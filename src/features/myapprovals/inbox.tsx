@@ -47,7 +47,7 @@ export function MyApprovalsBody({ view, t: tr, lang, canDecide }: MyApprovalsBod
         {view.rows.map((a, i) => (
           <ApprovalRow key={`${a.kind}:${a.id}:${i}`} href={a.href}>
             <div className={s.kindCol}>
-              <Tag tone="outline" className={s.kindTag}>
+              <Tag tone="outline" nowrap={false} className={s.kindTag}>
                 {t(APPROVAL_KIND_LABEL[a.kind])}
               </Tag>
               <span className={s.id}>{a.id}</span>
