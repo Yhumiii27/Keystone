@@ -22,6 +22,28 @@ import { getResourcePool, getWhatIf } from '@/server/dal/resources';
 import { createRisk, getRiskRegister, listRisks } from '@/server/dal/risks';
 import { getTask, listTasks } from '@/server/dal/tasks';
 import { getTrends } from '@/server/dal/trends';
+import { getBudgetContract } from '@/server/dal/budget';
+import { getCashFlow, listBillingPlans } from '@/server/dal/cashflow';
+import { getContract, issueInvoice, lateBillingMilestonesByProject } from '@/server/dal/contract';
+import { approveDocumentStep, depositInCodex, getCodexSyncState, getDocumentRecord, listDocumentTypes, listProjectDocuments, listVaultDocuments } from '@/server/dal/documents';
+import { getProjectsMap } from '@/server/dal/geo';
+import { createInterface, lateInterfacesByProject, listInterfaces } from '@/server/dal/interfaces';
+import { createMeeting, listMeetings, meetingsToWriteByProject, sendMinutes } from '@/server/dal/meetings';
+import { getPortfolioSchedule } from '@/server/dal/pipeline';
+import { getCapacityWhatIf, getPrioritisation } from '@/server/dal/prioritisation';
+import { getStakeholderRegister } from '@/server/dal/stakeholders';
+import { getProjectAssembly, getProjectBom, getRevisionComparison, getSpareList } from '@/server/dal/bom';
+import { acceptReceipt, announceDelivery, listReceipts, qcQueue, registerReceipt } from '@/server/dal/deliveries';
+import { getVaultSyncState, listDrawings } from '@/server/dal/drawings';
+import { ecoApprovalQueue, getEco, listEcos, recordEcoProgress } from '@/server/dal/eco';
+import { listParts } from '@/server/dal/parts';
+import {
+  approvePurchaseOrder, awardRfq, countOrdersToReceive, createDraftPurchaseOrders, createRfq, getBomShortfall, getPurchaseOrder, invoiceQueue, listPurchaseOrders, listRfqs,
+  listSupplierInvoices, poApprovalQueue, rfqAwardQueue, submitPurchaseOrder,
+} from '@/server/dal/purchasing';
+import { getX3StockSync, listStock } from '@/server/dal/stock';
+import { getSupplierScorecard, listStorageLocations } from '@/server/dal/suppliers';
+import { getVigieEcoConnector } from '@/server/integrations/vigie/eco-connector';
 import { setDb } from '@/server/db/client';
 import { riskCategory, riskResponse, riskStatus, stage } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
@@ -39,6 +61,37 @@ const D2_COUNTS: Record<string, number> = {
   leave_entries: 12, public_holidays: 11, hours_imports: 1, hours_lines: 10, unassigned_hours: 2,
   whatif_levers: 5, whatif_auto_levers: 9, whatif_contexts: 1, whatif_scenarios: 2, whatif_scenario_levers: 10,
   notifications: 10, notification_recipients: 24, activity_events: 12, audit_entries: 8,
+};
+
+/**
+ * Seed row counts of the delivery-3 tables: 42 DOCS with revisions A…current (Σ = 68), one approval row per circuit
+ * step (Σ = 96), downloads 2 × 30 released, acknowledgements of the 7 shared documents not released on 26/28/29 Sep;
+ * HLT-026 contract (2 amendments, 2 bonds, 5 milestones, 3 invoices) + the BILLING rows of NDC, RCF, WSA, MSR (15);
+ * MEETINGS 6 (25 invitees, 14 agenda points, 18 lines, 3 transcripts with 13 proposals); SCORES 10 × 5 axes.
+ */
+const D3_COUNTS: Record<string, number> = {
+  document_types: 28, document_type_circuit_steps: 65, document_approver_assignments: 10, documents: 42, document_revisions: 68, document_approvals: 96,
+  document_links: 18, document_acknowledgements: 7, document_downloads: 60, document_deposits: 0, document_index_syncs: 1,
+  contracts: 1, contract_amendments: 2, contract_bonds: 2, billing_plans: 6, payment_milestones: 20, customer_invoices: 3, portfolio_cash_forecasts: 6,
+  meetings: 6, meeting_participants: 25, meeting_agenda_points: 14, meeting_lines: 18, meeting_transcripts: 3, meeting_transcript_proposals: 13,
+  client_questions: 5, stakeholders: 8, raci_matrices: 1, raci_columns: 6, raci_rows: 7, raci_cells: 35, project_interfaces: 7,
+  score_axes: 5, portfolio_scores: 50, score_weights: 0, capacity_demand_rates: 5,
+};
+
+/**
+ * Seed row counts of the delivery-4 tables: 31 companies (8 rated + manufacturers, bidders, invoice issuers); 6 Settings
+ * locations + the generated receipts' unconfigured "Magasin chantier — Lyon"; PARTS 54 (12 equivalence rows, 15 last
+ * prices, 28 assembly links of TREE, 25 spare-list lines, 59 BOM lines); 13 drawings with revisions A…current (28);
+ * RFQS 4 (8 quotes); 21 orders (HLT_POS 6 + genPOs 15, 35 lines); 15 receipts (HLT_DELIV 5 + 10 generated, 25 lines,
+ * 44 documents & photos); INVOICES 6; STOCK0 18, MOVES0 5; the Vigie mirror of the 6 ECOS (18 approval keys, 12 parts,
+ * 7 projects, 24 effectivity targets) with an empty outbox.
+ */
+const D4_COUNTS: Record<string, number> = {
+  suppliers: 31, storage_locations: 7, parts: 54, part_equivalents: 12, part_last_prices: 15, assembly_links: 28, spare_list_lines: 25, project_bom_lines: 59,
+  project_assembly_roots: 1, revision_diffs: 1, revision_diff_lines: 5, drawings: 13, drawing_revisions: 28, pdm_vault_syncs: 1,
+  rfqs: 4, rfq_quotes: 8, purchase_orders: 21, po_lines: 35, goods_receipts: 15, receipt_lines: 25, receipt_attachments: 44, supplier_invoices: 6,
+  stock_positions: 18, stock_movements: 5, x3_sync_runs: 1,
+  vigie_ecos: 6, vigie_eco_approvals: 18, vigie_eco_parts: 12, vigie_eco_projects: 7, vigie_eco_effectivity: 24, vigie_eco_progress: 0,
 };
 
 let failures = 0;
@@ -77,6 +130,12 @@ async function main() {
 
   console.log('\nDelivery 2 tables (golden row counts)');
   for (const [table, n] of Object.entries(D2_COUNTS)) check(`${table} = ${n}`, counts[table] === n, counts[table]);
+
+  console.log('\nDelivery 3 tables (golden row counts)');
+  for (const [table, n] of Object.entries(D3_COUNTS)) check(`${table} = ${n}`, counts[table] === n, counts[table]);
+
+  console.log('\nDelivery 4 tables (golden row counts)');
+  for (const [table, n] of Object.entries(D4_COUNTS)) check(`${table} = ${n}`, counts[table] === n, counts[table]);
 
   console.log('\nProjects');
   const list = await listProjects();
@@ -204,6 +263,9 @@ async function main() {
   check('unread notifications per role 3/4/1/2/1/1/1/1', same(await Promise.all(['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'].map(countUnreadNotifications)), [3, 4, 1, 2, 1, 1, 1, 1]));
   check('ACTIVITY and AUDIT reproduced', same((await listActivity()).map((a) => [a.when, a.who, a.what, a.kind]), PROTO.ACTIVITY) && same((await listAudit()).map((a) => [a.when, a.who, a.object, a.change, a.area]), PROTO.AUDIT));
 
+  await delivery3Reads();
+  await delivery4Reads();
+
   console.log('\nNumbering & writes (temporary database)');
   check('next project number #045', (await nextProjectNumber()) === PROTO_GEN.nextProjectId);
   check('next analytic HAV002 / LOG001', (await nextAnalyticCode('Port authority')) === 'HAV002' && (await nextAnalyticCode('Logistics BU')) === 'LOG001');
@@ -225,10 +287,170 @@ async function main() {
     && (await createResourceRequest({ projectCode: 'HLT-026', title: 'Check', activityCode: 'A1250', person: 'Julien Wagner', priority: 'med' }, 'Romain Aubert')) === 'RQ-045');
   check('approving RQ-043 creates task T-2341 (contract role)', (await approveResourceRequest('RQ-043', 'Marion Kerviel')) === 'T-2341' && (await getTask('T-2341'))?.assignee === 'Contract structural engineer');
   check('audit rows appended (8 seed + 4)', (await listAudit()).length === 12);
+  await delivery3Writes();
+  await delivery4Writes();
 
   fs.rmSync(dir, { recursive: true, force: true });
   console.log(failures ? `\n${failures} check(s) FAILED` : '\nAll checks passed');
   process.exit(failures ? 1 : 0);
+}
+
+/** Delivery 3 data through the DAL vs the prototype figures quoted by the specs (10 §4–5, 04 §3–4, 03 §3, §6–7, 05 §3, §5–6, 07 §2.5). */
+async function delivery3Reads() {
+  console.log('\nDelivery 3 data (DAL vs prototype)');
+  const docs = await listProjectDocuments('HLT-026');
+  check('vault HLT-026 + QMS: 40 records · 28 released · 1 awaiting approval · 7 shared · 1 acknowledgement pending · 25 withdrawn revisions',
+    same([docs.length, docs.filter((d) => d.status === 'released').length, docs.filter((d) => d.status === 'release_proposed').length, docs.filter((d) => d.shared).length,
+      docs.filter((d) => d.shared && !d.acknowledged).length, docs.reduce((s, d) => s + d.withdrawnRevisions, 0)], [40, 28, 1, 7, 1, 25]));
+  check('vault all projects: 42 records (DOCS)', same((await listVaultDocuments()).map((d) => d.number), PROTO.DOCS.map((d: { id: string }) => d.id)));
+  const sync = await getCodexSyncState();
+  check('Codex sync 08:02 · 412 records', sync?.time === '08:02' && sync.records === 412, sync);
+  const pid = await getDocumentRecord('PID-HLT-026');
+  check('PID-HLT-026: rev D, revisions D→A, proof signed 24/25/26 Sep, client acknowledgement pending',
+    same(pid?.revisions.map((r) => [r.revision, r.issuedOn, r.withdrawnOn]), [['D', '2026-09-26', null], ['C', '2026-09-05', '2026-09-26'], ['B', '2026-08-15', '2026-09-05'], ['A', '2026-07-25', '2026-08-15']])
+      && same(pid?.approvals.map((a) => a.signedOn), ['2026-09-24', '2026-09-25', '2026-09-26']) && pid?.acknowledged === false, pid?.revisions);
+  const types = await listDocumentTypes();
+  check('document types register = DOC_TYPES, In Codex counts', same(types.map((t) => [t.code, t.label, t.circuitText, t.retention, t.isoClause, t.isClientDeliverable]),
+    PROTO.DOC_TYPES.map((t: { code: string; label: string; circuit: string; retention: string; iso: string; client: boolean }) => [t.code, t.label, t.circuit, t.retention, t.iso, t.client]))
+    && types.find((t) => t.code === 'LST')?.inCodex === 4);
+  const ct = await getContract('HLT-026');
+  check('contract HLT-026: €5.52M (5 400 + signed 120), invoiced 3 036, paid 1 656, retention 83, next INV-2026-004',
+    ct?.valueKeur === 5520 && ct.invoicedKeur === 3036 && ct.paidKeur === 1656 && ct.retentionKeur === 83 && ct.nextInvoiceNumber === 'INV-2026-004', ct && [ct.valueKeur, ct.invoicedKeur, ct.paidKeur]);
+  check('invoices INV-2026-001…003, M3 due 10 Nov (calendar days)', same(ct?.invoices.map((i) => [i.number, i.milestoneNumber, i.dueOn, i.statusLabel]),
+    [['INV-2026-001', 'M1', '2026-04-26', 'Paid'], ['INV-2026-002', 'M2', '2026-08-29', 'Paid'], ['INV-2026-003', 'M3', '2026-11-10', 'Awaiting payment']]));
+  check('no late billing milestone (badge), no contract on NDC-031', same(await lateBillingMilestonesByProject(), {}) && (await getContract('NDC-031')) === null);
+  check('Budget cash tab reads the contract from the DB, orders placed 713', (await getBudgetContract('HLT-026'))?.openCommit === 713);
+  const plans = await listBillingPlans();
+  check('billing plans: HLT-026 from the contract, BILLING elsewhere', plans['HLT-026']?.fromContract === true && plans['NDC-031']?.contractValueKeur === 2350 && plans['ERP-202']?.internal === true);
+  const cash = await getCashFlow(null);
+  const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+  check('cash flow: 5 rows · contract 10 090 · invoiced 5 258 · outstanding 1 940 · net +365 · low −490',
+    same([cash.rows.map((r) => r.project.code), sum(cash.rows.map((r) => r.plan.contractValueKeur)), sum(cash.rows.map((r) => r.plan.invoicedKeur)),
+      sum(cash.rows.map((r) => sum(r.plan.milestones.filter((m) => m.status === 'invoiced').map((m) => m.amountKeur)))),
+      sum(cash.forecast.map((m) => m.cashInKeur - m.cashOutKeur)), Math.min(...cash.forecast.map((_, i) => sum(cash.forecast.slice(0, i + 1).map((m) => m.cashInKeur - m.cashOutKeur))))],
+    [['HLT-026', 'NDC-031', 'RCF-019', 'ERP-202', 'MSR-012'], 10090, 5258, 1940, 365, -490]));
+  const pf = await getPrioritisation('director', null);
+  check('prioritisation: 10 ranked (SCORES remapped), WSA-044 first (81), HLT-026 72 · margin 13 % (contract)',
+    pf.ranking.length === 10 && pf.ranking[0].project.code === 'WSA-044' && pf.ranking[0].score === 81
+      && same(pf.ranking.find((r) => r.project.code === 'HLT-026') && [pf.ranking.find((r) => r.project.code === 'HLT-026')!.score, pf.ranking.find((r) => r.project.code === 'HLT-026')!.marginPct], [72, 13]));
+  check('capacity what-if WSA-044: gap 1 560 h', (await getCapacityWhatIf('WSA-044'))?.gapH === 1560);
+  const ms = await listMeetings('HLT-026');
+  const acts = ms.flatMap((m) => m.agenda.flatMap((a) => a.lines)).filter((l) => l.type === 'action');
+  check('meetings HLT-026: 5 · 1 notes in progress · 6 open actions · 0 overdue; MTG-121 on NDC-031',
+    ms.length === 5 && ms.filter((m) => m.status === 'notes_in_progress').length === 1 && acts.filter((l) => !l.done).length === 6 && !acts.some((l) => l.overdue)
+      && same(await meetingsToWriteByProject(), { 'HLT-026': 1, 'NDC-031': 1 }));
+  const stk = await getStakeholderRegister('HLT-026');
+  check('stakeholders 8 · 1 stale (DREAL Normandie) · RACI 7 × 6', stk.stakeholders.length === 8 && same(stk.stakeholders.filter((s) => s.stale).map((s) => s.name), ['DREAL Normandie'])
+    && stk.raci?.rows.length === 7 && stk.raci.columns.length === 6);
+  const ifc = await listInterfaces('HLT-026');
+  check('interfaces: 7 · IF-07 late (10 d) · badge 1', ifc.length === 7 && same(ifc.filter((i) => i.status === 'late').map((i) => [i.number, i.daysToNeed]), [['IF-07', -10]])
+    && same(await lateInterfacesByProject(), { 'HLT-026': 1 }));
+  const ps = await getPortfolioSchedule(null);
+  check('portfolio schedule: 7 in progress · 5 pipeline · average board wait 28 d', ps.rows.filter((r) => !r.pipeline).length === 7 && ps.rows.filter((r) => r.pipeline).length === 5 && ps.averageBoardWaitDays === 28);
+  const map = await getProjectsMap(null);
+  check('projects map: 17 located · 11 sites · 6 countries · 7 active · 5 pipeline · 3 at risk (1 off track)',
+    same([map.points.length, map.groups.length, map.countries.length, map.points.filter((p) => p.category === 'active').length, map.points.filter((p) => p.category === 'pipeline').length,
+      map.points.filter((p) => p.health && p.health !== 'on_track').length, map.points.filter((p) => p.health === 'off_track').length], [17, 11, 6, 7, 5, 3, 1]));
+}
+
+/** Delivery 3 numbering and writers (after the Delivery 2 writes: T-2341 is taken). */
+async function delivery3Writes() {
+  check('deposit → CER-HLT-042 (count + 40), first in the vault', (await depositInCodex({ typeCode: 'CER', project: 'HLT-026', linkedPo: 'PO-2026-118' }, 'Marie Lefebvre')).number === 'CER-HLT-042'
+    && (await listVaultDocuments())[0].number === 'CER-HLT-042');
+  await approveDocumentStep('RPT-HLT-014', 'Gabriel Comte');
+  check('RPT-HLT-014 released after its 2 approvals', (await approveDocumentStep('RPT-HLT-014', 'Romain Aubert')).released);
+  check('issue invoice on M4 → INV-2026-004', (await issueInvoice('HLT-026', { milestone: 'M4' }, 'Romain Aubert')) === 'INV-2026-004');
+  check('new meeting MTG-130', (await createMeeting('HLT-026', { title: 'Check', type: 'internal', series: 'one_off', date: '2026-10-06', invitees: ['R. Aubert'], agenda: [] }, 'Romain Aubert')) === 'MTG-130');
+  const sent = await sendMinutes('MTG-118', 'Romain Aubert');
+  check('MTG-118 minutes → MIN-HLT-027, tasks T-2342 / T-2343', same(sent, { minutesNumber: 'MIN-HLT-027', invited: 5, tasks: ['T-2342', 'T-2343'] }), sent);
+  check('new interface IF-10', (await createInterface('HLT-026', { title: 'Check', keystoneSide: 'site', otherParty: 'Client', dataExpected: 'Data', neededBy: '2026-11-02', owner: 'R. Aubert' }, 'Romain Aubert')) === 'IF-10');
+  check('audit rows appended (12 + 7)', (await listAudit()).length === 19);
+}
+
+/** Delivery 4 data through the DAL vs the prototype figures quoted by the specs (09 §1–5, 08 §1–4, §7.5). */
+async function delivery4Reads() {
+  console.log('\nDelivery 4 data (DAL vs prototype)');
+  const keur = (v: number) => Math.round(v / 10) / 100;
+  const bom = (await getProjectBom('HLT-026'))!;
+  check('BOM HLT-026: 35 articles · 2 042 units · €14.05M at list price (prototype sum) · 2 not validated · 1 outdated · 7 restricted',
+    same([bom.summary.articles, bom.summary.units, Math.round(bom.summary.listValueEur / 10000) / 100, bom.summary.notValidated, bom.summary.outdatedOrObsolete, bom.summary.exportRestricted], [35, 2042, 14.05, 2, 1, 7]), bom.summary);
+  check('BOM value without the assembly double count (09 OQ6) < list sum', bom.summary.valueEur < bom.summary.listValueEur && bom.lines.filter((l) => l.valuedByComponents).length === 8);
+  const others = await Promise.all(['NDC-031', 'RCF-019', 'ERP-202', 'WSA-044', 'MSR-012'].map(async (c) => { const b = (await getProjectBom(c))!; return [b.summary.articles, keur(b.summary.listValueEur)]; }));
+  check('BOM articles / value: NDC 8 / €3.83M, RCF 5 / €150k, ERP 2 / €1.32M, WSA 6 / €4.01M, MSR 3 / €351k', same(others.map(([n, v]) => [n, v >= 1000 ? Math.round(v / 10) / 100 : Math.round(v)]), [[8, 3.83], [5, 150], [2, 1.32], [6, 4.01], [3, 351]]), others);
+  check('no BOM, tree or orders on EWA-051 (no Harbor Line fallback)', (await getProjectBom('EWA-051'))!.lines.length === 0 && (await getProjectAssembly('EWA-051')) === null && (await listPurchaseOrders('EWA-051')).length === 0);
+  const asm = (await getProjectAssembly('HLT-026'))!;
+  const bog = asm.rows.find((r) => r.ref === 'ASM-BOG-300')!;
+  check('assembly tree: ASM-RMG-250 ×2 unit €713,996 · extended €1,427,992; ASM-BOG-300 ext 8 · unit €11,222',
+    same([asm.root.unitCostEur, asm.root.extendedCostEur, bog.extended, bog.unitCostEur], [713996, 1427992, 8, 11222]), [asm.root.unitCostEur, bog.unitCostEur]);
+  check('compare revisions B → C: +€19,180 per crane (ECO-2026-014)', (await getRevisionComparison('HLT-026'))?.totalDeltaEur === 19180);
+  const sp = (await getSpareList('HLT-026'))!;
+  check('PU/PR complete system ×2: 12 lines (4 PU) · €235k · 4 long lead · 3 under change · 10 below recommended stock (real on-hand)',
+    same([sp.rows.length, sp.rows.filter((r) => r.kind === 'PU').length, Math.round(sp.rows.reduce((a, r) => a + r.totalEur, 0) / 1000), sp.rows.filter((r) => (r.leadWeeks ?? 0) > 8).length,
+      sp.rows.filter((r) => r.underChange).length, sp.rows.filter((r) => r.inStock < r.recommendedQty).length], [12, 4, 235, 4, 3, 10]));
+  const parts = await listParts();
+  check('PLM: 54 parts · 16 manufactured · 87 % validated · 4 awaiting · FD-DET-OPT, SG-BRK-SS outdated in use · 13 restricted · 9 wks',
+    same([parts.length, parts.filter((p) => p.makeBuy === 'manufactured').length, Math.round((parts.filter((p) => p.status === 'validated').length / parts.length) * 100), parts.filter((p) => p.status === 'not_validated').length,
+      parts.filter((p) => (p.status === 'outdated' || p.status === 'obsolete') && p.usage.length).map((p) => p.ref), parts.filter((p) => p.exportRestriction).length,
+      Math.round(parts.filter((p) => p.leadWeeks).reduce((a, p) => a + p.leadWeeks!, 0) / parts.filter((p) => p.leadWeeks).length)], [54, 16, 87, 4, ['FD-DET-OPT', 'SG-BRK-SS'], 13, 9]));
+  const ecos = await listEcos();
+  const open = ecos.filter((e) => e.open);
+  check('ECOs (Vigie mirror, mock connector): 6 · 3 open · 1 in approval · 2 released (€10,360) · 2 projects · 5 parts · 12 dispositions pending',
+    getVigieEcoConnector().mode === 'mock' && same([ecos.length, open.length, ecos.filter((e) => e.status === 'in_approval').length, ecos.filter((e) => e.status === 'released').reduce((a, e) => a + e.costEur, 0),
+      new Set(open.flatMap((e) => e.projects)).size, new Set(open.flatMap((e) => e.parts)).size, open.reduce((a, e) => a + e.pendingDispositions, 0)], [6, 3, 1, 10360, 2, 5, 12]));
+  check('ECO-2026-015: open POs PO-1082 (HLT) and none elsewhere; PM approval pending for R. Aubert', same((await getEco('ECO-2026-015'))!.openPurchaseOrders.map((o) => o.number), ['PO-1082'])
+    && same((await ecoApprovalQueue({ name: 'Romain Aubert', role: 'pm' })).map((e) => e.number), ['ECO-2026-015']));
+  const dw = await listDrawings();
+  const vs = (await getVaultSyncState())!;
+  check('drawings: 13 · 10 released · 2 WIP/under review · 1 obsolete · vault 1 248 · last sync 07:40',
+    same([dw.length, dw.filter((d) => d.state === 'released').length, dw.filter((d) => d.state === 'wip' || d.state === 'under_review').length, dw.filter((d) => d.state === 'obsolete').length, vs.drawingsInVault, vs.time], [13, 10, 2, 1, 1248, '07:40']));
+  const pos = await listPurchaseOrders('HLT-026');
+  const sf = await getBomShortfall('HLT-026');
+  check('orders HLT-026: 5 open / 6 · committed €6.09M · 1 late (PO-1063) · 1 awaiting approval · shortfall 15 articles €884k',
+    same([pos.filter((o) => !['received', 'cancelled'].includes(o.status)).length, pos.length, Math.round(pos.filter((o) => o.status !== 'cancelled' && o.status !== 'draft').reduce((a, o) => a + o.valueEur, 0) / 10000) / 100,
+      pos.filter((o) => o.late).map((o) => o.number), pos.filter((o) => o.status === 'awaiting_approval').length, sf.lines.length, Math.round(sf.valueEur / 1000)], [5, 6, 6.09, ['PO-1063'], 1, 15, 884]));
+  const rs = await listReceipts('HLT-026');
+  check('deliveries HLT-026: 5 · 1 announced · 1 QC pending · 4 rejected (0.5 %) · 4 orders to receive',
+    same([rs.length, rs.filter((r) => r.status === 'announced').length, rs.filter((r) => r.status === 'qc_pending').length, rs.reduce((a, r) => a + r.totals.rejected, 0),
+      Math.round((rs.reduce((a, r) => a + r.totals.rejected, 0) / rs.reduce((a, r) => a + r.totals.delivered, 0)) * 1000) / 10, await countOrdersToReceive('HLT-026')], [5, 1, 1, 4, 0.5, 4]));
+  const stock = await listStock();
+  const x3 = (await getX3StockSync())!;
+  check('stock: €1.25M · 18 lines · 6 locations · 1 below min (MD-GAS-OUT) · 2 in quarantine · X3 07:15 · 15 lines · 3 local',
+    same([Math.round(stock.reduce((a, r) => a + r.valueEur, 0) / 10000) / 100, stock.length, (await listStorageLocations()).length, stock.filter((r) => r.belowMin).map((r) => r.ref),
+      stock.filter((r) => r.locationType === 'quarantine').reduce((a, r) => a + r.onHand, 0), x3.time, x3.x3Lines, x3.localLines], [1.25, 18, 6, ['MD-GAS-OUT'], 2, '07:15', 15, 3]));
+  const rfqs = await listRfqs();
+  const inv = await listSupplierInvoices();
+  const sc = await getSupplierScorecard('HLT-026');
+  check('sourcing: 3 open RFQs (1 to award) · 8 quotes · 5 invoices to process €1,724,160 · 3 blocked · 2 awaiting receipt · 8 suppliers (4 A, 1 C) · OTD 90 % · quality 97 % · 3 supplier NCRs',
+    same([rfqs.filter((r) => r.status !== 'awarded').length, rfqs.filter((r) => r.status === 'comparing').length, rfqs.reduce((a, r) => a + r.quotes.length, 0),
+      inv.filter((i) => i.status !== 'paid').length, inv.filter((i) => i.status !== 'paid').reduce((a, i) => a + i.amountEur, 0), inv.filter((i) => i.status === 'blocked' || i.status === 'no_po').length,
+      inv.filter((i) => i.status === 'awaiting_receipt').length, sc.rows.length, sc.rows.filter((s) => s.grade === 'A').length, sc.rows.filter((s) => s.grade === 'C').length,
+      Math.round(sc.rows.reduce((a, s) => a + s.onTimeDeliveryPct, 0) / 8), Math.round(sc.rows.reduce((a, s) => a + s.qualityAcceptancePct, 0) / 8), sc.supplierNcrs],
+    [3, 1, 8, 5, 1724160, 3, 2, 8, 4, 1, 90, 97, 3]));
+  check('My approvals queues: PO-1082 (director, PM) · BL-2026-0521 (quality, procurement) · RFQ-2026-031 · 3 invoices',
+    same([(await poApprovalQueue('HLT-026', 'Marie Lefebvre')).map((o) => o.number), (await poApprovalQueue('HLT-026', 'Romain Aubert')).map((o) => o.number), (await poApprovalQueue('HLT-026', 'Fabien Bertrand')).length,
+      (await qcQueue('HLT-026')).map((r) => r.number), (await rfqAwardQueue()).map((r) => r.number), (await invoiceQueue()).map((i) => i.number)],
+    [['PO-1082'], ['PO-1082'], 0, ['BL-2026-0521'], ['RFQ-2026-031'], ['INV-HC-7781', 'INV-BX-55120', 'INV-LE-2210']]));
+}
+
+/** Delivery 4 numbering and writers (after the Delivery 2 and 3 writes). */
+async function delivery4Writes() {
+  const before = (await listAudit()).length;
+  const drafts = await createDraftPurchaseOrders('HLT-026', 'Fabien Bertrand');
+  check('shortfall → 13 drafts PO-1100…PO-1112, one per manufacturer', drafts.length === 13 && drafts[0] === 'PO-1100' && drafts[12] === 'PO-1112', drafts);
+  await submitPurchaseOrder('PO-1100', 'Fabien Bertrand');
+  await approvePurchaseOrder('PO-1100', 'Romain Aubert');
+  const bl = await announceDelivery('HLT-026', {}, 'Fabien Bertrand');
+  await registerReceipt(bl, {}, 'Hélène Sauvage');
+  await acceptReceipt(bl, {}, 'Gabriel Comte');
+  check('PO-1100 approved → announce BL-2026-0600 → register → accept: order received, 192 plates in the Le Havre store',
+    bl === 'BL-2026-0600' && (await getPurchaseOrder('PO-1100'))?.status === 'received' && (await listStock()).find((s) => s.ref === 'KS-PLT-S355')?.onHand === 192);
+  check('award RFQ-2026-031 to Dillinger → draft PO-1113 at 1 195 €; new RFQ → RFQ-2026-035',
+    (await awardRfq('RFQ-2026-031', 'Dillinger', 'Fabien Bertrand')).purchaseOrderNumber === 'PO-1113'
+      && (await createRfq({ title: 'Check', suppliers: 'ABB', articles: 'EL-VFD-200', replyDueOn: '2026-10-15' }, 'Fabien Bertrand')) === 'RFQ-2026-035');
+  const rec = await recordEcoProgress('ECO-2026-015', { key: 'pm', decision: 'ok' }, { name: 'Romain Aubert', role: 'pm' });
+  check('ECO-2026-015 PM approval recorded, pending sync with Vigie (Vigie status unchanged)', rec.syncStatus === 'pending' && (await getEco('ECO-2026-015'))?.status === 'in_approval'
+    && (await getEco('ECO-2026-015'))?.approvalsView.find((a) => a.key === 'pm')?.pendingSync === true);
+  check('audit rows appended (19 + 21)', (await listAudit()).length === before + 21 && before === 19, [before, (await listAudit()).length]);
 }
 
 main().catch((e) => {

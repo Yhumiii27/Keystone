@@ -3,10 +3,10 @@ import 'server-only';
 // change lines, reconciliation — via cost.ts), the REX payment pattern of the project's machine type (Cost profile),
 // and the client contract that feeds Cash & recovery (§1.6).
 import { asc, eq } from 'drizzle-orm';
-import type { MilestoneStatus, PaymentMilestone } from '@/domain/evm';
+import type { PaymentMilestone } from '@/domain/evm';
 import { getDb } from '@/server/db/client';
 import { machineTypes, projects, rexReferences } from '@/server/db/schema';
-import { PROTO } from '@/server/prototype';
+import { getCashContract } from './contract';
 import { getCostControl, type CostControl } from './cost';
 
 export interface RexReference {
@@ -51,7 +51,7 @@ export async function getRexPattern(code: string): Promise<RexPattern | null> {
   return { mt: p.mtLabel ?? p.mtCode ?? 'AUTRE', ...pattern };
 }
 
-/** Client contract figures used by Cash & recovery (subset of `CONTRACTS[project]`, docs/spec/04 §6). */
+/** Client contract figures used by Cash & recovery (04 §1.6), read from the contract module (src/server/dal/contract.ts). */
 export interface BudgetContract {
   /** "CTR-HLT-001". */
   ref: string;
@@ -65,31 +65,15 @@ export interface BudgetContract {
   openCommit: number | null;
 }
 
-const MS_STATUS: Record<string, MilestoneStatus> = { Planned: 'planned', Invoiced: 'invoiced', Paid: 'paid' };
-const dash = (s: string | null | undefined) => (!s || s === '—' ? null : s);
-
 /**
- * The project's client contract, or null when none is registered (only HLT-026 in the seed).
- * TODO(db): contracts, amendments, payment milestones and invoices are not modelled yet (docs/spec/11) — read from
- * the prototype data. Billing's in-session overrides (issue invoice / mark paid, `ctrOv`/`ctrInv`) and contract-sheet
- * edits (`ctrInfo`) must feed this once the Contract & Billing module persists them. `openCommit` (713 for HLT-026)
- * is the prototype's literal; it should become the open purchase-order value from procurement (04 Q11).
+ * The project's client contract, or null when none is registered (only HLT-026 in the seed). Billing's invoices and
+ * payments and the contract-sheet edits are persisted by the contract module and flow in here. `openCommit` is the
+ * project's "orders placed" figure (HLT-026: 713 k€ until purchase orders are modelled, 04 Q11).
  */
 export async function getBudgetContract(code: string): Promise<BudgetContract | null> {
-  const ct = (PROTO.CONTRACTS as Record<string, unknown>)[code] as
-    | { ref: string; amount: number; terms: string; amendments: [string, number, string, string, string][]; milestones: [string, string, number, string, string, string, string][] }
-    | undefined;
+  const ct = await getCashContract(code);
   if (!ct) return null;
-  return {
-    ref: ct.ref,
-    amount: ct.amount,
-    terms: ct.terms,
-    amendments: ct.amendments.map(([label, amount, status]) => ({ label, amount, signed: status === 'Signed' })),
-    milestones: ct.milestones.map(([id, label, pct, due, status, inv, paid]) => ({
-      id, label, pct, due, status: MS_STATUS[status] ?? 'planned', invoiced: dash(inv), paid: dash(paid),
-    })),
-    openCommit: code === 'HLT-026' ? 713 : null,
-  };
+  return { ref: ct.reference, amount: ct.amount, terms: ct.terms, amendments: ct.amendments, milestones: ct.milestones, openCommit: ct.openCommit };
 }
 
 export interface BudgetData {

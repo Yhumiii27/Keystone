@@ -6,6 +6,9 @@ Conventions: `docs/ARCHITECTURE.md`. Functional spec: `docs/spec/`. Delivery 1 b
 
 ## 1. Status at hand-over (8 Oct 2026)
 
+> **Delivery 3 has landed.** This file describes Delivery 2 as it was handed over. For the current status, data,
+> `TODO(db)` list and APIs, read `docs/DELIVERY-3.md`. In particular, sections 3, 5 and 8 below are partly outdated.
+
 | Check | Result |
 |---|---|
 | `npx tsc --noEmit` | clean |

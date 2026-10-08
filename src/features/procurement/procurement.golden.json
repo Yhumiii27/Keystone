@@ -1,0 +1,7894 @@
+{
+ "seed": {
+  "en": {
+   "rfq": {
+    "kpis": [
+     {
+      "label": "Open RFQs",
+      "value": 3,
+      "sub": "1 ready to award",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Quotes received",
+      "value": 8,
+      "sub": "Across open requests",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Savings vs list",
+      "value": "€12k",
+      "sub": "Awarded this quarter",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Average cycle",
+      "value": "9 d",
+      "sub": "RFQ sent → award",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Award rule",
+      "value": "PM",
+      "sub": "Decided per RFQ by the project manager",
+      "color": "var(--color-text)"
+     }
+    ],
+    "rows": [
+     {
+      "id": "RFQ-2026-031",
+      "title": "Steel plate S355 · 20 mm — 192 plates",
+      "part": "KS-STL-0450",
+      "qty": 192,
+      "due": "30 Sep",
+      "owner": "Fabien Bertrand",
+      "quotesText": "3 quotes · from €1,195",
+      "rule": "Lowest total cost of ownership",
+      "chosenText": "—",
+      "status": "Comparing",
+      "tagClass": "tag tag-accent",
+      "idColor": "var(--color-neutral-300)",
+      "canSend": false,
+      "canCompare": false
+     },
+     {
+      "id": "RFQ-2026-033",
+      "title": "Frequency drives 200 kW — 6 units",
+      "part": "EL-VFD-200",
+      "qty": 6,
+      "due": "3 Oct",
+      "owner": "Pauline Noguès",
+      "quotesText": "2 quotes · from €14,200",
+      "rule": "Technical compliance first",
+      "chosenText": "—",
+      "status": "Open",
+      "tagClass": "tag tag-outline",
+      "idColor": "var(--color-neutral-300)",
+      "canSend": false,
+      "canCompare": true
+     },
+     {
+      "id": "RFQ-2026-029",
+      "title": "Wire rope 28 mm — 4 × 400 m",
+      "part": "HST-ROP-28",
+      "qty": 4,
+      "due": "15 Sep",
+      "owner": "Fabien Bertrand",
+      "quotesText": "3 quotes · from €9,400",
+      "rule": "Lowest price",
+      "chosenText": "Teufelberger",
+      "status": "Awarded",
+      "tagClass": "tag tag-neutral",
+      "idColor": "var(--color-neutral-300)",
+      "canSend": false,
+      "canCompare": false
+     },
+     {
+      "id": "RFQ-2026-034",
+      "title": "Anti-collision lidar — 8 units",
+      "part": "CTL-ANT-COL",
+      "qty": 8,
+      "due": "10 Oct",
+      "owner": "Thomas Kerbrat",
+      "quotesText": "No quote yet",
+      "rule": "PM decides",
+      "chosenText": "—",
+      "status": "Draft",
+      "tagClass": "tag tag-neutral",
+      "idColor": "var(--color-neutral-300)",
+      "canSend": true,
+      "canCompare": false
+     }
+    ]
+   },
+   "inv": {
+    "kpis": [
+     {
+      "label": "Invoices to process",
+      "value": 5,
+      "sub": "€1,724,160",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Blocked by 3-way match",
+      "value": 3,
+      "sub": "Quantity or PO mismatch",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Awaiting goods receipt",
+      "value": 2,
+      "sub": "Invoice before delivery",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Approved for payment",
+      "value": 0,
+      "sub": "Pushed to X3 accounts payable",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Due within 30 days",
+      "value": 5,
+      "sub": "Net 30 default terms",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     [
+      "All",
+      6
+     ],
+     [
+      "Blocked",
+      2
+     ],
+     [
+      "Awaiting receipt",
+      2
+     ],
+     [
+      "No PO",
+      1
+     ],
+     [
+      "Approved for payment",
+      0
+     ],
+     [
+      "Paid",
+      1
+     ]
+    ],
+    "noInv": false,
+    "rows": [
+     {
+      "id": "INV-KS-4471",
+      "date": "05 Jul",
+      "supplier": "Keystone Steelworks",
+      "poText": "PO-1041",
+      "grText": "BL-2026-0412",
+      "amountText": "€433,400",
+      "gapText": "—",
+      "gapColor": "var(--color-neutral-500)",
+      "dueDate": "04 Aug",
+      "status": "Paid",
+      "tagClass": "tag tag-neutral",
+      "idColor": "var(--color-neutral-300)",
+      "canApprove": false,
+      "canPartial": false,
+      "m": [
+       [
+        "PO",
+        "var(--color-accent)"
+       ],
+       [
+        "GR",
+        "var(--color-accent)"
+       ],
+       [
+        "INV",
+        "var(--color-accent)"
+       ]
+      ]
+     },
+     {
+      "id": "INV-HC-7781",
+      "date": "10 Sep",
+      "supplier": "Halvorsen Cranes",
+      "poText": "PO-1052",
+      "grText": "BL-2026-0498",
+      "amountText": "€1,286,400",
+      "gapText": "€26,800",
+      "gapColor": "var(--color-accent-300)",
+      "dueDate": "10 Oct",
+      "status": "Blocked",
+      "tagClass": "tag tag-accent",
+      "idColor": "var(--color-neutral-300)",
+      "canApprove": false,
+      "canPartial": true,
+      "m": [
+       [
+        "PO",
+        "var(--color-accent)"
+       ],
+       [
+        "GR",
+        "var(--color-accent-700)"
+       ],
+       [
+        "INV",
+        "var(--color-accent)"
+       ]
+      ]
+     },
+     {
+      "id": "INV-NV-1190",
+      "date": "22 Sep",
+      "supplier": "Nordvolt",
+      "poText": "PO-1063",
+      "grText": "BL-2026-0521",
+      "amountText": "€248,000",
+      "gapText": "€248,000",
+      "gapColor": "var(--color-accent-300)",
+      "dueDate": "22 Oct",
+      "status": "Awaiting receipt",
+      "tagClass": "tag tag-outline",
+      "idColor": "var(--color-neutral-300)",
+      "canApprove": false,
+      "canPartial": false,
+      "m": [
+       [
+        "PO",
+        "var(--color-accent)"
+       ],
+       [
+        "GR",
+        "var(--color-neutral-700)"
+       ],
+       [
+        "INV",
+        "var(--color-accent)"
+       ]
+      ]
+     },
+     {
+      "id": "INV-BX-55120",
+      "date": "24 Sep",
+      "supplier": "Brightline Electrics",
+      "poText": "PO-1071",
+      "grText": "BL-2026-0533",
+      "amountText": "€163,800",
+      "gapText": "€7,800",
+      "gapColor": "var(--color-accent-300)",
+      "dueDate": "24 Oct",
+      "status": "Blocked",
+      "tagClass": "tag tag-accent",
+      "idColor": "var(--color-neutral-300)",
+      "canApprove": false,
+      "canPartial": true,
+      "m": [
+       [
+        "PO",
+        "var(--color-accent)"
+       ],
+       [
+        "GR",
+        "var(--color-accent-700)"
+       ],
+       [
+        "INV",
+        "var(--color-accent)"
+       ]
+      ]
+     },
+     {
+      "id": "INV-CF-0921",
+      "date": "25 Sep",
+      "supplier": "Cotswold Fire Systems",
+      "poText": "PO-1078",
+      "grText": "—",
+      "amountText": "€19,080",
+      "gapText": "—",
+      "gapColor": "var(--color-neutral-500)",
+      "dueDate": "25 Oct",
+      "status": "Awaiting receipt",
+      "tagClass": "tag tag-outline",
+      "idColor": "var(--color-neutral-300)",
+      "canApprove": false,
+      "canPartial": false,
+      "m": [
+       [
+        "PO",
+        "var(--color-accent)"
+       ],
+       [
+        "GR",
+        "var(--color-neutral-100)"
+       ],
+       [
+        "INV",
+        "var(--color-accent)"
+       ]
+      ]
+     },
+     {
+      "id": "INV-LE-2210",
+      "date": "25 Sep",
+      "supplier": "Lincoln Electric",
+      "poText": "—",
+      "grText": "—",
+      "amountText": "€6,880",
+      "gapText": "—",
+      "gapColor": "var(--color-neutral-500)",
+      "dueDate": "25 Oct",
+      "status": "No PO",
+      "tagClass": "tag tag-accent",
+      "idColor": "var(--color-neutral-300)",
+      "canApprove": false,
+      "canPartial": false,
+      "m": [
+       [
+        "PO",
+        "var(--color-neutral-100)"
+       ],
+       [
+        "GR",
+        "var(--color-neutral-100)"
+       ],
+       [
+        "INV",
+        "var(--color-accent)"
+       ]
+      ]
+     }
+    ]
+   },
+   "sup": {
+    "kpis": [
+     {
+      "label": "Active suppliers",
+      "value": 8,
+      "sub": "4 rated A",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "On-time delivery",
+      "value": "90%",
+      "sub": "Weighted last 12 months",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Quality acceptance",
+      "value": "97%",
+      "sub": "Units accepted at receipt",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Rated C",
+      "value": 1,
+      "sub": "Improvement plan required",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "NCRs from suppliers",
+      "value": 3,
+      "sub": "This quarter",
+      "color": "var(--color-text)"
+     }
+    ],
+    "rows": [
+     {
+      "name": "Keystone Steelworks",
+      "otd": "96%",
+      "otdW": "96%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "1.2%",
+      "ncrColor": "var(--color-text)",
+      "pos": 12,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Halvorsen Cranes",
+      "otd": "88%",
+      "otdW": "88%",
+      "otdColor": "var(--color-text)",
+      "qual": "96%",
+      "qualW": "96%",
+      "ncr": "2.1%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 4,
+      "ncrs": 1,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Nordvolt",
+      "otd": "92%",
+      "otdW": "92%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 6,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Brightline Electrics",
+      "otd": "90%",
+      "otdW": "90%",
+      "otdColor": "var(--color-text)",
+      "qual": "90%",
+      "qualW": "90%",
+      "ncr": "4.8%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 9,
+      "ncrs": 1,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Cotswold Fire Systems",
+      "otd": "78%",
+      "otdW": "78%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "95%",
+      "qualW": "95%",
+      "ncr": "0.5%",
+      "ncrColor": "var(--color-text)",
+      "pos": 7,
+      "ncrs": 0,
+      "grade": "C",
+      "gradeClass": "tag tag-accent"
+     },
+     {
+      "name": "ArcelorMittal",
+      "otd": "95%",
+      "otdW": "95%",
+      "otdColor": "var(--color-text)",
+      "qual": "99%",
+      "qualW": "99%",
+      "ncr": "0.3%",
+      "ncrColor": "var(--color-text)",
+      "pos": 5,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Siemens",
+      "otd": "97%",
+      "otdW": "97%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 11,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Solaris PV",
+      "otd": "84%",
+      "otdW": "84%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "98%",
+      "qualW": "98%",
+      "ncr": "1.1%",
+      "ncrColor": "var(--color-text)",
+      "pos": 3,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     }
+    ]
+   },
+   "invFilters": {
+    "Blocked": {
+     "ids": [
+      "INV-HC-7781",
+      "INV-BX-55120"
+     ],
+     "noInv": false
+    },
+    "Awaiting receipt": {
+     "ids": [
+      "INV-NV-1190",
+      "INV-CF-0921"
+     ],
+     "noInv": false
+    },
+    "No PO": {
+     "ids": [
+      "INV-LE-2210"
+     ],
+     "noInv": false
+    },
+    "Approved for payment": {
+     "ids": [],
+     "noInv": true
+    },
+    "Paid": {
+     "ids": [
+      "INV-KS-4471"
+     ],
+     "noInv": false
+    }
+   }
+  },
+  "fr": {
+   "rfq": {
+    "kpis": [
+     {
+      "label": "Consultations ouvertes",
+      "value": 3,
+      "sub": "1 prêtes à attribuer",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Devis reçus",
+      "value": 8,
+      "sub": "Sur les consultations ouvertes",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Économies vs catalogue",
+      "value": "12 k€",
+      "sub": "Attribuées ce trimestre",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Cycle moyen",
+      "value": "9 j",
+      "sub": "Envoi → attribution",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Règle d’attribution",
+      "value": "CP",
+      "sub": "Décidée par le chef de projet pour chaque consultation",
+      "color": "var(--color-text)"
+     }
+    ],
+    "rows": [
+     {
+      "id": "RFQ-2026-031",
+      "title": "Tôle acier S355 · 20 mm — 192 tôles",
+      "part": "KS-STL-0450",
+      "qty": 192,
+      "due": "30 sept.",
+      "owner": "Fabien Bertrand",
+      "quotesText": "3 devis · à partir de 1 195 €",
+      "rule": "Coût total de possession le plus bas",
+      "chosenText": "—",
+      "status": "Comparaison",
+      "tagClass": "tag tag-accent",
+      "idColor": "var(--color-neutral-300)",
+      "canSend": false,
+      "canCompare": false
+     },
+     {
+      "id": "RFQ-2026-033",
+      "title": "Variateurs de fréquence 200 kW — 6 unités",
+      "part": "EL-VFD-200",
+      "qty": 6,
+      "due": "3 oct.",
+      "owner": "Pauline Noguès",
+      "quotesText": "2 devis · à partir de 14 200 €",
+      "rule": "Conformité technique d’abord",
+      "chosenText": "—",
+      "status": "Ouverte",
+      "tagClass": "tag tag-outline",
+      "idColor": "var(--color-neutral-300)",
+      "canSend": false,
+      "canCompare": true
+     },
+     {
+      "id": "RFQ-2026-029",
+      "title": "Câble acier 28 mm — 4 × 400 m",
+      "part": "HST-ROP-28",
+      "qty": 4,
+      "due": "15 sept.",
+      "owner": "Fabien Bertrand",
+      "quotesText": "3 devis · à partir de 9 400 €",
+      "rule": "Prix le plus bas",
+      "chosenText": "Teufelberger",
+      "status": "Attribuée",
+      "tagClass": "tag tag-neutral",
+      "idColor": "var(--color-neutral-300)",
+      "canSend": false,
+      "canCompare": false
+     },
+     {
+      "id": "RFQ-2026-034",
+      "title": "Lidar anticollision — 8 unités",
+      "part": "CTL-ANT-COL",
+      "qty": 8,
+      "due": "10 oct.",
+      "owner": "Thomas Kerbrat",
+      "quotesText": "No quote yet",
+      "rule": "Le chef de projet décide",
+      "chosenText": "—",
+      "status": "Brouillon",
+      "tagClass": "tag tag-neutral",
+      "idColor": "var(--color-neutral-300)",
+      "canSend": true,
+      "canCompare": false
+     }
+    ]
+   },
+   "inv": {
+    "kpis": [
+     {
+      "label": "Factures à traiter",
+      "value": 5,
+      "sub": "1 724 160 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Bloquées par le rapprochement",
+      "value": 3,
+      "sub": "Écart de quantité ou de commande",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "En attente de réception",
+      "value": 2,
+      "sub": "Facture avant livraison",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Approuvée pour paiement",
+      "value": 0,
+      "sub": "Envoyées à la comptabilité X3",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Échéance sous 30 jours",
+      "value": 5,
+      "sub": "Conditions par défaut 30 jours net",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     [
+      "Tous",
+      6
+     ],
+     [
+      "Bloquée",
+      2
+     ],
+     [
+      "En attente de réception",
+      2
+     ],
+     [
+      "Sans commande",
+      1
+     ],
+     [
+      "Approuvée pour paiement",
+      0
+     ],
+     [
+      "Payé",
+      1
+     ]
+    ],
+    "noInv": false,
+    "rows": [
+     {
+      "id": "INV-KS-4471",
+      "date": "05 juil.",
+      "supplier": "Keystone Steelworks",
+      "poText": "PO-1041",
+      "grText": "BL-2026-0412",
+      "amountText": "433 400 €",
+      "gapText": "—",
+      "gapColor": "var(--color-neutral-500)",
+      "dueDate": "04 août",
+      "status": "Payé",
+      "tagClass": "tag tag-neutral",
+      "idColor": "var(--color-neutral-300)",
+      "canApprove": false,
+      "canPartial": false,
+      "m": [
+       [
+        "PO",
+        "var(--color-accent)"
+       ],
+       [
+        "GR",
+        "var(--color-accent)"
+       ],
+       [
+        "INV",
+        "var(--color-accent)"
+       ]
+      ]
+     },
+     {
+      "id": "INV-HC-7781",
+      "date": "10 sept.",
+      "supplier": "Halvorsen Cranes",
+      "poText": "PO-1052",
+      "grText": "BL-2026-0498",
+      "amountText": "1 286 400 €",
+      "gapText": "26 800 €",
+      "gapColor": "var(--color-accent-300)",
+      "dueDate": "10 oct.",
+      "status": "Bloquée",
+      "tagClass": "tag tag-accent",
+      "idColor": "var(--color-neutral-300)",
+      "canApprove": false,
+      "canPartial": true,
+      "m": [
+       [
+        "PO",
+        "var(--color-accent)"
+       ],
+       [
+        "GR",
+        "var(--color-accent-700)"
+       ],
+       [
+        "INV",
+        "var(--color-accent)"
+       ]
+      ]
+     },
+     {
+      "id": "INV-NV-1190",
+      "date": "22 sept.",
+      "supplier": "Nordvolt",
+      "poText": "PO-1063",
+      "grText": "BL-2026-0521",
+      "amountText": "248 000 €",
+      "gapText": "248 000 €",
+      "gapColor": "var(--color-accent-300)",
+      "dueDate": "22 oct.",
+      "status": "En attente de réception",
+      "tagClass": "tag tag-outline",
+      "idColor": "var(--color-neutral-300)",
+      "canApprove": false,
+      "canPartial": false,
+      "m": [
+       [
+        "PO",
+        "var(--color-accent)"
+       ],
+       [
+        "GR",
+        "var(--color-neutral-700)"
+       ],
+       [
+        "INV",
+        "var(--color-accent)"
+       ]
+      ]
+     },
+     {
+      "id": "INV-BX-55120",
+      "date": "24 sept.",
+      "supplier": "Brightline Electrics",
+      "poText": "PO-1071",
+      "grText": "BL-2026-0533",
+      "amountText": "163 800 €",
+      "gapText": "7 800 €",
+      "gapColor": "var(--color-accent-300)",
+      "dueDate": "24 oct.",
+      "status": "Bloquée",
+      "tagClass": "tag tag-accent",
+      "idColor": "var(--color-neutral-300)",
+      "canApprove": false,
+      "canPartial": true,
+      "m": [
+       [
+        "PO",
+        "var(--color-accent)"
+       ],
+       [
+        "GR",
+        "var(--color-accent-700)"
+       ],
+       [
+        "INV",
+        "var(--color-accent)"
+       ]
+      ]
+     },
+     {
+      "id": "INV-CF-0921",
+      "date": "25 sept.",
+      "supplier": "Cotswold Fire Systems",
+      "poText": "PO-1078",
+      "grText": "—",
+      "amountText": "19 080 €",
+      "gapText": "—",
+      "gapColor": "var(--color-neutral-500)",
+      "dueDate": "25 oct.",
+      "status": "En attente de réception",
+      "tagClass": "tag tag-outline",
+      "idColor": "var(--color-neutral-300)",
+      "canApprove": false,
+      "canPartial": false,
+      "m": [
+       [
+        "PO",
+        "var(--color-accent)"
+       ],
+       [
+        "GR",
+        "var(--color-neutral-100)"
+       ],
+       [
+        "INV",
+        "var(--color-accent)"
+       ]
+      ]
+     },
+     {
+      "id": "INV-LE-2210",
+      "date": "25 sept.",
+      "supplier": "Lincoln Electric",
+      "poText": "—",
+      "grText": "—",
+      "amountText": "6 880 €",
+      "gapText": "—",
+      "gapColor": "var(--color-neutral-500)",
+      "dueDate": "25 oct.",
+      "status": "Sans commande",
+      "tagClass": "tag tag-accent",
+      "idColor": "var(--color-neutral-300)",
+      "canApprove": false,
+      "canPartial": false,
+      "m": [
+       [
+        "PO",
+        "var(--color-neutral-100)"
+       ],
+       [
+        "GR",
+        "var(--color-neutral-100)"
+       ],
+       [
+        "INV",
+        "var(--color-accent)"
+       ]
+      ]
+     }
+    ]
+   },
+   "sup": {
+    "kpis": [
+     {
+      "label": "Fournisseurs actifs",
+      "value": 8,
+      "sub": "4 notés A",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraison à l’heure",
+      "value": "90%",
+      "sub": "Pondéré sur 12 mois",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Acceptation qualité",
+      "value": "97%",
+      "sub": "Unités acceptées à la réception",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Notés C",
+      "value": 1,
+      "sub": "Plan d’amélioration requis",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "NCR d’origine fournisseur",
+      "value": 3,
+      "sub": "Ce trimestre",
+      "color": "var(--color-text)"
+     }
+    ],
+    "rows": [
+     {
+      "name": "Keystone Steelworks",
+      "otd": "96%",
+      "otdW": "96%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "1.2%",
+      "ncrColor": "var(--color-text)",
+      "pos": 12,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Halvorsen Cranes",
+      "otd": "88%",
+      "otdW": "88%",
+      "otdColor": "var(--color-text)",
+      "qual": "96%",
+      "qualW": "96%",
+      "ncr": "2.1%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 4,
+      "ncrs": 1,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Nordvolt",
+      "otd": "92%",
+      "otdW": "92%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 6,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Brightline Electrics",
+      "otd": "90%",
+      "otdW": "90%",
+      "otdColor": "var(--color-text)",
+      "qual": "90%",
+      "qualW": "90%",
+      "ncr": "4.8%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 9,
+      "ncrs": 1,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Cotswold Fire Systems",
+      "otd": "78%",
+      "otdW": "78%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "95%",
+      "qualW": "95%",
+      "ncr": "0.5%",
+      "ncrColor": "var(--color-text)",
+      "pos": 7,
+      "ncrs": 0,
+      "grade": "C",
+      "gradeClass": "tag tag-accent"
+     },
+     {
+      "name": "ArcelorMittal",
+      "otd": "95%",
+      "otdW": "95%",
+      "otdColor": "var(--color-text)",
+      "qual": "99%",
+      "qualW": "99%",
+      "ncr": "0.3%",
+      "ncrColor": "var(--color-text)",
+      "pos": 5,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Siemens",
+      "otd": "97%",
+      "otdW": "97%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 11,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Solaris PV",
+      "otd": "84%",
+      "otdW": "84%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "98%",
+      "qualW": "98%",
+      "ncr": "1.1%",
+      "ncrColor": "var(--color-text)",
+      "pos": 3,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     }
+    ]
+   },
+   "invFilters": {
+    "Blocked": {
+     "ids": [
+      "INV-HC-7781",
+      "INV-BX-55120"
+     ],
+     "noInv": false
+    },
+    "Awaiting receipt": {
+     "ids": [
+      "INV-NV-1190",
+      "INV-CF-0921"
+     ],
+     "noInv": false
+    },
+    "No PO": {
+     "ids": [
+      "INV-LE-2210"
+     ],
+     "noInv": false
+    },
+    "Approved for payment": {
+     "ids": [],
+     "noInv": true
+    },
+    "Paid": {
+     "ids": [
+      "INV-KS-4471"
+     ],
+     "noInv": false
+    }
+   }
+  }
+ },
+ "sup": {
+  "en": {
+   "HLT-026": {
+    "kpis": [
+     {
+      "label": "Active suppliers",
+      "value": 8,
+      "sub": "4 rated A",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "On-time delivery",
+      "value": "90%",
+      "sub": "Weighted last 12 months",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Quality acceptance",
+      "value": "97%",
+      "sub": "Units accepted at receipt",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Rated C",
+      "value": 1,
+      "sub": "Improvement plan required",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "NCRs from suppliers",
+      "value": 3,
+      "sub": "This quarter",
+      "color": "var(--color-text)"
+     }
+    ],
+    "rows": [
+     {
+      "name": "Keystone Steelworks",
+      "otd": "96%",
+      "otdW": "96%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "1.2%",
+      "ncrColor": "var(--color-text)",
+      "pos": 12,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Halvorsen Cranes",
+      "otd": "88%",
+      "otdW": "88%",
+      "otdColor": "var(--color-text)",
+      "qual": "96%",
+      "qualW": "96%",
+      "ncr": "2.1%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 4,
+      "ncrs": 1,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Nordvolt",
+      "otd": "92%",
+      "otdW": "92%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 6,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Brightline Electrics",
+      "otd": "90%",
+      "otdW": "90%",
+      "otdColor": "var(--color-text)",
+      "qual": "90%",
+      "qualW": "90%",
+      "ncr": "4.8%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 9,
+      "ncrs": 1,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Cotswold Fire Systems",
+      "otd": "78%",
+      "otdW": "78%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "95%",
+      "qualW": "95%",
+      "ncr": "0.5%",
+      "ncrColor": "var(--color-text)",
+      "pos": 7,
+      "ncrs": 0,
+      "grade": "C",
+      "gradeClass": "tag tag-accent"
+     },
+     {
+      "name": "ArcelorMittal",
+      "otd": "95%",
+      "otdW": "95%",
+      "otdColor": "var(--color-text)",
+      "qual": "99%",
+      "qualW": "99%",
+      "ncr": "0.3%",
+      "ncrColor": "var(--color-text)",
+      "pos": 5,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Siemens",
+      "otd": "97%",
+      "otdW": "97%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 11,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Solaris PV",
+      "otd": "84%",
+      "otdW": "84%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "98%",
+      "qualW": "98%",
+      "ncr": "1.1%",
+      "ncrColor": "var(--color-text)",
+      "pos": 3,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     }
+    ]
+   },
+   "NDC-031": {
+    "kpis": [
+     {
+      "label": "Active suppliers",
+      "value": 8,
+      "sub": "4 rated A",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "On-time delivery",
+      "value": "90%",
+      "sub": "Weighted last 12 months",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Quality acceptance",
+      "value": "97%",
+      "sub": "Units accepted at receipt",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Rated C",
+      "value": 1,
+      "sub": "Improvement plan required",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "NCRs from suppliers",
+      "value": 2,
+      "sub": "This quarter",
+      "color": "var(--color-text)"
+     }
+    ],
+    "rows": [
+     {
+      "name": "Keystone Steelworks",
+      "otd": "96%",
+      "otdW": "96%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "1.2%",
+      "ncrColor": "var(--color-text)",
+      "pos": 12,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Halvorsen Cranes",
+      "otd": "88%",
+      "otdW": "88%",
+      "otdColor": "var(--color-text)",
+      "qual": "96%",
+      "qualW": "96%",
+      "ncr": "2.1%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 4,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Nordvolt",
+      "otd": "92%",
+      "otdW": "92%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 6,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Brightline Electrics",
+      "otd": "90%",
+      "otdW": "90%",
+      "otdColor": "var(--color-text)",
+      "qual": "90%",
+      "qualW": "90%",
+      "ncr": "4.8%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 9,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Cotswold Fire Systems",
+      "otd": "78%",
+      "otdW": "78%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "95%",
+      "qualW": "95%",
+      "ncr": "0.5%",
+      "ncrColor": "var(--color-text)",
+      "pos": 7,
+      "ncrs": 0,
+      "grade": "C",
+      "gradeClass": "tag tag-accent"
+     },
+     {
+      "name": "ArcelorMittal",
+      "otd": "95%",
+      "otdW": "95%",
+      "otdColor": "var(--color-text)",
+      "qual": "99%",
+      "qualW": "99%",
+      "ncr": "0.3%",
+      "ncrColor": "var(--color-text)",
+      "pos": 5,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Siemens",
+      "otd": "97%",
+      "otdW": "97%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 11,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Solaris PV",
+      "otd": "84%",
+      "otdW": "84%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "98%",
+      "qualW": "98%",
+      "ncr": "1.1%",
+      "ncrColor": "var(--color-text)",
+      "pos": 3,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     }
+    ]
+   },
+   "WSA-044": {
+    "kpis": [
+     {
+      "label": "Active suppliers",
+      "value": 8,
+      "sub": "4 rated A",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "On-time delivery",
+      "value": "90%",
+      "sub": "Weighted last 12 months",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Quality acceptance",
+      "value": "97%",
+      "sub": "Units accepted at receipt",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Rated C",
+      "value": 1,
+      "sub": "Improvement plan required",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "NCRs from suppliers",
+      "value": 2,
+      "sub": "This quarter",
+      "color": "var(--color-text)"
+     }
+    ],
+    "rows": [
+     {
+      "name": "Keystone Steelworks",
+      "otd": "96%",
+      "otdW": "96%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "1.2%",
+      "ncrColor": "var(--color-text)",
+      "pos": 12,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Halvorsen Cranes",
+      "otd": "88%",
+      "otdW": "88%",
+      "otdColor": "var(--color-text)",
+      "qual": "96%",
+      "qualW": "96%",
+      "ncr": "2.1%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 4,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Nordvolt",
+      "otd": "92%",
+      "otdW": "92%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 6,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Brightline Electrics",
+      "otd": "90%",
+      "otdW": "90%",
+      "otdColor": "var(--color-text)",
+      "qual": "90%",
+      "qualW": "90%",
+      "ncr": "4.8%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 9,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Cotswold Fire Systems",
+      "otd": "78%",
+      "otdW": "78%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "95%",
+      "qualW": "95%",
+      "ncr": "0.5%",
+      "ncrColor": "var(--color-text)",
+      "pos": 7,
+      "ncrs": 0,
+      "grade": "C",
+      "gradeClass": "tag tag-accent"
+     },
+     {
+      "name": "ArcelorMittal",
+      "otd": "95%",
+      "otdW": "95%",
+      "otdColor": "var(--color-text)",
+      "qual": "99%",
+      "qualW": "99%",
+      "ncr": "0.3%",
+      "ncrColor": "var(--color-text)",
+      "pos": 5,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Siemens",
+      "otd": "97%",
+      "otdW": "97%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 11,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Solaris PV",
+      "otd": "84%",
+      "otdW": "84%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "98%",
+      "qualW": "98%",
+      "ncr": "1.1%",
+      "ncrColor": "var(--color-text)",
+      "pos": 3,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     }
+    ]
+   },
+   "EWA-051": {
+    "kpis": [
+     {
+      "label": "Active suppliers",
+      "value": 8,
+      "sub": "4 rated A",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "On-time delivery",
+      "value": "90%",
+      "sub": "Weighted last 12 months",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Quality acceptance",
+      "value": "97%",
+      "sub": "Units accepted at receipt",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Rated C",
+      "value": 1,
+      "sub": "Improvement plan required",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "NCRs from suppliers",
+      "value": 2,
+      "sub": "This quarter",
+      "color": "var(--color-text)"
+     }
+    ],
+    "rows": [
+     {
+      "name": "Keystone Steelworks",
+      "otd": "96%",
+      "otdW": "96%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "1.2%",
+      "ncrColor": "var(--color-text)",
+      "pos": 12,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Halvorsen Cranes",
+      "otd": "88%",
+      "otdW": "88%",
+      "otdColor": "var(--color-text)",
+      "qual": "96%",
+      "qualW": "96%",
+      "ncr": "2.1%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 4,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Nordvolt",
+      "otd": "92%",
+      "otdW": "92%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 6,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Brightline Electrics",
+      "otd": "90%",
+      "otdW": "90%",
+      "otdColor": "var(--color-text)",
+      "qual": "90%",
+      "qualW": "90%",
+      "ncr": "4.8%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 9,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Cotswold Fire Systems",
+      "otd": "78%",
+      "otdW": "78%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "95%",
+      "qualW": "95%",
+      "ncr": "0.5%",
+      "ncrColor": "var(--color-text)",
+      "pos": 7,
+      "ncrs": 0,
+      "grade": "C",
+      "gradeClass": "tag tag-accent"
+     },
+     {
+      "name": "ArcelorMittal",
+      "otd": "95%",
+      "otdW": "95%",
+      "otdColor": "var(--color-text)",
+      "qual": "99%",
+      "qualW": "99%",
+      "ncr": "0.3%",
+      "ncrColor": "var(--color-text)",
+      "pos": 5,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Siemens",
+      "otd": "97%",
+      "otdW": "97%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 11,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Solaris PV",
+      "otd": "84%",
+      "otdW": "84%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "98%",
+      "qualW": "98%",
+      "ncr": "1.1%",
+      "ncrColor": "var(--color-text)",
+      "pos": 3,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     }
+    ]
+   }
+  },
+  "fr": {
+   "HLT-026": {
+    "kpis": [
+     {
+      "label": "Fournisseurs actifs",
+      "value": 8,
+      "sub": "4 notés A",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraison à l’heure",
+      "value": "90%",
+      "sub": "Pondéré sur 12 mois",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Acceptation qualité",
+      "value": "97%",
+      "sub": "Unités acceptées à la réception",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Notés C",
+      "value": 1,
+      "sub": "Plan d’amélioration requis",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "NCR d’origine fournisseur",
+      "value": 3,
+      "sub": "Ce trimestre",
+      "color": "var(--color-text)"
+     }
+    ],
+    "rows": [
+     {
+      "name": "Keystone Steelworks",
+      "otd": "96%",
+      "otdW": "96%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "1.2%",
+      "ncrColor": "var(--color-text)",
+      "pos": 12,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Halvorsen Cranes",
+      "otd": "88%",
+      "otdW": "88%",
+      "otdColor": "var(--color-text)",
+      "qual": "96%",
+      "qualW": "96%",
+      "ncr": "2.1%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 4,
+      "ncrs": 1,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Nordvolt",
+      "otd": "92%",
+      "otdW": "92%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 6,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Brightline Electrics",
+      "otd": "90%",
+      "otdW": "90%",
+      "otdColor": "var(--color-text)",
+      "qual": "90%",
+      "qualW": "90%",
+      "ncr": "4.8%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 9,
+      "ncrs": 1,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Cotswold Fire Systems",
+      "otd": "78%",
+      "otdW": "78%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "95%",
+      "qualW": "95%",
+      "ncr": "0.5%",
+      "ncrColor": "var(--color-text)",
+      "pos": 7,
+      "ncrs": 0,
+      "grade": "C",
+      "gradeClass": "tag tag-accent"
+     },
+     {
+      "name": "ArcelorMittal",
+      "otd": "95%",
+      "otdW": "95%",
+      "otdColor": "var(--color-text)",
+      "qual": "99%",
+      "qualW": "99%",
+      "ncr": "0.3%",
+      "ncrColor": "var(--color-text)",
+      "pos": 5,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Siemens",
+      "otd": "97%",
+      "otdW": "97%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 11,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Solaris PV",
+      "otd": "84%",
+      "otdW": "84%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "98%",
+      "qualW": "98%",
+      "ncr": "1.1%",
+      "ncrColor": "var(--color-text)",
+      "pos": 3,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     }
+    ]
+   },
+   "NDC-031": {
+    "kpis": [
+     {
+      "label": "Fournisseurs actifs",
+      "value": 8,
+      "sub": "4 notés A",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraison à l’heure",
+      "value": "90%",
+      "sub": "Pondéré sur 12 mois",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Acceptation qualité",
+      "value": "97%",
+      "sub": "Unités acceptées à la réception",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Notés C",
+      "value": 1,
+      "sub": "Plan d’amélioration requis",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "NCR d’origine fournisseur",
+      "value": 2,
+      "sub": "Ce trimestre",
+      "color": "var(--color-text)"
+     }
+    ],
+    "rows": [
+     {
+      "name": "Keystone Steelworks",
+      "otd": "96%",
+      "otdW": "96%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "1.2%",
+      "ncrColor": "var(--color-text)",
+      "pos": 12,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Halvorsen Cranes",
+      "otd": "88%",
+      "otdW": "88%",
+      "otdColor": "var(--color-text)",
+      "qual": "96%",
+      "qualW": "96%",
+      "ncr": "2.1%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 4,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Nordvolt",
+      "otd": "92%",
+      "otdW": "92%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 6,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Brightline Electrics",
+      "otd": "90%",
+      "otdW": "90%",
+      "otdColor": "var(--color-text)",
+      "qual": "90%",
+      "qualW": "90%",
+      "ncr": "4.8%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 9,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Cotswold Fire Systems",
+      "otd": "78%",
+      "otdW": "78%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "95%",
+      "qualW": "95%",
+      "ncr": "0.5%",
+      "ncrColor": "var(--color-text)",
+      "pos": 7,
+      "ncrs": 0,
+      "grade": "C",
+      "gradeClass": "tag tag-accent"
+     },
+     {
+      "name": "ArcelorMittal",
+      "otd": "95%",
+      "otdW": "95%",
+      "otdColor": "var(--color-text)",
+      "qual": "99%",
+      "qualW": "99%",
+      "ncr": "0.3%",
+      "ncrColor": "var(--color-text)",
+      "pos": 5,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Siemens",
+      "otd": "97%",
+      "otdW": "97%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 11,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Solaris PV",
+      "otd": "84%",
+      "otdW": "84%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "98%",
+      "qualW": "98%",
+      "ncr": "1.1%",
+      "ncrColor": "var(--color-text)",
+      "pos": 3,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     }
+    ]
+   },
+   "WSA-044": {
+    "kpis": [
+     {
+      "label": "Fournisseurs actifs",
+      "value": 8,
+      "sub": "4 notés A",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraison à l’heure",
+      "value": "90%",
+      "sub": "Pondéré sur 12 mois",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Acceptation qualité",
+      "value": "97%",
+      "sub": "Unités acceptées à la réception",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Notés C",
+      "value": 1,
+      "sub": "Plan d’amélioration requis",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "NCR d’origine fournisseur",
+      "value": 2,
+      "sub": "Ce trimestre",
+      "color": "var(--color-text)"
+     }
+    ],
+    "rows": [
+     {
+      "name": "Keystone Steelworks",
+      "otd": "96%",
+      "otdW": "96%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "1.2%",
+      "ncrColor": "var(--color-text)",
+      "pos": 12,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Halvorsen Cranes",
+      "otd": "88%",
+      "otdW": "88%",
+      "otdColor": "var(--color-text)",
+      "qual": "96%",
+      "qualW": "96%",
+      "ncr": "2.1%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 4,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Nordvolt",
+      "otd": "92%",
+      "otdW": "92%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 6,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Brightline Electrics",
+      "otd": "90%",
+      "otdW": "90%",
+      "otdColor": "var(--color-text)",
+      "qual": "90%",
+      "qualW": "90%",
+      "ncr": "4.8%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 9,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Cotswold Fire Systems",
+      "otd": "78%",
+      "otdW": "78%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "95%",
+      "qualW": "95%",
+      "ncr": "0.5%",
+      "ncrColor": "var(--color-text)",
+      "pos": 7,
+      "ncrs": 0,
+      "grade": "C",
+      "gradeClass": "tag tag-accent"
+     },
+     {
+      "name": "ArcelorMittal",
+      "otd": "95%",
+      "otdW": "95%",
+      "otdColor": "var(--color-text)",
+      "qual": "99%",
+      "qualW": "99%",
+      "ncr": "0.3%",
+      "ncrColor": "var(--color-text)",
+      "pos": 5,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Siemens",
+      "otd": "97%",
+      "otdW": "97%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 11,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Solaris PV",
+      "otd": "84%",
+      "otdW": "84%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "98%",
+      "qualW": "98%",
+      "ncr": "1.1%",
+      "ncrColor": "var(--color-text)",
+      "pos": 3,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     }
+    ]
+   },
+   "EWA-051": {
+    "kpis": [
+     {
+      "label": "Fournisseurs actifs",
+      "value": 8,
+      "sub": "4 notés A",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraison à l’heure",
+      "value": "90%",
+      "sub": "Pondéré sur 12 mois",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Acceptation qualité",
+      "value": "97%",
+      "sub": "Unités acceptées à la réception",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Notés C",
+      "value": 1,
+      "sub": "Plan d’amélioration requis",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "NCR d’origine fournisseur",
+      "value": 2,
+      "sub": "Ce trimestre",
+      "color": "var(--color-text)"
+     }
+    ],
+    "rows": [
+     {
+      "name": "Keystone Steelworks",
+      "otd": "96%",
+      "otdW": "96%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "1.2%",
+      "ncrColor": "var(--color-text)",
+      "pos": 12,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Halvorsen Cranes",
+      "otd": "88%",
+      "otdW": "88%",
+      "otdColor": "var(--color-text)",
+      "qual": "96%",
+      "qualW": "96%",
+      "ncr": "2.1%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 4,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Nordvolt",
+      "otd": "92%",
+      "otdW": "92%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 6,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Brightline Electrics",
+      "otd": "90%",
+      "otdW": "90%",
+      "otdColor": "var(--color-text)",
+      "qual": "90%",
+      "qualW": "90%",
+      "ncr": "4.8%",
+      "ncrColor": "var(--color-accent-300)",
+      "pos": 9,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     },
+     {
+      "name": "Cotswold Fire Systems",
+      "otd": "78%",
+      "otdW": "78%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "95%",
+      "qualW": "95%",
+      "ncr": "0.5%",
+      "ncrColor": "var(--color-text)",
+      "pos": 7,
+      "ncrs": 0,
+      "grade": "C",
+      "gradeClass": "tag tag-accent"
+     },
+     {
+      "name": "ArcelorMittal",
+      "otd": "95%",
+      "otdW": "95%",
+      "otdColor": "var(--color-text)",
+      "qual": "99%",
+      "qualW": "99%",
+      "ncr": "0.3%",
+      "ncrColor": "var(--color-text)",
+      "pos": 5,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Siemens",
+      "otd": "97%",
+      "otdW": "97%",
+      "otdColor": "var(--color-text)",
+      "qual": "100%",
+      "qualW": "100%",
+      "ncr": "0%",
+      "ncrColor": "var(--color-text)",
+      "pos": 11,
+      "ncrs": 0,
+      "grade": "A",
+      "gradeClass": "tag tag-neutral"
+     },
+     {
+      "name": "Solaris PV",
+      "otd": "84%",
+      "otdW": "84%",
+      "otdColor": "var(--color-accent-300)",
+      "qual": "98%",
+      "qualW": "98%",
+      "ncr": "1.1%",
+      "ncrColor": "var(--color-text)",
+      "pos": 3,
+      "ncrs": 0,
+      "grade": "B",
+      "gradeClass": "tag tag-outline"
+     }
+    ]
+   }
+  }
+ },
+ "rfqDrawers": {
+  "en": {
+   "RFQ-2026-031": {
+    "director": {
+     "id": "RFQ-2026-031",
+     "title": "Steel plate S355 · 20 mm — 192 plates",
+     "status": "Comparing",
+     "tagClass": "tag tag-accent",
+     "hint": "",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "KS-STL-0450 · Structural steel column HEB 450",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "192",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "30 Sep",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "Lowest total cost of ownership",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€4,700",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ArcelorMittal",
+       "price": "€1,240",
+       "priceColor": "var(--color-text)",
+       "total": "€238,080",
+       "delta": "+€8,640",
+       "lead": "4 wks",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "98/100",
+       "chosen": false,
+       "canAward": true
+      },
+      {
+       "sup": "Dillinger",
+       "price": "€1,195",
+       "priceColor": "var(--color-accent-300)",
+       "total": "€229,440",
+       "delta": "—",
+       "lead": "6 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 45",
+       "grade": "B",
+       "score": "94/100",
+       "chosen": false,
+       "canAward": true
+      },
+      {
+       "sup": "Salzgitter",
+       "price": "€1,210",
+       "priceColor": "var(--color-text)",
+       "total": "€232,320",
+       "delta": "+€2,880",
+       "lead": "5 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "B",
+       "score": "91/100",
+       "chosen": false,
+       "canAward": true
+      }
+     ]
+    },
+    "pm": {
+     "id": "RFQ-2026-031",
+     "title": "Steel plate S355 · 20 mm — 192 plates",
+     "status": "Comparing",
+     "tagClass": "tag tag-accent",
+     "hint": "",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "KS-STL-0450 · Structural steel column HEB 450",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "192",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "30 Sep",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "Lowest total cost of ownership",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€4,700",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ArcelorMittal",
+       "price": "€1,240",
+       "priceColor": "var(--color-text)",
+       "total": "€238,080",
+       "delta": "+€8,640",
+       "lead": "4 wks",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "98/100",
+       "chosen": false,
+       "canAward": true
+      },
+      {
+       "sup": "Dillinger",
+       "price": "€1,195",
+       "priceColor": "var(--color-accent-300)",
+       "total": "€229,440",
+       "delta": "—",
+       "lead": "6 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 45",
+       "grade": "B",
+       "score": "94/100",
+       "chosen": false,
+       "canAward": true
+      },
+      {
+       "sup": "Salzgitter",
+       "price": "€1,210",
+       "priceColor": "var(--color-text)",
+       "total": "€232,320",
+       "delta": "+€2,880",
+       "lead": "5 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "B",
+       "score": "91/100",
+       "chosen": false,
+       "canAward": true
+      }
+     ]
+    },
+    "procurement": {
+     "id": "RFQ-2026-031",
+     "title": "Steel plate S355 · 20 mm — 192 plates",
+     "status": "Comparing",
+     "tagClass": "tag tag-accent",
+     "hint": "",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "KS-STL-0450 · Structural steel column HEB 450",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "192",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "30 Sep",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "Lowest total cost of ownership",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€4,700",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ArcelorMittal",
+       "price": "€1,240",
+       "priceColor": "var(--color-text)",
+       "total": "€238,080",
+       "delta": "+€8,640",
+       "lead": "4 wks",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "98/100",
+       "chosen": false,
+       "canAward": true
+      },
+      {
+       "sup": "Dillinger",
+       "price": "€1,195",
+       "priceColor": "var(--color-accent-300)",
+       "total": "€229,440",
+       "delta": "—",
+       "lead": "6 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 45",
+       "grade": "B",
+       "score": "94/100",
+       "chosen": false,
+       "canAward": true
+      },
+      {
+       "sup": "Salzgitter",
+       "price": "€1,210",
+       "priceColor": "var(--color-text)",
+       "total": "€232,320",
+       "delta": "+€2,880",
+       "lead": "5 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "B",
+       "score": "91/100",
+       "chosen": false,
+       "canAward": true
+      }
+     ]
+    },
+    "quality": {
+     "id": "RFQ-2026-031",
+     "title": "Steel plate S355 · 20 mm — 192 plates",
+     "status": "Comparing",
+     "tagClass": "tag tag-accent",
+     "hint": "Switch to Project manager or Procurement to award.",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "KS-STL-0450 · Structural steel column HEB 450",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "192",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "30 Sep",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "Lowest total cost of ownership",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€4,700",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ArcelorMittal",
+       "price": "€1,240",
+       "priceColor": "var(--color-text)",
+       "total": "€238,080",
+       "delta": "+€8,640",
+       "lead": "4 wks",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "98/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Dillinger",
+       "price": "€1,195",
+       "priceColor": "var(--color-accent-300)",
+       "total": "€229,440",
+       "delta": "—",
+       "lead": "6 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 45",
+       "grade": "B",
+       "score": "94/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Salzgitter",
+       "price": "€1,210",
+       "priceColor": "var(--color-text)",
+       "total": "€232,320",
+       "delta": "+€2,880",
+       "lead": "5 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "B",
+       "score": "91/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    }
+   },
+   "RFQ-2026-033": {
+    "director": {
+     "id": "RFQ-2026-033",
+     "title": "Frequency drives 200 kW — 6 units",
+     "status": "Open",
+     "tagClass": "tag tag-outline",
+     "hint": "",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "EL-VFD-200 · Frequency drive 200 kW",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "6",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "3 Oct",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Pauline Noguès",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "Technical compliance first",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€13,600",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ABB",
+       "price": "€14,200",
+       "priceColor": "var(--color-accent-300)",
+       "total": "€85,200",
+       "delta": "—",
+       "lead": "9 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "97/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Siemens",
+       "price": "€14,650",
+       "priceColor": "var(--color-text)",
+       "total": "€87,900",
+       "delta": "+€2,700",
+       "lead": "7 wks",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "96/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    },
+    "pm": {
+     "id": "RFQ-2026-033",
+     "title": "Frequency drives 200 kW — 6 units",
+     "status": "Open",
+     "tagClass": "tag tag-outline",
+     "hint": "",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "EL-VFD-200 · Frequency drive 200 kW",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "6",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "3 Oct",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Pauline Noguès",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "Technical compliance first",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€13,600",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ABB",
+       "price": "€14,200",
+       "priceColor": "var(--color-accent-300)",
+       "total": "€85,200",
+       "delta": "—",
+       "lead": "9 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "97/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Siemens",
+       "price": "€14,650",
+       "priceColor": "var(--color-text)",
+       "total": "€87,900",
+       "delta": "+€2,700",
+       "lead": "7 wks",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "96/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    },
+    "procurement": {
+     "id": "RFQ-2026-033",
+     "title": "Frequency drives 200 kW — 6 units",
+     "status": "Open",
+     "tagClass": "tag tag-outline",
+     "hint": "",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "EL-VFD-200 · Frequency drive 200 kW",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "6",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "3 Oct",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Pauline Noguès",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "Technical compliance first",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€13,600",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ABB",
+       "price": "€14,200",
+       "priceColor": "var(--color-accent-300)",
+       "total": "€85,200",
+       "delta": "—",
+       "lead": "9 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "97/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Siemens",
+       "price": "€14,650",
+       "priceColor": "var(--color-text)",
+       "total": "€87,900",
+       "delta": "+€2,700",
+       "lead": "7 wks",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "96/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    },
+    "quality": {
+     "id": "RFQ-2026-033",
+     "title": "Frequency drives 200 kW — 6 units",
+     "status": "Open",
+     "tagClass": "tag tag-outline",
+     "hint": "",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "EL-VFD-200 · Frequency drive 200 kW",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "6",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "3 Oct",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Pauline Noguès",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "Technical compliance first",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€13,600",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ABB",
+       "price": "€14,200",
+       "priceColor": "var(--color-accent-300)",
+       "total": "€85,200",
+       "delta": "—",
+       "lead": "9 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "97/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Siemens",
+       "price": "€14,650",
+       "priceColor": "var(--color-text)",
+       "total": "€87,900",
+       "delta": "+€2,700",
+       "lead": "7 wks",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "96/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    }
+   },
+   "RFQ-2026-029": {
+    "director": {
+     "id": "RFQ-2026-029",
+     "title": "Wire rope 28 mm — 4 × 400 m",
+     "status": "Awarded",
+     "tagClass": "tag tag-neutral",
+     "hint": "Awarded to Teufelberger — purchase order created as draft.",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "HST-ROP-28 · Wire rope 28 mm · 400 m",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "4",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "15 Sep",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "Lowest price",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€9,200",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "Teufelberger",
+       "price": "€9,600",
+       "priceColor": "var(--color-text)",
+       "total": "€38,400",
+       "delta": "+€800",
+       "lead": "6 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "95/100",
+       "chosen": true,
+       "canAward": false
+      },
+      {
+       "sup": "Casar",
+       "price": "€9,950",
+       "priceColor": "var(--color-text)",
+       "total": "€39,800",
+       "delta": "+€2,200",
+       "lead": "5 wks",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "93/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Bridon",
+       "price": "€9,400",
+       "priceColor": "var(--color-accent-300)",
+       "total": "€37,600",
+       "delta": "—",
+       "lead": "10 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 60",
+       "grade": "C",
+       "score": "82/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    },
+    "pm": {
+     "id": "RFQ-2026-029",
+     "title": "Wire rope 28 mm — 4 × 400 m",
+     "status": "Awarded",
+     "tagClass": "tag tag-neutral",
+     "hint": "Awarded to Teufelberger — purchase order created as draft.",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "HST-ROP-28 · Wire rope 28 mm · 400 m",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "4",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "15 Sep",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "Lowest price",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€9,200",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "Teufelberger",
+       "price": "€9,600",
+       "priceColor": "var(--color-text)",
+       "total": "€38,400",
+       "delta": "+€800",
+       "lead": "6 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "95/100",
+       "chosen": true,
+       "canAward": false
+      },
+      {
+       "sup": "Casar",
+       "price": "€9,950",
+       "priceColor": "var(--color-text)",
+       "total": "€39,800",
+       "delta": "+€2,200",
+       "lead": "5 wks",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "93/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Bridon",
+       "price": "€9,400",
+       "priceColor": "var(--color-accent-300)",
+       "total": "€37,600",
+       "delta": "—",
+       "lead": "10 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 60",
+       "grade": "C",
+       "score": "82/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    },
+    "procurement": {
+     "id": "RFQ-2026-029",
+     "title": "Wire rope 28 mm — 4 × 400 m",
+     "status": "Awarded",
+     "tagClass": "tag tag-neutral",
+     "hint": "Awarded to Teufelberger — purchase order created as draft.",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "HST-ROP-28 · Wire rope 28 mm · 400 m",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "4",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "15 Sep",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "Lowest price",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€9,200",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "Teufelberger",
+       "price": "€9,600",
+       "priceColor": "var(--color-text)",
+       "total": "€38,400",
+       "delta": "+€800",
+       "lead": "6 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "95/100",
+       "chosen": true,
+       "canAward": false
+      },
+      {
+       "sup": "Casar",
+       "price": "€9,950",
+       "priceColor": "var(--color-text)",
+       "total": "€39,800",
+       "delta": "+€2,200",
+       "lead": "5 wks",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "93/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Bridon",
+       "price": "€9,400",
+       "priceColor": "var(--color-accent-300)",
+       "total": "€37,600",
+       "delta": "—",
+       "lead": "10 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 60",
+       "grade": "C",
+       "score": "82/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    },
+    "quality": {
+     "id": "RFQ-2026-029",
+     "title": "Wire rope 28 mm — 4 × 400 m",
+     "status": "Awarded",
+     "tagClass": "tag tag-neutral",
+     "hint": "Awarded to Teufelberger — purchase order created as draft.",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "HST-ROP-28 · Wire rope 28 mm · 400 m",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "4",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "15 Sep",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "Lowest price",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€9,200",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "Teufelberger",
+       "price": "€9,600",
+       "priceColor": "var(--color-text)",
+       "total": "€38,400",
+       "delta": "+€800",
+       "lead": "6 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "95/100",
+       "chosen": true,
+       "canAward": false
+      },
+      {
+       "sup": "Casar",
+       "price": "€9,950",
+       "priceColor": "var(--color-text)",
+       "total": "€39,800",
+       "delta": "+€2,200",
+       "lead": "5 wks",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "93/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Bridon",
+       "price": "€9,400",
+       "priceColor": "var(--color-accent-300)",
+       "total": "€37,600",
+       "delta": "—",
+       "lead": "10 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 60",
+       "grade": "C",
+       "score": "82/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    }
+   },
+   "RFQ-2026-034": {
+    "director": {
+     "id": "RFQ-2026-034",
+     "title": "Anti-collision lidar — 8 units",
+     "status": "Draft",
+     "tagClass": "tag tag-neutral",
+     "hint": "",
+     "noQuotes": true,
+     "canSend": true,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "CTL-ANT-COL · Anti-collision lidar",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "8",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "10 Oct",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Thomas Kerbrat",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "PM decides",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€4,980",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": []
+    },
+    "pm": {
+     "id": "RFQ-2026-034",
+     "title": "Anti-collision lidar — 8 units",
+     "status": "Draft",
+     "tagClass": "tag tag-neutral",
+     "hint": "",
+     "noQuotes": true,
+     "canSend": true,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "CTL-ANT-COL · Anti-collision lidar",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "8",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "10 Oct",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Thomas Kerbrat",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "PM decides",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€4,980",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": []
+    },
+    "procurement": {
+     "id": "RFQ-2026-034",
+     "title": "Anti-collision lidar — 8 units",
+     "status": "Draft",
+     "tagClass": "tag tag-neutral",
+     "hint": "",
+     "noQuotes": true,
+     "canSend": true,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "CTL-ANT-COL · Anti-collision lidar",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "8",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "10 Oct",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Thomas Kerbrat",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "PM decides",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€4,980",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": []
+    },
+    "quality": {
+     "id": "RFQ-2026-034",
+     "title": "Anti-collision lidar — 8 units",
+     "status": "Draft",
+     "tagClass": "tag tag-neutral",
+     "hint": "",
+     "noQuotes": true,
+     "canSend": true,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "CTL-ANT-COL · Anti-collision lidar",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "8",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "10 Oct",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Thomas Kerbrat",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "PM decides",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€4,980",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": []
+    }
+   }
+  },
+  "fr": {
+   "RFQ-2026-031": {
+    "director": {
+     "id": "RFQ-2026-031",
+     "title": "Tôle acier S355 · 20 mm — 192 tôles",
+     "status": "Comparaison",
+     "tagClass": "tag tag-accent",
+     "hint": "",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "KS-STL-0450 · Structural steel column HEB 450",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "192",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "30 sept.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Coût total de possession le plus bas",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "4 700 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ArcelorMittal",
+       "price": "1 240 €",
+       "priceColor": "var(--color-text)",
+       "total": "238 080 €",
+       "delta": "+8 640 €",
+       "lead": "4 sem.",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "98/100",
+       "chosen": false,
+       "canAward": true
+      },
+      {
+       "sup": "Dillinger",
+       "price": "1 195 €",
+       "priceColor": "var(--color-accent-300)",
+       "total": "229 440 €",
+       "delta": "—",
+       "lead": "6 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 45",
+       "grade": "B",
+       "score": "94/100",
+       "chosen": false,
+       "canAward": true
+      },
+      {
+       "sup": "Salzgitter",
+       "price": "1 210 €",
+       "priceColor": "var(--color-text)",
+       "total": "232 320 €",
+       "delta": "+2 880 €",
+       "lead": "5 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "B",
+       "score": "91/100",
+       "chosen": false,
+       "canAward": true
+      }
+     ]
+    },
+    "pm": {
+     "id": "RFQ-2026-031",
+     "title": "Tôle acier S355 · 20 mm — 192 tôles",
+     "status": "Comparaison",
+     "tagClass": "tag tag-accent",
+     "hint": "",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "KS-STL-0450 · Structural steel column HEB 450",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "192",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "30 sept.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Coût total de possession le plus bas",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "4 700 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ArcelorMittal",
+       "price": "1 240 €",
+       "priceColor": "var(--color-text)",
+       "total": "238 080 €",
+       "delta": "+8 640 €",
+       "lead": "4 sem.",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "98/100",
+       "chosen": false,
+       "canAward": true
+      },
+      {
+       "sup": "Dillinger",
+       "price": "1 195 €",
+       "priceColor": "var(--color-accent-300)",
+       "total": "229 440 €",
+       "delta": "—",
+       "lead": "6 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 45",
+       "grade": "B",
+       "score": "94/100",
+       "chosen": false,
+       "canAward": true
+      },
+      {
+       "sup": "Salzgitter",
+       "price": "1 210 €",
+       "priceColor": "var(--color-text)",
+       "total": "232 320 €",
+       "delta": "+2 880 €",
+       "lead": "5 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "B",
+       "score": "91/100",
+       "chosen": false,
+       "canAward": true
+      }
+     ]
+    },
+    "procurement": {
+     "id": "RFQ-2026-031",
+     "title": "Tôle acier S355 · 20 mm — 192 tôles",
+     "status": "Comparaison",
+     "tagClass": "tag tag-accent",
+     "hint": "",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "KS-STL-0450 · Structural steel column HEB 450",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "192",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "30 sept.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Coût total de possession le plus bas",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "4 700 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ArcelorMittal",
+       "price": "1 240 €",
+       "priceColor": "var(--color-text)",
+       "total": "238 080 €",
+       "delta": "+8 640 €",
+       "lead": "4 sem.",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "98/100",
+       "chosen": false,
+       "canAward": true
+      },
+      {
+       "sup": "Dillinger",
+       "price": "1 195 €",
+       "priceColor": "var(--color-accent-300)",
+       "total": "229 440 €",
+       "delta": "—",
+       "lead": "6 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 45",
+       "grade": "B",
+       "score": "94/100",
+       "chosen": false,
+       "canAward": true
+      },
+      {
+       "sup": "Salzgitter",
+       "price": "1 210 €",
+       "priceColor": "var(--color-text)",
+       "total": "232 320 €",
+       "delta": "+2 880 €",
+       "lead": "5 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "B",
+       "score": "91/100",
+       "chosen": false,
+       "canAward": true
+      }
+     ]
+    },
+    "quality": {
+     "id": "RFQ-2026-031",
+     "title": "Tôle acier S355 · 20 mm — 192 tôles",
+     "status": "Comparaison",
+     "tagClass": "tag tag-accent",
+     "hint": "Passez sur Chef de projet ou Achats pour attribuer.",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "KS-STL-0450 · Structural steel column HEB 450",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "192",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "30 sept.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Coût total de possession le plus bas",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "4 700 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ArcelorMittal",
+       "price": "1 240 €",
+       "priceColor": "var(--color-text)",
+       "total": "238 080 €",
+       "delta": "+8 640 €",
+       "lead": "4 sem.",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "98/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Dillinger",
+       "price": "1 195 €",
+       "priceColor": "var(--color-accent-300)",
+       "total": "229 440 €",
+       "delta": "—",
+       "lead": "6 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 45",
+       "grade": "B",
+       "score": "94/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Salzgitter",
+       "price": "1 210 €",
+       "priceColor": "var(--color-text)",
+       "total": "232 320 €",
+       "delta": "+2 880 €",
+       "lead": "5 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "B",
+       "score": "91/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    }
+   },
+   "RFQ-2026-033": {
+    "director": {
+     "id": "RFQ-2026-033",
+     "title": "Variateurs de fréquence 200 kW — 6 unités",
+     "status": "Ouverte",
+     "tagClass": "tag tag-outline",
+     "hint": "",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "EL-VFD-200 · Frequency drive 200 kW",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "6",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "3 oct.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Pauline Noguès",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Conformité technique d’abord",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "13 600 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ABB",
+       "price": "14 200 €",
+       "priceColor": "var(--color-accent-300)",
+       "total": "85 200 €",
+       "delta": "—",
+       "lead": "9 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "97/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Siemens",
+       "price": "14 650 €",
+       "priceColor": "var(--color-text)",
+       "total": "87 900 €",
+       "delta": "+2 700 €",
+       "lead": "7 sem.",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "96/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    },
+    "pm": {
+     "id": "RFQ-2026-033",
+     "title": "Variateurs de fréquence 200 kW — 6 unités",
+     "status": "Ouverte",
+     "tagClass": "tag tag-outline",
+     "hint": "",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "EL-VFD-200 · Frequency drive 200 kW",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "6",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "3 oct.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Pauline Noguès",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Conformité technique d’abord",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "13 600 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ABB",
+       "price": "14 200 €",
+       "priceColor": "var(--color-accent-300)",
+       "total": "85 200 €",
+       "delta": "—",
+       "lead": "9 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "97/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Siemens",
+       "price": "14 650 €",
+       "priceColor": "var(--color-text)",
+       "total": "87 900 €",
+       "delta": "+2 700 €",
+       "lead": "7 sem.",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "96/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    },
+    "procurement": {
+     "id": "RFQ-2026-033",
+     "title": "Variateurs de fréquence 200 kW — 6 unités",
+     "status": "Ouverte",
+     "tagClass": "tag tag-outline",
+     "hint": "",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "EL-VFD-200 · Frequency drive 200 kW",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "6",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "3 oct.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Pauline Noguès",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Conformité technique d’abord",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "13 600 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ABB",
+       "price": "14 200 €",
+       "priceColor": "var(--color-accent-300)",
+       "total": "85 200 €",
+       "delta": "—",
+       "lead": "9 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "97/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Siemens",
+       "price": "14 650 €",
+       "priceColor": "var(--color-text)",
+       "total": "87 900 €",
+       "delta": "+2 700 €",
+       "lead": "7 sem.",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "96/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    },
+    "quality": {
+     "id": "RFQ-2026-033",
+     "title": "Variateurs de fréquence 200 kW — 6 unités",
+     "status": "Ouverte",
+     "tagClass": "tag tag-outline",
+     "hint": "",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "EL-VFD-200 · Frequency drive 200 kW",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "6",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "3 oct.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Pauline Noguès",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Conformité technique d’abord",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "13 600 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ABB",
+       "price": "14 200 €",
+       "priceColor": "var(--color-accent-300)",
+       "total": "85 200 €",
+       "delta": "—",
+       "lead": "9 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "97/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Siemens",
+       "price": "14 650 €",
+       "priceColor": "var(--color-text)",
+       "total": "87 900 €",
+       "delta": "+2 700 €",
+       "lead": "7 sem.",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "96/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    }
+   },
+   "RFQ-2026-029": {
+    "director": {
+     "id": "RFQ-2026-029",
+     "title": "Câble acier 28 mm — 4 × 400 m",
+     "status": "Attribuée",
+     "tagClass": "tag tag-neutral",
+     "hint": "Attribuée à Teufelberger — commande créée en brouillon.",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "HST-ROP-28 · Wire rope 28 mm · 400 m",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "4",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "15 sept.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Prix le plus bas",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "9 200 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "Teufelberger",
+       "price": "9 600 €",
+       "priceColor": "var(--color-text)",
+       "total": "38 400 €",
+       "delta": "+800 €",
+       "lead": "6 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "95/100",
+       "chosen": true,
+       "canAward": false
+      },
+      {
+       "sup": "Casar",
+       "price": "9 950 €",
+       "priceColor": "var(--color-text)",
+       "total": "39 800 €",
+       "delta": "+2 200 €",
+       "lead": "5 sem.",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "93/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Bridon",
+       "price": "9 400 €",
+       "priceColor": "var(--color-accent-300)",
+       "total": "37 600 €",
+       "delta": "—",
+       "lead": "10 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 60",
+       "grade": "C",
+       "score": "82/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    },
+    "pm": {
+     "id": "RFQ-2026-029",
+     "title": "Câble acier 28 mm — 4 × 400 m",
+     "status": "Attribuée",
+     "tagClass": "tag tag-neutral",
+     "hint": "Attribuée à Teufelberger — commande créée en brouillon.",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "HST-ROP-28 · Wire rope 28 mm · 400 m",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "4",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "15 sept.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Prix le plus bas",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "9 200 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "Teufelberger",
+       "price": "9 600 €",
+       "priceColor": "var(--color-text)",
+       "total": "38 400 €",
+       "delta": "+800 €",
+       "lead": "6 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "95/100",
+       "chosen": true,
+       "canAward": false
+      },
+      {
+       "sup": "Casar",
+       "price": "9 950 €",
+       "priceColor": "var(--color-text)",
+       "total": "39 800 €",
+       "delta": "+2 200 €",
+       "lead": "5 sem.",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "93/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Bridon",
+       "price": "9 400 €",
+       "priceColor": "var(--color-accent-300)",
+       "total": "37 600 €",
+       "delta": "—",
+       "lead": "10 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 60",
+       "grade": "C",
+       "score": "82/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    },
+    "procurement": {
+     "id": "RFQ-2026-029",
+     "title": "Câble acier 28 mm — 4 × 400 m",
+     "status": "Attribuée",
+     "tagClass": "tag tag-neutral",
+     "hint": "Attribuée à Teufelberger — commande créée en brouillon.",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "HST-ROP-28 · Wire rope 28 mm · 400 m",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "4",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "15 sept.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Prix le plus bas",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "9 200 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "Teufelberger",
+       "price": "9 600 €",
+       "priceColor": "var(--color-text)",
+       "total": "38 400 €",
+       "delta": "+800 €",
+       "lead": "6 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "95/100",
+       "chosen": true,
+       "canAward": false
+      },
+      {
+       "sup": "Casar",
+       "price": "9 950 €",
+       "priceColor": "var(--color-text)",
+       "total": "39 800 €",
+       "delta": "+2 200 €",
+       "lead": "5 sem.",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "93/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Bridon",
+       "price": "9 400 €",
+       "priceColor": "var(--color-accent-300)",
+       "total": "37 600 €",
+       "delta": "—",
+       "lead": "10 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 60",
+       "grade": "C",
+       "score": "82/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    },
+    "quality": {
+     "id": "RFQ-2026-029",
+     "title": "Câble acier 28 mm — 4 × 400 m",
+     "status": "Attribuée",
+     "tagClass": "tag tag-neutral",
+     "hint": "Attribuée à Teufelberger — commande créée en brouillon.",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "HST-ROP-28 · Wire rope 28 mm · 400 m",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "4",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "15 sept.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Prix le plus bas",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "9 200 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "Teufelberger",
+       "price": "9 600 €",
+       "priceColor": "var(--color-text)",
+       "total": "38 400 €",
+       "delta": "+800 €",
+       "lead": "6 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "95/100",
+       "chosen": true,
+       "canAward": false
+      },
+      {
+       "sup": "Casar",
+       "price": "9 950 €",
+       "priceColor": "var(--color-text)",
+       "total": "39 800 €",
+       "delta": "+2 200 €",
+       "lead": "5 sem.",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "93/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Bridon",
+       "price": "9 400 €",
+       "priceColor": "var(--color-accent-300)",
+       "total": "37 600 €",
+       "delta": "—",
+       "lead": "10 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 60",
+       "grade": "C",
+       "score": "82/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    }
+   },
+   "RFQ-2026-034": {
+    "director": {
+     "id": "RFQ-2026-034",
+     "title": "Lidar anticollision — 8 unités",
+     "status": "Brouillon",
+     "tagClass": "tag tag-neutral",
+     "hint": "",
+     "noQuotes": true,
+     "canSend": true,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "CTL-ANT-COL · Anti-collision lidar",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "8",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "10 oct.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Thomas Kerbrat",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Le chef de projet décide",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "4 980 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": []
+    },
+    "pm": {
+     "id": "RFQ-2026-034",
+     "title": "Lidar anticollision — 8 unités",
+     "status": "Brouillon",
+     "tagClass": "tag tag-neutral",
+     "hint": "",
+     "noQuotes": true,
+     "canSend": true,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "CTL-ANT-COL · Anti-collision lidar",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "8",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "10 oct.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Thomas Kerbrat",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Le chef de projet décide",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "4 980 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": []
+    },
+    "procurement": {
+     "id": "RFQ-2026-034",
+     "title": "Lidar anticollision — 8 unités",
+     "status": "Brouillon",
+     "tagClass": "tag tag-neutral",
+     "hint": "",
+     "noQuotes": true,
+     "canSend": true,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "CTL-ANT-COL · Anti-collision lidar",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "8",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "10 oct.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Thomas Kerbrat",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Le chef de projet décide",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "4 980 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": []
+    },
+    "quality": {
+     "id": "RFQ-2026-034",
+     "title": "Lidar anticollision — 8 unités",
+     "status": "Brouillon",
+     "tagClass": "tag tag-neutral",
+     "hint": "",
+     "noQuotes": true,
+     "canSend": true,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "CTL-ANT-COL · Anti-collision lidar",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "8",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "10 oct.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Thomas Kerbrat",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Le chef de projet décide",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "4 980 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": []
+    }
+   }
+  }
+ },
+ "invDrawers": {
+  "en": {
+   "INV-KS-4471": {
+    "id": "INV-KS-4471",
+    "supplier": "Keystone Steelworks",
+    "status": "Paid",
+    "tagClass": "tag tag-neutral",
+    "canApprove": false,
+    "canPartial": false,
+    "partialLabel": "Approve €433,400 · request credit note",
+    "canReject": false,
+    "hasPO": true,
+    "hasGR": true,
+    "rows": [
+     {
+      "k": "Purchase order",
+      "ref": "PO-1041",
+      "amt": "€433,400",
+      "dot": "var(--color-accent)",
+      "state": "Matched",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Goods receipt",
+      "ref": "BL-2026-0412",
+      "amt": "€433,400",
+      "dot": "var(--color-accent)",
+      "state": "Matched",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Invoice",
+      "ref": "INV-KS-4471",
+      "amt": "€433,400",
+      "dot": "var(--color-accent)",
+      "state": "Matched",
+      "color": "var(--color-text)"
+     }
+    ],
+    "meta": [
+     {
+      "k": "Invoice date",
+      "v": "05 Jul",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Due date",
+      "v": "04 Aug",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Terms",
+      "v": "Net 30",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Variance invoice − receipt",
+      "v": "—",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Blocking reason",
+      "v": "—",
+      "color": "var(--color-text)"
+     }
+    ]
+   },
+   "INV-HC-7781": {
+    "id": "INV-HC-7781",
+    "supplier": "Halvorsen Cranes",
+    "status": "Blocked",
+    "tagClass": "tag tag-accent",
+    "canApprove": false,
+    "canPartial": true,
+    "partialLabel": "Approve €1,259,600 · request credit note",
+    "canReject": true,
+    "hasPO": true,
+    "hasGR": true,
+    "rows": [
+     {
+      "k": "Purchase order",
+      "ref": "PO-1052",
+      "amt": "€1,286,400",
+      "dot": "var(--color-accent)",
+      "state": "Matched",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Goods receipt",
+      "ref": "BL-2026-0498",
+      "amt": "€1,259,600",
+      "dot": "var(--color-accent-700)",
+      "state": "Partial receipt",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "k": "Invoice",
+      "ref": "INV-HC-7781",
+      "amt": "€1,286,400",
+      "dot": "var(--color-accent)",
+      "state": "Matched",
+      "color": "var(--color-text)"
+     }
+    ],
+    "meta": [
+     {
+      "k": "Invoice date",
+      "v": "10 Sep",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Due date",
+      "v": "10 Oct",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Terms",
+      "v": "Net 30",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Variance invoice − receipt",
+      "v": "€26,800",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Blocking reason",
+      "v": "Invoiced quantity exceeds accepted receipt (rejected units)",
+      "color": "var(--color-accent-300)"
+     }
+    ]
+   },
+   "INV-NV-1190": {
+    "id": "INV-NV-1190",
+    "supplier": "Nordvolt",
+    "status": "Awaiting receipt",
+    "tagClass": "tag tag-outline",
+    "canApprove": false,
+    "canPartial": false,
+    "partialLabel": "Approve €0 · request credit note",
+    "canReject": true,
+    "hasPO": true,
+    "hasGR": true,
+    "rows": [
+     {
+      "k": "Purchase order",
+      "ref": "PO-1063",
+      "amt": "€248,000",
+      "dot": "var(--color-accent)",
+      "state": "Matched",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Goods receipt",
+      "ref": "BL-2026-0521",
+      "amt": "€0",
+      "dot": "var(--color-neutral-700)",
+      "state": "Receipt pending",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "k": "Invoice",
+      "ref": "INV-NV-1190",
+      "amt": "€248,000",
+      "dot": "var(--color-accent)",
+      "state": "Matched",
+      "color": "var(--color-text)"
+     }
+    ],
+    "meta": [
+     {
+      "k": "Invoice date",
+      "v": "22 Sep",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Due date",
+      "v": "22 Oct",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Terms",
+      "v": "Net 30",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Variance invoice − receipt",
+      "v": "€248,000",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Blocking reason",
+      "v": "Goods not yet received",
+      "color": "var(--color-accent-300)"
+     }
+    ]
+   },
+   "INV-BX-55120": {
+    "id": "INV-BX-55120",
+    "supplier": "Brightline Electrics",
+    "status": "Blocked",
+    "tagClass": "tag tag-accent",
+    "canApprove": false,
+    "canPartial": true,
+    "partialLabel": "Approve €156,000 · request credit note",
+    "canReject": true,
+    "hasPO": true,
+    "hasGR": true,
+    "rows": [
+     {
+      "k": "Purchase order",
+      "ref": "PO-1071",
+      "amt": "€163,800",
+      "dot": "var(--color-accent)",
+      "state": "Matched",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Goods receipt",
+      "ref": "BL-2026-0533",
+      "amt": "€156,000",
+      "dot": "var(--color-accent-700)",
+      "state": "Partial receipt",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "k": "Invoice",
+      "ref": "INV-BX-55120",
+      "amt": "€163,800",
+      "dot": "var(--color-accent)",
+      "state": "Matched",
+      "color": "var(--color-text)"
+     }
+    ],
+    "meta": [
+     {
+      "k": "Invoice date",
+      "v": "24 Sep",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Due date",
+      "v": "24 Oct",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Terms",
+      "v": "Net 30",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Variance invoice − receipt",
+      "v": "€7,800",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Blocking reason",
+      "v": "Invoiced quantity exceeds accepted receipt (rejected units)",
+      "color": "var(--color-accent-300)"
+     }
+    ]
+   },
+   "INV-CF-0921": {
+    "id": "INV-CF-0921",
+    "supplier": "Cotswold Fire Systems",
+    "status": "Awaiting receipt",
+    "tagClass": "tag tag-outline",
+    "canApprove": false,
+    "canPartial": false,
+    "partialLabel": "Approve €0 · request credit note",
+    "canReject": true,
+    "hasPO": true,
+    "hasGR": false,
+    "rows": [
+     {
+      "k": "Purchase order",
+      "ref": "PO-1078",
+      "amt": "€19,080",
+      "dot": "var(--color-accent)",
+      "state": "Matched",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Goods receipt",
+      "ref": "—",
+      "amt": "€0",
+      "dot": "var(--color-neutral-100)",
+      "state": "Missing",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "k": "Invoice",
+      "ref": "INV-CF-0921",
+      "amt": "€19,080",
+      "dot": "var(--color-accent)",
+      "state": "Matched",
+      "color": "var(--color-text)"
+     }
+    ],
+    "meta": [
+     {
+      "k": "Invoice date",
+      "v": "25 Sep",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Due date",
+      "v": "25 Oct",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Terms",
+      "v": "Net 30",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Variance invoice − receipt",
+      "v": "—",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Blocking reason",
+      "v": "Goods not yet received",
+      "color": "var(--color-accent-300)"
+     }
+    ]
+   },
+   "INV-LE-2210": {
+    "id": "INV-LE-2210",
+    "supplier": "Lincoln Electric",
+    "status": "No PO",
+    "tagClass": "tag tag-accent",
+    "canApprove": false,
+    "canPartial": false,
+    "partialLabel": "Approve €0 · request credit note",
+    "canReject": true,
+    "hasPO": false,
+    "hasGR": false,
+    "rows": [
+     {
+      "k": "Purchase order",
+      "ref": "—",
+      "amt": "€0",
+      "dot": "var(--color-neutral-100)",
+      "state": "Missing",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "k": "Goods receipt",
+      "ref": "—",
+      "amt": "€0",
+      "dot": "var(--color-neutral-100)",
+      "state": "Missing",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "k": "Invoice",
+      "ref": "INV-LE-2210",
+      "amt": "€6,880",
+      "dot": "var(--color-accent)",
+      "state": "Matched",
+      "color": "var(--color-text)"
+     }
+    ],
+    "meta": [
+     {
+      "k": "Invoice date",
+      "v": "25 Sep",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Due date",
+      "v": "25 Oct",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Terms",
+      "v": "Net 30",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Variance invoice − receipt",
+      "v": "—",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Blocking reason",
+      "v": "No purchase order referenced — create PO or reject",
+      "color": "var(--color-accent-300)"
+     }
+    ]
+   }
+  },
+  "fr": {
+   "INV-KS-4471": {
+    "id": "INV-KS-4471",
+    "supplier": "Keystone Steelworks",
+    "status": "Payé",
+    "tagClass": "tag tag-neutral",
+    "canApprove": false,
+    "canPartial": false,
+    "partialLabel": "Approuver 433 400 € · demander un avoir",
+    "canReject": false,
+    "hasPO": true,
+    "hasGR": true,
+    "rows": [
+     {
+      "k": "Commande d’achat",
+      "ref": "PO-1041",
+      "amt": "433 400 €",
+      "dot": "var(--color-accent)",
+      "state": "Rapproché",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Réception",
+      "ref": "BL-2026-0412",
+      "amt": "433 400 €",
+      "dot": "var(--color-accent)",
+      "state": "Rapproché",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Facture",
+      "ref": "INV-KS-4471",
+      "amt": "433 400 €",
+      "dot": "var(--color-accent)",
+      "state": "Rapproché",
+      "color": "var(--color-text)"
+     }
+    ],
+    "meta": [
+     {
+      "k": "Date de facture",
+      "v": "05 juil.",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Échéance",
+      "v": "04 août",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Conditions",
+      "v": "Net 30",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Écart facture − réception",
+      "v": "—",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Motif de blocage",
+      "v": "—",
+      "color": "var(--color-text)"
+     }
+    ]
+   },
+   "INV-HC-7781": {
+    "id": "INV-HC-7781",
+    "supplier": "Halvorsen Cranes",
+    "status": "Bloquée",
+    "tagClass": "tag tag-accent",
+    "canApprove": false,
+    "canPartial": true,
+    "partialLabel": "Approuver 1 259 600 € · demander un avoir",
+    "canReject": true,
+    "hasPO": true,
+    "hasGR": true,
+    "rows": [
+     {
+      "k": "Commande d’achat",
+      "ref": "PO-1052",
+      "amt": "1 286 400 €",
+      "dot": "var(--color-accent)",
+      "state": "Rapproché",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Réception",
+      "ref": "BL-2026-0498",
+      "amt": "1 259 600 €",
+      "dot": "var(--color-accent-700)",
+      "state": "Réception partielle",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "k": "Facture",
+      "ref": "INV-HC-7781",
+      "amt": "1 286 400 €",
+      "dot": "var(--color-accent)",
+      "state": "Rapproché",
+      "color": "var(--color-text)"
+     }
+    ],
+    "meta": [
+     {
+      "k": "Date de facture",
+      "v": "10 sept.",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Échéance",
+      "v": "10 oct.",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Conditions",
+      "v": "Net 30",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Écart facture − réception",
+      "v": "26 800 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Motif de blocage",
+      "v": "Quantité facturée supérieure à la réception acceptée (unités refusées)",
+      "color": "var(--color-accent-300)"
+     }
+    ]
+   },
+   "INV-NV-1190": {
+    "id": "INV-NV-1190",
+    "supplier": "Nordvolt",
+    "status": "En attente de réception",
+    "tagClass": "tag tag-outline",
+    "canApprove": false,
+    "canPartial": false,
+    "partialLabel": "Approuver 0 € · demander un avoir",
+    "canReject": true,
+    "hasPO": true,
+    "hasGR": true,
+    "rows": [
+     {
+      "k": "Commande d’achat",
+      "ref": "PO-1063",
+      "amt": "248 000 €",
+      "dot": "var(--color-accent)",
+      "state": "Rapproché",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Réception",
+      "ref": "BL-2026-0521",
+      "amt": "0 €",
+      "dot": "var(--color-neutral-700)",
+      "state": "Réception en attente",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "k": "Facture",
+      "ref": "INV-NV-1190",
+      "amt": "248 000 €",
+      "dot": "var(--color-accent)",
+      "state": "Rapproché",
+      "color": "var(--color-text)"
+     }
+    ],
+    "meta": [
+     {
+      "k": "Date de facture",
+      "v": "22 sept.",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Échéance",
+      "v": "22 oct.",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Conditions",
+      "v": "Net 30",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Écart facture − réception",
+      "v": "248 000 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Motif de blocage",
+      "v": "Marchandise non reçue",
+      "color": "var(--color-accent-300)"
+     }
+    ]
+   },
+   "INV-BX-55120": {
+    "id": "INV-BX-55120",
+    "supplier": "Brightline Electrics",
+    "status": "Bloquée",
+    "tagClass": "tag tag-accent",
+    "canApprove": false,
+    "canPartial": true,
+    "partialLabel": "Approuver 156 000 € · demander un avoir",
+    "canReject": true,
+    "hasPO": true,
+    "hasGR": true,
+    "rows": [
+     {
+      "k": "Commande d’achat",
+      "ref": "PO-1071",
+      "amt": "163 800 €",
+      "dot": "var(--color-accent)",
+      "state": "Rapproché",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Réception",
+      "ref": "BL-2026-0533",
+      "amt": "156 000 €",
+      "dot": "var(--color-accent-700)",
+      "state": "Réception partielle",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "k": "Facture",
+      "ref": "INV-BX-55120",
+      "amt": "163 800 €",
+      "dot": "var(--color-accent)",
+      "state": "Rapproché",
+      "color": "var(--color-text)"
+     }
+    ],
+    "meta": [
+     {
+      "k": "Date de facture",
+      "v": "24 sept.",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Échéance",
+      "v": "24 oct.",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Conditions",
+      "v": "Net 30",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Écart facture − réception",
+      "v": "7 800 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Motif de blocage",
+      "v": "Quantité facturée supérieure à la réception acceptée (unités refusées)",
+      "color": "var(--color-accent-300)"
+     }
+    ]
+   },
+   "INV-CF-0921": {
+    "id": "INV-CF-0921",
+    "supplier": "Cotswold Fire Systems",
+    "status": "En attente de réception",
+    "tagClass": "tag tag-outline",
+    "canApprove": false,
+    "canPartial": false,
+    "partialLabel": "Approuver 0 € · demander un avoir",
+    "canReject": true,
+    "hasPO": true,
+    "hasGR": false,
+    "rows": [
+     {
+      "k": "Commande d’achat",
+      "ref": "PO-1078",
+      "amt": "19 080 €",
+      "dot": "var(--color-accent)",
+      "state": "Rapproché",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Réception",
+      "ref": "—",
+      "amt": "0 €",
+      "dot": "var(--color-neutral-100)",
+      "state": "Manquant",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "k": "Facture",
+      "ref": "INV-CF-0921",
+      "amt": "19 080 €",
+      "dot": "var(--color-accent)",
+      "state": "Rapproché",
+      "color": "var(--color-text)"
+     }
+    ],
+    "meta": [
+     {
+      "k": "Date de facture",
+      "v": "25 sept.",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Échéance",
+      "v": "25 oct.",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Conditions",
+      "v": "Net 30",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Écart facture − réception",
+      "v": "—",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Motif de blocage",
+      "v": "Marchandise non reçue",
+      "color": "var(--color-accent-300)"
+     }
+    ]
+   },
+   "INV-LE-2210": {
+    "id": "INV-LE-2210",
+    "supplier": "Lincoln Electric",
+    "status": "Sans commande",
+    "tagClass": "tag tag-accent",
+    "canApprove": false,
+    "canPartial": false,
+    "partialLabel": "Approuver 0 € · demander un avoir",
+    "canReject": true,
+    "hasPO": false,
+    "hasGR": false,
+    "rows": [
+     {
+      "k": "Commande d’achat",
+      "ref": "—",
+      "amt": "0 €",
+      "dot": "var(--color-neutral-100)",
+      "state": "Manquant",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "k": "Réception",
+      "ref": "—",
+      "amt": "0 €",
+      "dot": "var(--color-neutral-100)",
+      "state": "Manquant",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "k": "Facture",
+      "ref": "INV-LE-2210",
+      "amt": "6 880 €",
+      "dot": "var(--color-accent)",
+      "state": "Rapproché",
+      "color": "var(--color-text)"
+     }
+    ],
+    "meta": [
+     {
+      "k": "Date de facture",
+      "v": "25 sept.",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Échéance",
+      "v": "25 oct.",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Conditions",
+      "v": "Net 30",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Écart facture − réception",
+      "v": "—",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Motif de blocage",
+      "v": "Aucune commande référencée — créer une commande ou refuser",
+      "color": "var(--color-accent-300)"
+     }
+    ]
+   }
+  }
+ },
+ "scenarios": {
+  "en": {
+   "afterSend": {
+    "rfq": {
+     "kpis": [
+      {
+       "label": "Open RFQs",
+       "value": 3,
+       "sub": "1 ready to award",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Quotes received",
+       "value": 8,
+       "sub": "Across open requests",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Savings vs list",
+       "value": "€12k",
+       "sub": "Awarded this quarter",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Average cycle",
+       "value": "9 d",
+       "sub": "RFQ sent → award",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Award rule",
+       "value": "PM",
+       "sub": "Decided per RFQ by the project manager",
+       "color": "var(--color-text)"
+      }
+     ],
+     "rows": [
+      {
+       "id": "RFQ-2026-031",
+       "title": "Steel plate S355 · 20 mm — 192 plates",
+       "part": "KS-STL-0450",
+       "qty": 192,
+       "due": "30 Sep",
+       "owner": "Fabien Bertrand",
+       "quotesText": "3 quotes · from €1,195",
+       "rule": "Lowest total cost of ownership",
+       "chosenText": "—",
+       "status": "Comparing",
+       "tagClass": "tag tag-accent",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      },
+      {
+       "id": "RFQ-2026-033",
+       "title": "Frequency drives 200 kW — 6 units",
+       "part": "EL-VFD-200",
+       "qty": 6,
+       "due": "3 Oct",
+       "owner": "Pauline Noguès",
+       "quotesText": "2 quotes · from €14,200",
+       "rule": "Technical compliance first",
+       "chosenText": "—",
+       "status": "Open",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": true
+      },
+      {
+       "id": "RFQ-2026-029",
+       "title": "Wire rope 28 mm — 4 × 400 m",
+       "part": "HST-ROP-28",
+       "qty": 4,
+       "due": "15 Sep",
+       "owner": "Fabien Bertrand",
+       "quotesText": "3 quotes · from €9,400",
+       "rule": "Lowest price",
+       "chosenText": "Teufelberger",
+       "status": "Awarded",
+       "tagClass": "tag tag-neutral",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      },
+      {
+       "id": "RFQ-2026-034",
+       "title": "Anti-collision lidar — 8 units",
+       "part": "CTL-ANT-COL",
+       "qty": 8,
+       "due": "10 Oct",
+       "owner": "Thomas Kerbrat",
+       "quotesText": "No quote yet",
+       "rule": "PM decides",
+       "chosenText": "—",
+       "status": "Open",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      }
+     ]
+    }
+   },
+   "afterCompare": {
+    "rfq": {
+     "kpis": [
+      {
+       "label": "Open RFQs",
+       "value": 3,
+       "sub": "2 ready to award",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Quotes received",
+       "value": 8,
+       "sub": "Across open requests",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Savings vs list",
+       "value": "€12k",
+       "sub": "Awarded this quarter",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Average cycle",
+       "value": "9 d",
+       "sub": "RFQ sent → award",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Award rule",
+       "value": "PM",
+       "sub": "Decided per RFQ by the project manager",
+       "color": "var(--color-text)"
+      }
+     ],
+     "rows": [
+      {
+       "id": "RFQ-2026-031",
+       "title": "Steel plate S355 · 20 mm — 192 plates",
+       "part": "KS-STL-0450",
+       "qty": 192,
+       "due": "30 Sep",
+       "owner": "Fabien Bertrand",
+       "quotesText": "3 quotes · from €1,195",
+       "rule": "Lowest total cost of ownership",
+       "chosenText": "—",
+       "status": "Comparing",
+       "tagClass": "tag tag-accent",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      },
+      {
+       "id": "RFQ-2026-033",
+       "title": "Frequency drives 200 kW — 6 units",
+       "part": "EL-VFD-200",
+       "qty": 6,
+       "due": "3 Oct",
+       "owner": "Pauline Noguès",
+       "quotesText": "2 quotes · from €14,200",
+       "rule": "Technical compliance first",
+       "chosenText": "—",
+       "status": "Comparing",
+       "tagClass": "tag tag-accent",
+       "idColor": "var(--color-accent-300)",
+       "canSend": false,
+       "canCompare": false
+      },
+      {
+       "id": "RFQ-2026-029",
+       "title": "Wire rope 28 mm — 4 × 400 m",
+       "part": "HST-ROP-28",
+       "qty": 4,
+       "due": "15 Sep",
+       "owner": "Fabien Bertrand",
+       "quotesText": "3 quotes · from €9,400",
+       "rule": "Lowest price",
+       "chosenText": "Teufelberger",
+       "status": "Awarded",
+       "tagClass": "tag tag-neutral",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      },
+      {
+       "id": "RFQ-2026-034",
+       "title": "Anti-collision lidar — 8 units",
+       "part": "CTL-ANT-COL",
+       "qty": 8,
+       "due": "10 Oct",
+       "owner": "Thomas Kerbrat",
+       "quotesText": "No quote yet",
+       "rule": "PM decides",
+       "chosenText": "—",
+       "status": "Open",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      }
+     ]
+    },
+    "drawer": {
+     "id": "RFQ-2026-033",
+     "title": "Frequency drives 200 kW — 6 units",
+     "status": "Comparing",
+     "tagClass": "tag tag-accent",
+     "hint": "",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "EL-VFD-200 · Frequency drive 200 kW",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "6",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "3 Oct",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Pauline Noguès",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "Technical compliance first",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€13,600",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ABB",
+       "price": "€14,200",
+       "priceColor": "var(--color-accent-300)",
+       "total": "€85,200",
+       "delta": "—",
+       "lead": "9 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "97/100",
+       "chosen": false,
+       "canAward": true
+      },
+      {
+       "sup": "Siemens",
+       "price": "€14,650",
+       "priceColor": "var(--color-text)",
+       "total": "€87,900",
+       "delta": "+€2,700",
+       "lead": "7 wks",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "96/100",
+       "chosen": false,
+       "canAward": true
+      }
+     ]
+    }
+   },
+   "afterAward": {
+    "rfq": {
+     "kpis": [
+      {
+       "label": "Open RFQs",
+       "value": 2,
+       "sub": "1 ready to award",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Quotes received",
+       "value": 8,
+       "sub": "Across open requests",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Savings vs list",
+       "value": "€12k",
+       "sub": "Awarded this quarter",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Average cycle",
+       "value": "9 d",
+       "sub": "RFQ sent → award",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Award rule",
+       "value": "PM",
+       "sub": "Decided per RFQ by the project manager",
+       "color": "var(--color-text)"
+      }
+     ],
+     "rows": [
+      {
+       "id": "RFQ-2026-031",
+       "title": "Steel plate S355 · 20 mm — 192 plates",
+       "part": "KS-STL-0450",
+       "qty": 192,
+       "due": "30 Sep",
+       "owner": "Fabien Bertrand",
+       "quotesText": "3 quotes · from €1,195",
+       "rule": "Lowest total cost of ownership",
+       "chosenText": "Dillinger",
+       "status": "Awarded",
+       "tagClass": "tag tag-neutral",
+       "idColor": "var(--color-accent-300)",
+       "canSend": false,
+       "canCompare": false
+      },
+      {
+       "id": "RFQ-2026-033",
+       "title": "Frequency drives 200 kW — 6 units",
+       "part": "EL-VFD-200",
+       "qty": 6,
+       "due": "3 Oct",
+       "owner": "Pauline Noguès",
+       "quotesText": "2 quotes · from €14,200",
+       "rule": "Technical compliance first",
+       "chosenText": "—",
+       "status": "Comparing",
+       "tagClass": "tag tag-accent",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      },
+      {
+       "id": "RFQ-2026-029",
+       "title": "Wire rope 28 mm — 4 × 400 m",
+       "part": "HST-ROP-28",
+       "qty": 4,
+       "due": "15 Sep",
+       "owner": "Fabien Bertrand",
+       "quotesText": "3 quotes · from €9,400",
+       "rule": "Lowest price",
+       "chosenText": "Teufelberger",
+       "status": "Awarded",
+       "tagClass": "tag tag-neutral",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      },
+      {
+       "id": "RFQ-2026-034",
+       "title": "Anti-collision lidar — 8 units",
+       "part": "CTL-ANT-COL",
+       "qty": 8,
+       "due": "10 Oct",
+       "owner": "Thomas Kerbrat",
+       "quotesText": "No quote yet",
+       "rule": "PM decides",
+       "chosenText": "—",
+       "status": "Open",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      }
+     ]
+    },
+    "drawer": {
+     "id": "RFQ-2026-031",
+     "title": "Steel plate S355 · 20 mm — 192 plates",
+     "status": "Awarded",
+     "tagClass": "tag tag-neutral",
+     "hint": "Awarded to Dillinger — purchase order created as draft.",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Part",
+       "v": "KS-STL-0450 · Structural steel column HEB 450",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantity",
+       "v": "192",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quotes due",
+       "v": "30 Sep",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Buyer",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Award rule",
+       "v": "Lowest total cost of ownership",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Last purchase price",
+       "v": "€4,700",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ArcelorMittal",
+       "price": "€1,240",
+       "priceColor": "var(--color-text)",
+       "total": "€238,080",
+       "delta": "+€8,640",
+       "lead": "4 wks",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "98/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Dillinger",
+       "price": "€1,195",
+       "priceColor": "var(--color-accent-300)",
+       "total": "€229,440",
+       "delta": "—",
+       "lead": "6 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 45",
+       "grade": "B",
+       "score": "94/100",
+       "chosen": true,
+       "canAward": false
+      },
+      {
+       "sup": "Salzgitter",
+       "price": "€1,210",
+       "priceColor": "var(--color-text)",
+       "total": "€232,320",
+       "delta": "+€2,880",
+       "lead": "5 wks",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "B",
+       "score": "91/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    },
+    "myapprovals": {
+     "pm": [
+      "RFQ-2026-033"
+     ],
+     "procurement": [
+      "RFQ-2026-033"
+     ]
+    }
+   },
+   "drawerSend": {
+    "id": "RFQ-2026-034",
+    "title": "Anti-collision lidar — 8 units",
+    "status": "Open",
+    "tagClass": "tag tag-outline",
+    "hint": "",
+    "noQuotes": true,
+    "canSend": false,
+    "meta": [
+     {
+      "k": "Part",
+      "v": "CTL-ANT-COL · Anti-collision lidar",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Quantity",
+      "v": "8",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Quotes due",
+      "v": "10 Oct",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Buyer",
+      "v": "Thomas Kerbrat",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Award rule",
+      "v": "PM decides",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Last purchase price",
+      "v": "€4,980",
+      "color": "var(--color-text)"
+     }
+    ],
+    "quotes": []
+   },
+   "afterPartial": {
+    "inv": {
+     "kpis": [
+      {
+       "label": "Invoices to process",
+       "value": 5,
+       "sub": "€1,697,360",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Blocked by 3-way match",
+       "value": 2,
+       "sub": "Quantity or PO mismatch",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "label": "Awaiting goods receipt",
+       "value": 2,
+       "sub": "Invoice before delivery",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Approved for payment",
+       "value": 1,
+       "sub": "Pushed to X3 accounts payable",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Due within 30 days",
+       "value": 5,
+       "sub": "Net 30 default terms",
+       "color": "var(--color-text)"
+      }
+     ],
+     "chips": [
+      [
+       "All",
+       6
+      ],
+      [
+       "Blocked",
+       1
+      ],
+      [
+       "Awaiting receipt",
+       2
+      ],
+      [
+       "No PO",
+       1
+      ],
+      [
+       "Approved for payment",
+       1
+      ],
+      [
+       "Paid",
+       1
+      ]
+     ],
+     "noInv": false,
+     "rows": [
+      {
+       "id": "INV-KS-4471",
+       "date": "05 Jul",
+       "supplier": "Keystone Steelworks",
+       "poText": "PO-1041",
+       "grText": "BL-2026-0412",
+       "amountText": "€433,400",
+       "gapText": "—",
+       "gapColor": "var(--color-neutral-500)",
+       "dueDate": "04 Aug",
+       "status": "Paid",
+       "tagClass": "tag tag-neutral",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent)"
+        ],
+        [
+         "GR",
+         "var(--color-accent)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-HC-7781",
+       "date": "10 Sep",
+       "supplier": "Halvorsen Cranes",
+       "poText": "PO-1052",
+       "grText": "BL-2026-0498",
+       "amountText": "€1,259,600",
+       "gapText": "—",
+       "gapColor": "var(--color-neutral-500)",
+       "dueDate": "10 Oct",
+       "status": "Approved for payment",
+       "tagClass": "tag tag-neutral",
+       "idColor": "var(--color-accent-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent-700)"
+        ],
+        [
+         "GR",
+         "var(--color-accent)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-NV-1190",
+       "date": "22 Sep",
+       "supplier": "Nordvolt",
+       "poText": "PO-1063",
+       "grText": "BL-2026-0521",
+       "amountText": "€248,000",
+       "gapText": "€248,000",
+       "gapColor": "var(--color-accent-300)",
+       "dueDate": "22 Oct",
+       "status": "Awaiting receipt",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent)"
+        ],
+        [
+         "GR",
+         "var(--color-neutral-700)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-BX-55120",
+       "date": "24 Sep",
+       "supplier": "Brightline Electrics",
+       "poText": "PO-1071",
+       "grText": "BL-2026-0533",
+       "amountText": "€163,800",
+       "gapText": "€7,800",
+       "gapColor": "var(--color-accent-300)",
+       "dueDate": "24 Oct",
+       "status": "Blocked",
+       "tagClass": "tag tag-accent",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": true,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent)"
+        ],
+        [
+         "GR",
+         "var(--color-accent-700)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-CF-0921",
+       "date": "25 Sep",
+       "supplier": "Cotswold Fire Systems",
+       "poText": "PO-1078",
+       "grText": "—",
+       "amountText": "€19,080",
+       "gapText": "—",
+       "gapColor": "var(--color-neutral-500)",
+       "dueDate": "25 Oct",
+       "status": "Awaiting receipt",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent)"
+        ],
+        [
+         "GR",
+         "var(--color-neutral-100)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-LE-2210",
+       "date": "25 Sep",
+       "supplier": "Lincoln Electric",
+       "poText": "—",
+       "grText": "—",
+       "amountText": "€6,880",
+       "gapText": "—",
+       "gapColor": "var(--color-neutral-500)",
+       "dueDate": "25 Oct",
+       "status": "No PO",
+       "tagClass": "tag tag-accent",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-neutral-100)"
+        ],
+        [
+         "GR",
+         "var(--color-neutral-100)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      }
+     ]
+    },
+    "drawer": {
+     "id": "INV-HC-7781",
+     "supplier": "Halvorsen Cranes",
+     "status": "Approved for payment",
+     "tagClass": "tag tag-neutral",
+     "canApprove": false,
+     "canPartial": false,
+     "partialLabel": "Approve €1,259,600 · request credit note",
+     "canReject": false,
+     "hasPO": true,
+     "hasGR": true,
+     "rows": [
+      {
+       "k": "Purchase order",
+       "ref": "PO-1052",
+       "amt": "€1,286,400",
+       "dot": "var(--color-accent-700)",
+       "state": "Amount differs",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "k": "Goods receipt",
+       "ref": "BL-2026-0498",
+       "amt": "€1,259,600",
+       "dot": "var(--color-accent)",
+       "state": "Matched",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Invoice",
+       "ref": "INV-HC-7781",
+       "amt": "€1,259,600",
+       "dot": "var(--color-accent)",
+       "state": "Matched",
+       "color": "var(--color-text)"
+      }
+     ],
+     "meta": [
+      {
+       "k": "Invoice date",
+       "v": "10 Sep",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Due date",
+       "v": "10 Oct",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Terms",
+       "v": "Net 30",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Variance invoice − receipt",
+       "v": "—",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Blocking reason",
+       "v": "—",
+       "color": "var(--color-text)"
+      }
+     ]
+    }
+   },
+   "afterReject": {
+    "inv": {
+     "kpis": [
+      {
+       "label": "Invoices to process",
+       "value": 5,
+       "sub": "€1,697,360",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Blocked by 3-way match",
+       "value": 1,
+       "sub": "Quantity or PO mismatch",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "label": "Awaiting goods receipt",
+       "value": 2,
+       "sub": "Invoice before delivery",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Approved for payment",
+       "value": 1,
+       "sub": "Pushed to X3 accounts payable",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Due within 30 days",
+       "value": 5,
+       "sub": "Net 30 default terms",
+       "color": "var(--color-text)"
+      }
+     ],
+     "chips": [
+      [
+       "All",
+       6
+      ],
+      [
+       "Blocked",
+       1
+      ],
+      [
+       "Awaiting receipt",
+       2
+      ],
+      [
+       "No PO",
+       0
+      ],
+      [
+       "Approved for payment",
+       1
+      ],
+      [
+       "Paid",
+       1
+      ]
+     ],
+     "noInv": false,
+     "rows": [
+      {
+       "id": "INV-KS-4471",
+       "date": "05 Jul",
+       "supplier": "Keystone Steelworks",
+       "poText": "PO-1041",
+       "grText": "BL-2026-0412",
+       "amountText": "€433,400",
+       "gapText": "—",
+       "gapColor": "var(--color-neutral-500)",
+       "dueDate": "04 Aug",
+       "status": "Paid",
+       "tagClass": "tag tag-neutral",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent)"
+        ],
+        [
+         "GR",
+         "var(--color-accent)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-HC-7781",
+       "date": "10 Sep",
+       "supplier": "Halvorsen Cranes",
+       "poText": "PO-1052",
+       "grText": "BL-2026-0498",
+       "amountText": "€1,259,600",
+       "gapText": "—",
+       "gapColor": "var(--color-neutral-500)",
+       "dueDate": "10 Oct",
+       "status": "Approved for payment",
+       "tagClass": "tag tag-neutral",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent-700)"
+        ],
+        [
+         "GR",
+         "var(--color-accent)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-NV-1190",
+       "date": "22 Sep",
+       "supplier": "Nordvolt",
+       "poText": "PO-1063",
+       "grText": "BL-2026-0521",
+       "amountText": "€248,000",
+       "gapText": "€248,000",
+       "gapColor": "var(--color-accent-300)",
+       "dueDate": "22 Oct",
+       "status": "Awaiting receipt",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent)"
+        ],
+        [
+         "GR",
+         "var(--color-neutral-700)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-BX-55120",
+       "date": "24 Sep",
+       "supplier": "Brightline Electrics",
+       "poText": "PO-1071",
+       "grText": "BL-2026-0533",
+       "amountText": "€163,800",
+       "gapText": "€7,800",
+       "gapColor": "var(--color-accent-300)",
+       "dueDate": "24 Oct",
+       "status": "Blocked",
+       "tagClass": "tag tag-accent",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": true,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent)"
+        ],
+        [
+         "GR",
+         "var(--color-accent-700)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-CF-0921",
+       "date": "25 Sep",
+       "supplier": "Cotswold Fire Systems",
+       "poText": "PO-1078",
+       "grText": "—",
+       "amountText": "€19,080",
+       "gapText": "—",
+       "gapColor": "var(--color-neutral-500)",
+       "dueDate": "25 Oct",
+       "status": "Awaiting receipt",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent)"
+        ],
+        [
+         "GR",
+         "var(--color-neutral-100)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-LE-2210",
+       "date": "25 Sep",
+       "supplier": "Lincoln Electric",
+       "poText": "—",
+       "grText": "—",
+       "amountText": "€6,880",
+       "gapText": "—",
+       "gapColor": "var(--color-neutral-500)",
+       "dueDate": "25 Oct",
+       "status": "Rejected",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-accent-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-neutral-100)"
+        ],
+        [
+         "GR",
+         "var(--color-neutral-100)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      }
+     ]
+    },
+    "drawer": {
+     "id": "INV-LE-2210",
+     "supplier": "Lincoln Electric",
+     "status": "Rejected",
+     "tagClass": "tag tag-outline",
+     "canApprove": false,
+     "canPartial": false,
+     "partialLabel": "Approve €0 · request credit note",
+     "canReject": true,
+     "hasPO": false,
+     "hasGR": false,
+     "rows": [
+      {
+       "k": "Purchase order",
+       "ref": "—",
+       "amt": "€0",
+       "dot": "var(--color-neutral-100)",
+       "state": "Missing",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "k": "Goods receipt",
+       "ref": "—",
+       "amt": "€0",
+       "dot": "var(--color-neutral-100)",
+       "state": "Missing",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "k": "Invoice",
+       "ref": "INV-LE-2210",
+       "amt": "€6,880",
+       "dot": "var(--color-accent)",
+       "state": "Matched",
+       "color": "var(--color-text)"
+      }
+     ],
+     "meta": [
+      {
+       "k": "Invoice date",
+       "v": "25 Sep",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Due date",
+       "v": "25 Oct",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Terms",
+       "v": "Net 30",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Variance invoice − receipt",
+       "v": "—",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Blocking reason",
+       "v": "—",
+       "color": "var(--color-text)"
+      }
+     ]
+    },
+    "myapprovals": {
+     "director": [
+      "INV-BX-55120"
+     ],
+     "procurement": [
+      "INV-BX-55120"
+     ]
+    }
+   }
+  },
+  "fr": {
+   "afterSend": {
+    "rfq": {
+     "kpis": [
+      {
+       "label": "Consultations ouvertes",
+       "value": 3,
+       "sub": "1 prêtes à attribuer",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Devis reçus",
+       "value": 8,
+       "sub": "Sur les consultations ouvertes",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Économies vs catalogue",
+       "value": "12 k€",
+       "sub": "Attribuées ce trimestre",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Cycle moyen",
+       "value": "9 j",
+       "sub": "Envoi → attribution",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Règle d’attribution",
+       "value": "CP",
+       "sub": "Décidée par le chef de projet pour chaque consultation",
+       "color": "var(--color-text)"
+      }
+     ],
+     "rows": [
+      {
+       "id": "RFQ-2026-031",
+       "title": "Tôle acier S355 · 20 mm — 192 tôles",
+       "part": "KS-STL-0450",
+       "qty": 192,
+       "due": "30 sept.",
+       "owner": "Fabien Bertrand",
+       "quotesText": "3 devis · à partir de 1 195 €",
+       "rule": "Coût total de possession le plus bas",
+       "chosenText": "—",
+       "status": "Comparaison",
+       "tagClass": "tag tag-accent",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      },
+      {
+       "id": "RFQ-2026-033",
+       "title": "Variateurs de fréquence 200 kW — 6 unités",
+       "part": "EL-VFD-200",
+       "qty": 6,
+       "due": "3 oct.",
+       "owner": "Pauline Noguès",
+       "quotesText": "2 devis · à partir de 14 200 €",
+       "rule": "Conformité technique d’abord",
+       "chosenText": "—",
+       "status": "Ouverte",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": true
+      },
+      {
+       "id": "RFQ-2026-029",
+       "title": "Câble acier 28 mm — 4 × 400 m",
+       "part": "HST-ROP-28",
+       "qty": 4,
+       "due": "15 sept.",
+       "owner": "Fabien Bertrand",
+       "quotesText": "3 devis · à partir de 9 400 €",
+       "rule": "Prix le plus bas",
+       "chosenText": "Teufelberger",
+       "status": "Attribuée",
+       "tagClass": "tag tag-neutral",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      },
+      {
+       "id": "RFQ-2026-034",
+       "title": "Lidar anticollision — 8 unités",
+       "part": "CTL-ANT-COL",
+       "qty": 8,
+       "due": "10 oct.",
+       "owner": "Thomas Kerbrat",
+       "quotesText": "No quote yet",
+       "rule": "Le chef de projet décide",
+       "chosenText": "—",
+       "status": "Ouverte",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      }
+     ]
+    }
+   },
+   "afterCompare": {
+    "rfq": {
+     "kpis": [
+      {
+       "label": "Consultations ouvertes",
+       "value": 3,
+       "sub": "2 prêtes à attribuer",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Devis reçus",
+       "value": 8,
+       "sub": "Sur les consultations ouvertes",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Économies vs catalogue",
+       "value": "12 k€",
+       "sub": "Attribuées ce trimestre",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Cycle moyen",
+       "value": "9 j",
+       "sub": "Envoi → attribution",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Règle d’attribution",
+       "value": "CP",
+       "sub": "Décidée par le chef de projet pour chaque consultation",
+       "color": "var(--color-text)"
+      }
+     ],
+     "rows": [
+      {
+       "id": "RFQ-2026-031",
+       "title": "Tôle acier S355 · 20 mm — 192 tôles",
+       "part": "KS-STL-0450",
+       "qty": 192,
+       "due": "30 sept.",
+       "owner": "Fabien Bertrand",
+       "quotesText": "3 devis · à partir de 1 195 €",
+       "rule": "Coût total de possession le plus bas",
+       "chosenText": "—",
+       "status": "Comparaison",
+       "tagClass": "tag tag-accent",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      },
+      {
+       "id": "RFQ-2026-033",
+       "title": "Variateurs de fréquence 200 kW — 6 unités",
+       "part": "EL-VFD-200",
+       "qty": 6,
+       "due": "3 oct.",
+       "owner": "Pauline Noguès",
+       "quotesText": "2 devis · à partir de 14 200 €",
+       "rule": "Conformité technique d’abord",
+       "chosenText": "—",
+       "status": "Comparaison",
+       "tagClass": "tag tag-accent",
+       "idColor": "var(--color-accent-300)",
+       "canSend": false,
+       "canCompare": false
+      },
+      {
+       "id": "RFQ-2026-029",
+       "title": "Câble acier 28 mm — 4 × 400 m",
+       "part": "HST-ROP-28",
+       "qty": 4,
+       "due": "15 sept.",
+       "owner": "Fabien Bertrand",
+       "quotesText": "3 devis · à partir de 9 400 €",
+       "rule": "Prix le plus bas",
+       "chosenText": "Teufelberger",
+       "status": "Attribuée",
+       "tagClass": "tag tag-neutral",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      },
+      {
+       "id": "RFQ-2026-034",
+       "title": "Lidar anticollision — 8 unités",
+       "part": "CTL-ANT-COL",
+       "qty": 8,
+       "due": "10 oct.",
+       "owner": "Thomas Kerbrat",
+       "quotesText": "No quote yet",
+       "rule": "Le chef de projet décide",
+       "chosenText": "—",
+       "status": "Ouverte",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      }
+     ]
+    },
+    "drawer": {
+     "id": "RFQ-2026-033",
+     "title": "Variateurs de fréquence 200 kW — 6 unités",
+     "status": "Comparaison",
+     "tagClass": "tag tag-accent",
+     "hint": "",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "EL-VFD-200 · Frequency drive 200 kW",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "6",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "3 oct.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Pauline Noguès",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Conformité technique d’abord",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "13 600 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ABB",
+       "price": "14 200 €",
+       "priceColor": "var(--color-accent-300)",
+       "total": "85 200 €",
+       "delta": "—",
+       "lead": "9 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "97/100",
+       "chosen": false,
+       "canAward": true
+      },
+      {
+       "sup": "Siemens",
+       "price": "14 650 €",
+       "priceColor": "var(--color-text)",
+       "total": "87 900 €",
+       "delta": "+2 700 €",
+       "lead": "7 sem.",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "96/100",
+       "chosen": false,
+       "canAward": true
+      }
+     ]
+    }
+   },
+   "afterAward": {
+    "rfq": {
+     "kpis": [
+      {
+       "label": "Consultations ouvertes",
+       "value": 2,
+       "sub": "1 prêtes à attribuer",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Devis reçus",
+       "value": 8,
+       "sub": "Sur les consultations ouvertes",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Économies vs catalogue",
+       "value": "12 k€",
+       "sub": "Attribuées ce trimestre",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Cycle moyen",
+       "value": "9 j",
+       "sub": "Envoi → attribution",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Règle d’attribution",
+       "value": "CP",
+       "sub": "Décidée par le chef de projet pour chaque consultation",
+       "color": "var(--color-text)"
+      }
+     ],
+     "rows": [
+      {
+       "id": "RFQ-2026-031",
+       "title": "Tôle acier S355 · 20 mm — 192 tôles",
+       "part": "KS-STL-0450",
+       "qty": 192,
+       "due": "30 sept.",
+       "owner": "Fabien Bertrand",
+       "quotesText": "3 devis · à partir de 1 195 €",
+       "rule": "Coût total de possession le plus bas",
+       "chosenText": "Dillinger",
+       "status": "Attribuée",
+       "tagClass": "tag tag-neutral",
+       "idColor": "var(--color-accent-300)",
+       "canSend": false,
+       "canCompare": false
+      },
+      {
+       "id": "RFQ-2026-033",
+       "title": "Variateurs de fréquence 200 kW — 6 unités",
+       "part": "EL-VFD-200",
+       "qty": 6,
+       "due": "3 oct.",
+       "owner": "Pauline Noguès",
+       "quotesText": "2 devis · à partir de 14 200 €",
+       "rule": "Conformité technique d’abord",
+       "chosenText": "—",
+       "status": "Comparaison",
+       "tagClass": "tag tag-accent",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      },
+      {
+       "id": "RFQ-2026-029",
+       "title": "Câble acier 28 mm — 4 × 400 m",
+       "part": "HST-ROP-28",
+       "qty": 4,
+       "due": "15 sept.",
+       "owner": "Fabien Bertrand",
+       "quotesText": "3 devis · à partir de 9 400 €",
+       "rule": "Prix le plus bas",
+       "chosenText": "Teufelberger",
+       "status": "Attribuée",
+       "tagClass": "tag tag-neutral",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      },
+      {
+       "id": "RFQ-2026-034",
+       "title": "Lidar anticollision — 8 unités",
+       "part": "CTL-ANT-COL",
+       "qty": 8,
+       "due": "10 oct.",
+       "owner": "Thomas Kerbrat",
+       "quotesText": "No quote yet",
+       "rule": "Le chef de projet décide",
+       "chosenText": "—",
+       "status": "Ouverte",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-neutral-300)",
+       "canSend": false,
+       "canCompare": false
+      }
+     ]
+    },
+    "drawer": {
+     "id": "RFQ-2026-031",
+     "title": "Tôle acier S355 · 20 mm — 192 tôles",
+     "status": "Attribuée",
+     "tagClass": "tag tag-neutral",
+     "hint": "Attribuée à Dillinger — commande créée en brouillon.",
+     "noQuotes": false,
+     "canSend": false,
+     "meta": [
+      {
+       "k": "Article",
+       "v": "KS-STL-0450 · Structural steel column HEB 450",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Quantité",
+       "v": "192",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Devis attendus",
+       "v": "30 sept.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Acheteur",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Règle d’attribution",
+       "v": "Coût total de possession le plus bas",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Dernier prix d’achat",
+       "v": "4 700 €",
+       "color": "var(--color-text)"
+      }
+     ],
+     "quotes": [
+      {
+       "sup": "ArcelorMittal",
+       "price": "1 240 €",
+       "priceColor": "var(--color-text)",
+       "total": "238 080 €",
+       "delta": "+8 640 €",
+       "lead": "4 sem.",
+       "leadColor": "var(--color-accent-300)",
+       "terms": "Net 30",
+       "grade": "A",
+       "score": "98/100",
+       "chosen": false,
+       "canAward": false
+      },
+      {
+       "sup": "Dillinger",
+       "price": "1 195 €",
+       "priceColor": "var(--color-accent-300)",
+       "total": "229 440 €",
+       "delta": "—",
+       "lead": "6 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 45",
+       "grade": "B",
+       "score": "94/100",
+       "chosen": true,
+       "canAward": false
+      },
+      {
+       "sup": "Salzgitter",
+       "price": "1 210 €",
+       "priceColor": "var(--color-text)",
+       "total": "232 320 €",
+       "delta": "+2 880 €",
+       "lead": "5 sem.",
+       "leadColor": "var(--color-neutral-300)",
+       "terms": "Net 30",
+       "grade": "B",
+       "score": "91/100",
+       "chosen": false,
+       "canAward": false
+      }
+     ]
+    },
+    "myapprovals": {
+     "pm": [
+      "RFQ-2026-033"
+     ],
+     "procurement": [
+      "RFQ-2026-033"
+     ]
+    }
+   },
+   "drawerSend": {
+    "id": "RFQ-2026-034",
+    "title": "Lidar anticollision — 8 unités",
+    "status": "Ouverte",
+    "tagClass": "tag tag-outline",
+    "hint": "",
+    "noQuotes": true,
+    "canSend": false,
+    "meta": [
+     {
+      "k": "Article",
+      "v": "CTL-ANT-COL · Anti-collision lidar",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Quantité",
+      "v": "8",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Devis attendus",
+      "v": "10 oct.",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Acheteur",
+      "v": "Thomas Kerbrat",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Règle d’attribution",
+      "v": "Le chef de projet décide",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Dernier prix d’achat",
+      "v": "4 980 €",
+      "color": "var(--color-text)"
+     }
+    ],
+    "quotes": []
+   },
+   "afterPartial": {
+    "inv": {
+     "kpis": [
+      {
+       "label": "Factures à traiter",
+       "value": 5,
+       "sub": "1 697 360 €",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Bloquées par le rapprochement",
+       "value": 2,
+       "sub": "Écart de quantité ou de commande",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "label": "En attente de réception",
+       "value": 2,
+       "sub": "Facture avant livraison",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Approuvée pour paiement",
+       "value": 1,
+       "sub": "Envoyées à la comptabilité X3",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Échéance sous 30 jours",
+       "value": 5,
+       "sub": "Conditions par défaut 30 jours net",
+       "color": "var(--color-text)"
+      }
+     ],
+     "chips": [
+      [
+       "Tous",
+       6
+      ],
+      [
+       "Bloquée",
+       1
+      ],
+      [
+       "En attente de réception",
+       2
+      ],
+      [
+       "Sans commande",
+       1
+      ],
+      [
+       "Approuvée pour paiement",
+       1
+      ],
+      [
+       "Payé",
+       1
+      ]
+     ],
+     "noInv": false,
+     "rows": [
+      {
+       "id": "INV-KS-4471",
+       "date": "05 juil.",
+       "supplier": "Keystone Steelworks",
+       "poText": "PO-1041",
+       "grText": "BL-2026-0412",
+       "amountText": "433 400 €",
+       "gapText": "—",
+       "gapColor": "var(--color-neutral-500)",
+       "dueDate": "04 août",
+       "status": "Payé",
+       "tagClass": "tag tag-neutral",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent)"
+        ],
+        [
+         "GR",
+         "var(--color-accent)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-HC-7781",
+       "date": "10 sept.",
+       "supplier": "Halvorsen Cranes",
+       "poText": "PO-1052",
+       "grText": "BL-2026-0498",
+       "amountText": "1 259 600 €",
+       "gapText": "—",
+       "gapColor": "var(--color-neutral-500)",
+       "dueDate": "10 oct.",
+       "status": "Approuvée pour paiement",
+       "tagClass": "tag tag-neutral",
+       "idColor": "var(--color-accent-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent-700)"
+        ],
+        [
+         "GR",
+         "var(--color-accent)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-NV-1190",
+       "date": "22 sept.",
+       "supplier": "Nordvolt",
+       "poText": "PO-1063",
+       "grText": "BL-2026-0521",
+       "amountText": "248 000 €",
+       "gapText": "248 000 €",
+       "gapColor": "var(--color-accent-300)",
+       "dueDate": "22 oct.",
+       "status": "En attente de réception",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent)"
+        ],
+        [
+         "GR",
+         "var(--color-neutral-700)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-BX-55120",
+       "date": "24 sept.",
+       "supplier": "Brightline Electrics",
+       "poText": "PO-1071",
+       "grText": "BL-2026-0533",
+       "amountText": "163 800 €",
+       "gapText": "7 800 €",
+       "gapColor": "var(--color-accent-300)",
+       "dueDate": "24 oct.",
+       "status": "Bloquée",
+       "tagClass": "tag tag-accent",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": true,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent)"
+        ],
+        [
+         "GR",
+         "var(--color-accent-700)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-CF-0921",
+       "date": "25 sept.",
+       "supplier": "Cotswold Fire Systems",
+       "poText": "PO-1078",
+       "grText": "—",
+       "amountText": "19 080 €",
+       "gapText": "—",
+       "gapColor": "var(--color-neutral-500)",
+       "dueDate": "25 oct.",
+       "status": "En attente de réception",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent)"
+        ],
+        [
+         "GR",
+         "var(--color-neutral-100)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-LE-2210",
+       "date": "25 sept.",
+       "supplier": "Lincoln Electric",
+       "poText": "—",
+       "grText": "—",
+       "amountText": "6 880 €",
+       "gapText": "—",
+       "gapColor": "var(--color-neutral-500)",
+       "dueDate": "25 oct.",
+       "status": "Sans commande",
+       "tagClass": "tag tag-accent",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-neutral-100)"
+        ],
+        [
+         "GR",
+         "var(--color-neutral-100)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      }
+     ]
+    },
+    "drawer": {
+     "id": "INV-HC-7781",
+     "supplier": "Halvorsen Cranes",
+     "status": "Approuvée pour paiement",
+     "tagClass": "tag tag-neutral",
+     "canApprove": false,
+     "canPartial": false,
+     "partialLabel": "Approuver 1 259 600 € · demander un avoir",
+     "canReject": false,
+     "hasPO": true,
+     "hasGR": true,
+     "rows": [
+      {
+       "k": "Commande d’achat",
+       "ref": "PO-1052",
+       "amt": "1 286 400 €",
+       "dot": "var(--color-accent-700)",
+       "state": "Montant différent",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "k": "Réception",
+       "ref": "BL-2026-0498",
+       "amt": "1 259 600 €",
+       "dot": "var(--color-accent)",
+       "state": "Rapproché",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Facture",
+       "ref": "INV-HC-7781",
+       "amt": "1 259 600 €",
+       "dot": "var(--color-accent)",
+       "state": "Rapproché",
+       "color": "var(--color-text)"
+      }
+     ],
+     "meta": [
+      {
+       "k": "Date de facture",
+       "v": "10 sept.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Échéance",
+       "v": "10 oct.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Conditions",
+       "v": "Net 30",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Écart facture − réception",
+       "v": "—",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Motif de blocage",
+       "v": "—",
+       "color": "var(--color-text)"
+      }
+     ]
+    }
+   },
+   "afterReject": {
+    "inv": {
+     "kpis": [
+      {
+       "label": "Factures à traiter",
+       "value": 5,
+       "sub": "1 697 360 €",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Bloquées par le rapprochement",
+       "value": 1,
+       "sub": "Écart de quantité ou de commande",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "label": "En attente de réception",
+       "value": 2,
+       "sub": "Facture avant livraison",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Approuvée pour paiement",
+       "value": 1,
+       "sub": "Envoyées à la comptabilité X3",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Échéance sous 30 jours",
+       "value": 5,
+       "sub": "Conditions par défaut 30 jours net",
+       "color": "var(--color-text)"
+      }
+     ],
+     "chips": [
+      [
+       "Tous",
+       6
+      ],
+      [
+       "Bloquée",
+       1
+      ],
+      [
+       "En attente de réception",
+       2
+      ],
+      [
+       "Sans commande",
+       0
+      ],
+      [
+       "Approuvée pour paiement",
+       1
+      ],
+      [
+       "Payé",
+       1
+      ]
+     ],
+     "noInv": false,
+     "rows": [
+      {
+       "id": "INV-KS-4471",
+       "date": "05 juil.",
+       "supplier": "Keystone Steelworks",
+       "poText": "PO-1041",
+       "grText": "BL-2026-0412",
+       "amountText": "433 400 €",
+       "gapText": "—",
+       "gapColor": "var(--color-neutral-500)",
+       "dueDate": "04 août",
+       "status": "Payé",
+       "tagClass": "tag tag-neutral",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent)"
+        ],
+        [
+         "GR",
+         "var(--color-accent)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-HC-7781",
+       "date": "10 sept.",
+       "supplier": "Halvorsen Cranes",
+       "poText": "PO-1052",
+       "grText": "BL-2026-0498",
+       "amountText": "1 259 600 €",
+       "gapText": "—",
+       "gapColor": "var(--color-neutral-500)",
+       "dueDate": "10 oct.",
+       "status": "Approuvée pour paiement",
+       "tagClass": "tag tag-neutral",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent-700)"
+        ],
+        [
+         "GR",
+         "var(--color-accent)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-NV-1190",
+       "date": "22 sept.",
+       "supplier": "Nordvolt",
+       "poText": "PO-1063",
+       "grText": "BL-2026-0521",
+       "amountText": "248 000 €",
+       "gapText": "248 000 €",
+       "gapColor": "var(--color-accent-300)",
+       "dueDate": "22 oct.",
+       "status": "En attente de réception",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent)"
+        ],
+        [
+         "GR",
+         "var(--color-neutral-700)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-BX-55120",
+       "date": "24 sept.",
+       "supplier": "Brightline Electrics",
+       "poText": "PO-1071",
+       "grText": "BL-2026-0533",
+       "amountText": "163 800 €",
+       "gapText": "7 800 €",
+       "gapColor": "var(--color-accent-300)",
+       "dueDate": "24 oct.",
+       "status": "Bloquée",
+       "tagClass": "tag tag-accent",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": true,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent)"
+        ],
+        [
+         "GR",
+         "var(--color-accent-700)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-CF-0921",
+       "date": "25 sept.",
+       "supplier": "Cotswold Fire Systems",
+       "poText": "PO-1078",
+       "grText": "—",
+       "amountText": "19 080 €",
+       "gapText": "—",
+       "gapColor": "var(--color-neutral-500)",
+       "dueDate": "25 oct.",
+       "status": "En attente de réception",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-neutral-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-accent)"
+        ],
+        [
+         "GR",
+         "var(--color-neutral-100)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      },
+      {
+       "id": "INV-LE-2210",
+       "date": "25 sept.",
+       "supplier": "Lincoln Electric",
+       "poText": "—",
+       "grText": "—",
+       "amountText": "6 880 €",
+       "gapText": "—",
+       "gapColor": "var(--color-neutral-500)",
+       "dueDate": "25 oct.",
+       "status": "Refusé",
+       "tagClass": "tag tag-outline",
+       "idColor": "var(--color-accent-300)",
+       "canApprove": false,
+       "canPartial": false,
+       "m": [
+        [
+         "PO",
+         "var(--color-neutral-100)"
+        ],
+        [
+         "GR",
+         "var(--color-neutral-100)"
+        ],
+        [
+         "INV",
+         "var(--color-accent)"
+        ]
+       ]
+      }
+     ]
+    },
+    "drawer": {
+     "id": "INV-LE-2210",
+     "supplier": "Lincoln Electric",
+     "status": "Refusé",
+     "tagClass": "tag tag-outline",
+     "canApprove": false,
+     "canPartial": false,
+     "partialLabel": "Approuver 0 € · demander un avoir",
+     "canReject": true,
+     "hasPO": false,
+     "hasGR": false,
+     "rows": [
+      {
+       "k": "Commande d’achat",
+       "ref": "—",
+       "amt": "0 €",
+       "dot": "var(--color-neutral-100)",
+       "state": "Manquant",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "k": "Réception",
+       "ref": "—",
+       "amt": "0 €",
+       "dot": "var(--color-neutral-100)",
+       "state": "Manquant",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "k": "Facture",
+       "ref": "INV-LE-2210",
+       "amt": "6 880 €",
+       "dot": "var(--color-accent)",
+       "state": "Rapproché",
+       "color": "var(--color-text)"
+      }
+     ],
+     "meta": [
+      {
+       "k": "Date de facture",
+       "v": "25 sept.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Échéance",
+       "v": "25 oct.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Conditions",
+       "v": "Net 30",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Écart facture − réception",
+       "v": "—",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Motif de blocage",
+       "v": "—",
+       "color": "var(--color-text)"
+      }
+     ]
+    },
+    "myapprovals": {
+     "director": [
+      "INV-BX-55120"
+     ],
+     "procurement": [
+      "INV-BX-55120"
+     ]
+    }
+   }
+  }
+ },
+ "labels": {
+  "Requests for quotation": "Demandes de devis (RFQ)",
+  "Draft → sent → comparing → awarded · the award creates a draft purchase order": "Brouillon → envoyée → comparaison → attribuée · l’attribution crée une commande brouillon",
+  "RFQ": "RFQ",
+  "Part": "Article",
+  "Qty": "Qté",
+  "Quotes due": "Devis attendus",
+  "Buyer": "Acheteur",
+  "Quotes": "Devis",
+  "Award rule": "Règle d’attribution",
+  "Awarded to": "Attribuée à",
+  "Status": "Statut",
+  "Send to suppliers": "Envoyer aux fournisseurs",
+  "Compare quotes": "Comparer les devis",
+  "Quote comparison": "Comparaison des devis",
+  "Supplier": "Fournisseur",
+  "Unit": "Unitaire",
+  "Total": "Total",
+  "vs best": "vs meilleur",
+  "Discipline lead": "Référent",
+  "Terms": "Conditions",
+  "Rating": "Notation",
+  "Awarded": "Attribuée",
+  "Award": "Attribuer",
+  "No quote received yet — send the RFQ to at least three suppliers": "Aucun devis reçu — envoyez la consultation à au moins trois fournisseurs",
+  "Best unit price and shortest lead time highlighted · rating from supplier performance ·": "Meilleur prix unitaire et délai le plus court surlignés · notation issue de la performance fournisseur ·",
+  "Request": "Demander",
+  "Part record": "Fiche article",
+  "Purchase orders": "Commandes d’achat",
+  "3-way match: purchase order · goods receipt · invoice — approved invoices are pushed to X3 accounts payable": "Rapprochement 3 voies : commande · réception · facture — les factures approuvées partent vers la comptabilité fournisseurs X3",
+  "Supplier invoices": "Factures fournisseurs",
+  "Invoice": "Facture",
+  "Purchase order": "Commande d’achat",
+  "Goods receipt": "Réception",
+  "Amount": "Montant",
+  "Not covered by receipt": "Non couvert par la réception",
+  "Match": "Rapprochement",
+  "Due": "Échéance",
+  "Approve payment": "Approuver le paiement",
+  "Approve received part": "Approuver la part reçue",
+  "No invoice in this status": "Aucune facture dans ce statut",
+  "3-way match": "Rapprochement 3 voies",
+  "Reject invoice": "Refuser la facture",
+  "Supplier scorecard": "Tableau de bord fournisseurs",
+  "On-time from deliveries · quality from goods receipt · NCR rate per unit · rating feeds RFQ comparison": "Ponctualité issue des livraisons · qualité des réceptions · taux de NCR par unité · la notation alimente la comparaison des devis",
+  "On-time delivery": "Livraison à l’heure",
+  "Quality acceptance": "Acceptation qualité",
+  "NCR rate": "Taux de NCR",
+  "Open POs": "Commandes ouvertes",
+  "NCRs this quarter": "NCR ce trimestre",
+  "Display": "Vue",
+  "All": "Tous",
+  "Lead time": "Délai d’approvisionnement",
+  "Sourcing, invoices & suppliers": "Consultations, factures et fournisseurs",
+  "Purchasing & stock · all projects": "Achats & stock · tous les projets"
+ },
+ "seg": {
+  "en": [
+   "RFQ & quotes",
+   "Invoices — 3-way match",
+   "Supplier performance"
+  ],
+  "fr": [
+   "Consultations et devis",
+   "Factures — rapprochement 3 voies",
+   "Performance fournisseurs"
+  ]
+ },
+ "af": {
+  "def": {
+   "title": "New RFQ",
+   "kind": "create",
+   "submit": "Send RFQ",
+   "fields": [
+    [
+     "title",
+     "Title",
+     "text",
+     "",
+     1
+    ],
+    [
+     "suppliers",
+     "Suppliers",
+     "text",
+     "",
+     1
+    ],
+    [
+     "articles",
+     "Articles",
+     "text",
+     "",
+     1
+    ],
+    [
+     "due",
+     "Reply due",
+     "text",
+     "15 Oct 2026"
+    ],
+    [
+     "incoterm",
+     "Incoterm",
+     "select",
+     [
+      "DAP site",
+      "EXW",
+      "FCA",
+      "DDP"
+     ]
+    ]
+   ]
+  },
+  "result": "RFQ sent to suppliers",
+  "fr": {
+   "title": "Nouvelle consultation",
+   "submit": "Envoyer la consultation",
+   "labels": [
+    "Titre",
+    "Fournisseurs",
+    "Articles",
+    "Réponse attendue le",
+    "Incoterm"
+   ],
+   "options": [
+    [
+     "DAP chantier",
+     "EXW",
+     "FCA",
+     "DDP"
+    ]
+   ],
+   "result": "Consultation envoyée aux fournisseurs"
+  }
+ },
+ "myapprovals": {
+  "en": {
+   "director": [
+    {
+     "kind": "Invoice — 3-way match",
+     "id": "INV-HC-7781",
+     "title": "Halvorsen Cranes · €1,286,400",
+     "sub": "Receipt does not cover invoice",
+     "when": "10 Sep",
+     "who": "Accounts payable"
+    },
+    {
+     "kind": "Invoice — 3-way match",
+     "id": "INV-BX-55120",
+     "title": "Brightline Electrics · €163,800",
+     "sub": "Receipt does not cover invoice",
+     "when": "24 Sep",
+     "who": "Accounts payable"
+    },
+    {
+     "kind": "Invoice — 3-way match",
+     "id": "INV-LE-2210",
+     "title": "Lincoln Electric · €6,880",
+     "sub": "No purchase order referenced",
+     "when": "25 Sep",
+     "who": "Accounts payable"
+    }
+   ],
+   "pm": [
+    {
+     "kind": "RFQ award",
+     "id": "RFQ-2026-031",
+     "title": "Steel plate S355 · 20 mm — 192 plates",
+     "sub": "3 quotes · Lowest total cost of ownership",
+     "when": "30 Sep",
+     "who": "Fabien Bertrand"
+    }
+   ],
+   "depthead": [],
+   "member": [],
+   "englead": [],
+   "quality": [],
+   "procurement": [
+    {
+     "kind": "RFQ award",
+     "id": "RFQ-2026-031",
+     "title": "Steel plate S355 · 20 mm — 192 plates",
+     "sub": "3 quotes · Lowest total cost of ownership",
+     "when": "30 Sep",
+     "who": "Fabien Bertrand"
+    },
+    {
+     "kind": "Invoice — 3-way match",
+     "id": "INV-HC-7781",
+     "title": "Halvorsen Cranes · €1,286,400",
+     "sub": "Receipt does not cover invoice",
+     "when": "10 Sep",
+     "who": "Accounts payable"
+    },
+    {
+     "kind": "Invoice — 3-way match",
+     "id": "INV-BX-55120",
+     "title": "Brightline Electrics · €163,800",
+     "sub": "Receipt does not cover invoice",
+     "when": "24 Sep",
+     "who": "Accounts payable"
+    },
+    {
+     "kind": "Invoice — 3-way match",
+     "id": "INV-LE-2210",
+     "title": "Lincoln Electric · €6,880",
+     "sub": "No purchase order referenced",
+     "when": "25 Sep",
+     "who": "Accounts payable"
+    }
+   ],
+   "client": []
+  },
+  "fr": {
+   "director": [
+    {
+     "kind": "Facture — rapprochement 3 voies",
+     "id": "INV-HC-7781",
+     "title": "Halvorsen Cranes · 1 286 400 €",
+     "sub": "La réception ne couvre pas la facture",
+     "when": "10 sept.",
+     "who": "Comptabilité fournisseurs"
+    },
+    {
+     "kind": "Facture — rapprochement 3 voies",
+     "id": "INV-BX-55120",
+     "title": "Brightline Electrics · 163 800 €",
+     "sub": "La réception ne couvre pas la facture",
+     "when": "24 sept.",
+     "who": "Comptabilité fournisseurs"
+    },
+    {
+     "kind": "Facture — rapprochement 3 voies",
+     "id": "INV-LE-2210",
+     "title": "Lincoln Electric · 6 880 €",
+     "sub": "Aucune commande référencée",
+     "when": "25 sept.",
+     "who": "Comptabilité fournisseurs"
+    }
+   ],
+   "pm": [
+    {
+     "kind": "Attribution de consultation",
+     "id": "RFQ-2026-031",
+     "title": "Tôle acier S355 · 20 mm — 192 tôles",
+     "sub": "3 devis · Lowest total cost of ownership",
+     "when": "30 sept.",
+     "who": "Fabien Bertrand"
+    }
+   ],
+   "depthead": [],
+   "member": [],
+   "englead": [],
+   "quality": [],
+   "procurement": [
+    {
+     "kind": "Attribution de consultation",
+     "id": "RFQ-2026-031",
+     "title": "Tôle acier S355 · 20 mm — 192 tôles",
+     "sub": "3 devis · Lowest total cost of ownership",
+     "when": "30 sept.",
+     "who": "Fabien Bertrand"
+    },
+    {
+     "kind": "Facture — rapprochement 3 voies",
+     "id": "INV-HC-7781",
+     "title": "Halvorsen Cranes · 1 286 400 €",
+     "sub": "La réception ne couvre pas la facture",
+     "when": "10 sept.",
+     "who": "Comptabilité fournisseurs"
+    },
+    {
+     "kind": "Facture — rapprochement 3 voies",
+     "id": "INV-BX-55120",
+     "title": "Brightline Electrics · 163 800 €",
+     "sub": "La réception ne couvre pas la facture",
+     "when": "24 sept.",
+     "who": "Comptabilité fournisseurs"
+    },
+    {
+     "kind": "Facture — rapprochement 3 voies",
+     "id": "INV-LE-2210",
+     "title": "Lincoln Electric · 6 880 €",
+     "sub": "Aucune commande référencée",
+     "when": "25 sept.",
+     "who": "Comptabilité fournisseurs"
+    }
+   ],
+   "client": []
+  }
+ }
+}

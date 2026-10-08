@@ -1,0 +1,56 @@
+/* Sourcing, invoices & suppliers (docs/spec/08 §1, template 1972–2078). Values copied from the prototype's inline styles. */
+
+/* RFQ cell: id over title (display:flex;flex-direction:column;line-height:1.3;max-width:300px) */
+.rfqCell { display: flex; flex-direction: column; line-height: 1.3; max-width: 300px; }
+.rfqTitle { text-wrap: pretty; }
+/* invoice cell: id over date (line-height 1.3) */
+.invCell { display: flex; flex-direction: column; line-height: 1.3; }
+.invDate { font-size: 11.5px; color: var(--color-neutral-400); }
+
+/* 12px cells */
+.fs12 { font-size: 12px; }
+.nowrap { white-space: nowrap; }
+
+/* row actions: display:flex;gap:6px;justify-content:flex-end */
+.rowActions { display: flex; gap: 6px; justify-content: flex-end; }
+
+/* "Not covered by receipt": colour from data (LO or neutral-500) */
+.gap { color: var(--gap-color); }
+
+/* 3-way match dots of the invoice table: display:flex;gap:8px · item gap 4px 11px neutral-400 · dot 8px */
+.dots { display: flex; gap: 8px; }
+.dotItem { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--color-neutral-400); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); flex: none; }
+/* the dot's state for screen readers (the colour alone carries it on screen; the item's title shows it on hover) */
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* scorecard bars: track flex:1 5px radius 3px neutral-800, fill accent (OTD) / neutral-300 (quality); value 12px tabular */
+.barCell { display: flex; align-items: center; gap: 8px; }
+.track { flex: 1; height: 5px; border-radius: 3px; background: var(--color-neutral-800); }
+.fill { height: 100%; border-radius: 3px; background: var(--fill); width: var(--w); }
+.barValue { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--bar-color, inherit); }
+.supplierName { font-weight: 500; }
+.ncrRate { color: var(--ncr-color); }
+
+/* drawers */
+.section { display: flex; flex-direction: column; gap: 4px; }
+.quoteWrap { overflow: auto; flex: none; }
+.quoteTable { width: 100%; }
+.supplierCell { display: flex; align-items: center; gap: 6px; }
+.price { color: var(--price-color); }
+.delta { color: var(--color-neutral-400); }
+.lead { white-space: nowrap; color: var(--lead-color); }
+.empty { font-size: 12.5px; color: var(--color-neutral-500); padding: 6px 0; }
+.footnote { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+.buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* 3-way match legs: grid 10px minmax(0,1fr) auto auto · gap 10px · padding 6px 0 · rule neutral-900 · 12.5px */
+.leg { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--color-neutral-900); font-size: 12.5px; }
+.legDot { width: 10px; height: 10px; border-radius: 50%; background: var(--dot); }
+.legLabel { display: flex; flex-direction: column; line-height: 1.3; }
+.legRef { font-size: 11px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.legAmount { font-variant-numeric: tabular-nums; }
+.legState { font-size: 11.5px; white-space: nowrap; color: var(--state-color); }
+
+/* empty-state line under the invoice table: 12.5px neutral-500 padding 8px 0 */
+.noRows { font-size: 12.5px; color: var(--color-neutral-500); padding: 8px 0; }

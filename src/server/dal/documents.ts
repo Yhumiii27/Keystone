@@ -1,0 +1,611 @@
+import 'server-only';
+// Documents — Codex index DAL (docs/spec/10 §4 Documents, §5 Document types register; 11 §3.10). Keystone mirrors
+// the Codex records (number, revision, status, confidentiality, tags, links), shows the approval proof, distribution
+// and acknowledgements and the download log, and hands deposits over to Codex (simulated: the index record is
+// created at once, OPEN QUESTION D-1). Writers follow the vault's state machine (10 §9): Draft → Frozen →
+// Release proposed → (approvals) → Released; client acknowledgement of released client deliverables.
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { cache } from 'react';
+import { getDb } from '@/server/db/client';
+import {
+  CODEX_TODAY_ISO, approverRole, confidentiality, docFamily, docLinkKind, docRecipient, docService, documentStatus, parisParts,
+  shortDateOfIso, type ApproverRole, type Confidentiality, type DocFamily, type DocLinkKind, type DocRecipient, type DocService,
+  type DocumentStatus,
+} from '@/server/db/codes';
+import { findPerson, nameOf, writeAudit } from '@/server/db/helpers';
+import {
+  clients, documentAcknowledgements, documentApprovals, documentApproverAssignments, documentDeposits, documentDownloads, documentIndexSyncs,
+  documentLinks, documentRevisions, documentTypeCircuitSteps, documentTypes, documents, persons, projects, users,
+} from '@/server/db/schema';
+import type { Tx } from '@/server/db/types';
+
+/** Scope value of company quality-system documents (`proj: 'QMS'`). */
+export const QMS = 'QMS';
+/** Title of a new deposit when none is given (the prototype's hard-coded record title, 10 OQ14). */
+export const DEPOSIT_DEFAULT_TITLE = 'Material certificate 3.1 — S355 · heat 7781';
+
+// ── Document types register ────────────────────────────────────────────────────────────────────────────
+
+export interface CircuitStep {
+  role: ApproverRole;
+  /** EN source label ("Engineering lead"). */
+  label: string;
+}
+
+export interface DocumentTypeRow {
+  /** "PID". */
+  code: string;
+  /** EN source label ("P&ID"). */
+  label: string;
+  family: DocFamily;
+  /** "Engineering". */
+  familyLabel: string;
+  /** Step 0 is the originator (Author, Buyer, Auditor…); approvals needed to release = steps − 1. */
+  circuit: CircuitStep[];
+  /** "Author → Engineering lead → Project manager". */
+  circuitText: string;
+  retention: string;
+  isoClause: string;
+  isClientDeliverable: boolean;
+  /** Vault records of the type, all projects (deposits included). */
+  inCodex: number;
+}
+
+/** DOC_TYPES order with the "In Codex" count (10 §5.3). */
+export async function listDocumentTypes(): Promise<DocumentTypeRow[]> {
+  const db = await getDb();
+  const [types, steps, counts] = await Promise.all([
+    db.select().from(documentTypes).orderBy(asc(documentTypes.position)),
+    db.select().from(documentTypeCircuitSteps).orderBy(asc(documentTypeCircuitSteps.typeCode), asc(documentTypeCircuitSteps.position)),
+    db.select({ code: documents.typeCode, n: sql<number>`count(*)::int` }).from(documents).groupBy(documents.typeCode),
+  ]);
+  const n = new Map(counts.map((c) => [c.code, c.n]));
+  return types.map((t) => {
+    const circuit = steps.filter((s) => s.typeCode === t.code).map((s) => ({ role: s.role, label: approverRole.label(s.role) }));
+    return {
+      code: t.code, label: t.label, family: t.family, familyLabel: docFamily.label(t.family), circuit, circuitText: circuit.map((c) => c.label).join(' → '),
+      retention: t.retention, isoClause: t.isoClause, isClientDeliverable: t.isClientDeliverable, inCodex: n.get(t.code) ?? 0,
+    };
+  });
+}
+
+/** Named approver per circuit role (DOC_WHO): short names ("G. Comte"). */
+export async function getApproverDirectory(): Promise<Partial<Record<ApproverRole, string>>> {
+  const db = await getDb();
+  const rows = await db
+    .select({ role: documentApproverAssignments.role, short: persons.shortName })
+    .from(documentApproverAssignments)
+    .innerJoin(persons, eq(persons.id, documentApproverAssignments.personId))
+    .where(isNull(documentApproverAssignments.projectId))
+    .orderBy(asc(documentApproverAssignments.position));
+  return Object.fromEntries(rows.map((r) => [r.role, r.short]));
+}
+
+// ── Vault ──────────────────────────────────────────────────────────────────────────────────────────────
+
+export interface VaultDocument {
+  /** "PID-HLT-026". */
+  number: string;
+  type: string;
+  typeLabel: string;
+  family: DocFamily;
+  familyLabel: string;
+  title: string;
+  /** Project code, or "QMS" for company quality-system documents. */
+  project: string;
+  service: DocService;
+  /** "Process", "Project management". */
+  serviceLabel: string;
+  /** Current revision letter. */
+  revision: string;
+  status: DocumentStatus;
+  /** EN source label ("Release proposed"). */
+  statusLabel: string;
+  /** ISO date of the current revision and its display ("26 Sep"). */
+  issuedOn: string;
+  dateText: string;
+  /** Author short name ("P. Noguès"). */
+  author: string;
+  confidentiality: Confidentiality;
+  confidentialityLabel: string;
+  tags: string[];
+  /** Tags joined with " · ", or "—". */
+  tagsText: string;
+  recipients: DocRecipient[];
+  links: { kind: DocLinkKind; kindLabel: string; ref: string }[];
+  /** Created from Keystone (deposit, meeting minutes): "New" tag. */
+  isNew: boolean;
+  /** Client deliverable type and released: shared with the client. */
+  shared: boolean;
+  /** Shared and acknowledged by the client for the current revision. */
+  acknowledged: boolean;
+  circuit: CircuitStep[];
+  circuitText: string;
+  retention: string;
+  isoClause: string;
+  /** Signed approval steps after the originator, and the number required to release (steps − 1). */
+  approvalsGiven: number;
+  approvalsRequired: number;
+  /** Next circuit role to approve and its named approver (DOC_WHO, else the author); null when none is pending. */
+  nextRole: ApproverRole | null;
+  nextRoleLabel: string | null;
+  nextApprover: string | null;
+  /** Status-driven actions of the engineering screens and the vault (`canFreeze`, `canPropose`, `canApprove`). */
+  canFreeze: boolean;
+  canPropose: boolean;
+  canApprove: boolean;
+  /** Withdrawal of the previous revision on the last release ("rev C withdrawn automatically · 29 Sep"). */
+  withdrawal: { revision: string; on: string } | null;
+  /** Revisions withdrawn so far (obsolete revision rows). */
+  withdrawnRevisions: number;
+}
+
+const tagsTextOf = (tags: string[]) => tags.join(' · ') || '—';
+
+interface VaultBundle {
+  docs: (typeof documents.$inferSelect & { projectCode: string | null })[];
+  types: Map<string, typeof documentTypes.$inferSelect>;
+  steps: Map<string, CircuitStep[]>;
+  approvals: Map<string, (typeof documentApprovals.$inferSelect)[]>;
+  links: Map<string, (typeof documentLinks.$inferSelect)[]>;
+  acks: Set<string>;
+  withdrawn: Map<string, number>;
+  who: Partial<Record<ApproverRole, string>>;
+}
+
+async function loadVault(q: Awaited<ReturnType<typeof getDb>> | Tx, where?: ReturnType<typeof eq>): Promise<VaultBundle> {
+  const docRows = await q
+    .select({ d: documents, projectCode: projects.code })
+    .from(documents)
+    .leftJoin(projects, eq(projects.id, documents.projectId))
+    .where(where)
+    .orderBy(asc(documents.sortOrder));
+  const ids = docRows.map((r) => r.d.id);
+  const none = ids.length === 0;
+  const [types, steps, approvals, links, acks, revs, whoRows] = await Promise.all([
+    q.select().from(documentTypes),
+    q.select().from(documentTypeCircuitSteps).orderBy(asc(documentTypeCircuitSteps.position)),
+    none ? [] : q.select().from(documentApprovals).where(inArray(documentApprovals.documentId, ids)).orderBy(asc(documentApprovals.stepPosition)),
+    none ? [] : q.select().from(documentLinks).where(inArray(documentLinks.documentId, ids)).orderBy(asc(documentLinks.position)),
+    none ? [] : q.select().from(documentAcknowledgements).where(inArray(documentAcknowledgements.documentId, ids)),
+    none ? [] : q.select({ documentId: documentRevisions.documentId, withdrawnOn: documentRevisions.withdrawnOn }).from(documentRevisions).where(inArray(documentRevisions.documentId, ids)),
+    q.select({ role: documentApproverAssignments.role, short: persons.shortName }).from(documentApproverAssignments)
+      .innerJoin(persons, eq(persons.id, documentApproverAssignments.personId)).where(isNull(documentApproverAssignments.projectId)),
+  ]);
+  const group = <T extends { documentId: string }>(xs: T[]) => {
+    const m = new Map<string, T[]>();
+    for (const x of xs) (m.get(x.documentId) ?? m.set(x.documentId, []).get(x.documentId)!).push(x);
+    return m;
+  };
+  const stepMap = new Map<string, CircuitStep[]>();
+  for (const s of steps) (stepMap.get(s.typeCode) ?? stepMap.set(s.typeCode, []).get(s.typeCode)!).push({ role: s.role, label: approverRole.label(s.role) });
+  const withdrawn = new Map<string, number>();
+  for (const r of revs) if (r.withdrawnOn) withdrawn.set(r.documentId, (withdrawn.get(r.documentId) ?? 0) + 1);
+  return {
+    docs: docRows.map((r) => ({ ...r.d, projectCode: r.projectCode })),
+    types: new Map(types.map((t) => [t.code, t])),
+    steps: stepMap,
+    approvals: group(approvals),
+    links: group(links),
+    acks: new Set(acks.map((a) => `${a.documentId}|${a.revision}`)),
+    withdrawn,
+    who: Object.fromEntries(whoRows.map((w) => [w.role, w.short])),
+  };
+}
+
+function toVault(b: VaultBundle, d: VaultBundle['docs'][number]): VaultDocument {
+  const t = b.types.get(d.typeCode)!;
+  const circuit = b.steps.get(d.typeCode) ?? [];
+  const appr = (b.approvals.get(d.id) ?? []).filter((a) => a.revision === d.currentRevision);
+  const given = appr.filter((a) => a.stepPosition > 0 && a.signedOn).length;
+  const next = circuit.length > 1 + given ? circuit[1 + given] : null;
+  const shared = t.isClientDeliverable && d.status === 'released';
+  return {
+    number: d.number, type: d.typeCode, typeLabel: t.label, family: t.family, familyLabel: docFamily.label(t.family), title: d.title,
+    project: d.projectCode ?? QMS, service: d.service, serviceLabel: docService.label(d.service), revision: d.currentRevision, status: d.status,
+    statusLabel: documentStatus.label(d.status), issuedOn: d.issuedOn, dateText: shortDateOfIso(d.issuedOn), author: d.authorName,
+    confidentiality: d.confidentiality, confidentialityLabel: confidentiality.label(d.confidentiality), tags: d.tags, tagsText: tagsTextOf(d.tags),
+    recipients: d.recipients, links: (b.links.get(d.id) ?? []).map((l) => ({ kind: l.kind, kindLabel: docLinkKind.label(l.kind), ref: l.targetRef })),
+    isNew: d.isNew, shared, acknowledged: shared && b.acks.has(`${d.id}|${d.currentRevision}`), circuit, circuitText: circuit.map((c) => c.label).join(' → '),
+    retention: t.retention, isoClause: t.isoClause, approvalsGiven: given, approvalsRequired: Math.max(0, circuit.length - 1),
+    nextRole: next?.role ?? null, nextRoleLabel: next?.label ?? null, nextApprover: next ? (b.who[next.role] ?? d.authorName) : null,
+    canFreeze: d.status === 'draft', canPropose: d.status === 'frozen', canApprove: d.status === 'release_proposed' && !!next,
+    withdrawal: d.lastWithdrawnRevision && d.lastWithdrawnOn ? { revision: d.lastWithdrawnRevision, on: d.lastWithdrawnOn } : null,
+    withdrawnRevisions: b.withdrawn.get(d.id) ?? 0,
+  };
+}
+
+/** Every vault record, all projects: Keystone-created records first, then the Codex (DOCS) order. Memoised per request. */
+export const listVaultDocuments = cache(async (): Promise<VaultDocument[]> => {
+  const db = await getDb();
+  const b = await loadVault(db);
+  return b.docs.map((d) => toVault(b, d));
+});
+
+/** Records in the scope of a project: its own documents plus the company QMS documents (`inScope`, scope "Current project"). */
+export async function listProjectDocuments(projectCode: string): Promise<VaultDocument[]> {
+  return (await listVaultDocuments()).filter((d) => d.project === projectCode || d.project === QMS);
+}
+
+/** Released client-deliverable documents of a project (client portal "Documents", `cpVaultDocs`). */
+export async function listSharedDocuments(projectCode: string): Promise<VaultDocument[]> {
+  return (await listVaultDocuments()).filter((d) => d.shared && d.project === projectCode);
+}
+
+/** Documents waiting for an approval step, all projects (sidebar "Documents · Codex" badge). */
+export async function countDocumentsAwaitingApproval(): Promise<number> {
+  const db = await getDb();
+  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(documents).where(eq(documents.status, 'release_proposed'));
+  return n;
+}
+
+// ── Document record (drawer) ───────────────────────────────────────────────────────────────────────────
+
+export interface DocumentRevisionRow {
+  revision: string;
+  current: boolean;
+  /** Current revision: the document status; earlier revisions: obsolete. */
+  status: DocumentStatus;
+  issuedOn: string;
+  dateText: string;
+  author: string;
+  /** Working versions recorded in Codex (prototype display: current "A.3", earlier "{n} working versions"). */
+  workingVersions: number;
+  withdrawnOn: string | null;
+}
+
+export interface ApprovalProofRow {
+  position: number;
+  role: ApproverRole;
+  roleLabel: string;
+  /**
+   * Named approver (author for step 0), "—" when the role has no approver; a step signed in Keystone shows its
+   * signer (the portfolio director may sign on the approver's behalf).
+   */
+  who: string;
+  signed: boolean;
+  signedOn: string | null;
+}
+
+export type DistributionRow =
+  | { kind: 'client'; organisation: string; contact: string | null; revision: string; date: string; acknowledgedOn: string | null }
+  | { kind: 'internal'; recipient: DocRecipient; label: string; revision: string; date: string };
+
+export interface DownloadRow {
+  who: string;
+  revision: string;
+  on: string;
+  format: string;
+  source: 'keystone' | 'codex';
+  /** "S. Haddad · rev D · 27 Sep · PDF". */
+  text: string;
+}
+
+export interface DocumentRecord extends VaultDocument {
+  /** Newest first (A … current reversed). */
+  revisions: DocumentRevisionRow[];
+  approvals: ApprovalProofRow[];
+  distribution: DistributionRow[];
+  /** Keystone downloads first (oldest first), then the Codex log. */
+  downloads: DownloadRow[];
+  /** "PHO" → JPG ×12, else native + PDF (display only). */
+  files: 'photos' | 'native_pdf';
+}
+
+/** Drawer of a vault record (`showDoc`, 10 §4.5); null when the number is unknown. */
+export async function getDocumentRecord(number: string): Promise<DocumentRecord | null> {
+  const db = await getDb();
+  const b = await loadVault(db, eq(documents.number, number));
+  const d = b.docs[0];
+  if (!d) return null;
+  const base = toVault(b, d);
+  const [revs, dls, ack, client] = await Promise.all([
+    db.select().from(documentRevisions).where(eq(documentRevisions.documentId, d.id)).orderBy(desc(documentRevisions.position)),
+    db.select().from(documentDownloads).where(eq(documentDownloads.documentId, d.id)).orderBy(asc(documentDownloads.downloadedOn), asc(documentDownloads.createdAt)),
+    db.select().from(documentAcknowledgements).where(and(eq(documentAcknowledgements.documentId, d.id), eq(documentAcknowledgements.revision, d.currentRevision))),
+    d.projectId ? clientContactOf(db, d.projectId) : Promise.resolve(null),
+  ]);
+  const current = (b.approvals.get(d.id) ?? []).filter((a) => a.revision === d.currentRevision);
+  const signerIds = [...new Set(current.map((a) => (a.signedOn ? a.signedByPersonId : null)).filter((x): x is string => !!x))];
+  const signers = new Map(
+    (signerIds.length ? await db.select({ id: persons.id, short: persons.shortName }).from(persons).where(inArray(persons.id, signerIds)) : []).map((p) => [p.id, p.short]),
+  );
+  const approvals = current.map((a) => ({
+    position: a.stepPosition, role: a.role, roleLabel: approverRole.label(a.role),
+    who: (a.signedOn && a.signedByPersonId ? signers.get(a.signedByPersonId) : null) ?? a.approverName ?? '—', signed: !!a.signedOn, signedOn: a.signedOn,
+  }));
+  const distribution: DistributionRow[] = [
+    ...(base.shared
+      ? [{ kind: 'client' as const, organisation: client?.organisation ?? '—', contact: client?.contact ?? null, revision: d.currentRevision, date: d.issuedOn, acknowledgedOn: ack[0]?.acknowledgedOn ?? null }]
+      : []),
+    ...d.recipients.filter((r) => r !== 'client').map((r) => ({ kind: 'internal' as const, recipient: r, label: docRecipient.isCode(r) ? docRecipient.label(r) : r, revision: d.currentRevision, date: d.issuedOn })),
+  ];
+  const downloads = [...dls.filter((x) => x.source === 'keystone'), ...dls.filter((x) => x.source === 'codex')].map((x) => ({
+    who: x.personName, revision: x.revision, on: x.downloadedOn, format: x.format, source: x.source,
+    text: `${x.personName} · rev ${x.revision} · ${shortDateOfIso(x.downloadedOn)} · ${x.format}`,
+  }));
+  return {
+    ...base,
+    revisions: revs.map((r) => ({
+      revision: r.revision, current: r.revision === d.currentRevision, status: r.revision === d.currentRevision ? d.status : 'obsolete', issuedOn: r.issuedOn,
+      dateText: shortDateOfIso(r.issuedOn), author: r.authorName, workingVersions: r.workingVersions, withdrawnOn: r.withdrawnOn,
+    })),
+    approvals, distribution, downloads, files: d.typeCode === 'PHO' ? 'photos' : 'native_pdf',
+  };
+}
+
+/** Client organisation of a project and its client contact (the client user of that organisation), for the distribution row. */
+async function clientContactOf(q: Awaited<ReturnType<typeof getDb>> | Tx, projectId: string): Promise<{ organisation: string; contact: string | null; personId: string | null } | null> {
+  const [p] = await q.select({ clientId: projects.clientId, name: clients.name }).from(projects).leftJoin(clients, eq(clients.id, projects.clientId)).where(eq(projects.id, projectId));
+  if (!p?.clientId || !p.name) return null;
+  const [u] = await q.select({ short: persons.shortName, id: persons.id }).from(users).innerJoin(persons, eq(persons.id, users.personId)).where(eq(users.clientId, p.clientId));
+  return { organisation: p.name, contact: u?.short ?? null, personId: u?.id ?? null };
+}
+
+// ── Codex sync state and deposits ──────────────────────────────────────────────────────────────────────
+
+export interface CodexSyncState {
+  /** Wall-clock time of the last sync in Europe/Paris ("08:02") and its instant. */
+  time: string;
+  syncedAt: string;
+  /** Records in Codex: the count at the last sync + records created from Keystone since then (412 + new deposits). */
+  records: number;
+}
+
+/** "Last sync 08:02 · 412 records" (`codexSync`). */
+export async function getCodexSyncState(): Promise<CodexSyncState | null> {
+  const db = await getDb();
+  const [s] = await db.select().from(documentIndexSyncs).orderBy(desc(documentIndexSyncs.syncedAt)).limit(1);
+  if (!s) return null;
+  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(documents).where(eq(documents.isNew, true));
+  const p = parisParts(s.syncedAt);
+  return { time: `${p.hh}:${p.mm}`, syncedAt: s.syncedAt.toISOString(), records: s.recordCount + n };
+}
+
+/** Codex project code of a number: "QMS" or the 3-letter prefix of the project code (HLT-026 → HLT). */
+const codexProjectCode = (project: string) => (project === QMS ? QMS : project.split('-')[0]);
+
+/**
+ * Number previewed by the deposit dialog (`depNumber`): `TYPE-PROJ-SEQ` with SEQ = (records of the type in the
+ * project) + 40, the next free one when taken; a new revision keeps the existing number.
+ */
+export async function previewDepositNumber(input: { typeCode: string; project: string; revisionOf?: string | null }): Promise<string> {
+  const db = await getDb();
+  return depositNumber(db, input);
+}
+
+async function depositNumber(q: Awaited<ReturnType<typeof getDb>> | Tx, input: { typeCode: string; project: string; revisionOf?: string | null }): Promise<string> {
+  if (input.revisionOf) return input.revisionOf;
+  const projectId = input.project === QMS ? null : (await q.select({ id: projects.id }).from(projects).where(eq(projects.code, input.project)))[0]?.id;
+  if (projectId === undefined) throw new Error(`Unknown project ${input.project}`);
+  const sameScope = await q
+    .select({ number: documents.number })
+    .from(documents)
+    .where(and(eq(documents.typeCode, input.typeCode), projectId ? eq(documents.projectId, projectId) : isNull(documents.projectId)));
+  const taken = new Set((await q.select({ number: documents.number }).from(documents)).map((r) => r.number));
+  for (let seq = sameScope.length + 40; ; seq++) {
+    const n = `${input.typeCode}-${codexProjectCode(input.project)}-${String(seq).padStart(3, '0')}`;
+    if (!taken.has(n)) return n;
+  }
+}
+
+export interface DepositInput {
+  typeCode: string;
+  /** Project code or "QMS". */
+  project: string;
+  /** "Linked purchase order" / "Linked article" (free text). */
+  linkedPo?: string | null;
+  linkedPart?: string | null;
+  /** New revision of this existing document (drawer "New revision · Codex"). */
+  revisionOf?: string | null;
+  /** Title of a new record (defaults to the prototype's literal, 10 OQ14). */
+  title?: string | null;
+}
+
+/** Service of a deposit from its type family (`finish`, logic 5058). */
+const depositService = (family: DocFamily): DocService => (family === 'purchasing' ? 'procurement' : family === 'quality' ? 'quality' : family === 'site' ? 'site' : 'pm');
+
+/**
+ * "Continue in Codex" (`handoff`): records the hand-off and its result in the index. A new document is created as
+ * Draft, rev A, dated `on`, authored by the viewer, prepended to the vault ("New"); a new revision sets the existing
+ * record back to Draft (the revision letter is not bumped, as in the prototype — D-1) and resets its approvals.
+ */
+export async function depositInCodex(input: DepositInput, actorName: string, on: string = CODEX_TODAY_ISO): Promise<{ number: string; created: boolean }> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const [type] = await tx.select().from(documentTypes).where(eq(documentTypes.code, input.typeCode));
+    if (!type) throw new Error(`Unknown document type ${input.typeCode}`);
+    const actor = await findPerson(tx, actorName);
+    const link = input.linkedPo?.trim() || null;
+    const part = input.linkedPart?.trim() || null;
+    let projectId: string | null = null;
+    if (input.project !== QMS) {
+      const [p] = await tx.select({ id: projects.id }).from(projects).where(eq(projects.code, input.project));
+      if (!p) throw new Error(`Unknown project ${input.project}`);
+      projectId = p.id;
+    }
+    if (input.revisionOf) {
+      const [doc] = await tx.select().from(documents).where(eq(documents.number, input.revisionOf));
+      if (!doc) throw new Error(`Unknown document ${input.revisionOf}`);
+      await tx.update(documents).set({ status: 'draft', updatedAt: new Date() }).where(eq(documents.id, doc.id));
+      await tx.update(documentApprovals).set({ signedOn: null, signedByPersonId: null })
+        .where(and(eq(documentApprovals.documentId, doc.id), eq(documentApprovals.revision, doc.currentRevision), sql`${documentApprovals.stepPosition} > 0`));
+      await tx.insert(documentDeposits).values({
+        typeCode: type.code, projectId: doc.projectId, linkedPoRef: link, linkedPartRef: part, contextDocumentId: doc.id, number: doc.number, documentId: doc.id,
+        status: 'recorded', requestedByPersonId: actor?.id ?? null, requestedOn: on,
+      });
+      await writeAudit(tx, {
+        actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: doc.number,
+        change: `new revision deposited in Codex · status: ${documentStatus.label(doc.status)} → Draft`, area: 'Documents', entityType: 'document', entityId: doc.id, projectId: doc.projectId,
+      });
+      return { number: doc.number, created: false };
+    }
+    const number = await depositNumber(tx, { typeCode: type.code, project: input.project });
+    const [{ minOrder }] = await tx.select({ minOrder: sql<number>`coalesce(min(${documents.sortOrder}), 1)::int` }).from(documents);
+    const authorName = actor?.shortName ?? actorName;
+    const [doc] = await tx
+      .insert(documents)
+      .values({
+        number, typeCode: type.code, title: input.title?.trim() || DEPOSIT_DEFAULT_TITLE, projectId, service: depositService(type.family), currentRevision: 'A',
+        status: 'draft', issuedOn: on, authorPersonId: actor?.id ?? null, authorName, confidentiality: type.isClientDeliverable ? 'client' : 'internal',
+        tags: [link, part].filter((x): x is string => !!x), recipients: [], isNew: true, sortOrder: minOrder - 1,
+      })
+      .returning({ id: documents.id });
+    await insertFirstRevision(tx, doc.id, type.code, on, actor?.id ?? null, authorName, false);
+    const links = [...(link ? [{ kind: 'purchase_order' as const, ref: link }] : []), ...(part ? [{ kind: 'article' as const, ref: part }] : [])];
+    if (links.length) await tx.insert(documentLinks).values(links.map((l, position) => ({ documentId: doc.id, kind: l.kind, targetRef: l.ref, position })));
+    await tx.insert(documentDeposits).values({
+      typeCode: type.code, projectId, linkedPoRef: link, linkedPartRef: part, contextDocumentId: null, number, documentId: doc.id, status: 'recorded',
+      requestedByPersonId: actor?.id ?? null, requestedOn: on,
+    });
+    await writeAudit(tx, {
+      actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number, change: 'deposited in Codex · Draft rev A', area: 'Documents',
+      entityType: 'document', entityId: doc.id, projectId,
+    });
+    return { number, created: true };
+  });
+}
+
+/** Revision A and its approval proof (step 0 signed at issue; every step when created released). */
+async function insertFirstRevision(tx: Tx, documentId: string, typeCode: string, on: string, authorId: string | null, authorName: string, released: boolean) {
+  await tx.insert(documentRevisions).values({ documentId, revision: 'A', position: 0, issuedOn: on, authorPersonId: authorId, authorName, withdrawnOn: null, workingVersions: 1 });
+  const steps = await tx.select().from(documentTypeCircuitSteps).where(eq(documentTypeCircuitSteps.typeCode, typeCode)).orderBy(asc(documentTypeCircuitSteps.position));
+  const who = await tx
+    .select({ role: documentApproverAssignments.role, personId: persons.id, short: persons.shortName })
+    .from(documentApproverAssignments)
+    .innerJoin(persons, eq(persons.id, documentApproverAssignments.personId))
+    .where(isNull(documentApproverAssignments.projectId));
+  await tx.insert(documentApprovals).values(
+    steps.map((s) => {
+      const w = who.find((x) => x.role === s.role);
+      return {
+        documentId, revision: 'A', stepPosition: s.position, role: s.role, approverPersonId: s.position === 0 ? authorId : (w?.personId ?? null),
+        approverName: s.position === 0 ? authorName : (w?.short ?? null), signedOn: s.position === 0 || released ? on : null,
+      };
+    }),
+  );
+}
+
+/**
+ * Index record of meeting minutes sent from Keystone (`sendMinutes`): MIN, rev A, Released at `on`, authored by the
+ * organizer, Client confidentiality for external meetings. Runs inside the caller's transaction. Returns the id.
+ */
+export async function createMinutesDocument(
+  tx: Tx,
+  input: { number: string; title: string; projectId: string; authorPersonId: string | null; authorName: string; external: boolean; tags: string[] },
+  on: string,
+): Promise<string> {
+  const [{ minOrder }] = await tx.select({ minOrder: sql<number>`coalesce(min(${documents.sortOrder}), 1)::int` }).from(documents);
+  const [doc] = await tx
+    .insert(documents)
+    .values({
+      number: input.number, typeCode: 'MIN', title: input.title, projectId: input.projectId, service: 'pm', currentRevision: 'A', status: 'released',
+      issuedOn: on, authorPersonId: input.authorPersonId, authorName: input.authorName, confidentiality: input.external ? 'client' : 'internal',
+      tags: input.tags, recipients: [], isNew: true, sortOrder: minOrder - 1,
+    })
+    .returning({ id: documents.id });
+  await insertFirstRevision(tx, doc.id, 'MIN', on, input.authorPersonId, input.authorName, true);
+  return doc.id;
+}
+
+// ── Lifecycle writers ──────────────────────────────────────────────────────────────────────────────────
+
+async function loadDoc(tx: Tx, number: string) {
+  const [d] = await tx.select().from(documents).where(eq(documents.number, number));
+  if (!d) throw new Error(`Unknown document ${number}`);
+  return d;
+}
+
+async function setStatus(number: string, from: DocumentStatus, to: DocumentStatus, actorName: string): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    const d = await loadDoc(tx, number);
+    if (d.status !== from) throw new Error(`${number} is ${documentStatus.label(d.status)}, not ${documentStatus.label(from)}`);
+    const actor = await findPerson(tx, actorName);
+    await tx.update(documents).set({ status: to, updatedAt: new Date() }).where(eq(documents.id, d.id));
+    await writeAudit(tx, {
+      actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number, change: `status: ${documentStatus.label(from)} → ${documentStatus.label(to)}`,
+      area: 'Documents', entityType: 'document', entityId: d.id, projectId: d.projectId,
+    });
+  });
+}
+
+/** "Freeze" (engineering screens): Draft → Frozen. */
+export const freezeDocument = (number: string, actorName: string) => setStatus(number, 'draft', 'frozen', actorName);
+/** "Propose release" (engineering screens): Frozen → Release proposed. */
+export const proposeDocumentRelease = (number: string, actorName: string) => setStatus(number, 'frozen', 'release_proposed', actorName);
+
+/**
+ * "Approve in Codex · {role} · {approver}" (`approve`, logic 5026): signs the next circuit step of the current
+ * revision. When the last step is signed the document is Released; a revision > A withdraws the previous one
+ * ("rev C withdrawn automatically"), and a client deliverable waits for the client's acknowledgement again.
+ */
+export async function approveDocumentStep(number: string, actorName: string, on: string = CODEX_TODAY_ISO): Promise<{ role: ApproverRole; released: boolean }> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const d = await loadDoc(tx, number);
+    if (d.status !== 'release_proposed') throw new Error(`${number} is not awaiting approval`);
+    const steps = await tx.select().from(documentApprovals)
+      .where(and(eq(documentApprovals.documentId, d.id), eq(documentApprovals.revision, d.currentRevision))).orderBy(asc(documentApprovals.stepPosition));
+    const next = steps.find((s) => s.stepPosition > 0 && !s.signedOn);
+    if (!next) throw new Error(`${number} has no approval step pending`);
+    const actor = await findPerson(tx, actorName);
+    await tx.update(documentApprovals).set({ signedOn: on, signedByPersonId: actor?.id ?? null })
+      .where(and(eq(documentApprovals.documentId, d.id), eq(documentApprovals.revision, d.currentRevision), eq(documentApprovals.stepPosition, next.stepPosition)));
+    const released = !steps.some((s) => s.stepPosition > next.stepPosition && !s.signedOn);
+    const who = actor ? nameOf(actor) : actorName;
+    if (released) {
+      const prev = d.currentRevision > 'A' ? String.fromCharCode(d.currentRevision.charCodeAt(0) - 1) : null;
+      await tx.update(documents).set({ status: 'released', lastWithdrawnRevision: prev, lastWithdrawnOn: prev ? on : null, updatedAt: new Date() }).where(eq(documents.id, d.id));
+      if (prev) await tx.update(documentRevisions).set({ withdrawnOn: on }).where(and(eq(documentRevisions.documentId, d.id), eq(documentRevisions.revision, prev), isNull(documentRevisions.withdrawnOn)));
+      await tx.delete(documentAcknowledgements).where(and(eq(documentAcknowledgements.documentId, d.id), eq(documentAcknowledgements.revision, d.currentRevision)));
+    }
+    await writeAudit(tx, {
+      actorName: who, actorPersonId: actor?.id, objectRef: number,
+      change: `approved · ${approverRole.label(next.role)}${released ? ' · status: Release proposed → Released' : ''}`, area: 'Documents', entityType: 'document', entityId: d.id, projectId: d.projectId,
+    });
+    return { role: next.role, released };
+  });
+}
+
+/** Client portal "Acknowledge receipt" of a shared document's current revision. */
+export async function acknowledgeDocument(number: string, actorName: string, on: string = CODEX_TODAY_ISO): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    const d = await loadDoc(tx, number);
+    const [t] = await tx.select().from(documentTypes).where(eq(documentTypes.code, d.typeCode));
+    if (!t.isClientDeliverable || d.status !== 'released') throw new Error(`${number} is not shared with the client`);
+    const actor = await findPerson(tx, actorName);
+    await tx.insert(documentAcknowledgements).values({ documentId: d.id, revision: d.currentRevision, acknowledgedByPersonId: actor?.id ?? null, acknowledgedOn: on })
+      .onConflictDoNothing();
+    await writeAudit(tx, {
+      actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number, change: `rev ${d.currentRevision} acknowledged by the client`,
+      area: 'Documents', entityType: 'document', entityId: d.id, projectId: d.projectId,
+    });
+  });
+}
+
+/** Download of the current revision (table icon, drawer "Download PDF" / "Native"): appends to the download log. */
+export async function logDocumentDownload(number: string, actorName: string, format: 'PDF' | 'Native' = 'PDF', on: string = CODEX_TODAY_ISO): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    const d = await loadDoc(tx, number);
+    const actor = await findPerson(tx, actorName);
+    await tx.insert(documentDownloads).values({
+      documentId: d.id, revision: d.currentRevision, personId: actor?.id ?? null, personName: actor ? nameOf(actor) : actorName, downloadedOn: on, format, source: 'keystone',
+    });
+  });
+}
+
+/** "Sync now": records a sync of the Codex index (count = last count + records created from Keystone). Returns the record count. */
+export async function syncCodexIndex(actorName: string, at: Date = new Date()): Promise<number> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const [last] = await tx.select().from(documentIndexSyncs).orderBy(desc(documentIndexSyncs.syncedAt)).limit(1);
+    const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(documents).where(eq(documents.isNew, true));
+    const records = (last?.recordCount ?? 0) + n;
+    const actor = await findPerson(tx, actorName);
+    await tx.insert(documentIndexSyncs).values({ syncedAt: at, recordCount: last?.recordCount ?? 0, requestedByPersonId: actor?.id ?? null });
+    return records;
+  });
+}

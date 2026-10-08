@@ -1,0 +1,153 @@
+/* Meetings & minutes (template 753–813). Inline values of the prototype copied as-is. */
+
+/* Meetings view: list column + detail card */
+.split { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 760px) {
+  .split { grid-template-columns: minmax(0, 1fr); }
+}
+.left { display: flex; flex-direction: column; gap: 10px; }
+.chipsRow { display: flex; gap: 6px; flex-wrap: wrap; }
+.list { display: flex; flex-direction: column; gap: 6px; }
+
+/* meeting card (button → link) */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-neutral-900);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+}
+.card:hover { border-color: var(--color-accent-700); color: var(--color-text); }
+.cardOn { border-color: var(--color-accent-700); background: var(--color-accent-900); }
+.cardLine { display: flex; align-items: center; gap: 8px; width: 100%; }
+.cardTitle { font-size: 13px; flex: 1; min-width: 0; text-wrap: pretty; }
+.cardSub { font-size: 11.5px; color: var(--color-neutral-400); flex: 1; }
+.flexNone { flex: none; }
+:global(.tag).tag10 { font-size: 10px; }
+:global(.tag).tag105 { font-size: 10.5px; }
+.nowrap { white-space: nowrap; }
+
+/* detail card */
+/* :global(.card) out-ranks the DS .card padding/gap whatever the stylesheet order (as SectionCard) */
+:global(.card).detail { padding: 14px 16px; gap: 8px; overflow: auto; }
+.head { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+.headCol { display: flex; flex-direction: column; gap: 3px; margin-right: auto; }
+.headTitle { text-wrap: pretty; }
+.meta { font-size: 12px; color: var(--color-neutral-400); }
+.synced { font-size: 11px; color: var(--color-neutral-500); display: inline-flex; align-items: center; gap: 5px; }
+
+.block { display: flex; flex-direction: column; gap: 6px; }
+.blockLg { display: flex; flex-direction: column; gap: 8px; }
+.kicker { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent); }
+.kickerMuted { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-400); }
+.push { margin-right: auto; }
+.tags { display: flex; gap: 6px; flex-wrap: wrap; }
+/* attendance tags carry an explicit text colour (prototype a.color): text, or neutral-500 when absent */
+:global(.tag).attendee { color: var(--color-text); }
+:global(.tag).absent { color: var(--color-neutral-500); }
+
+/* neutral-900 panels: carry-over, previous meeting, bridge */
+.panel { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: var(--radius-md); background: var(--color-neutral-900); }
+.panelTight { gap: 4px; }
+.panelHint { font-size: 11.5px; color: var(--color-neutral-500); }
+.panelHead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* "Actions since the previous meeting" head: display:flex;align-items:center;gap:8px;margin-top:4px (no wrap) */
+.actionsHead { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.ref { font-size: 11px; color: var(--color-neutral-400); }
+.count { font-size: 11px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.prepGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 10px; }
+
+/* 18px | text | meta rows */
+.row3 { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: start; font-size: 12.5px; }
+.row3Center { align-items: center; padding: 4px 0; }
+.textCol { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pretty { text-wrap: pretty; }
+.small { font-size: 11px; color: var(--color-neutral-400); }
+.smallNowrap { font-size: 11.5px; color: var(--color-neutral-400); white-space: nowrap; }
+.decision { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; text-wrap: pretty; }
+.gavel { color: var(--color-accent); flex: none; margin-top: 2px; }
+
+/* icon toggles (ph-square / ph-check-square) */
+.toggle { border: 0; background: transparent; padding: 0; cursor: pointer; color: var(--toggle-color, var(--color-accent-300)); font-size: 16px; line-height: 1; display: inline-flex; }
+.toggle:disabled { cursor: default; }
+.toggleStatic { color: var(--toggle-color, var(--color-accent-300)); font-size: 16px; line-height: 1; display: inline-flex; }
+.toggleLg { font-size: 17px; }
+
+/* bridge */
+.bridgeItem { display: flex; flex-direction: column; gap: 3px; padding: 6px 0; border-top: 1px solid var(--color-neutral-800); font-size: 12.5px; }
+.bridgeRow { display: flex; gap: 8px; align-items: flex-start; }
+.bridgeIcon { color: var(--color-accent-300); flex: none; margin-top: 2px; }
+.bridgeText { text-wrap: pretty; margin-right: auto; }
+.bridgeSub { font-size: 11px; color: var(--color-neutral-400); padding-left: 22px; }
+.bridgeAnswer { font-size: 12px; color: var(--color-neutral-200); padding-left: 22px; text-wrap: pretty; }
+
+/* transcript */
+.transcript { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-neutral-800); }
+.transcriptText { margin: 0; font-size: 12px; line-height: 1.5; color: var(--color-neutral-300); max-height: 96px; overflow: auto; text-wrap: pretty; }
+.analysis { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--color-neutral-800); }
+.summary { margin: 0; font-size: 12.5px; line-height: 1.5; text-wrap: pretty; }
+.draftLine { padding: 4px 0; border-top: 1px solid var(--color-neutral-900); }
+.draftIcon { margin-top: 2px; }
+.footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 4px; }
+.distHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sentText { font-size: 11.5px; color: var(--color-neutral-400); }
+.footerText { font-size: 11.5px; color: var(--color-neutral-400); flex: 1; min-width: 200px; text-wrap: pretty; }
+
+/* agenda & notes */
+.point { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: var(--radius-md); background: transparent; }
+.pointPick { cursor: pointer; }
+.pointOn { background: var(--color-accent-900); }
+.pointHead { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
+.pointHeadBtn { border: 0; background: transparent; padding: 0; color: inherit; font: inherit; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.pointNo {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-neutral-800);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--color-neutral-300);
+  flex: none;
+}
+.line { padding: 5px 0; border-top: 1px solid var(--color-neutral-900); }
+.lineCheck { display: flex; justify-content: center; }
+.lineCol { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lineText { display: flex; align-items: flex-start; gap: 6px; text-wrap: pretty; }
+.lineDone { color: var(--color-neutral-500); }
+.lineIcon { flex: none; margin-top: 2px; }
+.lineMeta { font-size: 11.5px; color: var(--color-neutral-400); padding-left: 20px; }
+.lineType { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; }
+.taskLink { color: var(--color-neutral-400); text-decoration: underline dotted; text-underline-offset: 2px; }
+.taskLink:hover { color: var(--color-accent-300); }
+.pending { opacity: 0.6; }
+.empty { font-size: 11.5px; color: var(--color-neutral-500); padding: 4px 0 0 28px; }
+.emptyAgenda { font-size: 11.5px; color: var(--color-neutral-500); padding: 4px 0; }
+
+/* composer */
+.composer { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-neutral-800); }
+.composerHint { font-size: 11.5px; color: var(--color-neutral-400); }
+.composerRow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+/* :global(.input) out-ranks the DS .input (width:100%;min-height:36px) */
+:global(.input).draftText { flex: 1; min-width: 200px; min-height: 34px; }
+:global(.input).draftOwner { width: 140px; min-height: 34px; }
+:global(.input).draftDue { width: 110px; min-height: 34px; }
+
+/* registers */
+.cellText { text-wrap: pretty; }
+.decisionCell { display: inline-flex; gap: 8px; align-items: flex-start; }
+.meetingCell { font-size: 12px; color: var(--color-neutral-300); }
+.meetingLink { border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; padding: 0; text-decoration: none; }
+.meetingLink:hover { color: var(--color-accent-300); }
+.meetingRef { display: block; font-size: 11px; color: var(--color-neutral-500); }
+.pointCell { font-size: 12px; color: var(--color-neutral-400); }
+.cell12 { font-size: 12px; }
+.checkCell { width: 28px; }

@@ -11,7 +11,9 @@ import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import type { ZoneKey } from '@/server/session';
+import { recordEcoProgress } from './eco';
 import { getHomeView } from './home';
+import { createDraftPurchaseOrders } from './purchasing';
 
 type Kpi = [string, string, string, boolean];
 type Golden = { greeting: string; sub: string; kpis: (Kpi | null)[]; lt: string; lr: string[][]; rt: string; rr: string[][] };
@@ -231,5 +233,31 @@ describe('Home view', () => {
 
   it('unknown current project falls back to the default project', async () => {
     expect((await render('client', 'en', 'NOPE-1')).out.kpis[0]).toEqual(['Progress', '64%', 'Work completed · Harbor Line Terminal Expansion', false]);
+  });
+});
+
+describe('Home view — Delivery 4 modules follow the database', () => {
+  beforeAll(async () => {
+    setDb(await openDatabase());
+  }, 60_000);
+
+  it('an ECO decision recorded in Keystone leaves the PM\'s list; the status waits for Vigie', async () => {
+    await recordEcoProgress('ECO-2026-015', { key: 'pm', decision: 'ok' }, { name: 'Romain Aubert', role: 'pm' });
+    const pm = (await render('pm', 'en')).out;
+    expect(pm.rr.map((r) => r[0])).toEqual(['PO-1082 · Cotswold Fire Systems', 'Re-baseline proposal']);
+    // Vigie still reports ECO-2026-015 in approval (pending sync): not released by the Home.
+    expect((await render('director', 'en')).out.rr[2]).toEqual(['ECOs in approval', 'ECO-2026-015', '1', 'tag tag-outline']);
+    const eng = (await render('englead', 'en')).out;
+    expect(eng.lr.find((r) => r[0].startsWith('ECO-2026-015'))?.[2]).toBe('In approval');
+    expect((await render('quality', 'en')).out.lr.find((r) => r[0] === 'ECO-2026-015')?.[2]).toBe('Approved');
+  });
+
+  it('procurement: drafts made from the BOM shortfall clear "Still to order"', async () => {
+    const before = (await render('procurement', 'en')).out;
+    expect([before.kpis[2]?.[1], before.rr.length]).toEqual(['15', 15]);
+    const drafts = await createDraftPurchaseOrders('HLT-026', 'Fabien Bertrand');
+    const after = (await render('procurement', 'en')).out;
+    expect([after.kpis[2]?.[1], after.rr]).toEqual(['0', []]);
+    expect(after.lr.filter((r) => r[2] === 'Draft').map((r) => r[0].split(' · ')[0])).toEqual(drafts);
   });
 });

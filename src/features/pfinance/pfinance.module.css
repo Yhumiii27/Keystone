@@ -1,0 +1,61 @@
+/* Portfolio — prioritisation & capacity (template 2079–2141) and Cash flow & billing (template 2143–2179).
+   Values copied from the prototype's inline styles. */
+
+/* ── Tables: project cell, status tag ─────────────────────────────────────── */
+.project { display: flex; flex-direction: column; line-height: 1.3; max-width: 260px; }
+.cashProject { max-width: 240px; }
+.projectName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.projectCode { font-size: 11.5px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+/* Ranking rows carry an inline `background:{{ r.bg }}` in the prototype: transparent (so no row rule and no hover
+   tint) or accent-900 when selected. */
+:global(.table) tbody tr.rankRow,
+:global(.table) tbody tr.rankRow:hover { background: transparent; }
+:global(.table) tbody tr.rankRow[aria-selected='true'],
+:global(.table) tbody tr.rankRow[aria-selected='true']:hover { background: var(--color-accent-900); }
+.rankRow:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+
+/* ── Ranking: score bar, axis dots ────────────────────────────────────────── */
+.score { display: flex; align-items: center; gap: 8px; }
+.scoreTrack { flex: 1; height: 6px; border-radius: 3px; background: var(--color-neutral-800); }
+.scoreFill { height: 100%; border-radius: 3px; background: var(--color-accent); width: var(--score-w); }
+.scoreValue { font-variant-numeric: tabular-nums; font-weight: 500; width: 26px; text-align: right; }
+.axis { display: flex; gap: 2px; }
+
+/* ── Weights card ─────────────────────────────────────────────────────────── */
+.weight {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px 70px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid var(--color-neutral-900);
+}
+.weightLabel { font-size: 13px; }
+.weightPct { font-size: 11.5px; color: var(--color-neutral-400); text-align: right; font-variant-numeric: tabular-nums; }
+:global(.input).weightInput { min-height: 30px; text-align: right; padding: 2px 8px; font-variant-numeric: tabular-nums; }
+/* read-only weight (outside the workspace): the input's box without the control */
+.weightValue { min-height: 30px; display: flex; align-items: center; justify-content: flex-end; padding: 2px 8px; font-variant-numeric: tabular-nums; }
+.footnote { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+
+/* ── Capacity what-if ─────────────────────────────────────────────────────── */
+.selector { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.selectorLabel { font-size: 12px; color: var(--color-neutral-400); }
+.verdictHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.accentIcon { color: var(--color-accent); flex: none; }
+.verdictTitle { display: flex; flex-direction: column; margin-right: auto; }
+.verdictName { font-size: 14px; font-weight: 500; }
+.verdictSub { font-size: 12px; color: var(--color-neutral-300); }
+.verdict { font-size: 14px; color: var(--verdict-color); text-wrap: pretty; }
+.gapLine { font-size: 12px; color: var(--color-neutral-300); }
+.dept { display: flex; flex-direction: column; gap: 5px; }
+.deptHead { display: flex; font-size: 12.5px; gap: 8px; }
+.deptName { margin-right: auto; }
+.deptAdd { color: var(--color-neutral-400); }
+.deptTotal { font-variant-numeric: tabular-nums; color: var(--dept-color); }
+.optionsHead { display: flex; align-items: center; gap: 8px; }
+.option { font-size: 13px; padding: 8px 0; border-top: 1px solid var(--color-neutral-900); text-wrap: pretty; }
+
+/* ── Legends (12×6 / 10×10 swatches, 11.5px neutral-400, gap 14) ──────────── */
+.legend { display: flex; gap: 14px; font-size: 11.5px; color: var(--color-neutral-400); }
+.legendWrap { flex-wrap: wrap; }
+.caption { font-size: 11px; color: var(--color-neutral-500); }

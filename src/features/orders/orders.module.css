@@ -1,0 +1,41 @@
+/* Purchase orders (template 2615–2688). */
+
+/* BOM shortfall banner: card elev-sm · padding 12px 16px · gap 8px · accent-900 ground */
+:global(.card).banner { padding: 12px 16px; gap: 8px; background: var(--color-accent-900); }
+.bannerRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.bannerIcon { color: var(--color-accent); flex: none; }
+.bannerText { display: flex; flex-direction: column; margin-right: auto; }
+.bannerTitle { font-size: 13.5px; font-weight: 500; }
+.bannerSub { font-size: 12px; color: var(--color-neutral-300); }
+.bannerChips { display: flex; gap: 6px; flex-wrap: wrap; }
+:global(.tag).chip { font-size: 11px; }
+
+/* Orders table cells */
+.id { font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 500; white-space: nowrap; color: var(--color-neutral-300); }
+.idOn { color: var(--color-accent-300); }
+.stack { display: flex; flex-direction: column; line-height: 1.3; }
+.summary { font-size: 12.5px; }
+.count { font-size: 11.5px; color: var(--color-neutral-400); }
+.value { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nowrap { white-space: nowrap; }
+.ordered { font-size: 12px; color: var(--color-neutral-300); white-space: nowrap; }
+.expected { font-size: 12px; white-space: nowrap; color: var(--exp-color, var(--color-neutral-300)); }
+.need { font-size: 12px; }
+.risk { font-size: 11px; color: var(--risk-color, var(--color-neutral-400)); }
+.actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+/* empty line below the table: 12.5px neutral-500, padding 8px 0 */
+.empty { font-size: 12.5px; color: var(--color-neutral-500); padding: 8px 0; }
+
+/* Drawer */
+.body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.lines { overflow: auto; flex: none; }
+:global(.table).linesTable { width: 100%; }
+.ref { font-variant-numeric: tabular-nums; font-size: 12px; white-space: nowrap; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.numNowrap { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.details { display: flex; flex-direction: column; gap: 4px; }
+.buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.links { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 10px; }
+.link { color: var(--color-accent-300); text-decoration: none; }
+.link:hover { text-decoration: underline; }

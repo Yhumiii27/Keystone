@@ -1,0 +1,73 @@
+/* Stock & storages (docs/spec/08 §4, template 1658–1714). Values copied from the prototype's inline styles. */
+
+/* Two-card row: stock table (flex 2.4 1 980px) + recent movements (flex 1 1 280px), wrapping below ~1280px. */
+.cards { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+:global(.card).tableCard { padding: 14px 16px; gap: 8px; flex: 2.4 1 980px; min-width: 0; overflow: auto; }
+:global(.card).movesCard { padding: 14px 16px; gap: 4px; flex: 1 1 280px; min-width: 0; }
+
+.cardHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.hint { font-size: 12px; color: var(--color-neutral-400); display: flex; align-items: center; gap: 6px; }
+.movesTitle { margin-bottom: 4px; }
+
+/* Table cells */
+.ref { font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 500; white-space: nowrap; color: var(--color-neutral-300); }
+.refOn { color: var(--color-accent-300); }
+.article { max-width: 220px; }
+.name { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pin { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; color: var(--color-accent-300); white-space: nowrap; }
+.locCell { display: flex; flex-direction: column; line-height: 1.3; }
+.locName { font-size: 12.5px; }
+.locType { font-size: 11px; color: var(--color-neutral-400); }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.muted { color: var(--color-neutral-400); white-space: nowrap; }
+.minCell { color: var(--color-neutral-400); }
+.minInner { display: inline-flex; align-items: center; gap: 4px; }
+.warn { color: var(--color-accent); }
+.nowrap { white-space: nowrap; }
+.last { font-size: 12px; color: var(--color-neutral-400); white-space: nowrap; }
+.empty { font-size: 12.5px; color: var(--color-neutral-500); padding: 8px 0; }
+
+/* Recent movements card */
+.move { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 7px 0; border-top: 1px solid var(--color-neutral-900); }
+.moveBody { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.moveLine { font-size: 12.5px; }
+.moveType { color: var(--color-accent-300); }
+.moveWhere { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+.moveWho { font-size: 11px; color: var(--color-neutral-500); }
+
+/* Stock-line drawer */
+.drawerSub { font-size: 12px; color: var(--color-neutral-400); }
+.section { display: flex; flex-direction: column; gap: 4px; }
+.movement { display: flex; flex-direction: column; gap: 8px; }
+.eyebrow { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent); margin-bottom: 4px; }
+.destLabel { font-size: 11.5px; color: var(--color-neutral-400); }
+.scrapWarn {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 12px;
+  color: var(--color-neutral-200);
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-900);
+}
+.scrapIcon { color: var(--color-accent); flex: none; margin-top: 2px; }
+.scrapText { text-wrap: pretty; margin-right: auto; }
+:global(.btn).ecoBtn { font-size: 12px; padding: 2px 6px; white-space: nowrap; }
+.qtyRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.qtyLabel { font-size: 12px; color: var(--color-neutral-400); }
+:global(.input).qtyInput { width: 110px; min-height: 32px; text-align: right; }
+.note { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+.error { font-size: 12px; color: var(--color-accent-300); text-wrap: pretty; }
+.history {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  font-size: 12.5px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-neutral-900);
+}
+.historyType { color: var(--color-accent-300); }
+.historyWhere { color: var(--color-neutral-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.historyWhen { color: var(--color-neutral-500); white-space: nowrap; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }

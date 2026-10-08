@@ -1,0 +1,8 @@
+{
+  "No pipeline project to absorb": "Aucun projet du pipeline à absorber",
+  "The weight could not be saved": "Le poids n’a pas pu être enregistré",
+  "Weights are numbers from 0 to 1": "Les poids sont des nombres de 0 à 1",
+  "Scores are whole numbers from 1 to 5": "Les notes sont des nombres entiers de 1 à 5",
+  "Choose a project in the pipeline": "Choisissez un projet du pipeline",
+  "The comment is too long": "Le commentaire est trop long"
+}

@@ -7,6 +7,9 @@ export const id = () => uuid('id').primaryKey().defaultRandom();
 /** Money in thousands of euros (k€), arbitrary-precision numeric read back as a JS number. */
 export const keur = (name: string) => numeric(name, { mode: 'number' });
 
+/** Money in euros (part prices, purchase orders, supplier invoices, stock values — docs/spec/11 §0 `eur`). */
+export const eur = (name: string) => numeric(name, { mode: 'number' });
+
 /** Plain numeric read back as a JS number (ratios, hours, percentages). */
 export const num = (name: string) => numeric(name, { mode: 'number' });
 

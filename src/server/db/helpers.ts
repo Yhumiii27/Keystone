@@ -98,5 +98,16 @@ export async function recordActivity(q: Q, e: ActivityInput): Promise<void> {
   });
 }
 
+/**
+ * The person behind an actor name and the roles of their user accounts (the "View as" personas): writers that apply a
+ * role rule (RFQ award, purchase-order approval) check it server-side. Unknown names get no person and no role.
+ */
+export async function actorOf(q: Q, name: string): Promise<{ personId: string | null; name: string; roles: string[] }> {
+  const p = await findPerson(q, name);
+  if (!p) return { personId: null, name, roles: [] };
+  const roles = (await q.select({ role: users.role }).from(users).where(eq(users.personId, p.id))).map((r) => r.role);
+  return { personId: p.id, name: nameOf(p), roles };
+}
+
 /** Display name of a person row (full name when known). */
 export const nameOf = (p: { fullName: string | null; shortName: string }) => p.fullName ?? p.shortName;

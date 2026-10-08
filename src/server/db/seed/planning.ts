@@ -6,6 +6,9 @@ import { activities, activityAssignments, activityLinks, milestones, projectCont
 import type { Tx } from '../types';
 import { must, newId, personId, type SeedCtx } from './context';
 
+/** Orders placed not yet in actual cost on HLT-026 (`openCommit = 713`, 04 §1.6) until purchase orders are modelled. */
+const HLT_ORDERS_PLACED_KEUR = 713;
+
 /** Prototype ACTS row (docs/spec/05 Data entities). */
 export interface ProtoAct {
   id?: string;
@@ -98,6 +101,8 @@ export async function seedPlanning(tx: Tx, ctx: SeedCtx): Promise<void> {
       floatText: pd.floatText, floatShort: pd.floatShort, critText: pd.critText, milesText: pd.milesText, milesSub: pd.milesSub,
       baselineSet: pd.baselineSet, reconOrigKeur: r.orig, reconChangesKeur: r.chg, reconCrCount: r.crCount, reconPendingKeur: r.pending,
       reconPendingSub: r.pendingSub, contingencyKeur: r.cont, contingencyUsedKeur: r.contUsed, note: pd.note,
+      // Cash & recovery "orders placed": the prototype's literal for HLT-026 (logic 4908); the others use the PV rule.
+      ordersPlacedKeur: code === 'HLT-026' ? HLT_ORDERS_PLACED_KEUR : null,
     });
   }
 

@@ -1,22 +1,24 @@
 // My approvals — the unified inbox (docs/spec/08 §7, 00 §7.8; prototype `apprItems` / `myApprKpis`, logic 4720–4737).
 // Pure part: the approval-item shape every provider returns (src/server/approvals), the item builders of the
-// kinds still read from the prototype data set, the change-request routing rule shared by the provider and the
-// Server Function, and the inbox view model (KPIs, kind chips, filtered rows). Strings are English source text
-// (money already formatted for the language, as the prototype's `f()`), rendered through t() by the feature.
+// kinds still read from the prototype data set (client deliverables, NCRs) and of the Codex documents, the
+// change-request routing rule shared by the provider and the Server Function, and the inbox view model (KPIs, kind
+// chips, filtered rows). Strings are English source text (money already formatted for the language, as the
+// prototype's `f()`), rendered through t() by the feature.
 //
 // Deviations from the prototype (docs/spec/00 §7.16, 08 OQ22, OQ28):
 // - "Oldest" is the item with the earliest date, not the last item pushed;
 // - resource-request items carry the sent date and the real sender (not '' and a fixed "R. Aubert");
-// - inline decisions of kinds not modelled yet are previews (toast) — the delivery QC no longer throws;
+// - inline decisions of kinds not modelled yet (deliverables, NCRs) are previews (toast); purchase orders, ECOs and
+//   delivery quality checks are decided for real (the delivery QC no longer throws);
 // - "Decided this week" only counts the kinds the viewer decides (not every role's ordered POs);
 // - the change control board step, which no persona held (07 OQ2), reaches the portfolio director who records it
 //   on Change control (STEP_DECIDER), so a change request is never stuck in review.
 import { screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
-import { money, moneyEur } from '@/lib/format';
+import { money } from '@/lib/format';
 import { isoOfDisplayDate, type ChangeStep, type StepDecision } from '@/server/db/codes';
 import { CR_STEP_LABEL, STEP_DECIDER } from './change-control';
-import { ecoStatus, renderTxt, type EcoApprover, type Txt } from './home';
+import { renderTxt, type Txt } from './home';
 
 // ── Kinds ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -49,6 +51,12 @@ export const isApprovalKind = (v: unknown): v is ApprovalKind => typeof v === 's
  */
 export type ApprovalDecision =
   | { mode: 'change-request'; projectCode: string; number: string; step: ChangeStep }
+  /** ECO approval key of the viewer: recorded in Keystone and sent to Vigie (src/features/eco/actions.ts). */
+  | { mode: 'eco'; number: string; key: 'englead' | 'quality' | 'pm' }
+  /** Purchase order awaiting approval: Approve → Ordered, Reject → Cancelled (src/features/orders/actions.ts). */
+  | { mode: 'purchase-order'; projectCode: string; number: string }
+  /** Goods receipt waiting for its quality check: Approve → Accept → stock, Reject → Reject → quarantine (src/features/deliveries/actions.ts). */
+  | { mode: 'delivery-qc'; projectCode: string; number: string }
   | { mode: 'preview' };
 
 export interface ApprovalItem {
@@ -68,6 +76,8 @@ export interface ApprovalItem {
   href: string | null;
   /** Inline Approve / Reject; null = decided on its own page only. */
   decision: ApprovalDecision | null;
+  /** Link to the item in the application that owns it (e.g. "Open in Vigie"), opened outside Keystone; EN label. */
+  external?: { href: string; label: string } | null;
 }
 
 /** "24 Sep" / "9 Jan ’27" / "25 Sep 2026" → ISO (2026 by default); null for "—" or ''. */
@@ -80,108 +90,10 @@ const href = (screen: ScreenId, code: string | undefined, params: Record<string,
 
 const item = (kind: ApprovalKind, x: Omit<ApprovalItem, 'kind' | 'whenIso'>): ApprovalItem => ({ kind, ...x, whenIso: isoOfWhen(x.when) });
 
-// ── Prototype-backed kinds (TODO(db): POs, ECOs, deliveries, deliverables, RFQs, invoices, NCRs, Codex documents) ──
-
-/** Buyer shown as the submitter of purchase orders and goods receipts (prototype literal; TODO(db): PO creator / receiving clerk). */
-export const PROTO_BUYER = 'Fabien Bertrand';
-
-export interface ProtoPurchaseOrder {
-  id: string;
-  supplier: string;
-  /** [part ref, ordered qty, received qty]. */
-  lines: [string, number, number][];
-  status: string;
-  ordered: string;
-}
-
-/** List value of a PO in € (poValue 4309: Σ PARTS.price × ordered qty; unknown parts count 0). */
-export const poValue = (o: Pick<ProtoPurchaseOrder, 'lines'>, prices: Record<string, number>) =>
-  o.lines.reduce((a, [ref, q]) => a + (prices[ref] != null ? prices[ref] * q : 0), 0);
-
-/** Purchase orders awaiting approval of a project (apprItems 4723). */
-export function purchaseOrderItems(pos: ProtoPurchaseOrder[], prices: Record<string, number>, code: string, lang: Lang): ApprovalItem[] {
-  return pos
-    .filter((o) => o.status === 'Awaiting approval')
-    .map((o) =>
-      item('po', {
-        id: o.id, title: `${o.supplier} · ${money(poValue(o, prices) / 1000, lang)}`, sub: o.lines.map((l) => l[0]).join(', '),
-        when: o.ordered, who: PROTO_BUYER, href: href('orders', code, { po: o.id }), decision: { mode: 'preview' },
-      }),
-    );
-}
-
-export interface ProtoEco {
-  id: string;
-  title: string;
-  /** ECO_TYPES key ("obs"). */
-  type: string;
-  status: string;
-  appr: Record<EcoApprover, string>;
-  /** 3-letter project keys ("HLT"). */
-  projects: string[];
-  parts: string[];
-  date: string;
-  by: string;
-}
-
-/** ECO approval key of a role (ecoRoleKey 4341). */
-export const ecoKeyOf = (role: string): EcoApprover | null => (role === 'englead' || role === 'quality' || role === 'pm' ? role : null);
-
-/** ECOs in approval whose `key` is pending (apprItems 4724). */
-export function ecoItems(ecos: ProtoEco[], key: EcoApprover, ecoTypes: Record<string, string>, projectNames: Record<string, string>): ApprovalItem[] {
-  return ecos
-    .filter((e) => ecoStatus(e) === 'In approval' && e.appr[key] === 'pending')
-    .map((e) =>
-      item('eco', {
-        id: e.id, title: e.title, sub: `${ecoTypes[e.type] ?? e.type} · ${e.projects.map((k) => projectNames[k] ?? k).join(', ')}`,
-        when: e.date, who: e.by, href: href('eco', undefined, { eco: e.id }), decision: { mode: 'preview' },
-      }),
-    );
-}
-
-/** ECO approvals given on `key` (prototype "Decided this week" ECO term: appr[key] === 'ok'). */
-export const ecoDecided = (ecos: ProtoEco[], key: EcoApprover) => ecos.filter((e) => e.appr[key] === 'ok').length;
-
-export interface ProtoDelivery {
-  id: string;
-  supplier: string;
-  date: string;
-  status: string;
-  /** [ref, ordered, delivered, accepted, rejected, location]. */
-  lines: [string, ...unknown[]][];
-  qc: { by: string; result: string; remarks: string };
-}
-
-/**
- * Goods receipts of a project (genDeliv 4449): Harbor Line's register, else one receipt per received / partially
- * received PO of a project with data (QC pending while partial). Projects without data have none.
- */
-export function deliveriesOf(code: string, hltDeliveries: ProtoDelivery[], pos: (ProtoPurchaseOrder & { expected: string })[], defIdx: number | null): ProtoDelivery[] {
-  if (code === 'HLT-026') return hltDeliveries;
-  if (defIdx == null) return [];
-  return pos
-    .filter((o) => o.status === 'Received' || o.status === 'Partially received')
-    .map((o, i) => {
-      const received = o.status === 'Received';
-      return {
-        id: 'BL-2026-0' + (300 + defIdx * 10 + i), supplier: o.supplier, date: o.expected, status: received ? 'Accepted' : 'QC pending',
-        lines: o.lines.map((l) => [l[0]] as [string]),
-        qc: received ? { by: 'Hélène Sauvage', result: 'Passed', remarks: 'Visual + documentary check' } : { by: '—', result: 'Pending', remarks: 'Inspection to schedule' },
-      };
-    });
-}
-
-/** Receipts waiting for their quality check (apprItems 4725). */
-export function deliveryItems(deliveries: ProtoDelivery[], code: string): ApprovalItem[] {
-  return deliveries
-    .filter((d) => d.status === 'QC pending')
-    .map((d) =>
-      item('delivery', {
-        id: d.id, title: `${d.supplier} · ${d.lines.map((l) => l[0]).join(', ')}`, sub: d.qc.remarks, when: d.date, who: PROTO_BUYER,
-        href: href('deliveries', code, { receipt: d.id }), decision: { mode: 'preview' },
-      }),
-    );
-}
+// ── Prototype-backed kinds (TODO(db): client deliverables and NCRs, until the Quality module is modelled) ──
+// Purchase orders, ECOs (Vigie mirror), delivery quality checks, RFQ awards and supplier invoices are read from the
+// database since Delivery 4: their item builders live with their modules (`poApprovalItems` in ./orders,
+// `ecoApprovalItems` in ./eco, `qcInboxItems` in ./deliveries, `rfqAwardItems` / `invoiceApprovalItems` in ./procurement).
 
 export interface ProtoDeliverable {
   id: string;
@@ -208,49 +120,6 @@ export function deliverableItems(dlv: ProtoDeliverable[], code: string): Approva
       item('deliverable', {
         id: d.id, title: d.title, sub: `${d.type} · ${d.acc}`, when: d.due, who: d.raci.R,
         href: href('quality', code, { tab: 'dlv', dlv: d.id }), decision: { mode: 'preview' },
-      }),
-    );
-}
-
-export interface ProtoRfq {
-  id: string;
-  title: string;
-  status: string;
-  due: string;
-  owner: string;
-  rule: string;
-  quotes: unknown[];
-}
-
-/** RFQs ready to award (apprItems 4728). Decided on Sourcing only. */
-export function rfqItems(rfqs: ProtoRfq[]): ApprovalItem[] {
-  return rfqs
-    .filter((r) => r.status === 'Comparing')
-    .map((r) =>
-      item('rfq', {
-        id: r.id, title: r.title, sub: `${r.quotes.length} quotes · ${r.rule}`, when: r.due, who: r.owner,
-        href: href('procurement', undefined, { tab: 'rfq', rfq: r.id }), decision: null,
-      }),
-    );
-}
-
-export interface ProtoInvoice {
-  id: string;
-  supplier: string;
-  amount: number;
-  status: string;
-  date: string;
-}
-
-/** Supplier invoices blocked by the 3-way match (apprItems 4729). Decided on Sourcing only. */
-export function invoiceItems(invoices: ProtoInvoice[], lang: Lang): ApprovalItem[] {
-  return invoices
-    .filter((i) => i.status === 'Blocked' || i.status === 'No PO')
-    .map((i) =>
-      item('invoice', {
-        id: i.id, title: `${i.supplier} · ${moneyEur(i.amount, lang)}`,
-        sub: i.status === 'No PO' ? 'No purchase order referenced' : 'Receipt does not cover invoice', when: i.date, who: 'Accounts payable',
-        href: href('procurement', undefined, { tab: 'inv', inv: i.id }), decision: null,
       }),
     );
 }
@@ -317,6 +186,39 @@ export function codexDocItems(
         href: href('docs', d.proj === 'QMS' ? currentCode : d.proj, { doc: d.id }), decision: null,
       });
     });
+}
+
+/** Codex index record fields the inbox reads (`VaultDocument`, src/server/dal/documents.ts). */
+export interface VaultDocForInbox {
+  number: string;
+  title: string;
+  typeLabel: string;
+  /** Project code, or "QMS". */
+  project: string;
+  revision: string;
+  status: string;
+  /** "28 Sep". */
+  dateText: string;
+  author: string;
+  /** Next circuit step (label) and its named approver; null when no step is pending. */
+  nextRoleLabel: string | null;
+  nextApprover: string | null;
+}
+
+/**
+ * Codex documents of the database index awaiting the viewer: "Release proposed" and the next pending circuit step
+ * names the viewer. Same item as `codexDocItems` on the seed; the next step follows the approvals already signed
+ * (after the quality manager signs RPT-HLT-014, the item moves to the project manager).
+ */
+export function codexVaultItems(docs: VaultDocForInbox[], viewerShort: string, currentCode: string): ApprovalItem[] {
+  return docs
+    .filter((d) => d.status === 'release_proposed' && !!d.nextRoleLabel && d.nextApprover === viewerShort)
+    .map((d) =>
+      item('doc', {
+        id: d.number, title: d.title, sub: `${d.typeLabel} · rev ${d.revision} · ${d.nextRoleLabel}`, when: d.dateText, who: d.author,
+        href: href('docs', d.project === 'QMS' ? currentCode : d.project, { doc: d.number }), decision: null,
+      }),
+    );
 }
 
 // ── Change requests (DB) ───────────────────────────────────────────────────────────────────────────────

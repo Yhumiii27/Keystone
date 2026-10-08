@@ -1,0 +1,5904 @@
+{
+ "en|null": {
+  "crumb": "Portfolio · 17 projects located",
+  "title": "Projects map",
+  "kpis": [
+   {
+    "label": "Projects located",
+    "value": 17,
+    "sub": "Whole portfolio",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "Sites",
+    "value": 11,
+    "sub": "6 countries",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "Active on site",
+    "value": 7,
+    "sub": "5 in pipeline",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "At risk",
+    "value": 3,
+    "sub": "1 off track",
+    "color": "var(--color-accent-300)"
+   }
+  ],
+  "siteCount": 11,
+  "zoneEmpty": false,
+  "groups": [
+   {
+    "city": "Le Havre",
+    "country": "France",
+    "count": 3,
+    "items": [
+     {
+      "code": "HLT-026",
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "status": "Fabrication & Assemblage",
+      "statusClass": "tag tag-accent",
+      "health": "At risk",
+      "healthClass": "tag tag-outline"
+     },
+     {
+      "code": "PRS-038",
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "status": "Approvisionnements",
+      "statusClass": "tag tag-accent",
+      "health": "On track",
+      "healthClass": "tag tag-neutral"
+     },
+     {
+      "code": "QFR-015",
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "status": "Clos",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Lyon",
+    "country": "France",
+    "count": 3,
+    "items": [
+     {
+      "code": "RCF-019",
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "status": "Chantier",
+      "statusClass": "tag tag-accent",
+      "health": "Off track",
+      "healthClass": "tag tag-accent"
+     },
+     {
+      "code": "ERP-202",
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "status": "Etudes",
+      "statusClass": "tag tag-accent",
+      "health": "On track",
+      "healthClass": "tag tag-neutral"
+     },
+     {
+      "code": "HRM-011",
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "status": "Clos",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Marseille",
+    "country": "France",
+    "count": 3,
+    "items": [
+     {
+      "code": "MSR-012",
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "status": "Mise Service & SAT",
+      "statusClass": "tag tag-accent",
+      "health": "At risk",
+      "healthClass": "tag tag-outline"
+     },
+     {
+      "code": "DRR-009",
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "status": "Clos",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     },
+     {
+      "code": "SCP-033",
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "status": "Annulé",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Abidjan",
+    "country": "Côte d’Ivoire",
+    "count": 1,
+    "items": [
+     {
+      "code": "TTR-017",
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "status": "Clos",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Casablanca",
+    "country": "Morocco",
+    "count": 1,
+    "items": [
+     {
+      "code": "NDC-031",
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "status": "Approvisionnements",
+      "statusClass": "tag tag-accent",
+      "health": "On track",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Kuala Lumpur",
+    "country": "Malaysia",
+    "count": 1,
+    "items": [
+     {
+      "code": "CER-047",
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "status": "APD",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Lyon-Saint-Exupéry",
+    "country": "France",
+    "count": 1,
+    "items": [
+     {
+      "code": "ALP-021",
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "status": "Garantie",
+      "statusClass": "tag tag-outline",
+      "health": "On track",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Ridgeway (Ontario)",
+    "country": "Canada",
+    "count": 1,
+    "items": [
+     {
+      "code": "RBR-048",
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "status": "APS",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Sydney",
+    "country": "Australia",
+    "count": 1,
+    "items": [
+     {
+      "code": "FTU-052",
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "status": "Initiative",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Tanger Med",
+    "country": "Morocco",
+    "count": 1,
+    "items": [
+     {
+      "code": "EWA-051",
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "status": "Initiative",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Westfield (WA)",
+    "country": "Australia",
+    "count": 1,
+    "items": [
+     {
+      "code": "WSA-044",
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "status": "APD",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   }
+  ],
+  "ui": {
+   "world": "World",
+   "europe": "Europe",
+   "fit": "Projects",
+   "ontrack": "On track",
+   "risk": "At risk / off track",
+   "pipeline": "Pipeline",
+   "closed": "Closed / on hold",
+   "open": "Open project",
+   "projects": "projects",
+   "loading": "Loading map geometry…",
+   "failed": "Map geometry could not be loaded."
+  },
+  "zone": null,
+  "points": [
+   {
+    "code": "HLT-026",
+    "name": "#026 · Harbor Line Terminal Expansion",
+    "city": "Le Havre",
+    "country": "France",
+    "lat": 49.49,
+    "lng": 0.11,
+    "cat": "active",
+    "health": "At risk",
+    "status": "Fabrication & Assemblage",
+    "client": "Port authority",
+    "pm": "R. Aubert"
+   },
+   {
+    "code": "NDC-031",
+    "name": "#031 · Northgate Data Center Retrofit",
+    "city": "Casablanca",
+    "country": "Morocco",
+    "lat": 33.57,
+    "lng": -7.59,
+    "cat": "active",
+    "health": "On track",
+    "status": "Approvisionnements",
+    "client": "Infrastructure BU",
+    "pm": "S. Perrin"
+   },
+   {
+    "code": "RCF-019",
+    "name": "#019 · Clinique Pasteur Lyon Fit-out",
+    "city": "Lyon",
+    "country": "France",
+    "lat": 45.76,
+    "lng": 4.84,
+    "cat": "active",
+    "health": "Off track",
+    "status": "Chantier",
+    "client": "Health trust",
+    "pm": "C. Moreau"
+   },
+   {
+    "code": "ERP-202",
+    "name": "#032 · ERP Migration — Phase 2",
+    "city": "Lyon",
+    "country": "France",
+    "lat": 45.76,
+    "lng": 4.84,
+    "cat": "active",
+    "health": "On track",
+    "status": "Etudes",
+    "client": "Finance",
+    "pm": "D. Imbert"
+   },
+   {
+    "code": "WSA-044",
+    "name": "#044 · Westfield Solar Array",
+    "city": "Westfield (WA)",
+    "country": "Australia",
+    "lat": -32.14,
+    "lng": 115.95,
+    "cat": "pipeline",
+    "health": "",
+    "status": "APD",
+    "client": "Energy BU",
+    "pm": "K. Blanchard"
+   },
+   {
+    "code": "MSR-012",
+    "name": "#012 · Marseille Metro Signage Rollout",
+    "city": "Marseille",
+    "country": "France",
+    "lat": 43.3,
+    "lng": 5.37,
+    "cat": "active",
+    "health": "At risk",
+    "status": "Mise Service & SAT",
+    "client": "Transit BU",
+    "pm": "A. Naveau"
+   },
+   {
+    "code": "EWA-051",
+    "name": "EWA-051 · Eastbank Warehouse Automation",
+    "city": "Tanger Med",
+    "country": "Morocco",
+    "lat": 35.89,
+    "lng": -5.5,
+    "cat": "pipeline",
+    "health": "",
+    "status": "Initiative",
+    "client": "Logistics BU",
+    "pm": "S. Perrin"
+   },
+   {
+    "code": "FTU-052",
+    "name": "FTU-052 · Fleet Telematics Upgrade",
+    "city": "Sydney",
+    "country": "Australia",
+    "lat": -33.87,
+    "lng": 151.21,
+    "cat": "pipeline",
+    "health": "",
+    "status": "Initiative",
+    "client": "Operations",
+    "pm": "A. Naveau"
+   },
+   {
+    "code": "RBR-048",
+    "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+    "city": "Ridgeway (Ontario)",
+    "country": "Canada",
+    "lat": 42.88,
+    "lng": -79.05,
+    "cat": "pipeline",
+    "health": "",
+    "status": "APS",
+    "client": "Highways agency",
+    "pm": "L. Fontaine"
+   },
+   {
+    "code": "CER-047",
+    "name": "CER-047 · Campus Energy Retrofit",
+    "city": "Kuala Lumpur",
+    "country": "Malaysia",
+    "lat": 3.14,
+    "lng": 101.69,
+    "cat": "pipeline",
+    "health": "",
+    "status": "APD",
+    "client": "Facilities",
+    "pm": "K. Blanchard"
+   },
+   {
+    "code": "PRS-038",
+    "name": "PRS-038 · Portside Rail Spur",
+    "city": "Le Havre",
+    "country": "France",
+    "lat": 49.49,
+    "lng": 0.11,
+    "cat": "active",
+    "health": "On track",
+    "status": "Approvisionnements",
+    "client": "Port authority",
+    "pm": "R. Aubert"
+   },
+   {
+    "code": "ALP-021",
+    "name": "ALP-021 · Airfield Lighting Phase 1",
+    "city": "Lyon-Saint-Exupéry",
+    "country": "France",
+    "lat": 45.72,
+    "lng": 5.08,
+    "cat": "active",
+    "health": "On track",
+    "status": "Garantie",
+    "client": "Airport operator",
+    "pm": "C. Moreau"
+   },
+   {
+    "code": "DRR-009",
+    "name": "DRR-009 · Depot Roof Replacement",
+    "city": "Marseille",
+    "country": "France",
+    "lat": 43.33,
+    "lng": 5.38,
+    "cat": "closed",
+    "health": "",
+    "status": "Clos",
+    "client": "Transit BU",
+    "pm": "A. Ollivier"
+   },
+   {
+    "code": "HRM-011",
+    "name": "HRM-011 · HR System Migration",
+    "city": "Lyon",
+    "country": "France",
+    "lat": 45.76,
+    "lng": 4.84,
+    "cat": "closed",
+    "health": "",
+    "status": "Clos",
+    "client": "People ops",
+    "pm": "D. Imbert"
+   },
+   {
+    "code": "QFR-015",
+    "name": "QFR-015 · Quayside Fender Renewal",
+    "city": "Le Havre",
+    "country": "France",
+    "lat": 49.49,
+    "lng": 0.11,
+    "cat": "closed",
+    "health": "",
+    "status": "Clos",
+    "client": "Port authority",
+    "pm": "R. Aubert"
+   },
+   {
+    "code": "TTR-017",
+    "name": "TTR-017 · Telecom Tower Relocation",
+    "city": "Abidjan",
+    "country": "Côte d’Ivoire",
+    "lat": 5.35,
+    "lng": -4.01,
+    "cat": "closed",
+    "health": "",
+    "status": "Clos",
+    "client": "Network BU",
+    "pm": "K. Blanchard"
+   },
+   {
+    "code": "SCP-033",
+    "name": "SCP-033 · Southgate Car Park",
+    "city": "Marseille",
+    "country": "France",
+    "lat": 43.3,
+    "lng": 5.37,
+    "cat": "closed",
+    "health": "",
+    "status": "Annulé",
+    "client": "Retail BU",
+    "pm": "S. Perrin"
+   }
+  ]
+ },
+ "en|euna": {
+  "crumb": "Portfolio · 11 projects located · Europe & North America",
+  "title": "Projects map",
+  "kpis": [
+   {
+    "label": "Projects located",
+    "value": 11,
+    "sub": "Europe & North America",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "Sites",
+    "value": 5,
+    "sub": "2 countries",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "Active on site",
+    "value": 6,
+    "sub": "1 in pipeline",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "At risk",
+    "value": 3,
+    "sub": "1 off track",
+    "color": "var(--color-accent-300)"
+   }
+  ],
+  "siteCount": 5,
+  "zoneEmpty": false,
+  "groups": [
+   {
+    "city": "Le Havre",
+    "country": "France",
+    "count": 3,
+    "items": [
+     {
+      "code": "HLT-026",
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "status": "Fabrication & Assemblage",
+      "statusClass": "tag tag-accent",
+      "health": "At risk",
+      "healthClass": "tag tag-outline"
+     },
+     {
+      "code": "PRS-038",
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "status": "Approvisionnements",
+      "statusClass": "tag tag-accent",
+      "health": "On track",
+      "healthClass": "tag tag-neutral"
+     },
+     {
+      "code": "QFR-015",
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "status": "Clos",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Lyon",
+    "country": "France",
+    "count": 3,
+    "items": [
+     {
+      "code": "RCF-019",
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "status": "Chantier",
+      "statusClass": "tag tag-accent",
+      "health": "Off track",
+      "healthClass": "tag tag-accent"
+     },
+     {
+      "code": "ERP-202",
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "status": "Etudes",
+      "statusClass": "tag tag-accent",
+      "health": "On track",
+      "healthClass": "tag tag-neutral"
+     },
+     {
+      "code": "HRM-011",
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "status": "Clos",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Marseille",
+    "country": "France",
+    "count": 3,
+    "items": [
+     {
+      "code": "MSR-012",
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "status": "Mise Service & SAT",
+      "statusClass": "tag tag-accent",
+      "health": "At risk",
+      "healthClass": "tag tag-outline"
+     },
+     {
+      "code": "DRR-009",
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "status": "Clos",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     },
+     {
+      "code": "SCP-033",
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "status": "Annulé",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Lyon-Saint-Exupéry",
+    "country": "France",
+    "count": 1,
+    "items": [
+     {
+      "code": "ALP-021",
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "status": "Garantie",
+      "statusClass": "tag tag-outline",
+      "health": "On track",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Ridgeway (Ontario)",
+    "country": "Canada",
+    "count": 1,
+    "items": [
+     {
+      "code": "RBR-048",
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "status": "APS",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   }
+  ],
+  "ui": {
+   "world": "World",
+   "europe": "Europe",
+   "fit": "Projects",
+   "ontrack": "On track",
+   "risk": "At risk / off track",
+   "pipeline": "Pipeline",
+   "closed": "Closed / on hold",
+   "open": "Open project",
+   "projects": "projects",
+   "loading": "Loading map geometry…",
+   "failed": "Map geometry could not be loaded."
+  },
+  "zone": {
+   "label": "Europe & North America",
+   "bounds": [
+    -135,
+    72,
+    45,
+    24
+   ]
+  },
+  "points": [
+   {
+    "code": "HLT-026",
+    "name": "#026 · Harbor Line Terminal Expansion",
+    "city": "Le Havre",
+    "country": "France",
+    "lat": 49.49,
+    "lng": 0.11,
+    "cat": "active",
+    "health": "At risk",
+    "status": "Fabrication & Assemblage",
+    "client": "Port authority",
+    "pm": "R. Aubert"
+   },
+   {
+    "code": "RCF-019",
+    "name": "#019 · Clinique Pasteur Lyon Fit-out",
+    "city": "Lyon",
+    "country": "France",
+    "lat": 45.76,
+    "lng": 4.84,
+    "cat": "active",
+    "health": "Off track",
+    "status": "Chantier",
+    "client": "Health trust",
+    "pm": "C. Moreau"
+   },
+   {
+    "code": "ERP-202",
+    "name": "#032 · ERP Migration — Phase 2",
+    "city": "Lyon",
+    "country": "France",
+    "lat": 45.76,
+    "lng": 4.84,
+    "cat": "active",
+    "health": "On track",
+    "status": "Etudes",
+    "client": "Finance",
+    "pm": "D. Imbert"
+   },
+   {
+    "code": "MSR-012",
+    "name": "#012 · Marseille Metro Signage Rollout",
+    "city": "Marseille",
+    "country": "France",
+    "lat": 43.3,
+    "lng": 5.37,
+    "cat": "active",
+    "health": "At risk",
+    "status": "Mise Service & SAT",
+    "client": "Transit BU",
+    "pm": "A. Naveau"
+   },
+   {
+    "code": "RBR-048",
+    "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+    "city": "Ridgeway (Ontario)",
+    "country": "Canada",
+    "lat": 42.88,
+    "lng": -79.05,
+    "cat": "pipeline",
+    "health": "",
+    "status": "APS",
+    "client": "Highways agency",
+    "pm": "L. Fontaine"
+   },
+   {
+    "code": "PRS-038",
+    "name": "PRS-038 · Portside Rail Spur",
+    "city": "Le Havre",
+    "country": "France",
+    "lat": 49.49,
+    "lng": 0.11,
+    "cat": "active",
+    "health": "On track",
+    "status": "Approvisionnements",
+    "client": "Port authority",
+    "pm": "R. Aubert"
+   },
+   {
+    "code": "ALP-021",
+    "name": "ALP-021 · Airfield Lighting Phase 1",
+    "city": "Lyon-Saint-Exupéry",
+    "country": "France",
+    "lat": 45.72,
+    "lng": 5.08,
+    "cat": "active",
+    "health": "On track",
+    "status": "Garantie",
+    "client": "Airport operator",
+    "pm": "C. Moreau"
+   },
+   {
+    "code": "DRR-009",
+    "name": "DRR-009 · Depot Roof Replacement",
+    "city": "Marseille",
+    "country": "France",
+    "lat": 43.33,
+    "lng": 5.38,
+    "cat": "closed",
+    "health": "",
+    "status": "Clos",
+    "client": "Transit BU",
+    "pm": "A. Ollivier"
+   },
+   {
+    "code": "HRM-011",
+    "name": "HRM-011 · HR System Migration",
+    "city": "Lyon",
+    "country": "France",
+    "lat": 45.76,
+    "lng": 4.84,
+    "cat": "closed",
+    "health": "",
+    "status": "Clos",
+    "client": "People ops",
+    "pm": "D. Imbert"
+   },
+   {
+    "code": "QFR-015",
+    "name": "QFR-015 · Quayside Fender Renewal",
+    "city": "Le Havre",
+    "country": "France",
+    "lat": 49.49,
+    "lng": 0.11,
+    "cat": "closed",
+    "health": "",
+    "status": "Clos",
+    "client": "Port authority",
+    "pm": "R. Aubert"
+   },
+   {
+    "code": "SCP-033",
+    "name": "SCP-033 · Southgate Car Park",
+    "city": "Marseille",
+    "country": "France",
+    "lat": 43.3,
+    "lng": 5.37,
+    "cat": "closed",
+    "health": "",
+    "status": "Annulé",
+    "client": "Retail BU",
+    "pm": "S. Perrin"
+   }
+  ]
+ },
+ "en|afr": {
+  "crumb": "Portfolio · 3 projects located · Africa",
+  "title": "Projects map",
+  "kpis": [
+   {
+    "label": "Projects located",
+    "value": 3,
+    "sub": "Africa",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "Sites",
+    "value": 3,
+    "sub": "2 countries",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "Active on site",
+    "value": 1,
+    "sub": "1 in pipeline",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "At risk",
+    "value": 0,
+    "sub": "0 off track",
+    "color": "var(--color-text)"
+   }
+  ],
+  "siteCount": 3,
+  "zoneEmpty": false,
+  "groups": [
+   {
+    "city": "Abidjan",
+    "country": "Côte d’Ivoire",
+    "count": 1,
+    "items": [
+     {
+      "code": "TTR-017",
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "status": "Clos",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Casablanca",
+    "country": "Morocco",
+    "count": 1,
+    "items": [
+     {
+      "code": "NDC-031",
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "status": "Approvisionnements",
+      "statusClass": "tag tag-accent",
+      "health": "On track",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Tanger Med",
+    "country": "Morocco",
+    "count": 1,
+    "items": [
+     {
+      "code": "EWA-051",
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "status": "Initiative",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   }
+  ],
+  "ui": {
+   "world": "World",
+   "europe": "Europe",
+   "fit": "Projects",
+   "ontrack": "On track",
+   "risk": "At risk / off track",
+   "pipeline": "Pipeline",
+   "closed": "Closed / on hold",
+   "open": "Open project",
+   "projects": "projects",
+   "loading": "Loading map geometry…",
+   "failed": "Map geometry could not be loaded."
+  },
+  "zone": {
+   "label": "Africa",
+   "bounds": [
+    -22,
+    40,
+    55,
+    -38
+   ]
+  },
+  "points": [
+   {
+    "code": "NDC-031",
+    "name": "#031 · Northgate Data Center Retrofit",
+    "city": "Casablanca",
+    "country": "Morocco",
+    "lat": 33.57,
+    "lng": -7.59,
+    "cat": "active",
+    "health": "On track",
+    "status": "Approvisionnements",
+    "client": "Infrastructure BU",
+    "pm": "S. Perrin"
+   },
+   {
+    "code": "EWA-051",
+    "name": "EWA-051 · Eastbank Warehouse Automation",
+    "city": "Tanger Med",
+    "country": "Morocco",
+    "lat": 35.89,
+    "lng": -5.5,
+    "cat": "pipeline",
+    "health": "",
+    "status": "Initiative",
+    "client": "Logistics BU",
+    "pm": "S. Perrin"
+   },
+   {
+    "code": "TTR-017",
+    "name": "TTR-017 · Telecom Tower Relocation",
+    "city": "Abidjan",
+    "country": "Côte d’Ivoire",
+    "lat": 5.35,
+    "lng": -4.01,
+    "cat": "closed",
+    "health": "",
+    "status": "Clos",
+    "client": "Network BU",
+    "pm": "K. Blanchard"
+   }
+  ]
+ },
+ "en|apac": {
+  "crumb": "Portfolio · 3 projects located · Asia Pacific",
+  "title": "Projects map",
+  "kpis": [
+   {
+    "label": "Projects located",
+    "value": 3,
+    "sub": "Asia Pacific",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "Sites",
+    "value": 3,
+    "sub": "2 countries",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "Active on site",
+    "value": 0,
+    "sub": "3 in pipeline",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "At risk",
+    "value": 0,
+    "sub": "0 off track",
+    "color": "var(--color-text)"
+   }
+  ],
+  "siteCount": 3,
+  "zoneEmpty": false,
+  "groups": [
+   {
+    "city": "Kuala Lumpur",
+    "country": "Malaysia",
+    "count": 1,
+    "items": [
+     {
+      "code": "CER-047",
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "status": "APD",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Sydney",
+    "country": "Australia",
+    "count": 1,
+    "items": [
+     {
+      "code": "FTU-052",
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "status": "Initiative",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Westfield (WA)",
+    "country": "Australia",
+    "count": 1,
+    "items": [
+     {
+      "code": "WSA-044",
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "status": "APD",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   }
+  ],
+  "ui": {
+   "world": "World",
+   "europe": "Europe",
+   "fit": "Projects",
+   "ontrack": "On track",
+   "risk": "At risk / off track",
+   "pipeline": "Pipeline",
+   "closed": "Closed / on hold",
+   "open": "Open project",
+   "projects": "projects",
+   "loading": "Loading map geometry…",
+   "failed": "Map geometry could not be loaded."
+  },
+  "zone": {
+   "label": "Asia Pacific",
+   "bounds": [
+    58,
+    52,
+    180,
+    -50
+   ]
+  },
+  "points": [
+   {
+    "code": "WSA-044",
+    "name": "#044 · Westfield Solar Array",
+    "city": "Westfield (WA)",
+    "country": "Australia",
+    "lat": -32.14,
+    "lng": 115.95,
+    "cat": "pipeline",
+    "health": "",
+    "status": "APD",
+    "client": "Energy BU",
+    "pm": "K. Blanchard"
+   },
+   {
+    "code": "FTU-052",
+    "name": "FTU-052 · Fleet Telematics Upgrade",
+    "city": "Sydney",
+    "country": "Australia",
+    "lat": -33.87,
+    "lng": 151.21,
+    "cat": "pipeline",
+    "health": "",
+    "status": "Initiative",
+    "client": "Operations",
+    "pm": "A. Naveau"
+   },
+   {
+    "code": "CER-047",
+    "name": "CER-047 · Campus Energy Retrofit",
+    "city": "Kuala Lumpur",
+    "country": "Malaysia",
+    "lat": 3.14,
+    "lng": 101.69,
+    "cat": "pipeline",
+    "health": "",
+    "status": "APD",
+    "client": "Facilities",
+    "pm": "K. Blanchard"
+   }
+  ]
+ },
+ "fr|null": {
+  "crumb": "Portefeuille · 17 projets localisés",
+  "title": "Mappemonde des projets",
+  "kpis": [
+   {
+    "label": "Projets localisés",
+    "value": 17,
+    "sub": "Tout le portefeuille",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "Sites",
+    "value": 11,
+    "sub": "6 pays",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "Actifs",
+    "value": 7,
+    "sub": "5 en pipeline",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "À risque",
+    "value": 3,
+    "sub": "1 hors trajectoire",
+    "color": "var(--color-accent-300)"
+   }
+  ],
+  "siteCount": 11,
+  "zoneEmpty": false,
+  "groups": [
+   {
+    "city": "Le Havre",
+    "country": "France",
+    "count": 3,
+    "items": [
+     {
+      "code": "HLT-026",
+      "name": "#026 · Extension du terminal Harbor Line",
+      "sub": "HLT-026 · R. Aubert · Autorité portuaire",
+      "status": "Fabrication & Assemblage",
+      "statusClass": "tag tag-accent",
+      "health": "À risque",
+      "healthClass": "tag tag-outline"
+     },
+     {
+      "code": "PRS-038",
+      "name": "PRS-038 · Embranchement ferroviaire portuaire",
+      "sub": "PRS-038 · R. Aubert · Autorité portuaire",
+      "status": "Approvisionnements",
+      "statusClass": "tag tag-accent",
+      "health": "Conforme",
+      "healthClass": "tag tag-neutral"
+     },
+     {
+      "code": "QFR-015",
+      "name": "QFR-015 · Renouvellement des défenses de quai",
+      "sub": "QFR-015 · R. Aubert · Autorité portuaire",
+      "status": "Clos",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Lyon",
+    "country": "France",
+    "count": 3,
+    "items": [
+     {
+      "code": "RCF-019",
+      "name": "#019 · Aménagement de la Clinique Pasteur Lyon",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "status": "Chantier",
+      "statusClass": "tag tag-accent",
+      "health": "Hors trajectoire",
+      "healthClass": "tag tag-accent"
+     },
+     {
+      "code": "ERP-202",
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "status": "Études",
+      "statusClass": "tag tag-accent",
+      "health": "Conforme",
+      "healthClass": "tag tag-neutral"
+     },
+     {
+      "code": "HRM-011",
+      "name": "HRM-011 · Migration du SIRH",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "status": "Clos",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Marseille",
+    "country": "France",
+    "count": 3,
+    "items": [
+     {
+      "code": "MSR-012",
+      "name": "#012 · Déploiement signalétique métro de Marseille",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "status": "Mise en service & SAT",
+      "statusClass": "tag tag-accent",
+      "health": "À risque",
+      "healthClass": "tag tag-outline"
+     },
+     {
+      "code": "DRR-009",
+      "name": "DRR-009 · Remplacement de la toiture du dépôt",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "status": "Clos",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     },
+     {
+      "code": "SCP-033",
+      "name": "SCP-033 · Parking Southgate",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "status": "Annulé",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Abidjan",
+    "country": "Côte d’Ivoire",
+    "count": 1,
+    "items": [
+     {
+      "code": "TTR-017",
+      "name": "TTR-017 · Déplacement du pylône télécom",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "status": "Clos",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Casablanca",
+    "country": "Maroc",
+    "count": 1,
+    "items": [
+     {
+      "code": "NDC-031",
+      "name": "#031 · Rénovation du data center Northgate",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "status": "Approvisionnements",
+      "statusClass": "tag tag-accent",
+      "health": "Conforme",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Kuala Lumpur",
+    "country": "Malaisie",
+    "count": 1,
+    "items": [
+     {
+      "code": "CER-047",
+      "name": "CER-047 · Rénovation énergétique du campus",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "status": "APD",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Lyon-Saint-Exupéry",
+    "country": "France",
+    "count": 1,
+    "items": [
+     {
+      "code": "ALP-021",
+      "name": "ALP-021 · Balisage aéroportuaire — Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "status": "Garantie",
+      "statusClass": "tag tag-outline",
+      "health": "Conforme",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Ridgeway (Ontario)",
+    "country": "Canada",
+    "count": 1,
+    "items": [
+     {
+      "code": "RBR-048",
+      "name": "RBR-048 · Réhabilitation du pont de Ridgeway",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "status": "APS",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Sydney",
+    "country": "Australie",
+    "count": 1,
+    "items": [
+     {
+      "code": "FTU-052",
+      "name": "FTU-052 · Modernisation télématique de flotte",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "status": "Initiative",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Tanger Med",
+    "country": "Maroc",
+    "count": 1,
+    "items": [
+     {
+      "code": "EWA-051",
+      "name": "EWA-051 · Automatisation de l’entrepôt Eastbank",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "status": "Initiative",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Westfield (WA)",
+    "country": "Australie",
+    "count": 1,
+    "items": [
+     {
+      "code": "WSA-044",
+      "name": "#044 · Centrale solaire de Westfield",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "status": "APD",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   }
+  ],
+  "ui": {
+   "world": "Monde",
+   "europe": "Europe",
+   "fit": "Projets",
+   "ontrack": "Conforme",
+   "risk": "À risque / hors trajectoire",
+   "pipeline": "Pipeline",
+   "closed": "Clos / en attente",
+   "open": "Ouvrir le projet",
+   "projects": "projets",
+   "loading": "Chargement de la géométrie de la carte…",
+   "failed": "Impossible de charger la géométrie de la carte."
+  },
+  "zone": null,
+  "points": [
+   {
+    "code": "HLT-026",
+    "name": "#026 · Harbor Line Terminal Expansion",
+    "city": "Le Havre",
+    "country": "France",
+    "lat": 49.49,
+    "lng": 0.11,
+    "cat": "active",
+    "health": "À risque",
+    "status": "Fabrication & Assemblage",
+    "client": "Port authority",
+    "pm": "R. Aubert"
+   },
+   {
+    "code": "NDC-031",
+    "name": "#031 · Northgate Data Center Retrofit",
+    "city": "Casablanca",
+    "country": "Maroc",
+    "lat": 33.57,
+    "lng": -7.59,
+    "cat": "active",
+    "health": "Conforme",
+    "status": "Approvisionnements",
+    "client": "Infrastructure BU",
+    "pm": "S. Perrin"
+   },
+   {
+    "code": "RCF-019",
+    "name": "#019 · Clinique Pasteur Lyon Fit-out",
+    "city": "Lyon",
+    "country": "France",
+    "lat": 45.76,
+    "lng": 4.84,
+    "cat": "active",
+    "health": "Hors trajectoire",
+    "status": "Chantier",
+    "client": "Health trust",
+    "pm": "C. Moreau"
+   },
+   {
+    "code": "ERP-202",
+    "name": "#032 · ERP Migration — Phase 2",
+    "city": "Lyon",
+    "country": "France",
+    "lat": 45.76,
+    "lng": 4.84,
+    "cat": "active",
+    "health": "Conforme",
+    "status": "Études",
+    "client": "Finance",
+    "pm": "D. Imbert"
+   },
+   {
+    "code": "WSA-044",
+    "name": "#044 · Westfield Solar Array",
+    "city": "Westfield (WA)",
+    "country": "Australie",
+    "lat": -32.14,
+    "lng": 115.95,
+    "cat": "pipeline",
+    "health": "",
+    "status": "APD",
+    "client": "Energy BU",
+    "pm": "K. Blanchard"
+   },
+   {
+    "code": "MSR-012",
+    "name": "#012 · Marseille Metro Signage Rollout",
+    "city": "Marseille",
+    "country": "France",
+    "lat": 43.3,
+    "lng": 5.37,
+    "cat": "active",
+    "health": "À risque",
+    "status": "Mise en service & SAT",
+    "client": "Transit BU",
+    "pm": "A. Naveau"
+   },
+   {
+    "code": "EWA-051",
+    "name": "EWA-051 · Eastbank Warehouse Automation",
+    "city": "Tanger Med",
+    "country": "Maroc",
+    "lat": 35.89,
+    "lng": -5.5,
+    "cat": "pipeline",
+    "health": "",
+    "status": "Initiative",
+    "client": "Logistics BU",
+    "pm": "S. Perrin"
+   },
+   {
+    "code": "FTU-052",
+    "name": "FTU-052 · Fleet Telematics Upgrade",
+    "city": "Sydney",
+    "country": "Australie",
+    "lat": -33.87,
+    "lng": 151.21,
+    "cat": "pipeline",
+    "health": "",
+    "status": "Initiative",
+    "client": "Operations",
+    "pm": "A. Naveau"
+   },
+   {
+    "code": "RBR-048",
+    "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+    "city": "Ridgeway (Ontario)",
+    "country": "Canada",
+    "lat": 42.88,
+    "lng": -79.05,
+    "cat": "pipeline",
+    "health": "",
+    "status": "APS",
+    "client": "Highways agency",
+    "pm": "L. Fontaine"
+   },
+   {
+    "code": "CER-047",
+    "name": "CER-047 · Campus Energy Retrofit",
+    "city": "Kuala Lumpur",
+    "country": "Malaisie",
+    "lat": 3.14,
+    "lng": 101.69,
+    "cat": "pipeline",
+    "health": "",
+    "status": "APD",
+    "client": "Facilities",
+    "pm": "K. Blanchard"
+   },
+   {
+    "code": "PRS-038",
+    "name": "PRS-038 · Portside Rail Spur",
+    "city": "Le Havre",
+    "country": "France",
+    "lat": 49.49,
+    "lng": 0.11,
+    "cat": "active",
+    "health": "Conforme",
+    "status": "Approvisionnements",
+    "client": "Port authority",
+    "pm": "R. Aubert"
+   },
+   {
+    "code": "ALP-021",
+    "name": "ALP-021 · Airfield Lighting Phase 1",
+    "city": "Lyon-Saint-Exupéry",
+    "country": "France",
+    "lat": 45.72,
+    "lng": 5.08,
+    "cat": "active",
+    "health": "Conforme",
+    "status": "Garantie",
+    "client": "Airport operator",
+    "pm": "C. Moreau"
+   },
+   {
+    "code": "DRR-009",
+    "name": "DRR-009 · Depot Roof Replacement",
+    "city": "Marseille",
+    "country": "France",
+    "lat": 43.33,
+    "lng": 5.38,
+    "cat": "closed",
+    "health": "",
+    "status": "Clos",
+    "client": "Transit BU",
+    "pm": "A. Ollivier"
+   },
+   {
+    "code": "HRM-011",
+    "name": "HRM-011 · HR System Migration",
+    "city": "Lyon",
+    "country": "France",
+    "lat": 45.76,
+    "lng": 4.84,
+    "cat": "closed",
+    "health": "",
+    "status": "Clos",
+    "client": "People ops",
+    "pm": "D. Imbert"
+   },
+   {
+    "code": "QFR-015",
+    "name": "QFR-015 · Quayside Fender Renewal",
+    "city": "Le Havre",
+    "country": "France",
+    "lat": 49.49,
+    "lng": 0.11,
+    "cat": "closed",
+    "health": "",
+    "status": "Clos",
+    "client": "Port authority",
+    "pm": "R. Aubert"
+   },
+   {
+    "code": "TTR-017",
+    "name": "TTR-017 · Telecom Tower Relocation",
+    "city": "Abidjan",
+    "country": "Côte d’Ivoire",
+    "lat": 5.35,
+    "lng": -4.01,
+    "cat": "closed",
+    "health": "",
+    "status": "Clos",
+    "client": "Network BU",
+    "pm": "K. Blanchard"
+   },
+   {
+    "code": "SCP-033",
+    "name": "SCP-033 · Southgate Car Park",
+    "city": "Marseille",
+    "country": "France",
+    "lat": 43.3,
+    "lng": 5.37,
+    "cat": "closed",
+    "health": "",
+    "status": "Annulé",
+    "client": "Retail BU",
+    "pm": "S. Perrin"
+   }
+  ]
+ },
+ "fr|euna": {
+  "crumb": "Portefeuille · 11 projets localisés · Europe & Amérique du Nord",
+  "title": "Mappemonde des projets",
+  "kpis": [
+   {
+    "label": "Projets localisés",
+    "value": 11,
+    "sub": "Europe & Amérique du Nord",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "Sites",
+    "value": 5,
+    "sub": "2 pays",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "Actifs",
+    "value": 6,
+    "sub": "1 en pipeline",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "À risque",
+    "value": 3,
+    "sub": "1 hors trajectoire",
+    "color": "var(--color-accent-300)"
+   }
+  ],
+  "siteCount": 5,
+  "zoneEmpty": false,
+  "groups": [
+   {
+    "city": "Le Havre",
+    "country": "France",
+    "count": 3,
+    "items": [
+     {
+      "code": "HLT-026",
+      "name": "#026 · Extension du terminal Harbor Line",
+      "sub": "HLT-026 · R. Aubert · Autorité portuaire",
+      "status": "Fabrication & Assemblage",
+      "statusClass": "tag tag-accent",
+      "health": "À risque",
+      "healthClass": "tag tag-outline"
+     },
+     {
+      "code": "PRS-038",
+      "name": "PRS-038 · Embranchement ferroviaire portuaire",
+      "sub": "PRS-038 · R. Aubert · Autorité portuaire",
+      "status": "Approvisionnements",
+      "statusClass": "tag tag-accent",
+      "health": "Conforme",
+      "healthClass": "tag tag-neutral"
+     },
+     {
+      "code": "QFR-015",
+      "name": "QFR-015 · Renouvellement des défenses de quai",
+      "sub": "QFR-015 · R. Aubert · Autorité portuaire",
+      "status": "Clos",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Lyon",
+    "country": "France",
+    "count": 3,
+    "items": [
+     {
+      "code": "RCF-019",
+      "name": "#019 · Aménagement de la Clinique Pasteur Lyon",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "status": "Chantier",
+      "statusClass": "tag tag-accent",
+      "health": "Hors trajectoire",
+      "healthClass": "tag tag-accent"
+     },
+     {
+      "code": "ERP-202",
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "status": "Études",
+      "statusClass": "tag tag-accent",
+      "health": "Conforme",
+      "healthClass": "tag tag-neutral"
+     },
+     {
+      "code": "HRM-011",
+      "name": "HRM-011 · Migration du SIRH",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "status": "Clos",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Marseille",
+    "country": "France",
+    "count": 3,
+    "items": [
+     {
+      "code": "MSR-012",
+      "name": "#012 · Déploiement signalétique métro de Marseille",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "status": "Mise en service & SAT",
+      "statusClass": "tag tag-accent",
+      "health": "À risque",
+      "healthClass": "tag tag-outline"
+     },
+     {
+      "code": "DRR-009",
+      "name": "DRR-009 · Remplacement de la toiture du dépôt",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "status": "Clos",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     },
+     {
+      "code": "SCP-033",
+      "name": "SCP-033 · Parking Southgate",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "status": "Annulé",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Lyon-Saint-Exupéry",
+    "country": "France",
+    "count": 1,
+    "items": [
+     {
+      "code": "ALP-021",
+      "name": "ALP-021 · Balisage aéroportuaire — Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "status": "Garantie",
+      "statusClass": "tag tag-outline",
+      "health": "Conforme",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Ridgeway (Ontario)",
+    "country": "Canada",
+    "count": 1,
+    "items": [
+     {
+      "code": "RBR-048",
+      "name": "RBR-048 · Réhabilitation du pont de Ridgeway",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "status": "APS",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   }
+  ],
+  "ui": {
+   "world": "Monde",
+   "europe": "Europe",
+   "fit": "Projets",
+   "ontrack": "Conforme",
+   "risk": "À risque / hors trajectoire",
+   "pipeline": "Pipeline",
+   "closed": "Clos / en attente",
+   "open": "Ouvrir le projet",
+   "projects": "projets",
+   "loading": "Chargement de la géométrie de la carte…",
+   "failed": "Impossible de charger la géométrie de la carte."
+  },
+  "zone": {
+   "label": "Europe & Amérique du Nord",
+   "bounds": [
+    -135,
+    72,
+    45,
+    24
+   ]
+  },
+  "points": [
+   {
+    "code": "HLT-026",
+    "name": "#026 · Harbor Line Terminal Expansion",
+    "city": "Le Havre",
+    "country": "France",
+    "lat": 49.49,
+    "lng": 0.11,
+    "cat": "active",
+    "health": "À risque",
+    "status": "Fabrication & Assemblage",
+    "client": "Port authority",
+    "pm": "R. Aubert"
+   },
+   {
+    "code": "RCF-019",
+    "name": "#019 · Clinique Pasteur Lyon Fit-out",
+    "city": "Lyon",
+    "country": "France",
+    "lat": 45.76,
+    "lng": 4.84,
+    "cat": "active",
+    "health": "Hors trajectoire",
+    "status": "Chantier",
+    "client": "Health trust",
+    "pm": "C. Moreau"
+   },
+   {
+    "code": "ERP-202",
+    "name": "#032 · ERP Migration — Phase 2",
+    "city": "Lyon",
+    "country": "France",
+    "lat": 45.76,
+    "lng": 4.84,
+    "cat": "active",
+    "health": "Conforme",
+    "status": "Études",
+    "client": "Finance",
+    "pm": "D. Imbert"
+   },
+   {
+    "code": "MSR-012",
+    "name": "#012 · Marseille Metro Signage Rollout",
+    "city": "Marseille",
+    "country": "France",
+    "lat": 43.3,
+    "lng": 5.37,
+    "cat": "active",
+    "health": "À risque",
+    "status": "Mise en service & SAT",
+    "client": "Transit BU",
+    "pm": "A. Naveau"
+   },
+   {
+    "code": "RBR-048",
+    "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+    "city": "Ridgeway (Ontario)",
+    "country": "Canada",
+    "lat": 42.88,
+    "lng": -79.05,
+    "cat": "pipeline",
+    "health": "",
+    "status": "APS",
+    "client": "Highways agency",
+    "pm": "L. Fontaine"
+   },
+   {
+    "code": "PRS-038",
+    "name": "PRS-038 · Portside Rail Spur",
+    "city": "Le Havre",
+    "country": "France",
+    "lat": 49.49,
+    "lng": 0.11,
+    "cat": "active",
+    "health": "Conforme",
+    "status": "Approvisionnements",
+    "client": "Port authority",
+    "pm": "R. Aubert"
+   },
+   {
+    "code": "ALP-021",
+    "name": "ALP-021 · Airfield Lighting Phase 1",
+    "city": "Lyon-Saint-Exupéry",
+    "country": "France",
+    "lat": 45.72,
+    "lng": 5.08,
+    "cat": "active",
+    "health": "Conforme",
+    "status": "Garantie",
+    "client": "Airport operator",
+    "pm": "C. Moreau"
+   },
+   {
+    "code": "DRR-009",
+    "name": "DRR-009 · Depot Roof Replacement",
+    "city": "Marseille",
+    "country": "France",
+    "lat": 43.33,
+    "lng": 5.38,
+    "cat": "closed",
+    "health": "",
+    "status": "Clos",
+    "client": "Transit BU",
+    "pm": "A. Ollivier"
+   },
+   {
+    "code": "HRM-011",
+    "name": "HRM-011 · HR System Migration",
+    "city": "Lyon",
+    "country": "France",
+    "lat": 45.76,
+    "lng": 4.84,
+    "cat": "closed",
+    "health": "",
+    "status": "Clos",
+    "client": "People ops",
+    "pm": "D. Imbert"
+   },
+   {
+    "code": "QFR-015",
+    "name": "QFR-015 · Quayside Fender Renewal",
+    "city": "Le Havre",
+    "country": "France",
+    "lat": 49.49,
+    "lng": 0.11,
+    "cat": "closed",
+    "health": "",
+    "status": "Clos",
+    "client": "Port authority",
+    "pm": "R. Aubert"
+   },
+   {
+    "code": "SCP-033",
+    "name": "SCP-033 · Southgate Car Park",
+    "city": "Marseille",
+    "country": "France",
+    "lat": 43.3,
+    "lng": 5.37,
+    "cat": "closed",
+    "health": "",
+    "status": "Annulé",
+    "client": "Retail BU",
+    "pm": "S. Perrin"
+   }
+  ]
+ },
+ "fr|afr": {
+  "crumb": "Portefeuille · 3 projets localisés · Afrique",
+  "title": "Mappemonde des projets",
+  "kpis": [
+   {
+    "label": "Projets localisés",
+    "value": 3,
+    "sub": "Afrique",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "Sites",
+    "value": 3,
+    "sub": "2 pays",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "Actifs",
+    "value": 1,
+    "sub": "1 en pipeline",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "À risque",
+    "value": 0,
+    "sub": "0 hors trajectoire",
+    "color": "var(--color-text)"
+   }
+  ],
+  "siteCount": 3,
+  "zoneEmpty": false,
+  "groups": [
+   {
+    "city": "Abidjan",
+    "country": "Côte d’Ivoire",
+    "count": 1,
+    "items": [
+     {
+      "code": "TTR-017",
+      "name": "TTR-017 · Déplacement du pylône télécom",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "status": "Clos",
+      "statusClass": "tag tag-neutral",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Casablanca",
+    "country": "Maroc",
+    "count": 1,
+    "items": [
+     {
+      "code": "NDC-031",
+      "name": "#031 · Rénovation du data center Northgate",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "status": "Approvisionnements",
+      "statusClass": "tag tag-accent",
+      "health": "Conforme",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Tanger Med",
+    "country": "Maroc",
+    "count": 1,
+    "items": [
+     {
+      "code": "EWA-051",
+      "name": "EWA-051 · Automatisation de l’entrepôt Eastbank",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "status": "Initiative",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   }
+  ],
+  "ui": {
+   "world": "Monde",
+   "europe": "Europe",
+   "fit": "Projets",
+   "ontrack": "Conforme",
+   "risk": "À risque / hors trajectoire",
+   "pipeline": "Pipeline",
+   "closed": "Clos / en attente",
+   "open": "Ouvrir le projet",
+   "projects": "projets",
+   "loading": "Chargement de la géométrie de la carte…",
+   "failed": "Impossible de charger la géométrie de la carte."
+  },
+  "zone": {
+   "label": "Afrique",
+   "bounds": [
+    -22,
+    40,
+    55,
+    -38
+   ]
+  },
+  "points": [
+   {
+    "code": "NDC-031",
+    "name": "#031 · Northgate Data Center Retrofit",
+    "city": "Casablanca",
+    "country": "Maroc",
+    "lat": 33.57,
+    "lng": -7.59,
+    "cat": "active",
+    "health": "Conforme",
+    "status": "Approvisionnements",
+    "client": "Infrastructure BU",
+    "pm": "S. Perrin"
+   },
+   {
+    "code": "EWA-051",
+    "name": "EWA-051 · Eastbank Warehouse Automation",
+    "city": "Tanger Med",
+    "country": "Maroc",
+    "lat": 35.89,
+    "lng": -5.5,
+    "cat": "pipeline",
+    "health": "",
+    "status": "Initiative",
+    "client": "Logistics BU",
+    "pm": "S. Perrin"
+   },
+   {
+    "code": "TTR-017",
+    "name": "TTR-017 · Telecom Tower Relocation",
+    "city": "Abidjan",
+    "country": "Côte d’Ivoire",
+    "lat": 5.35,
+    "lng": -4.01,
+    "cat": "closed",
+    "health": "",
+    "status": "Clos",
+    "client": "Network BU",
+    "pm": "K. Blanchard"
+   }
+  ]
+ },
+ "fr|apac": {
+  "crumb": "Portefeuille · 3 projets localisés · Asie Pacifique",
+  "title": "Mappemonde des projets",
+  "kpis": [
+   {
+    "label": "Projets localisés",
+    "value": 3,
+    "sub": "Asie Pacifique",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "Sites",
+    "value": 3,
+    "sub": "2 pays",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "Actifs",
+    "value": 0,
+    "sub": "3 en pipeline",
+    "color": "var(--color-text)"
+   },
+   {
+    "label": "À risque",
+    "value": 0,
+    "sub": "0 hors trajectoire",
+    "color": "var(--color-text)"
+   }
+  ],
+  "siteCount": 3,
+  "zoneEmpty": false,
+  "groups": [
+   {
+    "city": "Kuala Lumpur",
+    "country": "Malaisie",
+    "count": 1,
+    "items": [
+     {
+      "code": "CER-047",
+      "name": "CER-047 · Rénovation énergétique du campus",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "status": "APD",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Sydney",
+    "country": "Australie",
+    "count": 1,
+    "items": [
+     {
+      "code": "FTU-052",
+      "name": "FTU-052 · Modernisation télématique de flotte",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "status": "Initiative",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   },
+   {
+    "city": "Westfield (WA)",
+    "country": "Australie",
+    "count": 1,
+    "items": [
+     {
+      "code": "WSA-044",
+      "name": "#044 · Centrale solaire de Westfield",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "status": "APD",
+      "statusClass": "tag tag-outline",
+      "health": "",
+      "healthClass": "tag tag-neutral"
+     }
+    ]
+   }
+  ],
+  "ui": {
+   "world": "Monde",
+   "europe": "Europe",
+   "fit": "Projets",
+   "ontrack": "Conforme",
+   "risk": "À risque / hors trajectoire",
+   "pipeline": "Pipeline",
+   "closed": "Clos / en attente",
+   "open": "Ouvrir le projet",
+   "projects": "projets",
+   "loading": "Chargement de la géométrie de la carte…",
+   "failed": "Impossible de charger la géométrie de la carte."
+  },
+  "zone": {
+   "label": "Asie Pacifique",
+   "bounds": [
+    58,
+    52,
+    180,
+    -50
+   ]
+  },
+  "points": [
+   {
+    "code": "WSA-044",
+    "name": "#044 · Westfield Solar Array",
+    "city": "Westfield (WA)",
+    "country": "Australie",
+    "lat": -32.14,
+    "lng": 115.95,
+    "cat": "pipeline",
+    "health": "",
+    "status": "APD",
+    "client": "Energy BU",
+    "pm": "K. Blanchard"
+   },
+   {
+    "code": "FTU-052",
+    "name": "FTU-052 · Fleet Telematics Upgrade",
+    "city": "Sydney",
+    "country": "Australie",
+    "lat": -33.87,
+    "lng": 151.21,
+    "cat": "pipeline",
+    "health": "",
+    "status": "Initiative",
+    "client": "Operations",
+    "pm": "A. Naveau"
+   },
+   {
+    "code": "CER-047",
+    "name": "CER-047 · Campus Energy Retrofit",
+    "city": "Kuala Lumpur",
+    "country": "Malaisie",
+    "lat": 3.14,
+    "lng": 101.69,
+    "cat": "pipeline",
+    "health": "",
+    "status": "APD",
+    "client": "Facilities",
+    "pm": "K. Blanchard"
+   }
+  ]
+ },
+ "tips": {
+  "en|null|1": [
+   {
+    "codes": [
+     "HLT-026",
+     "RCF-019",
+     "ERP-202",
+     "MSR-012",
+     "PRS-038",
+     "ALP-021",
+     "DRR-009",
+     "HRM-011",
+     "QFR-015",
+     "SCP-033"
+    ],
+    "header": "4 sites · 10 projects",
+    "rows": [
+     {
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-outline|Fabrication & Assemblage",
+       "tag tag-outline|At risk"
+      ]
+     },
+     {
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "tags": [
+       "tag tag-accent|Chantier",
+       "tag tag-accent|Off track"
+      ]
+     },
+     {
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "tags": [
+       "tag tag-neutral|Etudes",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "tags": [
+       "tag tag-outline|Mise Service & SAT",
+       "tag tag-outline|At risk"
+      ]
+     },
+     {
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Approvisionnements",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "tags": [
+       "tag tag-neutral|Garantie",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "tags": [
+       "tag tag-neutral|Annulé"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "4 sites"
+   },
+   {
+    "codes": [
+     "NDC-031",
+     "EWA-051"
+    ],
+    "header": "2 sites · 2 projects",
+    "rows": [
+     {
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "tags": [
+       "tag tag-neutral|Approvisionnements",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "2 sites"
+   },
+   {
+    "codes": [
+     "WSA-044"
+    ],
+    "header": "Westfield (WA) · Australia · 1 project",
+    "rows": [
+     {
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Westfield (WA)"
+   },
+   {
+    "codes": [
+     "FTU-052"
+    ],
+    "header": "Sydney · Australia · 1 project",
+    "rows": [
+     {
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Sydney"
+   },
+   {
+    "codes": [
+     "RBR-048"
+    ],
+    "header": "Ridgeway (Ontario) · Canada · 1 project",
+    "rows": [
+     {
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "tags": [
+       "tag tag-outline|APS"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Ridgeway (Ontario)"
+   },
+   {
+    "codes": [
+     "CER-047"
+    ],
+    "header": "Kuala Lumpur · Malaysia · 1 project",
+    "rows": [
+     {
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Kuala Lumpur"
+   },
+   {
+    "codes": [
+     "TTR-017"
+    ],
+    "header": "Abidjan · Côte d’Ivoire · 1 project",
+    "rows": [
+     {
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Abidjan"
+   }
+  ],
+  "en|null|2.4": [
+   {
+    "codes": [
+     "HLT-026",
+     "PRS-038",
+     "QFR-015"
+    ],
+    "header": "Le Havre · France · 3 projects",
+    "rows": [
+     {
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-outline|Fabrication & Assemblage",
+       "tag tag-outline|At risk"
+      ]
+     },
+     {
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Approvisionnements",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Le Havre"
+   },
+   {
+    "codes": [
+     "NDC-031",
+     "EWA-051"
+    ],
+    "header": "2 sites · 2 projects",
+    "rows": [
+     {
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "tags": [
+       "tag tag-neutral|Approvisionnements",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "2 sites"
+   },
+   {
+    "codes": [
+     "RCF-019",
+     "ERP-202",
+     "MSR-012",
+     "ALP-021",
+     "DRR-009",
+     "HRM-011",
+     "SCP-033"
+    ],
+    "header": "3 sites · 7 projects",
+    "rows": [
+     {
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "tags": [
+       "tag tag-accent|Chantier",
+       "tag tag-accent|Off track"
+      ]
+     },
+     {
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "tags": [
+       "tag tag-neutral|Etudes",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "tags": [
+       "tag tag-outline|Mise Service & SAT",
+       "tag tag-outline|At risk"
+      ]
+     },
+     {
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "tags": [
+       "tag tag-neutral|Garantie",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "tags": [
+       "tag tag-neutral|Annulé"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "3 sites"
+   },
+   {
+    "codes": [
+     "WSA-044"
+    ],
+    "header": "Westfield (WA) · Australia · 1 project",
+    "rows": [
+     {
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Westfield (WA)"
+   },
+   {
+    "codes": [
+     "FTU-052"
+    ],
+    "header": "Sydney · Australia · 1 project",
+    "rows": [
+     {
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Sydney"
+   },
+   {
+    "codes": [
+     "RBR-048"
+    ],
+    "header": "Ridgeway (Ontario) · Canada · 1 project",
+    "rows": [
+     {
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "tags": [
+       "tag tag-outline|APS"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Ridgeway (Ontario)"
+   },
+   {
+    "codes": [
+     "CER-047"
+    ],
+    "header": "Kuala Lumpur · Malaysia · 1 project",
+    "rows": [
+     {
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Kuala Lumpur"
+   },
+   {
+    "codes": [
+     "TTR-017"
+    ],
+    "header": "Abidjan · Côte d’Ivoire · 1 project",
+    "rows": [
+     {
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Abidjan"
+   }
+  ],
+  "en|null|6": [
+   {
+    "codes": [
+     "HLT-026",
+     "PRS-038",
+     "QFR-015"
+    ],
+    "header": "Le Havre · France · 3 projects",
+    "rows": [
+     {
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-outline|Fabrication & Assemblage",
+       "tag tag-outline|At risk"
+      ]
+     },
+     {
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Approvisionnements",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Le Havre"
+   },
+   {
+    "codes": [
+     "NDC-031"
+    ],
+    "header": "Casablanca · Morocco · 1 project",
+    "rows": [
+     {
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "tags": [
+       "tag tag-neutral|Approvisionnements",
+       "tag tag-neutral|On track"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Casablanca"
+   },
+   {
+    "codes": [
+     "RCF-019",
+     "ERP-202",
+     "ALP-021",
+     "HRM-011"
+    ],
+    "header": "2 sites · 4 projects",
+    "rows": [
+     {
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "tags": [
+       "tag tag-accent|Chantier",
+       "tag tag-accent|Off track"
+      ]
+     },
+     {
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "tags": [
+       "tag tag-neutral|Etudes",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "tags": [
+       "tag tag-neutral|Garantie",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "2 sites"
+   },
+   {
+    "codes": [
+     "WSA-044"
+    ],
+    "header": "Westfield (WA) · Australia · 1 project",
+    "rows": [
+     {
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Westfield (WA)"
+   },
+   {
+    "codes": [
+     "MSR-012",
+     "DRR-009",
+     "SCP-033"
+    ],
+    "header": "Marseille · France · 3 projects",
+    "rows": [
+     {
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "tags": [
+       "tag tag-outline|Mise Service & SAT",
+       "tag tag-outline|At risk"
+      ]
+     },
+     {
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "tags": [
+       "tag tag-neutral|Annulé"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Marseille"
+   },
+   {
+    "codes": [
+     "EWA-051"
+    ],
+    "header": "Tanger Med · Morocco · 1 project",
+    "rows": [
+     {
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Tanger Med"
+   },
+   {
+    "codes": [
+     "FTU-052"
+    ],
+    "header": "Sydney · Australia · 1 project",
+    "rows": [
+     {
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Sydney"
+   },
+   {
+    "codes": [
+     "RBR-048"
+    ],
+    "header": "Ridgeway (Ontario) · Canada · 1 project",
+    "rows": [
+     {
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "tags": [
+       "tag tag-outline|APS"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Ridgeway (Ontario)"
+   },
+   {
+    "codes": [
+     "CER-047"
+    ],
+    "header": "Kuala Lumpur · Malaysia · 1 project",
+    "rows": [
+     {
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Kuala Lumpur"
+   },
+   {
+    "codes": [
+     "TTR-017"
+    ],
+    "header": "Abidjan · Côte d’Ivoire · 1 project",
+    "rows": [
+     {
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Abidjan"
+   }
+  ],
+  "en|null|48": [
+   {
+    "codes": [
+     "HLT-026",
+     "PRS-038",
+     "QFR-015"
+    ],
+    "header": "Le Havre · France · 3 projects",
+    "rows": [
+     {
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-outline|Fabrication & Assemblage",
+       "tag tag-outline|At risk"
+      ]
+     },
+     {
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Approvisionnements",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Le Havre"
+   },
+   {
+    "codes": [
+     "NDC-031"
+    ],
+    "header": "Casablanca · Morocco · 1 project",
+    "rows": [
+     {
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "tags": [
+       "tag tag-neutral|Approvisionnements",
+       "tag tag-neutral|On track"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Casablanca"
+   },
+   {
+    "codes": [
+     "RCF-019",
+     "ERP-202",
+     "HRM-011"
+    ],
+    "header": "Lyon · France · 3 projects",
+    "rows": [
+     {
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "tags": [
+       "tag tag-accent|Chantier",
+       "tag tag-accent|Off track"
+      ]
+     },
+     {
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "tags": [
+       "tag tag-neutral|Etudes",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Lyon"
+   },
+   {
+    "codes": [
+     "WSA-044"
+    ],
+    "header": "Westfield (WA) · Australia · 1 project",
+    "rows": [
+     {
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Westfield (WA)"
+   },
+   {
+    "codes": [
+     "MSR-012",
+     "DRR-009",
+     "SCP-033"
+    ],
+    "header": "Marseille · France · 3 projects",
+    "rows": [
+     {
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "tags": [
+       "tag tag-outline|Mise Service & SAT",
+       "tag tag-outline|At risk"
+      ]
+     },
+     {
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "tags": [
+       "tag tag-neutral|Annulé"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Marseille"
+   },
+   {
+    "codes": [
+     "EWA-051"
+    ],
+    "header": "Tanger Med · Morocco · 1 project",
+    "rows": [
+     {
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Tanger Med"
+   },
+   {
+    "codes": [
+     "FTU-052"
+    ],
+    "header": "Sydney · Australia · 1 project",
+    "rows": [
+     {
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Sydney"
+   },
+   {
+    "codes": [
+     "RBR-048"
+    ],
+    "header": "Ridgeway (Ontario) · Canada · 1 project",
+    "rows": [
+     {
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "tags": [
+       "tag tag-outline|APS"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Ridgeway (Ontario)"
+   },
+   {
+    "codes": [
+     "CER-047"
+    ],
+    "header": "Kuala Lumpur · Malaysia · 1 project",
+    "rows": [
+     {
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Kuala Lumpur"
+   },
+   {
+    "codes": [
+     "ALP-021"
+    ],
+    "header": "Lyon-Saint-Exupéry · France · 1 project",
+    "rows": [
+     {
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "tags": [
+       "tag tag-neutral|Garantie",
+       "tag tag-neutral|On track"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Lyon-Saint-Exupéry"
+   },
+   {
+    "codes": [
+     "TTR-017"
+    ],
+    "header": "Abidjan · Côte d’Ivoire · 1 project",
+    "rows": [
+     {
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Abidjan"
+   }
+  ],
+  "en|euna|1": [
+   {
+    "codes": [
+     "HLT-026",
+     "RCF-019",
+     "ERP-202",
+     "MSR-012",
+     "PRS-038",
+     "ALP-021",
+     "DRR-009",
+     "HRM-011",
+     "QFR-015",
+     "SCP-033"
+    ],
+    "header": "4 sites · 10 projects",
+    "rows": [
+     {
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-outline|Fabrication & Assemblage",
+       "tag tag-outline|At risk"
+      ]
+     },
+     {
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "tags": [
+       "tag tag-accent|Chantier",
+       "tag tag-accent|Off track"
+      ]
+     },
+     {
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "tags": [
+       "tag tag-neutral|Etudes",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "tags": [
+       "tag tag-outline|Mise Service & SAT",
+       "tag tag-outline|At risk"
+      ]
+     },
+     {
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Approvisionnements",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "tags": [
+       "tag tag-neutral|Garantie",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "tags": [
+       "tag tag-neutral|Annulé"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "4 sites"
+   },
+   {
+    "codes": [
+     "RBR-048"
+    ],
+    "header": "Ridgeway (Ontario) · Canada · 1 project",
+    "rows": [
+     {
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "tags": [
+       "tag tag-outline|APS"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Ridgeway (Ontario)"
+   }
+  ],
+  "en|euna|2.4": [
+   {
+    "codes": [
+     "HLT-026",
+     "PRS-038",
+     "QFR-015"
+    ],
+    "header": "Le Havre · France · 3 projects",
+    "rows": [
+     {
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-outline|Fabrication & Assemblage",
+       "tag tag-outline|At risk"
+      ]
+     },
+     {
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Approvisionnements",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Le Havre"
+   },
+   {
+    "codes": [
+     "RCF-019",
+     "ERP-202",
+     "MSR-012",
+     "ALP-021",
+     "DRR-009",
+     "HRM-011",
+     "SCP-033"
+    ],
+    "header": "3 sites · 7 projects",
+    "rows": [
+     {
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "tags": [
+       "tag tag-accent|Chantier",
+       "tag tag-accent|Off track"
+      ]
+     },
+     {
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "tags": [
+       "tag tag-neutral|Etudes",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "tags": [
+       "tag tag-outline|Mise Service & SAT",
+       "tag tag-outline|At risk"
+      ]
+     },
+     {
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "tags": [
+       "tag tag-neutral|Garantie",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "tags": [
+       "tag tag-neutral|Annulé"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "3 sites"
+   },
+   {
+    "codes": [
+     "RBR-048"
+    ],
+    "header": "Ridgeway (Ontario) · Canada · 1 project",
+    "rows": [
+     {
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "tags": [
+       "tag tag-outline|APS"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Ridgeway (Ontario)"
+   }
+  ],
+  "en|euna|6": [
+   {
+    "codes": [
+     "HLT-026",
+     "PRS-038",
+     "QFR-015"
+    ],
+    "header": "Le Havre · France · 3 projects",
+    "rows": [
+     {
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-outline|Fabrication & Assemblage",
+       "tag tag-outline|At risk"
+      ]
+     },
+     {
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Approvisionnements",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Le Havre"
+   },
+   {
+    "codes": [
+     "RCF-019",
+     "ERP-202",
+     "ALP-021",
+     "HRM-011"
+    ],
+    "header": "2 sites · 4 projects",
+    "rows": [
+     {
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "tags": [
+       "tag tag-accent|Chantier",
+       "tag tag-accent|Off track"
+      ]
+     },
+     {
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "tags": [
+       "tag tag-neutral|Etudes",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "tags": [
+       "tag tag-neutral|Garantie",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "2 sites"
+   },
+   {
+    "codes": [
+     "MSR-012",
+     "DRR-009",
+     "SCP-033"
+    ],
+    "header": "Marseille · France · 3 projects",
+    "rows": [
+     {
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "tags": [
+       "tag tag-outline|Mise Service & SAT",
+       "tag tag-outline|At risk"
+      ]
+     },
+     {
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "tags": [
+       "tag tag-neutral|Annulé"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Marseille"
+   },
+   {
+    "codes": [
+     "RBR-048"
+    ],
+    "header": "Ridgeway (Ontario) · Canada · 1 project",
+    "rows": [
+     {
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "tags": [
+       "tag tag-outline|APS"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Ridgeway (Ontario)"
+   }
+  ],
+  "en|euna|48": [
+   {
+    "codes": [
+     "HLT-026",
+     "PRS-038",
+     "QFR-015"
+    ],
+    "header": "Le Havre · France · 3 projects",
+    "rows": [
+     {
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-outline|Fabrication & Assemblage",
+       "tag tag-outline|At risk"
+      ]
+     },
+     {
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Approvisionnements",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Le Havre"
+   },
+   {
+    "codes": [
+     "RCF-019",
+     "ERP-202",
+     "HRM-011"
+    ],
+    "header": "Lyon · France · 3 projects",
+    "rows": [
+     {
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "tags": [
+       "tag tag-accent|Chantier",
+       "tag tag-accent|Off track"
+      ]
+     },
+     {
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "tags": [
+       "tag tag-neutral|Etudes",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Lyon"
+   },
+   {
+    "codes": [
+     "MSR-012",
+     "DRR-009",
+     "SCP-033"
+    ],
+    "header": "Marseille · France · 3 projects",
+    "rows": [
+     {
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "tags": [
+       "tag tag-outline|Mise Service & SAT",
+       "tag tag-outline|At risk"
+      ]
+     },
+     {
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "tags": [
+       "tag tag-neutral|Annulé"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Marseille"
+   },
+   {
+    "codes": [
+     "RBR-048"
+    ],
+    "header": "Ridgeway (Ontario) · Canada · 1 project",
+    "rows": [
+     {
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "tags": [
+       "tag tag-outline|APS"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Ridgeway (Ontario)"
+   },
+   {
+    "codes": [
+     "ALP-021"
+    ],
+    "header": "Lyon-Saint-Exupéry · France · 1 project",
+    "rows": [
+     {
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "tags": [
+       "tag tag-neutral|Garantie",
+       "tag tag-neutral|On track"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Lyon-Saint-Exupéry"
+   }
+  ],
+  "en|afr|1": [
+   {
+    "codes": [
+     "NDC-031",
+     "EWA-051"
+    ],
+    "header": "2 sites · 2 projects",
+    "rows": [
+     {
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "tags": [
+       "tag tag-neutral|Approvisionnements",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "2 sites"
+   },
+   {
+    "codes": [
+     "TTR-017"
+    ],
+    "header": "Abidjan · Côte d’Ivoire · 1 project",
+    "rows": [
+     {
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Abidjan"
+   }
+  ],
+  "en|afr|2.4": [
+   {
+    "codes": [
+     "NDC-031",
+     "EWA-051"
+    ],
+    "header": "2 sites · 2 projects",
+    "rows": [
+     {
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "tags": [
+       "tag tag-neutral|Approvisionnements",
+       "tag tag-neutral|On track"
+      ]
+     },
+     {
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "2 sites"
+   },
+   {
+    "codes": [
+     "TTR-017"
+    ],
+    "header": "Abidjan · Côte d’Ivoire · 1 project",
+    "rows": [
+     {
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Abidjan"
+   }
+  ],
+  "en|afr|6": [
+   {
+    "codes": [
+     "NDC-031"
+    ],
+    "header": "Casablanca · Morocco · 1 project",
+    "rows": [
+     {
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "tags": [
+       "tag tag-neutral|Approvisionnements",
+       "tag tag-neutral|On track"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Casablanca"
+   },
+   {
+    "codes": [
+     "EWA-051"
+    ],
+    "header": "Tanger Med · Morocco · 1 project",
+    "rows": [
+     {
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Tanger Med"
+   },
+   {
+    "codes": [
+     "TTR-017"
+    ],
+    "header": "Abidjan · Côte d’Ivoire · 1 project",
+    "rows": [
+     {
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Abidjan"
+   }
+  ],
+  "en|afr|48": [
+   {
+    "codes": [
+     "NDC-031"
+    ],
+    "header": "Casablanca · Morocco · 1 project",
+    "rows": [
+     {
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "tags": [
+       "tag tag-neutral|Approvisionnements",
+       "tag tag-neutral|On track"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Casablanca"
+   },
+   {
+    "codes": [
+     "EWA-051"
+    ],
+    "header": "Tanger Med · Morocco · 1 project",
+    "rows": [
+     {
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Tanger Med"
+   },
+   {
+    "codes": [
+     "TTR-017"
+    ],
+    "header": "Abidjan · Côte d’Ivoire · 1 project",
+    "rows": [
+     {
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Abidjan"
+   }
+  ],
+  "en|apac|1": [
+   {
+    "codes": [
+     "WSA-044"
+    ],
+    "header": "Westfield (WA) · Australia · 1 project",
+    "rows": [
+     {
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Westfield (WA)"
+   },
+   {
+    "codes": [
+     "FTU-052"
+    ],
+    "header": "Sydney · Australia · 1 project",
+    "rows": [
+     {
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Sydney"
+   },
+   {
+    "codes": [
+     "CER-047"
+    ],
+    "header": "Kuala Lumpur · Malaysia · 1 project",
+    "rows": [
+     {
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Kuala Lumpur"
+   }
+  ],
+  "en|apac|2.4": [
+   {
+    "codes": [
+     "WSA-044"
+    ],
+    "header": "Westfield (WA) · Australia · 1 project",
+    "rows": [
+     {
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Westfield (WA)"
+   },
+   {
+    "codes": [
+     "FTU-052"
+    ],
+    "header": "Sydney · Australia · 1 project",
+    "rows": [
+     {
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Sydney"
+   },
+   {
+    "codes": [
+     "CER-047"
+    ],
+    "header": "Kuala Lumpur · Malaysia · 1 project",
+    "rows": [
+     {
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Kuala Lumpur"
+   }
+  ],
+  "en|apac|6": [
+   {
+    "codes": [
+     "WSA-044"
+    ],
+    "header": "Westfield (WA) · Australia · 1 project",
+    "rows": [
+     {
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Westfield (WA)"
+   },
+   {
+    "codes": [
+     "FTU-052"
+    ],
+    "header": "Sydney · Australia · 1 project",
+    "rows": [
+     {
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Sydney"
+   },
+   {
+    "codes": [
+     "CER-047"
+    ],
+    "header": "Kuala Lumpur · Malaysia · 1 project",
+    "rows": [
+     {
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Kuala Lumpur"
+   }
+  ],
+  "en|apac|48": [
+   {
+    "codes": [
+     "WSA-044"
+    ],
+    "header": "Westfield (WA) · Australia · 1 project",
+    "rows": [
+     {
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Westfield (WA)"
+   },
+   {
+    "codes": [
+     "FTU-052"
+    ],
+    "header": "Sydney · Australia · 1 project",
+    "rows": [
+     {
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Sydney"
+   },
+   {
+    "codes": [
+     "CER-047"
+    ],
+    "header": "Kuala Lumpur · Malaysia · 1 project",
+    "rows": [
+     {
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Open project →",
+    "label": "Kuala Lumpur"
+   }
+  ],
+  "fr|null|1": [
+   {
+    "codes": [
+     "HLT-026",
+     "RCF-019",
+     "ERP-202",
+     "MSR-012",
+     "PRS-038",
+     "ALP-021",
+     "DRR-009",
+     "HRM-011",
+     "QFR-015",
+     "SCP-033"
+    ],
+    "header": "4 sites · 10 projets",
+    "rows": [
+     {
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-accent|Fabrication & Assemblage",
+       "tag tag-accent|À risque"
+      ]
+     },
+     {
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "tags": [
+       "tag tag-accent|Chantier",
+       "tag tag-accent|Hors trajectoire"
+      ]
+     },
+     {
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "tags": [
+       "tag tag-accent|Études",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "tags": [
+       "tag tag-accent|Mise en service & SAT",
+       "tag tag-accent|À risque"
+      ]
+     },
+     {
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-accent|Approvisionnements",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "tags": [
+       "tag tag-accent|Garantie",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "tags": [
+       "tag tag-neutral|Annulé"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "4 sites"
+   },
+   {
+    "codes": [
+     "NDC-031",
+     "EWA-051"
+    ],
+    "header": "2 sites · 2 projets",
+    "rows": [
+     {
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "tags": [
+       "tag tag-accent|Approvisionnements",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "2 sites"
+   },
+   {
+    "codes": [
+     "WSA-044"
+    ],
+    "header": "Westfield (WA) · Australie · 1 projet",
+    "rows": [
+     {
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Westfield (WA)"
+   },
+   {
+    "codes": [
+     "FTU-052"
+    ],
+    "header": "Sydney · Australie · 1 projet",
+    "rows": [
+     {
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Sydney"
+   },
+   {
+    "codes": [
+     "RBR-048"
+    ],
+    "header": "Ridgeway (Ontario) · Canada · 1 projet",
+    "rows": [
+     {
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "tags": [
+       "tag tag-outline|APS"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Ridgeway (Ontario)"
+   },
+   {
+    "codes": [
+     "CER-047"
+    ],
+    "header": "Kuala Lumpur · Malaisie · 1 projet",
+    "rows": [
+     {
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Kuala Lumpur"
+   },
+   {
+    "codes": [
+     "TTR-017"
+    ],
+    "header": "Abidjan · Côte d’Ivoire · 1 projet",
+    "rows": [
+     {
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Abidjan"
+   }
+  ],
+  "fr|null|2.4": [
+   {
+    "codes": [
+     "HLT-026",
+     "PRS-038",
+     "QFR-015"
+    ],
+    "header": "Le Havre · France · 3 projets",
+    "rows": [
+     {
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-accent|Fabrication & Assemblage",
+       "tag tag-accent|À risque"
+      ]
+     },
+     {
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-accent|Approvisionnements",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Le Havre"
+   },
+   {
+    "codes": [
+     "NDC-031",
+     "EWA-051"
+    ],
+    "header": "2 sites · 2 projets",
+    "rows": [
+     {
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "tags": [
+       "tag tag-accent|Approvisionnements",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "2 sites"
+   },
+   {
+    "codes": [
+     "RCF-019",
+     "ERP-202",
+     "MSR-012",
+     "ALP-021",
+     "DRR-009",
+     "HRM-011",
+     "SCP-033"
+    ],
+    "header": "3 sites · 7 projets",
+    "rows": [
+     {
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "tags": [
+       "tag tag-accent|Chantier",
+       "tag tag-accent|Hors trajectoire"
+      ]
+     },
+     {
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "tags": [
+       "tag tag-accent|Études",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "tags": [
+       "tag tag-accent|Mise en service & SAT",
+       "tag tag-accent|À risque"
+      ]
+     },
+     {
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "tags": [
+       "tag tag-accent|Garantie",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "tags": [
+       "tag tag-neutral|Annulé"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "3 sites"
+   },
+   {
+    "codes": [
+     "WSA-044"
+    ],
+    "header": "Westfield (WA) · Australie · 1 projet",
+    "rows": [
+     {
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Westfield (WA)"
+   },
+   {
+    "codes": [
+     "FTU-052"
+    ],
+    "header": "Sydney · Australie · 1 projet",
+    "rows": [
+     {
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Sydney"
+   },
+   {
+    "codes": [
+     "RBR-048"
+    ],
+    "header": "Ridgeway (Ontario) · Canada · 1 projet",
+    "rows": [
+     {
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "tags": [
+       "tag tag-outline|APS"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Ridgeway (Ontario)"
+   },
+   {
+    "codes": [
+     "CER-047"
+    ],
+    "header": "Kuala Lumpur · Malaisie · 1 projet",
+    "rows": [
+     {
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Kuala Lumpur"
+   },
+   {
+    "codes": [
+     "TTR-017"
+    ],
+    "header": "Abidjan · Côte d’Ivoire · 1 projet",
+    "rows": [
+     {
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Abidjan"
+   }
+  ],
+  "fr|null|6": [
+   {
+    "codes": [
+     "HLT-026",
+     "PRS-038",
+     "QFR-015"
+    ],
+    "header": "Le Havre · France · 3 projets",
+    "rows": [
+     {
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-accent|Fabrication & Assemblage",
+       "tag tag-accent|À risque"
+      ]
+     },
+     {
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-accent|Approvisionnements",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Le Havre"
+   },
+   {
+    "codes": [
+     "NDC-031"
+    ],
+    "header": "Casablanca · Maroc · 1 projet",
+    "rows": [
+     {
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "tags": [
+       "tag tag-accent|Approvisionnements",
+       "tag tag-accent|Conforme"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Casablanca"
+   },
+   {
+    "codes": [
+     "RCF-019",
+     "ERP-202",
+     "ALP-021",
+     "HRM-011"
+    ],
+    "header": "2 sites · 4 projets",
+    "rows": [
+     {
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "tags": [
+       "tag tag-accent|Chantier",
+       "tag tag-accent|Hors trajectoire"
+      ]
+     },
+     {
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "tags": [
+       "tag tag-accent|Études",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "tags": [
+       "tag tag-accent|Garantie",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "2 sites"
+   },
+   {
+    "codes": [
+     "WSA-044"
+    ],
+    "header": "Westfield (WA) · Australie · 1 projet",
+    "rows": [
+     {
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Westfield (WA)"
+   },
+   {
+    "codes": [
+     "MSR-012",
+     "DRR-009",
+     "SCP-033"
+    ],
+    "header": "Marseille · France · 3 projets",
+    "rows": [
+     {
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "tags": [
+       "tag tag-accent|Mise en service & SAT",
+       "tag tag-accent|À risque"
+      ]
+     },
+     {
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "tags": [
+       "tag tag-neutral|Annulé"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Marseille"
+   },
+   {
+    "codes": [
+     "EWA-051"
+    ],
+    "header": "Tanger Med · Maroc · 1 projet",
+    "rows": [
+     {
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Tanger Med"
+   },
+   {
+    "codes": [
+     "FTU-052"
+    ],
+    "header": "Sydney · Australie · 1 projet",
+    "rows": [
+     {
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Sydney"
+   },
+   {
+    "codes": [
+     "RBR-048"
+    ],
+    "header": "Ridgeway (Ontario) · Canada · 1 projet",
+    "rows": [
+     {
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "tags": [
+       "tag tag-outline|APS"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Ridgeway (Ontario)"
+   },
+   {
+    "codes": [
+     "CER-047"
+    ],
+    "header": "Kuala Lumpur · Malaisie · 1 projet",
+    "rows": [
+     {
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Kuala Lumpur"
+   },
+   {
+    "codes": [
+     "TTR-017"
+    ],
+    "header": "Abidjan · Côte d’Ivoire · 1 projet",
+    "rows": [
+     {
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Abidjan"
+   }
+  ],
+  "fr|null|48": [
+   {
+    "codes": [
+     "HLT-026",
+     "PRS-038",
+     "QFR-015"
+    ],
+    "header": "Le Havre · France · 3 projets",
+    "rows": [
+     {
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-accent|Fabrication & Assemblage",
+       "tag tag-accent|À risque"
+      ]
+     },
+     {
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-accent|Approvisionnements",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Le Havre"
+   },
+   {
+    "codes": [
+     "NDC-031"
+    ],
+    "header": "Casablanca · Maroc · 1 projet",
+    "rows": [
+     {
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "tags": [
+       "tag tag-accent|Approvisionnements",
+       "tag tag-accent|Conforme"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Casablanca"
+   },
+   {
+    "codes": [
+     "RCF-019",
+     "ERP-202",
+     "HRM-011"
+    ],
+    "header": "Lyon · France · 3 projets",
+    "rows": [
+     {
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "tags": [
+       "tag tag-accent|Chantier",
+       "tag tag-accent|Hors trajectoire"
+      ]
+     },
+     {
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "tags": [
+       "tag tag-accent|Études",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Lyon"
+   },
+   {
+    "codes": [
+     "WSA-044"
+    ],
+    "header": "Westfield (WA) · Australie · 1 projet",
+    "rows": [
+     {
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Westfield (WA)"
+   },
+   {
+    "codes": [
+     "MSR-012",
+     "DRR-009",
+     "SCP-033"
+    ],
+    "header": "Marseille · France · 3 projets",
+    "rows": [
+     {
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "tags": [
+       "tag tag-accent|Mise en service & SAT",
+       "tag tag-accent|À risque"
+      ]
+     },
+     {
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "tags": [
+       "tag tag-neutral|Annulé"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Marseille"
+   },
+   {
+    "codes": [
+     "EWA-051"
+    ],
+    "header": "Tanger Med · Maroc · 1 projet",
+    "rows": [
+     {
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Tanger Med"
+   },
+   {
+    "codes": [
+     "FTU-052"
+    ],
+    "header": "Sydney · Australie · 1 projet",
+    "rows": [
+     {
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Sydney"
+   },
+   {
+    "codes": [
+     "RBR-048"
+    ],
+    "header": "Ridgeway (Ontario) · Canada · 1 projet",
+    "rows": [
+     {
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "tags": [
+       "tag tag-outline|APS"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Ridgeway (Ontario)"
+   },
+   {
+    "codes": [
+     "CER-047"
+    ],
+    "header": "Kuala Lumpur · Malaisie · 1 projet",
+    "rows": [
+     {
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Kuala Lumpur"
+   },
+   {
+    "codes": [
+     "ALP-021"
+    ],
+    "header": "Lyon-Saint-Exupéry · France · 1 projet",
+    "rows": [
+     {
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "tags": [
+       "tag tag-accent|Garantie",
+       "tag tag-accent|Conforme"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Lyon-Saint-Exupéry"
+   },
+   {
+    "codes": [
+     "TTR-017"
+    ],
+    "header": "Abidjan · Côte d’Ivoire · 1 projet",
+    "rows": [
+     {
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Abidjan"
+   }
+  ],
+  "fr|euna|1": [
+   {
+    "codes": [
+     "HLT-026",
+     "RCF-019",
+     "ERP-202",
+     "MSR-012",
+     "PRS-038",
+     "ALP-021",
+     "DRR-009",
+     "HRM-011",
+     "QFR-015",
+     "SCP-033"
+    ],
+    "header": "4 sites · 10 projets",
+    "rows": [
+     {
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-accent|Fabrication & Assemblage",
+       "tag tag-accent|À risque"
+      ]
+     },
+     {
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "tags": [
+       "tag tag-accent|Chantier",
+       "tag tag-accent|Hors trajectoire"
+      ]
+     },
+     {
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "tags": [
+       "tag tag-accent|Études",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "tags": [
+       "tag tag-accent|Mise en service & SAT",
+       "tag tag-accent|À risque"
+      ]
+     },
+     {
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-accent|Approvisionnements",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "tags": [
+       "tag tag-accent|Garantie",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "tags": [
+       "tag tag-neutral|Annulé"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "4 sites"
+   },
+   {
+    "codes": [
+     "RBR-048"
+    ],
+    "header": "Ridgeway (Ontario) · Canada · 1 projet",
+    "rows": [
+     {
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "tags": [
+       "tag tag-outline|APS"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Ridgeway (Ontario)"
+   }
+  ],
+  "fr|euna|2.4": [
+   {
+    "codes": [
+     "HLT-026",
+     "PRS-038",
+     "QFR-015"
+    ],
+    "header": "Le Havre · France · 3 projets",
+    "rows": [
+     {
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-accent|Fabrication & Assemblage",
+       "tag tag-accent|À risque"
+      ]
+     },
+     {
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-accent|Approvisionnements",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Le Havre"
+   },
+   {
+    "codes": [
+     "RCF-019",
+     "ERP-202",
+     "MSR-012",
+     "ALP-021",
+     "DRR-009",
+     "HRM-011",
+     "SCP-033"
+    ],
+    "header": "3 sites · 7 projets",
+    "rows": [
+     {
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "tags": [
+       "tag tag-accent|Chantier",
+       "tag tag-accent|Hors trajectoire"
+      ]
+     },
+     {
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "tags": [
+       "tag tag-accent|Études",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "tags": [
+       "tag tag-accent|Mise en service & SAT",
+       "tag tag-accent|À risque"
+      ]
+     },
+     {
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "tags": [
+       "tag tag-accent|Garantie",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "tags": [
+       "tag tag-neutral|Annulé"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "3 sites"
+   },
+   {
+    "codes": [
+     "RBR-048"
+    ],
+    "header": "Ridgeway (Ontario) · Canada · 1 projet",
+    "rows": [
+     {
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "tags": [
+       "tag tag-outline|APS"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Ridgeway (Ontario)"
+   }
+  ],
+  "fr|euna|6": [
+   {
+    "codes": [
+     "HLT-026",
+     "PRS-038",
+     "QFR-015"
+    ],
+    "header": "Le Havre · France · 3 projets",
+    "rows": [
+     {
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-accent|Fabrication & Assemblage",
+       "tag tag-accent|À risque"
+      ]
+     },
+     {
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-accent|Approvisionnements",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Le Havre"
+   },
+   {
+    "codes": [
+     "RCF-019",
+     "ERP-202",
+     "ALP-021",
+     "HRM-011"
+    ],
+    "header": "2 sites · 4 projets",
+    "rows": [
+     {
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "tags": [
+       "tag tag-accent|Chantier",
+       "tag tag-accent|Hors trajectoire"
+      ]
+     },
+     {
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "tags": [
+       "tag tag-accent|Études",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "tags": [
+       "tag tag-accent|Garantie",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "2 sites"
+   },
+   {
+    "codes": [
+     "MSR-012",
+     "DRR-009",
+     "SCP-033"
+    ],
+    "header": "Marseille · France · 3 projets",
+    "rows": [
+     {
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "tags": [
+       "tag tag-accent|Mise en service & SAT",
+       "tag tag-accent|À risque"
+      ]
+     },
+     {
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "tags": [
+       "tag tag-neutral|Annulé"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Marseille"
+   },
+   {
+    "codes": [
+     "RBR-048"
+    ],
+    "header": "Ridgeway (Ontario) · Canada · 1 projet",
+    "rows": [
+     {
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "tags": [
+       "tag tag-outline|APS"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Ridgeway (Ontario)"
+   }
+  ],
+  "fr|euna|48": [
+   {
+    "codes": [
+     "HLT-026",
+     "PRS-038",
+     "QFR-015"
+    ],
+    "header": "Le Havre · France · 3 projets",
+    "rows": [
+     {
+      "name": "#026 · Harbor Line Terminal Expansion",
+      "sub": "HLT-026 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-accent|Fabrication & Assemblage",
+       "tag tag-accent|À risque"
+      ]
+     },
+     {
+      "name": "PRS-038 · Portside Rail Spur",
+      "sub": "PRS-038 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-accent|Approvisionnements",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "QFR-015 · Quayside Fender Renewal",
+      "sub": "QFR-015 · R. Aubert · Port authority",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Le Havre"
+   },
+   {
+    "codes": [
+     "RCF-019",
+     "ERP-202",
+     "HRM-011"
+    ],
+    "header": "Lyon · France · 3 projets",
+    "rows": [
+     {
+      "name": "#019 · Clinique Pasteur Lyon Fit-out",
+      "sub": "RCF-019 · C. Moreau · Health trust",
+      "tags": [
+       "tag tag-accent|Chantier",
+       "tag tag-accent|Hors trajectoire"
+      ]
+     },
+     {
+      "name": "#032 · ERP Migration — Phase 2",
+      "sub": "ERP-202 · D. Imbert · Finance",
+      "tags": [
+       "tag tag-accent|Études",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "HRM-011 · HR System Migration",
+      "sub": "HRM-011 · D. Imbert · People ops",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Lyon"
+   },
+   {
+    "codes": [
+     "MSR-012",
+     "DRR-009",
+     "SCP-033"
+    ],
+    "header": "Marseille · France · 3 projets",
+    "rows": [
+     {
+      "name": "#012 · Marseille Metro Signage Rollout",
+      "sub": "MSR-012 · A. Naveau · Transit BU",
+      "tags": [
+       "tag tag-accent|Mise en service & SAT",
+       "tag tag-accent|À risque"
+      ]
+     },
+     {
+      "name": "DRR-009 · Depot Roof Replacement",
+      "sub": "DRR-009 · A. Ollivier · Transit BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     },
+     {
+      "name": "SCP-033 · Southgate Car Park",
+      "sub": "SCP-033 · S. Perrin · Retail BU",
+      "tags": [
+       "tag tag-neutral|Annulé"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Marseille"
+   },
+   {
+    "codes": [
+     "RBR-048"
+    ],
+    "header": "Ridgeway (Ontario) · Canada · 1 projet",
+    "rows": [
+     {
+      "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+      "sub": "RBR-048 · L. Fontaine · Highways agency",
+      "tags": [
+       "tag tag-outline|APS"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Ridgeway (Ontario)"
+   },
+   {
+    "codes": [
+     "ALP-021"
+    ],
+    "header": "Lyon-Saint-Exupéry · France · 1 projet",
+    "rows": [
+     {
+      "name": "ALP-021 · Airfield Lighting Phase 1",
+      "sub": "ALP-021 · C. Moreau · Airport operator",
+      "tags": [
+       "tag tag-accent|Garantie",
+       "tag tag-accent|Conforme"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Lyon-Saint-Exupéry"
+   }
+  ],
+  "fr|afr|1": [
+   {
+    "codes": [
+     "NDC-031",
+     "EWA-051"
+    ],
+    "header": "2 sites · 2 projets",
+    "rows": [
+     {
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "tags": [
+       "tag tag-accent|Approvisionnements",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "2 sites"
+   },
+   {
+    "codes": [
+     "TTR-017"
+    ],
+    "header": "Abidjan · Côte d’Ivoire · 1 projet",
+    "rows": [
+     {
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Abidjan"
+   }
+  ],
+  "fr|afr|2.4": [
+   {
+    "codes": [
+     "NDC-031",
+     "EWA-051"
+    ],
+    "header": "2 sites · 2 projets",
+    "rows": [
+     {
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "tags": [
+       "tag tag-accent|Approvisionnements",
+       "tag tag-accent|Conforme"
+      ]
+     },
+     {
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "2 sites"
+   },
+   {
+    "codes": [
+     "TTR-017"
+    ],
+    "header": "Abidjan · Côte d’Ivoire · 1 projet",
+    "rows": [
+     {
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Abidjan"
+   }
+  ],
+  "fr|afr|6": [
+   {
+    "codes": [
+     "NDC-031"
+    ],
+    "header": "Casablanca · Maroc · 1 projet",
+    "rows": [
+     {
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "tags": [
+       "tag tag-accent|Approvisionnements",
+       "tag tag-accent|Conforme"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Casablanca"
+   },
+   {
+    "codes": [
+     "EWA-051"
+    ],
+    "header": "Tanger Med · Maroc · 1 projet",
+    "rows": [
+     {
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Tanger Med"
+   },
+   {
+    "codes": [
+     "TTR-017"
+    ],
+    "header": "Abidjan · Côte d’Ivoire · 1 projet",
+    "rows": [
+     {
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Abidjan"
+   }
+  ],
+  "fr|afr|48": [
+   {
+    "codes": [
+     "NDC-031"
+    ],
+    "header": "Casablanca · Maroc · 1 projet",
+    "rows": [
+     {
+      "name": "#031 · Northgate Data Center Retrofit",
+      "sub": "NDC-031 · S. Perrin · Infrastructure BU",
+      "tags": [
+       "tag tag-accent|Approvisionnements",
+       "tag tag-accent|Conforme"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Casablanca"
+   },
+   {
+    "codes": [
+     "EWA-051"
+    ],
+    "header": "Tanger Med · Maroc · 1 projet",
+    "rows": [
+     {
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "sub": "EWA-051 · S. Perrin · Logistics BU",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Tanger Med"
+   },
+   {
+    "codes": [
+     "TTR-017"
+    ],
+    "header": "Abidjan · Côte d’Ivoire · 1 projet",
+    "rows": [
+     {
+      "name": "TTR-017 · Telecom Tower Relocation",
+      "sub": "TTR-017 · K. Blanchard · Network BU",
+      "tags": [
+       "tag tag-neutral|Clos"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Abidjan"
+   }
+  ],
+  "fr|apac|1": [
+   {
+    "codes": [
+     "WSA-044"
+    ],
+    "header": "Westfield (WA) · Australie · 1 projet",
+    "rows": [
+     {
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Westfield (WA)"
+   },
+   {
+    "codes": [
+     "FTU-052"
+    ],
+    "header": "Sydney · Australie · 1 projet",
+    "rows": [
+     {
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Sydney"
+   },
+   {
+    "codes": [
+     "CER-047"
+    ],
+    "header": "Kuala Lumpur · Malaisie · 1 projet",
+    "rows": [
+     {
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Kuala Lumpur"
+   }
+  ],
+  "fr|apac|2.4": [
+   {
+    "codes": [
+     "WSA-044"
+    ],
+    "header": "Westfield (WA) · Australie · 1 projet",
+    "rows": [
+     {
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Westfield (WA)"
+   },
+   {
+    "codes": [
+     "FTU-052"
+    ],
+    "header": "Sydney · Australie · 1 projet",
+    "rows": [
+     {
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Sydney"
+   },
+   {
+    "codes": [
+     "CER-047"
+    ],
+    "header": "Kuala Lumpur · Malaisie · 1 projet",
+    "rows": [
+     {
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Kuala Lumpur"
+   }
+  ],
+  "fr|apac|6": [
+   {
+    "codes": [
+     "WSA-044"
+    ],
+    "header": "Westfield (WA) · Australie · 1 projet",
+    "rows": [
+     {
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Westfield (WA)"
+   },
+   {
+    "codes": [
+     "FTU-052"
+    ],
+    "header": "Sydney · Australie · 1 projet",
+    "rows": [
+     {
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Sydney"
+   },
+   {
+    "codes": [
+     "CER-047"
+    ],
+    "header": "Kuala Lumpur · Malaisie · 1 projet",
+    "rows": [
+     {
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Kuala Lumpur"
+   }
+  ],
+  "fr|apac|48": [
+   {
+    "codes": [
+     "WSA-044"
+    ],
+    "header": "Westfield (WA) · Australie · 1 projet",
+    "rows": [
+     {
+      "name": "#044 · Westfield Solar Array",
+      "sub": "WSA-044 · K. Blanchard · Energy BU",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Westfield (WA)"
+   },
+   {
+    "codes": [
+     "FTU-052"
+    ],
+    "header": "Sydney · Australie · 1 projet",
+    "rows": [
+     {
+      "name": "FTU-052 · Fleet Telematics Upgrade",
+      "sub": "FTU-052 · A. Naveau · Operations",
+      "tags": [
+       "tag tag-outline|Initiative"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Sydney"
+   },
+   {
+    "codes": [
+     "CER-047"
+    ],
+    "header": "Kuala Lumpur · Malaisie · 1 projet",
+    "rows": [
+     {
+      "name": "CER-047 · Campus Energy Retrofit",
+      "sub": "CER-047 · K. Blanchard · Facilities",
+      "tags": [
+       "tag tag-outline|APD"
+      ]
+     }
+    ],
+    "open": "Ouvrir le projet →",
+    "label": "Kuala Lumpur"
+   }
+  ]
+ }
+}

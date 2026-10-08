@@ -15,6 +15,20 @@
       "when": 1791439304702,
       "tag": "0001_colorful_speedball",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791456474938,
+      "tag": "0002_amazing_lester",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791479645373,
+      "tag": "0003_jittery_nextwave",
+      "breakpoints": true
     }
   ]
 }

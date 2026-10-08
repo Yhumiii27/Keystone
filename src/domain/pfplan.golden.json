@@ -1,0 +1,5664 @@
+{
+ "en": {
+  "title": "Portfolio schedule — projects in progress & pipeline",
+  "stageLabel": "Stage",
+  "segCtl": [
+   "All",
+   "In progress",
+   "Pipeline"
+  ],
+  "months": [
+   {
+    "label": "Jan",
+    "year": "2026",
+    "bl": "1px solid var(--color-neutral-700)"
+   },
+   {
+    "label": "Feb",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Mar",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Apr",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "May",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Jun",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Jul",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Aug",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Sep",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Oct",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Nov",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Dec",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Jan",
+    "year": "2027",
+    "bl": "1px solid var(--color-neutral-700)"
+   },
+   {
+    "label": "Feb",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Mar",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Apr",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "May",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Jun",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Jul",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Aug",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Sep",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Oct",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Nov",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "Dec",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   }
+  ],
+  "todayL": "37.38%",
+  "zoneEmptyText": "No project in this zone for this view",
+  "tpl": {
+   "k112": "Finish",
+   "k14": "Project",
+   "k812": "Baseline finish",
+   "k813": "Portfolio schedule",
+   "k814": "One line per project · execution in accent, pipeline (Initiative → APS → APD) in grey, hatched while the group board decides",
+   "k815": "In progress",
+   "k816": "Pipeline",
+   "k817": "Group decision pending",
+   "k818": "Execution if approved",
+   "k819": "Next decision",
+   "k820": "Group board",
+   "k94": "Status"
+  },
+  "rows": {
+   "HLT-026": {
+    "code": "HLT-026",
+    "name": "#026 · Harbor Line Terminal Expansion",
+    "pm": "R. Aubert · Port authority",
+    "status": "Fabrication & Assemblage",
+    "tagClass": "tag tag-accent",
+    "pipe": false,
+    "segs": [
+     {
+      "left": "1.53%",
+      "width": "2.71%",
+      "w": 0.6499999999999999,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "4.24%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "5.28%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "5.28%",
+      "width": "3.54%",
+      "w": 0.8500000000000001,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "8.82%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "9.86%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "9.86%",
+      "width": "4.03%",
+      "w": 0.9666666666666668,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "13.89%",
+      "width": "1.25%",
+      "w": 0.2999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "15.14%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     }
+    ],
+    "hasExec": true,
+    "exL": "15.14%",
+    "exW": "38.61%",
+    "exBg": "var(--color-accent-800)",
+    "exBorder": "0",
+    "exFill": "64%",
+    "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+    "hasBase": true,
+    "bL": "15.14%",
+    "bW": "34.86%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "14 Jan 2027",
+    "gateSub": "−27 d",
+    "gateColor": "var(--color-accent-300)"
+   },
+   "NDC-031": {
+    "code": "NDC-031",
+    "name": "#031 · Northgate Data Center Retrofit",
+    "pm": "S. Perrin · Infrastructure BU",
+    "status": "Approvisionnements",
+    "tagClass": "tag tag-accent",
+    "pipe": false,
+    "segs": [
+     {
+      "left": "12.50%",
+      "width": "3.13%",
+      "w": 0.75,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "15.63%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "16.67%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "16.67%",
+      "width": "3.54%",
+      "w": 0.8499999999999996,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "20.21%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "21.25%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "21.25%",
+      "width": "3.75%",
+      "w": 0.9000000000000004,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "25.00%",
+      "width": "1.25%",
+      "w": 0.2999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "26.25%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     }
+    ],
+    "hasExec": true,
+    "exL": "26.25%",
+    "exW": "36.81%",
+    "exBg": "var(--color-accent-800)",
+    "exBorder": "0",
+    "exFill": "51%",
+    "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+    "hasBase": true,
+    "bL": "26.25%",
+    "bW": "36.25%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "5 Apr 2027",
+    "gateSub": "−4 d",
+    "gateColor": "var(--color-accent-300)"
+   },
+   "RCF-019": {
+    "code": "RCF-019",
+    "name": "#019 · Clinique Pasteur Lyon Fit-out",
+    "pm": "C. Moreau · Health trust",
+    "status": "Chantier",
+    "tagClass": "tag tag-accent",
+    "pipe": false,
+    "segs": [
+     {
+      "left": "4.72%",
+      "width": "2.71%",
+      "w": 0.6499999999999999,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "7.43%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "8.47%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "8.47%",
+      "width": "2.85%",
+      "w": 0.6833333333333336,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "11.32%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "12.36%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "12.36%",
+      "width": "3.47%",
+      "w": 0.833333333333333,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "15.83%",
+      "width": "1.25%",
+      "w": 0.2999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "17.08%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     }
+    ],
+    "hasExec": true,
+    "exL": "17.08%",
+    "exW": "32.78%",
+    "exBg": "var(--color-accent-800)",
+    "exBorder": "0",
+    "exFill": "82%",
+    "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+    "hasBase": true,
+    "bL": "17.08%",
+    "bW": "28.75%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "27 Dec 2026",
+    "gateSub": "−29 d",
+    "gateColor": "var(--color-accent-300)"
+   },
+   "ERP-202": {
+    "code": "ERP-202",
+    "name": "#032 · ERP Migration — Phase 2",
+    "pm": "D. Imbert · Finance",
+    "status": "Etudes",
+    "tagClass": "tag tag-accent",
+    "pipe": false,
+    "segs": [
+     {
+      "left": "20.83%",
+      "width": "3.13%",
+      "w": 0.75,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "23.96%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "25.00%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "25.00%",
+      "width": "3.54%",
+      "w": 0.8499999999999996,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "28.54%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "29.58%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "29.58%",
+      "width": "3.75%",
+      "w": 0.8999999999999995,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "33.33%",
+      "width": "1.25%",
+      "w": 0.2999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "34.58%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     }
+    ],
+    "hasExec": true,
+    "exL": "34.58%",
+    "exW": "23.75%",
+    "exBg": "var(--color-accent-800)",
+    "exBorder": "0",
+    "exFill": "45%",
+    "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+    "hasBase": false,
+    "bL": "34.58%",
+    "bW": "23.75%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "1 Mar 2027",
+    "gateSub": "+2 d",
+    "gateColor": "var(--color-neutral-400)"
+   },
+   "MSR-012": {
+    "code": "MSR-012",
+    "name": "#012 · Marseille Metro Signage Rollout",
+    "pm": "A. Naveau · Transit BU",
+    "status": "Mise Service & SAT",
+    "tagClass": "tag tag-accent",
+    "pipe": false,
+    "segs": [
+     {
+      "left": "8.33%",
+      "width": "3.13%",
+      "w": 0.75,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "11.46%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "12.50%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "12.50%",
+      "width": "3.54%",
+      "w": 0.8499999999999996,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "16.04%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "17.08%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "17.08%",
+      "width": "3.75%",
+      "w": 0.9000000000000004,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "20.83%",
+      "width": "1.25%",
+      "w": 0.2999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "22.08%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     }
+    ],
+    "hasExec": true,
+    "exL": "22.08%",
+    "exW": "20.83%",
+    "exBg": "var(--color-accent-800)",
+    "exBorder": "0",
+    "exFill": "91%",
+    "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+    "hasBase": true,
+    "bL": "22.08%",
+    "bW": "19.58%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "9 Nov 2026",
+    "gateSub": "−9 d",
+    "gateColor": "var(--color-accent-300)"
+   },
+   "PRS-038": {
+    "code": "PRS-038",
+    "name": "PRS-038 · Portside Rail Spur",
+    "pm": "R. Aubert · Port authority",
+    "status": "Approvisionnements",
+    "tagClass": "tag tag-accent",
+    "pipe": false,
+    "segs": [
+     {
+      "left": "12.50%",
+      "width": "3.13%",
+      "w": 0.75,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "15.63%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "16.67%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "16.67%",
+      "width": "3.54%",
+      "w": 0.8499999999999996,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "20.21%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "21.25%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "21.25%",
+      "width": "3.75%",
+      "w": 0.9000000000000004,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "25.00%",
+      "width": "1.25%",
+      "w": 0.2999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "26.25%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     }
+    ],
+    "hasExec": true,
+    "exL": "26.25%",
+    "exW": "11.13%",
+    "exBg": "var(--color-accent-800)",
+    "exBorder": "0",
+    "exFill": "11%",
+    "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+    "hasBase": false,
+    "bL": "26.25%",
+    "bW": "11.13%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "finish not planned",
+    "gateSub": "",
+    "gateColor": "var(--color-neutral-400)"
+   },
+   "ALP-021": {
+    "code": "ALP-021",
+    "name": "ALP-021 · Airfield Lighting Phase 1",
+    "pm": "C. Moreau · Airport operator",
+    "status": "Garantie",
+    "tagClass": "tag tag-outline",
+    "pipe": false,
+    "segs": [],
+    "hasExec": true,
+    "exL": "0.00%",
+    "exW": "37.50%",
+    "exBg": "var(--color-accent-800)",
+    "exBorder": "0",
+    "exFill": "100%",
+    "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+    "hasBase": false,
+    "bL": "0.00%",
+    "bW": "37.50%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "Sep 2026",
+    "gateSub": "+4 d",
+    "gateColor": "var(--color-neutral-400)"
+   },
+   "WSA-044": {
+    "code": "WSA-044",
+    "name": "#044 · Westfield Solar Array",
+    "pm": "K. Blanchard · Energy BU",
+    "status": "APD",
+    "tagClass": "tag tag-outline",
+    "pipe": true,
+    "segs": [
+     {
+      "left": "12.50%",
+      "width": "3.33%",
+      "w": 0.7999999999999998,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "15.83%",
+      "width": "3.33%",
+      "w": 0.7999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "19.17%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "19.17%",
+      "width": "7.50%",
+      "w": 1.8000000000000007,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "26.67%",
+      "width": "3.33%",
+      "w": 0.7999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "30.00%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "30.00%",
+      "width": "10.00%",
+      "w": 2.3999999999999995,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "40.00%",
+      "width": "3.33%",
+      "w": 0.8000000000000007,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Group board · Planned",
+      "glow": "none"
+     },
+     {
+      "left": "43.33%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Group board · Planned"
+     }
+    ],
+    "hasExec": true,
+    "exL": "43.33%",
+    "exW": "31.67%",
+    "exBg": "transparent",
+    "exBorder": "1px dashed var(--color-accent-700)",
+    "exFill": "0%",
+    "exEdge": "none",
+    "hasBase": false,
+    "bL": "43.33%",
+    "bW": "31.67%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "Group board → Execution",
+    "gateSub": "12 Nov",
+    "gateColor": "var(--color-neutral-400)"
+   },
+   "EWA-051": {
+    "code": "EWA-051",
+    "name": "EWA-051 · Eastbank Warehouse Automation",
+    "pm": "S. Perrin · Logistics BU",
+    "status": "Initiative",
+    "tagClass": "tag tag-outline",
+    "pipe": true,
+    "segs": [
+     {
+      "left": "32.50%",
+      "width": "3.75%",
+      "w": 0.8999999999999995,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "INI",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "36.25%",
+      "width": "6.25%",
+      "w": 1.5,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-accent)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Group board · Decision pending",
+      "glow": "0 0 10px color-mix(in srgb, var(--color-accent) 45%, transparent)"
+     },
+     {
+      "left": "42.50%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent)",
+      "dBorder": "transparent",
+      "glow": "0 0 10px color-mix(in srgb, var(--color-accent) 60%, transparent)",
+      "title": "Group board · Decision pending"
+     },
+     {
+      "left": "42.50%",
+      "width": "5.00%",
+      "w": 1.200000000000001,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "47.50%",
+      "width": "2.50%",
+      "w": 0.5999999999999996,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Group board · Planned",
+      "glow": "none"
+     },
+     {
+      "left": "50.00%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Group board · Planned"
+     },
+     {
+      "left": "50.00%",
+      "width": "3.33%",
+      "w": 0.8000000000000007,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "53.33%",
+      "width": "1.67%",
+      "w": 0.3999999999999986,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Group board · Planned",
+      "glow": "none"
+     },
+     {
+      "left": "55.00%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Group board · Planned"
+     }
+    ],
+    "hasExec": true,
+    "exL": "55.00%",
+    "exW": "40.83%",
+    "exBg": "transparent",
+    "exBorder": "1px dashed var(--color-accent-700)",
+    "exFill": "0%",
+    "exEdge": "none",
+    "hasBase": false,
+    "bL": "55.00%",
+    "bW": "40.83%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "Group board → APS",
+    "gateSub": "Decision pending · 8 d",
+    "gateColor": "var(--color-accent-300)"
+   },
+   "FTU-052": {
+    "code": "FTU-052",
+    "name": "FTU-052 · Fleet Telematics Upgrade",
+    "pm": "A. Naveau · Operations",
+    "status": "Initiative",
+    "tagClass": "tag tag-outline",
+    "pipe": true,
+    "segs": [
+     {
+      "left": "35.42%",
+      "width": "3.33%",
+      "w": 0.8000000000000007,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "INI",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "38.75%",
+      "width": "2.92%",
+      "w": 0.6999999999999993,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Group board · Planned",
+      "glow": "none"
+     },
+     {
+      "left": "41.67%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Group board · Planned"
+     },
+     {
+      "left": "41.67%",
+      "width": "4.17%",
+      "w": 1,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "45.83%",
+      "width": "2.08%",
+      "w": 0.5,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Group board · Planned",
+      "glow": "none"
+     },
+     {
+      "left": "47.92%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Group board · Planned"
+     },
+     {
+      "left": "47.92%",
+      "width": "3.33%",
+      "w": 0.8000000000000007,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "51.25%",
+      "width": "2.08%",
+      "w": 0.5,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Group board · Planned",
+      "glow": "none"
+     },
+     {
+      "left": "53.33%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Group board · Planned"
+     }
+    ],
+    "hasExec": true,
+    "exL": "53.33%",
+    "exW": "21.67%",
+    "exBg": "transparent",
+    "exBorder": "1px dashed var(--color-accent-700)",
+    "exFill": "0%",
+    "exEdge": "none",
+    "hasBase": false,
+    "bL": "53.33%",
+    "bW": "21.67%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "Group board → APS",
+    "gateSub": "1 Nov",
+    "gateColor": "var(--color-neutral-400)"
+   },
+   "RBR-048": {
+    "code": "RBR-048",
+    "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+    "pm": "L. Fontaine · Highways agency",
+    "status": "APS",
+    "tagClass": "tag tag-outline",
+    "pipe": true,
+    "segs": [
+     {
+      "left": "20.83%",
+      "width": "4.17%",
+      "w": 1,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "INI",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "25.00%",
+      "width": "5.83%",
+      "w": 1.4000000000000004,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "30.83%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "30.83%",
+      "width": "9.17%",
+      "w": 2.1999999999999993,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "40.00%",
+      "width": "5.00%",
+      "w": 1.200000000000001,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Group board · Planned",
+      "glow": "none"
+     },
+     {
+      "left": "45.00%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Group board · Planned"
+     },
+     {
+      "left": "45.00%",
+      "width": "10.00%",
+      "w": 2.3999999999999986,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "55.00%",
+      "width": "3.33%",
+      "w": 0.8000000000000007,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Group board · Planned",
+      "glow": "none"
+     },
+     {
+      "left": "58.33%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Group board · Planned"
+     }
+    ],
+    "hasExec": true,
+    "exL": "58.33%",
+    "exW": "41.67%",
+    "exBg": "transparent",
+    "exBorder": "1px dashed var(--color-accent-700)",
+    "exFill": "0%",
+    "exEdge": "none",
+    "hasBase": false,
+    "bL": "58.33%",
+    "bW": "41.67%",
+    "clipped": true,
+    "clipText": "→ Aug 2028",
+    "gate": "Group board → APD",
+    "gateSub": "23 Nov",
+    "gateColor": "var(--color-neutral-400)"
+   },
+   "CER-047": {
+    "code": "CER-047",
+    "name": "CER-047 · Campus Energy Retrofit",
+    "pm": "K. Blanchard · Facilities",
+    "status": "APD",
+    "tagClass": "tag tag-outline",
+    "pipe": true,
+    "segs": [
+     {
+      "left": "16.67%",
+      "width": "3.33%",
+      "w": 0.7999999999999998,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "20.00%",
+      "width": "3.33%",
+      "w": 0.7999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "23.33%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "23.33%",
+      "width": "6.67%",
+      "w": 1.6000000000000005,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "30.00%",
+      "width": "3.75%",
+      "w": 0.8999999999999995,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Group board · Approved",
+      "glow": "none"
+     },
+     {
+      "left": "33.75%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Group board · Approved"
+     },
+     {
+      "left": "33.75%",
+      "width": "7.08%",
+      "w": 1.700000000000001,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "40.83%",
+      "width": "2.92%",
+      "w": 0.6999999999999993,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Group board · Planned",
+      "glow": "none"
+     },
+     {
+      "left": "43.75%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Group board · Planned"
+     }
+    ],
+    "hasExec": true,
+    "exL": "43.75%",
+    "exW": "47.92%",
+    "exBg": "transparent",
+    "exBorder": "1px dashed var(--color-accent-700)",
+    "exFill": "0%",
+    "exEdge": "none",
+    "hasBase": false,
+    "bL": "43.75%",
+    "bW": "47.92%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "Group board → Execution",
+    "gateSub": "15 Nov",
+    "gateColor": "var(--color-neutral-400)"
+   }
+  },
+  "zones": {
+   "null": {
+    "crumb": "Portfolio · FY2026",
+    "zoneEmpty": false,
+    "kpis": [
+     {
+      "label": "Projects in progress",
+      "value": 7,
+      "sub": "€14.35M",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projects in pipeline",
+      "value": 5,
+      "sub": "€13.08M",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Group decisions pending",
+      "value": 1,
+      "sub": "EWA-051",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Average board wait",
+      "value": "28 d",
+      "sub": "target 3 weeks",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "exec",
+      "label": "In progress",
+      "count": 7,
+      "codes": [
+       "HLT-026",
+       "NDC-031",
+       "RCF-019",
+       "ERP-202",
+       "MSR-012",
+       "PRS-038",
+       "ALP-021"
+      ]
+     },
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 5,
+      "codes": [
+       "WSA-044",
+       "EWA-051",
+       "FTU-052",
+       "RBR-048",
+       "CER-047"
+      ]
+     }
+    ],
+    "filters": {
+     "all": [
+      "exec",
+      "pipe"
+     ],
+     "exec": [
+      "exec"
+     ],
+     "pipe": [
+      "pipe"
+     ]
+    }
+   },
+   "euna": {
+    "crumb": "Portfolio · FY2026 · Europe & North America",
+    "zoneEmpty": false,
+    "kpis": [
+     {
+      "label": "Projects in progress",
+      "value": 6,
+      "sub": "€12.25M",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projects in pipeline",
+      "value": 1,
+      "sub": "€5.10M",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Group decisions pending",
+      "value": 0,
+      "sub": "—",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Average board wait",
+      "value": "28 d",
+      "sub": "target 3 weeks",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "exec",
+      "label": "In progress",
+      "count": 6,
+      "codes": [
+       "HLT-026",
+       "RCF-019",
+       "ERP-202",
+       "MSR-012",
+       "PRS-038",
+       "ALP-021"
+      ]
+     },
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 1,
+      "codes": [
+       "RBR-048"
+      ]
+     }
+    ],
+    "filters": {
+     "all": [
+      "exec",
+      "pipe"
+     ],
+     "exec": [
+      "exec"
+     ],
+     "pipe": [
+      "pipe"
+     ]
+    }
+   },
+   "afr": {
+    "crumb": "Portfolio · FY2026 · Africa",
+    "zoneEmpty": false,
+    "kpis": [
+     {
+      "label": "Projects in progress",
+      "value": 1,
+      "sub": "€2.10M",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projects in pipeline",
+      "value": 1,
+      "sub": "€2.20M",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Group decisions pending",
+      "value": 1,
+      "sub": "EWA-051",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Average board wait",
+      "value": "28 d",
+      "sub": "target 3 weeks",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "exec",
+      "label": "In progress",
+      "count": 1,
+      "codes": [
+       "NDC-031"
+      ]
+     },
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 1,
+      "codes": [
+       "EWA-051"
+      ]
+     }
+    ],
+    "filters": {
+     "all": [
+      "exec",
+      "pipe"
+     ],
+     "exec": [
+      "exec"
+     ],
+     "pipe": [
+      "pipe"
+     ]
+    }
+   },
+   "apac": {
+    "crumb": "Portfolio · FY2026 · Asia Pacific",
+    "zoneEmpty": false,
+    "kpis": [
+     {
+      "label": "Projects in progress",
+      "value": 0,
+      "sub": "€0k",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projects in pipeline",
+      "value": 3,
+      "sub": "€5.78M",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Group decisions pending",
+      "value": 0,
+      "sub": "—",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Average board wait",
+      "value": "28 d",
+      "sub": "target 3 weeks",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 3,
+      "codes": [
+       "WSA-044",
+       "FTU-052",
+       "CER-047"
+      ]
+     }
+    ],
+    "filters": {
+     "all": [
+      "pipe"
+     ],
+     "exec": [],
+     "pipe": [
+      "pipe"
+     ]
+    }
+   }
+  }
+ },
+ "fr": {
+  "title": "Planning du portefeuille — projets en cours & pipe",
+  "stageLabel": "Étape",
+  "segCtl": [
+   "Tous",
+   "En cours",
+   "Pipeline"
+  ],
+  "months": [
+   {
+    "label": "janv.",
+    "year": "2026",
+    "bl": "1px solid var(--color-neutral-700)"
+   },
+   {
+    "label": "févr.",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "mars",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "avr.",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "mai",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "juin",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "juil.",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "août",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "sept.",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "oct.",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "nov.",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "déc.",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "janv.",
+    "year": "2027",
+    "bl": "1px solid var(--color-neutral-700)"
+   },
+   {
+    "label": "févr.",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "mars",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "avr.",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "mai",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "juin",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "juil.",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "août",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "sept.",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "oct.",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "nov.",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   },
+   {
+    "label": "déc.",
+    "year": "",
+    "bl": "1px solid var(--color-neutral-900)"
+   }
+  ],
+  "todayL": "37.38%",
+  "zoneEmptyText": "Aucun projet dans cette zone pour cette vue",
+  "tpl": {
+   "k112": "Fin",
+   "k14": "Projet",
+   "k812": "Fin de référence",
+   "k813": "Planning du portefeuille",
+   "k814": "Une ligne par projet · exécution en couleur, pipe (Initiative → APS → APD) en gris, hachuré pendant la décision du groupe",
+   "k815": "En cours",
+   "k816": "Pipeline",
+   "k817": "Décision groupe en attente",
+   "k818": "Exécution si validé",
+   "k819": "Prochaine décision",
+   "k820": "Board groupe",
+   "k94": "Statut"
+  },
+  "rows": {
+   "HLT-026": {
+    "code": "HLT-026",
+    "name": "#026 · Extension du terminal Harbor Line",
+    "pm": "R. Aubert · Autorité portuaire",
+    "status": "Fabrication & Assemblage",
+    "tagClass": "tag tag-accent",
+    "pipe": false,
+    "segs": [
+     {
+      "left": "1.53%",
+      "width": "2.71%",
+      "w": 0.6499999999999999,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "4.24%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "5.28%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "5.28%",
+      "width": "3.54%",
+      "w": 0.8500000000000001,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "8.82%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "9.86%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "9.86%",
+      "width": "4.03%",
+      "w": 0.9666666666666668,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "13.89%",
+      "width": "1.25%",
+      "w": 0.2999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "15.14%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     }
+    ],
+    "hasExec": true,
+    "exL": "15.14%",
+    "exW": "38.61%",
+    "exBg": "var(--color-accent-800)",
+    "exBorder": "0",
+    "exFill": "64%",
+    "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+    "hasBase": true,
+    "bL": "15.14%",
+    "bW": "34.86%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "14 janv. 2027",
+    "gateSub": "−27 j",
+    "gateColor": "var(--color-accent-300)"
+   },
+   "NDC-031": {
+    "code": "NDC-031",
+    "name": "#031 · Rénovation du data center Northgate",
+    "pm": "S. Perrin · Infrastructure BU",
+    "status": "Approvisionnements",
+    "tagClass": "tag tag-accent",
+    "pipe": false,
+    "segs": [
+     {
+      "left": "12.50%",
+      "width": "3.13%",
+      "w": 0.75,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "15.63%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "16.67%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "16.67%",
+      "width": "3.54%",
+      "w": 0.8499999999999996,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "20.21%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "21.25%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "21.25%",
+      "width": "3.75%",
+      "w": 0.9000000000000004,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "25.00%",
+      "width": "1.25%",
+      "w": 0.2999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "26.25%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     }
+    ],
+    "hasExec": true,
+    "exL": "26.25%",
+    "exW": "36.81%",
+    "exBg": "var(--color-accent-800)",
+    "exBorder": "0",
+    "exFill": "51%",
+    "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+    "hasBase": true,
+    "bL": "26.25%",
+    "bW": "36.25%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "5 avr. 2027",
+    "gateSub": "−4 j",
+    "gateColor": "var(--color-accent-300)"
+   },
+   "RCF-019": {
+    "code": "RCF-019",
+    "name": "#019 · Aménagement de la Clinique Pasteur Lyon",
+    "pm": "C. Moreau · Health trust",
+    "status": "Chantier",
+    "tagClass": "tag tag-accent",
+    "pipe": false,
+    "segs": [
+     {
+      "left": "4.72%",
+      "width": "2.71%",
+      "w": 0.6499999999999999,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "7.43%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "8.47%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "8.47%",
+      "width": "2.85%",
+      "w": 0.6833333333333336,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "11.32%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "12.36%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "12.36%",
+      "width": "3.47%",
+      "w": 0.833333333333333,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "15.83%",
+      "width": "1.25%",
+      "w": 0.2999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "17.08%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     }
+    ],
+    "hasExec": true,
+    "exL": "17.08%",
+    "exW": "32.78%",
+    "exBg": "var(--color-accent-800)",
+    "exBorder": "0",
+    "exFill": "82%",
+    "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+    "hasBase": true,
+    "bL": "17.08%",
+    "bW": "28.75%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "27 déc. 2026",
+    "gateSub": "−29 j",
+    "gateColor": "var(--color-accent-300)"
+   },
+   "ERP-202": {
+    "code": "ERP-202",
+    "name": "#032 · ERP Migration — Phase 2",
+    "pm": "D. Imbert · Finance",
+    "status": "Études",
+    "tagClass": "tag tag-accent",
+    "pipe": false,
+    "segs": [
+     {
+      "left": "20.83%",
+      "width": "3.13%",
+      "w": 0.75,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "23.96%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "25.00%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "25.00%",
+      "width": "3.54%",
+      "w": 0.8499999999999996,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "28.54%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "29.58%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "29.58%",
+      "width": "3.75%",
+      "w": 0.8999999999999995,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "33.33%",
+      "width": "1.25%",
+      "w": 0.2999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "34.58%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     }
+    ],
+    "hasExec": true,
+    "exL": "34.58%",
+    "exW": "23.75%",
+    "exBg": "var(--color-accent-800)",
+    "exBorder": "0",
+    "exFill": "45%",
+    "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+    "hasBase": false,
+    "bL": "34.58%",
+    "bW": "23.75%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "1 mars 2027",
+    "gateSub": "+2 j",
+    "gateColor": "var(--color-neutral-400)"
+   },
+   "MSR-012": {
+    "code": "MSR-012",
+    "name": "#012 · Déploiement signalétique métro de Marseille",
+    "pm": "A. Naveau · Transit BU",
+    "status": "Mise en service & SAT",
+    "tagClass": "tag tag-accent",
+    "pipe": false,
+    "segs": [
+     {
+      "left": "8.33%",
+      "width": "3.13%",
+      "w": 0.75,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "11.46%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "12.50%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "12.50%",
+      "width": "3.54%",
+      "w": 0.8499999999999996,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "16.04%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "17.08%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "17.08%",
+      "width": "3.75%",
+      "w": 0.9000000000000004,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "20.83%",
+      "width": "1.25%",
+      "w": 0.2999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "22.08%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     }
+    ],
+    "hasExec": true,
+    "exL": "22.08%",
+    "exW": "20.83%",
+    "exBg": "var(--color-accent-800)",
+    "exBorder": "0",
+    "exFill": "91%",
+    "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+    "hasBase": true,
+    "bL": "22.08%",
+    "bW": "19.58%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "9 nov. 2026",
+    "gateSub": "−9 j",
+    "gateColor": "var(--color-accent-300)"
+   },
+   "PRS-038": {
+    "code": "PRS-038",
+    "name": "PRS-038 · Embranchement ferroviaire portuaire",
+    "pm": "R. Aubert · Autorité portuaire",
+    "status": "Approvisionnements",
+    "tagClass": "tag tag-accent",
+    "pipe": false,
+    "segs": [
+     {
+      "left": "12.50%",
+      "width": "3.13%",
+      "w": 0.75,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "15.63%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "16.67%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "16.67%",
+      "width": "3.54%",
+      "w": 0.8499999999999996,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "20.21%",
+      "width": "1.04%",
+      "w": 0.25,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "21.25%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "21.25%",
+      "width": "3.75%",
+      "w": 0.9000000000000004,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "25.00%",
+      "width": "1.25%",
+      "w": 0.2999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "26.25%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     }
+    ],
+    "hasExec": true,
+    "exL": "26.25%",
+    "exW": "11.13%",
+    "exBg": "var(--color-accent-800)",
+    "exBorder": "0",
+    "exFill": "11%",
+    "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+    "hasBase": false,
+    "bL": "26.25%",
+    "bW": "11.13%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "fin non planifiée",
+    "gateSub": "",
+    "gateColor": "var(--color-neutral-400)"
+   },
+   "ALP-021": {
+    "code": "ALP-021",
+    "name": "ALP-021 · Balisage aéroportuaire — Phase 1",
+    "pm": "C. Moreau · Airport operator",
+    "status": "Garantie",
+    "tagClass": "tag tag-outline",
+    "pipe": false,
+    "segs": [],
+    "hasExec": true,
+    "exL": "0.00%",
+    "exW": "37.50%",
+    "exBg": "var(--color-accent-800)",
+    "exBorder": "0",
+    "exFill": "100%",
+    "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+    "hasBase": false,
+    "bL": "0.00%",
+    "bW": "37.50%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "sept. 2026",
+    "gateSub": "+4 j",
+    "gateColor": "var(--color-neutral-400)"
+   },
+   "WSA-044": {
+    "code": "WSA-044",
+    "name": "#044 · Centrale solaire de Westfield",
+    "pm": "K. Blanchard · Energy BU",
+    "status": "APD",
+    "tagClass": "tag tag-outline",
+    "pipe": true,
+    "segs": [
+     {
+      "left": "12.50%",
+      "width": "3.33%",
+      "w": 0.7999999999999998,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "15.83%",
+      "width": "3.33%",
+      "w": 0.7999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "19.17%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "19.17%",
+      "width": "7.50%",
+      "w": 1.8000000000000007,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "26.67%",
+      "width": "3.33%",
+      "w": 0.7999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "30.00%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "30.00%",
+      "width": "10.00%",
+      "w": 2.3999999999999995,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "40.00%",
+      "width": "3.33%",
+      "w": 0.8000000000000007,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Board groupe · Planifié",
+      "glow": "none"
+     },
+     {
+      "left": "43.33%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Board groupe · Planifié"
+     }
+    ],
+    "hasExec": true,
+    "exL": "43.33%",
+    "exW": "31.67%",
+    "exBg": "transparent",
+    "exBorder": "1px dashed var(--color-accent-700)",
+    "exFill": "0%",
+    "exEdge": "none",
+    "hasBase": false,
+    "bL": "43.33%",
+    "bW": "31.67%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "Board groupe → Exécution",
+    "gateSub": "12 nov.",
+    "gateColor": "var(--color-neutral-400)"
+   },
+   "EWA-051": {
+    "code": "EWA-051",
+    "name": "EWA-051 · Automatisation de l’entrepôt Eastbank",
+    "pm": "S. Perrin · Logistics BU",
+    "status": "Initiative",
+    "tagClass": "tag tag-outline",
+    "pipe": true,
+    "segs": [
+     {
+      "left": "32.50%",
+      "width": "3.75%",
+      "w": 0.8999999999999995,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "INI",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "36.25%",
+      "width": "6.25%",
+      "w": 1.5,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-accent)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Board groupe · Décision en attente",
+      "glow": "0 0 10px color-mix(in srgb, var(--color-accent) 45%, transparent)"
+     },
+     {
+      "left": "42.50%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent)",
+      "dBorder": "transparent",
+      "glow": "0 0 10px color-mix(in srgb, var(--color-accent) 60%, transparent)",
+      "title": "Board groupe · Décision en attente"
+     },
+     {
+      "left": "42.50%",
+      "width": "5.00%",
+      "w": 1.200000000000001,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "47.50%",
+      "width": "2.50%",
+      "w": 0.5999999999999996,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Board groupe · Planifié",
+      "glow": "none"
+     },
+     {
+      "left": "50.00%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Board groupe · Planifié"
+     },
+     {
+      "left": "50.00%",
+      "width": "3.33%",
+      "w": 0.8000000000000007,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "53.33%",
+      "width": "1.67%",
+      "w": 0.3999999999999986,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Board groupe · Planifié",
+      "glow": "none"
+     },
+     {
+      "left": "55.00%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Board groupe · Planifié"
+     }
+    ],
+    "hasExec": true,
+    "exL": "55.00%",
+    "exW": "40.83%",
+    "exBg": "transparent",
+    "exBorder": "1px dashed var(--color-accent-700)",
+    "exFill": "0%",
+    "exEdge": "none",
+    "hasBase": false,
+    "bL": "55.00%",
+    "bW": "40.83%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "Board groupe → APS",
+    "gateSub": "Décision en attente · 8 j",
+    "gateColor": "var(--color-accent-300)"
+   },
+   "FTU-052": {
+    "code": "FTU-052",
+    "name": "FTU-052 · Modernisation télématique de flotte",
+    "pm": "A. Naveau · Operations",
+    "status": "Initiative",
+    "tagClass": "tag tag-outline",
+    "pipe": true,
+    "segs": [
+     {
+      "left": "35.42%",
+      "width": "3.33%",
+      "w": 0.8000000000000007,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "INI",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "38.75%",
+      "width": "2.92%",
+      "w": 0.6999999999999993,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Board groupe · Planifié",
+      "glow": "none"
+     },
+     {
+      "left": "41.67%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Board groupe · Planifié"
+     },
+     {
+      "left": "41.67%",
+      "width": "4.17%",
+      "w": 1,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "45.83%",
+      "width": "2.08%",
+      "w": 0.5,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Board groupe · Planifié",
+      "glow": "none"
+     },
+     {
+      "left": "47.92%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Board groupe · Planifié"
+     },
+     {
+      "left": "47.92%",
+      "width": "3.33%",
+      "w": 0.8000000000000007,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "51.25%",
+      "width": "2.08%",
+      "w": 0.5,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Board groupe · Planifié",
+      "glow": "none"
+     },
+     {
+      "left": "53.33%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Board groupe · Planifié"
+     }
+    ],
+    "hasExec": true,
+    "exL": "53.33%",
+    "exW": "21.67%",
+    "exBg": "transparent",
+    "exBorder": "1px dashed var(--color-accent-700)",
+    "exFill": "0%",
+    "exEdge": "none",
+    "hasBase": false,
+    "bL": "53.33%",
+    "bW": "21.67%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "Board groupe → APS",
+    "gateSub": "1 nov.",
+    "gateColor": "var(--color-neutral-400)"
+   },
+   "RBR-048": {
+    "code": "RBR-048",
+    "name": "RBR-048 · Réhabilitation du pont de Ridgeway",
+    "pm": "L. Fontaine · Highways agency",
+    "status": "APS",
+    "tagClass": "tag tag-outline",
+    "pipe": true,
+    "segs": [
+     {
+      "left": "20.83%",
+      "width": "4.17%",
+      "w": 1,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "INI",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "25.00%",
+      "width": "5.83%",
+      "w": 1.4000000000000004,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "30.83%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "30.83%",
+      "width": "9.17%",
+      "w": 2.1999999999999993,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "40.00%",
+      "width": "5.00%",
+      "w": 1.200000000000001,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Board groupe · Planifié",
+      "glow": "none"
+     },
+     {
+      "left": "45.00%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Board groupe · Planifié"
+     },
+     {
+      "left": "45.00%",
+      "width": "10.00%",
+      "w": 2.3999999999999986,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "55.00%",
+      "width": "3.33%",
+      "w": 0.8000000000000007,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Board groupe · Planifié",
+      "glow": "none"
+     },
+     {
+      "left": "58.33%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Board groupe · Planifié"
+     }
+    ],
+    "hasExec": true,
+    "exL": "58.33%",
+    "exW": "41.67%",
+    "exBg": "transparent",
+    "exBorder": "1px dashed var(--color-accent-700)",
+    "exFill": "0%",
+    "exEdge": "none",
+    "hasBase": false,
+    "bL": "58.33%",
+    "bW": "41.67%",
+    "clipped": true,
+    "clipText": "→ août 2028",
+    "gate": "Board groupe → APD",
+    "gateSub": "23 nov.",
+    "gateColor": "var(--color-neutral-400)"
+   },
+   "CER-047": {
+    "code": "CER-047",
+    "name": "CER-047 · Rénovation énergétique du campus",
+    "pm": "K. Blanchard · Facilities",
+    "status": "APD",
+    "tagClass": "tag tag-outline",
+    "pipe": true,
+    "segs": [
+     {
+      "left": "16.67%",
+      "width": "3.33%",
+      "w": 0.7999999999999998,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Initiative",
+      "glow": "none"
+     },
+     {
+      "left": "20.00%",
+      "width": "3.33%",
+      "w": 0.7999999999999998,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "23.33%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "23.33%",
+      "width": "6.67%",
+      "w": 1.6000000000000005,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-600)",
+      "border": "0",
+      "label": "APS",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "APS",
+      "glow": "none"
+     },
+     {
+      "left": "30.00%",
+      "width": "3.75%",
+      "w": 0.8999999999999995,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-200)",
+      "title": "Board groupe · Approuvé",
+      "glow": "none"
+     },
+     {
+      "left": "33.75%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "var(--color-accent-300)",
+      "dBorder": "transparent",
+      "glow": "none",
+      "title": "Board groupe · Approuvé"
+     },
+     {
+      "left": "33.75%",
+      "width": "7.08%",
+      "w": 1.700000000000001,
+      "top": "14px",
+      "height": "14px",
+      "radius": "4px",
+      "bg": "var(--color-neutral-700)",
+      "border": "0",
+      "label": "APD",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "APD",
+      "glow": "none"
+     },
+     {
+      "left": "40.83%",
+      "width": "2.92%",
+      "w": 0.6999999999999993,
+      "top": "15px",
+      "height": "12px",
+      "radius": "2px",
+      "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+      "border": "1px dashed var(--color-neutral-600)",
+      "label": "",
+      "labelColor": "var(--color-neutral-300)",
+      "title": "Board groupe · Planifié",
+      "glow": "none"
+     },
+     {
+      "left": "43.75%",
+      "width": "0",
+      "top": "15px",
+      "height": "0",
+      "diamond": true,
+      "dBg": "transparent",
+      "dBorder": "var(--color-neutral-500)",
+      "glow": "none",
+      "title": "Board groupe · Planifié"
+     }
+    ],
+    "hasExec": true,
+    "exL": "43.75%",
+    "exW": "47.92%",
+    "exBg": "transparent",
+    "exBorder": "1px dashed var(--color-accent-700)",
+    "exFill": "0%",
+    "exEdge": "none",
+    "hasBase": false,
+    "bL": "43.75%",
+    "bW": "47.92%",
+    "clipped": false,
+    "clipText": "",
+    "gate": "Board groupe → Exécution",
+    "gateSub": "15 nov.",
+    "gateColor": "var(--color-neutral-400)"
+   }
+  },
+  "zones": {
+   "null": {
+    "crumb": "Portefeuille · exercice 2026",
+    "zoneEmpty": false,
+    "kpis": [
+     {
+      "label": "Projets en cours",
+      "value": 7,
+      "sub": "14,35 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projets dans le pipe",
+      "value": 5,
+      "sub": "13,08 M€",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Décisions groupe en attente",
+      "value": 1,
+      "sub": "EWA-051",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Attente moyenne du board",
+      "value": "28 j",
+      "sub": "cible 3 semaines",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "exec",
+      "label": "En cours",
+      "count": 7,
+      "codes": [
+       "HLT-026",
+       "NDC-031",
+       "RCF-019",
+       "ERP-202",
+       "MSR-012",
+       "PRS-038",
+       "ALP-021"
+      ]
+     },
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 5,
+      "codes": [
+       "WSA-044",
+       "EWA-051",
+       "FTU-052",
+       "RBR-048",
+       "CER-047"
+      ]
+     }
+    ],
+    "filters": {
+     "all": [
+      "exec",
+      "pipe"
+     ],
+     "exec": [
+      "exec"
+     ],
+     "pipe": [
+      "pipe"
+     ]
+    }
+   },
+   "euna": {
+    "crumb": "Portefeuille · Exercice 2026 · Europe & Amérique du Nord",
+    "zoneEmpty": false,
+    "kpis": [
+     {
+      "label": "Projets en cours",
+      "value": 6,
+      "sub": "12,25 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projets dans le pipe",
+      "value": 1,
+      "sub": "5,10 M€",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Décisions groupe en attente",
+      "value": 0,
+      "sub": "—",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Attente moyenne du board",
+      "value": "28 j",
+      "sub": "cible 3 semaines",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "exec",
+      "label": "En cours",
+      "count": 6,
+      "codes": [
+       "HLT-026",
+       "RCF-019",
+       "ERP-202",
+       "MSR-012",
+       "PRS-038",
+       "ALP-021"
+      ]
+     },
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 1,
+      "codes": [
+       "RBR-048"
+      ]
+     }
+    ],
+    "filters": {
+     "all": [
+      "exec",
+      "pipe"
+     ],
+     "exec": [
+      "exec"
+     ],
+     "pipe": [
+      "pipe"
+     ]
+    }
+   },
+   "afr": {
+    "crumb": "Portefeuille · Exercice 2026 · Afrique",
+    "zoneEmpty": false,
+    "kpis": [
+     {
+      "label": "Projets en cours",
+      "value": 1,
+      "sub": "2,10 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projets dans le pipe",
+      "value": 1,
+      "sub": "2,20 M€",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Décisions groupe en attente",
+      "value": 1,
+      "sub": "EWA-051",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Attente moyenne du board",
+      "value": "28 j",
+      "sub": "cible 3 semaines",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "exec",
+      "label": "En cours",
+      "count": 1,
+      "codes": [
+       "NDC-031"
+      ]
+     },
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 1,
+      "codes": [
+       "EWA-051"
+      ]
+     }
+    ],
+    "filters": {
+     "all": [
+      "exec",
+      "pipe"
+     ],
+     "exec": [
+      "exec"
+     ],
+     "pipe": [
+      "pipe"
+     ]
+    }
+   },
+   "apac": {
+    "crumb": "Portefeuille · Exercice 2026 · Asie Pacifique",
+    "zoneEmpty": false,
+    "kpis": [
+     {
+      "label": "Projets en cours",
+      "value": 0,
+      "sub": "0 k€",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projets dans le pipe",
+      "value": 3,
+      "sub": "5,78 M€",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Décisions groupe en attente",
+      "value": 0,
+      "sub": "—",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Attente moyenne du board",
+      "value": "28 j",
+      "sub": "cible 3 semaines",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 3,
+      "codes": [
+       "WSA-044",
+       "FTU-052",
+       "CER-047"
+      ]
+     }
+    ],
+    "filters": {
+     "all": [
+      "pipe"
+     ],
+     "exec": [],
+     "pipe": [
+      "pipe"
+     ]
+    }
+   }
+  }
+ },
+ "scenarios": {
+  "aps-EWA-051": {
+   "code": "EWA-051",
+   "to": "APS",
+   "en": {
+    "kpis": [
+     {
+      "label": "Projects in progress",
+      "value": 7,
+      "sub": "€14.35M",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projects in pipeline",
+      "value": 5,
+      "sub": "€13.08M",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Group decisions pending",
+      "value": 1,
+      "sub": "EWA-051",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Average board wait",
+      "value": "28 d",
+      "sub": "target 3 weeks",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "exec",
+      "label": "In progress",
+      "count": 7,
+      "codes": [
+       "HLT-026",
+       "NDC-031",
+       "RCF-019",
+       "ERP-202",
+       "MSR-012",
+       "PRS-038",
+       "ALP-021"
+      ]
+     },
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 5,
+      "codes": [
+       "WSA-044",
+       "EWA-051",
+       "FTU-052",
+       "RBR-048",
+       "CER-047"
+      ]
+     }
+    ],
+    "rows": {
+     "EWA-051": {
+      "code": "EWA-051",
+      "name": "EWA-051 · Eastbank Warehouse Automation",
+      "pm": "S. Perrin · Logistics BU",
+      "status": "APS",
+      "tagClass": "tag tag-outline",
+      "pipe": true,
+      "segs": [
+       {
+        "left": "32.50%",
+        "width": "3.75%",
+        "w": 0.8999999999999995,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-600)",
+        "border": "0",
+        "label": "INI",
+        "labelColor": "var(--color-neutral-200)",
+        "title": "Initiative",
+        "glow": "none"
+       },
+       {
+        "left": "36.25%",
+        "width": "6.25%",
+        "w": 1.5,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-accent)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Group board · Decision pending",
+        "glow": "0 0 10px color-mix(in srgb, var(--color-accent) 45%, transparent)"
+       },
+       {
+        "left": "42.50%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "var(--color-accent)",
+        "dBorder": "transparent",
+        "glow": "0 0 10px color-mix(in srgb, var(--color-accent) 60%, transparent)",
+        "title": "Group board · Decision pending"
+       },
+       {
+        "left": "42.50%",
+        "width": "5.00%",
+        "w": 1.200000000000001,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-700)",
+        "border": "0",
+        "label": "APS",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "APS",
+        "glow": "none"
+       },
+       {
+        "left": "47.50%",
+        "width": "2.50%",
+        "w": 0.5999999999999996,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Group board · Planned",
+        "glow": "none"
+       },
+       {
+        "left": "50.00%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "transparent",
+        "dBorder": "var(--color-neutral-500)",
+        "glow": "none",
+        "title": "Group board · Planned"
+       },
+       {
+        "left": "50.00%",
+        "width": "3.33%",
+        "w": 0.8000000000000007,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-700)",
+        "border": "0",
+        "label": "APD",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "APD",
+        "glow": "none"
+       },
+       {
+        "left": "53.33%",
+        "width": "1.67%",
+        "w": 0.3999999999999986,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Group board · Planned",
+        "glow": "none"
+       },
+       {
+        "left": "55.00%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "transparent",
+        "dBorder": "var(--color-neutral-500)",
+        "glow": "none",
+        "title": "Group board · Planned"
+       }
+      ],
+      "hasExec": true,
+      "exL": "55.00%",
+      "exW": "40.83%",
+      "exBg": "transparent",
+      "exBorder": "1px dashed var(--color-accent-700)",
+      "exFill": "0%",
+      "exEdge": "none",
+      "hasBase": false,
+      "bL": "55.00%",
+      "bW": "40.83%",
+      "clipped": false,
+      "clipText": "",
+      "gate": "Group board → APS",
+      "gateSub": "Decision pending · 8 d",
+      "gateColor": "var(--color-accent-300)"
+     }
+    }
+   },
+   "fr": {
+    "kpis": [
+     {
+      "label": "Projets en cours",
+      "value": 7,
+      "sub": "14,35 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projets dans le pipe",
+      "value": 5,
+      "sub": "13,08 M€",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Décisions groupe en attente",
+      "value": 1,
+      "sub": "EWA-051",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Attente moyenne du board",
+      "value": "28 j",
+      "sub": "cible 3 semaines",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "exec",
+      "label": "En cours",
+      "count": 7,
+      "codes": [
+       "HLT-026",
+       "NDC-031",
+       "RCF-019",
+       "ERP-202",
+       "MSR-012",
+       "PRS-038",
+       "ALP-021"
+      ]
+     },
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 5,
+      "codes": [
+       "WSA-044",
+       "EWA-051",
+       "FTU-052",
+       "RBR-048",
+       "CER-047"
+      ]
+     }
+    ],
+    "rows": {
+     "EWA-051": {
+      "code": "EWA-051",
+      "name": "EWA-051 · Automatisation de l’entrepôt Eastbank",
+      "pm": "S. Perrin · Logistics BU",
+      "status": "APS",
+      "tagClass": "tag tag-outline",
+      "pipe": true,
+      "segs": [
+       {
+        "left": "32.50%",
+        "width": "3.75%",
+        "w": 0.8999999999999995,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-600)",
+        "border": "0",
+        "label": "INI",
+        "labelColor": "var(--color-neutral-200)",
+        "title": "Initiative",
+        "glow": "none"
+       },
+       {
+        "left": "36.25%",
+        "width": "6.25%",
+        "w": 1.5,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-accent)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Board groupe · Décision en attente",
+        "glow": "0 0 10px color-mix(in srgb, var(--color-accent) 45%, transparent)"
+       },
+       {
+        "left": "42.50%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "var(--color-accent)",
+        "dBorder": "transparent",
+        "glow": "0 0 10px color-mix(in srgb, var(--color-accent) 60%, transparent)",
+        "title": "Board groupe · Décision en attente"
+       },
+       {
+        "left": "42.50%",
+        "width": "5.00%",
+        "w": 1.200000000000001,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-700)",
+        "border": "0",
+        "label": "APS",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "APS",
+        "glow": "none"
+       },
+       {
+        "left": "47.50%",
+        "width": "2.50%",
+        "w": 0.5999999999999996,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Board groupe · Planifié",
+        "glow": "none"
+       },
+       {
+        "left": "50.00%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "transparent",
+        "dBorder": "var(--color-neutral-500)",
+        "glow": "none",
+        "title": "Board groupe · Planifié"
+       },
+       {
+        "left": "50.00%",
+        "width": "3.33%",
+        "w": 0.8000000000000007,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-700)",
+        "border": "0",
+        "label": "APD",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "APD",
+        "glow": "none"
+       },
+       {
+        "left": "53.33%",
+        "width": "1.67%",
+        "w": 0.3999999999999986,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Board groupe · Planifié",
+        "glow": "none"
+       },
+       {
+        "left": "55.00%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "transparent",
+        "dBorder": "var(--color-neutral-500)",
+        "glow": "none",
+        "title": "Board groupe · Planifié"
+       }
+      ],
+      "hasExec": true,
+      "exL": "55.00%",
+      "exW": "40.83%",
+      "exBg": "transparent",
+      "exBorder": "1px dashed var(--color-accent-700)",
+      "exFill": "0%",
+      "exEdge": "none",
+      "hasBase": false,
+      "bL": "55.00%",
+      "bW": "40.83%",
+      "clipped": false,
+      "clipText": "",
+      "gate": "Board groupe → APS",
+      "gateSub": "Décision en attente · 8 j",
+      "gateColor": "var(--color-accent-300)"
+     }
+    }
+   }
+  },
+  "etudes-WSA-044": {
+   "code": "WSA-044",
+   "to": "Etudes",
+   "en": {
+    "kpis": [
+     {
+      "label": "Projects in progress",
+      "value": 8,
+      "sub": "€17.75M",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projects in pipeline",
+      "value": 4,
+      "sub": "€9.68M",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Group decisions pending",
+      "value": 1,
+      "sub": "EWA-051",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Average board wait",
+      "value": "28 d",
+      "sub": "target 3 weeks",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "exec",
+      "label": "In progress",
+      "count": 8,
+      "codes": [
+       "HLT-026",
+       "NDC-031",
+       "RCF-019",
+       "ERP-202",
+       "WSA-044",
+       "MSR-012",
+       "PRS-038",
+       "ALP-021"
+      ]
+     },
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 4,
+      "codes": [
+       "EWA-051",
+       "FTU-052",
+       "RBR-048",
+       "CER-047"
+      ]
+     }
+    ],
+    "rows": {
+     "WSA-044": {
+      "code": "WSA-044",
+      "name": "#044 · Westfield Solar Array",
+      "pm": "K. Blanchard · Energy BU",
+      "status": "Etudes",
+      "tagClass": "tag tag-accent",
+      "pipe": false,
+      "segs": [
+       {
+        "left": "29.17%",
+        "width": "3.13%",
+        "w": 0.75,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-600)",
+        "border": "0",
+        "label": "",
+        "labelColor": "var(--color-neutral-200)",
+        "title": "Initiative",
+        "glow": "none"
+       },
+       {
+        "left": "32.29%",
+        "width": "1.04%",
+        "w": 0.25,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-200)",
+        "title": "Group board · Approved",
+        "glow": "none"
+       },
+       {
+        "left": "33.33%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "var(--color-accent-300)",
+        "dBorder": "transparent",
+        "glow": "none",
+        "title": "Group board · Approved"
+       },
+       {
+        "left": "33.33%",
+        "width": "3.54%",
+        "w": 0.8499999999999996,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-600)",
+        "border": "0",
+        "label": "APS",
+        "labelColor": "var(--color-neutral-200)",
+        "title": "APS",
+        "glow": "none"
+       },
+       {
+        "left": "36.88%",
+        "width": "1.04%",
+        "w": 0.25,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-accent)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Group board · Decision pending",
+        "glow": "0 0 10px color-mix(in srgb, var(--color-accent) 45%, transparent)"
+       },
+       {
+        "left": "37.92%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "var(--color-accent)",
+        "dBorder": "transparent",
+        "glow": "0 0 10px color-mix(in srgb, var(--color-accent) 60%, transparent)",
+        "title": "Group board · Decision pending"
+       },
+       {
+        "left": "35.42%",
+        "width": "1.25%",
+        "w": 0.3000000000000007,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-200)",
+        "title": "Group board · Approved",
+        "glow": "none"
+       },
+       {
+        "left": "36.67%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "var(--color-accent-300)",
+        "dBorder": "transparent",
+        "glow": "none",
+        "title": "Group board · Approved"
+       }
+      ],
+      "hasExec": true,
+      "exL": "36.67%",
+      "exW": "38.33%",
+      "exBg": "var(--color-accent-800)",
+      "exBorder": "0",
+      "exFill": "27%",
+      "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+      "hasBase": false,
+      "bL": "36.67%",
+      "bW": "38.33%",
+      "clipped": false,
+      "clipText": "",
+      "gate": "1 Jul 2027",
+      "gateSub": "+11 d",
+      "gateColor": "var(--color-neutral-400)"
+     }
+    }
+   },
+   "fr": {
+    "kpis": [
+     {
+      "label": "Projets en cours",
+      "value": 8,
+      "sub": "17,75 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projets dans le pipe",
+      "value": 4,
+      "sub": "9,68 M€",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Décisions groupe en attente",
+      "value": 1,
+      "sub": "EWA-051",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Attente moyenne du board",
+      "value": "28 j",
+      "sub": "cible 3 semaines",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "exec",
+      "label": "En cours",
+      "count": 8,
+      "codes": [
+       "HLT-026",
+       "NDC-031",
+       "RCF-019",
+       "ERP-202",
+       "WSA-044",
+       "MSR-012",
+       "PRS-038",
+       "ALP-021"
+      ]
+     },
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 4,
+      "codes": [
+       "EWA-051",
+       "FTU-052",
+       "RBR-048",
+       "CER-047"
+      ]
+     }
+    ],
+    "rows": {
+     "WSA-044": {
+      "code": "WSA-044",
+      "name": "#044 · Centrale solaire de Westfield",
+      "pm": "K. Blanchard · Energy BU",
+      "status": "Études",
+      "tagClass": "tag tag-accent",
+      "pipe": false,
+      "segs": [
+       {
+        "left": "29.17%",
+        "width": "3.13%",
+        "w": 0.75,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-600)",
+        "border": "0",
+        "label": "",
+        "labelColor": "var(--color-neutral-200)",
+        "title": "Initiative",
+        "glow": "none"
+       },
+       {
+        "left": "32.29%",
+        "width": "1.04%",
+        "w": 0.25,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-200)",
+        "title": "Board groupe · Approuvé",
+        "glow": "none"
+       },
+       {
+        "left": "33.33%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "var(--color-accent-300)",
+        "dBorder": "transparent",
+        "glow": "none",
+        "title": "Board groupe · Approuvé"
+       },
+       {
+        "left": "33.33%",
+        "width": "3.54%",
+        "w": 0.8499999999999996,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-600)",
+        "border": "0",
+        "label": "APS",
+        "labelColor": "var(--color-neutral-200)",
+        "title": "APS",
+        "glow": "none"
+       },
+       {
+        "left": "36.88%",
+        "width": "1.04%",
+        "w": 0.25,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-accent)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Board groupe · Décision en attente",
+        "glow": "0 0 10px color-mix(in srgb, var(--color-accent) 45%, transparent)"
+       },
+       {
+        "left": "37.92%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "var(--color-accent)",
+        "dBorder": "transparent",
+        "glow": "0 0 10px color-mix(in srgb, var(--color-accent) 60%, transparent)",
+        "title": "Board groupe · Décision en attente"
+       },
+       {
+        "left": "35.42%",
+        "width": "1.25%",
+        "w": 0.3000000000000007,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-200)",
+        "title": "Board groupe · Approuvé",
+        "glow": "none"
+       },
+       {
+        "left": "36.67%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "var(--color-accent-300)",
+        "dBorder": "transparent",
+        "glow": "none",
+        "title": "Board groupe · Approuvé"
+       }
+      ],
+      "hasExec": true,
+      "exL": "36.67%",
+      "exW": "38.33%",
+      "exBg": "var(--color-accent-800)",
+      "exBorder": "0",
+      "exFill": "27%",
+      "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+      "hasBase": false,
+      "bL": "36.67%",
+      "bW": "38.33%",
+      "clipped": false,
+      "clipText": "",
+      "gate": "1 juil. 2027",
+      "gateSub": "+11 j",
+      "gateColor": "var(--color-neutral-400)"
+     }
+    }
+   }
+  },
+  "etudes-CER-047": {
+   "code": "CER-047",
+   "to": "Etudes",
+   "en": {
+    "kpis": [
+     {
+      "label": "Projects in progress",
+      "value": 8,
+      "sub": "€16.25M",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projects in pipeline",
+      "value": 4,
+      "sub": "€11.18M",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Group decisions pending",
+      "value": 1,
+      "sub": "EWA-051",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Average board wait",
+      "value": "28 d",
+      "sub": "target 3 weeks",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "exec",
+      "label": "In progress",
+      "count": 8,
+      "codes": [
+       "HLT-026",
+       "NDC-031",
+       "RCF-019",
+       "ERP-202",
+       "MSR-012",
+       "CER-047",
+       "PRS-038",
+       "ALP-021"
+      ]
+     },
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 4,
+      "codes": [
+       "WSA-044",
+       "EWA-051",
+       "FTU-052",
+       "RBR-048"
+      ]
+     }
+    ],
+    "rows": {
+     "CER-047": {
+      "code": "CER-047",
+      "name": "CER-047 · Campus Energy Retrofit",
+      "pm": "K. Blanchard · Facilities",
+      "status": "Etudes",
+      "tagClass": "tag tag-accent",
+      "pipe": false,
+      "segs": [
+       {
+        "left": "41.67%",
+        "width": "3.13%",
+        "w": 0.75,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-700)",
+        "border": "0",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Initiative",
+        "glow": "none"
+       },
+       {
+        "left": "44.79%",
+        "width": "1.04%",
+        "w": 0.25,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Group board · Planned",
+        "glow": "none"
+       },
+       {
+        "left": "45.83%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "transparent",
+        "dBorder": "var(--color-neutral-500)",
+        "glow": "none",
+        "title": "Group board · Planned"
+       },
+       {
+        "left": "45.83%",
+        "width": "3.54%",
+        "w": 0.8499999999999996,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-700)",
+        "border": "0",
+        "label": "APS",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "APS",
+        "glow": "none"
+       },
+       {
+        "left": "49.38%",
+        "width": "1.04%",
+        "w": 0.25,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Group board · Planned",
+        "glow": "none"
+       },
+       {
+        "left": "50.42%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "transparent",
+        "dBorder": "var(--color-neutral-500)",
+        "glow": "none",
+        "title": "Group board · Planned"
+       },
+       {
+        "left": "35.42%",
+        "width": "1.25%",
+        "w": 0.3000000000000007,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-200)",
+        "title": "Group board · Approved",
+        "glow": "none"
+       },
+       {
+        "left": "36.67%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "var(--color-accent-300)",
+        "dBorder": "transparent",
+        "glow": "none",
+        "title": "Group board · Approved"
+       }
+      ],
+      "hasExec": true,
+      "exL": "36.67%",
+      "exW": "55.00%",
+      "exBg": "var(--color-accent-800)",
+      "exBorder": "0",
+      "exFill": "2%",
+      "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+      "hasBase": false,
+      "bL": "36.67%",
+      "bW": "55.00%",
+      "clipped": false,
+      "clipText": "",
+      "gate": "Oct 2027",
+      "gateSub": "0 d",
+      "gateColor": "var(--color-neutral-400)"
+     }
+    }
+   },
+   "fr": {
+    "kpis": [
+     {
+      "label": "Projets en cours",
+      "value": 8,
+      "sub": "16,25 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projets dans le pipe",
+      "value": 4,
+      "sub": "11,18 M€",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Décisions groupe en attente",
+      "value": 1,
+      "sub": "EWA-051",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Attente moyenne du board",
+      "value": "28 j",
+      "sub": "cible 3 semaines",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "exec",
+      "label": "En cours",
+      "count": 8,
+      "codes": [
+       "HLT-026",
+       "NDC-031",
+       "RCF-019",
+       "ERP-202",
+       "MSR-012",
+       "CER-047",
+       "PRS-038",
+       "ALP-021"
+      ]
+     },
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 4,
+      "codes": [
+       "WSA-044",
+       "EWA-051",
+       "FTU-052",
+       "RBR-048"
+      ]
+     }
+    ],
+    "rows": {
+     "CER-047": {
+      "code": "CER-047",
+      "name": "CER-047 · Rénovation énergétique du campus",
+      "pm": "K. Blanchard · Facilities",
+      "status": "Études",
+      "tagClass": "tag tag-accent",
+      "pipe": false,
+      "segs": [
+       {
+        "left": "41.67%",
+        "width": "3.13%",
+        "w": 0.75,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-700)",
+        "border": "0",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Initiative",
+        "glow": "none"
+       },
+       {
+        "left": "44.79%",
+        "width": "1.04%",
+        "w": 0.25,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Board groupe · Planifié",
+        "glow": "none"
+       },
+       {
+        "left": "45.83%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "transparent",
+        "dBorder": "var(--color-neutral-500)",
+        "glow": "none",
+        "title": "Board groupe · Planifié"
+       },
+       {
+        "left": "45.83%",
+        "width": "3.54%",
+        "w": 0.8499999999999996,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-700)",
+        "border": "0",
+        "label": "APS",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "APS",
+        "glow": "none"
+       },
+       {
+        "left": "49.38%",
+        "width": "1.04%",
+        "w": 0.25,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Board groupe · Planifié",
+        "glow": "none"
+       },
+       {
+        "left": "50.42%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "transparent",
+        "dBorder": "var(--color-neutral-500)",
+        "glow": "none",
+        "title": "Board groupe · Planifié"
+       },
+       {
+        "left": "35.42%",
+        "width": "1.25%",
+        "w": 0.3000000000000007,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-200)",
+        "title": "Board groupe · Approuvé",
+        "glow": "none"
+       },
+       {
+        "left": "36.67%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "var(--color-accent-300)",
+        "dBorder": "transparent",
+        "glow": "none",
+        "title": "Board groupe · Approuvé"
+       }
+      ],
+      "hasExec": true,
+      "exL": "36.67%",
+      "exW": "55.00%",
+      "exBg": "var(--color-accent-800)",
+      "exBorder": "0",
+      "exFill": "2%",
+      "exEdge": "inset 0 0 0 1px var(--color-accent-700)",
+      "hasBase": false,
+      "bL": "36.67%",
+      "bW": "55.00%",
+      "clipped": false,
+      "clipText": "",
+      "gate": "oct. 2027",
+      "gateSub": "0 j",
+      "gateColor": "var(--color-neutral-400)"
+     }
+    }
+   }
+  },
+  "annule-RCF-019": {
+   "code": "RCF-019",
+   "to": "Annulé",
+   "en": {
+    "kpis": [
+     {
+      "label": "Projects in progress",
+      "value": 6,
+      "sub": "€13.00M",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projects in pipeline",
+      "value": 5,
+      "sub": "€13.08M",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Group decisions pending",
+      "value": 1,
+      "sub": "EWA-051",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Average board wait",
+      "value": "28 d",
+      "sub": "target 3 weeks",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "exec",
+      "label": "In progress",
+      "count": 6,
+      "codes": [
+       "HLT-026",
+       "NDC-031",
+       "ERP-202",
+       "MSR-012",
+       "PRS-038",
+       "ALP-021"
+      ]
+     },
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 5,
+      "codes": [
+       "WSA-044",
+       "EWA-051",
+       "FTU-052",
+       "RBR-048",
+       "CER-047"
+      ]
+     }
+    ],
+    "rows": {}
+   },
+   "fr": {
+    "kpis": [
+     {
+      "label": "Projets en cours",
+      "value": 6,
+      "sub": "13,00 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projets dans le pipe",
+      "value": 5,
+      "sub": "13,08 M€",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Décisions groupe en attente",
+      "value": 1,
+      "sub": "EWA-051",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Attente moyenne du board",
+      "value": "28 j",
+      "sub": "cible 3 semaines",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "exec",
+      "label": "En cours",
+      "count": 6,
+      "codes": [
+       "HLT-026",
+       "NDC-031",
+       "ERP-202",
+       "MSR-012",
+       "PRS-038",
+       "ALP-021"
+      ]
+     },
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 5,
+      "codes": [
+       "WSA-044",
+       "EWA-051",
+       "FTU-052",
+       "RBR-048",
+       "CER-047"
+      ]
+     }
+    ],
+    "rows": {}
+   }
+  },
+  "new-project": {
+   "create": {
+    "name": "Test plant",
+    "client": "Port authority"
+   },
+   "project": {
+    "code": "HAV-045",
+    "name": "Test plant",
+    "status": "Initiative",
+    "pm": "S. Perrin",
+    "client": "Port authority",
+    "start": "Jan 2027",
+    "finish": "Sep 2027",
+    "budget": 2037,
+    "actual": 0,
+    "progress": 0,
+    "spi": 1,
+    "isNew": true
+   },
+   "en": {
+    "kpis": [
+     {
+      "label": "Projects in progress",
+      "value": 7,
+      "sub": "€14.35M",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projects in pipeline",
+      "value": 6,
+      "sub": "€15.12M",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Group decisions pending",
+      "value": 1,
+      "sub": "EWA-051",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Average board wait",
+      "value": "28 d",
+      "sub": "target 3 weeks",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "exec",
+      "label": "In progress",
+      "count": 7,
+      "codes": [
+       "HLT-026",
+       "NDC-031",
+       "RCF-019",
+       "ERP-202",
+       "MSR-012",
+       "PRS-038",
+       "ALP-021"
+      ]
+     },
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 6,
+      "codes": [
+       "HAV-045",
+       "WSA-044",
+       "EWA-051",
+       "FTU-052",
+       "RBR-048",
+       "CER-047"
+      ]
+     }
+    ],
+    "rows": {
+     "HAV-045": {
+      "code": "HAV-045",
+      "name": "#045 · Test plant",
+      "pm": "S. Perrin · Port authority",
+      "status": "Initiative",
+      "tagClass": "tag tag-outline",
+      "pipe": true,
+      "segs": [
+       {
+        "left": "37.50%",
+        "width": "3.33%",
+        "w": 0.8000000000000007,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-700)",
+        "border": "0",
+        "label": "INI",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Initiative",
+        "glow": "none"
+       },
+       {
+        "left": "40.83%",
+        "width": "2.50%",
+        "w": 0.5999999999999996,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Group board · Planned",
+        "glow": "none"
+       },
+       {
+        "left": "43.33%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "transparent",
+        "dBorder": "var(--color-neutral-500)",
+        "glow": "none",
+        "title": "Group board · Planned"
+       },
+       {
+        "left": "43.33%",
+        "width": "3.33%",
+        "w": 0.7999999999999989,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-700)",
+        "border": "0",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "APS",
+        "glow": "none"
+       },
+       {
+        "left": "46.67%",
+        "width": "1.67%",
+        "w": 0.40000000000000036,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Group board · Planned",
+        "glow": "none"
+       },
+       {
+        "left": "48.33%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "transparent",
+        "dBorder": "var(--color-neutral-500)",
+        "glow": "none",
+        "title": "Group board · Planned"
+       },
+       {
+        "left": "48.33%",
+        "width": "2.92%",
+        "w": 0.7000000000000011,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-700)",
+        "border": "0",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "APD",
+        "glow": "none"
+       },
+       {
+        "left": "51.25%",
+        "width": "1.25%",
+        "w": 0.29999999999999893,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Group board · Planned",
+        "glow": "none"
+       },
+       {
+        "left": "52.50%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "transparent",
+        "dBorder": "var(--color-neutral-500)",
+        "glow": "none",
+        "title": "Group board · Planned"
+       }
+      ],
+      "hasExec": true,
+      "exL": "52.50%",
+      "exW": "35.00%",
+      "exBg": "transparent",
+      "exBorder": "1px dashed var(--color-accent-700)",
+      "exFill": "0%",
+      "exEdge": "none",
+      "hasBase": false,
+      "bL": "52.50%",
+      "bW": "35.00%",
+      "clipped": false,
+      "clipText": "",
+      "gate": "Group board → APS",
+      "gateSub": "12 Nov",
+      "gateColor": "var(--color-neutral-400)"
+     }
+    }
+   },
+   "fr": {
+    "kpis": [
+     {
+      "label": "Projets en cours",
+      "value": 7,
+      "sub": "14,35 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Projets dans le pipe",
+      "value": 6,
+      "sub": "15,12 M€",
+      "color": "var(--color-neutral-200)"
+     },
+     {
+      "label": "Décisions groupe en attente",
+      "value": 1,
+      "sub": "EWA-051",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Attente moyenne du board",
+      "value": "28 j",
+      "sub": "cible 3 semaines",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "groups": [
+     {
+      "key": "exec",
+      "label": "En cours",
+      "count": 7,
+      "codes": [
+       "HLT-026",
+       "NDC-031",
+       "RCF-019",
+       "ERP-202",
+       "MSR-012",
+       "PRS-038",
+       "ALP-021"
+      ]
+     },
+     {
+      "key": "pipe",
+      "label": "Pipeline",
+      "count": 6,
+      "codes": [
+       "HAV-045",
+       "WSA-044",
+       "EWA-051",
+       "FTU-052",
+       "RBR-048",
+       "CER-047"
+      ]
+     }
+    ],
+    "rows": {
+     "HAV-045": {
+      "code": "HAV-045",
+      "name": "#045 · Test plant",
+      "pm": "S. Perrin · Autorité portuaire",
+      "status": "Initiative",
+      "tagClass": "tag tag-outline",
+      "pipe": true,
+      "segs": [
+       {
+        "left": "37.50%",
+        "width": "3.33%",
+        "w": 0.8000000000000007,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-700)",
+        "border": "0",
+        "label": "INI",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Initiative",
+        "glow": "none"
+       },
+       {
+        "left": "40.83%",
+        "width": "2.50%",
+        "w": 0.5999999999999996,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Board groupe · Planifié",
+        "glow": "none"
+       },
+       {
+        "left": "43.33%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "transparent",
+        "dBorder": "var(--color-neutral-500)",
+        "glow": "none",
+        "title": "Board groupe · Planifié"
+       },
+       {
+        "left": "43.33%",
+        "width": "3.33%",
+        "w": 0.7999999999999989,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-700)",
+        "border": "0",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "APS",
+        "glow": "none"
+       },
+       {
+        "left": "46.67%",
+        "width": "1.67%",
+        "w": 0.40000000000000036,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Board groupe · Planifié",
+        "glow": "none"
+       },
+       {
+        "left": "48.33%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "transparent",
+        "dBorder": "var(--color-neutral-500)",
+        "glow": "none",
+        "title": "Board groupe · Planifié"
+       },
+       {
+        "left": "48.33%",
+        "width": "2.92%",
+        "w": 0.7000000000000011,
+        "top": "14px",
+        "height": "14px",
+        "radius": "4px",
+        "bg": "var(--color-neutral-700)",
+        "border": "0",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "APD",
+        "glow": "none"
+       },
+       {
+        "left": "51.25%",
+        "width": "1.25%",
+        "w": 0.29999999999999893,
+        "top": "15px",
+        "height": "12px",
+        "radius": "2px",
+        "bg": "repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px)",
+        "border": "1px dashed var(--color-neutral-600)",
+        "label": "",
+        "labelColor": "var(--color-neutral-300)",
+        "title": "Board groupe · Planifié",
+        "glow": "none"
+       },
+       {
+        "left": "52.50%",
+        "width": "0",
+        "top": "15px",
+        "height": "0",
+        "diamond": true,
+        "dBg": "transparent",
+        "dBorder": "var(--color-neutral-500)",
+        "glow": "none",
+        "title": "Board groupe · Planifié"
+       }
+      ],
+      "hasExec": true,
+      "exL": "52.50%",
+      "exW": "35.00%",
+      "exBg": "transparent",
+      "exBorder": "1px dashed var(--color-accent-700)",
+      "exFill": "0%",
+      "exEdge": "none",
+      "hasBase": false,
+      "bL": "52.50%",
+      "bW": "35.00%",
+      "clipped": false,
+      "clipText": "",
+      "gate": "Board groupe → APS",
+      "gateSub": "12 nov.",
+      "gateColor": "var(--color-neutral-400)"
+     }
+    }
+   }
+  }
+ }
+}

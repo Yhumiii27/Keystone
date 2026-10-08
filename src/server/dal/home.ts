@@ -2,9 +2,11 @@ import 'server-only';
 // Home DAL (docs/spec/03 §1): gathers each role's inputs and builds the HomeView (src/domain/home.ts).
 // Projects, EVM series, schedule header, milestones, change requests, activities, resource requests, the resource
 // pool's weekly loads, tasks, the skills matrix and certifications come from the database. The director's KPI tiles
-// and "Needs attention" items are the Portfolio overview's (src/server/dal/portfolio.ts).
-// TODO(db): ECOs, parts, drawings, purchase orders, client deliverables and billing are read from the prototype data
-// set (PROTO) at its initial state; switch each block to its module DAL once modelled.
+// and "Needs attention" items are the Portfolio overview's (src/server/dal/portfolio.ts). Since Delivery 4, the parts
+// catalogue, the purchase orders (and so the BOM shortfall), the drawings (PDM vault mirror) and the ECOs (Vigie
+// mirror, src/server/integrations/vigie) come from the database too.
+// TODO(db): client deliverables and the client's next invoice are read from the prototype data set (PROTO) at its
+// initial state; switch each block to its module DAL once modelled.
 import { DEFAULT_PROJECT, type RoleKey } from '@/config/screens';
 import {
   clientHome, deptHeadHome, directorHome, engLeadHome, homeHref, memberHome, pmHome, procurementHome, qualityHome,
@@ -14,19 +16,21 @@ import {
 } from '@/domain/home';
 import { workingDayOf } from '@/domain/tasks';
 import type { Lang } from '@/i18n/translate';
-import { PROTO, PROTO_GEN } from '@/server/prototype';
+import { ecoType } from '@/server/db/codes';
+import { PROTO } from '@/server/prototype';
 import type { ZoneKey } from '@/server/session';
 import { getCostControl, listChangeRequests } from './cost';
+import { listDrawings } from './drawings';
+import { listEcos } from './eco';
+import { listParts } from './parts';
 import { getActivities, getMilestones, getScheduleControl } from './planning';
 import { getPortfolioOverview } from './portfolio';
 import { getSkillsMatrix } from './hr';
 import { getProject, listProjects, type ProjectRow } from './projects';
+import { listPurchaseOrders } from './purchasing';
 import { listApprovalDepartments, listResourceRequests } from './requests';
 import { getResourcePool } from './resources';
 import { listTasks } from './tasks';
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Row = Record<string, any>;
 
 export interface HomeQuery {
   role: RoleKey;
@@ -41,12 +45,6 @@ export interface HomeQuery {
 // ── Prototype-backed modules (TODO(db)) ───────────────────────────────────────────────────────────────────
 
 const lookups = (): Lookups => ({ projectNames: PROTO.PROJ_NAMES });
-const parts = (): Part[] => PROTO.PARTS as Part[];
-const ecos = (): Eco[] => PROTO.ECOS as Eco[];
-const drawings = (): Drawing[] => PROTO.DRAWINGS as Drawing[];
-/** Purchase orders of a project (genPOs, line 3415; Harbor Line = HLT_POS). */
-const purchaseOrders = (code: string): PurchaseOrder[] =>
-  ((PROTO_GEN.genPOs[code] ?? []) as Row[]).map((o) => ({ id: o.id, supplier: o.supplier, status: o.status, lines: o.lines, act: o.act ?? null }));
 
 /** Client deliverables of the Home (DELIVERABLES 3424, Harbor Line). TODO(db): read the deliverables register once modelled. */
 function clientDeliverables(code: string): ClientDeliverable[] {
@@ -58,6 +56,45 @@ function clientDeliverables(code: string): ClientDeliverable[] {
 const clientInvoice = (code: string) => (code === 'HLT-026' ? { label: 'Milestone 4 invoice', amount: 640, due: '15 Oct' } : null);
 
 // ── Database-backed inputs ────────────────────────────────────────────────────────────────────────────────
+
+/** The parts catalogue (PARTS order, parts created in Keystone appended): list price, quantity per project short code. */
+async function parts(): Promise<Part[]> {
+  return (await listParts()).map((p) => ({
+    ref: p.ref, name: p.name, mfr: p.manufacturer ?? '', mb: p.makeBuyLabel, price: p.listPriceEur, status: p.statusLabel,
+    usage: Object.fromEntries(p.usage.map((u) => [u.shortCode, u.quantity])),
+  }));
+}
+
+/**
+ * The ECOs of the Vigie mirror, with the status Vigie reports (`reported`). A decision the viewer recorded in Keystone
+ * counts once recorded (it leaves "Awaiting my approval" and "Waiting for me", as in My approvals) while the status
+ * waits for Vigie.
+ */
+async function ecos(): Promise<Eco[]> {
+  const [rows, projects] = await Promise.all([listEcos(), listProjects()]);
+  const short = new Map(projects.map((p) => [p.code, p.shortCode]));
+  return rows.map((e) => ({
+    id: e.number, type: e.type, status: e.statusLabel, reported: true, title: e.title, parts: e.parts,
+    appr: Object.fromEntries(e.approvalsView.map((a) => [a.key, a.decision])) as Eco['appr'],
+    projects: e.projects.map((c) => short.get(c) ?? c),
+  }));
+}
+
+/** ECO type labels by code (ECO_TYPES 3430). */
+const ECO_TYPE_LABELS: Record<string, string> = Object.fromEntries(ecoType.codes.map((c) => [c, ecoType.label(c)]));
+
+/** The PDM vault mirror (DRAWINGS order). */
+async function drawings(): Promise<Drawing[]> {
+  return (await listDrawings()).map((d) => ({ no: d.number, title: d.title, rev: d.revision, state: d.stateLabel }));
+}
+
+/** Purchase orders of a project (genPOs order, then the drafts made in Keystone), with their own value. */
+async function purchaseOrders(code: string): Promise<PurchaseOrder[]> {
+  return (await listPurchaseOrders(code)).map((o) => ({
+    id: o.number, supplier: o.supplier, status: o.statusLabel, lines: o.lines.map((l) => [l.ref, l.orderedQty, l.receivedQty]), act: o.neededFor?.code ?? null,
+    valueEur: o.valueEur,
+  }));
+}
 
 /** Resource requests in list order (REQUESTS order, new ones first), in the Home's shape. */
 async function requests(): Promise<ResourceRequest[]> {
@@ -141,8 +178,8 @@ export async function getHomeView(q: HomeQuery): Promise<HomeView> {
   const current = currentOf(project);
   switch (q.role) {
     case 'pm': {
-      const { evm, schedule } = await evmAndSchedule(project.code);
-      return pmHome({ lang, persona, project: current, evm, schedule, requests: await requests(), purchaseOrders: purchaseOrders(project.code), parts: parts(), ecos: ecos() });
+      const [{ evm, schedule }, reqs, pos, ps, es] = await Promise.all([evmAndSchedule(project.code), requests(), purchaseOrders(project.code), parts(), ecos()]);
+      return pmHome({ lang, persona, project: current, evm, schedule, requests: reqs, purchaseOrders: pos, parts: ps, ecos: es });
     }
     case 'depthead': {
       const [dept, reqs, pool] = await Promise.all([deptOfHead(persona.name), requests(), people()]);
@@ -154,17 +191,19 @@ export async function getHomeView(q: HomeQuery): Promise<HomeView> {
       return memberHome({ persona, person: persona.name, todos: tasks, people: pool.loads, certs: sk.certs, statusLabels: PROTO.STATUS_L, lookups: lookups() });
     }
     case 'englead': {
-      const [pool, sk] = await Promise.all([people(), skillsMatrix()]);
+      const [pool, sk, es, dwgs, ps] = await Promise.all([people(), skillsMatrix(), ecos(), drawings(), parts()]);
       return engLeadHome({
-        persona, ecos: ecos(), ecoTypes: PROTO.ECO_TYPES, drawings: drawings(), parts: parts(), skills: sk.skills, skillLevels: sk.levels, people: pool.loads,
+        persona, ecos: es, ecoTypes: ECO_TYPE_LABELS, drawings: dwgs, parts: ps, skills: sk.skills, skillLevels: sk.levels, people: pool.loads,
       });
     }
-    case 'quality':
-      return qualityHome({ persona, project: current, ecos: ecos(), parts: parts(), requests: await requests() });
+    case 'quality': {
+      const [es, ps, reqs] = await Promise.all([ecos(), parts(), requests()]);
+      return qualityHome({ persona, project: current, ecos: es, parts: ps, requests: reqs });
+    }
     case 'procurement': {
-      const acts = await getActivities(project.code);
+      const [acts, pos, ps, es] = await Promise.all([getActivities(project.code), purchaseOrders(project.code), parts(), ecos()]);
       return procurementHome({
-        lang, persona, project: current, purchaseOrders: purchaseOrders(project.code), parts: parts(), ecos: ecos(),
+        lang, persona, project: current, purchaseOrders: pos, parts: ps, ecos: es,
         activityPct: Object.fromEntries(acts.map((a) => [a.id, a.pct])),
       });
     }
@@ -176,15 +215,15 @@ export async function getHomeView(q: HomeQuery): Promise<HomeView> {
     }
     default: {
       // KPI tiles and "Needs attention" are the Portfolio overview's own (same zone filter, docs/spec/03 §1.2 / §4).
-      const [overview, all] = await Promise.all([getPortfolioOverview(q.zone, lang), listProjects()]);
+      const [overview, all, pos, es, reqs] = await Promise.all([getPortfolioOverview(q.zone, lang), listProjects(), purchaseOrders(project.code), ecos(), requests()]);
       return directorHome({
         lang, persona, project: current,
         portfolioKpis: overview.kpis,
         alerts: overview.alerts.map((a): PortfolioAlert => ({ title: a.title, detail: a.detail, href: homeHref(a.target.screen, { code: a.target.code }) })),
         changeRequests: await changeRequestsOf(all.filter((p) => p.hasData)),
-        purchaseOrders: purchaseOrders(project.code),
-        ecos: ecos(),
-        requests: await requests(),
+        purchaseOrders: pos,
+        ecos: es,
+        requests: reqs,
       });
     }
   }

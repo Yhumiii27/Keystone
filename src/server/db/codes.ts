@@ -391,3 +391,408 @@ export function nextBusinessNumber(existing: readonly string[], prefix: string, 
   }
   return prefix + String(max + 1).padStart(pad, '0');
 }
+
+// ── Delivery 3 time model (docs/spec/00 §7.5) ─────────────────────────────────────────────────────────
+/**
+ * Month index of the prototype "now" used by the portfolio Gantt, meetings, interfaces, stakeholders and the
+ * Billing late flag (`PG_NOW` 3671 ≈ 30 Sep 2026). Comparisons use `monthIndexOfIso(date) < PG_NOW` exactly like
+ * the prototype's `mIdx(date) < PG_NOW`.
+ */
+export const PG_NOW = 8.97;
+/** Prototype `NOWD` / literal "30 Sep": overdue invoices (due < NOWD) and the date stamped on invoices, payments, minutes and records created by the Contract, Billing, Meetings, Stakeholders and Interfaces writers. */
+export const NOW_ISO = '2026-09-30';
+/** Literal "29 Sep" of the Codex vault: downloads, deposits and automatic withdrawals. */
+export const CODEX_TODAY_ISO = '2026-09-29';
+
+/** Month index since 1 Jan 2026 of an ISO date (prototype `mIdx('14 Dec 2026')` = 11 + 13/30). */
+export function monthIndexOfIso(iso: string): number {
+  const [y, m, d] = iso.split('-').map((x) => parseInt(x, 10));
+  return (y - 2026) * 12 + (m - 1) + (d - 1) / 30;
+}
+/** Prototype `mIdx(x) < PG_NOW` on an ISO date (null → false). */
+export const beforePgNow = (iso: string | null | undefined) => !!iso && monthIndexOfIso(iso) < PG_NOW;
+
+/** "12 Mar" (current year 2026) / "14 Jan 2027" — the prototype's short date with the year only when ≠ 2026 (`fmtInvD`). */
+export function shortDateYearOfIso(iso: string): string {
+  const [y] = iso.split('-');
+  return y === '2026' ? shortDateOfIso(iso) : displayOfIso(iso);
+}
+
+// ── Documents — Codex index (docs/spec/11 §2.7, §3.10; 10 §4–5) ─────────────────────────────────────
+/** Document families (DOC_FAM 3614). */
+export type DocFamily = 'eng' | 'client' | 'quality' | 'purchasing' | 'site' | 'contracts' | 'photos';
+export const docFamily = codec<DocFamily, string>([
+  ['eng', 'Engineering'], ['client', 'Client deliverables'], ['quality', 'Quality'], ['purchasing', 'Purchasing'], ['site', 'Site'],
+  ['contracts', 'Contracts & mail'], ['photos', 'Photos & reports'],
+]);
+/** Owning service of a document (DOC_SVC 3662). */
+export type DocService = 'process' | 'meca' | 'elec' | 'auto' | 'quality' | 'procurement' | 'site' | 'pm';
+export const docService = codec<DocService, string>([
+  ['process', 'Process'], ['meca', 'Mechanical'], ['elec', 'Electrical'], ['auto', 'Automation'], ['quality', 'Quality'],
+  ['procurement', 'Purchasing'], ['site', 'Site'], ['pm', 'Project management'],
+]);
+/** Document status (DOC_STATUSES 3664), shared with the engineering screens. */
+export type DocumentStatus = 'draft' | 'frozen' | 'release_proposed' | 'released' | 'obsolete';
+export const documentStatus = codec<DocumentStatus, string>([
+  ['draft', 'Draft'], ['frozen', 'Frozen'], ['release_proposed', 'Release proposed'], ['released', 'Released'], ['obsolete', 'Obsolete'],
+]);
+/** Status tag class (`stClassDoc` 5024). */
+export const DOCUMENT_STATUS_TAG: Record<DocumentStatus, 'tag-accent' | 'tag-outline' | 'tag-neutral'> = {
+  draft: 'tag-outline', frozen: 'tag-outline', release_proposed: 'tag-accent', released: 'tag-neutral', obsolete: 'tag-outline',
+};
+/** Confidentiality (`DOCS.conf`). */
+export type Confidentiality = 'internal' | 'client' | 'supplier';
+export const confidentiality = codec<Confidentiality, string>([['internal', 'Internal'], ['client', 'Client'], ['supplier', 'Supplier']]);
+export const CONFIDENTIALITY_TAG: Record<Confidentiality, 'tag-accent' | 'tag-outline' | 'tag-neutral'> = { client: 'tag-accent', supplier: 'tag-outline', internal: 'tag-neutral' };
+/** Relation kinds of a document (`DOCS.links`). Only `article` opens a screen (PLM part drawer). */
+export type DocLinkKind = 'deliverable' | 'article' | 'purchase_order' | 'punch_item' | 'change_request';
+export const docLinkKind = codec<DocLinkKind, string>([
+  ['deliverable', 'Deliverable'], ['article', 'Article'], ['purchase_order', 'Purchase order'], ['punch_item', 'Punch item'], ['change_request', 'Change request'],
+]);
+/** Distribution recipients (`DOCS.to`, ENG_RCP 3737). */
+export type DocRecipient = 'process' | 'meca' | 'elec' | 'auto' | 'client' | 'achats' | 'site';
+export const docRecipient = codec<DocRecipient, string>([
+  ['process', 'Process'], ['meca', 'Mechanical'], ['elec', 'Electrical'], ['auto', 'Automation'], ['client', 'Client'], ['achats', 'Purchasing'], ['site', 'Site'],
+]);
+/** Saved views of the vault (DOC_VIEWS 3663) — UI filters, not stored. */
+export type DocSavedView = 'all' | 'bpe' | 'audit' | 'client' | 'pending' | 'obsolete';
+export const docSavedView = codec<DocSavedView, string>([
+  ['all', 'All documents'], ['bpe', 'BPE dossier (released)'], ['audit', 'Quality records 2026 (ISO audit)'], ['client', 'Shared with client'],
+  ['pending', 'Awaiting approval'], ['obsolete', 'Obsolete withdrawn'],
+]);
+/** Types counted by the "Quality records 2026 (ISO audit)" view (`viewFilter` 5030). */
+export const AUDIT_VIEW_TYPES: readonly string[] = ['REC', 'NCR', 'AUD', 'PRO', 'FRM', 'CER', 'COC', 'PV', 'RPT'];
+/** Types offered by the "Deposit in Codex" dialog, in DOC_TYPES order (5051). */
+export const DEPOSIT_TYPES: readonly string[] = ['RPT', 'REC', 'NCR', 'CER', 'COC', 'PV', 'LET', 'MIN', 'PHO'];
+/** Approval-circuit roles (DOC_TYPES circuits 3615, DOC_WHO 3617). */
+export type ApproverRole =
+  | 'author' | 'engineering_lead' | 'project_manager' | 'quality_manager' | 'direction' | 'client' | 'quality_verification'
+  | 'hse_officer' | 'buyer' | 'site_manager' | 'auditor';
+export const approverRole = codec<ApproverRole, string>([
+  ['author', 'Author'], ['engineering_lead', 'Engineering lead'], ['project_manager', 'Project manager'], ['quality_manager', 'Quality manager'],
+  ['direction', 'Direction'], ['client', 'Client'], ['quality_verification', 'Quality (verification)'], ['hse_officer', 'HSE officer'],
+  ['buyer', 'Buyer'], ['site_manager', 'Site manager'], ['auditor', 'Auditor'],
+]);
+/** Where a download log entry comes from: made from Keystone, or synced from the Codex log. */
+export type DocDownloadSource = 'keystone' | 'codex';
+/** Hand-off state of a deposit to Codex (simulated: recorded at once, OPEN QUESTION D-1). */
+export type DepositStatus = 'handed_off' | 'recorded';
+
+// ── Contract & billing (docs/spec/11 §2.3, §3.5; 04 §3–4; 03 §7) ────────────────────────────────────
+/** Contract types (CTR_FIELDS 4873). */
+export type ContractType = 'lump_sum_epc' | 'unit_rates' | 'cost_plus' | 'framework';
+export const contractType = codec<ContractType, string>([
+  ['lump_sum_epc', 'Lump sum (EPC)'], ['unit_rates', 'Unit rates'], ['cost_plus', 'Cost plus'], ['framework', 'Framework agreement'],
+]);
+/** Amendment status (AF.amendment). Only `signed` adds to the contract value. */
+export type AmendmentStatus = 'draft' | 'sent_for_signature' | 'awaiting_signature' | 'signed';
+export const amendmentStatus = codec<AmendmentStatus, string>([
+  ['draft', 'Draft'], ['sent_for_signature', 'Sent for signature'], ['awaiting_signature', 'Awaiting signature'], ['signed', 'Signed'],
+]);
+/** Bond / guarantee types (AF.bond). */
+export type BondType = 'performance' | 'advance_payment' | 'retention' | 'warranty' | 'parent_company';
+export const bondType = codec<BondType, string>([
+  ['performance', 'Performance bond'], ['advance_payment', 'Advance payment bond'], ['retention', 'Retention bond'], ['warranty', 'Warranty bond'],
+  ['parent_company', 'Parent company guarantee'],
+]);
+/** Payment milestone status (CONTRACTS.milestones, BILLING rows). */
+export type PaymentMilestoneStatus = 'planned' | 'invoiced' | 'paid';
+export const paymentMilestoneStatus = codec<PaymentMilestoneStatus, string>([['planned', 'Planned'], ['invoiced', 'Invoiced'], ['paid', 'Paid']]);
+/** Customer invoice status (derived, `ctrInvoices` 4896). */
+export type CustomerInvoiceStatus = 'awaiting_payment' | 'overdue' | 'paid';
+export const customerInvoiceStatus = codec<CustomerInvoiceStatus, string>([['awaiting_payment', 'Awaiting payment'], ['overdue', 'Overdue'], ['paid', 'Paid']]);
+/** Billing model of a project (BILLING[code][0]). */
+export type BillingModel = 'client_milestones' | 'client_monthly_progress' | 'client_fixed_price' | 'internal_capex';
+export const billingModel = codec<BillingModel, string>([
+  ['client_milestones', 'Client · milestones'], ['client_monthly_progress', 'Client · monthly progress'], ['client_fixed_price', 'Client · fixed price'],
+  ['internal_capex', 'Internal · capex'],
+]);
+
+// ── Prioritisation (docs/spec/11 §2.1 ScoreAxis, §3.2 PortfolioScore; 03 §6) ─────────────────────────
+export type ScoreAxis = 'fit' | 'margin' | 'risk' | 'res' | 'client';
+export const scoreAxis = codec<ScoreAxis, string>([
+  ['fit', 'Strategic fit'], ['margin', 'Margin / NPV'], ['risk', 'Risk level'], ['res', 'Resource fit'], ['client', 'Client priority'],
+]);
+/** Obsolete project codes of `SCORES` (3540) and the projects they mean (11 §7 #12, 00 §7.16). */
+export const SCORE_CODE_REMAP: Readonly<Record<string, string>> = { 'EWA-041': 'EWA-051', 'RBR-038': 'RBR-048', 'CER-045': 'CER-047' };
+
+// ── Meetings, stakeholders (docs/spec/11 §2.2, §3.4; 05 §5–6) ───────────────────────────────────────
+export type MeetingType = 'internal' | 'external';
+export const meetingType = codec<MeetingType, string>([['internal', 'Internal'], ['external', 'External']]);
+export type MeetingStatus = 'scheduled' | 'notes_in_progress' | 'minutes_sent';
+export const meetingStatus = codec<MeetingStatus, string>([['scheduled', 'Scheduled'], ['notes_in_progress', 'Notes in progress'], ['minutes_sent', 'Minutes sent']]);
+/** Meeting series (AF.meetings select). */
+export type MeetingSeries = 'weekly_site' | 'steering_committee' | 'engineering_coordination' | 'supplier_review' | 'kick_off' | 'one_off';
+export const meetingSeries = codec<MeetingSeries, string>([
+  ['weekly_site', 'Weekly site meeting'], ['steering_committee', 'Steering committee'], ['engineering_coordination', 'Engineering coordination'],
+  ['supplier_review', 'Supplier review'], ['kick_off', 'Kick-off'], ['one_off', 'One-off'],
+]);
+export type MeetingLineType = 'info' | 'decision' | 'action';
+export const meetingLineType = codec<MeetingLineType, string>([['info', 'Info'], ['decision', 'Decision'], ['action', 'Action']]);
+/** How a minutes line was created. */
+export type MeetingLineOrigin = 'seed' | 'manual' | 'transcript';
+export type ClientQuestionState = 'open' | 'answered';
+export type StakeholderType = 'client' | 'internal' | 'supplier' | 'authority' | 'third_party';
+export const stakeholderType = codec<StakeholderType, string>([
+  ['client', 'Client'], ['internal', 'Internal'], ['supplier', 'Supplier'], ['authority', 'Authority'], ['third_party', 'Third party'],
+]);
+/** RACI codes (RACI 3715; deliverables add B = backup). */
+export type RaciCode = 'R' | 'A' | 'C' | 'I' | 'B';
+export const RACI_CODES: readonly RaciCode[] = ['R', 'A', 'C', 'I', 'B'];
+
+// ── Interfaces (docs/spec/11 §3.7 Interface; 07 §2.5) ────────────────────────────────────────────────
+/** Stored interface status; `late` is derived (open and needed before PG_NOW). */
+export type InterfaceStatus = 'open' | 'received' | 'frozen';
+export type InterfaceEffectiveStatus = InterfaceStatus | 'late';
+export const interfaceStatus = codec<InterfaceEffectiveStatus, string>([['open', 'Open'], ['late', 'Late'], ['received', 'Received'], ['frozen', 'Frozen']]);
+export type KeystoneSide = 'process' | 'mechanical' | 'electrical' | 'automation' | 'site';
+export const keystoneSide = codec<KeystoneSide, string>([
+  ['process', 'Process'], ['mechanical', 'Mechanical'], ['electrical', 'Electrical'], ['automation', 'Automation'], ['site', 'Site'],
+]);
+
+// ── Delivery 4 time helpers (docs/spec/08 §4.5, 09 §5) ───────────────────────────────────────────────
+/**
+ * Stamp of the n-th stock movement recorded in Keystone (`applyOp` 4480: '25 Sep 16:' + pad(10 + moves.length)):
+ * the status date at 16:10 + n minutes (n = movements already listed), so new movements sort above the seed ones.
+ */
+export function stockMoveInstant(count: number): Date {
+  const minutes = 16 * 60 + 10 + count;
+  const hh = String(Math.min(23, Math.floor(minutes / 60))).padStart(2, '0');
+  const mm = String(minutes >= 24 * 60 ? 59 : minutes % 60).padStart(2, '0');
+  return parisInstant(STATUS_ISO, `${hh}:${mm}`);
+}
+
+/** "12 Mar" (2026) / "13 Feb ’27" — the prototype's `fmtD` on an ISO date (purchase orders, receipts generated in Keystone). */
+export function fmtDOfIso(iso: string): string {
+  const [y] = iso.split('-');
+  return shortDateOfIso(iso) + (+y > 2026 ? ' ’' + y.slice(2) : '');
+}
+
+// ── Engineering & PLM (docs/spec/11 §2.7, §3.9; 09 §1–5) ─────────────────────────────────────────────
+/** Make / buy (`PARTS.mb`). */
+export type PartMakeBuy = 'manufactured' | 'purchased';
+export const partMakeBuy = codec<PartMakeBuy, string>([['manufactured', 'Manufactured'], ['purchased', 'Purchased']]);
+/** Part types (`PARTS.type`, 13 values in catalogue first-appearance order — the PLM type select order). */
+export type PartType =
+  | 'structural' | 'heavy_equipment' | 'electrical' | 'hvac' | 'fire_safety' | 'architectural' | 'medical' | 'mechanical'
+  | 'electronics' | 'it_hardware' | 'assembly' | 'consumable' | 'software';
+export const partType = codec<PartType, string>([
+  ['structural', 'Structural'], ['heavy_equipment', 'Heavy equipment'], ['electrical', 'Electrical'], ['hvac', 'HVAC'], ['fire_safety', 'Fire & safety'],
+  ['architectural', 'Architectural'], ['medical', 'Medical'], ['mechanical', 'Mechanical'], ['electronics', 'Electronics'], ['it_hardware', 'IT hardware'],
+  ['assembly', 'Assembly'], ['consumable', 'Consumable'], ['software', 'Software'],
+]);
+/** "Family" of the New part form (AF.plm) and the catalogue type it creates (OPEN QUESTION E-1: two lists). */
+export type PartFamily = 'structure' | 'mechanical' | 'electrical' | 'automation' | 'consumable';
+export const partFamily = codec<PartFamily, string>([
+  ['structure', 'Structure'], ['mechanical', 'Mechanical'], ['electrical', 'Electrical'], ['automation', 'Automation'], ['consumable', 'Consumable'],
+]);
+export const PART_FAMILY_TYPE: Record<PartFamily, PartType> = {
+  structure: 'structural', mechanical: 'mechanical', electrical: 'electrical', automation: 'electronics', consumable: 'consumable',
+};
+/** Unit of measure (New part form; the seed parts are counted in pieces). */
+export type PartUnit = 'pc' | 'm' | 'kg' | 'set';
+export const PART_UNITS: readonly PartUnit[] = ['pc', 'm', 'kg', 'set'];
+/** Qualification status (`PARTS.status`). */
+export type PartStatus = 'validated' | 'not_validated' | 'outdated' | 'obsolete';
+export const partStatus = codec<PartStatus, string>([
+  ['validated', 'Validated'], ['not_validated', 'Not validated'], ['outdated', 'Outdated'], ['obsolete', 'Obsolete'],
+]);
+/** Part drawer banner per status (STATUS_NOTE 3405; EN source strings). */
+export const PART_STATUS_NOTE: Partial<Record<PartStatus, string>> = {
+  outdated: 'Superseded — replace in open designs before procurement.',
+  obsolete: 'Discontinued by the manufacturer — no new orders; switch to the registered equivalent.',
+  not_validated: 'Qualification pending — cannot be released to purchasing.',
+};
+/** Part status tag (`partTag` 4176). */
+export const PART_STATUS_TAG: Record<PartStatus, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = {
+  validated: 'tag-neutral', not_validated: 'tag-outline', outdated: 'tag-accent', obsolete: 'tag-accent',
+};
+/** Wear / spare classification (WEAR_SPARE 3341, PU_LABEL 3342 — "—" when none). */
+export type WearSpare = 'PU' | 'PR';
+export const wearSpare = codec<WearSpare, string>([['PU', 'Wear part (PU)'], ['PR', 'Spare part (PR)']]);
+/**
+ * Export control family of a part (`PARTS.restr`): the restriction text stays on the part (EN source string, shown
+ * as is); the code lets customs screens group the lines (BACKLOG §1 Expédition & transport, dual-use alert).
+ */
+export type ExportControl = 'dual_use' | 'encryption' | 'dangerous_goods' | 'medical_device' | 'anti_dumping';
+export const exportControl = codec<ExportControl, string>([
+  ['dual_use', 'Dual-use'], ['encryption', 'Encryption'], ['dangerous_goods', 'Dangerous goods'], ['medical_device', 'Medical device'], ['anti_dumping', 'Anti-dumping'],
+]);
+/** Export-control code of a restriction text ("Dual-use — export licence…" → dual_use); null for "None" / unknown. */
+export function exportControlOf(restriction: string | null | undefined): ExportControl | null {
+  const r = (restriction ?? '').toLowerCase();
+  if (!r || r === 'none') return null;
+  if (r.startsWith('dual-use')) return 'dual_use';
+  if (r.startsWith('encryption')) return 'encryption';
+  if (r.startsWith('dangerous goods')) return 'dangerous_goods';
+  if (r.startsWith('medical device')) return 'medical_device';
+  if (r.startsWith('anti-dumping')) return 'anti_dumping';
+  return null;
+}
+/** BOM line scope (AF.bom). */
+export type BomScope = 'keystone' | 'client' | 'overlay';
+export const bomScope = codec<BomScope, string>([['keystone', 'Keystone'], ['client', 'Client'], ['overlay', 'Overlay']]);
+/** Revision comparison line kind (REV_DIFF 3427). */
+export type RevisionDiffKind = 'quantity' | 'substitution' | 'added';
+export const revisionDiffKind = codec<RevisionDiffKind, string>([['quantity', 'Quantity'], ['substitution', 'Substitution'], ['added', 'Added']]);
+/** "Open BOM" stages (OPEN_BOM 4185): design still open, ECOs update the BOM automatically. */
+export const OPEN_BOM_STAGES: readonly StageCode[] = ['initiative', 'aps', 'apd', 'etudes'];
+
+// ECOs are owned by Vigie (the group's QHSE application): Keystone keeps a read-only mirror of them and records
+// progress (approval-key decisions, step advancement) that is sent to Vigie — src/server/integrations/vigie.
+/** ECO types (ECO_TYPES 3430). */
+export type EcoType = 'rev' | 'sub' | 'asm' | 'sup' | 'obs';
+export const ecoType = codec<EcoType, string>([
+  ['rev', 'Part revision'], ['sub', 'BOM substitution'], ['asm', 'Assembly structure'], ['sup', 'Supplier / make-buy'], ['obs', 'Obsolescence notice'],
+]);
+/** ECO status (ECO_FLOW 3431) as Vigie reports it (release is automatic in Vigie, 09 §11). */
+export type EcoStatus = 'draft' | 'impact_analysis' | 'in_approval' | 'released' | 'rejected';
+export const ecoStatus = codec<EcoStatus, string>([
+  ['draft', 'Draft'], ['impact_analysis', 'Impact analysis'], ['in_approval', 'In approval'], ['released', 'Released'], ['rejected', 'Rejected'],
+]);
+/** Status tag (`ecoTag` 4194). */
+export const ECO_STATUS_TAG: Record<EcoStatus, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = {
+  draft: 'tag-outline', impact_analysis: 'tag-outline', in_approval: 'tag-accent', released: 'tag-neutral', rejected: 'tag-outline',
+};
+/** Steps of the ECO drawer's indicator (ECO_FLOW.slice(0, 4)); a rejected ECO reaches none. */
+export const ECO_FLOW_STEPS: readonly EcoStatus[] = ['draft', 'impact_analysis', 'in_approval', 'released'];
+/** Index of a status in the step indicator (-1 for rejected). */
+export const ecoStepIndex = (s: EcoStatus) => ECO_FLOW_STEPS.indexOf(s);
+/**
+ * Step advancements Keystone may record and send to Vigie ("Start impact analysis", "Submit for approval" — the
+ * prototype's only step buttons, 09 §4.7). Submitting needs the interchangeability decided (in Vigie).
+ */
+export const ECO_STEP_ADVANCE: Partial<Record<EcoStatus, EcoStatus>> = { draft: 'impact_analysis', impact_analysis: 'in_approval' };
+/** ECO approval keys (ECOS.appr, ecoRoleKey 4341) in drawer order, with the approver label and the table's short label. */
+export type EcoApproverKey = 'englead' | 'quality' | 'pm';
+export const ECO_APPROVER_KEYS: readonly EcoApproverKey[] = ['englead', 'quality', 'pm'];
+export const ecoApproverKey = codec<EcoApproverKey, string>([
+  ['englead', 'Engineering lead'], ['quality', 'Quality (ISO 9001)'], ['pm', 'PM of impacted projects'],
+]);
+export const ECO_APPROVER_SHORT: Record<EcoApproverKey, string> = { englead: 'Eng.', quality: 'Quality', pm: 'PM' };
+/** ECO approval key of a role (ecoRoleKey 4341); the portfolio director holds none. */
+export const ecoKeyOfRole = (role: string): EcoApproverKey | null => (role === 'englead' || role === 'quality' || role === 'pm' ? role : null);
+/** Decision on an ECO approval key. */
+export type EcoDecision = 'pending' | 'ok' | 'rejected';
+export const ecoDecision = codec<EcoDecision, string>([['pending', 'Pending'], ['ok', 'Approved'], ['rejected', 'Rejected']]);
+/** Approver-state tag (4363). */
+export const ECO_DECISION_TAG: Record<EcoDecision, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = { ok: 'tag-neutral', pending: 'tag-accent', rejected: 'tag-outline' };
+/** Interchangeability with the previous revision (null = not assessed) — decided in Vigie. */
+export type Interchangeability = 'yes' | 'no';
+export const interchangeability = codec<Interchangeability, string>([['yes', 'Interchangeable'], ['no', 'Not interchangeable']]);
+export const INTERCHANGEABILITY_NOT_ASSESSED = 'Interchangeability not assessed';
+/** Disposition of an ECO target as Vigie reports it (DISP_L 4184; retrofit = machines only). Never edited in Keystone. */
+export type EcoDisposition = 'update' | 'pinned' | 'retrofit' | 'na';
+export const ecoDisposition = codec<EcoDisposition, string>([['update', 'Update'], ['pinned', 'Pinned'], ['retrofit', 'Retrofit'], ['na', 'Not applicable']]);
+/** Effectivity target of an ECO: an open/frozen project BOM, or a machine of the installed base (Vigie's code). */
+export type EcoTargetType = 'project' | 'machine';
+/** What a progress entry records: the viewer's decision on their approval key, or a step advancement. */
+export type EcoProgressKind = 'approval' | 'step';
+/** Delivery state of a progress entry in the outbox towards Vigie. */
+export type VigieSyncStatus = 'pending' | 'sent' | 'failed';
+export const vigieSyncStatus = codec<VigieSyncStatus, string>([
+  ['pending', 'Pending sync with Vigie'], ['sent', 'Sent to Vigie'], ['failed', 'Sync with Vigie failed'],
+]);
+/** State of a part fitted on a machine in service, derived from the ECO dispositions (part drawer, 09 §2.2). */
+export type InstalledPartState = 'latest' | 'update_planned' | 'decision_pending' | 'retrofit_pending' | 'pinned';
+export const installedPartState = codec<InstalledPartState, string>([
+  ['latest', 'Latest'], ['update_planned', 'Update planned'], ['decision_pending', 'Decision pending'], ['retrofit_pending', 'Retrofit pending'], ['pinned', 'Pinned'],
+]);
+/** Drawing state mirrored from the PDM vault (DRAWINGS 3439). */
+export type DrawingState = 'wip' | 'under_review' | 'released' | 'obsolete';
+export const drawingState = codec<DrawingState, string>([['wip', 'WIP'], ['under_review', 'Under review'], ['released', 'Released'], ['obsolete', 'Obsolete']]);
+/** Drawing state tag (`dwgTag` 4373). */
+export const DRAWING_STATE_TAG: Record<DrawingState, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = {
+  wip: 'tag-accent', under_review: 'tag-accent', released: 'tag-neutral', obsolete: 'tag-outline',
+};
+/** "Sync vault" form (AF.drawings): source and scope. */
+export type VaultSyncSource = 'solidworks_3dx' | 'see_electrical' | 'both';
+export const vaultSyncSource = codec<VaultSyncSource, string>([['solidworks_3dx', 'SolidWorks 3DX vault'], ['see_electrical', 'SeeElectrical'], ['both', 'Both']]);
+export type VaultSyncScope = 'current_project' | 'all_projects';
+export const vaultSyncScope = codec<VaultSyncScope, string>([['current_project', 'Current project'], ['all_projects', 'All projects']]);
+
+// ── Installed base (docs/spec/11 §2.4, §3.7 Machine; 09 §10.5) — not modelled before phase 8 ───────────
+/** Warranty status (FLEET 3729, read from the prototype by dal/machines.ts); `extended` carries its end date. */
+export type WarrantyStatus = 'in_warranty' | 'extended' | 'out_of_warranty';
+export const warrantyStatus = codec<WarrantyStatus, string>([['in_warranty', 'In warranty'], ['extended', 'Extended'], ['out_of_warranty', 'Out of warranty']]);
+
+// ── Supply chain (docs/spec/11 §2.5, §3.8; 08 §1–4) ──────────────────────────────────────────────────
+/** Purchase order status (PO_FLOW 3414). */
+export type PoStatus = 'draft' | 'awaiting_approval' | 'ordered' | 'partially_received' | 'received' | 'cancelled';
+export const poStatus = codec<PoStatus, string>([
+  ['draft', 'Draft'], ['awaiting_approval', 'Awaiting approval'], ['ordered', 'Ordered'], ['partially_received', 'Partially received'], ['received', 'Received'],
+  ['cancelled', 'Cancelled'],
+]);
+/** PO status tag (`poTag` 4313). */
+export const PO_STATUS_TAG: Record<PoStatus, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = {
+  draft: 'tag-neutral', awaiting_approval: 'tag-outline', ordered: 'tag-outline', partially_received: 'tag-accent', received: 'tag-neutral', cancelled: 'tag-neutral',
+};
+/** Where a purchase order comes from: Sage X3 (seed, genPOs), the BOM shortfall assistant, an RFQ award. */
+export type PoOrigin = 'x3' | 'shortfall' | 'rfq';
+/** Incoterms (AF.procurement); "DAP site" = DAP at the site gate. Codes are the Incoterm abbreviations. */
+export type Incoterm = 'DAP' | 'EXW' | 'FCA' | 'DDP';
+export const incoterm = codec<Incoterm, string>([['DAP', 'DAP site'], ['EXW', 'EXW'], ['FCA', 'FCA'], ['DDP', 'DDP']]);
+/** RFQ status (RFQS 3526). */
+export type RfqStatus = 'draft' | 'open' | 'comparing' | 'awarded';
+export const rfqStatus = codec<RfqStatus, string>([['draft', 'Draft'], ['open', 'Open'], ['comparing', 'Comparing'], ['awarded', 'Awarded']]);
+export const RFQ_STATUS_TAG: Record<RfqStatus, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = {
+  draft: 'tag-neutral', open: 'tag-outline', comparing: 'tag-accent', awarded: 'tag-neutral',
+};
+/** RFQ award rule (RFQS.rule). */
+export type AwardRule = 'lowest_tco' | 'technical_first' | 'lowest_price' | 'pm_decides';
+export const awardRule = codec<AwardRule, string>([
+  ['lowest_tco', 'Lowest total cost of ownership'], ['technical_first', 'Technical compliance first'], ['lowest_price', 'Lowest price'], ['pm_decides', 'PM decides'],
+]);
+/** Roles allowed to award an RFQ (rfqVals.canAward 4655). */
+export const RFQ_AWARD_ROLES: readonly string[] = ['pm', 'procurement', 'director'];
+/** Supplier rating (SUPPLIERS 3538, RFQ quotes). */
+export type SupplierGrade = 'A' | 'B' | 'C';
+export const SUPPLIER_GRADES: readonly SupplierGrade[] = ['A', 'B', 'C'];
+export const SUPPLIER_GRADE_TAG: Record<SupplierGrade, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = { A: 'tag-neutral', B: 'tag-outline', C: 'tag-accent' };
+/** Supplier invoice status (INVOICES 3531). */
+export type SupplierInvoiceStatus = 'awaiting_receipt' | 'blocked' | 'no_po' | 'approved_for_payment' | 'paid' | 'rejected';
+export const supplierInvoiceStatus = codec<SupplierInvoiceStatus, string>([
+  ['awaiting_receipt', 'Awaiting receipt'], ['blocked', 'Blocked'], ['no_po', 'No PO'], ['approved_for_payment', 'Approved for payment'], ['paid', 'Paid'],
+  ['rejected', 'Rejected'],
+]);
+export const SUPPLIER_INVOICE_STATUS_TAG: Record<SupplierInvoiceStatus, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = {
+  awaiting_receipt: 'tag-outline', blocked: 'tag-accent', no_po: 'tag-accent', approved_for_payment: 'tag-neutral', paid: 'tag-neutral', rejected: 'tag-outline',
+};
+/** 3-way match states (`match3` 4663): PO line (ok / diff / none) and goods receipt (ok / partial / pending / none). */
+export type MatchState = 'ok' | 'diff' | 'partial' | 'pending' | 'none';
+export const matchState = codec<MatchState, string>([
+  ['ok', 'Matched'], ['partial', 'Partial receipt'], ['diff', 'Amount differs'], ['pending', 'Receipt pending'], ['none', 'Missing'],
+]);
+/** Goods receipt status (DELIV_FLOW 3474). */
+export type ReceiptStatus = 'announced' | 'received' | 'qc_pending' | 'accepted' | 'partially_rejected' | 'rejected';
+export const receiptStatus = codec<ReceiptStatus, string>([
+  ['announced', 'Announced'], ['received', 'Received'], ['qc_pending', 'QC pending'], ['accepted', 'Accepted'], ['partially_rejected', 'Partially rejected'],
+  ['rejected', 'Rejected'],
+]);
+/** Receipt status tag (`dTag` 4451). */
+export const RECEIPT_STATUS_TAG: Record<ReceiptStatus, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = {
+  announced: 'tag-neutral', received: 'tag-outline', qc_pending: 'tag-outline', accepted: 'tag-neutral', partially_rejected: 'tag-accent', rejected: 'tag-accent',
+};
+export type ReceiptAttachmentKind = 'document' | 'photo';
+/** Source of a stock position: imported from Sage X3, or changed in Keystone and not yet pushed back. */
+export type StockSource = 'x3' | 'local';
+export const stockSource = codec<StockSource, string>([['x3', 'X3'], ['local', 'Local']]);
+/** Sage X3 exchanges recorded by Keystone (mock connector): stock import ("Import from X3"), push of local changes. */
+export type X3SyncKind = 'stock_import' | 'stock_push';
+/** Stock operations of the stock-line drawer (STOCK_OPS 3483), plus the system movement `receipt` (MOVES0 3484). */
+export type StockOperation = 'adjust' | 'transfer' | 'reserve' | 'issue' | 'return' | 'scrap';
+export type StockMovementType = StockOperation | 'receipt';
+export const stockOperation = codec<StockOperation, string>([
+  ['adjust', 'Adjust (count)'], ['transfer', 'Transfer'], ['reserve', 'Reserve for project'], ['issue', 'Issue to activity'], ['return', 'Return to stock'],
+  ['scrap', 'Scrap / rework'],
+]);
+/** Movement type as the movement lists show it (MOVES0: "Transfer", "Receipt"…). */
+export const stockMovementType = codec<StockMovementType, string>([
+  ['adjust', 'Adjust'], ['transfer', 'Transfer'], ['reserve', 'Reserve'], ['issue', 'Issue'], ['return', 'Return'], ['scrap', 'Scrap'], ['receipt', 'Receipt'],
+]);
+/** Storage location types (SETTINGS0.locTypes). */
+export type LocationType = 'central_warehouse' | 'workshop' | 'site_store' | 'consignment' | 'quarantine';
+export const locationType = codec<LocationType, string>([
+  ['central_warehouse', 'Central warehouse'], ['workshop', 'Workshop'], ['site_store', 'Site store'], ['consignment', 'Consignment at supplier'],
+  ['quarantine', 'Quarantine (QC hold)'],
+]);

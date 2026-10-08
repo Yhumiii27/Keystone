@@ -1,0 +1,182 @@
+/* Documents — Codex index (template 2310–2345), record drawer (2346–2362), deposit hand-off (2363–2374) and
+   Document types register (2375–2383). */
+
+/* ── Codex banner (2312, 2377) ── card elev-sm row, accent-800 border (SectionCard variant highlight) */
+.cx {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-900);
+  color: var(--color-accent-200);
+  display: grid;
+  place-items: center;
+  font-weight: 500;
+  font-size: 13px;
+  flex: none;
+  border: 1px solid var(--color-accent-800);
+}
+.bannerText { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 240px; }
+.bannerTitle { font-size: 13px; font-weight: 500; }
+.bannerSub { font-size: 12px; color: var(--color-neutral-400); text-wrap: pretty; }
+.sync { font-size: 11.5px; color: var(--color-neutral-400); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+
+/* ── Filter rows (2314–2319) ── */
+.filters1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* "Saved views" caption: margin-right 6px before its chips */
+.viewsLabel { margin-right: 6px; }
+.divider { width: 1px; height: 18px; background: var(--color-neutral-800); flex: none; }
+
+/* ── Selection bar (2320) ── */
+.selBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-900);
+  font-size: 12.5px;
+}
+.selText { margin-right: auto; color: var(--color-accent-100); }
+
+/* ── Vault card (2321–2343) ── */
+.cardHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cardTitleCol { display: flex; flex-direction: column; margin-right: auto; min-width: 0; }
+.cardSub { font-size: 12px; color: var(--color-neutral-400); text-wrap: pretty; }
+.checkCell { width: 28px; }
+.check {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid var(--color-neutral-600);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+.checkOn { border-color: var(--color-accent); background: var(--color-accent-700); }
+.checkIcon { font-size: 11px; color: var(--color-accent-100); }
+.check:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.numberCell { font-variant-numeric: tabular-nums; font-weight: 500; white-space: nowrap; }
+.numberWrap { display: inline-flex; align-items: center; gap: 6px; }
+.titleCell { text-wrap: pretty; min-width: 160px; }
+.projectCell { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.num { font-variant-numeric: tabular-nums; }
+.nowrapTag { white-space: nowrap; }
+.confTag { font-size: 10.5px; }
+.tagsCell { font-size: 11.5px; color: var(--color-neutral-400); max-width: 220px; }
+.dlCell { text-align: right; white-space: nowrap; }
+.dlBtn { color: var(--color-neutral-400); }
+
+/* ── Document types register (2380–2381) ── */
+.codeCell { font-variant-numeric: tabular-nums; font-weight: 500; }
+.small { font-size: 12px; }
+
+/* ── Record drawer (2346–2362) ── */
+/* header row gap 8px (the shared drawer header uses 10px) */
+.drawer > :first-child { gap: 8px; }
+.codexTag { display: inline-flex; align-items: center; gap: 4px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.mirrorNote { font-size: 11.5px; color: var(--color-neutral-500); display: inline-flex; align-items: center; gap: 6px; }
+.section { display: flex; flex-direction: column; gap: 4px; }
+.sectionWide { display: flex; flex-direction: column; gap: 6px; }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.revRow {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-neutral-900);
+  font-size: 12.5px;
+  color: var(--color-text);
+}
+.revOld { color: var(--color-neutral-500); }
+.revLetter { font-weight: 500; font-variant-numeric: tabular-nums; }
+.revNote { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.revSub { font-size: 11px; color: var(--color-neutral-400); }
+.revBtns { display: flex; gap: 4px; }
+.apprRow {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--color-neutral-900);
+  font-size: 12.5px;
+  color: var(--color-text);
+}
+.apprPending { color: var(--color-neutral-500); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-accent); }
+.dotPending { background: var(--color-neutral-700); }
+.apprState { font-size: 11.5px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.distRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--color-neutral-900);
+  font-size: 12.5px;
+}
+.muted { color: var(--color-neutral-400); }
+.dlRow { font-size: 12.5px; padding: 4px 0; border-bottom: 1px solid var(--color-neutral-900); color: var(--color-neutral-300); }
+.relation {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-neutral-800);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: none;
+}
+a.relation { cursor: pointer; }
+a.relation:hover { border-color: var(--color-accent-700); color: var(--color-text); }
+.relationKind { color: var(--color-neutral-400); }
+
+/* ── Deposit hand-off (2363–2374) ── */
+.ctxBanner { font-size: 12.5px; padding: 8px 12px; border-radius: var(--radius-md); background: var(--color-accent-900); color: var(--color-accent-100); }
+.typeChips { display: flex; gap: 6px; flex-wrap: wrap; }
+.typeChip {
+  padding: 5px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-neutral-800);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.typeChipOn { background: var(--color-accent-900); border-color: var(--color-accent-700); }
+.typeChip:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.typeCode { color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.full { grid-column: 1 / -1; }
+.drop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 22px;
+  border: 1px dashed var(--color-neutral-700);
+  border-radius: var(--radius-md);
+  color: var(--color-neutral-400);
+  font-size: 12.5px;
+  text-align: center;
+  cursor: pointer;
+}
+.drop:hover,
+.drop:focus-within { border-color: var(--color-neutral-500); }
+.dropIcon { font-size: 26px; color: var(--color-accent); }
+.dropFile { font-size: 12px; color: var(--color-text); overflow-wrap: anywhere; }
+.fileInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.footer { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+

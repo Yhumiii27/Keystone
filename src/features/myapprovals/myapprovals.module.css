@@ -31,3 +31,7 @@
 
 /* Col 4: open arrow */
 .arrow { color: var(--color-neutral-500); }
+
+/* Col 2: link to the application that owns the item ("Open in Vigie"), 11.5px accent, opens outside Keystone. */
+.external { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; font-size: 11.5px; color: var(--color-accent); text-decoration: none; }
+.external:hover { color: var(--color-accent-300); }

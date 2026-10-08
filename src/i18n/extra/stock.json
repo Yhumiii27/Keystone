@@ -1,0 +1,14 @@
+{
+  "Stock is read-only for you": "Le stock est en lecture seule pour vous",
+  "Nothing to push · this line matches Sage X3": "Rien à envoyer · cette ligne est à jour dans Sage X3",
+  "Invalid movement": "Mouvement invalide",
+  "Invalid quantity": "Quantité invalide",
+  "Enter a whole quantity": "Saisissez une quantité entière",
+  "Enter a quantity above 0": "Saisissez une quantité supérieure à 0",
+  "Choose a destination": "Choisissez une destination",
+  "The destination is the current location": "La destination est l’emplacement actuel",
+  "A project is required": "Un projet est requis",
+  "This line is already reserved for another project": "Cette ligne est déjà réservée pour un autre projet",
+  "The destination is reserved for another project": "La destination est réservée pour un autre projet",
+  "Unknown stock line": "Ligne de stock inconnue"
+}

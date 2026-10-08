@@ -1,0 +1,5 @@
+/* Capacity what-if department bar (template 2124–2127). */
+.track { position: relative; height: 8px; border-radius: 4px; background: var(--color-neutral-900); display: flex; overflow: visible; }
+.committed { height: 100%; border-radius: 4px 0 0 4px; background: var(--color-neutral-600); }
+.candidate { height: 100%; border-radius: 0 4px 4px 0; background: var(--color-accent); }
+.tick { position: absolute; top: -3px; width: 2px; height: 14px; background: var(--color-neutral-200); left: var(--cap-left); }

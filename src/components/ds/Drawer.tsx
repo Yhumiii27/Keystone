@@ -19,7 +19,7 @@ export interface DrawerProps {
   closeHref?: string;
   /** 640 (default) or 680 (document drawer). */
   width?: 640 | 680;
-  /** Object id shown first in the header (12px neutral-400 tabular), e.g. "A1250", "PO-2026-0412". */
+  /** Object id shown first in the header (12px neutral-400 tabular), e.g. "A1250", "PO-2026-0412"; names the dialog when there is no title. */
   id?: ReactNode;
   /** `.card-title` (translated). */
   title?: ReactNode;
@@ -44,6 +44,7 @@ export function Drawer({ open, onClose, closeHref, width = 640, id, title, title
   const router = useRouter();
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const headId = useId();
   const isClient = useIsClient();
 
   const close = () => {
@@ -68,13 +69,19 @@ export function Drawer({ open, onClose, closeHref, width = 640, id, title, title
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={title ? titleId : undefined}
+        aria-labelledby={title ? titleId : id != null ? headId : undefined}
         tabIndex={-1}
         className={cx('card', 'elev-lg', s.panel, className)}
         style={{ '--drawer-w': `${width}px` } as CSSProperties}
       >
         <div className={s.header}>
-          {id != null ? <span className={cx(s.id, (!inline || !title) && s.push)}>{id}</span> : !inline && <span className={s.push} />}
+          {id != null ? (
+            <span id={headId} className={cx(s.id, (!inline || !title) && s.push)}>
+              {id}
+            </span>
+          ) : (
+            !inline && <span className={s.push} />
+          )}
           {inline && titleEl}
           {meta}
           <IconButton icon={X} muted label={closeLabel ?? t('Close')} onClick={close} />

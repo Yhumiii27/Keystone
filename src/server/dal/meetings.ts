@@ -1,0 +1,449 @@
+import 'server-only';
+// Meetings & minutes DAL (docs/spec/05 §5; 11 §3.4 Meeting, ClientQuestion). The project meeting register with
+// attendance, agenda and minutes lines, transcripts and their (simulated) analysis, the internal ⇄ client question
+// bridge, and the writers: new meeting (MTG-130…), minutes lines (Scheduled → Notes in progress), action ticks,
+// transcript analysis / "Add to minutes", and "Send minutes" — a numbered MIN document released in the Codex index,
+// a to-do for every action owner of the resource pool, read receipts for every invitee but the organizer.
+import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { TODAY } from '@/lib/format';
+import { getDb } from '@/server/db/client';
+import {
+  NOW_ISO, PG_NOW, isoOfDayOffset, isoOfDisplayDate, meetingLineType, meetingSeries, meetingStatus, meetingType, monthIndexOfIso,
+  nextBusinessNumber, parisInstant, shortDateOfIso, displayOfIso,
+  type MeetingLineOrigin, type MeetingLineType, type MeetingSeries, type MeetingStatus, type MeetingType,
+} from '@/server/db/codes';
+import { findPerson, nameOf, nextNumber, requireProject, writeAudit } from '@/server/db/helpers';
+import {
+  clientQuestions, documents, meetingAgendaPoints, meetingLines, meetingParticipants, meetingTranscriptProposals, meetingTranscripts, meetings, persons,
+  projects, tasks,
+} from '@/server/db/schema';
+import type { Tx } from '@/server/db/types';
+import { createMinutesDocument } from './documents';
+
+// ── Read model ─────────────────────────────────────────────────────────────────────────────────────────
+
+export interface MeetingLineRow {
+  /** Agenda point index and line index (the prototype's `{id}|{i}|{j}` key). */
+  point: number;
+  position: number;
+  type: MeetingLineType;
+  text: string;
+  /** Actions: owner as typed ("J. Wagner") and its full name when the owner is in the resource pool (`fullName`). */
+  owner: string | null;
+  ownerFull: string | null;
+  /** Actions: due as typed ("2 Oct", "—") and its date (2026 assumed). */
+  due: string | null;
+  dueDate: string | null;
+  done: boolean;
+  /** Open action due before the prototype's now (PG_NOW). */
+  overdue: boolean;
+  /** Task created by "Send minutes". */
+  taskNumber: string | null;
+  origin: MeetingLineOrigin;
+}
+
+export interface MeetingParticipantRow {
+  name: string;
+  present: boolean;
+  /** Receives the minutes (every invitee but the organizer once sent) and the read date. */
+  minutesRecipient: boolean;
+  readOn: string | null;
+  /** "27 Sep" or "". */
+  readText: string;
+}
+
+export interface TranscriptProposal {
+  type: 'decision' | 'action';
+  text: string;
+  owner: string | null;
+  due: string | null;
+}
+
+export interface MeetingTranscriptView {
+  text: string;
+  analysed: boolean;
+  /** Revealed once analysed. */
+  summary: string | null;
+  proposals: TranscriptProposal[];
+  applied: boolean;
+}
+
+export interface MeetingRow {
+  /** "MTG-118". */
+  number: string;
+  projectCode: string;
+  title: string;
+  series: MeetingSeries;
+  seriesLabel: string;
+  type: MeetingType;
+  typeLabel: string;
+  startsOn: string;
+  /** "29 Sep 2026". */
+  dateText: string;
+  /** Month index of the meeting date (prototype `mIdx(date)`), for "this week" / "this month". */
+  monthIndex: number;
+  time: string;
+  durationMin: number;
+  /** "45 min", "1 h", "1 h 30". */
+  durationText: string;
+  location: string;
+  organizer: string;
+  status: MeetingStatus;
+  statusLabel: string;
+  /** "MIN-HLT-023"; `minutesIndexed` = the record exists in the Codex index ("Open minutes"). */
+  minutesNumber: string | null;
+  minutesIndexed: boolean;
+  minutesSentOn: string | null;
+  /** "26 Sep". */
+  sentText: string;
+  participants: MeetingParticipantRow[];
+  agenda: { position: number; title: string; lines: MeetingLineRow[] }[];
+  transcript: MeetingTranscriptView | null;
+  /** Action lines of the meeting. */
+  actionCount: number;
+  /** Register order. */
+  sortOrder: number;
+}
+
+/** Register order of a created meeting: below the seeded register (1…n), ascending with the global number (MTG-130, MTG-131…). */
+export const createdSortOrder = (number: string) => parseInt(number.replace(/^MTG-/, ''), 10) - 1_000_000;
+
+export const durationText = (min: number) => (min < 60 ? `${min} min` : `${Math.floor(min / 60)} h${min % 60 ? ' ' + (min % 60) : ''}`);
+const before = (iso: string | null) => !!iso && monthIndexOfIso(iso) < PG_NOW;
+
+/** Meetings of a project with everything the register, detail card and registers need (MEETINGS order). */
+export async function listMeetings(projectCode: string): Promise<MeetingRow[]> {
+  const db = await getDb();
+  const ms = await db
+    .select({ m: meetings, code: projects.code, docNumber: documents.number })
+    .from(meetings)
+    .innerJoin(projects, eq(projects.id, meetings.projectId))
+    .leftJoin(documents, eq(documents.id, meetings.minutesDocumentId))
+    .where(eq(projects.code, projectCode))
+    .orderBy(asc(meetings.sortOrder));
+  if (!ms.length) return [];
+  const ids = ms.map((r) => r.m.id);
+  const [parts, points, lines, trs, props, pool] = await Promise.all([
+    db.select().from(meetingParticipants).where(inArray(meetingParticipants.meetingId, ids)).orderBy(asc(meetingParticipants.position)),
+    db.select().from(meetingAgendaPoints).where(inArray(meetingAgendaPoints.meetingId, ids)).orderBy(asc(meetingAgendaPoints.position)),
+    db.select({ l: meetingLines, meetingId: meetingAgendaPoints.meetingId, task: tasks.number }).from(meetingLines)
+      .innerJoin(meetingAgendaPoints, eq(meetingAgendaPoints.id, meetingLines.agendaPointId))
+      .leftJoin(tasks, eq(tasks.id, meetingLines.taskId))
+      .where(inArray(meetingAgendaPoints.meetingId, ids)).orderBy(asc(meetingLines.position)),
+    db.select().from(meetingTranscripts).where(inArray(meetingTranscripts.meetingId, ids)),
+    db.select().from(meetingTranscriptProposals).where(inArray(meetingTranscriptProposals.meetingId, ids)).orderBy(asc(meetingTranscriptProposals.position)),
+    db.select({ id: persons.id, full: persons.fullName }).from(persons).where(isNotNull(persons.resourcePoolPosition)),
+  ]);
+  const poolName = new Map(pool.map((p) => [p.id, p.full]));
+  return ms.map(({ m, code, docNumber }) => {
+    const agenda = points.filter((p) => p.meetingId === m.id).map((p) => ({
+      position: p.position, title: p.title,
+      lines: lines.filter((x) => x.l.agendaPointId === p.id).map(({ l, task }) => ({
+        point: p.position, position: l.position, type: l.type, text: l.text, owner: l.ownerName,
+        ownerFull: l.ownerName ? ((l.ownerPersonId && poolName.get(l.ownerPersonId)) || l.ownerName) : null, due: l.dueText, dueDate: l.dueDate, done: l.done,
+        overdue: l.type === 'action' && !l.done && before(l.dueDate), taskNumber: task, origin: l.origin,
+      })),
+    }));
+    const tr = trs.find((t) => t.meetingId === m.id);
+    return {
+      number: m.number, projectCode: code, title: m.title, series: m.series, seriesLabel: meetingSeries.label(m.series), type: m.type, typeLabel: meetingType.label(m.type),
+      startsOn: m.startsOn, dateText: displayOfIso(m.startsOn), monthIndex: monthIndexOfIso(m.startsOn), time: m.startTime, durationMin: m.durationMin,
+      durationText: durationText(m.durationMin), location: m.location, organizer: m.organizerName, status: m.status, statusLabel: meetingStatus.label(m.status),
+      minutesNumber: m.minutesNumber, minutesIndexed: !!docNumber, minutesSentOn: m.minutesSentOn, sentText: m.minutesSentOn ? shortDateOfIso(m.minutesSentOn) : '',
+      participants: parts.filter((p) => p.meetingId === m.id).map((p) => ({
+        name: p.name, present: p.present, minutesRecipient: p.minutesRecipient, readOn: p.minutesReadOn, readText: p.minutesReadOn ? shortDateOfIso(p.minutesReadOn) : '',
+      })),
+      agenda,
+      transcript: tr
+        ? {
+            text: tr.rawText, analysed: !!tr.analysedAt, summary: tr.analysedAt ? tr.summary : null, applied: !!tr.appliedAt,
+            proposals: tr.analysedAt
+              ? props.filter((x) => x.meetingId === m.id).map((x) => ({ type: x.type, text: x.text, owner: x.ownerName, due: x.dueText }))
+              : [],
+          }
+        : null,
+      actionCount: agenda.reduce((s, a) => s + a.lines.filter((l) => l.type === 'action').length, 0),
+      sortOrder: m.sortOrder,
+    };
+  });
+}
+
+/** One meeting by number, null when unknown. */
+export async function getMeeting(number: string): Promise<MeetingRow | null> {
+  const db = await getDb();
+  const [r] = await db.select({ code: projects.code }).from(meetings).innerJoin(projects, eq(projects.id, meetings.projectId)).where(eq(meetings.number, number));
+  if (!r) return null;
+  return (await listMeetings(r.code)).find((m) => m.number === number) ?? null;
+}
+
+/** Meetings with notes in progress per project code (Meetings nav badge, `mtgBadge`). */
+export async function meetingsToWriteByProject(): Promise<Record<string, number>> {
+  const db = await getDb();
+  const rows = await db
+    .select({ code: projects.code, n: sql<number>`count(*)::int` })
+    .from(meetings)
+    .innerJoin(projects, eq(projects.id, meetings.projectId))
+    .where(eq(meetings.status, 'notes_in_progress'))
+    .groupBy(projects.code);
+  return Object.fromEntries(rows.map((r) => [r.code, r.n]));
+}
+
+export interface ClientQuestionRow {
+  text: string;
+  /** "N. Bensaïd", "Infrastructure BU". */
+  askedBy: string;
+  department: string;
+  owner: string;
+  state: 'open' | 'answered';
+  answer: string | null;
+}
+
+/** Internal ⇄ client question bridge of a project (MTG_EXCHANGE order). */
+export async function listClientQuestions(projectCode: string): Promise<ClientQuestionRow[]> {
+  const db = await getDb();
+  const rows = await db
+    .select({ q: clientQuestions })
+    .from(clientQuestions)
+    .innerJoin(projects, eq(projects.id, clientQuestions.projectId))
+    .where(eq(projects.code, projectCode))
+    .orderBy(asc(clientQuestions.position));
+  return rows.map(({ q }) => ({ text: q.text, askedBy: q.askedByName, department: q.department, owner: q.ownerName, state: q.state, answer: q.answer }));
+}
+
+// ── Writers ────────────────────────────────────────────────────────────────────────────────────────────
+
+async function loadMeeting(tx: Tx, number: string) {
+  const [m] = await tx.select().from(meetings).where(eq(meetings.number, number));
+  if (!m) throw new Error(`Unknown meeting ${number}`);
+  return m;
+}
+
+async function audit(tx: Tx, actorName: string, objectRef: string, change: string, projectId: string, entityId: string) {
+  const actor = await findPerson(tx, actorName);
+  await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef, change, area: 'Meetings', entityType: 'meeting', entityId, projectId });
+  return actor;
+}
+
+export interface NewMeeting {
+  title: string;
+  type: MeetingType;
+  series: MeetingSeries;
+  /** ISO date and "09:00". */
+  date: string;
+  time?: string | null;
+  location?: string | null;
+  /** Short names as typed ("R. Aubert, L. Fabre"). */
+  invitees: string[];
+  /** One point per line. */
+  agenda: string[];
+}
+
+/**
+ * "New meeting" (AF.meetings, "Create & invite"): MTG-130… (global sequence), organized by the viewer, Scheduled,
+ * 1 h, on top of the register — created meetings come before the seeded register, in creation order, as the
+ * prototype's `[...added.meetings, ...MEETINGS]`. Returns the number (toast "{title} · Meeting created · …").
+ */
+export async function createMeeting(projectCode: string, input: NewMeeting, actorName: string): Promise<string> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const p = await requireProject(tx, projectCode);
+    const title = input.title.trim();
+    if (!title) throw new Error('The title is required');
+    if (!meetingType.isCode(input.type) || !meetingSeries.isCode(input.series)) throw new Error('Invalid meeting type or series');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) throw new Error('Invalid date');
+    const invitees = [...new Set(input.invitees.map((x) => x.trim()).filter(Boolean))];
+    if (!invitees.length) throw new Error('Invite at least one person');
+    const time = input.time?.trim() || '09:00';
+    if (!/^\d{1,2}:\d{2}$/.test(time)) throw new Error('Invalid time');
+    const hhmm = time.padStart(5, '0');
+    const actor = await findPerson(tx, actorName);
+    const number = await nextNumber(tx, meetings, meetings.number, 'MTG-', 3, 129);
+    const [m] = await tx
+      .insert(meetings)
+      .values({
+        projectId: p.id, number, title, series: input.series, type: input.type, startsOn: input.date, startTime: hhmm, startsAt: parisInstant(input.date, hhmm),
+        durationMin: 60, location: input.location?.trim() || 'Teams', organizerPersonId: actor?.id ?? null, organizerName: actor?.shortName ?? actorName,
+        status: 'scheduled', sortOrder: createdSortOrder(number),
+      })
+      .returning({ id: meetings.id });
+    const people = await Promise.all(invitees.map((n) => findPerson(tx, n)));
+    await tx.insert(meetingParticipants).values(invitees.map((name, position) => ({ meetingId: m.id, position, personId: people[position]?.id ?? null, name })));
+    const points = input.agenda.map((x) => x.trim()).filter(Boolean);
+    if (points.length) await tx.insert(meetingAgendaPoints).values(points.map((t, position) => ({ meetingId: m.id, position, title: t })));
+    await audit(tx, actorName, number, `created · ${title} · ${displayOfIso(input.date)} ${hhmm}`, p.id, m.id);
+    return number;
+  });
+}
+
+export interface NewMeetingLine {
+  type: MeetingLineType;
+  text: string;
+  /** Actions: owner (default the organizer) and due as typed (default "—"). */
+  owner?: string | null;
+  due?: string | null;
+}
+
+async function appendLines(tx: Tx, m: typeof meetings.$inferSelect, point: number, lines: (NewMeetingLine & { origin: MeetingLineOrigin })[]) {
+  const [pt] = await tx.select().from(meetingAgendaPoints).where(and(eq(meetingAgendaPoints.meetingId, m.id), eq(meetingAgendaPoints.position, point)));
+  if (!pt) throw new Error(`${m.number} has no agenda point ${point}`);
+  const [{ maxPos }] = await tx.select({ maxPos: sql<number>`coalesce(max(${meetingLines.position}), -1)::int` }).from(meetingLines).where(eq(meetingLines.agendaPointId, pt.id));
+  const rows = [];
+  for (const [k, l] of lines.entries()) {
+    const isAction = l.type === 'action';
+    const owner = isAction ? l.owner?.trim() || m.organizerName : null;
+    const due = isAction ? l.due?.trim() || '—' : null;
+    rows.push({
+      agendaPointId: pt.id, position: maxPos + 1 + k, type: l.type, text: l.text.trim(), ownerName: owner, ownerPersonId: owner ? (await findPerson(tx, owner))?.id ?? null : null,
+      dueText: due, dueDate: due && due !== '—' ? isoOfDisplayDate(due) : null, origin: l.origin,
+    });
+  }
+  if (rows.length) await tx.insert(meetingLines).values(rows);
+}
+
+/**
+ * Composer "+ Add" (`addLine`): appends a line to an agenda point; a Scheduled meeting moves to Notes in progress.
+ * Minutes already sent cannot be edited.
+ */
+export async function addMeetingLine(meetingNumber: string, point: number, line: NewMeetingLine, actorName: string): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    const m = await loadMeeting(tx, meetingNumber);
+    if (m.status === 'minutes_sent') throw new Error(`${meetingNumber}: minutes already sent`);
+    if (!meetingLineType.isCode(line.type)) throw new Error('Invalid line type');
+    if (!line.text.trim()) throw new Error('The note is empty');
+    await appendLines(tx, m, point, [{ ...line, origin: 'manual' }]);
+    if (m.status === 'scheduled') await tx.update(meetings).set({ status: 'notes_in_progress', updatedAt: new Date() }).where(eq(meetings.id, m.id));
+    await audit(tx, actorName, meetingNumber, `${line.type} added · ${line.text.trim()}${m.status === 'scheduled' ? ' · status: Scheduled → Notes in progress' : ''}`, m.projectId, m.id);
+  });
+}
+
+/** Action checkbox (`toggleLine`): ticks / unticks an action line (any meeting status, as the prototype). Returns the new state. */
+export async function toggleMeetingAction(meetingNumber: string, point: number, position: number, actorName: string): Promise<boolean> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const m = await loadMeeting(tx, meetingNumber);
+    const [row] = await tx
+      .select({ l: meetingLines })
+      .from(meetingLines)
+      .innerJoin(meetingAgendaPoints, eq(meetingAgendaPoints.id, meetingLines.agendaPointId))
+      .where(and(eq(meetingAgendaPoints.meetingId, m.id), eq(meetingAgendaPoints.position, point), eq(meetingLines.position, position)));
+    if (!row) throw new Error(`Unknown line ${meetingNumber}|${point}|${position}`);
+    if (row.l.type !== 'action') throw new Error('Only actions can be ticked');
+    const done = !row.l.done;
+    await tx.update(meetingLines).set({ done, doneAt: done ? new Date() : null }).where(eq(meetingLines.id, row.l.id));
+    await audit(tx, actorName, meetingNumber, `action ${done ? 'closed' : 'reopened'} · ${row.l.text}`, m.projectId, m.id);
+    return done;
+  });
+}
+
+/** "Analyse transcript": reveals the (simulated) summary and proposed decisions and actions. */
+export async function analyseTranscript(meetingNumber: string, actorName: string, at: Date = new Date()): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    const m = await loadMeeting(tx, meetingNumber);
+    const [tr] = await tx.select().from(meetingTranscripts).where(eq(meetingTranscripts.meetingId, m.id));
+    if (!tr) throw new Error(`${meetingNumber} has no transcript`);
+    if (tr.analysedAt) return;
+    await tx.update(meetingTranscripts).set({ analysedAt: at }).where(eq(meetingTranscripts.meetingId, m.id));
+    await audit(tx, actorName, meetingNumber, 'transcript analysed', m.projectId, m.id);
+  });
+}
+
+/** "Add to minutes" (`apply`): appends the proposed decisions then actions to the last agenda point, once. Status unchanged. */
+export async function applyTranscriptToMinutes(meetingNumber: string, actorName: string, at: Date = new Date()): Promise<number> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const m = await loadMeeting(tx, meetingNumber);
+    const [tr] = await tx.select().from(meetingTranscripts).where(eq(meetingTranscripts.meetingId, m.id));
+    if (!tr?.analysedAt) throw new Error(`${meetingNumber}: analyse the transcript first`);
+    if (tr.appliedAt) return 0;
+    const props = await tx.select().from(meetingTranscriptProposals).where(eq(meetingTranscriptProposals.meetingId, m.id)).orderBy(asc(meetingTranscriptProposals.position));
+    const [{ last }] = await tx.select({ last: sql<number>`coalesce(max(${meetingAgendaPoints.position}), -1)::int` }).from(meetingAgendaPoints).where(eq(meetingAgendaPoints.meetingId, m.id));
+    if (last < 0) await tx.insert(meetingAgendaPoints).values({ meetingId: m.id, position: 0, title: m.title });
+    await appendLines(tx, m, Math.max(0, last), props.map((x) => ({ type: x.type, text: x.text, owner: x.ownerName, due: x.dueText, origin: 'transcript' as const })));
+    await tx.update(meetingTranscripts).set({ appliedAt: at }).where(eq(meetingTranscripts.meetingId, m.id));
+    await audit(tx, actorName, meetingNumber, `${props.length} proposals added to the minutes`, m.projectId, m.id);
+    return props.length;
+  });
+}
+
+/**
+ * Minutes number: `MIN-{project short code}-{seq}` with seq = max(24 + minutes already sent on the project, the
+ * project's highest MIN number) + 1 — HLT-026's first send is MIN-HLT-027 as in the prototype, whose prefix was
+ * hard-coded to HLT for every project (S-12).
+ */
+async function minutesNumberOf(tx: Tx, projectId: string, shortCode: string): Promise<string> {
+  const [{ sent }] = await tx.select({ sent: sql<number>`count(*)::int` }).from(meetings).where(and(eq(meetings.projectId, projectId), eq(meetings.status, 'minutes_sent')));
+  const prefix = `MIN-${shortCode}-`;
+  const existing = (await tx.select({ n: documents.number }).from(documents)).map((r) => r.n).filter((n) => n.startsWith(prefix));
+  return nextBusinessNumber(existing, prefix, 3, 24 + sent);
+}
+
+export interface SentMinutes {
+  /** "MIN-HLT-027". */
+  minutesNumber: string;
+  /** Everyone invited (the toast's "{n} invitees"). */
+  invited: number;
+  /** Tasks created for the action owners of the resource pool. */
+  tasks: string[];
+}
+
+/**
+ * "Send minutes to all invitees" (`sendMinutes`): Minutes sent on `on`, a Released MIN record in the Codex index,
+ * read receipts for every invitee but the organizer, and a to-do (T-2341…) for each action whose owner is in the
+ * resource pool — start today (Fri 25 Sep), due today + 3 working days, 2 h, labels Meeting + meeting number.
+ */
+export async function sendMinutes(meetingNumber: string, actorName: string, on: string = NOW_ISO): Promise<SentMinutes> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const m = await loadMeeting(tx, meetingNumber);
+    if (m.status === 'minutes_sent') throw new Error(`${meetingNumber}: minutes already sent`);
+    const [p] = await tx.select().from(projects).where(eq(projects.id, m.projectId));
+    const minutesNumber = await minutesNumberOf(tx, p.id, p.shortCode);
+    const docId = await createMinutesDocument(
+      tx,
+      { number: minutesNumber, title: m.title, projectId: p.id, authorPersonId: m.organizerPersonId, authorName: m.organizerName, external: m.type === 'external', tags: [m.number, meetingSeries.label(m.series)] },
+      on,
+    );
+    const parts = await tx.select().from(meetingParticipants).where(eq(meetingParticipants.meetingId, m.id));
+    // Every invitee but the organizer (by name, as the prototype, or by person when invited under another form).
+    const isOrganizer = (x: typeof meetingParticipants.$inferSelect) => x.name === m.organizerName || (!!x.personId && x.personId === m.organizerPersonId);
+    for (const x of parts)
+      if (!isOrganizer(x)) await tx.update(meetingParticipants).set({ minutesRecipient: true, minutesReadOn: null }).where(eq(meetingParticipants.id, x.id));
+    const actions = await tx
+      .select({ l: meetingLines, pool: persons.resourcePoolPosition })
+      .from(meetingLines)
+      .innerJoin(meetingAgendaPoints, eq(meetingAgendaPoints.id, meetingLines.agendaPointId))
+      .leftJoin(persons, eq(persons.id, meetingLines.ownerPersonId))
+      .where(and(eq(meetingAgendaPoints.meetingId, m.id), eq(meetingLines.type, 'action')))
+      .orderBy(asc(meetingAgendaPoints.position), asc(meetingLines.position));
+    const created: string[] = [];
+    const [{ maxOrder }] = await tx.select({ maxOrder: sql<number>`coalesce(max(${tasks.sortOrder}), 0)::int` }).from(tasks);
+    for (const { l, pool } of actions) {
+      if (l.taskId || !l.ownerPersonId || pool == null) continue;
+      const number = await nextNumber(tx, tasks, tasks.number, 'T-', 4, 2340);
+      const [t] = await tx
+        .insert(tasks)
+        .values({
+          number, assigneePersonId: l.ownerPersonId, title: l.text, projectId: p.id, activityId: null, status: 'todo', priority: 'med',
+          startDate: isoOfDayOffset(TODAY), dueDate: isoOfDayOffset(TODAY + 3), estimateH: 2, loggedH: 0, percentComplete: 0,
+          labels: ['Meeting', m.number], checklistDone: 0, checklistTotal: 0, sortOrder: maxOrder + 1 + created.length,
+        })
+        .returning({ id: tasks.id });
+      await tx.update(meetingLines).set({ taskId: t.id }).where(eq(meetingLines.id, l.id));
+      created.push(number);
+    }
+    await tx.update(meetings).set({ status: 'minutes_sent', minutesNumber, minutesDocumentId: docId, minutesSentOn: on, updatedAt: new Date() }).where(eq(meetings.id, m.id));
+    await audit(tx, actorName, meetingNumber, `minutes sent · ${minutesNumber} · ${parts.length} invitees · ${created.length} actions added to tasks`, p.id, m.id);
+    return { minutesNumber, invited: parts.length, tasks: created };
+  });
+}
+
+/** Records a read receipt of the minutes (Outlook sync, OPEN QUESTION S-11). */
+export async function recordMinutesRead(meetingNumber: string, participant: string, on: string = NOW_ISO): Promise<void> {
+  const db = await getDb();
+  const [m] = await db.select({ id: meetings.id }).from(meetings).where(eq(meetings.number, meetingNumber));
+  if (!m) throw new Error(`Unknown meeting ${meetingNumber}`);
+  await db.update(meetingParticipants).set({ minutesReadOn: on })
+    .where(and(eq(meetingParticipants.meetingId, m.id), eq(meetingParticipants.name, participant), eq(meetingParticipants.minutesRecipient, true)));
+}

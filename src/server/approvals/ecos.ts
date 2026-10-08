@@ -1,24 +1,28 @@
 import 'server-only';
-// Kind "ECO" (prototype data, TODO(db): ECOs are not modelled yet): ECOs in approval whose approval key of the
-// viewer's role is pending (apprItems 4724; keys englead / quality / pm, ecoRoleKey 4341). Inline Approve / Reject
-// are previews until the ECO module persists `appr[key]`.
-import { ecoDecided, ecoItems, ecoKeyOf, type ProtoEco } from '@/domain/approvals';
-import { PROTO } from '@/server/prototype';
+// Kind "ECO" (database — the Vigie mirror, src/server/integrations/vigie): ECOs in approval in Vigie whose approval key
+// of the viewer is still pending and not already decided in Keystone (apprItems 4724; keys englead / quality / pm,
+// ecoRoleKey 4341 — the director holds none; the PM key goes to the PMs of the ECO's projects). Decided inline: the
+// decision is recorded through the Vigie connector (decideEcoApprovalAction → recordEcoProgress, "pending sync with
+// Vigie"); the row opens the ECO in Keystone and "Open in Vigie" opens it where it is managed.
+import { screenHref } from '@/config/screens';
+import { ecoApprovalItems } from '@/domain/eco';
+import { fmtDOfIso } from '@/server/db/codes';
+import { ecoApprovalQueue, ecoDecidedCount } from '@/server/dal/eco';
+import { vigieEcoUrl } from '@/server/integrations/vigie/links';
 import type { ApprovalProvider } from './types';
 
-const ECOS = PROTO.ECOS as ProtoEco[];
+const keystoneEcoHref = (n: string) => `${screenHref('eco')}?eco=${encodeURIComponent(n)}`;
 
 export const ecoProvider: ApprovalProvider = {
   kind: 'eco',
   scope: 'global',
-  source: 'prototype',
+  source: 'db',
   async items({ viewer }) {
-    const key = ecoKeyOf(viewer.role);
-    return key ? ecoItems(ECOS, key, PROTO.ECO_TYPES, PROTO.PROJ_NAMES) : [];
+    const queue = await ecoApprovalQueue({ name: viewer.name, role: viewer.role });
+    return ecoApprovalItems(queue, { keystone: keystoneEcoHref, vigie: vigieEcoUrl }, fmtDOfIso);
   },
-  // Prototype term: ECOs approved on the viewer's key.
+  // Prototype term: ECOs approved on the viewer's key (decisions waiting for Vigie included).
   async decided({ viewer }) {
-    const key = ecoKeyOf(viewer.role);
-    return key ? ecoDecided(ECOS, key) : 0;
+    return ecoDecidedCount({ name: viewer.name, role: viewer.role });
   },
 };

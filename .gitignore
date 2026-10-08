@@ -45,3 +45,7 @@ next-env.d.ts
 
 # design source archives (extracted in design/)
 /*.zip
+
+# Mac app build output (npm run app)
+/desktop/dist
+/.next-ci/

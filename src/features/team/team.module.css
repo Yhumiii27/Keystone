@@ -1,0 +1,31 @@
+/* Stakeholders & RACI (template 870–879) and Interface register (template 893–899). */
+
+/* ── Stakeholder register ─────────────────────────────────────────────────────────────────────────── */
+/* Stakeholder cell: 28px avatar + name (500) over "{org} · {role}" (11px neutral-400), gap 10 */
+.who { display: flex; align-items: center; gap: 10px; }
+.whoText { display: flex; flex-direction: column; line-height: 1.3; }
+.whoName { font-weight: 500; }
+.whoSub { font-size: 11px; color: var(--color-neutral-400); }
+.cell12 { font-size: 12px; }
+/* kind tag 10.5px (out-ranks the DS .tag 11px, as the prototype's inline style) */
+:global(.tag).kind { font-size: 10.5px; }
+/* notes: 11.5px neutral-400, max-width 260px, wrapping */
+.notes { font-size: 11.5px; color: var(--color-neutral-400); max-width: 260px; }
+.pretty { display: block; text-wrap: pretty; }
+
+/* ── RACI matrix: 220px label column + one minmax(96px,1fr) column per role, gap 4 ─────────────────────── */
+.raci { display: grid; gap: 4px; }
+.raciRow { display: contents; }
+.raciHead { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-neutral-400); padding: 4px 6px; text-align: center; text-wrap: pretty; font-weight: 400; }
+.raciLabel { font-size: 12.5px; display: flex; align-items: center; padding: 4px 6px; font-weight: 400; text-align: left; }
+.raciCell { height: 32px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; }
+
+/* ── Interface register ──────────────────────────────────────────────────────────────────────────── */
+.id { font-variant-numeric: tabular-nums; color: var(--color-neutral-400); }
+.title { text-wrap: pretty; min-width: 200px; }
+.data { max-width: 200px; }
+.needed { display: flex; flex-direction: column; line-height: 1.3; }
+.num { font-variant-numeric: tabular-nums; }
+.neededSub { font-size: 11px; }
+.actions { text-align: right; white-space: nowrap; }
+.nowrap { white-space: nowrap; }

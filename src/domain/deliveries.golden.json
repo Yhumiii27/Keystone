@@ -1,0 +1,7667 @@
+{
+ "seed": {
+  "en": {
+   "HLT-026": {
+    "crumb": "Purchasing & stock",
+    "title": "Deliveries & goods receipt",
+    "primary": "Announce a delivery",
+    "hasPrimary": true,
+    "badge": "1",
+    "kpis": [
+     {
+      "label": "Deliveries",
+      "value": 5,
+      "sub": "1 announced",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting quality check",
+      "value": 1,
+      "sub": "Held in quarantine",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Rejected quantity",
+      "value": 4,
+      "sub": "0.5% of units received",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "On-time deliveries",
+      "value": "83%",
+      "sub": "Last 90 days · vs PO expected date",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Open orders to receive",
+      "value": 4,
+      "sub": "Ordered or partially received",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "All",
+      "count": "5",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Announced",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Received",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "QC pending",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepted",
+      "count": "2",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partially rejected",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Rejected",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0412",
+      "po": "PO-1041",
+      "supplier": "Keystone Steelworks",
+      "date": "30 Jun",
+      "note": "KS-DN-88213",
+      "lines": "KS-STL-0450, KS-STL-0301",
+      "qty": "688 / 688",
+      "acc": "688",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Passed",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0498",
+      "po": "PO-1052",
+      "supplier": "Halvorsen Cranes",
+      "date": "02 Sep",
+      "note": "HC-7781",
+      "lines": "CR-RAIL-A100",
+      "qty": "96 / 96",
+      "acc": "94",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Passed with reserve",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0521",
+      "po": "PO-1063",
+      "supplier": "Nordvolt",
+      "date": "18 Sep",
+      "note": "NV-2026-1190",
+      "lines": "EL-TRF-2MVA",
+      "qty": "2 / 2",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "QC pending",
+      "tagClass": "tag tag-outline",
+      "loc": "Zone quarantaine QC — Lyon",
+      "qc": "Pending",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     },
+     {
+      "id": "BL-2026-0533",
+      "po": "PO-1071",
+      "supplier": "Brightline Electrics",
+      "date": "23 Sep",
+      "note": "BX-55120",
+      "lines": "EL-CBL-XLPE",
+      "qty": "42 / 42",
+      "acc": "40",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Partially rejected",
+      "tagClass": "tag tag-accent",
+      "loc": "Entrepôt central — Lyon",
+      "qc": "Failed on 2 drums",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0540",
+      "po": "PO-1078",
+      "supplier": "Cotswold Fire Systems",
+      "date": "06 Nov",
+      "note": "—",
+      "lines": "FD-DAMP-FR, FD-SPR-HD",
+      "qty": "0 / 444",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Announced",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "—",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": true,
+      "canQC": false
+     }
+    ],
+    "noDeliv": false,
+    "drawer": null,
+    "drawers": {
+     "BL-2026-0412": {
+      "id": "BL-2026-0412",
+      "po": "PO-1041",
+      "supplier": "Keystone Steelworks",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "docs": [
+       "Delivery note KS-DN-88213.pdf",
+       "Mill certificate S355 — heat 4471.pdf",
+       "Certificate of conformity.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0412",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Purchase order",
+        "v": "PO-1041",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Supplier delivery note",
+        "v": "KS-DN-88213",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Delivered on",
+        "v": "30 Jun",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Carrier",
+        "v": "Transports Delmas",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "2 attached",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspector",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Result",
+        "v": "Passed",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarks",
+        "v": "Mill certificates checked · dimensions within tolerance",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "KS-STL-0450",
+        "name": "Structural steel column HEB 450",
+        "o": "48",
+        "d": "48",
+        "a": "48",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Le Havre"
+       },
+       {
+        "ref": "KS-STL-0301",
+        "name": "Roof purlin Z-section 300",
+        "o": "640",
+        "d": "640",
+        "a": "640",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Le Havre"
+       }
+      ]
+     },
+     "BL-2026-0498": {
+      "id": "BL-2026-0498",
+      "po": "PO-1052",
+      "supplier": "Halvorsen Cranes",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "docs": [
+       "Delivery note HC-7781.pdf",
+       "Rail hardness report.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0498",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Purchase order",
+        "v": "PO-1052",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Supplier delivery note",
+        "v": "HC-7781",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Delivered on",
+        "v": "02 Sep",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Carrier",
+        "v": "Halvorsen logistics",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "5 attached",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspector",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Result",
+        "v": "Passed with reserve",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarks",
+        "v": "2 bars with transport damage → returned to supplier (credit note pending)",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "CR-RAIL-A100",
+        "name": "Crane rail A100 · 12 m bar",
+        "o": "96",
+        "d": "96",
+        "a": "94",
+        "r": "2",
+        "rColor": "var(--color-accent-300)",
+        "loc": "Magasin chantier — Le Havre"
+       }
+      ]
+     },
+     "BL-2026-0521": {
+      "id": "BL-2026-0521",
+      "po": "PO-1063",
+      "supplier": "Nordvolt",
+      "status": "QC pending",
+      "tagClass": "tag tag-outline",
+      "docs": [
+       "Delivery note NV-2026-1190.pdf",
+       "Factory acceptance test report.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0521",
+      "canQC": true,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Purchase order",
+        "v": "PO-1063",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Supplier delivery note",
+        "v": "NV-2026-1190",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Delivered on",
+        "v": "18 Sep",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Carrier",
+        "v": "Nordvolt heavy haul",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "3 attached",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspector",
+        "v": "Pauline Noguès",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Result",
+        "v": "Pending",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarks",
+        "v": "Oil sample and ratio test scheduled 29 Sep",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "EL-TRF-2MVA",
+        "name": "Transformer 2 MVA · 11/0.4 kV",
+        "o": "2",
+        "d": "2",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Zone quarantaine QC — Lyon"
+       }
+      ]
+     },
+     "BL-2026-0533": {
+      "id": "BL-2026-0533",
+      "po": "PO-1071",
+      "supplier": "Brightline Electrics",
+      "status": "Partially rejected",
+      "tagClass": "tag tag-accent",
+      "docs": [
+       "Delivery note BX-55120.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0533",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Purchase order",
+        "v": "PO-1071",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Supplier delivery note",
+        "v": "BX-55120",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Delivered on",
+        "v": "23 Sep",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Carrier",
+        "v": "DB Schenker",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "4 attached",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspector",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Result",
+        "v": "Failed on 2 drums",
+        "color": "var(--color-accent-300)"
+       },
+       {
+        "k": "Remarks",
+        "v": "2 drums with sheath damage → scrap · replacement requested",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "EL-CBL-XLPE",
+        "name": "XLPE cable 11 kV 3×240 mm² · per 100 m",
+        "o": "42",
+        "d": "42",
+        "a": "40",
+        "r": "2",
+        "rColor": "var(--color-accent-300)",
+        "loc": "Entrepôt central — Lyon"
+       }
+      ]
+     },
+     "BL-2026-0540": {
+      "id": "BL-2026-0540",
+      "po": "PO-1078",
+      "supplier": "Cotswold Fire Systems",
+      "status": "Announced",
+      "tagClass": "tag tag-neutral",
+      "docs": [],
+      "noDocs": true,
+      "slotId": "deliv-BL-2026-0540",
+      "canQC": false,
+      "canReceive": true,
+      "meta": [
+       {
+        "k": "Purchase order",
+        "v": "PO-1078",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Supplier delivery note",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Delivered on",
+        "v": "06 Nov",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Carrier",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "None",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspector",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Result",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarks",
+        "v": "Expected 06 Nov · inspection slot to book",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "FD-DAMP-FR",
+        "name": "Fire damper 600×400",
+        "o": "24",
+        "d": "0",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Le Havre"
+       },
+       {
+        "ref": "FD-SPR-HD",
+        "name": "Sprinkler head · quick response",
+        "o": "420",
+        "d": "0",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Le Havre"
+       }
+      ]
+     }
+    }
+   },
+   "NDC-031": {
+    "crumb": "Purchasing & stock",
+    "title": "Deliveries & goods receipt",
+    "primary": "Announce a delivery",
+    "hasPrimary": true,
+    "badge": "2",
+    "kpis": [
+     {
+      "label": "Deliveries",
+      "value": 3,
+      "sub": "0 announced",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting quality check",
+      "value": 2,
+      "sub": "Held in quarantine",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Rejected quantity",
+      "value": 0,
+      "sub": "0% of units received",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "On-time deliveries",
+      "value": "83%",
+      "sub": "Last 90 days · vs PO expected date",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Open orders to receive",
+      "value": 3,
+      "sub": "Ordered or partially received",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "All",
+      "count": "3",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Announced",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Received",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "QC pending",
+      "count": "2",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepted",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partially rejected",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Rejected",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0330",
+      "po": "PO-3120",
+      "supplier": "Nordvolt",
+      "date": "16 Oct",
+      "note": "NO-4100",
+      "lines": "EL-SWG-11KV, EL-TRF-2MVA, EL-UPS-500, EL-BAT-LI-200",
+      "qty": "18 / 18",
+      "acc": "18",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Passed",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0331",
+      "po": "PO-3127",
+      "supplier": "Brightline Electrics",
+      "date": "8 Aug",
+      "note": "BR-4107",
+      "lines": "EL-CBL-XLPE, LT-HB-200W",
+      "qty": "29 / 58",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "QC pending",
+      "tagClass": "tag tag-outline",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Pending",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     },
+     {
+      "id": "BL-2026-0332",
+      "po": "PO-3134",
+      "supplier": "Aeris Controls",
+      "date": "17 Nov",
+      "note": "AE-4114",
+      "lines": "ME-CRAC-60",
+      "qty": "6 / 12",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "QC pending",
+      "tagClass": "tag tag-outline",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Pending",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     }
+    ],
+    "noDeliv": false,
+    "drawer": null,
+    "drawers": {
+     "BL-2026-0330": {
+      "id": "BL-2026-0330",
+      "po": "PO-3120",
+      "supplier": "Nordvolt",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0330",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Purchase order",
+        "v": "PO-3120",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Supplier delivery note",
+        "v": "NO-4100",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Delivered on",
+        "v": "16 Oct",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Carrier",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "2 attached",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspector",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Result",
+        "v": "Passed",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarks",
+        "v": "Visual + documentary check",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "EL-SWG-11KV",
+        "name": "11 kV switchgear panel · 8-way",
+        "o": "4",
+        "d": "4",
+        "a": "4",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       },
+       {
+        "ref": "EL-TRF-2MVA",
+        "name": "Transformer 2 MVA · 11/0.4 kV",
+        "o": "2",
+        "d": "2",
+        "a": "2",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       },
+       {
+        "ref": "EL-UPS-500",
+        "name": "UPS 500 kVA modular",
+        "o": "4",
+        "d": "4",
+        "a": "4",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       },
+       {
+        "ref": "EL-BAT-LI-200",
+        "name": "Li-ion battery cabinet 200 kWh",
+        "o": "8",
+        "d": "8",
+        "a": "8",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       }
+      ]
+     },
+     "BL-2026-0331": {
+      "id": "BL-2026-0331",
+      "po": "PO-3127",
+      "supplier": "Brightline Electrics",
+      "status": "QC pending",
+      "tagClass": "tag tag-outline",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0331",
+      "canQC": true,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Purchase order",
+        "v": "PO-3127",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Supplier delivery note",
+        "v": "BR-4107",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Delivered on",
+        "v": "8 Aug",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Carrier",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "None",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspector",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Result",
+        "v": "Pending",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarks",
+        "v": "Inspection to schedule",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "EL-CBL-XLPE",
+        "name": "XLPE cable 11 kV 3×240 mm² · per 100 m",
+        "o": "18",
+        "d": "9",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       },
+       {
+        "ref": "LT-HB-200W",
+        "name": "LED high-bay luminaire 200 W",
+        "o": "40",
+        "d": "20",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       }
+      ]
+     },
+     "BL-2026-0332": {
+      "id": "BL-2026-0332",
+      "po": "PO-3134",
+      "supplier": "Aeris Controls",
+      "status": "QC pending",
+      "tagClass": "tag tag-outline",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0332",
+      "canQC": true,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Purchase order",
+        "v": "PO-3134",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Supplier delivery note",
+        "v": "AE-4114",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Delivered on",
+        "v": "17 Nov",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Carrier",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "None",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspector",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Result",
+        "v": "Pending",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarks",
+        "v": "Inspection to schedule",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "ME-CRAC-60",
+        "name": "CRAC unit 60 kW",
+        "o": "12",
+        "d": "6",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       }
+      ]
+     }
+    }
+   },
+   "RCF-019": {
+    "crumb": "Purchasing & stock",
+    "title": "Deliveries & goods receipt",
+    "primary": "Announce a delivery",
+    "hasPrimary": true,
+    "badge": "",
+    "kpis": [
+     {
+      "label": "Deliveries",
+      "value": 2,
+      "sub": "0 announced",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting quality check",
+      "value": 0,
+      "sub": "Held in quarantine",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Rejected quantity",
+      "value": 0,
+      "sub": "0% of units received",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "On-time deliveries",
+      "value": "83%",
+      "sub": "Last 90 days · vs PO expected date",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Open orders to receive",
+      "value": 0,
+      "sub": "Ordered or partially received",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "All",
+      "count": "2",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Announced",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Received",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "QC pending",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepted",
+      "count": "2",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partially rejected",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Rejected",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0320",
+      "po": "PO-2120",
+      "supplier": "Cotswold Fire Systems",
+      "date": "12 May",
+      "note": "CO-4100",
+      "lines": "FD-DET-OPT, FD-DAMP-FR, FD-SPR-HD",
+      "qty": "638 / 638",
+      "acc": "638",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Passed",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0321",
+      "po": "PO-2127",
+      "supplier": "Meridian Medical Interiors",
+      "date": "24 Jul",
+      "note": "ME-4107",
+      "lines": "MD-ISO-PNL, MD-GAS-OUT",
+      "qty": "236 / 236",
+      "acc": "236",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Passed",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     }
+    ],
+    "noDeliv": false,
+    "drawer": null,
+    "drawers": {
+     "BL-2026-0320": {
+      "id": "BL-2026-0320",
+      "po": "PO-2120",
+      "supplier": "Cotswold Fire Systems",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0320",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Purchase order",
+        "v": "PO-2120",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Supplier delivery note",
+        "v": "CO-4100",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Delivered on",
+        "v": "12 May",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Carrier",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "2 attached",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspector",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Result",
+        "v": "Passed",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarks",
+        "v": "Visual + documentary check",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "FD-DET-OPT",
+        "name": "Optical smoke detector",
+        "o": "220",
+        "d": "220",
+        "a": "220",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       },
+       {
+        "ref": "FD-DAMP-FR",
+        "name": "Fire damper 600×400",
+        "o": "58",
+        "d": "58",
+        "a": "58",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       },
+       {
+        "ref": "FD-SPR-HD",
+        "name": "Sprinkler head · quick response",
+        "o": "360",
+        "d": "360",
+        "a": "360",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       }
+      ]
+     },
+     "BL-2026-0321": {
+      "id": "BL-2026-0321",
+      "po": "PO-2127",
+      "supplier": "Meridian Medical Interiors",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0321",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Purchase order",
+        "v": "PO-2127",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Supplier delivery note",
+        "v": "ME-4107",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Delivered on",
+        "v": "24 Jul",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Carrier",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "2 attached",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspector",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Result",
+        "v": "Passed",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarks",
+        "v": "Visual + documentary check",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "MD-ISO-PNL",
+        "name": "Cleanroom isolation wall panel",
+        "o": "140",
+        "d": "140",
+        "a": "140",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       },
+       {
+        "ref": "MD-GAS-OUT",
+        "name": "Medical gas outlet · O₂",
+        "o": "96",
+        "d": "96",
+        "a": "96",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       }
+      ]
+     }
+    }
+   },
+   "ERP-202": {
+    "crumb": "Purchasing & stock",
+    "title": "Deliveries & goods receipt",
+    "primary": "Announce a delivery",
+    "hasPrimary": true,
+    "badge": "1",
+    "kpis": [
+     {
+      "label": "Deliveries",
+      "value": 1,
+      "sub": "0 announced",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting quality check",
+      "value": 1,
+      "sub": "Held in quarantine",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Rejected quantity",
+      "value": 0,
+      "sub": "0% of units received",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "On-time deliveries",
+      "value": "83%",
+      "sub": "Last 90 days · vs PO expected date",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Open orders to receive",
+      "value": 2,
+      "sub": "Ordered or partially received",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "All",
+      "count": "1",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Announced",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Received",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "QC pending",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepted",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partially rejected",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Rejected",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0340",
+      "po": "PO-4120",
+      "supplier": "Corvid Systems",
+      "date": "19 Sep",
+      "note": "CO-4100",
+      "lines": "IT-SRV-2U",
+      "qty": "3 / 6",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "QC pending",
+      "tagClass": "tag tag-outline",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Pending",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     }
+    ],
+    "noDeliv": false,
+    "drawer": null,
+    "drawers": {
+     "BL-2026-0340": {
+      "id": "BL-2026-0340",
+      "po": "PO-4120",
+      "supplier": "Corvid Systems",
+      "status": "QC pending",
+      "tagClass": "tag tag-outline",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0340",
+      "canQC": true,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Purchase order",
+        "v": "PO-4120",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Supplier delivery note",
+        "v": "CO-4100",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Delivered on",
+        "v": "19 Sep",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Carrier",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "None",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspector",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Result",
+        "v": "Pending",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarks",
+        "v": "Inspection to schedule",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "IT-SRV-2U",
+        "name": "2U compute server",
+        "o": "6",
+        "d": "3",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       }
+      ]
+     }
+    }
+   },
+   "WSA-044": {
+    "crumb": "Purchasing & stock",
+    "title": "Deliveries & goods receipt",
+    "primary": "Announce a delivery",
+    "hasPrimary": true,
+    "badge": "1",
+    "kpis": [
+     {
+      "label": "Deliveries",
+      "value": 1,
+      "sub": "0 announced",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting quality check",
+      "value": 1,
+      "sub": "Held in quarantine",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Rejected quantity",
+      "value": 0,
+      "sub": "0% of units received",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "On-time deliveries",
+      "value": "83%",
+      "sub": "Last 90 days · vs PO expected date",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Open orders to receive",
+      "value": 3,
+      "sub": "Ordered or partially received",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "All",
+      "count": "1",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Announced",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Received",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "QC pending",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepted",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partially rejected",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Rejected",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0350",
+      "po": "PO-5120",
+      "supplier": "Nordvolt",
+      "date": "13 Feb ’27",
+      "note": "NO-4100",
+      "lines": "EL-TRF-2MVA, EL-BAT-LI-200",
+      "qty": "9 / 18",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "QC pending",
+      "tagClass": "tag tag-outline",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Pending",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     }
+    ],
+    "noDeliv": false,
+    "drawer": null,
+    "drawers": {
+     "BL-2026-0350": {
+      "id": "BL-2026-0350",
+      "po": "PO-5120",
+      "supplier": "Nordvolt",
+      "status": "QC pending",
+      "tagClass": "tag tag-outline",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0350",
+      "canQC": true,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Purchase order",
+        "v": "PO-5120",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Supplier delivery note",
+        "v": "NO-4100",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Delivered on",
+        "v": "13 Feb ’27",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Carrier",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "None",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspector",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Result",
+        "v": "Pending",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarks",
+        "v": "Inspection to schedule",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "EL-TRF-2MVA",
+        "name": "Transformer 2 MVA · 11/0.4 kV",
+        "o": "6",
+        "d": "3",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       },
+       {
+        "ref": "EL-BAT-LI-200",
+        "name": "Li-ion battery cabinet 200 kWh",
+        "o": "12",
+        "d": "6",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       }
+      ]
+     }
+    }
+   },
+   "MSR-012": {
+    "crumb": "Purchasing & stock",
+    "title": "Deliveries & goods receipt",
+    "primary": "Announce a delivery",
+    "hasPrimary": true,
+    "badge": "",
+    "kpis": [
+     {
+      "label": "Deliveries",
+      "value": 3,
+      "sub": "0 announced",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting quality check",
+      "value": 0,
+      "sub": "Held in quarantine",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Rejected quantity",
+      "value": 0,
+      "sub": "0% of units received",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "On-time deliveries",
+      "value": "83%",
+      "sub": "Last 90 days · vs PO expected date",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Open orders to receive",
+      "value": 0,
+      "sub": "Ordered or partially received",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "All",
+      "count": "3",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Announced",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Received",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "QC pending",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepted",
+      "count": "3",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partially rejected",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Rejected",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0360",
+      "po": "PO-6120",
+      "supplier": "Vektor Signage",
+      "date": "9 Jun",
+      "note": "VE-4100",
+      "lines": "SG-DSP-55",
+      "qty": "120 / 120",
+      "acc": "120",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Marseille",
+      "qc": "Passed",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0361",
+      "po": "PO-6127",
+      "supplier": "Keystone Electronics",
+      "date": "10 Jun",
+      "note": "KE-4107",
+      "lines": "SG-CTRL-01",
+      "qty": "120 / 120",
+      "acc": "120",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Marseille",
+      "qc": "Passed",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0362",
+      "po": "PO-6134",
+      "supplier": "Keystone Steelworks",
+      "date": "3 Jul",
+      "note": "KE-4114",
+      "lines": "SG-BRK-SS",
+      "qty": "120 / 120",
+      "acc": "120",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Marseille",
+      "qc": "Passed",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     }
+    ],
+    "noDeliv": false,
+    "drawer": null,
+    "drawers": {
+     "BL-2026-0360": {
+      "id": "BL-2026-0360",
+      "po": "PO-6120",
+      "supplier": "Vektor Signage",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0360",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Purchase order",
+        "v": "PO-6120",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Supplier delivery note",
+        "v": "VE-4100",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Delivered on",
+        "v": "9 Jun",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Carrier",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "2 attached",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspector",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Result",
+        "v": "Passed",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarks",
+        "v": "Visual + documentary check",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "SG-DSP-55",
+        "name": "55″ outdoor display module",
+        "o": "120",
+        "d": "120",
+        "a": "120",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Marseille"
+       }
+      ]
+     },
+     "BL-2026-0361": {
+      "id": "BL-2026-0361",
+      "po": "PO-6127",
+      "supplier": "Keystone Electronics",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0361",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Purchase order",
+        "v": "PO-6127",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Supplier delivery note",
+        "v": "KE-4107",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Delivered on",
+        "v": "10 Jun",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Carrier",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "2 attached",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspector",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Result",
+        "v": "Passed",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarks",
+        "v": "Visual + documentary check",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "SG-CTRL-01",
+        "name": "Signage controller unit",
+        "o": "120",
+        "d": "120",
+        "a": "120",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Marseille"
+       }
+      ]
+     },
+     "BL-2026-0362": {
+      "id": "BL-2026-0362",
+      "po": "PO-6134",
+      "supplier": "Keystone Steelworks",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0362",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Purchase order",
+        "v": "PO-6134",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Supplier delivery note",
+        "v": "KE-4114",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Delivered on",
+        "v": "3 Jul",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Carrier",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "2 attached",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspector",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Result",
+        "v": "Passed",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarks",
+        "v": "Visual + documentary check",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "SG-BRK-SS",
+        "name": "Stainless mounting bracket",
+        "o": "120",
+        "d": "120",
+        "a": "120",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Marseille"
+       }
+      ]
+     }
+    }
+   },
+   "EWA-051": {
+    "crumb": "Purchasing & stock",
+    "title": "Deliveries & goods receipt",
+    "primary": "Announce a delivery",
+    "hasPrimary": true,
+    "badge": "",
+    "kpis": [
+     {
+      "label": "Deliveries",
+      "value": 0,
+      "sub": "0 announced",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting quality check",
+      "value": 0,
+      "sub": "Held in quarantine",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Rejected quantity",
+      "value": 0,
+      "sub": "—",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "On-time deliveries",
+      "value": "83%",
+      "sub": "Last 90 days · vs PO expected date",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Open orders to receive",
+      "value": 0,
+      "sub": "Ordered or partially received",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "All",
+      "count": "0",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Announced",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Received",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "QC pending",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepted",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partially rejected",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Rejected",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [],
+    "noDeliv": true,
+    "drawer": null,
+    "drawers": {}
+   }
+  },
+  "fr": {
+   "HLT-026": {
+    "crumb": "Achats & stock",
+    "title": "Livraisons et réceptions",
+    "primary": "Annoncer une livraison",
+    "hasPrimary": true,
+    "badge": "1",
+    "kpis": [
+     {
+      "label": "Livraisons",
+      "value": 5,
+      "sub": "1 annoncée(s)",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de contrôle qualité",
+      "value": 1,
+      "sub": "Retenues en quarantaine",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Quantité refusée",
+      "value": 4,
+      "sub": "0.5 % des unités reçues",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Livraisons à l’heure",
+      "value": "83%",
+      "sub": "90 derniers jours · vs date attendue de la commande",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Commandes à recevoir",
+      "value": 4,
+      "sub": "Commandées ou partiellement reçues",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "Tous",
+      "count": "5",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Annoncée",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Reçu",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Contrôle en attente",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepté",
+      "count": "2",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partiellement refusée",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Refusé",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0412",
+      "po": "PO-1041",
+      "supplier": "Keystone Steelworks",
+      "date": "30 juin",
+      "note": "KS-DN-88213",
+      "lines": "KS-STL-0450, KS-STL-0301",
+      "qty": "688 / 688",
+      "acc": "688",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Conforme",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0498",
+      "po": "PO-1052",
+      "supplier": "Halvorsen Cranes",
+      "date": "02 sept.",
+      "note": "HC-7781",
+      "lines": "CR-RAIL-A100",
+      "qty": "96 / 96",
+      "acc": "94",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Conforme avec réserve",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0521",
+      "po": "PO-1063",
+      "supplier": "Nordvolt",
+      "date": "18 sept.",
+      "note": "NV-2026-1190",
+      "lines": "EL-TRF-2MVA",
+      "qty": "2 / 2",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Contrôle en attente",
+      "tagClass": "tag tag-outline",
+      "loc": "Zone quarantaine QC — Lyon",
+      "qc": "En attente",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     },
+     {
+      "id": "BL-2026-0533",
+      "po": "PO-1071",
+      "supplier": "Brightline Electrics",
+      "date": "23 sept.",
+      "note": "BX-55120",
+      "lines": "EL-CBL-XLPE",
+      "qty": "42 / 42",
+      "acc": "40",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Partiellement refusée",
+      "tagClass": "tag tag-accent",
+      "loc": "Entrepôt central — Lyon",
+      "qc": "Non conforme sur 2 tourets",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0540",
+      "po": "PO-1078",
+      "supplier": "Cotswold Fire Systems",
+      "date": "06 nov.",
+      "note": "—",
+      "lines": "FD-DAMP-FR, FD-SPR-HD",
+      "qty": "0 / 444",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Annoncée",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "—",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": true,
+      "canQC": false
+     }
+    ],
+    "noDeliv": false,
+    "drawer": null,
+    "drawers": {
+     "BL-2026-0412": {
+      "id": "BL-2026-0412",
+      "po": "PO-1041",
+      "supplier": "Keystone Steelworks",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "docs": [
+       "Delivery note KS-DN-88213.pdf",
+       "Mill certificate S355 — heat 4471.pdf",
+       "Certificate of conformity.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0412",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Commande d’achat",
+        "v": "PO-1041",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Bon de livraison fournisseur",
+        "v": "KS-DN-88213",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Livré le",
+        "v": "30 juin",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Transporteur",
+        "v": "Transports Delmas",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "2 jointes",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspecteur",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Résultat",
+        "v": "Conforme",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarques",
+        "v": "Certificats matière vérifiés · dimensions dans la tolérance",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "KS-STL-0450",
+        "name": "Structural steel column HEB 450",
+        "o": "48",
+        "d": "48",
+        "a": "48",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Le Havre"
+       },
+       {
+        "ref": "KS-STL-0301",
+        "name": "Roof purlin Z-section 300",
+        "o": "640",
+        "d": "640",
+        "a": "640",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Le Havre"
+       }
+      ]
+     },
+     "BL-2026-0498": {
+      "id": "BL-2026-0498",
+      "po": "PO-1052",
+      "supplier": "Halvorsen Cranes",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "docs": [
+       "Delivery note HC-7781.pdf",
+       "Rail hardness report.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0498",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Commande d’achat",
+        "v": "PO-1052",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Bon de livraison fournisseur",
+        "v": "HC-7781",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Livré le",
+        "v": "02 sept.",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Transporteur",
+        "v": "Halvorsen logistics",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "5 jointes",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspecteur",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Résultat",
+        "v": "Conforme avec réserve",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarques",
+        "v": "2 barres endommagées au transport → retournées au fournisseur (avoir en attente)",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "CR-RAIL-A100",
+        "name": "Crane rail A100 · 12 m bar",
+        "o": "96",
+        "d": "96",
+        "a": "94",
+        "r": "2",
+        "rColor": "var(--color-accent-300)",
+        "loc": "Magasin chantier — Le Havre"
+       }
+      ]
+     },
+     "BL-2026-0521": {
+      "id": "BL-2026-0521",
+      "po": "PO-1063",
+      "supplier": "Nordvolt",
+      "status": "Contrôle en attente",
+      "tagClass": "tag tag-outline",
+      "docs": [
+       "Delivery note NV-2026-1190.pdf",
+       "Factory acceptance test report.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0521",
+      "canQC": true,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Commande d’achat",
+        "v": "PO-1063",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Bon de livraison fournisseur",
+        "v": "NV-2026-1190",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Livré le",
+        "v": "18 sept.",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Transporteur",
+        "v": "Nordvolt heavy haul",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "3 jointes",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspecteur",
+        "v": "Pauline Noguès",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Résultat",
+        "v": "En attente",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarques",
+        "v": "Prélèvement d’huile et essai de rapport prévus le 29 sept.",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "EL-TRF-2MVA",
+        "name": "Transformer 2 MVA · 11/0.4 kV",
+        "o": "2",
+        "d": "2",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Zone quarantaine QC — Lyon"
+       }
+      ]
+     },
+     "BL-2026-0533": {
+      "id": "BL-2026-0533",
+      "po": "PO-1071",
+      "supplier": "Brightline Electrics",
+      "status": "Partiellement refusée",
+      "tagClass": "tag tag-accent",
+      "docs": [
+       "Delivery note BX-55120.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0533",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Commande d’achat",
+        "v": "PO-1071",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Bon de livraison fournisseur",
+        "v": "BX-55120",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Livré le",
+        "v": "23 sept.",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Transporteur",
+        "v": "DB Schenker",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "4 jointes",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspecteur",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Résultat",
+        "v": "Non conforme sur 2 tourets",
+        "color": "var(--color-accent-300)"
+       },
+       {
+        "k": "Remarques",
+        "v": "2 tourets avec gaine endommagée → rebut · remplacement demandé",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "EL-CBL-XLPE",
+        "name": "XLPE cable 11 kV 3×240 mm² · per 100 m",
+        "o": "42",
+        "d": "42",
+        "a": "40",
+        "r": "2",
+        "rColor": "var(--color-accent-300)",
+        "loc": "Entrepôt central — Lyon"
+       }
+      ]
+     },
+     "BL-2026-0540": {
+      "id": "BL-2026-0540",
+      "po": "PO-1078",
+      "supplier": "Cotswold Fire Systems",
+      "status": "Annoncée",
+      "tagClass": "tag tag-neutral",
+      "docs": [],
+      "noDocs": true,
+      "slotId": "deliv-BL-2026-0540",
+      "canQC": false,
+      "canReceive": true,
+      "meta": [
+       {
+        "k": "Commande d’achat",
+        "v": "PO-1078",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Bon de livraison fournisseur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Livré le",
+        "v": "06 nov.",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Transporteur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "Aucun",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspecteur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Résultat",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarques",
+        "v": "Attendue le 6 nov. · créneau d’inspection à réserver",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "FD-DAMP-FR",
+        "name": "Fire damper 600×400",
+        "o": "24",
+        "d": "0",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Le Havre"
+       },
+       {
+        "ref": "FD-SPR-HD",
+        "name": "Sprinkler head · quick response",
+        "o": "420",
+        "d": "0",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Le Havre"
+       }
+      ]
+     }
+    }
+   },
+   "NDC-031": {
+    "crumb": "Achats & stock",
+    "title": "Livraisons et réceptions",
+    "primary": "Annoncer une livraison",
+    "hasPrimary": true,
+    "badge": "2",
+    "kpis": [
+     {
+      "label": "Livraisons",
+      "value": 3,
+      "sub": "0 annoncée(s)",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de contrôle qualité",
+      "value": 2,
+      "sub": "Retenues en quarantaine",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Quantité refusée",
+      "value": 0,
+      "sub": "0 % des unités reçues",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraisons à l’heure",
+      "value": "83%",
+      "sub": "90 derniers jours · vs date attendue de la commande",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Commandes à recevoir",
+      "value": 3,
+      "sub": "Commandées ou partiellement reçues",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "Tous",
+      "count": "3",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Annoncée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Reçu",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Contrôle en attente",
+      "count": "2",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepté",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partiellement refusée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Refusé",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0330",
+      "po": "PO-3120",
+      "supplier": "Nordvolt",
+      "date": "16 oct.",
+      "note": "NO-4100",
+      "lines": "EL-SWG-11KV, EL-TRF-2MVA, EL-UPS-500, EL-BAT-LI-200",
+      "qty": "18 / 18",
+      "acc": "18",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Conforme",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0331",
+      "po": "PO-3127",
+      "supplier": "Brightline Electrics",
+      "date": "8 août",
+      "note": "BR-4107",
+      "lines": "EL-CBL-XLPE, LT-HB-200W",
+      "qty": "29 / 58",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Contrôle en attente",
+      "tagClass": "tag tag-outline",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "En attente",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     },
+     {
+      "id": "BL-2026-0332",
+      "po": "PO-3134",
+      "supplier": "Aeris Controls",
+      "date": "17 nov.",
+      "note": "AE-4114",
+      "lines": "ME-CRAC-60",
+      "qty": "6 / 12",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Contrôle en attente",
+      "tagClass": "tag tag-outline",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "En attente",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     }
+    ],
+    "noDeliv": false,
+    "drawer": null,
+    "drawers": {
+     "BL-2026-0330": {
+      "id": "BL-2026-0330",
+      "po": "PO-3120",
+      "supplier": "Nordvolt",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0330",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Commande d’achat",
+        "v": "PO-3120",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Bon de livraison fournisseur",
+        "v": "NO-4100",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Livré le",
+        "v": "16 oct.",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Transporteur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "2 jointes",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspecteur",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Résultat",
+        "v": "Conforme",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarques",
+        "v": "Contrôle visuel et documentaire",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "EL-SWG-11KV",
+        "name": "11 kV switchgear panel · 8-way",
+        "o": "4",
+        "d": "4",
+        "a": "4",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       },
+       {
+        "ref": "EL-TRF-2MVA",
+        "name": "Transformer 2 MVA · 11/0.4 kV",
+        "o": "2",
+        "d": "2",
+        "a": "2",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       },
+       {
+        "ref": "EL-UPS-500",
+        "name": "UPS 500 kVA modular",
+        "o": "4",
+        "d": "4",
+        "a": "4",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       },
+       {
+        "ref": "EL-BAT-LI-200",
+        "name": "Li-ion battery cabinet 200 kWh",
+        "o": "8",
+        "d": "8",
+        "a": "8",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       }
+      ]
+     },
+     "BL-2026-0331": {
+      "id": "BL-2026-0331",
+      "po": "PO-3127",
+      "supplier": "Brightline Electrics",
+      "status": "Contrôle en attente",
+      "tagClass": "tag tag-outline",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0331",
+      "canQC": true,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Commande d’achat",
+        "v": "PO-3127",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Bon de livraison fournisseur",
+        "v": "BR-4107",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Livré le",
+        "v": "8 août",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Transporteur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "Aucun",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspecteur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Résultat",
+        "v": "En attente",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarques",
+        "v": "Inspection à planifier",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "EL-CBL-XLPE",
+        "name": "XLPE cable 11 kV 3×240 mm² · per 100 m",
+        "o": "18",
+        "d": "9",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       },
+       {
+        "ref": "LT-HB-200W",
+        "name": "LED high-bay luminaire 200 W",
+        "o": "40",
+        "d": "20",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       }
+      ]
+     },
+     "BL-2026-0332": {
+      "id": "BL-2026-0332",
+      "po": "PO-3134",
+      "supplier": "Aeris Controls",
+      "status": "Contrôle en attente",
+      "tagClass": "tag tag-outline",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0332",
+      "canQC": true,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Commande d’achat",
+        "v": "PO-3134",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Bon de livraison fournisseur",
+        "v": "AE-4114",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Livré le",
+        "v": "17 nov.",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Transporteur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "Aucun",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspecteur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Résultat",
+        "v": "En attente",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarques",
+        "v": "Inspection à planifier",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "ME-CRAC-60",
+        "name": "CRAC unit 60 kW",
+        "o": "12",
+        "d": "6",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       }
+      ]
+     }
+    }
+   },
+   "RCF-019": {
+    "crumb": "Achats & stock",
+    "title": "Livraisons et réceptions",
+    "primary": "Annoncer une livraison",
+    "hasPrimary": true,
+    "badge": "",
+    "kpis": [
+     {
+      "label": "Livraisons",
+      "value": 2,
+      "sub": "0 annoncée(s)",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de contrôle qualité",
+      "value": 0,
+      "sub": "Retenues en quarantaine",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Quantité refusée",
+      "value": 0,
+      "sub": "0 % des unités reçues",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraisons à l’heure",
+      "value": "83%",
+      "sub": "90 derniers jours · vs date attendue de la commande",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Commandes à recevoir",
+      "value": 0,
+      "sub": "Commandées ou partiellement reçues",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "Tous",
+      "count": "2",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Annoncée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Reçu",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Contrôle en attente",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepté",
+      "count": "2",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partiellement refusée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Refusé",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0320",
+      "po": "PO-2120",
+      "supplier": "Cotswold Fire Systems",
+      "date": "12 mai",
+      "note": "CO-4100",
+      "lines": "FD-DET-OPT, FD-DAMP-FR, FD-SPR-HD",
+      "qty": "638 / 638",
+      "acc": "638",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Conforme",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0321",
+      "po": "PO-2127",
+      "supplier": "Meridian Medical Interiors",
+      "date": "24 juil.",
+      "note": "ME-4107",
+      "lines": "MD-ISO-PNL, MD-GAS-OUT",
+      "qty": "236 / 236",
+      "acc": "236",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Conforme",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     }
+    ],
+    "noDeliv": false,
+    "drawer": null,
+    "drawers": {
+     "BL-2026-0320": {
+      "id": "BL-2026-0320",
+      "po": "PO-2120",
+      "supplier": "Cotswold Fire Systems",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0320",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Commande d’achat",
+        "v": "PO-2120",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Bon de livraison fournisseur",
+        "v": "CO-4100",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Livré le",
+        "v": "12 mai",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Transporteur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "2 jointes",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspecteur",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Résultat",
+        "v": "Conforme",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarques",
+        "v": "Contrôle visuel et documentaire",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "FD-DET-OPT",
+        "name": "Optical smoke detector",
+        "o": "220",
+        "d": "220",
+        "a": "220",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       },
+       {
+        "ref": "FD-DAMP-FR",
+        "name": "Fire damper 600×400",
+        "o": "58",
+        "d": "58",
+        "a": "58",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       },
+       {
+        "ref": "FD-SPR-HD",
+        "name": "Sprinkler head · quick response",
+        "o": "360",
+        "d": "360",
+        "a": "360",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       }
+      ]
+     },
+     "BL-2026-0321": {
+      "id": "BL-2026-0321",
+      "po": "PO-2127",
+      "supplier": "Meridian Medical Interiors",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0321",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Commande d’achat",
+        "v": "PO-2127",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Bon de livraison fournisseur",
+        "v": "ME-4107",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Livré le",
+        "v": "24 juil.",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Transporteur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "2 jointes",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspecteur",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Résultat",
+        "v": "Conforme",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarques",
+        "v": "Contrôle visuel et documentaire",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "MD-ISO-PNL",
+        "name": "Cleanroom isolation wall panel",
+        "o": "140",
+        "d": "140",
+        "a": "140",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       },
+       {
+        "ref": "MD-GAS-OUT",
+        "name": "Medical gas outlet · O₂",
+        "o": "96",
+        "d": "96",
+        "a": "96",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       }
+      ]
+     }
+    }
+   },
+   "ERP-202": {
+    "crumb": "Achats & stock",
+    "title": "Livraisons et réceptions",
+    "primary": "Annoncer une livraison",
+    "hasPrimary": true,
+    "badge": "1",
+    "kpis": [
+     {
+      "label": "Livraisons",
+      "value": 1,
+      "sub": "0 annoncée(s)",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de contrôle qualité",
+      "value": 1,
+      "sub": "Retenues en quarantaine",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Quantité refusée",
+      "value": 0,
+      "sub": "0 % des unités reçues",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraisons à l’heure",
+      "value": "83%",
+      "sub": "90 derniers jours · vs date attendue de la commande",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Commandes à recevoir",
+      "value": 2,
+      "sub": "Commandées ou partiellement reçues",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "Tous",
+      "count": "1",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Annoncée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Reçu",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Contrôle en attente",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepté",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partiellement refusée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Refusé",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0340",
+      "po": "PO-4120",
+      "supplier": "Corvid Systems",
+      "date": "19 sept.",
+      "note": "CO-4100",
+      "lines": "IT-SRV-2U",
+      "qty": "3 / 6",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Contrôle en attente",
+      "tagClass": "tag tag-outline",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "En attente",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     }
+    ],
+    "noDeliv": false,
+    "drawer": null,
+    "drawers": {
+     "BL-2026-0340": {
+      "id": "BL-2026-0340",
+      "po": "PO-4120",
+      "supplier": "Corvid Systems",
+      "status": "Contrôle en attente",
+      "tagClass": "tag tag-outline",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0340",
+      "canQC": true,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Commande d’achat",
+        "v": "PO-4120",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Bon de livraison fournisseur",
+        "v": "CO-4100",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Livré le",
+        "v": "19 sept.",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Transporteur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "Aucun",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspecteur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Résultat",
+        "v": "En attente",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarques",
+        "v": "Inspection à planifier",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "IT-SRV-2U",
+        "name": "2U compute server",
+        "o": "6",
+        "d": "3",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       }
+      ]
+     }
+    }
+   },
+   "WSA-044": {
+    "crumb": "Achats & stock",
+    "title": "Livraisons et réceptions",
+    "primary": "Annoncer une livraison",
+    "hasPrimary": true,
+    "badge": "1",
+    "kpis": [
+     {
+      "label": "Livraisons",
+      "value": 1,
+      "sub": "0 annoncée(s)",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de contrôle qualité",
+      "value": 1,
+      "sub": "Retenues en quarantaine",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Quantité refusée",
+      "value": 0,
+      "sub": "0 % des unités reçues",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraisons à l’heure",
+      "value": "83%",
+      "sub": "90 derniers jours · vs date attendue de la commande",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Commandes à recevoir",
+      "value": 3,
+      "sub": "Commandées ou partiellement reçues",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "Tous",
+      "count": "1",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Annoncée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Reçu",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Contrôle en attente",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepté",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partiellement refusée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Refusé",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0350",
+      "po": "PO-5120",
+      "supplier": "Nordvolt",
+      "date": "13 févr. ’27",
+      "note": "NO-4100",
+      "lines": "EL-TRF-2MVA, EL-BAT-LI-200",
+      "qty": "9 / 18",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Contrôle en attente",
+      "tagClass": "tag tag-outline",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "En attente",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     }
+    ],
+    "noDeliv": false,
+    "drawer": null,
+    "drawers": {
+     "BL-2026-0350": {
+      "id": "BL-2026-0350",
+      "po": "PO-5120",
+      "supplier": "Nordvolt",
+      "status": "Contrôle en attente",
+      "tagClass": "tag tag-outline",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0350",
+      "canQC": true,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Commande d’achat",
+        "v": "PO-5120",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Bon de livraison fournisseur",
+        "v": "NO-4100",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Livré le",
+        "v": "13 févr. ’27",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Transporteur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "Aucun",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspecteur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Résultat",
+        "v": "En attente",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarques",
+        "v": "Inspection à planifier",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "EL-TRF-2MVA",
+        "name": "Transformer 2 MVA · 11/0.4 kV",
+        "o": "6",
+        "d": "3",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       },
+       {
+        "ref": "EL-BAT-LI-200",
+        "name": "Li-ion battery cabinet 200 kWh",
+        "o": "12",
+        "d": "6",
+        "a": "0",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Lyon"
+       }
+      ]
+     }
+    }
+   },
+   "MSR-012": {
+    "crumb": "Achats & stock",
+    "title": "Livraisons et réceptions",
+    "primary": "Annoncer une livraison",
+    "hasPrimary": true,
+    "badge": "",
+    "kpis": [
+     {
+      "label": "Livraisons",
+      "value": 3,
+      "sub": "0 annoncée(s)",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de contrôle qualité",
+      "value": 0,
+      "sub": "Retenues en quarantaine",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Quantité refusée",
+      "value": 0,
+      "sub": "0 % des unités reçues",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraisons à l’heure",
+      "value": "83%",
+      "sub": "90 derniers jours · vs date attendue de la commande",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Commandes à recevoir",
+      "value": 0,
+      "sub": "Commandées ou partiellement reçues",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "Tous",
+      "count": "3",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Annoncée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Reçu",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Contrôle en attente",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepté",
+      "count": "3",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partiellement refusée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Refusé",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0360",
+      "po": "PO-6120",
+      "supplier": "Vektor Signage",
+      "date": "9 juin",
+      "note": "VE-4100",
+      "lines": "SG-DSP-55",
+      "qty": "120 / 120",
+      "acc": "120",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Marseille",
+      "qc": "Conforme",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0361",
+      "po": "PO-6127",
+      "supplier": "Keystone Electronics",
+      "date": "10 juin",
+      "note": "KE-4107",
+      "lines": "SG-CTRL-01",
+      "qty": "120 / 120",
+      "acc": "120",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Marseille",
+      "qc": "Conforme",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0362",
+      "po": "PO-6134",
+      "supplier": "Keystone Steelworks",
+      "date": "3 juil.",
+      "note": "KE-4114",
+      "lines": "SG-BRK-SS",
+      "qty": "120 / 120",
+      "acc": "120",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Marseille",
+      "qc": "Conforme",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     }
+    ],
+    "noDeliv": false,
+    "drawer": null,
+    "drawers": {
+     "BL-2026-0360": {
+      "id": "BL-2026-0360",
+      "po": "PO-6120",
+      "supplier": "Vektor Signage",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0360",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Commande d’achat",
+        "v": "PO-6120",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Bon de livraison fournisseur",
+        "v": "VE-4100",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Livré le",
+        "v": "9 juin",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Transporteur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "2 jointes",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspecteur",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Résultat",
+        "v": "Conforme",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarques",
+        "v": "Contrôle visuel et documentaire",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "SG-DSP-55",
+        "name": "55″ outdoor display module",
+        "o": "120",
+        "d": "120",
+        "a": "120",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Marseille"
+       }
+      ]
+     },
+     "BL-2026-0361": {
+      "id": "BL-2026-0361",
+      "po": "PO-6127",
+      "supplier": "Keystone Electronics",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0361",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Commande d’achat",
+        "v": "PO-6127",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Bon de livraison fournisseur",
+        "v": "KE-4107",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Livré le",
+        "v": "10 juin",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Transporteur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "2 jointes",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspecteur",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Résultat",
+        "v": "Conforme",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarques",
+        "v": "Contrôle visuel et documentaire",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "SG-CTRL-01",
+        "name": "Signage controller unit",
+        "o": "120",
+        "d": "120",
+        "a": "120",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Marseille"
+       }
+      ]
+     },
+     "BL-2026-0362": {
+      "id": "BL-2026-0362",
+      "po": "PO-6134",
+      "supplier": "Keystone Steelworks",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "docs": [
+       "Delivery note.pdf"
+      ],
+      "noDocs": false,
+      "slotId": "deliv-BL-2026-0362",
+      "canQC": false,
+      "canReceive": false,
+      "meta": [
+       {
+        "k": "Commande d’achat",
+        "v": "PO-6134",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Bon de livraison fournisseur",
+        "v": "KE-4114",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Livré le",
+        "v": "3 juil.",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Transporteur",
+        "v": "—",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Photos",
+        "v": "2 jointes",
+        "color": "var(--color-text)"
+       }
+      ],
+      "qc": [
+       {
+        "k": "Inspecteur",
+        "v": "Hélène Sauvage",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Résultat",
+        "v": "Conforme",
+        "color": "var(--color-text)"
+       },
+       {
+        "k": "Remarques",
+        "v": "Contrôle visuel et documentaire",
+        "color": "var(--color-text)"
+       }
+      ],
+      "lines": [
+       {
+        "ref": "SG-BRK-SS",
+        "name": "Stainless mounting bracket",
+        "o": "120",
+        "d": "120",
+        "a": "120",
+        "r": "—",
+        "rColor": "var(--color-neutral-500)",
+        "loc": "Magasin chantier — Marseille"
+       }
+      ]
+     }
+    }
+   },
+   "EWA-051": {
+    "crumb": "Achats & stock",
+    "title": "Livraisons et réceptions",
+    "primary": "Annoncer une livraison",
+    "hasPrimary": true,
+    "badge": "",
+    "kpis": [
+     {
+      "label": "Livraisons",
+      "value": 0,
+      "sub": "0 annoncée(s)",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de contrôle qualité",
+      "value": 0,
+      "sub": "Retenues en quarantaine",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Quantité refusée",
+      "value": 0,
+      "sub": "—",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraisons à l’heure",
+      "value": "83%",
+      "sub": "90 derniers jours · vs date attendue de la commande",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Commandes à recevoir",
+      "value": 0,
+      "sub": "Commandées ou partiellement reçues",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "Tous",
+      "count": "0",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Annoncée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Reçu",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Contrôle en attente",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepté",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partiellement refusée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Refusé",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [],
+    "noDeliv": true,
+    "drawer": null,
+    "drawers": {}
+   }
+  }
+ },
+ "header": {
+  "HLT-026": {
+   "director": {
+    "hasPrimary": true,
+    "primary": "Announce a delivery",
+    "readOnly": false,
+    "outside": false
+   },
+   "pm": {
+    "hasPrimary": true,
+    "primary": "Announce a delivery",
+    "readOnly": false,
+    "outside": false
+   },
+   "depthead": {
+    "hasPrimary": false,
+    "primary": "Announce a delivery",
+    "readOnly": false,
+    "outside": true
+   },
+   "member": {
+    "hasPrimary": false,
+    "primary": "Announce a delivery",
+    "readOnly": false,
+    "outside": true
+   },
+   "englead": {
+    "hasPrimary": false,
+    "primary": "Announce a delivery",
+    "readOnly": false,
+    "outside": true
+   },
+   "quality": {
+    "hasPrimary": true,
+    "primary": "Announce a delivery",
+    "readOnly": false,
+    "outside": false
+   },
+   "procurement": {
+    "hasPrimary": true,
+    "primary": "Announce a delivery",
+    "readOnly": false,
+    "outside": false
+   },
+   "client": {
+    "hasPrimary": false,
+    "primary": "Announce a delivery",
+    "readOnly": false,
+    "outside": true
+   }
+  },
+  "NDC-031": {
+   "director": {
+    "hasPrimary": true,
+    "primary": "Announce a delivery",
+    "readOnly": false,
+    "outside": false
+   },
+   "pm": {
+    "hasPrimary": false,
+    "primary": "Announce a delivery",
+    "readOnly": false,
+    "outside": false
+   },
+   "depthead": {
+    "hasPrimary": false,
+    "primary": "Announce a delivery",
+    "readOnly": false,
+    "outside": true
+   },
+   "member": {
+    "hasPrimary": false,
+    "primary": "Announce a delivery",
+    "readOnly": false,
+    "outside": true
+   },
+   "englead": {
+    "hasPrimary": false,
+    "primary": "Announce a delivery",
+    "readOnly": false,
+    "outside": true
+   },
+   "quality": {
+    "hasPrimary": true,
+    "primary": "Announce a delivery",
+    "readOnly": false,
+    "outside": false
+   },
+   "procurement": {
+    "hasPrimary": true,
+    "primary": "Announce a delivery",
+    "readOnly": false,
+    "outside": false
+   },
+   "client": {
+    "hasPrimary": false,
+    "primary": "Announce a delivery",
+    "readOnly": false,
+    "outside": true
+   }
+  }
+ },
+ "scenarios": {
+  "register0540": {
+   "en": {
+    "crumb": "Purchasing & stock",
+    "title": "Deliveries & goods receipt",
+    "primary": "Announce a delivery",
+    "hasPrimary": true,
+    "badge": "2",
+    "kpis": [
+     {
+      "label": "Deliveries",
+      "value": 5,
+      "sub": "0 announced",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting quality check",
+      "value": 2,
+      "sub": "Held in quarantine",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Rejected quantity",
+      "value": 4,
+      "sub": "0.3% of units received",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "On-time deliveries",
+      "value": "83%",
+      "sub": "Last 90 days · vs PO expected date",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Open orders to receive",
+      "value": 4,
+      "sub": "Ordered or partially received",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "All",
+      "count": "5",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Announced",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Received",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "QC pending",
+      "count": "2",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepted",
+      "count": "2",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partially rejected",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Rejected",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0412",
+      "po": "PO-1041",
+      "supplier": "Keystone Steelworks",
+      "date": "30 Jun",
+      "note": "KS-DN-88213",
+      "lines": "KS-STL-0450, KS-STL-0301",
+      "qty": "688 / 688",
+      "acc": "688",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Passed",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0498",
+      "po": "PO-1052",
+      "supplier": "Halvorsen Cranes",
+      "date": "02 Sep",
+      "note": "HC-7781",
+      "lines": "CR-RAIL-A100",
+      "qty": "96 / 96",
+      "acc": "94",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Passed with reserve",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0521",
+      "po": "PO-1063",
+      "supplier": "Nordvolt",
+      "date": "18 Sep",
+      "note": "NV-2026-1190",
+      "lines": "EL-TRF-2MVA",
+      "qty": "2 / 2",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "QC pending",
+      "tagClass": "tag tag-outline",
+      "loc": "Zone quarantaine QC — Lyon",
+      "qc": "Pending",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     },
+     {
+      "id": "BL-2026-0533",
+      "po": "PO-1071",
+      "supplier": "Brightline Electrics",
+      "date": "23 Sep",
+      "note": "BX-55120",
+      "lines": "EL-CBL-XLPE",
+      "qty": "42 / 42",
+      "acc": "40",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Partially rejected",
+      "tagClass": "tag tag-accent",
+      "loc": "Entrepôt central — Lyon",
+      "qc": "Failed on 2 drums",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0540",
+      "po": "PO-1078",
+      "supplier": "Cotswold Fire Systems",
+      "date": "25 Sep",
+      "note": "—",
+      "lines": "FD-DAMP-FR, FD-SPR-HD",
+      "qty": "444 / 444",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "QC pending",
+      "tagClass": "tag tag-outline",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Pending",
+      "idColor": "var(--color-accent-300)",
+      "canReceive": false,
+      "canQC": true
+     }
+    ],
+    "noDeliv": false,
+    "drawer": {
+     "id": "BL-2026-0540",
+     "po": "PO-1078",
+     "supplier": "Cotswold Fire Systems",
+     "status": "QC pending",
+     "tagClass": "tag tag-outline",
+     "docs": [],
+     "noDocs": true,
+     "slotId": "deliv-BL-2026-0540",
+     "canQC": true,
+     "canReceive": false,
+     "meta": [
+      {
+       "k": "Purchase order",
+       "v": "PO-1078",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Supplier delivery note",
+       "v": "—",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Delivered on",
+       "v": "25 Sep",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Carrier",
+       "v": "Geodis",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Photos",
+       "v": "None",
+       "color": "var(--color-text)"
+      }
+     ],
+     "qc": [
+      {
+       "k": "Inspector",
+       "v": "Hélène Sauvage",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Result",
+       "v": "Pending",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Remarks",
+       "v": "Received complete · inspection to do",
+       "color": "var(--color-text)"
+      }
+     ],
+     "lines": [
+      {
+       "ref": "FD-DAMP-FR",
+       "name": "Fire damper 600×400",
+       "o": "24",
+       "d": "24",
+       "a": "0",
+       "r": "—",
+       "rColor": "var(--color-neutral-500)",
+       "loc": "Magasin chantier — Le Havre"
+      },
+      {
+       "ref": "FD-SPR-HD",
+       "name": "Sprinkler head · quick response",
+       "o": "420",
+       "d": "420",
+       "a": "0",
+       "r": "—",
+       "rColor": "var(--color-neutral-500)",
+       "loc": "Magasin chantier — Le Havre"
+      }
+     ]
+    }
+   },
+   "fr": {
+    "crumb": "Achats & stock",
+    "title": "Livraisons et réceptions",
+    "primary": "Annoncer une livraison",
+    "hasPrimary": true,
+    "badge": "2",
+    "kpis": [
+     {
+      "label": "Livraisons",
+      "value": 5,
+      "sub": "0 annoncée(s)",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de contrôle qualité",
+      "value": 2,
+      "sub": "Retenues en quarantaine",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Quantité refusée",
+      "value": 4,
+      "sub": "0.3 % des unités reçues",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Livraisons à l’heure",
+      "value": "83%",
+      "sub": "90 derniers jours · vs date attendue de la commande",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Commandes à recevoir",
+      "value": 4,
+      "sub": "Commandées ou partiellement reçues",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "Tous",
+      "count": "5",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Annoncée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Reçu",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Contrôle en attente",
+      "count": "2",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepté",
+      "count": "2",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partiellement refusée",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Refusé",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0412",
+      "po": "PO-1041",
+      "supplier": "Keystone Steelworks",
+      "date": "30 juin",
+      "note": "KS-DN-88213",
+      "lines": "KS-STL-0450, KS-STL-0301",
+      "qty": "688 / 688",
+      "acc": "688",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Conforme",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0498",
+      "po": "PO-1052",
+      "supplier": "Halvorsen Cranes",
+      "date": "02 sept.",
+      "note": "HC-7781",
+      "lines": "CR-RAIL-A100",
+      "qty": "96 / 96",
+      "acc": "94",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Conforme avec réserve",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0521",
+      "po": "PO-1063",
+      "supplier": "Nordvolt",
+      "date": "18 sept.",
+      "note": "NV-2026-1190",
+      "lines": "EL-TRF-2MVA",
+      "qty": "2 / 2",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Contrôle en attente",
+      "tagClass": "tag tag-outline",
+      "loc": "Zone quarantaine QC — Lyon",
+      "qc": "En attente",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     },
+     {
+      "id": "BL-2026-0533",
+      "po": "PO-1071",
+      "supplier": "Brightline Electrics",
+      "date": "23 sept.",
+      "note": "BX-55120",
+      "lines": "EL-CBL-XLPE",
+      "qty": "42 / 42",
+      "acc": "40",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Partiellement refusée",
+      "tagClass": "tag tag-accent",
+      "loc": "Entrepôt central — Lyon",
+      "qc": "Non conforme sur 2 tourets",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0540",
+      "po": "PO-1078",
+      "supplier": "Cotswold Fire Systems",
+      "date": "25 sept.",
+      "note": "—",
+      "lines": "FD-DAMP-FR, FD-SPR-HD",
+      "qty": "444 / 444",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Contrôle en attente",
+      "tagClass": "tag tag-outline",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "En attente",
+      "idColor": "var(--color-accent-300)",
+      "canReceive": false,
+      "canQC": true
+     }
+    ],
+    "noDeliv": false,
+    "drawer": {
+     "id": "BL-2026-0540",
+     "po": "PO-1078",
+     "supplier": "Cotswold Fire Systems",
+     "status": "Contrôle en attente",
+     "tagClass": "tag tag-outline",
+     "docs": [],
+     "noDocs": true,
+     "slotId": "deliv-BL-2026-0540",
+     "canQC": true,
+     "canReceive": false,
+     "meta": [
+      {
+       "k": "Commande d’achat",
+       "v": "PO-1078",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Bon de livraison fournisseur",
+       "v": "—",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Livré le",
+       "v": "25 sept.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Transporteur",
+       "v": "Geodis",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Photos",
+       "v": "Aucun",
+       "color": "var(--color-text)"
+      }
+     ],
+     "qc": [
+      {
+       "k": "Inspecteur",
+       "v": "Hélène Sauvage",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Résultat",
+       "v": "En attente",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Remarques",
+       "v": "Reçu complet · inspection à faire",
+       "color": "var(--color-text)"
+      }
+     ],
+     "lines": [
+      {
+       "ref": "FD-DAMP-FR",
+       "name": "Fire damper 600×400",
+       "o": "24",
+       "d": "24",
+       "a": "0",
+       "r": "—",
+       "rColor": "var(--color-neutral-500)",
+       "loc": "Magasin chantier — Le Havre"
+      },
+      {
+       "ref": "FD-SPR-HD",
+       "name": "Sprinkler head · quick response",
+       "o": "420",
+       "d": "420",
+       "a": "0",
+       "r": "—",
+       "rColor": "var(--color-neutral-500)",
+       "loc": "Magasin chantier — Le Havre"
+      }
+     ]
+    }
+   }
+  },
+  "accept0521": {
+   "en": {
+    "crumb": "Purchasing & stock",
+    "title": "Deliveries & goods receipt",
+    "primary": "Announce a delivery",
+    "hasPrimary": true,
+    "badge": "",
+    "kpis": [
+     {
+      "label": "Deliveries",
+      "value": 5,
+      "sub": "1 announced",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting quality check",
+      "value": 0,
+      "sub": "Held in quarantine",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Rejected quantity",
+      "value": 4,
+      "sub": "0.5% of units received",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "On-time deliveries",
+      "value": "83%",
+      "sub": "Last 90 days · vs PO expected date",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Open orders to receive",
+      "value": 4,
+      "sub": "Ordered or partially received",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "All",
+      "count": "5",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Announced",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Received",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "QC pending",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepted",
+      "count": "3",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partially rejected",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Rejected",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0412",
+      "po": "PO-1041",
+      "supplier": "Keystone Steelworks",
+      "date": "30 Jun",
+      "note": "KS-DN-88213",
+      "lines": "KS-STL-0450, KS-STL-0301",
+      "qty": "688 / 688",
+      "acc": "688",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Passed",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0498",
+      "po": "PO-1052",
+      "supplier": "Halvorsen Cranes",
+      "date": "02 Sep",
+      "note": "HC-7781",
+      "lines": "CR-RAIL-A100",
+      "qty": "96 / 96",
+      "acc": "94",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Passed with reserve",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0521",
+      "po": "PO-1063",
+      "supplier": "Nordvolt",
+      "date": "18 Sep",
+      "note": "NV-2026-1190",
+      "lines": "EL-TRF-2MVA",
+      "qty": "2 / 2",
+      "acc": "2",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Entrepôt central — Lyon",
+      "qc": "Passed",
+      "idColor": "var(--color-accent-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0533",
+      "po": "PO-1071",
+      "supplier": "Brightline Electrics",
+      "date": "23 Sep",
+      "note": "BX-55120",
+      "lines": "EL-CBL-XLPE",
+      "qty": "42 / 42",
+      "acc": "40",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Partially rejected",
+      "tagClass": "tag tag-accent",
+      "loc": "Entrepôt central — Lyon",
+      "qc": "Failed on 2 drums",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0540",
+      "po": "PO-1078",
+      "supplier": "Cotswold Fire Systems",
+      "date": "06 Nov",
+      "note": "—",
+      "lines": "FD-DAMP-FR, FD-SPR-HD",
+      "qty": "0 / 444",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Announced",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "—",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": true,
+      "canQC": false
+     }
+    ],
+    "noDeliv": false,
+    "drawer": {
+     "id": "BL-2026-0521",
+     "po": "PO-1063",
+     "supplier": "Nordvolt",
+     "status": "Accepted",
+     "tagClass": "tag tag-neutral",
+     "docs": [
+      "Delivery note NV-2026-1190.pdf",
+      "Factory acceptance test report.pdf"
+     ],
+     "noDocs": false,
+     "slotId": "deliv-BL-2026-0521",
+     "canQC": false,
+     "canReceive": false,
+     "meta": [
+      {
+       "k": "Purchase order",
+       "v": "PO-1063",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Supplier delivery note",
+       "v": "NV-2026-1190",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Delivered on",
+       "v": "18 Sep",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Carrier",
+       "v": "Nordvolt heavy haul",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Photos",
+       "v": "3 attached",
+       "color": "var(--color-text)"
+      }
+     ],
+     "qc": [
+      {
+       "k": "Inspector",
+       "v": "Gabriel Comte",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Result",
+       "v": "Passed",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Remarks",
+       "v": "Conforming — released to stock",
+       "color": "var(--color-text)"
+      }
+     ],
+     "lines": [
+      {
+       "ref": "EL-TRF-2MVA",
+       "name": "Transformer 2 MVA · 11/0.4 kV",
+       "o": "2",
+       "d": "2",
+       "a": "2",
+       "r": "—",
+       "rColor": "var(--color-neutral-500)",
+       "loc": "Entrepôt central — Lyon"
+      }
+     ]
+    }
+   },
+   "fr": {
+    "crumb": "Achats & stock",
+    "title": "Livraisons et réceptions",
+    "primary": "Annoncer une livraison",
+    "hasPrimary": true,
+    "badge": "",
+    "kpis": [
+     {
+      "label": "Livraisons",
+      "value": 5,
+      "sub": "1 annoncée(s)",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de contrôle qualité",
+      "value": 0,
+      "sub": "Retenues en quarantaine",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Quantité refusée",
+      "value": 4,
+      "sub": "0.5 % des unités reçues",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Livraisons à l’heure",
+      "value": "83%",
+      "sub": "90 derniers jours · vs date attendue de la commande",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Commandes à recevoir",
+      "value": 4,
+      "sub": "Commandées ou partiellement reçues",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "Tous",
+      "count": "5",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Annoncée",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Reçu",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Contrôle en attente",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepté",
+      "count": "3",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partiellement refusée",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Refusé",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0412",
+      "po": "PO-1041",
+      "supplier": "Keystone Steelworks",
+      "date": "30 juin",
+      "note": "KS-DN-88213",
+      "lines": "KS-STL-0450, KS-STL-0301",
+      "qty": "688 / 688",
+      "acc": "688",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Conforme",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0498",
+      "po": "PO-1052",
+      "supplier": "Halvorsen Cranes",
+      "date": "02 sept.",
+      "note": "HC-7781",
+      "lines": "CR-RAIL-A100",
+      "qty": "96 / 96",
+      "acc": "94",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Conforme avec réserve",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0521",
+      "po": "PO-1063",
+      "supplier": "Nordvolt",
+      "date": "18 sept.",
+      "note": "NV-2026-1190",
+      "lines": "EL-TRF-2MVA",
+      "qty": "2 / 2",
+      "acc": "2",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Entrepôt central — Lyon",
+      "qc": "Conforme",
+      "idColor": "var(--color-accent-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0533",
+      "po": "PO-1071",
+      "supplier": "Brightline Electrics",
+      "date": "23 sept.",
+      "note": "BX-55120",
+      "lines": "EL-CBL-XLPE",
+      "qty": "42 / 42",
+      "acc": "40",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Partiellement refusée",
+      "tagClass": "tag tag-accent",
+      "loc": "Entrepôt central — Lyon",
+      "qc": "Non conforme sur 2 tourets",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0540",
+      "po": "PO-1078",
+      "supplier": "Cotswold Fire Systems",
+      "date": "06 nov.",
+      "note": "—",
+      "lines": "FD-DAMP-FR, FD-SPR-HD",
+      "qty": "0 / 444",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Annoncée",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "—",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": true,
+      "canQC": false
+     }
+    ],
+    "noDeliv": false,
+    "drawer": {
+     "id": "BL-2026-0521",
+     "po": "PO-1063",
+     "supplier": "Nordvolt",
+     "status": "Accepté",
+     "tagClass": "tag tag-neutral",
+     "docs": [
+      "Delivery note NV-2026-1190.pdf",
+      "Factory acceptance test report.pdf"
+     ],
+     "noDocs": false,
+     "slotId": "deliv-BL-2026-0521",
+     "canQC": false,
+     "canReceive": false,
+     "meta": [
+      {
+       "k": "Commande d’achat",
+       "v": "PO-1063",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Bon de livraison fournisseur",
+       "v": "NV-2026-1190",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Livré le",
+       "v": "18 sept.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Transporteur",
+       "v": "Nordvolt heavy haul",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Photos",
+       "v": "3 jointes",
+       "color": "var(--color-text)"
+      }
+     ],
+     "qc": [
+      {
+       "k": "Inspecteur",
+       "v": "Gabriel Comte",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Résultat",
+       "v": "Conforme",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Remarques",
+       "v": "Conforme — libéré en stock",
+       "color": "var(--color-text)"
+      }
+     ],
+     "lines": [
+      {
+       "ref": "EL-TRF-2MVA",
+       "name": "Transformer 2 MVA · 11/0.4 kV",
+       "o": "2",
+       "d": "2",
+       "a": "2",
+       "r": "—",
+       "rColor": "var(--color-neutral-500)",
+       "loc": "Entrepôt central — Lyon"
+      }
+     ]
+    }
+   }
+  },
+  "accept0521Remarks": {
+   "en": {
+    "crumb": "Purchasing & stock",
+    "title": "Deliveries & goods receipt",
+    "primary": "Announce a delivery",
+    "hasPrimary": true,
+    "badge": "",
+    "kpis": [
+     {
+      "label": "Deliveries",
+      "value": 5,
+      "sub": "1 announced",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting quality check",
+      "value": 0,
+      "sub": "Held in quarantine",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Rejected quantity",
+      "value": 4,
+      "sub": "0.5% of units received",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "On-time deliveries",
+      "value": "83%",
+      "sub": "Last 90 days · vs PO expected date",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Open orders to receive",
+      "value": 4,
+      "sub": "Ordered or partially received",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "All",
+      "count": "5",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Announced",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Received",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "QC pending",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepted",
+      "count": "3",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partially rejected",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Rejected",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0412",
+      "po": "PO-1041",
+      "supplier": "Keystone Steelworks",
+      "date": "30 Jun",
+      "note": "KS-DN-88213",
+      "lines": "KS-STL-0450, KS-STL-0301",
+      "qty": "688 / 688",
+      "acc": "688",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Passed",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0498",
+      "po": "PO-1052",
+      "supplier": "Halvorsen Cranes",
+      "date": "02 Sep",
+      "note": "HC-7781",
+      "lines": "CR-RAIL-A100",
+      "qty": "96 / 96",
+      "acc": "94",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Passed with reserve",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0521",
+      "po": "PO-1063",
+      "supplier": "Nordvolt",
+      "date": "18 Sep",
+      "note": "NV-2026-1190",
+      "lines": "EL-TRF-2MVA",
+      "qty": "2 / 2",
+      "acc": "2",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Entrepôt central — Lyon",
+      "qc": "Passed",
+      "idColor": "var(--color-accent-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0533",
+      "po": "PO-1071",
+      "supplier": "Brightline Electrics",
+      "date": "23 Sep",
+      "note": "BX-55120",
+      "lines": "EL-CBL-XLPE",
+      "qty": "42 / 42",
+      "acc": "40",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Partially rejected",
+      "tagClass": "tag tag-accent",
+      "loc": "Entrepôt central — Lyon",
+      "qc": "Failed on 2 drums",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0540",
+      "po": "PO-1078",
+      "supplier": "Cotswold Fire Systems",
+      "date": "06 Nov",
+      "note": "—",
+      "lines": "FD-DAMP-FR, FD-SPR-HD",
+      "qty": "0 / 444",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Announced",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "—",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": true,
+      "canQC": false
+     }
+    ],
+    "noDeliv": false,
+    "drawer": {
+     "id": "BL-2026-0521",
+     "po": "PO-1063",
+     "supplier": "Nordvolt",
+     "status": "Accepted",
+     "tagClass": "tag tag-neutral",
+     "docs": [
+      "Delivery note NV-2026-1190.pdf",
+      "Factory acceptance test report.pdf"
+     ],
+     "noDocs": false,
+     "slotId": "deliv-BL-2026-0521",
+     "canQC": false,
+     "canReceive": false,
+     "meta": [
+      {
+       "k": "Purchase order",
+       "v": "PO-1063",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Supplier delivery note",
+       "v": "NV-2026-1190",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Delivered on",
+       "v": "18 Sep",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Carrier",
+       "v": "Nordvolt heavy haul",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Photos",
+       "v": "3 attached",
+       "color": "var(--color-text)"
+      }
+     ],
+     "qc": [
+      {
+       "k": "Inspector",
+       "v": "Gabriel Comte",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Result",
+       "v": "Passed",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Remarks",
+       "v": "Seals intact · routine test report checked",
+       "color": "var(--color-text)"
+      }
+     ],
+     "lines": [
+      {
+       "ref": "EL-TRF-2MVA",
+       "name": "Transformer 2 MVA · 11/0.4 kV",
+       "o": "2",
+       "d": "2",
+       "a": "2",
+       "r": "—",
+       "rColor": "var(--color-neutral-500)",
+       "loc": "Entrepôt central — Lyon"
+      }
+     ]
+    }
+   },
+   "fr": {
+    "crumb": "Achats & stock",
+    "title": "Livraisons et réceptions",
+    "primary": "Annoncer une livraison",
+    "hasPrimary": true,
+    "badge": "",
+    "kpis": [
+     {
+      "label": "Livraisons",
+      "value": 5,
+      "sub": "1 annoncée(s)",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de contrôle qualité",
+      "value": 0,
+      "sub": "Retenues en quarantaine",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Quantité refusée",
+      "value": 4,
+      "sub": "0.5 % des unités reçues",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Livraisons à l’heure",
+      "value": "83%",
+      "sub": "90 derniers jours · vs date attendue de la commande",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Commandes à recevoir",
+      "value": 4,
+      "sub": "Commandées ou partiellement reçues",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "Tous",
+      "count": "5",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Annoncée",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Reçu",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Contrôle en attente",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepté",
+      "count": "3",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partiellement refusée",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Refusé",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0412",
+      "po": "PO-1041",
+      "supplier": "Keystone Steelworks",
+      "date": "30 juin",
+      "note": "KS-DN-88213",
+      "lines": "KS-STL-0450, KS-STL-0301",
+      "qty": "688 / 688",
+      "acc": "688",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Conforme",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0498",
+      "po": "PO-1052",
+      "supplier": "Halvorsen Cranes",
+      "date": "02 sept.",
+      "note": "HC-7781",
+      "lines": "CR-RAIL-A100",
+      "qty": "96 / 96",
+      "acc": "94",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Conforme avec réserve",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0521",
+      "po": "PO-1063",
+      "supplier": "Nordvolt",
+      "date": "18 sept.",
+      "note": "NV-2026-1190",
+      "lines": "EL-TRF-2MVA",
+      "qty": "2 / 2",
+      "acc": "2",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Entrepôt central — Lyon",
+      "qc": "Conforme",
+      "idColor": "var(--color-accent-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0533",
+      "po": "PO-1071",
+      "supplier": "Brightline Electrics",
+      "date": "23 sept.",
+      "note": "BX-55120",
+      "lines": "EL-CBL-XLPE",
+      "qty": "42 / 42",
+      "acc": "40",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Partiellement refusée",
+      "tagClass": "tag tag-accent",
+      "loc": "Entrepôt central — Lyon",
+      "qc": "Non conforme sur 2 tourets",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0540",
+      "po": "PO-1078",
+      "supplier": "Cotswold Fire Systems",
+      "date": "06 nov.",
+      "note": "—",
+      "lines": "FD-DAMP-FR, FD-SPR-HD",
+      "qty": "0 / 444",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Annoncée",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "—",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": true,
+      "canQC": false
+     }
+    ],
+    "noDeliv": false,
+    "drawer": {
+     "id": "BL-2026-0521",
+     "po": "PO-1063",
+     "supplier": "Nordvolt",
+     "status": "Accepté",
+     "tagClass": "tag tag-neutral",
+     "docs": [
+      "Delivery note NV-2026-1190.pdf",
+      "Factory acceptance test report.pdf"
+     ],
+     "noDocs": false,
+     "slotId": "deliv-BL-2026-0521",
+     "canQC": false,
+     "canReceive": false,
+     "meta": [
+      {
+       "k": "Commande d’achat",
+       "v": "PO-1063",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Bon de livraison fournisseur",
+       "v": "NV-2026-1190",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Livré le",
+       "v": "18 sept.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Transporteur",
+       "v": "Nordvolt heavy haul",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Photos",
+       "v": "3 jointes",
+       "color": "var(--color-text)"
+      }
+     ],
+     "qc": [
+      {
+       "k": "Inspecteur",
+       "v": "Gabriel Comte",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Résultat",
+       "v": "Conforme",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Remarques",
+       "v": "Seals intact · routine test report checked",
+       "color": "var(--color-text)"
+      }
+     ],
+     "lines": [
+      {
+       "ref": "EL-TRF-2MVA",
+       "name": "Transformer 2 MVA · 11/0.4 kV",
+       "o": "2",
+       "d": "2",
+       "a": "2",
+       "r": "—",
+       "rColor": "var(--color-neutral-500)",
+       "loc": "Entrepôt central — Lyon"
+      }
+     ]
+    }
+   }
+  },
+  "reject0521": {
+   "en": {
+    "crumb": "Purchasing & stock",
+    "title": "Deliveries & goods receipt",
+    "primary": "Announce a delivery",
+    "hasPrimary": true,
+    "badge": "",
+    "kpis": [
+     {
+      "label": "Deliveries",
+      "value": 5,
+      "sub": "1 announced",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting quality check",
+      "value": 0,
+      "sub": "Held in quarantine",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Rejected quantity",
+      "value": 6,
+      "sub": "0.7% of units received",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "On-time deliveries",
+      "value": "83%",
+      "sub": "Last 90 days · vs PO expected date",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Open orders to receive",
+      "value": 4,
+      "sub": "Ordered or partially received",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "All",
+      "count": "5",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Announced",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Received",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "QC pending",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepted",
+      "count": "2",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partially rejected",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Rejected",
+      "count": "1",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0412",
+      "po": "PO-1041",
+      "supplier": "Keystone Steelworks",
+      "date": "30 Jun",
+      "note": "KS-DN-88213",
+      "lines": "KS-STL-0450, KS-STL-0301",
+      "qty": "688 / 688",
+      "acc": "688",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Passed",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0498",
+      "po": "PO-1052",
+      "supplier": "Halvorsen Cranes",
+      "date": "02 Sep",
+      "note": "HC-7781",
+      "lines": "CR-RAIL-A100",
+      "qty": "96 / 96",
+      "acc": "94",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Passed with reserve",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0521",
+      "po": "PO-1063",
+      "supplier": "Nordvolt",
+      "date": "18 Sep",
+      "note": "NV-2026-1190",
+      "lines": "EL-TRF-2MVA",
+      "qty": "2 / 2",
+      "acc": "0",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Rejected",
+      "tagClass": "tag tag-accent",
+      "loc": "Zone quarantaine QC — Lyon",
+      "qc": "Failed",
+      "idColor": "var(--color-accent-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0533",
+      "po": "PO-1071",
+      "supplier": "Brightline Electrics",
+      "date": "23 Sep",
+      "note": "BX-55120",
+      "lines": "EL-CBL-XLPE",
+      "qty": "42 / 42",
+      "acc": "40",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Partially rejected",
+      "tagClass": "tag tag-accent",
+      "loc": "Entrepôt central — Lyon",
+      "qc": "Failed on 2 drums",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0540",
+      "po": "PO-1078",
+      "supplier": "Cotswold Fire Systems",
+      "date": "06 Nov",
+      "note": "—",
+      "lines": "FD-DAMP-FR, FD-SPR-HD",
+      "qty": "0 / 444",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Announced",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "—",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": true,
+      "canQC": false
+     }
+    ],
+    "noDeliv": false,
+    "drawer": {
+     "id": "BL-2026-0521",
+     "po": "PO-1063",
+     "supplier": "Nordvolt",
+     "status": "Rejected",
+     "tagClass": "tag tag-accent",
+     "docs": [
+      "Delivery note NV-2026-1190.pdf",
+      "Factory acceptance test report.pdf"
+     ],
+     "noDocs": false,
+     "slotId": "deliv-BL-2026-0521",
+     "canQC": false,
+     "canReceive": false,
+     "meta": [
+      {
+       "k": "Purchase order",
+       "v": "PO-1063",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Supplier delivery note",
+       "v": "NV-2026-1190",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Delivered on",
+       "v": "18 Sep",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Carrier",
+       "v": "Nordvolt heavy haul",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Photos",
+       "v": "3 attached",
+       "color": "var(--color-text)"
+      }
+     ],
+     "qc": [
+      {
+       "k": "Inspector",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Result",
+       "v": "Failed",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "k": "Remarks",
+       "v": "Non-conforming — supplier notified",
+       "color": "var(--color-text)"
+      }
+     ],
+     "lines": [
+      {
+       "ref": "EL-TRF-2MVA",
+       "name": "Transformer 2 MVA · 11/0.4 kV",
+       "o": "2",
+       "d": "2",
+       "a": "0",
+       "r": "2",
+       "rColor": "var(--color-accent-300)",
+       "loc": "Zone quarantaine QC — Lyon"
+      }
+     ]
+    }
+   },
+   "fr": {
+    "crumb": "Achats & stock",
+    "title": "Livraisons et réceptions",
+    "primary": "Annoncer une livraison",
+    "hasPrimary": true,
+    "badge": "",
+    "kpis": [
+     {
+      "label": "Livraisons",
+      "value": 5,
+      "sub": "1 annoncée(s)",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de contrôle qualité",
+      "value": 0,
+      "sub": "Retenues en quarantaine",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Quantité refusée",
+      "value": 6,
+      "sub": "0.7 % des unités reçues",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Livraisons à l’heure",
+      "value": "83%",
+      "sub": "90 derniers jours · vs date attendue de la commande",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Commandes à recevoir",
+      "value": 4,
+      "sub": "Commandées ou partiellement reçues",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "Tous",
+      "count": "5",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Annoncée",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Reçu",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Contrôle en attente",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepté",
+      "count": "2",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partiellement refusée",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Refusé",
+      "count": "1",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0412",
+      "po": "PO-1041",
+      "supplier": "Keystone Steelworks",
+      "date": "30 juin",
+      "note": "KS-DN-88213",
+      "lines": "KS-STL-0450, KS-STL-0301",
+      "qty": "688 / 688",
+      "acc": "688",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Conforme",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0498",
+      "po": "PO-1052",
+      "supplier": "Halvorsen Cranes",
+      "date": "02 sept.",
+      "note": "HC-7781",
+      "lines": "CR-RAIL-A100",
+      "qty": "96 / 96",
+      "acc": "94",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Conforme avec réserve",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0521",
+      "po": "PO-1063",
+      "supplier": "Nordvolt",
+      "date": "18 sept.",
+      "note": "NV-2026-1190",
+      "lines": "EL-TRF-2MVA",
+      "qty": "2 / 2",
+      "acc": "0",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Refusé",
+      "tagClass": "tag tag-accent",
+      "loc": "Zone quarantaine QC — Lyon",
+      "qc": "Non conforme",
+      "idColor": "var(--color-accent-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0533",
+      "po": "PO-1071",
+      "supplier": "Brightline Electrics",
+      "date": "23 sept.",
+      "note": "BX-55120",
+      "lines": "EL-CBL-XLPE",
+      "qty": "42 / 42",
+      "acc": "40",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Partiellement refusée",
+      "tagClass": "tag tag-accent",
+      "loc": "Entrepôt central — Lyon",
+      "qc": "Non conforme sur 2 tourets",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0540",
+      "po": "PO-1078",
+      "supplier": "Cotswold Fire Systems",
+      "date": "06 nov.",
+      "note": "—",
+      "lines": "FD-DAMP-FR, FD-SPR-HD",
+      "qty": "0 / 444",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Annoncée",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "—",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": true,
+      "canQC": false
+     }
+    ],
+    "noDeliv": false,
+    "drawer": {
+     "id": "BL-2026-0521",
+     "po": "PO-1063",
+     "supplier": "Nordvolt",
+     "status": "Refusé",
+     "tagClass": "tag tag-accent",
+     "docs": [
+      "Delivery note NV-2026-1190.pdf",
+      "Factory acceptance test report.pdf"
+     ],
+     "noDocs": false,
+     "slotId": "deliv-BL-2026-0521",
+     "canQC": false,
+     "canReceive": false,
+     "meta": [
+      {
+       "k": "Commande d’achat",
+       "v": "PO-1063",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Bon de livraison fournisseur",
+       "v": "NV-2026-1190",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Livré le",
+       "v": "18 sept.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Transporteur",
+       "v": "Nordvolt heavy haul",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Photos",
+       "v": "3 jointes",
+       "color": "var(--color-text)"
+      }
+     ],
+     "qc": [
+      {
+       "k": "Inspecteur",
+       "v": "Fabien Bertrand",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Résultat",
+       "v": "Non conforme",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "k": "Remarques",
+       "v": "Non conforme — fournisseur informé",
+       "color": "var(--color-text)"
+      }
+     ],
+     "lines": [
+      {
+       "ref": "EL-TRF-2MVA",
+       "name": "Transformer 2 MVA · 11/0.4 kV",
+       "o": "2",
+       "d": "2",
+       "a": "0",
+       "r": "2",
+       "rColor": "var(--color-accent-300)",
+       "loc": "Zone quarantaine QC — Lyon"
+      }
+     ]
+    }
+   }
+  },
+  "registerAccept0540": {
+   "en": {
+    "crumb": "Purchasing & stock",
+    "title": "Deliveries & goods receipt",
+    "primary": "Announce a delivery",
+    "hasPrimary": true,
+    "badge": "1",
+    "kpis": [
+     {
+      "label": "Deliveries",
+      "value": 5,
+      "sub": "0 announced",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting quality check",
+      "value": 1,
+      "sub": "Held in quarantine",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Rejected quantity",
+      "value": 4,
+      "sub": "0.3% of units received",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "On-time deliveries",
+      "value": "83%",
+      "sub": "Last 90 days · vs PO expected date",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Open orders to receive",
+      "value": 4,
+      "sub": "Ordered or partially received",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "All",
+      "count": "5",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Announced",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Received",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "QC pending",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepted",
+      "count": "3",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partially rejected",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Rejected",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0412",
+      "po": "PO-1041",
+      "supplier": "Keystone Steelworks",
+      "date": "30 Jun",
+      "note": "KS-DN-88213",
+      "lines": "KS-STL-0450, KS-STL-0301",
+      "qty": "688 / 688",
+      "acc": "688",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Passed",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0498",
+      "po": "PO-1052",
+      "supplier": "Halvorsen Cranes",
+      "date": "02 Sep",
+      "note": "HC-7781",
+      "lines": "CR-RAIL-A100",
+      "qty": "96 / 96",
+      "acc": "94",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Passed with reserve",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0521",
+      "po": "PO-1063",
+      "supplier": "Nordvolt",
+      "date": "18 Sep",
+      "note": "NV-2026-1190",
+      "lines": "EL-TRF-2MVA",
+      "qty": "2 / 2",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "QC pending",
+      "tagClass": "tag tag-outline",
+      "loc": "Zone quarantaine QC — Lyon",
+      "qc": "Pending",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     },
+     {
+      "id": "BL-2026-0533",
+      "po": "PO-1071",
+      "supplier": "Brightline Electrics",
+      "date": "23 Sep",
+      "note": "BX-55120",
+      "lines": "EL-CBL-XLPE",
+      "qty": "42 / 42",
+      "acc": "40",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Partially rejected",
+      "tagClass": "tag tag-accent",
+      "loc": "Entrepôt central — Lyon",
+      "qc": "Failed on 2 drums",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0540",
+      "po": "PO-1078",
+      "supplier": "Cotswold Fire Systems",
+      "date": "25 Sep",
+      "note": "—",
+      "lines": "FD-DAMP-FR, FD-SPR-HD",
+      "qty": "444 / 444",
+      "acc": "444",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Passed",
+      "idColor": "var(--color-accent-300)",
+      "canReceive": false,
+      "canQC": false
+     }
+    ],
+    "noDeliv": false,
+    "drawer": {
+     "id": "BL-2026-0540",
+     "po": "PO-1078",
+     "supplier": "Cotswold Fire Systems",
+     "status": "Accepted",
+     "tagClass": "tag tag-neutral",
+     "docs": [],
+     "noDocs": true,
+     "slotId": "deliv-BL-2026-0540",
+     "canQC": false,
+     "canReceive": false,
+     "meta": [
+      {
+       "k": "Purchase order",
+       "v": "PO-1078",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Supplier delivery note",
+       "v": "—",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Delivered on",
+       "v": "25 Sep",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Carrier",
+       "v": "Geodis",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Photos",
+       "v": "None",
+       "color": "var(--color-text)"
+      }
+     ],
+     "qc": [
+      {
+       "k": "Inspector",
+       "v": "Gabriel Comte",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Result",
+       "v": "Passed",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Remarks",
+       "v": "Conforming — released to stock",
+       "color": "var(--color-text)"
+      }
+     ],
+     "lines": [
+      {
+       "ref": "FD-DAMP-FR",
+       "name": "Fire damper 600×400",
+       "o": "24",
+       "d": "24",
+       "a": "24",
+       "r": "—",
+       "rColor": "var(--color-neutral-500)",
+       "loc": "Magasin chantier — Le Havre"
+      },
+      {
+       "ref": "FD-SPR-HD",
+       "name": "Sprinkler head · quick response",
+       "o": "420",
+       "d": "420",
+       "a": "420",
+       "r": "—",
+       "rColor": "var(--color-neutral-500)",
+       "loc": "Magasin chantier — Le Havre"
+      }
+     ]
+    }
+   },
+   "fr": {
+    "crumb": "Achats & stock",
+    "title": "Livraisons et réceptions",
+    "primary": "Annoncer une livraison",
+    "hasPrimary": true,
+    "badge": "1",
+    "kpis": [
+     {
+      "label": "Livraisons",
+      "value": 5,
+      "sub": "0 annoncée(s)",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de contrôle qualité",
+      "value": 1,
+      "sub": "Retenues en quarantaine",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Quantité refusée",
+      "value": 4,
+      "sub": "0.3 % des unités reçues",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Livraisons à l’heure",
+      "value": "83%",
+      "sub": "90 derniers jours · vs date attendue de la commande",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Commandes à recevoir",
+      "value": 4,
+      "sub": "Commandées ou partiellement reçues",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "Tous",
+      "count": "5",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Annoncée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Reçu",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Contrôle en attente",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepté",
+      "count": "3",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partiellement refusée",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Refusé",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0412",
+      "po": "PO-1041",
+      "supplier": "Keystone Steelworks",
+      "date": "30 juin",
+      "note": "KS-DN-88213",
+      "lines": "KS-STL-0450, KS-STL-0301",
+      "qty": "688 / 688",
+      "acc": "688",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Conforme",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0498",
+      "po": "PO-1052",
+      "supplier": "Halvorsen Cranes",
+      "date": "02 sept.",
+      "note": "HC-7781",
+      "lines": "CR-RAIL-A100",
+      "qty": "96 / 96",
+      "acc": "94",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Conforme avec réserve",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0521",
+      "po": "PO-1063",
+      "supplier": "Nordvolt",
+      "date": "18 sept.",
+      "note": "NV-2026-1190",
+      "lines": "EL-TRF-2MVA",
+      "qty": "2 / 2",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Contrôle en attente",
+      "tagClass": "tag tag-outline",
+      "loc": "Zone quarantaine QC — Lyon",
+      "qc": "En attente",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     },
+     {
+      "id": "BL-2026-0533",
+      "po": "PO-1071",
+      "supplier": "Brightline Electrics",
+      "date": "23 sept.",
+      "note": "BX-55120",
+      "lines": "EL-CBL-XLPE",
+      "qty": "42 / 42",
+      "acc": "40",
+      "rej": "2",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Partiellement refusée",
+      "tagClass": "tag tag-accent",
+      "loc": "Entrepôt central — Lyon",
+      "qc": "Non conforme sur 2 tourets",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0540",
+      "po": "PO-1078",
+      "supplier": "Cotswold Fire Systems",
+      "date": "25 sept.",
+      "note": "—",
+      "lines": "FD-DAMP-FR, FD-SPR-HD",
+      "qty": "444 / 444",
+      "acc": "444",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Le Havre",
+      "qc": "Conforme",
+      "idColor": "var(--color-accent-300)",
+      "canReceive": false,
+      "canQC": false
+     }
+    ],
+    "noDeliv": false,
+    "drawer": {
+     "id": "BL-2026-0540",
+     "po": "PO-1078",
+     "supplier": "Cotswold Fire Systems",
+     "status": "Accepté",
+     "tagClass": "tag tag-neutral",
+     "docs": [],
+     "noDocs": true,
+     "slotId": "deliv-BL-2026-0540",
+     "canQC": false,
+     "canReceive": false,
+     "meta": [
+      {
+       "k": "Commande d’achat",
+       "v": "PO-1078",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Bon de livraison fournisseur",
+       "v": "—",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Livré le",
+       "v": "25 sept.",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Transporteur",
+       "v": "Geodis",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Photos",
+       "v": "Aucun",
+       "color": "var(--color-text)"
+      }
+     ],
+     "qc": [
+      {
+       "k": "Inspecteur",
+       "v": "Gabriel Comte",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Résultat",
+       "v": "Conforme",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Remarques",
+       "v": "Conforme — libéré en stock",
+       "color": "var(--color-text)"
+      }
+     ],
+     "lines": [
+      {
+       "ref": "FD-DAMP-FR",
+       "name": "Fire damper 600×400",
+       "o": "24",
+       "d": "24",
+       "a": "24",
+       "r": "—",
+       "rColor": "var(--color-neutral-500)",
+       "loc": "Magasin chantier — Le Havre"
+      },
+      {
+       "ref": "FD-SPR-HD",
+       "name": "Sprinkler head · quick response",
+       "o": "420",
+       "d": "420",
+       "a": "420",
+       "r": "—",
+       "rColor": "var(--color-neutral-500)",
+       "loc": "Magasin chantier — Le Havre"
+      }
+     ]
+    }
+   }
+  },
+  "acceptNdc": {
+   "id": "BL-2026-0331",
+   "en": {
+    "crumb": "Purchasing & stock",
+    "title": "Deliveries & goods receipt",
+    "primary": "Announce a delivery",
+    "hasPrimary": true,
+    "badge": "1",
+    "kpis": [
+     {
+      "label": "Deliveries",
+      "value": 3,
+      "sub": "0 announced",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting quality check",
+      "value": 1,
+      "sub": "Held in quarantine",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Rejected quantity",
+      "value": 0,
+      "sub": "0% of units received",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "On-time deliveries",
+      "value": "83%",
+      "sub": "Last 90 days · vs PO expected date",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Open orders to receive",
+      "value": 3,
+      "sub": "Ordered or partially received",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "All",
+      "count": "3",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Announced",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Received",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "QC pending",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepted",
+      "count": "2",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partially rejected",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Rejected",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0330",
+      "po": "PO-3120",
+      "supplier": "Nordvolt",
+      "date": "16 Oct",
+      "note": "NO-4100",
+      "lines": "EL-SWG-11KV, EL-TRF-2MVA, EL-UPS-500, EL-BAT-LI-200",
+      "qty": "18 / 18",
+      "acc": "18",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Passed",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0331",
+      "po": "PO-3127",
+      "supplier": "Brightline Electrics",
+      "date": "8 Aug",
+      "note": "BR-4107",
+      "lines": "EL-CBL-XLPE, LT-HB-200W",
+      "qty": "29 / 58",
+      "acc": "29",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Passed",
+      "idColor": "var(--color-accent-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0332",
+      "po": "PO-3134",
+      "supplier": "Aeris Controls",
+      "date": "17 Nov",
+      "note": "AE-4114",
+      "lines": "ME-CRAC-60",
+      "qty": "6 / 12",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "QC pending",
+      "tagClass": "tag tag-outline",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Pending",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     }
+    ],
+    "noDeliv": false,
+    "drawer": {
+     "id": "BL-2026-0331",
+     "po": "PO-3127",
+     "supplier": "Brightline Electrics",
+     "status": "Accepted",
+     "tagClass": "tag tag-neutral",
+     "docs": [
+      "Delivery note.pdf"
+     ],
+     "noDocs": false,
+     "slotId": "deliv-BL-2026-0331",
+     "canQC": false,
+     "canReceive": false,
+     "meta": [
+      {
+       "k": "Purchase order",
+       "v": "PO-3127",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Supplier delivery note",
+       "v": "BR-4107",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Delivered on",
+       "v": "8 Aug",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Carrier",
+       "v": "—",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Photos",
+       "v": "None",
+       "color": "var(--color-text)"
+      }
+     ],
+     "qc": [
+      {
+       "k": "Inspector",
+       "v": "Gabriel Comte",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Result",
+       "v": "Passed",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Remarks",
+       "v": "Conforming — released to stock",
+       "color": "var(--color-text)"
+      }
+     ],
+     "lines": [
+      {
+       "ref": "EL-CBL-XLPE",
+       "name": "XLPE cable 11 kV 3×240 mm² · per 100 m",
+       "o": "18",
+       "d": "9",
+       "a": "9",
+       "r": "—",
+       "rColor": "var(--color-neutral-500)",
+       "loc": "Magasin chantier — Lyon"
+      },
+      {
+       "ref": "LT-HB-200W",
+       "name": "LED high-bay luminaire 200 W",
+       "o": "40",
+       "d": "20",
+       "a": "20",
+       "r": "—",
+       "rColor": "var(--color-neutral-500)",
+       "loc": "Magasin chantier — Lyon"
+      }
+     ]
+    }
+   },
+   "fr": {
+    "crumb": "Achats & stock",
+    "title": "Livraisons et réceptions",
+    "primary": "Annoncer une livraison",
+    "hasPrimary": true,
+    "badge": "1",
+    "kpis": [
+     {
+      "label": "Livraisons",
+      "value": 3,
+      "sub": "0 annoncée(s)",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de contrôle qualité",
+      "value": 1,
+      "sub": "Retenues en quarantaine",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Quantité refusée",
+      "value": 0,
+      "sub": "0 % des unités reçues",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraisons à l’heure",
+      "value": "83%",
+      "sub": "90 derniers jours · vs date attendue de la commande",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Commandes à recevoir",
+      "value": 3,
+      "sub": "Commandées ou partiellement reçues",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "Tous",
+      "count": "3",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Annoncée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Reçu",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Contrôle en attente",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepté",
+      "count": "2",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partiellement refusée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Refusé",
+      "count": "0",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0330",
+      "po": "PO-3120",
+      "supplier": "Nordvolt",
+      "date": "16 oct.",
+      "note": "NO-4100",
+      "lines": "EL-SWG-11KV, EL-TRF-2MVA, EL-UPS-500, EL-BAT-LI-200",
+      "qty": "18 / 18",
+      "acc": "18",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Conforme",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0331",
+      "po": "PO-3127",
+      "supplier": "Brightline Electrics",
+      "date": "8 août",
+      "note": "BR-4107",
+      "lines": "EL-CBL-XLPE, LT-HB-200W",
+      "qty": "29 / 58",
+      "acc": "29",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Conforme",
+      "idColor": "var(--color-accent-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0332",
+      "po": "PO-3134",
+      "supplier": "Aeris Controls",
+      "date": "17 nov.",
+      "note": "AE-4114",
+      "lines": "ME-CRAC-60",
+      "qty": "6 / 12",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Contrôle en attente",
+      "tagClass": "tag tag-outline",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "En attente",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     }
+    ],
+    "noDeliv": false,
+    "drawer": {
+     "id": "BL-2026-0331",
+     "po": "PO-3127",
+     "supplier": "Brightline Electrics",
+     "status": "Accepté",
+     "tagClass": "tag tag-neutral",
+     "docs": [
+      "Delivery note.pdf"
+     ],
+     "noDocs": false,
+     "slotId": "deliv-BL-2026-0331",
+     "canQC": false,
+     "canReceive": false,
+     "meta": [
+      {
+       "k": "Commande d’achat",
+       "v": "PO-3127",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Bon de livraison fournisseur",
+       "v": "BR-4107",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Livré le",
+       "v": "8 août",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Transporteur",
+       "v": "—",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Photos",
+       "v": "Aucun",
+       "color": "var(--color-text)"
+      }
+     ],
+     "qc": [
+      {
+       "k": "Inspecteur",
+       "v": "Gabriel Comte",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Résultat",
+       "v": "Conforme",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Remarques",
+       "v": "Conforme — libéré en stock",
+       "color": "var(--color-text)"
+      }
+     ],
+     "lines": [
+      {
+       "ref": "EL-CBL-XLPE",
+       "name": "XLPE cable 11 kV 3×240 mm² · per 100 m",
+       "o": "18",
+       "d": "9",
+       "a": "9",
+       "r": "—",
+       "rColor": "var(--color-neutral-500)",
+       "loc": "Magasin chantier — Lyon"
+      },
+      {
+       "ref": "LT-HB-200W",
+       "name": "LED high-bay luminaire 200 W",
+       "o": "40",
+       "d": "20",
+       "a": "20",
+       "r": "—",
+       "rColor": "var(--color-neutral-500)",
+       "loc": "Magasin chantier — Lyon"
+      }
+     ]
+    }
+   }
+  },
+  "rejectNdc": {
+   "id": "BL-2026-0331",
+   "en": {
+    "crumb": "Purchasing & stock",
+    "title": "Deliveries & goods receipt",
+    "primary": "Announce a delivery",
+    "hasPrimary": true,
+    "badge": "1",
+    "kpis": [
+     {
+      "label": "Deliveries",
+      "value": 3,
+      "sub": "0 announced",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting quality check",
+      "value": 1,
+      "sub": "Held in quarantine",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Rejected quantity",
+      "value": 29,
+      "sub": "54.7% of units received",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "On-time deliveries",
+      "value": "83%",
+      "sub": "Last 90 days · vs PO expected date",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Open orders to receive",
+      "value": 3,
+      "sub": "Ordered or partially received",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "All",
+      "count": "3",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Announced",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Received",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "QC pending",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepted",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partially rejected",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Rejected",
+      "count": "1",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0330",
+      "po": "PO-3120",
+      "supplier": "Nordvolt",
+      "date": "16 Oct",
+      "note": "NO-4100",
+      "lines": "EL-SWG-11KV, EL-TRF-2MVA, EL-UPS-500, EL-BAT-LI-200",
+      "qty": "18 / 18",
+      "acc": "18",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Passed",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0331",
+      "po": "PO-3127",
+      "supplier": "Brightline Electrics",
+      "date": "8 Aug",
+      "note": "BR-4107",
+      "lines": "EL-CBL-XLPE, LT-HB-200W",
+      "qty": "29 / 58",
+      "acc": "0",
+      "rej": "29",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Rejected",
+      "tagClass": "tag tag-accent",
+      "loc": "Zone quarantaine QC — Lyon",
+      "qc": "Failed",
+      "idColor": "var(--color-accent-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0332",
+      "po": "PO-3134",
+      "supplier": "Aeris Controls",
+      "date": "17 Nov",
+      "note": "AE-4114",
+      "lines": "ME-CRAC-60",
+      "qty": "6 / 12",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "QC pending",
+      "tagClass": "tag tag-outline",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Pending",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     }
+    ],
+    "noDeliv": false,
+    "drawer": {
+     "id": "BL-2026-0331",
+     "po": "PO-3127",
+     "supplier": "Brightline Electrics",
+     "status": "Rejected",
+     "tagClass": "tag tag-accent",
+     "docs": [
+      "Delivery note.pdf"
+     ],
+     "noDocs": false,
+     "slotId": "deliv-BL-2026-0331",
+     "canQC": false,
+     "canReceive": false,
+     "meta": [
+      {
+       "k": "Purchase order",
+       "v": "PO-3127",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Supplier delivery note",
+       "v": "BR-4107",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Delivered on",
+       "v": "8 Aug",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Carrier",
+       "v": "—",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Photos",
+       "v": "None",
+       "color": "var(--color-text)"
+      }
+     ],
+     "qc": [
+      {
+       "k": "Inspector",
+       "v": "Gabriel Comte",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Result",
+       "v": "Failed",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "k": "Remarks",
+       "v": "Non-conforming — supplier notified",
+       "color": "var(--color-text)"
+      }
+     ],
+     "lines": [
+      {
+       "ref": "EL-CBL-XLPE",
+       "name": "XLPE cable 11 kV 3×240 mm² · per 100 m",
+       "o": "18",
+       "d": "9",
+       "a": "0",
+       "r": "9",
+       "rColor": "var(--color-accent-300)",
+       "loc": "Zone quarantaine QC — Lyon"
+      },
+      {
+       "ref": "LT-HB-200W",
+       "name": "LED high-bay luminaire 200 W",
+       "o": "40",
+       "d": "20",
+       "a": "0",
+       "r": "20",
+       "rColor": "var(--color-accent-300)",
+       "loc": "Zone quarantaine QC — Lyon"
+      }
+     ]
+    }
+   },
+   "fr": {
+    "crumb": "Achats & stock",
+    "title": "Livraisons et réceptions",
+    "primary": "Annoncer une livraison",
+    "hasPrimary": true,
+    "badge": "1",
+    "kpis": [
+     {
+      "label": "Livraisons",
+      "value": 3,
+      "sub": "0 annoncée(s)",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de contrôle qualité",
+      "value": 1,
+      "sub": "Retenues en quarantaine",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Quantité refusée",
+      "value": 29,
+      "sub": "54.7 % des unités reçues",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Livraisons à l’heure",
+      "value": "83%",
+      "sub": "90 derniers jours · vs date attendue de la commande",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Commandes à recevoir",
+      "value": 3,
+      "sub": "Commandées ou partiellement reçues",
+      "color": "var(--color-text)"
+     }
+    ],
+    "chips": [
+     {
+      "label": "Tous",
+      "count": "3",
+      "bg": "var(--color-accent-900)"
+     },
+     {
+      "label": "Annoncée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Reçu",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Contrôle en attente",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Accepté",
+      "count": "1",
+      "bg": "transparent"
+     },
+     {
+      "label": "Partiellement refusée",
+      "count": "0",
+      "bg": "transparent"
+     },
+     {
+      "label": "Refusé",
+      "count": "1",
+      "bg": "transparent"
+     }
+    ],
+    "rows": [
+     {
+      "id": "BL-2026-0330",
+      "po": "PO-3120",
+      "supplier": "Nordvolt",
+      "date": "16 oct.",
+      "note": "NO-4100",
+      "lines": "EL-SWG-11KV, EL-TRF-2MVA, EL-UPS-500, EL-BAT-LI-200",
+      "qty": "18 / 18",
+      "acc": "18",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "Conforme",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0331",
+      "po": "PO-3127",
+      "supplier": "Brightline Electrics",
+      "date": "8 août",
+      "note": "BR-4107",
+      "lines": "EL-CBL-XLPE, LT-HB-200W",
+      "qty": "29 / 58",
+      "acc": "0",
+      "rej": "29",
+      "rejColor": "var(--color-accent-300)",
+      "status": "Refusé",
+      "tagClass": "tag tag-accent",
+      "loc": "Zone quarantaine QC — Lyon",
+      "qc": "Non conforme",
+      "idColor": "var(--color-accent-300)",
+      "canReceive": false,
+      "canQC": false
+     },
+     {
+      "id": "BL-2026-0332",
+      "po": "PO-3134",
+      "supplier": "Aeris Controls",
+      "date": "17 nov.",
+      "note": "AE-4114",
+      "lines": "ME-CRAC-60",
+      "qty": "6 / 12",
+      "acc": "0",
+      "rej": "—",
+      "rejColor": "var(--color-neutral-400)",
+      "status": "Contrôle en attente",
+      "tagClass": "tag tag-outline",
+      "loc": "Magasin chantier — Lyon",
+      "qc": "En attente",
+      "idColor": "var(--color-neutral-300)",
+      "canReceive": false,
+      "canQC": true
+     }
+    ],
+    "noDeliv": false,
+    "drawer": {
+     "id": "BL-2026-0331",
+     "po": "PO-3127",
+     "supplier": "Brightline Electrics",
+     "status": "Refusé",
+     "tagClass": "tag tag-accent",
+     "docs": [
+      "Delivery note.pdf"
+     ],
+     "noDocs": false,
+     "slotId": "deliv-BL-2026-0331",
+     "canQC": false,
+     "canReceive": false,
+     "meta": [
+      {
+       "k": "Commande d’achat",
+       "v": "PO-3127",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Bon de livraison fournisseur",
+       "v": "BR-4107",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Livré le",
+       "v": "8 août",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Transporteur",
+       "v": "—",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Photos",
+       "v": "Aucun",
+       "color": "var(--color-text)"
+      }
+     ],
+     "qc": [
+      {
+       "k": "Inspecteur",
+       "v": "Gabriel Comte",
+       "color": "var(--color-text)"
+      },
+      {
+       "k": "Résultat",
+       "v": "Non conforme",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "k": "Remarques",
+       "v": "Non conforme — fournisseur informé",
+       "color": "var(--color-text)"
+      }
+     ],
+     "lines": [
+      {
+       "ref": "EL-CBL-XLPE",
+       "name": "XLPE cable 11 kV 3×240 mm² · per 100 m",
+       "o": "18",
+       "d": "9",
+       "a": "0",
+       "r": "9",
+       "rColor": "var(--color-accent-300)",
+       "loc": "Zone quarantaine QC — Lyon"
+      },
+      {
+       "ref": "LT-HB-200W",
+       "name": "LED high-bay luminaire 200 W",
+       "o": "40",
+       "d": "20",
+       "a": "0",
+       "r": "20",
+       "rColor": "var(--color-accent-300)",
+       "loc": "Zone quarantaine QC — Lyon"
+      }
+     ]
+    }
+   }
+  }
+ },
+ "filters": {
+  "Announced": [
+   "BL-2026-0540"
+  ],
+  "Received": [],
+  "QC pending": [
+   "BL-2026-0521"
+  ],
+  "Accepted": [
+   "BL-2026-0412",
+   "BL-2026-0498"
+  ],
+  "Partially rejected": [
+   "BL-2026-0533"
+  ],
+  "Rejected": []
+ },
+ "inbox": {
+  "en": {
+   "director": [],
+   "pm": [],
+   "depthead": [],
+   "member": [],
+   "englead": [],
+   "quality": [
+    {
+     "kind": "Delivery — quality check",
+     "id": "BL-2026-0521",
+     "title": "Nordvolt · EL-TRF-2MVA",
+     "sub": "Oil sample and ratio test scheduled 29 Sep",
+     "when": "18 Sep",
+     "who": "Fabien Bertrand"
+    }
+   ],
+   "procurement": [
+    {
+     "kind": "Delivery — quality check",
+     "id": "BL-2026-0521",
+     "title": "Nordvolt · EL-TRF-2MVA",
+     "sub": "Oil sample and ratio test scheduled 29 Sep",
+     "when": "18 Sep",
+     "who": "Fabien Bertrand"
+    }
+   ],
+   "client": [],
+   "qualityAfterAccept": [],
+   "procurement:HLT-026": [
+    {
+     "kind": "Delivery — quality check",
+     "id": "BL-2026-0521",
+     "title": "Nordvolt · EL-TRF-2MVA",
+     "sub": "Oil sample and ratio test scheduled 29 Sep",
+     "when": "18 Sep",
+     "who": "Fabien Bertrand"
+    }
+   ],
+   "procurement:NDC-031": [
+    {
+     "kind": "Delivery — quality check",
+     "id": "BL-2026-0331",
+     "title": "Brightline Electrics · EL-CBL-XLPE, LT-HB-200W",
+     "sub": "Inspection to schedule",
+     "when": "8 Aug",
+     "who": "Fabien Bertrand"
+    },
+    {
+     "kind": "Delivery — quality check",
+     "id": "BL-2026-0332",
+     "title": "Aeris Controls · ME-CRAC-60",
+     "sub": "Inspection to schedule",
+     "when": "17 Nov",
+     "who": "Fabien Bertrand"
+    }
+   ],
+   "procurement:RCF-019": [],
+   "procurement:ERP-202": [
+    {
+     "kind": "Delivery — quality check",
+     "id": "BL-2026-0340",
+     "title": "Corvid Systems · IT-SRV-2U",
+     "sub": "Inspection to schedule",
+     "when": "19 Sep",
+     "who": "Fabien Bertrand"
+    }
+   ],
+   "procurement:WSA-044": [
+    {
+     "kind": "Delivery — quality check",
+     "id": "BL-2026-0350",
+     "title": "Nordvolt · EL-TRF-2MVA, EL-BAT-LI-200",
+     "sub": "Inspection to schedule",
+     "when": "13 Feb ’27",
+     "who": "Fabien Bertrand"
+    }
+   ],
+   "procurement:MSR-012": [],
+   "procurement:EWA-051": []
+  },
+  "fr": {
+   "director": [],
+   "pm": [],
+   "depthead": [],
+   "member": [],
+   "englead": [],
+   "quality": [
+    {
+     "kind": "Livraison — contrôle qualité",
+     "id": "BL-2026-0521",
+     "title": "Nordvolt · EL-TRF-2MVA",
+     "sub": "Prélèvement d’huile et essai de rapport prévus le 29 sept.",
+     "when": "18 sept.",
+     "who": "Fabien Bertrand"
+    }
+   ],
+   "procurement": [
+    {
+     "kind": "Livraison — contrôle qualité",
+     "id": "BL-2026-0521",
+     "title": "Nordvolt · EL-TRF-2MVA",
+     "sub": "Prélèvement d’huile et essai de rapport prévus le 29 sept.",
+     "when": "18 sept.",
+     "who": "Fabien Bertrand"
+    }
+   ],
+   "client": [],
+   "qualityAfterAccept": [],
+   "procurement:HLT-026": [
+    {
+     "kind": "Livraison — contrôle qualité",
+     "id": "BL-2026-0521",
+     "title": "Nordvolt · EL-TRF-2MVA",
+     "sub": "Prélèvement d’huile et essai de rapport prévus le 29 sept.",
+     "when": "18 sept.",
+     "who": "Fabien Bertrand"
+    }
+   ],
+   "procurement:NDC-031": [
+    {
+     "kind": "Livraison — contrôle qualité",
+     "id": "BL-2026-0331",
+     "title": "Brightline Electrics · EL-CBL-XLPE, LT-HB-200W",
+     "sub": "Inspection à planifier",
+     "when": "8 août",
+     "who": "Fabien Bertrand"
+    },
+    {
+     "kind": "Livraison — contrôle qualité",
+     "id": "BL-2026-0332",
+     "title": "Aeris Controls · ME-CRAC-60",
+     "sub": "Inspection à planifier",
+     "when": "17 nov.",
+     "who": "Fabien Bertrand"
+    }
+   ],
+   "procurement:RCF-019": [],
+   "procurement:ERP-202": [
+    {
+     "kind": "Livraison — contrôle qualité",
+     "id": "BL-2026-0340",
+     "title": "Corvid Systems · IT-SRV-2U",
+     "sub": "Inspection à planifier",
+     "when": "19 sept.",
+     "who": "Fabien Bertrand"
+    }
+   ],
+   "procurement:WSA-044": [
+    {
+     "kind": "Livraison — contrôle qualité",
+     "id": "BL-2026-0350",
+     "title": "Nordvolt · EL-TRF-2MVA, EL-BAT-LI-200",
+     "sub": "Inspection à planifier",
+     "when": "13 févr. ’27",
+     "who": "Fabien Bertrand"
+    }
+   ],
+   "procurement:MSR-012": [],
+   "procurement:EWA-051": []
+  }
+ }
+}

@@ -182,6 +182,11 @@ export const projectControls = pgTable('project_controls', {
   reconPendingSub: text('recon_pending_sub').notNull(),
   contingencyKeur: keur('contingency_keur').notNull(),
   contingencyUsedKeur: keur('contingency_used_keur').notNull(),
+  /**
+   * Orders placed not yet in actual cost (Cash & recovery `openCommit`, 04 §1.6): HLT-026's 713 k€ until purchase
+   * orders are modelled (04 Q11); null → 60 % of next month's planned value.
+   */
+  ordersPlacedKeur: keur('orders_placed_keur'),
   /** Narrative under the variance card. */
   note: text('note').notNull(),
   ...timestamps,

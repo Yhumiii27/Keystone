@@ -1,0 +1,139 @@
+/* PLM — parts catalogue (template 2535–2580) and the part record drawer (2582–2613). */
+
+/* ── Filter card (2546–2556): card elev-sm · padding 12px 16px · gap 10px; one wrapping row, gap 14px ── */
+:global(.card).filterCard { padding: 12px 16px; gap: 10px; }
+.filterRow { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+/* restrChip: chips() look — padding 4px 10px · radius-md · 12px · 1px border; hover neutral-900 */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--color-neutral-800);
+  color: var(--color-neutral-300);
+  text-decoration: none;
+}
+.chipOn { background: var(--color-accent-900); border-color: var(--color-accent-700); color: var(--color-accent-200); }
+.chip:hover { background: var(--color-neutral-900); color: var(--color-neutral-300); }
+.chipOn:hover { color: var(--color-accent-200); }
+.chip:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+:global(.btn).clear { font-size: 12px; }
+
+/* ── Catalogue table (2557–2579) ── */
+.sortHead { cursor: pointer; user-select: none; }
+.sortLink { display: inline-flex; align-items: center; gap: 4px; color: inherit; text-decoration: none; }
+.sortLink:hover { color: inherit; }
+.caret { font-size: 12px; color: var(--color-neutral-600); flex: none; }
+.caretOn { color: var(--color-accent); }
+.thRight { text-align: right; }
+:global(.table) th.thRight { text-align: right; }
+.refCell { font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 500; white-space: nowrap; color: var(--color-neutral-300); }
+.refOn { color: var(--color-accent-300); }
+.secondary { font-size: 12px; color: var(--color-neutral-300); }
+.nowrap { white-space: nowrap; }
+.mfr { display: flex; flex-direction: column; line-height: 1.3; font-size: 12px; }
+.mfrRef { color: var(--color-neutral-400); }
+.price { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.statusCol { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+:global(.tag).ecoTag { cursor: pointer; font: inherit; font-size: 10px; white-space: nowrap; text-decoration: none; }
+:global(.tag).ecoTag:hover { color: var(--color-accent-300); }
+.restr { font-size: 12px; max-width: 220px; line-height: 1.35; color: var(--color-neutral-500); }
+.restrOn { color: var(--color-accent-300); }
+.used { font-size: 12px; color: var(--color-neutral-400); white-space: nowrap; }
+
+/* ── Part record drawer ── */
+:global(.btn).headBtn { font-size: 12.5px; }
+.warn {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--color-neutral-200);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-900);
+}
+.warnIcon { color: var(--color-accent); margin-top: 2px; flex: none; }
+.warnText { text-wrap: pretty; }
+.section { display: flex; flex-direction: column; gap: 4px; }
+.sectionHead { display: flex; align-items: center; gap: 8px; }
+.sectionHead > :first-child { margin-right: auto; min-width: 0; }
+/* the header button keeps one line; a long (French) section label wraps inside the column instead
+   ("MODIFICATIONS TECHNIQUES" + "Créer un ECO" exceed the 289 px column of the drawer grid) */
+.sectionHead > :not(:first-child) { flex: none; white-space: nowrap; }
+.label { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent); }
+.labelGap { margin-bottom: 4px; }
+/* section grid: repeat(auto-fit,minmax(min(100%,230px),1fr)) · gap 18px */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 18px; }
+:global(.btn).ghost { font-size: 12px; }
+:global(.btn).ghostBlock { align-self: flex-start; font-size: 12.5px; margin-top: 4px; }
+.empty { font-size: 12.5px; color: var(--color-neutral-500); padding: 4px 0; }
+
+/* clickable list rows of the drawer: grid · padding 5px 0 · border-bottom neutral-900 · 12.5px · hover accent-300 */
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-neutral-900);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.row:hover { color: var(--color-accent-300); }
+.row3 { grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; }
+.row4 { grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 10px; }
+/* spare-list rows keep the prototype's 8px gap (ref / name · × q · kind) */
+.row.gap8 { gap: 8px; }
+.docRow { padding: 6px 0; gap: 10px; }
+.rowMain { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.rowTitle { font-variant-numeric: tabular-nums; }
+.rowTitleText { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rowSub { font-size: 11px; color: var(--color-neutral-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aside { font-size: 11.5px; color: var(--color-neutral-400); }
+.asideNum { font-variant-numeric: tabular-nums; color: var(--color-neutral-400); white-space: nowrap; }
+.rowTag { white-space: nowrap; }
+.arrow { color: var(--color-neutral-500); flex: none; }
+.syncNote { font-size: 11px; color: var(--color-accent-300); display: inline-flex; align-items: center; gap: 4px; }
+
+/* ECO rows: the row link to the ECO screen + the "Open in Vigie" icon link */
+.ecoLine { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; border-bottom: 1px solid var(--color-neutral-900); }
+.ecoLine > .row { border-bottom: 0; }
+.vigieLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-md);
+  color: var(--color-neutral-400);
+  text-decoration: none;
+}
+.vigieLink:hover { background: var(--color-neutral-900); color: var(--color-accent-300); }
+.vigieLink:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+
+/* assembly chains ("Used in"): 12px neutral-300 tabular, as the BOM node drawer */
+.chain { font-size: 12px; color: var(--color-neutral-300); font-variant-numeric: tabular-nums; text-wrap: pretty; }
+
+/* revision comparison events */
+.revEvent { display: flex; flex-direction: column; gap: 2px; padding: 5px 0; border-bottom: 1px solid var(--color-neutral-900); font-size: 12.5px; }
+.revTitle { font-variant-numeric: tabular-nums; }
+.revSub { font-size: 11px; color: var(--color-neutral-400); }
+.revSubLink { color: var(--color-neutral-400); }
+.revSubLink:hover { color: var(--color-accent-300); }
+.revLine { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 3px 0 3px 10px; }
+.revPath { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; font-size: 12px; }
+.revPathRef { font-variant-numeric: tabular-nums; color: var(--color-neutral-300); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.revChange { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--color-neutral-300); white-space: nowrap; }

@@ -149,6 +149,11 @@ export interface PurchaseOrder {
   lines: [string, number, number][];
   /** Activity the order feeds (late delivery when it has started). */
   act: string | null;
+  /**
+   * Order value in € from its own line prices (purchasing DAL), as Purchase orders shows it; absent = the prototype's
+   * Σ list price × quantity (`poValue` 4309). Identical on the seed, different for orders priced by an RFQ award.
+   */
+  valueEur?: number;
 }
 
 export type EcoApprover = 'englead' | 'quality' | 'pm';
@@ -156,6 +161,12 @@ export interface Eco {
   id: string;
   type: string;
   status: string;
+  /**
+   * The status is already the effective one, as Vigie reports it (effectivity lock included): ECOs of the Vigie
+   * mirror. Absent for the prototype rows, whose effective status is derived from the approvals (`ecoStatus`).
+   */
+  reported?: boolean;
+  /** Decision per key ('pending' | 'ok' | 'rejected'); a decision recorded in Keystone counts once recorded. */
   appr: Record<EcoApprover, string>;
   projects: string[];
   parts: string[];
@@ -259,11 +270,15 @@ export function changeRequestStatus(cr: Pick<ChangeRequest, 'status' | 'chain'>)
   return cr.status;
 }
 
-/** Effective ECO status (allEcos, line 4192) without overrides: any rejection → Rejected; all approvals ok → Released. */
+/**
+ * Effective ECO status (allEcos, line 4192). ECOs of the Vigie mirror carry it (`reported`: Vigie decides the status,
+ * effectivity lock included; a decision recorded in Keystone does not move it before Vigie does). Prototype rows
+ * derive it without overrides: any rejection → Rejected; all approvals ok → Released.
+ */
 export function ecoStatus(e: Eco): string {
+  if (e.reported) return e.status;
   const appr = Object.values(e.appr);
   if (appr.includes('rejected')) return 'Rejected';
-  // TODO(db): effectivity lock (pending dispositions keep an approved ECO "In approval") once the ECO module is modelled.
   if ((['englead', 'quality', 'pm'] as const).every((k) => e.appr[k] === 'ok') && e.status !== 'Draft') return 'Released';
   return e.status;
 }
@@ -275,9 +290,9 @@ const partTag = (s: string) => (s === 'Validated' ? TAG.neutral : s === 'Not val
 const dwgTag = (s: string) => (s === 'Released' ? TAG.neutral : s === 'Obsolete' ? TAG.outline : TAG.accent);
 const usedIn = (p: Part) => Object.keys(p.usage).filter((k) => p.usage[k] > 0);
 
-/** Order value in € (poValue, line 4309). */
+/** Order value in € (poValue, line 4309): the order's own value when known, else Σ list price × quantity. */
 export function poValue(o: PurchaseOrder, parts: Map<string, Part>): number {
-  return o.lines.reduce((a, [ref, q]) => a + (parts.get(ref)?.price ?? 0) * q, 0);
+  return o.valueEur ?? o.lines.reduce((a, [ref, q]) => a + (parts.get(ref)?.price ?? 0) * q, 0);
 }
 
 /** BOM articles of a project not fully ordered (shortfall, line 4328). */
@@ -628,7 +643,7 @@ export function qualityHome(i: QualityInput): HomeView {
       title: 'Quality approvals',
       rows: ecos
         .filter((e) => e.status === 'In approval' || e.status === 'Impact analysis')
-        .map((e) => row(e.id, e.title, e.appr.quality === 'pending' ? 'To review' : 'Approved', TAG.outline, homeHref('eco', { params: { eco: e.id } }))),
+        .map((e) => row(e.id, e.title, e.appr.quality === 'pending' ? 'To review' : e.appr.quality === 'rejected' ? 'Rejected' : 'Approved', TAG.outline, homeHref('eco', { params: { eco: e.id } }))),
     },
     right: {
       title: 'Parts needing action',

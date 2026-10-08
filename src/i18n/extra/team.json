@@ -1,0 +1,20 @@
+{
+  "> 30 d": "> 30 j",
+  "Notes": "Notes",
+  "Name is required": "Le nom est obligatoire",
+  "Organisation is required": "L’organisation est obligatoire",
+  "Text is too long": "Le texte est trop long",
+  "Unknown stakeholder type": "Type de partie prenante inconnu",
+  "Enter a valid e-mail address": "Saisissez une adresse e-mail valide",
+  "Interface is required": "L’interface est obligatoire",
+  "Other party is required": "L’autre partie est obligatoire",
+  "Data expected is required": "La donnée attendue est obligatoire",
+  "Needed by is required": "La date de besoin est obligatoire",
+  "Enter the need date as a date, e.g. 15 Oct": "Saisissez la date de besoin sous forme de date, par ex. 15 oct.",
+  "Unknown Keystone side": "Côté Keystone inconnu",
+  "Unknown interface": "Interface inconnue",
+  "This interface is no longer open": "Cette interface n’est plus ouverte",
+  "Only a received interface can be frozen": "Seule une interface reçue peut être gelée",
+  "This stakeholder register is read-only for you": "Ce registre des parties prenantes est en consultation pour vous",
+  "This interface register is read-only for you": "Ce registre des interfaces est en consultation pour vous"
+}

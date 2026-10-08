@@ -1,6 +1,6 @@
 // My approvals body (docs/spec/08 §7.3–7.4; template 1715–1736): KPI row → kind chips (?filter=) → the
 // "Waiting for my decision" card. Server Component; rows and inline decisions are small client islands.
-import { ArrowRight, Funnel } from '@phosphor-icons/react/dist/ssr';
+import { ArrowRight, ArrowSquareOut, Funnel } from '@phosphor-icons/react/dist/ssr';
 import { EmptyState, FilterBar, FilterChips, FilterGroup, FilterLabel, FilterNote, KpiGrid, KpiTile, LO, OK, SectionCard, Stack } from '@/components/app';
 import { Tag } from '@/components/ds/Tag';
 import { screenHref } from '@/config/screens';
@@ -58,6 +58,13 @@ export function MyApprovalsBody({ view, t: tr, lang, canDecide }: MyApprovalsBod
               <span className={s.meta}>
                 {t(a.who)} · {t(a.when)}
               </span>
+              {a.external && (
+                // The application that owns the item (ECOs: Vigie), opened outside Keystone.
+                <a href={a.external.href} target="_blank" rel="noopener noreferrer" className={s.external} aria-label={`${t(a.external.label)} ${a.id}`}>
+                  {t(a.external.label)}
+                  <ArrowSquareOut aria-hidden />
+                </a>
+              )}
             </div>
             {a.decision && canDecide ? <DecisionButtons id={a.id} decision={a.decision} /> : <div className={s.actions} />}
             {a.href && <ArrowRight className={s.arrow} aria-hidden />}

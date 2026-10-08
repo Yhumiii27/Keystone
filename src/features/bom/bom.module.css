@@ -1,0 +1,95 @@
+/* Project BOM — equipment & parts (docs/spec/09 §1, template 1167–1311). Inline values of the prototype. */
+
+/* screen root: display:flex;flex-direction:column;gap:14px */
+.root { display: flex; flex-direction: column; gap: 14px; }
+.nowrap { white-space: nowrap; }
+
+/* view toolbar (1178): flex wrap gap 10; label + seg cluster gap 12; note 12px neutral-400 */
+.toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cluster { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.note { font-size: 12px; color: var(--color-neutral-400); }
+
+/* flat filters (1180): flex wrap gap 14; count pushed right */
+.filters { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.count { margin-left: auto; font-size: 12px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+
+/* sortable headers: cursor pointer, user-select none, label + 12px caret (accent active, neutral-600 idle); the whole
+   cell sorts (the prototype's onClick sits on the <th>): the link's ::after covers the cell */
+.sortTh { cursor: pointer; user-select: none; position: relative; }
+.sortLink { display: inline-flex; align-items: center; gap: 4px; color: inherit; text-decoration: none; font: inherit; letter-spacing: inherit; text-transform: inherit; }
+.sortLink::after { content: ''; position: absolute; inset: 0; }
+.sortLink:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 2px; }
+.caret { font-size: 12px; color: var(--color-neutral-600); flex: none; }
+.caretOn { color: var(--color-accent); }
+
+/* article cell: flex column, line-height 1.3; sub-line 11.5px neutral-400 */
+.article { display: flex; flex-direction: column; line-height: 1.3; }
+.articleSub { font-size: 11.5px; color: var(--color-neutral-400); }
+
+/* status cell: tag + open-ECO tag button (10px) */
+.statusCell { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+:global(.tag).ecoTag { cursor: pointer; font: inherit; font-size: 10px; white-space: nowrap; text-decoration: none; }
+:global(.tag).ecoTag:hover { color: var(--color-accent-300); }
+
+/* restrictions: 12px, max-width 220, line-height 1.35; "—" neutral-500, text in LO */
+.restr { font-size: 12px; max-width: 220px; line-height: 1.35; color: var(--color-neutral-500); }
+.restrOn { color: var(--color-accent-300); }
+.used { font-size: 12px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+/* total of an assembly valued through its components (not added to the BOM value) */
+.totalMuted { color: var(--color-neutral-500); }
+
+/* tree (1211): grid wrapper; ref·article cell with depth padding; caret button 18×18 */
+.treeWrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
+.treeCell { display: flex; align-items: center; gap: 6px; padding-left: var(--tree-pad, 6px); }
+.caretBtn { border: 0; background: transparent; color: var(--color-neutral-400); cursor: pointer; padding: 0; display: grid; place-items: center; width: 18px; height: 18px; flex: none; }
+.caretBtn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; border-radius: 2px; }
+.caretBtn:disabled { cursor: pointer; }
+.treeRef { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--color-neutral-400); white-space: nowrap; }
+.treeName { color: var(--color-neutral-300); }
+.treeNameAsm { color: var(--color-text); }
+.ext { color: var(--color-neutral-400); }
+/* the prototype's inline row background (transparent) removed the row rule: the rebuild keeps the DS rule and hover
+   tint, and paints the selected node accent-900 (Table `selected`). */
+
+/* node drawer: sections and buttons */
+.section { display: flex; flex-direction: column; gap: 4px; }
+.parent { font-size: 12px; color: var(--color-neutral-300); font-variant-numeric: tabular-nums; text-wrap: pretty; }
+.buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* where-used card (1248) */
+.usedHead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.headCol { display: flex; flex-direction: column; margin-right: auto; }
+.headSub { font-size: 12px; color: var(--color-neutral-400); }
+.usedPart { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.usedRef { font-size: 12px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.usedName { font-size: 14px; font-weight: 500; }
+.usedEquiv { font-size: 12px; color: var(--color-neutral-400); }
+.usedGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 18px; }
+.usedCol { display: flex; flex-direction: column; gap: 6px; }
+.pathRow { display: flex; flex-direction: column; gap: 2px; padding: 7px 0; border-bottom: 1px solid var(--color-neutral-900); }
+.pathChain { font-size: 12.5px; font-variant-numeric: tabular-nums; text-wrap: pretty; }
+.pathQty { font-size: 11.5px; color: var(--color-neutral-400); }
+.none { font-size: 12.5px; color: var(--color-neutral-500); }
+.projRow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--color-neutral-900); font-size: 12.5px; }
+.poRow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--color-neutral-900); font-size: 12.5px; }
+.ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.muted { color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.poId { font-variant-numeric: tabular-nums; color: var(--color-neutral-300); }
+
+/* compare card (1268) */
+.cmpHead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cmpLine { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--color-neutral-300); }
+
+/* PU/PR (1280–1306) */
+.sparesBar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.kindWrap { display: flex; gap: 6px; }
+.legend { font-size: 12px; color: var(--color-neutral-400); }
+.spHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.block { display: block; }
+.pin { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; color: var(--color-accent-300); white-space: nowrap; border: 0; background: transparent; padding: 0; cursor: pointer; font-family: inherit; text-decoration: none; }
+.pin:hover { color: var(--color-accent-200); }
+.qTotal { font-weight: 500; }
+.noteCell { font-size: 12px; color: var(--color-neutral-300); max-width: 240px; text-wrap: pretty; }
+.lead { font-size: 12px; color: var(--color-neutral-300); }
+.stock { font-size: 12px; color: var(--color-neutral-300); }
+.stockShort { color: var(--color-accent-300); }

@@ -1,21 +1,28 @@
 import 'server-only';
-// Kind "Invoice — 3-way match" (prototype data, TODO(db): supplier invoices are not modelled yet): invoices
-// blocked by the 3-way match or without PO, for procurement and the portfolio director (apprItems 4729).
-// Decided on Sourcing › Invoices only (no inline decision).
-import { invoiceItems, type ProtoInvoice } from '@/domain/approvals';
-import { PROTO } from '@/server/prototype';
+// Kind "Invoice — 3-way match" (DB): supplier invoices Blocked by the 3-way match or without PO, for procurement and
+// the portfolio director (apprItems 4729), all projects. Decided on Sourcing only (row opens `?tab=inv&inv=…`; no
+// inline decision): approving the payment, approving the received part or rejecting takes the invoice out of the queue.
+// "Decided this week": the invoices the viewer decided in Keystone.
+import { INVOICE_DECIDER_ROLES, invoiceApprovalItems, match3 } from '@/domain/procurement';
+import { invoiceQueue, listSupplierInvoices } from '@/server/dal/purchasing';
 import type { ApprovalProvider } from './types';
-
-const ROLES = ['procurement', 'director'];
 
 export const invoiceProvider: ApprovalProvider = {
   kind: 'invoice',
   scope: 'global',
-  source: 'prototype',
+  source: 'db',
   async items({ viewer, lang }) {
-    return ROLES.includes(viewer.role) ? invoiceItems(PROTO.INVOICES as ProtoInvoice[], lang) : [];
+    if (!INVOICE_DECIDER_ROLES.includes(viewer.role)) return [];
+    const invoices = await invoiceQueue();
+    return invoiceApprovalItems(
+      invoices.map((i) => ({
+        number: i.number, supplier: i.supplier, status: i.status, amountEur: i.amountEur, invoiceDate: i.invoiceDate,
+        match: match3({ hasPo: !!i.poNumber, hasReceipt: !!i.receiptNumber, amountEur: i.amountEur, poAmountEur: i.poAmountEur, receiptAmountEur: i.receiptAmountEur }),
+      })),
+      lang,
+    );
   },
-  async decided() {
-    return 0;
+  async decided({ viewer }) {
+    return (await listSupplierInvoices()).filter((i) => i.decidedBy === viewer.name).length;
   },
 };

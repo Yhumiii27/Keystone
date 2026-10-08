@@ -1,0 +1,153 @@
+/* Projects map (docs/spec/02 SCR-WORLDMAP-FRAME; `design/Keystone PM map.html` lines 9–40). Values copied from the
+   map page. */
+.wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  color: var(--color-text);
+  background: radial-gradient(900px 520px at 50% 45%, var(--color-neutral-900), transparent 72%);
+}
+
+.svg { display: block; width: 100%; height: 100%; cursor: grab; }
+.svg:active { cursor: grabbing; }
+/* Focus target when a pinned tooltip holding focus closes (Esc, ×); no ring on a mouse click. */
+.svg:focus { outline: none; }
+.svg:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+
+/* ── land ── */
+.sphere { fill: none; stroke: var(--color-neutral-800); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.graticule { fill: none; stroke: var(--color-neutral-800); stroke-opacity: 0.45; stroke-width: 0.5; vector-effect: non-scaling-stroke; }
+.country { fill: var(--color-neutral-900); stroke: var(--color-neutral-700); stroke-opacity: 0.7; stroke-width: 0.6; vector-effect: non-scaling-stroke; }
+
+/* ── markers ── */
+.mk { cursor: pointer; }
+.dot { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-accent) 55%, transparent)); }
+.cluster { fill: var(--color-accent-900); stroke: var(--color-accent); stroke-width: 1.5; }
+.ontrack { fill: var(--color-accent); stroke: var(--color-accent-200); stroke-width: 1; }
+.risk { fill: var(--color-accent-300); }
+.riskRing { fill: none; stroke: var(--color-accent-300); stroke-width: 1.2; stroke-dasharray: 3 2; }
+.pipeline { fill: var(--color-bg); stroke: var(--color-accent-300); stroke-width: 1.5; stroke-dasharray: 2.5 2; }
+.closed { fill: var(--color-neutral-600); }
+.hl { fill: none; stroke: var(--color-accent-200); stroke-width: 1.5; }
+.label,
+.count {
+  font-size: 11px;
+  fill: var(--color-neutral-200);
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--color-bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.count { font-size: 10.5px; font-weight: 500; fill: var(--color-accent-100); stroke: none; text-anchor: middle; dominant-baseline: central; }
+
+/* ── view control (`#ctl.seg`) ── */
+.ctl {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+}
+.ctlBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 12px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-neutral-300);
+  padding: 6px 12px;
+}
+.ctlBtn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.on { color: var(--color-accent); box-shadow: inset 0 0 0 1px var(--color-accent); }
+
+/* ── legend and attribution ── */
+.legend {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--color-neutral-300);
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-bg) 78%, transparent);
+}
+.legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; box-sizing: border-box; }
+.swOntrack { background: var(--color-accent); }
+.swRisk { background: var(--color-accent-300); outline: 1px dashed var(--color-accent-300); outline-offset: 2px; }
+.swPipeline { border: 1.5px dashed var(--color-accent-300); }
+.swClosed { background: var(--color-neutral-600); }
+
+.attr { position: absolute; right: 10px; bottom: 10px; font-size: 10px; color: var(--color-neutral-500); }
+
+/* ── tooltip (`#tip.card.elev-md`) ── */
+:global(.card).tip {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  min-width: 230px;
+  max-width: 320px;
+  z-index: 5;
+  font-size: 12px;
+}
+.hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+.hdr > span { margin-right: auto; }
+.close {
+  border: 0;
+  background: transparent;
+  color: var(--color-neutral-400);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+.close:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid var(--color-neutral-900);
+  cursor: pointer;
+  color: var(--color-text);
+  text-decoration: none;
+}
+.row:hover .name { color: var(--color-accent-300); }
+.row:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.name { display: block; }
+.sub { display: block; font-size: 11px; color: var(--color-neutral-400); }
+.tags { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.open { font-size: 11px; color: var(--color-accent-300); padding-top: 4px; }
+
+/* ── loading / failure message ── */
+.msg {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 12.5px;
+  color: var(--color-neutral-400);
+  pointer-events: none;
+}

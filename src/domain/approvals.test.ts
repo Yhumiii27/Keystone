@@ -1,81 +1,15 @@
-// Golden values of the My approvals builders (docs/spec/08 §7.4–7.5, 00 §8.8) on the prototype data set:
-// item text per kind (apprItems 4721–4732), the change-request routing rule, and the inbox view model
-// (myApprKpis 4737) — including the fixed "Oldest" (00 §7.16, 08 OQ22).
+// Golden values of the My approvals builders (docs/spec/08 §7.4–7.5, 00 §8.8) on the prototype data set: item text
+// of the kinds built here (apprItems 4727, 4730, Codex documents), the change-request routing rule, and the inbox view
+// model (myApprKpis 4737) — including the fixed "Oldest" (00 §7.16, 08 OQ22).
 import { describe, expect, it } from 'vitest';
 import { makeT } from '@/i18n/translate';
-import { PROTO, PROTO_GEN } from '@/server/prototype';
+import { PROTO } from '@/server/prototype';
 import {
-  canDecideStep, changeRequestItems, changeRequestSub, codexDocItems, deliverableItems, deliverablesOf, deliveriesOf, deliveryItems, ecoDecided,
-  ecoItems, ecoKeyOf, inboxView, invoiceItems, isoOfWhen, kpiTexts, ncrItems, ncrsOf, oldestItem, pendingStepFor, poValue, purchaseOrderItems, rfqItems,
-  type ApprovalItem, type ChangeRequestForInbox, type ProtoDeliverable, type ProtoDelivery, type ProtoDoc, type ProtoEco, type ProtoInvoice,
-  type ProtoNcr, type ProtoPurchaseOrder, type ProtoRfq,
+  canDecideStep, changeRequestItems, changeRequestSub, codexDocItems, deliverableItems, deliverablesOf, inboxView, isoOfWhen, kpiTexts, ncrItems, ncrsOf,
+  oldestItem, pendingStepFor, type ApprovalItem, type ChangeRequestForInbox, type ProtoDeliverable, type ProtoDoc, type ProtoNcr,
 } from './approvals';
 
-const PRICES: Record<string, number> = Object.fromEntries((PROTO.PARTS as { ref: string; price: number }[]).map((p) => [p.ref, p.price]));
-const pos = (code: string) => PROTO_GEN.genPOs[code] as (ProtoPurchaseOrder & { expected: string })[];
 const ids = (xs: ApprovalItem[]) => xs.map((x) => x.id);
-
-describe('purchase orders (apprItems 4723)', () => {
-  it('PO-1082 awaiting approval: Cotswold Fire Systems · €9k (180 × €48 list price)', () => {
-    const po = pos('HLT-026').find((o) => o.id === 'PO-1082')!;
-    expect(poValue(po, PRICES)).toBe(8640);
-    const [en] = purchaseOrderItems(pos('HLT-026'), PRICES, 'HLT-026', 'en');
-    expect(en).toEqual({
-      kind: 'po', id: 'PO-1082', title: 'Cotswold Fire Systems · €9k', sub: 'FD-DET-OPT', when: '24 Sep', whenIso: '2026-09-24', who: 'Fabien Bertrand',
-      href: '/projects/HLT-026/orders?po=PO-1082', decision: { mode: 'preview' },
-    });
-    expect(purchaseOrderItems(pos('HLT-026'), PRICES, 'HLT-026', 'fr')[0].title).toBe('Cotswold Fire Systems · 9 k€');
-    expect(ids(purchaseOrderItems(pos('HLT-026'), PRICES, 'HLT-026', 'en'))).toEqual(['PO-1082']);
-  });
-  it('other projects: WSA-044 has PO-5141 (Jan ’27), NDC-031 none', () => {
-    const [w] = purchaseOrderItems(pos('WSA-044'), PRICES, 'WSA-044', 'en');
-    expect([w.id, w.when, w.whenIso, w.href]).toEqual(['PO-5141', '9 Jan ’27', '2027-01-09', '/projects/WSA-044/orders?po=PO-5141']);
-    expect(purchaseOrderItems(pos('NDC-031'), PRICES, 'NDC-031', 'en')).toEqual([]);
-  });
-});
-
-describe('ECOs (apprItems 4724, ecoRoleKey 4341)', () => {
-  const ecos = PROTO.ECOS as ProtoEco[];
-  it('only ECO-2026-015 is in approval, pending on the pm key', () => {
-    expect(ecoKeyOf('pm')).toBe('pm');
-    expect(ecoKeyOf('director')).toBeNull();
-    const [e] = ecoItems(ecos, 'pm', PROTO.ECO_TYPES, PROTO.PROJ_NAMES);
-    expect(e).toMatchObject({
-      kind: 'eco', id: 'ECO-2026-015', sub: 'Obsolescence notice · Harbor Line, Clinique Pasteur Lyon', when: '19 Sep', who: 'Gabriel Comte',
-      href: '/reference/eco?eco=ECO-2026-015', decision: { mode: 'preview' },
-    });
-    expect(ecoItems(ecos, 'englead', PROTO.ECO_TYPES, PROTO.PROJ_NAMES)).toEqual([]);
-    expect(ecoItems(ecos, 'quality', PROTO.ECO_TYPES, PROTO.PROJ_NAMES)).toEqual([]);
-  });
-  it('ECO approvals given per key ("Decided this week" ECO term)', () => {
-    expect([ecoDecided(ecos, 'pm'), ecoDecided(ecos, 'englead'), ecoDecided(ecos, 'quality')]).toEqual([2, 4, 3]);
-  });
-});
-
-describe('delivery quality checks (apprItems 4725, genDeliv 4449)', () => {
-  const hlt = PROTO.HLT_DELIV as ProtoDelivery[];
-  it('Harbor Line: BL-2026-0521 Nordvolt, QC remarks, opens the receipt', () => {
-    expect(deliveryItems(deliveriesOf('HLT-026', hlt, pos('HLT-026'), 1), 'HLT-026')).toEqual([
-      {
-        kind: 'delivery', id: 'BL-2026-0521', title: 'Nordvolt · EL-TRF-2MVA', sub: 'Oil sample and ratio test scheduled 29 Sep', when: '18 Sep', whenIso: '2026-09-18',
-        who: 'Fabien Bertrand', href: '/projects/HLT-026/deliveries?receipt=BL-2026-0521', decision: { mode: 'preview' },
-      },
-    ]);
-  });
-  it('generated receipts: one per received / partially received PO, QC pending while partial; none without data', () => {
-    const ndc = deliveriesOf('NDC-031', hlt, pos('NDC-031'), 3);
-    expect(ndc.map((d) => [d.id, d.status, d.date])).toEqual([
-      ['BL-2026-0330', 'Accepted', '16 Oct'],
-      ['BL-2026-0331', 'QC pending', '8 Aug'],
-      ['BL-2026-0332', 'QC pending', '17 Nov'],
-    ]);
-    expect(deliveryItems(ndc, 'NDC-031').map((i) => [i.id, i.title, i.sub])).toEqual([
-      ['BL-2026-0331', 'Brightline Electrics · EL-CBL-XLPE, LT-HB-200W', 'Inspection to schedule'],
-      ['BL-2026-0332', 'Aeris Controls · ME-CRAC-60', 'Inspection to schedule'],
-    ]);
-    expect(deliveriesOf('EWA-051', hlt, [], null)).toEqual([]);
-  });
-});
 
 describe('client deliverables (apprItems 4727, allDlv 4630)', () => {
   const hlt = PROTO.HLT_DELIVS as ProtoDeliverable[];
@@ -93,25 +27,9 @@ describe('client deliverables (apprItems 4727, allDlv 4630)', () => {
   });
 });
 
-describe('RFQ awards, invoices, NCRs (apprItems 4728–4730)', () => {
-  it('RFQ-2026-031 comparing three quotes', () => {
-    expect(rfqItems(PROTO.RFQS as ProtoRfq[])).toEqual([
-      {
-        kind: 'rfq', id: 'RFQ-2026-031', title: 'Steel plate S355 · 20 mm — 192 plates', sub: '3 quotes · Lowest total cost of ownership', when: '30 Sep', whenIso: '2026-09-30',
-        who: 'Fabien Bertrand', href: '/purchasing/sourcing?tab=rfq&rfq=RFQ-2026-031', decision: null,
-      },
-    ]);
-  });
-  it('three invoices blocked or without PO, amounts in full euros', () => {
-    const en = invoiceItems(PROTO.INVOICES as ProtoInvoice[], 'en');
-    expect(en.map((i) => [i.id, i.title, i.sub, i.when, i.who])).toEqual([
-      ['INV-HC-7781', 'Halvorsen Cranes · €1,286,400', 'Receipt does not cover invoice', '10 Sep', 'Accounts payable'],
-      ['INV-BX-55120', 'Brightline Electrics · €163,800', 'Receipt does not cover invoice', '24 Sep', 'Accounts payable'],
-      ['INV-LE-2210', 'Lincoln Electric · €6,880', 'No purchase order referenced', '25 Sep', 'Accounts payable'],
-    ]);
-    expect(en[0].href).toBe('/purchasing/sourcing?tab=inv&inv=INV-HC-7781');
-    expect(invoiceItems(PROTO.INVOICES as ProtoInvoice[], 'fr')[0].title.replace(/\s/g, ' ')).toBe('Halvorsen Cranes · 1 286 400 €');
-  });
+// RFQ awards, invoices, purchase orders, ECOs and delivery quality checks are read from the database since Delivery 4:
+// their item builders are golden-tested with their modules (orders, eco, deliveries, procurement).
+describe('NCRs (apprItems 4730)', () => {
   it('NCRs: none in Verification in the data set; a verification NCR becomes an inline item', () => {
     const hlt = PROTO.HLT_NCRS as ProtoNcr[];
     expect(ncrItems(ncrsOf('HLT-026', hlt, true), 'HLT-026')).toEqual([]);

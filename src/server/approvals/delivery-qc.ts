@@ -1,34 +1,35 @@
 import 'server-only';
-// Kind "Delivery — quality check" (prototype data, TODO(db): goods receipts are not modelled yet): receipts of the
-// current project waiting for QC, for the quality manager and procurement (apprItems 4725). The prototype's inline
-// Accept / Reject threw (event-less handler, 08 OQ28); here they are previews until the Deliveries module
-// persists the QC result (Accept → stock, Reject → quarantine).
-import { deliveriesOf, deliveryItems, type ProtoDelivery, type ProtoPurchaseOrder } from '@/domain/approvals';
-import { PROTO, PROTO_GEN } from '@/server/prototype';
+// Kind "Delivery — quality check" (database, Delivery 4): goods receipts of the current project waiting for their
+// incoming inspection, for the quality manager and procurement (apprItems 4725), in the register's order. The row
+// opens the delivery drawer (`?receipt=`); the inline Approve / Reject record the same decision as the Deliveries
+// screen — Accept → stock, Reject → quarantine, default remarks (src/features/deliveries/actions.ts) — where the
+// prototype's inbox call threw (event-less handler, 08 OQ28). The submitter is the receiving clerk who registered
+// the delivery (the prototype wrote "Fabien Bertrand" for every receipt).
+import { screenHref } from '@/config/screens';
+import type { ApprovalItem } from '@/domain/approvals';
+import { QC_INBOX_ROLES, qcInboxItems } from '@/domain/deliveries';
+import { qcDecidedCount, qcQueue } from '@/server/dal/deliveries';
 import type { ApprovalContext, ApprovalProvider } from './types';
 
-const QC_ROLES = ['quality', 'procurement'];
-
-const receiptsOf = (code: string) =>
-  deliveriesOf(
-    code,
-    PROTO.HLT_DELIV as ProtoDelivery[],
-    (PROTO_GEN.genPOs[code] ?? []) as (ProtoPurchaseOrder & { expected: string })[],
-    (PROTO.DEFS[code]?.idx as number | undefined) ?? null,
-  );
-
-const inScope = ({ viewer, project }: ApprovalContext) => !!project && QC_ROLES.includes(viewer.role);
+const inScope = ({ viewer, project }: ApprovalContext) => !!project && QC_INBOX_ROLES.includes(viewer.role);
 
 export const deliveryQcProvider: ApprovalProvider = {
   kind: 'delivery',
   scope: 'project',
-  source: 'prototype',
+  source: 'db',
   async items(ctx) {
-    return inScope(ctx) ? deliveryItems(receiptsOf(ctx.project!.code), ctx.project!.code) : [];
+    if (!inScope(ctx)) return [];
+    const code = ctx.project!.code;
+    return qcInboxItems(await qcQueue(code)).map(
+      (i): ApprovalItem => ({
+        kind: 'delivery', id: i.id, title: i.title, sub: i.sub, who: i.who, when: i.when, whenIso: i.whenIso,
+        href: `${screenHref('deliveries', { code })}?receipt=${encodeURIComponent(i.id)}`,
+        decision: { mode: 'delivery-qc', projectCode: code, number: i.id },
+      }),
+    );
   },
-  // QC results recorded by the viewer (none in the data set; the prototype does not count them).
+  // Quality checks the viewer recorded on the project's receipts.
   async decided(ctx) {
-    if (!inScope(ctx)) return 0;
-    return receiptsOf(ctx.project!.code).filter((d) => d.status !== 'QC pending' && d.qc.by === ctx.viewer.name).length;
+    return inScope(ctx) ? qcDecidedCount(ctx.project!.code, ctx.viewer.name) : 0;
   },
 };

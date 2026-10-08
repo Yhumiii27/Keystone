@@ -1,28 +1,23 @@
 import 'server-only';
-// Kind "Purchase order" (prototype data, TODO(db): purchase orders are not modelled yet): POs of the current
-// project awaiting approval, for its project manager and the portfolio director (apprItems 4723). Inline
-// Approve / Reject are previews until the Orders module persists PO status (Approve → Ordered, Reject → Cancelled).
-import { purchaseOrderItems, type ProtoPurchaseOrder } from '@/domain/approvals';
-import { PROTO, PROTO_GEN } from '@/server/prototype';
-import type { ApprovalContext, ApprovalProvider } from './types';
-
-const PRICES: Record<string, number> = Object.fromEntries((PROTO.PARTS as { ref: string; price: number }[]).map((p) => [p.ref, p.price]));
-
-/** POs of a project (genPOs 3415; Harbor Line = HLT_POS). */
-const posOf = (code: string): ProtoPurchaseOrder[] => (PROTO_GEN.genPOs[code] ?? []) as ProtoPurchaseOrder[];
-
-/** PO approvers: the project's manager and the portfolio director. */
-const approves = ({ viewer, project }: ApprovalContext) => !!project && (viewer.role === 'director' || viewer.managedProjects.includes(project.code));
+// Kind "Purchase order" (DB): orders of the current project awaiting approval, for the portfolio director and the
+// project's manager (apprItems 4724, routed per person by the data layer). Decided inline: Approve → Ordered,
+// Reject → Cancelled, through the Orders Server Function `decidePurchaseOrderAction` (src/features/orders/actions.ts)
+// and the purchasing writers. "Submitted by" is whoever sent the order for approval (the buyer for the seed orders).
+import { poApprovalItems } from '@/domain/orders';
+import { fmtDOfIso } from '@/server/db/codes';
+import { poApprovalQueue, poDecidedCount } from '@/server/dal/purchasing';
+import type { ApprovalProvider } from './types';
 
 export const purchaseOrderProvider: ApprovalProvider = {
   kind: 'po',
   scope: 'project',
-  source: 'prototype',
-  async items(ctx) {
-    return approves(ctx) ? purchaseOrderItems(posOf(ctx.project!.code), PRICES, ctx.project!.code, ctx.lang) : [];
+  source: 'db',
+  async items({ viewer, project, lang }) {
+    if (!project) return [];
+    return poApprovalItems(await poApprovalQueue(project.code, viewer.name), project.code, lang, fmtDOfIso);
   },
-  // Prototype term: POs of the project in status Ordered (counted for PO approvers only).
-  async decided(ctx) {
-    return approves(ctx) ? posOf(ctx.project!.code).filter((o) => o.status === 'Ordered').length : 0;
+  // Prototype term kept by the data layer: the project's orders in status Ordered, for its approvers only.
+  async decided({ viewer, project }) {
+    return project ? poDecidedCount(project.code, viewer.name) : 0;
   },
 };

@@ -1,0 +1,19 @@
+{
+  "Punch item": "Réserve",
+  "Type proposed": "Type proposé",
+  "Selection": "Sélection",
+  "Select": "Sélectionner",
+  "Download zip — coming soon": "Télécharger zip — bientôt disponible",
+  "Export register (xlsx) — coming soon": "Exporter le registre (xlsx) — bientôt disponible",
+  "The document vault is read-only for you": "Le coffre-fort documentaire est en consultation seule pour vous",
+  "Unknown document": "Document inconnu",
+  "Unknown document type": "Type de document inconnu",
+  "Title too long": "Titre trop long",
+  "Reference too long": "Référence trop longue",
+  "The hand-off to Codex could not be recorded": "Le transfert vers Codex n’a pas pu être enregistré",
+  "No approval step is pending on this document": "Aucune étape d’approbation n’est en attente sur ce document",
+  "You are not the approver of this step": "Vous n’êtes pas l’approbateur de cette étape",
+  "The approval could not be recorded": "L’approbation n’a pas pu être enregistrée",
+  "Only the client can acknowledge receipt": "Seul le client peut accuser réception",
+  "PLC variable table": "Table de variables automate"
+}

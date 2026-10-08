@@ -1,0 +1,18 @@
+{
+  "Open in Vigie": "Ouvrir dans Vigie",
+  "Manage in Vigie": "Gérer dans Vigie",
+  "Pending sync with Vigie": "En attente de synchronisation avec Vigie",
+  "Sent to Vigie": "Envoyé à Vigie",
+  "Sync with Vigie failed": "Échec de la synchronisation avec Vigie",
+  "Mirrored from Vigie — ECOs are managed in Vigie": "Miroir de Vigie — les ECO sont gérés dans Vigie",
+  "Managed in Vigie — Keystone records your approval and step requests and sends them to Vigie": "Géré dans Vigie — Keystone enregistre votre approbation et vos demandes d’étape et les transmet à Vigie",
+  "Impact analysis requested": "Analyse d’impact demandée",
+  "Submitted for approval": "Soumis à approbation",
+  "Sent to Vigie, where the ECO is managed": "Transmis à Vigie, où l’ECO est géré",
+  "Change orders are outside your workspace": "Les ordres de modification sont hors de votre espace de travail",
+  "Unknown ECO": "ECO inconnu",
+  "This step is not available any more": "Cette étape n’est plus disponible",
+  "The progress could not be recorded": "L’avancement n’a pas pu être enregistré",
+  "The PDM vault is read-only for you": "Le coffre PDM est en lecture seule pour vous",
+  "Open in PDM — coming soon": "Ouvrir dans PDM — bientôt disponible"
+}

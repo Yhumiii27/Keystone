@@ -4,14 +4,16 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PERSONA_BY_ROLE } from '@/config/personas';
 import type { RoleKey } from '@/config/screens';
-import { inboxView } from '@/domain/approvals';
+import { codexDocItems, codexVaultItems, inboxView, type ProtoDoc } from '@/domain/approvals';
 import { setDb } from '@/server/db/client';
 import { stage } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
 import { decideChangeStep } from '@/server/dal/changes';
+import { approveDocumentStep, listVaultDocuments } from '@/server/dal/documents';
 import { recordStageChange } from '@/server/dal/lifecycle';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { createResourceRequest } from '@/server/dal/requests';
+import { PROTO } from '@/server/prototype';
 import { APPROVAL_PROVIDERS, approvalCount, approvalCountsByProject, getApprovalInbox } from './index';
 
 const inbox = (role: RoleKey, projectCode = 'HLT-026', lang: 'en' | 'fr' = 'en') => getApprovalInbox(PERSONA_BY_ROLE[role], { projectCode, lang });
@@ -24,8 +26,8 @@ describe('My approvals registry', () => {
 
   it('registers one provider per kind, in inbox order', () => {
     expect(APPROVAL_PROVIDERS.map((p) => `${p.kind}/${p.scope}/${p.source}`)).toEqual([
-      'request/global/db', 'po/project/prototype', 'eco/global/prototype', 'delivery/project/prototype', 'stage/global/db', 'cr/project/db',
-      'deliverable/project/prototype', 'rfq/global/prototype', 'invoice/global/prototype', 'ncr/project/prototype', 'doc/global/prototype',
+      'request/global/db', 'po/project/db', 'eco/global/db', 'delivery/project/db', 'stage/global/db', 'cr/project/db',
+      'deliverable/project/prototype', 'rfq/global/db', 'invoice/global/db', 'ncr/project/prototype', 'doc/global/db',
     ]);
   });
 
@@ -146,5 +148,17 @@ describe('My approvals registry', () => {
     expect(await queue('client')).toEqual(['deliverable:D-014', 'deliverable:D-016']);
     // Rejected: nothing left to decide on it for anyone.
     expect(await queue('director')).not.toContain('cr:CR-008');
+  });
+
+  it('Codex documents come from the database index: same items as the prototype on the seed, then follow the circuit', async () => {
+    const vault = await listVaultDocuments();
+    for (const p of Object.values(PERSONA_BY_ROLE)) {
+      expect([p.short, codexVaultItems(vault, p.short, 'HLT-026')]).toEqual([p.short, codexDocItems(PROTO.DOCS as ProtoDoc[], PROTO.DOC_TYPE, PROTO.DOC_WHO, p.short, 'HLT-026')]);
+    }
+    await approveDocumentStep('RPT-HLT-014', 'Gabriel Comte');
+    expect(await queue('quality')).not.toContain('doc:RPT-HLT-014');
+    expect((await inbox('pm')).items.filter((i) => i.kind === 'doc').map((i) => [i.id, i.sub])).toEqual([['RPT-HLT-014', 'Test & inspection report · rev A · Project manager']]);
+    await approveDocumentStep('RPT-HLT-014', 'Romain Aubert');
+    expect(await queue('pm')).not.toContain('doc:RPT-HLT-014');
   });
 });

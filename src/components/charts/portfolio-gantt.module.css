@@ -1,0 +1,207 @@
+/* Portfolio Gantt — projects in progress & pipeline (docs/spec/02 CH-9, docs/spec/05 §3.3, template 979–1020). */
+.grid {
+  display: grid;
+  grid-template-columns: 240px 172px 170px minmax(760px, 1fr);
+  min-width: 1342px;
+}
+.contents { display: contents; }
+
+/* Header line */
+.th {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral-400);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-neutral-800);
+  align-self: end;
+}
+.thGate { padding: 6px 12px 6px 0; }
+.months {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  border-bottom: 1px solid var(--color-neutral-800);
+}
+.month {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0 6px 5px;
+  border-left: 1px solid var(--color-neutral-900);
+  line-height: 1.2;
+}
+.monthYear { border-left-color: var(--color-neutral-700); }
+.year { font-size: 10px; color: var(--color-neutral-500); min-height: 12px; }
+.monthLabel { font-size: 10.5px; color: var(--color-neutral-400); }
+
+/* Project rows (44px) */
+.name {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 44px;
+  line-height: 1.25;
+  border: 0;
+  border-bottom: 1px solid var(--color-neutral-900);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  min-width: 0;
+  text-decoration: none;
+}
+/* style-hover color:accent-300 (the PM line keeps its own colour) */
+.name:hover { color: var(--color-accent-300); }
+.name:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.nameText,
+.nameSub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 230px;
+}
+.nameText { font-size: 13px; }
+.nameSub { font-size: 11.5px; color: var(--color-neutral-400); }
+
+.statusCell {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-neutral-900);
+}
+
+.gateCell {
+  height: 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-right: 12px;
+  line-height: 1.3;
+  border-bottom: 1px solid var(--color-neutral-900);
+}
+.gate { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gateSub { font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--color-neutral-400); }
+.gateLo { color: var(--color-accent-300); }
+
+/* Timeline cells: month gridlines every 1/24 */
+.track {
+  position: relative;
+  height: 44px;
+  border-bottom: 1px solid var(--color-neutral-900);
+  background: repeating-linear-gradient(to right, var(--color-neutral-900) 0 1px, transparent 1px calc(100% / 24));
+}
+
+/* Stage plan segments (Initiative / APS / APD bars, group boards) */
+.seg {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  box-shadow: none;
+}
+.stage {
+  top: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 0;
+  background: var(--color-neutral-700);
+  color: var(--color-neutral-300);
+}
+.stageDone { background: var(--color-neutral-600); color: var(--color-neutral-200); }
+.board {
+  top: 15px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px dashed var(--color-neutral-600);
+  background: repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px);
+  color: var(--color-neutral-300);
+}
+.boardPending {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+/* Board decision diamond at the end of the window */
+.diamond {
+  position: absolute;
+  top: 16px;
+  width: 10px;
+  height: 10px;
+  transform: translateX(-5px) rotate(45deg);
+  border: 1px solid transparent;
+  box-shadow: none;
+  z-index: 2;
+}
+.d_approved { background: var(--color-accent-300); }
+.d_pending {
+  background: var(--color-accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-accent) 60%, transparent);
+}
+.d_planned { background: transparent; border-color: var(--color-neutral-500); }
+
+/* Baseline finish (slipping execution rows) */
+.baseline {
+  position: absolute;
+  top: 34px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--color-neutral-600);
+}
+
+/* Execution bar: in progress (accent-800 + inset edge, accent fill) or "if approved" (dashed outline) */
+.exec {
+  position: absolute;
+  top: 12px;
+  height: 18px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 0;
+  background: var(--color-accent-800);
+  box-shadow: inset 0 0 0 1px var(--color-accent-700);
+}
+.execIfApproved {
+  background: transparent;
+  border: 1px dashed var(--color-accent-700);
+  box-shadow: none;
+}
+.execFill { height: 100%; background: var(--color-accent); }
+
+/* "→ Aug 2028" when the bar runs past the horizon */
+.clip {
+  position: absolute;
+  right: 4px;
+  top: 14px;
+  font-size: 10.5px;
+  color: var(--color-neutral-400);
+  background: var(--color-surface);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+/* Today line (PG_NOW ≈ 30 Sep 2026) */
+.today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-accent);
+  opacity: 0.7;
+}
+
+/* Legend (template 979–986) */
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--color-neutral-400); }
+.legendItem { display: flex; align-items: center; gap: 6px; }
+.sw { width: 18px; height: 8px; border-radius: 2px; }
+.swExec { background: var(--color-accent-800); box-shadow: inset 0 0 0 1px var(--color-accent-700); }
+.swPipe { background: var(--color-neutral-700); }
+.swBoard {
+  border: 1px dashed var(--color-neutral-600);
+  background: repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px);
+}
+.swDiamond { width: 8px; height: 8px; transform: rotate(45deg); background: var(--color-accent); }
+.swIfApproved { border: 1px dashed var(--color-accent-700); }
+.swBaseline { width: 18px; height: 3px; border-radius: 2px; background: var(--color-neutral-600); }

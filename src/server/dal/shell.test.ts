@@ -4,7 +4,14 @@ import type { RoleKey } from '@/config/screens';
 import { approvalCount } from '@/server/approvals';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { addPaymentMilestone } from './contract';
+import { approveDocumentStep } from './documents';
+import { markInterfaceReceived } from './interfaces';
+import { addMeetingLine, createMeeting, sendMinutes } from './meetings';
 import { markAllNotificationsRead, markNotificationRead } from './notifications';
+import { createPart } from './parts';
+import { approvePurchaseOrder, rejectSupplierInvoice } from './purchasing';
+import { applyStockMovement, listStock } from './stock';
 import { crumbExtraOf, deepLink, defaultTitleOf, getShellNav, notificationsFor, projectBadges, searchShell, zoneBarOf } from './shell';
 
 // Golden values need the pristine seed: use a fresh in-memory database, never the local ./.data one
@@ -132,5 +139,83 @@ describe('global search (docs/spec/01 §5.4)', () => {
     const hits = await searchShell('ne', 'HLT-026');
     expect(hits.filter((h) => h.kind === 'Project').length).toBeLessThanOrEqual(4);
     expect(hits.filter((h) => h.kind === 'Person').map((h) => h.title)).toEqual(['Julien Wagner', 'Pauline Noguès', 'Hélène Sauvage']);
+  });
+});
+
+describe('Delivery 3 badges and crumbs follow the database (docs/spec/01 §4.4)', () => {
+  const badges = async (code: string) => {
+    const nav = await getShellNav('director');
+    return { ...nav.globalBadges, ...nav.projectBadges[code] };
+  };
+
+  it('Documents, Meetings, Interfaces and Billing badges move with the writes', async () => {
+    // Codex: RPT-HLT-014 is the only record in "Release proposed"; both approvals release it.
+    expect((await badges('HLT-026')).docs).toBe('1');
+    await approveDocumentStep('RPT-HLT-014', 'Gabriel Comte');
+    expect((await badges('HLT-026')).docs).toBe('1');
+    await approveDocumentStep('RPT-HLT-014', 'Romain Aubert');
+    expect((await badges('HLT-026')).docs).toBe('');
+    // Meetings: MTG-118 has its notes in progress; sending the minutes clears the badge.
+    expect((await badges('HLT-026')).meetings).toBe('1');
+    await sendMinutes('MTG-118', 'Romain Aubert');
+    expect((await badges('HLT-026')).meetings).toBe('');
+    // Interfaces: IF-07 is late until it is received.
+    expect((await badges('HLT-026')).interfaces).toBe('1');
+    await markInterfaceReceived('HLT-026', 'IF-07', 'Romain Aubert');
+    expect((await badges('HLT-026')).interfaces).toBe('');
+    // Billing: a planned milestone due before the prototype's now is late.
+    expect((await badges('HLT-026')).billing).toBe('');
+    await addPaymentMilestone('HLT-026', { label: 'Early works', sharePct: 1, contractualDue: '2026-09-01' }, 'Romain Aubert');
+    expect((await badges('HLT-026')).billing).toBe('1');
+  });
+
+  it('a project without data gets a database badge once it has the rows', async () => {
+    const n = await createMeeting('EWA-051', {
+      title: 'Kick-off', type: 'internal', series: 'one_off', date: '2026-10-06', time: '9:00', location: '', invitees: ['M. Lefebvre'], agenda: ['Scope'],
+    }, 'Marie Lefebvre');
+    expect(Object.keys(await projectBadges('director', 'EWA-051'))).toEqual(['myapprovals']);
+    await addMeetingLine(n, 0, { type: 'info', text: 'Scope confirmed', owner: '', due: '' }, 'Marie Lefebvre');
+    const b = await projectBadges('director', 'EWA-051');
+    expect([Object.keys(b), b.meetings]).toEqual([['myapprovals', 'meetings'], '1']);
+  });
+
+  it('Contract and Billing crumbs come from the contract; none without a contract', async () => {
+    const ctx = { role: 'director' as RoleKey, code: 'EWA-051', zone: null };
+    expect([await crumbExtraOf('contract', ctx), await crumbExtraOf('billing', ctx)]).toEqual(['', '']);
+    expect(await crumbExtraOf('worldmap', { ...ctx, zone: 'afr' })).toMatch(/^\d+ projects? located · Africa$/);
+  });
+});
+
+describe('Delivery 4 badges and search follow the database (docs/spec/01 §4.4, §5.4)', () => {
+  const badges = async (code: string) => {
+    const nav = await getShellNav('director');
+    return { ...nav.globalBadges, ...nav.projectBadges[code] };
+  };
+
+  it('Purchase orders, Sourcing & invoices and Stock badges move with the writes', async () => {
+    // PO-1082 awaits approval on Harbor Line; approving it orders it.
+    expect((await badges('HLT-026')).orders).toBe('1');
+    await approvePurchaseOrder('PO-1082', 'Romain Aubert');
+    expect((await badges('HLT-026')).orders).toBe('');
+    // INV-HC-7781 and INV-BX-55120 are blocked by the 3-way match, INV-LE-2210 has no PO.
+    expect((await badges('HLT-026')).procurement).toBe('3');
+    await rejectSupplierInvoice('INV-LE-2210', 'Fabien Bertrand');
+    expect((await badges('HLT-026')).procurement).toBe('2');
+    // One stock line is below its minimum; a count at the minimum clears the badge.
+    const low = (await listStock()).filter((r) => r.belowMin);
+    expect([low.length, (await badges('HLT-026')).stock]).toEqual([1, '1']);
+    await applyStockMovement(low[0].id, { op: 'adjust', qty: low[0].minQty }, 'Fabien Bertrand');
+    expect((await badges('HLT-026')).stock).toBe('');
+  });
+
+  it('search reads parts and purchase orders from their modules', async () => {
+    await createPart({ ref: 'ME-GBX-91', name: 'Gearbox 91 kW', family: 'mechanical', supplier: 'Flender', priceEur: 8400, unit: 'pc' }, 'Antoine Girard');
+    const part = (await searchShell('gbx-91', 'HLT-026')).filter((h) => h.kind === 'Part');
+    expect(part).toEqual([{ kind: 'Part', title: 'ME-GBX-91 · Gearbox 91 kW', sub: 'Flender · Not validated', href: '/reference/parts?part=ME-GBX-91' }]);
+    const smoke = (await searchShell('smoke', 'HLT-026')).filter((h) => h.kind === 'Part').map((h) => [h.title, h.sub]);
+    expect(smoke[0]).toEqual(['FD-DET-OPT · Optical smoke detector', 'Cotswold Fire Systems · Outdated']);
+    const po = (await searchShell('po-1082', 'HLT-026')).filter((h) => h.kind === 'Purchase order');
+    expect(po).toEqual([{ kind: 'Purchase order', title: 'PO-1082 · Cotswold Fire Systems', sub: 'Ordered', href: '/projects/HLT-026/orders?po=PO-1082' }]);
+    expect((await searchShell('po-1082', 'NDC-031')).filter((h) => h.kind === 'Purchase order')).toEqual([]);
   });
 });

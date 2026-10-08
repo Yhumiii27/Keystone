@@ -1,0 +1,17 @@
+/* CH-7 CashFlowBars (docs/spec/02 CH-7): Cash flow template 2169–2174. */
+.chart { display: flex; gap: 4px; height: 150px; align-items: flex-end; }
+.col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  justify-content: flex-end;
+}
+.net { font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--net-color, var(--color-accent-300)); }
+.bars { display: flex; gap: 2px; align-items: flex-end; width: 100%; height: 100px; }
+.bar { flex: 1; border-radius: 2px 2px 0 0; }
+.in { background: var(--color-accent); }
+.out { background: var(--color-neutral-600); }
+.label { font-size: 10.5px; color: var(--color-neutral-400); }

@@ -1,0 +1,13 @@
+{
+  "Activity already started — delivery is late": "Activité déjà démarrée — livraison en retard",
+  "Export PO — coming soon": "Exporter la commande — bientôt disponible",
+  "Pushed to X3": "Envoyée vers X3",
+  "Local change · not yet pushed to X3": "Modification locale · pas encore envoyée vers X3",
+  "Purchase orders are read-only for you": "Les commandes d’achat sont en consultation pour vous",
+  "Unknown purchase order": "Commande inconnue",
+  "Only the project manager or the portfolio director approves purchase orders": "Seuls le chef de projet et la direction du portefeuille approuvent les commandes d’achat",
+  "Every BOM article is already ordered": "Tous les articles de la nomenclature sont déjà commandés",
+  "This order is no longer a draft": "Cette commande n’est plus un brouillon",
+  "This order is no longer awaiting approval": "Cette commande n’est plus en attente d’approbation",
+  "Only an approved order drafted in Keystone can be pushed to X3": "Seule une commande approuvée créée dans Keystone peut être envoyée vers X3"
+}

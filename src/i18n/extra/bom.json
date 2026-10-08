@@ -1,0 +1,17 @@
+{
+  "Drawing / ref.": "Plan / réf.",
+  "Valued through its components — not added to the BOM value": "Valorisé par ses composants — non compté dans la valeur de la nomenclature",
+  "No article is registered in this project’s BOM yet": "Aucun article n’est encore enregistré dans la nomenclature de ce projet",
+  "No article matches": "Aucun article ne correspond",
+  "Fold": "Replier",
+  "Unfold": "Déplier",
+  "This project BOM is read-only for you": "Cette nomenclature projet est en consultation pour vous",
+  "The article reference is required": "La référence article est obligatoire",
+  "Unknown article reference": "Référence article inconnue",
+  "This article is already in the project BOM": "Cet article figure déjà dans la nomenclature du projet",
+  "Unknown activity": "Activité inconnue",
+  "Invalid scope": "Périmètre invalide",
+  "Create spares purchase order — coming soon": "Créer la commande de pièces — bientôt disponible",
+  "Export list — coming soon": "Exporter la liste — bientôt disponible",
+  "Opens Vigie’s new ECO form, prefilled with this part": "Ouvre le formulaire de nouvel ECO de Vigie, prérempli avec cet article"
+}
