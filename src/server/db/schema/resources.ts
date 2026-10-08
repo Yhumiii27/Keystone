@@ -1,0 +1,253 @@
+// Resources and HR (docs/spec/11 §3.3 Calendar / WhatIf, §3.6; screens 06 resources, rates, skills, leave,
+// hours; 05 §4 what-if levelling): weekly allocations, rate cards and multipliers, skills and certifications,
+// leave and public holidays, Lucca hours imports, what-if levers and scenarios.
+import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import type { HoursMatching, LeaveType, RateMultiplierKey, WhatIfLeverCode, WhatIfPriority } from '../codes';
+import { id, keur, num, timestamps } from './_common';
+import { persons } from './organisation';
+import { wbsNodes } from './planning';
+import { projects } from './portfolio';
+
+// ── Allocations ────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Weekly load of a person, % of available hours (PEOPLE[i][2]: 8 weeks from w/c 28 Sep 2026). The prototype
+ * holds one total per week (projectId null); project-level rows are allowed for later use.
+ * Pool membership and order: persons.resourcePoolPosition.
+ */
+export const allocations = pgTable(
+  'allocations',
+  {
+    id: id(),
+    personId: uuid('person_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
+    /** Monday of the week. */
+    weekStart: date('week_start', { mode: 'string' }).notNull(),
+    loadPct: num('load_pct').notNull(),
+    projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
+  },
+  (t) => [unique().on(t.personId, t.weekStart, t.projectId).nullsNotDistinct()],
+);
+
+// ── Rates ──────────────────────────────────────────────────────────────────────────────────────────────
+
+/** Hourly cost rate per role (RATE_ROLES 3454). Visible to director and pm only (enforced by the screen). */
+export const rateRoles = pgTable('rate_roles', {
+  id: id(),
+  /** "Project manager", "Contractor — structural (external)". */
+  role: text('role').notNull().unique(),
+  baseRateEur: num('base_rate_eur').notNull(),
+  /** /external/ in the role name. */
+  isExternal: boolean('is_external').notNull(),
+  /** "Add role" form fields (OPEN QUESTION R-4). */
+  costCenter: text('cost_center'),
+  grade: text('grade'),
+  effectiveFrom: date('effective_from', { mode: 'string' }),
+  position: integer('position').notNull(),
+  ...timestamps,
+});
+
+/** Premium multipliers (MULTS 3455). */
+export const rateMultipliers = pgTable('rate_multipliers', {
+  key: text('key').$type<RateMultiplierKey>().primaryKey(),
+  /** EN source string: "Overtime > 8 h/day". */
+  label: text('label').notNull(),
+  factor: num('factor').notNull(),
+  position: integer('position').notNull(),
+  ...timestamps,
+});
+
+/** Legacy rate per job title (RATES 3262) — only the Task screen's cost note uses it (OPEN QUESTION A-10). */
+export const jobTitleRates = pgTable('job_title_rates', {
+  jobTitle: text('job_title').primaryKey(),
+  rateEur: num('rate_eur').notNull(),
+  position: integer('position').notNull(),
+});
+
+// ── Skills ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/** Skill families (SKILLS 3456; matrix column order). */
+export const skills = pgTable('skills', {
+  id: id(),
+  name: text('name').notNull().unique(),
+  /** "Add skill" form category (Engineering, Site, Automation, Management, Safety); null for seed skills. */
+  category: text('category'),
+  position: integer('position').notNull(),
+});
+
+/** Level 0–5 of a person on a skill (SKILL_LV 3457; 0 = none). */
+export const personSkills = pgTable(
+  'person_skills',
+  {
+    personId: uuid('person_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
+    skillId: uuid('skill_id').notNull().references(() => skills.id, { onDelete: 'cascade' }),
+    level: integer('level').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.personId, t.skillId] })],
+);
+
+/** Certifications (CERTS 3458, one free-text line per person split on " · "). Expiry tracked in Lucca. */
+export const certifications = pgTable('certifications', {
+  id: id(),
+  personId: uuid('person_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  expiresOn: date('expires_on', { mode: 'string' }),
+  position: integer('position').notNull(),
+});
+
+// ── Leave and calendar ─────────────────────────────────────────────────────────────────────────────────
+
+/** Leave types with the working days lost in a week (LEAVE_DAYS 3460). */
+export const leaveTypes = pgTable('leave_types', {
+  code: text('code').$type<LeaveType>().primaryKey(),
+  /** Lucca label "CP", "RTT", "Sick", "Training". */
+  label: text('label').notNull(),
+  daysPerWeek: integer('days_per_week').notNull(),
+  position: integer('position').notNull(),
+});
+
+/** Approved absences mirrored from Lucca (LEAVE 3459, week-indexed in the prototype → one row per week). */
+export const leaveEntries = pgTable('leave_entries', {
+  id: id(),
+  personId: uuid('person_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
+  leaveType: text('leave_type').$type<LeaveType>().notNull().references(() => leaveTypes.code),
+  /** Monday of the week the absence falls in. */
+  weekStart: date('week_start', { mode: 'string' }).notNull(),
+  startDate: date('start_date', { mode: 'string' }).notNull(),
+  endDate: date('end_date', { mode: 'string' }).notNull(),
+  /** Working days lost (LEAVE_DAYS of the type). */
+  days: integer('days').notNull(),
+  /** Read-only mirror: always approved in Lucca. */
+  status: text('status').notNull().default('approved'),
+  source: text('source').notNull().default('lucca'),
+  externalId: text('external_id'),
+});
+
+/** Public holidays (SETTINGS0.holidays 3467, France 2026; HOLIDAYS 3461 = those on a weekday of the 8-week window). */
+export const publicHolidays = pgTable(
+  'public_holidays',
+  {
+    id: id(),
+    countryCode: text('country_code').notNull().default('FR'),
+    date: date('date', { mode: 'string' }).notNull(),
+    /** "Armistice". */
+    name: text('name').notNull(),
+    position: integer('position').notNull(),
+  },
+  (t) => [unique().on(t.countryCode, t.date)],
+);
+
+// ── Lucca hours ────────────────────────────────────────────────────────────────────────────────────────
+
+/** Monthly import of hours declared in Lucca on the project analytic code (HOURS 3735: HLT-026, September 2026). */
+export const hoursImports = pgTable(
+  'hours_imports',
+  {
+    id: id(),
+    projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+    /** "HAV004". */
+    analyticCode: text('analytic_code').notNull(),
+    /** First day of the imported month. */
+    periodStart: date('period_start', { mode: 'string' }).notNull(),
+    importedOn: date('imported_on', { mode: 'string' }).notNull(),
+    source: text('source').notNull().default('lucca'),
+    matchingMode: text('matching_mode').$type<HoursMatching>().notNull(),
+    ...timestamps,
+  },
+  (t) => [unique().on(t.projectId, t.periodStart)],
+);
+
+/** Matched lines: resource × work package, planned vs declared hours. */
+export const hoursLines = pgTable('hours_lines', {
+  id: id(),
+  importId: uuid('import_id').notNull().references(() => hoursImports.id, { onDelete: 'cascade' }),
+  personId: uuid('person_id').notNull().references(() => persons.id),
+  wbsNodeId: uuid('wbs_node_id').references(() => wbsNodes.id, { onDelete: 'set null' }),
+  /** Label as imported: "1.3 · Foundations". */
+  wbsLabel: text('wbs_label').notNull(),
+  plannedH: num('planned_h').notNull(),
+  declaredH: num('declared_h').notNull(),
+  position: integer('position').notNull(),
+});
+
+/** Hours declared without a planned task ("To assign"). */
+export const unassignedHours = pgTable('unassigned_hours', {
+  id: id(),
+  importId: uuid('import_id').notNull().references(() => hoursImports.id, { onDelete: 'cascade' }),
+  personId: uuid('person_id').notNull().references(() => persons.id),
+  hours: num('hours').notNull(),
+  /** "Declared on HAV004 · no planned task this month". */
+  reason: text('reason').notNull(),
+  /** "Assign" target (OPEN QUESTION R-6; no handler in the prototype). */
+  assignedWbsNodeId: uuid('assigned_wbs_node_id').references(() => wbsNodes.id, { onDelete: 'set null' }),
+  assignedAt: timestamp('assigned_at', { withTimezone: true }),
+  position: integer('position').notNull(),
+});
+
+// ── What-if levelling ──────────────────────────────────────────────────────────────────────────────────
+
+/** Levelling levers with their static effects (LEVERS 3462; OPEN QUESTION S-7). */
+export const whatIfLevers = pgTable('whatif_levers', {
+  code: text('code').$type<WhatIfLeverCode>().primaryKey(),
+  /** EN source string. */
+  label: text('label').notNull(),
+  /** Float gained (days), cost (k€), peak load change (points), people above 100 % change. */
+  floatDays: integer('float_days').notNull(),
+  costKeur: keur('cost_keur').notNull(),
+  peakPts: integer('peak_pts').notNull(),
+  overPeople: integer('over_people').notNull(),
+  /** "Westfield SPI −0.02". */
+  sideEffect: text('side_effect'),
+  position: integer('position').notNull(),
+});
+
+/** Auto-level rule: levers enabled for a priority (AUTO 3463). */
+export const whatIfAutoLevers = pgTable(
+  'whatif_auto_levers',
+  {
+    priority: text('priority').$type<WhatIfPriority>().notNull(),
+    leverCode: text('lever_code').$type<WhatIfLeverCode>().notNull().references(() => whatIfLevers.code),
+    position: integer('position').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.priority, t.leverCode] })],
+);
+
+/**
+ * Levelling context of a project: the 8-week peak-load profile the scenarios start from (hard-coded
+ * [100,110,130,125,110,100,80,60] for HLT-026 in the prototype, 05 §4.4).
+ */
+export const whatIfContexts = pgTable('whatif_contexts', {
+  projectId: uuid('project_id').primaryKey().references(() => projects.id, { onDelete: 'cascade' }),
+  weekStart: date('week_start', { mode: 'string' }).notNull(),
+  peakLoad: integer('peak_load').array().notNull(),
+});
+
+/** Scenarios (state.whatif A/B of HLT-026; "New scenario" form fields). */
+export const whatIfScenarios = pgTable(
+  'whatif_scenarios',
+  {
+    id: id(),
+    projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+    /** "A", "B". */
+    name: text('name').notNull(),
+    priority: text('priority').$type<WhatIfPriority>().notNull(),
+    /** "Select scenario" (state.chosen). */
+    selected: boolean('selected').notNull().default(false),
+    /** New scenario form: basis (Current plan / Baseline BL1 / Last approved scenario), horizon months, hypotheses. */
+    basis: text('basis'),
+    horizonMonths: integer('horizon_months'),
+    hypotheses: text('hypotheses'),
+    position: integer('position').notNull(),
+    ...timestamps,
+  },
+  (t) => [unique().on(t.projectId, t.name)],
+);
+
+export const whatIfScenarioLevers = pgTable(
+  'whatif_scenario_levers',
+  {
+    scenarioId: uuid('scenario_id').notNull().references(() => whatIfScenarios.id, { onDelete: 'cascade' }),
+    leverCode: text('lever_code').$type<WhatIfLeverCode>().notNull().references(() => whatIfLevers.code),
+    enabled: boolean('enabled').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.scenarioId, t.leverCode] })],
+);

@@ -1,0 +1,55 @@
+/* What-if levelling (template 1504–1528). Values copied from the prototype's inline styles. */
+.body { display: flex; flex-direction: column; gap: 14px; }
+
+.scenarios { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 14px; align-items: start; }
+
+:global(.card).scenario { padding: 14px 16px; gap: 12px; }
+.head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.title { margin-right: auto; }
+
+.block { display: flex; flex-direction: column; gap: 6px; }
+.blockTight { display: flex; flex-direction: column; gap: 2px; }
+.eyebrow { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-400); }
+.leversHead { display: flex; align-items: center; gap: 8px; }
+.leversHead .eyebrow { margin-right: auto; }
+:global(.btn).small { font-size: 12px; padding: 3px 10px; }
+
+.lever {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-neutral-900);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+.lever:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.leverStatic { cursor: default; }
+.leverIcon { font-size: 16px; display: block; }
+.leverOn { color: var(--color-accent-300); }
+.leverOff { color: var(--color-neutral-400); }
+.effect { font-size: 11.5px; color: var(--color-neutral-400); white-space: nowrap; }
+
+/* Peak load by week */
+.bars { display: flex; gap: 4px; height: 64px; align-items: flex-end; }
+.barCol { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; justify-content: flex-end; }
+.bar { width: 100%; border-radius: 2px 2px 0 0; background: var(--bar-bg); height: var(--bar-h); }
+.barLabel { font-size: 10px; color: var(--color-neutral-400); }
+
+/* Results */
+.result { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; padding: 4px 0; border-top: 1px solid var(--color-neutral-900); }
+.resultKey { color: var(--color-neutral-400); }
+.resultValue { text-align: right; font-variant-numeric: tabular-nums; text-wrap: pretty; color: var(--res-color); }
+
+:global(.btn).choose { align-self: flex-start; font-size: 12.5px; }
+
+/* Side by side */
+:global(.card).compare { padding: 14px 16px; gap: 8px; overflow: auto; }
+.footnote { font-size: 12px; color: var(--color-neutral-400); text-wrap: pretty; }

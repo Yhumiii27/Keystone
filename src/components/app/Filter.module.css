@@ -1,0 +1,31 @@
+/* Filter bars (docs/spec/02 C-09). */
+.bar { display: flex; align-items: center; gap: var(--fb-gap, 12px); flex-wrap: wrap; }
+.group { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-neutral-400); white-space: nowrap; }
+.labelIcon { font-size: 15px; color: var(--color-accent); flex: none; }
+.note { margin-left: auto; font-size: 12px; color: var(--color-neutral-400); text-wrap: pretty; }
+.noteInline { font-size: 12px; color: var(--color-neutral-400); text-wrap: pretty; }
+.selectFilter { display: inline-flex; align-items: center; gap: 8px; }
+
+/* chips() helper (logic 4110) */
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--color-neutral-800);
+  color: var(--color-neutral-300);
+  text-decoration: none;
+}
+.chipOn { background: var(--color-accent-900); border-color: var(--color-accent-700); color: var(--color-accent-200); }
+/* style-hover background:neutral-900 (!important in the prototype → also over the selected chip) */
+.chip:hover { background: var(--color-neutral-900); color: var(--color-neutral-300); }
+.chipOn:hover { color: var(--color-accent-200); }
+.chip:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.chipCount { font-variant-numeric: tabular-nums; font-size: 11px; color: var(--color-neutral-400); }

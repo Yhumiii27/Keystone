@@ -1,0 +1,1910 @@
+{
+ "director": {
+  "en": {
+   "greeting": "Good morning, Marie",
+   "sub": "Portfolio director · Friday 25 Sep 2026",
+   "kpis": [
+    [
+     "Total budget",
+     "€13.23M",
+     "6 active projects",
+     false
+    ],
+    [
+     "Actual cost",
+     "€7.43M",
+     "56% of budget spent",
+     false
+    ],
+    [
+     "Forecast (EAC)",
+     "€13.50M",
+     "−€270k vs budget",
+     true
+    ],
+    [
+     "Cost perf. (CPI)",
+     "0.96",
+     "Earned per $1 spent",
+     true
+    ]
+   ],
+   "lt": "Needs attention",
+   "lr": [
+    [
+     "Harbor Line — critical path slip",
+     "Steel structure forecast 39 days late; handover moves to 14 Jan 2027.",
+     "",
+     ""
+    ],
+    [
+     "Harbor Line — labor overrun",
+     "Labor forecast +€160k over its line budget; contingency 139% drawn.",
+     "",
+     ""
+    ],
+    [
+     "3 people over 115% in October",
+     "Engineering demand exceeds capacity by 150 h across weeks 41–43.",
+     "",
+     ""
+    ],
+    [
+     "Clinique Pasteur Lyon — SPI 0.84",
+     "Electrical subcontractor three weeks behind; recovery plan due Friday.",
+     "",
+     ""
+    ]
+   ],
+   "rt": "Approvals across the portfolio",
+   "rr": [
+    [
+     "Change requests pending",
+     "Harbor Line · CR-008 second steel crew · +€85k",
+     "1",
+     "tag tag-accent"
+    ],
+    [
+     "Purchase orders awaiting approval",
+     "PO-1082",
+     "1",
+     "tag tag-outline"
+    ],
+    [
+     "ECOs in approval",
+     "ECO-2026-015",
+     "1",
+     "tag tag-outline"
+    ],
+    [
+     "Resource requests pending",
+     "Department heads · 4 open",
+     "4",
+     "tag tag-neutral"
+    ]
+   ]
+  },
+  "clicks": {
+   "lr": [
+    {
+     "screen": "schedule",
+     "project": "HLT-026"
+    },
+    {
+     "screen": "budget",
+     "project": "HLT-026"
+    },
+    {
+     "screen": "resources"
+    },
+    {
+     "screen": "schedule",
+     "project": "RCF-019"
+    }
+   ],
+   "rr": [
+    {
+     "screen": "changes",
+     "cr": "CR-008"
+    },
+    {
+     "screen": "orders"
+    },
+    {
+     "screen": "eco"
+    },
+    {
+     "screen": "requests"
+    }
+   ]
+  },
+  "fr": {
+   "greeting": "Bonjour, Marie",
+   "sub": "Directrice de portefeuille · vendredi 25 sept. 2026",
+   "kpis": [
+    [
+     "Budget total",
+     "13,23 M€",
+     "6 projets actifs",
+     false
+    ],
+    [
+     "Coût réel",
+     "7,43 M€",
+     "56 % du budget dépensé",
+     false
+    ],
+    [
+     "Prévision (EAC)",
+     "13,50 M€",
+     "−270 k€ vs budget",
+     true
+    ],
+    [
+     "Perf. coût (CPI)",
+     "0.96",
+     "Acquis par € dépensé",
+     true
+    ]
+   ],
+   "lt": "Points d’attention",
+   "lr": [
+    [
+     "Harbor Line — glissement du chemin critique",
+     "Charpente prévue avec 39 jours de retard ; la livraison passe au 14 janv. 2027.",
+     "",
+     ""
+    ],
+    [
+     "Harbor Line — dépassement main-d’œuvre",
+     "Main-d’œuvre prévue +160 k€ au-dessus de son budget de ligne ; provision consommée à 139 %.",
+     "",
+     ""
+    ],
+    [
+     "3 personnes au-dessus de 115 % en octobre",
+     "La demande ingénierie dépasse la capacité de 150 h sur les semaines 41–43.",
+     "",
+     ""
+    ],
+    [
+     "Clinique Pasteur Lyon — SPI 0,84",
+     "Sous-traitant électricité en retard de trois semaines ; plan de rattrapage attendu vendredi.",
+     "",
+     ""
+    ]
+   ],
+   "rt": "Approbations sur le portefeuille",
+   "rr": [
+    [
+     "Demandes de modification en attente",
+     "Harbor Line · CR-008 second steel crew · +85 k€",
+     "1",
+     "tag tag-accent"
+    ],
+    [
+     "Commandes en attente d’approbation",
+     "PO-1082",
+     "1",
+     "tag tag-outline"
+    ],
+    [
+     "ECO en approbation",
+     "ECO-2026-015",
+     "1",
+     "tag tag-outline"
+    ],
+    [
+     "Demandes de ressources en attente",
+     "Department heads · 4 ouvertes",
+     "4",
+     "tag tag-neutral"
+    ]
+   ]
+  }
+ },
+ "pm": {
+  "en": {
+   "greeting": "Good morning, Romain",
+   "sub": "Project manager · Friday 25 Sep 2026",
+   "kpis": [
+    [
+     "SPI",
+     "0.90",
+     "Earning 90¢ of planned work per $1",
+     true
+    ],
+    [
+     "CPI",
+     "0.92",
+     "Target ≥ 1.00",
+     true
+    ],
+    [
+     "Forecast (EAC)",
+     "€5.24M",
+     "At current CPI",
+     true
+    ],
+    [
+     "Critical path float",
+     "−27 days",
+     "4 of 8 packages critical",
+     true
+    ]
+   ],
+   "lt": "My resource requests — Harbor Line Terminal Expansion",
+   "lr": [
+    [
+     "Expedite roof decking delivery",
+     "Fabien Bertrand · Controls & planning · 4 h",
+     "Pending",
+     "tag tag-outline"
+    ],
+    [
+     "Steel connection checks — second crew",
+     "Contract structural engineer · Engineering · 40 h",
+     "Pending",
+     "tag tag-outline"
+    ],
+    [
+     "Weld inspection — Bay 4 rafters",
+     "Hélène Sauvage · Quality · 8 h",
+     "Pending",
+     "tag tag-outline"
+    ],
+    [
+     "Erection sequence review — Bay 4 rafters, second crew",
+     "Julien Wagner · Engineering · 12 h",
+     "Pending",
+     "tag tag-outline"
+    ],
+    [
+     "Re-sequence MEP after steel slip",
+     "Damien Roux · Controls & planning · 8 h",
+     "Approved",
+     "tag tag-neutral"
+    ],
+    [
+     "Crane rigging plan review",
+     "Thomas Kerbrat · Site operations · 4 h",
+     "Approved",
+     "tag tag-neutral"
+    ]
+   ],
+   "rt": "Waiting for me",
+   "rr": [
+    [
+     "PO-1082 · Cotswold Fire Systems",
+     "Purchase order · €9k",
+     "Approve",
+     "tag tag-accent"
+    ],
+    [
+     "ECO-2026-015",
+     "Replace CD-200 smoke detector by CD-210 in all open designs",
+     "Approve as PM",
+     "tag tag-accent"
+    ],
+    [
+     "Re-baseline proposal",
+     "Schedule slip −27 d · BL2 to submit to the change control board",
+     "Prepare",
+     "tag tag-outline"
+    ]
+   ]
+  },
+  "clicks": {
+   "lr": [
+    {
+     "screen": "requests"
+    },
+    {
+     "screen": "requests"
+    },
+    {
+     "screen": "requests"
+    },
+    {
+     "screen": "requests"
+    },
+    {
+     "screen": "requests"
+    },
+    {
+     "screen": "requests"
+    }
+   ],
+   "rr": [
+    {
+     "screen": "orders",
+     "po": "PO-1082"
+    },
+    {
+     "screen": "eco",
+     "eco": "ECO-2026-015"
+    },
+    {
+     "screen": "schedule"
+    }
+   ]
+  },
+  "fr": {
+   "greeting": "Bonjour, Romain",
+   "sub": "Chef de projet · vendredi 25 sept. 2026",
+   "kpis": [
+    [
+     "SPI",
+     "0.90",
+     "90 ¢ de travail prévu acquis par € dépensé",
+     true
+    ],
+    [
+     "CPI",
+     "0.92",
+     "Cible ≥ 1,00",
+     true
+    ],
+    [
+     "Prévision (EAC)",
+     "5,24 M€",
+     "Au CPI actuel",
+     true
+    ],
+    [
+     "Marge du chemin critique",
+     "−27 jours",
+     "4 lots critiques sur 8",
+     true
+    ]
+   ],
+   "lt": "Mes demandes de ressources — Harbor Line Terminal Expansion",
+   "lr": [
+    [
+     "Expedite roof decking delivery",
+     "Fabien Bertrand · Contrôle et planification · 4 h",
+     "En attente",
+     "tag tag-outline"
+    ],
+    [
+     "Steel connection checks — second crew",
+     "Contract structural engineer · Ingénierie · 40 h",
+     "En attente",
+     "tag tag-outline"
+    ],
+    [
+     "Weld inspection — Bay 4 rafters",
+     "Hélène Sauvage · Qualité · 8 h",
+     "En attente",
+     "tag tag-outline"
+    ],
+    [
+     "Erection sequence review — Bay 4 rafters, second crew",
+     "Julien Wagner · Ingénierie · 12 h",
+     "En attente",
+     "tag tag-outline"
+    ],
+    [
+     "Re-sequence MEP after steel slip",
+     "Damien Roux · Contrôle et planification · 8 h",
+     "Approuvé",
+     "tag tag-neutral"
+    ],
+    [
+     "Crane rigging plan review",
+     "Thomas Kerbrat · Exploitation chantier · 4 h",
+     "Approuvé",
+     "tag tag-neutral"
+    ]
+   ],
+   "rt": "En attente de ma part",
+   "rr": [
+    [
+     "PO-1082 · Cotswold Fire Systems",
+     "Commande d’achat · 9 k€",
+     "Approuver",
+     "tag tag-accent"
+    ],
+    [
+     "ECO-2026-015",
+     "Replace CD-200 smoke detector by CD-210 in all open designs",
+     "Approuver (chef de projet)",
+     "tag tag-accent"
+    ],
+    [
+     "Proposition de nouvelle référence",
+     "Schedule slip −27 d · BL2 to submit to the change control board",
+     "Préparer",
+     "tag tag-outline"
+    ]
+   ]
+  }
+ },
+ "depthead": {
+  "en": {
+   "greeting": "Good morning, Marion",
+   "sub": "Head of engineering · Friday 25 Sep 2026",
+   "kpis": [
+    [
+     "Awaiting my approval",
+     "2",
+     "Resource requests · Engineering",
+     true
+    ],
+    [
+     "Team utilization",
+     "83%",
+     "Target 85–95%",
+     false
+    ],
+    [
+     "Over-allocated",
+     "3 people",
+     "Peak weeks 41–43",
+     true
+    ],
+    [
+     "Unmet demand",
+     "240 h",
+     "Mostly engineering",
+     true
+    ]
+   ],
+   "lt": "Approval queue — Engineering",
+   "lr": [
+    [
+     "Steel connection checks — second crew",
+     "Contract structural engineer · Harbor Line · 40 h · 28 Sep – 9 Oct",
+     "Pending review",
+     "tag tag-outline"
+    ],
+    [
+     "Erection sequence review — Bay 4 rafters, second crew",
+     "Julien Wagner · Harbor Line · 12 h · 28 Sep – 30 Sep",
+     "Pending review",
+     "tag tag-outline"
+    ]
+   ],
+   "rt": "Team load — next 8 weeks",
+   "rr": [
+    [
+     "Julien Wagner",
+     "Structural engineer",
+     "99%",
+     "tag tag-neutral"
+    ]
+   ]
+  },
+  "clicks": {
+   "lr": [
+    {
+     "screen": "approvals"
+    },
+    {
+     "screen": "approvals"
+    }
+   ],
+   "rr": [
+    {
+     "screen": "resources"
+    }
+   ]
+  },
+  "fr": {
+   "greeting": "Bonjour, Marion",
+   "sub": "Responsable ingénierie · vendredi 25 sept. 2026",
+   "kpis": [
+    [
+     "En attente de mon approbation",
+     "2",
+     "Demandes de ressources · Ingénierie",
+     true
+    ],
+    [
+     "Taux d’occupation",
+     "83%",
+     "Cible 85–95 %",
+     false
+    ],
+    [
+     "Surchargés",
+     "3 personnes",
+     "Pointe semaines 41–43",
+     true
+    ],
+    [
+     "Demande non couverte",
+     "240 h",
+     "Surtout ingénierie",
+     true
+    ]
+   ],
+   "lt": "File d’approbation — Engineering",
+   "lr": [
+    [
+     "Steel connection checks — second crew",
+     "Contract structural engineer · Harbor Line · 40 h · 28 sept. – 9 oct.",
+     "Pending review",
+     "tag tag-outline"
+    ],
+    [
+     "Erection sequence review — Bay 4 rafters, second crew",
+     "Julien Wagner · Harbor Line · 12 h · 28 sept. – 30 sept.",
+     "Pending review",
+     "tag tag-outline"
+    ]
+   ],
+   "rt": "Charge de l’équipe — 8 prochaines semaines",
+   "rr": [
+    [
+     "Julien Wagner",
+     "Ingénieur structure",
+     "99%",
+     "tag tag-neutral"
+    ]
+   ]
+  }
+ },
+ "member": {
+  "en": {
+   "greeting": "Good morning, Julien",
+   "sub": "Structural engineer · Friday 25 Sep 2026",
+   "kpis": [
+    [
+     "Due today",
+     "2",
+     "Fri 25 Sep",
+     false
+    ],
+    [
+     "Overdue",
+     "1",
+     "Needs a new date or a push",
+     true
+    ],
+    [
+     "Next week",
+     "2",
+     "28 Sep – 2 Oct",
+     false
+    ],
+    [
+     "Logged this week",
+     "15.0 h",
+     "of 40 h · 38%",
+     false
+    ]
+   ],
+   "lt": "My tasks",
+   "lr": [
+    [
+     "Survey verticality — Bay 3 columns",
+     "Harbor Line · due Fri 25 Sep",
+     "In progress",
+     "tag tag-accent"
+    ],
+    [
+     "Weld inspection report — Bay 3",
+     "Harbor Line · due Thu 1 Oct",
+     "To do",
+     "tag tag-neutral"
+    ],
+    [
+     "NDT test plan — crane rail welds",
+     "Harbor Line · due Wed 23 Sep",
+     "In review",
+     "tag tag-accent"
+    ],
+    [
+     "Punch list walk — Bay 2",
+     "Harbor Line · due Fri 25 Sep",
+     "In progress",
+     "tag tag-accent"
+    ],
+    [
+     "Fire damper inspection — Level 1",
+     "Clinique Pasteur Lyon · due Fri 2 Oct",
+     "To do",
+     "tag tag-neutral"
+    ],
+    [
+     "ITP sign-off — electrical rough-in",
+     "Clinique Pasteur Lyon · due Thu 8 Oct",
+     "To do",
+     "tag tag-neutral"
+    ]
+   ],
+   "rt": "This week",
+   "rr": [
+    [
+     "Hours logged",
+     "Read from Lucca · 15 h this week",
+     "Lucca",
+     "tag tag-neutral"
+    ],
+    [
+     "Load",
+     "Average 45% over the next 2 weeks",
+     "45%",
+     "tag tag-neutral"
+    ],
+    [
+     "Skills & certifications",
+     "ISO 9001 lead auditor",
+     "View",
+     "tag tag-outline"
+    ]
+   ]
+  },
+  "clicks": {
+   "lr": [
+    {
+     "screen": "task",
+     "task": "T-2314",
+     "person": "Hélène Sauvage"
+    },
+    {
+     "screen": "task",
+     "task": "T-2318",
+     "person": "Hélène Sauvage"
+    },
+    {
+     "screen": "task",
+     "task": "T-2302",
+     "person": "Hélène Sauvage"
+    },
+    {
+     "screen": "task",
+     "task": "T-2311",
+     "person": "Hélène Sauvage"
+    },
+    {
+     "screen": "task",
+     "task": "T-2331",
+     "person": "Hélène Sauvage"
+    },
+    {
+     "screen": "task",
+     "task": "T-2335",
+     "person": "Hélène Sauvage"
+    }
+   ],
+   "rr": [
+    {
+     "screen": "mywork"
+    },
+    {
+     "screen": "mywork"
+    },
+    {
+     "screen": "skills"
+    }
+   ]
+  },
+  "fr": {
+   "greeting": "Bonjour, Julien",
+   "sub": "Ingénieur structure · vendredi 25 sept. 2026",
+   "kpis": [
+    [
+     "Due aujourd’hui",
+     "2",
+     "ven. 25 sept.",
+     false
+    ],
+    [
+     "En retard",
+     "1",
+     "Needs a new date or a push",
+     true
+    ],
+    [
+     "Next week",
+     "2",
+     "28 sept. – 2 oct.",
+     false
+    ],
+    [
+     "Logged this week",
+     "15.0 h",
+     "of 40 h · 38%",
+     false
+    ]
+   ],
+   "lt": "Mes tâches",
+   "lr": [
+    [
+     "Survey verticality — Bay 3 columns",
+     "Harbor Line · échéance ven. 25 sept.",
+     "En cours",
+     "tag tag-accent"
+    ],
+    [
+     "Weld inspection report — Bay 3",
+     "Harbor Line · échéance jeu. 1 oct.",
+     "À faire",
+     "tag tag-neutral"
+    ],
+    [
+     "NDT test plan — crane rail welds",
+     "Harbor Line · échéance mer. 23 sept.",
+     "En revue",
+     "tag tag-accent"
+    ],
+    [
+     "Punch list walk — Bay 2",
+     "Harbor Line · échéance ven. 25 sept.",
+     "En cours",
+     "tag tag-accent"
+    ],
+    [
+     "Fire damper inspection — Level 1",
+     "Clinique Pasteur Lyon · échéance ven. 2 oct.",
+     "À faire",
+     "tag tag-neutral"
+    ],
+    [
+     "ITP sign-off — electrical rough-in",
+     "Clinique Pasteur Lyon · échéance jeu. 8 oct.",
+     "À faire",
+     "tag tag-neutral"
+    ]
+   ],
+   "rt": "Cette semaine",
+   "rr": [
+    [
+     "Heures saisies",
+     "Lu le from Lucca · 15 h this week",
+     "Lucca",
+     "tag tag-neutral"
+    ],
+    [
+     "Charge",
+     "Moyenne 45 % sur les 2 prochaines semaines",
+     "45%",
+     "tag tag-neutral"
+    ],
+    [
+     "Compétences et certifications",
+     "ISO 9001 lead auditor",
+     "Voir",
+     "tag tag-outline"
+    ]
+   ]
+  }
+ },
+ "englead": {
+  "en": {
+   "greeting": "Good morning, Antoine",
+   "sub": "Engineering lead · Friday 25 Sep 2026",
+   "kpis": [
+    [
+     "Open ECOs",
+     "3",
+     "6 in total",
+     false
+    ],
+    [
+     "Awaiting my approval",
+     "0",
+     "As Engineering lead",
+     false
+    ],
+    [
+     "WIP / under review",
+     "2",
+     "Linked to open ECOs",
+     false
+    ],
+    [
+     "Validated",
+     "87%",
+     "4 awaiting qualification",
+     false
+    ]
+   ],
+   "lt": "ECOs waiting for engineering",
+   "lr": [
+    [
+     "ECO-2026-015 · Obsolescence notice",
+     "Replace CD-200 smoke detector by CD-210 in all open designs",
+     "In approval",
+     "tag tag-accent"
+    ],
+    [
+     "ECO-2026-016 · Supplier / make-buy",
+     "Disc brake SF 30 — supplier qualification & torque spec",
+     "Impact analysis",
+     "tag tag-outline"
+    ],
+    [
+     "ECO-2026-017 · BOM substitution",
+     "Bearing 22326 CC/W33 → Schaeffler equivalent (lead time)",
+     "Draft",
+     "tag tag-outline"
+    ]
+   ],
+   "rt": "Watchlist",
+   "rr": [
+    [
+     "Structural",
+     "Single expert — 1 expert · 1 at level ≥3",
+     "Skill gap",
+     "tag tag-outline"
+    ],
+    [
+     "Electrical / HV",
+     "Single expert — 1 expert · 1 at level ≥3",
+     "Skill gap",
+     "tag tag-outline"
+    ],
+    [
+     "MEP",
+     "Single expert — 1 expert · 1 at level ≥3",
+     "Skill gap",
+     "tag tag-outline"
+    ],
+    [
+     "Automation & controls",
+     "Single expert — 0 experts · 1 at level ≥3",
+     "Skill gap",
+     "tag tag-outline"
+    ],
+    [
+     "Civil & site",
+     "Single expert — 1 expert · 3 at level ≥3",
+     "Skill gap",
+     "tag tag-outline"
+    ],
+    [
+     "Procurement",
+     "Single expert — 1 expert · 2 at level ≥3",
+     "Skill gap",
+     "tag tag-outline"
+    ],
+    [
+     "Quality / QA-QC",
+     "Single expert — 1 expert · 2 at level ≥3",
+     "Skill gap",
+     "tag tag-outline"
+    ],
+    [
+     "Software / IT",
+     "Single expert — 0 experts · 2 at level ≥3",
+     "Skill gap",
+     "tag tag-outline"
+    ],
+    [
+     "DWG-AS-9300 · rev C",
+     "Travel bogie",
+     "WIP",
+     "tag tag-accent"
+    ],
+    [
+     "DWG-AS-9400 · rev A",
+     "Hoist & trolley",
+     "Under review",
+     "tag tag-accent"
+    ],
+    [
+     "DWG-MC-0031 · rev B",
+     "Stainless mounting bracket",
+     "Obsolete",
+     "tag tag-outline"
+    ]
+   ]
+  },
+  "clicks": {
+   "lr": [
+    {
+     "screen": "eco",
+     "eco": "ECO-2026-015"
+    },
+    {
+     "screen": "eco",
+     "eco": "ECO-2026-016"
+    },
+    {
+     "screen": "eco",
+     "eco": "ECO-2026-017"
+    }
+   ],
+   "rr": [
+    {
+     "screen": "skills"
+    },
+    {
+     "screen": "skills"
+    },
+    {
+     "screen": "skills"
+    },
+    {
+     "screen": "skills"
+    },
+    {
+     "screen": "skills"
+    },
+    {
+     "screen": "skills"
+    },
+    {
+     "screen": "skills"
+    },
+    {
+     "screen": "skills"
+    },
+    {
+     "screen": "drawings",
+     "dwg": "DWG-AS-9300"
+    },
+    {
+     "screen": "drawings",
+     "dwg": "DWG-AS-9400"
+    },
+    {
+     "screen": "drawings",
+     "dwg": "DWG-MC-0031"
+    }
+   ]
+  },
+  "fr": {
+   "greeting": "Bonjour, Antoine",
+   "sub": "Référent ingénierie · vendredi 25 sept. 2026",
+   "kpis": [
+    [
+     "ECO ouverts",
+     "3",
+     "6 au total",
+     false
+    ],
+    [
+     "En attente de mon approbation",
+     "0",
+     "En tant que Engineering lead",
+     false
+    ],
+    [
+     "En cours / en revue",
+     "2",
+     "Liés à des ECO ouverts",
+     false
+    ],
+    [
+     "Validé",
+     "87%",
+     "4 en attente de qualification",
+     false
+    ]
+   ],
+   "lt": "ECO en attente de l’ingénierie",
+   "lr": [
+    [
+     "ECO-2026-015 · Avis d’obsolescence",
+     "Replace CD-200 smoke detector by CD-210 in all open designs",
+     "En approbation",
+     "tag tag-accent"
+    ],
+    [
+     "ECO-2026-016 · Fournisseur / make-buy",
+     "Disc brake SF 30 — supplier qualification & torque spec",
+     "Analyse d’impact",
+     "tag tag-outline"
+    ],
+    [
+     "ECO-2026-017 · Substitution nomenclature",
+     "Bearing 22326 CC/W33 → Schaeffler equivalent (lead time)",
+     "Brouillon",
+     "tag tag-outline"
+    ]
+   ],
+   "rt": "À surveiller",
+   "rr": [
+    [
+     "Structure",
+     "Expert unique — 1 expert · 1 at level ≥3",
+     "Compétence à risque",
+     "tag tag-outline"
+    ],
+    [
+     "Électricité / HT",
+     "Expert unique — 1 expert · 1 at level ≥3",
+     "Compétence à risque",
+     "tag tag-outline"
+    ],
+    [
+     "CVC-élec",
+     "Expert unique — 1 expert · 1 at level ≥3",
+     "Compétence à risque",
+     "tag tag-outline"
+    ],
+    [
+     "Automatisme et contrôle-commande",
+     "Expert unique — 0 experts · 1 at level ≥3",
+     "Compétence à risque",
+     "tag tag-outline"
+    ],
+    [
+     "Génie civil et chantier",
+     "Expert unique — 1 expert · 3 at level ≥3",
+     "Compétence à risque",
+     "tag tag-outline"
+    ],
+    [
+     "Achats",
+     "Expert unique — 1 expert · 2 at level ≥3",
+     "Compétence à risque",
+     "tag tag-outline"
+    ],
+    [
+     "Qualité / QA-QC",
+     "Expert unique — 1 expert · 2 at level ≥3",
+     "Compétence à risque",
+     "tag tag-outline"
+    ],
+    [
+     "Logiciel / IT",
+     "Expert unique — 0 experts · 2 at level ≥3",
+     "Compétence à risque",
+     "tag tag-outline"
+    ],
+    [
+     "DWG-AS-9300 · rév. C",
+     "Travel bogie",
+     "En cours",
+     "tag tag-accent"
+    ],
+    [
+     "DWG-AS-9400 · rév. A",
+     "Hoist & trolley",
+     "En revue",
+     "tag tag-accent"
+    ],
+    [
+     "DWG-MC-0031 · rév. B",
+     "Stainless mounting bracket",
+     "Obsolète",
+     "tag tag-outline"
+    ]
+   ]
+  }
+ },
+ "quality": {
+  "en": {
+   "greeting": "Good morning, Gabriel",
+   "sub": "Quality manager · Friday 25 Sep 2026",
+   "kpis": [
+    [
+     "ECOs awaiting quality",
+     "0",
+     "ISO 9001 review",
+     false
+    ],
+    [
+     "Outdated still in use",
+     "2",
+     "FD-DET-OPT · SG-BRK-SS",
+     true
+    ],
+    [
+     "Not validated",
+     "2",
+     "Blocked for purchasing",
+     true
+    ],
+    [
+     "Inspections requested",
+     "1",
+     "Pending department approval",
+     false
+    ]
+   ],
+   "lt": "Quality approvals",
+   "lr": [
+    [
+     "ECO-2026-015",
+     "Replace CD-200 smoke detector by CD-210 in all open designs",
+     "Approved",
+     "tag tag-outline"
+    ],
+    [
+     "ECO-2026-016",
+     "Disc brake SF 30 — supplier qualification & torque spec",
+     "To review",
+     "tag tag-outline"
+    ]
+   ],
+   "rt": "Parts needing action",
+   "rr": [
+    [
+     "EL-BAT-LI-200 · Li-ion battery cabinet 200 kWh",
+     "Used in NDC, WSA",
+     "Not validated",
+     "tag tag-outline"
+    ],
+    [
+     "FD-DET-OPT · Optical smoke detector",
+     "Used in HLT, RCF",
+     "Outdated",
+     "tag tag-accent"
+    ],
+    [
+     "SG-BRK-SS · Stainless mounting bracket",
+     "Used in MSR",
+     "Obsolete",
+     "tag tag-accent"
+    ],
+    [
+     "HST-BRK-DSC · Disc brake · fail-safe",
+     "Used in HLT",
+     "Not validated",
+     "tag tag-outline"
+    ],
+    [
+     "CTL-WIND-SN · Anemometer · heated",
+     "Used in HLT",
+     "Not validated",
+     "tag tag-outline"
+    ]
+   ]
+  },
+  "clicks": {
+   "lr": [
+    {
+     "screen": "eco",
+     "eco": "ECO-2026-015"
+    },
+    {
+     "screen": "eco",
+     "eco": "ECO-2026-016"
+    }
+   ],
+   "rr": [
+    {
+     "screen": "plm",
+     "part": "EL-BAT-LI-200"
+    },
+    {
+     "screen": "plm",
+     "part": "FD-DET-OPT"
+    },
+    {
+     "screen": "plm",
+     "part": "SG-BRK-SS"
+    },
+    {
+     "screen": "plm",
+     "part": "HST-BRK-DSC"
+    },
+    {
+     "screen": "plm",
+     "part": "CTL-WIND-SN"
+    }
+   ]
+  },
+  "fr": {
+   "greeting": "Bonjour, Gabriel",
+   "sub": "Responsable qualité · vendredi 25 sept. 2026",
+   "kpis": [
+    [
+     "ECOs awaiting quality",
+     "0",
+     "ISO 9001 review",
+     false
+    ],
+    [
+     "Périmés encore utilisés",
+     "2",
+     "FD-DET-OPT · SG-BRK-SS",
+     true
+    ],
+    [
+     "Non validé",
+     "2",
+     "Bloqués pour les achats",
+     true
+    ],
+    [
+     "Inspections requested",
+     "1",
+     "Pending department approval",
+     false
+    ]
+   ],
+   "lt": "Approbations qualité",
+   "lr": [
+    [
+     "ECO-2026-015",
+     "Replace CD-200 smoke detector by CD-210 in all open designs",
+     "Approuvé",
+     "tag tag-outline"
+    ],
+    [
+     "ECO-2026-016",
+     "Disc brake SF 30 — supplier qualification & torque spec",
+     "À revoir",
+     "tag tag-outline"
+    ]
+   ],
+   "rt": "Articles à traiter",
+   "rr": [
+    [
+     "EL-BAT-LI-200 · Li-ion battery cabinet 200 kWh",
+     "Utilisé dans NDC, WSA",
+     "Non validé",
+     "tag tag-outline"
+    ],
+    [
+     "FD-DET-OPT · Optical smoke detector",
+     "Utilisé dans HLT, RCF",
+     "Périmé",
+     "tag tag-accent"
+    ],
+    [
+     "SG-BRK-SS · Stainless mounting bracket",
+     "Utilisé dans MSR",
+     "Obsolète",
+     "tag tag-accent"
+    ],
+    [
+     "HST-BRK-DSC · Disc brake · fail-safe",
+     "Utilisé dans HLT",
+     "Non validé",
+     "tag tag-outline"
+    ],
+    [
+     "CTL-WIND-SN · Anemometer · heated",
+     "Utilisé dans HLT",
+     "Non validé",
+     "tag tag-outline"
+    ]
+   ]
+  }
+ },
+ "procurement": {
+  "en": {
+   "greeting": "Good morning, Fabien",
+   "sub": "Procurement & stock · Friday 25 Sep 2026",
+   "kpis": [
+    [
+     "Awaiting approval",
+     "1",
+     "Blocks ordering",
+     true
+    ],
+    null,
+    [
+     "BOM not yet ordered",
+     "15",
+     "Harbor Line Terminal Expansion",
+     true
+    ],
+    [
+     "ECOs touching open POs",
+     "1",
+     "Hold ordering until released",
+     false
+    ]
+   ],
+   "lt": "Purchase orders to act on",
+   "lr": [
+    [
+     "PO-1052 · Halvorsen Cranes",
+     "EQ-CRN-250T, CR-RAIL-A100 · €4.99M",
+     "Partially received",
+     "tag tag-accent"
+    ],
+    [
+     "PO-1063 · Nordvolt",
+     "EL-SWG-11KV, EL-TRF-2MVA · €421k",
+     "Partially received",
+     "tag tag-accent"
+    ],
+    [
+     "PO-1071 · Brightline Electrics",
+     "EL-CBL-XLPE, LT-HB-200W · €218k",
+     "Partially received",
+     "tag tag-accent"
+    ],
+    [
+     "PO-1078 · Cotswold Fire Systems",
+     "FD-DAMP-FR, FD-SPR-HD · €19k",
+     "Ordered",
+     "tag tag-outline"
+    ],
+    [
+     "PO-1082 · Cotswold Fire Systems",
+     "FD-DET-OPT · €9k",
+     "Awaiting approval",
+     "tag tag-outline"
+    ]
+   ],
+   "rt": "Still to order — Harbor Line Terminal Expansion",
+   "rr": [
+    [
+     "KS-PLT-S355",
+     "Steel plate S355 · 20 mm · ArcelorMittal",
+     "192 to order",
+     "tag tag-outline"
+    ],
+    [
+     "KS-WLD-CONS",
+     "Welding consumables kit · Lincoln Electric",
+     "8 to order",
+     "tag tag-outline"
+    ],
+    [
+     "CR-WHL-630",
+     "Crane wheel Ø630 · forged · Halvorsen Cranes",
+     "16 to order",
+     "tag tag-outline"
+    ],
+    [
+     "CR-BRG-SKF",
+     "Spherical roller bearing · SKF",
+     "32 to order",
+     "tag tag-outline"
+    ],
+    [
+     "CR-MOT-15K",
+     "Travel motor 15 kW · geared · SEW-Eurodrive",
+     "8 to order",
+     "tag tag-outline"
+    ],
+    [
+     "HST-ROP-28",
+     "Wire rope 28 mm · 400 m · Teufelberger",
+     "4 to order",
+     "tag tag-outline"
+    ],
+    [
+     "HST-MOT-160",
+     "Hoist motor 160 kW · ABB",
+     "2 to order",
+     "tag tag-outline"
+    ],
+    [
+     "HST-BRK-DSC",
+     "Disc brake · fail-safe · Dellner Bubenzer",
+     "4 to order",
+     "tag tag-outline"
+    ],
+    [
+     "ASM-SPR-500",
+     "Telescopic spreader · Bromma",
+     "2 to order",
+     "tag tag-outline"
+    ],
+    [
+     "EL-VFD-200",
+     "Frequency drive 200 kW · ABB",
+     "6 to order",
+     "tag tag-outline"
+    ],
+    [
+     "EL-PLC-S7",
+     "Safety PLC · Siemens",
+     "2 to order",
+     "tag tag-outline"
+    ],
+    [
+     "EL-HMI-15",
+     "Operator HMI 15″ · Siemens",
+     "2 to order",
+     "tag tag-outline"
+    ],
+    [
+     "CTL-ANT-COL",
+     "Anti-collision lidar · SICK",
+     "8 to order",
+     "tag tag-outline"
+    ],
+    [
+     "CTL-CAM-OCR",
+     "OCR camera unit · Camco",
+     "12 to order",
+     "tag tag-outline"
+    ],
+    [
+     "CTL-WIND-SN",
+     "Anemometer · heated · Thies Clima",
+     "2 to order",
+     "tag tag-outline"
+    ]
+   ]
+  },
+  "clicks": {
+   "lr": [
+    {
+     "screen": "orders",
+     "po": "PO-1052"
+    },
+    {
+     "screen": "orders",
+     "po": "PO-1063"
+    },
+    {
+     "screen": "orders",
+     "po": "PO-1071"
+    },
+    {
+     "screen": "orders",
+     "po": "PO-1078"
+    },
+    {
+     "screen": "orders",
+     "po": "PO-1082"
+    }
+   ],
+   "rr": [
+    {
+     "screen": "orders"
+    },
+    {
+     "screen": "orders"
+    },
+    {
+     "screen": "orders"
+    },
+    {
+     "screen": "orders"
+    },
+    {
+     "screen": "orders"
+    },
+    {
+     "screen": "orders"
+    },
+    {
+     "screen": "orders"
+    },
+    {
+     "screen": "orders"
+    },
+    {
+     "screen": "orders"
+    },
+    {
+     "screen": "orders"
+    },
+    {
+     "screen": "orders"
+    },
+    {
+     "screen": "orders"
+    },
+    {
+     "screen": "orders"
+    },
+    {
+     "screen": "orders"
+    },
+    {
+     "screen": "orders"
+    }
+   ]
+  },
+  "fr": {
+   "greeting": "Bonjour, Fabien",
+   "sub": "Achats et stock · vendredi 25 sept. 2026",
+   "kpis": [
+    [
+     "En attente d’approbation",
+     "1",
+     "Bloque la commande",
+     true
+    ],
+    null,
+    [
+     "BOM not yet ordered",
+     "15",
+     "Extension du terminal Harbor Line",
+     true
+    ],
+    [
+     "ECOs touching open POs",
+     "1",
+     "Suspendre la commande jusqu’à diffusion",
+     false
+    ]
+   ],
+   "lt": "Commandes à traiter",
+   "lr": [
+    [
+     "PO-1052 · Halvorsen Cranes",
+     "EQ-CRN-250T, CR-RAIL-A100 · 4,99 M€",
+     "Partiellement reçu",
+     "tag tag-accent"
+    ],
+    [
+     "PO-1063 · Nordvolt",
+     "EL-SWG-11KV, EL-TRF-2MVA · 421 k€",
+     "Partiellement reçu",
+     "tag tag-accent"
+    ],
+    [
+     "PO-1071 · Brightline Electrics",
+     "EL-CBL-XLPE, LT-HB-200W · 218 k€",
+     "Partiellement reçu",
+     "tag tag-accent"
+    ],
+    [
+     "PO-1078 · Cotswold Fire Systems",
+     "FD-DAMP-FR, FD-SPR-HD · 19 k€",
+     "Commandé",
+     "tag tag-outline"
+    ],
+    [
+     "PO-1082 · Cotswold Fire Systems",
+     "FD-DET-OPT · 9 k€",
+     "En attente d’approbation",
+     "tag tag-outline"
+    ]
+   ],
+   "rt": "Reste à commander — Harbor Line Terminal Expansion",
+   "rr": [
+    [
+     "KS-PLT-S355",
+     "Steel plate S355 · 20 mm · ArcelorMittal",
+     "192 à commander",
+     "tag tag-outline"
+    ],
+    [
+     "KS-WLD-CONS",
+     "Welding consumables kit · Lincoln Electric",
+     "8 à commander",
+     "tag tag-outline"
+    ],
+    [
+     "CR-WHL-630",
+     "Crane wheel Ø630 · forged · Halvorsen Cranes",
+     "16 à commander",
+     "tag tag-outline"
+    ],
+    [
+     "CR-BRG-SKF",
+     "Spherical roller bearing · SKF",
+     "32 à commander",
+     "tag tag-outline"
+    ],
+    [
+     "CR-MOT-15K",
+     "Travel motor 15 kW · geared · SEW-Eurodrive",
+     "8 à commander",
+     "tag tag-outline"
+    ],
+    [
+     "HST-ROP-28",
+     "Wire rope 28 mm · 400 m · Teufelberger",
+     "4 à commander",
+     "tag tag-outline"
+    ],
+    [
+     "HST-MOT-160",
+     "Hoist motor 160 kW · ABB",
+     "2 à commander",
+     "tag tag-outline"
+    ],
+    [
+     "HST-BRK-DSC",
+     "Disc brake · fail-safe · Dellner Bubenzer",
+     "4 à commander",
+     "tag tag-outline"
+    ],
+    [
+     "ASM-SPR-500",
+     "Telescopic spreader · Bromma",
+     "2 à commander",
+     "tag tag-outline"
+    ],
+    [
+     "EL-VFD-200",
+     "Frequency drive 200 kW · ABB",
+     "6 à commander",
+     "tag tag-outline"
+    ],
+    [
+     "EL-PLC-S7",
+     "Automate sécurité · Siemens",
+     "2 à commander",
+     "tag tag-outline"
+    ],
+    [
+     "EL-HMI-15",
+     "Operator HMI 15″ · Siemens",
+     "2 à commander",
+     "tag tag-outline"
+    ],
+    [
+     "CTL-ANT-COL",
+     "Anti-collision lidar · SICK",
+     "8 à commander",
+     "tag tag-outline"
+    ],
+    [
+     "CTL-CAM-OCR",
+     "OCR camera unit · Camco",
+     "12 à commander",
+     "tag tag-outline"
+    ],
+    [
+     "CTL-WIND-SN",
+     "Anemometer · heated · Thies Clima",
+     "2 à commander",
+     "tag tag-outline"
+    ]
+   ]
+  }
+ },
+ "client": {
+  "en": {
+   "greeting": "Good morning, Nadia",
+   "sub": "Client — Port authority · Friday 25 Sep 2026",
+   "kpis": [
+    [
+     "Progress",
+     "64%",
+     "Work completed · Harbor Line Terminal Expansion",
+     false
+    ],
+    [
+     "Milestones reached",
+     "2 of 6",
+     "Next: Structure topped out",
+     false
+    ],
+    [
+     "Change requests to approve",
+     "1",
+     "CR-008 · €85k",
+     true
+    ],
+    [
+     "Deliverables to accept",
+     "2",
+     "Acceptance due within 10 days",
+     false
+    ]
+   ],
+   "lt": "Milestones",
+   "lr": [
+    [
+     "Permits approved",
+     "Baseline 15 Mar · Forecast 1 Apr",
+     "Done",
+     "tag tag-neutral"
+    ],
+    [
+     "Foundations complete",
+     "Baseline 1 Jul · Forecast 6 Aug",
+     "Done",
+     "tag tag-neutral"
+    ],
+    [
+     "Structure topped out",
+     "Baseline 15 Sep · Forecast 24 Oct",
+     "Late",
+     "tag tag-accent"
+    ],
+    [
+     "Cranes operational",
+     "Baseline 1 Oct · Forecast 3 Nov",
+     "Late",
+     "tag tag-accent"
+    ],
+    [
+     "Systems energised",
+     "Baseline 15 Nov · Forecast 1 Dec",
+     "At risk",
+     "tag tag-outline"
+    ],
+    [
+     "Handover",
+     "Baseline 18 Dec · Forecast 13 Jan ’27",
+     "At risk",
+     "tag tag-outline"
+    ]
+   ],
+   "rt": "Waiting for your decision",
+   "rr": [
+    [
+     "CR-008 — Second steel crew",
+     "+€85k · schedule recovery 12 days · submitted 24 Sep",
+     "Approve / reject",
+     "tag tag-accent"
+    ],
+    [
+     "D-014 · Crane rail alignment report",
+     "Test & inspection reports · Accept by 02 Oct",
+     "Submitted",
+     "tag tag-accent"
+    ],
+    [
+     "D-015 · Foundations as-built drawings",
+     "Manuals / as-built · Signed 18 Sep",
+     "Accepted",
+     "tag tag-neutral"
+    ],
+    [
+     "D-016 · Steel structure calculation note rev B",
+     "Calculation notes · Accept by 09 Oct",
+     "Submitted",
+     "tag tag-accent"
+    ],
+    [
+     "D-017 · Monthly progress report — September",
+     "Meeting minutes · Issue 30 Sep",
+     "Due",
+     "tag tag-outline"
+    ],
+    [
+     "Invoices",
+     "Milestone 4 invoice €640k · due 15 Oct",
+     "Open",
+     "tag tag-outline"
+    ]
+   ]
+  },
+  "clicks": {
+   "lr": [
+    {
+     "screen": "client",
+     "cpTab": "progress"
+    },
+    {
+     "screen": "client",
+     "cpTab": "progress"
+    },
+    {
+     "screen": "client",
+     "cpTab": "progress"
+    },
+    {
+     "screen": "client",
+     "cpTab": "progress"
+    },
+    {
+     "screen": "client",
+     "cpTab": "progress"
+    },
+    {
+     "screen": "client",
+     "cpTab": "progress"
+    }
+   ],
+   "rr": [
+    {
+     "screen": "client",
+     "cpTab": "decisions"
+    },
+    {
+     "screen": "client",
+     "cpTab": "decisions"
+    },
+    {
+     "screen": "client",
+     "cpTab": "decisions"
+    },
+    {
+     "screen": "client",
+     "cpTab": "decisions"
+    },
+    {
+     "screen": "client",
+     "cpTab": "decisions"
+    },
+    {
+     "screen": "client",
+     "cpTab": "invoices"
+    }
+   ]
+  },
+  "fr": {
+   "greeting": "Bonjour, Nadia",
+   "sub": "Client — Autorité portuaire · vendredi 25 sept. 2026",
+   "kpis": [
+    [
+     "Avancement",
+     "64%",
+     "Travail réalisé · Harbor Line Terminal Expansion",
+     false
+    ],
+    [
+     "Jalons atteints",
+     "2 sur 6",
+     "Prochain : structure hors d’eau",
+     false
+    ],
+    [
+     "Demandes de modification à approuver",
+     "1",
+     "CR-008 · 85 k€",
+     true
+    ],
+    [
+     "Livrables à accepter",
+     "2",
+     "Acceptation sous 10 jours",
+     false
+    ]
+   ],
+   "lt": "Jalons",
+   "lr": [
+    [
+     "Permis approuvés",
+     "Référence 15 mars · Forecast 1 avr.",
+     "Terminé",
+     "tag tag-neutral"
+    ],
+    [
+     "Fondations terminées",
+     "Référence 1 juil. · Forecast 6 août",
+     "Terminé",
+     "tag tag-neutral"
+    ],
+    [
+     "Structure hors d’eau",
+     "Référence 15 sept. · Forecast 24 oct.",
+     "En retard",
+     "tag tag-accent"
+    ],
+    [
+     "Grues opérationnelles",
+     "Référence 1 oct. · Forecast 3 nov.",
+     "En retard",
+     "tag tag-accent"
+    ],
+    [
+     "Systèmes sous tension",
+     "Référence 15 nov. · Forecast 1 déc.",
+     "À risque",
+     "tag tag-outline"
+    ],
+    [
+     "Livraison",
+     "Référence 18 déc. · Forecast 13 janv. ’27",
+     "À risque",
+     "tag tag-outline"
+    ]
+   ],
+   "rt": "En attente de votre décision",
+   "rr": [
+    [
+     "CR-008 — Second steel crew",
+     "+85 k€ · schedule recovery 12 jours · submitted 24 sept.",
+     "Approuver / refuser",
+     "tag tag-accent"
+    ],
+    [
+     "D-014 · Rapport d’alignement des rails de grue",
+     "Test & inspection reports · Accepter avant le 02 oct.",
+     "Soumis",
+     "tag tag-accent"
+    ],
+    [
+     "D-015 · Plans de récolement des fondations",
+     "Manuals / as-built · Signé le 18 sept.",
+     "Accepté",
+     "tag tag-neutral"
+    ],
+    [
+     "D-016 · Note de calcul charpente rév. B",
+     "Calculation notes · Accepter avant le 09 oct.",
+     "Soumis",
+     "tag tag-accent"
+    ],
+    [
+     "D-017 · Monthly progress report — Septembre",
+     "Comptes rendus de réunion · Émettre le 30 sept.",
+     "Échéance",
+     "tag tag-outline"
+    ],
+    [
+     "Factures",
+     "Facture jalon 4 640 k€ · échéance 15 oct.",
+     "Ouverte",
+     "tag tag-outline"
+    ]
+   ]
+  }
+ }
+}

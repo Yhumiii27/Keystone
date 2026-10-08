@@ -1,0 +1,50 @@
+/* Progress bars (docs/spec/02 C-18). Widths/positions are data-driven (CSS variables). */
+.track { position: relative; border-radius: 3px; background: var(--color-neutral-800); flex: none; }
+.fill { height: 100%; border-radius: inherit; background: var(--pb-color, var(--color-accent)); width: var(--pb-w, 0%); }
+
+/* inline (table cell): 64×5, radius 3, neutral-800 */
+.inline { width: var(--pb-track-w, 64px); height: 5px; }
+/* card (My projects): 4px, radius 2, neutral-900, gradient fill */
+.card { height: 4px; border-radius: 2px; background: var(--color-neutral-900); overflow: hidden; flex: auto; }
+.card .fill { background: linear-gradient(90deg, var(--color-accent-700), var(--color-accent-500)); border-radius: 0; }
+/* thin (checklist, board cards): 3px, radius 2 */
+.thin { height: 3px; border-radius: 2px; flex: auto; }
+/* md (task progress/time, plan progress cell): 6px, radius 3 */
+.md { height: 6px; flex: auto; }
+.clip { overflow: hidden; }
+
+.withLabel { display: flex; align-items: center; gap: 8px; }
+.label { font-variant-numeric: tabular-nums; }
+.labelSm { font-size: 12px; }
+.labelMuted { color: var(--color-neutral-300); }
+
+/* marker tick / diamond */
+.tick { position: absolute; top: var(--tk-top, -3px); width: 2px; height: var(--tk-h, 11px); background: var(--tk-color, var(--color-accent)); left: var(--tk-left); }
+.diamond { position: absolute; top: -4px; width: 8px; height: 8px; margin-left: -4px; transform: translateY(5px) rotate(45deg); background: var(--color-accent); left: var(--dm-left); }
+
+/* capacity: 8px, radius 4, neutral-900 */
+.capacity { height: 8px; border-radius: 4px; background: var(--color-neutral-900); }
+.capacityStack { display: flex; overflow: visible; }
+.seg { height: 100%; flex: none; width: var(--seg-w); background: var(--seg-color); }
+.segFirst { border-radius: 4px 0 0 4px; }
+.segLast { border-radius: 0 4px 4px 0; }
+
+/* spend vs earned: 84×5 */
+.spend { width: 84px; height: 5px; }
+.spend .fill { background: var(--color-neutral-300); }
+
+/* bullet (cost breakdown): 10px (WBS variant 8px), radius 3, neutral-900, flex, overflow visible */
+.bullet { height: var(--bl-h, 10px); border-radius: 3px; background: var(--color-neutral-900); display: flex; overflow: visible; flex: auto; }
+.bulletActual { height: 100%; background: var(--color-neutral-300); border-radius: 3px 0 0 3px; width: var(--bl-a); flex: none; }
+.bulletCommitted { height: 100%; background: var(--color-neutral-700); width: var(--bl-c); flex: none; }
+
+/* stacked share (billing): 10px, radius 5, neutral-800, overflow hidden */
+.share { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--color-neutral-800); flex: auto; }
+
+/* overlay (cash): 6px, radius 3 */
+.overlay { height: 6px; flex: auto; }
+.overlayFill { position: absolute; top: 0; left: 0; height: 100%; border-radius: 3px; width: var(--ov-w); background: var(--ov-color); }
+
+/* hatched (contingency): 8px, radius 4, EMV hatch + used accent on top */
+.hatched { height: 8px; border-radius: 4px; overflow: hidden; flex: auto; }
+.hatch { position: absolute; top: 0; left: 0; height: 100%; width: var(--ht-w); background: repeating-linear-gradient(135deg, var(--color-accent-800) 0 3px, transparent 3px 7px); }

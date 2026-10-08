@@ -1,0 +1,14 @@
+/* Eyebrows / section labels (docs/spec/02 C-06). */
+.base { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+.section { color: var(--color-accent); margin-bottom: 4px; }
+.muted { color: var(--color-neutral-400); }
+.sub { font-size: 11px; letter-spacing: 0.06em; color: var(--color-neutral-500); }
+.label { letter-spacing: 0.06em; color: var(--color-neutral-500); }
+.menu { font-size: 10px; color: var(--color-neutral-500); padding: 4px 8px 6px; }
+.flush { margin-bottom: 0; }
+
+/* group divider: label · count · fading rule (portfolio Gantt groups 1000) */
+.divider { display: flex; align-items: center; gap: 8px; padding: 12px 0 4px; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-400); }
+.fullRow { grid-column: 1 / -1; }
+.count { font-variant-numeric: tabular-nums; color: var(--color-neutral-500); letter-spacing: 0; }
+.rule { flex: 1; height: 1px; background: linear-gradient(90deg, var(--color-neutral-800), transparent); }

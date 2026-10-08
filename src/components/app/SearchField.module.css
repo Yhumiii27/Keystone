@@ -1,0 +1,10 @@
+/* Search field (docs/spec/02 C-10): magnifier at left 10px, input padding-left 30px. */
+.wrap { position: relative; min-width: var(--sf-min, 220px); }
+.push { margin-left: auto; }
+.flex { flex: var(--sf-flex); max-width: var(--sf-max, none); }
+.icon { position: absolute; left: 10px; top: 10px; color: var(--color-neutral-500); pointer-events: none; }
+.sm .icon { top: 9px; }
+.xs .icon { left: 9px; top: 9px; font-size: 13px; }
+:global(.input).input { padding-left: 30px; min-height: 34px; }
+.sm :global(.input).input,
+.xs :global(.input).input { padding-left: 30px; min-height: 32px; font-size: 12.5px; }

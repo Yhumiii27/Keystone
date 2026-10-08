@@ -1,0 +1,82 @@
+/* HR screens (docs/spec/06 §2–§5; template 1420–1503, 932–947). Values copied from the prototype's inline styles. */
+
+/* ── shared ── */
+.person { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.personText { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.personName { font-size: 13px; }
+.personSub { font-size: 11px; color: var(--color-neutral-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ── Rate cards ── */
+.roleCell { display: flex; align-items: center; gap: 8px; }
+:global(.tag).extTag { font-size: 10.5px; }
+:global(.input).rateInput { width: 84px; min-height: 30px; text-align: right; padding: 2px 8px; font-variant-numeric: tabular-nums; }
+.masked { color: var(--color-neutral-500); }
+.mulCell { font-variant-numeric: tabular-nums; color: var(--color-neutral-300); }
+.multRow { display: grid; grid-template-columns: minmax(0, 1fr) 84px; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--color-neutral-900); }
+.multText { display: flex; flex-direction: column; line-height: 1.3; }
+.multLabel { font-size: 13px; }
+.multHint { font-size: 11px; color: var(--color-neutral-400); }
+:global(.input).multInput { min-height: 30px; text-align: right; padding: 2px 8px; font-variant-numeric: tabular-nums; }
+.multValue { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--color-neutral-300); padding: 2px 9px; }
+.footNote { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+
+/* ── Skills matrix ── */
+.matrix { display: grid; grid-template-columns: minmax(150px, 210px) repeat(var(--skill-cols, 10), minmax(48px, 1fr)); gap: 4px; align-items: center; }
+.skillHead { font-size: 10.5px; color: var(--color-neutral-400); text-align: center; line-height: 1.2; text-wrap: balance; }
+.matrixPerson { height: 44px; }
+.row { display: contents; }
+.skillCell { height: 36px; display: flex; align-items: center; justify-content: center; gap: 2px; border-radius: 5px; background: var(--color-neutral-900); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-neutral-900); }
+.lv1 { background: var(--color-neutral-800); }
+.lv2 { background: var(--color-accent-800); }
+.lv3 { background: var(--color-accent-600); }
+.lv4 { background: var(--color-accent-400); }
+.coverageRow { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; padding: 6px 0; border-top: 1px solid var(--color-neutral-900); }
+.coverageText { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--color-neutral-300); }
+.lo { color: var(--color-accent-300); }
+
+/* ── Leave & working calendar ── */
+.leaveGrid { display: grid; grid-template-columns: 200px repeat(var(--weeks, 8), minmax(60px, 1fr)) 60px 60px; gap: 4px; min-width: 820px; align-items: center; }
+.colHead { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-400); }
+.right { text-align: right; }
+.weekHead { font-size: 11px; color: var(--color-neutral-400); text-align: center; }
+.holLabel { font-size: 12px; color: var(--color-neutral-400); }
+.holCell { height: 26px; border-radius: 5px; display: grid; place-items: center; font-size: 11px; color: var(--color-neutral-300); background: transparent; }
+.holOn { background: var(--color-neutral-800); }
+.leavePerson { height: 42px; }
+.leaveRole { font-size: 11.5px; color: var(--color-neutral-400); }
+.leaveCell { height: 36px; border-radius: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; background: var(--color-neutral-900); }
+.leaveLabel { font-size: 11.5px; color: var(--color-neutral-400); }
+.leaveHours { font-size: 10.5px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.cellLeave { background: var(--color-accent-900); }
+.cellSick { background: var(--color-accent-800); }
+.cellHoliday { background: var(--color-neutral-800); }
+.cellLeave .leaveLabel,
+.cellSick .leaveLabel { color: var(--color-accent-200); }
+.rightNum { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--color-neutral-300); }
+.legend { display: flex; gap: 14px; font-size: 11.5px; color: var(--color-neutral-400); flex-wrap: wrap; }
+
+/* ── Hours — Lucca reconciliation ── */
+.group { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-top: 1px solid var(--color-neutral-900); }
+.hrGrid { display: grid; grid-template-columns: 32px minmax(0, 1fr) 80px 80px 90px 140px; gap: 10px; align-items: center; font-size: 13px; }
+.hrLine { font-size: 12px; color: var(--color-neutral-400); }
+.hrAvatar { width: 28px; height: 28px; border-radius: 50%; background: var(--color-neutral-800); color: var(--color-neutral-200); display: grid; place-items: center; font-size: 10.5px; }
+.hrLabel { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.hrName { font-weight: 500; }
+.hrSub { font-size: 11px; color: var(--color-neutral-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hrPlanned { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--color-neutral-400); text-align: right; }
+.hrNum { font-variant-numeric: tabular-nums; font-size: 12px; text-align: right; }
+.hrLineNum { font-variant-numeric: tabular-nums; text-align: right; }
+.hrLineLabel { padding-left: 6px; }
+.varOk { color: var(--color-neutral-300); }
+.varLo { color: var(--color-accent-300); }
+.track { height: 6px; border-radius: 3px; background: var(--color-neutral-800); overflow: hidden; }
+.fill { height: 100%; background: var(--color-accent); }
+.fillOver { background: var(--color-accent-700); }
+.unRow { display: grid; grid-template-columns: 32px minmax(0, 1fr) 70px minmax(200px, 260px) auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--color-neutral-900); font-size: 12.5px; }
+.unText { display: flex; flex-direction: column; line-height: 1.3; }
+.unWhy { font-size: 11px; color: var(--color-neutral-400); }
+.unHours { font-variant-numeric: tabular-nums; text-align: right; }
+:global(.input).unSelect { min-height: 32px; font-size: 12px; }
+.assigned { font-size: 12px; color: var(--color-neutral-300); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -1,0 +1,3531 @@
+{
+ "en": {
+  "rows": [
+   {
+    "code": "HLT-026",
+    "name": "#026 · Harbor Line Terminal Expansion",
+    "idLine": "HAV004 · DAS 2 · EMP",
+    "metaLine": "R. Aubert · Port authority · Jan 2026 → Dec 2026",
+    "status": "Fabrication & Assemblage",
+    "isNew": false,
+    "canOpen": true,
+    "openTitle": "Open project · Plan — WBS",
+    "tagClass": "tag tag-accent",
+    "health": "At risk",
+    "healthClass": "tag tag-outline",
+    "spiText": "0.90",
+    "spiColor": "var(--color-accent-300)",
+    "cpiText": "0.91",
+    "cpiColor": "var(--color-accent-300)",
+    "msName": "Structure topped out",
+    "msLine": "23 Oct · Late",
+    "msColor": "var(--color-accent-300)",
+    "attention": "SPI 0.90 · CPI 0.91 · Structure topped out · Late · 27 d slip",
+    "delivText": "2 / 4",
+    "delivPct": "50%",
+    "delivs": [
+     [
+      "Structure fabriquée & contrôlée",
+      true
+     ],
+     [
+      "Assemblage mécanique terminé",
+      true
+     ],
+     [
+      "Câblage & armoires terminés",
+      false
+     ],
+     [
+      "NCR majeures clôturées",
+      false
+     ]
+    ],
+    "hist": [
+     [
+      "Fabrication & Assemblage",
+      "14 Jul 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "Approvisionnements",
+      "8 Jun 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "Etudes",
+      "20 Apr 2026",
+      "Forcé",
+      "tag tag-accent",
+      "Nomenclature gelée avant validation des notes de calcul — délai matière (validé M. Lefebvre)"
+     ],
+     [
+      "APD",
+      "12 Mar 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "APS",
+      "9 Feb 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "Initiative",
+      "12 Jan 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ]
+    ],
+    "histCount": 6,
+    "transitions": [
+     [
+      "FAT",
+      "Assemblage & câblage terminés"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "64%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "18 Dec 2026",
+    "finishForecast": "14 Jan 2027",
+    "finishColor": "var(--color-accent-300)",
+    "floatText": "−27 d",
+    "budgetText": "€4.80M",
+    "spentText": "€3.36M",
+    "earnedText": "€3.07M",
+    "eacText": "€5.25M",
+    "vacText": "−€450k",
+    "vacColor": "var(--color-accent-300)",
+    "spentPct": "70%",
+    "spentColor": "var(--color-accent-300)"
+   },
+   {
+    "code": "NDC-031",
+    "name": "#031 · Northgate Data Center Retrofit",
+    "idLine": "NGD001 · DAS 3 · AUTRE",
+    "metaLine": "S. Perrin · Infrastructure BU · Apr 2026 → Mar 2027",
+    "status": "Approvisionnements",
+    "isNew": false,
+    "canOpen": true,
+    "openTitle": "Open project · Plan — WBS",
+    "tagClass": "tag tag-accent",
+    "health": "On track",
+    "healthClass": "tag tag-neutral",
+    "spiText": "0.98",
+    "spiColor": "var(--color-text)",
+    "cpiText": "1.05",
+    "cpiColor": "var(--color-text)",
+    "msName": "Power upgrade — UPS & switchgear complete",
+    "msLine": "5 Nov · At risk",
+    "msColor": "var(--color-accent-300)",
+    "attention": "4 d slip",
+    "delivText": "2 / 3",
+    "delivPct": "67%",
+    "delivs": [
+     [
+      "Commandes longs délais passées",
+      true
+     ],
+     [
+      "Consultations attribuées",
+      true
+     ],
+     [
+      "Livraisons critiques confirmées",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "Fabrication & Assemblage",
+      "Commandes longs délais passées"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "51%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "1 Apr 2027",
+    "finishForecast": "5 Apr 2027",
+    "finishColor": "var(--color-accent-300)",
+    "floatText": "−4 d",
+    "budgetText": "€2.10M",
+    "spentText": "€1.02M",
+    "earnedText": "€1.07M",
+    "eacText": "€2.00M",
+    "vacText": "+€100k",
+    "vacColor": "var(--color-neutral-300)",
+    "spentPct": "49%",
+    "spentColor": "var(--color-accent)"
+   },
+   {
+    "code": "RCF-019",
+    "name": "#019 · Clinique Pasteur Lyon Fit-out",
+    "idLine": "CPL002 · DAS 1 · MEMU",
+    "metaLine": "C. Moreau · Health trust · Feb 2026 → Nov 2026",
+    "status": "Chantier",
+    "isNew": false,
+    "canOpen": true,
+    "openTitle": "Open project · Plan — WBS",
+    "tagClass": "tag tag-accent",
+    "health": "Off track",
+    "healthClass": "tag tag-accent",
+    "spiText": "0.84",
+    "spiColor": "var(--color-accent-300)",
+    "cpiText": "0.91",
+    "cpiColor": "var(--color-accent-300)",
+    "msName": "Fire systems complete",
+    "msLine": "27 Oct · Late",
+    "msColor": "var(--color-accent-300)",
+    "attention": "SPI 0.84 · CPI 0.91 · Fire systems complete · Late · 29 d slip",
+    "delivText": "2 / 3",
+    "delivPct": "67%",
+    "delivs": [
+     [
+      "Montage site terminé",
+      true
+     ],
+     [
+      "Raccordements réalisés",
+      true
+     ],
+     [
+      "Sécurité chantier clôturée",
+      false
+     ]
+    ],
+    "hist": [
+     [
+      "Chantier",
+      "7 Sep 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "Expédition",
+      "24 Aug 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "FAT",
+      "3 Aug 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "Fabrication & Assemblage",
+      "29 Jun 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "Approvisionnements",
+      "1 Jun 2026",
+      "Forcé",
+      "tag tag-accent",
+      "Consultation électricité non attribuée — démarrage fabrication anticipé"
+     ],
+     [
+      "Etudes",
+      "4 May 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "APD",
+      "30 Mar 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "APS",
+      "2 Mar 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "Initiative",
+      "5 Feb 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ]
+    ],
+    "histCount": 9,
+    "transitions": [
+     [
+      "Mise Service & SAT",
+      "Montage & raccordements terminés"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "82%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "1 Dec 2026",
+    "finishForecast": "27 Dec 2026",
+    "finishColor": "var(--color-accent-300)",
+    "floatText": "−29 d",
+    "budgetText": "€1.35M",
+    "spentText": "€1.21M",
+    "earnedText": "€1.11M",
+    "eacText": "€1.48M",
+    "vacText": "−€126k",
+    "vacColor": "var(--color-accent-300)",
+    "spentPct": "90%",
+    "spentColor": "var(--color-accent-300)"
+   },
+   {
+    "code": "ERP-202",
+    "name": "#032 · ERP Migration — Phase 2",
+    "idLine": "KEY011 · DAS 4 · R&D",
+    "metaLine": "D. Imbert · Finance · Jun 2026 → Feb 2027",
+    "status": "Etudes",
+    "isNew": false,
+    "canOpen": true,
+    "openTitle": "Open project · Plan — WBS",
+    "tagClass": "tag tag-accent",
+    "health": "On track",
+    "healthClass": "tag tag-neutral",
+    "spiText": "1.01",
+    "spiColor": "var(--color-text)",
+    "cpiText": "1.05",
+    "cpiColor": "var(--color-text)",
+    "msName": "Procurement module complete",
+    "msLine": "15 Nov · At risk",
+    "msColor": "var(--color-accent-300)",
+    "attention": "—",
+    "delivText": "3 / 4",
+    "delivPct": "75%",
+    "delivs": [
+     [
+      "Plans d’ensemble diffusés (rév. A)",
+      true
+     ],
+     [
+      "Notes de calcul validées",
+      true
+     ],
+     [
+      "Nomenclature projet gelée",
+      false
+     ],
+     [
+      "Analyse de risques revue",
+      true
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "Approvisionnements",
+      "Plans & nomenclature gelés"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "45%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "1 Mar 2027",
+    "finishForecast": "1 Mar 2027",
+    "finishColor": "var(--color-neutral-300)",
+    "floatText": "+2 d",
+    "budgetText": "€960k",
+    "spentText": "€410k",
+    "earnedText": "€432k",
+    "eacText": "€911k",
+    "vacText": "+€49k",
+    "vacColor": "var(--color-neutral-300)",
+    "spentPct": "43%",
+    "spentColor": "var(--color-accent)"
+   },
+   {
+    "code": "WSA-044",
+    "name": "#044 · Westfield Solar Array",
+    "idLine": "WFE001 · DAS 2 · SPUR",
+    "metaLine": "K. Blanchard · Energy BU · Aug 2026 → Jun 2027",
+    "status": "APD",
+    "isNew": false,
+    "canOpen": true,
+    "openTitle": "Open project · Plan — WBS",
+    "tagClass": "tag tag-outline",
+    "health": "On track",
+    "healthClass": "tag tag-neutral",
+    "spiText": "1.06",
+    "spiColor": "var(--color-text)",
+    "cpiText": "1.04",
+    "cpiColor": "var(--color-text)",
+    "msName": "Civil & access roads complete",
+    "msLine": "1 Dec · On track",
+    "msColor": "var(--color-neutral-400)",
+    "attention": "—",
+    "delivText": "2 / 3",
+    "delivPct": "67%",
+    "delivs": [
+     [
+      "Avant-projet détaillé approuvé client",
+      true
+     ],
+     [
+      "Planning BL1 posé",
+      true
+     ],
+     [
+      "Budget BAC approuvé",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "Etudes",
+      "APD approuvé · BL1 posé"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "27%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "1 Jul 2027",
+    "finishForecast": "1 Jul 2027",
+    "finishColor": "var(--color-neutral-300)",
+    "floatText": "+11 d",
+    "budgetText": "€3.40M",
+    "spentText": "€880k",
+    "earnedText": "€918k",
+    "eacText": "€3.26M",
+    "vacText": "+€141k",
+    "vacColor": "var(--color-neutral-300)",
+    "spentPct": "26%",
+    "spentColor": "var(--color-accent)"
+   },
+   {
+    "code": "MSR-012",
+    "name": "#012 · Marseille Metro Signage Rollout",
+    "idLine": "RTM003 · DAS 1 · MEMU",
+    "metaLine": "A. Naveau · Transit BU · Mar 2026 → Oct 2026",
+    "status": "Mise Service & SAT",
+    "isNew": false,
+    "canOpen": true,
+    "openTitle": "Open project · Plan — WBS",
+    "tagClass": "tag tag-accent",
+    "health": "At risk",
+    "healthClass": "tag tag-outline",
+    "spiText": "0.95",
+    "spiColor": "var(--color-accent-300)",
+    "cpiText": "1.03",
+    "cpiColor": "var(--color-text)",
+    "msName": "Acceptance & handover complete",
+    "msLine": "9 Nov 2026 · At risk",
+    "msColor": "var(--color-accent-300)",
+    "attention": "SPI 0.95 · 9 d slip",
+    "delivText": "2 / 4",
+    "delivPct": "50%",
+    "delivs": [
+     [
+      "Mise en service réalisée",
+      true
+     ],
+     [
+      "SAT — PV de réception signé",
+      true
+     ],
+     [
+      "Formation opérateurs",
+      false
+     ],
+     [
+      "Dossier as-built remis",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "Garantie",
+      "PV SAT signé · as-built remis"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "91%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "1 Nov 2026",
+    "finishForecast": "9 Nov 2026",
+    "finishColor": "var(--color-accent-300)",
+    "floatText": "−9 d",
+    "budgetText": "€620k",
+    "spentText": "€550k",
+    "earnedText": "€564k",
+    "eacText": "€604k",
+    "vacText": "+€16k",
+    "vacColor": "var(--color-neutral-300)",
+    "spentPct": "89%",
+    "spentColor": "var(--color-accent)"
+   },
+   {
+    "code": "EWA-051",
+    "name": "EWA-051 · Eastbank Warehouse Automation",
+    "idLine": "— · — · —",
+    "metaLine": "S. Perrin · Logistics BU · Feb 2027 → Nov 2027",
+    "status": "Initiative",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-outline",
+    "health": "—",
+    "healthClass": "text-muted",
+    "spiText": "—",
+    "spiColor": "var(--color-neutral-500)",
+    "cpiText": "—",
+    "cpiColor": "var(--color-neutral-500)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-500)",
+    "attention": "—",
+    "delivText": "0 / 3",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Fiche initiative validée",
+      false
+     ],
+     [
+      "Identifiant & code analytique créés",
+      false
+     ],
+     [
+      "Chef de projet nommé",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "APS",
+      "Fiche initiative validée"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "0%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "Nov 2027",
+    "finishForecast": "—",
+    "finishColor": "var(--color-neutral-400)",
+    "floatText": "—",
+    "budgetText": "€2.20M",
+    "spentText": "—",
+    "earnedText": "—",
+    "eacText": "—",
+    "vacText": "—",
+    "vacColor": "var(--color-neutral-400)",
+    "spentPct": "0%",
+    "spentColor": "var(--color-neutral-600)"
+   },
+   {
+    "code": "FTU-052",
+    "name": "FTU-052 · Fleet Telematics Upgrade",
+    "idLine": "— · — · —",
+    "metaLine": "A. Naveau · Operations · Jan 2027 → Jun 2027",
+    "status": "Initiative",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-outline",
+    "health": "—",
+    "healthClass": "text-muted",
+    "spiText": "—",
+    "spiColor": "var(--color-neutral-500)",
+    "cpiText": "—",
+    "cpiColor": "var(--color-neutral-500)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-500)",
+    "attention": "—",
+    "delivText": "0 / 3",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Fiche initiative validée",
+      false
+     ],
+     [
+      "Identifiant & code analytique créés",
+      false
+     ],
+     [
+      "Chef de projet nommé",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "APS",
+      "Fiche initiative validée"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "0%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "Jun 2027",
+    "finishForecast": "—",
+    "finishColor": "var(--color-neutral-400)",
+    "floatText": "—",
+    "budgetText": "€480k",
+    "spentText": "—",
+    "earnedText": "—",
+    "eacText": "—",
+    "vacText": "—",
+    "vacColor": "var(--color-neutral-400)",
+    "spentPct": "0%",
+    "spentColor": "var(--color-neutral-600)"
+   },
+   {
+    "code": "RBR-048",
+    "name": "RBR-048 · Ridgeway Bridge Rehabilitation",
+    "idLine": "— · — · —",
+    "metaLine": "L. Fontaine · Highways agency · Mar 2027 → Aug 2028",
+    "status": "APS",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-outline",
+    "health": "—",
+    "healthClass": "text-muted",
+    "spiText": "—",
+    "spiColor": "var(--color-neutral-500)",
+    "cpiText": "—",
+    "cpiColor": "var(--color-neutral-500)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-500)",
+    "attention": "—",
+    "delivText": "0 / 3",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Avant-projet sommaire émis",
+      false
+     ],
+     [
+      "Devis budgétaire remis",
+      false
+     ],
+     [
+      "Go / no-go direction",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "APD",
+      "APS émis · go direction"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "0%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "Aug 2028",
+    "finishForecast": "—",
+    "finishColor": "var(--color-neutral-400)",
+    "floatText": "—",
+    "budgetText": "€5.10M",
+    "spentText": "—",
+    "earnedText": "—",
+    "eacText": "—",
+    "vacText": "—",
+    "vacColor": "var(--color-neutral-400)",
+    "spentPct": "0%",
+    "spentColor": "var(--color-neutral-600)"
+   },
+   {
+    "code": "CER-047",
+    "name": "CER-047 · Campus Energy Retrofit",
+    "idLine": "— · — · —",
+    "metaLine": "K. Blanchard · Facilities · Nov 2026 → Oct 2027",
+    "status": "APD",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-outline",
+    "health": "Off track",
+    "healthClass": "tag tag-accent",
+    "spiText": "1.00",
+    "spiColor": "var(--color-text)",
+    "cpiText": "0.70",
+    "cpiColor": "var(--color-accent-300)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-400)",
+    "attention": "CPI 0.70",
+    "delivText": "0 / 3",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Avant-projet détaillé approuvé client",
+      false
+     ],
+     [
+      "Planning BL1 posé",
+      false
+     ],
+     [
+      "Budget BAC approuvé",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "Etudes",
+      "APD approuvé · BL1 posé"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "2%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "Oct 2027",
+    "finishForecast": "Oct 2027",
+    "finishColor": "var(--color-neutral-300)",
+    "floatText": "0 d",
+    "budgetText": "€1.90M",
+    "spentText": "€60k",
+    "earnedText": "€38k",
+    "eacText": "€2.71M",
+    "vacText": "−€814k",
+    "vacColor": "var(--color-accent-300)",
+    "spentPct": "3%",
+    "spentColor": "var(--color-accent-300)"
+   },
+   {
+    "code": "PRS-038",
+    "name": "PRS-038 · Portside Rail Spur",
+    "idLine": "— · — · —",
+    "metaLine": "R. Aubert · Port authority · Apr 2026 → —",
+    "status": "Approvisionnements",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-accent",
+    "health": "On track",
+    "healthClass": "tag tag-neutral",
+    "spiText": "1.00",
+    "spiColor": "var(--color-text)",
+    "cpiText": "1.02",
+    "cpiColor": "var(--color-text)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-400)",
+    "attention": "—",
+    "delivText": "0 / 3",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Commandes longs délais passées",
+      false
+     ],
+     [
+      "Consultations attribuées",
+      false
+     ],
+     [
+      "Livraisons critiques confirmées",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "Fabrication & Assemblage",
+      "Commandes longs délais passées"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "11%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "finish not planned",
+    "finishForecast": "finish not planned",
+    "finishColor": "var(--color-neutral-300)",
+    "floatText": "—",
+    "budgetText": "€3.80M",
+    "spentText": "€410k",
+    "earnedText": "€418k",
+    "eacText": "€3.73M",
+    "vacText": "+€73k",
+    "vacColor": "var(--color-neutral-300)",
+    "spentPct": "11%",
+    "spentColor": "var(--color-accent)"
+   },
+   {
+    "code": "ALP-021",
+    "name": "ALP-021 · Airfield Lighting Phase 1",
+    "idLine": "— · — · —",
+    "metaLine": "C. Moreau · Airport operator · Sep 2025 → Sep 2026",
+    "status": "Garantie",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-outline",
+    "health": "On track",
+    "healthClass": "tag tag-neutral",
+    "spiText": "1.02",
+    "spiColor": "var(--color-text)",
+    "cpiText": "1.02",
+    "cpiColor": "var(--color-text)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-400)",
+    "attention": "—",
+    "delivText": "0 / 3",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Période de garantie ouverte",
+      false
+     ],
+     [
+      "Réserves de réception levées",
+      false
+     ],
+     [
+      "Retour d’expérience réalisé",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "Clos",
+      "Réserves levées · REX fait"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "100%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "Sep 2026",
+    "finishForecast": "Sep 2026",
+    "finishColor": "var(--color-neutral-300)",
+    "floatText": "+4 d",
+    "budgetText": "€720k",
+    "spentText": "€706k",
+    "earnedText": "€720k",
+    "eacText": "€706k",
+    "vacText": "+€14k",
+    "vacColor": "var(--color-neutral-300)",
+    "spentPct": "98%",
+    "spentColor": "var(--color-accent)"
+   },
+   {
+    "code": "DRR-009",
+    "name": "DRR-009 · Depot Roof Replacement",
+    "idLine": "— · — · —",
+    "metaLine": "A. Ollivier · Transit BU · Feb 2025 → Aug 2025",
+    "status": "Clos",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-neutral",
+    "health": "—",
+    "healthClass": "text-muted",
+    "spiText": "—",
+    "spiColor": "var(--color-neutral-500)",
+    "cpiText": "—",
+    "cpiColor": "var(--color-neutral-500)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-500)",
+    "attention": "—",
+    "delivText": "0 / 2",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Clôture financière",
+      false
+     ],
+     [
+      "Archivage documentaire",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [],
+    "progressPct": "100%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "Aug 2025",
+    "finishForecast": "—",
+    "finishColor": "var(--color-neutral-400)",
+    "floatText": "—",
+    "budgetText": "€310k",
+    "spentText": "€298k",
+    "earnedText": "—",
+    "eacText": "—",
+    "vacText": "—",
+    "vacColor": "var(--color-neutral-400)",
+    "spentPct": "96%",
+    "spentColor": "var(--color-neutral-600)"
+   },
+   {
+    "code": "HRM-011",
+    "name": "HRM-011 · HR System Migration",
+    "idLine": "— · — · —",
+    "metaLine": "D. Imbert · People ops · Jan 2025 → Jun 2025",
+    "status": "Clos",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-neutral",
+    "health": "—",
+    "healthClass": "text-muted",
+    "spiText": "—",
+    "spiColor": "var(--color-neutral-500)",
+    "cpiText": "—",
+    "cpiColor": "var(--color-neutral-500)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-500)",
+    "attention": "—",
+    "delivText": "0 / 2",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Clôture financière",
+      false
+     ],
+     [
+      "Archivage documentaire",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [],
+    "progressPct": "100%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "Jun 2025",
+    "finishForecast": "—",
+    "finishColor": "var(--color-neutral-400)",
+    "floatText": "—",
+    "budgetText": "€540k",
+    "spentText": "€571k",
+    "earnedText": "—",
+    "eacText": "—",
+    "vacText": "—",
+    "vacColor": "var(--color-neutral-400)",
+    "spentPct": "106%",
+    "spentColor": "var(--color-neutral-600)"
+   },
+   {
+    "code": "QFR-015",
+    "name": "QFR-015 · Quayside Fender Renewal",
+    "idLine": "— · — · —",
+    "metaLine": "R. Aubert · Port authority · Mar 2025 → Dec 2025",
+    "status": "Clos",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-neutral",
+    "health": "—",
+    "healthClass": "text-muted",
+    "spiText": "—",
+    "spiColor": "var(--color-neutral-500)",
+    "cpiText": "—",
+    "cpiColor": "var(--color-neutral-500)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-500)",
+    "attention": "—",
+    "delivText": "0 / 2",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Clôture financière",
+      false
+     ],
+     [
+      "Archivage documentaire",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [],
+    "progressPct": "100%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "Dec 2025",
+    "finishForecast": "—",
+    "finishColor": "var(--color-neutral-400)",
+    "floatText": "—",
+    "budgetText": "€1.10M",
+    "spentText": "€1.08M",
+    "earnedText": "—",
+    "eacText": "—",
+    "vacText": "—",
+    "vacColor": "var(--color-neutral-400)",
+    "spentPct": "98%",
+    "spentColor": "var(--color-neutral-600)"
+   },
+   {
+    "code": "TTR-017",
+    "name": "TTR-017 · Telecom Tower Relocation",
+    "idLine": "— · — · —",
+    "metaLine": "K. Blanchard · Network BU · May 2025 → Nov 2025",
+    "status": "Clos",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-neutral",
+    "health": "—",
+    "healthClass": "text-muted",
+    "spiText": "—",
+    "spiColor": "var(--color-neutral-500)",
+    "cpiText": "—",
+    "cpiColor": "var(--color-neutral-500)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-500)",
+    "attention": "—",
+    "delivText": "0 / 2",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Clôture financière",
+      false
+     ],
+     [
+      "Archivage documentaire",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [],
+    "progressPct": "100%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "Nov 2025",
+    "finishForecast": "—",
+    "finishColor": "var(--color-neutral-400)",
+    "floatText": "—",
+    "budgetText": "€260k",
+    "spentText": "€255k",
+    "earnedText": "—",
+    "eacText": "—",
+    "vacText": "—",
+    "vacColor": "var(--color-neutral-400)",
+    "spentPct": "98%",
+    "spentColor": "var(--color-neutral-600)"
+   },
+   {
+    "code": "SCP-033",
+    "name": "SCP-033 · Southgate Car Park",
+    "idLine": "— · — · —",
+    "metaLine": "S. Perrin · Retail BU · — → —",
+    "status": "Annulé",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-neutral",
+    "health": "—",
+    "healthClass": "text-muted",
+    "spiText": "—",
+    "spiColor": "var(--color-neutral-500)",
+    "cpiText": "—",
+    "cpiColor": "var(--color-neutral-500)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-500)",
+    "attention": "—",
+    "delivText": "0 / 0",
+    "delivPct": "0%",
+    "delivs": [],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [],
+    "progressPct": "0%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "—",
+    "finishForecast": "—",
+    "finishColor": "var(--color-neutral-400)",
+    "floatText": "—",
+    "budgetText": "€900k",
+    "spentText": "€35k",
+    "earnedText": "—",
+    "eacText": "—",
+    "vacText": "—",
+    "vacColor": "var(--color-neutral-400)",
+    "spentPct": "4%",
+    "spentColor": "var(--color-neutral-600)"
+   }
+  ],
+  "slider": {
+   "ticks": [
+    [
+     "All",
+     17,
+     "0.000%",
+     "var(--color-accent)",
+     "var(--color-accent-300)",
+     "500"
+    ],
+    [
+     "Init.",
+     2,
+     "7.692%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "APS",
+     1,
+     "15.385%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "APD",
+     2,
+     "23.077%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Études",
+     1,
+     "30.769%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Appro.",
+     2,
+     "38.462%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Fab.",
+     1,
+     "46.154%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "FAT",
+     0,
+     "53.846%",
+     "var(--color-neutral-800)",
+     "var(--color-neutral-600)",
+     "400"
+    ],
+    [
+     "Expéd.",
+     0,
+     "61.538%",
+     "var(--color-neutral-800)",
+     "var(--color-neutral-600)",
+     "400"
+    ],
+    [
+     "Chantier",
+     1,
+     "69.231%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "MES/SAT",
+     1,
+     "76.923%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Garantie",
+     1,
+     "84.615%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Clos",
+     4,
+     "92.308%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Annulé",
+     1,
+     "100.000%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ]
+   ],
+   "thumb": "0.000%",
+   "sel": [
+    "All projects",
+    "17 projects",
+    "Drag the cursor to filter by stage"
+   ],
+   "title": "All projects · 17",
+   "hint": "Click a status to move it"
+  },
+  "sliderFab": {
+   "ticks": [
+    [
+     "All",
+     17,
+     "0.000%",
+     "var(--color-accent-700)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Init.",
+     2,
+     "7.692%",
+     "var(--color-accent-700)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "APS",
+     1,
+     "15.385%",
+     "var(--color-accent-700)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "APD",
+     2,
+     "23.077%",
+     "var(--color-accent-700)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Études",
+     1,
+     "30.769%",
+     "var(--color-accent-700)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Appro.",
+     2,
+     "38.462%",
+     "var(--color-accent-700)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Fab.",
+     1,
+     "46.154%",
+     "var(--color-accent)",
+     "var(--color-accent-300)",
+     "500"
+    ],
+    [
+     "FAT",
+     0,
+     "53.846%",
+     "var(--color-neutral-800)",
+     "var(--color-neutral-600)",
+     "400"
+    ],
+    [
+     "Expéd.",
+     0,
+     "61.538%",
+     "var(--color-neutral-800)",
+     "var(--color-neutral-600)",
+     "400"
+    ],
+    [
+     "Chantier",
+     1,
+     "69.231%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "MES/SAT",
+     1,
+     "76.923%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Garantie",
+     1,
+     "84.615%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Clos",
+     4,
+     "92.308%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Annulé",
+     1,
+     "100.000%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ]
+   ],
+   "thumb": "46.154%",
+   "sel": [
+    "Fabrication & Assemblage",
+    "1 project · Structure, montage mécanique, câblage",
+    "Drag the cursor or use ← → to change stage"
+   ],
+   "title": "Fabrication & Assemblage projects · 1",
+   "hint": "Forecast from SPI"
+  },
+  "fabRows": [
+   "HLT-026"
+  ],
+  "search": {
+   "harbor": [
+    "HLT-026"
+   ],
+   "emp": [
+    "HLT-026"
+   ],
+   "#03": [
+    "NDC-031",
+    "ERP-202"
+   ],
+   "hav": [
+    "HLT-026"
+   ],
+   "ewa": [
+    "EWA-051",
+    "RBR-048",
+    "QFR-015"
+   ],
+   "MEMU": [
+    "RCF-019",
+    "MSR-012"
+   ],
+   "clinique": [
+    "RCF-019"
+   ]
+  },
+  "force": {
+   "name": "#026 · Harbor Line Terminal Expansion",
+   "from": "Fabrication & Assemblage",
+   "to": "FAT",
+   "missing": [
+    "Câblage & armoires terminés",
+    "NCR majeures clôturées"
+   ],
+   "isCancel": false,
+   "approver": "Marie Lefebvre · Directrice de portefeuille"
+  },
+  "npDefault": {
+   "stepNo": 4,
+   "steps": [
+    "Basics",
+    "Structure",
+    "Budget",
+    "Schedule"
+   ],
+   "pid": "#045",
+   "ana": "XXX001",
+   "anaHint": "3 client letters + incremental number",
+   "templates": [
+    [
+     "Projet blank",
+     "WBS vide — vous définissez lots, catégories et calendriers."
+    ],
+    [
+     "Planning EMP",
+     "Planning standard EMP : études, structure, montage mécanique, électricité & automatisme, essais, réception."
+    ]
+   ],
+   "copyItems": [
+    [
+     "WBS",
+     "6 phases · 14 lots"
+    ],
+    [
+     "Activities & logic",
+     "38 activités · 52 liens"
+    ],
+    [
+     "Cost categories",
+     "7 categories"
+    ],
+    [
+     "Calendars",
+     "Standard 5d · 8h + Atelier"
+    ],
+    [
+     "Baselines",
+     "Not copied"
+    ]
+   ],
+   "phases": [
+    "1 · Études & approvisionnements longs",
+    "2 · Fabrication structure",
+    "3 · Montage mécanique",
+    "4 · Installation électrique & automatisme",
+    "5 · Essais & mise en service",
+    "6 · Réception & transfert"
+   ],
+   "catSource": "Budget structure of Planning EMP",
+   "cats": [
+    [
+     "Études",
+     "Labor",
+     "160"
+    ],
+    [
+     "Matière & structure",
+     "Material",
+     "560"
+    ],
+    [
+     "Composants achetés",
+     "Material",
+     "440"
+    ],
+    [
+     "Fabrication & montage",
+     "Labor",
+     "360"
+    ],
+    [
+     "Sous-traitance",
+     "Subcontract",
+     "200"
+    ],
+    [
+     "Installation & essais",
+     "Labor",
+     "160"
+    ],
+    [
+     "Frais & transport",
+     "Fees",
+     "60"
+    ]
+   ],
+   "totalText": "€2.04M",
+   "summary": "#045 · XXX001 · DAS 2 · EMP · Untitled project · status Initiative · 6 phases · 14 lots, 38 activités · 52 liens copied · 7 cost categories with 5% contingency · Standard 5d · 8h calendar · weekly data date."
+  },
+  "npBlank": {
+   "stepNo": 3,
+   "steps": [
+    "Basics",
+    "Structure",
+    "Budget",
+    "Schedule"
+   ],
+   "pid": "#045",
+   "ana": "ACM001",
+   "anaHint": "New client — code ACM proposed",
+   "templates": [
+    [
+     "Projet blank",
+     "WBS vide — vous définissez lots, catégories et calendriers."
+    ],
+    [
+     "Planning R&D",
+     "Exploration, prototype, essais & itérations, industrialisation, bilan — jalons de décision go / no-go."
+    ]
+   ],
+   "copyItems": [
+    [
+     "WBS",
+     "Vide"
+    ],
+    [
+     "Activities & logic",
+     "Aucune"
+    ],
+    [
+     "Cost categories",
+     "Define in step 3"
+    ],
+    [
+     "Calendars",
+     "Standard 5d · 8h"
+    ],
+    [
+     "Baselines",
+     "Not copied"
+    ]
+   ],
+   "phases": [],
+   "catSource": "Start from nothing",
+   "cats": [],
+   "totalText": "$0k",
+   "summary": "#045 · ACM001 · DAS 4 · R&D · Lab line · status Initiative · empty WBS · 0 cost categories with 10% contingency · 24h continuous calendar · weekly data date."
+  },
+  "npSpur": {
+   "stepNo": 2,
+   "steps": [
+    "Basics",
+    "Structure",
+    "Budget",
+    "Schedule"
+   ],
+   "pid": "#045",
+   "ana": "LOG001",
+   "anaHint": "Client code LOG · incremental number",
+   "templates": [
+    [
+     "Projet blank",
+     "WBS vide — vous définissez lots, catégories et calendriers."
+    ],
+    [
+     "Planning SPUR",
+     "Planning standard SPUR : études & permis, génie civil, structures, équipements électriques, raccordement, mise en service."
+    ]
+   ],
+   "copyItems": [
+    [
+     "WBS",
+     "6 phases · 15 lots"
+    ],
+    [
+     "Activities & logic",
+     "44 activités · 60 liens"
+    ],
+    [
+     "Cost categories",
+     "5 categories"
+    ],
+    [
+     "Calendars",
+     "Chantier 6d · 10h"
+    ],
+    [
+     "Baselines",
+     "Not copied"
+    ]
+   ],
+   "phases": [
+    "1 · Études & permis",
+    "2 · Génie civil",
+    "3 · Structures & supports",
+    "4 · Équipements électriques",
+    "5 · Raccordement & essais",
+    "6 · Mise en service"
+   ],
+   "catSource": "Budget structure of Planning SPUR",
+   "cats": [],
+   "totalText": "€0k",
+   "summary": "#045 · LOG001 · DAS 2 · SPUR · Untitled project · status Initiative · 6 phases · 15 lots, 44 activités · 60 liens copied · 0 cost categories with 5% contingency · Standard 5d · 8h calendar · weekly data date."
+  }
+ },
+ "fr": {
+  "rows": [
+   {
+    "code": "HLT-026",
+    "name": "#026 · Extension du terminal Harbor Line",
+    "idLine": "HAV004 · DAS 2 · EMP",
+    "metaLine": "R. Aubert · Autorité portuaire · Jan 2026 → Dec 2026",
+    "status": "Fabrication & Assemblage",
+    "isNew": false,
+    "canOpen": true,
+    "openTitle": "Ouvrir le projet · Plan — WBS",
+    "tagClass": "tag tag-accent",
+    "health": "À risque",
+    "healthClass": "tag tag-outline",
+    "spiText": "0.90",
+    "spiColor": "var(--color-accent-300)",
+    "cpiText": "0.91",
+    "cpiColor": "var(--color-accent-300)",
+    "msName": "Structure hors d’eau",
+    "msLine": "23 oct. · En retard",
+    "msColor": "var(--color-accent-300)",
+    "attention": "SPI 0.90 · CPI 0.91 · Structure hors d’eau · En retard · 27 j de dérive",
+    "delivText": "2 / 4",
+    "delivPct": "50%",
+    "delivs": [
+     [
+      "Structure fabriquée & contrôlée",
+      true
+     ],
+     [
+      "Assemblage mécanique terminé",
+      true
+     ],
+     [
+      "Câblage & armoires terminés",
+      false
+     ],
+     [
+      "NCR majeures clôturées",
+      false
+     ]
+    ],
+    "hist": [
+     [
+      "Fabrication & Assemblage",
+      "14 juil. 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "Approvisionnements",
+      "8 juin 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "Études",
+      "20 avr. 2026",
+      "Forcé",
+      "tag tag-accent",
+      "Nomenclature gelée avant validation des notes de calcul — délai matière (validé M. Lefebvre)"
+     ],
+     [
+      "APD",
+      "12 mars 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "APS",
+      "9 févr. 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "Initiative",
+      "12 janv. 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ]
+    ],
+    "histCount": 6,
+    "transitions": [
+     [
+      "FAT",
+      "Assemblage & câblage terminés"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "64%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "18 déc. 2026",
+    "finishForecast": "14 janv. 2027",
+    "finishColor": "var(--color-accent-300)",
+    "floatText": "−27 j",
+    "budgetText": "4,80 M€",
+    "spentText": "3,36 M€",
+    "earnedText": "3,07 M€",
+    "eacText": "5,25 M€",
+    "vacText": "−450 k€",
+    "vacColor": "var(--color-accent-300)",
+    "spentPct": "70%",
+    "spentColor": "var(--color-accent-300)"
+   },
+   {
+    "code": "NDC-031",
+    "name": "#031 · Rénovation du data center Northgate",
+    "idLine": "NGD001 · DAS 3 · AUTRE",
+    "metaLine": "S. Perrin · Infrastructure BU · Apr 2026 → Mar 2027",
+    "status": "Approvisionnements",
+    "isNew": false,
+    "canOpen": true,
+    "openTitle": "Ouvrir le projet · Plan — WBS",
+    "tagClass": "tag tag-accent",
+    "health": "Conforme",
+    "healthClass": "tag tag-neutral",
+    "spiText": "0.98",
+    "spiColor": "var(--color-text)",
+    "cpiText": "1.05",
+    "cpiColor": "var(--color-text)",
+    "msName": "Power upgrade — UPS & switchgear complete",
+    "msLine": "5 nov. · À risque",
+    "msColor": "var(--color-accent-300)",
+    "attention": "4 j de dérive",
+    "delivText": "2 / 3",
+    "delivPct": "67%",
+    "delivs": [
+     [
+      "Commandes longs délais passées",
+      true
+     ],
+     [
+      "Consultations attribuées",
+      true
+     ],
+     [
+      "Livraisons critiques confirmées",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "Fabrication & Assemblage",
+      "Commandes longs délais passées"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "51%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "1 avr. 2027",
+    "finishForecast": "5 avr. 2027",
+    "finishColor": "var(--color-accent-300)",
+    "floatText": "−4 j",
+    "budgetText": "2,10 M€",
+    "spentText": "1,02 M€",
+    "earnedText": "1,07 M€",
+    "eacText": "2,00 M€",
+    "vacText": "+100 k€",
+    "vacColor": "var(--color-neutral-300)",
+    "spentPct": "49%",
+    "spentColor": "var(--color-accent)"
+   },
+   {
+    "code": "RCF-019",
+    "name": "#019 · Aménagement de la Clinique Pasteur Lyon",
+    "idLine": "CPL002 · DAS 1 · MEMU",
+    "metaLine": "C. Moreau · Health trust · Feb 2026 → Nov 2026",
+    "status": "Chantier",
+    "isNew": false,
+    "canOpen": true,
+    "openTitle": "Ouvrir le projet · Plan — WBS",
+    "tagClass": "tag tag-accent",
+    "health": "Hors trajectoire",
+    "healthClass": "tag tag-accent",
+    "spiText": "0.84",
+    "spiColor": "var(--color-accent-300)",
+    "cpiText": "0.91",
+    "cpiColor": "var(--color-accent-300)",
+    "msName": "Fire systems complete",
+    "msLine": "27 oct. · En retard",
+    "msColor": "var(--color-accent-300)",
+    "attention": "SPI 0.84 · CPI 0.91 · Fire systems complete · En retard · 29 j de dérive",
+    "delivText": "2 / 3",
+    "delivPct": "67%",
+    "delivs": [
+     [
+      "Montage site terminé",
+      true
+     ],
+     [
+      "Raccordements réalisés",
+      true
+     ],
+     [
+      "Sécurité chantier clôturée",
+      false
+     ]
+    ],
+    "hist": [
+     [
+      "Chantier",
+      "7 sept. 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "Expédition",
+      "24 août 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "FAT",
+      "3 août 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "Fabrication & Assemblage",
+      "29 juin 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "Approvisionnements",
+      "1 juin 2026",
+      "Forcé",
+      "tag tag-accent",
+      "Consultation électricité non attribuée — démarrage fabrication anticipé"
+     ],
+     [
+      "Études",
+      "4 mai 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "APD",
+      "30 mars 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "APS",
+      "2 mars 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ],
+     [
+      "Initiative",
+      "5 févr. 2026",
+      "Auto",
+      "tag tag-neutral",
+      ""
+     ]
+    ],
+    "histCount": 9,
+    "transitions": [
+     [
+      "Mise en service & SAT",
+      "Montage & raccordements terminés"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "82%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "1 déc. 2026",
+    "finishForecast": "27 déc. 2026",
+    "finishColor": "var(--color-accent-300)",
+    "floatText": "−29 j",
+    "budgetText": "1,35 M€",
+    "spentText": "1,21 M€",
+    "earnedText": "1,11 M€",
+    "eacText": "1,48 M€",
+    "vacText": "−126 k€",
+    "vacColor": "var(--color-accent-300)",
+    "spentPct": "90%",
+    "spentColor": "var(--color-accent-300)"
+   },
+   {
+    "code": "ERP-202",
+    "name": "#032 · ERP Migration — Phase 2",
+    "idLine": "KEY011 · DAS 4 · R&D",
+    "metaLine": "D. Imbert · Finance · Jun 2026 → Feb 2027",
+    "status": "Études",
+    "isNew": false,
+    "canOpen": true,
+    "openTitle": "Ouvrir le projet · Plan — WBS",
+    "tagClass": "tag tag-accent",
+    "health": "Conforme",
+    "healthClass": "tag tag-neutral",
+    "spiText": "1.01",
+    "spiColor": "var(--color-text)",
+    "cpiText": "1.05",
+    "cpiColor": "var(--color-text)",
+    "msName": "Procurement module complete",
+    "msLine": "15 nov. · À risque",
+    "msColor": "var(--color-accent-300)",
+    "attention": "—",
+    "delivText": "3 / 4",
+    "delivPct": "75%",
+    "delivs": [
+     [
+      "Plans d’ensemble diffusés (rév. A)",
+      true
+     ],
+     [
+      "Notes de calcul validées",
+      true
+     ],
+     [
+      "Nomenclature projet gelée",
+      false
+     ],
+     [
+      "Analyse de risques revue",
+      true
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "Approvisionnements",
+      "Plans & nomenclature gelés"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "45%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "1 mars 2027",
+    "finishForecast": "1 mars 2027",
+    "finishColor": "var(--color-neutral-300)",
+    "floatText": "+2 j",
+    "budgetText": "960 k€",
+    "spentText": "410 k€",
+    "earnedText": "432 k€",
+    "eacText": "911 k€",
+    "vacText": "+49 k€",
+    "vacColor": "var(--color-neutral-300)",
+    "spentPct": "43%",
+    "spentColor": "var(--color-accent)"
+   },
+   {
+    "code": "WSA-044",
+    "name": "#044 · Centrale solaire de Westfield",
+    "idLine": "WFE001 · DAS 2 · SPUR",
+    "metaLine": "K. Blanchard · Energy BU · Aug 2026 → Jun 2027",
+    "status": "APD",
+    "isNew": false,
+    "canOpen": true,
+    "openTitle": "Ouvrir le projet · Plan — WBS",
+    "tagClass": "tag tag-outline",
+    "health": "Conforme",
+    "healthClass": "tag tag-neutral",
+    "spiText": "1.06",
+    "spiColor": "var(--color-text)",
+    "cpiText": "1.04",
+    "cpiColor": "var(--color-text)",
+    "msName": "Civil & access roads complete",
+    "msLine": "1 déc. · Conforme",
+    "msColor": "var(--color-neutral-400)",
+    "attention": "—",
+    "delivText": "2 / 3",
+    "delivPct": "67%",
+    "delivs": [
+     [
+      "Avant-projet détaillé approuvé client",
+      true
+     ],
+     [
+      "Planning BL1 posé",
+      true
+     ],
+     [
+      "Budget BAC approuvé",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "Études",
+      "APD approuvé · BL1 posé"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "27%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "1 juil. 2027",
+    "finishForecast": "1 juil. 2027",
+    "finishColor": "var(--color-neutral-300)",
+    "floatText": "+11 j",
+    "budgetText": "3,40 M€",
+    "spentText": "880 k€",
+    "earnedText": "918 k€",
+    "eacText": "3,26 M€",
+    "vacText": "+141 k€",
+    "vacColor": "var(--color-neutral-300)",
+    "spentPct": "26%",
+    "spentColor": "var(--color-accent)"
+   },
+   {
+    "code": "MSR-012",
+    "name": "#012 · Déploiement signalétique métro de Marseille",
+    "idLine": "RTM003 · DAS 1 · MEMU",
+    "metaLine": "A. Naveau · Transit BU · Mar 2026 → Oct 2026",
+    "status": "Mise en service & SAT",
+    "isNew": false,
+    "canOpen": true,
+    "openTitle": "Ouvrir le projet · Plan — WBS",
+    "tagClass": "tag tag-accent",
+    "health": "À risque",
+    "healthClass": "tag tag-outline",
+    "spiText": "0.95",
+    "spiColor": "var(--color-accent-300)",
+    "cpiText": "1.03",
+    "cpiColor": "var(--color-text)",
+    "msName": "Acceptance & handover complete",
+    "msLine": "9 nov. 2026 · À risque",
+    "msColor": "var(--color-accent-300)",
+    "attention": "SPI 0.95 · 9 j de dérive",
+    "delivText": "2 / 4",
+    "delivPct": "50%",
+    "delivs": [
+     [
+      "Mise en service réalisée",
+      true
+     ],
+     [
+      "SAT — PV de réception signé",
+      true
+     ],
+     [
+      "Formation opérateurs",
+      false
+     ],
+     [
+      "Dossier as-built remis",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "Garantie",
+      "PV SAT signé · as-built remis"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "91%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "1 nov. 2026",
+    "finishForecast": "9 nov. 2026",
+    "finishColor": "var(--color-accent-300)",
+    "floatText": "−9 j",
+    "budgetText": "620 k€",
+    "spentText": "550 k€",
+    "earnedText": "564 k€",
+    "eacText": "604 k€",
+    "vacText": "+16 k€",
+    "vacColor": "var(--color-neutral-300)",
+    "spentPct": "89%",
+    "spentColor": "var(--color-accent)"
+   },
+   {
+    "code": "EWA-051",
+    "name": "EWA-051 · Automatisation de l’entrepôt Eastbank",
+    "idLine": "— · — · —",
+    "metaLine": "S. Perrin · Logistics BU · Feb 2027 → Nov 2027",
+    "status": "Initiative",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-outline",
+    "health": "—",
+    "healthClass": "text-muted",
+    "spiText": "—",
+    "spiColor": "var(--color-neutral-500)",
+    "cpiText": "—",
+    "cpiColor": "var(--color-neutral-500)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-500)",
+    "attention": "—",
+    "delivText": "0 / 3",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Fiche initiative validée",
+      false
+     ],
+     [
+      "Identifiant & code analytique créés",
+      false
+     ],
+     [
+      "Chef de projet nommé",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "APS",
+      "Fiche initiative validée"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "0%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "nov. 2027",
+    "finishForecast": "—",
+    "finishColor": "var(--color-neutral-400)",
+    "floatText": "—",
+    "budgetText": "2,20 M€",
+    "spentText": "—",
+    "earnedText": "—",
+    "eacText": "—",
+    "vacText": "—",
+    "vacColor": "var(--color-neutral-400)",
+    "spentPct": "0%",
+    "spentColor": "var(--color-neutral-600)"
+   },
+   {
+    "code": "FTU-052",
+    "name": "FTU-052 · Modernisation télématique de flotte",
+    "idLine": "— · — · —",
+    "metaLine": "A. Naveau · Operations · Jan 2027 → Jun 2027",
+    "status": "Initiative",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-outline",
+    "health": "—",
+    "healthClass": "text-muted",
+    "spiText": "—",
+    "spiColor": "var(--color-neutral-500)",
+    "cpiText": "—",
+    "cpiColor": "var(--color-neutral-500)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-500)",
+    "attention": "—",
+    "delivText": "0 / 3",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Fiche initiative validée",
+      false
+     ],
+     [
+      "Identifiant & code analytique créés",
+      false
+     ],
+     [
+      "Chef de projet nommé",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "APS",
+      "Fiche initiative validée"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "0%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "juin 2027",
+    "finishForecast": "—",
+    "finishColor": "var(--color-neutral-400)",
+    "floatText": "—",
+    "budgetText": "480 k€",
+    "spentText": "—",
+    "earnedText": "—",
+    "eacText": "—",
+    "vacText": "—",
+    "vacColor": "var(--color-neutral-400)",
+    "spentPct": "0%",
+    "spentColor": "var(--color-neutral-600)"
+   },
+   {
+    "code": "RBR-048",
+    "name": "RBR-048 · Réhabilitation du pont de Ridgeway",
+    "idLine": "— · — · —",
+    "metaLine": "L. Fontaine · Highways agency · Mar 2027 → Aug 2028",
+    "status": "APS",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-outline",
+    "health": "—",
+    "healthClass": "text-muted",
+    "spiText": "—",
+    "spiColor": "var(--color-neutral-500)",
+    "cpiText": "—",
+    "cpiColor": "var(--color-neutral-500)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-500)",
+    "attention": "—",
+    "delivText": "0 / 3",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Avant-projet sommaire émis",
+      false
+     ],
+     [
+      "Devis budgétaire remis",
+      false
+     ],
+     [
+      "Go / no-go direction",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "APD",
+      "APS émis · go direction"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "0%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "août 2028",
+    "finishForecast": "—",
+    "finishColor": "var(--color-neutral-400)",
+    "floatText": "—",
+    "budgetText": "5,10 M€",
+    "spentText": "—",
+    "earnedText": "—",
+    "eacText": "—",
+    "vacText": "—",
+    "vacColor": "var(--color-neutral-400)",
+    "spentPct": "0%",
+    "spentColor": "var(--color-neutral-600)"
+   },
+   {
+    "code": "CER-047",
+    "name": "CER-047 · Rénovation énergétique du campus",
+    "idLine": "— · — · —",
+    "metaLine": "K. Blanchard · Facilities · Nov 2026 → Oct 2027",
+    "status": "APD",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-outline",
+    "health": "Hors trajectoire",
+    "healthClass": "tag tag-accent",
+    "spiText": "1.00",
+    "spiColor": "var(--color-text)",
+    "cpiText": "0.70",
+    "cpiColor": "var(--color-accent-300)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-400)",
+    "attention": "CPI 0.70",
+    "delivText": "0 / 3",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Avant-projet détaillé approuvé client",
+      false
+     ],
+     [
+      "Planning BL1 posé",
+      false
+     ],
+     [
+      "Budget BAC approuvé",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "Études",
+      "APD approuvé · BL1 posé"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "2%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "oct. 2027",
+    "finishForecast": "oct. 2027",
+    "finishColor": "var(--color-neutral-300)",
+    "floatText": "0 j",
+    "budgetText": "1,90 M€",
+    "spentText": "60 k€",
+    "earnedText": "38 k€",
+    "eacText": "2,71 M€",
+    "vacText": "−814 k€",
+    "vacColor": "var(--color-accent-300)",
+    "spentPct": "3%",
+    "spentColor": "var(--color-accent-300)"
+   },
+   {
+    "code": "PRS-038",
+    "name": "PRS-038 · Embranchement ferroviaire portuaire",
+    "idLine": "— · — · —",
+    "metaLine": "R. Aubert · Autorité portuaire · Apr 2026 → —",
+    "status": "Approvisionnements",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-accent",
+    "health": "Conforme",
+    "healthClass": "tag tag-neutral",
+    "spiText": "1.00",
+    "spiColor": "var(--color-text)",
+    "cpiText": "1.02",
+    "cpiColor": "var(--color-text)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-400)",
+    "attention": "—",
+    "delivText": "0 / 3",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Commandes longs délais passées",
+      false
+     ],
+     [
+      "Consultations attribuées",
+      false
+     ],
+     [
+      "Livraisons critiques confirmées",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "Fabrication & Assemblage",
+      "Commandes longs délais passées"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "11%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "fin non planifiée",
+    "finishForecast": "fin non planifiée",
+    "finishColor": "var(--color-neutral-300)",
+    "floatText": "—",
+    "budgetText": "3,80 M€",
+    "spentText": "410 k€",
+    "earnedText": "418 k€",
+    "eacText": "3,73 M€",
+    "vacText": "+73 k€",
+    "vacColor": "var(--color-neutral-300)",
+    "spentPct": "11%",
+    "spentColor": "var(--color-accent)"
+   },
+   {
+    "code": "ALP-021",
+    "name": "ALP-021 · Balisage aéroportuaire — Phase 1",
+    "idLine": "— · — · —",
+    "metaLine": "C. Moreau · Airport operator · Sep 2025 → Sep 2026",
+    "status": "Garantie",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-outline",
+    "health": "Conforme",
+    "healthClass": "tag tag-neutral",
+    "spiText": "1.02",
+    "spiColor": "var(--color-text)",
+    "cpiText": "1.02",
+    "cpiColor": "var(--color-text)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-400)",
+    "attention": "—",
+    "delivText": "0 / 3",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Période de garantie ouverte",
+      false
+     ],
+     [
+      "Réserves de réception levées",
+      false
+     ],
+     [
+      "Retour d’expérience réalisé",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [
+     [
+      "Clos",
+      "Réserves levées · REX fait"
+     ],
+     [
+      "Annulé",
+      "Décision direction"
+     ]
+    ],
+    "progressPct": "100%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "sept. 2026",
+    "finishForecast": "sept. 2026",
+    "finishColor": "var(--color-neutral-300)",
+    "floatText": "+4 j",
+    "budgetText": "720 k€",
+    "spentText": "706 k€",
+    "earnedText": "720 k€",
+    "eacText": "706 k€",
+    "vacText": "+14 k€",
+    "vacColor": "var(--color-neutral-300)",
+    "spentPct": "98%",
+    "spentColor": "var(--color-accent)"
+   },
+   {
+    "code": "DRR-009",
+    "name": "DRR-009 · Remplacement de la toiture du dépôt",
+    "idLine": "— · — · —",
+    "metaLine": "A. Ollivier · Transit BU · Feb 2025 → Aug 2025",
+    "status": "Clos",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-neutral",
+    "health": "—",
+    "healthClass": "text-muted",
+    "spiText": "—",
+    "spiColor": "var(--color-neutral-500)",
+    "cpiText": "—",
+    "cpiColor": "var(--color-neutral-500)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-500)",
+    "attention": "—",
+    "delivText": "0 / 2",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Clôture financière",
+      false
+     ],
+     [
+      "Archivage documentaire",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [],
+    "progressPct": "100%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "août 2025",
+    "finishForecast": "—",
+    "finishColor": "var(--color-neutral-400)",
+    "floatText": "—",
+    "budgetText": "310 k€",
+    "spentText": "298 k€",
+    "earnedText": "—",
+    "eacText": "—",
+    "vacText": "—",
+    "vacColor": "var(--color-neutral-400)",
+    "spentPct": "96%",
+    "spentColor": "var(--color-neutral-600)"
+   },
+   {
+    "code": "HRM-011",
+    "name": "HRM-011 · Migration du SIRH",
+    "idLine": "— · — · —",
+    "metaLine": "D. Imbert · People ops · Jan 2025 → Jun 2025",
+    "status": "Clos",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-neutral",
+    "health": "—",
+    "healthClass": "text-muted",
+    "spiText": "—",
+    "spiColor": "var(--color-neutral-500)",
+    "cpiText": "—",
+    "cpiColor": "var(--color-neutral-500)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-500)",
+    "attention": "—",
+    "delivText": "0 / 2",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Clôture financière",
+      false
+     ],
+     [
+      "Archivage documentaire",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [],
+    "progressPct": "100%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "juin 2025",
+    "finishForecast": "—",
+    "finishColor": "var(--color-neutral-400)",
+    "floatText": "—",
+    "budgetText": "540 k€",
+    "spentText": "571 k€",
+    "earnedText": "—",
+    "eacText": "—",
+    "vacText": "—",
+    "vacColor": "var(--color-neutral-400)",
+    "spentPct": "106%",
+    "spentColor": "var(--color-neutral-600)"
+   },
+   {
+    "code": "QFR-015",
+    "name": "QFR-015 · Renouvellement des défenses de quai",
+    "idLine": "— · — · —",
+    "metaLine": "R. Aubert · Autorité portuaire · Mar 2025 → Dec 2025",
+    "status": "Clos",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-neutral",
+    "health": "—",
+    "healthClass": "text-muted",
+    "spiText": "—",
+    "spiColor": "var(--color-neutral-500)",
+    "cpiText": "—",
+    "cpiColor": "var(--color-neutral-500)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-500)",
+    "attention": "—",
+    "delivText": "0 / 2",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Clôture financière",
+      false
+     ],
+     [
+      "Archivage documentaire",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [],
+    "progressPct": "100%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "déc. 2025",
+    "finishForecast": "—",
+    "finishColor": "var(--color-neutral-400)",
+    "floatText": "—",
+    "budgetText": "1,10 M€",
+    "spentText": "1,08 M€",
+    "earnedText": "—",
+    "eacText": "—",
+    "vacText": "—",
+    "vacColor": "var(--color-neutral-400)",
+    "spentPct": "98%",
+    "spentColor": "var(--color-neutral-600)"
+   },
+   {
+    "code": "TTR-017",
+    "name": "TTR-017 · Déplacement du pylône télécom",
+    "idLine": "— · — · —",
+    "metaLine": "K. Blanchard · Network BU · May 2025 → Nov 2025",
+    "status": "Clos",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-neutral",
+    "health": "—",
+    "healthClass": "text-muted",
+    "spiText": "—",
+    "spiColor": "var(--color-neutral-500)",
+    "cpiText": "—",
+    "cpiColor": "var(--color-neutral-500)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-500)",
+    "attention": "—",
+    "delivText": "0 / 2",
+    "delivPct": "0%",
+    "delivs": [
+     [
+      "Clôture financière",
+      false
+     ],
+     [
+      "Archivage documentaire",
+      false
+     ]
+    ],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [],
+    "progressPct": "100%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "nov. 2025",
+    "finishForecast": "—",
+    "finishColor": "var(--color-neutral-400)",
+    "floatText": "—",
+    "budgetText": "260 k€",
+    "spentText": "255 k€",
+    "earnedText": "—",
+    "eacText": "—",
+    "vacText": "—",
+    "vacColor": "var(--color-neutral-400)",
+    "spentPct": "98%",
+    "spentColor": "var(--color-neutral-600)"
+   },
+   {
+    "code": "SCP-033",
+    "name": "SCP-033 · Parking Southgate",
+    "idLine": "— · — · —",
+    "metaLine": "S. Perrin · Retail BU · — → —",
+    "status": "Annulé",
+    "isNew": false,
+    "canOpen": false,
+    "openTitle": "",
+    "tagClass": "tag tag-neutral",
+    "health": "—",
+    "healthClass": "text-muted",
+    "spiText": "—",
+    "spiColor": "var(--color-neutral-500)",
+    "cpiText": "—",
+    "cpiColor": "var(--color-neutral-500)",
+    "msName": "—",
+    "msLine": "",
+    "msColor": "var(--color-neutral-500)",
+    "attention": "—",
+    "delivText": "0 / 0",
+    "delivPct": "0%",
+    "delivs": [],
+    "hist": [],
+    "histCount": 0,
+    "transitions": [],
+    "progressPct": "0%",
+    "barColor": "var(--color-accent)",
+    "finishPlanned": "—",
+    "finishForecast": "—",
+    "finishColor": "var(--color-neutral-400)",
+    "floatText": "—",
+    "budgetText": "900 k€",
+    "spentText": "35 k€",
+    "earnedText": "—",
+    "eacText": "—",
+    "vacText": "—",
+    "vacColor": "var(--color-neutral-400)",
+    "spentPct": "4%",
+    "spentColor": "var(--color-neutral-600)"
+   }
+  ],
+  "slider": {
+   "ticks": [
+    [
+     "Tous",
+     17,
+     "0.000%",
+     "var(--color-accent)",
+     "var(--color-accent-300)",
+     "500"
+    ],
+    [
+     "Init.",
+     2,
+     "7.692%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "APS",
+     1,
+     "15.385%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "APD",
+     2,
+     "23.077%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Études",
+     1,
+     "30.769%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Appro.",
+     2,
+     "38.462%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Fab.",
+     1,
+     "46.154%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "FAT",
+     0,
+     "53.846%",
+     "var(--color-neutral-800)",
+     "var(--color-neutral-600)",
+     "400"
+    ],
+    [
+     "Expéd.",
+     0,
+     "61.538%",
+     "var(--color-neutral-800)",
+     "var(--color-neutral-600)",
+     "400"
+    ],
+    [
+     "Chantier",
+     1,
+     "69.231%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "MES/SAT",
+     1,
+     "76.923%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Garantie",
+     1,
+     "84.615%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Clos",
+     4,
+     "92.308%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Annulé",
+     1,
+     "100.000%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ]
+   ],
+   "thumb": "0.000%",
+   "sel": [
+    "Tous les projets",
+    "17 projets",
+    "Déplacez le curseur pour filtrer par état d’avancement"
+   ],
+   "title": "Tous les projets · 17",
+   "hint": "Cliquer sur un statut pour le déplacer"
+  },
+  "sliderFab": {
+   "ticks": [
+    [
+     "Tous",
+     17,
+     "0.000%",
+     "var(--color-accent-700)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Init.",
+     2,
+     "7.692%",
+     "var(--color-accent-700)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "APS",
+     1,
+     "15.385%",
+     "var(--color-accent-700)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "APD",
+     2,
+     "23.077%",
+     "var(--color-accent-700)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Études",
+     1,
+     "30.769%",
+     "var(--color-accent-700)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Appro.",
+     2,
+     "38.462%",
+     "var(--color-accent-700)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Fab.",
+     1,
+     "46.154%",
+     "var(--color-accent)",
+     "var(--color-accent-300)",
+     "500"
+    ],
+    [
+     "FAT",
+     0,
+     "53.846%",
+     "var(--color-neutral-800)",
+     "var(--color-neutral-600)",
+     "400"
+    ],
+    [
+     "Expéd.",
+     0,
+     "61.538%",
+     "var(--color-neutral-800)",
+     "var(--color-neutral-600)",
+     "400"
+    ],
+    [
+     "Chantier",
+     1,
+     "69.231%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "MES/SAT",
+     1,
+     "76.923%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Garantie",
+     1,
+     "84.615%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Clos",
+     4,
+     "92.308%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ],
+    [
+     "Annulé",
+     1,
+     "100.000%",
+     "var(--color-neutral-500)",
+     "var(--color-neutral-300)",
+     "400"
+    ]
+   ],
+   "thumb": "46.154%",
+   "sel": [
+    "Fabrication & Assemblage",
+    "1 projet · Structure, montage mécanique, câblage",
+    "Déplacez le curseur ou utilisez ← → pour changer d’état"
+   ],
+   "title": "Fabrication & Assemblage projects · 1",
+   "hint": "Prévision d’après le SPI"
+  },
+  "fabRows": [
+   "HLT-026"
+  ],
+  "search": {
+   "harbor": [
+    "HLT-026"
+   ],
+   "emp": [
+    "HLT-026"
+   ],
+   "#03": [
+    "NDC-031",
+    "ERP-202"
+   ],
+   "hav": [
+    "HLT-026"
+   ],
+   "ewa": [
+    "EWA-051",
+    "RBR-048",
+    "QFR-015"
+   ],
+   "MEMU": [
+    "RCF-019",
+    "MSR-012"
+   ],
+   "clinique": [
+    "RCF-019"
+   ]
+  },
+  "force": {
+   "name": "#026 · Extension du terminal Harbor Line",
+   "from": "Fabrication & Assemblage",
+   "to": "FAT",
+   "missing": [
+    "Câblage & armoires terminés",
+    "NCR majeures clôturées"
+   ],
+   "isCancel": false,
+   "approver": "Marie Lefebvre · Directrice de portefeuille"
+  },
+  "npDefault": {
+   "stepNo": 4,
+   "steps": [
+    "Basics",
+    "Structure",
+    "Budget",
+    "Planning"
+   ],
+   "pid": "#045",
+   "ana": "XXX001",
+   "anaHint": "3 lettres du client + numéro incrémental",
+   "templates": [
+    [
+     "Projet blank",
+     "WBS vide — vous définissez lots, catégories et calendriers."
+    ],
+    [
+     "Planning EMP",
+     "Planning standard EMP : études, structure, montage mécanique, électricité & automatisme, essais, réception."
+    ]
+   ],
+   "copyItems": [
+    [
+     "WBS",
+     "6 phases · 14 lots"
+    ],
+    [
+     "Activities & logic",
+     "38 activités · 52 liens"
+    ],
+    [
+     "Catégories de coûts",
+     "7 categories"
+    ],
+    [
+     "Calendars",
+     "Standard 5j · 8h + Atelier"
+    ],
+    [
+     "Références",
+     "Not copied"
+    ]
+   ],
+   "phases": [
+    "1 · Études & approvisionnements longs",
+    "2 · Fabrication structure",
+    "3 · Montage mécanique",
+    "4 · Installation électrique & automatisme",
+    "5 · Essais & mise en service",
+    "6 · Réception & transfert"
+   ],
+   "catSource": "Structure budgétaire de Planning EMP",
+   "cats": [
+    [
+     "Études",
+     "Main-d’œuvre",
+     "160"
+    ],
+    [
+     "Matière & structure",
+     "Matériel",
+     "560"
+    ],
+    [
+     "Composants achetés",
+     "Matériel",
+     "440"
+    ],
+    [
+     "Fabrication & montage",
+     "Main-d’œuvre",
+     "360"
+    ],
+    [
+     "Sous-traitance",
+     "Sous-traitance",
+     "200"
+    ],
+    [
+     "Installation & essais",
+     "Main-d’œuvre",
+     "160"
+    ],
+    [
+     "Frais & transport",
+     "Frais",
+     "60"
+    ]
+   ],
+   "totalText": "€2.04M",
+   "summary": "#045 · XXX001 · DAS 2 · EMP · Projet sans titre · statut Initiative · 6 phases · 14 lots, 38 activités · 52 liens copied · 7 cost categories with 5% contingency · Standard 5d · 8h calendar · weekly data date."
+  },
+  "npBlank": {
+   "stepNo": 3,
+   "steps": [
+    "Basics",
+    "Structure",
+    "Budget",
+    "Planning"
+   ],
+   "pid": "#045",
+   "ana": "ACM001",
+   "anaHint": "Nouveau client — code ACM proposé",
+   "templates": [
+    [
+     "Projet blank",
+     "WBS vide — vous définissez lots, catégories et calendriers."
+    ],
+    [
+     "Planning R&D",
+     "Exploration, prototype, essais & itérations, industrialisation, bilan — jalons de décision go / no-go."
+    ]
+   ],
+   "copyItems": [
+    [
+     "WBS",
+     "Vide"
+    ],
+    [
+     "Activities & logic",
+     "Aucune"
+    ],
+    [
+     "Catégories de coûts",
+     "Define in step 3"
+    ],
+    [
+     "Calendars",
+     "Standard 5d · 8h"
+    ],
+    [
+     "Références",
+     "Not copied"
+    ]
+   ],
+   "phases": [],
+   "catSource": "Start from nothing",
+   "cats": [],
+   "totalText": "$0k",
+   "summary": "#045 · ACM001 · DAS 4 · R&D · Lab line · statut Initiative · empty WBS · 0 cost categories with 10% contingency · 24h continuous calendar · weekly data date."
+  },
+  "npSpur": {
+   "stepNo": 2,
+   "steps": [
+    "Basics",
+    "Structure",
+    "Budget",
+    "Planning"
+   ],
+   "pid": "#045",
+   "ana": "LOG001",
+   "anaHint": "Code client LOG · numéro incrémental",
+   "templates": [
+    [
+     "Projet blank",
+     "WBS vide — vous définissez lots, catégories et calendriers."
+    ],
+    [
+     "Planning SPUR",
+     "Planning standard SPUR : études & permis, génie civil, structures, équipements électriques, raccordement, mise en service."
+    ]
+   ],
+   "copyItems": [
+    [
+     "WBS",
+     "6 phases · 15 lots"
+    ],
+    [
+     "Activities & logic",
+     "44 activités · 60 liens"
+    ],
+    [
+     "Catégories de coûts",
+     "5 categories"
+    ],
+    [
+     "Calendars",
+     "Chantier 6j · 10h"
+    ],
+    [
+     "Références",
+     "Not copied"
+    ]
+   ],
+   "phases": [
+    "1 · Études & permis",
+    "2 · Génie civil",
+    "3 · Structures & supports",
+    "4 · Équipements électriques",
+    "5 · Raccordement & essais",
+    "6 · Mise en service"
+   ],
+   "catSource": "Structure budgétaire de Planning SPUR",
+   "cats": [],
+   "totalText": "€0k",
+   "summary": "#045 · LOG001 · DAS 2 · SPUR · Projet sans titre · statut Initiative · 6 phases · 15 lots, 44 activités · 60 liens copied · 0 cost categories with 5% contingency · Standard 5d · 8h calendar · weekly data date."
+  }
+ },
+ "scenarios": {
+  "hltForced": {
+   "code": "HLT-026",
+   "name": "#026 · Harbor Line Terminal Expansion",
+   "idLine": "HAV004 · DAS 2 · EMP",
+   "metaLine": "R. Aubert · Port authority · Jan 2026 → Dec 2026",
+   "status": "FAT",
+   "isNew": false,
+   "canOpen": true,
+   "openTitle": "Open project · Plan — WBS",
+   "tagClass": "tag tag-accent",
+   "health": "At risk",
+   "healthClass": "tag tag-outline",
+   "spiText": "0.90",
+   "spiColor": "var(--color-accent-300)",
+   "cpiText": "0.91",
+   "cpiColor": "var(--color-accent-300)",
+   "msName": "Structure topped out",
+   "msLine": "23 Oct · Late",
+   "msColor": "var(--color-accent-300)",
+   "attention": "SPI 0.90 · CPI 0.91 · Structure topped out · Late · 27 d slip",
+   "delivText": "0 / 3",
+   "delivPct": "0%",
+   "delivs": [
+    [
+     "Procédure FAT approuvée",
+     false
+    ],
+    [
+     "FAT réalisés — PV signé",
+     false
+    ],
+    [
+     "Réserves FAT levées",
+     false
+    ]
+   ],
+   "hist": [
+    [
+     "FAT",
+     "25 Sep 2026",
+     "Forcé",
+     "tag tag-accent",
+     "Client pressure on delivery date"
+    ],
+    [
+     "Fabrication & Assemblage",
+     "14 Jul 2026",
+     "Auto",
+     "tag tag-neutral",
+     ""
+    ],
+    [
+     "Approvisionnements",
+     "8 Jun 2026",
+     "Auto",
+     "tag tag-neutral",
+     ""
+    ],
+    [
+     "Etudes",
+     "20 Apr 2026",
+     "Forcé",
+     "tag tag-accent",
+     "Nomenclature gelée avant validation des notes de calcul — délai matière (validé M. Lefebvre)"
+    ],
+    [
+     "APD",
+     "12 Mar 2026",
+     "Auto",
+     "tag tag-neutral",
+     ""
+    ],
+    [
+     "APS",
+     "9 Feb 2026",
+     "Auto",
+     "tag tag-neutral",
+     ""
+    ],
+    [
+     "Initiative",
+     "12 Jan 2026",
+     "Auto",
+     "tag tag-neutral",
+     ""
+    ]
+   ],
+   "histCount": 7,
+   "transitions": [
+    [
+     "Expédition",
+     "PV FAT signé · réserves levées"
+    ],
+    [
+     "Annulé",
+     "Décision direction"
+    ]
+   ],
+   "progressPct": "64%",
+   "barColor": "var(--color-accent)",
+   "finishPlanned": "18 Dec 2026",
+   "finishForecast": "14 Jan 2027",
+   "finishColor": "var(--color-accent-300)",
+   "floatText": "−27 d",
+   "budgetText": "€4.80M",
+   "spentText": "€3.36M",
+   "earnedText": "€3.07M",
+   "eacText": "€5.25M",
+   "vacText": "−€450k",
+   "vacColor": "var(--color-accent-300)",
+   "spentPct": "70%",
+   "spentColor": "var(--color-accent-300)"
+  },
+  "ndcAuto": {
+   "code": "NDC-031",
+   "name": "#031 · Northgate Data Center Retrofit",
+   "idLine": "NGD001 · DAS 3 · AUTRE",
+   "metaLine": "S. Perrin · Infrastructure BU · Apr 2026 → Mar 2027",
+   "status": "Fabrication & Assemblage",
+   "isNew": false,
+   "canOpen": true,
+   "openTitle": "Open project · Plan — WBS",
+   "tagClass": "tag tag-accent",
+   "health": "On track",
+   "healthClass": "tag tag-neutral",
+   "spiText": "0.98",
+   "spiColor": "var(--color-text)",
+   "cpiText": "1.05",
+   "cpiColor": "var(--color-text)",
+   "msName": "Power upgrade — UPS & switchgear complete",
+   "msLine": "5 Nov · At risk",
+   "msColor": "var(--color-accent-300)",
+   "attention": "4 d slip",
+   "delivText": "0 / 4",
+   "delivPct": "0%",
+   "delivs": [
+    [
+     "Structure fabriquée & contrôlée",
+     false
+    ],
+    [
+     "Assemblage mécanique terminé",
+     false
+    ],
+    [
+     "Câblage & armoires terminés",
+     false
+    ],
+    [
+     "NCR majeures clôturées",
+     false
+    ]
+   ],
+   "hist": [
+    [
+     "Fabrication & Assemblage",
+     "25 Sep 2026",
+     "Auto",
+     "tag tag-neutral",
+     ""
+    ]
+   ],
+   "histCount": 1,
+   "transitions": [
+    [
+     "FAT",
+     "Assemblage & câblage terminés"
+    ],
+    [
+     "Annulé",
+     "Décision direction"
+    ]
+   ],
+   "progressPct": "51%",
+   "barColor": "var(--color-accent)",
+   "finishPlanned": "1 Apr 2027",
+   "finishForecast": "5 Apr 2027",
+   "finishColor": "var(--color-accent-300)",
+   "floatText": "−4 d",
+   "budgetText": "€2.10M",
+   "spentText": "€1.02M",
+   "earnedText": "€1.07M",
+   "eacText": "€2.00M",
+   "vacText": "+€100k",
+   "vacColor": "var(--color-neutral-300)",
+   "spentPct": "49%",
+   "spentColor": "var(--color-accent)"
+  },
+  "wsaCancelDialog": {
+   "name": "#044 · Westfield Solar Array",
+   "from": "APD",
+   "to": "Annulé",
+   "missing": [],
+   "isCancel": true
+  },
+  "wsaCancelled": {
+   "code": "WSA-044",
+   "name": "#044 · Westfield Solar Array",
+   "idLine": "WFE001 · DAS 2 · SPUR",
+   "metaLine": "K. Blanchard · Energy BU · Aug 2026 → Jun 2027",
+   "status": "Annulé",
+   "isNew": false,
+   "canOpen": true,
+   "openTitle": "Open project · Plan — WBS",
+   "tagClass": "tag tag-neutral",
+   "health": "—",
+   "healthClass": "text-muted",
+   "spiText": "—",
+   "spiColor": "var(--color-neutral-500)",
+   "cpiText": "—",
+   "cpiColor": "var(--color-neutral-500)",
+   "msName": "—",
+   "msLine": "",
+   "msColor": "var(--color-neutral-500)",
+   "attention": "—",
+   "delivText": "0 / 0",
+   "delivPct": "0%",
+   "delivs": [],
+   "hist": [
+    [
+     "Annulé",
+     "25 Sep 2026",
+     "Forcé",
+     "tag tag-accent",
+     "Client withdrew"
+    ]
+   ],
+   "histCount": 1,
+   "transitions": [],
+   "progressPct": "27%",
+   "barColor": "var(--color-accent)",
+   "finishPlanned": "Jun 2027",
+   "finishForecast": "—",
+   "finishColor": "var(--color-neutral-400)",
+   "floatText": "—",
+   "budgetText": "€3.40M",
+   "spentText": "€880k",
+   "earnedText": "—",
+   "eacText": "—",
+   "vacText": "—",
+   "vacColor": "var(--color-neutral-400)",
+   "spentPct": "26%",
+   "spentColor": "var(--color-neutral-600)"
+  },
+  "alpClosDialog": {
+   "missing": [
+    "Période de garantie ouverte",
+    "Réserves de réception levées",
+    "Retour d’expérience réalisé"
+   ]
+  },
+  "created": {
+   "code": "LOG-045",
+   "name": "#045 · Lab line",
+   "idLine": "LOG001 · DAS 2 · EMP",
+   "metaLine": "S. Perrin · Logistics BU · Jan 2027 → Sep 2027",
+   "status": "Initiative",
+   "isNew": true,
+   "canOpen": false,
+   "openTitle": "",
+   "tagClass": "tag tag-outline",
+   "health": "—",
+   "healthClass": "text-muted",
+   "spiText": "—",
+   "spiColor": "var(--color-neutral-500)",
+   "cpiText": "—",
+   "cpiColor": "var(--color-neutral-500)",
+   "msName": "—",
+   "msLine": "",
+   "msColor": "var(--color-neutral-500)",
+   "attention": "—",
+   "delivText": "0 / 3",
+   "delivPct": "0%",
+   "delivs": [
+    [
+     "Fiche initiative validée",
+     false
+    ],
+    [
+     "Identifiant & code analytique créés",
+     false
+    ],
+    [
+     "Chef de projet nommé",
+     false
+    ]
+   ],
+   "hist": [],
+   "histCount": 0,
+   "transitions": [
+    [
+     "APS",
+     "Fiche initiative validée"
+    ],
+    [
+     "Annulé",
+     "Décision direction"
+    ]
+   ],
+   "progressPct": "0%",
+   "barColor": "var(--color-accent)",
+   "finishPlanned": "Sep 2027",
+   "finishForecast": "—",
+   "finishColor": "var(--color-neutral-400)",
+   "floatText": "—",
+   "budgetText": "€2.04M",
+   "spentText": "—",
+   "earnedText": "—",
+   "eacText": "—",
+   "vacText": "—",
+   "vacColor": "var(--color-neutral-400)",
+   "spentPct": "0%",
+   "spentColor": "var(--color-neutral-600)"
+  },
+  "createdTitle": "All projects · 18"
+ }
+}

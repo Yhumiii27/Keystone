@@ -1,0 +1,240 @@
+// HR screens: DAL integration (in-memory PGlite seeded from the prototype) + static render of the four bodies in
+// EN and FR, checked against the prototype's displayed values (docs/spec/06 §2.4, §3.4, §4.4, §5.4).
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+vi.mock('next/navigation', () => ({ usePathname: () => '/resources/skills', useRouter: () => ({ push() {}, replace() {}, refresh() {} }), useSearchParams: () => new URLSearchParams() }));
+import { createElement as h, type ReactElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { I18nProvider } from '@/i18n/client';
+import { makeT, type Lang } from '@/i18n/translate';
+import { setDb } from '@/server/db/client';
+import { openDatabase } from '@/server/db/open';
+import { getHoursReconciliation, getLeaveCalendar, getRateCard, getSkillsMatrix, type HoursReconciliation, type LeaveCalendar, type RateCard, type SkillsMatrix } from '@/server/dal/hr';
+import { HoursBody, hoursViewHref } from './hours-view';
+import { hrT } from './i18n';
+import { LeaveView } from './leave-view';
+import { RatesView } from './rates-view';
+import { SkillsView, skillFilterHref } from './skills-view';
+import css from './hr.module.css';
+
+const html = (el: ReactElement, lang: Lang) => renderToStaticMarkup(h(I18nProvider, { lang, children: el }));
+const text = (markup: string) =>
+  markup
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#x27;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&gt;/g, '>')
+    .replace(/&lt;/g, '<')
+    .replace(/\s+/g, ' ');
+const tOf = (lang: Lang) => hrT(makeT(lang), lang);
+const count = (s: string, sub: string) => s.split(sub).length - 1;
+
+let card: RateCard;
+let skills: SkillsMatrix;
+let leave: LeaveCalendar;
+let hours: HoursReconciliation;
+
+beforeAll(async () => {
+  setDb(await openDatabase());
+  [card, skills, leave, hours] = await Promise.all([getRateCard(), getSkillsMatrix(), getLeaveCalendar(), getHoursReconciliation('HLT-026').then((x) => x!)]);
+}, 60_000);
+
+describe('Rate cards', () => {
+  const props = (canSee: boolean, canEdit = canSee) => ({
+    roles: card.roles.map((r) => ({ role: r.role, baseRateEur: canSee ? r.baseRateEur : 0 })),
+    multipliers: card.multipliers,
+    canSee,
+    canEdit,
+  });
+
+  it('director/pm: KPIs, editable base rates, multiplied rates (EN)', () => {
+    const m = html(h(RatesView, props(true)), 'en');
+    const x = text(m);
+    expect(x).toContain('Average internal rate 72,33 €/h Cost rate · 9 roles');
+    expect(x).toContain('Contractor premium +39% vs internal structural engineer');
+    expect(x).toContain('Weekend multiplier ×2 Sunday / public holiday');
+    expect(x).toContain('Visibility Full Directors and project managers');
+    expect(x).toContain('Structural engineer');
+    expect(x).toContain('106,25 € 127,5 € 170 € 110,5 € 29,75 €');
+    expect(x).toContain('Contractor — structural (external) External');
+    expect(count(m, 'type="number"')).toBe(15); // 10 base rates + 5 multipliers
+    expect(m).toContain('value="85"');
+    expect(m).toContain('step="0.05"');
+    expect(x).not.toContain('Rates are visible to directors');
+    expect(x).toContain('× base, per hour on call');
+  });
+
+  it('other roles: masked values, lock banner, read-only multipliers; no rate sent', () => {
+    const m = html(h(RatesView, props(false)), 'en');
+    const x = text(m);
+    expect(x).toContain('Average internal rate ••• ');
+    expect(x).toContain('Contractor premium ••• ');
+    expect(x).toContain('Weekend multiplier ×2');
+    expect(x).toContain('Visibility Masked');
+    expect(x).toContain('Rates are visible to directors and project managers only — switch role (bottom-left) to see and edit them.');
+    expect(count(x, '•••')).toBe(2 + 10 * 6);
+    expect(m).not.toContain('type="number"');
+    expect(m).not.toContain('106,25');
+    expect(m).toContain('var(--color-accent-300)'); // "Masked" in LO
+  });
+
+  it('FR', () => {
+    const x = text(html(h(RatesView, props(true)), 'fr'));
+    expect(x).toContain('Taux interne moyen 72,33 €/h Taux de coût · 9 rôles');
+    expect(x).toContain('Surcoût prestataire +39% vs ingénieur structure interne');
+    expect(x).toContain('Taux horaires par rôle');
+    expect(x).toContain('Prestataire — structure (externe) Externe');
+    expect(x).toContain('Majorations');
+    expect(x).toContain('Heures sup. > 8 h/jour');
+    expect(x).toContain('× base, par heure d’astreinte');
+  });
+});
+
+describe('Skills matrix', () => {
+  const base = '/resources/skills';
+
+  it('KPIs, chips, matrix and coverage (EN)', () => {
+    const m = html(h(SkillsView, { data: skills, filter: null, base, t: tOf('en') }), 'en');
+    const x = text(m);
+    expect(x).toContain('Skill families 10 Levels 1–5 · certifications noted');
+    expect(x).toContain('Single-expert skills 8 Fewer than 2 people at level ≥4');
+    expect(x).toContain('Certifications 5 Tracked with expiry in Lucca');
+    expect(x).toContain('Open requests needing level ≥4 2 Structural · Quality');
+    expect(x).toContain('Filter shows people at level ≥3');
+    expect(count(m, 'role="row"')).toBe(1 + 8);
+    expect(count(m, 'role="cell"')).toBe(80);
+    expect(m).toContain('title="Structural · level 5"');
+    expect(x).toContain('Thomas Kerbrat Crane operator G1 · rigging CACES');
+    expect(x).toContain('Léa Marchand —');
+    expect(x).toContain('Crane &amp; lifting 2 experts · 3 at level ≥3'.replace('&amp;', '&'));
+    expect(x).toContain('Structural 1 expert · 1 at level ≥3');
+    expect(m).toContain(`href="${skillFilterHref(base, 4)}"`);
+    expect(m).toContain('aria-current="true"');
+    // dots: 5 per cell; level v fills v dots in lvColor(v) (≥4 accent-400 · 3 accent-600 · 2 accent-800 · 1 neutral-800)
+    const levels = skills.people.flatMap((p) => p.levels);
+    const filled = (pred: (v: number) => boolean) => levels.filter(pred).reduce((a, v) => a + v, 0);
+    expect(count(m, `class="${css.dot}"`) + count(m, `class="${css.dot} `)).toBe(400);
+    expect(count(m, `${css.dot} ${css.lv4}`)).toBe(filled((v) => v >= 4));
+    expect(count(m, `${css.dot} ${css.lv3}`)).toBe(filled((v) => v === 3));
+    expect(count(m, `${css.dot} ${css.lv1}`)).toBe(filled((v) => v === 1));
+  });
+
+  it('filter ?filter=4 (Crane & lifting): people at level ≥3', () => {
+    const m = html(h(SkillsView, { data: skills, filter: 4, base, t: tOf('en') }), 'en');
+    expect(count(m, 'role="row"')).toBe(1 + 3);
+    const x = text(m);
+    expect(x).toContain('Amélie Ollivier');
+    expect(x).toContain('Julien Wagner');
+    expect(x).toContain('Thomas Kerbrat');
+    expect(x).not.toContain('Pauline Noguès');
+  });
+
+  it('FR', () => {
+    const m = html(h(SkillsView, { data: skills, filter: null, base, t: tOf('fr') }), 'fr');
+    const x = text(m);
+    expect(x).toContain('Familles de compétences 10');
+    expect(x).toContain('Compétences à expert unique 8');
+    expect(x).toContain('Tout le monde');
+    expect(x).toContain('Grues et levage 2 expert(s) · 3 au niveau ≥3');
+    expect(m).toContain('title="Structure · niveau 5"');
+  });
+});
+
+describe('Leave & working calendar', () => {
+  it('KPIs, holiday row, person rows (EN)', () => {
+    const m = html(h(LeaveView, { data: leave, t: tOf('en') }), 'en');
+    const x = text(m);
+    expect(x).toContain('Lucca sync 06:30 Today · leave, RTT, sick, training');
+    expect(x).toContain('Team availability 85% Next 8 weeks · 35 h basis');
+    expect(x).toContain('Leave days 43 Approved in Lucca');
+    expect(x).toContain('Public holidays 1 11 Nov · France');
+    expect(x).toContain('Weeks under 60% team capacity 0 Capacity feeds the allocation heatmap');
+    expect(x).toContain('Person Sep 28 Oct 5 Oct 12 Oct 19 Oct 26 Nov 2 Nov 9 Nov 16 Leave Avail.');
+    expect(x).toContain('Public holidays 11 Nov');
+    expect(x).toContain('Amélie Ollivier Site lead 35 h 35 h CP 0 h CP 0 h 35 h 35 h Hol. 28 h 35 h 10 d 73%');
+    expect(x).toContain('Pauline Noguès');
+    expect(x).toContain('Training 14 h');
+    expect(x).toContain('Sick 21 h');
+    expect(x).toContain('Fabien Bertrand');
+    expect(x).toContain('CP 0 h CP 0 h 10 d 75%');
+    expect(x).toContain('CP · paid leave RTT · reduced working time Sick · sick leave Training Hol. · public holiday');
+    expect(x).toContain('Leave is requested and approved in Lucca');
+  });
+
+  it('FR: week labels "28 sept.", leave codes, day unit', () => {
+    const x = text(html(h(LeaveView, { data: leave, t: tOf('fr') }), 'fr'));
+    expect(x).toContain('Personne 28 sept. 5 oct. 12 oct. 19 oct. 26 oct. 2 nov. 9 nov. 16 nov. Congés Dispo.');
+    expect(x).toContain('Disponibilité de l’équipe 85%');
+    expect(x).toContain('Jours fériés 1 11 nov. · France');
+    expect(x).toContain('Maladie 21 h');
+    expect(x).toContain('Formation 14 h');
+    expect(x).toContain('Férié 28 h');
+    expect(x).toContain('10 j 73%');
+    expect(x).toContain('Maladie · arrêt maladie');
+  });
+});
+
+describe('Hours — Lucca reconciliation', () => {
+  const base = '/projects/HLT-026/hours';
+  const render = (view: 'resource' | 'wp' | 'unassigned', lang: Lang, canEdit = true) =>
+    html(h(HoursBody, { data: hours, view, base, code: 'HLT-026', canEdit, lang, t: tOf(lang) }), lang);
+
+  it('by resource (default): KPIs and groups (EN)', () => {
+    const m = render('resource', 'en');
+    const x = text(m);
+    expect(x).toContain('Declared in Lucca · September 779 h analytic code HAV004 · imported 29 Sep 2026');
+    expect(x).toContain('Planned (schedule) 740 h 10 resource × work package lines');
+    expect(x).toContain('Variance +12 h 2 % · ≈ €1k labour cost');
+    expect(x).toContain('To assign 27 h 2 lines without a planned task');
+    expect(x).toContain('JW Julien Wagner 1.3 · Foundations · 1.4 · Steel structure 280 h 303 h +23 h');
+    expect(x).toContain('1.3 · Foundations · Julien Wagner 120 h 132 h +12 h');
+    expect(x).toContain('Hélène Sauvage 1.3 · Foundations · 1.4 · Steel structure 100 h 115 h +15 h');
+    expect(x).toContain('Léa Marchand 1.1 · Design & permits 24 h 31 h +7 h');
+    expect(m).toContain('width:100%');
+    expect(m).toContain('width:90%');
+    expect(m).toContain(`href="${hoursViewHref(base, 'wp')}"`);
+    expect(x).not.toContain('Hours without a planned task');
+  });
+
+  it('by work package', () => {
+    const x = text(render('wp', 'en'));
+    expect(x).toContain('1.3 1.3 · Foundations J. Wagner · H. Sauvage 160 h 184 h +24 h');
+    expect(x).toContain('1.1 1.1 · Design & permits D. Roux · L. Marchand 54 h 59 h +5 h');
+    expect(x).toContain('1.2 · Site preparation · Amélie Ollivier 80 h 76 h -4 h');
+  });
+
+  it('to assign: rows with the work-package select and Assign (editors only)', () => {
+    const m = render('unassigned', 'en');
+    const x = text(m);
+    expect(x).toContain('Hours without a planned task');
+    expect(x).toContain('FB Fabien Bertrand Declared on HAV004 · no planned task this month 18 h');
+    expect(x).toContain('PN Pauline Noguès Declared on HAV004 · no planned task this month 9 h');
+    expect(count(m, '<select')).toBe(2);
+    expect(count(m, '<option')).toBe(16);
+    expect(x).toContain('1.1 · Design & permits');
+    expect(x).toContain('1.8 · Commissioning & handover');
+    expect(count(x, 'Assign')).toBe(2);
+    const ro = render('unassigned', 'en', false);
+    expect(ro).not.toContain('<select');
+    expect(text(ro)).not.toContain('Assign ');
+    expect(text(ro)).toContain('Fabien Bertrand');
+  });
+
+  it('assigned lines leave "To assign" but stay in the Lucca total', () => {
+    const data: HoursReconciliation = { ...hours, unassigned: hours.unassigned.map((u, i) => (i === 0 ? { ...u, assignedWbs: '1.3' } : u)) };
+    const x = text(html(h(HoursBody, { data, view: 'unassigned', base, code: 'HLT-026', canEdit: true, lang: 'en', t: tOf('en') }), 'en'));
+    expect(x).toContain('Declared in Lucca · September 779 h');
+    expect(x).toContain('To assign 9 h 1 line without a planned task');
+    expect(x).toContain('18 h 1.3 · Foundations Assigned');
+  });
+
+  it('FR', () => {
+    const x = text(render('resource', 'fr'));
+    expect(x).toContain('Regrouper par Par ressource Par lot À affecter');
+    expect(x).toContain('Déclaré dans Lucca · septembre 779 h code analytique HAV004 · importé le 29 sept. 2026');
+    expect(x).toContain('Planifié (planning) 740 h 10 lignes ressource × lot');
+    expect(x).toContain('Écart +12 h 2 % · ≈ 1 k€ de main-d’œuvre');
+    expect(x).toContain('À affecter 27 h 2 lignes sans tâche planifiée');
+    expect(x).toContain('Déclaré Lucca vs planifié');
+  });
+});

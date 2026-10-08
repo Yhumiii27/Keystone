@@ -1,0 +1,11 @@
+/* Chart legends (docs/spec/02 C-28). */
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; font-size: 12px; color: var(--color-neutral-300); }
+.footer { gap: 16px; font-size: 11.5px; color: var(--color-neutral-400); padding-top: 4px; }
+.item { display: flex; align-items: center; gap: 6px; }
+.sw { display: inline-block; flex: none; width: var(--sw-w); height: var(--sw-h); background: var(--sw-bg, transparent); border-radius: var(--sw-r, 2px); box-shadow: var(--sw-edge, none); }
+.line { height: 0; border-top: 2px var(--sw-style, solid) var(--sw-color); border-radius: 0; background: transparent; }
+.diamond { transform: rotate(45deg); border-radius: 0; }
+.hatched { border: 1px dashed var(--color-neutral-600); background: repeating-linear-gradient(135deg, var(--color-neutral-600) 0 2px, transparent 2px 6px); }
+.dashedOutline { border: 1px dashed var(--sw-color, var(--color-accent-700)); background: transparent; }
+.dot { border-radius: 50%; }
+.scale { display: flex; align-items: center; gap: 4px; }

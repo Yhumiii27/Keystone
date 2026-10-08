@@ -1,0 +1,54 @@
+/* Risk register (template 1771–1832) and Contingency register (template 900–909). */
+
+/* register + heat map: flex row, wraps the heat map below the register on narrower viewports */
+.split { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+
+/* Risk cell: id over title, max-width 300 */
+.riskCell { display: flex; flex-direction: column; line-height: 1.3; max-width: 300px; }
+.riskId { font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 500; color: var(--color-neutral-300); }
+.riskIdOn { color: var(--color-accent-300); }
+.riskTitle { text-wrap: pretty; }
+.score { font-weight: 500; }
+.nowrap { white-space: nowrap; }
+.ownerCell { font-size: 12px; white-space: nowrap; }
+.trend { font-size: 15px; color: var(--color-neutral-400); vertical-align: middle; }
+.trendUp { color: var(--color-accent-300); }
+
+/* inline empty text below the table: 12.5px neutral-500, padding 8px 0 */
+.empty { font-size: 12.5px; color: var(--color-neutral-500); padding: 8px 0; }
+
+/* drawer body */
+.scales { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.fieldLabel { font-size: 11px; color: var(--color-neutral-400); }
+/* read-only segments: the selected option keeps its accent, the others are dimmed and inert */
+.readOnly button:disabled { opacity: 1; cursor: default; color: var(--color-neutral-500); }
+.section { display: flex; flex-direction: column; gap: 4px; }
+.plan { font-size: 13px; line-height: 1.5; text-wrap: pretty; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Contingency ─────────────────────────────────────────────────────────────────────────────────── */
+.cgGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 14px; align-items: start; }
+.bars { display: flex; flex-direction: column; gap: 12px; padding-top: 6px; }
+.barBlock { display: flex; flex-direction: column; gap: 4px; }
+.barHead { display: flex; justify-content: space-between; font-size: 12px; }
+.num { font-variant-numeric: tabular-nums; }
+.track { height: 8px; border-radius: 4px; background: var(--color-neutral-800); position: relative; overflow: hidden; }
+.hatch {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--bar-w);
+  background: repeating-linear-gradient(135deg, var(--color-accent-800) 0 3px, transparent 3px 7px);
+}
+.used { position: absolute; inset: 0 auto 0 0; width: var(--bar-w); background: var(--color-accent); border-radius: 4px; }
+.progTrack { height: 8px; border-radius: 4px; background: var(--color-neutral-800); overflow: hidden; }
+.progFill { height: 100%; width: var(--bar-w); background: var(--color-neutral-400); border-radius: 4px; }
+.cgLegend { font-size: 11.5px; color: var(--color-neutral-400); display: flex; align-items: center; gap: 6px; }
+.cgSwatch {
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
+  background: repeating-linear-gradient(135deg, var(--color-accent-800) 0 3px, transparent 3px 7px);
+}
+.reason { text-wrap: pretty; min-width: 220px; }

@@ -1,0 +1,106 @@
+// Organisation and reference data (docs/spec/11 §3.1): persons, users (personas), departments, zones,
+// countries, cities, clients.
+import { boolean, date, doublePrecision, integer, pgTable, text, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import type { ZoneCode } from '../codes';
+import { id, num, timestamps } from './_common';
+
+/** Client organisations (CLIENT_CODES 3167 + clients cited by projects). */
+export const clients = pgTable('clients', {
+  id: id(),
+  name: text('name').notNull().unique(),
+  /** Registered 3-letter code (HAV…); null for clients never registered (new code proposed by clientCode3). */
+  code3: text('code3').unique(),
+  sortOrder: integer('sort_order').notNull(),
+  ...timestamps,
+});
+
+/** Departments (DEPTS 3268). */
+export const departments = pgTable('departments', {
+  id: id(),
+  name: text('name').notNull().unique(),
+  headPersonId: uuid('head_person_id').references((): AnyPgColumn => persons.id),
+  /** "Head of engineering" (EN source string). */
+  headTitle: text('head_title'),
+  sortOrder: integer('sort_order').notNull(),
+  ...timestamps,
+});
+
+/**
+ * Staff and external contacts (PEOPLE, OWN, PERSONAS, DEPTS heads, zone managers, ENG_DISC leads, DOC_WHO and
+ * the project managers cited by projects). Some are only known by their short name ("S. Perrin").
+ */
+export const persons = pgTable('persons', {
+  id: id(),
+  /** "Julien Wagner"; null when the prototype only knows the short form. */
+  fullName: text('full_name'),
+  /** "J. Wagner" — unique; how projects, bars and records cite people. */
+  shortName: text('short_name').notNull().unique(),
+  /** "JW" (display; not unique). */
+  initials: text('initials').notNull(),
+  /** Planner owner key (`OWN` 3195, activities' `o`): set for the 9 schedulable owners. */
+  ownerCode: text('owner_code').unique(),
+  /** EN source string: "Structural engineer". */
+  jobTitle: text('job_title'),
+  departmentId: uuid('department_id').references((): AnyPgColumn => departments.id),
+  /** External contacts: their organisation. */
+  clientId: uuid('client_id').references(() => clients.id),
+  email: text('email'),
+  isContractRole: boolean('is_contract_role').notNull().default(false),
+  /** Position in the shared resource pool (PEOPLE 3123 order: allocations, skills, leave); null = not in the pool. */
+  resourcePoolPosition: integer('resource_pool_position'),
+  sortOrder: integer('sort_order').notNull(),
+  ...timestamps,
+});
+
+/** Users who sign in — the 8 "View as" personas (PERSONAS 3747). One row per role in the prototype. */
+export const users = pgTable('users', {
+  id: id(),
+  /** RoleKey (director, pm, depthead, member, englead, quality, procurement, client). */
+  role: text('role').notNull().unique(),
+  personId: uuid('person_id').notNull().references(() => persons.id),
+  /** Persona title, EN source string ("Client — Port authority"). */
+  title: text('title').notNull(),
+  clientId: uuid('client_id').references(() => clients.id),
+  isExternal: boolean('is_external').notNull().default(false),
+  active: boolean('active').notNull().default(true),
+  sortOrder: integer('sort_order').notNull(),
+  ...timestamps,
+});
+
+/** Department capacity over the 8-week resource window (ROLES 3132). */
+export const departmentCapacities = pgTable('department_capacities', {
+  id: id(),
+  departmentId: uuid('department_id').notNull().references(() => departments.id),
+  periodStart: date('period_start', { mode: 'string' }).notNull(),
+  weeks: integer('weeks').notNull(),
+  capacityH: num('capacity_h').notNull(),
+  demandH: num('demand_h').notNull(),
+  /** ROLES order (Engineering, Site operations, MEP, Controls & planning, Quality). */
+  position: integer('position').notNull(),
+});
+
+/** Zones (ZONES 3170, ZONE_BOUNDS 3172). */
+export const zones = pgTable('zones', {
+  code: text('code').$type<ZoneCode>().primaryKey(),
+  /** EN source string ("Europe & North America"). */
+  label: text('label').notNull(),
+  managerPersonId: uuid('manager_person_id').references(() => persons.id),
+  boundsW: doublePrecision('bounds_w').notNull(),
+  boundsN: doublePrecision('bounds_n').notNull(),
+  boundsE: doublePrecision('bounds_e').notNull(),
+  boundsS: doublePrecision('bounds_s').notNull(),
+  sortOrder: integer('sort_order').notNull(),
+});
+
+/** Countries → zone (COUNTRY_ZONE 3171). */
+export const countries = pgTable('countries', {
+  name: text('name').primaryKey(),
+  zoneCode: text('zone_code').$type<ZoneCode>().notNull().references(() => zones.code),
+  sortOrder: integer('sort_order').notNull(),
+});
+
+/** Cities used to resolve free-text sites (CITY_COUNTRY 3174, zoneOfSite). */
+export const cities = pgTable('cities', {
+  name: text('name').primaryKey(),
+  countryName: text('country_name').notNull().references(() => countries.name),
+});

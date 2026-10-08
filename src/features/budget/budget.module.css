@@ -1,0 +1,84 @@
+/* Budget & cost (docs/spec/04 §1; template 286–484). Values copied from the prototype's inline styles. */
+
+/* root + tab bodies: flex column, gap 14px (287, 290, 380, 449) */
+.stack { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+/* ── View bar (288) ── */
+.viewBar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.viewGroup { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.viewLabel { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-neutral-400); white-space: nowrap; }
+.viewIcon { font-size: 15px; color: var(--color-accent); }
+.viewHint { font-size: 12px; color: var(--color-neutral-400); }
+
+/* ── Performance (289–378) ── */
+.cardsRow { display: flex; flex-wrap: wrap; gap: 14px; align-items: stretch; }
+.cardHead { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+/* card header with title + subtitle and an action (403, 414, 427): gap 10px */
+.headRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.titleCol { display: flex; flex-direction: column; margin-right: auto; }
+.subtitle { font-size: 12px; color: var(--color-neutral-400); }
+.pretty { text-wrap: pretty; }
+
+.chartFoot {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--color-neutral-400);
+  border-top: 1px solid var(--color-neutral-900); padding-top: 8px;
+}
+.chartFootIcon { color: var(--color-neutral-500); }
+.chartFootText { text-wrap: pretty; flex: 1 1 320px; min-width: 0; }
+
+.varGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.varItem { display: flex; flex-direction: column; gap: 2px; }
+.varLabel { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-400); }
+.varValue { font-size: 20px; font-weight: 500; color: var(--color-accent-300); }
+.caption { font-size: 12px; color: var(--color-neutral-400); }
+.bars { display: flex; gap: 6px; height: 110px; align-items: start; border-top: 1px solid var(--color-neutral-800); padding-top: 1px; }
+.barCol { display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; flex: 1; min-width: 0; }
+.bar { width: 100%; border-radius: 0 0 3px 3px; background: linear-gradient(var(--color-accent-700), var(--color-accent-500)); height: var(--bar-h); }
+.barLabel { font-size: 10px; color: var(--color-neutral-400); }
+.note {
+  font-size: 12.5px; line-height: 1.5; color: var(--color-neutral-300); padding: 10px 12px; border-radius: var(--radius-md);
+  background: var(--color-neutral-900); text-wrap: pretty;
+}
+.noteAccent { color: var(--color-accent-300); }
+
+.strong { font-weight: 500; }
+
+/* ── Structure & changes (379–447) ── */
+.section { display: flex; flex-direction: column; gap: 6px; }
+.kicker { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent); }
+.leadIcon { color: var(--color-accent); margin-right: 4px; vertical-align: -1px; }
+.refGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.refRow { display: grid; grid-template-columns: 64px minmax(0, 1fr) 44px; gap: 10px; font-size: 12.5px; padding: 5px 0; border-top: 1px solid var(--color-neutral-900); }
+.refId { color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.refName { display: flex; flex-direction: column; line-height: 1.3; }
+.refPattern { font-size: 11.5px; color: var(--color-neutral-400); }
+.refYear { color: var(--color-neutral-400); text-align: right; }
+.streamRow { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; padding: 5px 0; border-top: 1px solid var(--color-neutral-900); }
+.streamBasis { color: var(--color-neutral-400); text-align: right; text-wrap: pretty; }
+
+.reconRow { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; }
+
+.crRow {
+  display: grid; grid-template-columns: 58px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 9px 0;
+  border-top: 1px solid var(--color-neutral-900);
+}
+.crId { font-size: 12px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.crMain { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.crTitle { font-size: 13px; text-wrap: pretty; }
+.crMeta { font-size: 11.5px; color: var(--color-neutral-400); }
+.crAmounts { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.3; }
+.crAmount { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--cr-color); }
+.crDays { font-size: 11.5px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+
+/* work-package bar (438): 8px track, actual fill, current-budget tick, EAC diamond */
+.wpTrack { position: relative; height: 8px; border-radius: 3px; background: var(--color-neutral-900); }
+.wpFill { height: 100%; border-radius: 3px; background: var(--color-neutral-300); width: var(--wp-a); }
+.wpTick { position: absolute; top: -3px; width: 2px; height: 14px; background: var(--color-neutral-500); left: var(--wp-t); }
+.wpDiamond {
+  position: absolute; top: -3px; width: 8px; height: 8px; margin-left: -4px; transform: translateY(3px) rotate(45deg);
+  background: var(--color-accent); left: var(--wp-e);
+}
+
+/* ── Cash & recovery (448–481) ── */
+.comCell { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.3; }
+.comNote { font-size: 11px; color: var(--color-neutral-400); white-space: nowrap; }

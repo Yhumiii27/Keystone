@@ -1,0 +1,32 @@
+import 'server-only';
+// Approval-item provider contract (docs/spec/00 §7.8): each module that needs a decision registers one provider
+// per kind; the registry (./index.ts) asks every provider for the viewer's items and builds the inbox.
+import type { ApprovalItem, ApprovalKind } from '@/domain/approvals';
+import type { Lang } from '@/i18n/translate';
+import type { ApproverIdentity } from '@/server/dal/myapprovals-identity';
+import type { ProjectRow } from '@/server/dal/projects';
+
+export interface ApprovalContext {
+  /** Who is asking: role, name and what they are responsible for in the database. */
+  viewer: ApproverIdentity;
+  /**
+   * Current project (last project used; prototype `state.project`). Project-bound kinds — purchase orders,
+   * deliveries, change requests, client deliverables, NCRs — cover this project only, as in the prototype
+   * (08 §7.5 "current-project …"). Null when the code is unknown.
+   */
+  project: ProjectRow | null;
+  /** Money in titles is formatted for the language (prototype `f()`). */
+  lang: Lang;
+}
+
+export interface ApprovalProvider {
+  kind: ApprovalKind;
+  /** `project` = depends on the current project (the sidebar badge is computed per project). */
+  scope: 'global' | 'project';
+  /** `prototype` = read from the prototype data set until the module is modelled (TODO(db)). */
+  source: 'db' | 'prototype';
+  /** Items waiting for the viewer, in the module's list order. */
+  items(ctx: ApprovalContext): Promise<ApprovalItem[]>;
+  /** The viewer's decisions on this kind ("Decided this week"); 0 when the kind keeps no trace of them. */
+  decided(ctx: ApprovalContext): Promise<number>;
+}

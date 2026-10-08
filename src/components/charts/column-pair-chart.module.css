@@ -1,0 +1,26 @@
+/* CH-5 ColumnPairChart (docs/spec/02 CH-5): Schedule progression (template 546–556), Client progress (~2188). */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cp-cols, 12), 1fr);
+  gap: 8px;
+  height: 170px;
+  align-items: end;
+  padding-top: 8px;
+}
+.flex { display: flex; gap: 8px; height: 150px; align-items: flex-end; }
+.col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  height: 100%;
+  justify-content: flex-end;
+}
+.flex .col { flex: 1; }
+.spi { font-size: 10.5px; font-variant-numeric: tabular-nums; color: var(--color-neutral-400); }
+.spiAlert { color: var(--color-accent-300); }
+.bars { display: flex; gap: 2px; align-items: flex-end; width: 100%; height: 120px; }
+.bar { flex: 1; border-radius: 2px 2px 0 0; }
+.planned { background: var(--color-neutral-700); }
+.actual { background: var(--color-accent); }
+.label { font-size: 10.5px; color: var(--color-neutral-400); }

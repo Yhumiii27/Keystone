@@ -1,0 +1,183 @@
+// Resource loads, load bands, capacity vs demand and availability from leave (docs/spec/06 §1.4–§1.6, §4,
+// "Status machines" #5; prototype logic 3866–3882 and 4400–4403). Pure functions on the 8-week window: loads are
+// % of available hours per week, hours are 8-week totals. Formatting (money, translated sentences) stays in the UI
+// (src/features/resources/model.ts). Golden values: src/domain/resources.test.ts.
+
+// ── Load bands (shade(), logic 3867) ───────────────────────────────────────────────────────────────────
+
+/** Heat band of a weekly load: < 60 % · 60–89 % · 90–100 % nominal · 101–115 % stretched · > 115 % over-allocated. */
+export type LoadBand = 'under' | 'moderate' | 'nominal' | 'stretched' | 'over';
+
+/** Band order from "Under" to "Over" (legend swatches). */
+export const LOAD_BANDS: LoadBand[] = ['under', 'moderate', 'nominal', 'stretched', 'over'];
+
+/** Same thresholds as the prototype's `shade(v)`: > 115 · > 100 · ≥ 90 · ≥ 60 · else. */
+export function loadBand(v: number): LoadBand {
+  if (v > 115) return 'over';
+  if (v > 100) return 'stretched';
+  if (v >= 90) return 'nominal';
+  if (v >= 60) return 'moderate';
+  return 'under';
+}
+
+/** A person is over-allocated when any week is above this load (strict: 110 % is not over). */
+export const OVER_ALLOCATED_PCT = 110;
+/** The 8-week average is shown in the attention colour above this load (strict). */
+export const AVERAGE_ALERT_PCT = 100;
+
+// ── Person loads (logic 3869–3871) ─────────────────────────────────────────────────────────────────────
+
+export interface PersonLoad {
+  /** Weekly loads (%). */
+  loads: number[];
+  /** Mean of the weekly loads (unrounded). */
+  avg: number;
+  /** `Math.round(avg)` — the "Avg" column (`avgText`), also the basis of project demand. */
+  avgPct: number;
+  max: number;
+  /** Any week > 110 %. */
+  overAllocated: boolean;
+  /** avg > 100 % → "Avg" in the attention colour. */
+  avgAlert: boolean;
+  bands: LoadBand[];
+}
+
+export function personLoad(loads: number[]): PersonLoad {
+  const avg = loads.length ? loads.reduce((a, b) => a + b, 0) / loads.length : 0;
+  const max = loads.length ? Math.max(...loads) : 0;
+  return { loads, avg, avgPct: Math.round(avg), max, overAllocated: max > OVER_ALLOCATED_PCT, avgAlert: avg > AVERAGE_ALERT_PCT, bands: loads.map(loadBand) };
+}
+
+/** "Team utilization" / "Project team load": `round(Σ person avg / n)` (unweighted, unrounded averages); 0 for nobody. */
+export function teamUtilization(people: Pick<PersonLoad, 'avg'>[]): number {
+  return people.length ? Math.round(people.reduce((a, p) => a + p.avg, 0) / people.length) : 0;
+}
+
+/** "Over-allocated": people with any week above 110 %. */
+export function overAllocatedCount(people: Pick<PersonLoad, 'overAllocated'>[]): number {
+  return people.filter((p) => p.overAllocated).length;
+}
+
+/** Number of people above `threshold` % in each week (What-if "People above 100%"). */
+export function peopleAboveByWeek(people: Pick<PersonLoad, 'loads'>[], threshold = AVERAGE_ALERT_PCT): number[] {
+  const n = Math.max(0, ...people.map((p) => p.loads.length));
+  return Array.from({ length: n }, (_, i) => people.filter((p) => (p.loads[i] ?? 0) > threshold).length);
+}
+
+// ── Capacity vs demand (logic 3872–3874) ───────────────────────────────────────────────────────────────
+
+export interface CapacityRow {
+  /** Department name (EN source). */
+  name: string;
+  capacityH: number;
+  demandH: number;
+}
+
+/** 8 weeks × 40 h: the capacity one team member brings to Project resources. */
+export const HOURS_PER_PERSON_WINDOW = 320;
+/** Department of a team member without one. */
+export const OTHER_DEPARTMENT = 'Other';
+
+/**
+ * Project resources bars: per department of the team (first-appearance order), capacity += 320 h per person and
+ * demand += round(avg% × 3.2) h, with the rounded average as the prototype (`parseInt(avgText) * 3.2`).
+ */
+export function projectDepartmentDemand(people: { department: string | null | undefined; avgPct: number }[]): CapacityRow[] {
+  const m = new Map<string, CapacityRow>();
+  for (const p of people) {
+    const d = p.department || OTHER_DEPARTMENT;
+    const row = m.get(d) ?? { name: d, capacityH: 0, demandH: 0 };
+    row.capacityH += HOURS_PER_PERSON_WINDOW;
+    row.demandH += Math.round(p.avgPct * (HOURS_PER_PERSON_WINDOW / 100));
+    m.set(d, row);
+  }
+  return [...m.values()];
+}
+
+export interface CapacityBarGeometry {
+  /** Demand above capacity → accent fill, attention text. */
+  over: boolean;
+  /** Bar scale = max(capacity, demand) × 1.1 — the larger value sits at 90.9 %. */
+  scale: number;
+  /** Fractions of the track (0..1). */
+  demand: number;
+  capacity: number;
+}
+
+export function capacityBar(row: Pick<CapacityRow, 'capacityH' | 'demandH'>): CapacityBarGeometry {
+  const scale = Math.max(row.capacityH, row.demandH) * 1.1;
+  return { over: row.demandH > row.capacityH, scale, demand: scale ? row.demandH / scale : 0, capacity: scale ? row.capacityH / scale : 0 };
+}
+
+/** "Unmet demand" of Project resources: Σ max(0, demand − capacity). */
+export function unmetDemand(rows: Pick<CapacityRow, 'capacityH' | 'demandH'>[]): number {
+  return rows.reduce((a, r) => a + Math.max(0, r.demandH - r.capacityH), 0);
+}
+
+/**
+ * "Unmet demand" of the portfolio Resources screen: a constant in the prototype ("240 h · Mostly engineering"),
+ * while the ROLES bars give 280 h (docs/spec/06 OQ1, 00 OPEN QUESTION A-12). Kept identical to the department-head
+ * Home tile until the rule is decided.
+ */
+export const PORTFOLIO_UNMET_DEMAND_H = 240;
+
+/** "Labor cost to date" sub: `round(actual / budget × 100)` % of the labour budget (null without a budget). */
+export function laborShare(labor: { budget: number; actual: number }): number | null {
+  return labor.budget ? Math.round((labor.actual / labor.budget) * 100) : null;
+}
+
+// ── Availability from leave (Leave & working calendar, logic 4400–4403) ───────────────────────────────
+
+/** Weekly basis of the leave calendar: 5 working days × 7 h = 35 h. */
+export const WORKING_DAYS_PER_WEEK = 5;
+export const HOURS_PER_DAY = 7;
+export const WEEK_HOURS = WORKING_DAYS_PER_WEEK * HOURS_PER_DAY;
+/** A person's 8-week availability below this share is shown in the attention colour. */
+export const LOW_AVAILABILITY = 0.7;
+/** "Weeks under 60% team capacity". */
+export const LOW_TEAM_CAPACITY = 0.6;
+
+/** Hours available in one week: max(0, 5 − leave days − public-holiday days) × 7. */
+export function availableHours(leaveDays: number, holidayDays = 0): number {
+  return Math.max(0, WORKING_DAYS_PER_WEEK - leaveDays - holidayDays) * HOURS_PER_DAY;
+}
+
+export interface LeaveWeek {
+  /** Working days of leave that week (LEAVE_DAYS of its type; 0 when none). */
+  days: number;
+  /** Public-holiday working days that week. */
+  holidays: number;
+}
+
+export interface PersonAvailability {
+  /** Available hours per week. */
+  hours: number[];
+  total: number;
+  /** `round(total / (weeks × 35) × 100)`. */
+  pct: number;
+  /** Leave days in the window (public holidays excluded). */
+  leaveDays: number;
+  /** total / capacity < 70 %. */
+  low: boolean;
+}
+
+export function personAvailability(weeks: LeaveWeek[]): PersonAvailability {
+  const hours = weeks.map((w) => availableHours(w.days, w.holidays));
+  const total = hours.reduce((a, b) => a + b, 0);
+  const cap = weeks.length * WEEK_HOURS;
+  return { hours, total, pct: cap ? Math.round((total / cap) * 100) : 0, leaveDays: weeks.reduce((a, w) => a + w.days, 0), low: cap ? total / cap < LOW_AVAILABILITY : false };
+}
+
+/** "Team availability": mean of the people's rounded availability %, rounded (as the prototype parses "73%"). */
+export function teamAvailability(people: Pick<PersonAvailability, 'pct'>[]): number {
+  return people.length ? Math.round(people.reduce((a, p) => a + p.pct, 0) / people.length) : 0;
+}
+
+/** Weeks whose team hours fall below 60 % of the 35 h × people basis. */
+export function weeksUnderTeamCapacity(people: Pick<PersonAvailability, 'hours'>[], threshold = LOW_TEAM_CAPACITY): number {
+  if (!people.length) return 0;
+  const n = Math.max(...people.map((p) => p.hours.length));
+  let count = 0;
+  for (let i = 0; i < n; i++) if (people.reduce((a, p) => a + (p.hours[i] ?? 0), 0) / (WEEK_HOURS * people.length) < threshold) count++;
+  return count;
+}

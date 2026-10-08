@@ -1,0 +1,19 @@
+{
+  "Basics": "Généralités",
+  "Activities & logic": "Activités & logique",
+  "Calendars": "Calendriers",
+  "Not copied": "Non copiées",
+  "Define in step 3": "À définir à l’étape 3",
+  "Start from nothing": "Partir de zéro",
+  "24h continuous": "24h en continu",
+  "Read-only — you cannot change the project lifecycle": "Consultation — vous ne pouvez pas modifier le cycle de vie du projet",
+  "Deliverables are missing — force the stage change": "Des livrables manquent — forcez le changement d’étape",
+  "A reason is required to force the stage change": "Un motif est obligatoire pour forcer le changement d’étape",
+  "This stage change is not allowed": "Ce changement d’étape n’est pas autorisé",
+  "The project has already moved to another stage": "Le projet est déjà passé à une autre étape",
+  "Invalid deliverable": "Livrable invalide",
+  "Invalid project setup": "Paramétrage du projet invalide",
+  "You are not allowed to create projects": "Vous n’êtes pas autorisé à créer des projets",
+  "The change could not be saved": "La modification n’a pas pu être enregistrée",
+  "The project could not be created": "Le projet n’a pas pu être créé"
+}

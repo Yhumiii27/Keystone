@@ -1,0 +1,27 @@
+/* App-level globals (prototype <helmet> base style, design line 14). Tokens and DS classes live in styles/nocturne.css. */
+:root {
+  --font-heading: var(--font-inter), 'Inter', system-ui, sans-serif;
+  --font-body: var(--font-inter), 'Inter', system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+}
+
+* {
+  scrollbar-color: var(--color-neutral-700) transparent;
+  scrollbar-width: thin;
+}
+
+a {
+  color: var(--color-accent);
+}
+
+a:hover {
+  color: var(--color-accent-400);
+}
+
+button {
+  font: inherit;
+}

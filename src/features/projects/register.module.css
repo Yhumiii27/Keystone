@@ -1,0 +1,179 @@
+/* Projects register (template 638–752, docs/spec/03 §5.1–§5.6). Values copied from the prototype's inline styles. */
+.root { display: flex; flex-direction: column; gap: 14px; }
+
+/* Row 2: slider zone · selected-stage block · search */
+.filterRow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+/* ── Stage slider (§5.2) ── */
+.sliderScroll { flex: 1 1 760px; min-width: 0; overflow-x: auto; overflow-y: hidden; padding: 2px 0 0; }
+.sliderPad { min-width: 780px; padding: 0 36px; }
+.slider {
+  position: relative;
+  height: 66px;
+  cursor: pointer;
+  outline: none;
+  touch-action: none;
+  user-select: none;
+  border-radius: 6px;
+}
+/* style-focus = `:focus` (also after a pointer press), no outline: the ring replaces the global focus outline. */
+.slider:focus,
+.slider:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--color-accent-800); }
+.track { position: absolute; left: 0; right: 0; top: 11px; height: 2px; border-radius: 1px; background: var(--color-neutral-800); }
+.trackFill { position: absolute; left: 0; top: 11px; height: 2px; border-radius: 1px; background: var(--color-accent-700); }
+.tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 60px;
+  pointer-events: none;
+}
+.dot { flex: none; width: 8px; height: 8px; border-radius: 50%; margin-top: 8px; background: var(--color-neutral-800); box-shadow: none; }
+.dotFirst { width: 6px; height: 6px; border-radius: 2px; margin-top: 9px; }
+.dotOn { background: var(--color-accent); box-shadow: 0 0 0 4px var(--color-accent-900); }
+.dotPast { background: var(--color-accent-700); }
+.dotHas { background: var(--color-neutral-500); }
+.lift { width: 1px; flex: none; height: 0; background: var(--color-neutral-800); margin: -5px 0 -5px; }
+.liftOdd { height: 14px; }
+.tickLabel {
+  font-size: 10.5px;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--color-neutral-600);
+  font-weight: 400;
+  padding-top: 0;
+}
+.tickLabelOdd { padding-top: 6px; }
+.tickLabelHas { color: var(--color-neutral-300); }
+.tickLabelOn { color: var(--color-accent-300); font-weight: 500; }
+.tickCount { font-size: 10.5px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--color-neutral-500); margin-top: -2px; }
+.thumb {
+  position: absolute;
+  top: 4px;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-bg);
+  box-shadow: inset 0 0 0 2px var(--color-accent), 0 0 10px color-mix(in srgb, var(--color-accent) 55%, transparent);
+  transition: left 0.16s ease;
+  pointer-events: none;
+}
+
+/* Selected-stage block */
+.selection { display: flex; flex-direction: column; line-height: 1.3; min-width: 200px; max-width: 320px; }
+.selLabel { font-size: 13px; font-weight: 500; }
+.selSub { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+.selHint { font-size: 11px; color: var(--color-neutral-500); }
+
+/* Zone-empty notice (zoneEmptyPr) */
+.zoneEmpty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--color-neutral-300);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-neutral-900);
+}
+.accentIcon { color: var(--color-accent); flex: none; }
+
+/* Register card */
+.cardRow { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+:global(.card).card { padding: 14px 16px; gap: 8px; flex: 3 1 950px; min-width: 0; overflow: auto; }
+.cardHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cardHint { font-size: 12px; color: var(--color-neutral-400); }
+
+/* Project cell (§5.4) */
+.project { display: flex; flex-direction: column; line-height: 1.3; }
+.projectName { font-weight: 500; display: flex; align-items: center; gap: 6px; cursor: default; }
+a.projectName, a.projectName:hover { color: inherit; text-decoration: none; cursor: pointer; }
+.openIcon { font-size: 13px; color: var(--color-accent); flex: none; }
+.projectIds { font-size: 11.5px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.projectMeta { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+
+/* Cells positioned for their popovers (td style="position:relative") */
+.rel { position: relative; }
+.delivCell { position: relative; min-width: 150px; }
+/* The popover anchor is static so the panel is placed against the td, as in the prototype. */
+div.staticAnchor { position: static; }
+.statusStatic { font-size: 11px; padding: 3px 10px; white-space: nowrap; }
+
+/* Next milestone / attention */
+.ms { font-size: 12px; }
+.msStack { display: flex; flex-direction: column; line-height: 1.3; }
+.msName { text-wrap: pretty; }
+.msLine { font-variant-numeric: tabular-nums; }
+.attention { font-size: 12px; max-width: 260px; }
+.attentionText { display: block; color: var(--color-neutral-300); text-wrap: pretty; }
+.num { font-variant-numeric: tabular-nums; }
+.numNowrap { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.numRight { font-variant-numeric: tabular-nums; text-align: right; }
+:global(.table) th.right { text-align: right; }
+
+/* Stage deliverables trigger (§5.6 progress view) */
+.delivButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--color-text);
+  padding: 0;
+}
+.delivButton:disabled { cursor: default; }
+.delivTrack { width: 56px; height: 5px; border-radius: 3px; background: var(--color-neutral-800); flex: none; }
+.delivFill { display: block; height: 100%; border-radius: 3px; background: var(--color-accent); }
+.delivCount { font-variant-numeric: tabular-nums; color: var(--color-neutral-300); }
+.caretMuted { color: var(--color-neutral-500); }
+
+/* Deliverables popover */
+.caption { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-500); }
+.captionGap { margin-top: 4px; }
+.delivItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--color-text);
+}
+.delivItem:disabled { cursor: default; }
+.delivIcon { font-size: 16px; flex: none; color: var(--color-neutral-400); }
+.delivIconDone { color: var(--color-accent-300); }
+.help { font-size: 11px; color: var(--color-neutral-400); text-wrap: pretty; }
+.hist {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  padding: 3px 0;
+  border-top: 1px solid var(--color-neutral-900);
+}
+.histStage { display: flex; flex-direction: column; line-height: 1.3; }
+.histWhy { font-size: 11px; color: var(--color-neutral-400); text-wrap: pretty; }
+.histDate { color: var(--color-neutral-400); white-space: nowrap; }
+
+/* Force stage change dialog (template 3058–3069) */
+.missing { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: var(--radius-md); background: var(--color-accent-900); }
+.missingTitle { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
+.missingItem { font-size: 12.5px; color: var(--color-neutral-200); display: flex; gap: 8px; align-items: center; }
+.squareIcon { color: var(--color-neutral-400); flex: none; }
+.cancelNote { font-size: 13px; color: var(--color-neutral-300); text-wrap: pretty; }
+.note { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--color-neutral-300); text-wrap: pretty; }
+.noteIcon { color: var(--color-accent); margin-top: 2px; flex: none; }

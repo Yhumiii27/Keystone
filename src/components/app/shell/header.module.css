@@ -1,0 +1,453 @@
+/* Page header (prototype lines 76–136, docs/spec/01 §5 and §7, docs/spec/02 C-02/C-03). */
+.header {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-right: auto;
+}
+
+.crumb {
+  font-size: 12px;
+  color: var(--color-neutral-400);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sep {
+  color: var(--color-neutral-600);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.title {
+  margin: 0;
+  font-size: 26px;
+}
+
+.roTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Shared popover chrome (C-20) */
+.rel {
+  position: relative;
+}
+
+.catcher {
+  position: fixed;
+  inset: 0;
+  z-index: 48;
+}
+
+.menuHead {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral-500);
+  padding: 4px 8px 6px;
+}
+
+/* Project switcher (lines 79–95) */
+.pickBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--color-neutral-800);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.pickBtn:hover {
+  border-color: var(--color-neutral-600);
+}
+
+.accentIcon {
+  color: var(--color-accent);
+  flex: none;
+}
+
+.mutedIcon {
+  color: var(--color-neutral-500);
+  flex: none;
+}
+
+.pickMenu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 460px;
+  max-width: min(560px, 90vw);
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.pickSeg {
+  margin: 0 4px 6px;
+}
+
+.pickSearch {
+  position: relative;
+  margin: 0 4px 6px;
+}
+
+.pickSearchIcon {
+  position: absolute;
+  left: 9px;
+  top: 9px;
+  color: var(--color-neutral-500);
+  pointer-events: none;
+}
+
+.pickInput:global(.input) {
+  padding-left: 28px;
+  min-height: 32px;
+  font-size: 12.5px;
+  width: 100%;
+}
+
+.pickOpt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+}
+
+.pickOptOn {
+  background: var(--color-accent-900);
+}
+
+.pickOpt:hover {
+  background: var(--color-neutral-900);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+  min-width: 0;
+}
+
+.ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.optSub {
+  font-size: 11px;
+  color: var(--color-neutral-400);
+}
+
+.optRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.roEye {
+  display: inline-flex;
+  color: var(--color-neutral-500);
+}
+
+.menuEmpty {
+  font-size: 12px;
+  color: var(--color-neutral-500);
+  padding: 8px;
+}
+
+/* Global search (lines 99–107) */
+.search {
+  position: relative;
+  min-width: 220px;
+  flex: 1 1 220px;
+  max-width: 360px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  top: 9px;
+  color: var(--color-neutral-500);
+  pointer-events: none;
+}
+
+.searchInput:global(.input) {
+  padding-left: 30px;
+  min-height: 32px;
+  font-size: 12.5px;
+}
+
+.searchPanel {
+  position: absolute;
+  z-index: 49;
+  top: calc(100% + 4px);
+  right: 0;
+  left: auto;
+  width: min(480px, calc(100vw - 48px));
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.hit {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  text-decoration: none;
+}
+
+.hit:hover {
+  background: var(--color-neutral-900);
+  color: var(--color-text);
+}
+
+.hitKind {
+  justify-self: start;
+  white-space: nowrap;
+}
+
+.hitSub {
+  font-size: 11px;
+  color: var(--color-neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.searchEmpty {
+  font-size: 12.5px;
+  color: var(--color-neutral-500);
+  padding: 8px;
+}
+
+/* Notifications (lines 108–117) */
+.bell:global(.btn) {
+  position: relative;
+}
+
+.bellBadge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.notifPanel {
+  position: absolute;
+  z-index: 49;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(440px, 90vw);
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.notifHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 8px;
+}
+
+.notifTitle {
+  font-size: 13px;
+  font-weight: 500;
+  margin-right: auto;
+}
+
+.markAll:global(.btn) {
+  font-size: 12px;
+  padding: 2px 8px;
+}
+
+.notif {
+  display: grid;
+  grid-template-columns: 8px 28px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 8px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  text-decoration: none;
+}
+
+.notifUnread {
+  background: color-mix(in srgb, var(--color-accent-900) 60%, transparent);
+}
+
+.notif:hover {
+  background: var(--color-neutral-900);
+  color: var(--color-text);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 9px;
+  background: transparent;
+}
+
+.dotOn {
+  background: var(--color-accent);
+}
+
+.notifIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: var(--color-accent-900);
+  color: var(--color-accent-300);
+}
+
+.notifText {
+  font-size: 13px;
+  text-wrap: pretty;
+}
+
+.notifSub {
+  font-size: 11.5px;
+  color: var(--color-neutral-400);
+  text-wrap: pretty;
+}
+
+.notifWhen {
+  font-size: 11px;
+  color: var(--color-neutral-500);
+}
+
+.notifFoot {
+  font-size: 11px;
+  color: var(--color-neutral-500);
+  padding: 8px;
+  text-wrap: pretty;
+}
+
+/* Status date, actions */
+.statusDate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-neutral-400);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Outside banner (lines 126–128) */
+.outside {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--color-neutral-300);
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-neutral-900);
+  box-shadow: inset 0 0 0 1px var(--color-neutral-800);
+}
+
+.outsideText {
+  text-wrap: pretty;
+  margin-right: auto;
+}
+
+.homeBtn:global(.btn) {
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.homeBtn:global(.btn):hover {
+  color: var(--color-accent);
+}
+
+/* Zone bar (lines 130–136) */
+.zoneBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: -4px;
+}
+
+.zoneLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-neutral-400);
+}
+
+.zoneName {
+  color: var(--color-neutral-200);
+}

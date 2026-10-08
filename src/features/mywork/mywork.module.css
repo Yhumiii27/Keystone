@@ -1,0 +1,171 @@
+/* My work (docs/spec/10 §6, template 2813–2901) and Task detail (§7, template 2902–2969).
+   Values copied from the prototype's inline styles. Links reset the global `a` colours. */
+
+/* ── page rhythm ── */
+.page { display: flex; flex-direction: column; gap: 14px; }
+
+/* ── My work header row (2815–2823) ── */
+.headRow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.chip {
+  display: flex; align-items: center; gap: 10px; padding: 6px 10px 6px 6px; border-radius: var(--radius-md);
+  background: var(--color-surface); box-shadow: var(--shadow-sm); border: 0; font: inherit; color: var(--color-text); text-align: left;
+}
+.chipButton { cursor: pointer; }
+.chipButton:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.chipText { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.chipName { font-size: 13px; }
+.chipSub { font-size: 11.5px; color: var(--color-neutral-400); }
+.caret { color: var(--color-neutral-500); flex: none; }
+.viewingNote { font-size: 12px; color: var(--color-neutral-400); }
+.viewCtl { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-left: auto; }
+.pickerMeta { font-size: 11px; color: var(--color-neutral-400); margin-left: auto; padding-left: 12px; white-space: nowrap; }
+
+/* ── List view (2833–2856) ── */
+.groups { display: flex; flex-direction: column; gap: 12px; }
+:global(.card).group { padding: 10px 16px 4px; gap: 0; }
+.groupHead { display: flex; align-items: center; gap: 8px; padding-bottom: 6px; }
+.groupLabel { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--group-color, var(--color-neutral-400)); }
+.groupCount { font-size: 11.5px; color: var(--color-neutral-400); }
+.row {
+  display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 0;
+  border-top: 1px solid var(--color-neutral-900); cursor: pointer;
+}
+.row:hover { background: color-mix(in srgb, var(--color-text) 3%, transparent); }
+.row:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.toggleSlot { display: grid; place-items: center start; }
+.rowMain { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.titleLine { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rowTitle { font-size: 13.5px; color: var(--color-text); text-decoration: none; }
+.rowTitle:hover { color: var(--color-text); }
+.done { text-decoration: line-through; color: var(--color-neutral-500); }
+.done:hover { color: var(--color-neutral-500); }
+:global(.tag).mini { font-size: 10px; padding: 1px 7px; }
+.meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 11.5px; color: var(--color-neutral-400); }
+.label { color: var(--color-accent-300); }
+.right { display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--color-neutral-400); white-space: nowrap; }
+.iconText { display: flex; align-items: center; gap: 4px; }
+.num { font-variant-numeric: tabular-nums; }
+.high { color: var(--color-accent); }
+.due { font-variant-numeric: tabular-nums; min-width: 88px; text-align: right; }
+.due_done { color: var(--color-neutral-500); }
+.due_overdue { color: var(--color-accent-300); }
+.due_today { color: var(--color-accent-300); }
+.due_normal { color: var(--color-neutral-400); }
+
+/* ── Board view (2857–2874) ── */
+.board { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; align-items: start; }
+.column {
+  display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 60%, transparent); box-shadow: var(--shadow-sm);
+}
+.columnHead { display: flex; align-items: center; gap: 8px; padding: 0 2px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--dot-color); }
+.columnLabel { font-size: 12.5px; font-weight: 500; margin-right: auto; }
+.columnCount { font-size: 11.5px; color: var(--color-neutral-400); }
+:global(.card).boardCard {
+  gap: 6px; padding: 10px 12px; border: 0; text-align: left; font: inherit; color: var(--color-text); cursor: pointer;
+  box-shadow: var(--shadow-sm); text-decoration: none;
+}
+:global(.card).boardCard:hover { box-shadow: var(--shadow-md); color: var(--color-text); }
+.cardTitle { font-size: 13px; line-height: 1.35; text-wrap: pretty; }
+/* Board: done titles are struck through but keep the text colour (2862 `text-decoration:{{ t.deco }}` only). */
+.strike { text-decoration: line-through; }
+.cardMeta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11px; color: var(--color-neutral-400); }
+.cardFoot { display: flex; align-items: center; gap: 10px; font-size: 11.5px; color: var(--color-neutral-400); }
+.push { margin-left: auto; }
+.thinTrack { height: 3px; border-radius: 2px; background: var(--color-neutral-800); }
+.thinFill { height: 100%; border-radius: 2px; background: var(--color-accent); width: var(--w, 0%); }
+
+/* ── Calendar view (2875–2899) ── */
+:global(.card).calCard { padding: 14px 16px; gap: 8px; overflow: auto; }
+.calHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.calNav { display: flex; gap: 4px; }
+:global(.btn).calBtn { width: 28px; height: 28px; }
+:global(.btn).calBtn:hover { color: var(--color-text); }
+.calGrid { display: grid; grid-template-columns: 200px repeat(10, minmax(56px, 1fr)); min-width: 780px; }
+.corner { border-bottom: 1px solid var(--color-neutral-800); }
+.dayHead {
+  display: flex; flex-direction: column; align-items: center; padding: 4px 0 6px; border-bottom: 1px solid var(--color-neutral-800);
+  border-left: 1px solid var(--color-neutral-900);
+}
+.dayHeadToday { background: var(--color-accent-900); }
+.weekday { font-size: 10.5px; color: var(--color-neutral-400); }
+.dayNum { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--color-text); }
+.dayHeadToday .dayNum { color: var(--color-accent-300); }
+.calRow { display: contents; }
+.calLabel {
+  display: flex; flex-direction: column; justify-content: center; height: 40px; line-height: 1.25; border-bottom: 1px solid var(--color-neutral-900);
+  cursor: pointer; min-width: 0; padding-right: 8px; color: var(--color-text); text-decoration: none;
+}
+.calLabel:hover { color: var(--color-text); }
+.calLabelTitle { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.calLabelSub { font-size: 11px; color: var(--color-neutral-400); }
+.track {
+  grid-column: span 10; position: relative; height: 40px; border-bottom: 1px solid var(--color-neutral-900);
+  background: repeating-linear-gradient(to right, var(--color-neutral-900) 0 1px, transparent 1px 10%);
+}
+.todayBand { position: absolute; top: 0; bottom: 0; background: var(--color-accent-900); opacity: 0.5; left: var(--l); width: 10%; }
+.calBar {
+  position: absolute; top: 9px; height: 22px; border-radius: 5px; display: flex; align-items: center; padding: 0 8px; font-size: 11.5px;
+  white-space: nowrap; overflow: hidden; cursor: pointer; left: var(--l); width: var(--w); text-decoration: none;
+}
+.bar_late, .bar_late:hover { background: var(--color-accent-800); color: var(--color-accent-100); box-shadow: inset 0 0 0 1px var(--color-accent-600); }
+.bar_doing, .bar_doing:hover { background: var(--color-accent-900); color: var(--color-neutral-200); box-shadow: inset 0 0 0 1px var(--color-accent-600); }
+.bar_idle, .bar_idle:hover { background: var(--color-neutral-900); color: var(--color-neutral-200); box-shadow: inset 0 0 0 1px var(--color-neutral-700); }
+.hoursLabel { height: 36px; display: flex; align-items: center; font-size: 12px; color: var(--color-neutral-300); }
+.hoursCell {
+  height: 36px; display: grid; place-items: center; font-size: 12px; font-variant-numeric: tabular-nums; border-left: 1px solid var(--color-neutral-900);
+  color: var(--color-neutral-300);
+}
+.hoursOver { color: var(--color-accent-300); }
+.hoursToday { background: var(--color-accent-900); }
+
+/* ── Task header row (2904–2910) ── */
+.taskHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+:global(.btn).back { font-size: 13px; }
+:global(.btn).actLink { font-size: 12.5px; }
+.taskId { font-size: 12px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.statusSeg { margin-left: auto; }
+.statusRead { margin-left: auto; }
+
+/* ── Task grid & cards (2911–2967) ── */
+.taskGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 14px; align-items: start; }
+.col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+:global(.card).sheet { padding: 14px 16px; }
+.gap6 { gap: 6px; }
+.gap8 { gap: 8px; }
+.gap10 { gap: 10px; }
+.description { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--color-neutral-200); text-wrap: pretty; white-space: pre-line; }
+.cardHead { display: flex; align-items: center; gap: 8px; }
+.cardHeadSpaced { margin-top: 6px; }
+.headHint { font-size: 12px; color: var(--color-neutral-400); }
+.addRow { display: flex; gap: 6px; margin-top: 4px; }
+:global(.input).addInput { min-height: 32px; font-size: 13px; }
+:global(.input).commentInput { min-height: 34px; font-size: 13px; }
+:global(.btn).addBtn { font-size: 12.5px; padding: 4px 10px; }
+:global(.btn).postBtn { font-size: 12.5px; padding: 4px 12px; }
+:global(.btn).attach { font-size: 12.5px; }
+.staticCheck { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--color-neutral-900); font-size: 13px; }
+.checkText { min-width: 0; }
+.checkDone { text-decoration: line-through; color: var(--color-neutral-500); }
+.empty { font-size: 12.5px; color: var(--color-neutral-500); padding: 4px 0; }
+
+/* Progress & Time */
+.pctValue { font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.track6 { height: 6px; border-radius: 3px; background: var(--color-neutral-800); }
+.fill6 { height: 100%; border-radius: 3px; background: var(--fill, var(--color-accent)); width: var(--w, 0%); }
+.track3 { height: 3px; border-radius: 2px; background: var(--color-neutral-800); }
+.fill3 { height: 100%; border-radius: 2px; background: var(--color-accent); width: var(--w, 0%); }
+.timeValue { font-size: 13px; font-variant-numeric: tabular-nums; }
+.timeLogged { font-weight: 500; }
+.timeEst { color: var(--color-neutral-400); }
+.logForm { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 6px; margin-top: 4px; }
+:global(.input).logInput { min-height: 32px; font-size: 13px; }
+:global(.input).logHours { text-align: right; }
+.costNote { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+
+/* Plan card */
+.planRow { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; padding: 4px 0; border-bottom: 1px solid var(--color-neutral-900); }
+.planKey { color: var(--color-neutral-400); }
+.planValue { text-align: right; font-variant-numeric: tabular-nums; color: var(--v-color, var(--color-text)); }
+:global(.btn).openPlan { align-self: flex-start; font-size: 12.5px; }

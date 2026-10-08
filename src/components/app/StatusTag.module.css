@@ -1,0 +1,4 @@
+/* Tag-as-menu-button (Projects status cell 669): border:0;cursor:pointer;gap:5px;font:inherit;font-size:11px;padding:3px 8px 3px 10px;white-space:nowrap */
+:global(.tag).button { border: 0; cursor: pointer; gap: 5px; font: inherit; font-size: 11px; padding: 3px 8px 3px 10px; white-space: nowrap; }
+/* Note: border:0 also removes the outline tag's border, exactly as the prototype's inline style does. */
+.muted { white-space: nowrap; }

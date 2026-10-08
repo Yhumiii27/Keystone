@@ -1,0 +1,151 @@
+/* Plan — WBS & activities (template 1024–1166). Values copied from the prototype's inline styles. */
+
+/* Screen body: vertical stack, gap 14 (1025) */
+.body { display: flex; flex-direction: column; gap: 14px; }
+
+/* ── Toolbar (1026–1035) ── */
+.toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+:global(.input).chip {
+  width: auto; min-height: 32px; display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12.5px; cursor: pointer; padding: 4px 10px; text-align: left; white-space: nowrap;
+}
+:global(.input).chipStatic { cursor: auto; }
+.chipIcon { color: var(--color-neutral-500); flex: none; }
+.chipLabel { color: var(--color-neutral-400); }
+.toolbarRight { margin-left: auto; display: flex; gap: 8px; }
+:global(.btn).btn13 { font-size: 13px; }
+
+/* ── Cards (1046 / 1072) ── */
+:global(.card).card { padding: 14px 16px; gap: 8px; overflow: auto; }
+.cardHead { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+.cardHeadText { display: flex; flex-direction: column; margin-right: auto; }
+.cardSub { font-size: 12px; color: var(--color-neutral-400); text-wrap: pretty; }
+.dataDate { font-size: 12px; color: var(--color-neutral-400); white-space: nowrap; }
+:global(.btn).addWp { font-size: 12px; white-space: nowrap; }
+
+/* ── Grid tables (1048 / 1074) ── */
+.structure { min-width: 1000px; }
+.progress { min-width: 1040px; }
+.sGrid,
+.pGrid { display: grid; gap: 8px; align-items: center; }
+.sGrid { grid-template-columns: 72px minmax(220px, 1.6fr) 150px 64px 84px minmax(170px, 1fr) 100px 92px; }
+.pGrid { grid-template-columns: 72px minmax(200px, 1.4fr) 84px 84px 80px 54px minmax(170px, 1fr) 50px 92px 46px 56px; }
+.head {
+  padding: 6px 0; border-bottom: 1px solid var(--color-neutral-800);
+  font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-400);
+}
+.right { text-align: right; }
+.row { min-height: 36px; border-bottom: 1px solid var(--color-neutral-900); font-size: 12.5px; background: transparent; }
+.selected { background: var(--color-accent-900); }
+.clickRow { cursor: pointer; }
+/* style-hover is !important in the prototype: hover wins over the selected ground (docs/spec/02 Q-13). */
+.clickRow:hover { background: var(--color-neutral-900) !important; }
+
+.idCell { font-variant-numeric: tabular-nums; color: var(--color-neutral-400); font-size: 12px; }
+.idLink { color: inherit; text-decoration: none; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+.idLink:hover { color: inherit; }
+.idPlain { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.mark { width: 6px; height: 6px; border-radius: 50%; background: var(--color-accent); flex: none; }
+
+.nameCell { display: flex; align-items: center; gap: 6px; min-width: 0; padding-left: var(--indent, 0); }
+.caret {
+  width: 18px; height: 18px; border: 0; background: transparent; color: var(--color-neutral-400);
+  cursor: pointer; display: grid; place-items: center; padding: 0; flex: none;
+}
+.ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.w500 { font-weight: 500; }
+.w400 { font-weight: 400; }
+:global(.input).w500 { font-weight: 500; }
+.lightning { color: var(--color-accent); font-size: 12px; flex: none; }
+
+.flexCell { display: flex; min-width: 0; }
+.numCell { display: flex; font-variant-numeric: tabular-nums; color: var(--color-neutral-400); font-size: 12px; }
+.budgetCell { display: flex; font-variant-numeric: tabular-nums; font-size: 12px; }
+.consCell { font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--color-neutral-400); }
+.actions { display: flex; justify-content: flex-end; gap: 2px; }
+.readText { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:global(.input).invalid { border-color: var(--color-accent-300); }
+
+.tab { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.muted { color: var(--color-neutral-400); }
+.varCell { font-variant-numeric: tabular-nums; color: var(--color-neutral-400); }
+.tfCell { font-variant-numeric: tabular-nums; color: var(--color-neutral-300); }
+.progCell { display: grid; grid-template-columns: minmax(0, 1fr) 58px 24px; gap: 6px; align-items: center; }
+/* The prototype's fill is a plain block clipped by the track (square end), not a rounded pill. */
+.progCell > [role='progressbar'] > div { border-radius: 0; }
+:global(.input).pctInput { width: 58px; }
+.pctText { font-variant-numeric: tabular-nums; font-size: 12px; text-align: right; }
+.status { white-space: nowrap; font-size: 11px; }
+.ownerCell { display: flex; }
+.todoCell { font-size: 12px; color: var(--color-neutral-300); display: flex; align-items: center; gap: 4px; }
+.todoIcon { color: var(--color-neutral-500); }
+
+/* ── Activity drawer (1107–1162) ── */
+.drawerGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 18px; }
+.section { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.kicker { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent); margin-bottom: 4px; }
+.kv { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; padding: 3px 0; border-bottom: 1px solid var(--color-neutral-900); }
+.kvKey { color: var(--color-neutral-400); }
+.kvVal { font-variant-numeric: tabular-nums; text-align: right; color: var(--color-text); }
+.subLabel { font-size: 11px; color: var(--color-neutral-400); }
+.subLabelGap { margin-top: 8px; }
+.rel {
+  display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 8px; font-size: 12.5px; align-items: center;
+  padding: 3px 0; border-bottom: 1px solid var(--color-neutral-900);
+}
+.relId { color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.relType { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--color-neutral-300); }
+.relDriving { color: var(--color-accent-300); }
+.relNone { color: var(--color-neutral-500); }
+:global(.btn).addRel { align-self: flex-start; font-size: 12.5px; margin-top: 4px; }
+.res { display: flex; flex-direction: column; gap: 1px; font-size: 12.5px; padding: 3px 0; border-bottom: 1px solid var(--color-neutral-900); }
+.resTop { display: flex; justify-content: space-between; gap: 8px; }
+.resUnits { font-variant-numeric: tabular-nums; color: var(--color-neutral-300); white-space: nowrap; }
+.resSub { font-size: 11.5px; color: var(--color-neutral-400); }
+.miniKpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+.miniKpi { display: flex; flex-direction: column; }
+.miniLabel { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-400); }
+.miniValue { font-size: 15px; font-weight: 500; }
+.costBar { position: relative; height: 6px; border-radius: 3px; background: var(--color-neutral-900); margin-top: 4px; }
+.costFill { height: 100%; border-radius: 3px; background: var(--color-neutral-300); width: var(--w); }
+.costTick { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--color-neutral-500); left: var(--l); }
+.costEac {
+  position: absolute; top: -2px; width: 8px; height: 8px; margin-left: -4px; transform: translateY(3px) rotate(45deg);
+  background: var(--color-accent); left: var(--l);
+}
+.costNote { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+.todoHead { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.todoHead .kicker { margin-right: auto; margin-bottom: 0; }
+.todoCount { font-size: 12px; color: var(--color-neutral-400); }
+.todo {
+  display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 0;
+  border: 0; border-bottom: 1px solid var(--color-neutral-900); background: transparent; color: var(--color-text);
+  font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; text-decoration: none;
+}
+.todo:hover { color: var(--color-accent-300) !important; }
+.ring {
+  width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--color-neutral-600); background: transparent;
+  display: grid; place-items: center;
+}
+.ringDone { border-color: var(--color-accent); background: var(--color-accent); }
+.ringCheck { font-size: 9px; color: var(--color-bg); }
+.todoText { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.todoTitle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.todoTitleDone { text-decoration: line-through; }
+.todoMeta { font-size: 11px; color: var(--color-neutral-400); }
+.pending {
+  display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; align-items: center; padding: 5px 0;
+  border-bottom: 1px dashed var(--color-neutral-800); font-size: 12.5px; color: var(--color-neutral-400);
+}
+.pendingIcon { color: var(--color-accent-300); }
+.pendingMeta { font-size: 11px; }
+.noTodos { font-size: 12.5px; color: var(--color-neutral-500); padding: 4px 0; }
+.addTodo { display: flex; gap: 6px; margin-top: 6px; }
+:global(.input).addTodoInput { min-height: 32px; font-size: 13px; }
+:global(.btn).addTodoBtn { font-size: 12.5px; padding: 4px 10px; }
+
+/* ── Removal confirmation ── */
+.confirmText { font-size: 13px; color: var(--color-neutral-300); text-wrap: pretty; }
+
+/* LO (attention) colour — last so it wins over the cells' default colours (same specificity). */
+.lo { color: var(--color-accent-300); }

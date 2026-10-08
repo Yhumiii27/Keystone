@@ -1,0 +1,11 @@
+/* Key–value rows (docs/spec/02 C-13). */
+.list { display: flex; flex-direction: column; gap: 4px; }
+.row { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; padding: 3px 0; border-bottom: 1px solid var(--color-neutral-900); }
+.k { color: var(--color-neutral-400); flex: none; }
+.v { text-align: right; font-variant-numeric: tabular-nums; text-wrap: pretty; color: var(--kv-color, inherit); }
+
+/* horizontal variant (Task meta 2915) */
+.inline { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 12.5px; }
+.item { display: flex; flex-direction: column; gap: 1px; }
+.ik { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-400); }
+.iv { color: var(--kv-color, inherit); }

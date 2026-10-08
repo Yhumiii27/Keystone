@@ -1,0 +1,28 @@
+/* CH-11 RiskMatrix (template 1802–1812). */
+.grid { display: grid; grid-template-columns: 18px repeat(5, 1fr); gap: 4px; }
+.row { display: contents; }
+.axis { font-size: 11px; color: var(--color-neutral-400); display: grid; place-items: center; }
+.axisX { font-size: 11px; color: var(--color-neutral-400); text-align: center; }
+.cell {
+  aspect-ratio: 1;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  line-height: 1.2;
+  padding: 2px;
+  color: var(--color-neutral-300);
+}
+/* rCell(p, i): background by band; accent-100 text from High up */
+.critical { background: var(--color-accent-500); }
+.high { background: var(--color-accent-700); }
+.medium { background: var(--color-accent-900); }
+.low { background: var(--color-neutral-900); }
+.cell.critical, .cell.high { color: var(--color-accent-100); }
+
+/* legend (template 1812) */
+.legend { display: flex; gap: 10px; font-size: 11px; color: var(--color-neutral-400); flex-wrap: wrap; }
+.item { display: flex; align-items: center; gap: 5px; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; flex: none; }

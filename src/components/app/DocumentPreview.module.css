@@ -1,0 +1,5 @@
+/* Document / photo preview slot (docs/spec/02 C-31, stand-in for <image-slot>). */
+.wrap { width: 100%; aspect-ratio: var(--dp-ratio, 4 / 3); border-radius: var(--radius-md); overflow: hidden; }
+.img { display: block; width: 100%; height: 100%; object-fit: var(--dp-fit, contain); }
+.empty { display: grid; place-items: center; align-content: center; gap: 6px; background: var(--color-neutral-900); border: 1px dashed var(--color-neutral-700); color: var(--color-neutral-500); font-size: 12px; text-align: center; padding: 12px; text-wrap: pretty; }
+.emptyIcon { font-size: 20px; color: var(--color-neutral-600); }

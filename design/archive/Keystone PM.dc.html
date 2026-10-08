@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-08af9e11-fa9b-4d10-b0bf-ef17d330333a/styles.css">
+<script src="_ds/nocturne-08af9e11-fa9b-4d10-b0bf-ef17d330333a/_ds_bundle.js"></script>
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>body{margin:0;background:var(--color-bg)}*{scrollbar-color:var(--color-neutral-700) transparent;scrollbar-width:thin}a{color:var(--color-accent)}a:hover{color:var(--color-accent-400)}</style>
+</helmet>
+<div style="display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh;background:radial-gradient(1200px 600px at 70% -10%, var(--color-accent-900), transparent 60%), var(--color-bg);color:var(--color-text);font-family:var(--font-body)">
+
+  <aside style="display:flex;flex-direction:column;gap:22px;padding:18px 14px;border-right:1px solid var(--color-neutral-900);background:color-mix(in srgb, var(--color-bg) 70%, transparent)">
+    <div style="display:flex;align-items:center;gap:10px;padding:0 6px">
+      <div style="width:26px;height:26px;border-radius:7px;border:1px solid var(--color-accent);display:grid;place-items:center;color:var(--color-accent);box-shadow:0 0 14px color-mix(in srgb, var(--color-accent) 40%, transparent)"><i class="ph ph-polygon" style="font-size:15px"></i></div>
+      <div style="font-size:16px;font-weight:500;letter-spacing:-0.01em">Keystone</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-neutral-500);padding:0 8px 6px">Portfolio</div>
+      <sc-for list="{{ navPortfolio }}" as="n" hint-placeholder-count="1">
+        <button onClick="{{ n.onClick }}" style="display:flex;align-items:center;gap:10px;padding:7px 8px;border:0;border-radius:var(--radius-md);font:inherit;font-size:13px;text-align:left;cursor:pointer;background:{{ n.bg }};color:{{ n.color }}" style-hover="background:var(--color-neutral-900)"><i class="{{ n.icon }}" style="font-size:16px"></i>{{ n.label }}</button>
+      </sc-for>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-neutral-500);padding:0 8px 6px">Harbor Line Terminal</div>
+      <sc-for list="{{ navProject }}" as="n" hint-placeholder-count="3">
+        <button onClick="{{ n.onClick }}" style="display:flex;align-items:center;gap:10px;padding:7px 8px;border:0;border-radius:var(--radius-md);font:inherit;font-size:13px;text-align:left;cursor:pointer;background:{{ n.bg }};color:{{ n.color }}" style-hover="background:var(--color-neutral-900)"><i class="{{ n.icon }}" style="font-size:16px"></i>{{ n.label }}</button>
+      </sc-for>
+    </div>
+    <div style="margin-top:auto;display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--radius-md);background:var(--color-surface)">
+      <div style="width:28px;height:28px;border-radius:50%;background:var(--color-accent-800);color:var(--color-accent-200);display:grid;place-items:center;font-size:11px">ML</div>
+      <div style="display:flex;flex-direction:column;line-height:1.25"><span style="font-size:13px">Maya Lindqvist</span><span style="font-size:11px;color:var(--color-neutral-400)">Portfolio director</span></div>
+    </div>
+  </aside>
+
+  <main style="display:flex;flex-direction:column;gap:18px;padding:20px 28px 40px;min-width:0">
+    <header style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:4px;margin-right:auto">
+        <div style="font-size:12px;color:var(--color-neutral-400);display:flex;gap:6px;align-items:center">{{ crumb }}</div>
+        <div style="display:flex;align-items:center;gap:10px"><h2 style="margin:0;font-size:26px">{{ title }}</h2><sc-if value="{{ isProject }}" hint-placeholder-val="{{ false }}"><span class="tag tag-outline">At risk</span></sc-if></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-neutral-400)"><i class="ph ph-calendar-blank"></i>Status date · 25 Sep 2026</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary"><i class="ph ph-export"></i>Export</button>
+        <button class="btn btn-primary"><i class="ph ph-plus"></i>{{ primaryAction }}</button>
+      </div>
+    </header>
+
+    <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
+          <sc-for list="{{ portfolioKpis }}" as="k" hint-placeholder-count="6">
+            <div class="card elev-sm" style="gap:3px;padding:12px 14px">
+              <div style="font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-400)">{{ k.label }}</div>
+              <div style="font-size:24px;font-weight:500;letter-spacing:-0.02em;color:{{ k.color }}">{{ k.value }}</div>
+              <div style="font-size:12px;color:var(--color-neutral-400);display:flex;gap:5px;align-items:center"><i class="{{ k.icon }}"></i>{{ k.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px">
+          <div class="card elev-sm" style="padding:14px 16px;gap:8px;overflow:auto">
+            <div style="display:flex;align-items:center;gap:10px"><div class="card-title" style="margin-right:auto">Active projects</div><span style="font-size:12px;color:var(--color-neutral-400)">6 projects · FY2026</span></div>
+            <table class="table" style="font-size:13px;min-width:760px">
+              <thead><tr><th>Project</th><th>Health</th><th>Progress</th><th>Spend vs earned</th><th>CPI</th><th>SPI</th><th>EAC</th><th>Variance</th></tr></thead>
+              <tbody>
+                <sc-for list="{{ projects }}" as="p" hint-placeholder-count="6">
+                  <tr onClick="{{ p.onClick }}" style="cursor:{{ p.cursor }}">
+                    <td><div style="display:flex;flex-direction:column;line-height:1.3"><span style="font-weight:500">{{ p.name }}</span><span style="font-size:11.5px;color:var(--color-neutral-400)">{{ p.pm }} · due {{ p.due }}</span></div></td>
+                    <td><span class="{{ p.tagClass }}">{{ p.health }}</span></td>
+                    <td><div style="display:flex;align-items:center;gap:8px"><div style="width:64px;height:5px;border-radius:3px;background:var(--color-neutral-800)"><div style="height:100%;border-radius:3px;background:var(--color-accent);width:{{ p.progressPct }}"></div></div><span style="font-variant-numeric:tabular-nums">{{ p.progressPct }}</span></div></td>
+                    <td><div style="display:flex;align-items:center;gap:8px"><div style="position:relative;width:84px;height:5px;border-radius:3px;background:var(--color-neutral-800)"><div style="height:100%;border-radius:3px;background:var(--color-neutral-300);width:{{ p.spentPct }}"></div><div style="position:absolute;top:-3px;width:2px;height:11px;background:var(--color-accent);left:{{ p.progressPct }}"></div></div><span style="font-size:12px;color:var(--color-neutral-300);font-variant-numeric:tabular-nums">{{ p.spentPct }}</span></div></td>
+                    <td style="font-variant-numeric:tabular-nums;color:{{ p.cpiColor }}">{{ p.cpiText }}</td>
+                    <td style="font-variant-numeric:tabular-nums;color:{{ p.spiColor }}">{{ p.spiText }}</td>
+                    <td style="font-variant-numeric:tabular-nums">{{ p.eacText }}</td>
+                    <td style="font-variant-numeric:tabular-nums;color:{{ p.varColor }}">{{ p.varText }}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+            <div style="display:flex;gap:16px;font-size:11.5px;color:var(--color-neutral-400);padding-top:4px"><span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:5px;border-radius:2px;background:var(--color-neutral-300)"></span>Budget spent</span><span style="display:flex;align-items:center;gap:6px"><span style="width:2px;height:10px;background:var(--color-accent)"></span>Work earned</span><span>Spend past the mark = paying more than the work is worth</span></div>
+          </div>
+          <div class="card elev-sm" style="padding:14px 16px;gap:10px">
+            <div class="card-title">Needs attention</div>
+            <sc-for list="{{ alerts }}" as="a" hint-placeholder-count="4">
+              <div style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:10px 0;border-top:1px solid var(--color-neutral-900)">
+                <div style="width:28px;height:28px;border-radius:7px;background:var(--color-accent-900);color:var(--color-accent-300);display:grid;place-items:center"><i class="{{ a.icon }}"></i></div>
+                <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:500">{{ a.title }}</span><span style="font-size:12px;color:var(--color-neutral-400);text-wrap:pretty">{{ a.detail }}</span><button class="btn btn-ghost" onClick="{{ a.onClick }}" style="align-self:flex-start;font-size:12px;padding:2px 4px;margin-left:-4px">{{ a.action }}<i class="ph ph-arrow-right"></i></button></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isBudget }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+          <sc-for list="{{ budgetKpis }}" as="k" hint-placeholder-count="7">
+            <div class="card elev-sm" style="gap:3px;padding:12px 14px">
+              <div style="font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-400)">{{ k.label }}</div>
+              <div style="font-size:22px;font-weight:500;letter-spacing:-0.02em;color:{{ k.color }}">{{ k.value }}</div>
+              <div style="font-size:11.5px;color:var(--color-neutral-400)">{{ k.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:14px">
+          <div class="card elev-sm" style="padding:14px 16px;gap:10px;overflow:auto">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+              <div style="display:flex;flex-direction:column;margin-right:auto"><div class="card-title">Budget vs cost</div><span style="font-size:12px;color:var(--color-neutral-400)">Cumulative, earned-value method</span></div>
+              <div style="display:flex;gap:14px;font-size:12px;color:var(--color-neutral-300)">
+                <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;border-top:2px dashed var(--color-neutral-500)"></span>Planned (PV)</span>
+                <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;border-top:2px solid var(--color-accent)"></span>Earned (EV)</span>
+                <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;border-top:2px solid var(--color-neutral-100)"></span>Actual (AC)</span>
+                <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;border-top:2px dotted var(--color-neutral-100)"></span>Forecast</span>
+              </div>
+            </div>
+            <svg viewBox="0 0 760 290" style="width:100%;min-width:560px;height:auto;display:block">
+              <defs><linearGradient id="evfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9184d9" stop-opacity="0.28"></stop><stop offset="1" stop-color="#9184d9" stop-opacity="0"></stop></linearGradient></defs>
+              <sc-for list="{{ chart.grid }}" as="g" hint-placeholder-count="6">
+                <line x1="52" x2="744" y1="{{ g.y }}" y2="{{ g.y }}" stroke="#292b31"></line>
+                <text x="44" y="{{ g.ty }}" fill="#9397ab" style="font-size:11px;text-anchor:end">{{ g.label }}</text>
+              </sc-for>
+              <sc-for list="{{ chart.months }}" as="m" hint-placeholder-count="12">
+                <text x="{{ m.x }}" y="282" fill="#9397ab" style="font-size:11px;text-anchor:middle">{{ m.label }}</text>
+              </sc-for>
+              <line x1="52" x2="744" y1="{{ chart.bacY }}" y2="{{ chart.bacY }}" stroke="#595d6c" style="stroke-dasharray:2 4"></line>
+              <text x="56" y="{{ chart.bacLabelY }}" fill="#b2b6ca" style="font-size:11px">Budget at completion · {{ chart.bacText }}</text>
+              <line x1="{{ chart.todayX }}" x2="{{ chart.todayX }}" y1="10" y2="262" stroke="#5d5294"></line>
+              <text x="{{ chart.todayLabelX }}" y="22" fill="#b5abfc" style="font-size:11px">Today</text>
+              <path d="{{ chart.evArea }}" fill="url(#evfill)"></path>
+              <path d="{{ chart.pv }}" fill="none" stroke="#75798c" style="stroke-width:2;stroke-dasharray:5 4"></path>
+              <path d="{{ chart.ac }}" fill="none" stroke="#e4e7f5" style="stroke-width:2"></path>
+              <path d="{{ chart.fc }}" fill="none" stroke="#e4e7f5" style="stroke-width:2;stroke-dasharray:1 4;stroke-linecap:round"></path>
+              <path d="{{ chart.ev }}" fill="none" stroke="#9184d9" style="stroke-width:2.5"></path>
+              <circle cx="{{ chart.eacX }}" cy="{{ chart.eacY }}" r="4" fill="#161826" stroke="#e4e7f5" style="stroke-width:2"></circle>
+              <text x="{{ chart.eacLabelX }}" y="{{ chart.eacLabelY }}" fill="#e4e7f5" style="font-size:11px;text-anchor:end">EAC {{ chart.eacText }}</text>
+            </svg>
+          </div>
+          <div class="card elev-sm" style="padding:14px 16px;gap:12px">
+            <div class="card-title">Variance</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-400)">Cost (EV−AC)</span><span style="font-size:20px;font-weight:500;color:var(--color-accent-300)">{{ cvText }}</span></div>
+              <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-400)">Schedule (EV−PV)</span><span style="font-size:20px;font-weight:500;color:var(--color-accent-300)">{{ svText }}</span></div>
+            </div>
+            <div style="font-size:12px;color:var(--color-neutral-400)">Cumulative cost variance by month</div>
+            <div style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;height:110px;align-items:start;border-top:1px solid var(--color-neutral-800);padding-top:1px">
+              <sc-for list="{{ cvBars }}" as="b" hint-placeholder-count="9">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;height:100%">
+                  <div style="width:100%;border-radius:0 0 3px 3px;background:linear-gradient(var(--color-accent-700), var(--color-accent-500));height:{{ b.h }}"></div>
+                  <span style="font-size:10px;color:var(--color-neutral-400)">{{ b.label }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="font-size:12.5px;line-height:1.5;color:var(--color-neutral-300);padding:10px 12px;border-radius:var(--radius-md);background:var(--color-neutral-900);text-wrap:pretty">Overrun is widening ~$40k a month, led by steel labor. To finish on budget the remaining work needs a CPI of <span style="color:var(--color-accent-300)">{{ tcpiText }}</span>.</div>
+          </div>
+        </div>
+        <div class="card elev-sm" style="padding:14px 16px;gap:8px;overflow:auto">
+          <div style="display:flex;align-items:center;gap:10px"><div class="card-title" style="margin-right:auto">Cost breakdown</div><span style="font-size:12px;color:var(--color-neutral-400)">Bar spans 140% of each line's budget · tick = budget</span></div>
+          <table class="table" style="font-size:13px;min-width:820px">
+            <thead><tr><th>Category</th><th style="text-align:right">Budget</th><th style="text-align:right">Actual</th><th style="text-align:right">Committed</th><th style="text-align:right">Forecast</th><th style="width:30%">Actual · committed · forecast</th><th style="text-align:right">Variance</th></tr></thead>
+            <tbody>
+              <sc-for list="{{ categories }}" as="c" hint-placeholder-count="6">
+                <tr>
+                  <td style="font-weight:500">{{ c.name }}</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums">{{ c.budgetText }}</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums">{{ c.actualText }}</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--color-neutral-400)">{{ c.committedText }}</td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums">{{ c.forecastText }}</td>
+                  <td><div style="position:relative;height:10px;border-radius:3px;background:var(--color-neutral-900);display:flex;overflow:visible">
+                    <div style="height:100%;border-radius:3px 0 0 3px;background:var(--color-neutral-300);width:{{ c.aW }}"></div>
+                    <div style="height:100%;background:var(--color-neutral-700);width:{{ c.cW }}"></div>
+                    <div style="position:absolute;top:-3px;height:16px;width:2px;background:var(--color-neutral-500);left:{{ c.bL }}"></div>
+                    <div style="position:absolute;top:-4px;width:8px;height:8px;margin-left:-4px;transform:translateY(5px) rotate(45deg);background:var(--color-accent);left:{{ c.fL }}"></div>
+                  </div></td>
+                  <td style="text-align:right;font-variant-numeric:tabular-nums;color:{{ c.varColor }}">{{ c.varText }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSchedule }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
+          <sc-for list="{{ scheduleKpis }}" as="k" hint-placeholder-count="5">
+            <div class="card elev-sm" style="gap:3px;padding:12px 14px">
+              <div style="font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-400)">{{ k.label }}</div>
+              <div style="font-size:22px;font-weight:500;letter-spacing:-0.02em;color:{{ k.color }}">{{ k.value }}</div>
+              <div style="font-size:11.5px;color:var(--color-neutral-400)">{{ k.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div class="card elev-sm" style="padding:14px 16px;gap:10px;overflow:auto">
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <div class="card-title" style="margin-right:auto">Schedule — baseline vs forecast</div>
+            <div style="display:flex;gap:14px;font-size:12px;color:var(--color-neutral-300)">
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:8px;border-radius:2px;background:var(--color-accent-800);box-shadow:inset 0 0 0 1px var(--color-accent)"></span>Critical path</span>
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:8px;border-radius:2px;background:var(--color-neutral-800);box-shadow:inset 0 0 0 1px var(--color-neutral-600)"></span>Task</span>
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:4px;border-radius:2px;background:var(--color-neutral-600)"></span>Baseline</span>
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;transform:rotate(45deg);background:var(--color-accent)"></span>Milestone</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:230px 56px 64px minmax(560px,1fr);min-width:900px">
+            <div style="display:contents">
+              <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-400);padding:6px 0;border-bottom:1px solid var(--color-neutral-800)">Work package</div>
+              <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-400);padding:6px 0;border-bottom:1px solid var(--color-neutral-800);text-align:right">Done</div>
+              <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-400);padding:6px 0;border-bottom:1px solid var(--color-neutral-800);text-align:right;padding-right:12px">Slip</div>
+              <div style="display:grid;grid-template-columns:repeat(13,1fr);border-bottom:1px solid var(--color-neutral-800)">
+                <sc-for list="{{ ganttMonths }}" as="m" hint-placeholder-count="13"><div style="font-size:11px;color:var(--color-neutral-400);padding:6px 0 6px 6px;border-left:1px solid var(--color-neutral-900)">{{ m }}</div></sc-for>
+              </div>
+            </div>
+            <sc-for list="{{ tasks }}" as="t" hint-placeholder-count="8">
+              <div style="display:contents">
+                <div style="display:flex;flex-direction:column;justify-content:center;height:44px;line-height:1.25;border-bottom:1px solid var(--color-neutral-900)"><span style="font-size:13px;display:flex;align-items:center;gap:6px">{{ t.name }}<sc-if value="{{ t.critical }}" hint-placeholder-val="{{ false }}"><i class="ph ph-lightning" style="color:var(--color-accent);font-size:12px"></i></sc-if></span><span style="font-size:11.5px;color:var(--color-neutral-400)">{{ t.owner }}</span></div>
+                <div style="height:44px;display:flex;align-items:center;justify-content:flex-end;font-size:13px;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--color-neutral-900)">{{ t.pctText }}</div>
+                <div style="height:44px;display:flex;align-items:center;justify-content:flex-end;padding-right:12px;font-size:13px;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--color-neutral-900);color:{{ t.slipColor }}">{{ t.slipText }}</div>
+                <div style="position:relative;height:44px;border-bottom:1px solid var(--color-neutral-900);background:repeating-linear-gradient(to right, var(--color-neutral-900) 0 1px, transparent 1px calc(100% / 13))">
+                  <sc-if value="{{ showBaseline }}" hint-placeholder-val="{{ true }}"><div style="position:absolute;top:31px;height:4px;border-radius:2px;background:var(--color-neutral-700);left:{{ t.bL }};width:{{ t.bW }}"></div></sc-if>
+                  <div style="position:absolute;top:10px;height:16px;border-radius:4px;overflow:hidden;left:{{ t.aL }};width:{{ t.aW }};background:{{ t.barBg }};box-shadow:{{ t.barEdge }}"><div style="height:100%;width:{{ t.pctText }};background:{{ t.fillBg }}"></div></div>
+                  <div style="position:absolute;top:0;bottom:0;width:1px;background:var(--color-accent);opacity:0.7;left:{{ todayL }}"></div>
+                </div>
+              </div>
+            </sc-for>
+            <div style="display:contents">
+              <div style="height:44px;display:flex;align-items:center;font-size:13px;color:var(--color-neutral-300)">Milestones</div><div></div><div></div>
+              <div style="position:relative;height:44px;background:repeating-linear-gradient(to right, var(--color-neutral-900) 0 1px, transparent 1px calc(100% / 13))">
+                <sc-for list="{{ milestones }}" as="m" hint-placeholder-count="6">
+                  <sc-if value="{{ showBaseline }}" hint-placeholder-val="{{ true }}"><div style="position:absolute;top:17px;width:9px;height:9px;margin-left:-4.5px;transform:rotate(45deg);box-shadow:inset 0 0 0 1px var(--color-neutral-600);left:{{ m.bL }}"></div></sc-if>
+                  <div title="{{ m.name }}" style="position:absolute;top:16px;width:11px;height:11px;margin-left:-5.5px;transform:rotate(45deg);left:{{ m.fL }};background:{{ m.bg }}"></div>
+                </sc-for>
+                <div style="position:absolute;top:0;bottom:0;width:1px;background:var(--color-accent);opacity:0.7;left:{{ todayL }}"></div>
+                <div style="position:absolute;top:-2px;font-size:10px;color:var(--color-accent-300);padding:0 4px;background:var(--color-surface);border-radius:3px;transform:translateX(-50%);left:{{ todayL }}">Today</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:14px">
+          <div class="card elev-sm" style="padding:14px 16px;gap:10px">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+              <div style="display:flex;flex-direction:column;margin-right:auto"><div class="card-title">Schedule progression</div><span style="font-size:12px;color:var(--color-neutral-400)">Cumulative % complete · SPI per month</span></div>
+              <div style="display:flex;gap:14px;font-size:12px;color:var(--color-neutral-300)"><span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:var(--color-neutral-700)"></span>Planned</span><span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:var(--color-accent)"></span>Actual</span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:8px;height:170px;align-items:end;padding-top:8px">
+              <sc-for list="{{ progression }}" as="p" hint-placeholder-count="12">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end">
+                  <span style="font-size:10.5px;font-variant-numeric:tabular-nums;color:{{ p.spiColor }}">{{ p.spiText }}</span>
+                  <div style="display:flex;gap:2px;align-items:flex-end;width:100%;height:120px">
+                    <div style="flex:1;border-radius:2px 2px 0 0;background:var(--color-neutral-700);height:{{ p.planH }}"></div>
+                    <div style="flex:1;border-radius:2px 2px 0 0;background:var(--color-accent);height:{{ p.actH }}"></div>
+                  </div>
+                  <span style="font-size:10.5px;color:var(--color-neutral-400)">{{ p.label }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div class="card elev-sm" style="padding:14px 16px;gap:4px">
+            <div class="card-title" style="margin-bottom:4px">Milestones</div>
+            <sc-for list="{{ milestones }}" as="m" hint-placeholder-count="6">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--color-neutral-900);font-size:13px">
+                <div style="display:flex;flex-direction:column;line-height:1.3"><span>{{ m.name }}</span><span style="font-size:11.5px;color:var(--color-neutral-400)">Baseline {{ m.baseDate }} · Forecast {{ m.fcDate }}</span></div>
+                <span style="font-variant-numeric:tabular-nums;color:{{ m.slipColor }}">{{ m.slipText }}</span>
+                <span class="{{ m.tagClass }}">{{ m.status }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isResources }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
+          <sc-for list="{{ resourceKpis }}" as="k" hint-placeholder-count="5">
+            <div class="card elev-sm" style="gap:3px;padding:12px 14px">
+              <div style="font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-400)">{{ k.label }}</div>
+              <div style="font-size:22px;font-weight:500;letter-spacing:-0.02em;color:{{ k.color }}">{{ k.value }}</div>
+              <div style="font-size:11.5px;color:var(--color-neutral-400)">{{ k.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px">
+          <div class="card elev-sm" style="padding:14px 16px;gap:10px;overflow:auto">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+              <div style="display:flex;flex-direction:column;margin-right:auto"><div class="card-title">Allocation — next 8 weeks</div><span style="font-size:12px;color:var(--color-neutral-400)">% of available hours per person</span></div>
+              <div style="display:flex;gap:4px;align-items:center;font-size:11px;color:var(--color-neutral-400)">Under<span style="width:16px;height:10px;border-radius:2px;background:var(--color-neutral-900)"></span><span style="width:16px;height:10px;border-radius:2px;background:var(--color-accent-900)"></span><span style="width:16px;height:10px;border-radius:2px;background:var(--color-accent-800)"></span><span style="width:16px;height:10px;border-radius:2px;background:var(--color-accent-600)"></span><span style="width:16px;height:10px;border-radius:2px;background:var(--color-accent-400)"></span>Over</div>
+            </div>
+            <div style="display:grid;grid-template-columns:200px repeat(8,minmax(52px,1fr)) 60px;gap:4px;min-width:720px;align-items:center">
+              <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-400)">Person</div>
+              <sc-for list="{{ weeks }}" as="w" hint-placeholder-count="8"><div style="font-size:11px;color:var(--color-neutral-400);text-align:center">{{ w }}</div></sc-for>
+              <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-400);text-align:right">Avg</div>
+              <sc-for list="{{ people }}" as="p" hint-placeholder-count="8">
+                <div style="display:contents">
+                  <div style="display:flex;align-items:center;gap:9px;height:40px">
+                    <div style="width:28px;height:28px;flex:none;border-radius:50%;background:var(--color-neutral-800);color:var(--color-neutral-200);display:grid;place-items:center;font-size:11px">{{ p.initials }}</div>
+                    <div style="display:flex;flex-direction:column;line-height:1.25;min-width:0"><span style="font-size:13px">{{ p.name }}</span><span style="font-size:11.5px;color:var(--color-neutral-400)">{{ p.role }}</span></div>
+                  </div>
+                  <sc-for list="{{ p.cells }}" as="c" hint-placeholder-count="8">
+                    <div style="height:34px;border-radius:5px;display:grid;place-items:center;font-size:12px;font-variant-numeric:tabular-nums;background:{{ c.bg }};color:{{ c.fg }}">{{ c.v }}</div>
+                  </sc-for>
+                  <div style="text-align:right;font-size:13px;font-variant-numeric:tabular-nums;color:{{ p.avgColor }}">{{ p.avgText }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="card elev-sm" style="padding:14px 16px;gap:10px">
+              <div style="display:flex;flex-direction:column"><div class="card-title">Capacity vs demand</div><span style="font-size:12px;color:var(--color-neutral-400)">Hours by role, next 8 weeks</span></div>
+              <sc-for list="{{ roles }}" as="r" hint-placeholder-count="5">
+                <div style="display:flex;flex-direction:column;gap:5px">
+                  <div style="display:flex;font-size:12.5px"><span style="margin-right:auto">{{ r.name }}</span><span style="font-variant-numeric:tabular-nums;color:{{ r.color }}">{{ r.text }}</span></div>
+                  <div style="position:relative;height:8px;border-radius:4px;background:var(--color-neutral-900)">
+                    <div style="height:100%;border-radius:4px;background:{{ r.bar }};width:{{ r.dW }}"></div>
+                    <div style="position:absolute;top:-3px;width:2px;height:14px;background:var(--color-neutral-300);left:{{ r.cL }}"></div>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="font-size:11.5px;color:var(--color-neutral-400)">Tick marks available capacity</div>
+            </div>
+            <div class="card elev-sm" style="padding:14px 16px;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px"><i class="ph ph-sparkle" style="color:var(--color-accent)"></i><div class="card-title">Suggested rebalancing</div></div>
+              <sc-for list="{{ suggestions }}" as="s" hint-placeholder-count="3">
+                <div style="display:flex;flex-direction:column;gap:4px;padding:9px 0;border-top:1px solid var(--color-neutral-900)">
+                  <span style="font-size:13px;text-wrap:pretty">{{ s.title }}</span>
+                  <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11.5px;color:var(--color-neutral-400);margin-right:auto">{{ s.impact }}</span><button class="btn btn-secondary" style="font-size:12px;padding:3px 10px">Apply</button></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;currency&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;USD&quot;,&quot;EUR&quot;],&quot;default&quot;:&quot;EUR&quot;,&quot;tsType&quot;:&quot;'USD'|'EUR'&quot;},&quot;showBaseline&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Schedule&quot;},&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;overview&quot;,&quot;budget&quot;,&quot;schedule&quot;,&quot;resources&quot;],&quot;default&quot;:&quot;overview&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const PV=[180,420,760,1150,1590,2060,2540,3000,3420,3860,4300,4800];
+const EV=[170,390,700,1060,1450,1880,2300,2710,3080];
+const AC=[175,410,745,1130,1560,2030,2490,2950,3360];
+const BAC=4800;
+const PROJECTS=[
+ {name:'Harbor Line Terminal Expansion',pm:'R. Adeyemi',budget:4800,actual:3360,progress:.64,spi:.90,due:'Dec 2026',open:true},
+ {name:'Northgate Data Center Retrofit',pm:'S. Park',budget:2100,actual:1020,progress:.51,spi:.98,due:'Mar 2027'},
+ {name:'Riverside Clinic Fit-out',pm:'C. Moreau',budget:1350,actual:1210,progress:.82,spi:.84,due:'Nov 2026'},
+ {name:'ERP Migration — Phase 2',pm:'D. Iyer',budget:960,actual:410,progress:.45,spi:1.01,due:'Feb 2027'},
+ {name:'Westfield Solar Array',pm:'K. Brandt',budget:3400,actual:880,progress:.27,spi:1.06,due:'Jun 2027'},
+ {name:'Metro Signage Rollout',pm:'A. Novak',budget:620,actual:550,progress:.91,spi:.95,due:'Oct 2026'}];
+const CATS=[['Labor',1850,1420,180,2010],['Materials',1320,960,240,1460],['Equipment',780,540,120,820],['Subcontractors',560,330,150,610],['Permits & fees',140,62,0,128],['Contingency',150,48,0,208]];
+const TASKS=[
+ ['Design & permits','R. Adeyemi',0,2.5,0,3.0,100,false],
+ ['Site preparation','A. Osei',2,4,2.5,4.8,100,false],
+ ['Foundations','J. Weber',3.5,6,4.5,7.2,100,true],
+ ['Steel structure','J. Weber',5.5,8.5,7,9.8,72,true],
+ ['Crane installation','T. Kessler',7,9,8,10.1,55,true],
+ ['MEP systems','P. Nair',7.5,10.5,8,11,40,false],
+ ['Paving & yard','A. Osei',9,11,9.5,11.6,10,false],
+ ['Commissioning & handover','H. Sato',10.5,11.6,11.2,12.45,0,true]];
+const MILES=[['Permits approved',2.5,3.0,'Done'],['Foundations complete',6,7.2,'Done'],['Structure topped out',8.5,9.8,'Late'],['Cranes operational',9,10.1,'Late'],['Systems energised',10.5,11,'At risk'],['Handover',11.6,12.45,'At risk']];
+const PEOPLE=[
+ ['Amara Osei','Site lead',[100,110,120,120,100,90,90,80]],
+ ['Jonas Weber','Structural engineer',[90,100,130,125,110,100,80,60]],
+ ['Priya Nair','MEP lead',[80,90,100,110,115,100,100,90]],
+ ['Tom Kessler','Crane operations',[60,100,100,100,80,40,20,20]],
+ ['Lina Marsh','Cost controller',[70,70,70,80,80,70,70,70]],
+ ['Diego Ramos','Planner',[90,90,95,90,85,85,80,80]],
+ ['Hana Sato','QA / QC',[40,50,60,80,90,100,110,100]],
+ ['Felix Brandt','Procurement',[100,95,80,60,50,50,40,40]]];
+const ROLES=[['Engineering',960,1110],['Site operations',640,690],['MEP',480,510],['Controls & planning',640,560],['Quality',320,370]];
+const pct=v=>(Math.round(v*1000)/10)+'%';
+const dateOf=m=>{const y=m>=12?2027:2026;const mm=Math.floor(m%12);const d=Math.max(1,Math.round((m-Math.floor(m))*30));return d+' '+MO[mm]+(y===2027?' ’27':'');};
+const LO='var(--color-accent-300)', OK='var(--color-text)';
+
+class Component extends DCLogic {
+  state={screen:null};
+  money(k,signed){const s=this.props.currency==='EUR'?'€':'$';const a=Math.abs(k);const sign=k<0?'−':(signed&&k>0?'+':'');return a>=1000?`${sign}${s}${(a/1000).toFixed(2)}M`:`${sign}${s}${Math.round(a)}k`;}
+  renderVals(){
+    const screen=this.state.screen||this.props.startScreen||'overview';
+    const go=s=>()=>this.setState({screen:s});
+    const f=(k,s)=>this.money(k,s);
+    const nav=(id,label,icon)=>({label,icon,onClick:go(id),bg:screen===id?'var(--color-accent-900)':'transparent',color:screen===id?'var(--color-accent-300)':'var(--color-neutral-300)'});
+    const ev=EV[8],ac=AC[8],pv=PV[8];
+    const cpi=ev/ac,spi=ev/pv,eac=BAC/cpi,vac=BAC-eac,tcpi=(BAC-ev)/(BAC-ac);
+
+    // Portfolio
+    let sB=0,sA=0,sE=0,sEac=0,risk=0,spiW=0;
+    const projects=PROJECTS.map(p=>{const e=p.budget*p.progress,c=e/p.actual,pe=p.budget/c,m=Math.min(c,p.spi);
+      const health=m<.9?'Off track':m<.97?'At risk':'On track';if(health!=='On track')risk++;
+      sB+=p.budget;sA+=p.actual;sE+=e;sEac+=pe;spiW+=p.spi*p.budget;
+      return {name:p.name,pm:p.pm,due:p.due,health,tagClass:health==='Off track'?'tag tag-accent':health==='At risk'?'tag tag-outline':'tag tag-neutral',
+        progressPct:Math.round(p.progress*100)+'%',spentPct:Math.round(p.actual/p.budget*100)+'%',
+        cpiText:c.toFixed(2),cpiColor:c<.97?LO:OK,spiText:p.spi.toFixed(2),spiColor:p.spi<.97?LO:OK,
+        eacText:f(pe),varText:f(p.budget-pe,true),varColor:p.budget-pe<0?LO:'var(--color-neutral-300)',
+        onClick:p.open?go('budget'):undefined,cursor:p.open?'pointer':'default'};});
+    const pCpi=sE/sA,pSpi=spiW/sB;
+    const portfolioKpis=[
+      {label:'Total budget',value:f(sB),sub:'6 active projects',icon:'ph ph-briefcase',color:OK},
+      {label:'Actual cost',value:f(sA),sub:Math.round(sA/sB*100)+'% of budget spent',icon:'ph ph-receipt',color:OK},
+      {label:'Forecast (EAC)',value:f(sEac),sub:f(sB-sEac,true)+' vs budget',icon:'ph ph-trend-up',color:LO},
+      {label:'Cost perf. (CPI)',value:pCpi.toFixed(2),sub:'Earned per $1 spent',icon:'ph ph-gauge',color:pCpi<.97?LO:OK},
+      {label:'Schedule perf. (SPI)',value:pSpi.toFixed(2),sub:'Weighted by budget',icon:'ph ph-timer',color:pSpi<.97?LO:OK},
+      {label:'Projects at risk',value:risk+' of 6',sub:'1 off track',icon:'ph ph-warning',color:LO}];
+    const alerts=[
+      {icon:'ph ph-lightning',title:'Harbor Line — critical path slip',detail:'Steel structure forecast 39 days late; handover moves to 14 Jan 2027.',action:'Open schedule',onClick:go('schedule')},
+      {icon:'ph ph-coins',title:'Harbor Line — labor overrun',detail:'Labor forecast '+f(160,true)+' over its line budget; contingency 139% drawn.',action:'Open budget',onClick:go('budget')},
+      {icon:'ph ph-users-three',title:'3 people over 115% in October',detail:'Engineering demand exceeds capacity by 150 h across weeks 41–43.',action:'Rebalance',onClick:go('resources')},
+      {icon:'ph ph-clock-countdown',title:'Riverside Clinic — SPI 0.84',detail:'Electrical subcontractor three weeks behind; recovery plan due Friday.',action:'Request plan',onClick:undefined}];
+
+    // Budget chart
+    const W=760,H=290,L=52,R=16,T=14,B=30,ymax=5600;
+    const x=m=>L+m/12*(W-L-R),y=v=>T+(1-v/ymax)*(H-T-B);
+    const path=a=>'M'+[[0,0],...a.map((v,i)=>[i+1,v])].map(([m,v])=>x(m).toFixed(1)+' '+y(v).toFixed(1)).join(' L');
+    const evP=path(EV);
+    const chart={
+      grid:[0,1000,2000,3000,4000,5000].map(v=>({y:y(v).toFixed(1),ty:(y(v)+4).toFixed(1),label:v?f(v).replace('.00',''):'0'})),
+      months:MO.map((l,i)=>({label:l,x:x(i+.5).toFixed(1)})),
+      pv:path(PV),ev:evP,ac:path(AC),evArea:evP+` L${x(9).toFixed(1)} ${y(0).toFixed(1)} Z`,
+      fc:`M${x(9).toFixed(1)} ${y(ac).toFixed(1)} L${x(12).toFixed(1)} ${y(eac).toFixed(1)}`,
+      bacY:y(BAC).toFixed(1),bacLabelY:(y(BAC)-6).toFixed(1),bacText:f(BAC),
+      todayX:x(9).toFixed(1),todayLabelX:(x(9)+6).toFixed(1),
+      eacX:x(12).toFixed(1),eacY:y(eac).toFixed(1),eacLabelX:(x(12)-10).toFixed(1),eacLabelY:(y(eac)-10).toFixed(1),eacText:f(eac)};
+    const budgetKpis=[
+      {label:'Budget (BAC)',value:f(BAC),sub:'Approved baseline',color:OK},
+      {label:'Actual cost',value:f(ac),sub:Math.round(ac/BAC*100)+'% of budget',color:OK},
+      {label:'Earned value',value:f(ev),sub:'Work completed',color:OK},
+      {label:'Forecast (EAC)',value:f(eac),sub:'At current CPI',color:LO},
+      {label:'Variance (VAC)',value:f(vac,true),sub:Math.round(vac/BAC*1000)/10+'% of budget',color:LO},
+      {label:'CPI',value:cpi.toFixed(2),sub:'Target ≥ 1.00',color:LO},
+      {label:'TCPI',value:tcpi.toFixed(2),sub:'Needed to hit BAC',color:LO}];
+    const cvs=EV.map((e,i)=>e-AC[i]);
+    const cvBars=cvs.map((v,i)=>({label:MO[i][0],h:Math.max(3,Math.abs(v)/300*80)+'%'}));
+    const categories=CATS.map(([name,b,a,c,fc])=>({name,budgetText:f(b),actualText:f(a),committedText:c?f(c):'—',forecastText:f(fc),
+      aW:pct(a/b/1.4),cW:pct(c/b/1.4),bL:pct(1/1.4),fL:pct(Math.min(fc/b,1.4)/1.4),varText:f(b-fc,true),varColor:b-fc<0?LO:'var(--color-neutral-300)'}));
+
+    // Schedule
+    const S=13,pos=m=>pct(m/S);
+    const tasks=TASKS.map(([name,owner,bs,be,as,ae,p,crit])=>{const slip=Math.round((ae-be)*30);
+      return {name,owner,critical:crit,pctText:p+'%',slipText:slip>0?'+'+slip+'d':'—',slipColor:slip>14?LO:'var(--color-neutral-300)',
+        bL:pos(bs),bW:pos(be-bs),aL:pos(as),aW:pos(ae-as),
+        barBg:crit?'var(--color-accent-900)':'var(--color-neutral-900)',barEdge:crit?'inset 0 0 0 1px var(--color-accent-600)':'inset 0 0 0 1px var(--color-neutral-700)',
+        fillBg:crit?'linear-gradient(90deg,var(--color-accent-700),var(--color-accent-500))':'var(--color-neutral-700)'};});
+    const milestones=MILES.map(([name,b,fc,st])=>{const slip=Math.round((fc-b)*30);
+      return {name,bL:pos(b),fL:pos(fc),bg:st==='Done'?'var(--color-neutral-400)':'var(--color-accent)',baseDate:dateOf(b),fcDate:dateOf(fc),
+        slipText:'+'+slip+'d',slipColor:slip>14?LO:'var(--color-neutral-300)',status:st,tagClass:st==='Done'?'tag tag-neutral':st==='Late'?'tag tag-accent':'tag tag-outline'};});
+    const progression=MO.map((l,i)=>{const pl=PV[i]/BAC,a=EV[i]!=null?EV[i]/BAC:null,s=a!=null?EV[i]/PV[i]:null;
+      return {label:l,planH:pct(pl),actH:a!=null?pct(a):'0%',spiText:s!=null?s.toFixed(2):'',spiColor:s!=null&&s<.93?LO:'var(--color-neutral-400)'};});
+    const scheduleKpis=[
+      {label:'SPI',value:spi.toFixed(2),sub:'Earning 90¢ of planned work per $1',color:LO},
+      {label:'Complete',value:Math.round(ev/BAC*100)+'%',sub:'Planned '+Math.round(pv/BAC*100)+'% by today',color:OK},
+      {label:'Forecast finish',value:'14 Jan 2027',sub:'Baseline 18 Dec 2026',color:LO},
+      {label:'Critical path float',value:'−27 days',sub:'4 of 8 packages critical',color:LO},
+      {label:'Milestones',value:'2 of 6',sub:'Complete · 0 on baseline date',color:OK}];
+
+    // Resources
+    const shade=v=>v>115?['var(--color-accent-400)','var(--color-bg)']:v>100?['var(--color-accent-600)','var(--color-accent-100)']:v>=90?['var(--color-accent-800)','var(--color-accent-200)']:v>=60?['var(--color-accent-900)','var(--color-neutral-300)']:['var(--color-neutral-900)','var(--color-neutral-400)'];
+    let tot=0,over=0;
+    const people=PEOPLE.map(([name,role,w])=>{const avg=w.reduce((a,b)=>a+b,0)/w.length;tot+=avg;if(Math.max(...w)>110)over++;
+      return {name,role,initials:name.split(' ').map(s=>s[0]).join(''),avgText:Math.round(avg)+'%',avgColor:avg>100?LO:OK,
+        cells:w.map(v=>{const [bg,fg]=shade(v);return {v,bg,fg};})};});
+    const resourceKpis=[
+      {label:'Team utilization',value:Math.round(tot/PEOPLE.length)+'%',sub:'Target 85–95%',color:OK},
+      {label:'Over-allocated',value:over+' people',sub:'Peak weeks 41–43',color:LO},
+      {label:'Unmet demand',value:'240 h',sub:'Mostly engineering',color:LO},
+      {label:'Labor cost to date',value:f(1420),sub:'77% of labor budget',color:OK},
+      {label:'Open requests',value:'2',sub:'Steel engineer · QA inspector',color:OK}];
+    const roles=ROLES.map(([name,cap,dem])=>{const sc=Math.max(cap,dem)*1.1;
+      return {name,text:dem+' / '+cap+' h',color:dem>cap?LO:'var(--color-neutral-300)',dW:pct(dem/sc),cL:pct(cap/sc),bar:dem>cap?'var(--color-accent)':'var(--color-neutral-600)'};});
+    const suggestions=[
+      {title:'Move steel QA checks from Jonas Weber to Hana Sato in weeks 41–42',impact:'Jonas 130% → 105% · no cost'},
+      {title:'Bring in a contract structural engineer for 3 weeks',impact:'Recovers ~12 days float · '+f(18,true)},
+      {title:'Shift paving prep 1 week later to free Amara Osei',impact:'Site lead 120% → 100% · off critical path'}];
+
+    const titles={overview:'Portfolio overview',budget:'Budget & cost',schedule:'Schedule',resources:'Resources'};
+    return {
+      navPortfolio:[nav('overview','Overview','ph ph-squares-four')],
+      navProject:[nav('budget','Budget & cost','ph ph-chart-line-up'),nav('schedule','Schedule','ph ph-calendar-dots'),nav('resources','Resources','ph ph-users-three')],
+      isOverview:screen==='overview',isBudget:screen==='budget',isSchedule:screen==='schedule',isResources:screen==='resources',
+      isProject:screen!=='overview',
+      crumb:screen==='overview'?'Portfolio · FY2026':'Portfolio / Harbor Line Terminal Expansion',
+      title:screen==='overview'?titles.overview:titles[screen],
+      primaryAction:screen==='overview'?'New project':screen==='budget'?'Change request':screen==='schedule'?'Re-baseline':'Request resource',
+      portfolioKpis,projects,alerts,budgetKpis,chart,cvBars,categories,
+      cvText:f(ev-ac,true),svText:f(ev-pv,true),tcpiText:tcpi.toFixed(2),
+      tasks,milestones,progression,scheduleKpis,todayL:pos(8.8),
+      ganttMonths:[...MO,'Jan'],showBaseline:this.props.showBaseline??true,
+      people,weeks:['Sep 28','Oct 5','Oct 12','Oct 19','Oct 26','Nov 2','Nov 9','Nov 16'],resourceKpis,roles,suggestions};
+  }
+}
+</script>
+</body>
+</html>

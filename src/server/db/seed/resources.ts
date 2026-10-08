@@ -1,0 +1,124 @@
+// Resources and HR seed: weekly allocations (PEOPLE), rate cards (RATE_ROLES, MULTS, legacy RATES), skills
+// (SKILLS, SKILL_LV, CERTS), leave (LEAVE_DAYS, LEAVE) and public holidays (SETTINGS0.holidays), Lucca hours
+// (HOURS) and what-if levelling (LEVERS, AUTO, the HLT-026 scenarios of the initial state). See schema/resources.ts.
+import { PROTO } from '@/server/prototype';
+import { addDaysIso, hoursMatching, isoOfDisplayDate, leaveType, whatIfPriority, type WhatIfPriority } from '../codes';
+import {
+  allocations, certifications, hoursImports, hoursLines, jobTitleRates, leaveEntries, leaveTypes, personSkills, publicHolidays, rateMultipliers,
+  rateRoles, skills, unassignedHours, whatIfAutoLevers, whatIfContexts, whatIfLevers, whatIfScenarioLevers, whatIfScenarios,
+} from '../schema';
+import type { Tx } from '../types';
+import { must, newId, personId, type SeedCtx } from './context';
+
+/** Monday of the first week of the 8-week resource window (w/c 28 Sep 2026; `weeks` 5182). */
+export const RESOURCE_WINDOW_START = '2026-09-28';
+export const RESOURCE_WEEKS = 8;
+export const resourceWeekStart = (i: number) => addDaysIso(RESOURCE_WINDOW_START, 7 * i);
+
+/** Peak-load profile of the HLT-026 levelling scenarios (hard-coded in logic 4409–4416). */
+export const WHATIF_BASE_LOAD = [100, 110, 130, 125, 110, 100, 80, 60];
+/** Initial scenarios (state.whatif, line 3774). */
+export const WHATIF_SCENARIOS: { name: string; priority: WhatIfPriority; levers: string[] }[] = [
+  { name: 'A', priority: 'date', levers: ['contractor', 'overtime'] },
+  { name: 'B', priority: 'people', levers: ['delay', 'move'] },
+];
+
+export async function seedResources(tx: Tx, ctx: SeedCtx): Promise<void> {
+  const people = PROTO.PEOPLE as [string, string, number[]][];
+
+  // Allocations: 8 persons × 8 weeks.
+  await tx.insert(allocations).values(
+    people.flatMap(([name, , loads]) =>
+      loads.map((loadPct, i) => ({ id: newId(), personId: personId(ctx, name), weekStart: resourceWeekStart(i), loadPct, projectId: null })),
+    ),
+  );
+
+  // Rates.
+  await tx.insert(rateRoles).values(
+    (PROTO.RATE_ROLES as [string, number][]).map(([role, rate], i) => ({ id: newId(), role, baseRateEur: rate, isExternal: /external/.test(role), position: i + 1 })),
+  );
+  await tx.insert(rateMultipliers).values(
+    (PROTO.MULTS as [string, string, number][]).map(([key, label, factor], i) => ({ key, label, factor, position: i + 1 })),
+  );
+  await tx.insert(jobTitleRates).values(
+    Object.entries(PROTO.RATES as Record<string, number>).map(([jobTitle, rateEur], i) => ({ jobTitle, rateEur, position: i + 1 })),
+  );
+
+  // Skills, levels, certifications.
+  const skillRows = (PROTO.SKILLS as string[]).map((name, i) => ({ id: newId(), name, position: i + 1 }));
+  await tx.insert(skills).values(skillRows);
+  await tx.insert(personSkills).values(
+    Object.entries(PROTO.SKILL_LV as Record<string, number[]>).flatMap(([name, levels]) =>
+      levels.map((level, i) => ({ personId: personId(ctx, name), skillId: skillRows[i].id, level })),
+    ),
+  );
+  await tx.insert(certifications).values(
+    Object.entries(PROTO.CERTS as Record<string, string>).flatMap(([name, text]) =>
+      text.split(' · ').map((cert, position) => ({ id: newId(), personId: personId(ctx, name), name: cert, position })),
+    ),
+  );
+
+  // Leave and public holidays.
+  const leaveDays = PROTO.LEAVE_DAYS as Record<string, number>;
+  await tx.insert(leaveTypes).values(
+    Object.entries(leaveDays).map(([label, days], i) => ({ code: leaveType.code(label), label, daysPerWeek: days, position: i + 1 })),
+  );
+  const leaveRows = Object.entries(PROTO.LEAVE as Record<string, Record<string, string>>).flatMap(([name, byWeek]) =>
+    Object.entries(byWeek).map(([week, label]) => {
+      const weekStart = resourceWeekStart(+week);
+      const days = leaveDays[label];
+      return {
+        id: newId(), personId: personId(ctx, name), leaveType: leaveType.code(label), weekStart, startDate: weekStart,
+        endDate: addDaysIso(weekStart, days - 1), days,
+      };
+    }),
+  );
+  await tx.insert(leaveEntries).values(leaveRows);
+  await tx.insert(publicHolidays).values(
+    (PROTO.SETTINGS0.holidays as string[]).map((h, i) => {
+      const [day, name] = h.split(' · ');
+      return { id: newId(), countryCode: 'FR', date: isoOfDisplayDate(day)!, name, position: i + 1 };
+    }),
+  );
+
+  // Lucca hours (HLT-026, September 2026).
+  for (const [code, h] of Object.entries(PROTO.HOURS as Record<string, { imported: string; code: string; lines: [string, string, number, number][]; unassigned: [string, number, string][] }>)) {
+    const importId = newId();
+    const wbs = must(ctx.wbs, code, 'project WBS');
+    await tx.insert(hoursImports).values({
+      id: importId, projectId: must(ctx.projectByCode, code, 'project'), analyticCode: h.code, periodStart: '2026-09-01',
+      importedOn: isoOfDisplayDate(h.imported)!, matchingMode: hoursMatching.code('Resource × work package (planning)'),
+    });
+    await tx.insert(hoursLines).values(
+      h.lines.map(([person, wbsLabel, plannedH, declaredH], position) => ({
+        id: newId(), importId, personId: personId(ctx, person), wbsNodeId: wbs.get(wbsLabel.split(' · ')[0]) ?? null, wbsLabel, plannedH, declaredH, position,
+      })),
+    );
+    await tx.insert(unassignedHours).values(
+      h.unassigned.map(([person, hours, reason], position) => ({ id: newId(), importId, personId: personId(ctx, person), hours, reason, position })),
+    );
+  }
+
+  // What-if levelling.
+  await tx.insert(whatIfLevers).values(
+    (PROTO.LEVERS as [string, string, { float: number; cost: number; peak: number; over: number; side?: string }][]).map(([code, label, e], i) => ({
+      code, label, floatDays: e.float, costKeur: e.cost, peakPts: e.peak, overPeople: e.over, sideEffect: e.side ?? null, position: i + 1,
+    })),
+  );
+  await tx.insert(whatIfAutoLevers).values(
+    Object.entries(PROTO.AUTO as Record<string, string[]>).flatMap(([prio, levers]) =>
+      levers.map((leverCode, position) => {
+        if (!whatIfPriority.isCode(prio)) throw new Error(`Seed: unknown what-if priority "${prio}"`);
+        return { priority: prio, leverCode, position };
+      }),
+    ),
+  );
+  const hlt = must(ctx.projectByCode, 'HLT-026', 'project');
+  await tx.insert(whatIfContexts).values({ projectId: hlt, weekStart: RESOURCE_WINDOW_START, peakLoad: WHATIF_BASE_LOAD });
+  const allLevers = (PROTO.LEVERS as [string][]).map(([code]) => code);
+  for (const [position, s] of WHATIF_SCENARIOS.entries()) {
+    const scenarioId = newId();
+    await tx.insert(whatIfScenarios).values({ id: scenarioId, projectId: hlt, name: s.name, priority: s.priority, position });
+    await tx.insert(whatIfScenarioLevers).values(allLevers.map((leverCode) => ({ scenarioId, leverCode, enabled: s.levers.includes(leverCode) })));
+  }
+}

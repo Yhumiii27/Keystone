@@ -1,0 +1,74 @@
+// Change seed: change-request register (HLT_CRS_X + CR-005 from HCRS), approval steps, WBS links, the Budget
+// screen's change lines (projectData().CRS) and baselines (BASELINES). See schema/change.ts for the two datasets.
+import { PROTO, PROTO_GEN } from '@/server/prototype';
+import { baselineState, budgetChangeStatus, CHANGE_STEPS, changeStatus, isoOfDisplayDate, stepDecision, type ChangeType } from '../codes';
+import { baselines, budgetChangeLines, changeRequestSteps, changeRequestWbs, changeRequests } from '../schema';
+import type { Tx } from '../types';
+import { must, newId, type SeedCtx } from './context';
+
+interface ProtoCr {
+  id: string; title: string; types: ChangeType[]; amt: number; days: number; wbs: string[]; status: string; by: string; date: string;
+  chain: Record<string, string>; bl: string;
+}
+
+export async function seedChange(tx: Tx, ctx: SeedCtx): Promise<void> {
+  const code = 'HLT-026';
+  const projectId = must(ctx.projectByCode, code, 'project');
+  const wbs = must(ctx.wbs, code, 'project WBS');
+  const crIds = new Map<string, string>();
+  ctx.changeRequest.set(code, crIds);
+
+  const register = PROTO.HLT_CRS_X as ProtoCr[];
+  const crRows = register.map((c, position) => ({
+    id: newId(), projectId, number: c.id, title: c.title, types: c.types, amountKeur: c.amt, scheduleDays: c.days,
+    status: changeStatus.code(c.status), requestedBy: c.by, requestedByPersonId: ctx.personByShort.get(c.by) ?? null,
+    requestedOnText: c.date, requestedOn: isoOfDisplayDate(c.date), baselineCode: c.bl, position,
+  }));
+  // CR-005 only exists in the Budget dataset (HCRS): add it to the register (11 §7 #2).
+  for (const [num, title, amt, days, status, meta] of PROTO.HCRS as [string, string, number, number, string, string][]) {
+    if (register.some((c) => c.id === num)) continue;
+    const [date, by] = meta.split(' · ');
+    crRows.push({
+      id: newId(), projectId, number: num, title, types: ['budget'], amountKeur: amt, scheduleDays: days,
+      status: changeStatus.code(status), requestedBy: by, requestedByPersonId: ctx.personByShort.get(by) ?? null,
+      requestedOnText: date, requestedOn: isoOfDisplayDate(date), baselineCode: 'BL1', position: crRows.length,
+    });
+  }
+  for (const c of crRows) crIds.set(c.number, c.id);
+  await tx.insert(changeRequests).values(crRows);
+
+  await tx.insert(changeRequestSteps).values(
+    register.flatMap((c) =>
+      CHANGE_STEPS.map((step, position) => ({ changeRequestId: crIds.get(c.id)!, step, decision: stepDecision.code(c.chain[step]), position })),
+    ),
+  );
+  await tx.insert(changeRequestWbs).values(
+    register.flatMap((c) =>
+      c.wbs.map((wbsCode, position) => ({ id: newId(), changeRequestId: crIds.get(c.id)!, wbsCode, wbsNodeId: wbs.get(wbsCode) ?? null, position })),
+    ),
+  );
+
+  // Budget change lines for every project with data (only HLT-026 has some).
+  for (const [pCode, pd] of Object.entries(PROTO_GEN.projectData)) {
+    const lines = pd.CRS as [string, string, number, number, string, string][];
+    if (!lines.length) continue;
+    const pid = must(ctx.projectByCode, pCode, 'project');
+    const ids = ctx.changeRequest.get(pCode);
+    await tx.insert(budgetChangeLines).values(
+      lines.map(([num, title, amt, days, status, meta], position) => ({
+        id: newId(), projectId: pid, number: num, title, amountKeur: amt, scheduleDays: days, status: budgetChangeStatus.code(status), meta,
+        changeRequestId: ids?.get(num) ?? null, position,
+      })),
+    );
+  }
+
+  await tx.insert(baselines).values(
+    (PROTO.BASELINES as [string, string, string, number, string, string][]).map(([blCode, name, setOn, bac, finish, state], position) => {
+      const pending = /^Pending (CR-\d+)$/.exec(setOn);
+      return {
+        id: newId(), projectId, code: blCode, name, setOn: pending ? null : isoOfDisplayDate(setOn), bacKeur: bac,
+        finishDate: isoOfDisplayDate(finish)!, state: baselineState.code(state), changeRequestId: pending ? must(crIds, pending[1], 'CR') : null, position,
+      };
+    }),
+  );
+}

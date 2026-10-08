@@ -1,0 +1,46 @@
+// Shared app components (docs/spec/02 DS-COMPONENTS C-04…C-31, except the shell C-01…C-03 which lives in
+// components/app/shell). Server-compatible unless noted; client components: SearchField, ClickableRow,
+// FormDialog, WizardDialog.
+export * from './tones';
+export { SectionCard, Stack, PageSection, CardGrid, FlexRow } from './SectionCard';
+export type { SectionCardProps } from './SectionCard';
+export { Eyebrow, SectionLabel, GroupDivider } from './Eyebrow';
+export type { EyebrowProps, EyebrowVariant, GroupDividerProps } from './Eyebrow';
+export { KpiGrid, KpiTile, TrendKpiCard, ReconStep } from './Kpi';
+export type { KpiGridProps, KpiTileProps, TrendKpiCardProps, ReconStepProps } from './Kpi';
+export { StatusTag, HealthTag, LifecycleTag, ObjectStatusTag, statusTagButtonClass } from './StatusTag';
+export type { StatusTagProps } from './StatusTag';
+export { FilterBar, FilterGroup, FilterLabel, FilterNote, FilterChips, SelectFilter } from './Filter';
+export type { FilterChipOption, FilterChipsProps, SelectFilterProps } from './Filter';
+export { SearchField } from './SearchField';
+export type { SearchFieldProps } from './SearchField';
+export { DataTable, GridTable, GridHead, GridRow } from './DataTable';
+export type { DataColumn, DataTableProps, GridTableProps, GridRowProps } from './DataTable';
+export { ClickableRow } from './ClickableRow';
+export type { ClickableRowProps } from './ClickableRow';
+export { ListRow } from './ListRow';
+export type { ListRowProps } from './ListRow';
+export { KeyValueList } from './KeyValueList';
+export type { KeyValue, KeyValueListProps } from './KeyValueList';
+export { CountBadge, Avatar, StatusDot, IconTile } from './Badges';
+export type { CountBadgeProps, AvatarProps, StatusDotProps, IconTileProps } from './Badges';
+export { ProgressBar, SpendVsEarned, CapacityBar, CapacityStack, BulletBar, StackedShare, OverlayBar, HatchedBar } from './Progress';
+export type { ProgressBarProps, SpendVsEarnedProps, CapacityBarProps, CapacityStackProps, BulletBarProps, StackedShareProps, OverlayBarProps, HatchedBarProps } from './Progress';
+export { Callout, InsetPanel } from './Callout';
+export type { CalloutProps, InsetPanelProps } from './Callout';
+export { EmptyState } from './EmptyState';
+export type { EmptyStateProps } from './EmptyState';
+export { FlowStepper, NumberedStepper, WizardSteps } from './Stepper';
+export type { FlowStep, FlowStepperProps, NumberedStepperProps, WizardStepsProps } from './Stepper';
+export { CheckCircle, CheckSquare, CheckRow, IconCheck, RadioDot, ChoiceCard } from './Check';
+export type { CheckCircleProps, CheckRowProps, ChoiceCardProps } from './Check';
+export { Legend, LegendItem, Swatch, HeatScale } from './Legend';
+export type { LegendProps, LegendItemProps, SwatchProps, SwatchKind } from './Legend';
+export { AttachmentRow, CommentRow, TimeEntryRow } from './Rows';
+export { DocumentPreview } from './DocumentPreview';
+export type { DocumentPreviewProps } from './DocumentPreview';
+export * from './form-def';
+export { FormDialog } from './FormDialog';
+export type { FormDialogProps, FormDialogResult } from './FormDialog';
+export { WizardDialog } from './Wizard';
+export type { WizardDialogProps } from './Wizard';

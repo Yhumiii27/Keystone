@@ -1,0 +1,125 @@
+'use server';
+// My work / Task Server Functions (docs/spec/10 §6.5, §7.5): status and % (with their coupling), the list's done
+// toggle, "Mark done", checklist ticks and items, comments by the viewer, time logging. Each one validates its
+// input, checks the viewer (outside the workspace → refused; task edits → assignee or director; comments → anyone in
+// the workspace), writes through the tasks DAL and revalidates every screen (tasks show on Home, the sidebar badge,
+// Plan…). Error messages are English source strings (the client shows them with toast.showEn).
+import { revalidatePath } from 'next/cache';
+import { isTaskStatus, parseHours } from '@/domain/tasks';
+import {
+  addChecklistItem, addTaskComment, listTasks, logTaskTime, setTaskProgress, setTaskStatus, toggleChecklistItem, toggleTaskDone,
+  type TaskRow,
+} from '@/server/dal/tasks';
+import { getScreenAccess } from '@/server/project-context';
+import type { Viewer } from '@/server/session';
+import { canCommentTask, canEditTask } from './permissions';
+
+export type TaskActionResult = { ok: true } | { ok: false; error: string };
+
+const OUTSIDE = 'Read-only — outside my workspace';
+const NOT_YOURS = 'Read-only — only the assignee or the portfolio director can update this task';
+const UNKNOWN = 'Unknown task';
+const FAILED = 'The change could not be saved';
+const TASK_RE = /^T-\d{1,6}$/;
+const MAX_ITEM = 200;
+const MAX_COMMENT = 2000;
+const MAX_NOTE = 200;
+
+const fail = (error: string): TaskActionResult => ({ ok: false, error });
+const text = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+
+type Gate = { ok: true; task: TaskRow; viewer: Viewer } | { ok: false; error: string };
+
+/** Loads the task after checking the viewer: `edit` = status/%/checklist/time, `comment` = post a comment. */
+async function gate(taskId: unknown, need: 'edit' | 'comment'): Promise<Gate> {
+  if (typeof taskId !== 'string' || !TASK_RE.test(taskId)) return { ok: false, error: UNKNOWN };
+  const { viewer, outside } = await getScreenAccess('task');
+  if (outside) return { ok: false, error: OUTSIDE };
+  const [task] = await listTasks({ number: taskId });
+  if (!task) return { ok: false, error: UNKNOWN };
+  if (need === 'edit' ? !canEditTask(viewer, task.assignee, outside) : !canCommentTask(outside)) return { ok: false, error: NOT_YOURS };
+  return { ok: true, task, viewer };
+}
+
+async function write(label: string, fn: () => Promise<unknown>): Promise<TaskActionResult> {
+  try {
+    await fn();
+  } catch (e) {
+    console.error(label, e);
+    return fail(FAILED);
+  }
+  revalidatePath('/', 'layout');
+  return { ok: true };
+}
+
+/** Status segment (To do / In progress / In review / Done): done ⇒ 100 %, leaving done from 100 % ⇒ 75 %. */
+export async function setTaskStatusAction(input: { taskId: string; status: string }): Promise<TaskActionResult> {
+  const g = await gate(input?.taskId, 'edit');
+  if (!g.ok) return g;
+  if (!isTaskStatus(input.status)) return fail('Invalid status');
+  const status = input.status;
+  return write('setTaskStatusAction', () => setTaskStatus(g.task.id, status, g.viewer.name));
+}
+
+/** Header primary "Mark done" (setTask({status:'done', pct:100})). */
+export async function markTaskDoneAction(input: { taskId: string }): Promise<TaskActionResult> {
+  const g = await gate(input?.taskId, 'edit');
+  if (!g.ok) return g;
+  return write('markTaskDoneAction', () => setTaskStatus(g.task.id, 'done', g.viewer.name));
+}
+
+/** List done toggle: done ↔ in progress (100 % ↔ 75 %). */
+export async function toggleTaskDoneAction(input: { taskId: string }): Promise<TaskActionResult> {
+  const g = await gate(input?.taskId, 'edit');
+  if (!g.ok) return g;
+  return write('toggleTaskDoneAction', () => toggleTaskDone(g.task.id, g.viewer.name));
+}
+
+/**
+ * % segment (0 / 25 / 50 / 75 / 100, any integer 0–100 accepted): 100 % ⇒ done; > 0 % on a to-do or done task ⇒ in
+ * progress; 0 % on a done task ⇒ to do (domain applyProgress, applied by the DAL in one transaction).
+ */
+export async function setTaskProgressAction(input: { taskId: string; pct: number }): Promise<TaskActionResult> {
+  const g = await gate(input?.taskId, 'edit');
+  if (!g.ok) return g;
+  const pct = input.pct;
+  if (typeof pct !== 'number' || !Number.isInteger(pct) || pct < 0 || pct > 100) return fail('Invalid progress');
+  return write('setTaskProgressAction', () => setTaskProgress(g.task.id, pct, g.viewer.name));
+}
+
+/** Ticks / unticks a checklist item (by position). */
+export async function toggleChecklistItemAction(input: { taskId: string; position: number }): Promise<TaskActionResult> {
+  const g = await gate(input?.taskId, 'edit');
+  if (!g.ok) return g;
+  const position = input.position;
+  if (typeof position !== 'number' || !Number.isInteger(position) || position < 0) return fail('Unknown checklist item');
+  return write('toggleChecklistItemAction', () => toggleChecklistItem(g.task.id, position, g.viewer.name));
+}
+
+/** "Add an item…" + Add (not wired in the prototype). */
+export async function addChecklistItemAction(input: { taskId: string; text: string }): Promise<TaskActionResult> {
+  const g = await gate(input?.taskId, 'edit');
+  if (!g.ok) return g;
+  const item = text(input.text, MAX_ITEM);
+  if (!item) return fail('Enter an item');
+  return write('addChecklistItemAction', () => addChecklistItem(g.task.id, item, g.viewer.name));
+}
+
+/** "Post": a comment by the viewer (the prototype always wrote "Marie Lefebvre", 00 §7.16). */
+export async function addTaskCommentAction(input: { taskId: string; text: string }): Promise<TaskActionResult> {
+  const g = await gate(input?.taskId, 'comment');
+  if (!g.ok) return g;
+  const body = text(input.text, MAX_COMMENT);
+  if (!body) return fail('Write a comment first');
+  return write('addTaskCommentAction', () => addTaskComment(g.task.id, g.viewer.name, body));
+}
+
+/** "Log": hours (> 0, ≤ 24) and an optional note (default "Work on {title}") on the status date, added to the logged total. */
+export async function logTaskTimeAction(input: { taskId: string; hours: string | number; note?: string }): Promise<TaskActionResult> {
+  const g = await gate(input?.taskId, 'edit');
+  if (!g.ok) return g;
+  const hours = parseHours(input.hours);
+  if (hours == null) return fail('Enter hours between 0 and 24');
+  const note = text(input.note, MAX_NOTE);
+  return write('logTaskTimeAction', () => logTaskTime(g.task.id, { hours, note: note || undefined, actorName: g.viewer.name }));
+}
