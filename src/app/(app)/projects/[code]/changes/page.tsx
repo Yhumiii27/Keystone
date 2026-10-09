@@ -1,6 +1,7 @@
 // Change control & baselines — /projects/[code]/changes (docs/spec/07 §2.2, template 1833–1882, logic 4591–4610).
 // URL state (docs/spec/00 §8.3): `?filter=budget|scope|schedule` (type chips), `?cr=CR-008` opens the CR drawer,
-// `?new=1` opens the New change request form on arrival (Budget › "New change request").
+// `?new=1` opens the New change request form on arrival (Budget › "New change request"); `?new=1&baseline=1` (Plan "Set baseline"
+// after BL1, S-3) opens it as a request proposing the next baseline, pre-filled.
 // Primary action "New change request" (AF `changes`) for viewers who may edit the project; Submit for review and
 // the approval-step decisions are hidden when the screen is outside the workspace or the project is read-only.
 import { notFound } from 'next/navigation';
@@ -11,6 +12,8 @@ import { NewChangeRequestButton } from '@/features/changes/change-buttons';
 import { ChangesView } from '@/features/changes/changes-view';
 import { CR_DEFAULT_WBS } from '@/features/changes/forms';
 import { changesT } from '@/features/changes/i18n';
+import { nextBaselineCode } from '@/domain/ch4-defaults';
+import { listProjectBaselines } from '@/server/dal/baselines';
 import { getChangeControl } from '@/server/dal/changes';
 import { getBaselineRegister } from '@/server/dal/changes-baselines';
 import { getWbs } from '@/server/dal/planning';
@@ -25,7 +28,9 @@ export default async function ChangesPage({ params, searchParams }: { params: Pr
   const [{ code }, sp] = await Promise.all([params, searchParams]);
   const ctx = await getProjectContext(code, 'changes');
   const projectCode = ctx.project.code;
-  const [i18n, cc, wbs, baselines] = await Promise.all([getI18n(), getChangeControl(projectCode), getWbs(projectCode), getBaselineRegister(projectCode)]);
+  const [i18n, cc, wbs, baselines, blRows] = await Promise.all([
+    getI18n(), getChangeControl(projectCode), getWbs(projectCode), getBaselineRegister(projectCode), listProjectBaselines(projectCode),
+  ]);
   if (!cc) notFound();
   const { lang } = i18n;
   const t = changesT(i18n.t, lang);
@@ -45,13 +50,18 @@ export default async function ChangesPage({ params, searchParams }: { params: Pr
     return qs ? `${base}?${qs}` : base;
   };
 
+  const autoOpen = first(sp.new) === '1';
+  const proposeBaseline = autoOpen && first(sp.baseline) === '1';
+  const nextBl = nextBaselineCode(blRows.map((b) => b.code));
   const primary = canEdit ? (
     <NewChangeRequestButton
       code={projectCode}
       context={i18n.t(projectLabel(ctx.project))}
       defaultWbs={wbs.some((w) => w.code === CR_DEFAULT_WBS) ? CR_DEFAULT_WBS : '1'}
-      autoOpen={first(sp.new) === '1'}
+      autoOpen={autoOpen}
       closeHref={href({ filter, cr: selected })}
+      proposeBaseline={proposeBaseline}
+      initialValues={proposeBaseline ? { title: `${i18n.t('New baseline')} ${nextBl}`, type: 'schedule', wbs: '1' } : undefined}
     />
   ) : undefined;
 

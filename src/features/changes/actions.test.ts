@@ -1,6 +1,6 @@
 // Change control & Trends Server Functions against an in-memory database: permission gate, who decides which
 // step (the viewer's role; CCB recorded by the director), the status derived from the chain (not stuck in
-// review — 07 OQ1), BL2 becoming current with CR-009, new CR numbering and the viewer as actor, status reports.
+// review — 07 OQ1), BL2 becoming current with CR-009 (with its activity snapshot, S-3), a CR proposing a baseline, new CR numbering and the viewer as actor, status reports.
 // Session and project context are mocked.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,7 +14,12 @@ vi.mock('@/server/project-context', () => ({
   getProjectContext: async (code: string) => ({ project: { code }, viewer: { role: viewer.role, name: viewer.name }, canEdit: () => viewer.canEdit }),
 }));
 
-import { setDb } from '@/server/db/client';
+import { eq } from 'drizzle-orm';
+import { getDb, setDb } from '@/server/db/client';
+import { projects } from '@/server/db/schema';
+import { getBaselineActivities, listProjectBaselines } from '@/server/dal/baselines';
+import { getPlanSettings } from '@/server/dal/plan';
+import { showBaselineAction } from '@/features/plan/scheduling-actions';
 import { openDatabase } from '@/server/db/open';
 import { getChangeControl } from '@/server/dal/changes';
 import { listAudit } from '@/server/dal/notifications';
@@ -75,6 +80,10 @@ describe('Change control Server Functions', () => {
   });
 
   it('CR-009: submit, then the chain approves it (no stuck "In review") and BL2 becomes current', async () => {
+    // Data date of the project (S-4): the approved baseline is set on it, not on the fixed status date.
+    const db = await getDb();
+    await db.update(projects).set({ dataDate: '2026-10-02' }).where(eq(projects.code, 'HLT-026'));
+    expect((await listProjectBaselines('HLT-026')).find((b) => b.code === 'BL2')).toMatchObject({ state: 'proposed', activityCount: 0, setOn: null });
     as('pm', 'Romain Aubert');
     expect(await decideChangeStepAction('HLT-026', 'CR-009', 'pm', 'ok')).toEqual({ error: 'This approval step is no longer pending' });
     expect(await submitChangeRequestAction('HLT-026', 'CR-009')).toEqual({ ok: true });
@@ -93,6 +102,14 @@ describe('Change control Server Functions', () => {
       ['BL1', 'superseded'],
       ['BL2', 'current'],
     ]);
+    // §3.1 gap (1): the approval fills BL2's activity snapshot, so the Plan's Baseline chip can show it.
+    const bl2 = (await listProjectBaselines('HLT-026')).find((b) => b.code === 'BL2')!;
+    expect(bl2).toMatchObject({ state: 'current', activityCount: 21, setOn: '2026-10-02', dataDate: '2026-10-02', changeRequest: 'CR-009' });
+    expect((await getBaselineActivities('HLT-026', 'BL2')).find((a) => a.activityCode === 'A1250')).toMatchObject({ finishDate: '2026-10-09' });
+    expect(await showBaselineAction('HLT-026', 'BL2')).toEqual({ ok: true, toast: 'BL2 displayed · variances recomputed' });
+    expect((await getPlanSettings('HLT-026'))!.displayed).toMatchObject({ code: 'BL2', activityCount: 21 });
+    expect(await showBaselineAction('HLT-026', 'BL1')).toMatchObject({ ok: true });
+    await db.update(projects).set({ dataDate: null }).where(eq(projects.code, 'HLT-026'));
   });
 
   it('new change request: validated, numbered CR-011, submitted, raised by the viewer', async () => {
@@ -111,6 +128,30 @@ describe('Change control Server Functions', () => {
     expect((await listAudit()).some((a) => a.object === 'CR-012')).toBe(true);
   });
 
+  it('a change request proposing the next baseline (Plan "Set baseline" after BL1, S-3): BL3 proposed, filled and current at approval', async () => {
+    as('pm', 'Romain Aubert');
+    const r = await createChangeRequestAction('HLT-026', { title: 'New baseline BL3', type: 'schedule', wbs: '1', why: 'Recovery plan agreed' }, { proposeBaseline: true });
+    expect(r).toEqual({ toast: 'CR-013 · Change request submitted for review · BL3 proposed' });
+    expect((await cr('CR-013')).baseline).toBe('BL3');
+    expect((await listProjectBaselines('HLT-026')).find((b) => b.code === 'BL3')).toMatchObject({
+      name: 'BL3 — CR-013', state: 'proposed', source: 'change_request', changeRequest: 'CR-013', activityCount: 0, setOn: null, comment: 'Recovery plan agreed',
+    });
+    expect(await decideChangeStepAction('HLT-026', 'CR-013', 'pm', 'ok')).toEqual({ ok: true });
+    as('client', 'Nadia Bensaïd');
+    expect(await decideChangeStepAction('HLT-026', 'CR-013', 'client', 'ok')).toEqual({ ok: true });
+    as('director', 'Marie Lefebvre');
+    expect(await decideChangeStepAction('HLT-026', 'CR-013', 'director', 'ok')).toEqual({ ok: true });
+    expect((await listProjectBaselines('HLT-026')).find((b) => b.code === 'BL3')!.state).toBe('proposed');
+    expect(await decideChangeStepAction('HLT-026', 'CR-013', 'ccb', 'ok')).toEqual({ ok: true });
+    expect((await listProjectBaselines('HLT-026')).map((b) => [b.code, b.state, b.activityCount])).toEqual([
+      ['BL0', 'superseded', 0], ['BL1', 'superseded', 21], ['BL2', 'superseded', 21], ['BL3', 'current', 21],
+    ]);
+    // A rejected proposal stays proposed and empty.
+    expect(await createChangeRequestAction('HLT-026', { title: 'New baseline BL4', type: 'schedule', wbs: '1', why: 'x' }, { proposeBaseline: true })).toMatchObject({ toast: expect.stringContaining('BL4 proposed') });
+    expect(await decideChangeStepAction('HLT-026', 'CR-014', 'director', 'rejected')).toEqual({ ok: true });
+    expect((await listProjectBaselines('HLT-026')).find((b) => b.code === 'BL4')).toMatchObject({ state: 'proposed', activityCount: 0 });
+  });
+
   it('generate status report: validated, recorded with the viewer, prototype toast', async () => {
     as('client', 'Nadia Bensaïd');
     expect(await generateStatusReportAction('HLT-026', { period: 'year' })).toEqual({ error: 'Unknown period' });
@@ -122,8 +163,9 @@ describe('Change control Server Functions', () => {
     // FR toasts: whole dictionary sentence first, else per " · " segment after the new number
     viewer.lang = 'fr';
     expect(await generateStatusReportAction('HLT-026', {})).toEqual({ toast: 'Rapport d’avancement généré · PDF prêt' });
+    // CR-013 and CR-014 were raised by the baseline-proposal test above.
     expect(await createChangeRequestAction('HLT-026', { title: 'Signage', type: 'scope', wbs: '1.3', why: 'Port rules' })).toEqual({
-      toast: 'CR-013 · Demande de modification soumise en revue',
+      toast: 'CR-015 · Demande de modification soumise en revue',
     });
   });
 });

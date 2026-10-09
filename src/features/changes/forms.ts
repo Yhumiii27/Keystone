@@ -28,10 +28,13 @@ export const CR_AMOUNT_MAX = 100_000;
 export const CR_DAYS_MAX = 3650;
 const WBS_RE = /^\d+(?:\.\d+)*$/;
 
-/** AF.changes; the WBS default is "1.3" when the project has that work package, else the project root "1". */
-export function newChangeRequestForm(defaultWbs = CR_DEFAULT_WBS): FormDef {
+/**
+ * AF.changes; the WBS default is "1.3" when the project has that work package, else the project root "1". `proposeBaseline`
+ * (S-3, Plan "Set baseline" after BL1): the same form titled "New baseline · change request".
+ */
+export function newChangeRequestForm(defaultWbs = CR_DEFAULT_WBS, opts?: { proposeBaseline?: boolean }): FormDef {
   return {
-    title: 'New change request',
+    title: opts?.proposeBaseline ? 'New baseline · change request' : 'New change request',
     submit: 'Submit for review',
     kind: 'create',
     fields: [

@@ -28,5 +28,16 @@
   "Project calendar": "Calendrier du projet",
   "Displayed baseline": "Référence affichée",
   "No activity snapshot": "Pas d’instantané des activités",
-  "Free float": "Marge libre"
+  "Free float": "Marge libre",
+  "After BL1, a new baseline goes through a change request": "Après BL1, toute nouvelle référence passe par une demande de modification",
+  "After BL1, a new baseline goes through a change request — name an open change request (CR-…)": "Après BL1, toute nouvelle référence passe par une demande de modification — indiquez une demande ouverte (CR-…)",
+  "already proposes baseline": "propose déjà la référence",
+  "proposed": "proposée",
+  "New baseline · change request": "Nouvelle référence · demande de modification",
+  "New baseline": "Nouvelle référence",
+  "Restore": "Restaurer",
+  "Recently deleted": "Supprimés récemment",
+  "Removed work packages and activities can be restored for 30 days, with their links, assignments and to-dos": "Les lots et activités retirés peuvent être restaurés pendant 30 jours, avec leurs liens, affectations et tâches",
+  "Restore its work package first": "Restaurez d’abord son lot",
+  "This removal can no longer be undone": "Ce retrait ne peut plus être annulé"
 }

@@ -5,6 +5,7 @@ import 'server-only';
 // not the prototype's stuck "In review", 07 OQ1 — and the BL2 → current switch when its CR is approved).
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { projectDataDate } from '@/domain/ch4-defaults';
 import { getDb, type Tx } from '@/server/db/client';
 import {
   CHANGE_STEPS, STATUS_ISO, changeStatus, shortDateOfIso, stepDecision,
@@ -14,6 +15,7 @@ import { findPerson, nameOf, nextNumber, recordActivity, requireProject, writeAu
 import {
   baselines, changeRequestSteps, changeRequestWbs, changeRequests, persons, projectControls, projects, users, wbsNodes,
 } from '@/server/db/schema';
+import { baselineSnapshotSize, createProposedBaseline, snapshotIntoBaseline } from './baselines';
 import { getBaselines, type BaselineRow } from './planning';
 
 /** Labels of the change types (CR_TYPES 3497). */
@@ -194,6 +196,11 @@ export interface NewChangeRequestInput {
   submit?: boolean;
   /** Business date (default the status date). */
   requestedOn?: string;
+  /**
+   * S-3: the request proposes the project's next baseline (Plan "Set baseline" after BL1). An empty proposed BLn is linked to
+   * it and becomes the request's baseline; the snapshot is taken at approval.
+   */
+  proposeBaseline?: boolean;
 }
 
 /** Raises a change request (CR-011…, global sequence) prepended to the register. Returns its number. */
@@ -219,6 +226,10 @@ export async function createChangeRequest(projectCode: string, input: NewChangeR
       })
       .returning({ id: changeRequests.id });
     await tx.insert(changeRequestSteps).values(CHANGE_STEPS.map((step, position) => ({ changeRequestId: cr.id, step, decision: 'pending' as const, position })));
+    if (input.proposeBaseline) {
+      const blCode = await createProposedBaseline(tx, { projectId: p.id, changeRequestId: cr.id, changeRequestNumber: number, actorName, comment: input.justification });
+      await tx.update(changeRequests).set({ baselineCode: blCode }).where(eq(changeRequests.id, cr.id));
+    }
     const codes = input.wbsCodes?.length ? input.wbsCodes : ['1'];
     const nodes = await tx.select({ id: wbsNodes.id, code: wbsNodes.code }).from(wbsNodes).where(and(eq(wbsNodes.projectId, p.id), inArray(wbsNodes.code, codes)));
     await tx.insert(changeRequestWbs).values(
@@ -288,8 +299,18 @@ export async function decideChangeStep(
     if (status === 'approved') {
       const [bl] = await tx.select().from(baselines).where(and(eq(baselines.changeRequestId, cr.id), eq(baselines.state, 'proposed')));
       if (bl) {
-        await tx.update(baselines).set({ state: 'superseded', updatedAt: at }).where(and(eq(baselines.projectId, p.id), eq(baselines.state, 'current')));
-        await tx.update(baselines).set({ state: 'current', setOn: STATUS_ISO, updatedAt: at }).where(eq(baselines.id, bl.id));
+        // S-3 / §3.1 gap (1): the proposed baseline becomes current, set on the project data date (S-4). A baseline without an
+        // activity snapshot (the seed's BL2 "Pending CR-009", or one proposed from the Plan) is filled with the activities now;
+        // one frozen with its snapshot by the Schedule "Re-baseline" keeps it.
+        const [proj] = await tx.select({ dataDate: projects.dataDate }).from(projects).where(eq(projects.id, p.id));
+        const setOn = projectDataDate(proj ?? {});
+        if (!(await baselineSnapshotSize(bl.id, tx))) {
+          const n = await snapshotIntoBaseline(projectCode, bl.code, { actorName, makeCurrent: true, setOn }, tx);
+          changes.push(`${bl.code} snapshot · ${n} activities`);
+        } else {
+          await tx.update(baselines).set({ state: 'superseded', updatedAt: at }).where(and(eq(baselines.projectId, p.id), eq(baselines.state, 'current')));
+          await tx.update(baselines).set({ state: 'current', setOn, updatedAt: at }).where(eq(baselines.id, bl.id));
+        }
         changes.push(`${bl.code} current`);
       }
     }

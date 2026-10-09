@@ -22,9 +22,12 @@ import { PlanTable } from '@/features/plan/plan-table';
 import { canEditPlan, canSchedulePlan } from '@/features/plan/rights';
 import { PlanToolbar } from '@/features/plan/toolbar';
 import s from '@/features/plan/plan.module.css';
+import { canSnapshotFreely } from '@/domain/baseline-policy';
 import { nextBaselineCode } from '@/domain/ch4-defaults';
 import { longDateText } from '@/domain/schedule-rollup';
-import { baselineWhenText } from '@/features/plan/i18n';
+import { baselineWhenText, trashMetaText } from '@/features/plan/i18n';
+import { RecentlyDeleted } from '@/features/plan/recently-deleted';
+import { PLAN_TRASH_RETENTION_DAYS, listPlanTrash } from '@/server/dal/plan-trash';
 import { listActivityTodos } from '@/server/dal/activity-todos';
 import { listChangeRequestDetails } from '@/server/dal/changes';
 import { listDepartments } from '@/server/dal/people';
@@ -84,12 +87,14 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
   const collapsed = parseCollapsed(jar.get(COLLAPSE_COOKIE)?.value);
   if (act) collapsed[act.wbs] = false;
 
-  const [todos, requests] = await Promise.all([getPlanTodos(projectCode), getPlanRequests(projectCode)]);
+  const [todos, requests, trash] = await Promise.all([getPlanTodos(projectCode), getPlanRequests(projectCode), canSchedule ? listPlanTrash(projectCode) : []]);
   const rows = planRowViews(planRows(data, todos), data, t, lang);
   const displayed = settings?.displayed ?? null;
   const kpis = planKpis(view, data, t, lang, { dataDate: settings?.dataDate, baseline: displayed });
   const dataDateText = t(settings ? longDateText(settings.dataDate) : STATUS_DATE);
   const context = t(projectLabel(ctx.project));
+  // "Recently deleted" (S-5): real-clock removal times.
+  const whenText = new Intl.DateTimeFormat(lang === 'fr' ? 'fr-FR' : 'en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
 
   // Toolbar chips (S-2 project calendar, S-3 displayed baseline).
   const calName = (c: string) => settings?.calendars.find((x) => x.code === c)?.name ?? c;
@@ -107,6 +112,9 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
       title: b.activityCount ? undefined : t('No activity snapshot'),
     })),
   };
+
+  // S-3: "Set baseline" snapshots freely up to BL1; afterwards it opens a change request proposing the next baseline.
+  const baselineCodes = (settings?.baselines ?? []).map((b) => b.code);
 
   let drawer = null;
   if (act) {
@@ -168,7 +176,8 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
           calendar={calendarChip}
           baseline={baselineChip}
           dataDate={dataDateText}
-          nextBaseline={nextBaselineCode((settings?.baselines ?? []).map((b) => b.code))}
+          nextBaseline={nextBaselineCode(baselineCodes)}
+          baselineChangeRequestHref={canSnapshotFreely(baselineCodes) ? undefined : `${screenHref('changes', { code: projectCode })}?new=1&baseline=1`}
           canSchedule={canSchedule}
           t={t}
         />
@@ -204,10 +213,23 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
             collapsed={collapsed}
             selected={selected}
             canEdit={canEdit}
+            canRemove={canSchedule}
             owners={data.owners.map((o) => ({ value: o.code, label: o.name }))}
             hrefOf={{ base, query: view === 'structure' ? 'view=structure&' : '' }}
           />
         </div>
+        {canSchedule && (
+          <RecentlyDeleted
+            code={projectCode}
+            title={t('Recently deleted')}
+            hint={t(`Removed work packages and activities can be restored for ${PLAN_TRASH_RETENTION_DAYS} days, with their links, assignments and to-dos`)}
+            entries={trash.map((e) => ({
+              id: e.id,
+              label: `${e.code} · ${e.name}`,
+              meta: trashMetaText(e.kind, e.activityCount, e.deletedByName, whenText.format(e.deletedAt), lang),
+            }))}
+          />
+        )}
         {drawer}
       </div>
       {canEdit && <PlanForms code={projectCode} context={context} defs={formDefs} />}

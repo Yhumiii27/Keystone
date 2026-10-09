@@ -14,11 +14,12 @@ import { getDb } from '@/server/db/client';
 import { constraintText, type LinkType } from '@/server/db/codes';
 import { findPerson, nameOf, writeAudit } from '@/server/db/helpers';
 import {
-  activities, activityLinks, changeRequestWbs, milestones, persons, projects, scheduleBars, wbsNodes, wpBudgets,
+  activities, activityLinks, persons, projects, wbsNodes,
 } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 import { PROTO } from '@/server/prototype';
 import { listProjectBaselines, type BaselineInfo } from './baselines';
+import { trashPlanRow } from './plan-trash';
 import { listCalendars } from './calendars';
 import { getScheduleControl, type ScheduleControl } from './planning';
 import { listResourceRequests } from './requests';
@@ -312,41 +313,22 @@ export async function getPackageOrder(code: string, actId: string): Promise<{ wb
   });
 }
 
-async function deleteActivities(tx: Tx, ids: string[]) {
-  if (!ids.length) return;
-  await tx.update(milestones).set({ activityId: null }).where(inArray(milestones.activityId, ids));
-  await tx.delete(activities).where(inArray(activities.id, ids));
-}
-
-/** Removes an activity (`rmKey`); its logic links and assignments go with it. */
-export async function deleteActivity(code: string, actId: string): Promise<boolean> {
-  const db = await getDb();
-  return db.transaction(async (tx) => {
-    const a = await findActivity(tx, code, actId);
-    if (!a) return false;
-    await deleteActivities(tx, [a.id]);
-    return true;
-  });
+/**
+ * Removes an activity (`rmKey`) into the Plan trash (S-5): its logic links, assignments and Plan to-dos go with it and can be
+ * restored (plan-trash.ts). False when not found.
+ */
+export async function deleteActivity(code: string, actId: string, actorName = 'Keystone'): Promise<boolean> {
+  return !!(await trashPlanRow(code, 'act', actId, actorName));
 }
 
 /**
- * Removes a work package and all its activities (`rmKey` on a WP); their logic links go with them (cascade, S-5). Rows of
- * other modules that point at the node (Budget WP lines, change-request WBS) keep their own code/name and lose only the
- * link; the package's Schedule bar is removed (A-7: bars are WBS roll-ups).
+ * Removes a work package and all its activities (`rmKey` on a WP) into the Plan trash (S-5): their links, assignments, to-dos
+ * and the package's Schedule bar (A-7 roll-up) go with them. Rows of other modules that point at the node or the activities
+ * (Budget WP lines, change-request WBS, milestones…) keep their own code/name and lose only the link, given back on restore.
+ * False for the root or an unknown package.
  */
-export async function deleteWorkPackage(code: string, w: string): Promise<boolean> {
-  const db = await getDb();
-  return db.transaction(async (tx) => {
-    const n = await findNode(tx, code, w);
-    if (!n || n.level !== 1) return false;
-    await deleteActivities(tx, (await packageActivities(tx, n.id)).map((k) => k.id));
-    await tx.update(wpBudgets).set({ wbsNodeId: null }).where(eq(wpBudgets.wbsNodeId, n.id));
-    await tx.update(changeRequestWbs).set({ wbsNodeId: null }).where(eq(changeRequestWbs.wbsNodeId, n.id));
-    // A-7: Schedule bars are roll-ups of the work packages — the package's bar goes with it (S-5).
-    await tx.delete(scheduleBars).where(eq(scheduleBars.wbsNodeId, n.id));
-    await tx.delete(wbsNodes).where(eq(wbsNodes.id, n.id));
-    return true;
-  });
+export async function deleteWorkPackage(code: string, w: string, actorName = 'Keystone'): Promise<boolean> {
+  return !!(await trashPlanRow(code, 'wp', w, actorName));
 }
 
 export interface NewActivity {
