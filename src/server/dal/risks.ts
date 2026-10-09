@@ -10,6 +10,7 @@ import {
 } from '@/server/db/codes';
 import { findPerson, nameOf, nextNumber, requireProject, writeAudit } from '@/server/db/helpers';
 import { activities, persons, projectControls, projects, risks, wbsNodes } from '@/server/db/schema';
+import type { Tx } from '@/server/db/types';
 import { settingsEntries } from './settings-lists';
 
 export interface LinkedActivity {
@@ -166,9 +167,8 @@ const clamp15 = (v: number | undefined) => Math.max(1, Math.min(5, Math.round(v 
  * Adds a risk to a project's register (AF.risks): number R-21… (global sequence, OPEN QUESTION Q-7), status
  * Open, trend flat, prepended to the register. Returns the new number.
  */
-export async function createRisk(projectCode: string, input: NewRiskInput, actorName: string): Promise<string> {
-  const db = await getDb();
-  return db.transaction(async (tx) => {
+export async function createRisk(projectCode: string, input: NewRiskInput, actorName: string, inTx?: Tx): Promise<string> {
+  const run = async (tx: Tx) => {
     const p = await requireProject(tx, projectCode);
     const number = await nextNumber(tx, risks, risks.number, 'R-', 2, 20);
     const [{ minOrder }] = await tx
@@ -195,7 +195,9 @@ export async function createRisk(projectCode: string, input: NewRiskInput, actor
       area: 'Risks', entityType: 'risk', entityId: row.id, projectId: p.id,
     });
     return number;
-  });
+  };
+  // `inTx`: part of a caller's transaction (a risk registered from a meeting transcript proposal, marked applied with it).
+  return inTx ? run(inTx) : (await getDb()).transaction(run);
 }
 
 export interface RiskPatch {

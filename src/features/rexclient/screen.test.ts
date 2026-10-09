@@ -61,8 +61,9 @@ describe('client portal screen', () => {
     const v = await getClientScreen('HLT-026', 'decisions', t, lang);
     const g = G.client[lang]['HLT-026'];
     expect(v.kpis).toEqual(str(g.kpis));
-    expect(v.tabs.map((o) => o.label)).toEqual(g.seg);
-    expect(v.tabs.map((o) => o.href)).toEqual(['', 'decisions', 'invoices', 'issues', 'docs'].map((x) => `/projects/HLT-026/client${x ? `?tab=${x}` : ''}`));
+    // S-9a: "Schedule" (FR "Planning") added after the prototype's first segment.
+    expect(v.tabs.map((o) => o.label)).toEqual([g.seg[0], t('Schedule'), ...g.seg.slice(1)]);
+    expect(v.tabs.map((o) => o.href)).toEqual(['', 'planning', 'decisions', 'invoices', 'issues', 'docs'].map((x) => `/projects/HLT-026/client${x ? `?tab=${x}` : ''}`));
     expect(v.progress).toEqual(g.progress);
     expect(v.milestones).toEqual(g.milestones);
     // Deliverable types the prototype left in English are translated by the shared dictionary when it has them.

@@ -1,5 +1,6 @@
 // My project — client view — /projects/[code]/client (docs/spec/03 §8, template 2180–2236, logic 4679–4690, 5061).
-// URL state (docs/spec/00 §8.3): `?tab=progress|decisions|invoices|issues|docs` (cpTab, default Progress & milestones).
+// URL state (docs/spec/00 §8.3): `?tab=progress|planning|decisions|invoices|issues|docs` (cpTab, default Progress & milestones;
+// `planning` = the read-only summary Gantt and milestones with the Gantt PDF, S-9a).
 // Workspace: client and director (others see it outside their workspace, read-only, without the primary action). The
 // portal ignores the project read-only mode (01 §5.9), but only the client contact of the project's client organisation
 // decides (change-request client step, deliverable acceptance), acknowledges documents and — with the director —

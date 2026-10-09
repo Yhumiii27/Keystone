@@ -34,8 +34,8 @@ export async function analyseTranscriptText(input: AnalysisInput, opts: AnalyseO
   if (!claude) return local(input, null);
   try {
     if (input.text.length > TRANSCRIPT_AI.maxClaudeChars) throw new ClaudeAnalysisError('too_long');
-    const r = await claude.analyse(input);
-    return { ...r, analyzer: 'claude', model: claude.model, notice: null };
+    const { servedBy, ...r } = await claude.analyse(input);
+    return { ...r, analyzer: 'claude', model: servedBy || claude.model, notice: null };
   } catch (e) {
     const f = failureOf(e);
     console.error('Claude transcript analysis failed:', f.code, f.status ?? '', f.message);

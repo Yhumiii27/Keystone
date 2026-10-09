@@ -508,9 +508,18 @@ export const isDateDue = (due: string | null | undefined) => !!due && due !== '�
 export const TRANSCRIPT_IMPORT = {
   /** Largest stored transcript, in characters after parsing (≈ 60 000 words — several hours of meeting). */
   maxChars: 400_000,
-  /** Largest file or paste sent to the server. */
+  /** Largest file or paste sent to the server, in bytes (a paste counts in UTF-8: accents take 2 bytes, ’ « » 3). */
   maxUploadBytes: 800_000,
 } as const;
+
+/**
+ * A pasted transcript too large to send: its UTF-8 size is above `maxUploadBytes`, so the Server Function request stays under
+ * Next's 1 MB body limit and the user reads "The transcript is too long" instead of a generic save error.
+ */
+export function pasteTooLong(text: string): boolean {
+  if (text.length > TRANSCRIPT_IMPORT.maxUploadBytes) return true;
+  return new TextEncoder().encode(text).length > TRANSCRIPT_IMPORT.maxUploadBytes;
+}
 
 /** Review order of the proposals: decisions, actions, risks, client questions — each in analysis order. */
 export const PROPOSAL_ORDER = ['decision', 'action', 'risk', 'question'] as const;

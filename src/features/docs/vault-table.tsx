@@ -1,7 +1,7 @@
 'use client';
 // Selection bar and Vault card (docs/spec/10 §4.4h–i, template 2320–2343). Multi-select is transient client state
 // (`dv.sel`): the 16px check of each row toggles it, the bar shows "{n} selected" with "Download zip" (the files are in
-// Codex: a toast says so), "Export register (xlsx)" (the ticked documents; the card's button exports the register as
+// Codex: a toast says so, with an "Open Codex" link), "Export register (xlsx)" (the ticked documents; the card's button exports the register as
 // filtered — chapter 4 exports) and "Clear". A row click opens / closes the
 // document record drawer (`?doc=`); the download icon logs a download of the current revision.
 import { Check, FileXls, FileZip } from '@phosphor-icons/react/dist/ssr';
@@ -30,9 +30,11 @@ export interface VaultTableProps {
   rows: VaultRowView[];
   /** "No document matches" or null. */
   empty: string | null;
+  /** Codex web app (the "Download zip" toast links to it: the files are stored in Codex). */
+  codexUrl?: string;
 }
 
-export function VaultTable({ project, title, rows, empty }: VaultTableProps) {
+export function VaultTable({ project, title, rows, empty, codexUrl }: VaultTableProps) {
   const { t, lang } = useI18n();
   const [sel, setSel] = useState<Record<string, boolean>>({});
   const count = Object.values(sel).filter(Boolean).length;
@@ -58,7 +60,7 @@ export function VaultTable({ project, title, rows, empty }: VaultTableProps) {
           <span className={s.selText} aria-live="polite">
             {selectedT(count, t, lang)}
           </span>
-          <Button variant="secondary" size="xs" icon={FileZip} onClick={() => showToast(t('Download zip needs Codex — the document files are stored in Codex'))}>
+          <Button variant="secondary" size="xs" icon={FileZip} onClick={() => showToast(t('Download zip needs Codex — the document files are stored in Codex'), codexUrl ? { href: codexUrl, label: t('Open Codex') } : undefined)}>
             {t('Download zip')}
           </Button>
           <Button variant="secondary" size="xs" icon={FileXls} disabled={busy} onClick={() => exportRegister(Object.keys(sel).filter((n) => sel[n]))}>

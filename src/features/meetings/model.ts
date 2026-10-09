@@ -142,6 +142,8 @@ export interface TranscriptView {
   // ── Chapter 4 (S-10) ──
   /** "Teams transcript" / "Pasted text · R. Aubert · 9 Oct" / "meeting.vtt · R. Aubert · 9 Oct". */
   sourceText: string;
+  /** Uploaded file name (the head of `sourceText`, linked to its download — transcriptFileHref), null for a paste / Teams. */
+  fileName: string | null;
   /** "Local analysis (rules) · the transcript stayed in Keystone" / "Analysis by Claude (Anthropic) · claude-opus-5-5 · …". */
   analyzerText: string | null;
   /** Translated fallback notice ("Claude could not be reached · local analysis used instead"). */
@@ -390,6 +392,9 @@ export function meetingsScreenView({ code, meetings: ms, questions, query }: Mee
 
 // ── Transcript (chapter 4, S-10) ───────────────────────────────────────────────────────────────────────────────────
 
+/** Download of a meeting's uploaded transcript file (src/app/api/meetings/[number]/transcript/route.ts). */
+export const transcriptFileHref = (meeting: string) => `/api/meetings/${encodeURIComponent(meeting)}/transcript`;
+
 /** "Teams transcript" / "Pasted text · {who} · {date}" / "{file} · {who} · {date}". */
 function transcriptSource(tr: MeetingTranscript, t: T): string {
   if (!tr.source || tr.source === 'teams') return t('Teams transcript');
@@ -442,6 +447,7 @@ export function transcriptView(tr: MeetingTranscript, t: T, lang: Lang, organize
     })),
     applied: tr.applied,
     sourceText: transcriptSource(tr, t),
+    fileName: tr.source === 'file' && tr.fileName ? tr.fileName : null,
     analyzerText: analyzerText(tr, t),
     notice: tr.notice ? tr.notice.split(' · ').map(t).join(' · ') : null,
     items,

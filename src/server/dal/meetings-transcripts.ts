@@ -15,7 +15,7 @@ import type { AnalyzerId, TranscriptAnalyzerImpl } from '@/server/ai/transcripts
 import { getDb } from '@/server/db/client';
 import { isoOfDisplayDate, type TranscriptProposalStatus, type TranscriptProposalType } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity } from '@/server/db/helpers';
-import { clientQuestions, meetingAgendaPoints, meetingParticipants, meetingTranscriptProposals, meetingTranscripts, meetings } from '@/server/db/schema';
+import { clientQuestions, meetingAgendaPoints, meetingParticipants, meetingTranscriptProposals, meetingTranscripts, meetings, projects } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 import { deleteStoredFile, storeFile } from '@/server/storage/files';
 import { appendLines, auditMeeting, loadMeeting } from './meetings-core';
@@ -105,6 +105,18 @@ export async function importTranscript(meetingNumber: string, input: TranscriptI
   });
   if (oldFileId) await deleteStoredFile(oldFileId).catch((e) => console.error('importTranscript: old file not deleted', e));
   return { replaced, format: parsed.format, words: parsed.words, speakers: parsed.speakers.length, language: parsed.language };
+}
+
+/** Stored file of a meeting's transcript (an upload; null for a paste or an unknown meeting) and the meeting's project. */
+export async function getTranscriptFileRef(meetingNumber: string): Promise<{ projectCode: string; fileId: string } | null> {
+  const db = await getDb();
+  const [r] = await db
+    .select({ projectCode: projects.code, fileId: meetingTranscripts.fileId })
+    .from(meetings)
+    .innerJoin(projects, eq(projects.id, meetings.projectId))
+    .innerJoin(meetingTranscripts, eq(meetingTranscripts.meetingId, meetings.id))
+    .where(eq(meetings.number, meetingNumber));
+  return r?.fileId ? { projectCode: r.projectCode, fileId: r.fileId } : null;
 }
 
 // ── Analysis ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -266,15 +278,17 @@ export async function applyTranscriptToMinutes(meetingNumber: string, actorName:
   });
 }
 
-/** Marks a proposal as applied elsewhere (a risk registered from it: `ref` = "R-21"). */
-export async function markTranscriptProposalApplied(meetingNumber: string, position: number, ref: string, actorName: string): Promise<void> {
+/** Marks a proposal as applied elsewhere (a risk registered from it: `ref` = "R-21" — or a function of the transaction giving it). */
+export async function markTranscriptProposalApplied(meetingNumber: string, position: number, ref: string | ((tx: Tx) => Promise<string>), actorName: string): Promise<string> {
   const db = await getDb();
-  await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     const { m, p } = await loadProposal(tx, meetingNumber, position);
     if (p.status === 'applied') throw new TranscriptError('This proposal was already added');
-    await tx.update(meetingTranscriptProposals).set({ status: 'applied', appliedRef: ref, ...(await reviewer(tx, actorName)) })
+    const applied = typeof ref === 'string' ? ref : await ref(tx);
+    await tx.update(meetingTranscriptProposals).set({ status: 'applied', appliedRef: applied, ...(await reviewer(tx, actorName)) })
       .where(and(eq(meetingTranscriptProposals.meetingId, m.id), eq(meetingTranscriptProposals.position, position)));
-    await auditMeeting(tx, actorName, meetingNumber, `transcript ${p.type} added · ${ref} · ${p.text}`, m.projectId, m.id);
+    await auditMeeting(tx, actorName, meetingNumber, `transcript ${p.type} added · ${applied} · ${p.text}`, m.projectId, m.id);
+    return applied;
   });
 }
 

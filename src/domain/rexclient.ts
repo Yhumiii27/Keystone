@@ -232,10 +232,14 @@ export function parseNewLesson(values: unknown): Parsed<NewLesson> {
 
 // ── Client portal ──────────────────────────────────────────────────────────────────────────────────────
 
-export type ClientTab = 'progress' | 'decisions' | 'invoices' | 'issues' | 'docs';
-/** Display segments (`cpSeg`), default Progress & milestones. */
+export type ClientTab = 'progress' | 'planning' | 'decisions' | 'invoices' | 'issues' | 'docs';
+/**
+ * Display segments (`cpSeg`), default Progress & milestones. "Schedule" (`planning`, read-only summary Gantt and milestones
+ * with its PDF) is not in the prototype: the owner's answer S-9a puts the plan in the client portal.
+ */
 export const CLIENT_TABS: { value: ClientTab; label: string }[] = [
   { value: 'progress', label: 'Progress & milestones' },
+  { value: 'planning', label: 'Schedule' },
   { value: 'decisions', label: 'Decisions' },
   { value: 'invoices', label: 'Invoices' },
   { value: 'issues', label: 'Issues' },

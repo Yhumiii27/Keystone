@@ -3,6 +3,7 @@
 // Rights as on screen: hourly rates and premium multipliers only for the roles that see rates (director, PM) — the
 // columns are left out otherwise; requests are the viewer's own unless the screen shows them all (director, outside
 // the workspace); a client exports only its own projects' rows. Weekly loads are fractions (1 = 100 % of the hours).
+import { DEFAULT_PROJECT } from '@/config/screens';
 import { matchesFilter as matchesRequestFilter, isRequestFilter, deptOfSlug, REQUEST_FILTERS } from '@/domain/requests';
 import { parseSkillFilter } from '@/domain/hr';
 import { leverLabel, type WhatIfResult } from '@/domain/whatif';
@@ -13,10 +14,9 @@ import { departmentOfPerson, getApprovalsScreenData, listApprovalDepartmentsFull
 import { getLaborCost, getProjectTeam, getResourcePool, getWhatIf, listDepartments, type PoolPerson, type ResourceWeek } from '@/server/dal/resources';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
-import { col, compact, filterLine, kpiSheet, param, sheet } from './common';
-import { projectFilter } from './scope';
+import { col, compact, filterLine, isoOf, kpiSheet, param, sheet } from './common';
+import { currentProjectCode, projectFilter } from './scope';
 
-const currentProject = (ctx: ExportContext) => param(ctx, 'code')?.toUpperCase() ?? 'HLT-026';
 
 function loadSheet(ctx: ExportContext, name: string, weeks: ResourceWeek[], people: PoolPerson[]): ExportSheet {
   const { t } = ctx;
@@ -33,13 +33,13 @@ function requestSheet(ctx: ExportContext, name: string, rows: ResourceRequestRow
   const { t } = ctx;
   return sheet(name, [
     col('id', t('Request'), 'text', 8), col('project', t('Project'), 'text', 10), col('title', t('Title'), 'text', 36), col('resource', t('Resource'), 'text', 20),
-    col('department', t('Department'), 'text', 18), col('activity', t('Activity'), 'text', 26), col('hours', t('Hours'), 'number', 8), col('start', t('Start date'), 'text', 12),
-    col('due', t('Due'), 'text', 12), col('priority', t('Priority'), 'text', 10), col('status', t('Status'), 'text', 18), col('requestedBy', t('Requested by'), 'text', 16),
-    col('sent', t('Sent'), 'text', 12), col('response', t('Response'), 'text', 36), col('task', t('Task'), 'text', 9),
+    col('department', t('Department'), 'text', 18), col('activity', t('Activity'), 'text', 26), col('hours', t('Hours'), 'number', 8), col('start', t('Start date'), 'date'),
+    col('due', t('Due'), 'date'), col('priority', t('Priority'), 'text', 10), col('status', t('Status'), 'text', 18), col('requestedBy', t('Requested by'), 'text', 16),
+    col('sent', t('Sent'), 'date'), col('response', t('Response'), 'text', 36), col('task', t('Task'), 'text', 9),
   ], rows.map((r) => ({
     id: r.id, project: r.projectCode, title: t(r.title), resource: t(r.resource), department: t(r.department), activity: r.activity ? `${r.activity.code} · ${t(r.activity.name)}` : '',
-    hours: r.hours, start: t(r.start), due: t(r.due), priority: t(r.priority === 'high' ? 'High' : r.priority === 'low' ? 'Low' : 'Medium'), status: t(r.statusLabel),
-    requestedBy: r.requestedBy, sent: t(r.sentText), response: t(r.response), task: r.taskId ?? '',
+    hours: r.hours, start: isoOf(r.start) ?? t(r.start), due: isoOf(r.due) ?? t(r.due), priority: t(r.priority === 'high' ? 'High' : r.priority === 'low' ? 'Low' : 'Medium'), status: t(r.statusLabel),
+    requestedBy: r.requestedBy, sent: isoOf(r.sent) ?? isoOf(r.sentText) ?? t(r.sentText), response: t(r.response), task: r.taskId ?? '',
   })));
 }
 
@@ -58,7 +58,7 @@ function loadKpis(ctx: ExportContext, people: PoolPerson[], openRequests: number
 // ── Resources (pool) ─────────────────────────────────────────────────────────────────────────────────────────────────
 async function resourcesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
-  const [pool, departments, pending, labor] = await Promise.all([getResourcePool(), listDepartments(), listResourceRequests({ status: 'pending' }), getLaborCost(currentProject(ctx))]);
+  const [pool, departments, pending, labor] = await Promise.all([getResourcePool(), listDepartments(), listResourceRequests({ status: 'pending' }), currentProjectCode(ctx, DEFAULT_PROJECT).then((c) => (c ? getLaborCost(c) : null))]);
   const caps = departments.filter((d) => d.capacityH != null && d.demandH != null).sort((a, b) => (a.capacityPosition ?? 0) - (b.capacityPosition ?? 0));
   return {
     title: t('Resources'),

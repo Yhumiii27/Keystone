@@ -5,6 +5,7 @@ import { evmCore } from '@/domain/evm';
 import { getBudgetData } from '@/server/dal/budget';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook, PdfDocument } from '../types';
+import { ratioText } from './common';
 
 async function budgetSheets(ctx: ExportContext): Promise<{ sheets: Record<'categories' | 'wps' | 'changes' | 'evm', ExportSheet>; data: NonNullable<Awaited<ReturnType<typeof getBudgetData>>> } | null> {
   const { t } = ctx;
@@ -79,8 +80,8 @@ export async function budgetReport(ctx: ExportContext): Promise<PdfDocument | nu
     blocks: [
       {
         kind: 'kpis', items: [
-          { label: 'BAC', value: fmtK(cost.bac) }, { label: 'EAC', value: fmtK(Math.round(core.eac)) }, { label: 'CPI', value: core.cpi.toFixed(2) },
-          { label: 'SPI', value: core.spi.toFixed(2) }, { label: t('Actual cost'), value: fmtK(cost.ac.at(-1) ?? 0) },
+          { label: 'BAC', value: fmtK(cost.bac) }, { label: 'EAC', value: fmtK(Math.round(core.eac)) }, { label: 'CPI', value: ratioText(core.cpi, lang) },
+          { label: 'SPI', value: ratioText(core.spi, lang) }, { label: t('Actual cost'), value: fmtK(cost.ac.at(-1) ?? 0) },
         ],
       },
       { kind: 'heading', text: t('Cost categories') },

@@ -17,3 +17,4 @@
 .icon { color: var(--color-accent); font-size: 18px; flex: none; }
 .text { text-wrap: pretty; }
 .close { margin-left: 4px; flex: none; }
+.link { flex: none; color: var(--color-accent-300); text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }

@@ -10,7 +10,7 @@
 // revalidates. Error messages are English source strings translated here.
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
-import { parseClientQuestion, parseMinutesLine, parseNewMeeting, parseProposalEdit, TRANSCRIPT_IMPORT } from '@/domain/meetings';
+import { parseClientQuestion, parseMinutesLine, parseNewMeeting, parseProposalEdit, pasteTooLong, TRANSCRIPT_IMPORT } from '@/domain/meetings';
 import { parseNewRisk } from '@/domain/risk';
 import { RISK_RESULT } from '@/features/risks/forms';
 import { transcriptAiInfo } from '@/server/ai/config';
@@ -168,7 +168,7 @@ export async function importTranscriptAction(form: FormData): Promise<MeetingAct
     if (file.size > TRANSCRIPT_IMPORT.maxUploadBytes) return fail('The transcript is too long');
     input = { file: { name: file.name, data: new Uint8Array(await file.arrayBuffer()) } };
   } else if (typeof text === 'string' && text.trim()) {
-    if (text.length > TRANSCRIPT_IMPORT.maxUploadBytes) return fail('The transcript is too long');
+    if (pasteTooLong(text)) return fail('The transcript is too long');
     input = { text };
   } else return fail('Paste the transcript or choose a file');
   const r = await write('importTranscriptAction', () => importTranscript(g.meeting.number, input, g.actor));
@@ -258,15 +258,14 @@ export async function addProposalRiskAction(code: string, meeting: string, posit
   const parsed = parseNewRisk(strings(values), await riskOwnerOptions(g.code));
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
-  const r = await write('addProposalRiskAction', async () => {
-    const number = await createRisk(
+  // One transaction: the risk is created and the proposal marked added together (or neither).
+  const r = await write('addProposalRiskAction', () =>
+    markTranscriptProposalApplied(g.meeting.number, g.item.position, (tx) => createRisk(
       g.code,
       { title: v.title, category: v.category, probability: v.probability, impact: v.impact, owner: v.owner, response: v.response, emvKeur: v.emvKeur, plan: v.plan, trigger: `${g.meeting.number} · transcript` },
       g.actor,
-    );
-    await markTranscriptProposalApplied(g.meeting.number, g.item.position, number, g.actor);
-    return number;
-  });
+      tx,
+    ), g.actor));
   if (!r.ok) return { error: await tr(r.error) };
   refresh(g.code);
   return { toast: `${r.value} · ${await tr(RISK_RESULT)}` };

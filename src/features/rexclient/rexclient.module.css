@@ -116,3 +116,8 @@ button.clRow:disabled { cursor: progress; }
 .tabular { font-variant-numeric: tabular-nums; }
 .docActions { text-align: right; white-space: nowrap; }
 .emptyDocs { font-size: 12.5px; color: var(--color-neutral-500); }
+
+/* "Schedule" tab (S-9a): summary Gantt + milestone list, as the Schedule screen draws them. */
+.planMsRow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--color-neutral-900); font-size: 13px; }
+.planSlip { font-variant-numeric: tabular-nums; color: var(--color-neutral-300); }
+.planSlipAlert { color: var(--color-accent-300); }

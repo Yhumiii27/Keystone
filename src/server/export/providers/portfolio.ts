@@ -16,7 +16,7 @@ import { getPortfolioSchedule } from '@/server/dal/pipeline';
 import { getPortfolioOverview } from '@/server/dal/portfolio';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportWorkbook } from '../types';
-import { col, compact, filterLine, kpiSheet, monthIso, param, sheet } from './common';
+import { col, compact, filterLine, kpiSheet, monthIso, param, pctNum, sheet } from './common';
 import { projectFilter } from './scope';
 
 const zoneLine = (ctx: ExportContext) => filterLine(ctx.t('Zone'), ctx.zone?.toUpperCase());
@@ -120,8 +120,8 @@ async function prioritisationWorkbook(ctx: ExportContext): Promise<ExportWorkboo
     rank, code: p.code, name: t(p.name), stage: t(p.status), score, ...Object.fromEntries(p.scores.map((v, i) => [`ax${i}`, v])), budget: p.budget,
     margin: p.marginPct != null ? p.marginPct / 100 : null,
   })));
-  const weights = sheet(t('Weights'), [col('axis', t('Axis'), 'text', 30), col('weight', t('Weight'), 'number', 10), col('share', t('Share'), 'text', 10)],
-    scoped.axes.map((a, i) => ({ axis: t(a.label), weight: scoped.weights[i] ?? 0, share: view.weightRows[i]?.pct ?? '' })));
+  const weights = sheet(t('Weights'), [col('axis', t('Axis'), 'text', 30), col('weight', t('Weight'), 'number', 10), col('share', t('Share'), 'percent', 10)],
+    scoped.axes.map((a, i) => ({ axis: t(a.label), weight: scoped.weights[i] ?? 0, share: pctNum(view.weightRows[i]?.pct) })));
   const sheets = [ranking, weights, kpiSheet(ctx, view.kpis.map((k) => ({ label: k.label, value: k.value, sub: k.sub })))];
   if (tab === 'capacity') {
     const asked = param(ctx, 'project');

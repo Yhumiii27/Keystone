@@ -14,7 +14,7 @@ import { getTrends } from '@/server/dal/trends';
 import { reportAudience, reportPeriod, reportSections, type ReportAudience, type ReportPeriod, type ReportSections } from '@/server/db/codes';
 import { scheduleView } from '@/domain/schedule-gantt';
 import type { ExportContext, PdfBlock, PdfDocument } from '../types';
-import { col, monthIso, param, projectRef, sheet, todayIso } from './common';
+import { col, daysText, monthIso, param, projectRef, ratioText, sheet, todayIso } from './common';
 
 export interface StatusReportOptions {
   audience: ReportAudience;
@@ -79,11 +79,11 @@ export async function statusReportDocument(ctx: ExportContext, o: StatusReportOp
     const last = trends?.snapshots.at(-1) ?? null;
     if (last) {
       blocks.push({ kind: 'kpis', items: [
-        { label: t('Progress'), value: `${schedule?.control.pct ?? Math.round(ctx.project.progress * 100)}%` }, { label: 'SPI', value: last.spi.toFixed(2) }, { label: 'CPI', value: last.cpi.toFixed(2) },
-        { label: 'EAC', value: fmtK(last.eac, lang), sub: trends ? `BAC ${fmtK(trends.bac, lang)}` : undefined }, { label: t('Critical path float'), value: `${last.float} ${t('d')}` },
+        { label: t('Progress'), value: `${schedule?.control.pct ?? Math.round(ctx.project.progress * 100)}%` }, { label: 'SPI', value: ratioText(last.spi, lang) }, { label: 'CPI', value: ratioText(last.cpi, lang) },
+        { label: 'EAC', value: fmtK(last.eac, lang), sub: trends ? `BAC ${fmtK(trends.bac, lang)}` : undefined }, { label: t('Critical path float'), value: daysText(last.float, lang) },
         { label: t('Open risk exposure'), value: fmtK(last.risk, lang) },
       ] });
-    } else if (sv) blocks.push({ kind: 'kpis', items: sv.kpis.map((k) => ({ label: t(k.label), value: t(k.value), sub: t(k.sub) })) });
+    } else if (sv) blocks.push({ kind: 'kpis', items: sv.kpis.map((k) => ({ label: t(k.label), value: k.key === 'spi' && k.value !== '—' ? ratioText(parseFloat(k.value), lang) : t(k.value), sub: t(k.sub) })) });
     if (o.sections !== 'kpis') {
       if (schedule) blocks.push({ kind: 'fields', columns: 3, items: [[t('Forecast finish'), t(schedule.header.finishText)], [t('Baseline'), t(schedule.header.baselineText)], [t('Float'), t(schedule.header.floatText)]] });
       if (milestones) blocks.push({ kind: 'heading', text: t('Milestones') }, { kind: 'table', sheet: milestones });

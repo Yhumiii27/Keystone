@@ -12,6 +12,7 @@ export const isNumericType = (t: ColumnType | undefined) => t === 'number' || t 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export function formatDate(v: string, lang: Lang, withTime = false): string {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(v)) return v;
   const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T00:00:00Z` : v);
   if (isNaN(d.getTime())) return v;
   // English as the app writes it ("25 Sep 2026", "25 Sep 2026 09:12"); French from Intl ("25 sept. 2026").

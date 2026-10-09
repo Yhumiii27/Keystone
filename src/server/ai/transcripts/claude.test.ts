@@ -139,6 +139,10 @@ describe('analyser choice and fallback', () => {
     const claude = createClaudeAnalyzer(SETTINGS);
     expect(await analyseTranscriptText(INPUT, { claude })).toMatchObject({ analyzer: 'claude', model: 'claude-opus-5-5', notice: null, summary: OK.summary });
 
+    // After a server-side refusal fallback the response names the model that answered: that one is recorded.
+    parseMock.mockResolvedValueOnce(answer(OK, 'end_turn', { model: 'claude-opus-5' }));
+    expect(await analyseTranscriptText(INPUT, { claude })).toMatchObject({ analyzer: 'claude', model: 'claude-opus-5', notice: null });
+
     parseMock.mockRejectedValueOnce(Anthropic.APIError.generate(429, undefined, 'slow down', new Headers()));
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const fb = await analyseTranscriptText(INPUT, { claude });
@@ -147,6 +151,6 @@ describe('analyser choice and fallback', () => {
     errSpy.mockRestore();
 
     expect(await analyseTranscriptText(INPUT, { claude, engine: 'local' })).toMatchObject({ analyzer: 'local', notice: null });
-    expect(parseMock).toHaveBeenCalledTimes(2);
+    expect(parseMock).toHaveBeenCalledTimes(3);
   });
 });

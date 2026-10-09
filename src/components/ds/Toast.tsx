@@ -3,7 +3,8 @@
 // current one, auto-dismiss after 4000 ms (timer reset on each call), × closes it.
 //
 // Mount <ToastProvider> (or <ToastViewport/>) once, in the app shell. Trigger from client code with
-// `useToast().show(message)` or the standalone `showToast(message)`.
+// `useToast().show(message)` or the standalone `showToast(message)`. An optional link (`showToast(message, { href, label })`)
+// renders after the text — e.g. the external system a placeholder needs (opens in a new tab).
 import { CheckCircle, X } from '@phosphor-icons/react/dist/ssr';
 import { useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import { useI18n } from '@/i18n/client';
@@ -14,9 +15,17 @@ import s from './Toast.module.css';
 /** Auto-dismiss delay (prototype `showToast`, logic 5116). */
 export const TOAST_MS = 4000;
 
+/** Optional extras of a toast (additive: `showToast(message)` is unchanged). */
+export interface ToastOptions {
+  /** Link shown after the message (opens in a new tab), with its `label` (translated). */
+  href?: string;
+  label?: string;
+}
+
 interface ToastState {
   id: number;
   message: string;
+  link?: { href: string; label: string };
 }
 
 let current: ToastState | null = null;
@@ -30,9 +39,11 @@ const subscribe = (l: () => void) => {
 };
 
 /** Shows `message` as-is (pass it already translated). Replaces any visible toast. No-op on the server. */
-export function showToast(message: string) {
+export function showToast(message: string, opts?: ToastOptions) {
   if (typeof window === 'undefined' || !message) return;
-  current = { id: ++seq, message };
+  // Only web links (http(s) or same-site paths) are rendered.
+  const href = opts?.href && /^(https?:\/\/|\/(?!\/))/i.test(opts.href) ? opts.href : null;
+  current = { id: ++seq, message, ...(href ? { link: { href, label: opts?.label || href } } : {}) };
   clearTimeout(timer);
   timer = setTimeout(() => {
     current = null;
@@ -48,8 +59,8 @@ export function dismissToast() {
 }
 
 export interface ToastApi {
-  /** Show an already translated message. */
-  show: (message: string) => void;
+  /** Show an already translated message (optionally with a link). */
+  show: (message: string, opts?: ToastOptions) => void;
   /**
    * Show an English source message translated like the prototype: FR splits on " · " and translates
    * each segment ("R-21 · Risk registered" → "R-21 · Risque enregistré").
@@ -77,6 +88,11 @@ export function ToastViewport({ closeLabel }: { closeLabel?: string }) {
         <div key={toast.id} className={cx('card', 'elev-lg', s.toast)}>
           <CheckCircle className={s.icon} aria-hidden />
           <span className={s.text}>{toast.message}</span>
+          {toast.link && (
+            <a className={s.link} href={toast.link.href} target="_blank" rel="noopener noreferrer">
+              {toast.link.label}
+            </a>
+          )}
           <IconButton icon={X} muted label={closeLabel ?? t('Close')} onClick={dismissToast} className={s.close} />
         </div>
       )}

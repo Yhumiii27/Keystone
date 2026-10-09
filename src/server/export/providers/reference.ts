@@ -98,7 +98,7 @@ async function ecoWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
         col('approvals', t('Approvals'), 'text', 40), col('vigie', 'Vigie', 'text', 40),
       ], ecos.map((e) => ({
         number: e.number, title: t(e.title), type: t(e.typeLabel), status: t(e.statusLabel), from: e.fromRevision, to: e.toRevision, cost: e.costEur, days: e.scheduleDays, stock: t(e.stockImpact),
-        parts: e.parts.join(' · '), projects: e.projects.join(' · '), requestedBy: e.requestedBy, raised: e.raisedOn,
+        parts: e.parts.join(' · '), projects: e.projects.filter((c) => visible(c)).join(' · '), requestedBy: e.requestedBy, raised: e.raisedOn,
         approvals: e.approvals.map((a) => `${a.key}: ${a.decision}`).join(' · '), vigie: e.vigieUrl,
       }))),
     ],
