@@ -6,6 +6,9 @@ reconstruction en Next.js 16 du prototype Claude Design `design/Keystone PM v8.d
 - Conventions : `docs/ARCHITECTURE.md`
 - Spécification fonctionnelle : `docs/spec/`
 - État des livraisons : `docs/DELIVERY-1.md`, `docs/DELIVERY-2.md`, `docs/DELIVERY-3.md`, `docs/DELIVERY-4.md`, `docs/DELIVERY-5.md`
+- Travail en cours (chapitre 4 = livraison 6) : `docs/DELIVERY-6-PLAN.md` — plan, état et reste à faire
+- Décisions du responsable produit (questionnaire) : `docs/DECISIONS.md`
+- Consignes pour les sessions Claude : `CLAUDE.md`
   (état courant : les 59 écrans du prototype sont construits)
 - Évolutions demandées et proposées : `docs/BACKLOG.md`
 

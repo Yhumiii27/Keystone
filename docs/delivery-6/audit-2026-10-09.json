@@ -1,0 +1,901 @@
+[
+ {
+  "feature": "foundation",
+  "verdict": "mostly-done",
+  "summary": "The chapter 4 foundation is essentially complete. The pinned dependencies, the single migration 0005 (Drizzle schema and snapshot match with no drift), the seed and backfill, the calendar and CPM engines, the CSV/XLSX/PDF export framework with its registry and GET route, the file storage and the central defaults all exist. The relevant tests pass (462 tests in 20 files) and `tsc` is clean. What remains is wiring and cleanup in the DAL layer: approving a change request does not fill the proposed baseline's activity snapshot, so `snapshotIntoBaseline` is never called. The foundation's `whatif-store` is mostly bypassed by `dal/resources.ts`, and several DAL functions have no caller: calendar exception editing, an export-log reader, a writer for the project data date, and `listImportJobs` / `openClientFollowUps`. A few constants in `ch4-defaults` have no effect on behaviour. Note: the untracked files `CLAUDE.md`, `docs/DECISIONS.md` and `docs/decisions/` (created 16:51) were not written by this audit. They hold the chapter-5 answers, and some of those affect this feature (D-7a, D-7b, S-4).",
+  "items": [
+   {
+    "criterion": "Pinned deps (@anthropic-ai/sdk, zod, exceljs, pdfkit, fast-xml-parser) + next.config serverExternalPackages",
+    "status": "done",
+    "evidence": "/Users/gga/Systeme EPC2i/Keystone/package.json pins exact versions: @anthropic-ai/sdk 0.128.0, zod 4.6.5, exceljs 4.4.0, pdfkit 0.20.2, fast-xml-parser 5.11.1 (package-lock and node_modules match). /Users/gga/Systeme EPC2i/Keystone/next.config.ts has serverExternalPackages ['@electric-sql/pglite','pdfkit','exceljs']. Where each is used: src/server/ai/transcripts/claude.ts (sdk + zod), src/server/interchange/mspdi.ts (fast-xml-parser), src/server/export/pdf.ts (pdfkit), src/server/export/xlsx.ts (exceljs).",
+    "gap": ""
+   },
+   {
+    "criterion": "ONE migration 0005: calendars + exceptions, project/activity calendar, baselines + BL1 snapshots, displayed baseline, to-dos, import staging, stored files, client comms, stage decision fields, what-if persistence, connector config, export log",
+    "status": "done",
+    "evidence": "Single file drizzle/0005_sloppy_talos.sql (journal idx 5, meta/0005_snapshot.json). It creates calendars, calendar_exceptions, baseline_activities, whatif_scenario_actions, client_communications, schedule_runs, export_log, import_jobs, import_job_rows and stored_files. It adds columns: activities.calendar_code (the project calendar is the existing projects.calendar from 0000); projects.displayed_baseline_code, data_date, planned_start_date, planned_finish_date; baselines.source, comment, data_date, created_by_*, approver_person_id, scope; tasks.origin (activity to-dos are stored as tasks with origin 'activity_todo'); task_attachments.file_id and meeting_transcripts.file_id; stage_transitions.decision_comment and reverts_transition_id; whatif_scenarios.result, computed_at, applied_*; connectors.enabled, config, configured_*. A temporary drift script compared every pgTable in src/server/db/schema/*.ts (203 tables) with the 0005 snapshot: no difference in columns or notNull.",
+    "gap": ""
+   },
+   {
+    "criterion": "Seed + backfill of an existing DB (BL1 snapshots so displays are unchanged)",
+    "status": "done",
+    "evidence": "src/server/db/seed/chapter4.ts seedChapter4() calls builtinCalendarRows, markSeedBaselines, seedBaselineSnapshots (BL1 from projectControls, start derived with WorkCalendar.startOf) and seedAssignmentQuantities. src/server/db/seed/index.ts seedIfEmpty() runs it inside the initial seed, and once on an existing DB when the `calendars` table is empty. Tests: src/server/dal/chapter4-foundation.test.ts 'chapter 4 seed' (4 tests, including 'backfills a database seeded before migration 0005 once' and 'keeps the Change control register unchanged'); delivery2–5 golden tests and plan.test.ts pass. By design, projects.displayed_baseline_code stays null and resolves to BL1 through ch4-defaults displayedBaselineCode().",
+    "gap": ""
+   },
+   {
+    "criterion": "src/domain/calendar.ts: 4 calendars, French holidays incl. Easter-based, Settings holidays",
+    "status": "done",
+    "evidence": "BUILTIN_CALENDARS defines standard_5x8 (Standard 5d · 8h), standard_5x8_workshop (Atelier 5d · 8h), site_6x10 (Chantier 6d · 10h, Mon–Sat) and continuous_24h (Continu 24h/7d, holidays worked). Holidays come from easterSunday() and frenchPublicHolidays() (11 days: Easter Monday, Ascension, Whit Monday computed from Easter) and HOLIDAY_SETS. WorkCalendar applies WorkCalendarOptions.settingsHolidays and exceptions, and provides ordinal, dateOf, addWorkDays, durationOf, finishOf, startOf and boundaries. Settings holidays are fed by src/server/dal/calendars.ts settingsHolidayDates() (reference_values 'holidays', ISO codes via seed/settings.ts holidayCode, enforced in dal/settings.ts addReferenceValue). Tests: src/domain/calendar.test.ts (21 tests).",
+    "gap": ""
+   },
+   {
+    "criterion": "src/domain/cpm.ts: forward/backward pass, FS/SS/FF/SF + lags (incl. negative), SNET/SNLT/FNET/FNLT/MSO/MFO, progress at data date with retained logic, TF/FF, critical TF≤0, driving preds, cycle detection, exhaustive tests",
+    "status": "done",
+    "evidence": "schedule() with CpmOptions (criticalFloat 0, progressMode retained|override, lagCalendar, remainingRounding), plus topologicalOrder, detectCycle, CpmCycleError, CpmInputError, remainingDuration and changedActivities. Tests: src/domain/cpm.test.ts (35 tests) cover the textbook network, all link types, lead/negative lag, every constraint, project deadline/start, retained vs override, the Harbor Line case, mixed calendars, cycles, invalid input and a 2,000-activity chain. Wiring: src/server/dal/schedule.ts rescheduleProject() → src/features/plan/scheduling-actions.ts rescheduleAction → src/features/plan/plan-controls.tsx. Results are persisted: early/late dates, free_float_days, activity_links.is_driving, schedule_runs. Test: src/server/dal/reschedule.test.ts.",
+    "gap": ""
+   },
+   {
+    "criterion": "src/server/export/: CSV (BOM, ';' + decimal comma in FR), XLSX, PDF, provider registry",
+    "status": "done",
+    "evidence": "csv.ts toCsv: UTF-8 BOM bytes EF BB BF, CSV_DIALECT fr ';'/',' and en ','/'.', RFC 4180 quoting, formula-injection guard. format.ts csvCell/displayCell. xlsx.ts toXlsx (frozen, filterable header; numFmt per type and lang; 'Export' metadata sheet) and readXlsx. pdf.ts renderPdf (A4 branded, Page x / y, WinAnsi mapping via pdfText). registry.ts registerExportProvider, getExportProvider, formatsOf. providers/index.ts registers providers for every screen (checked by providers.test.ts). The header Export menu is wired: src/components/app/shell/header-islands.tsx:334 calls downloadExport(exportHref(...)). Tests: src/server/export/export.test.ts (9), providers/providers.test.ts, providers/common.test.ts.",
+    "gap": ""
+   },
+   {
+    "criterion": "GET export route with viewer / canSee / project checks + export log",
+    "status": "done",
+    "evidence": "src/app/api/export/[screen]/route.ts: GET reads getViewer/getI18n/getZone, checks isExportFormat (400), then buildExportContext → runExport → logExport, with Content-Disposition, nosniff and no-store. src/server/export/run.ts buildExportContext: unknown screen 404; project scope needs `code` (400 if missing, 404 if unknown); a client on another organisation's project gets 403; readOnly follows the getProjectScope rule; outside = isOutside(role, screen) = !canSee; ratesMasked = !canSeeRates. ExportProvider.refuse exists, but no provider uses it. Outside screens are exported read-only (same rule as the read-only banner), not refused. Covered by export.test.ts 'access rules' and 'file names and the export log'. The handler itself has no test; only buildExportContext and runExport are tested.",
+    "gap": ""
+   },
+   {
+    "criterion": "src/server/storage/files.ts: 20 MB, type allowlist, content sniffing",
+    "status": "done",
+    "evidence": "checkUpload() refuses empty files, files over MAX_FILE_BYTES (20 MB), and extensions outside FILE_EXTENSIONS[purpose]; contentMatches() sniffs PDF, PNG, JPEG, GIF, WEBP, ZIP/OOXML, OLE and DWG signatures and rejects NUL bytes in text files. Also: safeFileName, storeFile (tmp + rename, sha256, rollback deletes the bytes), storeUploadedFile, read/stream/delete with a path-escape guard, contentDisposition (RFC 6266) and fileResponse. Callers: dal/task-files.ts (← app/api/tasks/[taskId]/files/route.ts, which re-checks size, type and per-task count), dal/meetings-transcripts.ts, interchange/jobs.ts. Tests: src/server/storage/files.test.ts (7). Note: pruneOrphanFiles() is never called in production (no startup hook or cron), so bytes left behind by rolled-back transactions accumulate. Optional hardening.",
+    "gap": ""
+   },
+   {
+    "criterion": "DAL for the new tables (and actually reachable from the UI)",
+    "status": "partial",
+    "evidence": "These exist and are tested in src/server/dal/chapter4-foundation.test.ts: calendars.ts, baselines.ts, activity-todos.ts, import-jobs.ts, task-files.ts, client-comms.ts, whatif-store.ts, connector-config.ts, schedule-network.ts and export/run.ts logExport. Wired to the UI: setProjectCalendar/setActivityCalendar, createBaselineSnapshot, showProjectBaseline (dal/schedule.ts) and the to-do functions via features/plan/scheduling-actions.ts → plan-controls.tsx; client comms via features/site/comm-log-actions.ts; connector config via features/admin/interchange-actions.ts; task files via the api/tasks routes and features/mywork/actions.ts; stage decision fields via dal/lifecycle.ts decideForcedStageChange ← features/myapprovals/actions.ts decideForcedStageChangeAction; import jobs via server/interchange/jobs.ts.",
+    "gap": "(1) Approving a CR does not fill its baseline. src/server/dal/changes.ts (status === 'approved' block, around line 288) switches the proposed baseline (e.g. BL2 ↔ CR-009) to 'current' but never calls baselines.ts snapshotIntoBaseline(), so the new current baseline has 0 baseline_activities rows and showBaselineAction refuses it ('This baseline has no activity snapshot'). Fix: call snapshotIntoBaseline(code, bl.code, { actorName, makeCurrent: true }, tx) there, or populate on approval. Also, a baseline from Plan 'Set baseline' stays 'proposed' forever unless a CR references it. (2) whatif-store.ts listScenarioActions, replaceScenarioActions and saveScenarioResult have no caller. dal/resources.ts saveScenarioLevers and toggleScenarioLever write whatif_scenario_actions and whatif_scenarios.result themselves (only markScenarioApplied is shared). Either route resources.ts through whatif-store or delete the dead functions. (3) baselines.ts setDisplayedBaseline duplicates schedule.ts showProjectBaseline (the one the UI uses) and is dead; remove it or merge. (4) calendars.ts setCalendarException and removeCalendarException are not exposed by any Server Function or UI; calendar exceptions only arrive through MSPDI/XER import (upsertCalendar). Add a Settings/Plan editor if per-calendar exceptions must be editable. (5) export_log has a writer only: no list function and no Administration view of exports. (6) projects.data_date is never written; projectDataDate() always falls back to STATUS_ISO. The S-4 answer in docs/DECISIONS.md is a per-project data date with a weekly Friday freeze, so a writer or rollover is needed. (7) import-jobs.ts listImportJobs and client-comms.ts openClientFollowUps are unused (no import history, no follow-up reminders). Note D-7b 'Ne traite rien pour le moment concernant les imports' (don't handle imports for now) and D-7a 'Par l'informatique, en dehors de l'application ★' (connectors configured by IT outside the app). The latter conflicts with the in-app connector Configure (connector-config.ts); the product owner should confirm."
+   },
+   {
+    "criterion": "src/domain/ch4-defaults.ts central defaults",
+    "status": "partial",
+    "evidence": "Exists and is used: RECALCULATION_MODE, CPM_DEFAULTS, DEFAULT_DATA_DATE/projectDataDate, DEFAULT_PROJECT_CALENDAR/projectCalendarCode, DEFAULT_DISPLAYED_BASELINE/displayedBaselineCode/nextBaselineCode, MAX_FILE_BYTES, FILE_EXTENSIONS/acceptOf, CSV_DIALECT, MAX_ATTACHMENTS_PER_TASK and fileSizeText. It re-exports the health, settings-rules and project-template defaults. Values match the answered decisions S-1, S-2, S-3, S-8, X-3 and R-8a in docs/DECISIONS.md.",
+    "gap": "Some 'change in one place' constants do nothing. DEFAULT_HOLIDAY_SET ('FR') is not referenced: src/domain/calendar.ts BUILTIN_CALENDARS hardcodes holidaySet 'FR'. PDF_DEFAULT_LANG is unused: PDFs follow the viewer's lang cookie (it works only because i18n DEFAULT_LANG is 'fr'). DURATION_UNIT and DEFAULT_CALENDARS are never read. Either make calendar.ts and the export route read them, or drop or annotate them as documentation-only."
+   }
+  ],
+  "comingSoonLeft": [],
+  "tests": "Ran `npx vitest run` on src/domain/cpm.test.ts, src/domain/calendar.test.ts, src/domain/ch4-misc.test.ts, src/server/dal/chapter4-foundation.test.ts, src/server/storage/files.test.ts, src/server/export/export.test.ts, src/server/export/providers/common.test.ts, src/server/db/db.test.ts, src/server/dal/reschedule.test.ts and src/server/db/codes.test.ts: 10 files, 150 tests passed. A second run covered src/server/dal/plan.test.ts, schedule.test.ts, delivery2/3/4/5.test.ts (golden 'displays unchanged'), src/server/export/providers/providers.test.ts, src/server/dal/ch4-settings.test.ts, src/domain/schedule-rollup.test.ts and schedule-gantt.test.ts: 10 files, 312 tests passed. `npx tsc --noEmit --incremental false` was clean; .next/types already existed, so no typegen was needed. A temporary tsx script in the scratchpad compared the Drizzle schema with drizzle/meta/0005_snapshot.json and found no drift over 203 tables; the script was removed afterwards. No 'coming soon' remains in the foundation's own files (src/domain/calendar.ts, cpm.ts, ch4-defaults.ts, src/server/export/**, src/server/storage/**, seed/chapter4.ts, the new DAL modules, drizzle/0005). Adjacent ones belong to other features: src/features/bom/client-buttons.tsx:54 ('Export list — coming soon' fallback), src/features/pid/pid-view.tsx:53 and src/features/eco/drawings/pdm-button.tsx:22 ('Open in PDM — coming soon'), and the unused helper src/features/admin/i18n.ts:67 comingSoonT."
+ },
+ {
+  "feature": "planning",
+  "verdict": "mostly-done",
+  "summary": "Planning for chapter 4 is functionally complete. Every Plan control (Reschedule, Set baseline, the Baseline and Calendar chips, the drawer's calendar override, relationships, to-dos and the removal confirmation) calls its server function, and each function re-checks rights on the server, validates input and writes through an audited DAL. Schedule bars and milestones are rolled up from the WBS, and the CR re-baseline writes a baseline row. The only listed criterion still open is documentation: the values a Reschedule of HLT-026 changes are pinned with prototype comparisons in src/server/dal/reschedule.test.ts, but no docs/DELIVERY-6.md or spec section describes them. Outside the listed criteria, approving a change request makes its proposed baseline current without filling its activity snapshot (snapshotIntoBaseline is never called). Optional hardening: (1) no test checks that links are cleaned up after a removal (an FK cascade does it); (2) removeRow and addActivity skip rescheduleIfAutomatic, which has no effect while RECALCULATION_MODE is 'manual'.",
+  "items": [
+   {
+    "criterion": "Reschedule (PM or director only, not read-only/outside): CPM at the data date; persists ISO and display dates, floats, critical flags and violations; toast shows the new finish and the number of changed activities; running it twice changes nothing",
+    "status": "done",
+    "evidence": "UI: src/features/plan/toolbar.tsx (rendered only when canSchedule) → plan-controls.tsx RescheduleButton → scheduling-actions.ts rescheduleAction (allowed(code,'schedule') via rights.ts canSchedulePlan = canEditPlan && (director || isMine)); DAL src/server/dal/schedule.ts rescheduleProject (actualsFromProgress, domain/cpm.ts schedule, writes start/finish ISO + startText/finishText, early/late dates, totalFloat/freeFloat, critical, constraintViolated, isDriving links, refreshRollups, recordScheduleRun, audit + activity feed; cycle/invalid input recorded as a failed run and nothing else changes); toast i18n.ts rescheduledText. Tests: src/server/dal/reschedule.test.ts ('a second run changes nothing', 11 activities changed), src/features/plan/scheduling-actions.test.ts (rights, EN/FR toast, 'aucun changement' on the second run), plan-render.test.ts (button only for director/PM).",
+    "gap": ""
+   },
+   {
+    "criterion": "Set baseline dialog (auto BLn name, comment) snapshots every activity",
+    "status": "done",
+    "evidence": "plan-controls.tsx SetBaselineButton (FormDialog; name defaults to nextBaselineCode() passed from plan/page.tsx; comment textarea) → scheduling-actions.ts setBaselineAction (length checks) → src/server/dal/baselines.ts createBaselineSnapshot (next BLn, snapshotRows of all activities into baseline_activities, state 'proposed', audit + feed). Test: scheduling-actions.test.ts 'BL3 snapshot of the 21 activities'.",
+    "gap": ""
+   },
+   {
+    "criterion": "Baseline chip switches the displayed baseline (variance columns, Gantt baseline bars)",
+    "status": "done",
+    "evidence": "plan-controls.tsx PickerChip kind='baseline' (options without a snapshot are disabled, built in plan/page.tsx baselineChip) → showBaselineAction → schedule.ts showProjectBaseline (stores projects.displayedBaselineCode, then refreshRollups recomputes baselineFinishDate/Text and varianceDays per activity, the root BL finish, schedule_bars baseline geometry and the control header). Plan 'BL finish'/'Var' columns (plan-table.tsx) and the drawer key baselineFinishKey follow it. Tests: reschedule.test.ts 'Set baseline and the Baseline chip' (variances 0 on BL3, Gantt bL==aL), scheduling-actions.test.ts.",
+    "gap": ""
+   },
+   {
+    "criterion": "Calendar chip sets the project calendar; the activity drawer offers a per-activity override",
+    "status": "done",
+    "evidence": "PickerChip kind='calendar' → setProjectCalendarAction → src/server/dal/calendars.ts setProjectCalendar; drawer activity-drawer.tsx ActivityCalendarSelect (when canEdit) → setActivityCalendarAction → setActivityCalendar; options from drawer-model.ts calendar (''=project calendar). The CPM uses them via src/server/dal/schedule-network.ts toCpmActivity (calendar: a.calendarCode) and projectCalendarCode. Dates move at the next Reschedule (S-1 manual). Test: scheduling-actions.test.ts 'Calendar chip and the drawer override (S-2)'.",
+    "gap": ""
+   },
+   {
+    "criterion": "Drawer 'Add relationship' (type, lag; no self link, duplicate or cycle) and link removal",
+    "status": "done",
+    "evidence": "activity-drawer.tsx renders AddRelationshipButton + RemoveLinkButton on each predecessor/successor line (canEdit) → scheduling-actions.ts addRelationshipAction (pred/succ direction, FS/SS/FF/SF via isLinkType, lag −999..999) / removeRelationshipAction → src/server/dal/plan.ts addActivityLink (unknown/self/duplicate/detectCycle → cycle path) / removeActivityLink ('missing'); audited. Tests: scheduling-actions.test.ts 'Add relationship…', reschedule.test.ts 'relationships (S-5) and circular logic'.",
+    "gap": ""
+   },
+   {
+    "criterion": "Drawer to-do composer (add / tick / remove)",
+    "status": "done",
+    "evidence": "activity-drawer.tsx TodoComposer, TodoRing, RemoveTodoButton (only for to-dos marked removable) → scheduling-actions.ts addTodoAction / toggleTodoAction / removeTodoAction → src/server/dal/activity-todos.ts (task T-nnnn origin 'activity_todo', assigned to the activity owner, due at the activity finish; removal refused for seeded tasks or tasks with logged time). The drawer list reads tasks through dal/plan.ts getPlanTodos (listTasks), so new to-dos appear. Test: scheduling-actions.test.ts 'To-dos: add, tick, untick, remove'.",
+    "gap": ""
+   },
+   {
+    "criterion": "WBS removal confirmation (S-5) with link cleanup, and validation errors on predecessor text",
+    "status": "done",
+    "evidence": "plan-table.tsx askRemove → ConfirmRemove dialog (i18n.ts removeQuestion, counts the work package's activities) → actions.ts removeRow → dal/plan.ts deleteActivity / deleteWorkPackage (milestones unlinked, wpBudgets/changeRequestWbs unlinked, schedule_bars row deleted). Links are removed by the FK cascade on activity_links.predecessor_id/successor_id (src/server/db/schema/planning.ts:111-112); baseline_activities.activity_id is 'set null'. Predecessor text: actions.ts editActivity 'preds' (parsePredecessors + createsCycle → predError syntax/unknown/self/duplicate/cycle) shown inline on the cell (EditableInput inlineError). Tests: actions.test.ts 'predecessors…' and 'removes an activity and a work package…'.",
+    "gap": ""
+   },
+   {
+    "criterion": "Schedule bars and milestones rolled up from the WBS (A-7); critical path from floats; baseline bars from the displayed baseline",
+    "status": "done",
+    "evidence": "src/app/(app)/projects/[code]/schedule/page.tsx → dal/schedule.ts getScheduleData → getScheduleRollup (read-time roll-ups once a Reschedule or Baseline chip change has dated the work packages): rollUpPackage/barOf/rollUpMilestone (domain/schedule-rollup.ts); isCritical = CPM flag (TF ≤ CRITICAL_FLOAT_DAYS=0, domain/cpm.ts line 526) once scheduled; baseline geometry from the displayed baseline snapshot (getBaselineActivities in loadRollupState). Until the first Reschedule the seeded prototype bars are shown (rolledUp=false, S-1 manual, by design). Tests: reschedule.test.ts 'Schedule screen: bars and milestones are WBS roll-ups', schedule-render.test.ts, schedule-page.test.ts.",
+    "gap": ""
+   },
+   {
+    "criterion": "CR-driven Re-baseline writes a baseline row",
+    "status": "done",
+    "evidence": "src/features/schedule/rebaseline-button.tsx → src/features/schedule/actions.ts rebaselineSchedule (canEdit('schedule'), parseRebaseline, finds a known CR-nnn in the name or reason) → createBaselineSnapshot(source 'change_request' | 'snapshot', changeRequestNumber, approverName, scope) → new proposed BLn with an activity snapshot. Test: src/features/schedule/rebaseline-action.test.ts 'writes BL3 (proposed) with the snapshot, CR-006…'.",
+    "gap": ""
+   },
+   {
+    "criterion": "Values changed by a Reschedule of HLT-026 vs the prototype documented",
+    "status": "partial",
+    "evidence": "src/server/dal/reschedule.test.ts pins every changed value, with the prototype value as a per-row comment ('activity dates, variances, floats, violations and driving links (documented changes)'): finish 14 Jan 2027 → 18 Jan 2027; float −27 days → −19 working days; 4 → 3 of 8 packages critical; 11 activities changed; variances and floats in working days (S-8) with French holidays; A1420 becomes critical; A1620 FNLT 18 Dec missed by 19 d; milestone slips and statuses. No docs file carries this.",
+    "gap": "Write the human-readable documentation: create docs/DELIVERY-6.md (deliveries 1–5 each have one) with a 'Reschedule of HLT-026 vs prototype' section that turns the table in reschedule.test.ts (activity rows, project header, Schedule bars, milestones, KPIs) into prose and a table, and state the rules behind the differences (S-2 Standard 5d·8h calendar with French holidays, S-8 working-day variances and floats, S-1 critical = TF ≤ 0, progress implies actual dates). Optionally add a pointer in docs/spec/05-planning-schedule.md §2.6."
+   },
+   {
+    "criterion": "(Related, outside the listed criteria) Approving a CR makes its proposed baseline current, with an activity snapshot",
+    "status": "partial",
+    "evidence": "src/server/dal/changes.ts ~lines 288-293: on status 'approved', the proposed baseline linked to the CR becomes current (others superseded) with setOn = STATUS_ISO. src/server/dal/baselines.ts snapshotIntoBaseline (line 210) exists but nothing calls it.",
+    "gap": "In the approval branch of changes.ts, call snapshotIntoBaseline(code, bl.code, { actorName, makeCurrent: true }, tx) when the baseline has no activity snapshot. Without it the seeded BL2 'Pending CR-009' stays empty after approval and stays disabled in the Baseline chip ('No activity snapshot'). Use the project data date instead of STATUS_ISO for setOn, and add a test in src/features/changes/actions.test.ts."
+   },
+   {
+    "criterion": "No 'coming soon' left in src/features/plan or src/features/schedule",
+    "status": "done",
+    "evidence": "grep -i 'coming soon|ComingSoon' across src/features/plan, src/features/schedule and the plan/schedule routes finds nothing. The old placeholder src/features/plan/plan-soon.tsx was deleted in commit 49aa02c. The only ComingSoon use is the generic fallback route src/app/(app)/projects/[code]/[...rest]/page.tsx, which is not part of plan or schedule.",
+    "gap": ""
+   }
+  ],
+  "comingSoonLeft": [],
+  "tests": "Ran `npx vitest run src/features/plan src/features/schedule src/server/dal/reschedule.test.ts src/server/dal/plan.test.ts src/server/dal/schedule.test.ts src/server/dal/chapter4-foundation.test.ts`: 12 files and 105 tests passed. `npx tsc --noEmit --incremental false` was clean; next typegen was not needed because .next/types already existed. A French translation spot-check of the planning UI strings found only 'Type' and 'Dates & budget' unchanged, and the passing rebaseline.test.ts suggests the second is intentional. An ad-hoc in-memory script to check link cleanup after removals was blocked by the permission classifier. I did not work around it; the cleanup was confirmed from the FK cascade declared in src/server/db/schema/planning.ts. All temporary scratchpad files were removed."
+ },
+ {
+  "feature": "whatif",
+  "verdict": "mostly-done",
+  "summary": "The what-if feature is built and tested. Levers come from real assignments, loads and department capacities. Effects come from the CPM engine run on an in-memory copy of the plan. Scenarios are saved per project, and both \"Select scenario → create requests\" and \"Apply\" create DRAFT requests through the requests DAL without changing the plan. The Resources KPIs (280 h unmet demand, Peak weeks 42–44, 3 open requests needing level ≥4) are computed and every UI control is wired to a Server Function. What remains: the department-head Home view still shows the prototype constants \"240 h\" and \"Peak weeks 41–43\"; the New scenario Basis/Horizon fields are saved but never used; the page has no project selection; the Select button can create duplicate requests on a double-click; plus some unused store code, missing tests and the missing DELIVERY-6 document.",
+  "items": [
+   {
+    "criterion": "Levers derived from real allocations (overloaded people/departments, critical activities with assignments)",
+    "status": "done",
+    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/domain/whatif.ts deriveLevers() + helperFor() (overtime / extra unit on the driving assignment of CRITICAL activities, relief for overloaded person or department, shift for not-started non-critical activities within float); data loaded in /Users/gga/Systeme EPC2i/Keystone/src/server/dal/resources.ts loadWhatIfState() from activity_assignments, pool allocations (getProjectTeam), department_capacities (listDepartments), rate_roles/rate_multipliers. Tests: src/domain/whatif.test.ts 'levers derived from the data', src/server/dal/delivery2.test.ts:152, src/features/resources/resources-page.test.ts 'What-if page'.",
+    "gap": ""
+   },
+   {
+    "criterion": "Effects computed with the CPM engine on an in-memory copy (overtime, extra resource, shift) → new finish, cost delta, load delta",
+    "status": "done",
+    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/domain/whatif.ts scheduleScenario() (schedule() on cloned activities: scaled remaining duration, SNET for shifts), evaluateScenario() (finish, daysGained, costKeur, loadDeltaH, overloadDeltaH, bars, sideEffects); getWhatIf() precomputes results one toggle away for the optimistic board. Golden values in src/domain/whatif.test.ts 'effects' block.",
+    "gap": ""
+   },
+   {
+    "criterion": "Load delta visible to the user per scenario",
+    "status": "partial",
+    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/features/resources/whatif-model.ts resultRows() shows Forecast finish, Critical-path float, Cost impact, Peak load %, People above 100%, Side effects. loadDeltaH appears only in leverEffectText() when a lever moves neither the finish nor the peak. The export /Users/gga/Systeme EPC2i/Keystone/src/server/export/providers/resources.ts whatIfWorkbook() has no load-delta column either.",
+    "gap": "Ask the user whether a 'Load change (h)' row is wanted, since resultRows keeps the six prototype rows. If yes: add a row from r.loadDeltaH (and optionally r.overloadDeltaH 'Overloaded people h') in resultRows(); add the EN/FR strings in src/i18n/extra/ch4-whatif.json; add the column in whatIfWorkbook(); update the expectations in resources-page.test.ts and model.test.ts."
+   },
+   {
+    "criterion": "Scenarios persisted per project: create, rename, delete, select (UI wired to server)",
+    "status": "done",
+    "evidence": "UI → Server Function → DAL: /Users/gga/Systeme EPC2i/Keystone/src/features/resources/new-scenario-button.tsx → actions.ts createWhatIfScenario → resources.ts createScenario; whatif-board.tsx rename FormDialog → renameWhatIfScenario → renameScenario; ConfirmDelete → deleteWhatIfScenario → deleteScenario; Select button → selectWhatIfScenario → selectScenario + applyScenario; priority/toggle/auto → setWhatIfPriority/toggleWhatIfLever/autoLevelWhatIf. Stored in whatif_scenarios + whatif_scenario_actions, audited. Tests: src/features/resources/actions.test.ts (all actions, permissions, validation, audit).",
+    "gap": ""
+   },
+   {
+    "criterion": "New scenario 'Basis' and 'Horizon' fields actually used",
+    "status": "partial",
+    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/features/resources/whatif-form.ts NEW_SCENARIO_FORM offers basis current_plan / baseline / last_approved and horizon 3/6/12 months; resources.ts createScenario() stores basis and horizonMonths. They are never read by the engine: every scenario is evaluated on the current plan at the data date over the pool's 8 weeks. They are also not shown on the card, only in getWhatIf().scenarios.",
+    "gap": "Decide with the user, then either: (a) implement them — basis=baseline: build the network from the displayed baseline (listProjectBaselines / baseline snapshot) instead of loadScheduleNetwork; basis=last_approved: start the new scenario with the selected scenario's lever set; horizon: limit or extend ctx.weeks. Or (b) remove both fields from the form, or label them as notes and show them on the card. Today they look functional but do nothing."
+   },
+   {
+    "criterion": "Project selection on /resources/what-if (scenarios are per project)",
+    "status": "partial",
+    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/app/(app)/resources/what-if/page.tsx uses ?project= or WHATIF_DEFAULT_PROJECT='HLT-026'. There is no picker, and the sidebar link (screen 'whatif', scope global) always opens HLT-026. Only src/features/risks/model.ts:183 links with ?project=.",
+    "gap": "Default to the viewer's current project (getLastProject() / getProjectScope()) when ?project= is absent, and/or add a project picker in the PageHeader. Make sure the export context passes ?project= (whatIfWorkbook falls back to HLT-026). Add a test in resources-page.test.ts."
+   },
+   {
+    "criterion": "'Apply' on Suggested rebalancing creates a DRAFT resource request via the requests DAL, no plan change",
+    "status": "done",
+    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/features/resources/apply-button.tsx → actions.ts applySuggestion → resources.ts applyLever → draftRequests → requests.ts createResourceRequest({draft:true}). Rendered in resources-view.tsx on Resources and on Project resources (src/app/(app)/projects/[code]/resources/page.tsx) from getRebalancingSuggestions(); a 'Requested · RQ-…' tag replaces the button once a request exists.",
+    "gap": ""
+   },
+   {
+    "criterion": "'Select scenario → create requests' creates DRAFT requests via the requests DAL, no plan change",
+    "status": "done",
+    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/server/dal/resources.ts applyScenario(): scenarioRequests() → createResourceRequest(draft:true, scenarioId), skips levers already requested, then markScenarioApplied (src/server/dal/whatif-store.ts) + recordActivity. Only resource_requests, whatif_scenarios, audit and activity are written; activities are never touched. Shifts appear only in the toast (applyMessage). Tested in actions.test.ts: RQ-045..047 drafts, not in the department queue, idempotent.",
+    "gap": ""
+   },
+   {
+    "criterion": "Robustness of Select/apply against double-submit and partial failure",
+    "status": "partial",
+    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/features/resources/whatif-board.tsx throws away the pending flag (const [, startTransition]), so the 'Select scenario → create requests' button is not disabled while the request runs. In resources.ts applyScenario(), the openRequests() duplicate check and each createResourceRequest() run outside one transaction, and markScenarioApplied runs in a separate later transaction.",
+    "gap": "Disable the Select button (and Auto-level) while pending, as ApplySuggestionButton already does. On the server, run the duplicate check, the draft inserts and markScenarioApplied in one transaction. That needs createResourceRequest to accept a tx, or an advisory lock or unique key on (scenario_id, title, activity_id). Then a double-click or concurrent apply cannot create duplicate drafts, and a failure cannot leave drafts without the applied stamp."
+   },
+   {
+    "criterion": "'Baseline finish' tile shows the baseline",
+    "status": "done",
+    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/features/resources/whatif-model.ts whatIfKpis() shows d.baseline.finish, with sub 'BL1 · forecast … · float …'. The baseline comes from getWhatIf() through listProjectBaselines() (displayed baseline, else current). Tests: model.test.ts:213, resources-page.test.ts ('18 Dec 2026', 'BL1 · forecast 14 Jan 2027 · float −27 d', FR 'Fin de référence').",
+    "gap": ""
+   },
+   {
+    "criterion": "Resources KPI 'Unmet demand' computed (280 h, not the prototype's 240 h)",
+    "status": "done",
+    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/features/resources/model.ts resourcesView() → domain/resources.ts unmetDemand() + mainShortfall() (shortfallText 'Mostly engineering'); LO colour only when > 0. Tests: resources-page.test.ts:58 ('280 h'), Project resources 0 h / 3 h (RCF-019), model.test.ts:60–74.",
+    "gap": ""
+   },
+   {
+    "criterion": "Resources KPI 'Peak weeks' computed",
+    "status": "done",
+    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/features/resources/model.ts peakWeeksText() via domain/resources.ts weeksAbove(110 %) + weekRangesText() → 'Peak weeks 42–44' (prototype constant was 41–43). On what-if, overWeeksText() → 'Week 43'. Tests: model.test.ts:62,141; resources-page.test.ts:117.",
+    "gap": ""
+   },
+   {
+    "criterion": "KPI 'Open requests needing level ≥ 4' computed",
+    "status": "done",
+    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/domain/resources.ts requestsNeedingExperts() is called in src/app/(app)/resources/skills/page.tsx and passed to src/features/hr/skills-view.tsx expertRequests → count 3 'Structural · Procurement · Quality / QA-QC'. Tests: resources-page.test.ts:251, domain/resources.test.ts:163.",
+    "gap": ""
+   },
+   {
+    "criterion": "Same KPIs on Home (department head) no longer constants (A-12 answered 'a')",
+    "status": "missing",
+    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/domain/home.ts:528–530 deptHeadHome() still has kpi('Over-allocated', …, 'Peak weeks 41–43', …) and kpi('Unmet demand', '240 h', 'Mostly engineering', true), with a 'TODO(db)' comment. /Users/gga/Systeme EPC2i/Keystone/src/server/dal/home.ts:200–202 passes no departments or week starts. The golden src/features/home/home.golden.json (depthead en/fr) still expects '240 h' and 'Peak weeks 41–43'.",
+    "gap": "Add departments (listDepartments() capacity/demand) and the pool weekStarts to DeptHeadInput in server/dal/home.ts. In deptHeadHome(), compute the values with unmetDemand()/mainShortfall() and weeksAbove()/weekRangesText(), moving peakWeeksText/shortfallText from features/resources/model.ts into domain so Home can reuse them. Update home.golden.json (expected '280 h' · 'Mostly engineering' / 'Surtout ingénierie', 'Peak weeks 42–44' / 'Pointe semaines 42–44'). This may belong to the separate A-12 KPI feature; check for overlap before doing it twice."
+   },
+   {
+    "criterion": "No invented fallback figure left for the level ≥4 tile",
+    "status": "partial",
+    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/domain/hr.ts:162 OPEN_REQUESTS_LEVEL4 = {value:'2', sub:'Structural · Quality'} is still used by src/features/hr/skills-view.tsx:40–41 when expertRequests is absent. The page always passes it, but src/features/hr/hr.render.test.ts:102 still asserts the constant.",
+    "gap": "Make expertRequests required (or render '—' without it), delete OPEN_REQUESTS_LEVEL4, and update hr.render.test.ts to pass a computed value."
+   },
+   {
+    "criterion": "No dead or parallel persistence code for scenario actions",
+    "status": "partial",
+    "evidence": "/Users/gga/Systeme EPC2i/Keystone/src/server/dal/whatif-store.ts replaceScenarioActions/listScenarioActions/saveScenarioResult are used only by src/server/dal/chapter4-foundation.test.ts. Production writes the same table through resources.ts saveScenarioLevers() with params {leverCode, …}, while the store writes params like {hoursPerDay}. scenarioRows() would treat store-written rows as 'saved' but enable no lever, because they have no leverCode.",
+    "gap": "Remove the three unused store functions and their test, or make them write params.leverCode and route saveScenarioLevers through them. Keep a single params shape for whatif_scenario_actions."
+   },
+   {
+    "criterion": "Test coverage of the remaining paths",
+    "status": "partial",
+    "evidence": "src/features/resources/actions.test.ts tests applySuggestion only for 'already requested' and for refusals. The seed data (HLT-026: only A1250 has labour assignments) never produces a shift lever, so shifts are tested only on the domain fixture. No test asserts that activities and the schedule stay unchanged after select/apply.",
+    "gap": "Add: applySuggestion creating a fresh draft (before scenario A drafts the lever) and the 'Requested · RQ-…' tag on the next render; a DB-level check that activities rows are unchanged after selectWhatIfScenario; and a seeded or fixture project that yields a shift lever through getWhatIf (toast '1 shift to enter in the plan')."
+   },
+   {
+    "criterion": "Documentation of the chapter-4 what-if work",
+    "status": "missing",
+    "evidence": "src/domain/whatif.test.ts header cites 'docs: DELIVERY-6', but /Users/gga/Systeme EPC2i/Keystone/docs/DELIVERY-6.md does not exist. Decisions S-7, R-3 and A-12 are answered 'a' in docs/decisions/answers.json, which matches the implementation.",
+    "gap": "Write the what-if section of docs/DELIVERY-6.md: lever rules (WHATIF_RULES), the duration/load/cost models, legacy seed mapping (LEGACY_LEVERS), the draft-request flow, and the open points listed above (basis/horizon, project selection, load-delta display)."
+   },
+   {
+    "criterion": "No 'coming soon' left in src/features/resources",
+    "status": "done",
+    "evidence": "grep -i 'coming soon|bientôt|à venir|TODO|FIXME|placeholder|simulat' found nothing in src/features/resources, src/app/(app)/resources, src/domain/whatif.ts, src/server/dal/resources.ts, src/server/dal/whatif-store.ts or src/i18n/extra/ch4-whatif.json. The whatif screen is built:true in src/config/screens.ts:115.",
+    "gap": ""
+   }
+  ],
+  "comingSoonLeft": [],
+  "tests": "npx vitest run src/domain/whatif.test.ts src/domain/resources.test.ts src/features/resources/ (actions.test.ts, model.test.ts, resources-page.test.ts) src/server/dal/delivery2.test.ts src/server/dal/delivery2-writes.test.ts src/server/dal/chapter4-foundation.test.ts src/features/hr/hr.render.test.ts: 9 files, 149 tests, all passed (9.2 s, in-memory PGlite). typegen was not needed. This audit modified no repo files. git status now shows untracked CLAUDE.md, docs/DECISIONS.md and docs/decisions/, which this audit did not create."
+ },
+ {
+  "feature": "interchange",
+  "verdict": "done",
+  "summary": "Every acceptance criterion for interchange is met in the committed code (49aa02c). MSPDI/XER/Excel-CSV imports run through upload → parse → mapping → dry-run preview → explicit confirmation → transactional write with audit and activity; the MS Project XML export carries the displayed baseline; per-role rights, the connector Configure dialog and the round-trip tests on tests/fixtures/ch4 are all real, wired to the UI on /admin/integrations, and covered by 119 passing tests. What remains is optional polish (a project picker for multi-project XER files, showing the disabled connector state, re-planning table imports inside the transaction, stale comments/docs). Scope note: the product answers in the untracked docs/DECISIONS.md (D-7a \"réglage des connecteurs par l'informatique, en dehors de l'application\", D-7b \"ne traite rien pour le moment concernant les imports\", S-9a \"export PDF du planning suffisant\") may make parts of this feature unnecessary — the user should confirm before more work goes into it.",
+  "items": [
+   {
+    "criterion": "MS Project XML (MSPDI) import into a new or existing project",
+    "status": "done",
+    "evidence": "src/server/interchange/mspdi.ts parseMspdi; src/server/interchange/schedule-import.ts planScheduleImport / writeScheduleImport (createImportedProject for NEW, loadExisting for UPDATE); src/server/interchange/jobs.ts startImport / previewSchedule / applyImport; src/features/admin/import-dialog.tsx 'Import into' New project / Existing project; tests src/server/interchange/interchange.test.ts 'MS Project XML into a new project', 'update by Activity ID', src/server/interchange/imported-project.test.ts",
+    "gap": ""
+   },
+   {
+    "criterion": "Primavera P6 XER import",
+    "status": "done",
+    "evidence": "src/server/interchange/xer.ts readXerTables / parseXer / parseClndrData; jobs.ts scheduleKindOf (ERMHDR detection, either drop card); plumbing-islands.tsx CARDS 'Primavera P6 XER'; tests interchange.test.ts 'Primavera P6 XER', parsers.test.ts 'P6 XER reader'",
+    "gap": ""
+   },
+   {
+    "criterion": "Excel/CSV import of budget lines, BOM, parts catalogue, resource assignments with column mapping (auto-detect)",
+    "status": "done",
+    "evidence": "src/server/interchange/table.ts TABLE_FIELDS / decodeText / detectSeparator / parseCsv / detectHeaderRow / autoMapping / mappingError / normaliseRow; src/server/interchange/table-import.ts planTableImport / writeTableImport; jobs.ts readTable (readXlsx, sheet choice) / tableMapping / previewTable; import-dialog.tsx mapping step (MapRow, Sheet select, sample rows) wired to tableMappingAction / previewTableAction; tests interchange.test.ts 'Excel / CSV tables' (FR CSV, xlsx 2nd sheet, BOM, assignments)",
+    "gap": ""
+   },
+   {
+    "criterion": "Pipeline: upload (storage, limits) → parse → mapping → preview OK/warning/error → explicit confirmation → transactional write + audit + activity",
+    "status": "done",
+    "evidence": "src/app/api/import/route.ts POST (same-origin check, 413 above 20 MB, checkUpload); src/server/storage/files.ts storeFile/checkUpload/contentMatches with src/domain/ch4-defaults.ts FILE_EXTENSIONS.import + MAX_FILE_BYTES; src/server/dal/import-jobs.ts createImportJob / saveImportPreview / markImportJobApplied (writeAudit + recordActivity); jobs.ts applyImport (db.transaction, stale-preview guard); import-dialog.tsx PreviewBody counts + rows, 'Import now' → applyImportAction (src/features/admin/interchange-actions.ts); drizzle/0005_sloppy_talos.sql import_jobs / import_job_rows; tests interchange-actions.test.ts 'upload route → preview → confirmation'",
+    "gap": ""
+   },
+   {
+    "criterion": "Update mode matches on UID / Activity ID",
+    "status": "done",
+    "evidence": "schedule-import.ts planScheduleImport (matchOn first key, the other as fallback, 'Matched on UID/Activity ID' messages); defaults.ts INTERCHANGE_DEFAULTS.matchOn; import-dialog.tsx 'Match activities on' segmented → route matchOn; table imports keyed by Code/Reference/Activity+Resource with 'Add and update' / 'Add only'; test 're-importing the export into HLT-026 by UID falls back on the Activity ID'",
+    "gap": ""
+   },
+   {
+    "criterion": "Dry runs never write",
+    "status": "done",
+    "evidence": "planScheduleImport / planTableImport only read; only staging rows (stored_files, import_jobs, import_job_rows) are written; tests compare counts() before/after the preview in interchange.test.ts (schedule and budget lines)",
+    "gap": ""
+   },
+   {
+    "criterion": "MSPDI/XER cover WBS, activities, durations, links + lags, calendars, constraints, baselines (MSPDI), % complete, unmapped fields reported",
+    "status": "done",
+    "evidence": "mspdi.ts (summary tasks → WBS, ISO durations, LinkLag + LagFormat elapsed/percent, calendars with exceptions and inheritance, CONSTRAINT_IN, Baseline 0–10, PercentComplete, unmapped list); xer.ts (PROJWBS, TASK, TASKPRED lag_hr_cnt, CALENDAR clndr_data, cstr_type, % complete, unmapped tables); schedule-import.ts builtinCalendarFor / upsertCalendar, writeBaselines (BL1.. NEW, proposed in UPDATE), WBS flattened to 2 levels (reported); PreviewBody 'Not imported or mapped differently'",
+    "gap": ""
+   },
+   {
+    "criterion": "'Export — MS Project XML' of a project with its displayed baseline",
+    "status": "done",
+    "evidence": "src/server/interchange/schedule-export.ts buildScheduleExport (getDisplayedBaselineCode → Baseline 0) / exportScheduleXml / stampMsProjectConnector; src/app/api/interchange/mspdi/[code]/route.ts GET (audit, activity, connector stamp, client restricted to own org); src/features/admin/export-dialog.tsx format 'xml' builds the link; tests interchange-actions.test.ts 'exports', interchange.test.ts round trips",
+    "gap": ""
+   },
+   {
+    "criterion": "Rights (schedules director/pm own; BOM/parts englead/procurement/director; budget pm/director; assignments pm/depthead/director)",
+    "status": "done",
+    "evidence": "src/server/interchange/rights.ts IMPORT_ROLES / OWN_PROJECTS_ONLY / canImport / importKindsOf; jobs.ts refusal() on every step + ownJob (author only) + importTargets; page src/app/(app)/admin/integrations/page.tsx passes importKindsOf(role) to DropZone; tests interchange.test.ts 'rights', interchange-actions.test.ts 'offer each role its kinds and projects'",
+    "gap": ""
+   },
+   {
+    "criterion": "Connector 'Configure' dialog editing Keystone-side settings (frequency, data scope, direction, enabled)",
+    "status": "done",
+    "evidence": "src/features/admin/connector-config-dialog.tsx → connectorConfigAction / saveConnectorConfigAction (interchange-actions.ts) → src/server/dal/connector-config.ts updateConnectorConfig (validated, audited); plumbing-islands.tsx ConnectorActions 'Configure' button; syncEnabledConnectorAction refuses a disabled connector; drizzle/0005 adds connectors.enabled/config/configured_at/configured_by_name; test interchange-actions.test.ts 'connector Configure'",
+    "gap": ""
+   },
+   {
+    "criterion": "Fixtures in tests/fixtures/ch4 incl. MSPDI export → import round trip",
+    "status": "done",
+    "evidence": "tests/fixtures/ch4/sample.mspdi.xml, cycle.mspdi.xml, sample.xer, budget-lines.fr.csv, bom.en.csv, assignments.fr.csv (tracked in git); round trips in parsers.test.ts 'round trip: write → read', interchange.test.ts 'round trip: export the imported project…' and 'HLT-026 exported then imported…' (the parts .xlsx is generated inside the test with ExcelJS)",
+    "gap": ""
+   },
+   {
+    "criterion": "Follow-ups outside the acceptance criteria (non-blocking polish)",
+    "status": "partial",
+    "evidence": "src/server/interchange/xer.ts:100 xerProjects (unused); src/server/interchange/jobs.ts:122 parseSchedule, :203, :338; src/server/dal/integrations.ts listConnectors; src/features/admin/actions.ts:304 syncConnectorAction; src/app/(app)/admin/integrations/page.tsx:3-4; src/features/admin/i18n.ts:66-67; docs/DELIVERY-5.md:269,384",
+    "gap": "(1) Multi-project XER: only the export_flag/first project is imported (with a warning). xerProjects() is unused, and parseSchedule calls parseXer(text) without projectId. To fix: list the projects in the preview, add a select to the import-dialog source step, pass it through the route into job.options, then call parseXer(text, {projectId}). (2) A disabled connector still shows its normal status in the connectors table, because listConnectors/plumbingView ignore connectors.enabled. The enabled check exists only in syncEnabledConnectorAction. syncConnectorAction (still an exported 'use server' function) and the DAL syncConnector bypass it, so the check should move into syncConnector or syncAdminConnector. (3) applyImport re-plans table imports with planTable on getDb(), outside the write transaction (jobs.ts:338), unlike schedules. To fix: run the re-plan and the stale check inside db.transaction with tx. (4) The error for an unrecognised file on the P6 card says 'not an MS Project XML file (MSPDI)' (jobs.ts:203). (5) Cleanup: stale page header comment ('drop zones staged — the import handlers come later'); unused comingSoonT, listImportJobs and listImportTargets; DELIVERY-5.md still describes the drop zones and Configure as inert; no docs/DELIVERY-6.md documents interchange. (6) Product answers in the untracked docs/DECISIONS.md (D-7a, D-7b, S-9a) may reduce the scope of this feature and need the user's confirmation."
+   }
+  ],
+  "comingSoonLeft": [
+   "src/features/admin/i18n.ts:66-67 comingSoonT ('<label> — coming soon' for export cards) — defined but no longer used anywhere (dead code)",
+   "src/app/(app)/admin/integrations/page.tsx:3-4 header comment still says 'drop zones staged — the import handlers come later' (stale comment, the handlers exist)",
+   "src/features/admin/plumbing-islands.tsx:79,92 fallback toasts 'No export handler for this format' / 'No import handler for this format' — only for card names not in CARDS (unreachable with the 6 seeded IMPORTS cards)",
+   "docs/DELIVERY-5.md:269 ('drop zones staged') and :384 (connector 'Configure', import drop zones and export cards listed as coming-soon/inert) — documentation now out of date"
+  ],
+  "tests": "npx vitest run src/server/interchange src/features/admin/interchange-actions.test.ts → 4 files (parsers.test.ts, interchange.test.ts, imported-project.test.ts, interchange-actions.test.ts), 64/64 tests passed. npx vitest run src/features/admin src/server/storage/files.test.ts → 6 files, 55/55 tests passed. No typecheck run, so next typegen was not needed. No repository file was modified; the temporary i18n check scripts in the scratchpad were deleted."
+ },
+ {
+  "feature": "meetings (S-10 meeting transcripts: import, local/Claude analysis, human review)",
+  "verdict": "done",
+  "summary": "Every acceptance criterion for S-10 meeting transcripts is implemented, wired from the UI to the server and tested. The chain is the transcript box (src/features/meetings/transcript-client.tsx), then the Server Functions (src/features/meetings/actions.ts), then the DAL (src/server/dal/meetings-transcripts.ts), then the analysers (src/server/ai/transcripts/{parse,local,claude,index}.ts and src/server/ai/config.ts), plus migration drizzle/0005_sloppy_talos.sql. The 9 relevant vitest files pass (97 tests), and typecheck and lint are clean on these files. Five small leftovers remain and none blocks acceptance: the model name recorded after a server-side fallback, a risk proposal added outside one transaction, no download of the uploaded transcript file, a paste-size edge case against the 1 MB Server Action limit, and a few missing tests.",
+  "items": [
+   {
+    "criterion": "Import a transcript by pasting text or uploading .txt/.vtt/.srt (stored by Keystone)",
+    "status": "done",
+    "evidence": "UI: ImportDialog, ImportTranscriptButton and TranscriptImportPanel in src/features/meetings/transcript-client.tsx (paste/file toggle, accept from acceptOf('transcript')). Server: importTranscriptAction in src/features/meetings/actions.ts (FormData, checkUpload, size limit). DAL: importTranscript and decodeTranscriptFile in src/server/dal/meetings-transcripts.ts call storeFile({purpose:'transcript', ownerType:'meeting'}) and delete the old file on replace. Extensions are set in FILE_EXTENSIONS.transcript (src/domain/ch4-defaults.ts). Tests: src/server/dal/meetings-transcripts.test.ts ('transcript import') and src/features/meetings/actions.test.ts.",
+    "gap": ""
+   },
+   {
+    "criterion": "Transcript stored with its source (paste/file/teams), file, language and importer",
+    "status": "done",
+    "evidence": "Columns meetingTranscripts.source/fileId/language/importedAt/importedBy* in src/server/db/schema/collaboration.ts, created by migration drizzle/0005_sloppy_talos.sql. The DAL view (transcriptView in src/server/dal/meetings.ts) joins storedFiles to get the file name. The UI shows the source line via transcriptSource() in src/features/meetings/model.ts.",
+    "gap": ""
+   },
+   {
+    "criterion": "Parser: VTT voice tags give speakers; SRT, plain text and Teams copy are handled; language detected",
+    "status": "done",
+    "evidence": "parseTranscript, parseCues, parsePlain, splitInlineSpeakers and detectLanguage in src/server/ai/transcripts/parse.ts. Tested in src/server/ai/transcripts/parse.test.ts with fixtures chantier-fr.vtt, revue-fr.srt, grue-en.txt and teams-copy.txt.",
+    "gap": ""
+   },
+   {
+    "criterion": "Analyser interface with a local rule-based default (FR+EN cues, deterministic, tested)",
+    "status": "done",
+    "evidence": "TranscriptAnalyzerImpl in src/server/ai/transcripts/types.ts. analyseLocally, localAnalyzer, findDates and resolveOwner in src/server/ai/transcripts/local.ts. analyseTranscriptText in src/server/ai/transcripts/index.ts uses local when no key is set or engine is 'local'. Tested in src/server/ai/transcripts/local.test.ts: prototype goldens, FR VTT/SRT and EN fixtures, an 'is deterministic' check, and injected instructions treated as text.",
+    "gap": ""
+   },
+   {
+    "criterion": "Claude only when ANTHROPIC_API_KEY is set; model claude-opus-5-5, overridable by KEYSTONE_AI_MODEL",
+    "status": "done",
+    "evidence": "claudeSettings and transcriptAiInfo in src/server/ai/config.ts: the key is passed explicitly (ANTHROPIC_AUTH_TOKEN is ignored), KEYSTONE_AI=off is a kill switch, Claude is off under VITEST unless KEYSTONE_AI_ALLOW_IN_TESTS=1, and TRANSCRIPT_AI.model is 'claude-opus-5-5'. analyseTranscriptAction refuses engine 'claude' when Claude is not configured. Tested in the 'analyser choice and fallback' block of claude.test.ts.",
+    "gap": ""
+   },
+   {
+    "criterion": "UI says 'Analyse par Claude (Anthropic)' vs 'Analyse locale' and explains that data leaves Keystone",
+    "status": "done",
+    "evidence": "AiHint and AnalyseButton's confirm Dialog (with 'Analyse locally' and 'Analyse with Claude' buttons) in transcript-client.tsx. analyzerText() in model.ts writes the after-analysis line ('the transcript was sent to Anthropic' or 'stayed in Keystone'). FR strings are in src/i18n/extra/ch4-meetings.json. page.tsx passes ai={transcriptAiInfo()}. The render test (src/features/meetings/meetings.render.test.ts) checks 'Analyse par Claude (Anthropic) · la transcription est envoyée à Anthropic' and 'Analyse locale (règles) · la transcription reste dans Keystone'.",
+    "gap": "The confirm dialog shown before a Claude analysis has no render test (it is client state). Optional."
+   },
+   {
+    "criterion": "Structured output via zodOutputFormat; server-side fallbacks",
+    "status": "done",
+    "evidence": "analyseWithClaude in src/server/ai/transcripts/claude.ts: client.beta.messages.parse with output_config {effort:'medium', format: zodOutputFormat(ClaudeAnalysisSchema)}, betas ['server-side-fallback-2026-07-01'] and fallbacks 'default'. KEYSTONE_AI_FALLBACKS=off turns the fallback off. These parameters exist in the installed @anthropic-ai/sdk 0.128.0 types, and tsc passes.",
+    "gap": "After a server-side fallback the stored analyzerModel is still the requested model: index.ts uses claude.model, not res.model. Fix: return res.model from analyseWithClaude (for example add a model field to AnalysisResult) and store it in meetingTranscripts.analyzerModel, so the UI names the model that actually answered."
+   },
+   {
+    "criterion": "Refusal and max_tokens handled; typed errors fall back to local analysis with a notice",
+    "status": "done",
+    "evidence": "analyseWithClaude checks stop_reason 'refusal' and 'max_tokens' and a null parsed_output. failureOf maps Anthropic.AuthenticationError, PermissionDenied, RateLimit, APIConnection, BadRequest/NotFound/Unprocessable, InternalServer, APIError and AnthropicError to a ClaudeAnalysisError code. analyseTranscriptText catches the error and returns the local analysis with CLAUDE_FAILURE_NOTICE + LOCAL_FALLBACK_NOTICE. The notice is stored in analysisNotice and shown in a Callout and in the toast (analysedToastText). FR translations exist. Tested in claude.test.ts and in the DAL test 'a failure falls back to the local rules with a notice'.",
+    "gap": ""
+   },
+   {
+    "criterion": "No temperature, top_p/top_k, disabled thinking, budget_tokens or prefill",
+    "status": "done",
+    "evidence": "The request in analyseWithClaude contains none of these parameters, and the messages end with the user turn. claude.test.ts asserts that temperature, top_p, top_k, thinking and stream are absent and that the last message is from the user. A grep of src/server/ai finds no budget_tokens.",
+    "gap": ""
+   },
+   {
+    "criterion": "Proposals (decisions, actions with owner and due date, risks, client questions) are reviewed by a human",
+    "status": "done",
+    "evidence": "Proposal table meetingTranscriptProposals (status, speaker, quote, reviewedBy*, appliedRef). DAL in meetings-transcripts.ts: setTranscriptProposalStatus, updateTranscriptProposal, markTranscriptProposalApplied and addTranscriptQuestion. guardAnalysis in claude.ts drops owners, speakers, quotes and dates that are not in the transcript. UI: ProposalRow (discard, restore, edit, 'Add to risk register', 'Add to client questions') and TranscriptReview in transcript-client.tsx, wired to reviewProposalAction, editProposalAction, addProposalRiskAction and addProposalQuestionAction.",
+    "gap": ""
+   },
+   {
+    "criterion": "Nothing reaches the minutes, tasks or risks without a click",
+    "status": "done",
+    "evidence": "analyseTranscript stores proposals with status 'proposed' only. applyTranscriptToMinutes runs only from the 'Add to minutes' button (applyTranscriptAction) and skips rejected proposals. Risks go through the 'New risk' FormDialog, then createRisk, then markTranscriptProposalApplied. Questions go through the QUESTION_FORM dialog, then addTranscriptQuestion. Tasks are created only by sendMinutes ('Send minutes'). Re-analysis is refused once a proposal has been added. Tested in meetings-transcripts.test.ts and actions.test.ts.",
+    "gap": "Minor: in addProposalRiskAction (src/features/meetings/actions.ts), createRisk and markTranscriptProposalApplied run in two separate transactions. If the second fails, the risk exists but the proposal stays 'proposed' and could be added twice. Optional fix: run both in one transaction (the DAL would need to accept a tx)."
+   },
+   {
+    "criterion": "Tests mock the SDK (no network)",
+    "status": "done",
+    "evidence": "src/server/ai/transcripts/claude.test.ts replaces the Anthropic default export with a FakeAnthropic (parseMock) through vi.mock('@anthropic-ai/sdk') and keeps the real typed errors. The DAL tests inject a TranscriptAnalyzerImpl. config.ts disables Claude under VITEST.",
+    "gap": "Optional: no Server Function test runs analyseTranscriptAction with Claude configured (only the 'not configured' refusal is tested)."
+   },
+   {
+    "criterion": "Uploaded transcript file can be retrieved (implied by 'storage')",
+    "status": "partial",
+    "evidence": "The file is stored (storeFile) and its name is shown in sourceText. src/app/api has export, import, interchange and tasks routes, but no route serves a meeting transcript file.",
+    "gap": "Not in the stated criteria, so optional. If wanted, add a GET route (for example src/app/api/meetings/[number]/transcript/route.ts) that checks project access with getProjectContext(...,'meetings') and calls streamStoredFile(fileId) and fileResponse(). Then make the file name in TranscriptBox's sourceText a link."
+   },
+   {
+    "criterion": "Upload and paste size limits match the Next Server Action body limit",
+    "status": "partial",
+    "evidence": "TRANSCRIPT_IMPORT.maxUploadBytes is 800000 and is compared with text.length (characters), in ImportDialog.submit and in importTranscriptAction. next.config.ts does not set serverActions.bodySizeLimit, so the default 1 MB applies (node_modules/next/dist/docs/.../serverActions.md).",
+    "gap": "Edge case: a pasted text of about 500k–800k characters with many accents can exceed 1 MB in UTF-8. Next then rejects the request and the user sees the generic 'The change could not be saved' instead of 'The transcript is too long'. Fix: check new TextEncoder().encode(text).length on the client, or lower the paste limit to TRANSCRIPT_IMPORT.maxChars (400k), which is all the DAL accepts anyway."
+   }
+  ],
+  "comingSoonLeft": [],
+  "tests": "npx vitest run src/server/ai/transcripts src/server/dal/meetings-transcripts.test.ts src/features/meetings src/domain/meetings.test.ts src/server/storage/files.test.ts: 9 files, 97 tests, all passed. Also: npx tsc --noEmit --incremental false gave no errors, and npx eslint --no-cache on the meetings feature, src/server/ai, the meetings DAL and the meetings page gave no findings. Note: untracked files CLAUDE.md, docs/DECISIONS.md and docs/decisions/ (answers.json, questions.json) appeared in the working tree at 16:51 during this audit. They were not created by this audit, which only read files; they are likely from another workflow agent."
+ },
+ {
+  "feature": "exports",
+  "verdict": "mostly-done",
+  "summary": "Exports are largely finished. The framework (src/server/export/run.ts, xlsx.ts, csv.ts, pdf.ts, route src/app/api/export/[screen]/route.ts, export_log in drizzle/0005) is in place, 59 of 59 screens have a provider (55 direct registrations plus the 4 discipline screens registered in a loop in engineering.ts), and every document button is wired to the server through ExportFileButton/downloadExport. The remaining gaps are small: the \"Download zip\" toast has no Codex link, some date/percent columns are still exported as text, a few FR labels are missing, client rights can be bypassed by passing ?code= on a few global screens, and only 3 screens are tested with a masked-rate role. Note: docs/DECISIONS.md S-9a (untracked, not written by this audit) also asks for a PDF of the detailed plan and the Gantt, and no such PDF exists yet.",
+  "items": [
+   {
+    "criterion": "Header Export button with CSV / Excel (+ PDF report) menu on every screen",
+    "status": "done",
+    "evidence": "src/components/app/shell/page-header.tsx:120 renders <ExportButton screen code formats={exportFormatsOf(screen)} task>. src/components/app/shell/header-islands.tsx ExportButton reads window.location.search at click time, adds task and dept, then calls downloadExport(exportHref(...)). All 59 screens render PageHeader (only the catch-all pages and /resources/approvals, which redirects, do not). src/features/exports/catalog.ts PDF_REPORT_SCREENS lists budget, billing, meetings, risks, trends and client. providers.test.ts checks that the menu matches the providers.",
+    "gap": ""
+   },
+   {
+    "criterion": "A registered provider for each of the 59 screens in src/config/screens.ts",
+    "status": "done",
+    "evidence": "59/59. src/server/export/providers/index.ts imports 16 files. There are 55 registerExportProvider calls, and engineering.ts:218-221 registers eng-process, eng-meca, eng-elec and eng-auto in a loop over DISCIPLINES. providers.test.ts checks 'registry covers the 59 screens' and runs an it.each over all 59. No screen is missing.",
+    "gap": ""
+   },
+   {
+    "criterion": "Main table(s) follow the current filters / tab / zone / search",
+    "status": "done",
+    "evidence": "Each provider reads the same URL parameters as its page: projects q/status/view; pfplan filter; portfolio tab/project; risks/changes/quality filter, status, tab; itp view; meetings view/filter/meeting; orders/deliveries status; procurement tab/status; stock loc/q; docs scope/view/fam/status/q plus numbers; plm via parsePlmState; bom via parseBomState; pid via parsePidState; drawings state/q; eco status; requests status; skills filter; whatif project; approvals dept; plumbing view/source; sav view; site/client/budget tab; hours/plan view. Zone screens use ctx.zone (?zone= or the cookie, run.ts buildExportContext). Tests check the zone (worldmap), risk category, order status and docs selection.",
+    "gap": "Minor: mywork ignores ?view/?week and exports all of the person's tasks. schedule ignores ?baseline=0, which only hides the baseline in the display."
+   },
+   {
+    "criterion": "Labels in the viewer's language",
+    "status": "partial",
+    "evidence": "All headers and sheet names go through ctx.t, and the strings are in src/i18n/extra/ch4-exports.json (256 entries). A temporary FR/EN comparison of all 59 workbooks found only cognates (Code, Type, Date…) plus the misses below. CSV FR uses ';' and decimal commas (export.test.ts).",
+    "gap": "'Minutes' has no FR entry. It appears in the meetings sheet column (team.ts:41) and the minutes PDF title (team.ts:83 gives 'Minutes · Réunion…'); add 'Minutes': 'Compte rendu' to src/i18n/extra/ch4-exports.json. The FR trends and budget PDFs show SPI/CPI as '0.90'/'0.92' and float as '-27 d', because the KPI tile strings are pre-formatted in EN (review.ts/status-report.ts, budget.ts); format them with the lang."
+   },
+   {
+    "criterion": "Real numbers and dates in Excel",
+    "status": "partial",
+    "evidence": "xlsx.ts cellValue writes Date objects for 'date'/'datetime' columns and numFmt per type (k€, €, %, dd/mm/yyyy in FR). Most providers use typed columns, and the tests assert typeof number and ISO dates for plan, orders and budget.",
+    "gap": "Some columns are typed 'text' but hold dates or percentages. resources.ts requestSheet (requests, presources, approvals): start/due hold ISO strings and should be 'date'; 'sent' is 'Fri 25 Sep' and should be isoOf → 'date'. my.ts myProjectsWorkbook: 'Forecast finish'/'Milestone date' are display strings. review.ts clientWorkbook: Milestones baseline/forecast ('15 Mar'), Decisions 'Since', Documents 'Date'. portfolio.ts prioritisation 'Weights' sheet: Share '25%' should be 'percent'. projects/overview/pfplan Start/Finish 'Jan 2026' (optionally first of the month with an mmm yyyy format)."
+   },
+   {
+    "criterion": "Rights: rates masked as on screen",
+    "status": "done",
+    "evidence": "ctx.ratesMasked = !canSeeRates(role) (run.ts). Applied in resources.ts ratesWorkbook (Hourly rate, Multiplier), the whatIf levers (Hourly rate) and my.ts taskWorkbook (Hourly rate (€)). A temporary run of all 59 screens as member, quality and client found no rate or multiplier column.",
+    "gap": ""
+   },
+   {
+    "criterion": "Rights: a client exports only its own projects",
+    "status": "partial",
+    "evidence": "run.ts buildExportContext returns 403 to a client on another organisation's project-scoped screen. providers/scope.ts projectFilter is applied in portfolio, purchasing, reference (docs, eco), resources (requests, approvals, whatif), aftersales and admin plumbing. Tested in providers.test.ts 'a client exports only its organisation's projects, everywhere'.",
+    "gap": "On global screens, ?code= is not checked against the client's projects. Verified: a client sending code=NDC-031 gets that project's 'Labor cost to date 340 k€ / Budget 700 k€' (resources.ts currentProject → getLaborCost) and the 'NCRs this quarter (NDC-031)' scorecard (purchasing.ts procurementWorkbook → getSupplierScorecard). my.ts currentProject (home, myprojects, myapprovals) has the same pattern. Fix: for a client, fall back to one of their own projects. Also, admin.ts machineTypesWorkbook 'Projects' column lists every project code, and the eco 'projects' column can show other organisations' codes; filter both with projectFilter for clients."
+   },
+   {
+    "criterion": "PDF purchase order (orders 'Export PO')",
+    "status": "done",
+    "evidence": "purchasing.ts poDocument (variant 'po'). src/features/orders/order-buttons.tsx ExportPoButton is rendered in order-drawer.tsx:90. Tested ('purchase order: header, lines and total, signatures'; another project's PO returns 404).",
+    "gap": ""
+   },
+   {
+    "criterion": "PDF goods receipt (deliveries 'Print receipt')",
+    "status": "done",
+    "evidence": "purchasing.ts receiptDocument (variant 'receipt'). src/features/deliveries/receipt-actions.tsx PrintReceiptButton is rendered in deliveries-view.tsx:219. Tested.",
+    "gap": ""
+   },
+   {
+    "criterion": "PDF client status report and account statement (client portal)",
+    "status": "done",
+    "evidence": "review.ts client provider: pdf clientStatusReport, documents status and statement (contract.ts statementDocument). src/features/rexclient/buttons.tsx: StatusReportButton records the request, then downloads variant=status&period; DownloadStatementButton is in client-view.tsx:190. Trends 'Generate status report' (src/features/changes/change-buttons.tsx:72) downloads report=latest. Tested.",
+    "gap": ""
+   },
+   {
+    "criterion": "PDF deliverable acceptance PV (quality deliverables)",
+    "status": "done",
+    "evidence": "control.ts pvDocument (variant 'pv', accepted deliverables only, otherwise 404). src/features/quality/model.ts:387 pvHref; dlv-drawer.tsx:79 ExportFileButton 'Download PV (PDF)'. Tested.",
+    "gap": ""
+   },
+   {
+    "criterion": "BOM 'Export list' PDF",
+    "status": "done",
+    "evidence": "engineering.ts sparesDocument (variant 'spares', sys/kind). bom-view.tsx:266 passes exportHref to SparesActions (client-buttons.tsx:54 → downloadExport). Tested.",
+    "gap": "Cleanup only: client-buttons.tsx:54 still has an unreachable fallback, showToast(t('Export list — coming soon')), and its comment (line 9) and the bom.json key go with it. Make exportHref required and remove the fallback."
+   },
+   {
+    "criterion": "P&ID 'Export overlay list' PDF",
+    "status": "done",
+    "evidence": "engineering.ts overlayDocument (variant 'overlay'). src/features/pid/model.ts:200 overlayExportHref; pid-view.tsx:166 ExportFileButton. Tested.",
+    "gap": ""
+   },
+   {
+    "criterion": "Docs 'Export register (xlsx)'",
+    "status": "done",
+    "evidence": "src/features/docs/vault-table.tsx exportRegister: the card button exports the filtered register (URL params without doc); the selection bar sends numbers=. reference.ts docsWorkbook reads both. Tested ('documents register: the filtered view, or only the ticked documents').",
+    "gap": "Cleanup: the 'Export register (xlsx) — coming soon' key in src/i18n/extra/docs.json:7 is no longer used."
+   },
+   {
+    "criterion": "'Download zip' shows a toast naming Codex with a link",
+    "status": "partial",
+    "evidence": "vault-table.tsx:61 calls showToast(t('Download zip needs Codex — the document files are stored in Codex')); the FR text is in ch4-exports.json:251.",
+    "gap": "The toast has no link. showToast(message: string) in src/components/ds/Toast.tsx only takes text. Add an optional action/link to the Toast API and pass a Codex URL: the documents.codex_url column exists in src/server/db/schema/documents.ts, or use a configured Codex base URL (Codex deep links are open question D-1)."
+   },
+   {
+    "criterion": "Admin 'Export — Excel / PDF' cards",
+    "status": "done",
+    "evidence": "src/features/admin/plumbing-islands.tsx CARDS maps 'Export — Excel'/'Export — PDF' to ExportDialog (src/features/admin/export-dialog.tsx). That dialog lists the screens from exportSetupAction (interchange-actions.ts:98, providers filtered by format and canSee) plus a project, and builds exportHref. Tested in interchange-actions.test.ts.",
+    "gap": "Minor: the dialog downloads through a plain <a href download>, so a 403/404 refusal is not shown as a toast. Use downloadExport() like the other buttons."
+   },
+   {
+    "criterion": "Sober branded PDFs (Keystone, project, date, page x/y), French by default",
+    "status": "done",
+    "evidence": "src/server/export/pdf.ts: header() prints KEYSTONE, reference, title, project and date; footers() prints 'Keystone · title · Généré par Keystone le …' and 'Page i / n'. pdfkit uses Helvetica with WinAnsi mapping. Lang comes from getI18n (DEFAULT_LANG 'fr' in src/i18n/translate.ts). Checked by rendering all 12 documents and reports in FR (all start with %PDF).",
+    "gap": ""
+   },
+   {
+    "criterion": "Tests per provider: HLT-026 director + one masked-rate role; XLSX opens; PDFs start with %PDF",
+    "status": "partial",
+    "evidence": "providers.test.ts runs it.each over the 59 screens for the director: XLSX opens (PK, readXlsx, last sheet 'Export') and CSV has rows. pdfOf asserts '%PDF' for every document. export.test.ts covers the CSV, XLSX and PDF writers, the access rules and export_log.",
+    "gap": "Masked-rate roles are tested only on rates, task and whatif. Add an it.each(SCREENS) with a masked role (e.g. 'member' or 'quality') that checks the XLSX opens and has no 'Hourly rate'/'Multiplier' header, and a client case with ?code=<other org> on the global screens to cover the leak above."
+   },
+   {
+    "criterion": "(Related decision S-9a, docs/DECISIONS.md) PDF of the detailed plan and the Gantt",
+    "status": "missing",
+    "evidence": "steering.ts registers plan and schedule with table only. catalog.ts PDF_REPORT_SCREENS does not list plan or schedule.",
+    "gap": "If S-9a is in scope for chapter 4: add pdf reports to the plan provider (WBS and activities table, landscape) and the schedule provider (work packages baseline vs forecast plus milestones), and add 'plan' and 'schedule' to PDF_REPORT_SCREENS so the catalog test stays in sync."
+   }
+  ],
+  "comingSoonLeft": [
+   "src/features/bom/client-buttons.tsx:54 — showToast(t('Export list — coming soon')): unreachable fallback when exportHref is missing (bom-view.tsx always passes it)",
+   "src/features/bom/client-buttons.tsx:9 — comment describing that fallback",
+   "src/features/admin/i18n.ts:66-67 — comingSoonT helper for 'export cards', no longer used anywhere",
+   "src/i18n/extra/bom.json:15 — 'Export list — coming soon' dictionary key (only used by the fallback above)",
+   "src/i18n/extra/docs.json:7 — 'Export register (xlsx) — coming soon' dictionary key (unused)"
+  ],
+  "tests": "`npx vitest run src/server/export`: 3 files, 90 tests, all pass (export.test.ts, providers/providers.test.ts, providers/common.test.ts). `npx vitest run` on src/features/bom/render.test.ts, src/features/admin/interchange-actions.test.ts, src/features/orders/drawer.render.test.ts, src/features/deliveries/render.test.ts, src/components/app/shell/shell-render.test.ts, src/features/quality, src/features/pid, src/features/docs and src/features/rexclient: 20 files, 183 tests, all pass. I also ran temporary vitest checks from the scratchpad, since deleted: FR vs EN headers on all 59 workbooks, a scan for text-typed date columns, FR rendering of the 12 PDFs, all 59 screens exported as member, quality and client, and a client ?code=NDC-031 probe. No repo files were modified; the untracked CLAUDE.md, docs/DECISIONS.md and docs/decisions/ were not created by this audit."
+ },
+ {
+  "feature": "settings",
+  "verdict": "done",
+  "summary": "Every chapter-4 acceptance criterion for 'settings' (A-13, A-14, Budget categories, A-2/L-3 wizard, P-14) is implemented. The UI controls reach the server functions and the DAL, each one is covered by tests, and all 15 relevant vitest files pass (110 tests). Three things are left, none of them a blocker: index colours still use a fixed 0.97, a holiday on an already-listed date is not refused, and three helpers are dead code. One product answer recorded in docs/DECISIONS.md (L-3b: the wizard should require a location, and the planned finish should come from the plan) is not built, but it falls outside the chapter-4 criteria.",
+  "items": [
+   {
+    "criterion": "A-13 one health rule everywhere: min(CPI clamped [0.70,1.25], SPI), thresholds from Settings",
+    "status": "done",
+    "evidence": "src/domain/health.ts (healthOf, healthIndex, clampHealthCpi, usableThresholds); src/server/dal/health-thresholds.ts healthThresholds() reads app_settings 'health.thresholds'. Consumers: src/server/dal/projects.ts toRow() -> ProjectRow.health, used by the Projects register (src/features/projects/register-model.ts:129), the page header (src/components/app/shell/page-header.tsx:38), the world map (src/server/dal/geo.ts:49) and the exports. Overview: src/server/dal/portfolio.ts getPortfolioOverview -> overviewMetrics(p, th) (src/domain/portfolio.ts:46). My projects: getMyProjects -> myProjectsModel({thresholds}) (src/domain/portfolio.ts:378). Tests: src/server/dal/ch4-settings.test.ts 'A-13', src/domain/health.test.ts",
+    "gap": ""
+   },
+   {
+    "criterion": "(polish, optional) CPI/SPI colours and 'attention' items follow the Settings threshold too",
+    "status": "partial",
+    "evidence": "src/domain/portfolio.ts:19 INDEX_ALERT = 0.97 is a constant, used at :118-119 (portfolioKpis alert), :251-263 (projectIndicators attention and tints) and src/features/portfolio/overview.tsx:78,81. projectIndicators also repeats the clamp inline at src/domain/portfolio.ts:235 instead of calling clampHealthCpi.",
+    "gap": "The health verdict follows Settings, but if the director changes 'At risk below' (e.g. to 0.95), the CPI/SPI colours and 'SPI 0.96' attention items still use 0.97. Decide whether these should follow th.risk. If yes, pass the thresholds into portfolioKpis, projectIndicators and the overview table instead of using INDEX_ALERT. Either way, replace the inline Math.min(1.25, Math.max(0.7, …)) at portfolio.ts:235 with clampHealthCpi."
+   },
+   {
+    "criterion": "A-14 Settings lists drive the modules: risk categories, cost categories, statuses, skills, holidays (calendar module), deliverable types",
+    "status": "done",
+    "evidence": "Read API: src/server/dal/settings-lists.ts. Risks: riskCategoryOptions in src/app/(app)/projects/[code]/risks/page.tsx:26,44, src/features/risks/actions.ts:53, src/server/dal/risks.ts:96,136. Budget: costCategoryOptions in src/app/(app)/projects/[code]/budget/page.tsx:69, src/features/budget/category-actions.ts:54, and the wizard's settingsCategories (src/server/dal/projects-register.ts:212). Statuses: inactiveStageCodes in src/features/projects/actions.ts:52, projects-register.ts:85,122, register-cells.tsx:93. Skills: hiddenSkillNames and ensureSettingsEntry in src/server/dal/hr.ts:125,149. Holidays: settingsHolidayDates -> loadWorkCalendars (src/server/dal/calendars.ts:31,62) and listPublicHolidays FR (hr.ts:186). Deliverable types: labels in src/server/dal/quality.ts:193,207. Tests: ch4-settings.test.ts 'A-14'",
+    "gap": ""
+   },
+   {
+    "criterion": "In-use values deactivated, not deleted",
+    "status": "done",
+    "evidence": "src/server/dal/settings.ts removeReferenceValue (line 130) uses referenceUsage (settings-lists.ts:93) and removalModeOf (src/domain/settings-rules.ts). The stages Initiative, Clos and Annulé are protected (REQUIRED_STAGES; the UI hides their x in settings-view.tsx). The toast comes from removedEntryToastT. Tests: actions.test.ts:76, ch4-settings.test.ts risk/skills cases",
+    "gap": ""
+   },
+   {
+    "criterion": "Director-only editing (server and UI)",
+    "status": "done",
+    "evidence": "canEditSettings / SETTINGS_EDIT_ROLES=['director'] in src/domain/settings-rules.ts; DAL guard ST() at src/server/dal/settings.ts:69; server-function guard settingsEditor() in src/features/admin/actions.ts; page src/app/(app)/admin/settings/page.tsx (canEdit, Reset button hidden, read-only note in settings-view.tsx). Test: actions.test.ts:63",
+    "gap": ""
+   },
+   {
+    "criterion": "Every Settings change is audited",
+    "status": "done",
+    "evidence": "trace() (src/server/dal/ops-common.ts:61) is called in addReferenceValue, removeReferenceValue, addLocation, removeLocation, setHealthThresholds and resetSettings (src/server/dal/settings.ts), with area 'Settings'. Test: actions.test.ts:111",
+    "gap": ""
+   },
+   {
+    "criterion": "Duplicates refused",
+    "status": "done",
+    "evidence": "addReferenceValue (settings.ts:81) refuses an active entry with the same label, case-insensitive; a deactivated one is reactivated. addLocation does the same. Test: actions.test.ts:94 and ch4-settings.test.ts skills case",
+    "gap": ""
+   },
+   {
+    "criterion": "(edge) A second holiday on an existing date is refused",
+    "status": "partial",
+    "evidence": "src/server/dal/settings.ts addReferenceValue only compares labels. holidayCode() (src/server/db/seed/settings.ts:14) then gives code '2026-07-14_2', and settingsHolidayDates (calendars.ts:37) and settingsHolidayRows filter non-ISO codes out.",
+    "gap": "Adding '14 Jul · Bastille Day' when '14 Jul · Fête nationale' already exists creates an entry that Settings lists but that the calendars and the leave calendar silently ignore. For listKey 'holidays', refuse an active row whose code equals holidayCode(text) (or reactivate it), with an FR message in settings-i18n."
+   },
+   {
+    "criterion": "Thresholds: 'Off track below' < 'At risk below', saved from the UI",
+    "status": "done",
+    "evidence": "thresholdsError (src/domain/admin.ts:81) is checked in setHealthThresholdAction (src/features/admin/actions.ts), and setHealthThresholds (settings.ts:177) checks again. ThresholdField in src/features/admin/settings-view.tsx calls setHealthThresholdAction on blur or Enter. Test: actions.test.ts:137",
+    "gap": ""
+   },
+   {
+    "criterion": "Budget 'Add category' / 'Edit category' are real",
+    "status": "done",
+    "evidence": "src/features/budget/category-buttons.tsx (AddCategoryButton, EditCategoryButton -> FormDialog) is rendered in setup-tab.tsx:161,190 when canEdit. Server functions: src/features/budget/category-actions.ts (addCostCategoryAction, editCostCategoryAction). DAL: src/server/dal/budget-categories.ts (addProjectCostCategory, updateProjectCostCategory), with audit and activity, duplicate names refused, BAC untouched. Tests: category-actions.test.ts, ch4-settings.test.ts",
+    "gap": ""
+   },
+   {
+    "criterion": "Wizard (A-2): machine type -> template instantiated on creation (WBS phases as work packages, template activities, FS links, cost categories, ITP plan)",
+    "status": "done",
+    "evidence": "src/domain/project-template.ts instantiateTemplate (1 activity per phase, TEMPLATE_LINK FS lag 0). src/server/dal/projects-register.ts createWizardProject (line 292) inserts the wbsNodes root and packages, activities, activityLinks, costCategories and itpPlans; the ITP systems are read from machineTypeItpSystems by src/server/dal/itp.ts. Templates come from the Machine types screen data in getNewProjectSetup (line 200), including custom types. Test: ch4-settings.test.ts 'A-2 / L-3'",
+    "gap": ""
+   },
+   {
+    "criterion": "Wizard (L-3): PM chosen from people, the viewer by default when they are a PM",
+    "status": "done",
+    "evidence": "managerOptions() and defaultManagerId in projects-register.ts; PM Select in new-project-wizard.tsx step 1; createProjectAction checks pm against setup.managers (src/features/projects/actions.ts). Test: wizard-actions.test.ts:45",
+    "gap": ""
+   },
+   {
+    "criterion": "Wizard: planned start/finish, calendar and currency stored",
+    "status": "done",
+    "evidence": "plannedWindowError (project-template.ts) is applied in the UI (basicsComplete) and in createProjectAction. createWizardProject writes plannedStartDate, plannedFinishDate, calendar, currency and contingencyPct. projects.calendar is used by schedule.ts:150 and calendars.ts:69",
+    "gap": ""
+   },
+   {
+    "criterion": "Wizard: name and client required",
+    "status": "done",
+    "evidence": "WIZARD_REQUIRED in project-template.ts; createProjectAction refuses missing values; Next stays disabled through basicsComplete() in new-project-wizard.tsx. Test: wizard-actions.test.ts:33",
+    "gap": ""
+   },
+   {
+    "criterion": "Wizard: draft reset after creation; created project opens on its plan",
+    "status": "done",
+    "evidence": "src/features/projects/new-project-launcher.tsx create(): setDraft(DEFAULT_DRAFT), setStep(1), PROJECTS_RESET_EVENT, router.push(screenHref('plan', {code})). The register opens /plan for planned projects (listPlannedProjectCodes, tested in ch4-settings.test.ts)",
+    "gap": ""
+   },
+   {
+    "criterion": "P-14 machine-type edit/remove gated by mtCanEdit server-side",
+    "status": "done",
+    "evidence": "src/server/dal/mtypes.ts MT() = requireWorkspace('mtypes') in updateMachineType, setMachineTypePhases, setMachineTypeItpSystems, setMachineTypeCostCategories, removeRexReference and createMachineType. The server functions in src/features/admin/actions.ts use editor('mtypes'), and src/features/admin/mtype-editor.tsx sets controls read-only. Tests: ch4-settings.test.ts 'P-14', actions.test.ts:155",
+    "gap": ""
+   },
+   {
+    "criterion": "(follow-up, outside chapter-4 criteria) Product answer L-3b = a: name, client, PM, type, start AND location required; planned finish from the plan; zone from the site country",
+    "status": "missing",
+    "evidence": "docs/DECISIONS.md and docs/decisions/answers.json (untracked, dated 2026-10-09 16:51): L-3b choice 'a', recorded with status 'open' (no default applied). Today the wizard (src/features/projects/new-project-wizard.tsx step 1) has no site or location field, and createWizardProject never inserts project_sites; only the seed writes that table (src/server/db/seed/portfolio.ts:82). New projects are therefore missing from the world map and fall into zone 'euna' (projects.ts toRow).",
+    "gap": "1) Add a required site to wizard step 1: a city, plus a country chosen from the countries table. 2) Validate it in createProjectAction. 3) Insert projectSites {projectId, city, countryName, lat/lng if a geocoding source exists} in createWizardProject; the zone comes from countries.zoneCode. 4) Per the answer, make the planned finish optional and derive it from the instantiated plan (plan.finishDate). Related answers, still marked À discuter: A-2 and L-3a ask for a full per-machine-type standard (WBS, budgets, stage deliverables, several activities per phase) that the PM can customise. Today TEMPLATE_ACTIVITIES_PER_PHASE = 1 and the Machine types screen has no activity list, so that work needs the user's standard data first."
+   },
+   {
+    "criterion": "(cleanup) No dead or leftover code in the feature",
+    "status": "partial",
+    "evidence": "Unused exports: comingSoonT (src/features/admin/i18n.ts:67), activeStatusCodes (src/server/dal/settings.ts:222), listDeliverableTypes (src/server/dal/quality.ts:230; no form creates deliverables yet). src/features/budget/soon-button.tsx now only holds NewChangeRequestLink.",
+    "gap": "Remove comingSoonT and activeStatusCodes, or wire them up. Keep listDeliverableTypes only if a 'New deliverable' form is planned. Optionally rename soon-button.tsx to change-request-link.tsx. Optional UX point: the Settings page lists only active entries (getSettings filters active=true), so deactivated in-use values can only come back by retyping the exact label."
+   }
+  ],
+  "comingSoonLeft": [
+   "src/features/admin/i18n.ts:67 comingSoonT helper ('<label> — coming soon'): exported but never called (dead code)",
+   "src/features/budget/soon-button.tsx:3 comment only (Add/Edit category are real; the file holds NewChangeRequestLink)",
+   "src/features/budget/category-buttons.tsx:4 comment only ('they announced coming soon before')"
+  ],
+  "tests": "Ran `npx vitest run` on 15 files: src/server/dal/ch4-settings.test.ts, src/domain/health.test.ts, src/domain/project-template.test.ts, src/domain/settings-rules.test.ts, src/features/admin/{actions,model,page,render}.test.ts, src/features/budget/{category-actions,budget.render}.test.ts, src/features/projects/{register-render,register,wizard-actions,wizard-render}.test.ts, src/server/dal/portfolio.test.ts. Result: 15 files passed, 110 tests passed (about 9 s). No typecheck was run, so next typegen was not needed. No repository file was modified; the untracked CLAUDE.md, docs/DECISIONS.md and docs/decisions/ already existed (timestamped 16:51) and were not created by this audit."
+ },
+ {
+  "feature": "kpis (A-12: hard-coded KPIs replaced by formulas)",
+  "verdict": "mostly-done",
+  "summary": "Every A-12 tile on the task's list now calls a pure formula in src/domain/kpis.ts, fed by src/server/dal/kpis.ts at the data date, and is shown on its real screen. The formulas have hand-worked golden tests in src/domain/kpis.test.ts, and every test file I ran passes. Four gaps remain. (1) \"Average cycle\" (Sourcing) can never count an RFQ created in Keystone, because the DAL looks for the wrong audit text. (2) The department-head Home still shows the prototype values \"Unmet demand 240 h\", \"Mostly engineering\" and \"Peak weeks 41–43\". (3) The \"Last vault sync\" sub-line always says \"today\". (4) There is no DELIVERY-6.md listing old → new values, and DELIVERY-5.md still calls some of these tiles constants.",
+  "items": [
+   {
+    "criterion": "Pure formula module in src/domain with a formula comment and unit tests, computed at the data date",
+    "status": "done",
+    "evidence": "src/domain/kpis.ts: one-line formula comment per function; dates come from projectDataDate / DEFAULT_DATA_DATE, never the real clock. Tests: src/domain/kpis.test.ts (data date 25 Sep 2026). Database reads: src/server/dal/kpis.ts (projectDataDateOf, cashProjectInputs, capacityModel, rfqKpiFacts, onTimeDeliveriesOf, clientDecisionsOf, ncrClosureDates, latestVaultRun, loggedThisWeek, loadNextWeeks, eventsToday). Text helpers: src/features/kpis/i18n.ts. src/i18n/extra/ch4-kpis.json is an empty {}, but every KPI string checked has a French entry elsewhere.",
+    "gap": ""
+   },
+   {
+    "criterion": "Portfolio margin \"18 %\"",
+    "status": "done",
+    "evidence": "Formula: portfolioMarginPct + projectEacKeur (src/domain/kpis.ts). Wired in getPrioritisationScreen (src/server/dal/pfinance.ts:45), shown by src/features/pfinance/model.ts:147, page src/app/(app)/portfolio/prioritisation/page.tsx. Tests: src/features/pfinance/model.test.ts MARGIN_A12, render.test.ts:50,76. Old → new: 18 % → 8 % (no zone); EUNA 5 %, AFR 15 %, APAC —. Hidden for viewers without margin rights.",
+    "gap": ""
+   },
+   {
+    "criterion": "Cash in/out arrays + \"Lowest cumulative point\"",
+    "status": "done",
+    "evidence": "Formulas: cashForecast, expectedReceipts, lowestCumulativePoint (domain). Inputs: cashProjectInputs (DAL kpis). getCashFlow (src/server/dal/cashflow.ts:146-160) feeds getCashScreen (dal/pfinance.ts) and cashView (features/pfinance/model.ts:327, lowPointSubText). The stored plan getPortfolioCashForecast is no longer read. Tests: model.test.ts CASH_A12, render.test.ts:145-166. Old → new: stored plan (−€490k, static \"November — before M3 payment lands\") → net +€2.84M, low point −€521k \"October — before M3 payment lands (HLT-026)\", bars −521k / +885k / −51k / +1083k / +1116k / +324k.",
+    "gap": ""
+   },
+   {
+    "criterion": "Capacity model and demand per €1M",
+    "status": "done",
+    "evidence": "Formulas: departmentCapacity, demandPerMeur, projectValueKeur (domain). Inputs: capacityModel (DAL kpis). Wired in getCapacityWhatIf (src/server/dal/prioritisation.ts:141-150) → getCapacityScreen → capacityView. Tests: model.test.ts CAPACITY_A12, render.test.ts:116-133. Old → new: WSA-044 gap 1 560 h → 151 h (\"Absorbable with 151 h of overtime or one contractor\"); Engineering +73 h, 391 / 320 h.",
+    "gap": ""
+   },
+   {
+    "criterion": "Procurement \"Savings vs list\" €12k and \"Average cycle\" 9 d",
+    "status": "partial",
+    "evidence": "Formulas: rfqSavingsKeur, rfqAverageCycleDays (domain). Inputs: rfqKpiFacts (src/server/dal/kpis.ts:102-122). Wired in rfqTabView (src/features/procurement/model.ts:92-93) and src/app/(app)/purchasing/sourcing/page.tsx:44. Tests: procurement/render.test.ts:79,101 and model.test.ts:38. Old → new: €12k → €0k; 9 d → — (the seed's awarded RFQ has no send date).",
+    "gap": "Bug: rfqKpiFacts takes the send date only from audit entries whose change is exactly 'status: Draft → Open'. createRfq (src/server/dal/purchasing.ts:429-470) inserts RFQs directly with status 'open' and writes the audit text 'RFQ sent to … · reply … · …'. So every RFQ created in Keystone has sentOn = null and never counts in \"Average cycle\". Only seeded Draft RFQs sent later ever count. Fix: also accept change LIKE 'RFQ sent to %' (or use rfqs.createdAt when an RFQ is created Open), and add a writes test: create → compare → award, then check that the cycle is no longer '—'. The award date falls back to replyDueOn when awarded_at is null (seed only), and this is documented."
+   },
+   {
+    "criterion": "On-time deliveries 83 %",
+    "status": "done",
+    "evidence": "Formula: onTimeDeliveryPct (domain, 90-day window). Input: onTimeDeliveriesOf (DAL kpis, project data date). Wired: getDeliveriesScreen (src/server/dal/deliveries.ts:125) → deliveryKpis (src/domain/deliveries.ts:115) → deliveries model; export: src/server/export/providers/purchasing.ts:164. Tests: deliveries/render.test.ts:41,124; scenarios.test.ts:60. Old → new: 83 % → 100 % (HLT-026); — when nothing was received in the last 90 days.",
+    "gap": ""
+   },
+   {
+    "criterion": "Average response 1.4 d / 0.9 d",
+    "status": "done",
+    "evidence": "Formula: averageResponseDays (domain, working days on the standard calendar). Wired in requestsScreenModel (src/features/requests/model.ts:119) and the department approvals model (:191), from request events (src/server/dal/requests.ts:133). Tests: features/requests/model.test.ts:42,72,120,145,174; domain/requests.test.ts:42,79. Old → new: 1.4 d → 1.0 d; 0.9 d → — (Engineering, nothing decided); 0.5 d / 1.0 j for the other departments.",
+    "gap": ""
+   },
+   {
+    "criterion": "Site: man-days 168, client decisions 3, \"0 incident\" (Vigie HSE mirror), \"2 rotations\"",
+    "status": "done",
+    "evidence": "Formulas: plannedManDays, crewSize, clientDecisionsLogged, vigieIncidentCount (domain). getSite (src/server/dal/site.ts:136) uses the project calendar plus clientDecisionsOf and getVigieQualityConnector().listHse. Tiles: teamKpis / execKpis (src/domain/site.ts:196-225; rotationCount computed). Mapped in src/features/site/model.ts:104. Tests: site/render.test.ts:34,222; delivery5.test.ts:356; domain/site.test.ts:33,158. Old → new: man-days 168 → 179; client decisions 3 → 2 (CR-004, CR-006); HSE 0 → 0, now from Vigie's registers; rotations 2 → 2, computed. \"Site premium ×1.5 / ×2\" deliberately stays a constant (10 OQ7).",
+    "gap": ""
+   },
+   {
+    "criterion": "Drawings \"1 248 in vault\" and \"07:40 last sync\"",
+    "status": "partial",
+    "evidence": "Formula: latestVaultSync + leadingCount (domain). Input: latestVaultRun (DAL kpis: PDM connector row last_sync_at / last_volume plus pdm_vault_syncs). Wired: getVaultSyncState (src/server/dal/drawings.ts:87) → getDrawingsScreen (dal/eco-screen.ts:87) → drawingKpis (src/domain/drawings.ts:56). Test: delivery4-writes.test.ts:208. Old → new: 1 248 → 1 248 (parsed from the connector row's volume); 07:40 → time of the latest run (11:05 after a later sync).",
+    "gap": "The \"Last vault sync\" sub-line is still the literal 'SolidWorks PDM · today · read-only' (src/domain/drawings.ts:63). It says \"today\" even when the run is on another day (the seed run is 26 Sep while the data date is 25 Sep). Build the day text from VaultSyncState.syncedAt compared with the data date. Note that the vault count comes from the mock PDM connector row's seeded volume text, and syncPdmVault copies the previous count (simulated connector)."
+   },
+   {
+    "criterion": "\"Released this month\" with a real date filter",
+    "status": "done",
+    "evidence": "Formulas: releasedInMonth, ecoReleaseDate (domain). ecoKpis (src/domain/eco.ts:123-130) uses opts.asOf, defaulting to the portfolio data date. Approval dates and raise dates come from the Vigie mirror (src/server/integrations/vigie/mirror.ts:107). Tests: eco/render.test.ts:39; domain/eco.test.ts:56. Old → new: 2 · €10,360 → 1 · €9,400.",
+    "gap": ""
+   },
+   {
+    "criterion": "Client home \"CR to approve\"",
+    "status": "done",
+    "evidence": "Computed before chapter 4: crAwaiting / clientHome (src/domain/home.ts:371, 793, 810) and clientKpis 'Awaiting your decision' (src/domain/rexclient.ts:276) come from the CR chain. No change in value on the seed.",
+    "gap": ""
+   },
+   {
+    "criterion": "\"NCR closed this quarter\"",
+    "status": "done",
+    "evidence": "Formula: closedInQuarter (domain). The closure date is Vigie's vigie_updated_at (ncrClosureDates, DAL kpis:150). Wired: getQualityScreen (src/server/dal/quality-screen.ts:37-41, project data date) → ncrKpis (src/domain/quality.ts:110-114) via src/features/quality/model.ts:129. Formula test: kpis.test.ts. Old → new: same value on the seed, so the quality golden tests are unchanged.",
+    "gap": ""
+   },
+   {
+    "criterion": "\"Interfaces due within 30 days\"",
+    "status": "done",
+    "evidence": "Formula: dueWithinDays (domain). Wired: interfacesView (src/features/team/model.ts:144) with projectDataDateOf in src/app/(app)/projects/[code]/interfaces/page.tsx:22,33. Tests: team/render.test.ts:137,154. Old → new: 2 → '1 due within 30 days' (IF-02 only; IF-05 is 51 days away).",
+    "gap": ""
+   },
+   {
+    "criterion": "My approvals \"Oldest\"",
+    "status": "done",
+    "evidence": "Computed before chapter 4: oldestItem (src/domain/approvals.ts:257) compares whenIso; the tile is at approvals.ts:301. No change in value.",
+    "gap": ""
+   },
+   {
+    "criterion": "\"Obsolete revisions withdrawn\"",
+    "status": "done",
+    "evidence": "Computed before chapter 4: vaultKpis (src/domain/documents.ts:142-149) counts withdrawn revision records from src/server/dal/documents.ts:214. Same value as the prototype on the seed (10 OQ16).",
+    "gap": ""
+   },
+   {
+    "criterion": "My work \"Logged this week\" and \"Load next 2 wks\"",
+    "status": "done",
+    "evidence": "Formulas: loggedInWeek, nextWeeksLoad (domain). Inputs: loggedThisWeek / loadNextWeeks (DAL kpis). Wired: src/app/(app)/my/tasks/page.tsx:46,91 → MyWorkBody measured prop (src/features/mywork/my-work-body.tsx:70-83); Home member: src/server/dal/home.ts:209 → memberHome (src/domain/home.ts:586). Tests: mywork-render.test.ts:69,98; dal/home.test.ts:83,108. Old → new: Julien 14.0 h → 7.0 h (Load 95 %); Hélène 6.0 h (Load 45 %).",
+    "gap": ""
+   },
+   {
+    "criterion": "Plumbing \"Events today\"",
+    "status": "done",
+    "evidence": "Formula: eventsOnDay (domain, Paris day). Input: eventsToday (DAL kpis:204). Wired: getPlumbingCounts (src/server/dal/integrations.ts:214) → plumbingKpis (src/domain/admin.ts:246). Tests: admin/model.test.ts:202; delivery5.test.ts:572. Old → new: 6 → 5.",
+    "gap": ""
+   },
+   {
+    "criterion": "Remaining A-12 tiles on Home: department head \"Unmet demand 240 h\", \"Mostly engineering\", \"Peak weeks 41–43\"",
+    "status": "missing",
+    "evidence": "src/domain/home.ts:528-530 (deptHeadHome) still has kpi('Over-allocated', …, 'Peak weeks 41–43') and kpi('Unmet demand', '240 h', 'Mostly engineering', true), with a TODO(db). The Resources screen already computes these (src/domain/resources.ts unmetDemand, mainShortfall, weeksAbove, weekRangesText; src/features/resources/model.ts peakWeeksText, shortfallText). The A-12 decision context in docs/decisions/questions.json cites \"demande non couverte 240 h\" explicitly.",
+    "gap": "Pass the department's capacity rows and pool week starts into DeptHeadInput (src/server/dal/home.ts:200-202) and reuse unmetDemand / mainShortfall / weeksAbove + isoWeekOf, as features/resources/model.ts does. Then update the Home golden tests (src/domain/home.test.ts, src/server/dal/home.test.ts) with \"A-12\" comments and old → new values. The domain/kpis.ts header assigns the Resources KPIs to the what-if module, so confirm who owns this tile."
+   },
+   {
+    "criterion": "Golden tests updated with \"A-12\" comments",
+    "status": "partial",
+    "evidence": "A-12 overrides with comments exist in pfinance model/render, procurement model/render, deliveries render/scenarios, requests model, site render, delivery3/4-writes/5 tests, eco render, team render, mywork render, dal/home, admin model, and resources tests.",
+    "gap": "No screen-level test shows that a closed NCR from another quarter is excluded. src/server/dal/delivery5.test.ts:83 still asserts the prototype rule `${ncrs.length - open.length} closed this quarter` and passes only because the seed matches. Add a case where Vigie's closure date is in Q2. The department-head Home goldens still assert the 240 h constant."
+   },
+   {
+    "criterion": "Old → new values listed",
+    "status": "partial",
+    "evidence": "The values appear only in test and code comments (see the items above).",
+    "gap": "docs/DELIVERY-6.md does not exist. docs/DELIVERY-5.md:386-387 still lists \"Client decisions logged 3\" and the \"1 248 drawings\" volume as constants kept, and DELIVERY-5.md:367 lists \"Unmet demand 240 h\". Write the chapter-4 A-12 table: margin 18→8 %; cash low point −€490k Nov → −€521k Oct; capacity gap 1 560→151 h; savings €12k→€0k; cycle 9 d→—; OTD 83→100 %; average response 1.4→1.0 d and 0.9 d→—; man-days 168→179; client decisions 3→2; ECO released 2·€10,360→1·€9,400; interfaces due 2→1; logged this week 14.0→7.0 h; events today 6→5; unchanged: 0 incident, 2 rotations, 1 248 / 07:40, NCR closed this quarter, CR to approve, Oldest, obsolete revisions."
+   },
+   {
+    "criterion": "Leftover prototype literals next to computed tiles (minor)",
+    "status": "partial",
+    "evidence": "src/domain/portfolio-finance.ts:143-145: the capacity options 'Start X 6 weeks later — gap closes as Harbor Line demobilises' and 'Delay Metro Signage Line B (non-critical) by 2 weeks' are static. src/server/dal/kpis.ts capacityModel takes the first 8 pool allocation weeks, not the 8 weeks after the data date. src/domain/home.ts:592-593: member Home 'Next week' '28 Sep – 2 Oct' and 'of 40 h' are literals (My work uses weekHoursOf / spanText).",
+    "gap": "Optional clean-up. Anchor the capacity window on weekMondayOf(DEFAULT_DATA_DATE). Use weekHoursOf() and a computed span in memberHome. Derive or drop the static capacity options."
+   }
+  ],
+  "comingSoonLeft": [
+   "src/features/eco/drawings/pdm-button.tsx:22 — 'Open in PDM — coming soon' (Drawings screen, next to the vault tiles; not a KPI)",
+   "No 'coming soon' in the KPI files themselves (src/domain/kpis.ts, src/server/dal/kpis.ts, src/features/kpis/*)"
+  ],
+  "tests": "npx vitest run on src/domain/kpis.test.ts, src/features/{pfinance,procurement,deliveries,requests,site,mywork,quality,resources}, src/features/eco/render.test.ts, src/features/team/render.test.ts, src/features/admin/model.test.ts, src/domain/{requests,site,eco,quality,deliveries,approvals,documents,drawings,home,resources}.test.ts and src/server/dal/home.test.ts: 40 files, 544 tests, all passed. A second run on src/server/dal/{delivery3,delivery4,delivery4-writes,delivery5,delivery5-writes,chapter4-foundation}.test.ts: 6 files, 204 tests, all passed. eslint on the KPI-related source files reported no problems. tsc was not run, so `next typegen` was not needed. The working tree is unchanged apart from untracked files that were already there (CLAUDE.md, docs/DECISIONS.md, docs/decisions/)."
+ },
+ {
+  "feature": "misc",
+  "verdict": "mostly-done",
+  "summary": "All five 'misc' criteria are built, wired from the UI to Server Functions or Route Handlers and then to the DAL, and covered by tests that pass (20 files, 203 tests). The code has task attachments, the client communication log, spares purchase orders and inline My approvals decisions for resource requests and forced stage changes. The My work to-do and checklist controls are real too: checklist Add and ticks, and the Plan drawer to-do composer whose to-dos show in My work. The main open point is a product decision, not code: questionnaire answer D-5 = (a) 'Use the project's meetings and decisions', yet a dedicated client communication log was built (option b, 'a new tool, to be validated'), so the owner must confirm before this is called done. What remains otherwise is cleanup: orphan 'coming soon' i18n keys, a dead legacy DAL function and small edge cases.",
+  "items": [
+   {
+    "criterion": "Task sheet 'Attach': real attachments (upload, list, download, delete, limits)",
+    "status": "done",
+    "evidence": "Upload: POST src/app/api/tasks/[taskId]/files/route.ts (same-origin guard, content-length cap, taskFileGate 'edit', checkUpload, MAX_ATTACHMENTS_PER_TASK=20 → 409) → src/server/dal/task-files.ts attachTaskFile (storeFile in src/server/storage/files.ts: 20 MB cap, extension allowlist, content sniff; audit 'file attached'). List: listTaskFiles + src/server/dal/tasks.ts getTask attachments (hasFile) → src/features/mywork/model.ts taskSheetData files/fileRules. Download: GET src/app/api/tasks/[taskId]/files/[fileId]/route.ts → getTaskFile → fileResponse (nosniff, RFC 6266 filename). Delete: src/features/mywork/actions.ts removeTaskFileAction → removeTaskFile (audited, bytes deleted). UI: src/features/mywork/task-sheet.tsx FilesCard (hidden file input with accept, client-side size check, fetch to uploadHref, router.refresh; download links; RemoveFileDialog). Rights: src/features/mywork/permissions.ts canAttachTaskFiles/canDownloadTaskFiles, src/features/mywork/task-access.ts. Tests: src/features/mywork/task-files.test.ts. Optional cleanup, not blocking: the dead legacy addTaskAttachment in src/server/dal/tasks.ts:343 (metadata only, no audit, unused). removeActivityTodo in src/server/dal/activity-todos.ts deletes a task: its task_attachments cascade, but the stored_files rows and bytes stay orphaned, and pruneOrphanFiles does not catch them because the rows still exist. The per-task count check is not locked against concurrent uploads.",
+    "gap": ""
+   },
+   {
+    "criterion": "Inert to-do/checklist controls in My work made real",
+    "status": "done",
+    "evidence": "Checklist 'Add an item…' and ticks: src/features/mywork/task-sheet.tsx ChecklistCard → actions.ts addChecklistItemAction / toggleChecklistItemAction → src/server/dal/tasks.ts addChecklistItem / toggleChecklistItem (audited). List done toggle: src/features/mywork/my-work-body.tsx → toggleTaskDoneAction. Calendar prev/next and the person switcher are links (src/app/(app)/my/tasks/page.tsx, person-chip.tsx). The activity to-dos ('Add a to-do…' composer, which had no handler in the prototype) create tasks that appear in My work: src/features/plan/plan-controls.tsx TodoComposer/TodoRing/RemoveTodoButton → src/features/plan/scheduling-actions.ts addTodoAction/toggleTodoAction/removeTodoAction → src/server/dal/activity-todos.ts (origin 'activity_todo', audited); rendered in src/features/plan/activity-drawer.tsx. No toast, 'soon' or no-op handler is left in src/features/mywork. Tests: src/features/mywork/actions.test.ts, mywork-render.test.ts, src/features/plan/scheduling-actions.test.ts.",
+    "gap": ""
+   },
+   {
+    "criterion": "Site 'Client communication log' (per project: date, channel, contact, subject, summary, follow-up owner/date; list + add)",
+    "status": "partial",
+    "evidence": "Schema: client_communications in src/server/db/schema/client.ts (migration drizzle/0005_sloppy_talos.sql). DAL: src/server/dal/client-comms.ts listClientCommunications / addClientCommunication (COM-nnn per project, audit + activity) / setClientCommunicationFollowUpDone. Rules: src/domain/client-comms.ts (parseClientCommForm; owner from the project team; follow-up needs owner and date, due ≥ exchange; read = everyone except the client; write = Site editors). Server Functions: src/features/site/comm-log-actions.ts loadClientLogAction / addClientExchangeAction / setClientFollowUpDoneAction. UI: src/features/site/comm-log.tsx CommunicationLogButton (drawer, list newest first, inline 'Log an exchange' form, follow-up tick), mounted in src/features/site/site-view.tsx HseCard and gated by canReadClientLog in src/app/(app)/projects/[code]/site/page.tsx. Tests: src/features/site/comm-log.test.ts. The code fully meets the criterion as written.",
+    "gap": "Product-decision conflict, to settle with the owner before closing. docs/DECISIONS.md and docs/decisions/answers.json give D-5 = choice 'a': 'Utiliser les réunions et décisions du projet' (site exchanges and decisions go through the Meetings screen, and the 'Client decisions logged' indicator counts those decisions). What was built is option 'b' (a dedicated log in the Site module), which the questionnaire flags as 'a new tool, to be validated', and CLAUDE.md says answers override chapter-4 defaults. Two ways forward. (1) The owner confirms keeping the dedicated log: nothing to code. (2) Apply D-5(a): point the HSE card button to the project's Meetings screen (or a filtered client-meeting view) instead of the drawer, decide what happens to client_communications and its COM-nnn data (hide the feature or keep it as a backend), and change clientDecisionsOf in src/server/dal/kpis.ts (used by src/server/dal/site.ts:123) to count meeting decisions instead of change-request client steps."
+   },
+   {
+    "criterion": "BOM 'Create spares purchase order' (DRAFT PO from selected spare lines, preferred supplier, link to it)",
+    "status": "done",
+    "evidence": "Rules: src/domain/spares-order.ts (suggestedSpareQty, isPreselected, validateSparesOrder, groupBySupplier). DAL: src/server/dal/spares-orders.ts getSparesOrderScope (preferred supplier = non-internal manufacturer, stock, on-order netting) and createSparesPurchaseOrders (one PO per supplier via purchasing.insertOrder with status 'draft', origin 'spares'; audited per order; activity). Server Functions: src/features/bom/spares-order-actions.ts loadSparesOrderAction / createSparesOrderAction (BOM edit permission; returns ordersHref(code,{po}) of the first draft). UI: src/features/bom/client-buttons.tsx SparesActions → src/features/bom/spares-order-dialog.tsx (tick lines, edit quantities, per-supplier count; on success toast + router.push to Orders ?po=), wired from src/features/bom/bom-view.tsx:261/347 with canOrder=canEdit. src/app/(app)/projects/[code]/orders/page.tsx reads ?po=. Tests: src/features/bom/spares-order.test.ts.",
+    "gap": ""
+   },
+   {
+    "criterion": "My approvals: no row shows 'coming soon'; resource requests decided inline (requests DAL rules)",
+    "status": "done",
+    "evidence": "src/server/approvals/resource-requests.ts sets decision {mode:'resource-request'} when canDecideRequests(role). src/features/myapprovals/decision-buttons.tsx recorder() has an exhaustive switch over every ApprovalDecision mode (a never-check, so no fallback toast); Reject on a request opens RejectDialog to collect the reason. → src/features/myapprovals/actions.ts decideResourceRequestAction → src/features/requests/actions.ts approveRequestAction / rejectRequestAction (pendingRequest: canDecideRequests, still pending) → src/server/dal/requests.ts approveResourceRequest (task created, audit) / rejectResourceRequest (audit), plus notifications and activity via announce(). Rows of kinds without an inline decision (invoices, RFQ awards, Codex documents) render an empty actions cell and open their page; they show no 'coming soon'. src/features/myapprovals/inbox.tsx renders DecisionButtons only when a.decision && canDecide. Tests: src/features/myapprovals/ch4-decisions.test.ts, myapprovals.test.ts, src/server/approvals/approvals.test.ts. Minor test gap: no test renders every role's inbox and asserts there is no 'coming soon' text.",
+    "gap": ""
+   },
+   {
+    "criterion": "Forced stage changes: approve (keep) / reject (revert to previous stage), audited and notified (lifecycle writer)",
+    "status": "done",
+    "evidence": "src/server/approvals/forced-stage-changes.ts sets decision {mode:'stage', transitionId, fromLabel} for isForcedStageDecider (director, src/domain/forced-stage.ts L-1). decision-buttons.tsx: Reject asks an optional comment and shows the 'reverts to <stage>' notice. → src/features/myapprovals/actions.ts decideForcedStageChangeAction (role, workspace, input checks; StageDecisionError mapping) → src/server/dal/lifecycle.ts decideForcedStageChange: in one transaction, on approve the stage is kept; on reject a 'revert' stage_transitions row is written (revertsTransitionId) and projects.stage is set back, guarded by revertBlocker moved_on/no_previous. validationStatus, validatedBy, validatedAt and decisionComment are stored; writeAudit + recordActivity. Notifications: stageNotices → notifyRequestEvent, to whoever forced the move and the PM. Columns in drizzle/0005_sloppy_talos.sql; TransitionMode 'revert' in src/server/db/codes.ts:73. Tests: src/features/myapprovals/ch4-decisions.test.ts (approve, reject+revert, moved-on refusal, rights). Optional polish: src/features/projects/register-model.ts:142 maps history with forced: h.mode==='forced' and why: h.reason raw. A 'revert' row is not tagged as a revert, the forced row's approved/rejected outcome is not shown, and the default revert reason 'Forced stage change rejected by the portfolio director' stays in English in French (its translation exists in src/i18n/extra/ch4-misc.json but t() is not applied).",
+    "gap": ""
+   },
+   {
+    "criterion": "(Adjacent, outside the listed criteria) Questionnaire answers touching these screens not yet applied",
+    "status": "missing",
+    "evidence": "docs/DECISIONS.md: C-2b = 'Supprimer la saisie d'heures dans Keystone' (Prochaine étape), yet the task sheet Log form (src/features/mywork/task-sheet.tsx ProgressCard → logTaskTimeAction) and the My work 'Log time' primary (src/app/(app)/my/tasks/page.tsx) remain. R-8b @mentions in comments notify (Plus tard): no mention parsing in src/server/dal/tasks.ts addTaskComment. R-8c drag-and-drop on the Board changes status (Plus tard): the Board cards in src/features/mywork/my-work-body.tsx WorkBoard are plain links.",
+    "gap": "Probably belongs to the Cursus/timesheet feature (C-2b) and later work (R-8b, R-8c), not to 'misc'. Listed so they are not lost: confirm the scope with the owner before building, per the 'no new tools without approval' rule."
+   }
+  ],
+  "comingSoonLeft": [
+   "src/features/bom/client-buttons.tsx:54 — fallback toast 'Export list — coming soon' when exportHref is null (bom-view.tsx:266 always passes one, so it is dead in practice; belongs to the exports feature, E-3/X-3)",
+   "src/i18n/extra/myapprovals.json:3 — orphan key 'Approve — coming soon' (unused)",
+   "src/i18n/extra/myapprovals.json:4 — orphan key 'Reject — coming soon' (unused)",
+   "src/i18n/extra/mywork.json:20 — orphan key 'Attach — coming soon' (unused)",
+   "src/i18n/extra/bom.json:14 — orphan key 'Create spares purchase order — coming soon' (unused)",
+   "src/i18n/extra/site.json:15 — orphan key 'Client communication log — coming soon' (unused)",
+   "src/i18n/extra/plan.json:40 — orphan key 'Add a to-do — coming soon' (unused)"
+  ],
+  "tests": "npx vitest run src/features/mywork src/features/site src/features/bom src/features/myapprovals src/server/storage/files.test.ts src/server/approvals/approvals.test.ts src/features/requests src/features/plan/scheduling-actions.test.ts src/server/dal/chapter4-foundation.test.ts → 20 test files, 203 tests, all passed (15.2 s). next typegen was not needed (vitest does not typecheck). Typecheck and lint were not run, to avoid writing tsconfig.tsbuildinfo or cache files in the repo. git status unchanged afterwards."
+ }
+]

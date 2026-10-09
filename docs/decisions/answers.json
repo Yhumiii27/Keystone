@@ -1,0 +1,790 @@
+{
+ "A-10": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:23:15.899Z"
+ },
+ "A-11": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:23:51.467Z"
+ },
+ "A-12": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:24:09.273Z"
+ },
+ "A-13": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:24:56.689Z"
+ },
+ "A-14": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:04:21.242Z"
+ },
+ "A-15": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:04:55.017Z"
+ },
+ "A-1a": {
+  "choice": "discuss",
+  "note": "Je ne suis pas certains de modules et de la gestion qui est faite dans sage 3X.\nGarde cette question car il faut que j'en discute avec le service finance, achat et la logistique.",
+  "updatedAt": "2026-10-09T08:02:22.850Z"
+ },
+ "A-1b": {
+  "choice": "discuss",
+  "note": "De mon point de vue, tout les numéros d'articles PLM sont pris par solidworks 3DX.\nLaisse moi confirmer avec l'ingénierie",
+  "updatedAt": "2026-10-09T08:04:20.201Z"
+ },
+ "A-2": {
+  "choice": "other",
+  "note": "Nous avons plusieurs type de projet et chacun doit voir son \"standard\" que le chef de projet pourra customiser.\nIl nous faudra pour cela créer par type de projet un standard que l'on pourra mettre a jour dans Keystone, qui servira de socle pour le WBS, les budgets, et toutes les autres étapes ainsi que leurs livrables.",
+  "updatedAt": "2026-10-09T08:19:45.236Z"
+ },
+ "A-3": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:19:46.986Z"
+ },
+ "A-4": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:20:52.577Z"
+ },
+ "A-5": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:21:20.061Z"
+ },
+ "A-6": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:30:17.074Z"
+ },
+ "A-7": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:22:04.784Z"
+ },
+ "A-8": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:22:46.808Z"
+ },
+ "A-9": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:30:50.591Z"
+ },
+ "C-1": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:04:31.555Z"
+ },
+ "C-10a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:57:24.063Z"
+ },
+ "C-10b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:57:34.621Z"
+ },
+ "C-2a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:54:14.331Z"
+ },
+ "C-2b": {
+  "choice": "b",
+  "updatedAt": "2026-10-09T08:54:44.425Z"
+ },
+ "C-3": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:04:48.889Z"
+ },
+ "C-4": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:55:00.830Z"
+ },
+ "C-5": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:55:29.315Z"
+ },
+ "C-6": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:56:04.639Z"
+ },
+ "C-7": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:05:11.598Z"
+ },
+ "C-8": {
+  "choice": "discuss",
+  "note": "Il faut que je vois avec les service finance quelles genres de retenue oude garanties nous pouvons avoir ",
+  "updatedAt": "2026-10-09T08:57:21.696Z"
+ },
+ "C-9": {
+  "choice": "b",
+  "updatedAt": "2026-10-09T08:52:54.691Z"
+ },
+ "D-1a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:14:15.840Z"
+ },
+ "D-1b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:14:43.656Z"
+ },
+ "D-2": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:56:18.685Z"
+ },
+ "D-3": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:15:02.464Z"
+ },
+ "D-4": {
+  "choice": "c",
+  "updatedAt": "2026-10-09T09:56:35.076Z"
+ },
+ "D-5": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:56:45.132Z"
+ },
+ "D-6a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:56:50.791Z"
+ },
+ "D-6b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:15:18.456Z"
+ },
+ "D-7a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:15:34.881Z"
+ },
+ "D-7b": {
+  "choice": "discuss",
+  "note": "Ne traite rien pour le moment concernant les imports.",
+  "updatedAt": "2026-10-09T10:23:58.045Z"
+ },
+ "E-1a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:15:46.006Z"
+ },
+ "E-1b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:16:17.310Z"
+ },
+ "E-2a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:16:23.960Z"
+ },
+ "E-2b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:57:02.657Z"
+ },
+ "E-3a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:57:10.591Z"
+ },
+ "E-3b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:57:23.107Z"
+ },
+ "E-4": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:57:59.948Z"
+ },
+ "E-5": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:16:40.011Z"
+ },
+ "E-6": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:58:30.547Z"
+ },
+ "E-7": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:16:49.010Z"
+ },
+ "E-8": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:17:13.960Z"
+ },
+ "E-9": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:59:02.436Z"
+ },
+ "I-1a": {
+  "choice": "discuss",
+  "note": "Cela reste encore a décider avec l'IT et la DSI, je pense que dans un premier temps un serveur cloud indépendant sera utilisé pour commencer le multiuser avec des beta testeurs avant de passer en production, au moment de passer en production il est possible que l'on migre vers Azure ou vers un serveur interne ou même que l'on reste en cloud, je ne sais pas ",
+  "updatedAt": "2026-10-09T08:07:54.768Z"
+ },
+ "I-1b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:07:56.516Z"
+ },
+ "I-2a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:08:05.482Z"
+ },
+ "I-2b": {
+  "choice": "c",
+  "updatedAt": "2026-10-09T08:08:34.850Z"
+ },
+ "I-3a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:25:18.548Z"
+ },
+ "I-3b": {
+  "choice": "discuss",
+  "note": "La connection a sage risque d'être le point le plus bloquant du projet.\nMa proposition est que dans un premier temps nous ferons des extraction automatisées de certaines bases sage et un import automatisé dans keystone. pour la périodicité de ces imports avant la mise en production un import par jour devrait être suffisant pour epprouver notre outil?",
+  "updatedAt": "2026-10-09T08:27:24.272Z"
+ },
+ "I-3c": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:31:06.846Z"
+ },
+ "L-1": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:40:16.762Z"
+ },
+ "L-2": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:40:44.279Z"
+ },
+ "L-3a": {
+  "choice": "discuss",
+  "note": "Il y aura un modèle complet par type de machine, le chef de projet choisiera.\nJe vais devoir te fournir les données standard (WBS, budgets, etc.) par type de machine, l'assistant fera une copie de tout cela que le chef de projet pourra customiser au besoin avant le lancement officiel du projet",
+  "updatedAt": "2026-10-09T08:43:25.528Z"
+ },
+ "L-3b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:43:26.628Z"
+ },
+ "L-4a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:44:05.944Z"
+ },
+ "L-4b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:32:45.328Z"
+ },
+ "L-4c": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:44:29.269Z"
+ },
+ "L-5a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:49:49.942Z"
+ },
+ "L-5b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:50:16.458Z"
+ },
+ "L-6": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:45:07.460Z"
+ },
+ "L-7": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:50:29.641Z"
+ },
+ "L-8": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:50:39.133Z"
+ },
+ "L-9": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:51:01.016Z"
+ },
+ "NEW-CURSUS-1": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:27:45.746Z"
+ },
+ "NEW-CURSUS-2": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:09:38.665Z"
+ },
+ "NEW-CURSUS-3": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:32:03.619Z"
+ },
+ "NEW-CURSUS-4": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:27:59.472Z"
+ },
+ "NEW-CURSUS-5": {
+  "choice": "c",
+  "updatedAt": "2026-10-09T08:28:28.243Z"
+ },
+ "NEW-CURSUS-6": {
+  "choice": "b",
+  "updatedAt": "2026-10-09T08:28:47.191Z"
+ },
+ "NEW-CURSUS-7": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:29:06.158Z"
+ },
+ "NEW-D1-1": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T10:07:50.070Z"
+ },
+ "NEW-D1-2": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T10:07:56.096Z"
+ },
+ "NEW-D2-1": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T10:06:59.741Z"
+ },
+ "NEW-D2-2": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T10:08:10.374Z"
+ },
+ "NEW-D3-1": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T10:07:11.734Z"
+ },
+ "NEW-D3-2": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T10:19:55.596Z"
+ },
+ "NEW-D3-3": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T10:20:22.974Z"
+ },
+ "NEW-D4-1": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T10:07:38.549Z"
+ },
+ "NEW-D4-2": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T10:21:02.025Z"
+ },
+ "NEW-D4-3": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T10:21:09.958Z"
+ },
+ "NEW-D4-4": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T10:21:22.665Z"
+ },
+ "NEW-D4-5": {
+  "choice": "c",
+  "updatedAt": "2026-10-09T10:22:37.850Z"
+ },
+ "NEW-D5-1": {
+  "choice": "b",
+  "updatedAt": "2026-10-09T10:22:00.329Z"
+ },
+ "NEW-D5-2": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T10:23:03.844Z"
+ },
+ "NEW-D5-3": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T10:23:39.727Z"
+ },
+ "NEW-SITE-1": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:17:35.714Z"
+ },
+ "NEW-SITE-2": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:59:18.161Z"
+ },
+ "NEW-SYS-1": {
+  "choice": "other",
+  "note": "Il existe deux forme pour identifier un projet chez nous, le code au format #000 qui est utilisé par l'ensemble des équipes ingénieries et une code dit analytique au format XXX000 qui est lui utilisé par la finance (et donc pas Sage 3X).\nJe dois confirmer cela mais je pense que le numéro projet #000 vient d'un listing que l'on incrémente et que le numéro XXX000 est créé dans Sage et nous est donc imposé. Il faut trouver un moyen de réconcilier les deux et je pense que cela sera plus simple dans la fiche projet de keystone.",
+  "updatedAt": "2026-10-09T08:15:38.869Z"
+ },
+ "NEW-VIGIE-1": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:15:41.004Z"
+ },
+ "P-1": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:33:15.361Z"
+ },
+ "P-10a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:38:32.005Z"
+ },
+ "P-10b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:39:09.930Z"
+ },
+ "P-10c": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:52:39.825Z"
+ },
+ "P-11": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:52:32.457Z"
+ },
+ "P-12": {
+  "choice": "c",
+  "updatedAt": "2026-10-09T08:49:02.433Z"
+ },
+ "P-13": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:39:59.271Z"
+ },
+ "P-14": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:49:12.001Z"
+ },
+ "P-2": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:33:42.077Z"
+ },
+ "P-3": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:33:51.043Z"
+ },
+ "P-4": {
+  "choice": "other",
+  "note": "Le directeur, le CP et le Role Finance doivent pouvoir modifier la page contrat.\n",
+  "updatedAt": "2026-10-09T08:36:27.924Z"
+ },
+ "P-5a": {
+  "choice": "other",
+  "note": "Nous avons une procédure d'achats qui défini les montant et workflow de validation dans Sage. Il faudra que je te communique cette procédure pour que tu définisses les règles dans keystone et ce qui devra être communiqué a sage",
+  "updatedAt": "2026-10-09T08:37:29.455Z"
+ },
+ "P-5b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:45:27.259Z"
+ },
+ "P-5c": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:45:54.117Z"
+ },
+ "P-6a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:46:20.735Z"
+ },
+ "P-6b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:46:58.618Z"
+ },
+ "P-6c": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:47:53.242Z"
+ },
+ "P-7b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:37:59.705Z"
+ },
+ "P-7c": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:48:12.675Z"
+ },
+ "P-7d": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:51:12.493Z"
+ },
+ "P-8a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:38:12.480Z"
+ },
+ "P-8b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:51:24.410Z"
+ },
+ "P-8c": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:51:45.431Z"
+ },
+ "P-9a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:48:17.101Z"
+ },
+ "P-9b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:48:34.775Z"
+ },
+ "Q-1": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:17:57.347Z"
+ },
+ "Q-3a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:18:17.561Z"
+ },
+ "Q-3b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:18:38.713Z"
+ },
+ "Q-4": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:59:39.511Z"
+ },
+ "Q-5": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:18:51.408Z"
+ },
+ "Q-6a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:19:02.929Z"
+ },
+ "Q-6b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:19:08.951Z"
+ },
+ "Q-7": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:13:49.478Z"
+ },
+ "Q-8": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:19:42.461Z"
+ },
+ "Q-9": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:59:54.169Z"
+ },
+ "R-1": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:57:40.739Z"
+ },
+ "R-2": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:05:24.906Z"
+ },
+ "R-3": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:05:55.563Z"
+ },
+ "R-4a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:57:59.179Z"
+ },
+ "R-4b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:58:16.362Z"
+ },
+ "R-5a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:06:04.968Z"
+ },
+ "R-5b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:06:15.793Z"
+ },
+ "R-6a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:58:32.604Z"
+ },
+ "R-6b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:06:25.530Z"
+ },
+ "R-7": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:59:04.141Z"
+ },
+ "R-8a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:06:48.817Z"
+ },
+ "R-8b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:06:55.432Z"
+ },
+ "R-8c": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:07:06.729Z"
+ },
+ "R-9": {
+  "choice": "b",
+  "updatedAt": "2026-10-09T08:53:06.897Z"
+ },
+ "S-1": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:59:19.378Z"
+ },
+ "S-10": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:09:01.756Z"
+ },
+ "S-11": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:09:51.322Z"
+ },
+ "S-12": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:10:18.345Z"
+ },
+ "S-13a": {
+  "choice": "discuss",
+  "updatedAt": "2026-10-09T09:11:05.412Z"
+ },
+ "S-13b": {
+  "choice": "other",
+  "note": "La grille ne doit pas etre modifiable, elle est en cours de définition et te sera donnée par la suite.\nC'est une matrice par role, il faudra donc que tu identifie chaque role de la matrice a une personne de l'équipe projet.",
+  "updatedAt": "2026-10-09T09:12:26.054Z"
+ },
+ "S-2": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:59:53.611Z"
+ },
+ "S-3": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:00:00.796Z"
+ },
+ "S-4": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:53:31.105Z"
+ },
+ "S-5": {
+  "choice": "discuss",
+  "note": "Nous devons demander une confirmation et garder la possibilité d'annulation.",
+  "updatedAt": "2026-10-09T09:08:38.076Z"
+ },
+ "S-6": {
+  "choice": "discuss",
+  "note": "les codes analystiques que sage utilise sont redécoupés en codes NIM, je ferais une extraction pour que tu puisses avoir le détails et ainsi nous pourront attribuer par tache au projet le bon code analytique et le bon code NIM, ces codes NIM devraient aussi être affectés a des budgets. Le découpage des budgets projets doit être revus, nous en discuterons plus tard.",
+  "updatedAt": "2026-10-09T09:03:34.898Z"
+ },
+ "S-7": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:08:44.242Z"
+ },
+ "S-8": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:08:54.092Z"
+ },
+ "S-9a": {
+  "choice": "other",
+  "note": "Nos client aurons acces au planning dans le portail client, l'export au format PDF du planning détaillé et du gantt seront pour le moment suffisant.",
+  "updatedAt": "2026-10-09T09:04:29.706Z"
+ },
+ "S-9b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:54:00.138Z"
+ },
+ "SC-1": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T10:00:22.737Z"
+ },
+ "SC-2": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:19:48.506Z"
+ },
+ "SC-3a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:20:04.845Z"
+ },
+ "SC-3b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:20:16.895Z"
+ },
+ "SC-4a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:20:25.837Z"
+ },
+ "SC-4b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:20:46.887Z"
+ },
+ "SC-5a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:20:51.839Z"
+ },
+ "SC-5b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T10:00:59.548Z"
+ },
+ "SC-6": {
+  "choice": "b",
+  "updatedAt": "2026-10-09T10:01:33.711Z"
+ },
+ "SC-7a": {
+  "choice": "discuss",
+  "note": "je dois me renseigner avant de te repondre",
+  "updatedAt": "2026-10-09T09:56:17.282Z"
+ },
+ "SC-7b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T09:14:00.336Z"
+ },
+ "V-2": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:29:35.058Z"
+ },
+ "V-3a": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:29:55.583Z"
+ },
+ "V-3b": {
+  "choice": "a",
+  "updatedAt": "2026-10-09T08:32:22.102Z"
+ },
+ "X-1": {
+  "choice": "fr_user",
+  "updatedAt": "2026-10-09T10:03:27.215Z"
+ },
+ "X-10": {
+  "choice": "remove",
+  "updatedAt": "2026-10-09T10:05:30.818Z"
+ },
+ "X-11": {
+  "choice": "shared",
+  "updatedAt": "2026-10-09T10:05:43.828Z"
+ },
+ "X-12a": {
+  "choice": "en_labels",
+  "updatedAt": "2026-10-09T10:02:52.599Z"
+ },
+ "X-12b": {
+  "choice": "as_typed",
+  "updatedAt": "2026-10-09T10:06:00.370Z"
+ },
+ "X-13a": {
+  "choice": "mono_labels",
+  "updatedAt": "2026-10-09T10:06:11.178Z"
+ },
+ "X-13b": {
+  "choice": "harmonise",
+  "updatedAt": "2026-10-09T10:06:20.798Z"
+ },
+ "X-14": {
+  "choice": "team",
+  "updatedAt": "2026-10-09T10:06:31.520Z"
+ },
+ "X-15": {
+  "choice": "split",
+  "updatedAt": "2026-10-09T10:03:21.181Z"
+ },
+ "X-16": {
+  "choice": "fix_all",
+  "updatedAt": "2026-10-09T10:06:46.682Z"
+ },
+ "X-2": {
+  "choice": "keep",
+  "updatedAt": "2026-10-09T10:03:48.194Z"
+ },
+ "X-3": {
+  "choice": "view_all",
+  "updatedAt": "2026-10-09T10:01:56.235Z"
+ },
+ "X-4": {
+  "choice": "tablet",
+  "updatedAt": "2026-10-09T10:02:11.049Z"
+ },
+ "X-5": {
+  "choice": "portfolio",
+  "updatedAt": "2026-10-09T10:03:53.649Z"
+ },
+ "X-6a": {
+  "choice": "spec_list",
+  "updatedAt": "2026-10-09T10:02:28.653Z"
+ },
+ "X-6b": {
+  "choice": "mail",
+  "updatedAt": "2026-10-09T10:02:40.237Z"
+ },
+ "X-7": {
+  "choice": "keep",
+  "updatedAt": "2026-10-09T10:04:06.611Z"
+ },
+ "X-8": {
+  "choice": "always",
+  "updatedAt": "2026-10-09T10:04:27.790Z"
+ },
+ "X-9": {
+  "choice": "yes",
+  "updatedAt": "2026-10-09T10:05:02.550Z"
+ }
+}
