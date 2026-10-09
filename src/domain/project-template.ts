@@ -5,12 +5,15 @@
 //                 the phases being those of the Machine types screen (09 §9) — typed projects inherit the template.
 //   Activities    TEMPLATE_ACTIVITIES_PER_PHASE per work package (named after the phase), codes A1010, A1020… (step 10,
 //                 as P6 numbering); the working days between planned start and finish are shared evenly (remainder to
-//                 the first phases); budgets share the cost-category total (without contingency) evenly.
+//                 the first phases) — with no planned finish (L-3b: optional), each activity lasts TEMPLATE_ACTIVITY_DAYS
+//                 and the project's planned finish is the plan's finish; budgets share the cost-category total (without
+//                 contingency) evenly.
 //   Logic         a finish-to-start chain (lag 0) from the first activity to the last.
 //   Dates         computed on the project calendar (holidays included), not rescheduled: the plan changes only at the
 //                 next "Reschedule" (S-1, manual recalculation).
 //   Also          cost categories of the budget step, the ITP plan of the machine type (its systems), the calendar,
-//                 the PM chosen in the wizard, the planned start / finish and the currency.
+//                 the PM chosen in the wizard, the planned start / finish, the currency and the site (L-3b: city and a
+//                 country of the countries table — the zone comes from the country).
 import type { WorkCalendar } from './calendar';
 
 /** Activities created under each phase (the Machine types screen has no activity list yet). */
@@ -23,8 +26,18 @@ export const TEMPLATE_CODE_STEP = 10;
 /** Planned start / finish offered by the wizard (the prototype's static "11 Jan 2027" / "30 Sep 2027"). */
 export const DEFAULT_PLANNED_START = '2027-01-11';
 export const DEFAULT_PLANNED_FINISH = '2027-09-30';
-/** The wizard requires a project name and a client / sponsor (L-3). */
-export const WIZARD_REQUIRED = { name: true, client: true } as const;
+/**
+ * Required fields of the wizard. L-3b (owner's answer "a"): name, client, PM, type, start and location (site city + a
+ * country of the countries table). The planned finish is optional: without it the finish comes from the instantiated plan.
+ * PM and type always have a value in the wizard (a select / a segmented control); the Server Function checks them.
+ */
+export const WIZARD_REQUIRED = { name: true, client: true, pm: true, type: true, start: true, location: true, finish: false } as const;
+/**
+ * Working days of each template activity when the wizard has no planned finish (L-3b). 30 working days (6 weeks) per
+ * phase: the 6 standard phases then span about 9 months, as the prototype's default window (11 Jan → 30 Sep 2027). To be
+ * replaced by the per-phase durations of the owner's standard per machine type (A-2 / L-3a) when it arrives.
+ */
+export const TEMPLATE_ACTIVITY_DAYS = 30;
 /** Planned finish must be after the planned start; the window is capped (typo guard). */
 export const MAX_PROJECT_YEARS = 10;
 
@@ -77,6 +90,20 @@ export function templateActivitiesText(phases: number): string {
 const isIso = (v: unknown): v is string =>
   typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && new Date(v + 'T00:00:00Z').toISOString().slice(0, 10) === v;
 
+/** Wizard window (L-3b): the start is required, the finish optional (validated as a window when given). */
+export function wizardWindowError(start: unknown, finish: unknown): string | null {
+  if (finish == null || finish === '') return isIso(start) ? null : 'Enter the planned start date';
+  return plannedWindowError(start, finish);
+}
+
+/** Site of the wizard (L-3b): a city and a country among `countries`; null when valid, else the English message. */
+export function wizardSiteError(city: unknown, country: unknown, countries: readonly string[]): string | null {
+  if (typeof city !== 'string' || !city.trim()) return 'Enter the site city';
+  if (city.trim().length > 120) return 'The site city is too long';
+  if (typeof country !== 'string' || !countries.includes(country)) return 'Choose the site country among the proposed countries';
+  return null;
+}
+
 /** Validates the planned window; null when valid, else the English message. */
 export function plannedWindowError(start: unknown, finish: unknown): string | null {
   if (!isIso(start) || !isIso(finish)) return 'Enter the planned start and finish dates';
@@ -103,15 +130,16 @@ export function shareDays(total: number, n: number): number[] {
 
 /**
  * Plans the WBS, activities and links of a template. `phases` = standard phases of the machine type, `budgetKeur` =
- * Σ cost categories (no contingency), `calendar` = the project calendar. Blank template (no phase) → empty plan.
+ * Σ cost categories (no contingency), `calendar` = the project calendar, `finish` = the planned finish (null: each
+ * activity lasts TEMPLATE_ACTIVITY_DAYS, L-3b). Blank template (no phase) → empty plan.
  */
-export function instantiateTemplate(input: { phases: readonly string[]; start: string; finish: string; calendar: WorkCalendar; budgetKeur: number }): TemplatePlan {
+export function instantiateTemplate(input: { phases: readonly string[]; start: string; finish: string | null; calendar: WorkCalendar; budgetKeur: number }): TemplatePlan {
   const phases = input.phases.map((p) => p.trim()).filter(Boolean);
   if (!phases.length) return { packages: [], activities: [], links: [], startDate: null, finishDate: null };
   const cal = input.calendar;
   const packages = phases.map((name, i) => ({ code: `1.${i + 1}`, name }));
   const count = phases.length * TEMPLATE_ACTIVITIES_PER_PHASE;
-  const days = shareDays(cal.durationOf(input.start, input.finish), count);
+  const days = input.finish ? shareDays(cal.durationOf(input.start, input.finish), count) : Array.from({ length: count }, () => TEMPLATE_ACTIVITY_DAYS);
   const each = count ? Math.round((input.budgetKeur / count) * 100) / 100 : 0;
   const activities: TemplateActivity[] = [];
   let next = cal.nextWorkDay(input.start);

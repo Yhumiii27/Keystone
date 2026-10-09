@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 import {
   CATEGORY_TYPES, CONTINGENCIES, DAS_LIST, WIZARD_CURRENCIES, isTransitionAllowed, moveError,
 } from '@/domain/lifecycle';
-import { WIZARD_CALENDAR_OPTIONS, WIZARD_REQUIRED, plannedWindowError } from '@/domain/project-template';
+import { WIZARD_CALENDAR_OPTIONS, WIZARD_REQUIRED, wizardSiteError, wizardWindowError } from '@/domain/project-template';
 import { costType, machineType, stage as stageCodec, type MachineTypeCode, type StageCode } from '@/server/db/codes';
 import { listStages } from '@/server/dal/lifecycle';
 import {
@@ -111,9 +111,12 @@ export interface NewProjectDraft {
   cal: string;
   /** Project manager, person id (L-3). */
   pm?: string | null;
-  /** Planned window, ISO dates (L-3). */
+  /** Planned window, ISO dates (L-3). The finish is optional (L-3b): '' / absent → taken from the instantiated plan. */
   start?: string;
-  finish?: string;
+  finish?: string | null;
+  /** Site (L-3b, required): city, and a country of the countries table (EN name). */
+  city?: string;
+  country?: string;
 }
 
 export type CreateProjectResult =
@@ -124,17 +127,21 @@ const INVALID_SETUP = 'Invalid project setup';
 
 /**
  * npCreate (3969): creates the project at Initiative with the next number, its analytic code and cost categories, and
- * instantiates the machine-type template (chapter 4, A-2 / L-3): name and client required, PM among the wizard's
- * project managers, a valid planned window, calendar and currency stored.
+ * instantiates the machine-type template (chapter 4, A-2 / L-3): required name, client, PM (among the wizard's project
+ * managers), type, planned start and location (L-3b: site city + a country of the countries table; zone from the country);
+ * the planned finish is optional and comes from the instantiated plan when absent; calendar and currency stored.
  */
 export async function createProjectAction(draft: NewProjectDraft): Promise<CreateProjectResult> {
   const viewer = await getViewer();
   if (!CREATE_PROJECT_ROLES.includes(viewer.role)) return { ok: false, error: 'You are not allowed to create projects' };
   if (WIZARD_REQUIRED.name && !str(draft?.name)) return { ok: false, error: 'Project name is required' };
   if (WIZARD_REQUIRED.client && !str(draft?.client)) return { ok: false, error: 'Client / sponsor is required' };
-  const windowError = plannedWindowError(draft?.start, draft?.finish);
+  const finish = typeof draft?.finish === 'string' && draft.finish ? draft.finish : null;
+  const windowError = wizardWindowError(draft?.start, finish);
   if (windowError) return { ok: false, error: windowError };
   const setup = await getNewProjectSetup({ name: viewer.name, role: viewer.role });
+  const siteError = WIZARD_REQUIRED.location ? wizardSiteError(draft?.city, draft?.country, setup.countries) : null;
+  if (siteError) return { ok: false, error: siteError };
   const das = (DAS_LIST as readonly string[]).includes(draft?.das) ? draft.das : null;
   const mt = typeof draft?.mt === 'string' && setup.machineTypes.includes(draft.mt) ? draft.mt : null;
   const cur = (WIZARD_CURRENCIES as readonly string[]).includes(draft?.cur) ? (draft.cur as 'EUR' | 'USD') : null;
@@ -143,7 +150,7 @@ export async function createProjectAction(draft: NewProjectDraft): Promise<Creat
   const template = draft?.template === 'blank' || draft?.template === mt ? draft.template : null;
   const cats = Array.isArray(draft?.cats) && draft.cats.length <= 50 ? draft.cats : null;
   const pm = draft?.pm == null ? setup.defaultManagerId : setup.managers.some((m) => m.id === draft.pm) ? draft.pm : undefined;
-  if (pm === undefined) return { ok: false, error: 'Choose the project manager among the proposed people' };
+  if (pm === undefined || (WIZARD_REQUIRED.pm && !pm)) return { ok: false, error: 'Choose the project manager among the proposed people' };
   if (!das || !mt || !cur || cont == null || !cal || !template || !cats) return { ok: false, error: INVALID_SETUP };
   const mtCode = (machineType.labels.includes(mt) ? machineType.code(mt) : mt) as MachineTypeCode;
   const categories = [];
@@ -166,7 +173,8 @@ export async function createProjectAction(draft: NewProjectDraft): Promise<Creat
       calendar: cal,
       pmPersonId: pm,
       plannedStart: draft.start,
-      plannedFinish: draft.finish,
+      plannedFinish: finish,
+      site: typeof draft.city === 'string' && typeof draft.country === 'string' ? { city: draft.city.trim().slice(0, 120), country: draft.country } : null,
       actorName: viewer.name,
     });
     refresh();

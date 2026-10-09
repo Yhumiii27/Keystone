@@ -1,5 +1,5 @@
 // New project wizard steps rendered (static markup) with the chapter-4 fields (A-2 / L-3): PM select, planned dates,
-// required name / client gating "Next", the machine-type template copy items, typed cost categories, the real calendar
+// required name / client / site (L-3b) gating "Next", the machine-type template copy items, typed cost categories, the real calendar
 // working time and holidays. The dialog shell is replaced by its children (portals need a DOM).
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 vi.mock('next/navigation', () => ({ usePathname: () => '/portfolio/projects', useRouter: () => ({ push() {}, replace() {}, refresh() {} }), useSearchParams: () => new URLSearchParams() }));
@@ -35,13 +35,21 @@ describe('New project wizard (chapter 4)', () => {
 
   it('step 1: required name and client gate "Next"; PM select with the viewer; planned dates', () => {
     expect(render(1, DEFAULT_DRAFT)).toContain('data-can-advance="false"');
-    const filled = { ...DEFAULT_DRAFT, name: 'Lab line', client: 'Logistics BU' };
-    expect(basicsComplete(filled)).toBe(true);
+    // L-3b: the site (city + a country of the list) is required too; the planned finish is optional.
+    expect(basicsComplete({ ...DEFAULT_DRAFT, name: 'Lab line', client: 'Logistics BU' }, setup.countries)).toBe(false);
+    const filled = { ...DEFAULT_DRAFT, name: 'Lab line', client: 'Logistics BU', city: 'Lyon', country: 'France', finish: '2027-09-30' };
+    expect(basicsComplete(filled, setup.countries)).toBe(true);
+    expect(basicsComplete({ ...filled, finish: '' }, setup.countries)).toBe(true);
+    expect(basicsComplete({ ...filled, country: 'Atlantis' }, setup.countries)).toBe(false);
     const m = render(1, filled);
     expect(m).toContain('data-can-advance="true"');
     expect(m).toContain('type="date"');
     expect(m).toContain('value="2027-01-11"');
     expect(m).toMatch(/<option value="[^"]+" selected="">R\. Aubert<\/option>/);
+    expect(setup.countries).toContain('France');
+    expect(m).toMatch(/<option value="France" selected="">France<\/option>/);
+    expect(text(render(1, filled, 'fr'))).toContain('Pays du site');
+    expect(text(render(1, { ...filled, finish: '' }, 'fr'))).toContain('Facultative — tirée du planning si vide');
     expect(render(1, { ...filled, finish: '2026-12-01' })).toContain('data-can-advance="false"');
     expect(text(render(1, { ...filled, finish: '2026-12-01' }, 'fr'))).toContain('La fin prévue doit être postérieure au début prévu');
   });

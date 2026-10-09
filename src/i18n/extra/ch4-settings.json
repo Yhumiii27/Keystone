@@ -30,5 +30,13 @@
   "Settings holidays": "Fériés des paramètres",
   "Holidays are worked": "Jours fériés travaillés",
   "Project created": "Projet créé",
-  "Unknown project manager": "Chef de projet inconnu"
+  "Unknown project manager": "Chef de projet inconnu",
+  "Site city": "Ville du site",
+  "Site country": "Pays du site",
+  "Choose a country": "Choisissez un pays",
+  "Optional — taken from the plan when empty": "Facultative — tirée du planning si vide",
+  "Enter the planned start date": "Saisissez la date de début prévue",
+  "Enter the site city": "Saisissez la ville du site",
+  "The site city is too long": "La ville du site est trop longue",
+  "Choose the site country among the proposed countries": "Choisissez le pays du site parmi les pays proposés"
 }

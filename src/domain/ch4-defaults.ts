@@ -111,4 +111,6 @@ export function fileSizeText(bytes: number): string {
 // ── A-13 health, A-14 Settings, A-2 / L-3 wizard (settings feature) — defined next to their logic, re-exported here ──
 export { DEFAULT_HEALTH_THRESHOLDS, HEALTH_CPI_CLAMP } from './health';
 export { CUSTOM_STATUSES_ALLOWED, REQUIRED_STAGES, SETTINGS_COST_TYPE, SETTINGS_EDIT_ROLES, removalModeOf } from './settings-rules';
-export { DEFAULT_PLANNED_FINISH, DEFAULT_PLANNED_START, TEMPLATE_ACTIVITIES_PER_PHASE, TEMPLATE_LINK, WIZARD_REQUIRED } from './project-template';
+export {
+  DEFAULT_PLANNED_FINISH, DEFAULT_PLANNED_START, TEMPLATE_ACTIVITIES_PER_PHASE, TEMPLATE_ACTIVITY_DAYS, TEMPLATE_LINK, WIZARD_REQUIRED,
+} from './project-template';

@@ -1,8 +1,9 @@
 'use client';
 // New project wizard (docs/spec/01 §10, 03 §5.8; template 2972–3056, npVals 3946–3969): 4 steps — Basics,
 // Structure, Budget, Schedule — over a draft kept by <NewProjectLauncher>.
-// Chapter 4 (A-2 / L-3, src/domain/project-template.ts): name and client are required (Next stays disabled until they
-// are filled and the planned window is valid); the PM is chosen among the project managers (the viewer by default when
+// Chapter 4 (A-2 / L-3, src/domain/project-template.ts): name, client, planned start and the site (L-3b: city + a
+// country of the countries table) are required — Next stays disabled until they are filled; the planned finish is
+// optional (empty → taken from the instantiated plan) and validated as a window when given; the PM is chosen among the project managers (the viewer by default when
 // they are one); planned start / finish are dates; the templates are the machine types of the Machine types screen and
 // creation instantiates them (work packages, activities, FS links, cost categories, ITP plan); the type of a cost
 // category is a real choice and "Add category" offers Settings › Cost categories; the calendar defaults to the machine
@@ -21,7 +22,7 @@ import {
   wizardClientCode, wizardTotal, wizardTotalText, type ProjectIdentity, type WizardCurrency,
 } from '@/domain/lifecycle';
 import {
-  DEFAULT_PLANNED_FINISH, DEFAULT_PLANNED_START, WIZARD_CALENDAR_OPTIONS, holidaysText, plannedWindowError, templateActivitiesText, templateWbsText,
+  DEFAULT_PLANNED_START, WIZARD_CALENDAR_OPTIONS, holidaysText, templateActivitiesText, templateWbsText, wizardSiteError, wizardWindowError,
   workingTimeText,
 } from '@/domain/project-template';
 import { useI18n } from '@/i18n/client';
@@ -55,14 +56,17 @@ export interface WizardDraft {
   cal: CalendarCode | null;
   /** Person id of the project manager. */
   pm: string | null;
-  /** Planned window, ISO dates. */
+  /** Planned window, ISO dates; finish '' = taken from the instantiated plan (L-3b). */
   start: string;
   finish: string;
+  /** Site (L-3b): city and country (EN name of the countries table). */
+  city: string;
+  country: string;
 }
 
 export const DEFAULT_DRAFT: WizardDraft = {
   name: '', client: '', das: '2', mt: 'EMP', cur: 'EUR', template: 'EMP', cats: null, cont: 5, cal: null, pm: null,
-  start: DEFAULT_PLANNED_START, finish: DEFAULT_PLANNED_FINISH,
+  start: DEFAULT_PLANNED_START, finish: '', city: '', country: '',
 };
 
 const BLANK: WizardTemplate = {
@@ -80,8 +84,9 @@ export const draftCalendar = (setup: NewProjectSetup, d: WizardDraft): CalendarC
 /** Project manager of the draft (person id). */
 export const draftManager = (setup: NewProjectSetup, d: WizardDraft): string | null => d.pm ?? setup.defaultManagerId;
 
-/** Step 1 is complete: name and client typed (L-3), planned window valid. */
-export const basicsComplete = (d: WizardDraft) => !!d.name.trim() && !!d.client.trim() && !plannedWindowError(d.start, d.finish);
+/** Step 1 is complete: name and client typed (L-3), planned start (and window) valid, site city and country chosen (L-3b). */
+export const basicsComplete = (d: WizardDraft, countries?: readonly string[]) =>
+  !!d.name.trim() && !!d.client.trim() && !wizardWindowError(d.start, d.finish) && !wizardSiteError(d.city, d.country, countries ?? (d.country ? [d.country] : []));
 
 /** NP_TEMPLATES.find(id) || NP_TEMPLATES[0]. */
 export const templateOf = (setup: NewProjectSetup, id: string): WizardTemplate =>
@@ -121,8 +126,13 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
   const calLabel = WIZARD_CALENDAR_OPTIONS.find((o) => o.value === cal)?.label ?? cal;
   const pm = draftManager(setup, draft);
   const manager = setup.managers.find((m) => m.id === pm);
-  const windowError = plannedWindowError(draft.start, draft.finish);
-  const canAdvance = step !== 1 || basicsComplete(draft);
+  const windowError = wizardWindowError(draft.start, draft.finish);
+  const canAdvance = step !== 1 || basicsComplete(draft, setup.countries);
+  // Typing a known city fills its country (CITY_COUNTRY); the country stays editable.
+  const setCity = (city: string) => {
+    const known = setup.cities.find((c) => c.name.toLowerCase() === city.trim().toLowerCase());
+    onDraft(known && !draft.country ? { city, country: known.country } : { city });
+  };
   // "Add category": the next Settings › Cost category not used yet (A-14), else "New category · Labor · 0".
   const nextSettingsCategory = setup.settingsCategories.find((c) => {
     const names = [c.name, t(c.name)].map((n) => n.toLowerCase());
@@ -229,7 +239,11 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
               <Input id={`${id}-start`} type="date" value={draft.start} onChange={(e) => onDraft({ start: e.target.value })} required aria-required />
             </div>
           </Field>
-          <Field label={t('Planned finish')} htmlFor={`${id}-finish`} required hint={windowError && draft.start && draft.finish ? t(windowError) : undefined}>
+          <Field
+            label={t('Planned finish')}
+            htmlFor={`${id}-finish`}
+            hint={windowError && draft.start && draft.finish ? t(windowError) : t('Optional — taken from the plan when empty')}
+          >
             <div className={w.dateRow}>
               <CalendarBlank className={w.dateIcon} aria-hidden />
               <Input
@@ -238,11 +252,38 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
                 value={draft.finish}
                 min={draft.start || undefined}
                 onChange={(e) => onDraft({ finish: e.target.value })}
-                required
-                aria-required
-                aria-invalid={!!windowError || undefined}
+                aria-invalid={(!!windowError && !!draft.finish) || undefined}
               />
             </div>
+          </Field>
+          <Field label={t('Site city')} htmlFor={`${id}-city`} required>
+            <Input
+              id={`${id}-city`}
+              value={draft.city}
+              onChange={(e) => setCity(e.target.value)}
+              list={`${id}-cities`}
+              placeholder={t('Le Havre')}
+              maxLength={120}
+              required
+              aria-required
+            />
+            <datalist id={`${id}-cities`}>
+              {setup.cities.map((c) => (
+                <option key={c.name} value={c.name}>
+                  {t(c.country)}
+                </option>
+              ))}
+            </datalist>
+          </Field>
+          <Field label={t('Site country')} htmlFor={`${id}-country`} required>
+            <Select
+              id={`${id}-country`}
+              value={draft.country}
+              onChange={(e) => onDraft({ country: e.target.value })}
+              required
+              aria-required
+              options={[{ value: '', label: t('Choose a country') }, ...setup.countries.map((c) => ({ value: c, label: t(c) }))]}
+            />
           </Field>
         </div>
       )}

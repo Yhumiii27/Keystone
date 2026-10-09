@@ -21,8 +21,8 @@ import {
 } from '@/server/db/codes';
 import { recordActivity, writeAudit } from '@/server/db/helpers';
 import {
-  activities, activityLinks, clients, costCategories, itpPlans, machineTypeCostCategories, machineTypeItpSystems, machineTypePhases, machineTypes, persons,
-  projectTemplates, projects, stageDeliverableChecks, stageDeliverableDefs, wbsNodes,
+  activities, activityLinks, cities, clients, costCategories, countries, itpPlans, machineTypeCostCategories, machineTypeItpSystems, machineTypePhases, machineTypes,
+  persons, projectSites, projectTemplates, projects, stageDeliverableChecks, stageDeliverableDefs, wbsNodes,
 } from '@/server/db/schema';
 import { loadWorkCalendars } from './calendars';
 import { listStageHistory, listStages, recordStageChange, setStageDeliverable, type StageHistoryRow, type StageInfo } from './lifecycle';
@@ -181,6 +181,9 @@ export interface NewProjectSetup {
   defaultManagerId: string | null;
   /** Settings › Cost categories offered by step 3's "Add category" (A-14), with their type label. */
   settingsCategories: { name: string; type: string }[];
+  /** L-3b site: the countries of the countries table (EN names, in order) and the known cities with their country. */
+  countries: string[];
+  cities: { name: string; country: string }[];
 }
 
 const templateId = (code: string) => (code === 'blank' ? 'blank' : machineType.isCode(code) ? machineType.label(code) : code);
@@ -199,7 +202,7 @@ async function managerOptions(q: Pick<Awaited<ReturnType<typeof getDb>>, 'select
 /** Wizard reference data and numbering inputs. `viewerName` = the viewer (default PM when they are one). */
 export async function getNewProjectSetup(viewer?: { name: string; role: string }): Promise<NewProjectSetup> {
   const db = await getDb();
-  const [blankTpl, tpls, mts, phases, cats, itp, numbers, clientCodes, managers, settingsCats] = await Promise.all([
+  const [blankTpl, tpls, mts, phases, cats, itp, numbers, clientCodes, managers, settingsCats, countryRows, cityRows] = await Promise.all([
     db.select().from(projectTemplates).where(eq(projectTemplates.code, 'blank')),
     db.select().from(projectTemplates).orderBy(asc(projectTemplates.sortOrder)),
     db.select().from(machineTypes).where(eq(machineTypes.active, true)).orderBy(asc(machineTypes.sortOrder)),
@@ -210,6 +213,8 @@ export async function getNewProjectSetup(viewer?: { name: string; role: string }
     getClientCodes(),
     managerOptions(db),
     costCategoryOptions(db),
+    db.select({ name: countries.name }).from(countries).orderBy(asc(countries.sortOrder)),
+    db.select({ name: cities.name, country: cities.countryName }).from(cities).orderBy(asc(cities.name)),
   ]);
   const blank = blankTpl[0];
   const templates: WizardTemplate[] = [
@@ -244,6 +249,8 @@ export async function getNewProjectSetup(viewer?: { name: string; role: string }
     managers,
     defaultManagerId: me?.id ?? fallback?.id ?? managers[0]?.id ?? null,
     settingsCategories: settingsCats.filter((c) => c.type !== 'reserve').map((c) => ({ name: c.label, type: costType.label(c.type) })),
+    countries: countryRows.map((c) => c.name),
+    cities: cityRows,
   };
 }
 
@@ -262,9 +269,19 @@ export interface WizardCreateInput {
   calendar: CalendarCode;
   /** Project manager (person id); default the prototype's S. Perrin. */
   pmPersonId?: string | null;
-  /** Planned window (ISO); defaults 11 Jan 2027 → 30 Sep 2027. */
+  /**
+   * Planned window (ISO). Start: default 11 Jan 2027. Finish: undefined → the prototype's 30 Sep 2027; null → taken from the
+   * instantiated plan (L-3b: the wizard's planned finish is optional — each template activity then lasts
+   * TEMPLATE_ACTIVITY_DAYS; a blank template has no plan, so no planned finish: "—").
+   */
   plannedStart?: string;
-  plannedFinish?: string;
+  plannedFinish?: string | null;
+  /**
+   * Site (L-3b): city and a country of the countries table; the zone comes from the country (countries.zoneCode).
+   * Coordinates are copied from an existing site of the same city and country (the only coordinate source Keystone has,
+   * no geocoding service); else they stay null and the world map counts the project "without location".
+   */
+  site?: { city: string; country: string } | null;
   /** Author of the audit row and activity event. */
   actorName?: string;
 }
@@ -287,7 +304,8 @@ export interface CreatedProject extends ProjectIdentity {
  * register, with the chosen PM, planned window, calendar, currency and contingency, stores the wizard's cost categories
  * ("C01"…; actual and committed 0, forecast = budget) and instantiates the machine-type template (A-2): WBS root + one
  * work package per phase, the template activities chained finish-to-start on the project calendar, and the ITP plan of
- * the machine type. Validation and permission checks belong to the calling Server Function.
+ * the machine type, and the site (L-3b; zone from the country). Validation and permission checks belong to the calling
+ * Server Function.
  */
 export async function createWizardProject(input: WizardCreateInput): Promise<CreatedProject> {
   const db = await getDb();
@@ -296,9 +314,8 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
   const cats = input.categories.map((c) => ({ ...c, name: c.name.trim() || 'New category', budget: Number.isFinite(c.budget) ? c.budget : 0 }));
   const budget = wizardTotal(cats, input.contingencyPct);
   const plannedStart = input.plannedStart ?? DEFAULT_PLANNED_START;
-  const plannedFinish = input.plannedFinish ?? DEFAULT_PLANNED_FINISH;
+  const askedFinish = input.plannedFinish === undefined ? DEFAULT_PLANNED_FINISH : input.plannedFinish;
   const startM = monthOfIso(plannedStart);
-  const finishM = monthOfIso(plannedFinish);
   return db.transaction(async (tx) => {
     const [existing, [registered], [defaultPm], [{ min }], tplRows, phaseRows, itpRows, calendars] = await Promise.all([
       tx.select({ code: projects.code, number: projects.number, analytic: projects.analyticCode }).from(projects),
@@ -314,6 +331,25 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
         : tx.select({ name: machineTypeItpSystems.name }).from(machineTypeItpSystems).where(eq(machineTypeItpSystems.machineTypeCode, input.templateCode)),
       loadWorkCalendars(null, tx),
     ]);
+    // A-2: plan the machine-type template first — without a planned finish, the plan gives it (L-3b).
+    const cal = calendars[input.calendar] ?? new WorkCalendar(BUILTIN_CALENDAR_BY_CODE[input.calendar] ?? BUILTIN_CALENDAR_BY_CODE.standard_5x8);
+    const plan = instantiateTemplate({
+      phases: phaseRows.map((p) => p.name), start: plannedStart, finish: askedFinish, calendar: cal, budgetKeur: cats.reduce((a, c) => a + c.budget, 0),
+    });
+    const plannedFinish = askedFinish ?? plan.finishDate;
+    const finishM = plannedFinish ? monthOfIso(plannedFinish) : null;
+    let site: { city: string; countryName: string; lat: number | null; lng: number | null } | null = null;
+    if (input.site) {
+      const city = input.site.city.trim();
+      const [country] = await tx.select({ name: countries.name }).from(countries).where(eq(countries.name, input.site.country));
+      if (!city || !country) throw new Error('Unknown site country');
+      const [known] = await tx
+        .select({ lat: projectSites.lat, lng: projectSites.lng })
+        .from(projectSites)
+        .where(and(sql`lower(${projectSites.city}) = lower(${city})`, eq(projectSites.countryName, country.name), isNotNull(projectSites.lat), isNotNull(projectSites.lng)))
+        .limit(1);
+      site = { city, countryName: country.name, lat: known?.lat ?? null, lng: known?.lng ?? null };
+    }
     let pmId = defaultPm?.id ?? null;
     if (input.pmPersonId) {
       const [p] = await tx.select({ id: persons.id }).from(persons).where(eq(persons.id, input.pmPersonId));
@@ -336,7 +372,7 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
       .values({
         code: id.code, number: id.number, shortCode: id.code.slice(0, 3), name, clientId, pmPersonId: pmId,
         stage: 'initiative', das: input.das, machineTypeCode: input.machineType, analyticCode: id.analytic,
-        startText: startM.text, finishText: finishM.text, startMonth: startM.month, finishMonth: finishM.month,
+        startText: startM.text, finishText: finishM?.text ?? '—', startMonth: startM.month, finishMonth: finishM?.month ?? null,
         plannedStartDate: plannedStart, plannedFinishDate: plannedFinish,
         budgetKeur: budget, actualKeur: 0, progress: 0, spi: 1, isNew: true,
         currency: input.currency, calendar: input.calendar, contingencyPct: input.contingencyPct,
@@ -344,6 +380,8 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
         templateCode: tplRows.length ? input.templateCode : null, sortOrder: min - 1,
       })
       .returning({ id: projects.id });
+    // L-3b: the site (zone from the country — no zone override).
+    if (site) await tx.insert(projectSites).values({ projectId, ...site, zoneOverride: null });
     if (cats.length)
       await tx.insert(costCategories).values(
         cats.map((c, i) => ({
@@ -352,11 +390,7 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
         })),
       );
 
-    // A-2: instantiate the machine-type template (blank → no WBS: the project shows the planning empty states).
-    const cal = calendars[input.calendar] ?? new WorkCalendar(BUILTIN_CALENDAR_BY_CODE[input.calendar] ?? BUILTIN_CALENDAR_BY_CODE.standard_5x8);
-    const plan = instantiateTemplate({
-      phases: phaseRows.map((p) => p.name), start: plannedStart, finish: plannedFinish, calendar: cal, budgetKeur: cats.reduce((a, c) => a + c.budget, 0),
-    });
+    // A-2: write the instantiated template (blank → no WBS: the project shows the planning empty states).
     if (plan.packages.length) {
       const [root] = await tx
         .insert(wbsNodes)
@@ -404,7 +438,7 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
       : [];
     const who = { actorName: actor?.full ?? actorName, actorPersonId: actor?.id ?? null };
     const tplText = input.templateCode === 'blank' ? 'blank' : `${templateId(input.templateCode)} · ${plan.packages.length} work packages · ${plan.activities.length} activities`;
-    await writeAudit(tx, { ...who, objectRef: id.code, change: `project created · ${name} · template ${tplText} · ${cats.length} cost categories`, area: 'Projects', entityType: 'project', entityId: projectId, projectId });
+    await writeAudit(tx, { ...who, objectRef: id.code, change: `project created · ${name} · template ${tplText} · ${cats.length} cost categories${site ? ` · site ${site.city}, ${site.countryName}` : ''}`, area: 'Projects', entityType: 'project', entityId: projectId, projectId });
     await recordActivity(tx, { ...who, text: `${id.code} · ${name} created at Initiative`, kind: 'change', projectId });
     return { ...id, name, budget, workPackages: plan.packages.length, activities: plan.activities.length, links: plan.links.length, itpPlan };
   });
