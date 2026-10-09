@@ -1,6 +1,7 @@
 // Shared helpers of the export providers (chapter 4, exports feature): column / sheet builders, a "Key figures" sheet for
 // KPI tiles, parsing of the display strings some view models carry ("4 800 k€", "64 %", "0.90") back into numbers, EN date
 // strings → ISO, the project header of PDF documents and the URL parameters a screen reads. Pure (no DB access).
+import type { Lang } from '@/i18n/translate';
 import type { ColumnType, CellValue, ExportColumn, ExportContext, ExportSheet, PdfDocument } from '../types';
 
 /** A column: `col('budget', t('Budget'), 'money_keur')`. */
@@ -127,3 +128,9 @@ export function monthIso(m: number): string {
   const day = Math.min(28, 1 + Math.round((m - whole) * 27));
   return `${y}-${String(mo + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
+
+/** An index (SPI, CPI) for a PDF tile in the viewer's language: "0.90" / "0,90". */
+export const ratioText = (v: number, lang: Lang) => new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+
+/** Working days for a PDF tile in the viewer's language: "−27 d" / "−27 j" (U+2212 minus, as the screens write it). */
+export const daysText = (v: number, lang: Lang) => `${v < 0 ? '−' : ''}${Math.abs(v)} ${lang === 'fr' ? 'j' : 'd'}`;

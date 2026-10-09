@@ -124,4 +124,14 @@ describe('client portal render', () => {
     expect(x).toContain('No milestone recorded for this project');
     expect(text(await client('EWA-051', 'decisions', 'en', NONE))).toContain('Nothing waiting for you');
   });
+
+  it('"Schedule" tab (S-9a): read-only summary Gantt and milestones, the Gantt PDF, no owners; empty state without a schedule', async () => {
+    const m = await client('HLT-026', 'planning', 'fr', NONE);
+    const x = text(m);
+    for (const s of ['Planning — référence vs prévision', 'Fin prévisionnelle', 'Lot de travaux', 'Jalons', 'Télécharger le PDF']) expect(x).toContain(s);
+    expect(x).not.toContain('R. Aubert');
+    // Only the export button: no edit control on this tab.
+    expect(m.match(/<button/g)?.length).toBe(1);
+    expect(text(await client('EWA-051', 'planning', 'en', NONE))).toContain('No schedule recorded for this project');
+  });
 });

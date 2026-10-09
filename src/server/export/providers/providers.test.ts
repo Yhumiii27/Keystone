@@ -2,6 +2,7 @@
 // its global table) for the portfolio director as a real Excel workbook and a CSV; the documents (purchase order, goods
 // receipt, account statement, status report, PV de réception) and the PDF reports carry their key figures; rights follow
 // the screens (masked rates, client restricted to its organisation's projects).
+import ExcelJS from 'exceljs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PERSONA_BY_ROLE } from '@/config/personas';
 import { SCREENS, type RoleKey, type ScreenId } from '@/config/screens';
@@ -49,6 +50,27 @@ describe('every screen has an export provider', () => {
     const c = await runExport(ctx, 'csv');
     expect(csvLines(c.body).length).toBeGreaterThanOrEqual(1);
     expect(formatsOf(getExportProvider(screen))).toContain('xlsx');
+  }, 30_000);
+
+  // A masked-rate role (member: no hourly rates, no premium multipliers) — every screen, rates left out of every sheet.
+  it.each(SCREENS.map((s) => s.id))('%s: Excel opens without rate columns for a masked-rate role (member)', async (screen) => {
+    const ctx = await ctxOf(screen, 'member', queryOf(screen));
+    expect(ctx.ratesMasked).toBe(true);
+    const x = await runExport(ctx, 'xlsx');
+    expect(Buffer.from(x.body.subarray(0, 2)).toString('latin1')).toBe('PK');
+    const sheets = await readXlsx(x.body);
+    expect(sheets.at(-1)!.name).toBe('Export');
+    for (const sh of sheets) for (const h of ['Hourly rate', 'Hourly rate (€)', 'Multiplier']) expect(sh.rows[0] ?? [], `${screen} · ${sh.name}`).not.toContain(h);
+  }, 30_000);
+
+  // A client passing another organisation's project on a global screen gets its own project's figures instead.
+  it.each(SCREENS.filter((s) => s.scope !== 'project').map((s) => s.id))('%s: a client’s ?code=<other organisation> leaks nothing', async (screen) => {
+    const q = [queryOf(screen), 'code=NDC-031'].filter(Boolean).join('&');
+    const sheets = await sheetsOf(screen, 'client', q);
+    for (const sh of sheets) for (const r of sh.rows) for (const c of r) expect(String(c ?? ''), `${screen} · ${sh.name}`).not.toMatch(/NDC-031|EWA-051|\bNDC\b/);
+    // Same figures as for the client's own project (labour cost, NCR counts, home tiles…): the foreign code is ignored.
+    const own = await sheetsOf(screen, 'client', [queryOf(screen), 'code=HLT-026'].filter(Boolean).join('&'));
+    expect(sheets.slice(0, -1)).toEqual(own.slice(0, -1));
   }, 30_000);
 
   it('the header menu offers exactly the formats of each provider (PDF only where there is a report)', () => {
@@ -145,6 +167,17 @@ describe('rights', () => {
     expect(own[0].name).toBe('Invoices');
   });
 
+  it('a client sees only its organisation’s projects in the machine-type and ECO "Projects" columns', async () => {
+    const own = /^(HLT|PRS|QFR)-/;
+    const [mt] = await sheetsOf('mtypes', 'client', '');
+    const [mtd] = await sheetsOf('mtypes', 'director', '');
+    const codes = (rows: (string | number | boolean | null)[][]) => col(rows, 'Projects').flatMap((v) => String(v ?? '').split(' · ').filter(Boolean));
+    expect(codes(mtd.rows).some((c) => !own.test(c))).toBe(true);
+    expect(codes(mt.rows).every((c) => own.test(c))).toBe(true);
+    const [eco] = await sheetsOf('eco', 'client', '');
+    expect(codes(eco.rows).every((c) => own.test(c) || /^(HLT|PRS|QFR)$/.test(c))).toBe(true);
+  });
+
   it('requests: the viewer’s own unless the screen shows them all', async () => {
     const [d] = await sheetsOf('requests', 'director', '');
     const [pm] = await sheetsOf('requests', 'pm', '');
@@ -153,7 +186,68 @@ describe('rights', () => {
   });
 });
 
+describe('typed columns (real dates and percentages in Excel)', () => {
+  const cellsOf = async (screen: ScreenId, query: string, sheetName: string, header: string) => {
+    const x = await runExport(await ctxOf(screen, 'director', query), 'xlsx');
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load(Buffer.from(x.body) as unknown as ExcelJS.Buffer);
+    const ws = book.worksheets.find((w) => w.name === sheetName)!;
+    const i = (ws.getRow(1).values as unknown[]).indexOf(header);
+    return ws.getColumn(i).values.slice(2).filter((v) => v != null);
+  };
+  it('requests start / due / sent, my projects milestone and finish, client milestones are dates; weights share is a percent', async () => {
+    for (const h of ['Start date', 'Due', 'Sent']) expect((await cellsOf('requests', '', 'Resource requests', h)).every((v) => v instanceof Date), h).toBe(true);
+    const ms = await cellsOf('myprojects', '', 'My projects', 'Milestone date');
+    expect(ms.length).toBeGreaterThan(0);
+    expect(ms.every((v) => v instanceof Date)).toBe(true);
+    expect((await cellsOf('myprojects', '', 'My projects', 'Forecast finish')).some((v) => v instanceof Date)).toBe(true);
+    for (const h of ['Baseline', 'Forecast']) expect((await cellsOf('client', 'code=HLT-026', 'Milestones', h)).every((v) => v instanceof Date), h).toBe(true);
+    const share = await cellsOf('portfolio', '', 'Weights', 'Share');
+    expect(share.length).toBeGreaterThan(0);
+    expect(share.every((v) => typeof v === 'number' && v >= 0 && v <= 1)).toBe(true);
+  });
+});
+
 describe('PDF documents', () => {
+  it('plan: the detailed plan (landscape) with the WBS rows and activities; schedule: the Gantt with bars and milestones', async () => {
+    const p = await pdfOf('plan', 'director', 'code=HLT-026', 'en');
+    expect(p.file.fileName).toBe('plan-HLT-026-2026-10-09.pdf');
+    expect(p.text).toContain('Plan — WBS & activities');
+    expect(p.text).toContain('A1250');
+    expect(p.text).toContain('Steel erection — Bays 3–4');
+    expect(p.file.rowCount).toBeGreaterThan(20);
+    const s = await pdfOf('schedule', 'director', 'code=HLT-026', 'en');
+    expect(s.text).toContain('Schedule — baseline vs forecast');
+    expect(s.text).toContain('Critical path (*)');
+    expect(s.text).toContain('MILESTONES');
+    expect(s.text).toContain('SPI');
+    const fr = await pdfOf('schedule', 'director', 'code=HLT-026', 'fr');
+    expect(fr.text).toContain('Planning — référence vs prévision');
+    expect(fr.text).toContain('Jalons');
+  });
+
+  it('client portal "Schedule": the Gantt PDF without the internal indicators; another organisation’s project is refused', async () => {
+    const c = await pdfOf('client', 'client', 'code=HLT-026&variant=planning', 'en');
+    expect(c.file.fileName).toBe('planning-HLT-026-2026-10-09.pdf');
+    expect(c.text).toContain('Schedule — baseline vs forecast');
+    expect(c.text).not.toContain('SPI');
+    await expect(ctxOf('client', 'client', 'code=NDC-031&variant=planning')).rejects.toMatchObject({ status: 403 });
+    const [wp] = await sheetsOf('client', 'client', 'code=HLT-026&tab=planning');
+    expect(wp.name).toBe('Work packages');
+    expect(wp.rows[0]).not.toContain('Owner');
+  });
+
+  it('FR reports: indices with a decimal comma, float in jours, "Compte rendu" for the minutes', async () => {
+    const tr = await pdfOf('trends', 'director', 'code=HLT-026', 'fr');
+    expect(tr.text).toContain('0,90');
+    expect(tr.text).not.toMatch(/\b0\.9\d\b/);
+    expect(tr.text).toMatch(/-\d+ j\b/);
+    const b = await pdfOf('budget', 'director', 'code=HLT-026', 'fr');
+    expect(b.text).toMatch(/\b\d,\d\d\b/);
+    const m = await pdfOf('meetings', 'director', 'code=HLT-026&meeting=MTG-118', 'fr');
+    expect(m.text).toContain('Compte rendu');
+  });
+
   it('purchase order: header, lines and total, signatures; another project’s order is refused', async () => {
     const { text, file } = await pdfOf('orders', 'director', 'code=HLT-026&variant=po&id=PO-1082');
     expect(file.fileName).toBe('po-HLT-026-PO-1082-2026-10-09.pdf');

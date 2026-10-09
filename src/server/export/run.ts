@@ -96,7 +96,8 @@ const xlsxLabels = (t: (s: string) => string) => ({
   sheet: t('Export'), title: t('Title'), project: t('Project'), filters: t('Filters'), exportedBy: t('Exported by'), exportedOn: t('Exported on'),
 });
 
-const pdfRows = (doc: PdfDocument) => doc.blocks.reduce((n, b) => n + (b.kind === 'table' ? b.sheet.rows.length : 0), 0);
+const pdfRows = (doc: PdfDocument) =>
+  doc.blocks.reduce((n, b) => n + (b.kind === 'table' ? b.sheet.rows.length : b.kind === 'gantt' ? b.rows.length + (b.milestones?.length ?? 0) : 0), 0);
 
 /**
  * Produces the file. Throws ExportError (404 no provider / nothing to export, 403 refused, 400 bad format).

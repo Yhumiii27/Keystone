@@ -5,7 +5,7 @@ import type { ScreenId } from '@/config/screens';
 
 export type ExportMenuFormat = 'xlsx' | 'csv' | 'pdf';
 
-/** Screens whose provider has a PDF report (budget cost report, account statement, minutes, risk register, status reports). */
-export const PDF_REPORT_SCREENS: readonly ScreenId[] = ['budget', 'billing', 'meetings', 'risks', 'trends', 'client'];
+/** Screens whose provider has a PDF report (budget cost report, account statement, minutes, risk register, status reports, detailed plan and Gantt — S-9a). */
+export const PDF_REPORT_SCREENS: readonly ScreenId[] = ['budget', 'billing', 'meetings', 'risks', 'trends', 'client', 'plan', 'schedule'];
 
 export const exportFormatsOf = (screen: ScreenId): ExportMenuFormat[] => ['xlsx', 'csv', ...(PDF_REPORT_SCREENS.includes(screen) ? (['pdf'] as const) : [])];

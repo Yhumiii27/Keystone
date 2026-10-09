@@ -254,5 +254,11 @@
   "KPI detail": "Précision",
   "Consistency check": "Contrôle de cohérence",
   "Sheets": "Feuilles",
-  "Account statement": "Relevé de compte"
+  "Account statement": "Relevé de compte",
+  "Minutes": "Compte rendu",
+  "Milestone status": "Statut du jalon",
+  "Detailed plan": "Planning détaillé",
+  "Baseline start": "Début de référence",
+  "Dates in working days at the project data date; variance against the current baseline.": "Dates en jours ouvrés à la date d’avancement du projet ; écart par rapport à la référence en vigueur.",
+  "Bars from the work packages’ dates at the project data date.": "Barres établies d’après les dates des lots de travaux à la date d’avancement du projet."
 }

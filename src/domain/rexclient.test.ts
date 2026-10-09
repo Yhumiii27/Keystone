@@ -173,7 +173,8 @@ describe('client portal (03 §8)', () => {
   it('decisions waiting for the client and decided ones', () => {
     const g = G.client.en['HLT-026'];
     expect(decisionsOf(crs(), deliverables())).toEqual({ decisions: g.decisions, decided: g.decided });
-    expect(CLIENT_TABS.map((o) => o.label)).toEqual(g.seg);
+    // S-9a (docs/DECISIONS.md): the portal gains a "Schedule" tab after the prototype's first segment.
+    expect(CLIENT_TABS.map((o) => o.label)).toEqual([g.seg[0], 'Schedule', ...g.seg.slice(1)]);
   });
 
   it('after the client approves CR-008, accepts D-014 and rejects D-016 (stamped by the data layer)', () => {

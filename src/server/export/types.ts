@@ -68,7 +68,50 @@ export type PdfBlock =
   /** Signature boxes ("PV de réception", purchase order): one per party. */
   | { kind: 'signatures'; parties: { role: string; name?: string }[] }
   | { kind: 'spacer'; height?: number }
-  | { kind: 'pageBreak' };
+  | { kind: 'pageBreak' }
+  /** A Gantt chart drawn in the PDF (Schedule / client portal planning): bars and diamonds on a month timeline. */
+  | PdfGanttBlock;
+
+/** One bar row of a PDF Gantt; positions are fractions of the timeline (0 = first month's start, 1 = last month's end). */
+export interface PdfGanttRow {
+  name: string;
+  /** Second, muted text after the name (owner). */
+  sub?: string;
+  /** "72%" (done column). */
+  done?: string;
+  /** "+39 d" / "—" (slip column); `slipAlert` prints it in the attention colour. */
+  slip?: string;
+  slipAlert?: boolean;
+  critical?: boolean;
+  /** Baseline bar (thin, grey); null / absent → none. */
+  baseline?: [start: number, end: number] | null;
+  /** Forecast bar. */
+  forecast: [start: number, end: number];
+  /** Share of the forecast bar filled (0–1). */
+  progress?: number;
+}
+
+export interface PdfGanttMilestone {
+  name: string;
+  slip?: string;
+  slipAlert?: boolean;
+  /** Baseline (outline) and forecast (filled) diamonds, as timeline fractions. */
+  baseline?: number | null;
+  forecast: number;
+  done?: boolean;
+}
+
+export interface PdfGanttBlock {
+  kind: 'gantt';
+  /** Month labels of the timeline (translated), one column each. */
+  months: string[];
+  rows: PdfGanttRow[];
+  milestones?: PdfGanttMilestone[];
+  /** Data date line, as a timeline fraction. */
+  today?: number | null;
+  /** Translated labels: column headers and legend. */
+  labels: { name: string; done: string; slip: string; milestones: string; baseline: string; forecast: string; progress: string; critical: string; today: string };
+}
 
 export interface PdfDocument {
   /** Title, translated ("Purchase order PO-1082"). */

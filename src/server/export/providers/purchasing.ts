@@ -20,14 +20,15 @@ import { formatDate } from '../format';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook, PdfDocument } from '../types';
 import { col, compact, filterLine, kpiSheet, param, projectRef, sheet, sum, tableBlock, todayIso } from './common';
-import { projectFilter } from './scope';
+import { currentProjectCode, projectFilter } from './scope';
 
 // ── Sourcing, invoices & suppliers ───────────────────────────────────────────────────────────────────────────────────
 async function procurementWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const t = procT(ctx.t, ctx.lang);
   const raw = param(ctx, 'tab');
   const tab = isSourcingTab(raw) ? raw : 'rfq';
-  const current = param(ctx, 'code')?.toUpperCase() ?? DEFAULT_PROJECT;
+  // A client's `?code=` falls back to one of their own projects (never another organisation's NCR counts).
+  const current = await currentProjectCode(ctx, DEFAULT_PROJECT);
   const [rfqs, invoices, card, visible] = await Promise.all([listRfqs(), listSupplierInvoices(), getSupplierScorecard(current), projectFilter(ctx)]);
   const filter = parseInvoiceFilter(param(ctx, 'status') ?? undefined, invoices);
   const rfq = sheet(t('Requests for quotation'), [

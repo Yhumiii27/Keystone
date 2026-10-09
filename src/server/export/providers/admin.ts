@@ -35,7 +35,8 @@ async function settingsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
 
 async function machineTypesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
-  const types = await listMachineTypes();
+  // A client sees only its own organisation's projects in the "Projects" column.
+  const [types, visible] = await Promise.all([listMachineTypes(), projectFilter(ctx)]);
   return {
     title: t('Standard machine types'),
     sheets: [
@@ -45,7 +46,7 @@ async function machineTypesWorkbook(ctx: ExportContext): Promise<ExportWorkbook>
         col('deposit', t('Deposit'), 'percent'), col('delivery', t('Delivery'), 'percent'), col('acceptance', t('Acceptance'), 'percent'), col('projects', t('Projects'), 'text', 30),
       ], types.map((m) => ({
         code: m.displayCode, label: t(m.label), description: t(m.description), calendar: t(m.calendarLabel), active: m.active, standard: m.isStandard, phases: m.phases.map((p) => t(p)).join(' → '),
-        budget: m.costTotalKeur, deposit: m.depositPct / 100, delivery: m.deliveryPct / 100, acceptance: m.acceptancePct / 100, projects: m.projects.map((p) => p.code).join(' · '),
+        budget: m.costTotalKeur, deposit: m.depositPct / 100, delivery: m.deliveryPct / 100, acceptance: m.acceptancePct / 100, projects: m.projects.filter((p) => visible(p.code)).map((p) => p.code).join(' · '),
       }))),
       sheet(t('Cost categories'), [col('type', t('Machine type'), 'text', 10), col('name', t('Category'), 'text', 30), col('costType', t('Type'), 'text', 14), col('budget', t('Budget'), 'money_keur')],
         types.flatMap((m) => m.costCategories.map((c) => ({ type: m.displayCode, name: t(c.name), costType: t(c.typeLabel), budget: c.budgetKeur })))),

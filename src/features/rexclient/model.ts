@@ -9,7 +9,8 @@ import {
   contractSummary, invoiceRow, type ChangeRequestLike, type ClientTab, type ClosureMark, type DeliverableLike, type EvmLike, type Kpi,
   type ScheduleHeaderLike, type Tone,
 } from '@/domain/rexclient';
-import type { MilestoneInput } from '@/domain/schedule-gantt';
+import { scheduleView, type GanttTask, type MilestoneInput, type ScheduleInput, type ScheduleMilestone } from '@/domain/schedule-gantt';
+import { slipText } from '@/features/schedule/i18n';
 import type { Lang, T } from '@/i18n/translate';
 import type { ClosureItemStatus, LessonStatus } from '@/server/db/codes';
 import type { ClientPortal } from '@/server/dal/client';
@@ -128,6 +129,36 @@ export interface ClientScreenView {
   issues: { id: string; title: string; when: string; status: string; tagClass: string; response: string }[];
   docs: { id: string; title: string; typeLabel: string; date: string; rev: string; status: string; tagClass: string; acknowledged: boolean; ackLabel: string }[];
   docsLabels: { idHeader: string; sub: string; empty: string };
+  /** "Schedule" tab (S-9a): the summary Gantt and the milestones, read-only; null on the other tabs / without a schedule. */
+  planning?: ClientPlanningView | null;
+}
+
+/** Client portal "Schedule" tab (S-9a): the Schedule screen's Gantt (work packages without owners) and milestone list. */
+export interface ClientPlanningView {
+  months: string[];
+  tasks: GanttTask[];
+  milestones: Pick<ScheduleMilestone, 'name' | 'bL' | 'fL' | 'done'>[];
+  todayL: string;
+  /** Milestone list: translated name, "Baseline 15 Mar · Forecast 2 Apr", signed slip, status code and label. */
+  list: { name: string; dates: string; slipText: string; slipAlert: boolean; status: ScheduleMilestone['status']; statusLabel: string }[];
+  /** "Forecast finish 14 Jan 2027 · Baseline 15 Dec 2026". */
+  finish: string;
+}
+
+export function clientPlanningView(d: ScheduleInput, t: T, lang: Lang): ClientPlanningView {
+  const v = scheduleView(d);
+  return {
+    months: v.ganttMonths.map((m) => t(m)),
+    // Owners are internal (initials of the project team): the client view leaves them out.
+    tasks: v.tasks.map((x) => ({ ...x, name: t(x.name), owner: '', slipText: slipText(x.slipText, lang) })),
+    milestones: v.milestones.map((m) => ({ name: t(m.name), bL: m.bL, fL: m.fL, done: m.done })),
+    todayL: v.todayL,
+    list: v.milestones.map((m) => ({
+      name: t(m.name), dates: `${t('Baseline')} ${t(m.baseDate)} ${t('· Forecast')} ${t(m.fcDate)}`, slipText: slipText(m.slipText, lang), slipAlert: m.slipAlert,
+      status: m.status, statusLabel: t(m.statusLabel),
+    })),
+    finish: `${t('Forecast finish')} ${t(d.header.finishText)} · ${t('Baseline')} ${t(d.header.baselineText)}`,
+  };
 }
 
 export interface ClientScreenInput {

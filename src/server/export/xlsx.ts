@@ -24,7 +24,10 @@ export function sheetName(name: string, taken: Set<string>): string {
 
 function cellValue(v: CellValue, col: ExportColumn): ExcelJS.CellValue {
   if (v == null || v === '') return null;
+  // Only ISO dates / timestamps become Excel dates; any other text (a "—", "finish not planned") stays text — never the
+  // engine's lenient guess ("Mar 2027", "Raised 12 Sep").
   if ((col.type === 'date' || col.type === 'datetime') && typeof v === 'string') {
+    if (!/^\d{4}-\d{2}-\d{2}/.test(v)) return v;
     const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T00:00:00Z` : v);
     return isNaN(d.getTime()) ? v : d;
   }

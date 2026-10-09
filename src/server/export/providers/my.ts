@@ -16,14 +16,15 @@ import { getMyWorkPerson } from '@/server/dal/mywork-data';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
 import { col, filterLine, isoOf, kpiSheet, param, sheet, compact } from './common';
+import { currentProjectCode } from './scope';
 
-/** Current project of a global screen: `?code=` (the header passes the shell's project), else the default one. */
-const currentProject = (ctx: ExportContext) => param(ctx, 'code')?.toUpperCase() ?? DEFAULT_PROJECT;
+/** Current project of a global screen: `?code=` (the header passes the shell's project), else the default one; a client's own. */
+const currentProject = (ctx: ExportContext) => currentProjectCode(ctx, DEFAULT_PROJECT);
 
 // ── Home ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 async function homeWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t, lang, viewer } = ctx;
-  const view = await getHomeView({ role: viewer.role, persona: viewer, projectCode: currentProject(ctx), zone: ctx.zone, lang });
+  const view = await getHomeView({ role: viewer.role, persona: viewer, projectCode: await currentProject(ctx), zone: ctx.zone, lang });
   const list = (l: typeof view.left): ExportSheet =>
     sheet(renderTxt(l.title, t), [col('title', t('Item'), 'text', 44), col('sub', t('Details'), 'text', 48), col('tag', t('Status'), 'text', 18)], l.rows.map((r) => ({
       title: renderTxt(r.title, t), sub: renderTxt(r.sub, t), tag: renderTxt(r.tag, t),
@@ -35,15 +36,20 @@ async function homeWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   };
 }
 
+/** ISO date of a display date, else the translated text (a 'date' column keeps non-dates as text). */
+const dateOrText = (t: (s: string) => string, v: string) => (v && v !== '—' ? isoOf(v) ?? t(v) : '');
+
 // ── My projects ──────────────────────────────────────────────────────────────────────────────────────────────────────
 async function myProjectsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t, lang, viewer } = ctx;
-  const model = await getMyProjects(viewer, currentProject(ctx), lang);
+  const model = await getMyProjects(viewer, await currentProject(ctx), lang);
   const rows = model.cards.map((c) => ({
     code: c.project.code, name: t(c.project.name), role: c.myRole ? t(c.myRole) : '', readOnly: c.readOnly, stage: t(c.project.status), pm: c.project.pm,
     client: t(c.project.client), health: c.health ? t(HEALTH_LABEL[c.health]) : '—', progress: c.project.progress,
     spi: parseFloat(c.ind.spiText) || null, cpi: parseFloat(c.ind.cpiText) || null, milestone: c.ind.msName === '—' ? '' : t(c.ind.msName),
-    milestoneDate: c.ind.msLine ? t(c.ind.msLine) : '', finish: t(c.ind.finishForecast || c.project.finish), myOpen: c.myOpen,
+    // Real dates when the screen shows one ("23 Oct", "17 Jan ’27"); the screen's words otherwise ("finish not planned").
+    milestoneDate: c.ind.msDate ? isoOf(c.ind.msDate) ?? t(c.ind.msDate) : '', milestoneStatus: c.ind.msState ? t(c.ind.msState) : '',
+    finish: dateOrText(t, c.ind.finishForecast || c.project.finish), myOpen: c.myOpen,
   }));
   return {
     title: t('My projects'),
@@ -52,7 +58,8 @@ async function myProjectsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
         col('code', t('Code'), 'text', 10), col('name', t('Project'), 'text', 36), col('role', t('My role'), 'text', 18), col('readOnly', t('Read-only'), 'boolean'),
         col('stage', t('Stage'), 'text', 22), col('pm', t('Project manager'), 'text', 14), col('client', t('Client'), 'text', 20), col('health', t('Health'), 'text', 12),
         col('progress', t('Progress'), 'percent'), col('spi', 'SPI', 'number', 8, { decimals: 2 }), col('cpi', 'CPI', 'number', 8, { decimals: 2 }),
-        col('milestone', t('Next milestone'), 'text', 28), col('milestoneDate', t('Milestone date'), 'text', 18), col('finish', t('Forecast finish'), 'text', 14),
+        col('milestone', t('Next milestone'), 'text', 28), col('milestoneDate', t('Milestone date'), 'date'), col('milestoneStatus', t('Milestone status'), 'text', 12),
+        col('finish', t('Forecast finish'), 'date'),
         col('myOpen', t('My open tasks'), 'integer'),
       ], rows),
       kpiSheet(ctx, model.kpis.map((k) => ({ label: t(k.label), value: t(k.value), sub: t(k.sub) }))),
@@ -118,7 +125,7 @@ async function taskWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> 
 // ── My approvals ─────────────────────────────────────────────────────────────────────────────────────────────────────
 async function myApprovalsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t, lang, viewer } = ctx;
-  const inbox = await getApprovalInbox(viewer, { lang, projectCode: currentProject(ctx) });
+  const inbox = await getApprovalInbox(viewer, { lang, projectCode: await currentProject(ctx) });
   const view = inboxView(inbox.items, { decided: inbox.decided, roleTitle: viewer.title, filter: param(ctx, 'filter') });
   return {
     title: t('My approvals'),
