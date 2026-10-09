@@ -2,8 +2,8 @@
 // Site client islands: the header primary "Daily report" (AF.site form), the readiness steps ("Client confirms",
 // "Signed on site", equipment "Confirm") and the Cursus actions ("Remind in Cursus", "Sync Cursus"). Each calls its
 // Server Function and shows the translated result; the page is revalidated by the Server Function. Rendered only for
-// viewers who may edit the project's site. Chapter 4: "Client communication log" is a real log kept by Keystone
-// (./comm-log.tsx).
+// viewers who may edit the project's site. ("Client communication log" is a link to the project's client decisions in
+// Meetings — D-5, ./site-view.tsx.)
 import { ArrowsClockwise, Plus, Signature } from '@phosphor-icons/react/dist/ssr';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';

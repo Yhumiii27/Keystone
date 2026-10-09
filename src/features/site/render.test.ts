@@ -32,8 +32,10 @@ const text = (s: string) => s.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').re
 const kpis = (ks: any[]) => ks.map((k) => ({ label: k.label, value: String(k.value), sub: k.sub, color: k.color }));
 /**
  * A-12 (chapter 4): tile `i` computed from the data instead of the prototype's literal — "Man-days planned" = Σ rotation
- * crew × working days on the project calendar (179, not 168); "Client decisions logged" = change requests with a
- * decided client step (CR-004, CR-006: 2, not 3).
+ * crew × working days on the project calendar (179, not 168); "Client decisions logged" (A-12 / D-5) = decisions recorded
+ * in the minutes of the meetings with the client — MTG-117 steering committee (external): phased handover and CR-006
+ * approved, 2 (prototype 3; between A-12 and D-5 it counted the change requests with a decided client step, CR-004 and
+ * CR-006: also 2).
  */
 const computed = (i: number, value: string) => (k: any, j: number) => (j === i ? { ...k, value } : k);
 
@@ -87,6 +89,7 @@ describe('Site view model vs the prototype (EN and FR)', () => {
     it(`${lang} · Daily execution: KPIs, daily reports and their NCR link, site punch list, HSE register (Vigie)`, async () => {
       const g = G.seed[lang];
       const x = (await view(lang)).v.exec!;
+      // A-12 / D-5: "Client decisions logged" 3 → 2 (decisions of the meetings with the client).
       expect(x.kpis).toEqual(kpis(g.execKpis).map(computed(4, '2')));
       expect(x.reports.map((r) => ({ date: r.date, act: r.act, pct: r.pct, txt: r.txt, link: r.link, by: r.by }))).toEqual(g.reports);
       expect(x.reports.map((r) => !!r.href)).toEqual(g.reportLinks);
@@ -225,5 +228,22 @@ describe('a daily report saved with the form (last: writes to the database)', ()
     expect(fr.reports[0]).toMatchObject({ date: '25 sept.', txt: 'Montage poteaux · Mon équipe', detail: 'Dégagé · 8 sur site · HSE : Incident' });
     // Before the site start the headcount is preparation, not man-days on site.
     expect((await view('en', 'HLT-026', 'team')).v.team!.kpis[1].sub).toBe('0 consumed · site starts 19 Oct 2026');
+  });
+});
+
+describe('D-5 — "Client communication log" opens the client decisions of the project meetings', () => {
+  it('is a link to Meetings › Decisions › With the client (no drawer); hidden when the page says so', async () => {
+    const { v, t } = await view('en', 'HLT-026', 'exec');
+    const shown = html(h(SiteBody, { code: 'HLT-026', view: v, canEdit: false, t }), 'en');
+    expect(shown).toMatch(/<a [^>]*href="\/projects\/HLT-026\/meetings\?view=decisions&amp;decisions=client"[^>]*>.*Client communication log<\/a>/);
+    expect(shown).not.toContain('aria-haspopup="dialog"');
+    expect(html(h(SiteBody, { code: 'HLT-026', view: v, canEdit: false, showCommLog: false, t }), 'en')).not.toContain('Client communication log');
+    const fr = await view('fr', 'HLT-026', 'exec');
+    expect(text(html(h(SiteBody, { code: 'HLT-026', view: fr.v, canEdit: false, t: fr.t }), 'fr'))).toContain('Journal de communication client');
+  });
+
+  it('"Client decisions logged" counts the decisions of the meetings with the client', async () => {
+    // HLT-026: MTG-117 (steering committee, external) holds 2 decisions; MTG-118 / MTG-116 are internal.
+    expect((await getSite('HLT-026'))!.clientDecisions).toBe(2);
   });
 });

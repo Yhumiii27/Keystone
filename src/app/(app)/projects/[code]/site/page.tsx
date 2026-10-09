@@ -4,10 +4,11 @@
 // URL state (docs/spec/00 §8.3): `?tab=ready|team|exec` (unknown → Readiness & go). Primary action "Daily report" for
 // viewers who may edit the project's site (Site in their workspace, project not read-only) when the project has a site
 // sheet; the readiness steps and the Cursus reminder / sync follow the same rule. Projects without a site sheet show the
-// empty state. Cursus owns the individual go / no go, Vigie the HSE register: links open them. Chapter 4: the HSE card's
-// "Client communication log" opens Keystone's own log of the client exchanges (hidden for a client contact).
+// empty state. Cursus owns the individual go / no go, Vigie the HSE register: links open them. D-5: the HSE card's
+// "Client communication log" opens the project's Meetings screen on the decisions taken with the client (shown when the
+// viewer may see Meetings); the dedicated log of chapter 4 is retired from the screen.
 import { PageHeader } from '@/components/app/shell/page-header';
-import { canReadClientLog } from '@/domain/client-comms';
+import { canSee } from '@/config/screens';
 import { siteTabOf } from '@/domain/site';
 import { siteHref } from '@/features/site/links';
 import { dailyReportFormDef, siteView } from '@/features/site/model';
@@ -36,7 +37,7 @@ export default async function SitePage({ params, searchParams }: { params: Promi
   return (
     <>
       <PageHeader screen="site" projectCode={projectCode} primary={primary} />
-      <SiteBody code={projectCode} view={view} canEdit={canEdit} showCommLog={canReadClientLog(ctx.viewer.role)} t={t} />
+      <SiteBody code={projectCode} view={view} canEdit={canEdit} showCommLog={canSee(ctx.viewer.role, 'meetings')} t={t} />
     </>
   );
 }

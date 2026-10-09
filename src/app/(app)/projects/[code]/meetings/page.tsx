@@ -1,12 +1,13 @@
 // Meetings & minutes — /projects/[code]/meetings (docs/spec/05 §5, template 753–813, logic 4817–4867).
 // URL state (docs/spec/00 §8.3): `?view=meetings|decisions|actions` (Display segment), `?filter=todo|upcoming|sent`
-// (status chips), `?meeting=MTG-118` (selected meeting; default = first of the sorted list).
+// (status chips), `?meeting=MTG-118` (selected meeting; default = first of the sorted list), `?decisions=client` (D-5:
+// the Decisions register limited to meetings with the client — the Site's "Client communication log" opens it).
 // Primary action "New meeting" (AF `meetings`). Notes, ticks, the transcript (import, analysis — Claude only when the server
 // has ANTHROPIC_API_KEY, else the local rules — and the review of its proposals, S-10) and "Send minutes" go through
 // src/features/meetings/actions.ts; every edit control is hidden when the screen is outside the viewer's workspace
 // or the project is read-only for them. Projects without meetings show the empty register (no Harbor Line data).
 import { PageHeader } from '@/components/app/shell/page-header';
-import { parseMeetingFilter, parseMeetingsView, selectMeeting } from '@/domain/meetings';
+import { parseDecisionScope, parseMeetingFilter, parseMeetingsView, selectMeeting } from '@/domain/meetings';
 import { defaultInvitees, meetingFormDef } from '@/features/meetings/forms';
 import { MeetingsBody } from '@/features/meetings/meetings-view';
 import { meetingsScreenView } from '@/features/meetings/model';
@@ -31,7 +32,7 @@ export default async function MeetingsPage({ params, searchParams }: { params: P
 
   const requested = first(sp.meeting)?.toUpperCase() ?? null;
   const pinned = !!requested && data.meetings.some((m) => m.number === requested);
-  const query = { view: parseMeetingsView(first(sp.view)), filter: parseMeetingFilter(first(sp.filter)), meeting: pinned ? requested : null };
+  const query = { view: parseMeetingsView(first(sp.view)), filter: parseMeetingFilter(first(sp.filter)), meeting: pinned ? requested : null, decisions: parseDecisionScope(first(sp.decisions)) };
   const view = meetingsScreenView({ code: projectCode, meetings: data.meetings, questions: data.questions, query }, t, lang);
   const selected = selectMeeting(data.meetings, query.meeting);
   // A risk proposal of the selected meeting's transcript opens the risk register's "New risk" form (risk editors only).

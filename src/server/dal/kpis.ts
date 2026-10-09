@@ -7,10 +7,11 @@ import 'server-only';
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt } from 'drizzle-orm';
 import { projectDataDate, DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
 import {
-  CAPACITY_WINDOW_WEEKS, DEFAULT_PAYMENT_DAYS, clientDecisionsLogged, demandPerMeur, departmentCapacity, eventsOnDay, finishOfMonthText,
+  CAPACITY_WINDOW_WEEKS, DEFAULT_PAYMENT_DAYS, demandPerMeur, departmentCapacity, eventsOnDay, finishOfMonthText,
   latestVaultSync, leadingCount, loggedInWeek, nextWeeksLoad, onTimeDeliveryPct, parisDateOf, projectEacKeur, projectValueKeur, weekHoursOf,
   type CashProjectInput, type RfqKpiFacts, type VaultSyncFacts,
 } from '@/domain/kpis';
+import { clientDecisionCount } from '@/domain/meetings';
 import { getDb } from '@/server/db/client';
 import { addDaysIso, parisInstant } from '@/server/db/codes';
 import {
@@ -19,7 +20,7 @@ import {
 } from '@/server/db/schema';
 import type { BillingPlan } from './cashflow';
 import { getContract } from './contract';
-import { listChangeRequests } from './cost';
+import { listMeetings } from './meetings';
 import type { ProjectRow } from './projects';
 
 // ── Data date ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -139,9 +140,13 @@ export async function onTimeDeliveriesOf(projectCode: string): Promise<number | 
 
 // ── Site (10 OQ7) ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** "Client decisions logged" of a project: change requests whose client step is decided. */
+/**
+ * "Client decisions logged" of a project — A-12 / D-5: the decisions recorded in the minutes of the project's meetings with
+ * the client (external meetings; the owner answered D-5 "use the project's meetings and decisions"). It counted the change
+ * requests whose client step was decided before D-5 (HLT-026: 2 → 2, the same value from another source).
+ */
 export async function clientDecisionsOf(projectCode: string): Promise<number> {
-  return clientDecisionsLogged(await listChangeRequests(projectCode));
+  return clientDecisionCount(await listMeetings(projectCode));
 }
 
 // ── Quality (07 OQ23) ────────────────────────────────────────────────────────────────────────────────────────────────

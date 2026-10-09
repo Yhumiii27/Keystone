@@ -1,12 +1,13 @@
 // Meetings & minutes view model (docs/spec/05 §5.3–5.5, template 753–813, logic 4817–4867): the domain derivations
 // (src/domain/meetings.ts) turned into the translated strings, tag classes, colours and links the screen renders.
-// URL state (00 §8.3): `?view=meetings|decisions|actions`, `?filter=todo|upcoming|sent`, `?meeting=MTG-118`.
+// URL state (00 §8.3): `?view=meetings|decisions|actions`, `?filter=todo|upcoming|sent`, `?meeting=MTG-118`, and (D-5)
+// `?decisions=client` — the Decisions register limited to the decisions of meetings with the client.
 import { LO, OK, TAG_CLASS, statusTone } from '@/components/app/tones';
 import { screenHref } from '@/config/screens';
 import {
-  ACTION_STATE_LABEL, MEETING_FILTERS, MEETING_FILTER_LABEL, MEETING_VIEWS, MEETING_VIEW_LABEL, actionCountOf, actionRows, attendanceOf,
-  carriedOver, decisionRows, draftLines, filterCounts, lineKey, matchesFilter, meetingKpis, minutesEditable, prepPack, reviewOrder, selectMeeting, sortMeetings,
-  type ClientQuestion, type LineRef, type Meeting, type MeetingFilter, type MeetingLine, type MeetingTranscript, type MeetingsView, type ProposalKind,
+  ACTION_STATE_LABEL, DECISION_SCOPES, DECISION_SCOPE_LABEL, MEETING_FILTERS, MEETING_FILTER_LABEL, MEETING_VIEWS, MEETING_VIEW_LABEL, actionCountOf, actionRows, attendanceOf,
+  carriedOver, decisionRowsIn, draftLines, filterCounts, lineKey, matchesFilter, meetingKpis, minutesEditable, prepPack, reviewOrder, selectMeeting, sortMeetings,
+  type ClientQuestion, type DecisionScope, type LineRef, type Meeting, type MeetingFilter, type MeetingLine, type MeetingTranscript, type MeetingsView, type ProposalKind,
 } from '@/domain/meetings';
 import { docHref, documentsHref } from '@/features/docs/links';
 import type { Lang, T } from '@/i18n/translate';
@@ -18,14 +19,17 @@ export interface MeetingsQuery {
   filter: MeetingFilter;
   /** Requested meeting (`?meeting=`), validated against the register. */
   meeting: string | null;
+  /** Decisions register scope (`?decisions=client`, D-5); default all. */
+  decisions?: DecisionScope;
 }
 
-/** Screen URL with only the non-default parameters (view, filter, meeting). */
+/** Screen URL with only the non-default parameters (view, filter, meeting, decisions scope). */
 export function meetingsHref(code: string, q: Partial<MeetingsQuery>): string {
   const u = new URLSearchParams();
   if (q.view && q.view !== 'meetings') u.set('view', q.view);
   if (q.filter && q.filter !== 'all') u.set('filter', q.filter);
   if (q.meeting) u.set('meeting', q.meeting);
+  if (q.decisions === 'client') u.set('decisions', 'client');
   const base = screenHref('meetings', { code });
   const qs = u.toString();
   return qs ? `${base}?${qs}` : base;
@@ -38,6 +42,9 @@ export function meetingsHref(code: string, q: Partial<MeetingsQuery>): string {
 export function minutesHref(code: string, m: Pick<Meeting, 'minutesNumber' | 'minutesIndexed'>): string {
   return m.minutesNumber && m.minutesIndexed ? docHref(m.minutesNumber, code) : documentsHref(code);
 }
+
+/** D-5: the project's client decisions — the Decisions register limited to meetings with the client (Site's "Client communication log"). */
+export const clientDecisionsHref = (code: string) => meetingsHref(code, { view: 'decisions', decisions: 'client' });
 
 const taskHref = (n: string | null) => (n ? screenHref('task', { taskId: n }) : null);
 
@@ -205,6 +212,9 @@ export interface MeetingsScreenView {
   cards: CardView[];
   detail: DetailView | null;
   decisions: DecisionRowView[];
+  /** Decisions register scope chips (D-5): All / With the client. */
+  decisionScope: DecisionScope;
+  decisionChips: { value: DecisionScope; label: string; count: number; href: string }[];
   actions: ActionRowView[];
 }
 
@@ -331,7 +341,11 @@ export function meetingsScreenView({ code, meetings: ms, questions, query }: Mee
   }
 
   // Registers (4863–4864)
-  const decisions = decisionRows(ms).map((d): DecisionRowView => ({
+  const decisionScope = query.decisions ?? 'all';
+  const decisionChips = DECISION_SCOPES.map((sc) => ({
+    value: sc, label: t(DECISION_SCOPE_LABEL[sc]), count: decisionRowsIn(ms, sc).length, href: meetingsHref(code, { view: 'decisions', filter: query.filter, decisions: sc }),
+  }));
+  const decisions = decisionRowsIn(ms, decisionScope).map((d): DecisionRowView => ({
     key: lineKey({ meeting: d.meeting.number, point: d.line.point, position: d.line.position }),
     text: dataText(d.line.text, lang),
     meetingTitle: title(d.meeting),
@@ -368,6 +382,8 @@ export function meetingsScreenView({ code, meetings: ms, questions, query }: Mee
     cards,
     detail,
     decisions,
+    decisionScope,
+    decisionChips,
     actions,
   };
 }

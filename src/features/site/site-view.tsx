@@ -5,7 +5,7 @@
 // Server Component; the buttons that write are client islands (site-buttons.tsx), shown to editors only. Links to
 // Cursus and Vigie open outside Keystone.
 import {
-  ArrowSquareOut, ArrowsClockwise, Check, CheckCircle, Eye, FirstAid, LockSimple, Warning, WarningCircle,
+  ArrowSquareOut, ArrowsClockwise, Chats, Check, CheckCircle, Eye, FirstAid, LockSimple, Warning, WarningCircle,
 } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
@@ -23,7 +23,7 @@ import { CURSUS_LINK_ATTRS } from '@/server/integrations/cursus/links';
 import { VIGIE_LINK_ATTRS } from '@/server/integrations/vigie/links';
 import { CURSUS_CARD_ID } from './links';
 import type { ExecView, KpiView, ReadyView, SiteView, TeamView } from './model';
-import { CommunicationLogButton } from './comm-log';
+import { clientDecisionsHref } from '@/features/meetings/model';
 import { ConfirmEquipmentButton, PrerequisiteButton, RemindButton, SyncCursusButton } from './site-buttons';
 import s from './site.module.css';
 
@@ -32,7 +32,7 @@ export interface SiteBodyProps {
   view: SiteView;
   /** Edit controls (steps, Cursus reminder and sync): Site inside the viewer's workspace, project not read-only. */
   canEdit: boolean;
-  /** Chapter 4: the "Client communication log" button (hidden for a client contact — src/domain/client-comms.ts). Default shown. */
+  /** D-5: the "Client communication log" link to the project's client decisions (when the viewer may see Meetings). Default shown. */
   showCommLog?: boolean;
   t: T;
 }
@@ -447,9 +447,23 @@ function ExecTab({ code, v, showCommLog, t }: { code: string; v: ExecView; showC
             </tbody>
           </Table>
         </SectionCard>
-        <HseCard v={v.hse} commLog={showCommLog ? <CommunicationLogButton code={code} /> : null} t={t} />
+        <HseCard v={v.hse} commLog={showCommLog ? <ClientDecisionsLink code={code} t={t} /> : null} t={t} />
       </CardGrid>
     </>
+  );
+}
+
+/**
+ * "Client communication log" (template 2300). D-5 (owner's answer "a": use the project's meetings and decisions): it opens
+ * the project's Meetings screen on the decisions taken with the client (`?view=decisions&decisions=client`); the dedicated
+ * log built in chapter 4 is retired from the screen (its table, data and DAL are kept until the owner confirms deletion).
+ */
+function ClientDecisionsLink({ code, t }: { code: string; t: T }) {
+  return (
+    <Link href={clientDecisionsHref(code)} className={cx('btn', 'btn-ghost', s.hseBtn)} title={t('Client exchanges and decisions are recorded in the project meetings')}>
+      <Chats aria-hidden />
+      {t('Client communication log')}
+    </Link>
   );
 }
 

@@ -93,6 +93,18 @@ export function MeetingsBody({ code, view, canEdit, pinned, organizer, t, ai = L
       )}
 
       {view.view === 'decisions' && (
+        <div className={s.chipsRow}>
+          <FilterGroup>
+            <FilterLabel>{t('Decisions')}</FilterLabel>
+            <FilterChips
+              label={t('Decisions')}
+              value={view.decisionScope}
+              options={view.decisionChips.map((c) => ({ value: c.value, label: c.label, count: String(c.count), href: c.href }))}
+            />
+          </FilterGroup>
+        </div>
+      )}
+      {view.view === 'decisions' && (
         <SectionCard title={t('Decisions register')} scroll>
           <Table size={12.5}>
             <thead>

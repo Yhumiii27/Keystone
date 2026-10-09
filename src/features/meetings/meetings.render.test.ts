@@ -122,4 +122,21 @@ describe('meetings screen render — transcript (chapter 4, S-10)', () => {
     expect(ro).not.toContain('Écarter la proposition');
     expect(text(ro)).toContain('Update the electrical schematics for the three tags');
   });
+
+  it('D-5: the Decisions register filters on the decisions taken with the client (?decisions=client)', async () => {
+    const d = await getMeetingsScreen('HLT-026');
+    const t = makeT('en');
+    const all = meetingsScreenView({ code: 'HLT-026', meetings: d.meetings, questions: d.questions, query: { view: 'decisions', filter: 'all', meeting: null } }, t, 'en');
+    const client = meetingsScreenView({ code: 'HLT-026', meetings: d.meetings, questions: d.questions, query: { view: 'decisions', filter: 'all', meeting: null, decisions: 'client' } }, t, 'en');
+    expect(all.decisionScope).toBe('all');
+    expect(all.decisionChips.map((c) => [c.value, c.label, c.count, c.href])).toEqual([
+      ['all', 'All', all.decisions.length, '/projects/HLT-026/meetings?view=decisions'],
+      ['client', 'With the client', 2, '/projects/HLT-026/meetings?view=decisions&decisions=client'],
+    ]);
+    expect(client.decisions.map((x) => x.meetingRef.slice(0, 7))).toEqual(['MTG-117', 'MTG-117']);
+    expect(client.decisions.every((x) => x.typeLabel === 'External')).toBe(true);
+    const fr = meetingsScreenView({ code: 'HLT-026', meetings: d.meetings, questions: d.questions, query: { view: 'decisions', filter: 'all', meeting: null, decisions: 'client' } }, makeT('fr'), 'fr');
+    const raw = renderToStaticMarkup(h(I18nProvider, { lang: 'fr', children: h(MeetingsBody, { code: 'HLT-026', view: fr, canEdit: true, pinned: false, organizer: 'R. Aubert', t: makeT('fr') }) }));
+    expect(text(raw)).toContain('Avec le client');
+  });
 });

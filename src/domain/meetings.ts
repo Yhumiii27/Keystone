@@ -127,6 +127,18 @@ export const MEETING_FILTER_LABEL: Record<MeetingFilter, string> = { all: 'All',
 const FILTER_STATUS: Record<Exclude<MeetingFilter, 'all'>, MeetingStatus> = { todo: 'notes_in_progress', upcoming: 'scheduled', sent: 'minutes_sent' };
 export const parseMeetingFilter = (v: unknown): MeetingFilter => (MEETING_FILTERS as readonly unknown[]).includes(v) ? (v as MeetingFilter) : 'all';
 
+/**
+ * `?decisions=` of the Decisions register (D-5): every decision, or the client decisions only — the target of the Site's
+ * "Client communication log" button (the owner answered D-5 "use the project's meetings and decisions").
+ */
+export const DECISION_SCOPES = ['all', 'client'] as const;
+export type DecisionScope = (typeof DECISION_SCOPES)[number];
+export const DECISION_SCOPE_LABEL: Record<DecisionScope, string> = { all: 'All', client: 'With the client' };
+export const parseDecisionScope = (v: unknown): DecisionScope => (v === 'client' ? 'client' : 'all');
+
+/** A meeting with the client: an external meeting (the prototype's "decisions … with the client", mtgKpis 4866). */
+export const isClientMeeting = (m: Pick<Meeting, 'type'>) => m.type === 'external';
+
 /** Composer type segment (draftSeg 4861; default Action). */
 export const LINE_TYPES: readonly MeetingLineType[] = ['info', 'decision', 'action'];
 
@@ -194,7 +206,7 @@ export function meetingKpis(ms: readonly Meeting[], now = PG_NOW): MeetingKpis {
     openActions: actions.filter((x) => !x.l.done).length,
     overdueActions: actions.filter((x) => actionState(x.l) === 'overdue').length,
     decisionsThisMonth: decisions.filter((x) => x.m.monthIndex >= Math.floor(now)).length,
-    decisionsWithClient: decisions.filter((x) => x.m.type === 'external').length,
+    decisionsWithClient: decisions.filter((x) => isClientMeeting(x.m)).length,
   };
 }
 
@@ -324,6 +336,17 @@ export function decisionRows(ms: readonly Meeting[]): DecisionRow[] {
     .flatMap((m) => m.agenda.flatMap((a) => a.lines.filter((l) => l.type === 'decision').map((line) => ({ meeting: m, line, pointTitle: a.title }))))
     .sort((a, b) => b.meeting.monthIndex - a.meeting.monthIndex);
 }
+
+/** Decisions of the register in a scope (D-5: 'client' = decisions of meetings with the client). */
+export const decisionRowsIn = (ms: readonly Meeting[], scope: DecisionScope): DecisionRow[] =>
+  decisionRows(ms).filter((d) => scope === 'all' || isClientMeeting(d.meeting));
+
+/**
+ * "Client decisions logged" (Site tile, A-12 / D-5): decisions recorded in the minutes of the project's meetings with the
+ * client. Before D-5 the tile counted the change requests whose client step was decided (src/domain/kpis.ts
+ * clientDecisionsLogged).
+ */
+export const clientDecisionCount = (ms: readonly Meeting[]) => decisionRowsIn(ms, 'client').length;
 
 export type ActionState = 'done' | 'overdue' | 'open';
 /** Done / Overdue (due before now) / Open (`stText`, 4863). */
