@@ -178,7 +178,8 @@ export async function analyseWithClaude(input: AnalysisInput, settings: ClaudeSe
   if (res.stop_reason === 'max_tokens') throw new ClaudeAnalysisError('max_tokens');
   const out = res.parsed_output;
   if (!out) throw new ClaudeAnalysisError('invalid_output');
-  return guardAnalysis(out, input);
+  // After a server-side refusal fallback, `res.model` names the model that answered (not the requested one).
+  return { ...guardAnalysis(out, input), servedBy: typeof res.model === 'string' && res.model ? res.model : settings.model };
 }
 
 /** The analyser behind "Analyse transcript" when Claude is configured. */

@@ -168,6 +168,8 @@ describe('transcript Server Functions (chapter 4, S-10)', () => {
     expect(await importTranscriptAction(form({ code: 'HLT-026', meeting: 'MTG-130', file: new File(['x'], 'notes.docx') }))).toEqual({ ok: false, error: 'File type not accepted' });
     expect(await importTranscriptAction(form({ code: 'HLT-026', meeting: 'MTG-118', text: TEXT }))).toEqual({ ok: false, error: 'Minutes already sent' });
     expect(await importTranscriptAction(form({ code: 'NDC-031', meeting: 'MTG-130', text: TEXT }))).toEqual({ ok: false, error: 'Unknown meeting' });
+    // Under 800 000 characters but over 800 000 bytes in UTF-8 (accents): refused with its own message, before Next's 1 MB limit.
+    expect(await importTranscriptAction(form({ code: 'HLT-026', meeting: 'MTG-130', text: 'Décidé. '.repeat(90_000) }))).toEqual({ ok: false, error: 'The transcript is too long' });
     expect(await importTranscriptAction(form({ code: 'HLT-026', meeting: 'MTG-130', text: TEXT }))).toEqual({ ok: true, toast: 'Transcript imported · 37 words · 3 speakers' });
     viewer.lang = 'fr';
     const srt = '1\n00:00:01,000 --> 00:00:03,000\nR. Aubert: We agreed to keep the night shift.\n';
