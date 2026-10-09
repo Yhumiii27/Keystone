@@ -6,11 +6,10 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
 
 ## Where the project stands — read this first
 
-- **Deliveries 1–5 are done and committed.** The shell and all 59 prototype screens are built, with prototype mock data (HLT-026, NDC-031…). Each delivery's status, APIs, deviations and open questions are in `docs/DELIVERY-1.md` … `docs/DELIVERY-5.md`.
+- **Deliveries 1–6 are done and committed.** The shell and all 59 prototype screens are built, with prototype mock data (HLT-026, NDC-031…). Each delivery's status, APIs, deviations and open questions are in `docs/DELIVERY-1.md` … `docs/DELIVERY-6.md`.
 - **Ignore older status sources.** Any older handoff or README describing "Home ~70 %, Budget ~30 %, other screens under construction" is the prototype's handoff and is obsolete.
-- **Work in progress: chapter 4 = delivery 6.** It replaces every simulated function with a real one.
-  - The plan, acceptance criteria, per-feature status and remaining gaps are in **`docs/DELIVERY-6-PLAN.md`**. That file is the resume point.
-  - When the work is finished, write `docs/DELIVERY-6.md` with the same structure as `DELIVERY-5.md`.
+- **Chapter 4 = delivery 6 is done** (`docs/DELIVERY-6.md`): every simulated function is real when Keystone can do it with its own data, and the owner's answers that touch it are applied. `docs/DELIVERY-6-PLAN.md` is the historical plan and audit; the open questions are in `DELIVERY-6.md` §8.
+  - Next: delivery 7. Read `docs/DECISIONS.md` § "À traiter en priorité" and `DELIVERY-6.md` §8 before planning it.
 - **Product decisions.**
   - The product owner answered the 195 open questions (the "chapter-5 questionnaire"). See **`docs/DECISIONS.md`** (readable) and `docs/decisions/{questions,answers}.json` (raw).
   - The answers override the spec and the chapter-4 defaults where they differ.

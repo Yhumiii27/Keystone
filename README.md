@@ -5,11 +5,11 @@ reconstruction en Next.js 16 du prototype Claude Design `design/Keystone PM v8.d
 
 - Conventions : `docs/ARCHITECTURE.md`
 - Spécification fonctionnelle : `docs/spec/`
-- État des livraisons : `docs/DELIVERY-1.md`, `docs/DELIVERY-2.md`, `docs/DELIVERY-3.md`, `docs/DELIVERY-4.md`, `docs/DELIVERY-5.md`
-- Travail en cours (chapitre 4 = livraison 6) : `docs/DELIVERY-6-PLAN.md` — plan, état et reste à faire
+- État des livraisons : `docs/DELIVERY-1.md`, `docs/DELIVERY-2.md`, `docs/DELIVERY-3.md`, `docs/DELIVERY-4.md`, `docs/DELIVERY-5.md`,
+  `docs/DELIVERY-6.md` (chapitre 4 : les fonctions simulées des 59 écrans sont devenues réelles ; plan d'origine dans
+  `docs/DELIVERY-6-PLAN.md`)
 - Décisions du responsable produit (questionnaire) : `docs/DECISIONS.md`
 - Consignes pour les sessions Claude : `CLAUDE.md`
-  (état courant : les 59 écrans du prototype sont construits)
 - Évolutions demandées et proposées : `docs/BACKLOG.md`
 
 ## Développement
@@ -25,6 +25,10 @@ npm run dev          # http://localhost:3000
 - **Contrôles :** `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 - **Rôle et langue :** le sélecteur « Voir en tant que » en bas de la barre latérale remplace l'authentification.
   La bascule FR/EN est dans l'en-tête ; le français est la langue par défaut.
+- **Analyse des comptes rendus par Claude (optionnelle) :** l'analyse d'une transcription de réunion par Claude n'est active que si
+  `ANTHROPIC_API_KEY` est définie côté serveur. La transcription est alors envoyée à Anthropic, et l'écran l'indique (« Analyse par
+  Claude (Anthropic) »). Sans cette clé, un analyseur local à base de règles est utilisé et rien ne sort de Keystone.
+  `KEYSTONE_AI_MODEL` permet de changer de modèle.
 
 ## Application Mac
 

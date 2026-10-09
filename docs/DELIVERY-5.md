@@ -1,5 +1,7 @@
 # Keystone PM — Delivery 5
 
+> **Superseded in part by `docs/DELIVERY-6.md`** (chapter 4: simulated functions made real, product-owner decisions applied).
+
 Delivery 5 builds the last 17 screens of the prototype (spec 00 §9, phases 7 and 8 and the administration part of phase 9):
 the engineering register (synthesis and four disciplines), P&ID validation, Quality (NCR and deliverables), the inspection & test
 plan with its punch list, commissioning and the handover dossier, the site (chantier), lessons learned and closure, the client
