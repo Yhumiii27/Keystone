@@ -291,35 +291,39 @@ async function addEvent(tx: Tx, requestId: string, action: RequestEventAction, o
  * "Send request" (New resource request dialog): a pending request RQ-045… prepended to the list, routed to the
  * person's department (Engineering for contract roles). `requestedBy` is the viewer. Returns the number.
  */
-export async function createResourceRequest(input: NewRequestInput, requestedBy: string): Promise<string> {
+export async function createResourceRequest(input: NewRequestInput, requestedBy: string, q?: Tx): Promise<string> {
+  // Inside the caller's transaction when given (what-if "Apply": duplicate check, drafts and the applied stamp commit together).
+  if (q) return insertResourceRequest(q, input, requestedBy);
   const db = await getDb();
-  return db.transaction(async (tx) => {
-    const p = await requireProject(tx, input.projectCode);
-    const pm = await requirePerson(tx, requestedBy);
-    const person = input.person ? await requirePerson(tx, input.person) : null;
-    let deptId: string | null = null;
-    if (person) [{ deptId }] = await tx.select({ deptId: persons.departmentId }).from(persons).where(eq(persons.id, person.id));
-    if (!deptId) [{ deptId }] = await tx.select({ deptId: departments.id }).from(departments).where(eq(departments.name, 'Engineering'));
-    const [act] = await tx.select({ id: activities.id }).from(activities).where(and(eq(activities.projectId, p.id), eq(activities.code, input.activityCode)));
-    const number = await nextNumber(tx, resourceRequests, resourceRequests.number, 'RQ-', 3, 44);
-    const [{ minOrder }] = await tx.select({ minOrder: sql<number>`coalesce(min(${resourceRequests.sortOrder}), 1)::int` }).from(resourceRequests);
-    const start = input.startDate ?? isoOfDayOffset(input.startDay ?? 5);
-    const due = input.dueDate ?? isoOfDayOffset(input.dueDay ?? (input.startDay ?? 5) + 4);
-    const sentOn = today(input.sentOn);
-    const hours = input.hours != null && Number.isFinite(input.hours) && input.hours > 0 ? input.hours : 8;
-    const [r] = await tx
-      .insert(resourceRequests)
-      .values({
-        number, projectId: p.id, requestedByPersonId: pm.id, personId: person?.id ?? null, contractRole: person ? null : (input.contractRole?.trim() || 'Contract role'),
-        departmentId: deptId!, title: input.title.trim() || 'Untitled request', activityId: act?.id ?? null, hours, startDate: start, dueDate: due,
-        priority: input.priority, status: input.draft ? 'draft' : 'pending', sentOn, note: input.note?.trim() ?? '', sortOrder: minOrder - 1,
-        scenarioId: input.scenarioId ?? null,
-      })
-      .returning({ id: resourceRequests.id });
-    await addEvent(tx, r.id, input.draft ? 'drafted' : 'sent', sentOn, pm.id, input.note?.trim() || null);
-    await writeAudit(tx, { actorName: nameOf(pm), actorPersonId: pm.id, objectRef: `Request ${number}`, change: input.draft ? 'drafted' : 'sent → pending review', area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: p.id });
-    return number;
-  });
+  return db.transaction((tx) => insertResourceRequest(tx, input, requestedBy));
+}
+
+async function insertResourceRequest(tx: Tx, input: NewRequestInput, requestedBy: string): Promise<string> {
+  const p = await requireProject(tx, input.projectCode);
+  const pm = await requirePerson(tx, requestedBy);
+  const person = input.person ? await requirePerson(tx, input.person) : null;
+  let deptId: string | null = null;
+  if (person) [{ deptId }] = await tx.select({ deptId: persons.departmentId }).from(persons).where(eq(persons.id, person.id));
+  if (!deptId) [{ deptId }] = await tx.select({ deptId: departments.id }).from(departments).where(eq(departments.name, 'Engineering'));
+  const [act] = await tx.select({ id: activities.id }).from(activities).where(and(eq(activities.projectId, p.id), eq(activities.code, input.activityCode)));
+  const number = await nextNumber(tx, resourceRequests, resourceRequests.number, 'RQ-', 3, 44);
+  const [{ minOrder }] = await tx.select({ minOrder: sql<number>`coalesce(min(${resourceRequests.sortOrder}), 1)::int` }).from(resourceRequests);
+  const start = input.startDate ?? isoOfDayOffset(input.startDay ?? 5);
+  const due = input.dueDate ?? isoOfDayOffset(input.dueDay ?? (input.startDay ?? 5) + 4);
+  const sentOn = today(input.sentOn);
+  const hours = input.hours != null && Number.isFinite(input.hours) && input.hours > 0 ? input.hours : 8;
+  const [r] = await tx
+    .insert(resourceRequests)
+    .values({
+      number, projectId: p.id, requestedByPersonId: pm.id, personId: person?.id ?? null, contractRole: person ? null : (input.contractRole?.trim() || 'Contract role'),
+      departmentId: deptId!, title: input.title.trim() || 'Untitled request', activityId: act?.id ?? null, hours, startDate: start, dueDate: due,
+      priority: input.priority, status: input.draft ? 'draft' : 'pending', sentOn, note: input.note?.trim() ?? '', sortOrder: minOrder - 1,
+      scenarioId: input.scenarioId ?? null,
+    })
+    .returning({ id: resourceRequests.id });
+  await addEvent(tx, r.id, input.draft ? 'drafted' : 'sent', sentOn, pm.id, input.note?.trim() || null);
+  await writeAudit(tx, { actorName: nameOf(pm), actorPersonId: pm.id, objectRef: `Request ${number}`, change: input.draft ? 'drafted' : 'sent → pending review', area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: p.id });
+  return number;
 }
 
 /** Chapter 4 (S-7): sends a draft to its department (draft → pending review), stamped with the business date. */

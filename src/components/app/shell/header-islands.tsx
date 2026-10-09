@@ -53,13 +53,15 @@ function useDismiss(open: boolean, ref: RefObject<HTMLElement | null>, setOpen: 
 
 // ── Project switcher (lines 79–95) ─────────────────────────────────────────
 export function ProjectSwitcher({
-  current, currentName, options, scopeAvail, mineCount,
+  current, currentName, options, scopeAvail, mineCount, param,
 }: {
   current: string;
   currentName: string;
   options: ProjectOptionView[];
   scopeAvail: boolean;
   mineCount: number;
+  /** Global screen scoped by a query parameter (What-if `?project=`): picking sets it instead of swapping the path. */
+  param?: string;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -78,7 +80,12 @@ export function ProjectSwitcher({
   const pick = (code: string) => {
     setOpen(false);
     setQ('');
-    if (code !== current) router.push(swapProjectInPath(pathname, code, window.location.search));
+    if (code === current) return;
+    if (param) {
+      const sp = new URLSearchParams(window.location.search);
+      sp.set(param, code);
+      router.push(`${pathname}?${sp.toString()}`);
+    } else router.push(swapProjectInPath(pathname, code, window.location.search));
   };
 
   return (

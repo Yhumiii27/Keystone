@@ -10,7 +10,7 @@ import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { seedIfEmpty } from '@/server/db/seed';
 import {
-  activityAssignments, auditEntries, baselineActivities, baselines, calendars, connectors, projects, resourceRequests, scheduleRuns, storedFiles,
+  activityAssignments, auditEntries, baselineActivities, baselines, calendars, connectors, projects, resourceRequests, scheduleRuns, storedFiles, whatIfScenarios,
 } from '@/server/db/schema';
 import { setFilesRoot } from '@/server/storage/files';
 import { addActivityTodo, listActivityTodos, removeActivityTodo, setActivityTodoDone } from './activity-todos';
@@ -23,7 +23,7 @@ import { cancelImportJob, createImportJob, getImportJob, getImportJobRows, listI
 import { createResourceRequest, discardDraftRequest, getDepartmentApprovals, sendDraftRequest } from './requests';
 import { listScheduleRuns, loadScheduleNetwork, recordScheduleRun } from './schedule-network';
 import { attachTaskFile, getTaskFile, listTaskFiles, removeTaskFile } from './task-files';
-import { listScenarioActions, markScenarioApplied, replaceScenarioActions, saveScenarioResult } from './whatif-store';
+import { markScenarioApplied } from './whatif-store';
 
 const DIRECTOR = 'Marie Lefebvre';
 const PM = 'Romain Aubert';
@@ -195,21 +195,22 @@ describe('client communication log', () => {
 });
 
 describe('what-if persistence and draft requests', () => {
-  it('scenario actions, result, apply → draft requests outside the department queue until sent', async () => {
-    await replaceScenarioActions('HLT-026', 'A', [
-      { kind: 'overtime', activityCode: 'A1250', params: { hoursPerDay: 10 }, label: 'Overtime 10 h/d on A1250' },
-      { kind: 'extra_resource', activityCode: 'A1260', department: 'Engineering', params: { extraUnits: 1 } },
-    ], PM);
-    expect((await listScenarioActions('HLT-026', 'A')).map((a) => [a.kind, a.activityCode, a.department, a.params])).toEqual([
-      ['overtime', 'A1250', null, { hoursPerDay: 10 }], ['extra_resource', 'A1260', 'Engineering', { extraUnits: 1 }],
-    ]);
-    await expect(replaceScenarioActions('HLT-026', 'A', [{ kind: 'overtime', activityCode: 'A9999', params: {} }], PM)).rejects.toThrow('Unknown activity');
-    await saveScenarioResult('HLT-026', 'A', { finish: '2027-01-08', costDeltaKeur: 42 });
+  it('apply stamp → draft requests outside the department queue until sent', async () => {
     const db = await getDb();
+    // The stamp and the draft commit together (createResourceRequest inside the caller's transaction, as applyScenario does).
     const number = await db.transaction(async (tx) => {
       const scenarioId = await markScenarioApplied('HLT-026', 'A', PM, tx);
-      return scenarioId;
-    }).then((scenarioId) => createResourceRequest({ projectCode: 'HLT-026', title: 'Overtime crew', activityCode: 'A1250', person: 'J. Wagner', hours: 40, priority: 'high', draft: true, scenarioId }, 'R. Aubert'));
+      return createResourceRequest({ projectCode: 'HLT-026', title: 'Overtime crew', activityCode: 'A1250', person: 'J. Wagner', hours: 40, priority: 'high', draft: true, scenarioId }, 'R. Aubert', tx);
+    });
+    // A failure inside the transaction rolls both back: no stamp, no draft.
+    const before = (await db.select().from(resourceRequests)).length;
+    await expect(db.transaction(async (tx) => {
+      const scenarioId = await markScenarioApplied('HLT-026', 'B', PM, tx);
+      await createResourceRequest({ projectCode: 'HLT-026', title: 'Lost', activityCode: 'A1250', person: 'J. Wagner', hours: 8, priority: 'med', draft: true, scenarioId }, 'R. Aubert', tx);
+      await createResourceRequest({ projectCode: 'HLT-026', title: 'Fails', activityCode: 'A1250', person: 'Nobody Here', hours: 8, priority: 'med', draft: true, scenarioId }, 'R. Aubert', tx);
+    })).rejects.toThrow();
+    expect((await db.select().from(resourceRequests)).length).toBe(before);
+    expect((await db.select({ at: whatIfScenarios.appliedAt }).from(whatIfScenarios).where(eq(whatIfScenarios.name, 'B')))[0].at).toBeNull();
     const [r] = await db.select().from(resourceRequests).where(eq(resourceRequests.number, number));
     expect([r.status, !!r.scenarioId]).toEqual(['draft', true]);
     const dept = (await getDepartmentApprovals('Engineering'))!;

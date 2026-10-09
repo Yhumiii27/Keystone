@@ -33,17 +33,22 @@ export interface PageHeaderProps {
   primary?: ReactNode;
   /** Task screen (`/my/tasks/[taskId]`): the task shown — default crumb extra (its id) and title (its title). */
   taskId?: string;
+  /**
+   * Global screen showing one project chosen by `?project=` (What-if levelling): that project, with the project switcher
+   * setting the query parameter instead of the path.
+   */
+  projectParam?: string;
 }
 
 const healthView = (p: Pick<ProjectRow, 'health'>) =>
   p.health ? { label: HEALTH_LABEL[p.health], cls: HEALTH_TAG[p.health] } : { label: '—', cls: 'tag tag-neutral' };
 
-export async function PageHeader({ screen, projectCode, title, crumbExtra, primary, taskId }: PageHeaderProps) {
+export async function PageHeader({ screen, projectCode, title, crumbExtra, primary, taskId, projectParam }: PageHeaderProps) {
   const [{ t, lang }, viewer, zone, lastProject, scope] = await Promise.all([getI18n(), getViewer(), getZone(), getLastProject(), getProjectScope()]);
   const def = SCREEN_BY_ID[screen];
   const isProject = def.scope === 'project';
   const code = projectCode ?? lastProject;
-  const project = isProject ? await getProject(code) : null;
+  const project = isProject ? await getProject(code) : projectParam ? await getProject(projectParam) : null;
 
   const outside = isOutside(viewer.role, screen);
   const readOnly = !!project && scope.readOnly(project);
@@ -94,6 +99,7 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
                   options={options}
                   scopeAvail={scope.scopeAvail}
                   mineCount={scope.mineCount}
+                  param={isProject ? undefined : 'project'}
                 />
               </>
             )}

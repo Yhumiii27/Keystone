@@ -140,10 +140,11 @@ async function whatIfWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null
   const label = new Map(w.levers.map((l) => [l.code, leverLabel(l)]));
   const result = (r: WhatIfResult | undefined) => ({
     finish: r?.finish ?? null, float: r?.floatDays ?? null, gained: r?.daysGained ?? null, cost: r?.costKeur ?? null, peak: r ? r.peakPct / 100 : null, over: r?.overPeople ?? null,
+    load: r ? Math.round(r.loadDeltaH) : null,
   });
   const resultCols = [
     col('finish', t('Project finish'), 'date'), col('float', t('Float (d)'), 'integer'), col('gained', t('Days gained'), 'integer'), col('cost', t('Cost'), 'money_keur'),
-    col('peak', t('Peak load'), 'percent'), col('over', t('People above 100%'), 'integer'),
+    col('peak', t('Peak load'), 'percent'), col('over', t('People above 100%'), 'integer'), col('load', t('Load change (h)'), 'integer'),
   ];
   return {
     title: `${t('What-if levelling')} · ${project.code}`,

@@ -153,13 +153,13 @@ export interface SkillKpis {
   certifications: number;
 }
 
-/** `skillKpis` (line 4396) computed values; "Open requests needing level ≥4" stays the prototype constant. */
+/**
+ * `skillKpis` (line 4396) computed values. The 4th tile, "Open requests needing level ≥4", is computed by the page from the
+ * pending requests (A-12, domain/resources `requestsNeedingExperts`); the prototype's constant "2 · Structural · Quality" is gone.
+ */
 export function skillKpis(coverage: SkillCoverage[], peopleWithCerts: number): SkillKpis {
   return { families: coverage.length, singleExpert: coverage.filter((c) => c.gap).length, certifications: peopleWithCerts };
 }
-
-/** Prototype constants of the 4th Skills KPI (06 OQ4, 00 A-12: no source for "requests needing level ≥4"). */
-export const OPEN_REQUESTS_LEVEL4 = { value: '2', sub: 'Structural · Quality' };
 
 // ── Leave & working calendar (§4, logic 4398–4404) ──────────────────────────────────────────────────────
 
