@@ -109,6 +109,7 @@ export function ToastViewport({ closeLabel }: { closeLabel?: string }) {
             <a className={s.link} href={toast.link.href} target="_blank" rel="noopener noreferrer">
               {toast.link.label}
             </a>
+          )}
           {toast.action && (
             <Button
               variant="ghost"
