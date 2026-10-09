@@ -1,7 +1,8 @@
 'use server';
 // Server Functions of the resource-request workflow (docs/spec/08 §5.5–§5.6, §6.5, 01 §12): send (New resource request
-// dialog), the PM's withdraw / accept reschedule / re-request on their own requests, and the department decisions
-// approve / propose reschedule / reject. Each validates its input, checks the viewer (persona) may act, writes through
+// dialog), the PM's withdraw / accept reschedule / re-request on their own requests, send / discard of the DRAFTS made by
+// the what-if levelling (chapter 4, S-7), and the department decisions approve / propose reschedule / reject. Each
+// validates its input, checks the viewer (persona) may act, writes through
 // the requests DAL with the viewer as actor (never the prototype's hard-wired R. Aubert or department head, 00 §7.16),
 // notifies the other party and revalidates every screen (badges, Home, My work). Messages are English source strings
 // (the client shows them with toast showEn).
@@ -12,22 +13,24 @@ import {
 import { shortDateOfIso } from '@/server/db/codes';
 import { getProject } from '@/server/dal/projects';
 import {
-  acceptReschedule, approveResourceRequest, createResourceRequest, getResourceRequest, listRequestActivities, proposeReschedule,
-  reRequestResourceRequest, rejectResourceRequest, withdrawResourceRequest, type ResourceRequestRow,
+  acceptReschedule, approveResourceRequest, createResourceRequest, discardDraftRequest, getResourceRequest, listRequestActivities, proposeReschedule,
+  reRequestResourceRequest, rejectResourceRequest, sendDraftRequest, withdrawResourceRequest, type ResourceRequestRow,
 } from '@/server/dal/requests';
 import { notifyRequestEvent, recordRequestActivity, type RequestNotice } from '@/server/dal/requests-screens';
 import { getResourcePool } from '@/server/dal/resources';
 import { getProjectScope } from '@/server/project-context';
 import { getViewer, type Viewer } from '@/server/session';
-import { canDecideRequests, canManageOwnRequests, canSendRequests } from './permissions';
+import { canDecideRequests, canManageOwnRequests, canSendRequests, draftRights, isRequester } from './permissions';
 
 export type RequestActionResult = { ok: true; number?: string } | { ok: false; error: string };
 
 const NOT_SENDER = 'Read-only — you cannot send resource requests';
 const NOT_OWNER = 'Read-only — only the sender can change this request';
+const NOT_DRAFTER = 'Read-only — only the requester, the project manager or the director can send or discard this draft';
 const NOT_DECIDER = 'Read-only — you cannot decide resource requests';
 const UNKNOWN = 'Unknown request';
 const STALE = 'This request has already been decided';
+const NOT_DRAFT = 'This request is no longer a draft';
 const INVALID = 'Invalid request';
 const NO_PLAN = 'This project has no plan yet';
 const FAILED = 'The change could not be saved';
@@ -118,7 +121,7 @@ async function ownRequest(id: unknown): Promise<{ viewer: Viewer; r: ResourceReq
   if (!isNumber(id)) return { error: INVALID };
   const r = await getResourceRequest(id);
   if (!r) return { error: UNKNOWN };
-  if (r.requestedBy !== viewer.short && r.requestedByName !== viewer.name) return { error: NOT_OWNER };
+  if (!isRequester(r, viewer)) return { error: NOT_OWNER };
   return { viewer, r };
 }
 
@@ -176,6 +179,57 @@ export async function acceptRescheduleAction(id: string): Promise<RequestActionR
   ], 'Accepted reschedule of resource request');
   refresh();
   return { ok: true, number: task };
+}
+
+// ── Drafts (chapter 4, S-7: what-if "Apply" / "Select scenario → create requests") ────────────────────────────
+
+/**
+ * Loads a DRAFT the viewer may send or discard — the rules of sending a request (`canHandleDraft`, shared with the page
+ * through `draftRights`): the requester, the project's PM or the director, with Resource requests in their workspace,
+ * never on a project read-only for them.
+ */
+async function draftRequest(id: unknown): Promise<{ viewer: Viewer; r: ResourceRequestRow } | { error: string }> {
+  const viewer = await getViewer();
+  if (!canSendRequests(viewer.role) || !canManageOwnRequests(viewer.role)) return { error: NOT_SENDER };
+  if (!isNumber(id)) return { error: INVALID };
+  const r = await getResourceRequest(id);
+  if (!r) return { error: UNKNOWN };
+  if (!draftRights(viewer, await getProjectScope())(r)) return { error: NOT_DRAFTER };
+  if (r.status !== 'draft') return { error: NOT_DRAFT };
+  return { viewer, r };
+}
+
+/** "Send" on a draft: draft → pending review, sent today; the department head is notified as for a new request. */
+export async function sendDraftRequestAction(id: string): Promise<RequestActionResult> {
+  const o = await draftRequest(id);
+  if ('error' in o) return { ok: false, error: o.error };
+  try {
+    await sendDraftRequest(o.r.id, o.viewer.name);
+  } catch (e) {
+    console.error('sendDraftRequestAction', e);
+    return { ok: false, error: FAILED };
+  }
+  await announce(o.viewer, await getResourceRequest(o.r.id), (r) => [
+    { kind: 'request', title: 'New resource request', sub: `${r.title} · ${who(r)} · ${o.viewer.name}`, screen: 'approvals', params: { dept: r.department }, projectCode: r.projectCode, to: r.departmentHead },
+  ], 'Sent draft resource request');
+  refresh();
+  return { ok: true, number: o.r.id };
+}
+
+/** "Discard" on a draft (confirmed in a dialog): the draft is deleted — it never reached the department. */
+export async function discardDraftRequestAction(id: string): Promise<RequestActionResult> {
+  const o = await draftRequest(id);
+  if ('error' in o) return { ok: false, error: o.error };
+  try {
+    await discardDraftRequest(o.r.id, o.viewer.name);
+  } catch (e) {
+    console.error('discardDraftRequestAction', e);
+    return { ok: false, error: FAILED };
+  }
+  // Nobody to notify (the department never saw it); the activity feed keeps the trace.
+  await announce(o.viewer, o.r, () => [], 'Discarded draft resource request');
+  refresh();
+  return { ok: true, number: o.r.id };
 }
 
 // ── Department side (Approvals) ────────────────────────────────────────────────────────────────────────

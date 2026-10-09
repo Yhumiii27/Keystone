@@ -36,5 +36,15 @@
   "Resource request rejected": "Demande de ressource refusée",
   "Resource request withdrawn": "Demande de ressource retirée",
   "Reschedule accepted": "Replanification acceptée",
-  "New task assigned": "Nouvelle tâche affectée"
+  "New task assigned": "Nouvelle tâche affectée",
+  "Not sent": "Non envoyée",
+  "Not sent to the department yet": "Pas encore envoyée au service",
+  "Send": "Envoyer",
+  "Discard": "Supprimer",
+  "Discard draft": "Supprimer le brouillon",
+  "The draft is deleted; it was never sent to the department.": "Le brouillon est supprimé ; il n’a jamais été envoyé au service.",
+  "Draft sent to the department": "Brouillon envoyé au service",
+  "Draft discarded": "Brouillon supprimé",
+  "Read-only — only the requester, the project manager or the director can send or discard this draft": "Consultation — seuls le demandeur, le chef de projet ou la direction peuvent envoyer ou supprimer ce brouillon",
+  "This request is no longer a draft": "Cette demande n’est plus un brouillon"
 }
