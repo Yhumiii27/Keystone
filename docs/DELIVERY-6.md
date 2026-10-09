@@ -13,11 +13,11 @@ Conventions: `docs/ARCHITECTURE.md`. Functional spec: `docs/spec/`. Earlier base
 |---|---|
 | `npx tsc --noEmit` (after `npx next typegen` in a fresh clone) | clean |
 | `npm run lint` | clean (run it with `--ignore-pattern '.claude/**'` when agent worktrees exist under `.claude/worktrees`) |
-| `npm test` | STATUS_TESTS |
+| `npm test` | 200 files, 2 786 tests, all passing (Delivery 5: 164 files, 2 206 tests) |
 | `KEYSTONE_DIST_DIR=.next-ci npm run build` | succeeds (Next 16.4 / Turbopack), all routes dynamic; new Route Handlers `/api/export/[screen]`, `/api/import`, `/api/interchange/mspdi/[code]`, `/api/meetings/[number]/transcript`, `/api/tasks/…` |
 | `npm run db:generate` | "No schema changes". Seven migrations; chapter 4 adds `0005_sloppy_talos.sql` and `0006_square_lilith.sql` (§3) |
 | `scripts/db-check.ts` | "All checks passed", including the new "Chapter 4 writes" block |
-| Route matrix on `next start` with a fresh DB | 220 routes × 8 personas × FR/EN = 3 520 requests, all 200, no "being built" or error page, nothing but the start-up lines in the server log |
+| Route matrix on `next start` with a fresh DB | 220 routes × 8 personas × FR/EN = 3 520 requests, all 200, no "being built" or error page, nothing but the start-up lines in the server log; re-run on the final build after the review fixes, same result |
 | End-to-end scenarios (Playwright, `next start`) | 14 scenarios of the plan (§5 step 2), all passing, no page error, console error or 5xx (below) |
 | Adversarial reviews | Security / permissions and correctness (CPM, calendars, KPIs, what-if, trash, baselines, seeded displays): every headline value recomputed by hand matches; the findings and their fixes are in §1.1 |
 
