@@ -253,18 +253,23 @@ export interface ImpactRow {
   lo: boolean;
 }
 
-export function crImpact(cr: ChangeRequestLike, ctx: { bac: number; contingency: number | null }, lang: Lang): ImpactRow[] {
+/**
+ * `ctx.proposedBaseline`: the baseline this request proposes (Baselines register, linked to the request — BL2 for the seeded
+ * CR-009, BL3… for a request raised from the Plan, S-3); without it the prototype's rule applies (baseline column BL2).
+ */
+export function crImpact(cr: ChangeRequestLike, ctx: { bac: number; contingency: number | null; proposedBaseline?: string | null }, lang: Lang): ImpactRow[] {
   const f = (k: number, signed = false) => money(k, lang, { signed });
   const amt = cr.amount;
   const budget = amt ? `${f(amt, true)} → BAC ${f(ctx.bac + (cr.status === 'approved' ? 0 : amt))}` : 'None';
   const schedule = cr.days ? `${cr.days > 0 ? '+' : ''}${cr.days} days on handover` : 'None';
   const wbs = cr.wbs.map((w) => w.code + (w.name ? ' · ' + w.name : '')).join(' · ');
+  const proposed = ctx.proposedBaseline !== undefined ? ctx.proposedBaseline : cr.baseline === 'BL2' ? 'BL2' : null;
   const contingency = amt > 0 && ctx.contingency ? `Funded from contingency · ${Math.round((amt / ctx.contingency) * 100)}% of reserve` : '—';
   return [
     { k: 'Budget', v: budget, lo: amt > 50 },
     { k: 'Schedule', v: schedule, lo: false },
     { k: 'WBS impacted', v: wbs || '—', lo: false },
-    { k: 'Baseline', v: cr.baseline === 'BL2' ? 'Requires re-baseline → BL2' : 'Within BL1', lo: false },
+    { k: 'Baseline', v: proposed ? `Requires re-baseline → ${proposed}` : 'Within BL1', lo: false },
     { k: 'Contingency', v: contingency, lo: false },
   ];
 }

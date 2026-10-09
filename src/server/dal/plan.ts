@@ -252,6 +252,8 @@ export async function updateActivity(code: string, actId: string, patch: Activit
     }
     const structural = Object.keys(set).some((k) => k !== 'percentComplete') || patch.preds !== undefined;
     if (structural) set.updatedAt = new Date();
+    // A remaining duration stored by an import (MSPDI / XER) wins over % complete in the CPM: a new % or duration replaces it.
+    if (patch.pct !== undefined || patch.durationDays !== undefined) set.remainingDays = null;
     if (Object.keys(set).length) await tx.update(activities).set(set).where(eq(activities.id, a.id));
     if (patch.preds !== undefined) {
       await tx.delete(activityLinks).where(eq(activityLinks.successorId, a.id));

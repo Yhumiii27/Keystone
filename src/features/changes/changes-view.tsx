@@ -191,7 +191,7 @@ export function ChangesView({ code, data, filter, selected, role, canEdit, href,
         <ChangeRequestDrawer
           cr={open}
           code={code}
-          ctx={{ bac: data.bac, contingency: data.contingency }}
+          ctx={{ bac: data.bac, contingency: data.contingency, proposedBaseline: data.baselines.find((b) => b.changeRequest === open.id)?.code ?? null }}
           role={role}
           canEdit={canEdit}
           closeHref={href({ filter, cr: null })}
@@ -208,7 +208,7 @@ export function ChangesView({ code, data, filter, selected, role, canEdit, href,
 export interface CrDrawerProps {
   cr: ChangeRequestLike;
   code: string;
-  ctx: { bac: number; contingency: number | null };
+  ctx: { bac: number; contingency: number | null; proposedBaseline?: string | null };
   role: RoleKey;
   canEdit: boolean;
   closeHref: string;
@@ -243,6 +243,12 @@ function ChangeRequestDrawer(props: CrDrawerProps) {
   );
 }
 
+/** Impact value in the viewer's language: "Requires re-baseline → BL3" keeps its code (any BLn, S-3). */
+const impactText = (v: string, t: (s: string) => string) => {
+  const m = /^Requires re-baseline → (BL\d+)$/.exec(v);
+  return m ? `${t('Requires re-baseline →')} ${m[1]}` : t(v);
+};
+
 /** Drawer content: raised by, impact, approval chain with the viewer's decisions, hint, actions. */
 export function CrDrawerBody({ cr, code, ctx, role, canEdit, planHref, budgetHref, lang, t }: Omit<CrDrawerProps, 'closeHref'>) {
   const impact = crImpact(cr, ctx, lang);
@@ -253,7 +259,7 @@ export function CrDrawerBody({ cr, code, ctx, role, canEdit, planHref, budgetHre
       <span className={s.raised}>
         {t('Raised by')} {t(`${cr.by} · ${cr.date}`)}
       </span>
-      <KeyValueList title={t('Impact')} items={impact.map((r) => ({ k: t(r.k), v: t(r.v), color: r.lo ? LO : OK }))} />
+      <KeyValueList title={t('Impact')} items={impact.map((r) => ({ k: t(r.k), v: impactText(r.v, t), color: r.lo ? LO : OK }))} />
       <section className={s.chainSection} aria-label={t('Approval chain')}>
         <Eyebrow>{t('Approval chain')}</Eyebrow>
         {cr.chain.map((st) => {

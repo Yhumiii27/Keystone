@@ -116,6 +116,22 @@ describe('Plan trash', () => {
     await db.delete(tasks).where(sql`${tasks.number} in ${[mine.number, todo]}`);
   });
 
+  it('two removed to-dos, the first number taken since: the renumbered one skips the number the second keeps', async () => {
+    const db = await getDb();
+    const first = await addActivityTodo('HLT-026', 'A1620', { title: 'Punch walk' }, PM);
+    const second = await addActivityTodo('HLT-026', 'A1620', { title: 'As-built set' }, PM);
+    const id = (await trashPlanRow('HLT-026', 'act', 'A1620', PM))!;
+    // The sequence hands the first removed number to a new task: the next free number in the database is now the second's.
+    const other = await addActivityTodo('HLT-026', 'A1610', { title: 'Roof check' }, PM);
+    await db.update(tasks).set({ number: first }).where(eq(tasks.number, other));
+    expect(await restorePlanTrash('HLT-026', id, PM)).toMatchObject({ ok: true });
+    const back = await listActivityTodos('HLT-026', 'A1620');
+    const punch = back.find((t) => t.title === 'Punch walk')!;
+    expect(back.find((t) => t.title === 'As-built set')!.number).toBe(second);
+    expect([punch.number === first, punch.number === second]).toEqual([false, false]);
+    await db.delete(tasks).where(sql`${tasks.number} in ${[first, second, punch.number]}`);
+  });
+
   it('a link to an activity removed later waits for that activity; restoring both brings every link back', async () => {
     const before = await dump();
     const succ = (await plan()).activities.find((a) => a.preds.some((l) => l[0] === 'A1250'))!;

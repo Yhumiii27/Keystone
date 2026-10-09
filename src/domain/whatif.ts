@@ -156,6 +156,8 @@ export interface WhatIfResult {
   daysGained: number;
   /** Labour-cost delta of the remaining work, k€ (0.1). */
   costKeur: number;
+  /** Unrounded cost delta in € (auto-level "protect the budget" must not take +€40 for "0.0 k€"). */
+  costEur?: number;
   /** Highest weekly load of the team (%). */
   peakPct: number;
   /** Most people above 100 % in one week. */
@@ -530,6 +532,7 @@ export function evaluateScenario(model: WhatIfModel, enabled: Iterable<string>):
     floatDays: open.length ? Math.min(...open.map((a) => a.totalFloat!)) : null,
     daysGained: projectCal.workDaysBetween(addCalendarDays(scen.projectFinish, 1), addCalendarDays(base.projectFinish, 1)),
     costKeur: round1(costDelta / 1000),
+    costEur: costDelta,
     peakPct: Math.max(0, ...bars),
     overPeople: Math.max(0, ...overByWeek),
     bars,
@@ -622,7 +625,9 @@ export function scenarioRequests(model: WhatIfModel, enabled: Iterable<string>):
         continue;
       }
       const added = l.to - l.from;
-      const hours = Math.round(l.driving ? added * h * days : ((j.units * h) / (j.units + added)) * days);
+      // Driving: the added units work the whole remaining span. Relief: the helpers take their share added / (units + added)
+      // of the assignee's load units × h (correctness review: the share was missing `added`, right only for +1).
+      const hours = Math.round(l.driving ? added * h * days : ((j.units * h * added) / (j.units + added)) * days);
       const helper = l.helper;
       if (!helper) continue;
       if (helper.kind === 'same') out.push({ ...base, title: `Extra resource ${l.from} → ${l.to} — ${j.resource}`, person: null, contractRole: j.resource, hours });
@@ -650,7 +655,7 @@ export function autoLevel(levers: readonly WhatIfLever[], effects: Readonly<Reco
       const e = effects[l.code];
       if (!e || e.error) return false;
       if (priority === 'date') return e.daysGained > 0;
-      if (priority === 'budget') return e.costKeur <= 0 && e.daysGained >= 0 && (e.daysGained > 0 || e.overloadDeltaH < 0);
+      if (priority === 'budget') return (e.costEur ?? e.costKeur * 1000) <= 0 && e.daysGained >= 0 && (e.daysGained > 0 || e.overloadDeltaH < 0);
       return l.kind !== 'overtime' && e.overloadDeltaH < 0 && e.overWeeksDelta <= 0 && !e.sideEffects.some((s) => s.kind === 'overload');
     })
     .map((l) => l.code);

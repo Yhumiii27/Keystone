@@ -36,15 +36,18 @@ export async function rebaselineSchedule(code: string, values: Record<string, st
   const cr = mentioned.find((n) => known.has(n)) ?? null;
   const bls = await listProjectBaselines(project.code);
   const free = canSnapshotFreely(bls.map((b) => b.code));
+  const open = cr && crs.some((c) => c.id === cr && (c.status === 'draft' || c.status === 'in_review')) ? cr : null;
+  const taken = open ? bls.find((b) => b.changeRequest === open && b.state === 'proposed') : undefined;
   if (!free) {
-    const open = crs.find((c) => c.id === cr && (c.status === 'draft' || c.status === 'in_review'));
     if (!open) return { error: t('After BL1, a new baseline goes through a change request — name an open change request (CR-…)') };
-    const taken = bls.find((b) => b.changeRequest === cr && b.state === 'proposed');
     if (taken) return { error: `${cr} · ${t('already proposes baseline')} ${taken.code}` };
   }
+  // Only an open request that proposes no baseline yet can carry the snapshot (it becomes current at its approval); a closed
+  // one named while snapshots are still free is ignored, else the baseline would stay proposed for ever (correctness review).
+  const linked = open && !taken ? open : null;
   const res = await createBaselineSnapshot(project.code, {
-    actorName: ctx.viewer.name, name, comment: reason, source: cr ? 'change_request' : 'snapshot', changeRequestNumber: cr,
-    approverName: PERSONA_BY_ROLE[approver].name, scope, makeCurrent: free && !cr,
+    actorName: ctx.viewer.name, name, comment: reason, source: linked ? 'change_request' : 'snapshot', changeRequestNumber: linked,
+    approverName: PERSONA_BY_ROLE[approver].name, scope, makeCurrent: free && !linked,
   });
   revalidatePath(`/projects/${project.code}`, 'layout');
   return { toast: `${name} · ${t(REBASELINE_RESULT)} · ${res.code}` };

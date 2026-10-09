@@ -230,4 +230,17 @@ describe('progress implies actual dates at Reschedule', () => {
     a = (await getPlanData('HLT-026'))!.activities.find((x) => x.id === 'A1320')!;
     expect([a.start, a.startActual, a.finish]).toEqual(['12 Oct', false, '30 Oct']);
   });
+
+  it('a remaining duration stored by an import is replaced by a new % complete (correctness review)', async () => {
+    const db = await getDb();
+    const [row] = await db.select({ id: activities.id }).from(activities).where(eq(activities.code, 'A1250'));
+    await db.update(activities).set({ remainingDays: 11 }).where(eq(activities.id, row.id));
+    await rescheduleProject('HLT-026', DIRECTOR);
+    expect((await getPlanData('HLT-026'))!.activities.find((x) => x.id === 'A1250')!.finish).toBe('09 Oct');
+    await updateActivity('HLT-026', 'A1250', { pct: 95 });
+    expect((await db.select({ r: activities.remainingDays }).from(activities).where(eq(activities.id, row.id)))[0].r).toBeNull();
+    await rescheduleProject('HLT-026', DIRECTOR);
+    // 95 % of the duration left → 2 working days from the data date (Fri 25 Sep): finish Mon 28 Sep.
+    expect((await getPlanData('HLT-026'))!.activities.find((x) => x.id === 'A1250')!.finish).toBe('28 Sep');
+  });
 });

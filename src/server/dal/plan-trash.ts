@@ -321,13 +321,22 @@ export async function restorePlanTrash(code: string, trashId: string, actorName:
         const [dup] = await tx.select({ code: activities.code }).from(activities).where(and(eq(activities.projectId, p.id), inArray(activities.code, acts.map((a) => a.code as string))));
         if (dup) return { error: 'conflict' as const, code: dup.code };
       }
-      // A to-do number (global sequence) given to a new task since the removal: the restored to-do takes the next free number.
+      // A to-do number (global sequence) given to a new task since the removal: the restored to-do takes the next number that is
+      // free both in the database and among the numbers the other restored to-dos keep.
+      const todoRows = rowsOf('tasks');
+      const takenRows = new Set(
+        todoRows.length
+          ? (await tx.select({ number: tasks.number }).from(tasks).where(inArray(tasks.number, todoRows.map((t) => t.number as string)))).map((r) => r.number)
+          : [],
+      );
+      const kept = new Set(todoRows.map((t) => t.number as string).filter((n) => !takenRows.has(n)));
       let free: number | null = null;
-      for (const t of rowsOf('tasks')) {
-        const [taken] = await tx.select({ id: tasks.id }).from(tasks).where(eq(tasks.number, t.number as string));
-        if (!taken) continue;
+      for (const t of todoRows) {
+        if (!takenRows.has(t.number as string)) continue;
         free ??= parseInt((await nextNumber(tx, tasks, tasks.number, 'T-', 4, 2340)).slice(2), 10);
+        while (kept.has(`T-${String(free).padStart(4, '0')}`)) free++;
         t.number = `T-${String(free++).padStart(4, '0')}`;
+        kept.add(t.number as string);
       }
       const { tables, edges } = schemaGraph();
       const restored = new Map<string, Set<string>>();

@@ -137,7 +137,9 @@ describe('Activity, integrations & audit body', () => {
 
   it('import / export cards and the audit trail with its CSV export', async () => {
     const imp = await body('en', 'imports');
-    expect(count(imp, />Drop a file or click to choose</g)).toBe(6);
+    // The three import cards keep the drop-zone text; the three export cards say what a click does (e2e review).
+    expect(count(imp, />Drop a file or click to choose</g)).toBe(3);
+    expect(count(imp, />Click to choose what to export</g)).toBe(3);
     expect(count(imp, /type="file"/g)).toBe(3);
     const fr = await body('fr', 'audit');
     const plain = text(fr);

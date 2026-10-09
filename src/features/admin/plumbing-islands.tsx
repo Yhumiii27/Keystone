@@ -68,9 +68,10 @@ export function DropZone({ format, direction, canEdit, kinds }: { format: string
   const [over, setOver] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [exporting, setExporting] = useState(false);
-  const label = t('Drop a file or click to choose');
   const name = Object.keys(CARDS).find((n) => n === format || t(n) === format);
   const card = name ? CARDS[name] : null;
+  // Export cards open the export dialog: no file to drop (the prototype's drop-zone text only fits the import cards).
+  const label = direction === 'export' || card?.direction === 'export' ? t('Click to choose what to export') : t('Drop a file or click to choose');
   const allowed = card?.direction === 'import' ? (kinds ? card.kinds.some((k) => kinds.includes(k)) : canEdit) : canEdit;
   if (!allowed) return <div className={cx(s.dropZone, s.dropZoneRo)}>{label}</div>;
 

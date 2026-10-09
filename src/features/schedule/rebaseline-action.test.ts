@@ -15,7 +15,8 @@ vi.mock('@/server/project-context', () => ({
 import { eq } from 'drizzle-orm';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
-import { baselines, persons, projects } from '@/server/db/schema';
+import { baselines, changeRequests, persons, projects } from '@/server/db/schema';
+import { createChangeRequest } from '@/server/dal/changes';
 import { getBaselineActivities, listProjectBaselines } from '@/server/dal/baselines';
 import { rebaselineSchedule } from './actions';
 
@@ -64,7 +65,11 @@ describe('rebaselineSchedule', () => {
     const db = await getDb();
     const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, 'NDC-031'));
     await db.delete(baselines).where(eq(baselines.projectId, p.id));
-    expect(await rebaselineSchedule('NDC-031', { name: 'Initial plan', reason: 'Kick-off' })).toEqual({ toast: 'Initial plan · Baseline frozen · BL0' });
+    // A closed (approved) request named while snapshots are free is ignored: the baseline is current, not proposed for ever.
+    const closed = await createChangeRequest('NDC-031', { title: 'Old scope', types: ['scope'], amountKeur: 0, scheduleDays: 0 }, 'Marie Lefebvre');
+    await db.update(changeRequests).set({ status: 'approved' }).where(eq(changeRequests.number, closed));
+    expect(await rebaselineSchedule('NDC-031', { name: 'Initial plan', reason: `Kick-off (${closed})` })).toEqual({ toast: 'Initial plan · Baseline frozen · BL0' });
+    expect((await listProjectBaselines('NDC-031')).map((b) => [b.code, b.state, b.source, b.changeRequest])).toEqual([['BL0', 'current', 'snapshot', null]]);
     expect(await rebaselineSchedule('NDC-031', { name: 'APD plan', reason: 'End of APD (L-2)' })).toEqual({ toast: 'APD plan · Baseline frozen · BL1' });
     expect((await listProjectBaselines('NDC-031')).map((b) => [b.code, b.state, b.source])).toEqual([['BL0', 'superseded', 'snapshot'], ['BL1', 'current', 'snapshot']]);
     expect(await rebaselineSchedule('NDC-031', { name: 'BL2', reason: 'Late' })).toMatchObject({ error: expect.stringContaining('After BL1') });

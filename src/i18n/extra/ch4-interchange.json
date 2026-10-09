@@ -135,5 +135,6 @@
   "Connectors are configured by IT outside Keystone": "Les connecteurs sont réglés par l’informatique, en dehors de Keystone",
   "Enabled": "Activé",
   "Disabled": "Désactivé",
-  "Connectors are configured by IT outside Keystone: ask IT to change the frequency, the data, the direction or to enable or disable a connector. Credentials, addresses and tokens stay in the server configuration and in the remote system.": "Les connecteurs sont réglés par l’informatique, en dehors de Keystone : demandez à l’informatique de changer la fréquence, les données, le sens ou d’activer ou désactiver un connecteur. Les identifiants, adresses et jetons restent dans la configuration du serveur et dans le système distant."
+  "Connectors are configured by IT outside Keystone: ask IT to change the frequency, the data, the direction or to enable or disable a connector. Credentials, addresses and tokens stay in the server configuration and in the remote system.": "Les connecteurs sont réglés par l’informatique, en dehors de Keystone : demandez à l’informatique de changer la fréquence, les données, le sens ou d’activer ou désactiver un connecteur. Les identifiants, adresses et jetons restent dans la configuration du serveur et dans le système distant.",
+  "Click to choose what to export": "Cliquer pour choisir quoi exporter"
 }

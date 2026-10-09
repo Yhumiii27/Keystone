@@ -94,7 +94,7 @@ skips it when any open request of the project already matches.
 | Resource requests · Average response (heads) | 1.4 d | **1.0 d** | working days sent → decision |
 | Approvals (Engineering) · Average response | 0.9 d | **—** | nothing decided yet in Engineering |
 | Site · Man-days planned | 168 | **179** | Σ rotation crew × working days |
-| Site · Client decisions logged | 3 | **2** | change requests with a decided client step |
+| Site · Client decisions logged | 3 | **2** | decisions of the project's meetings with the client (D-5, lot D; was change requests with a decided client step) |
 | ECO · Released this month | 2 · €10,360 | **1 · €9,400** | released ECOs of the data date's month |
 | Team · Interfaces due within 30 days | 2 | **1** | open interfaces needed within 30 days |
 | My work / member Home · Logged this week | 14.0 h | **7.0 h** | time entries of the week |

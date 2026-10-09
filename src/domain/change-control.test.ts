@@ -170,6 +170,9 @@ describe('drawer (crVals 4607–4610)', () => {
     expect(crImpact(byId('CR-007'), ctx, 'en')[0]).toEqual({ k: 'Budget', v: '+€15k → BAC €4.80M', lo: false });
     expect(crImpact(byId('CR-009'), ctx, 'en').map((r) => r.v)).toEqual(['None', '+27 days on handover', '1 · Harbor Line Terminal Expansion', 'Requires re-baseline → BL2', '—']);
     expect(crImpact(CR005, ctx, 'fr').map((r) => r.v)).toEqual(['−40 k€ → BAC 4,76 M€', 'None', '—', 'Within BL1', '—']);
+    // S-3: the baseline the request proposes comes from the Baselines register (BL3 for a request raised from the Plan).
+    expect(crImpact(byId('CR-008'), { ...ctx, proposedBaseline: 'BL3' }, 'en')[3]).toEqual({ k: 'Baseline', v: 'Requires re-baseline → BL3', lo: false });
+    expect(crImpact(byId('CR-009'), { ...ctx, proposedBaseline: null }, 'en')[3].v).toBe('Within BL1');
   });
 
   it('step state tags', () => {
