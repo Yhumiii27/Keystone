@@ -14,13 +14,14 @@ import {
 } from '@/domain/admin';
 import { isoOfDisplayDate, locationType, type CalendarCode, type CostType } from '@/server/db/codes';
 import { listAdminConnectors, syncAdminConnector } from '@/server/dal/admin-connectors';
-import { ADDABLE_SYSTEMS, CONNECTOR_FREQUENCIES, addConnector } from '@/server/dal/integrations';
+import { ADDABLE_SYSTEMS, CONNECTOR_FREQUENCIES, ConnectorDisabledError, addConnector } from '@/server/dal/integrations';
 import {
   createMachineType, getMachineType, removeRexReference, setMachineTypeCostCategories, setMachineTypeItpSystems, setMachineTypePhases, updateMachineType,
   type MachineTypePatch,
 } from '@/server/dal/mtypes';
 import type { Actor } from '@/server/dal/ops-common';
 import { addLocation, addReferenceValue, getHealthThresholds, removeLocation, removeReferenceValue, resetSettings, setHealthThresholds } from '@/server/dal/settings';
+import { translateMessage } from '@/server/interchange/messages';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { canEditSettings, SETTINGS_DIRECTOR_ONLY } from '@/domain/settings-rules';
@@ -300,7 +301,7 @@ export async function createMachineTypeAction(values: FormValues): Promise<Admin
 
 // ── Activity & integrations ────────────────────────────────────────────────────────────────────────────
 
-/** "Sync now" of a connector row (Codex index, Vigie and Cursus connectors for real; the others simulated). */
+/** "Sync now" of a connector row (Codex index, Vigie and Cursus connectors for real; the others simulated; refused when disabled). */
 export async function syncConnectorAction(name: unknown): Promise<AdminActionResult> {
   const ok = await editor('plumbing');
   if ('error' in ok) return ok;
@@ -311,6 +312,8 @@ export async function syncConnectorAction(name: unknown): Promise<AdminActionRes
     const { t, lang } = await getI18n();
     return r.ok ? { ok: true, toast: syncToastT(name, r, t, lang) } : { error: syncToastT(name, r, t, lang) };
   } catch (e) {
+    // D-7a: a connector disabled by IT is not synchronised (checked in the DAL `syncConnector`).
+    if (e instanceof ConnectorDisabledError) return { error: translateMessage(e.message, (await getI18n()).t) };
     return failure(e);
   }
 }

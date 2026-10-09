@@ -63,9 +63,6 @@ export const addedConnectorDataT = (direction: string | null, owner: string | nu
  */
 export const auditAreaT = (area: string, t: T, lang: Lang) => (fr(lang) && area === 'Integrations' ? 'Intégrations' : t(area));
 
-/** "<label> — coming soon" for a label already translated (export cards). */
-export const comingSoonT = (label: string, lang: Lang) => `${label} — ${fr(lang) ? 'bientôt disponible' : 'coming soon'}`;
-
 /** "NEW-TYPE · Machine type created". */
 export const machineTypeCreatedT = (code: string, t: T) => `${code} · ${t('Machine type created')}`;
 

@@ -5,7 +5,8 @@
 // file parsed: the answer is the next step (column mapping or preview) as JSON — nothing reaches the business tables before the
 // explicit confirmation (Server Function applyImportAction). A Route Handler rather than a Server Function: files up to 20 MB
 // (Server Function bodies are capped at 1 MB). The viewer is the "View as" persona; rights are checked in startImport.
-import { MAX_FILE_BYTES } from '@/domain/ch4-defaults';
+// D-7b: refused (403) while IMPORTS_ENABLED is off in src/domain/ch4-defaults.ts — the import cards are hidden then.
+import { IMPORTS_ENABLED, IMPORTS_OFF_MESSAGE, MAX_FILE_BYTES } from '@/domain/ch4-defaults';
 import { startImport } from '@/server/interchange/jobs';
 import { isTableKind } from '@/server/interchange/table';
 import { FileRejectedError, checkUpload } from '@/server/storage/files';
@@ -26,6 +27,7 @@ export async function POST(request: Request): Promise<Response> {
     crossSite = true;
   }
   if (crossSite) return json({ ok: false, error: 'Invalid request' }, 403);
+  if (!IMPORTS_ENABLED) return json({ ok: false, error: IMPORTS_OFF_MESSAGE }, 403);
   const length = Number(request.headers.get('content-length') ?? 0);
   if (length > MAX_FILE_BYTES + 512 * 1024) return json({ ok: false, error: 'The file is larger than 20 MB' }, 413);
   let form: FormData;

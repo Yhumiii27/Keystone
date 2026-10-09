@@ -22,10 +22,14 @@ export const projectDataDate = (p: { dataDate?: string | null }) => p.dataDate |
 // ── S-2 calendars ─────────────────────────────────────────────────────────────────────────────────────────────────────
 /** Calendar of a project whose `projects.calendar` is null (the seed): Standard 5d · 8h. */
 export const DEFAULT_PROJECT_CALENDAR: CalendarCode = 'standard_5x8';
-/** Built-in calendars: Standard 5d · 8h, Atelier 5d · 8h, Chantier 6d · 10h (Mon–Sat), Continu 24h / 7d. */
+/**
+ * Built-in calendars: Standard 5d · 8h, Atelier 5d · 8h, Chantier 6d · 10h (Mon–Sat), Continu 24h / 7d. Documentation
+ * only: the definitions live in src/domain/calendar.ts (BUILTIN_CALENDARS, which reads DEFAULT_HOLIDAY_SET below); this
+ * re-export lets the questionnaire reader find them from here.
+ */
 export const DEFAULT_CALENDARS = BUILTIN_CALENDARS;
 /** Public-holiday set of the built-in calendars (metropolitan France, computed per year) — Settings holidays are added. */
-export const DEFAULT_HOLIDAY_SET = 'FR';
+export { DEFAULT_HOLIDAY_SET } from './calendar';
 export const projectCalendarCode = (p: { calendar?: string | null }) => p.calendar || DEFAULT_PROJECT_CALENDAR;
 
 // ── S-3 baselines ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -44,7 +48,10 @@ export function nextBaselineCode(existing: readonly string[]): string {
 }
 
 // ── S-8 units ─────────────────────────────────────────────────────────────────────────────────────────────────────────
-/** Durations, lags, floats and slips are in working days of the activity's calendar. */
+/**
+ * Durations, lags, floats and slips are in working days of the activity's calendar. Documentation only: the CPM engine
+ * (src/domain/cpm.ts) and the calendars count working days by construction, nothing reads this constant.
+ */
 export const DURATION_UNIT = 'working_days' as const;
 
 // ── Files stored by Keystone (task attachments, transcripts, imports) ──────────────────────────────────────────────
@@ -68,8 +75,28 @@ export const CSV_DIALECT = {
   fr: { separator: ';', decimal: ',' },
   en: { separator: ',', decimal: '.' },
 } as const;
-/** PDFs are French by default (the viewer's language when the export URL says so). */
+/**
+ * PDFs are French by default. The export route renders every file in the viewer's language (`ks-lang` cookie); a viewer
+ * without that cookie gets the session default, i18n DEFAULT_LANG — ch4-defaults.test.ts keeps both equal, so changing the
+ * PDF default means changing DEFAULT_LANG (or reading this constant in src/app/api/export/[screen]/route.ts).
+ */
 export const PDF_DEFAULT_LANG: 'fr' | 'en' = 'fr';
+
+// ── D-7b imports, D-7a connector settings ─────────────────────────────────────────────────────────────────────────────
+/**
+ * D-7b ("Ne traite rien pour le moment concernant les imports"): the import cards of Activity & integrations (MS Project
+ * XML, Primavera P6 XER, Excel / CSV) are hidden and the upload route and the import Server Functions refuse every import.
+ * The importers (src/server/interchange) and their tests stay; the tests turn this flag on with `vi.mock`. Turn it on here
+ * when the owner asks for the one-time import at project start (S-9b). The "Export — …" cards are not imports and stay.
+ */
+export const IMPORTS_ENABLED: boolean = false;
+/** EN refusal of the import steps while IMPORTS_ENABLED is off (FR in src/i18n/extra/ch4-interchange.json). */
+export const IMPORTS_OFF_MESSAGE = 'Imports are not available for now';
+/**
+ * D-7a ("Par l'informatique, en dehors de l'application"): connectors are configured by IT outside Keystone. The
+ * connector "Configure" dialog shows the stored settings read-only and the save Server Function refuses every change.
+ */
+export const CONNECTOR_SETTINGS_BY_IT = true;
 
 // ── Task attachments (R-8) ────────────────────────────────────────────────────────────────────────────────────────────
 /** Maximum number of files on one task. */

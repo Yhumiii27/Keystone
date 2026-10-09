@@ -1,12 +1,16 @@
 'use server';
 // Server Functions of the import / export cards and the connector "Configure" dialog of Activity & integrations (chapter 4).
 // The upload itself is the Route Handler POST /api/import (files up to 20 MB); these functions continue a job (column mapping,
-// dry-run preview, explicit confirmation, cancel), list what the dialogs offer the viewer, and save the Keystone-side settings
+// dry-run preview, explicit confirmation, cancel), list what the dialogs offer the viewer, and show the Keystone-side settings
 // of a connector. Every function re-checks the viewer ("View as" persona): import rights per kind and project
-// (src/server/interchange/rights.ts), the job's author, and the workspace rule of the screen for "Configure" / "Sync now".
+// (src/server/interchange/rights.ts), the job's author, and the workspace rule of the screen for "Configure".
+// D-7b: while IMPORTS_ENABLED (src/domain/ch4-defaults.ts) is off, the dialogs offer no import kind and every import step is
+// refused (src/server/interchange/jobs.ts). D-7a: connectors are configured by IT outside Keystone — "Configure" is read-only
+// and saveConnectorConfigAction refuses every change while CONNECTOR_SETTINGS_BY_IT is on.
 // Messages are EN source sentences; the dialogs translate them (src/server/interchange/messages.ts translateMessage).
 import { revalidatePath } from 'next/cache';
 import { SCREEN_BY_ID, canSee, screenHref, type ScreenId } from '@/config/screens';
+import { CONNECTOR_SETTINGS_BY_IT, IMPORTS_ENABLED } from '@/domain/ch4-defaults';
 import { connectorDirection, type ConnectorDirection, type ImportKind } from '@/server/db/codes';
 import { getConnectorConfig, updateConnectorConfig } from '@/server/dal/connector-config';
 import { listProjects } from '@/server/dal/projects';
@@ -15,9 +19,7 @@ import '@/server/export/providers';
 import { applyImport, cancelImport, importTargets, previewTable, tableMapping, type ImportStep, type ImportViewer } from '@/server/interchange/jobs';
 import { importKindsOf } from '@/server/interchange/rights';
 import { isMineProject, getScreenAccess } from '@/server/project-context';
-import { fmt, translateMessage } from '@/server/interchange/messages';
-import { getI18n, getViewer } from '@/server/session';
-import { syncConnectorAction } from './actions';
+import { getViewer } from '@/server/session';
 
 async function importViewer(): Promise<ImportViewer> {
   const v = await getViewer();
@@ -41,7 +43,7 @@ export async function importSetupAction(): Promise<ImportSetup> {
   const viewer = await importViewer();
   const [projects, all] = await Promise.all([importTargets(viewer), listProjects()]);
   const managers = [...new Set(all.map((p) => p.pm).filter((x) => x && x !== '—'))].sort().map((n) => ({ name: n, label: n }));
-  return { kinds: importKindsOf(viewer.role), projects, managers, selfManager: viewer.role === 'pm' ? viewer.short : null };
+  return { kinds: IMPORTS_ENABLED ? importKindsOf(viewer.role) : [], projects, managers, selfManager: viewer.role === 'pm' ? viewer.short : null };
 }
 
 /** Column mapping of a table import (another sheet of a workbook). */
@@ -135,10 +137,15 @@ export async function connectorConfigAction(name: unknown): Promise<{ ok: true; 
   };
 }
 
-/** Saves the Keystone-side settings of a connector (frequency, data scope, direction, enabled); credentials stay out of scope. */
+/**
+ * Saves the Keystone-side settings of a connector (frequency, data scope, direction, enabled); credentials stay out of scope.
+ * D-7a: refused while connectors are configured by IT outside Keystone (CONNECTOR_SETTINGS_BY_IT); the DAL writer
+ * (src/server/dal/connector-config.ts updateConnectorConfig) stays for that configuration path.
+ */
 export async function saveConnectorConfigAction(name: unknown, values: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
   const editor = await plumbingEditor();
   if (!editor) return { ok: false, error: 'Activity & integrations is read-only for you' };
+  if (CONNECTOR_SETTINGS_BY_IT) return { ok: false, error: 'Connectors are configured by IT outside Keystone' };
   if (typeof name !== 'string' || name.length > 80 || !values || typeof values !== 'object') return { ok: false, error: 'Invalid request' };
   const v = values as Record<string, unknown>;
   const direction = v.direction === '' || v.direction == null ? null : v.direction;
@@ -151,13 +158,4 @@ export async function saveConnectorConfigAction(name: unknown, values: unknown):
   }
   revalidatePath('/admin/integrations');
   return { ok: true };
-}
-
-/** "Sync now", refused for a connector disabled in "Configure". */
-export async function syncEnabledConnectorAction(name: unknown) {
-  if (typeof name === 'string' && name.length <= 80 && (await plumbingEditor())) {
-    const c = await getConnectorConfig(name);
-    if (c && !c.enabled) return { error: translateMessage(fmt('Connector {0} is disabled — enable it in Configure', name), (await getI18n()).t) };
-  }
-  return syncConnectorAction(name);
 }

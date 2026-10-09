@@ -19,7 +19,7 @@ import { listProjects } from '@/server/dal/projects';
 import { addLocation, addReferenceValue, getSettings, removeReferenceValue, resetSettings, setHealthThresholds } from '@/server/dal/settings';
 import GOLDEN from './admin.golden.json';
 import { integrationsHref, machineTypesHref } from './links';
-import { machineTypesView, plumbingView, settingsView } from './model';
+import { machineTypesView, plumbingView, settingsView, visibleImportFormats } from './model';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const G = GOLDEN as any;
@@ -251,5 +251,18 @@ describe('Activity, integrations & audit view model', () => {
     expect([v.chipValue, v.activity.length]).toEqual(['', 12]);
     expect(v.chips.map((c) => c.href).slice(0, 3)).toEqual([integrationsHref(), integrationsHref({ source: 'sync' }), integrationsHref({ source: 'stock' })]);
     expect((await plumbing('en', { role: 'pm' })).kpis[2]).toEqual({ ...kpis(G.en.plumbing.kpisByRole.pm)[2] });
+  });
+
+  it('D-7b: the import cards are hidden while imports are off; the export cards stay', async () => {
+    const formats = await listImportFormats();
+    expect(visibleImportFormats(formats).map((f) => f.name)).toEqual(['Export — MS Project XML', 'Export — Excel', 'Export — PDF']);
+    expect(visibleImportFormats(formats, true)).toHaveLength(6);
+  });
+
+  it.each(['en', 'fr'] as const)('%s: D-7a — a connector disabled by IT is listed as Disabled (calm tone)', async (lang) => {
+    const [activity, connectors, imports, audit, counts] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
+    const off = connectors.map((c) => (c.name === 'Sage X3' ? { ...c, enabled: false } : c));
+    const v = plumbingView({ view: 'connectors', source: null, activity, connectors: off, imports, audit, counts, unread: 0, personaTitle: 'Portfolio director' }, makeT(lang), lang);
+    expect(v.connectors.find((c) => c.rawName === 'Sage X3')).toMatchObject({ status: lang === 'en' ? 'Disabled' : 'Désactivé', tone: 'neutral' });
   });
 });

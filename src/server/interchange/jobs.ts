@@ -4,8 +4,10 @@ import 'server-only';
 // plan still matches the preview, writes the business rows, marks the job imported and writes audit + activity.
 //
 // Rights are checked at every step (./rights.ts): the viewer's role, project ownership for the PM, and the job's author (a job
-// is continued only by the persona who started it). Messages are EN source sentences (./messages.ts); the screen translates them.
+// is continued only by the persona who started it). D-7b: while IMPORTS_ENABLED (src/domain/ch4-defaults.ts) is off, every step
+// is refused (cancelling a job stays possible). Messages are EN source sentences (./messages.ts); the screen translates them.
 import type { RoleKey } from '@/config/screens';
+import { IMPORTS_ENABLED, IMPORTS_OFF_MESSAGE } from '@/domain/ch4-defaults';
 import { getDb } from '@/server/db/client';
 import type { ImportJobStatus, ImportKind, ImportMode, ImportRowAction, ImportRowStatus } from '@/server/db/codes';
 import { importKind } from '@/server/db/codes';
@@ -103,6 +105,7 @@ export interface StartImportInput {
 
 /** May the viewer import `kind` into `projectCode`? EN refusal or null. */
 async function refusal(viewer: ImportViewer, kind: ImportKind, mode: ImportMode, projectCode: string | null): Promise<string | null> {
+  if (!IMPORTS_ENABLED) return IMPORTS_OFF_MESSAGE;
   let own: boolean | null = null;
   if (projectCode) {
     const p = await getProject(projectCode);
@@ -197,10 +200,12 @@ const errorOf = (e: unknown) => (e instanceof FileRejectedError || e instanceof 
 
 /** Step 1: stores the file, records the job and parses it (schedule → preview; table → column mapping). */
 export async function startImport(input: StartImportInput, viewer: ImportViewer): Promise<ImportStep> {
+  if (!IMPORTS_ENABLED) return { ok: false, error: IMPORTS_OFF_MESSAGE };
   let kind: ImportKind;
   if (input.kind === 'schedule') {
+    // Either schedule card accepts both formats (the kind is detected from the content), so the message names both.
     const k = scheduleKindOf(input.fileName, decodeText(input.data.subarray(0, 8192)));
-    if (!k) return { ok: false, error: 'The file is not an MS Project XML file (MSPDI)' };
+    if (!k) return { ok: false, error: 'The file is neither an MS Project XML file (MSPDI) nor a Primavera P6 XER file' };
     kind = k;
   } else if (isTableKind(input.kind)) kind = input.kind;
   else return { ok: false, error: 'Invalid request' };
@@ -247,6 +252,7 @@ async function previewSchedule(job: ImportJobView): Promise<ImportStep> {
 
 /** The job if this viewer may continue it, else an EN refusal. */
 async function ownJob(jobId: string, viewer: ImportViewer, statuses: ImportJobStatus[]): Promise<ImportJobView | string> {
+  if (!IMPORTS_ENABLED) return IMPORTS_OFF_MESSAGE;
   const job = typeof jobId === 'string' ? await getImportJob(jobId) : null;
   if (!job || job.createdByName !== viewer.name) return 'Unknown import';
   if (!statuses.includes(job.status)) return job.status === 'applied' ? 'This import is already imported' : job.status === 'cancelled' ? 'This import is cancelled' : 'Preview the import before confirming it';

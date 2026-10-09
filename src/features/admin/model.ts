@@ -8,6 +8,7 @@ import {
   locationTypeShortLabel, machineTypeKpis, machineTypeUseText, paymentTerms, plumbingKpis, settingsKpis, thresholdText,
   type ActivityIcon, type PlumbView, type SettingsCardKey, type SettingsIcon,
 } from '@/domain/admin';
+import { IMPORTS_ENABLED } from '@/domain/ch4-defaults';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import { calendar, costType, locationType, stampText, type ActivityKind, type CalendarCode, type CostType, type LocationType } from '@/server/db/codes';
@@ -240,6 +241,14 @@ export interface PlumbingInput {
   personaTitle: string;
 }
 
+/**
+ * Import / export cards listed on the screen. D-7b ("Ne traite rien pour le moment concernant les imports"): the import cards
+ * (MS Project XML, Excel / CSV, Primavera P6 XER) only while IMPORTS_ENABLED is on; the "Export — …" cards always.
+ */
+export function visibleImportFormats<F extends { direction: 'import' | 'export' }>(formats: readonly F[], importsEnabled: boolean = IMPORTS_ENABLED): F[] {
+  return formats.filter((f) => importsEnabled || f.direction === 'export');
+}
+
 const IMPORT_ICONS: readonly ImportIcon[] = ['file-arrow-down', 'file-xls', 'file-arrow-up', 'file-pdf'];
 const importIcon = (cls: string): ImportIcon => {
   const name = cls.replace(/^ph\s+ph-/, '') as ImportIcon;
@@ -272,8 +281,9 @@ export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
         mode: c.mode ? connectorModeT(c.mode, t) : null,
         data: c.dataScope ? t(c.dataScope) : addedConnectorDataT(c.direction ? directionLabel(c.direction) : null, c.owner, t),
         frequency: t(c.frequency),
-        status: t(c.statusLabel),
-        tone: connectorTone(c.status),
+        // D-7a: a connector disabled by IT shows "Disabled" (calm tone) instead of its last sync state.
+        status: c.enabled === false ? t('Disabled') : t(c.statusLabel),
+        tone: c.enabled === false ? 'neutral' : connectorTone(c.status),
         last: stampOf(c.lastSyncAt, t),
         volume: [volume, outbox].filter(Boolean).join(' · ') || '—',
       };

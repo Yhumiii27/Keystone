@@ -49,3 +49,13 @@
 @media (max-width: 560px) {
   .grid, .mapGrid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Connector configure (read-only, D-7a) */
+.readGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.readRow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.readRow:nth-child(3) { grid-column: 1 / -1; }
+.readLabel { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-neutral-500); }
+.readValue { margin: 0; font-size: 13px; color: var(--color-text); text-wrap: pretty; overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  .readGrid { grid-template-columns: minmax(0, 1fr); }
+}

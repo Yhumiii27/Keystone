@@ -1,12 +1,13 @@
 'use client';
 // Interactive parts of Activity, integrations & audit (docs/spec/10 §2.4–2.5, chapter 4):
 // - per connector row: "Sync now" (Codex index, Vigie and Cursus connectors for real; the others record a simulated run;
-//   refused for a connector disabled in Configure) and "Configure" (Keystone-side settings: frequency, data scope, direction,
-//   enabled — remote credentials stay out of scope);
-// - the import / export drop zones: a file dropped or chosen on "MS Project XML", "Primavera P6 XER" or "Excel / CSV" opens the
-//   import dialog (upload → mapping → preview → confirmation); the export cards open a dialog that downloads the MS Project
-//   XML of a project or the Excel / PDF export of a screen. A zone is active for the viewers allowed to import that card's
-//   kinds (rights of src/server/interchange/rights.ts), and for the export cards in the workspace only.
+//   refused for a connector disabled by IT) and "Configure" (D-7a: the Keystone-side settings — frequency, data scope,
+//   direction, enabled — shown read-only, since IT configures connectors outside Keystone);
+// - the import / export cards: a file dropped or chosen on "MS Project XML", "Primavera P6 XER" or "Excel / CSV" opens the
+//   import dialog (upload → mapping → preview → confirmation) — these cards are only listed while IMPORTS_ENABLED is on
+//   (D-7b, src/domain/ch4-defaults.ts); the export cards open a dialog that downloads the MS Project XML of a project or the
+//   Excel / PDF export of a screen. A zone is active for the viewers allowed to import that card's kinds (rights of
+//   src/server/interchange/rights.ts), and for the export cards in the workspace only.
 import { ArrowsClockwise } from '@phosphor-icons/react/dist/ssr';
 import { useId, useState, useTransition, type DragEvent } from 'react';
 import { Button } from '@/components/ds/Button';
@@ -17,7 +18,7 @@ import type { ImportKind } from '@/server/db/codes';
 import { ConnectorConfigDialog } from './connector-config-dialog';
 import { ExportDialog, type ExportCardFormat } from './export-dialog';
 import { ImportDialog } from './import-dialog';
-import { syncEnabledConnectorAction } from './interchange-actions';
+import { syncConnectorAction } from './actions';
 import s from './admin.module.css';
 
 export function ConnectorActions({ name, label }: { name: string; label: string }) {
@@ -27,7 +28,7 @@ export function ConnectorActions({ name, label }: { name: string; label: string 
   const sync = () =>
     start(async () => {
       try {
-        const r = await syncEnabledConnectorAction(name);
+        const r = await syncConnectorAction(name);
         showToast('error' in r ? r.error : (r.toast ?? ''));
       } catch (e) {
         showToast(e instanceof Error ? e.message : String(e));

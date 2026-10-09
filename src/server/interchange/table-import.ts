@@ -7,7 +7,7 @@ import 'server-only';
 // Reference — the part must be in the catalogue); parts → the catalogue (Reference); resource assignments → the activities'
 // assignments (Activity ID + Resource). Mode 'update' = add and update; mode 'new' = add only (rows already there are skipped).
 // Cells left empty never erase a value on update.
-import { asc, eq, inArray, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { DEFAULT_PROJECT_CALENDAR } from '@/domain/ch4-defaults';
 import { BUILTIN_CALENDAR_BY_CODE } from '@/domain/calendar';
 import type { DB, Tx } from '@/server/db/client';
@@ -292,14 +292,5 @@ export async function writeTableImport(kind: TableKind, plan: TablePlan, project
     entityType: 'import', projectId: project?.id ?? null,
   });
   return { created, updated };
-}
-
-/** Projects a table import may target, with their activity count (dialog select). */
-export async function listImportTargets(q: Q): Promise<{ code: string; name: string; activities: number }[]> {
-  const rows = await q
-    .select({ code: projects.code, name: projects.name, n: sql<number>`(select count(*)::int from ${activities} where ${activities.projectId} = ${projects.id})` })
-    .from(projects)
-    .orderBy(asc(projects.sortOrder));
-  return rows.map((r) => ({ code: r.code, name: r.name, activities: r.n }));
 }
 

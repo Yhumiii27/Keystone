@@ -17,6 +17,7 @@ import { recordFailedSync } from '@/server/integrations/cursus/mirror';
 import { vigieConnectorMode } from '@/server/integrations/vigie/config';
 import { getVigieEcoConnector } from '@/server/integrations/vigie/eco-connector';
 import { getVigieQualityConnector } from '@/server/integrations/vigie/quality-connector';
+import { fmt } from '@/server/interchange/messages';
 import { eventsToday } from './kpis';
 import { requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 
@@ -46,6 +47,8 @@ export interface ConnectorRow {
   failed: number;
   owner: string | null;
   addedInKeystone: boolean;
+  /** False when IT disabled the connector (D-7a): listed as "Disabled", "Sync now" refused. */
+  enabled: boolean;
 }
 
 /** Live state of the Vigie connector: mirrors and outboxes. */
@@ -106,6 +109,7 @@ export async function listConnectors(): Promise<ConnectorRow[]> {
       name: c.name, kind: c.kind, mode: c.kind === 'vigie' ? vigieConnectorMode() : c.kind === 'cursus' ? cursusConnectorMode() : null, dataScope: c.dataScope, frequency: c.frequency,
       direction: c.direction, status, statusLabel: connectorStatus.label(status), lastSyncAt: (live ? last : c.lastSyncAt)?.toISOString() ?? null,
       lastVolume: live ? live.volume : c.lastVolume, pending: live?.pending ?? 0, failed: live?.failed ?? 0, owner: c.ownerName, addedInKeystone: c.addedInKeystone,
+      enabled: c.enabled,
     };
   });
 }
@@ -115,15 +119,25 @@ export async function plumbingNavBadge(): Promise<string> {
   return (await listConnectors()).some((c) => c.status === 'warning' || c.status === 'error') ? '!' : '';
 }
 
+/** "Sync now" of a connector disabled by IT (D-7a, `connectors.enabled`): refused before anything runs. */
+export class ConnectorDisabledError extends Error {
+  constructor(name: string) {
+    super(fmt('Connector {0} is disabled — IT configures connectors outside Keystone', name));
+    this.name = 'ConnectorDisabledError';
+  }
+}
+
 /**
  * "Sync now": Vigie (ECO, NCR, HSE: deliver the outboxes, refresh the mirrors), Cursus (every project with a site sheet),
- * or a simulated run for the other connectors (their last sync becomes now). Returns the volume text of the run.
+ * or a simulated run for the other connectors (their last sync becomes now). Returns the volume text of the run. A connector
+ * disabled by IT throws ConnectorDisabledError (every caller — Server Functions, Codex index sync — goes through here).
  */
 export async function syncConnector(name: string, actor: Actor): Promise<{ ok: boolean; volume: string; error: string | null }> {
   requireWorkspace('plumbing', actor, 'Activity & integrations');
   const db = await getDb();
   const [c] = await db.select().from(connectors).where(eq(connectors.name, name));
   if (!c) throw new Error(`Unknown connector ${name}`);
+  if (!c.enabled) throw new ConnectorDisabledError(c.name);
   const startedAt = new Date();
   let ok = true;
   let error: string | null = null;

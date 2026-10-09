@@ -218,11 +218,6 @@ export async function resetSettings(actor: Actor): Promise<void> {
   });
 }
 
-/** Stage codes still offered on the Projects page (Settings › Project statuses, active). */
-export async function activeStatusCodes(): Promise<string[]> {
-  return (await listReferenceValues('statuses')).map((v) => v.code);
-}
-
 /** Labels of several lists at once (forms: risk categories, deliverable types, cost categories). */
 export async function referenceLists(keys: ReferenceListKey[]): Promise<Record<string, ReferenceValueRow[]>> {
   const db = await getDb();

@@ -1,13 +1,14 @@
 // Activity, integrations & audit — /admin/integrations (docs/spec/10 §2, template 2237–2267, logic 4692–4718). Activity
 // feed (all projects, source chips), connectors (the prototype's nine, Vigie, connectors added in Keystone; Codex, Vigie
-// and Cursus with the mode and state of Keystone's connector layer), import / export formats (drop zones staged — the
-// import handlers come later) and the audit trail with its ISO 9001 CSV export (./audit.csv). URL state: `?view=`
-// display (activity default, connectors, imports, audit), `?source=` activity kind. Primary "Add connector"
-// (AF.plumbing). Roles: director, PM; the others see it outside their workspace (banner, no Sync / Add / export).
+// and Cursus with the mode and state of Keystone's connector layer), import / export cards (D-7b: the import cards only
+// while IMPORTS_ENABLED is on in src/domain/ch4-defaults.ts; the "Export — …" cards always) and the audit trail with its
+// ISO 9001 CSV export (./audit.csv). URL state: `?view=` display (activity default, connectors, imports, audit), `?source=`
+// activity kind. Primary "Add connector" (AF.plumbing). Roles: director, PM; the others see it outside their workspace
+// (banner, no Sync / Add / export).
 import { PageHeader } from '@/components/app/shell/page-header';
 import { parseActivitySource, parsePlumbView } from '@/domain/admin';
 import { addConnectorForm, firstFreeSystem } from '@/features/admin/forms';
-import { plumbingView } from '@/features/admin/model';
+import { plumbingView, visibleImportFormats } from '@/features/admin/model';
 import { PlumbingBody } from '@/features/admin/plumbing-view';
 import { AddConnectorButton } from '@/features/admin/primary-buttons';
 import { listAdminConnectors } from '@/server/dal/admin-connectors';
@@ -32,7 +33,7 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
     {
       view: parsePlumbView(first(sp.view)),
       source: parseActivitySource(first(sp.source), activity.map((a) => a.kind)),
-      activity, connectors, imports, audit, counts, unread, personaTitle: access.viewer.title,
+      activity, connectors, imports: visibleImportFormats(imports), audit, counts, unread, personaTitle: access.viewer.title,
     },
     t, lang,
   );
