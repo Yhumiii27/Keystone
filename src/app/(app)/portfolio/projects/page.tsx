@@ -9,7 +9,7 @@ import { ProjectsRegister } from '@/features/projects/register';
 import { buildRegisterModel } from '@/features/projects/register-model';
 import { stage } from '@/server/db/codes';
 import { getRegisterData } from '@/server/dal/projects-register';
-import { getScreenAccess } from '@/server/project-context';
+import { getScreenAccess, isMineProject } from '@/server/project-context';
 import { getI18n, getZone } from '@/server/session';
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -17,6 +17,8 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 export default async function ProjectsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const [sp, { t, lang }, zone, access, data] = await Promise.all([searchParams, getI18n(), getZone(), getScreenAccess('projects'), getRegisterData()]);
   const model = buildRegisterModel(data, zone, t, lang);
+  // Lifecycle controls only on the projects the viewer manages (the director: all; a PM: their own).
+  const editableCodes = access.canEdit ? data.projects.filter((p) => isMineProject(access.viewer, p)).map((p) => p.code) : [];
   const view = one(sp.view);
   const status = one(sp.status);
   return (
@@ -27,6 +29,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         stages={model.stages}
         zoneEmpty={model.zoneEmpty}
         canEdit={access.canEdit}
+        editableCodes={editableCodes}
         initialView={isRegisterView(view) ? view : 'health'}
         initialStatus={status && stage.isCode(status) ? status : null}
         initialQuery={(one(sp.q) ?? '').slice(0, 100)}

@@ -9,7 +9,7 @@
 import { IMPORTS_ENABLED, IMPORTS_OFF_MESSAGE, MAX_FILE_BYTES } from '@/domain/ch4-defaults';
 import { startImport } from '@/server/interchange/jobs';
 import { isTableKind } from '@/server/interchange/table';
-import { FileRejectedError, checkUpload } from '@/server/storage/files';
+import { FileRejectedError, checkUpload, readFormDataCapped } from '@/server/storage/files';
 import { getViewer } from '@/server/session';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +22,7 @@ export async function POST(request: Request): Promise<Response> {
   const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? new URL(request.url).host;
   let crossSite = request.headers.get('sec-fetch-site') === 'cross-site';
   try {
-    if (origin && origin !== 'null' && new URL(origin).host !== host) crossSite = true;
+    if (origin === 'null' || (origin && new URL(origin).host !== host)) crossSite = true;
   } catch {
     crossSite = true;
   }
@@ -32,7 +32,10 @@ export async function POST(request: Request): Promise<Response> {
   if (length > MAX_FILE_BYTES + 512 * 1024) return json({ ok: false, error: 'The file is larger than 20 MB' }, 413);
   let form: FormData;
   try {
-    form = await request.formData();
+    // Read with a byte cap: a chunked body has no Content-Length and would otherwise be buffered whole.
+    const capped = await readFormDataCapped(request, MAX_FILE_BYTES + 512 * 1024);
+    if (!capped) return json({ ok: false, error: 'The file is larger than 20 MB' }, 413);
+    form = capped;
   } catch {
     return json({ ok: false, error: 'Invalid request' }, 400);
   }

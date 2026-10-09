@@ -11,7 +11,10 @@ vi.mock('@/server/session', async () => {
   return { getI18n: async () => ({ lang: viewer.lang, t: makeT(viewer.lang) }) };
 });
 vi.mock('@/server/project-context', () => ({
-  getProjectContext: async (code: string) => ({ project: { code }, viewer: { role: viewer.role, name: viewer.name }, canEdit: () => viewer.canEdit }),
+  // isMine: the test's PM (Romain Aubert) manages HLT-026; the director manages everything.
+  getProjectContext: async (code: string) => ({
+    project: { code }, viewer: { role: viewer.role, name: viewer.name }, canEdit: () => viewer.canEdit, isMine: viewer.role === 'director' || viewer.name === 'Romain Aubert',
+  }),
 }));
 
 import { eq } from 'drizzle-orm';
@@ -150,6 +153,12 @@ describe('Change control Server Functions', () => {
     expect(await createChangeRequestAction('HLT-026', { title: 'New baseline BL4', type: 'schedule', wbs: '1', why: 'x' }, { proposeBaseline: true })).toMatchObject({ toast: expect.stringContaining('BL4 proposed') });
     expect(await decideChangeStepAction('HLT-026', 'CR-014', 'director', 'rejected')).toEqual({ ok: true });
     expect((await listProjectBaselines('HLT-026')).find((b) => b.code === 'BL4')).toMatchObject({ state: 'proposed', activityCount: 0 });
+    // Security review: a client's request never proposes a baseline (S-1 / S-3: the PM and the director own baselines).
+    as('client', 'Nadia Bensaïd');
+    expect(await createChangeRequestAction('HLT-026', { title: 'New baseline BL5', type: 'schedule', wbs: '1', why: 'x' }, { proposeBaseline: true })).toEqual({
+      toast: 'CR-015 · Change request submitted for review',
+    });
+    expect((await listProjectBaselines('HLT-026')).some((b) => b.code === 'BL5')).toBe(false);
   });
 
   it('generate status report: validated, recorded with the viewer, prototype toast', async () => {
@@ -163,9 +172,9 @@ describe('Change control Server Functions', () => {
     // FR toasts: whole dictionary sentence first, else per " · " segment after the new number
     viewer.lang = 'fr';
     expect(await generateStatusReportAction('HLT-026', {})).toEqual({ toast: 'Rapport d’avancement généré · PDF prêt' });
-    // CR-013 and CR-014 were raised by the baseline-proposal test above.
+    // CR-013 … CR-015 were raised by the baseline-proposal test above.
     expect(await createChangeRequestAction('HLT-026', { title: 'Signage', type: 'scope', wbs: '1.3', why: 'Port rules' })).toEqual({
-      toast: 'CR-015 · Demande de modification soumise en revue',
+      toast: 'CR-016 · Demande de modification soumise en revue',
     });
   });
 });

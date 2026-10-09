@@ -261,7 +261,11 @@ export interface AuditCsvRow {
   projectCode: string | null;
 }
 
-const csvCell = (v: string) => (/[",\r\n;]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+/** RFC 4180 cell; a cell starting with = + - @ (or a tab / CR) is prefixed with ' so a spreadsheet never runs it as a formula. */
+const csvCell = (raw: string) => {
+  const v = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
+  return /[",\r\n;]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+};
 
 /**
  * ISO 9001 export of the audit trail: one row per entry, newest first, RFC 4180 (comma separator, CRLF, quoted cells

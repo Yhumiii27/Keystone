@@ -46,12 +46,14 @@ export interface ExportRequest {
 /**
  * Export context with the screen's access rules: unknown screen → 404; project-scoped screens need `code` (unknown → 404);
  * a client exports only the projects of their organisation (403). Screens outside the viewer's workspace stay exportable
- * read-only, as the screen itself is (`outside`), unless the provider refuses.
+ * read-only for internal roles, as the screen itself is (`outside`), unless the provider refuses; a client gets 403 there
+ * (P-1: "lecture seule en interne, accès refusé pour le client").
  */
 export async function buildExportContext(req: ExportRequest): Promise<ExportContext> {
   const def = SCREEN_BY_ID[req.screen as ScreenId];
   if (!def) throw new ExportError(404, 'Unknown screen');
   const screen = def.id;
+  if (req.viewer.role === 'client' && isOutside(req.viewer.role, screen)) throw new ExportError(403, 'Outside your workspace');
   const code = req.params.get('code');
   let project = null;
   let readOnly = false;

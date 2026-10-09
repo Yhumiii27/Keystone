@@ -88,3 +88,22 @@ describe('createProjectAction (L-3)', () => {
     expect(await getProject(r2.code)).toMatchObject({ city: 'Dakar', country: 'Senegal', zone: 'afr', lat: null, lng: null, finish: '—' });
   });
 });
+
+describe('lifecycle Server Functions (security review: another PM\'s project is read-only)', () => {
+  beforeEach(() => {
+    session.role = 'pm';
+  });
+
+  it('a PM moves and ticks only the projects they manage; the director any', async () => {
+    const { moveStageAction, setDeliverableAction } = await import('./actions');
+    // NDC-031 is managed by S. Perrin, not by the PM persona (R. Aubert).
+    const ndc = (await getProject('NDC-031'))!;
+    expect(await moveStageAction({ code: 'NDC-031', to: 'annule', mode: 'forced', reason: 'test' })).toMatchObject({ ok: false });
+    expect(await setDeliverableAction({ code: 'NDC-031', stage: ndc.stage, index: 0, done: true })).toMatchObject({ ok: false });
+    expect((await getProject('NDC-031'))!.stage).toBe(ndc.stage);
+    // On their own project the PM passes the rights check and reaches the stage rules (unknown stage → refused by the rules).
+    expect(await moveStageAction({ code: 'HLT-026', to: 'nope', mode: 'auto' })).toEqual({ ok: false, error: 'This stage change is not allowed' });
+    session.role = 'director';
+    expect(await moveStageAction({ code: 'NDC-031', to: 'nope', mode: 'auto' })).toEqual({ ok: false, error: 'This stage change is not allowed' });
+  });
+});

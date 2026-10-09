@@ -8,7 +8,7 @@ import { MAX_ATTACHMENTS_PER_TASK, MAX_FILE_BYTES, MAX_FILE_TEXT } from '@/domai
 import { isSameOrigin, taskFileGate } from '@/features/mywork/task-access';
 import { attachTaskFile, listTaskFiles } from '@/server/dal/task-files';
 import { getI18n } from '@/server/session';
-import { FileRejectedError, checkUpload } from '@/server/storage/files';
+import { FileRejectedError, checkUpload, readFormDataCapped } from '@/server/storage/files';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +26,10 @@ export async function POST(request: Request, ctx: { params: Promise<{ taskId: st
   if (!g.ok) return fail(g.status, g.error);
   let file: FormDataEntryValue | null;
   try {
-    file = (await request.formData()).get('file');
+    // Read with a byte cap: a chunked body has no Content-Length and would otherwise be buffered whole.
+    const form = await readFormDataCapped(request, MAX_FILE_BYTES + MULTIPART_SLACK);
+    if (!form) return fail(413, `The file is larger than ${MAX_FILE_TEXT}`);
+    file = form.get('file');
   } catch {
     return fail(400, 'Invalid request');
   }

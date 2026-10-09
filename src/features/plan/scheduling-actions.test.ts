@@ -129,6 +129,10 @@ describe('Plan scheduling Server Functions', () => {
     const number = /^(T-\d+) · To-do added$/.exec((r as { toast: string }).toast)![1];
     let todo = (await listActivityTodos('HLT-026', 'A1250')).find((x) => x.number === number)!;
     expect([todo.title, todo.assignee, todo.dueDate, todo.removable, todo.done]).toEqual(['Check bolt torques on bay 4', 'Julien Wagner', '2026-10-09', true, false]);
+    // Security review: a Plan editor who is neither the assignee nor the project's PM cannot tick someone else's task.
+    Object.assign(viewer, { role: 'englead', name: 'Antoine Girard', isMine: false });
+    expect(await toggleTodoAction('HLT-026', 'A1250', number, true)).toEqual({ error: 'Only the assignee or the project manager can change this to-do' });
+    Object.assign(viewer, { role: 'director', name: 'Marie Lefebvre', isMine: true });
     expect(await toggleTodoAction('HLT-026', 'A1250', number, true)).toEqual({ ok: true });
     todo = (await listActivityTodos('HLT-026', 'A1250')).find((x) => x.number === number)!;
     expect(todo.done).toBe(true);

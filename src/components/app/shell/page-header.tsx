@@ -123,7 +123,8 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
         </div>
         <LangToggle lang={lang} />
         <div className={styles.actions}>
-          <ExportButton screen={screen} code={project?.code ?? code} formats={exportFormatsOf(screen)} task={taskId ?? null} />
+          {/* P-1: outside the workspace a client cannot export (the route answers 403). */}
+          {!(outside && viewer.role === 'client') && <ExportButton screen={screen} code={project?.code ?? code} formats={exportFormatsOf(screen)} task={taskId ?? null} />}
           {showPrimary && primary}
         </div>
       </header>

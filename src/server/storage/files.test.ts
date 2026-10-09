@@ -9,7 +9,7 @@ import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import {
   FileRejectedError, checkUpload, contentDisposition, deleteStoredFile, fileResponse, filesRoot, getStoredFile, listStoredFiles, pruneOrphanFiles, readStoredFile,
-  readStoredText, safeFileName, setFileOwner, setFilesRoot, storeFile, storeUploadedFile, streamStoredFile,
+  readFormDataCapped, readStoredText, safeFileName, setFileOwner, setFilesRoot, storeFile, storeUploadedFile, streamStoredFile,
 } from './files';
 
 const PDF = new TextEncoder().encode('%PDF-1.7\n1 0 obj\n<<>>\nendobj\n');
@@ -93,5 +93,36 @@ describe('store, read, delete', () => {
     fs.mkdirSync(path.join(dir, '2026', '10'), { recursive: true });
     fs.writeFileSync(path.join(dir, '2026', '10', 'orphan.txt'), 'x');
     expect(await pruneOrphanFiles()).toBe(1);
+  });
+});
+
+describe('readFormDataCapped (security review: chunked uploads)', () => {
+  const chunked = (parts: Uint8Array[], type: string) =>
+    new Request('http://localhost/upload', {
+      method: 'POST',
+      headers: { 'content-type': type },
+      body: new ReadableStream<Uint8Array>({ pull(c) { const p = parts.shift(); if (p) c.enqueue(p); else c.close(); } }),
+      duplex: 'half',
+    } as RequestInit & { duplex: 'half' });
+
+  it('parses a form under the cap and refuses a body without Content-Length as soon as it exceeds it', async () => {
+    const form = new FormData();
+    form.set('file', new File([PDF], 'a.pdf', { type: 'application/pdf' }));
+    const multipart = new Response(form);
+    const body = new Uint8Array(await multipart.arrayBuffer());
+    const type = multipart.headers.get('content-type')!;
+    const ok = await readFormDataCapped(chunked([body.slice(0, 50), body.slice(50)], type), body.byteLength);
+    expect((ok!.get('file') as File).size).toBe(PDF.byteLength);
+    let pulled = 0;
+    const big = new Request('http://localhost/upload', {
+      method: 'POST',
+      headers: { 'content-type': type },
+      body: new ReadableStream<Uint8Array>({ pull(c) { pulled++; c.enqueue(new Uint8Array(1024 * 1024)); } }),
+      duplex: 'half',
+    } as RequestInit & { duplex: 'half' });
+    expect(await readFormDataCapped(big, 3 * 1024 * 1024)).toBeNull();
+    expect(pulled).toBeLessThan(8);
+    const declared = new Request('http://localhost/upload', { method: 'POST', headers: { 'content-type': type, 'content-length': String(10 ** 9) }, body });
+    expect(await readFormDataCapped(declared, 1024)).toBeNull();
   });
 });

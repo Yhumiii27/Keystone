@@ -1,12 +1,12 @@
 // "Export — MS Project XML" (chapter 4, S-9) — GET /api/interchange/mspdi/<project code>: the project's schedule as an MSPDI file
 // with its displayed baseline as Baseline 0 (src/server/interchange/schedule-export.ts). Same reading rights as the screens: an
-// unknown project or one without planning → 404, a client on another organisation's project → 403. Every export is audited,
+// unknown project or one without planning → 404, a client → 403 (the export carries costs and resources and lives on Activity &
+// integrations, outside the client's workspace — P-1). Every export is audited,
 // listed in the activity feed and stamped on the "MS Project" connector row ("HLT-026 exported · BL1").
 import { getDb } from '@/server/db/client';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import { getProject } from '@/server/dal/projects';
 import { exportScheduleXml, stampMsProjectConnector } from '@/server/interchange/schedule-export';
-import { isMineProject } from '@/server/project-context';
 import { getI18n, getViewer } from '@/server/session';
 import { contentDisposition } from '@/server/storage/files';
 
@@ -17,7 +17,7 @@ export async function GET(_request: Request, ctx: { params: Promise<{ code: stri
   const text = (status: number, msg: string) => new Response(t(msg), { status, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } });
   const project = await getProject(code);
   if (!project || !project.hasData) return text(404, 'Unknown project');
-  if (viewer.role === 'client' && !isMineProject(viewer, project)) return text(403, 'Clients export their own projects only');
+  if (viewer.role === 'client') return text(403, 'Outside your workspace');
   const now = new Date();
   const out = await exportScheduleXml(project.code, now);
   if (!out) return text(404, 'Unknown project');

@@ -33,6 +33,8 @@ export interface ProjectsRegisterProps {
   zoneEmpty: boolean;
   /** Edit controls (status menu, deliverable ticks): false outside the viewer's workspace. */
   canEdit: boolean;
+  /** Projects whose lifecycle the viewer manages (the director: all; a PM: their own); absent = every row. */
+  editableCodes?: string[];
   initialView: RegisterView;
   initialStatus: StageCode | null;
   initialQuery: string;
@@ -46,7 +48,9 @@ function replaceParam(key: string, value: string | null) {
   window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
 }
 
-export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, initialView, initialStatus, initialQuery }: ProjectsRegisterProps) {
+export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, editableCodes, initialView, initialStatus, initialQuery }: ProjectsRegisterProps) {
+  const editable = editableCodes ? new Set(editableCodes) : null;
+  const canEditRow = (code: string) => canEdit && (!editable || editable.has(code));
   const { t, lang } = useI18n();
   const toast = useToast();
   const [view, setViewState] = useState<RegisterView>(initialView);
@@ -140,7 +144,7 @@ export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, initialView
   ];
 
   const statusCell = (r: RegisterRow) => (
-    <StatusCell stage={stageOf(r)} stages={stageMap} canEdit={canEdit} onMove={(to, trigger) => requestMove(r, to, trigger)} />
+    <StatusCell stage={stageOf(r)} stages={stageMap} canEdit={canEditRow(r.code)} onMove={(to, trigger) => requestMove(r, to, trigger)} />
   );
 
   return (
@@ -251,7 +255,7 @@ export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, initialView
                       <ProjectCell row={r} />
                     </td>
                     {statusCell(r)}
-                    <DeliverablesCell row={r} stageLabel={labelOf(r.stage)} canEdit={canEdit} />
+                    <DeliverablesCell row={r} stageLabel={labelOf(r.stage)} canEdit={canEditRow(r.code)} />
                     <td>
                       <ProgressBar variant="inline" value={r.progress} label={r.progressPct} labelSize="sm" />
                     </td>

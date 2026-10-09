@@ -11,6 +11,7 @@ import { getWbs } from '@/server/dal/planning';
 import { getProject } from '@/server/dal/projects';
 import { recordStatusReport } from '@/server/dal/trends';
 import { getProjectContext, type ProjectContext } from '@/server/project-context';
+import { canSchedulePlan } from '@/features/plan/rights';
 import { getI18n } from '@/server/session';
 import { NEW_CR_RESULT, STATUS_REPORT_RESULT, parseNewChangeRequest, parseStatusReport } from './forms';
 
@@ -54,7 +55,8 @@ export async function createChangeRequestAction(code: string, values: Record<str
   const known = new Set((await getWbs(r.ctx.project.code)).map((w) => w.code));
   const unknown = known.size ? parsed.value.wbsCodes.filter((c) => !known.has(c)) : [];
   if (unknown.length) return { error: `${t('Unknown WBS element')} ${unknown.join(', ')}` };
-  const proposeBaseline = opts?.proposeBaseline === true;
+  // Baselines belong to the project's PM and the director (S-1 / S-3): a client's request never proposes one.
+  const proposeBaseline = opts?.proposeBaseline === true && canSchedulePlan(r.ctx);
   const number = await createChangeRequest(r.ctx.project.code, { ...parsed.value, submit: true, proposeBaseline }, r.ctx.viewer.name);
   refresh();
   if (proposeBaseline) {

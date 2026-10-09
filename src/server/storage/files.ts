@@ -281,6 +281,37 @@ export async function pruneOrphanFiles(): Promise<number> {
 }
 
 /** HTTP response serving a file (attachment by default; `inline` for PDFs and images shown in the browser). */
+/**
+ * Multipart body of an upload request read with a byte cap: `request.formData()` alone buffers the whole body, and a chunked
+ * request has no Content-Length to check first. Returns null as soon as the body exceeds `maxBytes` (the stream is
+ * cancelled), else the parsed form. Throws on a malformed body, like `formData()`.
+ */
+export async function readFormDataCapped(request: Request, maxBytes: number): Promise<FormData | null> {
+  const declared = Number(request.headers.get('content-length') ?? NaN);
+  if (Number.isFinite(declared) && declared > maxBytes) return null;
+  if (!request.body) return request.formData();
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => undefined);
+      return null;
+    }
+    chunks.push(value);
+  }
+  const body = new Uint8Array(total);
+  let at = 0;
+  for (const c of chunks) {
+    body.set(c, at);
+    at += c.byteLength;
+  }
+  return new Response(body, { headers: { 'content-type': request.headers.get('content-type') ?? '' } }).formData();
+}
+
 export function fileResponse(meta: Pick<StoredFileMeta, 'name' | 'mime' | 'sizeBytes'>, body: BodyInit, opts: { inline?: boolean } = {}): Response {
   return new Response(body, {
     headers: {

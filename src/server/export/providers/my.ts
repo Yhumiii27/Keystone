@@ -16,7 +16,7 @@ import { getMyWorkPerson } from '@/server/dal/mywork-data';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
 import { col, filterLine, isoOf, kpiSheet, param, sheet, compact } from './common';
-import { currentProjectCode } from './scope';
+import { currentProjectCode, projectFilter } from './scope';
 
 /** Current project of a global screen: `?code=` (the header passes the shell's project), else the default one; a client's own. */
 const currentProject = (ctx: ExportContext) => currentProjectCode(ctx, DEFAULT_PROJECT);
@@ -98,7 +98,8 @@ async function taskWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> 
   const id = (param(ctx, 'task') ?? param(ctx, 'id') ?? '').toUpperCase();
   if (!/^T-\d{1,6}$/.test(id)) return null;
   const d = await getTask(id);
-  if (!d) return null;
+  // A client exports only their organisation's projects (P-10a), as the attachment download already enforces.
+  if (!d || !(await projectFilter(ctx))(d.project.code)) return null;
   const a = d.activity;
   const fields: [string, string | number][] = [
     [t('Task'), d.id], [t('Title'), t(d.title)], [t('Assignee'), d.assignee], [t('Project'), `${d.project.code} · ${t(d.project.name)}`],

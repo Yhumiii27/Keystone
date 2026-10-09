@@ -4,6 +4,7 @@
 // the screens (masked rates, client restricted to its organisation's projects).
 import ExcelJS from 'exceljs';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { isOutside } from '@/components/app/shell/nav-model';
 import { PERSONA_BY_ROLE } from '@/config/personas';
 import { SCREENS, type RoleKey, type ScreenId } from '@/config/screens';
 import { setDb } from '@/server/db/client';
@@ -63,9 +64,14 @@ describe('every screen has an export provider', () => {
     for (const sh of sheets) for (const h of ['Hourly rate', 'Hourly rate (€)', 'Multiplier']) expect(sh.rows[0] ?? [], `${screen} · ${sh.name}`).not.toContain(h);
   }, 30_000);
 
-  // A client passing another organisation's project on a global screen gets its own project's figures instead.
+  // A client passing another organisation's project on a global screen gets its own project's figures instead; outside
+  // their workspace a client gets 403 (P-1: "accès refusé pour le client").
   it.each(SCREENS.filter((s) => s.scope !== 'project').map((s) => s.id))('%s: a client’s ?code=<other organisation> leaks nothing', async (screen) => {
     const q = [queryOf(screen), 'code=NDC-031'].filter(Boolean).join('&');
+    if (isOutside('client', screen)) {
+      await expect(ctxOf(screen, 'client', q)).rejects.toMatchObject({ status: 403 });
+      return;
+    }
     const sheets = await sheetsOf(screen, 'client', q);
     for (const sh of sheets) for (const r of sh.rows) for (const c of r) expect(String(c ?? ''), `${screen} · ${sh.name}`).not.toMatch(/NDC-031|EWA-051|\bNDC\b/);
     // Same figures as for the client's own project (labour cost, NCR counts, home tiles…): the foreign code is ignored.
@@ -156,26 +162,30 @@ describe('rights', () => {
     expect((await lev('procurement')).rows[0]).not.toContain('Hourly rate');
   });
 
-  it('a client exports only its organisation’s projects, everywhere', async () => {
-    const [map] = await sheetsOf('worldmap', 'client', '');
-    expect(map.rows.length - 1).toBe(3);
-    const [ov] = await sheetsOf('overview', 'client', '');
-    expect(new Set(col(ov.rows, 'Code'))).toEqual(new Set(['HLT-026']));
-    const req = (await sheetsOf('requests', 'client', ''))[0];
-    expect(col(req.rows, 'Project').every((c) => c === 'HLT-026')).toBe(true);
+  it('a client exports only its organisation’s projects, and nothing outside their workspace (P-1)', async () => {
+    for (const screen of ['worldmap', 'overview', 'requests', 'task', 'mtypes', 'eco', 'plan', 'budget'] as const)
+      await expect(ctxOf(screen, 'client', screen === 'task' ? 'task=T-2331' : 'code=HLT-026'), screen).rejects.toMatchObject({ status: 403 });
     await expect(ctxOf('orders', 'client', 'code=NDC-031')).rejects.toMatchObject({ status: 403 });
+    await expect(ctxOf('trends', 'client', 'code=NDC-031')).rejects.toMatchObject({ status: 403 });
+    const [home] = await sheetsOf('home', 'client', '');
+    expect(home.rows.length).toBeGreaterThan(0);
     const own = await sheetsOf('client', 'client', 'code=HLT-026&tab=invoices');
     expect(own[0].name).toBe('Invoices');
   });
 
-  it('a client sees only its organisation’s projects in the machine-type and ECO "Projects" columns', async () => {
+  it('the machine-type and ECO "Projects" columns keep the client filter (defence in depth behind P-1)', async () => {
     const own = /^(HLT|PRS|QFR)-/;
-    const [mt] = await sheetsOf('mtypes', 'client', '');
+    // P-1 refuses these screens to the client; the providers still filter for a client context built directly.
+    const asClient = async (screen: 'mtypes' | 'eco') => {
+      const ctx = await ctxOf(screen, 'director', '');
+      return readXlsx((await runExport({ ...ctx, viewer: PERSONA_BY_ROLE.client }, 'xlsx')).body);
+    };
+    const [mt] = await asClient('mtypes');
     const [mtd] = await sheetsOf('mtypes', 'director', '');
     const codes = (rows: (string | number | boolean | null)[][]) => col(rows, 'Projects').flatMap((v) => String(v ?? '').split(' · ').filter(Boolean));
     expect(codes(mtd.rows).some((c) => !own.test(c))).toBe(true);
     expect(codes(mt.rows).every((c) => own.test(c))).toBe(true);
-    const [eco] = await sheetsOf('eco', 'client', '');
+    const [eco] = await asClient('eco');
     expect(codes(eco.rows).every((c) => own.test(c) || /^(HLT|PRS|QFR)$/.test(c))).toBe(true);
   });
 

@@ -39,5 +39,6 @@
   "Recently deleted": "Supprimés récemment",
   "Removed work packages and activities can be restored for 30 days, with their links, assignments and to-dos": "Les lots et activités retirés peuvent être restaurés pendant 30 jours, avec leurs liens, affectations et tâches",
   "Restore its work package first": "Restaurez d’abord son lot",
-  "This removal can no longer be undone": "Ce retrait ne peut plus être annulé"
+  "This removal can no longer be undone": "Ce retrait ne peut plus être annulé",
+  "Only the assignee or the project manager can change this to-do": "Seuls le responsable de la tâche et le chef de projet peuvent modifier ce point"
 }

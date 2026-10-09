@@ -18,6 +18,7 @@ import {
   activityCalendarText, baselineSetText, baselineShownText, calendarSetText, cycleText, linkAddedText, linkCycleText, linkRemovedText, rescheduledText,
   todoAddedText, todoRemovedText,
 } from './i18n';
+import { canEditTask } from '@/features/mywork/permissions';
 import { canEditPlan, canSchedulePlan } from './rights';
 
 export type PlanToastResult = { ok: true; toast?: string } | { error: string };
@@ -211,6 +212,8 @@ export async function toggleTodoAction(code: string, activity: string, number: s
   const { t } = await getI18n();
   const todo = await todoOfActivity(r.ctx.project.code, str(activity), str(number));
   if (!todo) return { error: t('Invalid request') };
+  // Ticking someone's task follows My work (its assignee or the director), plus the project's PM who plans the activity.
+  if (!canSchedulePlan(r.ctx) && !canEditTask(r.ctx.viewer, todo.assignee ?? '', false)) return { error: t('Only the assignee or the project manager can change this to-do') };
   await setActivityTodoDone(r.ctx.project.code, todo.number, done === true, r.ctx.viewer.name);
   refresh(r.ctx.project.code, 'all');
   return { ok: true };

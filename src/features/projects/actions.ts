@@ -14,7 +14,8 @@ import {
   createWizardProject, getNewProjectSetup, getProjectStage, missingDeliverables, moveProjectStage, setDeliverableAndAdvance,
 } from '@/server/dal/projects-register';
 import { inactiveStageCodes } from '@/server/dal/settings-lists';
-import { getScreenAccess } from '@/server/project-context';
+import { getProject } from '@/server/dal/projects';
+import { getScreenAccess, isMineProject } from '@/server/project-context';
 import { getViewer } from '@/server/session';
 import { CREATE_PROJECT_ROLES } from './permissions';
 
@@ -32,15 +33,23 @@ function refresh() {
   revalidatePath('/', 'layout');
 }
 
+/** Lifecycle writes: the director, or the project's own PM (another PM's project is read-only, 01 §5.2). */
+async function mayManageLifecycle(code: string): Promise<boolean> {
+  const { canEdit, viewer } = await getScreenAccess('projects');
+  if (!canEdit) return false;
+  const project = await getProject(code);
+  return !!project && isMineProject(viewer, project);
+}
+
 /**
  * Moves a project to the next stage or to Annulé (advance 3922). `auto` is refused when deliverables are missing
  * or the target is Annulé; `forced` needs a reason and is recorded with the missing deliverables, pending the
  * portfolio director's validation.
  */
 export async function moveStageAction(input: { code: string; to: string; mode: 'auto' | 'forced'; reason?: string }): Promise<ActionResult> {
-  const { canEdit, viewer } = await getScreenAccess('projects');
-  if (!canEdit) return { ok: false, error: NOT_ALLOWED };
+  const { viewer } = await getScreenAccess('projects');
   const code = str(input?.code, 40);
+  if (!(await mayManageLifecycle(code))) return { ok: false, error: NOT_ALLOWED };
   const to = input?.to;
   const mode = input?.mode === 'forced' ? 'forced' : 'auto';
   const reason = str(input?.reason, 500);
@@ -71,9 +80,8 @@ export async function moveStageAction(input: { code: string; to: string; mode: '
 
 /** Ticks / unticks a deliverable of the project's current stage (toggleDeliv 3923); may auto-advance the project. */
 export async function setDeliverableAction(input: { code: string; stage: string; index: number; done: boolean }): Promise<ActionResult> {
-  const { canEdit } = await getScreenAccess('projects');
-  if (!canEdit) return { ok: false, error: NOT_ALLOWED };
   const code = str(input?.code, 40);
+  if (!(await mayManageLifecycle(code))) return { ok: false, error: NOT_ALLOWED };
   if (!isStage(input?.stage) || !Number.isInteger(input?.index) || typeof input?.done !== 'boolean')
     return { ok: false, error: 'Invalid deliverable' };
   try {
