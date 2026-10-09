@@ -59,6 +59,8 @@
 /* Row buttons: primary/secondary 12px · 3px 10px (nowrap), ghost 12px · 2px 4px */
 :global(.btn).rowBtn { font-size: 12px; padding: 3px 10px; white-space: nowrap; }
 :global(.btn).rowGhost { font-size: 12px; padding: 2px 4px; }
+/* Discard-draft confirmation (S-7), as the what-if "Delete scenario" dialog. */
+.confirmText { font-size: 13px; color: var(--color-neutral-300); margin: 4px 0 10px; text-wrap: pretty; }
 
 /* ── Approvals ───────────────────────────────────────────────────────────────────────────────── */
 .headRow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

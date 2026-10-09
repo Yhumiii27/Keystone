@@ -3,7 +3,7 @@
 // Rights as on screen: hourly rates and premium multipliers only for the roles that see rates (director, PM) — the
 // columns are left out otherwise; requests are the viewer's own unless the screen shows them all (director, outside
 // the workspace); a client exports only its own projects' rows. Weekly loads are fractions (1 = 100 % of the hours).
-import { matchesFilter as matchesRequestFilter, isRequestFilter, deptOfSlug, REQUEST_FILTERS } from '@/domain/requests';
+import { matchesFilter as matchesRequestFilter, isRequestFilter, isSentRequest, deptOfSlug, REQUEST_FILTERS } from '@/domain/requests';
 import { parseSkillFilter } from '@/domain/hr';
 import { leverLabel, type WhatIfResult } from '@/domain/whatif';
 import { getRateCard, getLeaveCalendar, getSkillsMatrix } from '@/server/dal/hr';
@@ -39,7 +39,8 @@ function requestSheet(ctx: ExportContext, name: string, rows: ResourceRequestRow
   ], rows.map((r) => ({
     id: r.id, project: r.projectCode, title: t(r.title), resource: t(r.resource), department: t(r.department), activity: r.activity ? `${r.activity.code} · ${t(r.activity.name)}` : '',
     hours: r.hours, start: t(r.start), due: t(r.due), priority: t(r.priority === 'high' ? 'High' : r.priority === 'low' ? 'Low' : 'Medium'), status: t(r.statusLabel),
-    requestedBy: r.requestedBy, sent: t(r.sentText), response: t(r.response), task: r.taskId ?? '',
+    // S-7: a draft (status "Draft") has no sent date — its stored date is when the what-if levelling drafted it.
+    requestedBy: r.requestedBy, sent: isSentRequest(r) ? t(r.sentText) : '', response: t(r.response), task: r.taskId ?? '',
   })));
 }
 

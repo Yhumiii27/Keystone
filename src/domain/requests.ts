@@ -62,11 +62,15 @@ export interface RequestKpis {
   approved: number;
 }
 
+/** A DRAFT (chapter 4, S-7: what-if "Apply" / "Select scenario") has not been sent to its department yet. */
+export const isSentRequest = (r: Pick<RequestFacts, 'status'>) => r.status !== 'draft';
+
 /** `reqKpis` (4138): requests sent · awaiting review (+ Σ pending hours) · needs your answer · approved. */
 export function requestKpis(rows: readonly Pick<RequestFacts, 'status' | 'hours'>[]): RequestKpis {
   const pending = rows.filter((r) => r.status === 'pending');
   return {
-    sent: rows.length,
+    // S-7: drafts are listed (All) but not counted as sent until "Send" (the prototype had no drafts: every row counted).
+    sent: rows.filter(isSentRequest).length,
     pending: pending.length,
     pendingHours: pending.reduce((a, r) => a + r.hours, 0),
     reschedule: rows.filter((r) => r.status === 'reschedule').length,
@@ -133,8 +137,9 @@ export const datesText = (start: string, due: string) => `${shortDateOfIso(start
 
 // ── Stepper (`step1..3`, 4120) ─────────────────────────────────────────────────────────────────────────
 
-/** 3-dot stepper: sent (always) → department review (not pending) → assigned to the person (approved). */
+/** 3-dot stepper: sent (always, except a draft — S-7) → department review (not pending) → assigned to the person (approved). */
 export function requestSteps(status: RequestStatus): [boolean, boolean, boolean] {
+  if (status === 'draft') return [false, false, false];
   return [true, status !== 'pending', status === 'approved'];
 }
 
