@@ -10,7 +10,7 @@ import { ProgressBar, SpendVsEarned } from '@/components/app/Progress';
 import { CardGrid, SectionCard, Stack } from '@/components/app/SectionCard';
 import { LO, OK } from '@/components/app/tones';
 import { screenHref } from '@/config/screens';
-import { INDEX_ALERT, activeProjectsHint } from '@/domain/portfolio';
+import { activeProjectsHint } from '@/domain/portfolio';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import type { PortfolioOverview } from '@/server/dal/portfolio';
@@ -75,10 +75,10 @@ function ActiveProjectsCard({ data, t, lang }: { data: PortfolioOverview; t: T; 
                 <Td>
                   <SpendVsEarned spent={m.spentBar} earned={m.progressBar} label={m.spentPct} />
                 </Td>
-                <Td numeric color={m.cpi < INDEX_ALERT ? LO : OK}>
+                <Td numeric color={m.cpiAlert ? LO : OK}>
                   {m.cpi.toFixed(2)}
                 </Td>
-                <Td numeric color={m.spi < INDEX_ALERT ? LO : OK}>
+                <Td numeric color={m.spiAlert ? LO : OK}>
                   {m.spi.toFixed(2)}
                 </Td>
                 <Td numeric>{money(m.eac, lang)}</Td>

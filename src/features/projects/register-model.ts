@@ -1,7 +1,7 @@
 // Projects register view model (docs/spec/03 §5.4–§5.6): turns the register data (DAL) into serialisable,
 // translated rows for the client island. Pure — runs in the page (Server Component) and in tests.
 import { screenHref } from '@/config/screens';
-import { HEALTH_LABEL } from '@/domain/health';
+import { HEALTH_LABEL, type HealthThresholds } from '@/domain/health';
 import { isLiveRow, type SearchableProject, type StageCode } from '@/domain/lifecycle';
 import { projectIndicators, type Tint } from '@/domain/portfolio';
 import { healthTone, type Tone } from '@/components/app/tones';
@@ -87,6 +87,8 @@ export interface RegisterInput {
   inactiveStages?: readonly StageCode[];
   /** Projects with a WBS but no cost controls yet (wizard template, A-2): their plan opens too. */
   planned?: readonly string[];
+  /** Settings health thresholds (A-13): CPI / SPI colours and attention items. Default 0.97 / 0.90. */
+  thresholds?: HealthThresholds;
 }
 
 /** Indicator tints → CSS colours (LO = accent-300, OK = text). */
@@ -113,6 +115,7 @@ export function buildRegisterModel(data: RegisterInput, zone: ZoneKey | null, t:
       sched && { start: sched.start, floatDays: sched.floatDays, finishText: sched.finishText, baselineText: sched.baselineText, milestones: sched.milestones },
       live,
       lang,
+      data.thresholds,
     );
     const st = stageByCode.get(p.stage);
     const ticks = data.checklists[p.code]?.[p.stage] ?? [];

@@ -43,7 +43,7 @@ export async function getPortfolioOverview(zone: ZoneKey | null, lang: Lang): Pr
   const totals = portfolioTotals(rows);
   const zoneOf = new Map(all.map((p) => [p.code, p.zone]));
   const alerts = portfolioAlerts(lang).filter((a) => !a.code || !zone || zoneOf.get(a.code) === zone);
-  return { rows, totals, kpis: portfolioKpis(totals, lang), alerts };
+  return { rows, totals, kpis: portfolioKpis(totals, lang, th), alerts };
 }
 
 /** Every task (assignee full name, status, project short code) for the "open tasks" indicators. */

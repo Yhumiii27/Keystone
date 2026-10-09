@@ -5,7 +5,7 @@
 import type { RoleKey, ScreenId } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
 import { fmtD, mIdx, money, monthDate } from '@/lib/format';
-import { DEFAULT_HEALTH_THRESHOLDS, HEALTH_LABEL, healthOf, type Health, type HealthThresholds } from './health';
+import { DEFAULT_HEALTH_THRESHOLDS, HEALTH_LABEL, clampHealthCpi, healthOf, type Health, type HealthThresholds } from './health';
 
 /** EVM inputs of a project record (ProjectRow subset). Amounts in k€. */
 export interface EvmInput {
@@ -15,8 +15,13 @@ export interface EvmInput {
   spi: number | null;
 }
 
-/** CPI/SPI below this value are shown in LO (attention colour). */
-export const INDEX_ALERT = 0.97;
+/**
+ * CPI / SPI below the Settings "At risk below" threshold are shown in LO (attention colour) and listed as attention items
+ * (A-13: colours follow the same threshold as the health verdict; it was a fixed 0.97 before). Default 0.97.
+ */
+export const indexAlert = (value: number, th: HealthThresholds = DEFAULT_HEALTH_THRESHOLDS) => value < th.risk;
+/** @deprecated The default "At risk below" threshold (0.97); screens pass the Settings thresholds to `indexAlert`. */
+export const INDEX_ALERT = DEFAULT_HEALTH_THRESHOLDS.risk;
 
 // ── Portfolio overview (§4) ────────────────────────────────────────────────────────────────────────
 
@@ -33,6 +38,9 @@ export interface OverviewMetrics {
    * thresholds; null without actuals or progress. (The prototype's Overview used the unclamped CPI, 03 §0.4.)
    */
   health: Health | null;
+  /** CPI / SPI below the Settings "At risk below" threshold (LO colour, A-13). */
+  cpiAlert: boolean;
+  spiAlert: boolean;
   /** round(progress × 100) + '%' — also the "Work earned" tick position. */
   progressPct: string;
   /** round(actual / budget × 100) + '%'. */
@@ -58,6 +66,8 @@ export function overviewMetrics(p: EvmInput, th: HealthThresholds = DEFAULT_HEAL
     eac,
     variance: p.budget - eac,
     health: healthOf(p, th),
+    cpiAlert: indexAlert(cpi, th),
+    spiAlert: indexAlert(spi, th),
     progressPct: Math.round(p.progress * 100) + '%',
     spentPct: (p.budget ? Math.round((p.actual / p.budget) * 100) : 0) + '%',
     progressBar: wholePct(p.progress),
@@ -107,16 +117,16 @@ export interface KpiView {
   icon?: KpiIcon;
 }
 
-/** `portfolioKpis` (lines 3802–3808). Home (director) shows the first four. */
-export function portfolioKpis(t: PortfolioTotals, lang: Lang): KpiView[] {
+/** `portfolioKpis` (lines 3802–3808). Home (director) shows the first four. CPI / SPI alert below the Settings threshold (A-13). */
+export function portfolioKpis(t: PortfolioTotals, lang: Lang, th: HealthThresholds = DEFAULT_HEALTH_THRESHOLDS): KpiView[] {
   const n = t.count;
   return [
     { key: 'budget', label: 'Total budget', value: money(t.budget, lang), sub: n === 1 ? '1 active project' : `${n} active projects`, icon: 'briefcase', alert: false },
     { key: 'actual', label: 'Actual cost', value: money(t.actual, lang), sub: `${t.budget ? Math.round((t.actual / t.budget) * 100) : 0}% of budget spent`, icon: 'receipt', alert: false },
     // The prototype always paints the forecast in LO.
     { key: 'eac', label: 'Forecast (EAC)', value: money(t.eac, lang), sub: `${money(t.budget - t.eac, lang, { signed: true })} vs budget`, icon: 'trend-up', alert: true },
-    { key: 'cpi', label: 'Cost perf. (CPI)', value: t.cpi.toFixed(2), sub: 'Earned per $1 spent', icon: 'gauge', alert: t.cpi < INDEX_ALERT },
-    { key: 'spi', label: 'Schedule perf. (SPI)', value: t.spi.toFixed(2), sub: 'Weighted by budget', icon: 'timer', alert: t.spi < INDEX_ALERT },
+    { key: 'cpi', label: 'Cost perf. (CPI)', value: t.cpi.toFixed(2), sub: 'Earned per $1 spent', icon: 'gauge', alert: indexAlert(t.cpi, th) },
+    { key: 'spi', label: 'Schedule perf. (SPI)', value: t.spi.toFixed(2), sub: 'Weighted by budget', icon: 'timer', alert: indexAlert(t.spi, th) },
     { key: 'risk', label: 'Projects at risk', value: `${t.atRisk} of ${n}`, sub: `${t.offTrack} off track`, icon: 'warning', alert: t.atRisk > 0 },
   ];
 }
@@ -217,13 +227,15 @@ export interface ProjectIndicators {
 /**
  * `pvExtra(p, live)`: display indicators of a project. `live` = the project has a health (actuals and progress);
  * otherwise everything shows "—". CPI is clamped to [0.70, 1.25] for display and EAC — the same clamp as the health
- * rule (A-13, src/domain/health.ts). `sched` = planning data of the project, null when it has none.
+ * rule (A-13, src/domain/health.ts). `sched` = planning data of the project, null when it has none. CPI / SPI colours and
+ * attention items follow the Settings "At risk below" threshold `th` (A-13).
  */
 export function projectIndicators(
   p: EvmInput & { finish: string },
   sched: ScheduleSummary | null,
   live: boolean,
   lang: Lang,
+  th: HealthThresholds = DEFAULT_HEALTH_THRESHOLDS,
 ): ProjectIndicators {
   if (!live)
     return {
@@ -232,7 +244,7 @@ export function projectIndicators(
       spentText: p.actual ? money(p.actual, lang) : '—', earnedText: '—', eacText: '—', vacText: '—', vacTint: 'n400',
       spentPct: p.actual ? Math.round((p.actual / p.budget) * 100) + '%' : '0%', spentTint: 'n600',
     };
-  const cpi = p.actual ? Math.min(1.25, Math.max(0.7, (p.budget * p.progress) / p.actual)) : 1;
+  const cpi = p.actual ? clampHealthCpi((p.budget * p.progress) / p.actual) : 1;
   const spi = p.spi || 1;
   const eac = p.budget / cpi;
   const vac = p.budget - eac;
@@ -248,8 +260,8 @@ export function projectIndicators(
   const floatDays = sched ? sched.floatDays : Math.round((spi - 1) * 180);
 
   const attention: string[] = [];
-  if (spi < INDEX_ALERT) attention.push('SPI ' + spi.toFixed(2));
-  if (cpi < INDEX_ALERT) attention.push('CPI ' + cpi.toFixed(2));
+  if (indexAlert(spi, th)) attention.push('SPI ' + spi.toFixed(2));
+  if (indexAlert(cpi, th)) attention.push('CPI ' + cpi.toFixed(2));
   if (msState === 'Late') attention.push(msName + ' · Late');
   if (floatDays < 0) attention.push(Math.abs(floatDays) + ' d slip');
 
@@ -259,8 +271,8 @@ export function projectIndicators(
   return {
     spiText: spi.toFixed(2),
     cpiText: cpi.toFixed(2),
-    spiTint: spi < INDEX_ALERT ? 'lo' : 'ok',
-    cpiTint: cpi < INDEX_ALERT ? 'lo' : 'ok',
+    spiTint: indexAlert(spi, th) ? 'lo' : 'ok',
+    cpiTint: indexAlert(cpi, th) ? 'lo' : 'ok',
     msName,
     msDate,
     msState,
@@ -383,7 +395,7 @@ export function myProjectsModel<P extends EvmInput & { code: string; pm: string;
       readOnly: v.role !== 'director' && v.role !== 'client' && p.pm !== v.short,
       progressPct: Math.round(p.progress * 100) + '%',
       progressBar: wholePct(p.progress),
-      ind: projectIndicators(p, sched[p.code] ?? null, !!health, opts.lang),
+      ind: projectIndicators(p, sched[p.code] ?? null, !!health, opts.lang, opts.thresholds),
       myOpen: data.todos.filter(isOpenTodoOf(v.name, p.code)).length,
     };
   });

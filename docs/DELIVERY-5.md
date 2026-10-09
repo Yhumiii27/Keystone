@@ -268,6 +268,9 @@ All 59 registry screens are built (`built: true` in `src/config/screens.ts`; `sr
 - KPI tiles (Events today, Connectors, Unread notifications, Audit entries · 7 days, Channels); `?view=activity|connectors|imports|audit`,
   activity source chips `?source=`; connectors (10, plus those added in Keystone) with Sync now; import / export formats (drop zones staged);
   audit trail with the ISO 9001 CSV export `audit.csv` (director and PM). Primary "Add connector". Nav badge "!" when a connector needs attention.
+  > **Outdated since delivery 6:** the importers were built in chapter 4, then hidden behind `IMPORTS_ENABLED` (off, decision D-7b); the
+  > export cards work; the connector "Configure" dialog is read-only (D-7a, IT configures connectors outside Keystone). See
+  > `docs/delivery-6/notes-admin-settings.md` and `docs/DELIVERY-6.md`.
 
 ### Shell, Home and My approvals (now read from the database)
 - **Sidebar badges** (`src/server/dal/shell.ts`): Engineering and the four disciplines, P&ID, Quality, Inspections, Site, Warranty claims and
@@ -383,6 +386,9 @@ Other gaps:
 - **Coming-soon toasts and inert controls (new):** P&ID "Open in PDM" and "Export overlay list"; Site "Client communication log"; client portal
   "Download statement"; connector "Configure"; import drop zones (file received, import not built) and export cards. "Download status
   report" records the request but produces no file; "SAT planned · invitation sent to the client" sends nothing (no mail connector, X-6).
+  > **Outdated since delivery 6:** "Client communication log" opens the project's client decisions in Meetings (D-5); "Configure" shows the
+  > connector settings read-only (D-7a); the import cards are hidden (D-7b) and the export cards download files. See
+  > `docs/delivery-6/notes-admin-settings.md` and `docs/DELIVERY-6.md`.
 - **Constants kept from the prototype** (A-12, 10 OQ7): Site "Client decisions logged 3" and the site premium "×1.5 / ×2"; the "1 248 drawings"
   PDM volume; the Cursus row's frequency "Real time (webhooks)" (the connector refreshes on read, at most once a minute).
 - **Settings not wired yet** (A-13, A-14): Project health does not read the Settings thresholds; the risk register's category chips do not

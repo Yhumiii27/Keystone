@@ -38,5 +38,6 @@
   "Enter the planned start date": "Saisissez la date de début prévue",
   "Enter the site city": "Saisissez la ville du site",
   "The site city is too long": "La ville du site est trop longue",
-  "Choose the site country among the proposed countries": "Choisissez le pays du site parmi les pays proposés"
+  "Choose the site country among the proposed countries": "Choisissez le pays du site parmi les pays proposés",
+  "A holiday is already listed on that date": "Un jour férié est déjà inscrit à cette date"
 }

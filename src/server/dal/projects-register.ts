@@ -25,6 +25,7 @@ import {
   persons, projectSites, projectTemplates, projects, stageDeliverableChecks, stageDeliverableDefs, wbsNodes,
 } from '@/server/db/schema';
 import { loadWorkCalendars } from './calendars';
+import { healthThresholds, type HealthThresholds } from './health-thresholds';
 import { listStageHistory, listStages, recordStageChange, setStageDeliverable, type StageHistoryRow, type StageInfo } from './lifecycle';
 import { getClientCodes } from './people';
 import { listScheduleSummaries, type MilestoneRow, type ScheduleControl } from './planning';
@@ -77,14 +78,17 @@ export interface RegisterData {
   inactiveStages?: StageCode[];
   /** Codes of the projects with a WBS (A-2: a wizard project opens on its plan from the register). */
   planned?: string[];
+  /** Settings health thresholds (A-13): the register's CPI / SPI colours and attention items. */
+  thresholds?: HealthThresholds;
 }
 
 /** Everything the Projects register renders. */
 export async function getRegisterData(): Promise<RegisterData> {
-  const [list, stages, checklists, history, schedules, inactiveStages, planned] = await Promise.all([
+  const [list, stages, checklists, history, schedules, inactiveStages, planned, thresholds] = await Promise.all([
     listProjects(), listStages(), listStageChecklists(), listStageHistory(), listScheduleSummaries(), inactiveStageCodes(), listPlannedProjectCodes(),
+    healthThresholds(),
   ]);
-  return { projects: list, stages, checklists, history, schedules, inactiveStages, planned };
+  return { projects: list, stages, checklists, history, schedules, inactiveStages, planned, thresholds };
 }
 
 /** Current stage of a project (null when unknown). */

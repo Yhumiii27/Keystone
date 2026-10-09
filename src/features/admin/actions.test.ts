@@ -101,7 +101,10 @@ describe('Settings Server Functions', () => {
     expect(await addSettingsEntryAction('holidays', 'Saint-Étienne')).toEqual({ error: 'A holiday reads "14 Jul · Fête nationale"' });
     expect(await addSettingsEntryAction('holidays', '31 Feb · Nope')).toEqual({ error: 'A holiday reads "14 Jul · Fête nationale"' });
     expect(await addSettingsEntryAction('skills', 'Structural')).toEqual({ error: '"Structural" is already in the list' });
+    // One holiday per date: the calendars key holidays by date (a second label would be listed but ignored).
+    expect(await addSettingsEntryAction('holidays', '14 Jul · Bastille Day')).toEqual({ error: 'A holiday is already listed on that date' });
     as('director', 'fr');
+    expect(await addSettingsEntryAction('holidays', '14 juil. · Fête de la Fédération')).toEqual({ error: 'Un jour férié est déjà inscrit à cette date' });
     expect(await addSettingsEntryAction('skills', 'structural')).toEqual({ error: '« structural » figure déjà dans la liste' });
     expect(await addSettingsEntryAction('locations', 'Entrepôt central — Lyon', 'workshop')).toEqual({ error: '« Entrepôt central — Lyon » est déjà un emplacement' });
     expect(await addSettingsEntryAction('holidays', 'Toussaint')).toEqual({ error: 'Un jour férié s’écrit « 14 juil. · Fête nationale »' });

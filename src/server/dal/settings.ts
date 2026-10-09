@@ -15,7 +15,7 @@ import {
 } from '@/server/db/codes';
 import { SETTINGS_CARDS } from '@/domain/admin';
 import {
-  CUSTOM_STATUSES_ALLOWED, CUSTOM_STATUS_REFUSED, REQUIRED_STAGES, REQUIRED_STAGE_REFUSED, SETTINGS_DIRECTOR_ONLY, canEditSettings, removalModeOf,
+  CUSTOM_STATUSES_ALLOWED, CUSTOM_STATUS_REFUSED, HOLIDAY_DATE_TAKEN, REQUIRED_STAGES, REQUIRED_STAGE_REFUSED, SETTINGS_DIRECTOR_ONLY, canEditSettings, removalModeOf,
   type RemovalMode,
 } from '@/domain/settings-rules';
 import { appSettings, referenceValues, skills, storageLocations } from '@/server/db/schema';
@@ -90,6 +90,8 @@ export async function addReferenceValue(listKey: ReferenceListKey, label: string
     if (same?.active) throw new Error(`"${text}" is already in the list`);
     // A-14: project statuses are the lifecycle stages; only a deactivated stage can come back.
     if (listKey === 'statuses' && !same && !CUSTOM_STATUSES_ALLOWED) throw new Error(CUSTOM_STATUS_REFUSED);
+    // Holidays are keyed by date (calendars, leave calendar): an active entry on that date refuses a second label.
+    if (listKey === 'holidays' && !same && rows.some((r) => r.active && r.code === holidayCode(text))) throw new Error(HOLIDAY_DATE_TAKEN);
     const position = rows.reduce((m, r) => Math.max(m, r.position + 1), 0);
     let code: string;
     if (same) {

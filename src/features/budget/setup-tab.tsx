@@ -15,7 +15,7 @@ import type { ListOption } from '@/domain/settings-rules';
 import { AddCategoryButton, EditCategoryButton } from './category-buttons';
 import { addCategoryFormDef, editCategoryFormDef, editCategoryValues } from './category-forms';
 import { costTypeLabel } from './i18n';
-import { NewChangeRequestLink } from './soon-button';
+import { NewChangeRequestLink } from './change-request-link';
 import s from './budget.module.css';
 
 export interface SetupTabProps {

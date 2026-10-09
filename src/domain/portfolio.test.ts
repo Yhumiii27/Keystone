@@ -107,6 +107,24 @@ describe('pvExtra indicators (spec §5.5)', () => {
     expect([x.floatText, x.spentText, x.earnedText, x.eacText, x.vacText, x.spentPct, x.spentTint]).toEqual(['−27 d', '€3.36M', '€3.07M', '€5.25M', '−€450k', '70%', 'lo']);
   });
 
+  it('A-13: CPI / SPI colours and attention items follow the Settings "At risk below" threshold', () => {
+    const p = { budget: 1000, actual: 500, progress: 0.48, spi: 0.96, finish: 'Dec 2026' };
+    // CPI = 480 / 500 = 0.96, SPI 0.96: below the default 0.97 → attention and LO tints.
+    expect(projectIndicators(p, null, true, 'en')).toMatchObject({ spiTint: 'lo', cpiTint: 'lo' });
+    expect(projectIndicators(p, null, true, 'en').attention.slice(0, 2)).toEqual(['SPI 0.96', 'CPI 0.96']);
+    // The director lowers "At risk below" to 0.95: 0.96 is no longer an attention value.
+    const th = { risk: 0.95, off: 0.9 };
+    const x = projectIndicators(p, null, true, 'en', th);
+    expect([x.spiTint, x.cpiTint, x.attention.filter((a) => /^(SPI|CPI) /.test(a))]).toEqual(['ok', 'ok', []]);
+    expect(overviewMetrics(p)).toMatchObject({ cpiAlert: true, spiAlert: true });
+    expect(overviewMetrics(p, th)).toMatchObject({ cpiAlert: false, spiAlert: false });
+    const totals = portfolioTotals([{ ...p, metrics: overviewMetrics(p, th) }]);
+    expect(portfolioKpis(totals, 'en').filter((k) => k.key === 'cpi' || k.key === 'spi').map((k) => k.alert)).toEqual([true, true]);
+    expect(portfolioKpis(totals, 'en', th).filter((k) => k.key === 'cpi' || k.key === 'spi').map((k) => k.alert)).toEqual([false, false]);
+    // The display clamp is the health rule's [0.70, 1.25] (clampHealthCpi).
+    expect(projectIndicators({ ...p, actual: 100 }, null, true, 'en').cpiText).toBe('1.25');
+  });
+
   it('dash values when the project has no health, and fallbacks without planning data', () => {
     const p = { budget: 2200, actual: 0, progress: 0, spi: 1, finish: 'Nov 2027' };
     expect(projectIndicators(p, null, false, 'en')).toMatchObject({ spiText: '—', cpiText: '—', msName: '—', msLine: '', finishForecast: '—', spentPct: '0%' });

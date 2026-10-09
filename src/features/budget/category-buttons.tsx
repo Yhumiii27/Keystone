@@ -1,7 +1,7 @@
 'use client';
 // Budget › Structure & changes — "Add category" (ghost, 12.5px, leading plus) and the row pencil "Edit category"
 // (28×28 ghost icon button, neutral-400), with the prototype's look; both open the generic form dialog and save through
-// ./category-actions.ts (chapter 4, A-14 — they announced "coming soon" before). Rendered only when the viewer may edit.
+// ./category-actions.ts (chapter 4, A-14). Rendered only when the viewer may edit.
 import { PencilSimple, Plus } from '@phosphor-icons/react/dist/ssr';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
