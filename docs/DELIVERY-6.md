@@ -18,8 +18,39 @@ Conventions: `docs/ARCHITECTURE.md`. Functional spec: `docs/spec/`. Earlier base
 | `npm run db:generate` | "No schema changes". Seven migrations; chapter 4 adds `0005_sloppy_talos.sql` and `0006_square_lilith.sql` (§3) |
 | `scripts/db-check.ts` | "All checks passed", including the new "Chapter 4 writes" block |
 | Route matrix on `next start` with a fresh DB | 220 routes × 8 personas × FR/EN = 3 520 requests, all 200, no "being built" or error page, nothing but the start-up lines in the server log |
-| End-to-end scenarios (Playwright, `next start`) | STATUS_E2E |
-| Adversarial reviews | STATUS_REVIEW |
+| End-to-end scenarios (Playwright, `next start`) | 14 scenarios of the plan (§5 step 2), all passing, no page error, console error or 5xx (below) |
+| Adversarial reviews | Security / permissions and correctness (CPM, calendars, KPIs, what-if, trash, baselines, seeded displays): every headline value recomputed by hand matches; the findings and their fixes are in §1.1 |
+
+**End-to-end scenarios** (Playwright 1.56 with the preinstalled Chromium on the production server above, plus `fetch` for the routes):
+Reschedule HLT-026 twice (second run "no change"); Set baseline → change request "New baseline BL3" → chain approved → BL3 current with 21
+activities (and CR-009 → BL2); relationship added, cycle and duplicate refused; work package 1.7 removed → Undo → plan CSV identical, then
+A1520 removed → "Recently deleted" → Restore; what-if scenario → "2 draft requests created", second Select "already exist", plan unchanged,
+redirect without `?project=`; FR transcript → local analysis → "Ajouter au CR"; CSV / XLSX for 12 screens, the 8 PDF reports and the
+PO, goods receipt, plan, Gantt, client planning, status report, spares and minutes PDFs, the member export without rates; wizard EEP-045
+(EMP, Le Havre / France: Next disabled without a location) opening on its plan; "At risk below" 0.99 → NDC-031 At risk on Projects,
+Overview and the CSV, then restored; two forced stage changes, one approved, one rejected (reverted); task attachment up / down
+(byte-identical; PM 403, `.exe` 415); spares POs PO-1100 / PO-1101 (Draft); imports hidden, Configure read-only, `POST /api/import` 403;
+Site "Client communication log" → Meetings › Decisions › With the client (EN and FR).
+
+### 1.1 Fixed after the reviews and the end-to-end run
+
+| Source | Finding | Fix |
+|---|---|---|
+| Security | P&ID import pasted a workbook relationship id into a RegExp (a crafted 1 KB file could block the server for minutes) | the id is compared as a string |
+| Security | Upload routes only checked `Content-Length`; a chunked 60 MB body was buffered before the 413 | `readFormDataCapped` reads the body with a byte cap (`src/server/storage/files.ts`) |
+| Security | A client could export another organisation's task, and internal cost data outside their workspace (budget, plan, MS Project XML) | P-1 applied to exports: a client gets 403 outside their workspace and on the MS Project XML export; the header Export button is hidden there; the task export filters by organisation |
+| Security | A PM could change the lifecycle stage of a project they do not manage | `moveStageAction` / `setDeliverableAction` require the project's PM or the director; the register hides the controls on other rows |
+| Security | The Plan drawer let any Plan editor tick someone else's task | the assignee, the director or the project's PM only (as My work) |
+| Security | Audit CSV cells starting with `= + - @` were written raw | neutralised with a leading quote |
+| Security | A client's change request could propose a baseline | `proposeBaseline` honoured only for the project's PM or the director |
+| Correctness | Undo could fail for good when two removed to-dos were renumbered onto the same number | the renumbering skips the numbers the other restored to-dos keep |
+| Correctness | An imported remaining duration kept overriding later % complete / duration edits in the CPM | a new % or duration clears it |
+| Correctness | Schedule Re-baseline naming a closed change request while snapshots are free left the baseline proposed for ever | only an open request that proposes no baseline is linked |
+| Correctness | What-if "protect the budget" took a +€40 lever shown as "0.0 k€"; relief hours were wrong for more than one added unit | unrounded cost; helper share × added units |
+| Correctness | Tests would call Vigie / Cursus if their API URLs were exported in the shell | Vitest starts with them (and `ANTHROPIC_API_KEY`) empty |
+| End-to-end | Draft resource requests (what-if) could be neither sent nor discarded; they read "Sent Fri 25 Sep · Awaiting …" and counted as sent | Send / Discard row actions (requester, project PM or director), "Draft" tag, "Not sent", excluded from "Requests sent"; exports show Draft with no sent date |
+| End-to-end | The change-request drawer always read "Requires re-baseline → BL2" | the baseline the request proposes (BL3…) |
+| End-to-end | Export cards said "Drop a file or click to choose" | "Click to choose what to export" |
 
 **Route matrix** (server `next start` on 127.0.0.1:3310 from `.next-ci`, fresh `KEYSTONE_DATA_DIR`; ports 3000, 3100, 3110, 3200, 3210,
 3217 and 5173 untouched). Cookies `ks-role` × `ks-lang`; redirects followed; a response is good when it is 200, is not the "being built"
@@ -152,7 +183,9 @@ Pure logic in `src/domain/whatif.ts`, formatting in `src/features/resources/what
   extra resources; move → internal colleagues; delay → shifts; split → none).
 - **Draft requests:** "Select scenario → create requests" and a suggestion's "Apply" create **DRAFT** resource requests through the
   requests DAL, in one transaction with the "applied" stamp (no duplicates on a double-click; a failure rolls back both); shifts create no
-  request (the toast asks to enter them in the plan). The plan changes only at the next Reschedule.
+  request (the toast asks to enter them in the plan). The plan changes only at the next Reschedule. Drafts are sent (or discarded, with
+  a confirmation) from Resource requests by the requester, the project's PM or the director; until then they read "Draft · Not sent",
+  are invisible to the department and do not count in "Requests sent".
 - **Basis:** "Current plan" or "Selected scenario (copy its levers)". The inert "Baseline BL1" basis and the Horizon field were removed
   (the pool has 8 weeks of load data, shorter than every horizon option). A "Load change (h)" result row was added (cards, comparison,
   export).
@@ -175,7 +208,7 @@ Pure logic in `src/domain/whatif.ts`, formatting in `src/features/resources/what
   (`src/server/export/providers/`) that exports the main tables with the current filters, tab, zone and search, labels in the viewer's
   language, real numbers and dates in Excel, CSV with BOM and `;` + decimal comma in French. Rights as on screen: rates masked for the roles
   that cannot see them; a client exports only their organisation's projects (a foreign `?code=` on a global screen falls back to one of
-  their own projects). Every export is logged.
+  their own projects) and nothing outside their workspace (P-1: 403, and no Export button there). Every export is logged.
 - **Header PDF reports (8 screens):** budget (cost report), billing (account statement), meetings (minutes), risks (register), trends (status
   report), client (status report), **plan (detailed plan, landscape)** and **schedule (Gantt drawn in the PDF: baseline vs forecast bars,
   progress, critical path, data-date line, milestones)**.
@@ -286,6 +319,16 @@ priorité".
 - **The remote side of each connector** (Vigie, Cursus, Lucca, Outlook…): mocks until the real APIs exist (V-3, C-1…C-3).
 - **Mail:** SAT invitations and client notifications send nothing (X-6).
 
+### Minor points left as they are
+
+- The New project wizard's template descriptions are the prototype's French texts, also in English.
+- On a new wizard project the plan export's Owner column shows the owner code ("SP") until the team has owner names.
+- A forced stage move in the Projects register shows no success toast (errors are toasted).
+- "Set baseline" (free up to BL1) re-checks the rule outside the snapshot transaction: two simultaneous submits on a project at BL0 could
+  create BL2 without a change request (the button is disabled while pending).
+- Expired trash entries (and their attachment files) are purged only at the project's next removal.
+- The local transcript analyser misses second-person French actions ("Julien, tu vas envoyer…").
+
 ## 7. Deliberate deviations and behaviour changes
 
 Delivery 1–5 deviations still apply. New in chapter 4:
@@ -301,6 +344,9 @@ Delivery 1–5 deviations still apply. New in chapter 4:
 | Imports, Configure | working import cards, editable connector settings | hidden / read-only (D-7a, D-7b) |
 | Wizard | name and client required, finish required (30 Sep 2027) | + PM, type, start and site required; finish optional, from the plan (L-3b) |
 | Client portal | no planning view | Schedule tab with Gantt and PDF (S-9a) |
+| Client exports (P-1) | any screen the client could open read-only | only the client's workspace screens (Home, My approvals, client portal, Trends, Change control, Quality); MS Project XML refused |
+| Projects register | any PM could move any project's stage | the project's PM or the director (another PM's project is read-only, 01 §5.2) |
+| Resource requests | — | drafts from the what-if: Send / Discard |
 
 ## 8. Open questions
 
@@ -317,6 +363,10 @@ Delivery 1–5 deviations still apply. New in chapter 4:
 | S-9a | Portal tab name and position; should clients see the detailed activity plan; should the PDF Gantt extend to the forecast finish instead of the screen's 13 months; an internal plan PDF with costs? | client portal, exports |
 | D-1 | Codex deep link for a document selection (zip) | Docs |
 | D-7b / S-9b | When imports come back: schedule imports only, or the Excel / CSV table imports too? | interchange |
+| P-1 | P-1 is applied to exports only; the client can still open outside-workspace screens read-only (I-2b: no client access at launch). Apply it to the screens before opening client access | client access |
+| A-12 | Prioritisation's capacity gap (151 h) counts the 8 resource-pool people × 40 h, while Resources and what-if use `department_capacities` (e.g. Engineering 320 h vs 960 h over the same 8 weeks): which source is the capacity? | Prioritisation, Resources |
+| S-3 | Approving an older request after a newer one makes its baseline current (CR-009 / BL2 after CR-011 / BL3): latest approval wins, or keep the highest BLn? | baselines |
+| S-7 | Drafts: should a PM's Resource requests list include drafts others made on their projects? Should the person who sends a draft become the requester? Procurement can draft (Resources "Apply") but not send — acceptable? A "Drafts" filter? | Resource requests |
 
 Questions of earlier `DELIVERY-*.md` not repeated here are still open (V-1…V-3, C-1…C-3, A-6, Q-5, Q-6, X-6, X-15, P-10…).
 
