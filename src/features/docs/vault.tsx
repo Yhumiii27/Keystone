@@ -8,6 +8,7 @@ import { SearchField } from '@/components/app/SearchField';
 import { Stack } from '@/components/app/SectionCard';
 import { Segmented } from '@/components/ds/Segmented';
 import type { T } from '@/i18n/translate';
+import { codexPublicUrl } from '@/server/integrations/codex/config';
 import { CodexBanner } from './codex-banner';
 import { OpenCodexButton, SyncNowButton } from './codex-buttons';
 import type { VaultView } from './model';
@@ -71,7 +72,7 @@ export function DocsVault({ project, view, canEdit, openToast, t }: DocsVaultPro
         </FilterGroup>
       </FilterBar>
 
-      <VaultTable project={project} title={view.title} rows={view.rows} empty={view.empty} />
+      <VaultTable project={project} title={view.title} rows={view.rows} empty={view.empty} codexUrl={codexPublicUrl()} />
     </Stack>
   );
 }
