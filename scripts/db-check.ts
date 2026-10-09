@@ -44,11 +44,33 @@ import {
 import { getX3StockSync, listStock } from '@/server/dal/stock';
 import { getSupplierScorecard, listStorageLocations } from '@/server/dal/suppliers';
 import { getVigieEcoConnector } from '@/server/integrations/vigie/eco-connector';
+import { getVigieQualityConnector } from '@/server/integrations/vigie/quality-connector';
+import { getCursusConnector } from '@/server/integrations/cursus/connector';
+import { getClientPortal, raiseClientIssue } from '@/server/dal/client';
+import { listClaims, listInterventions, openClaim } from '@/server/dal/claims';
+import { getCommissioning } from '@/server/dal/commissioning';
+import { getEngineeringRegister } from '@/server/dal/engineering';
+import { addMachine, listMachines, machinesByZone } from '@/server/dal/fleet';
+import { getPlumbingCounts, listConnectors, listImportFormats } from '@/server/dal/integrations';
+import { addPunchItem, getItpPlan, listPunchItems } from '@/server/dal/itp';
+import { listMachineTypes } from '@/server/dal/mtypes';
+import { getPidValidation } from '@/server/dal/pid';
+import { advanceNcr, decideDeliverable, deliverableAcceptanceQueue, getNcr, listDeliverables, listNcrs, ncrVerificationQueue } from '@/server/dal/quality';
+import { addLesson, getRex } from '@/server/dal/rex';
+import { getSettings } from '@/server/dal/settings';
+import { getSite, remindInCursus, saveDailyReport } from '@/server/dal/site';
 import { setDb } from '@/server/db/client';
 import { riskCategory, riskResponse, riskStatus, stage } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
 import * as schema from '@/server/db/schema';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
+import { schedule } from '@/domain/cpm';
+import { createBaselineSnapshot, getBaselineActivities, listProjectBaselines } from '@/server/dal/baselines';
+import { listCalendars, loadWorkCalendars, setProjectCalendar } from '@/server/dal/calendars';
+import { getBaselineRegister } from '@/server/dal/changes-baselines';
+import { addClientCommunication } from '@/server/dal/client-comms';
+import { createImportJob, getImportJob, saveImportPreview } from '@/server/dal/import-jobs';
+import { loadScheduleNetwork } from '@/server/dal/schedule-network';
 
 /**
  * Seed row counts of the delivery-2 tables: risks 8 (HLT) + 5 × 4 generated; snapshots 6 projects × 13 weeks;
@@ -94,6 +116,33 @@ const D4_COUNTS: Record<string, number> = {
   vigie_ecos: 6, vigie_eco_approvals: 18, vigie_eco_parts: 12, vigie_eco_projects: 7, vigie_eco_effectivity: 24, vigie_eco_progress: 0,
 };
 
+/**
+ * Seed row counts of the delivery-5 tables: deliverables HLT_DELIVS 10 + 5 × 4 generated (RACI 5 each); the Vigie NCR
+ * mirror HLT_NCRS 5 + 5 × 2 generated and the site HSE register 5; ITP 13 inspections; punch PUNCH 5 + SITE_PUNCH 3;
+ * commissioning 6 systems × 5 steps, 8 dossier items; LESSONS 4, CLOSURE 10, SATISFACTION 5; FLEET 8 (AS_MAINT 31 part
+ * revisions), CLAIMS 8, INTERVENTIONS 6; the site sheet with 8 equipment, 6 prerequisites, 6 rotations, 4 collisions,
+ * 6 cost lines, 2 reports; Cursus 5 people (1 sync); CLIENT_ISSUES 3, CLIENT_DOCS 5; ENG_* registers; PID 1 / 24 / 5;
+ * machine-type aggregate 28 phases, 25 cost categories, 17 ITP systems; SETTINGS0 60 values; CONNECTORS 9 + Vigie; IMPORTS 6.
+ */
+const D5_COUNTS: Record<string, number> = {
+  deliverables: 30, deliverable_raci: 150, vigie_ncrs: 15, vigie_ncr_progress: 0, vigie_hse_items: 5, itp_plans: 1, itp_inspections: 13, punch_items: 8,
+  commissioning_systems: 6, commissioning_steps: 30, handover_items: 8, sat_plans: 0, lessons_learned: 4, closure_items: 10, satisfaction_scores: 5,
+  machines: 8, machine_part_revisions: 31, warranty_claims: 8, interventions: 6, site_sheets: 1, site_equipment: 8, site_prerequisites: 6, site_rotations: 6,
+  site_collisions: 4, mission_cost_lines: 6, daily_reports: 2, cursus_clearances: 5, cursus_requests: 0, cursus_sync_runs: 1, client_issues: 3,
+  client_document_categories: 5, eng_disciplines: 4, eng_inputs: 12, eng_consistency_rules: 6, eng_checks: 10, eng_outputs: 6, eng_changes: 4, eng_import_tools: 4,
+  eng_column_mappings: 6, eng_import_deltas: 4, eng_imports: 0, pid_sheets: 1, pid_tags: 24, pid_validation_steps: 5, machine_type_phases: 28,
+  machine_type_cost_categories: 25, machine_type_itp_systems: 17, reference_values: 60, app_settings: 1, connectors: 10, connector_sync_runs: 0, import_formats: 6,
+};
+
+/**
+ * Seed row counts of the chapter 4 tables: the 4 built-in calendars; BL1 of the 5 generated projects (+ BL0/BL1/BL2 of
+ * HLT-026) and its snapshot of every activity (ALL_BYID 145); everything else starts empty.
+ */
+const CH4_COUNTS: Record<string, number> = {
+  calendars: 4, calendar_exceptions: 0, baselines: 8, baseline_activities: 145, schedule_runs: 0, stored_files: 0, import_jobs: 0, import_job_rows: 0, export_log: 0,
+  client_communications: 0, whatif_scenario_actions: 0,
+};
+
 let failures = 0;
 function check(label: string, ok: boolean, detail?: unknown) {
   if (!ok) failures++;
@@ -136,6 +185,12 @@ async function main() {
 
   console.log('\nDelivery 4 tables (golden row counts)');
   for (const [table, n] of Object.entries(D4_COUNTS)) check(`${table} = ${n}`, counts[table] === n, counts[table]);
+
+  console.log('\nDelivery 5 tables (golden row counts)');
+  for (const [table, n] of Object.entries(D5_COUNTS)) check(`${table} = ${n}`, counts[table] === n, counts[table]);
+
+  console.log('\nChapter 4 tables (golden row counts)');
+  for (const [table, n] of Object.entries(CH4_COUNTS)) check(`${table} = ${n}`, counts[table] === n, counts[table]);
 
   console.log('\nProjects');
   const list = await listProjects();
@@ -259,12 +314,15 @@ async function main() {
   const hr = await getHoursReconciliation('HLT-026');
   check('HOURS reproduced', same(hr && { imported: hr.importedText, code: hr.analyticCode, lines: hr.lines.map((l) => [l.person, l.wbsLabel, l.plannedH, l.declaredH]), unassigned: hr.unassigned.map((u) => [u.person, u.hours, u.reason]) }, PROTO.HOURS['HLT-026']));
   const wi = await getWhatIf('HLT-026');
-  check('what-if levers, AUTO, scenarios A/B', same(wi?.autoLevers, PROTO.AUTO) && wi?.levers.length === 5 && same(wi.scenarios.map((x) => x.name), ['A', 'B']));
+  // Chapter 4 (S-7): levers derived from the plan (A1250 assignments) replace the prototype's LEVERS / AUTO.
+  check('what-if levers derived from A1250, scenarios A/B', wi?.levers.length === 3 && wi.levers.every((l) => l.activity === 'A1250') && same(wi.scenarios.map((x) => x.name), ['A', 'B']));
   check('unread notifications per role 3/4/1/2/1/1/1/1', same(await Promise.all(['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'].map(countUnreadNotifications)), [3, 4, 1, 2, 1, 1, 1, 1]));
   check('ACTIVITY and AUDIT reproduced', same((await listActivity()).map((a) => [a.when, a.who, a.what, a.kind]), PROTO.ACTIVITY) && same((await listAudit()).map((a) => [a.when, a.who, a.object, a.change, a.area]), PROTO.AUDIT));
 
   await delivery3Reads();
   await delivery4Reads();
+  await delivery5Reads();
+  await chapter4Reads();
 
   console.log('\nNumbering & writes (temporary database)');
   check('next project number #045', (await nextProjectNumber()) === PROTO_GEN.nextProjectId);
@@ -289,6 +347,8 @@ async function main() {
   check('audit rows appended (8 seed + 4)', (await listAudit()).length === 12);
   await delivery3Writes();
   await delivery4Writes();
+  await delivery5Writes();
+  await chapter4Writes();
 
   fs.rmSync(dir, { recursive: true, force: true });
   console.log(failures ? `\n${failures} check(s) FAILED` : '\nAll checks passed');
@@ -324,16 +384,18 @@ async function delivery3Reads() {
   check('billing plans: HLT-026 from the contract, BILLING elsewhere', plans['HLT-026']?.fromContract === true && plans['NDC-031']?.contractValueKeur === 2350 && plans['ERP-202']?.internal === true);
   const cash = await getCashFlow(null);
   const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
-  check('cash flow: 5 rows · contract 10 090 · invoiced 5 258 · outstanding 1 940 · net +365 · low −490',
+  // A-12 (chapter 4): the forecast is computed from the billing plans and cost forecasts (prototype plan: net +365, low −490).
+  check('cash flow: 5 rows · contract 10 090 · invoiced 5 258 · outstanding 1 940 · net +2 836 · low −521',
     same([cash.rows.map((r) => r.project.code), sum(cash.rows.map((r) => r.plan.contractValueKeur)), sum(cash.rows.map((r) => r.plan.invoicedKeur)),
       sum(cash.rows.map((r) => sum(r.plan.milestones.filter((m) => m.status === 'invoiced').map((m) => m.amountKeur)))),
       sum(cash.forecast.map((m) => m.cashInKeur - m.cashOutKeur)), Math.min(...cash.forecast.map((_, i) => sum(cash.forecast.slice(0, i + 1).map((m) => m.cashInKeur - m.cashOutKeur))))],
-    [['HLT-026', 'NDC-031', 'RCF-019', 'ERP-202', 'MSR-012'], 10090, 5258, 1940, 365, -490]));
+    [['HLT-026', 'NDC-031', 'RCF-019', 'ERP-202', 'MSR-012'], 10090, 5258, 1940, 2836, -521]));
   const pf = await getPrioritisation('director', null);
   check('prioritisation: 10 ranked (SCORES remapped), WSA-044 first (81), HLT-026 72 · margin 13 % (contract)',
     pf.ranking.length === 10 && pf.ranking[0].project.code === 'WSA-044' && pf.ranking[0].score === 81
       && same(pf.ranking.find((r) => r.project.code === 'HLT-026') && [pf.ranking.find((r) => r.project.code === 'HLT-026')!.score, pf.ranking.find((r) => r.project.code === 'HLT-026')!.marginPct], [72, 13]));
-  check('capacity what-if WSA-044: gap 1 560 h', (await getCapacityWhatIf('WSA-044'))?.gapH === 1560);
+  // A-12: capacity from the pool's allocations, demand per €1M from the active portfolio (prototype constants: 1 560 h).
+  check('capacity what-if WSA-044: gap 151 h', (await getCapacityWhatIf('WSA-044'))?.gapH === 151);
   const ms = await listMeetings('HLT-026');
   const acts = ms.flatMap((m) => m.agenda.flatMap((a) => a.lines)).filter((l) => l.type === 'action');
   check('meetings HLT-026: 5 · 1 notes in progress · 6 open actions · 0 overdue; MTG-121 on NDC-031',
@@ -451,6 +513,131 @@ async function delivery4Writes() {
   check('ECO-2026-015 PM approval recorded, pending sync with Vigie (Vigie status unchanged)', rec.syncStatus === 'pending' && (await getEco('ECO-2026-015'))?.status === 'in_approval'
     && (await getEco('ECO-2026-015'))?.approvalsView.find((a) => a.key === 'pm')?.pendingSync === true);
   check('audit rows appended (19 + 21)', (await listAudit()).length === before + 21 && before === 19, [before, (await listAudit()).length]);
+}
+
+async function delivery5Reads() {
+  console.log('\nDelivery 5 data (DAL vs prototype)');
+  const ncrs = await listNcrs('HLT-026');
+  const open = ncrs.filter((n) => n.open);
+  check('NCRs HLT-026 (Vigie mirror, mock): 5 · 4 open · 1 critical · €44k · 3 from goods receipt; 2 on each other project with data; none on EWA-051',
+    getVigieQualityConnector().mode === 'mock' && same([ncrs.length, open.length, open.filter((n) => n.severity === 'critical').length, ncrs.reduce((a, n) => a + n.costKeur, 0),
+      ncrs.filter((n) => n.source === 'goods_receipt').length, (await listNcrs('NDC-031')).map((n) => n.number), (await listNcrs('EWA-051')).length], [5, 4, 1, 44, 3, ['NCR-040', 'NCR-041'], 0]));
+  const dl = await listDeliverables('HLT-026');
+  check('deliverables HLT-026: 10 · 3 accepted · 2 submitted (D-014 "Accept by 2 Oct", D-016) · D-021 due 2027-01-14; D-110…D-113 elsewhere',
+    same([dl.length, dl.filter((d) => d.status === 'accepted').length, dl.filter((d) => d.status === 'submitted').map((d) => d.number), dl[2].acceptanceText, dl.at(-1)!.dueOn,
+      (await listDeliverables('RCF-019')).map((d) => d.number)], [10, 3, ['D-014', 'D-016'], 'Accept by 2 Oct', '2027-01-14', ['D-110', 'D-111', 'D-112', 'D-113']]));
+  const plan = (await getItpPlan('HLT-026'))!;
+  const punch = (await listPunchItems('HLT-026', 'itp')).filter((p) => p.open);
+  check('ITP HLT-026: 3 / 13 passed · 1 failed · 5 hold points ahead · EMP 6 systems · 2 custom · 4 open punch (B 2 · C 2)',
+    same([plan.inspections.filter((i) => i.result === 'passed').length, plan.inspections.length, plan.inspections.filter((i) => i.result === 'failed').length,
+      plan.inspections.filter((i) => i.pointType === 'hold' && i.result !== 'passed').length, plan.template, plan.systems.length, plan.customCount, punch.length,
+      punch.filter((p) => p.category === 'B').length, punch.filter((p) => p.category === 'C').length], [3, 13, 1, 5, 'EMP', 6, 2, 4, 2, 2]));
+  const cm = (await getCommissioning('HLT-026'))!;
+  const cells = cm.systems.flatMap((x) => x.cells);
+  check('commissioning HLT-026: 0 / 6 handed over · 1 / 30 steps done · 2 blocked (IF-02, IF-05) · dossier 19 % · 4 missing',
+    same([cm.systems.filter((x) => x.cells[4].status === 'done').length, cells.filter((c) => c.status === 'done').length, cells.filter((c) => c.status === 'blocked').map((c) => c.blockingRef),
+      Math.round(((cm.dossier.filter((x) => x.status === 'ready').length + cm.dossier.filter((x) => x.status === 'partial').length * 0.5) / cm.dossier.length) * 100),
+      cm.dossier.filter((x) => x.status === 'missing').length], [0, 1, ['IF-02', 'IF-05'], 19, 4]));
+  const rex = await getRex('HLT-026');
+  check('REX HLT-026: 4 lessons (1 applied, 1 to validate) · closure 1 done 3 in progress · satisfaction 4.0 / 5',
+    same([rex.lessons.length, rex.lessons.filter((l) => l.status === 'applied').length, rex.lessons.filter((l) => l.status === 'proposed').length,
+      rex.closure.filter((c) => c.status === 'done').length, rex.closure.filter((c) => c.status === 'in_progress').length,
+      (rex.satisfaction.reduce((a, x) => a + x.score, 0) / rex.satisfaction.length).toFixed(1)], [4, 1, 1, 1, 3, '4.0']));
+  const ms = await listMachines();
+  const z = await machinesByZone();
+  check('installed base: 8 machines · 6 clients · 6 in warranty · 1 extended · MCH-035 ends in 31 d · 4 with open claims · zones 6 / 1 / 1',
+    same([ms.length, new Set(ms.map((m) => m.client)).size, ms.filter((m) => m.warrantyStatus === 'in_warranty').length, ms.filter((m) => m.warrantyStatus === 'extended').length,
+      ms.filter((m) => m.warrantyEndingSoon).map((m) => [m.number, m.warrantyEndsInDays]), ms.filter((m) => m.openClaims).length, [z.byZone.euna, z.byZone.afr, z.byZone.apac]],
+    [8, 6, 6, 1, [['MCH-035', 31]], 4, [6, 1, 1]]));
+  const claims = await listClaims();
+  const ivs = await listInterventions();
+  check('warranty claims: 5 open (2 major) · 4 interventions planned (next 6 Oct 2026) · €34k warranty · €6k chargeable · 1 linked to an ECO',
+    same([claims.filter((c) => c.open).length, claims.filter((c) => c.open && c.severity !== 'minor').length, ivs.filter((i) => i.status === 'planned').length,
+      ivs.filter((i) => i.status === 'planned').map((i) => i.scheduledOn).sort()[0], claims.filter((c) => c.coverage !== 'chargeable').reduce((a, c) => a + c.costKeur, 0),
+      claims.filter((c) => c.coverage === 'chargeable').reduce((a, c) => a + c.costKeur, 0), claims.filter((c) => c.ecoNumber).length], [5, 2, 4, '2026-10-06', 34, 6, 1]));
+  const site = (await getSite('HLT-026'))!;
+  check('site HLT-026: NO GO (5 conditions open) · prerequisites 4 / 6 · Cursus 3 / 5 (1 reserve, mock) · equipment 6 / 8 · 4 collisions · budget 98.3 k€ (11.3 committed) · 2 permits pending',
+    getCursusConnector().mode === 'mock' && same([site.go.ok, site.go.conditions.filter((c) => !c.ok).length, site.prerequisites.filter((p) => p.status !== 'pending').length,
+      site.cursus.people.filter((p) => p.verdict !== 'no_go').length, site.cursus.people.filter((p) => p.verdict === 'go_with_reserve').length,
+      site.equipment.filter((e) => e.status === 'confirmed').length, site.collisions.length, Math.round(site.missionCosts.reduce((a, m) => a + m.budgetKeur, 0) * 10) / 10,
+      Math.round(site.missionCosts.reduce((a, m) => a + m.actualKeur, 0) * 10) / 10, site.hse.filter((h) => h.status === 'pending').length], [false, 5, 4, 3, 1, 6, 4, 98.3, 11.3, 2]));
+  check('no site sheet, commissioning, ITP, REX, register or P&ID on NDC-031 / EWA-051', (await getSite('NDC-031')) === null && (await getCommissioning('EWA-051')) === null
+    && (await getItpPlan('NDC-031')) === null && (await getRex('EWA-051')).lessons.length === 0 && (await getEngineeringRegister('NDC-031')) === null && (await getPidValidation('EWA-051')) === null);
+  const cp = await getClientPortal('HLT-026');
+  check('client portal HLT-026: waiting CR-008, D-014, D-016 · 5 decided · 2 open issues · 7 shared documents',
+    same([cp.decisions.map((d) => d.id), cp.decided.length, cp.issues.filter((i) => i.status !== 'closed').length, cp.documents.length], [['CR-008', 'D-014', 'D-016'], 5, 2, 7]));
+  const eng = (await getEngineeringRegister('HLT-026'))!;
+  check('engineering HLT-026: 4 blocking · 4 outdated inputs · 5 / 13 released · 2 / 6 outputs ready',
+    same([eng.checks.filter((c) => c.open && c.severity === 'blocking').length, eng.inputs.filter((i) => i.outdated).length, eng.deliverables.filter((d) => d.status === 'released').length,
+      eng.deliverables.length, eng.outputs.filter((o) => o.state === 'ready').length, eng.outputs.length], [4, 4, 5, 13, 2, 6]));
+  const pid = (await getPidValidation('HLT-026'))!;
+  check('P&ID HLT-026: rev C · 22 in scope · 13 linked (59 %) · 6 unmapped · 3 reference issues', same([pid.sheet.revision, pid.coverage.inScope, pid.coverage.linked, pid.coverage.pct, pid.coverage.unmapped, pid.coverage.referenceIssues], ['C', 22, 13, 59, 6, 3]));
+  const mts = await listMachineTypes();
+  check('machine types: 5 active · 17 ITP systems · EMP reference budget 1 940 k€ · 5 REX patterns',
+    same([mts.filter((m) => m.active).length, mts.reduce((a, m) => a + m.itpSystems.length, 0), mts[0].costTotalKeur, mts.filter((m) => m.rexReferences.length).length], [5, 17, 1940, 5]));
+  const st = await getSettings();
+  check('settings: 6 locations (5 types) · 10 skills · 6 cost categories · 0.97 / 0.9 · 11 holidays',
+    same([st.locations.length, new Set(st.locations.map((l) => l.type)).size, st.lists.skills.length, st.lists.costCats.length, st.health, st.lists.holidays.length], [6, 5, 10, 6, { risk: 0.97, off: 0.9 }, 11]));
+  const conns = await listConnectors();
+  const pc = await getPlumbingCounts();
+  // A-12: "Events today" = events of the data date (Paris day); the prototype's 6 included one of 26 Sep.
+  check('connectors: 9 + Vigie (live: 6 ECOs · 15 NCRs · 5 HSE items) · Cursus live · 1 warning · 5 events today · 8 audit entries · 6 formats',
+    same([conns.length, conns.at(-1)!.lastVolume, conns.find((c) => c.name === 'Cursus')!.lastVolume, conns.filter((c) => c.status === 'warning').map((c) => c.name), pc.eventsToday,
+      pc.auditLast7Days, (await listImportFormats()).length], [10, '6 ECOs · 15 NCRs · 5 HSE items', '5 people · HLT-026', ['Outlook / Exchange'], 5, 8, 6]));
+  check('My approvals: client contact D-014, D-016 · quality no NCR in verification',
+    same([(await deliverableAcceptanceQueue('HLT-026', { name: 'Nadia Bensaïd', role: 'client' })).map((d) => d.number), (await ncrVerificationQueue('HLT-026', { name: 'Gabriel Comte', role: 'quality' })).length],
+      [['D-014', 'D-016'], 0]));
+}
+
+/** Delivery 5 numbering and writers (after the Delivery 2–4 writes). */
+async function delivery5Writes() {
+  const before = (await listAudit()).length;
+  const pm = { name: 'Romain Aubert', role: 'pm' };
+  const r = await advanceNcr('HLT-026', 'NCR-028', pm);
+  check('NCR-028 → Root cause recorded, pending sync with Vigie (Vigie status unchanged)', r.syncStatus === 'pending' && (await getNcr('HLT-026', 'NCR-028'))?.status === 'containment');
+  await decideDeliverable('HLT-026', 'D-014', 'accepted', { name: 'Nadia Bensaïd', role: 'client' });
+  check('D-014 accepted by the client contact (PV): "25 Sep · N. Bensaïd"', (await listDeliverables('HLT-026')).find((d) => d.number === 'D-014')?.acceptanceText === '25 Sep · N. Bensaïd');
+  const numbers = [
+    await addPunchItem('HLT-026', { description: 'Check', category: 'C', source: 'site_walk' }, pm),
+    await addLesson('HLT-026', { theme: 'site', whatHappened: 'Check', recommendation: 'Check', appliesTo: 'Other' }, pm),
+    await addMachine({ name: 'Check crane', machineType: 'EMP', client: 'Port authority', site: 'Le Havre · quay 5' }, pm),
+    await openClaim({ machineNumber: 'MCH-050', issue: 'Check', severity: 'minor', coverage: 'warranty', owner: 'T. Kerbrat' }, pm),
+    await raiseClientIssue('HLT-026', 'Check', { name: 'Nadia Bensaïd', role: 'client' }),
+    await saveDailyReport('HLT-026', { date: '2026-09-30', weather: 'clear', progress: 'Check', incident: 'none' }, pm),
+  ];
+  check('numbering: P-10 · LL-10 · MCH-050 · WC-020 · CI-08 · DR-003', same(numbers, ['P-10', 'LL-10', 'MCH-050', 'WC-020', 'CI-08', 'DR-003']), numbers);
+  const rem = await remindInCursus('HLT-026', 'Thomas Kerbrat', pm);
+  check('Cursus reminder for T. Kerbrat pending sync with Cursus (mock)', rem.syncStatus === 'pending');
+  check('audit rows appended (9 writes)', (await listAudit()).length === before + 9, [before, (await listAudit()).length]);
+}
+
+async function chapter4Reads() {
+  console.log('\nChapter 4 data (seed, calendars, CPM)');
+  check('built-in calendars', same((await listCalendars()).map((c) => c.code), ['standard_5x8', 'standard_5x8_workshop', 'site_6x10', 'continuous_24h']));
+  const cals = await loadWorkCalendars('HLT-026');
+  check('Standard calendar skips the French holidays (Easter Monday 6 Apr 2026)', !cals.standard_5x8.isWorkDay('2026-04-06') && cals.site_6x10.isWorkDay('2026-09-26'));
+  check('Change control register unchanged for a generated project (seeded BL1)', same(await getBaselineRegister('NDC-031'), [
+    { code: 'BL1', name: 'Approved baseline', setOn: '9 Apr 2026', setOnDate: '2026-04-09', bac: 2100, finish: '1 Apr 2027', finishDate: '2027-04-01', state: 'current', stateLabel: 'Current', changeRequest: null },
+  ]));
+  check('HLT-026 baselines BL0 (no snapshot) · BL1 (21 activities, displayed) · BL2 (proposed)', same((await listProjectBaselines('HLT-026')).map((b) => [b.code, b.activityCount, b.displayed]), [['BL0', 0, false], ['BL1', 21, true], ['BL2', 0, false]]));
+  check('A1250 BL1 finish 31 Aug', (await getBaselineActivities('HLT-026', 'BL1')).find((a) => a.activityCode === 'A1250')?.finishText === '31 Aug');
+  const net = await loadScheduleNetwork('HLT-026');
+  check('HLT-026 network: 21 activities, 30 links, data date 25 Sep 2026', net?.activities.length === 21 && net.links.length === 30 && net.dataDate === '2026-09-25');
+  const r = net && schedule(net.input);
+  check('CPM on HLT-026 (not persisted): A1250 → 9 Oct, A1260 5 Oct → 6 Nov, A1620 FNLT 18 Dec missed',
+    r?.activities.A1250.finish === '2026-10-09' && r.activities.A1260.start === '2026-10-05' && r.activities.A1260.finish === '2026-11-06' && r.activities.A1620.violation?.type === 'FNLT');
+}
+
+async function chapter4Writes() {
+  console.log('\nChapter 4 writes');
+  const bl = await createBaselineSnapshot('HLT-026', { actorName: 'Romain Aubert', comment: 'db-check' });
+  check('"Set baseline" → BL3 with 21 activities', bl.code === 'BL3' && bl.activityCount === 21, bl);
+  await setProjectCalendar('NDC-031', 'site_6x10', 'Romain Aubert');
+  check('project calendar set', (await loadScheduleNetwork('NDC-031'))?.projectCalendar === 'site_6x10');
+  check('client exchange COM-001', (await addClientCommunication('HLT-026', { occurredOn: '2026-09-25', channel: 'phone', contactName: 'N. Bensaïd', subject: 'db-check' }, 'Romain Aubert')) === 'COM-001');
+  const job = await createImportJob({ kind: 'parts', mode: 'update', fileName: 'parts.csv', actorName: 'Antoine Girard' });
+  await saveImportPreview(job, [{ status: 'ok', action: 'update', key: 'EL-PLC-S7', data: {} }], { rows: 1 });
+  check('import job previewed (nothing written)', (await getImportJob(job))?.status === 'previewed');
 }
 
 main().catch((e) => {

@@ -1,0 +1,19 @@
+1
+00:00:00,500 --> 00:00:04,000
+Sophie Perrin: Point sur la boucle de refroidissement.
+
+2
+00:00:04,500 --> 00:00:09,000
+Pierre Noguès: J’enverrai le P&ID rév. C d’ici le 16/10.
+
+3
+00:00:09,500 --> 00:00:14,000
+Sophie Perrin: Décision : on garde la redondance N+1 pendant les travaux.
+
+4
+00:00:14,500 --> 00:00:19,000
+Damien Roux: La coupure de la boucle B pourrait retarder la mise en service.
+
+5
+00:00:19,500 --> 00:00:23,000
+Damien Roux: Action pour Pierre Noguès : vérifier les vannes d’isolement avant le 20 octobre.

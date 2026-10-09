@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Synthetic MS Project XML (MSPDI) for the chapter-4 import tests: two top work packages (one with a nested summary),
+     five activities (one milestone), FS / SS / FF links with lags, a custom calendar, constraints, baselines, costs,
+     % complete, actual dates, one resource assignment, plus a deadline, an ALAP constraint and a second custom field
+     that Keystone reports as not imported. -->
+<Project xmlns="http://schemas.microsoft.com/project">
+  <SaveVersion>14</SaveVersion>
+  <Name>Sample.xml</Name>
+  <Title>Sample plant upgrade</Title>
+  <Company>Port authority</Company>
+  <ScheduleFromStart>1</ScheduleFromStart>
+  <StartDate>2026-01-05T08:00:00</StartDate>
+  <FinishDate>2026-03-16T08:00:00</FinishDate>
+  <CalendarUID>1</CalendarUID>
+  <MinutesPerDay>480</MinutesPerDay>
+  <MinutesPerWeek>2400</MinutesPerWeek>
+  <StatusDate>2026-02-02T17:00:00</StatusDate>
+  <ExtendedAttributes>
+    <ExtendedAttribute><FieldID>188743731</FieldID><FieldName>Text1</FieldName><Alias>Activity ID</Alias></ExtendedAttribute>
+    <ExtendedAttribute><FieldID>188743734</FieldID><FieldName>Text2</FieldName><Alias>Area</Alias></ExtendedAttribute>
+  </ExtendedAttributes>
+  <Calendars>
+    <Calendar>
+      <UID>1</UID>
+      <Name>Standard</Name>
+      <IsBaseCalendar>1</IsBaseCalendar>
+      <BaseCalendarUID>-1</BaseCalendarUID>
+      <WeekDays>
+        <WeekDay><DayType>1</DayType><DayWorking>0</DayWorking></WeekDay>
+        <WeekDay><DayType>2</DayType><DayWorking>1</DayWorking><WorkingTimes><WorkingTime><FromTime>08:00:00</FromTime><ToTime>12:00:00</ToTime></WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>17:00:00</ToTime></WorkingTime></WorkingTimes></WeekDay>
+        <WeekDay><DayType>3</DayType><DayWorking>1</DayWorking><WorkingTimes><WorkingTime><FromTime>08:00:00</FromTime><ToTime>12:00:00</ToTime></WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>17:00:00</ToTime></WorkingTime></WorkingTimes></WeekDay>
+        <WeekDay><DayType>4</DayType><DayWorking>1</DayWorking><WorkingTimes><WorkingTime><FromTime>08:00:00</FromTime><ToTime>12:00:00</ToTime></WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>17:00:00</ToTime></WorkingTime></WorkingTimes></WeekDay>
+        <WeekDay><DayType>5</DayType><DayWorking>1</DayWorking><WorkingTimes><WorkingTime><FromTime>08:00:00</FromTime><ToTime>12:00:00</ToTime></WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>17:00:00</ToTime></WorkingTime></WorkingTimes></WeekDay>
+        <WeekDay><DayType>6</DayType><DayWorking>1</DayWorking><WorkingTimes><WorkingTime><FromTime>08:00:00</FromTime><ToTime>12:00:00</ToTime></WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>17:00:00</ToTime></WorkingTime></WorkingTimes></WeekDay>
+        <WeekDay><DayType>7</DayType><DayWorking>0</DayWorking></WeekDay>
+      </WeekDays>
+      <Exceptions>
+        <Exception><EnteredByOccurrences>0</EnteredByOccurrences><TimePeriod><FromDate>2026-01-01T00:00:00</FromDate><ToDate>2026-01-01T23:59:00</ToDate></TimePeriod><Occurrences>1</Occurrences><Name>Jour de l'an</Name><Type>1</Type><DayWorking>0</DayWorking></Exception>
+      </Exceptions>
+    </Calendar>
+    <Calendar>
+      <UID>2</UID>
+      <Name>Workshop 4x10</Name>
+      <IsBaseCalendar>1</IsBaseCalendar>
+      <BaseCalendarUID>-1</BaseCalendarUID>
+      <WeekDays>
+        <WeekDay><DayType>1</DayType><DayWorking>0</DayWorking></WeekDay>
+        <WeekDay><DayType>2</DayType><DayWorking>1</DayWorking><WorkingTimes><WorkingTime><FromTime>07:00:00</FromTime><ToTime>12:00:00</ToTime></WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>18:00:00</ToTime></WorkingTime></WorkingTimes></WeekDay>
+        <WeekDay><DayType>3</DayType><DayWorking>1</DayWorking><WorkingTimes><WorkingTime><FromTime>07:00:00</FromTime><ToTime>12:00:00</ToTime></WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>18:00:00</ToTime></WorkingTime></WorkingTimes></WeekDay>
+        <WeekDay><DayType>4</DayType><DayWorking>1</DayWorking><WorkingTimes><WorkingTime><FromTime>07:00:00</FromTime><ToTime>12:00:00</ToTime></WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>18:00:00</ToTime></WorkingTime></WorkingTimes></WeekDay>
+        <WeekDay><DayType>5</DayType><DayWorking>1</DayWorking><WorkingTimes><WorkingTime><FromTime>07:00:00</FromTime><ToTime>12:00:00</ToTime></WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>18:00:00</ToTime></WorkingTime></WorkingTimes></WeekDay>
+        <WeekDay><DayType>6</DayType><DayWorking>0</DayWorking></WeekDay>
+        <WeekDay><DayType>7</DayType><DayWorking>0</DayWorking></WeekDay>
+      </WeekDays>
+      <Exceptions>
+        <Exception><TimePeriod><FromDate>2026-02-23T00:00:00</FromDate><ToDate>2026-02-24T23:59:00</ToDate></TimePeriod><Name>Workshop maintenance</Name><DayWorking>0</DayWorking></Exception>
+      </Exceptions>
+    </Calendar>
+    <Calendar>
+      <UID>3</UID>
+      <Name>Julien Wagner</Name>
+      <IsBaseCalendar>0</IsBaseCalendar>
+      <BaseCalendarUID>1</BaseCalendarUID>
+    </Calendar>
+  </Calendars>
+  <Tasks>
+    <Task><UID>0</UID><ID>0</ID><Name>Sample plant upgrade</Name><Type>1</Type><IsNull>0</IsNull><OutlineNumber>0</OutlineNumber><OutlineLevel>0</OutlineLevel><Summary>1</Summary></Task>
+    <Task><UID>1</UID><ID>1</ID><Name>Design</Name><IsNull>0</IsNull><WBS>1</WBS><OutlineNumber>1</OutlineNumber><OutlineLevel>1</OutlineLevel><Summary>1</Summary></Task>
+    <Task>
+      <UID>2</UID><ID>2</ID><Name>Basic design</Name><IsNull>0</IsNull><WBS>1.1</WBS><OutlineNumber>1.1</OutlineNumber><OutlineLevel>2</OutlineLevel>
+      <Start>2026-01-05T08:00:00</Start><Finish>2026-01-16T17:00:00</Finish><Duration>PT80H0M0S</Duration><DurationFormat>7</DurationFormat>
+      <Milestone>0</Milestone><Summary>0</Summary><Critical>0</Critical><PercentComplete>100</PercentComplete><Cost>5000000</Cost>
+      <ActualStart>2026-01-05T08:00:00</ActualStart><ActualFinish>2026-01-16T17:00:00</ActualFinish><ActualCost>4800000</ActualCost>
+      <ConstraintType>0</ConstraintType><CalendarUID>-1</CalendarUID>
+      <ExtendedAttribute><FieldID>188743731</FieldID><Value>D100</Value></ExtendedAttribute>
+      <Baseline><Number>0</Number><Start>2026-01-05T08:00:00</Start><Finish>2026-01-16T17:00:00</Finish><Duration>PT80H0M0S</Duration><Cost>5000000</Cost></Baseline>
+    </Task>
+    <Task><UID>3</UID><ID>3</ID><Name>Detailed design</Name><IsNull>0</IsNull><WBS>1.2</WBS><OutlineNumber>1.2</OutlineNumber><OutlineLevel>2</OutlineLevel><Summary>1</Summary></Task>
+    <Task>
+      <UID>4</UID><ID>4</ID><Name>Mechanical design</Name><IsNull>0</IsNull><WBS>1.2.1</WBS><OutlineNumber>1.2.1</OutlineNumber><OutlineLevel>3</OutlineLevel>
+      <Start>2026-01-19T07:00:00</Start><Finish>2026-02-12T18:00:00</Finish><Duration>PT120H0M0S</Duration><DurationFormat>7</DurationFormat>
+      <Milestone>0</Milestone><Summary>0</Summary><PercentComplete>40</PercentComplete><Cost>8000000</Cost>
+      <ActualStart>2026-01-19T07:00:00</ActualStart><RemainingDuration>PT72H0M0S</RemainingDuration>
+      <ConstraintType>0</ConstraintType><CalendarUID>2</CalendarUID>
+      <PredecessorLink><PredecessorUID>2</PredecessorUID><Type>1</Type><CrossProject>0</CrossProject><LinkLag>0</LinkLag><LagFormat>7</LagFormat></PredecessorLink>
+      <ExtendedAttribute><FieldID>188743731</FieldID><Value>D110</Value></ExtendedAttribute>
+      <Baseline><Number>0</Number><Start>2026-01-19T07:00:00</Start><Finish>2026-02-09T18:00:00</Finish><Duration>PT120H0M0S</Duration><Cost>7500000</Cost></Baseline>
+      <Baseline><Number>1</Number><Start>2026-01-12T07:00:00</Start><Finish>2026-02-02T18:00:00</Finish><Duration>PT120H0M0S</Duration></Baseline>
+    </Task>
+    <Task>
+      <UID>5</UID><ID>5</ID><Name>Electrical design</Name><IsNull>0</IsNull><WBS>1.2.2</WBS><OutlineNumber>1.2.2</OutlineNumber><OutlineLevel>3</OutlineLevel>
+      <Start>2026-01-07T08:00:00</Start><Finish>2026-02-03T17:00:00</Finish><Duration>PT160H0M0S</Duration><DurationFormat>7</DurationFormat>
+      <Milestone>0</Milestone><Summary>0</Summary><Critical>1</Critical><TotalSlack>0</TotalSlack><PercentComplete>0</PercentComplete>
+      <ConstraintType>7</ConstraintType><CalendarUID>-1</CalendarUID><ConstraintDate>2026-02-13T17:00:00</ConstraintDate>
+      <PredecessorLink><PredecessorUID>2</PredecessorUID><Type>3</Type><CrossProject>0</CrossProject><LinkLag>9600</LinkLag><LagFormat>7</LagFormat></PredecessorLink>
+    </Task>
+    <Task><UID>6</UID><ID>6</ID><Name>Site works</Name><IsNull>0</IsNull><WBS>2</WBS><OutlineNumber>2</OutlineNumber><OutlineLevel>1</OutlineLevel><Summary>1</Summary></Task>
+    <Task>
+      <UID>7</UID><ID>7</ID><Name>Foundations</Name><IsNull>0</IsNull><WBS>2.1</WBS><OutlineNumber>2.1</OutlineNumber><OutlineLevel>2</OutlineLevel>
+      <Start>2026-02-16T08:00:00</Start><Finish>2026-03-13T17:00:00</Finish><Duration>PT160H0M0S</Duration><DurationFormat>7</DurationFormat>
+      <Milestone>0</Milestone><Summary>0</Summary><TotalSlack>24000</TotalSlack><PercentComplete>0</PercentComplete><Cost>12000000</Cost>
+      <ConstraintType>0</ConstraintType><CalendarUID>-1</CalendarUID><Deadline>2026-03-20T17:00:00</Deadline>
+      <PredecessorLink><PredecessorUID>4</PredecessorUID><Type>1</Type><CrossProject>0</CrossProject><LinkLag>0</LinkLag><LagFormat>7</LagFormat></PredecessorLink>
+      <PredecessorLink><PredecessorUID>5</PredecessorUID><Type>0</Type><CrossProject>0</CrossProject><LinkLag>-4800</LinkLag><LagFormat>7</LagFormat></PredecessorLink>
+      <ExtendedAttribute><FieldID>188743731</FieldID><Value>S200</Value></ExtendedAttribute>
+      <ExtendedAttribute><FieldID>188743734</FieldID><Value>North</Value></ExtendedAttribute>
+      <Baseline><Number>0</Number><Start>2026-02-09T08:00:00</Start><Finish>2026-03-06T17:00:00</Finish><Duration>PT160H0M0S</Duration><Cost>11000000</Cost></Baseline>
+    </Task>
+    <Task>
+      <UID>8</UID><ID>8</ID><Name>Handover</Name><IsNull>0</IsNull><WBS>2.2</WBS><OutlineNumber>2.2</OutlineNumber><OutlineLevel>2</OutlineLevel>
+      <Start>2026-03-16T08:00:00</Start><Finish>2026-03-16T08:00:00</Finish><Duration>PT0H0M0S</Duration><DurationFormat>7</DurationFormat>
+      <Milestone>1</Milestone><Summary>0</Summary><PercentComplete>0</PercentComplete>
+      <ConstraintType>1</ConstraintType><CalendarUID>-1</CalendarUID>
+      <PredecessorLink><PredecessorUID>7</PredecessorUID><Type>1</Type><CrossProject>0</CrossProject><LinkLag>0</LinkLag><LagFormat>7</LagFormat></PredecessorLink>
+      <ExtendedAttribute><FieldID>188743731</FieldID><Value>S900</Value></ExtendedAttribute>
+    </Task>
+  </Tasks>
+  <Resources>
+    <Resource><UID>0</UID><ID>0</ID><IsNull>0</IsNull></Resource>
+    <Resource><UID>1</UID><ID>1</ID><Name>Julien Wagner</Name><Type>1</Type><IsNull>0</IsNull></Resource>
+  </Resources>
+  <Assignments>
+    <Assignment><UID>1</UID><TaskUID>4</TaskUID><ResourceUID>1</ResourceUID><Units>1</Units><Work>PT120H0M0S</Work><ActualWork>PT48H0M0S</ActualWork></Assignment>
+    <Assignment><UID>2</UID><TaskUID>8</TaskUID><ResourceUID>-65535</ResourceUID><Units>1</Units></Assignment>
+  </Assignments>
+</Project>

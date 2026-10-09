@@ -35,7 +35,7 @@ export interface EcoDrawerData {
   parts: Pick<PartRow, 'ref' | 'name' | 'status' | 'statusLabel'>[];
   /** Projects of the effectivity targets, by code. */
   projects: Record<string, Pick<ProjectRow, 'code' | 'name' | 'status' | 'stage' | 'pm'>>;
-  /** Machines of the effectivity targets, by id (TODO(db): installed base read from the prototype until phase 8). */
+  /** Machines of the effectivity targets, by id (the installed base, src/server/dal/machines.ts). */
   machines: Record<string, Pick<MachineRow, 'id' | 'name' | 'client' | 'generation' | 'warrantyStart' | 'warrantyText'>>;
 }
 

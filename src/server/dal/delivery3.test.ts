@@ -216,18 +216,27 @@ describe('cash flow (03 §7) — billing plans from the contract or the legacy B
       };
     })).toEqual(g.rows);
     const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
-    const ins = cf.forecast.map((m) => m.cashInKeur);
-    const outs = cf.forecast.map((m) => m.cashOutKeur);
-    const cum = ins.map((_, i) => sum(ins.slice(0, i + 1)) - sum(outs.slice(0, i + 1)));
     expect([
       f(sum(cf.rows.map((r) => r.plan.contractValueKeur))), f(sum(cf.rows.map((r) => r.plan.invoicedKeur))),
-      f(sum(cf.rows.map((r) => sum(r.plan.milestones.filter((m) => m.status === 'invoiced').map((m) => m.amountKeur))))), f(sum(ins) - sum(outs), true), f(Math.min(...cum), true),
-    ]).toEqual(g.kpis.map((k: any) => k.value));
+      f(sum(cf.rows.map((r) => sum(r.plan.milestones.filter((m) => m.status === 'invoiced').map((m) => m.amountKeur))))),
+    ]).toEqual(g.kpis.slice(0, 3).map((k: any) => k.value));
     expect(`${cf.rows.filter((r) => !r.plan.internal).length} client projects · ${cf.rows.filter((r) => r.plan.internal).length} internal`).toBe(g.kpis[0].sub);
-    expect(cf.forecast.map((m, i) => ({
-      label: m.label, inH: `${Math.round((m.cashInKeur / 1500) * 100)}%`, outH: `${Math.round((m.cashOutKeur / 1500) * 100)}%`,
-      net: (m.cashInKeur - m.cashOutKeur >= 0 ? '+' : '−') + Math.abs(m.cashInKeur - m.cashOutKeur) + 'k', cum: f(cum[i], true),
-    }))).toEqual(g.bars.map((b: any) => ({ label: b.label, inH: b.inH, outH: b.outH, net: b.net, cum: b.cum })));
+    // A-12 (chapter 4): the 6 months after the data date are computed — receipts of the billing plans (contract dates and
+    // payment terms, Net 30 for legacy plans, monthly progress billing) in, ETC spread to each finish out — instead of the
+    // prototype's stored plan scaled by the zone share. [label, in, out] k€ per month and the lowest cumulative point.
+    const A12: Record<string, [number, number][]> = {
+      null: [[560, 1081], [1911, 1026], [843, 894], [1347, 264], [1380, 264], [487, 163]],
+      euna: [[300, 917], [1668, 863], [600, 730], [1104, 100], [1380, 100], [0, 0]],
+      afr: [[260, 163], [243, 163], [243, 163], [243, 163], [0, 163], [487, 163]],
+      apac: [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+    };
+    expect(cf.forecast.map((m) => [m.label, m.cashInKeur, m.cashOutKeur])).toEqual(g.bars.map((b: any, i: number) => [b.label, ...A12[String(zone)][i]]));
+    expect(cf.lowPoint).toEqual({
+      null: { month: '2026-10-01', cumKeur: -521, next: { project: 'HLT-026', label: 'M3', progressMonth: undefined } },
+      euna: { month: '2026-10-01', cumKeur: -617, next: { project: 'HLT-026', label: 'M3', progressMonth: undefined } },
+      afr: { month: '2026-10-01', cumKeur: 97, next: { project: 'NDC-031', label: 'Oct', progressMonth: '2026-10-01' } },
+      apac: { month: '2026-10-01', cumKeur: 0, next: null },
+    }[String(zone)]);
   });
 
   it('billing plans: contract-derived for HLT-026 (€5.52M), migrated BILLING rows elsewhere, ERP-202 internal', async () => {
@@ -271,12 +280,26 @@ describe('prioritisation & capacity (03 §6)', () => {
       .toEqual([G.prioritisation.kpis[0].value, G.prioritisation.kpis[0].sub, G.prioritisation.kpis[1].value, G.prioritisation.kpis[1].sub, G.prioritisation.kpis[4].value]);
   });
 
+  /**
+   * A-12 (chapter 4): capacity = pool members × 40 h × 8 weeks, committed = Σ pool loads × 40 h (allocations), demand per
+   * €1M = committed ÷ active portfolio value (contract, else budget: €14.85M) — the prototype's capBase and coefficients
+   * gave Engineering 960 h / 1 110 h / 140 h per €1M. Per department: [capacity, committed, candidate add].
+   */
+  const POOL: [number, number][] = [[320, 318], [640, 532], [320, 314], [960, 716], [320, 252]];
+  const ADD: Record<string, number[]> = {
+    'WSA-044': [73, 122, 72, 164, 58], 'EWA-051': [47, 79, 47, 106, 37], 'FTU-052': [10, 17, 10, 23, 8], 'RBR-048': [109, 183, 108, 246, 87], 'CER-047': [41, 68, 40, 92, 32],
+  };
   it.each(['WSA-044', 'EWA-051', 'FTU-052', 'RBR-048', 'CER-047'])('capacity what-if of %s', async (code) => {
     const g = G.prioritisation.capacity[code];
     const w = (await getCapacityWhatIf(code))!;
-    expect(w.departments.map((d) => ({ name: d.department, cap: d.capacityH, cur: d.committedH, add: d.addH, tot: d.totalH, gap: d.gapH }))).toEqual(g.rows);
-    expect(`${w.gapH} h over 8 weeks`).toBe(g.wi.gapText);
-    expect(w.gapH === 0 ? 'Can be absorbed with current capacity' : w.gapH < 300 ? `Absorbable with ${w.gapH} h of overtime or one contractor` : `Needs ${Math.ceil(w.gapH / 140)} additional people or a later start`).toBe(g.wi.verdict);
+    const rows = g.rows.map((r: any, i: number) => {
+      const [cap, cur] = POOL[i];
+      const add = ADD[code][i];
+      return { name: r.name, cap, cur, add, tot: cur + add, gap: Math.max(0, cur + add - cap) };
+    });
+    expect(w.departments.map((d) => ({ name: d.department, cap: d.capacityH, cur: d.committedH, add: d.addH, tot: d.totalH, gap: d.gapH }))).toEqual(rows);
+    expect(w.gapH).toBe(rows.reduce((s: number, r: any) => s + r.gap, 0));
+    expect(w.gapH).not.toBe(Number(g.wi.gapText.split(' ')[0]));
   });
 });
 

@@ -53,3 +53,9 @@
 /* Side by side */
 :global(.card).compare { padding: 14px 16px; gap: 8px; overflow: auto; }
 .footnote { font-size: 12px; color: var(--color-neutral-400); text-wrap: pretty; }
+
+/* Chapter 4 (S-7): scenario actions (rename, delete), results awaiting their computation, lever empty state, delete text. */
+.cardActions { display: inline-flex; gap: 2px; }
+.pending { opacity: 0.55; transition: opacity 0.15s; }
+.noLever { font-size: 12.5px; color: var(--color-neutral-400); padding: 7px 0; text-wrap: pretty; }
+.confirmText { font-size: 13px; color: var(--color-neutral-300); margin: 4px 0 10px; text-wrap: pretty; }

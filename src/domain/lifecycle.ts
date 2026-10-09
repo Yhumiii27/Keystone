@@ -3,6 +3,7 @@
 // (stVals 3905–3915), the register filter (3933) and the wizard helpers (nextProjectId/nextAnalytic 3177–3178,
 // npVals 3949–3969). Pure: strings are the prototype's English source strings (render them through t()).
 import { STAGES, clientCode3, nextStageOf, type StageCode } from '@/server/db/codes';
+import { nextActiveStage } from './settings-rules';
 
 export type { StageCode };
 
@@ -22,14 +23,17 @@ export const PIPELINE_STAGES: readonly StageCode[] = ['initiative', 'aps', 'apd'
 /** Next stage in STAGE_ORDER, or null for Clos / Annulé. */
 export const nextStage = (stage: StageCode): StageCode | null => nextStageOf(stage);
 
-/** TRANS (3146): the next stage (no skipping, no going back) and Annulé; nothing from Clos / Annulé. */
-export function transitionsOf(stage: StageCode): StageCode[] {
+/**
+ * TRANS (3146): the next stage (no skipping, no going back) and Annulé; nothing from Clos / Annulé. `skip` = stages
+ * deactivated in Settings › Project statuses (chapter 4, A-14): the next ACTIVE stage is offered instead.
+ */
+export function transitionsOf(stage: StageCode, skip?: ReadonlySet<string>): StageCode[] {
   if (stage === 'clos' || stage === 'annule') return [];
-  const next = nextStage(stage);
+  const next = skip?.size ? nextActiveStage(STAGE_ORDER, stage, skip) : nextStage(stage);
   return next ? [next, 'annule'] : ['annule'];
 }
 
-export const isTransitionAllowed = (from: StageCode, to: StageCode) => transitionsOf(from).includes(to);
+export const isTransitionAllowed = (from: StageCode, to: StageCode, skip?: ReadonlySet<string>) => transitionsOf(from, skip).includes(to);
 
 export type MoveMode = 'auto' | 'forced';
 
@@ -60,9 +64,10 @@ export function deliverableToggle(
   done: readonly boolean[],
   index: number,
   value?: boolean,
+  skip?: ReadonlySet<string>,
 ): { done: boolean[]; advanceTo: StageCode | null } {
   const next = done.map((d, i) => (i === index ? (value ?? !d) : !!d));
-  const nxt = nextStage(stage);
+  const nxt = skip?.size ? nextActiveStage(STAGE_ORDER, stage, skip) : nextStage(stage);
   const advanceTo = current === stage && next.length > 0 && next.every(Boolean) && nxt ? nxt : null;
   return { done: next, advanceTo };
 }
@@ -71,8 +76,10 @@ export function deliverableToggle(
  * Server-side validation of a requested move (advance 3922 plus the dialog rules of 01 §11). Returns an English
  * error message, or null when the move is valid.
  */
-export function moveError(from: StageCode, to: StageCode, mode: MoveMode, missing: readonly string[], reason: string): string | null {
-  if (!isTransitionAllowed(from, to)) return 'This stage change is not allowed';
+export function moveError(
+  from: StageCode, to: StageCode, mode: MoveMode, missing: readonly string[], reason: string, skip?: ReadonlySet<string>,
+): string | null {
+  if (!isTransitionAllowed(from, to, skip)) return 'This stage change is not allowed';
   if (mode === 'auto' && moveModeFor(to, missing) === 'forced') return 'Deliverables are missing — force the stage change';
   if (mode === 'forced' && !reason.trim()) return 'A reason is required to force the stage change';
   return null;

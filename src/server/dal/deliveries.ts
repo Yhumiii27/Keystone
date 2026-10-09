@@ -19,6 +19,7 @@ import {
   goodsReceipts, parts, persons, poLines, projectSites, projects, purchaseOrders, receiptAttachments, receiptLines, stockPositions, storageLocations, supplierInvoices, suppliers,
 } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
+import { onTimeDeliveriesOf } from './kpis';
 import { countOrdersToReceive } from './purchasing';
 import { ensurePosition, insertMovement } from './stock';
 
@@ -111,6 +112,8 @@ export interface DeliveriesScreenData {
   receipts: ReceiptRow[];
   /** Orders Ordered or Partially received ("Open orders to receive"). */
   openOrdersToReceive: number;
+  /** A-12 "On-time deliveries" at the project's data date (`onTimeDeliveriesOf`), null when nothing was received in 90 days. */
+  onTimePct: number | null;
   /** Orders a delivery can be announced for ("Announce a delivery" form). */
   announceable: AnnounceableOrder[];
   /** Put-away locations offered by the form, and the project's default. */
@@ -119,10 +122,10 @@ export interface DeliveriesScreenData {
 
 /** Everything the Deliveries & goods receipt screen of a project reads. */
 export async function getDeliveriesScreen(projectCode: string): Promise<DeliveriesScreenData> {
-  const [receipts, openOrdersToReceive, announceable, putAway] = await Promise.all([
-    listReceipts(projectCode), countOrdersToReceive(projectCode), listAnnounceableOrders(projectCode), getPutAwayOptions(projectCode),
+  const [receipts, openOrdersToReceive, announceable, putAway, onTimePct] = await Promise.all([
+    listReceipts(projectCode), countOrdersToReceive(projectCode), listAnnounceableOrders(projectCode), getPutAwayOptions(projectCode), onTimeDeliveriesOf(projectCode),
   ]);
-  return { receipts, openOrdersToReceive, announceable, putAway };
+  return { receipts, openOrdersToReceive, announceable, putAway, onTimePct };
 }
 
 /** Receipts waiting for their quality check, per project code (sidebar badge of Deliveries). */

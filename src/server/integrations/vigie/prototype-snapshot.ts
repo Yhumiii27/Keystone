@@ -3,10 +3,10 @@
 // logic 4182–4193) from the project stages, the installed base (FLEET 3729, AS_MAINT 3722) and the approvals;
 // Vigie computes them now, so the seed materialises that derivation once. Pure (no database).
 import {
-  STATUS_ISO, ecoStatus, isoOfDisplayDate, parisInstant, stage as stageCodec, OPEN_BOM_STAGES,
-  type EcoApproverKey, type EcoDecision, type EcoDisposition, type EcoType, type Interchangeability, type StageCode,
+  STATUS_ISO, ecoStatus, hseStatus, isoOfDisplayDate, ncrSeverity, ncrSource, ncrStatus, parisInstant, stage as stageCodec, OPEN_BOM_STAGES,
+  type EcoApproverKey, type EcoDecision, type EcoDisposition, type EcoType, type HseItemKind, type HseStatus, type Interchangeability, type StageCode,
 } from '@/server/db/codes';
-import type { VigieEcoRecord } from './types';
+import type { VigieEcoRecord, VigieHseRecord, VigieNcrRecord } from './types';
 
 /** Prototype ECO row (ECOS 3432). */
 export interface ProtoEcoRow {
@@ -107,6 +107,55 @@ export function prototypeEcoSnapshot(c: SnapshotContext): VigieEcoRecord[] {
       projects: e.projects.map((k) => projOf3(k)?.code ?? k),
       approvals: KEYS.map((k) => ({ key: k, decision: e.appr[k], approver: approver[k], decidedBy: e.appr[k] === 'pending' ? null : approver[k], decidedAt: null })),
       effectivity, updatedAt: null,
+    };
+  });
+}
+
+// ── NCRs and site HSE (Delivery 5) ───────────────────────────────────────────────────────────────────────
+
+/** Prototype NCR row (HLT_NCRS 3507). */
+export interface ProtoNcrRow {
+  id: string; title: string; sev: string; src: string; act: string; part: string; raised: string; date: string; owner: string; status: string; root: string;
+  action: string; due: string; cost: number; deliv: string; iso: string;
+}
+
+const HLT = 'HLT-026';
+
+/**
+ * The NCRs as Vigie reports them: Harbor Line's register (HLT_NCRS) and, for the other projects with data, the
+ * prototype's two generated rows NCR-040 / NCR-041 (HLT_NCRS[1..2] without activity, part or deliverable, `allNCRs`
+ * 4614). Projects without data get none (the prototype would show Harbor Line's — 00 §7.16).
+ */
+export function prototypeNcrSnapshot(ncrs: ProtoNcrRow[], projectsWithData: string[]): VigieNcrRecord[] {
+  const rec = (code: string, n: ProtoNcrRow): VigieNcrRecord => ({
+    projectCode: code, number: n.id, vigieRef: null, title: n.title, severity: ncrSeverity.code(n.sev), source: ncrSource.code(n.src), status: ncrStatus.code(n.status),
+    activityCode: n.act || null, partRef: n.part || null, deliverableNumber: n.deliv || null, supplierName: null, raisedBy: n.raised,
+    raisedOn: isoOfDisplayDate(n.date)!, owner: n.owner, rootCause: n.root, action: n.action, dueOn: n.due && n.due !== '—' ? isoOfDisplayDate(n.due) : null,
+    costKeur: n.cost, isoClause: n.iso, updatedAt: null,
+  });
+  return projectsWithData.flatMap((code) =>
+    code === HLT
+      ? ncrs.map((n) => rec(code, n))
+      : ncrs.slice(1, 3).map((n, i) => rec(code, { ...n, id: 'NCR-0' + (40 + i), act: '', part: '', deliv: '' })),
+  );
+}
+
+/** Kind of a prototype HSE register line (SITE_HSE 3582 titles are French data values). */
+function hseKindOf(title: string): HseItemKind {
+  if (/^Plan de prévention/i.test(title)) return 'prevention_plan';
+  if (/^Permis/i.test(title)) return 'permit';
+  if (/^Registre/i.test(title)) return 'register';
+  return 'induction';
+}
+
+/** The site HSE register as Vigie reports it (SITE_HSE 3582, the site sheet's project): kind, status or free status text, date. */
+export function prototypeHseSnapshot(rows: [string, string, string][], projectCode: string): VigieHseRecord[] {
+  return rows.map(([title, status, date]) => {
+    const known = hseStatus.labels.includes(status);
+    const st: HseStatus = known ? hseStatus.code(status) : 'recorded';
+    return {
+      projectCode, vigieRef: null, kind: hseKindOf(title), title, status: st, statusText: known ? null : status,
+      dateOn: date && date !== '—' ? isoOfDisplayDate(date) : null,
     };
   });
 }

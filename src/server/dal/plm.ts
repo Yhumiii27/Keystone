@@ -2,7 +2,7 @@ import 'server-only';
 // PLM screen DAL (docs/spec/09 §2–§3): what the parts catalogue (/reference/parts) and the shared part record drawer
 // read, composed from the catalogue, BOM, stock, drawings, Codex, Vigie and installed-base data layers. Read-only:
 // the writers are `createPart` / `registerEquivalent` (parts.ts). ECOs come from the Vigie connector (Vigie owns them);
-// the installed base is read from the prototype data until phase 8 (machines.ts, TODO(db)).
+// the installed base is the database's (machines.ts over fleet.ts, Delivery 5).
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { revisionEventsOf, parentChains, type PartRevisionEvent } from '@/domain/parts';
@@ -41,7 +41,7 @@ export interface PartDrawerData {
   documents: VaultDocument[];
   /** Vigie ECOs listing the part, Vigie's order (rejected ones included — the view drops them, as the prototype). */
   ecos: EcoView[];
-  /** Machines in service carrying the part, with the state of the part (TODO(db): prototype FLEET / AS_MAINT). */
+  /** Machines in service carrying the part, with the state of the part (installed base, Vigie ECO effectivity). */
   machines: FittedMachine[];
   /** Stock positions of the part (every location, STOCK0 order). */
   stock: StockRow[];

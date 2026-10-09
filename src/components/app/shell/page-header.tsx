@@ -9,6 +9,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { SCREEN_BY_ID, screenHref, type ScreenId } from '@/config/screens';
 import { HEALTH_LABEL, HEALTH_TAG } from '@/domain/health';
+import { exportFormatsOf } from '@/features/exports/catalog';
 import { STATUS_DATE } from '@/lib/format';
 import { PROTO } from '@/server/prototype';
 import { getProject, projectLabel, type ProjectRow } from '@/server/dal/projects';
@@ -116,7 +117,7 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
         </div>
         <LangToggle lang={lang} />
         <div className={styles.actions}>
-          <ExportButton />
+          <ExportButton screen={screen} code={project?.code ?? code} formats={exportFormatsOf(screen)} task={taskId ?? null} />
           {showPrimary && primary}
         </div>
       </header>

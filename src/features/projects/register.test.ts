@@ -120,7 +120,11 @@ describe('Projects register', () => {
     const emp = setup.templates.find((x) => x.id === 'EMP')!;
     expect(setup.nextId).toBe(g.pid);
     expect(setup.templates.filter((x) => x.id === 'blank' || x.mt === 'EMP').map((x) => [x.name, x.desc])).toEqual(g.templates);
-    expect([emp.wbs, emp.acts, emp.cal]).toEqual([g.copyItems[0][1], g.copyItems[1][1], g.copyItems[3][1]]);
+    // A-2: the copy items describe what creation instantiates (one work package and one activity per phase, chained
+    // finish-to-start) instead of the prototype's static "6 phases · 14 lots" / "38 activités · 52 liens".
+    expect([g.copyItems[0][1], g.copyItems[1][1]]).toEqual(['6 phases · 14 lots', '38 activités · 52 liens']);
+    expect([emp.wbs, emp.acts, emp.cal]).toEqual(['6 phases · 6 work packages', '6 activities · 5 links', g.copyItems[3][1]]);
+    expect(emp.itpSystems.length).toBeGreaterThan(0);
     expect(emp.phases.map((p, i) => `${i + 1} · ${p}`)).toEqual(g.phases);
     expect(emp.cats.map((c) => [c.name, c.type, c.budget])).toEqual(g.cats);
     expect(categorySource({ blank: false, name: emp.name })).toBe(g.catSource);
@@ -131,7 +135,10 @@ describe('Projects register', () => {
         projectId: setup.nextId, analytic: ana, das, machineType: mt, name,
         template: { blank: !tpl, wbs: tpl?.wbs ?? '', acts: tpl?.acts ?? '' }, categories: n, contingencyPct: cont, calendar: cal,
       });
-    expect(summary('', 'XXX001', '2', 'EMP', emp, 7, 5, 'Standard 5d · 8h')).toBe(g.summary);
+    // A-2: same sentence, with the instantiated structure.
+    expect(summary('', 'XXX001', '2', 'EMP', emp, 7, 5, 'Standard 5d · 8h')).toBe(
+      g.summary.replace('6 phases · 14 lots, 38 activités · 52 liens copied', '6 phases · 6 work packages, 6 activities · 5 links copied'),
+    );
     const b = golden.en.npBlank;
     expect(analyticHint('Acme Corp', setup.clientCodes)).toBe(b.anaHint);
     expect(categorySource({ blank: true, name: 'Projet blank' })).toBe(b.catSource);
@@ -179,7 +186,9 @@ describe('Projects register', () => {
       expect(created.budget).toBeCloseTo(2037);
       const m = await model('en');
       expect(m.rows[0].code).toBe('LOG-045');
-      expect(asGolden(m, m.rows[0], 'en')).toEqual(expectedRow(golden.scenarios.created as GRow, 'en'));
+      // A-2: the template is instantiated, so the created project opens on its plan from the register.
+      expect(asGolden(m, m.rows[0], 'en')).toEqual({ ...expectedRow(golden.scenarios.created as GRow, 'en'), canOpen: true, openTitle: 'Open project · Plan — WBS' });
+      expect(created).toMatchObject({ workPackages: 6, activities: 6, links: 5, itpPlan: true });
       expect(m.rows[0].metaLine).toBe(`${NEW_PROJECT_DEFAULTS.pm} · Logistics BU · Jan 2027 → Sep 2027`);
       const db = await getDb();
       const cats = await db

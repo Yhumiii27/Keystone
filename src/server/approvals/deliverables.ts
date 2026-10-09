@@ -1,21 +1,26 @@
 import 'server-only';
-// Kind "Deliverable acceptance" (prototype data, TODO(db): client deliverables are not modelled yet): submitted
-// deliverables of the current project, for the client contact of that project's client organisation (apprItems
-// 4727 by person instead of the client role). Inline Accept / Reject (PV) are previews until the Quality module
-// persists them (Accepted, acc "25 Sep · N. Bensaïd" / Rejected, "comments issued").
-import { deliverableItems, deliverablesOf, type ProtoDeliverable } from '@/domain/approvals';
-import { PROTO } from '@/server/prototype';
-import type { ApprovalProvider } from './types';
+// Kind "Deliverable acceptance" (database): submitted deliverables of the current project, for the client contact of
+// that project's client organisation (apprItems 4727 by person instead of the client role). Decided inline:
+// Approve → Accepted (PV, the viewer and the status date stamped), Reject → Rejected ("comments issued"), through the
+// Quality writer (decideDeliverableAction → decideDeliverable); the row opens the deliverable drawer.
+import { deliverableAcceptanceItems } from '@/domain/quality';
+import { deliverableHref } from '@/features/quality/links';
+import { deliverableAcceptanceQueue, deliverableDecidedCount } from '@/server/dal/quality';
+import type { ApprovalContext, ApprovalProvider } from './types';
+
+const actorOf = ({ viewer }: ApprovalContext) => ({ name: viewer.name, role: viewer.role });
 
 export const deliverableProvider: ApprovalProvider = {
   kind: 'deliverable',
   scope: 'project',
-  source: 'prototype',
-  async items({ viewer, project }) {
-    if (!project || !viewer.clientProjects.includes(project.code)) return [];
-    return deliverableItems(deliverablesOf(project.code, PROTO.HLT_DELIVS as ProtoDeliverable[], project.hasData, project.pm), project.code);
+  source: 'db',
+  async items(ctx) {
+    if (!ctx.project || !ctx.viewer.clientProjects.includes(ctx.project.code)) return [];
+    const code = ctx.project.code;
+    return deliverableAcceptanceItems(await deliverableAcceptanceQueue(code, actorOf(ctx)), code, { deliverable: (n) => deliverableHref(code, n) });
   },
-  async decided() {
-    return 0;
+  // Deliverables the viewer accepted or rejected in Keystone (register, drawer, inbox, client portal).
+  async decided(ctx) {
+    return ctx.viewer.role === 'client' ? deliverableDecidedCount(actorOf(ctx)) : 0;
   },
 };

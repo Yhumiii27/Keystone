@@ -5,11 +5,13 @@
 import { LO, OK, TAG_CLASS, lifecycleTone, type Tone } from '@/components/app/tones';
 import { screenHref } from '@/config/screens';
 import {
-  PORTFOLIO_MARGIN_PCT, billingRollup, capacityBar, capacityOptions, cashBars, clientProjectsText, lowestCumulative, marginAlert, netCash, netLabel,
+  billingRollup, capacityBar, capacityOptions, cashBars, clientProjectsText, lowestCumulative, marginAlert, netCash, netLabel,
   parseWeight, rankByScore, scoreDots, verdictOf, verdictText, weightShares, weightSum, weightsOff, type BillingLine, type CashMonth,
 } from '@/domain/portfolio-finance';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
+import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
+import { lowPointSubText, pctOrDash } from '@/features/kpis/i18n';
 
 const N300 = 'var(--color-neutral-300)';
 const N400 = 'var(--color-neutral-400)';
@@ -67,6 +69,8 @@ export interface PrioritisationData {
   active: { count: number; budgetKeur: number };
   pipeline: { count: number; budgetKeur: number };
   canSeeMargin: boolean;
+  /** A-12 "Portfolio margin": Σ (contract − EAC) / Σ contract of the active client projects, whole %; null = none (or masked). */
+  portfolioMarginPct?: number | null;
   zoneSelected: boolean;
 }
 
@@ -140,7 +144,7 @@ export function prioritisationView(d: PrioritisationData, weights: number[], t: 
       { label: t('Top-ranked'), value: top ? top.code : '—', sub: top ? t(top.name) : '', color: OK },
       {
         label: t('Portfolio margin'),
-        value: d.canSeeMargin ? `${PORTFOLIO_MARGIN_PCT}%` : MASK,
+        value: d.canSeeMargin ? pctOrDash(d.portfolioMarginPct) : MASK,
         sub: t(d.canSeeMargin ? 'Client projects · weighted by contract' : 'Directors and PMs only'),
         color: OK,
       },
@@ -240,6 +244,8 @@ export interface CashData {
   rows: CashRowInput[];
   /** Zone-scaled forecast; `label` = EN month ("Oct", "Jan ’27"). */
   forecast: (CashMonth & { label: string })[];
+  /** A-12 "Lowest cumulative point": its month (ISO first day) and the payment it waits for; null/absent = no sub-line. */
+  lowPoint?: { month: string; next: { project: string; label: string; progressMonth?: string } | null } | null;
   canSeeMargin: boolean;
   zoneSelected: boolean;
 }
@@ -317,8 +323,8 @@ export function cashView(d: CashData, t: T, lang: Lang): CashView {
       { label: t('Invoiced to date'), value: f(sum(rolled.map((x) => x.b.invoicedKeur))), sub: t('Milestones reached or monthly progress'), color: OK },
       { label: t('Outstanding receivables'), value: f(sum(rolled.map((x) => x.b.receivableKeur))), sub: t('Invoiced, not yet paid'), color: A300 },
       { label: t('Net cash · next 6 months'), value: f(netCash(d.forecast), true), sub: t('Billing plan minus forecast spend'), color: OK },
-      // Sub-line kept from the prototype (03 OQ7): the forecast is still the stored plan (C-10).
-      { label: t('Lowest cumulative point'), value: f(lowestCumulative(d.forecast), true), sub: t('November — before M3 payment lands'), color: LO },
+      // A-12: the low month and the payment it waits for are computed (the prototype printed "November — before M3 payment lands").
+      { label: t('Lowest cumulative point'), value: f(lowestCumulative(d.forecast), true), sub: lowPointSubText(d.lowPoint, t, lang, +DEFAULT_DATA_DATE.slice(0, 4)), color: LO },
     ],
     rows,
     bars: d.forecast.map((m, i) => ({

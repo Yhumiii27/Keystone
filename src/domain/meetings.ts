@@ -41,12 +41,37 @@ export interface TranscriptProposal {
   due: string | null;
 }
 
+/** One proposal of a transcript analysis with its review state (chapter 4, S-10). */
+export interface TranscriptItem {
+  position: number;
+  type: 'decision' | 'action' | 'risk' | 'question';
+  text: string;
+  owner: string | null;
+  due: string | null;
+  speaker: string | null;
+  quote: string | null;
+  status: 'proposed' | 'accepted' | 'rejected' | 'applied';
+  /** "MTG-119|2|3" (minutes line), "R-21" (risk register), "Q&A" (client questions). */
+  appliedRef: string | null;
+}
+
 export interface MeetingTranscript {
   text: string;
   analysed: boolean;
   summary: string | null;
+  /** Decisions and actions for the minutes (not discarded). */
   proposals: TranscriptProposal[];
   applied: boolean;
+  // Chapter 4 (S-10) — absent in the prototype's model.
+  source?: 'teams' | 'paste' | 'file';
+  fileName?: string | null;
+  analyzer?: 'prototype' | 'local' | 'claude' | null;
+  analyzerModel?: string | null;
+  /** EN source notice (Claude failed → local analysis). */
+  notice?: string | null;
+  importedBy?: string | null;
+  importedOn?: string | null;
+  items?: TranscriptItem[];
 }
 
 export interface Meeting {
@@ -453,3 +478,54 @@ export function parseMinutesLine(v: { type?: unknown; text?: unknown; owner?: un
 
 /** Due shown as a date ("2 Oct" → translated months) when it parses like the DAL does, else free text. */
 export const isDateDue = (due: string | null | undefined) => !!due && due !== '—' && !!isoOfDisplayDate(due);
+
+// ── Transcripts (chapter 4, S-10) ──────────────────────────────────────────────────────────────────────────────────
+
+/** Transcript import limits (questionnaire S-10). A Server Function request is capped at 1 MB (Next.js default). */
+export const TRANSCRIPT_IMPORT = {
+  /** Largest stored transcript, in characters after parsing (≈ 60 000 words — several hours of meeting). */
+  maxChars: 400_000,
+  /** Largest file or paste sent to the server. */
+  maxUploadBytes: 800_000,
+} as const;
+
+/** Review order of the proposals: decisions, actions, risks, client questions — each in analysis order. */
+export const PROPOSAL_ORDER = ['decision', 'action', 'risk', 'question'] as const;
+export type ProposalKind = (typeof PROPOSAL_ORDER)[number];
+
+export function reviewOrder<P extends { type: ProposalKind; position: number }>(items: readonly P[]): P[] {
+  return [...items].sort((a, b) => PROPOSAL_ORDER.indexOf(a.type) - PROPOSAL_ORDER.indexOf(b.type) || a.position - b.position);
+}
+
+export interface ProposalEditInput {
+  text: string;
+  owner: string | null;
+  due: string | null;
+}
+
+/** "Edit proposal" form values (text*, owner, due) → the DAL edit; owner / due are ignored by the DAL where they do not apply. */
+export function parseProposalEdit(v: Record<string, string | undefined>): Parsed<ProposalEditInput> {
+  const text = (v.text ?? '').trim().replace(/\s+/g, ' ');
+  if (!text) return { ok: false, error: 'Write a note first' };
+  if (text.length > MAX.note) return { ok: false, error: 'The note is too long' };
+  const owner = (v.owner ?? '').trim().replace(/\s+/g, ' ');
+  const due = (v.due ?? '').trim().replace(/\s+/g, ' ');
+  if (owner.length > MAX.name || due.length > MAX.due) return { ok: false, error: 'The note is too long' };
+  return { ok: true, value: { text, owner: owner || null, due: due || null } };
+}
+
+export interface ClientQuestionInput {
+  text: string;
+  askedBy: string;
+  department: string | null;
+  owner: string;
+}
+
+/** "Add to client questions" form values (text*, askedBy*, department, owner*). */
+export function parseClientQuestion(v: Record<string, string | undefined>): Parsed<ClientQuestionInput> {
+  const get = (k: string) => (v[k] ?? '').trim().replace(/\s+/g, ' ');
+  const [text, askedBy, department, owner] = [get('text'), get('askedBy'), get('department'), get('owner')];
+  if (!text || !askedBy || !owner) return { ok: false, error: 'Fill in the required fields' };
+  if (text.length > MAX.note || askedBy.length > MAX.name || owner.length > MAX.name || department.length > MAX.name) return { ok: false, error: 'The note is too long' };
+  return { ok: true, value: { text, askedBy, department: department || null, owner } };
+}

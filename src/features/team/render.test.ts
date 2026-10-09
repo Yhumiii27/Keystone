@@ -134,7 +134,9 @@ describe('Stakeholders & RACI view model', () => {
 describe('Interface register view model', () => {
   it('EN: KPI tiles and rows equal the prototype (renderValsEN golden)', async () => {
     const { view } = await ifc('en');
-    expect(view.kpis).toEqual(GOLDEN.interfaces.kpis.map((k) => ({ ...k, value: String(k.value) })));
+    // A-12 (chapter 4, 07 OQ6): "due within 30 days" counts the open interfaces needed within 30 days of the data date —
+    // IF-02 (15 Oct), not IF-05 (15 Nov, 51 days away) that the prototype counted.
+    expect(view.kpis).toEqual(GOLDEN.interfaces.kpis.map((k, i) => ({ ...k, value: String(k.value), sub: i === 1 ? '1 due within 30 days' : k.sub })));
     expect(view.rows.map((r) => ({ id: r.number, title: r.title, a: r.side, b: r.otherParty, data: r.data, needed: r.needed, provided: r.provided, status: r.status, owner: r.owner, neededSub: r.neededSub }))).toEqual(
       GOLDEN.interfaces.rows,
     );
@@ -149,7 +151,7 @@ describe('Interface register view model', () => {
     const { view } = await ifc('fr');
     expect(view.kpis.map((k) => [k.label, k.value, k.sub, k.color])).toEqual([
       ['Interfaces', '7', '2 gelées · 2 reçues', OK],
-      ['Ouverte', '2', '2 dues sous 30 jours', OK],
+      ['Ouverte', '2', '1 due sous 30 jours', OK], // A-12
       ['En retard', '1', 'IF-07', LO],
       ['Bloquent la mise en service', '2', 'Cellule HT · zones anti-collision', LO],
     ]);

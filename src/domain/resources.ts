@@ -109,17 +109,69 @@ export function capacityBar(row: Pick<CapacityRow, 'capacityH' | 'demandH'>): Ca
   return { over: row.demandH > row.capacityH, scale, demand: scale ? row.demandH / scale : 0, capacity: scale ? row.capacityH / scale : 0 };
 }
 
-/** "Unmet demand" of Project resources: Σ max(0, demand − capacity). */
+/**
+ * "Unmet demand": Σ max(0, demand − capacity) over the department bars. Chapter 4 (A-12, 06 OQ1): the portfolio Resources
+ * screen computes it too (the prototype's constant "240 h" became the 280 h its own ROLES bars give).
+ */
 export function unmetDemand(rows: Pick<CapacityRow, 'capacityH' | 'demandH'>[]): number {
   return rows.reduce((a, r) => a + Math.max(0, r.demandH - r.capacityH), 0);
 }
 
+/** Department with the largest unmet demand ("Mostly engineering"); null when no department is over capacity. */
+export function mainShortfall<R extends Pick<CapacityRow, 'name' | 'capacityH' | 'demandH'>>(rows: readonly R[]): R | null {
+  let best: R | null = null;
+  for (const r of rows) if (r.demandH > r.capacityH && (!best || r.demandH - r.capacityH > best.demandH - best.capacityH)) best = r;
+  return best;
+}
+
+// ── Peak weeks (A-12: "Peak weeks 41–43" was a constant) ──────────────────────────────────────────────────────────────
+
+/** Window weeks (indexes) in which at least one person is above `threshold` % (strict). */
+export function weeksAbove(people: Pick<PersonLoad, 'loads'>[], threshold = OVER_ALLOCATED_PCT): number[] {
+  const n = Math.max(0, ...people.map((p) => p.loads.length));
+  return Array.from({ length: n }, (_, i) => i).filter((i) => people.some((p) => (p.loads[i] ?? 0) > threshold));
+}
+
+/** Week numbers as ranges: [42, 43, 44] → "42–44", [41, 42, 46] → "41–42, 46". */
+export function weekRangesText(weeks: readonly number[]): string {
+  const sorted = [...new Set(weeks)].sort((a, b) => a - b);
+  const out: string[] = [];
+  for (let i = 0; i < sorted.length; ) {
+    let j = i;
+    while (j + 1 < sorted.length && sorted[j + 1] === sorted[j] + 1) j++;
+    out.push(j > i ? `${sorted[i]}–${sorted[j]}` : String(sorted[i]));
+    i = j + 1;
+  }
+  return out.join(', ');
+}
+
+// ── Requests needing an expert (A-12: Skills "Open requests needing level ≥4" was the constant 2) ────────────────────
+
+/** Skill level of an expert (Skills coverage "Experts = level 4–5"). */
+export const EXPERT_LEVEL = 4;
+
 /**
- * "Unmet demand" of the portfolio Resources screen: a constant in the prototype ("240 h · Mostly engineering"),
- * while the ROLES bars give 280 h (docs/spec/06 OQ1, 00 OPEN QUESTION A-12). Kept identical to the department-head
- * Home tile until the rule is decided.
+ * Open requests needing level ≥ 4: pending requests that name a person whose main skill (highest level, first in skill
+ * order on a tie) is at expert level — the request needs that expertise. Contract roles carry no level and are not
+ * counted. Returns the count and the skills concerned in skill order (chapter-5 questionnaire: confirm the rule).
  */
-export const PORTFOLIO_UNMET_DEMAND_H = 240;
+export function requestsNeedingExperts(
+  requests: readonly { person: string | null; status: string }[],
+  people: readonly { name: string; levels: readonly number[] }[],
+  skills: readonly string[],
+  level = EXPERT_LEVEL,
+): { count: number; skills: string[] } {
+  const mainSkill = new Map<string, number>();
+  for (const p of people) {
+    let best = -1;
+    p.levels.forEach((v, i) => {
+      if (v >= level && (best < 0 || v > p.levels[best])) best = i;
+    });
+    if (best >= 0) mainSkill.set(p.name, best);
+  }
+  const hits = requests.filter((r) => r.status === 'pending' && r.person && mainSkill.has(r.person)).map((r) => mainSkill.get(r.person!)!);
+  return { count: hits.length, skills: [...new Set(hits)].sort((a, b) => a - b).map((i) => skills[i]).filter(Boolean) };
+}
 
 /** "Labor cost to date" sub: `round(actual / budget × 100)` % of the labour budget (null without a budget). */
 export function laborShare(labor: { budget: number; actual: number }): number | null {

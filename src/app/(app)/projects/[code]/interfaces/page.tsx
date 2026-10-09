@@ -9,6 +9,7 @@ import { interfaceFormDef, localizeForm } from '@/features/team/forms';
 import { formT } from '@/features/team/i18n';
 import { InterfacesBody } from '@/features/team/interfaces-view';
 import { interfacesView } from '@/features/team/model';
+import { projectDataDateOf } from '@/server/dal/kpis';
 import { projectLabel } from '@/server/dal/projects';
 import { getInterfacesScreen } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
@@ -18,7 +19,7 @@ export default async function InterfacesPage({ params }: { params: Promise<{ cod
   const { code } = await params;
   const ctx = await getProjectContext(code, 'interfaces');
   const projectCode = ctx.project.code;
-  const [{ t, lang }, data] = await Promise.all([getI18n(), getInterfacesScreen(projectCode)]);
+  const [{ t, lang }, data, dataDate] = await Promise.all([getI18n(), getInterfacesScreen(projectCode), projectDataDateOf(projectCode)]);
   const canEdit = ctx.canEdit('interfaces');
 
   const primary =
@@ -29,7 +30,7 @@ export default async function InterfacesPage({ params }: { params: Promise<{ cod
   return (
     <>
       <PageHeader screen="interfaces" projectCode={projectCode} primary={primary} />
-      {data && <InterfacesBody code={projectCode} view={interfacesView(data.interfaces, data.blockers, t, lang)} canEdit={canEdit} t={t} />}
+      {data && <InterfacesBody code={projectCode} view={interfacesView(data.interfaces, data.blockers, t, lang, dataDate)} canEdit={canEdit} t={t} />}
     </>
   );
 }

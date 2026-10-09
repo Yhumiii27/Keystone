@@ -8,8 +8,9 @@
 // Deviations from the prototype (docs/spec/00 §7.16, 08 OQ22, OQ28):
 // - "Oldest" is the item with the earliest date, not the last item pushed;
 // - resource-request items carry the sent date and the real sender (not '' and a fixed "R. Aubert");
-// - inline decisions of kinds not modelled yet (deliverables, NCRs) are previews (toast); purchase orders, ECOs and
-//   delivery quality checks are decided for real (the delivery QC no longer throws);
+// - inline decisions are recorded for real: purchase orders, ECOs, delivery quality checks (the delivery QC no longer
+//   throws) and, since Delivery 5, NCR verifications (sent to Vigie) and deliverable acceptances (src/domain/quality.ts
+//   builds those items; the prototype builders below are kept for their tests);
 // - "Decided this week" only counts the kinds the viewer decides (not every role's ordered POs);
 // - the change control board step, which no persona held (07 OQ2), reaches the portfolio director who records it
 //   on Change control (STEP_DECIDER), so a change request is never stuck in review.
@@ -46,8 +47,8 @@ export const isApprovalKind = (v: unknown): v is ApprovalKind => typeof v === 's
 // ── Items ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Inline decision of a row. `change-request` is recorded through the Change control writer (decideChangeStep);
- * `preview` belongs to a module not modelled yet: the buttons only announce the decision (toast).
+ * Inline decision of a row, recorded by its module's Server Function. `change-request` goes through the Change control
+ * writer (decideChangeStep). Every kind is persisted since Delivery 5 (the prototype-only `preview` mode is gone).
  */
 export type ApprovalDecision =
   | { mode: 'change-request'; projectCode: string; number: string; step: ChangeStep }
@@ -57,7 +58,20 @@ export type ApprovalDecision =
   | { mode: 'purchase-order'; projectCode: string; number: string }
   /** Goods receipt waiting for its quality check: Approve → Accept → stock, Reject → Reject → quarantine (src/features/deliveries/actions.ts). */
   | { mode: 'delivery-qc'; projectCode: string; number: string }
-  | { mode: 'preview' };
+  /** NCR in verification (quality manager): Approve → Closed, Reject → back to Corrective action; sent to Vigie (src/features/quality/actions.ts). */
+  | { mode: 'ncr-verification'; projectCode: string; number: string }
+  /** Submitted deliverable (project's client contact): Approve → Accepted (PV), Reject → Rejected (src/features/quality/actions.ts). */
+  | { mode: 'deliverable'; projectCode: string; number: string }
+  /**
+   * Chapter 4: pending resource request (department side, same rules as /resources/approvals): Approve → task created,
+   * Reject → asks the reason the PM sees (src/features/myapprovals/actions.ts → src/features/requests/actions.ts).
+   */
+  | { mode: 'resource-request'; number: string }
+  /**
+   * Chapter 4 (L-1): forced stage change (portfolio director): Approve keeps the stage, Reject reverts the project to
+   * `fromLabel` (the stage it left; prototype label) after a confirmation with an optional comment.
+   */
+  | { mode: 'stage'; projectCode: string; transitionId: string; fromLabel: string | null };
 
 export interface ApprovalItem {
   kind: ApprovalKind;
@@ -90,68 +104,11 @@ const href = (screen: ScreenId, code: string | undefined, params: Record<string,
 
 const item = (kind: ApprovalKind, x: Omit<ApprovalItem, 'kind' | 'whenIso'>): ApprovalItem => ({ kind, ...x, whenIso: isoOfWhen(x.when) });
 
-// ── Prototype-backed kinds (TODO(db): client deliverables and NCRs, until the Quality module is modelled) ──
-// Purchase orders, ECOs (Vigie mirror), delivery quality checks, RFQ awards and supplier invoices are read from the
-// database since Delivery 4: their item builders live with their modules (`poApprovalItems` in ./orders,
-// `ecoApprovalItems` in ./eco, `qcInboxItems` in ./deliveries, `rfqAwardItems` / `invoiceApprovalItems` in ./procurement).
-
-export interface ProtoDeliverable {
-  id: string;
-  title: string;
-  type: string;
-  status: string;
-  acc: string;
-  due: string;
-  raci: { R: string };
-}
-
-/** Client deliverables of a project (allDlv 4630): Harbor Line's register, else its first four as D-110… with R = the PM. */
-export function deliverablesOf(code: string, hlt: ProtoDeliverable[], hasData: boolean, pm: string): ProtoDeliverable[] {
-  if (code === 'HLT-026') return hlt;
-  if (!hasData) return [];
-  return hlt.slice(0, 4).map((d, i) => ({ ...d, id: 'D-1' + (10 + i), raci: { ...d.raci, R: pm } }));
-}
-
-/** Submitted deliverables awaiting the client's acceptance (apprItems 4727). */
-export function deliverableItems(dlv: ProtoDeliverable[], code: string): ApprovalItem[] {
-  return dlv
-    .filter((d) => d.status === 'Submitted')
-    .map((d) =>
-      item('deliverable', {
-        id: d.id, title: d.title, sub: `${d.type} · ${d.acc}`, when: d.due, who: d.raci.R,
-        href: href('quality', code, { tab: 'dlv', dlv: d.id }), decision: { mode: 'preview' },
-      }),
-    );
-}
-
-export interface ProtoNcr {
-  id: string;
-  title: string;
-  status: string;
-  sev: string;
-  owner: string;
-  due: string;
-  raised: string;
-}
-
-/** NCRs of a project (allNCRs 4614): Harbor Line's register, else two derived rows NCR-040/041 for projects with data. */
-export function ncrsOf(code: string, hlt: ProtoNcr[], hasData: boolean): ProtoNcr[] {
-  if (code === 'HLT-026') return hlt;
-  if (!hasData) return [];
-  return hlt.slice(1, 3).map((n, i) => ({ ...n, id: 'NCR-0' + (40 + i) }));
-}
-
-/** Open NCRs waiting for the quality manager's verification (apprItems 4730). */
-export function ncrItems(ncrs: ProtoNcr[], code: string): ApprovalItem[] {
-  return ncrs
-    .filter((n) => n.status === 'Verification')
-    .map((n) =>
-      item('ncr', {
-        id: n.id, title: n.title, sub: `${n.sev} · ${n.owner}`, when: n.due, who: n.raised,
-        href: href('quality', code, { tab: 'ncr', ncr: n.id }), decision: { mode: 'preview' },
-      }),
-    );
-}
+// Every kind is read from the database (or a connector mirror): purchase orders, ECOs (Vigie mirror), delivery quality
+// checks, RFQ awards and supplier invoices since Delivery 4 (`poApprovalItems` in ./orders, `ecoApprovalItems` in ./eco,
+// `qcInboxItems` in ./deliveries, `rfqAwardItems` / `invoiceApprovalItems` in ./procurement); NCR verification (Vigie
+// mirror) and client deliverable acceptance since Delivery 5 (`ncrVerificationItems` / `deliverableAcceptanceItems` in
+// ./quality). The builders below are the kinds whose items are assembled here.
 
 export interface ProtoDoc {
   id: string;

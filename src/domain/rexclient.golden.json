@@ -1,0 +1,6853 @@
+{
+ "rex": {
+  "en": {
+   "HLT-026": {
+    "header": {
+     "title": "Lessons learned & project closure",
+     "crumb": "Project · Project review",
+     "primaryAction": "Add lesson",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Lessons recorded",
+      "value": 4,
+      "sub": "1 applied to templates & procedures",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "To validate",
+      "value": 1,
+      "sub": "REX workshop · engineering lead + quality",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Closure checklist",
+      "value": "25 %",
+      "sub": "1 done · 3 in progress · 6 not started",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Customer satisfaction",
+      "value": "4.0 / 5",
+      "sub": "lowest · Schedule adherence",
+      "color": "var(--color-text)"
+     }
+    ],
+    "lessons": [
+     {
+      "id": "LL-01",
+      "theme": "Procurement",
+      "what": "Steel mill capacity slipped 3 weeks with no early warning",
+      "impact": "−27 d float · second mill qualified late",
+      "reco": "Qualify two mills at award for structural steel > 200 t",
+      "apply": "Purchasing procedure PRO-QMS-021",
+      "status": "Validated",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-02",
+      "theme": "Engineering",
+      "what": "P&ID rev D released while electrical and automation still consumed rev C",
+      "impact": "3 tags missing in schematics and PLC table",
+      "reco": "Make revision acknowledgment mandatory before design freeze (Keystone engineering register)",
+      "apply": "Engineering gate checklist",
+      "status": "Applied",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-03",
+      "theme": "Site",
+      "what": "Damp electrodes caused weld porosity on K-12",
+      "impact": "NCR-026 · 12 k€ contingency",
+      "reco": "Electrode oven and humidity log in the ITP for all site welding",
+      "apply": "ITP template EMP",
+      "status": "Validated",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-04",
+      "theme": "Client",
+      "what": "Client decides on hold points only in steering committee",
+      "impact": "2–3 weeks lost per hold point",
+      "reco": "Add a weekly client technical call with decision authority to the RACI",
+      "apply": "Stakeholder & RACI template",
+      "status": "Proposed",
+      "stClass": "tag tag-accent",
+      "canAdvance": true,
+      "next": "Validate"
+     }
+    ],
+    "closure": [
+     {
+      "item": "Final account agreed with client",
+      "owner": "R. Aubert",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Retention invoice issued (5 %)",
+      "owner": "L. Marchand",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "As-built dossier delivered & acknowledged",
+      "owner": "J. Wagner",
+      "status": "In progress",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Warranty start recorded in installed base",
+      "owner": "T. Kerbrat",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Lessons learned workshop held",
+      "owner": "R. Aubert",
+      "status": "Done",
+      "icon": "ph ph-check-square",
+      "color": "var(--color-accent-300)",
+      "textColor": "var(--color-neutral-500)"
+     },
+     {
+      "item": "Customer satisfaction survey received",
+      "owner": "R. Aubert",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Documents archived per retention rules",
+      "owner": "G. Comte",
+      "status": "In progress",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Resources released in capacity plan",
+      "owner": "D. Roux",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Purchase orders closed · invoices matched",
+      "owner": "F. Bertrand",
+      "status": "In progress",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Financial close in Sage X3",
+      "owner": "L. Marchand",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     }
+    ],
+    "satisfaction": [
+     {
+      "k": "Communication",
+      "v": "4.5",
+      "w": "90%"
+     },
+     {
+      "k": "Quality of deliverables",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Schedule adherence",
+      "v": "3.0",
+      "w": "60%"
+     },
+     {
+      "k": "Change management",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Site safety",
+      "v": "4.5",
+      "w": "90%"
+     }
+    ],
+    "satAvg": "4.0"
+   },
+   "NDC-031": {
+    "header": {
+     "title": "Lessons learned & project closure",
+     "crumb": "Project · Project review",
+     "primaryAction": "Add lesson",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Lessons recorded",
+      "value": 0,
+      "sub": "0 applied to templates & procedures",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "To validate",
+      "value": 0,
+      "sub": "REX workshop · engineering lead + quality",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Closure checklist",
+      "value": "—",
+      "sub": "0 done · 0 in progress · 0 not started",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Customer satisfaction",
+      "value": "—",
+      "sub": "survey not received",
+      "color": "var(--color-text)"
+     }
+    ],
+    "lessons": [],
+    "closure": [],
+    "satisfaction": [],
+    "satAvg": "—"
+   },
+   "roles": {
+    "director": {
+     "title": "Lessons learned & project closure",
+     "crumb": "Project · Project review",
+     "primaryAction": "Add lesson",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "pm": {
+     "title": "Lessons learned & project closure",
+     "crumb": "Project · Project review",
+     "primaryAction": "Add lesson",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "depthead": {
+     "title": "Lessons learned & project closure",
+     "crumb": "Project · Project review",
+     "primaryAction": "Add lesson",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "member": {
+     "title": "Lessons learned & project closure",
+     "crumb": "Project · Project review",
+     "primaryAction": "Add lesson",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "englead": {
+     "title": "Lessons learned & project closure",
+     "crumb": "Project · Project review",
+     "primaryAction": "Add lesson",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "quality": {
+     "title": "Lessons learned & project closure",
+     "crumb": "Project · Project review",
+     "primaryAction": "Add lesson",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "procurement": {
+     "title": "Lessons learned & project closure",
+     "crumb": "Project · Project review",
+     "primaryAction": "Add lesson",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "client": {
+     "title": "Lessons learned & project closure",
+     "crumb": "Project · Project review",
+     "primaryAction": "Add lesson",
+     "hasPrimary": false,
+     "outside": true
+    }
+   },
+   "afterAdvance": {
+    "header": {
+     "title": "Lessons learned & project closure",
+     "crumb": "Project · Project review",
+     "primaryAction": "Add lesson",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Lessons recorded",
+      "value": 4,
+      "sub": "3 applied to templates & procedures",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "To validate",
+      "value": 0,
+      "sub": "REX workshop · engineering lead + quality",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Closure checklist",
+      "value": "25 %",
+      "sub": "1 done · 3 in progress · 6 not started",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Customer satisfaction",
+      "value": "4.0 / 5",
+      "sub": "lowest · Schedule adherence",
+      "color": "var(--color-text)"
+     }
+    ],
+    "lessons": [
+     {
+      "id": "LL-01",
+      "theme": "Procurement",
+      "what": "Steel mill capacity slipped 3 weeks with no early warning",
+      "impact": "−27 d float · second mill qualified late",
+      "reco": "Qualify two mills at award for structural steel > 200 t",
+      "apply": "Purchasing procedure PRO-QMS-021",
+      "status": "Applied",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-02",
+      "theme": "Engineering",
+      "what": "P&ID rev D released while electrical and automation still consumed rev C",
+      "impact": "3 tags missing in schematics and PLC table",
+      "reco": "Make revision acknowledgment mandatory before design freeze (Keystone engineering register)",
+      "apply": "Engineering gate checklist",
+      "status": "Applied",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-03",
+      "theme": "Site",
+      "what": "Damp electrodes caused weld porosity on K-12",
+      "impact": "NCR-026 · 12 k€ contingency",
+      "reco": "Electrode oven and humidity log in the ITP for all site welding",
+      "apply": "ITP template EMP",
+      "status": "Applied",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-04",
+      "theme": "Client",
+      "what": "Client decides on hold points only in steering committee",
+      "impact": "2–3 weeks lost per hold point",
+      "reco": "Add a weekly client technical call with decision authority to the RACI",
+      "apply": "Stakeholder & RACI template",
+      "status": "Validated",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     }
+    ],
+    "closure": [
+     {
+      "item": "Final account agreed with client",
+      "owner": "R. Aubert",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Retention invoice issued (5 %)",
+      "owner": "L. Marchand",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "As-built dossier delivered & acknowledged",
+      "owner": "J. Wagner",
+      "status": "In progress",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Warranty start recorded in installed base",
+      "owner": "T. Kerbrat",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Lessons learned workshop held",
+      "owner": "R. Aubert",
+      "status": "Done",
+      "icon": "ph ph-check-square",
+      "color": "var(--color-accent-300)",
+      "textColor": "var(--color-neutral-500)"
+     },
+     {
+      "item": "Customer satisfaction survey received",
+      "owner": "R. Aubert",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Documents archived per retention rules",
+      "owner": "G. Comte",
+      "status": "In progress",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Resources released in capacity plan",
+      "owner": "D. Roux",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Purchase orders closed · invoices matched",
+      "owner": "F. Bertrand",
+      "status": "In progress",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Financial close in Sage X3",
+      "owner": "L. Marchand",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     }
+    ],
+    "satisfaction": [
+     {
+      "k": "Communication",
+      "v": "4.5",
+      "w": "90%"
+     },
+     {
+      "k": "Quality of deliverables",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Schedule adherence",
+      "v": "3.0",
+      "w": "60%"
+     },
+     {
+      "k": "Change management",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Site safety",
+      "v": "4.5",
+      "w": "90%"
+     }
+    ],
+    "satAvg": "4.0"
+   },
+   "afterCycle": {
+    "header": {
+     "title": "Lessons learned & project closure",
+     "crumb": "Project · Project review",
+     "primaryAction": "Add lesson",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Lessons recorded",
+      "value": 4,
+      "sub": "1 applied to templates & procedures",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "To validate",
+      "value": 1,
+      "sub": "REX workshop · engineering lead + quality",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Closure checklist",
+      "value": "25 %",
+      "sub": "1 done · 3 in progress · 6 not started",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Customer satisfaction",
+      "value": "4.0 / 5",
+      "sub": "lowest · Schedule adherence",
+      "color": "var(--color-text)"
+     }
+    ],
+    "lessons": [
+     {
+      "id": "LL-01",
+      "theme": "Procurement",
+      "what": "Steel mill capacity slipped 3 weeks with no early warning",
+      "impact": "−27 d float · second mill qualified late",
+      "reco": "Qualify two mills at award for structural steel > 200 t",
+      "apply": "Purchasing procedure PRO-QMS-021",
+      "status": "Validated",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-02",
+      "theme": "Engineering",
+      "what": "P&ID rev D released while electrical and automation still consumed rev C",
+      "impact": "3 tags missing in schematics and PLC table",
+      "reco": "Make revision acknowledgment mandatory before design freeze (Keystone engineering register)",
+      "apply": "Engineering gate checklist",
+      "status": "Applied",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-03",
+      "theme": "Site",
+      "what": "Damp electrodes caused weld porosity on K-12",
+      "impact": "NCR-026 · 12 k€ contingency",
+      "reco": "Electrode oven and humidity log in the ITP for all site welding",
+      "apply": "ITP template EMP",
+      "status": "Validated",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-04",
+      "theme": "Client",
+      "what": "Client decides on hold points only in steering committee",
+      "impact": "2–3 weeks lost per hold point",
+      "reco": "Add a weekly client technical call with decision authority to the RACI",
+      "apply": "Stakeholder & RACI template",
+      "status": "Proposed",
+      "stClass": "tag tag-accent",
+      "canAdvance": true,
+      "next": "Validate"
+     }
+    ],
+    "closure": [
+     {
+      "item": "Final account agreed with client",
+      "owner": "R. Aubert",
+      "status": "In progress",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Retention invoice issued (5 %)",
+      "owner": "L. Marchand",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "As-built dossier delivered & acknowledged",
+      "owner": "J. Wagner",
+      "status": "Done",
+      "icon": "ph ph-check-square",
+      "color": "var(--color-accent-300)",
+      "textColor": "var(--color-neutral-500)"
+     },
+     {
+      "item": "Warranty start recorded in installed base",
+      "owner": "T. Kerbrat",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Lessons learned workshop held",
+      "owner": "R. Aubert",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Customer satisfaction survey received",
+      "owner": "R. Aubert",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Documents archived per retention rules",
+      "owner": "G. Comte",
+      "status": "In progress",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Resources released in capacity plan",
+      "owner": "D. Roux",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Purchase orders closed · invoices matched",
+      "owner": "F. Bertrand",
+      "status": "In progress",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Financial close in Sage X3",
+      "owner": "L. Marchand",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     }
+    ],
+    "satisfaction": [
+     {
+      "k": "Communication",
+      "v": "4.5",
+      "w": "90%"
+     },
+     {
+      "k": "Quality of deliverables",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Schedule adherence",
+      "v": "3.0",
+      "w": "60%"
+     },
+     {
+      "k": "Change management",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Site safety",
+      "v": "4.5",
+      "w": "90%"
+     }
+    ],
+    "satAvg": "4.0"
+   },
+   "afterCycleTwice": {
+    "header": {
+     "title": "Lessons learned & project closure",
+     "crumb": "Project · Project review",
+     "primaryAction": "Add lesson",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Lessons recorded",
+      "value": 4,
+      "sub": "1 applied to templates & procedures",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "To validate",
+      "value": 1,
+      "sub": "REX workshop · engineering lead + quality",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Closure checklist",
+      "value": "25 %",
+      "sub": "1 done · 3 in progress · 6 not started",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Customer satisfaction",
+      "value": "4.0 / 5",
+      "sub": "lowest · Schedule adherence",
+      "color": "var(--color-text)"
+     }
+    ],
+    "lessons": [
+     {
+      "id": "LL-01",
+      "theme": "Procurement",
+      "what": "Steel mill capacity slipped 3 weeks with no early warning",
+      "impact": "−27 d float · second mill qualified late",
+      "reco": "Qualify two mills at award for structural steel > 200 t",
+      "apply": "Purchasing procedure PRO-QMS-021",
+      "status": "Validated",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-02",
+      "theme": "Engineering",
+      "what": "P&ID rev D released while electrical and automation still consumed rev C",
+      "impact": "3 tags missing in schematics and PLC table",
+      "reco": "Make revision acknowledgment mandatory before design freeze (Keystone engineering register)",
+      "apply": "Engineering gate checklist",
+      "status": "Applied",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-03",
+      "theme": "Site",
+      "what": "Damp electrodes caused weld porosity on K-12",
+      "impact": "NCR-026 · 12 k€ contingency",
+      "reco": "Electrode oven and humidity log in the ITP for all site welding",
+      "apply": "ITP template EMP",
+      "status": "Validated",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-04",
+      "theme": "Client",
+      "what": "Client decides on hold points only in steering committee",
+      "impact": "2–3 weeks lost per hold point",
+      "reco": "Add a weekly client technical call with decision authority to the RACI",
+      "apply": "Stakeholder & RACI template",
+      "status": "Proposed",
+      "stClass": "tag tag-accent",
+      "canAdvance": true,
+      "next": "Validate"
+     }
+    ],
+    "closure": [
+     {
+      "item": "Final account agreed with client",
+      "owner": "R. Aubert",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Retention invoice issued (5 %)",
+      "owner": "L. Marchand",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "As-built dossier delivered & acknowledged",
+      "owner": "J. Wagner",
+      "status": "In progress",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Warranty start recorded in installed base",
+      "owner": "T. Kerbrat",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Lessons learned workshop held",
+      "owner": "R. Aubert",
+      "status": "Done",
+      "icon": "ph ph-check-square",
+      "color": "var(--color-accent-300)",
+      "textColor": "var(--color-neutral-500)"
+     },
+     {
+      "item": "Customer satisfaction survey received",
+      "owner": "R. Aubert",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Documents archived per retention rules",
+      "owner": "G. Comte",
+      "status": "In progress",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Resources released in capacity plan",
+      "owner": "D. Roux",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Purchase orders closed · invoices matched",
+      "owner": "F. Bertrand",
+      "status": "In progress",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Financial close in Sage X3",
+      "owner": "L. Marchand",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     }
+    ],
+    "satisfaction": [
+     {
+      "k": "Communication",
+      "v": "4.5",
+      "w": "90%"
+     },
+     {
+      "k": "Quality of deliverables",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Schedule adherence",
+      "v": "3.0",
+      "w": "60%"
+     },
+     {
+      "k": "Change management",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Site safety",
+      "v": "4.5",
+      "w": "90%"
+     }
+    ],
+    "satAvg": "4.0"
+   },
+   "afterAdd": {
+    "header": {
+     "title": "Lessons learned & project closure",
+     "crumb": "Project · Project review",
+     "primaryAction": "Add lesson",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Lessons recorded",
+      "value": 6,
+      "sub": "1 applied to templates & procedures",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "To validate",
+      "value": 2,
+      "sub": "REX workshop · engineering lead + quality",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Closure checklist",
+      "value": "25 %",
+      "sub": "1 done · 3 in progress · 6 not started",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Customer satisfaction",
+      "value": "4.0 / 5",
+      "sub": "lowest · Schedule adherence",
+      "color": "var(--color-text)"
+     }
+    ],
+    "lessons": [
+     {
+      "id": "LL-01",
+      "theme": "Procurement",
+      "what": "Steel mill capacity slipped 3 weeks with no early warning",
+      "impact": "−27 d float · second mill qualified late",
+      "reco": "Qualify two mills at award for structural steel > 200 t",
+      "apply": "Purchasing procedure PRO-QMS-021",
+      "status": "Validated",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-02",
+      "theme": "Engineering",
+      "what": "P&ID rev D released while electrical and automation still consumed rev C",
+      "impact": "3 tags missing in schematics and PLC table",
+      "reco": "Make revision acknowledgment mandatory before design freeze (Keystone engineering register)",
+      "apply": "Engineering gate checklist",
+      "status": "Applied",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-03",
+      "theme": "Site",
+      "what": "Damp electrodes caused weld porosity on K-12",
+      "impact": "NCR-026 · 12 k€ contingency",
+      "reco": "Electrode oven and humidity log in the ITP for all site welding",
+      "apply": "ITP template EMP",
+      "status": "Validated",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-04",
+      "theme": "Client",
+      "what": "Client decides on hold points only in steering committee",
+      "impact": "2–3 weeks lost per hold point",
+      "reco": "Add a weekly client technical call with decision authority to the RACI",
+      "apply": "Stakeholder & RACI template",
+      "status": "Proposed",
+      "stClass": "tag tag-accent",
+      "canAdvance": true,
+      "next": "Validate"
+     },
+     {
+      "id": "LL-10",
+      "theme": "Quality",
+      "what": "Weld map missing at FAT",
+      "impact": "2 d lost",
+      "reco": "Attach the weld map to the FAT pack",
+      "apply": "ITP template",
+      "status": "Validated",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-11",
+      "theme": "Engineering",
+      "what": "Late crane permit",
+      "impact": "—",
+      "reco": "Request permits at award",
+      "apply": "WBS template",
+      "status": "Proposed",
+      "stClass": "tag tag-accent",
+      "canAdvance": true,
+      "next": "Validate"
+     }
+    ],
+    "closure": [
+     {
+      "item": "Final account agreed with client",
+      "owner": "R. Aubert",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Retention invoice issued (5 %)",
+      "owner": "L. Marchand",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "As-built dossier delivered & acknowledged",
+      "owner": "J. Wagner",
+      "status": "In progress",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Warranty start recorded in installed base",
+      "owner": "T. Kerbrat",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Lessons learned workshop held",
+      "owner": "R. Aubert",
+      "status": "Done",
+      "icon": "ph ph-check-square",
+      "color": "var(--color-accent-300)",
+      "textColor": "var(--color-neutral-500)"
+     },
+     {
+      "item": "Customer satisfaction survey received",
+      "owner": "R. Aubert",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Documents archived per retention rules",
+      "owner": "G. Comte",
+      "status": "In progress",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Resources released in capacity plan",
+      "owner": "D. Roux",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Purchase orders closed · invoices matched",
+      "owner": "F. Bertrand",
+      "status": "In progress",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Financial close in Sage X3",
+      "owner": "L. Marchand",
+      "status": "Not started",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     }
+    ],
+    "satisfaction": [
+     {
+      "k": "Communication",
+      "v": "4.5",
+      "w": "90%"
+     },
+     {
+      "k": "Quality of deliverables",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Schedule adherence",
+      "v": "3.0",
+      "w": "60%"
+     },
+     {
+      "k": "Change management",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Site safety",
+      "v": "4.5",
+      "w": "90%"
+     }
+    ],
+    "satAvg": "4.0"
+   }
+  },
+  "fr": {
+   "HLT-026": {
+    "header": {
+     "title": "Retours d’expérience & clôture du projet",
+     "crumb": "Projet · Bilan",
+     "primaryAction": "Ajouter un REX",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "REX enregistrés",
+      "value": 4,
+      "sub": "1 appliqués aux gabarits & procédures",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "À valider",
+      "value": 1,
+      "sub": "Atelier REX · responsable ingénierie + qualité",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Checklist de clôture",
+      "value": "25 %",
+      "sub": "1 faits · 3 en cours · 6 non démarrés",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Satisfaction client",
+      "value": "4.0 / 5",
+      "sub": "plus bas · Schedule adherence",
+      "color": "var(--color-text)"
+     }
+    ],
+    "lessons": [
+     {
+      "id": "LL-01",
+      "theme": "Achats",
+      "what": "Steel mill capacity slipped 3 weeks with no early warning",
+      "impact": "−27 d float · second mill qualified late",
+      "reco": "Qualify two mills at award for structural steel > 200 t",
+      "apply": "Purchasing procedure PRO-QMS-021",
+      "status": "Validé",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-02",
+      "theme": "Ingénierie",
+      "what": "P&ID rev D released while electrical and automation still consumed rev C",
+      "impact": "3 tags missing in schematics and PLC table",
+      "reco": "Make revision acknowledgment mandatory before design freeze (Keystone engineering register)",
+      "apply": "Checklist de passage ingénierie",
+      "status": "Appliqué",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-03",
+      "theme": "Site",
+      "what": "Damp electrodes caused weld porosity on K-12",
+      "impact": "NCR-026 · 12 k€ contingency",
+      "reco": "Electrode oven and humidity log in the ITP for all site welding",
+      "apply": "ITP template EMP",
+      "status": "Validé",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-04",
+      "theme": "Client",
+      "what": "Client decides on hold points only in steering committee",
+      "impact": "2–3 weeks lost per hold point",
+      "reco": "Add a weekly client technical call with decision authority to the RACI",
+      "apply": "Gabarit parties prenantes & RACI",
+      "status": "Proposée",
+      "stClass": "tag tag-accent",
+      "canAdvance": true,
+      "next": "Validate"
+     }
+    ],
+    "closure": [
+     {
+      "item": "Décompte final accepté par le client",
+      "owner": "R. Aubert",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Facture de retenue de garantie émise (5 %)",
+      "owner": "L. Marchand",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Dossier tel que construit livré & accusé",
+      "owner": "J. Wagner",
+      "status": "En cours",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Début de garantie enregistré au parc installé",
+      "owner": "T. Kerbrat",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Atelier REX tenu",
+      "owner": "R. Aubert",
+      "status": "Terminé",
+      "icon": "ph ph-check-square",
+      "color": "var(--color-accent-300)",
+      "textColor": "var(--color-neutral-500)"
+     },
+     {
+      "item": "Enquête de satisfaction reçue",
+      "owner": "R. Aubert",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Documents archivés selon les règles de rétention",
+      "owner": "G. Comte",
+      "status": "En cours",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Ressources libérées du plan de charge",
+      "owner": "D. Roux",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Commandes clôturées · factures rapprochées",
+      "owner": "F. Bertrand",
+      "status": "En cours",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Clôture financière dans Sage X3",
+      "owner": "L. Marchand",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     }
+    ],
+    "satisfaction": [
+     {
+      "k": "Communication",
+      "v": "4.5",
+      "w": "90%"
+     },
+     {
+      "k": "Qualité des livrables",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Respect du planning",
+      "v": "3.0",
+      "w": "60%"
+     },
+     {
+      "k": "Gestion des modifications",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Sécurité chantier",
+      "v": "4.5",
+      "w": "90%"
+     }
+    ],
+    "satAvg": "4.0"
+   },
+   "NDC-031": {
+    "header": {
+     "title": "Retours d’expérience & clôture du projet",
+     "crumb": "Projet · Bilan",
+     "primaryAction": "Ajouter un REX",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "REX enregistrés",
+      "value": 0,
+      "sub": "0 appliqués aux gabarits & procédures",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "À valider",
+      "value": 0,
+      "sub": "Atelier REX · responsable ingénierie + qualité",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Checklist de clôture",
+      "value": "—",
+      "sub": "0 faits · 0 en cours · 0 non démarrés",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Satisfaction client",
+      "value": "—",
+      "sub": "enquête non reçue",
+      "color": "var(--color-text)"
+     }
+    ],
+    "lessons": [],
+    "closure": [],
+    "satisfaction": [],
+    "satAvg": "—"
+   },
+   "roles": {
+    "director": {
+     "title": "Retours d’expérience & clôture du projet",
+     "crumb": "Projet · Bilan",
+     "primaryAction": "Ajouter un REX",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "pm": {
+     "title": "Retours d’expérience & clôture du projet",
+     "crumb": "Projet · Bilan",
+     "primaryAction": "Ajouter un REX",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "depthead": {
+     "title": "Retours d’expérience & clôture du projet",
+     "crumb": "Projet · Bilan",
+     "primaryAction": "Ajouter un REX",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "member": {
+     "title": "Retours d’expérience & clôture du projet",
+     "crumb": "Projet · Bilan",
+     "primaryAction": "Ajouter un REX",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "englead": {
+     "title": "Retours d’expérience & clôture du projet",
+     "crumb": "Projet · Bilan",
+     "primaryAction": "Ajouter un REX",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "quality": {
+     "title": "Retours d’expérience & clôture du projet",
+     "crumb": "Projet · Bilan",
+     "primaryAction": "Ajouter un REX",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "procurement": {
+     "title": "Retours d’expérience & clôture du projet",
+     "crumb": "Projet · Bilan",
+     "primaryAction": "Ajouter un REX",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "client": {
+     "title": "Retours d’expérience & clôture du projet",
+     "crumb": "Projet · Bilan",
+     "primaryAction": "Ajouter un REX",
+     "hasPrimary": false,
+     "outside": true
+    }
+   },
+   "afterAdvance": {
+    "header": {
+     "title": "Retours d’expérience & clôture du projet",
+     "crumb": "Projet · Bilan",
+     "primaryAction": "Ajouter un REX",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "REX enregistrés",
+      "value": 4,
+      "sub": "3 appliqués aux gabarits & procédures",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "À valider",
+      "value": 0,
+      "sub": "Atelier REX · responsable ingénierie + qualité",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Checklist de clôture",
+      "value": "25 %",
+      "sub": "1 faits · 3 en cours · 6 non démarrés",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Satisfaction client",
+      "value": "4.0 / 5",
+      "sub": "plus bas · Schedule adherence",
+      "color": "var(--color-text)"
+     }
+    ],
+    "lessons": [
+     {
+      "id": "LL-01",
+      "theme": "Achats",
+      "what": "Steel mill capacity slipped 3 weeks with no early warning",
+      "impact": "−27 d float · second mill qualified late",
+      "reco": "Qualify two mills at award for structural steel > 200 t",
+      "apply": "Purchasing procedure PRO-QMS-021",
+      "status": "Appliqué",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-02",
+      "theme": "Ingénierie",
+      "what": "P&ID rev D released while electrical and automation still consumed rev C",
+      "impact": "3 tags missing in schematics and PLC table",
+      "reco": "Make revision acknowledgment mandatory before design freeze (Keystone engineering register)",
+      "apply": "Checklist de passage ingénierie",
+      "status": "Appliqué",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-03",
+      "theme": "Site",
+      "what": "Damp electrodes caused weld porosity on K-12",
+      "impact": "NCR-026 · 12 k€ contingency",
+      "reco": "Electrode oven and humidity log in the ITP for all site welding",
+      "apply": "ITP template EMP",
+      "status": "Appliqué",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-04",
+      "theme": "Client",
+      "what": "Client decides on hold points only in steering committee",
+      "impact": "2–3 weeks lost per hold point",
+      "reco": "Add a weekly client technical call with decision authority to the RACI",
+      "apply": "Gabarit parties prenantes & RACI",
+      "status": "Validé",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     }
+    ],
+    "closure": [
+     {
+      "item": "Décompte final accepté par le client",
+      "owner": "R. Aubert",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Facture de retenue de garantie émise (5 %)",
+      "owner": "L. Marchand",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Dossier tel que construit livré & accusé",
+      "owner": "J. Wagner",
+      "status": "En cours",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Début de garantie enregistré au parc installé",
+      "owner": "T. Kerbrat",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Atelier REX tenu",
+      "owner": "R. Aubert",
+      "status": "Terminé",
+      "icon": "ph ph-check-square",
+      "color": "var(--color-accent-300)",
+      "textColor": "var(--color-neutral-500)"
+     },
+     {
+      "item": "Enquête de satisfaction reçue",
+      "owner": "R. Aubert",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Documents archivés selon les règles de rétention",
+      "owner": "G. Comte",
+      "status": "En cours",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Ressources libérées du plan de charge",
+      "owner": "D. Roux",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Commandes clôturées · factures rapprochées",
+      "owner": "F. Bertrand",
+      "status": "En cours",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Clôture financière dans Sage X3",
+      "owner": "L. Marchand",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     }
+    ],
+    "satisfaction": [
+     {
+      "k": "Communication",
+      "v": "4.5",
+      "w": "90%"
+     },
+     {
+      "k": "Qualité des livrables",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Respect du planning",
+      "v": "3.0",
+      "w": "60%"
+     },
+     {
+      "k": "Gestion des modifications",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Sécurité chantier",
+      "v": "4.5",
+      "w": "90%"
+     }
+    ],
+    "satAvg": "4.0"
+   },
+   "afterCycle": {
+    "header": {
+     "title": "Retours d’expérience & clôture du projet",
+     "crumb": "Projet · Bilan",
+     "primaryAction": "Ajouter un REX",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "REX enregistrés",
+      "value": 4,
+      "sub": "1 appliqués aux gabarits & procédures",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "À valider",
+      "value": 1,
+      "sub": "Atelier REX · responsable ingénierie + qualité",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Checklist de clôture",
+      "value": "25 %",
+      "sub": "1 faits · 3 en cours · 6 non démarrés",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Satisfaction client",
+      "value": "4.0 / 5",
+      "sub": "plus bas · Schedule adherence",
+      "color": "var(--color-text)"
+     }
+    ],
+    "lessons": [
+     {
+      "id": "LL-01",
+      "theme": "Achats",
+      "what": "Steel mill capacity slipped 3 weeks with no early warning",
+      "impact": "−27 d float · second mill qualified late",
+      "reco": "Qualify two mills at award for structural steel > 200 t",
+      "apply": "Purchasing procedure PRO-QMS-021",
+      "status": "Validé",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-02",
+      "theme": "Ingénierie",
+      "what": "P&ID rev D released while electrical and automation still consumed rev C",
+      "impact": "3 tags missing in schematics and PLC table",
+      "reco": "Make revision acknowledgment mandatory before design freeze (Keystone engineering register)",
+      "apply": "Checklist de passage ingénierie",
+      "status": "Appliqué",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-03",
+      "theme": "Site",
+      "what": "Damp electrodes caused weld porosity on K-12",
+      "impact": "NCR-026 · 12 k€ contingency",
+      "reco": "Electrode oven and humidity log in the ITP for all site welding",
+      "apply": "ITP template EMP",
+      "status": "Validé",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-04",
+      "theme": "Client",
+      "what": "Client decides on hold points only in steering committee",
+      "impact": "2–3 weeks lost per hold point",
+      "reco": "Add a weekly client technical call with decision authority to the RACI",
+      "apply": "Gabarit parties prenantes & RACI",
+      "status": "Proposée",
+      "stClass": "tag tag-accent",
+      "canAdvance": true,
+      "next": "Validate"
+     }
+    ],
+    "closure": [
+     {
+      "item": "Décompte final accepté par le client",
+      "owner": "R. Aubert",
+      "status": "En cours",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Facture de retenue de garantie émise (5 %)",
+      "owner": "L. Marchand",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Dossier tel que construit livré & accusé",
+      "owner": "J. Wagner",
+      "status": "Terminé",
+      "icon": "ph ph-check-square",
+      "color": "var(--color-accent-300)",
+      "textColor": "var(--color-neutral-500)"
+     },
+     {
+      "item": "Début de garantie enregistré au parc installé",
+      "owner": "T. Kerbrat",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Atelier REX tenu",
+      "owner": "R. Aubert",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Enquête de satisfaction reçue",
+      "owner": "R. Aubert",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Documents archivés selon les règles de rétention",
+      "owner": "G. Comte",
+      "status": "En cours",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Ressources libérées du plan de charge",
+      "owner": "D. Roux",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Commandes clôturées · factures rapprochées",
+      "owner": "F. Bertrand",
+      "status": "En cours",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Clôture financière dans Sage X3",
+      "owner": "L. Marchand",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     }
+    ],
+    "satisfaction": [
+     {
+      "k": "Communication",
+      "v": "4.5",
+      "w": "90%"
+     },
+     {
+      "k": "Qualité des livrables",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Respect du planning",
+      "v": "3.0",
+      "w": "60%"
+     },
+     {
+      "k": "Gestion des modifications",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Sécurité chantier",
+      "v": "4.5",
+      "w": "90%"
+     }
+    ],
+    "satAvg": "4.0"
+   },
+   "afterCycleTwice": {
+    "header": {
+     "title": "Retours d’expérience & clôture du projet",
+     "crumb": "Projet · Bilan",
+     "primaryAction": "Ajouter un REX",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "REX enregistrés",
+      "value": 4,
+      "sub": "1 appliqués aux gabarits & procédures",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "À valider",
+      "value": 1,
+      "sub": "Atelier REX · responsable ingénierie + qualité",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Checklist de clôture",
+      "value": "25 %",
+      "sub": "1 faits · 3 en cours · 6 non démarrés",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Satisfaction client",
+      "value": "4.0 / 5",
+      "sub": "plus bas · Schedule adherence",
+      "color": "var(--color-text)"
+     }
+    ],
+    "lessons": [
+     {
+      "id": "LL-01",
+      "theme": "Achats",
+      "what": "Steel mill capacity slipped 3 weeks with no early warning",
+      "impact": "−27 d float · second mill qualified late",
+      "reco": "Qualify two mills at award for structural steel > 200 t",
+      "apply": "Purchasing procedure PRO-QMS-021",
+      "status": "Validé",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-02",
+      "theme": "Ingénierie",
+      "what": "P&ID rev D released while electrical and automation still consumed rev C",
+      "impact": "3 tags missing in schematics and PLC table",
+      "reco": "Make revision acknowledgment mandatory before design freeze (Keystone engineering register)",
+      "apply": "Checklist de passage ingénierie",
+      "status": "Appliqué",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-03",
+      "theme": "Site",
+      "what": "Damp electrodes caused weld porosity on K-12",
+      "impact": "NCR-026 · 12 k€ contingency",
+      "reco": "Electrode oven and humidity log in the ITP for all site welding",
+      "apply": "ITP template EMP",
+      "status": "Validé",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-04",
+      "theme": "Client",
+      "what": "Client decides on hold points only in steering committee",
+      "impact": "2–3 weeks lost per hold point",
+      "reco": "Add a weekly client technical call with decision authority to the RACI",
+      "apply": "Gabarit parties prenantes & RACI",
+      "status": "Proposée",
+      "stClass": "tag tag-accent",
+      "canAdvance": true,
+      "next": "Validate"
+     }
+    ],
+    "closure": [
+     {
+      "item": "Décompte final accepté par le client",
+      "owner": "R. Aubert",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Facture de retenue de garantie émise (5 %)",
+      "owner": "L. Marchand",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Dossier tel que construit livré & accusé",
+      "owner": "J. Wagner",
+      "status": "En cours",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Début de garantie enregistré au parc installé",
+      "owner": "T. Kerbrat",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Atelier REX tenu",
+      "owner": "R. Aubert",
+      "status": "Terminé",
+      "icon": "ph ph-check-square",
+      "color": "var(--color-accent-300)",
+      "textColor": "var(--color-neutral-500)"
+     },
+     {
+      "item": "Enquête de satisfaction reçue",
+      "owner": "R. Aubert",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Documents archivés selon les règles de rétention",
+      "owner": "G. Comte",
+      "status": "En cours",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Ressources libérées du plan de charge",
+      "owner": "D. Roux",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Commandes clôturées · factures rapprochées",
+      "owner": "F. Bertrand",
+      "status": "En cours",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Clôture financière dans Sage X3",
+      "owner": "L. Marchand",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     }
+    ],
+    "satisfaction": [
+     {
+      "k": "Communication",
+      "v": "4.5",
+      "w": "90%"
+     },
+     {
+      "k": "Qualité des livrables",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Respect du planning",
+      "v": "3.0",
+      "w": "60%"
+     },
+     {
+      "k": "Gestion des modifications",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Sécurité chantier",
+      "v": "4.5",
+      "w": "90%"
+     }
+    ],
+    "satAvg": "4.0"
+   },
+   "afterAdd": {
+    "header": {
+     "title": "Retours d’expérience & clôture du projet",
+     "crumb": "Projet · Bilan",
+     "primaryAction": "Ajouter un REX",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "REX enregistrés",
+      "value": 6,
+      "sub": "1 appliqués aux gabarits & procédures",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "À valider",
+      "value": 2,
+      "sub": "Atelier REX · responsable ingénierie + qualité",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Checklist de clôture",
+      "value": "25 %",
+      "sub": "1 faits · 3 en cours · 6 non démarrés",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Satisfaction client",
+      "value": "4.0 / 5",
+      "sub": "plus bas · Schedule adherence",
+      "color": "var(--color-text)"
+     }
+    ],
+    "lessons": [
+     {
+      "id": "LL-01",
+      "theme": "Achats",
+      "what": "Steel mill capacity slipped 3 weeks with no early warning",
+      "impact": "−27 d float · second mill qualified late",
+      "reco": "Qualify two mills at award for structural steel > 200 t",
+      "apply": "Purchasing procedure PRO-QMS-021",
+      "status": "Validé",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-02",
+      "theme": "Ingénierie",
+      "what": "P&ID rev D released while electrical and automation still consumed rev C",
+      "impact": "3 tags missing in schematics and PLC table",
+      "reco": "Make revision acknowledgment mandatory before design freeze (Keystone engineering register)",
+      "apply": "Checklist de passage ingénierie",
+      "status": "Appliqué",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-03",
+      "theme": "Site",
+      "what": "Damp electrodes caused weld porosity on K-12",
+      "impact": "NCR-026 · 12 k€ contingency",
+      "reco": "Electrode oven and humidity log in the ITP for all site welding",
+      "apply": "ITP template EMP",
+      "status": "Validé",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-04",
+      "theme": "Client",
+      "what": "Client decides on hold points only in steering committee",
+      "impact": "2–3 weeks lost per hold point",
+      "reco": "Add a weekly client technical call with decision authority to the RACI",
+      "apply": "Gabarit parties prenantes & RACI",
+      "status": "Proposée",
+      "stClass": "tag tag-accent",
+      "canAdvance": true,
+      "next": "Validate"
+     },
+     {
+      "id": "LL-10",
+      "theme": "Qualité",
+      "what": "Weld map missing at FAT",
+      "impact": "2 d lost",
+      "reco": "Attach the weld map to the FAT pack",
+      "apply": "Gabarit ITP",
+      "status": "Validé",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Mark applied"
+     },
+     {
+      "id": "LL-11",
+      "theme": "Ingénierie",
+      "what": "Late crane permit",
+      "impact": "—",
+      "reco": "Request permits at award",
+      "apply": "Gabarit WBS",
+      "status": "Proposée",
+      "stClass": "tag tag-accent",
+      "canAdvance": true,
+      "next": "Validate"
+     }
+    ],
+    "closure": [
+     {
+      "item": "Décompte final accepté par le client",
+      "owner": "R. Aubert",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Facture de retenue de garantie émise (5 %)",
+      "owner": "L. Marchand",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Dossier tel que construit livré & accusé",
+      "owner": "J. Wagner",
+      "status": "En cours",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Début de garantie enregistré au parc installé",
+      "owner": "T. Kerbrat",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Atelier REX tenu",
+      "owner": "R. Aubert",
+      "status": "Terminé",
+      "icon": "ph ph-check-square",
+      "color": "var(--color-accent-300)",
+      "textColor": "var(--color-neutral-500)"
+     },
+     {
+      "item": "Enquête de satisfaction reçue",
+      "owner": "R. Aubert",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Documents archivés selon les règles de rétention",
+      "owner": "G. Comte",
+      "status": "En cours",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Ressources libérées du plan de charge",
+      "owner": "D. Roux",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Commandes clôturées · factures rapprochées",
+      "owner": "F. Bertrand",
+      "status": "En cours",
+      "icon": "ph ph-minus-square",
+      "color": "var(--color-accent)",
+      "textColor": "var(--color-text)"
+     },
+     {
+      "item": "Clôture financière dans Sage X3",
+      "owner": "L. Marchand",
+      "status": "Non démarré",
+      "icon": "ph ph-square",
+      "color": "var(--color-neutral-500)",
+      "textColor": "var(--color-text)"
+     }
+    ],
+    "satisfaction": [
+     {
+      "k": "Communication",
+      "v": "4.5",
+      "w": "90%"
+     },
+     {
+      "k": "Qualité des livrables",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Respect du planning",
+      "v": "3.0",
+      "w": "60%"
+     },
+     {
+      "k": "Gestion des modifications",
+      "v": "4.0",
+      "w": "80%"
+     },
+     {
+      "k": "Sécurité chantier",
+      "v": "4.5",
+      "w": "90%"
+     }
+    ],
+    "satAvg": "4.0"
+   }
+  }
+ },
+ "client": {
+  "en": {
+   "HLT-026": {
+    "header": {
+     "title": "My project — client view",
+     "crumb": "Keystone · read-only except decisions and issues",
+     "primaryAction": "Download status report",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Progress",
+      "value": "64%",
+      "sub": "Planned 71% by today",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Forecast handover",
+      "value": "14 Jan 2027",
+      "sub": "Contract date 18 Dec 2026",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Milestones",
+      "value": "2 of 6",
+      "sub": "Reached",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting your decision",
+      "value": 3,
+      "sub": "Change requests and deliverables",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Open issues",
+      "value": 2,
+      "sub": "Raised by you",
+      "color": "var(--color-text)"
+     }
+    ],
+    "seg": [
+     "Progress & milestones",
+     "Decisions",
+     "Invoices",
+     "Issues",
+     "Documents"
+    ],
+    "progress": [
+     {
+      "label": "Jan",
+      "planH": "3.4%",
+      "actH": "3.5%"
+     },
+     {
+      "label": "Feb",
+      "planH": "7.3%",
+      "actH": "8.1%"
+     },
+     {
+      "label": "Mar",
+      "planH": "15.3%",
+      "actH": "14.6%"
+     },
+     {
+      "label": "Apr",
+      "planH": "23.6%",
+      "actH": "22.1%"
+     },
+     {
+      "label": "May",
+      "planH": "32.8%",
+      "actH": "30.2%"
+     },
+     {
+      "label": "Jun",
+      "planH": "47.7%",
+      "actH": "39.2%"
+     },
+     {
+      "label": "Jul",
+      "planH": "54.6%",
+      "actH": "47.9%"
+     },
+     {
+      "label": "Aug",
+      "planH": "62%",
+      "actH": "56.5%"
+     },
+     {
+      "label": "Sep",
+      "planH": "71.3%",
+      "actH": "64.2%"
+     }
+    ],
+    "milestones": [
+     {
+      "name": "Permits approved",
+      "baseDate": "15 Mar",
+      "fcDate": "1 Apr",
+      "status": "Done",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Foundations complete",
+      "baseDate": "1 Jul",
+      "fcDate": "6 Aug",
+      "status": "Done",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Structure topped out",
+      "baseDate": "15 Sep",
+      "fcDate": "24 Oct",
+      "status": "Late",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Cranes operational",
+      "baseDate": "1 Oct",
+      "fcDate": "3 Nov",
+      "status": "Late",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Systems energised",
+      "baseDate": "15 Nov",
+      "fcDate": "1 Dec",
+      "status": "At risk",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "name": "Handover",
+      "baseDate": "18 Dec",
+      "fcDate": "13 Jan ’27",
+      "status": "At risk",
+      "tagClass": "tag tag-outline"
+     }
+    ],
+    "decisions": [
+     {
+      "kind": "Change request",
+      "id": "CR-008",
+      "title": "Second steel crew — schedule recovery",
+      "sub": "Budget · Schedule · +€85k on contract · -12 d on handover",
+      "when": "24 Sep",
+      "approveLabel": "Approve"
+     },
+     {
+      "kind": "Deliverable",
+      "id": "D-014",
+      "title": "Crane rail alignment report",
+      "sub": "Test & inspection reports · rev A · Accept by 2 Oct",
+      "when": "25 Sep",
+      "approveLabel": "Accept (PV)"
+     },
+     {
+      "kind": "Deliverable",
+      "id": "D-016",
+      "title": "Steel structure calculation note rev B",
+      "sub": "Calculation notes · rev B · Accept by 9 Oct",
+      "when": "30 Sep",
+      "approveLabel": "Accept (PV)"
+     }
+    ],
+    "decided": [
+     {
+      "id": "CR-004",
+      "title": "Additional piling — soft ground at Bay 4",
+      "state": "Approved",
+      "tagClass": "tag tag-neutral",
+      "when": "14 May"
+     },
+     {
+      "id": "CR-006",
+      "title": "Crane specification upgrade to 250 t",
+      "state": "Approved",
+      "tagClass": "tag tag-neutral",
+      "when": "02 Jul"
+     },
+     {
+      "id": "D-011",
+      "title": "Structural design package — portal & girders",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "12 Mar · N. Bensaïd"
+     },
+     {
+      "id": "D-012",
+      "title": "Piling & foundation calculation note",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "20 Mar · Bureau de contrôle"
+     },
+     {
+      "id": "D-015",
+      "title": "Foundations as-built drawings",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "18 Sep · N. Bensaïd"
+     }
+    ],
+    "invoices": [
+     {
+      "no": "F-2026-101",
+      "name": "M1 Permits",
+      "amt": "€540k",
+      "status": "Paid",
+      "tagClass": "tag tag-neutral",
+      "due": "Settled"
+     },
+     {
+      "no": "F-2026-102",
+      "name": "M2 Foundations",
+      "amt": "€1.08M",
+      "status": "Paid",
+      "tagClass": "tag tag-neutral",
+      "due": "Settled"
+     },
+     {
+      "no": "F-2026-103",
+      "name": "M3 Structure",
+      "amt": "€1.35M",
+      "status": "Invoiced",
+      "tagClass": "tag tag-accent",
+      "due": "Due 15 Oct"
+     },
+     {
+      "no": "F-2026-104",
+      "name": "M4 Cranes operational",
+      "amt": "€1.08M",
+      "status": "Planned",
+      "tagClass": "tag tag-outline",
+      "due": "On milestone"
+     },
+     {
+      "no": "F-2026-105",
+      "name": "M5 Handover",
+      "amt": "€1.35M",
+      "status": "Planned",
+      "tagClass": "tag tag-outline",
+      "due": "On milestone"
+     }
+    ],
+    "invKpis": [
+     {
+      "k": "Contract value",
+      "v": "€5.40M",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Invoiced",
+      "v": "€2.97M",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Paid",
+      "v": "€1.62M",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Approved changes",
+      "v": "+€200k",
+      "color": "var(--color-text)"
+     }
+    ],
+    "issues": [
+     {
+      "id": "CI-04",
+      "title": "Night-time noise near quay 3 during pile driving",
+      "when": "Raised 12 Aug",
+      "status": "Closed",
+      "resp": "Noise barrier + shifted window 06:00–20:00",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "id": "CI-06",
+      "title": "Access to berth 5 blocked by material laydown",
+      "when": "Raised 14 Sep",
+      "status": "In progress",
+      "resp": "Laydown relocated by 30 Sep · traffic plan updated",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "id": "CI-07",
+      "title": "Request for weekly photo report",
+      "when": "Raised 22 Sep",
+      "status": "Open",
+      "resp": "To be added to monthly report cycle from October",
+      "tagClass": "tag tag-accent"
+     }
+    ],
+    "docs": [
+     {
+      "id": "PID-HLT-026",
+      "title": "P&ID",
+      "typeLabel": "P&ID",
+      "date": "26 Sep",
+      "rev": "D",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": false,
+      "canAck": true,
+      "ackLabel": "Acknowledge receipt"
+     },
+     {
+      "id": "GA-HLT-026",
+      "title": "General arrangement",
+      "typeLabel": "General arrangement",
+      "date": "15 Sep",
+      "rev": "C",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "MAN-HLT-015",
+      "title": "Foundations as-built drawings",
+      "typeLabel": "Manual / as-built",
+      "date": "12 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "COC-HLT-012",
+      "title": "Certificate of conformity — 11 kV switchgear",
+      "typeLabel": "Certificate of conformity",
+      "date": "19 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "HSE-HLT-002",
+      "title": "Prevention plan — Le Havre port",
+      "typeLabel": "HSE plan",
+      "date": "15 Sep",
+      "rev": "B",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "PV-HLT-001",
+      "title": "Foundations acceptance minutes",
+      "typeLabel": "Acceptance minutes (PV)",
+      "date": "12 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "MIN-HLT-023",
+      "title": "Weekly meeting minutes #23",
+      "typeLabel": "Meeting minutes",
+      "date": "25 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     }
+    ],
+    "flags": {
+     "noDecisions": false,
+     "noDecided": false,
+     "noCpInv": false,
+     "noCpVault": false,
+     "cpIsProgress": true,
+     "cpIsDecisions": false,
+     "cpIsInvoices": false,
+     "cpIsIssues": false,
+     "cpIsDocs": false
+    }
+   },
+   "NDC-031": {
+    "header": {
+     "title": "My project — client view",
+     "crumb": "Keystone · read-only except decisions and issues",
+     "primaryAction": "Download status report",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Progress",
+      "value": "51%",
+      "sub": "Planned 38% by today",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Forecast handover",
+      "value": "5 Apr 2027",
+      "sub": "Contract date 1 Apr 2027",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Milestones",
+      "value": "0 of 3",
+      "sub": "Reached",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting your decision",
+      "value": 1,
+      "sub": "Change requests and deliverables",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Open issues",
+      "value": 2,
+      "sub": "Raised by you",
+      "color": "var(--color-text)"
+     }
+    ],
+    "seg": [
+     "Progress & milestones",
+     "Decisions",
+     "Invoices",
+     "Issues",
+     "Documents"
+    ],
+    "progress": [
+     {
+      "label": "Apr",
+      "planH": "2.5%",
+      "actH": "3.4%"
+     },
+     {
+      "label": "May",
+      "planH": "11.1%",
+      "actH": "14.9%"
+     },
+     {
+      "label": "Jun",
+      "planH": "17.4%",
+      "actH": "23.2%"
+     },
+     {
+      "label": "Jul",
+      "planH": "26.6%",
+      "actH": "35.5%"
+     },
+     {
+      "label": "Aug",
+      "planH": "31.1%",
+      "actH": "41.6%"
+     },
+     {
+      "label": "Sep",
+      "planH": "38.2%",
+      "actH": "51%"
+     }
+    ],
+    "milestones": [
+     {
+      "name": "Power upgrade — UPS & switchgear complete",
+      "baseDate": "1 Nov",
+      "fcDate": "4 Nov",
+      "status": "At risk",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "name": "Fire suppression & detection complete",
+      "baseDate": "1 Jan ’27",
+      "fcDate": "4 Jan ’27",
+      "status": "On track",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "name": "Commissioning & IST complete",
+      "baseDate": "1 Apr ’27",
+      "fcDate": "4 Apr ’27",
+      "status": "On track",
+      "tagClass": "tag tag-outline"
+     }
+    ],
+    "decisions": [
+     {
+      "kind": "Deliverable",
+      "id": "D-112",
+      "title": "Crane rail alignment report",
+      "sub": "Test & inspection reports · rev A · Accept by 2 Oct",
+      "when": "25 Sep",
+      "approveLabel": "Accept (PV)"
+     }
+    ],
+    "decided": [
+     {
+      "id": "D-110",
+      "title": "Structural design package — portal & girders",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "12 Mar · N. Bensaïd"
+     },
+     {
+      "id": "D-111",
+      "title": "Piling & foundation calculation note",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "20 Mar · Bureau de contrôle"
+     },
+     {
+      "id": "D-113",
+      "title": "Foundations as-built drawings",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "18 Sep · N. Bensaïd"
+     }
+    ],
+    "invoices": [
+     {
+      "no": "F-2026-101",
+      "name": "Jun",
+      "amt": "€180k",
+      "status": "Paid",
+      "tagClass": "tag tag-neutral",
+      "due": "Settled"
+     },
+     {
+      "no": "F-2026-102",
+      "name": "Jul",
+      "amt": "€210k",
+      "status": "Paid",
+      "tagClass": "tag tag-neutral",
+      "due": "Settled"
+     },
+     {
+      "no": "F-2026-103",
+      "name": "Aug",
+      "amt": "€240k",
+      "status": "Paid",
+      "tagClass": "tag tag-neutral",
+      "due": "Settled"
+     },
+     {
+      "no": "F-2026-104",
+      "name": "Sep",
+      "amt": "€260k",
+      "status": "Invoiced",
+      "tagClass": "tag tag-accent",
+      "due": "Due 15 Oct"
+     }
+    ],
+    "invKpis": [
+     {
+      "k": "Contract value",
+      "v": "€2.35M",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Invoiced",
+      "v": "€890k",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Paid",
+      "v": "€630k",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Approved changes",
+      "v": "—",
+      "color": "var(--color-text)"
+     }
+    ],
+    "issues": [
+     {
+      "id": "CI-04",
+      "title": "Night-time noise near quay 3 during pile driving",
+      "when": "Raised 12 Aug",
+      "status": "Closed",
+      "resp": "Noise barrier + shifted window 06:00–20:00",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "id": "CI-06",
+      "title": "Access to berth 5 blocked by material laydown",
+      "when": "Raised 14 Sep",
+      "status": "In progress",
+      "resp": "Laydown relocated by 30 Sep · traffic plan updated",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "id": "CI-07",
+      "title": "Request for weekly photo report",
+      "when": "Raised 22 Sep",
+      "status": "Open",
+      "resp": "To be added to monthly report cycle from October",
+      "tagClass": "tag tag-accent"
+     }
+    ],
+    "docs": [
+     {
+      "id": "PID-NDC-031",
+      "title": "P&ID — cooling loop",
+      "typeLabel": "P&ID",
+      "date": "4 Sep",
+      "rev": "B",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     }
+    ],
+    "flags": {
+     "noDecisions": false,
+     "noDecided": false,
+     "noCpInv": false,
+     "noCpVault": false,
+     "cpIsProgress": true,
+     "cpIsDecisions": false,
+     "cpIsInvoices": false,
+     "cpIsIssues": false,
+     "cpIsDocs": false
+    }
+   },
+   "roles": {
+    "director": {
+     "title": "My project — client view",
+     "crumb": "Keystone · read-only except decisions and issues",
+     "primaryAction": "Download status report",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "pm": {
+     "title": "My project — client view",
+     "crumb": "Keystone · read-only except decisions and issues",
+     "primaryAction": "Download status report",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "depthead": {
+     "title": "My project — client view",
+     "crumb": "Keystone · read-only except decisions and issues",
+     "primaryAction": "Download status report",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "member": {
+     "title": "My project — client view",
+     "crumb": "Keystone · read-only except decisions and issues",
+     "primaryAction": "Download status report",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "englead": {
+     "title": "My project — client view",
+     "crumb": "Keystone · read-only except decisions and issues",
+     "primaryAction": "Download status report",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "quality": {
+     "title": "My project — client view",
+     "crumb": "Keystone · read-only except decisions and issues",
+     "primaryAction": "Download status report",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "procurement": {
+     "title": "My project — client view",
+     "crumb": "Keystone · read-only except decisions and issues",
+     "primaryAction": "Download status report",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "client": {
+     "title": "My project — client view",
+     "crumb": "Keystone · read-only except decisions and issues",
+     "primaryAction": "Download status report",
+     "hasPrimary": true,
+     "outside": false
+    }
+   },
+   "afterDecide": {
+    "header": {
+     "title": "My project — client view",
+     "crumb": "Keystone · read-only except decisions and issues",
+     "primaryAction": "Download status report",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Progress",
+      "value": "64%",
+      "sub": "Planned 71% by today",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Forecast handover",
+      "value": "14 Jan 2027",
+      "sub": "Contract date 18 Dec 2026",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Milestones",
+      "value": "2 of 6",
+      "sub": "Reached",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting your decision",
+      "value": 0,
+      "sub": "Change requests and deliverables",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Open issues",
+      "value": 2,
+      "sub": "Raised by you",
+      "color": "var(--color-text)"
+     }
+    ],
+    "seg": [
+     "Progress & milestones",
+     "Decisions",
+     "Invoices",
+     "Issues",
+     "Documents"
+    ],
+    "progress": [
+     {
+      "label": "Jan",
+      "planH": "3.4%",
+      "actH": "3.5%"
+     },
+     {
+      "label": "Feb",
+      "planH": "7.3%",
+      "actH": "8.1%"
+     },
+     {
+      "label": "Mar",
+      "planH": "15.3%",
+      "actH": "14.6%"
+     },
+     {
+      "label": "Apr",
+      "planH": "23.6%",
+      "actH": "22.1%"
+     },
+     {
+      "label": "May",
+      "planH": "32.8%",
+      "actH": "30.2%"
+     },
+     {
+      "label": "Jun",
+      "planH": "47.7%",
+      "actH": "39.2%"
+     },
+     {
+      "label": "Jul",
+      "planH": "54.6%",
+      "actH": "47.9%"
+     },
+     {
+      "label": "Aug",
+      "planH": "62%",
+      "actH": "56.5%"
+     },
+     {
+      "label": "Sep",
+      "planH": "71.3%",
+      "actH": "64.2%"
+     }
+    ],
+    "milestones": [
+     {
+      "name": "Permits approved",
+      "baseDate": "15 Mar",
+      "fcDate": "1 Apr",
+      "status": "Done",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Foundations complete",
+      "baseDate": "1 Jul",
+      "fcDate": "6 Aug",
+      "status": "Done",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Structure topped out",
+      "baseDate": "15 Sep",
+      "fcDate": "24 Oct",
+      "status": "Late",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Cranes operational",
+      "baseDate": "1 Oct",
+      "fcDate": "3 Nov",
+      "status": "Late",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Systems energised",
+      "baseDate": "15 Nov",
+      "fcDate": "1 Dec",
+      "status": "At risk",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "name": "Handover",
+      "baseDate": "18 Dec",
+      "fcDate": "13 Jan ’27",
+      "status": "At risk",
+      "tagClass": "tag tag-outline"
+     }
+    ],
+    "decisions": [],
+    "decided": [
+     {
+      "id": "CR-004",
+      "title": "Additional piling — soft ground at Bay 4",
+      "state": "Approved",
+      "tagClass": "tag tag-neutral",
+      "when": "14 May"
+     },
+     {
+      "id": "CR-006",
+      "title": "Crane specification upgrade to 250 t",
+      "state": "Approved",
+      "tagClass": "tag tag-neutral",
+      "when": "02 Jul"
+     },
+     {
+      "id": "CR-008",
+      "title": "Second steel crew — schedule recovery",
+      "state": "Approved",
+      "tagClass": "tag tag-neutral",
+      "when": "24 Sep"
+     },
+     {
+      "id": "D-011",
+      "title": "Structural design package — portal & girders",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "12 Mar · N. Bensaïd"
+     },
+     {
+      "id": "D-012",
+      "title": "Piling & foundation calculation note",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "20 Mar · Bureau de contrôle"
+     },
+     {
+      "id": "D-014",
+      "title": "Crane rail alignment report",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "25 Sep · N. Bensaïd"
+     },
+     {
+      "id": "D-015",
+      "title": "Foundations as-built drawings",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "18 Sep · N. Bensaïd"
+     },
+     {
+      "id": "D-016",
+      "title": "Steel structure calculation note rev B",
+      "state": "Rejected",
+      "tagClass": "tag tag-outline",
+      "when": "25 Sep · comments issued"
+     }
+    ],
+    "invoices": [
+     {
+      "no": "F-2026-101",
+      "name": "M1 Permits",
+      "amt": "€540k",
+      "status": "Paid",
+      "tagClass": "tag tag-neutral",
+      "due": "Settled"
+     },
+     {
+      "no": "F-2026-102",
+      "name": "M2 Foundations",
+      "amt": "€1.08M",
+      "status": "Paid",
+      "tagClass": "tag tag-neutral",
+      "due": "Settled"
+     },
+     {
+      "no": "F-2026-103",
+      "name": "M3 Structure",
+      "amt": "€1.35M",
+      "status": "Invoiced",
+      "tagClass": "tag tag-accent",
+      "due": "Due 15 Oct"
+     },
+     {
+      "no": "F-2026-104",
+      "name": "M4 Cranes operational",
+      "amt": "€1.08M",
+      "status": "Planned",
+      "tagClass": "tag tag-outline",
+      "due": "On milestone"
+     },
+     {
+      "no": "F-2026-105",
+      "name": "M5 Handover",
+      "amt": "€1.35M",
+      "status": "Planned",
+      "tagClass": "tag tag-outline",
+      "due": "On milestone"
+     }
+    ],
+    "invKpis": [
+     {
+      "k": "Contract value",
+      "v": "€5.40M",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Invoiced",
+      "v": "€2.97M",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Paid",
+      "v": "€1.62M",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Approved changes",
+      "v": "+€200k",
+      "color": "var(--color-text)"
+     }
+    ],
+    "issues": [
+     {
+      "id": "CI-04",
+      "title": "Night-time noise near quay 3 during pile driving",
+      "when": "Raised 12 Aug",
+      "status": "Closed",
+      "resp": "Noise barrier + shifted window 06:00–20:00",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "id": "CI-06",
+      "title": "Access to berth 5 blocked by material laydown",
+      "when": "Raised 14 Sep",
+      "status": "In progress",
+      "resp": "Laydown relocated by 30 Sep · traffic plan updated",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "id": "CI-07",
+      "title": "Request for weekly photo report",
+      "when": "Raised 22 Sep",
+      "status": "Open",
+      "resp": "To be added to monthly report cycle from October",
+      "tagClass": "tag tag-accent"
+     }
+    ],
+    "docs": [
+     {
+      "id": "PID-HLT-026",
+      "title": "P&ID",
+      "typeLabel": "P&ID",
+      "date": "26 Sep",
+      "rev": "D",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": false,
+      "canAck": true,
+      "ackLabel": "Acknowledge receipt"
+     },
+     {
+      "id": "GA-HLT-026",
+      "title": "General arrangement",
+      "typeLabel": "General arrangement",
+      "date": "15 Sep",
+      "rev": "C",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "MAN-HLT-015",
+      "title": "Foundations as-built drawings",
+      "typeLabel": "Manual / as-built",
+      "date": "12 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "COC-HLT-012",
+      "title": "Certificate of conformity — 11 kV switchgear",
+      "typeLabel": "Certificate of conformity",
+      "date": "19 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "HSE-HLT-002",
+      "title": "Prevention plan — Le Havre port",
+      "typeLabel": "HSE plan",
+      "date": "15 Sep",
+      "rev": "B",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "PV-HLT-001",
+      "title": "Foundations acceptance minutes",
+      "typeLabel": "Acceptance minutes (PV)",
+      "date": "12 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "MIN-HLT-023",
+      "title": "Weekly meeting minutes #23",
+      "typeLabel": "Meeting minutes",
+      "date": "25 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     }
+    ],
+    "flags": {
+     "noDecisions": true,
+     "noDecided": false,
+     "noCpInv": false,
+     "noCpVault": false,
+     "cpIsProgress": true,
+     "cpIsDecisions": false,
+     "cpIsInvoices": false,
+     "cpIsIssues": false,
+     "cpIsDocs": false
+    }
+   },
+   "afterRejectCr": {
+    "header": {
+     "title": "My project — client view",
+     "crumb": "Keystone · read-only except decisions and issues",
+     "primaryAction": "Download status report",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Progress",
+      "value": "64%",
+      "sub": "Planned 71% by today",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Forecast handover",
+      "value": "14 Jan 2027",
+      "sub": "Contract date 18 Dec 2026",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Milestones",
+      "value": "2 of 6",
+      "sub": "Reached",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting your decision",
+      "value": 2,
+      "sub": "Change requests and deliverables",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Open issues",
+      "value": 2,
+      "sub": "Raised by you",
+      "color": "var(--color-text)"
+     }
+    ],
+    "seg": [
+     "Progress & milestones",
+     "Decisions",
+     "Invoices",
+     "Issues",
+     "Documents"
+    ],
+    "progress": [
+     {
+      "label": "Jan",
+      "planH": "3.4%",
+      "actH": "3.5%"
+     },
+     {
+      "label": "Feb",
+      "planH": "7.3%",
+      "actH": "8.1%"
+     },
+     {
+      "label": "Mar",
+      "planH": "15.3%",
+      "actH": "14.6%"
+     },
+     {
+      "label": "Apr",
+      "planH": "23.6%",
+      "actH": "22.1%"
+     },
+     {
+      "label": "May",
+      "planH": "32.8%",
+      "actH": "30.2%"
+     },
+     {
+      "label": "Jun",
+      "planH": "47.7%",
+      "actH": "39.2%"
+     },
+     {
+      "label": "Jul",
+      "planH": "54.6%",
+      "actH": "47.9%"
+     },
+     {
+      "label": "Aug",
+      "planH": "62%",
+      "actH": "56.5%"
+     },
+     {
+      "label": "Sep",
+      "planH": "71.3%",
+      "actH": "64.2%"
+     }
+    ],
+    "milestones": [
+     {
+      "name": "Permits approved",
+      "baseDate": "15 Mar",
+      "fcDate": "1 Apr",
+      "status": "Done",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Foundations complete",
+      "baseDate": "1 Jul",
+      "fcDate": "6 Aug",
+      "status": "Done",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Structure topped out",
+      "baseDate": "15 Sep",
+      "fcDate": "24 Oct",
+      "status": "Late",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Cranes operational",
+      "baseDate": "1 Oct",
+      "fcDate": "3 Nov",
+      "status": "Late",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Systems energised",
+      "baseDate": "15 Nov",
+      "fcDate": "1 Dec",
+      "status": "At risk",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "name": "Handover",
+      "baseDate": "18 Dec",
+      "fcDate": "13 Jan ’27",
+      "status": "At risk",
+      "tagClass": "tag tag-outline"
+     }
+    ],
+    "decisions": [
+     {
+      "kind": "Deliverable",
+      "id": "D-014",
+      "title": "Crane rail alignment report",
+      "sub": "Test & inspection reports · rev A · Accept by 2 Oct",
+      "when": "25 Sep",
+      "approveLabel": "Accept (PV)"
+     },
+     {
+      "kind": "Deliverable",
+      "id": "D-016",
+      "title": "Steel structure calculation note rev B",
+      "sub": "Calculation notes · rev B · Accept by 9 Oct",
+      "when": "30 Sep",
+      "approveLabel": "Accept (PV)"
+     }
+    ],
+    "decided": [
+     {
+      "id": "CR-004",
+      "title": "Additional piling — soft ground at Bay 4",
+      "state": "Approved",
+      "tagClass": "tag tag-neutral",
+      "when": "14 May"
+     },
+     {
+      "id": "CR-006",
+      "title": "Crane specification upgrade to 250 t",
+      "state": "Approved",
+      "tagClass": "tag tag-neutral",
+      "when": "02 Jul"
+     },
+     {
+      "id": "CR-008",
+      "title": "Second steel crew — schedule recovery",
+      "state": "Rejected",
+      "tagClass": "tag tag-outline",
+      "when": "24 Sep"
+     },
+     {
+      "id": "D-011",
+      "title": "Structural design package — portal & girders",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "12 Mar · N. Bensaïd"
+     },
+     {
+      "id": "D-012",
+      "title": "Piling & foundation calculation note",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "20 Mar · Bureau de contrôle"
+     },
+     {
+      "id": "D-015",
+      "title": "Foundations as-built drawings",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "18 Sep · N. Bensaïd"
+     }
+    ],
+    "invoices": [
+     {
+      "no": "F-2026-101",
+      "name": "M1 Permits",
+      "amt": "€540k",
+      "status": "Paid",
+      "tagClass": "tag tag-neutral",
+      "due": "Settled"
+     },
+     {
+      "no": "F-2026-102",
+      "name": "M2 Foundations",
+      "amt": "€1.08M",
+      "status": "Paid",
+      "tagClass": "tag tag-neutral",
+      "due": "Settled"
+     },
+     {
+      "no": "F-2026-103",
+      "name": "M3 Structure",
+      "amt": "€1.35M",
+      "status": "Invoiced",
+      "tagClass": "tag tag-accent",
+      "due": "Due 15 Oct"
+     },
+     {
+      "no": "F-2026-104",
+      "name": "M4 Cranes operational",
+      "amt": "€1.08M",
+      "status": "Planned",
+      "tagClass": "tag tag-outline",
+      "due": "On milestone"
+     },
+     {
+      "no": "F-2026-105",
+      "name": "M5 Handover",
+      "amt": "€1.35M",
+      "status": "Planned",
+      "tagClass": "tag tag-outline",
+      "due": "On milestone"
+     }
+    ],
+    "invKpis": [
+     {
+      "k": "Contract value",
+      "v": "€5.40M",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Invoiced",
+      "v": "€2.97M",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Paid",
+      "v": "€1.62M",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Approved changes",
+      "v": "+€200k",
+      "color": "var(--color-text)"
+     }
+    ],
+    "issues": [
+     {
+      "id": "CI-04",
+      "title": "Night-time noise near quay 3 during pile driving",
+      "when": "Raised 12 Aug",
+      "status": "Closed",
+      "resp": "Noise barrier + shifted window 06:00–20:00",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "id": "CI-06",
+      "title": "Access to berth 5 blocked by material laydown",
+      "when": "Raised 14 Sep",
+      "status": "In progress",
+      "resp": "Laydown relocated by 30 Sep · traffic plan updated",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "id": "CI-07",
+      "title": "Request for weekly photo report",
+      "when": "Raised 22 Sep",
+      "status": "Open",
+      "resp": "To be added to monthly report cycle from October",
+      "tagClass": "tag tag-accent"
+     }
+    ],
+    "docs": [
+     {
+      "id": "PID-HLT-026",
+      "title": "P&ID",
+      "typeLabel": "P&ID",
+      "date": "26 Sep",
+      "rev": "D",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": false,
+      "canAck": true,
+      "ackLabel": "Acknowledge receipt"
+     },
+     {
+      "id": "GA-HLT-026",
+      "title": "General arrangement",
+      "typeLabel": "General arrangement",
+      "date": "15 Sep",
+      "rev": "C",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "MAN-HLT-015",
+      "title": "Foundations as-built drawings",
+      "typeLabel": "Manual / as-built",
+      "date": "12 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "COC-HLT-012",
+      "title": "Certificate of conformity — 11 kV switchgear",
+      "typeLabel": "Certificate of conformity",
+      "date": "19 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "HSE-HLT-002",
+      "title": "Prevention plan — Le Havre port",
+      "typeLabel": "HSE plan",
+      "date": "15 Sep",
+      "rev": "B",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "PV-HLT-001",
+      "title": "Foundations acceptance minutes",
+      "typeLabel": "Acceptance minutes (PV)",
+      "date": "12 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "MIN-HLT-023",
+      "title": "Weekly meeting minutes #23",
+      "typeLabel": "Meeting minutes",
+      "date": "25 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     }
+    ],
+    "flags": {
+     "noDecisions": false,
+     "noDecided": false,
+     "noCpInv": false,
+     "noCpVault": false,
+     "cpIsProgress": true,
+     "cpIsDecisions": false,
+     "cpIsInvoices": false,
+     "cpIsIssues": false,
+     "cpIsDocs": false
+    }
+   },
+   "afterIssues": {
+    "header": {
+     "title": "My project — client view",
+     "crumb": "Keystone · read-only except decisions and issues",
+     "primaryAction": "Download status report",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Progress",
+      "value": "64%",
+      "sub": "Planned 71% by today",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Forecast handover",
+      "value": "14 Jan 2027",
+      "sub": "Contract date 18 Dec 2026",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Milestones",
+      "value": "2 of 6",
+      "sub": "Reached",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting your decision",
+      "value": 3,
+      "sub": "Change requests and deliverables",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Open issues",
+      "value": 5,
+      "sub": "Raised by you",
+      "color": "var(--color-text)"
+     }
+    ],
+    "seg": [
+     "Progress & milestones",
+     "Decisions",
+     "Invoices",
+     "Issues",
+     "Documents"
+    ],
+    "progress": [
+     {
+      "label": "Jan",
+      "planH": "3.4%",
+      "actH": "3.5%"
+     },
+     {
+      "label": "Feb",
+      "planH": "7.3%",
+      "actH": "8.1%"
+     },
+     {
+      "label": "Mar",
+      "planH": "15.3%",
+      "actH": "14.6%"
+     },
+     {
+      "label": "Apr",
+      "planH": "23.6%",
+      "actH": "22.1%"
+     },
+     {
+      "label": "May",
+      "planH": "32.8%",
+      "actH": "30.2%"
+     },
+     {
+      "label": "Jun",
+      "planH": "47.7%",
+      "actH": "39.2%"
+     },
+     {
+      "label": "Jul",
+      "planH": "54.6%",
+      "actH": "47.9%"
+     },
+     {
+      "label": "Aug",
+      "planH": "62%",
+      "actH": "56.5%"
+     },
+     {
+      "label": "Sep",
+      "planH": "71.3%",
+      "actH": "64.2%"
+     }
+    ],
+    "milestones": [
+     {
+      "name": "Permits approved",
+      "baseDate": "15 Mar",
+      "fcDate": "1 Apr",
+      "status": "Done",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Foundations complete",
+      "baseDate": "1 Jul",
+      "fcDate": "6 Aug",
+      "status": "Done",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Structure topped out",
+      "baseDate": "15 Sep",
+      "fcDate": "24 Oct",
+      "status": "Late",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Cranes operational",
+      "baseDate": "1 Oct",
+      "fcDate": "3 Nov",
+      "status": "Late",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Systems energised",
+      "baseDate": "15 Nov",
+      "fcDate": "1 Dec",
+      "status": "At risk",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "name": "Handover",
+      "baseDate": "18 Dec",
+      "fcDate": "13 Jan ’27",
+      "status": "At risk",
+      "tagClass": "tag tag-outline"
+     }
+    ],
+    "decisions": [
+     {
+      "kind": "Change request",
+      "id": "CR-008",
+      "title": "Second steel crew — schedule recovery",
+      "sub": "Budget · Schedule · +€85k on contract · -12 d on handover",
+      "when": "24 Sep",
+      "approveLabel": "Approve"
+     },
+     {
+      "kind": "Deliverable",
+      "id": "D-014",
+      "title": "Crane rail alignment report",
+      "sub": "Test & inspection reports · rev A · Accept by 2 Oct",
+      "when": "25 Sep",
+      "approveLabel": "Accept (PV)"
+     },
+     {
+      "kind": "Deliverable",
+      "id": "D-016",
+      "title": "Steel structure calculation note rev B",
+      "sub": "Calculation notes · rev B · Accept by 9 Oct",
+      "when": "30 Sep",
+      "approveLabel": "Accept (PV)"
+     }
+    ],
+    "decided": [
+     {
+      "id": "CR-004",
+      "title": "Additional piling — soft ground at Bay 4",
+      "state": "Approved",
+      "tagClass": "tag tag-neutral",
+      "when": "14 May"
+     },
+     {
+      "id": "CR-006",
+      "title": "Crane specification upgrade to 250 t",
+      "state": "Approved",
+      "tagClass": "tag tag-neutral",
+      "when": "02 Jul"
+     },
+     {
+      "id": "D-011",
+      "title": "Structural design package — portal & girders",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "12 Mar · N. Bensaïd"
+     },
+     {
+      "id": "D-012",
+      "title": "Piling & foundation calculation note",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "20 Mar · Bureau de contrôle"
+     },
+     {
+      "id": "D-015",
+      "title": "Foundations as-built drawings",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "18 Sep · N. Bensaïd"
+     }
+    ],
+    "invoices": [
+     {
+      "no": "F-2026-101",
+      "name": "M1 Permits",
+      "amt": "€540k",
+      "status": "Paid",
+      "tagClass": "tag tag-neutral",
+      "due": "Settled"
+     },
+     {
+      "no": "F-2026-102",
+      "name": "M2 Foundations",
+      "amt": "€1.08M",
+      "status": "Paid",
+      "tagClass": "tag tag-neutral",
+      "due": "Settled"
+     },
+     {
+      "no": "F-2026-103",
+      "name": "M3 Structure",
+      "amt": "€1.35M",
+      "status": "Invoiced",
+      "tagClass": "tag tag-accent",
+      "due": "Due 15 Oct"
+     },
+     {
+      "no": "F-2026-104",
+      "name": "M4 Cranes operational",
+      "amt": "€1.08M",
+      "status": "Planned",
+      "tagClass": "tag tag-outline",
+      "due": "On milestone"
+     },
+     {
+      "no": "F-2026-105",
+      "name": "M5 Handover",
+      "amt": "€1.35M",
+      "status": "Planned",
+      "tagClass": "tag tag-outline",
+      "due": "On milestone"
+     }
+    ],
+    "invKpis": [
+     {
+      "k": "Contract value",
+      "v": "€5.40M",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Invoiced",
+      "v": "€2.97M",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Paid",
+      "v": "€1.62M",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Approved changes",
+      "v": "+€200k",
+      "color": "var(--color-text)"
+     }
+    ],
+    "issues": [
+     {
+      "id": "CI-010",
+      "title": "Training dates",
+      "when": "Raised today",
+      "status": "Open",
+      "resp": "Acknowledged — response within 2 working days",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "id": "CI-09",
+      "title": "Spare parts list format",
+      "when": "Raised today",
+      "status": "Open",
+      "resp": "Acknowledged — response within 2 working days",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "id": "CI-08",
+      "title": "Crane test witness slot",
+      "when": "Raised today",
+      "status": "Open",
+      "resp": "Acknowledged — response within 2 working days",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "id": "CI-04",
+      "title": "Night-time noise near quay 3 during pile driving",
+      "when": "Raised 12 Aug",
+      "status": "Closed",
+      "resp": "Noise barrier + shifted window 06:00–20:00",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "id": "CI-06",
+      "title": "Access to berth 5 blocked by material laydown",
+      "when": "Raised 14 Sep",
+      "status": "In progress",
+      "resp": "Laydown relocated by 30 Sep · traffic plan updated",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "id": "CI-07",
+      "title": "Request for weekly photo report",
+      "when": "Raised 22 Sep",
+      "status": "Open",
+      "resp": "To be added to monthly report cycle from October",
+      "tagClass": "tag tag-accent"
+     }
+    ],
+    "docs": [
+     {
+      "id": "PID-HLT-026",
+      "title": "P&ID",
+      "typeLabel": "P&ID",
+      "date": "26 Sep",
+      "rev": "D",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": false,
+      "canAck": true,
+      "ackLabel": "Acknowledge receipt"
+     },
+     {
+      "id": "GA-HLT-026",
+      "title": "General arrangement",
+      "typeLabel": "General arrangement",
+      "date": "15 Sep",
+      "rev": "C",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "MAN-HLT-015",
+      "title": "Foundations as-built drawings",
+      "typeLabel": "Manual / as-built",
+      "date": "12 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "COC-HLT-012",
+      "title": "Certificate of conformity — 11 kV switchgear",
+      "typeLabel": "Certificate of conformity",
+      "date": "19 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "HSE-HLT-002",
+      "title": "Prevention plan — Le Havre port",
+      "typeLabel": "HSE plan",
+      "date": "15 Sep",
+      "rev": "B",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "PV-HLT-001",
+      "title": "Foundations acceptance minutes",
+      "typeLabel": "Acceptance minutes (PV)",
+      "date": "12 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "MIN-HLT-023",
+      "title": "Weekly meeting minutes #23",
+      "typeLabel": "Meeting minutes",
+      "date": "25 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     }
+    ],
+    "flags": {
+     "noDecisions": false,
+     "noDecided": false,
+     "noCpInv": false,
+     "noCpVault": false,
+     "cpIsProgress": true,
+     "cpIsDecisions": false,
+     "cpIsInvoices": false,
+     "cpIsIssues": false,
+     "cpIsDocs": false
+    }
+   },
+   "afterAck": {
+    "header": {
+     "title": "My project — client view",
+     "crumb": "Keystone · read-only except decisions and issues",
+     "primaryAction": "Download status report",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Progress",
+      "value": "64%",
+      "sub": "Planned 71% by today",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Forecast handover",
+      "value": "14 Jan 2027",
+      "sub": "Contract date 18 Dec 2026",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Milestones",
+      "value": "2 of 6",
+      "sub": "Reached",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Awaiting your decision",
+      "value": 3,
+      "sub": "Change requests and deliverables",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Open issues",
+      "value": 2,
+      "sub": "Raised by you",
+      "color": "var(--color-text)"
+     }
+    ],
+    "seg": [
+     "Progress & milestones",
+     "Decisions",
+     "Invoices",
+     "Issues",
+     "Documents"
+    ],
+    "progress": [
+     {
+      "label": "Jan",
+      "planH": "3.4%",
+      "actH": "3.5%"
+     },
+     {
+      "label": "Feb",
+      "planH": "7.3%",
+      "actH": "8.1%"
+     },
+     {
+      "label": "Mar",
+      "planH": "15.3%",
+      "actH": "14.6%"
+     },
+     {
+      "label": "Apr",
+      "planH": "23.6%",
+      "actH": "22.1%"
+     },
+     {
+      "label": "May",
+      "planH": "32.8%",
+      "actH": "30.2%"
+     },
+     {
+      "label": "Jun",
+      "planH": "47.7%",
+      "actH": "39.2%"
+     },
+     {
+      "label": "Jul",
+      "planH": "54.6%",
+      "actH": "47.9%"
+     },
+     {
+      "label": "Aug",
+      "planH": "62%",
+      "actH": "56.5%"
+     },
+     {
+      "label": "Sep",
+      "planH": "71.3%",
+      "actH": "64.2%"
+     }
+    ],
+    "milestones": [
+     {
+      "name": "Permits approved",
+      "baseDate": "15 Mar",
+      "fcDate": "1 Apr",
+      "status": "Done",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Foundations complete",
+      "baseDate": "1 Jul",
+      "fcDate": "6 Aug",
+      "status": "Done",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Structure topped out",
+      "baseDate": "15 Sep",
+      "fcDate": "24 Oct",
+      "status": "Late",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Cranes operational",
+      "baseDate": "1 Oct",
+      "fcDate": "3 Nov",
+      "status": "Late",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Systems energised",
+      "baseDate": "15 Nov",
+      "fcDate": "1 Dec",
+      "status": "At risk",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "name": "Handover",
+      "baseDate": "18 Dec",
+      "fcDate": "13 Jan ’27",
+      "status": "At risk",
+      "tagClass": "tag tag-outline"
+     }
+    ],
+    "decisions": [
+     {
+      "kind": "Change request",
+      "id": "CR-008",
+      "title": "Second steel crew — schedule recovery",
+      "sub": "Budget · Schedule · +€85k on contract · -12 d on handover",
+      "when": "24 Sep",
+      "approveLabel": "Approve"
+     },
+     {
+      "kind": "Deliverable",
+      "id": "D-014",
+      "title": "Crane rail alignment report",
+      "sub": "Test & inspection reports · rev A · Accept by 2 Oct",
+      "when": "25 Sep",
+      "approveLabel": "Accept (PV)"
+     },
+     {
+      "kind": "Deliverable",
+      "id": "D-016",
+      "title": "Steel structure calculation note rev B",
+      "sub": "Calculation notes · rev B · Accept by 9 Oct",
+      "when": "30 Sep",
+      "approveLabel": "Accept (PV)"
+     }
+    ],
+    "decided": [
+     {
+      "id": "CR-004",
+      "title": "Additional piling — soft ground at Bay 4",
+      "state": "Approved",
+      "tagClass": "tag tag-neutral",
+      "when": "14 May"
+     },
+     {
+      "id": "CR-006",
+      "title": "Crane specification upgrade to 250 t",
+      "state": "Approved",
+      "tagClass": "tag tag-neutral",
+      "when": "02 Jul"
+     },
+     {
+      "id": "D-011",
+      "title": "Structural design package — portal & girders",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "12 Mar · N. Bensaïd"
+     },
+     {
+      "id": "D-012",
+      "title": "Piling & foundation calculation note",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "20 Mar · Bureau de contrôle"
+     },
+     {
+      "id": "D-015",
+      "title": "Foundations as-built drawings",
+      "state": "Accepted",
+      "tagClass": "tag tag-neutral",
+      "when": "18 Sep · N. Bensaïd"
+     }
+    ],
+    "invoices": [
+     {
+      "no": "F-2026-101",
+      "name": "M1 Permits",
+      "amt": "€540k",
+      "status": "Paid",
+      "tagClass": "tag tag-neutral",
+      "due": "Settled"
+     },
+     {
+      "no": "F-2026-102",
+      "name": "M2 Foundations",
+      "amt": "€1.08M",
+      "status": "Paid",
+      "tagClass": "tag tag-neutral",
+      "due": "Settled"
+     },
+     {
+      "no": "F-2026-103",
+      "name": "M3 Structure",
+      "amt": "€1.35M",
+      "status": "Invoiced",
+      "tagClass": "tag tag-accent",
+      "due": "Due 15 Oct"
+     },
+     {
+      "no": "F-2026-104",
+      "name": "M4 Cranes operational",
+      "amt": "€1.08M",
+      "status": "Planned",
+      "tagClass": "tag tag-outline",
+      "due": "On milestone"
+     },
+     {
+      "no": "F-2026-105",
+      "name": "M5 Handover",
+      "amt": "€1.35M",
+      "status": "Planned",
+      "tagClass": "tag tag-outline",
+      "due": "On milestone"
+     }
+    ],
+    "invKpis": [
+     {
+      "k": "Contract value",
+      "v": "€5.40M",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Invoiced",
+      "v": "€2.97M",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Paid",
+      "v": "€1.62M",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Approved changes",
+      "v": "+€200k",
+      "color": "var(--color-text)"
+     }
+    ],
+    "issues": [
+     {
+      "id": "CI-04",
+      "title": "Night-time noise near quay 3 during pile driving",
+      "when": "Raised 12 Aug",
+      "status": "Closed",
+      "resp": "Noise barrier + shifted window 06:00–20:00",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "id": "CI-06",
+      "title": "Access to berth 5 blocked by material laydown",
+      "when": "Raised 14 Sep",
+      "status": "In progress",
+      "resp": "Laydown relocated by 30 Sep · traffic plan updated",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "id": "CI-07",
+      "title": "Request for weekly photo report",
+      "when": "Raised 22 Sep",
+      "status": "Open",
+      "resp": "To be added to monthly report cycle from October",
+      "tagClass": "tag tag-accent"
+     }
+    ],
+    "docs": [
+     {
+      "id": "PID-HLT-026",
+      "title": "P&ID",
+      "typeLabel": "P&ID",
+      "date": "26 Sep",
+      "rev": "D",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "GA-HLT-026",
+      "title": "General arrangement",
+      "typeLabel": "General arrangement",
+      "date": "15 Sep",
+      "rev": "C",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "MAN-HLT-015",
+      "title": "Foundations as-built drawings",
+      "typeLabel": "Manual / as-built",
+      "date": "12 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "COC-HLT-012",
+      "title": "Certificate of conformity — 11 kV switchgear",
+      "typeLabel": "Certificate of conformity",
+      "date": "19 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "HSE-HLT-002",
+      "title": "Prevention plan — Le Havre port",
+      "typeLabel": "HSE plan",
+      "date": "15 Sep",
+      "rev": "B",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "PV-HLT-001",
+      "title": "Foundations acceptance minutes",
+      "typeLabel": "Acceptance minutes (PV)",
+      "date": "12 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     },
+     {
+      "id": "MIN-HLT-023",
+      "title": "Weekly meeting minutes #23",
+      "typeLabel": "Meeting minutes",
+      "date": "25 Sep",
+      "rev": "A",
+      "status": "Released",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Acknowledged"
+     }
+    ],
+    "flags": {
+     "noDecisions": false,
+     "noDecided": false,
+     "noCpInv": false,
+     "noCpVault": false,
+     "cpIsProgress": true,
+     "cpIsDecisions": false,
+     "cpIsInvoices": false,
+     "cpIsIssues": false,
+     "cpIsDocs": false
+    }
+   }
+  },
+  "fr": {
+   "HLT-026": {
+    "header": {
+     "title": "Mon projet — vue client",
+     "crumb": "Keystone · consultation sauf décisions et problèmes",
+     "primaryAction": "Télécharger le rapport d’état",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Avancement",
+      "value": "64%",
+      "sub": "Prévu 71 % à ce jour",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraison prévue",
+      "value": "14 janv. 2027",
+      "sub": "Date contractuelle 18 déc. 2026",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Jalons",
+      "value": "2 sur 6",
+      "sub": "Atteints",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de votre décision",
+      "value": 3,
+      "sub": "Demandes de modification et livrables",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Incidents ouverts",
+      "value": 2,
+      "sub": "Signalés par vous",
+      "color": "var(--color-text)"
+     }
+    ],
+    "seg": [
+     "Avancement et jalons",
+     "Décisions",
+     "Factures",
+     "Incidents",
+     "Documents"
+    ],
+    "progress": [
+     {
+      "label": "janv.",
+      "planH": "3.4%",
+      "actH": "3.5%"
+     },
+     {
+      "label": "févr.",
+      "planH": "7.3%",
+      "actH": "8.1%"
+     },
+     {
+      "label": "mars",
+      "planH": "15.3%",
+      "actH": "14.6%"
+     },
+     {
+      "label": "avr.",
+      "planH": "23.6%",
+      "actH": "22.1%"
+     },
+     {
+      "label": "mai",
+      "planH": "32.8%",
+      "actH": "30.2%"
+     },
+     {
+      "label": "juin",
+      "planH": "47.7%",
+      "actH": "39.2%"
+     },
+     {
+      "label": "juil.",
+      "planH": "54.6%",
+      "actH": "47.9%"
+     },
+     {
+      "label": "août",
+      "planH": "62%",
+      "actH": "56.5%"
+     },
+     {
+      "label": "sept.",
+      "planH": "71.3%",
+      "actH": "64.2%"
+     }
+    ],
+    "milestones": [
+     {
+      "name": "Permis approuvés",
+      "baseDate": "15 mars",
+      "fcDate": "1 avr.",
+      "status": "Terminé",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Fondations terminées",
+      "baseDate": "1 juil.",
+      "fcDate": "6 août",
+      "status": "Terminé",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Structure hors d’eau",
+      "baseDate": "15 sept.",
+      "fcDate": "24 oct.",
+      "status": "En retard",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Grues opérationnelles",
+      "baseDate": "1 oct.",
+      "fcDate": "3 nov.",
+      "status": "En retard",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Systèmes sous tension",
+      "baseDate": "15 nov.",
+      "fcDate": "1 déc.",
+      "status": "À risque",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "name": "Livraison",
+      "baseDate": "18 déc.",
+      "fcDate": "13 janv. ’27",
+      "status": "À risque",
+      "tagClass": "tag tag-outline"
+     }
+    ],
+    "decisions": [
+     {
+      "kind": "Demande de modification",
+      "id": "CR-008",
+      "title": "Seconde équipe charpente — rattrapage du planning",
+      "sub": "Budget · Planning · +85 k€ sur le contrat · -12 j sur la livraison",
+      "when": "24 sept.",
+      "approveLabel": "Approuver"
+     },
+     {
+      "kind": "Livrable",
+      "id": "D-014",
+      "title": "Rapport d’alignement des rails de grue",
+      "sub": "Test & inspection reports · rév. A · Accepter avant le 2 oct.",
+      "when": "25 sept.",
+      "approveLabel": "Accepter (PV)"
+     },
+     {
+      "kind": "Livrable",
+      "id": "D-016",
+      "title": "Note de calcul charpente rév. B",
+      "sub": "Calculation notes · rév. B · Accepter avant le 9 oct.",
+      "when": "30 sept.",
+      "approveLabel": "Accepter (PV)"
+     }
+    ],
+    "decided": [
+     {
+      "id": "CR-004",
+      "title": "Pieux supplémentaires — sol meuble poste 4",
+      "state": "Approuvé",
+      "tagClass": "tag tag-neutral",
+      "when": "14 mai"
+     },
+     {
+      "id": "CR-006",
+      "title": "Montée en gamme des grues à 250 t",
+      "state": "Approuvé",
+      "tagClass": "tag tag-neutral",
+      "when": "02 juil."
+     },
+     {
+      "id": "D-011",
+      "title": "Dossier de conception structure — portique et poutres",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "12 mars · N. Bensaïd"
+     },
+     {
+      "id": "D-012",
+      "title": "Note de calcul pieux et fondations",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "20 mars · Bureau de contrôle"
+     },
+     {
+      "id": "D-015",
+      "title": "Plans de récolement des fondations",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "18 sept. · N. Bensaïd"
+     }
+    ],
+    "invoices": [
+     {
+      "no": "F-2026-101",
+      "name": "M1 Permits",
+      "amt": "540 k€",
+      "status": "Payé",
+      "tagClass": "tag tag-neutral",
+      "due": "Réglée"
+     },
+     {
+      "no": "F-2026-102",
+      "name": "M2 Foundations",
+      "amt": "1,08 M€",
+      "status": "Payé",
+      "tagClass": "tag tag-neutral",
+      "due": "Réglée"
+     },
+     {
+      "no": "F-2026-103",
+      "name": "M3 Structure",
+      "amt": "1,35 M€",
+      "status": "Facturé",
+      "tagClass": "tag tag-accent",
+      "due": "Échéance 15 oct."
+     },
+     {
+      "no": "F-2026-104",
+      "name": "M4 Cranes operational",
+      "amt": "1,08 M€",
+      "status": "Planifié",
+      "tagClass": "tag tag-outline",
+      "due": "Au jalon"
+     },
+     {
+      "no": "F-2026-105",
+      "name": "M5 Handover",
+      "amt": "1,35 M€",
+      "status": "Planifié",
+      "tagClass": "tag tag-outline",
+      "due": "Au jalon"
+     }
+    ],
+    "invKpis": [
+     {
+      "k": "Montant du contrat",
+      "v": "5,40 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Facturé",
+      "v": "2,97 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Payé",
+      "v": "1,62 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Modifications approuvées",
+      "v": "+200 k€",
+      "color": "var(--color-text)"
+     }
+    ],
+    "issues": [
+     {
+      "id": "CI-04",
+      "title": "Bruit nocturne près du quai 3 pendant le battage des pieux",
+      "when": "Signalé le 12 août",
+      "status": "Clôturée",
+      "resp": "Écran acoustique + plage horaire 06:00–20:00",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "id": "CI-06",
+      "title": "Accès au poste 5 bloqué par la zone de stockage",
+      "when": "Signalé le 14 sept.",
+      "status": "En cours",
+      "resp": "Zone de stockage déplacée d’ici le 30 sept. · plan de circulation mis à jour",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "id": "CI-07",
+      "title": "Demande de rapport photo hebdomadaire",
+      "when": "Signalé le 22 sept.",
+      "status": "Ouverte",
+      "resp": "À ajouter au cycle de rapport mensuel dès octobre",
+      "tagClass": "tag tag-accent"
+     }
+    ],
+    "docs": [
+     {
+      "id": "PID-HLT-026",
+      "title": "P&ID",
+      "typeLabel": "P&ID",
+      "date": "26 sept.",
+      "rev": "D",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": false,
+      "canAck": true,
+      "ackLabel": "Accuser réception"
+     },
+     {
+      "id": "GA-HLT-026",
+      "title": "Plan d’ensemble",
+      "typeLabel": "Plan d’ensemble",
+      "date": "15 sept.",
+      "rev": "C",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "MAN-HLT-015",
+      "title": "Plans de récolement des fondations",
+      "typeLabel": "Manuel / tel que construit",
+      "date": "12 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "COC-HLT-012",
+      "title": "Certificat de conformité — cellules 11 kV",
+      "typeLabel": "Certificat de conformité",
+      "date": "19 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "HSE-HLT-002",
+      "title": "Plan de prévention — port du Havre",
+      "typeLabel": "Plan HSE",
+      "date": "15 sept.",
+      "rev": "B",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "PV-HLT-001",
+      "title": "PV de réception des fondations",
+      "typeLabel": "Procès-verbal de réception (PV)",
+      "date": "12 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "MIN-HLT-023",
+      "title": "Compte rendu hebdomadaire n°23",
+      "typeLabel": "Comptes rendus de réunion",
+      "date": "25 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     }
+    ],
+    "flags": {
+     "noDecisions": false,
+     "noDecided": false,
+     "noCpInv": false,
+     "noCpVault": false,
+     "cpIsProgress": true,
+     "cpIsDecisions": false,
+     "cpIsInvoices": false,
+     "cpIsIssues": false,
+     "cpIsDocs": false
+    }
+   },
+   "NDC-031": {
+    "header": {
+     "title": "Mon projet — vue client",
+     "crumb": "Keystone · consultation sauf décisions et problèmes",
+     "primaryAction": "Télécharger le rapport d’état",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Avancement",
+      "value": "51%",
+      "sub": "Prévu 38 % à ce jour",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraison prévue",
+      "value": "5 avr. 2027",
+      "sub": "Date contractuelle 1 avr. 2027",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Jalons",
+      "value": "0 sur 3",
+      "sub": "Atteints",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de votre décision",
+      "value": 1,
+      "sub": "Demandes de modification et livrables",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Incidents ouverts",
+      "value": 2,
+      "sub": "Signalés par vous",
+      "color": "var(--color-text)"
+     }
+    ],
+    "seg": [
+     "Avancement et jalons",
+     "Décisions",
+     "Factures",
+     "Incidents",
+     "Documents"
+    ],
+    "progress": [
+     {
+      "label": "avr.",
+      "planH": "2.5%",
+      "actH": "3.4%"
+     },
+     {
+      "label": "mai",
+      "planH": "11.1%",
+      "actH": "14.9%"
+     },
+     {
+      "label": "juin",
+      "planH": "17.4%",
+      "actH": "23.2%"
+     },
+     {
+      "label": "juil.",
+      "planH": "26.6%",
+      "actH": "35.5%"
+     },
+     {
+      "label": "août",
+      "planH": "31.1%",
+      "actH": "41.6%"
+     },
+     {
+      "label": "sept.",
+      "planH": "38.2%",
+      "actH": "51%"
+     }
+    ],
+    "milestones": [
+     {
+      "name": "Power upgrade — UPS & switchgear complete",
+      "baseDate": "1 nov.",
+      "fcDate": "4 nov.",
+      "status": "À risque",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "name": "Fire suppression & detection complete",
+      "baseDate": "1 janv. ’27",
+      "fcDate": "4 janv. ’27",
+      "status": "Conforme",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "name": "Commissioning & IST complete",
+      "baseDate": "1 avr. ’27",
+      "fcDate": "4 avr. ’27",
+      "status": "Conforme",
+      "tagClass": "tag tag-outline"
+     }
+    ],
+    "decisions": [
+     {
+      "kind": "Livrable",
+      "id": "D-112",
+      "title": "Rapport d’alignement des rails de grue",
+      "sub": "Test & inspection reports · rév. A · Accepter avant le 2 oct.",
+      "when": "25 sept.",
+      "approveLabel": "Accepter (PV)"
+     }
+    ],
+    "decided": [
+     {
+      "id": "D-110",
+      "title": "Dossier de conception structure — portique et poutres",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "12 mars · N. Bensaïd"
+     },
+     {
+      "id": "D-111",
+      "title": "Note de calcul pieux et fondations",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "20 mars · Bureau de contrôle"
+     },
+     {
+      "id": "D-113",
+      "title": "Plans de récolement des fondations",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "18 sept. · N. Bensaïd"
+     }
+    ],
+    "invoices": [
+     {
+      "no": "F-2026-101",
+      "name": "juin",
+      "amt": "180 k€",
+      "status": "Payé",
+      "tagClass": "tag tag-neutral",
+      "due": "Réglée"
+     },
+     {
+      "no": "F-2026-102",
+      "name": "juil.",
+      "amt": "210 k€",
+      "status": "Payé",
+      "tagClass": "tag tag-neutral",
+      "due": "Réglée"
+     },
+     {
+      "no": "F-2026-103",
+      "name": "août",
+      "amt": "240 k€",
+      "status": "Payé",
+      "tagClass": "tag tag-neutral",
+      "due": "Réglée"
+     },
+     {
+      "no": "F-2026-104",
+      "name": "sept.",
+      "amt": "260 k€",
+      "status": "Facturé",
+      "tagClass": "tag tag-accent",
+      "due": "Échéance 15 oct."
+     }
+    ],
+    "invKpis": [
+     {
+      "k": "Montant du contrat",
+      "v": "2,35 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Facturé",
+      "v": "890 k€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Payé",
+      "v": "630 k€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Modifications approuvées",
+      "v": "—",
+      "color": "var(--color-text)"
+     }
+    ],
+    "issues": [
+     {
+      "id": "CI-04",
+      "title": "Bruit nocturne près du quai 3 pendant le battage des pieux",
+      "when": "Signalé le 12 août",
+      "status": "Clôturée",
+      "resp": "Écran acoustique + plage horaire 06:00–20:00",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "id": "CI-06",
+      "title": "Accès au poste 5 bloqué par la zone de stockage",
+      "when": "Signalé le 14 sept.",
+      "status": "En cours",
+      "resp": "Zone de stockage déplacée d’ici le 30 sept. · plan de circulation mis à jour",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "id": "CI-07",
+      "title": "Demande de rapport photo hebdomadaire",
+      "when": "Signalé le 22 sept.",
+      "status": "Ouverte",
+      "resp": "À ajouter au cycle de rapport mensuel dès octobre",
+      "tagClass": "tag tag-accent"
+     }
+    ],
+    "docs": [
+     {
+      "id": "PID-NDC-031",
+      "title": "P&ID — boucle de refroidissement",
+      "typeLabel": "P&ID",
+      "date": "4 sept.",
+      "rev": "B",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     }
+    ],
+    "flags": {
+     "noDecisions": false,
+     "noDecided": false,
+     "noCpInv": false,
+     "noCpVault": false,
+     "cpIsProgress": true,
+     "cpIsDecisions": false,
+     "cpIsInvoices": false,
+     "cpIsIssues": false,
+     "cpIsDocs": false
+    }
+   },
+   "roles": {
+    "director": {
+     "title": "Mon projet — vue client",
+     "crumb": "Keystone · consultation sauf décisions et problèmes",
+     "primaryAction": "Télécharger le rapport d’état",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "pm": {
+     "title": "Mon projet — vue client",
+     "crumb": "Keystone · consultation sauf décisions et problèmes",
+     "primaryAction": "Télécharger le rapport d’état",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "depthead": {
+     "title": "Mon projet — vue client",
+     "crumb": "Keystone · consultation sauf décisions et problèmes",
+     "primaryAction": "Télécharger le rapport d’état",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "member": {
+     "title": "Mon projet — vue client",
+     "crumb": "Keystone · consultation sauf décisions et problèmes",
+     "primaryAction": "Télécharger le rapport d’état",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "englead": {
+     "title": "Mon projet — vue client",
+     "crumb": "Keystone · consultation sauf décisions et problèmes",
+     "primaryAction": "Télécharger le rapport d’état",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "quality": {
+     "title": "Mon projet — vue client",
+     "crumb": "Keystone · consultation sauf décisions et problèmes",
+     "primaryAction": "Télécharger le rapport d’état",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "procurement": {
+     "title": "Mon projet — vue client",
+     "crumb": "Keystone · consultation sauf décisions et problèmes",
+     "primaryAction": "Télécharger le rapport d’état",
+     "hasPrimary": false,
+     "outside": true
+    },
+    "client": {
+     "title": "Mon projet — vue client",
+     "crumb": "Keystone · consultation sauf décisions et problèmes",
+     "primaryAction": "Télécharger le rapport d’état",
+     "hasPrimary": true,
+     "outside": false
+    }
+   },
+   "afterDecide": {
+    "header": {
+     "title": "Mon projet — vue client",
+     "crumb": "Keystone · consultation sauf décisions et problèmes",
+     "primaryAction": "Télécharger le rapport d’état",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Avancement",
+      "value": "64%",
+      "sub": "Prévu 71 % à ce jour",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraison prévue",
+      "value": "14 janv. 2027",
+      "sub": "Date contractuelle 18 déc. 2026",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Jalons",
+      "value": "2 sur 6",
+      "sub": "Atteints",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de votre décision",
+      "value": 0,
+      "sub": "Demandes de modification et livrables",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Incidents ouverts",
+      "value": 2,
+      "sub": "Signalés par vous",
+      "color": "var(--color-text)"
+     }
+    ],
+    "seg": [
+     "Avancement et jalons",
+     "Décisions",
+     "Factures",
+     "Incidents",
+     "Documents"
+    ],
+    "progress": [
+     {
+      "label": "janv.",
+      "planH": "3.4%",
+      "actH": "3.5%"
+     },
+     {
+      "label": "févr.",
+      "planH": "7.3%",
+      "actH": "8.1%"
+     },
+     {
+      "label": "mars",
+      "planH": "15.3%",
+      "actH": "14.6%"
+     },
+     {
+      "label": "avr.",
+      "planH": "23.6%",
+      "actH": "22.1%"
+     },
+     {
+      "label": "mai",
+      "planH": "32.8%",
+      "actH": "30.2%"
+     },
+     {
+      "label": "juin",
+      "planH": "47.7%",
+      "actH": "39.2%"
+     },
+     {
+      "label": "juil.",
+      "planH": "54.6%",
+      "actH": "47.9%"
+     },
+     {
+      "label": "août",
+      "planH": "62%",
+      "actH": "56.5%"
+     },
+     {
+      "label": "sept.",
+      "planH": "71.3%",
+      "actH": "64.2%"
+     }
+    ],
+    "milestones": [
+     {
+      "name": "Permis approuvés",
+      "baseDate": "15 mars",
+      "fcDate": "1 avr.",
+      "status": "Terminé",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Fondations terminées",
+      "baseDate": "1 juil.",
+      "fcDate": "6 août",
+      "status": "Terminé",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Structure hors d’eau",
+      "baseDate": "15 sept.",
+      "fcDate": "24 oct.",
+      "status": "En retard",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Grues opérationnelles",
+      "baseDate": "1 oct.",
+      "fcDate": "3 nov.",
+      "status": "En retard",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Systèmes sous tension",
+      "baseDate": "15 nov.",
+      "fcDate": "1 déc.",
+      "status": "À risque",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "name": "Livraison",
+      "baseDate": "18 déc.",
+      "fcDate": "13 janv. ’27",
+      "status": "À risque",
+      "tagClass": "tag tag-outline"
+     }
+    ],
+    "decisions": [],
+    "decided": [
+     {
+      "id": "CR-004",
+      "title": "Pieux supplémentaires — sol meuble poste 4",
+      "state": "Approuvé",
+      "tagClass": "tag tag-neutral",
+      "when": "14 mai"
+     },
+     {
+      "id": "CR-006",
+      "title": "Montée en gamme des grues à 250 t",
+      "state": "Approuvé",
+      "tagClass": "tag tag-neutral",
+      "when": "02 juil."
+     },
+     {
+      "id": "CR-008",
+      "title": "Seconde équipe charpente — rattrapage du planning",
+      "state": "Approuvé",
+      "tagClass": "tag tag-neutral",
+      "when": "24 sept."
+     },
+     {
+      "id": "D-011",
+      "title": "Dossier de conception structure — portique et poutres",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "12 mars · N. Bensaïd"
+     },
+     {
+      "id": "D-012",
+      "title": "Note de calcul pieux et fondations",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "20 mars · Bureau de contrôle"
+     },
+     {
+      "id": "D-014",
+      "title": "Rapport d’alignement des rails de grue",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "25 sept. · N. Bensaïd"
+     },
+     {
+      "id": "D-015",
+      "title": "Plans de récolement des fondations",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "18 sept. · N. Bensaïd"
+     },
+     {
+      "id": "D-016",
+      "title": "Note de calcul charpente rév. B",
+      "state": "Refusé",
+      "tagClass": "tag tag-outline",
+      "when": "25 sept. · comments issued"
+     }
+    ],
+    "invoices": [
+     {
+      "no": "F-2026-101",
+      "name": "M1 Permits",
+      "amt": "540 k€",
+      "status": "Payé",
+      "tagClass": "tag tag-neutral",
+      "due": "Réglée"
+     },
+     {
+      "no": "F-2026-102",
+      "name": "M2 Foundations",
+      "amt": "1,08 M€",
+      "status": "Payé",
+      "tagClass": "tag tag-neutral",
+      "due": "Réglée"
+     },
+     {
+      "no": "F-2026-103",
+      "name": "M3 Structure",
+      "amt": "1,35 M€",
+      "status": "Facturé",
+      "tagClass": "tag tag-accent",
+      "due": "Échéance 15 oct."
+     },
+     {
+      "no": "F-2026-104",
+      "name": "M4 Cranes operational",
+      "amt": "1,08 M€",
+      "status": "Planifié",
+      "tagClass": "tag tag-outline",
+      "due": "Au jalon"
+     },
+     {
+      "no": "F-2026-105",
+      "name": "M5 Handover",
+      "amt": "1,35 M€",
+      "status": "Planifié",
+      "tagClass": "tag tag-outline",
+      "due": "Au jalon"
+     }
+    ],
+    "invKpis": [
+     {
+      "k": "Montant du contrat",
+      "v": "5,40 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Facturé",
+      "v": "2,97 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Payé",
+      "v": "1,62 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Modifications approuvées",
+      "v": "+200 k€",
+      "color": "var(--color-text)"
+     }
+    ],
+    "issues": [
+     {
+      "id": "CI-04",
+      "title": "Bruit nocturne près du quai 3 pendant le battage des pieux",
+      "when": "Signalé le 12 août",
+      "status": "Clôturée",
+      "resp": "Écran acoustique + plage horaire 06:00–20:00",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "id": "CI-06",
+      "title": "Accès au poste 5 bloqué par la zone de stockage",
+      "when": "Signalé le 14 sept.",
+      "status": "En cours",
+      "resp": "Zone de stockage déplacée d’ici le 30 sept. · plan de circulation mis à jour",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "id": "CI-07",
+      "title": "Demande de rapport photo hebdomadaire",
+      "when": "Signalé le 22 sept.",
+      "status": "Ouverte",
+      "resp": "À ajouter au cycle de rapport mensuel dès octobre",
+      "tagClass": "tag tag-accent"
+     }
+    ],
+    "docs": [
+     {
+      "id": "PID-HLT-026",
+      "title": "P&ID",
+      "typeLabel": "P&ID",
+      "date": "26 sept.",
+      "rev": "D",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": false,
+      "canAck": true,
+      "ackLabel": "Accuser réception"
+     },
+     {
+      "id": "GA-HLT-026",
+      "title": "Plan d’ensemble",
+      "typeLabel": "Plan d’ensemble",
+      "date": "15 sept.",
+      "rev": "C",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "MAN-HLT-015",
+      "title": "Plans de récolement des fondations",
+      "typeLabel": "Manuel / tel que construit",
+      "date": "12 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "COC-HLT-012",
+      "title": "Certificat de conformité — cellules 11 kV",
+      "typeLabel": "Certificat de conformité",
+      "date": "19 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "HSE-HLT-002",
+      "title": "Plan de prévention — port du Havre",
+      "typeLabel": "Plan HSE",
+      "date": "15 sept.",
+      "rev": "B",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "PV-HLT-001",
+      "title": "PV de réception des fondations",
+      "typeLabel": "Procès-verbal de réception (PV)",
+      "date": "12 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "MIN-HLT-023",
+      "title": "Compte rendu hebdomadaire n°23",
+      "typeLabel": "Comptes rendus de réunion",
+      "date": "25 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     }
+    ],
+    "flags": {
+     "noDecisions": true,
+     "noDecided": false,
+     "noCpInv": false,
+     "noCpVault": false,
+     "cpIsProgress": true,
+     "cpIsDecisions": false,
+     "cpIsInvoices": false,
+     "cpIsIssues": false,
+     "cpIsDocs": false
+    }
+   },
+   "afterRejectCr": {
+    "header": {
+     "title": "Mon projet — vue client",
+     "crumb": "Keystone · consultation sauf décisions et problèmes",
+     "primaryAction": "Télécharger le rapport d’état",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Avancement",
+      "value": "64%",
+      "sub": "Prévu 71 % à ce jour",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraison prévue",
+      "value": "14 janv. 2027",
+      "sub": "Date contractuelle 18 déc. 2026",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Jalons",
+      "value": "2 sur 6",
+      "sub": "Atteints",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de votre décision",
+      "value": 2,
+      "sub": "Demandes de modification et livrables",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Incidents ouverts",
+      "value": 2,
+      "sub": "Signalés par vous",
+      "color": "var(--color-text)"
+     }
+    ],
+    "seg": [
+     "Avancement et jalons",
+     "Décisions",
+     "Factures",
+     "Incidents",
+     "Documents"
+    ],
+    "progress": [
+     {
+      "label": "janv.",
+      "planH": "3.4%",
+      "actH": "3.5%"
+     },
+     {
+      "label": "févr.",
+      "planH": "7.3%",
+      "actH": "8.1%"
+     },
+     {
+      "label": "mars",
+      "planH": "15.3%",
+      "actH": "14.6%"
+     },
+     {
+      "label": "avr.",
+      "planH": "23.6%",
+      "actH": "22.1%"
+     },
+     {
+      "label": "mai",
+      "planH": "32.8%",
+      "actH": "30.2%"
+     },
+     {
+      "label": "juin",
+      "planH": "47.7%",
+      "actH": "39.2%"
+     },
+     {
+      "label": "juil.",
+      "planH": "54.6%",
+      "actH": "47.9%"
+     },
+     {
+      "label": "août",
+      "planH": "62%",
+      "actH": "56.5%"
+     },
+     {
+      "label": "sept.",
+      "planH": "71.3%",
+      "actH": "64.2%"
+     }
+    ],
+    "milestones": [
+     {
+      "name": "Permis approuvés",
+      "baseDate": "15 mars",
+      "fcDate": "1 avr.",
+      "status": "Terminé",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Fondations terminées",
+      "baseDate": "1 juil.",
+      "fcDate": "6 août",
+      "status": "Terminé",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Structure hors d’eau",
+      "baseDate": "15 sept.",
+      "fcDate": "24 oct.",
+      "status": "En retard",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Grues opérationnelles",
+      "baseDate": "1 oct.",
+      "fcDate": "3 nov.",
+      "status": "En retard",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Systèmes sous tension",
+      "baseDate": "15 nov.",
+      "fcDate": "1 déc.",
+      "status": "À risque",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "name": "Livraison",
+      "baseDate": "18 déc.",
+      "fcDate": "13 janv. ’27",
+      "status": "À risque",
+      "tagClass": "tag tag-outline"
+     }
+    ],
+    "decisions": [
+     {
+      "kind": "Livrable",
+      "id": "D-014",
+      "title": "Rapport d’alignement des rails de grue",
+      "sub": "Test & inspection reports · rév. A · Accepter avant le 2 oct.",
+      "when": "25 sept.",
+      "approveLabel": "Accepter (PV)"
+     },
+     {
+      "kind": "Livrable",
+      "id": "D-016",
+      "title": "Note de calcul charpente rév. B",
+      "sub": "Calculation notes · rév. B · Accepter avant le 9 oct.",
+      "when": "30 sept.",
+      "approveLabel": "Accepter (PV)"
+     }
+    ],
+    "decided": [
+     {
+      "id": "CR-004",
+      "title": "Pieux supplémentaires — sol meuble poste 4",
+      "state": "Approuvé",
+      "tagClass": "tag tag-neutral",
+      "when": "14 mai"
+     },
+     {
+      "id": "CR-006",
+      "title": "Montée en gamme des grues à 250 t",
+      "state": "Approuvé",
+      "tagClass": "tag tag-neutral",
+      "when": "02 juil."
+     },
+     {
+      "id": "CR-008",
+      "title": "Seconde équipe charpente — rattrapage du planning",
+      "state": "Refusé",
+      "tagClass": "tag tag-outline",
+      "when": "24 sept."
+     },
+     {
+      "id": "D-011",
+      "title": "Dossier de conception structure — portique et poutres",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "12 mars · N. Bensaïd"
+     },
+     {
+      "id": "D-012",
+      "title": "Note de calcul pieux et fondations",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "20 mars · Bureau de contrôle"
+     },
+     {
+      "id": "D-015",
+      "title": "Plans de récolement des fondations",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "18 sept. · N. Bensaïd"
+     }
+    ],
+    "invoices": [
+     {
+      "no": "F-2026-101",
+      "name": "M1 Permits",
+      "amt": "540 k€",
+      "status": "Payé",
+      "tagClass": "tag tag-neutral",
+      "due": "Réglée"
+     },
+     {
+      "no": "F-2026-102",
+      "name": "M2 Foundations",
+      "amt": "1,08 M€",
+      "status": "Payé",
+      "tagClass": "tag tag-neutral",
+      "due": "Réglée"
+     },
+     {
+      "no": "F-2026-103",
+      "name": "M3 Structure",
+      "amt": "1,35 M€",
+      "status": "Facturé",
+      "tagClass": "tag tag-accent",
+      "due": "Échéance 15 oct."
+     },
+     {
+      "no": "F-2026-104",
+      "name": "M4 Cranes operational",
+      "amt": "1,08 M€",
+      "status": "Planifié",
+      "tagClass": "tag tag-outline",
+      "due": "Au jalon"
+     },
+     {
+      "no": "F-2026-105",
+      "name": "M5 Handover",
+      "amt": "1,35 M€",
+      "status": "Planifié",
+      "tagClass": "tag tag-outline",
+      "due": "Au jalon"
+     }
+    ],
+    "invKpis": [
+     {
+      "k": "Montant du contrat",
+      "v": "5,40 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Facturé",
+      "v": "2,97 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Payé",
+      "v": "1,62 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Modifications approuvées",
+      "v": "+200 k€",
+      "color": "var(--color-text)"
+     }
+    ],
+    "issues": [
+     {
+      "id": "CI-04",
+      "title": "Bruit nocturne près du quai 3 pendant le battage des pieux",
+      "when": "Signalé le 12 août",
+      "status": "Clôturée",
+      "resp": "Écran acoustique + plage horaire 06:00–20:00",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "id": "CI-06",
+      "title": "Accès au poste 5 bloqué par la zone de stockage",
+      "when": "Signalé le 14 sept.",
+      "status": "En cours",
+      "resp": "Zone de stockage déplacée d’ici le 30 sept. · plan de circulation mis à jour",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "id": "CI-07",
+      "title": "Demande de rapport photo hebdomadaire",
+      "when": "Signalé le 22 sept.",
+      "status": "Ouverte",
+      "resp": "À ajouter au cycle de rapport mensuel dès octobre",
+      "tagClass": "tag tag-accent"
+     }
+    ],
+    "docs": [
+     {
+      "id": "PID-HLT-026",
+      "title": "P&ID",
+      "typeLabel": "P&ID",
+      "date": "26 sept.",
+      "rev": "D",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": false,
+      "canAck": true,
+      "ackLabel": "Accuser réception"
+     },
+     {
+      "id": "GA-HLT-026",
+      "title": "Plan d’ensemble",
+      "typeLabel": "Plan d’ensemble",
+      "date": "15 sept.",
+      "rev": "C",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "MAN-HLT-015",
+      "title": "Plans de récolement des fondations",
+      "typeLabel": "Manuel / tel que construit",
+      "date": "12 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "COC-HLT-012",
+      "title": "Certificat de conformité — cellules 11 kV",
+      "typeLabel": "Certificat de conformité",
+      "date": "19 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "HSE-HLT-002",
+      "title": "Plan de prévention — port du Havre",
+      "typeLabel": "Plan HSE",
+      "date": "15 sept.",
+      "rev": "B",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "PV-HLT-001",
+      "title": "PV de réception des fondations",
+      "typeLabel": "Procès-verbal de réception (PV)",
+      "date": "12 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "MIN-HLT-023",
+      "title": "Compte rendu hebdomadaire n°23",
+      "typeLabel": "Comptes rendus de réunion",
+      "date": "25 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     }
+    ],
+    "flags": {
+     "noDecisions": false,
+     "noDecided": false,
+     "noCpInv": false,
+     "noCpVault": false,
+     "cpIsProgress": true,
+     "cpIsDecisions": false,
+     "cpIsInvoices": false,
+     "cpIsIssues": false,
+     "cpIsDocs": false
+    }
+   },
+   "afterIssues": {
+    "header": {
+     "title": "Mon projet — vue client",
+     "crumb": "Keystone · consultation sauf décisions et problèmes",
+     "primaryAction": "Télécharger le rapport d’état",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Avancement",
+      "value": "64%",
+      "sub": "Prévu 71 % à ce jour",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraison prévue",
+      "value": "14 janv. 2027",
+      "sub": "Date contractuelle 18 déc. 2026",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Jalons",
+      "value": "2 sur 6",
+      "sub": "Atteints",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de votre décision",
+      "value": 3,
+      "sub": "Demandes de modification et livrables",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Incidents ouverts",
+      "value": 5,
+      "sub": "Signalés par vous",
+      "color": "var(--color-text)"
+     }
+    ],
+    "seg": [
+     "Avancement et jalons",
+     "Décisions",
+     "Factures",
+     "Incidents",
+     "Documents"
+    ],
+    "progress": [
+     {
+      "label": "janv.",
+      "planH": "3.4%",
+      "actH": "3.5%"
+     },
+     {
+      "label": "févr.",
+      "planH": "7.3%",
+      "actH": "8.1%"
+     },
+     {
+      "label": "mars",
+      "planH": "15.3%",
+      "actH": "14.6%"
+     },
+     {
+      "label": "avr.",
+      "planH": "23.6%",
+      "actH": "22.1%"
+     },
+     {
+      "label": "mai",
+      "planH": "32.8%",
+      "actH": "30.2%"
+     },
+     {
+      "label": "juin",
+      "planH": "47.7%",
+      "actH": "39.2%"
+     },
+     {
+      "label": "juil.",
+      "planH": "54.6%",
+      "actH": "47.9%"
+     },
+     {
+      "label": "août",
+      "planH": "62%",
+      "actH": "56.5%"
+     },
+     {
+      "label": "sept.",
+      "planH": "71.3%",
+      "actH": "64.2%"
+     }
+    ],
+    "milestones": [
+     {
+      "name": "Permis approuvés",
+      "baseDate": "15 mars",
+      "fcDate": "1 avr.",
+      "status": "Terminé",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Fondations terminées",
+      "baseDate": "1 juil.",
+      "fcDate": "6 août",
+      "status": "Terminé",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Structure hors d’eau",
+      "baseDate": "15 sept.",
+      "fcDate": "24 oct.",
+      "status": "En retard",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Grues opérationnelles",
+      "baseDate": "1 oct.",
+      "fcDate": "3 nov.",
+      "status": "En retard",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Systèmes sous tension",
+      "baseDate": "15 nov.",
+      "fcDate": "1 déc.",
+      "status": "À risque",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "name": "Livraison",
+      "baseDate": "18 déc.",
+      "fcDate": "13 janv. ’27",
+      "status": "À risque",
+      "tagClass": "tag tag-outline"
+     }
+    ],
+    "decisions": [
+     {
+      "kind": "Demande de modification",
+      "id": "CR-008",
+      "title": "Seconde équipe charpente — rattrapage du planning",
+      "sub": "Budget · Planning · +85 k€ sur le contrat · -12 j sur la livraison",
+      "when": "24 sept.",
+      "approveLabel": "Approuver"
+     },
+     {
+      "kind": "Livrable",
+      "id": "D-014",
+      "title": "Rapport d’alignement des rails de grue",
+      "sub": "Test & inspection reports · rév. A · Accepter avant le 2 oct.",
+      "when": "25 sept.",
+      "approveLabel": "Accepter (PV)"
+     },
+     {
+      "kind": "Livrable",
+      "id": "D-016",
+      "title": "Note de calcul charpente rév. B",
+      "sub": "Calculation notes · rév. B · Accepter avant le 9 oct.",
+      "when": "30 sept.",
+      "approveLabel": "Accepter (PV)"
+     }
+    ],
+    "decided": [
+     {
+      "id": "CR-004",
+      "title": "Pieux supplémentaires — sol meuble poste 4",
+      "state": "Approuvé",
+      "tagClass": "tag tag-neutral",
+      "when": "14 mai"
+     },
+     {
+      "id": "CR-006",
+      "title": "Montée en gamme des grues à 250 t",
+      "state": "Approuvé",
+      "tagClass": "tag tag-neutral",
+      "when": "02 juil."
+     },
+     {
+      "id": "D-011",
+      "title": "Dossier de conception structure — portique et poutres",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "12 mars · N. Bensaïd"
+     },
+     {
+      "id": "D-012",
+      "title": "Note de calcul pieux et fondations",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "20 mars · Bureau de contrôle"
+     },
+     {
+      "id": "D-015",
+      "title": "Plans de récolement des fondations",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "18 sept. · N. Bensaïd"
+     }
+    ],
+    "invoices": [
+     {
+      "no": "F-2026-101",
+      "name": "M1 Permits",
+      "amt": "540 k€",
+      "status": "Payé",
+      "tagClass": "tag tag-neutral",
+      "due": "Réglée"
+     },
+     {
+      "no": "F-2026-102",
+      "name": "M2 Foundations",
+      "amt": "1,08 M€",
+      "status": "Payé",
+      "tagClass": "tag tag-neutral",
+      "due": "Réglée"
+     },
+     {
+      "no": "F-2026-103",
+      "name": "M3 Structure",
+      "amt": "1,35 M€",
+      "status": "Facturé",
+      "tagClass": "tag tag-accent",
+      "due": "Échéance 15 oct."
+     },
+     {
+      "no": "F-2026-104",
+      "name": "M4 Cranes operational",
+      "amt": "1,08 M€",
+      "status": "Planifié",
+      "tagClass": "tag tag-outline",
+      "due": "Au jalon"
+     },
+     {
+      "no": "F-2026-105",
+      "name": "M5 Handover",
+      "amt": "1,35 M€",
+      "status": "Planifié",
+      "tagClass": "tag tag-outline",
+      "due": "Au jalon"
+     }
+    ],
+    "invKpis": [
+     {
+      "k": "Montant du contrat",
+      "v": "5,40 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Facturé",
+      "v": "2,97 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Payé",
+      "v": "1,62 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Modifications approuvées",
+      "v": "+200 k€",
+      "color": "var(--color-text)"
+     }
+    ],
+    "issues": [
+     {
+      "id": "CI-010",
+      "title": "Training dates",
+      "when": "Signalé aujourd’hui",
+      "status": "Ouverte",
+      "resp": "Accusé de réception — réponse sous 2 jours ouvrés",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "id": "CI-09",
+      "title": "Spare parts list format",
+      "when": "Signalé aujourd’hui",
+      "status": "Ouverte",
+      "resp": "Accusé de réception — réponse sous 2 jours ouvrés",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "id": "CI-08",
+      "title": "Crane test witness slot",
+      "when": "Signalé aujourd’hui",
+      "status": "Ouverte",
+      "resp": "Accusé de réception — réponse sous 2 jours ouvrés",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "id": "CI-04",
+      "title": "Bruit nocturne près du quai 3 pendant le battage des pieux",
+      "when": "Signalé le 12 août",
+      "status": "Clôturée",
+      "resp": "Écran acoustique + plage horaire 06:00–20:00",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "id": "CI-06",
+      "title": "Accès au poste 5 bloqué par la zone de stockage",
+      "when": "Signalé le 14 sept.",
+      "status": "En cours",
+      "resp": "Zone de stockage déplacée d’ici le 30 sept. · plan de circulation mis à jour",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "id": "CI-07",
+      "title": "Demande de rapport photo hebdomadaire",
+      "when": "Signalé le 22 sept.",
+      "status": "Ouverte",
+      "resp": "À ajouter au cycle de rapport mensuel dès octobre",
+      "tagClass": "tag tag-accent"
+     }
+    ],
+    "docs": [
+     {
+      "id": "PID-HLT-026",
+      "title": "P&ID",
+      "typeLabel": "P&ID",
+      "date": "26 sept.",
+      "rev": "D",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": false,
+      "canAck": true,
+      "ackLabel": "Accuser réception"
+     },
+     {
+      "id": "GA-HLT-026",
+      "title": "Plan d’ensemble",
+      "typeLabel": "Plan d’ensemble",
+      "date": "15 sept.",
+      "rev": "C",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "MAN-HLT-015",
+      "title": "Plans de récolement des fondations",
+      "typeLabel": "Manuel / tel que construit",
+      "date": "12 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "COC-HLT-012",
+      "title": "Certificat de conformité — cellules 11 kV",
+      "typeLabel": "Certificat de conformité",
+      "date": "19 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "HSE-HLT-002",
+      "title": "Plan de prévention — port du Havre",
+      "typeLabel": "Plan HSE",
+      "date": "15 sept.",
+      "rev": "B",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "PV-HLT-001",
+      "title": "PV de réception des fondations",
+      "typeLabel": "Procès-verbal de réception (PV)",
+      "date": "12 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "MIN-HLT-023",
+      "title": "Compte rendu hebdomadaire n°23",
+      "typeLabel": "Comptes rendus de réunion",
+      "date": "25 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     }
+    ],
+    "flags": {
+     "noDecisions": false,
+     "noDecided": false,
+     "noCpInv": false,
+     "noCpVault": false,
+     "cpIsProgress": true,
+     "cpIsDecisions": false,
+     "cpIsInvoices": false,
+     "cpIsIssues": false,
+     "cpIsDocs": false
+    }
+   },
+   "afterAck": {
+    "header": {
+     "title": "Mon projet — vue client",
+     "crumb": "Keystone · consultation sauf décisions et problèmes",
+     "primaryAction": "Télécharger le rapport d’état",
+     "hasPrimary": true,
+     "outside": false
+    },
+    "kpis": [
+     {
+      "label": "Avancement",
+      "value": "64%",
+      "sub": "Prévu 71 % à ce jour",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Livraison prévue",
+      "value": "14 janv. 2027",
+      "sub": "Date contractuelle 18 déc. 2026",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Jalons",
+      "value": "2 sur 6",
+      "sub": "Atteints",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "En attente de votre décision",
+      "value": 3,
+      "sub": "Demandes de modification et livrables",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Incidents ouverts",
+      "value": 2,
+      "sub": "Signalés par vous",
+      "color": "var(--color-text)"
+     }
+    ],
+    "seg": [
+     "Avancement et jalons",
+     "Décisions",
+     "Factures",
+     "Incidents",
+     "Documents"
+    ],
+    "progress": [
+     {
+      "label": "janv.",
+      "planH": "3.4%",
+      "actH": "3.5%"
+     },
+     {
+      "label": "févr.",
+      "planH": "7.3%",
+      "actH": "8.1%"
+     },
+     {
+      "label": "mars",
+      "planH": "15.3%",
+      "actH": "14.6%"
+     },
+     {
+      "label": "avr.",
+      "planH": "23.6%",
+      "actH": "22.1%"
+     },
+     {
+      "label": "mai",
+      "planH": "32.8%",
+      "actH": "30.2%"
+     },
+     {
+      "label": "juin",
+      "planH": "47.7%",
+      "actH": "39.2%"
+     },
+     {
+      "label": "juil.",
+      "planH": "54.6%",
+      "actH": "47.9%"
+     },
+     {
+      "label": "août",
+      "planH": "62%",
+      "actH": "56.5%"
+     },
+     {
+      "label": "sept.",
+      "planH": "71.3%",
+      "actH": "64.2%"
+     }
+    ],
+    "milestones": [
+     {
+      "name": "Permis approuvés",
+      "baseDate": "15 mars",
+      "fcDate": "1 avr.",
+      "status": "Terminé",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Fondations terminées",
+      "baseDate": "1 juil.",
+      "fcDate": "6 août",
+      "status": "Terminé",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "name": "Structure hors d’eau",
+      "baseDate": "15 sept.",
+      "fcDate": "24 oct.",
+      "status": "En retard",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Grues opérationnelles",
+      "baseDate": "1 oct.",
+      "fcDate": "3 nov.",
+      "status": "En retard",
+      "tagClass": "tag tag-accent"
+     },
+     {
+      "name": "Systèmes sous tension",
+      "baseDate": "15 nov.",
+      "fcDate": "1 déc.",
+      "status": "À risque",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "name": "Livraison",
+      "baseDate": "18 déc.",
+      "fcDate": "13 janv. ’27",
+      "status": "À risque",
+      "tagClass": "tag tag-outline"
+     }
+    ],
+    "decisions": [
+     {
+      "kind": "Demande de modification",
+      "id": "CR-008",
+      "title": "Seconde équipe charpente — rattrapage du planning",
+      "sub": "Budget · Planning · +85 k€ sur le contrat · -12 j sur la livraison",
+      "when": "24 sept.",
+      "approveLabel": "Approuver"
+     },
+     {
+      "kind": "Livrable",
+      "id": "D-014",
+      "title": "Rapport d’alignement des rails de grue",
+      "sub": "Test & inspection reports · rév. A · Accepter avant le 2 oct.",
+      "when": "25 sept.",
+      "approveLabel": "Accepter (PV)"
+     },
+     {
+      "kind": "Livrable",
+      "id": "D-016",
+      "title": "Note de calcul charpente rév. B",
+      "sub": "Calculation notes · rév. B · Accepter avant le 9 oct.",
+      "when": "30 sept.",
+      "approveLabel": "Accepter (PV)"
+     }
+    ],
+    "decided": [
+     {
+      "id": "CR-004",
+      "title": "Pieux supplémentaires — sol meuble poste 4",
+      "state": "Approuvé",
+      "tagClass": "tag tag-neutral",
+      "when": "14 mai"
+     },
+     {
+      "id": "CR-006",
+      "title": "Montée en gamme des grues à 250 t",
+      "state": "Approuvé",
+      "tagClass": "tag tag-neutral",
+      "when": "02 juil."
+     },
+     {
+      "id": "D-011",
+      "title": "Dossier de conception structure — portique et poutres",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "12 mars · N. Bensaïd"
+     },
+     {
+      "id": "D-012",
+      "title": "Note de calcul pieux et fondations",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "20 mars · Bureau de contrôle"
+     },
+     {
+      "id": "D-015",
+      "title": "Plans de récolement des fondations",
+      "state": "Accepté",
+      "tagClass": "tag tag-neutral",
+      "when": "18 sept. · N. Bensaïd"
+     }
+    ],
+    "invoices": [
+     {
+      "no": "F-2026-101",
+      "name": "M1 Permits",
+      "amt": "540 k€",
+      "status": "Payé",
+      "tagClass": "tag tag-neutral",
+      "due": "Réglée"
+     },
+     {
+      "no": "F-2026-102",
+      "name": "M2 Foundations",
+      "amt": "1,08 M€",
+      "status": "Payé",
+      "tagClass": "tag tag-neutral",
+      "due": "Réglée"
+     },
+     {
+      "no": "F-2026-103",
+      "name": "M3 Structure",
+      "amt": "1,35 M€",
+      "status": "Facturé",
+      "tagClass": "tag tag-accent",
+      "due": "Échéance 15 oct."
+     },
+     {
+      "no": "F-2026-104",
+      "name": "M4 Cranes operational",
+      "amt": "1,08 M€",
+      "status": "Planifié",
+      "tagClass": "tag tag-outline",
+      "due": "Au jalon"
+     },
+     {
+      "no": "F-2026-105",
+      "name": "M5 Handover",
+      "amt": "1,35 M€",
+      "status": "Planifié",
+      "tagClass": "tag tag-outline",
+      "due": "Au jalon"
+     }
+    ],
+    "invKpis": [
+     {
+      "k": "Montant du contrat",
+      "v": "5,40 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Facturé",
+      "v": "2,97 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Payé",
+      "v": "1,62 M€",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Modifications approuvées",
+      "v": "+200 k€",
+      "color": "var(--color-text)"
+     }
+    ],
+    "issues": [
+     {
+      "id": "CI-04",
+      "title": "Bruit nocturne près du quai 3 pendant le battage des pieux",
+      "when": "Signalé le 12 août",
+      "status": "Clôturée",
+      "resp": "Écran acoustique + plage horaire 06:00–20:00",
+      "tagClass": "tag tag-neutral"
+     },
+     {
+      "id": "CI-06",
+      "title": "Accès au poste 5 bloqué par la zone de stockage",
+      "when": "Signalé le 14 sept.",
+      "status": "En cours",
+      "resp": "Zone de stockage déplacée d’ici le 30 sept. · plan de circulation mis à jour",
+      "tagClass": "tag tag-outline"
+     },
+     {
+      "id": "CI-07",
+      "title": "Demande de rapport photo hebdomadaire",
+      "when": "Signalé le 22 sept.",
+      "status": "Ouverte",
+      "resp": "À ajouter au cycle de rapport mensuel dès octobre",
+      "tagClass": "tag tag-accent"
+     }
+    ],
+    "docs": [
+     {
+      "id": "PID-HLT-026",
+      "title": "P&ID",
+      "typeLabel": "P&ID",
+      "date": "26 sept.",
+      "rev": "D",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "GA-HLT-026",
+      "title": "Plan d’ensemble",
+      "typeLabel": "Plan d’ensemble",
+      "date": "15 sept.",
+      "rev": "C",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "MAN-HLT-015",
+      "title": "Plans de récolement des fondations",
+      "typeLabel": "Manuel / tel que construit",
+      "date": "12 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "COC-HLT-012",
+      "title": "Certificat de conformité — cellules 11 kV",
+      "typeLabel": "Certificat de conformité",
+      "date": "19 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "HSE-HLT-002",
+      "title": "Plan de prévention — port du Havre",
+      "typeLabel": "Plan HSE",
+      "date": "15 sept.",
+      "rev": "B",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "PV-HLT-001",
+      "title": "PV de réception des fondations",
+      "typeLabel": "Procès-verbal de réception (PV)",
+      "date": "12 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     },
+     {
+      "id": "MIN-HLT-023",
+      "title": "Compte rendu hebdomadaire n°23",
+      "typeLabel": "Comptes rendus de réunion",
+      "date": "25 sept.",
+      "rev": "A",
+      "status": "Diffusé",
+      "stClass": "tag tag-neutral",
+      "ack": true,
+      "canAck": false,
+      "ackLabel": "Accusé de réception"
+     }
+    ],
+    "flags": {
+     "noDecisions": false,
+     "noDecided": false,
+     "noCpInv": false,
+     "noCpVault": false,
+     "cpIsProgress": true,
+     "cpIsDecisions": false,
+     "cpIsInvoices": false,
+     "cpIsIssues": false,
+     "cpIsDocs": false
+    }
+   }
+  }
+ },
+ "labels": {
+  "Lessons learned": "Retours d’expérience",
+  "Theme": "Thème",
+  "What happened": "Ce qui s’est passé",
+  "Impact": "Impact",
+  "Recommendation": "Recommandation",
+  "Applies to": "S’applique à",
+  "Status": "Statut",
+  "Closure checklist": "Checklist de clôture",
+  "Click to cycle · not started → in progress → done": "Cliquer pour changer · non démarré → en cours → fait",
+  "Customer satisfaction": "Satisfaction client",
+  "Survey · 5 criteria": "Enquête · 5 critères",
+  "Display": "Vue",
+  "Progress to date": "Avancement à date",
+  "Cumulative % complete · planned vs actual": "% d’avancement cumulé · prévu vs réel",
+  "Planned": "Planifié",
+  "Actual": "Réel",
+  "Milestones": "Jalons",
+  "Contract": "Contrat",
+  "· Forecast": "· Prévision",
+  "Waiting for your decision": "En attente de votre décision",
+  "Change requests affect the contract value or the handover date · deliverables are accepted with a signed PV": "Les demandes de modification affectent le montant du contrat ou la date de livraison · les livrables sont acceptés par PV signé",
+  "Reject": "Refuser",
+  "Nothing waiting for you": "Nothing waiting for you",
+  "Decided": "Décidé",
+  "No decision yet": "Aucune décision pour l’instant",
+  "Invoices & payments": "Factures et paiements",
+  "Milestone billing per contract · 30 days net": "Facturation aux jalons selon le contrat · 30 jours net",
+  "Invoice": "Facture",
+  "Milestone": "Jalon",
+  "Amount": "Montant",
+  "Payment": "Paiement",
+  "Internal project — no client billing": "Projet interne — pas de facturation client",
+  "Contract summary": "Synthèse du contrat",
+  "Download statement": "Télécharger le relevé",
+  "Issues you raised": "Incidents que vous avez signalés",
+  "Acknowledged within 2 working days · answered by the project manager": "Accusé de réception sous 2 jours ouvrés · réponse du chef de projet",
+  "Describe a new issue or request": "Décrire un nouvel incident ou une demande",
+  "Raise issue": "Signaler",
+  "Documents": "Documents",
+  "Deliverables": "Livrables",
+  "Column mapping": "Correspondance des colonnes",
+  "Title": "Titre",
+  "Rev": "Rév.",
+  "Own documents · files stay in the business tool, Keystone holds revision and status": "Documents produits · les fichiers restent dans l’outil métier, Keystone porte révision et statut",
+  "Add lesson learned": "Ajouter un retour d’expérience",
+  "Record": "Fiche",
+  "Engineering": "Ingénierie",
+  "Procurement": "Achats",
+  "Site": "Site",
+  "Client": "Client",
+  "Planning": "Planification",
+  "Quality": "Qualité",
+  "HSE": "HSE",
+  "WBS template": "Gabarit WBS",
+  "ITP template": "Gabarit ITP",
+  "Purchasing procedure": "Procédure achats",
+  "Engineering gate checklist": "Checklist de passage ingénierie",
+  "Stakeholder & RACI template": "Gabarit parties prenantes & RACI",
+  "Other": "Autre",
+  "Download status report": "Télécharger le rapport d’état",
+  "Download": "Télécharger",
+  "Period": "Période",
+  "Format": "Format",
+  "September 2026": "Septembre 2026",
+  "Q3 2026": "T3 2026",
+  "Since project start": "Depuis le début du projet",
+  "PDF": "PDF",
+  "PowerPoint": "PowerPoint",
+  "Add lesson": "Ajouter un REX",
+  "Lesson recorded · to be validated": "REX enregistré · à valider",
+  "Report downloaded": "Rapport téléchargé",
+  "Validate": "Validate",
+  "Mark applied": "Mark applied",
+  "Applied": "Appliqué",
+  "Validated": "Validé",
+  "Proposed": "Proposée",
+  "Not started": "Non démarré",
+  "In progress": "En cours",
+  "Done": "Terminé",
+  "Change request": "Demande de modification",
+  "Deliverable": "Livrable",
+  "Approve": "Approuver",
+  "Accept (PV)": "Accepter (PV)",
+  "Approved": "Approuvé",
+  "Rejected": "Refusé",
+  "Accepted": "Accepté",
+  "Paid": "Payé",
+  "Invoiced": "Facturé",
+  "Settled": "Réglée",
+  "On milestone": "Au jalon",
+  "Open": "Ouverte",
+  "Closed": "Clôturée",
+  "Acknowledged": "Accusé de réception",
+  "Acknowledge receipt": "Accuser réception",
+  "Released": "Diffusé",
+  "Raised today": "Signalé aujourd’hui",
+  "Acknowledged — response within 2 working days": "Accusé de réception — réponse sous 2 jours ouvrés",
+  "Contract value": "Montant du contrat",
+  "Approved changes": "Modifications approuvées",
+  "Reference": "Référence",
+  "survey not received": "enquête non reçue",
+  "Lessons learned & project closure": "Retours d’expérience & clôture du projet",
+  "My project — client view": "Mon projet — vue client",
+  "Project · Project review": "Projet · Bilan",
+  "Keystone · read-only except decisions and issues": "Keystone · consultation sauf décisions et problèmes"
+ },
+ "toasts": {
+  "rex": {
+   "en": "Lesson recorded · to be validated",
+   "fr": "Lesson recorded · to be validated"
+  },
+  "client": {
+   "en": "Report downloaded",
+   "fr": "Rapport téléchargé"
+  }
+ }
+}

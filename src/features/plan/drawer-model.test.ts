@@ -146,3 +146,59 @@ describe('activity drawer — other cases', () => {
     expect(v.general.find((g) => g.k === 'Écart de fin')).toEqual({ k: 'Écart de fin', v: '-39 j', lo: true });
   });
 });
+
+describe('activity drawer — chapter 4 (S-1, S-2, S-3)', () => {
+  const cals = [
+    { code: 'standard_5x8', name: 'Standard 5d · 8h', hoursPerDay: 8 },
+    { code: 'site_6x10', name: 'Chantier 6d · 10h', hoursPerDay: 10 },
+    { code: 'continuous_24h', name: 'Continu 24h / 7d', hoursPerDay: 24 },
+  ];
+  const ch4 = (id: string, patch: Partial<PlanActivity>, extra: Partial<DrawerInput> = {}, lang: Lang = 'en') =>
+    activityDrawerView(
+      {
+        act: { ...activities.find((a) => a.id === id)!, ...patch }, activities, packages, owners, assignments: [], todos, requests, deptHeads, pendingChanges: [],
+        taskHref: (x) => `/my/tasks/${x.id}`, calendars: cals, projectCalendar: 'standard_5x8', baselineCode: 'BL2', removableTodos: new Set(['T-2314']), ...extra,
+      },
+      makeT(lang),
+      lang,
+    );
+
+  it('calendar: the project calendar unless overridden; resource hours follow it', () => {
+    const v = ch4('A1410', {});
+    expect(v.general.find((g) => g.key === 'calendar')).toEqual({ k: 'Calendar', v: 'Standard 5d · 8h', lo: false, key: 'calendar' });
+    expect(v.calendar).toEqual({
+      value: '',
+      options: [
+        { value: '', label: 'Project calendar · Standard 5d · 8h' }, { value: 'standard_5x8', label: 'Standard 5d · 8h' },
+        { value: 'site_6x10', label: 'Chantier 6d · 10h' }, { value: 'continuous_24h', label: 'Continu 24h / 7d' },
+      ],
+    });
+    expect(v.res[0].units).toBe('8 h/d');
+    const site = ch4('A1410', { calendarCode: 'site_6x10' });
+    expect([site.general.find((g) => g.key === 'calendar')!.v, site.calendar.value, site.res[0].units]).toEqual(['Chantier 6d · 10h', 'site_6x10', '6 × 10 h/d']);
+    expect(ch4('A1410', { calendarCode: 'continuous_24h' }).res[0]).toMatchObject({ units: '24 h/d', sub: 'MEP lead · lead · 528 / 960 h' });
+    expect(ch4('A1410', {}, {}, 'fr').calendar.options[0].label).toBe('Calendrier du projet · Standard 5j · 8h');
+  });
+
+  it('displayed baseline key, remaining duration entered, free float once scheduled', () => {
+    const v = ch4('A1250', { scheduled: true, freeFloat: 0, remainingDays: 9 });
+    const kv = Object.fromEntries(v.general.map((g) => [g.k, g.v]));
+    expect(kv).toMatchObject({ 'BL2 finish': '31 Aug', 'Original / remaining': '40d / 9d', 'Free float': '0d' });
+    expect(kv['BL1 finish']).toBeUndefined();
+    expect(Object.keys(Object.fromEntries(ch4('A1250', {}).general.map((g) => [g.k, g.v])))).not.toContain('Free float');
+    expect(ch4('A1250', {}, {}, 'fr').general.find((g) => g.k === 'Fin BL2')?.v).toBe('31 août');
+  });
+
+  it('driving predecessors come from the CPM once rescheduled (none when all are complete)', () => {
+    expect(ch4('A1250', { scheduled: true, drivingPreds: [] }).preds.map((p) => [p.id, p.rel, p.tone])).toEqual([
+      ['A1240', 'FS', 'normal'], ['A1220', 'FS +10d', 'normal'], ['A1230', 'FF +5d', 'normal'],
+    ]);
+    expect(ch4('A1250', { scheduled: true, drivingPreds: ['A1230'] }).preds.map((p) => p.tone)).toEqual(['normal', 'normal', 'driving']);
+    expect(ch4('A1250', {}).preds[0].rel).toBe('FS · driving');
+  });
+
+  it('to-dos created from the drawer are removable', () => {
+    const v = ch4('A1250', {});
+    expect(v.todos.filter((x) => x.removable).map((x) => x.id)).toEqual(v.todos.some((x) => x.id === 'T-2314') ? ['T-2314'] : []);
+  });
+});

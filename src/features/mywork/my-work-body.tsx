@@ -17,10 +17,12 @@ import {
   TASK_STATUS_LABEL, WORK_GROUP_LABEL, boardColumns, calendarBars, calendarDays, calendarStart, dueText, dueTone, hoursCellText, hoursText,
   nextWeekEnd, plannedHours, spanText, toggleDone, todayColumn, workGroups, workKpis, type TaskStatus, type WorkGroupKey,
 } from '@/domain/tasks';
+import { weekHoursOf } from '@/domain/kpis';
+import { loggedOfText } from '@/features/kpis/i18n';
 import { useI18n } from '@/i18n/client';
 import { TODAY, dayLabel, pct } from '@/lib/format';
 import { toggleTaskDoneAction } from './actions';
-import { loggedSubText, taskCountText } from './i18n';
+import { taskCountText } from './i18n';
 import type { WorkItemData } from './model';
 import s from './mywork.module.css';
 
@@ -30,6 +32,11 @@ export interface MyWorkBodyProps {
   items: WorkItemData[];
   /** Weekly loads of the person (resource pool); null outside the pool. */
   loads: number[] | null;
+  /**
+   * A-12 (10 OQ18): hours of this week's time entries and the mean pool load of the two weeks after the data date
+   * (src/server/dal/kpis.ts); absent → the prototype's formulas (`workKpis`).
+   */
+  measured?: { loggedH: number; load: number | null };
   view: WorkView;
   /** Calendar window offset in weeks (0 = 21 Sep – 2 Oct). */
   week: number;
@@ -46,7 +53,7 @@ const DOT_COLOR: Record<TaskStatus, string> = {
 };
 const INTERACTIVE = 'a, button, input, select, textarea, label';
 
-export function MyWorkBody({ items, loads, view, week, calendarHrefs, canEdit }: MyWorkBodyProps) {
+export function MyWorkBody({ items, loads, measured, view, week, calendarHrefs, canEdit }: MyWorkBodyProps) {
   const { t, lang } = useI18n();
   const toast = useToast();
   const [, startTransition] = useTransition();
@@ -59,7 +66,10 @@ export function MyWorkBody({ items, loads, view, week, calendarHrefs, canEdit }:
       if (!r.ok) toast.showEn(r.error);
     });
 
-  const k = workKpis(tasks, loads);
+  const base = workKpis(tasks, loads);
+  const k = measured
+    ? { ...base, loggedH: measured.loggedH, loggedPct: Math.round((measured.loggedH / weekHoursOf()) * 100), load: measured.load, overCapacity: measured.load != null && measured.load > 100 }
+    : base;
   const nextStart = nextWeekEnd() - 4;
   return (
     <>
@@ -67,7 +77,7 @@ export function MyWorkBody({ items, loads, view, week, calendarHrefs, canEdit }:
         <KpiTile label={t('Due today')} value={k.dueToday} sub={t(dayLabel(TODAY))} color={OK} />
         <KpiTile label={t('Overdue')} value={k.overdue} sub={t('Needs a new date or a push')} color={k.overdue ? LO : OK} />
         <KpiTile label={t('Next week')} value={k.nextWeek} sub={t(spanText(nextStart, nextStart + 4))} color={OK} />
-        <KpiTile label={t('Logged this week')} value={k.loggedH.toFixed(1) + ' h'} sub={loggedSubText(k.loggedPct, lang)} color={OK} />
+        <KpiTile label={t('Logged this week')} value={k.loggedH.toFixed(1) + ' h'} sub={loggedOfText(weekHoursOf(), k.loggedPct, lang)} color={OK} />
         <KpiTile
           label={t('Load next 2 wks')}
           value={k.load == null ? '—' : k.load + '%'}

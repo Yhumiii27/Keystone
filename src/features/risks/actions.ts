@@ -7,11 +7,13 @@
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { parseDrawDown } from '@/domain/contingency';
-import { parseNewRisk, parseRiskEdit, type RiskEdit } from '@/domain/risk';
+import { FORM_CATEGORIES, parseNewRisk, parseRiskEdit, type RiskEdit } from '@/domain/risk';
+import { orderedOptions } from '@/domain/settings-rules';
 import { recordContingencyDraw } from '@/server/dal/contingency';
 import { getProject } from '@/server/dal/projects';
 import { createRisk, listRisks, updateRisk } from '@/server/dal/risks';
 import { getContingencyScreen, riskOwnerOptions } from '@/server/dal/risks-screen';
+import { riskCategoryOptions } from '@/server/dal/settings-lists';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { DRAW_RESULT, RISK_RESULT } from './forms';
@@ -47,7 +49,9 @@ async function editable(code: unknown, screen: 'risks' | 'contingency'): Promise
 export async function createRiskAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const ok = await editable(code, 'risks');
   if ('error' in ok) return ok;
-  const parsed = parseNewRisk(strings(values), await riskOwnerOptions(ok.code));
+  // A-14: the category must be one of the active Settings › Risk categories (what the form offers).
+  const [team, cats] = await Promise.all([riskOwnerOptions(ok.code), riskCategoryOptions()]);
+  const parsed = parseNewRisk(strings(values), team, orderedOptions(cats.active, FORM_CATEGORIES).map((c) => c.code));
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
   const number = await createRisk(

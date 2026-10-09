@@ -11,6 +11,8 @@ import type { ApprovalItem } from '@/domain/approvals';
 import type { Txt } from '@/domain/home';
 import type { Lang } from '@/i18n/translate';
 import { moneyEur } from '@/lib/format';
+import { DEFAULT_DATA_DATE } from './ch4-defaults';
+import { releasedInMonth } from './kpis';
 import {
   ECO_APPROVER_KEYS, ECO_APPROVER_SHORT, ECO_DECISION_TAG, ECO_FLOW_STEPS, ECO_STATUS_TAG, ECO_STEP_ADVANCE, ecoApproverKey, ecoDecision,
   ecoDisposition, ecoKeyOfRole, ecoStatus, interchangeability, INTERCHANGEABILITY_NOT_ASSESSED, isoOfDisplayDate, vigieSyncStatus,
@@ -50,6 +52,8 @@ export interface EcoApprovalLike {
   decision: EcoDecision;
   /** Who decides, as Vigie names them ("R. Aubert, C. Moreau"). */
   approver: string;
+  /** When Vigie recorded the decision (ISO instant), when it reports it — dates the release (A-12). */
+  decidedAt?: string | null;
   /** The viewer's decision recorded in Keystone, pending sync with Vigie. */
   pending: EcoProgressLike | null;
 }
@@ -80,6 +84,8 @@ export interface EcoLike {
   /** Keystone project codes ("HLT-026"). */
   projects: string[];
   approvals: EcoApprovalLike[];
+  /** Raised on (ISO) — the release date when Vigie reports no approval date (A-12). */
+  raisedOn?: string;
   /** Step advancement recorded in Keystone, pending sync with Vigie. */
   requestedStatus: EcoStatus | null;
   pendingProgress: EcoProgressLike[];
@@ -110,11 +116,13 @@ export const releasesBlockedText = (n: number) => (n ? `${n} ${n === 1 ? 'releas
 /**
  * The six tiles. `awaitingMine` = the viewer's queue (ECOs in approval whose key of the viewer is still pending —
  * for a PM, on the projects they manage); `roleTitle` = the persona title (EN source, translated with the sentence).
- * "Released this month" counts every released ECO, as the prototype (no release date in the mirror, 09 OQ18).
+ * "Released this month" (A-12, 09 OQ18): released ECOs whose release date — Vigie's last approval decision, else the
+ * raise date (`ecoReleaseDate`) — falls in the data date's month (`opts.asOf`, default the portfolio data date); the
+ * prototype counted every released ECO.
  */
-export function ecoKpis(ecos: EcoLike[], opts: { roleKey: EcoApproverKey | null; roleTitle: string; awaitingMine: number; lang: Lang }): EcoKpi[] {
+export function ecoKpis(ecos: EcoLike[], opts: { roleKey: EcoApproverKey | null; roleTitle: string; awaitingMine: number; lang: Lang; asOf?: string }): EcoKpi[] {
   const open = ecos.filter((e) => isOpenEco(e.status));
-  const released = ecos.filter((e) => e.status === 'released');
+  const released = releasedInMonth(ecos, opts.asOf ?? DEFAULT_DATA_DATE);
   const locked = ecos.filter((e) => e.locked).length;
   return [
     { label: 'Open ECOs', value: open.length, sub: `${ecos.length} in total`, lo: false },

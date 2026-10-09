@@ -1,16 +1,19 @@
 // Meetings & minutes Server Functions against an in-memory database: permission gate (outside / read-only project
 // refused server-side), meeting ↔ project check, input validation, writes with the viewer as the actor, toasts in
 // EN and FR (New meeting, Send minutes). Session and project context are mocked.
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const viewer = { name: 'Romain Aubert', canEdit: true, lang: 'en' as 'en' | 'fr' };
+const viewer = { name: 'Romain Aubert', canEdit: true, canEditRisks: true, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@/server/session', async () => {
   const { makeT } = await import('@/i18n/translate');
   return { getI18n: async () => ({ lang: viewer.lang, t: makeT(viewer.lang) }) };
 });
 vi.mock('@/server/project-context', () => ({
-  getProjectContext: async () => ({ viewer: { name: viewer.name }, canEdit: () => viewer.canEdit }),
+  getProjectContext: async () => ({ viewer: { name: viewer.name }, canEdit: (screen?: string) => (screen === 'risks' ? viewer.canEditRisks : viewer.canEdit) }),
 }));
 
 import { revalidatePath } from 'next/cache';
@@ -18,9 +21,13 @@ import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { getMeeting } from '@/server/dal/meetings';
 import { listAudit } from '@/server/dal/notifications';
+import { listClientQuestions } from '@/server/dal/meetings';
+import { listRisks } from '@/server/dal/risks';
 import { listTasks } from '@/server/dal/tasks';
+import { setFilesRoot } from '@/server/storage/files';
 import {
-  addMinutesLineAction, analyseTranscriptAction, applyTranscriptAction, createMeetingAction, sendMinutesAction, toggleMeetingActionAction,
+  addMinutesLineAction, addProposalQuestionAction, addProposalRiskAction, analyseTranscriptAction, applyTranscriptAction, createMeetingAction, editProposalAction,
+  importTranscriptAction, reviewProposalAction, sendMinutesAction, toggleMeetingActionAction,
 } from './actions';
 
 const NEW = { title: 'Weekly site meeting #25', type: 'internal', series: 'weekly_site', date: '6 oct. 2026', time: '8:30', loc: '', invited: 'R. Aubert, L. Fabre, J. Wagner', agenda: 'Safety\nSteel' };
@@ -30,7 +37,7 @@ describe('meetings Server Functions', () => {
     setDb(await openDatabase());
   }, 60_000);
   beforeEach(() => {
-    Object.assign(viewer, { name: 'Romain Aubert', canEdit: true, lang: 'en' });
+    Object.assign(viewer, { name: 'Romain Aubert', canEdit: true, canEditRisks: true, lang: 'en' });
     vi.mocked(revalidatePath).mockClear();
   });
 
@@ -78,7 +85,8 @@ describe('meetings Server Functions', () => {
   it('transcript: analyse first, then add to the minutes once; a meeting without transcript is refused', async () => {
     expect(await applyTranscriptAction({ code: 'HLT-026', meeting: 'MTG-119' })).toEqual({ ok: false, error: 'Analyse the transcript first' });
     expect(await analyseTranscriptAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual({ ok: false, error: 'This meeting has no transcript' });
-    expect(await analyseTranscriptAction({ code: 'HLT-026', meeting: 'MTG-119' })).toEqual({ ok: true });
+    // S-10: a real analysis (local rules under Vitest) — its toast gives the analyser and the counts.
+    expect(await analyseTranscriptAction({ code: 'HLT-026', meeting: 'MTG-119' })).toEqual({ ok: true, toast: 'Transcript analysed (local rules) · 3 decisions · 3 actions' });
     expect(await applyTranscriptAction({ code: 'HLT-026', meeting: 'MTG-119' })).toEqual({ ok: true });
     const m = (await getMeeting('MTG-119'))!;
     expect(m.transcript).toMatchObject({ analysed: true, applied: true });
@@ -128,5 +136,82 @@ describe('meetings Server Functions', () => {
     expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-132' })).toEqual({ ok: true, toast: 'MIN-HLT-028 · minutes sent to 2 invitees · 0 actions added to tasks' });
     const sent = (await getMeeting('MTG-132'))!;
     expect(sent.participants.map((p) => [p.name, p.minutesRecipient])).toEqual([['Romain Aubert', false], ['L. Fabre', true]]);
+  });
+});
+
+describe('transcript Server Functions (chapter 4, S-10)', () => {
+  let dir = '';
+  const form = (fields: Record<string, string | File>) => {
+    const f = new FormData();
+    for (const [k, v] of Object.entries(fields)) f.set(k, v);
+    return f;
+  };
+  const TEXT = 'R. Aubert: We agreed to keep the night shift.\nJ. Wagner: I will update the access plan by 2 October.\nL. Fabre: There is a risk the crane arrives late. Can the client confirm the exclusion zone?';
+  beforeAll(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'keystone-mtg-actions-'));
+    setFilesRoot(dir); // uploaded transcripts never land in ./.data
+  });
+  afterAll(() => {
+    setFilesRoot(null);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+  beforeEach(() => {
+    Object.assign(viewer, { name: 'Romain Aubert', canEdit: true, canEditRisks: true, lang: 'en' });
+  });
+
+  it('import: rights, nothing to import, file type, paste, file (replace, FR toast), minutes sent', async () => {
+    viewer.canEdit = false;
+    expect(await importTranscriptAction(form({ code: 'HLT-026', meeting: 'MTG-130', text: TEXT }))).toEqual({ ok: false, error: 'These meetings are read-only for you' });
+    viewer.canEdit = true;
+    expect(await importTranscriptAction({} as never)).toEqual({ ok: false, error: 'Invalid request' });
+    expect(await importTranscriptAction(form({ code: 'HLT-026', meeting: 'MTG-130', text: '  ' }))).toEqual({ ok: false, error: 'Paste the transcript or choose a file' });
+    expect(await importTranscriptAction(form({ code: 'HLT-026', meeting: 'MTG-130', file: new File(['x'], 'notes.docx') }))).toEqual({ ok: false, error: 'File type not accepted' });
+    expect(await importTranscriptAction(form({ code: 'HLT-026', meeting: 'MTG-118', text: TEXT }))).toEqual({ ok: false, error: 'Minutes already sent' });
+    expect(await importTranscriptAction(form({ code: 'NDC-031', meeting: 'MTG-130', text: TEXT }))).toEqual({ ok: false, error: 'Unknown meeting' });
+    expect(await importTranscriptAction(form({ code: 'HLT-026', meeting: 'MTG-130', text: TEXT }))).toEqual({ ok: true, toast: 'Transcript imported · 37 words · 3 speakers' });
+    viewer.lang = 'fr';
+    const srt = '1\n00:00:01,000 --> 00:00:03,000\nR. Aubert: We agreed to keep the night shift.\n';
+    expect(await importTranscriptAction(form({ code: 'HLT-026', meeting: 'MTG-130', file: new File([srt], 'cr.srt') }))).toEqual({ ok: true, toast: 'Transcription remplacée · 9 mots · 1 intervenant' });
+    expect((await getMeeting('MTG-130'))!.transcript).toMatchObject({ source: 'file', fileName: 'cr.srt', analysed: false });
+    viewer.lang = 'en';
+    expect(await importTranscriptAction(form({ code: 'HLT-026', meeting: 'MTG-130', text: TEXT }))).toMatchObject({ ok: true });
+  });
+
+  it('analyse: Claude refused when not configured; the local analysis; the counts in the toast', async () => {
+    expect(await analyseTranscriptAction({ code: 'HLT-026', meeting: 'MTG-130', engine: 'claude' })).toEqual({ ok: false, error: 'Claude is not configured (ANTHROPIC_API_KEY)' });
+    expect(await analyseTranscriptAction({ code: 'HLT-026', meeting: 'MTG-130', engine: 'gpt' })).toEqual({ ok: false, error: 'Invalid request' });
+    viewer.lang = 'fr';
+    expect(await analyseTranscriptAction({ code: 'HLT-026', meeting: 'MTG-130', engine: 'local' })).toEqual({
+      ok: true, toast: 'Transcription analysée (règles locales) · 1 décision · 1 action · 1 risque · 1 question client',
+    });
+    expect((await getMeeting('MTG-130'))!.transcript!.items.map((x) => x.type)).toEqual(['decision', 'action', 'risk', 'question']);
+  });
+
+  it('review: discard / restore / edit; a risk needs the risk register right; a question goes to the client questions', async () => {
+    expect(await reviewProposalAction({ code: 'HLT-026', meeting: 'MTG-130', position: 9, status: 'rejected' })).toEqual({ ok: false, error: 'Unknown proposal' });
+    expect(await reviewProposalAction({ code: 'HLT-026', meeting: 'MTG-130', position: 0, status: 'done' })).toEqual({ ok: false, error: 'Invalid request' });
+    expect(await reviewProposalAction({ code: 'HLT-026', meeting: 'MTG-130', position: 0, status: 'rejected' })).toEqual({ ok: true });
+    expect(await editProposalAction('HLT-026', 'MTG-130', 1, { text: 'Update the access plan', owner: 'J. Wagner', due: '1 oct.' })).toEqual({ toast: 'Proposal updated' });
+    expect(await editProposalAction('HLT-026', 'MTG-130', 1, { text: '' })).toEqual({ error: 'Write a note first' });
+
+    viewer.canEditRisks = false;
+    const RISK = { title: 'The crane arrives late', cat: 'supplier_delivery', p: '3', i: '4', resp: 'mitigate' };
+    expect(await addProposalRiskAction('HLT-026', 'MTG-130', 2, RISK)).toEqual({ error: 'This risk register is read-only for you' });
+    viewer.canEditRisks = true;
+    expect(await addProposalRiskAction('HLT-026', 'MTG-130', 1, RISK)).toEqual({ error: 'Unknown proposal' });
+    const r = await addProposalRiskAction('HLT-026', 'MTG-130', 2, RISK);
+    expect(r).toEqual({ toast: expect.stringMatching(/^R-\d+ · Risk registered$/) });
+    const number = (r as { toast: string }).toast.split(' · ')[0];
+    expect((await listRisks('HLT-026')).find((x) => x.id === number)).toMatchObject({ title: 'The crane arrives late', category: 'supplier_delivery' });
+    expect(await addProposalRiskAction('HLT-026', 'MTG-130', 2, RISK)).toEqual({ error: 'This proposal was already added' });
+
+    expect(await addProposalQuestionAction('HLT-026', 'MTG-130', 3, { text: 'Can the client confirm the exclusion zone?', askedBy: '', owner: 'R. Aubert' })).toEqual({ error: 'Fill in the required fields' });
+    expect(await addProposalQuestionAction('HLT-026', 'MTG-130', 3, { text: 'Can the client confirm the exclusion zone?', askedBy: 'L. Fabre', owner: 'R. Aubert' })).toEqual({ toast: 'Question added to the client questions' });
+    expect((await listClientQuestions('HLT-026')).at(-1)).toMatchObject({ text: 'Can the client confirm the exclusion zone?', state: 'open' });
+
+    expect(await applyTranscriptAction({ code: 'HLT-026', meeting: 'MTG-130' })).toEqual({ ok: true });
+    const m = (await getMeeting('MTG-130'))!;
+    expect(m.agenda.at(-1)!.lines.map((l) => [l.type, l.text, l.owner, l.due])).toEqual([['action', 'Update the access plan', 'J. Wagner', '1 Oct']]);
+    expect(await analyseTranscriptAction({ code: 'HLT-026', meeting: 'MTG-130' })).toEqual({ ok: false, error: 'Proposals were already added · the analysis cannot be replaced' });
   });
 });

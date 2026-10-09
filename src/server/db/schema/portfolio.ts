@@ -1,6 +1,6 @@
 // Portfolio and projects (docs/spec/11 §3.2): projects, sites, members, lifecycle reference (stages, gates,
 // transitions, stage deliverables), deliverable checks, stage history, machine types and project templates.
-import { boolean, date, doublePrecision, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { boolean, date, doublePrecision, integer, pgTable, primaryKey, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { CalendarCode, CostType, MachineTypeCode, StageCode, StageGroup, TransitionMode, ValidationStatus, ZoneCode } from '../codes';
 import { id, keur, months, num, timestamps } from './_common';
 import { clients, countries, persons, zones } from './organisation';
@@ -60,8 +60,50 @@ export const machineTypes = pgTable('machine_types', {
   isStandard: boolean('is_standard').notNull().default(true),
   active: boolean('active').notNull().default(true),
   sortOrder: integer('sort_order').notNull(),
+  /**
+   * Machine types screen (09 §9): editable label (null = the display code, as MT_ALL), description (French, from the
+   * template) and default calendar. The aggregate's phases, cost categories and ITP systems are the tables below.
+   */
+  name: text('name'),
+  description: text('description'),
+  calendar: text('calendar').$type<CalendarCode>(),
   ...timestamps,
 });
+
+/** Standard phases of a machine type (NP_TEMPLATES[mt].phases; edited on the Machine types screen). */
+export const machineTypePhases = pgTable(
+  'machine_type_phases',
+  {
+    machineTypeCode: text('machine_type_code').$type<MachineTypeCode>().notNull().references(() => machineTypes.code, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+    name: text('name').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.machineTypeCode, t.position] })],
+);
+
+/** Reference cost categories of a machine type, k€ (NP_TEMPLATES[mt].cats). */
+export const machineTypeCostCategories = pgTable(
+  'machine_type_cost_categories',
+  {
+    machineTypeCode: text('machine_type_code').$type<MachineTypeCode>().notNull().references(() => machineTypes.code, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+    name: text('name').notNull(),
+    costType: text('cost_type').$type<CostType>().notNull(),
+    budgetKeur: keur('budget_keur').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.machineTypeCode, t.position] })],
+);
+
+/** ITP inspection systems of a machine type (ITP_TEMPLATES 3716) — the systems of a project's inspection plan. */
+export const machineTypeItpSystems = pgTable(
+  'machine_type_itp_systems',
+  {
+    machineTypeCode: text('machine_type_code').$type<MachineTypeCode>().notNull().references(() => machineTypes.code, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+    name: text('name').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.machineTypeCode, t.position] })],
+);
 
 /** REX references of a machine type (REX_FIN[mt].refs). */
 export const rexReferences = pgTable('rex_references', {
@@ -153,6 +195,14 @@ export const projects = pgTable('projects', {
   templateCode: text('template_code').references(() => projectTemplates.code),
   /** Register order (state.projects order; new projects are prepended with a lower value). */
   sortOrder: integer('sort_order').notNull(),
+  // ── Chapter 4 ──
+  /** Project data date (S-1, S-4): remaining work is scheduled from it. Null = DEFAULT_DATA_DATE (domain/ch4-defaults). */
+  dataDate: date('data_date', { mode: 'string' }),
+  /** Baseline shown by Plan / Schedule (S-3: "BL1"); null = DEFAULT_DISPLAYED_BASELINE (domain/ch4-defaults). */
+  displayedBaselineCode: text('displayed_baseline_code'),
+  /** Planned start / finish chosen in the New project wizard (L-3); null for the seed (month texts above). */
+  plannedStartDate: date('planned_start_date', { mode: 'string' }),
+  plannedFinishDate: date('planned_finish_date', { mode: 'string' }),
   ...timestamps,
 });
 
@@ -212,6 +262,10 @@ export const stageTransitions = pgTable(
     validationStatus: text('validation_status').$type<ValidationStatus>(),
     validatedByPersonId: uuid('validated_by_person_id').references(() => persons.id),
     validatedAt: timestamp('validated_at', { withTimezone: true }),
+    /** Chapter 4 (L-1): the portfolio director's comment on the approval / rejection of a forced move. */
+    decisionComment: text('decision_comment'),
+    /** Chapter 4 (L-1): on a 'revert' row, the forced transition it reverts. */
+    revertsTransitionId: uuid('reverts_transition_id').references((): AnyPgColumn => stageTransitions.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique().on(t.projectId, t.seq)],

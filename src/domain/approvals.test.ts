@@ -1,45 +1,19 @@
 // Golden values of the My approvals builders (docs/spec/08 §7.4–7.5, 00 §8.8) on the prototype data set: item text
-// of the kinds built here (apprItems 4727, 4730, Codex documents), the change-request routing rule, and the inbox view
+// of the kinds built here (Codex documents, change requests), the change-request routing rule, and the inbox view
 // model (myApprKpis 4737) — including the fixed "Oldest" (00 §7.16, 08 OQ22).
 import { describe, expect, it } from 'vitest';
 import { makeT } from '@/i18n/translate';
 import { PROTO } from '@/server/prototype';
 import {
-  canDecideStep, changeRequestItems, changeRequestSub, codexDocItems, deliverableItems, deliverablesOf, inboxView, isoOfWhen, kpiTexts, ncrItems, ncrsOf,
-  oldestItem, pendingStepFor, type ApprovalItem, type ChangeRequestForInbox, type ProtoDeliverable, type ProtoDoc, type ProtoNcr,
+  canDecideStep, changeRequestItems, changeRequestSub, codexDocItems, inboxView, isoOfWhen, kpiTexts, oldestItem, pendingStepFor,
+  type ApprovalItem, type ChangeRequestForInbox, type ProtoDoc,
 } from './approvals';
 
 const ids = (xs: ApprovalItem[]) => xs.map((x) => x.id);
 
-describe('client deliverables (apprItems 4727, allDlv 4630)', () => {
-  const hlt = PROTO.HLT_DELIVS as ProtoDeliverable[];
-  it('Harbor Line: D-014 and D-016 submitted', () => {
-    const xs = deliverableItems(deliverablesOf('HLT-026', hlt, true, 'R. Aubert'), 'HLT-026');
-    expect(xs.map((x) => [x.id, x.sub, x.when, x.who, x.href])).toEqual([
-      ['D-014', 'Test & inspection reports · Accept by 2 Oct', '25 Sep', 'Thomas Kerbrat', '/projects/HLT-026/quality?tab=dlv&dlv=D-014'],
-      ['D-016', 'Calculation notes · Accept by 9 Oct', '30 Sep', 'Julien Wagner', '/projects/HLT-026/quality?tab=dlv&dlv=D-016'],
-    ]);
-  });
-  it('other projects with data reuse the first four as D-110…, R = their PM; none without data', () => {
-    const xs = deliverableItems(deliverablesOf('NDC-031', hlt, true, 'S. Perrin'), 'NDC-031');
-    expect(xs.map((x) => [x.id, x.who])).toEqual([['D-112', 'S. Perrin']]);
-    expect(deliverablesOf('EWA-051', hlt, false, 'S. Perrin')).toEqual([]);
-  });
-});
-
-// RFQ awards, invoices, purchase orders, ECOs and delivery quality checks are read from the database since Delivery 4:
-// their item builders are golden-tested with their modules (orders, eco, deliveries, procurement).
-describe('NCRs (apprItems 4730)', () => {
-  it('NCRs: none in Verification in the data set; a verification NCR becomes an inline item', () => {
-    const hlt = PROTO.HLT_NCRS as ProtoNcr[];
-    expect(ncrItems(ncrsOf('HLT-026', hlt, true), 'HLT-026')).toEqual([]);
-    expect(ncrsOf('NDC-031', hlt, true).map((n) => n.id)).toEqual(['NCR-040', 'NCR-041']);
-    expect(ncrsOf('EWA-051', hlt, false)).toEqual([]);
-    const v = ncrItems([{ ...hlt[0], status: 'Verification' }], 'HLT-026')[0];
-    expect([v.id, v.sub, v.when, v.who, v.href, v.decision]).toEqual(['NCR-026', 'Major · Julien Wagner', '2 Oct', 'Hélène Sauvage', '/projects/HLT-026/quality?tab=ncr&ncr=NCR-026', { mode: 'preview' }]);
-  });
-});
-
+// RFQ awards, invoices, purchase orders, ECOs and delivery quality checks (Delivery 4), NCR verification and client
+// deliverable acceptance (Delivery 5) are read from the database: their item builders are golden-tested with their
+// modules (orders, eco, deliveries, procurement, quality).
 describe('Codex documents (00 §7.8, DOC_WHO)', () => {
   const docs = PROTO.DOCS as ProtoDoc[];
   it('RPT-HLT-014 (release proposed) waits for the quality manager, step 2 of its circuit', () => {

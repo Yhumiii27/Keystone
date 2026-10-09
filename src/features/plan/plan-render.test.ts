@@ -3,7 +3,7 @@
 // state of a project without planning data. Shell pieces (PageHeader) and the session are mocked.
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-const state = { lang: 'fr' as 'fr' | 'en', canEdit: true, role: 'director', cookie: undefined as string | undefined };
+const state = { lang: 'fr' as 'fr' | 'en', canEdit: true, role: 'director', isMine: true, cookie: undefined as string | undefined };
 vi.mock('next/navigation', () => ({ usePathname: () => '/projects/HLT-026/plan', useRouter: () => ({ push() {}, replace() {}, refresh() {} }), useSearchParams: () => new URLSearchParams(), notFound: () => { throw new Error('404'); } }));
 vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => (state.cookie ? { value: state.cookie } : undefined) }) }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
@@ -14,7 +14,7 @@ vi.mock('@/server/session', async () => {
 vi.mock('@/server/project-context', async () => {
   const { getProject } = await import('@/server/dal/projects');
   return {
-    getProjectContext: async (code: string) => ({ project: await getProject(code), viewer: { role: state.role }, canEdit: () => state.canEdit }),
+    getProjectContext: async (code: string) => ({ project: await getProject(code), viewer: { role: state.role }, canEdit: () => state.canEdit, isMine: state.isMine }),
   };
 });
 vi.mock('@/components/app/shell/page-header', async () => {
@@ -45,7 +45,8 @@ describe('Plan page render', () => {
     const html = await render('HLT-026');
     const tx = text(html);
     for (const s of [
-      'Vue', 'Structure', 'Avancement', 'Calendrier', 'Chantier 6j · 10h', 'Référence', 'BL1 · 12 mars 2026', 'Date de référence', '25 sept. 2026',
+      // S-2: the chip shows the project calendar — the seed's default Standard 5d · 8h (the prototype printed "Site 6d · 10h" everywhere).
+      'Vue', 'Structure', 'Avancement', 'Calendrier', 'Standard 5j · 8h', 'Référence', 'BL1 · 12 mars 2026', 'Date de référence', '25 sept. 2026',
       'Replanifier', 'Fixer la référence',
       'Avancement global', '63 %', 'pondéré par le budget · date d’état 25 sept. 2026', 'Terminée', '10 / 21', 'En cours', '5 en retard',
       'Non démarré', 'Prochain démarrage · A1260 · 05 oct.', 'Flottement projet', '−27 j', 'Fin 14 janv. 2027 vs BL1 18 déc. 2026',
@@ -115,6 +116,24 @@ describe('Plan page render', () => {
     expect(html).toContain('>A1010<');
     expect(html).not.toContain('>A1250<');
     state.cookie = undefined;
+  });
+
+  it('chapter 4 toolbar: the director gets the picker chips, Reschedule and Set baseline; other editors static chips', async () => {
+    state.lang = 'en';
+    const html = await render('HLT-026');
+    expect(html).toContain('aria-label="Calendar · Standard 5d · 8h"');
+    expect(html).toContain('aria-label="Baseline · BL1 · 12 Mar 2026"');
+    expect(text(html)).toContain('Reschedule');
+    expect(text(html)).toContain('Set baseline');
+    state.role = 'englead';
+    state.isMine = false;
+    const eng = await render('HLT-026');
+    expect(eng).not.toContain('aria-label="Calendar · Standard 5d · 8h"');
+    expect(text(eng)).toContain('Calendar Standard 5d · 8h');
+    expect(text(eng)).not.toContain('Reschedule');
+    expect(text(eng)).toContain('Update progress');
+    state.role = 'director';
+    state.isMine = true;
   });
 
   it('project without planning data → empty state, no other project’s data', async () => {

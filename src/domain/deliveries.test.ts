@@ -62,7 +62,12 @@ function protoReceipts(code: string): ReceiptLike[] {
 /** Open orders to receive (Ordered or Partially received) of the prototype's orders. */
 const openOrders = (code: string) => ((PROTO_GEN.genPOs[code] ?? []) as any[]).filter((o) => o.status === 'Ordered' || o.status === 'Partially received').length;
 
-const kpisOf = (rs: ReceiptLike[], code: string) => deliveryKpis(rs, openOrders(code), 'en').map((k) => ({ label: k.label, value: k.value, sub: k.sub, color: k.lo ? LO : TEXT }));
+/**
+ * A-12 (chapter 4): "On-time deliveries" is an input computed by the DAL from the receipt and PO dates
+ * (`onTimeDeliveryPct`, src/domain/kpis.test.ts); the prototype's 83 % is passed here so the other tiles stay compared.
+ */
+const PROTO_ON_TIME = 83;
+const kpisOf = (rs: ReceiptLike[], code: string) => deliveryKpis(rs, openOrders(code), 'en', PROTO_ON_TIME).map((k) => ({ label: k.label, value: k.value, sub: k.sub, color: k.lo ? LO : TEXT }));
 const rowsOf = (rs: ReceiptLike[]) =>
   rs.map((r) => {
     const v = receiptRowView(r, 'en');
@@ -142,6 +147,8 @@ describe('goods receipts of every project (delivRows / delivKpis / delivChips / 
     expect([qtyText(1234, 'en'), qtyText(1234, 'fr').replace(/\s/g, ' ')]).toEqual(['1,234', '1 234']);
     expect(deliveryKpis(protoReceipts('HLT-026'), 4, 'fr')[2].sub).toBe('0,5% of units received');
     expect(deliveryKpis([], 0, 'en')[2]).toEqual({ label: 'Rejected quantity', value: '0', sub: '—', lo: false });
+    // A-12: nothing received in the last 90 days → "—".
+    expect(deliveryKpis([], 0, 'en')[3]).toEqual({ label: 'On-time deliveries', value: '—', sub: 'Last 90 days · vs PO expected date', lo: false });
   });
 });
 

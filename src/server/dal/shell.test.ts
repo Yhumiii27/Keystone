@@ -4,9 +4,12 @@ import type { RoleKey } from '@/config/screens';
 import { approvalCount } from '@/server/approvals';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { openClaim } from './claims';
 import { addPaymentMilestone } from './contract';
 import { approveDocumentStep } from './documents';
+import { addMachine } from './fleet';
 import { markInterfaceReceived } from './interfaces';
+import { addPunchItem, advancePunchItem } from './itp';
 import { addMeetingLine, createMeeting, sendMinutes } from './meetings';
 import { markAllNotificationsRead, markNotificationRead } from './notifications';
 import { createPart } from './parts';
@@ -217,5 +220,45 @@ describe('Delivery 4 badges and search follow the database (docs/spec/01 §4.4, 
     const po = (await searchShell('po-1082', 'HLT-026')).filter((h) => h.kind === 'Purchase order');
     expect(po).toEqual([{ kind: 'Purchase order', title: 'PO-1082 · Cotswold Fire Systems', sub: 'Ordered', href: '/projects/HLT-026/orders?po=PO-1082' }]);
     expect((await searchShell('po-1082', 'NDC-031')).filter((h) => h.kind === 'Purchase order')).toEqual([]);
+  });
+});
+
+describe('Delivery 5 badges, search and zone bar follow the database (docs/spec/01 §4.4, §5.4, §7.2)', () => {
+  const badges = async (code: string) => {
+    const nav = await getShellNav('director');
+    return { ...nav.globalBadges, ...nav.projectBadges[code] };
+  };
+  const quality = { name: 'Gabriel Comte', role: 'quality' };
+
+  it('Inspections & punch list: open category-A items of the ITP register', async () => {
+    expect((await badges('HLT-026')).itp).toBe('');
+    const n = await addPunchItem('HLT-026', { description: 'Missing guard on gantry 2 ladder', location: 'Gantry crane 2', category: 'A', source: 'site_walk', owner: 'S. Haddad' }, quality);
+    expect((await badges('HLT-026')).itp).toBe('1');
+    await advancePunchItem('HLT-026', n, quality);
+    await advancePunchItem('HLT-026', n, quality);
+    expect((await badges('HLT-026')).itp).toBe('');
+  });
+
+  it('Warranty claims and the zone bar of the installed base', async () => {
+    expect((await badges('HLT-026')).sav).toBe('2');
+    const before = await zoneBarOf('fleet', null);
+    await openClaim({ machineNumber: 'MCH-041', issue: 'Hoist brake noise', severity: 'major', coverage: 'warranty', owner: 'T. Kerbrat' }, quality);
+    expect((await badges('HLT-026')).sav).toBe('3');
+    await addMachine({ name: 'Gantry crane 45 t — quay 4', machineType: 'EMP', client: 'Port authority', site: 'Le Havre · quay 4', deliveredOn: '2026-09-01', warrantyEndOn: '2028-08-31' }, { name: 'Marie Lefebvre', role: 'director' });
+    const after = await zoneBarOf('fleet', null);
+    expect(after.options[0].count).toBe(before.options[0].count + 1);
+    expect(after.options.find((o) => o.key === 'euna')!.count).toBe(before.options.find((o) => o.key === 'euna')!.count + 1);
+  });
+
+  it('NCR search reads the Vigie mirror of the current project', async () => {
+    const hits = (await searchShell('ncr-029', 'HLT-026')).filter((h) => h.kind === 'NCR');
+    expect(hits).toEqual([{ kind: 'NCR', title: expect.stringMatching(/^NCR-029 · /), sub: 'Critical · Root cause', href: '/projects/HLT-026/quality?ncr=NCR-029' }]);
+    expect((await searchShell('ncr-04', 'NDC-031')).filter((h) => h.kind === 'NCR').map((h) => h.title.split(' · ')[0])).toEqual(['NCR-040', 'NCR-041']);
+    expect((await searchShell('ncr', 'EWA-051')).filter((h) => h.kind === 'NCR')).toEqual([]);
+  });
+
+  it('a project without data carries no Delivery 5 badge', async () => {
+    const b = await projectBadges('director', 'EWA-051');
+    for (const k of ['eng', 'eng-elec', 'pid', 'quality', 'itp', 'site'] as const) expect([k, b[k]]).toEqual([k, undefined]);
   });
 });

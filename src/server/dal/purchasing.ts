@@ -177,7 +177,8 @@ export async function getBomShortfall(projectCode: string, q?: Q): Promise<{ lin
       .where(eq(projectBomLines.projectId, p.id)).orderBy(asc(parts.position)),
     db.select({ ref: parts.ref, qty: sql<number>`sum(${poLines.orderedQty})::float8` })
       .from(poLines).innerJoin(purchaseOrders, eq(purchaseOrders.id, poLines.poId)).innerJoin(parts, eq(parts.id, poLines.partId))
-      .where(and(eq(purchaseOrders.projectId, p.id), ne(purchaseOrders.status, 'cancelled'))).groupBy(parts.ref),
+      // Chapter 4 (E-3): spares orders (origin 'spares', BOM PU/PR list) never count against the BOM shortfall.
+      .where(and(eq(purchaseOrders.projectId, p.id), ne(purchaseOrders.status, 'cancelled'), ne(purchaseOrders.origin, 'spares'))).groupBy(parts.ref),
   ]);
   // The rule is the BOM screen's (src/domain/bom.ts `bomShortfall`, golden-tested).
   return bomShortfall(
@@ -196,7 +197,8 @@ async function nextDraftNumber(tx: Tx): Promise<string> {
   return +next.slice(3) <= 1999 && !all.includes(next) ? next : nextBusinessNumber(all, 'PO-', 4);
 }
 
-async function insertOrder(
+/** Inserts a Draft order (next PO-1100… number) with its lines; returns the number. Also used by the spares orders (chapter 4). */
+export async function insertOrder(
   tx: Tx,
   o: { projectId: string; supplierId: string; origin: PoOrigin; lines: { partId: string; qty: number; unitPriceEur: number }[]; createdBy: string | null; expectedOn?: string | null },
 ): Promise<string> {

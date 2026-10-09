@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic MSPDI with circular logic (A -> B -> C -> A): the import is refused. -->
+<Project xmlns="http://schemas.microsoft.com/project">
+  <Name>Cycle.xml</Name><Title>Circular logic</Title><StartDate>2026-03-02T08:00:00</StartDate><MinutesPerDay>480</MinutesPerDay>
+  <Tasks>
+    <Task><UID>1</UID><ID>1</ID><Name>A</Name><OutlineLevel>1</OutlineLevel><Start>2026-03-02T08:00:00</Start><Finish>2026-03-06T17:00:00</Finish><Duration>PT40H0M0S</Duration>
+      <PredecessorLink><PredecessorUID>3</PredecessorUID><Type>1</Type><LinkLag>0</LinkLag><LagFormat>7</LagFormat></PredecessorLink></Task>
+    <Task><UID>2</UID><ID>2</ID><Name>B</Name><OutlineLevel>1</OutlineLevel><Start>2026-03-09T08:00:00</Start><Finish>2026-03-13T17:00:00</Finish><Duration>PT40H0M0S</Duration>
+      <PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type><LinkLag>0</LinkLag><LagFormat>7</LagFormat></PredecessorLink></Task>
+    <Task><UID>3</UID><ID>3</ID><Name>C</Name><OutlineLevel>1</OutlineLevel><Start>2026-03-16T08:00:00</Start><Finish>2026-03-20T17:00:00</Finish><Duration>PT40H0M0S</Duration>
+      <PredecessorLink><PredecessorUID>2</PredecessorUID><Type>1</Type><LinkLag>0</LinkLag><LagFormat>7</LagFormat></PredecessorLink></Task>
+  </Tasks>
+</Project>

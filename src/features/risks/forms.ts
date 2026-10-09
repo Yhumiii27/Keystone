@@ -11,15 +11,22 @@ export const RISK_RESULT = 'Risk registered';
 /** AF_RESULT.contingency. */
 export const DRAW_RESULT = 'Draw-down recorded';
 
-/** "New risk" — title · category · P · I · owner · response · EMV · response plan (select values are codes). */
-export function riskFormDef(team: readonly string[]): FormDef {
+/**
+ * "New risk" — title · category · P · I · owner · response · EMV · response plan (select values are codes).
+ * `categories` = Settings › Risk categories offered (chapter 4, A-14: active values, the form's own order first —
+ * `orderedOptions`); omitted = the prototype's seven.
+ */
+export function riskFormDef(team: readonly string[], categories?: readonly { code: string; label: string }[]): FormDef {
   return {
     title: 'New risk',
     kind: 'create',
     submit: 'Register risk',
     fields: [
       { id: 'title', label: 'Title', type: 'text', required: true },
-      { id: 'cat', label: 'Category', type: 'select', options: FORM_CATEGORIES.map((c) => ({ value: c, label: riskCategory.label(c) })) },
+      {
+        id: 'cat', label: 'Category', type: 'select',
+        options: categories ? categories.map((c) => ({ value: c.code, label: c.label })) : FORM_CATEGORIES.map((c) => ({ value: c, label: riskCategory.label(c) })),
+      },
       { id: 'p', label: 'Probability (1–5)', type: 'number', defaultValue: '3' },
       { id: 'i', label: 'Impact (1–5)', type: 'number', defaultValue: '3' },
       { id: 'owner', label: 'Owner', type: 'select', options: [...team] },

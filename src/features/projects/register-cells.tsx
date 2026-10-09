@@ -58,6 +58,9 @@ export interface StatusCellProps {
   onMove: (to: StageCode, trigger: HTMLElement | null) => void;
 }
 
+/** Stages deactivated in Settings › Project statuses (A-14): "Move to" skips them. */
+const inactiveOf = (stages: ReadonlyMap<StageCode, StageView>) => new Set<string>([...stages.values()].filter((x) => x.inactive).map((x) => x.code));
+
 /** Status tag as a menu button; the menu lists the allowed transitions with their entry gate (TRANS / GATES). */
 export function StatusCell({ stage, stages, canEdit, onMove }: StatusCellProps) {
   const { t } = useI18n();
@@ -87,7 +90,7 @@ export function StatusCell({ stage, stages, canEdit, onMove }: StatusCellProps) 
         zIndex={20}
       >
         <MenuHeader>{t('Move to')}</MenuHeader>
-        {transitionsOf(stage).map((to) => (
+        {transitionsOf(stage, inactiveOf(stages)).map((to) => (
           <MenuItem
             key={to}
             icon={ArrowRight}

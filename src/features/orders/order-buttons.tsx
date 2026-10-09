@@ -1,16 +1,18 @@
 'use client';
 // Client islands of the Purchase orders screen (docs/spec/08 §2.4–2.5): the BOM shortfall assistant (header
 // "New purchase order" and banner "Create draft POs by supplier"), the row actions "Send for approval" / "Approve &
-// order", and the drawer's "Export PO" (no export yet: "coming soon" toast) and "Push to X3". Rendered only for
+// order", and the drawer's "Export PO" (the purchase order PDF) and "Push to X3". Rendered only for
 // viewers who may act (the page gates them; the Server Functions check again). A refused or failed change shows its
 // message as a toast; successful changes refresh the page through revalidation, as in the prototype (no toast),
 // except "Push to X3", which confirms with the X3 reference.
-import { Check, FilePdf, Plus, UploadSimple } from '@phosphor-icons/react/dist/ssr';
+import { Check, Plus, UploadSimple } from '@phosphor-icons/react/dist/ssr';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { Button } from '@/components/ds/Button';
 import { useToast } from '@/components/ds/Toast';
+import { ExportFileButton } from '@/features/exports/export-file-button';
 import { useI18n } from '@/i18n/client';
+import { exportHref } from '@/lib/export-href';
 import { approveOrderAction, createDraftOrdersAction, pushOrderToX3Action, submitOrderAction, type OrderActionResult } from './actions';
 
 const FAILED = 'The change could not be saved';
@@ -84,15 +86,10 @@ export function OrderRowActions({ code, number, canSubmit, canApprove }: OrderRo
   );
 }
 
-/** Drawer "Export PO" (ghost + file-pdf): no export behind it yet. */
-export function ExportPoButton() {
+/** Drawer "Export PO" (ghost + file-pdf): the purchase order as a PDF (chapter 4 exports, document `po`). */
+export function ExportPoButton({ code, number }: { code: string; number: string }) {
   const { t } = useI18n();
-  const toast = useToast();
-  return (
-    <Button variant="ghost" size="sm" icon={FilePdf} onClick={() => toast.show(t('Export PO — coming soon'))}>
-      {t('Export PO')}
-    </Button>
-  );
+  return <ExportFileButton href={exportHref('orders', { format: 'pdf', code, variant: 'po', id: number })} label={t('Export PO')} ariaLabel={`${t('Export PO')} · ${number}`} />;
 }
 
 /** Drawer "Push to X3" (ghost + upload, as on Stock): an approved order drafted in Keystone gets its X3 reference. */

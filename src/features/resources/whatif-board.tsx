@@ -1,20 +1,28 @@
 'use client';
-// What-if levelling body (docs/spec/05 §4.3–§4.5, template 1504–1528): 4 KPI tiles, one card per scenario
-// (priority segment, levers, peak load by week, results, "Select scenario → create requests") and the "Side by
-// side" table. Lever toggles, priority, auto-level and selection are saved through Server Functions and shown
-// optimistically; read-only viewers see the same cards without the controls.
-import { Check, CheckSquare, Sparkle, Square } from '@phosphor-icons/react/dist/ssr';
-import { useOptimistic, useTransition, type CSSProperties } from 'react';
+// What-if levelling body (docs/spec/05 §4.3–§4.5, template 1504–1528; chapter 4, S-7): 4 KPI tiles, one card per scenario
+// (priority segment, levers derived from the data, peak load by week, results computed by the CPM engine on a copy of the
+// plan, "Select scenario → create requests") and the "Side by side" table with the current plan. Lever toggles, priority,
+// auto-level and selection are saved through Server Functions and shown optimistically (results of a lever set one toggle
+// away are precomputed by the server); rename and delete are confirmed in dialogs. Read-only viewers see the cards
+// without the controls.
+import { Check, CheckSquare, PencilSimple, Sparkle, Square, Trash } from '@phosphor-icons/react/dist/ssr';
+import { useOptimistic, useState, useTransition, type CSSProperties } from 'react';
+import { Callout } from '@/components/app/Callout';
+import { EmptyState } from '@/components/app/EmptyState';
+import { FormDialog } from '@/components/app/FormDialog';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
-import { Button } from '@/components/ds/Button';
+import { Button, IconButton } from '@/components/ds/Button';
 import { CardTitle } from '@/components/ds/Card';
 import { cx } from '@/components/ds/cx';
+import { Dialog } from '@/components/ds/Dialog';
+import { DialogActions } from '@/components/ds/DialogParts';
 import { Segmented } from '@/components/ds/Segmented';
 import { Table, Td, Th } from '@/components/ds/Table';
 import { useToast } from '@/components/ds/Toast';
 import type { WhatIfPriority } from '@/domain/whatif';
 import { useI18n } from '@/i18n/client';
-import { autoLevelWhatIf, selectWhatIfScenario, setWhatIfPriority, toggleWhatIfLever, type WhatIfActionResult } from './actions';
+import { autoLevelWhatIf, deleteWhatIfScenario, renameWhatIfScenario, selectWhatIfScenario, setWhatIfPriority, toggleWhatIfLever, type WhatIfActionResult } from './actions';
+import { RENAME_SCENARIO_FORM } from './whatif-form';
 import { PRIORITY_OPTIONS, reduceScenarios, whatIfView, type ScenarioCardView, type WhatIfAction, type WhatIfData } from './whatif-model';
 import s from './whatif.module.css';
 
@@ -23,24 +31,29 @@ export function WhatIfBoard({ data, canEdit }: { data: WhatIfData; canEdit: bool
   const toast = useToast();
   const [scenarios, apply] = useOptimistic(data.scenarios, (state, a: WhatIfAction) => reduceScenarios(state, a, data));
   const [, startTransition] = useTransition();
-  const view = whatIfView({ ...data, scenarios }, t, lang);
+  const [renaming, setRenaming] = useState<ScenarioCardView | null>(null);
+  const [deleting, setDeleting] = useState<ScenarioCardView | null>(null);
+  const view = whatIfView({ ...data, scenarios }, t, lang, data.scenarios);
 
-  const run = (a: WhatIfAction, call: () => Promise<WhatIfActionResult>) =>
+  const run = (a: WhatIfAction | null, call: () => Promise<WhatIfActionResult>) =>
     startTransition(async () => {
-      apply(a);
+      if (a) apply(a);
       try {
         const r = await call();
         if ('error' in r) toast.show(r.error);
+        else if (r.message) toast.show(r.message);
       } catch {
         toast.show(t('The change could not be saved'));
       }
     });
   const code = data.projectCode;
-  const handlers = {
-    priority: (name: string, priority: WhatIfPriority) => run({ type: 'priority', name, priority }, () => setWhatIfPriority(code, name, priority)),
-    toggle: (name: string, lever: string) => run({ type: 'toggle', name, lever }, () => toggleWhatIfLever(code, name, lever)),
-    auto: (name: string) => run({ type: 'auto', name }, () => autoLevelWhatIf(code, name)),
-    select: (name: string) => run({ type: 'select', name }, () => selectWhatIfScenario(code, name)),
+  const handlers: Handlers = {
+    priority: (name, priority) => run({ type: 'priority', name, priority }, () => setWhatIfPriority(code, name, priority)),
+    toggle: (name, lever) => run({ type: 'toggle', name, lever }, () => toggleWhatIfLever(code, name, lever)),
+    auto: (name) => run({ type: 'auto', name }, () => autoLevelWhatIf(code, name)),
+    select: (name) => run({ type: 'select', name }, () => selectWhatIfScenario(code, name)),
+    rename: setRenaming,
+    remove: setDeleting,
   };
 
   return (
@@ -50,19 +63,24 @@ export function WhatIfBoard({ data, canEdit }: { data: WhatIfData; canEdit: bool
           <KpiTile key={k.label} label={k.label} value={k.value} sub={k.sub} color={k.color} />
         ))}
       </KpiGrid>
-      <div className={s.scenarios}>
-        {view.scenarios.map((sc) => (
-          <ScenarioCard key={sc.name} sc={sc} canEdit={canEdit} handlers={handlers} />
-        ))}
-      </div>
+      {data.error && <Callout tone="accent">{`${t('The plan cannot be scheduled')} · ${t(data.error)}`}</Callout>}
+      {view.scenarios.length ? (
+        <div className={s.scenarios}>
+          {view.scenarios.map((sc) => (
+            <ScenarioCard key={sc.name} sc={sc} canEdit={canEdit} hasLevers={data.levers.length > 0} handlers={handlers} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState variant="boxed">{t(canEdit ? 'No scenario yet — create one with New scenario.' : 'No scenario yet.')}</EmptyState>
+      )}
       <section className={cx('card', 'elev-sm', s.compare)}>
         <CardTitle>{t('Side by side')}</CardTitle>
         <Table size={13}>
           <thead>
             <tr>
               <Th>{t('Indicator')}</Th>
-              {view.scenarios.map((sc) => (
-                <Th key={sc.name}>{sc.title}</Th>
+              {view.columns.map((c, i) => (
+                <Th key={i}>{c}</Th>
               ))}
             </tr>
           </thead>
@@ -84,7 +102,22 @@ export function WhatIfBoard({ data, canEdit }: { data: WhatIfData; canEdit: bool
             'Selecting a scenario turns its levers into resource requests (contractor, overtime, transfers) that go through department approval before anything reaches a team member.',
           )}
         </span>
+        <span className={s.footnote}>{view.note}</span>
       </section>
+      {canEdit && (
+        <>
+          <FormDialog
+            {...RENAME_SCENARIO_FORM}
+            translate
+            open={!!renaming}
+            onClose={() => setRenaming(null)}
+            context={renaming?.title}
+            initialValues={renaming ? { name: renaming.name, note: renaming.hypotheses ?? '' } : undefined}
+            onSubmit={(values) => renameWhatIfScenario(code, renaming!.name, values)}
+          />
+          <ConfirmDelete code={code} target={deleting} onClose={() => setDeleting(null)} />
+        </>
+      )}
     </div>
   );
 }
@@ -94,15 +127,28 @@ interface Handlers {
   toggle: (name: string, lever: string) => void;
   auto: (name: string) => void;
   select: (name: string) => void;
+  rename: (sc: ScenarioCardView) => void;
+  remove: (sc: ScenarioCardView) => void;
 }
 
-function ScenarioCard({ sc, canEdit, handlers }: { sc: ScenarioCardView; canEdit: boolean; handlers: Handlers }) {
+function ScenarioCard({ sc, canEdit, hasLevers, handlers }: { sc: ScenarioCardView; canEdit: boolean; hasLevers: boolean; handlers: Handlers }) {
   const { t } = useI18n();
   return (
     <section className={cx('card', 'elev-sm', s.scenario)} aria-label={sc.title}>
       <div className={s.head}>
         <CardTitle className={s.title}>{sc.title}</CardTitle>
+        {sc.applied && (
+          <span className="tag tag-outline" title={sc.appliedText}>
+            {t('Applied')}
+          </span>
+        )}
         {sc.selected && <span className="tag tag-accent">{t('Selected')}</span>}
+        {canEdit && (
+          <span className={s.cardActions}>
+            <IconButton icon={PencilSimple} size={26} muted label={`${t('Rename scenario')} — ${sc.title}`} onClick={() => handlers.rename(sc)} />
+            <IconButton icon={Trash} size={26} muted label={`${t('Delete scenario')} — ${sc.title}`} onClick={() => handlers.remove(sc)} />
+          </span>
+        )}
       </div>
       <div className={s.block}>
         <span className={s.eyebrow}>{t('Priority (set by the PM)')}</span>
@@ -117,16 +163,19 @@ function ScenarioCard({ sc, canEdit, handlers }: { sc: ScenarioCardView; canEdit
         <div className={s.leversHead}>
           <span className={s.eyebrow}>{t('Levers')}</span>
           {canEdit && (
-            <Button variant="secondary" className={s.small} icon={Sparkle} onClick={() => handlers.auto(sc.name)}>
+            <Button variant="secondary" className={s.small} icon={Sparkle} disabled={!hasLevers} onClick={() => handlers.auto(sc.name)}>
               {t('Auto-level for this priority')}
             </Button>
           )}
         </div>
+        {!sc.levers.length && (
+          <span className={s.noLever}>{t('No lever derived from this plan — no critical activity with labour assignments, no overloaded person on a movable activity.')}</span>
+        )}
         {sc.levers.map((l) => {
           const inner = (
             <>
               {l.on ? <CheckSquare className={cx(s.leverIcon, s.leverOn)} aria-hidden /> : <Square className={cx(s.leverIcon, s.leverOff)} aria-hidden />}
-              <span>{l.label}</span>
+              <span title={l.title}>{l.label}</span>
               <span className={s.effect}>{l.effect}</span>
             </>
           );
@@ -141,7 +190,7 @@ function ScenarioCard({ sc, canEdit, handlers }: { sc: ScenarioCardView; canEdit
           );
         })}
       </div>
-      <div className={s.block}>
+      <div className={cx(s.block, sc.pending && s.pending)}>
         <span className={s.eyebrow}>{t('Peak load by week')}</span>
         <div className={s.bars}>
           {sc.bars.map((b, i) => (
@@ -152,7 +201,7 @@ function ScenarioCard({ sc, canEdit, handlers }: { sc: ScenarioCardView; canEdit
           ))}
         </div>
       </div>
-      <div className={s.blockTight}>
+      <div className={cx(s.blockTight, sc.pending && s.pending)} aria-busy={sc.pending || undefined}>
         {sc.results.map((r) => (
           <div key={r.key} className={s.result}>
             <span className={s.resultKey}>{r.key}</span>
@@ -168,5 +217,42 @@ function ScenarioCard({ sc, canEdit, handlers }: { sc: ScenarioCardView; canEdit
         </Button>
       )}
     </section>
+  );
+}
+
+function ConfirmDelete({ code, target, onClose }: { code: string; target: ScenarioCardView | null; onClose: () => void }) {
+  const { t, lang } = useI18n();
+  const toast = useToast();
+  const [pending, start] = useTransition();
+  const confirm = () => {
+    if (!target) return;
+    start(async () => {
+      try {
+        const r = await deleteWhatIfScenario(code, target.name);
+        toast.show('error' in r ? r.error : (r.message ?? ''));
+      } catch {
+        toast.show(t('The change could not be saved'));
+      }
+      onClose();
+    });
+  };
+  return (
+    <Dialog open={!!target} onClose={onClose} title={t('Delete scenario')} width={440}>
+      {target && (
+        <p className={s.confirmText}>
+          {lang === 'fr'
+            ? `Supprimer ${target.title} ? Ses leviers et ses résultats sont perdus ; les demandes déjà créées restent dans Demandes de ressources.`
+            : `Delete ${target.title}? Its levers and results are lost; requests it already created stay in Resource requests.`}
+        </p>
+      )}
+      <DialogActions>
+        <Button variant="secondary" onClick={onClose}>
+          {t('Cancel')}
+        </Button>
+        <Button variant="primary" icon={Trash} onClick={confirm} disabled={pending} aria-busy={pending || undefined}>
+          {t('Delete scenario')}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }

@@ -5,7 +5,7 @@
 import type { RoleKey, ScreenId } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
 import { fmtD, mIdx, money, monthDate } from '@/lib/format';
-import { HEALTH_LABEL, healthOf, type Health } from './health';
+import { DEFAULT_HEALTH_THRESHOLDS, HEALTH_LABEL, healthOf, type Health, type HealthThresholds } from './health';
 
 /** EVM inputs of a project record (ProjectRow subset). Amounts in k€. */
 export interface EvmInput {
@@ -14,9 +14,6 @@ export interface EvmInput {
   progress: number;
   spi: number | null;
 }
-
-/** Health thresholds shared by both formulas (docs/spec/03 §0.4). */
-const healthFor = (m: number): Health => (m < 0.9 ? 'off_track' : m < 0.97 ? 'at_risk' : 'on_track');
 
 /** CPI/SPI below this value are shown in LO (attention colour). */
 export const INDEX_ALERT = 0.97;
@@ -31,8 +28,11 @@ export interface OverviewMetrics {
   eac: number;
   /** budget − EAC (k€); negative = overrun. */
   variance: number;
-  /** min(CPI, SPI) against the thresholds — the Overview keeps the unclamped CPI (spec Open question 5). */
-  health: Health;
+  /**
+   * The one health rule (A-13, src/domain/health.ts): min(CPI clamped to [0.70, 1.25], SPI) against the Settings
+   * thresholds; null without actuals or progress. (The prototype's Overview used the unclamped CPI, 03 §0.4.)
+   */
+  health: Health | null;
   /** round(progress × 100) + '%' — also the "Work earned" tick position. */
   progressPct: string;
   /** round(actual / budget × 100) + '%'. */
@@ -45,7 +45,7 @@ export interface OverviewMetrics {
 /** Fraction rounded to a whole percent — the prototype sizes bars with its rounded "64%" strings. */
 export const wholePct = (x: number) => Math.round(x * 100) / 100;
 
-export function overviewMetrics(p: EvmInput): OverviewMetrics {
+export function overviewMetrics(p: EvmInput, th: HealthThresholds = DEFAULT_HEALTH_THRESHOLDS): OverviewMetrics {
   const spi = p.spi ?? 1;
   const earned = p.budget * p.progress;
   // A project without actuals yet has no cost performance: CPI 1, EAC = budget (the prototype divides by 0).
@@ -57,7 +57,7 @@ export function overviewMetrics(p: EvmInput): OverviewMetrics {
     spi,
     eac,
     variance: p.budget - eac,
-    health: healthFor(Math.min(cpi, spi)),
+    health: healthOf(p, th),
     progressPct: Math.round(p.progress * 100) + '%',
     spentPct: (p.budget ? Math.round((p.actual / p.budget) * 100) : 0) + '%',
     progressBar: wholePct(p.progress),
@@ -89,7 +89,7 @@ export function portfolioTotals(rows: (EvmInput & { metrics: OverviewMetrics })[
     earned += r.metrics.earned;
     eac += r.metrics.eac;
     spiW += r.metrics.spi * r.budget;
-    if (r.metrics.health !== 'on_track') atRisk++;
+    if (r.metrics.health && r.metrics.health !== 'on_track') atRisk++;
     if (r.metrics.health === 'off_track') offTrack++;
   }
   return { count: rows.length, budget, actual, earned, eac, cpi: actual ? earned / actual : 1, spi: budget ? spiW / budget : 1, atRisk, offTrack };
@@ -216,8 +216,8 @@ export interface ProjectIndicators {
 
 /**
  * `pvExtra(p, live)`: display indicators of a project. `live` = the project has a health (actuals and progress);
- * otherwise everything shows "—". CPI is clamped to [0.70, 1.25] for display and EAC (the health keeps the
- * unclamped value). `sched` = planning data of the project, null when it has none.
+ * otherwise everything shows "—". CPI is clamped to [0.70, 1.25] for display and EAC — the same clamp as the health
+ * rule (A-13, src/domain/health.ts). `sched` = planning data of the project, null when it has none.
  */
 export function projectIndicators(
   p: EvmInput & { finish: string },
@@ -366,7 +366,7 @@ export function myProjectsModel<P extends EvmInput & { code: string; pm: string;
   pool: P[],
   sched: Record<string, ScheduleSummary & { team: string[] }>,
   data: MyProjectsData,
-  opts: { personaTitle: string; pendingDecisions: number; lang: Lang },
+  opts: { personaTitle: string; pendingDecisions: number; lang: Lang; thresholds?: HealthThresholds },
 ): MyProjectsModel<P> {
   let list: (readonly [P, MyProjectRole | ''])[] = pool
     .map((p) => [p, myProjectRole(v, { ...p, team: sched[p.code]?.team ?? null }, data) ?? ''] as const)
@@ -375,7 +375,7 @@ export function myProjectsModel<P extends EvmInput & { code: string; pm: string;
   if (fallback) list = pool.map((p) => [p, ''] as const);
 
   const cards = list.map(([p, role]): MyProjectCard<P> => {
-    const health = healthOf(p);
+    const health = healthOf(p, opts.thresholds);
     return {
       project: p,
       health,

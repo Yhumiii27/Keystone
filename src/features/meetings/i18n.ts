@@ -36,3 +36,43 @@ export function sentToastText(doc: string, invited: number, tasks: number, lang:
     return `${doc} · CR envoyé à ${invited} convié${invited > 1 ? 's' : ''} · ${tasks} action${tasks > 1 ? 's' : ''} ajoutée${tasks > 1 ? 's' : ''} aux tâches`;
   return `${doc} · minutes sent to ${invited} invitee${invited === 1 ? '' : 's'} · ${tasks} action${tasks === 1 ? '' : 's'} added to tasks`;
 }
+
+// ── Transcripts (chapter 4, S-10) ──────────────────────────────────────────────────────────────────────────────────
+
+const count = (n: number, en: [string, string], fr: [string, string], lang: Lang) => {
+  const [one, many] = lang === 'fr' ? fr : en;
+  return `${n} ${n > 1 || (lang === 'en' && n === 0) ? many : one}`;
+};
+
+/** "Transcript imported · 412 words · 4 speakers" / "Transcription importée · 412 mots · 4 intervenants". */
+export function importedToastText(r: { replaced: boolean; words: number; speakers: number }, lang: Lang): string {
+  const head = lang === 'fr' ? (r.replaced ? 'Transcription remplacée' : 'Transcription importée') : r.replaced ? 'Transcript replaced' : 'Transcript imported';
+  const parts = [head, count(r.words, ['word', 'words'], ['mot', 'mots'], lang)];
+  if (r.speakers) parts.push(count(r.speakers, ['speaker', 'speakers'], ['intervenant', 'intervenants'], lang));
+  return parts.join(' · ');
+}
+
+/** "{n} decisions · {n} actions · {n} risks · {n} client questions" (non-zero counts) or "no proposal". */
+export function proposalCountsText(c: { decision: number; action: number; risk: number; question: number }, lang: Lang): string {
+  const parts = [
+    c.decision ? count(c.decision, ['decision', 'decisions'], ['décision', 'décisions'], lang) : '',
+    c.action ? count(c.action, ['action', 'actions'], ['action', 'actions'], lang) : '',
+    c.risk ? count(c.risk, ['risk', 'risks'], ['risque', 'risques'], lang) : '',
+    c.question ? count(c.question, ['client question', 'client questions'], ['question client', 'questions client'], lang) : '',
+  ].filter(Boolean);
+  return parts.length ? parts.join(' · ') : lang === 'fr' ? 'aucune proposition' : 'no proposal';
+}
+
+/** Toast of "Analyse transcript": analyser, counts and the fallback notice when Claude failed. */
+export function analysedToastText(
+  r: { analyzer: 'local' | 'claude'; notice: string | null; counts: { decision: number; action: number; risk: number; question: number } },
+  t: T,
+  lang: Lang,
+): string {
+  const head =
+    lang === 'fr'
+      ? `Transcription analysée (${r.analyzer === 'claude' ? 'Claude' : 'règles locales'})`
+      : `Transcript analysed (${r.analyzer === 'claude' ? 'Claude' : 'local rules'})`;
+  const notice = r.notice ? ` · ${r.notice.split(' · ').map(t).join(' · ')}` : '';
+  return `${head} · ${proposalCountsText(r.counts, lang)}${notice}`;
+}

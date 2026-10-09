@@ -1,11 +1,9 @@
 'use client';
 // Interactive parts of the Meetings screen (docs/spec/05 §5.4–5.5, template 766–810): action ticks (agenda, carried
 // over, previous meeting, Actions register — optimistic, reconciled when the Server Function revalidates), the
-// agenda with its selectable point and the minutes composer, "Send minutes", and the transcript buttons. Edit
-// controls are rendered only when `canEdit` (not outside the workspace, not a read-only project).
-import {
-  ArrowBendDownRight, CheckCircle, CheckSquare, Circle, Gavel, Info, ListPlus, PaperPlaneTilt, Plus, Sparkle, Square,
-} from '@phosphor-icons/react/dist/ssr';
+// agenda with its selectable point and the minutes composer, and "Send minutes" (the transcript box is in
+// transcript-client.tsx). Edit controls are rendered only when `canEdit` (not outside the workspace, not a read-only project).
+import { ArrowBendDownRight, CheckCircle, CheckSquare, Circle, Gavel, Info, PaperPlaneTilt, Plus, Square } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -17,7 +15,7 @@ import { cx } from '@/components/ds/cx';
 import { LINE_TYPES, lineKey, type LineRef } from '@/domain/meetings';
 import { useI18n } from '@/i18n/client';
 import type { MeetingLineType } from '@/server/db/codes';
-import { addMinutesLineAction, analyseTranscriptAction, applyTranscriptAction, sendMinutesAction, toggleMeetingActionAction } from './actions';
+import { addMinutesLineAction, sendMinutesAction, toggleMeetingActionAction } from './actions';
 import { LINE_COLOR, type ActionRowView, type AgendaPointView, type LineView, type PrepActionView } from './model';
 import s from './meetings.module.css';
 
@@ -334,56 +332,5 @@ export function MinutesEditor({ code, meeting, organizer, agenda, editable, canE
         </>
       )}
     </>
-  );
-}
-
-// ── Transcript ─────────────────────────────────────────────────────────────────────────────────────────
-
-/** "Analyse transcript" (secondary) — reveals the simulated analysis (S-10). */
-export function AnalyseButton({ code, meeting, selfHref, pinned }: { code: string; meeting: string; selfHref: string; pinned: boolean }) {
-  const { t } = useI18n();
-  const toast = useToast();
-  const router = useRouter();
-  const [busy, startTransition] = useTransition();
-  return (
-    <Button
-      size="sm"
-      icon={Sparkle}
-      disabled={busy}
-      onClick={() =>
-        startTransition(async () => {
-          const r = await analyseTranscriptAction({ code, meeting });
-          if (!r.ok) return toast.show(r.error);
-          if (!pinned) router.replace(selfHref, { scroll: false });
-        })
-      }
-    >
-      {t('Analyse transcript')}
-    </Button>
-  );
-}
-
-/** "Add to minutes" (primary) — appends the proposals to the last agenda point, once. */
-export function ApplyButton({ code, meeting, selfHref, pinned }: { code: string; meeting: string; selfHref: string; pinned: boolean }) {
-  const { t } = useI18n();
-  const toast = useToast();
-  const router = useRouter();
-  const [busy, startTransition] = useTransition();
-  return (
-    <Button
-      variant="primary"
-      size="sm"
-      icon={ListPlus}
-      disabled={busy}
-      onClick={() =>
-        startTransition(async () => {
-          const r = await applyTranscriptAction({ code, meeting });
-          if (!r.ok) return toast.show(r.error);
-          if (!pinned) router.replace(selfHref, { scroll: false });
-        })
-      }
-    >
-      {t('Add to minutes')}
-    </Button>
   );
 }

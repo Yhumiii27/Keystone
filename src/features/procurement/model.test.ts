@@ -16,6 +16,8 @@ import {
   approveInvoiceReceivedPart, awardRfq, compareRfqQuotes, countInvoicesToResolve, getPurchaseOrder, invoiceQueue, listRfqs, listSupplierInvoices, rejectSupplierInvoice,
   rfqAwardQueue, sendRfq,
 } from '@/server/dal/purchasing';
+import { rfqKpiFacts } from '@/server/dal/kpis';
+import { money } from '@/lib/format';
 import { getSupplierScorecard } from '@/server/dal/suppliers';
 import golden from './procurement.golden.json';
 import { procT } from './i18n';
@@ -32,6 +34,13 @@ const ctxOf = (lang: Lang, role: RoleKey = 'director'): SourcingCtx => ({ t: pro
 /** Prototype dates are zero-padded ("05 Jul"); the rebuild writes "5 Jul" / "5 juil." (data layer convention). */
 const date = (s: string) => s.replace(/^0(\d)/, '$1');
 const kpis = (ks: KpiView[]) => ks.map((k) => ({ label: k.label, value: k.value, sub: k.sub, color: k.color }));
+/**
+ * A-12 (chapter 4): "Savings vs list" and "Average cycle" are computed from the RFQs (`rfqKpiFacts`) instead of the
+ * prototype's €12k and 9 d: the only awarded RFQ (RFQ-2026-029) went to Teufelberger at the catalogue price (€0k saved)
+ * and no RFQ has both a "sent" and an award date ("—").
+ */
+const protoRfqKpis = (ks: any[], lang: Lang) =>
+  ks.map((k, i) => ({ label: k.label, value: i === 2 ? money(0, lang) : i === 3 ? '—' : String(k.value), sub: k.sub, color: k.color }));
 const protoKpis = (ks: any[]) => ks.map((k) => ({ label: k.label, value: String(k.value), sub: k.sub, color: k.color }));
 
 /** French texts this screen fixes (prototype → rebuild). */
@@ -108,9 +117,9 @@ describe('Sourcing view models vs the prototype', () => {
     });
 
     it('RFQ & quotes: KPI tiles and rows', async () => {
-      const v = rfqTabView(await listRfqs(), null, ctxOf(lang));
+      const v = rfqTabView(await listRfqs(), null, ctxOf(lang), await rfqKpiFacts());
       const g = G.seed[lang].rfq;
-      expect(kpis(v.kpis)).toEqual(protoKpis(g.kpis).map((k) => ({ ...k, sub: fix(k.sub, lang) })));
+      expect(kpis(v.kpis)).toEqual(protoRfqKpis(g.kpis, lang).map((k) => ({ ...k, sub: fix(k.sub, lang) })));
       expect(rfqRows(v)).toEqual(protoRfqRows(g.rows, lang));
       expect(v.rows.map((r) => r.href)).toEqual(['RFQ-2026-031', 'RFQ-2026-033', 'RFQ-2026-029', 'RFQ-2026-034'].map((n) => `/purchasing/sourcing?rfq=${n}`));
     });
@@ -195,8 +204,8 @@ describe('Sourcing view models vs the prototype', () => {
       await sendRfq('RFQ-2026-034', 'Fabien Bertrand');
       for (const lang of LANGS) {
         const g = G.scenarios[lang].afterSend.rfq;
-        const v = rfqTabView(await listRfqs(), null, ctxOf(lang));
-        expect(kpis(v.kpis)).toEqual(protoKpis(g.kpis).map((k) => ({ ...k, sub: fix(k.sub, lang) })));
+        const v = rfqTabView(await listRfqs(), null, ctxOf(lang), await rfqKpiFacts());
+        expect(kpis(v.kpis)).toEqual(protoRfqKpis(g.kpis, lang).map((k) => ({ ...k, sub: fix(k.sub, lang) })));
         expect(rfqRows(v)).toEqual(protoRfqRows(g.rows, lang));
       }
       // The drawer after "Send to suppliers" (fresh prototype session) — same state.
@@ -207,8 +216,8 @@ describe('Sourcing view models vs the prototype', () => {
       await compareRfqQuotes('RFQ-2026-033', 'Fabien Bertrand');
       for (const lang of LANGS) {
         const g = G.scenarios[lang].afterCompare;
-        const v = rfqTabView(await listRfqs(), 'RFQ-2026-033', ctxOf(lang));
-        expect(kpis(v.kpis)).toEqual(protoKpis(g.rfq.kpis).map((k) => ({ ...k, sub: fix(k.sub, lang) })));
+        const v = rfqTabView(await listRfqs(), 'RFQ-2026-033', ctxOf(lang), await rfqKpiFacts());
+        expect(kpis(v.kpis)).toEqual(protoRfqKpis(g.rfq.kpis, lang).map((k) => ({ ...k, sub: fix(k.sub, lang) })));
         expect(rfqRows(v)).toEqual(protoRfqRows(g.rfq.rows, lang));
         expect(ownRfqDrawer(await rfqDrawer('RFQ-2026-033', lang, 'director'))).toEqual(protoRfqDrawer(g.drawer, lang));
       }

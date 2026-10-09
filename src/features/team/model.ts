@@ -5,6 +5,8 @@ import { LO, OK, TAG_CLASS, raciCell, statusTagClass } from '@/components/app/to
 import {
   interfaceRowState, raciGrid, stakeholderTone, summariseInterfaces, summariseStakeholders,
 } from '@/domain/team';
+import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
+import { dueWithinDays } from '@/domain/kpis';
 import type { Lang, T } from '@/i18n/translate';
 import type { InterfaceRow } from '@/server/dal/interfaces';
 import type { StakeholderRegister } from '@/server/dal/stakeholders';
@@ -130,14 +132,16 @@ export interface InterfacesView {
   late: number;
 }
 
-export function interfacesView(interfaces: readonly InterfaceRow[], blockers: readonly CommissioningBlocker[], t: T, lang: Lang): InterfacesView {
+/** `dataDate` = the project's data date (A-12: "due within 30 days" counts from it). */
+export function interfacesView(interfaces: readonly InterfaceRow[], blockers: readonly CommissioningBlocker[], t: T, lang: Lang, dataDate: string = DEFAULT_DATA_DATE): InterfacesView {
   const facts = interfaces.map((r) => ({ number: r.number, status: r.status, daysToNeed: r.daysToNeed }));
   const s = summariseInterfaces(facts, blockers.map((b) => b.number));
   const st = statusT(t, lang);
   const blockingLabels = s.blocking.map((n) => blockers.find((b) => b.number === n)!.label);
   const kpis: KpiView[] = [
     { label: t('Interfaces'), value: String(s.count), sub: frozenReceivedText(s.frozen, s.received, lang), color: OK },
-    { label: t('Open'), value: String(s.open), sub: dueWithinText(s.dueWithin30, lang), color: OK },
+    // A-12 (07 OQ6): open interfaces needed within 30 days of the data date (the prototype counted every future need date).
+    { label: t('Open'), value: String(s.open), sub: dueWithinText(dueWithinDays(interfaces, dataDate, 30), lang), color: OK },
     { label: t('Late'), value: String(s.late.length), sub: s.late.join(' · ') || '—', color: s.late.length ? LO : OK },
     // Sub: what the still-open blockers hold up (the prototype always printed "HV cell · anti-collision zones").
     // Colour: LO while any blocker is open or late (the prototype turned it LO only for an Open one, so two late

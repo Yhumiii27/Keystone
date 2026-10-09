@@ -216,7 +216,7 @@ export function DeliveryDrawerBody({ code, d, canEdit, canQc, register, t }: Dra
         <ButtonLink href={d.poHref} variant="secondary" size="sm" icon={ShoppingCart}>
           {t('Open purchase order')}
         </ButtonLink>
-        <PrintReceiptButton />
+        <PrintReceiptButton code={code} number={d.id} />
       </div>
     </>
   );

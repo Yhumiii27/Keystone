@@ -13,7 +13,7 @@
 //   otherwise open or close the delivery drawer behind the "Register receipt" form;
 // - moves the focus to the enclosing row or drawer panel when the island disappears after a decision (its buttons
 //   are gone once the receipt is no longer Announced / QC pending), instead of dropping it on the page body.
-import { Check, FilePdf, Package, Paperclip, X } from '@phosphor-icons/react/dist/ssr';
+import { Check, Package, Paperclip, X } from '@phosphor-icons/react/dist/ssr';
 import { useId, useLayoutEffect, useRef, useState, useTransition, type MouseEvent, type ReactNode } from 'react';
 import { FormDialog } from '@/components/app/FormDialog';
 import type { FormDef } from '@/components/app/form-def';
@@ -23,7 +23,9 @@ import { DialogActions } from '@/components/ds/DialogParts';
 import { Input } from '@/components/ds/Field';
 import { Table, Td, Th } from '@/components/ds/Table';
 import { showToast } from '@/components/ds/Toast';
+import { ExportFileButton } from '@/features/exports/export-file-button';
 import { useI18n } from '@/i18n/client';
+import { exportHref } from '@/lib/export-href';
 import { acceptReceiptAction, attachDeliveryNoteAction, recordPartialQcAction, registerReceiptAction, rejectReceiptAction, type DeliveryActionResult } from './actions';
 import s from './deliveries.module.css';
 
@@ -310,12 +312,8 @@ export function AttachNoteButton({ code, number }: { code: string; number: strin
   );
 }
 
-/** "Print receipt" (`btn-ghost`, `ph-file-pdf`): no PDF report yet (00 §9 phase reports) — announced as coming soon. */
-export function PrintReceiptButton() {
+/** "Print receipt" (`btn-ghost`, `ph-file-pdf`): the goods receipt as a PDF (chapter 4 exports, document `receipt`). */
+export function PrintReceiptButton({ code, number }: { code: string; number: string }) {
   const { t } = useI18n();
-  return (
-    <Button variant="ghost" size="sm" icon={FilePdf} onClick={() => showToast(t('Print receipt — coming soon'))}>
-      {t('Print receipt')}
-    </Button>
-  );
+  return <ExportFileButton href={exportHref('deliveries', { format: 'pdf', code, variant: 'receipt', id: number })} label={t('Print receipt')} ariaLabel={`${t('Print receipt')} · ${number}`} />;
 }

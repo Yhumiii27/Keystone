@@ -1,7 +1,8 @@
 // Meetings & minutes — /projects/[code]/meetings (docs/spec/05 §5, template 753–813, logic 4817–4867).
 // URL state (docs/spec/00 §8.3): `?view=meetings|decisions|actions` (Display segment), `?filter=todo|upcoming|sent`
 // (status chips), `?meeting=MTG-118` (selected meeting; default = first of the sorted list).
-// Primary action "New meeting" (AF `meetings`). Notes, ticks, transcript analysis and "Send minutes" go through
+// Primary action "New meeting" (AF `meetings`). Notes, ticks, the transcript (import, analysis — Claude only when the server
+// has ANTHROPIC_API_KEY, else the local rules — and the review of its proposals, S-10) and "Send minutes" go through
 // src/features/meetings/actions.ts; every edit control is hidden when the screen is outside the viewer's workspace
 // or the project is read-only for them. Projects without meetings show the empty register (no Harbor Line data).
 import { PageHeader } from '@/components/app/shell/page-header';
@@ -10,8 +11,11 @@ import { defaultInvitees, meetingFormDef } from '@/features/meetings/forms';
 import { MeetingsBody } from '@/features/meetings/meetings-view';
 import { meetingsScreenView } from '@/features/meetings/model';
 import { NewMeetingButton } from '@/features/meetings/new-meeting-button';
+import { riskFormDef } from '@/features/risks/forms';
+import { transcriptAiInfo } from '@/server/ai/config';
 import { getMeetingsScreen } from '@/server/dal/meetings-screen';
 import { projectLabel } from '@/server/dal/projects';
+import { riskOwnerOptions } from '@/server/dal/risks-screen';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 
@@ -30,6 +34,9 @@ export default async function MeetingsPage({ params, searchParams }: { params: P
   const query = { view: parseMeetingsView(first(sp.view)), filter: parseMeetingFilter(first(sp.filter)), meeting: pinned ? requested : null };
   const view = meetingsScreenView({ code: projectCode, meetings: data.meetings, questions: data.questions, query }, t, lang);
   const selected = selectMeeting(data.meetings, query.meeting);
+  // A risk proposal of the selected meeting's transcript opens the risk register's "New risk" form (risk editors only).
+  const riskProposal = canEdit && !!selected?.transcript?.items.some((x) => x.type === 'risk' && x.status === 'proposed');
+  const riskTeam = riskProposal && (await getProjectContext(projectCode, 'risks')).canEdit('risks') ? await riskOwnerOptions(projectCode) : null;
 
   const primary = canEdit ? (
     <NewMeetingButton code={projectCode} context={t(projectLabel(ctx.project))} form={meetingFormDef(t, lang, defaultInvitees(ctx.viewer.short, ctx.project.pm))} />
@@ -38,7 +45,17 @@ export default async function MeetingsPage({ params, searchParams }: { params: P
   return (
     <>
       <PageHeader screen="meetings" projectCode={projectCode} primary={primary} />
-      <MeetingsBody code={projectCode} view={view} canEdit={canEdit} pinned={pinned} organizer={selected?.organizer ?? ''} t={t} />
+      <MeetingsBody
+        code={projectCode}
+        view={view}
+        canEdit={canEdit}
+        pinned={pinned}
+        organizer={selected?.organizer ?? ''}
+        t={t}
+        ai={transcriptAiInfo()}
+        riskForm={riskTeam ? riskFormDef(riskTeam) : null}
+        riskTeam={riskTeam ?? []}
+      />
     </>
   );
 }

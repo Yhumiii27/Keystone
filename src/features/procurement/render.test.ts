@@ -18,6 +18,7 @@ import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { rfqKpiFacts } from '@/server/dal/kpis';
 import { listRfqs, listSupplierInvoices } from '@/server/dal/purchasing';
 import { getSupplierScorecard } from '@/server/dal/suppliers';
 import { procT } from './i18n';
@@ -52,7 +53,7 @@ async function rfqHtml(lang: Lang, role: RoleKey = 'director', open: string | nu
   const rfqs = await listRfqs();
   const sel = rfqs.find((r) => r.number === open) ?? null;
   const drawer = sel ? rfqDrawerView(sel, { ...c, orderProject: null, currentProject: 'HLT-026' }) : null;
-  return renderToStaticMarkup(withI18n(lang, h(SourcingBody, { tab: 'rfq', seg: segView(c.t), rfq: { view: rfqTabView(rfqs, open, c), drawer }, t: c.t })));
+  return renderToStaticMarkup(withI18n(lang, h(SourcingBody, { tab: 'rfq', seg: segView(c.t), rfq: { view: rfqTabView(rfqs, open, c, await rfqKpiFacts()), drawer }, t: c.t })));
 }
 async function invHtml(lang: Lang, role: RoleKey = 'director', open: string | null = null, filter: Parameters<typeof invoiceTabView>[1] = 'all') {
   const c = ctxOf(lang, role);
@@ -75,7 +76,7 @@ describe('RFQ & quotes', () => {
     const html = await rfqHtml('en');
     inOrder(text(html), [
       'Display', 'RFQ & quotes', 'Invoices — 3-way match', 'Supplier performance',
-      'Open RFQs', '3', '1 ready to award', 'Quotes received', '8', 'Across open requests', 'Savings vs list', '€12k', 'Awarded this quarter', 'Average cycle', '9 d',
+      'Open RFQs', '3', '1 ready to award', 'Quotes received', '8', 'Across open requests', 'Savings vs list', '€0k' /* A-12: computed (prototype €12k) */, 'Awarded this quarter', 'Average cycle', '—' /* A-12 (prototype 9 d) */,
       'RFQ sent → award', 'Award rule', 'PM', 'Decided per RFQ by the project manager',
       'Requests for quotation', 'Draft → sent → comparing → awarded · the award creates a draft purchase order',
       'RFQ', 'Part', 'Qty', 'Quotes due', 'Buyer', 'Quotes', 'Award rule', 'Awarded to', 'Status',
@@ -97,7 +98,8 @@ describe('RFQ & quotes', () => {
   it('FR: translated labels and data, French singular', async () => {
     const seq = text(await rfqHtml('fr'));
     inOrder(seq, [
-      'Vue', 'Consultations et devis', 'Consultations ouvertes', '1 prête à attribuer', 'Économies vs catalogue', '12 k€', 'Cycle moyen', '9 j', 'Règle d’attribution', 'CP',
+      'Vue', 'Consultations et devis', 'Consultations ouvertes', '1 prête à attribuer', 'Économies vs catalogue', '0 k€', 'Cycle moyen', '—', // A-12: computed (prototype 12 k€, 9 j)
+      'Règle d’attribution', 'CP',
       'Demandes de devis (RFQ)', 'RFQ', 'Article', 'Qté', 'Devis attendus', 'Acheteur', 'Devis', 'Règle d’attribution', 'Attribuée à', 'Statut',
       'Tôle acier S355 · 20 mm — 192 tôles', '30 sept.', '3 devis · à partir de 1 195 €', 'Coût total de possession le plus bas', 'Comparaison',
       'Comparer les devis', 'Lidar anticollision — 8 unités', 'Aucun devis', 'Le chef de projet décide', 'Brouillon', 'Envoyer aux fournisseurs',

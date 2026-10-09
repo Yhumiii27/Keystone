@@ -1,0 +1,100 @@
+/* Site (chantier) — template 2268–2309. Inline values of the prototype, data-driven ones stay inline in the JSX. */
+
+/* Go card: tag 13px · padding 4px 12px */
+.goTag { font-size: 13px; padding: 4px 12px; }
+/* Go conditions: grid auto-fit minmax(150px,1fr) gap 8 */
+.goGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.goItem { display: flex; gap: 8px; align-items: flex-start; padding: 10px; border-radius: var(--radius-md); background: var(--color-neutral-900); }
+.goIcon { font-size: 18px; flex: none; }
+.goText { display: flex; flex-direction: column; line-height: 1.3; }
+.goLabel { font-size: 12.5px; }
+.goSub { font-size: 11.5px; }
+
+/* Site sheet: title margin-bottom 4 */
+.sheetTitle { margin-bottom: 4px; }
+/* Site sheet rows: flex space-between gap 10 · 12.5px · padding 3px 0 · rule neutral-900 */
+.metaRow { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; padding: 3px 0; border-bottom: 1px solid var(--color-neutral-900); }
+.metaKey { color: var(--color-neutral-400); flex: none; }
+.metaVal { text-align: right; font-variant-numeric: tabular-nums; text-wrap: pretty; color: var(--color-text); }
+
+/* Table cells */
+.pretty { text-wrap: pretty; }
+.nowrap { white-space: nowrap; }
+.cell12 { font-size: 12px; }
+.due { font-size: 12px; white-space: nowrap; }
+.note { font-size: 12px; color: var(--color-neutral-400); }
+.note115 { font-size: 11.5px; color: var(--color-neutral-400); }
+.actions { display: flex; gap: 6px; justify-content: flex-end; }
+.mutedLine { font-size: 11.5px; color: var(--color-neutral-400); white-space: nowrap; }
+/* Delivery state of a reminder: wraps (FR "En attente de synchronisation avec Cursus" would widen the table). */
+.syncLine { font-size: 11px; line-height: 1.3; color: var(--color-neutral-400); max-width: 150px; text-wrap: pretty; }
+
+/* Cursus card (anchor of the Document collision): .card.elev-sm · padding 14px 16px · gap 8 · overflow auto */
+:global(.card).cursusCard { padding: 14px 16px; gap: 8px; overflow: auto; scroll-margin-top: 16px; }
+/* Card header with actions (Cursus): flex · center · gap 10 · wrap */
+.cardHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.headCol { display: flex; flex-direction: column; margin-right: auto; }
+.headSub { font-size: 12px; color: var(--color-neutral-400); }
+.headBtns { display: flex; gap: 6px; flex-wrap: wrap; }
+/* header buttons: 12px · padding 4px 10px · gap 6 */
+:global(.btn).headBtn { font-size: 12px; padding: 4px 10px; gap: 6px; }
+a:global(.btn).headBtn { text-decoration: none; }
+a:global(.btn-secondary).headBtn:hover { color: var(--color-text); }
+
+/* Privacy notice: 12px neutral-300 · line-height 1.45 · padding 8px 10px · radius sm · neutral-800 */
+.privacy { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; line-height: 1.45; color: var(--color-neutral-300); padding: 8px 10px; border-radius: var(--radius-sm); background: var(--color-neutral-800); }
+.privacyIcon { font-size: 14px; color: var(--color-accent-300); margin-top: 1px; flex: none; }
+
+/* Mirror line (source system + last refresh) */
+.mirror { font-size: 12px; color: var(--color-neutral-400); display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.mirrorIcon { flex: none; }
+
+/* Clearances cell: tag over the note */
+.habCell { display: flex; flex-direction: column; gap: 2px; line-height: 1.3; }
+.habTag { align-self: flex-start; }
+.habNote { font-size: 11.5px; }
+.rec { font-size: 12px; white-space: nowrap; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.reminded { display: flex; flex-direction: column; gap: 1px; }
+
+/* Rotation plan */
+.rot { font-variant-numeric: tabular-nums; }
+.collideIcon { font-size: 16px; color: var(--color-accent-300); }
+
+/* Collision rows: grid minmax(0,1fr) auto · gap 10 · padding 8px 0 · top rule */
+.collision { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--color-neutral-900); }
+.collisionText { display: flex; flex-direction: column; line-height: 1.3; gap: 2px; }
+.collisionWho { font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.kindTag { font-size: 10px; }
+.collisionWhat { font-size: 12px; color: var(--color-neutral-300); text-wrap: pretty; }
+.collisionFix { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+
+/* Mission costs bar: 5px · radius 3 · neutral-800 track · accent fill */
+.bar { height: 5px; border-radius: 3px; background: var(--color-neutral-800); }
+.barFill { height: 100%; border-radius: 3px; background: var(--color-accent); width: var(--w); }
+
+/* Daily reports */
+.reportDetail { display: block; font-size: 11.5px; color: var(--color-neutral-400); margin-top: 2px; }
+.link { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--color-accent-300); }
+a.link { text-decoration: none; }
+a.link:hover { text-decoration: underline; }
+.footnote { font-size: 12px; color: var(--color-neutral-400); }
+
+/* Punch list */
+.punchId { font-variant-numeric: tabular-nums; font-size: 12px; }
+.ncr { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--color-neutral-400); }
+
+/* HSE register rows: grid minmax(0,1fr) auto auto (+ Vigie link) · gap 10 · padding 7px 0 · 12.5px */
+.hseRow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--color-neutral-900); font-size: 12.5px; }
+.hseDate { font-size: 12px; color: var(--color-neutral-400); white-space: nowrap; }
+.hseBtns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
+:global(.btn).hseBtn { font-size: 12.5px; }
+a:global(.btn).hseBtn { text-decoration: none; }
+a:global(.btn-secondary).hseBtn:hover { color: var(--color-text); }
+a:global(.btn-ghost).hseBtn:hover { color: var(--color-accent); }
+.outIcon { font-size: 12px; opacity: 0.8; }
+/* Row icon link to Vigie: 24×24 ghost, neutral-400 glyph */
+:global(.btn).iconLink { width: 24px; height: 24px; min-height: 0; padding: 0; color: var(--color-neutral-400); }
+:global(.btn).iconLink:hover { color: var(--color-accent); }
+
+/* Empty state: 12.5px neutral-400 · padding 14 · centred · radius md · neutral-900 */
+.empty { font-size: 12.5px; color: var(--color-neutral-400); padding: 14px; text-align: center; border-radius: var(--radius-md); background: var(--color-neutral-900); }

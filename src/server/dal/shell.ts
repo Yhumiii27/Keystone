@@ -8,10 +8,11 @@ import 'server-only';
 // Billing badges; Contract / Billing crumbs) and project sites (Projects map crumb); since Delivery 4, purchase orders
 // (Purchase orders badge, search), goods receipts (Deliveries badge), supplier invoices (Sourcing & invoices badge),
 // stock positions (Stock & storages badge), the parts catalogue (search), the Vigie ECO mirror (Change orders badge,
-// search) and the PDM vault mirror (search).
-// TODO(db): the other modules below (claims, connectors, punch list, engineering checks, P&ID, site, NCRs, installed
-// base) still read the prototype data set (PROTO) at its initial state; switch each block to its module DAL once the
-// module is modelled in the DB.
+// search) and the PDM vault mirror (search); since Delivery 5, the engineering checks (Engineering badges), the P&ID
+// tags (P&ID badge), the Vigie NCR mirror (Quality badge, NCR search), the ITP punch list (Inspections badge), the site
+// sheet with Cursus's Go / No Go and Vigie's HSE mirror (Site badge), warranty claims (Warranty claims badge), the
+// connectors (Activity & integrations badge) and the installed base (zone bar of Installed base / Warranty claims).
+// Only reference constants (zones, city → country → zone) are still read from the prototype data set.
 import { and, eq, sql } from 'drizzle-orm';
 import { PERSONA_BY_ROLE } from '@/config/personas';
 import { DEFAULT_PROJECT, canSee, screenHref, type RoleKey, type ScreenId } from '@/config/screens';
@@ -21,79 +22,48 @@ import { mapCrumbExtra } from '@/domain/worldmap';
 import { approvalCountsByProject } from '@/server/approvals';
 import { getDb } from '@/server/db/client';
 import { changeRequests, projects as projectsTable } from '@/server/db/schema';
-import { PROTO, PROTO_GEN } from '@/server/prototype';
+import { ncrHref } from '@/features/quality/links';
+import { PROTO } from '@/server/prototype';
 import type { ZoneKey } from '@/server/session';
 import type { Badges } from '@/components/app/shell/nav-model';
 import { listChangeRequestDetails } from './changes';
+import { savNavBadge } from './claims';
 import { getContractHeader, lateBillingMilestonesByProject } from './contract';
 import { receiptsQcPendingByProject } from './deliveries';
 import { docsBadge } from './docs-badge';
 import { listDrawings } from './drawings';
 import { listEcos } from './eco';
 import { ecoNavBadge } from './eco-screen';
+import { engNavBadgesByProject } from './eng-screen';
+import { machinesByZone } from './fleet';
 import { getProjectsMap } from './geo';
+import { plumbingNavBadge } from './integrations';
 import { lateInterfacesByProject } from './interfaces';
+import { openPunchAByProject } from './itp';
 import { meetingsToWriteByProject } from './meetings';
 import { listNotifications } from './notifications';
 import { listParts } from './parts';
+import { pidBadgeByProject } from './pid';
 import { getActivities } from './planning';
 import { listProjects, projectLabel, type ProjectRow } from './projects';
 import { countInvoicesToResolve, listPurchaseOrders, posAwaitingApprovalByProject } from './purchasing';
+import { criticalOpenNcrsByProject, listNcrs } from './quality';
 import { listApprovalDepartments, listResourceRequests } from './requests';
 import { departmentOfPerson } from './requests-screens';
 import { getResourcePool } from './resources';
 import { listRisks } from './risks';
 import { riskBadges } from './risks-badge';
+import { siteBadgeByProject } from './site';
 import { stockNavBadge } from './stock';
 import { getTask, listTasks } from './tasks';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Row = Record<string, any>;
-
-const HLT = 'HLT-026';
 const n2s = (n: number) => (n ? String(n) : '');
 const count = <T,>(xs: T[], f: (x: T) => boolean) => xs.filter(f).length;
-const hasData = (code: string) => !!PROTO_GEN.projectData[code];
 
 // ── Zones (ZONES line 3170, zoneOf line 3173) ──────────────────────────────
 export interface ZoneDef { key: ZoneKey; label: string; manager: string }
 export const ZONES: ZoneDef[] = (PROTO.ZONES as [ZoneKey, string, string][]).map(([key, label, manager]) => ({ key, label, manager }));
 export const zoneLabel = (z: ZoneKey | null) => (z ? ZONES.find((x) => x.key === z)?.label ?? '' : '');
-
-// ── Per-project module data (prototype derivations; TODO(db)) ─────────────
-/** NCRs (`allNCRs`, line 4614): other projects with data get two derived rows, as in the prototype. */
-function ncrsOf(code: string): Row[] {
-  if (!hasData(code)) return [];
-  return code === HLT ? PROTO.HLT_NCRS : (PROTO.HLT_NCRS as Row[]).slice(1, 3).map((n, i) => ({ ...n, id: 'NCR-0' + (40 + i) }));
-}
-
-/** PID tags not linked to a validated BOM part (line 4766–4775). Harbor Line only. */
-function pidUnlinked(): number {
-  const bom = new Set((PROTO.PARTS as Row[]).filter((p) => (p.usage ?? {}).HLT > 0).map((p) => p.ref));
-  const status = (t: Row) => {
-    if (t.scope === 'Client') return 'Client';
-    if (!t.ref) return 'Unmapped';
-    const p = (PROTO.PARTS as Row[]).find((x) => x.ref === t.ref);
-    if (!p) return 'Unknown ref';
-    if (!bom.has(t.ref)) return 'Not in BOM';
-    return p.status !== 'Validated' ? 'Part' : 'Linked';
-  };
-  const ks = (PROTO.PID_TAGS as Row[]).filter((t) => t.scope !== 'Client');
-  const linked = count(ks, (t) => status(t) === 'Linked');
-  const cov = ks.length ? Math.round((linked / ks.length) * 100) : 0;
-  return cov < 100 ? ks.length - linked : 0;
-}
-
-/** Mobilisation GO checklist all OK (`goOk`, line 4748). Harbor Line only. */
-function siteGoOk(): boolean {
-  return (
-    (PROTO.SITE_PREREQ as Row[]).every((p) => p[3] !== 'Pending') &&
-    (PROTO.SITE_DOCS as Row[]).every((d) => d[5] !== 'NO GO') &&
-    (PROTO.SITE_EQUIP as Row[]).every((e) => e[2] === 'Confirmed') &&
-    (PROTO.SITE_COLLISIONS as Row[]).length === 0 &&
-    (PROTO.SITE_HSE as Row[]).every((x) => x[1] !== 'Pending')
-  );
-}
 
 /** The viewer sees every resource request (director, or Resource requests outside their workspace), else the ones they sent. */
 const seesAllRequests = (role: RoleKey) => role === 'director' || !canSee(role, 'requests');
@@ -109,7 +79,7 @@ async function approvalsDeptOf(role: RoleKey) {
 /** Badges that do not depend on the current project. */
 async function globalBadges(role: RoleKey): Promise<Badges> {
   const viewer = PERSONA_BY_ROLE[role];
-  const [mine, rescheduled, dept, docs, eco, invoices, stock] = await Promise.all([
+  const [mine, rescheduled, dept, docs, eco, invoices, stock, sav, plumbing] = await Promise.all([
     listTasks({ person: viewer.name }),
     listResourceRequests({ status: 'reschedule', ...(seesAllRequests(role) ? {} : { requestedBy: viewer.short }) }),
     approvalsDeptOf(role),
@@ -117,6 +87,8 @@ async function globalBadges(role: RoleKey): Promise<Badges> {
     safe(ecoNavBadge, ''),
     countInvoicesToResolve(),
     stockNavBadge(),
+    savNavBadge(),
+    safe(plumbingNavBadge, ''),
   ]);
   return {
     // My tasks: the viewer's open tasks due today (line 5106; the prototype counted Hélène Sauvage's for everyone, 00 §7.16).
@@ -134,12 +106,14 @@ async function globalBadges(role: RoleKey): Promise<Badges> {
     procurement: n2s(invoices),
     // Stock lines below their minimum (logic 5150).
     stock,
-    sav: n2s(count(PROTO.CLAIMS as Row[], (c) => c[5] !== 'Closed' && (c[3] === 'Major' || c[3] === 'Critical'))),
+    // Open Major / Critical warranty claims, every zone (logic 5148).
+    sav,
     // Reschedules proposed on the requests the viewer sees on Resource requests (the prototype: R. Aubert's, 08 OQ18).
     requests: n2s(rescheduled.length),
     // Pending requests of the viewer's Approvals department (the prototype: Engineering).
     approvals: n2s(dept?.pending ?? 0),
-    plumbing: (PROTO.CONNECTORS as Row[]).some((c) => c[3] === 'Warning') ? '!' : '',
+    // A connector in warning or error (Vigie, Codex and Cursus report their live state).
+    plumbing,
   };
 }
 
@@ -170,50 +144,52 @@ interface ProjectBadgeInputs {
   deliveries: Record<string, number>;
   /** Purchase orders awaiting approval (Purchase orders badge, logic 5147). */
   orders: Record<string, number>;
+  /** Open blocking engineering checks: Synthesis = all, each discipline = its own (`engNav_` 4815). */
+  eng: Record<string, Partial<Record<ScreenId, string>>>;
+  /** Keystone-scope P&ID tags not linked while the coverage is below 100 % (logic 4766–4775). */
+  pid: Record<string, number>;
+  /** Open critical NCRs of the Vigie mirror (`qBadge`). */
+  quality: Record<string, number>;
+  /** Open category-A items of the ITP punch list (`itpBadge`). */
+  itp: Record<string, number>;
+  /** "NO GO" while Go chantier is not reached (`goOk`, logic 4748). */
+  site: Record<string, string>;
+  /** Projects with data (prototype `projectData`): their module entries carry an explicit '' when there is nothing. */
+  withData: Set<string>;
 }
 
 async function projectBadgeInputs(role: RoleKey, codes: string[]): Promise<ProjectBadgeInputs> {
-  const [approvals, risks, changes, meetings, interfaces, billing, deliveries, orders] = await Promise.all([
+  const [approvals, risks, changes, meetings, interfaces, billing, deliveries, orders, eng, pid, quality, itp, site, projects] = await Promise.all([
     approvalCountsByProject(PERSONA_BY_ROLE[role], codes), riskBadges(), changesInReview(),
     meetingsToWriteByProject(), lateInterfacesByProject(), lateBillingMilestonesByProject(), receiptsQcPendingByProject(),
-    posAwaitingApprovalByProject(),
+    posAwaitingApprovalByProject(), engNavBadgesByProject(), pidBadgeByProject(), safe(criticalOpenNcrsByProject, {}), openPunchAByProject(),
+    safe(siteBadgeByProject, {}), listProjects(),
   ]);
-  return { approvals, risks, changes, meetings, interfaces, billing, deliveries, orders };
+  const withData = new Set(projects.filter((p) => p.hasData).map((p) => p.code));
+  return { approvals, risks, changes, meetings, interfaces, billing, deliveries, orders, eng, pid, quality, itp, site, withData };
 }
 
 function badgesOf(code: string, inp: ProjectBadgeInputs): Badges {
   const b: Badges = { myapprovals: n2s(inp.approvals[code] ?? 0) };
+  // Every module is in the database: badges follow their rows on every project (none on a project without data).
   if (inp.risks[code]) b.risks = inp.risks[code];
   if (inp.changes[code]) b.changes = n2s(inp.changes[code]);
-  // Modules in the database follow their rows on every project (e.g. a meeting created on a project without data).
   if (inp.meetings[code]) b.meetings = n2s(inp.meetings[code]);
   if (inp.interfaces[code]) b.interfaces = n2s(inp.interfaces[code]);
   if (inp.billing[code]) b.billing = n2s(inp.billing[code]);
   if (inp.deliveries[code]) b.deliveries = n2s(inp.deliveries[code]);
   if (inp.orders[code]) b.orders = n2s(inp.orders[code]);
-  if (!hasData(code)) return b; // projects without data: empty states, no prototype-derived badges
-  const isHLT = code === HLT;
-  b.meetings ??= '';
-  b.interfaces ??= '';
-  b.billing ??= '';
-  b.itp = n2s(count((PROTO.PUNCH[code] ?? []) as Row[], (p) => p[7] !== 'Closed' && p[3] === 'A'));
-  if (isHLT) {
-    const open = (PROTO.ENG_CHECKS as Row[]).filter((c) => (c.status === 'Open' || c.status === 'In progress') && c.sev === 'blocking');
-    b.eng = n2s(open.length);
-    b['eng-process'] = n2s(count(open, (c) => c.disc === 'process'));
-    b['eng-meca'] = n2s(count(open, (c) => c.disc === 'meca'));
-    b['eng-elec'] = n2s(count(open, (c) => c.disc === 'elec'));
-    b['eng-auto'] = n2s(count(open, (c) => c.disc === 'auto'));
-    b.pid = n2s(pidUnlinked());
-    b.site = siteGoOk() ? '' : 'NO GO';
-  }
-  b.risks ??= '';
-  b.changes ??= '';
-  b.quality = n2s(count(ncrsOf(code), (x) => x.status !== 'Closed' && x.sev === 'Critical'));
-  b.orders ??= '';
-  b.deliveries ??= '';
+  for (const [id, v] of Object.entries(inp.eng[code] ?? {})) if (v) b[id as ScreenId] = v;
+  if (inp.pid[code]) b.pid = n2s(inp.pid[code]);
+  if (inp.quality[code]) b.quality = n2s(inp.quality[code]);
+  if (inp.itp[code]) b.itp = n2s(inp.itp[code]);
+  if (inp.site[code]) b.site = inp.site[code];
+  if (inp.withData.has(code)) for (const id of WITH_DATA_ENTRIES) b[id] ??= '';
   return b;
 }
+
+/** Project entries that always carry a badge value ('' = none) on a project with data, as in the prototype. */
+const WITH_DATA_ENTRIES: ScreenId[] = ['meetings', 'interfaces', 'billing', 'itp', 'risks', 'changes', 'quality', 'orders', 'deliveries'];
 
 /** Badges of the project-dependent entries (Project section, orders, deliveries, My approvals) of one project. */
 export async function projectBadges(role: RoleKey, code: string): Promise<Badges> {
@@ -415,8 +391,9 @@ export async function searchShell(query: string, currentCode: string): Promise<S
   const ecos = await safe(() => listEcos(), []);
   add(ecos.filter((e) => has(e.number + ' ' + e.title)).map((e) => ({ kind: 'ECO', title: `${e.number} · ${e.title}`, sub: e.statusLabel, href: deepLink('eco', { eco: e.number }) })), 3);
   add(crs.filter((c) => has(c.id + ' ' + c.title)).map((c) => ({ kind: 'Change request', title: `${c.id} · ${c.title}`, sub: c.statusLabel, href: deepLink('changes', { cr: c.id }, code) })), 3);
-  // TODO(db): NCRs from the Quality DAL once NCRs are modelled (phase 7).
-  add(ncrsOf(code).filter((n) => has(n.id + ' ' + n.title)).map((n) => ({ kind: 'NCR', title: `${n.id} · ${n.title}`, sub: `${n.sev} · ${n.status}`, href: deepLink('quality', { qTab: 'ncr', ncr: n.id }, code) })), 3);
+  // NCRs of the current project: the Vigie mirror (severity and status as Vigie reports them).
+  const ncrs = await safe(() => listNcrs(code), []);
+  add(ncrs.filter((n) => has(n.number + ' ' + n.title)).map((n) => ({ kind: 'NCR', title: `${n.number} · ${n.title}`, sub: `${n.severityLabel} · ${n.statusLabel}`, href: ncrHref(code, n.number) })), 3);
   add(risks.filter((r) => has(r.id + ' ' + r.title)).map((r) => ({ kind: 'Risk', title: `${r.id} · ${r.title}`, sub: r.categoryLabel, href: deepLink('risks', { risk: r.id }, code) })), 3);
   // Drawings: the PDM vault mirror.
   const drawings = await safe(() => listDrawings(), []);
@@ -432,21 +409,16 @@ export interface ZoneBarModel {
   ownerName: string;
 }
 
-const zoneOfSite = (site: string): ZoneKey | null =>
-  PROTO.COUNTRY_ZONE[PROTO.CITY_COUNTRY[(site || '').split(' · ')[0].trim()]] ?? null;
-
 /** Zone segmented control counts: portfolio projects per zone, or installed machines for fleet/sav. */
 export async function zoneBarOf(screen: ScreenId, zone: ZoneKey | null): Promise<ZoneBarModel> {
   const sav = screen === 'fleet' || screen === 'sav';
   let zoneOf: (key: ZoneKey) => number;
   let total: number;
   if (sav) {
-    // TODO(db): installed base from the after-sales DAL.
-    const projects = new Map((await listProjects()).map((p) => [p.code, p.zone]));
-    const fleet = PROTO.FLEET as Row[];
-    const machineZone = (m: Row): ZoneKey => zoneOfSite(m[4]) ?? (m[5] && PROTO.GEO[m[5]] ? projects.get(m[5]) ?? 'euna' : 'euna');
-    zoneOf = (key) => count(fleet, (m) => machineZone(m) === key);
-    total = fleet.length;
+    // The installed base (machines added in Keystone included), zone stored per machine.
+    const m = await machinesByZone();
+    zoneOf = (key) => m.byZone[key] ?? 0;
+    total = m.total;
   } else {
     const projects = await listProjects();
     zoneOf = (key) => count(projects, (p) => p.zone === key);

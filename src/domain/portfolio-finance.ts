@@ -12,11 +12,8 @@ export const canSeeMargins = (role: string) => (MARGIN_ROLES as readonly string[
 /** A margin below this % is shown in the attention colour (strict). */
 export const MARGIN_ALERT_PCT = 15;
 
-/**
- * "Portfolio margin" KPI: the prototype's constant (03 OQ8, A-12 — "Client projects · weighted by contract" has no
- * formula yet). Kept as a constant until finance confirms the definition.
- */
-export const PORTFOLIO_MARGIN_PCT = 18;
+// "Portfolio margin" KPI: computed since chapter 4 (A-12) — `portfolioMarginPct`, src/domain/kpis.ts (the prototype
+// printed a constant 18 %).
 
 /** `(contract − budget) / contract` in whole %, null for internal projects (contract 0) or without a billing plan. */
 export function marginPct(contractKeur: number | null | undefined, budgetKeur: number): number | null {

@@ -2,12 +2,13 @@ import 'server-only';
 // Projects DAL — contract used by the shell and every screen (Drizzle queries over src/server/db).
 import { asc, eq, like, sql } from 'drizzle-orm';
 import { cache } from 'react';
-import { healthOf, type Health } from '@/domain/health';
+import { healthOf, type Health, type HealthThresholds } from '@/domain/health';
 import { getDb } from '@/server/db/client';
 import { clientCode3, machineType, stage, type CalendarCode, type CostType, type MachineTypeCode, type StageCode } from '@/server/db/codes';
 import { clients, countries, persons, projectControls, projectSites, projects } from '@/server/db/schema';
 import type { ZoneKey } from '@/server/session';
 import { getCostControl, type CostControl } from './cost';
+import { healthThresholds } from './health-thresholds';
 import { getActivities, getMilestones, getScheduleBars, getScheduleControl, getWbs, toProtoActs, type ProtoAct, type ScheduleControl } from './planning';
 
 export interface ProjectRow {
@@ -61,7 +62,8 @@ const projectSelect = {
 type Joined = { p: typeof projects.$inferSelect; client: string | null; pm: string | null; city: string | null; country: string | null;
   lat: number | null; lng: number | null; zoneOverride: ZoneKey | null; countryZone: ZoneKey | null; controls: string | null };
 
-function toRow(r: Joined): ProjectRow {
+/** `th` = Settings › Project health rules (A-13: one health rule everywhere). */
+function toRow(r: Joined, th: HealthThresholds): ProjectRow {
   const p = r.p;
   const row = {
     code: p.code, name: p.name, displayId: p.number ?? p.code, analytic: p.analyticCode, das: p.das,
@@ -71,12 +73,12 @@ function toRow(r: Joined): ProjectRow {
     city: r.city, country: r.country, zone: r.zoneOverride ?? r.countryZone ?? 'euna', hasData: r.controls != null,
     stage: p.stage, shortCode: p.shortCode, isNew: p.isNew, lat: r.lat, lng: r.lng,
   };
-  return { ...row, health: healthOf(row) };
+  return { ...row, health: healthOf(row, th) };
 }
 
 /** All projects in register order (new projects first). Memoised per request. */
 export const listProjects = cache(async (): Promise<ProjectRow[]> => {
-  const db = await getDb();
+  const [db, th] = await Promise.all([getDb(), healthThresholds()]);
   const rows = await db
     .select(projectSelect)
     .from(projects)
@@ -86,7 +88,7 @@ export const listProjects = cache(async (): Promise<ProjectRow[]> => {
     .leftJoin(countries, eq(countries.name, projectSites.countryName))
     .leftJoin(projectControls, eq(projectControls.projectId, projects.id))
     .orderBy(asc(projects.sortOrder));
-  return rows.map(toRow);
+  return rows.map((r) => toRow(r, th));
 });
 
 export async function getProject(code: string): Promise<ProjectRow | null> {

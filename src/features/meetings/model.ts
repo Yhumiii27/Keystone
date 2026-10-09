@@ -5,12 +5,12 @@ import { LO, OK, TAG_CLASS, statusTone } from '@/components/app/tones';
 import { screenHref } from '@/config/screens';
 import {
   ACTION_STATE_LABEL, MEETING_FILTERS, MEETING_FILTER_LABEL, MEETING_VIEWS, MEETING_VIEW_LABEL, actionCountOf, actionRows, attendanceOf,
-  carriedOver, decisionRows, draftLines, filterCounts, lineKey, matchesFilter, meetingKpis, minutesEditable, prepPack, selectMeeting, sortMeetings,
-  type ClientQuestion, type LineRef, type Meeting, type MeetingFilter, type MeetingLine, type MeetingsView,
+  carriedOver, decisionRows, draftLines, filterCounts, lineKey, matchesFilter, meetingKpis, minutesEditable, prepPack, reviewOrder, selectMeeting, sortMeetings,
+  type ClientQuestion, type LineRef, type Meeting, type MeetingFilter, type MeetingLine, type MeetingTranscript, type MeetingsView, type ProposalKind,
 } from '@/domain/meetings';
 import { docHref, documentsHref } from '@/features/docs/links';
 import type { Lang, T } from '@/i18n/translate';
-import { meetingLineType, meetingSeries, meetingStatus, meetingType, type MeetingLineType } from '@/server/db/codes';
+import { meetingLineType, meetingSeries, meetingStatus, meetingType, shortDateOfIso, transcriptProposalType, type MeetingLineType } from '@/server/db/codes';
 import { actionsText, dataText, dueText, invitedText } from './i18n';
 
 export interface MeetingsQuery {
@@ -103,13 +103,47 @@ export interface PrepActionView {
 export interface PrepView {
   prev: { ref: string; decisions: string[]; actions: PrepActionView[]; closedCount: string } | null;
   bridge: { title: string; items: { key: string; text: string; sub: string; label: string; cls: string; answer: string }[] } | null;
-  transcript: {
-    text: string;
-    analysed: boolean;
-    summary: string;
-    draft: { key: string; type: 'decision' | 'action'; text: string; meta: string }[];
-    applied: boolean;
-  } | null;
+  transcript: TranscriptView | null;
+}
+
+/** One analysis proposal under review (chapter 4, S-10). */
+export interface TranscriptItemView {
+  key: string;
+  position: number;
+  type: ProposalKind;
+  /** "Decision", "Action", "Risk", "Client question" (translated). */
+  typeLabel: string;
+  text: string;
+  /** Actions: "{owner} · {due}"; other kinds: the speaker who raised it. */
+  meta: string;
+  /** "A. Girard: « … »" — the excerpt the proposal comes from (tooltip). */
+  source: string;
+  status: 'proposed' | 'rejected' | 'applied';
+  /** "Discarded", "Added to the minutes", "Added to the risk register · R-21", "Added to the client questions". */
+  statusText: string | null;
+  /** Initial values of the Edit / New risk / client question forms (people's text, untranslated). */
+  init: { text: string; owner: string; due: string; askedBy: string };
+}
+
+export interface TranscriptView {
+  text: string;
+  analysed: boolean;
+  summary: string;
+  /** Decisions and actions kept for the minutes (prototype draft lines). */
+  draft: { key: string; type: 'decision' | 'action'; text: string; meta: string }[];
+  applied: boolean;
+  // ── Chapter 4 (S-10) ──
+  /** "Teams transcript" / "Pasted text · R. Aubert · 9 Oct" / "meeting.vtt · R. Aubert · 9 Oct". */
+  sourceText: string;
+  /** "Local analysis (rules) · the transcript stayed in Keystone" / "Analysis by Claude (Anthropic) · claude-opus-5-5 · …". */
+  analyzerText: string | null;
+  /** Translated fallback notice ("Claude could not be reached · local analysis used instead"). */
+  notice: string | null;
+  items: TranscriptItemView[];
+  /** Kept decisions and actions not yet in the minutes. */
+  pendingMinutes: number;
+  /** Something was added from the analysis: it can no longer be replaced. */
+  locked: boolean;
 }
 
 export interface DetailView {
@@ -257,15 +291,7 @@ export function meetingsScreenView({ code, meetings: ms, questions, query }: Mee
               })),
             }
           : null,
-        transcript: tr
-          ? {
-              text: dataText(tr.text, lang),
-              analysed: tr.analysed,
-              summary: tr.summary ? dataText(tr.summary, lang) : '',
-              draft: draftLines(tr).map((p, i) => ({ key: String(i), type: p.type, text: dataText(p.text, lang), meta: p.type === 'action' ? ownerDue(p.owner, p.due) : '' })),
-              applied: tr.applied,
-            }
-          : null,
+        transcript: tr ? transcriptView(tr, t, lang, m.organizer) : null,
       };
     }
     detail = {
@@ -343,5 +369,67 @@ export function meetingsScreenView({ code, meetings: ms, questions, query }: Mee
     detail,
     decisions,
     actions,
+  };
+}
+
+// ── Transcript (chapter 4, S-10) ───────────────────────────────────────────────────────────────────────────────────
+
+/** "Teams transcript" / "Pasted text · {who} · {date}" / "{file} · {who} · {date}". */
+function transcriptSource(tr: MeetingTranscript, t: T): string {
+  if (!tr.source || tr.source === 'teams') return t('Teams transcript');
+  const head = tr.source === 'file' && tr.fileName ? tr.fileName : t('Pasted text');
+  return [head, tr.importedBy ?? '', tr.importedOn ? t(shortDateOfIso(tr.importedOn)) : ''].filter(Boolean).join(' · ');
+}
+
+function analyzerText(tr: MeetingTranscript, t: T): string | null {
+  if (!tr.analysed) return null;
+  if (tr.analyzer === 'claude') return [t('Analysis by Claude (Anthropic)'), tr.analyzerModel ?? '', t('the transcript was sent to Anthropic')].filter(Boolean).join(' · ');
+  if (tr.analyzer === 'local') return `${t('Local analysis (rules)')} · ${t('the transcript stayed in Keystone')}`;
+  return t('Pre-recorded analysis (prototype data)');
+}
+
+/** Transcript box of the preparation pack: the prototype's summary and draft lines plus the review list. */
+export function transcriptView(tr: MeetingTranscript, t: T, lang: Lang, organizer: string): TranscriptView {
+  const due = (d: string | null) => dueText(d, t, lang);
+  const items = reviewOrder(tr.items ?? []).map((x): TranscriptItemView => {
+    const status = x.status === 'applied' ? 'applied' : x.status === 'rejected' ? 'rejected' : 'proposed';
+    const ref = x.appliedRef ?? '';
+    const statusText =
+      status === 'rejected'
+        ? t('Discarded')
+        : status !== 'applied'
+          ? null
+          : /^R-\d+$/.test(ref)
+            ? `${t('Added to the risk register')} · ${ref}`
+            : ref === 'Q&A'
+              ? t('Added to the client questions')
+              : t('Added to the minutes');
+    return {
+      key: `${x.type}-${x.position}`,
+      position: x.position,
+      type: x.type,
+      typeLabel: t(transcriptProposalType.label(x.type)),
+      text: dataText(x.text, lang),
+      meta: x.type === 'action' ? `${x.owner ?? '—'} · ${x.due ? due(x.due) : '—'}` : x.type === 'risk' && x.owner ? x.owner : (x.speaker ?? ''),
+      source: x.quote ? `${x.speaker ? `${x.speaker}: ` : ''}« ${x.quote} »` : '',
+      status,
+      statusText,
+      init: { text: x.text, owner: x.owner ?? '', due: x.due ?? '', askedBy: x.speaker ?? '' },
+    };
+  });
+  return {
+    text: dataText(tr.text, lang),
+    analysed: tr.analysed,
+    summary: tr.summary ? dataText(tr.summary, lang) : '',
+    draft: draftLines(tr).map((p, i) => ({
+      key: String(i), type: p.type, text: dataText(p.text, lang), meta: p.type === 'action' ? `${p.owner ?? organizer} · ${due(p.due ?? '—')}` : '', // as the minutes line will read
+    })),
+    applied: tr.applied,
+    sourceText: transcriptSource(tr, t),
+    analyzerText: analyzerText(tr, t),
+    notice: tr.notice ? tr.notice.split(' · ').map(t).join(' · ') : null,
+    items,
+    pendingMinutes: (tr.items ?? []).filter((x) => (x.type === 'decision' || x.type === 'action') && (x.status === 'proposed' || x.status === 'accepted')).length,
+    locked: tr.applied || (tr.items ?? []).some((x) => x.status === 'applied'),
   };
 }

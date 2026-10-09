@@ -7,7 +7,10 @@
 //   - people's text (titles, agenda points, notes, transcripts, questions) is translated only on an exact dictionary
 //     match (`dataText`), never half-translated by the segment rules; the location is never translated ("Teams");
 //   - "1 action" (prototype "1 actions"); the line type label is translated (the prototype showed the raw code);
-//   - the Decisions register headers name their content (Agenda point, Type — 00 §7.16).
+//   - the Decisions register headers name their content (Agenda point, Type — 00 §7.16);
+//   - S-10 (chapter 4): "Analyse transcript" runs a real analyser (the local rules under Vitest) instead of revealing the
+//     prototype's pre-baked result, so the MTG-119 summary and draft lines are the local analysis (LOCAL_119) — same three
+//     decisions and three actions, the texts taken from the transcript, and no invented due date for A. Girard.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { beforeAll, describe, expect, it } from 'vitest';
 import { makeT, type Lang } from '@/i18n/translate';
@@ -163,12 +166,51 @@ describe('meetings screen — seeded register vs the prototype', () => {
   });
 });
 
+/** S-10: local analysis of the MTG-119 transcript (summary, draft lines [type, text, "{owner} · {due}"]). */
+const LOCAL_119 = {
+  summary:
+    'Decisions — Freeze the I/O list on rev D by Friday; On inconsistencies C-04 and C-05, we agree to close C-04 as a drawing error and keep C-05 open until the supplier confirms the status word…; For the client question on the HV cell date, electrical can confirm we need the cell energised by 20 November at the latest — that is the a…. 3 actions (S. Haddad, P. Noguès, A. Girard).',
+  draft: [
+    ['decision', 'Freeze the I/O list on rev D by Friday', ''],
+    ['decision', 'On inconsistencies C-04 and C-05, we agree to close C-04 as a drawing error and keep C-05 open until the supplier confirms the status word mapping', ''],
+    ['decision', 'For the client question on the HV cell date, electrical can confirm we need the cell energised by 20 November at the latest — that is the answer to give the port authority', ''],
+    ['action', 'Update the electrical schematics for the three tags', 'S. Haddad · 6 Oct'],
+    ['action', 'Send the corrected P&ID sheet for C-04', 'P. Noguès · 3 Oct'],
+    ['action', 'Carry it to the steering committee', 'A. Girard · —'],
+  ],
+};
+
 describe('meetings screen — interactions played on both sides', () => {
   const state: any = { mtg: P.mtg0(), added: P.added0() };
   const set = (patch: any) => Object.assign(state.mtg, patch);
+  /** The analysed meeting whose prototype analysis is replaced by the local one (S-10). */
+  let localAnalysis: string | null = null;
   const same = async (sel: string, lang: Lang = 'en') => {
-    for (const view of ['meetings', 'decisions', 'actions'] as const)
-      expect(actual(await ours('HLT-026', lang, { meeting: sel, view }))).toEqual(expected({ ...state, mtg: { ...state.mtg, sel, view } }, lang));
+    for (const view of ['meetings', 'decisions', 'actions'] as const) {
+      const exp = expected({ ...state, mtg: { ...state.mtg, sel, view } }, lang);
+      const tr = exp.detail?.prep?.transcript;
+      if (tr && sel === localAnalysis && tr[1]) {
+        tr[2] = LOCAL_119.summary; // the analysis text is people's text: the same in EN and FR
+        tr[3] = LOCAL_119.draft.map(([type, text, meta]) => [type, text, lang === 'fr' ? meta.replace('6 Oct', '6 oct.').replace('3 Oct', '3 oct.') : meta]);
+      }
+      fixNoDue(exp, lang);
+      expect(actual(await ours('HLT-026', lang, { meeting: sel, view }))).toEqual(exp);
+    }
+  };
+  /**
+   * S-10 brings the first minutes action without a due date ("—", A. Girard's): the rebuild keeps it Open, the prototype's
+   * `mIdx('— 2026') < PG_NOW` made it Overdue (and counted it in the "{n} overdue" KPI).
+   */
+  const fixNoDue = (exp: any, lang: Lang) => {
+    const t = makeT(lang);
+    let n = 0;
+    for (const a of exp.actions)
+      if (a[2] === '—' && !a[7] && a[6] === t('Overdue')) {
+        a[3] = 'var(--color-neutral-400)';
+        a[6] = t('Open');
+        n++;
+      }
+    if (n) exp.kpis[2][2] = t(`${parseInt(exp.kpis[2][2], 10) - n} overdue`);
   };
 
   it('tick an MTG-118 action and reopen an MTG-116 one (carried over into #24, 1 / 2 closed)', async () => {
@@ -191,12 +233,15 @@ describe('meetings screen — interactions played on both sides', () => {
   it('MTG-119 transcript analysed, then its proposals added to the last agenda point', async () => {
     await analyseTranscript('MTG-119', 'Antoine Girard');
     set({ analysed: { 'MTG-119': true } });
+    localAnalysis = 'MTG-119';
     await same('MTG-119');
+    await same('MTG-119', 'fr');
     await applyTranscriptToMinutes('MTG-119', 'Antoine Girard');
-    const P2 = P.render({ ...state, mtg: { ...state.mtg, sel: 'MTG-119' } });
-    const drafts = plain(P2.mtgPrep).draftLines.map((l: any) => (l.type === 'decision' ? ['decision', l.text] : ['action', l.text, ...l.meta.split(' · ')]));
+    // The prototype's state gets the lines the local analysis added (S-10), so its registers and agenda are compared as before.
+    const drafts = LOCAL_119.draft.map(([type, text, meta]) => (type === 'decision' ? ['decision', text] : ['action', text, ...meta.split(' · ')]));
     set({ applied: { 'MTG-119': true }, lines: { ...state.mtg.lines, 'MTG-119': { ...state.mtg.lines['MTG-119'], 2: drafts } } });
     await same('MTG-119');
+    await same('MTG-119', 'fr');
   });
 
   it('minutes of MTG-118 sent: MIN-HLT-027 on 30 Sep, read receipts for every invitee but the organizer', async () => {

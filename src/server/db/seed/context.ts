@@ -1,7 +1,7 @@
 // Seed loader context: ids generated client-side so every foreign key resolves in one pass.
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { activities, persons, projects } from '../schema';
+import { activities, documents, persons, projects, users, wbsNodes } from '../schema';
 import type { Tx } from '../types';
 
 export const newId = (): string => randomUUID();
@@ -67,8 +67,8 @@ export function newCtx(): SeedCtx {
 }
 
 /**
- * Context rebuilt from an existing database (people, projects, activities) — for module seeders that run on a database
- * seeded before them (see seedIfEmpty's backfill).
+ * Context rebuilt from an existing database (people, projects, activities, WBS, Codex documents, users) — for module
+ * seeders that run on a database seeded before them (see seedIfEmpty's backfills).
  */
 export async function ctxFromDb(tx: Tx): Promise<SeedCtx> {
   const ctx = newCtx();
@@ -81,6 +81,12 @@ export async function ctxFromDb(tx: Tx): Promise<SeedCtx> {
     if (!ctx.activity.has(a.project)) ctx.activity.set(a.project, new Map());
     ctx.activity.get(a.project)!.set(a.code, a.id);
   }
+  for (const w of await tx.select({ id: wbsNodes.id, code: wbsNodes.code, project: projects.code }).from(wbsNodes).innerJoin(projects, eq(projects.id, wbsNodes.projectId))) {
+    if (!ctx.wbs.has(w.project)) ctx.wbs.set(w.project, new Map());
+    ctx.wbs.get(w.project)!.set(w.code, w.id);
+  }
+  for (const d of await tx.select({ id: documents.id, number: documents.number }).from(documents)) ctx.document.set(d.number, d.id);
+  for (const u of await tx.select({ id: users.id, role: users.role }).from(users)) ctx.userByRole.set(u.role, u.id);
   return ctx;
 }
 

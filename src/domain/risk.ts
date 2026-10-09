@@ -118,21 +118,31 @@ export interface RiskChip {
 
 /**
  * "All" (every risk, closed included) + one chip per category in Settings order (`ST.riskCats`) that has at least
- * one risk. `order` defaults to the Settings list.
+ * one risk. `order` defaults to the Settings list; categories added in Settings (chapter 4, A-14) follow, in order of
+ * appearance, labelled with the risk's own `categoryLabel` (the DAL resolves it from Settings).
  */
-export function riskChips(risks: readonly Pick<RiskFacts, 'category'>[], order: readonly RiskCategory[] = riskCategory.codes): RiskChip[] {
+export function riskChips(
+  risks: readonly (Pick<RiskFacts, 'category'> & { categoryLabel?: string })[],
+  order: readonly RiskCategory[] = riskCategory.codes,
+): RiskChip[] {
+  const codes = [...order];
+  for (const r of risks) if (!codes.includes(r.category)) codes.push(r.category);
+  const labelOf = (c: RiskCategory) => risks.find((r) => r.category === c && r.categoryLabel)?.categoryLabel ?? (riskCategory.isCode(c) ? riskCategory.label(c) : c);
   return [
     { value: null, label: 'All', count: risks.length },
-    ...order
-      .map((c) => ({ value: c, label: riskCategory.label(c), count: risks.filter((r) => r.category === c).length }))
+    ...codes
+      .map((c) => ({ value: c, label: labelOf(c), count: risks.filter((r) => r.category === c).length }))
       .filter((c) => c.count > 0),
   ];
 }
 
-/** Category filter from a URL value (code or English label); unknown → null (All). */
-export function parseCategory(v: string | null | undefined): RiskCategory | null {
+/**
+ * Category filter from a URL value (code or English label); unknown → null (All). `known` = codes of Settings ›
+ * Risk categories (custom categories included, A-14).
+ */
+export function parseCategory(v: string | null | undefined, known: readonly string[] = []): RiskCategory | null {
   if (!v) return null;
-  if (riskCategory.isCode(v)) return v;
+  if (riskCategory.isCode(v) || known.includes(v)) return v;
   try {
     return riskCategory.code(v);
   } catch {
@@ -225,14 +235,15 @@ export const MAX_PLAN = 2000;
 /**
  * Validates the raw "New risk" values (field ids title · cat · p · i · owner · resp · emv · plan). Selects must hold
  * one of the offered values (blank → first option, as the dialog submits); errors are English source strings.
+ * `categories` = the category codes the form offers (Settings › Risk categories, active — A-14); omitted = the defaults.
  */
-export function parseNewRisk(values: Record<string, string | undefined>, team: readonly string[]): ParseResult<NewRisk> {
+export function parseNewRisk(values: Record<string, string | undefined>, team: readonly string[], categories?: readonly string[]): ParseResult<NewRisk> {
   const title = (values.title ?? '').trim();
   if (!title) return { ok: false, error: 'Title is required' };
   if (title.length > MAX_TITLE) return { ok: false, error: 'Title is too long' };
-  const cat = values.cat || FORM_CATEGORIES[0];
-  const category = parseCategory(cat);
-  if (!category) return { ok: false, error: 'Unknown category' };
+  const cat = values.cat || (categories ?? FORM_CATEGORIES)[0];
+  const category = parseCategory(cat, categories);
+  if (!category || (categories && !categories.includes(category))) return { ok: false, error: 'Unknown category' };
   const resp = values.resp || FORM_RESPONSES[0];
   const response = riskResponse.isCode(resp) ? resp : (riskResponse.labels as string[]).includes(resp) ? riskResponse.code(resp) : null;
   if (!response) return { ok: false, error: 'Unknown response' };

@@ -51,7 +51,7 @@ export const SCREENS: ScreenDef[] = [
   // Fixed entries
   S({ id: 'home', title: 'Home', navLabel: 'Home', icon: House, nav: 'fixed', scope: 'global', slug: '', built: true }),
   S({ id: 'myprojects', title: 'My projects', navLabel: 'My projects', icon: FolderUser, nav: 'fixed', scope: 'global', slug: 'my/projects', built: true }),
-  S({ id: 'client', title: 'My project — client view', navLabel: 'My project', icon: Buildings, nav: 'fixed', scope: 'project', slug: 'client', built: false }),
+  S({ id: 'client', title: 'My project — client view', navLabel: 'My project', icon: Buildings, nav: 'fixed', scope: 'project', slug: 'client', built: true }),
   S({ id: 'mywork', title: 'My work', navLabel: 'My tasks', icon: CheckSquare, nav: 'fixed', scope: 'global', slug: 'my/tasks', built: true }),
   S({ id: 'task', title: 'Task', scope: 'global', slug: 'my/tasks/[taskId]', built: true }),
   S({ id: 'myapprovals', title: 'My approvals', navLabel: 'My approvals', icon: Stamp, nav: 'fixed', scope: 'global', slug: 'my/approvals', built: true }),
@@ -78,24 +78,24 @@ export const SCREENS: ScreenDef[] = [
   S({ id: 'stakeholders', title: 'Stakeholders & RACI', navLabel: 'Stakeholders & RACI', icon: UsersFour, nav: 'project', group: 'Team & exchanges', scope: 'project', slug: 'stakeholders', built: true }),
   S({ id: 'interfaces', title: 'Interface register', navLabel: 'Interfaces', icon: ArrowsLeftRight, nav: 'project', group: 'Team & exchanges', scope: 'project', slug: 'interfaces', built: true }),
   // Project › Project engineering
-  S({ id: 'eng', title: 'Engineering synthesis', navLabel: 'Synthesis', icon: SquaresFour, nav: 'project', group: 'Project engineering', scope: 'project', slug: 'engineering', built: false }),
-  S({ id: 'eng-process', title: 'Process engineering', navLabel: 'Process', icon: FlowArrow, nav: 'project', group: 'Project engineering', scope: 'project', slug: 'engineering/process', built: false }),
-  S({ id: 'eng-meca', title: 'Mechanical engineering', navLabel: 'Mechanical', icon: Gear, nav: 'project', group: 'Project engineering', scope: 'project', slug: 'engineering/mechanical', built: false }),
-  S({ id: 'eng-elec', title: 'Electrical engineering', navLabel: 'Electrical', icon: Lightning, nav: 'project', group: 'Project engineering', scope: 'project', slug: 'engineering/electrical', built: false }),
-  S({ id: 'eng-auto', title: 'Automation engineering', navLabel: 'Automation', icon: Cpu, nav: 'project', group: 'Project engineering', scope: 'project', slug: 'engineering/automation', built: false }),
-  S({ id: 'pid', title: 'P&ID — tags, overlay & process validation', navLabel: 'P&ID validation', icon: FlowArrow, nav: 'project', group: 'Project engineering', scope: 'project', slug: 'pid', built: false }),
+  S({ id: 'eng', title: 'Engineering synthesis', navLabel: 'Synthesis', icon: SquaresFour, nav: 'project', group: 'Project engineering', scope: 'project', slug: 'engineering', built: true }),
+  S({ id: 'eng-process', title: 'Process engineering', navLabel: 'Process', icon: FlowArrow, nav: 'project', group: 'Project engineering', scope: 'project', slug: 'engineering/process', built: true }),
+  S({ id: 'eng-meca', title: 'Mechanical engineering', navLabel: 'Mechanical', icon: Gear, nav: 'project', group: 'Project engineering', scope: 'project', slug: 'engineering/mechanical', built: true }),
+  S({ id: 'eng-elec', title: 'Electrical engineering', navLabel: 'Electrical', icon: Lightning, nav: 'project', group: 'Project engineering', scope: 'project', slug: 'engineering/electrical', built: true }),
+  S({ id: 'eng-auto', title: 'Automation engineering', navLabel: 'Automation', icon: Cpu, nav: 'project', group: 'Project engineering', scope: 'project', slug: 'engineering/automation', built: true }),
+  S({ id: 'pid', title: 'P&ID — tags, overlay & process validation', navLabel: 'P&ID validation', icon: FlowArrow, nav: 'project', group: 'Project engineering', scope: 'project', slug: 'pid', built: true }),
   S({ id: 'bom', title: 'Project BOM — equipment & parts', navLabel: 'Project BOM', icon: Cube, nav: 'project', group: 'Project engineering', scope: 'project', slug: 'bom', built: true }),
   // Project › Control
   S({ id: 'risks', title: 'Risk register', navLabel: 'Risk register', icon: ShieldWarning, nav: 'project', group: 'Control', scope: 'project', slug: 'risks', built: true }),
   S({ id: 'changes', title: 'Change control & baselines', navLabel: 'Change control', icon: GitPullRequest, nav: 'project', group: 'Control', scope: 'project', slug: 'changes', built: true }),
-  S({ id: 'quality', title: 'Quality — NCR & deliverables', navLabel: 'Quality & deliverables', icon: SealCheck, nav: 'project', group: 'Control', scope: 'project', slug: 'quality', built: false }),
-  S({ id: 'itp', title: 'Inspection & test plan · punch list', navLabel: 'Inspections & punch list', icon: ClipboardText, nav: 'project', group: 'Control', scope: 'project', slug: 'itp', built: false }),
+  S({ id: 'quality', title: 'Quality — NCR & deliverables', navLabel: 'Quality & deliverables', icon: SealCheck, nav: 'project', group: 'Control', scope: 'project', slug: 'quality', built: true }),
+  S({ id: 'itp', title: 'Inspection & test plan · punch list', navLabel: 'Inspections & punch list', icon: ClipboardText, nav: 'project', group: 'Control', scope: 'project', slug: 'itp', built: true }),
   // Project › Site & handover
-  S({ id: 'site', title: 'Site — readiness, mobilisation & execution', navLabel: 'Site (chantier)', icon: HardHat, nav: 'project', group: 'Site & handover', scope: 'project', slug: 'site', built: false }),
-  S({ id: 'commissioning', title: 'Commissioning & handover dossier', navLabel: 'Commissioning & handover', icon: Key, nav: 'project', group: 'Site & handover', scope: 'project', slug: 'commissioning', built: false }),
+  S({ id: 'site', title: 'Site — readiness, mobilisation & execution', navLabel: 'Site (chantier)', icon: HardHat, nav: 'project', group: 'Site & handover', scope: 'project', slug: 'site', built: true }),
+  S({ id: 'commissioning', title: 'Commissioning & handover dossier', navLabel: 'Commissioning & handover', icon: Key, nav: 'project', group: 'Site & handover', scope: 'project', slug: 'commissioning', built: true }),
   // Project › Project review
   S({ id: 'trends', title: 'Trends & status report', navLabel: 'Trends & status', icon: ChartLine, nav: 'project', group: 'Project review', scope: 'project', slug: 'trends', built: true }),
-  S({ id: 'rex', title: 'Lessons learned & project closure', navLabel: 'Lessons learned & closure', icon: GraduationCap, nav: 'project', group: 'Project review', scope: 'project', slug: 'closure', built: false }),
+  S({ id: 'rex', title: 'Lessons learned & project closure', navLabel: 'Lessons learned & closure', icon: GraduationCap, nav: 'project', group: 'Project review', scope: 'project', slug: 'closure', built: true }),
   // Technical reference
   S({ id: 'plm', title: 'PLM — parts catalogue', navLabel: 'Parts (PLM)', icon: Database, nav: 'tech', scope: 'global', slug: 'reference/parts', built: true }),
   S({ id: 'eco', title: 'Engineering change orders', navLabel: 'Change orders (ECO)', icon: GitBranch, nav: 'tech', scope: 'global', slug: 'reference/eco', built: true }),
@@ -106,8 +106,8 @@ export const SCREENS: ScreenDef[] = [
   S({ id: 'deliveries', title: 'Deliveries & goods receipt', navLabel: 'Deliveries', icon: Truck, nav: 'stock', scope: 'project', slug: 'deliveries', built: true }),
   S({ id: 'stock', title: 'Stock & storages', navLabel: 'Stock & storages', icon: Warehouse, nav: 'stock', scope: 'global', slug: 'purchasing/stock', built: true }),
   // Warranty & after-sales
-  S({ id: 'fleet', title: 'Installed base', navLabel: 'Installed base', icon: CraneTower, nav: 'sav', scope: 'zone', slug: 'after-sales/fleet', built: false }),
-  S({ id: 'sav', title: 'Warranty claims & interventions', navLabel: 'Warranty claims & interventions', icon: Wrench, nav: 'sav', scope: 'zone', slug: 'after-sales/claims', built: false }),
+  S({ id: 'fleet', title: 'Installed base', navLabel: 'Installed base', icon: CraneTower, nav: 'sav', scope: 'zone', slug: 'after-sales/fleet', built: true }),
+  S({ id: 'sav', title: 'Warranty claims & interventions', navLabel: 'Warranty claims & interventions', icon: Wrench, nav: 'sav', scope: 'zone', slug: 'after-sales/claims', built: true }),
   // Resources
   S({ id: 'resources', title: 'Resources', navLabel: 'Resources', icon: UsersThree, nav: 'res', scope: 'global', slug: 'resources', built: true }),
   S({ id: 'requests', title: 'Resource requests', navLabel: 'Resource requests', icon: PaperPlaneTilt, nav: 'res', scope: 'global', slug: 'resources/requests', built: true }),
@@ -117,10 +117,10 @@ export const SCREENS: ScreenDef[] = [
   S({ id: 'leave', title: 'Leave & working calendar', navLabel: 'Leave & calendar', icon: CalendarCheck, nav: 'res', scope: 'global', slug: 'resources/leave', built: true }),
   S({ id: 'rates', title: 'Rate cards', navLabel: 'Rate cards', icon: CurrencyEur, nav: 'res', scope: 'global', slug: 'resources/rates', built: true }),
   // Administration
-  S({ id: 'settings', title: 'Settings — personalisable lists', navLabel: 'Settings', icon: GearSix, nav: 'admin', scope: 'global', slug: 'admin/settings', built: false }),
-  S({ id: 'mtypes', title: 'Standard machine types', navLabel: 'Machine types', icon: Cube, nav: 'admin', scope: 'global', slug: 'admin/machine-types', built: false }),
+  S({ id: 'settings', title: 'Settings — personalisable lists', navLabel: 'Settings', icon: GearSix, nav: 'admin', scope: 'global', slug: 'admin/settings', built: true }),
+  S({ id: 'mtypes', title: 'Standard machine types', navLabel: 'Machine types', icon: Cube, nav: 'admin', scope: 'global', slug: 'admin/machine-types', built: true }),
   S({ id: 'doctypes', title: 'Document types register (Codex)', navLabel: 'Document types register (Codex)', icon: ListChecks, nav: 'admin', scope: 'global', slug: 'admin/document-types', built: true }),
-  S({ id: 'plumbing', title: 'Activity, integrations & audit', navLabel: 'Activity & integrations', icon: PlugsConnected, nav: 'admin', scope: 'global', slug: 'admin/integrations', built: false }),
+  S({ id: 'plumbing', title: 'Activity, integrations & audit', navLabel: 'Activity & integrations', icon: PlugsConnected, nav: 'admin', scope: 'global', slug: 'admin/integrations', built: true }),
 ];
 
 export const SCREEN_BY_ID = Object.fromEntries(SCREENS.map((s) => [s.id, s])) as Record<ScreenId, ScreenDef>;

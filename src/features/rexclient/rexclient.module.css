@@ -1,0 +1,118 @@
+/* Lessons learned & closure (template 921–931) and client portal (template 2180–2236): the prototype's inline values. */
+.root { display: flex; flex-direction: column; gap: 14px; }
+
+/* ── Lessons table ── */
+.llId { font-variant-numeric: tabular-nums; color: var(--color-neutral-400); }
+:global(.tag).theme { font-size: 10.5px; }
+.what { text-wrap: pretty; min-width: 200px; }
+.impact { font-size: 12px; color: var(--color-neutral-300); min-width: 140px; }
+.reco { text-wrap: pretty; min-width: 220px; color: var(--color-neutral-200); }
+.apply { font-size: 12px; color: var(--color-neutral-300); }
+.nowrap { white-space: nowrap; }
+.actionCell { text-align: right; }
+
+/* two cards: repeat(auto-fit, minmax(min(100%, 380px), 1fr)) */
+.grid380 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 14px; align-items: start; }
+
+/* ── Closure checklist rows (full-width buttons) ── */
+.clRow {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 4px;
+  border: 0;
+  border-top: 1px solid var(--color-neutral-900);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  border-radius: var(--radius-md);
+}
+button.clRow { cursor: pointer; }
+button.clRow:hover { background: var(--color-neutral-900); }
+button.clRow:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+button.clRow:disabled { cursor: progress; }
+.clIcon { font-size: 17px; color: var(--cl-color); }
+.clItem { text-wrap: pretty; color: var(--cl-text); }
+.clOwner { font-size: 11.5px; color: var(--color-neutral-400); white-space: nowrap; }
+.clStatus { font-size: 11.5px; color: var(--cl-color); white-space: nowrap; min-width: 80px; text-align: right; }
+
+/* ── Customer satisfaction ── */
+.satHead { display: flex; align-items: center; gap: 10px; }
+.titleCol { display: flex; flex-direction: column; }
+.sub { font-size: 12px; color: var(--color-neutral-400); text-wrap: pretty; }
+.satAvg { margin-left: auto; font-size: 26px; font-weight: 500; letter-spacing: -0.02em; }
+.satOf { font-size: 13px; color: var(--color-neutral-400); }
+.satRow { display: grid; grid-template-columns: minmax(0, 1fr) 120px 36px; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--color-neutral-900); font-size: 12.5px; }
+.satTrack { height: 6px; border-radius: 3px; background: var(--color-neutral-800); overflow: hidden; }
+.satFill { height: 100%; background: var(--color-accent); }
+.satScore { font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ── Client portal ── */
+.flexRow { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+
+/* progress card header + legend */
+.chartHead { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.chartTitle { display: flex; flex-direction: column; margin-right: auto; }
+.chartSub { font-size: 12px; color: var(--color-neutral-400); }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--color-neutral-300); }
+.legendItem { display: flex; align-items: center; gap: 6px; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; background: var(--color-neutral-700); }
+.swatchActual { background: var(--color-accent); }
+
+/* progress bars: height 150, pairs in a 120px area */
+.bars { display: flex; gap: 8px; height: 150px; align-items: flex-end; }
+.barCol { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; height: 100%; justify-content: flex-end; }
+.barPair { display: flex; gap: 2px; align-items: flex-end; width: 100%; height: 120px; }
+.barPlan, .barActual { flex: 1; border-radius: 2px 2px 0 0; background: var(--color-neutral-700); }
+.barActual { background: var(--color-accent); }
+.barLabel { font-size: 10.5px; color: var(--color-neutral-400); }
+
+/* milestones */
+.titleGap { margin-bottom: 4px; }
+.msRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--color-neutral-900); font-size: 13px; }
+.stackText { display: flex; flex-direction: column; line-height: 1.3; }
+.msSub { font-size: 11.5px; color: var(--color-neutral-400); }
+
+/* decisions */
+.grid460 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 14px; align-items: start; }
+.cardHead { display: flex; flex-direction: column; margin-bottom: 4px; }
+.decRow { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding: 10px 0; border-top: 1px solid var(--color-neutral-900); }
+.decMain { display: flex; flex-direction: column; line-height: 1.3; min-width: 220px; flex: 1 1 260px; }
+.decHead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.decMeta { font-size: 11.5px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.decTitle { font-size: 13px; text-wrap: pretty; margin-top: 4px; }
+.decSub { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+.decActions { display: flex; gap: 6px; margin-left: auto; }
+.decidedRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--color-neutral-900); font-size: 12.5px; }
+.decidedText { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.decidedMeta { font-size: 11px; color: var(--color-neutral-400); }
+
+/* invoices */
+.invNo { font-variant-numeric: tabular-nums; font-size: 12px; }
+.amount { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.payment { font-size: 12px; color: var(--color-neutral-300); }
+:global(.btn).statement { align-self: flex-start; font-size: 12.5px; margin-top: 6px; }
+
+/* issues */
+.issueForm { display: flex; gap: 8px; }
+:global(.input).issueInput { min-height: 34px; flex: 1; }
+:global(.btn).issueButton { font-size: 12.5px; }
+.issueRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--color-neutral-900); }
+.issueText { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.issueTitle { font-size: 13px; text-wrap: pretty; }
+.issueMeta { font-size: 11.5px; color: var(--color-neutral-400); }
+.issueResp { font-size: 12px; color: var(--color-neutral-300); text-wrap: pretty; margin-top: 2px; }
+
+/* documents */
+.docId { font-variant-numeric: tabular-nums; font-weight: 500; white-space: nowrap; }
+.docLink { color: inherit; text-decoration: none; }
+.docLink:hover { color: var(--color-accent); }
+.docTitle { text-wrap: pretty; }
+.docMeta { color: var(--color-neutral-400); }
+.tabular { font-variant-numeric: tabular-nums; }
+.docActions { text-align: right; white-space: nowrap; }
+.emptyDocs { font-size: 12.5px; color: var(--color-neutral-500); }

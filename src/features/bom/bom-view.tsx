@@ -15,11 +15,13 @@ import { Segmented } from '@/components/ds/Segmented';
 import { IdText, Table, Td, Th } from '@/components/ds/Table';
 import { cx } from '@/components/ds/cx';
 import { SparesActions } from './client-buttons';
+import type { SparesOrderScope } from './spares-order-dialog';
 import { FlatFilters, UsedSearch } from './flat-filters';
 import type { BomScreenView, CompareView, FlatView, KpiView, SparesView, WhereUsedView } from './model';
 import { NodeDrawer } from './node-drawer';
 import { TreeTable } from './tree-table';
 import s from './bom.module.css';
+import { exportHref as fileExportHref } from '@/lib/export-href';
 
 function Kpis({ kpis }: { kpis: KpiView[] }) {
   return (
@@ -232,7 +234,7 @@ function Compare({ view }: { view: CompareView }) {
   );
 }
 
-function Spares({ view, canOrder }: { view: SparesView; canOrder: boolean }) {
+function Spares({ view, canOrder, scope }: { view: SparesView; canOrder: boolean; scope: SparesOrderScope }) {
   const L = view.labels;
   return (
     <>
@@ -256,7 +258,13 @@ function Spares({ view, canOrder }: { view: SparesView; canOrder: boolean }) {
             <CardTitle>{view.title}</CardTitle>
             <span className={s.headSub}>{view.sub}</span>
           </div>
-          <SparesActions createLabel={view.createOrderLabel} exportLabel={view.exportLabel} canOrder={canOrder} />
+          <SparesActions
+            createLabel={view.createOrderLabel}
+            exportLabel={view.exportLabel}
+            canOrder={canOrder}
+            scope={scope}
+            exportHref={fileExportHref('bom', { format: 'pdf', code: scope.code, variant: 'spares', params: { sys: scope.system ?? undefined, kind: scope.kind ?? undefined } })}
+          />
         </div>
         <Table>
           <thead>
@@ -336,7 +344,7 @@ export function BomBody({ view, canEdit }: { view: BomScreenView; canEdit: boole
       {view.node && <NodeDrawer key={view.node.ref} view={view.node} />}
       {view.used && <WhereUsed view={view.used} />}
       {view.compare && <Compare view={view.compare} />}
-      {view.spares && <Spares view={view.spares} canOrder={canEdit} />}
+      {view.spares && <Spares view={view.spares} canOrder={canEdit} scope={{ code: view.code, system: view.state.sys, kind: view.state.kind }} />}
       {view.noTree && <EmptyState variant="boxed">{view.noTree}</EmptyState>}
     </div>
   );

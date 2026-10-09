@@ -5,7 +5,7 @@ import 'server-only';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { getDb, type Tx } from '@/server/db/client';
 import {
-  addDaysIso, displayOfIso, dowOfIso, hoursMatching, leaveType, weekLabelOfIso,
+  addDaysIso, displayOfIso, dowOfIso, hoursMatching, leaveType, slugOf, weekLabelOfIso,
   type HoursMatching, type LeaveType, type RateMultiplierKey,
 } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
@@ -14,6 +14,7 @@ import {
   rateMultipliers, rateRoles, skills, unassignedHours, wbsNodes,
 } from '@/server/db/schema';
 import type { ResourceWeek } from './resources';
+import { ensureSettingsEntry, hiddenSkillNames, settingsHolidayRows } from './settings-lists';
 
 // ── Rate cards ─────────────────────────────────────────────────────────────────────────────────────────
 
@@ -116,12 +117,15 @@ export interface SkillsMatrix {
 /** People × skills levels and certifications (Skills matrix). */
 export async function getSkillsMatrix(): Promise<SkillsMatrix> {
   const db = await getDb();
-  const [sk, people, levels, certs] = await Promise.all([
+  const [allSkills, people, levels, certs, hidden] = await Promise.all([
     db.select().from(skills).orderBy(asc(skills.position)),
     db.select().from(persons).where(sql`${persons.resourcePoolPosition} is not null`).orderBy(asc(persons.resourcePoolPosition)),
     db.select().from(personSkills),
     db.select().from(certifications).orderBy(asc(certifications.position)),
+    hiddenSkillNames(db),
   ]);
+  // Chapter 4 (A-14): a skill family removed in Settings › Skills & levels hides its column (levels are kept).
+  const sk = allSkills.filter((s) => !hidden.has(s.name.toLowerCase()));
   return {
     skills: sk.map((s) => ({ name: s.name, category: s.category })),
     people: people.map((p) => {
@@ -141,6 +145,8 @@ export async function addSkill(input: { name: string; category?: string }, actor
   await db.transaction(async (tx) => {
     const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${skills.position}), 0)::int` }).from(skills);
     await tx.insert(skills).values({ name: input.name.trim(), category: input.category ?? null, position: pos + 1 });
+    // Chapter 4 (A-14): the skill family is also offered by Settings › Skills & levels.
+    await ensureSettingsEntry(tx, 'skills', input.name.trim(), slugOf(input.name.trim()));
     await auditSettings(tx, actorName, 'Skills', `skill added: ${input.name.trim()}`);
   });
 }
@@ -173,10 +179,15 @@ export interface LeaveCalendar {
   people: { name: string; shortName: string; initials: string; jobTitle: string | null; weeks: LeaveWeekCell[] }[];
 }
 
-/** Public holidays of a country (Settings list "Public holidays 2026 — France"). */
+/**
+ * Public holidays of a country. France reads Settings › Public holidays (chapter 4, A-14: the company list drives the
+ * leave calendar as it drives the work calendars); other countries keep the public_holidays table.
+ */
 export async function listPublicHolidays(countryCode = 'FR'): Promise<HolidayRow[]> {
   const db = await getDb();
-  const rows = await db.select().from(publicHolidays).where(eq(publicHolidays.countryCode, countryCode)).orderBy(asc(publicHolidays.position));
+  const rows = countryCode === 'FR'
+    ? await settingsHolidayRows(db)
+    : await db.select().from(publicHolidays).where(eq(publicHolidays.countryCode, countryCode)).orderBy(asc(publicHolidays.position));
   return rows.map((h) => ({ date: h.date, name: h.name, label: `${displayOfIso(h.date).replace(/ \d{4}$/, '')} · ${h.name}` }));
 }
 

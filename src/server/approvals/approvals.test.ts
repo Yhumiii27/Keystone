@@ -27,7 +27,7 @@ describe('My approvals registry', () => {
   it('registers one provider per kind, in inbox order', () => {
     expect(APPROVAL_PROVIDERS.map((p) => `${p.kind}/${p.scope}/${p.source}`)).toEqual([
       'request/global/db', 'po/project/db', 'eco/global/db', 'delivery/project/db', 'stage/global/db', 'cr/project/db',
-      'deliverable/project/prototype', 'rfq/global/db', 'invoice/global/db', 'ncr/project/prototype', 'doc/global/db',
+      'deliverable/project/db', 'rfq/global/db', 'invoice/global/db', 'ncr/project/db', 'doc/global/db',
     ]);
   });
 
@@ -82,7 +82,8 @@ describe('My approvals registry', () => {
     const { items } = await inbox('depthead');
     expect(items[0]).toEqual({
       kind: 'request', id: 'RQ-043', title: 'Steel connection checks — second crew', sub: 'Contract structural engineer · Harbor Line · 40 h', when: '25 Sep', whenIso: '2026-09-25',
-      who: 'R. Aubert', href: '/resources/approvals/engineering', decision: null,
+      // Chapter 4: decided inline with the Approvals screen's rules (was `decision: null`, decided on Approvals only).
+      who: 'R. Aubert', href: '/resources/approvals/engineering', decision: { mode: 'resource-request', number: 'RQ-043' },
     });
     const v = inboxView(items, { decided: 0, roleTitle: 'Head of engineering' });
     expect(v.kpis[2].value).toBe('24 Sep'); // RQ-041, sent Thu 24 Sep
@@ -126,10 +127,15 @@ describe('My approvals registry', () => {
 
     await recordStageChange('NDC-031', stage.code('Fabrication & Assemblage'), 'forced', { reason: 'Long-lead switchgear released early', missing: ['x'], requestedByShortName: 'S. Perrin' });
     const forced = (await inbox('director')).items.filter((i) => i.kind === 'stage');
+    // Chapter 4 (L-1): decided inline by the portfolio director (was `decision: null`, informational); the decision names
+    // the forced history row and the stage Reject reverts to.
+    const transitionId = forced[0]?.decision?.mode === 'stage' ? forced[0].decision.transitionId : '';
+    expect(transitionId).toMatch(/^[0-9a-f-]{36}$/);
     expect(forced).toEqual([
       {
         kind: 'stage', id: 'NDC-031', title: '#031 · Northgate Data Center Retrofit → Fabrication & Assemblage', sub: 'Long-lead switchgear released early', when: '25 Sep 2026',
-        whenIso: '2026-09-25', who: 'S. Perrin', href: '/portfolio/projects?q=NDC-031', decision: null,
+        whenIso: '2026-09-25', who: 'S. Perrin', href: '/portfolio/projects?q=NDC-031',
+        decision: { mode: 'stage', projectCode: 'NDC-031', transitionId, fromLabel: 'Approvisionnements' },
       },
     ]);
     expect(await queue('pm')).not.toContain('stage:NDC-031');

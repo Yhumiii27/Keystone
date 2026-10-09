@@ -144,6 +144,17 @@
 :global(.input).addTodoInput { min-height: 32px; font-size: 13px; }
 :global(.btn).addTodoBtn { font-size: 12.5px; padding: 4px 10px; }
 
+/* ── Chapter 4 controls (editors only): link removal, to-do ticks, calendar override ── */
+.relEdit { grid-template-columns: 52px minmax(0, 1fr) auto 24px; }
+.todoRow { cursor: auto; }
+.todoRow:hover { color: var(--color-text) !important; }
+.todoRowRm { grid-template-columns: 16px minmax(0, 1fr) auto 24px; }
+.todoLink { color: inherit; text-decoration: none; }
+.todoLink:hover { color: var(--color-accent-300); }
+.ringButton { padding: 0; cursor: pointer; flex: none; }
+.ringButton:disabled { cursor: progress; }
+:global(.input).calSelect { width: auto; max-width: 60%; min-height: 24px; font-size: 12px; }
+
 /* ── Removal confirmation ── */
 .confirmText { font-size: 13px; color: var(--color-neutral-300); text-wrap: pretty; }
 

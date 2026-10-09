@@ -51,9 +51,8 @@ export function requestChipCounts(rows: readonly Pick<RequestFacts, 'status'>[])
 
 // ── KPI tiles ──────────────────────────────────────────────────────────────────────────────────────────
 
-/** "Avg response" tiles: hard-coded in the prototype (08 OQ23, A-12) — kept until a formula is decided. */
-export const AVG_RESPONSE_PM = '1.4 d';
-export const AVG_RESPONSE_DEPARTMENT = '0.9 d';
+// "Avg response" tiles: computed since chapter 4 (A-12, 08 OQ23) — `averageResponseDays`, src/domain/kpis.ts (working
+// days from sending to the department's decision); the prototype printed "1.4 d" and "0.9 d".
 
 export interface RequestKpis {
   sent: number;

@@ -37,3 +37,69 @@ export function vigieNewEcoUrl(ctx: { partRef?: string | null; projectCode?: str
 export function vigieEcoListUrl(filter: { partRef?: string | null; projectCode?: string | null } = {}): string {
   return `${vigiePublicUrl()}${VIGIE_ECO_PATH}${qs({ part: filter.partRef, project: filter.projectCode })}`;
 }
+
+// ── Non-conformities (NCR) and site HSE (Delivery 5) ────────────────────────────────────────────────────
+// Vigie's real routes (Vigie README, src/app): /evenements (signalements et événements, type NC = non-conformité,
+// `?sel=<event id>`, `?etat=tous`, `?type=`, `?q=`), /signaler (field report form, `?lieu=`), /actions (`?action=A-214`),
+// /prevention (plans `?plan=PP-…`, permits `?onglet=permis&permis=PF-…`), /prevention/carte (co-activity map).
+
+/** Vigie's events register (non-conformities are events of type NC). */
+export const VIGIE_EVENTS_PATH = '/evenements';
+/** Vigie's field report form (where an NCR or an incident is reported). */
+export const VIGIE_REPORT_PATH = '/signaler';
+/** Vigie's prevention plans and permits. */
+export const VIGIE_PREVENTION_PATH = '/prevention';
+/** Vigie's site map and co-activity screen. */
+export const VIGIE_COACTIVITY_PATH = '/prevention/carte';
+
+/**
+ * An NCR in Vigie. With Vigie's event id: the event record (`/evenements?etat=tous&sel=EV-2026-130`). Without it — the
+ * prototype NCR numbers are not Vigie ids — OPEN QUESTION V-3: Vigie has no field for Keystone's NCR number, so the link
+ * opens the NC events searched by that number (`/evenements?etat=tous&type=NC&q=NCR-029`).
+ */
+export function vigieNcrUrl(ncr: { number: string; vigieRef?: string | null }): string {
+  return ncr.vigieRef
+    ? `${vigiePublicUrl()}${VIGIE_EVENTS_PATH}${qs({ etat: 'tous', sel: ncr.vigieRef })}`
+    : `${vigiePublicUrl()}${VIGIE_EVENTS_PATH}${qs({ etat: 'tous', type: 'NC', q: ncr.number })}`;
+}
+
+/** Vigie's non-conformities ("Manage in Vigie"). OPEN QUESTION V-3: Vigie's events carry its own project ids ("K-2025-042"), not Keystone codes. */
+export function vigieNcrListUrl(): string {
+  return `${vigiePublicUrl()}${VIGIE_EVENTS_PATH}${qs({ type: 'NC' })}`;
+}
+
+/**
+ * "Report in Vigie" — Vigie's report form, prefilled with what Keystone knows. OPEN QUESTION V-3: /signaler reads only
+ * `lieu` today; `type`, `projet`, `article`, `activite`, `titre` and `source=keystone` are proposals.
+ */
+export function vigieReportNcrUrl(ctx: { projectCode?: string | null; partRef?: string | null; activityCode?: string | null; title?: string | null; location?: string | null } = {}): string {
+  return `${vigiePublicUrl()}${VIGIE_REPORT_PATH}${qs({
+    type: 'NC', projet: ctx.projectCode, article: ctx.partRef, activite: ctx.activityCode, titre: ctx.title, lieu: ctx.location, source: 'keystone',
+  })}`;
+}
+
+/** "Declare incident" (site HSE register) — Vigie's report form (OPEN QUESTION V-3 for the prefill parameters). */
+export function vigieReportIncidentUrl(ctx: { projectCode?: string | null; location?: string | null } = {}): string {
+  return `${vigiePublicUrl()}${VIGIE_REPORT_PATH}${qs({ projet: ctx.projectCode, lieu: ctx.location, source: 'keystone' })}`;
+}
+
+/**
+ * A site HSE item in Vigie: a prevention plan (`/prevention?plan=PP-…`) or a permit (`/prevention?onglet=permis&permis=PF-…`)
+ * when Vigie gave its id; else the matching list (plans, permits; the near-miss register opens the near-miss events).
+ */
+export function vigieHseUrl(item: { kind: 'prevention_plan' | 'induction' | 'permit' | 'register'; vigieRef?: string | null }): string {
+  const base = vigiePublicUrl();
+  if (item.kind === 'permit') return `${base}${VIGIE_PREVENTION_PATH}${qs({ onglet: 'permis', permis: item.vigieRef })}`;
+  if (item.kind === 'register') return `${base}${VIGIE_EVENTS_PATH}${qs({ etat: 'tous', type: 'PA' })}`;
+  return `${base}${VIGIE_PREVENTION_PATH}${qs({ plan: item.vigieRef })}`;
+}
+
+/** Vigie's prevention plans and permits ("Manage in Vigie" on the HSE register). */
+export function vigieHseListUrl(): string {
+  return `${vigiePublicUrl()}${VIGIE_PREVENTION_PATH}`;
+}
+
+/** Vigie's site map and co-activity detection. */
+export function vigieCoactivityUrl(): string {
+  return `${vigiePublicUrl()}${VIGIE_COACTIVITY_PATH}`;
+}

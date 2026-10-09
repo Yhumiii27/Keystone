@@ -1,24 +1,29 @@
 import 'server-only';
 // Meetings & minutes DAL (docs/spec/05 §5; 11 §3.4 Meeting, ClientQuestion). The project meeting register with
-// attendance, agenda and minutes lines, transcripts and their (simulated) analysis, the internal ⇄ client question
-// bridge, and the writers: new meeting (MTG-130…), minutes lines (Scheduled → Notes in progress), action ticks,
-// transcript analysis / "Add to minutes", and "Send minutes" — a numbered MIN document released in the Codex index,
+// attendance, agenda and minutes lines, transcripts with their analysis and its human review (chapter 4, S-10 — writers in
+// meetings-transcripts.ts), the internal ⇄ client question bridge, and the writers: new meeting (MTG-130…), minutes lines
+// (Scheduled → Notes in progress), action ticks, and "Send minutes" — a numbered MIN document released in the Codex index,
 // a to-do for every action owner of the resource pool, read receipts for every invitee but the organizer.
 import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { TODAY } from '@/lib/format';
 import { getDb } from '@/server/db/client';
 import {
-  NOW_ISO, PG_NOW, isoOfDayOffset, isoOfDisplayDate, meetingLineType, meetingSeries, meetingStatus, meetingType, monthIndexOfIso,
+  NOW_ISO, PG_NOW, isoOfDayOffset, meetingLineType, meetingSeries, meetingStatus, meetingType, monthIndexOfIso,
   nextBusinessNumber, parisInstant, shortDateOfIso, displayOfIso,
-  type MeetingLineOrigin, type MeetingLineType, type MeetingSeries, type MeetingStatus, type MeetingType,
+  type MeetingLineOrigin, type MeetingLineType, type MeetingSeries, type MeetingStatus, type MeetingType, type TranscriptAnalyzer,
+  type TranscriptProposalStatus, type TranscriptProposalType, type TranscriptSource,
 } from '@/server/db/codes';
-import { findPerson, nameOf, nextNumber, requireProject, writeAudit } from '@/server/db/helpers';
+import { findPerson, nextNumber, requireProject } from '@/server/db/helpers';
 import {
   clientQuestions, documents, meetingAgendaPoints, meetingLines, meetingParticipants, meetingTranscriptProposals, meetingTranscripts, meetings, persons,
-  projects, tasks,
+  projects, storedFiles, tasks,
 } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 import { createMinutesDocument } from './documents';
+import { appendLines, auditMeeting as audit, loadMeeting, type NewMeetingLine } from './meetings-core';
+
+export type { NewMeetingLine } from './meetings-core';
+export { analyseTranscript, applyTranscriptToMinutes } from './meetings-transcripts';
 
 // ── Read model ─────────────────────────────────────────────────────────────────────────────────────────
 
@@ -52,6 +57,9 @@ export interface MeetingParticipantRow {
   readText: string;
 }
 
+/** Chapter 4 schema: proposals may also be risks / client questions; the minutes take decisions and actions only. */
+const isMinutesProposal = <P extends { type: string }>(x: P): x is P & { type: 'decision' | 'action' } => x.type === 'decision' || x.type === 'action';
+
 export interface TranscriptProposal {
   type: 'decision' | 'action';
   text: string;
@@ -59,13 +67,48 @@ export interface TranscriptProposal {
   due: string | null;
 }
 
+/** One proposal of the analysis with its review state (chapter 4, S-10). */
+export interface TranscriptItemRow {
+  position: number;
+  type: TranscriptProposalType;
+  text: string;
+  owner: string | null;
+  /** "6 Oct" as stored and its date. */
+  due: string | null;
+  dueDate: string | null;
+  speaker: string | null;
+  quote: string | null;
+  /** proposed → rejected (discarded by a reviewer) / applied (in the minutes, the risk register or the client questions). */
+  status: TranscriptProposalStatus;
+  /** "MTG-119|2|3" (minutes line), "R-21" (risk), "Q&A" (client question). */
+  appliedRef: string | null;
+  reviewedBy: string | null;
+}
+
 export interface MeetingTranscriptView {
   text: string;
   analysed: boolean;
   /** Revealed once analysed. */
   summary: string | null;
+  /** Decisions and actions for the minutes (not discarded), analysis order. */
   proposals: TranscriptProposal[];
   applied: boolean;
+  // ── Chapter 4 (S-10) ──
+  /** teams (seed recording) / paste / file. */
+  source: TranscriptSource;
+  /** Uploaded file name (stored by Keystone), null for a paste. */
+  fileName: string | null;
+  language: string | null;
+  /** Who analysed: 'local' rules, 'claude', or 'prototype' / null for the prototype's pre-recorded analysis. */
+  analyzer: TranscriptAnalyzer | null;
+  analyzerModel: string | null;
+  /** EN source notice (Claude failed → local analysis), translated per " · " segment. */
+  notice: string | null;
+  importedBy: string | null;
+  /** ISO date of the import. */
+  importedOn: string | null;
+  /** Every proposal with its review state (empty until analysed). */
+  items: TranscriptItemRow[];
 }
 
 export interface MeetingRow {
@@ -135,6 +178,9 @@ export async function listMeetings(projectCode: string): Promise<MeetingRow[]> {
     db.select({ id: persons.id, full: persons.fullName }).from(persons).where(isNotNull(persons.resourcePoolPosition)),
   ]);
   const poolName = new Map(pool.map((p) => [p.id, p.full]));
+  const fileIds = trs.map((t) => t.fileId).filter((x): x is string => !!x);
+  const files = fileIds.length ? await db.select({ id: storedFiles.id, name: storedFiles.name }).from(storedFiles).where(inArray(storedFiles.id, fileIds)) : [];
+  const fileName = new Map(files.map((f) => [f.id, f.name]));
   return ms.map(({ m, code, docNumber }) => {
     const agenda = points.filter((p) => p.meetingId === m.id).map((p) => ({
       position: p.position, title: p.title,
@@ -154,18 +200,35 @@ export async function listMeetings(projectCode: string): Promise<MeetingRow[]> {
         name: p.name, present: p.present, minutesRecipient: p.minutesRecipient, readOn: p.minutesReadOn, readText: p.minutesReadOn ? shortDateOfIso(p.minutesReadOn) : '',
       })),
       agenda,
-      transcript: tr
-        ? {
-            text: tr.rawText, analysed: !!tr.analysedAt, summary: tr.analysedAt ? tr.summary : null, applied: !!tr.appliedAt,
-            proposals: tr.analysedAt
-              ? props.filter((x) => x.meetingId === m.id).map((x) => ({ type: x.type, text: x.text, owner: x.ownerName, due: x.dueText }))
-              : [],
-          }
-        : null,
+      transcript: tr ? transcriptView(tr, props.filter((x) => x.meetingId === m.id), tr.fileId ? fileName.get(tr.fileId) ?? null : null) : null,
       actionCount: agenda.reduce((s, a) => s + a.lines.filter((l) => l.type === 'action').length, 0),
       sortOrder: m.sortOrder,
     };
   });
+}
+
+/** Transcript of a meeting as the screen reads it: proposals and review items only once analysed. */
+function transcriptView(
+  tr: typeof meetingTranscripts.$inferSelect,
+  props: (typeof meetingTranscriptProposals.$inferSelect)[],
+  fileName: string | null,
+): MeetingTranscriptView {
+  const analysed = !!tr.analysedAt;
+  const shown = analysed ? props : [];
+  return {
+    text: tr.rawText, analysed, summary: analysed ? tr.summary : null, applied: !!tr.appliedAt,
+    // Decisions then actions — the order "Add to minutes" appends them in.
+    proposals: [...shown.filter((x) => x.type === 'decision'), ...shown.filter((x) => x.type === 'action')]
+      .filter(isMinutesProposal)
+      .filter((x) => x.status !== 'rejected')
+      .map((x) => ({ type: x.type, text: x.text, owner: x.ownerName, due: x.dueText })),
+    source: tr.source, fileName, language: tr.language, analyzer: tr.analyzer, analyzerModel: tr.analyzerModel, notice: tr.analysisNotice,
+    importedBy: tr.importedByName, importedOn: tr.importedAt ? tr.importedAt.toISOString().slice(0, 10) : null,
+    items: shown.map((x) => ({
+      position: x.position, type: x.type, text: x.text, owner: x.ownerName, due: x.dueText, dueDate: x.dueDate, speaker: x.speaker, quote: x.quote, status: x.status,
+      appliedRef: x.appliedRef, reviewedBy: x.reviewedByName,
+    })),
+  };
 }
 
 /** One meeting by number, null when unknown. */
@@ -211,18 +274,6 @@ export async function listClientQuestions(projectCode: string): Promise<ClientQu
 }
 
 // ── Writers ────────────────────────────────────────────────────────────────────────────────────────────
-
-async function loadMeeting(tx: Tx, number: string) {
-  const [m] = await tx.select().from(meetings).where(eq(meetings.number, number));
-  if (!m) throw new Error(`Unknown meeting ${number}`);
-  return m;
-}
-
-async function audit(tx: Tx, actorName: string, objectRef: string, change: string, projectId: string, entityId: string) {
-  const actor = await findPerson(tx, actorName);
-  await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef, change, area: 'Meetings', entityType: 'meeting', entityId, projectId });
-  return actor;
-}
 
 export interface NewMeeting {
   title: string;
@@ -275,31 +326,6 @@ export async function createMeeting(projectCode: string, input: NewMeeting, acto
   });
 }
 
-export interface NewMeetingLine {
-  type: MeetingLineType;
-  text: string;
-  /** Actions: owner (default the organizer) and due as typed (default "—"). */
-  owner?: string | null;
-  due?: string | null;
-}
-
-async function appendLines(tx: Tx, m: typeof meetings.$inferSelect, point: number, lines: (NewMeetingLine & { origin: MeetingLineOrigin })[]) {
-  const [pt] = await tx.select().from(meetingAgendaPoints).where(and(eq(meetingAgendaPoints.meetingId, m.id), eq(meetingAgendaPoints.position, point)));
-  if (!pt) throw new Error(`${m.number} has no agenda point ${point}`);
-  const [{ maxPos }] = await tx.select({ maxPos: sql<number>`coalesce(max(${meetingLines.position}), -1)::int` }).from(meetingLines).where(eq(meetingLines.agendaPointId, pt.id));
-  const rows = [];
-  for (const [k, l] of lines.entries()) {
-    const isAction = l.type === 'action';
-    const owner = isAction ? l.owner?.trim() || m.organizerName : null;
-    const due = isAction ? l.due?.trim() || '—' : null;
-    rows.push({
-      agendaPointId: pt.id, position: maxPos + 1 + k, type: l.type, text: l.text.trim(), ownerName: owner, ownerPersonId: owner ? (await findPerson(tx, owner))?.id ?? null : null,
-      dueText: due, dueDate: due && due !== '—' ? isoOfDisplayDate(due) : null, origin: l.origin,
-    });
-  }
-  if (rows.length) await tx.insert(meetingLines).values(rows);
-}
-
 /**
  * Composer "+ Add" (`addLine`): appends a line to an agenda point; a Scheduled meeting moves to Notes in progress.
  * Minutes already sent cannot be edited.
@@ -333,37 +359,6 @@ export async function toggleMeetingAction(meetingNumber: string, point: number, 
     await tx.update(meetingLines).set({ done, doneAt: done ? new Date() : null }).where(eq(meetingLines.id, row.l.id));
     await audit(tx, actorName, meetingNumber, `action ${done ? 'closed' : 'reopened'} · ${row.l.text}`, m.projectId, m.id);
     return done;
-  });
-}
-
-/** "Analyse transcript": reveals the (simulated) summary and proposed decisions and actions. */
-export async function analyseTranscript(meetingNumber: string, actorName: string, at: Date = new Date()): Promise<void> {
-  const db = await getDb();
-  await db.transaction(async (tx) => {
-    const m = await loadMeeting(tx, meetingNumber);
-    const [tr] = await tx.select().from(meetingTranscripts).where(eq(meetingTranscripts.meetingId, m.id));
-    if (!tr) throw new Error(`${meetingNumber} has no transcript`);
-    if (tr.analysedAt) return;
-    await tx.update(meetingTranscripts).set({ analysedAt: at }).where(eq(meetingTranscripts.meetingId, m.id));
-    await audit(tx, actorName, meetingNumber, 'transcript analysed', m.projectId, m.id);
-  });
-}
-
-/** "Add to minutes" (`apply`): appends the proposed decisions then actions to the last agenda point, once. Status unchanged. */
-export async function applyTranscriptToMinutes(meetingNumber: string, actorName: string, at: Date = new Date()): Promise<number> {
-  const db = await getDb();
-  return db.transaction(async (tx) => {
-    const m = await loadMeeting(tx, meetingNumber);
-    const [tr] = await tx.select().from(meetingTranscripts).where(eq(meetingTranscripts.meetingId, m.id));
-    if (!tr?.analysedAt) throw new Error(`${meetingNumber}: analyse the transcript first`);
-    if (tr.appliedAt) return 0;
-    const props = await tx.select().from(meetingTranscriptProposals).where(eq(meetingTranscriptProposals.meetingId, m.id)).orderBy(asc(meetingTranscriptProposals.position));
-    const [{ last }] = await tx.select({ last: sql<number>`coalesce(max(${meetingAgendaPoints.position}), -1)::int` }).from(meetingAgendaPoints).where(eq(meetingAgendaPoints.meetingId, m.id));
-    if (last < 0) await tx.insert(meetingAgendaPoints).values({ meetingId: m.id, position: 0, title: m.title });
-    await appendLines(tx, m, Math.max(0, last), props.map((x) => ({ type: x.type, text: x.text, owner: x.ownerName, due: x.dueText, origin: 'transcript' as const })));
-    await tx.update(meetingTranscripts).set({ appliedAt: at }).where(eq(meetingTranscripts.meetingId, m.id));
-    await audit(tx, actorName, meetingNumber, `${props.length} proposals added to the minutes`, m.projectId, m.id);
-    return props.length;
   });
 }
 

@@ -13,6 +13,7 @@ import {
   renameWorkPackage, reorderActivities, updateActivity, type ActivityPatch, type PlanData,
 } from '@/server/dal/plan';
 import { getProject } from '@/server/dal/projects';
+import { rescheduleIfAutomatic } from '@/server/dal/schedule';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 
@@ -34,7 +35,7 @@ function formDate(text: string): Date | null {
 const isoOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 /** Loads the plan after checking the viewer may edit it (not outside, not read-only, not the client). */
-async function editablePlan(code: unknown): Promise<{ data: PlanData } | { error: string }> {
+async function editablePlan(code: unknown): Promise<{ data: PlanData; actor: string } | { error: string }> {
   const { t } = await getI18n();
   if (typeof code !== 'string' || !code) return { error: t('Invalid request') };
   if (!(await getProject(code))) return { error: t('Invalid request') };
@@ -42,10 +43,15 @@ async function editablePlan(code: unknown): Promise<{ data: PlanData } | { error
   if (!ctx.canEdit('plan') || ctx.viewer.role === 'client') return { error: t('This plan is read-only for you') };
   const data = await getPlanData(code);
   if (!data) return { error: t('This project has no plan yet') };
-  return { data };
+  return { data, actor: ctx.viewer.name };
 }
 
 const refresh = (code: string) => revalidatePath(`/projects/${code}`, 'layout');
+
+/** S-1: dates move only at "Reschedule" (manual, the default); in 'automatic' mode a schedule edit reschedules at once. */
+async function afterScheduleEdit(code: string, actor: string) {
+  await rescheduleIfAutomatic(code, actor);
+}
 
 /** Toast text translated per " · " segment, like the prototype's showToast. */
 async function toastOf(english: string) {
@@ -125,6 +131,7 @@ export async function editActivity(code: string, actId: string, field: ActivityF
   }
   if (patch) {
     if (!(await updateActivity(code, actId, patch))) return { error: t('Invalid request') };
+    if (field === 'dur' || field === 'preds' || field === 'pct') await afterScheduleEdit(code, r.actor);
     refresh(code);
   }
   return { ok: true, value: normalized };
@@ -227,6 +234,7 @@ export async function saveProgress(code: string, values: Record<string, string>)
   if (!r.data.activities.some((a) => a.id === id)) return { error: t('Invalid request') };
   const pc = clampPct(str(values?.pc));
   await updateActivity(code, id, { pct: pc });
+  await afterScheduleEdit(code, r.actor);
   refresh(code);
   return { toast: await toastOf(`${id} · ${pc} % · Progress saved`) };
 }

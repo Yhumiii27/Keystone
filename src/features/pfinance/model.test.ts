@@ -35,6 +35,46 @@ const fixSub = (lang: Lang, s: string) =>
         .replace(/^0 projets clients/, '0 projet client')
     : s.replace(/^1 client projects/, '1 client project');
 
+// ── A-12 (chapter 4): KPIs computed from the data instead of the prototype's constants (src/domain/kpis.ts) ──────────
+/** "Portfolio margin" = Σ (contract − EAC) / Σ contract over the zone's active client projects (was 18 % everywhere). */
+const MARGIN_A12: Record<string, string> = { null: '8%', euna: '5%', afr: '15%', apac: '—' };
+/**
+ * Capacity what-if: capacity and commitments from the resource pool's allocations, demand per €1M from the active
+ * portfolio's value. Per candidate: [add, total, capacity] per department (ROLES order) and the gap (prototype 1 560 h…).
+ */
+const CAPACITY_A12: Record<string, { gap: number; rows: [number, number, number][] }> = {
+  'WSA-044': { gap: 151, rows: [[73, 391, 320], [122, 654, 640], [72, 386, 320], [164, 880, 960], [58, 310, 320]] },
+  'EWA-051': { gap: 86, rows: [[47, 365, 320], [79, 611, 640], [47, 361, 320], [106, 822, 960], [37, 289, 320]] },
+  'FTU-052': { gap: 12, rows: [[10, 328, 320], [17, 549, 640], [10, 324, 320], [23, 739, 960], [8, 260, 320]] },
+  'RBR-048': { gap: 305, rows: [[109, 427, 320], [183, 715, 640], [108, 422, 320], [246, 962, 960], [87, 339, 320]] },
+  'CER-047': { gap: 73, rows: [[41, 359, 320], [68, 600, 640], [40, 354, 320], [92, 808, 960], [32, 284, 320]] },
+};
+/**
+ * Cash flow: the 6 months after the data date from the billing plans (in) and the cost forecasts (out), per zone —
+ * "Net cash · next 6 months", "Lowest cumulative point" (value and sub-line) and the bars [in %, out %, net].
+ */
+const CASH_A12: Record<string, { net: Record<Lang, string>; low: Record<Lang, string>; lowSub: Record<Lang, string>; bars: [number, number, string][] }> = {
+  null: {
+    net: { en: '+€2.84M', fr: '+2,84 M€' }, low: { en: '−€521k', fr: '−521 k€' },
+    lowSub: { en: 'October — before M3 payment lands (HLT-026)', fr: 'Octobre — avant l’encaissement de M3 (HLT-026)' },
+    bars: [[29, 57, '−521k'], [100, 54, '+885k'], [44, 47, '−51k'], [70, 14, '+1083k'], [72, 14, '+1116k'], [25, 9, '+324k']],
+  },
+  euna: {
+    net: { en: '+€2.34M', fr: '+2,34 M€' }, low: { en: '−€617k', fr: '−617 k€' },
+    lowSub: { en: 'October — before M3 payment lands (HLT-026)', fr: 'Octobre — avant l’encaissement de M3 (HLT-026)' },
+    bars: [[18, 55, '−617k'], [100, 52, '+805k'], [36, 44, '−130k'], [66, 6, '+1004k'], [83, 6, '+1280k'], [0, 0, '+0k']],
+  },
+  afr: {
+    net: { en: '+€498k', fr: '+498 k€' }, low: { en: '+€97k', fr: '+97 k€' },
+    lowSub: { en: 'October — before the October progress payment lands (NDC-031)', fr: 'Octobre — avant l’encaissement de la situation d’octobre (NDC-031)' },
+    bars: [[17, 11, '+97k'], [16, 11, '+80k'], [16, 11, '+80k'], [16, 11, '+80k'], [0, 11, '−163k'], [32, 11, '+324k']],
+  },
+  apac: {
+    net: { en: '€0k', fr: '0 k€' }, low: { en: '€0k', fr: '0 k€' }, lowSub: { en: 'October — lowest point of the window', fr: 'Octobre — point bas de la période' },
+    bars: [[0, 0, '+0k'], [0, 0, '+0k'], [0, 0, '+0k'], [0, 0, '+0k'], [0, 0, '+0k'], [0, 0, '+0k']],
+  },
+};
+
 beforeAll(async () => {
   setDb(await openDatabase());
 }, 60_000);
@@ -54,7 +94,9 @@ describe('prioritisation (03 §6)', () => {
         const d = await load(role, z);
         const v = prioritisationView(d, d.weights, tOf(lang), lang);
         // KPI tiles (the ranking gains the remapped projects but the top-ranked project is unchanged).
-        expect(v.kpis.map((k) => [k.label, k.value, k.sub, k.color])).toEqual(g.kpis.map((k: any) => [k.label, String(k.value), fixSub(lang, k.sub), k.color]));
+        // A-12: "Portfolio margin" computed (directors and PMs only; masked otherwise).
+        const margin = (k: any, i: number) => (i === 3 && role === 'director' ? MARGIN_A12[String(z)] : String(k.value));
+        expect(v.kpis.map((k) => [k.label, k.value, k.sub, k.color])).toEqual(g.kpis.map((k: any, i: number) => [k.label, margin(k, i), fixSub(lang, k.sub), k.color]));
         expect([v.masked, v.zoneEmpty]).toEqual([g.masked, g.zoneEmpty]);
         // Ranking: every prototype row, same values; HLT-026 margin from the contract; plus the remapped projects.
         const byCode = new Map(v.rows.map((r) => [r.code, r]));
@@ -124,12 +166,22 @@ describe('capacity what-if (03 §6.5)', () => {
       const g = G.portfolio[lang].director.null.capacity[code];
       const v = capacityView((await getCapacityScreen(code))!, tOf(lang), lang);
       const T = (s: string) => G.labels[s] && lang === 'fr' ? G.labels[s] : s;
+      // A-12: the model is computed (allocations, portfolio value), so the verdict, gap, the contractor option and the
+      // rows follow CAPACITY_A12; the project line, its other options and the department names stay the prototype's.
+      const a = CAPACITY_A12[code];
+      const t = tOf(lang);
+      const verdict = a.gap >= 300 ? `Needs ${Math.ceil(a.gap / 140)} additional people or a later start` : `Absorbable with ${a.gap} h of overtime or one contractor`;
+      const options = g.wi.options.map((o: string, i: number) => (i === 1 ? t(`Contract ${Math.ceil(a.gap / 280)} engineer(s) for the ramp-up phase`) : o));
       expect([v.name, v.status, tagClassOf(v.tone), v.budgetLine, v.verdict, v.verdictColor, v.gapLine, v.options]).toEqual([
-        g.wi.name, g.wi.status, g.wi.tagClass, `${g.wi.budget} ${T('· start')} ${g.wi.start}`, g.wi.verdict, g.wi.verdictColor, `${T('Capacity gap ·')} ${g.wi.gapText}`, g.wi.options,
+        g.wi.name, g.wi.status, g.wi.tagClass, `${g.wi.budget} ${T('· start')} ${g.wi.start}`, t(verdict), LO, `${T('Capacity gap ·')} ${t(`${a.gap} h over 8 weeks`)}`, options,
       ]);
-      expect(v.rows.map((r) => ({ name: r.name, add: r.addText, text: r.text, color: r.color, curW: `${r.committedPct}%`, addW: `${r.candidatePct}%`, capL: `${r.capacityPct}%` }))).toEqual(
-        g.rows.map((r: any) => ({ name: r.name, add: `+${r.add} h`, text: r.text, color: r.color, curW: r.curW, addW: r.addW, capL: r.capL })),
+      expect(v.rows.map((r) => ({ name: r.name, add: r.addText, text: r.text, color: r.color }))).toEqual(
+        g.rows.map((r: any, i: number) => {
+          const [add, total, cap] = a.rows[i];
+          return { name: r.name, add: `+${add} h`, text: `${total} / ${cap} h`, color: total > cap ? LO : 'var(--color-neutral-300)' };
+        }),
       );
+      for (const r of v.rows) expect(r.committedPct + r.candidatePct).toBeLessThanOrEqual(100);
     });
 
   it('zone candidates (wiSeg) follow the zone', async () => {
@@ -145,13 +197,17 @@ describe('cash flow & billing (03 §7)', () => {
         const g = G.cash[lang][role][String(z)];
         const d: CashData = await getCashScreen(role, z);
         const v = cashView(d, tOf(lang), lang);
-        expect(v.kpis.map((k) => [k.label, k.value, k.sub, k.color])).toEqual(g.kpis.map((k: any) => [k.label, k.value, fixSub(lang, k.sub), k.color]));
+        // A-12: the forecast is computed (billing plan in, cost forecast out) — net cash, low point and bars per CASH_A12.
+        const c = CASH_A12[String(z)];
+        const cashKpi = (k: any, i: number) =>
+          i === 3 ? [k.label, c.net[lang], fixSub(lang, k.sub), k.color] : i === 4 ? [k.label, c.low[lang], c.lowSub[lang], k.color] : [k.label, k.value, fixSub(lang, k.sub), k.color];
+        expect(v.kpis.map((k) => [k.label, k.value, k.sub, k.color])).toEqual(g.kpis.map(cashKpi));
         expect(v.rows.map((r) => ({
           code: r.code, name: r.name, model: r.model, contract: r.contract, invoiced: r.invoiced, paid: r.paid, outstanding: r.outstanding, outColor: r.outColor, cost: r.cost,
           marginText: r.marginText, marginColor: r.marginColor, next: r.next, invW: `${r.invoicedPct}%`, paidW: `${r.paidPct}%`, isInternal: r.internal,
         }))).toEqual(g.rows.map((r: any) => ({ ...r, marginColor: role === 'director' ? r.marginColor : OK })));
         expect(v.bars.map((b) => ({ label: b.label, inH: `${b.inPct}%`, outH: `${b.outPct}%`, net: b.net, netColor: b.netColor }))).toEqual(
-          g.bars.map((b: any) => ({ label: b.label, inH: b.inH, outH: b.outH, net: b.net, netColor: b.netColor })),
+          g.bars.map((b: any, i: number) => ({ label: b.label, inH: `${c.bars[i][0]}%`, outH: `${c.bars[i][1]}%`, net: c.bars[i][2], netColor: LO })),
         );
         expect(v.zoneEmpty).toBe(g.zoneEmpty);
         if (role === 'depthead') expect(d.rows.every((r) => r.marginPct === null)).toBe(true);

@@ -35,6 +35,12 @@ const fix = (lang: Lang, s: string) => (lang === 'fr' ? DEVIATIONS.reduce((x, [a
 /** Zero-padded prototype dates ("03 Jul") are written "3 Jul" (as the Delivery 4 data layer). */
 const day = (s: string) => s.replace(/(^|· )0(\d)/g, '$1$2');
 
+/**
+ * A-12 (chapter 4): "Released this month" keeps the released ECOs of the data date's month (09 OQ18) — ECO-2026-014
+ * (raised 12 Sep, Vigie reports no approval date), not ECO-2026-012 (raised 28 Aug): 1 · €9,400 instead of 2 · €10,360.
+ */
+const releasedThisMonth = (k: any) => ({ ...k, value: 1, sub: k.sub.replace('10,360', '9,400').replace(/10\s360/, (m: string) => `9${m.slice(2, 3)}400`) });
+
 beforeAll(async () => {
   setDb(await openDatabase());
 }, 60_000);
@@ -56,7 +62,7 @@ describe('Change orders register — EN and FR', () => {
     for (const role of ROLES) {
       const v = await screen(role, lang);
       expect(v.kpis.map((k) => ({ label: k.label, value: Number(k.value), sub: k.sub, color: k.color })), role)
-        .toEqual(G[lang].eco.byRole[role].kpis.map((k: any) => ({ ...k, sub: fix(lang, k.sub) })));
+        .toEqual(G[lang].eco.byRole[role].kpis.map((k: any, i: number) => (i === 2 ? releasedThisMonth(k) : { ...k, sub: fix(lang, k.sub) })));
     }
   });
 

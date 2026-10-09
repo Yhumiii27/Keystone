@@ -60,3 +60,32 @@ export function parseNewScenario(values: FormValues | unknown, existingNames: st
   if (hypotheses.length > HYPOTHESES_MAX) return { ok: false, error: 'Hypotheses are too long' };
   return { ok: true, value: { name, basis: basis as ScenarioBasis, horizonMonths: Number(horizon), hypotheses } };
 }
+
+// ── Rename (chapter 4, S-7: scenarios are persisted per project — create, rename, delete, select) ─────────────────────
+
+export const RENAME_SCENARIO_FORM: FormDef = {
+  title: 'Rename scenario',
+  submit: 'Save scenario',
+  kind: 'create',
+  fields: [
+    { id: 'name', label: 'Scenario name', type: 'text', required: true },
+    { id: 'note', label: 'Hypotheses', type: 'textarea' },
+  ],
+};
+
+export const RENAME_SCENARIO_RESULT = 'Scenario saved';
+export const DELETE_SCENARIO_RESULT = 'Scenario deleted';
+
+export type RenameScenarioParse = { ok: true; value: { name: string; hypotheses: string } } | { ok: false; error: string };
+
+/** Validates the rename form (untrusted): the name stays unique among the project's other scenarios. */
+export function parseRenameScenario(values: FormValues | unknown, current: string, existingNames: string[] = []): RenameScenarioParse {
+  const v = (values && typeof values === 'object' ? values : {}) as Record<string, unknown>;
+  const name = str(v.name).replace(/\s+/g, ' ');
+  const hypotheses = str(v.note);
+  if (!name) return { ok: false, error: 'Scenario name is required' };
+  if (name.length > SCENARIO_NAME_MAX) return { ok: false, error: 'Scenario name is too long' };
+  if (existingNames.some((n) => n !== current && n.toLowerCase() === name.toLowerCase())) return { ok: false, error: 'A scenario with this name already exists' };
+  if (hypotheses.length > HYPOTHESES_MAX) return { ok: false, error: 'Hypotheses are too long' };
+  return { ok: true, value: { name, hypotheses } };
+}

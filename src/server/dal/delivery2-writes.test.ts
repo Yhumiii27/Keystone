@@ -191,15 +191,17 @@ describe('HR and what-if', () => {
   });
 
   it('what-if scenario edits', async () => {
-    expect(await toggleScenarioLever('HLT-026', 'A', 'split')).toBe(true);
+    // Chapter 4 (S-7): levers derived from the data (A1250 assignments) replace the prototype's static ones.
+    expect(await toggleScenarioLever('HLT-026', 'A', 'extra_resource:A1250:julien-wagner')).toBe(false);
     await setScenarioPriority('HLT-026', 'B', 'budget');
     await autoLevelScenario('HLT-026', 'B');
     await selectScenario('HLT-026', 'B', 'Romain Aubert');
     await createScenario('HLT-026', { name: 'C', basis: 'Baseline BL1', horizonMonths: 6, hypotheses: 'No overtime' });
     const w = (await getWhatIf('HLT-026'))!;
     const on = (n: string) => Object.entries(w.scenarios.find((s) => s.name === n)!.levers).filter(([, v]) => v).map(([k]) => k);
-    expect(on('A')).toEqual(['contractor', 'overtime', 'split']);
-    expect(on('B')).toEqual(['delay', 'split', 'move']);
+    expect(on('A')).toEqual(['overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew']);
+    // "Protect budget" on HLT-026: every derived lever costs money → none.
+    expect(on('B')).toEqual([]);
     expect(on('C')).toEqual([]);
     expect(w.scenarios.map((s) => [s.name, s.priority, s.selected])).toEqual([['A', 'date', false], ['B', 'budget', true], ['C', 'date', false]]);
   });

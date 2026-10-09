@@ -1,0 +1,287 @@
+// View models of the administration screens, translated: Settings — personalisable lists (docs/spec/10 §1, template
+// 1573–1597), Standard machine types (09 §9, template 1529–1572) and Activity, integrations & audit (10 §2, template
+// 2237–2267). Built from the DAL rows with the pure rules of src/domain/admin.ts; English is the prototype's source text,
+// French goes through t() as the prototype's `deepTr` did (data texts included), with the fixes of ./i18n.ts.
+import { screenHref } from '@/config/screens';
+import {
+  ACTIVITY_ICON, MT_CALENDAR_OPTIONS, MT_COST_TYPES, PLUMB_VIEWS, SETTINGS_CARDS, activityChips, connectorTone, costCategoriesTotal, healthRuleText,
+  locationTypeShortLabel, machineTypeKpis, machineTypeUseText, paymentTerms, plumbingKpis, settingsKpis, thresholdText,
+  type ActivityIcon, type PlumbView, type SettingsCardKey, type SettingsIcon,
+} from '@/domain/admin';
+import type { Lang, T } from '@/i18n/translate';
+import { money } from '@/lib/format';
+import { calendar, costType, locationType, stampText, type ActivityKind, type CalendarCode, type CostType, type LocationType } from '@/server/db/codes';
+import type { ConnectorRow } from '@/server/dal/integrations';
+import type { MachineTypeRow } from '@/server/dal/mtypes';
+import type { ActivityRow, AuditRow } from '@/server/dal/notifications';
+import type { ProjectRow } from '@/server/dal/projects';
+import type { SettingsData } from '@/server/dal/settings';
+import { activityChipT, addedConnectorDataT, auditAreaT, connectorModeT, mtListSubT, outboxT, volumeT } from './i18n';
+import { integrationsHref, machineTypesHref } from './links';
+
+export interface KpiView {
+  label: string;
+  value: string;
+  sub: string;
+  color: string;
+}
+
+const kpiT = (k: { label: string; value: string; sub: string; color: string }, t: T): KpiView => ({ label: t(k.label), value: k.value, sub: t(k.sub), color: k.color });
+
+// ── Settings ───────────────────────────────────────────────────────────────────────────────────────────
+
+export interface SettingsItemView {
+  /** Stable key of the entry: the location name, or the reference value code. */
+  id: string;
+  label: string;
+  /** Location type (Locations card only). */
+  sub: string | null;
+}
+
+export interface SettingsCardView {
+  key: SettingsCardKey;
+  title: string;
+  sub: string;
+  icon: SettingsIcon;
+  count: string;
+  isLoc: boolean;
+  items: SettingsItemView[];
+}
+
+export interface SettingsView {
+  kpis: KpiView[];
+  health: { risk: number; off: number; riskText: string; offText: string; text: string };
+  cards: SettingsCardView[];
+  /** Location type options of the Locations card (shortened labels). */
+  locTypes: { value: LocationType; label: string }[];
+}
+
+export function settingsView(data: SettingsData, t: T): SettingsView {
+  const items: Record<SettingsCardKey, SettingsItemView[]> = {
+    locations: data.locations.map((l) => ({ id: l.name, label: t(l.name), sub: t(l.typeLabel) })),
+    skills: [], costCats: [], statuses: [], riskCats: [], delivTypes: [], holidays: [],
+  };
+  for (const key of ['skills', 'costCats', 'statuses', 'riskCats', 'delivTypes', 'holidays'] as const) {
+    items[key] = data.lists[key].map((v) => ({ id: v.code, label: t(v.label), sub: null }));
+  }
+  const locTypeCodes = data.lists.locTypes.length ? data.lists.locTypes.map((v) => v.code as LocationType).filter((c) => locationType.isCode(c)) : locationType.codes;
+  return {
+    kpis: settingsKpis({
+      locationTypes: data.locations.map((l) => l.type), skills: data.lists.skills.length, costCats: data.lists.costCats.length, holidays: data.lists.holidays.length,
+      health: data.health,
+    }).map((k) => kpiT(k, t)),
+    health: { risk: data.health.risk, off: data.health.off, riskText: thresholdText(data.health.risk), offText: thresholdText(data.health.off), text: t(healthRuleText(data.health)) },
+    cards: SETTINGS_CARDS.map((c) => ({ key: c.key, title: t(c.title), sub: t(c.sub), icon: c.icon, count: String(items[c.key].length), isLoc: c.key === 'locations', items: items[c.key] })),
+    locTypes: locTypeCodes.map((code) => ({ value: code, label: t(locationTypeShortLabel(locationType.label(code))) })),
+  };
+}
+
+// ── Machine types ──────────────────────────────────────────────────────────────────────────────────────
+
+export interface MtListItemView {
+  /** Stored code (URL `?type=`). */
+  code: string;
+  displayCode: string;
+  sub: string;
+  use: string;
+  active: boolean;
+  stateText: string;
+  custom: boolean;
+  selected: boolean;
+  href: string;
+}
+
+/** An editable text: the stored value (written back) and what the input shows (translated, as the prototype). */
+export interface EditableText {
+  value: string;
+  display: string;
+}
+
+export interface MtDetailView {
+  code: string;
+  displayCode: string;
+  label: string;
+  description: string;
+  calendar: CalendarCode;
+  calendarOptions: { value: CalendarCode; label: string }[];
+  active: boolean;
+  stateText: string;
+  toggleLabel: string;
+  deposit: number;
+  delivery: number;
+  acceptance: number;
+  termsText: string;
+  termsOk: boolean;
+  phases: EditableText[];
+  itpSystems: EditableText[];
+  costCategories: { name: EditableText; type: CostType; budget: string; budgetKeur: number }[];
+  costTypeOptions: { value: CostType; label: string }[];
+  costTotal: string;
+  refs: { analyticCode: string; name: string }[];
+  projects: { code: string; name: string; sub: string; openHref: string | null }[];
+}
+
+export interface MachineTypesView {
+  kpis: KpiView[];
+  list: MtListItemView[];
+  mt: MtDetailView | null;
+}
+
+const editable = (v: string, t: T): EditableText => ({ value: v, display: t(v) });
+
+/** `selected` = the `?type=` code (stored or display code, any case); unknown → the first type. */
+export function machineTypesView(input: { types: MachineTypeRow[]; projects: ProjectRow[]; selected: string | null }, t: T, lang: Lang): MachineTypesView {
+  const { types, projects } = input;
+  const want = (input.selected ?? '').trim().toLowerCase();
+  const sel = types.find((m) => m.code.toLowerCase() === want || m.displayCode.toLowerCase() === want) ?? types[0] ?? null;
+  const typed = projects.filter((p) => !!p.machineType).length;
+  const kpis = machineTypeKpis(
+    types.map((m) => ({ active: m.active, isStandard: m.isStandard, phases: m.phases.length, itpSystems: m.itpSystems.length, rexReferences: m.rexReferences.length })),
+    typed, projects.length,
+  ).map((k) => kpiT(k, t));
+  const list = types.map((m) => ({
+    code: m.code, displayCode: m.displayCode, sub: mtListSubT(m.phases.length, m.costCategories.length, m.itpSystems.length, lang), use: t(machineTypeUseText(m.projects.length)),
+    active: m.active, stateText: t(m.active ? 'Active' : 'Inactive'), custom: !m.isStandard, selected: m === sel, href: machineTypesHref(m.code),
+  }));
+  if (!sel) return { kpis, list, mt: null };
+  const terms = paymentTerms(sel.depositPct, sel.deliveryPct, sel.acceptancePct);
+  const byCode = new Map(projects.map((p) => [p.code, p]));
+  const calendarOptions = MT_CALENDAR_OPTIONS.map((o) => ({ value: o.value, label: t(o.label) }));
+  if (!calendarOptions.some((o) => o.value === sel.calendar)) calendarOptions.push({ value: sel.calendar, label: t(calendar.label(sel.calendar)) });
+  return {
+    kpis,
+    list,
+    mt: {
+      code: sel.code, displayCode: sel.displayCode, label: sel.label, description: sel.description, calendar: sel.calendar, calendarOptions, active: sel.active,
+      stateText: t(sel.active ? 'Active' : 'Inactive'), toggleLabel: t(sel.active ? 'Deactivate' : 'Activate'),
+      deposit: sel.depositPct, delivery: sel.deliveryPct, acceptance: sel.acceptancePct, termsText: terms.text, termsOk: terms.ok,
+      phases: sel.phases.map((p) => editable(p, t)),
+      itpSystems: sel.itpSystems.map((s) => editable(s, t)),
+      costCategories: sel.costCategories.map((c) => ({ name: editable(c.name, t), type: c.type, budget: String(c.budgetKeur), budgetKeur: c.budgetKeur })),
+      costTypeOptions: MT_COST_TYPES.map((c) => ({ value: c, label: t(costType.label(c)) })),
+      costTotal: money(costCategoriesTotal(sel.costCategories), lang),
+      refs: sel.rexReferences.map((r) => ({ analyticCode: r.analyticCode, name: t(`${r.analyticCode} · ${r.projectName} · ${r.year}`) })),
+      projects: sel.projects.map((p) => {
+        const row = byCode.get(p.code);
+        return {
+          code: p.code, name: t(`${row?.displayId ?? p.number ?? p.code} · ${p.name}`), sub: `${p.code} · ${t(row?.status ?? '—')}`,
+          openHref: row?.hasData ? screenHref('plan', { code: p.code }) : null,
+        };
+      }),
+    },
+  };
+}
+
+// ── Activity, integrations & audit ─────────────────────────────────────────────────────────────────────
+
+export interface ActivityRowView {
+  key: string;
+  icon: ActivityIcon;
+  who: string;
+  what: string;
+  when: string;
+}
+
+export interface ConnectorRowView {
+  /** Stored name (the key "Sync now" sends). */
+  rawName: string;
+  name: string;
+  /** Connector-layer mode line (Codex, Vigie, Cursus); null for the recorded connectors. */
+  mode: string | null;
+  data: string;
+  frequency: string;
+  status: string;
+  tone: 'neutral' | 'accent' | 'outline';
+  last: string;
+  volume: string;
+}
+
+export type ImportIcon = 'file-arrow-down' | 'file-xls' | 'file-arrow-up' | 'file-pdf';
+
+export interface ImportCardView {
+  name: string;
+  description: string;
+  icon: ImportIcon;
+  direction: 'import' | 'export';
+}
+
+export interface AuditRowView {
+  key: string;
+  when: string;
+  who: string;
+  object: string;
+  change: string;
+  area: string;
+}
+
+export interface PlumbingView {
+  kpis: KpiView[];
+  view: PlumbView;
+  seg: { value: PlumbView; label: string; href: string }[];
+  /** Source chips ('' = All). */
+  chips: { value: string; label: string; count: string; href: string }[];
+  chipValue: string;
+  activity: ActivityRowView[];
+  connectors: ConnectorRowView[];
+  imports: ImportCardView[];
+  audit: AuditRowView[];
+}
+
+export interface PlumbingInput {
+  view: PlumbView;
+  source: ActivityKind | null;
+  activity: ActivityRow[];
+  connectors: ConnectorRow[];
+  imports: { name: string; description: string; icon: string; direction: 'import' | 'export' }[];
+  audit: AuditRow[];
+  counts: { eventsToday: number; auditLast7Days: number };
+  unread: number;
+  /** Persona title of the viewer (EN source). */
+  personaTitle: string;
+}
+
+const IMPORT_ICONS: readonly ImportIcon[] = ['file-arrow-down', 'file-xls', 'file-arrow-up', 'file-pdf'];
+const importIcon = (cls: string): ImportIcon => {
+  const name = cls.replace(/^ph\s+ph-/, '') as ImportIcon;
+  return IMPORT_ICONS.includes(name) ? name : 'file-arrow-down';
+};
+
+/** "26 Sep 07:00" in the viewer's language (`stampText` of the instant), "—" before the first sync. */
+const stampOf = (iso: string | null, t: T) => (iso ? t(stampText(new Date(iso))) : '—');
+
+export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
+  const kinds = i.activity.map((a) => a.kind);
+  const chips = activityChips(kinds);
+  const rows = i.source ? i.activity.filter((a) => a.kind === i.source) : i.activity;
+  return {
+    kpis: plumbingKpis({
+      eventsToday: i.counts.eventsToday, connectorStatuses: i.connectors.map((c) => c.status), unread: i.unread, personaTitle: i.personaTitle,
+      auditEntries: i.counts.auditLast7Days,
+    }).map((k) => kpiT(k, t)),
+    view: i.view,
+    seg: PLUMB_VIEWS.map((v) => ({ value: v.value, label: t(v.label), href: integrationsHref({ view: v.value }) })),
+    chips: chips.map((c) => ({ value: c.value ?? '', label: activityChipT(c.label, t, lang), count: String(c.count), href: integrationsHref({ source: c.value }) })),
+    chipValue: i.source ?? '',
+    activity: rows.map((a, n) => ({ key: `${a.occurredAt}-${n}`, icon: ACTIVITY_ICON[a.kind] ?? 'arrows-clockwise', who: t(a.who), what: t(a.what), when: t(a.when) })),
+    connectors: i.connectors.map((c) => {
+      const outbox = outboxT(c.pending, c.failed, lang);
+      const volume = volumeT(c.lastVolume, t, lang);
+      return {
+        rawName: c.name,
+        name: t(c.name),
+        mode: c.mode ? connectorModeT(c.mode, t) : null,
+        data: c.dataScope ? t(c.dataScope) : addedConnectorDataT(c.direction ? directionLabel(c.direction) : null, c.owner, t),
+        frequency: t(c.frequency),
+        status: t(c.statusLabel),
+        tone: connectorTone(c.status),
+        last: stampOf(c.lastSyncAt, t),
+        volume: [volume, outbox].filter(Boolean).join(' · ') || '—',
+      };
+    }),
+    imports: i.imports.map((f) => ({ name: t(f.name), description: t(f.description), icon: importIcon(f.icon), direction: f.direction })),
+    audit: i.audit.map((a, n) => ({ key: `${a.occurredAt}-${n}`, when: t(a.when), who: t(a.who), object: t(a.object), change: t(a.change), area: auditAreaT(a.area, t, lang) })),
+  };
+}
+
+const DIRECTION_LABEL: Record<string, string> = { import: 'Import', export: 'Export', both: 'Both' };
+const directionLabel = (d: string) => DIRECTION_LABEL[d] ?? d;

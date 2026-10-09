@@ -1,0 +1,13 @@
+{
+  "Machine is required": "La machine est obligatoire",
+  "Unknown machine type": "Type de machine inconnu",
+  "Enter the delivery date as a date, e.g. 14 Dec 2025": "Saisissez la date de livraison sous forme de date, par ex. 14 déc. 2025",
+  "Enter the warranty end as a date, e.g. 13 Dec 2027": "Saisissez la fin de garantie sous forme de date, par ex. 13 déc. 2027",
+  "Warranty end is before delivery": "La fin de garantie précède la livraison",
+  "Unknown machine": "Machine inconnue",
+  "Issue is required": "Le problème est obligatoire",
+  "Unknown severity": "Gravité inconnue",
+  "Unknown coverage": "Couverture inconnue",
+  "The installed base is read-only for you": "Le parc installé est en consultation pour vous",
+  "Warranty claims are read-only for you": "Les réclamations sont en consultation pour vous"
+}

@@ -206,7 +206,8 @@ export async function getDepartmentApprovals(department: string): Promise<Depart
   for (const r of pending) if (r.person) pendingHoursByPerson[r.person] = (pendingHoursByPerson[r.person] ?? 0) + r.hours;
   return {
     department: d.name, head: d.short ? { name: d.full ?? d.short, shortName: d.short, initials: d.initials!, title: d.title } : null,
-    pending, decided: all.filter((r) => r.status !== 'pending'), pendingHoursByPerson,
+    // Chapter 4 (S-7): drafts are not sent to the department yet.
+    pending, decided: all.filter((r) => r.status !== 'pending' && r.status !== 'draft'), pendingHoursByPerson,
   };
 }
 
@@ -264,6 +265,10 @@ export interface NewRequestInput {
   note?: string;
   /** Business date of sending (default the status date). */
   sentOn?: string;
+  /** Chapter 4 (S-7): create a DRAFT (not sent to the department) — what-if "Apply"; `sendDraftRequest` sends it. */
+  draft?: boolean;
+  /** What-if scenario that drafted the request. */
+  scenarioId?: string | null;
 }
 
 const today = (d?: string) => d ?? STATUS_ISO;
@@ -307,12 +312,39 @@ export async function createResourceRequest(input: NewRequestInput, requestedBy:
       .values({
         number, projectId: p.id, requestedByPersonId: pm.id, personId: person?.id ?? null, contractRole: person ? null : (input.contractRole?.trim() || 'Contract role'),
         departmentId: deptId!, title: input.title.trim() || 'Untitled request', activityId: act?.id ?? null, hours, startDate: start, dueDate: due,
-        priority: input.priority, status: 'pending', sentOn, note: input.note?.trim() ?? '', sortOrder: minOrder - 1,
+        priority: input.priority, status: input.draft ? 'draft' : 'pending', sentOn, note: input.note?.trim() ?? '', sortOrder: minOrder - 1,
+        scenarioId: input.scenarioId ?? null,
       })
       .returning({ id: resourceRequests.id });
-    await addEvent(tx, r.id, 'sent', sentOn, pm.id, input.note?.trim() || null);
-    await writeAudit(tx, { actorName: nameOf(pm), actorPersonId: pm.id, objectRef: `Request ${number}`, change: 'sent → pending review', area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: p.id });
+    await addEvent(tx, r.id, input.draft ? 'drafted' : 'sent', sentOn, pm.id, input.note?.trim() || null);
+    await writeAudit(tx, { actorName: nameOf(pm), actorPersonId: pm.id, objectRef: `Request ${number}`, change: input.draft ? 'drafted' : 'sent → pending review', area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: p.id });
     return number;
+  });
+}
+
+/** Chapter 4 (S-7): sends a draft to its department (draft → pending review), stamped with the business date. */
+export async function sendDraftRequest(number: string, actorName: string, on?: string): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    const r = await loadRequest(tx, number);
+    if (r.status !== 'draft') throw new Error(`${number} is not a draft (${r.status})`);
+    const actor = await findPerson(tx, actorName);
+    const d = today(on);
+    await tx.update(resourceRequests).set({ status: 'pending', sentOn: d, updatedAt: new Date() }).where(eq(resourceRequests.id, r.id));
+    await addEvent(tx, r.id, 'sent', d, actor?.id ?? null, null);
+    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: 'draft → pending review', area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId });
+  });
+}
+
+/** Chapter 4 (S-7): discards a draft (deleted — it was never sent). */
+export async function discardDraftRequest(number: string, actorName: string): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    const r = await loadRequest(tx, number);
+    if (r.status !== 'draft') throw new Error(`${number} is not a draft (${r.status})`);
+    const actor = await findPerson(tx, actorName);
+    await tx.delete(resourceRequests).where(eq(resourceRequests.id, r.id));
+    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: 'draft discarded', area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId });
   });
 }
 

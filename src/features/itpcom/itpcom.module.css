@@ -1,0 +1,36 @@
+/* Inspection & test plan · punch list (template 880–892) and Commissioning & handover dossier (template 910–920). */
+
+/* ── Plan: one block per system (display:flex;flex-direction:column;gap:2px) ─────────────────────────── */
+.group { display: flex; flex-direction: column; gap: 2px; }
+/* system header: flex · gap 8 · padding 10px 0 4px · 10.5px uppercase .08em neutral-400 */
+.groupHead { display: flex; align-items: center; gap: 8px; padding: 10px 0 4px; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-400); margin: 0; font-weight: 400; }
+.groupCount { font-variant-numeric: tabular-nums; letter-spacing: 0; color: var(--color-neutral-500); }
+.groupRule { flex: 1; height: 1px; background: linear-gradient(90deg, var(--color-neutral-800), transparent); }
+
+/* plan rows */
+.num400 { font-variant-numeric: tabular-nums; color: var(--color-neutral-400); }
+.idCell { font-variant-numeric: tabular-nums; color: var(--color-neutral-400); width: 52px; }
+.name { text-wrap: pretty; min-width: 220px; }
+/* tags 10.5px (out-ranks the DS .tag 11px, as the prototype's inline style) */
+:global(.tag).small { font-size: 10.5px; }
+.ref { font-size: 11.5px; color: var(--color-neutral-400); max-width: 200px; }
+.cell12 { font-size: 12px; }
+.nowrap { white-space: nowrap; }
+.right { text-align: right; }
+.pretty { text-wrap: pretty; }
+
+/* ── Commissioning grid: 200px + 5 × minmax(130px,1fr) + 90px · gap 6 · min-width 1000px ──────────────── */
+.grid { display: grid; grid-template-columns: 200px repeat(5, minmax(130px, 1fr)) 90px; gap: 6px; min-width: 1000px; }
+.gridRow { display: contents; }
+.colHead { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-neutral-400); padding: 4px 6px; font-weight: 400; text-align: left; }
+.colHeadRight { text-align: right; }
+.sys { font-size: 13px; display: flex; align-items: center; padding: 6px; font-weight: 400; text-align: left; }
+/* status cell: min-height 40 · radius md · flex · gap 7 · padding 6px 8px · 12px; colours from data */
+.cell { min-height: 40px; border-radius: var(--radius-md); display: flex; align-items: center; gap: 7px; padding: 6px 8px; font-size: 12px; }
+.cellIcon { flex: none; }
+.cellText { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.cellSub { font-size: 10.5px; opacity: 0.8; }
+.punchA { display: flex; align-items: center; justify-content: flex-end; font-variant-numeric: tabular-nums; font-size: 13px; color: var(--color-neutral-300); }
+
+/* dossier: document type 12px neutral-400 tabular */
+.docType { font-size: 12px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }

@@ -134,7 +134,7 @@ const kvText = (x: DrawerKv, t: T, lang: Lang) => {
  */
 export function deliveriesView(
   code: string,
-  data: { receipts: readonly ReceiptLike[]; openOrdersToReceive: number },
+  data: { receipts: readonly ReceiptLike[]; openOrdersToReceive: number; onTimePct?: number | null },
   q: { status: ReceiptStatus | null; receipt: string | null },
   t: T,
   lang: Lang,
@@ -168,7 +168,7 @@ export function deliveriesView(
     };
   }
   return {
-    kpis: deliveryKpis(receipts, data.openOrdersToReceive, lang).map((k) => ({ label: t(k.label), value: k.value, sub: t(k.sub), color: k.lo ? LO : OK })),
+    kpis: deliveryKpis(receipts, data.openOrdersToReceive, lang, data.onTimePct ?? null).map((k) => ({ label: t(k.label), value: k.value, sub: t(k.sub), color: k.lo ? LO : OK })),
     chips: deliveryChips(receipts).map((c) => ({
       value: c.value ?? 'all', label: c.value ? statusText(c.value, t, lang) : t(c.label), count: String(c.count), href: deliveriesHref(code, { status: c.value, receipt: open?.number }),
     })),

@@ -1,11 +1,11 @@
 // Resources and HR (docs/spec/11 §3.3 Calendar / WhatIf, §3.6; screens 06 resources, rates, skills, leave,
 // hours; 05 §4 what-if levelling): weekly allocations, rate cards and multipliers, skills and certifications,
 // leave and public holidays, Lucca hours imports, what-if levers and scenarios.
-import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
-import type { HoursMatching, LeaveType, RateMultiplierKey, WhatIfLeverCode, WhatIfPriority } from '../codes';
+import { boolean, date, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import type { HoursMatching, LeaveType, RateMultiplierKey, WhatIfActionKind, WhatIfLeverCode, WhatIfPriority } from '../codes';
 import { id, keur, num, timestamps } from './_common';
-import { persons } from './organisation';
-import { wbsNodes } from './planning';
+import { departments, persons } from './organisation';
+import { activities, wbsNodes } from './planning';
 import { projects } from './portfolio';
 
 // ── Allocations ────────────────────────────────────────────────────────────────────────────────────────
@@ -237,6 +237,15 @@ export const whatIfScenarios = pgTable(
     horizonMonths: integer('horizon_months'),
     hypotheses: text('hypotheses'),
     position: integer('position').notNull(),
+    // ── Chapter 4 (S-7): persisted scenarios with computed effects. ──
+    createdByPersonId: uuid('created_by_person_id').references(() => persons.id),
+    createdByName: text('created_by_name'),
+    /** Effects computed by the CPM engine on a copy of the plan (new finish, cost delta, load delta…), and when. */
+    result: jsonb('result').$type<Record<string, unknown>>(),
+    computedAt: timestamp('computed_at', { withTimezone: true }),
+    /** "Apply" drafted resource requests (resource_requests.scenario_id). */
+    appliedAt: timestamp('applied_at', { withTimezone: true }),
+    appliedByName: text('applied_by_name'),
     ...timestamps,
   },
   (t) => [unique().on(t.projectId, t.name)],
@@ -251,3 +260,23 @@ export const whatIfScenarioLevers = pgTable(
   },
   (t) => [primaryKey({ columns: [t.scenarioId, t.leverCode] })],
 );
+
+/**
+ * Chapter 4 (S-7): actions of a scenario, derived from real allocations — overtime (more hours per day on an activity), an
+ * extra resource (shorter duration) or a shifted start (start constraint). `params` holds the figures ({ hoursPerDay },
+ * { extraUnits, hoursPerDay }, { shiftDays } …); the effects are computed on an in-memory copy of the plan.
+ */
+export const whatIfScenarioActions = pgTable('whatif_scenario_actions', {
+  id: id(),
+  scenarioId: uuid('scenario_id').notNull().references(() => whatIfScenarios.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull(),
+  kind: text('kind').$type<WhatIfActionKind>().notNull(),
+  activityId: uuid('activity_id').references(() => activities.id, { onDelete: 'cascade' }),
+  personId: uuid('person_id').references(() => persons.id),
+  departmentId: uuid('department_id').references(() => departments.id),
+  params: jsonb('params').$type<Record<string, unknown>>().notNull().default({}),
+  enabled: boolean('enabled').notNull().default(true),
+  /** EN source label ("Overtime 10 h/d on A1250"). */
+  label: text('label').notNull().default(''),
+  ...timestamps,
+});

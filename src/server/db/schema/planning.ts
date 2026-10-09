@@ -1,10 +1,10 @@
 // Planning (docs/spec/11 §3.3, docs/spec/05 §0.5 / §1 / §2): WBS nodes, activities, logic links, resource
 // assignments, milestones, schedule bars (TASKS), pipeline stage plans and the project control header
 // (the display figures of projectData()).
-import { boolean, date, integer, pgTable, text, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
-import type { ConstraintType, LinkType, MilestoneStatus, PipelineWindow } from '../codes';
-import { id, keur, months, timestamps } from './_common';
-import { persons } from './organisation';
+import { boolean, date, integer, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import type { CalendarCode, ConstraintType, LinkType, MilestoneStatus, PipelineWindow } from '../codes';
+import { id, keur, months, num, timestamps } from './_common';
+import { departments, persons } from './organisation';
 import { projects } from './portfolio';
 
 /**
@@ -29,6 +29,11 @@ export const wbsNodes = pgTable(
     /** Added work packages (OPEN QUESTION S-6). */
     ownerPersonId: uuid('owner_person_id').references(() => persons.id),
     scope: text('scope'),
+    /** Chapter 4 (A-7): roll-up dates of the node's activities, written by "Reschedule" (null until then). */
+    startDate: date('start_date', { mode: 'string' }),
+    finishDate: date('finish_date', { mode: 'string' }),
+    /** Chapter 4 (S-9): UID of the summary task / WBS element in the imported MS Project or P6 file (update matching). */
+    externalUid: text('external_uid'),
     ...timestamps,
   },
   (t) => [unique().on(t.projectId, t.code)],
@@ -76,6 +81,22 @@ export const activities = pgTable(
     description: text('description'),
     isAdded: boolean('is_added').notNull().default(false),
     position: integer('position').notNull(),
+    // ── Chapter 4 (S-1, S-2): CPM results and inputs. `startDate` / `finishDate` stay the current dates (actual when the
+    // matching `…Actual` flag is set, else early dates); the columns below are written by "Reschedule".
+    /** Calendar override (S-2); null = the project calendar. */
+    calendarCode: text('calendar_code').$type<CalendarCode>(),
+    /** Remaining duration entered by the user (working days); null = derived from % complete (domain/ch4-defaults). */
+    remainingDays: integer('remaining_days'),
+    earlyStartDate: date('early_start_date', { mode: 'string' }),
+    earlyFinishDate: date('early_finish_date', { mode: 'string' }),
+    lateStartDate: date('late_start_date', { mode: 'string' }),
+    lateFinishDate: date('late_finish_date', { mode: 'string' }),
+    /** Free float, working days (S-8); null when complete. */
+    freeFloatDays: integer('free_float_days'),
+    /** Last "Reschedule" that wrote the CPM values. */
+    scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
+    /** UID in the imported MS Project / P6 file (S-9 update matching). */
+    externalUid: text('external_uid'),
     ...timestamps,
   },
   (t) => [unique().on(t.projectId, t.code)],
@@ -93,6 +114,8 @@ export const activityLinks = pgTable(
     lagDays: integer('lag_days').notNull(),
     /** Position in the successor's predecessor list. */
     position: integer('position').notNull(),
+    /** Chapter 4 (S-1): the link drives the successor's early date (last "Reschedule"). */
+    isDriving: boolean('is_driving').notNull().default(false),
   },
   (t) => [unique().on(t.successorId, t.predecessorId)],
 );
@@ -111,6 +134,18 @@ export const activityAssignments = pgTable('activity_assignments', {
   units: text('units').notNull(),
   /** "1,840 / 2,400 h". */
   progressText: text('progress_text').notNull(),
+  // ── Chapter 4 (S-7 levers, S-9 imports): numeric quantities parsed from / alongside the display texts (null when the
+  // assignment is not counted in hours: equipment days, material tonnes).
+  /** Planned and actual work, hours ("1,840 / 2,400 h" → 2400 / 1840). */
+  plannedHours: num('planned_hours'),
+  actualHours: num('actual_hours'),
+  /** Units and hours per day per unit ("6 × 10 h/d" → 6 × 10; "40 h/wk" → 1 × 8). */
+  resourceCount: num('resource_count'),
+  hoursPerDay: num('hours_per_day'),
+  /** Department of the resource (levelling by department); null for crews, equipment and material. */
+  departmentId: uuid('department_id').references(() => departments.id),
+  /** Resource UID in the imported file. */
+  externalUid: text('external_uid'),
 });
 
 /** Milestones (HMILES 3122 / generated MILES). Months are fractional offsets from the project start. */

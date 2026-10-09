@@ -5,6 +5,7 @@
 // (The Plan — WBS & activities logic lives in ./schedule.ts.)
 import type { MilestoneStatus } from '@/server/db/codes';
 import { dateOf, pct } from '@/lib/format';
+import { shortDateText } from './schedule-rollup';
 
 /** Gantt span: 13 month columns from the project start month (`S = 13`). */
 export const GANTT_SPAN = 13;
@@ -33,6 +34,11 @@ export interface PackageBarInput {
   forecastEnd: number;
   pct: number;
   critical: boolean;
+  /**
+   * Chapter 4 roll-ups (A-7, S-8): slip in working days computed from the real dates. Absent for the seeded bars, whose slip
+   * is the prototype's `round((ae − be) × 30)` calendar-day approximation.
+   */
+  slipDays?: number;
 }
 
 /** Milestone (MILES tuple `[name, b, fc, status]`), months from the project start. */
@@ -43,6 +49,11 @@ export interface MilestoneInput {
   status: MilestoneStatus;
   /** EN label: 'Done' | 'Late' | 'At risk' | 'On track'. */
   statusLabel: string;
+  /** Chapter 4 roll-ups (A-7): exact ISO dates of the anchor activity (display "1 Apr" instead of `dateOf(month)`). */
+  baselineDate?: string | null;
+  forecastDate?: string | null;
+  /** Working days late vs the baseline (S-8); absent → `round((fc − b) × 30)`. */
+  slipDays?: number;
 }
 
 /** Schedule header strings of the project (projectData() display fields). */
@@ -149,7 +160,7 @@ export interface ScheduleView {
 // ── Builders ───────────────────────────────────────────────────────────────────────────────────────────
 
 export function ganttTask(b: PackageBarInput): GanttTask {
-  const slip = slipDays(b.baselineEnd, b.forecastEnd);
+  const slip = b.slipDays ?? slipDays(b.baselineEnd, b.forecastEnd);
   return {
     name: b.name,
     owner: b.owner,
@@ -167,7 +178,7 @@ export function ganttTask(b: PackageBarInput): GanttTask {
 
 /** `start` = project start month (Jan 2026 = 0), used for the absolute baseline / forecast dates. */
 export function scheduleMilestone(m: MilestoneInput, start: number): ScheduleMilestone {
-  const slip = slipDays(m.baselineMonth, m.forecastMonth);
+  const slip = m.slipDays ?? slipDays(m.baselineMonth, m.forecastMonth);
   return {
     name: m.name,
     status: m.status,
@@ -175,8 +186,8 @@ export function scheduleMilestone(m: MilestoneInput, start: number): ScheduleMil
     done: m.status === 'done',
     bL: ganttPos(m.baselineMonth),
     fL: ganttPos(m.forecastMonth),
-    baseDate: dateOf(m.baselineMonth + start),
-    fcDate: dateOf(m.forecastMonth + start),
+    baseDate: m.baselineDate ? shortDateText(m.baselineDate) : dateOf(m.baselineMonth + start),
+    fcDate: m.forecastDate ? shortDateText(m.forecastDate) : dateOf(m.forecastMonth + start),
     slip,
     slipText: (slip < 0 ? '−' + -slip : '+' + slip) + 'd',
     slipAlert: slip > SLIP_ALERT_DAYS,

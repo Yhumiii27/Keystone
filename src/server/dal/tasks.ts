@@ -68,6 +68,8 @@ export interface TaskComment {
 }
 
 export interface TaskAttachment {
+  /** task_attachments.id (download / remove, chapter 4). */
+  id: string;
   name: string;
   /** "48 KB · H. Sauvage · today". */
   meta: string;
@@ -77,6 +79,8 @@ export interface TaskAttachment {
   kind: AttachmentKind;
   /** Phosphor class ("ph ph-file-xls"). */
   icon: string;
+  /** Content stored by Keystone (chapter 4); false for the seed's files, which have none. */
+  hasFile: boolean;
 }
 
 export interface TimeEntryRow {
@@ -196,6 +200,7 @@ export async function getTask(number: string): Promise<TaskDetail | null> {
       author: full ?? short, authorShort: short, initials, postedAt: c.postedAt.toISOString(), when: relativeStampText(c.postedAt), text: c.text,
     })),
     attachments: files.map(({ f, short }) => ({
+      id: f.id, hasFile: !!f.fileId,
       name: f.name, meta: [f.sizeText, short, relativeDayText(f.uploadedOn)].filter(Boolean).join(' · '), sizeText: f.sizeText, uploadedBy: short,
       uploadedOn: f.uploadedOn, kind: f.kind, icon: ATTACHMENT_ICON[f.kind],
     })),

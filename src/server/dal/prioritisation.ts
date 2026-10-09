@@ -8,9 +8,10 @@ import { and, asc, eq } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { scoreAxis, type ScoreAxis, type StageCode } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
-import { capacityDemandRates, departmentCapacities, departments, portfolioScores, projects, scoreAxes, scoreWeights, users } from '@/server/db/schema';
+import { portfolioScores, projects, scoreAxes, scoreWeights, users } from '@/server/db/schema';
 import type { ZoneKey } from '@/server/session';
 import { listBillingPlans, marginPct } from './cashflow';
+import { capacityModel } from './kpis';
 import { listProjects, type ProjectRow } from './projects';
 
 export interface ScoreAxisRow {
@@ -134,20 +135,17 @@ export interface CapacityDepartment {
 
 /** Capacity what-if for a candidate project (logic 4505–4512): demand by department vs capacity. */
 export async function getCapacityWhatIf(projectCode: string): Promise<{ project: ProjectRow; departments: CapacityDepartment[]; gapH: number } | null> {
-  const project = (await listProjects()).find((p) => p.code === projectCode);
+  const [all, plans] = await Promise.all([listProjects(), listBillingPlans()]);
+  const project = all.find((p) => p.code === projectCode);
   if (!project) return null;
-  const db = await getDb();
-  const rows = await db
-    .select({ name: departments.name, cap: departmentCapacities.capacityH, cur: departmentCapacities.demandH, rate: capacityDemandRates.hoursPerMeur })
-    .from(departmentCapacities)
-    .innerJoin(departments, eq(departments.id, departmentCapacities.departmentId))
-    .leftJoin(capacityDemandRates, eq(capacityDemandRates.departmentId, departments.id))
-    .orderBy(asc(departmentCapacities.position));
+  // A-12 (chapter 4): capacity and commitments from the resource pool's allocations, demand per €1M from the active
+  // portfolio's value (`capacityModel`, src/server/dal/kpis.ts) — the prototype's capBase and coefficients were constants.
+  const rows = await capacityModel(all.filter((p) => EXECUTION.has(p.stage)), plans);
   const k = project.budget / 1000;
   const depts = rows.map((r) => {
-    const addH = Math.round((r.rate ?? 0) * k);
-    const totalH = r.cur + addH;
-    return { department: r.name, capacityH: r.cap, committedH: r.cur, addH, totalH, gapH: Math.max(0, totalH - r.cap) };
+    const addH = Math.round(r.hoursPerMeur * k);
+    const totalH = r.committedH + addH;
+    return { department: r.department, capacityH: r.capacityH, committedH: r.committedH, addH, totalH, gapH: Math.max(0, totalH - r.capacityH) };
   });
   return { project, departments: depts, gapH: depts.reduce((s, d) => s + d.gapH, 0) };
 }

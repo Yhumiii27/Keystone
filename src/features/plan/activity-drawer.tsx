@@ -1,16 +1,18 @@
 // Activity drawer of the Plan screen (docs/spec/05 §2.4.5, template 1105–1163). Server-rendered content inside
 // the DS Drawer (client): opened by `?act=A1250`, closed (×, scrim, Esc) to `closeHref`, which keeps the row
 // highlighted (`?sel=`). Four sections: General · Relationships · Resources & cost · To-dos.
+// Chapter 4: editors override the activity calendar, add / remove relationships and add, tick and remove to-dos
+// (./plan-controls.tsx); read-only viewers see the prototype's static content.
 import { CalendarDots, Check, Hourglass } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Avatar } from '@/components/app/Badges';
 import { ButtonLink } from '@/components/ds/Button';
 import { cx } from '@/components/ds/cx';
 import { Drawer } from '@/components/ds/Drawer';
 import type { T } from '@/i18n/translate';
 import type { DrawerLine, DrawerView } from './drawer-model';
-import { AddRelationshipButton, TodoComposer } from './plan-soon';
+import { ActivityCalendarSelect, AddRelationshipButton, RemoveLinkButton, RemoveTodoButton, TodoComposer, TodoRing } from './plan-controls';
 import s from './plan.module.css';
 
 export interface ActivityDrawerProps {
@@ -20,21 +22,33 @@ export interface ActivityDrawerProps {
   /** Schedule screen of the project ("Show in Gantt"). */
   scheduleHref: string;
   t: T;
+  /** Project code (Server Functions). */
+  code: string;
+  /** Activity edits allowed (calendar override, relationships, to-dos). */
+  canEdit?: boolean;
+  /** Other activities as "A1240 · Steel erection — Bays 1–2" (EN) for "Add relationship". */
+  linkOptions?: string[];
+  /** Translated "#026 · Harbor Line…" (dialog sub-line). */
+  context?: string;
 }
 
 const LINE_TONE: Record<DrawerLine['tone'], string | undefined> = { driving: s.relDriving, lo: s.lo, normal: undefined, none: s.relNone };
 
-function Lines({ lines }: { lines: DrawerLine[] }) {
-  return lines.map((p, i) => (
-    <div key={`${p.id}-${i}`} className={s.rel}>
-      <span className={s.relId}>{p.id}</span>
-      <span className={s.ellipsis}>{p.name}</span>
-      <span className={cx(s.relType, LINE_TONE[p.tone])}>{p.rel}</span>
-    </div>
-  ));
+function Lines({ lines, remove }: { lines: DrawerLine[]; remove?: (line: DrawerLine) => ReactNode }) {
+  return lines.map((p, i) => {
+    const rm = remove && p.tone !== 'none' ? remove(p) : null;
+    return (
+      <div key={`${p.id}-${i}`} className={cx(s.rel, rm != null && s.relEdit)}>
+        <span className={s.relId}>{p.id}</span>
+        <span className={s.ellipsis}>{p.name}</span>
+        <span className={cx(s.relType, LINE_TONE[p.tone])}>{p.rel}</span>
+        {rm}
+      </div>
+    );
+  });
 }
 
-export function ActivityDrawer({ view, closeHref, scheduleHref, t }: ActivityDrawerProps) {
+export function ActivityDrawer({ view, closeHref, scheduleHref, t, code, canEdit = false, linkOptions = [], context = '' }: ActivityDrawerProps) {
   return (
     <Drawer
       open
@@ -55,7 +69,11 @@ export function ActivityDrawer({ view, closeHref, scheduleHref, t }: ActivityDra
           {view.general.map((g) => (
             <div key={g.k} className={s.kv}>
               <span className={s.kvKey}>{g.k}</span>
-              <span className={cx(s.kvVal, g.lo && s.lo)}>{g.v}</span>
+              {g.key === 'calendar' && canEdit ? (
+                <ActivityCalendarSelect code={code} activity={view.id} value={view.calendar.value} options={view.calendar.options} label={g.k} />
+              ) : (
+                <span className={cx(s.kvVal, g.lo && s.lo)}>{g.v}</span>
+              )}
             </div>
           ))}
         </section>
@@ -63,10 +81,10 @@ export function ActivityDrawer({ view, closeHref, scheduleHref, t }: ActivityDra
         <section className={s.section} aria-label={t('Relationships')}>
           <span className={s.kicker}>{t('Relationships')}</span>
           <span className={s.subLabel}>{t('Predecessors')}</span>
-          <Lines lines={view.preds} />
+          <Lines lines={view.preds} remove={canEdit ? (l) => <RemoveLinkButton code={code} pred={l.id} succ={view.id} /> : undefined} />
           <span className={cx(s.subLabel, s.subLabelGap)}>{t('Successors')}</span>
-          <Lines lines={view.succs} />
-          <AddRelationshipButton />
+          <Lines lines={view.succs} remove={canEdit ? (l) => <RemoveLinkButton code={code} pred={view.id} succ={l.id} /> : undefined} />
+          {canEdit && <AddRelationshipButton code={code} activity={view.id} activities={linkOptions} context={context} />}
         </section>
 
         <section className={s.section} aria-label={t('Resources & cost')}>
@@ -107,16 +125,28 @@ export function ActivityDrawer({ view, closeHref, scheduleHref, t }: ActivityDra
             <span className={s.kicker}>{t('To-dos')}</span>
             <span className={s.todoCount}>{view.todoCount}</span>
           </div>
-          {view.todos.map((x) => (
-            <Link key={x.id} href={x.href} className={s.todo}>
-              <span className={cx(s.ring, x.done && s.ringDone)}>{x.done && <Check className={s.ringCheck} aria-hidden />}</span>
-              <span className={s.todoText}>
-                <span className={cx(s.todoTitle, x.done && s.todoTitleDone)}>{x.title}</span>
-                <span className={s.todoMeta}>{x.meta}</span>
-              </span>
-              <Avatar initials={x.initials} size={22} />
-            </Link>
-          ))}
+          {view.todos.map((x) =>
+            canEdit ? (
+              <div key={x.id} className={cx(s.todo, s.todoRow, x.removable && s.todoRowRm)}>
+                <TodoRing code={code} activity={view.id} number={x.id} done={x.done} />
+                <Link href={x.href} className={cx(s.todoText, s.todoLink)}>
+                  <span className={cx(s.todoTitle, x.done && s.todoTitleDone)}>{x.title}</span>
+                  <span className={s.todoMeta}>{x.meta}</span>
+                </Link>
+                <Avatar initials={x.initials} size={22} />
+                {x.removable && <RemoveTodoButton code={code} activity={view.id} number={x.id} />}
+              </div>
+            ) : (
+              <Link key={x.id} href={x.href} className={s.todo}>
+                <span className={cx(s.ring, x.done && s.ringDone)}>{x.done && <Check className={s.ringCheck} aria-hidden />}</span>
+                <span className={s.todoText}>
+                  <span className={cx(s.todoTitle, x.done && s.todoTitleDone)}>{x.title}</span>
+                  <span className={s.todoMeta}>{x.meta}</span>
+                </span>
+                <Avatar initials={x.initials} size={22} />
+              </Link>
+            ),
+          )}
           {view.pending.map((x) => (
             <div key={x.id} className={s.pending}>
               <Hourglass className={s.pendingIcon} aria-hidden />
@@ -127,7 +157,7 @@ export function ActivityDrawer({ view, closeHref, scheduleHref, t }: ActivityDra
             </div>
           ))}
           {view.noTodos && <span className={s.noTodos}>{t('No to-dos yet — break the activity down for the team')}</span>}
-          <TodoComposer />
+          {canEdit && <TodoComposer code={code} activity={view.id} />}
         </section>
       </div>
     </Drawer>

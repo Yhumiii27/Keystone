@@ -161,9 +161,8 @@ export function invoiceKpis(invoices: readonly InvoiceForKpi[], todayIso: string
 
 // ── RFQs (`rfqRows` 4650, `rfqKpis` 4652, `rfqVals` 4653–4657) ─────────────────────────────────────────
 
-/** Prototype constants of the RFQ KPI tiles (no source yet, 08 OQ23 / A-12): savings vs list (k€) and average cycle. */
-export const RFQ_SAVINGS_VS_LIST_KEUR = 12.4;
-export const RFQ_AVERAGE_CYCLE_DAYS = 9;
+// "Savings vs list" and "Average cycle" are computed since chapter 4 (A-12, 08 OQ23): `rfqSavingsKeur` and
+// `rfqAverageCycleDays`, src/domain/kpis.ts (the prototype printed €12.4k and 9 d).
 
 export interface RfqForKpi {
   status: RfqStatus;

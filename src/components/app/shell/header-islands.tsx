@@ -2,7 +2,7 @@
 // Interactive parts of the page header (docs/spec/01 §5, §7.2): project switcher, global search,
 // notifications, language toggle, Export, zone bar. Strings arrive translated from the server.
 import {
-  ArrowsClockwise, At, Bell, CaretDown, CheckSquare, Export, Eye, FolderOpen, GitBranch, MagnifyingGlass,
+  ArrowsClockwise, At, Bell, CaretDown, CheckSquare, Export, Eye, FileCsv, FilePdf, FileXls, FolderOpen, GitBranch, MagnifyingGlass,
   PaperPlaneTilt, Receipt, SealCheck, ShieldWarning, Truck, Warning,
 } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
@@ -16,8 +16,13 @@ import type { ZoneKey } from '@/server/session';
 import { markAllNotificationsReadAction, markNotificationReadAction, searchAction } from './actions';
 import { swapProjectInPath } from './nav-model';
 import { cx } from '@/components/ds/cx';
+import { MenuEmpty, MenuHeader, MenuItem } from '@/components/ds/Menu';
+import { Popover } from '@/components/ds/Popover';
 import { Segmented } from '@/components/ds/Segmented';
-import { useToast } from '@/components/ds/Toast';
+import type { ScreenId } from '@/config/screens';
+import type { ExportMenuFormat } from '@/features/exports/catalog';
+import { downloadExport } from '@/features/exports/download';
+import { exportHref } from '@/lib/export-href';
 import { useShell } from './shell-provider';
 import type { NotificationView, ProjectOptionView, SearchHitView, ZoneOptionView } from './types';
 import styles from './header.module.css';
@@ -309,15 +314,53 @@ export function LangToggle({ lang }: { lang: Lang }) {
   );
 }
 
-// ── Export (line 122): no behaviour in the prototype → toast ───────────────
-export function ExportButton() {
+// ── Export (line 122): menu Excel / CSV (+ PDF report) of the screen's current view (chapter 4, X-3) ──────
+/**
+ * The file reflects what the screen shows: its search params (tab, filters, search) are read at click time and the
+ * route re-applies the viewer's rights. `code` = project of a project screen, else the shell's current project (the
+ * global screens that depend on it: Home, My approvals, Sourcing, Resources); `task` = the task of the Task screen.
+ */
+export function ExportButton({ screen, code, formats = [], task }: { screen?: ScreenId; code?: string | null; formats?: ExportMenuFormat[]; task?: string | null }) {
   const { t } = useI18n();
-  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const run = async (format: ExportMenuFormat) => {
+    if (!screen || busy) return;
+    const params = new URLSearchParams(window.location.search);
+    if (task) params.set('task', task);
+    // Approvals keep the department in the path (/resources/approvals/<dept>).
+    if (screen === 'approvals') params.set('dept', decodeURIComponent(window.location.pathname.split('/').filter(Boolean).at(-1) ?? ''));
+    setBusy(true);
+    try {
+      await downloadExport(exportHref(screen, { format, code, params }), t('Export failed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const LABEL: Record<ExportMenuFormat, [Icon, string]> = { xlsx: [FileXls, 'Excel (.xlsx)'], csv: [FileCsv, 'CSV'], pdf: [FilePdf, 'PDF report'] };
   return (
-    <button type="button" className="btn btn-secondary" onClick={() => toast.showEn('Export — coming soon')}>
-      <Export />
-      {t('Export')}
-    </button>
+    <Popover
+      triggerClassName="btn btn-secondary"
+      trigger={
+        <>
+          <Export />
+          {t('Export')}
+        </>
+      }
+      align="end"
+      minWidth="200px"
+      zIndex={30}
+    >
+      <MenuHeader>{t('Export this view')}</MenuHeader>
+      {formats.map((f) => {
+        const [I, label] = LABEL[f];
+        return (
+          <MenuItem key={f} icon={I} disabled={busy} onClick={() => void run(f)}>
+            {t(label)}
+          </MenuItem>
+        );
+      })}
+      {!formats.length && <MenuEmpty>{t('Nothing to export on this screen')}</MenuEmpty>}
+    </Popover>
   );
 }
 

@@ -2,7 +2,7 @@ import 'server-only';
 // Screen-level reads of the Team & exchanges feature — Stakeholders & RACI (docs/spec/05 §6) and the Interface register
 // (07 §2.5) — on top of the data-layer getters (stakeholders.ts, interfaces.ts): the TEAM option list of the two
 // add-forms and the interfaces a commissioning step waits for.
-import { PROTO } from '@/server/prototype';
+import { commissioningBlockingRefs } from './commissioning';
 import { listInterfaces, type InterfaceRow } from './interfaces';
 import { getScheduleControl } from './planning';
 import { getProject } from './projects';
@@ -27,25 +27,21 @@ export interface CommissioningBlocker {
 }
 
 /**
- * Short labels of the prototype's "Blocking commissioning" KPI sub ("HV cell · anti-collision zones", logic 4956).
- * TODO(db): commissioning (COMMISSIONING 3721) is not modelled yet — the steps waiting for an interface are read from
- * the prototype grid ("Blocked · IF-02"), and these labels go with them. Other blockers fall back to the interface title.
+ * Short labels of the prototype's "Blocking commissioning" KPI sub ("HV cell · anti-collision zones", logic 4956): the
+ * prototype's own wording for its two blocked steps. Other blockers fall back to the interface title.
  */
 const BLOCKER_LABEL: Record<string, string> = { 'IF-02': 'HV cell', 'IF-05': 'anti-collision zones' };
 
-/** Interfaces a commissioning step of the project is blocked by (grid order: system by system, step by step). */
-export function commissioningBlockers(projectCode: string, interfaces: readonly Pick<InterfaceRow, 'number' | 'title'>[]): CommissioningBlocker[] {
-  // TODO(db): prototype COMMISSIONING grid until commissioning steps are modelled (blockingRef, docs/spec/11 §3.7).
-  const grid = (PROTO.COMMISSIONING?.[projectCode]?.grid ?? {}) as Record<string, string[]>;
-  const out: CommissioningBlocker[] = [];
-  for (const cells of Object.values(grid))
-    for (const cell of cells) {
-      const m = /^Blocked · (IF-\d+)$/.exec(cell);
-      if (!m || out.some((b) => b.number === m[1])) continue;
-      const row = interfaces.find((i) => i.number === m[1]);
-      if (row) out.push({ number: row.number, label: BLOCKER_LABEL[row.number] ?? row.title });
-    }
-  return out;
+/**
+ * Interfaces a commissioning step of the project is blocked by (grid order: system by system, step by step), from the
+ * commissioning grid in the database (`blocking_ref` of the blocked steps, src/server/dal/commissioning.ts).
+ */
+export async function commissioningBlockers(projectCode: string, interfaces: readonly Pick<InterfaceRow, 'number' | 'title'>[]): Promise<CommissioningBlocker[]> {
+  const refs = await commissioningBlockingRefs(projectCode);
+  return refs.flatMap((ref) => {
+    const row = interfaces.find((i) => i.number === ref);
+    return row ? [{ number: row.number, label: BLOCKER_LABEL[row.number] ?? row.title }] : [];
+  });
 }
 
 export interface StakeholdersScreenData {
@@ -73,5 +69,5 @@ export interface InterfacesScreenData {
 export async function getInterfacesScreen(projectCode: string): Promise<InterfacesScreenData | null> {
   if (!(await getProject(projectCode))) return null;
   const [interfaces, team] = await Promise.all([listInterfaces(projectCode), teamOwnerOptions(projectCode)]);
-  return { interfaces, blockers: commissioningBlockers(projectCode, interfaces), team };
+  return { interfaces, blockers: await commissioningBlockers(projectCode, interfaces), team };
 }

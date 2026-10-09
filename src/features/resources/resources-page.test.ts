@@ -10,6 +10,7 @@ import { createElement, isValidElement, type ComponentType, type ReactElement, t
 import { renderToStaticMarkup } from 'react-dom/server';
 import ProjectResourcesPage from '@/app/(app)/projects/[code]/resources/page';
 import ResourcesPage from '@/app/(app)/resources/page';
+import SkillsPage from '@/app/(app)/resources/skills/page';
 import WhatIfPage from '@/app/(app)/resources/what-if/page';
 import { NewRequestButton } from '@/features/requests/new-request-button';
 import { I18nProvider } from '@/i18n/client';
@@ -53,7 +54,8 @@ describe('Resources page', () => {
     expect(v.people.map((p) => p.name)).toEqual([
       'Amélie Ollivier', 'Julien Wagner', 'Pauline Noguès', 'Thomas Kerbrat', 'Léa Marchand', 'Damien Roux', 'Hélène Sauvage', 'Fabien Bertrand',
     ]);
-    expect(v.kpis.map((k) => k.value)).toEqual(['83%', '3 people', '240 h', '€1.42M', '4']);
+    // A-12: unmet demand computed from the ROLES bars (prototype constant 240 h).
+    expect(v.kpis.map((k) => k.value)).toEqual(['83%', '3 people', '280 h', '€1.42M', '4']);
     expect(v.roles.map((r) => r.text)).toEqual(['1110 / 960 h', '690 / 640 h', '510 / 480 h', '560 / 640 h', '370 / 320 h']);
     expect(body.props.canEdit).toBe(true);
     expect(body.props.projectName).toBeUndefined();
@@ -88,7 +90,9 @@ describe('Resources page', () => {
       'Allocation — next 8 weeks', '% of available hours per person', 'Under', 'Over', 'Person', 'Avg', 'Sep 28', 'Nov 16', 'Open their work',
       'href="/my/tasks?person=Julien%20Wagner"', '--cell-bg:var(--color-accent-400);--cell-fg:var(--color-bg)', '>130<', '>101%<',
       'Capacity vs demand', 'Hours by role, next 8 weeks', 'Tick marks available capacity', '1110 / 960 h', 'Suggested rebalancing', '>Apply<',
-      'Recovers ~12 days float · +€18k',
+      // R-3 / S-7: the suggestions are the portfolio's what-if levers (the prototype's three static sentences are gone).
+      'Extra resource A1250 · Steel erection crew 6 → 7', 'Harbor Line · +1 d · +€2k', 'Contract structural engineer relieves Julien Wagner on A1250',
+      'title="A1250 · Steel erection — Bays 3–4"',
     ])
       expect(out).toContain(s);
     expect(out.match(/role="row"/g)?.length).toBe(9);
@@ -110,12 +114,17 @@ describe('Project resources page', () => {
     expect(body.props.projectName).toBe('#026 · Harbor Line Terminal Expansion');
     expect(v.kpis.map((k) => [k.label, k.value, k.sub])).toEqual([
       ['Project team load', '83%', '8 people assigned'],
-      ['Over-allocated', '3 people', 'Peak weeks 41–43'],
+      ['Over-allocated', '3 people', 'Peak weeks 42–44'],
       ['Unmet demand', '0 h', 'Next 8 weeks, by department'],
       ['Labor cost to date', '€1.42M', '77% of labor budget'],
       ['Open requests', '4', 'Awaiting department approval'],
     ]);
-    expect(v.suggestions).toHaveLength(3);
+    // The project's own levers that become a request (S-7); no project label on Project resources.
+    expect(v.suggestions!.map((g) => [g.leverCode, g.impact, g.canApply])).toEqual([
+      ['extra_resource:A1250:steel-erection-crew', '+1 d · +€2k', true],
+      ['overtime:A1250:steel-erection-crew', '+1 d · +€5k', true],
+      ['extra_resource:A1250:julien-wagner', '+€2k · load −40 h', true], // 44 h × (118 − 85) € = 1.5 k€ → +€2k
+    ]);
     const primary = header.props.primary as ReactElement<Props>;
     expect([primary.type, primary.props.projectCode]).toEqual([NewRequestButton, 'HLT-026']);
     const out = html(body);
@@ -169,33 +178,50 @@ describe('Project resources page', () => {
 });
 
 describe('What-if page', () => {
-  it('director: HLT-026 levelling with the DAL base figures, New scenario primary', async () => {
+  it('director: HLT-026 levelling with levers derived from the data and engine results (S-7), New scenario primary', async () => {
     const { header, body } = await whatif();
     expect(body.type).toBe(WhatIfBoard);
     const d = body.props.data!;
-    expect(d.projectCode).toBe('HLT-026');
-    expect(d.base).toEqual({ floatDays: -27, forecastFinish: '2027-01-14', peakPct: 130, overPeople: 3, baseLoad: [100, 110, 130, 125, 110, 100, 80, 60] });
+    expect([d.projectCode, d.dataDate, d.weekStarts[0], d.weeks[0]]).toEqual(['HLT-026', '2026-09-25', '2026-09-28', 'Sep 28']);
+    expect(d.plan).toEqual({ forecastFinish: '2027-01-14', floatDays: -27 });
     expect(d.baseline).toEqual({ code: 'BL1', finish: '2026-12-18' });
     expect(d.peak).toEqual({ pct: 130, person: 'Julien Wagner', weekStart: '2026-10-12' });
-    expect(d.scenarios.map((s) => [s.name, s.priority, s.selected, Object.keys(s.levers).filter((k) => s.levers[k])])).toEqual([
-      ['A', 'date', false, ['contractor', 'overtime']],
-      ['B', 'people', false, ['delay', 'move']],
+    expect(d.overByWeek).toEqual([0, 1, 2, 3, 2, 0, 1, 0]);
+    expect(d.levers.map((l) => [l.code, l.from, l.to, l.helper, l.effect.daysGained, l.effect.costKeur])).toEqual([
+      ['extra_resource:A1250:julien-wagner', 1, 2, { kind: 'external', name: 'Contract structural engineer' }, 0, 1.5],
+      ['overtime:A1250:steel-erection-crew', 10, 12, null, 1, 4.5],
+      ['extra_resource:A1250:steel-erection-crew', 6, 7, { kind: 'same', name: 'Steel erection crew' }, 1, 1.8],
     ]);
+    // The current plan rescheduled on a copy: finish 18 Jan 2027, float −19 working days (S-1, S-8).
+    expect([d.current.finish, d.current.floatDays, d.current.peakPct, d.current.bars]).toEqual(['2027-01-18', -19, 130, [100, 110, 130, 125, 115, 100, 110, 100]]);
+    expect(d.scenarios.map((s) => [s.name, s.priority, s.selected, Object.keys(s.levers).filter((k) => s.levers[k])])).toEqual([
+      ['A', 'date', false, ['extra_resource:A1250:julien-wagner', 'overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew']],
+      ['B', 'people', false, []],
+    ]);
+    expect(d.auto).toEqual({ date: ['overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew'], budget: [], people: ['extra_resource:A1250:julien-wagner'] });
     expect(body.props.canEdit).toBe(true);
     const primary = header.props.primary as ReactElement<Props>;
     expect(primary.type).toBe(NewScenarioButton);
   });
 
-  it('renders KPI tiles, two scenario cards and the side-by-side table (EN)', async () => {
+  it('renders KPI tiles, scenario cards and the side-by-side table with the current plan (EN)', async () => {
     const out = html((await whatif()).body);
     for (const s of [
-      'Forecast finish', '14 Jan 2027', 'BL1 18 Dec 2026 · float −27 d', 'Julien Wagner · week of 12 Oct', 'Scenario A', 'Scenario B',
-      'Priority (set by the PM)', 'Protect date', 'Auto-level for this priority', '+12 d · +€18k · peak −20 pts', 'Peak load by week',
-      '25 Dec 2026', '8 Jan 2027', '−7 days', '−21 days', '+€27k', 'Westfield SPI −0.02', 'Select scenario → create requests', 'Side by side', 'Indicator',
+      'Baseline finish', '18 Dec 2026', 'BL1 · forecast 14 Jan 2027 · float −27 d', 'Julien Wagner · week of 12 Oct', 'Week 43', 'Scenario A', 'Scenario B',
+      'Priority (set by the PM)', 'Protect date', 'Auto-level for this priority', 'Overtime A1250 · Steel erection crew 10 → 12 h/d', '+1 d · +€5k',
+      'Contract structural engineer relieves Julien Wagner on A1250', 'Peak load by week', 'Current plan', '18 Jan 2027', '13 Jan 2027', '−19 days', '−16 days',
+      'Pauline Noguès above 100% · week of 12 Oct', 'Select scenario → create requests', 'Side by side', 'Indicator', 'copy of the plan at the data date (25 Sep 2026)',
+      'Rename scenario — Scenario A', 'Delete scenario — Scenario B',
     ])
       expect(out).toContain(s);
-    expect(out).not.toContain('Baseline finish');
-    expect(out.match(/aria-pressed="true"/g)?.length).toBe(2 + 4); // selected priority × 2 + enabled levers × 4
+    expect(out.match(/aria-pressed="true"/g)?.length).toBe(2 + 3); // selected priority × 2 + enabled levers of A × 3
+  });
+
+  it('renders in French', async () => {
+    as('director', 'fr');
+    const out = html((await whatif()).body, 'fr');
+    for (const s of ['Fin de référence', 'BL1 · prévision 14 janv. 2027 · marge −27 j', 'Semaine 43', 'Heures sup. A1250 · Steel erection crew 10 → 12 h/j', 'Plan actuel', '−19 jours'])
+      expect(out).toContain(s);
   });
 
   it('PM owns HLT-026: editable; the member is outside: read-only cards without controls', async () => {
@@ -207,13 +233,29 @@ describe('What-if page', () => {
     const out = html(body);
     expect(out).not.toContain('Auto-level for this priority');
     expect(out).not.toContain('Select scenario → create requests');
+    expect(out).not.toContain('Rename scenario');
     expect(out).toContain('role="checkbox" aria-checked="true"');
   });
 
-  it('a project without levelling context shows an empty state', async () => {
+  it('any project with a plan has a what-if (S-7); a project without activities shows an empty state', async () => {
+    const ndc = (await whatif({ project: 'NDC-031' })).body.props.data!;
+    expect([ndc.projectCode, ndc.levers, ndc.scenarios, ndc.current.finish]).toEqual(['NDC-031', [], [], '2027-04-09']);
+    expect(html((await whatif({ project: 'NDC-031' })).body)).toContain('No scenario yet — create one with New scenario.');
     const { header, body } = await whatif({ project: 'EWA-051' });
     expect(header.props.primary).toBeUndefined();
     expect(html(body)).toContain('No levelling scenario for this project');
     expect(html((await whatif({ project: 'nope' })).body)).toContain('No levelling scenario for this project');
+  });
+});
+
+describe('Skills page — "Open requests needing level ≥4" computed (A-12)', () => {
+  it('pending requests naming an expert: RQ-041 (Structural), RQ-042 (Quality), RQ-044 (Procurement); the prototype showed "2 · Structural · Quality"', async () => {
+    const { body } = parts(await SkillsPage({ searchParams: Promise.resolve({}) }));
+    const view = (body.props.children as ReactElement<{ expertRequests?: unknown }>);
+    expect(view.props.expertRequests).toEqual({ count: 3, skills: ['Structural', 'Procurement', 'Quality / QA-QC'] });
+    expect(html(body)).toContain('Structural · Procurement · Quality / QA-QC');
+    as('director', 'fr');
+    const fr = parts(await SkillsPage({ searchParams: Promise.resolve({}) })).body;
+    expect(html(fr, 'fr')).toContain('Structure · Achats · Qualité / QA-QC');
   });
 });

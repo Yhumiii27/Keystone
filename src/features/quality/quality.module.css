@@ -1,0 +1,73 @@
+/* Quality — NCR & deliverables (docs/spec/07 §2.3, template 1883–1971): the prototype's inline values. */
+
+/* ── Register cells ── */
+.idStack { display: flex; flex-direction: column; line-height: 1.3; }
+.ncrCell { max-width: 300px; }
+.dlvCell { max-width: 280px; }
+.id { font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 500; color: var(--color-neutral-300); }
+.idOn { color: var(--color-accent-300); }
+.pretty { text-wrap: pretty; }
+.raised { font-size: 11.5px; color: var(--color-neutral-400); }
+.src { font-size: 12px; color: var(--color-neutral-300); white-space: nowrap; }
+.act { font-size: 12px; color: var(--color-neutral-400); max-width: 200px; }
+.type { font-size: 12px; color: var(--color-neutral-300); max-width: 150px; }
+.clip { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell12 { font-size: 12px; white-space: nowrap; }
+.wbs { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--color-neutral-300); }
+.num { font-variant-numeric: tabular-nums; }
+.money { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.acc { font-size: 12px; color: var(--color-neutral-400); white-space: nowrap; }
+.nowrap { white-space: nowrap; }
+.segments { display: flex; gap: 3px; }
+.segment { width: 14px; height: 5px; border-radius: 2px; background: var(--seg); }
+.statusCol { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+/* Keystone-only line (not in the prototype): progress waiting for Vigie, wrapping inside the Status column. */
+.syncLine { display: inline-flex; align-items: flex-start; gap: 4px; max-width: 180px; font-size: 11px; line-height: 1.3; color: var(--color-neutral-400); text-wrap: pretty; }
+.syncIcon { flex: none; margin-top: 1px; }
+.actions { display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
+.empty { font-size: 12.5px; color: var(--color-neutral-500); padding: 8px 0; }
+.mirror { font-size: 12px; color: var(--color-neutral-400); display: inline-flex; align-items: center; gap: 6px; }
+
+/* ── Drawers ── */
+/* Step indicator (template 1916 / 1959): 10px dots, 22×1 neutral-800 connectors, margin 0 6px. */
+.steps { display: flex; align-items: center; flex-wrap: wrap; font-size: 11.5px; color: var(--color-neutral-400); }
+.step { display: flex; align-items: center; gap: 6px; }
+.stepDot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--color-neutral-700); }
+.stepLabel { color: var(--color-neutral-500); }
+.stepOn .stepDot { background: var(--color-accent); }
+.stepOn .stepLabel { color: var(--color-text); }
+.stepLine { width: 22px; height: 1px; background: var(--color-neutral-800); margin: 0 6px; }
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+.fieldLabel { font-size: 11px; color: var(--color-neutral-400); }
+.fieldRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* Severity as Vigie reports it: the prototype's segmented control, display only (set in Vigie). The prototype's
+   `.seg` (display:flex) stretches across the drawer; it grows to fill the row before "Manage in Vigie". */
+.seg { display: flex; flex: 1 1 auto; overflow: hidden; border: 1px solid var(--color-divider); border-radius: var(--radius-md); }
+.segOpt { white-space: nowrap; font-size: 12px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 6px; color: var(--color-neutral-300); }
+.segOpt + .segOpt { border-left: 1px solid var(--color-divider); }
+.segOn { color: var(--color-accent); box-shadow: inset 0 0 0 1px var(--color-accent); }
+
+.section { display: flex; flex-direction: column; gap: 4px; }
+.section6 { display: flex; flex-direction: column; gap: 6px; }
+.text { font-size: 13px; line-height: 1.5; text-wrap: pretty; }
+.drawerActions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.mirrorNote { font-size: 11.5px; color: var(--color-neutral-400); display: inline-flex; align-items: center; gap: 6px; text-wrap: pretty; }
+.syncTag { text-wrap: pretty; }
+.hint { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+.recordLink { color: inherit; text-decoration: none; }
+.recordLink:hover { color: var(--color-accent-300); }
+.recordLinks { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 6px; }
+
+/* RACI-B rows (template 1960): grid 26px · 1fr · auto, padding 5px 0, 12.5px. */
+.raciRow { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--color-neutral-900); font-size: 12.5px; }
+.raciKey { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-size: 11px; font-weight: 500; background: var(--color-accent-900); color: var(--color-accent-200); }
+.raciLabel { color: var(--color-neutral-400); }
+
+/* Issued document: the Codex record under the preview. */
+.docRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; }
+.docLink { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text); text-decoration: none; margin-right: auto; min-width: 0; }
+.docLink:hover { color: var(--color-accent-300); }
+.docNumber { font-variant-numeric: tabular-nums; }
+.docMeta { font-size: 11.5px; color: var(--color-neutral-400); }
+.docIcon { color: var(--color-accent); flex: none; }

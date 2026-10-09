@@ -23,8 +23,8 @@ export interface ApprovalProvider {
   kind: ApprovalKind;
   /** `project` = depends on the current project (the sidebar badge is computed per project). */
   scope: 'global' | 'project';
-  /** `prototype` = read from the prototype data set until the module is modelled (TODO(db)). */
-  source: 'db' | 'prototype';
+  /** Where the items come from: the database (connector mirrors included) — every kind since Delivery 5. */
+  source: 'db';
   /** Items waiting for the viewer, in the module's list order. */
   items(ctx: ApprovalContext): Promise<ApprovalItem[]>;
   /** The viewer's decisions on this kind ("Decided this week"); 0 when the kind keeps no trace of them. */

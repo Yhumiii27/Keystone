@@ -7,10 +7,10 @@
 //    (titles, days, status and "date · decider" meta differ) so the Budget screen renders the prototype exactly.
 //    Each line points to the register entry with the same number.
 import { date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
-import type { BaselineState, BudgetChangeStatus, ChangeStatus, ChangeStep, ChangeType, StepDecision } from '../codes';
+import type { BaselineSource, BaselineState, BudgetChangeStatus, ChangeStatus, ChangeStep, ChangeType, StepDecision } from '../codes';
 import { id, keur, timestamps } from './_common';
 import { persons } from './organisation';
-import { wbsNodes } from './planning';
+import { activities, wbsNodes } from './planning';
 import { projects } from './portfolio';
 
 /** Change requests (HLT_CRS_X 3498 + CR-005 from HCRS). */
@@ -100,7 +100,47 @@ export const baselines = pgTable(
     changeRequestId: uuid('change_request_id').references(() => changeRequests.id),
     reason: text('reason'),
     position: integer('position').notNull(),
+    // ── Chapter 4 (S-3): "Set baseline" snapshots and the change-request re-baseline write rows here. ──
+    source: text('source').$type<BaselineSource>().notNull().default('snapshot'),
+    /** "Set baseline" comment. */
+    comment: text('comment'),
+    /** Data date of the snapshot. */
+    dataDate: date('data_date', { mode: 'string' }),
+    createdByPersonId: uuid('created_by_person_id').references(() => persons.id),
+    createdByName: text('created_by_name'),
+    /** Re-baseline form fields (11 §3.3): approver and scope ("Dates & budget" / "Dates only" / "Budget only"). */
+    approverPersonId: uuid('approver_person_id').references(() => persons.id),
+    scope: text('scope'),
     ...timestamps,
   },
   (t) => [unique().on(t.projectId, t.code)],
+);
+
+/**
+ * Activity snapshot of a baseline (11 §3.3 BaselineActivity). The seed snapshots BL1 of every project with planning data
+ * from the activities' BL1 finish (`bl`); BL0 and the proposed BL2 have no activity rows (the prototype keeps none).
+ * `activityId` is cleared if the activity is removed later — the code and name keep the snapshot readable.
+ */
+export const baselineActivities = pgTable(
+  'baseline_activities',
+  {
+    id: id(),
+    baselineId: uuid('baseline_id').notNull().references(() => baselines.id, { onDelete: 'cascade' }),
+    activityId: uuid('activity_id').references(() => activities.id, { onDelete: 'set null' }),
+    activityCode: text('activity_code').notNull(),
+    name: text('name').notNull(),
+    wbsCode: text('wbs_code'),
+    /** ISO dates; the start of seeded BL1 rows is derived (finish − duration on the project calendar). */
+    startDate: date('start_date', { mode: 'string' }),
+    finishDate: date('finish_date', { mode: 'string' }),
+    /** Display texts as the Plan shows them ("31 Aug", "14 Jan ’27"). */
+    startText: text('start_text'),
+    finishText: text('finish_text'),
+    durationDays: integer('duration_days'),
+    budgetKeur: keur('budget_keur'),
+    percentComplete: integer('percent_complete'),
+    totalFloatDays: integer('total_float_days'),
+    position: integer('position').notNull(),
+  },
+  (t) => [unique().on(t.baselineId, t.activityCode)],
 );

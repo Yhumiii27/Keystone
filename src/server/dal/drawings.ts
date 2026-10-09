@@ -8,6 +8,7 @@ import { drawingState, parisParts, partStatus, vaultSyncScope, vaultSyncSource, 
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
 import { drawingRevisions, drawings, parts, pdmVaultSyncs } from '@/server/db/schema';
 import type { DB } from '@/server/db/types';
+import { latestVaultRun } from './kpis';
 
 export interface DrawingRow {
   number: string;
@@ -78,13 +79,18 @@ export interface VaultSyncState {
   drawingsUpdated: number;
 }
 
+/**
+ * Vault state of the KPI tiles. A-12 (chapter 4): the latest of the PDM connector row's last run (Activity &
+ * integrations, its volume gives the vault count) and Keystone's last "Sync vault" (`latestVaultRun`) — the prototype
+ * printed "1 248" and "07:40".
+ */
 export async function getVaultSyncState(): Promise<VaultSyncState | null> {
   const db = await getDb();
-  const [s] = await db.select().from(pdmVaultSyncs).orderBy(desc(pdmVaultSyncs.syncedAt)).limit(1);
-  if (!s) return null;
+  const [[s], run] = await Promise.all([db.select().from(pdmVaultSyncs).orderBy(desc(pdmVaultSyncs.syncedAt)).limit(1), latestVaultRun()]);
+  if (!run) return null;
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(drawings);
-  const p = parisParts(s.syncedAt);
-  return { time: `${p.hh}:${p.mm}`, syncedAt: s.syncedAt.toISOString(), drawingsInVault: s.drawingsInVault, linkedDrawings: n, drawingsUpdated: s.drawingsUpdated };
+  const p = parisParts(new Date(run.at));
+  return { time: `${p.hh}:${p.mm}`, syncedAt: run.at, drawingsInVault: run.drawingsInVault ?? s?.drawingsInVault ?? 0, linkedDrawings: n, drawingsUpdated: s?.drawingsUpdated ?? 0 };
 }
 
 export interface VaultSyncInput {

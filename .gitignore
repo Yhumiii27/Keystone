@@ -22,7 +22,6 @@
 
 # misc
 .DS_Store
-*.pem
 
 # debug
 npm-debug.log*
@@ -30,8 +29,34 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# secrets: env files, keys, certificates, credentials, passwords
 .env*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*.jks
+*.keystore
+*.gpg
+*.asc
+id_rsa*
+id_ed25519*
+*.ppk
+.npmrc
+.netrc
+credentials*
+*credentials*.json
+secrets*
+*.secret
+*.secrets
+passwords*
+*.password
+.htpasswd
+service-account*.json
 
 # vercel
 .vercel
@@ -49,3 +74,11 @@ next-env.d.ts
 # Mac app build output (npm run app)
 /desktop/dist
 /.next-ci/
+/dist/
+
+# extracted copy of the design archive (same content as design/)
+/Keystone PM project management mockup/
+
+# local test servers / temp data
+/tmp/
+*.log

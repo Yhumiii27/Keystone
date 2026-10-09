@@ -10,6 +10,6 @@ import { canCreateProject } from './permissions';
 export async function NewProjectButton() {
   const viewer = await getViewer();
   if (!canCreateProject(viewer.role)) return null;
-  const setup = await getNewProjectSetup();
+  const setup = await getNewProjectSetup({ name: viewer.name, role: viewer.role });
   return <NewProjectLauncher setup={setup} />;
 }

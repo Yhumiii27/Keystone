@@ -8,7 +8,9 @@ import { useState, useTransition } from 'react';
 import { FormDialog } from '@/components/app/FormDialog';
 import { Button } from '@/components/ds/Button';
 import { useToast } from '@/components/ds/Toast';
+import { downloadExport } from '@/features/exports/download';
 import { useI18n } from '@/i18n/client';
+import { exportHref } from '@/lib/export-href';
 import { createChangeRequestAction, decideChangeStepAction, generateStatusReportAction, submitChangeRequestAction, type ChangeActionResult } from './actions';
 import { STATUS_REPORT_FORM, newChangeRequestForm } from './forms';
 
@@ -58,7 +60,19 @@ export function StatusReportButton({ code, context }: { code: string; context: s
       <Button variant="primary" icon={Plus} onClick={() => setOpen(true)}>
         {t('Generate status report')}
       </Button>
-      <FormDialog {...STATUS_REPORT_FORM} translate open={open} onClose={() => setOpen(false)} context={context} onSubmit={(values) => generateStatusReportAction(code, values)} />
+      <FormDialog
+        {...STATUS_REPORT_FORM}
+        translate
+        open={open}
+        onClose={() => setOpen(false)}
+        context={context}
+        onSubmit={async (values) => {
+          // Records the report, then downloads its PDF (chapter 4 exports: the Trends status report, `?report=latest`).
+          const r = await generateStatusReportAction(code, values);
+          if (!r.error) await downloadExport(exportHref('trends', { format: 'pdf', code, variant: 'status', params: { report: 'latest' } }), t('Export failed'));
+          return r;
+        }}
+      />
     </>
   );
 }

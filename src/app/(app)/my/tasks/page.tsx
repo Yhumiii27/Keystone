@@ -16,6 +16,7 @@ import { myWorkHref, personProjects, taskHref, workItemData } from '@/features/m
 import { PersonChip } from '@/features/mywork/person-chip';
 import { canEditTask, canPickPerson } from '@/features/mywork/permissions';
 import s from '@/features/mywork/mywork.module.css';
+import { loadNextWeeks, loggedThisWeek } from '@/server/dal/kpis';
 import { getMyWorkPerson, listMyWorkPeople } from '@/server/dal/mywork-data';
 import { listTasks } from '@/server/dal/tasks';
 import { getScreenAccess } from '@/server/project-context';
@@ -41,7 +42,8 @@ export default async function MyWorkPage({ searchParams }: { searchParams: Promi
   const weekRaw = parseInt(first(sp.week) ?? '0', 10);
   const week = Number.isFinite(weekRaw) ? Math.max(-52, Math.min(52, weekRaw)) : 0;
 
-  const rows = await listTasks({ person: person.name });
+  // A-12 (10 OQ18): this week's time entries and the pool loads of the two weeks after the data date.
+  const [rows, loggedWeekH, loadNext] = await Promise.all([listTasks({ person: person.name }), loggedThisWeek(person.name), loadNextWeeks(person.name)]);
   const items = rows.map((r) => workItemData(r, t, lang));
   const canEdit = canEditTask(viewer, person.name, outside);
 
@@ -86,6 +88,7 @@ export default async function MyWorkPage({ searchParams }: { searchParams: Promi
         <MyWorkBody
           items={items}
           loads={person.loads}
+          measured={{ loggedH: loggedWeekH, load: loadNext }}
           view={view}
           week={week}
           calendarHrefs={{

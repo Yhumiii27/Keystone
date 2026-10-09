@@ -3,10 +3,12 @@
 // Server Components and their client islands. Pure (no server-only import at runtime).
 import { LO, OK, shade } from '@/components/app/tones';
 import {
-  AVG_RESPONSE_DEPARTMENT, AVG_RESPONSE_PM, REQUEST_FILTERS, RESCHEDULE_SHIFTS, approvalKpis, approveTarget, datesText, firstName,
+  REQUEST_FILTERS, RESCHEDULE_SHIFTS, approvalKpis, approveTarget, datesText, firstName,
   matchesFilter, pendingHoursByPerson, projectsText, requestChipCounts, requestImpact, requestKpis, requestSteps, shiftedDates, teamLoad,
   weekLabel, type PoolFacts, type RequestFilter,
 } from '@/domain/requests';
+import { averageResponseDays } from '@/domain/kpis';
+import { responseDaysText } from '@/features/kpis/i18n';
 import { initials } from '@/lib/format';
 import { REQUEST_STATUS_TAG, shortDateOfIso } from '@/server/db/codes';
 import type { Lang, T } from '@/i18n/translate';
@@ -113,7 +115,8 @@ export function requestsScreenModel(
       { label: tt('Awaiting review'), value: String(k.pending), sub: hoursRequestedText(k.pendingHours, lang), color: k.pending ? LO : OK },
       { label: tt('Needs your answer'), value: String(k.reschedule), sub: tt('Reschedule proposals'), color: k.reschedule ? LO : OK },
       { label: tt('Approved'), value: String(k.approved), sub: tt('Now in team members’ lists'), color: OK },
-      { label: tt('Avg response'), value: tt(AVG_RESPONSE_PM), sub: tt('Department heads'), color: OK },
+      // A-12: mean working days from sending to the department's decision over the requests shown.
+      { label: tt('Avg response'), value: responseDaysText(averageResponseDays(rows), lang), sub: tt('Department heads'), color: OK },
     ],
     chips: REQUEST_FILTERS.map((f, i) => ({ value: f.value, label: tt(f.label), count: counts[i] })),
     rows: rows.filter((r) => matchesFilter(r.status, filter)).map((r) => requestRowView(r, t, lang, viewer)),
@@ -184,7 +187,8 @@ export function approvalsModel(
       { label: teamLoadLabel(w0, tt, lang), value: `${k.teamLoad}%`, sub: tt(k.teamSize === 1 ? '1 person' : `${k.teamSize} people`), color: k.teamLoad > 100 ? LO : OK },
       { label: tt('Capacity · 8 wks'), value: `${k.capacityH} h`, sub: committedText(k.committedH, lang), color: k.committedH > k.capacityH ? LO : OK },
       { label: tt('Decided'), value: String(k.decided), sub: decidedSubText(k.approved, k.rejected, lang), color: OK },
-      { label: tt('Avg response'), value: tt(AVG_RESPONSE_DEPARTMENT), sub: tt('Target ≤ 1 day'), color: OK },
+      // A-12: mean working days from sending to this department's decision over its decided requests.
+      { label: tt('Avg response'), value: responseDaysText(averageResponseDays(data.decided), lang), sub: tt('Target ≤ 1 day'), color: OK },
     ],
     queue: data.pending.map((r) => {
       const base = requestRowView(r, t, lang, viewer);

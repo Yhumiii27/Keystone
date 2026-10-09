@@ -29,6 +29,23 @@ import eco from './eco.json';
 import procurement from './procurement.json';
 import deliveries from './deliveries.json';
 import bom from './bom.json';
+import admin from './admin.json';
+import rexclient from './rexclient.json';
+import aftersales from './aftersales.json';
+import itpcom from './itpcom.json';
+import site from './site.json';
+import quality from './quality.json';
+import eng from './eng.json';
+import pid from './pid.json';
+import ch4Foundation from './ch4-foundation.json';
+import ch4Settings from './ch4-settings.json';
+import ch4Planning from './ch4-planning.json';
+import ch4Misc from './ch4-misc.json';
+import ch4Kpis from './ch4-kpis.json';
+import ch4Interchange from './ch4-interchange.json';
+import ch4Meetings from './ch4-meetings.json';
+import ch4Whatif from './ch4-whatif.json';
+import ch4Exports from './ch4-exports.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -60,4 +77,21 @@ export const EXTRA_FR: Record<string, string> = {
   ...procurement,
   ...deliveries,
   ...bom,
+  ...admin,
+  ...rexclient,
+  ...aftersales,
+  ...itpcom,
+  ...site,
+  ...quality,
+  ...eng,
+  ...pid,
+  ...ch4Foundation,
+  ...ch4Settings,
+  ...ch4Planning,
+  ...ch4Misc,
+  ...ch4Kpis,
+  ...ch4Interchange,
+  ...ch4Meetings,
+  ...ch4Whatif,
+  ...ch4Exports,
 };

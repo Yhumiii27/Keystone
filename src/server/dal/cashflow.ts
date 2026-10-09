@@ -2,14 +2,18 @@ import 'server-only';
 // Cash flow & billing DAL (docs/spec/03 §7 Cash flow, §6 margins, §8.5 client invoices; 11 §7 #3). One billing plan
 // per project: derived from the contract when one exists (`billingOf`, logic 4515: value = base + signed
 // amendments, milestones "{M} {label before ' ('}" priced round(value × share / 100), live status), else the legacy
-// plan migrated from BILLING (fixed amounts). The 6-month cash forecast is the stored portfolio plan (C-10).
+// plan migrated from BILLING (fixed amounts). The 6-month cash forecast is computed from the billing plans and cost
+// forecasts (A-12, chapter 4; the stored portfolio plan of the prototype is kept but no longer read).
 import { asc, eq, isNull } from 'drizzle-orm';
 import { cache } from 'react';
+import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
+import { cashForecast, lowestCumulativePoint } from '@/domain/kpis';
 import { getDb } from '@/server/db/client';
 import { billingModel, paymentMilestoneStatus, type BillingModel, type PaymentMilestoneStatus } from '@/server/db/codes';
 import { billingPlans, paymentMilestones, portfolioCashForecasts, projects } from '@/server/db/schema';
 import type { ZoneKey } from '@/server/session';
 import { getContract } from './contract';
+import { cashProjectInputs } from './kpis';
 import { listProjects, type ProjectRow } from './projects';
 
 export interface BillingPlanMilestone {
@@ -107,7 +111,7 @@ const monthLabel = (iso: string) => {
   return MON[m - 1] + (y > 2026 && m === 1 ? ' ’' + String(y).slice(2) : '');
 };
 
-/** Portfolio cash forecast, next 6 months (whole portfolio, k€). */
+/** The prototype's stored portfolio cash plan (next 6 months, k€) — no longer read by the screens since A-12 (chapter 4). */
 export async function getPortfolioCashForecast(): Promise<CashForecastMonth[]> {
   const db = await getDb();
   const rows = await db.select().from(portfolioCashForecasts).orderBy(asc(portfolioCashForecasts.position));
@@ -126,22 +130,32 @@ export interface CashFlowData {
   rows: CashFlowRow[];
   /** Contract value of the zone ÷ contract value of every cash project (1 without a zone, 0 when nothing to share). */
   zoneShare: number;
-  /** Forecast scaled by the zone share and rounded (`cashIn`/`cashOut`, logic 4518). */
+  /**
+   * A-12 (chapter 4): the 6 months after the portfolio data date, computed from the rows' billing plans (cash in) and
+   * cost forecasts (cash out) — `cashForecast`, src/domain/kpis.ts. The prototype scaled a stored plan by the zone share.
+   */
   forecast: CashForecastMonth[];
+  /** "Lowest cumulative point": month (ISO first day), cumulative net and the payment it waits for; null when no month. */
+  lowPoint: { month: string; cumKeur: number; next: { project: string; label: string; progressMonth?: string } | null } | null;
 }
 
 const EXECUTION = new Set(['etudes', 'approvisionnements', 'fabrication_assemblage', 'fat', 'expedition', 'chantier', 'mise_en_service_sat']);
 
 /** Everything the Cash flow screen reads (03 §7). */
 export async function getCashFlow(zone: ZoneKey | null): Promise<CashFlowData> {
-  const [projects_, plans, forecast] = await Promise.all([listProjects(), listBillingPlans(), getPortfolioCashForecast()]);
+  const [projects_, plans] = await Promise.all([listProjects(), listBillingPlans()]);
   const all = projects_.filter((p) => plans[p.code] && EXECUTION.has(p.stage));
   const inZone = all.filter((p) => !zone || p.zone === zone);
   const cv = (rows: ProjectRow[]) => rows.reduce((s, p) => s + plans[p.code].contractValueKeur, 0);
   const zoneShare = zone ? (cv(all) ? cv(inZone) / cv(all) : 0) : 1;
+  const rows = inZone.map((p) => ({ project: p, plan: plans[p.code], marginPct: marginPct(plans[p.code], p.budget) }));
+  // A-12: billing plan in, cost forecast out, at the portfolio data date (was the stored plan × zone share).
+  const months = cashForecast(await cashProjectInputs(rows), DEFAULT_DATA_DATE);
+  const low = lowestCumulativePoint(months);
   return {
-    rows: inZone.map((p) => ({ project: p, plan: plans[p.code], marginPct: marginPct(plans[p.code], p.budget) })),
+    rows,
     zoneShare,
-    forecast: forecast.map((m) => ({ ...m, cashInKeur: Math.round(m.cashInKeur * zoneShare), cashOutKeur: Math.round(m.cashOutKeur * zoneShare) })),
+    forecast: months.map((m) => ({ month: m.month, label: monthLabel(m.month), cashInKeur: m.cashInKeur, cashOutKeur: m.cashOutKeur })),
+    lowPoint: low ? { month: months[low.index].month, cumKeur: low.cumKeur, next: low.next && { project: low.next.project, label: low.next.label, progressMonth: low.next.progressMonth } } : null,
   };
 }

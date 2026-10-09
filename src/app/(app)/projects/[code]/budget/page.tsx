@@ -14,6 +14,8 @@ import { BudgetViewBar, budgetTabHref, parseBudgetTab } from '@/features/budget/
 import s from '@/features/budget/budget.module.css';
 import { money } from '@/lib/format';
 import { getBudgetData } from '@/server/dal/budget';
+import { projectLabel } from '@/server/dal/projects';
+import { costCategoryOptions } from '@/server/dal/settings-lists';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 
@@ -62,6 +64,9 @@ export default async function BudgetPage({
         profileText={profileText}
         planHref={screenHref('plan', { code: projectCode })}
         canEdit={ctx.canEdit('budget')}
+        code={projectCode}
+        context={t(projectLabel(ctx.project))}
+        categoryOptions={ctx.canEdit('budget') ? await costCategoryOptions() : []}
         lang={lang}
         t={t}
       />

@@ -1,0 +1,4734 @@
+{
+ "itp": {
+  "en": {
+   "HLT-026": {
+    "plan": {
+     "crumb": "Project · Control",
+     "title": "Inspection & test plan · punch list",
+     "primary": "Add inspection",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Inspection & test plan",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-accent)"
+      },
+      {
+       "label": "Punch list",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-neutral-300)"
+      }
+     ],
+     "isPlan": true,
+     "isPunch": false,
+     "kpis": [
+      {
+       "label": "Inspections passed",
+       "value": "3 / 13",
+       "sub": "1 failed · NCR raised",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "label": "Hold points ahead",
+       "value": 5,
+       "sub": "client presence required",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Open punch items",
+       "value": 4,
+       "sub": "A 0 · B 2 · C 2",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Template",
+       "value": "EMP",
+       "sub": "6 systems · 2 custom lines",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [
+      {
+       "sys": "Structure",
+       "passed": 2,
+       "count": 4,
+       "rows": [
+        {
+         "id": "I-01",
+         "sys": "Structure",
+         "name": "Weld inspection — main girders G1–G4",
+         "type": "Hold",
+         "typeClass": "tag tag-accent",
+         "stage": "Workshop",
+         "ref": "ISO 5817 · level B",
+         "date": "9 Sep",
+         "status": "Passed",
+         "stClass": "tag tag-neutral",
+         "stColor": "var(--color-accent-300)",
+         "doc": "REC-HLT-007",
+         "hasDoc": true
+        },
+        {
+         "id": "I-02",
+         "sys": "Structure",
+         "name": "Dimensional check — girders",
+         "type": "Review",
+         "typeClass": "tag tag-neutral",
+         "stage": "Workshop",
+         "ref": "Drawing GA-HLT-026 rev C",
+         "date": "12 Sep",
+         "status": "Passed",
+         "stClass": "tag tag-neutral",
+         "stColor": "var(--color-accent-300)",
+         "doc": "",
+         "hasDoc": false
+        },
+        {
+         "id": "I-03",
+         "sys": "Structure",
+         "name": "Paint thickness (DFT)",
+         "type": "Surveillance",
+         "typeClass": "tag tag-neutral",
+         "stage": "Workshop",
+         "ref": "ISO 12944 · C5",
+         "date": "24 Sep",
+         "status": "Failed",
+         "stClass": "tag tag-accent",
+         "stColor": "var(--color-accent-300)",
+         "doc": "NCR-HLT-031",
+         "hasDoc": true
+        },
+        {
+         "id": "I-04",
+         "sys": "Structure",
+         "name": "Crane rail alignment",
+         "type": "Hold",
+         "typeClass": "tag tag-accent",
+         "stage": "Site",
+         "ref": "Tolerance 3 mm / 10 m",
+         "date": "8 Oct",
+         "status": "Scheduled",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Hoist mechanisms",
+       "passed": 0,
+       "count": 2,
+       "rows": [
+        {
+         "id": "I-05",
+         "sys": "Hoist mechanisms",
+         "name": "Rope & drum inspection",
+         "type": "Witness",
+         "typeClass": "tag tag-outline",
+         "stage": "Workshop",
+         "ref": "FEM 1.001",
+         "date": "15 Oct",
+         "status": "Planned",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        },
+        {
+         "id": "I-06",
+         "sys": "Hoist mechanisms",
+         "name": "Brake test — 125 % load",
+         "type": "Hold",
+         "typeClass": "tag tag-accent",
+         "stage": "FAT",
+         "ref": "EN 13001",
+         "date": "20 Nov",
+         "status": "Planned",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Travel (gantry)",
+       "passed": 0,
+       "count": 1,
+       "rows": [
+        {
+         "id": "I-07",
+         "sys": "Travel (gantry)",
+         "name": "Wheel load measurement",
+         "type": "Witness",
+         "typeClass": "tag tag-outline",
+         "stage": "Site",
+         "ref": "Spec §7.3",
+         "date": "2 Dec",
+         "status": "Planned",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Electrical HV/LV",
+       "passed": 1,
+       "count": 2,
+       "rows": [
+        {
+         "id": "I-08",
+         "sys": "Electrical HV/LV",
+         "name": "11 kV switchgear — factory tests",
+         "type": "Witness",
+         "typeClass": "tag tag-outline",
+         "stage": "FAT",
+         "ref": "IEC 62271 · COC-HLT-012",
+         "date": "19 Sep",
+         "status": "Passed",
+         "stClass": "tag tag-neutral",
+         "stColor": "var(--color-accent-300)",
+         "doc": "COC-HLT-012",
+         "hasDoc": true
+        },
+        {
+         "id": "I-09",
+         "sys": "Electrical HV/LV",
+         "name": "Insulation & earthing tests",
+         "type": "Hold",
+         "typeClass": "tag tag-accent",
+         "stage": "Site",
+         "ref": "IEC 60364",
+         "date": "28 Nov",
+         "status": "Planned",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Automation & safety",
+       "passed": 0,
+       "count": 2,
+       "rows": [
+        {
+         "id": "I-10",
+         "sys": "Automation & safety",
+         "name": "FAT — hoist drive & PLC",
+         "type": "Witness",
+         "typeClass": "tag tag-outline",
+         "stage": "FAT",
+         "ref": "FDS-HLT-026 rev A",
+         "date": "24 Oct",
+         "status": "Scheduled",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "RPT-HLT-016",
+         "hasDoc": true
+        },
+        {
+         "id": "I-11",
+         "sys": "Automation & safety",
+         "name": "E-stop loop & SIL validation",
+         "type": "Hold",
+         "typeClass": "tag tag-accent",
+         "stage": "SAT",
+         "ref": "IEC 62061",
+         "date": "10 Dec",
+         "status": "Planned",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Anti-collision",
+       "passed": 0,
+       "count": 2,
+       "rows": [
+        {
+         "id": "I-12",
+         "sys": "Anti-collision",
+         "name": "Lidar detection test — 4 zones",
+         "type": "Hold",
+         "typeClass": "tag tag-accent",
+         "stage": "SAT",
+         "ref": "Spec §9 · custom",
+         "date": "12 Dec",
+         "status": "Planned",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        },
+        {
+         "id": "I-13",
+         "sys": "Anti-collision",
+         "name": "Wind alarm test",
+         "type": "Witness",
+         "typeClass": "tag tag-outline",
+         "stage": "SAT",
+         "ref": "Custom",
+         "date": "12 Dec",
+         "status": "Planned",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      }
+     ],
+     "noItp": false,
+     "punch": [
+      {
+       "id": "P-01",
+       "item": "Anchor bolt layout — post 7 (NCR-029)",
+       "loc": "Structure · Bay 4",
+       "cat": "A",
+       "catClass": "tag tag-accent",
+       "src": "Client inspection",
+       "owner": "J. Wagner",
+       "due": "26 Sep",
+       "status": "Closed",
+       "stClass": "tag tag-neutral",
+       "canAdvance": false,
+       "next": "Close",
+       "color": "var(--color-neutral-500)"
+      },
+      {
+       "id": "P-02",
+       "item": "Paint touch-up — girder G3 after DFT",
+       "loc": "Structure · Bay 3",
+       "cat": "B",
+       "catClass": "tag tag-outline",
+       "src": "ITP I-03",
+       "owner": "J. Wagner",
+       "due": "15 Oct",
+       "status": "Open",
+       "stClass": "tag tag-accent",
+       "canAdvance": true,
+       "next": "Start",
+       "color": "var(--color-text)"
+      },
+      {
+       "id": "P-03",
+       "item": "Missing cable tray cover — E-house",
+       "loc": "Electrical",
+       "cat": "C",
+       "catClass": "tag tag-neutral",
+       "src": "Site walk",
+       "owner": "S. Haddad",
+       "due": "30 Oct",
+       "status": "Open",
+       "stClass": "tag tag-accent",
+       "canAdvance": true,
+       "next": "Start",
+       "color": "var(--color-text)"
+      },
+      {
+       "id": "P-04",
+       "item": "Handrail height 1.05 m instead of 1.10 m — walkway",
+       "loc": "Structure · access",
+       "cat": "B",
+       "catClass": "tag tag-outline",
+       "src": "Client inspection",
+       "owner": "L. Fabre",
+       "due": "20 Oct",
+       "status": "In progress",
+       "stClass": "tag tag-outline",
+       "canAdvance": true,
+       "next": "Close",
+       "color": "var(--color-text)"
+      },
+      {
+       "id": "P-05",
+       "item": "Label plates missing on 4 junction boxes",
+       "loc": "Electrical",
+       "cat": "C",
+       "catClass": "tag tag-neutral",
+       "src": "Site walk",
+       "owner": "S. Haddad",
+       "due": "30 Oct",
+       "status": "Open",
+       "stClass": "tag tag-accent",
+       "canAdvance": true,
+       "next": "Start",
+       "color": "var(--color-text)"
+      }
+     ]
+    },
+    "punch": {
+     "crumb": "Project · Control",
+     "title": "Inspection & test plan · punch list",
+     "primary": "Add punch item",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Inspection & test plan",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-neutral-300)"
+      },
+      {
+       "label": "Punch list",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-accent)"
+      }
+     ],
+     "isPlan": false,
+     "isPunch": true,
+     "kpis": [
+      {
+       "label": "Inspections passed",
+       "value": "3 / 13",
+       "sub": "1 failed · NCR raised",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "label": "Hold points ahead",
+       "value": 5,
+       "sub": "client presence required",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Open punch items",
+       "value": 4,
+       "sub": "A 0 · B 2 · C 2",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Template",
+       "value": "EMP",
+       "sub": "6 systems · 2 custom lines",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [
+      {
+       "sys": "Structure",
+       "passed": 2,
+       "count": 4,
+       "rows": [
+        {
+         "id": "I-01",
+         "sys": "Structure",
+         "name": "Weld inspection — main girders G1–G4",
+         "type": "Hold",
+         "typeClass": "tag tag-accent",
+         "stage": "Workshop",
+         "ref": "ISO 5817 · level B",
+         "date": "9 Sep",
+         "status": "Passed",
+         "stClass": "tag tag-neutral",
+         "stColor": "var(--color-accent-300)",
+         "doc": "REC-HLT-007",
+         "hasDoc": true
+        },
+        {
+         "id": "I-02",
+         "sys": "Structure",
+         "name": "Dimensional check — girders",
+         "type": "Review",
+         "typeClass": "tag tag-neutral",
+         "stage": "Workshop",
+         "ref": "Drawing GA-HLT-026 rev C",
+         "date": "12 Sep",
+         "status": "Passed",
+         "stClass": "tag tag-neutral",
+         "stColor": "var(--color-accent-300)",
+         "doc": "",
+         "hasDoc": false
+        },
+        {
+         "id": "I-03",
+         "sys": "Structure",
+         "name": "Paint thickness (DFT)",
+         "type": "Surveillance",
+         "typeClass": "tag tag-neutral",
+         "stage": "Workshop",
+         "ref": "ISO 12944 · C5",
+         "date": "24 Sep",
+         "status": "Failed",
+         "stClass": "tag tag-accent",
+         "stColor": "var(--color-accent-300)",
+         "doc": "NCR-HLT-031",
+         "hasDoc": true
+        },
+        {
+         "id": "I-04",
+         "sys": "Structure",
+         "name": "Crane rail alignment",
+         "type": "Hold",
+         "typeClass": "tag tag-accent",
+         "stage": "Site",
+         "ref": "Tolerance 3 mm / 10 m",
+         "date": "8 Oct",
+         "status": "Scheduled",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Hoist mechanisms",
+       "passed": 0,
+       "count": 2,
+       "rows": [
+        {
+         "id": "I-05",
+         "sys": "Hoist mechanisms",
+         "name": "Rope & drum inspection",
+         "type": "Witness",
+         "typeClass": "tag tag-outline",
+         "stage": "Workshop",
+         "ref": "FEM 1.001",
+         "date": "15 Oct",
+         "status": "Planned",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        },
+        {
+         "id": "I-06",
+         "sys": "Hoist mechanisms",
+         "name": "Brake test — 125 % load",
+         "type": "Hold",
+         "typeClass": "tag tag-accent",
+         "stage": "FAT",
+         "ref": "EN 13001",
+         "date": "20 Nov",
+         "status": "Planned",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Travel (gantry)",
+       "passed": 0,
+       "count": 1,
+       "rows": [
+        {
+         "id": "I-07",
+         "sys": "Travel (gantry)",
+         "name": "Wheel load measurement",
+         "type": "Witness",
+         "typeClass": "tag tag-outline",
+         "stage": "Site",
+         "ref": "Spec §7.3",
+         "date": "2 Dec",
+         "status": "Planned",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Electrical HV/LV",
+       "passed": 1,
+       "count": 2,
+       "rows": [
+        {
+         "id": "I-08",
+         "sys": "Electrical HV/LV",
+         "name": "11 kV switchgear — factory tests",
+         "type": "Witness",
+         "typeClass": "tag tag-outline",
+         "stage": "FAT",
+         "ref": "IEC 62271 · COC-HLT-012",
+         "date": "19 Sep",
+         "status": "Passed",
+         "stClass": "tag tag-neutral",
+         "stColor": "var(--color-accent-300)",
+         "doc": "COC-HLT-012",
+         "hasDoc": true
+        },
+        {
+         "id": "I-09",
+         "sys": "Electrical HV/LV",
+         "name": "Insulation & earthing tests",
+         "type": "Hold",
+         "typeClass": "tag tag-accent",
+         "stage": "Site",
+         "ref": "IEC 60364",
+         "date": "28 Nov",
+         "status": "Planned",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Automation & safety",
+       "passed": 0,
+       "count": 2,
+       "rows": [
+        {
+         "id": "I-10",
+         "sys": "Automation & safety",
+         "name": "FAT — hoist drive & PLC",
+         "type": "Witness",
+         "typeClass": "tag tag-outline",
+         "stage": "FAT",
+         "ref": "FDS-HLT-026 rev A",
+         "date": "24 Oct",
+         "status": "Scheduled",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "RPT-HLT-016",
+         "hasDoc": true
+        },
+        {
+         "id": "I-11",
+         "sys": "Automation & safety",
+         "name": "E-stop loop & SIL validation",
+         "type": "Hold",
+         "typeClass": "tag tag-accent",
+         "stage": "SAT",
+         "ref": "IEC 62061",
+         "date": "10 Dec",
+         "status": "Planned",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Anti-collision",
+       "passed": 0,
+       "count": 2,
+       "rows": [
+        {
+         "id": "I-12",
+         "sys": "Anti-collision",
+         "name": "Lidar detection test — 4 zones",
+         "type": "Hold",
+         "typeClass": "tag tag-accent",
+         "stage": "SAT",
+         "ref": "Spec §9 · custom",
+         "date": "12 Dec",
+         "status": "Planned",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        },
+        {
+         "id": "I-13",
+         "sys": "Anti-collision",
+         "name": "Wind alarm test",
+         "type": "Witness",
+         "typeClass": "tag tag-outline",
+         "stage": "SAT",
+         "ref": "Custom",
+         "date": "12 Dec",
+         "status": "Planned",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      }
+     ],
+     "noItp": false,
+     "punch": [
+      {
+       "id": "P-01",
+       "item": "Anchor bolt layout — post 7 (NCR-029)",
+       "loc": "Structure · Bay 4",
+       "cat": "A",
+       "catClass": "tag tag-accent",
+       "src": "Client inspection",
+       "owner": "J. Wagner",
+       "due": "26 Sep",
+       "status": "Closed",
+       "stClass": "tag tag-neutral",
+       "canAdvance": false,
+       "next": "Close",
+       "color": "var(--color-neutral-500)"
+      },
+      {
+       "id": "P-02",
+       "item": "Paint touch-up — girder G3 after DFT",
+       "loc": "Structure · Bay 3",
+       "cat": "B",
+       "catClass": "tag tag-outline",
+       "src": "ITP I-03",
+       "owner": "J. Wagner",
+       "due": "15 Oct",
+       "status": "Open",
+       "stClass": "tag tag-accent",
+       "canAdvance": true,
+       "next": "Start",
+       "color": "var(--color-text)"
+      },
+      {
+       "id": "P-03",
+       "item": "Missing cable tray cover — E-house",
+       "loc": "Electrical",
+       "cat": "C",
+       "catClass": "tag tag-neutral",
+       "src": "Site walk",
+       "owner": "S. Haddad",
+       "due": "30 Oct",
+       "status": "Open",
+       "stClass": "tag tag-accent",
+       "canAdvance": true,
+       "next": "Start",
+       "color": "var(--color-text)"
+      },
+      {
+       "id": "P-04",
+       "item": "Handrail height 1.05 m instead of 1.10 m — walkway",
+       "loc": "Structure · access",
+       "cat": "B",
+       "catClass": "tag tag-outline",
+       "src": "Client inspection",
+       "owner": "L. Fabre",
+       "due": "20 Oct",
+       "status": "In progress",
+       "stClass": "tag tag-outline",
+       "canAdvance": true,
+       "next": "Close",
+       "color": "var(--color-text)"
+      },
+      {
+       "id": "P-05",
+       "item": "Label plates missing on 4 junction boxes",
+       "loc": "Electrical",
+       "cat": "C",
+       "catClass": "tag tag-neutral",
+       "src": "Site walk",
+       "owner": "S. Haddad",
+       "due": "30 Oct",
+       "status": "Open",
+       "stClass": "tag tag-accent",
+       "canAdvance": true,
+       "next": "Start",
+       "color": "var(--color-text)"
+      }
+     ]
+    }
+   },
+   "NDC-031": {
+    "plan": {
+     "crumb": "Project · Control",
+     "title": "Inspection & test plan · punch list",
+     "primary": "Add inspection",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Inspection & test plan",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-accent)"
+      },
+      {
+       "label": "Punch list",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-neutral-300)"
+      }
+     ],
+     "isPlan": true,
+     "isPunch": false,
+     "kpis": [
+      {
+       "label": "Inspections passed",
+       "value": "0 / 0",
+       "sub": "0 failed · NCR raised",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Hold points ahead",
+       "value": 0,
+       "sub": "client presence required",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Open punch items",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Template",
+       "value": "AUTRE",
+       "sub": "standard template for this machine type",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    },
+    "punch": {
+     "crumb": "Project · Control",
+     "title": "Inspection & test plan · punch list",
+     "primary": "Add punch item",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Inspection & test plan",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-neutral-300)"
+      },
+      {
+       "label": "Punch list",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-accent)"
+      }
+     ],
+     "isPlan": false,
+     "isPunch": true,
+     "kpis": [
+      {
+       "label": "Inspections passed",
+       "value": "0 / 0",
+       "sub": "0 failed · NCR raised",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Hold points ahead",
+       "value": 0,
+       "sub": "client presence required",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Open punch items",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Template",
+       "value": "AUTRE",
+       "sub": "standard template for this machine type",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    }
+   },
+   "RCF-019": {
+    "plan": {
+     "crumb": "Project · Control",
+     "title": "Inspection & test plan · punch list",
+     "primary": "Add inspection",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Inspection & test plan",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-accent)"
+      },
+      {
+       "label": "Punch list",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-neutral-300)"
+      }
+     ],
+     "isPlan": true,
+     "isPunch": false,
+     "kpis": [
+      {
+       "label": "Inspections passed",
+       "value": "0 / 0",
+       "sub": "0 failed · NCR raised",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Hold points ahead",
+       "value": 0,
+       "sub": "client presence required",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Open punch items",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Template",
+       "value": "MEMU",
+       "sub": "standard template for this machine type",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    },
+    "punch": {
+     "crumb": "Project · Control",
+     "title": "Inspection & test plan · punch list",
+     "primary": "Add punch item",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Inspection & test plan",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-neutral-300)"
+      },
+      {
+       "label": "Punch list",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-accent)"
+      }
+     ],
+     "isPlan": false,
+     "isPunch": true,
+     "kpis": [
+      {
+       "label": "Inspections passed",
+       "value": "0 / 0",
+       "sub": "0 failed · NCR raised",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Hold points ahead",
+       "value": 0,
+       "sub": "client presence required",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Open punch items",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Template",
+       "value": "MEMU",
+       "sub": "standard template for this machine type",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    }
+   },
+   "ERP-202": {
+    "plan": {
+     "crumb": "Project · Control",
+     "title": "Inspection & test plan · punch list",
+     "primary": "Add inspection",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Inspection & test plan",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-accent)"
+      },
+      {
+       "label": "Punch list",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-neutral-300)"
+      }
+     ],
+     "isPlan": true,
+     "isPunch": false,
+     "kpis": [
+      {
+       "label": "Inspections passed",
+       "value": "0 / 0",
+       "sub": "0 failed · NCR raised",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Hold points ahead",
+       "value": 0,
+       "sub": "client presence required",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Open punch items",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Template",
+       "value": "R&D",
+       "sub": "standard template for this machine type",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    },
+    "punch": {
+     "crumb": "Project · Control",
+     "title": "Inspection & test plan · punch list",
+     "primary": "Add punch item",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Inspection & test plan",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-neutral-300)"
+      },
+      {
+       "label": "Punch list",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-accent)"
+      }
+     ],
+     "isPlan": false,
+     "isPunch": true,
+     "kpis": [
+      {
+       "label": "Inspections passed",
+       "value": "0 / 0",
+       "sub": "0 failed · NCR raised",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Hold points ahead",
+       "value": 0,
+       "sub": "client presence required",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Open punch items",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Template",
+       "value": "R&D",
+       "sub": "standard template for this machine type",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    }
+   },
+   "WSA-044": {
+    "plan": {
+     "crumb": "Project · Control",
+     "title": "Inspection & test plan · punch list",
+     "primary": "Add inspection",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Inspection & test plan",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-accent)"
+      },
+      {
+       "label": "Punch list",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-neutral-300)"
+      }
+     ],
+     "isPlan": true,
+     "isPunch": false,
+     "kpis": [
+      {
+       "label": "Inspections passed",
+       "value": "0 / 0",
+       "sub": "0 failed · NCR raised",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Hold points ahead",
+       "value": 0,
+       "sub": "client presence required",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Open punch items",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Template",
+       "value": "SPUR",
+       "sub": "standard template for this machine type",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    },
+    "punch": {
+     "crumb": "Project · Control",
+     "title": "Inspection & test plan · punch list",
+     "primary": "Add punch item",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Inspection & test plan",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-neutral-300)"
+      },
+      {
+       "label": "Punch list",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-accent)"
+      }
+     ],
+     "isPlan": false,
+     "isPunch": true,
+     "kpis": [
+      {
+       "label": "Inspections passed",
+       "value": "0 / 0",
+       "sub": "0 failed · NCR raised",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Hold points ahead",
+       "value": 0,
+       "sub": "client presence required",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Open punch items",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Template",
+       "value": "SPUR",
+       "sub": "standard template for this machine type",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    }
+   },
+   "MSR-012": {
+    "plan": {
+     "crumb": "Project · Control",
+     "title": "Inspection & test plan · punch list",
+     "primary": "Add inspection",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Inspection & test plan",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-accent)"
+      },
+      {
+       "label": "Punch list",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-neutral-300)"
+      }
+     ],
+     "isPlan": true,
+     "isPunch": false,
+     "kpis": [
+      {
+       "label": "Inspections passed",
+       "value": "0 / 0",
+       "sub": "0 failed · NCR raised",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Hold points ahead",
+       "value": 0,
+       "sub": "client presence required",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Open punch items",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Template",
+       "value": "MEMU",
+       "sub": "standard template for this machine type",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    },
+    "punch": {
+     "crumb": "Project · Control",
+     "title": "Inspection & test plan · punch list",
+     "primary": "Add punch item",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Inspection & test plan",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-neutral-300)"
+      },
+      {
+       "label": "Punch list",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-accent)"
+      }
+     ],
+     "isPlan": false,
+     "isPunch": true,
+     "kpis": [
+      {
+       "label": "Inspections passed",
+       "value": "0 / 0",
+       "sub": "0 failed · NCR raised",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Hold points ahead",
+       "value": 0,
+       "sub": "client presence required",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Open punch items",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Template",
+       "value": "MEMU",
+       "sub": "standard template for this machine type",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    }
+   },
+   "EWA-051": {
+    "plan": {
+     "crumb": "Project · Control",
+     "title": "Inspection & test plan · punch list",
+     "primary": "Add inspection",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Inspection & test plan",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-accent)"
+      },
+      {
+       "label": "Punch list",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-neutral-300)"
+      }
+     ],
+     "isPlan": true,
+     "isPunch": false,
+     "kpis": [
+      {
+       "label": "Inspections passed",
+       "value": "0 / 0",
+       "sub": "0 failed · NCR raised",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Hold points ahead",
+       "value": 0,
+       "sub": "client presence required",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Open punch items",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Template",
+       "value": "—",
+       "sub": "standard template for this machine type",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    },
+    "punch": {
+     "crumb": "Project · Control",
+     "title": "Inspection & test plan · punch list",
+     "primary": "Add punch item",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Inspection & test plan",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-neutral-300)"
+      },
+      {
+       "label": "Punch list",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-accent)"
+      }
+     ],
+     "isPlan": false,
+     "isPunch": true,
+     "kpis": [
+      {
+       "label": "Inspections passed",
+       "value": "0 / 0",
+       "sub": "0 failed · NCR raised",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Hold points ahead",
+       "value": 0,
+       "sub": "client presence required",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Open punch items",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Template",
+       "value": "—",
+       "sub": "standard template for this machine type",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    }
+   }
+  },
+  "fr": {
+   "HLT-026": {
+    "plan": {
+     "crumb": "Projet · Maîtrise",
+     "title": "Plan d’inspection et d’essais · réserves",
+     "primary": "Ajouter une inspection",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Plan d’inspection et d’essais",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-accent)"
+      },
+      {
+       "label": "Liste de réserves",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-neutral-300)"
+      }
+     ],
+     "isPlan": true,
+     "isPunch": false,
+     "kpis": [
+      {
+       "label": "Inspections réussies",
+       "value": "3 / 13",
+       "sub": "1 échouées · NCR émise",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "label": "Points d’arrêt à venir",
+       "value": 5,
+       "sub": "présence client requise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Réserves ouvertes",
+       "value": 4,
+       "sub": "A 0 · B 2 · C 2",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Gabarit",
+       "value": "EMP",
+       "sub": "6 systèmes · 2 lignes personnalisées",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [
+      {
+       "sys": "Structure",
+       "passed": 2,
+       "count": 4,
+       "rows": [
+        {
+         "id": "I-01",
+         "sys": "Structure",
+         "name": "Contrôle soudures — poutres principales G1–G4",
+         "type": "Point d’arrêt",
+         "typeClass": "tag tag-accent",
+         "stage": "Atelier",
+         "ref": "ISO 5817 · level B",
+         "date": "9 sept.",
+         "status": "Conforme",
+         "stClass": "tag tag-neutral",
+         "stColor": "var(--color-accent-300)",
+         "doc": "REC-HLT-007",
+         "hasDoc": true
+        },
+        {
+         "id": "I-02",
+         "sys": "Structure",
+         "name": "Contrôle dimensionnel — poutres",
+         "type": "Revue",
+         "typeClass": "tag tag-neutral",
+         "stage": "Atelier",
+         "ref": "Drawing GA-HLT-026 rev C",
+         "date": "12 sept.",
+         "status": "Conforme",
+         "stClass": "tag tag-neutral",
+         "stColor": "var(--color-accent-300)",
+         "doc": "",
+         "hasDoc": false
+        },
+        {
+         "id": "I-03",
+         "sys": "Structure",
+         "name": "Épaisseur de peinture (DFT)",
+         "type": "Surveillance",
+         "typeClass": "tag tag-neutral",
+         "stage": "Atelier",
+         "ref": "ISO 12944 · C5",
+         "date": "24 sept.",
+         "status": "Non conforme",
+         "stClass": "tag tag-accent",
+         "stColor": "var(--color-accent-300)",
+         "doc": "NCR-HLT-031",
+         "hasDoc": true
+        },
+        {
+         "id": "I-04",
+         "sys": "Structure",
+         "name": "Alignement des rails de roulement",
+         "type": "Point d’arrêt",
+         "typeClass": "tag tag-accent",
+         "stage": "Site",
+         "ref": "Tolerance 3 mm / 10 m",
+         "date": "8 oct.",
+         "status": "Planifiée",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Mécanismes de levage",
+       "passed": 0,
+       "count": 2,
+       "rows": [
+        {
+         "id": "I-05",
+         "sys": "Mécanismes de levage",
+         "name": "Inspection câbles & tambour",
+         "type": "Témoin",
+         "typeClass": "tag tag-outline",
+         "stage": "Atelier",
+         "ref": "FEM 1.001",
+         "date": "15 oct.",
+         "status": "Planifié",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        },
+        {
+         "id": "I-06",
+         "sys": "Mécanismes de levage",
+         "name": "Essai de frein — charge 125 %",
+         "type": "Point d’arrêt",
+         "typeClass": "tag tag-accent",
+         "stage": "FAT",
+         "ref": "EN 13001",
+         "date": "20 nov.",
+         "status": "Planifié",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Translation (portique)",
+       "passed": 0,
+       "count": 1,
+       "rows": [
+        {
+         "id": "I-07",
+         "sys": "Translation (portique)",
+         "name": "Mesure des charges par galet",
+         "type": "Témoin",
+         "typeClass": "tag tag-outline",
+         "stage": "Site",
+         "ref": "Spec §7.3",
+         "date": "2 déc.",
+         "status": "Planifié",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Électrique HT/BT",
+       "passed": 1,
+       "count": 2,
+       "rows": [
+        {
+         "id": "I-08",
+         "sys": "Électrique HT/BT",
+         "name": "Cellules 11 kV — essais usine",
+         "type": "Témoin",
+         "typeClass": "tag tag-outline",
+         "stage": "FAT",
+         "ref": "IEC 62271 · COC-HLT-012",
+         "date": "19 sept.",
+         "status": "Conforme",
+         "stClass": "tag tag-neutral",
+         "stColor": "var(--color-accent-300)",
+         "doc": "COC-HLT-012",
+         "hasDoc": true
+        },
+        {
+         "id": "I-09",
+         "sys": "Électrique HT/BT",
+         "name": "Essais d’isolement & de terre",
+         "type": "Point d’arrêt",
+         "typeClass": "tag tag-accent",
+         "stage": "Site",
+         "ref": "IEC 60364",
+         "date": "28 nov.",
+         "status": "Planifié",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Automatisme & sécurité",
+       "passed": 0,
+       "count": 2,
+       "rows": [
+        {
+         "id": "I-10",
+         "sys": "Automatisme & sécurité",
+         "name": "FAT — entraînement de levage & automate",
+         "type": "Témoin",
+         "typeClass": "tag tag-outline",
+         "stage": "FAT",
+         "ref": "FDS-HLT-026 rev A",
+         "date": "24 oct.",
+         "status": "Planifiée",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "RPT-HLT-016",
+         "hasDoc": true
+        },
+        {
+         "id": "I-11",
+         "sys": "Automatisme & sécurité",
+         "name": "Boucle d’arrêt d’urgence & validation SIL",
+         "type": "Point d’arrêt",
+         "typeClass": "tag tag-accent",
+         "stage": "SAT",
+         "ref": "IEC 62061",
+         "date": "10 déc.",
+         "status": "Planifié",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Anti-collision",
+       "passed": 0,
+       "count": 2,
+       "rows": [
+        {
+         "id": "I-12",
+         "sys": "Anti-collision",
+         "name": "Essai de détection lidar — 4 zones",
+         "type": "Point d’arrêt",
+         "typeClass": "tag tag-accent",
+         "stage": "SAT",
+         "ref": "Spec §9 · custom",
+         "date": "12 déc.",
+         "status": "Planifié",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        },
+        {
+         "id": "I-13",
+         "sys": "Anti-collision",
+         "name": "Essai alarme vent",
+         "type": "Témoin",
+         "typeClass": "tag tag-outline",
+         "stage": "SAT",
+         "ref": "Custom",
+         "date": "12 déc.",
+         "status": "Planifié",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      }
+     ],
+     "noItp": false,
+     "punch": [
+      {
+       "id": "P-01",
+       "item": "Anchor bolt layout — post 7 (NCR-029)",
+       "loc": "Structure · Bay 4",
+       "cat": "A",
+       "catClass": "tag tag-accent",
+       "src": "Inspection client",
+       "owner": "J. Wagner",
+       "due": "26 sept.",
+       "status": "Clôturée",
+       "stClass": "tag tag-neutral",
+       "canAdvance": false,
+       "next": "Close",
+       "color": "var(--color-neutral-500)"
+      },
+      {
+       "id": "P-02",
+       "item": "Paint touch-up — girder G3 after DFT",
+       "loc": "Structure · Bay 3",
+       "cat": "B",
+       "catClass": "tag tag-outline",
+       "src": "ITP I-03",
+       "owner": "J. Wagner",
+       "due": "15 oct.",
+       "status": "Ouverte",
+       "stClass": "tag tag-accent",
+       "canAdvance": true,
+       "next": "Démarrer",
+       "color": "var(--color-text)"
+      },
+      {
+       "id": "P-03",
+       "item": "Missing cable tray cover — E-house",
+       "loc": "Électricité",
+       "cat": "C",
+       "catClass": "tag tag-neutral",
+       "src": "Visite chantier",
+       "owner": "S. Haddad",
+       "due": "30 oct.",
+       "status": "Ouverte",
+       "stClass": "tag tag-accent",
+       "canAdvance": true,
+       "next": "Démarrer",
+       "color": "var(--color-text)"
+      },
+      {
+       "id": "P-04",
+       "item": "Handrail height 1.05 m instead of 1.10 m — walkway",
+       "loc": "Structure · access",
+       "cat": "B",
+       "catClass": "tag tag-outline",
+       "src": "Inspection client",
+       "owner": "L. Fabre",
+       "due": "20 oct.",
+       "status": "En cours",
+       "stClass": "tag tag-outline",
+       "canAdvance": true,
+       "next": "Close",
+       "color": "var(--color-text)"
+      },
+      {
+       "id": "P-05",
+       "item": "Label plates missing on 4 junction boxes",
+       "loc": "Électricité",
+       "cat": "C",
+       "catClass": "tag tag-neutral",
+       "src": "Visite chantier",
+       "owner": "S. Haddad",
+       "due": "30 oct.",
+       "status": "Ouverte",
+       "stClass": "tag tag-accent",
+       "canAdvance": true,
+       "next": "Démarrer",
+       "color": "var(--color-text)"
+      }
+     ]
+    },
+    "punch": {
+     "crumb": "Projet · Maîtrise",
+     "title": "Plan d’inspection et d’essais · réserves",
+     "primary": "Ajouter une réserve",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Plan d’inspection et d’essais",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-neutral-300)"
+      },
+      {
+       "label": "Liste de réserves",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-accent)"
+      }
+     ],
+     "isPlan": false,
+     "isPunch": true,
+     "kpis": [
+      {
+       "label": "Inspections réussies",
+       "value": "3 / 13",
+       "sub": "1 échouées · NCR émise",
+       "color": "var(--color-accent-300)"
+      },
+      {
+       "label": "Points d’arrêt à venir",
+       "value": 5,
+       "sub": "présence client requise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Réserves ouvertes",
+       "value": 4,
+       "sub": "A 0 · B 2 · C 2",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Gabarit",
+       "value": "EMP",
+       "sub": "6 systèmes · 2 lignes personnalisées",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [
+      {
+       "sys": "Structure",
+       "passed": 2,
+       "count": 4,
+       "rows": [
+        {
+         "id": "I-01",
+         "sys": "Structure",
+         "name": "Contrôle soudures — poutres principales G1–G4",
+         "type": "Point d’arrêt",
+         "typeClass": "tag tag-accent",
+         "stage": "Atelier",
+         "ref": "ISO 5817 · level B",
+         "date": "9 sept.",
+         "status": "Conforme",
+         "stClass": "tag tag-neutral",
+         "stColor": "var(--color-accent-300)",
+         "doc": "REC-HLT-007",
+         "hasDoc": true
+        },
+        {
+         "id": "I-02",
+         "sys": "Structure",
+         "name": "Contrôle dimensionnel — poutres",
+         "type": "Revue",
+         "typeClass": "tag tag-neutral",
+         "stage": "Atelier",
+         "ref": "Drawing GA-HLT-026 rev C",
+         "date": "12 sept.",
+         "status": "Conforme",
+         "stClass": "tag tag-neutral",
+         "stColor": "var(--color-accent-300)",
+         "doc": "",
+         "hasDoc": false
+        },
+        {
+         "id": "I-03",
+         "sys": "Structure",
+         "name": "Épaisseur de peinture (DFT)",
+         "type": "Surveillance",
+         "typeClass": "tag tag-neutral",
+         "stage": "Atelier",
+         "ref": "ISO 12944 · C5",
+         "date": "24 sept.",
+         "status": "Non conforme",
+         "stClass": "tag tag-accent",
+         "stColor": "var(--color-accent-300)",
+         "doc": "NCR-HLT-031",
+         "hasDoc": true
+        },
+        {
+         "id": "I-04",
+         "sys": "Structure",
+         "name": "Alignement des rails de roulement",
+         "type": "Point d’arrêt",
+         "typeClass": "tag tag-accent",
+         "stage": "Site",
+         "ref": "Tolerance 3 mm / 10 m",
+         "date": "8 oct.",
+         "status": "Planifiée",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Mécanismes de levage",
+       "passed": 0,
+       "count": 2,
+       "rows": [
+        {
+         "id": "I-05",
+         "sys": "Mécanismes de levage",
+         "name": "Inspection câbles & tambour",
+         "type": "Témoin",
+         "typeClass": "tag tag-outline",
+         "stage": "Atelier",
+         "ref": "FEM 1.001",
+         "date": "15 oct.",
+         "status": "Planifié",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        },
+        {
+         "id": "I-06",
+         "sys": "Mécanismes de levage",
+         "name": "Essai de frein — charge 125 %",
+         "type": "Point d’arrêt",
+         "typeClass": "tag tag-accent",
+         "stage": "FAT",
+         "ref": "EN 13001",
+         "date": "20 nov.",
+         "status": "Planifié",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Translation (portique)",
+       "passed": 0,
+       "count": 1,
+       "rows": [
+        {
+         "id": "I-07",
+         "sys": "Translation (portique)",
+         "name": "Mesure des charges par galet",
+         "type": "Témoin",
+         "typeClass": "tag tag-outline",
+         "stage": "Site",
+         "ref": "Spec §7.3",
+         "date": "2 déc.",
+         "status": "Planifié",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Électrique HT/BT",
+       "passed": 1,
+       "count": 2,
+       "rows": [
+        {
+         "id": "I-08",
+         "sys": "Électrique HT/BT",
+         "name": "Cellules 11 kV — essais usine",
+         "type": "Témoin",
+         "typeClass": "tag tag-outline",
+         "stage": "FAT",
+         "ref": "IEC 62271 · COC-HLT-012",
+         "date": "19 sept.",
+         "status": "Conforme",
+         "stClass": "tag tag-neutral",
+         "stColor": "var(--color-accent-300)",
+         "doc": "COC-HLT-012",
+         "hasDoc": true
+        },
+        {
+         "id": "I-09",
+         "sys": "Électrique HT/BT",
+         "name": "Essais d’isolement & de terre",
+         "type": "Point d’arrêt",
+         "typeClass": "tag tag-accent",
+         "stage": "Site",
+         "ref": "IEC 60364",
+         "date": "28 nov.",
+         "status": "Planifié",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Automatisme & sécurité",
+       "passed": 0,
+       "count": 2,
+       "rows": [
+        {
+         "id": "I-10",
+         "sys": "Automatisme & sécurité",
+         "name": "FAT — entraînement de levage & automate",
+         "type": "Témoin",
+         "typeClass": "tag tag-outline",
+         "stage": "FAT",
+         "ref": "FDS-HLT-026 rev A",
+         "date": "24 oct.",
+         "status": "Planifiée",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "RPT-HLT-016",
+         "hasDoc": true
+        },
+        {
+         "id": "I-11",
+         "sys": "Automatisme & sécurité",
+         "name": "Boucle d’arrêt d’urgence & validation SIL",
+         "type": "Point d’arrêt",
+         "typeClass": "tag tag-accent",
+         "stage": "SAT",
+         "ref": "IEC 62061",
+         "date": "10 déc.",
+         "status": "Planifié",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      },
+      {
+       "sys": "Anti-collision",
+       "passed": 0,
+       "count": 2,
+       "rows": [
+        {
+         "id": "I-12",
+         "sys": "Anti-collision",
+         "name": "Essai de détection lidar — 4 zones",
+         "type": "Point d’arrêt",
+         "typeClass": "tag tag-accent",
+         "stage": "SAT",
+         "ref": "Spec §9 · custom",
+         "date": "12 déc.",
+         "status": "Planifié",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        },
+        {
+         "id": "I-13",
+         "sys": "Anti-collision",
+         "name": "Essai alarme vent",
+         "type": "Témoin",
+         "typeClass": "tag tag-outline",
+         "stage": "SAT",
+         "ref": "Custom",
+         "date": "12 déc.",
+         "status": "Planifié",
+         "stClass": "tag tag-outline",
+         "stColor": "var(--color-neutral-400)",
+         "doc": "",
+         "hasDoc": false
+        }
+       ]
+      }
+     ],
+     "noItp": false,
+     "punch": [
+      {
+       "id": "P-01",
+       "item": "Anchor bolt layout — post 7 (NCR-029)",
+       "loc": "Structure · Bay 4",
+       "cat": "A",
+       "catClass": "tag tag-accent",
+       "src": "Inspection client",
+       "owner": "J. Wagner",
+       "due": "26 sept.",
+       "status": "Clôturée",
+       "stClass": "tag tag-neutral",
+       "canAdvance": false,
+       "next": "Close",
+       "color": "var(--color-neutral-500)"
+      },
+      {
+       "id": "P-02",
+       "item": "Paint touch-up — girder G3 after DFT",
+       "loc": "Structure · Bay 3",
+       "cat": "B",
+       "catClass": "tag tag-outline",
+       "src": "ITP I-03",
+       "owner": "J. Wagner",
+       "due": "15 oct.",
+       "status": "Ouverte",
+       "stClass": "tag tag-accent",
+       "canAdvance": true,
+       "next": "Démarrer",
+       "color": "var(--color-text)"
+      },
+      {
+       "id": "P-03",
+       "item": "Missing cable tray cover — E-house",
+       "loc": "Électricité",
+       "cat": "C",
+       "catClass": "tag tag-neutral",
+       "src": "Visite chantier",
+       "owner": "S. Haddad",
+       "due": "30 oct.",
+       "status": "Ouverte",
+       "stClass": "tag tag-accent",
+       "canAdvance": true,
+       "next": "Démarrer",
+       "color": "var(--color-text)"
+      },
+      {
+       "id": "P-04",
+       "item": "Handrail height 1.05 m instead of 1.10 m — walkway",
+       "loc": "Structure · access",
+       "cat": "B",
+       "catClass": "tag tag-outline",
+       "src": "Inspection client",
+       "owner": "L. Fabre",
+       "due": "20 oct.",
+       "status": "En cours",
+       "stClass": "tag tag-outline",
+       "canAdvance": true,
+       "next": "Close",
+       "color": "var(--color-text)"
+      },
+      {
+       "id": "P-05",
+       "item": "Label plates missing on 4 junction boxes",
+       "loc": "Électricité",
+       "cat": "C",
+       "catClass": "tag tag-neutral",
+       "src": "Visite chantier",
+       "owner": "S. Haddad",
+       "due": "30 oct.",
+       "status": "Ouverte",
+       "stClass": "tag tag-accent",
+       "canAdvance": true,
+       "next": "Démarrer",
+       "color": "var(--color-text)"
+      }
+     ]
+    }
+   },
+   "NDC-031": {
+    "plan": {
+     "crumb": "Projet · Maîtrise",
+     "title": "Plan d’inspection et d’essais · réserves",
+     "primary": "Ajouter une inspection",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Plan d’inspection et d’essais",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-accent)"
+      },
+      {
+       "label": "Liste de réserves",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-neutral-300)"
+      }
+     ],
+     "isPlan": true,
+     "isPunch": false,
+     "kpis": [
+      {
+       "label": "Inspections réussies",
+       "value": "0 / 0",
+       "sub": "0 échouées · NCR émise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Points d’arrêt à venir",
+       "value": 0,
+       "sub": "présence client requise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Réserves ouvertes",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Gabarit",
+       "value": "AUTRE",
+       "sub": "gabarit standard pour ce type de machine",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    },
+    "punch": {
+     "crumb": "Projet · Maîtrise",
+     "title": "Plan d’inspection et d’essais · réserves",
+     "primary": "Ajouter une réserve",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Plan d’inspection et d’essais",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-neutral-300)"
+      },
+      {
+       "label": "Liste de réserves",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-accent)"
+      }
+     ],
+     "isPlan": false,
+     "isPunch": true,
+     "kpis": [
+      {
+       "label": "Inspections réussies",
+       "value": "0 / 0",
+       "sub": "0 échouées · NCR émise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Points d’arrêt à venir",
+       "value": 0,
+       "sub": "présence client requise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Réserves ouvertes",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Gabarit",
+       "value": "AUTRE",
+       "sub": "gabarit standard pour ce type de machine",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    }
+   },
+   "RCF-019": {
+    "plan": {
+     "crumb": "Projet · Maîtrise",
+     "title": "Plan d’inspection et d’essais · réserves",
+     "primary": "Ajouter une inspection",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Plan d’inspection et d’essais",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-accent)"
+      },
+      {
+       "label": "Liste de réserves",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-neutral-300)"
+      }
+     ],
+     "isPlan": true,
+     "isPunch": false,
+     "kpis": [
+      {
+       "label": "Inspections réussies",
+       "value": "0 / 0",
+       "sub": "0 échouées · NCR émise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Points d’arrêt à venir",
+       "value": 0,
+       "sub": "présence client requise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Réserves ouvertes",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Gabarit",
+       "value": "MEMU",
+       "sub": "gabarit standard pour ce type de machine",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    },
+    "punch": {
+     "crumb": "Projet · Maîtrise",
+     "title": "Plan d’inspection et d’essais · réserves",
+     "primary": "Ajouter une réserve",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Plan d’inspection et d’essais",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-neutral-300)"
+      },
+      {
+       "label": "Liste de réserves",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-accent)"
+      }
+     ],
+     "isPlan": false,
+     "isPunch": true,
+     "kpis": [
+      {
+       "label": "Inspections réussies",
+       "value": "0 / 0",
+       "sub": "0 échouées · NCR émise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Points d’arrêt à venir",
+       "value": 0,
+       "sub": "présence client requise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Réserves ouvertes",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Gabarit",
+       "value": "MEMU",
+       "sub": "gabarit standard pour ce type de machine",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    }
+   },
+   "ERP-202": {
+    "plan": {
+     "crumb": "Projet · Maîtrise",
+     "title": "Plan d’inspection et d’essais · réserves",
+     "primary": "Ajouter une inspection",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Plan d’inspection et d’essais",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-accent)"
+      },
+      {
+       "label": "Liste de réserves",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-neutral-300)"
+      }
+     ],
+     "isPlan": true,
+     "isPunch": false,
+     "kpis": [
+      {
+       "label": "Inspections réussies",
+       "value": "0 / 0",
+       "sub": "0 échouées · NCR émise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Points d’arrêt à venir",
+       "value": 0,
+       "sub": "présence client requise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Réserves ouvertes",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Gabarit",
+       "value": "R&D",
+       "sub": "gabarit standard pour ce type de machine",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    },
+    "punch": {
+     "crumb": "Projet · Maîtrise",
+     "title": "Plan d’inspection et d’essais · réserves",
+     "primary": "Ajouter une réserve",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Plan d’inspection et d’essais",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-neutral-300)"
+      },
+      {
+       "label": "Liste de réserves",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-accent)"
+      }
+     ],
+     "isPlan": false,
+     "isPunch": true,
+     "kpis": [
+      {
+       "label": "Inspections réussies",
+       "value": "0 / 0",
+       "sub": "0 échouées · NCR émise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Points d’arrêt à venir",
+       "value": 0,
+       "sub": "présence client requise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Réserves ouvertes",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Gabarit",
+       "value": "R&D",
+       "sub": "gabarit standard pour ce type de machine",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    }
+   },
+   "WSA-044": {
+    "plan": {
+     "crumb": "Projet · Maîtrise",
+     "title": "Plan d’inspection et d’essais · réserves",
+     "primary": "Ajouter une inspection",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Plan d’inspection et d’essais",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-accent)"
+      },
+      {
+       "label": "Liste de réserves",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-neutral-300)"
+      }
+     ],
+     "isPlan": true,
+     "isPunch": false,
+     "kpis": [
+      {
+       "label": "Inspections réussies",
+       "value": "0 / 0",
+       "sub": "0 échouées · NCR émise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Points d’arrêt à venir",
+       "value": 0,
+       "sub": "présence client requise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Réserves ouvertes",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Gabarit",
+       "value": "SPUR",
+       "sub": "gabarit standard pour ce type de machine",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    },
+    "punch": {
+     "crumb": "Projet · Maîtrise",
+     "title": "Plan d’inspection et d’essais · réserves",
+     "primary": "Ajouter une réserve",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Plan d’inspection et d’essais",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-neutral-300)"
+      },
+      {
+       "label": "Liste de réserves",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-accent)"
+      }
+     ],
+     "isPlan": false,
+     "isPunch": true,
+     "kpis": [
+      {
+       "label": "Inspections réussies",
+       "value": "0 / 0",
+       "sub": "0 échouées · NCR émise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Points d’arrêt à venir",
+       "value": 0,
+       "sub": "présence client requise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Réserves ouvertes",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Gabarit",
+       "value": "SPUR",
+       "sub": "gabarit standard pour ce type de machine",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    }
+   },
+   "MSR-012": {
+    "plan": {
+     "crumb": "Projet · Maîtrise",
+     "title": "Plan d’inspection et d’essais · réserves",
+     "primary": "Ajouter une inspection",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Plan d’inspection et d’essais",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-accent)"
+      },
+      {
+       "label": "Liste de réserves",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-neutral-300)"
+      }
+     ],
+     "isPlan": true,
+     "isPunch": false,
+     "kpis": [
+      {
+       "label": "Inspections réussies",
+       "value": "0 / 0",
+       "sub": "0 échouées · NCR émise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Points d’arrêt à venir",
+       "value": 0,
+       "sub": "présence client requise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Réserves ouvertes",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Gabarit",
+       "value": "MEMU",
+       "sub": "gabarit standard pour ce type de machine",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    },
+    "punch": {
+     "crumb": "Projet · Maîtrise",
+     "title": "Plan d’inspection et d’essais · réserves",
+     "primary": "Ajouter une réserve",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Plan d’inspection et d’essais",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-neutral-300)"
+      },
+      {
+       "label": "Liste de réserves",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-accent)"
+      }
+     ],
+     "isPlan": false,
+     "isPunch": true,
+     "kpis": [
+      {
+       "label": "Inspections réussies",
+       "value": "0 / 0",
+       "sub": "0 échouées · NCR émise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Points d’arrêt à venir",
+       "value": 0,
+       "sub": "présence client requise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Réserves ouvertes",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Gabarit",
+       "value": "MEMU",
+       "sub": "gabarit standard pour ce type de machine",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    }
+   },
+   "EWA-051": {
+    "plan": {
+     "crumb": "Projet · Maîtrise",
+     "title": "Plan d’inspection et d’essais · réserves",
+     "primary": "Ajouter une inspection",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Plan d’inspection et d’essais",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-accent)"
+      },
+      {
+       "label": "Liste de réserves",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-neutral-300)"
+      }
+     ],
+     "isPlan": true,
+     "isPunch": false,
+     "kpis": [
+      {
+       "label": "Inspections réussies",
+       "value": "0 / 0",
+       "sub": "0 échouées · NCR émise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Points d’arrêt à venir",
+       "value": 0,
+       "sub": "présence client requise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Réserves ouvertes",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Gabarit",
+       "value": "—",
+       "sub": "gabarit standard pour ce type de machine",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    },
+    "punch": {
+     "crumb": "Projet · Maîtrise",
+     "title": "Plan d’inspection et d’essais · réserves",
+     "primary": "Ajouter une réserve",
+     "hasPrimary": true,
+     "badge": "",
+     "seg": [
+      {
+       "label": "Plan d’inspection et d’essais",
+       "icon": "ph ph-clipboard-text",
+       "color": "var(--color-neutral-300)"
+      },
+      {
+       "label": "Liste de réserves",
+       "icon": "ph ph-list-checks",
+       "color": "var(--color-accent)"
+      }
+     ],
+     "isPlan": false,
+     "isPunch": true,
+     "kpis": [
+      {
+       "label": "Inspections réussies",
+       "value": "0 / 0",
+       "sub": "0 échouées · NCR émise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Points d’arrêt à venir",
+       "value": 0,
+       "sub": "présence client requise",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Réserves ouvertes",
+       "value": 0,
+       "sub": "A 0 · B 0 · C 0",
+       "color": "var(--color-text)"
+      },
+      {
+       "label": "Gabarit",
+       "value": "—",
+       "sub": "gabarit standard pour ce type de machine",
+       "color": "var(--color-neutral-200)"
+      }
+     ],
+     "groups": [],
+     "noItp": true,
+     "punch": []
+    }
+   }
+  }
+ },
+ "commissioning": {
+  "en": {
+   "HLT-026": {
+    "crumb": "Project · Site & handover",
+    "title": "Commissioning & handover dossier",
+    "primary": "Plan SAT",
+    "hasPrimary": true,
+    "hasComm": true,
+    "noComm": false,
+    "kpis": [
+     {
+      "label": "Systems handed over",
+      "value": "0 / 6",
+      "sub": "SAT planned 10 Dec · handover 14 Jan",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Steps completed",
+      "value": "1 / 30",
+      "sub": "2 blocked by interfaces",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Blocking punch items (A)",
+      "value": 0,
+      "sub": "must be closed before SAT",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Handover dossier",
+      "value": "19 %",
+      "sub": "4 items missing",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "cols": [
+     "Mechanical completion",
+     "Pre-commissioning",
+     "Commissioning",
+     "SAT",
+     "Handover"
+    ],
+    "rows": [
+     {
+      "sys": "Structure",
+      "punchA": 0,
+      "cells": [
+       {
+        "st": "Done",
+        "date": "12 Sep",
+        "bg": "var(--color-accent-800)",
+        "border": "1px solid var(--color-accent-700)",
+        "color": "var(--color-accent-100)",
+        "icon": "ph ph-check"
+       },
+       {
+        "st": "In progress",
+        "date": "",
+        "bg": "var(--color-accent-900)",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-accent-300)",
+        "icon": "ph ph-circle-half"
+       },
+       {
+        "st": "Planned",
+        "date": "20 Oct",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "10 Dec",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "14 Jan",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       }
+      ]
+     },
+     {
+      "sys": "Hoist mechanisms",
+      "punchA": 0,
+      "cells": [
+       {
+        "st": "Planned",
+        "date": "5 Nov",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "15 Nov",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "25 Nov",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "10 Dec",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "14 Jan",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       }
+      ]
+     },
+     {
+      "sys": "Travel (gantry)",
+      "punchA": 0,
+      "cells": [
+       {
+        "st": "Planned",
+        "date": "30 Oct",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "10 Nov",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "2 Dec",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "10 Dec",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "14 Jan",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       }
+      ]
+     },
+     {
+      "sys": "Electrical HV/LV",
+      "punchA": 0,
+      "cells": [
+       {
+        "st": "In progress",
+        "date": "",
+        "bg": "var(--color-accent-900)",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-accent-300)",
+        "icon": "ph ph-circle-half"
+       },
+       {
+        "st": "Planned",
+        "date": "20 Nov",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Blocked",
+        "date": "IF-02",
+        "bg": "transparent",
+        "border": "1px dashed var(--color-accent)",
+        "color": "var(--color-accent-300)",
+        "icon": "ph ph-lock-simple"
+       },
+       {
+        "st": "Planned",
+        "date": "10 Dec",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "14 Jan",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       }
+      ]
+     },
+     {
+      "sys": "Automation & safety",
+      "punchA": 0,
+      "cells": [
+       {
+        "st": "Planned",
+        "date": "25 Nov",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "30 Nov",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "5 Dec",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "12 Dec",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "14 Jan",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       }
+      ]
+     },
+     {
+      "sys": "Anti-collision",
+      "punchA": 0,
+      "cells": [
+       {
+        "st": "Planned",
+        "date": "28 Nov",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "3 Dec",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Blocked",
+        "date": "IF-05",
+        "bg": "transparent",
+        "border": "1px dashed var(--color-accent)",
+        "color": "var(--color-accent-300)",
+        "icon": "ph ph-lock-simple"
+       },
+       {
+        "st": "Planned",
+        "date": "12 Dec",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planned",
+        "date": "14 Jan",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       }
+      ]
+     }
+    ],
+    "dossier": [
+     {
+      "item": "As-built drawings",
+      "type": "MAN",
+      "doc": "MAN-HLT-015",
+      "status": "Partial",
+      "stClass": "tag tag-outline",
+      "hasDoc": true
+     },
+     {
+      "item": "O&M manuals",
+      "type": "MAN",
+      "doc": "",
+      "status": "Draft",
+      "stClass": "tag tag-outline",
+      "hasDoc": false
+     },
+     {
+      "item": "Spare parts list (2 years)",
+      "type": "LST",
+      "doc": "",
+      "status": "Missing",
+      "stClass": "tag tag-accent",
+      "hasDoc": false
+     },
+     {
+      "item": "Training records",
+      "type": "REC",
+      "doc": "",
+      "status": "Missing",
+      "stClass": "tag tag-accent",
+      "hasDoc": false
+     },
+     {
+      "item": "CE declaration & certificates of conformity",
+      "type": "COC",
+      "doc": "COC-HLT-012",
+      "status": "Partial",
+      "stClass": "tag tag-outline",
+      "hasDoc": true
+     },
+     {
+      "item": "SAT reports",
+      "type": "RPT",
+      "doc": "",
+      "status": "Missing",
+      "stClass": "tag tag-accent",
+      "hasDoc": false
+     },
+     {
+      "item": "Warranty certificate",
+      "type": "CTR",
+      "doc": "",
+      "status": "Missing",
+      "stClass": "tag tag-accent",
+      "hasDoc": false
+     },
+     {
+      "item": "Test & inspection records",
+      "type": "REC",
+      "doc": "REC-HLT-007",
+      "status": "Partial",
+      "stClass": "tag tag-outline",
+      "hasDoc": true
+     }
+    ]
+   },
+   "NDC-031": {
+    "crumb": "Project · Site & handover",
+    "title": "Commissioning & handover dossier",
+    "primary": "Plan SAT",
+    "hasPrimary": true,
+    "hasComm": false,
+    "noComm": true,
+    "kpis": [],
+    "cols": [],
+    "rows": [],
+    "dossier": []
+   },
+   "RCF-019": {
+    "crumb": "Project · Site & handover",
+    "title": "Commissioning & handover dossier",
+    "primary": "Plan SAT",
+    "hasPrimary": true,
+    "hasComm": false,
+    "noComm": true,
+    "kpis": [],
+    "cols": [],
+    "rows": [],
+    "dossier": []
+   },
+   "ERP-202": {
+    "crumb": "Project · Site & handover",
+    "title": "Commissioning & handover dossier",
+    "primary": "Plan SAT",
+    "hasPrimary": true,
+    "hasComm": false,
+    "noComm": true,
+    "kpis": [],
+    "cols": [],
+    "rows": [],
+    "dossier": []
+   },
+   "WSA-044": {
+    "crumb": "Project · Site & handover",
+    "title": "Commissioning & handover dossier",
+    "primary": "Plan SAT",
+    "hasPrimary": true,
+    "hasComm": false,
+    "noComm": true,
+    "kpis": [],
+    "cols": [],
+    "rows": [],
+    "dossier": []
+   },
+   "MSR-012": {
+    "crumb": "Project · Site & handover",
+    "title": "Commissioning & handover dossier",
+    "primary": "Plan SAT",
+    "hasPrimary": true,
+    "hasComm": false,
+    "noComm": true,
+    "kpis": [],
+    "cols": [],
+    "rows": [],
+    "dossier": []
+   },
+   "EWA-051": {
+    "crumb": "Project · Site & handover",
+    "title": "Commissioning & handover dossier",
+    "primary": "Plan SAT",
+    "hasPrimary": true,
+    "hasComm": false,
+    "noComm": true,
+    "kpis": [],
+    "cols": [],
+    "rows": [],
+    "dossier": []
+   }
+  },
+  "fr": {
+   "HLT-026": {
+    "crumb": "Projet · Chantier & transfert",
+    "title": "Mise en service & dossier de transfert",
+    "primary": "Planifier la SAT",
+    "hasPrimary": true,
+    "hasComm": true,
+    "noComm": false,
+    "kpis": [
+     {
+      "label": "Systèmes transférés",
+      "value": "0 / 6",
+      "sub": "SAT prévue 10 déc. · transfert 14 janv.",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Étapes terminées",
+      "value": "1 / 30",
+      "sub": "2 bloquées par des interfaces",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Réserves bloquantes (A)",
+      "value": 0,
+      "sub": "à clore avant la SAT",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Dossier de transfert",
+      "value": "19 %",
+      "sub": "4 éléments manquants",
+      "color": "var(--color-accent-300)"
+     }
+    ],
+    "cols": [
+     "Fin de montage",
+     "Pré-mise en service",
+     "Mise en service",
+     "SAT",
+     "Livraison"
+    ],
+    "rows": [
+     {
+      "sys": "Structure",
+      "punchA": 0,
+      "cells": [
+       {
+        "st": "Terminé",
+        "date": "12 sept.",
+        "bg": "var(--color-accent-800)",
+        "border": "1px solid var(--color-accent-700)",
+        "color": "var(--color-accent-100)",
+        "icon": "ph ph-check"
+       },
+       {
+        "st": "En cours",
+        "date": "",
+        "bg": "var(--color-accent-900)",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-accent-300)",
+        "icon": "ph ph-circle-half"
+       },
+       {
+        "st": "Planifié",
+        "date": "20 oct.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "10 déc.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "14 janv.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       }
+      ]
+     },
+     {
+      "sys": "Mécanismes de levage",
+      "punchA": 0,
+      "cells": [
+       {
+        "st": "Planifié",
+        "date": "5 nov.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "15 nov.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "25 nov.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "10 déc.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "14 janv.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       }
+      ]
+     },
+     {
+      "sys": "Translation (portique)",
+      "punchA": 0,
+      "cells": [
+       {
+        "st": "Planifié",
+        "date": "30 oct.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "10 nov.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "2 déc.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "10 déc.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "14 janv.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       }
+      ]
+     },
+     {
+      "sys": "Électrique HT/BT",
+      "punchA": 0,
+      "cells": [
+       {
+        "st": "En cours",
+        "date": "",
+        "bg": "var(--color-accent-900)",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-accent-300)",
+        "icon": "ph ph-circle-half"
+       },
+       {
+        "st": "Planifié",
+        "date": "20 nov.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Bloquée",
+        "date": "IF-02",
+        "bg": "transparent",
+        "border": "1px dashed var(--color-accent)",
+        "color": "var(--color-accent-300)",
+        "icon": "ph ph-lock-simple"
+       },
+       {
+        "st": "Planifié",
+        "date": "10 déc.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "14 janv.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       }
+      ]
+     },
+     {
+      "sys": "Automatisme & sécurité",
+      "punchA": 0,
+      "cells": [
+       {
+        "st": "Planifié",
+        "date": "25 nov.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "30 nov.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "5 déc.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "12 déc.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "14 janv.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       }
+      ]
+     },
+     {
+      "sys": "Anti-collision",
+      "punchA": 0,
+      "cells": [
+       {
+        "st": "Planifié",
+        "date": "28 nov.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "3 déc.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Bloquée",
+        "date": "IF-05",
+        "bg": "transparent",
+        "border": "1px dashed var(--color-accent)",
+        "color": "var(--color-accent-300)",
+        "icon": "ph ph-lock-simple"
+       },
+       {
+        "st": "Planifié",
+        "date": "12 déc.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       },
+       {
+        "st": "Planifié",
+        "date": "14 janv.",
+        "bg": "transparent",
+        "border": "1px solid var(--color-neutral-800)",
+        "color": "var(--color-neutral-400)",
+        "icon": "ph ph-circle-dashed"
+       }
+      ]
+     }
+    ],
+    "dossier": [
+     {
+      "item": "Plans tels que construits",
+      "type": "MAN",
+      "doc": "MAN-HLT-015",
+      "status": "Partiel",
+      "stClass": "tag tag-outline",
+      "hasDoc": true
+     },
+     {
+      "item": "Manuels d’exploitation & maintenance",
+      "type": "MAN",
+      "doc": "",
+      "status": "Brouillon",
+      "stClass": "tag tag-outline",
+      "hasDoc": false
+     },
+     {
+      "item": "Liste de pièces de rechange (2 ans)",
+      "type": "LST",
+      "doc": "",
+      "status": "Manquant",
+      "stClass": "tag tag-accent",
+      "hasDoc": false
+     },
+     {
+      "item": "Attestations de formation",
+      "type": "REC",
+      "doc": "",
+      "status": "Manquant",
+      "stClass": "tag tag-accent",
+      "hasDoc": false
+     },
+     {
+      "item": "Déclaration CE & certificats de conformité",
+      "type": "COC",
+      "doc": "COC-HLT-012",
+      "status": "Partiel",
+      "stClass": "tag tag-outline",
+      "hasDoc": true
+     },
+     {
+      "item": "Rapports SAT",
+      "type": "RPT",
+      "doc": "",
+      "status": "Manquant",
+      "stClass": "tag tag-accent",
+      "hasDoc": false
+     },
+     {
+      "item": "Certificat de garantie",
+      "type": "CTR",
+      "doc": "",
+      "status": "Manquant",
+      "stClass": "tag tag-accent",
+      "hasDoc": false
+     },
+     {
+      "item": "Enregistrements d’essais & contrôles",
+      "type": "REC",
+      "doc": "REC-HLT-007",
+      "status": "Partiel",
+      "stClass": "tag tag-outline",
+      "hasDoc": true
+     }
+    ]
+   },
+   "NDC-031": {
+    "crumb": "Projet · Chantier & transfert",
+    "title": "Mise en service & dossier de transfert",
+    "primary": "Planifier la SAT",
+    "hasPrimary": true,
+    "hasComm": false,
+    "noComm": true,
+    "kpis": [],
+    "cols": [],
+    "rows": [],
+    "dossier": []
+   },
+   "RCF-019": {
+    "crumb": "Projet · Chantier & transfert",
+    "title": "Mise en service & dossier de transfert",
+    "primary": "Planifier la SAT",
+    "hasPrimary": true,
+    "hasComm": false,
+    "noComm": true,
+    "kpis": [],
+    "cols": [],
+    "rows": [],
+    "dossier": []
+   },
+   "ERP-202": {
+    "crumb": "Projet · Chantier & transfert",
+    "title": "Mise en service & dossier de transfert",
+    "primary": "Planifier la SAT",
+    "hasPrimary": true,
+    "hasComm": false,
+    "noComm": true,
+    "kpis": [],
+    "cols": [],
+    "rows": [],
+    "dossier": []
+   },
+   "WSA-044": {
+    "crumb": "Projet · Chantier & transfert",
+    "title": "Mise en service & dossier de transfert",
+    "primary": "Planifier la SAT",
+    "hasPrimary": true,
+    "hasComm": false,
+    "noComm": true,
+    "kpis": [],
+    "cols": [],
+    "rows": [],
+    "dossier": []
+   },
+   "MSR-012": {
+    "crumb": "Projet · Chantier & transfert",
+    "title": "Mise en service & dossier de transfert",
+    "primary": "Planifier la SAT",
+    "hasPrimary": true,
+    "hasComm": false,
+    "noComm": true,
+    "kpis": [],
+    "cols": [],
+    "rows": [],
+    "dossier": []
+   },
+   "EWA-051": {
+    "crumb": "Projet · Chantier & transfert",
+    "title": "Mise en service & dossier de transfert",
+    "primary": "Planifier la SAT",
+    "hasPrimary": true,
+    "hasComm": false,
+    "noComm": true,
+    "kpis": [],
+    "cols": [],
+    "rows": [],
+    "dossier": []
+   }
+  }
+ },
+ "header": {
+  "itp": {
+   "HLT-026": {
+    "director": {
+     "hasPrimary": true,
+     "primary": "Add inspection",
+     "readOnly": false,
+     "outside": false
+    },
+    "pm": {
+     "hasPrimary": true,
+     "primary": "Add inspection",
+     "readOnly": false,
+     "outside": false
+    },
+    "depthead": {
+     "hasPrimary": false,
+     "primary": "Add inspection",
+     "readOnly": false,
+     "outside": true
+    },
+    "member": {
+     "hasPrimary": false,
+     "primary": "Add inspection",
+     "readOnly": false,
+     "outside": true
+    },
+    "englead": {
+     "hasPrimary": true,
+     "primary": "Add inspection",
+     "readOnly": false,
+     "outside": false
+    },
+    "quality": {
+     "hasPrimary": true,
+     "primary": "Add inspection",
+     "readOnly": false,
+     "outside": false
+    },
+    "procurement": {
+     "hasPrimary": false,
+     "primary": "Add inspection",
+     "readOnly": false,
+     "outside": true
+    },
+    "client": {
+     "hasPrimary": true,
+     "primary": "Add inspection",
+     "readOnly": false,
+     "outside": false
+    }
+   },
+   "NDC-031": {
+    "director": {
+     "hasPrimary": true,
+     "primary": "Add inspection",
+     "readOnly": false,
+     "outside": false
+    },
+    "pm": {
+     "hasPrimary": false,
+     "primary": "Add inspection",
+     "readOnly": false,
+     "outside": false
+    },
+    "depthead": {
+     "hasPrimary": false,
+     "primary": "Add inspection",
+     "readOnly": false,
+     "outside": true
+    },
+    "member": {
+     "hasPrimary": false,
+     "primary": "Add inspection",
+     "readOnly": false,
+     "outside": true
+    },
+    "englead": {
+     "hasPrimary": true,
+     "primary": "Add inspection",
+     "readOnly": false,
+     "outside": false
+    },
+    "quality": {
+     "hasPrimary": true,
+     "primary": "Add inspection",
+     "readOnly": false,
+     "outside": false
+    },
+    "procurement": {
+     "hasPrimary": false,
+     "primary": "Add inspection",
+     "readOnly": false,
+     "outside": true
+    },
+    "client": {
+     "hasPrimary": false,
+     "primary": "Add inspection",
+     "readOnly": false,
+     "outside": false
+    }
+   }
+  },
+  "commissioning": {
+   "HLT-026": {
+    "director": {
+     "hasPrimary": true,
+     "primary": "Plan SAT",
+     "readOnly": false,
+     "outside": false
+    },
+    "pm": {
+     "hasPrimary": true,
+     "primary": "Plan SAT",
+     "readOnly": false,
+     "outside": false
+    },
+    "depthead": {
+     "hasPrimary": false,
+     "primary": "Plan SAT",
+     "readOnly": false,
+     "outside": true
+    },
+    "member": {
+     "hasPrimary": false,
+     "primary": "Plan SAT",
+     "readOnly": false,
+     "outside": true
+    },
+    "englead": {
+     "hasPrimary": true,
+     "primary": "Plan SAT",
+     "readOnly": false,
+     "outside": false
+    },
+    "quality": {
+     "hasPrimary": true,
+     "primary": "Plan SAT",
+     "readOnly": false,
+     "outside": false
+    },
+    "procurement": {
+     "hasPrimary": false,
+     "primary": "Plan SAT",
+     "readOnly": false,
+     "outside": true
+    },
+    "client": {
+     "hasPrimary": true,
+     "primary": "Plan SAT",
+     "readOnly": false,
+     "outside": false
+    }
+   },
+   "NDC-031": {
+    "director": {
+     "hasPrimary": true,
+     "primary": "Plan SAT",
+     "readOnly": false,
+     "outside": false
+    },
+    "pm": {
+     "hasPrimary": false,
+     "primary": "Plan SAT",
+     "readOnly": false,
+     "outside": false
+    },
+    "depthead": {
+     "hasPrimary": false,
+     "primary": "Plan SAT",
+     "readOnly": false,
+     "outside": true
+    },
+    "member": {
+     "hasPrimary": false,
+     "primary": "Plan SAT",
+     "readOnly": false,
+     "outside": true
+    },
+    "englead": {
+     "hasPrimary": true,
+     "primary": "Plan SAT",
+     "readOnly": false,
+     "outside": false
+    },
+    "quality": {
+     "hasPrimary": true,
+     "primary": "Plan SAT",
+     "readOnly": false,
+     "outside": false
+    },
+    "procurement": {
+     "hasPrimary": false,
+     "primary": "Plan SAT",
+     "readOnly": false,
+     "outside": true
+    },
+    "client": {
+     "hasPrimary": false,
+     "primary": "Plan SAT",
+     "readOnly": false,
+     "outside": false
+    }
+   }
+  }
+ },
+ "forms": {
+  "en": {
+   "itp": {
+    "title": "Add inspection",
+    "submit": "Add to plan",
+    "isRun": false,
+    "icon": "ph ph-check",
+    "fields": [
+     {
+      "id": "name",
+      "label": "Inspection / test",
+      "req": true,
+      "value": "",
+      "span": "1 / -1",
+      "options": []
+     },
+     {
+      "id": "system",
+      "label": "System",
+      "req": false,
+      "value": "Structure",
+      "span": "auto",
+      "options": [
+       "Structure",
+       "Hoist mechanisms",
+       "Travel (gantry)",
+       "Electrical HV/LV",
+       "Automation & safety",
+       "Anti-collision"
+      ]
+     },
+     {
+      "id": "type",
+      "label": "Type",
+      "req": false,
+      "value": "Hold",
+      "span": "auto",
+      "options": [
+       "Hold",
+       "Witness",
+       "Review",
+       "Surveillance"
+      ]
+     },
+     {
+      "id": "stage",
+      "label": "Stage",
+      "req": false,
+      "value": "Workshop",
+      "span": "auto",
+      "options": [
+       "Workshop",
+       "FAT",
+       "Site",
+       "SAT"
+      ]
+     },
+     {
+      "id": "ref",
+      "label": "Standard / reference",
+      "req": false,
+      "value": "",
+      "span": "auto",
+      "options": []
+     },
+     {
+      "id": "date",
+      "label": "Planned date",
+      "req": false,
+      "value": "",
+      "span": "auto",
+      "options": []
+     }
+    ]
+   },
+   "punch": {
+    "title": "Add punch item",
+    "submit": "Add item",
+    "isRun": false,
+    "icon": "ph ph-check",
+    "fields": [
+     {
+      "id": "item",
+      "label": "Item",
+      "req": true,
+      "value": "",
+      "span": "auto",
+      "options": []
+     },
+     {
+      "id": "loc",
+      "label": "System / location",
+      "req": false,
+      "value": "",
+      "span": "auto",
+      "options": []
+     },
+     {
+      "id": "cat",
+      "label": "Category",
+      "req": false,
+      "value": "A — blocking",
+      "span": "auto",
+      "options": [
+       "A — blocking",
+       "B — before SAT",
+       "C — cosmetic"
+      ]
+     },
+     {
+      "id": "src",
+      "label": "Source",
+      "req": false,
+      "value": "Site walk",
+      "span": "auto",
+      "options": [
+       "Site walk",
+       "Client inspection",
+       "ITP",
+       "SAT"
+      ]
+     },
+     {
+      "id": "owner",
+      "label": "Owner",
+      "req": false,
+      "value": "Amélie Ollivier",
+      "span": "auto",
+      "options": [
+       "Amélie Ollivier",
+       "Julien Wagner",
+       "Pauline Noguès",
+       "Thomas Kerbrat",
+       "Léa Marchand",
+       "Damien Roux",
+       "Hélène Sauvage",
+       "Fabien Bertrand"
+      ]
+     },
+     {
+      "id": "due",
+      "label": "Due",
+      "req": false,
+      "value": "",
+      "span": "auto",
+      "options": []
+     }
+    ]
+   },
+   "commissioning": {
+    "title": "Plan SAT",
+    "submit": "Plan & invite",
+    "isRun": true,
+    "icon": "ph ph-play",
+    "fields": [
+     {
+      "id": "system",
+      "label": "System",
+      "req": false,
+      "value": "Structure",
+      "span": "auto",
+      "options": [
+       "Structure",
+       "Hoist mechanisms",
+       "Travel (gantry)",
+       "Electrical HV/LV",
+       "Automation & safety",
+       "Anti-collision"
+      ]
+     },
+     {
+      "id": "date",
+      "label": "Date",
+      "req": true,
+      "value": "10 Dec 2026",
+      "span": "auto",
+      "options": []
+     },
+     {
+      "id": "client",
+      "label": "Client witnesses",
+      "req": false,
+      "value": "N. Bensaïd, K. Doucouré",
+      "span": "auto",
+      "options": []
+     },
+     {
+      "id": "note",
+      "label": "Prerequisites",
+      "req": false,
+      "value": "Punch A items closed · pre-commissioning reports issued",
+      "span": "1 / -1",
+      "options": []
+     }
+    ]
+   },
+   "itpNdc": {
+    "title": "Add inspection",
+    "submit": "Add to plan",
+    "isRun": false,
+    "icon": "ph ph-check",
+    "fields": [
+     {
+      "id": "name",
+      "label": "Inspection / test",
+      "req": true,
+      "value": "",
+      "span": "1 / -1",
+      "options": []
+     },
+     {
+      "id": "system",
+      "label": "System",
+      "req": false,
+      "value": "General",
+      "span": "auto",
+      "options": [
+       "General"
+      ]
+     },
+     {
+      "id": "type",
+      "label": "Type",
+      "req": false,
+      "value": "Hold",
+      "span": "auto",
+      "options": [
+       "Hold",
+       "Witness",
+       "Review",
+       "Surveillance"
+      ]
+     },
+     {
+      "id": "stage",
+      "label": "Stage",
+      "req": false,
+      "value": "Workshop",
+      "span": "auto",
+      "options": [
+       "Workshop",
+       "FAT",
+       "Site",
+       "SAT"
+      ]
+     },
+     {
+      "id": "ref",
+      "label": "Standard / reference",
+      "req": false,
+      "value": "",
+      "span": "auto",
+      "options": []
+     },
+     {
+      "id": "date",
+      "label": "Planned date",
+      "req": false,
+      "value": "",
+      "span": "auto",
+      "options": []
+     }
+    ]
+   }
+  },
+  "fr": {
+   "itp": {
+    "title": "Ajouter une inspection",
+    "submit": "Ajouter au plan",
+    "isRun": false,
+    "icon": "ph ph-check",
+    "fields": [
+     {
+      "id": "name",
+      "label": "Inspection / essai",
+      "req": true,
+      "value": "",
+      "span": "1 / -1",
+      "options": []
+     },
+     {
+      "id": "system",
+      "label": "Système",
+      "req": false,
+      "value": "Structure",
+      "span": "auto",
+      "options": [
+       "Structure",
+       "Mécanismes de levage",
+       "Translation (portique)",
+       "Électrique HT/BT",
+       "Automatisme & sécurité",
+       "Anti-collision"
+      ]
+     },
+     {
+      "id": "type",
+      "label": "Type",
+      "req": false,
+      "value": "Point d’arrêt",
+      "span": "auto",
+      "options": [
+       "Point d’arrêt",
+       "Témoin",
+       "Revue",
+       "Surveillance"
+      ]
+     },
+     {
+      "id": "stage",
+      "label": "Étape",
+      "req": false,
+      "value": "Atelier",
+      "span": "auto",
+      "options": [
+       "Atelier",
+       "FAT",
+       "Site",
+       "SAT"
+      ]
+     },
+     {
+      "id": "ref",
+      "label": "Standard / reference",
+      "req": false,
+      "value": "",
+      "span": "auto",
+      "options": []
+     },
+     {
+      "id": "date",
+      "label": "Date prévue",
+      "req": false,
+      "value": "",
+      "span": "auto",
+      "options": []
+     }
+    ]
+   },
+   "punch": {
+    "title": "Ajouter une réserve",
+    "submit": "Ajouter la réserve",
+    "isRun": false,
+    "icon": "ph ph-check",
+    "fields": [
+     {
+      "id": "item",
+      "label": "Élément",
+      "req": true,
+      "value": "",
+      "span": "auto",
+      "options": []
+     },
+     {
+      "id": "loc",
+      "label": "Système / localisation",
+      "req": false,
+      "value": "",
+      "span": "auto",
+      "options": []
+     },
+     {
+      "id": "cat",
+      "label": "Catégorie",
+      "req": false,
+      "value": "A — bloquante",
+      "span": "auto",
+      "options": [
+       "A — bloquante",
+       "B — avant SAT",
+       "C — esthétique"
+      ]
+     },
+     {
+      "id": "src",
+      "label": "Source",
+      "req": false,
+      "value": "Visite chantier",
+      "span": "auto",
+      "options": [
+       "Visite chantier",
+       "Inspection client",
+       "ITP",
+       "SAT"
+      ]
+     },
+     {
+      "id": "owner",
+      "label": "Responsable",
+      "req": false,
+      "value": "Amélie Ollivier",
+      "span": "auto",
+      "options": [
+       "Amélie Ollivier",
+       "Julien Wagner",
+       "Pauline Noguès",
+       "Thomas Kerbrat",
+       "Léa Marchand",
+       "Damien Roux",
+       "Hélène Sauvage",
+       "Fabien Bertrand"
+      ]
+     },
+     {
+      "id": "due",
+      "label": "Échéance",
+      "req": false,
+      "value": "",
+      "span": "auto",
+      "options": []
+     }
+    ]
+   },
+   "commissioning": {
+    "title": "Planifier la SAT",
+    "submit": "Planifier & inviter",
+    "isRun": true,
+    "icon": "ph ph-play",
+    "fields": [
+     {
+      "id": "system",
+      "label": "Système",
+      "req": false,
+      "value": "Structure",
+      "span": "auto",
+      "options": [
+       "Structure",
+       "Mécanismes de levage",
+       "Translation (portique)",
+       "Électrique HT/BT",
+       "Automatisme & sécurité",
+       "Anti-collision"
+      ]
+     },
+     {
+      "id": "date",
+      "label": "Date",
+      "req": true,
+      "value": "10 déc. 2026",
+      "span": "auto",
+      "options": []
+     },
+     {
+      "id": "client",
+      "label": "Témoins client",
+      "req": false,
+      "value": "N. Bensaïd, K. Doucouré",
+      "span": "auto",
+      "options": []
+     },
+     {
+      "id": "note",
+      "label": "Prérequis",
+      "req": false,
+      "value": "Punch A items closed · pre-commissioning reports issued",
+      "span": "1 / -1",
+      "options": []
+     }
+    ]
+   },
+   "itpNdc": {
+    "title": "Ajouter une inspection",
+    "submit": "Ajouter au plan",
+    "isRun": false,
+    "icon": "ph ph-check",
+    "fields": [
+     {
+      "id": "name",
+      "label": "Inspection / essai",
+      "req": true,
+      "value": "",
+      "span": "1 / -1",
+      "options": []
+     },
+     {
+      "id": "system",
+      "label": "Système",
+      "req": false,
+      "value": "Général",
+      "span": "auto",
+      "options": [
+       "Général"
+      ]
+     },
+     {
+      "id": "type",
+      "label": "Type",
+      "req": false,
+      "value": "Point d’arrêt",
+      "span": "auto",
+      "options": [
+       "Point d’arrêt",
+       "Témoin",
+       "Revue",
+       "Surveillance"
+      ]
+     },
+     {
+      "id": "stage",
+      "label": "Étape",
+      "req": false,
+      "value": "Atelier",
+      "span": "auto",
+      "options": [
+       "Atelier",
+       "FAT",
+       "Site",
+       "SAT"
+      ]
+     },
+     {
+      "id": "ref",
+      "label": "Standard / reference",
+      "req": false,
+      "value": "",
+      "span": "auto",
+      "options": []
+     },
+     {
+      "id": "date",
+      "label": "Date prévue",
+      "req": false,
+      "value": "",
+      "span": "auto",
+      "options": []
+     }
+    ]
+   }
+  }
+ },
+ "toasts": {
+  "en": {
+   "itp": "Inspection added to the plan",
+   "punch": "Punch item added",
+   "commissioning": "SAT planned · invitation sent to the client"
+  },
+  "fr": {
+   "itp": "Inspection ajoutée au plan",
+   "punch": "Réserve ajoutée",
+   "commissioning": "SAT planned · invitation sent to the client"
+  }
+ },
+ "scenarios": {
+  "advance": {
+   "afterStartAndClose": {
+    "punch": [
+     {
+      "id": "P-01",
+      "item": "Anchor bolt layout — post 7 (NCR-029)",
+      "loc": "Structure · Bay 4",
+      "cat": "A",
+      "catClass": "tag tag-accent",
+      "src": "Client inspection",
+      "owner": "J. Wagner",
+      "due": "26 Sep",
+      "status": "Closed",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Close",
+      "color": "var(--color-neutral-500)"
+     },
+     {
+      "id": "P-02",
+      "item": "Paint touch-up — girder G3 after DFT",
+      "loc": "Structure · Bay 3",
+      "cat": "B",
+      "catClass": "tag tag-outline",
+      "src": "ITP I-03",
+      "owner": "J. Wagner",
+      "due": "15 Oct",
+      "status": "In progress",
+      "stClass": "tag tag-outline",
+      "canAdvance": true,
+      "next": "Close",
+      "color": "var(--color-text)"
+     },
+     {
+      "id": "P-03",
+      "item": "Missing cable tray cover — E-house",
+      "loc": "Electrical",
+      "cat": "C",
+      "catClass": "tag tag-neutral",
+      "src": "Site walk",
+      "owner": "S. Haddad",
+      "due": "30 Oct",
+      "status": "Open",
+      "stClass": "tag tag-accent",
+      "canAdvance": true,
+      "next": "Start",
+      "color": "var(--color-text)"
+     },
+     {
+      "id": "P-04",
+      "item": "Handrail height 1.05 m instead of 1.10 m — walkway",
+      "loc": "Structure · access",
+      "cat": "B",
+      "catClass": "tag tag-outline",
+      "src": "Client inspection",
+      "owner": "L. Fabre",
+      "due": "20 Oct",
+      "status": "Closed",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Close",
+      "color": "var(--color-neutral-500)"
+     },
+     {
+      "id": "P-05",
+      "item": "Label plates missing on 4 junction boxes",
+      "loc": "Electrical",
+      "cat": "C",
+      "catClass": "tag tag-neutral",
+      "src": "Site walk",
+      "owner": "S. Haddad",
+      "due": "30 Oct",
+      "status": "Open",
+      "stClass": "tag tag-accent",
+      "canAdvance": true,
+      "next": "Start",
+      "color": "var(--color-text)"
+     }
+    ],
+    "kpis": [
+     {
+      "label": "Inspections passed",
+      "value": "3 / 13",
+      "sub": "1 failed · NCR raised",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Hold points ahead",
+      "value": 5,
+      "sub": "client presence required",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Open punch items",
+      "value": 3,
+      "sub": "A 0 · B 1 · C 2",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Template",
+      "value": "EMP",
+      "sub": "6 systems · 2 custom lines",
+      "color": "var(--color-neutral-200)"
+     }
+    ]
+   },
+   "afterClose": {
+    "punch": [
+     {
+      "id": "P-01",
+      "item": "Anchor bolt layout — post 7 (NCR-029)",
+      "loc": "Structure · Bay 4",
+      "cat": "A",
+      "catClass": "tag tag-accent",
+      "src": "Client inspection",
+      "owner": "J. Wagner",
+      "due": "26 Sep",
+      "status": "Closed",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Close",
+      "color": "var(--color-neutral-500)"
+     },
+     {
+      "id": "P-02",
+      "item": "Paint touch-up — girder G3 after DFT",
+      "loc": "Structure · Bay 3",
+      "cat": "B",
+      "catClass": "tag tag-outline",
+      "src": "ITP I-03",
+      "owner": "J. Wagner",
+      "due": "15 Oct",
+      "status": "Closed",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Close",
+      "color": "var(--color-neutral-500)"
+     },
+     {
+      "id": "P-03",
+      "item": "Missing cable tray cover — E-house",
+      "loc": "Electrical",
+      "cat": "C",
+      "catClass": "tag tag-neutral",
+      "src": "Site walk",
+      "owner": "S. Haddad",
+      "due": "30 Oct",
+      "status": "Open",
+      "stClass": "tag tag-accent",
+      "canAdvance": true,
+      "next": "Start",
+      "color": "var(--color-text)"
+     },
+     {
+      "id": "P-04",
+      "item": "Handrail height 1.05 m instead of 1.10 m — walkway",
+      "loc": "Structure · access",
+      "cat": "B",
+      "catClass": "tag tag-outline",
+      "src": "Client inspection",
+      "owner": "L. Fabre",
+      "due": "20 Oct",
+      "status": "Closed",
+      "stClass": "tag tag-neutral",
+      "canAdvance": false,
+      "next": "Close",
+      "color": "var(--color-neutral-500)"
+     },
+     {
+      "id": "P-05",
+      "item": "Label plates missing on 4 junction boxes",
+      "loc": "Electrical",
+      "cat": "C",
+      "catClass": "tag tag-neutral",
+      "src": "Site walk",
+      "owner": "S. Haddad",
+      "due": "30 Oct",
+      "status": "Open",
+      "stClass": "tag tag-accent",
+      "canAdvance": true,
+      "next": "Start",
+      "color": "var(--color-text)"
+     }
+    ],
+    "kpis": [
+     {
+      "label": "Inspections passed",
+      "value": "3 / 13",
+      "sub": "1 failed · NCR raised",
+      "color": "var(--color-accent-300)"
+     },
+     {
+      "label": "Hold points ahead",
+      "value": 5,
+      "sub": "client presence required",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Open punch items",
+      "value": 2,
+      "sub": "A 0 · B 0 · C 2",
+      "color": "var(--color-text)"
+     },
+     {
+      "label": "Template",
+      "value": "EMP",
+      "sub": "6 systems · 2 custom lines",
+      "color": "var(--color-neutral-200)"
+     }
+    ]
+   }
+  },
+  "addPunchA": {
+   "toast": "Punch item added",
+   "row": {
+    "id": "P-10",
+    "item": "Missing bolt — post 3",
+    "loc": "Structure · Bay 2",
+    "cat": "A",
+    "catClass": "tag tag-accent",
+    "src": "SAT",
+    "owner": "Amélie Ollivier",
+    "due": "9 Oct",
+    "status": "Open",
+    "stClass": "tag tag-accent",
+    "canAdvance": true,
+    "next": "Start",
+    "color": "var(--color-text)"
+   },
+   "badge": "1",
+   "kpis": [
+    {
+     "label": "Inspections passed",
+     "value": "3 / 13",
+     "sub": "1 failed · NCR raised",
+     "color": "var(--color-accent-300)"
+    },
+    {
+     "label": "Hold points ahead",
+     "value": 5,
+     "sub": "client presence required",
+     "color": "var(--color-text)"
+    },
+    {
+     "label": "Open punch items",
+     "value": 5,
+     "sub": "A 1 · B 2 · C 2",
+     "color": "var(--color-accent-300)"
+    },
+    {
+     "label": "Template",
+     "value": "EMP",
+     "sub": "6 systems · 2 custom lines",
+     "color": "var(--color-neutral-200)"
+    }
+   ],
+   "cmKpis": [
+    {
+     "label": "Systems handed over",
+     "value": "0 / 6",
+     "sub": "SAT planned 10 Dec · handover 14 Jan",
+     "color": "var(--color-text)"
+    },
+    {
+     "label": "Steps completed",
+     "value": "1 / 30",
+     "sub": "2 blocked by interfaces",
+     "color": "var(--color-accent-300)"
+    },
+    {
+     "label": "Blocking punch items (A)",
+     "value": 1,
+     "sub": "must be closed before SAT",
+     "color": "var(--color-accent-300)"
+    },
+    {
+     "label": "Handover dossier",
+     "value": "19 %",
+     "sub": "4 items missing",
+     "color": "var(--color-accent-300)"
+    }
+   ],
+   "cmPunchA": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "afterStartBadge": "1"
+  },
+  "addInspection": {
+   "kpis": [
+    {
+     "label": "Inspections passed",
+     "value": "3 / 14",
+     "sub": "1 failed · NCR raised",
+     "color": "var(--color-accent-300)"
+    },
+    {
+     "label": "Hold points ahead",
+     "value": 5,
+     "sub": "client presence required",
+     "color": "var(--color-text)"
+    },
+    {
+     "label": "Open punch items",
+     "value": 4,
+     "sub": "A 0 · B 2 · C 2",
+     "color": "var(--color-text)"
+    },
+    {
+     "label": "Template",
+     "value": "EMP",
+     "sub": "6 systems · 3 custom lines",
+     "color": "var(--color-neutral-200)"
+    }
+   ],
+   "group": {
+    "sys": "Hoist mechanisms",
+    "passed": 0,
+    "count": 3,
+    "rows": [
+     {
+      "id": "I-05",
+      "sys": "Hoist mechanisms",
+      "name": "Rope & drum inspection",
+      "type": "Witness",
+      "typeClass": "tag tag-outline",
+      "stage": "Workshop",
+      "ref": "FEM 1.001",
+      "date": "15 Oct",
+      "status": "Planned",
+      "stClass": "tag tag-outline",
+      "stColor": "var(--color-neutral-400)",
+      "doc": "",
+      "hasDoc": false
+     },
+     {
+      "id": "I-06",
+      "sys": "Hoist mechanisms",
+      "name": "Brake test — 125 % load",
+      "type": "Hold",
+      "typeClass": "tag tag-accent",
+      "stage": "FAT",
+      "ref": "EN 13001",
+      "date": "20 Nov",
+      "status": "Planned",
+      "stClass": "tag tag-outline",
+      "stColor": "var(--color-neutral-400)",
+      "doc": "",
+      "hasDoc": false
+     },
+     {
+      "id": "I-20",
+      "sys": "Hoist mechanisms",
+      "name": "Rope end terminations",
+      "type": "Witness",
+      "typeClass": "tag tag-outline",
+      "stage": "Site",
+      "ref": "EN 12385",
+      "date": "6 Nov",
+      "status": "Planned",
+      "stClass": "tag tag-outline",
+      "stColor": "var(--color-neutral-400)",
+      "doc": "",
+      "hasDoc": false
+     }
+    ]
+   }
+  }
+ }
+}

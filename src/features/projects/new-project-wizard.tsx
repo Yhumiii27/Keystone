@@ -1,21 +1,34 @@
 'use client';
-// New project wizard (docs/spec/01 §10, 03 §5.8; template 2972–3056, npVals 3946–3967): 4 steps — Basics,
-// Structure, Budget, Schedule — over a draft kept by <NewProjectLauncher>. No field validation, as in the prototype.
+// New project wizard (docs/spec/01 §10, 03 §5.8; template 2972–3056, npVals 3946–3969): 4 steps — Basics,
+// Structure, Budget, Schedule — over a draft kept by <NewProjectLauncher>.
+// Chapter 4 (A-2 / L-3, src/domain/project-template.ts): name and client are required (Next stays disabled until they
+// are filled and the planned window is valid); the PM is chosen among the project managers (the viewer by default when
+// they are one); planned start / finish are dates; the templates are the machine types of the Machine types screen and
+// creation instantiates them (work packages, activities, FS links, cost categories, ITP plan); the type of a cost
+// category is a real choice and "Add category" offers Settings › Cost categories; the calendar defaults to the machine
+// type's, and its working time and holidays are the real ones.
 import { CalendarBlank, Clock, FlagBanner, Plus, X } from '@phosphor-icons/react/dist/ssr';
 import { useId } from 'react';
 import { ChoiceCard } from '@/components/app/Check';
 import { WizardDialog } from '@/components/app/Wizard';
 import { Button, IconButton } from '@/components/ds/Button';
-import { Field, Input, PseudoInput } from '@/components/ds/Field';
+import { Field, Input, PseudoInput, Select } from '@/components/ds/Field';
 import { Segmented } from '@/components/ds/Segmented';
 import { Tag } from '@/components/ds/Tag';
+import { BUILTIN_CALENDAR_BY_CODE } from '@/domain/calendar';
 import {
-  CONTINGENCIES, DAS_LIST, NEW_CATEGORY, WIZARD_CALENDARS, WIZARD_CURRENCIES, allocateProjectIdentity, analyticHint, categorySource,
-  wizardClientCode, wizardTotal, wizardTotalText, type ProjectIdentity, type WizardCalendar, type WizardCurrency,
+  CATEGORY_TYPES, CONTINGENCIES, DAS_LIST, NEW_CATEGORY, WIZARD_CURRENCIES, allocateProjectIdentity, analyticHint, categorySource,
+  wizardClientCode, wizardTotal, wizardTotalText, type ProjectIdentity, type WizardCurrency,
 } from '@/domain/lifecycle';
+import {
+  DEFAULT_PLANNED_FINISH, DEFAULT_PLANNED_START, WIZARD_CALENDAR_OPTIONS, holidaysText, plannedWindowError, templateActivitiesText, templateWbsText,
+  workingTimeText,
+} from '@/domain/project-template';
 import { useI18n } from '@/i18n/client';
+import type { CalendarCode } from '@/server/db/codes';
 import type { NewProjectSetup, WizardTemplate } from '@/server/dal/projects-register';
 import { categoriesText, wizardSummaryText } from './i18n';
+import { templateTextT, workingTimeT } from './wizard-i18n';
 import w from './wizard.module.css';
 
 export interface WizardCategory {
@@ -26,7 +39,10 @@ export interface WizardCategory {
   budget: string;
 }
 
-/** `state.np` without `open` / `step`. `cats: null` = the default template's categories (not loaded yet). */
+/**
+ * `state.np` without `open` / `step`. `cats: null` = the default template's categories (not loaded yet); `cal: null` =
+ * the template's calendar; `pm: null` = the setup's default PM (the viewer when they are a project manager).
+ */
 export interface WizardDraft {
   name: string;
   client: string;
@@ -36,14 +52,36 @@ export interface WizardDraft {
   template: string;
   cats: WizardCategory[] | null;
   cont: number;
-  cal: WizardCalendar;
+  cal: CalendarCode | null;
+  /** Person id of the project manager. */
+  pm: string | null;
+  /** Planned window, ISO dates. */
+  start: string;
+  finish: string;
 }
 
 export const DEFAULT_DRAFT: WizardDraft = {
-  name: '', client: '', das: '2', mt: 'EMP', cur: 'EUR', template: 'EMP', cats: null, cont: 5, cal: 'Standard 5d · 8h',
+  name: '', client: '', das: '2', mt: 'EMP', cur: 'EUR', template: 'EMP', cats: null, cont: 5, cal: null, pm: null,
+  start: DEFAULT_PLANNED_START, finish: DEFAULT_PLANNED_FINISH,
 };
 
-const BLANK: WizardTemplate = { id: 'blank', mt: null, name: 'Projet blank', desc: '', wbs: 'Vide', acts: 'Aucune', cal: 'Standard 5d · 8h', phases: [], cats: [] };
+const BLANK: WizardTemplate = {
+  id: 'blank', mt: null, name: 'Projet blank', desc: '', wbs: templateWbsText(0), acts: templateActivitiesText(0), cal: 'Standard 5d · 8h',
+  calCode: 'standard_5x8', phases: [], cats: [], itpSystems: [],
+};
+
+/** Calendar of the draft: the one chosen, else the template's (when the wizard offers it), else Standard. */
+export const draftCalendar = (setup: NewProjectSetup, d: WizardDraft): CalendarCode => {
+  if (d.cal) return d.cal;
+  const tpl = templateOf(setup, d.template).calCode;
+  return WIZARD_CALENDAR_OPTIONS.some((o) => o.value === tpl) ? tpl : 'standard_5x8';
+};
+
+/** Project manager of the draft (person id). */
+export const draftManager = (setup: NewProjectSetup, d: WizardDraft): string | null => d.pm ?? setup.defaultManagerId;
+
+/** Step 1 is complete: name and client typed (L-3), planned window valid. */
+export const basicsComplete = (d: WizardDraft) => !!d.name.trim() && !!d.client.trim() && !plannedWindowError(d.start, d.finish);
 
 /** NP_TEMPLATES.find(id) || NP_TEMPLATES[0]. */
 export const templateOf = (setup: NewProjectSetup, id: string): WizardTemplate =>
@@ -78,12 +116,24 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
   const { number: pid, analytic: ana } = draftIdentity(setup, draft);
   const total = wizardTotal(cats, draft.cont);
   const setCat = (i: number, patch: Partial<WizardCategory>) => onDraft({ cats: cats.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
+  const cal = draftCalendar(setup, draft);
+  const calDef = BUILTIN_CALENDAR_BY_CODE[cal];
+  const calLabel = WIZARD_CALENDAR_OPTIONS.find((o) => o.value === cal)?.label ?? cal;
+  const pm = draftManager(setup, draft);
+  const manager = setup.managers.find((m) => m.id === pm);
+  const windowError = plannedWindowError(draft.start, draft.finish);
+  const canAdvance = step !== 1 || basicsComplete(draft);
+  // "Add category": the next Settings › Cost category not used yet (A-14), else "New category · Labor · 0".
+  const nextSettingsCategory = setup.settingsCategories.find((c) => {
+    const names = [c.name, t(c.name)].map((n) => n.toLowerCase());
+    return !cats.some((x) => names.includes(x.name.trim().toLowerCase()));
+  });
 
   const setMachineType = (mt: string) => {
     const T = setup.templates.find((x) => x.mt === mt);
-    // A blank start stays blank and keeps its categories; otherwise switch to that type's template (3956).
+    // A blank start stays blank and keeps its categories; otherwise switch to that type's template (3956) and its calendar.
     if (draft.template === 'blank' || !T) onDraft({ mt });
-    else onDraft({ mt, template: T.id, cats: catsOf(T) });
+    else onDraft({ mt, template: T.id, cats: catsOf(T), cal: null });
   };
 
   return (
@@ -95,17 +145,20 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
       step={step}
       onStepChange={onStepChange}
       onFinish={onCreate}
+      canAdvance={canAdvance}
       pending={pending}
     >
       {step === 1 && (
         <div className={w.grid2}>
-          <Field label={t('Project name')} span="full" htmlFor={`${id}-name`}>
+          <Field label={t('Project name')} span="full" htmlFor={`${id}-name`} required>
             <Input
               id={`${id}-name`}
               value={draft.name}
               onChange={(e) => onDraft({ name: e.target.value })}
               placeholder={t('Eastbank Warehouse Automation')}
               maxLength={200}
+              required
+              aria-required
             />
           </Field>
           <Field label={t('Project ID')}>
@@ -138,19 +191,27 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
               options={setup.machineTypes.map((v) => ({ value: v, label: v }))}
             />
           </Field>
-          <Field label={t('Project manager')}>
-            <PseudoInput>
-              <span className={w.avatar}>{t('SP')}</span>
-              {t('S. Perrin')}
-            </PseudoInput>
+          <Field label={t('Project manager')} htmlFor={`${id}-pm`}>
+            <div className={w.pmRow}>
+              {manager && <span className={w.avatar}>{manager.initials}</span>}
+              <Select
+                id={`${id}-pm`}
+                className={w.pmSelect}
+                value={pm ?? ''}
+                onChange={(e) => onDraft({ pm: e.target.value || null })}
+                options={setup.managers.map((m) => ({ value: m.id, label: m.short }))}
+              />
+            </div>
           </Field>
-          <Field label={t('Client / sponsor')} htmlFor={`${id}-client`}>
+          <Field label={t('Client / sponsor')} htmlFor={`${id}-client`} required>
             <Input
               id={`${id}-client`}
               value={draft.client}
               onChange={(e) => onDraft({ client: e.target.value })}
               placeholder={t('Logistics business unit')}
               maxLength={200}
+              required
+              aria-required
             />
           </Field>
           <Field label={t('Currency')}>
@@ -162,11 +223,26 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
               options={WIZARD_CURRENCIES.map((v) => ({ value: v, label: v }))}
             />
           </Field>
-          <Field label={t('Planned start')}>
-            <PseudoInput icon={CalendarBlank}>{t('11 Jan 2027')}</PseudoInput>
+          <Field label={t('Planned start')} htmlFor={`${id}-start`} required>
+            <div className={w.dateRow}>
+              <CalendarBlank className={w.dateIcon} aria-hidden />
+              <Input id={`${id}-start`} type="date" value={draft.start} onChange={(e) => onDraft({ start: e.target.value })} required aria-required />
+            </div>
           </Field>
-          <Field label={t('Planned finish')}>
-            <PseudoInput icon={CalendarBlank}>{t('30 Sep 2027')}</PseudoInput>
+          <Field label={t('Planned finish')} htmlFor={`${id}-finish`} required hint={windowError && draft.start && draft.finish ? t(windowError) : undefined}>
+            <div className={w.dateRow}>
+              <CalendarBlank className={w.dateIcon} aria-hidden />
+              <Input
+                id={`${id}-finish`}
+                type="date"
+                value={draft.finish}
+                min={draft.start || undefined}
+                onChange={(e) => onDraft({ finish: e.target.value })}
+                required
+                aria-required
+                aria-invalid={!!windowError || undefined}
+              />
+            </div>
           </Field>
         </div>
       )}
@@ -189,10 +265,11 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
           </div>
           <div className={w.copy}>
             {[
-              { label: 'WBS', value: t(tmpl.wbs) },
-              { label: 'Activities & logic', value: t(tmpl.acts) },
+              { label: 'WBS', value: templateTextT(tmpl.wbs, t, lang) },
+              { label: 'Activities & logic', value: templateTextT(tmpl.acts, t, lang) },
               { label: 'Cost categories', value: categoriesText(t, lang, tmpl.cats.length) },
               { label: 'Calendars', value: t(tmpl.cal) },
+              { label: 'Inspection plan', value: tmpl.itpSystems.length ? itpSystemsText(tmpl.itpSystems.length, lang) : t('Not created'), muted: !tmpl.itpSystems.length },
               { label: 'Baselines', value: t('Not copied'), muted: true },
             ].map((c) => (
               <div key={c.label} className={w.copyItem}>
@@ -233,7 +310,16 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
             ))}
           </div>
           <div className={w.catFoot}>
-            <Button variant="ghost" icon={Plus} className={w.btn13} onClick={() => onDraft({ cats: [...cats, { ...NEW_CATEGORY, name: t(NEW_CATEGORY.name) }] })}>
+            <Button
+              variant="ghost"
+              icon={Plus}
+              className={w.btn13}
+              onClick={() =>
+                onDraft({
+                  cats: [...cats, nextSettingsCategory ? { name: t(nextSettingsCategory.name), type: nextSettingsCategory.type, budget: '0' } : { ...NEW_CATEGORY, name: t(NEW_CATEGORY.name) }],
+                })
+              }
+            >
               {t('Add category')}
             </Button>
             <div className={w.contingency}>
@@ -259,22 +345,22 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
             <Segmented
               fullWidth
               label={t('Default calendar')}
-              value={draft.cal}
-              onChange={(cal) => onDraft({ cal })}
-              options={WIZARD_CALENDARS.map((v) => ({ value: v, label: t(v) }))}
+              value={cal}
+              onChange={(v) => onDraft({ cal: v })}
+              options={WIZARD_CALENDAR_OPTIONS.map((o) => ({ value: o.value, label: t(o.label) }))}
             />
           </Field>
           <Field label={t('Progress cycle (data date)')}>
-            <PseudoInput icon={Clock}>{t('Weekly · Fridays')}</PseudoInput>
+            <PseudoInput icon={Clock} caret={false}>{t('Weekly · Fridays')}</PseudoInput>
           </Field>
           <Field label={t('Baseline policy')}>
-            <PseudoInput icon={FlagBanner}>{t('Set BL1 at Planning → Active')}</PseudoInput>
+            <PseudoInput icon={FlagBanner} caret={false}>{t('Set BL1 at Planning → Active')}</PseudoInput>
           </Field>
           <Field label={t('Working time')}>
-            <PseudoInput>08:00 – 17:00</PseudoInput>
+            <PseudoInput caret={false}>{calDef ? workingTimeT(workingTimeText(calDef), lang) : '—'}</PseudoInput>
           </Field>
           <Field label={t('Holidays')}>
-            <PseudoInput>{t('US federal + site shutdown 24 Dec – 2 Jan')}</PseudoInput>
+            <PseudoInput caret={false}>{calDef ? t(holidaysText(calDef)) : '—'}</PseudoInput>
           </Field>
           <div className={w.summary}>
             <span className={w.eyebrow}>{t('Will be created')}</span>
@@ -288,7 +374,7 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
                 template: { blank: tmpl.id === 'blank', wbs: tmpl.wbs, acts: tmpl.acts },
                 categories: cats.length,
                 contingencyPct: draft.cont,
-                calendar: draft.cal,
+                calendar: calLabel,
               })}
             </span>
           </div>
@@ -298,12 +384,22 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
   );
 }
 
+/** "6 ITP systems" (FR « 6 systèmes ITP »). */
+const itpSystemsText = (n: number, lang: string) =>
+  lang === 'fr' ? `${n} ${n > 1 ? 'systèmes' : 'système'} ITP` : `${n} ITP ${n > 1 ? 'systems' : 'system'}`;
+
 function CategoryRow({ cat, onChange, onRemove }: { cat: WizardCategory; onChange: (patch: Partial<WizardCategory>) => void; onRemove: () => void }) {
   const { t } = useI18n();
   return (
     <>
       <Input className={w.catInput} value={cat.name} onChange={(e) => onChange({ name: e.target.value })} aria-label={t('Category')} maxLength={200} />
-      <PseudoInput className={w.catType}>{t(cat.type)}</PseudoInput>
+      <Select
+        className={w.catType}
+        value={cat.type}
+        onChange={(e) => onChange({ type: e.target.value })}
+        aria-label={t('Type')}
+        options={CATEGORY_TYPES.map((v) => ({ value: v, label: t(v) }))}
+      />
       <Input className={w.catInput} alignRight value={cat.budget} onChange={(e) => onChange({ budget: e.target.value })} aria-label={t('Budget (k)')} inputMode="decimal" />
       <IconButton icon={X} label={t('Remove')} variant="ghost" size={32} muted onClick={onRemove} />
     </>

@@ -7,10 +7,12 @@
 // BU"): every person reference keeps the displayed name and links the person when one is known.
 import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type {
-  ClientQuestionState, MeetingLineOrigin, MeetingLineType, MeetingSeries, MeetingStatus, MeetingType, RaciCode, StakeholderType,
+  ClientQuestionState, MeetingLineOrigin, MeetingLineType, MeetingSeries, MeetingStatus, MeetingType, RaciCode, StakeholderType, TranscriptAnalyzer,
+  TranscriptProposalStatus, TranscriptProposalType, TranscriptSource,
 } from '../codes';
 import { id, timestamps } from './_common';
 import { documents } from './documents';
+import { storedFiles } from './files';
 import { persons } from './organisation';
 import { projects } from './portfolio';
 import { tasks } from './work';
@@ -107,12 +109,26 @@ export const meetingLines = pgTable(
 export const meetingTranscripts = pgTable('meeting_transcripts', {
   meetingId: uuid('meeting_id').primaryKey().references(() => meetings.id, { onDelete: 'cascade' }),
   rawText: text('raw_text').notNull(),
-  /** "teams" (recording source, OPEN QUESTION S-10). */
-  source: text('source').notNull(),
+  /** "teams" (seed recording), 'paste' or 'file' (chapter 4 import, S-10). */
+  source: text('source').$type<TranscriptSource>().notNull(),
   summary: text('summary').notNull(),
   analysedAt: timestamp('analysed_at', { withTimezone: true }),
   /** "Add to minutes" applied the proposals (once). */
   appliedAt: timestamp('applied_at', { withTimezone: true }),
+  // ── Chapter 4 (S-10) ──
+  /** Uploaded .txt / .vtt / .srt (stored by Keystone); null for pasted text and the seed. */
+  fileId: uuid('file_id').references(() => storedFiles.id, { onDelete: 'set null' }),
+  /** Detected language ('fr' / 'en'). */
+  language: text('language'),
+  /** Who produced the proposals: the prototype's pre-baked analysis, the local rule-based analyser or Claude. */
+  analyzer: text('analyzer').$type<TranscriptAnalyzer>(),
+  /** Model id when analysed by Claude. */
+  analyzerModel: text('analyzer_model'),
+  /** Notice shown with the analysis (fallback to the local analyser, refusal…; EN source text). */
+  analysisNotice: text('analysis_notice'),
+  importedAt: timestamp('imported_at', { withTimezone: true }),
+  importedByPersonId: uuid('imported_by_person_id').references(() => persons.id),
+  importedByName: text('imported_by_name'),
 });
 
 /** Decisions and actions proposed by the transcript analysis. */
@@ -121,12 +137,23 @@ export const meetingTranscriptProposals = pgTable(
   {
     meetingId: uuid('meeting_id').notNull().references(() => meetingTranscripts.meetingId, { onDelete: 'cascade' }),
     position: integer('position').notNull(),
-    type: text('type').$type<Exclude<MeetingLineType, 'info'>>().notNull(),
+    /** decision / action (prototype), risk / question (chapter 4 analysers). */
+    type: text('type').$type<TranscriptProposalType>().notNull(),
     text: text('text').notNull(),
     ownerName: text('owner_name'),
     ownerPersonId: uuid('owner_person_id').references(() => persons.id),
     dueText: text('due_text'),
     dueDate: date('due_date', { mode: 'string' }),
+    // ── Chapter 4 (S-10): human review — nothing reaches minutes / tasks / risks without a click. ──
+    status: text('status').$type<TranscriptProposalStatus>().notNull().default('proposed'),
+    /** Speaker label (VTT / SRT / "Name:" lines) and the transcript excerpt the proposal comes from. */
+    speaker: text('speaker'),
+    quote: text('quote'),
+    reviewedByPersonId: uuid('reviewed_by_person_id').references(() => persons.id),
+    reviewedByName: text('reviewed_by_name'),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    /** What the proposal became ("T-2345", "R-21", minutes line id…). */
+    appliedRef: text('applied_ref'),
   },
   (t) => [primaryKey({ columns: [t.meetingId, t.position] })],
 );

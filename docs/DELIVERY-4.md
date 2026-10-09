@@ -1,5 +1,7 @@
 # Keystone PM — Delivery 4
 
+> **Delivery 5 has landed.** This file describes Delivery 4 as handed over; for the current status, data, `TODO(db)` list and APIs, read `docs/DELIVERY-5.md`.
+
 Delivery 4 adds the technical reference and the supply chain (spec 00 §9, phase 6): the PLM parts catalogue, the project
 BOM, engineering change orders, drawings, purchase orders, deliveries and goods receipt, stock, and sourcing / supplier
 invoices. **Engineering change orders are owned by Vigie** (user decision, overrides the prototype and spec 09 §4):

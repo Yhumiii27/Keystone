@@ -1,0 +1,147 @@
+/* Administration screens — prototype inline styles of Settings (template 1573–1597), Standard machine types
+   (1529–1572) and Activity, integrations & audit (2237–2267). */
+
+.root { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.accent { color: var(--color-accent); }
+.muted12 { font-size: 12px; color: var(--color-neutral-400); }
+.pretty { text-wrap: pretty; }
+.tabular { font-variant-numeric: tabular-nums; }
+.confirmText { margin: 0; font-size: 13px; color: var(--color-neutral-300); text-wrap: pretty; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* section label: 10.5px uppercase .08em accent */
+.sectionLabel { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent); }
+
+/* ── Settings ── */
+/* Settings KPI subs have no `text-wrap:pretty` (template 1575), unlike the shared tile (the sub is its last child) */
+:global(.card).kpiPlainSub > :last-child { text-wrap: wrap; }
+:global(.card).healthCard { padding: 14px 16px; gap: 10px; }
+.healthHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.healthTitle { display: flex; flex-direction: column; margin-right: auto; }
+/* `.field` is a block in the DS: the label sits above the input (the prototype's flex-direction:row has no effect). */
+:global(.field).thresholdField > label { font-size: 12px; color: var(--color-neutral-400); }
+:global(.input).thresholdInput { width: 84px; min-height: 30px; padding: 2px 8px; text-align: right; }
+.rateNote { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--color-neutral-300); }
+.rateCards, .rateCards:hover { color: var(--color-accent-300); text-decoration: none; }
+.rateCards:hover { text-decoration: underline; }
+
+.cardGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 14px; align-items: start; }
+:global(.card).listCard { padding: 14px 16px; gap: 8px; }
+.listHead { display: flex; align-items: flex-start; gap: 10px; }
+.listIcon { color: var(--color-accent); font-size: 16px; margin-top: 2px; flex: none; }
+.listTitle { display: flex; flex-direction: column; margin-right: auto; min-width: 0; }
+.items { display: flex; flex-direction: column; }
+.item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 0; border-top: 1px solid var(--color-neutral-900); }
+/* read-only rows keep the 26px height of the × button */
+.itemRo { min-height: 37px; }
+.itemText { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.itemLabel { font-size: 13px; }
+.itemSub { font-size: 11px; color: var(--color-neutral-400); }
+:global(.btn).removeBtn { color: var(--color-neutral-500); width: 26px; height: 26px; }
+.addRow { display: flex; gap: 8px; }
+:global(.input).addInput { min-height: 32px; flex: 1; width: auto; min-width: 0; }
+
+/* ── Machine types ── */
+.mtLayout { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+:global(.card).mtListCard { padding: 14px 16px; gap: 8px; flex: 1 1 280px; max-width: 360px; }
+.mtListHead { display: flex; flex-direction: column; }
+.mtList { display: flex; flex-direction: column; gap: 6px; }
+.mtItem {
+  display: flex; flex-direction: column; gap: 3px; padding: 9px 11px; border-radius: var(--radius-md); cursor: pointer;
+  background: transparent; box-shadow: none; color: var(--color-text); text-decoration: none;
+}
+.mtItemOn { background: var(--color-accent-900); box-shadow: inset 0 0 0 1px var(--color-accent-700); }
+/* style-hover is !important in the prototype: hover wins over the selected ground, the edge stays (docs/spec/02 Q-13). */
+.mtItem:hover { background: var(--color-neutral-900); color: var(--color-text); }
+.mtItemHead { display: flex; align-items: center; gap: 8px; }
+.mtCode { font-weight: 500; font-size: 13.5px; }
+.tag105 { font-size: 10.5px; }
+.pushRight { margin-left: auto; }
+.mtItemSub { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+.mtItemUse { font-size: 11.5px; color: var(--color-neutral-300); }
+.mtRight { display: flex; flex-direction: column; gap: 14px; min-width: 0; flex: 999 1 420px; }
+:global(.card).identityCard { padding: 14px 16px; gap: 12px; }
+.identityHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.identityTitle { margin-right: auto; }
+.fieldGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px 14px; }
+.fullField { grid-column: 1 / -1; }
+:global(.input).mtInput { min-height: 28px; padding: 2px 8px; font-size: 12.5px; width: 100%; }
+:global(.input).mtTextarea { min-height: 56px; resize: vertical; padding: 2px 8px; font-size: 12.5px; width: 100%; }
+.terms { display: flex; flex-direction: column; gap: 6px; }
+.termsRow { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.pctField { width: 110px; }
+.termsTotal { font-size: 12.5px; padding-bottom: 6px; font-variant-numeric: tabular-nums; }
+/* the prototype's `<i>` glyph has padding-bottom:6px; on the SVG (border-box, 1em box) padding would shrink the drawing,
+   so the same 6px sit below it as a margin */
+.termsOk { color: var(--color-accent); margin-bottom: 6px; display: block; flex: none; }
+.termsBad { font-size: 12px; color: var(--color-accent-300); padding-bottom: 6px; }
+.twoGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 14px; align-items: start; }
+:global(.card).sectionCard { padding: 14px 16px; gap: 8px; }
+:global(.card).costCard { padding: 14px 16px; gap: 8px; overflow: auto; }
+.sectionHead { display: flex; align-items: center; gap: 10px; }
+:global(.btn).addBtn { margin-left: auto; font-size: 12px; white-space: nowrap; }
+.phaseRow { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 3px 0; border-top: 1px solid var(--color-neutral-900); }
+.itpRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 3px 0; border-top: 1px solid var(--color-neutral-900); }
+.phaseNo { font-size: 12px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+:global(.btn).rowRemove { width: 24px; height: 24px; min-height: 0; padding: 0; font-size: 13px; color: var(--color-neutral-400); }
+.catGrid { display: grid; grid-template-columns: minmax(140px, 1fr) 120px 90px auto; gap: 8px; align-items: center; }
+.catHead {
+  padding: 4px 0; border-bottom: 1px solid var(--color-neutral-800); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--color-neutral-400);
+}
+.catRow { padding: 3px 0; border-top: 1px solid var(--color-neutral-900); }
+.catTotal { padding: 6px 0; font-size: 12.5px; font-weight: 500; }
+.right { text-align: right; }
+.spacer24 { width: 24px; }
+.refRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 0; border-top: 1px solid var(--color-neutral-900); font-size: 12.5px; }
+.refRowRo { min-height: 35px; }
+.projRow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 5px 0; border-top: 1px solid var(--color-neutral-900); font-size: 12.5px; }
+.projText { display: flex; flex-direction: column; line-height: 1.3; }
+.projSub { font-size: 11px; color: var(--color-neutral-400); }
+.emptyNote { font-size: 12px; color: var(--color-neutral-400); text-wrap: pretty; }
+
+/* ── Activity, integrations & audit ── */
+:global(.card).feedCard { padding: 14px 16px; gap: 2px; }
+.cardHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.feedHead { margin-bottom: 6px; }
+.cardTitle { margin-right: auto; }
+.actRow { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 9px 0; border-top: 1px solid var(--color-neutral-900); }
+.actIcon { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; background: var(--color-neutral-900); color: var(--color-neutral-300); }
+.actText { display: flex; flex-direction: column; line-height: 1.35; min-width: 0; }
+.actLine { font-size: 13px; text-wrap: pretty; }
+.actWho { font-weight: 500; }
+.actWhen { font-size: 11.5px; color: var(--color-neutral-500); white-space: nowrap; }
+.actEmpty { font-size: 12.5px; color: var(--color-neutral-400); padding: 9px 0; border-top: 1px solid var(--color-neutral-900); }
+
+:global(.card).tableCard { padding: 14px 16px; gap: 8px; overflow: auto; }
+.table13 { font-size: 13px; }
+.table125 { font-size: 12.5px; }
+.connName { font-weight: 500; white-space: nowrap; }
+.connMode { display: block; font-size: 11px; font-weight: 400; color: var(--color-neutral-400); }
+.connData { font-size: 12.5px; color: var(--color-neutral-300); text-wrap: pretty; min-width: 260px; }
+.cell12 { font-size: 12px; white-space: nowrap; }
+.cell12Soft { font-size: 12px; white-space: nowrap; color: var(--color-neutral-300); }
+.cell12Muted { font-size: 12px; color: var(--color-neutral-400); white-space: nowrap; }
+:global(.btn).exportBtn { font-size: 12px; padding: 3px 10px; white-space: nowrap; }
+.connActions { display: flex; gap: 6px; justify-content: flex-end; }
+
+.importGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 10px; }
+:global(.card).importCard { padding: 14px 16px; gap: 8px; }
+.importHead { display: flex; align-items: center; gap: 10px; }
+.importIcon { color: var(--color-accent); font-size: 20px; flex: none; }
+.importName { font-size: 13.5px; font-weight: 500; }
+.dropZone {
+  width: 100%; aspect-ratio: 5 / 1; border: 1px dashed var(--color-neutral-700); border-radius: 8px; display: grid; place-items: center;
+  font-size: 12px; color: var(--color-neutral-500); background: transparent; font-family: inherit; cursor: pointer; padding: 0;
+}
+.dropZone:hover, .dropZoneOver { border-color: var(--color-accent-700); }
+.dropZone:focus-visible, .dropZone:has(input:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.dropZoneRo { cursor: default; }
+.dropZoneRo:hover { border-color: var(--color-neutral-700); }
+
+.when { white-space: nowrap; color: var(--color-neutral-300); }
+.nowrap { white-space: nowrap; }
+.obj { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.areaCell { font-size: 12px; color: var(--color-neutral-400); white-space: nowrap; }
+.tableEmpty { font-size: 12.5px; color: var(--color-neutral-400); }

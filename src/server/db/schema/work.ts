@@ -5,11 +5,13 @@
 // Dates: the prototype keeps working-day offsets from Mon 21 Sep 2026 (`start`, `due`, `propStart`…); they are
 // stored as ISO dates and converted back with codes.ts dayOffsetOfIso (the DAL returns both).
 import { boolean, date, integer, pgTable, primaryKey, text, timestamp, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
-import type { AttachmentKind, Priority, RequestEventAction, RequestStatus, TaskStatus, TimeEntrySource } from '../codes';
+import type { AttachmentKind, Priority, RequestEventAction, RequestStatus, TaskOrigin, TaskStatus, TimeEntrySource } from '../codes';
 import { id, num, timestamps } from './_common';
+import { storedFiles } from './files';
 import { departments, persons } from './organisation';
 import { activities } from './planning';
 import { projects } from './portfolio';
+import { whatIfScenarios } from './resources';
 
 /** Tasks (TODOS 3228, DESC 3261; new tasks from approved resource requests T-2341…). */
 export const tasks = pgTable('tasks', {
@@ -45,6 +47,8 @@ export const tasks = pgTable('tasks', {
   sourceRequestId: uuid('source_request_id').references((): AnyPgColumn => resourceRequests.id, { onDelete: 'set null' }),
   /** TODOS order (new tasks are appended). */
   sortOrder: integer('sort_order').notNull(),
+  /** Chapter 4: where the task comes from ('activity_todo' = Plan drawer composer); null for the seed and older tasks. */
+  origin: text('origin').$type<TaskOrigin>(),
   ...timestamps,
 });
 
@@ -81,6 +85,10 @@ export const taskAttachments = pgTable('task_attachments', {
   kind: text('kind').$type<AttachmentKind>().notNull(),
   storageRef: text('storage_ref'),
   position: integer('position').notNull(),
+  /** Chapter 4 (R-8): the stored file (src/server/storage); null for the seed's FILES rows (no content). */
+  fileId: uuid('file_id').references(() => storedFiles.id, { onDelete: 'set null' }),
+  mime: text('mime'),
+  sizeBytes: integer('size_bytes'),
 });
 
 /** Time entries (ENTRIES 3260; "Log" on the Task screen). */
@@ -126,6 +134,8 @@ export const resourceRequests = pgTable('resource_requests', {
   proposedDue: date('proposed_due', { mode: 'string' }),
   /** Task created on approval (prototype `todoId`). */
   taskId: uuid('task_id').references((): AnyPgColumn => tasks.id, { onDelete: 'set null' }),
+  /** Chapter 4 (S-7): the what-if scenario whose "Apply" drafted this request. */
+  scenarioId: uuid('scenario_id').references(() => whatIfScenarios.id, { onDelete: 'set null' }),
   /** REQUESTS order (new requests are prepended with a lower value). */
   sortOrder: integer('sort_order').notNull(),
   ...timestamps,

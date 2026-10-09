@@ -6,8 +6,8 @@ import { shade } from '@/components/app/tones';
 import PROTO from '@/server/prototype/prototype-data.json';
 import GEN from '@/server/prototype/prototype-generated.json';
 import {
-  availableHours, capacityBar, laborShare, loadBand, overAllocatedCount, peopleAboveByWeek, personAvailability, personLoad,
-  projectDepartmentDemand, teamAvailability, teamUtilization, unmetDemand, weeksUnderTeamCapacity, type LoadBand,
+  availableHours, capacityBar, laborShare, loadBand, mainShortfall, overAllocatedCount, peopleAboveByWeek, personAvailability, personLoad,
+  projectDepartmentDemand, requestsNeedingExperts, teamAvailability, teamUtilization, unmetDemand, weekRangesText, weeksAbove, weeksUnderTeamCapacity, type LoadBand,
 } from './resources';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -76,8 +76,11 @@ describe('capacity vs demand', () => {
       ['Controls & planning', false, 79.5, 90.9],
       ['Quality', true, 90.9, 78.6],
     ]);
-    // the portfolio constant (240 h) differs from Σ max(0, dem − cap) = 280 h (06 OQ1)
+    // A-12 (06 OQ1): the portfolio screen now computes Σ max(0, dem − cap) = 150 + 50 + 30 + 50 = 280 h (prototype constant 240 h),
+    // mostly Engineering (150 h).
     expect(unmetDemand(roles)).toBe(280);
+    expect(mainShortfall(roles)?.name).toBe('Engineering');
+    expect(mainShortfall(roles.filter((r) => r.demandH <= r.capacityH))).toBeNull();
   });
 
   it('project departments: 320 h per person, demand round(avg% × 3.2), first-appearance order', () => {
@@ -141,5 +144,23 @@ describe('availability from leave (Leave & working calendar, 35 h basis)', () =>
     expect(rows.reduce((a, r) => a + r.leaveDays, 0)).toBe(43);
     expect(weeksUnderTeamCapacity(rows)).toBe(0);
     expect(weeksUnderTeamCapacity(rows, 0.7)).toBe(1); // week 6 (Armistice): 189 h / 280 h
+  });
+});
+
+describe('computed KPI subs (chapter 4, A-12)', () => {
+  it('weeks with someone above 110 %: window weeks 3–5 (w/c 12, 19, 26 Oct = ISO weeks 42–44; the prototype said "41–43")', () => {
+    expect(weeksAbove(peopleOf())).toEqual([2, 3, 4]);
+    expect(weeksAbove(peopleOf(), 100)).toEqual([1, 2, 3, 4, 6]);
+    expect([weekRangesText([42, 43, 44]), weekRangesText([46, 41, 42, 44]), weekRangesText([43]), weekRangesText([])]).toEqual(['42–44', '41–42, 44, 46', '43', '']);
+  });
+
+  it('open requests needing level ≥ 4: pending requests naming an expert (main skill at level 4–5)', () => {
+    const skills = P.SKILLS as string[];
+    const people = Object.entries(P.SKILL_LV as Record<string, number[]>).map(([name, levels]) => ({ name, levels }));
+    const requests = (P.REQUESTS as { person: string; status: string }[]).map((r) => ({ person: r.person, status: r.status }));
+    // RQ-044 Fabien Bertrand (Procurement 5), RQ-042 Hélène Sauvage (Quality 5), RQ-041 Julien Wagner (Structural 5); RQ-043
+    // is a contract role (no level). The prototype showed the constant "2 · Structural · Quality".
+    expect(requestsNeedingExperts(requests, people, skills)).toEqual({ count: 3, skills: ['Structural', 'Procurement', 'Quality / QA-QC'] });
+    expect(requestsNeedingExperts(requests, people, skills, 6)).toEqual({ count: 0, skills: [] });
   });
 });

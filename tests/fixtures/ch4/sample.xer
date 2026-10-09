@@ -1,0 +1,53 @@
+ERMHDR	19.12	2026-09-25	Project	admin	Keystone test	dbxDatabaseNoName	Project Management	EUR
+%T	CURRTYPE
+%F	curr_id	curr_short_name
+%R	1	EUR
+%T	PROJECT
+%F	proj_id	proj_short_name	clndr_id	plan_start_date	plan_end_date	scd_end_date	last_recalc_date	export_flag
+%R	100	P6-DEMO	10	2026-03-02 07:00	2026-05-29 18:00	2026-05-18 07:00	2026-04-01 07:00	Y
+%T	CALENDAR
+%F	clndr_id	default_flag	clndr_name	proj_id	base_clndr_id	clndr_type	day_hr_cnt	clndr_data
+%R	10	Y	Chantier 6x10			CA_Base	10	(0||CalendarData()(   (0||DaysOfWeek()(     (0||1()())     (0||2()(       (0||0(s|07:00|f|12:00)())       (0||1(s|13:00|f|18:00)()))))     (0||3()(       (0||0(s|07:00|f|12:00)())       (0||1(s|13:00|f|18:00)()))))     (0||4()(       (0||0(s|07:00|f|12:00)())       (0||1(s|13:00|f|18:00)()))))     (0||5()(       (0||0(s|07:00|f|12:00)())       (0||1(s|13:00|f|18:00)()))))     (0||6()(       (0||0(s|07:00|f|12:00)())       (0||1(s|13:00|f|18:00)()))))     (0||7()(       (0||0(s|07:00|f|12:00)())       (0||1(s|13:00|f|18:00)()))))   (0||VIEW(ShowTotal|Y)())   (0||Exceptions()(     (0||0(d|46143)()) ))))
+%R	20	N	Office 5x8			CA_Base	8	(0||CalendarData()(   (0||DaysOfWeek()(     (0||1()())     (0||2()(       (0||0(s|08:00|f|12:00)())       (0||1(s|13:00|f|17:00)()))))     (0||3()(       (0||0(s|08:00|f|12:00)())       (0||1(s|13:00|f|17:00)()))))     (0||4()(       (0||0(s|08:00|f|12:00)())       (0||1(s|13:00|f|17:00)()))))     (0||5()(       (0||0(s|08:00|f|12:00)())       (0||1(s|13:00|f|17:00)()))))     (0||6()(       (0||0(s|08:00|f|12:00)())       (0||1(s|13:00|f|17:00)()))))     (0||7()())   (0||VIEW(ShowTotal|Y)())   (0||Exceptions()( ))))
+%T	PROJWBS
+%F	wbs_id	proj_id	parent_wbs_id	seq_num	proj_node_flag	wbs_short_name	wbs_name
+%R	1000	100		0	Y	P6-DEMO	P6 demo project
+%R	1001	100	1000	1	N	ENG	Engineering
+%R	1002	100	1000	2	N	CON	Construction
+%R	1003	100	1002	1	N	CIV	Civil works
+%T	TASK
+%F	task_id	proj_id	wbs_id	clndr_id	task_code	task_name	task_type	status_code	complete_pct_type	phys_complete_pct	target_drtn_hr_cnt	remain_drtn_hr_cnt	act_start_date	act_end_date	early_start_date	early_end_date	target_start_date	target_end_date	cstr_type	cstr_date	cstr_type2	total_float_hr_cnt
+%R	2001	100	1001	10	A1000	Survey	TT_Task	TK_Complete	CP_Drtn	100	50	0	2026-03-02 07:00	2026-03-07 18:00			2026-03-02 07:00	2026-03-07 18:00				
+%R	2002	100	1001	20	A1010	Design review	TT_Task	TK_Active	CP_Phys	50	80	40	2026-03-09 08:00		2026-03-09 08:00	2026-03-20 17:00	2026-03-09 08:00	2026-03-20 17:00				0
+%R	2003	100	1003	10	A1020	Foundations	TT_Task	TK_NotStart	CP_Drtn	0	200	200			2026-03-25 07:00	2026-04-15 18:00	2026-03-25 07:00	2026-04-15 18:00	CS_MEOB	2026-04-17 18:00	CS_MSOA	40
+%R	2004	100	1002	10	A1030	Steel erection	TT_Task	TK_NotStart	CP_Drtn	0	300	300			2026-04-01 07:00	2026-05-06 18:00	2026-04-01 07:00	2026-05-06 18:00				0
+%R	2005	100	1002	10	A1900	Handover	TT_FinMile	TK_NotStart	CP_Drtn	0	0	0			2026-05-07 07:00	2026-05-07 07:00	2026-05-07 07:00	2026-05-07 07:00				0
+%R	2006	100	1002	10	A1500	Site supervision	TT_LOE	TK_NotStart	CP_Drtn	0	400	400			2026-03-02 07:00	2026-05-06 18:00						
+%T	TASKPRED
+%F	task_pred_id	task_id	pred_task_id	proj_id	pred_proj_id	pred_type	lag_hr_cnt
+%R	3001	2002	2001	100	100	PR_FS	0
+%R	3002	2003	2002	100	100	PR_FS	16
+%R	3003	2004	2003	100	100	PR_SS	50
+%R	3004	2005	2004	100	100	PR_FS	0
+%R	3005	2004	9999	100	200	PR_FS	0
+%T	RSRC
+%F	rsrc_id	rsrc_name	rsrc_short_name	rsrc_type
+%R	500	Steel erection crew	CREW	RT_Labor
+%R	501	Crane 100t	CRANE	RT_Equip
+%T	TASKRSRC
+%F	taskrsrc_id	task_id	proj_id	rsrc_id	target_qty	act_reg_qty	act_ot_qty	remain_qty	target_cost	act_reg_cost	act_ot_cost	remain_cost	target_qty_per_hr
+%R	600	2004	100	500	1800	0	0	1800	90000	0	0	90000	6
+%R	601	2004	100	501	300	0	0	300	45000	0	0	45000	1
+%T	ACTVTYPE
+%F	actv_code_type_id	actv_code_type
+%R	700	Discipline
+%T	ACTVCODE
+%F	actv_code_id	actv_code_type_id	short_name	actv_code_name
+%R	710	700	CIV	Civil
+%T	TASKACTV
+%F	task_id	actv_code_type_id	actv_code_id	proj_id
+%R	2003	700	710	100
+%T	UDFVALUE
+%F	udf_type_id	fk_id	proj_id	udf_text
+%R	800	2003	100	Concrete C30/37
+%E

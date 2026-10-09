@@ -69,7 +69,8 @@ export const LEGACY_STATUS: Record<string, StageCode> = {
   'On hold': 'approvisionnements', Closing: 'garantie', Closed: 'clos', Cancelled: 'annule',
 };
 
-export type TransitionMode = 'auto' | 'forced';
+/** 'revert' (chapter 4, L-1): the row written when the portfolio director rejects a forced stage change (back to the previous stage). */
+export type TransitionMode = 'auto' | 'forced' | 'revert';
 export type ValidationStatus = 'pending' | 'approved' | 'rejected';
 
 // ── Organisation / portfolio ───────────────────────────────────────────────────────────────────────────
@@ -96,7 +97,8 @@ export const calendar = codec<CalendarCode, string>(
 
 // ── Planning ───────────────────────────────────────────────────────────────────────────────────────────
 export type LinkType = 'FS' | 'SS' | 'FF' | 'SF';
-export type ConstraintType = 'FNLT' | 'SNET' | (string & {});
+/** Activity constraint (`c`). Chapter 4 schedules every type of CONSTRAINT_TYPES (S-1); other strings are kept as typed. */
+export type ConstraintType = 'ASAP' | 'SNET' | 'SNLT' | 'FNET' | 'FNLT' | 'MSO' | 'MFO' | (string & {});
 
 export type MilestoneStatus = 'done' | 'late' | 'at_risk' | 'on_track';
 export const milestoneStatus = codec<MilestoneStatus, string>([
@@ -202,9 +204,9 @@ export function clientCode3(name: string | null | undefined, registered?: string
 }
 
 // ── Risk (docs/spec/11 §2.3, 07 §2.1) ─────────────────────────────────────────────────────────────────
-/** Risk categories, in Settings order (SETTINGS0.riskCats 3467 — the chip order of the register). */
+/** Risk categories, in Settings order (SETTINGS0.riskCats 3467 — the chip order of the register); custom Settings codes allowed (A-14). */
 export type RiskCategory =
-  | 'technical' | 'supplier_delivery' | 'hse' | 'contractual_client' | 'financial_currency' | 'regulatory_permits' | 'resources_skills';
+  | 'technical' | 'supplier_delivery' | 'hse' | 'contractual_client' | 'financial_currency' | 'regulatory_permits' | 'resources_skills' | (string & {});
 export const riskCategory = codec<RiskCategory, string>([
   ['technical', 'Technical'], ['supplier_delivery', 'Supplier / delivery'], ['hse', 'HSE (safety)'],
   ['contractual_client', 'Contractual / client'], ['financial_currency', 'Financial / currency'],
@@ -251,16 +253,17 @@ export const taskStatus = codec<TaskStatus, string>([['todo', 'To do'], ['doing'
 export type Priority = 'low' | 'med' | 'high';
 export const priority = codec<Priority, string>([['low', 'Low'], ['med', 'Medium'], ['high', 'High']]);
 /** Resource request status (REQ_STATUS 3282): the codes are the prototype's values. */
-export type RequestStatus = 'pending' | 'approved' | 'reschedule' | 'rejected' | 'withdrawn';
+/** 'draft' (chapter 4, S-7): prepared by a what-if "Apply", not sent to the department yet. */
+export type RequestStatus = 'draft' | 'pending' | 'approved' | 'reschedule' | 'rejected' | 'withdrawn';
 export const requestStatus = codec<RequestStatus, string>([
-  ['pending', 'Pending review'], ['approved', 'Approved · assigned'], ['reschedule', 'Reschedule proposed'], ['rejected', 'Rejected'], ['withdrawn', 'Withdrawn'],
+  ['draft', 'Draft'], ['pending', 'Pending review'], ['approved', 'Approved · assigned'], ['reschedule', 'Reschedule proposed'], ['rejected', 'Rejected'], ['withdrawn', 'Withdrawn'],
 ]);
 /** Status tag variant of a request (REQ_STATUS 3282 classes). */
 export const REQUEST_STATUS_TAG: Record<RequestStatus, 'tag-outline' | 'tag-accent' | 'tag-neutral'> = {
-  pending: 'tag-outline', approved: 'tag-accent', reschedule: 'tag-outline', rejected: 'tag-neutral', withdrawn: 'tag-neutral',
+  draft: 'tag-outline', pending: 'tag-outline', approved: 'tag-accent', reschedule: 'tag-outline', rejected: 'tag-neutral', withdrawn: 'tag-neutral',
 };
 /** Decision trail of a resource request. */
-export type RequestEventAction = 'sent' | 'approved' | 'reschedule' | 'rejected' | 'withdrawn' | 'accepted' | 'resent';
+export type RequestEventAction = 'drafted' | 'sent' | 'approved' | 'reschedule' | 'rejected' | 'withdrawn' | 'accepted' | 'resent';
 /** Where a time entry comes from (keystone = logged on the Task screen, lucca = HRIS import). */
 export type TimeEntrySource = 'keystone' | 'lucca';
 /** File icon of a task attachment (FILES 3259: ph-file-xls / ph-image / ph-file-pdf). */
@@ -727,8 +730,8 @@ export const poStatus = codec<PoStatus, string>([
 export const PO_STATUS_TAG: Record<PoStatus, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = {
   draft: 'tag-neutral', awaiting_approval: 'tag-outline', ordered: 'tag-outline', partially_received: 'tag-accent', received: 'tag-neutral', cancelled: 'tag-neutral',
 };
-/** Where a purchase order comes from: Sage X3 (seed, genPOs), the BOM shortfall assistant, an RFQ award. */
-export type PoOrigin = 'x3' | 'shortfall' | 'rfq';
+/** Where a purchase order comes from: Sage X3 (seed, genPOs), the BOM shortfall assistant, an RFQ award, the BOM spares list (chapter 4). */
+export type PoOrigin = 'x3' | 'shortfall' | 'rfq' | 'spares';
 /** Incoterms (AF.procurement); "DAP site" = DAP at the site gate. Codes are the Incoterm abbreviations. */
 export type Incoterm = 'DAP' | 'EXW' | 'FCA' | 'DDP';
 export const incoterm = codec<Incoterm, string>([['DAP', 'DAP site'], ['EXW', 'EXW'], ['FCA', 'FCA'], ['DDP', 'DDP']]);
@@ -796,3 +799,294 @@ export const locationType = codec<LocationType, string>([
   ['central_warehouse', 'Central warehouse'], ['workshop', 'Workshop'], ['site_store', 'Site store'], ['consignment', 'Consignment at supplier'],
   ['quarantine', 'Quarantine (QC hold)'],
 ]);
+
+// ── Delivery 5: quality, operations, after-sales, site, client portal, engineering, administration ──────
+// (docs/spec/11 §2.4, §2.7, §2.8; 07 §2.3–2.9, 09 §6–9, 10 §1–3, 03 §8). Labels are the prototype's source strings.
+
+/** NCR severity (NCR_SEV 3505) — also the warranty-claim severity (CLAIMS 3730). */
+export type NcrSeverity = 'minor' | 'major' | 'critical';
+export const ncrSeverity = codec<NcrSeverity, string>([['minor', 'Minor'], ['major', 'Major'], ['critical', 'Critical']]);
+/** Severity tag (`sevTag` 4612, claims 4987): Critical accent, Major outline, Minor neutral. */
+export const SEVERITY_TAG: Record<NcrSeverity, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = { critical: 'tag-accent', major: 'tag-outline', minor: 'tag-neutral' };
+/** Where an NCR was raised (HLT_NCRS.src, AF.quality). */
+export type NcrSource = 'site_inspection' | 'goods_receipt' | 'survey' | 'workshop' | 'client' | 'audit';
+export const ncrSource = codec<NcrSource, string>([
+  ['site_inspection', 'Site inspection'], ['goods_receipt', 'Goods receipt'], ['survey', 'Survey'], ['workshop', 'Workshop'], ['client', 'Client'], ['audit', 'Audit'],
+]);
+/** NCR workflow (NCR_FLOW 3506), in order — the 8D itself is managed in Vigie. */
+export type NcrStatus = 'open' | 'containment' | 'root_cause' | 'corrective_action' | 'verification' | 'closed';
+export const ncrStatus = codec<NcrStatus, string>([
+  ['open', 'Open'], ['containment', 'Containment'], ['root_cause', 'Root cause'], ['corrective_action', 'Corrective action'], ['verification', 'Verification'],
+  ['closed', 'Closed'],
+]);
+export const NCR_FLOW: readonly NcrStatus[] = ncrStatus.codes;
+/** Next NCR step (Closed stays Closed). */
+export const ncrNextStatus = (s: NcrStatus): NcrStatus => NCR_FLOW[Math.min(NCR_FLOW.length - 1, NCR_FLOW.indexOf(s) + 1)];
+/** NCR status tag (`ncrTag` 4613): Closed neutral, Open accent, intermediate steps outline. */
+export const NCR_STATUS_TAG: Record<NcrStatus, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = {
+  open: 'tag-accent', containment: 'tag-outline', root_cause: 'tag-outline', corrective_action: 'tag-outline', verification: 'tag-outline', closed: 'tag-neutral',
+};
+/** Progress Keystone records on a Vigie NCR: a step advancement, or the quality verification (close / back to corrective action). */
+export type NcrProgressKind = 'step' | 'verification';
+export type NcrVerificationDecision = 'approved' | 'rejected';
+/** Roles that verify and close NCRs (My approvals "NCR verification", apprItems 4730). */
+export const NCR_VERIFIER_ROLES: readonly string[] = ['quality'];
+
+/** Site HSE register items mirrored from Vigie (SITE_HSE 3582): prevention plan, induction, permits, near-miss register. */
+export type HseItemKind = 'prevention_plan' | 'induction' | 'permit' | 'register';
+export type HseStatus = 'signed' | 'ready' | 'pending' | 'recorded';
+export const hseStatus = codec<HseStatus, string>([['signed', 'Signed'], ['ready', 'Ready'], ['pending', 'Pending'], ['recorded', 'Recorded']]);
+
+/** Client deliverable types (DELIV_TYPES 3513 = SETTINGS0.delivTypes; a Settings list, custom codes allowed). */
+export type DeliverableType =
+  | 'drawings' | 'calculation_notes' | 'specifications' | 'test_reports' | 'certificates' | 'manuals_asbuilt' | 'minutes' | 'client_acceptance' | (string & {});
+export const deliverableType = codec<DeliverableType, string>([
+  ['drawings', 'Drawings'], ['calculation_notes', 'Calculation notes'], ['specifications', 'Specifications'], ['test_reports', 'Test & inspection reports'],
+  ['certificates', 'Certificates (CE, lifting…)'], ['manuals_asbuilt', 'Manuals / as-built'], ['minutes', 'Meeting minutes'],
+  ['client_acceptance', 'Client acceptance (PV de réception)'],
+]);
+/** Deliverable workflow (DELIV_FLOW2 3514). */
+export type DeliverableStatus = 'planned' | 'in_progress' | 'internal_review' | 'submitted' | 'accepted' | 'rejected';
+export const deliverableStatus = codec<DeliverableStatus, string>([
+  ['planned', 'Planned'], ['in_progress', 'In progress'], ['internal_review', 'Internal review'], ['submitted', 'Submitted'], ['accepted', 'Accepted'], ['rejected', 'Rejected'],
+]);
+/** Deliverable status tag (`dlvTag` 4631). */
+export const DELIVERABLE_STATUS_TAG: Record<DeliverableStatus, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = {
+  planned: 'tag-neutral', in_progress: 'tag-outline', internal_review: 'tag-outline', submitted: 'tag-accent', accepted: 'tag-neutral', rejected: 'tag-accent',
+};
+/** Client acceptance window of a submitted deliverable ("10-day acceptance window"). */
+export const DELIVERABLE_ACCEPTANCE_DAYS = 10;
+
+/** ITP point types, stages and results (ITP 3717). */
+export type ItpPointType = 'hold' | 'witness' | 'review' | 'surveillance';
+export const itpPointType = codec<ItpPointType, string>([['hold', 'Hold'], ['witness', 'Witness'], ['review', 'Review'], ['surveillance', 'Surveillance']]);
+export type ItpStage = 'workshop' | 'fat' | 'site' | 'sat';
+export const itpStage = codec<ItpStage, string>([['workshop', 'Workshop'], ['fat', 'FAT'], ['site', 'Site'], ['sat', 'SAT']]);
+export type ItpResult = 'planned' | 'scheduled' | 'passed' | 'failed';
+export const itpResult = codec<ItpResult, string>([['planned', 'Planned'], ['scheduled', 'Scheduled'], ['passed', 'Passed'], ['failed', 'Failed']]);
+
+/** Punch items (PUNCH 3718, SITE_PUNCH 3581, AF.punch). Category letter = code. */
+export type PunchCategory = 'A' | 'B' | 'C';
+export const punchCategory = codec<PunchCategory, string>([['A', 'A — blocking'], ['B', 'B — before SAT'], ['C', 'C — cosmetic']]);
+export type PunchSource = 'site_walk' | 'client_inspection' | 'itp' | 'sat';
+export const punchSource = codec<PunchSource, string>([['site_walk', 'Site walk'], ['client_inspection', 'Client inspection'], ['itp', 'ITP'], ['sat', 'SAT']]);
+export type PunchStatus = 'open' | 'in_progress' | 'closed';
+export const punchStatus = codec<PunchStatus, string>([['open', 'Open'], ['in_progress', 'In progress'], ['closed', 'Closed']]);
+/**
+ * Register a punch item belongs to: the ITP punch list (PUNCH, categorised) or the Site punch list & reserves
+ * (SITE_PUNCH, owner party + NCR). The two prototype lists clash on ids and statuses (11 §7 #4, OPEN QUESTION A-6):
+ * one entity, two registers, numbered per register until A-6 is settled.
+ */
+export type PunchRegister = 'itp' | 'site';
+export type PunchOwnerParty = 'client' | 'keystone';
+export const punchOwnerParty = codec<PunchOwnerParty, string>([['client', 'Client'], ['keystone', 'Keystone']]);
+
+/** Commissioning steps (COMMISSIONING.steps 3721) and cell status. */
+export type CommissioningStep = 'mechanical_completion' | 'pre_commissioning' | 'commissioning' | 'sat' | 'handover';
+export const commissioningStep = codec<CommissioningStep, string>([
+  ['mechanical_completion', 'Mechanical completion'], ['pre_commissioning', 'Pre-commissioning'], ['commissioning', 'Commissioning'], ['sat', 'SAT'], ['handover', 'Handover'],
+]);
+export type CommissioningCellStatus = 'planned' | 'in_progress' | 'done' | 'blocked';
+export const commissioningCellStatus = codec<CommissioningCellStatus, string>([['planned', 'Planned'], ['in_progress', 'In progress'], ['done', 'Done'], ['blocked', 'Blocked']]);
+export type HandoverItemStatus = 'ready' | 'partial' | 'draft' | 'missing';
+export const handoverItemStatus = codec<HandoverItemStatus, string>([['ready', 'Ready'], ['partial', 'Partial'], ['draft', 'Draft'], ['missing', 'Missing']]);
+/** Dossier status tag (`cmDossier` 4975). */
+export const HANDOVER_STATUS_TAG: Record<HandoverItemStatus, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = { ready: 'tag-neutral', partial: 'tag-outline', draft: 'tag-outline', missing: 'tag-accent' };
+
+/** Lessons learned (LESSONS 3732, AF.rex) and closure checklist (CLOSURE 3733). */
+export type LessonTheme = 'engineering' | 'procurement' | 'site' | 'client' | 'planning' | 'quality' | 'hse';
+export const lessonTheme = codec<LessonTheme, string>([
+  ['engineering', 'Engineering'], ['procurement', 'Procurement'], ['site', 'Site'], ['client', 'Client'], ['planning', 'Planning'], ['quality', 'Quality'], ['hse', 'HSE'],
+]);
+/** "Applies to" options of the lesson form (seed values may name a document: "Purchasing procedure PRO-QMS-021"). */
+export const LESSON_APPLIES_TO: readonly string[] = ['WBS template', 'ITP template', 'Purchasing procedure', 'Engineering gate checklist', 'Stakeholder & RACI template', 'Other'];
+export type LessonStatus = 'proposed' | 'validated' | 'applied';
+export const lessonStatus = codec<LessonStatus, string>([['proposed', 'Proposed'], ['validated', 'Validated'], ['applied', 'Applied']]);
+export type ClosureItemStatus = 'not_started' | 'in_progress' | 'done';
+export const closureItemStatus = codec<ClosureItemStatus, string>([['not_started', 'Not started'], ['in_progress', 'In progress'], ['done', 'Done']]);
+/** Click cycles Not started → In progress → Done → Not started (`clRows.toggle` 5002). */
+export const CLOSURE_NEXT: Record<ClosureItemStatus, ClosureItemStatus> = { not_started: 'in_progress', in_progress: 'done', done: 'not_started' };
+
+/** Warranty claims (CLAIMS 3730) and interventions (INTERVENTIONS 3731). Claim severity uses `ncrSeverity`. */
+export type ClaimStatus = 'open' | 'diagnosed' | 'intervention_planned' | 'closed';
+export const claimStatus = codec<ClaimStatus, string>([['open', 'Open'], ['diagnosed', 'Diagnosed'], ['intervention_planned', 'Intervention planned'], ['closed', 'Closed']]);
+export type ClaimCoverage = 'warranty' | 'extended_warranty' | 'chargeable';
+export const claimCoverage = codec<ClaimCoverage, string>([['warranty', 'Warranty'], ['extended_warranty', 'Extended warranty'], ['chargeable', 'Chargeable']]);
+export type InterventionStatus = 'planned' | 'done';
+export const interventionStatus = codec<InterventionStatus, string>([['planned', 'Planned'], ['done', 'Done']]);
+export type InterventionType = 'corrective' | 'diagnosis' | 'preventive';
+export const interventionType = codec<InterventionType, string>([['corrective', 'Corrective'], ['diagnosis', 'Diagnosis'], ['preventive', 'Preventive']]);
+
+/** Client portal issues (CLIENT_ISSUES 3544). */
+export type ClientIssueStatus = 'open' | 'in_progress' | 'closed';
+export const clientIssueStatus = codec<ClientIssueStatus, string>([['open', 'Open'], ['in_progress', 'In progress'], ['closed', 'Closed']]);
+
+/** Cursus approvals per person (SITE_DOCS 3574) — approvals and dates only, never personal data. */
+export type CursusVisa = 'not_required' | 'approved' | 'pending';
+export const cursusVisa = codec<CursusVisa, string>([['not_required', 'Not required'], ['approved', 'Approved'], ['pending', 'Pending']]);
+export type CursusVaccination = 'confirmed' | 'pending';
+export const cursusVaccination = codec<CursusVaccination, string>([['confirmed', 'Confirmed'], ['pending', 'Pending']]);
+export type CursusClearance = 'ok' | 'pending' | 'expiring' | 'missing';
+export const cursusClearance = codec<CursusClearance, string>([['ok', 'OK'], ['pending', 'Pending'], ['expiring', 'Expiring'], ['missing', 'Missing']]);
+export type CursusVerdict = 'go' | 'go_with_reserve' | 'no_go';
+export const cursusVerdict = codec<CursusVerdict, string>([['go', 'GO'], ['go_with_reserve', 'GO with reserve'], ['no_go', 'NO GO']]);
+/** What Keystone sends to Cursus: a reminder on a person's pending approvals ("Remind in Cursus"), or a travel request. */
+export type CursusRequestKind = 'reminder' | 'travel_request';
+export type CursusSyncStatus = 'pending' | 'sent' | 'failed';
+export const cursusSyncStatus = codec<CursusSyncStatus, string>([['pending', 'Pending sync with Cursus'], ['sent', 'Sent to Cursus'], ['failed', 'Sync with Cursus failed']]);
+
+/** Site equipment (SITE_EQUIP 3575; seed values are French data values), prerequisites (SITE_PREREQ 3576), collisions (SITE_COLLISIONS 3578). */
+export type EquipmentSource = 'shipped' | 'local_rental' | 'client';
+export const equipmentSource = codec<EquipmentSource, string>([['shipped', 'Expédié'], ['local_rental', 'Location locale'], ['client', 'Client']]);
+export type ConfirmStatus = 'pending' | 'confirmed' | 'signed';
+export const confirmStatus = codec<ConfirmStatus, string>([['pending', 'Pending'], ['confirmed', 'Confirmed'], ['signed', 'Signed']]);
+export type CollisionKind = 'load' | 'cert' | 'doc' | 'leave';
+export const collisionKind = codec<CollisionKind, string>([['load', 'Load'], ['cert', 'Certificate'], ['doc', 'Document'], ['leave', 'Leave']], { Cert: 'cert', Doc: 'doc' });
+/** Daily report form (AF.site). */
+export type Weather = 'clear' | 'rain' | 'wind' | 'storm';
+export const weather = codec<Weather, string>([['clear', 'Clear'], ['rain', 'Rain'], ['wind', 'Wind > 50 km/h'], ['storm', 'Storm']]);
+export type HseIncident = 'none' | 'near_miss' | 'first_aid' | 'incident';
+export const hseIncident = codec<HseIncident, string>([['none', 'None'], ['near_miss', 'Near miss'], ['first_aid', 'First aid'], ['incident', 'Incident']]);
+
+/** Engineering register (ENG_DISC 3736, ENG_CHECKS 3741, ENG_OUTPUTS 3742). */
+export type Discipline = 'process' | 'meca' | 'elec' | 'auto';
+export const DISCIPLINES: readonly Discipline[] = ['process', 'meca', 'elec', 'auto'];
+export const discipline = codec<Discipline, string>([['process', 'Process'], ['meca', 'Mechanical'], ['elec', 'Electrical'], ['auto', 'Automation']]);
+export type CheckSeverity = 'blocking' | 'warning' | 'info';
+export const checkSeverity = codec<CheckSeverity, string>([['blocking', 'Blocking'], ['warning', 'Warning'], ['info', 'Info']]);
+export type CheckStatus = 'open' | 'in_progress' | 'resolved' | 'sent_back';
+export const checkStatus = codec<CheckStatus, string>([['open', 'Open'], ['in_progress', 'In progress'], ['resolved', 'Resolved'], ['sent_back', 'Sent back']]);
+export const isOpenCheck = (s: CheckStatus) => s === 'open' || s === 'in_progress';
+export type OutputState = 'ready' | 'partial' | 'blocked' | 'stale';
+export const outputState = codec<OutputState, string>([['ready', 'Ready'], ['partial', 'Partial'], ['blocked', 'Blocked'], ['stale', 'Stale']]);
+export type InputState = 'to_confirm' | 'up_to_date' | 'outdated';
+export const inputState = codec<InputState, string>([['to_confirm', 'To confirm'], ['up_to_date', 'Up to date'], ['outdated', 'Outdated']]);
+export type ImportDeltaKind = 'new' | 'changed';
+
+/** P&ID tags (PID_TAGS 3585, PLC_LABEL 3584, PID_STEPS 3611). */
+export type PidTagKind = 'instrument' | 'equipment';
+export const pidTagKind = codec<PidTagKind, string>([['instrument', 'Instrument'], ['equipment', 'Equipment']]);
+export type PlcType = 'P' | 'S' | 'L';
+export const plcType = codec<PlcType, string>([['P', 'Process PLC'], ['S', 'Safety PLC'], ['L', 'Local']]);
+export type PidRole = 'sensor' | 'actuator' | 'ctrl' | 'passive';
+export type StepState = 'done' | 'doing' | 'todo';
+export const stepState = codec<StepState, string>([['done', 'Done'], ['doing', 'In progress'], ['todo', 'To do']]);
+/** Derived P&ID tag status (`tagStatus` 4766). */
+export type PidTagStatus = 'client' | 'unmapped' | 'unknown_ref' | 'not_in_bom' | 'part_not_validated' | 'part_outdated' | 'part_obsolete' | 'linked';
+export const pidTagStatus = codec<PidTagStatus, string>([
+  ['linked', 'Linked'], ['unmapped', 'Unmapped'], ['not_in_bom', 'Not in BOM'], ['part_not_validated', 'Part not validated'], ['part_outdated', 'Part outdated'],
+  ['part_obsolete', 'Part obsolete'], ['client', 'Client'], ['unknown_ref', 'Unknown ref'],
+]);
+
+/** Connectors (CONNECTORS 3570). `kind` names the connectors whose state comes from Keystone's connector layer. */
+export type ConnectorStatus = 'ok' | 'warning' | 'ready' | 'error';
+export const connectorStatus = codec<ConnectorStatus, string>([['ok', 'OK'], ['warning', 'Warning'], ['ready', 'Ready'], ['error', 'Error']]);
+export type ConnectorKind = 'static' | 'vigie' | 'cursus';
+export type ConnectorDirection = 'import' | 'export' | 'both';
+export const connectorDirection = codec<ConnectorDirection, string>([['import', 'Import'], ['export', 'Export'], ['both', 'Both']]);
+export type ImportFormatDirection = 'import' | 'export';
+
+/** Settings › reference lists (SETTINGS0 3467). Locations live in `storage_locations`; health thresholds in `app_settings`. */
+export type ReferenceListKey = 'skills' | 'costCats' | 'statuses' | 'riskCats' | 'delivTypes' | 'holidays' | 'locTypes';
+export const REFERENCE_LIST_KEYS: readonly ReferenceListKey[] = ['skills', 'costCats', 'statuses', 'riskCats', 'delivTypes', 'holidays', 'locTypes'];
+/** Project health thresholds (SETTINGS0.health): at risk below 0.97, off track below 0.90. */
+export const HEALTH_DEFAULTS = { risk: 0.97, off: 0.9 } as const;
+export const APP_SETTING_HEALTH = 'health.thresholds';
+
+/** Slug of a free label (custom Settings entries, custom machine types): "Permits & fees" → "permits_fees". */
+export const slugOf = (label: string) =>
+  label.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'item';
+
+/**
+ * Roles whose workspace includes the Delivery 5 screens (ROLE_SCREENS 3465–3466 as computed in src/config/screens.ts —
+ * duplicated here so DAL writers can re-check the outside-workspace rule without loading the screen registry; the
+ * Delivery 5 tests assert both lists agree). The director sees every screen.
+ */
+export const D5_SCREEN_ROLES = {
+  quality: ['director', 'pm', 'englead', 'quality', 'client'],
+  itp: ['director', 'pm', 'englead', 'quality', 'client'],
+  commissioning: ['director', 'pm', 'englead', 'quality', 'client'],
+  rex: ['director', 'pm', 'englead', 'quality'],
+  fleet: ['director', 'pm', 'quality', 'procurement'],
+  sav: ['director', 'pm', 'quality', 'procurement'],
+  site: ['director', 'pm', 'depthead', 'member'],
+  pid: ['director', 'englead', 'quality'],
+  eng: ['director', 'pm', 'englead', 'quality'],
+  client: ['director', 'client'],
+  settings: ['director', 'pm', 'depthead', 'englead', 'quality', 'procurement'],
+  mtypes: ['director', 'pm', 'englead', 'quality'],
+  plumbing: ['director', 'pm'],
+} as const satisfies Record<string, readonly string[]>;
+export type D5Screen = keyof typeof D5_SCREEN_ROLES;
+export const inWorkspace = (screen: D5Screen, role: string) => (D5_SCREEN_ROLES[screen] as readonly string[]).includes(role);
+
+// ── Chapter 4 (delivery 6): scheduling, baselines, files, imports, exports, transcripts, client log ─────────────
+/** Constraint types the CPM engine schedules (S-1). 'ASAP' = no constraint. */
+export const CONSTRAINT_TYPES = ['ASAP', 'SNET', 'SNLT', 'FNET', 'FNLT', 'MSO', 'MFO'] as const;
+export type KnownConstraintType = (typeof CONSTRAINT_TYPES)[number];
+export const isConstraintType = (v: unknown): v is KnownConstraintType => typeof v === 'string' && (CONSTRAINT_TYPES as readonly string[]).includes(v);
+/** Constraint labels (EN source strings, P6 / MS Project wording). */
+export const constraintTypeLabel = codec<KnownConstraintType, string>([
+  ['ASAP', 'As soon as possible'], ['SNET', 'Start no earlier than'], ['SNLT', 'Start no later than'], ['FNET', 'Finish no earlier than'],
+  ['FNLT', 'Finish no later than'], ['MSO', 'Must start on'], ['MFO', 'Must finish on'],
+]);
+/** Logic link types (FS, SS, FF, SF). */
+export const LINK_TYPES: readonly LinkType[] = ['FS', 'SS', 'FF', 'SF'];
+export const isLinkType = (v: unknown): v is LinkType => typeof v === 'string' && (LINK_TYPES as readonly string[]).includes(v);
+
+/** Built-in calendar codes (S-2), in display order. Imported schedules may add project calendars with other codes. */
+export const CALENDAR_CODES: readonly CalendarCode[] = ['standard_5x8', 'standard_5x8_workshop', 'site_6x10', 'continuous_24h'];
+
+/** How a baseline row was created (S-3): seed data, "Set baseline", a change request's re-baseline, an MS Project import. */
+export type BaselineSource = 'seed' | 'snapshot' | 'change_request' | 'import';
+
+/** Outcome of a "Reschedule" run (schedule_runs). */
+export type ScheduleRunOutcome = 'ok' | 'cycle' | 'error';
+
+/** What a stored file is for (src/server/storage: allowlists and limits per purpose). */
+export type StoredFilePurpose = 'attachment' | 'transcript' | 'import' | 'export';
+
+/** Import jobs (S-9 and the Excel / CSV table imports of /admin/integrations). */
+export type ImportKind = 'mspdi' | 'xer' | 'budget_lines' | 'bom' | 'parts' | 'assignments';
+export const importKind = codec<ImportKind, string>([
+  ['mspdi', 'MS Project XML'], ['xer', 'Primavera P6 XER'], ['budget_lines', 'Budget lines'], ['bom', 'Bill of materials'], ['parts', 'Parts catalogue'],
+  ['assignments', 'Resource assignments'],
+]);
+/** 'new' = create (a new project for schedules), 'update' = match existing rows (UID / Activity ID / reference). */
+export type ImportMode = 'new' | 'update';
+export type ImportJobStatus = 'uploaded' | 'mapped' | 'previewed' | 'applied' | 'failed' | 'cancelled';
+export const importJobStatus = codec<ImportJobStatus, string>([
+  ['uploaded', 'Uploaded'], ['mapped', 'Mapped'], ['previewed', 'Previewed'], ['applied', 'Imported'], ['failed', 'Failed'], ['cancelled', 'Cancelled'],
+]);
+export type ImportRowStatus = 'ok' | 'warning' | 'error';
+export type ImportRowAction = 'create' | 'update' | 'skip';
+
+/** Export formats of the header Export menu and the document buttons. */
+export type ExportFormat = 'csv' | 'xlsx' | 'pdf';
+export const EXPORT_FORMATS: readonly ExportFormat[] = ['csv', 'xlsx', 'pdf'];
+export const isExportFormat = (v: unknown): v is ExportFormat => typeof v === 'string' && (EXPORT_FORMATS as readonly string[]).includes(v);
+
+/** Meeting transcripts (S-10): where the text came from, who analysed it, what the analysis proposes, and the review state. */
+export type TranscriptSource = 'teams' | 'paste' | 'file';
+export type TranscriptAnalyzer = 'prototype' | 'local' | 'claude';
+export type TranscriptProposalType = 'decision' | 'action' | 'risk' | 'question';
+export const transcriptProposalType = codec<TranscriptProposalType, string>([
+  ['decision', 'Decision'], ['action', 'Action'], ['risk', 'Risk'], ['question', 'Client question'],
+]);
+/** proposed → accepted / rejected by a human; applied once it reached the minutes, a task, the risk register or the Q&A bridge. */
+export type TranscriptProposalStatus = 'proposed' | 'accepted' | 'rejected' | 'applied';
+
+/** Client communication log (Site › "Client communication log", Keystone-owned). */
+export type ClientCommChannel = 'email' | 'phone' | 'meeting' | 'video' | 'letter' | 'site_visit' | 'other';
+export const clientCommChannel = codec<ClientCommChannel, string>([
+  ['email', 'E-mail'], ['phone', 'Phone'], ['meeting', 'Meeting'], ['video', 'Video call'], ['letter', 'Letter'], ['site_visit', 'Site visit'], ['other', 'Other'],
+]);
+export type ClientCommDirection = 'inbound' | 'outbound';
+export const clientCommDirection = codec<ClientCommDirection, string>([['inbound', 'From the client'], ['outbound', 'To the client']]);
+
+/** What-if scenario actions derived from real allocations (S-7). */
+export type WhatIfActionKind = 'overtime' | 'extra_resource' | 'shift';
+export const whatIfActionKind = codec<WhatIfActionKind, string>([['overtime', 'Overtime'], ['extra_resource', 'Extra resource'], ['shift', 'Shift start']]);
+
+/** Where a task comes from ('activity_todo' = the Plan drawer's to-do composer; null for seed and older tasks). */
+export type TaskOrigin = 'activity_todo' | 'request' | 'meeting' | 'manual';

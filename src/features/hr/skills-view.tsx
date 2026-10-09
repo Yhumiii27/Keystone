@@ -18,7 +18,7 @@ const DOT: Record<LevelTone, string | undefined> = { 'accent-400': s.lv4, 'accen
 /** `?filter=` link of a chip (null = "Everyone"). */
 export const skillFilterHref = (base: string, skill: number | null) => (skill == null ? base : `${base}?filter=${skill}`);
 
-export function SkillsView({ data, filter, base, t }: { data: SkillsMatrix; filter: number | null; base: string; t: T }) {
+export function SkillsView({ data, filter, base, t, expertRequests }: { data: SkillsMatrix; filter: number | null; base: string; t: T; /** Chapter 4 (A-12): computed "Open requests needing level ≥4" (domain/resources requestsNeedingExperts). */ expertRequests?: { count: number; skills: string[] } }) {
   const names = data.skills.map((x) => x.name);
   const coverage = skillCoverage(names, data.people);
   const k = skillKpis(coverage, data.people.filter((p) => p.certifications.length > 0).length);
@@ -34,8 +34,13 @@ export function SkillsView({ data, filter, base, t }: { data: SkillsMatrix; filt
         <KpiTile label={t('Skill families')} value={k.families} sub={t('Levels 1–5 · certifications noted')} color={OK} />
         <KpiTile label={t('Single-expert skills')} value={k.singleExpert} sub={t('Fewer than 2 people at level ≥4')} color={k.singleExpert > 0 ? LO : OK} />
         <KpiTile label={t('Certifications')} value={k.certifications} sub={t('Tracked with expiry in Lucca')} color={OK} />
-        {/* TODO(db): no source for "requests needing level ≥4" (06 OQ4, 00 A-12) — prototype constant. */}
-        <KpiTile label={t('Open requests needing level ≥4')} value={OPEN_REQUESTS_LEVEL4.value} sub={t(OPEN_REQUESTS_LEVEL4.sub)} color={OK} />
+        {/* A-12: computed from the pending requests when the page passes them; else the prototype constant. */}
+        <KpiTile
+          label={t('Open requests needing level ≥4')}
+          value={expertRequests ? expertRequests.count : OPEN_REQUESTS_LEVEL4.value}
+          sub={expertRequests ? expertRequests.skills.map((n) => t(n)).join(' · ') || t('None') : t(OPEN_REQUESTS_LEVEL4.sub)}
+          color={OK}
+        />
       </KpiGrid>
       <FilterBar gap={6}>
         <FilterGroup>

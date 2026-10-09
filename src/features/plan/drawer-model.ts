@@ -8,7 +8,7 @@ import {
 import type { Lang, T } from '@/i18n/translate';
 import { initials, money } from '@/lib/format';
 import type { PlanOwner, PlanRequest, PlanTodo } from '@/server/dal/plan';
-import { awaitingApprovalText, daysText, forecastOverText, planT, rescheduleProposedText, todoCountText } from './i18n';
+import { awaitingApprovalText, baselineFinishKey, daysText, forecastOverText, planT, rescheduleProposedText, todoCountText } from './i18n';
 
 export interface DrawerResourceInput {
   resource: string;
@@ -36,6 +36,14 @@ export interface DrawerInput {
   pendingChanges?: readonly string[];
   /** URL of a to-do's task page. */
   taskHref: (todo: PlanTodo) => string;
+  // ── Chapter 4 (S-2, S-3) — optional: absent, the prototype rules apply (site calendar by WBS, "BL1 finish"). ──
+  /** Work calendars (code, EN name, hours per day) and the project calendar code. */
+  calendars?: { code: string; name: string; hoursPerDay: number }[];
+  projectCalendar?: string;
+  /** Code of the displayed baseline ("BL1"). */
+  baselineCode?: string | null;
+  /** To-dos the viewer may remove (created from the drawer, no logged time). */
+  removableTodos?: ReadonlySet<string>;
 }
 
 export interface DrawerLine {
@@ -53,13 +61,16 @@ export interface DrawerTodo {
   done: boolean;
   initials: string;
   href: string;
+  removable: boolean;
 }
 
 export interface DrawerView {
   id: string;
   name: string;
   status: { label: string; className: string };
-  general: { k: string; v: string; lo: boolean }[];
+  general: { k: string; v: string; lo: boolean; key?: 'calendar' }[];
+  /** Calendar override of the activity ('' = the project calendar) and the select options (translated). */
+  calendar: { value: string; options: { value: string; label: string }[] };
   preds: DrawerLine[];
   succs: DrawerLine[];
   res: { name: string; sub: string; units: string }[];
@@ -84,30 +95,40 @@ export function activityDrawerView(input: DrawerInput, baseT: T, lang: Lang): Dr
   const owner = input.owners.find((o) => o.code === a.owner);
   const ownerName = owner?.name ?? a.owner ?? '—';
   const pkg = input.packages.find((p) => p.code === a.wbs)?.name ?? '';
-  const site = isSiteCalendar(a);
+  // Calendar (S-2): the activity's override, else the project calendar; the prototype's WBS rule without calendar data.
+  const cals = input.calendars ?? [];
+  const projectCal = cals.find((c) => c.code === input.projectCalendar);
+  const actCal = (a.calendarCode && cals.find((c) => c.code === a.calendarCode)) || projectCal;
+  const site = actCal ? actCal.code === 'site_6x10' : isSiteCalendar(a);
+  const calendarName = actCal ? actCal.name : calendarLabel(site);
   const tf = effectiveFloat(a);
+  const blKey = input.baselineCode ? baselineFinishKey(input.baselineCode, lang) : t('BL1 finish');
 
   const general: DrawerView['general'] = [
     { k: 'WBS', v: `${a.wbs} ${t(pkg)}`.trim(), lo: false },
     { k: 'Type', v: t('Task dependent'), lo: false },
-    { k: 'Calendar', v: t(calendarLabel(site)), lo: false },
-    { k: 'Original / remaining', v: daysText(durationText(a.durationDays, a.pct), lang), lo: false },
+    { k: 'Calendar', v: t(calendarName), lo: false, key: 'calendar' as const },
+    { k: 'Original / remaining', v: daysText(durationText(a.durationDays, a.pct, a.remainingDays), lang), lo: false },
     { k: 'Start', v: t(withActual(a.start, a.startActual)), lo: false },
     { k: 'Finish', v: t(withActual(a.finish, a.finishActual)), lo: false },
-    { k: 'BL1 finish', v: t(a.baselineFinish), lo: false },
+    { k: blKey, v: t(a.baselineFinish), lo: false },
     { k: 'Finish variance', v: daysText(`${a.variance || 0}d`, lang), lo: a.variance < 0 },
     { k: 'Total float', v: tf == null ? t('— (complete)') : daysText(signedDays(tf), lang), lo: tf != null && tf < 0 },
+    // Chapter 4 (S-1): free float once the CPM has dated the activity.
+    ...(a.scheduled && a.freeFloat != null && a.pct < 100 ? [{ k: 'Free float', v: daysText(signedDays(a.freeFloat), lang), lo: false }] : []),
     { k: 'Constraint', v: a.constraint ? t(a.constraint) : t('None'), lo: a.violated },
     { k: 'Owner', v: ownerName, lo: false },
   ].map((g) => ({ ...g, k: t(g.k) }));
 
+  // Driving predecessors: the CPM's once rescheduled (S-1), else the prototype's rule (the first one listed).
+  const isDriving = (id: string, i: number) => (a.drivingPreds ? a.drivingPreds.includes(id) : i === 0);
   const preds: DrawerLine[] = a.preds
     .filter(([id]) => byId.has(id))
     .map(([id, type, lag], i) => ({
       id,
       name: t(byId.get(id)!.name),
-      rel: daysText(relText(type, lag), lang) + (i === 0 ? ' · ' + t('driving') : ''),
-      tone: i === 0 ? 'driving' : 'normal',
+      rel: daysText(relText(type, lag), lang) + (isDriving(id, i) ? ' · ' + t('driving') : ''),
+      tone: isDriving(id, i) ? 'driving' : 'normal',
     }));
   const succs: DrawerLine[] = successorsOf(a.id, activities).map(({ act, type, lag }) => {
     const sf = effectiveFloat(act);
@@ -117,7 +138,7 @@ export function activityDrawerView(input: DrawerInput, baseT: T, lang: Lang): Dr
   const res = input.assignments.length
     ? input.assignments.map((r) => ({ name: r.resource, sub: t(`${r.detail} · ${r.progressText}`), units: t(r.units) }))
     : owner
-      ? [ownerResource(owner.name, owner.title, a.durationDays, a.pct, site)].map((r) => ({ ...r, sub: t(r.sub), units: t(r.units) }))
+      ? [ownerResource(owner.name, owner.title, a.durationDays, a.pct, site, actCal?.hoursPerDay ?? 8)].map((r) => ({ ...r, sub: t(r.sub), units: t(r.units) }))
       : [];
 
   const bar = costBar(a.budget, a.actual, a.eac);
@@ -136,6 +157,7 @@ export function activityDrawerView(input: DrawerInput, baseT: T, lang: Lang): Dr
     done: x.status === 'done',
     initials: initials(x.person),
     href: input.taskHref(x),
+    removable: !!input.removableTodos?.has(x.id),
   }));
   const pending = input.requests
     .filter((r) => r.act === a.id && (r.status === 'pending' || r.status === 'reschedule'))
@@ -156,6 +178,13 @@ export function activityDrawerView(input: DrawerInput, baseT: T, lang: Lang): Dr
     name: t(a.name),
     status: { label: t(status.label), className: status.className },
     general,
+    calendar: {
+      value: a.calendarCode ?? '',
+      options: [
+        { value: '', label: `${t('Project calendar')} · ${projectCal ? t(projectCal.name) : ''}`.replace(/ · $/, '') },
+        ...cals.map((c) => ({ value: c.code, label: t(c.name) })),
+      ],
+    },
     preds: preds.length ? preds : [{ id: '—', name: t('No predecessors'), rel: '', tone: 'none' }],
     succs: succs.length ? succs : [{ id: '—', name: t('No successors'), rel: '', tone: 'none' }],
     res,

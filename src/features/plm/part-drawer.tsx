@@ -8,7 +8,7 @@
 // "Propose release" → Codex deposit); then Identification, Commercial & export (HS code,
 // export restriction), Equivalent parts (+ Register equivalent), Spare parts list, Stock by location (Σ on hand —
 // STOCK_BY_REF fixed), Projects equipped (where-used in project BOMs), Used in (assembly chains), Installed base
-// (TODO(db): prototype FLEET / AS_MAINT until phase 8), Revisions (REV_DIFF), Drawings, Engineering changes (Vigie ECOs,
+// (the installed base and its as-maintained configuration), Revisions (REV_DIFF), Drawings, Engineering changes (Vigie ECOs,
 // "Open in Vigie", "Raise ECO" → Vigie's new-ECO form prefilled with the part; nothing is created in Keystone).
 import { ArrowRight, ArrowSquareOut, ArrowsClockwise, Database, GitBranch, ListChecks, UploadSimple, Warning } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';

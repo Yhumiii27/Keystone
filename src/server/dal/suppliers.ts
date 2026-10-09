@@ -6,7 +6,7 @@ import { asc, eq, isNotNull } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { locationType, type LocationType, type SupplierGrade } from '@/server/db/codes';
 import { goodsReceipts, parts, projects, receiptLines, storageLocations, suppliers } from '@/server/db/schema';
-import { PROTO } from '@/server/prototype';
+import { listProjectNcrRefs } from './quality';
 
 export interface SupplierRow {
   name: string;
@@ -38,18 +38,17 @@ export interface SupplierScorecard {
   supplierNcrs: number;
 }
 
-interface NcrRef { id: string; src: string; part: string }
-
 /**
- * NCRs of a project (`allNCRs` 4614). TODO(db): NCRs are not modelled yet (phase 7) — read from the prototype data set:
- * Harbor Line's register; on the other projects with data, two re-labelled rows whose part is cleared; none on
- * projects without data (the prototype showed Harbor Line's, 00 §7.16).
+ * NCRs of a project (`allNCRs` 4614): the Vigie NCR mirror (src/server/dal/quality.ts). Vigie reports Harbor Line's
+ * register and, on the other projects with data, NCR-040 / NCR-041 without a part; none on projects without data (the
+ * prototype showed Harbor Line's, 00 §7.16). Unreachable Vigie mirror → no NCR counted.
  */
-function projectNcrs(projectCode: string): NcrRef[] {
-  const hlt = PROTO.HLT_NCRS as NcrRef[];
-  if (projectCode === 'HLT-026') return hlt;
-  if (!PROTO.DEFS[projectCode]) return [];
-  return hlt.slice(1, 3).map((n, i) => ({ ...n, id: 'NCR-0' + (40 + i), part: '' }));
+async function projectNcrs(projectCode: string) {
+  try {
+    return await listProjectNcrRefs(projectCode);
+  } catch {
+    return [];
+  }
 }
 
 /** The supplier scorecard (SUPPLIERS order) with the NCR counts of the current project. */

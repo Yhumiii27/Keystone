@@ -1,0 +1,131 @@
+/* Engineering synthesis, discipline screens and import wizard (docs/spec/09 §7–8, template 2384–2471). */
+.page { display: flex; flex-direction: column; gap: 14px; }
+
+/* ── Card headers ─────────────────────────────────────────────────────────── */
+.head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.headTop { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+.titleCol { display: flex; flex-direction: column; }
+.sub { font-size: 12px; color: var(--color-neutral-400); text-wrap: pretty; }
+.push { margin-left: auto; }
+:global(.card).card { padding: 14px 16px; gap: 8px; }
+:global(.card).cardScroll { padding: 14px 16px; gap: 8px; overflow: auto; }
+:global(.card).cardMatrix { padding: 14px 16px; gap: 10px; overflow: auto; }
+:global(.card).cardList { padding: 14px 16px; gap: 6px; }
+
+/* ── "Who is waiting for what" ────────────────────────────────────────────── */
+.legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--color-neutral-400); }
+.legendItem { display: flex; align-items: center; gap: 5px; }
+.legendDot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.dotUp { background: var(--color-neutral-300); }
+.dotConfirm { background: var(--color-neutral-500); }
+.dotOutdated { background: var(--color-accent); }
+.dotAwaited { border: 1px solid var(--color-neutral-600); }
+.contents { display: contents; }
+.matrix { display: grid; grid-template-columns: 110px repeat(5, minmax(130px, 1fr)); gap: 6px; min-width: 820px; }
+.from { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-400); padding: 0 6px 4px; }
+.to { font-size: 12.5px; display: flex; align-items: center; padding: 6px; color: var(--color-neutral-200); }
+.cell { min-height: 40px; border-radius: var(--radius-md); padding: 5px 6px; display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start; }
+/* Prototype `white-space:nowrap`: a pill wider than its cell (130px minimum column, e.g. "BOM-MEC · Diffusion proposée")
+   overflowed into the next cell — it wraps inside the cell instead (one line whenever it fits, as in the prototype). */
+.pill { font-size: 11px; padding: 2px 7px; border-radius: 9px; border: 1px solid; white-space: normal; max-width: 100%; display: inline-flex; align-items: center; gap: 5px; }
+.pillDot { width: 7px; height: 7px; border-radius: 50%; border: 1px solid; flex: none; }
+
+/* ── Disciplines and gate (two cards) ─────────────────────────────────────── */
+.twoCols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 14px; align-items: start; }
+.wideCols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 620px), 1fr)); gap: 14px; align-items: start; }
+.discBtn,
+.gateBtn {
+  display: grid;
+  align-items: center;
+  border: 0;
+  border-top: 1px solid var(--color-neutral-900);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+}
+.discBtn:hover,
+.gateBtn:hover { background: var(--color-neutral-900); color: var(--color-text); }
+.discBtn { grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; padding: 9px 6px; }
+.gateBtn { grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; padding: 8px 6px; }
+.discIcon { font-size: 18px; color: var(--color-accent); }
+.discMid { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.discLabel { font-size: 13px; }
+.discLead { font-size: 11.5px; color: var(--color-neutral-400); }
+.bar { height: 3px; border-radius: 2px; background: var(--color-neutral-800); overflow: hidden; display: block; margin-top: 3px; }
+.barFill { display: block; height: 100%; background: var(--color-accent); }
+.discRight { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; font-size: 11.5px; color: var(--color-neutral-400); white-space: nowrap; }
+.sevDot { width: 10px; height: 10px; border-radius: 50%; }
+.gateMid { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gateTitle { font-size: 12.5px; text-wrap: pretty; }
+.gateMeta { font-size: 11px; color: var(--color-neutral-400); }
+.nowrap { white-space: nowrap; }
+
+/* ── Recent changes ───────────────────────────────────────────────────────── */
+.change { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 7px 0; border-top: 1px solid var(--color-neutral-900); font-size: 12.5px; }
+.changeDate { color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
+.changeText { text-wrap: pretty; }
+.changeImpact { font-size: 11.5px; color: var(--color-neutral-400); white-space: nowrap; }
+
+/* ── Discipline header line ───────────────────────────────────────────────── */
+.discHead { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--color-neutral-400); }
+.discHeadIcon { font-size: 20px; color: var(--color-accent); }
+.muted5 { color: var(--color-neutral-500); }
+.textColor { color: var(--color-text); }
+
+/* ── Tables ───────────────────────────────────────────────────────────────── */
+.docCell { display: flex; flex-direction: column; line-height: 1.3; }
+.docId { font-variant-numeric: tabular-nums; font-weight: 500; white-space: nowrap; color: inherit; text-decoration: none; }
+a.docId:hover { color: var(--color-accent-300); }
+.docSub { font-size: 11px; color: var(--color-neutral-400); }
+.issuer { font-size: 12px; color: var(--color-neutral-300); }
+.tab { font-variant-numeric: tabular-nums; }
+.recipients { font-size: 11.5px; color: var(--color-neutral-400); max-width: 160px; }
+.recipientsText { display: block; text-wrap: pretty; }
+.actionsCell { text-align: right; }
+.actionsCell > * + * { margin-left: 6px; }
+.blocked { font-size: 11.5px; color: var(--color-accent-300); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+
+/* ── Generated outputs ────────────────────────────────────────────────────── */
+.out { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--color-neutral-900); }
+.outMid { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.outName { font-size: 12.5px; }
+.outTo { color: var(--color-neutral-400); }
+.outSource { font-size: 11.5px; color: var(--color-neutral-400); }
+.outGen { font-size: 11.5px; color: var(--color-accent-300); }
+.outRight { display: flex; align-items: center; gap: 8px; }
+
+/* ── Consistency checks ───────────────────────────────────────────────────── */
+.chipsRow { display: flex; gap: 6px; flex-wrap: wrap; }
+.check { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 9px 0; border-top: 1px solid var(--color-neutral-900); }
+.checkDot { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; }
+.checkMid { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.checkTitle { font-size: 12.5px; text-wrap: pretty; }
+.checkDetail { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+.checkMeta { font-size: 11px; color: var(--color-neutral-500); }
+.checkNote { font-size: 11.5px; color: var(--color-accent-300); }
+.checkActions { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+.checkTags { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+
+/* ── Import wizard ────────────────────────────────────────────────────────── */
+.wizCol { display: flex; flex-direction: column; gap: 6px; }
+.eyebrow { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent); }
+.tool { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-md); border: 1px solid; color: var(--color-text); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; }
+.toolDot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--color-accent); flex: none; }
+.toolDisc { margin-left: auto; font-size: 11px; color: var(--color-neutral-400); }
+.fileName { font-size: 12px; color: var(--color-text); }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.stat { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: var(--radius-md); background: var(--color-neutral-900); }
+.statValue { font-size: 20px; font-weight: 500; }
+.statLabel { font-size: 11.5px; color: var(--color-neutral-400); }
+.deltas { display: flex; flex-direction: column; }
+.delta { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 10px; padding: 6px 0; border-top: 1px solid var(--color-neutral-900); font-size: 12.5px; }
+.deltaSym { font-weight: 500; }
+.deltaKind { font-size: 11.5px; color: var(--color-neutral-400); }
+.note { font-size: 11.5px; color: var(--color-neutral-400); }
+.footer { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.error { font-size: 12px; color: var(--color-accent-300); }
+.right { text-align: right; }

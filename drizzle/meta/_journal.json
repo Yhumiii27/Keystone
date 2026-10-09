@@ -29,6 +29,20 @@
       "when": 1791479645373,
       "tag": "0003_jittery_nextwave",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791494296499,
+      "tag": "0004_curved_scarlet_spider",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791532579689,
+      "tag": "0005_sloppy_talos",
+      "breakpoints": true
     }
   ]
 }

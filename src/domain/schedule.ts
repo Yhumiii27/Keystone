@@ -45,6 +45,20 @@ export interface PlanActivity {
   isAdded?: boolean;
   /** Structure edited (name, owner, duration, budget or logic) after creation (`edited`). */
   edited?: boolean;
+  // ── Chapter 4 (S-1, S-2, A-7): optional, absent in the prototype-shaped fixtures ──
+  /** ISO finish and displayed-baseline finish (work-package roll-ups by real dates). */
+  finishDate?: string | null;
+  baselineFinishDate?: string | null;
+  /** Calendar override (null = the project calendar). */
+  calendarCode?: string | null;
+  /** Remaining duration entered (working days); null = derived from % complete. */
+  remainingDays?: number | null;
+  /** Free float (working days) written by the last Reschedule; null when complete or never scheduled. */
+  freeFloat?: number | null;
+  /** The last Reschedule dated this activity (`scheduled_at` set). */
+  scheduled?: boolean;
+  /** Predecessors that drive the early dates (CPM); null before the first Reschedule (the prototype labels the first one). */
+  drivingPreds?: string[] | null;
 }
 
 export interface PlanPackage {
@@ -147,15 +161,31 @@ export interface Rollup {
   count: number;
 }
 
-/** Work-package roll-up `roll(w)` (logic 3988) over its children in display order. */
+/** The child whose date wins (`better(candidate, best)`); children without a date are ignored; null when none has one. */
+function pick(children: PlanActivity[], date: (a: PlanActivity) => string | null | undefined, better: (x: string, y: string) => boolean): PlanActivity | null {
+  let best: PlanActivity | null = null;
+  for (const a of children) {
+    const d = date(a);
+    if (d && (!best || better(d, date(best)!))) best = a;
+  }
+  return best;
+}
+
+/**
+ * Work-package roll-up `roll(w)` (logic 3988). Chapter 4 (A-7): start = earliest child start and finish / baseline finish =
+ * latest child dates when the ISO dates are known (the prototype took the first / last child in display order, which moving
+ * an activity changed); children without dates fall back to the display order.
+ */
 export function rollUp(children: PlanActivity[]): Rollup {
   if (!children.length) return { start: '—', finish: '—', baselineFinish: '—', pct: 0, tf: null, budget: 0, count: 0 };
   const open = children.filter((x) => x.pct < 100);
-  const last = children[children.length - 1];
+  const first = pick(children, (a) => a.startDate, (x, y) => x < y) ?? children[0];
+  const last = pick(children, (a) => a.finishDate, (x, y) => x >= y) ?? children[children.length - 1];
+  const lastBl = pick(children, (a) => a.baselineFinishDate, (x, y) => x >= y) ?? children[children.length - 1];
   return {
-    start: withActual(children[0].start, children[0].startActual),
+    start: withActual(first.start, first.startActual),
     finish: withActual(last.finish, last.finishActual),
-    baselineFinish: last.baselineFinish,
+    baselineFinish: lastBl.baselineFinish,
     pct: weightedProgress(children),
     tf: open.length ? Math.min(...open.map((x) => effectiveFloat(x) ?? 0)) : null,
     budget: children.reduce((s, x) => s + x.budget, 0),
@@ -284,6 +314,16 @@ export function structureKpis(packageCount: number, acts: PlanActivity[]): Struc
   };
 }
 
+/**
+ * Activities on the critical path (S-1: total float ≤ 0, not complete) — the Structure KPI "… on the critical path"
+ * (the prototype counted the behind ones, float < 0; same figures on the seeded data).
+ */
+export const criticalCount = (acts: PlanActivity[], threshold = 0) =>
+  acts.filter((a) => {
+    const tf = effectiveFloat(a);
+    return tf != null && tf <= threshold && a.pct < 100;
+  }).length;
+
 export interface ProgressKpis {
   /** Budget-weighted % complete of all activities. */
   overall: number;
@@ -371,18 +411,22 @@ export function createsCycle(succ: string, newPreds: string[], predsOf: (id: str
 export const isSiteCalendar = (a: Pick<PlanActivity, 'wbs' | 'id'>) => !(a.wbs === '1.1' || a.id === 'A1230');
 export const calendarLabel = (site: boolean) => (site ? 'Site 6d · 10h' : 'Standard 5d · 8h');
 
-/** Remaining duration: round(d × (1 − pc/100)). */
-export const remainingDays = (d: number, pc: number) => Math.round(d * (1 - pc / 100));
+/** Remaining duration: round(d × (1 − pc/100)), or the remaining duration entered (`remaining`). */
+export const remainingDays = (d: number, pc: number, remaining?: number | null) => (remaining != null ? remaining : Math.round(d * (1 - pc / 100)));
 
 /** "40d / 11d". */
-export const durationText = (d: number, pc: number) => `${d}d / ${remainingDays(d, pc)}d`;
+export const durationText = (d: number, pc: number, remaining?: number | null) => `${d}d / ${remainingDays(d, pc, remaining)}d`;
 
-/** Default resource line when no assignment is recorded: the owner as lead. */
-export function ownerResource(ownerName: string, ownerTitle: string, d: number, pc: number, site: boolean) {
+/**
+ * Default resource line when no assignment is recorded: the owner as lead. The prototype reads 8 h/d and "6 × 10 h/d" on
+ * site; chapter 4 (S-2) passes the hours per day of the activity's calendar (`hoursPerDay`, 8 by default).
+ */
+export function ownerResource(ownerName: string, ownerTitle: string, d: number, pc: number, site: boolean, hoursPerDay = 8) {
+  const h = site ? 8 : hoursPerDay;
   return {
     name: ownerName,
-    sub: `${ownerTitle} · lead · ${Math.round((d * 8 * pc) / 100)} / ${d * 8} h`,
-    units: site ? '6 × 10 h/d' : '8 h/d',
+    sub: `${ownerTitle} · lead · ${Math.round((d * h * pc) / 100)} / ${d * h} h`,
+    units: site ? '6 × 10 h/d' : `${hoursPerDay} h/d`,
   };
 }
 

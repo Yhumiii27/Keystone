@@ -5,7 +5,7 @@
 import { LO, OK } from '@/components/app/tones';
 import { screenHref, type RoleKey } from '@/config/screens';
 import {
-  MATCH_DOT, RFQ_AVERAGE_CYCLE_DAYS, RFQ_SAVINGS_VS_LIST_KEUR, blockingReason, canAwardRfq, canDecideInvoiceRole, compareQuotes, invoiceChipStatuses,
+  MATCH_DOT, blockingReason, canAwardRfq, canDecideInvoiceRole, compareQuotes, invoiceChipStatuses,
   invoiceDecisions, invoiceKpis, match3, quotesText, receiptGap, rfqActions, rfqHint, rfqKpis, sourcingHref, supplierAttention, supplierKpis,
   type SourcingTab,
 } from '@/domain/procurement';
@@ -17,6 +17,9 @@ import {
 } from '@/server/db/codes';
 import type { RfqRow, SupplierInvoiceRow } from '@/server/dal/purchasing';
 import type { SupplierScorecard } from '@/server/dal/suppliers';
+import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
+import { rfqAverageCycleDays, rfqSavingsKeur, type RfqKpiFacts } from '@/domain/kpis';
+import { wholeDaysText } from '@/features/kpis/i18n';
 import { dataText } from './i18n';
 
 export interface KpiView {
@@ -75,15 +78,19 @@ export interface RfqTabView {
   rows: RfqRowView[];
 }
 
-export function rfqTabView(rfqs: readonly RfqRow[], selected: string | null, c: SourcingCtx): RfqTabView {
+/**
+ * `facts` = the RFQ facts of the computed tiles (src/server/dal/kpis.ts `rfqKpiFacts`): "Savings vs list" (awarded in the
+ * data date's quarter) and "Average cycle" (sent → award) — A-12; `asOf` = the portfolio data date.
+ */
+export function rfqTabView(rfqs: readonly RfqRow[], selected: string | null, c: SourcingCtx, facts: readonly RfqKpiFacts[] = [], asOf: string = DEFAULT_DATA_DATE): RfqTabView {
   const { t, lang } = c;
   const k = rfqKpis(rfqs.map((r) => ({ status: r.status, quoteCount: r.quotes.length })));
   return {
     kpis: [
       kpi(t, 'Open RFQs', k.open, t(`${k.readyToAward} ready to award`)),
       kpi(t, 'Quotes received', k.quotes, t('Across open requests')),
-      kpi(t, 'Savings vs list', money(RFQ_SAVINGS_VS_LIST_KEUR, lang), t('Awarded this quarter')),
-      kpi(t, 'Average cycle', `${RFQ_AVERAGE_CYCLE_DAYS} d`, t('RFQ sent → award')),
+      kpi(t, 'Savings vs list', money(rfqSavingsKeur(facts, asOf), lang), t('Awarded this quarter')),
+      kpi(t, 'Average cycle', wholeDaysText(rfqAverageCycleDays(facts), lang), t('RFQ sent → award')),
       kpi(t, 'Award rule', 'PM', t('Decided per RFQ by the project manager')),
     ],
     rows: rfqs.map((r) => {

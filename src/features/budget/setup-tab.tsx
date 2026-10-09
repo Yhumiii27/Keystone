@@ -1,4 +1,5 @@
 // Budget › Structure & changes tab (docs/spec/04 §1.5; template 379–447, logic 3829–3833, 4048–4056). Server Component.
+// Chapter 4 (A-14): "Add category" offers Settings › Cost categories and the row pencil edits name, type and budget.
 import { ArrowRight, HourglassHigh } from '@phosphor-icons/react/dist/ssr';
 import type { CSSProperties, ReactNode } from 'react';
 import { CardGrid, EmptyState, LO, OK, ReconStep, SectionCard, statusTagClass } from '@/components/app';
@@ -10,8 +11,11 @@ import type { Lang, T } from '@/i18n/translate';
 import { money, pct } from '@/lib/format';
 import type { CostControl } from '@/server/dal/cost';
 import type { RexPattern } from '@/server/dal/budget';
+import type { ListOption } from '@/domain/settings-rules';
+import { AddCategoryButton, EditCategoryButton } from './category-buttons';
+import { addCategoryFormDef, editCategoryFormDef, editCategoryValues } from './category-forms';
 import { costTypeLabel } from './i18n';
-import { NewChangeRequestLink, SoonButton, SoonEditButton } from './soon-button';
+import { NewChangeRequestLink } from './soon-button';
 import s from './budget.module.css';
 
 export interface SetupTabProps {
@@ -24,6 +28,12 @@ export interface SetupTabProps {
   planHref: string;
   /** Edit controls visible (not outside the workspace, project not read-only). */
   canEdit: boolean;
+  /** Project code (the category dialogs; the URL's when omitted). */
+  code?: string;
+  /** Translated project label, the dialogs' sub-line. */
+  context?: string;
+  /** Settings › Cost categories offered by "Add category" (active values, A-14). */
+  categoryOptions?: readonly ListOption[];
   lang: Lang;
   t: T;
 }
@@ -44,7 +54,7 @@ function CardHead({ title, subtitle, actions }: { title: string; subtitle: strin
   );
 }
 
-export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, lang, t }: SetupTabProps) {
+export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, code, context, categoryOptions = [], lang, t }: SetupTabProps) {
   const f = (k: number, signed?: boolean) => money(k, lang, { signed });
   const m = (i: number | null) => (i == null ? '' : (cost.chartMonths[i] ?? ''));
   const rc = cost.recon;
@@ -148,7 +158,7 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, lan
           <CardHead
             title={t('Cost categories')}
             subtitle={t('Defined per project · actuals map in by rule')}
-            actions={canEdit ? <SoonButton label="Add category" variant="ghost" /> : undefined}
+            actions={canEdit ? <AddCategoryButton code={code} context={context} form={addCategoryFormDef(categoryOptions)} /> : undefined}
           />
           <Table size={13}>
             <thead>
@@ -177,7 +187,7 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, lan
                   </Td>
                   {canEdit && (
                     <Td align="right">
-                      <SoonEditButton />
+                      <EditCategoryButton code={code} context={context} form={editCategoryFormDef()} category={c.code} values={editCategoryValues(c)} />
                     </Td>
                   )}
                 </tr>

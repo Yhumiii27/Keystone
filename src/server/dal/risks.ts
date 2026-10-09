@@ -10,6 +10,7 @@ import {
 } from '@/server/db/codes';
 import { findPerson, nameOf, nextNumber, requireProject, writeAudit } from '@/server/db/helpers';
 import { activities, persons, projectControls, projects, risks, wbsNodes } from '@/server/db/schema';
+import { settingsEntries } from './settings-lists';
 
 export interface LinkedActivity {
   /** "A1250". */
@@ -91,11 +92,14 @@ export async function listRisks(projectCode: string): Promise<RiskRow[]> {
     .leftJoin(wbsNodes, eq(wbsNodes.id, activities.wbsNodeId))
     .where(eq(projects.code, projectCode))
     .orderBy(asc(risks.sortOrder));
+  // A-14: categories added in Settings › Risk categories are labelled from Settings (active or not).
+  const custom = rows.some(({ r }) => !riskCategory.isCode(r.category)) ? await settingsEntries('riskCats', db) : [];
+  const categoryLabelOf = (c: RiskCategory) => (riskCategory.isCode(c) ? riskCategory.label(c) : (custom.find((e) => e.code === c)?.label ?? c));
   return rows.map(({ r, ownerFull, ownerShort, actCode, actName, actFloat, actPct, actWbs }) => {
     const score = riskScore(r.probability, r.impact);
     const level = riskLevelOf(score);
     return {
-      id: r.number, title: r.title, category: r.category, categoryLabel: riskCategory.label(r.category), probability: r.probability, impact: r.impact,
+      id: r.number, title: r.title, category: r.category, categoryLabel: categoryLabelOf(r.category), probability: r.probability, impact: r.impact,
       score, level, levelLabel: riskLevel.label(level), owner: ownerFull ?? ownerShort, ownerShort,
       response: r.response, responseLabel: riskResponse.label(r.response), plan: r.responsePlan,
       activity: actCode ? { code: actCode, name: actName!, wbs: actWbs!, totalFloat: actFloat, pct: actPct! } : null,
@@ -128,7 +132,12 @@ export async function getRiskRegister(projectCode: string): Promise<RiskRegister
   const list = await listRisks(projectCode);
   return {
     projectCode, risks: list,
-    categories: riskCategory.codes.map((code) => ({ code, label: riskCategory.label(code), count: list.filter((r) => r.category === code).length })),
+    // Settings order (A-14), then any other category still used by a risk.
+    categories: [...(await settingsEntries('riskCats', db)).map((e) => ({ code: e.code as RiskCategory, label: e.label })),
+      ...riskCategory.codes.map((code) => ({ code, label: riskCategory.label(code) })),
+      ...list.map((r) => ({ code: r.category, label: r.categoryLabel }))]
+      .filter((c, i, all) => all.findIndex((x) => x.code === c.code) === i)
+      .map((c) => ({ ...c, count: list.filter((r) => r.category === c.code).length })),
     openEmv: list.filter((r) => r.status === 'open').reduce((a, r) => a + r.emv, 0),
     contingency: p.cont ?? null, bac: p.bac,
   };

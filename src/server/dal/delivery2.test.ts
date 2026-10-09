@@ -149,17 +149,23 @@ describe('resources (06 §1, 05 §4)', () => {
     expect((await getLaborCost('ERP-202'))?.name).toBe('Internal staff');
   });
 
-  it('what-if: LEVERS, AUTO, scenarios A/B, base load and the static KPIs from data', async () => {
+  it('what-if: levers derived from the data (chapter 4, S-7), scenarios A/B, the KPIs from data', async () => {
     const w = (await getWhatIf('HLT-026'))!;
-    expect(w.levers.map((l) => [l.code, l.label, { float: l.floatDays, cost: l.costKeur, peak: l.peakPts, over: l.overPeople, ...(l.sideEffect ? { side: l.sideEffect } : {}) }])).toEqual(P.LEVERS);
-    expect(w.autoLevers).toEqual(P.AUTO);
-    expect(w.baseLoad).toEqual([100, 110, 130, 125, 110, 100, 80, 60]);
-    expect(w.scenarios.map((s) => [s.name, s.priority, Object.keys(s.levers).filter((k) => s.levers[k])])).toEqual([['A', 'date', ['contractor', 'overtime']], ['B', 'people', ['delay', 'move']]]);
+    // S-7: the prototype's static LEVERS / AUTO are replaced by levers derived from the plan — on HLT-026 only A1250 carries
+    // labour assignments (Julien Wagner 8 h/d, steel crew 6 × 10 h/d); seed scenario A (contractor + overtime) maps onto them.
+    expect(w.levers.map((l) => l.code)).toEqual(['extra_resource:A1250:julien-wagner', 'overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew']);
+    expect(w.autoLevers).toEqual({ date: ['overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew'], budget: [], people: ['extra_resource:A1250:julien-wagner'] });
+    expect(w.scenarios.map((s) => [s.name, s.priority, Object.keys(s.levers).filter((k) => s.levers[k])])).toEqual([
+      ['A', 'date', ['extra_resource:A1250:julien-wagner', 'overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew']],
+      ['B', 'people', []],
+    ]);
     expect([w.forecastFinish, w.floatDays, w.baselineFinish, w.peak, w.overByWeek]).toEqual([
       '2027-01-14', -27, '2026-12-18', { pct: 130, person: 'Julien Wagner', weekStart: '2026-10-12' }, [0, 1, 2, 3, 2, 0, 1, 0],
     ]);
     expect(Math.max(...w.overByWeek)).toBe(3);
-    expect(await getWhatIf('NDC-031')).toBeNull();
+    // S-7: any project with a plan has a what-if (no lever on NDC-031); a project without activities has none.
+    expect((await getWhatIf('NDC-031'))?.levers).toEqual([]);
+    expect(await getWhatIf('EWA-051')).toBeNull();
   });
 });
 

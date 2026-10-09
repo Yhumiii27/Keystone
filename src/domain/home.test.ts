@@ -5,7 +5,7 @@ import { money, ratio } from '@/lib/format';
 import { makeT } from '@/i18n/translate';
 import { overviewMetrics, portfolioKpis, portfolioTotals, type EvmInput } from './portfolio';
 import {
-  bomShortfall, changeRequestStatus, directorHome, ecoStatus, evmAtDate, homeHref, procurementHome, renderTxt, skillCoverage, teamLoad, workSummary,
+  bomShortfall, changeRequestStatus, clientHomeDeliverables, clientOpenInvoice, directorHome, ecoStatus, evmAtDate, homeHref, procurementHome, renderTxt, skillCoverage, teamLoad, workSummary,
   type Eco, type Part, type PersonLoad, type ResourceRequest, type Todo,
 } from './home';
 
@@ -121,5 +121,23 @@ describe('rendering helpers', () => {
     expect(homeHref('changes', { code: 'HLT-026', params: { cr: 'CR-008' } })).toBe('/projects/HLT-026/changes?cr=CR-008');
     expect(homeHref('task', { taskId: 'T-2318' })).toBe('/my/tasks/T-2318');
     expect(homeHref('eco')).toBe('/reference/eco');
+  });
+});
+
+describe('client Home inputs from the register and the billing plan (Delivery 5)', () => {
+  const d = (number: string, status: Parameters<typeof clientHomeDeliverables>[0][number]['status'], acceptedOn: string | null = null) => ({
+    number, title: number, typeLabel: 'Drawings', status, statusLabel: status, acceptanceText: 'x', acceptedOn, acceptedOnText: acceptedOn ? '18 Sep' : null,
+  });
+  it('keeps produced, submitted, rejected and recently accepted deliverables', () => {
+    const rows = [d('D-1', 'accepted', '2026-03-12'), d('D-2', 'submitted'), d('D-3', 'accepted', '2026-09-18'), d('D-4', 'in_progress'), d('D-5', 'planned'), d('D-6', 'rejected')];
+    expect(clientHomeDeliverables(rows, '2026-08-26').map((x) => [x.id, x.note])).toEqual([['D-2', 'x'], ['D-3', 'Signed 18 Sep'], ['D-4', 'x'], ['D-6', 'x']]);
+  });
+  it('open invoice: first invoiced milestone; none when everything is paid or planned', () => {
+    const m = (status: string, n: string | null, label: string) => ({ milestoneNumber: n, milestone: label, amountKeur: 100, status, invoiceNumber: n ? 'INV-1' : null, dueText: n ? '10 Nov' : null });
+    expect(clientOpenInvoice([m('paid', 'M1', 'M1 Permits'), m('invoiced', 'M3', 'M3 Structure topped out')])).toEqual({
+      invoiceNumber: 'INV-1', milestoneNumber: 'M3', name: 'Structure topped out', amount: 100, due: '10 Nov',
+    });
+    expect(clientOpenInvoice([m('invoiced', null, 'Sep')])?.name).toBe('Sep');
+    expect(clientOpenInvoice([m('paid', 'M1', 'M1 Permits'), m('planned', 'M2', 'M2 X')])).toBeNull();
   });
 });

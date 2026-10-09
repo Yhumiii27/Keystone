@@ -21,3 +21,16 @@ export const canEditTask = (viewer: { role: RoleKey; name: string }, assignee: s
 
 /** Comments: anyone whose workspace includes My work (the seed has colleagues commenting on each other's tasks). */
 export const canCommentTask = (outside: boolean) => !outside;
+
+/**
+ * Chapter 4 (R-8 default): attaching and removing task files follows the task's other edits — the assignee or the
+ * portfolio director, inside the workspace. Change it here (the upload route, the remove Server Function and the sheet
+ * read it).
+ */
+export const canAttachTaskFiles = canEditTask;
+
+/**
+ * Chapter 4 (R-8 default): who may download a task's files — whoever may open the task sheet (outside viewers read it),
+ * except a client contact on another organisation's project (the exports' rule).
+ */
+export const canDownloadTaskFiles = (viewer: { role: RoleKey }, projectIsTheirs: boolean) => viewer.role !== 'client' || projectIsTheirs;

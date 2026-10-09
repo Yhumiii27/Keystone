@@ -87,7 +87,7 @@ export function OrderDrawer({ code, view, canEdit, t }: OrderDrawerProps) {
             <ButtonLink variant="secondary" size="sm" icon={TreeStructure} href={view.activityHref}>
               {t('Open activity')}
             </ButtonLink>
-            <ExportPoButton />
+            <ExportPoButton code={code} number={view.number} />
             {canEdit && view.canPush && <PushToX3Button code={code} number={view.number} />}
           </div>
         </div>

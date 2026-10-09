@@ -47,6 +47,41 @@ Les articles PLM portent déjà un code douanier (HS) et une restriction export,
   - étape *Expédition* du registre projets ;
   - risques, par exemple le retard de fret.
 
+## 1 bis. Demandé — Heures depuis Cursus (remplace Lucca)
+
+**Décision (2026-10-09).** Les feuilles de temps sont saisies et validées dans Cursus, plus dans Lucca. Le prototype
+suppose Lucca : écran *Heures (Lucca)*, connecteur Lucca de l'administration, mentions dans l'accueil et les
+notifications.
+
+**Ce que Cursus fait déjà** (`Cursus/server/src/actions/temps.ts`, `integrations/keystone.ts`) :
+- **Feuilles de temps :** une feuille par salarié et par semaine, avec une ligne par code projet et par tâche et une
+  valeur pour chaque jour du lundi au vendredi.
+- **Circuit :** soumission, validation par le manager ou les RH, puis envoi à Sage Paie.
+- **Envoi à Keystone :** à la validation, Cursus émet `heures.validees` = { matricule, semaine, projets : { code → heures } }.
+  - Il émet aussi `absence.validee`, `demande.decision` et `verdict.modifie`.
+  - Aujourd'hui ces messages sont seulement écrits dans le journal de Cursus. L'envoi prévu est
+    `POST ${KEYSTONE_URL}/events` avec un jeton, mais le contrat n'est pas défini.
+- **Proposition de lignes :** Cursus propose des lignes « depuis les tâches Keystone », mais il lit pour l'instant ses
+  propres données fictives.
+
+**À construire côté Keystone :**
+- **Point d'entrée des événements Cursus :** clé d'API, rejeu sans doublon par salarié et par semaine, trace dans
+  l'audit.
+- **Écran *Heures (Cursus)* :** heures validées comparées aux heures prévues, et anomalies (heures sans projet,
+  surcharge, projet inconnu). Il remplace l'import Lucca.
+- **Point de lecture des tâches :** il expose à Cursus les tâches Keystone affectées à une personne pour une semaine,
+  pour que Cursus puisse proposer les lignes.
+- **Table de correspondance :** codes projet Cursus (K-2620…) ↔ codes Keystone (HLT-026…), et matricules ↔
+  personnes. C'est le même besoin que pour le Go/No-Go chantier.
+- **Remplacer les mentions de Lucca :** connecteur de l'administration, libellés, accueil, notifications.
+
+**Questions :**
+- **Congés :** passent-ils aussi par Cursus (`absence.validee`) ?
+- **Niveau de détail :** les heures par projet suffisent-elles, ou faut-il le détail par activité du WBS ? Le détail
+  demanderait que Cursus envoie l'identifiant de la tâche Keystone, et donc une évolution de Cursus.
+- **Heures internes :** les codes `INT-*` (heures hors projet) doivent-ils remonter dans Keystone, pour la charge des
+  ressources ?
+
 ## 2. Proposés — à valider
 
 | # | Outil | Pourquoi (contexte Keystone) | Portée indicative |

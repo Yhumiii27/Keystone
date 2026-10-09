@@ -185,7 +185,7 @@ export interface ResourceRequest {
   /** Working-day offsets (TODAY = 4). */
   start: number;
   due: number;
-  status: 'pending' | 'approved' | 'reschedule' | 'rejected' | 'withdrawn';
+  status: 'draft' | 'pending' | 'approved' | 'reschedule' | 'rejected' | 'withdrawn';
 }
 
 /** PEOPLE row: name, role, load % for the next 8 weeks. */
@@ -230,13 +230,73 @@ export interface ChangeRequest {
   chain: Partial<Record<'pm' | 'director' | 'client' | 'ccb', string>>;
 }
 
-/** Client deliverable row (DELIVERABLES): [id, title, type, status, note]. */
+/** Client deliverable row (DELIVERABLES 3464): [id, title, type, status, note]. */
 export interface ClientDeliverable {
   id: string;
   title: string;
   type: string;
   status: string;
   note: string;
+}
+
+/** A line of the project's deliverables register (quality DAL `listDeliverables`), as the client Home needs it. */
+export interface RegisterDeliverable {
+  number: string;
+  title: string;
+  /** Settings label of the type ("Test & inspection reports"). */
+  typeLabel: string;
+  status: 'planned' | 'in_progress' | 'internal_review' | 'submitted' | 'accepted' | 'rejected';
+  statusLabel: string;
+  /** The register's acceptance text ("Accept by 2 Oct", "Issue 30 Sep", "25 Sep · comments issued"). */
+  acceptanceText: string;
+  /** ISO date of the client's acceptance (PV), null when not accepted. */
+  acceptedOn: string | null;
+  /** The same date as displayed ("18 Sep"). */
+  acceptedOnText: string | null;
+}
+
+/**
+ * Deliverables on the client Home (the prototype's static DELIVERABLES 3464: D-014…D-017 of Harbor Line), from the
+ * register: being produced, waiting for the client, rejected, or accepted since `acceptedSince` (ISO, the status date
+ * − 30 days); planned ones and older acceptances stay on the client portal. Register order.
+ */
+export function clientHomeDeliverables(rows: RegisterDeliverable[], acceptedSince: string): ClientDeliverable[] {
+  return rows
+    .filter((d) => d.status !== 'planned' && (d.status !== 'accepted' || (!!d.acceptedOn && d.acceptedOn >= acceptedSince)))
+    .map((d) => ({
+      id: d.number, title: d.title, type: d.typeLabel, status: d.statusLabel,
+      note: d.status === 'accepted' && d.acceptedOnText ? `Signed ${d.acceptedOnText}` : d.acceptanceText,
+    }));
+}
+
+/** A milestone of the project's billing plan (client portal `invoices`). */
+export interface BillingInvoice {
+  /** "M3" on a contract plan; null on a legacy monthly plan. */
+  milestoneNumber: string | null;
+  /** "M3 Structure topped out" (contract) / "Sep" (legacy monthly plan). */
+  milestone: string;
+  amountKeur: number;
+  status: string;
+  /** "INV-2026-003"; null on a legacy plan. */
+  invoiceNumber: string | null;
+  /** Payment due date as displayed ("10 Nov"); null when unknown. */
+  dueText: string | null;
+}
+
+/** The client's open invoice: the first invoiced, unpaid milestone of the billing plan; null when none. */
+export function clientOpenInvoice(plan: BillingInvoice[]): ClientInput['invoice'] {
+  const m = plan.find((x) => x.status === 'invoiced');
+  if (!m) return null;
+  // "M3 Structure topped out" → number "M3" + name "Structure topped out" (the name is translated, the number is not).
+  const name = m.milestoneNumber && m.milestone.startsWith(m.milestoneNumber + ' ') ? m.milestone.slice(m.milestoneNumber.length + 1) : m.milestone;
+  return { invoiceNumber: m.invoiceNumber, milestoneNumber: m.milestoneNumber, name, amount: m.amountKeur, due: m.dueText };
+}
+
+/** "INV-2026-003 · M3 Structure topped out · €1.38M · due 10 Nov" (parts the plan does not have are left out). */
+function invoiceSub(inv: NonNullable<ClientInput['invoice']>, lang: Lang): Txt {
+  const p: Record<string, string> = { name: inv.name, amt: money(inv.amount, lang), inv: inv.invoiceNumber ?? '', no: inv.milestoneNumber ?? '', date: inv.due ?? '' };
+  const parts = [inv.invoiceNumber ? '{inv}' : '', inv.milestoneNumber ? '{no} {name}' : '{name}', '{amt}', inv.due ? 'due {date}' : ''];
+  return { tpl: parts.filter(Boolean).join(' · '), p };
 }
 
 export interface PortfolioAlert {
@@ -380,6 +440,7 @@ export interface PmInput {
 }
 
 const REQ_TAG: Record<ResourceRequest['status'], [string, string]> = {
+  draft: ['Draft', TAG.outline],
   pending: ['Pending', TAG.outline],
   reschedule: ['Reschedule proposed', TAG.accent],
   approved: ['Approved', TAG.neutral],
@@ -500,6 +561,8 @@ export interface MemberInput {
   /** STATUS_L: task status → label. */
   statusLabels: Record<string, string>;
   lookups: Lookups;
+  /** A-12 (10 OQ18): hours of the person's time entries this week (`loggedInWeek`); absent → the prototype's formula. */
+  loggedThisWeekH?: number;
 }
 
 /** My work buckets (logic 4061–4071). */
@@ -520,13 +583,14 @@ export function workSummary(todos: Todo[], person: string, people: PersonLoad[])
 
 export function memberHome(i: MemberInput): HomeView {
   const w = workSummary(i.todos, i.person, i.people);
+  const logged = i.loggedThisWeekH ?? w.logged;
   return {
     ...greeting(i.persona),
     kpis: [
       kpi('Due today', w.dueToday, dayLabel(TODAY), false),
       kpi('Overdue', w.overdue, 'Needs a new date or a push', w.overdue > 0),
       kpi('Next week', w.nextWeek, '28 Sep – 2 Oct', false),
-      kpi('Logged this week', w.logged.toFixed(1) + ' h', { tpl: 'of 40 h · {pct}%', p: { pct: Math.round((w.logged / 40) * 100) } }, false),
+      kpi('Logged this week', logged.toFixed(1) + ' h', { tpl: 'of 40 h · {pct}%', p: { pct: Math.round((logged / 40) * 100) } }, false),
     ],
     left: {
       title: 'My tasks',
@@ -717,8 +781,8 @@ export interface ClientInput {
   changeRequests: ChangeRequest[];
   /** Deliverables awaiting / past client acceptance (current project). */
   deliverables: ClientDeliverable[];
-  /** Next invoice line ("Milestone 4 invoice", 640 k€, "15 Oct"), null when none. */
-  invoice: { label: string; amount: number; due: string } | null;
+  /** Open invoice of the billing plan (INV-2026-003, "M3", "Structure topped out", 1380 k€, "10 Nov"), null when none. */
+  invoice: { invoiceNumber: string | null; milestoneNumber: string | null; name: string; amount: number; due: string | null } | null;
 }
 
 export function clientHome(i: ClientInput): HomeView {
@@ -765,7 +829,10 @@ export function clientHome(i: ClientInput): HomeView {
         ...i.deliverables.map((d) =>
           row(`${d.id} · ${d.title}`, { tpl: '{type} · {note}', p: { type: d.type, note: d.note } }, d.status, d.status === 'Submitted' ? TAG.accent : d.status === 'Accepted' ? TAG.neutral : TAG.outline, cpHref('decisions')),
         ),
-        ...(i.invoice ? [row('Invoices', `${i.invoice.label} ${money(i.invoice.amount, lang)} · due ${i.invoice.due}`, 'Open', TAG.outline, cpHref('invoices'))] : []),
+        // The open invoice of the billing plan (the prototype's static "Milestone 4 invoice €640k · due 15 Oct", A-5).
+        ...(i.invoice
+          ? [row('Invoices', invoiceSub(i.invoice, lang), 'Open', TAG.outline, cpHref('invoices'))]
+          : []),
       ],
     },
   };

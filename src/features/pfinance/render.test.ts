@@ -47,7 +47,8 @@ describe('Prioritisation tab', () => {
     expect(x).toContain('Active projects 6 €13.63M committed');
     expect(x).toContain('Pipeline 5 €13.08M proposed · approved · planning');
     expect(x).toContain('Top-ranked WSA-044 Westfield Solar Array');
-    expect(x).toContain('Portfolio margin 18% Client projects · weighted by contract');
+    // A-12 (chapter 4): Σ (contract − EAC) / Σ contract of the active client projects — 8 %, not the constant 18 %.
+    expect(x).toContain('Portfolio margin 8% Client projects · weighted by contract');
     expect(x).toContain('Weights sum 100% Edit weights on the right');
     expect(x).toContain('Ranking — active and pipeline Score = Σ axis (1–5) × weight · pipeline projects compete with active ones for capacity');
     expect(x).toContain('# Project Status Score Strategic fit Margin / NPV Risk level Resource fit Client priority Budget Margin');
@@ -72,7 +73,7 @@ describe('Prioritisation tab', () => {
     expect(x).toContain('Projets actifs 6 13,63 M€ engagés');
     expect(x).toContain('Pipeline 5 13,08 M€ proposés · approuvés · en planification');
     expect(x).toContain('Mieux classé WSA-044 Centrale solaire de Westfield');
-    expect(x).toContain('Marge du portefeuille 18% Projets clients · pondérée par contrat');
+    expect(x).toContain('Marge du portefeuille 8% Projets clients · pondérée par contrat'); // A-12
     expect(x).toContain('Somme des poids 100% Modifier les poids à droite');
     expect(x).toContain('Classement — actifs et pipeline');
     expect(x).toContain('# Projet Statut Score Alignement stratégique Marge / VAN Niveau de risque Adéquation ressources Priorité client Budget Marge');
@@ -112,23 +113,24 @@ describe('Capacity what-if tab', () => {
     const x = text(m);
     if (lang === 'en') {
       expect(x).toContain('Pipeline project to absorb WSA-044 EWA-051 FTU-052 RBR-048 CER-047');
-      expect(x).toContain('Westfield Solar Array €3.40M · start Aug 2026 APD Needs 12 additional people or a later start Capacity gap · 1560 h over 8 weeks');
+      // A-12 (chapter 4): capacity from the pool's allocations, demand per €1M from the active portfolio (prototype: gap 1 560 h).
+      expect(x).toContain('Westfield Solar Array €3.40M · start Aug 2026 APD Absorbable with 151 h of overtime or one contractor Capacity gap · 151 h over 8 weeks');
       expect(x).toContain('Demand vs capacity by department — next 8 weeks Current commitments + the candidate project · tick = available capacity');
-      expect(x).toContain('Engineering +476 h 1586 / 960 h');
-      expect(x).toContain('Controls & planning +238 h 798 / 640 h'.replace('&', '&'));
+      expect(x).toContain('Engineering +73 h 391 / 320 h');
+      expect(x).toContain('Controls & planning +164 h 880 / 960 h');
       expect(x).toContain('Committed Candidate project Capacity');
-      expect(x).toContain('Options Start Westfield 6 weeks later — gap closes as Harbor Line demobilises Contract 6 engineer(s) for the ramp-up phase Delay Metro Signage Line B (non-critical) by 2 weeks');
+      expect(x).toContain('Options Start Westfield 6 weeks later — gap closes as Harbor Line demobilises Contract 1 engineer(s) for the ramp-up phase Delay Metro Signage Line B (non-critical) by 2 weeks');
       expect(x).toContain('Demand is estimated from budget and past projects of the same type until the WBS is planned.');
     } else {
       expect(x).toContain('Projet du pipeline à absorber');
-      expect(x).toContain('Centrale solaire de Westfield 3,40 M€ · début août 2026 APD Nécessite 12 personnes supplémentaires ou un démarrage plus tard Écart de capacité · 1560 h sur 8 semaines');
-      expect(x).toContain('Ingénierie +476 h 1586 / 960 h');
+      expect(x).toContain('Centrale solaire de Westfield 3,40 M€ · début août 2026 APD Absorbable avec 151 h d’heures sup. ou un prestataire Écart de capacité · 151 h sur 8 semaines'); // A-12
+      expect(x).toContain('Ingénierie +73 h 391 / 320 h');
       expect(x).toContain('Engagé Projet candidat Capacité');
-      expect(x).toContain('Recruter 6 ingénieur(s) en prestation pour la montée en charge');
+      expect(x).toContain('Recruter 1 ingénieur(s) en prestation pour la montée en charge');
     }
     expect(m).toContain('href="/portfolio/prioritisation?tab=capacity&amp;project=EWA-051&amp;sel=HLT-026"');
-    expect(m).toContain('width:64%');
-    expect(m).toContain('--cap-left:55%');
+    expect(m).toContain('width:74%'); // A-12: Engineering 318 h committed of max(320, 391) × 1.1
+    expect(m).toContain('--cap-left:74%');
   });
 });
 
@@ -140,15 +142,17 @@ describe('Cash flow & billing', () => {
     expect(x).toContain('Contract value €10.09M 4 client projects · 1 internal');
     expect(x).toContain('Invoiced to date €5.26M Milestones reached or monthly progress');
     expect(x).toContain('Outstanding receivables €1.94M Invoiced, not yet paid');
-    expect(x).toContain('Net cash · next 6 months +€365k Billing plan minus forecast spend');
-    expect(x).toContain('Lowest cumulative point −€490k November — before M3 payment lands');
+    // A-12 (chapter 4): billing plan in, cost forecast out, at the data date (the prototype's stored plan gave +€365k / −€490k in
+    // November with a static sub-line).
+    expect(x).toContain('Net cash · next 6 months +€2.84M Billing plan minus forecast spend');
+    expect(x).toContain('Lowest cumulative point −€521k October — before M3 payment lands (HLT-026)');
     expect(x).toContain('Project Billing model Contract Invoiced · paid Outstanding Cost to date Margin Next milestone');
     expect(x).toContain('Harbor Line Terminal Expansion HLT-026 Client · milestones €5.52M €1.38M €3.36M 13% M4 Cranes operational · €1.10M');
     expect(x).toContain('ERP Migration — Phase 2 ERP-202 Internal · capex — — €410k — —');
     expect(x).toContain('Marseille Metro Signage Rollout MSR-012 Client · fixed price €720k €0k €550k 14% Line B · €288k');
     expect(x).toContain('Paid Invoiced');
-    expect(x).toContain('Cash flow — next 6 months Billing plan in · forecast spend out +530k Oct −760k Nov +380k Dec −640k Jan ’27 +790k Feb +65k Mar Cash in Cash out Net per month above bars');
-    expect(m).toContain('height:90%');
+    expect(x).toContain('Cash flow — next 6 months Billing plan in · forecast spend out −521k Oct +885k Nov −51k Dec +1083k Jan ’27 +1116k Feb +324k Mar Cash in Cash out Net per month above bars');
+    expect(m).toContain('height:57%');
     expect(m).toContain('title="Invoiced · €3.04M"');
     expect(m).toContain('--ov-w:55%');
     expect(m).toContain('--ov-w:30%');
@@ -159,10 +163,10 @@ describe('Cash flow & billing', () => {
     const t = tOf('fr');
     const x = text(html(h(CashView, { view: cashView(await getCashScreen('pm', null), t, 'fr'), t }), 'fr'));
     expect(x).toContain('Montant du contrat 10,09 M€ 4 projets clients · 1 interne');
-    expect(x).toContain('Point bas cumulé −490 k€ Novembre — avant l’encaissement de M3');
+    expect(x).toContain('Point bas cumulé −521 k€ Octobre — avant l’encaissement de M3 (HLT-026)'); // A-12
     expect(x).toContain('Projet Modèle de facturation Contrat Facturé · payé En attente de paiement Coût à date Marge Prochain jalon');
     expect(x).toContain('Aménagement de la Clinique Pasteur Lyon RCF-019 Client · jalons 1,50 M€ 300 k€ 1,21 M€ 10% Livraison · 600 k€');
-    expect(x).toContain('Trésorerie — 6 prochains mois Plan de facturation en entrée · dépenses prévues en sortie +530k oct. −760k nov. +380k déc. −640k janv. ’27 +790k févr. +65k mars Encaissements Décaissements Net mensuel au-dessus des barres');
+    expect(x).toContain('Trésorerie — 6 prochains mois Plan de facturation en entrée · dépenses prévues en sortie −521k oct. +885k nov. −51k déc. +1083k janv. ’27 +1116k févr. +324k mars Encaissements Décaissements Net mensuel au-dessus des barres');
   });
 
   it('zone without projects in execution (apac): notice, zero figures; masked margins for other roles', async () => {

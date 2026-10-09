@@ -4,30 +4,33 @@ import 'server-only';
 // pool's weekly loads, tasks, the skills matrix and certifications come from the database. The director's KPI tiles
 // and "Needs attention" items are the Portfolio overview's (src/server/dal/portfolio.ts). Since Delivery 4, the parts
 // catalogue, the purchase orders (and so the BOM shortfall), the drawings (PDM vault mirror) and the ECOs (Vigie
-// mirror, src/server/integrations/vigie) come from the database too.
-// TODO(db): client deliverables and the client's next invoice are read from the prototype data set (PROTO) at its
-// initial state; switch each block to its module DAL once modelled.
+// mirror, src/server/integrations/vigie) come from the database too; since Delivery 5, the client's deliverables
+// (the deliverables register, src/server/dal/quality.ts) and open invoice (the billing plan, as on the client portal).
 import { DEFAULT_PROJECT, type RoleKey } from '@/config/screens';
+import { isNotNull } from 'drizzle-orm';
 import {
-  clientHome, deptHeadHome, directorHome, engLeadHome, homeHref, memberHome, pmHome, procurementHome, qualityHome,
-  type ChangeRequest, type ClientDeliverable, type CurrentProject, type Drawing, type Eco, type EvmSeries, type HomeView,
-  type Lookups, type Part, type Persona, type PersonLoad, type PortfolioAlert, type PurchaseOrder, type ResourceRequest,
-  type ScheduleHeader, type Todo,
+  clientHome, clientHomeDeliverables, clientOpenInvoice, deptHeadHome, directorHome, engLeadHome, homeHref, memberHome, pmHome, procurementHome,
+  qualityHome, type ChangeRequest, type CurrentProject, type Drawing, type Eco, type EvmSeries, type HomeView, type Lookups, type Part,
+  type Persona, type PersonLoad, type PortfolioAlert, type PurchaseOrder, type ResourceRequest, type ScheduleHeader, type Todo,
 } from '@/domain/home';
 import { workingDayOf } from '@/domain/tasks';
 import type { Lang } from '@/i18n/translate';
-import { ecoType } from '@/server/db/codes';
-import { PROTO } from '@/server/prototype';
+import { getDb } from '@/server/db/client';
+import { REQUEST_STATUS_TAG, STATUS_ISO, addDaysIso, ecoType, fmtDOfIso, requestStatus, taskStatus } from '@/server/db/codes';
+import { projects as projectsTable } from '@/server/db/schema';
 import type { ZoneKey } from '@/server/session';
 import { getCostControl, listChangeRequests } from './cost';
 import { listDrawings } from './drawings';
 import { listEcos } from './eco';
+import { loggedThisWeek } from './kpis';
 import { listParts } from './parts';
+import { getClientPortal } from './client';
 import { getActivities, getMilestones, getScheduleControl } from './planning';
 import { getPortfolioOverview } from './portfolio';
 import { getSkillsMatrix } from './hr';
 import { getProject, listProjects, type ProjectRow } from './projects';
 import { listPurchaseOrders } from './purchasing';
+import { listDeliverables } from './quality';
 import { listApprovalDepartments, listResourceRequests } from './requests';
 import { getResourcePool } from './resources';
 import { listTasks } from './tasks';
@@ -42,20 +45,33 @@ export interface HomeQuery {
   lang: Lang;
 }
 
-// ── Prototype-backed modules (TODO(db)) ───────────────────────────────────────────────────────────────────
+// ── Database-backed inputs ────────────────────────────────────────────────────────────────────────────────
 
-const lookups = (): Lookups => ({ projectNames: PROTO.PROJ_NAMES });
-
-/** Client deliverables of the Home (DELIVERABLES 3424, Harbor Line). TODO(db): read the deliverables register once modelled. */
-function clientDeliverables(code: string): ClientDeliverable[] {
-  if (code !== 'HLT-026') return [];
-  return (PROTO.DELIVERABLES as [string, string, string, string, string][]).map(([id, title, type, status, note]) => ({ id, title, type, status, note }));
+/** Short project names by short code (PROJ_NAMES 3263: "HLT" → "Harbor Line"), the projects' `short_name`. */
+async function lookups(): Promise<Lookups> {
+  const db = await getDb();
+  const rows = await db.select({ code: projectsTable.shortCode, name: projectsTable.shortName }).from(projectsTable).where(isNotNull(projectsTable.shortName));
+  return { projectNames: Object.fromEntries(rows.map((r) => [r.code, r.name!])) };
 }
 
-/** Next client invoice (static in the prototype, line 4432). TODO(db): next invoiced milestone from the billing plan. */
-const clientInvoice = (code: string) => (code === 'HLT-026' ? { label: 'Milestone 4 invoice', amount: 640, due: '15 Oct' } : null);
+/** Resource request status labels and tags (REQ_STATUS 3282). */
+const REQ_STATUS: Record<string, [string, string]> = Object.fromEntries(requestStatus.codes.map((c) => [c, [requestStatus.label(c), 'tag ' + REQUEST_STATUS_TAG[c]]]));
+/** Task status labels (STATUS_L 3264). */
+const TASK_STATUS: Record<string, string> = Object.fromEntries(taskStatus.codes.map((c) => [c, taskStatus.label(c)]));
 
-// ── Database-backed inputs ────────────────────────────────────────────────────────────────────────────────
+/**
+ * The client Home's deliverables (being produced, waiting for the client, rejected, accepted in the last 30 days) and
+ * open invoice, from the deliverables register and the billing plan the client portal shows.
+ */
+async function clientInputs(code: string) {
+  const [dlv, portal] = await Promise.all([listDeliverables(code), getClientPortal(code)]);
+  const deliverables = clientHomeDeliverables(
+    dlv.map((d) => ({ ...d, acceptedOnText: d.acceptedOn ? fmtDOfIso(d.acceptedOn) : null })),
+    addDaysIso(STATUS_ISO, -30),
+  );
+  const invoice = clientOpenInvoice(portal.invoices.map((m) => ({ ...m, dueText: m.dueOn ? fmtDOfIso(m.dueOn) : null })));
+  return { deliverables, invoice };
+}
 
 /** The parts catalogue (PARTS order, parts created in Keystone appended): list price, quantity per project short code. */
 async function parts(): Promise<Part[]> {
@@ -152,7 +168,7 @@ async function evmAndSchedule(code: string): Promise<{ evm: EvmSeries | null; sc
 }
 
 async function changeRequestsOf(projects: ProjectRow[]): Promise<ChangeRequest[]> {
-  const names = lookups().projectNames;
+  const names = (await lookups()).projectNames;
   const lists = await Promise.all(
     projects.map(async (p) =>
       (await listChangeRequests(p.code)).map((c) => ({
@@ -183,12 +199,15 @@ export async function getHomeView(q: HomeQuery): Promise<HomeView> {
     }
     case 'depthead': {
       const [dept, reqs, pool] = await Promise.all([deptOfHead(persona.name), requests(), people()]);
-      return deptHeadHome({ persona, dept, requests: reqs, people: pool.loads, deptOf: pool.deptOf, reqStatus: PROTO.REQ_STATUS, lookups: lookups() });
+      return deptHeadHome({ persona, dept, requests: reqs, people: pool.loads, deptOf: pool.deptOf, reqStatus: REQ_STATUS, lookups: await lookups() });
     }
     case 'member': {
       // The viewer's own work: the prototype always showed `state.person` = Hélène Sauvage (docs/spec/00 §7.16, 10 OQ17).
       const [tasks, pool, sk] = await Promise.all([todos(), people(), skillsMatrix()]);
-      return memberHome({ persona, person: persona.name, todos: tasks, people: pool.loads, certs: sk.certs, statusLabels: PROTO.STATUS_L, lookups: lookups() });
+      return memberHome({
+        persona, person: persona.name, todos: tasks, people: pool.loads, certs: sk.certs, statusLabels: TASK_STATUS, lookups: await lookups(),
+        loggedThisWeekH: await loggedThisWeek(persona.name), // A-12: this week's time entries
+      });
     }
     case 'englead': {
       const [pool, sk, es, dwgs, ps] = await Promise.all([people(), skillsMatrix(), ecos(), drawings(), parts()]);
@@ -208,10 +227,8 @@ export async function getHomeView(q: HomeQuery): Promise<HomeView> {
       });
     }
     case 'client': {
-      const [{ evm, schedule }, crs] = await Promise.all([evmAndSchedule(project.code), changeRequestsOf([project])]);
-      return clientHome({
-        lang, persona, project: current, evm, schedule, changeRequests: crs, deliverables: clientDeliverables(project.code), invoice: clientInvoice(project.code),
-      });
+      const [{ evm, schedule }, crs, { deliverables, invoice }] = await Promise.all([evmAndSchedule(project.code), changeRequestsOf([project]), clientInputs(project.code)]);
+      return clientHome({ lang, persona, project: current, evm, schedule, changeRequests: crs, deliverables, invoice });
     }
     default: {
       // KPI tiles and "Needs attention" are the Portfolio overview's own (same zone filter, docs/spec/03 §1.2 / §4).

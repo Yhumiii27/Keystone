@@ -1,0 +1,8 @@
+{
+  "Sent back to tool · closes on next import": "Renvoyé vers l’outil · se clôt au prochain import",
+  "Blocked by 1 blocking inconsistency": "Bloqué par 1 incohérence bloquante",
+  "The engineering register is read-only for you": "Le registre ingénierie est en lecture seule pour vous",
+  "This action is not available any more": "Cette action n’est plus disponible",
+  "Only the project manager validates releases": "Seul le chef de projet valide les diffusions",
+  "Release blocked by open blocking inconsistencies": "Diffusion bloquée par des incohérences bloquantes ouvertes"
+}

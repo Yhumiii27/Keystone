@@ -1,7 +1,8 @@
 'use client';
 // Selection bar and Vault card (docs/spec/10 §4.4h–i, template 2320–2343). Multi-select is transient client state
-// (`dv.sel`): the 16px check of each row toggles it, the bar shows "{n} selected" with "Download zip", "Export
-// register (xlsx)" (no export behind them yet, D-2: "coming soon" toasts) and "Clear". A row click opens / closes the
+// (`dv.sel`): the 16px check of each row toggles it, the bar shows "{n} selected" with "Download zip" (the files are in
+// Codex: a toast says so), "Export register (xlsx)" (the ticked documents; the card's button exports the register as
+// filtered — chapter 4 exports) and "Clear". A row click opens / closes the
 // document record drawer (`?doc=`); the download icon logs a download of the current revision.
 import { Check, FileXls, FileZip } from '@phosphor-icons/react/dist/ssr';
 import { useState } from 'react';
@@ -14,7 +15,9 @@ import { cx } from '@/components/ds/cx';
 import { Ellipsis, Table, Td, Th } from '@/components/ds/Table';
 import { Tag } from '@/components/ds/Tag';
 import { showToast } from '@/components/ds/Toast';
+import { downloadExport } from '@/features/exports/download';
 import { useI18n } from '@/i18n/client';
+import { exportHref } from '@/lib/export-href';
 import { DownloadButton } from './codex-buttons';
 import { selectedT } from './i18n';
 import type { VaultRowView } from './model';
@@ -34,7 +37,19 @@ export function VaultTable({ project, title, rows, empty }: VaultTableProps) {
   const [sel, setSel] = useState<Record<string, boolean>>({});
   const count = Object.values(sel).filter(Boolean).length;
   const toggle = (n: string) => setSel((cur) => ({ ...cur, [n]: !cur[n] }));
-  const soon = (label: string) => () => showToast(t(`${label} — coming soon`));
+  const [busy, setBusy] = useState(false);
+  // "Export register (xlsx)": the register as filtered on screen (URL state), or only the ticked documents.
+  const exportRegister = async (numbers: string[]) => {
+    setBusy(true);
+    try {
+      const params = new URLSearchParams(window.location.search);
+      params.delete('doc');
+      if (numbers.length) params.set('numbers', numbers.join(','));
+      await downloadExport(exportHref('docs', { format: 'xlsx', code: project, params }), t('Export failed'));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <>
@@ -43,10 +58,10 @@ export function VaultTable({ project, title, rows, empty }: VaultTableProps) {
           <span className={s.selText} aria-live="polite">
             {selectedT(count, t, lang)}
           </span>
-          <Button variant="secondary" size="xs" icon={FileZip} onClick={soon('Download zip')}>
+          <Button variant="secondary" size="xs" icon={FileZip} onClick={() => showToast(t('Download zip needs Codex — the document files are stored in Codex'))}>
             {t('Download zip')}
           </Button>
-          <Button variant="secondary" size="xs" icon={FileXls} onClick={soon('Export register (xlsx)')}>
+          <Button variant="secondary" size="xs" icon={FileXls} disabled={busy} onClick={() => exportRegister(Object.keys(sel).filter((n) => sel[n]))}>
             {t('Export register (xlsx)')}
           </Button>
           <Button variant="ghost" size="xs" onClick={() => setSel({})}>
@@ -63,7 +78,7 @@ export function VaultTable({ project, title, rows, empty }: VaultTableProps) {
               {t('Flat vault · every document is numbered by the system, tagged, versioned and downloadable · folders are just saved views')}
             </span>
           </div>
-          <Button variant="secondary" size="sm" icon={FileXls} onClick={soon('Export register (xlsx)')}>
+          <Button variant="secondary" size="sm" icon={FileXls} disabled={busy} onClick={() => exportRegister([])}>
             {t('Export register (xlsx)')}
           </Button>
         </div>

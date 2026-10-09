@@ -65,3 +65,10 @@
   background: var(--color-neutral-900);
 }
 .summaryText { font-size: 13px; color: var(--color-neutral-300); text-wrap: pretty; }
+
+/* Chapter 4 (L-3): PM select with its avatar, planned dates as date inputs. */
+.pmRow { display: flex; align-items: center; gap: 8px; }
+:global(.input).pmSelect { flex: 1; min-width: 0; }
+.dateRow { position: relative; display: flex; align-items: center; }
+.dateIcon { position: absolute; left: 10px; color: var(--color-neutral-400); pointer-events: none; font-size: 14px; }
+.dateRow :global(.input) { padding-left: 30px; width: 100%; }

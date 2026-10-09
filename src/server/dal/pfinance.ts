@@ -3,9 +3,10 @@ import 'server-only';
 // the Delivery 3 DAL (prioritisation.ts, cashflow.ts) into the view-model inputs of src/features/pfinance/model.ts.
 // Margins are removed here for viewers without margin rights (director, pm): they never reach the browser.
 import { canSeeMargins } from '@/domain/portfolio-finance';
+import { portfolioMarginPct, projectEacKeur } from '@/domain/kpis';
 import type { CapacityInput, CashData, PrioritisationData } from '@/features/pfinance/model';
 import type { ZoneKey } from '@/server/session';
-import { getCashFlow } from './cashflow';
+import { getCashFlow, listBillingPlans } from './cashflow';
 import { getCapacityWhatIf, getPrioritisation } from './prioritisation';
 import { listProjects, projectLabel, type ProjectRow } from './projects';
 
@@ -18,7 +19,7 @@ export interface PrioritisationScreen extends PrioritisationData {
 
 /** Ranking population, weights and KPI figures for a viewer (role) and zone. */
 export async function getPrioritisationScreen(role: string, zone: ZoneKey | null): Promise<PrioritisationScreen> {
-  const [pf, all] = await Promise.all([getPrioritisation(role, zone), listProjects()]);
+  const [pf, all, plans] = await Promise.all([getPrioritisation(role, zone), listProjects(), listBillingPlans()]);
   const see = canSeeMargins(role);
   const order = new Map(all.map((p, i) => [p.code, i]));
   const budget = (ps: ProjectRow[]) => ps.reduce((a, p) => a + p.budget, 0);
@@ -40,6 +41,8 @@ export async function getPrioritisationScreen(role: string, zone: ZoneKey | null
     active: { count: pf.active.length, budgetKeur: budget(pf.active) },
     pipeline: { count: pf.pipeline.length, budgetKeur: budget(pf.pipeline) },
     canSeeMargin: see,
+    // A-12: Σ (contract − EAC) / Σ contract over the zone's active client projects (was the constant 18 %).
+    portfolioMarginPct: see ? portfolioMarginPct(pf.active.map((p) => ({ contractKeur: plans[p.code]?.contractValueKeur ?? 0, eacKeur: projectEacKeur(p) }))) : null,
     zoneSelected: !!zone,
     candidates: pf.pipeline.map((p) => ({ code: p.code, name: p.name })),
   };
@@ -76,6 +79,7 @@ export async function getCashScreen(role: string, zone: ZoneKey | null): Promise
       marginPct: see ? marginPct : null,
     })),
     forecast: cf.forecast.map((m) => ({ label: m.label, cashInKeur: m.cashInKeur, cashOutKeur: m.cashOutKeur })),
+    lowPoint: cf.lowPoint,
     canSeeMargin: see,
     zoneSelected: !!zone,
   };

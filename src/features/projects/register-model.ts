@@ -22,6 +22,8 @@ export interface StageView {
   description: string;
   /** GATES — entry gate shown in the "Move to" menu ('' for Initiative). */
   gate: string;
+  /** Deactivated in Settings › Project statuses (A-14): "Move to" offers the next active stage instead. */
+  inactive?: true;
 }
 
 export interface RegisterRow {
@@ -81,6 +83,10 @@ export interface RegisterInput {
   checklists: StageChecklists;
   history: Record<string, StageHistoryRow[]>;
   schedules: ScheduleSummaries;
+  /** Stages deactivated in Settings › Project statuses (A-14). */
+  inactiveStages?: readonly StageCode[];
+  /** Projects with a WBS but no cost controls yet (wizard template, A-2): their plan opens too. */
+  planned?: readonly string[];
 }
 
 /** Indicator tints → CSS colours (LO = accent-300, OK = text). */
@@ -97,6 +103,7 @@ const TINT: Record<Tint, string> = {
 export function buildRegisterModel(data: RegisterInput, zone: ZoneKey | null, t: T, lang: Lang): RegisterModel {
   const stageByCode = new Map(data.stages.map((s) => [s.code, s]));
   const inZone = data.projects.filter((p) => !zone || p.zone === zone);
+  const planned = new Set(data.planned ?? []);
 
   const rows = inZone.map((p): RegisterRow => {
     const live = isLiveRow(p.stage, p.health);
@@ -115,7 +122,7 @@ export function buildRegisterModel(data: RegisterInput, zone: ZoneKey | null, t:
       stage: p.stage,
       search: { names: [p.name, t(p.name)], code: p.code, number, analytic: p.analytic ?? '', machineType: p.machineType ?? '' },
       name: t(`${p.displayId} · ${p.name}`),
-      openHref: p.hasData ? screenHref('plan', { code: p.code }) : null,
+      openHref: p.hasData || planned.has(p.code) ? screenHref('plan', { code: p.code }) : null,
       isNew: p.isNew,
       idLine: `${p.analytic ?? '—'} · ${p.das ? 'DAS ' + p.das : '—'} · ${p.machineType ?? '—'}`,
       metaLine: `${t(p.pm)} · ${t(p.client)} · ${t(`${p.start} → ${p.finish}`)}`,
@@ -151,12 +158,14 @@ export function buildRegisterModel(data: RegisterInput, zone: ZoneKey | null, t:
     };
   });
 
+  const inactive = new Set(data.inactiveStages ?? []);
   const stages = data.stages.map((s) => ({
     code: s.code,
     label: t(s.label),
     short: t(s.short),
     description: t(s.description),
     gate: s.gate ? t(s.gate) : '',
+    ...(inactive.has(s.code) ? { inactive: true as const } : {}),
   }));
 
   return { rows, stages, zoneEmpty: !!zone && !inZone.length };

@@ -4,17 +4,20 @@
 // state (useOptimistic) is shared through context by the body and the header's "Mark done" primary, so the status
 // ⇄ % coupling, ticks, comments and time entries show at once and reconcile when the Server Function revalidates.
 import {
-  ArrowLeft, ArrowSquareOut, File, FileDoc, FilePdf, FileXls, Image as ImageIcon, Lightning, Paperclip, Plus, TreeStructure,
+  ArrowLeft, ArrowSquareOut, DownloadSimple, File, FileDoc, FilePdf, FileXls, Image as ImageIcon, Lightning, Paperclip, Plus, Trash, TreeStructure,
 } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
-import { createContext, useContext, useOptimistic, useState, useTransition, type CSSProperties, type FormEvent, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import { createContext, useContext, useOptimistic, useRef, useState, useTransition, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { Callout } from '@/components/app/Callout';
 import { CheckRow, CheckSquare } from '@/components/app/Check';
 import { KeyValueList } from '@/components/app/KeyValueList';
 import { AttachmentRow, CommentRow, TimeEntryRow } from '@/components/app/Rows';
 import { LO } from '@/components/app/tones';
-import { Button, ButtonLink } from '@/components/ds/Button';
+import { Button, ButtonLink, IconButton } from '@/components/ds/Button';
 import { CardTitle } from '@/components/ds/Card';
+import { Dialog } from '@/components/ds/Dialog';
+import { DialogActions } from '@/components/ds/DialogParts';
 import { Segmented } from '@/components/ds/Segmented';
 import { useToast } from '@/components/ds/Toast';
 import { cx } from '@/components/ds/cx';
@@ -26,7 +29,7 @@ import { useI18n } from '@/i18n/client';
 import { TODAY, dayLabel } from '@/lib/format';
 import type { AttachmentKind } from '@/server/db/codes';
 import {
-  addChecklistItemAction, addTaskCommentAction, logTaskTimeAction, markTaskDoneAction, setTaskProgressAction, setTaskStatusAction,
+  addChecklistItemAction, addTaskCommentAction, logTaskTimeAction, markTaskDoneAction, removeTaskFileAction, setTaskProgressAction, setTaskStatusAction,
   toggleChecklistItemAction, type TaskActionResult,
 } from './actions';
 import { checkCountText, costNoteText, daysText } from './i18n';
@@ -251,10 +254,45 @@ function ChecklistCard() {
   );
 }
 
+/**
+ * Files (chapter 4, R-8): "Attach" uploads a file that Keystone stores (not Codex) — size, type and per-task limits are
+ * checked here first and again by the upload Route Handler; a stored file opens / downloads from its name or the download
+ * button; the assignee or the director removes one after a confirmation. The seed's files have no content (no link).
+ */
 function FilesCard() {
   const { t } = useI18n();
   const toast = useToast();
+  const router = useRouter();
   const { data, canEdit } = useTask();
+  const input = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null);
+  const rules = data.fileRules;
+  const full = data.files.length >= rules.maxFiles;
+
+  const upload = async (file: File) => {
+    if (file.size > rules.maxBytes) return toast.show(t(`The file is larger than ${rules.maxText}`));
+    if (!file.size) return toast.showEn('The file is empty');
+    setUploading(true);
+    try {
+      const body = new FormData();
+      body.set('file', file);
+      const res = await fetch(rules.uploadHref, { method: 'POST', body });
+      const r = (await res.json().catch(() => null)) as { ok: boolean; error?: string } | null;
+      if (!r?.ok) {
+        toast.show(r?.error ?? t('The file could not be saved'));
+        return;
+      }
+      toast.show(`${file.name} · ${t('Attached')}`);
+      router.refresh();
+    } catch {
+      toast.showEn('The file could not be saved');
+    } finally {
+      setUploading(false);
+      if (input.current) input.current.value = '';
+    }
+  };
+
   return (
     <div className={cx('card', 'elev-sm', s.sheet, s.gap6)}>
       <div className={s.cardHead}>
@@ -262,16 +300,98 @@ function FilesCard() {
           {t('Files')}
         </CardTitle>
         {canEdit && (
-          <Button variant="ghost" icon={Paperclip} className={s.attach} onClick={() => toast.show(t('Attach — coming soon'))}>
-            {t('Attach')}
-          </Button>
+          <>
+            <input
+              ref={input}
+              type="file"
+              hidden
+              accept={rules.accept}
+              aria-label={t('Attach')}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void upload(f);
+              }}
+            />
+            <Button
+              variant="ghost"
+              icon={Paperclip}
+              className={s.attach}
+              disabled={uploading || full}
+              aria-busy={uploading || undefined}
+              title={full ? `${t('Too many files on this task')} · max ${rules.maxFiles}` : undefined}
+              onClick={() => input.current?.click()}
+            >
+              {uploading ? t('Uploading…') : t('Attach')}
+            </Button>
+          </>
         )}
       </div>
-      {data.files.map((f, i) => (
-        <AttachmentRow key={i} icon={FILE_ICON[f.kind]} name={f.name} meta={f.meta} />
+      {data.files.map((f) => (
+        <AttachmentRow
+          key={f.id}
+          icon={FILE_ICON[f.kind]}
+          name={
+            f.href ? (
+              <a href={f.href} className={s.fileLink} download>
+                {f.name}
+              </a>
+            ) : (
+              f.name
+            )
+          }
+          meta={f.meta}
+          right={
+            (f.href || canEdit) && (
+              <span className={s.fileActions}>
+                {f.href && (
+                  <a href={f.href} download className={cx('btn', 'btn-icon', 'btn-ghost', s.fileBtn)} aria-label={`${t('Download')} ${f.name}`} title={t('Download')}>
+                    <DownloadSimple aria-hidden />
+                  </a>
+                )}
+                {canEdit && <IconButton icon={Trash} size={28} muted label={`${t('Remove')} ${f.name}`} title={t('Remove')} onClick={() => setRemoving({ id: f.id, name: f.name })} />}
+              </span>
+            )
+          }
+        />
       ))}
       {!data.files.length && <span className={s.empty}>{t('No files attached')}</span>}
+      {canEdit && <RemoveFileDialog taskId={data.id} file={removing} onClose={() => setRemoving(null)} />}
     </div>
+  );
+}
+
+/** "Remove file" confirmation: the attachment and the file Keystone stored are deleted (audited). */
+function RemoveFileDialog({ taskId, file, onClose }: { taskId: string; file: { id: string; name: string } | null; onClose: () => void }) {
+  const { t } = useI18n();
+  const toast = useToast();
+  const [pending, startTransition] = useTransition();
+  const remove = () => {
+    if (!file) return;
+    startTransition(async () => {
+      try {
+        const r = await removeTaskFileAction({ taskId, attachmentId: file.id });
+        if (!r.ok) toast.showEn(r.error);
+        else {
+          toast.show(`${file.name} · ${t('Removed')}`);
+          onClose();
+        }
+      } catch {
+        toast.showEn('The change could not be saved');
+      }
+    });
+  };
+  return (
+    <Dialog open={!!file} onClose={onClose} title={t('Remove file')} subtitle={file?.name} width={440} placement="center" maxHeight={null}>
+      <p className={s.dialogText}>{t('The file is deleted from Keystone.')}</p>
+      <DialogActions variant="flush">
+        <Button variant="secondary" onClick={onClose}>
+          {t('Cancel')}
+        </Button>
+        <Button variant="primary" icon={Trash} disabled={pending} aria-busy={pending || undefined} onClick={remove}>
+          {t('Remove')}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 

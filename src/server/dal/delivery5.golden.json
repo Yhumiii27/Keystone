@@ -1,0 +1,8322 @@
+{
+ "quality": {
+  "HLT-026": {
+   "ncrKpis": [
+    {
+     "label": "Open NCRs",
+     "value": 4,
+     "sub": "1 closed this quarter"
+    },
+    {
+     "label": "Critical",
+     "value": 1,
+     "sub": "Stop-work until containment"
+    },
+    {
+     "label": "Cost of non-quality",
+     "value": "€44k",
+     "sub": "Rework, scrap, re-inspection"
+    },
+    {
+     "label": "Overdue actions",
+     "value": 2,
+     "sub": "Corrective action past due date"
+    },
+    {
+     "label": "From goods receipt",
+     "value": 3,
+     "sub": "Supplier-caused · feeds supplier rating"
+    }
+   ],
+   "ncrChips": [
+    [
+     "All",
+     5
+    ],
+    [
+     "Minor",
+     2
+    ],
+    [
+     "Major",
+     2
+    ],
+    [
+     "Critical",
+     1
+    ]
+   ],
+   "ncrRows": [
+    {
+     "id": "NCR-026",
+     "title": "Weld porosity on column K-12 splice",
+     "sev": "Major",
+     "src": "Site inspection",
+     "actText": "A1250 · Steel erection — Bays 3–4",
+     "owner": "Julien Wagner",
+     "due": "2 Oct",
+     "costText": "€6k",
+     "status": "Corrective action",
+     "stepIdx": 3,
+     "canAdvance": true,
+     "nextLabel": "Verification",
+     "raised": "Hélène Sauvage",
+     "date": "18 Sep"
+    },
+    {
+     "id": "NCR-027",
+     "title": "Crane rail bars damaged in transport (2 bars)",
+     "sev": "Minor",
+     "src": "Goods receipt",
+     "actText": "A1320 · Crane delivery & rigging",
+     "owner": "Fabien Bertrand",
+     "due": "—",
+     "costText": "—",
+     "status": "Closed",
+     "stepIdx": 5,
+     "canAdvance": false,
+     "nextLabel": "Closed",
+     "raised": "Hélène Sauvage",
+     "date": "02 Sep"
+    },
+    {
+     "id": "NCR-028",
+     "title": "XLPE cable sheath damage on 2 drums",
+     "sev": "Minor",
+     "src": "Goods receipt",
+     "actText": "A1420 · Lighting & power distribution",
+     "owner": "Fabien Bertrand",
+     "due": "7 Oct",
+     "costText": "€8k",
+     "status": "Containment",
+     "stepIdx": 1,
+     "canAdvance": true,
+     "nextLabel": "Root cause",
+     "raised": "Hélène Sauvage",
+     "date": "23 Sep"
+    },
+    {
+     "id": "NCR-029",
+     "title": "Foundation bolt pattern 12 mm off at Bay 7",
+     "sev": "Critical",
+     "src": "Survey",
+     "actText": "A1230 · Steel fabrication & delivery",
+     "owner": "Julien Wagner",
+     "due": "30 Sep",
+     "costText": "€28k",
+     "status": "Root cause",
+     "stepIdx": 2,
+     "canAdvance": true,
+     "nextLabel": "Corrective action",
+     "raised": "Thomas Kerbrat",
+     "date": "24 Sep"
+    },
+    {
+     "id": "NCR-030",
+     "title": "Smoke detectors CD-200 (obsolete) delivered",
+     "sev": "Major",
+     "src": "Goods receipt",
+     "actText": "A1430 · Fire detection & suppression",
+     "owner": "Fabien Bertrand",
+     "due": "10 Oct",
+     "costText": "€2k",
+     "status": "Open",
+     "stepIdx": 0,
+     "canAdvance": true,
+     "nextLabel": "Containment",
+     "raised": "Gabriel Comte",
+     "date": "25 Sep"
+    }
+   ],
+   "dlvKpis": [
+    {
+     "label": "Deliverables",
+     "value": 10,
+     "sub": "3 accepted by client"
+    },
+    {
+     "label": "Awaiting client acceptance",
+     "value": 2,
+     "sub": "10-day acceptance window"
+    },
+    {
+     "label": "Due in 30 days",
+     "value": 3,
+     "sub": "Not yet accepted"
+    },
+    {
+     "label": "Without backup (B)",
+     "value": 0,
+     "sub": "RACI-B complete on every line"
+    },
+    {
+     "label": "Rejected",
+     "value": 0,
+     "sub": "Resubmission needed"
+    }
+   ],
+   "dlvChips": [
+    [
+     "All",
+     10
+    ],
+    [
+     "Planned",
+     4
+    ],
+    [
+     "In progress",
+     1
+    ],
+    [
+     "Internal review",
+     0
+    ],
+    [
+     "Submitted",
+     2
+    ],
+    [
+     "Accepted",
+     3
+    ],
+    [
+     "Rejected",
+     0
+    ]
+   ],
+   "dlvRows": [
+    {
+     "id": "D-011",
+     "title": "Structural design package — portal & girders",
+     "type": "Drawings",
+     "wbs": "1.1",
+     "due": "28 Feb",
+     "rev": "C",
+     "acc": "12 Mar · N. Bensaïd",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "Julien Wagner",
+       "JW"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Antoine Girard",
+       "AG"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Marion Kerviel",
+       "MK"
+      ]
+     ]
+    },
+    {
+     "id": "D-012",
+     "title": "Piling & foundation calculation note",
+     "type": "Calculation notes",
+     "wbs": "1.3",
+     "due": "15 Mar",
+     "rev": "B",
+     "acc": "20 Mar · Bureau de contrôle",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "Julien Wagner",
+       "JW"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Bureau de contrôle",
+       "Bdc"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Antoine Girard",
+       "AG"
+      ]
+     ]
+    },
+    {
+     "id": "D-014",
+     "title": "Crane rail alignment report",
+     "type": "Test & inspection reports",
+     "wbs": "1.5",
+     "due": "25 Sep",
+     "rev": "A",
+     "acc": "Accept by 2 Oct",
+     "status": "Submitted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "Thomas Kerbrat",
+       "TK"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Hélène Sauvage",
+       "HS"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Amélie Ollivier",
+       "AO"
+      ]
+     ]
+    },
+    {
+     "id": "D-015",
+     "title": "Foundations as-built drawings",
+     "type": "Manuals / as-built",
+     "wbs": "1.3",
+     "due": "15 Sep",
+     "rev": "A",
+     "acc": "18 Sep · N. Bensaïd",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "Julien Wagner",
+       "JW"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Amélie Ollivier",
+       "AO"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Damien Roux",
+       "DR"
+      ]
+     ]
+    },
+    {
+     "id": "D-016",
+     "title": "Steel structure calculation note rev B",
+     "type": "Calculation notes",
+     "wbs": "1.4",
+     "due": "30 Sep",
+     "rev": "B",
+     "acc": "Accept by 9 Oct",
+     "status": "Submitted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "Julien Wagner",
+       "JW"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Bureau de contrôle",
+       "Bdc"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Antoine Girard",
+       "AG"
+      ]
+     ]
+    },
+    {
+     "id": "D-017",
+     "title": "Monthly progress report — September",
+     "type": "Meeting minutes",
+     "wbs": "1",
+     "due": "30 Sep",
+     "rev": "—",
+     "acc": "Issue 30 Sep",
+     "status": "In progress",
+     "canStart": true,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "Damien Roux",
+       "DR"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Léa Marchand",
+       "LM"
+      ],
+      [
+       "I",
+       "Marie Lefebvre",
+       "ML"
+      ],
+      [
+       "B",
+       "Léa Marchand",
+       "LM"
+      ]
+     ]
+    },
+    {
+     "id": "D-018",
+     "title": "Lifting equipment CE certificates — gantry cranes",
+     "type": "Certificates (CE, lifting…)",
+     "wbs": "1.5",
+     "due": "20 Nov",
+     "rev": "—",
+     "acc": "—",
+     "status": "Planned",
+     "canStart": true,
+     "canSubmit": false,
+     "nextLabel": "Start",
+     "raci": [
+      [
+       "R",
+       "Thomas Kerbrat",
+       "TK"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Gabriel Comte",
+       "GC"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Hélène Sauvage",
+       "HS"
+      ]
+     ]
+    },
+    {
+     "id": "D-019",
+     "title": "HV installation test & commissioning report",
+     "type": "Test & inspection reports",
+     "wbs": "1.6",
+     "due": "28 Nov",
+     "rev": "—",
+     "acc": "—",
+     "status": "Planned",
+     "canStart": true,
+     "canSubmit": false,
+     "nextLabel": "Start",
+     "raci": [
+      [
+       "R",
+       "Pauline Noguès",
+       "PN"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Hélène Sauvage",
+       "HS"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Julien Wagner",
+       "JW"
+      ]
+     ]
+    },
+    {
+     "id": "D-020",
+     "title": "Operation & maintenance manuals",
+     "type": "Manuals / as-built",
+     "wbs": "1.8",
+     "due": "20 Dec",
+     "rev": "—",
+     "acc": "—",
+     "status": "Planned",
+     "canStart": true,
+     "canSubmit": false,
+     "nextLabel": "Start",
+     "raci": [
+      [
+       "R",
+       "Hélène Sauvage",
+       "HS"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Thomas Kerbrat",
+       "TK"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Pauline Noguès",
+       "PN"
+      ]
+     ]
+    },
+    {
+     "id": "D-021",
+     "title": "Client acceptance — PV de réception provisoire",
+     "type": "Client acceptance (PV de réception)",
+     "wbs": "1.8",
+     "due": "14 Jan",
+     "rev": "—",
+     "acc": "—",
+     "status": "Planned",
+     "canStart": true,
+     "canSubmit": false,
+     "nextLabel": "Start",
+     "raci": [
+      [
+       "R",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "A",
+       "Marie Lefebvre",
+       "ML"
+      ],
+      [
+       "C",
+       "Hélène Sauvage",
+       "HS"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Damien Roux",
+       "DR"
+      ]
+     ]
+    }
+   ]
+  },
+  "NDC-031": {
+   "ncrKpis": [
+    {
+     "label": "Open NCRs",
+     "value": 1,
+     "sub": "1 closed this quarter"
+    },
+    {
+     "label": "Critical",
+     "value": 0,
+     "sub": "Stop-work until containment"
+    },
+    {
+     "label": "Cost of non-quality",
+     "value": "€8k",
+     "sub": "Rework, scrap, re-inspection"
+    },
+    {
+     "label": "Overdue actions",
+     "value": 0,
+     "sub": "Corrective action past due date"
+    },
+    {
+     "label": "From goods receipt",
+     "value": 2,
+     "sub": "Supplier-caused · feeds supplier rating"
+    }
+   ],
+   "ncrChips": [
+    [
+     "All",
+     2
+    ],
+    [
+     "Minor",
+     2
+    ],
+    [
+     "Major",
+     0
+    ],
+    [
+     "Critical",
+     0
+    ]
+   ],
+   "ncrRows": [
+    {
+     "id": "NCR-040",
+     "title": "Crane rail bars damaged in transport (2 bars)",
+     "sev": "Minor",
+     "src": "Goods receipt",
+     "actText": "—",
+     "owner": "Fabien Bertrand",
+     "due": "—",
+     "costText": "—",
+     "status": "Closed",
+     "stepIdx": 5,
+     "canAdvance": false,
+     "nextLabel": "Closed",
+     "raised": "Hélène Sauvage",
+     "date": "02 Sep"
+    },
+    {
+     "id": "NCR-041",
+     "title": "XLPE cable sheath damage on 2 drums",
+     "sev": "Minor",
+     "src": "Goods receipt",
+     "actText": "—",
+     "owner": "Fabien Bertrand",
+     "due": "7 Oct",
+     "costText": "€8k",
+     "status": "Containment",
+     "stepIdx": 1,
+     "canAdvance": true,
+     "nextLabel": "Root cause",
+     "raised": "Hélène Sauvage",
+     "date": "23 Sep"
+    }
+   ],
+   "dlvKpis": [
+    {
+     "label": "Deliverables",
+     "value": 4,
+     "sub": "3 accepted by client"
+    },
+    {
+     "label": "Awaiting client acceptance",
+     "value": 1,
+     "sub": "10-day acceptance window"
+    },
+    {
+     "label": "Due in 30 days",
+     "value": 1,
+     "sub": "Not yet accepted"
+    },
+    {
+     "label": "Without backup (B)",
+     "value": 0,
+     "sub": "RACI-B complete on every line"
+    },
+    {
+     "label": "Rejected",
+     "value": 0,
+     "sub": "Resubmission needed"
+    }
+   ],
+   "dlvChips": [
+    [
+     "All",
+     4
+    ],
+    [
+     "Planned",
+     0
+    ],
+    [
+     "In progress",
+     0
+    ],
+    [
+     "Internal review",
+     0
+    ],
+    [
+     "Submitted",
+     1
+    ],
+    [
+     "Accepted",
+     3
+    ],
+    [
+     "Rejected",
+     0
+    ]
+   ],
+   "dlvRows": [
+    {
+     "id": "D-110",
+     "title": "Structural design package — portal & girders",
+     "type": "Drawings",
+     "wbs": "1.1",
+     "due": "28 Feb",
+     "rev": "C",
+     "acc": "12 Mar · N. Bensaïd",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "S. Perrin",
+       "SP"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Antoine Girard",
+       "AG"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Marion Kerviel",
+       "MK"
+      ]
+     ]
+    },
+    {
+     "id": "D-111",
+     "title": "Piling & foundation calculation note",
+     "type": "Calculation notes",
+     "wbs": "1.3",
+     "due": "15 Mar",
+     "rev": "B",
+     "acc": "20 Mar · Bureau de contrôle",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "S. Perrin",
+       "SP"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Bureau de contrôle",
+       "Bdc"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Antoine Girard",
+       "AG"
+      ]
+     ]
+    },
+    {
+     "id": "D-112",
+     "title": "Crane rail alignment report",
+     "type": "Test & inspection reports",
+     "wbs": "1.5",
+     "due": "25 Sep",
+     "rev": "A",
+     "acc": "Accept by 2 Oct",
+     "status": "Submitted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "S. Perrin",
+       "SP"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Hélène Sauvage",
+       "HS"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Amélie Ollivier",
+       "AO"
+      ]
+     ]
+    },
+    {
+     "id": "D-113",
+     "title": "Foundations as-built drawings",
+     "type": "Manuals / as-built",
+     "wbs": "1.3",
+     "due": "15 Sep",
+     "rev": "A",
+     "acc": "18 Sep · N. Bensaïd",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "S. Perrin",
+       "SP"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Amélie Ollivier",
+       "AO"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Damien Roux",
+       "DR"
+      ]
+     ]
+    }
+   ]
+  },
+  "RCF-019": {
+   "ncrKpis": [
+    {
+     "label": "Open NCRs",
+     "value": 1,
+     "sub": "1 closed this quarter"
+    },
+    {
+     "label": "Critical",
+     "value": 0,
+     "sub": "Stop-work until containment"
+    },
+    {
+     "label": "Cost of non-quality",
+     "value": "€8k",
+     "sub": "Rework, scrap, re-inspection"
+    },
+    {
+     "label": "Overdue actions",
+     "value": 0,
+     "sub": "Corrective action past due date"
+    },
+    {
+     "label": "From goods receipt",
+     "value": 2,
+     "sub": "Supplier-caused · feeds supplier rating"
+    }
+   ],
+   "ncrChips": [
+    [
+     "All",
+     2
+    ],
+    [
+     "Minor",
+     2
+    ],
+    [
+     "Major",
+     0
+    ],
+    [
+     "Critical",
+     0
+    ]
+   ],
+   "ncrRows": [
+    {
+     "id": "NCR-040",
+     "title": "Crane rail bars damaged in transport (2 bars)",
+     "sev": "Minor",
+     "src": "Goods receipt",
+     "actText": "—",
+     "owner": "Fabien Bertrand",
+     "due": "—",
+     "costText": "—",
+     "status": "Closed",
+     "stepIdx": 5,
+     "canAdvance": false,
+     "nextLabel": "Closed",
+     "raised": "Hélène Sauvage",
+     "date": "02 Sep"
+    },
+    {
+     "id": "NCR-041",
+     "title": "XLPE cable sheath damage on 2 drums",
+     "sev": "Minor",
+     "src": "Goods receipt",
+     "actText": "—",
+     "owner": "Fabien Bertrand",
+     "due": "7 Oct",
+     "costText": "€8k",
+     "status": "Containment",
+     "stepIdx": 1,
+     "canAdvance": true,
+     "nextLabel": "Root cause",
+     "raised": "Hélène Sauvage",
+     "date": "23 Sep"
+    }
+   ],
+   "dlvKpis": [
+    {
+     "label": "Deliverables",
+     "value": 4,
+     "sub": "3 accepted by client"
+    },
+    {
+     "label": "Awaiting client acceptance",
+     "value": 1,
+     "sub": "10-day acceptance window"
+    },
+    {
+     "label": "Due in 30 days",
+     "value": 1,
+     "sub": "Not yet accepted"
+    },
+    {
+     "label": "Without backup (B)",
+     "value": 0,
+     "sub": "RACI-B complete on every line"
+    },
+    {
+     "label": "Rejected",
+     "value": 0,
+     "sub": "Resubmission needed"
+    }
+   ],
+   "dlvChips": [
+    [
+     "All",
+     4
+    ],
+    [
+     "Planned",
+     0
+    ],
+    [
+     "In progress",
+     0
+    ],
+    [
+     "Internal review",
+     0
+    ],
+    [
+     "Submitted",
+     1
+    ],
+    [
+     "Accepted",
+     3
+    ],
+    [
+     "Rejected",
+     0
+    ]
+   ],
+   "dlvRows": [
+    {
+     "id": "D-110",
+     "title": "Structural design package — portal & girders",
+     "type": "Drawings",
+     "wbs": "1.1",
+     "due": "28 Feb",
+     "rev": "C",
+     "acc": "12 Mar · N. Bensaïd",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "C. Moreau",
+       "CM"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Antoine Girard",
+       "AG"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Marion Kerviel",
+       "MK"
+      ]
+     ]
+    },
+    {
+     "id": "D-111",
+     "title": "Piling & foundation calculation note",
+     "type": "Calculation notes",
+     "wbs": "1.3",
+     "due": "15 Mar",
+     "rev": "B",
+     "acc": "20 Mar · Bureau de contrôle",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "C. Moreau",
+       "CM"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Bureau de contrôle",
+       "Bdc"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Antoine Girard",
+       "AG"
+      ]
+     ]
+    },
+    {
+     "id": "D-112",
+     "title": "Crane rail alignment report",
+     "type": "Test & inspection reports",
+     "wbs": "1.5",
+     "due": "25 Sep",
+     "rev": "A",
+     "acc": "Accept by 2 Oct",
+     "status": "Submitted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "C. Moreau",
+       "CM"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Hélène Sauvage",
+       "HS"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Amélie Ollivier",
+       "AO"
+      ]
+     ]
+    },
+    {
+     "id": "D-113",
+     "title": "Foundations as-built drawings",
+     "type": "Manuals / as-built",
+     "wbs": "1.3",
+     "due": "15 Sep",
+     "rev": "A",
+     "acc": "18 Sep · N. Bensaïd",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "C. Moreau",
+       "CM"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Amélie Ollivier",
+       "AO"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Damien Roux",
+       "DR"
+      ]
+     ]
+    }
+   ]
+  },
+  "ERP-202": {
+   "ncrKpis": [
+    {
+     "label": "Open NCRs",
+     "value": 1,
+     "sub": "1 closed this quarter"
+    },
+    {
+     "label": "Critical",
+     "value": 0,
+     "sub": "Stop-work until containment"
+    },
+    {
+     "label": "Cost of non-quality",
+     "value": "€8k",
+     "sub": "Rework, scrap, re-inspection"
+    },
+    {
+     "label": "Overdue actions",
+     "value": 0,
+     "sub": "Corrective action past due date"
+    },
+    {
+     "label": "From goods receipt",
+     "value": 2,
+     "sub": "Supplier-caused · feeds supplier rating"
+    }
+   ],
+   "ncrChips": [
+    [
+     "All",
+     2
+    ],
+    [
+     "Minor",
+     2
+    ],
+    [
+     "Major",
+     0
+    ],
+    [
+     "Critical",
+     0
+    ]
+   ],
+   "ncrRows": [
+    {
+     "id": "NCR-040",
+     "title": "Crane rail bars damaged in transport (2 bars)",
+     "sev": "Minor",
+     "src": "Goods receipt",
+     "actText": "—",
+     "owner": "Fabien Bertrand",
+     "due": "—",
+     "costText": "—",
+     "status": "Closed",
+     "stepIdx": 5,
+     "canAdvance": false,
+     "nextLabel": "Closed",
+     "raised": "Hélène Sauvage",
+     "date": "02 Sep"
+    },
+    {
+     "id": "NCR-041",
+     "title": "XLPE cable sheath damage on 2 drums",
+     "sev": "Minor",
+     "src": "Goods receipt",
+     "actText": "—",
+     "owner": "Fabien Bertrand",
+     "due": "7 Oct",
+     "costText": "€8k",
+     "status": "Containment",
+     "stepIdx": 1,
+     "canAdvance": true,
+     "nextLabel": "Root cause",
+     "raised": "Hélène Sauvage",
+     "date": "23 Sep"
+    }
+   ],
+   "dlvKpis": [
+    {
+     "label": "Deliverables",
+     "value": 4,
+     "sub": "3 accepted by client"
+    },
+    {
+     "label": "Awaiting client acceptance",
+     "value": 1,
+     "sub": "10-day acceptance window"
+    },
+    {
+     "label": "Due in 30 days",
+     "value": 1,
+     "sub": "Not yet accepted"
+    },
+    {
+     "label": "Without backup (B)",
+     "value": 0,
+     "sub": "RACI-B complete on every line"
+    },
+    {
+     "label": "Rejected",
+     "value": 0,
+     "sub": "Resubmission needed"
+    }
+   ],
+   "dlvChips": [
+    [
+     "All",
+     4
+    ],
+    [
+     "Planned",
+     0
+    ],
+    [
+     "In progress",
+     0
+    ],
+    [
+     "Internal review",
+     0
+    ],
+    [
+     "Submitted",
+     1
+    ],
+    [
+     "Accepted",
+     3
+    ],
+    [
+     "Rejected",
+     0
+    ]
+   ],
+   "dlvRows": [
+    {
+     "id": "D-110",
+     "title": "Structural design package — portal & girders",
+     "type": "Drawings",
+     "wbs": "1.1",
+     "due": "28 Feb",
+     "rev": "C",
+     "acc": "12 Mar · N. Bensaïd",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "D. Imbert",
+       "DI"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Antoine Girard",
+       "AG"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Marion Kerviel",
+       "MK"
+      ]
+     ]
+    },
+    {
+     "id": "D-111",
+     "title": "Piling & foundation calculation note",
+     "type": "Calculation notes",
+     "wbs": "1.3",
+     "due": "15 Mar",
+     "rev": "B",
+     "acc": "20 Mar · Bureau de contrôle",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "D. Imbert",
+       "DI"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Bureau de contrôle",
+       "Bdc"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Antoine Girard",
+       "AG"
+      ]
+     ]
+    },
+    {
+     "id": "D-112",
+     "title": "Crane rail alignment report",
+     "type": "Test & inspection reports",
+     "wbs": "1.5",
+     "due": "25 Sep",
+     "rev": "A",
+     "acc": "Accept by 2 Oct",
+     "status": "Submitted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "D. Imbert",
+       "DI"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Hélène Sauvage",
+       "HS"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Amélie Ollivier",
+       "AO"
+      ]
+     ]
+    },
+    {
+     "id": "D-113",
+     "title": "Foundations as-built drawings",
+     "type": "Manuals / as-built",
+     "wbs": "1.3",
+     "due": "15 Sep",
+     "rev": "A",
+     "acc": "18 Sep · N. Bensaïd",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "D. Imbert",
+       "DI"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Amélie Ollivier",
+       "AO"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Damien Roux",
+       "DR"
+      ]
+     ]
+    }
+   ]
+  },
+  "WSA-044": {
+   "ncrKpis": [
+    {
+     "label": "Open NCRs",
+     "value": 1,
+     "sub": "1 closed this quarter"
+    },
+    {
+     "label": "Critical",
+     "value": 0,
+     "sub": "Stop-work until containment"
+    },
+    {
+     "label": "Cost of non-quality",
+     "value": "€8k",
+     "sub": "Rework, scrap, re-inspection"
+    },
+    {
+     "label": "Overdue actions",
+     "value": 0,
+     "sub": "Corrective action past due date"
+    },
+    {
+     "label": "From goods receipt",
+     "value": 2,
+     "sub": "Supplier-caused · feeds supplier rating"
+    }
+   ],
+   "ncrChips": [
+    [
+     "All",
+     2
+    ],
+    [
+     "Minor",
+     2
+    ],
+    [
+     "Major",
+     0
+    ],
+    [
+     "Critical",
+     0
+    ]
+   ],
+   "ncrRows": [
+    {
+     "id": "NCR-040",
+     "title": "Crane rail bars damaged in transport (2 bars)",
+     "sev": "Minor",
+     "src": "Goods receipt",
+     "actText": "—",
+     "owner": "Fabien Bertrand",
+     "due": "—",
+     "costText": "—",
+     "status": "Closed",
+     "stepIdx": 5,
+     "canAdvance": false,
+     "nextLabel": "Closed",
+     "raised": "Hélène Sauvage",
+     "date": "02 Sep"
+    },
+    {
+     "id": "NCR-041",
+     "title": "XLPE cable sheath damage on 2 drums",
+     "sev": "Minor",
+     "src": "Goods receipt",
+     "actText": "—",
+     "owner": "Fabien Bertrand",
+     "due": "7 Oct",
+     "costText": "€8k",
+     "status": "Containment",
+     "stepIdx": 1,
+     "canAdvance": true,
+     "nextLabel": "Root cause",
+     "raised": "Hélène Sauvage",
+     "date": "23 Sep"
+    }
+   ],
+   "dlvKpis": [
+    {
+     "label": "Deliverables",
+     "value": 4,
+     "sub": "3 accepted by client"
+    },
+    {
+     "label": "Awaiting client acceptance",
+     "value": 1,
+     "sub": "10-day acceptance window"
+    },
+    {
+     "label": "Due in 30 days",
+     "value": 1,
+     "sub": "Not yet accepted"
+    },
+    {
+     "label": "Without backup (B)",
+     "value": 0,
+     "sub": "RACI-B complete on every line"
+    },
+    {
+     "label": "Rejected",
+     "value": 0,
+     "sub": "Resubmission needed"
+    }
+   ],
+   "dlvChips": [
+    [
+     "All",
+     4
+    ],
+    [
+     "Planned",
+     0
+    ],
+    [
+     "In progress",
+     0
+    ],
+    [
+     "Internal review",
+     0
+    ],
+    [
+     "Submitted",
+     1
+    ],
+    [
+     "Accepted",
+     3
+    ],
+    [
+     "Rejected",
+     0
+    ]
+   ],
+   "dlvRows": [
+    {
+     "id": "D-110",
+     "title": "Structural design package — portal & girders",
+     "type": "Drawings",
+     "wbs": "1.1",
+     "due": "28 Feb",
+     "rev": "C",
+     "acc": "12 Mar · N. Bensaïd",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "K. Blanchard",
+       "KB"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Antoine Girard",
+       "AG"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Marion Kerviel",
+       "MK"
+      ]
+     ]
+    },
+    {
+     "id": "D-111",
+     "title": "Piling & foundation calculation note",
+     "type": "Calculation notes",
+     "wbs": "1.3",
+     "due": "15 Mar",
+     "rev": "B",
+     "acc": "20 Mar · Bureau de contrôle",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "K. Blanchard",
+       "KB"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Bureau de contrôle",
+       "Bdc"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Antoine Girard",
+       "AG"
+      ]
+     ]
+    },
+    {
+     "id": "D-112",
+     "title": "Crane rail alignment report",
+     "type": "Test & inspection reports",
+     "wbs": "1.5",
+     "due": "25 Sep",
+     "rev": "A",
+     "acc": "Accept by 2 Oct",
+     "status": "Submitted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "K. Blanchard",
+       "KB"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Hélène Sauvage",
+       "HS"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Amélie Ollivier",
+       "AO"
+      ]
+     ]
+    },
+    {
+     "id": "D-113",
+     "title": "Foundations as-built drawings",
+     "type": "Manuals / as-built",
+     "wbs": "1.3",
+     "due": "15 Sep",
+     "rev": "A",
+     "acc": "18 Sep · N. Bensaïd",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "K. Blanchard",
+       "KB"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Amélie Ollivier",
+       "AO"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Damien Roux",
+       "DR"
+      ]
+     ]
+    }
+   ]
+  },
+  "MSR-012": {
+   "ncrKpis": [
+    {
+     "label": "Open NCRs",
+     "value": 1,
+     "sub": "1 closed this quarter"
+    },
+    {
+     "label": "Critical",
+     "value": 0,
+     "sub": "Stop-work until containment"
+    },
+    {
+     "label": "Cost of non-quality",
+     "value": "€8k",
+     "sub": "Rework, scrap, re-inspection"
+    },
+    {
+     "label": "Overdue actions",
+     "value": 0,
+     "sub": "Corrective action past due date"
+    },
+    {
+     "label": "From goods receipt",
+     "value": 2,
+     "sub": "Supplier-caused · feeds supplier rating"
+    }
+   ],
+   "ncrChips": [
+    [
+     "All",
+     2
+    ],
+    [
+     "Minor",
+     2
+    ],
+    [
+     "Major",
+     0
+    ],
+    [
+     "Critical",
+     0
+    ]
+   ],
+   "ncrRows": [
+    {
+     "id": "NCR-040",
+     "title": "Crane rail bars damaged in transport (2 bars)",
+     "sev": "Minor",
+     "src": "Goods receipt",
+     "actText": "—",
+     "owner": "Fabien Bertrand",
+     "due": "—",
+     "costText": "—",
+     "status": "Closed",
+     "stepIdx": 5,
+     "canAdvance": false,
+     "nextLabel": "Closed",
+     "raised": "Hélène Sauvage",
+     "date": "02 Sep"
+    },
+    {
+     "id": "NCR-041",
+     "title": "XLPE cable sheath damage on 2 drums",
+     "sev": "Minor",
+     "src": "Goods receipt",
+     "actText": "—",
+     "owner": "Fabien Bertrand",
+     "due": "7 Oct",
+     "costText": "€8k",
+     "status": "Containment",
+     "stepIdx": 1,
+     "canAdvance": true,
+     "nextLabel": "Root cause",
+     "raised": "Hélène Sauvage",
+     "date": "23 Sep"
+    }
+   ],
+   "dlvKpis": [
+    {
+     "label": "Deliverables",
+     "value": 4,
+     "sub": "3 accepted by client"
+    },
+    {
+     "label": "Awaiting client acceptance",
+     "value": 1,
+     "sub": "10-day acceptance window"
+    },
+    {
+     "label": "Due in 30 days",
+     "value": 1,
+     "sub": "Not yet accepted"
+    },
+    {
+     "label": "Without backup (B)",
+     "value": 0,
+     "sub": "RACI-B complete on every line"
+    },
+    {
+     "label": "Rejected",
+     "value": 0,
+     "sub": "Resubmission needed"
+    }
+   ],
+   "dlvChips": [
+    [
+     "All",
+     4
+    ],
+    [
+     "Planned",
+     0
+    ],
+    [
+     "In progress",
+     0
+    ],
+    [
+     "Internal review",
+     0
+    ],
+    [
+     "Submitted",
+     1
+    ],
+    [
+     "Accepted",
+     3
+    ],
+    [
+     "Rejected",
+     0
+    ]
+   ],
+   "dlvRows": [
+    {
+     "id": "D-110",
+     "title": "Structural design package — portal & girders",
+     "type": "Drawings",
+     "wbs": "1.1",
+     "due": "28 Feb",
+     "rev": "C",
+     "acc": "12 Mar · N. Bensaïd",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "A. Naveau",
+       "AN"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Antoine Girard",
+       "AG"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Marion Kerviel",
+       "MK"
+      ]
+     ]
+    },
+    {
+     "id": "D-111",
+     "title": "Piling & foundation calculation note",
+     "type": "Calculation notes",
+     "wbs": "1.3",
+     "due": "15 Mar",
+     "rev": "B",
+     "acc": "20 Mar · Bureau de contrôle",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "A. Naveau",
+       "AN"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Bureau de contrôle",
+       "Bdc"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Antoine Girard",
+       "AG"
+      ]
+     ]
+    },
+    {
+     "id": "D-112",
+     "title": "Crane rail alignment report",
+     "type": "Test & inspection reports",
+     "wbs": "1.5",
+     "due": "25 Sep",
+     "rev": "A",
+     "acc": "Accept by 2 Oct",
+     "status": "Submitted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "A. Naveau",
+       "AN"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Hélène Sauvage",
+       "HS"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Amélie Ollivier",
+       "AO"
+      ]
+     ]
+    },
+    {
+     "id": "D-113",
+     "title": "Foundations as-built drawings",
+     "type": "Manuals / as-built",
+     "wbs": "1.3",
+     "due": "15 Sep",
+     "rev": "A",
+     "acc": "18 Sep · N. Bensaïd",
+     "status": "Accepted",
+     "canStart": false,
+     "canSubmit": false,
+     "nextLabel": "To internal review",
+     "raci": [
+      [
+       "R",
+       "A. Naveau",
+       "AN"
+      ],
+      [
+       "A",
+       "Romain Aubert",
+       "RA"
+      ],
+      [
+       "C",
+       "Amélie Ollivier",
+       "AO"
+      ],
+      [
+       "I",
+       "Nadia Bensaïd",
+       "NB"
+      ],
+      [
+       "B",
+       "Damien Roux",
+       "DR"
+      ]
+     ]
+    }
+   ]
+  }
+ },
+ "ncrDrawers": {
+  "NCR-026": {
+   "meta": [
+    {
+     "k": "Raised by",
+     "v": "Hélène Sauvage · 18 Sep",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Owner",
+     "v": "Julien Wagner",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Source",
+     "v": "Site inspection",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Linked activity",
+     "v": "A1250 · Steel erection — Bays 3–4",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Part",
+     "v": "KS-STL-0450",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Deliverable impacted",
+     "v": "D-016",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "ISO 9001 clause",
+     "v": "8.7 Control of nonconforming outputs",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Cost of non-quality",
+     "v": "€6k",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Action due",
+     "v": "2 Oct",
+     "color": "var(--color-text)"
+    }
+   ],
+   "root": "Damp electrodes · humidity not controlled in storage",
+   "action": "Re-weld splice · electrode oven on site · WPS reminder",
+   "nextLabel": "Move to Verification",
+   "hasEco": false,
+   "ecoId": "",
+   "hasPart": true
+  },
+  "NCR-027": {
+   "meta": [
+    {
+     "k": "Raised by",
+     "v": "Hélène Sauvage · 02 Sep",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Owner",
+     "v": "Fabien Bertrand",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Source",
+     "v": "Goods receipt",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Linked activity",
+     "v": "A1320 · Crane delivery & rigging",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Part",
+     "v": "CR-RAIL-A100",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Deliverable impacted",
+     "v": "—",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "ISO 9001 clause",
+     "v": "8.4 Externally provided processes",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Cost of non-quality",
+     "v": "—",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Action due",
+     "v": "—",
+     "color": "var(--color-text)"
+    }
+   ],
+   "root": "Inadequate dunnage by carrier",
+   "action": "Returned to supplier · credit note · packing spec added to PO terms",
+   "nextLabel": "Move to Closed",
+   "hasEco": false,
+   "ecoId": "",
+   "hasPart": true
+  },
+  "NCR-028": {
+   "meta": [
+    {
+     "k": "Raised by",
+     "v": "Hélène Sauvage · 23 Sep",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Owner",
+     "v": "Fabien Bertrand",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Source",
+     "v": "Goods receipt",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Linked activity",
+     "v": "A1420 · Lighting & power distribution",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Part",
+     "v": "EL-CBL-XLPE",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Deliverable impacted",
+     "v": "—",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "ISO 9001 clause",
+     "v": "8.4 Externally provided processes",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Cost of non-quality",
+     "v": "€8k",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Action due",
+     "v": "7 Oct",
+     "color": "var(--color-text)"
+    }
+   ],
+   "root": "To determine — supplier 8D requested",
+   "action": "Drums scrapped · replacement ordered",
+   "nextLabel": "Move to Root cause",
+   "hasEco": false,
+   "ecoId": "",
+   "hasPart": true
+  },
+  "NCR-029": {
+   "meta": [
+    {
+     "k": "Raised by",
+     "v": "Thomas Kerbrat · 24 Sep",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Owner",
+     "v": "Julien Wagner",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Source",
+     "v": "Survey",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Linked activity",
+     "v": "A1230 · Steel fabrication & delivery",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Part",
+     "v": "—",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Deliverable impacted",
+     "v": "D-015",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "ISO 9001 clause",
+     "v": "8.7 Control of nonconforming outputs",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Cost of non-quality",
+     "v": "€28k",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Action due",
+     "v": "30 Sep",
+     "color": "var(--color-text)"
+    }
+   ],
+   "root": "Setting-out template rotated · check not signed",
+   "action": "Engineering assessment · oversize base plate or core & re-grout",
+   "nextLabel": "Move to Corrective action",
+   "hasEco": false,
+   "ecoId": "",
+   "hasPart": false
+  },
+  "NCR-030": {
+   "meta": [
+    {
+     "k": "Raised by",
+     "v": "Gabriel Comte · 25 Sep",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Owner",
+     "v": "Fabien Bertrand",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Source",
+     "v": "Goods receipt",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Linked activity",
+     "v": "A1430 · Fire detection & suppression",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Part",
+     "v": "FD-DET-OPT",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Deliverable impacted",
+     "v": "—",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "ISO 9001 clause",
+     "v": "8.5.6 Control of changes",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Cost of non-quality",
+     "v": "€2k",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Action due",
+     "v": "10 Oct",
+     "color": "var(--color-text)"
+    }
+   ],
+   "root": "PO raised before ECO-2026-015 release",
+   "action": "Hold in quarantine · exchange for CD-210",
+   "nextLabel": "Move to Containment",
+   "hasEco": true,
+   "ecoId": "ECO-2026-015",
+   "hasPart": true
+  }
+ },
+ "dlvDrawers": {
+  "D-011": {
+   "meta": [
+    {
+     "k": "WBS",
+     "v": "1.1 · Design & permits",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Due",
+     "v": "28 Feb",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Revision",
+     "v": "C",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Acceptance",
+     "v": "12 Mar · N. Bensaïd",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Linked NCRs",
+     "v": "None",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Quality reference",
+     "v": "ISO 9001 · 8.6 Release of products and services",
+     "color": "var(--color-text)"
+    }
+   ],
+   "raci": [
+    {
+     "k": "R",
+     "l": "Responsible — produces it",
+     "who": "Julien Wagner",
+     "ini": "JW"
+    },
+    {
+     "k": "A",
+     "l": "Accountable — signs it off",
+     "who": "Romain Aubert",
+     "ini": "RA"
+    },
+    {
+     "k": "C",
+     "l": "Consulted",
+     "who": "Antoine Girard",
+     "ini": "AG"
+    },
+    {
+     "k": "I",
+     "l": "Informed",
+     "who": "Nadia Bensaïd",
+     "ini": "NB"
+    },
+    {
+     "k": "B",
+     "l": "Backup — takes over if R is absent",
+     "who": "Marion Kerviel",
+     "ini": "MK"
+    }
+   ]
+  },
+  "D-012": {
+   "meta": [
+    {
+     "k": "WBS",
+     "v": "1.3 · Foundations",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Due",
+     "v": "15 Mar",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Revision",
+     "v": "B",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Acceptance",
+     "v": "20 Mar · Bureau de contrôle",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Linked NCRs",
+     "v": "None",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Quality reference",
+     "v": "ISO 9001 · 8.6 Release of products and services",
+     "color": "var(--color-text)"
+    }
+   ],
+   "raci": [
+    {
+     "k": "R",
+     "l": "Responsible — produces it",
+     "who": "Julien Wagner",
+     "ini": "JW"
+    },
+    {
+     "k": "A",
+     "l": "Accountable — signs it off",
+     "who": "Romain Aubert",
+     "ini": "RA"
+    },
+    {
+     "k": "C",
+     "l": "Consulted",
+     "who": "Bureau de contrôle",
+     "ini": "Bdc"
+    },
+    {
+     "k": "I",
+     "l": "Informed",
+     "who": "Nadia Bensaïd",
+     "ini": "NB"
+    },
+    {
+     "k": "B",
+     "l": "Backup — takes over if R is absent",
+     "who": "Antoine Girard",
+     "ini": "AG"
+    }
+   ]
+  },
+  "D-014": {
+   "meta": [
+    {
+     "k": "WBS",
+     "v": "1.5 · Crane installation",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Due",
+     "v": "25 Sep",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Revision",
+     "v": "A",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Acceptance",
+     "v": "Accept by 2 Oct",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Linked NCRs",
+     "v": "None",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Quality reference",
+     "v": "ISO 9001 · 8.6 Release of products and services",
+     "color": "var(--color-text)"
+    }
+   ],
+   "raci": [
+    {
+     "k": "R",
+     "l": "Responsible — produces it",
+     "who": "Thomas Kerbrat",
+     "ini": "TK"
+    },
+    {
+     "k": "A",
+     "l": "Accountable — signs it off",
+     "who": "Romain Aubert",
+     "ini": "RA"
+    },
+    {
+     "k": "C",
+     "l": "Consulted",
+     "who": "Hélène Sauvage",
+     "ini": "HS"
+    },
+    {
+     "k": "I",
+     "l": "Informed",
+     "who": "Nadia Bensaïd",
+     "ini": "NB"
+    },
+    {
+     "k": "B",
+     "l": "Backup — takes over if R is absent",
+     "who": "Amélie Ollivier",
+     "ini": "AO"
+    }
+   ]
+  },
+  "D-015": {
+   "meta": [
+    {
+     "k": "WBS",
+     "v": "1.3 · Foundations",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Due",
+     "v": "15 Sep",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Revision",
+     "v": "A",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Acceptance",
+     "v": "18 Sep · N. Bensaïd",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Linked NCRs",
+     "v": "NCR-029",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Quality reference",
+     "v": "ISO 9001 · 8.6 Release of products and services",
+     "color": "var(--color-text)"
+    }
+   ],
+   "raci": [
+    {
+     "k": "R",
+     "l": "Responsible — produces it",
+     "who": "Julien Wagner",
+     "ini": "JW"
+    },
+    {
+     "k": "A",
+     "l": "Accountable — signs it off",
+     "who": "Romain Aubert",
+     "ini": "RA"
+    },
+    {
+     "k": "C",
+     "l": "Consulted",
+     "who": "Amélie Ollivier",
+     "ini": "AO"
+    },
+    {
+     "k": "I",
+     "l": "Informed",
+     "who": "Nadia Bensaïd",
+     "ini": "NB"
+    },
+    {
+     "k": "B",
+     "l": "Backup — takes over if R is absent",
+     "who": "Damien Roux",
+     "ini": "DR"
+    }
+   ]
+  },
+  "D-016": {
+   "meta": [
+    {
+     "k": "WBS",
+     "v": "1.4 · Steel structure",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Due",
+     "v": "30 Sep",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Revision",
+     "v": "B",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Acceptance",
+     "v": "Accept by 9 Oct",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Linked NCRs",
+     "v": "NCR-026",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Quality reference",
+     "v": "ISO 9001 · 8.6 Release of products and services",
+     "color": "var(--color-text)"
+    }
+   ],
+   "raci": [
+    {
+     "k": "R",
+     "l": "Responsible — produces it",
+     "who": "Julien Wagner",
+     "ini": "JW"
+    },
+    {
+     "k": "A",
+     "l": "Accountable — signs it off",
+     "who": "Romain Aubert",
+     "ini": "RA"
+    },
+    {
+     "k": "C",
+     "l": "Consulted",
+     "who": "Bureau de contrôle",
+     "ini": "Bdc"
+    },
+    {
+     "k": "I",
+     "l": "Informed",
+     "who": "Nadia Bensaïd",
+     "ini": "NB"
+    },
+    {
+     "k": "B",
+     "l": "Backup — takes over if R is absent",
+     "who": "Antoine Girard",
+     "ini": "AG"
+    }
+   ]
+  },
+  "D-017": {
+   "meta": [
+    {
+     "k": "WBS",
+     "v": "1 · Harbor Line Terminal Expansion",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Due",
+     "v": "30 Sep",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Revision",
+     "v": "—",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Acceptance",
+     "v": "Issue 30 Sep",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Linked NCRs",
+     "v": "None",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Quality reference",
+     "v": "ISO 9001 · 8.6 Release of products and services",
+     "color": "var(--color-text)"
+    }
+   ],
+   "raci": [
+    {
+     "k": "R",
+     "l": "Responsible — produces it",
+     "who": "Damien Roux",
+     "ini": "DR"
+    },
+    {
+     "k": "A",
+     "l": "Accountable — signs it off",
+     "who": "Romain Aubert",
+     "ini": "RA"
+    },
+    {
+     "k": "C",
+     "l": "Consulted",
+     "who": "Léa Marchand",
+     "ini": "LM"
+    },
+    {
+     "k": "I",
+     "l": "Informed",
+     "who": "Marie Lefebvre",
+     "ini": "ML"
+    },
+    {
+     "k": "B",
+     "l": "Backup — takes over if R is absent",
+     "who": "Léa Marchand",
+     "ini": "LM"
+    }
+   ]
+  },
+  "D-018": {
+   "meta": [
+    {
+     "k": "WBS",
+     "v": "1.5 · Crane installation",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Due",
+     "v": "20 Nov",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Revision",
+     "v": "—",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Acceptance",
+     "v": "—",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Linked NCRs",
+     "v": "None",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Quality reference",
+     "v": "ISO 9001 · 8.6 Release of products and services",
+     "color": "var(--color-text)"
+    }
+   ],
+   "raci": [
+    {
+     "k": "R",
+     "l": "Responsible — produces it",
+     "who": "Thomas Kerbrat",
+     "ini": "TK"
+    },
+    {
+     "k": "A",
+     "l": "Accountable — signs it off",
+     "who": "Romain Aubert",
+     "ini": "RA"
+    },
+    {
+     "k": "C",
+     "l": "Consulted",
+     "who": "Gabriel Comte",
+     "ini": "GC"
+    },
+    {
+     "k": "I",
+     "l": "Informed",
+     "who": "Nadia Bensaïd",
+     "ini": "NB"
+    },
+    {
+     "k": "B",
+     "l": "Backup — takes over if R is absent",
+     "who": "Hélène Sauvage",
+     "ini": "HS"
+    }
+   ]
+  },
+  "D-019": {
+   "meta": [
+    {
+     "k": "WBS",
+     "v": "1.6 · MEP systems",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Due",
+     "v": "28 Nov",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Revision",
+     "v": "—",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Acceptance",
+     "v": "—",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Linked NCRs",
+     "v": "None",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Quality reference",
+     "v": "ISO 9001 · 8.6 Release of products and services",
+     "color": "var(--color-text)"
+    }
+   ],
+   "raci": [
+    {
+     "k": "R",
+     "l": "Responsible — produces it",
+     "who": "Pauline Noguès",
+     "ini": "PN"
+    },
+    {
+     "k": "A",
+     "l": "Accountable — signs it off",
+     "who": "Romain Aubert",
+     "ini": "RA"
+    },
+    {
+     "k": "C",
+     "l": "Consulted",
+     "who": "Hélène Sauvage",
+     "ini": "HS"
+    },
+    {
+     "k": "I",
+     "l": "Informed",
+     "who": "Nadia Bensaïd",
+     "ini": "NB"
+    },
+    {
+     "k": "B",
+     "l": "Backup — takes over if R is absent",
+     "who": "Julien Wagner",
+     "ini": "JW"
+    }
+   ]
+  },
+  "D-020": {
+   "meta": [
+    {
+     "k": "WBS",
+     "v": "1.8 · Commissioning & handover",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Due",
+     "v": "20 Dec",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Revision",
+     "v": "—",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Acceptance",
+     "v": "—",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Linked NCRs",
+     "v": "None",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Quality reference",
+     "v": "ISO 9001 · 8.6 Release of products and services",
+     "color": "var(--color-text)"
+    }
+   ],
+   "raci": [
+    {
+     "k": "R",
+     "l": "Responsible — produces it",
+     "who": "Hélène Sauvage",
+     "ini": "HS"
+    },
+    {
+     "k": "A",
+     "l": "Accountable — signs it off",
+     "who": "Romain Aubert",
+     "ini": "RA"
+    },
+    {
+     "k": "C",
+     "l": "Consulted",
+     "who": "Thomas Kerbrat",
+     "ini": "TK"
+    },
+    {
+     "k": "I",
+     "l": "Informed",
+     "who": "Nadia Bensaïd",
+     "ini": "NB"
+    },
+    {
+     "k": "B",
+     "l": "Backup — takes over if R is absent",
+     "who": "Pauline Noguès",
+     "ini": "PN"
+    }
+   ]
+  },
+  "D-021": {
+   "meta": [
+    {
+     "k": "WBS",
+     "v": "1.8 · Commissioning & handover",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Due",
+     "v": "14 Jan",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Revision",
+     "v": "—",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Acceptance",
+     "v": "—",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Linked NCRs",
+     "v": "None",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Quality reference",
+     "v": "ISO 9001 · 8.6 Release of products and services",
+     "color": "var(--color-text)"
+    }
+   ],
+   "raci": [
+    {
+     "k": "R",
+     "l": "Responsible — produces it",
+     "who": "Romain Aubert",
+     "ini": "RA"
+    },
+    {
+     "k": "A",
+     "l": "Accountable — signs it off",
+     "who": "Marie Lefebvre",
+     "ini": "ML"
+    },
+    {
+     "k": "C",
+     "l": "Consulted",
+     "who": "Hélène Sauvage",
+     "ini": "HS"
+    },
+    {
+     "k": "I",
+     "l": "Informed",
+     "who": "Nadia Bensaïd",
+     "ini": "NB"
+    },
+    {
+     "k": "B",
+     "l": "Backup — takes over if R is absent",
+     "who": "Damien Roux",
+     "ini": "DR"
+    }
+   ]
+  }
+ },
+ "itp": {
+  "HLT-026": {
+   "kpis": [
+    {
+     "label": "Inspections passed",
+     "value": "3 / 13",
+     "sub": "1 failed · NCR raised"
+    },
+    {
+     "label": "Hold points ahead",
+     "value": 5,
+     "sub": "client presence required"
+    },
+    {
+     "label": "Open punch items",
+     "value": 4,
+     "sub": "A 0 · B 2 · C 2"
+    },
+    {
+     "label": "Template",
+     "value": "EMP",
+     "sub": "6 systems · 2 custom lines"
+    }
+   ],
+   "groups": [
+    {
+     "sys": "Structure",
+     "count": 4,
+     "passed": 2,
+     "rows": [
+      {
+       "id": "I-01",
+       "name": "Weld inspection — main girders G1–G4",
+       "type": "Hold",
+       "stage": "Workshop",
+       "ref": "ISO 5817 · level B",
+       "date": "9 Sep",
+       "status": "Passed",
+       "doc": "REC-HLT-007"
+      },
+      {
+       "id": "I-02",
+       "name": "Dimensional check — girders",
+       "type": "Review",
+       "stage": "Workshop",
+       "ref": "Drawing GA-HLT-026 rev C",
+       "date": "12 Sep",
+       "status": "Passed",
+       "doc": ""
+      },
+      {
+       "id": "I-03",
+       "name": "Paint thickness (DFT)",
+       "type": "Surveillance",
+       "stage": "Workshop",
+       "ref": "ISO 12944 · C5",
+       "date": "24 Sep",
+       "status": "Failed",
+       "doc": "NCR-HLT-031"
+      },
+      {
+       "id": "I-04",
+       "name": "Crane rail alignment",
+       "type": "Hold",
+       "stage": "Site",
+       "ref": "Tolerance 3 mm / 10 m",
+       "date": "8 Oct",
+       "status": "Scheduled",
+       "doc": ""
+      }
+     ]
+    },
+    {
+     "sys": "Hoist mechanisms",
+     "count": 2,
+     "passed": 0,
+     "rows": [
+      {
+       "id": "I-05",
+       "name": "Rope & drum inspection",
+       "type": "Witness",
+       "stage": "Workshop",
+       "ref": "FEM 1.001",
+       "date": "15 Oct",
+       "status": "Planned",
+       "doc": ""
+      },
+      {
+       "id": "I-06",
+       "name": "Brake test — 125 % load",
+       "type": "Hold",
+       "stage": "FAT",
+       "ref": "EN 13001",
+       "date": "20 Nov",
+       "status": "Planned",
+       "doc": ""
+      }
+     ]
+    },
+    {
+     "sys": "Travel (gantry)",
+     "count": 1,
+     "passed": 0,
+     "rows": [
+      {
+       "id": "I-07",
+       "name": "Wheel load measurement",
+       "type": "Witness",
+       "stage": "Site",
+       "ref": "Spec §7.3",
+       "date": "2 Dec",
+       "status": "Planned",
+       "doc": ""
+      }
+     ]
+    },
+    {
+     "sys": "Electrical HV/LV",
+     "count": 2,
+     "passed": 1,
+     "rows": [
+      {
+       "id": "I-08",
+       "name": "11 kV switchgear — factory tests",
+       "type": "Witness",
+       "stage": "FAT",
+       "ref": "IEC 62271 · COC-HLT-012",
+       "date": "19 Sep",
+       "status": "Passed",
+       "doc": "COC-HLT-012"
+      },
+      {
+       "id": "I-09",
+       "name": "Insulation & earthing tests",
+       "type": "Hold",
+       "stage": "Site",
+       "ref": "IEC 60364",
+       "date": "28 Nov",
+       "status": "Planned",
+       "doc": ""
+      }
+     ]
+    },
+    {
+     "sys": "Automation & safety",
+     "count": 2,
+     "passed": 0,
+     "rows": [
+      {
+       "id": "I-10",
+       "name": "FAT — hoist drive & PLC",
+       "type": "Witness",
+       "stage": "FAT",
+       "ref": "FDS-HLT-026 rev A",
+       "date": "24 Oct",
+       "status": "Scheduled",
+       "doc": "RPT-HLT-016"
+      },
+      {
+       "id": "I-11",
+       "name": "E-stop loop & SIL validation",
+       "type": "Hold",
+       "stage": "SAT",
+       "ref": "IEC 62061",
+       "date": "10 Dec",
+       "status": "Planned",
+       "doc": ""
+      }
+     ]
+    },
+    {
+     "sys": "Anti-collision",
+     "count": 2,
+     "passed": 0,
+     "rows": [
+      {
+       "id": "I-12",
+       "name": "Lidar detection test — 4 zones",
+       "type": "Hold",
+       "stage": "SAT",
+       "ref": "Spec §9 · custom",
+       "date": "12 Dec",
+       "status": "Planned",
+       "doc": ""
+      },
+      {
+       "id": "I-13",
+       "name": "Wind alarm test",
+       "type": "Witness",
+       "stage": "SAT",
+       "ref": "Custom",
+       "date": "12 Dec",
+       "status": "Planned",
+       "doc": ""
+      }
+     ]
+    }
+   ],
+   "punch": [
+    {
+     "id": "P-01",
+     "item": "Anchor bolt layout — post 7 (NCR-029)",
+     "loc": "Structure · Bay 4",
+     "cat": "A",
+     "src": "Client inspection",
+     "owner": "J. Wagner",
+     "due": "26 Sep",
+     "status": "Closed",
+     "canAdvance": false,
+     "next": "Close"
+    },
+    {
+     "id": "P-02",
+     "item": "Paint touch-up — girder G3 after DFT",
+     "loc": "Structure · Bay 3",
+     "cat": "B",
+     "src": "ITP I-03",
+     "owner": "J. Wagner",
+     "due": "15 Oct",
+     "status": "Open",
+     "canAdvance": true,
+     "next": "Start"
+    },
+    {
+     "id": "P-03",
+     "item": "Missing cable tray cover — E-house",
+     "loc": "Electrical",
+     "cat": "C",
+     "src": "Site walk",
+     "owner": "S. Haddad",
+     "due": "30 Oct",
+     "status": "Open",
+     "canAdvance": true,
+     "next": "Start"
+    },
+    {
+     "id": "P-04",
+     "item": "Handrail height 1.05 m instead of 1.10 m — walkway",
+     "loc": "Structure · access",
+     "cat": "B",
+     "src": "Client inspection",
+     "owner": "L. Fabre",
+     "due": "20 Oct",
+     "status": "In progress",
+     "canAdvance": true,
+     "next": "Close"
+    },
+    {
+     "id": "P-05",
+     "item": "Label plates missing on 4 junction boxes",
+     "loc": "Electrical",
+     "cat": "C",
+     "src": "Site walk",
+     "owner": "S. Haddad",
+     "due": "30 Oct",
+     "status": "Open",
+     "canAdvance": true,
+     "next": "Start"
+    }
+   ]
+  },
+  "NDC-031": {
+   "kpis": [
+    {
+     "label": "Inspections passed",
+     "value": "0 / 0",
+     "sub": "0 failed · NCR raised"
+    },
+    {
+     "label": "Hold points ahead",
+     "value": 0,
+     "sub": "client presence required"
+    },
+    {
+     "label": "Open punch items",
+     "value": 0,
+     "sub": "A 0 · B 0 · C 0"
+    },
+    {
+     "label": "Template",
+     "value": "AUTRE",
+     "sub": "standard template for this machine type"
+    }
+   ],
+   "groups": [],
+   "punch": []
+  },
+  "RCF-019": {
+   "kpis": [
+    {
+     "label": "Inspections passed",
+     "value": "0 / 0",
+     "sub": "0 failed · NCR raised"
+    },
+    {
+     "label": "Hold points ahead",
+     "value": 0,
+     "sub": "client presence required"
+    },
+    {
+     "label": "Open punch items",
+     "value": 0,
+     "sub": "A 0 · B 0 · C 0"
+    },
+    {
+     "label": "Template",
+     "value": "MEMU",
+     "sub": "standard template for this machine type"
+    }
+   ],
+   "groups": [],
+   "punch": []
+  },
+  "ERP-202": {
+   "kpis": [
+    {
+     "label": "Inspections passed",
+     "value": "0 / 0",
+     "sub": "0 failed · NCR raised"
+    },
+    {
+     "label": "Hold points ahead",
+     "value": 0,
+     "sub": "client presence required"
+    },
+    {
+     "label": "Open punch items",
+     "value": 0,
+     "sub": "A 0 · B 0 · C 0"
+    },
+    {
+     "label": "Template",
+     "value": "R&D",
+     "sub": "standard template for this machine type"
+    }
+   ],
+   "groups": [],
+   "punch": []
+  },
+  "WSA-044": {
+   "kpis": [
+    {
+     "label": "Inspections passed",
+     "value": "0 / 0",
+     "sub": "0 failed · NCR raised"
+    },
+    {
+     "label": "Hold points ahead",
+     "value": 0,
+     "sub": "client presence required"
+    },
+    {
+     "label": "Open punch items",
+     "value": 0,
+     "sub": "A 0 · B 0 · C 0"
+    },
+    {
+     "label": "Template",
+     "value": "SPUR",
+     "sub": "standard template for this machine type"
+    }
+   ],
+   "groups": [],
+   "punch": []
+  },
+  "MSR-012": {
+   "kpis": [
+    {
+     "label": "Inspections passed",
+     "value": "0 / 0",
+     "sub": "0 failed · NCR raised"
+    },
+    {
+     "label": "Hold points ahead",
+     "value": 0,
+     "sub": "client presence required"
+    },
+    {
+     "label": "Open punch items",
+     "value": 0,
+     "sub": "A 0 · B 0 · C 0"
+    },
+    {
+     "label": "Template",
+     "value": "MEMU",
+     "sub": "standard template for this machine type"
+    }
+   ],
+   "groups": [],
+   "punch": []
+  }
+ },
+ "commissioning": {
+  "kpis": [
+   {
+    "label": "Systems handed over",
+    "value": "0 / 6",
+    "sub": "SAT planned 10 Dec · handover 14 Jan"
+   },
+   {
+    "label": "Steps completed",
+    "value": "1 / 30",
+    "sub": "2 blocked by interfaces"
+   },
+   {
+    "label": "Blocking punch items (A)",
+    "value": 0,
+    "sub": "must be closed before SAT"
+   },
+   {
+    "label": "Handover dossier",
+    "value": "19 %",
+    "sub": "4 items missing"
+   }
+  ],
+  "cols": [
+   "Mechanical completion",
+   "Pre-commissioning",
+   "Commissioning",
+   "SAT",
+   "Handover"
+  ],
+  "rows": [
+   {
+    "sys": "Structure",
+    "punchA": 0,
+    "cells": [
+     [
+      "Done",
+      "12 Sep"
+     ],
+     [
+      "In progress",
+      ""
+     ],
+     [
+      "Planned",
+      "20 Oct"
+     ],
+     [
+      "Planned",
+      "10 Dec"
+     ],
+     [
+      "Planned",
+      "14 Jan"
+     ]
+    ]
+   },
+   {
+    "sys": "Hoist mechanisms",
+    "punchA": 0,
+    "cells": [
+     [
+      "Planned",
+      "5 Nov"
+     ],
+     [
+      "Planned",
+      "15 Nov"
+     ],
+     [
+      "Planned",
+      "25 Nov"
+     ],
+     [
+      "Planned",
+      "10 Dec"
+     ],
+     [
+      "Planned",
+      "14 Jan"
+     ]
+    ]
+   },
+   {
+    "sys": "Travel (gantry)",
+    "punchA": 0,
+    "cells": [
+     [
+      "Planned",
+      "30 Oct"
+     ],
+     [
+      "Planned",
+      "10 Nov"
+     ],
+     [
+      "Planned",
+      "2 Dec"
+     ],
+     [
+      "Planned",
+      "10 Dec"
+     ],
+     [
+      "Planned",
+      "14 Jan"
+     ]
+    ]
+   },
+   {
+    "sys": "Electrical HV/LV",
+    "punchA": 0,
+    "cells": [
+     [
+      "In progress",
+      ""
+     ],
+     [
+      "Planned",
+      "20 Nov"
+     ],
+     [
+      "Blocked",
+      "IF-02"
+     ],
+     [
+      "Planned",
+      "10 Dec"
+     ],
+     [
+      "Planned",
+      "14 Jan"
+     ]
+    ]
+   },
+   {
+    "sys": "Automation & safety",
+    "punchA": 0,
+    "cells": [
+     [
+      "Planned",
+      "25 Nov"
+     ],
+     [
+      "Planned",
+      "30 Nov"
+     ],
+     [
+      "Planned",
+      "5 Dec"
+     ],
+     [
+      "Planned",
+      "12 Dec"
+     ],
+     [
+      "Planned",
+      "14 Jan"
+     ]
+    ]
+   },
+   {
+    "sys": "Anti-collision",
+    "punchA": 0,
+    "cells": [
+     [
+      "Planned",
+      "28 Nov"
+     ],
+     [
+      "Planned",
+      "3 Dec"
+     ],
+     [
+      "Blocked",
+      "IF-05"
+     ],
+     [
+      "Planned",
+      "12 Dec"
+     ],
+     [
+      "Planned",
+      "14 Jan"
+     ]
+    ]
+   }
+  ],
+  "dossier": [
+   {
+    "item": "As-built drawings",
+    "type": "MAN",
+    "doc": "MAN-HLT-015",
+    "status": "Partial"
+   },
+   {
+    "item": "O&M manuals",
+    "type": "MAN",
+    "doc": "",
+    "status": "Draft"
+   },
+   {
+    "item": "Spare parts list (2 years)",
+    "type": "LST",
+    "doc": "",
+    "status": "Missing"
+   },
+   {
+    "item": "Training records",
+    "type": "REC",
+    "doc": "",
+    "status": "Missing"
+   },
+   {
+    "item": "CE declaration & certificates of conformity",
+    "type": "COC",
+    "doc": "COC-HLT-012",
+    "status": "Partial"
+   },
+   {
+    "item": "SAT reports",
+    "type": "RPT",
+    "doc": "",
+    "status": "Missing"
+   },
+   {
+    "item": "Warranty certificate",
+    "type": "CTR",
+    "doc": "",
+    "status": "Missing"
+   },
+   {
+    "item": "Test & inspection records",
+    "type": "REC",
+    "doc": "REC-HLT-007",
+    "status": "Partial"
+   }
+  ]
+ },
+ "commissioningNdc": [],
+ "rex": {
+  "kpis": [
+   {
+    "label": "Lessons recorded",
+    "value": 4,
+    "sub": "1 applied to templates & procedures"
+   },
+   {
+    "label": "To validate",
+    "value": 1,
+    "sub": "REX workshop · engineering lead + quality"
+   },
+   {
+    "label": "Closure checklist",
+    "value": "25 %",
+    "sub": "1 done · 3 in progress · 6 not started"
+   },
+   {
+    "label": "Customer satisfaction",
+    "value": "4.0 / 5",
+    "sub": "lowest · Schedule adherence"
+   }
+  ],
+  "lessons": [
+   {
+    "id": "LL-01",
+    "theme": "Procurement",
+    "what": "Steel mill capacity slipped 3 weeks with no early warning",
+    "impact": "−27 d float · second mill qualified late",
+    "reco": "Qualify two mills at award for structural steel > 200 t",
+    "apply": "Purchasing procedure PRO-QMS-021",
+    "status": "Validated",
+    "canAdvance": true,
+    "next": "Mark applied"
+   },
+   {
+    "id": "LL-02",
+    "theme": "Engineering",
+    "what": "P&ID rev D released while electrical and automation still consumed rev C",
+    "impact": "3 tags missing in schematics and PLC table",
+    "reco": "Make revision acknowledgment mandatory before design freeze (Keystone engineering register)",
+    "apply": "Engineering gate checklist",
+    "status": "Applied",
+    "canAdvance": false,
+    "next": "Mark applied"
+   },
+   {
+    "id": "LL-03",
+    "theme": "Site",
+    "what": "Damp electrodes caused weld porosity on K-12",
+    "impact": "NCR-026 · 12 k€ contingency",
+    "reco": "Electrode oven and humidity log in the ITP for all site welding",
+    "apply": "ITP template EMP",
+    "status": "Validated",
+    "canAdvance": true,
+    "next": "Mark applied"
+   },
+   {
+    "id": "LL-04",
+    "theme": "Client",
+    "what": "Client decides on hold points only in steering committee",
+    "impact": "2–3 weeks lost per hold point",
+    "reco": "Add a weekly client technical call with decision authority to the RACI",
+    "apply": "Stakeholder & RACI template",
+    "status": "Proposed",
+    "canAdvance": true,
+    "next": "Validate"
+   }
+  ],
+  "closure": [
+   {
+    "item": "Final account agreed with client",
+    "owner": "R. Aubert",
+    "status": "Not started"
+   },
+   {
+    "item": "Retention invoice issued (5 %)",
+    "owner": "L. Marchand",
+    "status": "Not started"
+   },
+   {
+    "item": "As-built dossier delivered & acknowledged",
+    "owner": "J. Wagner",
+    "status": "In progress"
+   },
+   {
+    "item": "Warranty start recorded in installed base",
+    "owner": "T. Kerbrat",
+    "status": "Not started"
+   },
+   {
+    "item": "Lessons learned workshop held",
+    "owner": "R. Aubert",
+    "status": "Done"
+   },
+   {
+    "item": "Customer satisfaction survey received",
+    "owner": "R. Aubert",
+    "status": "Not started"
+   },
+   {
+    "item": "Documents archived per retention rules",
+    "owner": "G. Comte",
+    "status": "In progress"
+   },
+   {
+    "item": "Resources released in capacity plan",
+    "owner": "D. Roux",
+    "status": "Not started"
+   },
+   {
+    "item": "Purchase orders closed · invoices matched",
+    "owner": "F. Bertrand",
+    "status": "In progress"
+   },
+   {
+    "item": "Financial close in Sage X3",
+    "owner": "L. Marchand",
+    "status": "Not started"
+   }
+  ],
+  "satisfaction": [
+   {
+    "k": "Communication",
+    "v": "4.5",
+    "w": "90%"
+   },
+   {
+    "k": "Quality of deliverables",
+    "v": "4.0",
+    "w": "80%"
+   },
+   {
+    "k": "Schedule adherence",
+    "v": "3.0",
+    "w": "60%"
+   },
+   {
+    "k": "Change management",
+    "v": "4.0",
+    "w": "80%"
+   },
+   {
+    "k": "Site safety",
+    "v": "4.5",
+    "w": "90%"
+   }
+  ],
+  "satAvg": "4.0"
+ },
+ "rexNdc": [
+  {
+   "label": "Lessons recorded",
+   "value": 0,
+   "sub": "0 applied to templates & procedures"
+  },
+  {
+   "label": "To validate",
+   "value": 0,
+   "sub": "REX workshop · engineering lead + quality"
+  },
+  {
+   "label": "Closure checklist",
+   "value": "—",
+   "sub": "0 done · 0 in progress · 0 not started"
+  },
+  {
+   "label": "Customer satisfaction",
+   "value": "—",
+   "sub": "survey not received"
+  }
+ ],
+ "fleet": {
+  "all": {
+   "kpis": [
+    {
+     "label": "Machines in service",
+     "value": 8,
+     "sub": "6 clients"
+    },
+    {
+     "label": "In warranty",
+     "value": 6,
+     "sub": "1 extended"
+    },
+    {
+     "label": "Warranty ending < 90 days",
+     "value": 1,
+     "sub": "MCH-035"
+    },
+    {
+     "label": "Machines with open claims",
+     "value": 4,
+     "sub": "see warranty claims"
+    }
+   ],
+   "zoneSeg": [
+    [
+     "All zones",
+     8
+    ],
+    [
+     "Europe & North America",
+     6
+    ],
+    [
+     "Africa",
+     1
+    ],
+    [
+     "Asia Pacific",
+     1
+    ]
+   ],
+   "rows": [
+    {
+     "id": "MCH-041",
+     "type": "EMP",
+     "name": "Gantry crane 45 t — quay 2",
+     "client": "Port authority",
+     "site": "Le Havre · quay 2",
+     "proj": "QFR-015",
+     "delivered": "14 Dec 2025",
+     "wend": "13 Dec 2027",
+     "status": "In warranty",
+     "open": 2,
+     "gen": "Gen 2",
+     "openText": "2 open",
+     "wendSub": "",
+     "cost": 20,
+     "cfg": [
+      "3 pending"
+     ]
+    },
+    {
+     "id": "MCH-038",
+     "type": "MEMU",
+     "name": "Overhead crane 20 t — hall B",
+     "client": "Transit BU",
+     "site": "Marseille · depot",
+     "proj": "DRR-009",
+     "delivered": "20 Aug 2025",
+     "wend": "19 Aug 2027",
+     "status": "In warranty",
+     "open": 1,
+     "gen": "Gen 2",
+     "openText": "1 open",
+     "wendSub": "",
+     "cost": 3,
+     "cfg": [
+      "2 pending"
+     ]
+    },
+    {
+     "id": "MCH-035",
+     "type": "SPUR",
+     "name": "Rail spur switch set",
+     "client": "Port authority",
+     "site": "Le Havre · spur 3",
+     "proj": "QFR-015",
+     "delivered": "2 Nov 2025",
+     "wend": "1 Nov 2026",
+     "status": "In warranty",
+     "open": 0,
+     "gen": "Gen 1",
+     "openText": "—",
+     "wendSub": "ends in 31 d",
+     "cost": 2,
+     "cfg": []
+    },
+    {
+     "id": "MCH-029",
+     "type": "EMP",
+     "name": "Gantry crane 40 t — quay 1",
+     "client": "Port authority",
+     "site": "Le Havre · quay 1",
+     "proj": "—",
+     "delivered": "18 Mar 2024",
+     "wend": "17 Mar 2026",
+     "status": "Out of warranty",
+     "open": 0,
+     "gen": "Gen 1",
+     "openText": "—",
+     "wendSub": "",
+     "cost": 0,
+     "cfg": [
+      "2 pending",
+      "1 retrofit",
+      "1 pinned"
+     ]
+    },
+    {
+     "id": "MCH-031",
+     "type": "MEMU",
+     "name": "Overhead crane 12.5 t",
+     "client": "Airport operator",
+     "site": "Lyon · hangar 4",
+     "proj": "ALP-021",
+     "delivered": "30 Sep 2026",
+     "wend": "29 Sep 2028",
+     "status": "In warranty",
+     "open": 0,
+     "gen": "Gen 2",
+     "openText": "—",
+     "wendSub": "",
+     "cost": 0,
+     "cfg": [
+      "2 pending"
+     ]
+    },
+    {
+     "id": "MCH-022",
+     "type": "EMP",
+     "name": "Gantry crane 32 t",
+     "client": "Retail BU",
+     "site": "Marseille · logistics",
+     "proj": "—",
+     "delivered": "5 Jun 2023",
+     "wend": "4 Jun 2025",
+     "status": "Extended → 4 Jun 2027",
+     "open": 1,
+     "gen": "Gen 1",
+     "openText": "1 open",
+     "wendSub": "",
+     "cost": 4,
+     "cfg": [
+      "2 pending",
+      "1 pinned"
+     ]
+    },
+    {
+     "id": "MCH-044",
+     "type": "EMP",
+     "name": "Gantry crane 45 t — quay 3",
+     "client": "Tanger Med port authority",
+     "site": "Tanger Med · quay 3",
+     "proj": "—",
+     "delivered": "3 Mar 2026",
+     "wend": "2 Mar 2028",
+     "status": "In warranty",
+     "open": 1,
+     "gen": "",
+     "openText": "1 open",
+     "wendSub": "",
+     "cost": 3,
+     "cfg": []
+    },
+    {
+     "id": "MCH-040",
+     "type": "MEMU",
+     "name": "Overhead crane 16 t — workshop",
+     "client": "Mining operator",
+     "site": "Perth · workshop 2",
+     "proj": "—",
+     "delivered": "9 Nov 2025",
+     "wend": "8 Nov 2027",
+     "status": "In warranty",
+     "open": 0,
+     "gen": "",
+     "openText": "—",
+     "wendSub": "",
+     "cost": 2,
+     "cfg": []
+    }
+   ]
+  },
+  "euna": {
+   "kpis": [
+    {
+     "label": "Machines in service",
+     "value": 6,
+     "sub": "4 clients"
+    },
+    {
+     "label": "In warranty",
+     "value": 4,
+     "sub": "1 extended"
+    },
+    {
+     "label": "Warranty ending < 90 days",
+     "value": 1,
+     "sub": "MCH-035"
+    },
+    {
+     "label": "Machines with open claims",
+     "value": 3,
+     "sub": "see warranty claims"
+    }
+   ],
+   "zoneSeg": [
+    [
+     "All zones",
+     8
+    ],
+    [
+     "Europe & North America",
+     6
+    ],
+    [
+     "Africa",
+     1
+    ],
+    [
+     "Asia Pacific",
+     1
+    ]
+   ],
+   "rows": [
+    {
+     "id": "MCH-041",
+     "type": "EMP",
+     "name": "Gantry crane 45 t — quay 2",
+     "client": "Port authority",
+     "site": "Le Havre · quay 2",
+     "proj": "QFR-015",
+     "delivered": "14 Dec 2025",
+     "wend": "13 Dec 2027",
+     "status": "In warranty",
+     "open": 2,
+     "gen": "Gen 2",
+     "openText": "2 open",
+     "wendSub": "",
+     "cost": 20,
+     "cfg": [
+      "3 pending"
+     ]
+    },
+    {
+     "id": "MCH-038",
+     "type": "MEMU",
+     "name": "Overhead crane 20 t — hall B",
+     "client": "Transit BU",
+     "site": "Marseille · depot",
+     "proj": "DRR-009",
+     "delivered": "20 Aug 2025",
+     "wend": "19 Aug 2027",
+     "status": "In warranty",
+     "open": 1,
+     "gen": "Gen 2",
+     "openText": "1 open",
+     "wendSub": "",
+     "cost": 3,
+     "cfg": [
+      "2 pending"
+     ]
+    },
+    {
+     "id": "MCH-035",
+     "type": "SPUR",
+     "name": "Rail spur switch set",
+     "client": "Port authority",
+     "site": "Le Havre · spur 3",
+     "proj": "QFR-015",
+     "delivered": "2 Nov 2025",
+     "wend": "1 Nov 2026",
+     "status": "In warranty",
+     "open": 0,
+     "gen": "Gen 1",
+     "openText": "—",
+     "wendSub": "ends in 31 d",
+     "cost": 2,
+     "cfg": []
+    },
+    {
+     "id": "MCH-029",
+     "type": "EMP",
+     "name": "Gantry crane 40 t — quay 1",
+     "client": "Port authority",
+     "site": "Le Havre · quay 1",
+     "proj": "—",
+     "delivered": "18 Mar 2024",
+     "wend": "17 Mar 2026",
+     "status": "Out of warranty",
+     "open": 0,
+     "gen": "Gen 1",
+     "openText": "—",
+     "wendSub": "",
+     "cost": 0,
+     "cfg": [
+      "2 pending",
+      "1 retrofit",
+      "1 pinned"
+     ]
+    },
+    {
+     "id": "MCH-031",
+     "type": "MEMU",
+     "name": "Overhead crane 12.5 t",
+     "client": "Airport operator",
+     "site": "Lyon · hangar 4",
+     "proj": "ALP-021",
+     "delivered": "30 Sep 2026",
+     "wend": "29 Sep 2028",
+     "status": "In warranty",
+     "open": 0,
+     "gen": "Gen 2",
+     "openText": "—",
+     "wendSub": "",
+     "cost": 0,
+     "cfg": [
+      "2 pending"
+     ]
+    },
+    {
+     "id": "MCH-022",
+     "type": "EMP",
+     "name": "Gantry crane 32 t",
+     "client": "Retail BU",
+     "site": "Marseille · logistics",
+     "proj": "—",
+     "delivered": "5 Jun 2023",
+     "wend": "4 Jun 2025",
+     "status": "Extended → 4 Jun 2027",
+     "open": 1,
+     "gen": "Gen 1",
+     "openText": "1 open",
+     "wendSub": "",
+     "cost": 4,
+     "cfg": [
+      "2 pending",
+      "1 pinned"
+     ]
+    }
+   ]
+  },
+  "afr": {
+   "kpis": [
+    {
+     "label": "Machines in service",
+     "value": 1,
+     "sub": "1 clients"
+    },
+    {
+     "label": "In warranty",
+     "value": 1,
+     "sub": "0 extended"
+    },
+    {
+     "label": "Warranty ending < 90 days",
+     "value": 0,
+     "sub": "—"
+    },
+    {
+     "label": "Machines with open claims",
+     "value": 1,
+     "sub": "see warranty claims"
+    }
+   ],
+   "zoneSeg": [
+    [
+     "All zones",
+     8
+    ],
+    [
+     "Europe & North America",
+     6
+    ],
+    [
+     "Africa",
+     1
+    ],
+    [
+     "Asia Pacific",
+     1
+    ]
+   ],
+   "rows": [
+    {
+     "id": "MCH-044",
+     "type": "EMP",
+     "name": "Gantry crane 45 t — quay 3",
+     "client": "Tanger Med port authority",
+     "site": "Tanger Med · quay 3",
+     "proj": "—",
+     "delivered": "3 Mar 2026",
+     "wend": "2 Mar 2028",
+     "status": "In warranty",
+     "open": 1,
+     "gen": "",
+     "openText": "1 open",
+     "wendSub": "",
+     "cost": 3,
+     "cfg": []
+    }
+   ]
+  },
+  "apac": {
+   "kpis": [
+    {
+     "label": "Machines in service",
+     "value": 1,
+     "sub": "1 clients"
+    },
+    {
+     "label": "In warranty",
+     "value": 1,
+     "sub": "0 extended"
+    },
+    {
+     "label": "Warranty ending < 90 days",
+     "value": 0,
+     "sub": "—"
+    },
+    {
+     "label": "Machines with open claims",
+     "value": 0,
+     "sub": "see warranty claims"
+    }
+   ],
+   "zoneSeg": [
+    [
+     "All zones",
+     8
+    ],
+    [
+     "Europe & North America",
+     6
+    ],
+    [
+     "Africa",
+     1
+    ],
+    [
+     "Asia Pacific",
+     1
+    ]
+   ],
+   "rows": [
+    {
+     "id": "MCH-040",
+     "type": "MEMU",
+     "name": "Overhead crane 16 t — workshop",
+     "client": "Mining operator",
+     "site": "Perth · workshop 2",
+     "proj": "—",
+     "delivered": "9 Nov 2025",
+     "wend": "8 Nov 2027",
+     "status": "In warranty",
+     "open": 0,
+     "gen": "",
+     "openText": "—",
+     "wendSub": "",
+     "cost": 2,
+     "cfg": []
+    }
+   ]
+  }
+ },
+ "sav": {
+  "all": {
+   "kpis": [
+    {
+     "label": "Open claims",
+     "value": 5,
+     "sub": "2 major"
+    },
+    {
+     "label": "Interventions planned",
+     "value": 4,
+     "sub": "next · 6 Oct 2026"
+    },
+    {
+     "label": "Warranty cost YTD",
+     "value": "€34k",
+     "sub": "€6k chargeable"
+    },
+    {
+     "label": "Design-related",
+     "value": 1,
+     "sub": "claims linked to an ECO"
+    }
+   ],
+   "claims": [
+    {
+     "id": "WC-014",
+     "mch": "MCH-041",
+     "mname": "Gantry crane 45 t — quay 2",
+     "client": "Port authority",
+     "issue": "Hoist brake noise at low speed",
+     "sev": "Major",
+     "date": "12 Sep 2026",
+     "status": "Diagnosed",
+     "cover": "Warranty",
+     "cost": 8,
+     "costText": "€8k",
+     "eco": "",
+     "owner": "T. Kerbrat",
+     "next": "Replace brake disc · intervention 8 Oct"
+    },
+    {
+     "id": "WC-015",
+     "mch": "MCH-038",
+     "mname": "Overhead crane 20 t — hall B",
+     "client": "Transit BU",
+     "issue": "Festoon cable wear — 3 segments",
+     "sev": "Minor",
+     "date": "20 Sep 2026",
+     "status": "Intervention planned",
+     "cover": "Warranty",
+     "cost": 3,
+     "costText": "€3k",
+     "eco": "",
+     "owner": "T. Kerbrat",
+     "next": "Intervention 6 Oct"
+    },
+    {
+     "id": "WC-013",
+     "mch": "MCH-041",
+     "mname": "Gantry crane 45 t — quay 2",
+     "client": "Port authority",
+     "issue": "Anti-collision false alarms in fog",
+     "sev": "Major",
+     "date": "28 Aug 2026",
+     "status": "Open",
+     "cover": "Warranty",
+     "cost": 12,
+     "costText": "€12k",
+     "eco": "ECO-031",
+     "owner": "C. Morvan",
+     "next": "Firmware update + lidar filter · ECO in approval"
+    },
+    {
+     "id": "WC-016",
+     "mch": "MCH-022",
+     "mname": "Gantry crane 32 t",
+     "client": "Retail BU",
+     "issue": "Cabin air conditioning failure",
+     "sev": "Minor",
+     "date": "27 Sep 2026",
+     "status": "Open",
+     "cover": "Extended warranty",
+     "cost": 4,
+     "costText": "€4k",
+     "eco": "",
+     "owner": "T. Kerbrat",
+     "next": "Quotation to send"
+    },
+    {
+     "id": "WC-017",
+     "mch": "MCH-044",
+     "mname": "Gantry crane 45 t — quay 3",
+     "client": "Tanger Med port authority",
+     "issue": "Spreader twist-lock sensor fault",
+     "sev": "Minor",
+     "date": "24 Sep 2026",
+     "status": "Open",
+     "cover": "Warranty",
+     "cost": 3,
+     "costText": "€3k",
+     "eco": "",
+     "owner": "S. Haddad",
+     "next": "Remote diagnosis · spare sensor shipped"
+    },
+    {
+     "id": "WC-012",
+     "mch": "MCH-029",
+     "mname": "Gantry crane 40 t — quay 1",
+     "client": "Port authority",
+     "issue": "Wheel flange wear",
+     "sev": "Minor",
+     "date": "15 Jul 2026",
+     "status": "Closed",
+     "cover": "Chargeable",
+     "cost": 6,
+     "costText": "€6k",
+     "eco": "",
+     "owner": "T. Kerbrat",
+     "next": "Wheels replaced · invoiced 4.8 k€"
+    },
+    {
+     "id": "WC-011",
+     "mch": "MCH-035",
+     "mname": "Rail spur switch set",
+     "client": "Port authority",
+     "issue": "Switch heater failure",
+     "sev": "Minor",
+     "date": "3 Feb 2026",
+     "status": "Closed",
+     "cover": "Warranty",
+     "cost": 2,
+     "costText": "€2k",
+     "eco": "",
+     "owner": "S. Haddad",
+     "next": "Heater replaced"
+    },
+    {
+     "id": "WC-018",
+     "mch": "MCH-040",
+     "mname": "Overhead crane 16 t — workshop",
+     "client": "Mining operator",
+     "issue": "Hoist limit switch drift",
+     "sev": "Minor",
+     "date": "18 Sep 2026",
+     "status": "Closed",
+     "cover": "Warranty",
+     "cost": 2,
+     "costText": "€2k",
+     "eco": "",
+     "owner": "Local partner",
+     "next": "Switch recalibrated by local partner"
+    }
+   ],
+   "interventions": [
+    {
+     "id": "IV-081",
+     "mch": "MCH-038",
+     "mname": "Overhead crane 20 t — hall B",
+     "site": "Marseille · depot",
+     "date": "6 Oct 2026",
+     "tech": "T. Kerbrat",
+     "type": "Corrective · WC-015",
+     "dur": "1 day",
+     "status": "Planned"
+    },
+    {
+     "id": "IV-082",
+     "mch": "MCH-041",
+     "mname": "Gantry crane 45 t — quay 2",
+     "site": "Le Havre · quay 2",
+     "date": "8 Oct 2026",
+     "tech": "T. Kerbrat + J. Wagner",
+     "type": "Corrective · WC-014",
+     "dur": "2 days",
+     "status": "Planned"
+    },
+    {
+     "id": "IV-080",
+     "mch": "MCH-041",
+     "mname": "Gantry crane 45 t — quay 2",
+     "site": "Le Havre · quay 2",
+     "date": "15 Sep 2026",
+     "tech": "T. Kerbrat",
+     "type": "Diagnosis · WC-014",
+     "dur": "0.5 day",
+     "status": "Done"
+    },
+    {
+     "id": "IV-079",
+     "mch": "MCH-029",
+     "mname": "Gantry crane 40 t — quay 1",
+     "site": "Le Havre · quay 1",
+     "date": "22 Jul 2026",
+     "tech": "T. Kerbrat",
+     "type": "Corrective · WC-012 (chargeable)",
+     "dur": "2 days",
+     "status": "Done"
+    },
+    {
+     "id": "IV-083",
+     "mch": "MCH-035",
+     "mname": "Rail spur switch set",
+     "site": "Le Havre · spur 3",
+     "date": "15 Oct 2026",
+     "tech": "S. Haddad",
+     "type": "Preventive · annual check",
+     "dur": "1 day",
+     "status": "Planned"
+    },
+    {
+     "id": "IV-084",
+     "mch": "MCH-044",
+     "mname": "Gantry crane 45 t — quay 3",
+     "site": "Tanger Med · quay 3",
+     "date": "20 Oct 2026",
+     "tech": "S. Haddad",
+     "type": "Corrective · WC-017",
+     "dur": "2 days",
+     "status": "Planned"
+    }
+   ],
+   "costs": [
+    {
+     "id": "MCH-041",
+     "name": "Gantry crane 45 t — quay 2",
+     "client": "Port authority",
+     "status": "In warranty",
+     "claims": 2,
+     "warrantyCost": "€20k",
+     "chargeable": "€0k",
+     "barW": "80%"
+    },
+    {
+     "id": "MCH-038",
+     "name": "Overhead crane 20 t — hall B",
+     "client": "Transit BU",
+     "status": "In warranty",
+     "claims": 1,
+     "warrantyCost": "€3k",
+     "chargeable": "€0k",
+     "barW": "12%"
+    },
+    {
+     "id": "MCH-035",
+     "name": "Rail spur switch set",
+     "client": "Port authority",
+     "status": "In warranty",
+     "claims": 1,
+     "warrantyCost": "€2k",
+     "chargeable": "€0k",
+     "barW": "8%"
+    },
+    {
+     "id": "MCH-029",
+     "name": "Gantry crane 40 t — quay 1",
+     "client": "Port authority",
+     "status": "Out of warranty",
+     "claims": 1,
+     "warrantyCost": "€0k",
+     "chargeable": "€6k",
+     "barW": "0%"
+    },
+    {
+     "id": "MCH-022",
+     "name": "Gantry crane 32 t",
+     "client": "Retail BU",
+     "status": "Extended → 4 Jun 2027",
+     "claims": 1,
+     "warrantyCost": "€4k",
+     "chargeable": "€0k",
+     "barW": "16%"
+    },
+    {
+     "id": "MCH-044",
+     "name": "Gantry crane 45 t — quay 3",
+     "client": "Tanger Med port authority",
+     "status": "In warranty",
+     "claims": 1,
+     "warrantyCost": "€3k",
+     "chargeable": "€0k",
+     "barW": "12%"
+    },
+    {
+     "id": "MCH-040",
+     "name": "Overhead crane 16 t — workshop",
+     "client": "Mining operator",
+     "status": "In warranty",
+     "claims": 1,
+     "warrantyCost": "€2k",
+     "chargeable": "€0k",
+     "barW": "8%"
+    }
+   ]
+  },
+  "euna": {
+   "kpis": [
+    {
+     "label": "Open claims",
+     "value": 4,
+     "sub": "2 major"
+    },
+    {
+     "label": "Interventions planned",
+     "value": 3,
+     "sub": "next · 6 Oct 2026"
+    },
+    {
+     "label": "Warranty cost YTD",
+     "value": "€29k",
+     "sub": "€6k chargeable"
+    },
+    {
+     "label": "Design-related",
+     "value": 1,
+     "sub": "claims linked to an ECO"
+    }
+   ],
+   "claims": [
+    {
+     "id": "WC-014",
+     "mch": "MCH-041",
+     "mname": "Gantry crane 45 t — quay 2",
+     "client": "Port authority",
+     "issue": "Hoist brake noise at low speed",
+     "sev": "Major",
+     "date": "12 Sep 2026",
+     "status": "Diagnosed",
+     "cover": "Warranty",
+     "cost": 8,
+     "costText": "€8k",
+     "eco": "",
+     "owner": "T. Kerbrat",
+     "next": "Replace brake disc · intervention 8 Oct"
+    },
+    {
+     "id": "WC-015",
+     "mch": "MCH-038",
+     "mname": "Overhead crane 20 t — hall B",
+     "client": "Transit BU",
+     "issue": "Festoon cable wear — 3 segments",
+     "sev": "Minor",
+     "date": "20 Sep 2026",
+     "status": "Intervention planned",
+     "cover": "Warranty",
+     "cost": 3,
+     "costText": "€3k",
+     "eco": "",
+     "owner": "T. Kerbrat",
+     "next": "Intervention 6 Oct"
+    },
+    {
+     "id": "WC-013",
+     "mch": "MCH-041",
+     "mname": "Gantry crane 45 t — quay 2",
+     "client": "Port authority",
+     "issue": "Anti-collision false alarms in fog",
+     "sev": "Major",
+     "date": "28 Aug 2026",
+     "status": "Open",
+     "cover": "Warranty",
+     "cost": 12,
+     "costText": "€12k",
+     "eco": "ECO-031",
+     "owner": "C. Morvan",
+     "next": "Firmware update + lidar filter · ECO in approval"
+    },
+    {
+     "id": "WC-016",
+     "mch": "MCH-022",
+     "mname": "Gantry crane 32 t",
+     "client": "Retail BU",
+     "issue": "Cabin air conditioning failure",
+     "sev": "Minor",
+     "date": "27 Sep 2026",
+     "status": "Open",
+     "cover": "Extended warranty",
+     "cost": 4,
+     "costText": "€4k",
+     "eco": "",
+     "owner": "T. Kerbrat",
+     "next": "Quotation to send"
+    },
+    {
+     "id": "WC-012",
+     "mch": "MCH-029",
+     "mname": "Gantry crane 40 t — quay 1",
+     "client": "Port authority",
+     "issue": "Wheel flange wear",
+     "sev": "Minor",
+     "date": "15 Jul 2026",
+     "status": "Closed",
+     "cover": "Chargeable",
+     "cost": 6,
+     "costText": "€6k",
+     "eco": "",
+     "owner": "T. Kerbrat",
+     "next": "Wheels replaced · invoiced 4.8 k€"
+    },
+    {
+     "id": "WC-011",
+     "mch": "MCH-035",
+     "mname": "Rail spur switch set",
+     "client": "Port authority",
+     "issue": "Switch heater failure",
+     "sev": "Minor",
+     "date": "3 Feb 2026",
+     "status": "Closed",
+     "cover": "Warranty",
+     "cost": 2,
+     "costText": "€2k",
+     "eco": "",
+     "owner": "S. Haddad",
+     "next": "Heater replaced"
+    }
+   ],
+   "interventions": [
+    {
+     "id": "IV-081",
+     "mch": "MCH-038",
+     "mname": "Overhead crane 20 t — hall B",
+     "site": "Marseille · depot",
+     "date": "6 Oct 2026",
+     "tech": "T. Kerbrat",
+     "type": "Corrective · WC-015",
+     "dur": "1 day",
+     "status": "Planned"
+    },
+    {
+     "id": "IV-082",
+     "mch": "MCH-041",
+     "mname": "Gantry crane 45 t — quay 2",
+     "site": "Le Havre · quay 2",
+     "date": "8 Oct 2026",
+     "tech": "T. Kerbrat + J. Wagner",
+     "type": "Corrective · WC-014",
+     "dur": "2 days",
+     "status": "Planned"
+    },
+    {
+     "id": "IV-080",
+     "mch": "MCH-041",
+     "mname": "Gantry crane 45 t — quay 2",
+     "site": "Le Havre · quay 2",
+     "date": "15 Sep 2026",
+     "tech": "T. Kerbrat",
+     "type": "Diagnosis · WC-014",
+     "dur": "0.5 day",
+     "status": "Done"
+    },
+    {
+     "id": "IV-079",
+     "mch": "MCH-029",
+     "mname": "Gantry crane 40 t — quay 1",
+     "site": "Le Havre · quay 1",
+     "date": "22 Jul 2026",
+     "tech": "T. Kerbrat",
+     "type": "Corrective · WC-012 (chargeable)",
+     "dur": "2 days",
+     "status": "Done"
+    },
+    {
+     "id": "IV-083",
+     "mch": "MCH-035",
+     "mname": "Rail spur switch set",
+     "site": "Le Havre · spur 3",
+     "date": "15 Oct 2026",
+     "tech": "S. Haddad",
+     "type": "Preventive · annual check",
+     "dur": "1 day",
+     "status": "Planned"
+    }
+   ],
+   "costs": [
+    {
+     "id": "MCH-041",
+     "name": "Gantry crane 45 t — quay 2",
+     "client": "Port authority",
+     "status": "In warranty",
+     "claims": 2,
+     "warrantyCost": "€20k",
+     "chargeable": "€0k",
+     "barW": "80%"
+    },
+    {
+     "id": "MCH-038",
+     "name": "Overhead crane 20 t — hall B",
+     "client": "Transit BU",
+     "status": "In warranty",
+     "claims": 1,
+     "warrantyCost": "€3k",
+     "chargeable": "€0k",
+     "barW": "12%"
+    },
+    {
+     "id": "MCH-035",
+     "name": "Rail spur switch set",
+     "client": "Port authority",
+     "status": "In warranty",
+     "claims": 1,
+     "warrantyCost": "€2k",
+     "chargeable": "€0k",
+     "barW": "8%"
+    },
+    {
+     "id": "MCH-029",
+     "name": "Gantry crane 40 t — quay 1",
+     "client": "Port authority",
+     "status": "Out of warranty",
+     "claims": 1,
+     "warrantyCost": "€0k",
+     "chargeable": "€6k",
+     "barW": "0%"
+    },
+    {
+     "id": "MCH-022",
+     "name": "Gantry crane 32 t",
+     "client": "Retail BU",
+     "status": "Extended → 4 Jun 2027",
+     "claims": 1,
+     "warrantyCost": "€4k",
+     "chargeable": "€0k",
+     "barW": "16%"
+    }
+   ]
+  },
+  "afr": {
+   "kpis": [
+    {
+     "label": "Open claims",
+     "value": 1,
+     "sub": "0 major"
+    },
+    {
+     "label": "Interventions planned",
+     "value": 1,
+     "sub": "next · 20 Oct 2026"
+    },
+    {
+     "label": "Warranty cost YTD",
+     "value": "€3k",
+     "sub": "€0k chargeable"
+    },
+    {
+     "label": "Design-related",
+     "value": 0,
+     "sub": "claims linked to an ECO"
+    }
+   ],
+   "claims": [
+    {
+     "id": "WC-017",
+     "mch": "MCH-044",
+     "mname": "Gantry crane 45 t — quay 3",
+     "client": "Tanger Med port authority",
+     "issue": "Spreader twist-lock sensor fault",
+     "sev": "Minor",
+     "date": "24 Sep 2026",
+     "status": "Open",
+     "cover": "Warranty",
+     "cost": 3,
+     "costText": "€3k",
+     "eco": "",
+     "owner": "S. Haddad",
+     "next": "Remote diagnosis · spare sensor shipped"
+    }
+   ],
+   "interventions": [
+    {
+     "id": "IV-084",
+     "mch": "MCH-044",
+     "mname": "Gantry crane 45 t — quay 3",
+     "site": "Tanger Med · quay 3",
+     "date": "20 Oct 2026",
+     "tech": "S. Haddad",
+     "type": "Corrective · WC-017",
+     "dur": "2 days",
+     "status": "Planned"
+    }
+   ],
+   "costs": [
+    {
+     "id": "MCH-044",
+     "name": "Gantry crane 45 t — quay 3",
+     "client": "Tanger Med port authority",
+     "status": "In warranty",
+     "claims": 1,
+     "warrantyCost": "€3k",
+     "chargeable": "€0k",
+     "barW": "12%"
+    }
+   ]
+  },
+  "apac": {
+   "kpis": [
+    {
+     "label": "Open claims",
+     "value": 0,
+     "sub": "0 major"
+    },
+    {
+     "label": "Interventions planned",
+     "value": 0,
+     "sub": "next · —"
+    },
+    {
+     "label": "Warranty cost YTD",
+     "value": "€2k",
+     "sub": "€0k chargeable"
+    },
+    {
+     "label": "Design-related",
+     "value": 0,
+     "sub": "claims linked to an ECO"
+    }
+   ],
+   "claims": [
+    {
+     "id": "WC-018",
+     "mch": "MCH-040",
+     "mname": "Overhead crane 16 t — workshop",
+     "client": "Mining operator",
+     "issue": "Hoist limit switch drift",
+     "sev": "Minor",
+     "date": "18 Sep 2026",
+     "status": "Closed",
+     "cover": "Warranty",
+     "cost": 2,
+     "costText": "€2k",
+     "eco": "",
+     "owner": "Local partner",
+     "next": "Switch recalibrated by local partner"
+    }
+   ],
+   "interventions": [],
+   "costs": [
+    {
+     "id": "MCH-040",
+     "name": "Overhead crane 16 t — workshop",
+     "client": "Mining operator",
+     "status": "In warranty",
+     "claims": 1,
+     "warrantyCost": "€2k",
+     "chargeable": "€0k",
+     "barW": "8%"
+    }
+   ]
+  }
+ },
+ "site": {
+  "kpis": [
+   {
+    "label": "Go chantier",
+    "value": "NO GO",
+    "sub": "5 of 5 conditions open · start 19 Oct 2026"
+   },
+   {
+    "label": "Client prerequisites",
+    "value": "4 / 6",
+    "sub": "0 late vs need date"
+   },
+   {
+    "label": "Individual go · Cursus",
+    "value": "3 / 5",
+    "sub": "1 with reserve · approvals only"
+   },
+   {
+    "label": "Equipment confirmed",
+    "value": "6 / 8",
+    "sub": "3 shipped · 5 local / client"
+   },
+   {
+    "label": "Collisions",
+    "value": 4,
+    "sub": "Load · leave · certificates · badges"
+   }
+  ],
+  "goItems": [
+   {
+    "label": "Client prerequisites",
+    "ok": false,
+    "sub": "2 pending"
+   },
+   {
+    "label": "Individual go · Cursus",
+    "ok": false,
+    "sub": "2 NO GO"
+   },
+   {
+    "label": "Equipment on site",
+    "ok": false,
+    "sub": "2 unconfirmed"
+   },
+   {
+    "label": "Team without collisions",
+    "ok": false,
+    "sub": "4 collisions"
+   },
+   {
+    "label": "HSE permits",
+    "ok": false,
+    "sub": "2 pending"
+   }
+  ],
+  "goLabel": "NO GO",
+  "meta": [
+   [
+    "Site",
+    "Terminal Harbor Line — Quai 4, Le Havre (FR)"
+   ],
+   [
+    "Country · time zone",
+    "France · Europe/Paris (UTC+1)"
+   ],
+   [
+    "Language · currency",
+    "Français · EUR"
+   ],
+   [
+    "Client contact on site",
+    "Nadia Bensaïd · +33 2 35 00 00 00"
+   ],
+   [
+    "Working hours",
+    "Lun–Sam 7h–19h · port : accès 24h sur badge"
+   ],
+   [
+    "Local holidays",
+    "11 nov. · 25 déc."
+   ],
+   [
+    "Access constraints",
+    "Badge port (ISPS) · habilitation levage · ATEX zone 2 (poste HT)"
+   ],
+   [
+    "Window",
+    "19 Oct 2026 → 18 Dec 2026 · 44 working days"
+   ]
+  ],
+  "prereqs": [
+   {
+    "title": "Génie civil rails & massifs réceptionnés",
+    "act": "A1230 · Steel fabrication & delivery",
+    "due": "12 Oct",
+    "status": "Signed",
+    "note": "12 Sep · N. Bensaïd",
+    "late": false,
+    "canConfirm": false,
+    "canSign": false
+   },
+   {
+    "title": "Alimentation électrique chantier 400 V / 250 kVA",
+    "act": "A1420 · Lighting & power distribution",
+    "due": "16 Oct",
+    "status": "Confirmed",
+    "note": "Port électricité · 8 Oct",
+    "late": false,
+    "canConfirm": false,
+    "canSign": true
+   },
+   {
+    "title": "Accès poids lourds & zone de stockage 1 500 m²",
+    "act": "A1320 · Crane delivery & rigging",
+    "due": "12 Oct",
+    "status": "Signed",
+    "note": "15 Sep",
+    "late": false,
+    "canConfirm": false,
+    "canSign": false
+   },
+   {
+    "title": "Autorisation de levage & arrêt exploitation quai 4",
+    "act": "A1320 · Crane delivery & rigging",
+    "due": "2 Nov",
+    "status": "Pending",
+    "note": "Demande déposée 20 Sep",
+    "late": false,
+    "canConfirm": true,
+    "canSign": false
+   },
+   {
+    "title": "Point de raccordement HT 11 kV disponible",
+    "act": "A1410 · HV connection & switchgear",
+    "due": "20 Nov",
+    "status": "Pending",
+    "note": "DSO : date attendue 15 Oct",
+    "late": false,
+    "canConfirm": true,
+    "canSign": false
+   },
+   {
+    "title": "Zone de vie & sanitaires",
+    "act": "A1320 · Crane delivery & rigging",
+    "due": "12 Oct",
+    "status": "Confirmed",
+    "note": "Conteneurs livrés",
+    "late": false,
+    "canConfirm": false,
+    "canSign": true
+   }
+  ],
+  "equip": [
+   {
+    "name": "Grue mobile 250 t (levage portique)",
+    "src": "Location locale",
+    "status": "Confirmed",
+    "note": "Sarens · 2–6 Nov",
+    "canConfirm": false
+   },
+   {
+    "name": "Nacelle 20 m ×2",
+    "src": "Client",
+    "status": "Confirmed",
+    "note": "Mise à dispo port",
+    "canConfirm": false
+   },
+   {
+    "name": "Chariot télescopique 4 t",
+    "src": "Location locale",
+    "status": "Pending",
+    "note": "Devis Loxam reçu",
+    "canConfirm": true
+   },
+   {
+    "name": "Outillage serrage hydraulique",
+    "src": "Expédié",
+    "status": "Confirmed",
+    "note": "Colis C-07 · BL-2026-0533",
+    "canConfirm": false
+   },
+   {
+    "name": "Groupe électrogène 100 kVA",
+    "src": "Client",
+    "status": "Pending",
+    "note": "À confirmer avant raccordement HT",
+    "canConfirm": true
+   },
+   {
+    "name": "Consommables soudure",
+    "src": "Expédié",
+    "status": "Confirmed",
+    "note": "Colis C-11",
+    "canConfirm": false
+   },
+   {
+    "name": "EPI & harnais",
+    "src": "Expédié",
+    "status": "Confirmed",
+    "note": "Colis C-02",
+    "canConfirm": false
+   },
+   {
+    "name": "Conteneur bureau/vestiaire",
+    "src": "Location locale",
+    "status": "Confirmed",
+    "note": "Algeco · livré 15 Oct",
+    "canConfirm": false
+   }
+  ],
+  "docs": [
+   {
+    "who": "Amélie Ollivier",
+    "visa": "Not required",
+    "vacc": "Confirmed",
+    "hab": "OK",
+    "habNote": "Badge ISPS · levage G1",
+    "status": "GO",
+    "rec": "26 Sep 07:00",
+    "canReq": false
+   },
+   {
+    "who": "Thomas Kerbrat",
+    "visa": "Approved",
+    "vacc": "Confirmed",
+    "hab": "Pending",
+    "habNote": "Badge ISPS pending",
+    "status": "NO GO",
+    "rec": "26 Sep 07:00",
+    "canReq": true
+   },
+   {
+    "who": "Pauline Noguès",
+    "visa": "Not required",
+    "vacc": "Confirmed",
+    "hab": "Expiring",
+    "habNote": "HT B2V expires 30 Nov 2026",
+    "status": "GO with reserve",
+    "rec": "25 Sep 16:20",
+    "canReq": true
+   },
+   {
+    "who": "Julien Wagner",
+    "visa": "Not required",
+    "vacc": "Confirmed",
+    "hab": "OK",
+    "habNote": "Badge ISPS",
+    "status": "GO",
+    "rec": "24 Sep 11:05",
+    "canReq": false
+   },
+   {
+    "who": "Hélène Sauvage",
+    "visa": "Pending",
+    "vacc": "Pending",
+    "hab": "Missing",
+    "habNote": "Badge ISPS missing",
+    "status": "NO GO",
+    "rec": "26 Sep 07:00",
+    "canReq": true
+   }
+  ],
+  "teamKpis": [
+   {
+    "label": "People on rotation",
+    "value": 6,
+    "sub": "2 rotations · 44 working days"
+   },
+   {
+    "label": "Man-days planned",
+    "value": "168",
+    "sub": "0 consumed · site starts 19 Oct 2026"
+   },
+   {
+    "label": "Collisions open",
+    "value": 4,
+    "sub": "Arbitrated by department heads"
+   },
+   {
+    "label": "Mission budget",
+    "value": "€98k",
+    "sub": "€11k committed · 11%"
+   },
+   {
+    "label": "Site premium",
+    "value": "×1.5 / ×2",
+    "sub": "Saturday / Sunday rates · 6d · 10h calendar"
+   }
+  ],
+  "rotation": [
+   {
+    "who": "Amélie Ollivier",
+    "role": "Chef de chantier",
+    "from": "19 Oct",
+    "to": "18 Dec",
+    "lodging": "Hôtel Vauban",
+    "travel": "TGV",
+    "rot": "R1",
+    "collideIcon": "ph ph-check"
+   },
+   {
+    "who": "Julien Wagner",
+    "role": "Ingénieur structure",
+    "from": "19 Oct",
+    "to": "13 Nov",
+    "lodging": "Hôtel Vauban",
+    "travel": "TGV",
+    "rot": "R1",
+    "collideIcon": "ph ph-warning"
+   },
+   {
+    "who": "Thomas Kerbrat",
+    "role": "Grutier / levage",
+    "from": "26 Oct",
+    "to": "27 Nov",
+    "lodging": "Hôtel Vauban",
+    "travel": "TGV",
+    "rot": "R1",
+    "collideIcon": "ph ph-warning"
+   },
+   {
+    "who": "Pauline Noguès",
+    "role": "Élec. & automatisme",
+    "from": "9 Nov",
+    "to": "18 Dec",
+    "lodging": "Appart. Gambetta",
+    "travel": "TGV",
+    "rot": "R2",
+    "collideIcon": "ph ph-warning"
+   },
+   {
+    "who": "Hélène Sauvage",
+    "role": "QA / QC",
+    "from": "30 Nov",
+    "to": "18 Dec",
+    "lodging": "Hôtel Vauban",
+    "travel": "TGV",
+    "rot": "R2",
+    "collideIcon": "ph ph-warning"
+   },
+   {
+    "who": "Contractant — 2 monteurs",
+    "role": "Montage mécanique",
+    "from": "26 Oct",
+    "to": "27 Nov",
+    "lodging": "Hébergement prestataire",
+    "travel": "Route",
+    "rot": "R1",
+    "collideIcon": "ph ph-check"
+   }
+  ],
+  "collisions": [
+   {
+    "who": "Julien Wagner",
+    "what": "Semaines 44–45 · 130 % avec études Northgate DC",
+    "kind": "Load",
+    "fix": "Scénario A du lissage : prestataire structure 3 sem."
+   },
+   {
+    "who": "Pauline Noguès",
+    "what": "Habilitation HT expire le 30 nov. — mission jusqu’au 18 déc.",
+    "kind": "Certificate",
+    "fix": "Recyclage à planifier avant le 9 nov."
+   },
+   {
+    "who": "Thomas Kerbrat",
+    "what": "Badge ISPS en attente — arrivée 26 oct.",
+    "kind": "Document",
+    "fix": "Relancer le port · délai 10 j"
+   },
+   {
+    "who": "Hélène Sauvage",
+    "what": "Congés 2–6 nov. (Lucca) — inspection QC câblage",
+    "kind": "Leave",
+    "fix": "Décaler la visite QC au 9 nov."
+   }
+  ],
+  "missionCosts": [
+   {
+    "name": "Voyages",
+    "budget": "€12k",
+    "actual": "€4k",
+    "pct": "34%",
+    "left": "€8k"
+   },
+   {
+    "name": "Hébergement",
+    "budget": "€19k",
+    "actual": "—",
+    "pct": "0%",
+    "left": "€19k"
+   },
+   {
+    "name": "Per diem",
+    "budget": "€10k",
+    "actual": "—",
+    "pct": "0%",
+    "left": "€10k"
+   },
+   {
+    "name": "Majorations chantier (6j · 10h)",
+    "budget": "€22k",
+    "actual": "—",
+    "pct": "0%",
+    "left": "€22k"
+   },
+   {
+    "name": "Location matériel local",
+    "budget": "€32k",
+    "actual": "€6k",
+    "pct": "19%",
+    "left": "€26k"
+   },
+   {
+    "name": "Transport local & douane",
+    "budget": "€4k",
+    "actual": "€1k",
+    "pct": "28%",
+    "left": "€3k"
+   }
+  ],
+  "execKpis": [
+   {
+    "label": "Progress on site",
+    "value": "0 / 44 d",
+    "sub": "Daily reports feed the data date"
+   },
+   {
+    "label": "Daily reports",
+    "value": 2,
+    "sub": "Mobile · hours, %, photos, weather"
+   },
+   {
+    "label": "Punch list open",
+    "value": 2,
+    "sub": "1 on the client"
+   },
+   {
+    "label": "HSE",
+    "value": "0 incident",
+    "sub": "2 permits pending"
+   },
+   {
+    "label": "Client decisions logged",
+    "value": "3",
+    "sub": "Out-of-scope requests → change request"
+   }
+  ],
+  "reports": [
+   {
+    "date": "25 Sep",
+    "act": "Préparation",
+    "pct": "—",
+    "txt": "Réunion de lancement chantier avec le port · visite d’accès · zone de stockage validée",
+    "link": "—",
+    "by": "A. Ollivier"
+   },
+   {
+    "date": "24 Sep",
+    "act": "Préparation",
+    "pct": "—",
+    "txt": "Relevé topographique rails — écart 12 mm poste 7 → NCR-029",
+    "link": "NCR-029",
+    "by": "T. Kerbrat"
+   }
+  ],
+  "punch": [
+   {
+    "id": "P-01",
+    "title": "Massif poste 7 — reprise implantation tiges",
+    "ncr": "NCR-029",
+    "status": "Open",
+    "owner": "Client",
+    "due": "30 Sep"
+   },
+   {
+    "id": "P-02",
+    "title": "Marquage au sol zone de levage",
+    "ncr": "—",
+    "status": "Open",
+    "owner": "Keystone",
+    "due": "19 Oct"
+   },
+   {
+    "id": "P-03",
+    "title": "Éclairage zone de stockage insuffisant",
+    "ncr": "—",
+    "status": "Closed",
+    "owner": "Client",
+    "due": "18 Sep"
+   }
+  ],
+  "hse": [
+   {
+    "title": "Plan de prévention signé",
+    "status": "Signed",
+    "date": "15 Sep"
+   },
+   {
+    "title": "Accueil sécurité — modèle port",
+    "status": "Ready",
+    "date": "—"
+   },
+   {
+    "title": "Permis de levage quai 4",
+    "status": "Pending",
+    "date": "2 Nov"
+   },
+   {
+    "title": "Permis de travail HT",
+    "status": "Pending",
+    "date": "20 Nov"
+   },
+   {
+    "title": "Registre presqu’accidents",
+    "status": "0 déclaré",
+    "date": "—"
+   }
+  ]
+ },
+ "client": {
+  "kpis": [
+   {
+    "label": "Progress",
+    "value": "64%",
+    "sub": "Planned 71% by today"
+   },
+   {
+    "label": "Forecast handover",
+    "value": "14 Jan 2027",
+    "sub": "Contract date 18 Dec 2026"
+   },
+   {
+    "label": "Milestones",
+    "value": "2 of 6",
+    "sub": "Reached"
+   },
+   {
+    "label": "Awaiting your decision",
+    "value": 3,
+    "sub": "Change requests and deliverables"
+   },
+   {
+    "label": "Open issues",
+    "value": 2,
+    "sub": "Raised by you"
+   }
+  ],
+  "decisions": [
+   {
+    "kind": "Change request",
+    "id": "CR-008",
+    "title": "Second steel crew — schedule recovery",
+    "sub": "Budget · Schedule · +€85k on contract · -12 d on handover",
+    "when": "24 Sep",
+    "approveLabel": "Approve"
+   },
+   {
+    "kind": "Deliverable",
+    "id": "D-014",
+    "title": "Crane rail alignment report",
+    "sub": "Test & inspection reports · rev A · Accept by 2 Oct",
+    "when": "25 Sep",
+    "approveLabel": "Accept (PV)"
+   },
+   {
+    "kind": "Deliverable",
+    "id": "D-016",
+    "title": "Steel structure calculation note rev B",
+    "sub": "Calculation notes · rev B · Accept by 9 Oct",
+    "when": "30 Sep",
+    "approveLabel": "Accept (PV)"
+   }
+  ],
+  "decided": [
+   {
+    "id": "CR-004",
+    "title": "Additional piling — soft ground at Bay 4",
+    "state": "Approved",
+    "when": "14 May"
+   },
+   {
+    "id": "CR-006",
+    "title": "Crane specification upgrade to 250 t",
+    "state": "Approved",
+    "when": "02 Jul"
+   },
+   {
+    "id": "D-011",
+    "title": "Structural design package — portal & girders",
+    "state": "Accepted",
+    "when": "12 Mar · N. Bensaïd"
+   },
+   {
+    "id": "D-012",
+    "title": "Piling & foundation calculation note",
+    "state": "Accepted",
+    "when": "20 Mar · Bureau de contrôle"
+   },
+   {
+    "id": "D-015",
+    "title": "Foundations as-built drawings",
+    "state": "Accepted",
+    "when": "18 Sep · N. Bensaïd"
+   }
+  ],
+  "invoices": [
+   {
+    "no": "F-2026-101",
+    "name": "M1 Permits",
+    "amt": "€540k",
+    "status": "Paid",
+    "due": "Settled"
+   },
+   {
+    "no": "F-2026-102",
+    "name": "M2 Foundations",
+    "amt": "€1.08M",
+    "status": "Paid",
+    "due": "Settled"
+   },
+   {
+    "no": "F-2026-103",
+    "name": "M3 Structure",
+    "amt": "€1.35M",
+    "status": "Invoiced",
+    "due": "Due 15 Oct"
+   },
+   {
+    "no": "F-2026-104",
+    "name": "M4 Cranes operational",
+    "amt": "€1.08M",
+    "status": "Planned",
+    "due": "On milestone"
+   },
+   {
+    "no": "F-2026-105",
+    "name": "M5 Handover",
+    "amt": "€1.35M",
+    "status": "Planned",
+    "due": "On milestone"
+   }
+  ],
+  "invKpis": [
+   [
+    "Contract value",
+    "€5.40M"
+   ],
+   [
+    "Invoiced",
+    "€2.97M"
+   ],
+   [
+    "Paid",
+    "€1.62M"
+   ],
+   [
+    "Approved changes",
+    "+€200k"
+   ]
+  ],
+  "issues": [
+   {
+    "id": "CI-04",
+    "title": "Night-time noise near quay 3 during pile driving",
+    "when": "Raised 12 Aug",
+    "status": "Closed",
+    "resp": "Noise barrier + shifted window 06:00–20:00"
+   },
+   {
+    "id": "CI-06",
+    "title": "Access to berth 5 blocked by material laydown",
+    "when": "Raised 14 Sep",
+    "status": "In progress",
+    "resp": "Laydown relocated by 30 Sep · traffic plan updated"
+   },
+   {
+    "id": "CI-07",
+    "title": "Request for weekly photo report",
+    "when": "Raised 22 Sep",
+    "status": "Open",
+    "resp": "To be added to monthly report cycle from October"
+   }
+  ],
+  "docs": [
+   {
+    "id": "PID-HLT-026",
+    "title": "P&ID",
+    "rev": "D",
+    "status": "Released",
+    "ack": false
+   },
+   {
+    "id": "GA-HLT-026",
+    "title": "General arrangement",
+    "rev": "C",
+    "status": "Released",
+    "ack": true
+   },
+   {
+    "id": "MAN-HLT-015",
+    "title": "Foundations as-built drawings",
+    "rev": "A",
+    "status": "Released",
+    "ack": true
+   },
+   {
+    "id": "COC-HLT-012",
+    "title": "Certificate of conformity — 11 kV switchgear",
+    "rev": "A",
+    "status": "Released",
+    "ack": true
+   },
+   {
+    "id": "HSE-HLT-002",
+    "title": "Prevention plan — Le Havre port",
+    "rev": "B",
+    "status": "Released",
+    "ack": true
+   },
+   {
+    "id": "PV-HLT-001",
+    "title": "Foundations acceptance minutes",
+    "rev": "A",
+    "status": "Released",
+    "ack": true
+   },
+   {
+    "id": "MIN-HLT-023",
+    "title": "Weekly meeting minutes #23",
+    "rev": "A",
+    "status": "Released",
+    "ack": true
+   }
+  ]
+ },
+ "eng": {
+  "kpis": [
+   {
+    "label": "Blocking inconsistencies",
+    "value": 4,
+    "sub": "block the gate «Plans & BOM frozen»"
+   },
+   {
+    "label": "Outdated inputs",
+    "value": 4,
+    "sub": "across the 4 disciplines"
+   },
+   {
+    "label": "Deliverables released",
+    "value": "5 / 13",
+    "sub": "0 awaiting PM validation"
+   },
+   {
+    "label": "Outputs ready",
+    "value": "2 / 6",
+    "sub": "2 blocked by inconsistencies"
+   }
+  ],
+  "from": [
+   {
+    "label": "Client"
+   },
+   {
+    "label": "Process"
+   },
+   {
+    "label": "Mechanical"
+   },
+   {
+    "label": "Electrical"
+   },
+   {
+    "label": "Automation"
+   }
+  ],
+  "matrix": [
+   {
+    "label": "Process",
+    "cells": [
+     [
+      [
+       "BOD-CLI",
+       "rev 2"
+      ]
+     ],
+     [],
+     [
+      [
+       "GA",
+       "rev C"
+      ]
+     ],
+     [],
+     []
+    ]
+   },
+   {
+    "label": "Mechanical",
+    "cells": [
+     [
+      [
+       "BOD-CLI",
+       "rev 2"
+      ]
+     ],
+     [
+      [
+       "PID",
+       "rev D"
+      ],
+      [
+       "LST-INS",
+       "rev D"
+      ]
+     ],
+     [],
+     [],
+     []
+    ]
+   },
+   {
+    "label": "Electrical",
+    "cells": [
+     [],
+     [
+      [
+       "PID",
+       "rev C → D"
+      ],
+      [
+       "LST-INS",
+       "rev C → D"
+      ]
+     ],
+     [
+      [
+       "LST-MOT",
+       "rev B"
+      ],
+      [
+       "GA",
+       "rev C"
+      ]
+     ],
+     [],
+     []
+    ]
+   },
+   {
+    "label": "Automation",
+    "cells": [
+     [],
+     [
+      [
+       "PID",
+       "rev C → D"
+      ]
+     ],
+     [],
+     [
+      [
+       "LST-IO",
+       "rev B → A"
+      ]
+     ],
+     []
+    ]
+   },
+   {
+    "label": "Purchasing",
+    "cells": [
+     [],
+     [
+      [
+       "LST-INS",
+       "rev D"
+      ]
+     ],
+     [
+      [
+       "BOM-MEC",
+       "Frozen"
+      ]
+     ],
+     [
+      [
+       "BOM-ELE",
+       "Draft"
+      ]
+     ],
+     []
+    ]
+   },
+   {
+    "label": "Site",
+    "cells": [
+     [],
+     [],
+     [
+      [
+       "GA",
+       "rev C"
+      ]
+     ],
+     [
+      [
+       "SCH-ELE",
+       "Draft"
+      ],
+      [
+       "LST-CAB",
+       "Draft"
+      ]
+     ],
+     []
+    ]
+   },
+   {
+    "label": "Client",
+    "cells": [
+     [],
+     [
+      [
+       "PID",
+       "rev D"
+      ]
+     ],
+     [],
+     [],
+     [
+      [
+       "FDS",
+       "Frozen"
+      ],
+      [
+       "HMI",
+       "Draft"
+      ]
+     ]
+    ]
+   }
+  ],
+  "discCards": [
+   {
+    "label": "Process",
+    "lead": "Pauline Noguès",
+    "tools": "AutoCAD P&ID",
+    "pct": "100%",
+    "relText": "3 / 3 released",
+    "openText": "1 open · 0 blocking"
+   },
+   {
+    "label": "Mechanical",
+    "lead": "Julien Wagner",
+    "tools": "SolidWorks 3DX",
+    "pct": "67%",
+    "relText": "2 / 3 released",
+    "openText": "1 open · 0 blocking"
+   },
+   {
+    "label": "Electrical",
+    "lead": "Sami Haddad",
+    "tools": "SeeElectrical",
+    "pct": "0%",
+    "relText": "0 / 4 released",
+    "openText": "4 open · 2 blocking"
+   },
+   {
+    "label": "Automation",
+    "lead": "Claire Morvan",
+    "tools": "TIA Portal · EcoStruxure",
+    "pct": "0%",
+    "relText": "0 / 3 released",
+    "openText": "3 open · 2 blocking"
+   }
+  ],
+  "gate": [
+   {
+    "id": "C-01",
+    "title": "3 tags of P&ID rev D missing from electrical schematics",
+    "ruleLabel": "Process ↔ Electrical",
+    "lead": "Sami Haddad",
+    "status": "Open"
+   },
+   {
+    "id": "C-02",
+    "title": "3 tags of P&ID rev D missing from PLC variable table",
+    "ruleLabel": "Process ↔ Automation",
+    "lead": "Claire Morvan",
+    "status": "Open"
+   },
+   {
+    "id": "C-03",
+    "title": "M-310 hoist motor: 160 kW in motor list, 132 kW in schematics",
+    "ruleLabel": "Mechanical ↔ Electrical",
+    "lead": "Sami Haddad",
+    "status": "Open"
+   },
+   {
+    "id": "C-04",
+    "title": "DI 4.3 (ZS-310) in I/O list without PLC variable",
+    "ruleLabel": "Electrical ↔ Automation",
+    "lead": "Claire Morvan",
+    "status": "Open"
+   }
+  ],
+  "gateText": "Blocked by 4 blocking inconsistencies",
+  "changes": [
+   {
+    "date": "26 Sep",
+    "text": "P&ID rev D released · +3 tags (LSL-201, XV-112, TT-201)",
+    "impact": "Electrical · Automation"
+   },
+   {
+    "date": "24 Sep",
+    "text": "PLC variable table rev A imported · 2 mismatches vs I/O list",
+    "impact": "Electrical"
+   },
+   {
+    "date": "22 Sep",
+    "text": "Mechanical BOM rev D frozen · 148 articles",
+    "impact": "Purchasing"
+   },
+   {
+    "date": "18 Sep",
+    "text": "Motor list rev B · M-310 160 kW confirmed",
+    "impact": "Electrical"
+   }
+  ],
+  "disciplines": {
+   "process": {
+    "kpis": [
+     {
+      "label": "Inputs up to date",
+      "value": "2 / 2",
+      "sub": "0 to confirm"
+     },
+     {
+      "label": "Deliverables released",
+      "value": "3 / 3",
+      "sub": "0 frozen"
+     },
+     {
+      "label": "Open inconsistencies",
+      "value": 1,
+      "sub": "0 blocking"
+     },
+     {
+      "label": "Outputs ready",
+      "value": "1 / 1",
+      "sub": "0 blocked"
+     }
+    ],
+    "inputs": [
+     {
+      "doc": "BOD-CLI-026",
+      "title": "Client basis of design",
+      "from": "Client",
+      "revText": "rev 2",
+      "latestText": "rev 2",
+      "state": "Up to date",
+      "canConfirm": false,
+      "canImport": false
+     },
+     {
+      "doc": "GA-HLT-026",
+      "title": "General arrangement",
+      "from": "Mechanical",
+      "revText": "rev C",
+      "latestText": "rev C",
+      "state": "Up to date",
+      "canConfirm": false,
+      "canImport": false
+     }
+    ],
+    "docs": [
+     {
+      "id": "PFD-HLT-026",
+      "title": "Process flow diagram",
+      "rev": "B",
+      "status": "Released",
+      "toText": "Mechanical",
+      "canFreeze": false,
+      "canPropose": false,
+      "proposeBlocked": false,
+      "blockedText": "0 blocking",
+      "canValidate": false
+     },
+     {
+      "id": "PID-HLT-026",
+      "title": "P&ID",
+      "rev": "D",
+      "status": "Released",
+      "toText": "Mechanical · Electrical · Automation · Client",
+      "canFreeze": false,
+      "canPropose": false,
+      "proposeBlocked": false,
+      "blockedText": "0 blocking",
+      "canValidate": false
+     },
+     {
+      "id": "LST-INS-026",
+      "title": "Instrument list",
+      "rev": "D",
+      "status": "Released",
+      "toText": "Electrical · Automation · Purchasing",
+      "canFreeze": false,
+      "canPropose": false,
+      "proposeBlocked": false,
+      "blockedText": "0 blocking",
+      "canValidate": false
+     }
+    ],
+    "outputs": [
+     {
+      "id": "O-01",
+      "name": "Instrument list",
+      "toText": "Electrical · Automation",
+      "source": "P&ID tags · 27 tags rev D",
+      "state": "Ready",
+      "stateText": "Ready",
+      "canGen": true
+     }
+    ],
+    "checks": [
+     {
+      "id": "C-01",
+      "title": "3 tags of P&ID rev D missing from electrical schematics",
+      "detail": "LSL-201, XV-112, TT-201 added in rev D · schematics rev B built on rev C",
+      "ruleLabel": "Process ↔ Electrical",
+      "ownerLabel": "Electrical",
+      "lead": "Sami Haddad",
+      "sevLabel": "Blocking",
+      "status": "Open",
+      "canAct": true
+     },
+     {
+      "id": "C-02",
+      "title": "3 tags of P&ID rev D missing from PLC variable table",
+      "detail": "LSL-201, XV-112, TT-201 · no variable in TIA export of 24 Sep",
+      "ruleLabel": "Process ↔ Automation",
+      "ownerLabel": "Automation",
+      "lead": "Claire Morvan",
+      "sevLabel": "Blocking",
+      "status": "Open",
+      "canAct": true
+     },
+     {
+      "id": "C-06",
+      "title": "XV-111 wired to the PLC without state feedback",
+      "detail": "No ZSO/ZSC on P&ID rev D · add position switches or declare not required",
+      "ruleLabel": "Process ↔ Automation",
+      "ownerLabel": "Process",
+      "lead": "Pauline Noguès",
+      "sevLabel": "Warning",
+      "status": "In progress",
+      "canAct": true
+     },
+     {
+      "id": "C-07",
+      "title": "HST-BRK-160 hoist brake in mechanical BOM without P&ID tag",
+      "detail": "BOM-MEC-026 rev D · confirm it is a sub-component of M-310",
+      "ruleLabel": "Process ↔ Mechanical",
+      "ownerLabel": "Mechanical",
+      "lead": "Julien Wagner",
+      "sevLabel": "Info",
+      "status": "Open",
+      "canAct": true
+     },
+     {
+      "id": "C-10",
+      "title": "LT-201 range 0–6 m in instrument list, 0–5 m in schematics",
+      "detail": "Aligned on 0–6 m in SCH-ELE-026 rev B",
+      "ruleLabel": "Process ↔ Electrical",
+      "ownerLabel": "Electrical",
+      "lead": "Sami Haddad",
+      "sevLabel": "Blocking",
+      "status": "Resolved",
+      "canAct": false
+     }
+    ],
+    "chips": [
+     [
+      "All",
+      5
+     ],
+     [
+      "Open",
+      4
+     ],
+     [
+      "Resolved",
+      1
+     ]
+    ]
+   },
+   "meca": {
+    "kpis": [
+     {
+      "label": "Inputs up to date",
+      "value": "3 / 3",
+      "sub": "2 to confirm"
+     },
+     {
+      "label": "Deliverables released",
+      "value": "2 / 3",
+      "sub": "1 frozen"
+     },
+     {
+      "label": "Open inconsistencies",
+      "value": 1,
+      "sub": "0 blocking"
+     },
+     {
+      "label": "Outputs ready",
+      "value": "1 / 2",
+      "sub": "0 blocked"
+     }
+    ],
+    "inputs": [
+     {
+      "doc": "PID-HLT-026",
+      "title": "P&ID",
+      "from": "Process",
+      "revText": "rev D",
+      "latestText": "rev D",
+      "state": "To confirm",
+      "canConfirm": true,
+      "canImport": false
+     },
+     {
+      "doc": "LST-INS-026",
+      "title": "Instrument list",
+      "from": "Process",
+      "revText": "rev D",
+      "latestText": "rev D",
+      "state": "To confirm",
+      "canConfirm": true,
+      "canImport": false
+     },
+     {
+      "doc": "BOD-CLI-026",
+      "title": "Client basis of design",
+      "from": "Client",
+      "revText": "rev 2",
+      "latestText": "rev 2",
+      "state": "Up to date",
+      "canConfirm": false,
+      "canImport": false
+     }
+    ],
+    "docs": [
+     {
+      "id": "GA-HLT-026",
+      "title": "General arrangement",
+      "rev": "C",
+      "status": "Released",
+      "toText": "Process · Electrical · Site",
+      "canFreeze": false,
+      "canPropose": false,
+      "proposeBlocked": false,
+      "blockedText": "0 blocking",
+      "canValidate": false
+     },
+     {
+      "id": "BOM-MEC-026",
+      "title": "Mechanical BOM",
+      "rev": "D",
+      "status": "Frozen",
+      "toText": "Purchasing",
+      "canFreeze": false,
+      "canPropose": true,
+      "proposeBlocked": false,
+      "blockedText": "0 blocking",
+      "canValidate": false
+     },
+     {
+      "id": "LST-MOT-026",
+      "title": "Motor list",
+      "rev": "B",
+      "status": "Released",
+      "toText": "Electrical",
+      "canFreeze": false,
+      "canPropose": false,
+      "proposeBlocked": false,
+      "blockedText": "0 blocking",
+      "canValidate": false
+     }
+    ],
+    "outputs": [
+     {
+      "id": "O-02",
+      "name": "Motor list",
+      "toText": "Electrical",
+      "source": "Mechanical BOM · motors & drives",
+      "state": "Ready",
+      "stateText": "Ready",
+      "canGen": true
+     },
+     {
+      "id": "O-04",
+      "name": "Purchasing BOM",
+      "toText": "Purchasing",
+      "source": "Mechanical + electrical BOM · frozen articles only",
+      "state": "Partial",
+      "stateText": "Partial",
+      "canGen": true
+     }
+    ],
+    "checks": [
+     {
+      "id": "C-03",
+      "title": "M-310 hoist motor: 160 kW in motor list, 132 kW in schematics",
+      "detail": "LST-MOT-026 rev B vs SCH-ELE-026 rev B · cable and protection sizing affected",
+      "ruleLabel": "Mechanical ↔ Electrical",
+      "ownerLabel": "Electrical",
+      "lead": "Sami Haddad",
+      "sevLabel": "Blocking",
+      "status": "Open",
+      "canAct": true
+     },
+     {
+      "id": "C-07",
+      "title": "HST-BRK-160 hoist brake in mechanical BOM without P&ID tag",
+      "detail": "BOM-MEC-026 rev D · confirm it is a sub-component of M-310",
+      "ruleLabel": "Process ↔ Mechanical",
+      "ownerLabel": "Mechanical",
+      "lead": "Julien Wagner",
+      "sevLabel": "Info",
+      "status": "Open",
+      "canAct": true
+     }
+    ],
+    "chips": [
+     [
+      "All",
+      2
+     ],
+     [
+      "Open",
+      2
+     ]
+    ]
+   },
+   "elec": {
+    "kpis": [
+     {
+      "label": "Inputs up to date",
+      "value": "2 / 4",
+      "sub": "0 to confirm"
+     },
+     {
+      "label": "Deliverables released",
+      "value": "0 / 4",
+      "sub": "1 frozen"
+     },
+     {
+      "label": "Open inconsistencies",
+      "value": 4,
+      "sub": "2 blocking"
+     },
+     {
+      "label": "Outputs ready",
+      "value": "0 / 2",
+      "sub": "2 blocked"
+     }
+    ],
+    "inputs": [
+     {
+      "doc": "PID-HLT-026",
+      "title": "P&ID",
+      "from": "Process",
+      "revText": "rev C",
+      "latestText": "rev D",
+      "state": "Outdated",
+      "canConfirm": false,
+      "canImport": true
+     },
+     {
+      "doc": "LST-INS-026",
+      "title": "Instrument list",
+      "from": "Process",
+      "revText": "rev C",
+      "latestText": "rev D",
+      "state": "Outdated",
+      "canConfirm": false,
+      "canImport": true
+     },
+     {
+      "doc": "LST-MOT-026",
+      "title": "Motor list",
+      "from": "Mechanical",
+      "revText": "rev B",
+      "latestText": "rev B",
+      "state": "Up to date",
+      "canConfirm": false,
+      "canImport": false
+     },
+     {
+      "doc": "GA-HLT-026",
+      "title": "General arrangement",
+      "from": "Mechanical",
+      "revText": "rev C",
+      "latestText": "rev C",
+      "state": "Up to date",
+      "canConfirm": false,
+      "canImport": false
+     }
+    ],
+    "docs": [
+     {
+      "id": "SCH-ELE-026",
+      "title": "Electrical schematics",
+      "rev": "B",
+      "status": "Draft",
+      "toText": "Automation · Site",
+      "canFreeze": true,
+      "canPropose": false,
+      "proposeBlocked": false,
+      "blockedText": "2 blocking",
+      "canValidate": false
+     },
+     {
+      "id": "BOM-ELE-026",
+      "title": "Electrical BOM",
+      "rev": "B",
+      "status": "Draft",
+      "toText": "Purchasing",
+      "canFreeze": true,
+      "canPropose": false,
+      "proposeBlocked": false,
+      "blockedText": "2 blocking",
+      "canValidate": false
+     },
+     {
+      "id": "LST-IO-026",
+      "title": "I/O list",
+      "rev": "B",
+      "status": "Frozen",
+      "toText": "Automation",
+      "canFreeze": false,
+      "canPropose": false,
+      "proposeBlocked": true,
+      "blockedText": "2 blocking",
+      "canValidate": false
+     },
+     {
+      "id": "LST-CAB-026",
+      "title": "Cable list",
+      "rev": "A",
+      "status": "Draft",
+      "toText": "Site",
+      "canFreeze": true,
+      "canPropose": false,
+      "proposeBlocked": false,
+      "blockedText": "2 blocking",
+      "canValidate": false
+     }
+    ],
+    "outputs": [
+     {
+      "id": "O-03",
+      "name": "I/O list",
+      "toText": "Automation",
+      "source": "Schematics device list · signals",
+      "state": "Blocked",
+      "stateText": "Blocked · 2 blocking",
+      "canGen": false
+     },
+     {
+      "id": "O-05",
+      "name": "Cable list",
+      "toText": "Site",
+      "source": "Schematics · cables & routes",
+      "state": "Blocked",
+      "stateText": "Blocked · 2 blocking",
+      "canGen": false
+     }
+    ],
+    "checks": [
+     {
+      "id": "C-01",
+      "title": "3 tags of P&ID rev D missing from electrical schematics",
+      "detail": "LSL-201, XV-112, TT-201 added in rev D · schematics rev B built on rev C",
+      "ruleLabel": "Process ↔ Electrical",
+      "ownerLabel": "Electrical",
+      "lead": "Sami Haddad",
+      "sevLabel": "Blocking",
+      "status": "Open",
+      "canAct": true
+     },
+     {
+      "id": "C-03",
+      "title": "M-310 hoist motor: 160 kW in motor list, 132 kW in schematics",
+      "detail": "LST-MOT-026 rev B vs SCH-ELE-026 rev B · cable and protection sizing affected",
+      "ruleLabel": "Mechanical ↔ Electrical",
+      "ownerLabel": "Electrical",
+      "lead": "Sami Haddad",
+      "sevLabel": "Blocking",
+      "status": "Open",
+      "canAct": true
+     },
+     {
+      "id": "C-04",
+      "title": "DI 4.3 (ZS-310) in I/O list without PLC variable",
+      "detail": "LST-IO-026 rev B vs VAR-PLC-026 rev A",
+      "ruleLabel": "Electrical ↔ Automation",
+      "ownerLabel": "Automation",
+      "lead": "Claire Morvan",
+      "sevLabel": "Blocking",
+      "status": "Open",
+      "canAct": true
+     },
+     {
+      "id": "C-05",
+      "title": "Variable FT110_Flow (AI) in PLC table without I/O in schematics",
+      "detail": "VAR-PLC-026 rev A · check FT-110 wiring or remove the variable",
+      "ruleLabel": "Electrical ↔ Automation",
+      "ownerLabel": "Electrical",
+      "lead": "Sami Haddad",
+      "sevLabel": "Warning",
+      "status": "Open",
+      "canAct": true
+     },
+     {
+      "id": "C-08",
+      "title": "Electrical schematics rev B based on P&ID rev C — rev D released 26 Sep",
+      "detail": "Re-import instrument list rev D and confirm consumption",
+      "ruleLabel": "Revision alignment",
+      "ownerLabel": "Electrical",
+      "lead": "Sami Haddad",
+      "sevLabel": "Warning",
+      "status": "Open",
+      "canAct": true
+     },
+     {
+      "id": "C-10",
+      "title": "LT-201 range 0–6 m in instrument list, 0–5 m in schematics",
+      "detail": "Aligned on 0–6 m in SCH-ELE-026 rev B",
+      "ruleLabel": "Process ↔ Electrical",
+      "ownerLabel": "Electrical",
+      "lead": "Sami Haddad",
+      "sevLabel": "Blocking",
+      "status": "Resolved",
+      "canAct": false
+     }
+    ],
+    "chips": [
+     [
+      "All",
+      6
+     ],
+     [
+      "Open",
+      5
+     ],
+     [
+      "Resolved",
+      1
+     ]
+    ]
+   },
+   "auto": {
+    "kpis": [
+     {
+      "label": "Inputs up to date",
+      "value": "1 / 3",
+      "sub": "0 to confirm"
+     },
+     {
+      "label": "Deliverables released",
+      "value": "0 / 3",
+      "sub": "1 frozen"
+     },
+     {
+      "label": "Open inconsistencies",
+      "value": 3,
+      "sub": "2 blocking"
+     },
+     {
+      "label": "Outputs ready",
+      "value": "0 / 1",
+      "sub": "0 blocked"
+     }
+    ],
+    "inputs": [
+     {
+      "doc": "PID-HLT-026",
+      "title": "P&ID",
+      "from": "Process",
+      "revText": "rev C",
+      "latestText": "rev D",
+      "state": "Outdated",
+      "canConfirm": false,
+      "canImport": true
+     },
+     {
+      "doc": "LST-IO-026",
+      "title": "I/O list",
+      "from": "Electrical",
+      "revText": "rev B",
+      "latestText": "rev A",
+      "state": "Outdated",
+      "canConfirm": false,
+      "canImport": true
+     },
+     {
+      "doc": "FDS-HLT-026",
+      "title": "Functional design specification",
+      "from": "Automation",
+      "revText": "rev A",
+      "latestText": "rev A",
+      "state": "Up to date",
+      "canConfirm": false,
+      "canImport": false
+     }
+    ],
+    "docs": [
+     {
+      "id": "FDS-HLT-026",
+      "title": "Functional design specification",
+      "rev": "A",
+      "status": "Frozen",
+      "toText": "Client · Electrical",
+      "canFreeze": false,
+      "canPropose": false,
+      "proposeBlocked": true,
+      "blockedText": "2 blocking",
+      "canValidate": false
+     },
+     {
+      "id": "VAR-PLC-026",
+      "title": "PLC variable table (TIA export)",
+      "rev": "A",
+      "status": "Draft",
+      "toText": "Electrical",
+      "canFreeze": true,
+      "canPropose": false,
+      "proposeBlocked": false,
+      "blockedText": "2 blocking",
+      "canValidate": false
+     },
+     {
+      "id": "HMI-HLT-026",
+      "title": "HMI specification",
+      "rev": "A",
+      "status": "Draft",
+      "toText": "Client",
+      "canFreeze": true,
+      "canPropose": false,
+      "proposeBlocked": false,
+      "blockedText": "2 blocking",
+      "canValidate": false
+     }
+    ],
+    "outputs": [
+     {
+      "id": "O-06",
+      "name": "BPE dossier index",
+      "toText": "Site · Client",
+      "source": "All released documents · rev & date",
+      "state": "Stale",
+      "stateText": "Stale",
+      "canGen": true
+     }
+    ],
+    "checks": [
+     {
+      "id": "C-02",
+      "title": "3 tags of P&ID rev D missing from PLC variable table",
+      "detail": "LSL-201, XV-112, TT-201 · no variable in TIA export of 24 Sep",
+      "ruleLabel": "Process ↔ Automation",
+      "ownerLabel": "Automation",
+      "lead": "Claire Morvan",
+      "sevLabel": "Blocking",
+      "status": "Open",
+      "canAct": true
+     },
+     {
+      "id": "C-04",
+      "title": "DI 4.3 (ZS-310) in I/O list without PLC variable",
+      "detail": "LST-IO-026 rev B vs VAR-PLC-026 rev A",
+      "ruleLabel": "Electrical ↔ Automation",
+      "ownerLabel": "Automation",
+      "lead": "Claire Morvan",
+      "sevLabel": "Blocking",
+      "status": "Open",
+      "canAct": true
+     },
+     {
+      "id": "C-05",
+      "title": "Variable FT110_Flow (AI) in PLC table without I/O in schematics",
+      "detail": "VAR-PLC-026 rev A · check FT-110 wiring or remove the variable",
+      "ruleLabel": "Electrical ↔ Automation",
+      "ownerLabel": "Electrical",
+      "lead": "Sami Haddad",
+      "sevLabel": "Warning",
+      "status": "Open",
+      "canAct": true
+     },
+     {
+      "id": "C-06",
+      "title": "XV-111 wired to the PLC without state feedback",
+      "detail": "No ZSO/ZSC on P&ID rev D · add position switches or declare not required",
+      "ruleLabel": "Process ↔ Automation",
+      "ownerLabel": "Process",
+      "lead": "Pauline Noguès",
+      "sevLabel": "Warning",
+      "status": "In progress",
+      "canAct": true
+     },
+     {
+      "id": "C-09",
+      "title": "PLC variable table rev A based on P&ID rev C — rev D released 26 Sep",
+      "detail": "Re-import instrument list rev D and confirm consumption",
+      "ruleLabel": "Revision alignment",
+      "ownerLabel": "Automation",
+      "lead": "Claire Morvan",
+      "sevLabel": "Warning",
+      "status": "Open",
+      "canAct": true
+     }
+    ],
+    "chips": [
+     [
+      "All",
+      5
+     ],
+     [
+      "Open",
+      5
+     ]
+    ]
+   }
+  }
+ },
+ "pid": {
+  "kpis": [
+   {
+    "label": "P&ID",
+    "value": "PID-HLT-026 rev C",
+    "sub": "4 sheets · Under review · 12 Sep 2026"
+   },
+   {
+    "label": "Tags in our scope",
+    "value": 22,
+    "sub": "5 overlay · 2 client-supplied"
+   },
+   {
+    "label": "Linked to a BOM reference",
+    "value": "59%",
+    "sub": "13 / 22 tags"
+   },
+   {
+    "label": "Unmapped tags",
+    "value": 6,
+    "sub": "Blocks release for construction"
+   },
+   {
+    "label": "Reference issues",
+    "value": 3,
+    "sub": "Not in BOM · outdated · not validated"
+   }
+  ],
+  "chips": [
+   [
+    "All",
+    24
+   ],
+   [
+    "Linked",
+    13
+   ],
+   [
+    "Unmapped",
+    6
+   ],
+   [
+    "Part not validated",
+    2
+   ],
+   [
+    "Part outdated",
+    1
+   ],
+   [
+    "Client",
+    2
+   ]
+  ],
+  "steps": [
+   {
+    "label": "Tags extracted from P&ID rev C",
+    "who": "P. Noguès",
+    "date": "12 Sep",
+    "state": "Done"
+   },
+   {
+    "label": "Tag ↔ BOM reference mapping",
+    "who": "A. Girard",
+    "date": "—",
+    "state": "In progress"
+   },
+   {
+    "label": "Overlay scope agreed with client",
+    "who": "R. Aubert · N. Bensaïd",
+    "date": "—",
+    "state": "To do"
+   },
+   {
+    "label": "Process validation review (HAZOP light)",
+    "who": "Quality · Engineering",
+    "date": "—",
+    "state": "To do"
+   },
+   {
+    "label": "P&ID released for construction (rev D)",
+    "who": "A. Girard",
+    "date": "—",
+    "state": "To do"
+   }
+  ],
+  "rows": [
+   {
+    "tag": "LT-101",
+    "desc": "Level transmitter — RM tank T-101",
+    "kind": "Instrument",
+    "scope": "Overlay",
+    "refText": "EL-PLC-S7",
+    "partName": "Safety PLC",
+    "status": "Linked",
+    "actText": "A1410 · HV connection & switchgear",
+    "plcText": "Process PLC",
+    "fbText": "—",
+    "fbWarn": false
+   },
+   {
+    "tag": "LSH-101",
+    "desc": "Level switch high — RM tank T-101",
+    "kind": "Instrument",
+    "scope": "Overlay",
+    "refText": "CTL-WIND-SN",
+    "partName": "Anemometer · heated",
+    "status": "Part not validated",
+    "actText": "A1410 · HV connection & switchgear",
+    "plcText": "Safety PLC",
+    "fbText": "—",
+    "fbWarn": false
+   },
+   {
+    "tag": "TT-102",
+    "desc": "Temperature transmitter — RM tank T-101",
+    "kind": "Instrument",
+    "scope": "Overlay",
+    "refText": "—",
+    "partName": "",
+    "status": "Unmapped",
+    "actText": "A1410 · HV connection & switchgear",
+    "plcText": "Process PLC",
+    "fbText": "—",
+    "fbWarn": false
+   },
+   {
+    "tag": "T-101",
+    "desc": "Raw material tank 40 m³",
+    "kind": "Equipment",
+    "scope": "Client",
+    "refText": "—",
+    "partName": "Client scope — free issue",
+    "status": "Client",
+    "actText": "A1410 · HV connection & switchgear",
+    "plcText": "—",
+    "fbText": "—",
+    "fbWarn": false
+   },
+   {
+    "tag": "T-201",
+    "desc": "Finished product tank 25 m³",
+    "kind": "Equipment",
+    "scope": "Client",
+    "refText": "—",
+    "partName": "Client scope — free issue",
+    "status": "Client",
+    "actText": "A1420 · Lighting & power distribution",
+    "plcText": "—",
+    "fbText": "—",
+    "fbWarn": false
+   },
+   {
+    "tag": "LT-201",
+    "desc": "Level transmitter — FP tank T-201",
+    "kind": "Instrument",
+    "scope": "Overlay",
+    "refText": "EL-PLC-S7",
+    "partName": "Safety PLC",
+    "status": "Linked",
+    "actText": "A1420 · Lighting & power distribution",
+    "plcText": "Process PLC",
+    "fbText": "—",
+    "fbWarn": false
+   },
+   {
+    "tag": "PT-201",
+    "desc": "Pressure transmitter — FP line",
+    "kind": "Instrument",
+    "scope": "Overlay",
+    "refText": "—",
+    "partName": "",
+    "status": "Unmapped",
+    "actText": "A1420 · Lighting & power distribution",
+    "plcText": "Process PLC",
+    "fbText": "—",
+    "fbWarn": false
+   },
+   {
+    "tag": "P-110",
+    "desc": "Transfer pump RM → process",
+    "kind": "Equipment",
+    "scope": "Keystone",
+    "refText": "CR-MOT-15K",
+    "partName": "Travel motor 15 kW · geared",
+    "status": "Linked",
+    "actText": "A1410 · HV connection & switchgear",
+    "plcText": "Process PLC",
+    "fbText": "VFD-110 · Run status · FT-110 · Flow",
+    "fbWarn": false
+   },
+   {
+    "tag": "M-110",
+    "desc": "Motor 15 kW — pump P-110",
+    "kind": "Equipment",
+    "scope": "Keystone",
+    "refText": "CR-MOT-15K",
+    "partName": "Travel motor 15 kW · geared",
+    "status": "Linked",
+    "actText": "A1410 · HV connection & switchgear",
+    "plcText": "Process PLC",
+    "fbText": "Thermistor → VFD-110",
+    "fbWarn": false
+   },
+   {
+    "tag": "VFD-110",
+    "desc": "Frequency drive — P-110",
+    "kind": "Equipment",
+    "scope": "Keystone",
+    "refText": "EL-VFD-200",
+    "partName": "Frequency drive 200 kW",
+    "status": "Linked",
+    "actText": "A1420 · Lighting & power distribution",
+    "plcText": "Process PLC",
+    "fbText": "Status word (bus)",
+    "fbWarn": false
+   },
+   {
+    "tag": "FT-110",
+    "desc": "Flow meter — transfer line",
+    "kind": "Instrument",
+    "scope": "Keystone",
+    "refText": "—",
+    "partName": "",
+    "status": "Unmapped",
+    "actText": "A1410 · HV connection & switchgear",
+    "plcText": "Process PLC",
+    "fbText": "—",
+    "fbWarn": false
+   },
+   {
+    "tag": "XV-111",
+    "desc": "Automatic valve — transfer line",
+    "kind": "Instrument",
+    "scope": "Keystone",
+    "refText": "—",
+    "partName": "",
+    "status": "Unmapped",
+    "actText": "A1410 · HV connection & switchgear",
+    "plcText": "Process PLC",
+    "fbText": "Missing",
+    "fbWarn": true
+   },
+   {
+    "tag": "M-310",
+    "desc": "Hoist motor 160 kW",
+    "kind": "Equipment",
+    "scope": "Keystone",
+    "refText": "HST-MOT-160",
+    "partName": "Hoist motor 160 kW",
+    "status": "Linked",
+    "actText": "A1320 · Crane delivery & rigging",
+    "plcText": "Process PLC",
+    "fbText": "VFD-310 · Run status · ZS-310 · Upper limit",
+    "fbWarn": false
+   },
+   {
+    "tag": "VFD-310",
+    "desc": "Frequency drive — hoist",
+    "kind": "Equipment",
+    "scope": "Keystone",
+    "refText": "EL-VFD-200",
+    "partName": "Frequency drive 200 kW",
+    "status": "Linked",
+    "actText": "A1420 · Lighting & power distribution",
+    "plcText": "Process PLC",
+    "fbText": "Status word (bus)",
+    "fbWarn": false
+   },
+   {
+    "tag": "ZS-310",
+    "desc": "Limit switch — hoist upper",
+    "kind": "Instrument",
+    "scope": "Keystone",
+    "refText": "—",
+    "partName": "",
+    "status": "Unmapped",
+    "actText": "A1320 · Crane delivery & rigging",
+    "plcText": "Safety PLC",
+    "fbText": "—",
+    "fbWarn": false
+   },
+   {
+    "tag": "SIS-001",
+    "desc": "Safety PLC — E-stop loop",
+    "kind": "Equipment",
+    "scope": "Keystone",
+    "refText": "EL-PLC-S7",
+    "partName": "Safety PLC",
+    "status": "Linked",
+    "actText": "A1430 · Fire detection & suppression",
+    "plcText": "Process PLC",
+    "fbText": "Safety status word",
+    "fbWarn": false
+   },
+   {
+    "tag": "ESD-001",
+    "desc": "Emergency stop pushbuttons ×6",
+    "kind": "Instrument",
+    "scope": "Keystone",
+    "refText": "—",
+    "partName": "",
+    "status": "Unmapped",
+    "actText": "A1430 · Fire detection & suppression",
+    "plcText": "Safety PLC",
+    "fbText": "—",
+    "fbWarn": false
+   },
+   {
+    "tag": "WS-001",
+    "desc": "Anemometer — wind alarm",
+    "kind": "Instrument",
+    "scope": "Keystone",
+    "refText": "CTL-WIND-SN",
+    "partName": "Anemometer · heated",
+    "status": "Part not validated",
+    "actText": "A1430 · Fire detection & suppression",
+    "plcText": "Safety PLC",
+    "fbText": "—",
+    "fbWarn": false
+   },
+   {
+    "tag": "LIDAR-001",
+    "desc": "Anti-collision lidar ×4",
+    "kind": "Instrument",
+    "scope": "Keystone",
+    "refText": "CTL-ANT-COL",
+    "partName": "Anti-collision lidar",
+    "status": "Linked",
+    "actText": "A1430 · Fire detection & suppression",
+    "plcText": "Safety PLC",
+    "fbText": "—",
+    "fbWarn": false
+   },
+   {
+    "tag": "CAM-001",
+    "desc": "OCR camera ×6",
+    "kind": "Instrument",
+    "scope": "Keystone",
+    "refText": "CTL-CAM-OCR",
+    "partName": "OCR camera unit",
+    "status": "Linked",
+    "actText": "A1430 · Fire detection & suppression",
+    "plcText": "Local",
+    "fbText": "—",
+    "fbWarn": false
+   },
+   {
+    "tag": "HMI-001",
+    "desc": "Operator HMI 15″",
+    "kind": "Equipment",
+    "scope": "Keystone",
+    "refText": "EL-HMI-15",
+    "partName": "Operator HMI 15″",
+    "status": "Linked",
+    "actText": "A1430 · Fire detection & suppression",
+    "plcText": "Process PLC",
+    "fbText": "—",
+    "fbWarn": false
+   },
+   {
+    "tag": "FD-001",
+    "desc": "Smoke detectors ×2 — E-house",
+    "kind": "Instrument",
+    "scope": "Keystone",
+    "refText": "FD-DET-OPT",
+    "partName": "Optical smoke detector",
+    "status": "Part outdated",
+    "actText": "A1430 · Fire detection & suppression",
+    "plcText": "Safety PLC",
+    "fbText": "—",
+    "fbWarn": false
+   },
+   {
+    "tag": "SW-001",
+    "desc": "11 kV switchgear",
+    "kind": "Equipment",
+    "scope": "Keystone",
+    "refText": "EL-SWG-11KV",
+    "partName": "11 kV switchgear panel · 8-way",
+    "status": "Linked",
+    "actText": "A1410 · HV connection & switchgear",
+    "plcText": "Process PLC",
+    "fbText": "Position contacts",
+    "fbWarn": false
+   },
+   {
+    "tag": "TR-001",
+    "desc": "Transformer 2 MVA",
+    "kind": "Equipment",
+    "scope": "Keystone",
+    "refText": "EL-TRF-2MVA",
+    "partName": "Transformer 2 MVA · 11/0.4 kV",
+    "status": "Linked",
+    "actText": "A1410 · HV connection & switchgear",
+    "plcText": "Process PLC",
+    "fbText": "Temperature alarm · Buchholz",
+    "fbWarn": false
+   }
+  ],
+  "overlay": [
+   "LT-101",
+   "LSH-101",
+   "TT-102",
+   "T-101",
+   "T-201",
+   "LT-201",
+   "PT-201"
+  ],
+  "drawers": {
+   "LT-101": {
+    "meta": [
+     [
+      "Reference",
+      "EL-PLC-S7"
+     ],
+     [
+      "Part",
+      "Safety PLC"
+     ],
+     [
+      "Activity",
+      "A1410 · HV connection & switchgear"
+     ],
+     [
+      "PLC",
+      "Process PLC"
+     ],
+     [
+      "State feedback",
+      "—"
+     ],
+     [
+      "Sheet",
+      "PID-HLT-026 · sheet 1"
+     ],
+     [
+      "Scope",
+      "Overlay — Keystone sensor on client equipment"
+     ]
+    ],
+    "candidates": [
+     [
+      "EL-SWG-11KV",
+      "Validated"
+     ],
+     [
+      "EL-TRF-2MVA",
+      "Validated"
+     ],
+     [
+      "EL-CBL-XLPE",
+      "Validated"
+     ],
+     [
+      "LT-HB-200W",
+      "Validated"
+     ],
+     [
+      "FD-DET-OPT",
+      "Outdated"
+     ],
+     [
+      "FD-DAMP-FR",
+      "Validated"
+     ],
+     [
+      "FD-SPR-HD",
+      "Validated"
+     ],
+     [
+      "CR-MOT-15K",
+      "Validated"
+     ]
+    ],
+    "canMap": true,
+    "notInBom": false,
+    "fbWarn": false
+   },
+   "TT-102": {
+    "meta": [
+     [
+      "Reference",
+      "—"
+     ],
+     [
+      "Part",
+      "—"
+     ],
+     [
+      "Activity",
+      "A1410 · HV connection & switchgear"
+     ],
+     [
+      "PLC",
+      "Process PLC"
+     ],
+     [
+      "State feedback",
+      "—"
+     ],
+     [
+      "Sheet",
+      "PID-HLT-026 · sheet 3"
+     ],
+     [
+      "Scope",
+      "Overlay — Keystone sensor on client equipment"
+     ]
+    ],
+    "candidates": [
+     [
+      "EL-SWG-11KV",
+      "Validated"
+     ],
+     [
+      "EL-TRF-2MVA",
+      "Validated"
+     ],
+     [
+      "EL-CBL-XLPE",
+      "Validated"
+     ],
+     [
+      "LT-HB-200W",
+      "Validated"
+     ],
+     [
+      "FD-DET-OPT",
+      "Outdated"
+     ],
+     [
+      "FD-DAMP-FR",
+      "Validated"
+     ],
+     [
+      "FD-SPR-HD",
+      "Validated"
+     ],
+     [
+      "CR-MOT-15K",
+      "Validated"
+     ]
+    ],
+    "canMap": true,
+    "notInBom": false,
+    "fbWarn": false
+   },
+   "XV-111": {
+    "meta": [
+     [
+      "Reference",
+      "—"
+     ],
+     [
+      "Part",
+      "—"
+     ],
+     [
+      "Activity",
+      "A1410 · HV connection & switchgear"
+     ],
+     [
+      "PLC",
+      "Process PLC"
+     ],
+     [
+      "State feedback",
+      "Missing"
+     ],
+     [
+      "Sheet",
+      "PID-HLT-026 · sheet 4"
+     ],
+     [
+      "Scope",
+      "Keystone supply"
+     ]
+    ],
+    "candidates": [
+     [
+      "EL-SWG-11KV",
+      "Validated"
+     ],
+     [
+      "EL-TRF-2MVA",
+      "Validated"
+     ],
+     [
+      "EL-CBL-XLPE",
+      "Validated"
+     ],
+     [
+      "LT-HB-200W",
+      "Validated"
+     ],
+     [
+      "FD-DET-OPT",
+      "Outdated"
+     ],
+     [
+      "FD-DAMP-FR",
+      "Validated"
+     ],
+     [
+      "FD-SPR-HD",
+      "Validated"
+     ],
+     [
+      "CR-MOT-15K",
+      "Validated"
+     ]
+    ],
+    "canMap": true,
+    "notInBom": false,
+    "fbWarn": true
+   },
+   "FD-001": {
+    "meta": [
+     [
+      "Reference",
+      "FD-DET-OPT"
+     ],
+     [
+      "Part",
+      "Optical smoke detector"
+     ],
+     [
+      "Activity",
+      "A1430 · Fire detection & suppression"
+     ],
+     [
+      "PLC",
+      "Safety PLC"
+     ],
+     [
+      "State feedback",
+      "—"
+     ],
+     [
+      "Sheet",
+      "PID-HLT-026 · sheet 2"
+     ],
+     [
+      "Scope",
+      "Keystone supply"
+     ]
+    ],
+    "candidates": [
+     [
+      "EL-SWG-11KV",
+      "Validated"
+     ],
+     [
+      "EL-TRF-2MVA",
+      "Validated"
+     ],
+     [
+      "EL-CBL-XLPE",
+      "Validated"
+     ],
+     [
+      "LT-HB-200W",
+      "Validated"
+     ],
+     [
+      "FD-DET-OPT",
+      "Outdated"
+     ],
+     [
+      "FD-DAMP-FR",
+      "Validated"
+     ],
+     [
+      "FD-SPR-HD",
+      "Validated"
+     ],
+     [
+      "CR-MOT-15K",
+      "Validated"
+     ]
+    ],
+    "canMap": true,
+    "notInBom": false,
+    "fbWarn": false
+   },
+   "T-101": {
+    "meta": [
+     [
+      "Reference",
+      "—"
+     ],
+     [
+      "Part",
+      "Client scope — free issue"
+     ],
+     [
+      "Activity",
+      "A1410 · HV connection & switchgear"
+     ],
+     [
+      "PLC",
+      "—"
+     ],
+     [
+      "State feedback",
+      "—"
+     ],
+     [
+      "Sheet",
+      "PID-HLT-026 · sheet 4"
+     ],
+     [
+      "Scope",
+      "Client-supplied equipment (free issue)"
+     ]
+    ],
+    "candidates": [
+     [
+      "EQ-CRN-250T",
+      "Validated"
+     ],
+     [
+      "EL-SWG-11KV",
+      "Validated"
+     ],
+     [
+      "EL-TRF-2MVA",
+      "Validated"
+     ],
+     [
+      "EL-CBL-XLPE",
+      "Validated"
+     ],
+     [
+      "LT-HB-200W",
+      "Validated"
+     ],
+     [
+      "ASM-RMG-250",
+      "Validated"
+     ],
+     [
+      "ASM-STR-100",
+      "Validated"
+     ],
+     [
+      "ASM-GIR-200",
+      "Validated"
+     ]
+    ],
+    "canMap": false,
+    "notInBom": false,
+    "fbWarn": false
+   },
+   "P-110": {
+    "meta": [
+     [
+      "Reference",
+      "CR-MOT-15K"
+     ],
+     [
+      "Part",
+      "Travel motor 15 kW · geared"
+     ],
+     [
+      "Activity",
+      "A1410 · HV connection & switchgear"
+     ],
+     [
+      "PLC",
+      "Process PLC"
+     ],
+     [
+      "State feedback",
+      "VFD-110 · Run status · FT-110 · Flow"
+     ],
+     [
+      "Sheet",
+      "PID-HLT-026 · sheet 4"
+     ],
+     [
+      "Scope",
+      "Keystone supply"
+     ]
+    ],
+    "candidates": [
+     [
+      "EQ-CRN-250T",
+      "Validated"
+     ],
+     [
+      "EL-SWG-11KV",
+      "Validated"
+     ],
+     [
+      "EL-TRF-2MVA",
+      "Validated"
+     ],
+     [
+      "EL-CBL-XLPE",
+      "Validated"
+     ],
+     [
+      "LT-HB-200W",
+      "Validated"
+     ],
+     [
+      "ASM-RMG-250",
+      "Validated"
+     ],
+     [
+      "ASM-STR-100",
+      "Validated"
+     ],
+     [
+      "ASM-GIR-200",
+      "Validated"
+     ]
+    ],
+    "canMap": true,
+    "notInBom": false,
+    "fbWarn": false
+   }
+  }
+ },
+ "mtypes": {
+  "kpis": [
+   {
+    "label": "Machine types",
+    "value": 5,
+    "sub": "0 inactive · 0 custom"
+   },
+   {
+    "label": "Projects covered",
+    "value": "6 / 17",
+    "sub": "typed projects inherit the template at creation"
+   },
+   {
+    "label": "Planning templates",
+    "value": "5 / 5",
+    "sub": "phases, cost categories, calendar"
+   },
+   {
+    "label": "ITP systems",
+    "value": 17,
+    "sub": "inspection systems across types"
+   },
+   {
+    "label": "REX patterns",
+    "value": 5,
+    "sub": "deposit / delivery / acceptance"
+   }
+  ],
+  "list": [
+   {
+    "code": "EMP",
+    "label": "EMP",
+    "sub": "6 phases · 7 cost categories · 6 ITP systems",
+    "use": "1 project",
+    "stateText": "Active",
+    "custom": false
+   },
+   {
+    "code": "MEMU",
+    "label": "MEMU",
+    "sub": "6 phases · 6 cost categories · 5 ITP systems",
+    "use": "2 projects",
+    "stateText": "Active",
+    "custom": false
+   },
+   {
+    "code": "SPUR",
+    "label": "SPUR",
+    "sub": "6 phases · 5 cost categories · 4 ITP systems",
+    "use": "1 project",
+    "stateText": "Active",
+    "custom": false
+   },
+   {
+    "code": "AUTRE",
+    "label": "AUTRE",
+    "sub": "5 phases · 4 cost categories · 1 ITP systems",
+    "use": "1 project",
+    "stateText": "Active",
+    "custom": false
+   },
+   {
+    "code": "R&D",
+    "label": "R&D",
+    "sub": "5 phases · 3 cost categories · 1 ITP systems",
+    "use": "1 project",
+    "stateText": "Active",
+    "custom": false
+   }
+  ],
+  "types": {
+   "EMP": {
+    "code": "EMP",
+    "label": "EMP",
+    "desc": "Planning standard EMP : études, structure, montage mécanique, électricité & automatisme, essais, réception.",
+    "cal": "Standard 5d · 8h + Atelier",
+    "dep": "30",
+    "deliv": "60",
+    "acc": "10",
+    "termsSum": "100 %",
+    "catTotal": "€1.94M",
+    "phases": [
+     "Études & approvisionnements longs",
+     "Fabrication structure",
+     "Montage mécanique",
+     "Installation électrique & automatisme",
+     "Essais & mise en service",
+     "Réception & transfert"
+    ],
+    "cats": [
+     [
+      "Études",
+      "Labor",
+      "160"
+     ],
+     [
+      "Matière & structure",
+      "Material",
+      "560"
+     ],
+     [
+      "Composants achetés",
+      "Material",
+      "440"
+     ],
+     [
+      "Fabrication & montage",
+      "Labor",
+      "360"
+     ],
+     [
+      "Sous-traitance",
+      "Subcontract",
+      "200"
+     ],
+     [
+      "Installation & essais",
+      "Labor",
+      "160"
+     ],
+     [
+      "Frais & transport",
+      "Fees",
+      "60"
+     ]
+    ],
+    "itp": [
+     "Structure",
+     "Hoist mechanisms",
+     "Travel (gantry)",
+     "Electrical HV/LV",
+     "Automation & safety",
+     "Anti-collision"
+    ],
+    "refs": [
+     {
+      "name": "HAV001 · Terminal Ouest — Dunkerque · 2023"
+     },
+     {
+      "name": "ANT002 · Quai 7 — Antwerp · 2024"
+     }
+    ],
+    "projects": [
+     "#026 · Harbor Line Terminal Expansion"
+    ]
+   },
+   "MEMU": {
+    "code": "MEMU",
+    "label": "MEMU",
+    "desc": "Planning standard MEMU : études, approvisionnements, fabrication modules, assemblage & câblage, essais plateforme, installation.",
+    "cal": "Standard 5d · 8h",
+    "dep": "30",
+    "deliv": "60",
+    "acc": "10",
+    "termsSum": "100 %",
+    "catTotal": "€1.13M",
+    "phases": [
+     "Études",
+     "Approvisionnements",
+     "Fabrication modules",
+     "Assemblage & câblage",
+     "Essais plateforme",
+     "Installation site & réception"
+    ],
+    "cats": [
+     [
+      "Études",
+      "Labor",
+      "120"
+     ],
+     [
+      "Modules & composants",
+      "Material",
+      "420"
+     ],
+     [
+      "Assemblage",
+      "Labor",
+      "240"
+     ],
+     [
+      "Sous-traitance",
+      "Subcontract",
+      "140"
+     ],
+     [
+      "Installation & réception",
+      "Labor",
+      "140"
+     ],
+     [
+      "Frais & transport",
+      "Fees",
+      "70"
+     ]
+    ],
+    "itp": [
+     "Structure",
+     "Hoist",
+     "Travel",
+     "Electrical",
+     "Automation"
+    ],
+    "refs": [
+     {
+      "name": "CPL001 · Operating theatre block — Lille · 2024"
+     },
+     {
+      "name": "RTM001 · Tram depot — Marseille · 2022"
+     }
+    ],
+    "projects": [
+     "#019 · Clinique Pasteur Lyon Fit-out",
+     "#012 · Marseille Metro Signage Rollout"
+    ]
+   },
+   "SPUR": {
+    "code": "SPUR",
+    "label": "SPUR",
+    "desc": "Planning standard SPUR : études & permis, génie civil, structures, équipements électriques, raccordement, mise en service.",
+    "cal": "Chantier 6d · 10h",
+    "dep": "20",
+    "deliv": "70",
+    "acc": "10",
+    "termsSum": "100 %",
+    "catTotal": "€1.41M",
+    "phases": [
+     "Études & permis",
+     "Génie civil",
+     "Structures & supports",
+     "Équipements électriques",
+     "Raccordement & essais",
+     "Mise en service"
+    ],
+    "cats": [
+     [
+      "Études & permis",
+      "Labor",
+      "90"
+     ],
+     [
+      "Génie civil",
+      "Subcontract",
+      "270"
+     ],
+     [
+      "Structures",
+      "Material",
+      "450"
+     ],
+     [
+      "Équipements électriques",
+      "Material",
+      "420"
+     ],
+     [
+      "Installation & essais",
+      "Labor",
+      "180"
+     ]
+    ],
+    "itp": [
+     "Track",
+     "Switches",
+     "Signalling",
+     "Electrical"
+    ],
+    "refs": [
+     {
+      "name": "WFE000 · Solar park — Narbonne · 2023"
+     }
+    ],
+    "projects": [
+     "#044 · Westfield Solar Array"
+    ]
+   },
+   "AUTRE": {
+    "code": "AUTRE",
+    "label": "AUTRE",
+    "desc": "Cadrage, conception, réalisation, essais, livraison — pour les projets hors gammes machine.",
+    "cal": "Standard 5d · 8h",
+    "dep": "30",
+    "deliv": "60",
+    "acc": "10",
+    "termsSum": "100 %",
+    "catTotal": "€900k",
+    "phases": [
+     "Cadrage",
+     "Conception",
+     "Réalisation",
+     "Essais",
+     "Livraison"
+    ],
+    "cats": [
+     [
+      "Main-d’œuvre",
+      "Labor",
+      "400"
+     ],
+     [
+      "Matériel",
+      "Material",
+      "300"
+     ],
+     [
+      "Sous-traitance",
+      "Subcontract",
+      "150"
+     ],
+     [
+      "Frais",
+      "Fees",
+      "50"
+     ]
+    ],
+    "itp": [
+     "General"
+    ],
+    "refs": [
+     {
+      "name": "NGD000 · Server room — Nantes · 2024"
+     }
+    ],
+    "projects": [
+     "#031 · Northgate Data Center Retrofit"
+    ]
+   },
+   "R&D": {
+    "code": "R&D",
+    "label": "R&D",
+    "desc": "Exploration, prototype, essais & itérations, industrialisation, bilan — jalons de décision go / no-go.",
+    "cal": "Standard 5d · 8h",
+    "dep": "50",
+    "deliv": "50",
+    "acc": "0",
+    "termsSum": "100 %",
+    "catTotal": "€550k",
+    "phases": [
+     "Exploration",
+     "Prototype",
+     "Essais & itérations",
+     "Industrialisation",
+     "Bilan"
+    ],
+    "cats": [
+     [
+      "Personnel R&D",
+      "Labor",
+      "330"
+     ],
+     [
+      "Prototypes & essais",
+      "Material",
+      "150"
+     ],
+     [
+      "Partenaires & labos",
+      "Subcontract",
+      "70"
+     ]
+    ],
+    "itp": [
+     "Prototype"
+    ],
+    "refs": [
+     {
+      "name": "KEY009 · Client portal v1 · 2024"
+     }
+    ],
+    "projects": [
+     "#032 · ERP Migration — Phase 2"
+    ]
+   }
+  }
+ },
+ "settings": {
+  "kpis": [
+   {
+    "label": "Stock locations",
+    "value": 6,
+    "sub": "5 types in use"
+   },
+   {
+    "label": "Skill families",
+    "value": 10,
+    "sub": "Rated 1–5"
+   },
+   {
+    "label": "Cost categories",
+    "value": 6,
+    "sub": "Per-project overrides allowed"
+   },
+   {
+    "label": "Health rules",
+    "value": "0.97 / 0.9",
+    "sub": "At-risk / off-track thresholds"
+   },
+   {
+    "label": "Public holidays",
+    "value": 11,
+    "sub": "2026 · France"
+   }
+  ],
+  "healthText": "On track when CPI and SPI ≥ 0.97 · At risk below 0.97 · Off track below 0.9",
+  "cards": [
+   {
+    "key": "locations",
+    "title": "Stock locations & workshops",
+    "count": 6,
+    "items": [
+     [
+      "Entrepôt central — Lyon",
+      "Central warehouse"
+     ],
+     [
+      "Atelier mécanique — Lyon",
+      "Workshop"
+     ],
+     [
+      "Magasin chantier — Le Havre",
+      "Site store"
+     ],
+     [
+      "Magasin chantier — Marseille",
+      "Site store"
+     ],
+     [
+      "Consignation — Nordvolt",
+      "Consignment at supplier"
+     ],
+     [
+      "Zone quarantaine QC — Lyon",
+      "Quarantine (QC hold)"
+     ]
+    ]
+   },
+   {
+    "key": "skills",
+    "title": "Skills & levels",
+    "count": 10,
+    "items": [
+     "Structural",
+     "Electrical / HV",
+     "MEP",
+     "Automation & controls",
+     "Crane & lifting",
+     "Civil & site",
+     "Planning & cost control",
+     "Procurement",
+     "Quality / QA-QC",
+     "Software / IT"
+    ]
+   },
+   {
+    "key": "costCats",
+    "title": "Cost categories",
+    "count": 6,
+    "items": [
+     "Labor",
+     "Materials",
+     "Equipment",
+     "Subcontractors",
+     "Permits & fees",
+     "Contingency"
+    ]
+   },
+   {
+    "key": "statuses",
+    "title": "Project statuses",
+    "count": 13,
+    "items": [
+     "Initiative",
+     "APS",
+     "APD",
+     "Etudes",
+     "Approvisionnements",
+     "Fabrication & Assemblage",
+     "FAT",
+     "Expédition",
+     "Chantier",
+     "Mise Service & SAT",
+     "Garantie",
+     "Clos",
+     "Annulé"
+    ]
+   },
+   {
+    "key": "riskCats",
+    "title": "Risk categories",
+    "count": 7,
+    "items": [
+     "Technical",
+     "Supplier / delivery",
+     "HSE (safety)",
+     "Contractual / client",
+     "Financial / currency",
+     "Regulatory / permits",
+     "Resources / skills"
+    ]
+   },
+   {
+    "key": "delivTypes",
+    "title": "Deliverable types",
+    "count": 8,
+    "items": [
+     "Drawings",
+     "Calculation notes",
+     "Specifications",
+     "Test & inspection reports",
+     "Certificates (CE, lifting…)",
+     "Manuals / as-built",
+     "Meeting minutes",
+     "Client acceptance (PV de réception)"
+    ]
+   },
+   {
+    "key": "holidays",
+    "title": "Public holidays 2026 — France",
+    "count": 11,
+    "items": [
+     "1 Jan · Jour de l’an",
+     "6 Apr · Lundi de Pâques",
+     "1 May · Fête du travail",
+     "8 May · Victoire 1945",
+     "14 May · Ascension",
+     "25 May · Lundi de Pentecôte",
+     "14 Jul · Fête nationale",
+     "15 Aug · Assomption",
+     "1 Nov · Toussaint",
+     "11 Nov · Armistice",
+     "25 Dec · Noël"
+    ]
+   }
+  ]
+ },
+ "plumbing": {
+  "kpis": [
+   {
+    "label": "Events today",
+    "value": 6,
+    "sub": "Across all projects"
+   },
+   {
+    "label": "Connectors",
+    "value": 9,
+    "sub": "7 healthy · 1 warning"
+   },
+   {
+    "label": "Unread notifications",
+    "value": 3,
+    "sub": "Portfolio director"
+   },
+   {
+    "label": "Audit entries · 7 days",
+    "value": 8,
+    "sub": "Every status, approval and value change"
+   },
+   {
+    "label": "Channels",
+    "value": "3",
+    "sub": "In-app · e-mail · Teams"
+   }
+  ],
+  "chips": [
+   [
+    "All",
+    12
+   ],
+   [
+    "Sync",
+    1
+   ],
+   [
+    "Stock",
+    2
+   ],
+   [
+    "Comment",
+    1
+   ],
+   [
+    "Change",
+    1
+   ],
+   [
+    "Snapshot",
+    1
+   ],
+   [
+    "Quality",
+    1
+   ],
+   [
+    "Request",
+    1
+   ],
+   [
+    "Delivery",
+    1
+   ],
+   [
+    "Invoice",
+    1
+   ],
+   [
+    "Eco",
+    1
+   ],
+   [
+    "Client",
+    1
+   ]
+  ],
+  "connectors": [
+   {
+    "name": "Cursus",
+    "what": "Individual go / no go: visa approval, vaccination confirmation, clearances & badges — approvals only, no personal data imported",
+    "freq": "Real time (webhooks)",
+    "st": "OK",
+    "last": "26 Sep 07:00",
+    "vol": "5 people · HLT-026"
+   },
+   {
+    "name": "Codex",
+    "what": "Document records, revisions, approval circuits, retention · deep links from every Keystone object",
+    "freq": "Real time (webhooks)",
+    "st": "OK",
+    "last": "26 Sep 08:02",
+    "vol": "412 records · 38 linked to HLT-026"
+   },
+   {
+    "name": "Lucca",
+    "what": "Hours, leave, RTT, sick leave",
+    "freq": "Daily 06:30",
+    "st": "OK",
+    "last": "26 Sep 06:30",
+    "vol": "312 h · 8 people"
+   },
+   {
+    "name": "Sage X3",
+    "what": "Stock positions, purchase orders, supplier invoices, accounts payable",
+    "freq": "Every 2 h",
+    "st": "OK",
+    "last": "26 Sep 07:15",
+    "vol": "18 stock lines · 6 invoices"
+   },
+   {
+    "name": "SolidWorks PDM",
+    "what": "Drawings, revisions, released states",
+    "freq": "Hourly",
+    "st": "OK",
+    "last": "26 Sep 07:40",
+    "vol": "1 248 drawings · 13 linked"
+   },
+   {
+    "name": "MS Project",
+    "what": "Schedule import / export (XML)",
+    "freq": "On demand",
+    "st": "Ready",
+    "last": "25 Sep 18:02",
+    "vol": "HLT-026 exported · BL1"
+   },
+   {
+    "name": "Outlook / Exchange",
+    "what": "Calendar sync for milestones and approvals",
+    "freq": "Every 15 min",
+    "st": "Warning",
+    "last": "26 Sep 07:55",
+    "vol": "Token expires in 3 days"
+   },
+   {
+    "name": "Microsoft Teams",
+    "what": "Notifications to project channels",
+    "freq": "Real time",
+    "st": "OK",
+    "last": "26 Sep 08:00",
+    "vol": "14 messages today"
+   },
+   {
+    "name": "E-mail (SMTP)",
+    "what": "Digest and approval e-mails",
+    "freq": "Real time",
+    "st": "OK",
+    "last": "26 Sep 08:01",
+    "vol": "9 sent today"
+   }
+  ],
+  "imports": [
+   {
+    "name": "MS Project XML",
+    "desc": "Import a schedule into a new or existing project (WBS, activities, links, calendars, baselines)",
+    "icon": "ph ph-file-arrow-down"
+   },
+   {
+    "name": "Excel / CSV",
+    "desc": "Budget lines, BOM, parts catalogue, resource assignments",
+    "icon": "ph ph-file-xls"
+   },
+   {
+    "name": "Primavera P6 XER",
+    "desc": "Schedule import with activity codes and resources",
+    "icon": "ph ph-file-arrow-down"
+   },
+   {
+    "name": "Export — MS Project XML",
+    "desc": "Current project schedule with baseline",
+    "icon": "ph ph-file-arrow-up"
+   },
+   {
+    "name": "Export — Excel",
+    "desc": "Any table on screen · filtered view",
+    "icon": "ph ph-file-arrow-up"
+   },
+   {
+    "name": "Export — PDF",
+    "desc": "Status report, PO, goods receipt, 8D, PV de réception",
+    "icon": "ph ph-file-pdf"
+   }
+  ],
+  "audit": [
+   {
+    "when": "25 Sep 09:12",
+    "who": "Romain Aubert",
+    "obj": "CR-008",
+    "change": "status: Draft → In review",
+    "area": "Change control"
+   },
+   {
+    "when": "25 Sep 08:15",
+    "who": "Marion Kerviel",
+    "obj": "Request RQ-014",
+    "change": "approved → task created for Julien Wagner",
+    "area": "Approvals"
+   },
+   {
+    "when": "24 Sep 17:30",
+    "who": "Léa Marchand",
+    "obj": "Rate card",
+    "change": "Structural engineer base: 82 → 85 €/h",
+    "area": "Settings"
+   },
+   {
+    "when": "24 Sep 11:05",
+    "who": "Fabien Bertrand",
+    "obj": "PO-1082",
+    "change": "status: Draft → Awaiting approval",
+    "area": "Purchase orders"
+   },
+   {
+    "when": "23 Sep 11:20",
+    "who": "Hélène Sauvage",
+    "obj": "BL-2026-0533",
+    "change": "QC: 2 drums rejected → quarantine",
+    "area": "Deliveries"
+   },
+   {
+    "when": "22 Sep 08:05",
+    "who": "Fabien Bertrand",
+    "obj": "Stock SG-BRK-SS2",
+    "change": "reserved 120 for MSR · Atelier mécanique",
+    "area": "Stock"
+   },
+   {
+    "when": "19 Sep 14:05",
+    "who": "Gabriel Comte",
+    "obj": "ECO-2026-015",
+    "change": "status: Impact analysis → In approval",
+    "area": "ECO"
+   },
+   {
+    "when": "18 Sep 15:00",
+    "who": "Nadia Bensaïd",
+    "obj": "D-015",
+    "change": "status: Submitted → Accepted (PV)",
+    "area": "Deliverables"
+   }
+  ]
+ },
+ "approvals": {
+  "quality": [],
+  "client": [
+   {
+    "kind": "Deliverable acceptance",
+    "id": "D-014",
+    "title": "Crane rail alignment report",
+    "sub": "Test & inspection reports · Accept by 2 Oct",
+    "when": "25 Sep",
+    "who": "Thomas Kerbrat"
+   },
+   {
+    "kind": "Deliverable acceptance",
+    "id": "D-016",
+    "title": "Steel structure calculation note rev B",
+    "sub": "Calculation notes · Accept by 9 Oct",
+    "when": "30 Sep",
+    "who": "Julien Wagner"
+   }
+  ]
+ }
+}

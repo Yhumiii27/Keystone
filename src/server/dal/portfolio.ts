@@ -9,6 +9,7 @@ import {
   type KpiView, type MyProjectsModel, type OverviewMetrics, type PortfolioAlert, type PortfolioTotals, type TodoLite,
 } from '@/domain/portfolio';
 import { approvalCount } from '@/server/approvals';
+import { healthThresholds } from './health-thresholds';
 import type { Viewer, ZoneKey } from '@/server/session';
 import { listDepartments, listPeople } from './people';
 import { listScheduleSummaries } from './planning';
@@ -36,8 +37,9 @@ const inZone = (p: Pick<ProjectRow, 'zone'>, zone: ZoneKey | null) => !zone || p
  * reads its static PROJECTS seed, which is the same six projects; here their live values are used.
  */
 export async function getPortfolioOverview(zone: ZoneKey | null, lang: Lang): Promise<PortfolioOverview> {
-  const all = await listProjects();
-  const rows = all.filter((p) => p.hasData && inZone(p, zone)).map((p) => ({ ...p, metrics: overviewMetrics(p) }));
+  const [all, th] = await Promise.all([listProjects(), healthThresholds()]);
+  // A-13: one health rule with the Settings thresholds (the same verdict as `ProjectRow.health`).
+  const rows = all.filter((p) => p.hasData && inZone(p, zone)).map((p) => ({ ...p, metrics: overviewMetrics(p, th) }));
   const totals = portfolioTotals(rows);
   const zoneOf = new Map(all.map((p) => [p.code, p.zone]));
   const alerts = portfolioAlerts(lang).filter((a) => !a.code || !zone || zoneOf.get(a.code) === zone);
@@ -53,8 +55,8 @@ const todos = async (): Promise<TodoLite[]> =>
  * used for the "Pending decisions" count (My approvals queue, which is project-dependent in the prototype).
  */
 export async function getMyProjects(viewer: Viewer, currentProject: string, lang: Lang): Promise<MyProjectsModel<ProjectRow>> {
-  const [all, sched, people, depts, tasks, pendingDecisions] = await Promise.all([
-    listProjects(), listScheduleSummaries(), listPeople(), listDepartments(), todos(), approvalCount(viewer, currentProject),
+  const [all, sched, people, depts, tasks, pendingDecisions, thresholds] = await Promise.all([
+    listProjects(), listScheduleSummaries(), listPeople(), listDepartments(), todos(), approvalCount(viewer, currentProject), healthThresholds(),
   ]);
   const pool = all.filter((p) => p.hasData);
   const deptOf: Record<string, string> = {};
@@ -66,6 +68,6 @@ export async function getMyProjects(viewer: Viewer, currentProject: string, lang
     pool,
     sched,
     { deptOf, todos: tasks },
-    { personaTitle: viewer.title, pendingDecisions, lang },
+    { personaTitle: viewer.title, pendingDecisions, lang, thresholds },
   );
 }

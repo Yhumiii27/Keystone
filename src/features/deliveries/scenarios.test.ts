@@ -57,7 +57,8 @@ async function screen(code: string, receipt: string, lang: Lang) {
 /** The prototype's snapshot in the same shape, with the rebuild's date, gender and decimal conventions. */
 function expected(g: any, receipt: string, lang: Lang) {
   return {
-    kpis: g.kpis.map((k: any) => ({ label: k.label, value: String(k.value), sub: decimal(k.sub, lang), color: k.color })),
+    // A-12 (chapter 4): "On-time deliveries" is computed from the receipt and PO dates — 100 % on HLT-026 and NDC-031 (prototype 83 %).
+    kpis: g.kpis.map((k: any, i: number) => ({ label: k.label, value: i === 3 ? '100%' : String(k.value), sub: decimal(k.sub, lang), color: k.color })),
     chips: g.chips.map((c: any) => ({ label: status(c.label, lang), count: c.count })),
     rows: g.rows.map((r: any) => ({
       id: r.id, sub: `${day(r.date)} · ${r.note}`, po: r.po, supplier: r.supplier, lines: r.lines, qty: r.qty, acc: r.acc, rej: r.rej, rejColor: r.rejColor,

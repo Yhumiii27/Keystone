@@ -135,8 +135,11 @@ describe('meetings writers', () => {
     await analyseTranscript('MTG-119', 'Antoine Girard');
     let m = (await getMeeting('MTG-119'))!;
     expect(m.transcript).toMatchObject({ analysed: true, applied: false });
+    // S-10 (chapter 4): the analysis is real (local rules here: no ANTHROPIC_API_KEY under Vitest). It finds the same three
+    // decisions and three actions as the prototype's pre-baked result, but A. Girard's action has no due date — the transcript
+    // states none (the prototype invented "9 Oct").
     expect(m.transcript!.proposals.map((p) => [p.type, p.owner, p.due])).toEqual([
-      ['decision', null, null], ['decision', null, null], ['decision', null, null], ['action', 'S. Haddad', '6 Oct'], ['action', 'P. Noguès', '3 Oct'], ['action', 'A. Girard', '9 Oct'],
+      ['decision', null, null], ['decision', null, null], ['decision', null, null], ['action', 'S. Haddad', '6 Oct'], ['action', 'P. Noguès', '3 Oct'], ['action', 'A. Girard', null],
     ]);
     expect(await applyTranscriptToMinutes('MTG-119', 'Antoine Girard')).toBe(6);
     expect(await applyTranscriptToMinutes('MTG-119', 'Antoine Girard')).toBe(0);

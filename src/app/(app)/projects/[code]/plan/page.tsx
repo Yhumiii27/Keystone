@@ -19,14 +19,20 @@ import { planT } from '@/features/plan/i18n';
 import { planKpis, planRowViews, planRows, type PlanView } from '@/features/plan/model';
 import { AddWorkPackageButton, PlanForms, PlanPrimaryButton } from '@/features/plan/plan-forms';
 import { PlanTable } from '@/features/plan/plan-table';
+import { canEditPlan, canSchedulePlan } from '@/features/plan/rights';
 import { PlanToolbar } from '@/features/plan/toolbar';
 import s from '@/features/plan/plan.module.css';
-import { STATUS_DATE } from '@/lib/format';
+import { nextBaselineCode } from '@/domain/ch4-defaults';
+import { longDateText } from '@/domain/schedule-rollup';
+import { baselineWhenText } from '@/features/plan/i18n';
+import { listActivityTodos } from '@/server/dal/activity-todos';
 import { listChangeRequestDetails } from '@/server/dal/changes';
 import { listDepartments } from '@/server/dal/people';
-import { getPlanData, getPlanRequests, getPlanTodos } from '@/server/dal/plan';
+import { getPlanData, getPlanRequests, getPlanSettings, getPlanTodos } from '@/server/dal/plan';
 import { getActivityAssignments } from '@/server/dal/planning';
+import { baselineState } from '@/server/db/codes';
 import { projectLabel } from '@/server/dal/projects';
+import { STATUS_DATE } from '@/lib/format';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 
@@ -37,11 +43,13 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
   const [{ code }, sp] = await Promise.all([params, searchParams]);
   const ctx = await getProjectContext(code, 'plan');
   const projectCode = ctx.project.code;
-  const [i18n, data, jar] = await Promise.all([getI18n(), getPlanData(projectCode), cookies()]);
+  const [i18n, data, settings, jar] = await Promise.all([getI18n(), getPlanData(projectCode), getPlanSettings(projectCode), cookies()]);
   const { lang } = i18n;
   const t = planT(i18n.t, lang);
-  // Edits: not outside the workspace, not a read-only project, never the client (`planRO`).
-  const canEdit = ctx.canEdit('plan') && ctx.viewer.role !== 'client';
+  // Edits: not outside the workspace, not a read-only project, never the client (`planRO`). Scheduling decisions
+  // (Reschedule, Set baseline, Baseline / Calendar chips): the director or the project's manager (S-1).
+  const canEdit = canEditPlan(ctx);
+  const canSchedule = canSchedulePlan(ctx);
 
   if (!data)
     return (
@@ -78,11 +86,33 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
 
   const [todos, requests] = await Promise.all([getPlanTodos(projectCode), getPlanRequests(projectCode)]);
   const rows = planRowViews(planRows(data, todos), data, t, lang);
-  const kpis = planKpis(view, data, t, lang);
+  const displayed = settings?.displayed ?? null;
+  const kpis = planKpis(view, data, t, lang, { dataDate: settings?.dataDate, baseline: displayed });
+  const dataDateText = t(settings ? longDateText(settings.dataDate) : STATUS_DATE);
+  const context = t(projectLabel(ctx.project));
+
+  // Toolbar chips (S-2 project calendar, S-3 displayed baseline).
+  const calName = (c: string) => settings?.calendars.find((x) => x.code === c)?.name ?? c;
+  const blWhen = (b: { setOn: string | null; changeRequest: string | null }) => baselineWhenText(b.setOn ? t(longDateText(b.setOn)) : null, b.changeRequest, lang);
+  const calendarChip = {
+    value: t(calName(settings?.calendarCode ?? '')),
+    current: settings?.calendarCode ?? '',
+    options: (settings?.calendars ?? []).map((c) => ({ value: c.code, label: t(c.name) })),
+  };
+  const baselineChip = {
+    value: displayed ? `${displayed.code} · ${blWhen(displayed)}` : t(`BL1 · ${data.control.baselineSet}`),
+    current: displayed?.code ?? '',
+    options: (settings?.baselines ?? []).map((b) => ({
+      value: b.code, label: `${b.code} · ${blWhen(b)}`, meta: t(baselineState.label(b.state)), disabled: !b.activityCount,
+      title: b.activityCount ? undefined : t('No activity snapshot'),
+    })),
+  };
 
   let drawer = null;
   if (act) {
-    const [assignments, depts, crs] = await Promise.all([getActivityAssignments(projectCode, act.id), listDepartments(), listChangeRequestDetails(projectCode)]);
+    const [assignments, depts, crs, actTodos] = await Promise.all([
+      getActivityAssignments(projectCode, act.id), listDepartments(), listChangeRequestDetails(projectCode), canEdit ? listActivityTodos(projectCode, act.id) : [],
+    ]);
     const view_ = activityDrawerView(
       {
         act,
@@ -95,6 +125,10 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
         deptHeads: Object.fromEntries(depts.map((d) => [d.name, d.head ?? d.headShort ?? d.name])),
         pendingChanges: crs.filter((c) => c.status === 'in_review').map((c) => c.id),
         taskHref: (x) => screenHref('task', { taskId: x.id }),
+        calendars: settings?.calendars,
+        projectCalendar: settings?.calendarCode,
+        baselineCode: displayed?.code ?? null,
+        removableTodos: new Set(actTodos.filter((x) => x.removable).map((x) => x.number)),
       },
       i18n.t,
       lang,
@@ -105,6 +139,10 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
         closeHref={href({ view: view === 'structure' ? 'structure' : undefined, sel: act.id })}
         scheduleHref={screenHref('schedule', { code: projectCode })}
         t={t}
+        code={projectCode}
+        canEdit={canEdit}
+        context={context}
+        linkOptions={data.activities.filter((a) => a.id !== act.id).map((a) => `${a.id} · ${a.name}`)}
       />
     );
   }
@@ -122,7 +160,18 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
     <>
       <PageHeader screen="plan" projectCode={projectCode} primary={primary} />
       <div className={s.body}>
-        <PlanToolbar view={view} hrefs={viewHrefs} baselineSet={data.control.baselineSet} t={t} />
+        <PlanToolbar
+          view={view}
+          hrefs={viewHrefs}
+          code={projectCode}
+          context={context}
+          calendar={calendarChip}
+          baseline={baselineChip}
+          dataDate={dataDateText}
+          nextBaseline={nextBaselineCode((settings?.baselines ?? []).map((b) => b.code))}
+          canSchedule={canSchedule}
+          t={t}
+        />
         <KpiGrid min={150}>
           {kpis.map((k) => (
             <KpiTile key={k.label} label={k.label} value={k.value} sub={k.sub} color={k.color} />
@@ -144,7 +193,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
               canEdit && <AddWorkPackageButton label={t('Add work package')} />
             ) : (
               <span className={s.dataDate}>
-                {t('Data date')} · {t(STATUS_DATE)}
+                {t('Data date')} · {dataDateText}
               </span>
             )}
           </div>
@@ -161,7 +210,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
         </div>
         {drawer}
       </div>
-      {canEdit && <PlanForms code={projectCode} context={t(projectLabel(ctx.project))} defs={formDefs} />}
+      {canEdit && <PlanForms code={projectCode} context={context} defs={formDefs} />}
     </>
   );
 }

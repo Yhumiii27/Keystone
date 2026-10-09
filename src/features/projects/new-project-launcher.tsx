@@ -1,7 +1,8 @@
 'use client';
 // "New project" primary button + the 4-step wizard (docs/spec/01 §10, 03 §5.8; openNp / npClose / npCreate 3968–3969).
 // Opening goes back to step 1 and keeps the draft (npClose keeps the values too). Create inserts the project
-// through createProjectAction, then lands on the Projects register with its status filter cleared.
+// through createProjectAction, resets the draft and (chapter 4, L-3) opens the created project on its plan — the
+// register's status filter is cleared for when the viewer comes back to it.
 import { Plus } from '@phosphor-icons/react/dist/ssr';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
@@ -12,7 +13,7 @@ import { useI18n } from '@/i18n/client';
 import type { NewProjectSetup } from '@/server/dal/projects-register';
 import { createProjectAction } from './actions';
 import { PROJECTS_RESET_EVENT } from './events';
-import { DEFAULT_DRAFT, NewProjectWizard, draftCategories, type WizardDraft } from './new-project-wizard';
+import { DEFAULT_DRAFT, NewProjectWizard, draftCalendar, draftCategories, draftManager, type WizardDraft } from './new-project-wizard';
 
 export function NewProjectLauncher({ setup }: { setup: NewProjectSetup }) {
   const { t } = useI18n();
@@ -25,7 +26,9 @@ export function NewProjectLauncher({ setup }: { setup: NewProjectSetup }) {
 
   const create = () =>
     startTransition(async () => {
-      const r = await createProjectAction({ ...draft, cats: draftCategories(setup, draft) });
+      const r = await createProjectAction({
+        ...draft, cats: draftCategories(setup, draft), cal: draftCalendar(setup, draft), pm: draftManager(setup, draft),
+      });
       if (!r.ok) {
         toast.showEn(r.error);
         return;
@@ -33,12 +36,10 @@ export function NewProjectLauncher({ setup }: { setup: NewProjectSetup }) {
       setOpen(false);
       setStep(1);
       setDraft(DEFAULT_DRAFT);
-      // npCreate: statusFilter:null, screen:'projects' (the search query is kept, as in the prototype).
-      const target = screenHref('projects');
-      const here = new URL(window.location.href);
-      here.searchParams.delete('status');
+      // npCreate cleared the register's status filter; the created project now opens on its plan (L-3).
       window.dispatchEvent(new Event(PROJECTS_RESET_EVENT));
-      router.push(here.pathname === target ? here.pathname + here.search : target);
+      toast.showEn(`${r.number} · ${r.name} · Project created`);
+      router.push(screenHref('plan', { code: r.code }));
     });
 
   return (

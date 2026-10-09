@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import PROTO from '@/server/prototype/prototype-data.json';
 import { addDaysIso, isoOfDayOffset } from '@/server/db/codes';
 import {
-  AVG_RESPONSE_DEPARTMENT, AVG_RESPONSE_PM, CONTRACT_ROLE, NR_DEFAULTS, REQUEST_FILTERS, addedLoad, approvalKpis, approveTarget, datesText,
+  CONTRACT_ROLE, NR_DEFAULTS, REQUEST_FILTERS, addedLoad, approvalKpis, approveTarget, datesText,
   defaultDepartment, deptOfSlug, deptSlug, isRequestFilter, loadAt, matchesFilter, nrDates, parseHours, pendingHoursByPerson, projectsText,
   requestChipCounts, requestImpact, requestKpis, requestSteps, requestTitle, routing, shiftedDates, teamLoad, weekIndex, weekLabel,
   type PoolFacts, type RequestFacts, type RequestStatus,
@@ -37,9 +37,9 @@ describe('Resource requests (PM outbox, 08 §5.4)', () => {
     expect([isRequestFilter('reschedule'), isRequestFilter('withdrawn'), isRequestFilter(null)]).toEqual([true, false, false]);
   });
 
-  it('KPIs: 9 sent · 4 awaiting review (64 h) · 1 needs your answer · 3 approved · avg response 1.4 d', () => {
+  it('KPIs: 9 sent · 4 awaiting review (64 h) · 1 needs your answer · 3 approved', () => {
     expect(requestKpis(mine)).toEqual({ sent: 9, pending: 4, pendingHours: 64, reschedule: 1, approved: 3 });
-    expect(AVG_RESPONSE_PM).toBe('1.4 d');
+    // A-12 (chapter 4): "Avg response" is computed (averageResponseDays, src/domain/kpis.test.ts) — no longer the prototype's '1.4 d'.
     expect(projectsText(['Harbor Line', 'Harbor Line'])).toBe('Harbor Line');
     expect(projectsText(['Harbor Line', 'Riverside'])).toBe('2 projects');
     expect(projectsText([])).toBe('');
@@ -76,7 +76,7 @@ describe('Approvals (department head, 08 §6.4)', () => {
     expect(approvalKpis(dept('Engineering'), team, CAP.Engineering)).toEqual({
       pending: 2, pendingHours: 52, teamLoad: 90, teamSize: 1, capacityH: 960, committedH: 1110, decided: 0, approved: 0, rejected: 0,
     });
-    expect(AVG_RESPONSE_DEPARTMENT).toBe('0.9 d');
+    // A-12 (chapter 4): the department's "Avg response" is computed (src/domain/kpis.test.ts) — no longer '0.9 d'.
   });
 
   it('other departments: team load and decided counts', () => {

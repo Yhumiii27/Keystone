@@ -4,13 +4,15 @@
 // src/features/risks/actions.ts. Hidden / read-only when the screen is outside the viewer's workspace or the project
 // is read-only for them. Projects without a register show the empty register (no Harbor Line data, 00 §7.16).
 import { PageHeader } from '@/components/app/shell/page-header';
-import { parseCategory } from '@/domain/risk';
+import { FORM_CATEGORIES, parseCategory } from '@/domain/risk';
+import { orderedOptions } from '@/domain/settings-rules';
 import { NewRiskButton } from '@/features/risks/add-buttons';
 import { riskFormDef } from '@/features/risks/forms';
 import { riskRegisterView } from '@/features/risks/model';
 import { RiskRegister } from '@/features/risks/risk-register';
 import { projectLabel } from '@/server/dal/projects';
 import { getRiskScreen } from '@/server/dal/risks-screen';
+import { riskCategoryOptions } from '@/server/dal/settings-lists';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 
@@ -21,7 +23,7 @@ export default async function RisksPage({ params, searchParams }: { params: Prom
   const [{ code }, sp] = await Promise.all([params, searchParams]);
   const ctx = await getProjectContext(code, 'risks');
   const projectCode = ctx.project.code;
-  const [{ t, lang }, data] = await Promise.all([getI18n(), getRiskScreen(projectCode)]);
+  const [{ t, lang }, data, cats] = await Promise.all([getI18n(), getRiskScreen(projectCode), riskCategoryOptions()]);
   const canEdit = ctx.canEdit('risks');
 
   const view = riskRegisterView(
@@ -29,7 +31,7 @@ export default async function RisksPage({ params, searchParams }: { params: Prom
       code: projectCode,
       risks: data?.register.risks ?? [],
       contingency: data?.contingency ?? 0,
-      filter: parseCategory(first(sp.filter)),
+      filter: parseCategory(first(sp.filter), cats.all.map((c) => c.code)),
       selected: first(sp.risk) ?? null,
     },
     t,
@@ -37,7 +39,10 @@ export default async function RisksPage({ params, searchParams }: { params: Prom
   );
 
   const primary =
-    canEdit && data ? <NewRiskButton code={projectCode} context={t(projectLabel(ctx.project))} form={riskFormDef(data.team)} /> : undefined;
+    canEdit && data ? (
+      // A-14: the form offers the active Settings › Risk categories (the prototype's order first).
+      <NewRiskButton code={projectCode} context={t(projectLabel(ctx.project))} form={riskFormDef(data.team, orderedOptions(cats.active, FORM_CATEGORIES))} />
+    ) : undefined;
 
   return (
     <>

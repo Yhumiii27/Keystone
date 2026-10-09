@@ -1,6 +1,7 @@
 // Resources (portfolio pool) and Project resources body (docs/spec/06 §1.3–§1.4, template 573–637): project banner,
 // 5 KPI tiles, allocation heatmap (next 8 weeks), capacity vs demand bars and the suggested rebalancing card.
-// Server Component; "Apply" is a client island. Strings arrive translated in `view` (model.ts).
+// Server Component; "Apply" is a client island that drafts a resource request (chapter 4, R-3 / S-7). Strings arrive
+// translated in `view` (model.ts).
 import { Sparkle, UsersThree } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
@@ -128,11 +129,17 @@ export function ResourcesView({ view, t, projectName, canEdit }: ResourcesViewPr
                 <CardTitle>{t('Suggested rebalancing')}</CardTitle>
               </div>
               {view.suggestions.map((g) => (
-                <div key={g.title} className={s.sug}>
-                  <span className={s.sugTitle}>{g.title}</span>
+                <div key={`${g.projectCode}:${g.leverCode}`} className={s.sug}>
+                  <span className={s.sugTitle} title={g.hint}>
+                    {g.title}
+                  </span>
                   <div className={s.sugFoot}>
                     <span className={s.sugImpact}>{g.impact}</span>
-                    {canEdit && <ApplySuggestionButton title={g.title} />}
+                    {g.requested ? (
+                      <span className="tag tag-outline">{g.requested}</span>
+                    ) : (
+                      canEdit && g.canApply && <ApplySuggestionButton title={g.title} projectCode={g.projectCode} lever={g.leverCode} />
+                    )}
                   </div>
                 </div>
               ))}

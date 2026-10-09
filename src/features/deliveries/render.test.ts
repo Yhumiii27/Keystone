@@ -37,6 +37,13 @@ const frStatus = (s: string, lang: Lang) => (lang === 'fr' ? (FR_STATUS[s] ?? s)
 /** "0.5 % des unités reçues" → "0,5 % …" in French. */
 const frDecimal = (s: string, lang: Lang) => (lang === 'fr' ? s.replace(/^(\d+)\.(\d)/, '$1,$2') : s);
 
+/**
+ * A-12 (chapter 4): "On-time deliveries" is computed — receipts received by their PO's expected date over the 90 days up
+ * to the data date (`onTimeDeliveryPct`) — instead of the prototype's 83 % everywhere; "—" without receipts in the window.
+ */
+const ON_TIME: Record<string, string> = { 'HLT-026': '100%', 'NDC-031': '100%', 'RCF-019': '100%', 'ERP-202': '100%', 'WSA-044': '—', 'MSR-012': '100%', 'EWA-051': '—' };
+const onTime = (code: string) => (k: any, i: number) => (i === 3 ? { ...k, value: ON_TIME[code] } : k);
+
 beforeAll(async () => {
   setDb(await openDatabase());
 }, 60_000);
@@ -52,7 +59,7 @@ describe('Deliveries view model vs the prototype (EN and FR)', () => {
     it.each(['HLT-026', 'NDC-031', 'RCF-019', 'ERP-202', 'WSA-044', 'MSR-012', 'EWA-051'])(`${lang} · %s: KPIs, chips, rows, drawers`, async (code) => {
       const g = G.seed[lang][code];
       const { v } = await view(lang, code);
-      expect(v.kpis).toEqual(g.kpis.map((k: any) => ({ label: k.label, value: String(k.value), sub: frDecimal(k.sub, lang), color: k.color })));
+      expect(v.kpis).toEqual(g.kpis.map((k: any) => ({ label: k.label, value: String(k.value), sub: frDecimal(k.sub, lang), color: k.color })).map(onTime(code)));
       expect(v.chips.map((c) => [c.label, c.count])).toEqual(g.chips.map((c: any) => [frStatus(c.label, lang), c.count]));
       expect(v.rows.map((r) => ({
         id: r.id, po: r.po, supplier: r.supplier, sub: r.sub, lines: r.lines, qty: r.qty, acc: r.acc, rej: r.rej, rejColor: r.rejColor, status: r.status,
@@ -114,7 +121,7 @@ describe('Deliveries static render', () => {
     const { page } = await body('fr', { canEdit: true, canQc: true });
     const txt = text(page);
     for (const s of [
-      'Livraisons', '1 annoncée(s)', 'En attente de contrôle qualité', 'Retenues en quarantaine', 'Quantité refusée', '0,5 % des unités reçues', 'Livraisons à l’heure', '83%',
+      'Livraisons', '1 annoncée(s)', 'En attente de contrôle qualité', 'Retenues en quarantaine', 'Quantité refusée', '0,5 % des unités reçues', 'Livraisons à l’heure', '100%' /* A-12: computed (prototype 83%) */,
       '90 derniers jours · vs date attendue de la commande', 'Commandes à recevoir', 'Commandées ou partiellement reçues',
       'Statut', 'Tous 5', 'Annoncée 1', 'Reçue 0', 'Contrôle en attente 1', 'Acceptée 2', 'Partiellement refusée 1', 'Refusée 0',
       'Annoncée → reçue → contrôle qualité → acceptée ou refusée · les quantités acceptées entrent en stock',

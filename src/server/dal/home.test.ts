@@ -14,6 +14,7 @@ import type { ZoneKey } from '@/server/session';
 import { recordEcoProgress } from './eco';
 import { getHomeView } from './home';
 import { createDraftPurchaseOrders } from './purchasing';
+import { decideDeliverable } from './quality';
 
 type Kpi = [string, string, string, boolean];
 type Golden = { greeting: string; sub: string; kpis: (Kpi | null)[]; lt: string; lr: string[][]; rt: string; rr: string[][] };
@@ -79,7 +80,8 @@ const MEMBER: Record<Lang, Golden> = {
       ['Due today', '1', 'Fri 25 Sep', false],
       ['Overdue', '1', 'Needs a new date or a push', true],
       ['Next week', '1', '28 Sep – 2 Oct', false],
-      ['Logged this week', '14.0 h', 'of 40 h · 35%', false],
+      // A-12 (chapter 4, 10 OQ18): Julien's time entries of the week (22 Sep 3 h + 23 Sep 4 h), not every hour of his tasks (14.0 h).
+      ['Logged this week', '7.0 h', 'of 40 h · 18%', false],
     ],
     lt: 'My tasks',
     lr: [
@@ -103,7 +105,7 @@ const MEMBER: Record<Lang, Golden> = {
       ['Échéance aujourd’hui', '1', 'ven. 25 sept.', false],
       ['En retard', '1', 'Nouvelle date ou relance nécessaire', true],
       ['Semaine prochaine', '1', '28 sept. – 2 oct.', false],
-      ['Saisi cette semaine', '14.0 h', 'sur 40 h · 35 %', false],
+      ['Saisi cette semaine', '7.0 h', 'sur 40 h · 18 %', false], // A-12
     ],
     lt: 'Mes tâches',
     lr: [
@@ -121,11 +123,35 @@ const MEMBER: Record<Lang, Golden> = {
   },
 };
 
+/**
+ * The client Home reads the deliverables register and the billing plan (Delivery 5) instead of the prototype's static
+ * DELIVERABLES and "Milestone 4 invoice" literal (A-5: the contract's billing plan is the source of truth): register
+ * dates ("2 Oct", not "02 Oct"), D-017's register status (In progress, the prototype's DELIVERABLES said "Due"), and the
+ * open invoice of the contract (INV-2026-003, M3, due 10 Nov) the client portal's Invoices tab shows.
+ */
+const CLIENT_DB: Record<Lang, [string, string][]> = {
+  en: [
+    ['Test & inspection reports · Accept by 02 Oct', 'Test & inspection reports · Accept by 2 Oct'],
+    ['Calculation notes · Accept by 09 Oct', 'Calculation notes · Accept by 9 Oct'],
+    ['Due', 'In progress'],
+    ['Milestone 4 invoice €640k · due 15 Oct', 'INV-2026-003 · M3 Structure topped out · €1.38M · due 10 Nov'],
+  ],
+  fr: [
+    ['Rapports d’essais et d’inspection · Accepter avant le 02 oct.', 'Rapports d’essais et d’inspection · Accepter avant le 2 oct.'],
+    ['Notes de calcul · Accepter avant le 09 oct.', 'Notes de calcul · Accepter avant le 9 oct.'],
+    ['Échéance', 'En cours'],
+    ['Facture jalon 4 640 k€ · échéance 15 oct.', 'INV-2026-003 · M3 Structure hors d’eau · 1,38 M€ · échéance 10 nov.'],
+  ],
+};
+
 function expected(role: RoleKey, lang: Lang): Golden {
   if (role === 'member') return structuredClone(MEMBER[lang]);
   const g = structuredClone(G[role][lang]);
   if (role === 'procurement') g.kpis[1] = LATE[lang];
-  return lang === 'fr' ? mapStrings(g, fixFr) : g;
+  const out = lang === 'fr' ? mapStrings(g, fixFr) : g;
+  if (role !== 'client') return out;
+  const db = new Map(CLIENT_DB[lang]);
+  return { ...out, rr: out.rr.map((r) => r.map((x) => db.get(x) ?? x)) };
 }
 
 describe('Home view', () => {
@@ -156,8 +182,9 @@ describe('Home view', () => {
     expect(await sub('quality', 'rr', 1)).toBe('Utilisé dans HLT, RCF');
     expect(await sub('client', 'lr', 5)).toBe('Référence 18 déc. · Prévision 13 janv. ’27');
     expect(await sub('client', 'rr', 0)).toBe('+85 k€ · rattrapage de 12 jours · soumise le 24 sept.');
-    expect(await sub('client', 'rr', 1)).toBe('Rapports d’essais et d’inspection · Accepter avant le 02 oct.');
-    expect(await sub('client', 'rr', 5)).toBe('Facture jalon 4 640 k€ · échéance 15 oct.');
+    expect(await sub('client', 'rr', 1)).toBe('Rapports d’essais et d’inspection · Accepter avant le 2 oct.');
+    expect(await sub('client', 'rr', 2)).toBe('Manuels / plans de récolement · Signé le 18 sept.');
+    expect(await sub('client', 'rr', 5)).toBe('INV-2026-003 · M3 Structure hors d’eau · 1,38 M€ · échéance 10 nov.');
   });
 
   it('director KPIs and alerts follow the zone filter', async () => {
@@ -259,5 +286,26 @@ describe('Home view — Delivery 4 modules follow the database', () => {
     const after = (await render('procurement', 'en')).out;
     expect([after.kpis[2]?.[1], after.rr]).toEqual(['0', []]);
     expect(after.lr.filter((r) => r[2] === 'Draft').map((r) => r[0].split(' · ')[0])).toEqual(drafts);
+  });
+});
+
+describe('Home view — Delivery 5: the client Home reads the deliverables register and the billing plan', () => {
+  beforeAll(async () => {
+    setDb(await openDatabase());
+  }, 60_000);
+
+  it('accepting a deliverable moves it from "to accept" to signed; the KPI follows', async () => {
+    const before = (await render('client', 'en')).out;
+    expect(before.kpis[3]?.[1]).toBe('2');
+    await decideDeliverable('HLT-026', 'D-014', 'accepted', { name: 'Nadia Bensaïd', role: 'client' });
+    const after = (await render('client', 'en')).out;
+    expect(after.kpis[3]?.[1]).toBe('1');
+    expect(after.rr.find((r) => r[0].startsWith('D-014'))).toEqual(['D-014 · Crane rail alignment report', 'Test & inspection reports · Signed 25 Sep', 'Accepted', 'tag tag-neutral']);
+  });
+
+  it('another project shows its own register and its legacy monthly billing (no Harbor Line data)', async () => {
+    const { out } = await render('client', 'en', 'NDC-031');
+    expect(out.rr.filter((r) => /^D-/.test(r[0])).map((r) => [r[0].split(' · ')[0], r[2]])).toEqual([['D-112', 'Submitted'], ['D-113', 'Accepted']]);
+    expect(out.rr.at(-1)).toEqual(['Invoices', 'Sep · €260k', 'Open', 'tag tag-outline']);
   });
 });

@@ -312,7 +312,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
 
     usedIn: data.usedInAssemblies.length ? { label: t('Used in'), chains: data.usedInAssemblies.map((c) => c.join(' › ')) } : null,
 
-    // TODO(db): machines are read from the prototype data until the installed base is modelled (phase 8).
+    // Machines of the installed base fitted with the part (machines added in Keystone included).
     machines: {
       label: t('Installed base'),
       rows: data.machines.map((m) => ({

@@ -39,7 +39,8 @@ describe('Resource requests model', () => {
       ['Awaiting review', '4', '64 h requested'],
       ['Needs your answer', '1', 'Reschedule proposals'],
       ['Approved', '3', 'Now in team members’ lists'],
-      ['Avg response', '1.4 d', 'Department heads'],
+      // A-12 (chapter 4): working days from sending to the department's decision, mean of the 6 decided requests (prototype 1.4 d).
+      ['Avg response', '1.0 d', 'Department heads'],
     ]);
     expect(m.kpis.map((k) => k.color)).toEqual(['var(--color-text)', 'var(--color-accent-300)', 'var(--color-accent-300)', 'var(--color-text)', 'var(--color-text)']);
     expect(m.chips.map((c) => `${c.label} ${c.count}`)).toEqual(['All 9', 'Pending 4', 'Reschedule proposed 1', 'Approved 3', 'Rejected / withdrawn 1']);
@@ -68,7 +69,7 @@ describe('Resource requests model', () => {
       ['En attente d’examen', '4', '64 h demandées'],
       ['Attend votre réponse', '1', 'Propositions de replanification'],
       ['Approuvées', '3', 'Dans les listes des membres de l’équipe'],
-      ['Délai de réponse moyen', '1,4 j', 'Chefs de service'],
+      ['Délai de réponse moyen', '1,0 j', 'Chefs de service'], // A-12
     ]);
     expect(m.chips.map((c) => c.label)).toEqual(['Tous', 'En attente', 'Replanification proposée', 'Approuvées', 'Refusées / retirées']);
     const r38 = m.rows.find((r) => r.id === 'RQ-038')!;
@@ -116,7 +117,8 @@ describe('Approvals model', () => {
       ['Team load w/c 28 Sep', '90%', '1 person', 'var(--color-text)'],
       ['Capacity · 8 wks', '960 h', 'Committed 1110 h', 'var(--color-accent-300)'],
       ['Decided', '0', '0 approved · 0 rejected', 'var(--color-text)'],
-      ['Avg response', '0.9 d', 'Target ≤ 1 day', 'var(--color-text)'],
+      // A-12 (chapter 4): nothing decided yet in Engineering (prototype 0.9 d).
+      ['Avg response', '—', 'Target ≤ 1 day', 'var(--color-text)'],
     ]);
     expect(m.queue.map((q) => q.id)).toEqual(['RQ-043', 'RQ-041']);
     const [q43, q41] = m.queue;
@@ -140,7 +142,7 @@ describe('Approvals model', () => {
       ['Charge équipe sem. du 28 sept.', '80%', '2 personnes'],
       ['Capacité · 8 sem.', '640 h', 'Engagé 690 h'],
       ['Décidé', '2', '1 approuvée · 1 refusée'],
-      ['Délai de réponse moyen', '0,9 j', 'Cible ≤ 1 jour'],
+      ['Délai de réponse moyen', '1,0 j', 'Cible ≤ 1 jour'], // A-12: RQ-037 and RQ-039 answered the next working day
     ]);
     expect(site.decided.map((r) => [r.id, r.statusLabel])).toEqual([['RQ-039', 'Approuvée · affectée'], ['RQ-037', 'Refusée']]);
     expect(site.queueEmpty).toBe('Rien en attente — toutes les demandes pour Exploitation chantier sont traitées');
@@ -169,7 +171,7 @@ describe('Approvals model', () => {
 
   it('Controls & planning and Quality (EN): impact at the 110 % boundary, decided rows (prototype reqRow / apprKpis)', async () => {
     const cp = approvalsModel((await getApprovalsScreenData('Controls & planning'))!, EN, 'en', HEAD);
-    expect(cp.kpis.map((k) => [k.value, k.sub])).toEqual([['1', '4 h requested'], ['87%', '3 people'], ['640 h', 'Committed 560 h'], ['2', '2 approved · 0 rejected'], ['0.9 d', 'Target ≤ 1 day']]);
+    expect(cp.kpis.map((k) => [k.value, k.sub])).toEqual([['1', '4 h requested'], ['87%', '3 people'], ['640 h', 'Committed 560 h'], ['2', '2 approved · 0 rejected'], ['0.5 d', 'Target ≤ 1 day']]); // A-12: RQ-035 same day, RQ-040 next day
     expect(cp.kpis[2].color).toBe('var(--color-text)');
     // 100 % + round(4/40·100) = 110 % → not over (> 110 only), neutral colour.
     expect(cp.queue.map((q) => [q.id, q.impact, q.impactColor, q.proposedByShift[0]])).toEqual([

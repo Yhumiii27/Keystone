@@ -90,7 +90,7 @@
 
 /* transcript */
 .transcript { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-neutral-800); }
-.transcriptText { margin: 0; font-size: 12px; line-height: 1.5; color: var(--color-neutral-300); max-height: 96px; overflow: auto; text-wrap: pretty; }
+.transcriptText { margin: 0; font-size: 12px; line-height: 1.5; color: var(--color-neutral-300); max-height: 96px; overflow: auto; text-wrap: pretty; white-space: pre-line; }
 .analysis { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--color-neutral-800); }
 .summary { margin: 0; font-size: 12.5px; line-height: 1.5; text-wrap: pretty; }
 .draftLine { padding: 4px 0; border-top: 1px solid var(--color-neutral-900); }
@@ -151,3 +151,20 @@
 .pointCell { font-size: 12px; color: var(--color-neutral-400); }
 .cell12 { font-size: 12px; }
 .checkCell { width: 28px; }
+
+/* transcript import, analyser and review (chapter 4, S-10) */
+.trSource { font-size: 11px; color: var(--color-neutral-500); }
+.trHint { font-size: 11px; color: var(--color-neutral-500); display: inline-flex; align-items: center; gap: 5px; text-wrap: pretty; }
+.trHint svg { flex: none; color: var(--color-accent-300); }
+.itemKind { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-neutral-400); margin-right: 4px; }
+.itemOff { color: var(--color-neutral-500); text-decoration: line-through; }
+.itemSide { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.importForm { display: flex; flex-direction: column; gap: 10px; }
+:global(.input).importText { min-height: 180px; font-size: 12.5px; line-height: 1.5; }
+.importNote { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+.fileRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.hiddenInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.fileName { font-size: 12.5px; color: var(--color-text); overflow-wrap: anywhere; }
+.fileNone { color: var(--color-neutral-500); }
+.confirmBody { display: flex; flex-direction: column; gap: 8px; }
+.confirmText { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--color-neutral-300); text-wrap: pretty; }

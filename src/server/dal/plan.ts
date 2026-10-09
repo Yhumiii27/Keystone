@@ -5,17 +5,24 @@ import 'server-only';
 // (src/features/plan/actions.ts).
 import { and, asc, eq, gte, inArray, max, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { projectCalendarCode, projectDataDate } from '@/domain/ch4-defaults';
+import { detectCycle } from '@/domain/cpm';
 import type { PlanActivity, PlanPackage, PlanRoot, PredLink, TodoStatus } from '@/domain/schedule';
 import { workingDayOf } from '@/domain/tasks';
+import { monthLabels } from '@/lib/format';
 import { getDb } from '@/server/db/client';
-import { constraintText } from '@/server/db/codes';
+import { constraintText, type LinkType } from '@/server/db/codes';
+import { findPerson, nameOf, writeAudit } from '@/server/db/helpers';
 import {
   activities, activityLinks, changeRequestWbs, milestones, persons, projects, scheduleBars, wbsNodes, wpBudgets,
 } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 import { PROTO } from '@/server/prototype';
+import { listProjectBaselines, type BaselineInfo } from './baselines';
+import { listCalendars } from './calendars';
 import { getScheduleControl, type ScheduleControl } from './planning';
 import { listResourceRequests } from './requests';
+import { listScheduleRuns } from './schedule-network';
 import { listTasks } from './tasks';
 
 // ── Types ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -68,7 +75,7 @@ export interface PlanRequest {
   dept: string;
   title: string;
   act: string;
-  status: 'pending' | 'approved' | 'reschedule' | 'rejected' | 'withdrawn';
+  status: 'draft' | 'pending' | 'approved' | 'reschedule' | 'rejected' | 'withdrawn';
 }
 
 // ── Reads ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -80,9 +87,9 @@ async function projectIdOf(tx: Tx, code: string): Promise<string | null> {
 
 /** Everything the Plan screen needs for one project; null for projects without planning data (empty state). */
 export async function getPlanData(code: string): Promise<PlanData | null> {
-  const control = await getScheduleControl(code);
-  if (!control) return null;
   const db = await getDb();
+  const control = (await getScheduleControl(code)) ?? (await defaultControl(db, code));
+  if (!control) return null;
   const owner = alias(persons, 'owner');
   const pred = alias(activities, 'pred');
   const [nodes, acts, links, owners] = await Promise.all([
@@ -102,7 +109,7 @@ export async function getPlanData(code: string): Promise<PlanData | null> {
       .where(eq(projects.code, code))
       .orderBy(asc(activities.position)),
     db
-      .select({ succ: activityLinks.successorId, pred: pred.code, type: activityLinks.type, lag: activityLinks.lagDays, position: activityLinks.position })
+      .select({ succ: activityLinks.successorId, pred: pred.code, type: activityLinks.type, lag: activityLinks.lagDays, position: activityLinks.position, driving: activityLinks.isDriving })
       .from(activityLinks)
       .innerJoin(projects, eq(projects.id, activityLinks.projectId))
       .innerJoin(pred, eq(pred.id, activityLinks.predecessorId))
@@ -117,9 +124,11 @@ export async function getPlanData(code: string): Promise<PlanData | null> {
   const rootNode = nodes.find(({ n }) => n.level === 0)?.n;
   if (!rootNode) return null;
   const preds = new Map<string, PredLink[]>();
+  const driving = new Map<string, string[]>();
   for (const l of links) {
     if (!preds.has(l.succ)) preds.set(l.succ, []);
     preds.get(l.succ)!.push([l.pred, l.type, l.lag]);
+    if (l.driving) driving.set(l.succ, [...(driving.get(l.succ) ?? []), l.pred]);
   }
   const seedTime = rootNode.createdAt.getTime();
   return {
@@ -141,8 +150,29 @@ export async function getPlanData(code: string): Promise<PlanData | null> {
       budget: a.budgetKeur, actual: a.actualKeur, eac: a.eacKeur, preds: preds.get(a.id) ?? [],
       isAdded: a.isAdded, edited: !a.isAdded && a.updatedAt.getTime() > a.createdAt.getTime(),
       description: a.description, critical: a.critical, position: a.position,
+      finishDate: a.finishDate, baselineFinishDate: a.baselineFinishDate, calendarCode: a.calendarCode, remainingDays: a.remainingDays,
+      freeFloat: a.scheduledAt ? a.freeFloatDays : null, scheduled: !!a.scheduledAt, drivingPreds: a.scheduledAt ? (driving.get(a.id) ?? []) : null,
     })),
     owners: owners.map((o) => ({ code: o.code!, name: o.name ?? o.short, title: o.title ?? '' })),
+  };
+}
+
+/**
+ * Schedule header of a project planned in Keystone (machine-type template, MS Project / P6 import) before its first
+ * Reschedule writes one (`refreshRollups`): neutral texts, start month from the project. Null without a WBS root.
+ */
+async function defaultControl(db: Tx | Awaited<ReturnType<typeof getDb>>, code: string): Promise<ScheduleControl | null> {
+  const [p] = await db
+    .select({ id: projects.id, startMonth: projects.startMonth, progress: projects.progress, shortCode: projects.shortCode })
+    .from(projects)
+    .where(eq(projects.code, code));
+  if (!p) return null;
+  const [root] = await db.select({ id: wbsNodes.id }).from(wbsNodes).where(and(eq(wbsNodes.projectId, p.id), eq(wbsNodes.level, 0)));
+  if (!root) return null;
+  const start = Math.max(0, Math.floor(p.startMonth ?? 0));
+  return {
+    start, tNow: 0, pct: Math.round(p.progress * 100), p3: p.shortCode, floatDays: 0, chartMonths: monthLabels(start, 12), ganttMonths: monthLabels(start, 13),
+    finishText: '—', baselineText: '—', floatText: '—', floatShort: '—', critText: '', milesText: '—', milesSub: '', baselineSet: '—', team: [],
   };
 }
 
@@ -300,8 +330,9 @@ export async function deleteActivity(code: string, actId: string): Promise<boole
 }
 
 /**
- * Removes a work package and all its activities (`rmKey` on a WP). Rows of other modules that point at the
- * node (Budget WP lines, change-request WBS, Schedule bars) keep their own code/name and lose only the link.
+ * Removes a work package and all its activities (`rmKey` on a WP); their logic links go with them (cascade, S-5). Rows of
+ * other modules that point at the node (Budget WP lines, change-request WBS) keep their own code/name and lose only the
+ * link; the package's Schedule bar is removed (A-7: bars are WBS roll-ups).
  */
 export async function deleteWorkPackage(code: string, w: string): Promise<boolean> {
   const db = await getDb();
@@ -311,7 +342,8 @@ export async function deleteWorkPackage(code: string, w: string): Promise<boolea
     await deleteActivities(tx, (await packageActivities(tx, n.id)).map((k) => k.id));
     await tx.update(wpBudgets).set({ wbsNodeId: null }).where(eq(wpBudgets.wbsNodeId, n.id));
     await tx.update(changeRequestWbs).set({ wbsNodeId: null }).where(eq(changeRequestWbs.wbsNodeId, n.id));
-    await tx.update(scheduleBars).set({ wbsNodeId: null }).where(eq(scheduleBars.wbsNodeId, n.id));
+    // A-7: Schedule bars are roll-ups of the work packages — the package's bar goes with it (S-5).
+    await tx.delete(scheduleBars).where(eq(scheduleBars.wbsNodeId, n.id));
     await tx.delete(wbsNodes).where(eq(wbsNodes.id, n.id));
     return true;
   });
@@ -391,4 +423,110 @@ export async function ownerCodeOfName(name: string): Promise<string | null> {
   const db = await getDb();
   const [p] = await db.select({ code: persons.ownerCode }).from(persons).where(eq(persons.fullName, name));
   return p?.code ?? null;
+}
+
+// ── Chapter 4: toolbar settings and relationships (S-1, S-2, S-3, S-5) ─────────────────────────────────────────────
+
+export interface PlanCalendarOption {
+  code: string;
+  /** EN source name ("Chantier 6d · 10h"). */
+  name: string;
+  hoursPerDay: number;
+}
+
+export interface PlanSettings {
+  /** Project data date (ISO, S-4 default: the status date). */
+  dataDate: string;
+  /** Project calendar code (S-2 default when none is set). */
+  calendarCode: string;
+  /** Active company calendars plus the project's imported ones. */
+  calendars: PlanCalendarOption[];
+  /** Baselines in register order, the displayed one flagged. */
+  baselines: BaselineInfo[];
+  displayed: BaselineInfo | null;
+  /** Last Reschedule run (null when never rescheduled). */
+  lastRun: { ranAt: Date; ranByName: string; outcome: string; finishDate: string | null; changedActivities: number } | null;
+}
+
+/** Calendar, data date, baselines and last run of a project (Plan toolbar chips, drawer calendar select). */
+export async function getPlanSettings(code: string): Promise<PlanSettings | null> {
+  const db = await getDb();
+  const [p] = await db.select({ dataDate: projects.dataDate, calendar: projects.calendar }).from(projects).where(eq(projects.code, code));
+  if (!p) return null;
+  const [cals, bls, runs] = await Promise.all([listCalendars({ projectCode: code }), listProjectBaselines(code), listScheduleRuns(code, 1)]);
+  const run = runs[0];
+  return {
+    dataDate: projectDataDate(p),
+    calendarCode: projectCalendarCode(p),
+    calendars: cals.map((c) => ({ code: c.code, name: c.name, hoursPerDay: c.hoursPerDay })),
+    baselines: bls,
+    displayed: bls.find((b) => b.displayed) ?? null,
+    lastRun: run ? { ranAt: run.ranAt, ranByName: run.ranByName, outcome: run.outcome, finishDate: run.finishDate, changedActivities: run.changedActivities } : null,
+  };
+}
+
+export type LinkWriteResult = { ok: true } | { error: 'unknown' | 'self' | 'duplicate' | 'cycle' | 'missing'; cycle?: string[] };
+
+async function linkEnds(tx: Tx, code: string, pred: string, succ: string) {
+  const [p] = await tx.select({ id: projects.id }).from(projects).where(eq(projects.code, code));
+  if (!p) return null;
+  const rows = await tx.select({ id: activities.id, code: activities.code }).from(activities).where(and(eq(activities.projectId, p.id), inArray(activities.code, [pred, succ])));
+  const byCode = new Map(rows.map((r) => [r.code, r.id]));
+  return { projectId: p.id, predId: byCode.get(pred) ?? null, succId: byCode.get(succ) ?? null };
+}
+
+/**
+ * Drawer "Add relationship": `pred` → `succ` with a type and a lag (working days, negative = lead). Refuses unknown activities,
+ * self links, duplicates and logic loops (CPM cycle detection). Appended to the successor's predecessor list; audited.
+ */
+export async function addActivityLink(code: string, link: { pred: string; succ: string; type: LinkType; lag: number }, actorName: string): Promise<LinkWriteResult> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const ends = await linkEnds(tx, code, link.pred, link.succ);
+    if (!ends || !ends.predId || !ends.succId) return { error: 'unknown' as const };
+    if (link.pred === link.succ) return { error: 'self' as const };
+    const pred = alias(activities, 'pred');
+    const succ = alias(activities, 'succ');
+    const existing = await tx
+      .select({ pred: pred.code, succ: succ.code, position: activityLinks.position, succId: activityLinks.successorId })
+      .from(activityLinks)
+      .innerJoin(pred, eq(pred.id, activityLinks.predecessorId))
+      .innerJoin(succ, eq(succ.id, activityLinks.successorId))
+      .where(eq(activityLinks.projectId, ends.projectId));
+    if (existing.some((l) => l.pred === link.pred && l.succ === link.succ)) return { error: 'duplicate' as const };
+    const ids = (await tx.select({ code: activities.code }).from(activities).where(eq(activities.projectId, ends.projectId))).map((r) => r.code);
+    const cycle = detectCycle(ids, [...existing, { pred: link.pred, succ: link.succ }]);
+    if (cycle) return { error: 'cycle' as const, cycle };
+    const position = Math.max(-1, ...existing.filter((l) => l.succId === ends.succId).map((l) => l.position)) + 1;
+    await tx.insert(activityLinks).values({ projectId: ends.projectId, predecessorId: ends.predId, successorId: ends.succId, type: link.type, lagDays: link.lag, position });
+    await tx.update(activities).set({ updatedAt: new Date() }).where(eq(activities.id, ends.succId));
+    const actor = await findPerson(tx, actorName);
+    await writeAudit(tx, {
+      actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: link.succ,
+      change: `relationship added: ${link.pred} ${link.type}${link.lag ? (link.lag > 0 ? '+' : '') + link.lag : ''} → ${link.succ}`,
+      area: 'Planning', entityType: 'activity', entityId: ends.succId, projectId: ends.projectId,
+    });
+    return { ok: true as const };
+  });
+}
+
+/** Drawer link removal (a predecessor or a successor line). */
+export async function removeActivityLink(code: string, pred: string, succ: string, actorName: string): Promise<LinkWriteResult> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const ends = await linkEnds(tx, code, pred, succ);
+    if (!ends || !ends.predId || !ends.succId) return { error: 'unknown' as const };
+    const del = await tx
+      .delete(activityLinks)
+      .where(and(eq(activityLinks.predecessorId, ends.predId), eq(activityLinks.successorId, ends.succId)))
+      .returning({ type: activityLinks.type });
+    if (!del.length) return { error: 'missing' as const };
+    await tx.update(activities).set({ updatedAt: new Date() }).where(eq(activities.id, ends.succId));
+    const actor = await findPerson(tx, actorName);
+    await writeAudit(tx, {
+      actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: succ, change: `relationship removed: ${pred} ${del[0].type} → ${succ}`,
+      area: 'Planning', entityType: 'activity', entityId: ends.succId, projectId: ends.projectId,
+    });
+    return { ok: true as const };
+  });
 }

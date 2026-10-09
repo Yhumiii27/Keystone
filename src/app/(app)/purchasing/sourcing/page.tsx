@@ -17,6 +17,7 @@ import { NewRfqButton } from '@/features/procurement/new-rfq-button';
 import { SourcingBody, type SourcingBodyProps } from '@/features/procurement/sourcing-view';
 import { getProject, projectLabel } from '@/server/dal/projects';
 import { getPurchaseOrder, listRfqs, listSupplierInvoices } from '@/server/dal/purchasing';
+import { rfqKpiFacts } from '@/server/dal/kpis';
 import { getSupplierScorecard } from '@/server/dal/suppliers';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n, getLastProject } from '@/server/session';
@@ -40,11 +41,11 @@ export default async function SourcingPage({ searchParams }: { searchParams: Pro
 
   const body: SourcingBodyProps = { tab, seg: segView(t), t };
   if (tab === 'rfq') {
-    const rfqs = await listRfqs();
+    const [rfqs, facts] = await Promise.all([listRfqs(), rfqKpiFacts()]);
     const sel = rfqs.find((r) => r.number === rfqSel) ?? null;
     const order = sel?.purchaseOrderNumber ? await getPurchaseOrder(sel.purchaseOrderNumber) : null;
     body.rfq = {
-      view: rfqTabView(rfqs, sel?.number ?? null, ctx),
+      view: rfqTabView(rfqs, sel?.number ?? null, ctx, facts),
       drawer: sel ? rfqDrawerView(sel, { ...ctx, orderProject: order?.projectCode ?? null, currentProject }) : null,
     };
   } else if (tab === 'inv') {

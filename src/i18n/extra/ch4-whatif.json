@@ -1,0 +1,20 @@
+{
+  "The plan cannot be scheduled": "Le plan ne peut pas être calculé",
+  "No scenario yet — create one with New scenario.": "Aucun scénario pour l’instant — créez-en un avec Nouveau scénario.",
+  "No scenario yet.": "Aucun scénario pour l’instant.",
+  "Rename scenario": "Renommer le scénario",
+  "Delete scenario": "Supprimer le scénario",
+  "Save scenario": "Enregistrer le scénario",
+  "Scenario saved": "Scénario enregistré",
+  "Scenario deleted": "Scénario supprimé",
+  "No lever derived from this plan — no critical activity with labour assignments, no overloaded person on a movable activity.": "Aucun levier tiré de ce plan — pas d’activité critique avec affectations de main-d’œuvre, pas de personne surchargée sur une activité décalable.",
+  "Resource requests are read-only for you": "Les demandes de ressources sont en consultation pour vous",
+  "Contract site lead": "Chef de chantier intérimaire",
+  "Contract MEP lead": "Responsable CVC-élec intérimaire",
+  "Contract crane operations": "Exploitation grues intérimaire",
+  "Contract cost controller": "Contrôleur de coûts intérimaire",
+  "Contract planner": "Planificateur intérimaire",
+  "Contract QA / QC": "QA / QC intérimaire",
+  "Contract procurement": "Achats intérimaire",
+  "Contract project manager": "Chef de projet intérimaire"
+}

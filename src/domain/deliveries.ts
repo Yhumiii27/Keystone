@@ -86,8 +86,8 @@ export const receiptTotals = (r: Pick<ReceiptLike, 'lines'>): ReceiptTotals => (
 
 // ── KPI tiles (delivKpis 4461) ─────────────────────────────────────────────────────────────────────────
 
-/** "On-time deliveries" is a prototype constant (no formula yet, 08 OQ23, A-12). */
-export const ON_TIME_DELIVERIES = '83%';
+// "On-time deliveries" is computed since chapter 4 (A-12, 08 OQ23): `onTimeDeliveryPct`, src/domain/kpis.ts — the
+// prototype printed a constant 83 %.
 
 export interface DeliveryKpi {
   /** English labels and sub-lines (parameterised ones are rendered by the FR rule engine). */
@@ -100,10 +100,11 @@ export interface DeliveryKpi {
 
 /**
  * Deliveries (count · "{n} announced"), Awaiting quality check (QC pending · "Held in quarantine"), Rejected quantity
- * (Σ rejected · "{x}% of units received" or "—"), On-time deliveries (83 %), Open orders to receive (orders Ordered or
- * Partially received, from the purchasing DAL).
+ * (Σ rejected · "{x}% of units received" or "—"), On-time deliveries (`onTimePct`, A-12: received by the PO expected
+ * date over the last 90 days, "—" when nothing was received), Open orders to receive (orders Ordered or Partially
+ * received, from the purchasing DAL).
  */
-export function deliveryKpis(rs: readonly ReceiptLike[], openOrdersToReceive: number, lang: Lang): DeliveryKpi[] {
+export function deliveryKpis(rs: readonly ReceiptLike[], openOrdersToReceive: number, lang: Lang, onTimePct: number | null = null): DeliveryKpi[] {
   const qc = rs.filter((r) => r.status === 'qc_pending').length;
   const rej = rs.reduce((a, r) => a + receiptTotals(r).rejected, 0);
   const rec = rs.reduce((a, r) => a + receiptTotals(r).delivered, 0);
@@ -111,7 +112,7 @@ export function deliveryKpis(rs: readonly ReceiptLike[], openOrdersToReceive: nu
     { label: 'Deliveries', value: String(rs.length), sub: `${rs.filter((r) => r.status === 'announced').length} announced`, lo: false },
     { label: 'Awaiting quality check', value: String(qc), sub: 'Held in quarantine', lo: qc > 0 },
     { label: 'Rejected quantity', value: String(rej), sub: rec ? `${dec1((rej / rec) * 100, lang)}% of units received` : '—', lo: rej > 0 },
-    { label: 'On-time deliveries', value: ON_TIME_DELIVERIES, sub: 'Last 90 days · vs PO expected date', lo: false },
+    { label: 'On-time deliveries', value: onTimePct == null ? '—' : `${onTimePct}%`, sub: 'Last 90 days · vs PO expected date', lo: false },
     { label: 'Open orders to receive', value: String(openOrdersToReceive), sub: 'Ordered or partially received', lo: false },
   ];
 }

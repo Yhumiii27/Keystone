@@ -205,8 +205,12 @@ describe('catalogue, BOM and PDM writers', () => {
     await expect(addBomLine('HLT-026', { ref: 'NOPE-1', quantity: 1 }, 'Romain Aubert')).rejects.toThrow(/not in the catalogue/);
     const line = (await getProjectBom('HLT-026'))!.lines.find((l) => l.ref === 'ME-GBX-90')!;
     expect([line.quantity, line.activityCode, line.note, line.scopeLabel]).toEqual([2, 'A1320', 'Spare drive', 'Keystone']);
+    // A-12 (chapter 4): "Last vault sync" is the latest of Keystone's sync and the PDM connector row's run (26 Sep 07:40) —
+    // a sync recorded on 25 Sep 11:05 is older, so the tile keeps 07:40; a later one shows its own time.
     const s = await syncPdmVault({ source: 'solidworks_3dx', scope: 'current_project', projectCode: 'HLT-026' }, 'Antoine Girard', new Date('2026-09-25T09:05:00Z'));
-    expect([s.time, s.drawingsInVault, s.linkedDrawings, s.drawingsUpdated]).toEqual(['11:05', 1248, 13, 0]);
+    expect([s.time, s.drawingsInVault, s.linkedDrawings, s.drawingsUpdated]).toEqual(['07:40', 1248, 13, 0]);
+    const later = await syncPdmVault({ source: 'solidworks_3dx', scope: 'current_project', projectCode: 'HLT-026' }, 'Antoine Girard', new Date('2026-09-26T09:05:00Z'));
+    expect([later.time, later.drawingsInVault, later.linkedDrawings, later.drawingsUpdated]).toEqual(['11:05', 1248, 13, 0]);
     expect((await getVaultSyncState())!.time).toBe('11:05');
   });
 });

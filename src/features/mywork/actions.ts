@@ -3,13 +3,16 @@
 // toggle, "Mark done", checklist ticks and items, comments by the viewer, time logging. Each one validates its
 // input, checks the viewer (outside the workspace → refused; task edits → assignee or director; comments → anyone in
 // the workspace), writes through the tasks DAL and revalidates every screen (tasks show on Home, the sidebar badge,
-// Plan…). Error messages are English source strings (the client shows them with toast.showEn).
+// Plan…). Chapter 4 (R-8): removing an attached file (attaching goes through the upload Route Handler
+// src/app/api/tasks/[taskId]/files, which Server Functions' 1 MB body limit would not allow). Error messages are English
+// source strings (the client shows them with toast.showEn).
 import { revalidatePath } from 'next/cache';
 import { isTaskStatus, parseHours } from '@/domain/tasks';
 import {
   addChecklistItem, addTaskComment, listTasks, logTaskTime, setTaskProgress, setTaskStatus, toggleChecklistItem, toggleTaskDone,
   type TaskRow,
 } from '@/server/dal/tasks';
+import { listTaskFiles, removeTaskFile } from '@/server/dal/task-files';
 import { getScreenAccess } from '@/server/project-context';
 import type { Viewer } from '@/server/session';
 import { canCommentTask, canEditTask } from './permissions';
@@ -122,4 +125,18 @@ export async function logTaskTimeAction(input: { taskId: string; hours: string |
   if (hours == null) return fail('Enter hours between 0 and 24');
   const note = text(input.note, MAX_NOTE);
   return write('logTaskTimeAction', () => logTaskTime(g.task.id, { hours, note: note || undefined, actorName: g.viewer.name }));
+}
+
+const ATTACHMENT_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Chapter 4 (R-8): removes an attachment of the task and the file Keystone stored for it (assignee or director; audited). */
+export async function removeTaskFileAction(input: { taskId: string; attachmentId: string }): Promise<TaskActionResult> {
+  const g = await gate(input?.taskId, 'edit');
+  if (!g.ok) return g;
+  const id = typeof input.attachmentId === 'string' ? input.attachmentId : '';
+  if (!ATTACHMENT_RE.test(id) || !(await listTaskFiles(g.task.id)).some((f) => f.id === id)) {
+    revalidatePath('/', 'layout');
+    return fail('This file is no longer attached');
+  }
+  return write('removeTaskFileAction', () => removeTaskFile(g.task.id, id, g.viewer.name));
 }

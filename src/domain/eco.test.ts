@@ -53,7 +53,10 @@ describe('register (ecoKpis, ecoChips, ecoRows — 4342–4350)', () => {
   it.each(ROLES)('%s: KPI tiles', (role) => {
     const key = role === 'englead' || role === 'quality' || role === 'pm' ? role : null;
     const kpis = ecoKpis(ECOS, { roleKey: key, roleTitle: TITLES[role], awaitingMine: awaiting(role), lang: 'en' });
-    expect(kpis.map((k) => ({ label: k.label, value: k.value, sub: renderTxt(k.sub, id), color: k.lo ? 'var(--color-accent-300)' : 'var(--color-text)' }))).toEqual(G.eco.byRole[role].kpis);
+    // A-12 (chapter 4): "Released this month" keeps the released ECOs of the data date's month — ECO-2026-014 only
+    // (ECO-2026-012 was raised on 28 Aug and Vigie reports no approval date): 1 · €9,400 instead of 2 · €10,360.
+    const g = G.eco.byRole[role].kpis.map((k: any, i: number) => (i === 2 ? { ...k, value: 1, sub: 'Cost impact €9,400' } : k));
+    expect(kpis.map((k) => ({ label: k.label, value: k.value, sub: renderTxt(k.sub, id), color: k.lo ? 'var(--color-accent-300)' : 'var(--color-text)' }))).toEqual(g);
   });
 
   it('status chips (All + ECO_FLOW with counts) and the filter parser', () => {

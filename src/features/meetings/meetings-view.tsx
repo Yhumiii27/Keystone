@@ -4,6 +4,7 @@
 // (minutes-client.tsx). The Decisions register's headers say what the columns hold — "Agenda point" and "Type" —
 // where the prototype titled them "Project" and "Status" (00 §7.16, 05 OQ13).
 import { ArrowBendDownRight, ArrowsLeftRight, CalendarCheck, ChatsCircle, Eye, FileText, Gavel } from '@phosphor-icons/react/dist/ssr';
+import type { FormDef } from '@/components/app/form-def';
 import type { Icon } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { EmptyState } from '@/components/app/EmptyState';
@@ -16,8 +17,9 @@ import { Table, Th } from '@/components/ds/Table';
 import { cx } from '@/components/ds/cx';
 import type { MeetingsView as ViewKey } from '@/domain/meetings';
 import type { T } from '@/i18n/translate';
-import { ActionRows, AnalyseButton, ApplyButton, CarriedRows, MinutesEditor, PrevActionRows } from './minutes-client';
-import { LINE_COLOR, type DetailView, type MeetingsScreenView } from './model';
+import { ActionRows, CarriedRows, MinutesEditor, PrevActionRows } from './minutes-client';
+import { type DetailView, type MeetingsScreenView } from './model';
+import { TranscriptBox, TranscriptImportPanel, type TranscriptAi } from './transcript-client';
 import s from './meetings.module.css';
 
 const VIEW_ICON: Record<ViewKey, Icon> = { meetings: ChatsCircle, decisions: Gavel, actions: ArrowBendDownRight };
@@ -32,9 +34,16 @@ export interface MeetingsBodyProps {
   /** Organizer short name of the selected meeting (default owner of a new action). */
   organizer: string;
   t: T;
+  /** Transcript analyser available on the server (S-10); default: the local rules. */
+  ai?: TranscriptAi;
+  /** "New risk" form for a risk proposal and its owner options (null: the viewer may not edit the risk register). */
+  riskForm?: FormDef | null;
+  riskTeam?: string[];
 }
 
-export function MeetingsBody({ code, view, canEdit, pinned, organizer, t }: MeetingsBodyProps) {
+const LOCAL_AI: TranscriptAi = { claude: false, model: null };
+
+export function MeetingsBody({ code, view, canEdit, pinned, organizer, t, ai = LOCAL_AI, riskForm = null, riskTeam = [] }: MeetingsBodyProps) {
   return (
     <Stack>
       <FilterGroup>
@@ -77,7 +86,9 @@ export function MeetingsBody({ code, view, canEdit, pinned, organizer, t }: Meet
               {!view.cards.length && <EmptyState variant="boxed">{t('No meeting in this view')}</EmptyState>}
             </nav>
           </div>
-          {view.detail && <MeetingDetail code={code} d={view.detail} canEdit={canEdit} pinned={pinned} organizer={organizer} t={t} />}
+          {view.detail && (
+            <MeetingDetail code={code} d={view.detail} canEdit={canEdit} pinned={pinned} organizer={organizer} t={t} ai={ai} riskForm={riskForm} riskTeam={riskTeam} />
+          )}
         </div>
       )}
 
@@ -143,8 +154,20 @@ export function MeetingsBody({ code, view, canEdit, pinned, organizer, t }: Meet
   );
 }
 
+interface DetailProps {
+  code: string;
+  d: DetailView;
+  canEdit: boolean;
+  pinned: boolean;
+  organizer: string;
+  t: T;
+  ai: TranscriptAi;
+  riskForm: FormDef | null;
+  riskTeam: string[];
+}
+
 /** Detail card of the selected meeting (mtgSel). */
-function MeetingDetail({ code, d, canEdit, pinned, organizer, t }: { code: string; d: DetailView; canEdit: boolean; pinned: boolean; organizer: string; t: T }) {
+function MeetingDetail({ code, d, canEdit, pinned, organizer, t, ai, riskForm, riskTeam }: DetailProps) {
   const prep = d.prep;
   const tr = prep?.transcript ?? null;
   return (
@@ -225,37 +248,20 @@ function MeetingDetail({ code, d, canEdit, pinned, organizer, t }: { code: strin
       )}
 
       {tr && (
-        <div className={s.transcript}>
-          <div className={s.panelHead}>
-            <span className={cx(s.kicker, s.push)}>{t('Transcript')}</span>
-            {canEdit && !tr.analysed && <AnalyseButton code={code} meeting={d.number} selfHref={d.selfHref} pinned={pinned} />}
-          </div>
-          <p className={s.transcriptText} tabIndex={0}>
-            {tr.text}
-          </p>
-          {tr.analysed && (
-            <div className={s.analysis}>
-              <span className={s.kickerMuted}>{t('Summary')}</span>
-              <p className={s.summary}>{tr.summary}</p>
-              {tr.draft.map((l) => {
-                const I = l.type === 'decision' ? Gavel : ArrowBendDownRight;
-                return (
-                  <div key={l.key} className={cx(s.row3, s.draftLine)}>
-                    <I className={s.draftIcon} style={{ color: l.type === 'decision' ? LINE_COLOR.decision : 'var(--color-neutral-300)' }} aria-hidden />
-                    <span className={s.pretty}>{l.text}</span>
-                    <span className={cx(s.small, s.nowrap)}>{l.meta}</span>
-                  </div>
-                );
-              })}
-              <div className={s.footer}>
-                <span className={s.footerText}>{t('Review the proposed decisions and actions, then add them to the minutes to edit before sending.')}</span>
-                {canEdit && !tr.applied && <ApplyButton code={code} meeting={d.number} selfHref={d.selfHref} pinned={pinned} />}
-                {tr.applied && <span className="tag tag-neutral">{t('Added to the minutes')}</span>}
-              </div>
-            </div>
-          )}
-        </div>
+        <TranscriptBox
+          code={code}
+          meeting={d.number}
+          organizer={organizer}
+          v={tr}
+          canEdit={canEdit}
+          ai={ai}
+          riskForm={riskForm}
+          riskTeam={riskTeam}
+          selfHref={d.selfHref}
+          pinned={pinned}
+        />
       )}
+      {prep && !tr && canEdit && <TranscriptImportPanel code={code} meeting={d.number} ai={ai} selfHref={d.selfHref} pinned={pinned} />}
 
       <MinutesEditor
         key={d.number}
