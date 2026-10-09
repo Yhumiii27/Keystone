@@ -1,7 +1,10 @@
 // Resource loads, load bands, capacity vs demand and availability from leave (docs/spec/06 §1.4–§1.6, §4,
 // "Status machines" #5; prototype logic 3866–3882 and 4400–4403). Pure functions on the 8-week window: loads are
 // % of available hours per week, hours are 8-week totals. Formatting (money, translated sentences) stays in the UI
-// (src/features/resources/model.ts). Golden values: src/domain/resources.test.ts.
+// (src/features/resources/model.ts), except the two KPI sub-lines Resources shares with the department head's Home
+// (`peakWeeksText`, `shortfallText`, A-12). Golden values: src/domain/resources.test.ts.
+import type { Lang, T } from '@/i18n/translate';
+import { isoWeekOf } from '@/server/db/codes';
 
 // ── Load bands (shade(), logic 3867) ───────────────────────────────────────────────────────────────────
 
@@ -143,6 +146,37 @@ export function weekRangesText(weeks: readonly number[]): string {
     i = j + 1;
   }
   return out.join(', ');
+}
+
+/** ISO week numbers of the window weeks in which someone is above 110 % ("Over-allocated" peak weeks). */
+export function peakWeekNumbers(people: Pick<PersonLoad, 'loads'>[], weekStarts: readonly string[]): number[] {
+  return weeksAbove(people, OVER_ALLOCATED_PCT).flatMap((i) => (weekStarts[i] ? [isoWeekOf(weekStarts[i])] : []));
+}
+
+/**
+ * "Over-allocated" sub (A-12; the prototype's constant "Peak weeks 41–43"): ISO weeks in which someone is above 110 %
+ * ("Peak weeks 42–44", FR "Pointe semaines 42–44"). Shared by Resources and the department head's Home.
+ */
+export function peakWeeksText(people: Pick<PersonLoad, 'loads'>[], weekStarts: readonly string[], lang: Lang): string {
+  const weeks = peakWeekNumbers(people, weekStarts);
+  const fr = lang === 'fr';
+  if (!weeks.length) return fr ? 'Aucune semaine au-dessus de 110 %' : 'No week above 110%';
+  const range = weekRangesText(weeks);
+  if (fr) return `${weeks.length === 1 ? 'Pointe semaine' : 'Pointe semaines'} ${range}`;
+  return `${weeks.length === 1 ? 'Peak week' : 'Peak weeks'} ${range}`;
+}
+
+/** First letter in lower case, unless the word is an acronym ("MEP", "CVC-élec"). */
+const lowerFirst = (s: string) => (/^[A-ZÀ-Ý]{2}/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1));
+
+/**
+ * "Unmet demand" sub (A-12; the prototype's constant "Mostly engineering"): the department short the most ("Mostly
+ * engineering", FR "Surtout ingénierie"). Shared by Resources and the department head's Home.
+ */
+export function shortfallText(rows: readonly CapacityRow[], t: T, lang: Lang): string {
+  const top = mainShortfall(rows);
+  if (!top) return lang === 'fr' ? 'Aucun service au-delà de sa capacité' : 'No department over capacity';
+  return lang === 'fr' ? `Surtout ${lowerFirst(t(top.name))}` : `Mostly ${lowerFirst(top.name)}`;
 }
 
 // ── Requests needing an expert (A-12: Skills "Open requests needing level ≥4" was the constant 2) ────────────────────

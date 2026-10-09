@@ -32,7 +32,7 @@ import { getProject, listProjects, type ProjectRow } from './projects';
 import { listPurchaseOrders } from './purchasing';
 import { listDeliverables } from './quality';
 import { listApprovalDepartments, listResourceRequests } from './requests';
-import { getResourcePool } from './resources';
+import { getResourcePool, listDepartments } from './resources';
 import { listTasks } from './tasks';
 
 export interface HomeQuery {
@@ -120,13 +120,21 @@ async function requests(): Promise<ResourceRequest[]> {
   }));
 }
 
-/** The resource pool (PEOPLE order) with its 8 weekly loads, and each member's department. */
-async function people(): Promise<{ loads: PersonLoad[]; deptOf: Record<string, string> }> {
-  const pool = (await getResourcePool()).people;
+/** The resource pool (PEOPLE order) with its 8 weekly loads, each member's department, and the window's ISO Mondays. */
+async function people(): Promise<{ loads: PersonLoad[]; deptOf: Record<string, string>; weekStarts: string[] }> {
+  const pool = await getResourcePool();
   return {
-    loads: pool.map((p) => ({ name: p.name, role: p.jobTitle ?? '', loads: p.loads })),
-    deptOf: Object.fromEntries(pool.filter((p) => p.department).map((p) => [p.name, p.department!])),
+    loads: pool.people.map((p) => ({ name: p.name, role: p.jobTitle ?? '', loads: p.loads })),
+    deptOf: Object.fromEntries(pool.people.filter((p) => p.department).map((p) => [p.name, p.department!])),
+    weekStarts: pool.weeks.map((w) => w.start),
   };
+}
+
+/** Department capacity vs demand over the window (the Resources bars), for the unmet demand (A-12). */
+async function capacityRows() {
+  return (await listDepartments())
+    .filter((d) => d.capacityH != null && d.demandH != null)
+    .map((d) => ({ name: d.name, capacityH: d.capacityH!, demandH: d.demandH! }));
 }
 
 /** Skill families (matrix columns), each pool member's levels, and their certifications text (CERTS). */
@@ -198,8 +206,10 @@ export async function getHomeView(q: HomeQuery): Promise<HomeView> {
       return pmHome({ lang, persona, project: current, evm, schedule, requests: reqs, purchaseOrders: pos, parts: ps, ecos: es });
     }
     case 'depthead': {
-      const [dept, reqs, pool] = await Promise.all([deptOfHead(persona.name), requests(), people()]);
-      return deptHeadHome({ persona, dept, requests: reqs, people: pool.loads, deptOf: pool.deptOf, reqStatus: REQ_STATUS, lookups: await lookups() });
+      const [dept, reqs, pool, departments] = await Promise.all([deptOfHead(persona.name), requests(), people(), capacityRows()]);
+      return deptHeadHome({
+        persona, dept, requests: reqs, people: pool.loads, deptOf: pool.deptOf, reqStatus: REQ_STATUS, lookups: await lookups(), weekStarts: pool.weekStarts, departments,
+      });
     }
     case 'member': {
       // The viewer's own work: the prototype always showed `state.person` = Hélène Sauvage (docs/spec/00 §7.16, 10 OQ17).

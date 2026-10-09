@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import PROTO from '@/server/prototype/prototype-data.json';
 import GOLD from '@/features/eco/eco.golden.json';
 import { drawingState } from '@/server/db/codes';
-import { drawingChips, drawingFilterOf, drawingKpis, drawingStateTag, filterDrawings, revisionHistory, vaultCountText } from './drawings';
+import { drawingChips, drawingFilterOf, drawingKpis, drawingStateTag, filterDrawings, revisionHistory, vaultCountText, vaultSyncDayText } from './drawings';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const G = (GOLD as any).en.drawings;
@@ -15,10 +15,22 @@ const ROWS = ((PROTO as any).DRAWINGS as { no: string; title: string; part: stri
 
 describe('drawings register (dwgKpis, dwgChips, dwgRows — 4371–4377)', () => {
   it('KPI tiles with the PDM sync record (1 248 drawings, last sync 07:40)', () => {
-    expect(drawingKpis(ROWS, { drawingsInVault: 1248, linkedDrawings: 13, time: '07:40' }).map((k) => ({ label: k.label, value: k.value, sub: k.sub, color: k.lo ? 'var(--color-accent-300)' : 'var(--color-text)' })))
+    // A run on the data date (25 Sep 07:40 Paris) reads "today", as the prototype printed it.
+    const sync = { drawingsInVault: 1248, linkedDrawings: 13, time: '07:40', syncedAt: '2026-09-25T05:40:00.000Z' };
+    expect(drawingKpis(ROWS, sync, '2026-09-25').map((k) => ({ label: k.label, value: k.value, sub: k.sub, color: k.lo ? 'var(--color-accent-300)' : 'var(--color-text)' })))
       .toEqual(G.kpis.map((k: any) => ({ ...k, value: String(k.value) })));
     expect(drawingKpis([], null).map((k) => k.value)).toEqual(['—', '0', '0', '0', '—']);
     expect([vaultCountText(1248), vaultCountText(12), vaultCountText(1234567)]).toEqual(['1 248', '12', '1 234 567']);
+  });
+
+  it('"Last vault sync" day: computed from the run against the data date (A-12; the prototype always said "today")', () => {
+    // Paris days: 23:30 UTC on 24 Sep is already 25 Sep in Paris.
+    expect([
+      vaultSyncDayText('2026-09-24T23:30:00Z', '2026-09-25'), vaultSyncDayText('2026-09-24T09:00:00Z', '2026-09-25'), vaultSyncDayText('2026-09-26T05:40:00Z', '2026-09-25'),
+      vaultSyncDayText('2026-09-18T05:40:00Z', '2026-09-25'),
+    ]).toEqual(['today', 'yesterday', '26 Sep', '18 Sep']);
+    const sub = (syncedAt?: string) => drawingKpis(ROWS, { drawingsInVault: 1, linkedDrawings: 1, time: '07:40', syncedAt }, '2026-09-25')[4].sub;
+    expect([sub('2026-09-24T09:00:00Z'), sub()]).toEqual(['SolidWorks PDM · yesterday · read-only', 'SolidWorks PDM · read-only']);
   });
 
   it('state chips, filter and search (number + title + part, case-insensitive)', () => {

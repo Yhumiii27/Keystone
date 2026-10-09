@@ -144,10 +144,21 @@ const CLIENT_DB: Record<Lang, [string, string][]> = {
   ],
 };
 
+/**
+ * A-12 (chapter 4): the department head's "Over-allocated" sub and "Unmet demand" are computed as on Resources (pool loads
+ * above 110 % in ISO weeks 42–44; Σ demand − capacity of the department bars = 280 h, Engineering the largest gap). The
+ * prototype's constants were "Peak weeks 41–43" and "240 h · Mostly engineering".
+ */
+const DEPTHEAD_A12: Record<Lang, [Kpi, Kpi]> = {
+  en: [['Over-allocated', '3 people', 'Peak weeks 42–44', true], ['Unmet demand', '280 h', 'Mostly engineering', true]],
+  fr: [['Surchargés', '3 personnes', 'Pointe semaines 42–44', true], ['Demande non couverte', '280 h', 'Surtout ingénierie', true]],
+};
+
 function expected(role: RoleKey, lang: Lang): Golden {
   if (role === 'member') return structuredClone(MEMBER[lang]);
   const g = structuredClone(G[role][lang]);
   if (role === 'procurement') g.kpis[1] = LATE[lang];
+  if (role === 'depthead') [g.kpis[2], g.kpis[3]] = DEPTHEAD_A12[lang];
   const out = lang === 'fr' ? mapStrings(g, fixFr) : g;
   if (role !== 'client') return out;
   const db = new Map(CLIENT_DB[lang]);

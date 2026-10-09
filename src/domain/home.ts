@@ -7,6 +7,9 @@
 import { screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
 import { STATUS_DATE, TODAY, dateOf, dayLabel, money } from '@/lib/format';
+import { weekHoursOf } from './kpis';
+import { mainShortfall, peakWeekNumbers, unmetDemand, weekRangesText, type CapacityRow } from './resources';
+import { nextWeekEnd, spanText } from './tasks';
 
 // ── View model ───────────────────────────────────────────────────────────────────────────────────────────
 
@@ -505,6 +508,26 @@ export interface DeptHeadInput {
   /** REQ_STATUS: status → [label, tag class]. */
   reqStatus: Record<string, [string, string]>;
   lookups: Lookups;
+  /** ISO Mondays of the pool's window weeks (peak week numbers, A-12). */
+  weekStarts: string[];
+  /** Department capacity vs demand over the window, as the Resources bars (unmet demand, A-12). */
+  departments: CapacityRow[];
+}
+
+/**
+ * "Over-allocated" sub of the department head's Home, as Resources computes it (A-12; the prototype's constant "Peak
+ * weeks 41–43"): the ISO weeks in which someone is above 110 %.
+ */
+export function peakWeeksTxt(people: Pick<PersonLoad, 'loads'>[], weekStarts: readonly string[]): Txt {
+  const weeks = peakWeekNumbers(people, weekStarts);
+  if (!weeks.length) return 'No week above 110%';
+  return { tpl: weeks.length === 1 ? 'Peak week {range}' : 'Peak weeks {range}', p: { range: weekRangesText(weeks) } };
+}
+
+/** "Unmet demand" sub (A-12; the prototype's constant "Mostly engineering"): the department short the most. */
+export function shortfallTxt(rows: readonly CapacityRow[]): Txt {
+  const top = mainShortfall(rows);
+  return top ? { tpl: 'Mostly {dept|lc}', p: { dept: top.name } } : 'No department over capacity';
 }
 
 /** Resource KPIs of the Resources screen (logic 3869–3882): utilization = mean of 8-week averages; over-allocated = peak > 110 %. */
@@ -519,15 +542,17 @@ export function teamLoad(people: PersonLoad[]) {
 export function deptHeadHome(i: DeptHeadInput): HomeView {
   const pending = i.requests.filter((r) => r.dept === i.dept && r.status === 'pending');
   const { utilization, over } = teamLoad(i.people);
+  const unmet = unmetDemand(i.departments);
   const dates = (r: ResourceRequest) => dayLabel(r.start).slice(4) + ' – ' + dayLabel(r.due).slice(4);
   return {
     ...greeting(i.persona),
     kpis: [
       kpi('Awaiting my approval', pending.length, 'Resource requests · ' + i.dept, pending.length > 0),
       kpi('Team utilization', utilization + '%', 'Target 85–95%', false),
-      kpi('Over-allocated', over + plural(over, ' person', ' people'), 'Peak weeks 41–43', over > 0),
-      // TODO(db): unmet demand is a constant in the prototype ("240 h"); derive from demand vs capacity once modelled.
-      kpi('Unmet demand', '240 h', 'Mostly engineering', true),
+      // A-12 (chapter 4): the peak weeks and the unmet demand are computed as on Resources — the prototype's constants were
+      // "Peak weeks 41–43" and "240 h · Mostly engineering".
+      kpi('Over-allocated', over + plural(over, ' person', ' people'), peakWeeksTxt(i.people, i.weekStarts), over > 0),
+      kpi('Unmet demand', `${unmet} h`, shortfallTxt(i.departments), unmet > 0),
     ],
     left: {
       title: { tpl: 'Approval queue — {dept}', p: { dept: i.dept } },
@@ -575,7 +600,7 @@ export function workSummary(todos: Todo[], person: string, people: PersonLoad[])
     open,
     dueToday: open.filter((t) => t.due === TODAY).length,
     overdue: open.filter((t) => t.due < TODAY).length,
-    nextWeek: open.filter((t) => t.due > TODAY && t.due <= 9).length,
+    nextWeek: open.filter((t) => t.due > TODAY && t.due <= nextWeekEnd()).length,
     logged,
     load: Math.round((loads[0] + loads[1]) / 2),
   };
@@ -584,13 +609,16 @@ export function workSummary(todos: Todo[], person: string, people: PersonLoad[])
 export function memberHome(i: MemberInput): HomeView {
   const w = workSummary(i.todos, i.person, i.people);
   const logged = i.loggedThisWeekH ?? w.logged;
+  // Computed instead of the prototype's literals "28 Sep – 2 Oct" and "of 40 h" (same values at the status date): next
+  // week's span (as My work's calendar) and the standard calendar's weekly hours (5 × 8 h, S-2).
+  const weekH = weekHoursOf();
   return {
     ...greeting(i.persona),
     kpis: [
       kpi('Due today', w.dueToday, dayLabel(TODAY), false),
       kpi('Overdue', w.overdue, 'Needs a new date or a push', w.overdue > 0),
-      kpi('Next week', w.nextWeek, '28 Sep – 2 Oct', false),
-      kpi('Logged this week', logged.toFixed(1) + ' h', { tpl: 'of 40 h · {pct}%', p: { pct: Math.round((logged / 40) * 100) } }, false),
+      kpi('Next week', w.nextWeek, spanText(nextWeekEnd() - 4, nextWeekEnd()), false),
+      kpi('Logged this week', logged.toFixed(1) + ' h', { tpl: 'of {h} h · {pct}%', p: { h: weekH, pct: Math.round((logged / weekH) * 100) } }, false),
     ],
     left: {
       title: 'My tasks',

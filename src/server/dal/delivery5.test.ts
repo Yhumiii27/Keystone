@@ -8,7 +8,10 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { canSee, type RoleKey, type ScreenId } from '@/config/screens';
 import { money } from '@/lib/format';
-import { setDb } from '@/server/db/client';
+import { and, eq } from 'drizzle-orm';
+import { ncrKpis } from '@/domain/quality';
+import { getDb, setDb } from '@/server/db/client';
+import { vigieNcrs } from '@/server/db/schema';
 import {
   D5_SCREEN_ROLES, NCR_FLOW, STATUS_ISO, addDaysIso, fmtDOfIso, ncrStatus, shortDateOfIso, stampText, type D5Screen,
 } from '@/server/db/codes';
@@ -29,6 +32,7 @@ import { getPidValidation, pidBadgeByProject, pidCandidates } from './pid';
 import {
   criticalOpenNcrsByProject, deliverableAcceptanceQueue, listDeliverables, listNcrs, listProjectNcrRefs, ncrVerificationQueue,
 } from './quality';
+import { getQualityScreen } from './quality-screen';
 import { getRex } from './rex';
 import { getSettings } from './settings';
 import { cursusLabels, getSite, siteBadgeByProject } from './site';
@@ -573,5 +577,28 @@ describe('administration (09 §9, 10 §1–2)', () => {
     // prototype's 6 included an event of 26 Sep.
     expect(g.kpis[0].value).toBe(6);
     expect([counts.eventsToday, counts.auditLast7Days]).toEqual([5, g.kpis[3].value]);
+  });
+});
+
+// ── A-12: "closed this quarter" ───────────────────────────────────────────────────────────────────────────────
+
+describe('quality — "N closed this quarter" counts the data date\'s quarter only (A-12, 07 OQ23)', () => {
+  it('a closed NCR whose Vigie closure date falls in another quarter (Q2) is not counted', async () => {
+    const db = await getDb();
+    const closed = await db.select({ id: vigieNcrs.id, at: vigieNcrs.vigieUpdatedAt }).from(vigieNcrs)
+      .where(and(eq(vigieNcrs.projectCode, 'HLT-026'), eq(vigieNcrs.status, 'closed')));
+    expect(closed.length).toBeGreaterThan(0);
+    const sub = async () => {
+      const q = await getQualityScreen('HLT-026');
+      return ncrKpis(q.ncrs, undefined, q.dataDate)[0].sub;
+    };
+    // Seed: every closed NCR was closed in Q3 2026, the data date's quarter (the prototype counted every closed NCR).
+    expect(await sub()).toBe(`${closed.length} closed this quarter`);
+    await db.update(vigieNcrs).set({ vigieUpdatedAt: new Date('2026-06-15T10:00:00Z') }).where(eq(vigieNcrs.id, closed[0].id));
+    try {
+      expect(await sub()).toBe(`${closed.length - 1} closed this quarter`);
+    } finally {
+      await db.update(vigieNcrs).set({ vigieUpdatedAt: closed[0].at }).where(eq(vigieNcrs.id, closed[0].id));
+    }
   });
 });

@@ -1,1 +1,9 @@
-{}
+{
+  "Peak week {range}": "Pointe semaine {range}",
+  "Peak weeks {range}": "Pointe semaines {range}",
+  "No week above 110%": "Aucune semaine au-dessus de 110 %",
+  "Mostly {dept|lc}": "Surtout {dept|lc}",
+  "No department over capacity": "Aucun service au-delà de sa capacité",
+  "read-only": "lecture seule",
+  "of {h} h · {pct}%": "sur {h} h · {pct} %"
+}
