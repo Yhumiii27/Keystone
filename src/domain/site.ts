@@ -17,8 +17,8 @@
 //   default "30 Sep 2026" was after it) and listed with the other reports.
 // Kept as constants (A-12, 10 OQ7): the site premium "×1.5 / ×2" and its calendar text.
 // Chapter 4 (A-12, src/domain/kpis.ts): "Man-days planned" = Σ rotation crew × working days on the project calendar
-// (`plannedManDays`, computed by the DAL); "Client decisions logged" = change requests with a decided client step
-// (`clientDecisionsLogged`); the HSE tile counts the incidents Vigie reports on its registers (`vigieIncidentCount`) —
+// (`plannedManDays`, computed by the DAL); "Client decisions logged" = decisions of the project's meetings with the client
+// (D-5, `clientDecisionCount` in src/domain/meetings.ts); the HSE tile counts the incidents Vigie reports on its registers (`vigieIncidentCount`) —
 // the prototype showed 168, 3 and a literal "0 incident".
 import type { Lang } from '@/i18n/translate';
 import { money } from '@/lib/format';

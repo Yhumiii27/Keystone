@@ -307,10 +307,6 @@ export function plannedManDays(rotation: readonly { person: string; fromOn: stri
   return rotation.reduce((s, r) => s + crewSize(r.person) * cal.durationOf(r.fromOn, r.toOn), 0);
 }
 
-/** Client decisions logged = change requests whose client step is decided (approved or rejected). */
-export const clientDecisionsLogged = (crs: readonly { chain: Partial<Record<string, string>> }[]) =>
-  crs.filter((c) => c.chain.client === 'ok' || c.chain.client === 'rejected').length;
-
 /** HSE incidents = Σ of the counts Vigie reports on its incident / near-miss registers ("0 déclaré" → 0). */
 export const vigieIncidentCount = (items: readonly { kind?: string; statusText?: string | null }[]) =>
   items.filter((h) => h.kind === 'register').reduce((s, h) => s + (leadingCount(h.statusText) ?? 0), 0);

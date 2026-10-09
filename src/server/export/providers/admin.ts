@@ -6,6 +6,7 @@ import { CLIENT_ORG } from '@/config/personas';
 import { SETTINGS_CARDS, parseActivitySource, parsePlumbView } from '@/domain/admin';
 import { listAdminConnectors } from '@/server/dal/admin-connectors';
 import { listDocumentTypes } from '@/server/dal/documents';
+import { visibleImportFormats } from '@/features/admin/model';
 import { listImportFormats } from '@/server/dal/integrations';
 import { listMachineTypes } from '@/server/dal/mtypes';
 import { listActivity, listAudit } from '@/server/dal/notifications';
@@ -72,7 +73,9 @@ async function docTypesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
 
 async function plumbingWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
-  const [activity, connectors, imports, audit, visible] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), projectFilter(ctx)]);
+  const [activity, connectors, allFormats, audit, visible] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), projectFilter(ctx)]);
+  // D-7b: the import cards are hidden while imports are off; the export lists what the screen shows.
+  const imports = visibleImportFormats(allFormats);
   const view = parsePlumbView(param(ctx, 'view'));
   const source = parseActivitySource(param(ctx, 'source'), activity.map((a) => a.kind));
   // A client sees its own projects' events only; events without a project are company-wide and stay internal.

@@ -2,7 +2,7 @@
 // seed's figures (data date Fri 25 Sep 2026).
 import { describe, expect, it } from 'vitest';
 import {
-  addMonthsIso, averageResponseDays, cashForecast, cashWindow, clientDecisionsLogged, closedInQuarter, crewSize, demandPerMeur, departmentCapacity,
+  addMonthsIso, averageResponseDays, cashForecast, cashWindow, closedInQuarter, crewSize, demandPerMeur, departmentCapacity,
   dueWithinDays, ecoReleaseDate, eventsOnDay, expectedReceipts, finishOfMonthText, latestVaultSync, leadingCount, loggedInWeek, lowestCumulativePoint,
   monthsBetween, nextWeeksLoad, onTimeDeliveryPct, plannedManDays, portfolioMarginPct, projectEacKeur, projectValueKeur, quarterKey, releasedInMonth,
   rfqAverageCycleDays, rfqSavingsKeur, standardCalendar, vigieIncidentCount, weekHoursOf, weekMondayOf, type CashProjectInput,
@@ -168,9 +168,6 @@ describe('site (10 OQ7)', () => {
     expect([crewSize('Contractant — 2 monteurs'), crewSize('Amélie Ollivier'), crewSize('Team - 3 fitters')]).toEqual([2, 1, 3]);
     expect(plannedManDays(rotation.slice(0, 1))).toBe(44);
     expect(plannedManDays(rotation, standardCalendar())).toBe(179);
-  });
-  it('client decisions = change requests with a decided client step (HLT-026: CR-004, CR-006)', () => {
-    expect(clientDecisionsLogged([{ chain: { client: 'ok' } }, { chain: { client: 'ok' } }, { chain: { client: 'na' } }, { chain: { client: 'pending' } }, { chain: {} }, { chain: { client: 'rejected' } }])).toBe(3);
   });
   it('HSE incidents = Σ the counts of Vigie\'s registers', () => {
     expect(vigieIncidentCount([{ kind: 'prevention_plan', statusText: 'Signed' }, { kind: 'register', statusText: '0 déclaré' }])).toBe(0);

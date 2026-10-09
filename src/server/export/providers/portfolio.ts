@@ -4,7 +4,7 @@
 // their organisation's projects).
 import { HEALTH_LABEL } from '@/domain/health';
 import { isPgFilter, portfolioScheduleModel } from '@/domain/pfplan';
-import { overviewMetrics, portfolioKpis, portfolioTotals } from '@/domain/portfolio';
+import { portfolioKpis, portfolioTotals } from '@/domain/portfolio';
 import { billingRollup, cashBars, rankByScore } from '@/domain/portfolio-finance';
 import { mapKpis } from '@/domain/worldmap';
 import { pfT } from '@/features/pfinance/i18n';
@@ -13,6 +13,7 @@ import { MO } from '@/lib/format';
 import { getProjectsMap } from '@/server/dal/geo';
 import { getCapacityScreen, getCashScreen, getPrioritisationScreen } from '@/server/dal/pfinance';
 import { getPortfolioSchedule } from '@/server/dal/pipeline';
+import { healthThresholds } from '@/server/dal/health-thresholds';
 import { getPortfolioOverview } from '@/server/dal/portfolio';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportWorkbook } from '../types';
@@ -24,9 +25,10 @@ const zoneLine = (ctx: ExportContext) => filterLine(ctx.t('Zone'), ctx.zone?.toU
 // ── Overview ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 async function overviewWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t, lang } = ctx;
-  const [data, visible] = await Promise.all([getPortfolioOverview(ctx.zone, lang), projectFilter(ctx)]);
+  const [data, visible, th] = await Promise.all([getPortfolioOverview(ctx.zone, lang), projectFilter(ctx), healthThresholds()]);
   const rows = data.rows.filter((p) => visible(p.code));
-  const kpis = rows.length === data.rows.length ? data.kpis : portfolioKpis(portfolioTotals(rows.map((p) => ({ ...p, metrics: overviewMetrics(p) }))), lang);
+  // The rows already carry their metrics with the Settings thresholds (A-13); a client's subset recomputes the totals only.
+  const kpis = rows.length === data.rows.length ? data.kpis : portfolioKpis(portfolioTotals(rows), lang, th);
   return {
     title: t('Portfolio overview'),
     filters: compact([zoneLine(ctx)]),

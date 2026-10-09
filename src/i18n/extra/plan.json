@@ -33,10 +33,5 @@
   "unknown activity": "activité inconnue",
   "an activity cannot precede itself": "une activité ne peut pas se précéder elle-même",
   "listed twice": "en double",
-  "would create a logic loop": "créerait une boucle logique",
-  "Reschedule — coming soon": "Replanifier — bientôt disponible",
-  "Set baseline — coming soon": "Fixer la référence — bientôt disponible",
-  "Add relationship — coming soon": "Ajouter un lien — bientôt disponible",
-  "Calendar — coming soon": "Calendrier — bientôt disponible",
-  "Baseline — coming soon": "Référence — bientôt disponible"
+  "would create a logic loop": "créerait une boucle logique"
 }

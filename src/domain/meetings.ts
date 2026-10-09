@@ -343,8 +343,7 @@ export const decisionRowsIn = (ms: readonly Meeting[], scope: DecisionScope): De
 
 /**
  * "Client decisions logged" (Site tile, A-12 / D-5): decisions recorded in the minutes of the project's meetings with the
- * client. Before D-5 the tile counted the change requests whose client step was decided (src/domain/kpis.ts
- * clientDecisionsLogged).
+ * client. Before D-5 the tile counted the change requests whose client step was decided.
  */
 export const clientDecisionCount = (ms: readonly Meeting[]) => decisionRowsIn(ms, 'client').length;
 

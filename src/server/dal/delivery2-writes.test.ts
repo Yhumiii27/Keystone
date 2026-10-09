@@ -56,8 +56,11 @@ describe('change control', () => {
     expect(cc.baselines.map((b) => [b.code, b.state, b.setOnDate])).toEqual([['BL0', 'superseded', '2026-01-18'], ['BL1', 'superseded', '2026-03-12'], ['BL2', 'current', '2026-09-25']]);
     const cr8 = cc.changeRequests.find((c) => c.id === 'CR-008')!;
     expect(cr8.chain.find((s) => s.step === 'director')).toMatchObject({ decision: 'ok', decidedBy: 'Marie Lefebvre' });
-    // S-3 / DELIVERY-6-PLAN §3.1 gap (1): the approval now also fills BL2's activity snapshot.
-    expect(await lastAudit()).toMatchObject({ object: 'CR-009', change: 'ccb: pending → ok · status: In review → Approved · BL2 snapshot · 21 activities · BL2 current', area: 'Change control' });
+    // S-3 / DELIVERY-6-PLAN §3.1 gap (1): the approval now also fills BL2's activity snapshot. Both audit lines are written in
+    // one transaction and can share a millisecond, so look each one up instead of relying on their order.
+    const recent = await listAudit({ limit: 5 });
+    expect(recent.find((a) => a.object === 'CR-009')).toMatchObject({ change: 'ccb: pending → ok · status: In review → Approved · BL2 snapshot · 21 activities · BL2 current', area: 'Change control' });
+    expect(recent.find((a) => a.object === 'HLT-026 BL2')).toMatchObject({ change: 'baseline snapshot · 21 activities · current', area: 'Planning' });
   });
 
   it('raises CR-011 (submitted, every step pending) and a rejected step rejects it', async () => {
