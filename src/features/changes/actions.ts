@@ -40,8 +40,12 @@ async function toastOf(english: string) {
   return whole !== english ? whole : english.split(' · ').map(t).join(' · ');
 }
 
-/** "New change request" (AF `changes`): raises a CR submitted for review (CR-011…), toast "CR-011 · Change request submitted for review". */
-export async function createChangeRequestAction(code: string, values: Record<string, string>): Promise<ChangeFormResult> {
+/**
+ * "New change request" (AF `changes`): raises a CR submitted for review (CR-011…), toast "CR-011 · Change request submitted for review".
+ * `opts.proposeBaseline` (Plan "Set baseline" after BL1, S-3): the request also proposes the project's next baseline BLn, filled
+ * with the activity snapshot and made current when the request is approved.
+ */
+export async function createChangeRequestAction(code: string, values: Record<string, string>, opts?: { proposeBaseline?: boolean }): Promise<ChangeFormResult> {
   const r = await editable(code, 'changes');
   if ('error' in r) return r;
   const { t } = await getI18n();
@@ -50,8 +54,13 @@ export async function createChangeRequestAction(code: string, values: Record<str
   const known = new Set((await getWbs(r.ctx.project.code)).map((w) => w.code));
   const unknown = known.size ? parsed.value.wbsCodes.filter((c) => !known.has(c)) : [];
   if (unknown.length) return { error: `${t('Unknown WBS element')} ${unknown.join(', ')}` };
-  const number = await createChangeRequest(r.ctx.project.code, { ...parsed.value, submit: true }, r.ctx.viewer.name);
+  const proposeBaseline = opts?.proposeBaseline === true;
+  const number = await createChangeRequest(r.ctx.project.code, { ...parsed.value, submit: true, proposeBaseline }, r.ctx.viewer.name);
   refresh();
+  if (proposeBaseline) {
+    const bl = (await listChangeRequestDetails(r.ctx.project.code)).find((c) => c.id === number)?.baseline ?? '';
+    return { toast: `${number} · ${await toastOf(NEW_CR_RESULT)} · ${bl} ${t('proposed')}` };
+  }
   return { toast: `${number} · ${await toastOf(NEW_CR_RESULT)}` };
 }
 

@@ -43,6 +43,13 @@
       "when": 1791532579689,
       "tag": "0005_sloppy_talos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791559634379,
+      "tag": "0006_square_lilith",
+      "breakpoints": true
     }
   ]
 }

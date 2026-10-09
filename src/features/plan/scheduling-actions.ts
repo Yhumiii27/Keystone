@@ -3,6 +3,7 @@
 // activity drawer's calendar override, relationships and to-dos. Each one re-checks the viewer's rights on the server
 // (src/features/plan/rights.ts), validates the untrusted input, writes through the DAL (which audits) and revalidates.
 import { revalidatePath } from 'next/cache';
+import { canSnapshotFreely } from '@/domain/baseline-policy';
 import { longDateText } from '@/domain/schedule-rollup';
 import { addActivityTodo, listActivityTodos, removeActivityTodo, setActivityTodoDone } from '@/server/dal/activity-todos';
 import { createBaselineSnapshot, listProjectBaselines } from '@/server/dal/baselines';
@@ -63,16 +64,21 @@ export async function rescheduleAction(code: string): Promise<PlanToastResult> {
 
 // ── Baselines (S-3) ───────────────────────────────────────────────────────────────────────────────────────────────
 
-/** "Set baseline" (name, comment): snapshots every activity into BLn, proposed (it becomes current through a change request). */
+/**
+ * "Set baseline" (name, comment) while the project is below BL1 (src/domain/baseline-policy.ts, S-3 + L-2): snapshots every
+ * activity into BL0 / BL1, current at once. From BL2 on it is refused: a new baseline goes through a change request (the Plan
+ * button links to the Change control form instead).
+ */
 export async function setBaselineAction(code: string, values: Record<string, string>): Promise<PlanDialogResult> {
   const r = await allowed(code, 'schedule');
   if ('error' in r) return r;
   const { t, lang } = await getI18n();
+  if (!canSnapshotFreely((await listProjectBaselines(r.ctx.project.code)).map((b) => b.code))) return { error: t('After BL1, a new baseline goes through a change request') };
   const name = str(values?.name).trim();
   const comment = str(values?.comment).trim();
   if (name.length > NAME_MAX) return { error: t('Baseline name is too long') };
   if (comment.length > COMMENT_MAX) return { error: t('Comment is too long') };
-  const res = await createBaselineSnapshot(r.ctx.project.code, { actorName: r.ctx.viewer.name, name: name || undefined, comment: comment || null, source: 'snapshot' });
+  const res = await createBaselineSnapshot(r.ctx.project.code, { actorName: r.ctx.viewer.name, name: name || undefined, comment: comment || null, source: 'snapshot', makeCurrent: true });
   refresh(r.ctx.project.code);
   return { toast: baselineSetText(res.code, res.activityCount, lang) };
 }

@@ -111,3 +111,27 @@ export const todoRemovedText = (number: string, lang: Lang) => (lang === 'fr' ? 
 /** Date part of a baseline chip / menu line: "12 mars 2026" (translated date given), else "Pending CR-009" / "Not set". */
 export const baselineWhenText = (setOn: string | null, changeRequest: string | null, lang: Lang) =>
   setOn ?? (changeRequest ? (lang === 'fr' ? `En attente de ${changeRequest}` : `Pending ${changeRequest}`) : lang === 'fr' ? 'Non fixée' : 'Not set');
+
+// ── Chapter 4 (S-5): removal with undo ─────────────────────────────────────────────────────────────────────────────
+
+/** Removal toast: "A1250 removed" / "Work package 1.7 removed". */
+export const removedText = (kind: 'wp' | 'act', code: string, lang: Lang) =>
+  kind === 'wp' ? (lang === 'fr' ? `Lot ${code} retiré` : `Work package ${code} removed`) : lang === 'fr' ? `${code} retirée` : `${code} removed`;
+
+/** Restore toast: "Work package 1.7 restored · 2 activities" / "A1250 restored". */
+export function restoredText(kind: 'wp' | 'act', code: string, n: number, lang: Lang): string {
+  if (kind === 'act') return lang === 'fr' ? `${code} restaurée` : `${code} restored`;
+  const acts = lang === 'fr' ? `${n} activité${n > 1 ? 's' : ''}` : `${n} activit${n === 1 ? 'y' : 'ies'}`;
+  return lang === 'fr' ? `Lot ${code} restauré · ${acts}` : `Work package ${code} restored · ${acts}`;
+}
+
+/** Restore refused: the code was given to a new row since. */
+export const restoreConflictText = (code: string, lang: Lang) =>
+  lang === 'fr' ? `${code} existe de nouveau dans le plan — restauration impossible` : `${code} exists again in the plan — it cannot be restored`;
+
+/** "Recently deleted" line meta: "2 activities · Romain Aubert · 9 Oct 14:05" (date already formatted). */
+export function trashMetaText(kind: 'wp' | 'act', n: number, who: string, when: string, lang: Lang): string {
+  if (kind === 'act') return `${who} · ${when}`;
+  const acts = lang === 'fr' ? `${n} activité${n > 1 ? 's' : ''}` : `${n} activit${n === 1 ? 'y' : 'ies'}`;
+  return `${acts} · ${who} · ${when}`;
+}

@@ -9,13 +9,16 @@ import {
 } from '@/domain/schedule';
 import { wbsFmtDate, wbsParseDate } from '@/lib/format';
 import {
-  deleteActivity, deleteWorkPackage, getPackageOrder, getPlanData, insertActivity, insertWorkPackage, ownerCodeOfName,
-  renameWorkPackage, reorderActivities, updateActivity, type ActivityPatch, type PlanData,
+  getPackageOrder, getPlanData, insertActivity, insertWorkPackage, ownerCodeOfName, renameWorkPackage, reorderActivities, updateActivity,
+  type ActivityPatch, type PlanData,
 } from '@/server/dal/plan';
+import { restorePlanTrash, trashPlanRow } from '@/server/dal/plan-trash';
 import { getProject } from '@/server/dal/projects';
 import { rescheduleIfAutomatic } from '@/server/dal/schedule';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { removedText, restoreConflictText, restoredText } from './i18n';
+import { canEditPlan, canSchedulePlan } from './rights';
 
 /** `value`: the normalised value of an edited cell. */
 export type PlanActionResult = { ok: true; value?: string } | { error: string };
@@ -26,6 +29,7 @@ const FIELDS: readonly ActivityField[] = ['name', 'owner', 'dur', 'budget', 'pre
 const str = (v: unknown) => (typeof v === 'string' ? v : v == null ? '' : String(v));
 const MAX_NAME = 200;
 const MAX_TEXT = 2000;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** A typed form date ("5 Oct 2026") → Date, or null when it does not parse to a plausible calendar date. */
 function formDate(text: string): Date | null {
@@ -167,15 +171,52 @@ export async function moveActivity(code: string, actId: string, dir: -1 | 1): Pr
   return { ok: true };
 }
 
-/** Remove an activity, or a work package with all its activities (`rmKey`). The root cannot be removed. */
-export async function removeRow(code: string, kind: 'wp' | 'act', key: string): Promise<PlanActionResult> {
-  const r = await editablePlan(code);
-  if ('error' in r) return r;
+/** Removal result: the trash entry ("Undo" in the toast) and the translated toast. */
+export type RemoveRowResult = { ok: true; trashId: string; toast: string } | { error: string };
+
+/** Removal and restore (S-5): the director or the project's manager, on a plan they may edit (not read-only / outside / client). */
+async function trashRights(code: unknown): Promise<{ code: string; actor: string } | { error: string }> {
   const { t } = await getI18n();
-  const done = kind === 'wp' ? await deleteWorkPackage(code, str(key)) : kind === 'act' ? await deleteActivity(code, str(key)) : false;
-  if (!done) return { error: t('Invalid request') };
-  refresh(code);
-  return { ok: true };
+  if (typeof code !== 'string' || !code || !(await getProject(code))) return { error: t('Invalid request') };
+  const ctx = await getProjectContext(code, 'plan');
+  if (!canEditPlan(ctx)) return { error: t('This plan is read-only for you') };
+  if (!canSchedulePlan(ctx)) return { error: t('Only the project manager or the director can do this') };
+  return { code: ctx.project.code, actor: ctx.viewer.name };
+}
+
+/**
+ * Remove an activity, or a work package with all its activities (`rmKey`), after the confirmation dialog. The root cannot be
+ * removed. S-5: the rows go to the Plan trash in one transaction (links, assignments, to-dos included) — the toast offers
+ * "Undo" and the Plan lists them under "Recently deleted" (src/server/dal/plan-trash.ts).
+ */
+export async function removeRow(code: string, kind: 'wp' | 'act', key: string): Promise<RemoveRowResult> {
+  const r = await trashRights(code);
+  if ('error' in r) return r;
+  const { t, lang } = await getI18n();
+  const k = str(key);
+  const trashId = kind === 'wp' || kind === 'act' ? await trashPlanRow(r.code, kind, k, r.actor) : null;
+  if (!trashId) return { error: t('Invalid request') };
+  await afterScheduleEdit(r.code, r.actor);
+  refresh(r.code);
+  return { ok: true, trashId, toast: removedText(kind, k, lang) };
+}
+
+/** "Undo" (toast) or "Restore" (Recently deleted): puts the removed rows back exactly as they were. */
+export async function restoreRow(code: string, trashId: string): Promise<{ ok: true; toast: string } | { error: string }> {
+  const r = await trashRights(code);
+  if ('error' in r) return r;
+  const { t, lang } = await getI18n();
+  const id = str(trashId);
+  if (!UUID_RE.test(id)) return { error: t('Invalid request') };
+  const res = await restorePlanTrash(r.code, id, r.actor);
+  if ('error' in res) {
+    if (res.error === 'conflict') return { error: restoreConflictText(res.code ?? '', lang) };
+    if (res.error === 'parent') return { error: t('Restore its work package first') };
+    return { error: t('This removal can no longer be undone') };
+  }
+  await afterScheduleEdit(r.code, r.actor);
+  refresh(r.code);
+  return { ok: true, toast: restoredText(res.kind, res.code, res.activityCount, lang) };
 }
 
 /** AF `plan` — "Add activity" (afSubmit, logic 5129). Toast "A1901 · Activity created · 1.1". */

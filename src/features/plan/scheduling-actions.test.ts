@@ -1,5 +1,5 @@
 // Chapter 4 Plan Server Functions against an in-memory database: rights (director / project manager schedule, editors edit),
-// Reschedule toast (EN / FR, "no change" on the second run), Set baseline, the Baseline and Calendar chips, the drawer's
+// Reschedule toast (EN / FR, "no change" on the second run), Set baseline (free up to BL1, S-3), the Baseline and Calendar chips, the drawer's
 // calendar override, relationships (errors, loops) and to-dos. Session and project context are mocked.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -18,8 +18,11 @@ vi.mock('@/server/project-context', async () => {
   };
 });
 
+import { eq } from 'drizzle-orm';
 import { listActivityTodos } from '@/server/dal/activity-todos';
-import { setDb } from '@/server/db/client';
+import { createBaselineSnapshot } from '@/server/dal/baselines';
+import { baselines, projects } from '@/server/db/schema';
+import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { getPlanData, getPlanSettings } from '@/server/dal/plan';
 import {
@@ -54,14 +57,28 @@ describe('Plan scheduling Server Functions', () => {
     expect(await rescheduleAction('HLT-026')).toEqual({ ok: true, toast: 'Replanifié au 25 sept. 2026 · fin 18 janv. 2027 · aucun changement' });
   });
 
-  it('Set baseline: BL3 snapshot of the 21 activities, proposed; name validated', async () => {
-    expect(await setBaselineAction('HLT-026', { name: 'x'.repeat(81) })).toEqual({ error: 'Baseline name is too long' });
-    expect(await setBaselineAction('HLT-026', { name: 'BL3 — after reschedule', comment: 'September data date' })).toEqual({ toast: 'BL3 · Baseline set · 21 activities' });
-    const b = (await getPlanSettings('HLT-026'))!.baselines.find((x) => x.code === 'BL3')!;
-    expect([b.name, b.state, b.comment, b.activityCount, b.displayed, b.createdByName]).toEqual(['BL3 — after reschedule', 'proposed', 'September data date', 21, false, 'Marie Lefebvre']);
+  // S-3 (docs/DECISIONS.md, S-3 = a; L-2 = a): "Set baseline" snapshots freely up to BL1 only — the snapshot is then current at
+  // once. HLT-026 already has BL0–BL2: a new baseline there goes through a change request (it used to give a proposed BL3).
+  it('Set baseline: refused after BL1; up to BL1 a current snapshot of every activity; name validated', async () => {
+    expect(await setBaselineAction('HLT-026', { name: 'BL3 — after reschedule' })).toEqual({ error: 'After BL1, a new baseline goes through a change request' });
+    expect((await getPlanSettings('HLT-026'))!.baselines.map((b) => b.code)).toEqual(['BL0', 'BL1', 'BL2']);
+    const db = await getDb();
+    const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, 'NDC-031'));
+    await db.delete(baselines).where(eq(baselines.projectId, p.id));
+    const n = (await getPlanData('NDC-031'))!.activities.length;
+    expect(await setBaselineAction('NDC-031', { name: 'x'.repeat(81) })).toEqual({ error: 'Baseline name is too long' });
+    expect(await setBaselineAction('NDC-031', { name: 'Initial plan', comment: 'Kick-off' })).toEqual({ toast: `BL0 · Baseline set · ${n} activities` });
+    expect(await setBaselineAction('NDC-031', { name: 'BL1 — end of APD' })).toEqual({ toast: `BL1 · Baseline set · ${n} activities` });
+    const bls = (await getPlanSettings('NDC-031'))!.baselines;
+    expect(bls.map((b) => [b.code, b.name, b.state, b.activityCount, b.createdByName])).toEqual([
+      ['BL0', 'Initial plan', 'superseded', n, 'Marie Lefebvre'], ['BL1', 'BL1 — end of APD', 'current', n, 'Marie Lefebvre'],
+    ]);
+    expect(await setBaselineAction('NDC-031', { name: 'BL2' })).toEqual({ error: 'After BL1, a new baseline goes through a change request' });
   });
 
   it('Baseline chip: refuses unknown baselines and baselines without snapshot; shows BL3', async () => {
+    // BL3 with its snapshot, as a change request's re-baseline writes it (the Plan no longer snapshots after BL1).
+    await createBaselineSnapshot('HLT-026', { actorName: 'Marie Lefebvre', name: 'BL3 — after reschedule', changeRequestNumber: 'CR-008', source: 'change_request' });
     expect(await showBaselineAction('HLT-026', 'BL9')).toEqual({ error: 'Unknown baseline' });
     expect(await showBaselineAction('HLT-026', 'BL0')).toEqual({ error: 'This baseline has no activity snapshot' });
     expect(await showBaselineAction('HLT-026', 'BL3')).toEqual({ ok: true, toast: 'BL3 displayed · variances recomputed' });

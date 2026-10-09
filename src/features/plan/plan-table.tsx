@@ -18,7 +18,7 @@ import { Input, Select } from '@/components/ds/Field';
 import { useToast } from '@/components/ds/Toast';
 import type { BarTone } from '@/domain/schedule';
 import { useI18n } from '@/i18n/client';
-import { editActivity, moveActivity, removeRow, renamePackage, type ActivityField, type PlanActionResult } from './actions';
+import { editActivity, moveActivity, removeRow, renamePackage, restoreRow, type ActivityField, type PlanActionResult } from './actions';
 import { COLLAPSE_COOKIE, serializeCollapsed } from './collapse';
 import { planT, removeQuestion } from './i18n';
 import type { PlanRowView, PlanView } from './model';
@@ -38,6 +38,8 @@ export interface PlanTableProps {
   selected: string | null;
   /** Edits allowed (not outside, not read-only, not the client). */
   canEdit: boolean;
+  /** Removal with undo (S-5): the director or the project's manager, on top of the edit rights. */
+  canRemove?: boolean;
   /** Owner select options (OWN: value = key, label = full name). */
   owners: { value: string; label: string }[];
   /** Row links: `${base}?${query}act=A1250` (`query` keeps the view, e.g. "view=structure&"). */
@@ -81,7 +83,7 @@ export function PlanTable(props: PlanTableProps) {
   return (
     <>
       {table}
-      {props.canEdit && <ConfirmRemove code={props.code} target={removing} onClose={() => setRemoving(null)} />}
+      {props.canEdit && props.canRemove && <ConfirmRemove code={props.code} target={removing} onClose={() => setRemoving(null)} />}
     </>
   );
 }
@@ -105,16 +107,23 @@ function useAction() {
 }
 
 // ── Removal confirmation (docs/spec/05 OQ 8: the prototype removes without asking; edits are now persisted) ──
+// S-5: the confirmation stays; the removal goes to the Plan trash and the toast offers "Undo" (also under "Recently deleted").
 
 function ConfirmRemove({ code, target, onClose }: { code: string; target: RemoveTarget | null; onClose: () => void }) {
   const { t, lang } = useI18n();
   const toast = useToast();
   const [pending, start] = useTransition();
+  const undo = (trashId: string) =>
+    start(async () => {
+      const r = await restoreRow(code, trashId);
+      toast.show('error' in r ? r.error : r.toast);
+    });
   const confirm = () => {
     if (!target) return;
     start(async () => {
       const r = await removeRow(code, target.kind, target.id);
       if ('error' in r) toast.show(r.error);
+      else toast.show(r.toast, { action: { label: t('Undo'), onClick: () => undo(r.trashId) } });
       onClose();
     });
   };
@@ -282,7 +291,7 @@ function NameCell({ r, collapsed, toggle, children }: { r: PlanRowView; collapse
 
 // ── Structure view (1045–1070) ─────────────────────────────────────────────────────────────────────────
 
-function StructureTable({ rows, code, selected, canEdit, owners, collapsed, toggle, href, askRemove }: TableProps) {
+function StructureTable({ rows, code, selected, canEdit, canRemove, owners, collapsed, toggle, href, askRemove }: TableProps) {
   const { t } = useI18n();
   const { run } = useAction();
   const edit = (id: string, field: ActivityField) => (v: string) => editActivity(code, id, field, v);
@@ -364,7 +373,7 @@ function StructureTable({ rows, code, selected, canEdit, owners, collapsed, togg
                   <IconButton icon={ArrowDown} size={24} muted label={t('Move down')} onClick={() => run(() => moveActivity(code, r.id, 1))} />
                 </>
               )}
-              {canEdit && r.kind !== 'root' && <IconButton icon={Trash} size={24} muted label={t('Remove')} onClick={() => askRemove(r)} />}
+              {canEdit && canRemove && r.kind !== 'root' && <IconButton icon={Trash} size={24} muted label={t('Remove')} onClick={() => askRemove(r)} />}
             </span>
           </div>
         );

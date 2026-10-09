@@ -5,18 +5,31 @@
 // Mount <ToastProvider> (or <ToastViewport/>) once, in the app shell. Trigger from client code with
 // `useToast().show(message)` or the standalone `showToast(message)`. An optional link (`showToast(message, { href, label })`)
 // renders after the text — e.g. the external system a placeholder needs (opens in a new tab).
+// Optional action (chapter 4, S-5 "Undo"): `show(message, { action: { label, onClick } })` adds a small ghost button before
+// the ×; clicking it runs `onClick` and dismisses the toast. A toast with an action stays TOAST_ACTION_MS (8 s) unless
+// `durationMs` says otherwise. Calls without options behave exactly as before.
 import { CheckCircle, X } from '@phosphor-icons/react/dist/ssr';
 import { useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import { useI18n } from '@/i18n/client';
-import { IconButton } from './Button';
+import { Button, IconButton } from './Button';
 import { cx } from './cx';
 import s from './Toast.module.css';
 
 /** Auto-dismiss delay (prototype `showToast`, logic 5116). */
 export const TOAST_MS = 4000;
+/** Auto-dismiss delay of a toast carrying an action (time to click "Undo"). */
+export const TOAST_ACTION_MS = 8000;
 
-/** Optional extras of a toast (additive: `showToast(message)` is unchanged). */
+export interface ToastAction {
+  /** Already translated button label ("Annuler"). */
+  label: string;
+  onClick: () => void;
+}
+
 export interface ToastOptions {
+  action?: ToastAction;
+  /** Auto-dismiss delay; default TOAST_MS, or TOAST_ACTION_MS with an action. */
+  durationMs?: number;
   /** Link shown after the message (opens in a new tab), with its `label` (translated). */
   href?: string;
   label?: string;
@@ -26,6 +39,7 @@ interface ToastState {
   id: number;
   message: string;
   link?: { href: string; label: string };
+  action?: ToastAction;
 }
 
 let current: ToastState | null = null;
@@ -43,12 +57,15 @@ export function showToast(message: string, opts?: ToastOptions) {
   if (typeof window === 'undefined' || !message) return;
   // Only web links (http(s) or same-site paths) are rendered.
   const href = opts?.href && /^(https?:\/\/|\/(?!\/))/i.test(opts.href) ? opts.href : null;
-  current = { id: ++seq, message, ...(href ? { link: { href, label: opts?.label || href } } : {}) };
+  current = { id: ++seq, message, action: opts?.action, ...(href ? { link: { href, label: opts?.label || href } } : {}) };
   clearTimeout(timer);
-  timer = setTimeout(() => {
-    current = null;
-    emit();
-  }, TOAST_MS);
+  timer = setTimeout(
+    () => {
+      current = null;
+      emit();
+    },
+    opts?.durationMs ?? (opts?.action ? TOAST_ACTION_MS : TOAST_MS),
+  );
   emit();
 }
 
@@ -59,7 +76,7 @@ export function dismissToast() {
 }
 
 export interface ToastApi {
-  /** Show an already translated message (optionally with a link). */
+  /** Show an already translated message, optionally with a link or an action button ("Undo"). */
   show: (message: string, opts?: ToastOptions) => void;
   /**
    * Show an English source message translated like the prototype: FR splits on " · " and translates
@@ -92,6 +109,19 @@ export function ToastViewport({ closeLabel }: { closeLabel?: string }) {
             <a className={s.link} href={toast.link.href} target="_blank" rel="noopener noreferrer">
               {toast.link.label}
             </a>
+          {toast.action && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={s.action}
+              onClick={() => {
+                const a = toast.action!;
+                dismissToast();
+                a.onClick();
+              }}
+            >
+              {toast.action.label}
+            </Button>
           )}
           <IconButton icon={X} muted label={closeLabel ?? t('Close')} onClick={dismissToast} className={s.close} />
         </div>

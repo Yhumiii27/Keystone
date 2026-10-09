@@ -3,20 +3,25 @@
 // working days, toasts) and removal. Session and project context are mocked.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const viewer = { role: 'director' as string, canEdit: true };
+const viewer = { role: 'director' as string, canEdit: true, isMine: true };
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@/server/session', async () => {
   const { makeT } = await import('@/i18n/translate');
   return { getI18n: async () => ({ lang: 'en', t: makeT('en') }) };
 });
-vi.mock('@/server/project-context', () => ({
-  getProjectContext: async () => ({ viewer: { role: viewer.role }, canEdit: () => viewer.canEdit }),
-}));
+vi.mock('@/server/project-context', async () => {
+  const { getProject } = await import('@/server/dal/projects');
+  return {
+    getProjectContext: async (code: string) => ({
+      project: await getProject(code), viewer: { role: viewer.role, name: 'Marie Lefebvre' }, canEdit: () => viewer.canEdit, isMine: viewer.isMine,
+    }),
+  };
+});
 
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { getPlanData } from '@/server/dal/plan';
-import { addActivity, addWorkPackage, editActivity, moveActivity, removeRow, renamePackage, saveProgress } from './actions';
+import { addActivity, addWorkPackage, editActivity, moveActivity, removeRow, renamePackage, restoreRow, saveProgress } from './actions';
 
 const act = async (id: string, code = 'HLT-026') => (await getPlanData(code))!.activities.find((a) => a.id === id);
 
@@ -27,6 +32,7 @@ describe('Plan Server Functions', () => {
   beforeEach(() => {
     viewer.role = 'director';
     viewer.canEdit = true;
+    viewer.isMine = true;
   });
 
   it('refuses read-only viewers, the client, unknown projects and projects without a plan', async () => {
@@ -103,13 +109,44 @@ describe('Plan Server Functions', () => {
     expect(await saveProgress('HLT-026', { act: 'A0000 · Nope', pc: '55' })).toEqual({ error: 'Invalid request' });
   });
 
-  it('removes an activity and a work package with its activities', async () => {
-    expect(await removeRow('HLT-026', 'act', 'A1902')).toEqual({ ok: true });
+  it('removes an activity and a work package with its activities (to the Plan trash, S-5)', async () => {
+    expect(await removeRow('HLT-026', 'act', 'A1902')).toEqual({ ok: true, trashId: expect.any(String), toast: 'A1902 removed' });
     expect(await act('A1902')).toBeUndefined();
-    expect(await removeRow('HLT-026', 'wp', '1.7')).toEqual({ ok: true });
+    expect(await removeRow('HLT-026', 'wp', '1.7')).toEqual({ ok: true, trashId: expect.any(String), toast: 'Work package 1.7 removed' });
     const d = (await getPlanData('HLT-026'))!;
     expect(d.packages.some((p) => p.code === '1.7')).toBe(false);
     expect(d.activities.some((a) => a.id === 'A1510' || a.id === 'A1520')).toBe(false);
     expect(await removeRow('HLT-026', 'wp', '1')).toEqual({ error: 'Invalid request' });
+  });
+
+  it('undo (S-5): removal and restore for the project manager and the director only; the toast trash id restores links exactly', async () => {
+    const before = (await getPlanData('HLT-026'))!;
+    const wp16 = before.activities.filter((a) => a.wbs === '1.6');
+    expect(wp16.length).toBeGreaterThan(0);
+    const linked = (d: typeof before) => d.activities.map((a) => [a.id, a.wbs, a.preds]);
+    // Read-only project / outside the workspace, the client, a plan editor who is not the manager.
+    viewer.canEdit = false;
+    expect(await removeRow('HLT-026', 'wp', '1.6')).toEqual({ error: 'This plan is read-only for you' });
+    viewer.canEdit = true;
+    viewer.role = 'client';
+    expect(await removeRow('HLT-026', 'wp', '1.6')).toEqual({ error: 'This plan is read-only for you' });
+    Object.assign(viewer, { role: 'englead', isMine: false });
+    expect(await removeRow('HLT-026', 'wp', '1.6')).toEqual({ error: 'Only the project manager or the director can do this' });
+    Object.assign(viewer, { role: 'pm', isMine: true });
+    const r = await removeRow('HLT-026', 'wp', '1.6');
+    if (!('ok' in r)) throw new Error(r.error);
+    expect(r.toast).toBe('Work package 1.6 removed');
+    expect((await getPlanData('HLT-026'))!.activities.some((a) => a.wbs === '1.6')).toBe(false);
+    // Restore: same rights.
+    Object.assign(viewer, { role: 'englead', isMine: false });
+    expect(await restoreRow('HLT-026', r.trashId)).toEqual({ error: 'Only the project manager or the director can do this' });
+    viewer.canEdit = false;
+    expect(await restoreRow('HLT-026', r.trashId)).toEqual({ error: 'This plan is read-only for you' });
+    Object.assign(viewer, { role: 'director', isMine: true, canEdit: true });
+    expect(await restoreRow('HLT-026', 'not-an-id')).toEqual({ error: 'Invalid request' });
+    expect(await restoreRow('NDC-031', r.trashId)).toEqual({ error: 'This removal can no longer be undone' });
+    expect(await restoreRow('HLT-026', r.trashId)).toEqual({ ok: true, toast: `Work package 1.6 restored · ${wp16.length} activities` });
+    expect(linked((await getPlanData('HLT-026'))!)).toEqual(linked(before));
+    expect(await restoreRow('HLT-026', r.trashId)).toEqual({ error: 'This removal can no longer be undone' });
   });
 });

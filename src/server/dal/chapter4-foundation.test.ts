@@ -14,13 +14,14 @@ import {
 } from '@/server/db/schema';
 import { setFilesRoot } from '@/server/storage/files';
 import { addActivityTodo, listActivityTodos, removeActivityTodo, setActivityTodoDone } from './activity-todos';
-import { createBaselineSnapshot, getBaselineActivities, getDisplayedBaselineCode, listProjectBaselines, setDisplayedBaseline, snapshotIntoBaseline } from './baselines';
+import { createBaselineSnapshot, getBaselineActivities, getDisplayedBaselineCode, listProjectBaselines, snapshotIntoBaseline } from './baselines';
 import { getProjectCalendarCode, listCalendars, loadWorkCalendars, setActivityCalendar, setProjectCalendar, upsertCalendar } from './calendars';
 import { getBaselineRegister } from './changes-baselines';
 import { addClientCommunication, listClientCommunications, openClientFollowUps, setClientCommunicationFollowUpDone } from './client-comms';
 import { getConnectorConfig, updateConnectorConfig } from './connector-config';
 import { cancelImportJob, createImportJob, getImportJob, getImportJobRows, listImportJobs, markImportJobApplied, saveImportPreview, setImportJobMapping } from './import-jobs';
 import { createResourceRequest, discardDraftRequest, getDepartmentApprovals, sendDraftRequest } from './requests';
+import { showProjectBaseline } from './schedule';
 import { listScheduleRuns, loadScheduleNetwork, recordScheduleRun } from './schedule-network';
 import { attachTaskFile, getTaskFile, listTaskFiles, removeTaskFile } from './task-files';
 import { listScenarioActions, markScenarioApplied, replaceScenarioActions, saveScenarioResult } from './whatif-store';
@@ -123,15 +124,16 @@ describe('schedule network', () => {
 });
 
 describe('baselines', () => {
+  // The Baseline chip writes through schedule.ts showProjectBaseline (baselines.ts setDisplayedBaseline, a dead duplicate, was removed).
   it('lists with the displayed flag; the chip stores the choice', async () => {
     expect((await listProjectBaselines('HLT-026')).map((b) => [b.code, b.activityCount, b.displayed, b.state])).toEqual([
       ['BL0', 0, false, 'superseded'], ['BL1', 21, true, 'current'], ['BL2', 0, false, 'proposed'],
     ]);
     expect(await getDisplayedBaselineCode('HLT-026')).toBe('BL1');
-    await setDisplayedBaseline('HLT-026', 'BL0', PM);
+    await showProjectBaseline('HLT-026', 'BL0', PM);
     expect(await getDisplayedBaselineCode('HLT-026')).toBe('BL0');
-    await expect(setDisplayedBaseline('HLT-026', 'BL9', PM)).rejects.toThrow('Unknown baseline');
-    await setDisplayedBaseline('HLT-026', 'BL1', PM);
+    await expect(showProjectBaseline('HLT-026', 'BL9', PM)).rejects.toThrow('Unknown baseline');
+    await showProjectBaseline('HLT-026', 'BL1', PM);
   });
   it('"Set baseline" snapshots BL3; the CR re-baseline fills BL2 and makes it current', async () => {
     const r = await createBaselineSnapshot('HLT-026', { actorName: PM, comment: 'Before recovery' }, undefined);

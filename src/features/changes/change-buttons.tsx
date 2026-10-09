@@ -23,15 +23,24 @@ export interface NewChangeRequestButtonProps {
   /** Open on arrival (`?new=1`, e.g. from Budget › "New change request"); closing drops the param via `closeHref`. */
   autoOpen?: boolean;
   closeHref?: string;
+  /**
+   * S-3: opened from Plan "Set baseline" after BL1 (`?new=1&baseline=1`): the request proposes the next baseline, the form is
+   * pre-filled (`initialValues`, translated: title "New baseline BL3", type Schedule).
+   */
+  proposeBaseline?: boolean;
+  initialValues?: Record<string, string>;
 }
 
 /** Header primary "New change request" (`btn btn-primary` + plus) opening AF `changes`. */
-export function NewChangeRequestButton({ code, context, defaultWbs, autoOpen, closeHref }: NewChangeRequestButtonProps) {
+export function NewChangeRequestButton({ code, context, defaultWbs, autoOpen, closeHref, proposeBaseline, initialValues }: NewChangeRequestButtonProps) {
   const { t } = useI18n();
   const router = useRouter();
   const [open, setOpen] = useState(!!autoOpen);
+  // The baseline proposal applies to the dialog opened on arrival only; the header button raises a plain request.
+  const [proposing, setProposing] = useState(!!(autoOpen && proposeBaseline));
   const close = () => {
     setOpen(false);
+    setProposing(false);
     if (autoOpen && closeHref) router.replace(closeHref, { scroll: false });
   };
   return (
@@ -39,14 +48,17 @@ export function NewChangeRequestButton({ code, context, defaultWbs, autoOpen, cl
       <Button variant="primary" icon={Plus} onClick={() => setOpen(true)}>
         {t('New change request')}
       </Button>
-      <FormDialog
-        {...newChangeRequestForm(defaultWbs)}
-        translate
-        open={open}
-        onClose={close}
-        context={context}
-        onSubmit={(values) => createChangeRequestAction(code, values)}
-      />
+      {open && (
+        <FormDialog
+          {...newChangeRequestForm(defaultWbs, { proposeBaseline: proposing })}
+          translate
+          open
+          onClose={close}
+          context={context}
+          initialValues={proposing ? initialValues : undefined}
+          onSubmit={(values) => createChangeRequestAction(code, values, proposing ? { proposeBaseline: true } : undefined)}
+        />
+      )}
     </>
   );
 }
