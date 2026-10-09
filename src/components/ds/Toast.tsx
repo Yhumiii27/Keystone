@@ -4,19 +4,37 @@
 //
 // Mount <ToastProvider> (or <ToastViewport/>) once, in the app shell. Trigger from client code with
 // `useToast().show(message)` or the standalone `showToast(message)`.
+// Optional action (chapter 4, S-5 "Undo"): `show(message, { action: { label, onClick } })` adds a small ghost button before
+// the ×; clicking it runs `onClick` and dismisses the toast. A toast with an action stays TOAST_ACTION_MS (8 s) unless
+// `durationMs` says otherwise. Calls without options behave exactly as before.
 import { CheckCircle, X } from '@phosphor-icons/react/dist/ssr';
 import { useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import { useI18n } from '@/i18n/client';
-import { IconButton } from './Button';
+import { Button, IconButton } from './Button';
 import { cx } from './cx';
 import s from './Toast.module.css';
 
 /** Auto-dismiss delay (prototype `showToast`, logic 5116). */
 export const TOAST_MS = 4000;
+/** Auto-dismiss delay of a toast carrying an action (time to click "Undo"). */
+export const TOAST_ACTION_MS = 8000;
+
+export interface ToastAction {
+  /** Already translated button label ("Annuler"). */
+  label: string;
+  onClick: () => void;
+}
+
+export interface ToastOptions {
+  action?: ToastAction;
+  /** Auto-dismiss delay; default TOAST_MS, or TOAST_ACTION_MS with an action. */
+  durationMs?: number;
+}
 
 interface ToastState {
   id: number;
   message: string;
+  action?: ToastAction;
 }
 
 let current: ToastState | null = null;
@@ -30,14 +48,17 @@ const subscribe = (l: () => void) => {
 };
 
 /** Shows `message` as-is (pass it already translated). Replaces any visible toast. No-op on the server. */
-export function showToast(message: string) {
+export function showToast(message: string, opts?: ToastOptions) {
   if (typeof window === 'undefined' || !message) return;
-  current = { id: ++seq, message };
+  current = { id: ++seq, message, action: opts?.action };
   clearTimeout(timer);
-  timer = setTimeout(() => {
-    current = null;
-    emit();
-  }, TOAST_MS);
+  timer = setTimeout(
+    () => {
+      current = null;
+      emit();
+    },
+    opts?.durationMs ?? (opts?.action ? TOAST_ACTION_MS : TOAST_MS),
+  );
   emit();
 }
 
@@ -48,8 +69,8 @@ export function dismissToast() {
 }
 
 export interface ToastApi {
-  /** Show an already translated message. */
-  show: (message: string) => void;
+  /** Show an already translated message, optionally with an action button ("Undo"). */
+  show: (message: string, opts?: ToastOptions) => void;
   /**
    * Show an English source message translated like the prototype: FR splits on " · " and translates
    * each segment ("R-21 · Risk registered" → "R-21 · Risque enregistré").
@@ -77,6 +98,20 @@ export function ToastViewport({ closeLabel }: { closeLabel?: string }) {
         <div key={toast.id} className={cx('card', 'elev-lg', s.toast)}>
           <CheckCircle className={s.icon} aria-hidden />
           <span className={s.text}>{toast.message}</span>
+          {toast.action && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={s.action}
+              onClick={() => {
+                const a = toast.action!;
+                dismissToast();
+                a.onClick();
+              }}
+            >
+              {toast.action.label}
+            </Button>
+          )}
           <IconButton icon={X} muted label={closeLabel ?? t('Close')} onClick={dismissToast} className={s.close} />
         </div>
       )}
