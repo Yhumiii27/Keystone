@@ -30,7 +30,8 @@ export function WhatIfBoard({ data, canEdit }: { data: WhatIfData; canEdit: bool
   const { t, lang } = useI18n();
   const toast = useToast();
   const [scenarios, apply] = useOptimistic(data.scenarios, (state, a: WhatIfAction) => reduceScenarios(state, a, data));
-  const [, startTransition] = useTransition();
+  // Pending while a Server Function runs: Select and Auto-level are disabled so a double-click cannot submit twice.
+  const [busy, startTransition] = useTransition();
   const [renaming, setRenaming] = useState<ScenarioCardView | null>(null);
   const [deleting, setDeleting] = useState<ScenarioCardView | null>(null);
   const view = whatIfView({ ...data, scenarios }, t, lang, data.scenarios);
@@ -67,7 +68,7 @@ export function WhatIfBoard({ data, canEdit }: { data: WhatIfData; canEdit: bool
       {view.scenarios.length ? (
         <div className={s.scenarios}>
           {view.scenarios.map((sc) => (
-            <ScenarioCard key={sc.name} sc={sc} canEdit={canEdit} hasLevers={data.levers.length > 0} handlers={handlers} />
+            <ScenarioCard key={sc.name} sc={sc} canEdit={canEdit} busy={busy} hasLevers={data.levers.length > 0} handlers={handlers} />
           ))}
         </div>
       ) : (
@@ -131,7 +132,7 @@ interface Handlers {
   remove: (sc: ScenarioCardView) => void;
 }
 
-function ScenarioCard({ sc, canEdit, hasLevers, handlers }: { sc: ScenarioCardView; canEdit: boolean; hasLevers: boolean; handlers: Handlers }) {
+function ScenarioCard({ sc, canEdit, busy, hasLevers, handlers }: { sc: ScenarioCardView; canEdit: boolean; busy: boolean; hasLevers: boolean; handlers: Handlers }) {
   const { t } = useI18n();
   return (
     <section className={cx('card', 'elev-sm', s.scenario)} aria-label={sc.title}>
@@ -163,7 +164,14 @@ function ScenarioCard({ sc, canEdit, hasLevers, handlers }: { sc: ScenarioCardVi
         <div className={s.leversHead}>
           <span className={s.eyebrow}>{t('Levers')}</span>
           {canEdit && (
-            <Button variant="secondary" className={s.small} icon={Sparkle} disabled={!hasLevers} onClick={() => handlers.auto(sc.name)}>
+            <Button
+              variant="secondary"
+              className={s.small}
+              icon={Sparkle}
+              disabled={!hasLevers || busy}
+              aria-busy={busy || undefined}
+              onClick={() => handlers.auto(sc.name)}
+            >
               {t('Auto-level for this priority')}
             </Button>
           )}
@@ -212,7 +220,7 @@ function ScenarioCard({ sc, canEdit, hasLevers, handlers }: { sc: ScenarioCardVi
         ))}
       </div>
       {canEdit && (
-        <Button variant="primary" className={s.choose} icon={Check} onClick={() => handlers.select(sc.name)}>
+        <Button variant="primary" className={s.choose} icon={Check} disabled={busy} aria-busy={busy || undefined} onClick={() => handlers.select(sc.name)}>
           {t('Select scenario → create requests')}
         </Button>
       )}

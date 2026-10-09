@@ -3,6 +3,7 @@
 // domain/whatif.ts: levers derived from the data, effects computed by the CPM engine on a copy of the plan); this module
 // only formats them. Dynamic sentences are built per language (the shared FR rules do not cover them).
 import { LO, OK } from '@/components/app/tones';
+import { screenHref } from '@/config/screens';
 import {
   leverSetKey, WHATIF_PRIORITIES, WHATIF_RULES, type WhatIfHelperKind, type WhatIfLever, type WhatIfLeverKind, type WhatIfPriority, type WhatIfResult, type WhatIfSideEffect,
 } from '@/domain/whatif';
@@ -11,6 +12,9 @@ import { FR_MONTHS } from '@/i18n/fr-rules';
 import { fmtDY, MINUS, MO, money } from '@/lib/format';
 import { isoWeekOf } from '@/server/db/codes';
 import type { Lang, T } from '@/i18n/translate';
+
+/** What-if levelling of a project: `/resources/what-if?project=HLT-026` (scenarios are per project). */
+export const whatIfHref = (code: string) => `${screenHref('whatif')}?project=${encodeURIComponent(code)}`;
 
 /** A lever as the board needs it (serializable). */
 export interface WhatIfLeverData {
@@ -236,7 +240,16 @@ export function whatIfKpis(d: Pick<WhatIfData, 'plan' | 'baseline' | 'peak' | 'o
   ];
 }
 
-/** The six result rows of a lever set (scenario card and side-by-side column). */
+/**
+ * "Load change (h)": team hours over the horizon vs the current plan (`loadDeltaH`, rounded; "+16" / "−40", 0 → "0"). A
+ * relief or a shorter activity frees hours (negative), an added colleague takes some on.
+ */
+export const loadChangeText = (h: number) => signed(Math.round(h)) || '0';
+
+/**
+ * The result rows of a lever set (scenario card and side-by-side column): the prototype's six plus "Load change (h)"
+ * (chapter 4, S-7 — recommended option of DELIVERY-6-PLAN §3.3).
+ */
 export function resultRows(r: WhatIfResult, t: T, lang: Lang): ScenarioResultView[] {
   const fl = r.floatDays;
   const R = WHATIF_RULES;
@@ -246,6 +259,7 @@ export function resultRows(r: WhatIfResult, t: T, lang: Lang): ScenarioResultVie
     { key: t('Cost impact (EAC)'), value: costText(r.costKeur, lang), color: r.costKeur > R.costAlertKeur ? LO : OK },
     { key: t('Peak load'), value: `${r.peakPct}%`, color: r.peakPct > R.peakAlertPct ? LO : OK },
     { key: t('People above 100%'), value: String(r.overPeople), color: r.overPeople ? LO : OK },
+    { key: t('Load change (h)'), value: loadChangeText(r.loadDeltaH), color: 'var(--color-neutral-300)' },
     { key: t('Side effects'), value: r.sideEffects.map((s) => sideEffectText(s, lang)).join(' · ') || t('None'), color: 'var(--color-neutral-300)' },
   ];
 }

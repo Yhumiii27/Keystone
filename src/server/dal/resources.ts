@@ -449,8 +449,8 @@ async function requireState(projectCode: string): Promise<WhatIfState> {
   return st;
 }
 
-async function enabledOf(st: WhatIfState, name: string): Promise<ScenarioRow> {
-  const row = (await scenarioRows(st)).find((r) => r.row.name === name);
+async function enabledOf(st: WhatIfState, name: string, q?: Q): Promise<ScenarioRow> {
+  const row = (await scenarioRows(st, q)).find((r) => r.row.name === name);
   if (!row) throw new Error(`Unknown what-if scenario ${name} on ${st.projectCode}`);
   return row;
 }
@@ -531,7 +531,9 @@ export interface ApplyOutcome {
 /** Open (not closed) statuses: a lever with such a request is not drafted again. */
 const OPEN_REQUEST = ['draft', 'pending', 'approved', 'reschedule'] as const;
 
-async function draftRequests(st: WhatIfState, drafts: WhatIfRequestDraft[], scenario: { id: string; name: string } | null, actorName: string, existing: { title: string; act: string | null }[]) {
+async function draftRequests(
+  tx: Tx, st: WhatIfState, drafts: WhatIfRequestDraft[], scenario: { id: string; name: string } | null, actorName: string, existing: { title: string; act: string | null }[],
+) {
   const created: string[] = [];
   let skipped = 0;
   for (const d of drafts) {
@@ -547,15 +549,15 @@ async function draftRequests(st: WhatIfState, drafts: WhatIfRequestDraft[], scen
           draft: true, scenarioId: scenario?.id ?? null,
         },
         actorName,
+        tx,
       ),
     );
   }
   return { created, skipped };
 }
 
-async function openRequests(projectId: string, scenarioId?: string) {
-  const db = await getDb();
-  return db
+async function openRequests(q: Q, projectId: string, scenarioId?: string) {
+  return q
     .select({ number: resourceRequests.number, title: resourceRequests.title, act: activities.code })
     .from(resourceRequests)
     .leftJoin(activities, eq(activities.id, resourceRequests.activityId))
@@ -566,16 +568,18 @@ async function openRequests(projectId: string, scenarioId?: string) {
  * "Apply" / "Select scenario → create requests": turns the scenario's enabled levers into DRAFT resource requests through
  * the requests DAL (not sent to the departments until "Send"; the plan changes only at the next Reschedule), skips levers
  * already requested from this scenario, and — when it drafted something — stamps the scenario applied and records the
- * activity. `actorName` must be a person.
+ * activity. The duplicate check, the drafts and the stamp run in ONE transaction: a double-click or a concurrent apply
+ * finds the first one's drafts (PGlite serialises transactions), and a failure leaves no draft without the stamp.
+ * `actorName` must be a person.
  */
 export async function applyScenario(projectCode: string, name: string, actorName: string): Promise<ApplyOutcome> {
   const st = await requireState(projectCode);
-  const sc = await enabledOf(st, name);
-  const drafts = scenarioRequests(st.model, sc.enabled);
-  const shifts = st.model.levers.filter((l) => sc.enabled.includes(l.code) && !createsRequest(l)).length;
-  const { created, skipped } = await draftRequests(st, drafts, { id: sc.row.id, name }, actorName, await openRequests(st.projectId, sc.row.id));
   const db = await getDb();
-  await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
+    const sc = await enabledOf(st, name, tx);
+    const drafts = scenarioRequests(st.model, sc.enabled);
+    const shifts = st.model.levers.filter((l) => sc.enabled.includes(l.code) && !createsRequest(l)).length;
+    const { created, skipped } = await draftRequests(tx, st, drafts, { id: sc.row.id, name }, actorName, await openRequests(tx, st.projectId, sc.row.id));
     if (!sc.saved) await saveScenarioLevers(tx, st, sc.row.id, sc.enabled);
     if (created.length) {
       await markScenarioApplied(st.projectCode, name, actorName, tx);
@@ -585,8 +589,8 @@ export async function applyScenario(projectCode: string, name: string, actorName
         text: `Drafted ${created.length} resource ${created.length === 1 ? 'request' : 'requests'} from what-if scenario ${name} · ${created.join(', ')}`,
       });
     }
+    return { created, skipped, shifts };
   });
-  return { created, skipped, shifts };
 }
 
 /** "Apply" on a Suggested rebalancing line: one DRAFT request for one lever (no scenario). Null when already requested. */
@@ -594,42 +598,71 @@ export async function applyLever(projectCode: string, lever: string, actorName: 
   const st = await requireState(projectCode);
   const l = st.model.levers.find((x) => x.code === lever);
   if (!l || !createsRequest(l)) throw new Error(`Unknown what-if lever ${lever} on ${projectCode}`);
-  const { created } = await draftRequests(st, scenarioRequests(st.model, [lever]), null, actorName, await openRequests(st.projectId));
-  if (!created.length) return null;
   const db = await getDb();
-  const actor = await findPerson(db, actorName);
-  await recordActivity(db, {
-    actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, kind: 'request', projectId: st.projectId,
-    text: `Drafted ${created[0]} from a suggested rebalancing · ${leverLabelEn(l)}`,
+  // One transaction: a double-click finds the first draft instead of drafting the lever twice.
+  return db.transaction(async (tx) => {
+    const { created } = await draftRequests(tx, st, scenarioRequests(st.model, [lever]), null, actorName, await openRequests(tx, st.projectId));
+    if (!created.length) return null;
+    const actor = await findPerson(tx, actorName);
+    await recordActivity(tx, {
+      actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, kind: 'request', projectId: st.projectId,
+      text: `Drafted ${created[0]} from a suggested rebalancing · ${leverLabelEn(l)}`,
+    });
+    return created[0];
   });
-  return created[0];
 }
 
 export interface NewScenarioInput {
   name: string;
+  /** 'current_plan' (default: no lever) or 'last_approved' (the levers and priority of `retainedScenario`). Stored as given. */
   basis?: string;
+  /** Kept for the stored column only: the form no longer asks for it (the pool has 8 allocation weeks). */
   horizonMonths?: number;
   hypotheses?: string;
   priority?: WhatIfPriority;
 }
 
-/** "New scenario" (AF.whatif): a scenario with no lever enabled, audited under the viewer when `actorName` is given. */
+/** Scenario the PM retained, the basis "last_approved" copies: the selected one, else the one applied last; null when none. */
+export async function retainedScenario(projectCode: string, q?: Q): Promise<string | null> {
+  const db = q ?? (await getDb());
+  const rows = await db
+    .select({ name: whatIfScenarios.name, selected: whatIfScenarios.selected, appliedAt: whatIfScenarios.appliedAt })
+    .from(whatIfScenarios)
+    .innerJoin(projects, eq(projects.id, whatIfScenarios.projectId))
+    .where(eq(projects.code, projectCode))
+    .orderBy(asc(whatIfScenarios.position));
+  const applied = rows.filter((r) => r.appliedAt).sort((a, b) => b.appliedAt!.getTime() - a.appliedAt!.getTime());
+  return (rows.find((r) => r.selected) ?? applied[0])?.name ?? null;
+}
+
+/**
+ * "New scenario" (AF.whatif), audited under the viewer when `actorName` is given: no lever enabled, or — basis
+ * "last_approved" — the levers and priority of the retained scenario (refused when there is none).
+ */
 export async function createScenario(projectCode: string, input: NewScenarioInput, actorName?: string): Promise<void> {
+  const st = input.basis === 'last_approved' ? await requireState(projectCode) : null;
   const db = await getDb();
   await db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);
+    let source: ScenarioRow | null = null;
+    if (st) {
+      const name = await retainedScenario(projectCode, tx);
+      source = name ? ((await scenarioRows(st, tx)).find((r) => r.row.name === name) ?? null) : null;
+      if (!source) throw new Error(`No selected or applied scenario on ${projectCode}`);
+    }
     const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${whatIfScenarios.position}), -1)::int` }).from(whatIfScenarios).where(eq(whatIfScenarios.projectId, p.id));
     const actor = actorName ? await findPerson(tx, actorName) : null;
     const [s] = await tx
       .insert(whatIfScenarios)
       .values({
-        projectId: p.id, name: input.name.trim(), priority: input.priority ?? 'date', basis: input.basis ?? null, horizonMonths: input.horizonMonths ?? null,
+        projectId: p.id, name: input.name.trim(), priority: input.priority ?? source?.row.priority ?? 'date', basis: input.basis ?? null, horizonMonths: input.horizonMonths ?? null,
         hypotheses: input.hypotheses?.trim() || null, position: pos + 1, createdByPersonId: actor?.id ?? null, createdByName: actor ? nameOf(actor) : (actorName ?? null),
         // Saved with no lever: the seed's prototype lever codes never apply to it.
         computedAt: new Date(),
       })
       .returning({ id: whatIfScenarios.id });
-    await audit(tx, actorName, { id: s.id, projectId: p.id }, `Scenario ${input.name.trim()}`, 'created');
+    if (st && source) await saveScenarioLevers(tx, st, s.id, source.enabled);
+    await audit(tx, actorName, { id: s.id, projectId: p.id }, `Scenario ${input.name.trim()}`, source ? `created from scenario ${source.row.name} (${source.enabled.length} levers)` : 'created');
   });
 }
 
@@ -689,7 +722,7 @@ export async function getRebalancingSuggestions(opts: { projectCode?: string; li
   for (const p of list) {
     const st = await loadWhatIfState(p.code);
     if (!st) continue;
-    const open = await openRequests(p.id);
+    const open = await openRequests(db, p.id);
     for (const lever of st.model.levers) {
       if (!createsRequest(lever)) continue;
       const effect = st.effects[lever.code];

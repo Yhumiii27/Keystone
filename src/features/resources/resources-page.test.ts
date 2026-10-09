@@ -4,7 +4,10 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 const jar = new Map<string, string>();
 vi.mock('next/headers', () => ({ cookies: async () => ({ get: (k: string) => (jar.has(k) ? { name: k, value: jar.get(k)! } : undefined) }) }));
-vi.mock('next/navigation', () => ({ usePathname: () => '/resources', useRouter: () => ({ push() {}, refresh() {} }), redirect() {}, notFound: () => { throw new Error('NOT_FOUND'); } }));
+const redirected: string[] = [];
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/resources', useRouter: () => ({ push() {}, refresh() {} }), redirect: (u: string) => void redirected.push(u), notFound: () => { throw new Error('NOT_FOUND'); },
+}));
 vi.mock('next/cache', () => ({ revalidatePath() {} }));
 import { createElement, isValidElement, type ComponentType, type ReactElement, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -23,7 +26,7 @@ import { ResourcesView } from './resources-view';
 import { WhatIfBoard } from './whatif-board';
 import type { WhatIfData } from './whatif-model';
 
-type Props = { primary?: ReactNode; children?: ReactNode; view?: View; canEdit?: boolean; projectName?: string; data?: WhatIfData; projectCode?: string; label?: string };
+type Props = { projectParam?: string; primary?: ReactNode; children?: ReactNode; view?: View; canEdit?: boolean; projectName?: string; data?: WhatIfData; projectCode?: string; label?: string };
 const parts = (el: unknown) => {
   const [header, body] = ((el as ReactElement<Props>).props.children as ReactElement<Props>[]).filter(isValidElement);
   return { header, body };
@@ -178,6 +181,19 @@ describe('Project resources page', () => {
 });
 
 describe('What-if page', () => {
+  it('without ?project= it redirects to the viewer\'s current project; the header shows that project with its switcher', async () => {
+    redirected.length = 0;
+    await whatif();
+    as('director', 'en', 'NDC-031');
+    await whatif();
+    expect(redirected).toEqual(['/resources/what-if?project=HLT-026', '/resources/what-if?project=NDC-031']);
+    redirected.length = 0;
+    const { header, body } = await whatif({ project: 'NDC-031' });
+    expect([redirected, header.props.projectParam, body.props.data!.projectCode]).toEqual([[], 'NDC-031', 'NDC-031']);
+    // A project without a plan keeps the switcher so the viewer can pick another one.
+    expect((await whatif({ project: 'EWA-051' })).header.props.projectParam).toBe('EWA-051');
+  });
+
   it('director: HLT-026 levelling with levers derived from the data and engine results (S-7), New scenario primary', async () => {
     const { header, body } = await whatif();
     expect(body.type).toBe(WhatIfBoard);

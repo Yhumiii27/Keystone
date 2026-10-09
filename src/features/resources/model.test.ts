@@ -238,6 +238,8 @@ describe('whatIfView', () => {
       ['Cost impact (EAC)', '—', '+<€1k', '+€1k'],
       ['Peak load', '120%', '140%', '120%'],
       ['People above 100%', '1', '1', '1'],
+      // S-7 (recommended option of DELIVERY-6-PLAN §3.3): the team hours each lever set frees (−) or adds (+) over the horizon.
+      ['Load change (h)', '0', '−24', '−36'],
       ['Side effects', 'None', 'Ben above 100% · week of 5 Oct', 'None'],
     ]);
     expect(v.compare[3].values.map((x) => x.color)).toEqual([LO, LO, LO]);
@@ -282,6 +284,7 @@ describe('whatIfView', () => {
       ['Impact coût (EAC)', '+< 1 k€'],
       ['Charge de pointe', '140%'],
       ['Personnes au-dessus de 100 %', '1'],
+      ['Variation de charge (h)', '−24'],
       ['Effets de bord', 'Ben au-dessus de 100 % · semaine du 5 oct.'],
     ]);
     expect(a.appliedText).toBe('2 demande(s) en brouillon · 0 envoyée(s)');

@@ -152,6 +152,7 @@ describe('rights', () => {
     expect(col(tm.rows, 'Field')).not.toContain('Hourly rate (€)');
     const lev = async (role: RoleKey) => (await sheetsOf('whatif', role, 'project=HLT-026')).find((x) => x.name === 'Levers')!;
     expect((await lev('director')).rows[0]).toContain('Hourly rate');
+    expect((await lev('director')).rows[0]).toContain('Load change (h)'); // S-7: load delta of each lever, as the cards show it
     expect((await lev('procurement')).rows[0]).not.toContain('Hourly rate');
   });
 

@@ -5,15 +5,16 @@
 import { LO, OK, shade } from '@/components/app/tones';
 import { screenHref } from '@/config/screens';
 import {
-  capacityBar, laborShare, mainShortfall, OVER_ALLOCATED_PCT, overAllocatedCount, personLoad, projectDepartmentDemand, teamUtilization, unmetDemand,
-  weekRangesText, weeksAbove, type CapacityRow,
+  capacityBar, laborShare, overAllocatedCount, peakWeeksText, personLoad, projectDepartmentDemand, shortfallText, teamUtilization, unmetDemand, type CapacityRow,
 } from '@/domain/resources';
 import type { WhatIfResult } from '@/domain/whatif';
 import { FR_MONTHS } from '@/i18n/fr-rules';
 import { money } from '@/lib/format';
-import { isoWeekOf } from '@/server/db/codes';
 import type { Lang, T } from '@/i18n/translate';
 import { leverEffectText, leverText, type WhatIfLeverData } from './whatif-model';
+
+/** Moved to src/domain/resources.ts (shared with the department head's Home). */
+export { peakWeeksText, shortfallText };
 
 export interface ResourcePerson {
   /** Full name ("Julien Wagner"). */
@@ -109,29 +110,6 @@ export interface ResourcesView {
   people: PersonRowView[];
   roles: RoleBarView[];
   suggestions: SuggestionView[] | null;
-}
-
-/**
- * "Over-allocated" sub (A-12; the prototype's constant "Peak weeks 41–43"): ISO weeks in which someone is above 110 %
- * ("Peak weeks 42–44", FR "Pointe semaines 42–44").
- */
-export function peakWeeksText(people: { loads: number[] }[], weekStarts: string[], lang: Lang): string {
-  const weeks = weeksAbove(people, OVER_ALLOCATED_PCT).flatMap((i) => (weekStarts[i] ? [isoWeekOf(weekStarts[i])] : []));
-  const fr = lang === 'fr';
-  if (!weeks.length) return fr ? 'Aucune semaine au-dessus de 110 %' : 'No week above 110%';
-  const range = weekRangesText(weeks);
-  if (fr) return `${weeks.length === 1 ? 'Pointe semaine' : 'Pointe semaines'} ${range}`;
-  return `${weeks.length === 1 ? 'Peak week' : 'Peak weeks'} ${range}`;
-}
-
-/** First letter in lower case, unless the word is an acronym ("MEP", "CVC-élec"). */
-const lowerFirst = (s: string) => (/^[A-ZÀ-Ý]{2}/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1));
-
-/** Portfolio "Unmet demand" sub (A-12; the prototype's constant "Mostly engineering"): the department short the most. */
-export function shortfallText(rows: CapacityRow[], t: T, lang: Lang): string {
-  const top = mainShortfall(rows);
-  if (!top) return lang === 'fr' ? 'Aucun service au-delà de sa capacité' : 'No department over capacity';
-  return lang === 'fr' ? `Surtout ${lowerFirst(t(top.name))}` : `Mostly ${lowerFirst(top.name)}`;
 }
 
 const WEEK_RE = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2})$/;

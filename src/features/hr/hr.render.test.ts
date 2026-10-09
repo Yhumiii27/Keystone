@@ -7,9 +7,11 @@ import { createElement as h, type ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
+import { requestsNeedingExperts } from '@/domain/resources';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { getHoursReconciliation, getLeaveCalendar, getRateCard, getSkillsMatrix, type HoursReconciliation, type LeaveCalendar, type RateCard, type SkillsMatrix } from '@/server/dal/hr';
+import { listResourceRequests } from '@/server/dal/requests';
 import { HoursBody, hoursViewHref } from './hours-view';
 import { hrT } from './i18n';
 import { LeaveView } from './leave-view';
@@ -33,10 +35,13 @@ let card: RateCard;
 let skills: SkillsMatrix;
 let leave: LeaveCalendar;
 let hours: HoursReconciliation;
+let expertRequests: { count: number; skills: string[] };
 
 beforeAll(async () => {
   setDb(await openDatabase());
   [card, skills, leave, hours] = await Promise.all([getRateCard(), getSkillsMatrix(), getLeaveCalendar(), getHoursReconciliation('HLT-026').then((x) => x!)]);
+  // As the Skills page computes it (A-12).
+  expertRequests = requestsNeedingExperts(await listResourceRequests({ status: 'pending' }), skills.people, skills.skills.map((x) => x.name));
 }, 60_000);
 
 describe('Rate cards', () => {
@@ -94,12 +99,14 @@ describe('Skills matrix', () => {
   const base = '/resources/skills';
 
   it('KPIs, chips, matrix and coverage (EN)', () => {
-    const m = html(h(SkillsView, { data: skills, filter: null, base, t: tOf('en') }), 'en');
+    const m = html(h(SkillsView, { data: skills, filter: null, base, t: tOf('en'), expertRequests }), 'en');
     const x = text(m);
     expect(x).toContain('Skill families 10 Levels 1–5 · certifications noted');
     expect(x).toContain('Single-expert skills 8 Fewer than 2 people at level ≥4');
     expect(x).toContain('Certifications 5 Tracked with expiry in Lucca');
-    expect(x).toContain('Open requests needing level ≥4 2 Structural · Quality');
+    // A-12 (chapter 4): computed from the pending requests naming an expert (RQ-041 Structural, RQ-044 Procurement, RQ-042
+    // Quality) — the prototype's constant was "2 · Structural · Quality".
+    expect(x).toContain('Open requests needing level ≥4 3 Structural · Procurement · Quality / QA-QC');
     expect(x).toContain('Filter shows people at level ≥3');
     expect(count(m, 'role="row"')).toBe(1 + 8);
     expect(count(m, 'role="cell"')).toBe(80);
@@ -117,6 +124,12 @@ describe('Skills matrix', () => {
     expect(count(m, `${css.dot} ${css.lv4}`)).toBe(filled((v) => v >= 4));
     expect(count(m, `${css.dot} ${css.lv3}`)).toBe(filled((v) => v === 3));
     expect(count(m, `${css.dot} ${css.lv1}`)).toBe(filled((v) => v === 1));
+  });
+
+  it('without the computed requests the 4th tile shows "—", never an invented figure (A-12)', () => {
+    const x = text(html(h(SkillsView, { data: skills, filter: null, base, t: tOf('en') }), 'en'));
+    expect(x).toContain('Open requests needing level ≥4 —');
+    expect(x).not.toContain('Structural · Quality');
   });
 
   it('filter ?filter=4 (Crane & lifting): people at level ≥3', () => {

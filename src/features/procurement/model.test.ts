@@ -9,11 +9,14 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { RoleKey } from '@/config/screens';
 import { makeT, type Lang } from '@/i18n/translate';
 import { canSee } from '@/config/screens';
-import { setDb } from '@/server/db/client';
+import { and, eq, inArray, like } from 'drizzle-orm';
+import { rfqAverageCycleDays } from '@/domain/kpis';
+import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { auditEntries, rfqQuotes, rfqs, suppliers } from '@/server/db/schema';
 import { recordReceiptQc } from '@/server/dal/deliveries';
 import {
-  approveInvoiceReceivedPart, awardRfq, compareRfqQuotes, countInvoicesToResolve, getPurchaseOrder, invoiceQueue, listRfqs, listSupplierInvoices, rejectSupplierInvoice,
+  approveInvoiceReceivedPart, awardRfq, compareRfqQuotes, countInvoicesToResolve, createRfq, getPurchaseOrder, invoiceQueue, listRfqs, listSupplierInvoices, rejectSupplierInvoice,
   rfqAwardQueue, sendRfq,
 } from '@/server/dal/purchasing';
 import { rfqKpiFacts } from '@/server/dal/kpis';
@@ -288,6 +291,26 @@ describe('Sourcing view models vs the prototype', () => {
       const after = (await listSupplierInvoices()).find((i) => i.number === 'INV-NV-1190')!;
       expect([after.status, after.amountEur, after.creditNoteEur, after.decidedBy]).toEqual(['approved_for_payment', 124_000, 124_000, 'Fabien Bertrand']);
       expect(await countInvoicesToResolve()).toBe(1);
+    });
+
+    it('A-12: an RFQ created in Keystone (Open, "RFQ sent to …") counts in "Average cycle": create → compare → award', async () => {
+      // Before the fix only "status: Draft → Open" gave a send date, so an RFQ created Open never counted ("—").
+      const number = await createRfq({ title: 'Column base plates', suppliers: 'Dillinger, Salzgitter', articles: 'KS-STL-0450', quantity: 12, replyDueOn: '2026-10-15', projectCode: 'HLT-026' }, 'Fabien Bertrand');
+      const db = await getDb();
+      const [r] = await db.select({ id: rfqs.id }).from(rfqs).where(eq(rfqs.number, number));
+      // The clock is real: date the "sent" audit entry 14 Sep and the award 23 Sep (Paris) to get a stable 9-day cycle.
+      await db.update(auditEntries).set({ occurredAt: new Date('2026-09-14T08:00:00Z') }).where(and(eq(auditEntries.entityId, r.id), like(auditEntries.change, 'RFQ sent to %')));
+      // Suppliers quote outside Keystone (no writer yet): two quotes recorded directly.
+      const sups = await db.select({ id: suppliers.id, name: suppliers.name }).from(suppliers).where(inArray(suppliers.name, ['Dillinger', 'Salzgitter']));
+      expect(sups).toHaveLength(2);
+      await db.insert(rfqQuotes).values(sups.map((x, i) => ({ rfqId: r.id, supplierId: x.id, unitPriceEur: 1150 + 30 * i, leadWeeks: 4, paymentTerms: 'Net 45', grade: 'A' as const, score: 90 - i, position: i })));
+      await compareRfqQuotes(number, 'Fabien Bertrand');
+      await awardRfq(number, 'Dillinger', 'Romain Aubert');
+      await db.update(rfqs).set({ awardedAt: new Date('2026-09-23T10:00:00Z') }).where(eq(rfqs.id, r.id));
+      const facts = await rfqKpiFacts();
+      expect(rfqAverageCycleDays(facts)).toBe(9);
+      const cycle = rfqTabView(await listRfqs(), null, ctxOf('en'), facts).kpis.find((k) => k.label === 'Average cycle')!;
+      expect(cycle.value).toBe('9 d');
     });
   });
 });

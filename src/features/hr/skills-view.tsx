@@ -8,7 +8,7 @@ import { KpiGrid, KpiTile } from '@/components/app/Kpi';
 import { FlexRow, SectionCard } from '@/components/app/SectionCard';
 import { LO, OK } from '@/components/app/tones';
 import { cx } from '@/components/ds/cx';
-import { OPEN_REQUESTS_LEVEL4, filterBySkill, levelDots, levelTone, skillCoverage, skillKpis, type LevelTone } from '@/domain/hr';
+import { filterBySkill, levelDots, levelTone, skillCoverage, skillKpis, type LevelTone } from '@/domain/hr';
 import type { T } from '@/i18n/translate';
 import type { SkillsMatrix } from '@/server/dal/hr';
 import s from './hr.module.css';
@@ -34,11 +34,11 @@ export function SkillsView({ data, filter, base, t, expertRequests }: { data: Sk
         <KpiTile label={t('Skill families')} value={k.families} sub={t('Levels 1–5 · certifications noted')} color={OK} />
         <KpiTile label={t('Single-expert skills')} value={k.singleExpert} sub={t('Fewer than 2 people at level ≥4')} color={k.singleExpert > 0 ? LO : OK} />
         <KpiTile label={t('Certifications')} value={k.certifications} sub={t('Tracked with expiry in Lucca')} color={OK} />
-        {/* A-12: computed from the pending requests when the page passes them; else the prototype constant. */}
+        {/* A-12: computed from the pending requests the page passes; without them the tile shows "—" (no invented figure). */}
         <KpiTile
           label={t('Open requests needing level ≥4')}
-          value={expertRequests ? expertRequests.count : OPEN_REQUESTS_LEVEL4.value}
-          sub={expertRequests ? expertRequests.skills.map((n) => t(n)).join(' · ') || t('None') : t(OPEN_REQUESTS_LEVEL4.sub)}
+          value={expertRequests ? expertRequests.count : '—'}
+          sub={expertRequests ? expertRequests.skills.map((n) => t(n)).join(' · ') || t('None') : ''}
           color={OK}
         />
       </KpiGrid>
