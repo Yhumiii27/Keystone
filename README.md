@@ -8,6 +8,7 @@ reconstruction en Next.js 16 du prototype Claude Design `design/Keystone PM v8.d
 - État des livraisons : `docs/DELIVERY-1.md`, `docs/DELIVERY-2.md`, `docs/DELIVERY-3.md`, `docs/DELIVERY-4.md`, `docs/DELIVERY-5.md`,
   `docs/DELIVERY-6.md` (chapitre 4 : les fonctions simulées des 59 écrans sont devenues réelles ; plan d'origine dans
   `docs/DELIVERY-6-PLAN.md`)
+- Reste à développer (inventaire du 10 octobre 2026) : `docs/RESTE-A-DEVELOPPER.md`
 - Décisions du responsable produit (questionnaire) : `docs/DECISIONS.md`
 - Consignes pour les sessions Claude : `CLAUDE.md`
 - Évolutions demandées et proposées : `docs/BACKLOG.md`
