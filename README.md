@@ -52,3 +52,19 @@ L'app pointe vers ce dossier de projet et vers le Node.js présents au moment de
 `npm run app` après un déplacement du projet ou un changement de Node.
 
 Pour repartir d'une base de démo neuve : quittez l'app, puis supprimez `~/Library/Application Support/Keystone/data`.
+
+## Mise en ligne (Docker, Coolify)
+
+Le `Dockerfile` à la racine compile l'application et lance `next start`. Réglages à donner à l'hébergeur :
+
+| Réglage | Valeur |
+| --- | --- |
+| Port interne | `3000` |
+| Volume persistant | `/data` (base PGlite dans `/data/pg`, fichiers dans `/data/files`) |
+| Variables disponibles au build | `NEXT_PUBLIC_CURSUS_URL`, `NEXT_PUBLIC_VIGIE_URL` : adresses publiques de Cursus et de Vigie |
+
+- **Liens vers Cursus et Vigie :** les deux adresses sont figées dans l'application au moment du build. Après les avoir
+  modifiées, il faut redéployer.
+- **Police :** le build télécharge Inter depuis Google Fonts ; le serveur de build doit avoir accès à Internet.
+- **Accès :** tant que l'authentification n'est pas branchée, protéger l'accès au niveau de l'hébergeur
+  (authentification HTTP de Coolify, par exemple).
