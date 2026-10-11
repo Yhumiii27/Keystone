@@ -25,7 +25,7 @@ import { getTrends } from '@/server/dal/trends';
 import { getBudgetContract } from '@/server/dal/budget';
 import { getCashFlow, listBillingPlans } from '@/server/dal/cashflow';
 import { getContract, issueInvoice, lateBillingMilestonesByProject } from '@/server/dal/contract';
-import { approveDocumentStep, depositInCodex, getCodexSyncState, getDocumentRecord, listDocumentTypes, listProjectDocuments, listVaultDocuments } from '@/server/dal/documents';
+import { depositInCodex, recordDocumentDecision, getCodexSyncState, getDocumentRecord, listDocumentTypes, listProjectDocuments, listVaultDocuments } from '@/server/dal/documents';
 import { getProjectsMap } from '@/server/dal/geo';
 import { createInterface, lateInterfacesByProject, listInterfaces } from '@/server/dal/interfaces';
 import { createMeeting, listMeetings, meetingsToWriteByProject, sendMinutes } from '@/server/dal/meetings';
@@ -344,7 +344,8 @@ async function main() {
     && (await createChangeRequest('HLT-026', { title: 'Check', types: ['scope'], amountKeur: 1, scheduleDays: 0 }, 'Romain Aubert')) === 'CR-011'
     && (await createResourceRequest({ projectCode: 'HLT-026', title: 'Check', activityCode: 'A1250', person: 'Julien Wagner', priority: 'med' }, 'Romain Aubert')) === 'RQ-045');
   check('approving RQ-043 creates task T-2341 (contract role)', (await approveResourceRequest('RQ-043', 'Marion Kerviel')) === 'T-2341' && (await getTask('T-2341'))?.assignee === 'Contract structural engineer');
-  check('audit rows appended (8 seed + 4)', (await listAudit()).length === 12);
+  // L-4c (Delivery 7, R-055): the automatic stage change is audited too.
+  check('audit rows appended (8 seed + 4 + the stage change)', (await listAudit()).length === 13);
   await delivery3Writes();
   await delivery4Writes();
   await delivery5Writes();
@@ -419,14 +420,16 @@ async function delivery3Reads() {
 async function delivery3Writes() {
   check('deposit → CER-HLT-042 (count + 40), first in the vault', (await depositInCodex({ typeCode: 'CER', project: 'HLT-026', linkedPo: 'PO-2026-118' }, 'Marie Lefebvre')).number === 'CER-HLT-042'
     && (await listVaultDocuments())[0].number === 'CER-HLT-042');
-  await approveDocumentStep('RPT-HLT-014', 'Gabriel Comte');
-  check('RPT-HLT-014 released after its 2 approvals', (await approveDocumentStep('RPT-HLT-014', 'Romain Aubert')).released);
+  // Delivery 7 (P-7b, R-124): the approvals go to Codex through the outbox; the second one requests the release.
+  await recordDocumentDecision('RPT-HLT-014', { decision: 'approved' }, { name: 'Gabriel Comte', role: 'quality' });
+  check('RPT-HLT-014 release requested after its 2 approvals (pending sync with Codex)',
+    (await recordDocumentDecision('RPT-HLT-014', { decision: 'approved' }, { name: 'Romain Aubert', role: 'pm' })).releaseRequested);
   check('issue invoice on M4 → INV-2026-004', (await issueInvoice('HLT-026', { milestone: 'M4' }, 'Romain Aubert')) === 'INV-2026-004');
   check('new meeting MTG-130', (await createMeeting('HLT-026', { title: 'Check', type: 'internal', series: 'one_off', date: '2026-10-06', invitees: ['R. Aubert'], agenda: [] }, 'Romain Aubert')) === 'MTG-130');
   const sent = await sendMinutes('MTG-118', 'Romain Aubert');
   check('MTG-118 minutes → MIN-HLT-027, tasks T-2342 / T-2343', same(sent, { minutesNumber: 'MIN-HLT-027', invited: 5, tasks: ['T-2342', 'T-2343'] }), sent);
   check('new interface IF-10', (await createInterface('HLT-026', { title: 'Check', keystoneSide: 'site', otherParty: 'Client', dataExpected: 'Data', neededBy: '2026-11-02', owner: 'R. Aubert' }, 'Romain Aubert')) === 'IF-10');
-  check('audit rows appended (12 + 7)', (await listAudit()).length === 19);
+  check('audit rows appended (13 + 7)', (await listAudit()).length === 20);
 }
 
 /** Delivery 4 data through the DAL vs the prototype figures quoted by the specs (09 §1–5, 08 §1–4, §7.5). */
@@ -442,8 +445,9 @@ async function delivery4Reads() {
   check('no BOM, tree or orders on EWA-051 (no Harbor Line fallback)', (await getProjectBom('EWA-051'))!.lines.length === 0 && (await getProjectAssembly('EWA-051')) === null && (await listPurchaseOrders('EWA-051')).length === 0);
   const asm = (await getProjectAssembly('HLT-026'))!;
   const bog = asm.rows.find((r) => r.ref === 'ASM-BOG-300')!;
-  check('assembly tree: ASM-RMG-250 ×2 unit €713,996 · extended €1,427,992; ASM-BOG-300 ext 8 · unit €11,222',
-    same([asm.root.unitCostEur, asm.root.extendedCostEur, bog.extended, bog.unitCostEur], [713996, 1427992, 8, 11222]), [asm.root.unitCostEur, bog.unitCostEur]);
+  // E-2a (Delivery 7, R-103): roll-ups at the ordered price, else last purchase, else catalogue (was €713,996 at list price).
+  check('assembly tree: ASM-RMG-250 ×2 unit €720,396 · extended €1,440,792; ASM-BOG-300 ext 8 · unit €11,222',
+    same([asm.root.unitCostEur, asm.root.extendedCostEur, bog.extended, bog.unitCostEur], [720396, 1440792, 8, 11222]), [asm.root.unitCostEur, bog.unitCostEur]);
   check('compare revisions B → C: +€19,180 per crane (ECO-2026-014)', (await getRevisionComparison('HLT-026'))?.totalDeltaEur === 19180);
   const sp = (await getSpareList('HLT-026'))!;
   check('PU/PR complete system ×2: 12 lines (4 PU) · €235k · 4 long lead · 3 under change · 10 below recommended stock (real on-hand)',
@@ -512,7 +516,7 @@ async function delivery4Writes() {
   const rec = await recordEcoProgress('ECO-2026-015', { key: 'pm', decision: 'ok' }, { name: 'Romain Aubert', role: 'pm' });
   check('ECO-2026-015 PM approval recorded, pending sync with Vigie (Vigie status unchanged)', rec.syncStatus === 'pending' && (await getEco('ECO-2026-015'))?.status === 'in_approval'
     && (await getEco('ECO-2026-015'))?.approvalsView.find((a) => a.key === 'pm')?.pendingSync === true);
-  check('audit rows appended (19 + 21)', (await listAudit()).length === before + 21 && before === 19, [before, (await listAudit()).length]);
+  check('audit rows appended (20 + 21)', (await listAudit()).length === before + 21 && before === 20, [before, (await listAudit()).length]);
 }
 
 async function delivery5Reads() {
@@ -567,9 +571,10 @@ async function delivery5Reads() {
   check('client portal HLT-026: waiting CR-008, D-014, D-016 · 5 decided · 2 open issues · 7 shared documents',
     same([cp.decisions.map((d) => d.id), cp.decided.length, cp.issues.filter((i) => i.status !== 'closed').length, cp.documents.length], [['CR-008', 'D-014', 'D-016'], 5, 2, 7]));
   const eng = (await getEngineeringRegister('HLT-026'))!;
-  check('engineering HLT-026: 4 blocking · 4 outdated inputs · 5 / 13 released · 2 / 6 outputs ready',
+  // E-5 (Delivery 7, R-105): LST-IO-026 rev B (Frozen) is the reference, no longer outdated.
+  check('engineering HLT-026: 4 blocking · 3 outdated inputs · 5 / 13 released · 2 / 6 outputs ready',
     same([eng.checks.filter((c) => c.open && c.severity === 'blocking').length, eng.inputs.filter((i) => i.outdated).length, eng.deliverables.filter((d) => d.status === 'released').length,
-      eng.deliverables.length, eng.outputs.filter((o) => o.state === 'ready').length, eng.outputs.length], [4, 4, 5, 13, 2, 6]));
+      eng.deliverables.length, eng.outputs.filter((o) => o.state === 'ready').length, eng.outputs.length], [4, 3, 5, 13, 2, 6]));
   const pid = (await getPidValidation('HLT-026'))!;
   check('P&ID HLT-026: rev C · 22 in scope · 13 linked (59 %) · 6 unmapped · 3 reference issues', same([pid.sheet.revision, pid.coverage.inScope, pid.coverage.linked, pid.coverage.pct, pid.coverage.unmapped, pid.coverage.referenceIssues], ['C', 22, 13, 59, 6, 3]));
   const mts = await listMachineTypes();
