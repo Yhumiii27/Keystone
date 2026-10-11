@@ -10,6 +10,7 @@ import type { Persona } from '@/config/personas';
 import type { RoleKey } from '@/config/screens';
 import { getDb } from '@/server/db/client';
 import { departments, persons, projects, users } from '@/server/db/schema';
+import { leadProjectCodes } from './project-team';
 
 export interface ApproverIdentity {
   role: RoleKey;
@@ -21,7 +22,7 @@ export interface ApproverIdentity {
   title: string;
   /** Departments headed by the viewer, DEPTS order ("Engineering"). */
   departments: string[];
-  /** Codes of the projects the viewer manages (projects.pm). */
+  /** Codes of the projects the viewer leads: PM of record, co-PM or deputy (R-041). */
   managedProjects: string[];
   /** Codes of the projects of the viewer's client organisation (client contacts only). */
   clientProjects: string[];
@@ -39,7 +40,7 @@ export const getApproverIdentity = cache(async (viewer: Persona): Promise<Approv
   if (!person) return { ...base, departments: [], managedProjects: [], clientProjects: [] };
   const [heads, managed, user] = await Promise.all([
     db.select({ name: departments.name, order: departments.sortOrder }).from(departments).where(eq(departments.headPersonId, person.id)),
-    db.select({ code: projects.code, order: projects.sortOrder }).from(projects).where(eq(projects.pmPersonId, person.id)),
+    leadProjectCodes(db, person.id).then((cs) => cs.map((code, order) => ({ code, order }))),
     db.select({ clientId: users.clientId }).from(users).where(eq(users.personId, person.id)),
   ]);
   const clientIds = [...new Set([person.clientId, ...user.map((u) => u.clientId)].filter((x): x is string => !!x))];

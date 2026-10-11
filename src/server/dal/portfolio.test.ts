@@ -41,7 +41,10 @@ describe('portfolio DAL', () => {
     expect(h.kpis[3]).toMatchObject({ value: '2', alert: true });
     const pm = await getMyProjects(PERSONA_BY_ROLE.pm, 'HLT-026', 'en');
     expect(pm.cards.map((c) => [c.project.code, c.myRole, c.readOnly])).toEqual([['HLT-026', 'Project manager', false]]);
+    // R-041 (P-2): the quality manager is a referent of Harbor Line (seeded named team) — was: no project, the fallback.
     const q = await getMyProjects(PERSONA_BY_ROLE.quality, 'HLT-026', 'en');
-    expect([q.fallback, q.cards.length, q.cards.every((c) => c.readOnly && c.myRole === '')]).toEqual([true, 6, true]);
+    expect([q.fallback, q.cards.map((c) => [c.project.code, c.myRole, c.readOnly])]).toEqual([false, [['HLT-026', 'Referent', false]]]);
+    const nobody = await getMyProjects({ ...PERSONA_BY_ROLE.quality, name: 'Zoé Martin', short: 'Z. Martin', personId: null }, 'HLT-026', 'en');
+    expect([nobody.fallback, nobody.cards.length, nobody.cards.every((c) => c.readOnly && c.myRole === '')]).toEqual([true, 6, true]);
   });
 });

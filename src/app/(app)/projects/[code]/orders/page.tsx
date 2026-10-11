@@ -7,6 +7,7 @@
 // Projects without orders show the empty list (never Harbor Line's orders).
 import { PageHeader } from '@/components/app/shell/page-header';
 import { isPoStatus } from '@/domain/orders';
+import { canSeeSupplierPrices } from '@/domain/rights';
 import { ordersView } from '@/features/orders/model';
 import { CreateDraftsButton } from '@/features/orders/order-buttons';
 import { OrdersBody } from '@/features/orders/orders-view';
@@ -24,7 +25,9 @@ export default async function OrdersPage({ params, searchParams }: { params: Pro
   const [{ t, lang }, data] = await Promise.all([getI18n(), getOrdersScreen(projectCode, ctx.viewer.name)]);
   const canEdit = ctx.canEdit('orders');
   const status = first(sp.status);
-  const view = ordersView({ code: projectCode, data, filter: isPoStatus(status) ? status : null, selected: first(sp.po)?.toUpperCase() ?? null }, t, lang);
+  // R-046 (NEW-D2-1): order values and supplier prices only for the director, the PMs and procurement.
+  const prices = canSeeSupplierPrices(ctx.viewer.role);
+  const view = ordersView({ code: projectCode, data, filter: isPoStatus(status) ? status : null, selected: first(sp.po)?.toUpperCase() ?? null, prices }, t, lang);
 
   const primary = canEdit && view.shortfall ? <CreateDraftsButton code={projectCode} place="header" afterHref={view.afterDraftsHref} /> : undefined;
 

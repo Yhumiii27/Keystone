@@ -60,18 +60,19 @@ describe('/after-sales/fleet', () => {
     expect(fr.context).toMatch(/^#031 · /);
   });
 
-  it('primary action only for the roles whose workspace has the screen (prototype hasPrimary)', async () => {
+  it('primary action only for the roles whose workspace has the screen (prototype hasPrimary); the client is refused (R-042, P-1)', async () => {
     for (const role of ROLES) {
       session.role = role;
-      expect(!!(await fleetPage()).PageHeader.props.primary, role).toBe(EDITORS.includes(role));
+      if (role === 'client') await expect(fleetPage()).rejects.toThrow('NEXT_REDIRECT');
+      else expect(!!(await fleetPage()).PageHeader.props.primary, role).toBe(EDITORS.includes(role));
     }
   });
 
-  it('no Vigie link for the client (Vigie is internal); staff and other outside viewers keep it', async () => {
+  it('Vigie links for staff and other outside viewers; the client never reaches the register (R-042, P-1)', async () => {
     const vigieLinks = async () => ((await fleetPage()).FleetBody.props.view as FleetView).rows.filter((r) => r.config?.vigieHref).length;
     expect(await vigieLinks()).toBe(5);
     session.role = 'client';
-    expect(await vigieLinks()).toBe(0);
+    await expect(vigieLinks()).rejects.toThrow('NEXT_REDIRECT');
     session.role = 'englead';
     expect(await vigieLinks()).toBe(5);
   });
@@ -103,16 +104,18 @@ describe('/after-sales/claims', () => {
   it('primary action only for the roles whose workspace has the screen; the zone preference applies', async () => {
     for (const role of ROLES) {
       session.role = role;
-      expect(!!(await savPage()).PageHeader.props.primary, role).toBe(EDITORS.includes(role));
+      // R-042 (P-1): the client is refused outside its workspace (was: read-only page without a primary).
+      if (role === 'client') await expect(savPage()).rejects.toThrow('NEXT_REDIRECT');
+      else expect(!!(await savPage()).PageHeader.props.primary, role).toBe(EDITORS.includes(role));
     }
-    session.zone = 'apac';
+    Object.assign(session, { zone: 'apac', role: 'director' });
     const v = (await savPage({ view: 'interventions' })).SavBody.props.view as SavScreenView;
     expect([v.interventions, v.zoneEmpty]).toEqual([[], 'No project in this zone for this view']);
-    // WC-013's design ECO (not reported by Vigie): a Vigie link for staff, a plain tag for the client.
+    // WC-013's design ECO (not reported by Vigie): a Vigie link for staff; the client is refused the screen (R-042, P-1).
     Object.assign(session, { zone: null, role: 'quality' });
     const ecoOf = async () => ((await savPage()).SavBody.props.view as SavScreenView).claims!.find((c) => c.number === 'WC-013')!.eco!.href;
     expect(await ecoOf()).toMatch(/^http:\/\/localhost:3200\//);
     session.role = 'client';
-    expect(await ecoOf()).toBeNull();
+    await expect(ecoOf()).rejects.toThrow('NEXT_REDIRECT');
   });
 });

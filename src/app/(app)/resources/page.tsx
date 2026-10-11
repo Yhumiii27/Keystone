@@ -12,6 +12,7 @@ import { listResourceRequests } from '@/server/dal/requests';
 import { getLaborCost, getRebalancingSuggestions, getResourcePool, listDepartments } from '@/server/dal/resources';
 import { getProjectScope, getScreenAccess } from '@/server/project-context';
 import { getI18n, getLastProject } from '@/server/session';
+import { myWorkAccess } from '@/server/dal/mywork-data';
 
 export default async function ResourcesPage() {
   const [{ t, lang }, access, scope, pool, departments, pending, lastProject, suggestions] = await Promise.all([
@@ -25,8 +26,10 @@ export default async function ResourcesPage() {
     getRebalancingSuggestions(),
   ]);
   const labor = await getLaborCost(lastProject);
+  const work = await myWorkAccess(access.viewer);
   const view = resourcesView(
     {
+      canOpenWork: work.canView,
       scope: 'portfolio',
       weeks: pool.weeks.map((w) => w.label),
       weekStarts: pool.weeks.map((w) => w.start),

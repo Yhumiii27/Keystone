@@ -86,8 +86,9 @@ export async function submitChangeRequestAction(code: string, number: string): P
 }
 
 /**
- * Approve / Reject one step of the approval chain. Only the persona owning the step decides it (pm, director,
- * client; the change control board is recorded by the director), on a request in review whose step is pending.
+ * Approve / Reject one step of the approval chain. Only the persona owning the step decides it (pm — one of the project's
+ * PMs or deputies, R-041 —, director, client; the change control board is recorded by the director), on a request in review
+ * whose step is pending.
  * The status is re-derived from the chain by the DAL (approved → BL2 becomes current for CR-009).
  */
 export async function decideChangeStepAction(code: string, number: string, step: string, decision: string): Promise<ChangeActionResult> {
@@ -97,6 +98,8 @@ export async function decideChangeStepAction(code: string, number: string, step:
   if (!(CR_STEPS as string[]).includes(step) || (decision !== 'ok' && decision !== 'rejected')) return { error: t('Invalid request') };
   const s = step as ChangeStep;
   if (STEP_DECIDER[s] !== r.ctx.viewer.role) return { error: t('This approval step is not yours to decide') };
+  // R-041: the PM step belongs to the project's PMs (PM of record, co-PMs, deputies), not to any PM on its team.
+  if (s === 'pm' && !r.ctx.isLead) return { error: t('This approval step is not yours to decide') };
   const cr = await loadCr(r.ctx.project.code, number);
   if (!cr) return { error: t('Unknown change request') };
   if (!canDecideStep(r.ctx.viewer.role, cr, s)) return { error: t('This approval step is no longer pending') };

@@ -19,7 +19,7 @@ import { planT } from '@/features/plan/i18n';
 import { planKpis, planRowViews, planRows, type PlanView } from '@/features/plan/model';
 import { AddWorkPackageButton, PlanForms, PlanPrimaryButton } from '@/features/plan/plan-forms';
 import { PlanTable } from '@/features/plan/plan-table';
-import { canEditPlan, canSchedulePlan } from '@/features/plan/rights';
+import { canEditPlan, canEditStructure, canSchedulePlan } from '@/features/plan/rights';
 import { PlanToolbar } from '@/features/plan/toolbar';
 import s from '@/features/plan/plan.module.css';
 import { canSnapshotFreely } from '@/domain/baseline-policy';
@@ -31,7 +31,7 @@ import { PLAN_TRASH_RETENTION_DAYS, listPlanTrash } from '@/server/dal/plan-tras
 import { listActivityTodos } from '@/server/dal/activity-todos';
 import { listChangeRequestDetails } from '@/server/dal/changes';
 import { listDepartments } from '@/server/dal/people';
-import { getPlanData, getPlanRequests, getPlanSettings, getPlanTodos } from '@/server/dal/plan';
+import { getPlanData, getPlanRequests, getPlanSettings, getPlanTodos, ownerCodeOfViewer } from '@/server/dal/plan';
 import { getActivityAssignments } from '@/server/dal/planning';
 import { baselineState } from '@/server/db/codes';
 import { projectLabel } from '@/server/dal/projects';
@@ -49,9 +49,11 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
   const [i18n, data, settings, jar] = await Promise.all([getI18n(), getPlanData(projectCode), getPlanSettings(projectCode), cookies()]);
   const { lang } = i18n;
   const t = planT(i18n.t, lang);
-  // Edits: not outside the workspace, not a read-only project, never the client (`planRO`). Scheduling decisions
-  // (Reschedule, Set baseline, Baseline / Calendar chips): the director or the project's manager (S-1).
+  // Edits: not outside the workspace, on the project's team, never the client (`planRO`, R-041). P-9a (R-061): the structure
+  // (WBS, durations, budgets, links, to-dos) and the scheduling decisions (Reschedule, Set baseline, Baseline / Calendar chips,
+  // removal) are the project's PMs' and the director's; an activity's owner enters only its % complete.
   const canEdit = canEditPlan(ctx);
+  const canStructure = canEditStructure(ctx);
   const canSchedule = canSchedulePlan(ctx);
 
   if (!data)
@@ -65,6 +67,10 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
       </>
     );
 
+  // Activities whose progress the viewer enters as their owner (P-9a), when they may not edit the structure.
+  const ownerCode = canEdit && !canStructure ? await ownerCodeOfViewer(ctx.viewer) : null;
+  const ownActs = ownerCode ? data.activities.filter((a) => a.owner === ownerCode) : [];
+  const progressIds = ownActs.map((a) => a.id);
   const view: PlanView = first(sp.view) === 'structure' ? 'structure' : 'progress';
   const ids = new Set(data.activities.map((a) => a.id));
   const actParam = first(sp.act)?.toUpperCase();
@@ -119,7 +125,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
   let drawer = null;
   if (act) {
     const [assignments, depts, crs, actTodos] = await Promise.all([
-      getActivityAssignments(projectCode, act.id), listDepartments(), listChangeRequestDetails(projectCode), canEdit ? listActivityTodos(projectCode, act.id) : [],
+      getActivityAssignments(projectCode, act.id), listDepartments(), listChangeRequestDetails(projectCode), canStructure ? listActivityTodos(projectCode, act.id) : [],
     ]);
     const view_ = activityDrawerView(
       {
@@ -148,7 +154,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
         scheduleHref={screenHref('schedule', { code: projectCode })}
         t={t}
         code={projectCode}
-        canEdit={canEdit}
+        canEdit={canStructure}
         context={context}
         linkOptions={data.activities.filter((a) => a.id !== act.id).map((a) => `${a.id} · ${a.name}`)}
       />
@@ -158,9 +164,10 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
   const formDefs = planFormDefs({
     wp: data.packages.map((p) => `${p.code} · ${p.name}`),
     team: data.control.team.length ? data.control.team : data.owners.map((o) => o.name),
-    actOpen: data.activities.filter((a) => a.pct < 100).map((a) => `${a.id} · ${a.name}`),
+    actOpen: (canStructure ? data.activities : ownActs).filter((a) => a.pct < 100).map((a) => `${a.id} · ${a.name}`),
   });
-  const primary = canEdit ? (
+  const canProgress = canStructure || progressIds.length > 0;
+  const primary = (view === 'structure' ? canStructure : canProgress) ? (
     <PlanPrimaryButton form={view === 'structure' ? 'plan' : 'progress'} label={t(view === 'structure' ? 'Add activity' : 'Update progress')} />
   ) : undefined;
 
@@ -199,7 +206,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
               </span>
             </div>
             {view === 'structure' ? (
-              canEdit && <AddWorkPackageButton label={t('Add work package')} />
+              canStructure && <AddWorkPackageButton label={t('Add work package')} />
             ) : (
               <span className={s.dataDate}>
                 {t('Data date')} · {dataDateText}
@@ -212,7 +219,8 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
             rows={rows}
             collapsed={collapsed}
             selected={selected}
-            canEdit={canEdit}
+            canEdit={canStructure}
+            progressIds={progressIds}
             canRemove={canSchedule}
             owners={data.owners.map((o) => ({ value: o.code, label: o.name }))}
             hrefOf={{ base, query: view === 'structure' ? 'view=structure&' : '' }}
@@ -232,7 +240,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
         )}
         {drawer}
       </div>
-      {canEdit && <PlanForms code={projectCode} context={context} defs={formDefs} />}
+      {canProgress && <PlanForms code={projectCode} context={context} defs={formDefs} />}
     </>
   );
 }

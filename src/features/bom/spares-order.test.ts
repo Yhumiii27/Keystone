@@ -6,7 +6,10 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const session = { role: 'director' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
-vi.mock('next/navigation', () => ({ usePathname: () => '/projects/HLT-026/bom', useRouter: () => ({ push() {}, replace() {}, refresh() {} }), useSearchParams: () => new URLSearchParams() }));
+vi.mock('next/navigation', () => ({
+  redirect: (url: string) => {
+    throw new Error(`REDIRECT ${url}`);
+  }, usePathname: () => '/projects/HLT-026/bom', useRouter: () => ({ push() {}, replace() {}, refresh() {} }), useSearchParams: () => new URLSearchParams() }));
 vi.mock('@/server/session', async () => {
   const { makeT } = await import('@/i18n/translate');
   const { PERSONA_BY_ROLE } = await import('@/config/personas');
@@ -105,10 +108,18 @@ describe('spares purchase order (E-3)', () => {
   });
 
   it('rights: BOM editors only (outside roles and other PMs’ projects are refused)', async () => {
+    // R-042 (P-1): the BOM is outside the client's workspace — refused (sent home).
     session.role = 'client';
-    expect(await loadSparesOrderAction('HLT-026', null, null)).toEqual({ ok: false, error: 'This project BOM is read-only for you' });
+    await expect(loadSparesOrderAction('HLT-026', null, null)).rejects.toThrow('REDIRECT /');
     session.role = 'pm';
     expect((await loadSparesOrderAction('HLT-026', null, null)).ok).toBe(true);
+    // R-046 (NEW-D2-1): the engineering referent drafts spares orders without seeing the prices — none is sent to the browser.
+    session.role = 'englead';
+    const masked = await loadSparesOrderAction('HLT-026', null, null);
+    expect(masked.ok && masked.view.lines.every((l) => l.unitPriceEur === null)).toBe(true);
+    session.role = 'pm';
+    const priced = await loadSparesOrderAction('HLT-026', null, null);
+    expect(priced.ok && priced.view.lines.every((l) => typeof l.unitPriceEur === 'number')).toBe(true);
     expect(await createSparesOrderAction('NDC-031', { system: null, kind: null, lines: [{ ref: 'CR-WHL-630', qty: 1 }] })).toEqual({ ok: false, error: 'This project BOM is read-only for you' });
     session.role = 'member';
     expect(await createSparesOrderAction('HLT-026', { system: null, kind: null, lines: [{ ref: 'CR-WHL-630', qty: 1 }] })).toEqual({ ok: false, error: 'This project BOM is read-only for you' });

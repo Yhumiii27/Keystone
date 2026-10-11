@@ -17,6 +17,7 @@ import { getPlmCatalogue } from '@/server/dal/plm';
 import { getProject, projectLabel } from '@/server/dal/projects';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n, getLastProject } from '@/server/session';
+import { canSeeSupplierPrices } from '@/domain/rights';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -30,7 +31,9 @@ export default async function PartsCataloguePage({ searchParams }: { searchParam
   const [{ t, lang }, access, catalogue, lastProject] = await Promise.all([getI18n(), getScreenAccess('plm'), getPlmCatalogue(), getLastProject()]);
   // The catalogue's own spelling of the reference (`?part=el-vfd-200` opens EL-VFD-200).
   const part = asked ? (catalogue.parts.find((p) => p.ref === asked) ?? catalogue.parts.find((p) => p.ref.toUpperCase() === asked.toUpperCase()))?.ref ?? null : null;
-  const view = catalogueView({ parts: catalogue.parts, openEco: catalogue.openEco, state, part }, t, lang);
+  // R-046 (NEW-D2-1): catalogue prices only for the director, the PMs and procurement (a price sort is ignored otherwise).
+  const prices = canSeeSupplierPrices(access.viewer.role);
+  const view = catalogueView({ parts: catalogue.parts, openEco: catalogue.openEco, state: prices || state.sort.key !== 'price' ? state : { ...state, sort: { key: 'ref', dir: 1 } }, part, prices }, t, lang);
 
   const project = access.canEdit ? await getProject(lastProject) : null;
   const primary = access.canEdit ? (

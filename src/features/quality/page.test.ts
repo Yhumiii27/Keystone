@@ -7,6 +7,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const session = { role: 'director' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/navigation', () => ({
+  redirect: (url: string) => {
+    throw new Error(`REDIRECT ${url}`);
+  },
   notFound: () => {
     throw new Error('NOT_FOUND');
   },
@@ -111,10 +114,12 @@ describe('/projects/[code]/quality', () => {
     const cv = props(c);
     expect(cv.dlv!.rows.filter((r) => r.action?.kind === 'decide').map((r) => r.number)).toEqual(['D-014', 'D-016']);
     expect([cv.dlvDrawer!.canDecide, cv.dlvDrawer!.canLinkDocument, cv.dlvDrawer!.hint]).toEqual([true, false, '']);
-    const cn = props(await page({ ncr: 'NCR-030' }));
-    expect([cn.ncr!.rows.every((r) => r.vigieUrl === null && r.action === null), cn.ncrDrawer!.vigieUrl, cn.ncrDrawer!.move]).toEqual([true, null, null]);
-    // Another organisation's project: read-only for the client.
-    expect(props(await page({ tab: 'dlv' }, 'NDC-031')).dlv!.rows.every((r) => r.action === null)).toBe(true);
+    // P-10b (R-043): no NCR for the client — the screen is the deliverables register (no NCR tab, no NCR drawer, no linked NCR).
+    const cn = props(await page({ ncr: 'NCR-030', tab: 'ncr' }));
+    expect([cn.tab, cn.ncr, cn.ncrDrawer, cn.seg.map((x) => x.value)]).toEqual(['dlv', null, null, ['dlv']]);
+    expect(JSON.stringify(cn.dlv)).not.toContain('NCR-');
+    // R-042 (P-10a): another organisation's project is refused (sent home).
+    await expect(page({ tab: 'dlv' }, 'NDC-031')).rejects.toThrow('REDIRECT /');
   });
 
   it('projects without data: empty registers (no Harbor Line fallback)', async () => {

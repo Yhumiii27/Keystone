@@ -22,6 +22,7 @@ import {
 } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
 import { bomShortfall, type ShortfallLine } from '@/domain/bom';
+import { leadsProject } from './project-team';
 
 type Q = DB | Tx;
 export type { ShortfallLine };
@@ -257,11 +258,10 @@ async function loadPo(tx: Tx, number: string) {
   return o;
 }
 
-/** Director or the project's manager (`apprItems` PO routing), else throws. */
+/** Director or the project's PMs — PM of record, co-PMs, deputies (`apprItems` PO routing, R-041) — else throws. */
 async function requirePoApprover(tx: Tx, projectId: string, actorName: string) {
   const a = await actorOf(tx, actorName);
-  const [p] = await tx.select({ pm: projects.pmPersonId }).from(projects).where(eq(projects.id, projectId));
-  if (a.roles.includes('director') || (a.personId && p?.pm === a.personId)) return a;
+  if (a.roles.includes('director') || (await leadsProject(tx, projectId, a.personId))) return a;
   throw new Error('Only the project manager or the portfolio director approves purchase orders');
 }
 
@@ -301,13 +301,13 @@ async function decidePurchaseOrder(number: string, to: 'ordered' | 'cancelled', 
   });
 }
 
-/** Can this person approve the project's purchase orders (director or the project's manager)? For the screens' buttons. */
+/** Can this person approve the project's purchase orders (director or the project's PMs and deputies)? For the screens' buttons. */
 export async function canApprovePurchaseOrders(projectCode: string, actorName: string): Promise<boolean> {
   const db = await getDb();
   const a = await actorOf(db, actorName);
   if (a.roles.includes('director')) return true;
-  const [p] = await db.select({ pm: projects.pmPersonId }).from(projects).where(eq(projects.code, projectCode));
-  return !!a.personId && p?.pm === a.personId;
+  const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, projectCode));
+  return !!p && leadsProject(db, p.id, a.personId);
 }
 
 // ── RFQs ───────────────────────────────────────────────────────────────────────────────────────────────

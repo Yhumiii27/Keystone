@@ -20,6 +20,7 @@ import type { PartDrawerData } from '@/server/dal/plm';
 import { vigieNewEcoUrl } from '@/server/integrations/vigie/links';
 import { belowMinT, countT, inStockT, leadLongT, leadShortT, qtyT, reservedT, revStepT, revT, totalQuantityT, unitsT } from './i18n';
 import { bomHref, drawingHref, ecoHref, fleetHref, openInPlmHref, plmHref, stockHref, withPart } from './links';
+import { PRICE_MASK, canSeeSupplierPrices } from '@/domain/rights';
 
 const tag = (tone: string) => `tag tag-${tone}`;
 
@@ -90,12 +91,14 @@ export interface CatalogueInput {
   state: PlmState;
   /** `?part=` (open drawer). */
   part: string | null;
+  /** Catalogue prices shown (R-046, NEW-D2-1: director, PMs, procurement); masked otherwise (no price sort). Default true. */
+  prices?: boolean;
 }
 
 /** Part name as the prototype translates it (deepTr: "Safety PLC" → "Automate sécurité"). */
 const nameT = (p: Pick<PartFacts, 'name'>, t: T) => t(p.name);
 
-export function catalogueView({ parts, openEco, state, part }: CatalogueInput, t: T, lang: Lang): CatalogueView {
+export function catalogueView({ parts, openEco, state, part, prices = true }: CatalogueInput, t: T, lang: Lang): CatalogueView {
   const href = (s: PlmState, p: string | null = part) => plmHref(s, p);
   const f = state.filter;
   const rows = plmRows(parts, state, lang === 'fr' ? (p) => nameT(p, t) : undefined);
@@ -103,7 +106,8 @@ export function catalogueView({ parts, openEco, state, part }: CatalogueInput, t
   const select = (param: SelectView['param'], label: string, value: string, options: { value: string; label: string }[]): SelectView => ({
     param, label, value, options: options.map((x) => ({ value: x.value, label: t(x.label) })),
   });
-  const sortable: Record<string, PlmSortKey> = { ref: 'ref', name: 'name', type: 'type', price: 'price', status: 'status' };
+  // A masked price is not sortable either (the order would reveal it).
+  const sortable: Record<string, PlmSortKey> = { ref: 'ref', name: 'name', type: 'type', ...(prices ? { price: 'price' as const } : {}), status: 'status' };
   const head = (key: string, label: string, align?: 'right'): HeaderView => {
     const k = sortable[key];
     const active = !!k && state.sort.key === k;
@@ -135,7 +139,7 @@ export function catalogueView({ parts, openEco, state, part }: CatalogueInput, t
       return {
         ref: p.ref, href: href(state, part === p.ref ? null : p.ref), selected: part === p.ref, name: nameT(p, t), type: t(p.typeLabel), makeBuy: t(p.makeBuyLabel),
         pu: p.wearSpare ?? '—', puClass: tag(wearSpareTone(p.wearSpare)), manufacturer: p.manufacturer ?? '—', manufacturerRef: p.manufacturerRef ?? '',
-        price: moneyEur(p.listPriceEur, lang), lead: leadShortT(p.leadWeeks, t), status: t(p.statusLabel), statusClass: tag(partStatusTone(p.status)),
+        price: prices ? moneyEur(p.listPriceEur, lang) : PRICE_MASK, lead: leadShortT(p.leadWeeks, t), status: t(p.statusLabel), statusClass: tag(partStatusTone(p.status)),
         eco: eco ? { number: eco, href: ecoHref(eco) } : null, restriction: t(restrictionCell(p)), restrictionAlert: !!p.exportRestriction,
         usedIn: t(usedCountText(p.usage.length)),
       };
@@ -262,7 +266,8 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
     },
     commercial: {
       label: t('Commercial & export'),
-      items: commercialLines(p, (v) => moneyEur(v, lang), (n) => qtyT(n, lang)).map((l) =>
+      // R-046 (NEW-D2-1): catalogue prices only for the director, the PMs and procurement.
+      items: commercialLines(p, (v) => (canSeeSupplierPrices(ctx.role) ? moneyEur(v, lang) : PRICE_MASK), (n) => qtyT(n, lang)).map((l) =>
         kv(t(l.k), l.k === 'Total quantity' ? totalQuantityT(p.totalQuantity, p.usage.length, lang) : l.translate ? t(l.v) : l.v, l.alert),
       ),
     },

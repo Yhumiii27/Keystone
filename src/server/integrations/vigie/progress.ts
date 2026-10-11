@@ -1,13 +1,14 @@
 import 'server-only';
 // Progress recorded in Keystone on a Vigie ECO (the viewer's approval-key decision, step advancement): validated
 // against the mirror and queued in the outbox (vigie_eco_progress) "pending sync with Vigie".
-import { and, eq, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { ECO_STEP_ADVANCE, ecoApproverKey, ecoDecision, ecoKeyOfRole, ecoStatus, vigieSyncStatus, type EcoStatus } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
-import { projects, vigieEcoProgress, vigieEcos } from '@/server/db/schema';
+import { vigieEcoProgress, vigieEcos } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 import { entryOf } from './mirror';
 import type { EcoProgressActor, EcoProgressEntry, EcoProgressInput, VigieEco } from './types';
+import { leadProjectCodes } from '@/server/dal/project-team';
 
 /**
  * Roles whose workspace includes Change orders (ROLE_SCREENS 3465 for `eco`, 09 §0.2 — the same list as
@@ -45,9 +46,8 @@ export async function recordProgressEntry(
     if (!a || a.decision !== 'pending') throw new Error(`${eco.number}: the ${ecoApproverKey.label(input.key)} approval is not pending`);
     if (a.pending) throw new Error(`${eco.number}: a decision is already waiting for Vigie`);
     if (input.key === 'pm') {
-      const managed = person
-        ? (await tx.select({ code: projects.code }).from(projects).where(and(eq(projects.pmPersonId, person.id), inArray(projects.code, eco.projects.length ? eco.projects : ['']))))
-        : [];
+      // A PM of an impacted project: PM of record, co-PM or deputy (R-041).
+      const managed = person ? (await leadProjectCodes(tx, person.id)).filter((c) => eco.projects.includes(c)) : [];
       if (!managed.length) throw new Error(`${eco.number}: only a PM of an impacted project decides the PM approval`);
     }
     values = { kind: 'approval', approvalKey: input.key, decision: input.decision, targetStatus: null };

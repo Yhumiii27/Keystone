@@ -62,9 +62,10 @@ describe('buildSidebar (docs/spec/01 §4.3–4.6)', () => {
   });
 
   it('prepends the Outside my workspace section', () => {
-    const m = buildSidebar({ ...base, role: 'member', active: 'plan' });
+    // R-061 (P-9a): the member has the Plan now (owners enter their progress) — Budget stays outside their workspace.
+    const m = buildSidebar({ ...base, role: 'member', active: 'budget' });
     expect(m.sections[0].key).toBe('outside');
-    expect(m.sections[0].rows).toEqual([{ kind: 'item', entry: { id: 'plan', label: 'Plan — WBS', badge: '', active: true } }]);
+    expect(m.sections[0].rows).toEqual([{ kind: 'item', entry: { id: 'budget', label: 'Budget & cost', badge: '', active: true } }]);
     const t = buildSidebar({ ...base, role: 'pm', active: 'task' });
     expect(t.sections[0].rows[0]).toMatchObject({ entry: { id: 'mywork', label: 'My tasks' } });
   });

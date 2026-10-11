@@ -6,6 +6,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const session = { role: 'director' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/navigation', () => ({
+  redirect: (url: string) => {
+    throw new Error(`REDIRECT ${url}`);
+  },
   notFound: () => {
     throw new Error('NOT_FOUND');
   },
@@ -84,9 +87,16 @@ describe('/projects/[code]/deliveries', () => {
   it.each(['HLT-026', 'NDC-031'])('%s: primary, edit and QC rights per persona (prototype hasPrimary; QC for quality, procurement, director)', async (code) => {
     for (const role of ROLES) {
       session.role = role;
+      // R-042 (P-1): Deliveries is outside the client's workspace — the client is sent home.
+      if (role === 'client') {
+        await expect(page({}, code)).rejects.toThrow('REDIRECT /');
+        continue;
+      }
       const p = await page({}, code);
       const body = p.DeliveriesBody.props as { canEdit: boolean; canQc: boolean };
-      const g = (GOLDEN as any).header[code][role];
+      // R-041 (P-2): the prototype's rights, on the projects whose named team the persona is on — the quality manager is a referent
+      // of Harbor Line, not of NDC-031 (read-only there).
+      const g = { hasPrimary: (GOLDEN as any).header[code][role].hasPrimary && !(role === 'quality' && code === 'NDC-031') };
       expect([role, !!p.PageHeader.props.primary, body.canEdit]).toEqual([role, g.hasPrimary, g.hasPrimary]);
       expect([role, body.canQc]).toEqual([role, g.hasPrimary && ['director', 'quality', 'procurement'].includes(role)]);
     }

@@ -46,15 +46,18 @@ beforeEach(() => {
 });
 
 describe('Settings Server Functions', () => {
-  it('refuses viewers outside the workspace (member, client), in their language', async () => {
-    for (const role of ['member', 'client'] as RoleKey[]) {
+  it('refuses viewers outside the workspace (member), in their language; the client is sent home (R-042, P-1)', async () => {
+    as('client');
+    await expect(addSettingsEntryAction('skills', 'Welding')).rejects.toThrow('NEXT_REDIRECT');
+    await expect(resetSettingsAction()).rejects.toThrow('NEXT_REDIRECT');
+    for (const role of ['member'] as RoleKey[]) {
       as(role);
       expect(await addSettingsEntryAction('skills', 'Welding')).toEqual({ error: 'Settings are read-only for you' });
       expect(await removeSettingsEntryAction('skills', 'structural')).toEqual({ error: 'Settings are read-only for you' });
       expect(await setHealthThresholdAction('risk', '0.95')).toEqual({ error: 'Settings are read-only for you' });
       expect(await resetSettingsAction()).toEqual({ error: 'Settings are read-only for you' });
     }
-    as('client', 'fr');
+    as('member', 'fr');
     expect(await removeSettingsEntryAction('nope', '')).toEqual({ error: 'Les paramètres sont en lecture seule pour vous' });
     expect(revalidatePath).not.toHaveBeenCalled();
     expect((await getSettings()).lists.skills).toHaveLength(10);
@@ -155,8 +158,10 @@ describe('Settings Server Functions', () => {
 });
 
 describe('Machine types Server Functions', () => {
-  it('refuses viewers outside the workspace (depthead, member, procurement, client): mtCanEdit', async () => {
-    for (const role of ['depthead', 'member', 'procurement', 'client'] as RoleKey[]) {
+  it('refuses viewers outside the workspace (depthead, member, procurement): mtCanEdit; the client is sent home (R-042, P-1)', async () => {
+    as('client');
+    await expect(updateMachineTypeAction('EMP', { active: false })).rejects.toThrow('NEXT_REDIRECT');
+    for (const role of ['depthead', 'member', 'procurement'] as RoleKey[]) {
       as(role);
       expect(await updateMachineTypeAction('EMP', { active: false })).toEqual({ error: 'Machine types are read-only for you' });
       expect(await setMachineTypePhasesAction('EMP', ['A'])).toEqual({ error: 'Machine types are read-only for you' });
@@ -225,8 +230,11 @@ describe('Machine types Server Functions', () => {
 });
 
 describe('Activity & integrations Server Functions and the audit export', () => {
-  it('refuses viewers outside the workspace (every role but director and PM)', async () => {
-    for (const role of ['depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as RoleKey[]) {
+  it('refuses viewers outside the workspace (every role but director and PM); the client is sent home (R-042, P-1)', async () => {
+    as('client');
+    await expect(syncConnectorAction('Lucca')).rejects.toThrow('NEXT_REDIRECT');
+    await expect(exportAudit()).rejects.toThrow('NEXT_REDIRECT');
+    for (const role of ['depthead', 'member', 'englead', 'quality', 'procurement'] as RoleKey[]) {
       as(role);
       expect(await syncConnectorAction('Lucca')).toEqual({ error: 'Activity & integrations is read-only for you' });
       expect(await addConnectorAction({ system: 'SharePoint', direction: 'import', freq: 'Daily', owner: '' })).toEqual({ error: 'Activity & integrations is read-only for you' });

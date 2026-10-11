@@ -115,8 +115,8 @@ export interface TaskSheetData {
   fileRules: { accept: string; maxBytes: number; maxText: string; maxFiles: number; uploadHref: string };
   comments: { author: string; initials: string; when: string; text: string }[];
   entries: { date: string; hours: number; note: string }[];
-  /** €/h of the assignee's job title (RATES, default 100). */
-  costRate: number;
+  /** €/h of the assignee's job title (RATES, default 100); null when the viewer may not see rates (R-046, NEW-D2-1). */
+  costRate: number | null;
   /** Cost note target: work package of the activity, else the project (EN source). */
   costTarget: { wbs: string; packageName: string | null } | null;
   projectName: string;
@@ -124,7 +124,7 @@ export interface TaskSheetData {
   plan: { activity: string; workPackage: string; finish: string; float: number | null; progress: number } | null;
 }
 
-export function taskSheetData(d: TaskDetail, backHref: string, t: T, lang: Lang): TaskSheetData {
+export function taskSheetData(d: TaskDetail, backHref: string, t: T, lang: Lang, opts: { rates?: boolean } = {}): TaskSheetData {
   const a = d.activity;
   return {
     id: d.id,
@@ -148,7 +148,8 @@ export function taskSheetData(d: TaskDetail, backHref: string, t: T, lang: Lang)
     fileRules: { accept: acceptOf('attachment'), maxBytes: MAX_FILE_BYTES, maxText: MAX_FILE_TEXT, maxFiles: MAX_ATTACHMENTS_PER_TASK, uploadHref: taskFilesUploadHref(d.id) },
     comments: d.comments.map((c) => ({ author: c.author, initials: c.initials, when: t(c.when), text: c.text })),
     entries: d.entries.map((e) => ({ date: t(e.dateText), hours: e.hours, note: e.note })),
-    costRate: d.costRate,
+    // R-046: the rate never reaches the browser of a viewer who may not see it.
+    costRate: opts.rates === false ? null : d.costRate,
     costTarget: a ? { wbs: a.wbs, packageName: a.packageName } : null,
     projectName: projectShortOf(d.project),
     plan: a

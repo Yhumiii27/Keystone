@@ -9,8 +9,8 @@ import type { SearchHitView } from './types';
 /** Global search hits for `query` (≥ 2 chars), translated for the viewer's language. `code` = current project. */
 export async function searchAction(query: string, code: string): Promise<SearchHitView[]> {
   if (typeof query !== 'string' || typeof code !== 'string') return [];
-  const { t } = await getI18n();
-  const hits = await searchShell(query.slice(0, 120), code.slice(0, 32));
+  const [{ t }, viewer] = await Promise.all([getI18n(), getViewer()]);
+  const hits = await searchShell(query.slice(0, 120), code.slice(0, 32), viewer);
   return hits.map((h) => ({ kind: t(h.kind), title: t(h.title), sub: t(h.sub), href: h.href }));
 }
 

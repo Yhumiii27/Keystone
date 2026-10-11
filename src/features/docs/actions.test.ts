@@ -10,14 +10,21 @@ vi.mock('@/server/session', async () => {
   const { makeT } = await import('@/i18n/translate');
   return { getI18n: async () => ({ lang: 'en', t: makeT('en') }) };
 });
-vi.mock('@/server/project-context', () => ({
-  getProjectContext: async (code: string) => ({
-    project: { code },
-    viewer: { name: viewer.name, short: viewer.short, role: viewer.role },
-    canEdit: () => viewer.canEdit,
-    isMine: viewer.isMine,
-  }),
-}));
+// `isMine` = on the project's named team (R-041 access.member); the client's organisation is the demo one.
+vi.mock('@/server/project-context', async () => {
+  const { listProjects } = await import('@/server/dal/projects');
+  return {
+    getProjectContext: async (code: string) => ({
+      project: { code },
+      viewer: { name: viewer.name, short: viewer.short, role: viewer.role, organisation: viewer.role === 'client' ? 'Port authority' : null },
+      canEdit: () => viewer.canEdit,
+      outside: false,
+      isMine: viewer.isMine,
+      access: { member: viewer.isMine },
+    }),
+    clientProjectCodes: async () => new Set((await listProjects()).filter((p) => p.client === 'Port authority').map((p) => p.code)),
+  };
+});
 
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
@@ -36,11 +43,20 @@ describe('documents Server Functions', () => {
     as('Marie Lefebvre', 'M. Lefebvre', 'director');
   });
 
-  it('validation and access: read-only viewers, unknown project, type, record, missing title', async () => {
-    viewer.canEdit = false;
-    expect(await depositInCodexAction({ project: 'HLT-026', type: 'CER', title: 'x' })).toEqual({ error: 'The document vault is read-only for you' });
-    expect(await syncCodexAction('HLT-026')).toEqual({ error: 'The document vault is read-only for you' });
-    viewer.canEdit = true;
+  it('validation and access: viewers outside the project team, unknown project, type, record, missing title', async () => {
+    // NEW-D3-1 (R-047): deposits and revisions are the project's internal team's; "Sync now" the director's.
+    const NOT_TEAM = { error: 'Only the project’s internal team deposits documents in Codex' };
+    viewer.isMine = false;
+    expect(await depositInCodexAction({ project: 'HLT-026', type: 'CER', title: 'x' })).toEqual(NOT_TEAM);
+    expect(await depositInCodexAction({ project: 'HLT-026', revisionOf: 'GA-HLT-026' })).toEqual(NOT_TEAM);
+    as('Nadia Bensaïd', 'N. Bensaïd', 'client');
+    expect(await depositInCodexAction({ project: 'HLT-026', type: 'CER', title: 'x' })).toEqual(NOT_TEAM);
+    expect(await syncCodexAction('HLT-026')).toEqual({ error: 'Only the portfolio director synchronises the Codex index' });
+    as('Romain Aubert', 'R. Aubert', 'pm');
+    expect(await syncCodexAction('HLT-026')).toEqual({ error: 'Only the portfolio director synchronises the Codex index' });
+    // A revision is deposited from the record's own project vault.
+    expect(await depositInCodexAction({ project: 'NDC-031', revisionOf: 'GA-HLT-026' })).toEqual(NOT_TEAM);
+    as('Marie Lefebvre', 'M. Lefebvre', 'director');
     expect(await depositInCodexAction({ project: 'NOPE-000', type: 'CER', title: 'x' })).toEqual({ error: 'Unknown project' });
     expect(await depositInCodexAction({ project: 'HLT-026', type: 'PID', title: 'x' })).toEqual({ error: 'Unknown document type' });
     expect(await depositInCodexAction({ project: 'HLT-026', type: 'CER', title: ' ' })).toEqual({ error: 'Title is required' });
@@ -107,8 +123,11 @@ describe('documents Server Functions', () => {
     expect(d.approvals.map((a) => a.who)).toEqual(['J. Wagner', 'M. Lefebvre', 'M. Lefebvre']);
   });
 
-  it('downloads are logged for every viewer, with the format', async () => {
+  it('downloads are logged for every viewer, with the format; a client downloads the shared records of their projects only', async () => {
     as('Nadia Bensaïd', 'N. Bensaïd', 'client', { canEdit: false });
+    // P-10a / P-10b: an internal record (not shared) or another organisation's record is unknown to the client.
+    expect(await logDownloadAction('HLT-026', 'LST-INS-026')).toEqual({ error: 'Unknown document' });
+    expect(await logDownloadAction('HLT-026', 'PID-NDC-031')).toEqual({ error: 'Unknown document' });
     expect(await logDownloadAction('HLT-026', 'PID-HLT-026')).toEqual({ ok: true });
     as('Julien Wagner', 'J. Wagner', 'member');
     expect(await logDownloadAction('HLT-026', 'PID-HLT-026', 'Native')).toEqual({ ok: true });

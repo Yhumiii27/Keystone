@@ -3,7 +3,6 @@ import 'server-only';
 // (user decision, overrides docs/spec/09 §4): Keystone lists the ECOs relevant to its parts and projects, links to them
 // in Vigie and records progress (the viewer's approval-key decision, the step advancements of the prototype) that is
 // sent to Vigie. No ECO is created, edited or numbered here.
-import { eq } from 'drizzle-orm';
 import { syncLabelOf } from '@/domain/eco';
 import { getDb } from '@/server/db/client';
 import {
@@ -16,6 +15,7 @@ import { projects } from '@/server/db/schema';
 import { getVigieEcoConnector, type EcoListFilter, type EcoProgressActor, type EcoProgressInput, type EcoProgressReceipt, type VigieEco } from '@/server/integrations/vigie/eco-connector';
 import { vigieEcoUrl, vigieNewEcoUrl } from '@/server/integrations/vigie/links';
 import { listPurchaseOrdersWithParts, type PurchaseOrderRow } from './purchasing';
+import { leadProjectCodes } from './project-team';
 
 export type { EcoProgressActor, EcoProgressInput, EcoProgressReceipt, VigieEco };
 export { vigieEcoUrl, vigieNewEcoUrl };
@@ -186,7 +186,8 @@ export async function ecoApprovalQueue(viewer: EcoProgressActor): Promise<EcoApp
   if (key === 'pm') {
     const db = await getDb();
     const p = await findPerson(db, viewer.name);
-    managed = new Set(p ? (await db.select({ code: projects.code }).from(projects).where(eq(projects.pmPersonId, p.id))).map((r) => r.code) : []);
+    // The PM approval: the PMs of an impacted project — PM of record, co-PMs, deputies (R-041).
+    managed = new Set(p ? await leadProjectCodes(db, p.id) : []);
   }
   return ecos
     .filter((e) => e.status === 'in_approval' && e.approvalsView.find((a) => a.key === key)?.decision === 'pending')

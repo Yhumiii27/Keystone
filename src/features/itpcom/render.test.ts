@@ -192,7 +192,10 @@ describe('action forms', () => {
       const f = localizeForm(punchFormDef(team), makeT(lang), lang);
       expect([f.title, f.submit]).toEqual([g.title, g.submit]);
       expect(f.fields.map((x) => [x.id, x.label, !!x.required])).toEqual(g.fields.map((x: any) => [x.id, x.label, x.req]));
-      expect(f.fields.map((x) => (x.options ?? []).map((o) => (typeof o === 'string' ? o : o.label)))).toEqual(g.fields.map((x: any) => x.options));
+      // R-041 (P-2): Harbor Line's named team adds the seeded referents to the prototype's TEAM owners.
+      expect(f.fields.map((x) => (x.options ?? []).map((o) => (typeof o === 'string' ? o : o.label)))).toEqual(
+        g.fields.map((x: any) => (x.id === 'owner' ? [...x.options, 'Antoine Girard', 'Gabriel Comte'] : x.options)),
+      );
       expect(f.fields[2].options).toEqual([
         { value: 'A', label: g.fields[2].options[0] }, { value: 'B', label: g.fields[2].options[1] }, { value: 'C', label: g.fields[2].options[2] },
       ]);

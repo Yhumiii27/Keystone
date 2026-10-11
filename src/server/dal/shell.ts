@@ -17,6 +17,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { personaOf, type Persona, type PersonaRef } from '@/config/personas';
 import { DEFAULT_PROJECT, canSee, screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import { defaultDepartment } from '@/domain/requests';
+import { clientRefusedProject, clientSeesTarget } from '@/domain/rights';
 import { dueTodayBadge, workingDayOf } from '@/domain/tasks';
 import { mapCrumbExtra } from '@/domain/worldmap';
 import { approvalCountsByProject } from '@/server/approvals';
@@ -213,7 +214,8 @@ export interface ShellNavData {
  */
 export async function getShellNav(who: PersonaRef): Promise<ShellNavData> {
   const viewer = personaOf(who);
-  const projects = await listProjects();
+  // R-042 (P-10a): a client's sidebar and project switcher list their organisation's projects only.
+  const projects = (await listProjects()).filter((p) => !clientRefusedProject(viewer, p));
   const codes = projects.map((p) => p.code);
   const [global, inputs] = await Promise.all([globalBadges(viewer), projectBadgeInputs(viewer, codes)]);
   return {
@@ -336,9 +338,22 @@ export interface ShellNotification {
   href: string;
 }
 
-/** Notifications delivered to the viewer (or the demo user of a role), bell order, with their read state. */
+/**
+ * Notifications delivered to the viewer (or the demo user of a role), bell order, with their read state. A client only gets
+ * those about their organisation's projects and their workspace, never about NCRs or purchasing (R-042, R-043: P-1, P-10a,
+ * P-10b) — a role audience reaches every client user, whatever their organisation.
+ */
 export async function notificationsFor(who: UserRef): Promise<ShellNotification[]> {
-  const rows = await listNotifications(who);
+  let rows = await listNotifications(who);
+  const viewer = typeof who === 'string' ? personaOf(who as RoleKey) : (who as Persona);
+  if (viewer.role === 'client') {
+    const projects = await listProjects();
+    const own = (code: string | null) => {
+      const p = projects.find((x) => x.code === (code ?? DEFAULT_PROJECT));
+      return !!p && !clientRefusedProject(viewer, p);
+    };
+    rows = rows.filter((n) => clientSeesTarget(n.screen, n.params, own(n.projectCode)));
+  }
   return rows.map((n) => ({
     id: n.id, kind: n.kind as NotifKind, title: n.title, sub: n.sub, when: n.when, read: n.read,
     // Portfolio-wide notifications (no project) target global screens; the default project is only a fallback.
@@ -368,9 +383,11 @@ async function safe<T>(p: () => Promise<T>, fallback: T): Promise<T> {
  * Global search hits (≥ 2 characters). Projects come from the projects DAL; project-specific kinds
  * (purchase orders, change requests, NCRs, risks) cover the current project, as in the prototype.
  */
-export async function searchShell(query: string, currentCode: string): Promise<SearchHit[]> {
+export async function searchShell(query: string, currentCode: string, who: PersonaRef = 'director'): Promise<SearchHit[]> {
   const q = query.trim().toLowerCase();
   if (q.length < 2) return [];
+  const viewer = personaOf(who);
+  if (viewer.role === 'client') return searchShellClient(q, currentCode, viewer);
   const has = (s: string) => s.toLowerCase().includes(q);
   const code = currentCode;
   const hits: SearchHit[] = [];
@@ -403,6 +420,25 @@ export async function searchShell(query: string, currentCode: string): Promise<S
   // Drawings: the PDM vault mirror.
   const drawings = await safe(() => listDrawings(), []);
   add(drawings.filter((d) => has(d.number + ' ' + d.title)).map((d) => ({ kind: 'Drawing', title: `${d.number} · ${d.title}`, sub: `rev ${d.revision} · ${d.stateLabel}`, href: deepLink('drawings', { dwg: d.number }) })), 3);
+  return hits;
+}
+
+/**
+ * The client's search (R-042, R-043: P-1, P-10a, P-10b): their organisation's projects (opening their portal) and the change
+ * requests of the current project when it is theirs — nothing outside their workspace (plan, parts, people, ECOs, risks,
+ * drawings), no purchase order, no NCR.
+ */
+async function searchShellClient(q: string, currentCode: string, viewer: Persona): Promise<SearchHit[]> {
+  const has = (s: string) => s.toLowerCase().includes(q);
+  const own = (await listProjects()).filter((p) => !clientRefusedProject(viewer, p));
+  const hits: SearchHit[] = own
+    .filter((p) => has(p.name + ' ' + p.code))
+    .slice(0, 4)
+    .map((p) => ({ kind: 'Project', title: p.name, sub: `${p.code} · ${p.status} · ${p.pm}`, href: screenHref('client', { code: p.code }) }));
+  if (own.some((p) => p.code === currentCode)) {
+    const crs = await safe(() => listChangeRequestDetails(currentCode), []);
+    hits.push(...crs.filter((c) => has(c.id + ' ' + c.title)).slice(0, 3).map((c) => ({ kind: 'Change request', title: `${c.id} · ${c.title}`, sub: c.statusLabel, href: deepLink('changes', { cr: c.id }, currentCode) })));
+  }
   return hits;
 }
 

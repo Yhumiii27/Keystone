@@ -14,6 +14,7 @@ import type { MovementRow, StockPositionDetail, StockRow, X3StockSync } from '@/
 import type { StorageLocationRow } from '@/server/dal/suppliers';
 import { linesLocationsText, moveTypeT, qtyText, scrapWarnT, whereT, x3LinesText } from './i18n';
 import { ecoHref, stockHref, type StockUrlState } from './links';
+import { PRICE_MASK } from '@/domain/rights';
 
 export interface KpiView {
   label: string;
@@ -90,15 +91,20 @@ export function moveView(m: MovementRow, t: T, lang: Lang, i: number): MoveView 
 }
 
 export function stockScreenView(
-  input: { rows: StockRow[]; locations: StorageLocationRow[]; sync: X3StockSync | null; moves: MovementRow[]; pins: Record<string, InstalledBasePin[]>; state: StockUrlState },
+  input: {
+    rows: StockRow[]; locations: StorageLocationRow[]; sync: X3StockSync | null; moves: MovementRow[]; pins: Record<string, InstalledBasePin[]>; state: StockUrlState;
+    /** Stock values at purchase price shown (R-046, NEW-D2-1: director, PMs, procurement); masked otherwise. Default true. */
+    prices?: boolean;
+  },
   t: T,
   lang: Lang,
 ): StockScreenView {
   const { rows, locations, sync, moves, pins, state } = input;
+  const prices = input.prices !== false;
   const names = locations.map((l) => l.name);
   const f = stockFigures(rows, names.length);
   const kpis: KpiView[] = [
-    { label: t('Stock value'), value: money(f.valueEur / 1000, lang), sub: linesLocationsText(f.lines, f.locations, lang), color: OK },
+    { label: t('Stock value'), value: prices ? money(f.valueEur / 1000, lang) : PRICE_MASK, sub: linesLocationsText(f.lines, f.locations, lang), color: OK },
     { label: t('Below minimum'), value: String(f.belowMin), sub: t('Reorder or transfer'), color: f.belowMin ? LO : OK },
     { label: t('In quarantine'), value: qtyText(f.quarantineQty, lang), sub: t('Awaiting quality decision'), color: OK },
     { label: t('X3 import'), value: sync?.time ?? '—', sub: x3LinesText(f.x3Lines, lang), color: OK },
@@ -118,13 +124,13 @@ export function stockScreenView(
     kpis,
     chips,
     chipValue: state.loc ?? '',
-    rows: shown.map((r) => rowView(r, pins, state, t, lang)),
+    rows: shown.map((r) => rowView(r, pins, state, t, lang, prices)),
     empty: shown.length ? null : t('No stock line matches'),
     moves: moves.slice(0, 8).map((m, i) => moveView(m, t, lang, i)),
   };
 }
 
-function rowView(r: StockRow, pins: Record<string, InstalledBasePin[]>, state: StockUrlState, t: T, lang: Lang): StockRowView {
+function rowView(r: StockRow, pins: Record<string, InstalledBasePin[]>, state: StockUrlState, t: T, lang: Lang, prices = true): StockRowView {
   const selected = state.stock === r.id;
   const pin = pinOf(pins, r.ref);
   const avail = availableQty(r);
@@ -141,7 +147,7 @@ function rowView(r: StockRow, pins: Record<string, InstalledBasePin[]>, state: S
     availableColor: avail < 0 ? LO : OK,
     min: r.minQty ? String(r.minQty) : '—',
     belowMin: isBelowMin(r),
-    value: moneyEur(lineValueEur(r), lang),
+    value: prices ? moneyEur(lineValueEur(r), lang) : PRICE_MASK,
     source: t(r.sourceLabel),
     sourceTone: r.source === 'x3' ? 'neutral' : 'accent',
     last: dayT(r.lastMovementOn, t),
@@ -174,7 +180,7 @@ export interface StockDrawerView {
 }
 
 export function stockDrawerView(
-  input: { detail: StockPositionDetail; locations: StorageLocationRow[]; pins: Record<string, InstalledBasePin[]>; state: StockUrlState },
+  input: { detail: StockPositionDetail; locations: StorageLocationRow[]; pins: Record<string, InstalledBasePin[]>; state: StockUrlState; prices?: boolean },
   t: T,
   lang: Lang,
 ): StockDrawerView {
@@ -194,7 +200,7 @@ export function stockDrawerView(
       { k: t('Reserved'), v: reservedText(d.reserved, d.reservedForShort, (n) => qtyText(n, lang)) },
       { k: t('Available'), v: qtyText(availableQty(d), lang) },
       { k: t('Minimum level'), v: d.minQty ? String(d.minQty) : '—' },
-      { k: t('Unit cost (last purchase)'), v: moneyEur(d.unitCostEur, lang) },
+      { k: t('Unit cost (last purchase)'), v: input.prices !== false ? moneyEur(d.unitCostEur, lang) : PRICE_MASK },
       { k: t('Last movement'), v: dayT(d.lastMovementOn, t) },
     ],
     ops: STOCK_OPS.map((op) => ({ value: op, label: t(stockOperation.label(op)), qtyLabel: t(quantityLabel(op)) })),

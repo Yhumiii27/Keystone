@@ -28,6 +28,7 @@ import { seedResources } from './resources';
 import { seedSettings } from './settings';
 import { seedSite } from './site';
 import { seedStock } from './stock';
+import { demoReferentsToBackfill, seedDemoReferents } from './project-team';
 import { backfillDemoUsers, demoUsersToBackfill } from './users';
 import { seedVigie, seedVigieQuality } from './vigie';
 import { seedWork } from './work';
@@ -65,7 +66,7 @@ async function seedDelivery5(tx: Tx, ctx: SeedCtx): Promise<void> {
  * Delivery 5 (migration 0004) gets the Delivery 5 modules once, when its Settings lists are empty; a database seeded before
  * chapter 4 (migration 0005) gets the chapter 4 data (calendars, BL1 snapshots, assignment quantities) once, when it has no
  * calendar; a database seeded before delivery 7 (migration 0007) gets its demo persona users' roles, e-mails and departments
- * once (R-039). Each backfill runs in its own transaction; a failure there is logged and leaves the database as it was.
+ * once (R-039), and its demo project referents once (R-041). Each backfill runs in its own transaction; a failure there is logged and leaves the database as it was.
  */
 export async function seedIfEmpty(db: DB): Promise<boolean> {
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(projects);
@@ -84,6 +85,9 @@ export async function seedIfEmpty(db: DB): Promise<boolean> {
     }
     if ((await demoUsersToBackfill(db)) > 0) {
       await db.transaction(async (tx) => backfillDemoUsers(tx)).catch((e) => console.error('[seed] Delivery 7 users backfill failed:', e));
+    }
+    if (await demoReferentsToBackfill(db)) {
+      await db.transaction(async (tx) => seedDemoReferents(tx)).catch((e) => console.error('[seed] Delivery 7 project team backfill failed:', e));
     }
     return false;
   }
@@ -106,6 +110,7 @@ export async function seedIfEmpty(db: DB): Promise<boolean> {
     await seedDelivery4(tx, ctx);
     await seedDelivery5(tx, ctx);
     await seedChapter4(tx);
+    await seedDemoReferents(tx);
   });
   return true;
 }

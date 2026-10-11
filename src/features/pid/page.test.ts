@@ -6,6 +6,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const session = { role: 'director' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/navigation', () => ({
+  redirect: (url: string) => {
+    throw new Error(`REDIRECT ${url}`);
+  },
   notFound: () => {
     throw new Error('NOT_FOUND');
   },
@@ -71,18 +74,20 @@ describe('/projects/[code]/pid', () => {
     expect([view.kpis.map((k) => k.value), view.rows.length, view.overlay.length, view.filter, view.scope]).toEqual([['PID-HLT-026 rev C', '22', '59%', '6', '3'], 24, 7, 'all', 'all']);
   });
 
-  it('roles: englead and quality edit; pm, procurement, client, member are outside (no primary, no mapping)', async () => {
+  it('roles: englead and quality edit; pm, procurement, member are outside (no primary, no mapping); the client is sent home', async () => {
     for (const role of ['englead', 'quality']) {
       session.role = role;
       const p = await page({ tag: 'TT-102' });
       expect([!!p.PageHeader.props.primary, p.PidTagDrawer.props.canEdit, (p.PidTagDrawer.props.view as PidTagDrawerView).candidates?.length], role).toEqual([true, true, 8]);
     }
-    for (const role of ['pm', 'procurement', 'client', 'member']) {
+    for (const role of ['pm', 'procurement', 'member']) {
       session.role = role;
       const p = await page({ tag: 'TT-102' });
       expect([p.PageHeader.props.primary, p.PidTagDrawer.props.canEdit, (p.PidTagDrawer.props.view as PidTagDrawerView).candidates], role).toEqual([undefined, false, []]);
       expect(drawerHtml(p.PidTagDrawer), role).not.toContain('Map to a BOM reference');
     }
+    session.role = 'client'; // R-042 (P-1): sent home (was: the read-only page)
+    await expect(page({ tag: 'TT-102' })).rejects.toThrow('REDIRECT /');
   });
 
   it('URL state: filters, case-insensitive tag, unknown tag dropped, part drawer in place of the tag drawer', async () => {

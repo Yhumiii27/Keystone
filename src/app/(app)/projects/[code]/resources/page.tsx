@@ -3,6 +3,8 @@
 // (320 h per person), suggested rebalancing. Primary action "Request resource".
 // Projects without a team show an empty heatmap (never Harbor Line's team, 00 §7.16). Chapter 4 (R-3, S-7): the suggestions
 // are the project's what-if levers that become a resource request (any project, not only Harbor Line); "Apply" drafts it.
+// R-041 (P-2): the "Project team" card lists the named team (PM, co-PMs, deputies, referents, members) whose people edit the
+// project; the director and the project's PMs manage it there.
 import { PageHeader } from '@/components/app/shell/page-header';
 import { NewRequestButton } from '@/features/requests/new-request-button';
 import { resourcesView } from '@/features/resources/model';
@@ -10,26 +12,36 @@ import { ResourcesView } from '@/features/resources/resources-view';
 import { suggestionInputs } from '@/features/resources/suggestions';
 import { listResourceRequests } from '@/server/dal/requests';
 import { getLaborCost, getProjectTeam, getRebalancingSuggestions, getResourcePool } from '@/server/dal/resources';
+import { canManageTeam } from '@/domain/rights';
+import { ProjectTeamCard } from '@/features/team/project-team';
+import { getNamedTeam, teamCandidates } from '@/server/dal/project-team';
+import { projectLabel } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { myWorkAccess } from '@/server/dal/mywork-data';
 
 export default async function ProjectResourcesPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const ctx = await getProjectContext(code, 'presources');
   const p = ctx.project;
-  const [{ t, lang }, pool, team, labor, pending, suggestions] = await Promise.all([
+  const canEdit = ctx.canEdit('presources');
+  const manageTeam = canEdit && canManageTeam(ctx.viewer.role, ctx.access);
+  const [{ t, lang }, pool, team, labor, pending, suggestions, named, candidates] = await Promise.all([
     getI18n(),
     getResourcePool(),
     getProjectTeam(p.code),
     getLaborCost(p.code),
     listResourceRequests({ projectCode: p.code, status: 'pending' }),
     getRebalancingSuggestions({ projectCode: p.code }),
+    getNamedTeam(p.code),
+    manageTeam ? teamCandidates(p.code) : Promise.resolve(null),
   ]);
-  const canEdit = ctx.canEdit('presources');
   // Pool order (PEOPLE order), team members only — as the prototype's PEOPLE.filter(team.includes).
   const members = new Set(team.map((m) => m.name));
+  const work = await myWorkAccess(ctx.viewer);
   const view = resourcesView(
     {
+      canOpenWork: work.canView,
       scope: 'project',
       weeks: pool.weeks.map((w) => w.label),
       weekStarts: pool.weeks.map((w) => w.start),
@@ -52,6 +64,7 @@ export default async function ProjectResourcesPage({ params }: { params: Promise
         primary={canEdit ? <NewRequestButton label="Request resource" projectCode={p.code} /> : undefined}
       />
       <ResourcesView view={view} t={t} projectName={`${p.displayId} · ${t(p.name)}`} canEdit={canEdit} />
+      <ProjectTeamCard code={p.code} context={t(projectLabel(p))} members={named} candidates={candidates} t={t} />
     </>
   );
 }

@@ -16,7 +16,7 @@ import { getPidValidation } from '@/server/dal/pid';
 import { DISCIPLINES, type Discipline } from '@/server/db/codes';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook, PdfDocument } from '../types';
-import { col, compact, filterLine, kpiSheet, paramRecord, projectRef, sheet, sum, tableBlock, todayIso } from './common';
+import { col, compact, filterLine, kpiSheet, paramRecord, pricedPdf, pricedWorkbook, projectRef, sheet, sum, tableBlock, todayIso } from './common';
 
 // ── Engineering ──────────────────────────────────────────────────────────────────────────────────────────────────────
 async function engWorkbook(ctx: ExportContext, disc: Discipline | null): Promise<ExportWorkbook | null> {
@@ -220,4 +220,5 @@ for (const d of DISCIPLINES) {
   registerExportProvider({ screen, table: (ctx) => engWorkbook(ctx, d) });
 }
 registerExportProvider({ screen: 'pid', table: pidWorkbook, documents: { overlay: overlayDocument } });
-registerExportProvider({ screen: 'bom', table: bomWorkbook, documents: { spares: sparesDocument } });
+// R-046 (NEW-D2-1): BOM prices and values only for the director, the PMs and procurement.
+registerExportProvider({ screen: 'bom', table: pricedWorkbook(bomWorkbook), documents: { spares: pricedPdf(sparesDocument) } });

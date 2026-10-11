@@ -517,7 +517,7 @@ function ProgressCard() {
         </form>
       )}
       <span className={s.costNote}>
-        {costNoteText(live.loggedH, data.costRate, laborCost(live.loggedH, data.costRate), data.costTarget, data.projectName, t, lang)}
+        {costNoteText(live.loggedH, data.costRate, data.costRate == null ? 0 : laborCost(live.loggedH, data.costRate), data.costTarget, data.projectName, t, lang)}
       </span>
     </div>
   );

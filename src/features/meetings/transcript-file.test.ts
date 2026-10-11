@@ -1,6 +1,6 @@
 // Download of an uploaded meeting transcript (chapter 4, S-10) — the Route Handler against an in-memory database and a
-// temporary file folder: the file comes back as stored (attachment), a paste / unknown meeting is a 404 and a client contact
-// on another organisation's project is refused. Session and project context are mocked.
+// temporary file folder: the file comes back as stored (attachment), a paste / unknown meeting is a 404 and a client is refused
+// every transcript (P-10b, R-043), of their own project too. Session and project context are mocked.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 const viewer = { role: 'pm', isMine: true };
 vi.mock('@/server/session', async () => {
   const { makeT } = await import('@/i18n/translate');
-  return { getI18n: async () => ({ lang: 'en', t: makeT('en') }) };
+  return { getI18n: async () => ({ lang: 'en', t: makeT('en') }), getViewer: async () => ({ name: 'Romain Aubert', role: viewer.role }) };
 });
 vi.mock('@/server/project-context', () => ({
   getProjectContext: async () => ({ viewer: { name: 'Romain Aubert', role: viewer.role }, isMine: viewer.isMine }),
@@ -56,12 +56,14 @@ describe('GET /api/meetings/[number]/transcript', () => {
     }
   });
 
-  it('a client contact on another organisation’s project is refused; on their own project they may download', async () => {
+  it('P-10b (R-043): a client is refused every transcript — another organisation’s project and their own', async () => {
     Object.assign(viewer, { role: 'client', isMine: false });
     const res = await get(meeting);
     expect(res.status).toBe(403);
     expect(await res.text()).toBe('You cannot open this file');
     Object.assign(viewer, { role: 'client', isMine: true });
-    expect((await get(meeting)).status).toBe(200);
+    expect((await get(meeting)).status).toBe(403);
+    expect((await get('MTG-999')).status).toBe(403);
+    Object.assign(viewer, { role: 'pm', isMine: true });
   });
 });

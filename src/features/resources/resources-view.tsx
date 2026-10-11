@@ -75,13 +75,23 @@ export function ResourcesView({ view, t, projectName, canEdit }: ResourcesViewPr
               {view.people.map((p) => (
                 <div key={p.name} className={s.contents} role="row">
                   <div className={s.personCell} role="rowheader">
-                    <Link href={p.href} className={s.person} title={t('Open their work')}>
-                      <Avatar initials={p.initials} size={28} />
-                      <span className={s.who}>
-                        <span className={s.name}>{p.name}</span>
-                        <span className={s.role}>{p.role}</span>
+                    {p.href ? (
+                      <Link href={p.href} className={s.person} title={t('Open their work')}>
+                        <Avatar initials={p.initials} size={28} />
+                        <span className={s.who}>
+                          <span className={s.name}>{p.name}</span>
+                          <span className={s.role}>{p.role}</span>
+                        </span>
+                      </Link>
+                    ) : (
+                      <span className={s.person}>
+                        <Avatar initials={p.initials} size={28} />
+                        <span className={s.who}>
+                          <span className={s.name}>{p.name}</span>
+                          <span className={s.role}>{p.role}</span>
+                        </span>
                       </span>
-                    </Link>
+                    )}
                   </div>
                   {p.cells.map((c, i) => (
                     <div key={i} className={s.cell} role="cell" style={{ '--cell-bg': c.bg, '--cell-fg': c.fg } as CSSProperties}>

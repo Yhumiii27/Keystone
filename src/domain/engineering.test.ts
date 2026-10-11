@@ -152,8 +152,9 @@ describe('pure rules', () => {
     ]);
     expect([
       canValidateRelease({ role: 'director' }, false), canValidateRelease({ role: 'pm' }, true), canValidateRelease({ role: 'pm' }, false),
-      canValidateRelease({ role: 'englead' }, true), canValidateRelease({ role: 'quality' }, false),
-    ]).toEqual([true, true, false, false, false]);
+      canValidateRelease({ role: 'englead' }, true), canValidateRelease({ role: 'quality' }, false), canValidateRelease({ role: 'client' }, true),
+    // R-041 (L-4b): the project's PMs and deputies validate whatever their active role (an engineering lead deputy too); never a client.
+    ]).toEqual([true, true, false, true, false, false]);
     expect([checkFilterOf('open'), checkFilterOf('sent_back'), checkFilterOf('Resolved'), checkFilterOf(undefined)]).toEqual(['open', 'sent_back', 'all', 'all']);
     expect(DISCIPLINES_SEGMENTS()).toEqual([['process', 'process'], ['meca', 'mechanical'], ['elec', 'electrical'], ['auto', 'automation']]);
     expect([disciplineOfSegment('mechanical'), disciplineOfSegment('meca'), disciplineOfSegment(undefined)]).toEqual(['meca', null, null]);

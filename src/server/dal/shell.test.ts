@@ -16,6 +16,7 @@ import { createPart } from './parts';
 import { approvePurchaseOrder, rejectSupplierInvoice } from './purchasing';
 import { applyStockMovement, listStock } from './stock';
 import { crumbExtraOf, deepLink, defaultTitleOf, getShellNav, notificationsFor, projectBadges, searchShell, zoneBarOf } from './shell';
+import { listProjects } from './projects';
 
 // Golden values need the pristine seed: use a fresh in-memory database, never the local ./.data one
 // (which the running app mutates, e.g. a project created by the wizard changes the counts).
@@ -260,5 +261,26 @@ describe('Delivery 5 badges, search and zone bar follow the database (docs/spec/
   it('a project without data carries no Delivery 5 badge', async () => {
     const b = await projectBadges('director', 'EWA-051');
     for (const k of ['eng', 'eng-elec', 'pid', 'quality', 'itp', 'site'] as const) expect([k, b[k]]).toEqual([k, undefined]);
+  });
+
+  it('R-042 / R-043 (P-1, P-10a, P-10b): the client\'s sidebar and search stay on their organisation\'s projects and workspace', async () => {
+    const nav = await getShellNav('client');
+    const all = await listProjects();
+    expect(nav.projects.map((p) => p.code)).toEqual(all.filter((p) => p.client === 'Port authority').map((p) => p.code));
+    expect(nav.projects.map((p) => p.code)).toContain('HLT-026');
+    expect(nav.projects.map((p) => p.code)).not.toContain('NDC-031');
+    expect(Object.keys(nav.projectBadges)).toEqual(nav.projects.map((p) => p.code));
+    // Their project opens their portal; another organisation's project is not found.
+    expect(await searchShell('harbor', 'HLT-026', 'client')).toEqual([
+      { kind: 'Project', title: 'Harbor Line Terminal Expansion', sub: expect.stringMatching(/^HLT-026 · /), href: '/projects/HLT-026/client' },
+    ]);
+    expect(await searchShell('northgate', 'HLT-026', 'client')).toEqual([]);
+    // No NCR, purchase order, part, person, ECO, risk, drawing or activity; the change requests of their current project only.
+    for (const q of ['ncr-029', 'po-1082', 'gbx-91', 'wagner', 'eco-2026', 'dwg'])
+      expect(await searchShell(q, 'HLT-026', 'client'), q).toEqual([]);
+    expect((await searchShell('cr-008', 'HLT-026', 'client')).map((h) => [h.kind, h.href])).toEqual([['Change request', '/projects/HLT-026/changes?cr=CR-008']]);
+    expect(await searchShell('cr-0', 'NDC-031', 'client')).toEqual([]);
+    // Staff search is unchanged.
+    expect((await searchShell('northgate', 'HLT-026')).map((h) => h.kind)).toContain('Project');
   });
 });

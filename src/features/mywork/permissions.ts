@@ -1,16 +1,10 @@
 // Who sees and edits what on My work / Task (docs/spec/10 §6.1, §7.1; 00 §8.3 "?person= for managers";
 // 00 §7.16 / 10 OQ17: My work shows the viewer, not a fixed Hélène Sauvage). Pure — used by pages, islands, actions.
 import type { RoleKey } from '@/config/screens';
+import { clientRefusedScreen } from '@/domain/rights';
 
-/**
- * Roles that may open someone else's My work with `?person=` (the person chip becomes a switcher): the roles whose
- * screens list people and link to their work — Resources rows (director, depthead, procurement), Approvals team
- * list (depthead, quality), project resources (pm). The team member and the client only ever see their own.
- * Outside their workspace (everyone but director and member) the page stays read-only.
- */
-export const PERSON_PICKER_ROLES: readonly RoleKey[] = ['director', 'pm', 'depthead', 'quality', 'procurement'];
-
-export const canPickPerson = (role: RoleKey) => PERSON_PICKER_ROLES.includes(role);
+// Someone else's My work (`?person=`, R-049 / R-9 answer b): by hierarchy and projects — src/domain/rights.ts
+// `canViewPersonWork`, applied by src/server/dal/mywork-data.ts `myWorkAccess` (page, task back link, export).
 
 /**
  * Status, %, checklist, time log of a task: its assignee, or the portfolio director (manager view, as the
@@ -30,7 +24,7 @@ export const canCommentTask = (outside: boolean) => !outside;
 export const canAttachTaskFiles = canEditTask;
 
 /**
- * Chapter 4 (R-8 default): who may download a task's files — whoever may open the task sheet (outside viewers read it),
- * except a client contact on another organisation's project (the exports' rule).
+ * Chapter 4 (R-8 default) and R-042 (P-1): who may download a task's files — whoever may open the task sheet (internal
+ * viewers outside their workspace read it); never a client, the task sheet being outside the client's workspace.
  */
-export const canDownloadTaskFiles = (viewer: { role: RoleKey }, projectIsTheirs: boolean) => viewer.role !== 'client' || projectIsTheirs;
+export const canDownloadTaskFiles = (viewer: { role: RoleKey }) => !clientRefusedScreen(viewer.role, 'task');

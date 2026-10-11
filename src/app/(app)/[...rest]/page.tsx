@@ -5,14 +5,19 @@ import { notFound, redirect } from 'next/navigation';
 import { SCREEN_BY_ID, screenHref } from '@/config/screens';
 import { ComingSoon } from '@/components/app/shell/coming-soon';
 import { matchScreen } from '@/components/app/shell/nav-model';
+import { clientRefusedProject } from '@/domain/rights';
 import { getProject } from '@/server/dal/projects';
+import { refuseClient } from '@/server/project-context';
+import { getViewer } from '@/server/session';
 
 export default async function NotBuiltPage({ params }: { params: Promise<{ rest: string[] }> }) {
   const { rest } = await params;
-  // /projects/<code> → the project's Plan (the prototype opens Plan when a project is picked from the map).
+  // /projects/<code> → the project's Plan (the prototype opens Plan when a project is picked from the map); a client → their
+  // portal (the Plan is outside their workspace, R-042), never another organisation's project.
   if (rest[0] === 'projects' && rest.length === 2) {
-    const p = await getProject(rest[1]);
-    if (p) redirect(screenHref('plan', { code: p.code }));
+    const [p, viewer] = await Promise.all([getProject(rest[1]), getViewer()]);
+    if (p && clientRefusedProject(viewer, p)) refuseClient();
+    if (p) redirect(screenHref(viewer.role === 'client' ? 'client' : 'plan', { code: p.code }));
     notFound();
   }
   const m = matchScreen('/' + rest.map(encodeURIComponent).join('/'), 'exact');

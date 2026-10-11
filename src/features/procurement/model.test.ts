@@ -24,6 +24,7 @@ import { money } from '@/lib/format';
 import { getSupplierScorecard } from '@/server/dal/suppliers';
 import golden from './procurement.golden.json';
 import { procT } from './i18n';
+import { canSeeSupplierPrices } from '@/domain/rights';
 import {
   invoiceDrawerView, invoiceTabView, rfqDrawerView, rfqTabView, segView, supplierTabView, type InvoiceTabView, type KpiView, type RfqTabView, type SourcingCtx,
 } from './model';
@@ -33,7 +34,8 @@ const G = golden as any;
 const LANGS: Lang[] = ['en', 'fr'];
 const ACCENT_300 = 'var(--color-accent-300)';
 
-const ctxOf = (lang: Lang, role: RoleKey = 'director'): SourcingCtx => ({ t: procT(makeT(lang), lang), lang, role, canEdit: canSee(role, 'procurement') });
+// R-046: prices follow the role (director, PM, procurement), as the page does.
+const ctxOf = (lang: Lang, role: RoleKey = 'director'): SourcingCtx => ({ t: procT(makeT(lang), lang), lang, role, canEdit: canSee(role, 'procurement'), prices: canSeeSupplierPrices(role) });
 /** Prototype dates are zero-padded ("05 Jul"); the rebuild writes "5 Jul" / "5 juil." (data layer convention). */
 const date = (s: string) => s.replace(/^0(\d)/, '$1');
 const kpis = (ks: KpiView[]) => ks.map((k) => ({ label: k.label, value: k.value, sub: k.sub, color: k.color }));
@@ -159,7 +161,15 @@ describe('Sourcing view models vs the prototype', () => {
         for (const role of ['director', 'pm', 'procurement', 'quality'] as const) {
           const v = await rfqDrawer(number, lang, role);
           const g = G.rfqDrawers[lang][number][role];
-          const expected = protoRfqDrawer(g, lang);
+          const proto = protoRfqDrawer(g, lang);
+          // R-046 (NEW-D2-1): the quality manager does not see supplier prices — masked, and no best-price highlight.
+          const expected = role !== 'quality' ? proto : {
+            ...proto,
+            meta: proto.meta.map((m: { k: string; v: string }, i: number) => (i === 5 && m.v !== '—' ? { ...m, v: '•••' } : m)),
+            quotes: proto.quotes.map((q: Record<string, unknown>) => ({
+              ...q, price: '•••', best: false, total: q.total === '—' ? '—' : '•••', delta: q.delta === '—' ? '—' : '•••',
+            })),
+          };
           if (lang === 'fr' && number === 'RFQ-2026-031') expect(expected.meta[0].v).toBe('KS-STL-0450 · Structural steel column HEB 450');
           expect([number, role, ownRfqDrawer(v)]).toEqual([number, role, expected]);
           // Outside the workspace (quality): no "Send to suppliers" (the prototype offered it to every role).

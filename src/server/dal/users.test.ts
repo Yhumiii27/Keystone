@@ -13,6 +13,7 @@ import { isMineProject } from '@/server/project-context';
 import { notifyRequestEvent } from './requests-screens';
 import { countUnreadNotifications, createNotification, listNotifications, markAllNotificationsRead } from './notifications';
 import { getScoreWeights, setScoreWeight } from './prioritisation';
+import { listProjectTeams } from './project-team';
 import { listProjects } from './projects';
 import { getUserAccount, isUniqueViolation, listUserAccounts, signInUser, userIdOf } from './users';
 
@@ -115,12 +116,13 @@ describe('users', () => {
     const r = await signInUser({ oid: 'oid-romain', email: 'r.aubert@epc2i.fr', roles: ['pm'] });
     if (!r.ok) throw new Error(r.reason);
     const romain = await viewerOf(r.account.userId, 'pm');
-    expect(isMineProject(romain, hlt)).toBe(true);
-    expect(isMineProject({ ...romain, personId: await personId('Sophie Renard') }, hlt)).toBe(false); // same short name cannot fake it
-    expect(isMineProject(PERSONA_BY_ROLE.pm, hlt)).toBe(true); // demo persona: short name
-    expect(isMineProject(PERSONA_BY_ROLE.client, hlt)).toBe(true);
-    expect(isMineProject({ ...PERSONA_BY_ROLE.client, organisation: 'Nordvolt' }, hlt)).toBe(false);
-    expect(isMineProject({ ...PERSONA_BY_ROLE.client, organisation: null }, hlt)).toBe(false);
+    const teams = await listProjectTeams();
+    expect(isMineProject(romain, hlt, teams)).toBe(true);
+    expect(isMineProject({ ...romain, personId: await personId('Sophie Renard') }, hlt, teams)).toBe(false); // same short name cannot fake it
+    expect(isMineProject(PERSONA_BY_ROLE.pm, hlt, teams)).toBe(true); // demo persona: short name
+    expect(isMineProject(PERSONA_BY_ROLE.client, hlt, teams)).toBe(true);
+    expect(isMineProject({ ...PERSONA_BY_ROLE.client, organisation: 'Nordvolt' }, hlt, teams)).toBe(false);
+    expect(isMineProject({ ...PERSONA_BY_ROLE.client, organisation: null }, hlt, teams)).toBe(false);
   });
 
   it('recognises the unique violation of a second account for the same person (retry of a racing first sign-in)', async () => {

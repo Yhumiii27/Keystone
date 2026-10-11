@@ -6,14 +6,18 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const viewer = { name: 'Romain Aubert', canEdit: true, canEditRisks: true, lang: 'en' as 'en' | 'fr' };
+// `pm` = the viewer is one of the project's PMs (R-041 access.pm); P-9b: the organiser and the PM write and send the minutes.
+const viewer = { name: 'Romain Aubert', short: 'R. Aubert', role: 'pm', pm: true, canEdit: true, canEditRisks: true, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@/server/session', async () => {
   const { makeT } = await import('@/i18n/translate');
   return { getI18n: async () => ({ lang: viewer.lang, t: makeT(viewer.lang) }) };
 });
 vi.mock('@/server/project-context', () => ({
-  getProjectContext: async () => ({ viewer: { name: viewer.name }, canEdit: (screen?: string) => (screen === 'risks' ? viewer.canEditRisks : viewer.canEdit) }),
+  getProjectContext: async () => ({
+    viewer: { name: viewer.name, short: viewer.short, role: viewer.role, personId: null }, access: { pm: viewer.pm },
+    canEdit: (screen?: string) => (screen === 'risks' ? viewer.canEditRisks : viewer.canEdit),
+  }),
 }));
 
 import { revalidatePath } from 'next/cache';
@@ -37,8 +41,30 @@ describe('meetings Server Functions', () => {
     setDb(await openDatabase());
   }, 60_000);
   beforeEach(() => {
-    Object.assign(viewer, { name: 'Romain Aubert', canEdit: true, canEditRisks: true, lang: 'en' });
+    Object.assign(viewer, { name: 'Romain Aubert', short: 'R. Aubert', role: 'pm', pm: true, canEdit: true, canEditRisks: true, lang: 'en' });
     vi.mocked(revalidatePath).mockClear();
+  });
+
+  it('P-9b (R-050): the internal team adds notes and ticks actions; the organiser and the project’s PM write and send; the client reads', async () => {
+    const WRITERS = { ok: false, error: 'Only the organiser or the project manager can write and send these minutes' };
+    // Julien Wagner, on the team but neither organiser nor PM: a note yes, the transcript and the sending no.
+    Object.assign(viewer, { name: 'Julien Wagner', short: 'J. Wagner', role: 'member', pm: false });
+    expect(await addMinutesLineAction({ code: 'HLT-026', meeting: 'MTG-118', point: 0, type: 'info', text: 'Crane inspection booked' })).toEqual({ ok: true });
+    expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual(WRITERS);
+    expect(await analyseTranscriptAction({ code: 'HLT-026', meeting: 'MTG-119' })).toEqual(WRITERS);
+    expect(await applyTranscriptAction({ code: 'HLT-026', meeting: 'MTG-119' })).toEqual(WRITERS);
+    expect(await reviewProposalAction({ code: 'HLT-026', meeting: 'MTG-119', position: 0, status: 'rejected' })).toEqual(WRITERS);
+    viewer.lang = 'fr';
+    expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual({ ok: false, error: 'Seuls l’organisateur et le chef de projet rédigent et envoient ce compte rendu' });
+    viewer.lang = 'en';
+    // Antoine Girard organised MTG-119 (not MTG-118): he writes its minutes only.
+    Object.assign(viewer, { name: 'Antoine Girard', short: 'A. Girard', role: 'englead', pm: false });
+    expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual(WRITERS);
+    expect(await analyseTranscriptAction({ code: 'HLT-026', meeting: 'MTG-119', engine: 'claude' })).toEqual({ ok: false, error: 'Claude is not configured (ANTHROPIC_API_KEY)' });
+    // The client reads: no meeting, no note.
+    Object.assign(viewer, { name: 'Nadia Bensaïd', short: 'N. Bensaïd', role: 'client', pm: false });
+    expect(await createMeetingAction('HLT-026', NEW)).toEqual({ error: 'These meetings are read-only for you' });
+    expect(await addMinutesLineAction({ code: 'HLT-026', meeting: 'MTG-118', point: 0, type: 'info', text: 'x' })).toEqual({ ok: false, error: 'These meetings are read-only for you' });
   });
 
   it('refuses read-only viewers, unknown projects and meetings of another project — nothing is written', async () => {

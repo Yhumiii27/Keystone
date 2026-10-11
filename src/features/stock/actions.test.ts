@@ -37,9 +37,13 @@ describe('stock Server Functions', () => {
     vi.mocked(revalidatePath).mockClear();
   });
 
-  it('refuses viewers outside the workspace (depthead, member, englead, client), in their language', async () => {
+  it('refuses viewers outside the workspace (depthead, member, englead; the client is sent home), in their language', async () => {
     const id = (await line('KS-STL-0450', CENTRAL)).id;
-    for (const role of ['depthead', 'member', 'englead', 'client'] as RoleKey[]) {
+    // R-042 (P-1): stock is outside the client's workspace — a redirect home (NEXT_REDIRECT), nothing written.
+    viewer.role = 'client';
+    await expect(importFromX3Action()).rejects.toThrow('NEXT_REDIRECT');
+    await expect(applyStockMovementAction(id, { op: 'adjust', qty: '5' }, 'HLT-026')).rejects.toThrow('NEXT_REDIRECT');
+    for (const role of ['depthead', 'member', 'englead'] as RoleKey[]) {
       viewer.role = role;
       expect(await applyStockMovementAction(id, { op: 'adjust', qty: '5' }, 'HLT-026')).toEqual({ error: 'Stock is read-only for you' });
       expect(await importFromX3Action()).toEqual({ error: 'Stock is read-only for you' });

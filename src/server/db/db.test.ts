@@ -30,7 +30,10 @@ describe('database seed and DAL', () => {
   });
 
   it.each(Object.keys(PROTO_GEN.projectData))('reproduces projectData(%s)', async (code) => {
-    expect(plain(await getProjectData(code))).toEqual(PROTO_GEN.projectData[code]);
+    const want = PROTO_GEN.projectData[code] as { team: string[] };
+    // R-041 (P-2): Harbor Line's named team adds the seeded referents (engineering lead, quality manager) to DEFS.team.
+    const team = code === 'HLT-026' ? [...want.team, 'Antoine Girard', 'Gabriel Comte'] : want.team;
+    expect(plain(await getProjectData(code))).toEqual({ ...want, team });
   });
 
   it('returns null projectData for projects without data', async () => {

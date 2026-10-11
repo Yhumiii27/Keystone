@@ -19,7 +19,7 @@ import {
   todoAddedText, todoRemovedText,
 } from './i18n';
 import { canEditTask } from '@/features/mywork/permissions';
-import { canEditPlan, canSchedulePlan } from './rights';
+import { canEditPlan, canEditStructure, canSchedulePlan } from './rights';
 
 export type PlanToastResult = { ok: true; toast?: string } | { error: string };
 export type PlanDialogResult = { toast?: string; error?: string };
@@ -33,15 +33,23 @@ const COMMENT_MAX = 2000;
 const TODO_MAX = 200;
 const LAG_MAX = 999;
 
-/** Project context after the right check: `schedule` = Reschedule / baselines / project calendar, `edit` = activity edits. */
-async function allowed(code: unknown, right: 'schedule' | 'edit'): Promise<{ ctx: ProjectContext } | { error: string }> {
+/**
+ * Project context after the right check: `schedule` = Reschedule / baselines / project calendar; `structure` = relationships, the
+ * activity calendar and the activity's to-dos (P-9a: the project's PMs and the director); `edit` = the Plan is editable at all
+ * (ticking a to-do: the caller also checks its assignee).
+ */
+async function allowed(code: unknown, right: 'schedule' | 'structure' | 'edit'): Promise<{ ctx: ProjectContext } | { error: string }> {
   const { t } = await getI18n();
   if (typeof code !== 'string' || !code || !(await getProject(code))) return { error: t('Invalid request') };
   const ctx = await getProjectContext(code, 'plan');
-  if (!(right === 'schedule' ? canSchedulePlan(ctx) : canEditPlan(ctx)))
-    return { error: t(right === 'schedule' ? 'Only the project manager or the director can do this' : 'This plan is read-only for you') };
+  if (!canEditPlan(ctx)) return { error: t('This plan is read-only for you') };
+  if (right === 'schedule' && !canSchedulePlan(ctx)) return { error: t('Only the project manager or the director can do this') };
+  if (right === 'structure' && !canEditStructure(ctx)) return { error: t(STRUCTURE_ONLY) };
   return { ctx };
 }
+
+const STRUCTURE_ONLY = 'Only the project manager or the director can change the plan structure — you can update the progress of your own activities';
+
 
 /** Project screens (Plan, Schedule, Change control…) — and, for schedule-wide changes, Home and the portfolio. */
 const refresh = (code: string, scope: 'project' | 'all' = 'project') => (scope === 'all' ? revalidatePath('/', 'layout') : revalidatePath(`/projects/${code}`, 'layout'));
@@ -117,7 +125,7 @@ export async function setProjectCalendarAction(code: string, calendarCode: strin
 
 /** Drawer "Calendar": per-activity override ('' = back to the project calendar). */
 export async function setActivityCalendarAction(code: string, activity: string, calendarCode: string): Promise<PlanToastResult> {
-  const r = await allowed(code, 'edit');
+  const r = await allowed(code, 'structure');
   if ('error' in r) return r;
   const { t, lang } = await getI18n();
   const act = str(activity).toUpperCase();
@@ -139,7 +147,7 @@ export async function setActivityCalendarAction(code: string, activity: string, 
  * successor; type FS/SS/FF/SF, lag in working days (negative = lead). No self link, duplicate or loop.
  */
 export async function addRelationshipAction(code: string, activity: string, values: Record<string, string>): Promise<PlanDialogResult> {
-  const r = await allowed(code, 'edit');
+  const r = await allowed(code, 'structure');
   if ('error' in r) return r;
   const { t, lang } = await getI18n();
   const act = str(activity).toUpperCase();
@@ -168,7 +176,7 @@ export async function addRelationshipAction(code: string, activity: string, valu
 
 /** Drawer link removal. */
 export async function removeRelationshipAction(code: string, pred: string, succ: string): Promise<PlanToastResult> {
-  const r = await allowed(code, 'edit');
+  const r = await allowed(code, 'structure');
   if ('error' in r) return r;
   const { t, lang } = await getI18n();
   const p = str(pred).toUpperCase();
@@ -185,7 +193,7 @@ export async function removeRelationshipAction(code: string, pred: string, succ:
 
 /** Drawer composer "Add a to-do…": a task on the activity, assigned to its owner, due at its finish. */
 export async function addTodoAction(code: string, activity: string, title: string): Promise<PlanToastResult> {
-  const r = await allowed(code, 'edit');
+  const r = await allowed(code, 'structure');
   if ('error' in r) return r;
   const { t, lang } = await getI18n();
   const act = str(activity).toUpperCase();
@@ -221,7 +229,7 @@ export async function toggleTodoAction(code: string, activity: string, number: s
 
 /** "Remove" on a to-do created here without logged time (other tasks are managed in My work). */
 export async function removeTodoAction(code: string, activity: string, number: string): Promise<PlanToastResult> {
-  const r = await allowed(code, 'edit');
+  const r = await allowed(code, 'structure');
   if ('error' in r) return r;
   const { t, lang } = await getI18n();
   const todo = await todoOfActivity(r.ctx.project.code, str(activity), str(number));

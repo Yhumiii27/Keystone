@@ -144,7 +144,7 @@ describe('resources (06 §1, 05 §4)', () => {
     expect(d.map((x) => [x.name, x.head?.name, x.headTitle])).toEqual(Object.entries(P.DEPTS as Record<string, [string, string]>).map(([n, [h, t]]) => [n, h, t]));
     expect(d.filter((x) => x.capacityH != null).sort((a, b) => a.capacityPosition! - b.capacityPosition!).map((x) => [x.name, x.capacityH, x.demandH])).toEqual(P.ROLES);
     expect((await getProjectTeam('NDC-031')).map((p) => p.name)).toEqual(['Pauline Noguès', 'Damien Roux', 'Léa Marchand', 'Fabien Bertrand']);
-    expect((await getProjectTeam('HLT-026')).length).toBe(8);
+    expect((await getProjectTeam('HLT-026')).length).toBe(10); // R-041 (P-2): + the 2 seeded referents (was 8)
     expect(await getLaborCost('HLT-026')).toEqual({ name: 'Labor', budget: 1850, actual: 1420 });
     expect((await getLaborCost('ERP-202'))?.name).toBe('Internal staff');
   });

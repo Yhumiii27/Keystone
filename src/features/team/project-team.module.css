@@ -1,0 +1,24 @@
+/* Project resources › Project team (R-041, P-2): one row per person of the named team. */
+.list { display: flex; flex-direction: column; }
+/* Row: 28px avatar · name over "{job} · {department}" · role (tag or select) · remove — 10px rows, neutral-900 separators */
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--color-neutral-900);
+}
+.row:first-child { border-top: none; }
+.who { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.name { font-weight: 500; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub { font-size: 11px; color: var(--color-neutral-400); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.role { min-width: 180px; }
+.empty { font-size: 12px; color: var(--color-neutral-500); }
+.note { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+.spacer { width: 24px; }
+
+@media (max-width: 640px) {
+  .row { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .role { min-width: 0; grid-column: 2 / -1; }
+}

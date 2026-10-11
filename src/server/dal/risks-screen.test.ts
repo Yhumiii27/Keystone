@@ -17,7 +17,7 @@ describe('getRiskScreen', () => {
     const s = (await getRiskScreen('HLT-026'))!;
     expect(s.register.risks).toHaveLength(8);
     expect(s.contingency).toBe(150);
-    expect(s.team).toEqual(PROTO.DEFS['HLT-026'].team);
+    expect(s.team).toEqual([...PROTO.DEFS['HLT-026'].team, 'Antoine Girard', 'Gabriel Comte']); // R-041 (P-2): + the seeded referents
   });
 
   it('other projects with data compare with DEFS.cont (NDC-031 → 100)', async () => {

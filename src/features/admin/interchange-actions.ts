@@ -18,12 +18,12 @@ import { formatsOf, listExportProviders } from '@/server/export/registry';
 import '@/server/export/providers';
 import { applyImport, cancelImport, importTargets, previewTable, tableMapping, type ImportStep, type ImportViewer } from '@/server/interchange/jobs';
 import { importKindsOf } from '@/server/interchange/rights';
-import { isMineProject, getScreenAccess } from '@/server/project-context';
+import { getScreenAccess, projectAccessResolver } from '@/server/project-context';
 import { getViewer } from '@/server/session';
 
 async function importViewer(): Promise<ImportViewer> {
   const v = await getViewer();
-  return { name: v.name, short: v.short, role: v.role };
+  return { name: v.name, short: v.short, role: v.role, personId: v.personId, organisation: v.organisation };
 }
 
 const isId = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f-]{36}$/i.test(v);
@@ -100,8 +100,8 @@ export interface ExportSetup {
 export async function exportSetupAction(format: unknown): Promise<ExportSetup> {
   const viewer = await getViewer();
   const fmt = format === 'pdf' ? 'pdf' : format === 'xml' ? 'xml' : 'xlsx';
-  const all = await listProjects();
-  const projects = all.filter((p) => p.hasData && (viewer.role !== 'client' || isMineProject(viewer, p))).map((p) => ({ code: p.code, label: `${p.displayId} · ${p.name}` }));
+  const [all, access] = await Promise.all([listProjects(), projectAccessResolver(viewer)]);
+  const projects = all.filter((p) => p.hasData && !access(p).refused).map((p) => ({ code: p.code, label: `${p.displayId} · ${p.name}` }));
   if (fmt === 'xml') return { targets: [], projects };
   const targets = listExportProviders()
     .filter((p) => formatsOf(p).includes(fmt) && canSee(viewer.role, p.screen))

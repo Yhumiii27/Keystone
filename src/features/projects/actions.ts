@@ -15,7 +15,7 @@ import {
 } from '@/server/dal/projects-register';
 import { inactiveStageCodes } from '@/server/dal/settings-lists';
 import { getProject } from '@/server/dal/projects';
-import { getScreenAccess, isMineProject } from '@/server/project-context';
+import { getScreenAccess, projectAccessResolver } from '@/server/project-context';
 import { getViewer } from '@/server/session';
 import { CREATE_PROJECT_ROLES } from './permissions';
 
@@ -33,12 +33,15 @@ function refresh() {
   revalidatePath('/', 'layout');
 }
 
-/** Lifecycle writes: the director, or the project's own PM (another PM's project is read-only, 01 §5.2). */
+/**
+ * Lifecycle writes (L-4b, R-041): the director, or the project's PMs — PM of record, co-PMs and deputies — with the Projects
+ * register in their workspace (another PM's project is read-only, 01 §5.2).
+ */
 async function mayManageLifecycle(code: string): Promise<boolean> {
   const { canEdit, viewer } = await getScreenAccess('projects');
   if (!canEdit) return false;
   const project = await getProject(code);
-  return !!project && isMineProject(viewer, project);
+  return !!project && (await projectAccessResolver(viewer))(project).lead;
 }
 
 /**

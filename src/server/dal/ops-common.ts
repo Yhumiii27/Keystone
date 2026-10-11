@@ -7,6 +7,7 @@ import { and, eq } from 'drizzle-orm';
 import { inWorkspace, type ActivityKind, type D5Screen } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
 import { persons, projects, users } from '@/server/db/schema';
+import { leadsProject } from './project-team';
 import type { DB, Tx } from '@/server/db/types';
 
 type Q = DB | Tx;
@@ -49,12 +50,12 @@ export async function isClientContactOf(q: Q, actor: Actor, projectClientId: str
   return !!u;
 }
 
-/** The actor manages the project (PM) — or is the portfolio director. */
-export async function managesProject(q: Q, actor: Actor, pmPersonId: string | null): Promise<boolean> {
+/** The actor leads the project — PM of record, co-PM or deputy (R-041, L-4b) — or is the portfolio director. */
+export async function managesProject(q: Q, actor: Actor, project: { id: string }): Promise<boolean> {
   if (actor.role === 'director') return true;
-  if (actor.role !== 'pm' || !pmPersonId) return false;
+  if (actor.role === 'client') return false;
   const p = await findPerson(q, actor.name);
-  return !!p && p.id === pmPersonId;
+  return !!p && leadsProject(q, project.id, p.id);
 }
 
 /** Audit row + activity event for one change by the actor (activity optional). */

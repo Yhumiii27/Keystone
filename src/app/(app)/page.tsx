@@ -8,7 +8,7 @@ import { getI18n, getLastProject, getViewer, getZone } from '@/server/session';
 
 export default async function HomePage() {
   const [viewer, { t, lang }, projectCode, zone] = await Promise.all([getViewer(), getI18n(), getLastProject(), getZone()]);
-  const view = await getHomeView({ role: viewer.role, persona: { name: viewer.name, title: viewer.title }, projectCode, zone, lang });
+  const view = await getHomeView({ role: viewer.role, persona: { name: viewer.name, title: viewer.title }, projectCode, zone, lang, organisation: viewer.organisation });
   return (
     <>
       <PageHeader screen="home" primary={HOME_PRIMARY_ROLES.includes(viewer.role) ? <NewProjectButton /> : undefined} />

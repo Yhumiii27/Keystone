@@ -93,8 +93,11 @@ export const DELIVERABLE_STEP: Record<DeliverableStep, { from: DocumentStatus; t
 };
 export const isDeliverableStep = (v: unknown): v is DeliverableStep => v === 'freeze' || v === 'propose' || v === 'validate';
 
-/** Who validates a release (09 OQ11; the prototype had no role check): the project's PM or the portfolio director. */
-export const canValidateRelease = (viewer: { role: string }, managesProject: boolean) => viewer.role === 'director' || (viewer.role === 'pm' && managesProject);
+/**
+ * Who validates a release (09 OQ11; the prototype had no role check): the portfolio director, or the project's PMs — PM of
+ * record, co-PMs and deputies (R-041, L-4b) — whatever their active role; never a client.
+ */
+export const canValidateRelease = (viewer: { role: string }, leadsProject: boolean) => viewer.role === 'director' || (viewer.role !== 'client' && leadsProject);
 
 /** Notes written on a check closed in Keystone (`resolve` / `sendBack` 4789) or by an import (`finish` 4813). */
 export const CHECK_NOTE = {

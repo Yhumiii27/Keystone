@@ -7,10 +7,13 @@ import { isPgFilter, portfolioScheduleModel } from '@/domain/pfplan';
 import { PfPlanBody } from '@/features/pfplan/view';
 import { getPortfolioSchedule } from '@/server/dal/pipeline';
 import { getI18n, getZone } from '@/server/session';
+import { getScreenAccess } from '@/server/project-context';
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 export default async function PortfolioSchedulePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  // R-042 (P-1): a client is sent home before anything is read.
+  await getScreenAccess('pfplan');
   const [sp, { t, lang }, zone] = await Promise.all([searchParams, getI18n(), getZone()]);
   const f = one(sp.filter);
   const filter = isPgFilter(f) ? f : 'all';

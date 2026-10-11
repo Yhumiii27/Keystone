@@ -47,6 +47,7 @@ import ch4Meetings from './ch4-meetings.json';
 import ch4Whatif from './ch4-whatif.json';
 import ch4Exports from './ch4-exports.json';
 import d7Auth from './d7-auth.json';
+import d7Rights from './d7-rights.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -96,4 +97,5 @@ export const EXTRA_FR: Record<string, string> = {
   ...ch4Whatif,
   ...ch4Exports,
   ...d7Auth,
+  ...d7Rights,
 };

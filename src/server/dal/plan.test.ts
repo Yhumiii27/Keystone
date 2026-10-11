@@ -38,7 +38,8 @@ describe('Plan DAL', () => {
     );
     expect(d.control).toMatchObject({ pct: pd.pct, floatDays: pd.floatDays, floatShort: pd.floatShort, finishText: pd.finishText, baselineText: pd.baselineText, baselineSet: pd.baselineSet, p3: pd.p3 });
     expect(d.projectIdx).toBe(PROTO.DEFS[code].idx);
-    expect(d.control.team).toEqual(PROTO.DEFS[code].team);
+    // R-041 (P-2): Harbor Line's named team adds the seeded referents to DEFS.team.
+    expect(d.control.team).toEqual(code === 'HLT-026' ? [...PROTO.DEFS[code].team, 'Antoine Girard', 'Gabriel Comte'] : PROTO.DEFS[code].team);
   });
 
   it('owners are the 9 OWN people in prototype order', async () => {

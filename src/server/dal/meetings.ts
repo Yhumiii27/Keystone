@@ -131,6 +131,8 @@ export interface MeetingRow {
   durationText: string;
   location: string;
   organizer: string;
+  /** The organiser's person (P-9b: they and the project's PM write and send the minutes); null when only a name is known. */
+  organizerPersonId: string | null;
   status: MeetingStatus;
   statusLabel: string;
   /** "MIN-HLT-023"; `minutesIndexed` = the record exists in the Codex index ("Open minutes"). */
@@ -194,7 +196,7 @@ export async function listMeetings(projectCode: string): Promise<MeetingRow[]> {
     return {
       number: m.number, projectCode: code, title: m.title, series: m.series, seriesLabel: meetingSeries.label(m.series), type: m.type, typeLabel: meetingType.label(m.type),
       startsOn: m.startsOn, dateText: displayOfIso(m.startsOn), monthIndex: monthIndexOfIso(m.startsOn), time: m.startTime, durationMin: m.durationMin,
-      durationText: durationText(m.durationMin), location: m.location, organizer: m.organizerName, status: m.status, statusLabel: meetingStatus.label(m.status),
+      durationText: durationText(m.durationMin), location: m.location, organizer: m.organizerName, organizerPersonId: m.organizerPersonId, status: m.status, statusLabel: meetingStatus.label(m.status),
       minutesNumber: m.minutesNumber, minutesIndexed: !!docNumber, minutesSentOn: m.minutesSentOn, sentText: m.minutesSentOn ? shortDateOfIso(m.minutesSentOn) : '',
       participants: parts.filter((p) => p.meetingId === m.id).map((p) => ({
         name: p.name, present: p.present, minutesRecipient: p.minutesRecipient, readOn: p.minutesReadOn, readText: p.minutesReadOn ? shortDateOfIso(p.minutesReadOn) : '',
