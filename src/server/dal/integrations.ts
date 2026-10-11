@@ -3,10 +3,11 @@ import 'server-only';
 // (the activity feed and the audit trail are notifications.ts `listActivity` / `listAudit`). The Vigie and Cursus rows
 // show the live state of Keystone's connector layer (mock or HTTP, outbox waiting for delivery, last refresh); the other
 // connectors keep the state of their last (simulated) sync. "Sync now" runs the Vigie / Cursus connectors for real and
-// records a simulated run for the others; "Add connector" records a connector waiting for its first sync.
+// records a simulated run for the others. Delivery 7 (R-020, D-7a): IT configures the connectors outside Keystone — the
+// connectors file is applied before the connectors are read (connector-config.ts); "Add connector" is gone from the app.
 import { and, asc, desc, eq, gte, sql } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
-import { STATUS_ISO, addDaysIso, connectorDirection, connectorStatus, parisInstant, type ConnectorDirection, type ConnectorKind, type ConnectorStatus } from '@/server/db/codes';
+import { STATUS_ISO, addDaysIso, connectorStatus, parisInstant, type ConnectorDirection, type ConnectorKind, type ConnectorStatus } from '@/server/db/codes';
 import {
   auditEntries, connectorSyncRuns, connectors, cursusClearances, cursusRequests, cursusSyncRuns, importFormats, siteSheets, projects, vigieEcoProgress, vigieEcos,
   vigieHseItems, vigieNcrProgress, vigieNcrs,
@@ -18,17 +19,12 @@ import { vigieConnectorMode } from '@/server/integrations/vigie/config';
 import { getVigieEcoConnector } from '@/server/integrations/vigie/eco-connector';
 import { getVigieQualityConnector } from '@/server/integrations/vigie/quality-connector';
 import { fmt } from '@/server/interchange/messages';
+import { FIRST_SYNC_SCHEDULED, ensureConnectorsFileApplied } from './connector-config';
 import { eventsToday } from './kpis';
-import { requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
+import { requireWorkspace, trace, whoIs, type Actor } from './ops-common';
 
 export type { Actor };
 
-/** Systems offered by "Add connector" (AF.plumbing). */
-export const ADDABLE_SYSTEMS: readonly string[] = ['Sage X3', 'Lucca', 'SharePoint', 'SeeElectrical', 'SolidWorks 3DX', 'TIA Portal'];
-/** Last-volume note of a connector added in Keystone until its first sync. */
-const FIRST_SYNC_SCHEDULED = 'First sync scheduled';
-/** Frequencies offered by "Add connector". */
-export const CONNECTOR_FREQUENCIES: readonly string[] = ['Real time', 'Hourly', 'Daily', 'Manual'];
 
 export interface ConnectorRow {
   name: string;
@@ -95,6 +91,7 @@ async function cursusState() {
 
 /** Connectors (CONNECTORS order, Vigie and connectors added in Keystone after) with the live Vigie / Cursus state. */
 export async function listConnectors(): Promise<ConnectorRow[]> {
+  await ensureConnectorsFileApplied();
   const db = await getDb();
   const [rows, vigie, cursus] = await Promise.all([db.select().from(connectors).orderBy(asc(connectors.position)), vigieState(), cursusState()]);
   return rows.map((c) => {
@@ -134,6 +131,7 @@ export class ConnectorDisabledError extends Error {
  */
 export async function syncConnector(name: string, actor: Actor): Promise<{ ok: boolean; volume: string; error: string | null }> {
   requireWorkspace('plumbing', actor, 'Activity & integrations');
+  await ensureConnectorsFileApplied();
   const db = await getDb();
   const [c] = await db.select().from(connectors).where(eq(connectors.name, name));
   if (!c) throw new Error(`Unknown connector ${name}`);
@@ -183,35 +181,6 @@ export async function syncConnector(name: string, actor: Actor): Promise<{ ok: b
     });
   });
   return { ok, volume, error };
-}
-
-export interface NewConnectorInput {
-  system: string;
-  direction: ConnectorDirection;
-  frequency: string;
-  owner?: string | null;
-}
-
-/** "Add connector" (AF.plumbing): listed at once, Ready, "First sync scheduled" (the prototype only toasted). */
-export async function addConnector(input: NewConnectorInput, actor: Actor): Promise<void> {
-  requireWorkspace('plumbing', actor, 'Activity & integrations');
-  const system = requiredText(input.system, 'System', 80);
-  if (!connectorDirection.isCode(input.direction)) throw new Error('Invalid direction');
-  if (!CONNECTOR_FREQUENCIES.includes(input.frequency)) throw new Error('Invalid frequency');
-  const db = await getDb();
-  await db.transaction(async (tx) => {
-    const all = await tx.select({ name: connectors.name, position: connectors.position }).from(connectors);
-    if (all.some((c) => c.name.toLowerCase() === system.toLowerCase())) throw new Error(`${system} is already connected`);
-    const owner = (input.owner ?? '').trim().slice(0, 120) || null;
-    await tx.insert(connectors).values({
-      name: system, kind: 'static', dataScope: '', frequency: input.frequency, direction: input.direction, status: 'ready', lastSyncAt: null, lastVolume: FIRST_SYNC_SCHEDULED,
-      ownerName: owner, addedInKeystone: true, position: all.reduce((m, c) => Math.max(m, c.position + 1), 0),
-    });
-    await trace(tx, await whoIs(tx, actor), {
-      objectRef: `Connector ${system}`, change: `added · ${connectorDirection.label(input.direction)} · ${input.frequency}${owner ? ` · ${owner}` : ''}`, area: 'Integrations',
-      activity: { text: `Connector ${system} added · first sync scheduled`, kind: 'sync' },
-    });
-  });
 }
 
 /** Import / export formats (IMPORTS order). */

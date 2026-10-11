@@ -27,7 +27,7 @@ import { getMachineType } from '@/server/dal/mtypes';
 import { listAudit } from '@/server/dal/notifications';
 import { getHealthThresholds, getSettings } from '@/server/dal/settings';
 import {
-  addConnectorAction, addSettingsEntryAction, createMachineTypeAction, removeRexReferenceAction, removeSettingsEntryAction, resetSettingsAction,
+  addSettingsEntryAction, createMachineTypeAction, removeRexReferenceAction, removeSettingsEntryAction, resetSettingsAction,
   setHealthThresholdAction, setMachineTypeCostCategoriesAction, setMachineTypeItpSystemsAction, setMachineTypePhasesAction, syncConnectorAction,
   updateMachineTypeAction,
 } from './actions';
@@ -229,7 +229,6 @@ describe('Activity & integrations Server Functions and the audit export', () => 
     for (const role of ['depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as RoleKey[]) {
       as(role);
       expect(await syncConnectorAction('Lucca')).toEqual({ error: 'Activity & integrations is read-only for you' });
-      expect(await addConnectorAction({ system: 'SharePoint', direction: 'import', freq: 'Daily', owner: '' })).toEqual({ error: 'Activity & integrations is read-only for you' });
       expect((await exportAudit()).status).toBe(403);
     }
     as('quality', 'fr');
@@ -256,17 +255,9 @@ describe('Activity & integrations Server Functions and the audit export', () => 
     expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
   });
 
-  it('"Add connector": the prototype\'s systems, frequencies and directions; listed at once; duplicates refused', async () => {
-    as('director');
-    expect(await addConnectorAction({ system: 'Nope', direction: 'import', freq: 'Daily' })).toEqual({ error: 'Invalid request' });
-    expect(await addConnectorAction({ system: 'SharePoint', direction: 'up', freq: 'Daily' })).toEqual({ error: 'Invalid direction' });
-    expect(await addConnectorAction({ system: 'SharePoint', direction: 'import', freq: 'Weekly' })).toEqual({ error: 'Invalid frequency' });
-    expect(await addConnectorAction({ system: 'Sage X3', direction: 'import', freq: 'Daily' })).toEqual({ error: 'Sage X3 is already connected' });
-    expect(await addConnectorAction({ system: 'SharePoint', direction: 'both', freq: 'Hourly', owner: ' IT · Paul ' })).toEqual({ ok: true, toast: 'Connector added · first sync scheduled' });
-    expect((await listAdminConnectors()).at(-1)).toMatchObject({ name: 'SharePoint', status: 'ready', lastSyncAt: null, lastVolume: 'First sync scheduled', direction: 'both', owner: 'IT · Paul', addedInKeystone: true });
-    as('pm', 'fr');
-    expect(await addConnectorAction({ system: 'SharePoint', direction: 'import', freq: 'Daily' })).toEqual({ error: 'SharePoint est déjà connecté' });
-    expect(await addConnectorAction({ system: 'TIA Portal', direction: 'export', freq: 'Manual', owner: '' })).toEqual({ ok: true, toast: 'Connecteur ajouté · première synchronisation planifiée' });
+  it('no "Add connector" Server Function any more (D-7a, R-020): connectors come from IT\'s connectors file', async () => {
+    const actions = await import('./actions');
+    expect('addConnectorAction' in actions).toBe(false);
   });
 
   it('exports the audit trail as CSV (ISO 9001) for the director and the PM', async () => {

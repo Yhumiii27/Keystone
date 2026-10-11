@@ -16,7 +16,7 @@ import { Dialog } from '@/components/ds/Dialog';
 import { DialogActions } from '@/components/ds/DialogParts';
 import { showToast } from '@/components/ds/Toast';
 import { useI18n } from '@/i18n/client';
-import { addConnectorAction, createMachineTypeAction, resetSettingsAction, type AdminActionResult } from './actions';
+import { createMachineTypeAction, resetSettingsAction, type AdminActionResult } from './actions';
 import { machineTypesHref } from './links';
 import s from './admin.module.css';
 
@@ -73,27 +73,6 @@ export function NewMachineTypeButton({ form, context }: { form: FormDef; context
         {t('New machine type')}
       </Button>
       <FormDialog {...form} translate open={open} onClose={() => setOpen(false)} context={context} onSubmit={submit} />
-    </>
-  );
-}
-
-export function AddConnectorButton({ form, initialSystem, context }: { form: FormDef; initialSystem: string; context?: string }) {
-  const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <Button variant="primary" icon={Plus} onClick={() => setOpen(true)}>
-        {t('Add connector')}
-      </Button>
-      <FormDialog
-        {...form}
-        translate
-        open={open}
-        onClose={() => setOpen(false)}
-        context={context}
-        initialValues={{ system: initialSystem }}
-        onSubmit={async (values) => asResult(await addConnectorAction(values))}
-      />
     </>
   );
 }

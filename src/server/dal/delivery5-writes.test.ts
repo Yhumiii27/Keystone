@@ -21,7 +21,7 @@ import { listClaims, openClaim } from './claims';
 import { getCommissioning, planSat } from './commissioning';
 import { closeEngCheck, confirmEngInput, freezeEngDeliverable, generateEngOutput, getEngineeringRegister, importEngList, proposeEngRelease, validateEngRelease } from './engineering';
 import { addMachine, getMachine, listMachines } from './fleet';
-import { addConnector, listConnectors, syncConnector } from './integrations';
+import { listConnectors, syncConnector } from './integrations';
 import { addItpInspection, addPunchItem, advancePunchItem, getItpPlan, listPunchItems } from './itp';
 import { createMachineType, getMachineType, removeRexReference, setMachineTypeCostCategories, setMachineTypeItpSystems, setMachineTypePhases, updateMachineType } from './mtypes';
 import { listAudit } from './notifications';
@@ -429,18 +429,16 @@ describe('settings', () => {
 });
 
 describe('connectors', () => {
-  it('Sync now (Vigie, Cursus, simulated), Add connector (duplicate refused), outside refused', async () => {
+  it('Sync now (Vigie, Cursus, simulated), outside refused', async () => {
     expect(await syncConnector('Vigie', A.director)).toMatchObject({ ok: true });
     // Cursus (mock again): the people the HTTP refresh above left in the mirror.
     const people = (await getSite(HLT))!.cursus.people.length;
     expect(await syncConnector('Cursus', A.pm)).toMatchObject({ ok: true, volume: `${people} approvals received` });
     expect(await syncConnector('Lucca', A.pm)).toMatchObject({ ok: true, volume: '312 h · 8 people' });
-    await addConnector({ system: 'SharePoint', direction: 'both', frequency: 'Hourly', owner: 'IT · L. Fontaine' }, A.director);
-    await expect(addConnector({ system: 'sharepoint', direction: 'both', frequency: 'Hourly' }, A.director)).rejects.toThrow(/already connected/);
-    await expect(addConnector({ system: 'X', direction: 'both', frequency: 'Weekly' }, A.director)).rejects.toThrow(/Invalid frequency/);
     await expect(syncConnector('Lucca', A.quality)).rejects.toThrow(/outside your workspace/);
     const list = await listConnectors();
-    expect(list.at(-1)).toMatchObject({ name: 'SharePoint', status: 'ready', lastVolume: 'First sync scheduled', addedInKeystone: true, owner: 'IT · L. Fontaine' });
+    // R-020: connectors are added by IT's connectors file (src/server/dal/d7-debt-ux.test.ts), no longer from the app.
+    expect(list.map((c) => c.name)).not.toContain('SharePoint');
     expect(list.find((c) => c.name === 'Vigie')).toMatchObject({ pending: 0, failed: 0 });
     expect((await lastAudit()).area).toBe('Integrations');
   });

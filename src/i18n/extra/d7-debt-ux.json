@@ -5,5 +5,20 @@
   "No RFQ to award": "Aucune consultation à attribuer",
   "Superseded revision": "Révision remplacée",
   "Nothing to withdraw": "Rien à retirer",
-  "To be agreed": "À convenir"
+  "To be agreed": "À convenir",
+  "Connectors file": "Fichier des connecteurs",
+  "Stored settings · not listed in a connectors file": "Réglages enregistrés · absent du fichier des connecteurs",
+  "Where it is configured": "Où il est réglé",
+  "Variable set": "Variable renseignée",
+  "Variable not set": "Variable non renseignée",
+  "The connectors file has errors and is not applied:": "Le fichier des connecteurs comporte des erreurs et n’est pas appliqué :",
+  "Vigie's API (ECOs, NCRs, site HSE)": "API de Vigie (ECO, NC, HSE chantier)",
+  "Vigie web app the links open": "Application Vigie ouverte par les liens",
+  "Cursus's API (site clearances, Go / No Go)": "API de Cursus (habilitations chantier, Go / No Go)",
+  "Key Keystone presents to Cursus": "Clé présentée par Keystone à Cursus",
+  "Cursus web app the links open": "Application Cursus ouverte par les liens",
+  "Codex web app the links open": "Application Codex ouverte par les liens",
+  "Simulated over the local mirror": "Simulé sur le miroir local",
+  "Demo key": "Clé de démonstration",
+  "Local development address": "Adresse de développement locale"
 }
