@@ -1,5 +1,5 @@
 // Shared view helpers of the portfolio screens. Server-compatible.
-import { Briefcase, ClockCountdown, Coins, Gauge, Lightning, Receipt, Timer, TrendUp, UsersThree, Warning } from '@phosphor-icons/react/dist/ssr';
+import { Briefcase, ClockCountdown, Coins, Gauge, Lightning, Receipt, Stamp, Timer, TrendUp, UsersThree, Warning } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
 import { Tag, type TagTone } from '@/components/ds/Tag';
 import { KpiTile } from '@/components/app/Kpi';
@@ -20,7 +20,9 @@ export const TINT: Record<Tint, string> = {
 };
 
 export const KPI_ICON: Record<KpiIcon, Icon> = { briefcase: Briefcase, receipt: Receipt, 'trend-up': TrendUp, gauge: Gauge, timer: Timer, warning: Warning };
-export const ALERT_ICON: Record<AlertIcon, Icon> = { lightning: Lightning, coins: Coins, 'users-three': UsersThree, 'clock-countdown': ClockCountdown };
+export const ALERT_ICON: Record<AlertIcon, Icon> = {
+  lightning: Lightning, coins: Coins, 'users-three': UsersThree, 'clock-countdown': ClockCountdown, receipt: Receipt, stamp: Stamp, warning: Warning,
+};
 
 const HEALTH_TAG_TONE: Record<Health, TagTone> = { off_track: 'accent', at_risk: 'outline', on_track: 'neutral' };
 

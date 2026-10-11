@@ -7,6 +7,8 @@
 //  - R-068 / A-4: the change list, "Pending" and the work packages' changes read the single register (CR-007 "Yard drainage
 //    re-routing", CR-008 "Second steel crew — schedule recovery" −12 days in review; 1.3 +€120k, 1.5 +€65k, 1.7 +€15k);
 //  - R-070 / A-8: contingency drawn = the register's validated draw-downs (139 % · +€58k over → 32 %), forecast €208k apart.
+// Delivery 7 (lot contract-portfolio): NEW-D3-3 (R-079) milestones priced on the base amount plus Amendment 1's own M6, and C-6
+// (R-076) receipts at the payment rule's dates — combined with R-073 in Cash & recovery (see that test).
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 vi.mock('next/navigation', () => ({ usePathname: () => '/projects/HLT-026/budget', useRouter: () => ({ push() {}, replace() {}, refresh() {} }), useSearchParams: () => new URLSearchParams() }));
 import { createElement as h, type ReactElement } from 'react';
@@ -56,7 +58,10 @@ describe('Budget & cost', () => {
     expect(hlt.rex).toMatchObject({ mt: 'EMP', dep: 30, deliv: 60, acc: 10 });
     expect(hlt.rex?.refs.map((r) => r.id)).toEqual(['HAV001', 'ANT002']);
     expect(hlt.contract).toMatchObject({ ref: 'CTR-HLT-001', amount: 5400, terms: 'Net 45 days', openCommit: 3946.5 });
-    expect(hlt.contract?.milestones.map((m) => m.status)).toEqual(['paid', 'paid', 'invoiced', 'planned', 'planned']);
+    // NEW-D3-3 (R-079): Amendment 1's own milestone M6 (signed, billable) follows the base contract's five.
+    expect(hlt.contract?.milestones.map((m) => [m.id, m.status, m.amount])).toEqual([
+      ['M1', 'paid', 540], ['M2', 'paid', 1080], ['M3', 'invoiced', 1350], ['M4', 'planned', 1080], ['M5', 'planned', 1350], ['M6', 'planned', 120],
+    ]);
     expect(await getBudgetData('SCP-033')).toBeNull();
     expect(await getBudgetContract('NDC-031')).toBeNull();
     expect((await getRexPattern('ERP-202'))?.mt).toBe('R&D');
@@ -173,18 +178,27 @@ describe('Budget & cost', () => {
   it('Cash & recovery (EN): KPIs, chart and monthly schedule', () => {
     const out = render(hlt, 'cash', 'en');
     const tx = text(out);
+    // Both delivery-7 lots move these figures; the expected values are their combination.
+    //  - R-073 (cost-control; C-2a, A-12): committed = actual cost by month from the activities' actual spans + the open purchase
+    //    orders (€3.95M at their line prices; the prototype's literal was €713k) — committed to date €4.07M → €7.31M, Apr €385k →
+    //    €97k, Sep €1.12M → €4.54M;
+    //  - NEW-D3-3 (R-079, contract-portfolio): milestones at base-amount prices plus Amendment 1's M6 (prototype €1.66M received,
+    //    30 %, next €1.38M, M1 €552k); C-6 (R-076): each receipt in the month of its payment date (invoice due date, else
+    //    contractual date + 45 days) — M4 and M6 in Jan ’27, M5 in Feb ’27 (the prototype rounded M5 to Mar ’27).
+    // Combined: received €1.62M (29 %) against €7.31M committed → recovery and lowest point −€5.69M in Sep (cost-control alone:
+    // −€5.65M, coverage 23 %; contract-portfolio alone: −€2.45M, coverage 40 %, low −€2.54M in Oct).
     for (const s of [
-      'Client payments received €1.66M 2 milestones paid · 30 % of contract',
-      // R-073: orders placed = the open purchase orders (€3.95M at their line prices; was the literal €713k), AC by month from the
-      // activities' actual spans — the recovery gap widens accordingly.
+      'Client payments received €1.62M 2 milestones paid · 29 % of contract',
       'Committed to date €7.31M €3.36M actual cost · €3.95M orders placed',
-      'Recovery −€5.65M we are financing the project',
-      'Coverage 23 % received ÷ committed',
-      'Next receipt €1.38M M3 · Nov · Net 45 days',
-      'Lowest point −€5.65M Sep · already passed',
-      'Apr €552k M1 €97k +€193k',
-      'Sep — €4.54M incl. €3.95M orders placed −€5.65M',
-      'Mar ’27 €1.38M M5 €0k −€1.79M',
+      'Recovery −€5.69M we are financing the project',
+      'Coverage 22 % received ÷ committed',
+      'Next receipt €1.35M M3 · Nov · Net 45 days',
+      'Lowest point −€5.69M Sep · already passed',
+      'Apr €540k M1 €97k +€181k',
+      'Sep — €4.54M incl. €3.95M orders placed −€5.69M',
+      'Jan ’27 €1.20M M4 · M6 €0k −€3.14M',
+      'Feb ’27 €1.35M M5 €0k −€1.79M',
+      'Mar ’27 — €0k −€1.79M',
     ])
       expect(tx).toContain(s);
     expect(out).toContain('d="M467.2 32.2 L513.3 32.2 L559.5 32.2');

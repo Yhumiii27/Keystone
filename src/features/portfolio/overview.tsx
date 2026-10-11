@@ -4,6 +4,7 @@ import { ButtonLink } from '@/components/ds/Button';
 import { CellStack, Table, Td, Th } from '@/components/ds/Table';
 import { IconTile } from '@/components/app/Badges';
 import { Callout } from '@/components/app/Callout';
+import { EmptyState } from '@/components/app/EmptyState';
 import { KpiGrid } from '@/components/app/Kpi';
 import { Legend, LegendItem } from '@/components/app/Legend';
 import { ProgressBar, SpendVsEarned } from '@/components/app/Progress';
@@ -103,10 +104,14 @@ function ActiveProjectsCard({ data, t, lang }: { data: PortfolioOverview; t: T; 
   );
 }
 
-/** "Needs attention" (line 3809): static alerts, zone-filtered, each with a link to the screen that resolves it. */
+/**
+ * "Needs attention" (line 3809): alerts computed by rules (R-130, NEW-D1-1 — were the prototype's static texts), zone-filtered,
+ * each with a link to the screen that resolves it. Their title and detail come in the render language.
+ */
 function NeedsAttentionCard({ data, t }: { data: PortfolioOverview; t: T }) {
   return (
     <SectionCard title={t('Needs attention')} gap={10}>
+      {!data.alerts.length && <EmptyState pad={6}>{t('Nothing needs attention')}</EmptyState>}
       <CardGrid min={260} gap="0 24px" align="stretch">
         {data.alerts.map((a) => (
           <div key={a.key} className={s.alert}>

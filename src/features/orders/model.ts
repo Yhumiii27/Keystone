@@ -9,7 +9,8 @@ import {
 } from '@/domain/orders';
 import { PRICES_HIDDEN, PRICE_MASK } from '@/domain/rights';
 import type { Lang, T } from '@/i18n/translate';
-import { money, moneyEur } from '@/lib/format';
+import { money } from '@/lib/format';
+import { BASE_CURRENCY, moneyIn, moneyUnitsIn } from '@/domain/currency';
 import { PART_STATUS_TAG, PO_STATUS_TAG, fmtDOfIso, poStatus, type PoStatus } from '@/server/db/codes';
 import type { OrdersScreenData, PoDocRef } from '@/server/dal/orders';
 import type { PurchaseOrderRow } from '@/server/dal/purchasing';
@@ -107,6 +108,8 @@ export interface OrderDrawerView {
   /** "Push to X3" offered (order drafted in Keystone, approved, not pushed yet). */
   canPush: boolean;
   closeHref: string;
+  /** C-9 (R-075): the order's currency; a Draft may switch between EUR and the project currency (`options`, ≥ 2). */
+  currency: { value: string; options: string[]; canSet: boolean };
 }
 
 export interface OrdersView {
@@ -149,7 +152,7 @@ function rowView(o: PurchaseOrderRow, code: string, filter: PoStatus | null, sel
     supplier: dataT(o.supplier, lang),
     lineSummary: lineSummary(o.lines.map((l) => l.ref)),
     lineCount: lineCountText(o.lines.length, poUnits(o), hasPartStatusIssue(o), lang),
-    value: prices ? money(poValueEur(o) / 1000, lang) : PRICE_MASK,
+    value: prices ? moneyIn(poValueEur(o) / 1000, o.currency, lang) : PRICE_MASK,
     status: t(poStatus.label(o.status)),
     statusClass: `tag ${PO_STATUS_TAG[o.status]}`,
     ordered: o.status === 'draft' || !o.orderedOn ? '—' : dateText(o.orderedOn, t),
@@ -171,7 +174,8 @@ function drawerView(o: PurchaseOrderRow, input: OrdersViewInput, t: T, lang: Lan
   const prices = input.prices !== false;
   const late = isLatePo(o);
   const meta: MetaRowView[] = [
-    { k: t('Order value'), v: prices ? money(poValueEur(o) / 1000, lang) : PRICE_MASK, color: OK },
+    // C-9: in the order's currency, with its euro equivalent at the project's budget rate.
+    { k: t('Order value'), v: prices ? moneyIn(poValueEur(o) / 1000, o.currency, lang) + (o.currency === BASE_CURRENCY ? '' : ` · ≈ ${money((poValueEur(o) * o.eurRate) / 1000, lang)}`) : PRICE_MASK, color: OK },
     { k: t('Ordered on'), v: o.status === 'draft' || !o.orderedOn ? t('Not yet') : dateText(o.orderedOn, t), color: OK },
     { k: t('Expected delivery'), v: o.expectedOn ? dateText(o.expectedOn, t) : t('To confirm'), color: late ? LO : OK },
     { k: t('Needed by'), v: o.neededFor ? t(needText(o)) : '—', color: OK },
@@ -197,8 +201,8 @@ function drawerView(o: PurchaseOrderRow, input: OrdersViewInput, t: T, lang: Lan
       ref: l.ref,
       name: dataT(l.name, lang),
       qty: qtyText(l.orderedQty, lang),
-      price: prices ? moneyEur(l.unitPriceEur, lang) : PRICE_MASK,
-      total: prices ? moneyEur(l.unitPriceEur * l.orderedQty, lang) : PRICE_MASK,
+      price: prices ? moneyUnitsIn(l.unitPriceEur, o.currency, lang) : PRICE_MASK,
+      total: prices ? moneyUnitsIn(l.unitPriceEur * l.orderedQty, o.currency, lang) : PRICE_MASK,
       status: t(l.partStatusLabel),
       statusClass: `tag ${PART_STATUS_TAG[l.partStatus]}`,
       href: bomPartHref(code, l.ref),
@@ -207,7 +211,14 @@ function drawerView(o: PurchaseOrderRow, input: OrdersViewInput, t: T, lang: Lan
     activityHref: planActivityHref(code, o.neededFor?.code ?? null),
     canPush: canPushPoToX3(o),
     closeHref: ordersHref(code, { status: filter }),
+    currency: currencyChoice(o),
   };
+}
+
+/** EUR first, then the project currency; an order in a currency no longer offered keeps it listed. */
+function currencyChoice(o: PurchaseOrderRow): OrderDrawerView['currency'] {
+  const options = [...new Set([...o.currencyOptions, o.currency])];
+  return { value: o.currency, options, canSet: o.status === 'draft' && options.length > 1 };
 }
 
 /** The whole screen. */

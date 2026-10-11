@@ -7,7 +7,7 @@ import { and, eq } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
-import { changeRequestPostings, changeRequestSteps, changeRequests, projects, risks } from '@/server/db/schema';
+import { changeRequestPostings, changeRequestSteps, changeRequests, contracts, projects, purchaseOrders, risks } from '@/server/db/schema';
 import { backfillCostControl } from '@/server/db/seed/cost-control';
 import { getApprovalInbox } from '@/server/approvals';
 import { PERSONA_BY_ROLE } from '@/config/personas';
@@ -18,7 +18,7 @@ import { getClientPortal } from './client';
 import { ContingencyError, decideContingencyDraw, drawLinkOptions, getContingency, listDrawsAwaitingValidation, submitContingencyDraw } from './contingency';
 import { getContract } from './contract';
 import { getCostControl } from './cost';
-import { getProjectEvm, listProjectEvms } from './evm';
+import { getOpenCommitment, getProjectEvm, listProjectEvms } from './evm';
 import { listAudit } from './notifications';
 import { getProject, listProjects } from './projects';
 import { getRiskRegister, updateRisk } from './risks';
@@ -76,6 +76,21 @@ describe('R-073 — earned value from Keystone data at the data date (25 Sep 202
     // The written narrative stays; a generated note quotes the computed CPI (A-12).
     expect(c.note).toBe('Overrun is widening ~$40k a month, led by steel labor.');
     expect((await getCostControl('NDC-031'))!.note).toBe('Cost performance is healthy (CPI 1.10); the forecast at completion sits within budget.');
+  });
+
+  it('orders placed in the project currency count in euros at the budget rate (C-9, R-075)', async () => {
+    const db = await getDb();
+    const [hlt] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, 'HLT-026'));
+    await db.update(projects).set({ currency: 'USD', budgetRate: 0.5 }).where(eq(projects.id, hlt.id));
+    await db.update(purchaseOrders).set({ currency: 'USD' }).where(eq(purchaseOrders.projectId, hlt.id));
+    try {
+      // The same open lines, priced in dollars: 3 946.5 k$ × 0.5 € per USD.
+      expect(await getOpenCommitment('HLT-026')).toBeCloseTo(1973.25, 0);
+    } finally {
+      await db.update(purchaseOrders).set({ currency: 'EUR' }).where(eq(purchaseOrders.projectId, hlt.id));
+      await db.update(projects).set({ currency: null, budgetRate: null }).where(eq(projects.id, hlt.id));
+    }
+    expect(await getOpenCommitment('HLT-026')).toBe(3946.5);
   });
 });
 
@@ -154,6 +169,24 @@ describe('R-068 — the Budget reads the single change register (A-4)', () => {
     // A request on the project root spreads over the work packages pro rata of their original budget.
     expect(q.allocations.reduce((t, a) => t + a.amountKeur, 0)).toBeCloseTo(30, 10);
     expect(q.allocations.map((a) => a.code)).toEqual(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6']);
+  });
+
+  it('the prepared amendment is in the contract currency (C-9, R-075): the request\'s k€ at the project\'s budget rate', async () => {
+    const db = await getDb();
+    const [hlt] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, 'HLT-026'));
+    await db.update(projects).set({ currency: 'USD', budgetRate: 0.92 }).where(eq(projects.id, hlt.id));
+    await db.update(contracts).set({ currency: 'USD' }).where(eq(contracts.projectId, hlt.id));
+    try {
+      const n = await createChangeRequest('HLT-026', { title: 'Extra fenders', types: ['scope', 'budget'], amountKeur: 46, scheduleDays: 0, wbsCodes: ['1.7'] }, 'Romain Aubert');
+      for (const [step, who] of [['pm', 'Romain Aubert'], ['director', 'Marie Lefebvre'], ['client', 'Nadia Bensaïd'], ['ccb', 'Marie Lefebvre']] as const) await decideChangeStep('HLT-026', n, step, 'ok', who);
+      const a = (await getContract('HLT-026'))!.amendments.find((x) => x.changeRequestRef === n)!;
+      // 46 k€ ÷ 0.92 € per USD = 50 k$ (the BAC, in euros, moves by 46).
+      expect([a.amountKeur, a.status]).toEqual([50, 'draft']);
+      expect((await listAudit({ limit: 6 })).find((r) => r.area === 'Contract')!.change).toBe(`amendment prepared from ${n} · ${a.label} · 50 k$ · Draft`);
+    } finally {
+      await db.update(contracts).set({ currency: 'EUR' }).where(eq(contracts.projectId, hlt.id));
+      await db.update(projects).set({ currency: null, budgetRate: null }).where(eq(projects.id, hlt.id));
+    }
   });
 
   it('a rejected request posts nothing', async () => {

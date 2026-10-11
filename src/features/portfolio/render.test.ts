@@ -22,19 +22,24 @@ describe('portfolio screens render', () => {
     const data = await getPortfolioOverview(null, 'fr');
     const html = renderToStaticMarkup(h(OverviewBody, { data, zoneSelected: false, t: makeT('fr'), lang: 'fr' }));
     const txt = text(html);
-    // Delivery 7 (R-073, C-2a): actual cost, EAC and health computed from the activities and BL1 (56 % → 50 % spent, −270 → −17 k€
-    // vs budget; HLT-026 at risk → off track, EAC 5,25 → 5,37 M€, VAC −450 → −566 k€).
+    // Delivery 7: A-3 (R-129) the projects in execution (prototype 13,23 M€ · 56 % · −270 k€) with R-073's computed actual
+    // cost, progress and SPI (A-3 alone: 51 % · −338 k€; HLT-026 À risque, EAC 5,25 M€, −450 k€ → Hors trajectoire, 5,37 M€,
+    // −566 k€); R-130 the alerts computed by rules on those figures (the prototype's fixed "Main-d’œuvre prévue +160 k€"):
+    // HLT-026 off track, RCF-019 cost overrun (A-3 alone: RCF-019 off track, HLT-026 cost overrun 5,25 M€ · CPI 0,91).
     for (const s of [
-      'Budget total', '13,23 M€', '6 projets actifs', '50 % du budget dépensé', '−17 k€ vs budget', 'Perf. coût (CPI)', '3 sur 6', '1 hors trajectoire',
+      'Budget total', '13,63 M€', '6 projets actifs', '49 % du budget dépensé', '−245 k€ vs budget', 'Perf. coût (CPI)', '3 sur 6', '1 hors trajectoire',
       'Projets actifs', '6 projets · exercice 2026', 'Dépensé vs acquis', 'Écart',
       '#026 · Extension du terminal Harbor Line', 'R. Aubert · échéance déc. 2026', 'Hors trajectoire', '5,37 M€', '−566 k€',
-      'Budget dépensé', 'Travail acquis', 'Points d’attention', 'Main-d’œuvre prévue +160 k€', 'Ouvrir le planning', 'Rééquilibrer',
+      'Budget dépensé', 'Travail acquis', 'Points d’attention', 'Extension du terminal Harbor Line — hors trajectoire',
+      'Prévision 1,40 M€ pour un budget de 1,35 M€ (+46 k€) · CPI 0,97.', '3 personnes au-delà de 110 %',
+      'Ouvrir le planning', 'Ouvrir le budget', 'Rééquilibrer', 'Ouvrir mes approbations',
     ])
       expect(txt).toContain(s);
     expect(html).toContain('href="/projects/HLT-026/schedule"');
-    expect(html).toContain('href="/projects/HLT-026/budget"');
+    expect(html).toContain('href="/projects/RCF-019/budget"');
     expect(html).toContain('href="/projects/RCF-019/schedule"');
     expect(html).toContain('href="/resources"');
+    expect(html).toContain('href="/my/approvals"');
     expect(txt).not.toContain('Aucun projet dans cette zone');
   });
 

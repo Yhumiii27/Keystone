@@ -89,13 +89,14 @@ const D2_COUNTS: Record<string, number> = {
 /**
  * Seed row counts of the delivery-3 tables: 42 DOCS with revisions A…current (Σ = 68), one approval row per circuit
  * step (Σ = 96), downloads 2 × 30 released, acknowledgements of the 7 shared documents not released on 26/28/29 Sep;
- * HLT-026 contract (2 amendments, 2 bonds, 5 milestones, 3 invoices) + the BILLING rows of NDC, RCF, WSA, MSR (15);
+ * HLT-026 contract (2 amendments, 2 bonds, 5 milestones + Amendment 1's own M6 — delivery 7, NEW-D3-3 / R-079 —, 3 invoices) +
+ * the BILLING rows of NDC, RCF, WSA, MSR (15);
  * MEETINGS 6 (25 invitees, 14 agenda points, 18 lines, 3 transcripts with 13 proposals); SCORES 10 × 5 axes.
  */
 const D3_COUNTS: Record<string, number> = {
   document_types: 28, document_type_circuit_steps: 65, document_approver_assignments: 10, documents: 42, document_revisions: 68, document_approvals: 96,
   document_links: 18, document_acknowledgements: 7, document_downloads: 60, document_deposits: 0, document_index_syncs: 1,
-  contracts: 1, contract_amendments: 2, contract_bonds: 2, billing_plans: 6, payment_milestones: 20, customer_invoices: 3, portfolio_cash_forecasts: 6,
+  contracts: 1, contract_amendments: 2, contract_bonds: 2, billing_plans: 6, payment_milestones: 21, customer_invoices: 3, portfolio_cash_forecasts: 6,
   meetings: 6, meeting_participants: 25, meeting_agenda_points: 14, meeting_lines: 18, meeting_transcripts: 3, meeting_transcript_proposals: 13,
   client_questions: 5, stakeholders: 8, raci_matrices: 1, raci_columns: 6, raci_rows: 7, raci_cells: 35, project_interfaces: 7,
   score_axes: 5, portfolio_scores: 50, score_weights: 0, capacity_demand_rates: 5,
@@ -396,8 +397,9 @@ async function delivery3Reads() {
     PROTO.DOC_TYPES.map((t: { code: string; label: string; circuit: string; retention: string; iso: string; client: boolean }) => [t.code, t.label, t.circuit, t.retention, t.iso, t.client]))
     && types.find((t) => t.code === 'LST')?.inCodex === 4);
   const ct = await getContract('HLT-026');
-  check('contract HLT-026: €5.52M (5 400 + signed 120), invoiced 3 036, paid 1 656, retention 83, next INV-2026-004',
-    ct?.valueKeur === 5520 && ct.invoicedKeur === 3036 && ct.paidKeur === 1656 && ct.retentionKeur === 83 && ct.nextInvoiceNumber === 'INV-2026-004', ct && [ct.valueKeur, ct.invoicedKeur, ct.paidKeur]);
+  // Delivery 7 (NEW-D3-3, R-079): the base milestones are priced on the base amount (was invoiced 3 036, paid 1 656, retention 83).
+  check('contract HLT-026: €5.52M (5 400 + signed 120), invoiced 2 970, paid 1 620, retention 81, next INV-2026-004',
+    ct?.valueKeur === 5520 && ct.invoicedKeur === 2970 && ct.paidKeur === 1620 && ct.retentionKeur === 81 && ct.nextInvoiceNumber === 'INV-2026-004', ct && [ct.valueKeur, ct.invoicedKeur, ct.paidKeur, ct.retentionKeur]);
   check('invoices INV-2026-001…003, M3 due 10 Nov (calendar days)', same(ct?.invoices.map((i) => [i.number, i.milestoneNumber, i.dueOn, i.statusLabel]),
     [['INV-2026-001', 'M1', '2026-04-26', 'Paid'], ['INV-2026-002', 'M2', '2026-08-29', 'Paid'], ['INV-2026-003', 'M3', '2026-11-10', 'Awaiting payment']]));
   check('no late billing milestone (badge), no contract on NDC-031', same(await lateBillingMilestonesByProject(), {}) && (await getContract('NDC-031')) === null);
@@ -408,16 +410,19 @@ async function delivery3Reads() {
   const cash = await getCashFlow(null);
   const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
   // A-12 (chapter 4): the forecast is computed from the billing plans and cost forecasts (prototype plan: net +365, low −490).
-  // Delivery 7 (R-073): the cost to complete starts from the actual cost computed from the activities (net +2 836 → +2 709, low −521 → −570).
-  check('cash flow: 5 rows · contract 10 090 · invoiced 5 258 · outstanding 1 940 · net +2 709 · low −570',
+  // Delivery 7: R-073 the cost to complete starts from the EAC and actual cost computed from the activities, spread along the
+  // computed PV curve (C-10a, R-133); receipts at the payment rule's dates (C-6, R-076); HLT-026 milestones at base-amount prices
+  // (NEW-D3-3) — net +2 836 → +2 746, low −521 → −1 412 (R-073 alone: +2 709 / −570; the contract-portfolio lot alone: +2 870 / −1 085).
+  check('cash flow: 5 rows · contract 10 090 · invoiced 5 192 · outstanding 1 910 · net +2 746 · low −1 412',
     same([cash.rows.map((r) => r.project.code), sum(cash.rows.map((r) => r.plan.contractValueKeur)), sum(cash.rows.map((r) => r.plan.invoicedKeur)),
       sum(cash.rows.map((r) => sum(r.plan.milestones.filter((m) => m.status === 'invoiced').map((m) => m.amountKeur)))),
       sum(cash.forecast.map((m) => m.cashInKeur - m.cashOutKeur)), Math.min(...cash.forecast.map((_, i) => sum(cash.forecast.slice(0, i + 1).map((m) => m.cashInKeur - m.cashOutKeur))))],
-    [['HLT-026', 'NDC-031', 'RCF-019', 'ERP-202', 'MSR-012'], 10090, 5258, 1940, 2709, -570]));
+    [['HLT-026', 'NDC-031', 'RCF-019', 'ERP-202', 'MSR-012'], 10090, 5192, 1910, 2746, -1412]));
   const pf = await getPrioritisation('director', null);
-  check('prioritisation: 10 ranked (SCORES remapped), WSA-044 first (81), HLT-026 72 · margin 13 % (contract)',
+  // Delivery 7 (C-10b, R-132): margin at completion (contract − EAC) / contract, with R-073's EAC 5 366 k€ (was 13 %: contract − budget).
+  check('prioritisation: 10 ranked (SCORES remapped), WSA-044 first (81), HLT-026 72 · margin at completion 3 %',
     pf.ranking.length === 10 && pf.ranking[0].project.code === 'WSA-044' && pf.ranking[0].score === 81
-      && same(pf.ranking.find((r) => r.project.code === 'HLT-026') && [pf.ranking.find((r) => r.project.code === 'HLT-026')!.score, pf.ranking.find((r) => r.project.code === 'HLT-026')!.marginPct], [72, 13]));
+      && same(pf.ranking.find((r) => r.project.code === 'HLT-026') && [pf.ranking.find((r) => r.project.code === 'HLT-026')!.score, pf.ranking.find((r) => r.project.code === 'HLT-026')!.marginPct], [72, 3]));
   // A-12: capacity from the pool's allocations, demand per €1M from the active portfolio (prototype constants: 1 560 h).
   check('capacity what-if WSA-044: gap 151 h', (await getCapacityWhatIf('WSA-044'))?.gapH === 151);
   const ms = await listMeetings('HLT-026');

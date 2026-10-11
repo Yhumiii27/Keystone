@@ -1,5 +1,6 @@
 'use client';
-// "Contract sheet" form (docs/spec/04 §3.4, template 820–829, `CTR_FIELDS` 4873): 12 fields in a
+// "Contract sheet" form (docs/spec/04 §3.4, template 820–829, `CTR_FIELDS` 4873; Delivery 7: currency, payment rule and
+// days in place of the free "Payment terms", C-9 / C-6): 14 fields in a
 // repeat(auto-fit, minmax(min(100%, 230px), 1fr)) grid. The prototype wrote every keystroke into the session state;
 // here a field is saved when it loses focus, on Enter (inputs) or on change (contract type), only when its value
 // differs from the one shown. Escape restores it. Disabled for viewers who may not edit (read-only project and —
@@ -67,7 +68,7 @@ function SheetField({ code, field: f, canEdit }: { code: string; field: SheetFie
   };
   const common = {
     id,
-    disabled: !canEdit,
+    disabled: !canEdit || !!f.locked,
     'aria-busy': pending || undefined,
   };
 
@@ -113,7 +114,7 @@ function SheetField({ code, field: f, canEdit }: { code: string; field: SheetFie
       );
   }
   return (
-    <Field label={f.label} htmlFor={id} className={f.type === 'textarea' ? s.full : undefined}>
+    <Field label={f.label} htmlFor={id} hint={f.hint} className={f.type === 'textarea' ? s.full : undefined}>
       {control}
     </Field>
   );

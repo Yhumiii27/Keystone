@@ -2,11 +2,31 @@
 // Ports of the prototype's `projects`/`portfolioKpis`/`alerts` (lines 3790–3813), `pvExtra` (3924) and
 // `myProjRole`/`myProjects`/`myProjKpis` (5063–5070). Pure: strings are the prototype's English source
 // strings (render them through t()); money is formatted for `lang` before translation, as the prototype does.
-import type { RoleKey, ScreenId } from '@/config/screens';
+import type { RoleKey } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
 import { fmtD, mIdx, money, monthDate } from '@/lib/format';
+import { STAGES, type StageCode } from '@/server/db/codes';
+import { DEFAULT_DATA_DATE } from './ch4-defaults';
 import { DEFAULT_HEALTH_THRESHOLDS, HEALTH_LABEL, clampHealthCpi, healthOf, type Health, type HealthThresholds } from './health';
 import type { ProjectTeamRole } from './rights';
+
+// ── Population (A-3) ───────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A-3 (owner answer "Projets en exécution (Études → Mise en service)"): the Portfolio overview, the director's Home and My
+ * projects count the projects whose lifecycle stage belongs to the "execution" group, read live from the register — no
+ * longer the projects that have seeded control data. The pipeline (Initiative, APS, APD) and the warranty appear elsewhere
+ * (Portfolio planning, after-sales). Cash flow and Prioritisation use the same set.
+ */
+export const EXECUTION_STAGES: ReadonlySet<StageCode> = new Set(STAGES.filter((s) => s.group === 'execution').map((s) => s.code));
+/** The project's stage is in the execution group (Études → Mise en service). */
+export const inExecution = (p: { stage: StageCode }) => EXECUTION_STAGES.has(p.stage);
+
+/**
+ * "FY2026" — the fiscal year shown in the Overview card hint and the portfolio breadcrumbs, from the portfolio data date
+ * (R-129; it was a fixed "FY2026"). The fiscal year is the calendar year of the data date until the owner says otherwise.
+ */
+export const fiscalYearLabel = (dataDate: string = DEFAULT_DATA_DATE) => `FY${dataDate.slice(0, 4)}`;
 
 /** EVM inputs of a project record (ProjectRow subset). Amounts in k€. */
 export interface EvmInput {
@@ -132,51 +152,12 @@ export function portfolioKpis(t: PortfolioTotals, lang: Lang, th: HealthThreshol
   ];
 }
 
-/** "6 projects · FY2026" — the prototype's static card hint, here counting the rows shown (zone filter). */
-export const activeProjectsHint = (n: number) => (n === 1 ? '1 project · FY2026' : `${n} projects · FY2026`);
+/** "6 projects · FY2026" — the prototype's static card hint, here counting the rows shown (zone filter), fiscal year of the data date. */
+export const activeProjectsHint = (n: number, dataDate: string = DEFAULT_DATA_DATE) =>
+  `${n === 1 ? '1 project' : `${n} projects`} · ${fiscalYearLabel(dataDate)}`;
 
-export type AlertIcon = 'lightning' | 'coins' | 'users-three' | 'clock-countdown';
-
-/** "Needs attention" item (line 3809). `target` is the screen opened by the action button. */
-export interface PortfolioAlert {
-  key: string;
-  icon: AlertIcon;
-  /** Project the alert is about; alerts with a code are hidden when that project is outside the selected zone. */
-  code: string | null;
-  title: string;
-  detail: string;
-  action: string;
-  target: { screen: ScreenId; code?: string };
-}
-
-/**
- * The prototype's static alert list (spec §4.4). TODO: generate from rules (critical-path slip, cost overrun,
- * over-allocation, SPI threshold) once those modules are modelled.
- */
-export function portfolioAlerts(lang: Lang): PortfolioAlert[] {
-  return [
-    {
-      key: 'hlt-slip', icon: 'lightning', code: 'HLT-026', title: 'Harbor Line — critical path slip',
-      detail: 'Steel structure forecast 39 days late; handover moves to 14 Jan 2027.', action: 'Open schedule',
-      target: { screen: 'schedule', code: 'HLT-026' },
-    },
-    {
-      key: 'hlt-labor', icon: 'coins', code: 'HLT-026', title: 'Harbor Line — labor overrun',
-      detail: `Labor forecast ${money(160, lang, { signed: true })} over its line budget; contingency 139% drawn.`, action: 'Open budget',
-      target: { screen: 'budget', code: 'HLT-026' },
-    },
-    {
-      key: 'people', icon: 'users-three', code: null, title: '3 people over 115% in October',
-      detail: 'Engineering demand exceeds capacity by 150 h across weeks 41–43.', action: 'Rebalance',
-      target: { screen: 'resources' },
-    },
-    {
-      key: 'rcf-spi', icon: 'clock-countdown', code: 'RCF-019', title: 'Clinique Pasteur Lyon — SPI 0.84',
-      detail: 'Electrical subcontractor three weeks behind; recovery plan due Friday.', action: 'Open schedule',
-      target: { screen: 'schedule', code: 'RCF-019' },
-    },
-  ];
-}
+// "Needs attention" items are computed by rules since R-130 (NEW-D1-1): src/domain/portfolio-alerts.ts.
+export type { AlertIcon, PortfolioAlert } from './portfolio-alerts';
 
 // ── Per-project indicators (pvExtra, line 3924) ────────────────────────────────────────────────────
 
@@ -379,7 +360,7 @@ export interface MyProjectsModel<P> {
 }
 
 /**
- * `myProjects` + `myProjKpis` (lines 5066–5070). `pool` = projects with planning data, register order.
+ * `myProjects` + `myProjKpis` (lines 5066–5070). `pool` = projects in execution (A-3), register order.
  * `personaTitle` = EN persona title (KPI sub); `pendingDecisions` = size of the viewer's My approvals queue.
  */
 export function myProjectsModel<P extends EvmInput & { code: string; pm: string; client: string; finish: string }>(

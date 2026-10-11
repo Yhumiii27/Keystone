@@ -135,8 +135,10 @@ describe('client Home inputs from the register and the billing plan (Delivery 5)
   it('open invoice: first invoiced milestone; none when everything is paid or planned', () => {
     const m = (status: string, n: string | null, label: string) => ({ milestoneNumber: n, milestone: label, amountKeur: 100, status, invoiceNumber: n ? 'INV-1' : null, dueText: n ? '10 Nov' : null });
     expect(clientOpenInvoice([m('paid', 'M1', 'M1 Permits'), m('invoiced', 'M3', 'M3 Structure topped out')])).toEqual({
-      invoiceNumber: 'INV-1', milestoneNumber: 'M3', name: 'Structure topped out', amount: 100, due: '10 Nov',
+      invoiceNumber: 'INV-1', milestoneNumber: 'M3', name: 'Structure topped out', amount: 100, due: '10 Nov', currency: 'EUR',
     });
+    // C-9: in the contract's currency.
+    expect(clientOpenInvoice([m('invoiced', 'M3', 'M3 Structure topped out')], 'USD')?.currency).toBe('USD');
     expect(clientOpenInvoice([m('invoiced', null, 'Sep')])?.name).toBe('Sep');
     expect(clientOpenInvoice([m('paid', 'M1', 'M1 Permits'), m('planned', 'M2', 'M2 X')])).toBeNull();
   });

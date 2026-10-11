@@ -25,7 +25,10 @@ vi.mock('@/server/session', async () => {
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { getContract } from '@/server/dal/contract';
-import { addAmendmentAction, addBondAction, addPaymentMilestoneAction, issueInvoiceAction, markInvoicePaidAction, updateContractFieldAction } from './actions';
+import {
+  addAmendmentAction, addBondAction, addPaymentMilestoneAction, issueInvoiceAction, markInvoicePaidAction, releaseBondAction, sendAmendmentAction, setBudgetRateAction,
+  signAmendmentAction, updateContractFieldAction,
+} from './actions';
 import { G } from './test-fixtures';
 
 const ROLES: RoleKey[] = ['director', 'pm', 'procurement', 'client', 'depthead', 'member', 'englead', 'quality'];
@@ -52,10 +55,17 @@ describe('Contract & Billing Server Functions behind the real project context', 
       expect(await updateContractFieldAction('HLT-026', 'retention', '120')).toEqual(contract ? { error: 'Enter a percentage between 0 and 100' } : ro);
       expect(await issueInvoiceAction('HLT-026', { ms: 'M3', no: 'X', date: '30 Sep 2026' })).toEqual(billing ? { error: 'Choose a milestone still to invoice' } : bro);
       expect(await markInvoicePaidAction('HLT-026', 'M4')).toEqual(billing ? { error: 'This invoice is not awaiting payment' } : bro);
+      // R-079: the signature cycle and the guarantee release follow the contract's rights.
+      expect(await sendAmendmentAction('HLT-026', 0)).toEqual(contract ? { error: 'Only a draft amendment can be sent for signature' } : ro);
+      expect(await signAmendmentAction('HLT-026', 0, { date: '30 Sep 2026' })).toEqual(contract ? { error: 'Only an amendment sent for signature can be signed' } : ro);
+      expect(await releaseBondAction('HLT-026', 1, { date: '30 Sep 2026' })).toEqual(contract ? { error: 'This guarantee is already released' } : ro);
+      // C-9: the budget rate is the portfolio director's alone.
+      expect(await setBudgetRateAction('HLT-026', 'usd', '1')).toEqual(role === 'director' ? { error: 'Unknown currency' } : { error: 'Only the portfolio director sets the budget rate' });
     });
 
   it('nothing was written', async () => {
     const c = (await getContract('HLT-026'))!;
-    expect([c.amendments.length, c.bonds.length, c.milestones.length, c.invoices.length, c.sheet.retentionPct]).toEqual([2, 2, 5, 3, 5]);
+    expect([c.amendments.length, c.bonds.length, c.milestones.length, c.invoices.length, c.sheet.retentionPct]).toEqual([2, 2, 6, 3, 5]);
+    expect([c.amendments.map((a) => a.status), c.bonds.map((b) => b.inForce), c.fx]).toEqual([['signed', 'awaiting_signature'], [true, false], { currency: 'EUR', budgetRate: null }]);
   });
 });

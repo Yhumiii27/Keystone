@@ -6,11 +6,13 @@ import 'server-only';
 //  - the project's BAC moves by the request's amount (an atomic increment);
 //  - the split over the work packages is recorded (the Budget re-derives its "Changes" column from the register);
 //  - a contractual change (the client approved it) on a project with a contract gets a DRAFT amendment for the same amount,
-//    linked to the request — counted in the contract value once signed — unless the contract already has one for it;
+//    linked to the request — counted in the contract value once signed — unless the contract already has one for it; the
+//    amendment is in the contract's currency (C-9, R-075), the request's k€ converted at the project's budget rate;
 //  - one posting per request: the unique row of `change_request_postings` makes a re-run, a retry or a concurrent approval
 //    a no-op (idempotent); every posting is audited (Budget, Contract) and traced in the activity feed.
 import { and, asc, eq, or, sql } from 'drizzle-orm';
 import { allocateChange, amendmentOutcome, amendmentSubject, type AmendmentOutcome } from '@/domain/cost-control';
+import { currencyOf, eurRate, projectFxOf, thousandsUnit } from '@/domain/currency';
 import type { Tx } from '@/server/db/client';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
 import {
@@ -38,12 +40,16 @@ export async function postApprovedChange(tx: Tx, changeRequestId: string, actorN
   if (!cr || cr.status !== 'approved') return null;
   const [already] = await tx.select({ id: changeRequestPostings.id }).from(changeRequestPostings).where(eq(changeRequestPostings.changeRequestId, cr.id));
   if (already) return null;
-  const [proj] = await tx.select({ code: projects.code, bac: projects.budgetKeur }).from(projects).where(eq(projects.id, cr.projectId)).for('update');
+  const [proj] = await tx
+    .select({ code: projects.code, bac: projects.budgetKeur, currency: projects.currency, budgetRate: projects.budgetRate })
+    .from(projects)
+    .where(eq(projects.id, cr.projectId))
+    .for('update');
   const [wbs, packages, steps, [contract]] = await Promise.all([
     tx.select({ code: changeRequestWbs.wbsCode, amount: changeRequestWbs.amountKeur }).from(changeRequestWbs).where(eq(changeRequestWbs.changeRequestId, cr.id)).orderBy(asc(changeRequestWbs.position)),
     tx.select({ code: wpBudgets.wbsCode, original: wpBudgets.originalKeur }).from(wpBudgets).where(eq(wpBudgets.projectId, cr.projectId)).orderBy(asc(wpBudgets.position)),
     tx.select({ step: changeRequestSteps.step, decision: changeRequestSteps.decision }).from(changeRequestSteps).where(eq(changeRequestSteps.changeRequestId, cr.id)),
-    tx.select({ id: contracts.id, reference: contracts.reference }).from(contracts).where(eq(contracts.projectId, cr.projectId)),
+    tx.select({ id: contracts.id, reference: contracts.reference, currency: contracts.currency }).from(contracts).where(eq(contracts.projectId, cr.projectId)),
   ]);
   const amount = cr.amountKeur || 0;
   const allocations = allocateChange(amount, wbs, packages).map((a) => ({ code: a.code, amountKeur: a.amount }));
@@ -85,15 +91,18 @@ export async function postApprovedChange(tx: Tx, changeRequestId: string, actorN
       .from(contractAmendments)
       .where(eq(contractAmendments.contractId, contract.id));
     const subject = amendmentSubject(n + 1, cr.title);
+    // C-9: every amount of the contract is in its currency — the request's k€ at the project's budget rate (1 for EUR).
+    const currency = currencyOf(contract.currency);
+    const amendmentAmount = Math.round((amount / eurRate(currency, projectFxOf(proj))) * 100) / 100;
     const [a] = await tx
       .insert(contractAmendments)
-      .values({ contractId: contract.id, position: maxPos + 1, subject, changeRequestRef: cr.number, changeRequestId: cr.id, amountKeur: amount, status: 'draft' })
+      .values({ contractId: contract.id, position: maxPos + 1, subject, changeRequestRef: cr.number, changeRequestId: cr.id, amountKeur: amendmentAmount, status: 'draft' })
       .returning({ id: contractAmendments.id });
     await tx.update(changeRequestPostings).set({ amendmentId: a.id }).where(eq(changeRequestPostings.id, posting.id));
     amendmentLabel = `${subject} (${cr.number})`;
     await writeAudit(tx, {
       actorName: who, actorPersonId: actor?.id, objectRef: contract.reference, area: 'Contract', entityType: 'contract_amendment', entityId: a.id, projectId: cr.projectId,
-      change: `amendment prepared from ${cr.number} · ${amendmentLabel} · ${amount} k€ · Draft`,
+      change: `amendment prepared from ${cr.number} · ${amendmentLabel} · ${amendmentAmount} ${thousandsUnit(currency)} · Draft`,
     });
   }
   await recordActivity(tx, {

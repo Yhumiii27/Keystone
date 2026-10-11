@@ -7,13 +7,19 @@ import PROTO from '@/server/prototype/prototype-data.json';
 import GEN from '@/server/prototype/prototype-generated.json';
 import golden from '@/features/pfinance/pfinance.golden.json';
 import {
-  billingRollup, canSeeMargins, capacityBar, capacityOptions, cashBars, candidateHours, clientProjectsText, lowestCumulative, marginAlert, marginPct,
+  billingRollup, canSeeMargins, capacityBar, capacityOptions, cashBars, candidateHours, clientProjectsText, lowestCumulative, marginAlert,
   netCash, netLabel, parseWeight, priorityScore, rankByScore, scoreDots, validScore, validWeight, verdictOf, verdictText, weightShares, weightSum, weightsOff,
   type BillingLine, type MilestoneState,
 } from './portfolio-finance';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const P = PROTO as any;
+/**
+ * The prototype's budgeted margin (contract − budget) / contract — kept here to check the prototype's render of the other
+ * columns. The screens show the margin at completion since R-132 (C-10b: `projectMarginPct`, src/domain/kpis.ts; the DAL tests
+ * pin the new values).
+ */
+const marginPct = (contract: number | null | undefined, budget: number) => (contract ? Math.round(((contract - budget) / contract) * 100) : null);
 const G = golden as any;
 const f = (k: number, signed = false) => money(k, 'en', { signed });
 const LO = 'var(--color-accent-300)';

@@ -14,6 +14,7 @@ import {
   type Persona, type PersonLoad, type PortfolioAlert, type PurchaseOrder, type ResourceRequest, type ScheduleHeader, type Todo,
 } from '@/domain/home';
 import { noProjectHome } from '@/domain/home-empty';
+import { inExecution } from '@/domain/portfolio';
 import { workingDayOf } from '@/domain/tasks';
 import type { Lang } from '@/i18n/translate';
 import { getDb } from '@/server/db/client';
@@ -77,7 +78,7 @@ async function clientInputs(code: string) {
     dlv.map((d) => ({ ...d, acceptedOnText: d.acceptedOn ? fmtDOfIso(d.acceptedOn) : null })),
     addDaysIso(STATUS_ISO, -30),
   );
-  const invoice = clientOpenInvoice(portal.invoices.map((m) => ({ ...m, dueText: m.dueOn ? fmtDOfIso(m.dueOn) : null })));
+  const invoice = clientOpenInvoice(portal.invoices.map((m) => ({ ...m, dueText: m.dueOn ? fmtDOfIso(m.dueOn) : null })), portal.currency);
   return { deliverables, invoice };
 }
 
@@ -273,7 +274,8 @@ export async function getHomeView(q: HomeQuery): Promise<HomeView> {
         lang, persona, project: current,
         portfolioKpis: overview.kpis,
         alerts: overview.alerts.map((a): PortfolioAlert => ({ title: a.title, detail: a.detail, href: homeHref(a.target.screen, { code: a.target.code }) })),
-        changeRequests: await changeRequestsOf(all.filter((p) => p.hasData)),
+        // A-3: change requests of the projects in execution (the Overview's population).
+        changeRequests: await changeRequestsOf(all.filter(inExecution)),
         purchaseOrders: pos,
         ecos: es,
         requests: reqs,

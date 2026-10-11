@@ -6,6 +6,8 @@
 // - FR: "{money} proposés · approuvés · en planification" (left in English by the prototype) and singular forms
 //   ("1 client project", "1 interne");
 // - masked margins ("•••") are not coloured (the prototype's colour revealed margins under 15 %).
+// Delivery 7: C-10b (R-132) the margins shown are margins at completion (contract − EAC, `MARGIN_D7`); NEW-D3-3 (R-079)
+// HLT-026's base milestones are priced on the base amount (`HLT_D7`); C-10a / C-6 (R-133, R-076) the cash forecast.
 import { beforeAll, describe, expect, it } from 'vitest';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
@@ -50,6 +52,28 @@ const COST_D7: Record<Lang, Record<string, string>> = {
  * Capacity what-if: capacity and commitments from the resource pool's allocations, demand per €1M from the active
  * portfolio's value. Per candidate: [add, total, capacity] per department (ROLES order) and the gap (prototype 1 560 h…).
  */
+/**
+ * C-10b (R-132): one margin everywhere — the margin at completion, (contract − EAC) / contract, from the cost forecast.
+ * The prototype's budgeted margins: WSA-044 13 %, NDC-031 11 %, HLT-026 13 % (contract, A-5), MSR-012 14 %, RCF-019 10 %.
+ * The EAC = BAC / CPI follows R-073's computed progress and actual cost (lot cost-control; on the prototype's figures the margins
+ * at completion were WSA 16 %, NDC 15 %, HLT 5 %, MSR 16 %, RCF 2 %).
+ */
+const MARGIN_D7: Record<string, string> = { 'WSA-044': '21%', 'NDC-031': '19%', 'HLT-026': '3%', 'MSR-012': '17%', 'RCF-019': '7%' };
+/** Margins under 15 % are highlighted (the prototype's rule, unchanged). */
+const marginColorD7 = (code: string) => (parseInt(MARGIN_D7[code], 10) < 15 ? LO : OK);
+/**
+ * NEW-D3-3 (R-079): HLT-026's invoices at base-amount prices (25 % of €5.40M = €1.35M for M3…) and M4 at €1.08M — the
+ * prototype re-priced them on base + signed amendments (€3.04M invoiced, €1.66M paid, €1.38M outstanding, M4 €1.10M).
+ */
+const HLT_D7: Record<Lang, Record<string, string>> = {
+  en: { invoiced: '€2.97M', paid: '€1.62M', outstanding: '€1.35M', next: 'M4 Cranes operational · €1.08M', invW: '54%', paidW: '29%' },
+  fr: { invoiced: '2,97 M€', paid: '1,62 M€', outstanding: '1,35 M€', next: 'M4 Cranes operational · 1,08 M€', invW: '54%', paidW: '29%' },
+};
+/** NEW-D3-3: the "Invoiced to date" and "Outstanding receivables" tiles follow (zones with HLT-026). */
+const CASH_TILES_D7: Record<string, string> = {
+  '€5.26M': '€5.19M', '€1.94M': '€1.91M', '€4.37M': '€4.30M', '€1.68M': '€1.65M',
+  '5,26 M€': '5,19 M€', '1,94 M€': '1,91 M€', '4,37 M€': '4,30 M€', '1,68 M€': '1,65 M€',
+};
 const CAPACITY_A12: Record<string, { gap: number; rows: [number, number, number][] }> = {
   'WSA-044': { gap: 151, rows: [[73, 391, 320], [122, 654, 640], [72, 386, 320], [164, 880, 960], [58, 310, 320]] },
   'EWA-051': { gap: 86, rows: [[47, 365, 320], [79, 611, 640], [47, 361, 320], [106, 822, 960], [37, 289, 320]] },
@@ -60,24 +84,28 @@ const CAPACITY_A12: Record<string, { gap: number; rows: [number, number, number]
 /**
  * Cash flow: the 6 months after the data date from the billing plans (in) and the cost forecasts (out), per zone —
  * "Net cash · next 6 months", "Lowest cumulative point" (value and sub-line) and the bars [in %, out %, net].
- * Delivery 7 (R-073): the cost forecast starts from the actual cost computed from the activities — null +€2.84M / −€521k →
- * +€2.71M / −€570k, euna +€2.34M / −€617k → +€2.26M / −€659k, afr +€498k / +€97k → +€450k / +€89k.
+ * Delivery 7: C-10a (R-133) the remaining spend follows each project's planned (PV) curve instead of an even spread
+ * (chapter 4: null +€2.84M, low −€521k; euna +€2.34M, −€617k; afr +€498k, +€97k); C-6 (R-076) receipts at the payment
+ * rule's exact dates; NEW-D3-3 HLT-026 at base-amount prices plus Amendment 1's M6. R-073 (lot cost-control): the planned curve
+ * is the Budget's PV computed from the cost-loaded BL1 and the ETC = EAC − actual uses the computed progress and actual cost
+ * (contract-portfolio alone, on the prototype's PV and figures: null +€2.87M, −€1.08M; euna +€2.38M, −€1.03M; afr +€496k, −€51k;
+ * cost-control alone, even spread: null +€2.71M, −€570k).
  */
 const CASH_A12: Record<string, { net: Record<Lang, string>; low: Record<Lang, string>; lowSub: Record<Lang, string>; bars: [number, number, string][] }> = {
   null: {
-    net: { en: '+€2.71M', fr: '+2,71 M€' }, low: { en: '−€570k', fr: '−570 k€' },
+    net: { en: '+€2.75M', fr: '+2,75 M€' }, low: { en: '−€1.41M', fr: '−1,41 M€' },
     lowSub: { en: 'October — before M3 payment lands (HLT-026)', fr: 'Octobre — avant l’encaissement de M3 (HLT-026)' },
-    bars: [[29, 59, '−570k'], [100, 57, '+827k'], [44, 48, '−81k'], [70, 13, '+1092k'], [72, 13, '+1125k'], [25, 9, '+316k']],
+    bars: [[28, 100, '−1412k'], [95, 55, '+801k'], [43, 21, '+428k'], [73, 6, '+1331k'], [68, 8, '+1196k'], [25, 4, '+402k']],
   },
   euna: {
-    net: { en: '+€2.26M', fr: '+2,26 M€' }, low: { en: '−€659k', fr: '−659 k€' },
+    net: { en: '+€2.29M', fr: '+2,29 M€' }, low: { en: '−€1.30M', fr: '−1,30 M€' },
     lowSub: { en: 'October — before M3 payment lands (HLT-026)', fr: 'Octobre — avant l’encaissement de M3 (HLT-026)' },
-    bars: [[18, 57, '−659k'], [100, 55, '+755k'], [36, 45, '−153k'], [66, 5, '+1020k'], [83, 5, '+1296k'], [0, 0, '+0k']],
+    bars: [[18, 98, '−1304k'], [100, 53, '+773k'], [37, 15, '+353k'], [73, 3, '+1156k'], [82, 2, '+1317k'], [0, 0, '−1k']],
   },
   afr: {
-    net: { en: '+€450k', fr: '+450 k€' }, low: { en: '+€89k', fr: '+89 k€' },
+    net: { en: '+€453k', fr: '+453 k€' }, low: { en: '−€107k', fr: '−107 k€' },
     lowSub: { en: 'October — before the October progress payment lands (NDC-031)', fr: 'Octobre — avant l’encaissement de la situation d’octobre (NDC-031)' },
-    bars: [[17, 11, '+89k'], [16, 11, '+72k'], [16, 11, '+72k'], [16, 11, '+72k'], [0, 11, '−171k'], [32, 11, '+316k']],
+    bars: [[17, 24, '−107k'], [16, 14, '+28k'], [16, 11, '+75k'], [16, 5, '+175k'], [0, 8, '−121k'], [32, 6, '+403k']],
   },
   apac: {
     net: { en: '€0k', fr: '0 k€' }, low: { en: '€0k', fr: '0 k€' }, lowSub: { en: 'October — lowest point of the window', fr: 'Octobre — point bas de la période' },
@@ -108,14 +136,14 @@ describe('prioritisation (03 §6)', () => {
         const margin = (k: any, i: number) => (i === 3 && role === 'director' ? MARGIN_A12[String(z)] : String(k.value));
         expect(v.kpis.map((k) => [k.label, k.value, k.sub, k.color])).toEqual(g.kpis.map((k: any, i: number) => [k.label, margin(k, i), fixSub(lang, k.sub), k.color]));
         expect([v.masked, v.zoneEmpty]).toEqual([g.masked, g.zoneEmpty]);
-        // Ranking: every prototype row, same values; HLT-026 margin from the contract; plus the remapped projects.
+        // Ranking: every prototype row, same values; margins at completion (C-10b); plus the remapped projects.
         const byCode = new Map(v.rows.map((r) => [r.code, r]));
         for (const gr of g.rows) {
           const r = byCode.get(gr.code)!;
-          const margin = gr.code === 'HLT-026' && role === 'director' ? '13%' : gr.marginText;
+          const margin = role === 'director' && MARGIN_D7[gr.code] ? MARGIN_D7[gr.code] : gr.marginText;
           expect([r.name, r.status, tagClassOf(r.tone), r.score, `${r.score}%`, r.budget, r.marginText, r.axes.map((a) => [a.label, a.value, a.dots.map((on) => (on ? 'var(--color-accent-500)' : 'var(--color-neutral-800)'))])], gr.code)
             .toEqual([gr.name, gr.status, gr.tagClass, gr.score, gr.scoreW, gr.budget, margin, gr.axes.map((a: any) => [a.l, a.v, a.dots])]);
-          expect(r.marginColor, gr.code).toBe(role === 'director' ? gr.marginColor : OK);
+          expect(r.marginColor, gr.code).toBe(role === 'director' ? (MARGIN_D7[gr.code] ? marginColorD7(gr.code) : gr.marginColor) : OK);
         }
         const extra = v.rows.filter((r) => !g.rows.some((gr: any) => gr.code === r.code));
         expect(Object.fromEntries(extra.map((r) => [r.code, r.score]))).toEqual(Object.fromEntries(Object.entries(REMAPPED).filter(([c]) => d.projects.some((p) => p.code === c))));
@@ -130,8 +158,8 @@ describe('prioritisation (03 §6)', () => {
     const d = await load('director', null);
     const v = prioritisationView(d, d.weights, tOf('en'), 'en');
     expect(v.rows.map((r) => `${r.rank} ${r.code} ${r.score} ${r.marginText}`)).toEqual([
-      '1 WSA-044 81 13%', '2 NDC-031 77 11%', '3 HLT-026 72 13%', '4 EWA-051 70 Internal', '5 MSR-012 69 14%', '6 CER-047 69 Internal', '7 ERP-202 66 Internal',
-      '8 FTU-052 64 Internal', '9 RBR-048 57 Internal', '10 RCF-019 54 10%',
+      '1 WSA-044 81 21%', '2 NDC-031 77 19%', '3 HLT-026 72 3%', '4 EWA-051 70 Internal', '5 MSR-012 69 17%', '6 CER-047 69 Internal', '7 ERP-202 66 Internal',
+      '8 FTU-052 64 Internal', '9 RBR-048 57 Internal', '10 RCF-019 54 7%',
     ]);
     expect(d.candidates.map((c) => c.code)).toEqual(G.portfolio.en.director.null.wiSeg);
   });
@@ -210,12 +238,20 @@ describe('cash flow & billing (03 §7)', () => {
         // A-12: the forecast is computed (billing plan in, cost forecast out) — net cash, low point and bars per CASH_A12.
         const c = CASH_A12[String(z)];
         const cashKpi = (k: any, i: number) =>
-          i === 3 ? [k.label, c.net[lang], fixSub(lang, k.sub), k.color] : i === 4 ? [k.label, c.low[lang], c.lowSub[lang], k.color] : [k.label, k.value, fixSub(lang, k.sub), k.color];
+          i === 3 ? [k.label, c.net[lang], fixSub(lang, k.sub), k.color] : i === 4 ? [k.label, c.low[lang], c.lowSub[lang], k.color] : [k.label, CASH_TILES_D7[k.value] ?? k.value, fixSub(lang, k.sub), k.color];
         expect(v.kpis.map((k) => [k.label, k.value, k.sub, k.color])).toEqual(g.kpis.map(cashKpi));
         expect(v.rows.map((r) => ({
           code: r.code, name: r.name, model: r.model, contract: r.contract, invoiced: r.invoiced, paid: r.paid, outstanding: r.outstanding, outColor: r.outColor, cost: r.cost,
           marginText: r.marginText, marginColor: r.marginColor, next: r.next, invW: `${r.invoicedPct}%`, paidW: `${r.paidPct}%`, isInternal: r.internal,
-        }))).toEqual(g.rows.map((r: any) => ({ ...r, cost: COST_D7[lang][r.code] ?? r.cost, marginColor: role === 'director' ? r.marginColor : OK })));
+        }))).toEqual(
+          g.rows.map((r: any) => ({
+            ...r,
+            cost: COST_D7[lang][r.code] ?? r.cost,
+            ...(r.code === 'HLT-026' ? HLT_D7[lang] : {}),
+            ...(role === 'director' && MARGIN_D7[r.code] ? { marginText: MARGIN_D7[r.code] } : {}),
+            marginColor: role === 'director' ? (MARGIN_D7[r.code] ? marginColorD7(r.code) : r.marginColor) : OK,
+          })),
+        );
         expect(v.bars.map((b) => ({ label: b.label, inH: `${b.inPct}%`, outH: `${b.outPct}%`, net: b.net, netColor: b.netColor }))).toEqual(
           g.bars.map((b: any, i: number) => ({ label: b.label, inH: `${c.bars[i][0]}%`, outH: `${c.bars[i][1]}%`, net: c.bars[i][2], netColor: LO })),
         );

@@ -9,6 +9,7 @@ import { and, asc, eq, inArray } from 'drizzle-orm';
 import { cache } from 'react';
 import { projectDataDate } from '@/domain/ch4-defaults';
 import { computeEvm, monthIndexOf, openCommitmentKeur, type ComputedEvm, type EvmActivity, type EvmCostEvent, type EvmPlanRow } from '@/domain/cost-control';
+import { projectFxOf, toEur } from '@/domain/currency';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import {
@@ -110,14 +111,23 @@ export async function getProjectEvm(code: string, q?: Q): Promise<ProjectEvm | n
   return (await computeFor(q, [p.id])).get(code) ?? null;
 }
 
-/** Orders placed and not yet received of a project, k€ (R-073: Keystone purchase orders, src/domain/cost-control.ts). */
+/**
+ * Orders placed and not yet received of a project, k€ (R-073: Keystone purchase orders, src/domain/cost-control.ts). A line
+ * price is in its order's currency (C-9, R-075): converted to euros at the project's budget rate before summing.
+ */
 export async function getOpenCommitment(code: string, q?: Q): Promise<number> {
   const db = q ?? (await getDb());
   const rows = await db
-    .select({ status: purchaseOrders.status, orderedQty: poLines.orderedQty, receivedQty: poLines.receivedQty, unitPriceEur: poLines.unitPriceEur })
+    .select({
+      status: purchaseOrders.status, orderedQty: poLines.orderedQty, receivedQty: poLines.receivedQty, unitPrice: poLines.unitPriceEur,
+      currency: purchaseOrders.currency, projectCurrency: projects.currency, budgetRate: projects.budgetRate,
+    })
     .from(poLines)
     .innerJoin(purchaseOrders, eq(purchaseOrders.id, poLines.poId))
     .innerJoin(projects, eq(projects.id, purchaseOrders.projectId))
     .where(eq(projects.code, code));
-  return openCommitmentKeur(rows);
+  return openCommitmentKeur(rows.map((r) => ({
+    status: r.status, orderedQty: r.orderedQty, receivedQty: r.receivedQty,
+    unitPriceEur: toEur(r.unitPrice, r.currency, projectFxOf({ currency: r.projectCurrency, budgetRate: r.budgetRate })),
+  })));
 }

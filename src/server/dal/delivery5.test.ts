@@ -400,11 +400,13 @@ describe('client portal (03 §8)', () => {
     // Deliberate (A-5, Delivery 3 "billing source of truth"): the invoices and the contract summary follow the contract's billing
     // plan — base + signed amendments, milestone = round(value × share / 100), as the Billing screen — not the static BILLING
     // rows of the prototype (M1 Permits €540k … value €5.40M); the real invoice numbers replace "F-2026-101".
+    // Delivery 7, NEW-D3-3 (R-079): the base milestones are priced on the base amount and the signed Amendment 1 adds its own
+    // billable milestone M6 (planned); C-9 (R-075): the summary carries the contract currency.
     const contract = (await getContract('HLT-026'))!;
-    expect(c.invoices.map((i) => i.statusLabel)).toEqual(g.invoices.map((i: any) => i.status));
-    expect(c.invoices.map((i) => [i.milestoneNumber, i.amountKeur])).toEqual(contract.milestones.map((m) => [m.number, m.amountKeur]));
-    expect(c.invoices.map((i) => i.invoiceNumber)).toEqual(['INV-2026-001', 'INV-2026-002', 'INV-2026-003', null, null]);
-    expect(c.contract).toEqual({ valueKeur: contract.valueKeur, invoicedKeur: contract.invoicedKeur, paidKeur: contract.paidKeur, approvedChangesKeur: 200 });
+    expect(c.invoices.map((i) => i.statusLabel)).toEqual([...g.invoices.map((i: any) => i.status), 'Planned']);
+    expect(c.invoices.map((i) => [i.milestoneNumber, i.amountKeur])).toEqual(contract.milestones.filter((m) => m.billable).map((m) => [m.number, m.amountKeur]));
+    expect(c.invoices.map((i) => i.invoiceNumber)).toEqual(['INV-2026-001', 'INV-2026-002', 'INV-2026-003', null, null, null]);
+    expect(c.contract).toEqual({ valueKeur: contract.valueKeur, invoicedKeur: contract.invoicedKeur, paidKeur: contract.paidKeur, approvedChangesKeur: 200, currency: 'EUR' });
     expect(f(c.contract!.approvedChangesKeur, true)).toBe(g.invKpis[3][1]);
     expect(c.issues.map((i) => ({ id: i.number, title: i.title, when: `Raised ${d(i.raisedOn)}`, status: i.statusLabel, resp: i.response }))).toEqual(g.issues);
     expect(c.documents.map((x) => ({ id: x.number, title: x.title, rev: x.revision, status: x.statusLabel, ack: x.acknowledged }))).toEqual(g.docs.map((x: any) => pickKeys(x, ['id', 'title', 'rev', 'status', 'ack'])));

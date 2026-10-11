@@ -2,15 +2,16 @@ import 'server-only';
 // Portfolio prioritisation & capacity DAL (docs/spec/03 §6; 11 §3.2 PortfolioScore / ScoreWeight). Score =
 // 100 × Σ (s_i / 5) × (w_i / Σw) (logic 4499). Ranked population: zone projects with scores, excluding Clos and
 // Annulé (the prototype compared legacy English statuses and so excluded nothing, 03 A.1). SCORES' obsolete keys are
-// remapped at seed (00 §7.16). Margin comes from the billing plan, i.e. the contract when one exists (A-5): HLT-026
-// shows 13 % (contract €5.52M) where the prototype's BILLING gave 11 % (€5.40M).
+// remapped at seed (00 §7.16). Margin = margin at completion (C-10b, R-132): (contract − EAC) / contract, the contract
+// from the billing plan (the contract when one exists, A-5) consolidated in euros (C-9) — it was (contract − budget) / contract.
 import { and, asc, eq } from 'drizzle-orm';
+import { inExecution } from '@/domain/portfolio';
 import { getDb } from '@/server/db/client';
 import { scoreAxis, type ScoreAxis, type StageCode } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
 import { portfolioScores, projects, scoreAxes, scoreWeights } from '@/server/db/schema';
 import type { ZoneKey } from '@/server/session';
-import { listBillingPlans, marginPct } from './cashflow';
+import { listEurBillingPlans, marginAtCompletion } from './cashflow';
 import { capacityModel } from './kpis';
 import { listProjects, type ProjectRow } from './projects';
 import { userIdOf, type UserRef } from './users';
@@ -84,7 +85,7 @@ export interface RankedProject {
   scores: number[];
   /** Rounded score (0–100). */
   score: number;
-  /** Margin % from the billing plan; null = internal or no plan. */
+  /** Margin at completion % (C-10b); null = internal or no plan. */
   marginPct: number | null;
   pipeline: boolean;
 }
@@ -101,22 +102,21 @@ export interface Prioritisation {
 }
 
 const PIPELINE: ReadonlySet<StageCode> = new Set(['initiative', 'aps', 'apd']);
-const EXECUTION: ReadonlySet<StageCode> = new Set(['etudes', 'approvisionnements', 'fabrication_assemblage', 'fat', 'expedition', 'chantier', 'mise_en_service_sat']);
 const CLOSED: ReadonlySet<StageCode> = new Set(['clos', 'annule']);
 
 /** Ranking, weights and KPI populations of the Prioritisation tab for a viewer (or a role's demo persona) and zone. */
 export async function getPrioritisation(who: UserRef, zone: ZoneKey | null): Promise<Prioritisation> {
-  const [axes, w, scores, plans, all] = await Promise.all([listScoreAxes(), getScoreWeights(who), listPortfolioScores(), listBillingPlans(), listProjects()]);
+  const [axes, w, scores, plans, all] = await Promise.all([listScoreAxes(), getScoreWeights(who), listPortfolioScores(), listEurBillingPlans(), listProjects()]);
   const zp = all.filter((p) => !zone || p.zone === zone);
   const weights = axes.map((a) => w[a.code]);
   const ranking = zp
     .filter((p) => scores[p.code] && !CLOSED.has(p.stage))
-    .map((p) => ({ project: p, scores: scores[p.code], score: Math.round(priorityScore(scores[p.code], weights)), marginPct: marginPct(plans[p.code], p.budget), pipeline: PIPELINE.has(p.stage) }))
+    .map((p) => ({ project: p, scores: scores[p.code], score: Math.round(priorityScore(scores[p.code], weights)), marginPct: marginAtCompletion(plans[p.code], p), pipeline: PIPELINE.has(p.stage) }))
     .sort((a, b) => b.score - a.score)
     .map((r, i) => ({ rank: i + 1, ...r }));
   return {
     axes, weights, weightSum: weights.reduce((a, b) => a + b, 0), ranking,
-    active: zp.filter((p) => EXECUTION.has(p.stage)), pipeline: zp.filter((p) => PIPELINE.has(p.stage)),
+    active: zp.filter(inExecution), pipeline: zp.filter((p) => PIPELINE.has(p.stage)),
   };
 }
 
@@ -134,12 +134,12 @@ export interface CapacityDepartment {
 
 /** Capacity what-if for a candidate project (logic 4505–4512): demand by department vs capacity. */
 export async function getCapacityWhatIf(projectCode: string): Promise<{ project: ProjectRow; departments: CapacityDepartment[]; gapH: number } | null> {
-  const [all, plans] = await Promise.all([listProjects(), listBillingPlans()]);
+  const [all, plans] = await Promise.all([listProjects(), listEurBillingPlans()]);
   const project = all.find((p) => p.code === projectCode);
   if (!project) return null;
   // A-12 (chapter 4): capacity and commitments from the resource pool's allocations, demand per €1M from the active
   // portfolio's value (`capacityModel`, src/server/dal/kpis.ts) — the prototype's capBase and coefficients were constants.
-  const rows = await capacityModel(all.filter((p) => EXECUTION.has(p.stage)), plans);
+  const rows = await capacityModel(all.filter(inExecution), plans);
   const k = project.budget / 1000;
   const depts = rows.map((r) => {
     const addH = Math.round(r.hoursPerMeur * k);

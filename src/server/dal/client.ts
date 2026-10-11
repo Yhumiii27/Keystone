@@ -10,8 +10,8 @@ import { getDb } from '@/server/db/client';
 import { STATUS_ISO, clientIssueStatus, nextBusinessNumber, type ClientIssueStatus } from '@/server/db/codes';
 import { clientDocumentCategories, clientIssues, projectControls } from '@/server/db/schema';
 import { listChangeRequestDetails, type ChangeRequestDetail } from './changes';
+import { BASE_CURRENCY, type CurrencyCode } from '@/domain/currency';
 import { getBillingPlan } from './cashflow';
-import { getContract } from './contract';
 import { listSharedDocuments, type VaultDocument } from './documents';
 import { isClientContactOf, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 import { listDeliverables, type DeliverableRow } from './quality';
@@ -65,10 +65,12 @@ export interface ClientPortal {
   decided: ClientDecided[];
   invoices: ClientInvoiceRow[];
   /**
-   * Contract summary: value, invoiced, paid, approved changes (k€); null without a billing plan. An internal project
-   * (contract value 0) keeps its rows (€0k), as the prototype's `cpInvKpis`.
+   * Contract summary: value, invoiced, paid (thousands of the contract's currency, C-9) and approved changes (k€); null without
+   * a billing plan. An internal project (contract value 0) keeps its rows (€0k), as the prototype's `cpInvKpis`.
    */
-  contract: { valueKeur: number; invoicedKeur: number; paidKeur: number; approvedChangesKeur: number } | null;
+  contract: { valueKeur: number; invoicedKeur: number; paidKeur: number; approvedChangesKeur: number; currency: CurrencyCode } | null;
+  /** C-9: currency of the invoices and of the contract summary (the contract's, EUR for a legacy plan). */
+  currency: CurrencyCode;
   documents: VaultDocument[];
   /** CLIENT_DOCS categories (not rendered by the prototype, L-9). */
   documentCategories: { category: string; description: string; fileCount: string }[];
@@ -95,8 +97,8 @@ const approvedChangesOf = (crs: ChangeRequestDetail[]) => registerReconciliation
 export async function getClientPortal(projectCode: string): Promise<ClientPortal> {
   const db = await getDb();
   const p = await projectOf(db, projectCode);
-  const [issues, crs, dlv, plan, contract, docs, cats, [ctl]] = await Promise.all([
-    issuesOf(p.id), listChangeRequestDetails(projectCode), listDeliverables(projectCode), getBillingPlan(projectCode), getContract(projectCode),
+  const [issues, crs, dlv, plan, docs, cats, [ctl]] = await Promise.all([
+    issuesOf(p.id), listChangeRequestDetails(projectCode), listDeliverables(projectCode), getBillingPlan(projectCode),
     listSharedDocuments(projectCode),
     db.select().from(clientDocumentCategories).where(eq(clientDocumentCategories.projectId, p.id)).orderBy(asc(clientDocumentCategories.position)),
     db.select({ id: projectControls.projectId }).from(projectControls).where(eq(projectControls.projectId, p.id)),
@@ -114,18 +116,17 @@ export async function getClientPortal(projectCode: string): Promise<ClientPortal
       kind: 'deliverable' as const, id: d.number, title: d.title, changeRequest: null, deliverable: d, state: d.status as 'accepted' | 'rejected',
     })),
   ];
-  const invoiceOf = new Map((contract?.milestones ?? []).filter((m) => m.invoice).map((m) => [m.number, m.invoice!]));
-  const invoices: ClientInvoiceRow[] = (plan?.milestones ?? []).map((m) => {
-    const inv = m.number ? invoiceOf.get(m.number) ?? null : null;
-    return {
-      milestoneNumber: m.number, milestone: m.label, amountKeur: m.amountKeur, status: m.status, statusLabel: m.statusLabel, invoiceNumber: inv?.number ?? null,
-      dueOn: inv?.dueOn ?? null, paidOn: inv?.paidOn ?? null,
-    };
-  });
+  // The billing plan in the contract's currency (C-9): the client reads the amounts of its own contract; due dates follow the
+  // contract's payment rule (R-076); an amendment's milestones appear once it is signed (NEW-D3-3).
+  const invoices: ClientInvoiceRow[] = (plan?.milestones ?? []).map((m) => ({
+    milestoneNumber: m.number, milestone: m.label, amountKeur: m.amountKeur, status: m.status, statusLabel: m.statusLabel, invoiceNumber: m.invoiceNumber,
+    dueOn: m.paymentDueOn, paidOn: m.paidOn,
+  }));
+  const currency = plan?.currency ?? BASE_CURRENCY;
   return {
-    projectCode, issues, decisions, decided, invoices,
-    // Delivery 7 (R-068, A-4): approved changes read from the single register (Σ approved change requests).
-    contract: plan ? { valueKeur: plan.contractValueKeur, invoicedKeur: plan.invoicedKeur, paidKeur: plan.paidKeur, approvedChangesKeur: ctl ? approvedChangesOf(crs) : 0 } : null,
+    projectCode, issues, decisions, decided, invoices, currency,
+    // Delivery 7 (R-068, A-4): approved changes read from the single register (Σ approved change requests); C-9: contract currency.
+    contract: plan ? { valueKeur: plan.contractValueKeur, invoicedKeur: plan.invoicedKeur, paidKeur: plan.paidKeur, approvedChangesKeur: ctl ? approvedChangesOf(crs) : 0, currency } : null,
     documents: docs, documentCategories: cats.map((c) => ({ category: c.category, description: c.description, fileCount: c.fileCountText })),
   };
 }

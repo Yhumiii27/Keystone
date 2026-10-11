@@ -135,13 +135,14 @@ const CLIENT_DB: Record<Lang, [string, string][]> = {
     ['Test & inspection reports · Accept by 02 Oct', 'Test & inspection reports · Accept by 2 Oct'],
     ['Calculation notes · Accept by 09 Oct', 'Calculation notes · Accept by 9 Oct'],
     ['Due', 'In progress'],
-    ['Milestone 4 invoice €640k · due 15 Oct', 'INV-2026-003 · M3 Structure topped out · €1.38M · due 10 Nov'],
+    // NEW-D3-3 (R-079): M3 invoiced at 25 % of the base amount (€1.35M; the prototype's re-priced value was €1.38M).
+    ['Milestone 4 invoice €640k · due 15 Oct', 'INV-2026-003 · M3 Structure topped out · €1.35M · due 10 Nov'],
   ],
   fr: [
     ['Rapports d’essais et d’inspection · Accepter avant le 02 oct.', 'Rapports d’essais et d’inspection · Accepter avant le 2 oct.'],
     ['Notes de calcul · Accepter avant le 09 oct.', 'Notes de calcul · Accepter avant le 9 oct.'],
     ['Échéance', 'En cours'],
-    ['Facture jalon 4 640 k€ · échéance 15 oct.', 'INV-2026-003 · M3 Structure hors d’eau · 1,38 M€ · échéance 10 nov.'],
+    ['Facture jalon 4 640 k€ · échéance 15 oct.', 'INV-2026-003 · M3 Structure hors d’eau · 1,35 M€ · échéance 10 nov.'],
   ],
 };
 
@@ -158,14 +159,10 @@ const DEPTHEAD_A12: Record<Lang, [Kpi, Kpi]> = {
 /**
  * Delivery 7 (R-073, owner decisions C-2a "EV = avancement × budget", A-12, A-15): progress, actual cost, SPI and CPI come from
  * the activities, the cost-loaded BL1 and the validated contingency draw-downs at the data date, no longer the seeded
- * projectData() series — the director's portfolio tiles (actual cost €7.43M → €6.58M, EAC €13.50M → €13.25M, CPI 0.96 → 0.97),
- * the PM's HLT-026 tiles (SPI 0.90 → 0.82, CPI 0.92 → 0.89, EAC €5.24M → €5.37M) and the client's progress (64 % → 63 %).
+ * projectData() series — the PM's HLT-026 tiles (SPI 0.90 → 0.82, CPI 0.92 → 0.89, EAC €5.24M → €5.37M) and the client's
+ * progress (64 % → 63 %). The director's tiles combine R-073 with A-3: see `DIRECTOR_D7`.
  */
 const R073: Partial<Record<RoleKey, Record<Lang, Record<number, Kpi>>>> = {
-  director: {
-    en: { 1: ['Actual cost', '€6.58M', '50% of budget spent', false], 2: ['Forecast (EAC)', '€13.25M', '−€17k vs budget', true], 3: ['Cost perf. (CPI)', '0.97', 'Earned per $1 spent', true] },
-    fr: { 1: ['Coût réel', '6,58 M€', '50 % du budget dépensé', false], 2: ['Prévision (EAC)', '13,25 M€', '−17 k€ vs budget', true], 3: ['Perf. coût (CPI)', '0.97', 'Acquis par € dépensé', true] },
-  },
   pm: {
     en: { 0: ['SPI', '0.82', 'Earning 82¢ of planned work per $1', true], 1: ['CPI', '0.89', 'Target ≥ 1.00', true], 2: ['Forecast (EAC)', '€5.37M', 'At current CPI', true] },
     fr: { 0: ['SPI', '0.82', '82 ¢ de travail prévu acquis par € dépensé', true], 1: ['CPI', '0.89', 'Cible ≥ 1,00', true], 2: ['Prévision (EAC)', '5,37 M€', 'Au CPI actuel', true] },
@@ -176,8 +173,55 @@ const R073: Partial<Record<RoleKey, Record<Lang, Record<number, Kpi>>>> = {
   },
 };
 
+/**
+ * Delivery 7: the director's KPI tiles count the projects in execution (A-3: PRS-038 in, WSA-044 out — the prototype's
+ * €13.23M · €7.43M, 56 % · €13.50M, −€270k · 0.96) with R-073's computed actual cost and progress (lot cost-control: A-3 on the
+ * prototype's figures gave €6.96M, 51 % · €13.97M, −€338k · 0.96; R-073 on the prototype's population €6.58M, 50 % · €13.25M,
+ * −€17k · 0.97), and "Needs attention" lists the alerts computed by rules (R-130, NEW-D1-1) on those figures, not the
+ * prototype's four fixed texts: HLT-026 off track (SPI 0.82 · CPI 0.89) and the RCF-019 cost overrun (on the prototype's
+ * figures: RCF-019 off track, HLT-026 cost overrun €5.25M · CPI 0.91).
+ */
+const DIRECTOR_D7: Record<Lang, Pick<Golden, 'kpis' | 'lr'>> = {
+  en: {
+    kpis: [
+      ['Total budget', '€13.63M', '6 active projects', false], ['Actual cost', '€6.74M', '49% of budget spent', false],
+      ['Forecast (EAC)', '€13.88M', '−€245k vs budget', true], ['Cost perf. (CPI)', '0.97', 'Earned per $1 spent', true],
+    ],
+    lr: [
+      ['Harbor Line Terminal Expansion — off track', 'SPI 0.82 · CPI 0.89 — below the off-track threshold 0.90.', '', ''],
+      ['Clinique Pasteur Lyon Fit-out — critical path slip', 'Critical path −29 d · forecast finish 27 Dec 2026 (baseline 1 Dec 2026) · 2 milestones late: Fire systems complete, Commissioning & handover complete.', '', ''],
+      ['Harbor Line Terminal Expansion — critical path slip', 'Critical path −27 d · forecast finish 14 Jan 2027 (baseline 18 Dec 2026) · 2 milestones late: Structure topped out, Cranes operational.', '', ''],
+      ['Marseille Metro Signage Rollout — critical path slip', 'Critical path −9 d · forecast finish 9 Nov 2026 (baseline 1 Nov 2026).', '', ''],
+      ['Northgate Data Center Retrofit — critical path slip', 'Critical path −4 d · forecast finish 5 Apr 2027 (baseline 1 Apr 2027).', '', ''],
+      ['Clinique Pasteur Lyon Fit-out — cost overrun', 'Forecast €1.40M vs budget €1.35M (+€46k) · CPI 0.97.', '', ''],
+      ['3 people over 110%', 'Weeks 42–44 · Amélie Ollivier, Julien Wagner, Pauline Noguès.', '', ''],
+      ['1 approval waiting more than 5 days', 'Oldest: INV-HC-7781 · Halvorsen Cranes · €1,286,400 · since 10 Sep 2026 (15 d).', '', ''],
+    ],
+  },
+  fr: {
+    kpis: [
+      ['Budget total', '13,63 M€', '6 projets actifs', false], ['Coût réel', '6,74 M€', '49 % du budget dépensé', false],
+      ['Prévision (EAC)', '13,88 M€', '−245 k€ vs budget', true], ['Perf. coût (CPI)', '0.97', 'Acquis par € dépensé', true],
+    ],
+    lr: [
+      ['Extension du terminal Harbor Line — hors trajectoire', 'SPI 0,82 · CPI 0,89 — sous le seuil « hors trajectoire » 0,90.', '', ''],
+      ['Aménagement de la Clinique Pasteur Lyon — glissement du chemin critique', 'Chemin critique −29 j · fin prévue 27 déc. 2026 (référence 1 déc. 2026) · 2 jalons en retard : Systèmes incendie terminés, Mise en service & livraison terminées.', '', ''],
+      ['Extension du terminal Harbor Line — glissement du chemin critique', 'Chemin critique −27 j · fin prévue 14 janv. 2027 (référence 18 déc. 2026) · 2 jalons en retard : Structure hors d’eau, Grues opérationnelles.', '', ''],
+      ['Déploiement signalétique métro de Marseille — glissement du chemin critique', 'Chemin critique −9 j · fin prévue 9 nov. 2026 (référence 1 nov. 2026).', '', ''],
+      ['Rénovation du data center Northgate — glissement du chemin critique', 'Chemin critique −4 j · fin prévue 5 avr. 2027 (référence 1 avr. 2027).', '', ''],
+      ['Aménagement de la Clinique Pasteur Lyon — dépassement de coût', 'Prévision 1,40 M€ pour un budget de 1,35 M€ (+46 k€) · CPI 0,97.', '', ''],
+      ['3 personnes au-delà de 110 %', 'Semaines 42–44 · Amélie Ollivier, Julien Wagner, Pauline Noguès.', '', ''],
+      ['1 approbation en attente depuis plus de 5 jours', 'La plus ancienne : INV-HC-7781 · Halvorsen Cranes · 1 286 400 € · depuis le 10 sept. 2026 (15 j).', '', ''],
+    ],
+  },
+};
+
 function expected(role: RoleKey, lang: Lang): Golden {
   if (role === 'member') return structuredClone(MEMBER[lang]);
+  if (role === 'director') {
+    const g = lang === 'fr' ? mapStrings(structuredClone(G.director.fr), fixFr) : structuredClone(G.director.en);
+    return { ...g, ...structuredClone(DIRECTOR_D7[lang]) };
+  }
   const g = structuredClone(G[role][lang]);
   if (role === 'procurement') g.kpis[1] = LATE[lang];
   if (role === 'depthead') [g.kpis[2], g.kpis[3]] = DEPTHEAD_A12[lang];
@@ -218,19 +262,21 @@ describe('Home view', () => {
     expect(await sub('client', 'rr', 0)).toBe('+85 k€ · rattrapage de 12 jours · soumise le 24 sept.');
     expect(await sub('client', 'rr', 1)).toBe('Rapports d’essais et d’inspection · Accepter avant le 2 oct.');
     expect(await sub('client', 'rr', 2)).toBe('Manuels / plans de récolement · Signé le 18 sept.');
-    expect(await sub('client', 'rr', 5)).toBe('INV-2026-003 · M3 Structure hors d’eau · 1,38 M€ · échéance 10 nov.');
+    expect(await sub('client', 'rr', 5)).toBe('INV-2026-003 · M3 Structure hors d’eau · 1,35 M€ · échéance 10 nov.'); // NEW-D3-3
   });
 
   it('director KPIs and alerts follow the zone filter', async () => {
-    // R-073 (C-2a): actual cost and CPI from the activities (euna €5.53M → €5.45M; afr: NDC-031 €1.02M → €884k, CPI 1.05 → 1.10).
+    // A-3: the zone's projects in execution (PRS-038 included); R-130: the zone's alerts plus the portfolio-wide ones. R-073
+    // (C-2a): actual cost and CPI from the activities — euna RCF-019 €1.21M → €1.08M, ERP-202 €410k → €457k, MSR-012 €550k →
+    // €553k (A-3 alone: €5.94M, 52 % · −€438k · 0.94); afr: NDC-031 €1.02M → €884k, CPI 1.05 → 1.10.
     const euna = (await render('director', 'en', 'HLT-026', 'euna')).out;
     expect(euna.kpis).toEqual([
-      ['Total budget', '€7.73M', '4 active projects', false],
-      ['Actual cost', '€5.45M', '70% of budget spent', false],
-      ['Forecast (EAC)', '€8.24M', '−€510k vs budget', true],
-      ['Cost perf. (CPI)', '0.94', 'Earned per $1 spent', true],
+      ['Total budget', '€11.53M', '5 active projects', false],
+      ['Actual cost', '€5.86M', '51% of budget spent', false],
+      ['Forecast (EAC)', '€11.97M', '−€437k vs budget', true],
+      ['Cost perf. (CPI)', '0.95', 'Earned per $1 spent', true],
     ]);
-    expect(euna.lr).toHaveLength(4);
+    expect(euna.lr).toHaveLength(7);
     const afr = (await render('director', 'en', 'HLT-026', 'afr')).out;
     expect(afr.kpis).toEqual([
       ['Total budget', '€2.10M', '1 active project', false],
@@ -238,7 +284,7 @@ describe('Home view', () => {
       ['Forecast (EAC)', '€1.91M', '+€192k vs budget', true],
       ['Cost perf. (CPI)', '1.10', 'Earned per $1 spent', false],
     ]);
-    expect(afr.lr.map((r) => r[0])).toEqual(['3 people over 115% in October']);
+    expect(afr.lr.map((r) => r[0])).toEqual(['Northgate Data Center Retrofit — critical path slip', '3 people over 110%', '1 approval waiting more than 5 days']);
   });
 
   it('PM home follows the current project (NDC-031)', async () => {
@@ -272,7 +318,12 @@ describe('Home view', () => {
       return { l: view.left.rows.map((r) => r.href), r: view.right.rows.map((r) => r.href) };
     };
     expect(await hrefs('director')).toEqual({
-      l: ['/projects/HLT-026/schedule', '/projects/HLT-026/budget', '/resources', '/projects/RCF-019/schedule'],
+      // R-130: each computed alert opens the screen that resolves it (on the R-073 figures: HLT-026 off track on its schedule
+      // side, SPI 0.82 ≤ CPI 0.89; RCF-019's cost overrun on its budget).
+      l: [
+        '/projects/HLT-026/schedule', '/projects/RCF-019/schedule', '/projects/HLT-026/schedule', '/projects/MSR-012/schedule', '/projects/NDC-031/schedule',
+        '/projects/RCF-019/budget', '/resources', '/my/approvals',
+      ],
       r: ['/projects/HLT-026/changes?cr=CR-008', '/projects/HLT-026/orders', '/reference/eco', '/resources/requests'],
     });
     expect((await hrefs('pm')).r).toEqual(['/projects/HLT-026/orders?po=PO-1082', '/reference/eco?eco=ECO-2026-015', '/projects/HLT-026/schedule']);

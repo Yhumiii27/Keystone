@@ -6,8 +6,8 @@
 // (`BILLING` 3541) migrated into `billing_plans` + `payment_milestones` (fixed amounts, no contract): Cash flow,
 // Prioritisation margins and the client portal read the same rows. A project with a contract derives its billing
 // plan from the contract (value = base + signed amendments; milestone amount = round(value × share / 100)).
-import { date, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
-import type { AmendmentStatus, BillingModel, BondType, ContractType, PaymentMilestoneStatus } from '../codes';
+import { date, integer, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import type { AmendmentStatus, BillingModel, BondType, ContractType, PaymentMilestoneStatus, PaymentRule } from '../codes';
 import { id, keur, num, timestamps } from './_common';
 import { changeRequests } from './change';
 import { documents } from './documents';
@@ -26,8 +26,19 @@ export const contracts = pgTable('contracts', {
   clientId: uuid('client_id').references(() => clients.id),
   type: text('type').$type<ContractType>().notNull(),
   signedOn: date('signed_on', { mode: 'string' }),
+  /**
+   * Base amount in thousands of the contract currency (`currency`; the column name predates C-9). Every amount of the
+   * contract — amendments, bonds, milestones, invoices — is in that currency; portfolio screens convert at the project's
+   * budget rate (`projects.budget_rate`).
+   */
   baseAmountKeur: keur('base_amount_keur').notNull(),
-  /** "Net 45 days" — payment delay = first integer (OPEN QUESTION C-6). */
+  /** C-9 (R-075): currency of the contract — EUR or the project currency. */
+  currency: text('currency').notNull().default('EUR'),
+  /** C-6 (R-076): payment rule — 'net' (N days from the invoice date), 'days_eom' (N days, then end of month), 'eom_days' (end of month + N days). */
+  paymentRule: text('payment_rule').$type<PaymentRule>().notNull().default('net'),
+  /** N of the payment rule, calendar days. */
+  paymentDays: integer('payment_days').notNull().default(45),
+  /** "Net 45 days" — the payment terms as text, rebuilt from the rule and the days whenever they change (R-076). */
   paymentTerms: text('payment_terms').notNull(),
   retentionPct: num('retention_pct').notNull(),
   retentionNote: text('retention_note').notNull(),
@@ -50,7 +61,10 @@ export const contractAmendments = pgTable('contract_amendments', {
   changeRequestRef: text('change_request_ref'),
   changeRequestId: uuid('change_request_id').references(() => changeRequests.id, { onDelete: 'set null' }),
   amountKeur: keur('amount_keur').notNull(),
+  /** Signature cycle (R-079): draft → sent for signature (or awaiting signature, the seed's wording) → signed. */
   status: text('status').$type<AmendmentStatus>().notNull(),
+  /** Day it was sent to the client for signature (R-079); null while draft or for the seed rows. */
+  sentOn: date('sent_on', { mode: 'string' }),
   signedOn: date('signed_on', { mode: 'string' }),
   /** "CTR-HLT-002" as entered; resolved to the Codex document when indexed. */
   documentRef: text('document_ref'),
@@ -93,11 +107,16 @@ export const paymentMilestones = pgTable(
     id: id(),
     projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
     contractId: uuid('contract_id').references(() => contracts.id, { onDelete: 'cascade' }),
+    /**
+     * NEW-D3-3 (R-079): the amendment this milestone belongs to — its share is a share of the amendment's amount and it is
+     * billable once the amendment is signed. Null = a milestone of the base contract (share of the base amount).
+     */
+    amendmentId: uuid('amendment_id').references((): AnyPgColumn => contractAmendments.id, { onDelete: 'cascade' }),
     /** "M3" for contractual milestones (M6… for added ones); null for billing-plan rows. */
     number: text('number'),
     /** "Structure topped out (80 % erected)" / "Jun" / "Strip-out". */
     label: text('label').notNull(),
-    /** Share of the contract value, % (contractual milestones; Σ ≤ 100 is OPEN QUESTION C-7). */
+    /** Share, %, of the base amount (base milestones) or of the amendment's amount (amendment milestones) — NEW-D3-3. */
     sharePct: num('share_pct'),
     /** Fixed amount (billing-plan rows without a contract). */
     amountKeur: keur('amount_keur'),
@@ -110,15 +129,20 @@ export const paymentMilestones = pgTable(
   (t) => [unique().on(t.projectId, t.number)],
 );
 
-/** Customer invoices (1:1 with an invoiced milestone). Due date = issued + payment delay (derived, calendar days). */
+/**
+ * Customer invoices (1:1 with an invoiced milestone). Due date derived from the contract's payment rule (R-076). The amount
+ * is frozen at issue: the milestone keeps it whatever the contract becomes (NEW-D3-3).
+ */
 export const customerInvoices = pgTable('customer_invoices', {
   id: id(),
   paymentMilestoneId: uuid('payment_milestone_id').notNull().unique().references(() => paymentMilestones.id, { onDelete: 'cascade' }),
   /** "INV-2026-004". */
   number: text('number').notNull().unique(),
   issuedOn: date('issued_on', { mode: 'string' }).notNull(),
-  /** Amount invoiced (k€) at issue = round(contract value × share / 100). */
+  /** Amount invoiced at issue (thousands of `currency`) = the milestone's amount then. */
   amountKeur: keur('amount_keur').notNull(),
+  /** C-9: currency of the invoice (the contract's at issue). */
+  currency: text('currency').notNull().default('EUR'),
   paidOn: date('paid_on', { mode: 'string' }),
   /** "Note on the invoice". */
   note: text('note'),

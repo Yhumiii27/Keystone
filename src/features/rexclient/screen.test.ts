@@ -100,10 +100,17 @@ describe('client portal screen', () => {
     const v = await getClientScreen('HLT-026', 'invoices', t, lang);
     const c = (await getContract('HLT-026'))!;
     const g = G.client[lang]['HLT-026'];
-    expect(v.invoices.map((i) => [i.status, i.tagClass])).toEqual(g.invoices.map((i: any) => [i.status, i.tagClass]));
-    expect(v.invoices.map((i) => [i.no, i.amount])).toEqual(c.milestones.map((m, k) => [['INV-2026-001', 'INV-2026-002', 'INV-2026-003'][k] ?? '—', money(m.amountKeur, lang)]));
+    // Delivery 7, NEW-D3-3 (R-079): the signed Amendment 1's own milestone M6 is billable and listed after M5 (planned).
+    const planned = g.invoices[g.invoices.length - 1];
+    expect(v.invoices.map((i) => [i.status, i.tagClass])).toEqual([...g.invoices, planned].map((i: any) => [i.status, i.tagClass]));
+    expect(v.invoices.map((i) => [i.no, i.amount])).toEqual(
+      c.milestones.filter((m) => m.billable).map((m, k) => [['INV-2026-001', 'INV-2026-002', 'INV-2026-003'][k] ?? '—', money(m.amountKeur, lang)]),
+    );
+    if (lang === 'en') expect(v.invoices[5].name).toBe('M6 Anti-collision lidar commissioned');
     expect(v.invoices.map((i) => i.payment)).toEqual(
-      lang === 'en' ? ['Settled', 'Settled', 'Due 10 Nov', 'On milestone', 'On milestone'] : ['Réglée', 'Réglée', 'Échéance 10 nov.', 'Au jalon', 'Au jalon'],
+      lang === 'en'
+        ? ['Settled', 'Settled', 'Due 10 Nov', 'On milestone', 'On milestone', 'On milestone']
+        : ['Réglée', 'Réglée', 'Échéance 10 nov.', 'Au jalon', 'Au jalon', 'Au jalon'],
     );
     expect(v.invoices[2].name).toBe(lang === 'en' ? 'M3 Structure topped out' : 'M3 Structure hors d’eau');
     expect(v.summary!.map((r) => r.k)).toEqual(g.invKpis.map((r: any) => r.k));

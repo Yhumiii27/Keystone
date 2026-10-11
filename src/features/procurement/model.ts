@@ -11,6 +11,7 @@ import {
 } from '@/domain/procurement';
 import type { Lang, T } from '@/i18n/translate';
 import { money, moneyEur } from '@/lib/format';
+import { moneyUnitsIn } from '@/domain/currency';
 import {
   RFQ_STATUS_TAG, SUPPLIER_GRADE_TAG, SUPPLIER_INVOICE_STATUS_TAG, incoterm, matchState, shortDateYearOfIso, supplierInvoiceStatus,
   type MatchState, type SupplierInvoiceStatus,
@@ -303,8 +304,8 @@ export function invoiceTabView(invoices: readonly SupplierInvoiceRow[], filter: 
           supplier: i.supplier,
           po: i.poNumber ?? '—',
           gr: i.receiptNumber ?? '—',
-          amount: pr(() => moneyEur(i.amountEur, lang)),
-          gap: gap != null ? pr(() => moneyEur(gap, lang)) : '—',
+          amount: pr(() => moneyUnitsIn(i.amountEur, i.currency, lang)),
+          gap: gap != null ? pr(() => moneyUnitsIn(gap, i.currency, lang)) : '—',
           gapColor: gap != null ? LO : 'var(--color-neutral-500)',
           dots: [
             { label: 'PO', color: MATCH_DOT[m.po], state: t(legState(m.po)) },
@@ -358,7 +359,7 @@ export function invoiceDrawerView(i: SupplierInvoiceRow, filter: SupplierInvoice
   const reason = blockingReason(i.status, m);
   const d = decisionsFor(i, c);
   const leg = (label: string, ref: string | null, amount: number, s: MatchState): MatchLegView => ({
-    label: t(label), ref: ref ?? '—', amount: pr(() => moneyEur(amount, lang)), dot: MATCH_DOT[s], state: t(legState(s)), color: s === 'ok' ? OK : LO,
+    label: t(label), ref: ref ?? '—', amount: pr(() => moneyUnitsIn(amount, i.currency, lang)), dot: MATCH_DOT[s], state: t(legState(s)), color: s === 'ok' ? OK : LO,
   });
   const code = i.projectCode ?? c.currentProject;
   return {
@@ -372,12 +373,12 @@ export function invoiceDrawerView(i: SupplierInvoiceRow, filter: SupplierInvoice
       { k: t('Invoice date'), v: dateText(i.invoiceDate, t), color: OK },
       { k: t('Due date'), v: dateText(i.dueDate, t), color: OK },
       { k: t('Terms'), v: t(i.paymentTerms), color: OK },
-      { k: t('Variance invoice − receipt'), v: gap != null ? pr(() => moneyEur(gap, lang)) : '—', color: OK },
+      { k: t('Variance invoice − receipt'), v: gap != null ? pr(() => moneyUnitsIn(gap, i.currency, lang)) : '—', color: OK },
       { k: t('Blocking reason'), v: reason ? t(reason) : '—', color: reason ? LO : OK },
     ],
     canApprove: d.canApprove,
     canApprovePart: d.canApprovePart,
-    partialLabel: c.prices ? t(`Approve ${moneyEur(i.receiptAmountEur, lang)} · request credit note`) : t('Approve the received amount · request credit note'),
+    partialLabel: c.prices ? t(`Approve ${moneyUnitsIn(i.receiptAmountEur, i.currency, lang)} · request credit note`) : t('Approve the received amount · request credit note'),
     canReject: d.canReject,
     poHref: i.poNumber ? `${screenHref('orders', { code })}?po=${encodeURIComponent(i.poNumber)}` : null,
     grHref: i.receiptNumber ? `${screenHref('deliveries', { code })}?receipt=${encodeURIComponent(i.receiptNumber)}` : null,

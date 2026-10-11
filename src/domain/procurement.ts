@@ -22,6 +22,7 @@
 import { screenHref, type RoleKey } from '@/config/screens';
 import type { Lang, T } from '@/i18n/translate';
 import { moneyEur } from '@/lib/format';
+import { BASE_CURRENCY, moneyUnitsIn, type CurrencyCode } from './currency';
 import {
   RFQ_AWARD_ROLES, STATUS_ISO, addDaysIso, incoterm, shortDateYearOfIso,
   type Incoterm, type MatchState, type RfqStatus, type SupplierGrade, type SupplierInvoiceStatus,
@@ -129,7 +130,10 @@ export function invoiceChipStatuses(invoices: readonly { status: SupplierInvoice
 
 export interface InvoiceForKpi {
   status: SupplierInvoiceStatus;
+  /** Amount in the invoice's currency (C-9). */
   amountEur: number;
+  /** Euros per unit of the invoice's currency at its project's budget rate (1 when absent): the KPI is consolidated in €. */
+  eurRate?: number;
   /** ISO due date. */
   dueDate: string;
 }
@@ -151,7 +155,7 @@ export function invoiceKpis(invoices: readonly InvoiceForKpi[], todayIso: string
   const horizon = addDaysIso(todayIso, 30);
   return {
     toProcess: open.length,
-    toProcessEur: open.reduce((a, i) => a + i.amountEur, 0),
+    toProcessEur: open.reduce((a, i) => a + i.amountEur * (i.eurRate ?? 1), 0),
     blocked: invoices.filter((i) => isInvoiceToResolve(i.status)).length,
     awaitingReceipt: invoices.filter((i) => i.status === 'awaiting_receipt').length,
     approved: invoices.filter((i) => i.status === 'approved_for_payment').length,
@@ -337,7 +341,9 @@ export interface InvoiceForInbox {
   number: string;
   supplier: string;
   status: SupplierInvoiceStatus;
+  /** Amount in `currency` (C-9; € when absent). */
   amountEur: number;
+  currency?: CurrencyCode;
   match: Match3;
   /** ISO invoice date. */
   invoiceDate: string;
@@ -354,7 +360,7 @@ export function invoiceApprovalItems(invoices: readonly InvoiceForInbox[], lang:
     .map((i) => ({
       kind: 'invoice',
       id: i.number,
-      title: `${i.supplier} · ${moneyEur(i.amountEur, lang)}`,
+      title: `${i.supplier} · ${moneyUnitsIn(i.amountEur, i.currency ?? BASE_CURRENCY, lang)}`,
       sub: invoiceInboxSub(i),
       who: 'Accounts payable',
       when: shortDateYearOfIso(i.invoiceDate),

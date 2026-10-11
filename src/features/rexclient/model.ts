@@ -189,7 +189,7 @@ export function clientScreenView({ code, tab, portal, schedule, billing }: Clien
     decisions: dec.waiting.map((d) => ({ kind: d.kind, kindLabel: t(d.kindLabel), id: d.id, when: t(d.when), title: t(d.title), sub: t(d.sub), approveLabel: t(d.approveLabel) })),
     decided: dec.decided.map((d) => ({ id: d.id, title: t(d.title), state: t(d.state), tagClass: tag(d.tone), when: t(d.when) })),
     invoices: portal.invoices.map((i) => {
-      const r = invoiceRow({ milestone: i.milestone, amountKeur: i.amountKeur, status: i.status, invoiceNumber: i.invoiceNumber, dueOn: i.dueOn }, lang);
+      const r = invoiceRow({ milestone: i.milestone, amountKeur: i.amountKeur, status: i.status, invoiceNumber: i.invoiceNumber, dueOn: i.dueOn }, lang, portal.currency);
       return {
         no: r.no, name: milestoneText(r.name, i.milestoneNumber, t, lang), amount: r.amount, status: t(r.status), tagClass: tag(r.tone),
         payment: r.payment.kind === 'due' ? dueText(r.payment.date, t, lang) : t(r.payment.text),

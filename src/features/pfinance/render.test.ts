@@ -52,9 +52,11 @@ describe('Prioritisation tab', () => {
     expect(x).toContain('Weights sum 100% Edit weights on the right');
     expect(x).toContain('Ranking — active and pipeline Score = Σ axis (1–5) × weight · pipeline projects compete with active ones for capacity');
     expect(x).toContain('# Project Status Score Strategic fit Margin / NPV Risk level Resource fit Client priority Budget Margin');
-    expect(x).toContain('1 Westfield Solar Array WSA-044 APD 81 €3.40M 13%');
-    expect(x).toContain('3 Harbor Line Terminal Expansion HLT-026 Fabrication &amp; Assemblage 72 €4.80M 13%'.replace('&amp;', '&'));
-    expect(x).toContain('10 Clinique Pasteur Lyon Fit-out RCF-019 Chantier 54 €1.35M 10%');
+    // C-10b (R-132): margins at completion (contract − EAC) — the prototype's 13 % / 13 % / 10 % — with R-073's EAC from the
+    // computed progress and actual cost (on the prototype's figures: 16 % / 5 % / 2 %).
+    expect(x).toContain('1 Westfield Solar Array WSA-044 APD 81 €3.40M 21%');
+    expect(x).toContain('3 Harbor Line Terminal Expansion HLT-026 Fabrication &amp; Assemblage 72 €4.80M 3%'.replace('&amp;', '&'));
+    expect(x).toContain('10 Clinique Pasteur Lyon Fit-out RCF-019 Chantier 54 €1.35M 7%');
     expect(count(m, '<tr')).toBe(11);
     expect(count(m, 'type="number"')).toBe(5);
     expect(m).toContain('step="0.05"');
@@ -78,7 +80,7 @@ describe('Prioritisation tab', () => {
     expect(x).toContain('Classement — actifs et pipeline');
     expect(x).toContain('# Projet Statut Score Alignement stratégique Marge / VAN Niveau de risque Adéquation ressources Priorité client Budget Marge');
     expect(x).toContain('4 Automatisation de l’entrepôt Eastbank EWA-051 Initiative 70 2,20 M€ Interne');
-    expect(x).toContain('5 Déploiement signalétique métro de Marseille MSR-012 Mise en service & SAT 69 620 k€ 14%');
+    expect(x).toContain('5 Déploiement signalétique métro de Marseille MSR-012 Mise en service & SAT 69 620 k€ 17%'); // C-10b + R-073 (14 %; 16 % before R-073)
     expect(x).toContain('Poids Modifiables · le classement se recalcule en direct');
   });
 
@@ -140,24 +142,28 @@ describe('Cash flow & billing', () => {
     const m = html(h(CashView, { view: cashView(await getCashScreen('director', null), t, 'en'), t }), 'en');
     const x = text(m);
     expect(x).toContain('Contract value €10.09M 4 client projects · 1 internal');
-    expect(x).toContain('Invoiced to date €5.26M Milestones reached or monthly progress');
-    expect(x).toContain('Outstanding receivables €1.94M Invoiced, not yet paid');
+    // NEW-D3-3 (R-079): HLT-026 invoiced at base-amount prices (prototype €5.26M / €1.94M, HLT-026 €3.04M · €1.38M, M4 €1.10M).
+    expect(x).toContain('Invoiced to date €5.19M Milestones reached or monthly progress');
+    expect(x).toContain('Outstanding receivables €1.91M Invoiced, not yet paid');
     // A-12 (chapter 4): billing plan in, cost forecast out, at the data date (the prototype's stored plan gave +€365k / −€490k in
-    // November with a static sub-line).
-    // Delivery 7 (R-073, C-2a): the cost forecast starts from the actual cost computed from the activities (+€2.84M / −€521k before).
-    expect(x).toContain('Net cash · next 6 months +€2.71M Billing plan minus forecast spend');
-    expect(x).toContain('Lowest cumulative point −€570k October — before M3 payment lands (HLT-026)');
+    // November with a static sub-line). Delivery 7, C-10a / C-6 (R-133, R-076): the remaining spend follows the PV curve and
+    // receipts land at the payment rule's dates (chapter 4: +€2.84M, low −€521k); R-073 (C-2a): that PV curve is computed from the
+    // cost-loaded BL1 and the ETC from the computed EAC and actual cost (contract-portfolio alone: +€2.87M, −€1.08M; cost-control
+    // alone, even spread: +€2.71M, −€570k).
+    expect(x).toContain('Net cash · next 6 months +€2.75M Billing plan minus forecast spend');
+    expect(x).toContain('Lowest cumulative point −€1.41M October — before M3 payment lands (HLT-026)');
     expect(x).toContain('Project Billing model Contract Invoiced · paid Outstanding Cost to date Margin Next milestone');
-    expect(x).toContain('Harbor Line Terminal Expansion HLT-026 Client · milestones €5.52M €1.38M €3.36M 13% M4 Cranes operational · €1.10M');
-    // R-073: cost to date from the activities (ERP-202 €410k → €457k, MSR-012 €550k → €553k).
+    // C-10b (R-132): margin at completion (prototype 13 % / 14 %) on R-073's EAC; R-073: cost to date from the activities
+    // (ERP-202 €410k → €457k, MSR-012 €550k → €553k).
+    expect(x).toContain('Harbor Line Terminal Expansion HLT-026 Client · milestones €5.52M €1.35M €3.36M 3% M4 Cranes operational · €1.08M');
     expect(x).toContain('ERP Migration — Phase 2 ERP-202 Internal · capex — — €457k — —');
-    expect(x).toContain('Marseille Metro Signage Rollout MSR-012 Client · fixed price €720k €0k €553k 14% Line B · €288k');
+    expect(x).toContain('Marseille Metro Signage Rollout MSR-012 Client · fixed price €720k €0k €553k 17% Line B · €288k');
     expect(x).toContain('Paid Invoiced');
-    expect(x).toContain('Cash flow — next 6 months Billing plan in · forecast spend out −570k Oct +827k Nov −81k Dec +1092k Jan ’27 +1125k Feb +316k Mar Cash in Cash out Net per month above bars');
-    expect(m).toContain('height:59%');
-    expect(m).toContain('title="Invoiced · €3.04M"');
-    expect(m).toContain('--ov-w:55%');
-    expect(m).toContain('--ov-w:30%');
+    expect(x).toContain('Cash flow — next 6 months Billing plan in · forecast spend out −1412k Oct +801k Nov +428k Dec +1331k Jan ’27 +1196k Feb +402k Mar Cash in Cash out Net per month above bars');
+    expect(m).toContain('height:55%');
+    expect(m).toContain('title="Invoiced · €2.97M"');
+    expect(m).toContain('--ov-w:54%');
+    expect(m).toContain('--ov-w:29%');
     expect(x).not.toContain('No project in this zone');
   });
 
@@ -165,10 +171,11 @@ describe('Cash flow & billing', () => {
     const t = tOf('fr');
     const x = text(html(h(CashView, { view: cashView(await getCashScreen('pm', null), t, 'fr'), t }), 'fr'));
     expect(x).toContain('Montant du contrat 10,09 M€ 4 projets clients · 1 interne');
-    expect(x).toContain('Point bas cumulé −570 k€ Octobre — avant l’encaissement de M3 (HLT-026)'); // A-12, R-073
+    expect(x).toContain('Point bas cumulé −1,41 M€ Octobre — avant l’encaissement de M3 (HLT-026)'); // A-12, C-10a, C-6, NEW-D3-3, R-073
     expect(x).toContain('Projet Modèle de facturation Contrat Facturé · payé En attente de paiement Coût à date Marge Prochain jalon');
-    expect(x).toContain('Aménagement de la Clinique Pasteur Lyon RCF-019 Client · jalons 1,50 M€ 300 k€ 1,08 M€ 10% Livraison · 600 k€');
-    expect(x).toContain('Trésorerie — 6 prochains mois Plan de facturation en entrée · dépenses prévues en sortie −570k oct. +827k nov. −81k déc. +1092k janv. ’27 +1125k févr. +316k mars Encaissements Décaissements Net mensuel au-dessus des barres');
+    // C-10b (10 %) on R-073's figures: cost to date 1,21 M€ → 1,08 M€, margin at completion 2 % → 7 %.
+    expect(x).toContain('Aménagement de la Clinique Pasteur Lyon RCF-019 Client · jalons 1,50 M€ 300 k€ 1,08 M€ 7% Livraison · 600 k€');
+    expect(x).toContain('Trésorerie — 6 prochains mois Plan de facturation en entrée · dépenses prévues en sortie −1412k oct. +801k nov. +428k déc. +1331k janv. ’27 +1196k févr. +402k mars Encaissements Décaissements Net mensuel au-dessus des barres');
   });
 
   it('zone without projects in execution (apac): notice, zero figures; masked margins for other roles', async () => {
@@ -178,6 +185,6 @@ describe('Cash flow & billing', () => {
     expect(x).toContain('Contract value €0k 0 client projects · 0 internal');
     const masked = html(h(CashView, { view: cashView(await getCashScreen('procurement', null), t, 'en'), t }), 'en');
     expect(count(text(masked), '•••')).toBe(5);
-    expect(text(masked)).not.toContain('13%');
+    expect(text(masked)).not.toMatch(/\b(3|19|7|17)%/); // the director's margins at completion (C-10b + R-073)
   });
 });
