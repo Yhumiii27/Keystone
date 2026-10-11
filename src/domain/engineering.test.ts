@@ -143,8 +143,12 @@ describe('pure rules', () => {
   it('prevRev, shortDoc, input latest / state, output state, deliverable steps, release validation', () => {
     expect(['D', 'B', 'A', '2', 'AA'].map(prevRev)).toEqual(['C', 'A', 'A', '2', 'AA']);
     expect(['PID-HLT-026', 'LST-INS-026', 'BOD-CLI-026', 'GA-HLT-026', 'VAR-PLC-026'].map((d) => shortDoc(d, HLT))).toEqual(['PID', 'LST-INS', 'BOD-CLI', 'GA', 'VAR-PLC']);
-    // 09 OQ12: the provider's Frozen rev B reads "latest rev A".
-    expect([inputLatest('C', { revision: 'D', status: 'released' }), inputLatest('B', { revision: 'B', status: 'frozen' }), inputLatest('2', null)]).toEqual(['D', 'A', '2']);
+    // E-5 = a (R-105): the latest frozen or released revision is the reference — a Frozen rev B reads "latest rev B" (the
+    // prototype, 09 OQ12, read "latest rev A"); only a Draft revision points to the previous letter.
+    expect([
+      inputLatest('C', { revision: 'D', status: 'released' }), inputLatest('B', { revision: 'B', status: 'frozen' }), inputLatest('B', { revision: 'B', status: 'release_proposed' }),
+      inputLatest('B', { revision: 'C', status: 'draft' }), inputLatest('A', { revision: 'A', status: 'draft' }), inputLatest('2', null),
+    ]).toEqual(['D', 'B', 'B', 'B', 'A', '2']);
     expect([inputStateOf('C', 'D', true), inputStateOf('D', 'D', true), inputStateOf('D', 'D', false)]).toEqual(['outdated', 'up_to_date', 'to_confirm']);
     expect([outputStateOf('blocked', 2), outputStateOf('blocked', 0), outputStateOf('stale', 0), outputStateOf('partial', 3)]).toEqual(['blocked', 'ready', 'stale', 'partial']);
     expect(Object.values(DELIVERABLE_STEP).map((s) => [s.from, s.to, s.label])).toEqual([
@@ -220,8 +224,9 @@ describe('sequence played with the prototype handlers', () => {
     const auto = strip(disciplineShape(reg, 'auto'));
     const gAuto = strip(goldDiscipline(g.disciplines.auto));
     expect(auto.inputs).toEqual([...gAuto.inputs, extra]);
-    expect(gAuto.kpis[0]).toMatchObject({ value: '2 / 3', sub: '1 to confirm' });
-    expect(auto.kpis[0]).toMatchObject({ value: '3 / 4', sub: '2 to confirm' });
+    // E-5 = a (R-105): LST-IO-026 rev B (Frozen) is up to date, so the Automation inputs read 3 / 3 before the new one (prototype 2 / 3).
+    expect(gAuto.kpis[0]).toMatchObject({ value: '3 / 3', sub: '1 to confirm' });
+    expect(auto.kpis[0]).toMatchObject({ value: '4 / 4', sub: '2 to confirm' });
     expect({ ...auto, inputs: gAuto.inputs, kpis: gAuto.kpis }).toEqual(gAuto);
     for (const k of ['process', 'meca', 'elec'] as Discipline[]) expect(strip(disciplineShape(reg, k))).toEqual(strip(goldDiscipline(g.disciplines[k])));
     // Synthesis: the same tiles (the new input is up to date with the released rev D) and one more pill Process → Automation.

@@ -3,9 +3,10 @@ import 'server-only';
 // the register; files stay in the business tools. Deliverables are Codex index records of the project whose service is
 // a discipline (documents.ts): Freeze / Propose release / Validate release (PM) change their Codex status, shared with
 // the Documents screen. Rules:
-// - input state: the provider document's latest revision is its current one when Released, else the previous letter
-//   (`prevRev`; "A" stays "A"); external documents (the client's BOD-CLI-026) are always up to date. Outdated when the
-//   revision in use differs from the latest, else Up to date when confirmed, else To confirm (`inRows` 4794);
+// - input state (E-5 = a): the provider document's latest revision is its current one once frozen or released, else
+//   (a Draft) the previous letter (`prevRev`; "A" stays "A"); external documents (the client's BOD-CLI-026) are always
+//   up to date. Outdated when the revision in use differs from the latest, else Up to date when confirmed, else To
+//   confirm (`inRows` 4794; domain `inputLatest`);
 // - an output recorded "Blocked" is Ready once its discipline has no open blocking check (`outRows` 4795);
 // - "Propose release" is refused while the discipline owns an open blocking check; "Validate release" is the PM's
 //   (the project's PM or the director — the prototype had no role check, 09 §8.6);
@@ -23,7 +24,7 @@ import {
   engImports, engInputs, engOutputs, projects,
 } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
-import { CLOSED_BY_IMPORT } from '@/domain/engineering';
+import { CLOSED_BY_IMPORT, inputLatest } from '@/domain/engineering';
 import { freezeDocument, listProjectDocuments, proposeDocumentRelease, type VaultDocument } from './documents';
 import { managesProject, projectOf, requireWorkspace, trace, whoIs, type Actor } from './ops-common';
 
@@ -162,7 +163,7 @@ export async function getEngineeringRegister(projectCode: string): Promise<Engin
     inputs: inputs.map((i) => {
       const doc = docByNumber.get(i.documentNumber);
       const internal = !!doc && (DISCIPLINES as readonly string[]).includes(doc.service);
-      const latest = doc ? (doc.status === 'released' ? doc.revision : prevRev(doc.revision)) : i.revisionInUse;
+      const latest = inputLatest(i.revisionInUse, doc);
       const outdated = i.revisionInUse !== latest;
       const state: InputState = outdated ? 'outdated' : i.acknowledged ? 'up_to_date' : 'to_confirm';
       const provider = (internal ? doc!.service : i.providerParty ?? 'client') as DocRecipient;
