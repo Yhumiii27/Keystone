@@ -12,6 +12,7 @@ import PortfolioSchedulePage from '@/app/(app)/portfolio/schedule/page';
 import { canSee, type RoleKey } from '@/config/screens';
 import { portfolioScheduleModel, type PgFilter, type PgRow } from '@/domain/pfplan';
 import golden from '@/domain/pfplan.golden.json';
+import { D7_PROGRESS_PCT } from '@/test/d7-cost-control';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
@@ -36,7 +37,9 @@ const rowView = (r: PgRow, t: (s: string) => string) => ({
 const goldenView = (g: any) => ({
   code: g.code, name: g.name, pm: g.pm, status: g.status, pipe: g.pipe,
   segs: g.segs.map((s: any) => (s.diamond ? { left: s.left, title: s.title, diamond: true } : { left: s.left, width: s.width, title: s.title, label: s.label })),
-  hasExec: g.hasExec, exL: g.exL, exW: g.exW, exFill: g.exFill, hasBase: g.hasBase, ...(g.hasBase ? { bL: g.bL, bW: g.bW } : {}),
+  // Delivery 7 (R-073, C-2a): the execution fill is the progress computed from the activities (src/test/d7-cost-control.ts).
+  hasExec: g.hasExec, exL: g.exL, exW: g.exW, exFill: !g.pipe && g.hasExec && D7_PROGRESS_PCT[g.code] != null ? `${D7_PROGRESS_PCT[g.code]}%` : g.exFill,
+  hasBase: g.hasBase, ...(g.hasBase ? { bL: g.bL, bW: g.bW } : {}),
   clipText: g.clipText, gate: g.gate, gateSub: g.gateSub, gateColor: g.gateColor,
 });
 

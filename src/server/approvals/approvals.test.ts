@@ -27,6 +27,8 @@ describe('My approvals registry', () => {
   it('registers one provider per kind, in inbox order', () => {
     expect(APPROVAL_PROVIDERS.map((p) => `${p.kind}/${p.scope}/${p.source}`)).toEqual([
       'request/global/db', 'po/project/db', 'eco/global/db', 'delivery/project/db', 'stage/global/db', 'cr/project/db',
+      // Delivery 7 (R-071, C-4): contingency draw-downs of every project wait for the portfolio director.
+      'contingency/global/db',
       'deliverable/project/db', 'rfq/global/db', 'invoice/global/db', 'ncr/project/db', 'doc/global/db',
     ]);
   });

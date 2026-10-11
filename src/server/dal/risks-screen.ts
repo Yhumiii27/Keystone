@@ -1,10 +1,10 @@
 import 'server-only';
 // Screen-level reads of the Risk register and Contingency register (docs/spec/07 §2.1, 04 §5) on top of the
 // data-layer getters (risks.ts, contingency.ts): the contingency the risk exposure is compared with, and the
-// option lists of the two add-forms (TEAM owners, draw-down approvers).
-import { approversOf, type Approver } from '@/domain/contingency';
-import { PERSONA_BY_ROLE } from '@/config/personas';
-import { getContingency, type Contingency } from './contingency';
+// option lists of the two add-forms (TEAM owners; delivery 7, C-4: the items a draw-down can be linked to — the
+// approver is no longer chosen, the portfolio director validates in My approvals).
+import type { DrawLinkOption } from '@/domain/contingency';
+import { drawLinkOptions, getContingency, type Contingency } from './contingency';
 import { getScheduleControl } from './planning';
 import { getProject } from './projects';
 import { getResourcePool } from './resources';
@@ -41,13 +41,13 @@ export async function getRiskScreen(projectCode: string): Promise<RiskScreenData
 
 export interface ContingencyScreenData {
   contingency: Contingency;
-  /** "Approved by" options: the project manager and the portfolio director. */
-  approvers: Approver[];
+  /** "Linked to" options (C-4): the project's change requests, risks and NCRs. */
+  links: DrawLinkOption[];
 }
 
 /** Everything the Contingency register page reads; null for an unknown project. */
 export async function getContingencyScreen(projectCode: string): Promise<ContingencyScreenData | null> {
-  const [contingency, project] = await Promise.all([getContingency(projectCode), getProject(projectCode)]);
+  const [contingency, project, links] = await Promise.all([getContingency(projectCode), getProject(projectCode), drawLinkOptions(projectCode)]);
   if (!contingency || !project) return null;
-  return { contingency, approvers: approversOf(project.pm, PERSONA_BY_ROLE.director.short) };
+  return { contingency, links };
 }

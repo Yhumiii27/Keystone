@@ -50,6 +50,7 @@ import d7Auth from './d7-auth.json';
 import d7Rights from './d7-rights.json';
 import d7PlatformData from './d7-platform-data.json';
 import d7PlatformWeb from './d7-platform-web.json';
+import d7CostControl from './d7-cost-control.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -102,4 +103,5 @@ export const EXTRA_FR: Record<string, string> = {
   ...d7Rights,
   ...d7PlatformData,
   ...d7PlatformWeb,
+  ...d7CostControl,
 };

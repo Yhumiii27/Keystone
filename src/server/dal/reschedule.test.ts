@@ -112,9 +112,11 @@ describe('Reschedule HLT-026 at the data date 25 Sep 2026', () => {
       ['Systems energised', '20 Nov', '21 Dec', '+21d', 'Late'],
       ['Handover', '18 Dec', '18 Jan ’27', '+19d', 'Late'],
     ]);
+    // Delivery 7 (R-073, C-2a): SPI and % complete computed from the activities and the cost-loaded BL1 at the data date
+    // (EV 3 006 / PV 3 663; budget-weighted 63 %), no longer the seeded series (0.90, 64 %, planned 71 %).
     expect(v.kpis.map((k) => [k.label, k.value, k.sub])).toEqual([
-      ['SPI', '0.90', 'Earning 90¢ of planned work per $1'],
-      ['Complete', '64%', 'Planned 71% by today'],
+      ['SPI', '0.82', 'Earning 82¢ of planned work per $1'],
+      ['Complete', '63%', 'Planned 76% by today'],
       ['Forecast finish', '18 Jan 2027', 'Baseline 18 Dec 2026'],
       ['Critical path float', '−19 days', '3 of 8 packages critical'],
       ['Milestones', '2 of 6', 'Complete · 0 on baseline date'],

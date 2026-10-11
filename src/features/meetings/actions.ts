@@ -280,7 +280,7 @@ export async function addProposalRiskAction(code: string, meeting: string, posit
   const r = await write('addProposalRiskAction', () =>
     markTranscriptProposalApplied(g.meeting.number, g.item.position, (tx) => createRisk(
       g.code,
-      { title: v.title, category: v.category, probability: v.probability, impact: v.impact, owner: v.owner, response: v.response, emvKeur: v.emvKeur, plan: v.plan, trigger: `${g.meeting.number} · transcript` },
+      { title: v.title, category: v.category, probability: v.probability, impact: v.impact, owner: v.owner, response: v.response, costKeur: v.costKeur, plan: v.plan, trigger: `${g.meeting.number} · transcript` },
       g.actor,
       tx,
     ), g.actor));

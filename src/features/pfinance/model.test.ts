@@ -36,8 +36,16 @@ const fixSub = (lang: Lang, s: string) =>
     : s.replace(/^1 client projects/, '1 client project');
 
 // ── A-12 (chapter 4): KPIs computed from the data instead of the prototype's constants (src/domain/kpis.ts) ──────────
-/** "Portfolio margin" = Σ (contract − EAC) / Σ contract over the zone's active client projects (was 18 % everywhere). */
-const MARGIN_A12: Record<string, string> = { null: '8%', euna: '5%', afr: '15%', apac: '—' };
+/**
+ * "Portfolio margin" = Σ (contract − EAC) / Σ contract over the zone's active client projects (was 18 % everywhere).
+ * Delivery 7 (R-073, C-2a): EAC = BAC / CPI with the CPI computed from the activities — afr (NDC-031, CPI 1.05 → 1.10) 15 → 19 %.
+ */
+const MARGIN_A12: Record<string, string> = { null: '8%', euna: '5%', afr: '19%', apac: '—' };
+/** Delivery 7 (R-073): actual cost of the projects with activities (activities' actual cost + validated contingency draw-downs). */
+const COST_D7: Record<Lang, Record<string, string>> = {
+  en: { 'NDC-031': '€884k', 'RCF-019': '€1.08M', 'ERP-202': '€457k', 'MSR-012': '€553k' },
+  fr: { 'NDC-031': '884 k€', 'RCF-019': '1,08 M€', 'ERP-202': '457 k€', 'MSR-012': '553 k€' },
+};
 /**
  * Capacity what-if: capacity and commitments from the resource pool's allocations, demand per €1M from the active
  * portfolio's value. Per candidate: [add, total, capacity] per department (ROLES order) and the gap (prototype 1 560 h…).
@@ -52,22 +60,24 @@ const CAPACITY_A12: Record<string, { gap: number; rows: [number, number, number]
 /**
  * Cash flow: the 6 months after the data date from the billing plans (in) and the cost forecasts (out), per zone —
  * "Net cash · next 6 months", "Lowest cumulative point" (value and sub-line) and the bars [in %, out %, net].
+ * Delivery 7 (R-073): the cost forecast starts from the actual cost computed from the activities — null +€2.84M / −€521k →
+ * +€2.71M / −€570k, euna +€2.34M / −€617k → +€2.26M / −€659k, afr +€498k / +€97k → +€450k / +€89k.
  */
 const CASH_A12: Record<string, { net: Record<Lang, string>; low: Record<Lang, string>; lowSub: Record<Lang, string>; bars: [number, number, string][] }> = {
   null: {
-    net: { en: '+€2.84M', fr: '+2,84 M€' }, low: { en: '−€521k', fr: '−521 k€' },
+    net: { en: '+€2.71M', fr: '+2,71 M€' }, low: { en: '−€570k', fr: '−570 k€' },
     lowSub: { en: 'October — before M3 payment lands (HLT-026)', fr: 'Octobre — avant l’encaissement de M3 (HLT-026)' },
-    bars: [[29, 57, '−521k'], [100, 54, '+885k'], [44, 47, '−51k'], [70, 14, '+1083k'], [72, 14, '+1116k'], [25, 9, '+324k']],
+    bars: [[29, 59, '−570k'], [100, 57, '+827k'], [44, 48, '−81k'], [70, 13, '+1092k'], [72, 13, '+1125k'], [25, 9, '+316k']],
   },
   euna: {
-    net: { en: '+€2.34M', fr: '+2,34 M€' }, low: { en: '−€617k', fr: '−617 k€' },
+    net: { en: '+€2.26M', fr: '+2,26 M€' }, low: { en: '−€659k', fr: '−659 k€' },
     lowSub: { en: 'October — before M3 payment lands (HLT-026)', fr: 'Octobre — avant l’encaissement de M3 (HLT-026)' },
-    bars: [[18, 55, '−617k'], [100, 52, '+805k'], [36, 44, '−130k'], [66, 6, '+1004k'], [83, 6, '+1280k'], [0, 0, '+0k']],
+    bars: [[18, 57, '−659k'], [100, 55, '+755k'], [36, 45, '−153k'], [66, 5, '+1020k'], [83, 5, '+1296k'], [0, 0, '+0k']],
   },
   afr: {
-    net: { en: '+€498k', fr: '+498 k€' }, low: { en: '+€97k', fr: '+97 k€' },
+    net: { en: '+€450k', fr: '+450 k€' }, low: { en: '+€89k', fr: '+89 k€' },
     lowSub: { en: 'October — before the October progress payment lands (NDC-031)', fr: 'Octobre — avant l’encaissement de la situation d’octobre (NDC-031)' },
-    bars: [[17, 11, '+97k'], [16, 11, '+80k'], [16, 11, '+80k'], [16, 11, '+80k'], [0, 11, '−163k'], [32, 11, '+324k']],
+    bars: [[17, 11, '+89k'], [16, 11, '+72k'], [16, 11, '+72k'], [16, 11, '+72k'], [0, 11, '−171k'], [32, 11, '+316k']],
   },
   apac: {
     net: { en: '€0k', fr: '0 k€' }, low: { en: '€0k', fr: '0 k€' }, lowSub: { en: 'October — lowest point of the window', fr: 'Octobre — point bas de la période' },
@@ -205,7 +215,7 @@ describe('cash flow & billing (03 §7)', () => {
         expect(v.rows.map((r) => ({
           code: r.code, name: r.name, model: r.model, contract: r.contract, invoiced: r.invoiced, paid: r.paid, outstanding: r.outstanding, outColor: r.outColor, cost: r.cost,
           marginText: r.marginText, marginColor: r.marginColor, next: r.next, invW: `${r.invoicedPct}%`, paidW: `${r.paidPct}%`, isInternal: r.internal,
-        }))).toEqual(g.rows.map((r: any) => ({ ...r, marginColor: role === 'director' ? r.marginColor : OK })));
+        }))).toEqual(g.rows.map((r: any) => ({ ...r, cost: COST_D7[lang][r.code] ?? r.cost, marginColor: role === 'director' ? r.marginColor : OK })));
         expect(v.bars.map((b) => ({ label: b.label, inH: `${b.inPct}%`, outH: `${b.outPct}%`, net: b.net, netColor: b.netColor }))).toEqual(
           g.bars.map((b: any, i: number) => ({ label: b.label, inH: `${c.bars[i][0]}%`, outH: `${c.bars[i][1]}%`, net: c.bars[i][2], netColor: LO })),
         );

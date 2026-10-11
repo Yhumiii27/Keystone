@@ -5,6 +5,7 @@ import 'server-only';
 // deliverables (quality.ts `decideDeliverable`); invoices the project's billing plan (the contract when there is one);
 // documents the Codex records shared with the client (documents.ts `listSharedDocuments`, acknowledged there).
 import { and, asc, eq } from 'drizzle-orm';
+import { registerReconciliation } from '@/domain/cost-control';
 import { getDb } from '@/server/db/client';
 import { STATUS_ISO, clientIssueStatus, nextBusinessNumber, type ClientIssueStatus } from '@/server/db/codes';
 import { clientDocumentCategories, clientIssues, projectControls } from '@/server/db/schema';
@@ -87,6 +88,9 @@ export async function listClientIssues(projectCode: string): Promise<ClientIssue
   return issuesOf((await projectOf(db, projectCode)).id);
 }
 
+/** Σ amounts of the approved change requests of the register (A-4). */
+const approvedChangesOf = (crs: ChangeRequestDetail[]) => registerReconciliation(crs.map((c) => ({ id: c.id, amount: c.amount, status: c.status, wbs: [], clientStep: null }))).approved;
+
 /** Everything the client portal shows for a project. */
 export async function getClientPortal(projectCode: string): Promise<ClientPortal> {
   const db = await getDb();
@@ -95,7 +99,7 @@ export async function getClientPortal(projectCode: string): Promise<ClientPortal
     issuesOf(p.id), listChangeRequestDetails(projectCode), listDeliverables(projectCode), getBillingPlan(projectCode), getContract(projectCode),
     listSharedDocuments(projectCode),
     db.select().from(clientDocumentCategories).where(eq(clientDocumentCategories.projectId, p.id)).orderBy(asc(clientDocumentCategories.position)),
-    db.select({ chg: projectControls.reconChangesKeur }).from(projectControls).where(eq(projectControls.projectId, p.id)),
+    db.select({ id: projectControls.projectId }).from(projectControls).where(eq(projectControls.projectId, p.id)),
   ]);
   const clientStep = (c: ChangeRequestDetail) => c.chain.find((s) => s.step === 'client')?.decision ?? null;
   const decisions: ClientDecision[] = [
@@ -120,7 +124,8 @@ export async function getClientPortal(projectCode: string): Promise<ClientPortal
   });
   return {
     projectCode, issues, decisions, decided, invoices,
-    contract: plan ? { valueKeur: plan.contractValueKeur, invoicedKeur: plan.invoicedKeur, paidKeur: plan.paidKeur, approvedChangesKeur: ctl?.chg ?? 0 } : null,
+    // Delivery 7 (R-068, A-4): approved changes read from the single register (Σ approved change requests).
+    contract: plan ? { valueKeur: plan.contractValueKeur, invoicedKeur: plan.invoicedKeur, paidKeur: plan.paidKeur, approvedChangesKeur: ctl ? approvedChangesOf(crs) : 0 } : null,
     documents: docs, documentCategories: cats.map((c) => ({ category: c.category, description: c.description, fileCount: c.fileCountText })),
   };
 }

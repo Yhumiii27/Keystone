@@ -29,6 +29,7 @@ import { milestoneStatus } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
 import { activities, activityLinks, baselines, evmPeriods, milestones, persons, projectControls, projects, scheduleBars, wbsNodes } from '@/server/db/schema';
 import { getBaselineActivities, getDisplayedBaselineCode } from './baselines';
+import { getProjectEvm } from './evm';
 import { loadWorkCalendars } from './calendars';
 import { getMilestones, getScheduleBars, getScheduleControl, type ScheduleControl } from './planning';
 import { loadScheduleNetwork, recordScheduleRun, toCpmActivity } from './schedule-network';
@@ -42,11 +43,17 @@ export interface ScheduleData extends ScheduleInput {
   rolledUp: boolean;
 }
 
-/** Cumulative EVM series (k€) and BAC of a project. EV stops at the data date. */
+/**
+ * Cumulative EVM series (k€) and BAC of a project. EV stops at the data date. Delivery 7 (R-073): computed from the activities
+ * and the cost-loaded baseline (src/server/dal/evm.ts) — the progression curve's monthly SPI follows the plan; the seeded
+ * series stay only for a project without activity budgets.
+ */
 async function getEvmSeries(code: string): Promise<{ bac: number; pv: number[]; ev: number[] } | null> {
   const db = await getDb();
   const [head] = await db.select({ id: projects.id, bac: projects.budgetKeur }).from(projects).where(eq(projects.code, code));
   if (!head) return null;
+  const evm = await getProjectEvm(code);
+  if (evm) return { bac: head.bac, pv: evm.series.pv, ev: evm.series.ev };
   const rows = await db
     .select({ pv: evmPeriods.pvKeur, ev: evmPeriods.evKeur })
     .from(evmPeriods)

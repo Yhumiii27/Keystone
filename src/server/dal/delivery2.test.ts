@@ -117,14 +117,18 @@ describe('trends (04 §2)', () => {
 describe('contingency (04 §5)', () => {
   it('HLT-026: €150k · drawn €48k (32 %) · remaining €102k · exposure €340k', async () => {
     const c = (await getContingency('HLT-026'))!;
-    expect([c.initial, c.drawn, c.remaining, c.exposure, c.isDefault, Math.round((c.drawn / c.initial) * 100), Math.round(c.progress * 100)]).toEqual([150, 48, 102, 340, false, 32, 64]);
+    // Delivery 7 (R-073): project progress computed from the activities (63 %, was the seeded 64 %).
+    expect([c.initial, c.drawn, c.remaining, c.exposure, c.isDefault, Math.round((c.drawn / c.initial) * 100), Math.round(c.progress * 100)]).toEqual([150, 48, 102, 340, false, 32, 63]);
     expect(c.draws.map((d) => [d.dateText, d.amount, d.reason, d.linkRef, d.approvedBy])).toEqual(P.CONTINGENCY['HLT-026'].draws);
     expect(c.draws.map((d) => d.linkType)).toEqual(['change_request', 'risk', 'ncr']);
   });
 
-  it('default provision round(BAC × 3 %) without a register', async () => {
+  // Delivery 7 (A-8: one contingency figure): a project without a register takes its budget's contingency line (NDC-031: 100,
+  // as the Budget and the Risk register show it — was round(BAC × 3 %) = 63); round(BAC × 3 %) stays for a project without one.
+  it('provision without a register: the budget\'s contingency line, else round(BAC × 3 %)', async () => {
     const c = (await getContingency('NDC-031'))!;
-    expect([c.initial, c.isDefault, c.draws.length, c.exposure]).toEqual([63, true, 0, 115]);
+    expect([c.initial, c.isDefault, c.draws.length, c.exposure]).toEqual([100, true, 0, 115]);
+    expect((await getContingency('EWA-051'))!.initial).toBe(66);
   });
 });
 

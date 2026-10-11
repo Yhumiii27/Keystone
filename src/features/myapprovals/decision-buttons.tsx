@@ -5,8 +5,9 @@
 // verifications and deliverable acceptances: the Quality writers; chapter 4: resource requests through the Approvals
 // screen's Server Functions and forced stage changes through the lifecycle writer, L-1) and the row leaves the inbox on
 // revalidation. Every mode is recorded — no row announces a decision it does not make.
-// Two rejections ask first (a small dialog, Esc / Cancel closes it): a resource request (the reason the PM sees, as on
-// Approvals) and a forced stage change (the project goes back to the stage it left; optional comment).
+// Three rejections ask first (a small dialog, Esc / Cancel closes it): a resource request (the reason the PM sees, as on
+// Approvals), a forced stage change (the project goes back to the stage it left; optional comment) and, delivery 7 (C-4), a
+// contingency draw-down (optional comment the requester sees).
 import { Check, Warning, X } from '@phosphor-icons/react/dist/ssr';
 import { useId, useState, useTransition } from 'react';
 import { Callout } from '@/components/app/Callout';
@@ -21,6 +22,7 @@ import { decideReceiptFromInboxAction } from '@/features/deliveries/actions';
 import { decideEcoApprovalAction } from '@/features/eco/actions';
 import { decidePurchaseOrderAction } from '@/features/orders/actions';
 import { decideDeliverableAction, verifyNcrAction } from '@/features/quality/actions';
+import { decideDrawDownAction } from '@/features/risks/actions';
 import { useI18n } from '@/i18n/client';
 import { decideChangeRequestAction, decideForcedStageChangeAction, decideResourceRequestAction } from './actions';
 import s from './myapprovals.module.css';
@@ -55,6 +57,9 @@ function recorder(decision: ApprovalDecision): (ok: boolean, note?: string) => P
     case 'stage':
       // L-1: Approve keeps the stage; Reject reverts the project to the stage it left.
       return (ok, note) => decideForcedStageChangeAction({ projectCode: decision.projectCode, transitionId: decision.transitionId, decision: ok ? 'approved' : 'rejected', comment: note });
+    case 'contingency-draw':
+      // C-4 (delivery 7): the portfolio director validates the draw-down (it is then drawn) or rejects it (optional comment).
+      return (ok, note) => decideDrawDownAction({ projectCode: decision.projectCode, drawId: decision.drawId, decision: ok ? 'validated' : 'rejected', comment: note });
     default: {
       const unknown: never = decision;
       throw new Error(`Unknown decision mode ${JSON.stringify(unknown)}`);
@@ -74,6 +79,7 @@ interface RejectPrompt {
 
 function rejectPrompt(decision: ApprovalDecision): RejectPrompt | null {
   if (decision.mode === 'resource-request') return { label: 'Reason — the PM sees this', required: false, max: 1000, notice: null, noticeValue: null };
+  if (decision.mode === 'contingency-draw') return { label: 'Comment — the requester sees this', required: false, max: 1000, notice: null, noticeValue: null };
   if (decision.mode === 'stage')
     return {
       label: 'Comment — the project manager sees this', required: FORCED_STAGE_REJECT_COMMENT_REQUIRED, max: FORCED_STAGE_COMMENT_MAX,

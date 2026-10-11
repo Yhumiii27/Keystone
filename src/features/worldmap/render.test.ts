@@ -21,9 +21,35 @@ import { clusterPoints, markerLabelText, tooltipTitle } from '@/domain/worldmap'
 import { buildWorldMapModel, openHref, type WorldMapModel } from './model';
 import { WorldMapBody } from './worldmap-body';
 import golden from './worldmap.golden.json';
+import { HEALTH_LABEL, HEALTH_TAG } from '@/domain/health';
+import { D7_HEALTH, withD7Health } from '@/test/d7-cost-control';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const G = golden as any;
+// Delivery 7 (R-073, C-2a): the health of the six projects with activities follows their computed progress, actual cost and SPI
+// (HLT-026 off track, NDC-031 / RCF-019 at risk, MSR-012 on track): list rows, points and tooltip tags; "At risk" tile per zone.
+const HEALTH_FR: Record<string, string> = { 'On track': 'Conforme', 'At risk': 'À risque', 'Off track': 'Hors trajectoire' };
+const tipTags = (tips: Record<string, any[]>) =>
+  Object.fromEntries(Object.entries(tips).map(([key, clusters]) => [key, clusters.map((c) => ({
+    ...c,
+    rows: c.rows.map((r: any) => {
+      const now = D7_HEALTH[r.sub.split(' · ')[0]];
+      if (!now || r.tags.length < 2) return r;
+      const label = key.startsWith('fr|') ? HEALTH_FR[HEALTH_LABEL[now]] : HEALTH_LABEL[now];
+      // The status tag of an active project takes the tone of its health (the map's tooltip colouring).
+      return { ...r, tags: [`${HEALTH_TAG[now]}|${r.tags[0].split('|')[1]}`, `${HEALTH_TAG[now]}|${label}`] };
+    }),
+  }))]));
+const D7_AT_RISK: Record<string, [string, string]> = { euna: ['2', 'var(--color-accent-300)'], afr: ['1', 'var(--color-accent-300)'] };
+const patched = withD7Health(golden) as any;
+const G = {
+  ...patched,
+  ...Object.fromEntries(Object.entries(patched).filter(([k]) => k.includes('|')).map(([k, v]: [string, any]) => {
+    const zone = k.split('|')[1];
+    const fix = D7_AT_RISK[zone];
+    return [k, fix ? { ...v, kpis: v.kpis.map((x: any, i: number) => (i === 3 ? { ...x, value: fix[0], color: fix[1] } : x)) } : v];
+  })),
+  tips: tipTags(patched.tips),
+};
 const ZONES = [null, 'euna', 'afr', 'apac'] as const;
 const LANGS: Lang[] = ['en', 'fr'];
 const text = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&#x27;/g, '’').replace(/\s+/g, ' ');
@@ -84,7 +110,8 @@ describe('projects map — view model vs prototype', () => {
     const en = modelOf('en', null);
     const fr = modelOf('fr', null);
     expect(fr.points.map((p) => [p.style, p.status.tone, p.health?.tone ?? null])).toEqual(en.points.map((p) => [p.style, p.status.tone, p.health?.tone ?? null]));
-    expect(Object.fromEntries(en.points.map((p) => [p.code, p.style]))).toMatchObject({ 'HLT-026': 'risk', 'NDC-031': 'ontrack', 'RCF-019': 'risk', 'WSA-044': 'pipeline', 'DRR-009': 'closed' });
+    // R-073: NDC-031 is at risk (SPI 0.96 computed from its activities and BL1; the prototype's synthetic figures had it on track).
+    expect(Object.fromEntries(en.points.map((p) => [p.code, p.style]))).toMatchObject({ 'HLT-026': 'risk', 'NDC-031': 'risk', 'RCF-019': 'risk', 'WSA-044': 'pipeline', 'DRR-009': 'closed' });
   });
 
   it('a project opens its Plan when it has planning data, else the Projects register searched by its code', () => {

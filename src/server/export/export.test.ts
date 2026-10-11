@@ -137,7 +137,8 @@ describe('export context and reference providers (seeded database)', () => {
     expect(x.fileName).toBe('budget-HLT-026-2026-10-09.xlsx');
     const csvFile = await runExport(await ctxOf('budget', 'director', 'code=HLT-026', 'fr'), 'csv');
     expect([...csvFile.body.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
-    expect(new TextDecoder().decode(csvFile.body).split('\r\n').slice(0, 2)).toEqual(['Mois;PV;EV;AC', 'janv.;162;170;175']);
+    // Delivery 7 (R-073, C-2a): the series are computed from the activities and BL1 (was the seeded 162 / 170 / 175).
+    expect(new TextDecoder().decode(csvFile.body).split('\r\n').slice(0, 2)).toEqual(['Mois;PV;EV;AC', 'janv.;96;96;92']);
     const pdf = await runExport(await ctxOf('budget', 'director', 'code=HLT-026', 'fr'), 'pdf', { compressPdf: false });
     expect(Buffer.from(pdf.body.subarray(0, 4)).toString('latin1')).toBe('%PDF');
     const text = pdfTextLines(pdf.body).join('\n');

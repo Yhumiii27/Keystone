@@ -16,6 +16,7 @@ import {
   baselines, changeRequestSteps, changeRequestWbs, changeRequests, persons, projectControls, projects, users, wbsNodes,
 } from '@/server/db/schema';
 import { baselineSnapshotSize, createProposedBaseline, snapshotIntoBaseline } from './baselines';
+import { postApprovedChange } from './change-posting';
 import { getBaselines, type BaselineRow } from './planning';
 
 /** Labels of the change types (CR_TYPES 3497). */
@@ -271,7 +272,8 @@ export async function submitChangeRequest(projectCode: string, number: string, a
 /**
  * Records one approval-chain decision (crOv.chain): only on a CR in review and a pending step. The status is
  * re-derived from the chain; when the CR becomes approved, the proposed baseline it carries (BL2 ↔ CR-009)
- * becomes current and the previous current one superseded. Returns the new status. Permission (which persona
+ * becomes current and the previous current one superseded, and (delivery 7, R-068) the change is posted to the budget
+ * and the contract (src/server/dal/change-posting.ts). Returns the new status. Permission (which persona
  * decides which step; the CCB has none, 07 OQ2) is the caller's check.
  */
 export async function decideChangeStep(
@@ -315,6 +317,9 @@ export async function decideChangeStep(
         }
         changes.push(`${bl.code} current`);
       }
+      // Delivery 7 (R-068, A-4): the approved change flows into the budget (BAC) and the contract (draft amendment), once.
+      const posted = await postApprovedChange(tx, cr.id, actorName);
+      if (posted?.amount) changes.push(`posted · BAC ${posted.bacBefore} → ${posted.bacAfter} k€${posted.amendmentLabel ? ' · amendment prepared' : ''}`);
     }
     await writeAudit(tx, { actorName: who, actorPersonId: actor?.id, objectRef: number, change: changes.join(' · '), area: 'Change control', entityType: 'change_request', entityId: cr.id, projectId: p.id });
     return status;

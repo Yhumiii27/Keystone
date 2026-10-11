@@ -16,6 +16,28 @@ import { getClientScreen, getRexScreen } from './screen';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const G = golden as any;
+
+/**
+ * Delivery 7 (R-073; C-2a "EV = avancement × budget", A-12): the portal's progress tile and "Progress to date" bars read the earned
+ * value computed from the activities and the cost-loaded BL1 at the data date, no longer the seeded PV / EV series.
+ * HLT-026: 64 % (planned 71 %) → 63 % (planned 76 %); NDC-031: 51 % (planned 38 %) → 46 % (planned 48 %).
+ */
+const bars = (labels: string[], plan: string[], act: string[]) => labels.map((label, i) => ({ label, planH: plan[i], actH: act[i] }));
+const HLT_PLAN = ['2%', '4.1%', '5.9%', '9.8%', '19.3%', '31%', '52%', '65%', '76.3%'];
+const HLT_ACT = ['2%', '4.1%', '5.7%', '7.8%', '14.6%', '26.2%', '43%', '57.2%', '62.6%'];
+const D7: Record<string, Record<string, { kpi0: { value: string; sub: string }; progress: { label: string; planH: string; actH: string }[] }>> = {
+  'HLT-026': {
+    en: { kpi0: { value: '63%', sub: 'Planned 76% by today' }, progress: bars(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'], HLT_PLAN, HLT_ACT) },
+    fr: { kpi0: { value: '63%', sub: 'Prévu 76 % à ce jour' }, progress: bars(['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.'], HLT_PLAN, HLT_ACT) },
+  },
+  'NDC-031': {
+    en: {
+      kpi0: { value: '46%', sub: 'Planned 48% by today' },
+      progress: bars(['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'], ['3.2%', '10%', '16.3%', '27.2%', '38.1%', '48.5%'], ['3%', '8.9%', '16.4%', '26.4%', '36.8%', '46.3%']),
+    },
+  },
+};
+const withD7 = (code: string, lang: string, kpis: any[]) => [{ ...kpis[0], ...D7[code][lang].kpi0 }, ...kpis.slice(1)];
 const LANGS: Lang[] = ['en', 'fr'];
 const ICON = { done: 'ph ph-check-square', progress: 'ph ph-minus-square', idle: 'ph ph-square' };
 const str = (ks: any[]) => ks.map((k) => ({ ...k, value: String(k.value) }));
@@ -60,11 +82,11 @@ describe('client portal screen', () => {
     const t = makeT(lang);
     const v = await getClientScreen('HLT-026', 'decisions', t, lang);
     const g = G.client[lang]['HLT-026'];
-    expect(v.kpis).toEqual(str(g.kpis));
+    expect(v.kpis).toEqual(withD7('HLT-026', lang, str(g.kpis)));
     // S-9a: "Schedule" (FR "Planning") added after the prototype's first segment.
     expect(v.tabs.map((o) => o.label)).toEqual([g.seg[0], t('Schedule'), ...g.seg.slice(1)]);
     expect(v.tabs.map((o) => o.href)).toEqual(['', 'planning', 'decisions', 'invoices', 'issues', 'docs'].map((x) => `/projects/HLT-026/client${x ? `?tab=${x}` : ''}`));
-    expect(v.progress).toEqual(g.progress);
+    expect(v.progress).toEqual(D7['HLT-026'][lang].progress);
     expect(v.milestones).toEqual(g.milestones);
     // Deliverable types the prototype left in English are translated by the shared dictionary when it has them.
     const typeFr = (sub: string) => (lang === 'fr' ? sub.replace(/^[^·]+ · /, (m) => `${t(m.slice(0, -3))} · `) : sub);
@@ -105,10 +127,10 @@ describe('client portal screen', () => {
   it('NDC-031: generated data; issues are per project (the prototype listed Harbor Line’s issues everywhere)', async () => {
     const v = await getClientScreen('NDC-031', 'progress', makeT('en'), 'en');
     const g = G.client.en['NDC-031'];
-    expect(v.kpis.slice(0, 4)).toEqual(str(g.kpis).slice(0, 4));
+    expect(v.kpis.slice(0, 4)).toEqual(withD7('NDC-031', 'en', str(g.kpis)).slice(0, 4));
     expect(v.kpis[4]).toEqual({ ...g.kpis[4], value: '0' });
     expect(v.issues).toEqual([]);
-    expect(v.progress).toEqual(g.progress);
+    expect(v.progress).toEqual(D7['NDC-031'].en.progress);
     expect(v.milestones).toEqual(g.milestones);
     expect(v.decisions.map((d) => [d.id, d.sub, d.when])).toEqual(g.decisions.map((d: any) => [d.id, d.sub, d.when]));
     expect(v.decided).toEqual(g.decided);

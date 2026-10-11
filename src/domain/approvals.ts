@@ -24,7 +24,7 @@ import { renderTxt, type Txt } from './home';
 // ── Kinds ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Kind codes (URL `?filter=`), in the prototype's push order (routing matrix 08 §7.5), Codex documents last. */
-export const APPROVAL_KINDS = ['request', 'po', 'eco', 'delivery', 'stage', 'cr', 'deliverable', 'rfq', 'invoice', 'ncr', 'doc'] as const;
+export const APPROVAL_KINDS = ['request', 'po', 'eco', 'delivery', 'stage', 'cr', 'contingency', 'deliverable', 'rfq', 'invoice', 'ncr', 'doc'] as const;
 export type ApprovalKind = (typeof APPROVAL_KINDS)[number];
 
 /** Kind tag / chip label (EN source; FR from the prototype dictionary, "Codex document" from extra/myapprovals.json). */
@@ -35,6 +35,8 @@ export const APPROVAL_KIND_LABEL: Record<ApprovalKind, string> = {
   delivery: 'Delivery — quality check',
   stage: 'Forced stage change',
   cr: 'Change request',
+  // Delivery 7 (R-071, C-4): the portfolio director validates the contingency draw-downs.
+  contingency: 'Contingency draw-down',
   deliverable: 'Deliverable acceptance',
   rfq: 'RFQ award',
   invoice: 'Invoice — 3-way match',
@@ -71,7 +73,12 @@ export type ApprovalDecision =
    * Chapter 4 (L-1): forced stage change (portfolio director): Approve keeps the stage, Reject reverts the project to
    * `fromLabel` (the stage it left; prototype label) after a confirmation with an optional comment.
    */
-  | { mode: 'stage'; projectCode: string; transitionId: string; fromLabel: string | null };
+  | { mode: 'stage'; projectCode: string; transitionId: string; fromLabel: string | null }
+  /**
+   * Delivery 7 (R-071, C-4): contingency draw-down awaiting the portfolio director: Approve → validated (drawn), Reject → rejected
+   * after a confirmation with an optional comment the requester sees (src/features/risks/actions.ts decideDrawDownAction).
+   */
+  | { mode: 'contingency-draw'; projectCode: string; drawId: string };
 
 export interface ApprovalItem {
   kind: ApprovalKind;

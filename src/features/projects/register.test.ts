@@ -50,6 +50,30 @@ function asGolden(m: RegisterModel, r: RegisterRow, lang: Lang): GRow {
 }
 
 /**
+ * Delivery 7 (R-073; owner decisions C-2a "EV = avancement × budget", A-12, A-13): the six projects with activities show the
+ * progress, actual cost and SPI computed from their activities and the cost-loaded BL1 at the data date — the health, SPI / CPI,
+ * attention line, % complete and the budget view (spent, earned, EAC, VAC) follow. Values of the seed (was the prototype's).
+ */
+const D7_ROWS: Record<Lang, Record<string, Partial<GRow>>> = {
+  en: {
+    'HLT-026': { health: 'Off track', healthClass: 'tag tag-accent', spiText: '0.82', cpiText: '0.89', attention: 'SPI 0.82 · CPI 0.89 · Structure topped out · Late · 27 d slip', progressPct: '63%', earnedText: '€3.01M', eacText: '€5.37M', vacText: '−€566k' },
+    'NDC-031': { health: 'At risk', healthClass: 'tag tag-outline', spiText: '0.96', spiColor: 'var(--color-accent-300)', cpiText: '1.10', attention: 'SPI 0.96 · 4 d slip', progressPct: '46%', spentText: '€884k', earnedText: '€973k', eacText: '€1.91M', vacText: '+€192k', spentPct: '42%' },
+    'RCF-019': { health: 'At risk', healthClass: 'tag tag-outline', spiText: '0.91', cpiText: '0.97', attention: 'SPI 0.91 · CPI 0.97 · Fire systems complete · Late · 29 d slip', progressPct: '77%', spentText: '€1.08M', earnedText: '€1.04M', eacText: '€1.40M', vacText: '−€46k', spentPct: '80%' },
+    'ERP-202': { spiText: '1.00', cpiText: '1.09', progressPct: '52%', spentText: '€457k', earnedText: '€499k', eacText: '€879k', vacText: '+€81k', spentPct: '48%' },
+    'WSA-044': { spiText: '1.00', cpiText: '1.10', progressPct: '8%', spentText: '€247k', earnedText: '€271k', eacText: '€3.10M', vacText: '+€301k', spentPct: '7%' },
+    'MSR-012': { health: 'On track', healthClass: 'tag tag-neutral', spiText: '0.99', spiColor: 'var(--color-text)', cpiText: '1.04', attention: '9 d slip', progressPct: '92%', spentText: '€553k', earnedText: '€572k', eacText: '€599k', vacText: '+€21k' },
+  },
+  fr: {
+    'HLT-026': { health: 'Hors trajectoire', healthClass: 'tag tag-accent', spiText: '0.82', cpiText: '0.89', attention: 'SPI 0.82 · CPI 0.89 · Structure hors d’eau · En retard · 27 j de dérive', progressPct: '63%', earnedText: '3,01 M€', eacText: '5,37 M€', vacText: '−566 k€' },
+    'NDC-031': { health: 'À risque', healthClass: 'tag tag-outline', spiText: '0.96', spiColor: 'var(--color-accent-300)', cpiText: '1.10', attention: 'SPI 0.96 · 4 j de dérive', progressPct: '46%', spentText: '884 k€', earnedText: '973 k€', eacText: '1,91 M€', vacText: '+192 k€', spentPct: '42%' },
+    'RCF-019': { health: 'À risque', healthClass: 'tag tag-outline', spiText: '0.91', cpiText: '0.97', attention: 'SPI 0.91 · CPI 0.97 · Systèmes incendie terminés · En retard · 29 j de dérive', progressPct: '77%', spentText: '1,08 M€', earnedText: '1,04 M€', eacText: '1,40 M€', vacText: '−46 k€', spentPct: '80%' },
+    'ERP-202': { spiText: '1.00', cpiText: '1.09', progressPct: '52%', spentText: '457 k€', earnedText: '499 k€', eacText: '879 k€', vacText: '+81 k€', spentPct: '48%' },
+    'WSA-044': { spiText: '1.00', cpiText: '1.10', progressPct: '8%', spentText: '247 k€', earnedText: '271 k€', eacText: '3,10 M€', vacText: '+301 k€', spentPct: '7%' },
+    'MSR-012': { health: 'Conforme', healthClass: 'tag tag-neutral', spiText: '0.99', spiColor: 'var(--color-text)', cpiText: '1.04', attention: '9 j de dérive', progressPct: '92%', spentText: '553 k€', earnedText: '572 k€', eacText: '599 k€', vacText: '+21 k€' },
+  },
+};
+
+/**
  * Intended FR differences: the prototype keeps `dates` untranslated (SKIP_KEYS) — the rebuild translates the
  * months; milestone names the prototype dictionary lacked are now translated by the shared extra dictionaries.
  */
@@ -60,7 +84,7 @@ function expectedRow(g: GRow, lang: Lang, en?: GRow): GRow {
   const gap = !!en && en.msName !== '—' && g.msName === en.msName;
   const msName = gap ? t(en.msName) : g.msName;
   const attention = gap ? g.attention.split(en.msName).join(msName) : g.attention;
-  return { ...g, metaLine, msName, attention } as GRow;
+  return { ...g, metaLine, msName, attention, ...D7_ROWS[lang][g.code] } as GRow;
 }
 
 describe('Projects register', () => {
@@ -171,7 +195,10 @@ describe('Projects register', () => {
 
     it('cancels WSA-044 (Annulé is always forced)', async () => {
       await moveProjectStage('WSA-044', 'annule', 'forced', { reason: 'Client withdrew', missing: [] });
-      expect(await rowOf('WSA-044')).toEqual(expectedRow(golden.scenarios.wsaCancelled as GRow, 'en'));
+      // A cancelled project shows no performance figures; its progress and spend follow the activities (D7_ROWS).
+      expect(await rowOf('WSA-044')).toEqual({
+        ...expectedRow(golden.scenarios.wsaCancelled as GRow, 'en'), spiText: '—', cpiText: '—', earnedText: '—', eacText: '—', vacText: '—',
+      });
     });
 
     it('creates a project from the wizard (npCreate)', async () => {

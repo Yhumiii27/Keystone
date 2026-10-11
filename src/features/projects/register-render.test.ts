@@ -39,7 +39,8 @@ describe('ProjectsRegister render', () => {
     expect(html).toContain('href="/projects/HLT-026/plan"');
     expect(html).toContain('title="Open project · Plan — WBS"');
     expect(html).toContain('HAV004 · DAS 2 · EMP');
-    expect(html).toContain('SPI 0.90 · CPI 0.91 · Structure topped out · Late · 27 d slip');
+    // Delivery 7 (R-073, C-2a): SPI / CPI computed from the activities and BL1 (were 0.90 / 0.91).
+    expect(html).toContain('SPI 0.82 · CPI 0.89 · Structure topped out · Late · 27 d slip');
     expect(html).toMatch(/role="slider"[^>]*aria-valuemin="0"[^>]*aria-valuemax="13"[^>]*aria-valuenow="0"[^>]*aria-valuetext="All projects"/);
     expect(html).toContain('Drag the cursor to filter by stage');
     expect(html).toContain('placeholder="Search projects"');
@@ -61,7 +62,8 @@ describe('ProjectsRegister render', () => {
     const html = await render('en', 'budget', { q: 'harbor' });
     expect(headers(html)).toEqual(['Project', 'Status', 'Budget', 'Spent', 'Earned', 'CPI', 'EAC', 'Variance at completion', 'Spent vs budget']);
     expect(html).toContain('All projects · 1');
-    for (const v of ['€4.80M', '€3.36M', '€3.07M', '€5.25M', '−€450k', '70%']) expect(html).toContain(v);
+    // R-073: earned value = progress × BAC from the activities (€3.07M → €3.01M), EAC and VAC follow.
+    for (const v of ['€4.80M', '€3.36M', '€3.01M', '€5.37M', '−€566k', '70%']) expect(html).toContain(v);
   });
 
   it('read-only (outside) drops the status menus', async () => {

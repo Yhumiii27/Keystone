@@ -3,7 +3,7 @@
 // reports, contingency registers and draw-downs.
 import { date, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type {
-  ContingencyLinkType, ReportAudience, ReportPeriod, ReportSections, RiskCategory, RiskResponse, RiskStatus, RiskTrend,
+  ContingencyDrawStatus, ContingencyLinkType, ReportAudience, ReportPeriod, ReportSections, RiskCategory, RiskResponse, RiskStatus, RiskTrend,
 } from '../codes';
 import { id, keur, num, timestamps } from './_common';
 import { persons } from './organisation';
@@ -13,7 +13,8 @@ import { projects } from './portfolio';
 /**
  * Risk register (RISKS_HLT 3487 for HLT-026; the 5 other projects with data get the prototype's generated
  * register: RISKS_HLT[0..3] renumbered R-01…R-04, owned by the project PM, EMV scaled to the BAC).
- * Score, level and "contingency draw if it occurs" are derived (codes.ts riskScore / riskLevelOf / riskCostIfOccurs).
+ * Score and level are derived (codes.ts riskScore / riskLevelOf). Delivery 7 (Q-1): the cost if the risk occurs is
+ * entered and stored (`costKeur`); the EMV is derived from it (cost × P / 5, src/domain/risk.ts emvOf).
  */
 export const risks = pgTable(
   'risks',
@@ -32,8 +33,13 @@ export const risks = pgTable(
     responsePlan: text('response_plan').notNull(),
     /** Linked schedule activity (prototype `act`; '' → null). */
     activityId: uuid('activity_id').references(() => activities.id, { onDelete: 'set null' }),
-    /** Expected monetary value, k€ — stored, not recomputed when P changes (OPEN QUESTION Q-1). */
-    emvKeur: keur('emv_keur').notNull(),
+    /**
+     * Legacy: the EMV entered before Q-1 (k€). No longer written nor read, except to backfill `costKeur` of a database seeded
+     * before delivery 7 (cost = EMV / (P/5), so the EMV shown is unchanged). Drop in a later delivery.
+     */
+    emvKeur: keur('emv_keur'),
+    /** Cost if the risk occurs, k€ (Q-1: entered; EMV = cost × P / 5). Null only on rows not backfilled yet. */
+    costKeur: keur('cost_keur'),
     /** "Mill confirms > 2 weeks delay"; "—" when none. */
     trigger: text('trigger').notNull(),
     status: text('status').$type<RiskStatus>().notNull(),
@@ -96,19 +102,34 @@ export const contingencyRegisters = pgTable('contingency_registers', {
   ...timestamps,
 });
 
-/** Draw-downs on the contingency (CONTINGENCY.draws; AF.contingency). Stored oldest first. */
+/**
+ * Draw-downs on the contingency (CONTINGENCY.draws; AF.contingency). Stored oldest first.
+ * Delivery 7 (R-071, C-4): a draw-down is linked to a change request, a risk or an NCR of the project and only counts once
+ * the portfolio director validates it in My approvals (submitted → validated / rejected). The prototype's draw-downs were
+ * approved when recorded: they are `validated` (the column default, which also covers a database seeded before).
+ */
 export const contingencyDraws = pgTable('contingency_draws', {
   id: id(),
   registerId: uuid('register_id').notNull().references(() => contingencyRegisters.id, { onDelete: 'cascade' }),
   drawnOn: date('drawn_on', { mode: 'string' }).notNull(),
   amountKeur: keur('amount_keur').notNull(),
   reason: text('reason').notNull(),
-  /** Free-text reference as entered ("CR-004", "R-03", "NCR-026"; null/'' when none). */
+  /** Reference of the linked item ("CR-004", "R-03", "NCR-026"); required for the draw-downs recorded in Keystone. */
   linkRef: text('link_ref'),
-  /** Parsed from linkRef; linkedEntityId resolves CRs and risks of the project (NCRs are not modelled yet). */
+  /** Kind of the linked item; linkedEntityId = the change request / risk / Vigie NCR mirror row (null when not resolved). */
   linkedEntityType: text('linked_entity_type').$type<ContingencyLinkType>(),
   linkedEntityId: uuid('linked_entity_id'),
+  /** Who validated it (the prototype's "Approved by"); null while awaiting validation or when rejected. */
   approvedByPersonId: uuid('approved_by_person_id').references(() => persons.id),
   position: integer('position').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  // ── Delivery 7 (R-071) ──
+  status: text('status').$type<ContingencyDrawStatus>().notNull().default('validated'),
+  /** Who recorded it (the "Requested by" of My approvals). */
+  requestedByPersonId: uuid('requested_by_person_id').references(() => persons.id),
+  requestedByName: text('requested_by_name'),
+  /** The director's decision (validated or rejected): who, when, comment. */
+  decidedByPersonId: uuid('decided_by_person_id').references(() => persons.id),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  decisionComment: text('decision_comment'),
 });

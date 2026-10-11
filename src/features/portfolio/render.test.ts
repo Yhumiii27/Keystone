@@ -22,10 +22,12 @@ describe('portfolio screens render', () => {
     const data = await getPortfolioOverview(null, 'fr');
     const html = renderToStaticMarkup(h(OverviewBody, { data, zoneSelected: false, t: makeT('fr'), lang: 'fr' }));
     const txt = text(html);
+    // Delivery 7 (R-073, C-2a): actual cost, EAC and health computed from the activities and BL1 (56 % → 50 % spent, −270 → −17 k€
+    // vs budget; HLT-026 at risk → off track, EAC 5,25 → 5,37 M€, VAC −450 → −566 k€).
     for (const s of [
-      'Budget total', '13,23 M€', '6 projets actifs', '56 % du budget dépensé', '−270 k€ vs budget', 'Perf. coût (CPI)', '3 sur 6', '1 hors trajectoire',
+      'Budget total', '13,23 M€', '6 projets actifs', '50 % du budget dépensé', '−17 k€ vs budget', 'Perf. coût (CPI)', '3 sur 6', '1 hors trajectoire',
       'Projets actifs', '6 projets · exercice 2026', 'Dépensé vs acquis', 'Écart',
-      '#026 · Extension du terminal Harbor Line', 'R. Aubert · échéance déc. 2026', 'À risque', '5,25 M€', '−450 k€',
+      '#026 · Extension du terminal Harbor Line', 'R. Aubert · échéance déc. 2026', 'Hors trajectoire', '5,37 M€', '−566 k€',
       'Budget dépensé', 'Travail acquis', 'Points d’attention', 'Main-d’œuvre prévue +160 k€', 'Ouvrir le planning', 'Rééquilibrer',
     ])
       expect(txt).toContain(s);
@@ -50,7 +52,8 @@ describe('portfolio screens render', () => {
     for (const s of [
       'Mes projets', 'Directrice de portefeuille', 'Décisions en attente', 'Dans mes approbations',
       '#026 · Extension du terminal Harbor Line', 'HAV004 · R. Aubert · Autorité portuaire', 'Fabrication & Assemblage',
-      '64%', '0.90', '0.91', '14 janv. 2027', 'Structure hors d’eau', '23 oct. · En retard', 'Ouvrir le projet', '#032 · Migration ERP — Phase 2',
+      // R-073: 64 % / SPI 0.90 / CPI 0.91 → 63 % / 0.82 / 0.89.
+      '63%', '0.82', '0.89', '14 janv. 2027', 'Structure hors d’eau', '23 oct. · En retard', 'Ouvrir le projet', '#032 · Migration ERP — Phase 2',
     ])
       expect(txt).toContain(s);
     expect(d).toContain('href="/projects/HLT-026/plan"');

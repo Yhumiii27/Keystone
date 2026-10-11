@@ -172,7 +172,9 @@ describe('Delivery 3 badges and crumbs follow the database (docs/spec/01 §4.4)'
     expect((await badges('HLT-026')).billing).toBe('');
     await addPaymentMilestone('HLT-026', { label: 'Early works', sharePct: 1, contractualDue: '2026-09-01' }, 'Romain Aubert');
     expect((await badges('HLT-026')).billing).toBe('1');
-  });
+    // Outside a request React's cache() memoises nothing: each badge read recomputes the portfolio (delivery 7: with the earned
+    // value of every project, R-073), so these write-then-read tests get more than the default 5 s.
+  }, 20_000);
 
   it('a project without data gets a database badge once it has the rows', async () => {
     const n = await createMeeting('EWA-051', {
@@ -211,7 +213,7 @@ describe('Delivery 4 badges and search follow the database (docs/spec/01 §4.4, 
     expect([low.length, (await badges('HLT-026')).stock]).toEqual([1, '1']);
     await applyStockMovement(low[0].id, { op: 'adjust', qty: low[0].minQty }, 'Fabien Bertrand');
     expect((await badges('HLT-026')).stock).toBe('');
-  });
+  }, 20_000);
 
   it('search reads parts and purchase orders from their modules', async () => {
     await createPart({ ref: 'ME-GBX-91', name: 'Gearbox 91 kW', family: 'mechanical', supplier: 'Flender', priceEur: 8400, unit: 'pc' }, 'Antoine Girard');

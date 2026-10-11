@@ -8,6 +8,7 @@ import { clientCode3, machineType, stage, type CalendarCode, type CostType, type
 import { clients, countries, persons, projectControls, projectSites, projects } from '@/server/db/schema';
 import type { ZoneKey } from '@/server/session';
 import { getCostControl, type CostControl } from './cost';
+import { listProjectEvms, type ProjectEvm } from './evm';
 import { healthThresholds } from './health-thresholds';
 import { getActivities, getMilestones, getScheduleBars, getScheduleControl, getWbs, toProtoActs, type ProtoAct, type ScheduleControl } from './planning';
 
@@ -64,14 +65,18 @@ const projectSelect = {
 type Joined = { p: typeof projects.$inferSelect; client: string | null; pm: string | null; city: string | null; country: string | null;
   lat: number | null; lng: number | null; zoneOverride: ZoneKey | null; countryZone: ZoneKey | null; controls: string | null };
 
-/** `th` = Settings › Project health rules (A-13: one health rule everywhere). */
-function toRow(r: Joined, th: HealthThresholds): ProjectRow {
+/**
+ * `th` = Settings › Project health rules (A-13: one health rule everywhere). `evm` = the project's earned value computed from
+ * its activities (delivery 7, R-073): progress, actual cost and SPI at the data date replace the stored (seeded) figures,
+ * which stay for a project without activity budgets.
+ */
+function toRow(r: Joined, th: HealthThresholds, evm: ProjectEvm | undefined): ProjectRow {
   const p = r.p;
   const row = {
     code: p.code, name: p.name, displayId: p.number ?? p.code, analytic: p.analyticCode, das: p.das,
     machineType: p.machineTypeCode ? (machineType.isCode(p.machineTypeCode) ? machineType.label(p.machineTypeCode) : p.machineTypeCode) : null,
     status: stage.label(p.stage), pm: r.pm ?? '—', pmPersonId: p.pmPersonId, client: r.client ?? '—', start: p.startText, finish: p.finishText,
-    budget: p.budgetKeur, actual: p.actualKeur, progress: p.progress, spi: p.spi,
+    budget: p.budgetKeur, actual: evm ? evm.ac : p.actualKeur, progress: evm ? evm.progress : p.progress, spi: evm ? evm.spi : p.spi,
     city: r.city, country: r.country, zone: r.zoneOverride ?? r.countryZone ?? 'euna', hasData: r.controls != null,
     stage: p.stage, shortCode: p.shortCode, isNew: p.isNew, lat: r.lat, lng: r.lng,
   };
@@ -80,7 +85,7 @@ function toRow(r: Joined, th: HealthThresholds): ProjectRow {
 
 /** All projects in register order (new projects first). Memoised per request. */
 export const listProjects = cache(async (): Promise<ProjectRow[]> => {
-  const [db, th] = await Promise.all([getDb(), healthThresholds()]);
+  const [db, th, evms] = await Promise.all([getDb(), healthThresholds(), listProjectEvms()]);
   const rows = await db
     .select(projectSelect)
     .from(projects)
@@ -90,7 +95,7 @@ export const listProjects = cache(async (): Promise<ProjectRow[]> => {
     .leftJoin(countries, eq(countries.name, projectSites.countryName))
     .leftJoin(projectControls, eq(projectControls.projectId, projects.id))
     .orderBy(asc(projects.sortOrder));
-  return rows.map((r) => toRow(r, th));
+  return rows.map((r) => toRow(r, th, evms.get(r.p.code)));
 });
 
 export async function getProject(code: string): Promise<ProjectRow | null> {

@@ -10,6 +10,7 @@ import { seedClient } from './client';
 import { seedCollaboration } from './collaboration';
 import { ctxFromDb, newCtx, type SeedCtx } from './context';
 import { seedControl } from './control';
+import { backfillCostControl } from './cost-control';
 import { seedContract } from './contract';
 import { seedCost } from './cost';
 import { seedCursus } from './cursus';
@@ -121,6 +122,8 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     if (await demoReferentsToBackfill(db)) {
       await db.transaction(async (tx) => seedDemoReferents(tx)).catch((e) => logError('Delivery 7 project team backfill', e, { component: 'seed' }));
     }
+    // Delivery 7 (cost-control): risk costs of a database seeded before migration 0007 (idempotent).
+    await backfillCostControl(db).catch((e) => logError('Delivery 7 cost-control backfill', e, { component: 'seed' }));
     // Databases seeded before delivery 7 adopt their (demo) record.
     if (!record) await writeSeedRecord(db, 'demo').catch((e) => logError('Seed record', e, { component: 'seed' }));
     return false;

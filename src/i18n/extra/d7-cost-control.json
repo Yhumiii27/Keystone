@@ -1,0 +1,23 @@
+{
+  "Planned value follows the cost-loaded baseline": "La valeur planifiée suit la référence chargée en coûts",
+  "Earned value = progress × budget": "Valeur acquise = avancement × budget",
+  "No change request in review": "Aucune demande de modification en revue",
+  "awaiting validation": "en attente de validation",
+  "Awaiting validation": "En attente de validation",
+  "Awaiting the director’s validation": "En attente de la validation du directeur",
+  "Choose a change request, risk or NCR": "Choisir une demande de modification, un risque ou une NC",
+  "Choose the change request, risk or NCR the draw-down covers": "Choisissez la demande de modification, le risque ou la NC que couvre le prélèvement",
+  "Unknown change request, risk or NCR": "Demande de modification, risque ou NC inconnu",
+  "The draw-down exceeds the remaining provision": "Le prélèvement dépasse la provision restante",
+  "Only the portfolio director validates contingency draw-downs": "Seul le directeur de portefeuille valide les prélèvements sur provision",
+  "This draw-down is not waiting for a decision any more": "Ce prélèvement n’attend plus de décision",
+  "Contingency draw-down to validate": "Prélèvement sur provision à valider",
+  "Contingency draw-down validated": "Prélèvement sur provision validé",
+  "Contingency draw-down rejected": "Prélèvement sur provision refusé",
+  "Draw-down validated": "Prélèvement validé",
+  "Draw-down rejected": "Prélèvement refusé",
+  "Comment — the requester sees this": "Commentaire — visible par le demandeur",
+  "Cost if it occurs (k€)": "Coût si survenance (k€)",
+  "EMV = cost × P / 5": "EMV = coût × P / 5",
+  "Enter a cost of 0 or more (k€)": "Saisissez un coût positif ou nul (k€)"
+}

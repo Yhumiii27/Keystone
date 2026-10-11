@@ -1,6 +1,8 @@
 // Contingency register screen body (docs/spec/04 §5, template 900–909): 4 KPI tiles, then "Contingency use vs
 // project progress" (drawn bar over the hatched exposure layer, progress bar, legend) and "Draw-downs" (most recent
-// first). Server Component.
+// first). Server Component. Delivery 7 (C-4): "Linked to" opens the change request, risk or NCR; "Approved by" shows the
+// validator, or the status of a draw-down awaiting the director's validation / rejected (with the comment).
+import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
 import { SectionCard, Stack } from '@/components/app/SectionCard';
@@ -69,9 +71,18 @@ export function ContingencyView({ view, t }: { view: View; t: T }) {
                   </Td>
                   <td className={s.reason}>{d.reason}</td>
                   <Td tone="secondary" nowrap>
-                    {d.link}
+                    {d.linkHref ? (
+                      <Link href={d.linkHref} className={s.drawLink}>
+                        {d.link}
+                      </Link>
+                    ) : (
+                      d.link
+                    )}
                   </Td>
-                  <td className={s.ownerCell}>{d.by}</td>
+                  <td className={s.ownerCell}>
+                    {d.status ? <span className={d.status.className}>{d.status.text}</span> : d.by}
+                    {d.note && <span className={s.drawNote}>{d.note}</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>

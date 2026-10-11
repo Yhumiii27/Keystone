@@ -63,10 +63,11 @@ describe('client portal render', () => {
   it('Progress & milestones: tiles, Display segments, bars, milestones', async () => {
     const m = await client('HLT-026', 'progress', 'en', CLIENT);
     const x = text(m);
-    for (const s of ['Progress', '64%', 'Planned 71% by today', 'Forecast handover', '14 Jan 2027', 'Contract date 18 Dec 2026', '2 of 6', 'Awaiting your decision', 'Open issues',
+    // Delivery 7 (R-073, C-2a): progress and planned value computed from the activities and BL1 (64 % / 71 % → 63 % / 76 %).
+    for (const s of ['Progress', '63%', 'Planned 76% by today', 'Forecast handover', '14 Jan 2027', 'Contract date 18 Dec 2026', '2 of 6', 'Awaiting your decision', 'Open issues',
       'Display', 'Progress & milestones', 'Progress to date', 'Cumulative % complete · planned vs actual', 'Milestones', 'Contract 15 Mar · Forecast 1 Apr', 'Handover'])
       expect(x).toContain(s);
-    expect(m.match(/height:71.3%/g)?.length).toBe(1);
+    expect(m.match(/height:76.3%/g)?.length).toBe(1);
     expect(m).toContain('href="/projects/HLT-026/client?tab=decisions"');
   });
 

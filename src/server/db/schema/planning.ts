@@ -215,11 +215,16 @@ export const projectControls = pgTable('project_controls', {
   reconCrCount: integer('recon_cr_count').notNull(),
   reconPendingKeur: keur('recon_pending_keur').notNull(),
   reconPendingSub: text('recon_pending_sub').notNull(),
+  /** Contingency line of the budget (k€): the provision of a project without a contingency register (delivery 7, A-8). */
   contingencyKeur: keur('contingency_keur').notNull(),
+  /**
+   * FORECAST consumption of the contingency (k€; the prototype's `contUsed`, e.g. HLT-026 208). Since delivery 7 (A-8) the
+   * consumed figure is the register's validated draw-downs; this stays the forecast the Budget shows apart.
+   */
   contingencyUsedKeur: keur('contingency_used_keur').notNull(),
   /**
-   * Orders placed not yet in actual cost (Cash & recovery `openCommit`, 04 §1.6): HLT-026's 713 k€ until purchase
-   * orders are modelled (04 Q11); null → 60 % of next month's planned value.
+   * Legacy: orders placed not yet in actual cost (the prototype's literal 713 k€ of HLT-026, 04 Q11). Since delivery 7
+   * (R-073) the Budget computes them from the project's purchase orders; no longer read.
    */
   ordersPlacedKeur: keur('orders_placed_keur'),
   /** Narrative under the variance card. */
