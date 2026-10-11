@@ -203,6 +203,8 @@ tests are unchanged except `scripts/db-check.ts` (`app_settings` 1 → 2: the se
   `actions.ts` files touched by other lots.
 - A Turbopack build inside an agent worktree whose `node_modules` is a symlink needs `turbopack.root` (used temporarily for
   the crawls, not committed).
+- `./drizzle` must ship with the server: PGlite already needed it, and now `getDb()` on PostgreSQL and `/api/health` read its
+  journal to detect pending migrations. This matters for a `standalone` output or a slim image.
 
 ## 6. Migration
 
