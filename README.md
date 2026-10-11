@@ -7,8 +7,9 @@ reconstruction en Next.js 16 du prototype Claude Design `design/Keystone PM v8.d
 - Spécification fonctionnelle : `docs/spec/`
 - État des livraisons : `docs/DELIVERY-1.md`, `docs/DELIVERY-2.md`, `docs/DELIVERY-3.md`, `docs/DELIVERY-4.md`, `docs/DELIVERY-5.md`,
   `docs/DELIVERY-6.md` (chapitre 4 : les fonctions simulées des 59 écrans sont devenues réelles ; plan d'origine dans
-  `docs/DELIVERY-6-PLAN.md`)
-- Reste à développer (inventaire du 10 octobre 2026) : `docs/RESTE-A-DEVELOPPER.md`
+  `docs/DELIVERY-6-PLAN.md`), `docs/DELIVERY-7.md` (mise en production : PostgreSQL, connexion Microsoft Entra ID, droits par
+  équipe projet, réponses du responsable produit ; plan dans `docs/DELIVERY-7-PLAN.md`)
+- Reste à développer (inventaire du 10 octobre 2026, tenu à jour à chaque développement) : `docs/RESTE-A-DEVELOPPER.md`
 - Décisions du responsable produit (questionnaire) : `docs/DECISIONS.md`
 - Consignes pour les sessions Claude : `CLAUDE.md`
 - Évolutions demandées et proposées : `docs/BACKLOG.md`
@@ -23,8 +24,12 @@ npm run dev          # http://localhost:3000
 - **Base locale :** au premier accès, une base PGlite est créée dans `./.data`, puis remplie avec les données du
   prototype.
 - **Repartir de zéro :** serveur arrêté, `npm run db:reset`.
-- **Contrôles :** `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
-- **Rôle et langue :** le sélecteur « Voir en tant que » en bas de la barre latérale remplace l'authentification.
+- **Contrôles :** `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, `npm run test:e2e` (Playwright sur un build de
+  production).
+- **Rôle et langue :** en mode démonstration (`KEYSTONE_AUTH=demo`, par défaut), le sélecteur « Voir en tant que » en bas de la
+  barre latérale remplace l'authentification. En production, `KEYSTONE_AUTH=entra` impose la connexion Microsoft Entra ID.
+- **Configuration de production :** toutes les variables sont décrites dans `.env.example` (base PostgreSQL et
+  `npm run db:migrate`, jeu de données `KEYSTONE_SEED`, connexion Entra ID, tâches planifiées `npm run worker`, connecteurs).
   La bascule FR/EN est dans l'en-tête ; le français est la langue par défaut.
 - **Analyse des comptes rendus par Claude (optionnelle) :** l'analyse d'une transcription de réunion par Claude n'est active que si
   `ANTHROPIC_API_KEY` est définie côté serveur. La transcription est alors envoyée à Anthropic, et l'écran l'indique (« Analyse par

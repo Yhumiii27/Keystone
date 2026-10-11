@@ -6,10 +6,11 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
 
 ## Where the project stands — read this first
 
-- **Deliveries 1–6 are done and committed.** The shell and all 59 prototype screens are built, with prototype mock data (HLT-026, NDC-031…). Each delivery's status, APIs, deviations and open questions are in `docs/DELIVERY-1.md` … `docs/DELIVERY-6.md`.
+- **Deliveries 1–7 are done and committed.** The shell and all 59 prototype screens are built, with prototype mock data (HLT-026, NDC-031…). Each delivery's status, APIs, deviations and open questions are in `docs/DELIVERY-1.md` … `docs/DELIVERY-7.md`.
 - **Ignore older status sources.** Any older handoff or README describing "Home ~70 %, Budget ~30 %, other screens under construction" is the prototype's handoff and is obsolete.
 - **Chapter 4 = delivery 6 is done** (`docs/DELIVERY-6.md`): every simulated function is real when Keystone can do it with its own data, and the owner's answers that touch it are applied. `docs/DELIVERY-6-PLAN.md` is the historical plan and audit; the open questions are in `DELIVERY-6.md` §8.
-  - Next: delivery 7. Read `docs/RESTE-A-DEVELOPPER.md` (inventory of the remaining work, 10 Oct 2026; data with code evidence in `docs/reste-a-developper.json`), `docs/DECISIONS.md` § "À traiter en priorité" and `DELIVERY-6.md` §8 before planning it.
+- **Delivery 7 is done** (`docs/DELIVERY-7.md`): production platform (PostgreSQL, production seed, configuration, logs and health, HTTP hardening, job worker, CI and end-to-end tests), Microsoft Entra ID sign-in with real users, rights by named project team, and the owner's answers on cost control, contract and portfolio, operations, quality and site, plus the prototype's technical debt. `docs/DELIVERY-7-PLAN.md` is the plan; each lot's notes are in `docs/delivery-7/`; the open questions are in `DELIVERY-7.md` §8.
+  - Next: read `docs/RESTE-A-DEVELOPPER.md` (what is left; data with code evidence in `docs/reste-a-developper.json`), `docs/DECISIONS.md` § "À traiter en priorité" and `DELIVERY-7.md` §8 before planning delivery 8.
 - **Remaining-work page — keep it current (user's standing rule).** After every development (a delivery started, a lot merged, an item finished), update `docs/reste-a-developper.json`: each item's `progress` (`{ state: 'a_faire' | 'en_cours' | 'fait', delivery, note }`), a line in `history`, and `updated`. Then run `npm run remaining:page` (regenerates `docs/RESTE-A-DEVELOPPER.md` and `.artifacts/reste-a-developper.html`), commit, and republish the HTML with the Artifact tool to the same page, https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc (pass it as `url`). Mark an item "fait" only once it is integrated and verified on the branch.
 - **Product decisions.**
   - The product owner answered the 195 open questions (the "chapter-5 questionnaire"). See **`docs/DECISIONS.md`** (readable) and `docs/decisions/{questions,answers}.json` (raw).
@@ -39,7 +40,9 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
 
 - **Must read first:** `docs/ARCHITECTURE.md`, then the spec in `docs/spec/`: 00 overview and open questions §10, 01–10 by module, 11 data model, 12 coverage.
 - **Routing:** `src/config/screens.ts` holds the 59 screens. Use `screenHref`, `canSee` and `ROLE_SCREENS`.
-- **Personas:** the "View as" cookie (`ks-role`) stands in for authentication.
+- **Viewer:** `getViewer()` (`src/server/session.ts`). `KEYSTONE_AUTH=demo` (default, tests and development): the "View as" cookie (`ks-role`) picks a persona. `KEYSTONE_AUTH=entra`: Microsoft Entra ID sign-in (R-038), the user's roles and person from the database; `ks-role` is ignored.
+- **Project rights (R-041):** `getProjectContext` / `projectAccessResolver` (`src/server/project-context.ts`) over `projectAccess` (`src/domain/rights.ts`): `isLead` for PM rights (PM of record, co-PM, deputy, director), `isMine` for team members; a client is sent home outside their workspace (`refuseClient`).
+- **Typed text (R-148):** what people typed (names, titles, notes) is shown with `dataText` / `projectLabelText` / `fieldsText` (`src/i18n/data-text.ts`), never through `t()`, which is for Keystone's own vocabulary.
 - **Data access:**
   - DAL in `src/server/dal/`, Drizzle schema in `src/server/db/schema/`.
   - Migrations in `drizzle/`: generate a new one with `npm run db:generate` and never edit an existing one.
@@ -57,7 +60,10 @@ npm ci
 npx next typegen      # generates .next/types (LayoutProps/PageProps); next-env.d.ts is gitignored
 npm run typecheck && npm run lint && npm test
 npm run dev           # http://localhost:3000 — PGlite DB created and seeded in ./.data
+npm run test:e2e      # Playwright on a production build (.next-ci), free port, fresh data directory
 ```
+
+- **Configuration:** every environment variable is in `.env.example`, validated by `src/server/config/parse.ts` (R-007). PostgreSQL with `DATABASE_URL` (`npm run db:migrate` at deploy), else PGlite; `KEYSTONE_SEED=production` for reference data only; scheduled jobs with `npm run worker` or `KEYSTONE_JOBS=inprocess`.
 
 - **Production build:** `npm run build`. To keep the regular `.next` untouched, build with `KEYSTONE_DIST_DIR=.next-ci` and point `KEYSTONE_DATA_DIR` at a temporary directory.
 - **Meeting analysis by Claude:** only active when `ANTHROPIC_API_KEY` is set. Otherwise a local rule-based analyser runs.
