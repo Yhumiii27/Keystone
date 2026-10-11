@@ -149,3 +149,9 @@ export const httpQualityConnector: VigieQualityConnector = {
 export function getVigieQualityConnector(): VigieQualityConnector {
   return vigieConnectorMode() === 'http' ? httpQualityConnector : mockQualityConnector;
 }
+
+/** Outbox redelivery of the worker (R-006, job "vigie-outbox"): the NCR progress not yet sent, as `redeliverEcoOutbox`. */
+export async function redeliverNcrOutbox(): Promise<{ mode: 'mock' | 'http'; delivered: number; failed: number; pending: number }> {
+  if (vigieConnectorMode() === 'http') return { mode: 'http', ...(await deliverOutbox()) };
+  return { mode: 'mock', delivered: 0, failed: 0, pending: (await undeliveredNcrProgress(await getDb())).length };
+}

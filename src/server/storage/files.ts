@@ -15,6 +15,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import { FILE_EXTENSIONS, MAX_FILE_BYTES, MAX_FILE_TEXT } from '@/domain/ch4-defaults';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import type { StoredFilePurpose } from '@/server/db/codes';
+import { orphanFilesToPrune } from '@/domain/jobs';
 import { storedFiles } from '@/server/db/schema';
 
 type Q = DB | Tx;
@@ -254,12 +255,16 @@ export async function deleteStoredFile(id: string, q?: Q): Promise<boolean> {
   return true;
 }
 
-/** Removes files on disk that no stored_files row references (left by rolled-back transactions). Returns their count. */
-export async function pruneOrphanFiles(): Promise<number> {
+/**
+ * Removes files on disk that no stored_files row references (left by rolled-back transactions). Returns their count.
+ * `graceMs` (R-006 worker job "orphan-files-prune": 24 h) spares recent files: an upload writes its bytes before its record
+ * is committed, so a file younger than that may still be on its way. The records are read after the files are listed, so
+ * a record committed meanwhile protects its file.
+ */
+export async function pruneOrphanFiles(opts: { graceMs?: number; now?: number } = {}): Promise<number> {
   const root = filesRoot();
-  const db = await getDb();
-  const known = new Set((await db.select({ p: storedFiles.storagePath }).from(storedFiles)).map((r) => r.p));
-  let removed = 0;
+  const now = opts.now ?? Date.now();
+  const files: { rel: string; abs: string; mtimeMs: number }[] = [];
   const walk = async (dir: string): Promise<void> => {
     let entries: import('node:fs').Dirent[];
     try {
@@ -270,13 +275,20 @@ export async function pruneOrphanFiles(): Promise<number> {
     for (const e of entries) {
       const abs = path.join(/*turbopackIgnore: true*/ dir, e.name);
       if (e.isDirectory()) await walk(abs);
-      else if (!known.has(path.relative(root, abs).split(path.sep).join('/'))) {
-        await fs.rm(abs, { force: true });
-        removed++;
+      else if (e.isFile()) {
+        const st = await fs.stat(abs).catch(() => null);
+        if (st) files.push({ rel: path.relative(root, abs).split(path.sep).join('/'), abs, mtimeMs: st.mtimeMs });
       }
     }
   };
   await walk(root);
+  const db = await getDb();
+  const known = new Set((await db.select({ p: storedFiles.storagePath }).from(storedFiles)).map((r) => r.p));
+  let removed = 0;
+  for (const f of orphanFilesToPrune(files, known, now, opts.graceMs ?? 0)) {
+    await fs.rm(f.abs, { force: true });
+    removed++;
+  }
   return removed;
 }
 
