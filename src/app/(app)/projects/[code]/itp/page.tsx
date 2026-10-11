@@ -13,8 +13,10 @@ import { canRecordItpResult, itpDateText } from '@/domain/itpcom';
 import { ItpFormButton } from '@/features/itpcom/add-buttons';
 import { inspectionFormDef, localizeForm, punchFormDef } from '@/features/itpcom/forms';
 import { ItpBody } from '@/features/itpcom/itp-view';
+import { photoViews } from '@/features/photos/model';
 import { itpScreenView, itpViewOf } from '@/features/itpcom/model';
 import { getItpPlan, listItpSystems, listPunchItems, projectMachineTypeLabel } from '@/server/dal/itp';
+import { listProjectPhotos } from '@/server/dal/photos';
 import { projectLabel } from '@/server/dal/projects';
 import { teamOwnerOptions } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
@@ -48,6 +50,14 @@ export default async function ItpPage({ params, searchParams }: { params: Promis
       );
   }
 
+  // R-126 (X-15): punch-item photos stored by Keystone; added by the screen's editors (not the client), seen by internal
+  // viewers and by the client on their own project.
+  let photos;
+  if (view === 'punch' && (ctx.viewer.role !== 'client' || ctx.isMine)) {
+    const byItem = await listProjectPhotos(projectCode, 'punch_item', 'itp');
+    photos = { canEdit: canEdit && ctx.viewer.role !== 'client', punch: Object.fromEntries([...byItem].map(([k, v]) => [k, photoViews(v)])) };
+  }
+
   return (
     <>
       <PageHeader screen="itp" projectCode={projectCode} primary={primary} />
@@ -61,6 +71,7 @@ export default async function ItpPage({ params, searchParams }: { params: Promis
           t, lang,
         )}
         canEdit={canEdit}
+        photos={photos}
         t={t}
       />
     </>

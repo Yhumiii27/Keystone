@@ -12,6 +12,7 @@ import { ButtonLink } from '@/components/ds/Button';
 import { Segmented } from '@/components/ds/Segmented';
 import { Ellipsis, Table, Td, Th } from '@/components/ds/Table';
 import { cx } from '@/components/ds/cx';
+import { PhotosButton, type PhotoView } from '@/features/photos/photo-gallery';
 import type { T } from '@/i18n/translate';
 import { VIGIE_LINK_ATTRS } from '@/server/integrations/vigie/links';
 import type { DocButtonView, InspectionGroupView, InspectionRowView, ItpScreenView, PunchRowView } from './model';
@@ -24,12 +25,14 @@ export interface ItpBodyProps {
   view: ItpScreenView;
   /** Row steps allowed (not outside the workspace, not a read-only project). */
   canEdit: boolean;
+  /** R-126: photos stored by Keystone of the punch items (by number), and whether the viewer adds / removes them. */
+  photos?: { canEdit: boolean; punch: Record<string, PhotoView[]> };
   t: T;
 }
 
 const VIEW_ICON = { plan: ClipboardText, punch: ListChecks } as const;
 
-export function ItpBody({ code, view, canEdit, t }: ItpBodyProps) {
+export function ItpBody({ code, view, canEdit, photos, t }: ItpBodyProps) {
   return (
     <Stack>
       <FilterBar>
@@ -57,7 +60,7 @@ export function ItpBody({ code, view, canEdit, t }: ItpBodyProps) {
           {view.punch.empty ? (
             <EmptyState variant="boxed">{view.punch.empty}</EmptyState>
           ) : (
-            <PunchTable code={code} rows={view.punch.rows} canEdit={canEdit} t={t} />
+            <PunchTable code={code} rows={view.punch.rows} canEdit={canEdit} photos={photos} t={t} />
           )}
         </SectionCard>
       )}
@@ -66,7 +69,7 @@ export function ItpBody({ code, view, canEdit, t }: ItpBodyProps) {
 }
 
 /** Punch list table (12.5px); the unlabelled first column (P-01…) is named for screen readers. */
-function PunchTable({ code, rows, canEdit, t }: { code: string; rows: PunchRowView[]; canEdit: boolean; t: T }) {
+function PunchTable({ code, rows, canEdit, photos, t }: { code: string; rows: PunchRowView[]; canEdit: boolean; photos?: ItpBodyProps['photos']; t: T }) {
   return (
     <Table size={12.5}>
       <thead>
@@ -84,7 +87,7 @@ function PunchTable({ code, rows, canEdit, t }: { code: string; rows: PunchRowVi
       </thead>
       <tbody>
         {rows.map((p) => (
-          <PunchRow key={p.number} code={code} row={p} canEdit={canEdit} />
+          <PunchRow key={p.number} code={code} row={p} canEdit={canEdit} photos={photos} t={t} />
         ))}
       </tbody>
     </Table>
@@ -169,7 +172,7 @@ function PlanGroup({ code, group: g }: { code: string; group: InspectionGroupVie
   );
 }
 
-function PunchRow({ code, row: p, canEdit }: { code: string; row: PunchRowView; canEdit: boolean }) {
+function PunchRow({ code, row: p, canEdit, photos, t }: { code: string; row: PunchRowView; canEdit: boolean; photos?: ItpBodyProps['photos']; t: T }) {
   return (
     <tr>
       <Td className={s.num400}>{p.number}</Td>
@@ -186,7 +189,20 @@ function PunchRow({ code, row: p, canEdit }: { code: string; row: PunchRowView; 
       <Td>
         <span className={cx(p.statusClass, s.nowrap)}>{p.status}</span>
       </Td>
-      <Td className={s.right}>{canEdit && <PunchStep code={code} number={p.number} label={p.step?.label ?? null} ariaLabel={p.step?.ariaLabel ?? null} from={p.step?.from ?? null} />}</Td>
+      <Td className={s.right}>
+        <span className={s.rowActions}>
+          {photos && (
+            <PhotosButton
+              title={`${p.number} · ${t('Photos')}`}
+              owner={{ kind: 'punch_item', code, ref: p.number, register: 'itp' }}
+              photos={photos.punch[p.number] ?? []}
+              canEdit={photos.canEdit}
+              empty={t('No photo yet')}
+            />
+          )}
+          {canEdit && <PunchStep code={code} number={p.number} label={p.step?.label ?? null} ariaLabel={p.step?.ariaLabel ?? null} from={p.step?.from ?? null} />}
+        </span>
+      </Td>
     </tr>
   );
 }

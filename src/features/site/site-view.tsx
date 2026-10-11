@@ -21,6 +21,7 @@ import { Ellipsis, Table, Td, Th } from '@/components/ds/Table';
 import type { T } from '@/i18n/translate';
 import { CURSUS_LINK_ATTRS } from '@/server/integrations/cursus/links';
 import { VIGIE_LINK_ATTRS } from '@/server/integrations/vigie/links';
+import { PhotosButton, type PhotoView } from '@/features/photos/photo-gallery';
 import { CURSUS_CARD_ID } from './links';
 import type { ExecView, KpiView, ReadyView, SiteView, TeamView } from './model';
 import { clientDecisionsHref } from '@/features/meetings/model';
@@ -34,10 +35,19 @@ export interface SiteBodyProps {
   canEdit: boolean;
   /** D-5: the "Client communication log" link to the project's client decisions (when the viewer may see Meetings). Default shown. */
   showCommLog?: boolean;
+  /** R-126: photos stored by Keystone of the daily reports and the site punch items (by number); none when not given. */
+  photos?: SitePhotos;
   t: T;
 }
 
-export function SiteBody({ code, view, canEdit, showCommLog = true, t }: SiteBodyProps) {
+export interface SitePhotos {
+  /** Add / remove (the viewer may edit the Site screen of the project). */
+  canEdit: boolean;
+  reports: Record<string, PhotoView[]>;
+  punch: Record<string, PhotoView[]>;
+}
+
+export function SiteBody({ code, view, canEdit, showCommLog = true, photos, t }: SiteBodyProps) {
   return (
     <Stack>
       {view.empty ? (
@@ -50,7 +60,7 @@ export function SiteBody({ code, view, canEdit, showCommLog = true, t }: SiteBod
           </FilterBar>
           {view.tab === 'ready' && view.ready && <ReadyTab code={code} v={view.ready} canEdit={canEdit} t={t} />}
           {view.tab === 'team' && view.team && <TeamTab v={view.team} t={t} />}
-          {view.tab === 'exec' && view.exec && <ExecTab code={code} v={view.exec} showCommLog={showCommLog} t={t} />}
+          {view.tab === 'exec' && view.exec && <ExecTab code={code} v={view.exec} showCommLog={showCommLog} photos={photos} t={t} />}
         </>
       )}
     </Stack>
@@ -361,7 +371,7 @@ function TeamTab({ v, t }: { v: TeamView; t: T }) {
 
 // ── Daily execution ───────────────────────────────────────────────────────────────────────────────────
 
-function ExecTab({ code, v, showCommLog, t }: { code: string; v: ExecView; showCommLog: boolean; t: T }) {
+function ExecTab({ code, v, showCommLog, photos, t }: { code: string; v: ExecView; showCommLog: boolean; photos?: SitePhotos; t: T }) {
   return (
     <>
       <Kpis kpis={v.kpis} />
@@ -379,6 +389,7 @@ function ExecTab({ code, v, showCommLog, t }: { code: string; v: ExecView; showC
               <Th>{t('Report')}</Th>
               <Th>{t('Link')}</Th>
               <Th>{t('By')}</Th>
+              {photos && <Th>{t('Photos')}</Th>}
             </tr>
           </thead>
           <tbody>
@@ -404,6 +415,17 @@ function ExecTab({ code, v, showCommLog, t }: { code: string; v: ExecView; showC
                     )}
                   </td>
                   <td className={s.due}>{r.by}</td>
+                  {photos && (
+                    <td>
+                      <PhotosButton
+                        title={`${r.number} · ${t('Photos')}`}
+                        owner={{ kind: 'daily_report', code, ref: r.number }}
+                        photos={photos.reports[r.number] ?? []}
+                        canEdit={photos.canEdit}
+                        empty={t('No photo yet')}
+                      />
+                    </td>
+                  )}
                 </>
               );
               return r.href ? (
@@ -429,6 +451,7 @@ function ExecTab({ code, v, showCommLog, t }: { code: string; v: ExecView; showC
                 <Th>{t('Owner')}</Th>
                 <Th>{t('Due')}</Th>
                 <Th>{t('Status')}</Th>
+                {photos && <Th>{t('Photos')}</Th>}
               </tr>
             </thead>
             <tbody>
@@ -442,6 +465,17 @@ function ExecTab({ code, v, showCommLog, t }: { code: string; v: ExecView; showC
                   <td>
                     <span className={r.tagClass}>{r.status}</span>
                   </td>
+                  {photos && (
+                    <td>
+                      <PhotosButton
+                        title={`${r.id} · ${t('Photos')}`}
+                        owner={{ kind: 'punch_item', code, ref: r.id, register: 'site' }}
+                        photos={photos.punch[r.id] ?? []}
+                        canEdit={photos.canEdit}
+                        empty={t('No photo yet')}
+                      />
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

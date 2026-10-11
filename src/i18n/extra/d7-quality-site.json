@@ -113,5 +113,16 @@
   "parts as built": "pièces telles que construites",
   "machine registered": "machine enregistrée",
   "machines registered": "machines enregistrées",
-  "Preventive": "Préventive"
+  "Preventive": "Préventive",
+  "Choose a photo to add": "Choisissez une photo à ajouter",
+  "Photos are read-only for you": "Les photos sont en consultation pour vous",
+  "Add photos": "Ajouter des photos",
+  "Remove photo": "Retirer la photo",
+  "The photo is deleted from Keystone.": "La photo est supprimée de Keystone.",
+  "Too many photos": "Trop de photos",
+  "photo added": "photo ajoutée",
+  "photos added": "photos ajoutées",
+  "photo recorded without a stored file": "photo enregistrée sans fichier stocké",
+  "photos recorded without a stored file": "photos enregistrées sans fichier stocké",
+  "No photo yet": "Aucune photo pour l’instant"
 }
