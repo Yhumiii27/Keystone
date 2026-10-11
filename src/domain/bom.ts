@@ -10,7 +10,43 @@
 // - Still-to-order shortfall (purchased BOM articles ordered less than their BOM quantity) and its grouping per
 //   supplier for the draft purchase orders; the spares package still to buy (recommended quantity − stock).
 // - "Add article" form parsing (AF.bom).
-import type { BomScope, PartMakeBuy, PartStatus, WearSpare } from '@/server/db/codes';
+// - Delivery 7 (E-2a = a, A-11 = a, R-103): one valuation rule for the flat list, the tree, a node's cost and the
+//   revision comparison — the project's ordered price, else the last purchase price, else the catalogue price, with the
+//   source shown (`bomUnitPrice`); stock stays at the last purchase price (src/domain/stock.ts).
+import type { BomScope, PartMakeBuy, PartStatus, PoStatus, WearSpare } from '@/server/db/codes';
+
+// ── Valuation (E-2a / A-11) ────────────────────────────────────────────────────────────────────────────
+
+/** Where a BOM unit price comes from (E-2a = a): the project's order, the last purchase, the catalogue. */
+export type BomPriceSource = 'ordered' | 'last_purchase' | 'catalogue';
+/** EN source labels of the price sources (the assembly roll-up of an assembly reads "Roll-up of components"). */
+export const BOM_PRICE_SOURCE_LABEL: Record<BomPriceSource, string> = { ordered: 'Ordered price', last_purchase: 'Last purchase price', catalogue: 'Catalogue price' };
+export const ROLLUP_SOURCE_LABEL = 'Roll-up of components';
+
+/** Order statuses whose line prices value the BOM ("the article is ordered"): approved, partly or fully received. */
+export const ORDERED_PO_STATUSES: readonly PoStatus[] = ['ordered', 'partially_received', 'received'];
+export const isOrderedPoStatus = (s: PoStatus) => ORDERED_PO_STATUSES.includes(s);
+
+/** The project's ordered unit price of a part: the quantity-weighted mean of its ordered lines; null when not ordered. */
+export function orderedUnitPrice(lines: readonly { qty: number; unitPriceEur: number }[]): number | null {
+  const qty = lines.reduce((a, l) => a + (l.qty > 0 ? l.qty : 0), 0);
+  if (!qty) return null;
+  return lines.reduce((a, l) => a + (l.qty > 0 ? l.qty * l.unitPriceEur : 0), 0) / qty;
+}
+
+/** E-2a = a: the ordered price, else the last purchase price, else the catalogue (list) price — and its source. */
+export function bomUnitPrice(f: { orderedEur: number | null; lastPurchaseEur: number | null; listPriceEur: number }): { unitEur: number; source: BomPriceSource } {
+  if (f.orderedEur != null) return { unitEur: f.orderedEur, source: 'ordered' };
+  if (f.lastPurchaseEur != null) return { unitEur: f.lastPurchaseEur, source: 'last_purchase' };
+  return { unitEur: f.listPriceEur, source: 'catalogue' };
+}
+
+/**
+ * Last purchase price kept up to date from the goods received in Keystone (A-11, R-103): a receipt replaces the stored
+ * price unless the stored one is from a later purchase (a seed price has no date and is always older).
+ */
+export const replacesLastPrice = (stored: { purchasedOn: string | null } | null | undefined, receivedOn: string) =>
+  !stored || !stored.purchasedOn || stored.purchasedOn <= receivedOn;
 
 // ── Flat list ──────────────────────────────────────────────────────────────────────────────────────────
 
@@ -47,13 +83,15 @@ export interface BomListItem {
   manufacturer: string | null;
   manufacturerRef: string | null;
   listPriceEur: number;
+  /** Delivery 7 (E-2a): the valuation unit price (`bomUnitPrice`); absent = the list price (the prototype's figure). */
+  unitPriceEur?: number;
   quantity: number;
   /** English status label ("Not validated"; sort key). */
   statusLabel: string;
 }
 
-/** Line total at list price (`price × usage`). */
-export const bomLineTotal = (l: Pick<BomListItem, 'listPriceEur' | 'quantity'>) => l.listPriceEur * l.quantity;
+/** Line total (`price × usage`): the valuation unit price (E-2a), the list price when none is given (the prototype). */
+export const bomLineTotal = (l: Pick<BomListItem, 'listPriceEur' | 'quantity'> & { unitPriceEur?: number }) => (l.unitPriceEur ?? l.listPriceEur) * l.quantity;
 
 export interface BomFilter {
   /** Search text (reference, article, manufacturer, manufacturer ref; case-insensitive substring). */
@@ -133,6 +171,8 @@ export function isValuedByComponents(ref: string, childrenOf: ChildrenOf, inBom:
 export interface BomSummaryInput {
   quantity: number;
   listPriceEur: number;
+  /** Valuation unit price (E-2a); absent = the list price. */
+  unitPriceEur?: number;
   status: PartStatus;
   /** Restriction text; null = "None". */
   exportRestriction: string | null;
@@ -143,9 +183,9 @@ export interface BomSummary {
   articles: number;
   /** Σ quantities ("2,042 units in total"). */
   units: number;
-  /** Each physical article once (assemblies valued through their components). */
+  /** Each physical article once (assemblies valued through their components), at the valuation price (E-2a). */
   valueEur: number;
-  /** Σ over every line (the prototype's figure: assemblies and their components both counted). */
+  /** Σ over every line at list price (the prototype's figure: assemblies and their components both counted). */
   listValueEur: number;
   notValidated: number;
   outdatedOrObsolete: number;
@@ -158,7 +198,7 @@ export function bomSummary(lines: readonly BomSummaryInput[]): BomSummary {
     articles: lines.length,
     units: lines.reduce((s, l) => s + l.quantity, 0),
     valueEur: lines.filter((l) => !l.valuedByComponents).reduce((s, l) => s + bomLineTotal(l), 0),
-    listValueEur: lines.reduce((s, l) => s + bomLineTotal(l), 0),
+    listValueEur: lines.reduce((s, l) => s + l.listPriceEur * l.quantity, 0),
     notValidated: lines.filter((l) => l.status === 'not_validated').length,
     outdatedOrObsolete: lines.filter((l) => l.status === 'outdated' || l.status === 'obsolete').length,
     exportRestricted: lines.filter((l) => !!l.exportRestriction).length,
@@ -283,8 +323,8 @@ export const diffNewRef = (path: string) => path.split(' / ').pop()!.split(' →
 /** Quantity change of a comparison line ("—" counts 0). */
 export const diffQtyDelta = (from: number | null, to: number | null) => (to ?? 0) - (from ?? 0);
 
-/** Cost delta of a line: quantity change × last purchase price (substitutions at equal quantity: 0, 09 OQ8). */
-export const diffCostDelta = (from: number | null, to: number | null, lastPriceEur: number | null) => diffQtyDelta(from, to) * (lastPriceEur ?? 0);
+/** Cost delta of a line: quantity change × the unit price (E-2a valuation; substitutions at equal quantity: 0, 09 OQ8). */
+export const diffCostDelta = (from: number | null, to: number | null, unitPriceEur: number | null) => diffQtyDelta(from, to) * (unitPriceEur ?? 0);
 
 // ── PU/PR list ─────────────────────────────────────────────────────────────────────────────────────────
 

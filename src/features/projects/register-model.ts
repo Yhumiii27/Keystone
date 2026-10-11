@@ -1,6 +1,7 @@
 // Projects register view model (docs/spec/03 §5.4–§5.6): turns the register data (DAL) into serialisable,
 // translated rows for the client island. Pure — runs in the page (Server Component) and in tests.
 import { screenHref } from '@/config/screens';
+import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
 import { HEALTH_LABEL, type HealthThresholds } from '@/domain/health';
 import { isLiveRow, type SearchableProject, type StageCode } from '@/domain/lifecycle';
 import { projectIndicators, type Tint } from '@/domain/portfolio';
@@ -52,6 +53,8 @@ export interface RegisterRow {
   delivs: { label: string; done: boolean }[];
   /** Stage history, newest first. */
   history: { stage: string; date: string; forced: boolean; why: string }[];
+  /** Bounds of the effective date of the next stage change (L-4c, ISO): the latest change and today (the data date). */
+  dateBounds: { previous: string | null; today: string };
   progress: number;
   progressPct: string;
   finishPlanned: string;
@@ -89,6 +92,8 @@ export interface RegisterInput {
   planned?: readonly string[];
   /** Settings health thresholds (A-13): CPI / SPI colours and attention items. Default 0.97 / 0.90. */
   thresholds?: HealthThresholds;
+  /** Data date per project (ISO): "today" of the stage-change effective date (L-4c). Default: the status date. */
+  dataDates?: Record<string, string>;
 }
 
 /** Indicator tints → CSS colours (LO = accent-300, OK = text). */
@@ -143,6 +148,7 @@ export function buildRegisterModel(data: RegisterInput, zone: ZoneKey | null, t:
         .slice()
         .reverse()
         .map((h) => ({ stage: t(h.label), date: t(h.date), forced: h.mode === 'forced', why: h.reason })),
+      dateBounds: { previous: data.history[p.code]?.at(-1)?.dateIso ?? null, today: data.dataDates?.[p.code] ?? DEFAULT_DATA_DATE },
       progress: p.progress,
       progressPct: Math.round(p.progress * 100) + '%',
       finishPlanned: t(ind.finishPlanned),

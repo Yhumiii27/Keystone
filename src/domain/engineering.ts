@@ -68,13 +68,22 @@ export function shortDoc(id: string, projectCode: string): string {
 }
 
 /**
- * Latest revision of an input (`inRows` 4794): the provider document's revision when it is Released, else the
- * previous letter (09 OQ12: a Frozen rev B reads "latest rev A"); a document outside the register (the client's
- * basis of design) is always up to date.
+ * Statuses whose current revision is a reference for the disciplines that consume the document (E-5 = a: "the latest
+ * frozen or released revision"): Frozen, Release proposed (frozen, in the release circuit), Released, and Obsolete (a
+ * withdrawn record was released at that revision). Only a Draft revision is still being written.
+ */
+export const REFERENCE_STATUSES: readonly DocumentStatus[] = ['frozen', 'release_proposed', 'released', 'obsolete'];
+export const isReferenceStatus = (s: DocumentStatus) => REFERENCE_STATUSES.includes(s);
+
+/**
+ * Latest revision of an input (`inRows` 4794), E-5 = a: the provider document's current revision once it is frozen or
+ * released, else (a Draft revision) the previous letter; a document outside the register (the client's basis of
+ * design) is always up to date. The prototype (09 OQ12) only took a Released revision: a Frozen rev B read "latest
+ * rev A", so LST-IO-026 rev B was reported outdated against rev A.
  */
 export function inputLatest(revisionInUse: string, providerDoc: { revision: string; status: DocumentStatus } | null | undefined): string {
   if (!providerDoc) return revisionInUse;
-  return providerDoc.status === 'released' ? providerDoc.revision : prevRev(providerDoc.revision);
+  return isReferenceStatus(providerDoc.status) ? providerDoc.revision : prevRev(providerDoc.revision);
 }
 
 /** Outdated when the revision in use differs from the latest, else Up to date once confirmed, else To confirm. */
@@ -201,7 +210,10 @@ export interface EngDeliverableLike extends EngDocRecord {
   canFreeze: boolean;
   canPropose: boolean;
   proposeBlocked: boolean;
+  /** Delivery 7 (P-7c): Release proposed and the Codex approval circuit not started ("Validate release (PM)" starts it). */
   canValidate: boolean;
+  /** Delivery 7: circuit line under the status (EN source), from the data layer; absent in the prototype replay. */
+  codexNote?: string | null;
 }
 export interface EngCheckLike extends Omit<EngCheckRecord, 'note'> {
   lead: string;
@@ -388,7 +400,8 @@ export function synthesisView(reg: EngRegister): SynthesisV {
       { label: 'Outdated inputs', value: outdatedIn, sub: 'across the 4 disciplines', color: okLo(outdatedIn > 0) },
       {
         label: 'Deliverables released', value: `${relAll} / ${reg.deliverables.length}`,
-        sub: `${reg.deliverables.filter((d) => d.status === 'release_proposed').length} awaiting PM validation`, color: ENG_COLOR.text,
+        // Delivery 7 (P-7c): once the PM has started the Codex circuit, a deliverable no longer awaits the PM.
+        sub: `${reg.deliverables.filter((d) => d.canValidate).length} awaiting PM validation`, color: ENG_COLOR.text,
       },
       {
         label: 'Outputs ready', value: `${readyOut} / ${reg.outputs.length}`, sub: `${reg.outputs.filter((o) => o.state === 'blocked').length} blocked by inconsistencies`,

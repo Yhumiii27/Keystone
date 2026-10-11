@@ -86,7 +86,7 @@ export function OrderRowActions({ code, number, canSubmit, canApprove }: OrderRo
   );
 }
 
-/** Drawer "Export PO" (ghost + file-pdf): the purchase order as a PDF (chapter 4 exports, document `po`). */
+/** Drawer "Export PO" (ghost + file-pdf): the internal purchase order summary as a PDF (document `po`; SC-4b: the legal order is issued by Sage X3). */
 export function ExportPoButton({ code, number }: { code: string; number: string }) {
   const { t } = useI18n();
   return <ExportFileButton href={exportHref('orders', { format: 'pdf', code, variant: 'po', id: number })} label={t('Export PO')} ariaLabel={`${t('Export PO')} · ${number}`} />;

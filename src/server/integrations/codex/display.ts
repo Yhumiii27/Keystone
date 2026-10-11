@@ -15,6 +15,7 @@ export function codexIndexLineT(sync: { time: string; records: number }, mode: C
 
 /** "Sync now" toast of the Documents screen. */
 export function codexSyncToastT(count: number, mode: CodexConnectorMode | 'live', t: T, lang: Lang): string {
-  if (mode === 'live') return t(`Codex sync · index up to date · ${count} records`);
+  // A real exchange with Codex (HTTP connector, CODEX_API_URL): the index is up to date; the mock says it simulates (R-021).
+  if (mode === 'live' || mode === 'http') return t(`Codex sync · index up to date · ${count} records`);
   return lang === 'fr' ? `Codex · synchro simulée (connecteur simulé) · ${records(count, lang)}` : `Codex · simulated sync (mock connector) · ${records(count, lang)}`;
 }

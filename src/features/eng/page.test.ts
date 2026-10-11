@@ -76,7 +76,8 @@ describe('/projects/[code]/engineering', () => {
     expect(primaryHref(p)).toBe('/projects/HLT-026/engineering?import=elec&doc=LST-INS-026&tool=2');
     const v = p.SynthesisBody.props.view as SynthesisScreenView;
     expect([v.kpis.map((k) => k.value), v.gate.text, v.discCards.map((d) => d.href)]).toEqual([
-      ['4', '4', '5 / 13', '2 / 6'],
+      // E-5 = a (R-105): 3 outdated inputs — LST-IO-026 rev B (Frozen) is up to date (prototype 4).
+      ['4', '3', '5 / 13', '2 / 6'],
       'Blocked by 4 blocking inconsistencies',
       ['/projects/HLT-026/engineering/process', '/projects/HLT-026/engineering/mechanical', '/projects/HLT-026/engineering/electrical', '/projects/HLT-026/engineering/automation'],
     ]);

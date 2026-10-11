@@ -12,9 +12,12 @@ import { NewChangeRequestButton } from '@/features/changes/change-buttons';
 import { ChangesView } from '@/features/changes/changes-view';
 import { CR_DEFAULT_WBS } from '@/features/changes/forms';
 import { changesT } from '@/features/changes/i18n';
+import { canEditCrActivities, durationChangeText } from '@/domain/change-activities';
 import { nextBaselineCode } from '@/domain/ch4-defaults';
 import { listProjectBaselines } from '@/server/dal/baselines';
+import { listCrActivityLinks } from '@/server/dal/change-activities';
 import { getChangeControl } from '@/server/dal/changes';
+import { listIssueActivityOptions } from '@/server/dal/stock';
 import { getBaselineRegister } from '@/server/dal/changes-baselines';
 import { getWbs } from '@/server/dal/planning';
 import { projectLabel } from '@/server/dal/projects';
@@ -28,8 +31,9 @@ export default async function ChangesPage({ params, searchParams }: { params: Pr
   const [{ code }, sp] = await Promise.all([params, searchParams]);
   const ctx = await getProjectContext(code, 'changes');
   const projectCode = ctx.project.code;
-  const [i18n, cc, wbs, baselines, blRows] = await Promise.all([
+  const [i18n, cc, wbs, baselines, blRows, crLinks, planActs] = await Promise.all([
     getI18n(), getChangeControl(projectCode), getWbs(projectCode), getBaselineRegister(projectCode), listProjectBaselines(projectCode),
+    listCrActivityLinks(projectCode), listIssueActivityOptions(projectCode),
   ]);
   if (!cc) notFound();
   const { lang } = i18n;
@@ -37,6 +41,17 @@ export default async function ChangesPage({ params, searchParams }: { params: Pr
   const canEdit = ctx.canEdit('changes');
 
   const crs = withDerivedStatus(cc.changeRequests);
+  // NEW-D2-2 (R-062): plan activities each request touches; the project team edits them, the client does not see them.
+  const actsByCr: Record<string, { code: string; label: string; duration: string }[]> = {};
+  const fr = (x: string) => (lang === 'fr' ? x.replace(/(\d+)d\b/g, '$1 j') : x);
+  for (const l of crLinks) {
+    const duration = l.appliedAt ? `${durationChangeText(l.appliedFromDays, l.newDurationDays)} · ${t('applied')}` : durationChangeText(l.durationDays, l.newDurationDays);
+    (actsByCr[l.cr] ??= []).push({ code: l.code, label: l.name ? `${l.code} · ${t(l.name)}` : `${l.code} · ${t('not in the plan any more')}`, duration: fr(duration) });
+  }
+  const crActivities = {
+    byCr: actsByCr, options: planActs.map((a) => ({ value: a.code, label: `${a.code} · ${t(a.name)}` })),
+    canEdit: canEditCrActivities(ctx.viewer, canEdit), visible: ctx.viewer.role !== 'client',
+  };
   const filter = parseCrFilter(first(sp.filter));
   const crParam = first(sp.cr)?.toUpperCase();
   const selected = crParam && crs.some((c) => c.id === crParam) ? crParam : null;
@@ -62,6 +77,7 @@ export default async function ChangesPage({ params, searchParams }: { params: Pr
       closeHref={href({ filter, cr: selected })}
       proposeBaseline={proposeBaseline}
       initialValues={proposeBaseline ? { title: `${i18n.t('New baseline')} ${nextBl}`, type: 'schedule', wbs: '1' } : undefined}
+      withActivities={canEditCrActivities(ctx.viewer, canEdit)}
     />
   ) : undefined;
 
@@ -78,6 +94,7 @@ export default async function ChangesPage({ params, searchParams }: { params: Pr
         href={href}
         planHref={screenHref('plan', { code: projectCode })}
         budgetHref={screenHref('budget', { code: projectCode })}
+        crActivities={crActivities}
         lang={lang}
         t={t}
       />

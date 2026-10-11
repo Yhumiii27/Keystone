@@ -481,6 +481,19 @@ export const approverRole = codec<ApproverRole, string>([
 export type DocDownloadSource = 'keystone' | 'codex';
 /** Hand-off state of a deposit to Codex (simulated: recorded at once, OPEN QUESTION D-1). */
 export type DepositStatus = 'handed_off' | 'recorded';
+/**
+ * What a Codex outbox entry asks Codex (Delivery 7, P-7b / P-7c): a circuit step decision of the named approver, or
+ * the start of the approval circuit of an engineering deliverable ("Validate release (PM)").
+ */
+export type CodexOutboxKind = 'approval' | 'circuit_start';
+/** Decision on a circuit step recorded in Keystone. */
+export type CodexDecision = 'approved' | 'rejected';
+export const codexDecision = codec<CodexDecision, string>([['approved', 'Approved'], ['rejected', 'Rejected']]);
+/** Delivery state of a Codex outbox entry. */
+export type CodexSyncStatus = 'pending' | 'sent' | 'failed';
+export const codexSyncStatus = codec<CodexSyncStatus, string>([
+  ['pending', 'Pending sync with Codex'], ['sent', 'Sent to Codex'], ['failed', 'Sync with Codex failed'],
+]);
 
 // ── Contract & billing (docs/spec/11 §2.3, §3.5; 04 §3–4; 03 §7) ────────────────────────────────────
 /** Contract types (CTR_FIELDS 4873). */
@@ -795,15 +808,15 @@ export const stockSource = codec<StockSource, string>([['x3', 'X3'], ['local', '
 /** Sage X3 exchanges recorded by Keystone (mock connector): stock import ("Import from X3"), push of local changes. */
 export type X3SyncKind = 'stock_import' | 'stock_push';
 /** Stock operations of the stock-line drawer (STOCK_OPS 3483), plus the system movement `receipt` (MOVES0 3484). */
-export type StockOperation = 'adjust' | 'transfer' | 'reserve' | 'issue' | 'return' | 'scrap';
+export type StockOperation = 'adjust' | 'transfer' | 'reserve' | 'release' | 'issue' | 'return' | 'scrap';
 export type StockMovementType = StockOperation | 'receipt';
 export const stockOperation = codec<StockOperation, string>([
-  ['adjust', 'Adjust (count)'], ['transfer', 'Transfer'], ['reserve', 'Reserve for project'], ['issue', 'Issue to activity'], ['return', 'Return to stock'],
+  ['adjust', 'Adjust (count)'], ['transfer', 'Transfer'], ['reserve', 'Reserve for project'], ['release', 'Release reservation'], ['issue', 'Issue to activity'], ['return', 'Return to stock'],
   ['scrap', 'Scrap / rework'],
 ]);
 /** Movement type as the movement lists show it (MOVES0: "Transfer", "Receipt"…). */
 export const stockMovementType = codec<StockMovementType, string>([
-  ['adjust', 'Adjust'], ['transfer', 'Transfer'], ['reserve', 'Reserve'], ['issue', 'Issue'], ['return', 'Return'], ['scrap', 'Scrap'], ['receipt', 'Receipt'],
+  ['adjust', 'Adjust'], ['transfer', 'Transfer'], ['reserve', 'Reserve'], ['release', 'Release'], ['issue', 'Issue'], ['return', 'Return'], ['scrap', 'Scrap'], ['receipt', 'Receipt'],
 ]);
 /** Storage location types (SETTINGS0.locTypes). */
 export type LocationType = 'central_warehouse' | 'workshop' | 'site_store' | 'consignment' | 'quarantine';

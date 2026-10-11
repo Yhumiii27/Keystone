@@ -32,6 +32,7 @@ import { getBaselineActivities, getDisplayedBaselineCode } from './baselines';
 import { getProjectEvm } from './evm';
 import { loadWorkCalendars } from './calendars';
 import { getMilestones, getScheduleBars, getScheduleControl, type ScheduleControl } from './planning';
+import { applyApprovedChangeDurations } from './change-activities';
 import { loadScheduleNetwork, recordScheduleRun, toCpmActivity } from './schedule-network';
 
 type Q = DB | Tx;
@@ -344,6 +345,8 @@ export type RescheduleResult =
       critical: number;
       violations: number;
       projectFloat: number;
+      /** Delivery 7 (NEW-D2-2, R-062): new durations of approved change requests applied before this run. */
+      appliedChanges?: { cr: string; code: string; from: number; to: number }[];
     }
   | { ok: false; reason: 'empty' | 'cycle' | 'invalid'; dataDate: string; cycle?: string[]; issues?: string[] };
 
@@ -354,6 +357,8 @@ export type RescheduleResult =
  */
 export async function rescheduleProject(code: string, actorName: string): Promise<RescheduleResult> {
   const db = await getDb();
+  // NEW-D2-2 (R-062): the approved change requests' new activity durations enter the plan at the next Reschedule.
+  const appliedChanges = await applyApprovedChangeDurations(code, actorName);
   const net = await loadScheduleNetwork(code);
   if (!net) throw new Error(`Unknown project ${code}`);
   const dataDate = net.dataDate;
@@ -435,6 +440,7 @@ export async function rescheduleProject(code: string, actorName: string): Promis
   return {
     ok: true, dataDate, finishDate: result.projectFinish, previousFinishDate, changed, critical: result.criticalPath.length,
     violations: Object.values(result.activities).filter((x) => x.violation).length, projectFloat: projectFloat(Object.values(result.activities).map((x) => x.totalFloat)),
+    ...(appliedChanges.length ? { appliedChanges } : {}),
   };
 }
 

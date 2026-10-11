@@ -4,7 +4,7 @@
 // and the validation steps; "Export overlay list" = a PDF to agree and sign with the client. BOM: the flat list with its
 // filters and sort (`?q=`, `?type=`, `?mfr=`, `?sort=`), the PU/PR list of the selected system (`?sys=`, `?kind=`), and
 // the "Export list" PDF of that recommended wear & spare parts list.
-import { filterBomLines, filterSpares, sortBomLines, bomSupplierOptions, bomTypeOptions } from '@/domain/bom';
+import { BOM_PRICE_SOURCE_LABEL, ROLLUP_SOURCE_LABEL, filterBomLines, filterSpares, sortBomLines, bomSupplierOptions, bomTypeOptions } from '@/domain/bom';
 import { SCREEN_OF_DISCIPLINE, checkFilterOf } from '@/domain/engineering';
 import { filterPidTags, overlayTags } from '@/domain/pid';
 import { SCREEN_BY_ID, type ScreenId } from '@/config/screens';
@@ -138,12 +138,13 @@ async function bomWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   const shown = sortBomLines(filterBomLines(lines, { q: state.q, type, mfr }), state.sort);
   const flat = sheet(t('Articles'), [
     col('ref', t('Reference'), 'text', 16), col('name', t('Article'), 'text', 36), col('type', t('Type'), 'text', 14), col('makeBuy', t('Make / buy'), 'text', 12),
-    col('scope', t('Scope'), 'text', 12), col('qty', t('Quantity'), 'number', 9), col('unit', t('Unit'), 'text', 6), col('price', t('List price'), 'money_eur'),
-    col('total', t('Total'), 'money_eur'), col('mfr', t('Manufacturer'), 'text', 20), col('mfrRef', t('Manufacturer ref.'), 'text', 16), col('revision', t('Revision'), 'text', 8),
+    col('scope', t('Scope'), 'text', 12), col('qty', t('Quantity'), 'number', 9), col('unit', t('Unit'), 'text', 6), col('price', t('Unit price'), 'money_eur'),
+    col('source', t('Price basis'), 'text', 18), col('list', t('List price'), 'money_eur'), col('total', t('Total'), 'money_eur'), col('mfr', t('Manufacturer'), 'text', 20), col('mfrRef', t('Manufacturer ref.'), 'text', 16), col('revision', t('Revision'), 'text', 8),
     col('status', t('Status'), 'text', 14), col('lead', t('Lead time (weeks)'), 'integer'), col('hs', t('HS code'), 'text', 10), col('restriction', t('Export restriction'), 'text', 18),
     col('eco', t('Open ECO'), 'text', 10),
   ], shown.map((l) => ({
-    ref: l.ref, name: t(l.name), type: t(l.typeLabel), makeBuy: t(l.makeBuyLabel), scope: t(l.scopeLabel), qty: l.quantity, unit: l.unit, price: l.listPriceEur, total: l.totalEur,
+    ref: l.ref, name: t(l.name), type: t(l.typeLabel), makeBuy: t(l.makeBuyLabel), scope: t(l.scopeLabel), qty: l.quantity, unit: l.unit, price: l.unitPriceEur,
+    source: t(BOM_PRICE_SOURCE_LABEL[l.priceSource]), list: l.listPriceEur, total: l.totalEur,
     mfr: l.manufacturer ?? '', mfrRef: l.manufacturerRef ?? '', revision: l.revision ?? '', status: t(l.statusLabel), lead: l.leadWeeks, hs: l.hsCode ?? '',
     restriction: l.exportRestriction ? t(l.exportRestriction) : '', eco: l.openEco ?? '',
   })));
@@ -156,15 +157,22 @@ async function bomWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   if (data.assembly) {
     sheets.splice(state.view === 'tree' ? 0 : sheets.length, 0, sheet(t('Assembly tree'), [
       col('level', t('Level'), 'integer', 6), col('ref', t('Reference'), 'text', 18), col('name', t('Article'), 'text', 36), col('qty', t('Qty per parent'), 'number', 9),
-      col('extended', t('Total units'), 'number', 9), col('unit', t('Unit cost'), 'money_eur'), col('extendedCost', t('Extended cost'), 'money_eur'), col('status', t('Status'), 'text', 14),
-    ], data.assembly.rows.map((n) => ({ level: n.depth, ref: n.ref, name: t(n.name), qty: n.qty, extended: n.extended, unit: n.unitCostEur, extendedCost: n.extendedCostEur, status: t(n.statusLabel) }))));
+      col('extended', t('Total units'), 'number', 9), col('unit', t('Unit cost'), 'money_eur'), col('source', t('Price basis'), 'text', 18), col('extendedCost', t('Extended cost'), 'money_eur'),
+      col('status', t('Status'), 'text', 14),
+    ], data.assembly.rows.map((n) => ({
+      level: n.depth, ref: n.ref, name: t(n.name), qty: n.qty, extended: n.extended, unit: n.unitCostEur,
+      source: t(n.priceSource === 'rollup' ? ROLLUP_SOURCE_LABEL : BOM_PRICE_SOURCE_LABEL[n.priceSource]), extendedCost: n.extendedCostEur, status: t(n.statusLabel),
+    }))));
   }
   if (data.comparison) {
     const c = data.comparison;
     sheets.splice(state.view === 'compare' ? 0 : sheets.length, 0, sheet(`${t('Compare')} ${c.fromRevision}-${c.toRevision}`, [
       col('path', t('Path'), 'text', 40), col('name', t('Article'), 'text', 30), col('from', c.fromRevision, 'number', 8), col('to', c.toRevision, 'number', 8),
-      col('kind', t('Change'), 'text', 12), col('price', t('Last price'), 'money_eur'), col('delta', t('Cost delta'), 'money_eur'),
-    ], c.lines.map((l) => ({ path: l.path, name: t(l.name), from: l.qtyFrom, to: l.qtyTo, kind: t(l.kindLabel), price: l.lastPriceEur, delta: l.deltaEur }))));
+      col('kind', t('Change'), 'text', 12), col('price', t('Unit price'), 'money_eur'), col('source', t('Price basis'), 'text', 18), col('delta', t('Cost delta'), 'money_eur'),
+    ], c.lines.map((l) => ({
+      path: l.path, name: t(l.name), from: l.qtyFrom, to: l.qtyTo, kind: t(l.kindLabel), price: l.unitPriceEur, source: l.priceSource ? t(BOM_PRICE_SOURCE_LABEL[l.priceSource]) : '',
+      delta: l.deltaEur,
+    }))));
   }
   const s = data.bom.summary;
   sheets.push(kpiSheet(ctx, [

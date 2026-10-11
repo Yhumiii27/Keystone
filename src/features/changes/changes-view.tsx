@@ -21,9 +21,11 @@ import {
   BASELINE_STATE_LABEL, BASELINE_TONE, CR_STATUS_LABEL, CR_STATUS_TONE, CR_STEP_LABEL, amountCell, canDecideStep, chainDots, crChips, crHint,
   crImpact, crKpis, daysCell, filterCrs, stepState, typesText, type BaselineLike, type ChangeRequestLike, type CrFilter,
 } from '@/domain/change-control';
+import { crActivitiesEditable } from '@/domain/change-activities';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import { StepDecisionButtons, SubmitForReviewButton } from './change-buttons';
+import { CrActivitiesEditor, type CrActivityRow } from './cr-activities';
 import s from './changes.module.css';
 
 export interface ChangesViewData {
@@ -50,11 +52,16 @@ export interface ChangesViewProps {
   budgetHref: string;
   lang: Lang;
   t: T;
+  /**
+   * Delivery 7 (NEW-D2-2, R-062): plan activities each request touches (by request number), the plan's activities offered
+   * to link, and whether the viewer edits the links (the project team; never the client, who does not see the section).
+   */
+  crActivities?: { byCr: Record<string, CrActivityRow[]>; options: { value: string; label: string }[]; canEdit: boolean; visible: boolean };
 }
 
 const DAYS_COLOR = { delay: LO, gain: 'var(--color-accent-300)', none: 'var(--color-neutral-400)' } as const;
 
-export function ChangesView({ code, data, filter, selected, role, canEdit, href, planHref, budgetHref, lang, t }: ChangesViewProps) {
+export function ChangesView({ code, data, filter, selected, role, canEdit, href, planHref, budgetHref, lang, t, crActivities }: ChangesViewProps) {
   const { crs } = data;
   const kpis = crKpis(crs, { originalBudget: data.originalBudget, bac: data.bac, baselines: data.baselines }, lang);
   const rows = filterCrs(crs, filter);
@@ -199,6 +206,7 @@ export function ChangesView({ code, data, filter, selected, role, canEdit, href,
           budgetHref={budgetHref}
           lang={lang}
           t={t}
+          crActivities={crActivities}
         />
       )}
     </div>
@@ -216,6 +224,7 @@ export interface CrDrawerProps {
   budgetHref: string;
   lang: Lang;
   t: T;
+  crActivities?: ChangesViewProps['crActivities'];
 }
 
 /** CR drawer (crVals 4607–4610) over the DS Drawer (client; closes to the register URL without `?cr=`). */
@@ -250,7 +259,7 @@ const impactText = (v: string, t: (s: string) => string) => {
 };
 
 /** Drawer content: raised by, impact, approval chain with the viewer's decisions, hint, actions. */
-export function CrDrawerBody({ cr, code, ctx, role, canEdit, planHref, budgetHref, lang, t }: Omit<CrDrawerProps, 'closeHref'>) {
+export function CrDrawerBody({ cr, code, ctx, role, canEdit, planHref, budgetHref, lang, t, crActivities }: Omit<CrDrawerProps, 'closeHref'>) {
   const impact = crImpact(cr, ctx, lang);
   // A read-only / outside viewer gets no "Submit the request…" instruction: the Submit button is hidden for them.
   const hint = cr.status === 'draft' && !canEdit ? '' : crHint(cr, role);
@@ -286,6 +295,18 @@ export function CrDrawerBody({ cr, code, ctx, role, canEdit, planHref, budgetHre
         })}
         <span className={s.hint}>{hint ? t(hint) : ''}</span>
       </section>
+      {crActivities?.visible && (
+        <section className={s.chainSection} aria-label={t('Plan activities')}>
+          <Eyebrow>{t('Plan activities')}</Eyebrow>
+          <CrActivitiesEditor
+            code={code}
+            number={cr.id}
+            rows={crActivities.byCr[cr.id] ?? []}
+            options={crActivities.options.filter((o) => !(crActivities.byCr[cr.id] ?? []).some((r) => r.code === o.value))}
+            editable={crActivities.canEdit && crActivitiesEditable(cr.status)}
+          />
+        </section>
+      )}
       <div className={s.actions}>
         {canEdit && cr.status === 'draft' && <SubmitForReviewButton code={code} number={cr.id} variant="drawer" />}
         <ButtonLink variant="secondary" size="sm" icon={TreeStructure} href={planHref}>

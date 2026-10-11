@@ -57,13 +57,16 @@ describe('project BOM (09 §1)', () => {
     const g = G.bom[code];
     const ecos = await openEcoByPart();
     const rows = [...bom.lines].sort((a, b) => a.ref.localeCompare(b.ref)).map((l) => ({
-      ref: l.ref, qty: n(l.quantity), total: $(l.totalEur), price: $(l.listPriceEur), status: l.statusLabel, eco: ecos[l.ref] ?? '', used: l.alsoUsedIn.join(', ') || '—',
+      // E-2a (R-103): the unit price is the ordered price, else the last purchase price, else the catalogue price.
+      ref: l.ref, qty: n(l.quantity), total: $(l.totalEur), price: $(l.unitPriceEur), status: l.statusLabel, eco: ecos[l.ref] ?? '', used: l.alsoUsedIn.join(', ') || '—',
       usedCount: l.usage.length ? `${l.usage.length} ${l.usage.length === 1 ? 'project' : 'projects'}` : '—', restr: l.exportRestriction ?? '—',
       lead: l.leadWeeks ? `${l.leadWeeks} wks` : '—', pu: l.wearSpare ?? '—', mfr: l.manufacturer,
     }));
     expect(rows).toEqual(g.rows);
     const s = bom.summary;
-    expect([[s.articles, `${n(s.units)} units in total`], [f(s.listValueEur / 1000), 'At unit list price'], [s.notValidated, 'Blocked for purchasing'],
+    // The prototype's BOM value adds every line (09 OQ6), here at the E-2a prices (golden generated with scripts/proto-e2a.ts).
+    const protoValue = bom.lines.reduce((a, l) => a + l.totalEur, 0);
+    expect([[s.articles, `${n(s.units)} units in total`], [f(protoValue / 1000), 'Ordered, else last purchase, else catalogue price'], [s.notValidated, 'Blocked for purchasing'],
       [s.outdatedOrObsolete, 'Replace before ordering'], [s.exportRestricted, 'Lines needing customs review']]).toEqual(kv(g.kpis));
     expect(bom.hasTree).toBe(g.hasTree);
   });
@@ -82,7 +85,7 @@ describe('project BOM (09 §1)', () => {
     expect(G.bom['EWA-051'].kpis[0].value).toBe(35); // the prototype showed Harbor Line's
   });
 
-  it('assembly tree of HLT-026 reproduces treeRows (roll-up at last purchase price)', async () => {
+  it('assembly tree of HLT-026 reproduces treeRows (roll-up at the E-2a price, R-103)', async () => {
     const asm = (await getProjectAssembly('HLT-026'))!;
     expect(asm.rows.map((r) => ({ ref: r.ref, qty: r.qty, ext: n(r.extended), unit: $(r.unitCostEur), total: $(r.extendedCostEur), rev: r.revision ?? '—', status: r.statusLabel, pad: `${r.depth * 18 + 6}px`, has: r.children.length > 0 })))
       .toEqual(G.tree);
@@ -100,8 +103,10 @@ describe('project BOM (09 §1)', () => {
       const has = r.children.length > 0;
       expect(g.ident.map((x: any) => x.v)).toEqual([r.revision ?? '—', r.makeBuyLabel, r.manufacturer, r.manufacturerRef, r.leadWeeks ? `${r.leadWeeks} weeks` : '—', has ? `${r.leafCount} parts · ${r.children.length} direct children` : 'Leaf part']);
       const d = r.unitCostEur - r.listPriceEur;
+      // E-2a (R-103): "Rolled-up cost" and its price basis (ordered, last purchase, catalogue; roll-up for an assembly).
+      const basis = { ordered: 'Ordered price', last_purchase: 'Last purchase price', catalogue: 'Catalogue price', rollup: 'Roll-up of components' }[r.priceSource];
       expect(g.cost.map((x: any) => [x.k, x.v])).toEqual([
-        ['Rolled-up cost (last purchase)', $(r.unitCostEur)], ['List / standard price', $(r.listPriceEur)], ['Delta', (d >= 0 ? '+' : '−') + $(Math.abs(d))],
+        ['Rolled-up cost', $(r.unitCostEur)], ['Price basis', basis], ['List / standard price', $(r.listPriceEur)], ['Delta', (d >= 0 ? '+' : '−') + $(Math.abs(d))],
         [`Per project (× ${perProject(r)})`, $(r.unitCostEur * perProject(r))],
       ]);
       expect(g.parents).toEqual([r.path.join(' › ') || 'Top level']);

@@ -123,6 +123,7 @@ export function DisciplineBody({ code, view, t }: { code: string; view: Discipli
                   <td className={s.tab}>{d.rev}</td>
                   <td>
                     <span className={cx(d.stClass, s.nowrap)}>{d.status}</span>
+                    {d.codexNote && <span className={s.codexNote}>{d.codexNote}</span>}
                   </td>
                   <td className={s.recipients}>
                     <span className={s.recipientsText}>{d.toText}</span>

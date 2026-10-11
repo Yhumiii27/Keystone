@@ -4,16 +4,19 @@ import 'server-only';
 // Push to X3). Movement rules (`applyOp` 4479–4487) are the domain's (src/domain/stock.ts, SC-5): a count may be 0, no
 // movement may take more than the quantity on hand, a reservation belongs to one project, an issue consumes the
 // reservation of its own project only, a transfer of reserved goods moves their reservation to the destination,
-// Import from X3 keeps local changes (merge) instead of discarding them.
+// Import from X3 keeps local changes (merge) instead of discarding them. Delivery 7: an issue names its activity and its
+// value is charged to the activity's work package (SC-5a, R-098 — `stockCostByWorkPackage` feeds the Budget's work
+// packages); an issue or a scrap never takes another project's reservation, which its PM (or the director) releases
+// first ("Release reservation"), unless the director overrides — audited (NEW-D4-2 / SC-5b, R-099).
 import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
-import { planStockMovement, planX3Import, type MovementPlan } from '@/domain/stock';
+import { movementValueEur, planStockMovement, planX3Import, type MovementPlan } from '@/domain/stock';
 import { getDb } from '@/server/db/client';
 import {
   STATUS_ISO, isoOfDisplayDate, locationType, parisInstant, parisParts, stampText, stockMoveInstant, stockMovementType, stockOperation, stockSource,
   type LocationType, type StockMovementType, type StockOperation, type StockSource,
 } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
-import { activities, parts, partLastPrices, projects, stockMovements, stockPositions, storageLocations, x3SyncRuns } from '@/server/db/schema';
+import { activities, parts, partLastPrices, projects, stockMovements, stockPositions, storageLocations, wbsNodes, x3SyncRuns } from '@/server/db/schema';
 import { X3_LAST_IMPORT } from '@/server/db/seed/stock';
 import { PROTO } from '@/server/prototype';
 import type { DB, Tx } from '@/server/db/types';
@@ -185,8 +188,51 @@ export interface StockMovementInput {
   targetLocation?: string | null;
   /** Current project (reserve, issue, return — prototype `PD.p3`). */
   projectCode?: string | null;
-  /** Activity issued to ("A1250"), within the project. */
+  /** Activity issued to ("A1250"), within the project: required for an issue (SC-5a), optional on a return. */
   activityCode?: string | null;
+  /** The portfolio director takes units reserved for another project (R-099; the Server Function checks the role). */
+  override?: boolean;
+}
+
+/** Work package (level-1 WBS code, "1.4") of a WBS node: the node itself or its level-1 ancestor; null above level 1. */
+async function workPackageCodeOf(q: Q, wbsNodeId: string): Promise<string | null> {
+  let id: string | null = wbsNodeId;
+  for (let guard = 0; id && guard < 20; guard++) {
+    const [n]: { code: string; level: number; parentId: string | null }[] = await q
+      .select({ code: wbsNodes.code, level: wbsNodes.level, parentId: wbsNodes.parentId }).from(wbsNodes).where(eq(wbsNodes.id, id));
+    if (!n) return null;
+    if (n.level <= 1) return n.level === 1 ? n.code : null;
+    id = n.parentId;
+  }
+  return null;
+}
+
+/** Activities a stock issue may name (the project's plan, plan order): "A1250 · Steel erection — Bays 3–4". */
+export async function listIssueActivityOptions(projectCode: string): Promise<{ code: string; name: string; label: string }[]> {
+  const db = await getDb();
+  const rows = await db.select({ code: activities.code, name: activities.name }).from(activities).innerJoin(projects, eq(projects.id, activities.projectId))
+    .where(eq(projects.code, projectCode)).orderBy(asc(activities.position));
+  return rows.map((r) => ({ ...r, label: `${r.code} · ${r.name}` }));
+}
+
+/**
+ * Stock material charged to each work package of a project (SC-5a, R-098), in k€: Σ value of the issues recorded in
+ * Keystone − Σ value of the returns credited to a work package, by level-1 WBS code. Movements without a value (the X3
+ * seed, whose cost is already in the actuals) count for nothing.
+ */
+export async function stockCostByWorkPackage(projectId: string, q?: Q): Promise<Map<string, number>> {
+  const db = q ?? (await getDb());
+  const rows = await db
+    .select({ wbs: stockMovements.wbsCode, type: stockMovements.type, value: sql<number>`sum(${stockMovements.valueEur})::float8` })
+    .from(stockMovements)
+    .where(and(eq(stockMovements.projectId, projectId), inArray(stockMovements.type, ['issue', 'return'])))
+    .groupBy(stockMovements.wbsCode, stockMovements.type);
+  const out = new Map<string, number>();
+  for (const r of rows) {
+    if (!r.wbs || !r.value) continue;
+    out.set(r.wbs, (out.get(r.wbs) ?? 0) + (r.type === 'issue' ? r.value : -r.value) / 1000);
+  }
+  return out;
 }
 
 /**
@@ -196,7 +242,11 @@ export interface StockMovementInput {
  */
 export async function insertMovement(
   tx: Tx,
-  m: { type: StockMovementType; partId: string; qty: number; fromLocationId?: string | null; toLocationId?: string | null; projectId?: string | null; activityId?: string | null; receiptId?: string | null; whereText: string; personName: string; personId: string | null },
+  m: {
+    type: StockMovementType; partId: string; qty: number; fromLocationId?: string | null; toLocationId?: string | null; projectId?: string | null; activityId?: string | null;
+    receiptId?: string | null; whereText: string; personName: string; personId: string | null;
+    unitCostEur?: number | null; valueEur?: number | null; wbsCode?: string | null; overrideQty?: number | null; overrideFromProjectId?: string | null;
+  },
 ): Promise<void> {
   const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(stockMovements);
   await tx.insert(stockMovements).values({ ...m, occurredAt: stockMoveInstant(n), pushedToX3At: null });
@@ -229,12 +279,14 @@ async function activeLocations(q: Q) {
 export async function applyStockMovement(positionId: string, input: StockMovementInput, actorName: string): Promise<MovementPlan> {
   const db = await getDb();
   return db.transaction(async (tx) => {
-    const [s] = await tx.select().from(stockPositions).where(eq(stockPositions.id, positionId));
+    // The line is locked for the transaction: two movements on it never read the same quantities.
+    const [s] = await tx.select().from(stockPositions).where(eq(stockPositions.id, positionId)).for('update');
     if (!s) throw new Error('Unknown stock line');
-    const [{ ref, loc }] = await tx
-      .select({ ref: parts.ref, loc: storageLocations.name })
+    const [{ ref, loc, list, last }] = await tx
+      .select({ ref: parts.ref, loc: storageLocations.name, list: parts.listPriceEur, last: partLastPrices.unitPriceEur })
       .from(parts)
       .innerJoin(storageLocations, eq(storageLocations.id, s.locationId))
+      .leftJoin(partLastPrices, eq(partLastPrices.partId, parts.id))
       .where(eq(parts.id, s.partId));
     const actor = await findPerson(tx, actorName);
     const who = actor ? nameOf(actor) : actorName;
@@ -242,12 +294,12 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
       ? (await tx.select({ id: projects.id, code: projects.code, short: projects.shortCode }).from(projects).where(eq(projects.code, input.projectCode)))[0]
       : undefined;
     if (input.projectCode && !project) throw new Error(`Unknown project ${input.projectCode}`);
-    let activity: { id: string; code: string; name: string } | undefined;
-    if (input.activityCode) {
+    let activity: { id: string; code: string; name: string; wbsNodeId: string } | undefined;
+    if (input.activityCode && (input.op === 'issue' || input.op === 'return')) {
       if (!project) throw new Error('A project is required');
-      [activity] = await tx.select({ id: activities.id, code: activities.code, name: activities.name }).from(activities)
+      [activity] = await tx.select({ id: activities.id, code: activities.code, name: activities.name, wbsNodeId: activities.wbsNodeId }).from(activities)
         .where(and(eq(activities.projectId, project.id), eq(activities.code, input.activityCode)));
-      if (!activity) throw new Error(`Unknown activity ${input.activityCode}`);
+      if (!activity) throw new Error('Choose an activity of the project plan');
     }
     const reservedFor = s.reservedForProjectId
       ? (await tx.select({ code: projects.code }).from(projects).where(eq(projects.id, s.reservedForProjectId)))[0]?.code ?? null
@@ -264,13 +316,19 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
       { location: loc, onHand: s.onHand, reserved: s.reserved, reservedFor },
       {
         op: input.op, qty: input.qty, target: input.targetLocation ?? null, targetReservedFor: targetLine && targetLine.reserved > 0 ? targetLine.code : null,
-        project: project ? { code: project.code, short: project.short } : null, activity: activity ?? null,
+        project: project ? { code: project.code, short: project.short } : null, activity: activity ?? null, override: input.override === true,
       },
       locs.map((l) => l.name),
     );
     if (!planned.ok) throw new Error(planned.error);
     const plan = planned.value;
     const reservedForProjectId = plan.reservedFor === null ? null : plan.reservedFor === project?.code ? project.id : s.reservedForProjectId;
+    // SC-5a (R-098): an issue (and a return naming an activity) is valued at the stock unit cost and charged (credited)
+    // to the activity's work package.
+    const unitCostEur = last ?? list;
+    const charged = activity && (plan.type === 'issue' || plan.type === 'return');
+    const wbsCode = charged ? await workPackageCodeOf(tx, activity!.wbsNodeId) : null;
+    const valueEur = charged ? movementValueEur(plan.qty, unitCostEur) : null;
     await tx.update(stockPositions)
       .set({ onHand: plan.onHand, reserved: plan.reserved, reservedForProjectId, source: 'local', lastMovementOn: STATUS_ISO, updatedAt: new Date() })
       .where(eq(stockPositions.id, s.id));
@@ -289,14 +347,28 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
     await insertMovement(tx, {
       type: plan.type, partId: s.partId, qty: plan.qty, fromLocationId: inward ? null : s.locationId, toLocationId: inward ? s.locationId : toLocationId,
       projectId: plan.projectCode ? project!.id : plan.transferReserved ? s.reservedForProjectId : null, activityId: activity?.id ?? null, whereText: plan.whereText, personName: who, personId: actor?.id ?? null,
+      unitCostEur: charged ? unitCostEur : null, valueEur, wbsCode, overrideQty: plan.overrideTaken || null, overrideFromProjectId: plan.overrideTaken ? s.reservedForProjectId : null,
     });
     const reservedChange = plan.reserved !== s.reserved ? ` · reserved ${s.reserved} → ${plan.reserved}` : '';
+    const chargedText = charged ? ` · ${plan.type === 'issue' ? 'charged to' : 'credited to'} ${activity!.code}${wbsCode ? ` (WP ${wbsCode})` : ''} · €${valueEur!.toFixed(2)}` : '';
+    const overrideText = plan.overrideTaken ? ` · director override: ${plan.overrideTaken} reserved for ${plan.overrideFrom} taken` : '';
     await writeAudit(tx, {
       actorName: who, actorPersonId: actor?.id, objectRef: `${ref} · ${loc}`,
-      change: `${stockOperation.label(plan.type)} × ${plan.qty} · on hand ${s.onHand} → ${plan.onHand}${reservedChange} · ${stockSource.label('local')}`,
+      change: `${stockOperation.label(plan.type)} × ${plan.qty} · on hand ${s.onHand} → ${plan.onHand}${reservedChange}${chargedText}${overrideText} · ${stockSource.label('local')}`,
       area: 'Stock', entityType: 'stock_position', entityId: s.id, projectId: project?.id ?? null,
     });
     await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, text: `${stockMovementType.label(plan.type)} ${ref} × ${plan.qty} · ${plan.whereText}`, kind: 'stock', projectId: project?.id ?? null });
+    if (plan.overrideTaken && s.reservedForProjectId) {
+      // The reserving project sees what was taken from its reservation, and by whom.
+      await writeAudit(tx, {
+        actorName: who, actorPersonId: actor?.id, objectRef: `${ref} · ${loc}`, area: 'Stock', entityType: 'stock_position', entityId: s.id, projectId: s.reservedForProjectId,
+        change: `reservation ${s.reserved} → ${plan.reserved} · ${plan.overrideTaken} taken for ${project?.code ?? stockOperation.label(plan.type)} · director override`,
+      });
+      await recordActivity(tx, {
+        actorName: who, actorPersonId: actor?.id, kind: 'stock', projectId: s.reservedForProjectId,
+        text: `Reservation reduced · ${ref} × ${plan.overrideTaken} · ${loc} · director override`,
+      });
+    }
     return plan;
   });
 }

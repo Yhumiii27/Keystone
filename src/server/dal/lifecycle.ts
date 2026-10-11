@@ -3,19 +3,21 @@ import 'server-only';
 // transitions), per-project deliverable checklists and stage history, plus the lifecycle writes (stage moves, deliverable
 // ticks and — chapter 4, L-1 — the portfolio director's validation of forced stage changes).
 // Permission checks and revalidation belong to the calling Server Functions.
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { cache } from 'react';
 import type { RoleKey } from '@/config/screens';
+import { projectDataDate } from '@/domain/ch4-defaults';
 import { REVERT_BLOCKER_MESSAGE, isForcedStageDecider, revertBlocker, revertReason, FORCED_STAGE_COMMENT_MAX } from '@/domain/forced-stage';
-import { STATUS_DATE } from '@/lib/format';
+import { defaultEffectiveDate, effectiveDateError, type EffectiveDateBounds } from '@/domain/lifecycle';
 import { getDb } from '@/server/db/client';
 import {
-  displayOfIso, isoOfDisplayDate, nextStageOf, stage as stageCodec,
+  displayOfIso, nextStageOf, stage as stageCodec,
   type StageCode, type StageGroup, type TransitionMode, type ValidationStatus,
 } from '@/server/db/codes';
-import { actorOf, recordActivity, writeAudit } from '@/server/db/helpers';
+import { actorOf, findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
 import { lifecycleStages, lifecycleTransitions, persons, projects, stageDeliverableChecks, stageDeliverableDefs, stageTransitions } from '@/server/db/schema';
+import type { Tx } from '@/server/db/types';
 
 export interface StageInfo {
   code: StageCode;
@@ -123,37 +125,81 @@ export const listStageHistory = cache(async (): Promise<Record<string, StageHist
   return out;
 });
 
-/** Status date of the frozen data set as ISO ('2026-09-25'): the date stamped on stage changes. */
-const STATUS_ISO = isoOfDisplayDate(STATUS_DATE)!;
+/** A stage change that cannot be recorded (EN source message): an effective date out of bounds, or a stale move. */
+export class StageChangeError extends Error {
+  readonly code: 'effective_date' | 'stale';
+  constructor(code: StageChangeError['code'], message: string) {
+    super(message);
+    this.name = 'StageChangeError';
+    this.code = code;
+  }
+}
+
+/** Effective-date bounds of a project's next stage change (L-4c): its latest change and its data date. Runs in `q`. */
+async function effectiveBoundsOf(q: Tx | Awaited<ReturnType<typeof getDb>>, p: { id: string; dataDate: string | null }): Promise<EffectiveDateBounds & { lastSeq: number }> {
+  const [last] = await q
+    .select({ seq: stageTransitions.seq, effectiveOn: stageTransitions.effectiveOn })
+    .from(stageTransitions)
+    .where(eq(stageTransitions.projectId, p.id))
+    .orderBy(desc(stageTransitions.seq))
+    .limit(1);
+  return { previous: last?.effectiveOn ?? null, today: projectDataDate(p), lastSeq: last?.seq ?? 0 };
+}
+
+/** Effective-date bounds of a project's next stage change (the register's date field). */
+export async function getStageChangeBounds(projectCode: string): Promise<EffectiveDateBounds | null> {
+  const db = await getDb();
+  const [p] = await db.select({ id: projects.id, dataDate: projects.dataDate }).from(projects).where(eq(projects.code, projectCode));
+  if (!p) return null;
+  const { previous, today } = await effectiveBoundsOf(db, p);
+  return { previous, today };
+}
 
 /**
- * Moves a project to `to` (advance 3922): sets the stage, clears the "New" flag and appends a history entry
- * dated at the status date. Forced moves keep the reason and the missing deliverables, and are left pending
- * validation by the portfolio director (OPEN QUESTION L-1). Does not check TRANS — the caller does.
+ * Moves a project to `to` (advance 3922): sets the stage, clears the "New" flag and appends a history entry dated at the
+ * effective date (L-4c = a, R-055: entered by the PM, today — the project's data date — by default; never before the
+ * previous change nor after today, re-checked here inside the transaction), audited with the time of entry and written
+ * to the activity feed. Forced moves keep the reason and the missing deliverables, and are left pending validation by the
+ * portfolio director (L-1). `from` (the stage the caller saw) refuses a move when the project has moved since. Does not
+ * check TRANS — the caller does. Throws StageChangeError when the move cannot be recorded. Returns the effective date.
  */
 export async function recordStageChange(
   projectCode: string,
   to: StageCode,
   mode: TransitionMode,
-  opts: { reason?: string; missing?: string[]; requestedByShortName?: string; effectiveOn?: string } = {},
-): Promise<void> {
+  opts: { reason?: string; missing?: string[]; requestedByShortName?: string; effectiveOn?: string; from?: StageCode } = {},
+): Promise<{ effectiveOn: string }> {
   const db = await getDb();
-  await db.transaction(async (tx) => {
-    const [p] = await tx.select({ id: projects.id, stage: projects.stage }).from(projects).where(eq(projects.code, projectCode));
+  return db.transaction(async (tx) => {
+    const [p] = await tx.select({ id: projects.id, stage: projects.stage, dataDate: projects.dataDate }).from(projects).where(eq(projects.code, projectCode));
     if (!p) throw new Error(`Unknown project ${projectCode}`);
-    const [{ seq }] = await tx
-      .select({ seq: sql<number>`coalesce(max(${stageTransitions.seq}), 0)::int` })
-      .from(stageTransitions)
-      .where(eq(stageTransitions.projectId, p.id));
-    const [by] = opts.requestedByShortName
-      ? await tx.select({ id: persons.id }).from(persons).where(eq(persons.shortName, opts.requestedByShortName))
-      : [];
-    await tx.insert(stageTransitions).values({
-      projectId: p.id, seq: seq + 1, fromStage: p.stage, toStage: to, effectiveOn: opts.effectiveOn ?? STATUS_ISO, mode,
+    if (opts.from && p.stage !== opts.from) throw new StageChangeError('stale', 'The project has already moved to another stage');
+    const bounds = await effectiveBoundsOf(tx, p);
+    if (opts.effectiveOn !== undefined) {
+      const err = effectiveDateError(opts.effectiveOn, bounds);
+      if (err) throw new StageChangeError('effective_date', err);
+    }
+    const effectiveOn = opts.effectiveOn ?? defaultEffectiveDate(bounds);
+    const by = opts.requestedByShortName ? await findPerson(tx, opts.requestedByShortName) : null;
+    const [row] = await tx.insert(stageTransitions).values({
+      projectId: p.id, seq: bounds.lastSeq + 1, fromStage: p.stage, toStage: to, effectiveOn, mode,
       reason: opts.reason?.trim() || null, missingDeliverables: mode === 'forced' ? (opts.missing ?? []) : null,
       requestedByPersonId: by?.id ?? null, validationStatus: mode === 'forced' ? 'pending' : null,
+    }).returning({ id: stageTransitions.id });
+    const at = new Date();
+    await tx.update(projects).set({ stage: to, isNew: false, updatedAt: at }).where(eq(projects.id, p.id));
+    const who = by ? nameOf(by) : 'Keystone';
+    const date = displayOfIso(effectiveOn);
+    await writeAudit(tx, {
+      actorName: who, actorPersonId: by?.id, objectRef: `${projectCode} stage`, area: 'Lifecycle', entityType: 'stage_transition', entityId: row.id, projectId: p.id, occurredAt: at,
+      change: `stage: ${stageCodec.label(p.stage)} → ${stageCodec.label(to)} · ${mode} · effective ${date}${mode === 'forced' && opts.reason?.trim() ? ` — ${opts.reason.trim()}` : ''}`,
     });
-    await tx.update(projects).set({ stage: to, isNew: false, updatedAt: new Date() }).where(eq(projects.id, p.id));
+    await recordActivity(tx, {
+      actorName: who, actorPersonId: by?.id, kind: 'change', projectId: p.id, occurredAt: at,
+      // Segments translated one by one (" · ", " → "): "Changement d’étape · HLT-026 → Études · 24 sept. 2026".
+      text: `${mode === 'forced' ? 'Forced stage change' : 'Stage changed'} · ${projectCode} → ${stageCodec.label(to)} · ${date}`,
+    });
+    return { effectiveOn };
   });
 }
 
@@ -287,7 +333,7 @@ export async function decideForcedStageChange(
     const req = alias(persons, 'req');
     const pm = alias(persons, 'pm');
     const [row] = await tx
-      .select({ t: stageTransitions, p: { id: projects.id, code: projects.code, stage: projects.stage }, reqFull: req.fullName, reqShort: req.shortName, pmFull: pm.fullName, pmShort: pm.shortName })
+      .select({ t: stageTransitions, p: { id: projects.id, code: projects.code, stage: projects.stage, dataDate: projects.dataDate }, reqFull: req.fullName, reqShort: req.shortName, pmFull: pm.fullName, pmShort: pm.shortName })
       .from(stageTransitions)
       .innerJoin(projects, eq(projects.id, stageTransitions.projectId))
       .leftJoin(req, eq(req.id, stageTransitions.requestedByPersonId))
@@ -303,12 +349,14 @@ export async function decideForcedStageChange(
     const at = new Date();
     let stage: StageCode = t.toStage;
     if (decision === 'rejected') {
-      const [{ lastSeq }] = await tx.select({ lastSeq: sql<number>`coalesce(max(${stageTransitions.seq}), 0)::int` }).from(stageTransitions).where(eq(stageTransitions.projectId, row.p.id));
+      // The revert is dated today (the project's data date, L-4c), never before the forced move it undoes.
+      const bounds = await effectiveBoundsOf(tx, row.p);
+      const lastSeq = bounds.lastSeq;
       const blocker = revertBlocker(t, { stage: row.p.stage, lastSeq });
       if (blocker) throw new StageDecisionError(blocker, REVERT_BLOCKER_MESSAGE[blocker]);
       stage = t.fromStage!;
       await tx.insert(stageTransitions).values({
-        projectId: row.p.id, seq: lastSeq + 1, fromStage: t.toStage, toStage: stage, effectiveOn: opts.effectiveOn ?? STATUS_ISO, mode: 'revert',
+        projectId: row.p.id, seq: lastSeq + 1, fromStage: t.toStage, toStage: stage, effectiveOn: opts.effectiveOn ?? defaultEffectiveDate(bounds), mode: 'revert',
         reason: revertReason(comment), requestedByPersonId: actor.personId, revertsTransitionId: t.id,
       });
       await tx.update(projects).set({ stage, updatedAt: at }).where(eq(projects.id, row.p.id));

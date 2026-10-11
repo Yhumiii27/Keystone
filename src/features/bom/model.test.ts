@@ -45,7 +45,9 @@ describe.each(LANGS)('Project BOM screen model (%s)', (lang) => {
     const v = await screen(code, {}, lang);
     const p = g.projects[code];
     const expected = gKpis(p.kpis, lang);
-    if (code === 'HLT-026') expected[1].value = lang === 'fr' ? '7,05 M€' : '€7.05M'; // 09 OQ6 (prototype €14.05M)
+    // 09 OQ6: each article once (the prototype added assemblies and their components, €14.01M at E-2a prices); E-2a (R-103):
+    // ordered price, else last purchase, else catalogue — €7.02M (€7.05M at list price before Delivery 7).
+    if (code === 'HLT-026') expected[1].value = lang === 'fr' ? '7,02 M€' : '€7.02M';
     expect(kpis(v.kpis)).toEqual(expected);
     expect(v.views.map((o) => [o.label, o.active])).toEqual(p.viewSeg.map((o: any) => [o.label, o.color === 'var(--color-accent)']));
     expect(v.displayLabel).toBe(p.FL.view);
@@ -225,7 +227,7 @@ describe('projects without data (no Harbor Line fallback, 00 §7.16)', () => {
   it('EWA-051: empty BOM, zero KPIs, empty-state message', async () => {
     const v = await screen('EWA-051', {}, 'en');
     expect(G.en.projects['EWA-051'].kpis[0].value).toBe(35); // the prototype showed Harbor Line's BOM
-    expect(kpis(v.kpis).map((k) => [k.value, k.sub])).toEqual([['0', '0 units in total'], ['€0k', 'At unit list price'], ['0', 'Blocked for purchasing'], ['0', 'Replace before ordering'], ['0', 'Lines needing customs review']]);
+    expect(kpis(v.kpis).map((k) => [k.value, k.sub])).toEqual([['0', '0 units in total'], ['€0k', 'Ordered, else last purchase, else catalogue price'], ['0', 'Blocked for purchasing'], ['0', 'Replace before ordering'], ['0', 'Lines needing customs review']]);
     expect([v.flat!.rows.length, v.flat!.count, v.flat!.title, v.flat!.empty]).toEqual([0, '0 / 0 articles', 'Bill of materials · 0 articles', 'No article is registered in this project’s BOM yet']);
     const fr = await screen('EWA-051', {}, 'fr');
     expect(fr.flat!.empty).toBe('Aucun article n’est encore enregistré dans la nomenclature de ce projet');

@@ -15,8 +15,8 @@ import { isLinkType, type LinkType } from '@/server/db/codes';
 import { getProjectContext, type ProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import {
-  activityCalendarText, baselineSetText, baselineShownText, calendarSetText, cycleText, linkAddedText, linkCycleText, linkRemovedText, rescheduledText,
-  todoAddedText, todoRemovedText,
+  activityCalendarText, appliedChangesText, baselineSetText, baselineShownText, calendarSetText, cycleText, linkAddedText, linkCycleText, linkRemovedText,
+  rescheduledText, todoAddedText, todoRemovedText,
 } from './i18n';
 import { canEditTask } from '@/features/mywork/permissions';
 import { canEditPlan, canEditStructure, canSchedulePlan } from './rights';
@@ -68,7 +68,9 @@ export async function rescheduleAction(code: string): Promise<PlanToastResult> {
     return { error: `${t('The schedule data is invalid')} · ${res.issues?.[0] ?? ''}` };
   }
   refresh(r.ctx.project.code, 'all');
-  return { ok: true, toast: rescheduledText(t(longDateText(res.dataDate)), t(longDateText(res.finishDate)), res.changed.length, lang) };
+  const toast = rescheduledText(t(longDateText(res.dataDate)), t(longDateText(res.finishDate)), res.changed.length, lang);
+  // NEW-D2-2 (R-062): the new durations of approved change requests applied by this run.
+  return { ok: true, toast: res.appliedChanges?.length ? `${toast} · ${appliedChangesText(res.appliedChanges.map((c) => c.cr), lang)}` : toast };
 }
 
 // ── Baselines (S-3) ───────────────────────────────────────────────────────────────────────────────────────────────

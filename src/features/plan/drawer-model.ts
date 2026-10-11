@@ -8,7 +8,9 @@ import {
 import type { Lang, T } from '@/i18n/translate';
 import { initials, money } from '@/lib/format';
 import type { PlanOwner, PlanRequest, PlanTodo } from '@/server/dal/plan';
-import { awaitingApprovalText, baselineFinishKey, daysText, forecastOverText, planT, rescheduleProposedText, todoCountText } from './i18n';
+import { durationChangeText } from '@/domain/change-activities';
+import type { ChangeStatus } from '@/server/db/codes';
+import { awaitingApprovalText, baselineFinishKey, changesPendingText, daysText, forecastOverText, planT, rescheduleProposedText, todoCountText } from './i18n';
 
 export interface DrawerResourceInput {
   resource: string;
@@ -32,8 +34,11 @@ export interface DrawerInput {
   requests: PlanRequest[];
   /** Department → head's full name (DEPTS). */
   deptHeads: Record<string, string>;
-  /** Change requests of the project currently in review ("CR-008"), from the change-control register. */
-  pendingChanges?: readonly string[];
+  /**
+   * Delivery 7 (NEW-D2-2, R-062): the change requests that name this activity (Change control › request › plan activities),
+   * with the new duration each asks for and whether a Reschedule applied it; `href` opens the request.
+   */
+  changeLinks?: readonly DrawerChangeLinkInput[];
   /** URL of a to-do's task page. */
   taskHref: (todo: PlanTodo) => string;
   // ── Chapter 4 (S-2, S-3) — optional: absent, the prototype rules apply (site calendar by WBS, "BL1 finish"). ──
@@ -44,6 +49,18 @@ export interface DrawerInput {
   baselineCode?: string | null;
   /** To-dos the viewer may remove (created from the drawer, no logged time). */
   removableTodos?: ReadonlySet<string>;
+}
+
+export interface DrawerChangeLinkInput {
+  cr: string;
+  title: string;
+  status: ChangeStatus;
+  /** Duration of the activity now (null when unknown) and the one the request asks for (null = none). */
+  durationDays: number | null;
+  newDurationDays: number | null;
+  appliedAt: string | null;
+  appliedFromDays: number | null;
+  href: string;
 }
 
 export interface DrawerLine {
@@ -84,7 +101,12 @@ export interface DrawerView {
   todos: DrawerTodo[];
   pending: { id: string; title: string; meta: string }[];
   noTodos: boolean;
+  /** NEW-D2-2 (R-062): change requests touching the activity ("CR-008 · Steel erection acceleration — second crew", status, duration). */
+  changes: { id: string; title: string; status: { label: string; tone: 'accent' | 'outline' | 'neutral' }; duration: string; href: string }[];
 }
+
+const CR_STATUS_EN: Record<ChangeStatus, string> = { draft: 'Draft', in_review: 'In review', approved: 'Approved', rejected: 'Rejected' };
+const CR_STATUS_TONE: Record<ChangeStatus, 'accent' | 'outline' | 'neutral'> = { draft: 'outline', in_review: 'accent', approved: 'neutral', rejected: 'outline' };
 
 /** Builds the drawer of one activity, translated for `lang` (`t` = the viewer's translator). */
 export function activityDrawerView(input: DrawerInput, baseT: T, lang: Lang): DrawerView {
@@ -142,12 +164,22 @@ export function activityDrawerView(input: DrawerInput, baseT: T, lang: Lang): Dr
       : [];
 
   const bar = costBar(a.budget, a.actual, a.eac);
+  // NEW-D2-2 (R-062): the requests in review that touch the activity (the prototype hard-coded "second crew (CR-008)" on A1250).
+  const links = input.changeLinks ?? [];
+  const inReview = links.filter((l) => l.status === 'in_review').map((l) => l.cr);
   const costNote = bar.over
-    ? forecastOverText(money(bar.overBy, lang, { signed: true }), lang) +
-      // The prototype hard-codes this pending change for A1250; it is shown while CR-008 is still in review.
-      // TODO(db): change requests are linked to WBS packages, not activities — the activity ↔ CR link is not modelled.
-      (a.id === 'A1250' && input.pendingChanges?.includes('CR-008') ? ' — ' + t('second crew (CR-008) pending approval') : '')
+    ? forecastOverText(money(bar.overBy, lang, { signed: true }), lang) + (inReview.length ? ' — ' + changesPendingText(inReview, lang) : '')
     : t('Tracking within budget');
+  const changes = links.map((l) => ({
+    id: l.cr,
+    title: t(l.title),
+    status: { label: t(CR_STATUS_EN[l.status]), tone: CR_STATUS_TONE[l.status] },
+    duration: daysText(
+      l.appliedAt ? `${durationChangeText(l.appliedFromDays, l.newDurationDays)} · ${t('applied')}` : durationChangeText(l.durationDays, l.newDurationDays),
+      lang,
+    ),
+    href: l.href,
+  }));
 
   const aTodos = input.todos.filter((x) => x.act === a.id);
   const todos: DrawerTodo[] = aTodos.map((x) => ({
@@ -198,5 +230,6 @@ export function activityDrawerView(input: DrawerInput, baseT: T, lang: Lang): Dr
     todos,
     pending,
     noTodos: !aTodos.length && !pending.length,
+    changes,
   };
 }

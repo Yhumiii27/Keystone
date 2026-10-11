@@ -346,9 +346,11 @@ describe('engineering register', () => {
     await expect(proposeEngRelease(HLT, 'VAR-PLC-026', A.englead)).rejects.toThrow(/Release blocked · 2 blocking/);
     await expect(validateEngRelease(HLT, 'SCH-ELE-026', A.englead)).rejects.toThrow(/Only the project manager/);
     await expect(validateEngRelease(HLT, 'SCH-ELE-026', { role: 'pm', name: 'Sophie Renard' })).rejects.toThrow(/Only the project manager/);
+    // P-7c = a (Delivery 7, R-106): the validation starts the Codex approval circuit; Codex releases the deliverable.
     await validateEngRelease(HLT, 'SCH-ELE-026', A.pm);
     const d = (await getEngineeringRegister(HLT))!.deliverables.find((x) => x.number === 'SCH-ELE-026')!;
-    expect([d.status, d.revision]).toEqual(['released', 'B']);
+    expect([d.status, d.revision, d.canValidate, d.codexNote]).toEqual(['release_proposed', 'B', false, 'Approval circuit started · Pending sync with Codex']);
+    await expect(validateEngRelease(HLT, 'SCH-ELE-026', A.pm)).rejects.toThrow(/already started/);
     await expect(freezeEngDeliverable(HLT, 'PRO-QMS-021', A.englead)).rejects.toThrow(/not an engineering deliverable/);
   });
 

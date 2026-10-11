@@ -112,6 +112,8 @@
 .apprPending { color: var(--color-neutral-500); }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-accent); }
 .dotPending { background: var(--color-neutral-700); }
+/* Delivery 7: step decided in Keystone, waiting for Codex (hollow accent dot). */
+.dotSync { background: transparent; box-shadow: inset 0 0 0 2px var(--color-accent); }
 .apprState { font-size: 11.5px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
 .distRow {
   display: grid;

@@ -21,6 +21,7 @@ import {
 } from '@/server/db/schema';
 import { getContingencyTotals } from './contingency';
 import { getOpenCommitment, getProjectEvm } from './evm';
+import { stockCostByWorkPackage } from './stock';
 
 export interface OfferQuoteRow {
   /** "Structural steel — columns, beams, purlins". */
@@ -138,7 +139,7 @@ export async function getCostControl(code: string): Promise<CostControl | null> 
     .where(eq(projects.code, code));
   if (!head) return null;
   const pid = head.projectId;
-  const [evmRows, offer, streams, cats, wps, crs, acts, evm, ordersPlaced, contingency] = await Promise.all([
+  const [evmRows, offer, streams, cats, wps, crs, acts, evm, ordersPlaced, contingency, stockByWp] = await Promise.all([
     db.select().from(evmPeriods).where(eq(evmPeriods.projectId, pid)).orderBy(asc(evmPeriods.monthIndex)),
     db.select().from(offerQuotes).where(eq(offerQuotes.projectId, pid)).orderBy(asc(offerQuotes.position)),
     db.select().from(costStreams).where(eq(costStreams.projectId, pid)).orderBy(asc(costStreams.position)),
@@ -153,6 +154,7 @@ export async function getCostControl(code: string): Promise<CostControl | null> 
     getProjectEvm(code),
     getOpenCommitment(code),
     getContingencyTotals(code),
+    stockCostByWorkPackage(pid),
   ]);
   const periods = streams.length
     ? await db.select().from(costStreamPeriods).where(inArray(costStreamPeriods.streamId, streams.map((s) => s.id))).orderBy(asc(costStreamPeriods.monthIndex))
@@ -200,7 +202,8 @@ export async function getCostControl(code: string): Promise<CostControl | null> 
       const has = acts.some((a) => a.wbs === w.wbsCode);
       return {
         wbs: w.wbsCode, name: w.name, original: w.originalKeur, changes: wpChanges.get(w.wbsCode) ?? 0,
-        actual: has ? sumBy(w.wbsCode, 'actual') : w.actualKeur, eac: has ? sumBy(w.wbsCode, 'eac') : w.eacKeur,
+        // SC-5a (R-098): stock material issued to the package's activities in Keystone is added to its actual cost.
+        actual: (has ? sumBy(w.wbsCode, 'actual') : w.actualKeur) + (stockByWp.get(w.wbsCode) ?? 0), eac: has ? sumBy(w.wbsCode, 'eac') : w.eacKeur,
       };
     }),
     changes: budgetChangeRows(crs).map((r) => ({

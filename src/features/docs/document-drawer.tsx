@@ -1,10 +1,11 @@
 // Document record drawer (docs/spec/10 §4.5, template 2346–2362, logic 5040–5047): opened by `?doc=PID-HLT-026` over
 // the vault, whatever its filters; closed (×, scrim, Esc) to the vault URL. Header "Document record · id · rev D" with
 // the Codex, confidentiality and status tags; title; Open in Codex · Download PDF · New revision · Codex · Approve in
-// Codex (named next approver / director); the mirror note; the withdrawal note after a release; Identity,
+// Codex (named next approver / director); the mirror note; Delivery 7: the circuit note (decisions recorded in
+// Keystone, pending sync with Codex — R-124); the withdrawal note after a release; Identity,
 // Classification, Revisions (newest first, Native / PDF downloads), Approval proof, Distribution, Download log and
 // Relations. Server Component; the buttons are client islands.
-import { ArrowsClockwise, Books, GitBranch, Info } from '@phosphor-icons/react/dist/ssr';
+import { ArrowsClockwise, Books, CloudArrowUp, GitBranch, Info } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import { Callout } from '@/components/app/Callout';
 import { Eyebrow } from '@/components/app/Eyebrow';
@@ -58,6 +59,11 @@ export function DocumentDrawer({ project, view: d, t }: DocumentDrawerProps) {
         <ArrowsClockwise aria-hidden />
         {t('Record mirrored from Codex · revisions, approvals and distribution are read-only here')}
       </span>
+      {d.circuitNote && (
+        <Callout variant="emphasis" icon={CloudArrowUp} role="status">
+          {d.circuitNote}
+        </Callout>
+      )}
       {d.withdrawal && (
         <Callout variant="emphasis" icon={Info} role="status">
           {d.withdrawal}
@@ -98,8 +104,8 @@ export function DocumentDrawer({ project, view: d, t }: DocumentDrawerProps) {
       <div className={s.section}>
         <Eyebrow>{t('Approval proof')}</Eyebrow>
         {d.approvals.map((a, i) => (
-          <div key={i} className={cx(s.apprRow, !a.signed && s.apprPending)}>
-            <span className={cx(s.dot, !a.signed && s.dotPending)} role="img" aria-label={a.state} />
+          <div key={i} className={cx(s.apprRow, !a.signed && !a.pendingSync && s.apprPending)}>
+            <span className={cx(s.dot, !a.signed && (a.pendingSync ? s.dotSync : s.dotPending))} role="img" aria-label={a.state} />
             <span>{a.label}</span>
             <span className={s.apprState}>{a.state}</span>
           </div>

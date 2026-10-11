@@ -3,7 +3,8 @@
 // URL state (src/features/stock/links.ts): `?loc=` location chip, `?q=` search, `?stock=` stock-line drawer,
 // `?part=` shared part record drawer. Roles: director, pm, quality, procurement; other roles see the screen outside
 // their workspace (banner, read-only: no movement form, no "Push to X3", no primary). The project read-only mode
-// does not apply (08 §0.2). Writes go through src/features/stock/actions.ts.
+// does not apply (08 §0.2). Writes go through src/features/stock/actions.ts. Delivery 7: an issue names an activity of
+// the current project's plan (SC-5a, R-098); reservations are protected ("Release reservation", director override, R-099).
 import { PageHeader } from '@/components/app/shell/page-header';
 import { DEFAULT_PROJECT } from '@/config/screens';
 import { parseLocationFilter } from '@/domain/stock';
@@ -15,9 +16,9 @@ import { StockDrawer } from '@/features/stock/stock-drawer';
 import { StockBody } from '@/features/stock/stock-view';
 import { installedBasePins } from '@/server/dal/eco';
 import { getProject } from '@/server/dal/projects';
-import { getStockPosition, getX3StockSync, listStock, listStockMovements } from '@/server/dal/stock';
+import { getStockPosition, getX3StockSync, listIssueActivityOptions, listStock, listStockMovements } from '@/server/dal/stock';
 import { listStorageLocations } from '@/server/dal/suppliers';
-import { getScreenAccess } from '@/server/project-context';
+import { getScreenAccess, projectAccessResolver } from '@/server/project-context';
 import { getI18n, getLastProject } from '@/server/session';
 import { canSeeSupplierPrices } from '@/domain/rights';
 
@@ -43,7 +44,20 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
   // R-046 (NEW-D2-1): stock values at purchase price only for the director, the PMs and procurement.
   const prices = canSeeSupplierPrices(access.viewer.role);
   const view = stockScreenView({ rows, locations, sync, moves, pins, state, prices }, t, lang);
-  const drawer = detail ? stockDrawerView({ detail, locations, pins, state, prices }, t, lang) : null;
+  // Delivery 7: an issue names an activity of the current project's plan (SC-5a); the reserving project's PM or the
+  // director releases a reservation, the director alone may take another project's reserved units (R-099).
+  const [acts, owner] = detail && project
+    ? await Promise.all([listIssueActivityOptions(project.code), detail.reservedForProject ? getProject(detail.reservedForProject) : Promise.resolve(null)])
+    : [[], null];
+  const viewer = access.viewer;
+  const drawer = detail
+    ? stockDrawerView({
+      detail, locations, pins, state, prices, projectCode: project?.code ?? null, activities: acts,
+      // R-041: the reserving project's PM team (PM of record, co-PMs, deputies) or the director.
+      canRelease: access.canEdit && !!owner && (await projectAccessResolver(viewer))(owner).lead,
+      canOverride: access.canEdit && viewer.role === 'director',
+    }, t, lang)
+    : null;
   const closeHref = state.stock ? stockHref({ ...state, stock: null }) : null;
 
   return (

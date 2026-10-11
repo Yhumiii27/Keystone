@@ -8,6 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
+import { applyE2a } from './proto-e2a';
 
 const root = path.resolve(__dirname, '..');
 const lines = fs.readFileSync(path.join(root, 'design/Keystone PM v8.dc.html'), 'utf8').split('\n');
@@ -23,7 +24,7 @@ const ctx: any = {
   },
 };
 vm.createContext(ctx);
-vm.runInContext(lines.slice(3095, 5239).join('\n') + '\n;globalThis.__C = Component;', ctx);
+vm.runInContext(applyE2a(lines).slice(3095, 5239).join('\n') + '\n;globalThis.__C = Component;', ctx);
 
 const make = (state: any = {}) => {
   const c = new ctx.__C({});

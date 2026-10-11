@@ -9,8 +9,8 @@
     },
     {
      "label": "BOM value",
-     "value": "€14.05M",
-     "sub": "At unit list price"
+     "value": "€14.01M",
+     "sub": "Ordered, else last purchase, else catalogue price"
     },
     {
      "label": "Not validated",
@@ -131,8 +131,8 @@
     {
      "ref": "ASM-SPR-500",
      "qty": "2",
-     "total": "€236,000",
-     "price": "€118,000",
+     "total": "€228,000",
+     "price": "€114,000",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -159,8 +159,8 @@
     {
      "ref": "CR-BRG-SKF",
      "qty": "32",
-     "total": "€20,480",
-     "price": "€640",
+     "total": "€19,136",
+     "price": "€598",
      "status": "Validated",
      "eco": "ECO-2026-017",
      "used": "—",
@@ -173,8 +173,8 @@
     {
      "ref": "CR-MOT-15K",
      "qty": "8",
-     "total": "€38,400",
-     "price": "€4,800",
+     "total": "€37,200",
+     "price": "€4,650",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -201,8 +201,8 @@
     {
      "ref": "CR-WHL-630",
      "qty": "16",
-     "total": "€34,400",
-     "price": "€2,150",
+     "total": "€33,440",
+     "price": "€2,090",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -215,8 +215,8 @@
     {
      "ref": "CTL-ANT-COL",
      "qty": "8",
-     "total": "€41,600",
-     "price": "€5,200",
+     "total": "€39,840",
+     "price": "€4,980",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -229,8 +229,8 @@
     {
      "ref": "CTL-CAM-OCR",
      "qty": "12",
-     "total": "€37,200",
-     "price": "€3,100",
+     "total": "€35,400",
+     "price": "€2,950",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -285,8 +285,8 @@
     {
      "ref": "EL-PLC-S7",
      "qty": "2",
-     "total": "€13,800",
-     "price": "€6,900",
+     "total": "€13,400",
+     "price": "€6,700",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -327,8 +327,8 @@
     {
      "ref": "EL-VFD-200",
      "qty": "6",
-     "total": "€85,200",
-     "price": "€14,200",
+     "total": "€81,600",
+     "price": "€13,600",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -425,8 +425,8 @@
     {
      "ref": "HST-MOT-160",
      "qty": "2",
-     "total": "€57,000",
-     "price": "€28,500",
+     "total": "€55,800",
+     "price": "€27,900",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -439,8 +439,8 @@
     {
      "ref": "HST-ROP-28",
      "qty": "4",
-     "total": "€38,400",
-     "price": "€9,600",
+     "total": "€36,800",
+     "price": "€9,200",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -453,8 +453,8 @@
     {
      "ref": "KS-PLT-S355",
      "qty": "192",
-     "total": "€238,080",
-     "price": "€1,240",
+     "total": "€226,560",
+     "price": "€1,180",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -566,7 +566,7 @@
     {
      "label": "BOM value",
      "value": "€3.83M",
-     "sub": "At unit list price"
+     "sub": "Ordered, else last purchase, else catalogue price"
     },
     {
      "label": "Not validated",
@@ -724,7 +724,7 @@
     {
      "label": "BOM value",
      "value": "€150k",
-     "sub": "At unit list price"
+     "sub": "Ordered, else last purchase, else catalogue price"
     },
     {
      "label": "Not validated",
@@ -838,7 +838,7 @@
     {
      "label": "BOM value",
      "value": "€1.32M",
-     "sub": "At unit list price"
+     "sub": "Ordered, else last purchase, else catalogue price"
     },
     {
      "label": "Not validated",
@@ -909,7 +909,7 @@
     {
      "label": "BOM value",
      "value": "€4.01M",
-     "sub": "At unit list price"
+     "sub": "Ordered, else last purchase, else catalogue price"
     },
     {
      "label": "Not validated",
@@ -1038,7 +1038,7 @@
     {
      "label": "BOM value",
      "value": "€351k",
-     "sub": "At unit list price"
+     "sub": "Ordered, else last purchase, else catalogue price"
     },
     {
      "label": "Not validated",
@@ -1123,8 +1123,8 @@
     },
     {
      "label": "BOM value",
-     "value": "€14.05M",
-     "sub": "At unit list price"
+     "value": "€13.99M",
+     "sub": "Ordered, else last purchase, else catalogue price"
     },
     {
      "label": "Not validated",
@@ -1245,8 +1245,8 @@
     {
      "ref": "ASM-SPR-500",
      "qty": "2",
-     "total": "€236,000",
-     "price": "€118,000",
+     "total": "€228,000",
+     "price": "€114,000",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -1273,8 +1273,8 @@
     {
      "ref": "CR-BRG-SKF",
      "qty": "32",
-     "total": "€20,480",
-     "price": "€640",
+     "total": "€19,136",
+     "price": "€598",
      "status": "Validated",
      "eco": "ECO-2026-017",
      "used": "—",
@@ -1287,8 +1287,8 @@
     {
      "ref": "CR-MOT-15K",
      "qty": "8",
-     "total": "€38,400",
-     "price": "€4,800",
+     "total": "€37,200",
+     "price": "€4,650",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -1315,8 +1315,8 @@
     {
      "ref": "CR-WHL-630",
      "qty": "16",
-     "total": "€34,400",
-     "price": "€2,150",
+     "total": "€33,440",
+     "price": "€2,090",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -1329,8 +1329,8 @@
     {
      "ref": "CTL-ANT-COL",
      "qty": "8",
-     "total": "€41,600",
-     "price": "€5,200",
+     "total": "€39,840",
+     "price": "€4,980",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -1343,8 +1343,8 @@
     {
      "ref": "CTL-CAM-OCR",
      "qty": "12",
-     "total": "€37,200",
-     "price": "€3,100",
+     "total": "€35,400",
+     "price": "€2,950",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -1371,8 +1371,8 @@
     {
      "ref": "EL-CBL-XLPE",
      "qty": "42",
-     "total": "€163,800",
-     "price": "€3,900",
+     "total": "€157,500",
+     "price": "€3,750",
      "status": "Validated",
      "eco": "",
      "used": "NDC, WSA",
@@ -1399,8 +1399,8 @@
     {
      "ref": "EL-PLC-S7",
      "qty": "2",
-     "total": "€13,800",
-     "price": "€6,900",
+     "total": "€13,400",
+     "price": "€6,700",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -1413,8 +1413,8 @@
     {
      "ref": "EL-SWG-11KV",
      "qty": "2",
-     "total": "€172,800",
-     "price": "€86,400",
+     "total": "€168,000",
+     "price": "€84,000",
      "status": "Validated",
      "eco": "",
      "used": "NDC",
@@ -1427,8 +1427,8 @@
     {
      "ref": "EL-TRF-2MVA",
      "qty": "2",
-     "total": "€248,000",
-     "price": "€124,000",
+     "total": "€243,000",
+     "price": "€121,500",
      "status": "Validated",
      "eco": "",
      "used": "NDC, WSA",
@@ -1441,8 +1441,8 @@
     {
      "ref": "EL-VFD-200",
      "qty": "6",
-     "total": "€85,200",
-     "price": "€14,200",
+     "total": "€81,600",
+     "price": "€13,600",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -1539,8 +1539,8 @@
     {
      "ref": "HST-MOT-160",
      "qty": "2",
-     "total": "€57,000",
-     "price": "€28,500",
+     "total": "€55,800",
+     "price": "€27,900",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -1553,8 +1553,8 @@
     {
      "ref": "HST-ROP-28",
      "qty": "4",
-     "total": "€38,400",
-     "price": "€9,600",
+     "total": "€36,800",
+     "price": "€9,200",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -1567,8 +1567,8 @@
     {
      "ref": "KS-PLT-S355",
      "qty": "192",
-     "total": "€238,080",
-     "price": "€1,240",
+     "total": "€226,560",
+     "price": "€1,180",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -1595,8 +1595,8 @@
     {
      "ref": "KS-STL-0450",
      "qty": "48",
-     "total": "€232,800",
-     "price": "€4,850",
+     "total": "€225,600",
+     "price": "€4,700",
      "status": "Validated",
      "eco": "",
      "used": "—",
@@ -1676,8 +1676,8 @@
    "ref": "ASM-RMG-250",
    "qty": 2,
    "ext": "2",
-   "unit": "€713,996",
-   "total": "€1,427,992",
+   "unit": "€720,396",
+   "total": "€1,440,792",
    "rev": "C",
    "status": "Validated",
    "pad": "6px",
@@ -1687,8 +1687,8 @@
    "ref": "ASM-STR-100",
    "qty": 1,
    "ext": "2",
-   "unit": "€180,408",
-   "total": "€360,816",
+   "unit": "€181,008",
+   "total": "€362,016",
    "rev": "B",
    "status": "Validated",
    "pad": "24px",
@@ -1698,8 +1698,8 @@
    "ref": "KS-STL-0450",
    "qty": 4,
    "ext": "8",
-   "unit": "€4,700",
-   "total": "€37,600",
+   "unit": "€4,850",
+   "total": "€38,800",
    "rev": "C",
    "status": "Validated",
    "pad": "42px",
@@ -1852,8 +1852,8 @@
    "ref": "ASM-ELE-600",
    "qty": 1,
    "ext": "2",
-   "unit": "€277,900",
-   "total": "€555,800",
+   "unit": "€283,700",
+   "total": "€567,400",
    "rev": "B",
    "status": "Validated",
    "pad": "24px",
@@ -1863,8 +1863,8 @@
    "ref": "EL-SWG-11KV",
    "qty": 1,
    "ext": "2",
-   "unit": "€84,000",
-   "total": "€168,000",
+   "unit": "€86,400",
+   "total": "€172,800",
    "rev": "D",
    "status": "Validated",
    "pad": "42px",
@@ -1874,8 +1874,8 @@
    "ref": "EL-TRF-2MVA",
    "qty": 1,
    "ext": "2",
-   "unit": "€121,500",
-   "total": "€243,000",
+   "unit": "€124,000",
+   "total": "€248,000",
    "rev": "B",
    "status": "Validated",
    "pad": "42px",
@@ -1885,8 +1885,8 @@
    "ref": "EL-CBL-XLPE",
    "qty": 6,
    "ext": "12",
-   "unit": "€3,750",
-   "total": "€45,000",
+   "unit": "€3,900",
+   "total": "€46,800",
    "rev": "A",
    "status": "Validated",
    "pad": "42px",
@@ -2028,8 +2028,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
-     "v": "€713,996",
+     "k": "Rolled-up cost",
+     "v": "€720,396",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Roll-up of components",
      "color": "var(--color-text)"
     },
     {
@@ -2039,12 +2044,12 @@
     },
     {
      "k": "Delta",
-     "v": "−€1,136,004",
+     "v": "−€1,129,604",
      "color": "var(--color-text)"
     },
     {
      "k": "Per project (× 2)",
-     "v": "€1,427,992",
+     "v": "€1,440,792",
      "color": "var(--color-text)"
     }
    ],
@@ -2087,8 +2092,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
-     "v": "€180,408",
+     "k": "Rolled-up cost",
+     "v": "€181,008",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Roll-up of components",
      "color": "var(--color-text)"
     },
     {
@@ -2098,12 +2108,12 @@
     },
     {
      "k": "Delta",
-     "v": "−€231,592",
+     "v": "−€230,992",
      "color": "var(--color-text)"
     },
     {
      "k": "Per project (× 2)",
-     "v": "€360,816",
+     "v": "€362,016",
      "color": "var(--color-text)"
     }
    ],
@@ -2146,8 +2156,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
-     "v": "€4,700",
+     "k": "Rolled-up cost",
+     "v": "€4,850",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Ordered price",
      "color": "var(--color-text)"
     },
     {
@@ -2157,12 +2172,12 @@
     },
     {
      "k": "Delta",
-     "v": "−€150",
+     "v": "+€0",
      "color": "var(--color-text)"
     },
     {
      "k": "Per project (× 8)",
-     "v": "€37,600",
+     "v": "€38,800",
      "color": "var(--color-text)"
     }
    ],
@@ -2205,8 +2220,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€58,360",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Roll-up of components",
      "color": "var(--color-text)"
     },
     {
@@ -2264,8 +2284,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€1,180",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Last purchase price",
      "color": "var(--color-text)"
     },
     {
@@ -2323,8 +2348,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€860",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Catalogue price",
      "color": "var(--color-text)"
     },
     {
@@ -2382,8 +2412,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€11,222",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Roll-up of components",
      "color": "var(--color-text)"
     },
     {
@@ -2441,8 +2476,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€2,090",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Last purchase price",
      "color": "var(--color-text)"
     },
     {
@@ -2500,8 +2540,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€598",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Last purchase price",
      "color": "var(--color-text)"
     },
     {
@@ -2559,8 +2604,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€4,650",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Last purchase price",
      "color": "var(--color-text)"
     },
     {
@@ -2618,8 +2668,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€217,100",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Roll-up of components",
      "color": "var(--color-text)"
     },
     {
@@ -2677,8 +2732,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€42,000",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Catalogue price",
      "color": "var(--color-text)"
     },
     {
@@ -2736,8 +2796,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€9,200",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Last purchase price",
      "color": "var(--color-text)"
     },
     {
@@ -2795,8 +2860,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€27,900",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Last purchase price",
      "color": "var(--color-text)"
     },
     {
@@ -2854,8 +2924,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€7,400",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Catalogue price",
      "color": "var(--color-text)"
     },
     {
@@ -2913,8 +2988,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€114,000",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Last purchase price",
      "color": "var(--color-text)"
     },
     {
@@ -2972,8 +3052,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
-     "v": "€277,900",
+     "k": "Rolled-up cost",
+     "v": "€283,700",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Roll-up of components",
      "color": "var(--color-text)"
     },
     {
@@ -2983,12 +3068,12 @@
     },
     {
      "k": "Delta",
-     "v": "−€86,100",
+     "v": "−€80,300",
      "color": "var(--color-text)"
     },
     {
      "k": "Per project (× 2)",
-     "v": "€555,800",
+     "v": "€567,400",
      "color": "var(--color-text)"
     }
    ],
@@ -3031,8 +3116,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
-     "v": "€84,000",
+     "k": "Rolled-up cost",
+     "v": "€86,400",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Ordered price",
      "color": "var(--color-text)"
     },
     {
@@ -3042,12 +3132,12 @@
     },
     {
      "k": "Delta",
-     "v": "−€2,400",
+     "v": "+€0",
      "color": "var(--color-text)"
     },
     {
      "k": "Per project (× 2)",
-     "v": "€168,000",
+     "v": "€172,800",
      "color": "var(--color-text)"
     }
    ],
@@ -3090,8 +3180,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
-     "v": "€121,500",
+     "k": "Rolled-up cost",
+     "v": "€124,000",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Ordered price",
      "color": "var(--color-text)"
     },
     {
@@ -3101,12 +3196,12 @@
     },
     {
      "k": "Delta",
-     "v": "−€2,500",
+     "v": "+€0",
      "color": "var(--color-text)"
     },
     {
      "k": "Per project (× 2)",
-     "v": "€243,000",
+     "v": "€248,000",
      "color": "var(--color-text)"
     }
    ],
@@ -3149,8 +3244,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
-     "v": "€3,750",
+     "k": "Rolled-up cost",
+     "v": "€3,900",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Ordered price",
      "color": "var(--color-text)"
     },
     {
@@ -3160,12 +3260,12 @@
     },
     {
      "k": "Delta",
-     "v": "−€150",
+     "v": "+€0",
      "color": "var(--color-text)"
     },
     {
      "k": "Per project (× 12)",
-     "v": "€45,000",
+     "v": "€46,800",
      "color": "var(--color-text)"
     }
    ],
@@ -3208,8 +3308,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€49,900",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Roll-up of components",
      "color": "var(--color-text)"
     },
     {
@@ -3267,8 +3372,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€13,600",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Last purchase price",
      "color": "var(--color-text)"
     },
     {
@@ -3326,8 +3436,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€6,700",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Last purchase price",
      "color": "var(--color-text)"
     },
     {
@@ -3385,8 +3500,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€2,400",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Catalogue price",
      "color": "var(--color-text)"
     },
     {
@@ -3444,8 +3564,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€38,588",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Roll-up of components",
      "color": "var(--color-text)"
     },
     {
@@ -3503,8 +3628,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€4,980",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Last purchase price",
      "color": "var(--color-text)"
     },
     {
@@ -3562,8 +3692,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€2,950",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Last purchase price",
      "color": "var(--color-text)"
     },
     {
@@ -3621,8 +3756,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€860",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Catalogue price",
      "color": "var(--color-text)"
     },
     {
@@ -3680,8 +3820,13 @@
    ],
    "cost": [
     {
-     "k": "Rolled-up cost (last purchase)",
+     "k": "Rolled-up cost",
      "v": "€54",
+     "color": "var(--color-text)"
+    },
+    {
+     "k": "Price basis",
+     "v": "Catalogue price",
      "color": "var(--color-text)"
     },
     {

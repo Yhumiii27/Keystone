@@ -9,7 +9,7 @@ import { PROTO, PROTO_GEN } from '@/server/prototype';
 import d4 from '@/server/dal/delivery4.golden.json';
 import golden from '@/features/bom/bom.golden.json';
 import {
-  BOM_SORT_KEYS, DEFAULT_BOM_SORT, assemblyPaths, assemblyRows, bomLineTotal, bomShortfall, bomSummary, bomSupplierOptions, bomTypeOptions, buildAssembly,
+  BOM_SORT_KEYS, DEFAULT_BOM_SORT, assemblyPaths, assemblyRows, bomLineTotal, bomShortfall, bomSummary, bomSupplierOptions, bomTypeOptions, bomUnitPrice, buildAssembly,
   diffCostDelta, diffNewRef, filterBomLines, filterSpares, groupBySupplier, isValuedByComponents, leafCount, nextBomSort, nodeCost, orderedQtyByRef,
   parseNewBomLine, parseQuantity, pathQuantity, resolvePartQuery, rollupCost, sortBomLines, spareShortfall, spareSummary, systemQuantity,
   visibleAssemblyRows, type AssemblyLink, type BomSortKey,
@@ -23,6 +23,22 @@ const n = (v: number) => v.toLocaleString('en-US');
 const P: any[] = PROTO.PARTS;
 const byRef = new Map(P.map((p) => [p.ref, p]));
 const lastPrice = (ref: string) => (PROTO.LAST_PRICE[ref] ?? byRef.get(ref)?.price ?? 0) as number;
+/**
+ * E-2a = a (Delivery 7, R-103): the BOM is valued at the project's ordered price (its orders Ordered, Partially received
+ * or Received — the seed's lines carry the catalogue price), else the last purchase price, else the catalogue price.
+ * The goldens are generated with the same rule applied to the prototype logic (scripts/proto-e2a.ts).
+ */
+const orderedRefs = (code: string) =>
+  new Set((PROTO_GEN.genPOs[code] as any[] ?? []).filter((o) => ['Ordered', 'Partially received', 'Received'].includes(o.status)).flatMap((o) => o.lines.map((l: any[]) => l[0] as string)));
+const e2aOf = (code: string) => {
+  const ordered = orderedRefs(code);
+  return (ref: string): number => {
+    const p = byRef.get(ref);
+    if (!p) return 0;
+    return bomUnitPrice({ orderedEur: ordered.has(ref) ? p.price : null, lastPurchaseEur: PROTO.LAST_PRICE[ref] ?? null, listPriceEur: p.price }).unitEur;
+  };
+};
+const e2aHlt = e2aOf('HLT-026');
 const STATUS_CODE: Record<string, any> = { Validated: 'validated', 'Not validated': 'not_validated', Outdated: 'outdated', Obsolete: 'obsolete' };
 
 /** Parent → children links of the prototype TREE. */
@@ -37,8 +53,9 @@ const root = buildAssembly(PROTO.TREE.ref, PROTO.TREE.q, childrenOf);
 const p3 = (code: string) => code.slice(0, 3);
 /** Flat-list items of a project from PARTS (`bomParts` 4206), with the English labels the prototype filters / sorts on. */
 function items(code: string) {
+  const e2a = e2aOf(code);
   return P.filter((p) => p.usage[p3(code)] > 0).map((p) => ({
-    ref: p.ref, name: p.name, type: p.type, typeLabel: p.type, manufacturer: p.mfr, manufacturerRef: p.mfrRef, listPriceEur: p.price,
+    ref: p.ref, name: p.name, type: p.type, typeLabel: p.type, manufacturer: p.mfr, manufacturerRef: p.mfrRef, listPriceEur: p.price, unitPriceEur: e2a(p.ref),
     quantity: p.usage[p3(code)], statusLabel: p.status, status: STATUS_CODE[p.status], exportRestriction: p.restr === 'None' ? null : p.restr,
   }));
 }
@@ -49,22 +66,26 @@ describe('flat list (bomRows, bomKpis, filters, sorts)', () => {
     const g = EN.projects[code];
     const its = items(code);
     const rows = sortBomLines(filterBomLines(its, {}), DEFAULT_BOM_SORT);
-    expect(rows.map((r) => [r.ref, n(r.quantity), $(r.listPriceEur), $(bomLineTotal(r))])).toEqual(g.rows.map((r: any) => [r.ref, r.qty, r.price, r.total]));
+    expect(rows.map((r) => [r.ref, n(r.quantity), $(r.unitPriceEur), $(bomLineTotal(r))])).toEqual(g.rows.map((r: any) => [r.ref, r.qty, r.price, r.total]));
     expect([{ label: `All types · ${its.length}` }, ...bomTypeOptions(its).map((o) => ({ label: `${o.label} · ${o.count}` }))]).toEqual(g.typeOpts.map((o: any) => ({ label: o.label })));
     expect([`All suppliers · ${its.length}`, ...bomSupplierOptions(its).map((o) => `${o.label} · ${o.count}`)]).toEqual(g.mfrOpts.map((o: any) => o.label));
     const inBom = new Set(its.map((i) => i.ref));
     const s = bomSummary(its.map((i) => ({ ...i, valuedByComponents: isValuedByComponents(i.ref, childrenOf, inBom) })));
-    expect([s.articles, `${n(s.units)} units in total`, money(s.listValueEur / 1000, 'en'), s.notValidated, s.outdatedOrObsolete, s.exportRestricted])
+    // The prototype's BOM value adds every line (09 OQ6) — here at the E-2a prices.
+    const protoValue = its.reduce((a, i) => a + bomLineTotal(i), 0);
+    expect([s.articles, `${n(s.units)} units in total`, money(protoValue / 1000, 'en'), s.notValidated, s.outdatedOrObsolete, s.exportRestricted])
       .toEqual([g.kpis[0].value, g.kpis[0].sub, g.kpis[1].value, g.kpis[2].value, g.kpis[3].value, g.kpis[4].value]);
   });
 
-  it('BOM value counts each article once (09 OQ6): HLT-026 €7.05M instead of the prototype\'s €14.05M', () => {
+  it('BOM value counts each article once (09 OQ6): HLT-026 €7.02M at E-2a prices instead of the prototype\'s €14.05M', () => {
     const its = items('HLT-026');
     const inBom = new Set(its.map((i) => i.ref));
     const flags = its.map((i) => ({ ...i, valuedByComponents: isValuedByComponents(i.ref, childrenOf, inBom) }));
     expect(flags.filter((f) => f.valuedByComponents).map((f) => f.ref)).toEqual(['ASM-RMG-250', 'ASM-STR-100', 'ASM-GIR-200', 'ASM-BOG-300', 'ASM-HST-400', 'ASM-ELE-600', 'ASM-DRV-700', 'ASM-CTL-800']);
     const s = bomSummary(flags);
-    expect([money(s.listValueEur / 1000, 'en'), money(s.valueEur / 1000, 'en'), s.valueEur]).toEqual(['€14.05M', '€7.05M', 7_053_360]);
+    // E-2a (R-103): €7.02M at the ordered / last purchase / catalogue price (€7.05M at the catalogue price, Delivery 4–6).
+    expect([money(s.listValueEur / 1000, 'en'), money(s.valueEur / 1000, 'en'), s.valueEur]).toEqual(['€14.05M', '€7.02M', 7_019_976]);
+    expect(bomSummary(flags.map((f) => ({ ...f, unitPriceEur: undefined }))).valueEur).toBe(7_053_360); // at the catalogue price (Delivery 4–6)
     // Projects without assemblies: both figures agree.
     const ndc = items('NDC-031');
     const sn = bomSummary(ndc.map((i) => ({ ...i, valuedByComponents: isValuedByComponents(i.ref, childrenOf, new Set(ndc.map((x) => x.ref))) })));
@@ -103,26 +124,31 @@ describe('flat list (bomRows, bomKpis, filters, sorts)', () => {
 });
 
 describe('assembly tree (treeRows, nodeVals)', () => {
-  it('rows: depth, quantity, extended, roll-up at last purchase price, extended cost', () => {
-    const rows = assemblyRows(root, lastPrice);
+  it('rows: depth, quantity, extended, roll-up at the E-2a price (R-103), extended cost', () => {
+    const rows = assemblyRows(root, e2aHlt);
     expect(rows.map((r) => ({ ref: r.ref, pad: `${r.depth * 18 + 6}px`, has: r.hasChildren, qty: r.qty, ext: n(r.extended), unit: $(r.unitCostEur), total: $(r.extendedCostEur) })))
       .toEqual(EN.tree.map((r: any) => ({ ref: r.ref, pad: r.pad, has: r.has, qty: r.qty, ext: r.ext, unit: r.unit, total: r.total })));
-    expect([$(rollupCost(root, lastPrice)), $(rollupCost(root, lastPrice) * root.q)]).toEqual(['€713,996', '€1,427,992']);
+    // E-2a: the ordered leaves of HLT-026 are valued at their order price — €720,396 a crane (€713,996 at last purchase price).
+    expect([$(rollupCost(root, e2aHlt)), $(rollupCost(root, e2aHlt) * root.q)]).toEqual(['€720,396', '€1,440,792']);
+    expect($(rollupCost(root, lastPrice))).toBe('€713,996');
   });
 
   it('folding hides the whole subtree of a folded assembly', () => {
-    const rows = visibleAssemblyRows(assemblyRows(root, lastPrice), new Set(['ASM-STR-100', 'ASM-DRV-700']));
+    const rows = visibleAssemblyRows(assemblyRows(root, e2aHlt), new Set(['ASM-STR-100', 'ASM-DRV-700']));
     expect(rows.map((r) => r.ref)).toEqual(EN.treeFolded.map((r: any) => r.ref));
   });
 
   it('node drawer: components, costed roll-up (delta, per project), used-in paths', () => {
-    for (const r of assemblyRows(root, lastPrice)) {
+    const ordered = orderedRefs('HLT-026');
+    for (const r of assemblyRows(root, e2aHlt)) {
       const g = EN.nodes[r.ref];
       const part = byRef.get(r.ref);
-      const c = nodeCost(root, r.ref, part.price, lastPrice)!;
+      const c = nodeCost(root, r.ref, part.price, e2aHlt)!;
       expect(g.ident[5].v).toBe(r.hasChildren ? `${r.leafCount} parts · ${r.childCount} direct children` : 'Leaf part');
+      // E-2a (R-103): "Rolled-up cost" and its price basis.
+      const basis = r.hasChildren ? 'Roll-up of components' : ordered.has(r.ref) ? 'Ordered price' : PROTO.LAST_PRICE[r.ref] != null ? 'Last purchase price' : 'Catalogue price';
       expect(g.cost.map((x: any) => [x.k, x.v, x.color])).toEqual([
-        ['Rolled-up cost (last purchase)', $(c.unitCostEur), 'var(--color-text)'], ['List / standard price', $(c.listPriceEur), 'var(--color-text)'],
+        ['Rolled-up cost', $(c.unitCostEur), 'var(--color-text)'], ['Price basis', basis, 'var(--color-text)'], ['List / standard price', $(c.listPriceEur), 'var(--color-text)'],
         ['Delta', (c.deltaEur >= 0 ? '+' : '−') + $(Math.abs(c.deltaEur)), c.overList ? 'var(--color-accent-300)' : 'var(--color-text)'],
         [`Per project (× ${c.perProjectQty})`, $(c.perProjectCostEur), 'var(--color-text)'],
       ]);
@@ -142,10 +168,10 @@ describe('where-used, compare revisions, PU/PR list', () => {
     }
   });
 
-  it('compare revisions: new part of a line, quantity × last price deltas, "+€19,180 per crane"', () => {
+  it('compare revisions: new part of a line, quantity × the E-2a price deltas (R-103), "+€19,180 per crane"', () => {
     const rd = PROTO.REV_DIFF[root.ref];
     const toN = (s: string) => (/^\d+$/.test(s) ? Number(s) : null);
-    const deltas = rd.rows.map(([path, , a, b]: string[]) => diffCostDelta(toN(a), toN(b), byRef.has(diffNewRef(path)) ? lastPrice(diffNewRef(path)) : null));
+    const deltas = rd.rows.map(([path, , a, b]: string[]) => diffCostDelta(toN(a), toN(b), byRef.has(diffNewRef(path)) ? e2aHlt(diffNewRef(path)) : null));
     expect(deltas.map((d: number) => (d ? (d > 0 ? '+' : '−') + $(Math.abs(d)) : '—'))).toEqual(EN.compare.cmp.rows.map((r: any) => r.delta));
     const t = deltas.reduce((s: number, d: number) => s + d, 0);
     expect(`${t >= 0 ? '+' : '−'}${$(Math.abs(t))} per crane`).toBe(EN.compare.cmp.total);

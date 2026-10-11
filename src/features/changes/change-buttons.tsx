@@ -29,10 +29,12 @@ export interface NewChangeRequestButtonProps {
    */
   proposeBaseline?: boolean;
   initialValues?: Record<string, string>;
+  /** Delivery 7 (NEW-D2-2): offer the "Plan activities touched" field (the project team, not the client). */
+  withActivities?: boolean;
 }
 
 /** Header primary "New change request" (`btn btn-primary` + plus) opening AF `changes`. */
-export function NewChangeRequestButton({ code, context, defaultWbs, autoOpen, closeHref, proposeBaseline, initialValues }: NewChangeRequestButtonProps) {
+export function NewChangeRequestButton({ code, context, defaultWbs, autoOpen, closeHref, proposeBaseline, initialValues, withActivities }: NewChangeRequestButtonProps) {
   const { t } = useI18n();
   const router = useRouter();
   const [open, setOpen] = useState(!!autoOpen);
@@ -50,7 +52,7 @@ export function NewChangeRequestButton({ code, context, defaultWbs, autoOpen, cl
       </Button>
       {open && (
         <FormDialog
-          {...newChangeRequestForm(defaultWbs, { proposeBaseline: proposing })}
+          {...newChangeRequestForm(defaultWbs, { proposeBaseline: proposing, withActivities })}
           translate
           open
           onClose={close}

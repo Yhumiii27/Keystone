@@ -7,9 +7,11 @@
 // listed in EN_FIX / FR_FIX and applied to the golden values before comparing.
 import { beforeAll, describe, expect, it } from 'vitest';
 import { makeT, trFR, type Lang } from '@/i18n/translate';
-import { setDb } from '@/server/db/client';
+import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
-import { parisParts, type Discipline } from '@/server/db/codes';
+import { CODEX_TODAY_ISO, parisParts, type Discipline } from '@/server/db/codes';
+import { getDocumentRecord, recordDocumentDecision } from '@/server/dal/documents';
+import { applyCodexDocumentStates } from '@/server/integrations/codex/mirror';
 import { getEngScreen } from '@/server/dal/eng-screen';
 import {
   closeEngCheck, confirmEngInput, freezeEngDeliverable, generateEngOutput, importEngList, proposeEngRelease, validateEngRelease, type Actor,
@@ -79,7 +81,8 @@ function disciplineShape(disc: Discipline, lang: Lang) {
       doc: r.doc, title: r.title, from: r.from, revText: r.revText, latestText: r.latestText, revColor: r.revColor, state: r.state, stClass: r.stClass, canConfirm: r.canConfirm,
       canImport: r.importHref !== null,
     })),
-    docs: v.docs.map((d) => omit(d, 'docHref')),
+    // Delivery 7 (P-7c, R-106): `codexNote` (the Codex circuit line) is not a prototype value.
+    docs: v.docs.map((d) => omit(d, 'docHref', 'codexNote')),
     outputs: v.outputs.map((o) => ({ id: o.id, name: o.name, toText: o.toText, source: o.source, genText: o.genText, stateText: o.stateText, stClass: o.stClass, canGen: o.canGen })),
     checks: v.checks.map((c) => ({ ...c })),
     chips: v.chips.map((c) => ({ label: c.label, count: String(c.count) })),
@@ -133,6 +136,27 @@ describe('default state', () => {
   });
 });
 
+/**
+ * P-7c = a (Delivery 7, R-106): "Validate release (PM)" starts the Codex approval circuit instead of releasing at once.
+ * The prototype's immediate release is replayed as the PM's validation, the circuit's approvals recorded in Keystone (the
+ * director on the approvers' behalf) and Codex's answer — released, the previous revision withdrawn — so the screens
+ * still match the prototype's values after the step.
+ */
+async function validateThroughCodex(number: string): Promise<void> {
+  await validateEngRelease(HLT, number, DIRECTOR);
+  let rec = await getDocumentRecord(number);
+  while (rec?.canApprove) {
+    await recordDocumentDecision(number, { decision: 'approved' }, DIRECTOR);
+    rec = await getDocumentRecord(number);
+  }
+  const r = rec!;
+  const prev = /^[B-Z]$/.test(r.revision) ? String.fromCharCode(r.revision.charCodeAt(0) - 1) : null;
+  await (await getDb()).transaction((tx) => applyCodexDocumentStates(tx, [{
+    number, revision: r.revision, status: 'released', withdrawnRevision: prev, withdrawnOn: prev ? CODEX_TODAY_ISO : null,
+    approvals: r.approvals.filter((a) => a.position > 0).map((a) => ({ step: a.position, signedOn: CODEX_TODAY_ISO })),
+  }]));
+}
+
 /** The generator's sequence, replayed with the data-layer writers (actor: the director). */
 const STEPS: Record<string, () => Promise<unknown>> = {
   'confirm meca PID-HLT-026': () => confirmEngInput(HLT, 'meca', 'PID-HLT-026', DIRECTOR),
@@ -141,13 +165,13 @@ const STEPS: Record<string, () => Promise<unknown>> = {
   'import elec LST-INS-026': () => importEngList(HLT, { consumer: 'elec', documentNumber: 'LST-INS-026', toolPosition: 0 }, DIRECTOR),
   'freeze SCH-ELE-026': () => freezeEngDeliverable(HLT, 'SCH-ELE-026', DIRECTOR),
   'propose BOM-MEC-026': () => proposeEngRelease(HLT, 'BOM-MEC-026', DIRECTOR),
-  'validate BOM-MEC-026': () => validateEngRelease(HLT, 'BOM-MEC-026', DIRECTOR),
+  'validate BOM-MEC-026': () => validateThroughCodex('BOM-MEC-026'),
   'generate O-01': () => generateEngOutput(HLT, 'O-01', DIRECTOR),
   'import auto LST-IO-026': () => importEngList(HLT, { consumer: 'auto', documentNumber: 'LST-IO-026', toolPosition: 2 }, DIRECTOR),
   'resolve C-02': () => closeEngCheck(HLT, 'C-02', 'resolved', DIRECTOR),
   'send back C-04': () => closeEngCheck(HLT, 'C-04', 'sent_back', DIRECTOR),
   'propose SCH-ELE-026': () => proposeEngRelease(HLT, 'SCH-ELE-026', DIRECTOR),
-  'validate SCH-ELE-026': () => validateEngRelease(HLT, 'SCH-ELE-026', DIRECTOR),
+  'validate SCH-ELE-026': () => validateThroughCodex('SCH-ELE-026'),
   'generate O-03': () => generateEngOutput(HLT, 'O-03', DIRECTOR),
   'confirm elec LST-INS-026': () => confirmEngInput(HLT, 'elec', 'LST-INS-026', DIRECTOR),
   'import process GA-HLT-026': () => importEngList(HLT, { consumer: 'process', documentNumber: 'GA-HLT-026', toolPosition: 1 }, DIRECTOR),

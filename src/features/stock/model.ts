@@ -3,8 +3,8 @@
 // src/domain/stock.ts.
 import { LO, OK } from '@/components/app/tones';
 import {
-  STOCK_OPS, availableQty, filterStockLines, isBelowMin, lineValueEur, locationChipCounts, pinnedText, quantityLabel, reservedText, stockFigures,
-  transferTargetOptions, type StockOperation,
+  availableQty, filterStockLines, isBelowMin, lineStockOps, lineValueEur, locationChipCounts, pinnedText, quantityLabel, reservedForOthers, reservedText,
+  stockFigures, transferTargetOptions, type StockOperation,
 } from '@/domain/stock';
 import type { Lang, T } from '@/i18n/translate';
 import { money, moneyEur } from '@/lib/format';
@@ -172,6 +172,17 @@ export interface StockDrawerView {
   meta: { k: string; v: string }[];
   ops: { value: StockOperation; label: string; qtyLabel: string }[];
   targets: { value: string; label: string; title: string }[];
+  /** Activities of the current project's plan an issue names (required, SC-5a) or a return credits (optional). */
+  activities: { value: string; label: string }[];
+  /** Current project code (reserve, issue, return), null when none. */
+  projectCode: string | null;
+  /**
+   * The line holds units reserved for another project than the current one (R-099): its code and the quantity —
+   * an issue / scrap takes only the free units unless the director overrides (`canOverride`). Null otherwise.
+   */
+  reservedForOther: { project: string; qty: number } | null;
+  /** The viewer is the portfolio director (override of another project's reservation, audited). */
+  canOverride: boolean;
   /** Pinned by an ECO for the installed base: scrap warning + "ECO →". */
   scrapWarning: { text: string; ecoHref: string } | null;
   moves: MoveView[];
@@ -180,12 +191,18 @@ export interface StockDrawerView {
 }
 
 export function stockDrawerView(
-  input: { detail: StockPositionDetail; locations: StorageLocationRow[]; pins: Record<string, InstalledBasePin[]>; state: StockUrlState; prices?: boolean },
+  input: {
+    detail: StockPositionDetail; locations: StorageLocationRow[]; pins: Record<string, InstalledBasePin[]>; state: StockUrlState; prices?: boolean;
+    /** Delivery 7: the current project, its plan's activities, and the viewer's rights on reservations (R-098 / R-099). */
+    projectCode?: string | null; activities?: { code: string; label: string }[]; canRelease?: boolean; canOverride?: boolean;
+  },
   t: T,
   lang: Lang,
 ): StockDrawerView {
   const { detail: d, locations, pins, state } = input;
   const pin = pinOf(pins, d.ref);
+  const projectCode = input.projectCode ?? null;
+  const others = reservedForOthers({ reserved: d.reserved, reservedFor: d.reservedForProject }, projectCode);
   return {
     id: d.id,
     ref: d.ref,
@@ -203,8 +220,13 @@ export function stockDrawerView(
       { k: t('Unit cost (last purchase)'), v: input.prices !== false ? moneyEur(d.unitCostEur, lang) : PRICE_MASK },
       { k: t('Last movement'), v: dayT(d.lastMovementOn, t) },
     ],
-    ops: STOCK_OPS.map((op) => ({ value: op, label: t(stockOperation.label(op)), qtyLabel: t(quantityLabel(op)) })),
+    // "Release reservation" (R-099) only on a reserved line, for the reserving project's PM or the director.
+    ops: lineStockOps(input.canRelease ? d.reserved : 0).map((op) => ({ value: op, label: t(stockOperation.label(op)), qtyLabel: t(quantityLabel(op)) })),
     targets: transferTargetOptions(locations.map((l) => l.name), d.location).map((o) => ({ value: o.name, label: o.label, title: o.name })),
+    activities: (input.activities ?? []).map((a) => ({ value: a.code, label: t(a.label) })),
+    projectCode,
+    reservedForOther: others && d.reservedForProject ? { project: d.reservedForProject, qty: others } : null,
+    canOverride: input.canOverride === true,
     scrapWarning: pin ? { text: scrapWarnT(pin.text, t, lang), ecoHref: ecoHref(pin.firstEco) } : null,
     moves: d.movements.map((m, i) => moveView(m, t, lang, i)),
     partHref: stockHref({ ...state, stock: null, part: d.ref }),

@@ -67,13 +67,13 @@ describe('stock Server Functions', () => {
     expect(await applyStockMovementAction(id, { op: 'transfer', qty: '1', target: 'Magasin chantier — Lyon' }, null)).toEqual({ error: 'Choose a destination' });
     expect(await applyStockMovementAction(id, { op: 'reserve', qty: '1' }, null)).toEqual({ error: 'A project is required' });
     expect(await applyStockMovementAction(id, { op: 'reserve', qty: '1' }, 'NOPE-000')).toEqual({ error: 'A project is required' });
-    expect(await applyStockMovementAction(id, { op: 'issue', qty: '9' }, 'HLT-026')).toEqual({ error: `Only 6 on hand at ${CENTRAL}` });
+    expect(await applyStockMovementAction(id, { op: 'issue', qty: '9', activity: 'A1250' }, 'HLT-026')).toEqual({ error: `Only 6 on hand at ${CENTRAL}` });
     expect(await applyStockMovementAction(id, { op: 'reserve', qty: '3' }, 'HLT-026')).toEqual({ error: `Only 2 available at ${CENTRAL}` });
     expect(await applyStockMovementAction('00000000-0000-0000-0000-000000000000', { op: 'adjust', qty: '1' }, null)).toEqual({ error: 'Unknown stock line' });
     const msr = (await line('SG-BRK-SS2', 'Atelier mécanique — Lyon')).id;
     viewer.lang = 'fr';
     expect(await applyStockMovementAction(msr, { op: 'reserve', qty: '5' }, 'HLT-026')).toEqual({ error: 'Cette ligne est déjà réservée pour un autre projet' });
-    expect(await applyStockMovementAction(id, { op: 'issue', qty: '9' }, 'HLT-026')).toEqual({ error: `Seulement 6 en stock à ${CENTRAL}` });
+    expect(await applyStockMovementAction(id, { op: 'issue', qty: '9', activity: 'A1250' }, 'HLT-026')).toEqual({ error: `Seulement 6 en stock à ${CENTRAL}` });
     expect(await applyStockMovementAction(id, { op: 'reserve', qty: '3' }, 'HLT-026')).toEqual({ error: `Seulement 2 disponibles à ${CENTRAL}` });
     expect(await applyStockMovementAction(id, { op: 'scrap', qty: '-1' }, null)).toEqual({ error: 'Saisissez une quantité entière' });
     expect((await line('KS-STL-0450', CENTRAL)).onHand).toBe(6);
