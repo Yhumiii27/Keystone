@@ -3,10 +3,12 @@
 // Functions take at most 1 MB per request by default, below the 20 MB file limit. The viewer must be the assignee or the
 // portfolio director inside the workspace (src/features/mywork/permissions.ts); the size, type, content and per-task
 // count are checked before anything is written. Answers JSON { ok: true, id } or { ok: false, error } (translated).
+// R-008: same-origin only, and at most RATE_LIMITS.upload uploads a minute per viewer (429 with Retry-After).
 import { revalidatePath } from 'next/cache';
 import { MAX_ATTACHMENTS_PER_TASK, MAX_FILE_BYTES, MAX_FILE_TEXT } from '@/domain/ch4-defaults';
-import { isSameOrigin, taskFileGate } from '@/features/mywork/task-access';
+import { taskFileGate } from '@/features/mywork/task-access';
 import { attachTaskFile, listTaskFiles } from '@/server/dal/task-files';
+import { TOO_MANY_REQUESTS, hitRateLimit, isSameOriginRequest, rateClient, tooManyRequestsResponse } from '@/server/http/request-guard';
 import { getI18n } from '@/server/session';
 import { FileRejectedError, checkUpload, readFormDataCapped } from '@/server/storage/files';
 
@@ -19,11 +21,13 @@ export async function POST(request: Request, ctx: { params: Promise<{ taskId: st
   const [{ taskId }, { t }] = await Promise.all([ctx.params, getI18n()]);
   const fail = (status: number, english: string) =>
     Response.json({ ok: false, error: english.split(' · ').map(t).join(' · ') }, { status, headers: { 'Cache-Control': 'no-store' } });
-  if (!isSameOrigin(request)) return fail(403, 'Invalid request');
+  if (!isSameOriginRequest(request)) return fail(403, 'Invalid request');
   const declared = Number(request.headers.get('content-length') ?? '0');
   if (declared > MAX_FILE_BYTES + MULTIPART_SLACK) return fail(413, `The file is larger than ${MAX_FILE_TEXT}`);
   const g = await taskFileGate(taskId, 'edit');
   if (!g.ok) return fail(g.status, g.error);
+  const limited = hitRateLimit('upload', rateClient(request.headers, g.viewer.name));
+  if (!limited.ok) return tooManyRequestsResponse('json', t(TOO_MANY_REQUESTS), limited.retryAfterSec);
   let file: FormDataEntryValue | null;
   try {
     // Read with a byte cap: a chunked body has no Content-Length and would otherwise be buffered whole.

@@ -230,7 +230,7 @@ describe('Activity & integrations Server Functions and the audit export', () => 
       as(role);
       expect(await syncConnectorAction('Lucca')).toEqual({ error: 'Activity & integrations is read-only for you' });
       expect(await addConnectorAction({ system: 'SharePoint', direction: 'import', freq: 'Daily', owner: '' })).toEqual({ error: 'Activity & integrations is read-only for you' });
-      expect((await exportAudit()).status).toBe(403);
+      expect((await exportAudit(new Request('http://localhost/admin/integrations/audit.csv'))).status).toBe(403);
     }
     as('quality', 'fr');
     expect(await syncConnectorAction('Lucca')).toEqual({ error: 'Activité et intégrations est en lecture seule pour vous' });
@@ -271,7 +271,7 @@ describe('Activity & integrations Server Functions and the audit export', () => 
 
   it('exports the audit trail as CSV (ISO 9001) for the director and the PM', async () => {
     as('director', 'fr');
-    const res = await exportAudit();
+    const res = await exportAudit(new Request('http://localhost/admin/integrations/audit.csv'));
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toBe('text/csv; charset=utf-8');
     expect(res.headers.get('Content-Disposition')).toMatch(/^attachment; filename="keystone-audit-trail-\d{4}-\d{2}-\d{2}\.csv"$/);

@@ -51,6 +51,7 @@ import { openDatabase } from '@/server/db/open';
 import { listAudit } from '@/server/dal/notifications';
 import { listTaskFiles } from '@/server/dal/task-files';
 import { listTasks } from '@/server/dal/tasks';
+import { resetRateLimits } from '@/server/http/request-guard';
 import { setFilesRoot } from '@/server/storage/files';
 import { removeTaskFileAction } from './actions';
 
@@ -79,6 +80,8 @@ afterAll(() => {
 beforeEach(() => {
   state.role = 'director';
   state.lang = 'en';
+  // R-008: the upload rate limit counts per viewer and minute; each test starts with a fresh window.
+  resetRateLimits();
 });
 
 describe('task attachments (R-8)', () => {

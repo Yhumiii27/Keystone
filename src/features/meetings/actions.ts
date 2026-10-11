@@ -7,7 +7,8 @@
 // Each one validates its raw input, checks the viewer may edit Meetings on this project (not outside the workspace, not a
 // read-only project — 05 OQ7 / P-9: no finer role gate, as the prototype; a risk also needs the right to edit the risk
 // register), checks the meeting belongs to the project, writes through the DAL with the viewer as the actor, then
-// revalidates. Error messages are English source strings translated here.
+// revalidates. Error messages are English source strings translated here. R-008: transcript imports count in the upload
+// rate limit and analyses in the analysis one (src/server/http/request-guard.ts).
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { parseClientQuestion, parseMinutesLine, parseNewMeeting, parseProposalEdit, pasteTooLong, TRANSCRIPT_IMPORT } from '@/domain/meetings';
@@ -24,6 +25,7 @@ import {
 import { getProject } from '@/server/dal/projects';
 import { createRisk } from '@/server/dal/risks';
 import { riskOwnerOptions } from '@/server/dal/risks-screen';
+import { TOO_MANY_REQUESTS, hitActionRateLimit } from '@/server/http/request-guard';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { checkUpload, FileRejectedError } from '@/server/storage/files';
@@ -156,6 +158,7 @@ export async function importTranscriptAction(form: FormData): Promise<MeetingAct
   if (!(form instanceof FormData)) return fail('Invalid request');
   const g = await transcriptMeeting(form.get('code'), form.get('meeting'));
   if (!g.ok) return fail(g.error);
+  if (!(await hitActionRateLimit('upload', g.actor)).ok) return fail(TOO_MANY_REQUESTS);
   const file = form.get('file');
   const text = form.get('text');
   let input: { text?: string; file?: { name: string; data: Uint8Array } };
@@ -189,6 +192,7 @@ export async function analyseTranscriptAction(input: { code: string; meeting: st
   const engine = input.engine ?? 'auto';
   if (engine !== 'auto' && engine !== 'local' && engine !== 'claude') return fail('Invalid request');
   if (engine === 'claude' && !transcriptAiInfo().claude) return fail('Claude is not configured (ANTHROPIC_API_KEY)');
+  if (!(await hitActionRateLimit('analysis', g.actor)).ok) return fail(TOO_MANY_REQUESTS);
   const r = await write('analyseTranscriptAction', () => analyseTranscript(g.meeting.number, g.actor, { engine }));
   if (!r.ok) return fail(r.error);
   refresh(g.code);
