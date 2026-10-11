@@ -59,6 +59,12 @@ describe('production seed (KEYSTONE_SEED=production)', () => {
     expect((await db.select().from(schema.engDisciplines)).every((d) => d.leadName === NO_LEAD && d.leadPersonId === null)).toBe(true);
   });
 
+  it('"Reset to defaults" document: the Settings lists and thresholds, never the prototype\'s storage locations (A-15, R-170)', async () => {
+    const [doc] = await db.select({ value: schema.appSettings.value }).from(schema.appSettings).where(eq(schema.appSettings.key, 'settings.defaults'));
+    const v = doc.value as { lists: unknown[]; locations: unknown[]; health: unknown };
+    expect([v.lists.length > 20, v.locations, v.health != null]).toEqual([true, [], true]);
+  });
+
   it('connectors are listed "Ready", never synced (no prototype sync state)', async () => {
     const rows = await db.select().from(schema.connectors);
     expect(rows.length).toBeGreaterThan(3);

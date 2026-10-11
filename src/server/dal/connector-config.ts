@@ -15,6 +15,7 @@ import { connectorDirection, type ConnectorDirection } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
 import { connectors } from '@/server/db/schema';
 import type { DB } from '@/server/db/types';
+import { logError } from '@/server/log';
 import { connectorsFileLabel, readConnectorsFile, type ConnectorsFileState } from '@/server/integrations/connectors-file';
 
 /** Who the audit names for a change made by the connectors file. */
@@ -88,7 +89,7 @@ export async function ensureConnectorsFileApplied(): Promise<ConnectorsFileState
     run = { signature: state.signature, done: applyEntries(db, state.entries) };
     applied.set(db, run);
     run.done.catch((e) => {
-      console.error('[connectors] applying the connectors file failed:', e);
+      logError('Applying the connectors file', e, { component: 'connectors' });
       if (applied.get(db) === run) applied.delete(db);
     });
   }

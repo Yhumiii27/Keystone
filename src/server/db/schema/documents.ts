@@ -225,6 +225,8 @@ export const codexDocumentOutbox = pgTable('codex_document_outbox', {
   syncStatus: text('sync_status').$type<CodexSyncStatus>().notNull(),
   attempts: integer('attempts').notNull().default(0),
   lastAttemptAt: timestamp('last_attempt_at', { withTimezone: true }),
+  /** Set while a delivery is sending the entry (R-010: one sender across processes; expired claims are taken over). */
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
   lastError: text('last_error'),
   sentAt: timestamp('sent_at', { withTimezone: true }),
   /** Codex's acknowledgement id. */

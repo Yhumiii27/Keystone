@@ -10,7 +10,7 @@
 // - orphan-file prune: every day — files on disk without a record (a rolled-back upload) older than 24 hours.
 // Every job is idempotent: running it twice, or after a crash, removes or sends nothing more than once.
 
-export type JobName = 'vigie-outbox' | 'cursus-outbox' | 'plan-trash-purge' | 'orphan-files-prune';
+export type JobName = 'vigie-outbox' | 'cursus-outbox' | 'codex-outbox' | 'plan-trash-purge' | 'orphan-files-prune';
 
 export interface JobSchedule {
   name: JobName;
@@ -28,6 +28,7 @@ const HOUR = 60 * MIN;
 export const JOB_SCHEDULES: readonly JobSchedule[] = [
   { name: 'vigie-outbox', everyMs: 5 * MIN, leaseMs: 15 * MIN, firstDelayMs: 5_000 },
   { name: 'cursus-outbox', everyMs: 5 * MIN, leaseMs: 15 * MIN, firstDelayMs: 10_000 },
+  { name: 'codex-outbox', everyMs: 5 * MIN, leaseMs: 15 * MIN, firstDelayMs: 12_000 },
   { name: 'plan-trash-purge', everyMs: HOUR, leaseMs: 15 * MIN, firstDelayMs: 15_000 },
   { name: 'orphan-files-prune', everyMs: 24 * HOUR, leaseMs: HOUR, firstDelayMs: 20_000 },
 ];

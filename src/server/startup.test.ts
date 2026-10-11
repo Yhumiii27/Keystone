@@ -61,6 +61,7 @@ describe('startServer', () => {
       'Configuration: NEXT_PUBLIC_CODEX_URL is not set: links open Codex on localhost',
       'Configuration: NEXT_PUBLIC_CURSUS_URL is not set: links open Cursus on localhost',
       'Configuration: NEXT_PUBLIC_VIGIE_URL is not set: links open Vigie on localhost',
+      'Configuration: KEYSTONE_AUTH is not set: demo mode ("View as", no sign-in) — set it to "entra" for real users, or "demo" explicitly',
     ]);
     // The database failing to open stops the start too.
     setDb(Promise.reject(new Error('The database has 1 pending migration: run "npm run db:migrate" before starting Keystone')));

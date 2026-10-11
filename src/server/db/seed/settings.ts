@@ -34,19 +34,20 @@ export function defaultReferenceValues(): { listKey: ReferenceListKey; code: str
 
 /**
  * What Settings › "Reset to defaults" restores (R-170), stored in app_settings "settings.defaults": the SETTINGS0 lists,
- * the six SETTINGS0 locations and the default health thresholds. The DAL reads only this document at run time.
+ * the six SETTINGS0 locations (demo data set only: a production database has EPC2i's own warehouses, which a reset must
+ * never replace by the prototype's, A-15) and the default health thresholds. The DAL reads only this document at run time.
  */
-export function settingsDefaultsDocument(): SettingsDefaults {
+export function settingsDefaultsDocument(opts: { demo: boolean } = { demo: true }): SettingsDefaults {
   return {
     lists: defaultReferenceValues().map(({ listKey, code, label }) => ({ listKey, code, label })),
-    locations: (PROTO.SETTINGS0.locations as [string, string][]).map(([name, type]) => ({ name, type: locationType.code(type) })),
+    locations: opts.demo ? (PROTO.SETTINGS0.locations as [string, string][]).map(([name, type]) => ({ name, type: locationType.code(type) })) : [],
     health: { risk: HEALTH_DEFAULTS.risk, off: HEALTH_DEFAULTS.off },
   };
 }
 
-/** Stores the defaults document once (seed, and the Delivery 7 backfill of a database seeded before it). */
-export async function seedSettingsDefaults(tx: Tx): Promise<void> {
-  await tx.insert(appSettings).values({ key: APP_SETTING_DEFAULTS, value: settingsDefaultsDocument() }).onConflictDoNothing();
+/** Stores the defaults document once (seed, and the Delivery 7 backfill of a demo database seeded before it). */
+export async function seedSettingsDefaults(tx: Tx, opts: { demo: boolean } = { demo: true }): Promise<void> {
+  await tx.insert(appSettings).values({ key: APP_SETTING_DEFAULTS, value: settingsDefaultsDocument(opts) }).onConflictDoNothing();
 }
 
 /** Vigie's row in the connectors table (not in the prototype's CONNECTORS: Vigie owns ECOs, NCRs and site HSE). */
@@ -63,7 +64,7 @@ export const VIGIE_CONNECTOR = {
 export async function seedSettings(tx: Tx, opts: { demo: boolean } = { demo: true }): Promise<void> {
   await tx.insert(referenceValues).values(defaultReferenceValues().map((v) => ({ ...v, active: true, isDefault: true })));
   await tx.insert(appSettings).values({ key: APP_SETTING_HEALTH, value: { risk: HEALTH_DEFAULTS.risk, off: HEALTH_DEFAULTS.off } });
-  await seedSettingsDefaults(tx);
+  await seedSettingsDefaults(tx, opts);
   const rows: (Omit<typeof connectors.$inferInsert, 'direction'>)[] = (PROTO.CONNECTORS as [string, string, string, string, string, string][]).map(([name, what, freq, status, last, vol], position) => ({
     name, kind: name === 'Cursus' ? 'cursus' : 'static', dataScope: what, frequency: freq,
     ...(opts.demo ? { status: connectorStatus.code(status), lastSyncAt: parseStampText(last), lastVolume: vol } : { status: 'ready' as const, lastSyncAt: null, lastVolume: '' }),

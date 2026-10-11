@@ -117,8 +117,9 @@ function NeedsAttentionCard({ data, t }: { data: PortfolioOverview; t: T }) {
           <div key={a.key} className={s.alert}>
             <IconTile icon={ALERT_ICON[a.icon]} variant="alert" />
             <div className={s.alertBody}>
-              <span className={s.alertTitle}>{t(a.title)}</span>
-              <span className={s.alertDetail}>{t(a.detail)}</span>
+              {/* The alert texts are written in the viewer's language with the typed names as typed (R-130, R-148). */}
+              <span className={s.alertTitle}>{a.title}</span>
+              <span className={s.alertDetail}>{a.detail}</span>
               <ButtonLink variant="ghost" size="inline" iconRight={ArrowRight} href={screenHref(a.target.screen, { code: a.target.code })}>
                 {t(a.action)}
               </ButtonLink>

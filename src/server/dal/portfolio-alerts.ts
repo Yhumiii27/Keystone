@@ -9,6 +9,7 @@ import { weekMondayOf } from '@/domain/kpis';
 import { inExecution } from '@/domain/portfolio';
 import { ALERT_RULE_DEFAULTS, portfolioAlertRules, type AlertApproval, type AlertProject, type PortfolioAlert } from '@/domain/portfolio-alerts';
 import { isoWeekOf } from '@/server/db/codes';
+import { dataText } from '@/i18n/data-text';
 import { makeT, type Lang } from '@/i18n/translate';
 import { APPROVAL_PROVIDERS } from '@/server/approvals';
 import type { ApprovalContext } from '@/server/approvals/types';
@@ -20,13 +21,13 @@ import { listProjects, type ProjectRow } from './projects';
 import { getResourcePool } from './resources';
 
 /** Billing of a project's contract for the rules: overdue invoices and late billable milestones; null without contract. */
-async function billingOf(code: string, t: (s: string) => string): Promise<AlertProject['billing']> {
+async function billingOf(code: string, lang: Lang): Promise<AlertProject['billing']> {
   const c = await getContract(code);
   if (!c) return null;
   return {
     currency: c.sheet.currency,
     overdue: c.invoices.filter((i) => i.overdue).map((i) => ({ number: i.number, amountKeur: i.amountKeur, dueOn: i.dueOn })),
-    late: c.milestones.filter((m) => m.late && m.contractualDue).map((m) => ({ number: m.number, label: t(m.label), dueOn: m.contractualDue! })),
+    late: c.milestones.filter((m) => m.late && m.contractualDue).map((m) => ({ number: m.number, label: dataText(m.label, lang), dueOn: m.contractualDue! })),
   };
 }
 
@@ -55,7 +56,6 @@ async function directorQueue(projects: readonly ProjectRow[], lang: Lang): Promi
       return [];
     }
   };
-  const t = makeT(lang);
   const items = (
     await Promise.all([
       ...APPROVAL_PROVIDERS.filter((p) => p.scope === 'global').map((p) => safe(p, base)),
@@ -68,7 +68,7 @@ async function directorQueue(projects: readonly ProjectRow[], lang: Lang): Promi
     const key = `${i.kind}|${i.id}`;
     if (seen.has(key) || !i.whenIso) continue;
     seen.add(key);
-    out.push({ id: i.id, title: t(i.title), since: i.whenIso });
+    out.push({ id: i.id, title: dataText(i.title, lang), since: i.whenIso });
   }
   return out;
 }
@@ -81,12 +81,12 @@ export async function getPortfolioAlerts(lang: Lang, asOf: string = DEFAULT_DATA
   const projects: AlertProject[] = await Promise.all(rows.map(async (p) => {
     const s = sched[p.code];
     return {
-      code: p.code, name: t(p.name), health: p.health, budget: p.budget, actual: p.actual, progress: p.progress, spi: p.spi,
+      code: p.code, name: dataText(p.name, lang), health: p.health, budget: p.budget, actual: p.actual, progress: p.progress, spi: p.spi,
       schedule: s ? {
         floatDays: s.floatDays, finishText: t(s.finishText), baselineText: t(s.baselineText),
-        lateMilestones: s.milestones.filter((m) => m.status === 'late').map((m) => t(m.name)),
+        lateMilestones: s.milestones.filter((m) => m.status === 'late').map((m) => dataText(m.name, lang)),
       } : null,
-      billing: await billingOf(p.code, t),
+      billing: await billingOf(p.code, lang),
     };
   }));
   const [people, approvals] = await Promise.all([overAllocated(asOf, ALERT_RULE_DEFAULTS.overAllocatedPct), directorQueue(rows, lang)]);

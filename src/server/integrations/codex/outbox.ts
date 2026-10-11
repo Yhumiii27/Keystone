@@ -3,11 +3,12 @@ import 'server-only';
 // R-124 / R-106). The documents DAL queues entries (circuit step decisions, engineering circuit starts); the connector
 // delivers them (connector.ts) and the index refresh closes the ones Codex reflects (mirror.ts). Entries never change
 // the index record itself.
-import { and, asc, eq, inArray, isNull, ne } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, lt, ne, or } from 'drizzle-orm';
 import type { CodexEntryLike } from '@/domain/codex-approvals';
 import type { ApproverRole, CodexDecision, CodexOutboxKind, CodexSyncStatus } from '@/server/db/codes';
 import { codexDocumentOutbox } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
+import { claimExpiry } from '../outbox';
 
 type Q = DB | Tx;
 
@@ -84,15 +85,28 @@ export async function codexEntrySyncStatus(q: Q, id: string): Promise<CodexSyncS
   return r?.s ?? null;
 }
 
-/** Records a delivery attempt. */
+/**
+ * Claims an outbox entry for one delivery (R-010): false when it was sent meanwhile or another delivery holds a live claim
+ * (an expired claim — a sender that died — is taken over).
+ */
+export async function claimCodexDelivery(q: Q, id: string, at = new Date()): Promise<boolean> {
+  const rows = await q
+    .update(codexDocumentOutbox)
+    .set({ claimedAt: at })
+    .where(and(eq(codexDocumentOutbox.id, id), ne(codexDocumentOutbox.syncStatus, 'sent'), or(isNull(codexDocumentOutbox.claimedAt), lt(codexDocumentOutbox.claimedAt, claimExpiry(at)))))
+    .returning({ id: codexDocumentOutbox.id });
+  return rows.length > 0;
+}
+
+/** Records a delivery attempt (and releases its claim). */
 export async function markCodexDelivery(q: Q, id: string, result: { ok: true; codexRef?: string | null } | { ok: false; error: string }, at = new Date()): Promise<void> {
   const [r] = await q.select({ attempts: codexDocumentOutbox.attempts }).from(codexDocumentOutbox).where(eq(codexDocumentOutbox.id, id));
   if (!r) return;
   await q
     .update(codexDocumentOutbox)
     .set(result.ok
-      ? { syncStatus: 'sent', sentAt: at, lastAttemptAt: at, attempts: r.attempts + 1, lastError: null, codexRef: result.codexRef ?? null }
-      : { syncStatus: 'failed', lastAttemptAt: at, attempts: r.attempts + 1, lastError: result.error.slice(0, 500) })
+      ? { syncStatus: 'sent', sentAt: at, lastAttemptAt: at, attempts: r.attempts + 1, lastError: null, codexRef: result.codexRef ?? null, claimedAt: null }
+      : { syncStatus: 'failed', lastAttemptAt: at, attempts: r.attempts + 1, lastError: result.error.slice(0, 500), claimedAt: null })
     .where(eq(codexDocumentOutbox.id, id));
 }
 

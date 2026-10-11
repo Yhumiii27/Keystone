@@ -10,6 +10,7 @@ import 'server-only';
 // - http (when VIGIE_API_URL is set): refreshes the mirror from Vigie and delivers the outbox — TODO(vigie): the
 //   endpoints are a proposal until Vigie publishes its API (OPEN QUESTION V-2).
 import { getDb } from '@/server/db/client';
+import { VIGIE_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
 import { logWarning } from '@/server/log';
 import { vigieApiUrl, vigieAuthHeaders, vigieConnectorMode } from './connection';
 import { claimProgressDelivery, markDelivery, progressSyncStatus, readMirror, undeliveredProgress, upsertMirror } from './mirror';
@@ -75,6 +76,7 @@ async function vigieFetch(path: string, init?: RequestInit): Promise<Response> {
 
 /** TODO(vigie): GET /api/ecos?source=keystone — the ECOs that concern Keystone's parts and projects (VigieEcoRecord[]). */
 async function refreshFromVigie(): Promise<number> {
+  if (!(await connectorEnabled(VIGIE_CONNECTOR_NAME))) return 0; // D-7a: disabled by IT — the local mirror is read
   const res = await vigieFetch('/api/ecos?source=keystone');
   const records = (await res.json()) as VigieEcoRecord[];
   if (!Array.isArray(records)) throw new Error('Vigie: unexpected ECO payload');
@@ -97,6 +99,8 @@ async function refreshIfStale(): Promise<void> {
 /** TODO(vigie): POST /api/ecos/:number/progress — one outbox entry; Vigie answers { id }. */
 async function deliverOutbox(): Promise<{ delivered: number; failed: number; pending: number }> {
   const db = await getDb();
+  // D-7a: a connector IT disabled exchanges nothing; the entries stay pending until it is enabled again.
+  if (!(await connectorEnabled(VIGIE_CONNECTOR_NAME))) return { delivered: 0, failed: 0, pending: (await undeliveredProgress(db)).length };
   let delivered = 0;
   let failed = 0;
   for (const e of await undeliveredProgress(db)) {

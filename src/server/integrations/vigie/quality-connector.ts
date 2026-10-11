@@ -10,6 +10,7 @@ import 'server-only';
 //   below are a proposal until Vigie publishes its API (OPEN QUESTION V-3).
 import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
+import { VIGIE_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
 import { vigieNcrs } from '@/server/db/schema';
 import { logWarning } from '@/server/log';
 import { vigieApiUrl, vigieAuthHeaders, vigieConnectorMode } from './connection';
@@ -80,6 +81,7 @@ async function vigieFetch(path: string, init?: RequestInit): Promise<Response> {
 
 /** TODO(vigie): GET /api/ncrs?source=keystone (VigieNcrRecord[]) and GET /api/hse?source=keystone (VigieHseRecord[]). */
 async function refreshFromVigie(): Promise<number> {
+  if (!(await connectorEnabled(VIGIE_CONNECTOR_NAME))) return 0; // D-7a: disabled by IT — the local mirror is read
   const [ncrRes, hseRes] = await Promise.all([vigieFetch('/api/ncrs?source=keystone'), vigieFetch('/api/hse?source=keystone')]);
   const ncrs = (await ncrRes.json()) as VigieNcrRecord[];
   const hse = (await hseRes.json()) as VigieHseRecord[];
@@ -103,6 +105,8 @@ async function refreshIfStale(): Promise<void> {
 /** TODO(vigie): POST /api/ncrs/:project/:number/progress — one outbox entry; Vigie answers { id }. */
 async function deliverOutbox(): Promise<{ delivered: number; failed: number; pending: number }> {
   const db = await getDb();
+  // D-7a: a connector IT disabled exchanges nothing; the entries stay pending until it is enabled again.
+  if (!(await connectorEnabled(VIGIE_CONNECTOR_NAME))) return { delivered: 0, failed: 0, pending: (await undeliveredNcrProgress(db)).length };
   let delivered = 0;
   let failed = 0;
   for (const e of await undeliveredNcrProgress(db)) {

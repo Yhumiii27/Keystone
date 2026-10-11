@@ -173,7 +173,7 @@ export function activityDrawerView(input: DrawerInput, baseT: T, lang: Lang): Dr
     : t('Tracking within budget');
   const changes = links.map((l) => ({
     id: l.cr,
-    title: t(l.title),
+    title: dataText(l.title, lang),
     status: { label: t(CR_STATUS_EN[l.status]), tone: CR_STATUS_TONE[l.status] },
     duration: daysText(
       l.appliedAt ? `${durationChangeText(l.appliedFromDays, l.newDurationDays)} · ${t('applied')}` : durationChangeText(l.durationDays, l.newDurationDays),

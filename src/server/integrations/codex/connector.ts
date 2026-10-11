@@ -10,10 +10,12 @@ import 'server-only';
 //   (mirror.ts, the only writer of their status and approval proof) — TODO(codex): the endpoints below are a proposal
 //   until Codex publishes its API (OPEN QUESTION D-1).
 import { getDb } from '@/server/db/client';
+import { CODEX_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
 import type { CodexSyncStatus } from '@/server/db/codes';
+import { logWarning } from '@/server/log';
 import { codexApiUrl, codexConnectorMode, type CodexConnectorMode } from './config';
 import { applyCodexDocumentStates, isCodexDocumentState, type CodexDocumentState } from './mirror';
-import { codexEntrySyncStatus, markCodexDelivery, openCodexEntries, undeliveredCodexEntries } from './outbox';
+import { claimCodexDelivery, codexEntrySyncStatus, markCodexDelivery, openCodexEntries, undeliveredCodexEntries } from './outbox';
 
 export type { CodexDocumentState };
 
@@ -69,10 +71,13 @@ async function codexFetch(path: string, init?: RequestInit): Promise<Response> {
  */
 async function deliverOutbox(): Promise<{ delivered: number; failed: number; numbers: string[] }> {
   const db = await getDb();
+  // D-7a: a connector IT disabled exchanges nothing; the entries stay pending until it is enabled again.
+  if (!(await connectorEnabled(CODEX_CONNECTOR_NAME))) return { delivered: 0, failed: 0, numbers: [] };
   let delivered = 0;
   let failed = 0;
   const numbers = new Set<string>();
   for (const e of await undeliveredCodexEntries(db)) {
+    if (!(await claimCodexDelivery(db, e.id))) continue; // another delivery is sending it (R-010)
     const actor = { name: e.actorName, role: e.actorRole };
     const path = `/api/documents/${encodeURIComponent(e.documentNumber)}/${e.kind === 'approval' ? 'approvals' : 'circuit'}`;
     const body = e.kind === 'approval'
@@ -94,7 +99,7 @@ async function deliverOutbox(): Promise<{ delivered: number; failed: number; num
 
 /** TODO(codex): GET /api/documents/state?numbers=… — the state of the records (CodexDocumentState[]). */
 async function refreshFromCodex(numbers: readonly string[]): Promise<number> {
-  if (!numbers.length) return 0;
+  if (!numbers.length || !(await connectorEnabled(CODEX_CONNECTOR_NAME))) return 0;
   const res = await codexFetch(`/api/documents/state?numbers=${numbers.map(encodeURIComponent).join(',')}`);
   const records = (await res.json()) as unknown;
   if (!Array.isArray(records)) throw new Error('Codex: unexpected document payload');
@@ -112,7 +117,7 @@ export const httpCodexConnector: CodexApprovalConnector = {
   mode: 'http',
   async afterRecord(entryId: string) {
     const d = await deliverOutbox().catch(() => ({ delivered: 0, failed: 0, numbers: [] as string[] }));
-    await refreshFromCodex(d.numbers).catch((e) => console.warn('[codex] refresh failed, the decision stays pending:', e instanceof Error ? e.message : e));
+    await refreshFromCodex(d.numbers).catch((e) => logWarning('Codex refresh (the decision stays pending)', e, { component: 'codex' }));
     return (await codexEntrySyncStatus(await getDb(), entryId)) ?? 'pending';
   },
   async sync() {
@@ -125,4 +130,16 @@ export const httpCodexConnector: CodexApprovalConnector = {
 /** The connector in use (http when CODEX_API_URL is set, else the mock). */
 export function getCodexConnector(): CodexApprovalConnector {
   return codexConnectorMode() === 'http' ? httpCodexConnector : mockCodexConnector;
+}
+
+/**
+ * Outbox redelivery of the worker (R-006, job "codex-outbox"): with Codex's API configured, the approval decisions and
+ * circuit starts not yet sent are delivered again and Codex's answer read back; the mock sends nothing and reports what waits.
+ */
+export async function redeliverCodexOutbox(): Promise<{ mode: 'mock' | 'http'; delivered: number; failed: number; pending: number }> {
+  if (codexConnectorMode() === 'http') {
+    const d = await httpCodexConnector.sync();
+    return { mode: 'http', delivered: d.delivered, failed: d.failed, pending: d.pending };
+  }
+  return { mode: 'mock', delivered: 0, failed: 0, pending: (await undeliveredCodexEntries(await getDb())).length };
 }

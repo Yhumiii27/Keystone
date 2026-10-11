@@ -13,6 +13,7 @@ import 'server-only';
 import { and, eq } from 'drizzle-orm';
 import { STATUS_ISO, cursusSyncStatus, inWorkspace, type CursusClearance, type CursusVerdict } from '@/server/db/codes';
 import { getDb } from '@/server/db/client';
+import { CURSUS_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
 import { cursusClearances, cursusRequests, projects, siteSheets } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
@@ -150,6 +151,7 @@ export function recordsOfPayload(projectCode: string, payload: CursusGoNoGoPaylo
 }
 
 async function refresh(projectCode: string): Promise<number> {
+  if (!(await connectorEnabled(CURSUS_CONNECTOR_NAME))) return 0; // D-7a: disabled by IT — the local mirror is read
   const db = await getDb();
   const chantierId = await db.transaction(async (tx) => (await chantierOf(tx, projectCode)).chantierId);
   if (!chantierId) throw new Error(`No Cursus site is linked to ${projectCode}`);
@@ -166,6 +168,8 @@ async function refresh(projectCode: string): Promise<number> {
 /** Delivers the outbox: travel requests go to POST /demandes; reminders have no Cursus endpoint (TODO(cursus), C-2). */
 async function deliverOutbox(): Promise<{ delivered: number; failed: number; pending: number }> {
   const db = await getDb();
+  // D-7a: a connector IT disabled exchanges nothing; the entries stay pending until it is enabled again.
+  if (!(await connectorEnabled(CURSUS_CONNECTOR_NAME))) return { delivered: 0, failed: 0, pending: (await undeliveredRequests(db)).length };
   let delivered = 0;
   let failed = 0;
   for (const e of await undeliveredRequests(db)) {

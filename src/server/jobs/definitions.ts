@@ -3,6 +3,7 @@ import 'server-only';
 // for the log and the job_locks row, and whether something needs attention (a delivery that failed).
 import { JOB_SCHEDULES, ORPHAN_FILE_GRACE_MS, type JobName, type JobSchedule } from '@/domain/jobs';
 import { purgeExpiredPlanTrash } from '@/server/dal/plan-trash';
+import { redeliverCodexOutbox } from '@/server/integrations/codex/connector';
 import { redeliverCursusOutbox } from '@/server/integrations/cursus/connector';
 import { redeliverEcoOutbox } from '@/server/integrations/vigie/eco-connector';
 import { redeliverNcrOutbox } from '@/server/integrations/vigie/quality-connector';
@@ -40,6 +41,8 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
   },
   // Travel requests (and reminders, which stay pending: no Cursus endpoint) sent to Cursus.
   'cursus-outbox': async () => outboxOutcome('Cursus', [await redeliverCursusOutbox()]),
+  // Document approval decisions and engineering circuit starts sent to Codex (R-124).
+  'codex-outbox': async () => outboxOutcome('Codex', [await redeliverCodexOutbox()]),
   'plan-trash-purge': async () => {
     const r = await purgeExpiredPlanTrash();
     return { summary: `${r.entries} trash entries purged on ${r.projects} projects · ${r.files} files deleted`, counts: r };

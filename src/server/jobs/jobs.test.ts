@@ -9,7 +9,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
-import { cursusRequests, planTrash, projects, vigieEcoProgress } from '@/server/db/schema';
+import { connectors, cursusRequests, planTrash, projects, vigieEcoProgress } from '@/server/db/schema';
 import { recordEcoProgress } from '@/server/dal/eco';
 import { acquireJobLock, listJobLocks, releaseJobLock } from '@/server/dal/job-locks';
 import { listPlanTrash, trashPlanRow } from '@/server/dal/plan-trash';
@@ -122,6 +122,28 @@ describe('outbox redelivery', () => {
     expect(posted).toHaveLength(waiting);
     expect(await run('vigie-outbox')).toMatchObject({ summary: 'Vigie · 0 delivered · 0 failed · 0 pending' });
     expect(posted).toHaveLength(waiting);
+  });
+
+  it('D-7a: a connector IT disabled sends nothing — its entries stay pending and go once it is enabled again', async () => {
+    vi.stubEnv('VIGIE_API_URL', 'http://vigie.test');
+    const posted: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      posted.push(String(url));
+      return new Response(JSON.stringify({ id: 'V-x' }), { status: 200 });
+    }));
+    const db = await getDb();
+    const [entry] = await db.select({ id: vigieEcoProgress.id }).from(vigieEcoProgress).limit(1);
+    await db.update(vigieEcoProgress).set({ syncStatus: 'pending', sentAt: null }).where(eq(vigieEcoProgress.id, entry.id));
+    await db.update(connectors).set({ enabled: false }).where(eq(connectors.name, 'Vigie'));
+    expect(await run('vigie-outbox')).toMatchObject({ counts: { delivered: 0, failed: 0, pending: 1 } });
+    expect(posted).toEqual([]);
+    await db.update(connectors).set({ enabled: true }).where(eq(connectors.name, 'Vigie'));
+    expect(await run('vigie-outbox')).toMatchObject({ counts: { delivered: 1, failed: 0, pending: 0 } });
+    expect(posted).toHaveLength(1);
+  });
+
+  it('Codex (R-124): the mock reports what waits; nothing is sent', async () => {
+    expect(await run('codex-outbox')).toMatchObject({ summary: expect.stringMatching(/^Codex mock connector · nothing sent · \d+ waiting$/) });
   });
 
   it('Cursus: mock reports; HTTP delivers the travel request once, a failure is a warning retried at the next run', async () => {

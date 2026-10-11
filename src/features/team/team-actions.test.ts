@@ -24,11 +24,11 @@ vi.mock('@/server/session', async () => {
   };
 });
 
-import { eq, isNotNull } from 'drizzle-orm';
+import { and, eq, isNotNull, ne } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
-import { persons, projects } from '@/server/db/schema';
+import { persons, projectMembers, projects } from '@/server/db/schema';
 import { demoReferentsToBackfill, seedDemoReferents } from '@/server/db/seed/project-team';
 import { listActivity, listAudit } from '@/server/dal/notifications';
 import { getPersonByName } from '@/server/dal/people';
@@ -78,6 +78,12 @@ describe('named team (DAL)', () => {
     const before = (await getNamedTeam('HLT-026')).length;
     await db.transaction((tx) => seedDemoReferents(tx));
     expect((await getNamedTeam('HLT-026')).length).toBe(before);
+    // Removed referents are not put back at the next start: the seed recorded that it ran (review finding, R-041).
+    const [hlt] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, 'HLT-026'));
+    const saved = await db.select().from(projectMembers).where(and(eq(projectMembers.projectId, hlt.id), ne(projectMembers.projectRole, 'team')));
+    await db.delete(projectMembers).where(ne(projectMembers.projectRole, 'team'));
+    expect(await demoReferentsToBackfill(db)).toBe(false);
+    await db.insert(projectMembers).values(saved);
   });
 });
 

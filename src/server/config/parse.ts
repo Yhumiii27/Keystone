@@ -229,6 +229,12 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
     for (const [name, app] of [['NEXT_PUBLIC_CODEX_URL', 'Codex'], ['NEXT_PUBLIC_CURSUS_URL', 'Cursus'], ['NEXT_PUBLIC_VIGIE_URL', 'Vigie']] as const)
       if (!v[name]) warnings.push({ variable: name, message: `is not set: links open ${app} on localhost` });
 
+  // Demo mode in production (R-038): "View as" with no sign-in, the director by default. Refused with the production data
+  // set (real people, no persona); otherwise allowed (the Mac app, demonstrations) with a warning when not chosen explicitly.
+  if (production && v.KEYSTONE_AUTH !== 'entra') {
+    if (v.KEYSTONE_SEED === 'production') errors.push({ variable: 'KEYSTONE_AUTH', message: 'must be "entra" with KEYSTONE_SEED=production (demo mode has no sign-in)' });
+    else if (!v.KEYSTONE_AUTH) warnings.push({ variable: 'KEYSTONE_AUTH', message: 'is not set: demo mode ("View as", no sign-in) — set it to "entra" for real users, or "demo" explicitly' });
+  }
   // Entra sign-in (R-038) needs its secret and app registration; without them every page would answer the sign-in error.
   if (v.KEYSTONE_AUTH === 'entra') {
     const missing: [ConfigVariable, unknown][] = [

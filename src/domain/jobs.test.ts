@@ -8,9 +8,9 @@ const NOW = new Date('2026-10-11T12:00:00Z');
 const ago = (days: number) => new Date(NOW.getTime() - days * day);
 
 describe('jobs and schedules', () => {
-  it('four jobs: outboxes every 5 min, plan-trash purge hourly, orphan prune daily (no Friday freeze: S-4 open)', () => {
+  it('five jobs: outboxes (Vigie, Cursus, Codex — R-124) every 5 min, plan-trash purge hourly, orphan prune daily (no Friday freeze: S-4 open)', () => {
     expect(JOB_SCHEDULES.map((j) => [j.name, j.everyMs / 60_000, j.leaseMs / 60_000])).toEqual([
-      ['vigie-outbox', 5, 15], ['cursus-outbox', 5, 15], ['plan-trash-purge', 60, 15], ['orphan-files-prune', 1440, 60],
+      ['vigie-outbox', 5, 15], ['cursus-outbox', 5, 15], ['codex-outbox', 5, 15], ['plan-trash-purge', 60, 15], ['orphan-files-prune', 1440, 60],
     ]);
     expect(JOB_NAMES).not.toContain('friday-freeze');
     // Staggered first runs.
