@@ -22,7 +22,7 @@ import { getBaselineRegister } from '@/server/dal/changes-baselines';
 import { getWbs } from '@/server/dal/planning';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
-import { projectLabelText } from '@/i18n/data-text';
+import { dataText, projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -46,10 +46,10 @@ export default async function ChangesPage({ params, searchParams }: { params: Pr
   const fr = (x: string) => (lang === 'fr' ? x.replace(/(\d+)d\b/g, '$1 j') : x);
   for (const l of crLinks) {
     const duration = l.appliedAt ? `${durationChangeText(l.appliedFromDays, l.newDurationDays)} · ${t('applied')}` : durationChangeText(l.durationDays, l.newDurationDays);
-    (actsByCr[l.cr] ??= []).push({ code: l.code, label: l.name ? `${l.code} · ${t(l.name)}` : `${l.code} · ${t('not in the plan any more')}`, duration: fr(duration) });
+    (actsByCr[l.cr] ??= []).push({ code: l.code, label: l.name ? `${l.code} · ${dataText(l.name, lang)}` : `${l.code} · ${t('not in the plan any more')}`, duration: fr(duration) });
   }
   const crActivities = {
-    byCr: actsByCr, options: planActs.map((a) => ({ value: a.code, label: `${a.code} · ${t(a.name)}` })),
+    byCr: actsByCr, options: planActs.map((a) => ({ value: a.code, label: `${a.code} · ${dataText(a.name, lang)}` })),
     canEdit: canEditCrActivities(ctx.viewer, canEdit), visible: ctx.viewer.role !== 'client',
   };
   const filter = parseCrFilter(first(sp.filter));

@@ -195,7 +195,7 @@ export function stockDrawerView(
   input: {
     detail: StockPositionDetail; locations: StorageLocationRow[]; pins: Record<string, InstalledBasePin[]>; state: StockUrlState; prices?: boolean;
     /** Delivery 7: the current project, its plan's activities, and the viewer's rights on reservations (R-098 / R-099). */
-    projectCode?: string | null; activities?: { code: string; label: string }[]; canRelease?: boolean; canOverride?: boolean;
+    projectCode?: string | null; activities?: { code: string; name: string }[]; canRelease?: boolean; canOverride?: boolean;
   },
   t: T,
   lang: Lang,
@@ -224,7 +224,7 @@ export function stockDrawerView(
     // "Release reservation" (R-099) only on a reserved line, for the reserving project's PM or the director.
     ops: lineStockOps(input.canRelease ? d.reserved : 0).map((op) => ({ value: op, label: t(stockOperation.label(op)), qtyLabel: t(quantityLabel(op)) })),
     targets: transferTargetOptions(locations.map((l) => l.name), d.location).map((o) => ({ value: o.name, label: o.label, title: o.name })),
-    activities: (input.activities ?? []).map((a) => ({ value: a.code, label: t(a.label) })),
+    activities: (input.activities ?? []).map((a) => ({ value: a.code, label: `${a.code} · ${dataText(a.name, lang)}` })),
     projectCode,
     reservedForOther: others && d.reservedForProject ? { project: d.reservedForProject, qty: others } : null,
     canOverride: input.canOverride === true,

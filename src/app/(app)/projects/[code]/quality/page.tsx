@@ -29,7 +29,7 @@ import { teamOwnerOptions } from '@/server/dal/team';
 import { vigieReportNcrUrl } from '@/server/integrations/vigie/links';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
-import { projectLabelText } from '@/i18n/data-text';
+import { dataText, projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -70,7 +70,7 @@ export default async function QualityPage({ params, searchParams }: { params: Pr
   let primary;
   if (creates) {
     const [types, wbs, team] = await Promise.all([listDeliverableTypes(), deliverableWbsOptions(projectCode), teamOwnerOptions(projectCode)]);
-    primary = <NewDeliverableButton code={projectCode} label={t('New deliverable')} context={context} form={newDeliverableFormDef({ types, wbs, team }, t)} />;
+    primary = <NewDeliverableButton code={projectCode} label={t('New deliverable')} context={context} form={newDeliverableFormDef({ types, wbs: wbs.map((w) => ({ ...w, name: dataText(w.name, lang) })), team }, t)} />;
   } else if (viewer.vigie) {
     primary = (
       <VigieLink href={vigieReportNcrUrl({ projectCode })} variant="primary" size="md" plus label={`${t('New NCR')} · ${t('Report in Vigie')}`}>

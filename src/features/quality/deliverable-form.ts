@@ -19,7 +19,7 @@ export function newDeliverableFormDef(
       { id: 'type', label: t('Type'), type: 'select', options: opts.types.map((x) => ({ value: x.code, label: t(x.label) })) },
       { id: 'title', label: t('Title'), type: 'text', required: true },
       { id: 'due', label: t('Due'), type: 'text', required: true, placeholder: t('e.g. 15 Oct') },
-      { id: 'wbs', label: t('WBS'), type: 'select', options: opts.wbs.map((w) => ({ value: w.code, label: `${w.code} · ${t(w.name)}` })) },
+      { id: 'wbs', label: t('WBS'), type: 'select', options: opts.wbs.map((w) => ({ value: w.code, label: `${w.code} · ${w.name}` })) },
       { id: 'r', label: t('Responsible (R)'), type: 'select', options: [...opts.team] },
       { id: 'b', label: t('Backup (B)'), type: 'select', options: [NO_BACKUP, ...opts.team] },
     ],
