@@ -8,7 +8,7 @@ import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, like, lt, or } fro
 import { projectDataDate, DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
 import {
   CAPACITY_WINDOW_WEEKS, DEFAULT_PAYMENT_DAYS, demandPerMeur, departmentCapacity, eventsOnDay, finishOfMonthText,
-  latestVaultSync, leadingCount, loggedInWeek, nextWeeksLoad, onTimeDeliveryPct, parisDateOf, projectEacKeur, projectValueKeur, weekHoursOf, weekMondayOf,
+  latestVaultSync, leadingCount, loggedInWeek, nextWeeksLoad, onTimeDeliveryPct, parisDateOf, plannedSpendOfPv, projectEacKeur, projectValueKeur, weekHoursOf, weekMondayOf,
   type CashProjectInput, type RfqKpiFacts, type VaultSyncFacts,
 } from '@/domain/kpis';
 import { clientDecisionCount } from '@/domain/meetings';
@@ -19,7 +19,7 @@ import {
   purchaseOrders, rfqQuotes, rfqs, timeEntries, vigieNcrs,
 } from '@/server/db/schema';
 import type { BillingPlan } from './cashflow';
-import { getContract } from './contract';
+import { getCostControl } from './cost';
 import { listMeetings } from './meetings';
 import type { ProjectRow } from './projects';
 
@@ -35,10 +35,11 @@ export async function projectDataDateOf(code: string): Promise<string> {
 // ── Cash flow & billing (03 OQ7) ─────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Inputs of the cash forecast for the Cash flow rows (project + billing plan): contract milestones with their dates and
- * the invoices' due dates (payment delay of the terms), legacy plans undated at Net 30, monthly progress plans billing
- * the rest of the contract value month by month; ETC = max(0, EAC − actual);
- * finish = `planned_finish_date`, else the end of the register's finish month.
+ * Inputs of the cash forecast for the Cash flow rows (project + billing plan consolidated in euros, C-9): contract milestones
+ * with their dates and the invoices' due dates, paid by the contract's payment rule (R-076), legacy plans undated at Net 30,
+ * monthly progress plans billing the rest of the contract value month by month; ETC = max(0, EAC − actual) spread along the
+ * planned curve — the PV increments of the project's cost control (C-10a, R-133); finish = `planned_finish_date`, else the end
+ * of the register's finish month.
  */
 export async function cashProjectInputs(rows: readonly { project: ProjectRow; plan: BillingPlan }[]): Promise<CashProjectInput[]> {
   if (!rows.length) return [];
@@ -48,13 +49,14 @@ export async function cashProjectInputs(rows: readonly { project: ProjectRow; pl
       .map((r) => [r.code, r.finish]),
   );
   return Promise.all(rows.map(async ({ project: p, plan }) => {
-    const contract = plan.fromContract ? await getContract(p.code) : null;
-    const milestones = contract
-      ? contract.milestones.map((m) => ({ label: m.number, amountKeur: m.amountKeur, status: m.status, dueOn: m.contractualDue, paymentDueOn: m.invoice?.dueOn ?? null }))
+    const cost = await getCostControl(p.code);
+    const milestones = plan.fromContract
+      ? plan.milestones.map((m) => ({ label: m.number ?? m.label, amountKeur: m.amountKeur, status: m.status, dueOn: m.contractualDue, paymentDueOn: m.paymentDueOn }))
       : plan.milestones.map((m) => ({ label: m.number ?? m.label, amountKeur: m.amountKeur, status: m.status, dueOn: null }));
     return {
-      code: p.code, milestones, paymentDays: contract ? contract.sheet.termsDays || DEFAULT_PAYMENT_DAYS : DEFAULT_PAYMENT_DAYS,
+      code: p.code, milestones, paymentDays: plan.terms ? plan.terms.days : DEFAULT_PAYMENT_DAYS, paymentRule: plan.terms?.rule,
       etcKeur: Math.max(0, projectEacKeur(p) - p.actual), finishOn: finishes.get(p.code) ?? finishOfMonthText(p.finish),
+      plannedSpend: cost ? plannedSpendOfPv(cost.pv, cost.start) : undefined,
       progressBillingKeur: plan.model === 'client_monthly_progress' ? Math.max(0, plan.contractValueKeur - plan.invoicedKeur) : 0,
     };
   }));

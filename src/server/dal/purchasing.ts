@@ -11,6 +11,7 @@ import 'server-only';
 //   and requests a credit note for the rest; an "Awaiting receipt" invoice whose receipt (accepted in Deliveries) covers
 //   only part of it reads as Blocked (`matchedInvoiceStatus`); a rejected invoice cannot be rejected again.
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { currencyOf, documentCurrencies, documentCurrencyError, eurRate, projectFxOf, type CurrencyCode } from '@/domain/currency';
 import { getDb } from '@/server/db/client';
 import {
   RFQ_AWARD_ROLES, STATUS_ISO, awardRule, incoterm, matchState, nextBusinessNumber, partStatus, poStatus, rfqStatus, splitActual, supplierInvoiceStatus,
@@ -67,7 +68,13 @@ export interface PurchaseOrderRow {
   /** Null = "To confirm". */
   expectedOn: string | null;
   lines: PoLineRow[];
-  /** Σ qty × unit price, €. */
+  /** C-9 (R-075): currency of the order — its line prices and value are in it (EUR or the project currency). */
+  currency: CurrencyCode;
+  /** Euros per unit of `currency` at the project's budget rate (1 for EUR): the Committed KPI consolidates with it. */
+  eurRate: number;
+  /** Currencies the order may use while Draft: EUR and the project currency (with its budget rate). */
+  currencyOptions: CurrencyCode[];
+  /** Σ qty × unit price, in `currency` (the name predates C-9). */
   valueEur: number;
   /** Σ received × unit price, €. */
   receivedValueEur: number;
@@ -96,7 +103,7 @@ async function loadOrders(q: Q, where: ReturnType<typeof eq> | undefined): Promi
   const submitter = sql<string | null>`(select coalesce(${persons.fullName}, ${persons.shortName}) from ${persons} where ${persons.id} = ${purchaseOrders.submittedByPersonId})`;
   const decider = sql<string | null>`(select coalesce(${persons.fullName}, ${persons.shortName}) from ${persons} where ${persons.id} = ${purchaseOrders.decidedByPersonId})`;
   const rows = await q
-    .select({ o: purchaseOrders, code: projects.code, supplier: suppliers.name, creator, submitter, decider, act: activities })
+    .select({ o: purchaseOrders, code: projects.code, supplier: suppliers.name, creator, submitter, decider, act: activities, pCurrency: projects.currency, pRate: projects.budgetRate })
     .from(purchaseOrders)
     .innerJoin(projects, eq(projects.id, purchaseOrders.projectId))
     .innerJoin(suppliers, eq(suppliers.id, purchaseOrders.supplierId))
@@ -110,7 +117,8 @@ async function loadOrders(q: Q, where: ReturnType<typeof eq> | undefined): Promi
     .innerJoin(parts, eq(parts.id, poLines.partId))
     .where(inArray(poLines.poId, rows.map((r) => r.o.id)))
     .orderBy(asc(poLines.position));
-  return rows.map(({ o, code, supplier, creator: c, submitter: s, decider: d, act }) => {
+  return rows.map(({ o, code, supplier, creator: c, submitter: s, decider: d, act, pCurrency, pRate }) => {
+    const fx = projectFxOf({ currency: pCurrency, budgetRate: pRate });
     // A Received order shows every line fully received (`allPOs` 4308).
     const ls = lines.filter((l) => l.l.poId === o.id).map(({ l, ref, name, status }) => {
       const received = o.status === 'received' ? l.orderedQty : l.receivedQty;
@@ -119,7 +127,9 @@ async function loadOrders(q: Q, where: ReturnType<typeof eq> | undefined): Promi
     const need: PoNeed | null = act ? { code: act.code, name: act.name, startText: splitActual(act.startText).text, startDate: act.startDate, percentComplete: act.percentComplete } : null;
     return {
       number: o.number, projectCode: code, supplier, status: o.status, statusLabel: poStatus.label(o.status), origin: o.origin, orderedOn: o.orderedOn, expectedOn: o.expectedOn,
-      lines: ls, valueEur: ls.reduce((a, l) => a + l.totalEur, 0), receivedValueEur: ls.reduce((a, l) => a + l.unitPriceEur * l.receivedQty, 0),
+      lines: ls, currency: currencyOf(o.currency), eurRate: eurRate(o.currency, fx),
+      currencyOptions: documentCurrencies(fx).filter((cur) => !documentCurrencyError(cur, fx)),
+      valueEur: ls.reduce((a, l) => a + l.totalEur, 0), receivedValueEur: ls.reduce((a, l) => a + l.unitPriceEur * l.receivedQty, 0),
       orderedUnits: ls.reduce((a, l) => a + l.orderedQty, 0), receivedUnits: ls.reduce((a, l) => a + l.receivedQty, 0),
       partStatusIssue: ls.some((l) => l.partStatus !== 'validated'), neededFor: need,
       late: !!need && need.percentComplete > 0 && !OPEN_LINE_STATUSES.includes(o.status), deliveryTerms: o.deliveryTerms,
@@ -558,6 +568,10 @@ export interface SupplierInvoiceRow {
   receiptNumber: string | null;
   /** Project of the order (null without PO). */
   projectCode: string | null;
+  /** C-9 (R-075): currency of the invoice as received from Sage X3 — its amounts below are in it. */
+  currency: CurrencyCode;
+  /** Euros per unit of `currency` at the order's project budget rate (1 for EUR or without project). */
+  eurRate: number;
   /** Amount as the screens show it: the approved amount once approved, else the invoiced amount (`amount` after `invOv`). */
   amountEur: number;
   invoicedAmountEur: number;
@@ -611,7 +625,10 @@ function blockingReasonOf(status: SupplierInvoiceStatus, m: { po: MatchState; gr
 
 async function loadInvoices(q: Q, number?: string): Promise<SupplierInvoiceRow[]> {
   const rows = await q
-    .select({ i: supplierInvoices, supplier: suppliers.name, po: purchaseOrders.number, gr: goodsReceipts.number, code: projects.code, by: persons.fullName })
+    .select({
+      i: supplierInvoices, supplier: suppliers.name, po: purchaseOrders.number, poCurrency: purchaseOrders.currency, gr: goodsReceipts.number, code: projects.code,
+      pCurrency: projects.currency, pRate: projects.budgetRate, by: persons.fullName,
+    })
     .from(supplierInvoices)
     .innerJoin(suppliers, eq(suppliers.id, supplierInvoices.supplierId))
     .leftJoin(purchaseOrders, eq(purchaseOrders.id, supplierInvoices.poId))
@@ -620,13 +637,16 @@ async function loadInvoices(q: Q, number?: string): Promise<SupplierInvoiceRow[]
     .leftJoin(persons, eq(persons.id, supplierInvoices.decidedByPersonId))
     .where(number ? eq(supplierInvoices.number, number) : undefined)
     .orderBy(asc(supplierInvoices.position));
-  return rows.map(({ i, supplier, po, gr, code, by }) => {
+  return rows.map(({ i, supplier, po, poCurrency, gr, code, pCurrency, pRate, by }) => {
     const amount = i.approvedAmountEur ?? i.amountEur;
-    const m = threeWayMatch({ hasPo: !!po, hasReceipt: !!gr, amountEur: amount, poAmountEur: i.poAmountEur, receiptAmountEur: i.receiptAmountEur });
+    const matched = threeWayMatch({ hasPo: !!po, hasReceipt: !!gr, amountEur: amount, poAmountEur: i.poAmountEur, receiptAmountEur: i.receiptAmountEur });
+    // C-9: an invoice in another currency than its order does not match the order (amounts are not comparable).
+    const m = po && poCurrency && currencyOf(poCurrency) !== currencyOf(i.currency) ? { ...matched, po: 'diff' as const } : matched;
     const gap = amount - i.receiptAmountEur;
     const status = matchedInvoiceStatus(i.status, m.gr);
     return {
-      number: i.number, supplier, poNumber: po ?? null, receiptNumber: gr ?? null, projectCode: code ?? null, amountEur: amount, invoicedAmountEur: i.amountEur,
+      number: i.number, supplier, poNumber: po ?? null, receiptNumber: gr ?? null, projectCode: code ?? null, currency: currencyOf(i.currency),
+      eurRate: eurRate(i.currency, projectFxOf({ currency: pCurrency, budgetRate: pRate })), amountEur: amount, invoicedAmountEur: i.amountEur,
       approvedAmountEur: i.approvedAmountEur, creditNoteEur: i.approvedAmountEur != null ? i.amountEur - i.approvedAmountEur : 0, poAmountEur: i.poAmountEur,
       receiptAmountEur: i.receiptAmountEur, gapEur: gr && gap > 0 ? gap : null, match: m, matchLabels: { po: matchState.label(m.po), gr: matchState.label(m.gr) },
       invoiceDate: i.invoiceDate, dueDate: i.dueDate, paymentTerms: i.paymentTerms, status, statusLabel: supplierInvoiceStatus.label(status),
@@ -700,7 +720,9 @@ export async function rejectSupplierInvoice(number: string, actorName: string): 
 export interface PoApprovalItem {
   number: string;
   supplier: string;
+  /** Value in `currency` (C-9). */
   valueEur: number;
+  currency: CurrencyCode;
   refs: string[];
   orderedOn: string | null;
   /** Who sent it for approval (the seed's buyer for the prototype orders). */
@@ -712,7 +734,7 @@ export async function poApprovalQueue(projectCode: string, actorName: string): P
   if (!(await canApprovePurchaseOrders(projectCode, actorName))) return [];
   return (await listPurchaseOrders(projectCode))
     .filter((o) => o.status === 'awaiting_approval')
-    .map((o) => ({ number: o.number, supplier: o.supplier, valueEur: o.valueEur, refs: o.lines.map((l) => l.ref), orderedOn: o.orderedOn, submittedBy: o.submittedBy }));
+    .map((o) => ({ number: o.number, supplier: o.supplier, valueEur: o.valueEur, currency: o.currency, refs: o.lines.map((l) => l.ref), orderedOn: o.orderedOn, submittedBy: o.submittedBy }));
 }
 
 /** Orders of the project the person approved and ordered ("Decided this week": the prototype counted every Ordered PO). */

@@ -5,11 +5,12 @@ import 'server-only';
 import { CLIENT_ORG } from '@/config/personas';
 import type { Lang } from '@/i18n/translate';
 import {
-  overviewMetrics, portfolioAlerts, portfolioKpis, portfolioTotals, myProjectsModel,
+  inExecution, overviewMetrics, portfolioKpis, portfolioTotals, myProjectsModel,
   type KpiView, type MyProjectsModel, type OverviewMetrics, type PortfolioAlert, type PortfolioTotals, type TodoLite,
 } from '@/domain/portfolio';
 import { approvalCount } from '@/server/approvals';
 import { healthThresholds } from './health-thresholds';
+import { getPortfolioAlerts } from './portfolio-alerts';
 import type { Viewer, ZoneKey } from '@/server/session';
 import { listDepartments, listPeople } from './people';
 import { listScheduleSummaries } from './planning';
@@ -21,28 +22,30 @@ export interface OverviewRow extends ProjectRow {
 }
 
 export interface PortfolioOverview {
-  /** "Active projects" rows: projects with planning data (the prototype's PROJECTS) in the selected zone, register order. */
+  /** "Active projects" rows: projects in execution (A-3: Études → Mise en service) in the selected zone, register order. */
   rows: OverviewRow[];
   totals: PortfolioTotals;
   /** The 6 KPI tiles (Home's director view uses the first four). */
   kpis: KpiView[];
-  /** "Needs attention" items, filtered by zone when they concern a project. */
+  /** "Needs attention" items computed by rules (R-130, NEW-D1-1), filtered by zone when they concern a project. */
   alerts: PortfolioAlert[];
 }
 
 const inZone = (p: Pick<ProjectRow, 'zone'>, zone: ZoneKey | null) => !zone || p.zone === zone;
 
 /**
- * Portfolio overview data. Population (spec Open question 4): the projects with planning data — the prototype
- * reads its static PROJECTS seed, which is the same six projects; here their live values are used.
+ * Portfolio overview data. Population (A-3, spec Open question 4): the projects whose stage is in the execution group,
+ * read live from the register (a project created or moved into execution counts at once). The prototype read its static
+ * PROJECTS seed (the six projects with planning data, WSA-044 in APD included).
  */
 export async function getPortfolioOverview(zone: ZoneKey | null, lang: Lang): Promise<PortfolioOverview> {
   const [all, th] = await Promise.all([listProjects(), healthThresholds()]);
   // A-13: one health rule with the Settings thresholds (the same verdict as `ProjectRow.health`).
-  const rows = all.filter((p) => p.hasData && inZone(p, zone)).map((p) => ({ ...p, metrics: overviewMetrics(p, th) }));
+  const rows = all.filter((p) => inExecution(p) && inZone(p, zone)).map((p) => ({ ...p, metrics: overviewMetrics(p, th) }));
   const totals = portfolioTotals(rows);
   const zoneOf = new Map(all.map((p) => [p.code, p.zone]));
-  const alerts = portfolioAlerts(lang).filter((a) => !a.code || !zone || zoneOf.get(a.code) === zone);
+  // R-130 (NEW-D1-1): alerts computed by rules at the data date (were the prototype's four fixed texts).
+  const alerts = (await getPortfolioAlerts(lang)).filter((a) => !a.code || !zone || zoneOf.get(a.code) === zone);
   return { rows, totals, kpis: portfolioKpis(totals, lang, th), alerts };
 }
 
@@ -58,7 +61,8 @@ export async function getMyProjects(viewer: Viewer, currentProject: string, lang
   const [all, sched, people, depts, tasks, pendingDecisions, thresholds] = await Promise.all([
     listProjects(), listScheduleSummaries(), listPeople(), listDepartments(), todos(), approvalCount(viewer, currentProject), healthThresholds(),
   ]);
-  const pool = all.filter((p) => p.hasData);
+  // A-3: the same population as the Overview (projects in execution).
+  const pool = all.filter(inExecution);
   const deptOf: Record<string, string> = {};
   for (const p of people) if (p.department) deptOf[p.name] = p.department;
   // Department of a department head: the one they head (the prototype's `state.dept`, default Engineering).

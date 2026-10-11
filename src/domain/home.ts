@@ -7,6 +7,7 @@
 import { screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
 import { STATUS_DATE, TODAY, dateOf, dayLabel, money } from '@/lib/format';
+import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import { weekHoursOf } from './kpis';
 import { mainShortfall, peakWeekNumbers, unmetDemand, weekRangesText, type CapacityRow } from './resources';
 import { nextWeekEnd, spanText } from './tasks';
@@ -287,17 +288,18 @@ export interface BillingInvoice {
 }
 
 /** The client's open invoice: the first invoiced, unpaid milestone of the billing plan; null when none. */
-export function clientOpenInvoice(plan: BillingInvoice[]): ClientInput['invoice'] {
+export function clientOpenInvoice(plan: BillingInvoice[], currency: CurrencyCode = BASE_CURRENCY): ClientInput['invoice'] {
   const m = plan.find((x) => x.status === 'invoiced');
   if (!m) return null;
   // "M3 Structure topped out" → number "M3" + name "Structure topped out" (the name is translated, the number is not).
   const name = m.milestoneNumber && m.milestone.startsWith(m.milestoneNumber + ' ') ? m.milestone.slice(m.milestoneNumber.length + 1) : m.milestone;
-  return { invoiceNumber: m.invoiceNumber, milestoneNumber: m.milestoneNumber, name, amount: m.amountKeur, due: m.dueText };
+  return { invoiceNumber: m.invoiceNumber, milestoneNumber: m.milestoneNumber, name, amount: m.amountKeur, due: m.dueText, currency };
 }
 
 /** "INV-2026-003 · M3 Structure topped out · €1.38M · due 10 Nov" (parts the plan does not have are left out). */
 function invoiceSub(inv: NonNullable<ClientInput['invoice']>, lang: Lang): Txt {
-  const p: Record<string, string> = { name: inv.name, amt: money(inv.amount, lang), inv: inv.invoiceNumber ?? '', no: inv.milestoneNumber ?? '', date: inv.due ?? '' };
+  // C-9: in the invoice's currency (the contract's).
+  const p: Record<string, string> = { name: inv.name, amt: moneyIn(inv.amount, inv.currency ?? BASE_CURRENCY, lang), inv: inv.invoiceNumber ?? '', no: inv.milestoneNumber ?? '', date: inv.due ?? '' };
   const parts = [inv.invoiceNumber ? '{inv}' : '', inv.milestoneNumber ? '{no} {name}' : '{name}', '{amt}', inv.due ? 'due {date}' : ''];
   return { tpl: parts.filter(Boolean).join(' · '), p };
 }
@@ -810,7 +812,7 @@ export interface ClientInput {
   /** Deliverables awaiting / past client acceptance (current project). */
   deliverables: ClientDeliverable[];
   /** Open invoice of the billing plan (INV-2026-003, "M3", "Structure topped out", 1380 k€, "10 Nov"), null when none. */
-  invoice: { invoiceNumber: string | null; milestoneNumber: string | null; name: string; amount: number; due: string | null } | null;
+  invoice: { invoiceNumber: string | null; milestoneNumber: string | null; name: string; amount: number; due: string | null; currency?: CurrencyCode } | null;
 }
 
 export function clientHome(i: ClientInput): HomeView {

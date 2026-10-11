@@ -50,6 +50,20 @@
       "when": 1791559634379,
       "tag": "0006_square_lilith",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791728374444,
+      "tag": "0007_fresh_young_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791732833861,
+      "tag": "0008_contract_payment_terms_backfill",
+      "breakpoints": true
     }
   ]
 }

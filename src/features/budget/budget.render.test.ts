@@ -49,7 +49,10 @@ describe('Budget & cost', () => {
     expect(hlt.rex).toMatchObject({ mt: 'EMP', dep: 30, deliv: 60, acc: 10 });
     expect(hlt.rex?.refs.map((r) => r.id)).toEqual(['HAV001', 'ANT002']);
     expect(hlt.contract).toMatchObject({ ref: 'CTR-HLT-001', amount: 5400, terms: 'Net 45 days', openCommit: 713 });
-    expect(hlt.contract?.milestones.map((m) => m.status)).toEqual(['paid', 'paid', 'invoiced', 'planned', 'planned']);
+    // NEW-D3-3 (R-079): Amendment 1's own milestone M6 (signed, billable) follows the base contract's five.
+    expect(hlt.contract?.milestones.map((m) => [m.id, m.status, m.amount])).toEqual([
+      ['M1', 'paid', 540], ['M2', 'paid', 1080], ['M3', 'invoiced', 1350], ['M4', 'planned', 1080], ['M5', 'planned', 1350], ['M6', 'planned', 120],
+    ]);
     expect(await getBudgetData('SCP-033')).toBeNull();
     expect(await getBudgetContract('NDC-031')).toBeNull();
     expect((await getRexPattern('ERP-202'))?.mt).toBe('R&D');
@@ -155,16 +158,21 @@ describe('Budget & cost', () => {
   it('Cash & recovery (EN): KPIs, chart and monthly schedule', () => {
     const out = render(hlt, 'cash', 'en');
     const tx = text(out);
+    // NEW-D3-3 (R-079): milestones at base-amount prices plus Amendment 1's M6 (prototype €1.66M received, 30 %, −€2.42M,
+    // 41 %, next €1.38M, low −€2.50M, M1 €552k); C-6 (R-076): each receipt in the month of its payment date (invoice due date,
+    // else contractual date + 45 days) — M4 and M6 in Jan ’27, M5 in Feb ’27 (the prototype rounded M5 to Mar ’27).
     for (const s of [
-      'Client payments received €1.66M 2 milestones paid · 30 % of contract',
+      'Client payments received €1.62M 2 milestones paid · 29 % of contract',
       'Committed to date €4.07M €3.36M actual cost · €713k orders placed',
-      'Recovery −€2.42M we are financing the project',
-      'Coverage 41 % received ÷ committed',
-      'Next receipt €1.38M M3 · Nov · Net 45 days',
-      'Lowest point −€2.50M Oct · still ahead',
-      'Apr €552k M1 €385k −€578k',
-      'Sep — €1.12M incl. €713k orders placed −€2.42M',
-      'Mar ’27 €1.38M M5 €0k +€655k',
+      'Recovery −€2.45M we are financing the project',
+      'Coverage 40 % received ÷ committed',
+      'Next receipt €1.35M M3 · Nov · Net 45 days',
+      'Lowest point −€2.54M Oct · still ahead',
+      'Apr €540k M1 €385k −€590k',
+      'Sep — €1.12M incl. €713k orders placed −€2.45M',
+      'Jan ’27 €1.20M M4 · M6 €0k −€695k',
+      'Feb ’27 €1.35M M5 €0k +€655k',
+      'Mar ’27 — €0k +€655k',
     ])
       expect(tx).toContain(s);
     expect(out).toContain('d="M467.2 91.9 L513.3 88.5 L559.5 69.6');

@@ -13,7 +13,7 @@
 // - the received quantity is driven by goods receipts (Deliveries): no "Receive" action here (08 OQ10).
 import { screenHref } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
-import { money } from '@/lib/format';
+import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import type { PartStatus, PoOrigin, PoStatus } from '@/server/db/codes';
 import { isoOfWhen, type ApprovalItem } from './approvals';
 
@@ -62,9 +62,13 @@ export interface PoInput {
   neededFor: PoNeedInput | null;
   /** Sage X3 order reference once pushed. */
   x3Ref: string | null;
+  /** C-9 (R-075): currency of the line prices (EUR when absent). */
+  currency?: CurrencyCode;
+  /** Euros per unit of `currency` at the project's budget rate (1 when absent). */
+  eurRate?: number;
 }
 
-/** Order value, € (poValue 4309: Σ ordered qty × unit price of the line). */
+/** Order value in the order's currency (poValue 4309: Σ ordered qty × unit price of the line) — € unless stated (C-9). */
 export const poValueEur = (o: Pick<PoInput, 'lines'>) => o.lines.reduce((a, l) => a + l.unitPriceEur * l.orderedQty, 0);
 /** Units ordered (poQty). */
 export const poUnits = (o: Pick<PoInput, 'lines'>) => o.lines.reduce((a, l) => a + l.orderedQty, 0);
@@ -81,7 +85,7 @@ export interface PoKpis {
   /** Not Received / Cancelled. */
   open: number;
   total: number;
-  /** Σ value of the orders neither Cancelled nor Draft, €. */
+  /** Σ value of the orders neither Cancelled nor Draft, € — consolidated at the project's budget rate (C-9). */
   committedEur: number;
   /** Open orders whose activity has started. */
   late: number;
@@ -93,7 +97,7 @@ export function poKpis(orders: readonly PoInput[]): PoKpis {
   return {
     open: orders.filter((o) => isOpenPo(o.status)).length,
     total: orders.length,
-    committedEur: orders.filter((o) => isCommittedPo(o.status)).reduce((a, o) => a + poValueEur(o), 0),
+    committedEur: orders.filter((o) => isCommittedPo(o.status)).reduce((a, o) => a + poValueEur(o) * (o.eurRate ?? 1), 0),
     late: orders.filter(isLatePo).length,
     awaitingApproval: orders.filter((o) => o.status === 'awaiting_approval').length,
   };
@@ -172,7 +176,9 @@ export const mockX3OrderRef = (number: string) => `X3-${number}`;
 export interface PoQueueEntry {
   number: string;
   supplier: string;
+  /** Value in `currency` (€ unless stated, C-9). */
   valueEur: number;
+  currency?: CurrencyCode;
   refs: string[];
   /** ISO order date. */
   orderedOn: string | null;
@@ -194,7 +200,7 @@ export function poApprovalItems(queue: readonly PoQueueEntry[], code: string, la
     return {
       kind: 'po',
       id: o.number,
-      title: `${o.supplier} · ${money(o.valueEur / 1000, lang)}`,
+      title: `${o.supplier} · ${moneyIn(o.valueEur / 1000, o.currency ?? BASE_CURRENCY, lang)}`,
       sub: o.refs.join(', '),
       who: o.submittedBy ?? '',
       when,

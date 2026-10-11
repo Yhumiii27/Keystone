@@ -17,6 +17,7 @@ import { CR_TYPE_LABEL } from '@/domain/change-control';
 import { scheduleMilestone, scheduleProgression, type MilestoneInput } from '@/domain/schedule-gantt';
 import type { Lang } from '@/i18n/translate';
 import { money } from '@/lib/format';
+import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import {
   CLOSURE_NEXT, DOCUMENT_STATUS_TAG, LESSON_APPLIES_TO, STATUS_ISO, closureItemStatus, clientIssueStatus, fmtDOfIso, lessonStatus,
   lessonTheme, reportPeriod,
@@ -439,17 +440,24 @@ export function paymentOf(i: Pick<InvoiceLike, 'status' | 'dueOn'>): PaymentText
   return i.dueOn ? { kind: 'due', date: fmtDOfIso(i.dueOn) } : { kind: 'text', text: '—' };
 }
 
-export const invoiceRow = (i: InvoiceLike, lang: Lang): InvoiceRow => ({
-  no: i.invoiceNumber ?? '—', name: i.milestone, amount: money(i.amountKeur, lang), status: INVOICE_LOOK[i.status].label, tone: INVOICE_LOOK[i.status].tone,
+/** An invoice row in the invoice's currency (C-9: the contract's; EUR by default). */
+export const invoiceRow = (i: InvoiceLike, lang: Lang, currency: CurrencyCode = BASE_CURRENCY): InvoiceRow => ({
+  no: i.invoiceNumber ?? '—', name: i.milestone, amount: moneyIn(i.amountKeur, currency, lang), status: INVOICE_LOOK[i.status].label, tone: INVOICE_LOOK[i.status].tone,
   payment: paymentOf(i),
 });
 
-/** "Contract summary" rows (`cpInvKpis`): value, invoiced, paid, approved changes (signed, "—" when none). */
-export function contractSummary(c: { valueKeur: number; invoicedKeur: number; paidKeur: number; approvedChangesKeur: number }, lang: Lang): { k: string; v: string }[] {
+/**
+ * "Contract summary" rows (`cpInvKpis`): value, invoiced, paid — in the contract's currency (C-9) — and approved changes (k€,
+ * signed, "—" when none).
+ */
+export function contractSummary(
+  c: { valueKeur: number; invoicedKeur: number; paidKeur: number; approvedChangesKeur: number; currency?: CurrencyCode }, lang: Lang,
+): { k: string; v: string }[] {
+  const cur = c.currency ?? BASE_CURRENCY;
   return [
-    { k: 'Contract value', v: money(c.valueKeur, lang) },
-    { k: 'Invoiced', v: money(c.invoicedKeur, lang) },
-    { k: 'Paid', v: money(c.paidKeur, lang) },
+    { k: 'Contract value', v: moneyIn(c.valueKeur, cur, lang) },
+    { k: 'Invoiced', v: moneyIn(c.invoicedKeur, cur, lang) },
+    { k: 'Paid', v: moneyIn(c.paidKeur, cur, lang) },
     { k: 'Approved changes', v: c.approvedChangesKeur ? money(c.approvedChangesKeur, lang, { signed: true }) : '—' },
   ];
 }

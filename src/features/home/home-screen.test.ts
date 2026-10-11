@@ -28,7 +28,7 @@ describe('Home screen render', () => {
     expect(out).toContain('Directrice de portefeuille · vendredi 25 sept. 2026');
     expect(out).toContain('--kpi-min:170px');
     expect(out.match(/class="card elev-sm [^"]*tile/g)).toHaveLength(4);
-    expect(out).toContain('13,23 M€');
+    expect(out).toContain('13,63 M€'); // A-3 (R-129): the projects in execution (prototype 13,23 M€)
     expect(out).toContain('--kpi-color:var(--color-accent-300)');
     expect(out).toContain('Points d’attention');
     expect(out).toContain('Approbations sur le portefeuille');

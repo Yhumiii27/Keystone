@@ -3,58 +3,112 @@
 // mutation the screens offer (src/features/contract/contract.golden.json). Here the domain figures are rebuilt from
 // CONTRACTS (3713) with the same mutations applied, and compared number by number; the rendered strings are
 // compared by src/features/contract/model.test.ts.
+//
+// Delivery 7 deviations, each from an owner decision:
+// - NEW-D3-3 (R-079): an amendment has its own milestones and never re-prices the existing ones. The base contract's
+//   milestones are priced on the base amount (the prototype used base + signed amendments: M1 €552k → €540k), an invoiced
+//   milestone keeps its invoice's amount, and the seed's Amendment 1 carries milestone M6 (€120k). The amounts below come from
+//   `expectedFigures` (the rule restated); everything else — ids, statuses, late flags, invoices, counts — is the prototype's.
+// - C-6 (R-076): due dates follow the contract's payment rule (the seed's "Net 45 days" = net 45: unchanged dates).
 import { describe, expect, it } from 'vitest';
-import { G, SCENARIOS, addMs, invoice, ms, seedInput } from '@/features/contract/test-fixtures';
+import { G, M6, SCENARIOS, addMs, expectedFigures, invoiceOf, ms, seedInput } from '@/features/contract/test-fixtures';
 import { money } from '@/lib/format';
 import {
-  contractFigures, contractValueSub, decimalText, liquidatedDamagesKpi, nextInvoiceNo, outstandingSub, overdueSub, parseAmendmentForm, parseBondForm,
-  parseDateInput, parseInvoiceForm, parseMilestoneForm, parseNumber, parseSheetField, pendingSub, progressCss, progressText, shareTotalText,
+  canSendAmendment, canSignAmendment, contractFigures, contractValueSub, decimalText, liquidatedDamagesKpi, nextInvoiceNo, outstandingSub, overdueSub,
+  parseAmendmentForm, parseBondForm, parseDateInput, parseInvoiceForm, parseMilestoneForm, parseNumber, parseReleaseBondForm, parseSheetField,
+  parseSignAmendmentForm, pendingSub, plannedMilestoneAmount, progressCss, progressText, shareTotalText,
 } from './contract';
 
 const en = (k: number) => money(k, 'en');
+/** The base contract's milestones (the prototype's list); the golden's "M6" of the add-milestone scenarios is M7 here (M6 = Amendment 1's). */
+const base = <T extends { amendment?: number | null }>(xs: readonly T[]) => xs.filter((m) => m.amendment == null);
+const gid = (name: string, id: string) => (name.startsWith('milestone') && id === 'M6' ? 'M7' : id);
 
 describe('contract figures vs the prototype (CONTRACTS HLT-026 + the screens’ mutations)', () => {
   for (const [name, mutate] of Object.entries(SCENARIOS)) {
     it(name, () => {
-      const fig = contractFigures(mutate(seedInput()));
+      const input = mutate(seedInput());
+      const fig = contractFigures(input);
+      const x = expectedFigures(input);
       const c = G.scenarios[`${name}|contract|en`];
       const b = G.scenarios[`${name}|billing|en`];
-      // Contract: value, amendments, guarantees, LD, schedule.
+      // Contract: value, amendments, guarantees (the prototype's: base + signed amendments).
       expect([en(fig.valueKeur), String(fig.pending.count), `${fig.bonds.live} / ${fig.bonds.total}`]).toEqual([c.kpis[0].value, c.kpis[1].value, c.kpis[2].value]);
-      expect(fig.milestones.map((m) => [m.number, en(m.amountKeur), m.late])).toEqual(c.milestones.map((m: { id: string; amtText: string; late: boolean }) => [m.id, m.amtText, m.late]));
-      expect([shareTotalText(fig.sharePct, 'en'), en(fig.scheduleAmountKeur), fig.shareOk]).toEqual([c.schedTotal.pct, c.schedTotal.amt, c.schedTotal.hint === '']);
-      // Billing: receivables, retention, progress, invoices (calendar-day due dates), next / late.
-      expect([en(fig.invoicedKeur), en(fig.paidKeur), en(fig.outstandingKeur), en(fig.overdueKeur)]).toEqual(b.kpis.slice(0, 4).map((k: { value: string }) => k.value));
-      expect(fig.next?.number ?? '—').toBe(b.kpis[4].value);
-      expect([en(fig.retentionKeur), progressCss(fig.paidKeur, fig.valueKeur), progressCss(fig.outstandingKeur, fig.valueKeur)]).toEqual([b.bill.retention, b.bill.paidW, b.bill.invW]);
-      expect(fig.invoices.map((i) => [i.number, i.milestone, en(i.amountKeur), i.status, i.overdue, i.canPay])).toEqual(
-        b.invoices.map((i: { no: string; msId: string; amtText: string; status: string; overdue: boolean; canPay: boolean }) => [
-          i.no, i.msId, i.amtText, i.status.toLowerCase().replace(' ', '_'), i.overdue, i.canPay,
-        ]),
+      expect(fig.valueKeur).toBe(x.value);
+      // Schedule: the prototype's base milestones, ids and late flags; amounts by NEW-D3-3.
+      expect(base(fig.milestones).map((m) => [m.number, m.late])).toEqual(c.milestones.map((m: { id: string; late: boolean }) => [gid(name, m.id), m.late]));
+      expect(fig.milestones.map((m) => m.amountKeur)).toEqual(input.milestones.map(x.amount));
+      expect([shareTotalText(fig.sharePct, 'en'), fig.groups[0].shareOk]).toEqual([c.schedTotal.pct, c.schedTotal.hint === '']);
+      expect(fig.scheduleAmountKeur).toBe(x.schedule);
+      // Billing: receivables, retention, progress, invoices (due dates by the rule), next / late.
+      expect([fig.invoicedKeur, fig.paidKeur, fig.outstandingKeur]).toEqual([x.invoiced, x.paid, x.invoiced - x.paid]);
+      expect(fig.overdueKeur).toBe(fig.invoices.filter((i) => i.overdue).reduce((s, i) => s + i.amountKeur, 0));
+      expect(fig.overdueCount).toBe(b.invoices.filter((i: { overdue: boolean }) => i.overdue).length);
+      // Next to invoice: the prototype's among the base milestones (M6, Amendment 1's, comes after them — NEW-D3-3).
+      expect(base(fig.toInvoice)[0]?.number ?? '—').toBe(gid(name, b.kpis[4].value));
+      expect(fig.next?.number ?? null).toBe(x.next?.number ?? null);
+      expect([en(fig.retentionKeur), progressCss(fig.paidKeur, fig.valueKeur)]).toEqual([en(Math.round((x.paid * input.sheet.retentionPct) / 100)), progressCss(x.paid, x.value)]);
+      expect(fig.invoices.map((i) => [i.number, i.milestone, i.status, i.overdue, i.canPay])).toEqual(
+        b.invoices.map((i: { no: string; msId: string; status: string; overdue: boolean; canPay: boolean }) => [i.no, i.msId, i.status.toLowerCase().replace(' ', '_'), i.overdue, i.canPay]),
       );
-      expect(fig.toInvoice.map((m) => [m.number, m.late])).toEqual(b.toInvoice.map((m: { id: string; late: boolean }) => [m.id, m.late]));
+      expect(base(fig.toInvoice).map((m) => [m.number, m.late])).toEqual(b.toInvoice.map((m: { id: string; late: boolean }) => [gid(name, m.id), m.late]));
       expect(String(fig.lateCount || '')).toBe(b.badge);
     });
   }
 
-  it('invoice due dates: issued + terms in calendar days (the prototype’s ms arithmetic shows 9 Nov in Paris, 04 Q12)', () => {
+  it('NEW-D3-3 on the seed: base milestones on the base amount, Amendment 1’s own M6, invoiced amounts frozen', () => {
+    const fig = contractFigures(seedInput());
+    // Prototype: M1–M5 = 552 / 1 104 / 1 380 / 1 104 / 1 380 (value × share, Amendment 1 spread over every milestone).
+    expect(fig.milestones.map((m) => [m.number, m.amountKeur, m.billable])).toEqual([
+      ['M1', 540, true], ['M2', 1080, true], ['M3', 1350, true], ['M4', 1080, true], ['M5', 1350, true], ['M6', 120, true],
+    ]);
+    expect([fig.valueKeur, fig.scheduleAmountKeur, fig.invoicedKeur, fig.paidKeur, fig.outstandingKeur]).toEqual([5520, 5520, 2970, 1620, 1350]);
+    expect(fig.groups.map((g) => [g.amendment, g.amountKeur, g.sharePct, g.shareOk, g.billable])).toEqual([[null, 5400, 100, true, true], [0, 120, 100, true, true]]);
+    expect(fig.toInvoice.map((m) => m.number)).toEqual(['M4', 'M5', 'M6']);
+    // Raising the base amount re-prices only the planned base milestones; invoices keep their amounts.
+    const raised = contractFigures({ ...seedInput(), sheet: { ...seedInput().sheet, baseAmountKeur: 6000 } });
+    expect(raised.milestones.map((m) => m.amountKeur)).toEqual([540, 1080, 1350, 1200, 1500, 120]);
+    // An amendment awaiting signature: its milestones are listed but not billable (no value, not in "To invoice").
+    const pending = contractFigures({ ...seedInput(), milestones: [...seedInput().milestones, { ...M6, number: 'M7', sharePct: 50, amendment: 1 }] });
+    expect(pending.milestones.at(-1)).toMatchObject({ number: 'M7', amountKeur: 130, billable: false, late: false });
+    expect([pending.scheduleAmountKeur, pending.toInvoice.map((m) => m.number)]).toEqual([5520, ['M4', 'M5', 'M6']]);
+    expect(pending.groups.map((g) => [g.amendment, g.billable, g.shareOk])).toEqual([[null, true, true], [0, true, true], [1, false, false]]);
+    // A signed amendment without milestones leaves its amount unscheduled (hint).
+    const unscheduled = contractFigures({ ...seedInput(), milestones: base(seedInput().milestones) });
+    expect([unscheduled.scheduleAmountKeur, unscheduled.shareOk, unscheduled.groups[1]]).toMatchObject([5400, false, { amendment: 0, shareOk: false, milestones: [] }]);
+    expect(plannedMilestoneAmount(260, 50)).toBe(130);
+  });
+
+  it('invoice due dates by the payment rule (C-6): net, N days end of month, end of month + N', () => {
     const fig = contractFigures(seedInput());
     expect(fig.invoices.map((i) => [i.issuedOn, i.dueOn])).toEqual([['2026-03-12', '2026-04-26'], ['2026-07-15', '2026-08-29'], ['2026-09-26', '2026-11-10']]);
     // Across the end of DST (25 Oct 2026) and the year end.
     const all = contractFigures(SCENARIOS['issue-all'](seedInput()));
     expect(all.invoices.slice(3).map((i) => i.dueOn)).toEqual(['2026-11-14', '2027-02-28']);
     expect(contractFigures(SCENARIOS['sheet-terms60'](seedInput())).invoices.map((i) => i.dueOn)).toEqual(['2026-05-11', '2026-09-13', '2026-11-25']);
+    const eom = contractFigures({ ...seedInput(), sheet: { ...seedInput().sheet, paymentRule: 'days_eom', paymentDays: 45 } });
+    expect(eom.invoices.map((i) => i.dueOn)).toEqual(['2026-04-30', '2026-08-31', '2026-11-30']);
+    const eomPlus = contractFigures({ ...seedInput(), sheet: { ...seedInput().sheet, paymentRule: 'eom_days', paymentDays: 30 } });
+    expect(eomPlus.invoices.map((i) => i.dueOn)).toEqual(['2026-04-30', '2026-08-30', '2026-10-30']);
     expect(G.dst).toEqual({ tz: 'UTC', m3Due: '10 Nov' });
   });
 
   it('late flag = planned and contractual date before PG_NOW (30 Sep is already late, 1 Oct is not); overdue = due before 30 Sep', () => {
-    const late = (due: string) => contractFigures(addMs(seedInput(), { number: 'M6', label: 'x', sharePct: 1, contractualDue: due, condition: null })).milestones[5].late;
+    const late = (due: string) => contractFigures(addMs(seedInput(), { number: 'M7', label: 'x', sharePct: 1, contractualDue: due, condition: null })).milestones.find((m) => m.number === 'M7')!.late;
     expect([late('2026-09-29'), late('2026-09-30'), late('2026-10-01')]).toEqual([true, true, false]);
-    const over = (issued: string) => contractFigures(ms(seedInput(), 'M4', { status: 'invoiced', invoice: invoice('INV-2026-004', issued) })).invoices[3].overdue;
+    const over = (issued: string) => {
+      const c = seedInput();
+      return contractFigures(ms(c, 'M4', { status: 'invoiced', invoice: invoiceOf(c, 'M4', 'INV-2026-004', issued) })).invoices[3].overdue;
+    };
     expect([over('2026-08-15'), over('2026-08-16'), over('2026-08-17')]).toEqual([true, false, false]); // due 29 Sep · 30 Sep · 1 Oct
   });
-});
 
+  it('signature cycle (R-079): draft → sent for signature → signed', () => {
+    expect(['draft', 'sent_for_signature', 'awaiting_signature', 'signed'].map((s) => [canSendAmendment(s as never), canSignAmendment(s as never)])).toEqual([
+      [true, false], [false, true], [false, true], [false, false],
+    ]);
+  });
+});
 describe('contract texts', () => {
   it('KPI sub-lines with the prototype’s FR branches', () => {
     expect([contractValueSub('€5.40M', 1, 'en'), contractValueSub('5,40 M€', 2, 'fr')]).toEqual(['€5.40M base · 1 signed amendment', '5,40 M€ de base · 2 avenants signés']);
@@ -96,6 +150,18 @@ describe('form parsing', () => {
     expect(parseAmendmentForm({ label: 'x', amt: 'a' })).toEqual({ ok: false, error: 'Enter an amount in k€' });
     expect(parseAmendmentForm({ label: 'x', amt: '1', status: 'Signed' })).toEqual({ ok: false, error: 'Unknown status' });
     expect(parseAmendmentForm({ label: 'x', amt: '1', date: 'tomorrow' })).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
+    // R-079: an amendment registered as signed carries its signature date.
+    expect(parseAmendmentForm({ label: 'x', amt: '1', status: 'signed' })).toEqual({ ok: false, error: 'Enter the signature date of a signed amendment' });
+    expect(parseAmendmentForm({ label: 'x', amt: '1', status: 'sent_for_signature' })).toMatchObject({ ok: true, value: { status: 'sent_for_signature', signedOn: null } });
+  });
+
+  it('Mark signed and Release (R-079)', () => {
+    expect(parseSignAmendmentForm({ date: '30 Sep 2026', doc: ' CTR-HLT-004 ' })).toEqual({ ok: true, value: { signedOn: '2026-09-30', documentRef: 'CTR-HLT-004' } });
+    expect(parseSignAmendmentForm({ date: '1 oct.', doc: '' })).toEqual({ ok: true, value: { signedOn: '2026-10-01', documentRef: null } });
+    expect(parseSignAmendmentForm({ date: '' })).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
+    expect(parseSignAmendmentForm({ date: '1 Oct 2026', doc: 'x'.repeat(61) })).toEqual({ ok: false, error: 'Reference is too long' });
+    expect(parseReleaseBondForm({ date: '12 Sep 2026' })).toEqual({ ok: true, value: { releasedOn: '2026-09-12' } });
+    expect(parseReleaseBondForm({ date: 'soon' })).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
   });
 
   it('AF.bond', () => {
@@ -111,8 +177,12 @@ describe('form parsing', () => {
 
   it('AF.milestone', () => {
     expect(parseMilestoneForm({ label: 'Final acceptance', pct: '2,5', due: '14 janv. 2028', cond: '' })).toEqual({
-      ok: true, value: { label: 'Final acceptance', sharePct: 2.5, contractualDue: '2028-01-14', condition: null },
+      ok: true, value: { label: 'Final acceptance', sharePct: 2.5, contractualDue: '2028-01-14', condition: null, amendment: null },
     });
+    // NEW-D3-3: "Applies to" the base contract or an amendment (its position).
+    expect(parseMilestoneForm({ basis: '1', label: 'Crane upgrade delivered', pct: '100', due: '14 Dec 2026' })).toMatchObject({ ok: true, value: { amendment: 1, sharePct: 100 } });
+    expect(parseMilestoneForm({ basis: 'base', label: 'x', pct: '10', due: '14 Dec 2026' })).toMatchObject({ ok: true, value: { amendment: null } });
+    expect(parseMilestoneForm({ basis: 'Amendment 1', label: 'x', pct: '10', due: '14 Dec 2026' })).toEqual({ ok: false, error: 'Choose the base contract or an amendment' });
     expect(parseMilestoneForm({ label: '', pct: '10', due: '1 Jan 2027' })).toEqual({ ok: false, error: 'Milestone is required' });
     expect(['0', '101', 'x'].map((pct) => parseMilestoneForm({ label: 'x', pct, due: '1 Jan 2027' }))).toEqual(
       Array(3).fill({ ok: false, error: 'Enter a share between 0 and 100 %' }),
@@ -143,8 +213,17 @@ describe('form parsing', () => {
     expect(parseSheetField('signed', '')).toEqual({ ok: true, value: { signedOn: null } });
     expect(parseSheetField('signed', 'x')).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
     expect(parseSheetField('ref', ' ')).toEqual({ ok: false, error: 'Reference is required' });
-    expect(parseSheetField('terms', ' Net 60 jours ')).toEqual({ ok: true, value: { paymentTerms: 'Net 60 jours' } });
+    // C-6 (R-076): the payment rule and its days replace the free "Payment terms" text.
+    expect(parseSheetField('rule', 'days_eom')).toEqual({ ok: true, value: { paymentRule: 'days_eom' } });
+    expect(parseSheetField('rule', '45 days end of month')).toEqual({ ok: false, error: 'Unknown payment rule' });
+    expect(parseSheetField('days', ' 60 ')).toEqual({ ok: true, value: { paymentDays: 60 } });
+    expect(['181', '-1', '4.5', 'x', ''].map((d) => parseSheetField('days', d))).toEqual(Array(5).fill({ ok: false, error: 'Enter a number of days between 0 and 180' }));
+    // C-9 (R-075): a currency code (the DAL checks it against the project).
+    expect(parseSheetField('currency', 'USD')).toEqual({ ok: true, value: { currency: 'USD' } });
+    expect(parseSheetField('currency', 'usd')).toEqual({ ok: false, error: 'Unknown currency' });
     expect(parseSheetField('scope', 'x'.repeat(2001))).toEqual({ ok: false, error: 'Text is too long' });
-    expect([parseSheetField('owner', 'x'), parseSheetField('terms', 5)]).toEqual([{ ok: false, error: 'Invalid request' }, { ok: false, error: 'Invalid request' }]);
+    expect([parseSheetField('owner', 'x'), parseSheetField('terms', 'Net 60 days'), parseSheetField('rule', 5)]).toEqual([
+      { ok: false, error: 'Invalid request' }, { ok: false, error: 'Invalid request' }, { ok: false, error: 'Invalid request' },
+    ]);
   });
 });

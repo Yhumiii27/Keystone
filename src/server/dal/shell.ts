@@ -16,6 +16,7 @@ import 'server-only';
 import { and, eq, sql } from 'drizzle-orm';
 import { PERSONA_BY_ROLE } from '@/config/personas';
 import { DEFAULT_PROJECT, canSee, screenHref, type RoleKey, type ScreenId } from '@/config/screens';
+import { fiscalYearLabel } from '@/domain/portfolio';
 import { defaultDepartment } from '@/domain/requests';
 import { dueTodayBadge, workingDayOf } from '@/domain/tasks';
 import { mapCrumbExtra } from '@/domain/worldmap';
@@ -238,13 +239,14 @@ export async function crumbExtraOf(screen: ScreenId, ctx: { role: RoleKey; code:
       return mapCrumbExtra((await getProjectsMap(ctx.zone)).points.length, zl || null);
     case 'projects': {
       const zp = (await listProjects()).filter((p) => inZone(p, ctx.zone));
-      return 'FY2026 · ' + zp.length + ' projects' + zoneCrumb;
+      // R-129: the fiscal year comes from the portfolio data date (was a fixed "FY2026").
+      return fiscalYearLabel() + ' · ' + zp.length + ' projects' + zoneCrumb;
     }
     case 'overview':
     case 'portfolio':
     case 'pfplan':
     case 'cash':
-      return 'FY2026' + zoneCrumb;
+      return fiscalYearLabel() + zoneCrumb;
     case 'myprojects':
       return PERSONA_BY_ROLE[ctx.role].title;
     case 'approvals': {

@@ -5,13 +5,19 @@
 // outside, 04 Q7), that the project has a contract, validates the untrusted input with the domain parsers, writes
 // through the Contract DAL with the viewer as the actor, then revalidates the app (Contract, Billing, Budget › Cash
 // & recovery, Cash flow, the Billing badge all read the same rows).
+// Delivery 7: the amendment signature cycle and the release of a guarantee (R-079), the payment rule and the currency in the
+// sheet (R-076, R-075), and the project's budget rate — the portfolio director only (C-9).
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
-import { parseAmendmentForm, parseBondForm, parseInvoiceForm, parseMilestoneForm, parseSheetField } from '@/domain/contract';
+import {
+  parseAmendmentForm, parseBondForm, parseInvoiceForm, parseMilestoneForm, parseReleaseBondForm, parseSheetField, parseSignAmendmentForm,
+} from '@/domain/contract';
 import { bondType } from '@/server/db/codes';
 import {
-  addAmendment, addBond, addPaymentMilestone, getContract, issueInvoice, markInvoicePaid, updateContractSheet, type ProjectContract,
+  addAmendment, addBond, addPaymentMilestone, getContract, issueInvoice, markInvoicePaid, releaseBond, sendAmendmentForSignature, signAmendment,
+  updateContractSheet, type ProjectContract,
 } from '@/server/dal/contract';
+import { setProjectBudgetRate } from '@/server/dal/currency';
 import { getProject } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -51,14 +57,28 @@ export async function updateContractFieldAction(code: string, key: string, value
   if ('error' in ok) return ok;
   const parsed = parseSheetField(key, value);
   if (!parsed.ok) return { error: await tr(parsed.error) };
+  // C-9: the currency is EUR or the project currency with a budget rate, and fixed once an invoice is issued.
+  if ('currency' in parsed.value && parsed.value.currency !== ok.contract.sheet.currency) {
+    if (ok.contract.hasInvoices) return { error: await tr('The currency cannot change once an invoice is issued') };
+  }
   try {
     await updateContractSheet(ok.code, parsed.value, ok.actor);
-  } catch {
-    return { error: await tr('The change could not be saved') };
+  } catch (e) {
+    return { error: await tr(knownError(e) ?? 'The change could not be saved') };
   }
   refresh();
   return { ok: true };
 }
+
+/** Messages of the DAL rules worth showing as they are (EN source, translated by `tr`). */
+const KNOWN_ERRORS = [
+  'The currency cannot change once an invoice is issued', 'A document is in euros or in the project currency',
+  'Ask the portfolio director to set the project’s budget rate first', 'Documents of this project are in its currency: it cannot change',
+  'Only a draft amendment can be sent for signature', 'Only an amendment sent for signature can be signed', 'This guarantee is already released',
+  'Unknown amendment', 'Unknown guarantee', 'Enter a budget rate in euros per unit', 'Unknown currency',
+];
+const knownError = (e: unknown) => (e instanceof Error && KNOWN_ERRORS.includes(e.message) ? e.message : null);
+const position = (v: unknown) => (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < 10_000 ? v : null);
 
 /** "Add amendment" → "Register amendment" (AF.amendment): toast "{subject} · Amendment registered". */
 export async function addAmendmentAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
@@ -98,10 +118,12 @@ export async function addPaymentMilestoneAction(code: string, values: Record<str
   if ('error' in ok) return ok;
   const parsed = parseMilestoneForm(strings(values));
   if (!parsed.ok) return { error: await tr(parsed.error) };
+  // NEW-D3-3: a milestone of an amendment of this contract.
+  if (parsed.value.amendment != null && !ok.contract.amendments.some((a) => a.position === parsed.value.amendment)) return { error: await tr('Unknown amendment') };
   try {
     await addPaymentMilestone(ok.code, parsed.value, ok.actor);
-  } catch {
-    return { error: await tr('The change could not be saved') };
+  } catch (e) {
+    return { error: await tr(knownError(e) ?? 'The change could not be saved') };
   }
   refresh();
   return { toast: await tr(RESULT.milestone) };
@@ -114,7 +136,8 @@ export async function addPaymentMilestoneAction(code: string, values: Record<str
 export async function issueInvoiceAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const ok = await editable(code, 'billing');
   if ('error' in ok) return ok;
-  const planned = ok.contract.milestones.filter((m) => m.status === 'planned').map((m) => m.number);
+  // Planned milestones of the base contract and of the signed amendments (NEW-D3-3: an unsigned amendment's are not billable).
+  const planned = ok.contract.milestones.filter((m) => m.status === 'planned' && m.billable).map((m) => m.number);
   const parsed = parseInvoiceForm(strings(values), planned);
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
@@ -141,6 +164,91 @@ export async function markInvoicePaidAction(code: string, milestone: string): Pr
     await markInvoicePaid(ok.code, milestone, ok.actor);
   } catch {
     return { error: await tr('The change could not be saved') };
+  }
+  refresh();
+  return { ok: true };
+}
+
+/** "Send for signature" (R-079): a draft amendment goes to the client for signature; toast "{label} · Sent for signature". */
+export async function sendAmendmentAction(code: string, pos: number): Promise<{ toast: string } | { error: string }> {
+  const ok = await editable(code, 'contract');
+  if ('error' in ok) return ok;
+  const p = position(pos);
+  const a = p == null ? null : ok.contract.amendments.find((x) => x.position === p);
+  if (!a) return { error: await tr('Unknown amendment') };
+  if (!a.canSend) return { error: await tr('Only a draft amendment can be sent for signature') };
+  let label: string;
+  try {
+    label = await sendAmendmentForSignature(ok.code, a.position, ok.actor);
+  } catch (e) {
+    return { error: await tr(knownError(e) ?? 'The change could not be saved') };
+  }
+  refresh();
+  const { t } = await getI18n();
+  return { toast: `${label} · ${t(RESULT.sent)}` };
+}
+
+/**
+ * "Mark signed" (R-079): signature date and the signed document's reference; the amendment adds its amount to the contract
+ * value and its own milestones become billable (NEW-D3-3). Toast "{label} · Amendment signed".
+ */
+export async function signAmendmentAction(code: string, pos: number, values: Record<string, string>): Promise<FormDialogResult> {
+  const ok = await editable(code, 'contract');
+  if ('error' in ok) return ok;
+  const p = position(pos);
+  const a = p == null ? null : ok.contract.amendments.find((x) => x.position === p);
+  if (!a) return { error: await tr('Unknown amendment') };
+  if (!a.canSign) return { error: await tr('Only an amendment sent for signature can be signed') };
+  const parsed = parseSignAmendmentForm(strings(values));
+  if (!parsed.ok) return { error: await tr(parsed.error) };
+  let label: string;
+  try {
+    label = await signAmendment(ok.code, a.position, parsed.value, ok.actor);
+  } catch (e) {
+    return { error: await tr(knownError(e) ?? 'The change could not be saved') };
+  }
+  refresh();
+  const { t } = await getI18n();
+  return { toast: `${label} · ${t(RESULT.signed)}` };
+}
+
+/** "Release" a guarantee in force (R-079): release date; toast "{label} · Guarantee released". */
+export async function releaseBondAction(code: string, pos: number, values: Record<string, string>): Promise<FormDialogResult> {
+  const ok = await editable(code, 'contract');
+  if ('error' in ok) return ok;
+  const p = position(pos);
+  const b = p == null ? null : ok.contract.bonds.find((x) => x.position === p);
+  if (!b) return { error: await tr('Unknown guarantee') };
+  if (!b.inForce) return { error: await tr('This guarantee is already released') };
+  const parsed = parseReleaseBondForm(strings(values));
+  if (!parsed.ok) return { error: await tr(parsed.error) };
+  try {
+    await releaseBond(ok.code, b.position, parsed.value.releasedOn, ok.actor);
+  } catch (e) {
+    return { error: await tr(knownError(e) ?? 'The change could not be saved') };
+  }
+  refresh();
+  const { t } = await getI18n();
+  return { toast: `${t(bondType.label(b.type))}${b.issuer ? ` · ${b.issuer}` : ''} · ${t(RESULT.released)}` };
+}
+
+/**
+ * Project currency and budget rate (C-9, R-075): the portfolio director only (the plan's default; Finance has no role yet).
+ * EUR clears the rate; another currency needs a rate in euros per unit. Budget, Cash flow and portfolio finance consolidate
+ * the project's amounts at this rate.
+ */
+export async function setBudgetRateAction(code: string, currency: string, rate: string): Promise<ContractEditResult> {
+  if (typeof code !== 'string' || !code || typeof currency !== 'string' || (rate != null && typeof rate !== 'string')) return { error: await tr('Invalid request') };
+  const project = await getProject(code);
+  if (!project) return { error: await tr('Unknown project') };
+  const ctx = await getProjectContext(project.code, 'contract');
+  if (ctx.viewer.role !== 'director') return { error: await tr('Only the portfolio director sets the budget rate') };
+  // A read-only project (closed, archived) keeps its rate.
+  if (!ctx.canEdit('contract')) return { error: await tr('This contract is read-only for you') };
+  try {
+    await setProjectBudgetRate(project.code, { currency, rate }, ctx.viewer.name);
+  } catch (e) {
+    return { error: await tr(knownError(e) ?? 'The change could not be saved') };
   }
   refresh();
   return { ok: true };

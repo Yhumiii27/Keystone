@@ -22,17 +22,22 @@ describe('portfolio screens render', () => {
     const data = await getPortfolioOverview(null, 'fr');
     const html = renderToStaticMarkup(h(OverviewBody, { data, zoneSelected: false, t: makeT('fr'), lang: 'fr' }));
     const txt = text(html);
+    // Delivery 7: A-3 (R-129) the projects in execution (prototype 13,23 M€ · 56 % · −270 k€); R-130 the alerts computed by
+    // rules (the prototype's fixed "Main-d’œuvre prévue +160 k€").
     for (const s of [
-      'Budget total', '13,23 M€', '6 projets actifs', '56 % du budget dépensé', '−270 k€ vs budget', 'Perf. coût (CPI)', '3 sur 6', '1 hors trajectoire',
+      'Budget total', '13,63 M€', '6 projets actifs', '51 % du budget dépensé', '−338 k€ vs budget', 'Perf. coût (CPI)', '3 sur 6', '1 hors trajectoire',
       'Projets actifs', '6 projets · exercice 2026', 'Dépensé vs acquis', 'Écart',
       '#026 · Extension du terminal Harbor Line', 'R. Aubert · échéance déc. 2026', 'À risque', '5,25 M€', '−450 k€',
-      'Budget dépensé', 'Travail acquis', 'Points d’attention', 'Main-d’œuvre prévue +160 k€', 'Ouvrir le planning', 'Rééquilibrer',
+      'Budget dépensé', 'Travail acquis', 'Points d’attention', 'Aménagement de la Clinique Pasteur Lyon — hors trajectoire',
+      'Prévision 5,25 M€ pour un budget de 4,80 M€ (+450 k€) · CPI 0,91.', '3 personnes au-delà de 110 %',
+      'Ouvrir le planning', 'Ouvrir le budget', 'Rééquilibrer', 'Ouvrir mes approbations',
     ])
       expect(txt).toContain(s);
     expect(html).toContain('href="/projects/HLT-026/schedule"');
     expect(html).toContain('href="/projects/HLT-026/budget"');
     expect(html).toContain('href="/projects/RCF-019/schedule"');
     expect(html).toContain('href="/resources"');
+    expect(html).toContain('href="/my/approvals"');
     expect(txt).not.toContain('Aucun projet dans cette zone');
   });
 

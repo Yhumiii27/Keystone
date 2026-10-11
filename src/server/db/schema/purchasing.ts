@@ -86,6 +86,8 @@ export const purchaseOrders = pgTable('purchase_orders', {
   neededForActivityId: uuid('needed_for_activity_id').references(() => activities.id, { onDelete: 'set null' }),
   /** "Site gate 2 · DAP · Net 30" (drawer "Delivery / terms"). */
   deliveryTerms: text('delivery_terms').notNull(),
+  /** C-9 (R-075): currency of the order (EUR or the project currency); the line prices (`unit_price_eur`) are in it. */
+  currency: text('currency').notNull().default('EUR'),
   createdByPersonId: uuid('created_by_person_id').references(() => persons.id),
   submittedByPersonId: uuid('submitted_by_person_id').references(() => persons.id),
   submittedAt: timestamp('submitted_at', { withTimezone: true }),
@@ -191,8 +193,10 @@ export const supplierInvoices = pgTable('supplier_invoices', {
   poId: uuid('po_id').references(() => purchaseOrders.id, { onDelete: 'set null' }),
   /** Null = no goods receipt yet. */
   receiptId: uuid('receipt_id').references(() => goodsReceipts.id, { onDelete: 'set null' }),
-  /** Amount invoiced, €. */
+  /** Amount invoiced, in `currency` (€ unless stated). */
   amountEur: eur('amount_eur').notNull(),
+  /** C-9 (R-075): currency of the invoice as received from Sage X3 (amounts of this row are in it). */
+  currency: text('currency').notNull().default('EUR'),
   /** Order amount the match compares with (`poAmt`; 0 when no PO). */
   poAmountEur: eur('po_amount_eur').notNull(),
   /** Value of the goods accepted at receipt (`grAmt`). */

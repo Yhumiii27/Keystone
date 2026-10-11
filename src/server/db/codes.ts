@@ -492,6 +492,17 @@ export type AmendmentStatus = 'draft' | 'sent_for_signature' | 'awaiting_signatu
 export const amendmentStatus = codec<AmendmentStatus, string>([
   ['draft', 'Draft'], ['sent_for_signature', 'Sent for signature'], ['awaiting_signature', 'Awaiting signature'], ['signed', 'Signed'],
 ]);
+/** Amendment statuses that wait for the client's signature (R-079: "Mark signed" applies). */
+export const AMENDMENT_AWAITING: readonly AmendmentStatus[] = ['sent_for_signature', 'awaiting_signature'];
+/**
+ * Payment rule of a contract (C-6 answer a, R-076): "N days from invoice date" (due = invoice date + N), "N days end of month"
+ * (invoice date + N, then the end of that month — "45 jours fin de mois") or "End of month + N days" (end of the invoice month,
+ * then + N). Labels in the owner's words.
+ */
+export type PaymentRule = 'net' | 'days_eom' | 'eom_days';
+export const paymentRule = codec<PaymentRule, string>([
+  ['net', 'N days from invoice date'], ['days_eom', 'N days end of month'], ['eom_days', 'End of month + N days'],
+]);
 /** Bond / guarantee types (AF.bond). */
 export type BondType = 'performance' | 'advance_payment' | 'retention' | 'warranty' | 'parent_company';
 export const bondType = codec<BondType, string>([

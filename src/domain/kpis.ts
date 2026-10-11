@@ -12,6 +12,7 @@ import { addDaysIso, daysBetweenIso, dowOfIso, parisParts, STATUS_ISO } from '@/
 import { BUILTIN_CALENDAR_BY_CODE, makeCalendar, type CalendarDef, type WorkCalendar } from './calendar';
 import { DEFAULT_PROJECT_CALENDAR } from './ch4-defaults';
 import { clampHealthCpi } from './health';
+import { paymentDueOn, type PaymentRule } from './payment-terms';
 
 // ── Dates ────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -67,6 +68,16 @@ export function projectEacKeur(p: { budget: number; actual: number; progress: nu
   return p.budget / cpi;
 }
 
+/**
+ * Margin at completion of one project (C-10b, R-132) = round(100 × (contract − EAC) / contract), whole %; null for an internal
+ * project (contract 0) or a project without a billing plan. Contract and EAC in euros (the contract consolidated at the project's
+ * budget rate, C-9). The one margin rule of Prioritisation, Cash flow and the steering status report (it was (contract − budget) /
+ * contract, the budgeted margin).
+ */
+export function projectMarginPct(contractKeur: number | null | undefined, eacKeur: number): number | null {
+  return contractKeur && contractKeur > 0 ? Math.round((100 * (contractKeur - eacKeur)) / contractKeur) : null;
+}
+
 /** Portfolio margin % = round(100 × Σ (contract − EAC) / Σ contract) over the active client projects (contract > 0); null when none. */
 export function portfolioMarginPct(rows: readonly { contractKeur: number; eacKeur: number }[]): number | null {
   const client = rows.filter((r) => r.contractKeur > 0);
@@ -95,10 +106,17 @@ export interface CashMilestoneInput {
 export interface CashProjectInput {
   code: string;
   milestones: readonly CashMilestoneInput[];
-  /** Payment delay of the contract's terms, calendar days. */
+  /** Payment delay of the contract's terms, calendar days (N of the rule). */
   paymentDays: number;
+  /** Payment rule of the contract (C-6, R-076); absent = 'net' (invoice date + `paymentDays`). */
+  paymentRule?: PaymentRule;
   /** Estimate to complete, k€: max(0, EAC − actual cost). */
   etcKeur: number;
+  /**
+   * C-10a (R-133): the planned spend per calendar month — the monthly increments of the PV curve (first day of the month, k€).
+   * The remaining spend is spread along it; absent or exhausted = evenly to the finish.
+   */
+  plannedSpend?: readonly { month: string; keur: number }[];
   /** Planned finish (ISO), null when unknown. */
   finishOn: string | null;
   /** Monthly progress billing: contract value not invoiced yet, billed at each month end with the spend (k€); 0/absent otherwise. */
@@ -116,20 +134,23 @@ export interface CashReceipt {
 }
 
 /**
- * Expected receipts of a project: an invoice is paid on its due date; a dated planned milestone at max(its date, data
- * date) + payment delay; undated planned milestones are spread evenly from the data date to the planned finish, + delay;
- * monthly progress billing invoices the unbilled contract value in equal parts at each month end up to the finish, + delay.
+ * Expected receipts of a project: an invoice is paid on its due date; a dated planned milestone is invoiced at max(its date,
+ * data date) and paid by the contract's payment rule (R-076); undated planned milestones are spread evenly from the data date to
+ * the planned finish, then the rule; monthly progress billing invoices the unbilled contract value in equal parts at each month
+ * end up to the finish, then the rule.
  */
 export function expectedReceipts(p: CashProjectInput, asOf: string): CashReceipt[] {
+  const terms = { rule: p.paymentRule ?? 'net', days: p.paymentDays } as const;
+  const due = (invoicedOn: string) => paymentDueOn(invoicedOn, terms);
   const undated = p.milestones.filter((m) => m.status === 'planned' && !m.dueOn);
   const span = p.finishOn && p.finishOn > asOf ? daysBetweenIso(asOf, p.finishOn) : 0;
   const out: CashReceipt[] = [];
   for (const m of p.milestones) {
     if (m.status === 'paid' || !m.amountKeur) continue;
     let on: string;
-    if (m.status === 'invoiced') on = m.paymentDueOn ?? addDaysIso(asOf, p.paymentDays);
-    else if (m.dueOn) on = addDaysIso(m.dueOn > asOf ? m.dueOn : asOf, p.paymentDays);
-    else on = addDaysIso(addDaysIso(asOf, Math.round(((undated.indexOf(m) + 1) / undated.length) * span)), p.paymentDays);
+    if (m.status === 'invoiced') on = m.paymentDueOn ?? due(asOf);
+    else if (m.dueOn) on = due(m.dueOn > asOf ? m.dueOn : asOf);
+    else on = due(addDaysIso(asOf, Math.round(((undated.indexOf(m) + 1) / undated.length) * span)));
     out.push({ project: p.code, label: m.label, amountKeur: m.amountKeur, on });
   }
   if (p.progressBillingKeur && p.progressBillingKeur > 0) {
@@ -137,7 +158,7 @@ export function expectedReceipts(p: CashProjectInput, asOf: string): CashReceipt
     const months = p.finishOn ? Math.max(1, monthsBetween(first, p.finishOn) + 1) : CASH_WINDOW_MONTHS;
     for (let i = 0; i < months; i++) {
       const month = addMonthsIso(first, i);
-      out.push({ project: p.code, label: MONTHS_EN[+month.slice(5, 7) - 1], amountKeur: p.progressBillingKeur / months, on: addDaysIso(monthEndOf(month), p.paymentDays), progressMonth: month });
+      out.push({ project: p.code, label: MONTHS_EN[+month.slice(5, 7) - 1], amountKeur: p.progressBillingKeur / months, on: due(monthEndOf(month)), progressMonth: month });
     }
   }
   return out;
@@ -156,9 +177,44 @@ export interface CashForecastMonth {
 export const cashWindow = (asOf: string, n = CASH_WINDOW_MONTHS) => Array.from({ length: n }, (_, i) => addMonthsIso(asOf, i + 1));
 
 /**
+ * Remaining spend of a project per window month (C-10a, R-133): the ETC spread along the planned curve — each month from the
+ * window start on gets ETC × its planned spend ÷ the planned spend still to come (the window's share only; months past the
+ * window are outside it). Without a planned curve, or once the curve is spent (a late project), evenly over the months from
+ * the window start to the planned finish month (all in the first month when the finish has passed, over the window when
+ * unknown) — the chapter-4 rule. k€, unrounded.
+ */
+export function remainingSpend(p: Pick<CashProjectInput, 'etcKeur' | 'finishOn' | 'plannedSpend'>, months: readonly string[]): number[] {
+  const n = months.length;
+  const out = months.map(() => 0);
+  if (!(p.etcKeur > 0) || !n) return out;
+  const first = months[0];
+  const ahead = (p.plannedSpend ?? []).filter((x) => x.month >= first && x.keur > 0);
+  const total = ahead.reduce((s, x) => s + x.keur, 0);
+  if (total > 0) {
+    for (const x of ahead) {
+      const i = months.indexOf(monthStartOf(x.month));
+      if (i >= 0) out[i] += (p.etcKeur * x.keur) / total;
+    }
+    return out;
+  }
+  // Months from the window start to the finish month, both included (1 when the finish has passed).
+  const span = p.finishOn ? Math.max(1, monthsBetween(first, p.finishOn) + 1) : n;
+  for (let i = 0; i < Math.min(n, span); i++) out[i] += p.etcKeur / span;
+  return out;
+}
+
+/**
+ * Planned spend per calendar month from a cumulative PV curve (k€) whose index 0 is the month `startMonth` months after
+ * Jan 2026 (the evm_periods / Budget convention): the month's increment PV[i] − PV[i − 1].
+ */
+export function plannedSpendOfPv(pv: readonly number[], startMonth: number): { month: string; keur: number }[] {
+  const base = Math.floor(startMonth);
+  return pv.map((v, i) => ({ month: addMonthsIso('2026-01-01', base + i), keur: v - (i ? pv[i - 1] : 0) }));
+}
+
+/**
  * Cash in of a month = Σ receipts expected in it (overdue ones in the first month, later ones outside the window);
- * cash out = each project's ETC spread evenly over the months from the window start to its planned finish month (the
- * window's share only; all in the first month when the finish has passed, over the window when unknown). k€, rounded.
+ * cash out = each project's remaining spend along its planned curve (`remainingSpend`, C-10a). k€, rounded.
  */
 export function cashForecast(projects: readonly CashProjectInput[], asOf: string, n = CASH_WINDOW_MONTHS): CashForecastMonth[] {
   const months = cashWindow(asOf, n);
@@ -174,11 +230,7 @@ export function cashForecast(projects: readonly CashProjectInput[], asOf: string
       inK[i] += r.amountKeur;
       receipts[i].push(r);
     }
-    if (p.etcKeur > 0) {
-      // Months from the window start to the finish month, both included (1 when the finish has passed).
-      const span = p.finishOn ? Math.max(1, monthsBetween(first, p.finishOn) + 1) : n;
-      for (let i = 0; i < Math.min(n, span); i++) outK[i] += p.etcKeur / span;
-    }
+    remainingSpend(p, months).forEach((v, i) => (outK[i] += v));
   }
   return months.map((month, i) => ({
     month, cashInKeur: Math.round(inK[i]), cashOutKeur: Math.round(outK[i]), receipts: receipts[i].sort((a, b) => a.on.localeCompare(b.on)),

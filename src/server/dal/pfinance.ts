@@ -6,7 +6,7 @@ import { canSeeMargins } from '@/domain/portfolio-finance';
 import { portfolioMarginPct, projectEacKeur } from '@/domain/kpis';
 import type { CapacityInput, CashData, PrioritisationData } from '@/features/pfinance/model';
 import type { ZoneKey } from '@/server/session';
-import { getCashFlow, listBillingPlans } from './cashflow';
+import { getCashFlow, listEurBillingPlans } from './cashflow';
 import { getCapacityWhatIf, getPrioritisation } from './prioritisation';
 import { listProjects, projectLabel, type ProjectRow } from './projects';
 
@@ -19,7 +19,7 @@ export interface PrioritisationScreen extends PrioritisationData {
 
 /** Ranking population, weights and KPI figures for a viewer (role) and zone. */
 export async function getPrioritisationScreen(role: string, zone: ZoneKey | null): Promise<PrioritisationScreen> {
-  const [pf, all, plans] = await Promise.all([getPrioritisation(role, zone), listProjects(), listBillingPlans()]);
+  const [pf, all, plans] = await Promise.all([getPrioritisation(role, zone), listProjects(), listEurBillingPlans()]);
   const see = canSeeMargins(role);
   const order = new Map(all.map((p, i) => [p.code, i]));
   const budget = (ps: ProjectRow[]) => ps.reduce((a, p) => a + p.budget, 0);

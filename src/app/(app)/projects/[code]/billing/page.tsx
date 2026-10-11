@@ -1,7 +1,8 @@
 // Billing & payments — /projects/[code]/billing (docs/spec/04 §4, template 841–869, logic 4890–4903). Receivables
 // KPIs, billing progress and retention, the planned milestones to invoice (late ones flagged) and the invoices (due
-// date = issue date + payment terms in calendar days, Mark paid). Header primary "Issue invoice" (AF `billing`) only
-// while a milestone is Planned, for viewers who may edit billing on this project. Breadcrumb extra = payment terms.
+// date by the contract's payment rule — R-076, Mark paid), in the contract's currency (C-9). Header primary "Issue invoice"
+// (AF `billing`) only while a billable milestone is Planned (NEW-D3-3: an unsigned amendment's are not), for viewers who may
+// edit billing on this project. Breadcrumb extra = the payment terms in words.
 import { EmptyState } from '@/components/app/EmptyState';
 import { PageHeader } from '@/components/app/shell/page-header';
 import { BillingScreen } from '@/features/contract/billing-view';
@@ -37,7 +38,7 @@ export default async function BillingPage({ params }: { params: Promise<{ code: 
 
   return (
     <>
-      <PageHeader screen="billing" projectCode={projectCode} primary={primary} crumbExtra={contract.sheet.paymentTerms} />
+      <PageHeader screen="billing" projectCode={projectCode} primary={primary} crumbExtra={view.terms} />
       <BillingScreen view={view} code={projectCode} canEdit={canEdit} context={context} invoiceForm={invoiceForm} t={t} />
     </>
   );

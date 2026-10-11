@@ -85,32 +85,36 @@ describe('contract & billing writers', () => {
     expect(await issueInvoice('HLT-026', { milestone: 'M4', note: 'Cranes 1–2' }, 'Romain Aubert')).toBe('INV-2026-004');
     let c = (await getContract('HLT-026'))!;
     const inv = c.invoices.find((i) => i.number === 'INV-2026-004')!;
-    expect([inv.issuedText, inv.amountKeur, inv.dueText, inv.statusLabel, inv.note]).toEqual(['30 Sep', 1104, '14 Nov', 'Awaiting payment', 'Cranes 1–2']);
-    expect([c.invoicedKeur, c.nextInvoiceNumber]).toEqual([4140, 'INV-2026-005']);
+    // NEW-D3-3 (R-079): M4 is 20 % of the base amount (€1 080k; the prototype re-priced it on base + signed amendments, 1 104).
+    expect([inv.issuedText, inv.amountKeur, inv.dueText, inv.statusLabel, inv.note]).toEqual(['30 Sep', 1080, '14 Nov', 'Awaiting payment', 'Cranes 1–2']);
+    expect([c.invoicedKeur, c.nextInvoiceNumber]).toEqual([4050, 'INV-2026-005']);
     await expect(issueInvoice('HLT-026', { milestone: 'M4' }, 'Romain Aubert')).rejects.toThrow(/already invoiced/);
     await markInvoicePaid('HLT-026', 'M3', 'Romain Aubert');
     c = (await getContract('HLT-026'))!;
-    expect(c.milestones.map((m) => m.statusLabel)).toEqual(['Paid', 'Paid', 'Paid', 'Invoiced', 'Planned']);
+    expect(c.milestones.map((m) => m.statusLabel)).toEqual(['Paid', 'Paid', 'Paid', 'Invoiced', 'Planned', 'Planned']);
     expect(c.invoices.find((i) => i.milestoneNumber === 'M3')).toMatchObject({ paidText: '30 Sep', status: 'paid' });
-    expect([c.paidKeur, c.retentionKeur]).toEqual([3036, 152]);
-    expect((await listBillingPlans())['HLT-026'].next).toMatchObject({ label: 'M5 Handover', amountKeur: 1380 });
-    expect((await getCashFlow(null)).rows[0].plan.outstandingKeur).toBe(1104);
+    expect([c.paidKeur, c.retentionKeur]).toEqual([2970, 149]);
+    expect((await listBillingPlans())['HLT-026'].next).toMatchObject({ label: 'M5 Handover', amountKeur: 1350 });
+    expect((await getCashFlow(null)).rows[0].plan.outstandingKeur).toBe(1080);
     expect((await listActivity())[0]).toMatchObject({ who: 'Romain Aubert', kind: 'invoice' });
   });
 
-  it('a signed amendment re-prices the milestones; bonds and milestones are appended; sheet edits are validated', async () => {
+  it('a signed amendment re-prices no milestone (NEW-D3-3); bonds and milestones are appended; sheet edits are validated', async () => {
     expect(await addAmendment('HLT-026', { subject: 'Amendment 3 — extra lighting', changeRequestRef: 'CR-007', amountKeur: 80, status: 'signed', signedOn: '2026-09-30' }, 'Romain Aubert'))
       .toBe('Amendment 3 — extra lighting (CR-007)');
     let c = (await getContract('HLT-026'))!;
-    expect([c.valueKeur, c.milestones[4].amountKeur, c.amendments[2].changeRequestLinked, c.amendments[2].dateText]).toEqual([5600, 1400, true, '30 Sep 2026']);
+    // NEW-D3-3: the value rises, M5 stays at 25 % of the base amount (the prototype re-priced it to 1 400).
+    expect([c.valueKeur, c.milestones[4].amountKeur, c.amendments[2].changeRequestLinked, c.amendments[2].dateText]).toEqual([5600, 1350, true, '30 Sep 2026']);
     expect(await addBond('HLT-026', { type: 'warranty', amountKeur: 280, issuer: 'BNP Paribas', validUntil: '2029-01-14' }, 'Romain Aubert')).toBe('Warranty bond · BNP Paribas');
-    expect(await addPaymentMilestone('HLT-026', { label: 'Final acceptance', sharePct: 5, contractualDue: '2028-01-14' }, 'Romain Aubert')).toBe('M6');
+    expect(await addPaymentMilestone('HLT-026', { label: 'Final acceptance', sharePct: 5, contractualDue: '2028-01-14' }, 'Romain Aubert')).toBe('M7');
     c = (await getContract('HLT-026'))!;
     expect([c.bondsInForce.count, c.bondsInForce.total, c.sharePctTotal, c.milestones.at(-1)!.dueText]).toEqual([2, 3, 105, '14 Jan 2028']);
     await updateContractSheet('HLT-026', { paymentTerms: 'Net 60 days', baseAmountKeur: 5500 }, 'Romain Aubert');
     c = (await getContract('HLT-026'))!;
     expect([c.sheet.termsDays, c.valueKeur, c.invoices[0].dueText]).toEqual([60, 5700, '11 May']);
-    expect(await lastAudit()).toMatchObject({ object: 'CTR-HLT-001', change: 'baseAmountKeur: 5400 → 5500 · paymentTerms: Net 45 days → Net 60 days', area: 'Contract' });
+    // C-6 (R-076): a terms text is read into the rule and its days (net 60).
+    expect(await lastAudit()).toMatchObject({ object: 'CTR-HLT-001', change: 'baseAmountKeur: 5400 → 5500 · paymentDays: 45 → 60', area: 'Contract' });
+    expect(c.sheet.paymentTerms).toBe('Net 60 days');
     await expect(updateContractSheet('HLT-026', { retentionPct: 120 }, 'Romain Aubert')).rejects.toThrow();
     await expect(addAmendment('NDC-031', { subject: 'x', amountKeur: 1, status: 'draft' }, 'Romain Aubert')).rejects.toThrow(/No contract/);
   });

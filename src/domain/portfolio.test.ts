@@ -1,12 +1,13 @@
 // Golden values of the Portfolio overview and My projects (docs/spec/03 §2.2 and §4 seed values), computed
 // from the prototype data set exactly as the prototype does.
 import { describe, expect, it } from 'vitest';
+import { makeT } from '@/i18n/translate';
 import { PERSONA_BY_ROLE, CLIENT_ORG } from '@/config/personas';
 import type { RoleKey } from '@/config/screens';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { money } from '@/lib/format';
 import {
-  activeProjectsHint, myProjectsModel, overviewMetrics, portfolioAlerts, portfolioKpis, portfolioTotals, projectIndicators,
+  EXECUTION_STAGES, activeProjectsHint, fiscalYearLabel, inExecution, myProjectsModel, overviewMetrics, portfolioKpis, portfolioTotals, projectIndicators,
   type MyProjectsViewer, type ScheduleSummary,
 } from './portfolio';
 
@@ -72,16 +73,18 @@ describe('Portfolio overview (spec §4)', () => {
     const none = portfolioTotals([]);
     expect(portfolioKpis(none, 'en').map((k) => k.value)).toEqual(['€0k', '€0k', '€0k', '1.00', '1.00', '0 of 0']);
     expect([activeProjectsHint(6), activeProjectsHint(1)]).toEqual(['6 projects · FY2026', '1 project · FY2026']);
+    // R-129: the fiscal year comes from the data date (was a fixed "FY2026").
+    expect([activeProjectsHint(4, '2027-02-26'), fiscalYearLabel('2027-02-26'), fiscalYearLabel()]).toEqual(['4 projects · FY2027', 'FY2027', 'FY2026']);
+    expect([makeT('fr')('6 projects · FY2026'), makeT('fr')(activeProjectsHint(6, '2027-01-05')), makeT('fr')('FY2027 · 17 projects')]).toEqual([
+      '6 projets · exercice 2026', '6 projets · Exercice 2027', 'Exercice 2027 · 17 projets',
+    ]);
   });
 
-  it('lists the four static alerts with money in the current language', () => {
-    expect(portfolioAlerts('en').map((a) => [a.title, a.target])).toEqual([
-      ['Harbor Line — critical path slip', { screen: 'schedule', code: 'HLT-026' }],
-      ['Harbor Line — labor overrun', { screen: 'budget', code: 'HLT-026' }],
-      ['3 people over 115% in October', { screen: 'resources' }],
-      ['Clinique Pasteur Lyon — SPI 0.84', { screen: 'schedule', code: 'RCF-019' }],
+  it('A-3: the population is the execution group, Études → Mise en service', () => {
+    expect([...EXECUTION_STAGES]).toEqual(['etudes', 'approvisionnements', 'fabrication_assemblage', 'fat', 'expedition', 'chantier', 'mise_en_service_sat']);
+    expect(['initiative', 'aps', 'apd', 'etudes', 'mise_en_service_sat', 'garantie', 'clos', 'annule'].map((stage) => inExecution({ stage: stage as never }))).toEqual([
+      false, false, false, true, true, false, false, false,
     ]);
-    expect(portfolioAlerts('fr')[1].detail).toBe('Labor forecast +160 k€ over its line budget; contingency 139% drawn.');
   });
 });
 

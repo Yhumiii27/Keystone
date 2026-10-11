@@ -183,6 +183,13 @@ export interface PaymentMilestone {
   invoiced: string | null;
   /** Payment date ("2 Apr") or null. */
   paid: string | null;
+  /**
+   * Amount (k€) when the contract prices it (NEW-D3-3, R-079: base amount or the amendment's own amount, invoiced amount once
+   * invoiced, consolidated in euros); absent = round(contract value × pct / 100), the prototype's rule.
+   */
+  amount?: number;
+  /** Expected payment date ("10 Nov", "28 Feb 2027") by the contract's payment rule (R-076); absent = issue / due month + terms. */
+  paymentDue?: string | null;
 }
 
 /** Contract value = base amount + signed amendments (`ctrTotal`, logic 4877). */
@@ -284,15 +291,17 @@ export function cashRecovery(inp: CashRecoveryInput): CashRecovery {
   const recA = Array<number>(RCN).fill(0);
   const recP = Array<number>(RCN).fill(0);
   const recWhat: string[][] = Array.from({ length: RCN }, () => []);
-  const milestones = inp.milestones.map((m) => ({ ...m, amount: milestoneAmount(inp.contractTotal, m.pct) }));
+  const milestones = inp.milestones.map((m) => ({ ...m, amount: m.amount ?? milestoneAmount(inp.contractTotal, m.pct) }));
   for (const m of milestones) {
     if (m.status === 'paid') {
       const i = Math.min(monthAt(m.paid) ?? todayM, todayM);
       recA[i] += m.amount;
       recWhat[i].push(m.id);
     } else {
+      // R-076: the payment date of the contract's rule when known, else the prototype's month lag.
+      const payM = m.paymentDue ? monthAt(m.paymentDue) : null;
       const base = m.status === 'invoiced' ? monthAt(m.invoiced) : monthAt(m.due);
-      let i = (base ?? todayM) + termsM;
+      let i = payM ?? (base ?? todayM) + termsM;
       if (i <= todayM) i = todayM + 1;
       if (i < RCN) {
         recP[i] += m.amount;

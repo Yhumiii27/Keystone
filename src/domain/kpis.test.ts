@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import {
   addMonthsIso, averageResponseDays, cashForecast, cashWindow, closedInQuarter, crewSize, demandPerMeur, departmentCapacity,
   dueWithinDays, ecoReleaseDate, eventsOnDay, expectedReceipts, finishOfMonthText, latestVaultSync, leadingCount, loggedInWeek, lowestCumulativePoint,
-  monthsBetween, nextWeeksLoad, onTimeDeliveryPct, plannedManDays, portfolioMarginPct, projectEacKeur, projectValueKeur, quarterKey, releasedInMonth,
+  monthsBetween, nextWeeksLoad, onTimeDeliveryPct, plannedManDays, plannedSpendOfPv, portfolioMarginPct, projectEacKeur, projectMarginPct, projectValueKeur, quarterKey,
+  releasedInMonth, remainingSpend,
   rfqAverageCycleDays, rfqSavingsKeur, standardCalendar, vigieIncidentCount, weekHoursOf, weekMondayOf, type CashProjectInput,
 } from './kpis';
 
@@ -91,6 +92,51 @@ describe('cash forecast (03 OQ7)', () => {
     expect(m.every((x) => x.cashInKeur === 0)).toBe(true);
     expect(cashForecast([{ code: 'Y', paymentDays: 30, etcKeur: 60, finishOn: null, milestones: [] }], AS_OF).map((x) => x.cashOutKeur)).toEqual([10, 10, 10, 10, 10, 10]);
     expect(lowestCumulativePoint([])).toBeNull();
+  });
+});
+
+describe('delivery 7: payment rule, PV-curve spend, margin at completion (C-6, C-10a, C-10b)', () => {
+  const months = cashWindow(AS_OF);
+  it('C-6 (R-076): receipts follow the contract\'s payment rule', () => {
+    const p: CashProjectInput = {
+      code: 'X', paymentDays: 45, etcKeur: 0, finishOn: null,
+      milestones: [
+        { label: 'Inv', amountKeur: 10, status: 'invoiced', dueOn: '2026-09-26' },
+        { label: 'Plan', amountKeur: 20, status: 'planned', dueOn: '2026-12-14' },
+      ],
+    };
+    // net 45 (default) — invoiced without a stored due date: data date + 45.
+    expect(expectedReceipts(p, AS_OF).map((r) => r.on)).toEqual(['2026-11-09', '2027-01-28']);
+    expect(expectedReceipts({ ...p, paymentRule: 'days_eom' }, AS_OF).map((r) => r.on)).toEqual(['2026-11-30', '2027-01-31']);
+    expect(expectedReceipts({ ...p, paymentRule: 'eom_days' }, AS_OF).map((r) => r.on)).toEqual(['2026-11-14', '2027-02-14']);
+  });
+
+  it('C-10a (R-133): planned spend per month from the cumulative PV curve', () => {
+    // PV index 0 = Jan 2026 + startMonth.
+    expect(plannedSpendOfPv([100, 250, 250, 400], 8)).toEqual([
+      { month: '2026-09-01', keur: 100 }, { month: '2026-10-01', keur: 150 }, { month: '2026-11-01', keur: 0 }, { month: '2026-12-01', keur: 150 },
+    ]);
+    expect(plannedSpendOfPv([], 0)).toEqual([]);
+  });
+
+  it('C-10a (R-133): the ETC follows the remaining planned increments (window part only), else evenly to the finish', () => {
+    const plannedSpend = [
+      { month: '2026-09-01', keur: 500 }, // before the window: ignored
+      { month: '2026-10-01', keur: 100 }, { month: '2026-11-01', keur: 300 }, { month: '2026-12-01', keur: 0 }, { month: '2027-05-01', keur: 100 },
+    ];
+    // Σ ahead = 500 → ETC 1 000 × 100 / 500, × 300 / 500; May ’27 (200) is after the window.
+    expect(remainingSpend({ etcKeur: 1000, finishOn: '2027-05-31', plannedSpend }, months)).toEqual([200, 600, 0, 0, 0, 0]);
+    // Curve exhausted (all planned before the window) → the chapter-4 even spread to the finish month.
+    expect(remainingSpend({ etcKeur: 90, finishOn: '2026-12-31', plannedSpend: [{ month: '2026-08-01', keur: 50 }] }, months)).toEqual([30, 30, 30, 0, 0, 0]);
+    expect(remainingSpend({ etcKeur: 0, finishOn: '2026-12-31', plannedSpend }, months)).toEqual([0, 0, 0, 0, 0, 0]);
+    expect(remainingSpend({ etcKeur: 10, finishOn: null }, [])).toEqual([]);
+    // cashForecast uses it.
+    const f = cashForecast([{ code: 'Z', paymentDays: 30, etcKeur: 1000, finishOn: '2027-05-31', plannedSpend, milestones: [] }], AS_OF);
+    expect(f.map((m) => m.cashOutKeur)).toEqual([200, 600, 0, 0, 0, 0]);
+  });
+
+  it('C-10b (R-132): margin at completion = (contract − EAC) / contract', () => {
+    expect([projectMarginPct(5520, 5250), projectMarginPct(1000, 1100), projectMarginPct(0, 100), projectMarginPct(1000, 1000)]).toEqual([5, -10, null, 0]);
   });
 });
 
