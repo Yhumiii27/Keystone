@@ -37,7 +37,9 @@ export function readConnectorsFile(env: Readonly<Record<string, string | undefin
   try {
     json = JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch (e) {
-    return remember(signature, { status: 'invalid', file, signature, errors: [`The connectors file is not valid JSON (${e instanceof Error ? e.message : String(e)})`] });
+    // The parser's message quotes part of the file: it goes to the server log only, never to the screen.
+    console.error(`[connectors] ${CONNECTORS_FILE_ENV}: ${e instanceof Error ? e.message : String(e)}`);
+    return remember(signature, { status: 'invalid', file, signature, errors: ['The connectors file is not valid JSON'] });
   }
   const r = parseConnectorsFile(json);
   return remember(signature, r.ok ? { status: 'ok', file, signature, entries: r.entries } : { status: 'invalid', file, signature, errors: r.errors });
