@@ -1,6 +1,17 @@
 {
  "generated": "2026-10-10",
+ "updated": "2026-10-11",
  "branch": "main-2a2fep",
+ "history": [
+  {
+   "date": "2026-10-10",
+   "text": "Inventaire initial : 184 points vérifiés dans le code après la livraison 6."
+  },
+  {
+   "date": "2026-10-11",
+   "text": "Livraison 7 lancée : 57 points en cours (plateforme, authentification Entra ID, droits, coûts, contrat et portefeuille, opérations, qualité et chantier, dette technique) — plan dans docs/DELIVERY-7-PLAN.md."
+  }
+ ],
  "items": [
   {
    "id": "R-001",
@@ -24,7 +35,10 @@
     "git ls-tree origin/main drizzle/ contient déjà 0005_sloppy_talos.sql ; git diff origin/main..HEAD -- drizzle : seule 0006_square_lilith.sql est ajoutée",
     "gh api repos/Yhumiii27/Keystone/pulls?state=all : une seule PR, #1 claude/deploiement-coolify → main (ouverte le 10/10/2026, base 95412b5) ; aucune PR pour main-2a2fep",
     "git worktree list : 3 worktrees .claude/worktrees/agent-a0c5…, agent-abbd…, agent-ad73… avec leurs branches worktree-agent-*"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-002",
@@ -47,7 +61,11 @@
     "src/server/db/open.ts:16-25 new PGlite + migrate + seedIfEmpty au premier accès",
     "src/server/db/types.ts DB = PgliteDatabase ; package.json : seul @electric-sql/pglite, aucun pilote pg",
     "PR #1 (Dockerfile Coolify, non fusionnée) garde PGlite dans /data/pg sur un volume, avec un seul conteneur ; la restauration à un instant donné exigée par I-1b suppose PostgreSQL"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-003",
@@ -72,7 +90,10 @@
     "README de la PR : « tant que l’authentification n’est pas branchée, protéger l’accès au niveau de l’hébergeur »",
     "Branche main-2a2fep : next.config.ts sans output 'standalone' ni en-têtes ; aucun Dockerfile ni manifeste de déploiement",
     "desktop/KeystoneApp.swift:11-12 : serveur local 127.0.0.1:3000"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-004",
@@ -94,7 +115,10 @@
     "src/server/storage/files.ts:2-4 fichiers sous <data dir>/files sur disque local",
     "grep -i 'pg_dump|backup|sauvegard' dans scripts/ et src/ : seulement le code RACI « B = backup » (src/server/db/codes.ts:542), aucun script de sauvegarde",
     "PR #1 : volume /data sans aucune sauvegarde prévue ; DECISIONS.md:57 I-1b « Perte ≤ 15 min, reprise ≤ 4 h » (Bloquant production)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-005",
@@ -118,7 +142,10 @@
     "src/server/storage/files.ts:2-12 « stored by Keystone under <data dir>/files », node:fs et createReadStream ; filesRoot() / setFilesRoot() aux lignes 52-60",
     "PR #1 : fichiers dans /data/files sur un volume persistant monté par Coolify",
     "Priorités du responsable : R-8a Plus tard, X-15 et SC-4a Prochaine étape (DECISIONS.md:161,172,234) ; aucune n’est « Bloquant production »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-006",
@@ -148,7 +175,11 @@
     "src/server/dal/plan-trash.ts:190,225 purge() seulement dans trashPlanRow ; deliverOutbox (cursus/connector.ts:160, vigie/eco-connector.ts:90, quality-connector.ts:97) appelé seulement sur sync, requestTravel ou lecture",
     "docs/delivery-6/notes-planning.md §3 : écrivain de projects.data_date non construit, en attente de la réponse S-4",
     "aucun envoi d’e-mail (grep nodemailer/smtp/sendMail vide ; commissioning.ts:113 « no mail connector »)"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-007",
@@ -172,7 +203,11 @@
     "src/server/integrations/vigie/eco-connector.ts:58-64 et quality-connector.ts:64-70 : vigieFetch sans en-tête d’authentification",
     "docs/DELIVERY-5.md:470 V-3 : l’authentification de l’API Vigie est une question ouverte",
     ".gitignore autorise !.env.example mais le fichier n’existe pas ; variables lues : CURSUS_API_URL/KEY, VIGIE_API_URL, NEXT_PUBLIC_*_URL, KEYSTONE_DATA_DIR"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-008",
@@ -194,7 +229,11 @@
     "déjà en place : X-Content-Type-Options nosniff dans storage/files.ts:321, api/export/[screen]/route.ts:26 et api/interchange/mspdi/[code]/route.ts:44 ; readFormDataCapped (files.ts:289) ; contrôle cross-site dans api/import/route.ts:23-29",
     "aucune limitation de débit (grep ratelimit : seulement le libellé d’erreur Claude, ai/transcripts/claude.ts:57)",
     "src/server/actions/preferences.ts:12-31 : cookies sameSite lax, sans httpOnly ni secure"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-009",
@@ -215,7 +254,11 @@
     "pas de src/instrumentation.ts ; src/app/api ne contient que export, import, interchange, meetings et tasks (pas de /api/health)",
     "déjà en place : src/server/dal/integrations.ts:97-119 listConnectors (pending, failed, lastRunFailed) et plumbingNavBadge « ! » ; connector_sync_runs enregistré par syncConnector (l.175)",
     "src/server/integrations/cursus/connector.ts:185 échec de rafraîchissement seulement en console.warn et recordFailedSync"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-010",
@@ -239,7 +282,11 @@
     "grep FOR UPDATE / advisory / isolation / serializable dans src/server : aucun ; src/server/dal/resources.ts:572 « PGlite serialises transactions »",
     "certaines contraintes uniques existent (ex. change_requests_project_id_number_unique) mais provoquent une erreur, sans nouvel essai ; aucun contrôle de version ou de modification simultanée",
     "temporisations de rafraîchissement dans globalThis : cursus/connector.ts:97, vigie/eco-connector.ts:51, quality-connector.ts:57"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-011",
@@ -266,7 +313,11 @@
     "src/config/screens.ts:146 DEFAULT_PROJECT = 'HLT-026'",
     "src/server/dal/meetings.ts:366-372 plancher 24 pour les comptes rendus ; tâches T- à partir de 2340 (activity-todos.ts:76, requests.ts:385, meetings.ts:419, plan-trash.ts:336)",
     "DECISIONS.md:55 A-15 « Données réelles seulement » (Bloquant production) ; le Dockerfile de la PR #1 supprime .data au build, donc le conteneur charge la démo au premier démarrage"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-012",
@@ -291,7 +342,10 @@
     "src/server/interchange/xer.ts:100 xerProjects existe mais n’est appelé nulle part hors tests",
     "docs/delivery-6/notes-admin-settings.md:39 « Not done : the multi-project XER picker, and re-planning table imports inside the write transaction »",
     "DECISIONS.md:132 S-9b et :211 D-7b, tous deux « Bloquant production »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-013",
@@ -320,7 +374,10 @@
     "écritures datées en dur : dal/tasks.ts:325,350, dal/purchasing.ts:210, dal/contingency.ts:109, dal/claims.ts:153 (NOW_ISO), features/contract/actions.ts:134",
     "60 fichiers non-test référencent ces constantes",
     "déjà en place : projects.data_date (schema/portfolio.ts:200) lu via projectDataDate() dans schedule.ts:166, baselines.ts, kpis.ts:29-32, plan.ts:438 ; notes-planning.md §3 : aucun écrivain (gap 6)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-014",
@@ -346,7 +403,10 @@
     "src/server/dal/risks.ts:173 nextNumber(…'R-', 2, 20) et changes.ts:211 nextNumber(…'CR-', 3, 10) sur toute la table",
     "aucune table ni code number_sequence (grep vide dans src et drizzle)",
     "answers.json Q-7 choice 'a' ; DECISIONS.md:199 (Bloquant production) ; NEW-SYS-1 (DECISIONS.md:64) : deux formats de code projet, #000 et XXX000"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-015",
@@ -370,7 +430,10 @@
     "src/server/dal/notifications.ts:91-118 audience = rôles ; destinataires = users dont le rôle est dans l’audience",
     "src/server/db/schema/organisation.ts:59 users.role unique (un compte par persona)",
     "src/server/db/codes.ts:290 types mention, task, eco, invoice, delivery, quality définis mais jamais produits"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-016",
@@ -392,7 +455,11 @@
     "package.json : scripts lint (eslint) et test (vitest run), pas de Playwright ni de script e2e ; tests/ ne contient que fixtures/ch4",
     "DELIVERY-6.md §1 : lint « --ignore-pattern '.claude/**' when agent worktrees exist » ; scénarios exécutés avec Playwright 1.56 préinstallé, hors dépôt",
     "git worktree list : 3 worktrees d’agents encore présents"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-017",
@@ -413,7 +480,10 @@
     "grep .offset( dans src/server : 0 (aucune pagination)",
     "src/features/docs/actions.ts:41-44 findRecord charge tout le coffre (listVaultDocuments) pour un numéro",
     "src/server/dal/shell.ts:80-95 globalBadges calcule 9 requêtes globales par page, plus les badges projet"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-018",
@@ -438,7 +508,10 @@
     "src/server/actions/preferences.ts:12-31 écrit ces cookies",
     "src/i18n/translate.ts:11 DEFAULT_LANG = 'fr' (déjà en place)",
     "DECISIONS.md:217 X-1 (Plus tard)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-019",
@@ -458,7 +531,10 @@
     "desktop/KeystoneApp.swift:11-12 port 3000, http://127.0.0.1 ; :108 KEYSTONE_DATA_DIR dans ~/Library/Application Support/Keystone",
     "desktop/build-app.sh:5-7 : utilise un serveur déjà lancé sur le port 3000, sinon la build de production locale",
     "desktop/KeystoneApp.swift:10 : Codex pointe vers Keystone via NEXT_PUBLIC_KEYSTONE_URL (port 3000), à mettre à jour avec l’URL hébergée"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-020",
@@ -481,7 +557,11 @@
     "src/server/dal/integrations.ts:27 ADDABLE_SYSTEMS propose encore Lucca et SharePoint (Lucca débranché, SharePoint inutile selon I-3c)",
     "src/features/admin/interchange-actions.ts:148 saveConnectorConfigAction refuse (CONNECTOR_SETTINGS_BY_IT = true, src/domain/ch4-defaults.ts:99) ; updateConnectorConfig gardé pour « le chemin IT » mais sans appelant hors tests",
     "Seules variables d’environnement : src/server/integrations/{vigie,cursus,codex}/config.ts (URL, clé Cursus) ; connectors.enabled seulement en base ; scripts/ ne contient que db-check.ts et des scripts golden"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-021",
@@ -504,7 +584,11 @@
     "src/server/db/seed/settings.ts:45 connecteurs semés depuis PROTO.CONNECTORS (9 lignes dont Codex « OK · 412 records », Outlook « Warning · Token expires in 3 days », SMTP « 9 sent today »)",
     "src/server/dal/integrations.ts:4-6 et syncConnector (~l.140-190) : pour kind 'static', « Sync now » ne fait que dater le passage et recopier lastVolume",
     "src/server/dal/admin-connectors.ts:25 Codex forcé en mode 'mock' mais statut semé conservé ; src/server/dal/documents.ts:601 syncCodexIndex = comptage local"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-022",
@@ -528,7 +612,10 @@
     "src/server/db/schema/portfolio.ts:163-177 projects.number (#026) et analytic_code (HAV004) existent, sans colonne Cursus ni Vigie",
     "src/server/dal/projects.ts:172-194 nextProjectNumber / nextAnalyticCode générés par Keystone ; src/server/dal/projects-register.ts:363 et src/domain/lifecycle.ts:274 allocateProjectIdentity les calcule à la création",
     "aucun écrivain de analyticCode hors création (grep) ; src/server/integrations/vigie/links.ts:66 Vigie a ses propres ids projet ; src/server/db/seed/site.ts:28 cursusChantierId null ; aucune table de correspondance (grep vigieProject/cursusProject/externalCode : rien)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-023",
@@ -554,7 +641,10 @@
     "eco-connector.ts:58-69 vigieFetch sans en-tête d’authentification (seulement content-type/accept) ; config.ts:19-26 mode mock tant que VIGIE_API_URL est vide",
     "src/server/integrations/vigie/links.ts:56-63 sans vigieRef, le lien cherche « q=NCR-029 »",
     "mirror.ts:54-57 et quality-mirror.ts:40-44 prune supprime ECO/NC absentes ; schema/vigie.ts:126 (vigie_eco_progress) et :207 (vigie_ncr_progress) en onDelete cascade ; httpEcoConnector.sync livre l’outbox puis rafraîchit avec prune : une entrée en échec est perdue"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-024",
@@ -578,7 +668,10 @@
     "src/server/integrations/vigie/links.ts:1-38 VIGIE_ECO_PATH '/modifications-techniques', VIGIE_NEW_ECO_PATH '/nouvelle', vigieNewEcoUrl encore marqués OPEN QUESTION V-1 (6 mentions dans src)",
     "src/server/integrations/vigie/eco-connector.ts:31-44 mock sur le miroir semé ; src/server/db/seed/index.ts:39 seedVigie charge les ECO du prototype",
     "DECISIONS.md : NEW-VIGIE-1 choix a « Construire le module ECO de Vigie avant la mise en service » (Bloquant production) ; NEW-D4-1 choix a (Bloquant production)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-025",
@@ -600,7 +693,10 @@
     "src/server/integrations/vigie/links.ts:77-83 vigieReportNcrUrl envoie type, projet, article, activite, titre, lieu, source ; vigieReportIncidentUrl (l.81-84) envoie projet et lieu",
     "src/server/integrations/vigie/links.ts:66-69 vigieNcrListUrl sans paramètre projet",
     "DECISIONS.md V-3b choix a (Plus tard)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-026",
@@ -623,7 +719,10 @@
     "src/server/db/schema/suppliers.ts:19 « derivation OPEN QUESTION SC-6 »",
     "src/server/integrations/vigie/ : seul supplierName sur les NC (types.ts:167), aucun miroir d’évaluation fournisseurs",
     "DECISIONS.md SC-6 choix b « Évaluation faite dans Vigie, affichée dans Keystone » (Plus tard)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-027",
@@ -647,7 +746,10 @@
     "src/server/db/schema/cursus.ts:20-21 « OPEN QUESTION C-3: matricule ↔ Keystone person »",
     "src/server/db/schema/organisation.ts:32-52 persons sans colonne matricule",
     "src/server/integrations/cursus/connector.ts:124-138 recordsOfPayload : nom = celui déjà dans le miroir, sinon le matricule"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-028",
@@ -671,7 +773,10 @@
     "src/server/dal/site.ts:103-108 getSite renvoie null sans fiche (état vide), aucune action de création",
     "src/features/site/actions.ts:125 refus NO_CURSUS_SITE en mode http",
     "src/server/integrations/cursus/connector.ts:185-209 : getGoNoGo, sync, remind, requestTravel seulement ; deliverOutbox (l.161-181) échoue sans chantier lié"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-029",
@@ -694,7 +799,10 @@
     "find src/app/api -name route.ts : seulement export, import, interchange/mspdi, meetings transcript, tasks files — aucune route d’événements entrants",
     "grep heures.validees / absence.validee / demande.decision / verdict.modifie / webhook dans src : aucun traitement (seule mention « Real time (webhooks) » dans schema/settings.ts:51)",
     "BACKLOG.md §1 bis : Cursus émet ces événements vers POST ${KEYSTONE_URL}/events, contrat non défini"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-030",
@@ -723,7 +831,10 @@
     "src/server/dal/tasks.ts:317 logTaskTime, src/features/mywork/actions.ts:121 logTaskTimeAction et task-sheet.tsx:455 : saisie d’heures toujours présente",
     "aucune route API de lecture des tâches pour Cursus ; grep « INT- » dans src : aucun traitement des heures internes",
     "DELIVERY-6.md §9 : « the Cursus timesheet link … wait for the owner’s validation »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-031",
@@ -749,7 +860,10 @@
     "src/features/hr/leave-view.tsx:30-31 « Lucca sync 06:30 » = constante du prototype ; leaveEntries lu seulement par src/server/dal/hr.ts (grep)",
     "src/server/dal/resources.ts (charge et what-if) ne lit pas leave_entries",
     "95 lignes mentionnant Lucca dans 29 fichiers .ts/.tsx hors tests (plus les dictionnaires i18n)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-032",
@@ -773,7 +887,10 @@
     "src/server/integrations/cursus/links.ts:1-4,17-20 paramètre ?chantier= ignoré par Cursus, aucun lien vers un salarié (/collaborateurs)",
     "src/server/integrations/cursus/connector.ts:11-12,159-166 deliverOutbox ignore les relances (kind ≠ travel_request), TODO(cursus) C-2",
     "src/features/site/model.ts:147 remindable = verdict ≠ 'go' : la relance d’un GO avec réserve est déjà proposée côté Keystone (D-6a)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-033",
@@ -805,7 +922,10 @@
     "src/server/dal/documents.ts:543-569 approveDocumentStep signe et diffuse dans l’index local, rien n’est transmis à Codex (P-7b Bloquant production)",
     "src/server/dal/documents.ts:601-611 syncCodexIndex = comptage local ; src/server/db/codes.ts:408 CODEX_TODAY_ISO figé au 2026-09-29",
     "src/features/docs/codex-buttons.tsx:33-39 OpenCodexButton = simple toast ; vault-table.tsx:63 « Download zip needs Codex » ; schema/documents.ts:85-87 codexId / codexUrl jamais alimentés (OPEN QUESTION D-1)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-034",
@@ -839,7 +959,10 @@
     "src/server/db/codes.ts:756 statut 'paid' des factures fournisseurs sans écrivain ; schema/stock.ts:67 x3_sync_runs simulés",
     "fournisseurs semés (seed/catalogue.ts:58) et créés librement à la saisie d’un article (src/server/dal/parts.ts:234) au lieu de la liste Sage X3 (SC-7b Bloquant production)",
     "aucun dossier src/server/integrations/sage ou x3 ; aucun planificateur (pas de cron ni instrumentation dans src/package.json)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-035",
@@ -866,7 +989,10 @@
     "src/features/eco/drawings/pdm-button.tsx:22 et src/features/pid/pid-view.tsx:53 « Open in PDM — coming soon »",
     "src/server/db/schema/plm.ts:102-105 pdmId / previewRef / pdmUrl « unknown until the connector exists, E-7 »",
     "aucun planificateur pour une synchro horaire"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-036",
@@ -890,7 +1016,10 @@
     "src/server/dal/commissioning.ts:113 « The invitation itself is not sent (no mail connector — Outlook, SMTP) »",
     "src/components/app/shell/header-islands.tsx:295 « Also sent by e-mail digest and to the project Teams channel · preferences in Settings » sans envoi ; aucune table de préférences de notification (grep schema)",
     "DECISIONS.md X-6b choix « mail » (Keystone + e-mail), pas « mail_teams » ; aucun planificateur pour le résumé quotidien"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-037",
@@ -915,7 +1044,10 @@
     "src/server/dal/meetings.ts:437-438 recordMinutesRead « Outlook sync, OPEN QUESTION S-11 », sans appelant (grep)",
     "src/server/db/schema/collaboration.ts:44-45 externalCalendarId (identifiant d’événement Outlook) jamais alimenté ; src/features/meetings/model.ts:313 « Synced from Outlook » libellé seul",
     "DECISIONS.md S-11 choix a « D’Outlook vers Keystone » (Plus tard) ; X-6b choix « mail » sans Teams ; ligne « Microsoft Teams · 14 messages today » semée (prototype CONNECTORS)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-038",
@@ -944,7 +1076,11 @@
     "src/proxy.ts et src/middleware.ts absents ; package.json : aucune bibliothèque d’authentification (grep auth/oidc/msal vide)",
     "src/components/app/shell/sidebar.tsx:217-253 sélecteur « View as » toujours affiché",
     "docs/decisions/questions.json I-2a (choix a, Entra ID pour toutes les applications) et I-2b (choix c, pas d’accès client au lancement)"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-039",
@@ -972,7 +1108,11 @@
     "src/server/dal/notifications.ts:54-80 countUnread / markNotificationRead / markAll filtrent par users.role — vérifié",
     "src/server/session.ts:8 préférences (langue, menu, projet, zone) en cookies « until real users/preferences exist in the DB »",
     "docs/spec/00-overview.md §8.12 : rôles multivalués par utilisateur prévus, non implémentés"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-040",
@@ -995,7 +1135,10 @@
     "src/config/screens.ts:14 RoleKey = 8 rôles fixes ; :157-182 ROLE_SCREENS figé ; aucun écran de gestion des utilisateurs ou des rôles dans le registre des 59 écrans",
     "docs/DECISIONS.md : aucune question ne tranche la source des rôles (grep « groupe » / « attribu… rôle » : seul X-8, sans rapport)",
     "docs/spec/00-overview.md §8.12 : autorisation par matrice §7.1 et rôles multivalués, source d’attribution non précisée"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-041",
@@ -1023,7 +1166,11 @@
     "src/features/projects/actions.ts:37-42 mayManageLifecycle = directeur ou CP du projet (L-4b appliqué sans les adjoints) ; src/features/plan/rights.ts:14 canSchedulePlan = directeur ou isMine",
     "src/features/team/ : pas d’éditeur de l’équipe projet (seulement parties prenantes et interfaces)",
     "src/components/app/shell/nav-model.ts:90 PROJECT_EDITABLE : lecture seule par rôle et par écran, pas par membre"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-042",
@@ -1049,7 +1196,11 @@
     "src/server/export/run.ts:56, :64 et page-header.tsx:127 : P-1 appliqué aux exports seulement ; DELIVERY-6.md §8 ligne P-1 le confirme",
     "grep forbidden( dans src : aucun ; refus 403 client limités à transcript-file.ts:24, mywork/task-access.ts:30, api/interchange/mspdi/[code]/route.ts:20",
     "src/server/dal/shell.ts:362-401 searchShell ne filtre pas les projets d’autres organisations pour le client"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-043",
@@ -1074,7 +1225,11 @@
     "src/server/dal/meetings-screen.ts : aucun filtre par rôle ni par type (grep role/internal vide) ; src/server/db/codes.ts:523 meetings.type 'internal' | 'external' disponible",
     "src/features/meetings/transcript-file.ts:24 : le client n’est refusé que sur les projets d’autres organisations, il ouvre les transcriptions de son projet",
     "src/config/screens.ts:164, :174 le client a 'quality', 'meetings', 'itp', 'commissioning'"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-044",
@@ -1101,7 +1256,10 @@
     "src/features/contract/actions.ts:37-45 editable() = ctx.canEdit(screen) ; gate.test.ts:4 « Contract: director, PM, procurement »",
     "src/features/hr/actions.ts:29-34 rateEditor : directeur et tout CP (canSeeRates, src/domain/hr.ts:8-9 RATE_VIEWER_ROLES = director, pm)",
     "docs/DELIVERY-6.md §5 : « Answers for later deliveries (Finance role P-4 / P-12…) » ; P-4 (Autre réponse) ne mentionne que la page Contrat, pas les factures"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-045",
@@ -1123,7 +1281,11 @@
     "src/features/projects/permissions.ts:5 CREATE_PROJECT_ROLES = ['director', 'pm', 'depthead'] — vérifié",
     "src/features/projects/actions.ts:144 createProjectAction s’appuie sur cette liste ; new-project-button.tsx:12 canCreateProject",
     "NewProjectButton rendu sur src/app/(app)/page.tsx, portfolio/overview/page.tsx, portfolio/projects/page.tsx"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-046",
@@ -1148,7 +1310,11 @@
     "Déjà masqué : resources/rates (canSeeRates), src/server/export/run.ts:78 ratesMasked utilisé par export/providers/my.ts:109 et resources.ts:166-218, src/features/resources/whatif-model.ts:36 (« rates stay on the server »)",
     "grep canSeeRates / MASK / mask dans src/features/{orders,procurement,deliveries,stock,bom,plm} : aucun masquage des prix fournisseurs ; seuls pfinance (marges) masque",
     "docs/decisions/questions.json NEW-D2-1 choix a : « Taux et prix masqués pour tous les autres rôles, client compris, à l’écran comme dans les exports »"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-047",
@@ -1177,7 +1343,11 @@
     "src/config/screens.ts:175-177 'docs' ajouté au périmètre de tous les rôles, client compris → le client peut déposer et synchroniser",
     "src/server/db/schema/portfolio.ts:220 project_members existe pour tester l’appartenance à l’équipe",
     "grep NEW-D3-1 dans src : aucune occurrence ; DECISIONS.md:241 = Bloquant production"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-048",
@@ -1200,7 +1370,11 @@
     "src/features/requests/actions.ts:237-245 pendingRequest « any department, 08 OQ19 » sans contrôle du service — vérifié",
     "src/app/(app)/resources/approvals/[dept]/page.tsx:3, :51 canDecide = access.canEdit pour tout service",
     "src/config/screens.ts:159, :162 depthead et quality ont 'approvals' ; departments.headPersonId et r.departmentHead disponibles pour le contrôle"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-049",
@@ -1223,7 +1397,11 @@
     "docs/decisions/questions.json R-9 : réponse b « Selon la hiérarchie et les projets », alors que appliedNote décrit l’option a",
     "src/app/(app)/my/tasks/page.tsx:32-38 canPickPerson(role) sans contrôle de hiérarchie ; src/server/export/providers/my.ts:89 idem",
     "src/server/dal/mywork-data.ts:36-39 listMyWorkPeople renvoie tout le pool ; departments.headPersonId (organisation.ts:21) et project_members disponibles"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-050",
@@ -1246,7 +1424,11 @@
     "src/features/meetings/actions.ts:291-301 sendMinutesAction sans contrôle organisateur / CP — vérifié",
     "src/server/db/schema/collaboration.ts:37-38 organizerPersonId / organizerName déjà stockés",
     "src/config/screens.ts:173-175 member et client ont 'meetings' ; le client est éditeur sur son propre projet"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-051",
@@ -1267,7 +1449,10 @@
     "grep -iE delegat|substitute|deputy|suppléant dans src et drizzle : aucun résultat",
     "src/server/approvals/ (12 files : change-requests, codex-documents, purchase-orders, resource-requests…) : routage par nom ou rôle, sans suppléant",
     "docs/DECISIONS.md:93 P-7d (Plus tard) : suppléant déclaré par l’approbateur pour une période"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-052",
@@ -1289,7 +1474,10 @@
    "evidence": [
     "src/server/dal/shell.ts:362-401 searchShell : commandes, CR, NCR et risques limités à currentCode ; projets et activités de tout le portefeuille sans filtre de droits — vérifié",
     "src/components/app/shell/actions.ts:10-15 searchAction n’appelle pas getViewer et ne transmet pas le lecteur — vérifié"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-053",
@@ -1316,7 +1504,10 @@
     "src/server/db/schema/portfolio.ts:74-108 machine_type_phases (position, nom seul), machine_type_cost_categories, machine_type_itp_systems (nom seul) ; :37-47 stage_deliverable_defs par étape, sans type de machine",
     "src/server/dal/projects-register.ts:314-437 createWizardProject : lots = phases, activités issues de instantiateTemplate, liens FS ; itp_plans inséré avec le seul machineTypeCode, sans inspection",
     "src/server/dal/mtypes.ts:131-176 les seuls éditeurs sont setMachineTypePhases, setMachineTypeItpSystems et setMachineTypeCostCategories (pas d’activités, de durées, de liens ni de livrables)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-054",
@@ -1342,7 +1533,10 @@
     "grep stageDeliverable : aucun usage dans src/server/dal/baselines.ts, ni dans les actions plan/schedule ; setStageDeliverable (lifecycle.ts:161) n’est pas lié aux baselines",
     "src/domain/baseline-policy.ts:19 canSnapshotFreely ne tient compte que des codes, pas de l’étape du projet",
     "src/features/projects/new-project-wizard.tsx:398 « Set BL1 at Planning → Active »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-055",
@@ -1365,7 +1559,11 @@
     "src/server/dal/lifecycle.ts:127 STATUS_ISO = date figée 25 Sep 2026 ; :152 effectiveOn: opts.effectiveOn ?? STATUS_ISO ; :311 le retour arrière décidé par le directeur utilise aussi STATUS_ISO",
     "src/features/projects/actions.ts:49 moveStageAction sans champ date ; projects-register.ts:111-119 moveProjectStage ne transmet pas effectiveOn ; :135 l’avance automatique sur coche de livrable non plus",
     "grep effective dans src/features/projects : aucun champ date (force-dialog.tsx, register.tsx, register-cells.tsx, stage-slider.tsx)"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-056",
@@ -1389,7 +1587,10 @@
     "src/server/db/schema/organisation.ts:103-106 la table cities n’a ni lat ni lng",
     "grep insert/update(projectSites) : seuls le seed et l’assistant écrivent un site, rien ne permet de compléter les coordonnées ensuite",
     "src/domain/worldmap.ts:276 « {n} without location »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-057",
@@ -1412,7 +1613,10 @@
     "src/server/dal/itp.ts:50-55 systemsOf lit machine_type_itp_systems en direct ; :69 getItpPlan et :82-90 templateSystemsOf / listItpSystems (liste « Add inspection ») en dépendent",
     "src/server/db/schema/operations.ts:46-52 itp_plans ne garde que machine_type_code, aucune copie des systèmes",
     "src/server/dal/mtypes.ts:149-150 setMachineTypeItpSystems remplace les lignes du type ; src/domain/itpcom.ts:70-78 groupBySystem garde les inspections des systèmes retirés (pas de perte de données, mais la liste et le décompte du modèle changent)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-058",
@@ -1436,7 +1640,10 @@
     "src/server/db/seed/collaboration.ts:136-144 seule la RACI du prototype (PROTO.RACI) est semée",
     "grep raciCells/raciColumns/raciRows : seule lecture dans src/server/dal/stakeholders.ts:62-65, aucun écrivain ; createWizardProject (projects-register.ts) ne crée aucune RACI",
     "src/server/db/schema/portfolio.ts:220-228 project_members.project_role (défaut 'team') pourrait porter l’affectation rôle → personne"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-059",
@@ -1459,7 +1666,10 @@
     "src/server/dal/stakeholders.ts:92,109 addStakeholder fixe lastContactOn = NOW_ISO ('2026-09-30', src/server/db/codes.ts:406) ; le seul autre export est getStakeholderRegister (aucune mise à jour)",
     "src/features/team/actions.ts:54 n’envoie aucune date de contact",
     "src/domain/team.ts:26 isStaleContact est calculé sur PG_NOW figé ; grep influence/interest/attitude dans src/features et src/domain : aucun affichage"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-060",
@@ -1488,7 +1698,10 @@
     "src/app/(app)/projects/[code]/plan/page.tsx:94,204-205 affiche déjà « Data date · … » à partir de projectDataDate",
     "src/server/dal/trends.ts:125 recordStatusReport date le rapport avec STATUS_ISO ; src/lib/format.ts:69 TODAY = 4, src/server/db/codes.ts:306 STATUS_ISO = '2026-09-25' (horloge figée)",
     "docs/decisions/questions.json S-4 option a : « Les retards, les échéances et l’horodatage suivent l’horloge réelle »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-061",
@@ -1514,7 +1727,11 @@
     "src/features/plan/scheduling-actions.ts:37-43 liens et calendrier d’activité en droit 'edit' (canEditPlan)",
     "src/features/plan/actions.ts:177-184 trashRights et scheduling 'schedule' déjà réservés au CP et au directeur",
     "src/server/dal/tasks.ts:253-259 setTaskProgress ne met pas à jour activities.percent_complete : aucun autre chemin pour qu’un responsable saisisse l’avancement d’une activité"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-062",
@@ -1540,7 +1757,11 @@
     "src/server/db/schema/change.ts : tables change_requests, change_request_steps, change_request_wbs (:63), budget_change_lines, baselines, baseline_activities ; aucune table CR ↔ activité",
     "src/features/changes/forms.ts:56,89 la CR ne porte que wbsCodes et scheduleDays global",
     "DELIVERY-1.md:127 et DELIVERY-2.md:300 citent la note A1250 codée en dur"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-063",
@@ -1564,7 +1785,10 @@
     "src/server/dal/changes.ts:306-312 l’approbation rend la référence courante (snapshotIntoBaseline makeCurrent, ou superseded puis current) quel que soit son numéro",
     "src/features/schedule/actions.ts:37-45 le formulaire Re-baseline reste ouvert après BL1 et exige seulement une CR ouverte citée dans le texte",
     "DELIVERY-6.md:356 et :368 (§8) listent ces deux questions S-3"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-064",
@@ -1588,7 +1812,10 @@
     "src/server/dal/plan-trash.ts:190-199 purge() appelée seulement depuis trashPlanRow (:225) ; aucune tâche planifiée",
     "src/server/dal/plan-trash.ts:297+ restorePlanTrash réinsère avec la position d’origine, sans renumérotation (notes-planning.md §3 « Positions after restore »)",
     "src/features/plan/actions.ts:177-184 suppression et restauration réservées à canSchedulePlan (CP et directeur)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-065",
@@ -1612,7 +1839,10 @@
     "src/server/dal/calendars.ts:30-36,60-63 settingsHolidayDates (liste Paramètres 'holidays') est déjà appliquée à tous les calendriers par loadWorkCalendars",
     "DELIVERY-6.md:108 « Calendar exceptions have a DAL writer but no editor »",
     "docs/decisions/questions.json S-2 option a : « 1 par projet + exception » désigne le calendrier propre à une activité, pas les exceptions de dates"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-066",
@@ -1634,7 +1864,10 @@
     "src/features/plan/drawer-model.ts:119 contrainte affichée en lecture seule",
     "écrivains de constraintType/constraintDate : seulement src/server/db/seed/planning.ts:67 et src/server/interchange/schedule-import.ts:548 (imports désactivés)",
     "docs/spec/05-planning-schedule.md:1193 (§7) cible « Editable constraint type and date ; violation computed » ; :444 prototype « read-only text »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-067",
@@ -1658,7 +1891,10 @@
     "src/server/db/schema/collaboration.ts:90-95 meeting_lines a owner_name, owner_person_id, due_text et due_date, mais aucune colonne d’activité",
     "src/server/db/schema/collaboration.ts:192-194 stakeholders.owner_person_id = responsable de la relation, utilisable pour la tâche de suivi",
     "src/features/meetings/meetings.golden.test.ts compare avec le prototype : les tests dorés seront à mettre à jour (S-12), d’où un effort M plutôt que S"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-068",
@@ -1685,7 +1921,11 @@
     "src/server/dal/changes.ts:275-320 decideChangeStep, au statut approved, ne traite que la référence proposée (baselines) : ni projects.budgetKeur, ni wp_budgets, ni recon",
     "src/server/dal/contract.ts:385-410 addAmendment : l’avenant n’est lié à une CR que par saisie manuelle (changeRequestRef) ; aucune création d’avenant à l’approbation",
     "src/server/dal/client.ts:98,123 approvedChangesKeur du portail = projectControls.reconChangesKeur semé"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-069",
@@ -1711,7 +1951,10 @@
     "src/server/dal/changes.ts:228 createChangeRequest crée les 4 étapes en 'pending', jamais 'na' ; :28 CCB_APPROVER = 'Monthly · next 8 Oct'",
     "src/server/dal/client.ts:102 le portail client liste toute CR in_review dont l’étape client est pending, même sans accord CP/directeur",
     "src/server/db/schema/change.ts:26-29 amountKeur et scheduleDays sans indicateur d’impact contractuel ; aucun seuil CCB dans src/domain/ch4-defaults.ts ni les Paramètres (grep P-6 / ccbThreshold : aucun)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-070",
@@ -1735,7 +1978,11 @@
     "src/server/db/seed/planning.ts:103 seul écrivain réel (schedule.ts:323 et schedule-import.ts:793 écrivent 0) ; getCostControl ne lit pas contingency_draws",
     "src/features/budget/budget.render.test.ts:119 attend « 139% drawn » ; src/domain/evm.test.ts:118 contingencyDrawn(150, 208)",
     "src/server/dal/contingency.ts:61 drawn = Σ draws (registre) calculé à part, non repris par le Budget"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-071",
@@ -1759,7 +2006,11 @@
     "src/server/db/schema/control.ts:100-115 contingency_draws : linkRef texte libre, pas de colonne de statut ; NCR non résolues",
     "src/domain/contingency.ts:132-137 parseDrawDown : lien facultatif ; approbateur choisi dans le formulaire",
     "src/features/risks/forms.ts:40-55 « \"Linked to\" is a placeholder here » ; aucune occurrence de contingency dans src/features/myapprovals"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-072",
@@ -1781,7 +2032,11 @@
     "src/domain/risk.ts:53-54 costIfOccurs = round(EMV / (P/5)) : sens inverse de la décision",
     "src/domain/risk.ts:96 exposition = Σ r.emv ; :212,258 parseEmv(values.emv)",
     "src/server/db/schema/control.ts:35-36 emvKeur stocké « not recomputed when P changes (OPEN QUESTION Q-1) »"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-073",
@@ -1810,7 +2065,11 @@
     "grep update(projects) : progress, spi, actualKeur écrits seulement par l’import désactivé (src/server/interchange/schedule-import.ts:785)",
     "src/server/db/schema/planning.ts:221-224 ordersPlacedKeur « 713 k€ until purchase orders are modelled » alors que purchase_orders / po_lines existent (schema/purchasing.ts:73-122, sans lien catégorie de coût ni WBS) ; src/server/dal/contract.ts:286-299 openCommit",
     "Correction : src/domain/schedule-rollup.ts:96 actualsFromProgress est appliqué par rescheduleProject (src/server/dal/schedule.ts:353-359, 394) : les dates réelles sont déjà posées au Reschedule, seule la saisie du % (plan.ts:237-269) ne les pose pas immédiatement"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-074",
@@ -1838,7 +2097,10 @@
     "src/server/integrations : seulement codex, cursus (habilitations), vigie ; ni Sage ni heures Cursus",
     "src/server/db/schema/resources.ts:34-47 rate_roles : un seul taux par rôle (role unique), effectiveFrom sans historique",
     "src/server/db/schema/purchasing.ts:123,185 goods_receipts et supplier_invoices existent mais sans rattachement à une catégorie de coût"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-075",
@@ -1860,7 +2122,11 @@
     "src/server/db/schema/portfolio.ts:192 projects.currency stocké mais jamais utilisé dans un calcul ; site.ts:24",
     "aucune devise sur contracts, contract_amendments, payment_milestones, customer_invoices, purchase_orders, po_lines (unitPriceEur) ni supplier_invoices (amountEur) ; grep exchangeRate / fxRate / budgetRate : aucun",
     "src/lib/format.ts:14-24 money : « USD only swaps the symbol » ; moneyEur « Always € »"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-076",
@@ -1883,7 +2149,11 @@
     "src/server/db/schema/contract.ts:30-31 paymentTerms texte libre « payment delay = first integer (OPEN QUESTION C-6) »",
     "src/domain/evm.ts:197-200 termsDays : premier entier du texte, 45 par défaut",
     "src/domain/contract.ts:141,155 dueOn = addDaysIso(issuedOn, delay) ; src/domain/kpis.ts:98-140 paymentDays « calendar days » pour la trésorerie ; grep « end of month / fin de mois » : aucun"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-077",
@@ -1903,7 +2173,10 @@
    "evidence": [
     "src/server/dal/contract.ts:448 « Shares may exceed 100 % (only a hint, C-7) » ; src/domain/contract.ts:238-239,382 avertissement seulement",
     "src/server/dal/contract.ts:485-505 issueInvoice (seul écrivain de customer_invoices hors seed) sans contrôle du total ; src/features/contract/actions.ts:114-125 non plus"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-078",
@@ -1926,7 +2199,10 @@
     "src/domain/contract.ts:130-131,185 retentionKeur = round(paid × retention % / 100) ; src/server/dal/contract.ts:236 idem",
     "src/domain/contract.ts:470-477 retentionPct et retentionNote saisis ; aucune déduction dans issueInvoice (dal/contract.ts:485-505) ni dans la trésorerie (domain/kpis.ts:98-140)",
     "docs/decisions/answers.json C-8 : choice « discuss »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-079",
@@ -1950,7 +2226,11 @@
     "src/domain/contract.ts:81 « a signed amendment re-prices every milestone (as the prototype) » ; :142-150 amountKeur = valeur × part",
     "src/server/dal/contract.ts:383-410 addAmendment : statut fixé à la création ; liste des fonctions exportées (172-510) sans écrivain de statut d’avenant ni de releasedOn de caution",
     "src/server/db/schema/contract.ts:43-72 payment_milestones sans lien vers un avenant"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-080",
@@ -1973,7 +2253,10 @@
     "src/features/budget/performance-tab.tsx:34-38 « Q1: the prototype colours these four LO whatever the value » : color LO en dur",
     "src/features/budget/performance-tab.tsx:101-108 et src/domain/evm.ts:116-120 hauteur = max(3, |cv|…), sans sens",
     "DELIVERY-6.md §4 : seuls Overview/Projects/portfolio/Home suivent les seuils A-13, pas l’onglet Performance du Budget"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-081",
@@ -1996,7 +2279,10 @@
     "src/features/budget/category-actions.ts:37-45 editable() : droits et données de coût seulement, aucun contrôle de la référence",
     "src/server/dal/budget-categories.ts:104-113 met à jour budgetKeur sans condition ; addProjectCostCategory (:54-70) ajoute un budget après BL1 aussi",
     "src/domain/baseline-policy.ts canSnapshotFreely (règle « libre jusqu’à BL1 ») réutilisable, non appelée ici"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-082",
@@ -2020,7 +2306,10 @@
    "evidence": [
     "grep NIM / nimCode / nim_code dans src et drizzle : aucun résultat",
     "src/server/db/schema/portfolio.ts:177 projects.analyticCode (niveau projet) ; aussi rex_references.analytic_code (:113) et hours_imports.analytic_code (resources.ts:148), tous au niveau projet ; rien sur activities, wbs_nodes ni cost_categories"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-083",
@@ -2048,7 +2337,10 @@
     "src/domain/hr.ts:243,319 HOURS_VALUATION_RATE = 62 ; src/domain/whatif.ts:54,296 defaultRateEur 60 et taux interne indexé par jobTitle",
     "src/server/db/schema/organisation.ts:43 persons.job_title texte libre, aucun lien vers rate_roles",
     "src/features/hr/actions.ts:38 + actions.test.ts:48 setBaseRateAction ouvert au directeur et au CP (P-12 demande Finance + directeur)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-084",
@@ -2077,7 +2369,10 @@
     "Déjà fait en partie : src/domain/resources.ts:217-228 availableHours = (5 − jours de congé − fériés) × 7 h (écran Congés, mais 35 h fixes, sans temps partiel) ; le what-if calcule les deltas de charge depuis activity_assignments (src/server/dal/resources.ts:241-265)",
     "src/server/dal/kpis.ts:78-103 capacityModel = pool × 40 h, demande au ratio par M€ (src/server/dal/prioritisation.ts:136-148)",
     "src/server/dal/resources.ts:56-78 charge = allocations.loadPct semées ; :123-127 et src/server/dal/people.ts:114-119 department_capacities statiques ; persons sans horaire contractuel (schema/organisation.ts)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-085",
@@ -2101,7 +2396,10 @@
     "src/server/dal/resources.ts:63-83 semaines = toutes celles des allocations, sans décalage ; src/server/dal/hr.ts:195-198 getLeaveCalendar idem ; what-if weeks = pool.weeks (resources.ts:268)",
     "Aucune navigation semaine précédente/suivante (grep weekOffset/prevWeek vide dans src/features/resources, src/features/hr) ; seul capacityModel (src/server/dal/kpis.ts:88-90) part déjà de la semaine de la date de situation, pour Priorisation",
     "src/domain/ch4-defaults.ts:19 DEFAULT_DATA_DATE figée (pas d’horloge réelle)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-086",
@@ -2123,7 +2421,10 @@
     "src/app/(app)/resources/page.tsx:4,27 getLaborCost(lastProject) (« reads the current project's labour category, as the prototype (06 OQ2) »)",
     "src/server/dal/resources.ts:142-152 première catégorie /labor|staff/ d’un seul projet",
     "Le cookie de zone existe (src/server/session.ts:14,50 ks-zone / getZone) mais n’est pas utilisé par la tuile"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-087",
@@ -2144,7 +2445,10 @@
    "evidence": [
     "src/features/hr/forms.ts:50-56 SKILL_SCALES (1–4, 1–3, Yes/No) toujours proposés ; :201-202 parseAddSkill exige une échelle",
     "src/features/hr/skills-view.tsx:35 une seule tuile « Single-expert skills » (« Fewer than 2 people at level ≥4 ») ; src/domain/hr.ts:161 singleExpert = coverage.filter(gap)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-088",
@@ -2166,7 +2470,10 @@
     "src/domain/hr.ts:252,268-275 tone 'over' si v > planned × 0,1 (strict), tout écart négatif 'under' ; commentaire « both read in accent-300 »",
     "src/features/hr/hours-view.tsx:24 une seule classe varLo pour 'over' et 'under'",
     "src/domain/hr.ts:320 varianceLo à 5 % en dur ; aucun paramètre de seuil dans les Paramètres (grep variance threshold vide)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-089",
@@ -2188,7 +2495,10 @@
     "src/server/dal/requests.ts:384-399 createTaskFromRequest : assigneePersonId = r.personId (null), contractRole = r.contractRole",
     "src/server/dal/requests.ts:403-421 approveResourceRequest sans routage vers les achats (grep procurement vide dans requests.ts)",
     "src/server/dal/tasks.ts : aucun writer de réaffectation de tâche (seuls statut, progression, checklist, commentaires, temps, pièces jointes)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-090",
@@ -2208,7 +2518,10 @@
     "src/server/dal/requests.ts:369-374 reRequestResourceRequest accepte 'rejected' et 'withdrawn'",
     "src/features/requests/actions.ts:146-150 reRequestAction refuse si status !== 'rejected'",
     "src/features/requests/request-row-actions.tsx:47-51 bouton « Re-request » seulement si isRejected ; aucune autre surface (grep Re-request)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-091",
@@ -2231,7 +2544,10 @@
     "src/server/dal/resources.ts:559-565 openRequests filtré par scenarioId ; applyScenario (:575-582) ne saute que les leviers du même scénario",
     "docs/DELIVERY-6.md:361 et :369 questions S-7 ouvertes (leviers, approbation, base BL1, horizon ; brouillons)",
     "docs/DELIVERY-6.md §4 What-if : base « Baseline BL1 » et champ Horizon retirés faute de données au-delà de 8 semaines"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-092",
@@ -2256,7 +2572,10 @@
     "src/server/dal/stock.ts:304-315 « Sage X3 (mock connector) », x3StockSnapshot = instantané du prototype (TODO(db))",
     "src/server/integrations/ ne contient que codex, cursus, vigie : aucun connecteur sage/x3",
     "docs/decisions/answers.json A-1a choice « discuss » ; questions.json A-1a priority « prod »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-093",
@@ -2283,7 +2602,10 @@
     "src/server/dal/purchasing.ts:428-437 et src/server/db/schema/purchasing.ts:34-35 invitedSuppliers en texte libre « until a supplier picker exists »",
     "src/server/db/schema/suppliers.ts:17-18 x3Code jamais rempli ; src/server/dal/suppliers.ts:18 listSuppliers n’est utilisé par aucun écran",
     "src/server/interchange/table-import.ts:224-230 l’import d’articles crée aussi des fournisseurs"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-094",
@@ -2308,7 +2630,10 @@
     "src/server/dal/purchasing.ts:304-311 canApprovePurchaseOrders, même règle",
     "src/domain/orders.ts:30 canApprovePo ne teste que le statut ; src/server/approvals/purchase-orders.ts route vers directeur/CP sans montant",
     "src/domain/ch4-defaults.ts : aucun défaut achats"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-095",
@@ -2334,7 +2659,10 @@
     "src/server/db/schema/purchasing.ts:73-94 purchase_orders sans colonne de motif d’annulation ni de solde",
     "grep short-close/solde/cancelOrder dans src : aucun résultat",
     "docs/decisions/questions.json : P-5c option a « une commande passée s’annule dans Sage X3 » vs SC-3a option a « annulation à tout stade… reportée dans Sage X3 », les deux choisies"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-096",
@@ -2359,7 +2687,10 @@
     "src/server/integrations/vigie/links.ts:75-79 vigieReportNcrUrl accepte projet/article/activité/titre/lieu, pas fournisseur/commande/quantité ; utilisé seulement par projects/[code]/quality/page.tsx:59",
     "grep vigie/ncr dans src/features/deliveries : aucun résultat",
     "src/server/dal/notifications.ts:98 createNotification existe et peut servir pour l’alerte acheteur"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-097",
@@ -2378,7 +2709,11 @@
    ],
    "evidence": [
     "src/server/export/providers/purchasing.ts:105-135 poDocument : titre « Purchase order », signatures « For Keystone — buyer » / « Supplier acknowledgement », footnote « please quote the order number on the delivery note and the invoice »"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-098",
@@ -2402,7 +2737,11 @@
     "src/domain/stock.ts:164-165,249 activité facultative, repli « → {projet} activity » ; aucune mention d’activité dans src/features/stock/*.tsx",
     "grep stockMovements : seulement dal/stock.ts, schema et seed — rien dans le suivi des coûts",
     "src/server/dal/bom.ts:325 listBomActivityOptions réutilisable pour le sélecteur"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-099",
@@ -2426,7 +2765,11 @@
     "src/domain/stock.ts:221-233 le transfert déplace la réservation et refuse une destination réservée par un autre projet (déjà traité)",
     "src/domain/stock.ts:25 et src/server/db/codes.ts:786 STOCK_OPS sans opération de libération (colonne movement_type en texte, pas de migration d’enum)",
     "Priorité : NEW-D4-2 « Prochaine étape », SC-5b « Plus tard » ; la réponse la plus récente est retenue"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-100",
@@ -2452,7 +2795,10 @@
     "src/server/dal/purchasing.ts:371-373,499,516-518 devis lus, comptés et exigés pour comparer/attribuer",
     "src/features/procurement/actions.ts:88-118 compare/award exigent des devis existants",
     "docs/DELIVERY-6.md:362 « Supplier quotes have no writer in Keystone »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-101",
@@ -2480,7 +2826,10 @@
     "src/server/dal/integrations.ts:27 'SolidWorks 3DX' seulement dans ADDABLE_SYSTEMS (libellé)",
     "docs/DECISIONS.md:39 A-1b (Bloquant production) : À discuter, « Laisse moi confirmer avec l'ingénierie »",
     "docs/DELIVERY-6.md §5 : A-1b non appliqué"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-102",
@@ -2508,7 +2857,10 @@
     "grep 'outdated'/'obsolete' : aucun writer ne passe un article en Périmé/Obsolète depuis un ECO Vigie",
     "src/server/db/schema/catalogue.ts:26-37 hsCode, exportRestriction, leadWeeks, manufacturerRef existent",
     "docs/DELIVERY-6.md §5 : E-1a / E-1b non appliqués"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-103",
@@ -2536,7 +2888,11 @@
     "grep partLastPrices : seul writer = src/server/db/seed/catalogue.ts:85 (LAST_PRICE du prototype) ; aucune mise à jour à la réception ni à la facture",
     "src/server/dal/purchasing.ts:117 chaque ligne de commande a son unitPriceEur (prix commandé disponible)",
     "src/server/dal/stock.ts:74-77 stock déjà au dernier prix d’achat (conforme A-11)"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-104",
@@ -2558,7 +2914,10 @@
     "src/domain/bom.ts:287 diffCostDelta = diffQtyDelta × lastPrice (« substitutions at equal quantity: 0, 09 OQ8 »)",
     "src/server/dal/bom.ts:234-247 getRevisionComparison : seul le prix du nouvel article (diffNewRef) est lu",
     "revision_diffs / revision_diff_lines n’ont pas de writer (seed seulement, src/server/db/seed/catalogue.ts)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-105",
@@ -2581,7 +2940,11 @@
     "src/server/dal/engineering.ts:167 état 'outdated' dérivé de cette règle",
     "scripts/proto-golden-eng.ts et src/domain/engineering.test.ts à mettre à jour",
     "docs/DELIVERY-6.md §5 : E-5 non appliqué"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-106",
@@ -2607,7 +2970,11 @@
     "src/server/dal/documents.ts:543-570 approveDocumentStep : signe les étapes du circuit du type (documentApprovals) et diffuse à la dernière",
     "src/server/dal/documents.ts:463-480 circuit créé depuis documentTypeCircuitSteps ; src/features/docs/actions.ts:74-90 approveDocumentAction",
     "src/server/integrations/codex/ ne contient que config.ts (aucun connecteur ni outbox Codex)"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-107",
@@ -2632,7 +2999,10 @@
     "src/server/db/seed/engineering.ts:51-52 ENG_MAP / ENG_DELTAS ; src/server/dal/engineering.ts:259-271 generateEngOutput horodatage seul",
     "grep eplan / tia portal dans src/server/interchange : aucun lecteur natif",
     "NEW-D5-1 réponse b (exports natifs, non recommandée) ; D-7b « Ne traite rien pour le moment concernant les imports »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-108",
@@ -2654,7 +3024,10 @@
     "src/domain/pid.ts:255-260 PID_MAX_CANDIDATES = 8, filtre bomRefs + type",
     "src/server/dal/pid.ts:109-118 pidCandidates ; :130 refus de tout article hors candidats",
     "src/server/dal/bom.ts:341 addBomLine réutilisable pour l’ajout à la nomenclature"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-109",
@@ -2677,7 +3050,10 @@
     "src/features/pid/model.ts:72 écart seulement en infobulle (« OPEN QUESTION A-9 ») ; :152-154 ligne « Codex · rév · statut »",
     "src/server/dal/pid.ts:97 codexRevision lu, jamais comparé à sheet.revision",
     "src/server/dal/pid-import.ts (stagePidImport / applyPidImport) et src/features/pid/import-dialog.tsx, pid-buttons.tsx:86-93 : ré-import réel déjà disponible, non soumis à IMPORTS_ENABLED"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-110",
@@ -2700,7 +3076,10 @@
     "src/server/dal/eco.ts:141-156 installedBasePins : chaque référence de l’ECO pour chaque machine (« 09 OQ21: also the parts the machine does not carry »)",
     "src/server/dal/fleet.ts:160-170 machinePartRevisions disponible pour filtrer",
     "machinePartRevisions n’a qu’un writer de seed (src/server/db/seed/aftersales.ts:50) : configuration non tenue à jour (E-8)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-111",
@@ -2724,7 +3103,10 @@
     "grep EQ-CRN-250T hors tests et JSON du prototype : aucune mention dans le code applicatif",
     "docs/DELIVERY-4.md:132 isValuedByComponents ne couvre pas l’équipement acheté EQ-CRN-250T ; :313 doublon possible noté dans les lacunes connues",
     "docs/decisions/questions.json NEW-D4-5 option c : « Le doublon possible reste signalé jusqu'à la réponse du bureau d'études »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-112",
@@ -2752,7 +3134,11 @@
     "src/server/db/schema/operations.ts:55-81 itp_inspections : ni date/auteur du résultat, ni témoin client, ni référence NC Vigie (seul recordRef libre) → migration nécessaire",
     "src/server/integrations/vigie/links.ts:76 vigieReportNcrUrl existe (projet, article, titre) mais sans paramètre inspection/système ; schema/vigie.ts:167-177 le miroir vigie_ncrs n’a pas de lien vers une inspection",
     "src/config/screens.ts:168-169 englead et quality ont déjà l’écran itp"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-113",
@@ -2777,7 +3163,10 @@
     "src/server/db/codes.ts:863 ItpStage workshop|fat|site|sat ≠ CommissioningStep (codes.ts:884) : correspondance inspection → étape à modéliser",
     "src/server/db/schema/operations.ts:143 blockingRef stocké (semé) ; commissioning.ts:144 commissioningBlockingRefs lit ce champ, ne calcule rien",
     "src/config/screens.ts:14 RoleKey sans rôle « responsable mise en service »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-114",
@@ -2801,7 +3190,11 @@
     "src/server/dal/quality.ts:288 le refus écrase rejectedOn / rejectedByPersonId / reviewComments (pas d’historique)",
     "src/server/db/schema/quality.ts:35 revision texte simple, aucun écrivain ne l’incrémente",
     "src/server/dal/quality.ts:298 linkDeliverableDocument relie déjà un document de l’index Codex : le dépôt dans Codex ne bloque pas la partie Keystone"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-115",
@@ -2825,7 +3218,11 @@
     "src/features/quality/actions.ts:75-191 : advanceNcr, verifyNcr, moveDeliverable, decideDeliverable, rejectWithComments, linkDocument — aucune création",
     "src/server/dal/quality.ts:230 listDeliverableTypes existe ; src/server/db/schema/quality.ts:59 deliverable_raci (rôles R et B pour responsable et suppléant)",
     "src/server/db/schema/quality.ts:29 wbs_code NOT NULL : le formulaire devra aussi fixer l’élément WBS (ou une valeur par défaut)"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-116",
@@ -2847,7 +3244,10 @@
     "src/server/db/schema/operations.ts:32-33 providedOn « Mark received does not stamp it (Q-4) »",
     "src/server/dal/interfaces.ts:4-5,130-133 markInterfaceReceived : statut seulement, aucun paramètre de date ; src/features/team/actions.ts:96 action sans formulaire",
     "Fait : src/features/team/model.ts:144 utilise dueWithinDays(…, 30) (src/domain/kpis.ts:354, test kpis.test.ts:202) ; le champ dueWithin30 de src/domain/team.ts:129-150 et son commentaire « Kept as is » sont obsolètes"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-117",
@@ -2870,7 +3270,10 @@
     "src/server/db/schema/operations.ts:83-115 punch_items.register 'itp' | 'site', catégorie / source / ownerParty / ncrNumber selon le registre",
     "src/server/dal/itp.ts:4-5 registre site « read-only there » ; addPunchItem (:199) et advancePunchItem (:235) filtrés sur register 'itp'",
     "src/server/dal/commissioning.ts:76-77 Bloquant A = registre 'itp' catégorie A seulement"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-118",
@@ -2896,7 +3299,10 @@
     "src/features/site/actions.ts:56-146 : advancePrerequisite, confirmEquipment, remindInCursus, syncCursus, saveDailyReport — aucune création",
     "src/server/dal/site.ts:103-108 getSite renvoie null sans fiche (état vide) ; src/server/db/schema/site.ts:35 cursus_chantier_id existe, vide",
     "docs/DECISIONS.md:142 C-3 = catégories de coûts : la source « C-3 » de l’item désignait la question Cursus de DELIVERY-5 §8"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-119",
@@ -2920,7 +3326,10 @@
     "src/server/db/schema/site.ts:112 resolvedAt « not cleared by Resolve » ; pas de champ commentaire d’arbitrage",
     "src/domain/site.ts:103-104 « the prototype's 4 constant collisions never reach one »",
     "src/server/db/schema/cursus.ts:12-32 cursus_clearances (clearance, clearanceNote, reasonCodes HABILITATION…) déjà en miroir ; aucun endpoint congés dans src/server/integrations/cursus/connector.ts:5-6"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-120",
@@ -2940,7 +3349,11 @@
    "evidence": [
     "src/domain/site.ts:93-108 goChantier : condition cursus ok quand noGo === 0, même avec une liste vide",
     "src/domain/site.test.ts:80-95 seuls tests de goChantier (aucun cas sans verdict) ; grep goChantier dans scripts/ : aucun résultat"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-121",
@@ -2963,7 +3376,10 @@
     "src/domain/site.ts:118-121 règle J-15 (affichage) ; src/server/dal/site.ts:142 late: isPrerequisiteLate(...)",
     "src/server/dal/notifications.ts:98 createNotification appelé seulement par src/server/dal/requests-screens.ts:133",
     "src/server/db/codes.ts:220 RiskStatus open | closed : aucun état « proposé » pour un risque à confirmer ; src/server/dal/risks.ts:170 createRisk réutilisable"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-122",
@@ -2985,7 +3401,10 @@
     "src/domain/site.ts:216-224 tuile HSE = vigieIncidentCount (fait)",
     "src/features/site/model.ts:235 champ select 'incident' encore présent ; src/server/dal/site.ts:240-251 valide et enregistre hseIncident ; src/server/db/schema/site.ts:154 colonne hse_incident",
     "src/server/integrations/vigie/links.ts:83 vigieReportIncidentUrl existe pour le renvoi"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-123",
@@ -3007,7 +3426,10 @@
     "src/domain/meetings.ts:140 isClientMeeting = m.type === 'external'",
     "src/server/dal/client-comms.ts, src/domain/client-comms.ts et src/server/db/schema/client.ts:50 conservés hors interface (encore testés : src/server/dal/chapter4-foundation.test.ts:20, src/domain/ch4-misc.test.ts:4)",
     "docs/DELIVERY-6.md:106 et :359 question D-5 ouverte"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-124",
@@ -3035,7 +3457,11 @@
     "src/server/integrations/codex/ ne contient que config.ts (URL), pas de connector/mirror/outbox, contrairement à vigie/eco-connector.ts (mock + outbox « pending sync with Vigie »)",
     "grep outbox/sync_status dans src/server/db/schema : seulement vigie.ts et cursus.ts, rien pour Codex",
     "DECISIONS.md:91 P-7b = Bloquant production ; :203 D-1b = Prochaine étape → bloquant_production retenu"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-125",
@@ -3062,7 +3488,10 @@
     "src/features/docs/actions.ts:44-71 depositInCodexAction écrit directement dans l’index local",
     "src/server/dal/deliveries.ts:467-479 attachReceiptDocument n’enregistre que le nom du fichier (« storage comes with the Codex hand-off, D-1 »)",
     "NEW-D3-1 retiré des sources : les droits de dépôt sont un sujet distinct, faisable sans Codex et bloquant (voir R-125b)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-126",
@@ -3089,7 +3518,11 @@
     "grep photo dans src/server/db/schema : rien pour les rapports journaliers de chantier ni pour punch_items (operations.ts:88)",
     "src/server/storage/files.ts storeFile/streamStoredFile/setFileOwner et FILE_EXTENSIONS (src/domain/ch4-defaults.ts:61) réutilisables : infrastructure présente, fonction absente",
     "DECISIONS.md:172 SC-4a et :234 X-15 = Prochaine étape"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-127",
@@ -3113,7 +3546,10 @@
     "src/server/dal/documents.ts:582-592 logDocumentDownload écrit encore le journal des téléchargements dans Keystone",
     "src/server/integrations/codex/config.ts:3-4 liens profonds par document = question D-1, seulement l’accueil Codex",
     "DECISIONS.md:204 D-2 = Plus tard"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-128",
@@ -3135,7 +3571,10 @@
     "src/server/db/codes.ts:451 DocLinkKind inclut deliverable, purchase_order, punch_item ; données seedées p. ex. [\"Deliverable\",\"D-016\"], [\"Punch item\",\"P-01\"], [\"Purchase order\",\"PO-2026-118\"]",
     "Cibles : orders/page.tsx:27 lit sp.po et quality/page.tsx:44 lit sp.dlv (liens directs possibles) ; itp/page.tsx et site/page.tsx ne lisent que view/tab → il faut ajouter un paramètre pour ouvrir une réserve",
     "Contexte de D-2 (questions.json) : « Les liens d’un document vers un livrable, une commande ou une réserve ouvriront la fiche Keystone correspondante »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-129",
@@ -3160,7 +3599,11 @@
     "src/domain/portfolio.ts:135 activeProjectsHint « · FY2026 » ; src/server/dal/shell.ts:241,247 fil d’Ariane 'FY2026' en dur (projects, overview, portfolio, pfplan, cash)",
     "src/domain/portfolio.ts:56-57 overviewMetrics gère déjà spi null : un projet sans contrôles reste affichable",
     "A-13 déjà fait : DELIVERY-6.md §4 « One health rule everywhere »"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-130",
@@ -3186,7 +3629,11 @@
     "src/server/dal/home.ts:248 l’accueil directeur reprend overview.alerts",
     "src/domain/portfolio.test.ts:78-84 le test fige encore les textes du prototype",
     "Briques existantes réutilisables : healthThresholds() (Paramètres), retards de facture (src/domain/contract.ts) et de jalons (src/domain/schedule.ts)"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-131",
@@ -3210,7 +3657,11 @@
     "src/server/export/providers/status-report.ts:81-114 une seule branche « else » commune à 'steering' et 'internal' (EVM, jalons, historique, top risques, CR ouvertes, livrables en attente) : pas de marge ni de ressources",
     "src/domain/rexclient.ts:448-455 contractSummary = totaux seulement (valeur, facturé, payé, avenants), sans liste de factures",
     "src/server/db/codes.ts:236-237 audiences steering / client / internal"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-132",
@@ -3234,7 +3685,11 @@
     "src/domain/portfolio-finance.ts:19-21 marginPct = (contrat − budget) / contrat, importée nulle part hors tests (code mort)",
     "src/server/dal/cashflow.ts:96-97 marginPct(plan, budgetKeur) = (contrat − budget) / contrat",
     "src/server/dal/prioritisation.ts:13,115 et src/server/dal/cashflow.ts:151 l’utilisent ; src/server/dal/pfinance.ts:39,79 l’affichent"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-133",
@@ -3256,7 +3711,11 @@
     "src/server/dal/kpis.ts:57 etcKeur = max(0, EAC − réel), finishOn seul, aucune courbe transmise",
     "src/server/dal/schedule.ts:46-55 getEvmSeries fournit pv[] par période (courbe prévue disponible)",
     "src/domain/kpis.ts:118-145 expectedReceipts : encaissements selon le plan de facturation (fait)"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-134",
@@ -3278,7 +3737,10 @@
     "src/server/dal/prioritisation.ts:153-181 ProposalScore = fit, margin, risk ; « the other axes keep their values (1 when new) » ; l.180 insert score: 1",
     "src/features/pfinance/forms.ts:18-22 formulaire à 3 champs (fit, fin, risk)",
     "src/server/dal/prioritisation.ts:63 axes du classement [fit, margin, risk, res, client]"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-135",
@@ -3301,7 +3763,10 @@
     "src/features/worldmap/model.ts:85 ton de l’étiquette d’étape = tooltipStatusTone(category, health) ; la liste latérale (l.100) utilise lifecycleTone (étape) ; src/domain/worldmap.ts:62-70",
     "src/features/worldmap/model.ts:119 closed: t('Closed / on hold')",
     "src/components/charts/projects-map.tsx:296 tabIndex={-1} sur le svg ; marqueurs <g> l.309-323 sans tabIndex ni onKeyDown (souris seulement)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-136",
@@ -3323,7 +3788,10 @@
     "src/domain/pfplan.ts:2,17-29 « 24-month portfolio Gantt (Jan 2026 – Dec 2027) », PG_MONTHS = 24, pgPct/pgSeg bornés à [0, 24]",
     "src/server/db/codes.ts:404 PG_NOW = 8.97 (≈ 30 sept. 2026, figé)",
     "src/app/(app)/portfolio/schedule/page.tsx:14-17 seul le paramètre ?filter est lu, aucun décalage de fenêtre"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-137",
@@ -3347,7 +3815,11 @@
     "src/server/db/codes.ts:921-922 statuts in_progress / closed définis ; grep clientIssues : aucun update en dehors du seed (seed/client.ts:17)",
     "src/app/(app)/projects/[code]/client/page.tsx:26-27 can.raise réservé au client du projet et au directeur ; le CP est « outside » (ROLE_SCREENS pm sans 'client', src/config/screens.ts:157)",
     "docs/spec/11 §6.4 : « Client issue: open → in_progress → closed (the UI only creates open) »"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-138",
@@ -3370,7 +3842,10 @@
     "src/server/db/seed/client.ts:21-22 catégories et comptes repris de CLIENT_DOCS du prototype",
     "src/features/rexclient/client-view.tsx:277-319 DocumentsTab n’affiche que view.docs, aucune catégorie",
     "src/server/dal/documents.ts:202,232 « shared » = type isClientDeliverable et statut released : les contrats, comptes rendus et rapports HSE n’entrent pas dans la liste partagée"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-139",
@@ -3393,7 +3868,10 @@
     "src/config/screens.ts:157-164 ROLE_SCREENS : 'client' absent des rôles internes (sauf directeur = tout)",
     "src/app/(app)/projects/[code]/client/page.tsx:22-28 aucune restriction de rôle (membre, achats, qualité l’ouvrent hors espace) ; can.raise inclut le directeur",
     "grep 'Voir comme le client' / screenHref('client') : aucun lien interne vers le portail"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-140",
@@ -3417,7 +3895,10 @@
     "grep -i justification dans src/features et src/app : seulement src/features/changes/forms.ts (formulaire de création) ; aucun rendu dans la fiche CR ni dans src/features/rexclient/client-view.tsx",
     "rendu seulement dans l’export src/server/export/providers/control.ts:89,92",
     "docs/decisions/questions.json X-11 appliedNote : « n’est encore affichée ni dans la fiche ni sur le portail client »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-141",
@@ -3440,7 +3921,10 @@
     "src/server/dal/rex.ts:2-3 « customer-satisfaction survey (read-only) » ; rex.ts:60 seule lecture de satisfaction_scores",
     "src/server/db/seed/execution.ts:110 satisfaction_scores alimenté par le seed seulement ; aucun insert/update ailleurs (grep satisfactionScores)",
     "src/features/rexclient/rex-view.tsx:96-113 affichage seul (« Survey not received yet »)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-142",
@@ -3462,7 +3946,10 @@
     "src/server/export/providers/steering.ts:131-139 scheduleDocument(ctx, 'internal' | 'client') : span = view.ganttMonths.length || GANTT_SPAN (13 mois de l’écran)",
     "docs/delivery-6/notes-exports.md §1 « Costs stay in the Excel file » (le PDF du plan exclut les coûts) ; §7.4 concerne les colonnes du registre des projets, hors portail",
     "docs/DELIVERY-6.md §8 ligne S-9a : question toujours ouverte"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-143",
@@ -3491,7 +3978,11 @@
     "src/config/screens.ts:14 RoleKey sans rôle SAV ; :168-172 sav/fleet ouverts à pm, quality, procurement (+ director)",
     "docs/DECISIONS.md:200 Q-8 (Prochaine étape) : choix a « Suivi complet, piloté par le responsable SAV »",
     "docs/DELIVERY-6.md : aucune mention des réclamations ni du SAV"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-144",
@@ -3518,7 +4009,11 @@
     "Points de conception : src/server/db/schema/plm.ts:18 project_bom_lines est par projet et non par machine (un projet livrant plusieurs machines devra être réparti) ; src/server/db/schema/contract.ts:36 warranty est un texte libre, donc la fin de garantie ne peut pas être calculée telle quelle",
     "La mise à jour par intervention dépend de la création d’interventions, absente aujourd’hui (voir R-143)",
     "docs/DECISIONS.md:189 E-8 (Prochaine étape) : choix a ; docs/DELIVERY-6.md : aucune mention"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-145",
@@ -3544,7 +4039,10 @@
     "Tests à mettre à jour : src/domain/aftersales.test.ts (golden scripts/proto-golden-aftersales.ts → src/domain/aftersales.golden.json) et src/server/dal/delivery5.test.ts:255-268 (wendSub / fleetKpis)",
     "docs/DELIVERY-5.md:413 : écart connu (« Warranty cost YTD adds every year ; < 90 days uses the original warranty end »)",
     "src/server/db/codes.ts:404-406 PG_NOW / NOW_ISO fixes"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-146",
@@ -3568,7 +4066,11 @@
     "grep @media : seulement admin/interchange, meetings et pid ; src/components/app/shell/sidebar.tsx sans repli",
     "vérifié : sidebar.tsx:94 toggle() ne replie que les sections du menu, pas le menu lui-même ; aucun matchMedia/innerWidth dans src ; sidebar.module.css:7 position sticky",
     "docs/decisions/questions.json X-4 : choix « tablet » (menu repliable, Chantier, Réserves, Livraisons), priorité next"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-147",
@@ -3593,7 +4095,10 @@
     "src/components/app/tones.ts:41-55 LIFECYCLE « French domain labels (shown in both languages) » ; src/server/db/codes.ts:44-58 STAGES en français",
     "src/i18n/translate.ts:61-63 makeT('en') = identité ; src/server/db/seed/portfolio.ts:52 description de modèle en français",
     "vérifié : aucun labelEn / label_en / enLabel dans src ; DELIVERY-6.md §6 « Minor points » : descriptions des modèles de l’assistant en français aussi en anglais"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-148",
@@ -3620,7 +4125,11 @@
     "src/features/portfolio/view.tsx:31 t(p.name) ; src/features/contract/model.ts:112-113 t(s.governingLaw) ; environ 186 appels t(x.title|name)",
     "dataText dupliqué dans ~9 fichiers src/features/*/i18n.ts ; src/components/app/shell/actions.ts:14 t(h.title)",
     "vérifié : 9 définitions identiques de dataText (quality, deliveries, eco, aftersales, meetings, contract, procurement, requests, site) ; ~199 appels t(x.name|title|client) hors tests ; fr-rules.ts:3 FR_DAYS Sun → « dim. »"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-149",
@@ -3642,7 +4151,10 @@
     "src/features/mywork/task-sheet.tsx:426 « @mention to notify » sans traitement",
     "src/server/dal/tasks.ts:291 addTaskComment sans analyse ; src/server/dal/notifications.ts:37 listNotifications(role)",
     "vérifié : grep mention → seuls le type de notification 'mention' (codes.ts:290) et l’icône existent, aucun parseur ; src/server/db/schema/organisation.ts:59 users.role unique (un utilisateur par persona)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-150",
@@ -3663,7 +4175,10 @@
    "evidence": [
     "src/features/mywork/my-work-body.tsx:172-200 WorkBoard : cartes en <Link>, aucun draggable / onDrop dans src/features/mywork",
     "vérifié : draggable/onDrop seulement dans admin/plumbing-islands.tsx et docs/deposit-wizard.tsx (dépôt de fichiers) ; setTaskStatusAction existe déjà (src/features/mywork/actions.ts:59), donc effort S"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-151",
@@ -3683,7 +4198,10 @@
    "evidence": [
     "src/components/app/shell/nav-model.ts:193-212 l’en-tête n’est ajouté que si gi[0] === x",
     "vérifié : nav-model.ts:194 shown = open ? items : items.filter(active) ; la ligne 'group' n’est poussée que pour le premier élément du groupe, absent quand la section est repliée"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-152",
@@ -3707,7 +4225,10 @@
     "src/features/requests/new-request-launcher.tsx:89-91 pas de toast quand openRequests redirige",
     "src/features/projects/register.tsx:104-110 moveStageAction n’affiche que les erreurs",
     "vérifié : moveStageAction n’est appelé que depuis register.tsx:109 ; DELIVERY-6.md §6 « A forced stage move in the Projects register shows no success toast »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-153",
@@ -3732,7 +4253,10 @@
     "ajouté : src/app/(app)/after-sales/claims/page.tsx:32 NewClaimButton affiche aussi le projet courant alors que le formulaire choisit une machine de tout le parc (src/features/aftersales/forms.ts:32-46)",
     "retiré : purchasing/sourcing/page.tsx:63 est légitime, src/features/procurement/actions.ts:47-60 createRfqAction enregistre la RFQ avec projectCode = getLastProject() (« the dialog's sub-line names it »)",
     "X-10 : « Le sous-titre n’apparaît que lorsque la saisie est vraiment rattachée au projet »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-154",
@@ -3756,7 +4280,10 @@
     "src/components/app/tones.ts:108-117 budgetChange (approved = accent) ≠ change (approved = neutral) ; activity ≠ activityDetail",
     "src/features/budget/performance-tab.tsx:35-38 valeurs distinguées par la seule couleur",
     "vérifié : tones.ts:111 activityDetail « inverted vs. the row (Q-6) » et :115 budgetChange « differs from change control (Q-5) » toujours présents ; seuls GO/NO GO et la santé (A-13) ont été harmonisés"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-155",
@@ -3779,7 +4306,10 @@
    "evidence": [
     "src/features/aftersales/model.ts:47 zoneNotice 'No project in this zone for this view' ; tests page.test.ts:110, render.test.ts:86",
     "vérifié : grep « No machine in this zone » → aucune occurrence dans src ni dans les dictionnaires"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-156",
@@ -3801,7 +4331,10 @@
     "src/i18n/fr-dict.json:655 \"Handover\": \"Livraison\" (étape définie dans src/server/db/codes.ts:887)",
     "déjà fait : fr-dict.json:650 \"Handover dossier\": \"Dossier de transfert\", :424/:434/:606 « … & transfert », fr-rules.ts « SAT prévue $1 · transfert $2 »",
     "à revoir : fr-dict.json:1628, 1963, 2244, 2482, 2494 (« Livraison prévue ») ; fr-rules.ts « (.+) d on handover », « (.+) days on handover », « Net (.+) on handover » → livraison, « % at (SAT|handover…) » → « à la réception » ; src/i18n/extra/portfolio.json:16,26 et extra/home.json:37"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-157",
@@ -3831,7 +4364,10 @@
     "vérifié : site/actions.ts:105-108 rappel Cursus répété → STALE ; quality/actions.ts:117,172 → NOT_YOURS ; src/app/globals.css:25 button sans reset de fond",
     "vérifié : src/server/dal/integrations.ts:182,212 textes d’activité « X sync · … » / « Connector X added · … » sans règle FR ; src/domain/bom.ts:69-74 recherche sur l.name (nom anglais)",
     "vérifié : src/features/itpcom/commissioning-view.tsx:62-66 cellules bloquées en texte simple ; src/features/meetings/meetings-view.tsx Décisions/Actions sans EmptyState ; src/features/contract/mark-paid-button.tsx sans gestion du focus ; local.ts FR_SELF/FR_NAMED sans « tu vas » / « vous allez »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-158",
@@ -3858,7 +4394,10 @@
     "Liste complète des tables (grep pgTable dans src/server/db/schema) : aucune table shipment / package / container / freight ; seul rfqs.incoterm (purchasing.ts:33) côté achats",
     "prototype-data.json STAGE_DELIVS/Expédition : « Colisage & documents douaniers », « Transport contracté » = simples livrables d’étape cochables",
     "docs/DELIVERY-6.md §9 « Not built, by decision »"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-159",
@@ -3880,7 +4419,10 @@
     "src/server/dal/purchasing.ts:80-81,125 drapeau late = activité démarrée et commande encore ouverte (seule alerte de délai)",
     "src/server/db/schema/operations.ts:54-75 itp_inspections.stage peut valoir 'fat' (codes.ts:863) mais sans lien commande / fournisseur",
     "grep -i expedit|release note|factory acceptance dans src : seulement l’étape de cycle de vie FAT et des transcriptions de réunion"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-160",
@@ -3902,7 +4444,10 @@
     "prototype-data.json COMMISSIONING/HLT-026/dossier : « CE declaration & certificates of conformity », semé en handover_items (src/server/db/seed/execution.ts:90)",
     "src/domain/documents.ts:230 détection du type de document COC seulement",
     "Aucune table d’analyse de risques, d’exigences essentielles ou de dossier technique (liste des tables pgTable dans src/server/db/schema) ; grep 2023/1230|2006/42|technical file|risk assessment : aucun résultat"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-161",
@@ -3924,7 +4469,10 @@
     "src/domain/contract.ts:233-236 liquidatedDamagesKpi découpe le texte pour l’affichage ; contract.ts:430,479 champ texte éditable, aucun calcul depuis le planning",
     "src/server/db/schema/aftersales.ts:54 warranty_claims = réclamations SAV sous garantie (Q-8), pas des réclamations contractuelles",
     "Aucune table de réclamation contractuelle ni de pénalité dans la liste des tables du schéma"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-162",
@@ -3947,7 +4495,10 @@
     "src/server/db/schema/portfolio.ts:192 projects.currency (texte) ; assistant src/features/projects/new-project-wizard.tsx:227 EUR/USD seulement",
     "src/server/db/codes.ts:209-212 catégorie de risque 'financial_currency'",
     "docs/DECISIONS.md:148 C-9 (Bloquant production) : « Devise par contrat et commande, consolidation en euros » (option b, pas c = P4)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-163",
@@ -3969,7 +4520,10 @@
     "src/server/integrations/cursus/connector.ts:127-139 et mirror.ts:22 visa / vaccination / habilitations lus depuis Cursus",
     "src/server/db/schema/site.ts:79-97 site_rotations (fromOn, toOn, lodging, travel) et :118-130 mission_cost_lines ; seul writer = src/server/db/seed/site.ts (grep insert/update hors seed : aucun)",
     "grep -i per.?diem|allowance|indemnit dans src : aucun résultat"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-164",
@@ -3992,7 +4546,10 @@
     "src/server/db/schema/cost.ts:48-64 offer_quotes = devis fournisseurs de l’offre (système, montant, échéances) semés et lus seulement par src/server/dal/cost.ts pour la trésorerie ; aucun outil de construction d’offre",
     "Briques existantes réutilisables : modèles machine_type_phases / machine_type_cost_categories / machine_type_itp_systems (assistant, A-2 défaut appliqué) et « Score a proposal » (src/server/dal/prioritisation.ts:162, 3 axes, L-5a)",
     "Aucune table d’offre client, de marge d’offre ni de conversion offre → BL1"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-165",
@@ -4012,7 +4569,10 @@
    "evidence": [
     "grep -i calibrat|étalonn|tooling|7.1.5 dans src : seulement src/domain/documents.ts:234 (détection du type de document REC) et un test",
     "src/server/db/schema/site.ts:40-55 site_equipment (name, source shipped/local_rental/client, statut de confirmation) : pas de parc d’outillage ni d’échéance d’étalonnage"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-166",
@@ -4034,7 +4594,10 @@
     "grep -i serviceWorker|manifest|navigator.onLine|indexedDB|offline dans src : aucun résultat ; public/ ne contient que les SVG par défaut",
     "Aucune règle @media dans src/components/app ; seuls meetings, pid et interchange ont des styles adaptatifs (X-4 non réalisé)",
     "docs/decisions/questions.json X-4 : option retenue « Ordinateur + tablette… en ligne », option « le chantier attendra l’appli P8 » non retenue"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-167",
@@ -4056,7 +4619,10 @@
     "appelants tous ≥ 0 : src/domain/requests.ts:253 NR_WEEKS = [5, 10, 15] + :275 nrDates ; src/server/dal/requests.ts:311-312 (défaut 5, startDay passé seulement par les tests) ; src/server/dal/meetings.ts:424 isoOfDayOffset(TODAY=4) ; src/server/dal/resources.ts:545 passe des dates ISO",
     "seed : aucune valeur start/due négative dans REQUESTS de prototype-data.json",
     "tests : src/server/dal/delivery2.test.ts:329 ne couvre que o = 0..39"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-168",
@@ -4078,7 +4644,10 @@
     "docs/spec/11:1534 AuditEntry : actorUserId, before / after (jsonb), reason, append-only, immutable",
     "drizzle/*.sql : aucun trigger ni REVOKE sur audit_entries ; FK project_id ON DELETE SET NULL (ligne modifiable)",
     "135 sites d’appel writeAudit / addAudit / trace / auditMeeting dans src (hors tests) ; pas de décision du propriétaire sur l’audit dans DECISIONS.md"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-169",
@@ -4109,7 +4678,11 @@
     "src/domain/admin.ts:250 Channels '3'",
     "src/features/hr/forms.ts:100-105 IMPORT_PERIODS (import d’heures Lucca) ; src/features/hr/leave-view.tsx:30 heure de synchro Lucca = constante du prototype ; DECISIONS.md:73 NEW-CURSUS-4 « Lucca débranché », :141 C-2b",
     "DELIVERY-6.md:262 et :362 run PDM daté du 26 sept."
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-170",
@@ -4135,7 +4708,11 @@
     "src/server/dal/plan.ts:180-182 PROTO.DEFS « TODO(db): not stored »",
     "src/server/dal/stock.ts:312-316 x3StockSnapshot lit PROTO.STOCK0 (mock X3 : hors périmètre, connecteur X3)",
     "DECISIONS.md:55 A-15 (Bloquant production) : Données réelles seulement"
-   ]
+   ],
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "id": "R-171",
@@ -4164,7 +4741,10 @@
     "grep « OPEN QUESTION » : 81 occurrences (V-3, D-1, V-1, E-7, L-1, A-10…), la plupart avec une réponse dans answers.json",
     "src/app/(app)/[...rest]/page.tsx : redirection /projects/<code> + notFound ; ComingSoon gardé « for a future unbuilt screen » ; les 59 écrans built: true",
     "déjà supprimés : comingSoonT, activeStatusCodes, setDisplayedBaseline, listScenarioActions / replaceScenarioActions / saveScenarioResult (0 occurrence)"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "id": "R-172",
@@ -4187,7 +4767,10 @@
     "src/features/plan/drawer-model.ts:146-149 TODO(db) + note codée en dur a.id === 'A1250' && 'CR-008'",
     "src/server/export/providers/steering.ts:35-39 owner = owners.get(code) ?? code ; src/features/plan/model.ts:94,109 même repli ; src/server/dal/plan.ts:31,105,150 ownerName déjà chargé par activité (owners limité aux personnes avec owner_code, l.120-122)",
     "DELIVERY-6.md §6 : l’export du plan affiche le code « SP » sur les nouveaux projets"
-   ]
+   ],
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "title": "Mettre Keystone en conformité RGPD (données personnelles, conservation, sous-traitants)",
@@ -4215,7 +4798,10 @@
     "grep -i 'rgpd|gdpr|données personnelles' dans docs/ : aucune mention hors Cursus"
    ],
    "id": "R-173",
-   "verdict": "ajout_critique"
+   "verdict": "ajout_critique",
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "title": "Faire auditer la sécurité avant production (test d'intrusion, veille des dépendances)",
@@ -4239,7 +4825,10 @@
     "DELIVERY-6.md §1.1 : failles trouvées par revue interne seulement (RegExp, corps chunked, exports client)"
    ],
    "id": "R-174",
-   "verdict": "ajout_critique"
+   "verdict": "ajout_critique",
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "title": "Analyser par antivirus les fichiers déposés dans Keystone",
@@ -4261,7 +4850,10 @@
     "grep -i 'clamav|antivirus|malware' dans src et docs : aucun résultat"
    ],
    "id": "R-175",
-   "verdict": "ajout_critique"
+   "verdict": "ajout_critique",
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "title": "Ajouter des pages d'erreur et « page introuvable » traduites",
@@ -4282,7 +4874,11 @@
     "notFound() appelé dans 10 fichiers de src/app (page 404 Next.js par défaut, en anglais)"
    ],
    "id": "R-176",
-   "verdict": "ajout_critique"
+   "verdict": "ajout_critique",
+   "progress": {
+    "state": "en_cours",
+    "delivery": "Livraison 7"
+   }
   },
   {
    "title": "Rédiger le guide utilisateur, former par rôle et organiser le support",
@@ -4303,7 +4899,10 @@
     "grep -i 'guide utilisateur|user guide|user manual|onboarding' dans docs/ : aucun résultat"
    ],
    "id": "R-177",
-   "verdict": "ajout_critique"
+   "verdict": "ajout_critique",
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "title": "Fournir et charger les listes de référence réelles d'EPC2i",
@@ -4326,7 +4925,10 @@
     "src/server/prototype/*.json : source de tout l'amorçage"
    ],
    "id": "R-178",
-   "verdict": "ajout_critique"
+   "verdict": "ajout_critique",
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "title": "Choisir la connexion des clients avant d'ouvrir le portail",
@@ -4349,7 +4951,10 @@
     "grep 'I-2b|CLIENT_ACCESS' dans src : aucune règle d'ouverture ou de fermeture de l'accès client"
    ],
    "id": "R-179",
-   "verdict": "ajout_critique"
+   "verdict": "ajout_critique",
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "title": "Exposer à Cursus les tâches Keystone de chaque personne par semaine",
@@ -4371,7 +4976,10 @@
     "src/server/integrations/cursus/connector.ts : interface CursusConnector = getGoNoGo, sync, remind, requestTravel (aucune exposition de tâches)"
    ],
    "id": "R-180",
-   "verdict": "ajout_critique"
+   "verdict": "ajout_critique",
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "title": "Décider qui crée le projet dans Codex et Vigie à sa création dans Keystone",
@@ -4393,7 +5001,10 @@
     "src/server/integrations/codex/config.ts : seulement l'URL publique de Codex, aucune API"
    ],
    "id": "R-181",
-   "verdict": "ajout_critique"
+   "verdict": "ajout_critique",
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "title": "Décider si les factures client sont émises et encaissées dans Sage X3",
@@ -4418,7 +5029,10 @@
     "Aucune question de docs/decisions/questions.json ne traite l'émission des factures client dans X3"
    ],
    "id": "R-182",
-   "verdict": "ajout_critique"
+   "verdict": "ajout_critique",
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "title": "Auditer l'accessibilité (WCAG 2.1 AA) et automatiser des contrôles axe",
@@ -4442,7 +5056,10 @@
     "DELIVERY-5.md §6 : « focus is not moved when a row action removes its own button »"
    ],
    "id": "R-183",
-   "verdict": "ajout_critique"
+   "verdict": "ajout_critique",
+   "progress": {
+    "state": "a_faire"
+   }
   },
   {
    "title": "Contrôler automatiquement la complétude de la traduction française",
@@ -4466,7 +5083,10 @@
     "DELIVERY-5.md §6 : « the texts the DAL writes for connector runs and additions stay in English in French »"
    ],
    "id": "R-184",
-   "verdict": "ajout_critique"
+   "verdict": "ajout_critique",
+   "progress": {
+    "state": "a_faire"
+   }
   }
  ]
 }
