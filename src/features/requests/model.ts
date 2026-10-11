@@ -86,7 +86,7 @@ export function requestRowView(r: ResourceRequestRow, t: T, lang: Lang, viewer: 
     title: dataText(r.title, lang),
     critical: !!r.activity?.critical,
     high: r.priority === 'high',
-    actLine: r.activity ? `${r.activity.code} · ${tt(r.activity.name)}` : tt('Activity'),
+    actLine: r.activity ? `${r.activity.code} · ${dataText(r.activity.name, lang)}` : tt('Activity'),
     initials: initials(r.resource),
     person: tt(r.resource),
     dept: tt(r.department),

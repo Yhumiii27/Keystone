@@ -191,7 +191,7 @@ export function rfqDrawerView(r: RfqRow, c: SourcingCtx & { orderProject: string
       delta: cmp[i].deltaEur ? '+' + moneyEur(cmp[i].deltaEur, lang) : '—',
       lead: t(`${q.leadWeeks} ${q.leadWeeks === 1 ? 'wk' : 'wks'}`),
       fastest: cmp[i].isFastest,
-      terms: t(q.paymentTerms),
+      terms: dataText(q.paymentTerms, lang),
       rating: `${q.grade} · ${q.score}/100`,
       canAward,
     })),
@@ -362,7 +362,7 @@ export function invoiceDrawerView(i: SupplierInvoiceRow, filter: SupplierInvoice
     meta: [
       { k: t('Invoice date'), v: dateText(i.invoiceDate, t), color: OK },
       { k: t('Due date'), v: dateText(i.dueDate, t), color: OK },
-      { k: t('Terms'), v: t(i.paymentTerms), color: OK },
+      { k: t('Terms'), v: dataText(i.paymentTerms, lang), color: OK },
       { k: t('Variance invoice − receipt'), v: gap != null ? moneyEur(gap, lang) : '—', color: OK },
       { k: t('Blocking reason'), v: reason ? t(reason) : '—', color: reason ? LO : OK },
     ],

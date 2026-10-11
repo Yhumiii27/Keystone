@@ -24,7 +24,7 @@ import {
   addAmendmentAction, addBondAction, addPaymentMilestoneAction, issueInvoiceAction, markInvoicePaidAction, updateContractFieldAction,
 } from './actions';
 import { billingView, contractView } from './model';
-import { G } from './test-fixtures';
+import { G, sheetFieldsExpected } from './test-fixtures';
 
 const fresh = async () => setDb(await openDatabase());
 const hlt = async () => (await getContract('HLT-026'))!;
@@ -37,7 +37,7 @@ async function expectContract(scenario: string, lang: Lang, parts: ('kpis' | 'am
   const v = contractView(await hlt(), makeT(lang), lang);
   if (parts.includes('kpis')) expect(v.kpis).toEqual(g.kpis);
   if (parts.includes('fields'))
-    expect(v.fields.map((f) => [f.key, f.type === 'select' ? f.options!.find((o) => o.value === f.value)!.label : f.value])).toEqual(g.fields.map(([k, x]: string[]) => [k, x]));
+    expect(v.fields.map((f) => [f.key, f.type === 'select' ? f.options!.find((o) => o.value === f.value)!.label : f.value])).toEqual(sheetFieldsExpected(scenario, lang));
   if (parts.includes('amendments'))
     expect(v.amendments.map((a) => [a.label, a.amount, a.status, a.date, a.doc ?? '', a.tagClass])).toEqual(
       g.amendments.map((a: Record<string, string>) => [a.label, a.amtText, a.status, a.date, a.doc, a.stClass]),

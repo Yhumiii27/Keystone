@@ -6,11 +6,8 @@
 //   match only, so a French text typed in Vigie is never altered and an English one is never half-translated
 //   ("None — not yet ordered" → "Aucun — not yet ordered" in the prototype);
 // - parameterised sentences the rule engine does not cover (vault sync result, progress toasts).
-import FR_DICT_BASE from '@/i18n/fr-dict.json';
-import { EXTRA_FR } from '@/i18n/extra';
 import type { Lang, T } from '@/i18n/translate';
-
-const DICT: Record<string, string> = { ...(FR_DICT_BASE as Record<string, string>), ...EXTRA_FR };
+import { dataText } from '@/i18n/data-text';
 
 /** Signed day count, alone or closing a " · " segment: "-6 d", "+6 d", "−6 d". */
 const SIGNED_DAYS = /(^|\s)([+\-−]\d+) d(?=$|\s·)/g;
@@ -19,8 +16,8 @@ export const daysFr = (s: string, lang: Lang) => (lang === 'fr' ? s.replace(SIGN
 /** `t` of the two screens: the shared engine, then the French day unit. English is the identity. */
 export const ecoT = (t: T, lang: Lang): T => (lang === 'fr' ? (s) => daysFr(t(s), lang) : t);
 
-/** Data text from Vigie or the PDM vault: FR only on an exact dictionary match. */
-export const dataText = (s: string, lang: Lang) => (lang === 'fr' && s && Object.hasOwn(DICT, s) ? DICT[s] : s);
+/** Typed / received text: as typed, or a seeded string's exact dictionary entry (R-148: the shared helper, src/i18n/data-text.ts). */
+export { dataText };
 
 /** "Vault synchronised · 6 drawings updated" (AF_RESULT.drawings) with the real count. */
 export function vaultSyncedText(n: number, lang: Lang): string {

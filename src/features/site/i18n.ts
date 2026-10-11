@@ -5,16 +5,14 @@
 // - Weather: the dictionary renders "Clear" as "Effacer" (the button) — the weather is "Dégagé".
 // - Parameterised sentences the shared FR rules do not cover (man-days consumed ≠ 0, the preparation footnote for any
 //   start date, the last-sync lines, the toasts with a number).
-import FR_DICT_BASE from '@/i18n/fr-dict.json';
-import { EXTRA_FR } from '@/i18n/extra';
 import type { Lang, T } from '@/i18n/translate';
 import { hseIncident, weather, type HseIncident, type Weather } from '@/server/db/codes';
+import { dataText } from '@/i18n/data-text';
 
-const DICT: Record<string, string> = { ...(FR_DICT_BASE as Record<string, string>), ...EXTRA_FR };
 const fr = (lang: Lang) => lang === 'fr';
 
-/** Text typed in Keystone: FR only on an exact dictionary match. */
-export const dataText = (s: string, lang: Lang) => (fr(lang) && s && Object.hasOwn(DICT, s) ? DICT[s] : s);
+/** Typed / received text: as typed, or a seeded string's exact dictionary entry (R-148: the shared helper, src/i18n/data-text.ts). */
+export { dataText };
 
 const WEATHER_FR: Record<Weather, string> = { clear: 'Dégagé', rain: 'Pluie', wind: 'Vent > 50 km/h', storm: 'Tempête' };
 /** Weather of a daily report (form option, report detail). */

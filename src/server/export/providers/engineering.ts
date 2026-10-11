@@ -17,6 +17,7 @@ import { DISCIPLINES, type Discipline } from '@/server/db/codes';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook, PdfDocument } from '../types';
 import { col, compact, filterLine, kpiSheet, paramRecord, projectRef, sheet, sum, tableBlock, todayIso } from './common';
+import { dataText } from '@/i18n/data-text';
 
 // ── Engineering ──────────────────────────────────────────────────────────────────────────────────────────────────────
 async function engWorkbook(ctx: ExportContext, disc: Discipline | null): Promise<ExportWorkbook | null> {
@@ -39,24 +40,24 @@ async function engWorkbook(ctx: ExportContext, disc: Discipline | null): Promise
       col('number', t('Document'), 'text', 18), col('title', t('Title'), 'text', 40), col('discipline', t('Discipline'), 'text', 14), col('revision', t('Revision'), 'text', 8),
       col('status', t('Status'), 'text', 14), col('issued', t('Issued on'), 'date'), col('author', t('Author'), 'text', 16), col('blocking', t('Blocking checks'), 'integer'),
     ], reg.deliverables.filter((d) => !disc || d.discipline === disc).map((d) => ({
-      number: d.number, title: t(d.title), discipline: t(discLabel.get(d.discipline) ?? d.discipline), revision: d.revision, status: t(d.statusLabel), issued: d.issuedOn || null,
+      number: d.number, title: dataText(d.title, ctx.lang), discipline: t(discLabel.get(d.discipline) ?? d.discipline), revision: d.revision, status: t(d.statusLabel), issued: d.issuedOn || null,
       author: d.author, blocking: d.blockingChecks,
     }))),
     sheet(t('Inputs'), [
       col('consumer', t('Used by'), 'text', 14), col('number', t('Document'), 'text', 18), col('title', t('Title'), 'text', 40), col('provider', t('Provided by'), 'text', 16),
       col('inUse', t('Revision in use'), 'text', 10), col('latest', t('Latest'), 'text', 8), col('state', t('Status'), 'text', 14), col('acknowledged', t('Acknowledged'), 'boolean'),
     ], reg.inputs.filter((i) => !disc || i.consumer === disc).map((i) => ({
-      consumer: t(discLabel.get(i.consumer) ?? i.consumer), number: i.documentNumber, title: t(i.title), provider: t(i.providerLabel), inUse: i.revisionInUse, latest: i.latest,
+      consumer: t(discLabel.get(i.consumer) ?? i.consumer), number: i.documentNumber, title: dataText(i.title, ctx.lang), provider: t(i.providerLabel), inUse: i.revisionInUse, latest: i.latest,
       state: t(i.stateLabel), acknowledged: i.acknowledged,
     }))),
     sheet(t('Outputs'), [
       col('number', t('Output'), 'text', 10), col('discipline', t('Discipline'), 'text', 14), col('name', t('Name'), 'text', 40), col('source', t('Source'), 'text', 24),
       col('state', t('Status'), 'text', 12), col('generated', t('Generated on'), 'datetime'), col('format', t('Format'), 'text', 8),
     ], reg.outputs.filter((o) => !disc || o.discipline === disc).map((o) => ({
-      number: o.number, discipline: t(discLabel.get(o.discipline) ?? o.discipline), name: t(o.name), source: t(o.source), state: t(o.stateLabel), generated: o.generatedAt, format: o.generatedFormat ?? '',
+      number: o.number, discipline: t(discLabel.get(o.discipline) ?? o.discipline), name: dataText(o.name, ctx.lang), source: t(o.source), state: t(o.stateLabel), generated: o.generatedAt, format: o.generatedFormat ?? '',
     }))),
   ];
-  if (!disc) sheets.push(sheet(t('Changes'), [col('date', t('Date'), 'date'), col('text', t('Change'), 'text', 70)], reg.changes.map((c) => ({ date: c.changedOn, text: t(c.text) }))));
+  if (!disc) sheets.push(sheet(t('Changes'), [col('date', t('Date'), 'date'), col('text', t('Change'), 'text', 70)], reg.changes.map((c) => ({ date: c.changedOn, text: dataText(c.text, ctx.lang) }))));
   return {
     title: t(SCREEN_BY_ID[disc ? SCREEN_OF_DISCIPLINE[disc] : 'eng'].title),
     filters: compact([disc && filter !== 'all' ? `${t('Status')}: ${t(filter === 'open' ? 'Open' : filter === 'sent_back' ? 'Sent back' : 'Resolved')}` : null]),
@@ -81,7 +82,7 @@ async function pidWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   const { t } = ctx;
   const state = parsePidState(paramRecord(ctx));
   const row = (x: (typeof data.tags)[number]) => ({
-    tag: x.tag, description: t(x.description), kind: t(x.kindLabel), scope: t(x.scopeLabel), ref: x.partRef ?? '', part: x.partName ? t(x.partName) : '', activity: x.activityCode,
+    tag: x.tag, description: dataText(x.description, ctx.lang), kind: t(x.kindLabel), scope: t(x.scopeLabel), ref: x.partRef ?? '', part: x.partName ? dataText(x.partName, ctx.lang) : '', activity: x.activityCode,
     plc: x.plcLabel ? t(x.plcLabel) : '', feedback: t(x.stateFeedback), status: t(x.statusLabel), sheet: x.sheet,
   });
   return {
@@ -117,7 +118,7 @@ async function overlayDocument(ctx: ExportContext): Promise<PdfDocument | null> 
     blocks: [
       { kind: 'paragraph', text: t('The client supplies the equipment, Keystone supplies and wires the instruments · this list is agreed and signed with the client') },
       { kind: 'table', sheet: sheet(t('Overlay'), [col('tag', t('Tag'), 'text', 10), col('description', t('Description'), 'text', 38), col('scope', t('Supplied by'), 'text', 12), col('ref', t('BOM reference'), 'text', 16), col('status', t('Status'), 'text', 14)],
-        rows.map((x) => ({ tag: x.tag, description: t(x.description), scope: t(x.scopeLabel), ref: x.partRef ?? '—', status: t(x.statusLabel) }))) },
+        rows.map((x) => ({ tag: x.tag, description: dataText(x.description, ctx.lang), scope: t(x.scopeLabel), ref: x.partRef ?? '—', status: t(x.statusLabel) }))) },
       { kind: 'spacer', height: 12 },
       { kind: 'signatures', parties: [{ role: t('Keystone — project manager'), name: ctx.project.pm }, { role: t('Client') }] },
     ],
@@ -143,7 +144,7 @@ async function bomWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
     col('status', t('Status'), 'text', 14), col('lead', t('Lead time (weeks)'), 'integer'), col('hs', t('HS code'), 'text', 10), col('restriction', t('Export restriction'), 'text', 18),
     col('eco', t('Open ECO'), 'text', 10),
   ], shown.map((l) => ({
-    ref: l.ref, name: t(l.name), type: t(l.typeLabel), makeBuy: t(l.makeBuyLabel), scope: t(l.scopeLabel), qty: l.quantity, unit: l.unit, price: l.listPriceEur, total: l.totalEur,
+    ref: l.ref, name: dataText(l.name, ctx.lang), type: t(l.typeLabel), makeBuy: t(l.makeBuyLabel), scope: t(l.scopeLabel), qty: l.quantity, unit: l.unit, price: l.listPriceEur, total: l.totalEur,
     mfr: l.manufacturer ?? '', mfrRef: l.manufacturerRef ?? '', revision: l.revision ?? '', status: t(l.statusLabel), lead: l.leadWeeks, hs: l.hsCode ?? '',
     restriction: l.exportRestriction ? t(l.exportRestriction) : '', eco: l.openEco ?? '',
   })));
@@ -157,14 +158,14 @@ async function bomWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
     sheets.splice(state.view === 'tree' ? 0 : sheets.length, 0, sheet(t('Assembly tree'), [
       col('level', t('Level'), 'integer', 6), col('ref', t('Reference'), 'text', 18), col('name', t('Article'), 'text', 36), col('qty', t('Qty per parent'), 'number', 9),
       col('extended', t('Total units'), 'number', 9), col('unit', t('Unit cost'), 'money_eur'), col('extendedCost', t('Extended cost'), 'money_eur'), col('status', t('Status'), 'text', 14),
-    ], data.assembly.rows.map((n) => ({ level: n.depth, ref: n.ref, name: t(n.name), qty: n.qty, extended: n.extended, unit: n.unitCostEur, extendedCost: n.extendedCostEur, status: t(n.statusLabel) }))));
+    ], data.assembly.rows.map((n) => ({ level: n.depth, ref: n.ref, name: dataText(n.name, ctx.lang), qty: n.qty, extended: n.extended, unit: n.unitCostEur, extendedCost: n.extendedCostEur, status: t(n.statusLabel) }))));
   }
   if (data.comparison) {
     const c = data.comparison;
     sheets.splice(state.view === 'compare' ? 0 : sheets.length, 0, sheet(`${t('Compare')} ${c.fromRevision}-${c.toRevision}`, [
       col('path', t('Path'), 'text', 40), col('name', t('Article'), 'text', 30), col('from', c.fromRevision, 'number', 8), col('to', c.toRevision, 'number', 8),
       col('kind', t('Change'), 'text', 12), col('price', t('Last price'), 'money_eur'), col('delta', t('Cost delta'), 'money_eur'),
-    ], c.lines.map((l) => ({ path: l.path, name: t(l.name), from: l.qtyFrom, to: l.qtyTo, kind: t(l.kindLabel), price: l.lastPriceEur, delta: l.deltaEur }))));
+    ], c.lines.map((l) => ({ path: l.path, name: dataText(l.name, ctx.lang), from: l.qtyFrom, to: l.qtyTo, kind: t(l.kindLabel), price: l.lastPriceEur, delta: l.deltaEur }))));
   }
   const s = data.bom.summary;
   sheets.push(kpiSheet(ctx, [
@@ -186,8 +187,8 @@ function spareSheet(ctx: ExportContext, list: NonNullable<Awaited<ReturnType<typ
     col('recommended', t('Recommended qty'), 'number', 10), col('inStock', t('In stock'), 'number', 8), col('price', t('Last price'), 'money_eur'), col('total', t('Total'), 'money_eur'),
     col('lead', t('Lead time (weeks)'), 'integer'), col('status', t('Status'), 'text', 14), col('underChange', t('Under change'), 'boolean'), col('note', t('Note'), 'text', 30),
   ], filterSpares(list.rows, kind).map((r) => ({
-    ref: r.ref, name: t(r.name), kind: r.kind, perSystem: r.qtyPerSystem, recommended: r.recommendedQty, inStock: r.inStock, price: r.lastPriceEur, total: r.totalEur, lead: r.leadWeeks,
-    status: t(r.statusLabel), underChange: r.underChange, note: r.note ? t(r.note) : '',
+    ref: r.ref, name: dataText(r.name, ctx.lang), kind: r.kind, perSystem: r.qtyPerSystem, recommended: r.recommendedQty, inStock: r.inStock, price: r.lastPriceEur, total: r.totalEur, lead: r.leadWeeks,
+    status: t(r.statusLabel), underChange: r.underChange, note: r.note ? dataText(r.note, ctx.lang) : '',
   })));
 }
 
@@ -200,7 +201,7 @@ async function sparesDocument(ctx: ExportContext): Promise<PdfDocument | null> {
   const { t } = ctx;
   const s = spareSheet(ctx, data.spares, state.kind);
   return {
-    title: `${t('Recommended wear & spare parts')} — ${t(data.spares.systemName)}`,
+    title: `${t('Recommended wear & spare parts')} — ${dataText(data.spares.systemName, ctx.lang)}`,
     subtitle: `${data.spares.systemQty} × ${data.spares.system}`,
     project: projectRef(ctx),
     reference: data.spares.system,

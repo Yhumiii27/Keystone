@@ -3,9 +3,8 @@
 //   noun ("Demande", not the verb "Demander", 08 OQ26), request statuses agree with "demande" (feminine), and the
 //   "procurement" target of "Approve & send to …" (contract roles, 08 OQ20).
 // - Parameterised sentences the shared FR rule engine does not cover (the prototype leaves them in English).
-import FR_DICT_BASE from '@/i18n/fr-dict.json';
-import { EXTRA_FR } from '@/i18n/extra';
 import type { Lang, T } from '@/i18n/translate';
+import { dataText } from '@/i18n/data-text';
 
 const FR_OVERRIDES: Record<string, string> = {
   Request: 'Demande',
@@ -21,14 +20,8 @@ const fr = (lang: Lang) => lang === 'fr';
 /** FR percentage spacing ("90 %"), as the FR rules write it. */
 const pc = (v: number, lang: Lang) => (fr(lang) ? `${v} %` : `${v}%`);
 
-const DICT: Record<string, string> = { ...(FR_DICT_BASE as Record<string, string>), ...EXTRA_FR };
-/**
- * Free text typed by people (request title, note for the department head): FR only on an exact dictionary match
- * (seeded prototype strings). The segment / month / rule engine is not applied, so a title typed in French is never
- * altered ("Mon équipe…" would become "lun. équipe…") and seeded titles are not half-translated by other features'
- * segment entries ("… — seconde équipe").
- */
-export const dataText = (s: string, lang: Lang) => (fr(lang) && s && Object.hasOwn(DICT, s) ? DICT[s] : s);
+/** Typed / received text: as typed, or a seeded string's exact dictionary entry (R-148: the shared helper, src/i18n/data-text.ts). */
+export { dataText };
 
 /** Hour figures: "12.5" EN, "12,5" FR (requests accept decimal hours). */
 export const hoursNum = (h: number, lang: Lang) => (fr(lang) ? String(h).replace('.', ',') : String(h));

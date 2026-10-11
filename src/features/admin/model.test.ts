@@ -20,6 +20,7 @@ import { addLocation, addReferenceValue, getSettings, removeReferenceValue, rese
 import GOLDEN from './admin.golden.json';
 import { integrationsHref, machineTypesHref } from './links';
 import { machineTypesView, plumbingView, settingsView, visibleImportFormats } from './model';
+import { dataText } from '@/i18n/data-text';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const G = GOLDEN as any;
@@ -42,7 +43,7 @@ const DIRECTOR = { name: 'Marie Lefebvre', role: 'director' };
 const QUALITY = { name: 'Gabriel Comte', role: 'quality' };
 
 async function settings(lang: Lang) {
-  return settingsView(await getSettings(), makeT(lang));
+  return settingsView(await getSettings(), makeT(lang), lang);
 }
 async function mtypes(lang: Lang, selected: string | null = null) {
   const [types, projects] = await Promise.all([listMachineTypes(), listProjects()]);
@@ -143,7 +144,9 @@ describe('Machine types view model', () => {
       }, `${lang} ${code}`).toEqual({
         code: g.code, label: g.label, desc: g.desc, stateText: g.stateText, toggleLabel: g.toggleLabel, dep: g.dep, deliv: g.deliv, acc: g.acc, termsOk: g.termsOk, termsSum: g.termsSum,
         catTotal: g.catTotal, noRefs: g.noRefs, noProjects: g.noProjects, phases: g.phases, cats: g.cats.map((c: any) => ({ name: c.name, type: c.type, budget: c.budget })), typeOpts: g.cats[0].typeOpts,
-        itp: g.itp, refs: g.refs, projects: g.projects.map((p: any) => ({ name: p.name, sub: `${p.code} · ${p.status}`, open: p.open })),
+        // R-148 (NEW-D1-2): reference and linked project names as typed, i.e. their exact French entry ("Quai 7 — Anvers",
+        // "Bloc opératoire — Lille"), not the prototype's segment translation that left them English.
+        itp: g.itp, refs: g.refs.map((r: string) => (lang === 'fr' ? r.split(' · ').map((x, i) => (i === 1 ? dataText(x, 'fr') : x)).join(' · ') : r)), projects: g.projects.map((p: any) => ({ name: lang === 'fr' ? p.name.split(' · ').map((x: string, i: number) => (i === 1 ? dataText(x, 'fr') : x)).join(' · ') : p.name, sub: `${p.code} · ${p.status}`, open: p.open })),
       });
       // Calendar: the prototype's selected option; SPUR's site calendar (no option selected in the prototype, E-9) is
       // offered as "Site 6d · 10h". FR "Standard 5j · 8h" through the plan dictionary.

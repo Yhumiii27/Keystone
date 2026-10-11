@@ -11,7 +11,7 @@ import { SCREEN_BY_ID, screenHref, type ScreenId } from '@/config/screens';
 import { HEALTH_LABEL, HEALTH_TAG } from '@/domain/health';
 import { exportFormatsOf } from '@/features/exports/catalog';
 import { STATUS_DATE } from '@/lib/format';
-import { dataText, projectLabelText } from '@/i18n/data-text';
+import { dataText, fieldsText, projectLabelText } from '@/i18n/data-text';
 import { getProject, type ProjectRow } from '@/server/dal/projects';
 import { crumbExtraOf, defaultTitleOf, notificationsFor, zoneBarOf } from '@/server/dal/shell';
 import { getProjectScope } from '@/server/project-context';
@@ -41,6 +41,9 @@ export interface PageHeaderProps {
   projectParam?: string;
 }
 
+/** Screens whose default crumb extra is typed text (contract reference, payment terms). */
+const DATA_CRUMB_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>(['contract', 'billing']);
+
 const healthView = (p: Pick<ProjectRow, 'health'>) =>
   p.health ? { label: HEALTH_LABEL[p.health], cls: HEALTH_TAG[p.health] } : { label: '—', cls: 'tag tag-neutral' };
 
@@ -56,13 +59,17 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
   const showPrimary = !!primary && !outside && !(readOnly && PROJECT_EDITABLE.includes(screen));
 
   const extra = crumbExtra !== undefined ? crumbExtra : await crumbExtraOf(screen, { role: viewer.role, code, zone, taskId });
-  const crumb = crumbBase(screen) + (extra ? ' · ' + extra : '');
+  // R-148: the contract's reference and payment terms are typed text (shown as typed); the other extras are Keystone's.
+  const crumbText = extra && crumbExtra === undefined && DATA_CRUMB_SCREENS.has(screen)
+    ? `${t(crumbBase(screen))} · ${fieldsText(extra, t, lang)}`
+    : t(crumbBase(screen) + (extra ? ' · ' + extra : ''));
 
   const [rawNotifs, defTitle] = await Promise.all([
     notificationsFor(viewer.role),
     title === undefined ? defaultTitleOf(screen, { taskId, role: viewer.role }) : Promise.resolve(null),
   ]);
-  const notifs = rawNotifs.map((n) => ({ ...n, title: t(n.title), sub: t(n.sub), when: t(n.when) }));
+  // R-148: a notification's sub-line joins typed fields (titles, people) with Keystone's amounts and dates.
+  const notifs = rawNotifs.map((n) => ({ ...n, title: t(n.title), sub: fieldsText(n.sub, t, lang), when: t(n.when) }));
 
   let options: ProjectOptionView[] = [];
   if (project) {
@@ -90,7 +97,7 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
       <header className={styles.header}>
         <div className={styles.left}>
           <div className={styles.crumb}>
-            {t(crumb)}
+            {crumbText}
             {project && (
               <>
                 <span className={styles.sep}>/</span>

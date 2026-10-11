@@ -11,20 +11,17 @@ import FR_DICT_BASE from '@/i18n/fr-dict.json';
 import { EXTRA_FR } from '@/i18n/extra';
 import type { Lang, T } from '@/i18n/translate';
 import { displayOfIso, fmtDOfIso } from '@/server/db/codes';
+import { dataText } from '@/i18n/data-text';
 
 const DICT: Record<string, string> = { ...(FR_DICT_BASE as Record<string, string>), ...EXTRA_FR };
 const fr = (lang: Lang) => lang === 'fr';
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
-/** Data text: French only on an exact dictionary match, the whole text then its " · " / " — " / " → " segments. */
-export function dataT(s: string, lang: Lang): string {
-  if (!fr(lang) || !s) return s;
-  if (Object.hasOwn(DICT, s)) return DICT[s];
-  return s
-    .split(/( · | — | → )/)
-    .map((p, i) => (i % 2 ? p : Object.hasOwn(DICT, p) ? DICT[p] : p))
-    .join('');
-}
+/**
+ * Register data (names, descriptions, notes typed in Keystone or received): as typed, or a seeded string's exact
+ * dictionary entry — never segment by segment (R-148, NEW-D1-2: the shared helper, src/i18n/data-text.ts).
+ */
+export const dataT = (s: string, lang: Lang): string => dataText(s, lang);
 
 /** "rev C" / "rév. C". */
 export const revT = (rev: string, lang: Lang) => (fr(lang) ? `rév. ${rev}` : `rev ${rev}`);

@@ -15,6 +15,20 @@ export function dataText(s: string | null | undefined, lang: Lang): string | nul
   return frExact(s) ?? s;
 }
 
+/** A segment Keystone formats itself: numbers, amounts, units, dates ("+85 k€", "12 Oct – 16 Oct", "−27 d"). */
+const FORMATTED = /^[\d\s+\-−–→.,:;%€$/()×]*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|k€|M€|d|h|wk|wks)(?![A-Za-z])[\d\s+\-−–→.,:;%€$/()×]*)*$/;
+
+/**
+ * A line Keystone joins from separate fields with " · " (a notification sub-line: title · department · person · dates):
+ * each field as typed (or its exact demo entry), the fields Keystone formats itself (amounts, dates) translated.
+ */
+export function fieldsText(s: string, t: (english: string) => string, lang: Lang): string {
+  if (lang !== 'fr' || !s) return s;
+  const whole = frExact(s);
+  if (whole !== undefined) return whole;
+  return s.split(' · ').map((f) => frExact(f) ?? (FORMATTED.test(f) ? t(f) : f)).join(' · ');
+}
+
 /** `dataText` bound to a language, for `.map(dt)` and models that receive a translator. */
 export const makeDataT = (lang: Lang) => (s: string) => dataText(s, lang);
 

@@ -10,6 +10,7 @@ import { ApprovalRow } from './approval-row';
 import { DecisionButtons } from './decision-buttons';
 import { inboxT } from './i18n';
 import s from './myapprovals.module.css';
+import { fieldsText } from '@/i18n/data-text';
 
 const filterHref = (kind: string | null) => screenHref('myapprovals') + (kind ? `?filter=${kind}` : '');
 
@@ -53,10 +54,10 @@ export function MyApprovalsBody({ view, t: tr, lang, canDecide }: MyApprovalsBod
               <span className={s.id}>{a.id}</span>
             </div>
             <div className={s.textCol}>
-              <span className={s.title}>{t(a.title)}</span>
-              <span className={s.sub}>{t(a.sub)}</span>
+              <span className={s.title}>{fieldsText(a.title, t, lang)}</span>
+              <span className={s.sub}>{fieldsText(a.sub, t, lang)}</span>
               <span className={s.meta}>
-                {t(a.who)} · {t(a.when)}
+                {fieldsText(a.who, t, lang)} · {t(a.when)}
               </span>
               {a.external && (
                 // The application that owns the item (ECOs: Vigie), opened outside Keystone.

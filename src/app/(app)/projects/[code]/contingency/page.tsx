@@ -7,10 +7,10 @@ import { DrawDownButton } from '@/features/risks/add-buttons';
 import { ContingencyView } from '@/features/risks/contingency-view';
 import { drawDownFormDef } from '@/features/risks/forms';
 import { contingencyView } from '@/features/risks/model';
-import { projectLabel } from '@/server/dal/projects';
 import { getContingencyScreen } from '@/server/dal/risks-screen';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 export default async function ContingencyPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -20,7 +20,7 @@ export default async function ContingencyPage({ params }: { params: Promise<{ co
 
   const primary =
     ctx.canEdit('contingency') && data ? (
-      <DrawDownButton code={projectCode} context={t(projectLabel(ctx.project))} form={drawDownFormDef(data.approvers)} />
+      <DrawDownButton code={projectCode} context={projectLabelText(ctx.project, lang)} form={drawDownFormDef(data.approvers)} />
     ) : undefined;
 
   return (

@@ -9,10 +9,10 @@ import { CardTitle } from '@/components/ds/Card';
 import { scheduleView } from '@/domain/schedule-gantt';
 import { RebaselineButton } from '@/features/schedule/rebaseline-button';
 import { ScheduleView } from '@/features/schedule/schedule-view';
-import { projectLabel } from '@/server/dal/projects';
 import { getScheduleData } from '@/server/dal/schedule';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 export default async function SchedulePage({
   params,
@@ -23,12 +23,12 @@ export default async function SchedulePage({
 }) {
   const [{ code }, sp] = await Promise.all([params, searchParams]);
   const ctx = await getProjectContext(code, 'schedule');
-  const [{ t }, data] = await Promise.all([getI18n(), getScheduleData(ctx.project.code)]);
+  const [{ t, lang }, data] = await Promise.all([getI18n(), getScheduleData(ctx.project.code)]);
   const baselineParam = Array.isArray(sp.baseline) ? sp.baseline[0] : sp.baseline;
   const showBaseline = baselineParam !== '0' && baselineParam !== 'off';
 
   const primary =
-    data && ctx.canEdit('schedule') ? <RebaselineButton code={ctx.project.code} context={t(projectLabel(ctx.project))} /> : undefined;
+    data && ctx.canEdit('schedule') ? <RebaselineButton code={ctx.project.code} context={projectLabelText(ctx.project, lang)} /> : undefined;
 
   return (
     <>

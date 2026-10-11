@@ -15,10 +15,10 @@ import { NewMeetingButton } from '@/features/meetings/new-meeting-button';
 import { riskFormDef } from '@/features/risks/forms';
 import { transcriptAiInfo } from '@/server/ai/config';
 import { getMeetingsScreen } from '@/server/dal/meetings-screen';
-import { projectLabel } from '@/server/dal/projects';
 import { riskOwnerOptions } from '@/server/dal/risks-screen';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -40,7 +40,7 @@ export default async function MeetingsPage({ params, searchParams }: { params: P
   const riskTeam = riskProposal && (await getProjectContext(projectCode, 'risks')).canEdit('risks') ? await riskOwnerOptions(projectCode) : null;
 
   const primary = canEdit ? (
-    <NewMeetingButton code={projectCode} context={t(projectLabel(ctx.project))} form={meetingFormDef(t, lang, defaultInvitees(ctx.viewer.short, ctx.project.pm))} />
+    <NewMeetingButton code={projectCode} context={projectLabelText(ctx.project, lang)} form={meetingFormDef(t, lang, defaultInvitees(ctx.viewer.short, ctx.project.pm))} />
   ) : undefined;
 
   return (

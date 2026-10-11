@@ -12,7 +12,7 @@ import { CardTitle } from '@/components/ds/Card';
 import { Segmented } from '@/components/ds/Segmented';
 import { screenHref } from '@/config/screens';
 import { PG_FILTERS, type PgFilter, type PgKpiTint, type PgRow, type PgTarget, type PortfolioScheduleModel } from '@/domain/pfplan';
-import type { T } from '@/i18n/translate';
+import type { Lang, T } from '@/i18n/translate';
 import { projectName } from '@/features/portfolio/view';
 import s from './pfplan.module.css';
 
@@ -25,10 +25,10 @@ export const filterHref = (f: PgFilter) => screenHref('pfplan') + (f === 'all' ?
 export const targetHref = (target: PgTarget) =>
   target.screen === 'plan' ? screenHref('plan', { code: target.code }) : `${screenHref('projects')}?q=${encodeURIComponent(target.q)}`;
 
-function ganttRow(r: PgRow, t: T): PortfolioGanttRow {
+function ganttRow(r: PgRow, t: T, lang: Lang): PortfolioGanttRow {
   return {
     key: r.code,
-    name: projectName(r, t),
+    name: projectName(r, lang),
     sub: t(r.pmLine),
     href: targetHref(r.target),
     status: t(r.status),
@@ -43,7 +43,7 @@ function ganttRow(r: PgRow, t: T): PortfolioGanttRow {
   };
 }
 
-export function PfPlanBody({ model, filter, zoneSelected, t }: { model: PortfolioScheduleModel; filter: PgFilter; zoneSelected: boolean; t: T }) {
+export function PfPlanBody({ model, filter, zoneSelected, t, lang }: { model: PortfolioScheduleModel; filter: PgFilter; zoneSelected: boolean; t: T; lang: Lang }) {
   return (
     <Stack gap={14}>
       <FilterBar>
@@ -86,7 +86,7 @@ export function PfPlanBody({ model, filter, zoneSelected, t }: { model: Portfoli
         </div>
         <PortfolioGantt
           months={model.months.map((m) => ({ ...m, label: t(m.label) }))}
-          groups={model.groups.map((g) => ({ key: g.key, label: t(g.label), count: g.count, rows: g.rows.map((r) => ganttRow(r, t)) }))}
+          groups={model.groups.map((g) => ({ key: g.key, label: t(g.label), count: g.count, rows: g.rows.map((r) => ganttRow(r, t, lang)) }))}
           todayL={model.todayL}
           labels={{ project: t('Project'), status: t('Status'), gate: `${t('Next decision')} / ${t('Finish')}` }}
         />

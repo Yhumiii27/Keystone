@@ -350,10 +350,14 @@ export async function notificationsFor(role: RoleKey): Promise<ShellNotification
 
 // ── Global search (`searchHits`, line 4695) ───────────────────────────────
 export interface SearchHit {
-  /** EN source strings. */
+  /** EN source string (translated). */
   kind: string;
+  /** Data (ids, names, titles): shown as typed (R-148). */
   title: string;
+  /** " · " segments: EN labels (translated) and data (`subData`, shown as typed). */
   sub: string;
+  /** R-148: the segments of `sub` that are data (a PM, a manufacturer, a job title), never translated. */
+  subData?: string[];
   href: string;
 }
 
@@ -379,18 +383,20 @@ export async function searchShell(query: string, currentCode: string): Promise<S
   const add = (xs: SearchHit[], max: number) => hits.push(...xs.slice(0, max));
 
   const projects = await listProjects();
-  add(projects.filter((p) => has(p.name + ' ' + p.code)).map((p) => ({ kind: 'Project', title: p.name, sub: `${p.code} · ${p.status} · ${p.pm}`, href: screenHref('plan', { code: p.code }) })), 4);
+  add(projects.filter((p) => has(p.name + ' ' + p.code)).map((p) => ({ kind: 'Project', title: p.name, sub: `${p.code} · ${p.status} · ${p.pm}`, subData: [p.pm], href: screenHref('plan', { code: p.code }) })), 4);
   // Activities of every project with data (ALL_BYID), from the planning DAL.
   const acts = await Promise.all(projects.filter((p) => p.hasData).map(async (p) => (await safe(() => getActivities(p.code), [])).map((a) => ({ a, code: p.code }))));
   const sfx = (s: string, actual: boolean) => s + (actual ? ' A' : '');
   add(acts.flat().filter(({ a }) => has(a.id + ' ' + a.name)).map(({ a, code: c }) => ({ kind: 'Activity', title: `${a.id} · ${a.name}`, sub: `${sfx(a.start, a.startActual)} → ${sfx(a.finish, a.finishActual)}`, href: deepLink('plan', { sel: a.id }, c) })), 4);
   // Parts: the PLM catalogue (parts created in Keystone included).
   const parts = await safe(listParts, []);
-  add(parts.filter((p) => has(p.ref + ' ' + p.name + ' ' + (p.manufacturer ?? ''))).map((p) => ({ kind: 'Part', title: `${p.ref} · ${p.name}`, sub: `${p.manufacturer ?? '—'} · ${p.statusLabel}`, href: deepLink('plm', { part: p.ref }) })), 4);
+  add(parts.filter((p) => has(p.ref + ' ' + p.name + ' ' + (p.manufacturer ?? ''))).map((p) => ({
+    kind: 'Part', title: `${p.ref} · ${p.name}`, sub: `${p.manufacturer ?? '—'} · ${p.statusLabel}`, ...(p.manufacturer ? { subData: [p.manufacturer] } : {}), href: deepLink('plm', { part: p.ref }),
+  })), 4);
   // People: the resource pool listed on Resources (pool order) — the hit opens that screen, so people outside the
   // pool (personas, client contacts) would land on a page that does not show them.
   const pool = (await safe(getResourcePool, { weeks: [], people: [] })).people;
-  add(pool.filter((p) => has(p.name)).map((p) => ({ kind: 'Person', title: p.name, sub: p.jobTitle ?? '', href: screenHref('resources') })), 3);
+  add(pool.filter((p) => has(p.name)).map((p) => ({ kind: 'Person', title: p.name, sub: p.jobTitle ?? '', ...(p.jobTitle ? { subData: [p.jobTitle] } : {}), href: screenHref('resources') })), 3);
   const [crs, risks, pos] = await Promise.all([safe(() => listChangeRequestDetails(code), []), safe(() => listRisks(code), []), safe(() => listPurchaseOrders(code), [])]);
   // Purchase orders of the current project (drafts made in Keystone included).
   add(pos.filter((o) => has(o.number + ' ' + o.supplier)).map((o) => ({ kind: 'Purchase order', title: `${o.number} · ${o.supplier}`, sub: o.statusLabel, href: deepLink('orders', { po: o.number }, code) })), 3);

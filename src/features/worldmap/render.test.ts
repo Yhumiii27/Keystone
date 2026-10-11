@@ -36,7 +36,7 @@ const modelOf = (lang: Lang, zone: ZoneCode | null) => models.get(`${lang}|${zon
 
 beforeAll(async () => {
   setDb(await openDatabase());
-  for (const lang of LANGS) for (const zone of ZONES) models.set(`${lang}|${zone}`, buildWorldMapModel(await getProjectsMap(zone), makeT(lang)));
+  for (const lang of LANGS) for (const zone of ZONES) models.set(`${lang}|${zone}`, buildWorldMapModel(await getProjectsMap(zone), makeT(lang), lang));
 }, 60_000);
 
 describe('projects map — view model vs prototype', () => {

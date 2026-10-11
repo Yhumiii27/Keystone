@@ -13,9 +13,10 @@ import { claimFormDef, localizeForm } from '@/features/aftersales/forms';
 import { savView } from '@/features/aftersales/model';
 import { SavBody } from '@/features/aftersales/sav-view';
 import { claimFormOptions, getSavScreen } from '@/server/dal/aftersales';
-import { getProject, projectLabel } from '@/server/dal/projects';
+import { getProject } from '@/server/dal/projects';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n, getLastProject, getZone } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -29,7 +30,7 @@ export default async function WarrantyClaimsPage({ searchParams }: { searchParam
   let primary;
   if (access.canEdit) {
     const [opts, project] = await Promise.all([claimFormOptions(), getLastProject().then(getProject)]);
-    primary = <NewClaimButton label={t('New claim')} form={localizeForm(claimFormDef(opts.machines, opts.owners), t, lang)} context={project ? t(projectLabel(project)) : undefined} />;
+    primary = <NewClaimButton label={t('New claim')} form={localizeForm(claimFormDef(opts.machines, opts.owners), t, lang)} context={project ? projectLabelText(project, lang) : undefined} />;
   }
 
   return (

@@ -45,7 +45,7 @@ describe('portfolio screens render', () => {
 
   it('my projects in French (director) and fallback notice (quality)', async () => {
     const t = makeT('fr');
-    const d = renderToStaticMarkup(h(MyProjectsBody, { data: await getMyProjects(PERSONA_BY_ROLE.director, 'HLT-026', 'fr'), t }));
+    const d = renderToStaticMarkup(h(MyProjectsBody, { data: await getMyProjects(PERSONA_BY_ROLE.director, 'HLT-026', 'fr'), t, lang: 'fr' }));
     const txt = text(d);
     for (const s of [
       'Mes projets', 'Directrice de portefeuille', 'Décisions en attente', 'Dans mes approbations',
@@ -55,7 +55,7 @@ describe('portfolio screens render', () => {
       expect(txt).toContain(s);
     expect(d).toContain('href="/projects/HLT-026/plan"');
     expect(txt).not.toContain('Aucun projet ne vous est affecté');
-    const q = text(renderToStaticMarkup(h(MyProjectsBody, { data: await getMyProjects(PERSONA_BY_ROLE.quality, 'HLT-026', 'fr'), t })));
+    const q = text(renderToStaticMarkup(h(MyProjectsBody, { data: await getMyProjects(PERSONA_BY_ROLE.quality, 'HLT-026', 'fr'), t, lang: 'fr' })));
     expect(q).toContain('Aucun projet ne vous est affecté — tout le portefeuille est affiché.');
     expect(q).toContain('Tout le portefeuille');
     expect(q).toContain('Consultation');

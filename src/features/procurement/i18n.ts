@@ -7,14 +7,11 @@
 // - "Awarded to {supplier} — no purchase order drafted (…)": the award made without an order to draft.
 // Text typed by people or read from the catalogue (RFQ titles, part names, articles) goes through `dataText`: French
 // only on an exact dictionary match, so it is never half-translated.
-import FR_DICT_BASE from '@/i18n/fr-dict.json';
-import { EXTRA_FR } from '@/i18n/extra';
 import type { Lang, T } from '@/i18n/translate';
+import { dataText } from '@/i18n/data-text';
 
-const DICT: Record<string, string> = { ...(FR_DICT_BASE as Record<string, string>), ...EXTRA_FR };
-
-/** Typed / catalogue text: French only on an exact dictionary match ("Steel plate S355 · 20 mm — 192 plates"). */
-export const dataText = (s: string, lang: Lang) => (lang === 'fr' && s && Object.hasOwn(DICT, s) ? DICT[s] : s);
+/** Typed / received text: as typed, or a seeded string's exact dictionary entry (R-148: the shared helper, src/i18n/data-text.ts). */
+export { dataText };
 
 const OWN: Record<string, string> = {
   Request: 'Demande',

@@ -84,14 +84,12 @@ export interface VaultView {
   empty: string | null;
 }
 
-/** Title / tags of a record: Codex records as the prototype translates them; Keystone-created ones only on an exact entry. */
-const dataT = (d: Pick<VaultDocument, 'isNew'>, s: string, t: T, lang: Lang) => (d.isNew ? exactT(s, lang) : t(s));
 
 export function vaultRowView(d: VaultDocument, href: string, open: boolean, t: T, lang: Lang): VaultRowView {
   return {
-    number: d.number, isNew: d.isNew, title: dataT(d, d.title, t, lang), kind: t(d.typeLabel), service: t(d.serviceLabel), project: d.project,
+    number: d.number, isNew: d.isNew, title: exactT(d.title, lang), kind: t(d.typeLabel), service: t(d.serviceLabel), project: d.project,
     revision: d.revision, status: t(d.statusLabel), statusClass: tag(DOCUMENT_STATUS_TAG[d.status]), conf: t(d.confidentialityLabel),
-    confClass: tag(CONFIDENTIALITY_TAG[d.confidentiality]), tags: dataT(d, d.tagsText, t, lang), href, open,
+    confClass: tag(CONFIDENTIALITY_TAG[d.confidentiality]), tags: exactT(d.tagsText, lang), href, open,
   };
 }
 
@@ -105,7 +103,7 @@ export interface VaultInput {
 export function vaultView({ project, docs, sync, state }: VaultInput, t: T, lang: Lang): VaultView {
   const keep = keepQuery(state);
   const href = (q: DocsQuery) => documentsHref(project, q);
-  const display = (d: VaultDocument) => `${dataT(d, d.title, t, lang)} ${t(d.typeLabel)} ${dataT(d, d.tagsText, t, lang)}`;
+  const display = (d: VaultDocument) => `${exactT(d.title, lang)} ${t(d.typeLabel)} ${exactT(d.tagsText, lang)}`;
   const { scoped, list } = vaultList(docs, { scope: state.scope, project, view: state.view, family: state.family, status: state.status, q: state.q }, display);
 
   const kpis = vaultKpis(scoped).map((k) => ({ label: t(k.label), value: String(k.value), sub: t(k.sub), color: k.alert ? LO : OK }));
@@ -273,7 +271,7 @@ export function drawerView({ project, record: r, state, viewer, canEdit }: Drawe
     number: r.number,
     revision: r.revision,
     head: `${t('Document record')} · ${r.number} · ${t(`rev ${r.revision}`)}`,
-    title: dataT(r, r.title, t, lang),
+    title: exactT(r.title, lang),
     conf: t(confidentiality.label(r.confidentiality)),
     confClass: tag(CONFIDENTIALITY_TAG[r.confidentiality]),
     status: t(r.statusLabel),
@@ -286,7 +284,7 @@ export function drawerView({ project, record: r, state, viewer, canEdit }: Drawe
     withdrawal: r.withdrawal ? `${t('Withdrawal')} · ${t(`rev ${r.withdrawal.revision} withdrawn automatically · ${shortDateOfIso(r.withdrawal.on)}`)}` : null,
     identity,
     // `tagList = tags.split(' · ')`: a record without classification shows a single "—" pill.
-    tags: r.tags.length ? r.tags.map((x) => dataT(r, x, t, lang)) : ['—'],
+    tags: r.tags.length ? r.tags.map((x) => exactT(x, lang)) : ['—'],
     revisions,
     approvals,
     distribution,
@@ -362,7 +360,7 @@ export function depositView(input: DepositInput, t: T, lang: Lang): DepositView 
       page: project,
       project: doc.project,
       projectText: t(projectText(doc.project)),
-      revision: { number: doc.number, title: dataT(doc, doc.title, t, lang), context: revisionContextT(revisionContextText(doc.number, doc.revision), lang), type: doc.type },
+      revision: { number: doc.number, title: exactT(doc.title, lang), context: revisionContextT(revisionContextText(doc.number, doc.revision), lang), type: doc.type },
       // `openDep` from the drawer: type of the record, linked order = its first relation, no article.
       initial: { type: doc.type, po: doc.links[0]?.ref ?? '', part: '' },
       types: [{ ...typeView(doc.type, doc.project, doc.number), confidentiality: t(doc.confidentialityLabel) }],

@@ -34,6 +34,11 @@ const DIRECTOR = { short: 'M. Lefebvre', role: 'director' };
 /** Labels the prototype dictionary leaves in English, translated in src/i18n/extra/docs.json. */
 const FR_GAPS: Record<string, string> = { 'PLC variable table': 'Table de variables automate' };
 const frGap = (lang: Lang, s: string) => (lang === 'fr' && Object.hasOwn(FR_GAPS, s) ? FR_GAPS[s] : s);
+/**
+ * R-148 (NEW-D1-2): the keywords of a Codex record are shown as typed — their exact French entry or the stored text, never
+ * the prototype's segment translation ("CR-RAIL-A100 · heat 7712" was shown as "… · coulée 7712").
+ */
+const tagsAsTyped = (lang: Lang, s: string) => (lang === 'fr' ? s.replace(/coulée (\d+)/g, 'heat $1') : s);
 const withI18n = (lang: Lang, el: ReactElement) => createElement(I18nProvider, { lang } as ComponentProps<typeof I18nProvider>, el);
 
 beforeAll(async () => {
@@ -67,7 +72,7 @@ describe('vault (dvKpis, dvScope, dvViews, dvFam, dvSt, dvList) — EN and FR', 
       expect(v.rows.map((r) => ({
         id: r.number, title: r.title, typeLabel: r.kind, svcLabel: r.service, proj: r.project, rev: r.revision, status: r.status, stClass: r.statusClass,
         conf: r.conf, confClass: r.confClass, tags: r.tags, isNew: r.isNew,
-      }))).toEqual(g.list.map((d: any) => ({ ...d, typeLabel: frGap(lang, d.typeLabel) })));
+      }))).toEqual(g.list.map((d: any) => ({ ...d, typeLabel: frGap(lang, d.typeLabel), tags: tagsAsTyped(lang, d.tags) })));
     }
   });
 

@@ -9,8 +9,9 @@ import { HEALTH_LABEL } from '@/domain/health';
 import {
   mapCrumbExtra, mapKpis, markerStyleOf, tooltipStatusTone, type GeoBounds, type MapCategory, type MapKpiView,
 } from '@/domain/worldmap';
-import type { T } from '@/i18n/translate';
+import type { Lang, T } from '@/i18n/translate';
 import type { MapPoint, ProjectsMap } from '@/server/dal/geo';
+import { dataText, projectLabelText } from '@/i18n/data-text';
 
 /** One project on the map (tooltip row): `mapPts` with codes kept and labels translated. */
 export type MapPointView = ProjectsMapPoint & { category: MapCategory };
@@ -53,8 +54,9 @@ export interface WorldMapModel {
   crumbExtra: string;
 }
 
-const name = (p: MapPoint, t: T) => `${p.project.displayId} · ${t(p.project.name)}`;
-const sub = (p: MapPoint, t: T) => [p.project.code, p.project.pm, t(p.project.client)].filter(Boolean).join(' · ');
+// R-148: project and client names as typed (or their seeded demo entry).
+const name = (p: MapPoint, lang: Lang) => projectLabelText(p.project, lang);
+const sub = (p: MapPoint, lang: Lang) => [p.project.code, p.project.pm, dataText(p.project.client, lang)].filter(Boolean).join(' · ');
 /** DS tag tone of a status tone ("muted" never applies to a stage or a health). */
 const tagTone = (tone: Tone): TagTone => (tone === 'muted' ? 'neutral' : tone);
 const healthTag = (p: MapPoint, t: T): MapTagView | null => (p.health ? { label: t(HEALTH_LABEL[p.health]), tone: tagTone(HEALTH_TONE[p.health]) } : null);
@@ -64,7 +66,7 @@ export function openHref(p: { code: string; hasData: boolean }): string {
   return p.hasData ? screenHref('plan', { code: p.code }) : `${screenHref('projects')}?q=${encodeURIComponent(p.code)}`;
 }
 
-export function buildWorldMapModel(map: ProjectsMap, t: T): WorldMapModel {
+export function buildWorldMapModel(map: ProjectsMap, t: T, lang: Lang): WorldMapModel {
   const zoneLabel = map.zone?.label ?? null;
   const kpis = mapKpis(
     map.points.map((p) => ({ category: p.category, health: p.health, site: `${p.city}|${p.country}`, country: p.country })),
@@ -74,8 +76,8 @@ export function buildWorldMapModel(map: ProjectsMap, t: T): WorldMapModel {
 
   const points: MapPointView[] = map.points.map((p) => ({
     code: p.project.code,
-    name: name(p, t),
-    sub: sub(p, t),
+    name: name(p, lang),
+    sub: sub(p, lang),
     city: p.city,
     country: t(p.country),
     lat: p.lat,
@@ -95,8 +97,8 @@ export function buildWorldMapModel(map: ProjectsMap, t: T): WorldMapModel {
     focusCode: g.points[0].project.code,
     items: g.points.map((p) => ({
       code: p.project.code,
-      name: name(p, t),
-      sub: `${p.project.code} · ${p.project.pm} · ${t(p.project.client)}`,
+      name: name(p, lang),
+      sub: `${p.project.code} · ${p.project.pm} · ${dataText(p.project.client, lang)}`,
       status: { label: t(p.project.status), tone: tagTone(lifecycleTone(p.project.status)) },
       health: healthTag(p, t),
       href: openHref(p.project),

@@ -99,7 +99,7 @@ describe('Skills matrix', () => {
   const base = '/resources/skills';
 
   it('KPIs, chips, matrix and coverage (EN)', () => {
-    const m = html(h(SkillsView, { data: skills, filter: null, base, t: tOf('en'), expertRequests }), 'en');
+    const m = html(h(SkillsView, { data: skills, filter: null, base, t: tOf('en'), lang: 'en', expertRequests }), 'en');
     const x = text(m);
     expect(x).toContain('Skill families 10 Levels 1–5 · certifications noted');
     expect(x).toContain('Single-expert skills 8 Fewer than 2 people at level ≥4');
@@ -127,13 +127,13 @@ describe('Skills matrix', () => {
   });
 
   it('without the computed requests the 4th tile shows "—", never an invented figure (A-12)', () => {
-    const x = text(html(h(SkillsView, { data: skills, filter: null, base, t: tOf('en') }), 'en'));
+    const x = text(html(h(SkillsView, { data: skills, filter: null, base, t: tOf('en'), lang: 'en' }), 'en'));
     expect(x).toContain('Open requests needing level ≥4 —');
     expect(x).not.toContain('Structural · Quality');
   });
 
   it('filter ?filter=4 (Crane & lifting): people at level ≥3', () => {
-    const m = html(h(SkillsView, { data: skills, filter: 4, base, t: tOf('en') }), 'en');
+    const m = html(h(SkillsView, { data: skills, filter: 4, base, t: tOf('en'), lang: 'en' }), 'en');
     expect(count(m, 'role="row"')).toBe(1 + 3);
     const x = text(m);
     expect(x).toContain('Amélie Ollivier');
@@ -143,7 +143,7 @@ describe('Skills matrix', () => {
   });
 
   it('FR', () => {
-    const m = html(h(SkillsView, { data: skills, filter: null, base, t: tOf('fr') }), 'fr');
+    const m = html(h(SkillsView, { data: skills, filter: null, base, t: tOf('fr'), lang: 'fr' }), 'fr');
     const x = text(m);
     expect(x).toContain('Familles de compétences 10');
     expect(x).toContain('Compétences à expert unique 8');

@@ -9,10 +9,10 @@ import { localizeForm, stakeholderFormDef } from '@/features/team/forms';
 import { formT } from '@/features/team/i18n';
 import { stakeholdersView } from '@/features/team/model';
 import { StakeholdersBody } from '@/features/team/stakeholders-view';
-import { projectLabel } from '@/server/dal/projects';
 import { getStakeholdersScreen } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 export default async function StakeholdersPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -22,7 +22,7 @@ export default async function StakeholdersPage({ params }: { params: Promise<{ c
 
   const primary =
     ctx.canEdit('stakeholders') && data ? (
-      <AddStakeholderButton code={projectCode} context={t(projectLabel(ctx.project))} form={localizeForm(stakeholderFormDef(data.team), formT(t, lang))} />
+      <AddStakeholderButton code={projectCode} context={projectLabelText(ctx.project, lang)} form={localizeForm(stakeholderFormDef(data.team), formT(t, lang))} />
     ) : undefined;
 
   return (

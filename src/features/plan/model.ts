@@ -12,6 +12,7 @@ import { STATUS_DATE, money } from '@/lib/format';
 import type { BaselineInfo } from '@/server/dal/baselines';
 import type { PlanData, PlanTodo } from '@/server/dal/plan';
 import { baselineKpiSub, daysText, finishVsBaselineText } from './i18n';
+import { dataText } from '@/i18n/data-text';
 
 export type PlanView = 'structure' | 'progress';
 
@@ -100,7 +101,8 @@ export function planRowViews(rows: PlanRow[], data: PlanData, t: T, lang: Lang):
       kind: r.kind,
       id: r.id,
       wbs: r.wbs,
-      name: t(r.name),
+      // R-148: work package and activity names are shown as typed (or their seeded demo entry).
+      name: dataText(r.name, lang),
       nameValue: r.name,
       wpOption: r.kind === 'wp' ? `${r.id} · ${r.name}` : undefined,
       indent: r.indent,

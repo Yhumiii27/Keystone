@@ -64,7 +64,7 @@ function ActiveProjectsCard({ data, t, lang }: { data: PortfolioOverview; t: T; 
             return (
               <RowLink key={p.code} href={screenHref('plan', { code: p.code })}>
                 <Td>
-                  <CellStack title={projectName(p, t)} sub={`${p.pm} ${t('· due')} ${t(p.finish)}`} />
+                  <CellStack title={projectName(p, lang)} sub={`${p.pm} ${t('· due')} ${t(p.finish)}`} />
                 </Td>
                 <Td>
                   <HealthBadge health={m.health} t={t} nowrap={false} />

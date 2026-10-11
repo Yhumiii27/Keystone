@@ -18,11 +18,11 @@ import { VigieLink } from '@/features/eco/vigie-link';
 import { dlvDrawerView, dlvTabView, ncrDrawerView, ncrTabView, qualitySegView, type QualityState, type QualityViewerCtx } from '@/features/quality/model';
 import { QualityView } from '@/features/quality/quality-view';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
-import { projectLabel } from '@/server/dal/projects';
 import { getQualityScreen } from '@/server/dal/quality-screen';
 import { vigieReportNcrUrl } from '@/server/integrations/vigie/links';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -54,7 +54,7 @@ export default async function QualityPage({ params, searchParams }: { params: Pr
   };
 
   const input = { code: projectCode, state, viewer };
-  const context = t(projectLabel(ctx.project));
+  const context = projectLabelText(ctx.project, lang);
   const primary = viewer.vigie ? (
     <VigieLink href={vigieReportNcrUrl({ projectCode })} variant="primary" size="md" plus label={`${t('New NCR')} · ${t('Report in Vigie')}`}>
       {t('New NCR')}

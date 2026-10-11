@@ -10,7 +10,7 @@ export default async function MyProjectsPage() {
   return (
     <>
       <PageHeader screen="myprojects" />
-      <MyProjectsBody data={data} t={t} />
+      <MyProjectsBody data={data} t={t} lang={lang} />
     </>
   );
 }

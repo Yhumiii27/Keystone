@@ -37,7 +37,7 @@ beforeAll(async () => {
 describe('Settings body', () => {
   it.each(['en', 'fr'] as const)('%s: template labels, KPI tiles, seven cards with their entries and controls', async (lang) => {
     const t = makeT(lang);
-    const out = html(h(SettingsBody, { view: settingsView(await getSettings(), t), canEdit: true }), lang);
+    const out = html(h(SettingsBody, { view: settingsView(await getSettings(), t, lang), canEdit: true }), lang);
     const plain = text(out);
     for (const l of ['Project health rules', 'At risk below', 'Off track below', 'Labor rates and multipliers are edited on the', 'Rate cards', 'page (directors and PMs).', 'Add']) {
       expect(plain, l).toContain(label(l, lang));
@@ -56,7 +56,7 @@ describe('Settings body', () => {
   });
 
   it('outside the workspace: entries listed, no remove / add / location type, thresholds read-only', async () => {
-    const out = html(h(SettingsBody, { view: settingsView(await getSettings(), makeT('en')), canEdit: false }), 'en');
+    const out = html(h(SettingsBody, { view: settingsView(await getSettings(), makeT('en'), 'en'), canEdit: false }), 'en');
     expect(out).not.toContain('aria-label="Remove');
     expect(out).not.toContain('placeholder="Add an entry"');
     expect(out).not.toContain('aria-pressed=');

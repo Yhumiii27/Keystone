@@ -16,6 +16,7 @@ import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportWorkbook } from '../types';
 import { col, compact, filterLine, kpiSheet, param, sheet } from './common';
 import { projectFilter } from './scope';
+import { dataText } from '@/i18n/data-text';
 
 // ── Documents (Codex index) ──────────────────────────────────────────────────────────────────────────────────────────
 async function docsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
@@ -28,7 +29,7 @@ async function docsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> 
     scope: parseScope(param(ctx, 'scope')), project: ctx.project.code, view: parseView(param(ctx, 'view')), family: parseFamily(param(ctx, 'fam')),
     status: parseStatus(param(ctx, 'status')), q: (param(ctx, 'q') ?? '').slice(0, 120),
   };
-  const { scoped, list } = vaultList(own, query, (d) => `${t(d.title)} ${t(d.typeLabel)} ${t(d.tagsText)}`);
+  const { scoped, list } = vaultList(own, query, (d) => `${dataText(d.title, ctx.lang)} ${t(d.typeLabel)} ${t(d.tagsText)}`);
   const rows = numbers.length ? own.filter((d) => numbers.includes(d.number)) : list;
   return {
     title: t('Documents — Codex index'),
@@ -45,7 +46,7 @@ async function docsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> 
         col('shared', t('Shared with the client'), 'boolean'), col('acknowledged', t('Acknowledged'), 'boolean'), col('next', t('Next approver'), 'text', 18),
         col('links', t('Relations'), 'text', 30), col('retention', t('Retention'), 'text', 14), col('iso', 'ISO 9001', 'text', 8),
       ], rows.map((d) => ({
-        number: d.number, title: t(d.title), type: t(d.typeLabel), family: t(d.familyLabel), project: d.project, service: t(d.serviceLabel), revision: d.revision, status: t(d.statusLabel),
+        number: d.number, title: dataText(d.title, ctx.lang), type: t(d.typeLabel), family: t(d.familyLabel), project: d.project, service: t(d.serviceLabel), revision: d.revision, status: t(d.statusLabel),
         issued: d.issuedOn, author: d.author, confidentiality: t(d.confidentialityLabel), tags: d.tags.map((x) => t(x)).join(' · '), shared: d.shared, acknowledged: d.acknowledged,
         next: d.nextRoleLabel ? `${t(d.nextRoleLabel)}${d.nextApprover ? ' · ' + d.nextApprover : ''}` : '', links: d.links.map((l) => `${t(l.kindLabel)} ${l.ref}`).join(' · '),
         retention: t(d.retention), iso: d.isoClause,
@@ -61,7 +62,7 @@ async function plmWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const cat = await getPlmCatalogue();
   const p = (k: string) => param(ctx, k) ?? undefined;
   const state = parsePlmState({ q: p('q'), type: p('type'), status: p('status'), pu: p('pu'), mb: p('mb'), restr: p('restr'), sort: p('sort'), dir: p('dir') });
-  const rows = plmRows(cat.parts, state, (x) => t(x.name));
+  const rows = plmRows(cat.parts, state, (x) => dataText(x.name, ctx.lang));
   return {
     title: t('PLM — parts catalogue'),
     filters: compact([filterLine(t('Search'), state.filter.q)]),
@@ -72,7 +73,7 @@ async function plmWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
         col('price', t('List price'), 'money_eur'), col('lastPrice', t('Last price'), 'money_eur'), col('lead', t('Lead time (weeks)'), 'integer'), col('mfr', t('Manufacturer'), 'text', 20),
         col('mfrRef', t('Manufacturer ref.'), 'text', 16), col('hs', t('HS code'), 'text', 10), col('restriction', t('Export restriction'), 'text', 18), col('eco', t('Open ECO'), 'text', 12),
       ], rows.map((x) => ({
-        ref: x.ref, name: t(x.name), type: t(x.typeLabel), makeBuy: t(x.makeBuyLabel), status: t(x.statusLabel), revision: x.revision ?? '', pu: x.wearSpareLabel ? t(x.wearSpareLabel) : '',
+        ref: x.ref, name: dataText(x.name, ctx.lang), type: t(x.typeLabel), makeBuy: t(x.makeBuyLabel), status: t(x.statusLabel), revision: x.revision ?? '', pu: x.wearSpareLabel ? t(x.wearSpareLabel) : '',
         unit: x.unit, price: x.listPriceEur, lastPrice: x.lastPriceEur, lead: x.leadWeeks, mfr: x.manufacturer ?? '', mfrRef: x.manufacturerRef ?? '', hs: x.hsCode ?? '',
         restriction: x.exportRestriction ? t(x.exportRestriction) : '', eco: cat.openEco[x.ref] ?? '',
       }))),
@@ -97,7 +98,7 @@ async function ecoWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
         col('parts', t('Parts'), 'text', 24), col('projects', t('Projects'), 'text', 18), col('requestedBy', t('Requested by'), 'text', 16), col('raised', t('Raised on'), 'date'),
         col('approvals', t('Approvals'), 'text', 40), col('vigie', 'Vigie', 'text', 40),
       ], ecos.map((e) => ({
-        number: e.number, title: t(e.title), type: t(e.typeLabel), status: t(e.statusLabel), from: e.fromRevision, to: e.toRevision, cost: e.costEur, days: e.scheduleDays, stock: t(e.stockImpact),
+        number: e.number, title: dataText(e.title, ctx.lang), type: t(e.typeLabel), status: t(e.statusLabel), from: e.fromRevision, to: e.toRevision, cost: e.costEur, days: e.scheduleDays, stock: t(e.stockImpact),
         parts: e.parts.join(' · '), projects: e.projects.filter((c) => visible(c)).join(' · '), requestedBy: e.requestedBy, raised: e.raisedOn,
         approvals: e.approvals.map((a) => `${a.key}: ${a.decision}`).join(' · '), vigie: e.vigieUrl,
       }))),
@@ -120,7 +121,7 @@ async function drawingsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
         col('state', t('Status'), 'text', 14), col('by', t('Checked in by'), 'text', 16), col('on', t('Checked in on'), 'date'), col('eco', 'ECO', 'text', 14), col('formats', t('Formats'), 'text', 18),
         col('file', t('Vault file'), 'text', 44),
       ], filterDrawings(data.drawings, state, q).map((d) => ({
-        number: d.number, title: t(d.title), part: d.partRef ?? '', revision: d.revision, state: t(d.stateLabel), by: d.checkedInBy, on: d.checkedInOn, eco: d.ecoNumber ?? '', formats: d.formats, file: d.vaultFile,
+        number: d.number, title: dataText(d.title, ctx.lang), part: d.partRef ?? '', revision: d.revision, state: t(d.stateLabel), by: d.checkedInBy, on: d.checkedInOn, eco: d.ecoNumber ?? '', formats: d.formats, file: d.vaultFile,
       }))),
     ],
   };

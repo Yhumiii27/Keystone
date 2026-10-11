@@ -13,6 +13,7 @@ import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import type { Contingency } from '@/server/dal/contingency';
 import type { RiskRow } from '@/server/dal/risks';
+import { dataText } from '@/i18n/data-text';
 
 export interface KpiView {
   label: string;
@@ -109,7 +110,7 @@ export interface RiskRegisterInput {
   selected: string | null;
 }
 
-const activityText = (r: RiskRow, t: T) => (r.activity ? `${r.activity.code} · ${t(r.activity.name)}` : '—');
+const activityText = (r: RiskRow, lang: Lang) => (r.activity ? `${r.activity.code} · ${dataText(r.activity.name, lang)}` : '—');
 const emvText = (k: number, lang: Lang) => (k ? money(k, lang) : '—');
 
 export function riskRegisterView(input: RiskRegisterInput, t: T, lang: Lang): RiskRegisterView {
@@ -141,9 +142,9 @@ export function riskRegisterView(input: RiskRegisterInput, t: T, lang: Lang): Ri
     const level = levelOf(score);
     const isSel = selected?.id === r.id;
     return {
-      id: r.id, title: t(r.title), category: t(r.categoryLabel), p: r.probability, i: r.impact, score,
+      id: r.id, title: dataText(r.title, lang), category: t(r.categoryLabel), p: r.probability, i: r.impact, score,
       level: t(levelLabel(level)), levelClass: TAG_CLASS[levelTone(level)], response: t(r.responseLabel), owner: r.owner ?? '—',
-      emvText: emvText(r.emv, lang), actText: activityText(r, t), trend: r.trend,
+      emvText: emvText(r.emv, lang), actText: activityText(r, lang), trend: r.trend,
       status: t(r.statusLabel), statusClass: TAG_CLASS[statusTone(r.status)], selected: isSel,
       href: risksHref(code, { filter, risk: isSel ? null : r.id }),
     };
@@ -165,7 +166,7 @@ export function riskRegisterView(input: RiskRegisterInput, t: T, lang: Lang): Ri
       head: `${r.id} · ${t(r.categoryLabel)}`,
       levelText: levelTagText(r).split(' · ').map(t).join(' · '),
       levelClass: TAG_CLASS[levelTone(level)],
-      title: t(r.title),
+      title: dataText(r.title, lang),
       probability: r.probability,
       impact: r.impact,
       response: r.response,
@@ -174,7 +175,7 @@ export function riskRegisterView(input: RiskRegisterInput, t: T, lang: Lang): Ri
       meta: [
         { k: t('Owner'), v: r.owner ?? '—' },
         { k: t('Trigger'), v: t(r.trigger) },
-        { k: t('Linked activity'), v: activityText(r, t) },
+        { k: t('Linked activity'), v: activityText(r, lang) },
         { k: t('EMV (P × cost impact)'), v: emvText(r.emv, lang) },
         { k: t('Contingency draw if it occurs'), v: cost != null ? money(cost, lang) : '—' },
       ],
@@ -242,7 +243,7 @@ export function contingencyView(c: Contingency, t: T, lang: Lang): ContingencyVi
     rows: drawRows(c.draws).map((d) => ({
       date: t(d.dateText),
       amount: f(d.amount),
-      reason: t(d.reason),
+      reason: dataText(d.reason, lang),
       link: d.linkRef || '—',
       by: d.approvedBy ?? '—',
     })),

@@ -9,8 +9,8 @@ import { getProjectsMap } from '@/server/dal/geo';
 import { getI18n, getZone } from '@/server/session';
 
 export default async function ProjectsMapPage() {
-  const [{ t }, zone] = await Promise.all([getI18n(), getZone()]);
-  const model = buildWorldMapModel(await getProjectsMap(zone), t);
+  const [{ t, lang }, zone] = await Promise.all([getI18n(), getZone()]);
+  const model = buildWorldMapModel(await getProjectsMap(zone), t, lang);
   return (
     <>
       <PageHeader screen="worldmap" crumbExtra={model.crumbExtra} />

@@ -10,10 +10,10 @@ import { formT } from '@/features/team/i18n';
 import { InterfacesBody } from '@/features/team/interfaces-view';
 import { interfacesView } from '@/features/team/model';
 import { projectDataDateOf } from '@/server/dal/kpis';
-import { projectLabel } from '@/server/dal/projects';
 import { getInterfacesScreen } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 export default async function InterfacesPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -24,7 +24,7 @@ export default async function InterfacesPage({ params }: { params: Promise<{ cod
 
   const primary =
     canEdit && data ? (
-      <NewInterfaceButton code={projectCode} context={t(projectLabel(ctx.project))} form={localizeForm(interfaceFormDef(data.team), formT(t, lang))} />
+      <NewInterfaceButton code={projectCode} context={projectLabelText(ctx.project, lang)} form={localizeForm(interfaceFormDef(data.team), formT(t, lang))} />
     ) : undefined;
 
   return (

@@ -34,10 +34,10 @@ import { listDepartments } from '@/server/dal/people';
 import { getPlanData, getPlanRequests, getPlanSettings, getPlanTodos } from '@/server/dal/plan';
 import { getActivityAssignments } from '@/server/dal/planning';
 import { baselineState } from '@/server/db/codes';
-import { projectLabel } from '@/server/dal/projects';
 import { STATUS_DATE } from '@/lib/format';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -92,7 +92,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
   const displayed = settings?.displayed ?? null;
   const kpis = planKpis(view, data, t, lang, { dataDate: settings?.dataDate, baseline: displayed });
   const dataDateText = t(settings ? longDateText(settings.dataDate) : STATUS_DATE);
-  const context = t(projectLabel(ctx.project));
+  const context = projectLabelText(ctx.project, lang);
   // "Recently deleted" (S-5): real-clock removal times.
   const whenText = new Intl.DateTimeFormat(lang === 'fr' ? 'fr-FR' : 'en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
 

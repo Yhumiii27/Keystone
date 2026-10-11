@@ -17,6 +17,7 @@ import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
 import { col, filterLine, isoOf, kpiSheet, param, sheet, compact } from './common';
 import { currentProjectCode, projectFilter } from './scope';
+import { dataText, fieldsText } from '@/i18n/data-text';
 
 /** Current project of a global screen: `?code=` (the header passes the shell's project), else the default one; a client's own. */
 const currentProject = (ctx: ExportContext) => currentProjectCode(ctx, DEFAULT_PROJECT);
@@ -44,9 +45,9 @@ async function myProjectsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t, lang, viewer } = ctx;
   const model = await getMyProjects(viewer, await currentProject(ctx), lang);
   const rows = model.cards.map((c) => ({
-    code: c.project.code, name: t(c.project.name), role: c.myRole ? t(c.myRole) : '', readOnly: c.readOnly, stage: t(c.project.status), pm: c.project.pm,
-    client: t(c.project.client), health: c.health ? t(HEALTH_LABEL[c.health]) : '—', progress: c.project.progress,
-    spi: parseFloat(c.ind.spiText) || null, cpi: parseFloat(c.ind.cpiText) || null, milestone: c.ind.msName === '—' ? '' : t(c.ind.msName),
+    code: c.project.code, name: dataText(c.project.name, ctx.lang), role: c.myRole ? t(c.myRole) : '', readOnly: c.readOnly, stage: t(c.project.status), pm: c.project.pm,
+    client: dataText(c.project.client, ctx.lang), health: c.health ? t(HEALTH_LABEL[c.health]) : '—', progress: c.project.progress,
+    spi: parseFloat(c.ind.spiText) || null, cpi: parseFloat(c.ind.cpiText) || null, milestone: c.ind.msName === '—' ? '' : dataText(c.ind.msName, ctx.lang),
     // Real dates when the screen shows one ("23 Oct", "17 Jan ’27"); the screen's words otherwise ("finish not planned").
     milestoneDate: c.ind.msDate ? isoOf(c.ind.msDate) ?? t(c.ind.msDate) : '', milestoneStatus: c.ind.msState ? t(c.ind.msState) : '',
     finish: dateOrText(t, c.ind.finishForecast || c.project.finish), myOpen: c.myOpen,
@@ -77,7 +78,7 @@ const taskSheet = (ctx: ExportContext, rows: TaskRow[], name: string, withAssign
     col('logged', t('Logged (h)'), 'number', 10, { decimals: 1 }), col('pct', t('Progress'), 'percent'), col('checklist', t('Checklist'), 'text', 10),
     col('labels', t('Labels'), 'text', 24), col('request', t('Request'), 'text', 10),
   ], rows.map((r) => ({
-    id: r.id, title: t(r.title), assignee: r.assignee, project: r.project.code, activity: r.activity ? `${r.activity.code} · ${t(r.activity.name)}` : '',
+    id: r.id, title: dataText(r.title, ctx.lang), assignee: r.assignee, project: r.project.code, activity: r.activity ? `${r.activity.code} · ${dataText(r.activity.name, ctx.lang)}` : '',
     status: t(r.statusLabel), priority: t(r.priorityLabel), start: isoOf(r.start), due: isoOf(r.due), estimate: r.estimateH, logged: r.loggedH, pct: r.pct / 100,
     checklist: r.checklist.total ? `${r.checklist.done}/${r.checklist.total}` : '', labels: r.labels.map((l) => t(l)).join(' · '), request: r.sourceRequest ?? '',
   })));
@@ -102,15 +103,15 @@ async function taskWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> 
   if (!d || !(await projectFilter(ctx))(d.project.code)) return null;
   const a = d.activity;
   const fields: [string, string | number][] = [
-    [t('Task'), d.id], [t('Title'), t(d.title)], [t('Assignee'), d.assignee], [t('Project'), `${d.project.code} · ${t(d.project.name)}`],
-    [t('Activity'), a ? `${a.code} · ${t(a.name)}` : '—'], [t('Status'), t(d.statusLabel)], [t('Priority'), t(d.priorityLabel)], [t('Start date'), t(d.start)],
+    [t('Task'), d.id], [t('Title'), dataText(d.title, ctx.lang)], [t('Assignee'), d.assignee], [t('Project'), `${d.project.code} · ${dataText(d.project.name, ctx.lang)}`],
+    [t('Activity'), a ? `${a.code} · ${dataText(a.name, ctx.lang)}` : '—'], [t('Status'), t(d.statusLabel)], [t('Priority'), t(d.priorityLabel)], [t('Start date'), t(d.start)],
     [t('Due'), t(d.due)], [t('Estimate (h)'), d.estimateH], [t('Logged (h)'), d.loggedH], [t('Progress'), `${d.pct}%`],
     // Rates are masked for the roles that may not see them (rates screen rule): the cost stays, the hourly rate does not.
     ...(ctx.ratesMasked ? [] : ([[t('Hourly rate (€)'), d.costRate]] as [string, number][])),
     [t('Actual cost (€)'), laborCost(d.loggedH, d.costRate)], [t('Description'), d.description ?? ''],
   ];
   return {
-    title: `${d.id} · ${t(d.title)}`,
+    title: `${d.id} · ${dataText(d.title, ctx.lang)}`,
     sheets: [
       sheet(t('Task'), [col('field', t('Field'), 'text', 22), col('value', t('Value'), 'text', 70)], fields.map(([field, value]) => ({ field, value: String(value) }))),
       sheet(t('Time log'), [col('date', t('Date'), 'date'), col('hours', t('Hours'), 'number', 8, { decimals: 2 }), col('person', t('Person'), 'text', 18), col('note', t('Note'), 'text', 50), col('source', t('Source'), 'text', 12)],
@@ -135,7 +136,7 @@ async function myApprovalsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> 
       sheet(t('Waiting for me'), [
         col('kind', t('Type'), 'text', 22), col('id', t('Reference'), 'text', 14), col('title', t('Title'), 'text', 44), col('sub', t('Details'), 'text', 40),
         col('who', t('Submitted by'), 'text', 18), col('when', t('Submitted on'), 'date'),
-      ], view.rows.map((i) => ({ kind: t(APPROVAL_KIND_LABEL[i.kind]), id: i.id, title: t(i.title), sub: t(i.sub), who: i.who, when: i.whenIso ?? isoOf(i.when) }))),
+      ], view.rows.map((i) => ({ kind: t(APPROVAL_KIND_LABEL[i.kind]), id: i.id, title: fieldsText(i.title, t, ctx.lang), sub: fieldsText(i.sub, t, ctx.lang), who: i.who, when: i.whenIso ?? isoOf(i.when) }))),
       kpiSheet(ctx, view.kpis.map((k) => kpiTexts(k, t))),
     ],
   };

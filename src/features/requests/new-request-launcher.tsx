@@ -23,6 +23,7 @@ import { sendResourceRequestAction } from './actions';
 import { reqT, routingText, sentByText, weekOfText } from './i18n';
 import { requestsHref } from './routes';
 import s from './requests.module.css';
+import { dataText } from '@/i18n/data-text';
 
 export interface NewRequestLauncherProps {
   /** EN label of the button ("New request" on Resource requests, "Request resource" elsewhere). */
@@ -102,7 +103,7 @@ export function NewRequestLauncher({ label, setup, defaults, sender, openRequest
         open={open}
         onClose={() => setOpen(false)}
         title={t('New resource request')}
-        subtitle={sentByText(t(setup.project.name), sender, lang)}
+        subtitle={sentByText(dataText(setup.project.name, lang), sender, lang)}
         width={720}
         offsetTop="6vh"
         maxHeight="88vh"
@@ -114,7 +115,7 @@ export function NewRequestLauncher({ label, setup, defaults, sender, openRequest
           <div className={s.chips} role="group" aria-label={t('Activity')}>
             {setup.activities.map((a) => (
               <button key={a.code} type="button" className={chip(act === a.code)} aria-pressed={act === a.code} onClick={() => set({ act: a.code })}>
-                {`${a.code} · ${t(a.name)}`}
+                {`${a.code} · ${dataText(a.name, lang)}`}
               </button>
             ))}
             {!setup.activities.length && <span className={s.noActs}>{t('No open activity on this project')}</span>}

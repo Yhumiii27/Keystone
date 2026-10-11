@@ -19,6 +19,7 @@ import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportWorkbook } from '../types';
 import { col, compact, filterLine, kpiSheet, monthIso, param, pctNum, sheet } from './common';
 import { projectFilter } from './scope';
+import { dataText } from '@/i18n/data-text';
 
 const zoneLine = (ctx: ExportContext) => filterLine(ctx.t('Zone'), ctx.zone?.toUpperCase());
 
@@ -39,7 +40,7 @@ async function overviewWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
         col('earned', t('Earned value'), 'money_keur'), col('cpi', 'CPI', 'number', 8, { decimals: 2 }), col('spi', 'SPI', 'number', 8, { decimals: 2 }),
         col('eac', 'EAC', 'money_keur'), col('variance', t('Variance'), 'money_keur'),
       ], rows.map((p) => ({
-        code: p.code, name: t(p.name), pm: p.pm, finish: t(p.finish), health: p.metrics.health ? t(HEALTH_LABEL[p.metrics.health]) : '—', progress: p.progress, budget: p.budget, actual: p.actual,
+        code: p.code, name: dataText(p.name, ctx.lang), pm: p.pm, finish: t(p.finish), health: p.metrics.health ? t(HEALTH_LABEL[p.metrics.health]) : '—', progress: p.progress, budget: p.budget, actual: p.actual,
         earned: Math.round(p.metrics.earned), cpi: p.metrics.cpi, spi: p.metrics.spi, eac: Math.round(p.metrics.eac), variance: Math.round(p.metrics.variance),
       }))),
       kpiSheet(ctx, kpis.map((k) => ({ label: t(k.label), value: k.value, sub: t(k.sub) }))),
@@ -71,7 +72,7 @@ async function pfplanWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
         col('stage', t('Stage'), 'text', 22), col('execStart', t('Execution start'), 'date'), col('finish', t('Finish'), 'text', 10), col('gate', t('Next gate'), 'text', 24),
         col('gateSub', t('Details'), 'text', 22), col('pending', t('Decision pending'), 'boolean'),
       ], shown.map(({ g, r, i }) => ({
-        group: t(g.label), code: r.code, name: t(r.name), pm: t(r.pmLine), stage: t(r.status), execStart: i.pipeline ? monthIso(i.execStart) : null,
+        group: t(g.label), code: r.code, name: dataText(r.name, ctx.lang), pm: t(r.pmLine), stage: t(r.status), execStart: i.pipeline ? monthIso(i.execStart) : null,
         finish: t(i.project.finish), gate: t(r.gate), gateSub: t(r.gateSub), pending: r.decisionPending,
       }))),
       sheet(t('Stage plan'), [col('code', t('Code'), 'text', 10), col('window', t('Stage'), 'text', 16), col('start', t('Start date'), 'date'), col('end', t('Finish'), 'date'), col('period', t('Period'), 'text', 22)],
@@ -97,8 +98,8 @@ async function worldmapWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
         col('health', t('Health'), 'text', 12), col('pm', t('Project manager'), 'text', 14), col('client', t('Client'), 'text', 20), col('city', t('City'), 'text', 16),
         col('country', t('Country'), 'text', 16), col('lat', t('Latitude'), 'number', 10, { decimals: 4 }), col('lng', t('Longitude'), 'number', 10, { decimals: 4 }),
       ], points.map((p) => ({
-        code: p.project.code, name: t(p.project.name), stage: t(p.project.status), category: t(CAT[p.category] ?? p.category), health: p.health ? t(HEALTH_LABEL[p.health]) : '',
-        pm: p.project.pm, client: t(p.project.client), city: t(p.city), country: t(p.country), lat: p.lat, lng: p.lng,
+        code: p.project.code, name: dataText(p.project.name, ctx.lang), stage: t(p.project.status), category: t(CAT[p.category] ?? p.category), health: p.health ? t(HEALTH_LABEL[p.health]) : '',
+        pm: p.project.pm, client: dataText(p.project.client, ctx.lang), city: t(p.city), country: t(p.country), lat: p.lat, lng: p.lng,
       }))),
       kpiSheet(ctx, kpis.map((k) => ({ label: t(k.label), value: k.value, sub: t(k.sub) }))),
     ],
@@ -119,7 +120,7 @@ async function prioritisationWorkbook(ctx: ExportContext): Promise<ExportWorkboo
     col('score', t('Score'), 'number', 8, { decimals: 2 }), ...scoped.axes.map((a, i) => col(`ax${i}`, t(a.label), 'integer', 12)), col('budget', t('Budget'), 'money_keur'),
     ...(scoped.canSeeMargin ? [col('margin', t('Margin'), 'percent', 10, { decimals: 1 })] : []),
   ], ranked.map(({ rank, score, item: p }) => ({
-    rank, code: p.code, name: t(p.name), stage: t(p.status), score, ...Object.fromEntries(p.scores.map((v, i) => [`ax${i}`, v])), budget: p.budget,
+    rank, code: p.code, name: dataText(p.name, ctx.lang), stage: t(p.status), score, ...Object.fromEntries(p.scores.map((v, i) => [`ax${i}`, v])), budget: p.budget,
     margin: p.marginPct != null ? p.marginPct / 100 : null,
   })));
   const weights = sheet(t('Weights'), [col('axis', t('Axis'), 'text', 30), col('weight', t('Weight'), 'number', 10), col('share', t('Share'), 'percent', 10)],
@@ -167,7 +168,7 @@ async function cashWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
       ], scoped.rows.map((r) => {
         const b = billingRollup(r.contractKeur, r.milestones);
         return {
-          code: r.code, name: t(r.name), model: t(r.modelLabel), contract: r.contractKeur || null, invoiced: r.contractKeur ? b.invoicedKeur : null, paid: r.contractKeur ? b.paidKeur : null,
+          code: r.code, name: dataText(r.name, ctx.lang), model: t(r.modelLabel), contract: r.contractKeur || null, invoiced: r.contractKeur ? b.invoicedKeur : null, paid: r.contractKeur ? b.paidKeur : null,
           outstanding: r.contractKeur ? b.outstandingKeur : null, cost: r.actual, margin: r.marginPct != null ? r.marginPct / 100 : null,
           next: b.next ? `${t(b.next.label)} · ${b.next.amountKeur} k€` : '',
         };

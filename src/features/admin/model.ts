@@ -19,6 +19,7 @@ import type { ProjectRow } from '@/server/dal/projects';
 import type { SettingsData } from '@/server/dal/settings';
 import { activityChipT, addedConnectorDataT, auditAreaT, connectorModeT, mtListSubT, outboxT, volumeT } from './i18n';
 import { integrationsHref, machineTypesHref } from './links';
+import { dataText, fieldsText } from '@/i18n/data-text';
 
 export interface KpiView {
   label: string;
@@ -57,13 +58,14 @@ export interface SettingsView {
   locTypes: { value: LocationType; label: string }[];
 }
 
-export function settingsView(data: SettingsData, t: T): SettingsView {
+export function settingsView(data: SettingsData, t: T, lang: Lang): SettingsView {
   const items: Record<SettingsCardKey, SettingsItemView[]> = {
-    locations: data.locations.map((l) => ({ id: l.name, label: t(l.name), sub: t(l.typeLabel) })),
+    locations: data.locations.map((l) => ({ id: l.name, label: dataText(l.name, lang), sub: t(l.typeLabel) })),
     skills: [], costCats: [], statuses: [], riskCats: [], delivTypes: [], holidays: [],
   };
   for (const key of ['skills', 'costCats', 'statuses', 'riskCats', 'delivTypes', 'holidays'] as const) {
-    items[key] = data.lists[key].map((v) => ({ id: v.code, label: t(v.label), sub: null }));
+    // R-148: entries typed by the director are shown as typed (a holiday's date part is Keystone's format, translated).
+    items[key] = data.lists[key].map((v) => ({ id: v.code, label: fieldsText(v.label, t, lang), sub: null }));
   }
   const locTypeCodes = data.lists.locTypes.length ? data.lists.locTypes.map((v) => v.code as LocationType).filter((c) => locationType.isCode(c)) : locationType.codes;
   return {
@@ -161,11 +163,11 @@ export function machineTypesView(input: { types: MachineTypeRow[]; projects: Pro
       costCategories: sel.costCategories.map((c) => ({ name: editable(c.name, t), type: c.type, budget: String(c.budgetKeur), budgetKeur: c.budgetKeur })),
       costTypeOptions: MT_COST_TYPES.map((c) => ({ value: c, label: t(costType.label(c)) })),
       costTotal: money(costCategoriesTotal(sel.costCategories), lang),
-      refs: sel.rexReferences.map((r) => ({ analyticCode: r.analyticCode, name: t(`${r.analyticCode} · ${r.projectName} · ${r.year}`) })),
+      refs: sel.rexReferences.map((r) => ({ analyticCode: r.analyticCode, name: `${r.analyticCode} · ${dataText(r.projectName, lang)} · ${r.year}` })),
       projects: sel.projects.map((p) => {
         const row = byCode.get(p.code);
         return {
-          code: p.code, name: t(`${row?.displayId ?? p.number ?? p.code} · ${p.name}`), sub: `${p.code} · ${t(row?.status ?? '—')}`,
+          code: p.code, name: `${row?.displayId ?? p.number ?? p.code} · ${dataText(p.name, lang)}`, sub: `${p.code} · ${t(row?.status ?? '—')}`,
           openHref: row?.hasData ? screenHref('plan', { code: p.code }) : null,
         };
       }),
@@ -271,16 +273,16 @@ export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
     seg: PLUMB_VIEWS.map((v) => ({ value: v.value, label: t(v.label), href: integrationsHref({ view: v.value }) })),
     chips: chips.map((c) => ({ value: c.value ?? '', label: activityChipT(c.label, t, lang), count: String(c.count), href: integrationsHref({ source: c.value }) })),
     chipValue: i.source ?? '',
-    activity: rows.map((a, n) => ({ key: `${a.occurredAt}-${n}`, icon: ACTIVITY_ICON[a.kind] ?? 'arrows-clockwise', who: t(a.who), what: t(a.what), when: t(a.when) })),
+    activity: rows.map((a, n) => ({ key: `${a.occurredAt}-${n}`, icon: ACTIVITY_ICON[a.kind] ?? 'arrows-clockwise', who: dataText(a.who, lang), what: t(a.what), when: t(a.when) })),
     connectors: i.connectors.map((c) => {
       const outbox = outboxT(c.pending, c.failed, lang);
       const volume = volumeT(c.lastVolume, t, lang);
       return {
         rawName: c.name,
-        name: t(c.name),
+        name: dataText(c.name, lang),
         mode: c.mode ? connectorModeT(c.mode, t) : null,
-        data: c.dataScope ? t(c.dataScope) : addedConnectorDataT(c.direction ? directionLabel(c.direction) : null, c.owner, t),
-        frequency: t(c.frequency),
+        data: c.dataScope ? dataText(c.dataScope, lang) : addedConnectorDataT(c.direction ? directionLabel(c.direction) : null, c.owner, t),
+        frequency: dataText(c.frequency, lang),
         // D-7a: a connector disabled by IT shows "Disabled" (calm tone) instead of its last sync state.
         status: c.enabled === false ? t('Disabled') : t(c.statusLabel),
         tone: c.enabled === false ? 'neutral' : connectorTone(c.status),
@@ -289,7 +291,7 @@ export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
       };
     }),
     imports: i.imports.map((f) => ({ name: t(f.name), description: t(f.description), icon: importIcon(f.icon), direction: f.direction })),
-    audit: i.audit.map((a, n) => ({ key: `${a.occurredAt}-${n}`, when: t(a.when), who: t(a.who), object: t(a.object), change: t(a.change), area: auditAreaT(a.area, t, lang) })),
+    audit: i.audit.map((a, n) => ({ key: `${a.occurredAt}-${n}`, when: t(a.when), who: dataText(a.who, lang), object: t(a.object), change: t(a.change), area: auditAreaT(a.area, t, lang) })),
   };
 }
 

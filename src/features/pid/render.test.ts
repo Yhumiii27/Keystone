@@ -24,6 +24,12 @@ let DATA: PidValidation;
  */
 const DEVIATIONS: [string, string][] = [['4 feuilles · Under review · 12 sept. 2026', '4 feuilles · En revue · 12 sept. 2026']];
 const fix = (lang: Lang, s: string) => (lang === 'fr' ? DEVIATIONS.reduce((x, [a, b]) => (x === a ? b : x), s) : s);
+/**
+ * R-148 (NEW-D1-2): a tag description is shown as typed — its exact French entry or the stored text, never the prototype's
+ * partial translation ("Safety PLC — E-stop loop" was shown half translated as "Automate sécurité — E-stop loop").
+ */
+const DESC_AS_TYPED: Record<string, string> = { 'Automate sécurité — E-stop loop': 'Safety PLC — E-stop loop' };
+const descFix = (lang: Lang, s: string) => (lang === 'fr' ? (DESC_AS_TYPED[s] ?? s) : s);
 const LO = 'var(--color-accent-300)';
 const OK = 'var(--color-text)';
 
@@ -62,7 +68,7 @@ describe('P&ID screen — EN and FR', () => {
       tag: r.tag, desc: r.desc, kind: r.kind, scope: r.scope, scopeClass: r.scopeClass, refText: r.refText, partName: r.partName, status: r.status, tagClass: r.statusClass,
       actText: r.actText, plcText: r.plc.text, plcTag: r.plc.asTag, plcPlain: !r.plc.asTag, plcClass: r.plc.tagClass, fbWarn: r.feedback.tone === 'warn', fbText: r.feedback.text,
       fbColor: r.feedback.tone === 'warn' ? LO : r.feedback.tone === 'text' ? OK : 'var(--color-neutral-500)', tagColor: r.selected ? LO : OK,
-    }))).toEqual(G[lang].rows.map((r: any) => Object.fromEntries(Object.entries(r).filter(([k]) => k !== 'ref' && k !== 'hasPart'))));
+    }))).toEqual(G[lang].rows.map((r: any) => ({ ...Object.fromEntries(Object.entries(r).filter(([k]) => k !== 'ref' && k !== 'hasPart')), desc: descFix(lang, r.desc) })));
     expect(screen(lang, { tag: 'XV-111' }).rows.map((r) => (r.selected ? LO : OK))).toEqual(G[lang].selectedTagColor);
     expect(v.empty).toBeNull();
   });
@@ -89,7 +95,8 @@ describe('P&ID screen — EN and FR', () => {
 
   it('fr: the search also matches the French text the viewer reads', () => {
     expect(screen('fr', { q: 'manquant' }).rows.map((r) => r.tag)).toEqual(['XV-111']);
-    expect(screen('fr', { q: 'automate sécurité' }).rows.map((r) => r.tag)).toEqual(['LSH-101', 'ZS-310', 'SIS-001', 'ESD-001', 'WS-001', 'LIDAR-001', 'FD-001']);
+    // SIS-001's description ("Safety PLC — E-stop loop") is shown as typed (R-148): it no longer reads "Automate sécurité".
+    expect(screen('fr', { q: 'automate sécurité' }).rows.map((r) => r.tag)).toEqual(['LSH-101', 'ZS-310', 'ESD-001', 'WS-001', 'LIDAR-001', 'FD-001']);
     expect(screen('en', { q: 'manquant' }).rows).toEqual([]);
   });
 
@@ -119,7 +126,7 @@ describe('P&ID tag drawer — EN and FR', () => {
       const g = G[lang].drawers[tag.tag];
       const cands = await pidCandidates(CODE, tag.tag);
       const d = pidTagDrawerView({ code: CODE, data: DATA, tag, candidates: cands, state: { ...DEFAULT_PID_STATE, tag: tag.tag }, bomHrefOf: (ref) => `/projects/HLT-026/bom?part=${ref}` }, t, lang);
-      expect([d.head, d.title, d.scope, d.scopeClass, d.status, d.statusClass], tag.tag).toEqual([`${g.tag} · ${g.kind}`, g.desc, g.scope, g.scopeClass, g.status, g.tagClass]);
+      expect([d.head, d.title, d.scope, d.scopeClass, d.status, d.statusClass], tag.tag).toEqual([`${g.tag} · ${g.kind}`, descFix(lang, g.desc), g.scope, g.scopeClass, g.status, g.tagClass]);
       expect(d.record.map((r) => [r.k, r.v]), tag.tag).toEqual(g.meta);
       expect([d.isClient, d.fbWarn, d.candidates != null, d.partHref != null, d.bomHref != null], tag.tag).toEqual([g.isClient, g.fbWarn, g.canMap, g.hasPart, g.notInBom]);
       if (d.candidates) expect(d.candidates, tag.tag).toEqual(g.candidates.map((c: any) => ({ ref: c.ref, name: c.name, status: c.status, tagClass: c.tagClass })));

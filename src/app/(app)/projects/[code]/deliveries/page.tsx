@@ -11,9 +11,9 @@ import { AnnounceDeliveryButton } from '@/features/deliveries/announce-button';
 import { DeliveriesBody } from '@/features/deliveries/deliveries-view';
 import { announceFormDef, deliveriesHref, deliveriesView, registerFormDef } from '@/features/deliveries/model';
 import { getDeliveriesScreen } from '@/server/dal/deliveries';
-import { projectLabel } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -36,7 +36,7 @@ export default async function DeliveriesPage({ params, searchParams }: { params:
   const primary = canEdit ? (
     <AnnounceDeliveryButton
       code={projectCode}
-      context={t(projectLabel(ctx.project))}
+      context={projectLabelText(ctx.project, lang)}
       form={data.announceable.length ? announceFormDef(data.announceable, data.putAway, t, lang) : null}
       path={deliveriesHref(projectCode)}
       status={status}

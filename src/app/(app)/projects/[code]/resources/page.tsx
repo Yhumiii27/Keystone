@@ -12,6 +12,7 @@ import { listResourceRequests } from '@/server/dal/requests';
 import { getLaborCost, getProjectTeam, getRebalancingSuggestions, getResourcePool } from '@/server/dal/resources';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 export default async function ProjectResourcesPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -51,7 +52,7 @@ export default async function ProjectResourcesPage({ params }: { params: Promise
         projectCode={p.code}
         primary={canEdit ? <NewRequestButton label="Request resource" projectCode={p.code} /> : undefined}
       />
-      <ResourcesView view={view} t={t} projectName={`${p.displayId} · ${t(p.name)}`} canEdit={canEdit} />
+      <ResourcesView view={view} t={t} projectName={projectLabelText(p, lang)} canEdit={canEdit} />
     </>
   );
 }

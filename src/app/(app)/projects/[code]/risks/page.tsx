@@ -10,11 +10,11 @@ import { NewRiskButton } from '@/features/risks/add-buttons';
 import { riskFormDef } from '@/features/risks/forms';
 import { riskRegisterView } from '@/features/risks/model';
 import { RiskRegister } from '@/features/risks/risk-register';
-import { projectLabel } from '@/server/dal/projects';
 import { getRiskScreen } from '@/server/dal/risks-screen';
 import { riskCategoryOptions } from '@/server/dal/settings-lists';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -41,7 +41,7 @@ export default async function RisksPage({ params, searchParams }: { params: Prom
   const primary =
     canEdit && data ? (
       // A-14: the form offers the active Settings › Risk categories (the prototype's order first).
-      <NewRiskButton code={projectCode} context={t(projectLabel(ctx.project))} form={riskFormDef(data.team, orderedOptions(cats.active, FORM_CATEGORIES))} />
+      <NewRiskButton code={projectCode} context={projectLabelText(ctx.project, lang)} form={riskFormDef(data.team, orderedOptions(cats.active, FORM_CATEGORIES))} />
     ) : undefined;
 
   return (

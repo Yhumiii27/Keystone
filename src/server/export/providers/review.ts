@@ -17,6 +17,7 @@ import { statementDocument } from './contract';
 import { col, isoOf, kpiSheet, monthIso, param, sheet } from './common';
 import { statusReportDocument, statusReportOptions, trendsReportOptions } from './status-report';
 import { scheduleDocument } from './steering';
+import { dataText } from '@/i18n/data-text';
 
 // ── Trends ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 async function trendsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
@@ -104,7 +105,7 @@ async function clientWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null
     ], schedule.bars.map((b) => {
       const s0 = schedule.header.start;
       return {
-        name: t(b.name), bStart: monthIso(s0 + b.baselineStart), bEnd: monthIso(s0 + b.baselineEnd), fStart: monthIso(s0 + b.forecastStart), fEnd: monthIso(s0 + b.forecastEnd),
+        name: dataText(b.name, ctx.lang), bStart: monthIso(s0 + b.baselineStart), bEnd: monthIso(s0 + b.baselineEnd), fStart: monthIso(s0 + b.forecastStart), fEnd: monthIso(s0 + b.forecastEnd),
         pct: b.pct / 100, critical: b.critical,
       };
     }))

@@ -9,9 +9,9 @@ import { ContractScreen } from '@/features/contract/contract-view';
 import { FormButton } from '@/features/contract/form-button';
 import { amendmentFormDef, bondFormDef, contractView, milestoneFormDef } from '@/features/contract/model';
 import { getContract } from '@/server/dal/contract';
-import { projectLabel } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 export default async function ContractPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -28,7 +28,7 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
     );
 
   const canEdit = ctx.canEdit('contract');
-  const context = t(projectLabel(ctx.project));
+  const context = projectLabelText(ctx.project, lang);
   const forms = { amendment: amendmentFormDef(t), bond: bondFormDef(t), milestone: milestoneFormDef(t) };
   const primary = canEdit ? (
     <FormButton kind="amendment" code={projectCode} context={context} form={forms.amendment} label={t('Add amendment')} variant="primary" />

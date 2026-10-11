@@ -3,6 +3,7 @@
 // through t() with their FR entries in src/i18n/extra/mywork.json.
 import { moneyEur } from '@/lib/format';
 import type { Lang, T } from '@/i18n/translate';
+import { dataText } from '@/i18n/data-text';
 
 /**
  * View option "Board" (kanban). Local FR because the shared dictionary keeps "Board" for the pipeline's management
@@ -43,10 +44,10 @@ export interface DescriptionActivity {
  * activity and the earned value of its work package."
  */
 export function defaultDescription(actCode: string, a: DescriptionActivity | null, t: T, lang: Lang): string {
-  const pkg = a ? `${a.wbs}${a.packageName ? ' ' + t(a.packageName) : ''}` : '';
+  const pkg = a ? `${a.wbs}${a.packageName ? ' ' + dataText(a.packageName, lang) : ''}` : '';
   if (lang === 'fr')
     return (
-      `Fait partie de ${actCode}${a ? ' ' + t(a.name) : ''}${a ? ' — WBS ' + pkg : ''}. ` +
+      `Fait partie de ${actCode}${a ? ' ' + dataText(a.name, lang) : ''}${a ? ' — WBS ' + pkg : ''}. ` +
       'Réalisez le travail, cochez la liste de contrôle et saisissez vos heures ; l’avancement remonte à l’activité et à la valeur acquise de son lot de travaux.'
     );
   return (
@@ -61,7 +62,7 @@ export function defaultDescription(actCode: string, a: DescriptionActivity | nul
  * whatever the currency (10 OQ20). Without an activity the target is the project.
  */
 export function costNoteText(loggedH: number, rate: number, cost: number, target: { wbs: string; packageName: string | null } | null, project: string, t: T, lang: Lang): string {
-  const where = target ? `${lang === 'fr' ? 'Lot' : 'WP'} ${target.wbs}${target.packageName ? ' ' + t(target.packageName) : ''}` : t(project);
+  const where = target ? `${lang === 'fr' ? 'Lot' : 'WP'} ${target.wbs}${target.packageName ? ' ' + dataText(target.packageName, lang) : ''}` : t(project);
   const h = loggedH.toFixed(1);
   return lang === 'fr'
     ? `${h} h × ${moneyEur(rate, 'fr')}/h = ${moneyEur(cost, 'fr')} de coût réel → ${t('Labor')} · ${where}`

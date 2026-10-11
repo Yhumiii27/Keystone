@@ -20,6 +20,7 @@ import type { PartDrawerData } from '@/server/dal/plm';
 import { vigieNewEcoUrl } from '@/server/integrations/vigie/links';
 import { belowMinT, countT, inStockT, leadLongT, leadShortT, qtyT, reservedT, revStepT, revT, totalQuantityT, unitsT } from './i18n';
 import { bomHref, drawingHref, ecoHref, fleetHref, openInPlmHref, plmHref, stockHref, withPart } from './links';
+import { dataText } from '@/i18n/data-text';
 
 const tag = (tone: string) => `tag tag-${tone}`;
 
@@ -93,12 +94,13 @@ export interface CatalogueInput {
 }
 
 /** Part name as the prototype translates it (deepTr: "Safety PLC" → "Automate sécurité"). */
-const nameT = (p: Pick<PartFacts, 'name'>, t: T) => t(p.name);
+/** R-148: a part name as typed (or its seeded demo entry). */
+const nameT = (p: Pick<PartFacts, 'name'>, lang: Lang) => dataText(p.name, lang);
 
 export function catalogueView({ parts, openEco, state, part }: CatalogueInput, t: T, lang: Lang): CatalogueView {
   const href = (s: PlmState, p: string | null = part) => plmHref(s, p);
   const f = state.filter;
-  const rows = plmRows(parts, state, lang === 'fr' ? (p) => nameT(p, t) : undefined);
+  const rows = plmRows(parts, state, lang === 'fr' ? (p) => nameT(p, lang) : undefined);
   const o = plmOptions(parts);
   const select = (param: SelectView['param'], label: string, value: string, options: { value: string; label: string }[]): SelectView => ({
     param, label, value, options: options.map((x) => ({ value: x.value, label: t(x.label) })),
@@ -133,7 +135,7 @@ export function catalogueView({ parts, openEco, state, part }: CatalogueInput, t
     rows: rows.map((p) => {
       const eco = openEco[p.ref] ?? null;
       return {
-        ref: p.ref, href: href(state, part === p.ref ? null : p.ref), selected: part === p.ref, name: nameT(p, t), type: t(p.typeLabel), makeBuy: t(p.makeBuyLabel),
+        ref: p.ref, href: href(state, part === p.ref ? null : p.ref), selected: part === p.ref, name: nameT(p, lang), type: t(p.typeLabel), makeBuy: t(p.makeBuyLabel),
         pu: p.wearSpare ?? '—', puClass: tag(wearSpareTone(p.wearSpare)), manufacturer: p.manufacturer ?? '—', manufacturerRef: p.manufacturerRef ?? '',
         price: moneyEur(p.listPriceEur, lang), lead: leadShortT(p.leadWeeks, t), status: t(p.statusLabel), statusClass: tag(partStatusTone(p.status)),
         eco: eco ? { number: eco, href: ecoHref(eco) } : null, restriction: t(restrictionCell(p)), restrictionAlert: !!p.exportRestriction,
@@ -232,7 +234,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
 
   return {
     ref: p.ref,
-    name: nameT(p, t),
+    name: nameT(p, lang),
     status: t(p.statusLabel),
     statusClass: tag(partStatusTone(p.status)),
     closeHref: ctx.closeHref,
@@ -270,18 +272,18 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
     equivalents: {
       label: t('Equivalent parts'),
       rows: p.equivalentParts.map((e) => ({
-        key: e.ref, title: e.ref, sub: t(e.name), tagLabel: t(e.statusLabel), tagClass: tag(partStatusTone(e.status)), href: select(e.ref), samePage: true,
+        key: e.ref, title: e.ref, sub: dataText(e.name, lang), tagLabel: t(e.statusLabel), tagClass: tag(partStatusTone(e.status)), href: select(e.ref), samePage: true,
       })),
       empty: p.equivalentParts.length ? null : t('No equivalent registered'),
       // Candidate names displayed as the catalogue displays them (French part names in French).
-      register: ctx.equivalentCandidates ? { label: t('Register equivalent'), candidates: ctx.equivalentCandidates.map((c) => ({ ref: c.ref, name: t(c.name) })) } : null,
+      register: ctx.equivalentCandidates ? { label: t('Register equivalent'), candidates: ctx.equivalentCandidates.map((c) => ({ ref: c.ref, name: dataText(c.name, lang) })) } : null,
     },
 
     spares: p.spareList.length
       ? {
           label: t('Spare parts list'),
           rows: p.spareList.map((s) => ({
-            key: s.ref, title: s.ref, sub: t(s.name), aside: `× ${qtyT(s.qtyPerSystem, lang)}`, tagLabel: s.kind, tagClass: tag(wearSpareTone(s.kind)), href: select(s.ref), samePage: true,
+            key: s.ref, title: s.ref, sub: dataText(s.name, lang), aside: `× ${qtyT(s.qtyPerSystem, lang)}`, tagLabel: s.kind, tagClass: tag(wearSpareTone(s.kind)), href: select(s.ref), samePage: true,
           })),
           open: { label: t('Open PU/PR list'), href: bomHref(spareProject, { spares: p.ref }) },
         }
@@ -293,7 +295,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
         const sub = [t(s.locationTypeLabel), s.reserved > 0 ? reservedT(s.reserved, s.reservedForShort, lang) : null, s.belowMin ? belowMinT(s.minQty, lang) : null]
           .filter(Boolean)
           .join(' · ');
-        return { key: s.id, title: t(s.location), sub, aside: inStockT(s.onHand, lang), href: stockHref(s.id), arrow: true, tagLabel: s.belowMin ? t('Below minimum') : undefined, tagClass: s.belowMin ? tag('accent') : undefined };
+        return { key: s.id, title: dataText(s.location, lang), sub, aside: inStockT(s.onHand, lang), href: stockHref(s.id), arrow: true, tagLabel: s.belowMin ? t('Below minimum') : undefined, tagClass: s.belowMin ? tag('accent') : undefined };
       }),
       empty: data.stock.length ? null : t('None in stock'),
       totals: data.stock.length
@@ -304,7 +306,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
     projects: {
       label: t('Projects equipped'),
       rows: p.projects.map((pr) => ({
-        key: pr.code, title: t(pr.name), sub: `${pr.shortCode} · ${unitsT(pr.quantity, lang)}`, tagLabel: t(pr.stageLabel), tagClass: tag(lifecycleTone(pr.stage)),
+        key: pr.code, title: dataText(pr.name, lang), sub: `${pr.shortCode} · ${unitsT(pr.quantity, lang)}`, tagLabel: t(pr.stageLabel), tagClass: tag(lifecycleTone(pr.stage)),
         href: bomHref(pr.code, { part: p.ref }), arrow: true,
       })),
       empty: p.projects.length ? null : t('Not used in any project yet'),
@@ -316,7 +318,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
     machines: {
       label: t('Installed base'),
       rows: data.machines.map((m) => ({
-        key: m.id, title: t(m.name), sub: `${m.id} · ${t(m.generation)} · ${revT(m.revision, lang)}`,
+        key: m.id, title: dataText(m.name, lang), sub: `${m.id} · ${t(m.generation)} · ${revT(m.revision, lang)}`,
         tagLabel: t(m.stateLabel) + (m.ecoNumber ? ` · ${m.ecoNumber}` : ''), tagClass: tag(machineState(m.state)),
         href: m.ecoNumber ? ecoHref(m.ecoNumber) : fleetHref(), arrow: true,
       })),
@@ -332,7 +334,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
         sub: [t(displayOfIso(e.date)), e.ecoNumber].filter(Boolean).join(' · '),
         ecoHref: e.ecoNumber ? ecoHref(e.ecoNumber) : null,
         lines: e.lines.map((l, i) => ({
-          key: `${i}`, path: l.path, name: t(l.name), change: diffChangeText(l), kind: t(revisionDiffKind.label(l.kind)), kindClass: tag(diffKindTone(l.kind)),
+          key: `${i}`, path: l.path, name: dataText(l.name, lang), change: diffChangeText(l), kind: t(revisionDiffKind.label(l.kind)), kindClass: tag(diffKindTone(l.kind)),
         })),
       })),
       empty: data.revisions.length ? null : t('No revision comparison recorded'),
@@ -341,7 +343,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
     drawings: {
       label: t('Drawings'),
       rows: data.drawings.map((d) => ({
-        key: d.number, title: `${d.number} · ${revT(d.revision, lang)}`, sub: t(d.title), aside: d.revisions.length > 1 ? d.revisions.map((r) => r.revision).join(' · ') : undefined,
+        key: d.number, title: `${d.number} · ${revT(d.revision, lang)}`, sub: dataText(d.title, lang), aside: d.revisions.length > 1 ? d.revisions.map((r) => r.revision).join(' · ') : undefined,
         tagLabel: t(d.stateLabel), tagClass: `tag ${DRAWING_STATE_TAG[d.state]}`, href: drawingHref(d.number), arrow: true,
       })),
       empty: data.drawings.length ? null : t('No drawing linked to this part'),
@@ -354,7 +356,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
         ? {
             label: t('Engineering changes'),
             rows: ecosShown.map((e) => ({
-              key: e.number, title: e.number, sub: t(e.title), tagLabel: t(e.statusLabel), tagClass: `tag ${ECO_STATUS_TAG[e.status]}`, href: ecoHref(e.number), arrow: true,
+              key: e.number, title: e.number, sub: dataText(e.title, lang), tagLabel: t(e.statusLabel), tagClass: `tag ${ECO_STATUS_TAG[e.status]}`, href: ecoHref(e.number), arrow: true,
               syncNote: e.pendingSyncLabel ? t(e.pendingSyncLabel) : null, vigieHref: e.vigieUrl, vigieLabel: t('Open in Vigie'),
             })),
             empty: ecosShown.length ? null : t('No engineering change on this part'),

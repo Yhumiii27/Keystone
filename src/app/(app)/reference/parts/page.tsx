@@ -14,9 +14,10 @@ import { catalogueView } from '@/features/plm/model';
 import { PartDrawer } from '@/features/plm/part-drawer';
 import { NewPartButton } from '@/features/plm/plm-buttons';
 import { getPlmCatalogue } from '@/server/dal/plm';
-import { getProject, projectLabel } from '@/server/dal/projects';
+import { getProject } from '@/server/dal/projects';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n, getLastProject } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -34,7 +35,7 @@ export default async function PartsCataloguePage({ searchParams }: { searchParam
 
   const project = access.canEdit ? await getProject(lastProject) : null;
   const primary = access.canEdit ? (
-    <NewPartButton label={t('New part')} form={localizePlmForm(newPartFormDef(), t, lang)} context={project ? t(projectLabel(project)) : undefined} />
+    <NewPartButton label={t('New part')} form={localizePlmForm(newPartFormDef(), t, lang)} context={project ? projectLabelText(project, lang) : undefined} />
   ) : undefined;
 
   return (

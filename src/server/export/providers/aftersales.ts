@@ -10,6 +10,7 @@ import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
 import { col, compact, filterLine, param, sheet } from './common';
 import { projectFilter } from './scope';
+import { dataText } from '@/i18n/data-text';
 
 async function machineFilter(ctx: ExportContext): Promise<(m: Pick<MachineRow, 'projectCode' | 'client'>) => boolean> {
   if (ctx.viewer.role !== 'client') return () => true;
@@ -27,7 +28,7 @@ function machineSheet(ctx: ExportContext, machines: MachineRow[]): ExportSheet {
     col('warranty', t('Warranty'), 'text', 22), col('generation', t('Generation'), 'text', 10), col('openClaims', t('Open claims'), 'integer'), col('cost', t('Warranty cost'), 'money_keur'),
     col('ecos', t('ECOs (Vigie)'), 'text', 24),
   ], machines.map((m) => ({
-    number: m.number, name: t(m.name), type: m.machineTypeLabel, client: t(m.client), site: t(m.site), zone: m.zone.toUpperCase(), project: m.projectCode ?? '', delivered: m.deliveredOn,
+    number: m.number, name: dataText(m.name, ctx.lang), type: m.machineTypeLabel, client: dataText(m.client, ctx.lang), site: dataText(m.site, ctx.lang), zone: m.zone.toUpperCase(), project: m.projectCode ?? '', delivered: m.deliveredOn,
     warrantyEnd: m.warrantyEndOn, warranty: t(m.warrantyText), generation: m.generation ?? '', openClaims: m.openClaims, cost: m.warrantyCostKeur, ecos: m.configuration.ecos.join(' · '),
   })));
 }
@@ -57,18 +58,18 @@ async function savWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
     col('reported', t('Reported on'), 'date'), col('status', t('Status'), 'text', 14), col('coverage', t('Coverage'), 'text', 14), col('cost', t('Cost'), 'money_keur'),
     col('eco', 'ECO (Vigie)', 'text', 14), col('owner', t('Owner'), 'text', 16), col('next', t('Next step'), 'text', 30),
   ], claims.map((c) => ({
-    number: c.number, machine: `${c.machineNumber} · ${t(c.machineName)}`, client: t(c.client), issue: t(c.issue), severity: t(c.severityLabel), reported: c.reportedOn, status: t(c.statusLabel),
+    number: c.number, machine: `${c.machineNumber} · ${dataText(c.machineName, ctx.lang)}`, client: dataText(c.client, ctx.lang), issue: dataText(c.issue, ctx.lang), severity: t(c.severityLabel), reported: c.reportedOn, status: t(c.statusLabel),
     coverage: t(c.coverageLabel), cost: c.costKeur, eco: c.ecoNumber ?? '', owner: c.owner, next: t(c.nextStep),
   })));
   const interventions = sheet(t('Interventions'), [
     col('number', t('Intervention'), 'text', 10), col('machine', t('Machine'), 'text', 28), col('site', t('Site'), 'text', 20), col('scheduled', t('Scheduled on'), 'date'), col('technicians', t('Technicians'), 'text', 24),
     col('type', t('Type'), 'text', 30), col('days', t('Duration (days)'), 'number', 8, { decimals: 1 }), col('status', t('Status'), 'text', 14),
   ], data.interventions.filter((i) => machines.has(i.machineNumber)).map((i) => ({
-    number: i.number, machine: `${i.machineNumber} · ${t(i.machineName)}`, site: t(i.site), scheduled: i.scheduledOn, technicians: i.technicians, type: t(i.typeText), days: i.durationDays, status: t(i.statusLabel),
+    number: i.number, machine: `${i.machineNumber} · ${dataText(i.machineName, ctx.lang)}`, site: dataText(i.site, ctx.lang), scheduled: i.scheduledOn, technicians: i.technicians, type: t(i.typeText), days: i.durationDays, status: t(i.statusLabel),
   })));
   const costSheet = sheet(t('Costs per machine'), [
     col('machine', t('Machine'), 'text', 28), col('client', t('Client'), 'text', 20), col('claims', t('Claims'), 'integer'), col('warranty', t('Under warranty'), 'money_keur'), col('chargeable', t('Chargeable'), 'money_keur'),
-  ], costs.filter((c) => machines.has(c.machine.number)).map((c) => ({ machine: `${c.machine.number} · ${t(c.machine.name)}`, client: t(c.machine.client), claims: c.claims, warranty: c.warrantyKeur, chargeable: c.chargeableKeur })));
+  ], costs.filter((c) => machines.has(c.machine.number)).map((c) => ({ machine: `${c.machine.number} · ${dataText(c.machine.name, ctx.lang)}`, client: dataText(c.machine.client, ctx.lang), claims: c.claims, warranty: c.warrantyKeur, chargeable: c.chargeableKeur })));
   const first = view === 'interventions' ? interventions : view === 'costs' ? costSheet : claimsSheet;
   return {
     title: t('Warranty claims & interventions'),

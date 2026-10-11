@@ -11,6 +11,7 @@ import type { StageHistoryRow, StageInfo } from '@/server/dal/lifecycle';
 import type { ProjectRow } from '@/server/dal/projects';
 import type { ScheduleSummaries, StageChecklists } from '@/server/dal/projects-register';
 import type { ZoneKey } from '@/server/session';
+import { dataText } from '@/i18n/data-text';
 
 /** A stage as the client needs it (labels already translated; LIFE and GATES are French domain text). */
 export interface StageView {
@@ -123,18 +124,18 @@ export function buildRegisterModel(data: RegisterInput, zone: ZoneKey | null, t:
     return {
       code: p.code,
       stage: p.stage,
-      search: { names: [p.name, t(p.name)], code: p.code, number, analytic: p.analytic ?? '', machineType: p.machineType ?? '' },
-      name: t(`${p.displayId} · ${p.name}`),
+      search: { names: [p.name, dataText(p.name, lang)], code: p.code, number, analytic: p.analytic ?? '', machineType: p.machineType ?? '' },
+      name: `${p.displayId} · ${dataText(p.name, lang)}`,
       openHref: p.hasData || planned.has(p.code) ? screenHref('plan', { code: p.code }) : null,
       isNew: p.isNew,
       idLine: `${p.analytic ?? '—'} · ${p.das ? 'DAS ' + p.das : '—'} · ${p.machineType ?? '—'}`,
-      metaLine: `${t(p.pm)} · ${t(p.client)} · ${t(`${p.start} → ${p.finish}`)}`,
+      metaLine: `${p.pm} · ${dataText(p.client, lang)} · ${t(`${p.start} → ${p.finish}`)}`,
       health: live && p.health ? { label: t(HEALTH_LABEL[p.health]), tone: healthTone(p.health) } : { label: '—', tone: 'muted' },
       spiText: ind.spiText,
       spiColor: TINT[ind.spiTint],
       cpiText: ind.cpiText,
       cpiColor: TINT[ind.cpiTint],
-      msName: ind.msName === '—' ? '—' : t(ind.msName),
+      msName: ind.msName === '—' ? '—' : dataText(ind.msName, lang),
       msLine: ind.msLine ? t(ind.msLine) : '',
       msColor: TINT[ind.msTint],
       attention: ind.attention.length ? ind.attention.map((a) => t(a)).join(' · ') : '—',

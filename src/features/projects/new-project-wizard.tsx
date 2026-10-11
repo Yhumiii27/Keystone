@@ -31,6 +31,7 @@ import type { NewProjectSetup, WizardTemplate } from '@/server/dal/projects-regi
 import { categoriesText, wizardSummaryText } from './i18n';
 import { templateTextT, workingTimeT } from './wizard-i18n';
 import w from './wizard.module.css';
+import { dataText } from '@/i18n/data-text';
 
 export interface WizardCategory {
   name: string;
@@ -135,7 +136,7 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
   };
   // "Add category": the next Settings › Cost category not used yet (A-14), else "New category · Labor · 0".
   const nextSettingsCategory = setup.settingsCategories.find((c) => {
-    const names = [c.name, t(c.name)].map((n) => n.toLowerCase());
+    const names = [c.name, dataText(c.name, lang)].map((n) => n.toLowerCase());
     return !cats.some((x) => names.includes(x.name.trim().toLowerCase()));
   });
 
@@ -298,8 +299,8 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
                 <ChoiceCard
                   key={x.id}
                   selected={draft.template === x.id}
-                  title={t(x.name)}
-                  description={t(x.desc)}
+                  title={dataText(x.name, lang)}
+                  description={dataText(x.desc, lang)}
                   onSelect={() => onDraft({ template: x.id, cats: catsOf(x) })}
                 />
               ))}
@@ -357,7 +358,7 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
               className={w.btn13}
               onClick={() =>
                 onDraft({
-                  cats: [...cats, nextSettingsCategory ? { name: t(nextSettingsCategory.name), type: nextSettingsCategory.type, budget: '0' } : { ...NEW_CATEGORY, name: t(NEW_CATEGORY.name) }],
+                  cats: [...cats, nextSettingsCategory ? { name: dataText(nextSettingsCategory.name, lang), type: nextSettingsCategory.type, budget: '0' } : { ...NEW_CATEGORY, name: t(NEW_CATEGORY.name) }],
                 })
               }
             >

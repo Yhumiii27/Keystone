@@ -16,6 +16,7 @@ import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
 import { col, compact, filterLine, isoOf, kpiSheet, param, sheet } from './common';
 import { currentProjectCode, projectFilter } from './scope';
+import { dataText } from '@/i18n/data-text';
 
 
 function loadSheet(ctx: ExportContext, name: string, weeks: ResourceWeek[], people: PoolPerson[]): ExportSheet {
@@ -37,7 +38,7 @@ function requestSheet(ctx: ExportContext, name: string, rows: ResourceRequestRow
     col('due', t('Due'), 'date'), col('priority', t('Priority'), 'text', 10), col('status', t('Status'), 'text', 18), col('requestedBy', t('Requested by'), 'text', 16),
     col('sent', t('Sent'), 'date'), col('response', t('Response'), 'text', 36), col('task', t('Task'), 'text', 9),
   ], rows.map((r) => ({
-    id: r.id, project: r.projectCode, title: t(r.title), resource: t(r.resource), department: t(r.department), activity: r.activity ? `${r.activity.code} · ${t(r.activity.name)}` : '',
+    id: r.id, project: r.projectCode, title: dataText(r.title, ctx.lang), resource: t(r.resource), department: t(r.department), activity: r.activity ? `${r.activity.code} · ${dataText(r.activity.name, ctx.lang)}` : '',
     hours: r.hours, start: isoOf(r.start) ?? t(r.start), due: isoOf(r.due) ?? t(r.due), priority: t(r.priority === 'high' ? 'High' : r.priority === 'low' ? 'Low' : 'Medium'), status: t(r.statusLabel),
     // S-7: a draft (status "Draft") has no sent date — its stored date is when the what-if levelling drafted it.
     requestedBy: r.requestedBy, sent: isSentRequest(r) ? (isoOf(r.sent) ?? isoOf(r.sentText) ?? t(r.sentText)) : null, response: t(r.response), task: r.taskId ?? '',
@@ -149,7 +150,7 @@ async function whatIfWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null
   ];
   return {
     title: `${t('What-if levelling')} · ${project.code}`,
-    filters: [`${t('Project')}: ${project.code} · ${t(project.name)}`, `${t('Data date')}: ${w.dataDate}`],
+    filters: [`${t('Project')}: ${project.code} · ${dataText(project.name, ctx.lang)}`, `${t('Data date')}: ${w.dataDate}`],
     sheets: [
       sheet(t('Scenarios'), [
         col('name', t('Scenario'), 'text', 10), col('priority', t('Priority'), 'text', 16), col('selected', t('Selected'), 'boolean'), col('levers', t('Levers'), 'text', 60), ...resultCols,
@@ -166,7 +167,7 @@ async function whatIfWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null
         col('from', t('From'), 'number', 7), col('to', t('To'), 'number', 7), col('helper', t('Helper'), 'text', 24), ...(ctx.ratesMasked ? [] : [col('rate', t('Hourly rate'), 'money_eur')]),
         col('critical', t('Critical'), 'boolean'), ...resultCols,
       ], w.levers.map((l) => ({
-        label: t(leverLabel(l)), activity: `${l.activity} · ${t(l.activityName)}`, resource: l.resource ? t(l.resource) : '', department: l.department ? t(l.department) : '', from: l.from, to: l.to,
+        label: t(leverLabel(l)), activity: `${l.activity} · ${dataText(l.activityName, ctx.lang)}`, resource: l.resource ? t(l.resource) : '', department: l.department ? t(l.department) : '', from: l.from, to: l.to,
         helper: l.helper ? t(l.helper.name) : '', rate: ctx.ratesMasked ? null : l.helper?.rateEur ?? null, critical: l.critical, ...result(w.effects[l.code]),
       }))),
       sheet(t('Peak load profile'), [col('week', t('Week of'), 'date'), col('load', t('Peak load'), 'percent'), col('over', t('People above 100%'), 'integer')],
@@ -190,7 +191,7 @@ async function skillsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
     title: t('Skills matrix'),
     filters: compact([f != null ? filterLine(t('Skill'), t(data.skills[f].name)) : null]),
     sheets: [sheet(t('Skills matrix'), [
-      col('name', t('Person'), 'text', 22), col('job', t('Job title'), 'text', 22), ...data.skills.map((s, i) => col(`s${i}`, t(s.name), 'integer', 12)), col('certs', t('Certifications'), 'text', 40),
+      col('name', t('Person'), 'text', 22), col('job', t('Job title'), 'text', 22), ...data.skills.map((s, i) => col(`s${i}`, dataText(s.name, ctx.lang), 'integer', 12)), col('certs', t('Certifications'), 'text', 40),
     ], people.map((p) => ({ name: p.name, job: p.jobTitle ? t(p.jobTitle) : '', ...Object.fromEntries(p.levels.map((l, i) => [`s${i}`, l || null])), certs: p.certifications.map((c) => t(c)).join(' · ') })))],
   };
 }
@@ -206,7 +207,7 @@ async function leaveWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
           name: p.name, job: p.jobTitle ? t(p.jobTitle) : '', ...Object.fromEntries(p.weeks.map((c, i) => [`w${i}`, c.typeLabel ? `${t(c.typeLabel)} · ${c.days} ${t('d')}` : c.holidays ? t('Public holiday') : ''])),
           days: p.weeks.reduce((a, c) => a + c.days, 0),
         }))),
-      sheet(t('Public holidays'), [col('date', t('Date'), 'date'), col('name', t('Holiday'), 'text', 30)], data.holidays.map((h) => ({ date: h.date, name: t(h.name) }))),
+      sheet(t('Public holidays'), [col('date', t('Date'), 'date'), col('name', t('Holiday'), 'text', 30)], data.holidays.map((h) => ({ date: h.date, name: dataText(h.name, ctx.lang) }))),
       sheet(t('Leave types'), [col('code', t('Code'), 'text', 8), col('label', t('Type'), 'text', 20), col('days', t('Days'), 'number', 8)], data.leaveTypes.map((l) => ({ code: l.code, label: t(l.label), days: l.days }))),
     ],
   };
@@ -223,7 +224,7 @@ async function ratesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
       sheet(t('Rate cards'), [
         col('role', t('Role'), 'text', 26), ...(masked ? [] : [col('rate', t('Hourly rate'), 'money_eur')]), col('external', t('External'), 'boolean'), col('costCenter', t('Cost centre'), 'text', 12),
         col('grade', t('Grade'), 'text', 8), col('from', t('Effective from'), 'date'),
-      ], card.roles.map((r) => ({ role: t(r.role), rate: masked ? null : r.baseRateEur, external: r.isExternal, costCenter: r.costCenter ?? '', grade: r.grade ?? '', from: r.effectiveFrom }))),
+      ], card.roles.map((r) => ({ role: dataText(r.role, ctx.lang), rate: masked ? null : r.baseRateEur, external: r.isExternal, costCenter: r.costCenter ?? '', grade: r.grade ?? '', from: r.effectiveFrom }))),
       sheet(t('Premium multipliers'), [col('label', t('Premium'), 'text', 30), ...(masked ? [] : [col('factor', t('Multiplier'), 'number', 10, { decimals: 2 })])],
         card.multipliers.map((m) => ({ label: t(m.label), factor: masked ? null : m.factor }))),
     ],

@@ -17,6 +17,7 @@ import { addCategoryFormDef, editCategoryFormDef, editCategoryValues } from './c
 import { costTypeLabel } from './i18n';
 import { NewChangeRequestLink } from './change-request-link';
 import s from './budget.module.css';
+import { dataText } from '@/i18n/data-text';
 
 export interface SetupTabProps {
   cost: CostControl;
@@ -99,8 +100,8 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
             <tbody>
               {offer.map((q, i) => (
                 <tr key={i}>
-                  <Td className={s.strong}>{t(q.system)}</Td>
-                  <Td color="var(--color-neutral-300)">{t(q.supplier)}</Td>
+                  <Td className={s.strong}>{dataText(q.system, lang)}</Td>
+                  <Td color="var(--color-neutral-300)">{q.supplier}</Td>
                   <Td align="right" numeric>
                     {f(q.amount)}
                   </Td>
@@ -124,7 +125,7 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
               <div key={r.id} className={s.refRow}>
                 <span className={s.refId}>{r.id}</span>
                 <span className={s.refName}>
-                  <span>{t(r.name)}</span>
+                  <span>{dataText(r.name, lang)}</span>
                   <span className={s.refPattern}>{t(r.pattern)}</span>
                 </span>
                 <span className={s.refYear}>{r.year}</span>
@@ -135,7 +136,7 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
             <span className={s.kicker}>{t('Other cost streams')}</span>
             {cost.streams.map((st, i) => (
               <div key={i} className={s.streamRow}>
-                <span>{t(st.name)}</span>
+                <span>{dataText(st.name, lang)}</span>
                 <span className={s.streamBasis}>{t(st.basis)}</span>
               </div>
             ))}
@@ -177,7 +178,7 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
                   <Td tone="muted" numeric>
                     {c.code}
                   </Td>
-                  <Td className={s.strong}>{t(c.name)}</Td>
+                  <Td className={s.strong}>{dataText(c.name, lang)}</Td>
                   <Td>
                     <span className="tag tag-neutral">{costTypeLabel(c.costTypeLabel, t, lang)}</span>
                   </Td>
@@ -207,7 +208,7 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
             <div key={cr.id} className={s.crRow}>
               <span className={s.crId}>{cr.id}</span>
               <div className={s.crMain}>
-                <span className={s.crTitle}>{t(cr.title)}</span>
+                <span className={s.crTitle}>{dataText(cr.title, lang)}</span>
                 <span className={s.crMeta}>{t(cr.meta)}</span>
               </div>
               <div className={s.crAmounts}>
@@ -258,7 +259,7 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
                   <Td tone="muted" numeric>
                     {w.wbs}
                   </Td>
-                  <Td>{t(w.name)}</Td>
+                  <Td>{dataText(w.name, lang)}</Td>
                   <Td align="right" numeric>
                     {f(w.original)}
                   </Td>

@@ -14,6 +14,7 @@ import { money } from '@/lib/format';
 import type { HoursGroup, HoursReconciliation } from '@/server/dal/hr';
 import { AssignControl } from './assign-control';
 import s from './hr.module.css';
+import { dataText } from '@/i18n/data-text';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -70,7 +71,7 @@ export function HoursBody({ data, view, base, code, canEdit, lang, t }: HoursVie
   const k = hoursKpis({ lines: data.lines, unassigned: pending, unassignedTotalH: data.unassigned.reduce((a, u) => a + u.hours, 0) });
   const month = MONTHS[+data.periodStart.slice(5, 7) - 1];
   const varText = (k.varianceH > 0 ? '+' : '') + k.varianceH + ' h';
-  const options = data.workPackages.map((w) => ({ value: w.code, label: t(w.label) }));
+  const options = data.workPackages.map((w) => ({ value: w.code, label: `${w.code} · ${dataText(w.name, lang)}` }));
 
   return (
     <>

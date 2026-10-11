@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { makeT, type Lang } from '@/i18n/translate';
 import { displayOfIso, isoOfDisplayDate } from '@/server/db/codes';
 import { amendmentFormDef, billingView, bondFormDef, contractView, invoiceFormDef, milestoneFormDef, RESULT, type ContractData } from './model';
-import { CT, G, SCENARIOS, seedInput } from './test-fixtures';
+import { CT, G, SCENARIOS, seedInput, sheetFieldsExpected } from './test-fixtures';
 
 const LANGS: Lang[] = ['en', 'fr'];
 const data = (name: string): ContractData => {
@@ -36,9 +36,7 @@ describe('Contract view = prototype render (EN, FR)', () => {
         const g = G.scenarios[`${name}|contract|${lang}`];
         const v = contractView(data(name), makeT(lang), lang);
         expect(v.kpis).toEqual(g.kpis);
-        expect(v.fields.map((f) => [f.key, f.type === 'select' ? f.options!.find((o) => o.value === f.value)!.label : f.value])).toEqual(
-          g.fields.map(([k, value]: [string, string]) => [k, value]),
-        );
+        expect(v.fields.map((f) => [f.key, f.type === 'select' ? f.options!.find((o) => o.value === f.value)!.label : f.value])).toEqual(sheetFieldsExpected(name, lang));
         expect(v.amendments.map((a) => [a.label, a.amount, a.status, a.date, a.doc ?? '', a.tagClass])).toEqual(
           g.amendments.map((a: Record<string, string>) => [a.label, a.amtText, a.status, a.date, a.doc, a.stClass]),
         );

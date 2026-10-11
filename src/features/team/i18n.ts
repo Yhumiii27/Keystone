@@ -10,20 +10,16 @@
 import FR_DICT_BASE from '@/i18n/fr-dict.json';
 import { EXTRA_FR } from '@/i18n/extra';
 import type { Lang, T } from '@/i18n/translate';
+import { dataText } from '@/i18n/data-text';
 
 const DICT: Record<string, string> = { ...(FR_DICT_BASE as Record<string, string>), ...EXTRA_FR };
-const exact = (s: string) => (Object.hasOwn(DICT, s) ? DICT[s] : s);
 const fr = (lang: Lang) => lang === 'fr';
 
-/** Register data text in the viewer's language (exact dictionary matches, whole text then segments). */
-export function dataT(s: string, lang: Lang): string {
-  if (!fr(lang) || !s) return s;
-  if (Object.hasOwn(DICT, s)) return DICT[s];
-  return s
-    .split(/( · | — | → | \/ )/)
-    .map((p, i) => (i % 2 ? p : exact(p)))
-    .join('');
-}
+/**
+ * Register data (names, descriptions, notes typed in Keystone or received): as typed, or a seeded string's exact
+ * dictionary entry — never segment by segment (R-148, NEW-D1-2: the shared helper, src/i18n/data-text.ts).
+ */
+export const dataT = (s: string, lang: Lang): string => dataText(s, lang);
 
 const STATUS_FR: Record<string, string> = { Received: 'Reçue', Frozen: 'Gelée' };
 /** Interface status tag (EN label → FR, feminine). */

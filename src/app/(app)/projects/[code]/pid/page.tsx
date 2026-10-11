@@ -18,9 +18,9 @@ import { ImportTagsButton } from '@/features/pid/pid-buttons';
 import { PidBody } from '@/features/pid/pid-view';
 import { PidTagDrawer } from '@/features/pid/tag-drawer';
 import { getPidValidation, pidCandidates } from '@/server/dal/pid';
-import { projectLabel } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 
@@ -38,7 +38,7 @@ export default async function PidPage({ params, searchParams }: { params: Promis
   const candidates = tag && !state.part && canEdit && tag.scope !== 'client' ? await pidCandidates(projectCode, tag.tag) : [];
 
   const primary = canEdit ? (
-    <ImportTagsButton code={projectCode} context={t(projectLabel(ctx.project))} currentRevision={data?.sheet.revision ?? null} />
+    <ImportTagsButton code={projectCode} context={projectLabelText(ctx.project, lang)} currentRevision={data?.sheet.revision ?? null} />
   ) : undefined;
 
   const view = data

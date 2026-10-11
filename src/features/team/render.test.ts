@@ -160,7 +160,8 @@ describe('Interface register view model', () => {
       ['IF-02', 'HV supply — port substation cell', 'Électricité', 'Client · port authority', 'Cell availability date + protection settings', '15 oct.', 'dans 15 j', '—', 'Ouverte', 'S. Haddad'],
       ['IF-03', 'Terminal operating system — data exchange', 'Automatisme', 'Navis · third party', 'Interface spec (OPC UA tags)', '22 sept.', '', '22 sept.', 'Gelée', 'C. Morvan'],
       ['IF-04', 'Quay access windows — crane erection', 'Site', 'Client · terminal operations', 'Restricted access calendar', '1 oct.', '', '29 sept.', 'Reçue', 'L. Fabre'],
-      ['IF-05', 'Neighbouring cranes — anti-collision zones', 'Automatisme', 'Tiers · other supplier', 'Crane envelope & positioning protocol', '15 nov.', 'dans 45 j', '—', 'Ouverte', 'C. Morvan'],
+      // R-148 (NEW-D1-2): the other party is shown as typed, not half translated ("Tiers · other supplier").
+      ['IF-05', 'Neighbouring cranes — anti-collision zones', 'Automatisme', 'Third party · other supplier', 'Crane envelope & positioning protocol', '15 nov.', 'dans 45 j', '—', 'Ouverte', 'C. Morvan'],
       ['IF-06', 'Environmental permit — night works', 'Process', 'DREAL · authority', 'Noise limits & allowed hours', '12 mars', '', '12 mars', 'Gelée', 'R. Aubert'],
       ['IF-07', 'Fibre & network — port backbone', 'Automatisme', 'Client · IT', 'Fibre route & VLAN plan', '20 sept.', '10 j de retard', '—', 'En retard', 'S. Haddad'],
     ]);

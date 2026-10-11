@@ -15,12 +15,12 @@ import { getScreenAccess } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 
 export default async function SettingsPage() {
-  const [{ t }, access, data] = await Promise.all([getI18n(), getScreenAccess('settings'), getSettings()]);
+  const [{ t, lang }, access, data] = await Promise.all([getI18n(), getScreenAccess('settings'), getSettings()]);
   const canEdit = access.canEdit && canEditSettings(access.viewer.role);
   return (
     <>
       <PageHeader screen="settings" primary={canEdit ? <ResetSettingsButton /> : undefined} />
-      <SettingsBody view={settingsView(data, t)} canEdit={canEdit} directorOnlyNote={access.canEdit && !canEdit} />
+      <SettingsBody view={settingsView(data, t, lang)} canEdit={canEdit} directorOnlyNote={access.canEdit && !canEdit} />
     </>
   );
 }

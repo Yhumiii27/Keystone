@@ -8,9 +8,9 @@ import { BillingScreen } from '@/features/contract/billing-view';
 import { FormButton } from '@/features/contract/form-button';
 import { billingView, invoiceFormDef } from '@/features/contract/model';
 import { getContract } from '@/server/dal/contract';
-import { projectLabel } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 export default async function BillingPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -27,7 +27,7 @@ export default async function BillingPage({ params }: { params: Promise<{ code: 
     );
 
   const canEdit = ctx.canEdit('billing');
-  const context = t(projectLabel(ctx.project));
+  const context = projectLabelText(ctx.project, lang);
   const view = billingView(contract, t, lang);
   const invoiceForm = invoiceFormDef(contract, t, lang);
   const primary =

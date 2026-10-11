@@ -48,7 +48,7 @@ export function DeliverableDrawer({ code, view: d, context, t }: { code: string;
               <Link href={docHref(d.document.number, code)} className={s.docLink} scroll={false}>
                 <FileText className={s.docIcon} aria-hidden />
                 <span className={s.docNumber}>{d.document.number}</span>
-                {d.document.title && <span>{t(d.document.title)}</span>}
+                {d.document.title && <span>{d.document.title}</span>}
                 {d.document.revision && (
                   <span className={s.docMeta}>
                     {t('Rev')} {d.document.revision} · {t(d.document.statusLabel)}
