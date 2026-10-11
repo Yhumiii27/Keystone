@@ -1,0 +1,69 @@
+# Continuous integration (R-016): on every pull request and every push to main — install, route types, typecheck, lint,
+# unit tests (vitest), production build into .next-ci, then the end-to-end scenarios (Playwright, tests/e2e) against
+# `next start` on that build with a fresh database. Nothing reaches Vigie, Cursus, Codex or Anthropic: their URLs and
+# keys are not set here, so the mock connectors and the local transcript analyser run.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Typecheck, lint, tests, build, end-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      KEYSTONE_DIST_DIR: .next-ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Route types (LayoutProps / PageProps)
+        run: npx next typegen
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          KEYSTONE_DATA_DIR: ${{ runner.temp }}/keystone-build-data
+
+      - name: Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      - name: End-to-end report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+# end-to-end outputs (npm run test:e2e)
+/playwright-report/
+/test-results/
 
 # next.js
 /.next/
