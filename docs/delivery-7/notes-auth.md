@@ -132,7 +132,10 @@ unique constraints `users_person_id_unique`, `users_entra_object_id_unique`. Dat
 - The health probe is assumed at `/api/health` (`HEALTH_PATHS` in `src/domain/auth.ts`); adjust if lot platform-data
   chose another path.
 - `CLAUDE.md` ("Personas: the View as cookie stands in for authentication") should mention `KEYSTONE_AUTH`.
-- Lot "rights" builds on `viewer.personId` / `viewer.userId` / `viewer.organisation` / `viewer.department`.
+- Lot "rights" builds on `viewer.personId` / `viewer.userId` / `viewer.organisation` / `viewer.department`. Pre-existing
+  rule to revisit there (R-041/R-042), now reachable with real users: `getProjectScope` only makes projects read-only
+  when the viewer owns some but not all of them, so a real PM who manages no project, or a client whose organisation has
+  no project, is not read-only anywhere.
 
 ## 7. Open questions for the owner
 
