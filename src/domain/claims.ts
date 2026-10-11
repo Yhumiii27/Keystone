@@ -90,7 +90,7 @@ export function parseClaimUpdate(values: Record<string, string | undefined>, own
   if (nextStep.length > 300 || diagnosis.length > 2000) return { ok: false, error: 'Text is too long' };
   const eco = text(values.eco).toUpperCase();
   if (eco && !ECO_NUMBER.test(eco)) return { ok: false, error: 'Enter the ECO number as in Vigie, e.g. ECO-031' };
-  return { ok: true, value: { coverage, owner, costKeur: Math.round(costKeur * 10) / 10, nextStep, diagnosis: diagnosis || null, ecoNumber: eco || null } };
+  return { ok: true, value: { coverage, owner, costKeur: Math.round(costKeur * 100) / 100, nextStep, diagnosis: diagnosis || null, ecoNumber: eco || null } };
 }
 
 /** "Mark diagnosed": the diagnosis is required (≤ 2000). */

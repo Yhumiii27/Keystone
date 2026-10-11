@@ -206,7 +206,8 @@ describe('R-112 "Record result" Server Function and DAL', () => {
     // Readers without the right: no "Record result"; the client sees no Vigie link nor NCR (P-10b).
     expect(row(await view(true, false), 'I-03').record).toBeNull();
     const c = row(await view(false, false), 'I-03');
-    expect([c.reportNcr, c.ncrs, c.record, c.resultLine]).toEqual([null, [], null, 'Failed 29 Sep · Gabriel Comte']);
+    // P-10b: the description of the non-conformity is internal; the client sees the result line only.
+    expect([c.reportNcr, c.ncrs, c.record, c.resultLine, c.comment]).toEqual([null, [], null, 'Failed 29 Sep · Gabriel Comte', null]);
 
     // Vigie reports the NCR with the inspection (V-3): its number replaces the report link.
     const db = await getDb();

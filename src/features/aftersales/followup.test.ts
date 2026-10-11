@@ -47,8 +47,8 @@ describe('R-143 / R-144 rules', () => {
   });
 
   it('parses "Edit claim"', () => {
-    expect(parseClaimUpdate({ ...EDIT, cost: '8,46', eco: 'eco-2026-015', next: '' }, CLAIM_OWNERS)).toEqual({
-      ok: true, value: { coverage: 'warranty', owner: 'T. Kerbrat', costKeur: 8.5, nextStep: '—', diagnosis: 'Worn brake disc lining', ecoNumber: 'ECO-2026-015' },
+    expect(parseClaimUpdate({ ...EDIT, cost: '8,456', eco: 'eco-2026-015', next: '' }, CLAIM_OWNERS)).toEqual({
+      ok: true, value: { coverage: 'warranty', owner: 'T. Kerbrat', costKeur: 8.46, nextStep: '—', diagnosis: 'Worn brake disc lining', ecoNumber: 'ECO-2026-015' },
     });
     expect(parseClaimUpdate({ ...EDIT, cover: 'Chargeable', cost: '' }, CLAIM_OWNERS)).toMatchObject({ ok: true, value: { coverage: 'chargeable', costKeur: 0 } });
     const err = (v: Record<string, string>) => {

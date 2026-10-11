@@ -355,7 +355,7 @@ export interface InterventionDoneInput {
 /**
  * "Mark done" (R-143): Planned → Done, dated, with the report. When a part was replaced or upgraded, the machine's
  * as-maintained configuration records the revision now fitted (R-144, E-8: "each after-sales intervention updates it");
- * the part must be in the catalogue. With `expected`, an intervention already done is refused.
+ * the part must be in the machine's configuration or the catalogue. An intervention already done is refused ("… has moved on").
  */
 export async function completeIntervention(number: string, input: InterventionDoneInput, actor: Actor): Promise<void> {
   requireWorkspace('sav', actor, 'Warranty claims & interventions');
@@ -373,9 +373,10 @@ export async function completeIntervention(number: string, input: InterventionDo
     const who = await whoIs(tx, actor);
     let configChange = '';
     if (partRef) {
-      const [p] = await tx.select({ ref: parts.ref }).from(parts).where(eq(parts.ref, partRef));
-      if (!p) throw new Error(`Unknown part ${partRef}`);
       const [old] = await tx.select().from(machinePartRevisions).where(and(eq(machinePartRevisions.machineId, i.machineId), eq(machinePartRevisions.partRef, partRef)));
+      // A part of the machine's configuration, or of the catalogue (a new part fitted).
+      const [p] = old ? [old] : await tx.select({ ref: parts.ref }).from(parts).where(eq(parts.ref, partRef));
+      if (!p) throw new Error(`Unknown part ${partRef}`);
       if (old) await tx.update(machinePartRevisions).set({ revision: revision! }).where(and(eq(machinePartRevisions.machineId, i.machineId), eq(machinePartRevisions.partRef, partRef)));
       else {
         const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${machinePartRevisions.position}), -1)::int` }).from(machinePartRevisions).where(eq(machinePartRevisions.machineId, i.machineId));

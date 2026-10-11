@@ -136,11 +136,16 @@ describe('R-137 handling', () => {
     const [audit] = await listAudit({ projectCode: HLT, limit: 1 });
     expect([audit.who, audit.object, audit.area, audit.change]).toEqual(['Romain Aubert', 'CI-08', 'Client portal', 'closed · status: In progress → Closed']);
 
-    // Answering an Open issue takes it in charge at the same time (the director here).
+    // The director answers CI-07 (taken in charge earlier); answering an Open issue takes it in charge at the same time.
     session.role = 'director';
     session.lang = 'en';
     expect(await answerClientIssueAction(HLT, 'CI-07', 'in_progress', { answer: 'Photos added to the weekly report' })).toEqual({ toast: 'CI-07 · Answer sent to the client' });
     expect(await issue('CI-07')).toMatchObject({ status: 'in_progress', handledBy: 'Marie Lefebvre', response: 'Photos added to the weekly report' });
+    session.role = 'client';
+    expect(await raiseClientIssueAction(HLT, 'Gate pass for the crane supplier')).toEqual({ ok: true, number: 'CI-09' });
+    session.role = 'pm';
+    expect(await answerClientIssueAction(HLT, 'CI-09', 'open', { answer: 'Passes issued for 6 Oct' })).toEqual({ toast: 'CI-09 · Answer sent to the client' });
+    expect(await issue('CI-09')).toMatchObject({ status: 'in_progress', handledBy: 'Romain Aubert', takenOn: '2026-09-30', answeredOn: '2026-09-30', answered: true });
   });
 
   it('a PM on another project is read-only there', async () => {

@@ -167,7 +167,8 @@ export function itpScreenView({ code, view, plan, punch, machineType, viewer = R
         date: t(itpDateText(r.plannedOn)), status: t(r.resultLabel), statusClass: look.statusClass, statusColor: look.statusColor,
         doc: docButton(r.recordRef, r.recordInCodex, code, t),
         resultLine: line ? resultLineText(r, t) : null,
-        comment: r.resultComment ?? null,
+        // The comment of a failure describes the non-conformity: internal (P-10b), not shown to the client.
+        comment: viewer.internal ? (r.resultComment ?? null) : null,
         ncrs,
         reportNcr:
           viewer.internal && r.result === 'failed' && !ncrs.length
