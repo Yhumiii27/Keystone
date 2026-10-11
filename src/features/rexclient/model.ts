@@ -12,7 +12,7 @@ import {
 import { scheduleView, type GanttTask, type MilestoneInput, type ScheduleInput, type ScheduleMilestone } from '@/domain/schedule-gantt';
 import { slipText } from '@/features/schedule/i18n';
 import type { Lang, T } from '@/i18n/translate';
-import type { ClosureItemStatus, LessonStatus } from '@/server/db/codes';
+import { fmtDOfIso, type ClosureItemStatus, type LessonStatus } from '@/server/db/codes';
 import type { ClientPortal } from '@/server/dal/client';
 import type { ProjectRex } from '@/server/dal/rex';
 import { dueText, exactText, milestoneText, subText } from './i18n';
@@ -126,6 +126,7 @@ export interface ClientScreenView {
   summary: { k: string; v: string }[] | null;
   /** Contract summary empty state (no billing plan), null when there is a summary (internal projects: €0k rows). */
   summaryEmpty: string | null;
+  /** `when`: "Raised 22 Sep", followed by "· Answered 30 Sep" once the project manager answered (R-137). */
   issues: { id: string; title: string; when: string; status: string; tagClass: string; response: string }[];
   docs: { id: string; title: string; typeLabel: string; date: string; rev: string; status: string; tagClass: string; acknowledged: boolean; ackLabel: string }[];
   docsLabels: { idHeader: string; sub: string; empty: string };
@@ -200,7 +201,8 @@ export function clientScreenView({ code, tab, portal, schedule, billing }: Clien
     summaryEmpty: portal.contract ? null : t('No contract recorded for this project'),
     issues: portal.issues.map((i) => {
       const r = issueRow({ number: i.number, title: i.title, raisedOn: i.raisedOn, status: i.status, response: i.response });
-      return { id: r.id, title: exactText(r.title, lang), when: t(r.when), status: t(r.status), tagClass: tag(r.tone), response: exactText(r.response, lang) };
+      const when = i.answeredOn ? `${t(r.when)} · ${t('Answered')} ${t(fmtDOfIso(i.answeredOn))}` : t(r.when);
+      return { id: r.id, title: exactText(r.title, lang), when, status: t(r.status), tagClass: tag(r.tone), response: exactText(r.response, lang) };
     }),
     docs: portal.documents.map((d) => {
       const r = sharedDocRow(d);
