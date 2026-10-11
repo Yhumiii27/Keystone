@@ -9,7 +9,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { PERSONA_BY_ROLE } from '@/config/personas';
 import { parseActivitySource } from '@/domain/admin';
 import { makeT, type Lang } from '@/i18n/translate';
-import { setDb } from '@/server/db/client';
+import { eq } from 'drizzle-orm';
+import { getDb, setDb } from '@/server/db/client';
+import { connectors as connectorsTable } from '@/server/db/schema';
 import { openDatabase } from '@/server/db/open';
 import { listAdminConnectors } from '@/server/dal/admin-connectors';
 import { getPlumbingCounts, listImportFormats } from '@/server/dal/integrations';
@@ -196,9 +198,13 @@ describe('Activity, integrations & audit view model', () => {
   it.each(['en', 'fr'] as const)('%s: KPI tiles, display, chips, feed, import / export and audit trail equal the prototype', async (lang) => {
     const v = await plumbing(lang);
     const g = (path: (x: any) => any) => golden(lang, path);
-    // Deliberate: 10 connectors (Vigie added), all healthy but Outlook.
+    // R-021 (A-15, NEW-CURSUS-4): 9 connectors (Vigie added, Lucca retired) counted by their real link instead of the seeded
+    // statuses ("7 healthy · 1 warning" in the prototype): MS Project (files) connected, Codex / Cursus / Vigie mocks, five
+    // that do not exist; no e-mail or Teams connector, so in-app is the only channel (the prototype: "3 · In-app · e-mail · Teams").
     const k = kpis(g((x) => x.plumbing.kpis));
-    k[1] = { ...k[1], value: '10', sub: lang === 'en' ? '8 healthy · 1 warning' : '8 sains · 1 en alerte' };
+    expect([k[1].sub, k[4].value, k[4].sub]).toEqual([lang === 'en' ? '7 healthy · 1 warning' : '7 sains · 1 en alerte', '3', 'In-app · e-mail · Teams']);
+    k[1] = { ...k[1], value: '9', sub: lang === 'en' ? '1 connected · 3 mock · 5 not connected' : '1 connecté · 3 simulés · 5 non connectés', color: 'var(--color-text)' };
+    k[4] = { ...k[4], value: '1', sub: lang === 'en' ? 'In-app · e-mail and Teams not connected' : 'In-app · e-mail et Teams non connectés' };
     // A-12 (chapter 4, 10 OQ4): "Events today" = events of the data date (Paris day) — 5 on 25 Sep (the prototype's 6
     // included an event of 26 Sep).
     expect(k[0].value).toBe('6');
@@ -215,30 +221,56 @@ describe('Activity, integrations & audit view model', () => {
     expect(v.audit.map((a) => ({ when: a.when, who: a.who, obj: a.object, change: a.change, area: a.area }))).toEqual(g((x) => x.plumbing.auditRows));
   });
 
-  it.each(['en', 'fr'] as const)('%s: connectors — the prototype rows, Codex / Cursus / Vigie from the connector layer', async (lang) => {
+  it.each(['en', 'fr'] as const)('%s: connectors — the prototype rows with their real state (R-021), Codex / Cursus / Vigie mocks', async (lang) => {
     const v = await plumbing(lang, { view: 'connectors' });
     const g = golden(lang, (x) => x.plumbing.connRows);
     const rows = v.connectors.map((c) => ({ name: c.name, what: c.data, freq: c.frequency, st: c.status, last: c.last, vol: c.volume, tagClass: `tag tag-${c.tone}` }));
-    const expected = g.map((r: any) => ({ ...r }));
-    // Codex: last sync and record count of the Codex index connector (as the Documents screen).
-    expected[1].last = lang === 'en' ? '29 Sep 08:02' : '29 sept. 08:02';
-    if (lang === 'fr') expected[1].vol = '412 fiches · 38 liées à HLT-026';
-    expect(rows.slice(0, 9)).toEqual(expected);
-    expect(v.connectors.map((c) => c.mode)).toEqual(
-      ['Cursus', 'Codex', 'Lucca', 'Sage X3', 'SolidWorks PDM', 'MS Project', 'Outlook / Exchange', 'Microsoft Teams', 'E-mail (SMTP)', 'Vigie'].map((n) =>
-        ['Cursus', 'Codex', 'Vigie'].includes(n) ? (lang === 'en' ? 'Mock connector · local mirror' : 'Connecteur simulé · miroir local') : null,
-      ),
-    );
-    expect(rows[9]).toEqual({
+    // R-021 (A-15, D-7a, NEW-CURSUS-4) — what the prototype seeded is no longer shown as real: Lucca is retired; Codex and Cursus
+    // are mocks ("Mock", no last sync, the local index / mirror content); Sage X3, the PDM, Outlook, Teams and SMTP do not exist
+    // ("Not connected", no last sync or volume — no more "OK · 18 stock lines", "Warning · Token expires in 3 days", "9 sent
+    // today"); MS Project keeps its last export ("Ready").
+    const mock = lang === 'en' ? 'Mock' : 'Simulé';
+    const none = lang === 'en' ? 'Not connected' : 'Non connecté';
+    const expected = g.filter((r: any) => r.name !== 'Lucca').map((r: any) => {
+      if (r.name === 'Cursus') return { ...r, st: mock, last: '—', tagClass: 'tag tag-outline' };
+      if (r.name === 'Codex') return { ...r, st: mock, last: '—', vol: lang === 'en' ? r.vol : '412 fiches · 38 liées à HLT-026', tagClass: 'tag tag-outline' };
+      if (r.name === 'MS Project') return r;
+      return { ...r, st: none, last: '—', vol: '—', tagClass: 'tag tag-outline' };
+    });
+    expect(g.map((r: any) => [r.name, r.st])).toEqual([
+      ['Cursus', 'OK'], ['Codex', 'OK'], ['Lucca', 'OK'], ['Sage X3', 'OK'], ['SolidWorks PDM', 'OK'], ['MS Project', lang === 'en' ? 'Ready' : 'Prêt'], ['Outlook / Exchange', lang === 'en' ? 'Warning' : 'Alerte'],
+      ['Microsoft Teams', 'OK'], ['E-mail (SMTP)', 'OK'],
+    ]);
+    expect(rows.slice(0, 8)).toEqual(expected);
+    const mirror = lang === 'en' ? 'Mock connector · local mirror' : 'Connecteur simulé · miroir local';
+    expect(v.connectors.map((c) => [c.rawName, c.mode, c.canSync])).toEqual([
+      ['Cursus', mirror, true], ['Codex', mirror, true], ['Sage X3', null, false], ['SolidWorks PDM', null, false],
+      ['MS Project', lang === 'en' ? 'File exchange · no live connection' : 'Échange de fichiers · pas de connexion directe', false],
+      ['Outlook / Exchange', null, false], ['Microsoft Teams', null, false], ['E-mail (SMTP)', null, false], ['Vigie', mirror, true],
+    ]);
+    expect(rows[8]).toEqual({
       name: 'Vigie',
       what: lang === 'en'
         ? 'Engineering change orders, non-conformities (NCR, 8D) and site HSE (prevention plans, permits) — managed in Vigie, Keystone records progress'
         : 'Ordres de modification, non-conformités (NCR, 8D) et HSE chantier (plans de prévention, permis) — gérés dans Vigie, Keystone enregistre l’avancement',
       freq: lang === 'en' ? 'Every minute (on read)' : 'Toutes les minutes (à la lecture)',
-      st: 'OK', last: lang === 'en' ? '25 Sep 07:30' : '25 sept. 07:30',
-      vol: lang === 'en' ? '6 ECOs · 15 NCRs · 5 HSE items' : '6 ECO · 15 NCR · 5 éléments HSE', tagClass: 'tag tag-neutral',
+      st: mock, last: '—',
+      vol: lang === 'en' ? '6 ECOs · 15 NCRs · 5 HSE items' : '6 ECO · 15 NCR · 5 éléments HSE', tagClass: 'tag tag-outline',
     });
-    expect(v.connectors.map((c) => c.rawName)[9]).toBe('Vigie');
+  });
+
+  it('R-021: with its API URL, Vigie is a live connector — its status, last refresh and "Sync now" for real', async () => {
+    const prev = process.env.VIGIE_API_URL;
+    process.env.VIGIE_API_URL = 'http://vigie.invalid';
+    try {
+      const vigie = (await listAdminConnectors()).find((c) => c.name === 'Vigie')!;
+      expect([vigie.link, vigie.state, vigie.mode, vigie.canSync, vigie.lastSyncAt]).toEqual(['live', 'ok', 'http', true, '2026-09-25T05:30:00.000Z']);
+      const v = await plumbing('en', { view: 'connectors' });
+      expect(v.connectors.find((c) => c.rawName === 'Vigie')).toMatchObject({ mode: 'Live connector · HTTP API', status: 'OK', tone: 'neutral', last: '25 Sep 07:30' });
+      expect(v.kpis[1].sub).toBe('2 connected · 2 mock · 5 not connected');
+    } finally {
+      process.env.VIGIE_API_URL = prev ?? '';
+    }
   });
 
   it('source chips filter the feed (links keep the display); the PM sees their own unread count', async () => {
@@ -259,10 +291,15 @@ describe('Activity, integrations & audit view model', () => {
     expect(visibleImportFormats(formats, true)).toHaveLength(6);
   });
 
-  it.each(['en', 'fr'] as const)('%s: D-7a — a connector disabled by IT is listed as Disabled (calm tone)', async (lang) => {
-    const [activity, connectors, imports, audit, counts] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
-    const off = connectors.map((c) => (c.name === 'Sage X3' ? { ...c, enabled: false } : c));
-    const v = plumbingView({ view: 'connectors', source: null, activity, connectors: off, imports, audit, counts, unread: 0, personaTitle: 'Portfolio director' }, makeT(lang), lang);
-    expect(v.connectors.find((c) => c.rawName === 'Sage X3')).toMatchObject({ status: lang === 'en' ? 'Disabled' : 'Désactivé', tone: 'neutral' });
+  it.each(['en', 'fr'] as const)('%s: D-7a — a connector disabled by IT is listed as Disabled (calm tone), without "Sync now"', async (lang) => {
+    const db = await getDb();
+    await db.update(connectorsTable).set({ enabled: false }).where(eq(connectorsTable.name, 'Vigie'));
+    try {
+      const [activity, connectors, imports, audit, counts] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
+      const v = plumbingView({ view: 'connectors', source: null, activity, connectors, imports, audit, counts, unread: 0, personaTitle: 'Portfolio director' }, makeT(lang), lang);
+      expect(v.connectors.find((c) => c.rawName === 'Vigie')).toMatchObject({ status: lang === 'en' ? 'Disabled' : 'Désactivé', tone: 'neutral', canSync: false, last: '—' });
+    } finally {
+      await db.update(connectorsTable).set({ enabled: true }).where(eq(connectorsTable.name, 'Vigie'));
+    }
   });
 });

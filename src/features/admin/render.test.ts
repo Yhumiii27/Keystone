@@ -127,10 +127,17 @@ describe('Activity, integrations & audit body', () => {
     const out = await body(lang, 'connectors');
     const plain = text(out);
     for (const l of ['Connectors', 'System', 'Data', 'Frequency', 'Status', 'Last sync', 'Last volume', 'Sync now', 'Configure']) expect(plain, l).toContain(label(l, lang));
-    expect(count(out, /<tr>/g)).toBe(11);
-    expect(count(out, /class="[^"]*connMode/g)).toBe(3);
-    expect(count(out, /class="tag tag-accent"/g)).toBe(1);
+    // R-021: Lucca is no longer listed (header + 9 rows); Codex, Cursus and Vigie are mocks, MS Project a file exchange, the
+    // other five "Not connected" — no seeded "Warning" (Outlook) any more, and "Sync now" only on the three mocks.
+    expect(count(out, /<tr>/g)).toBe(10);
+    expect(count(out, /class="[^"]*connMode/g)).toBe(4);
+    expect(count(out, /class="tag tag-accent"/g)).toBe(0);
+    expect(count(out, new RegExp(`>${lang === 'en' ? 'Not connected' : 'Non connecté'}<`, 'g'))).toBe(5);
+    expect(count(out, new RegExp(`>${lang === 'en' ? 'Mock' : 'Simulé'}<`, 'g'))).toBe(3);
+    expect(count(out, new RegExp(`aria-label="${label('Sync now', lang)} · `, 'g'))).toBe(3);
+    expect(count(out, new RegExp(`aria-label="${label('Configure', lang)} · `, 'g'))).toBe(9);
     expect(plain).toContain(lang === 'en' ? 'Vigie Mock connector · local mirror' : 'Vigie Connecteur simulé · miroir local');
+    expect(plain).toContain(lang === 'en' ? 'MS Project File exchange · no live connection' : 'MS Project Échange de fichiers · pas de connexion directe');
     const ro = await body(lang, 'connectors', false);
     expect(text(ro)).not.toContain(label('Sync now', lang));
   });
@@ -148,8 +155,10 @@ describe('Activity, integrations & audit body', () => {
     expect(plain).toContain('Exporter en CSV');
     expect(count(fr, /<tr>/g)).toBe(9);
     expect(await body('en', 'audit', false)).not.toContain('audit.csv');
-    // French connector volumes the prototype left in English; an empty audit trail says so.
-    expect(text(await body('fr', 'connectors'))).toContain('1 248 plans · 13 liés');
+    // French connector volumes the prototype left in English (R-021: the not-connected PDM shows none); an empty audit trail
+    // says so.
+    expect(text(await body('fr', 'connectors'))).toContain('412 fiches · 38 liées à HLT-026');
+    expect(text(await body('fr', 'connectors'))).not.toContain('1 248 plans');
     const t = makeT('fr');
     const empty = plumbingView({ view: 'audit', source: null, activity: [], connectors: [], imports: [], audit: [], counts: { eventsToday: 0, auditLast7Days: 0 }, unread: 0, personaTitle: 'Portfolio director' }, t, 'fr');
     expect(text(html(h(PlumbingBody, { view: empty, canEdit: true, t }), 'fr'))).toContain('Aucune entrée d’audit pour l’instant');

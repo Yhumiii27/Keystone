@@ -1,8 +1,8 @@
 'use client';
 // Interactive parts of Activity, integrations & audit (docs/spec/10 §2.4–2.5, chapter 4):
-// - per connector row: "Sync now" (Codex index, Vigie and Cursus connectors for real; the others record a simulated run;
-//   refused for a connector disabled by IT) and "Configure" (D-7a: the Keystone-side settings — frequency, data scope,
-//   direction, enabled — shown read-only, since IT configures connectors outside Keystone);
+// - per connector row: "Sync now" (R-021: live and mock connectors only — a mock run says it is simulated; not offered for a
+//   connector that does not exist, exchanges files only or is disabled by IT) and "Configure" (D-7a: the Keystone-side
+//   settings — frequency, data scope, direction, enabled — shown read-only, since IT configures connectors outside Keystone);
 // - the import / export cards: a file dropped or chosen on "MS Project XML", "Primavera P6 XER" or "Excel / CSV" opens the
 //   import dialog (upload → mapping → preview → confirmation) — these cards are only listed while IMPORTS_ENABLED is on
 //   (D-7b, src/domain/ch4-defaults.ts); the export cards open a dialog that downloads the MS Project XML of a project or the
@@ -21,7 +21,7 @@ import { ImportDialog } from './import-dialog';
 import { syncConnectorAction } from './actions';
 import s from './admin.module.css';
 
-export function ConnectorActions({ name, label }: { name: string; label: string }) {
+export function ConnectorActions({ name, label, canSync }: { name: string; label: string; canSync: boolean }) {
   const { t } = useI18n();
   const [pending, start] = useTransition();
   const [configure, setConfigure] = useState(false);
@@ -36,9 +36,11 @@ export function ConnectorActions({ name, label }: { name: string; label: string 
     });
   return (
     <div className={s.connActions}>
-      <Button variant="secondary" size="row" icon={ArrowsClockwise} disabled={pending} aria-busy={pending || undefined} aria-label={`${t('Sync now')} · ${label}`} onClick={sync}>
-        {t('Sync now')}
-      </Button>
+      {canSync && (
+        <Button variant="secondary" size="row" icon={ArrowsClockwise} disabled={pending} aria-busy={pending || undefined} aria-label={`${t('Sync now')} · ${label}`} onClick={sync}>
+          {t('Sync now')}
+        </Button>
+      )}
       <Button variant="ghost" size="compact" aria-label={`${t('Configure')} · ${label}`} onClick={() => setConfigure(true)}>
         {t('Configure')}
       </Button>

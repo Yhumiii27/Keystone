@@ -13,3 +13,11 @@ const trimSlash = (u: string) => u.trim().replace(/\/+$/, '');
 export function codexPublicUrl(): string {
   return trimSlash(process.env.NEXT_PUBLIC_CODEX_URL || DEFAULT_CODEX_URL);
 }
+
+export type CodexConnectorMode = 'mock';
+
+/**
+ * Which Codex connector runs (R-021): always the mock — Keystone's own index of the Codex records — until Codex publishes an
+ * API and the connector is built (R-033). Screens show it as "Mock", never as a real sync.
+ */
+export const codexConnectorMode = (): CodexConnectorMode => 'mock';

@@ -63,7 +63,10 @@ describe('vault (dvKpis, dvScope, dvViews, dvFam, dvSt, dvList) — EN and FR', 
       expect(chips(v.families.chips)).toEqual(g.fam.map((c: any) => ({ label: c.label, count: c.count })));
       expect(chips(v.statuses.chips)).toEqual(g.st.map((c: any) => ({ label: c.label, count: c.count })));
       expect(v.title).toBe(`${lang === 'fr' ? 'Coffre-fort' : 'Vault'} · ${g.count}`);
-      expect(v.sync).toBe(g.sync);
+      // R-021 (A-15): Codex is a mock — the banner shows the index count without the prototype's sync time ("Last sync 08:02
+      // · 412 records" / "Dernière synchro 08:02 · 412 fiches").
+      expect(g.sync).toBe(lang === 'en' ? 'Last sync 08:02 · 412 records' : 'Dernière synchro 08:02 · 412 fiches');
+      expect(v.sync).toBe(lang === 'en' ? 'Mock index · 412 records' : 'Index simulé · 412 fiches');
       expect(v.rows.map((r) => ({
         id: r.number, title: r.title, typeLabel: r.kind, svcLabel: r.service, proj: r.project, rev: r.revision, status: r.status, stClass: r.statusClass,
         conf: r.conf, confClass: r.confClass, tags: r.tags, isNew: r.isNew,
@@ -122,7 +125,7 @@ describe('vault (dvKpis, dvScope, dvViews, dvFam, dvSt, dvList) — EN and FR', 
     const html = renderToStaticMarkup(
       withI18n('fr', createElement(DocsVault, { project: 'HLT-026', view: v, canEdit: true, openToast: 'x', t })),
     );
-    for (const s of ['Les documents projet vivent dans Codex', 'Dernière synchro 08:02 · 412 fiches', 'Synchroniser', 'Ouvrir Codex', 'Documents dans le périmètre',
+    for (const s of ['Les documents projet vivent dans Codex', 'Index simulé · 412 fiches', 'Synchroniser', 'Ouvrir Codex', 'Documents dans le périmètre',
       'Vues enregistrées', 'En attente d’approbation', 'Rechercher numéro, titre, tag, auteur…', 'Toutes familles', 'Tous statuts', 'Coffre-fort · 1 / 40 documents',
       'RPT-HLT-014', 'Rapport d’alignement des rails de grue', 'Diffusion proposée', 'Exporter le registre (xlsx)', 'Sélectionner RPT-HLT-014'])
       expect(html, s).toContain(s);

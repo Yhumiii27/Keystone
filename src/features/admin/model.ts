@@ -4,11 +4,12 @@
 // French goes through t() as the prototype's `deepTr` did (data texts included), with the fixes of ./i18n.ts.
 import { screenHref } from '@/config/screens';
 import {
-  ACTIVITY_ICON, MT_CALENDAR_OPTIONS, MT_COST_TYPES, PLUMB_VIEWS, SETTINGS_CARDS, activityChips, connectorTone, costCategoriesTotal, healthRuleText,
+  ACTIVITY_ICON, MT_CALENDAR_OPTIONS, MT_COST_TYPES, PLUMB_VIEWS, SETTINGS_CARDS, activityChips, costCategoriesTotal, healthRuleText,
   locationTypeShortLabel, machineTypeKpis, machineTypeUseText, paymentTerms, plumbingKpis, settingsKpis, thresholdText,
   type ActivityIcon, type PlumbView, type SettingsCardKey, type SettingsIcon,
 } from '@/domain/admin';
 import { IMPORTS_ENABLED } from '@/domain/ch4-defaults';
+import { connectorStateTone } from '@/domain/connectors';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import { calendar, costType, locationType, stampText, type ActivityKind, type CalendarCode, type CostType, type LocationType } from '@/server/db/codes';
@@ -17,7 +18,7 @@ import type { MachineTypeRow } from '@/server/dal/mtypes';
 import type { ActivityRow, AuditRow } from '@/server/dal/notifications';
 import type { ProjectRow } from '@/server/dal/projects';
 import type { SettingsData } from '@/server/dal/settings';
-import { activityChipT, addedConnectorDataT, auditAreaT, connectorModeT, mtListSubT, outboxT, volumeT } from './i18n';
+import { activityChipT, addedConnectorDataT, auditAreaT, connectorLinkT, connectorsSubT, mtListSubT, outboxT, volumeT } from './i18n';
 import { integrationsHref, machineTypesHref } from './links';
 
 export interface KpiView {
@@ -187,8 +188,10 @@ export interface ConnectorRowView {
   /** Stored name (the key "Sync now" sends). */
   rawName: string;
   name: string;
-  /** Connector-layer mode line (Codex, Vigie, Cursus); null for the recorded connectors. */
+  /** Line under the name: connector-layer mode (Codex, Vigie, Cursus), file exchange (MS Project); null otherwise (R-021). */
   mode: string | null;
+  /** "Sync now" offered (live and mock connectors not disabled, R-021). */
+  canSync: boolean;
   data: string;
   frequency: string;
   status: string;
@@ -264,9 +267,8 @@ export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
   const rows = i.source ? i.activity.filter((a) => a.kind === i.source) : i.activity;
   return {
     kpis: plumbingKpis({
-      eventsToday: i.counts.eventsToday, connectorStatuses: i.connectors.map((c) => c.status), unread: i.unread, personaTitle: i.personaTitle,
-      auditEntries: i.counts.auditLast7Days,
-    }).map((k) => kpiT(k, t)),
+      eventsToday: i.counts.eventsToday, connectors: i.connectors, unread: i.unread, personaTitle: i.personaTitle, auditEntries: i.counts.auditLast7Days,
+    }).map((k) => (k.label === 'Connectors' ? { ...kpiT(k, t), sub: connectorsSubT(k.sub, t, lang) } : kpiT(k, t))),
     view: i.view,
     seg: PLUMB_VIEWS.map((v) => ({ value: v.value, label: t(v.label), href: integrationsHref({ view: v.value }) })),
     chips: chips.map((c) => ({ value: c.value ?? '', label: activityChipT(c.label, t, lang), count: String(c.count), href: integrationsHref({ source: c.value }) })),
@@ -278,12 +280,14 @@ export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
       return {
         rawName: c.name,
         name: t(c.name),
-        mode: c.mode ? connectorModeT(c.mode, t) : null,
+        mode: connectorLinkT(c.link, t),
+        canSync: c.canSync,
         data: c.dataScope ? t(c.dataScope) : addedConnectorDataT(c.direction ? directionLabel(c.direction) : null, c.owner, t),
         frequency: t(c.frequency),
-        // D-7a: a connector disabled by IT shows "Disabled" (calm tone) instead of its last sync state.
-        status: c.enabled === false ? t('Disabled') : t(c.statusLabel),
-        tone: c.enabled === false ? 'neutral' : connectorTone(c.status),
+        // R-021: the real state — the live status, Mock, Not connected, Ready (file exchange); D-7a: "Disabled" (calm tone)
+        // for a connector disabled by IT.
+        status: t(c.statusLabel),
+        tone: connectorStateTone(c.state),
         last: stampOf(c.lastSyncAt, t),
         volume: [volume, outbox].filter(Boolean).join(' · ') || '—',
       };

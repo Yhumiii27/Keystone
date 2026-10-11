@@ -118,9 +118,11 @@ describe('documents Server Functions', () => {
     ]);
   });
 
-  it('"Sync now": toast with the index record count', async () => {
+  it('"Sync now": toast with the index record count, saying the run is simulated (Codex is a mock)', async () => {
     const r = await syncCodexAction('HLT-026');
-    expect(r).toEqual({ ok: true, toast: 'Codex sync · index up to date · 414 records' });
+    // R-021 (A-15): the prototype's "Codex sync · index up to date · 414 records" claimed an exchange with Codex that the mock
+    // connector does not make.
+    expect(r).toEqual({ ok: true, toast: 'Codex · simulated sync (mock connector) · 414 records' });
   });
 
   it('client "Acknowledge receipt": the client of the project only, shared records only', async () => {

@@ -133,7 +133,7 @@ function Connectors({ view, canEdit, t }: { view: PlumbingView; canEdit: boolean
               </td>
               <td className={s.cell12Soft}>{c.last}</td>
               <td className={s.cell12Muted}>{c.volume}</td>
-              <td>{canEdit && <ConnectorActions name={c.rawName} label={c.name} />}</td>
+              <td>{canEdit && <ConnectorActions name={c.rawName} label={c.name} canSync={c.canSync} />}</td>
             </tr>
           ))}
         </tbody>

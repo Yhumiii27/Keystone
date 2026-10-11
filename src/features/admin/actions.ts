@@ -334,5 +334,5 @@ export async function addConnectorAction(values: FormValues): Promise<AdminActio
     return failure(e);
   }
   refresh();
-  return { ok: true, toast: await tr('Connector added · first sync scheduled') };
+  return { ok: true, toast: await tr('Connector added · not connected until IT sets it up') };
 }

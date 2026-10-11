@@ -6,7 +6,8 @@
 // calendar option, connectors in error) are asserted explicitly.
 import { describe, expect, it } from 'vitest';
 import { money } from '@/lib/format';
-import { connectorStatus, costType, type ActivityKind, type ConnectorStatus } from '@/server/db/codes';
+import { connectorStatus, costType, type ActivityKind } from '@/server/db/codes';
+import { connectorLink, connectorState, type ConnectorLink, type ConnectorState } from './connectors';
 import PROTO from '@/server/prototype/prototype-data.json';
 import GEN from '@/server/prototype/prototype-generated.json';
 import GOLDEN from '@/features/admin/admin.golden.json';
@@ -166,17 +167,42 @@ describe('Machine-type rules (MT_ALL / mtKpis / mtList / mtVals / AF.mtype)', ()
 
 describe('Activity & integrations rules (plumbKpis / actChips / actRows / connRows)', () => {
   const kinds = (P.ACTIVITY as string[][]).map((a) => a[3] as ActivityKind);
-  const statuses = (P.CONNECTORS as string[][]).map((c) => connectorStatus.code(c[3]));
+  // The prototype's nine connectors as Keystone is really linked to them (R-021): Cursus without its API URL and Codex are
+  // mocks, MS Project exchanges files, the others do not exist.
+  const protoRows = (P.CONNECTORS as string[][]).map(([name, , , st]) => {
+    const link = connectorLink({ name, kind: name === 'Cursus' ? 'cursus' : 'static', mode: name === 'Cursus' ? 'mock' : null });
+    return { name, link, state: connectorState(link, connectorStatus.code(st), true) };
+  });
+  const row = (name: string, link: ConnectorLink, state: ConnectorState) => ({ name, link, state });
 
   it('KPI tiles per persona', () => {
     for (const [role, unread, title] of [['director', 3, 'Portfolio director'], ['pm', 4, 'Project manager']] as const) {
-      expect(plumbingKpis({ eventsToday: 6, connectorStatuses: statuses, unread, personaTitle: title, auditEntries: P.AUDIT.length })).toEqual(kpis(G.en.plumbing.kpisByRole[role]));
+      const expected = kpis(G.en.plumbing.kpisByRole[role]);
+      // R-021 (A-15): the prototype counted the seeded statuses — "9 · 7 healthy · 1 warning" and "3 channels · In-app ·
+      // e-mail · Teams"; the tiles now count what is really connected (no e-mail or Teams connector exists).
+      expect([expected[1].sub, expected[4].value, expected[4].sub]).toEqual(['7 healthy · 1 warning', '3', 'In-app · e-mail · Teams']);
+      expected[1] = { ...expected[1], sub: '1 connected · 2 mock · 6 not connected', color: OK };
+      expected[4] = { ...expected[4], value: '1', sub: 'In-app · e-mail and Teams not connected' };
+      expect(plumbingKpis({ eventsToday: 6, connectors: protoRows, unread, personaTitle: title, auditEntries: P.AUDIT.length })).toEqual(expected);
     }
-    // Deliberate: Vigie is the 10th connector; a connector in error counts with the warnings.
-    const k = plumbingKpis({ eventsToday: 0, connectorStatuses: [...statuses, 'ok', 'error'] as ConnectorStatus[], unread: 0, personaTitle: 'x', auditEntries: 0 });
-    expect(k[1]).toEqual({ label: 'Connectors', value: '11', sub: '8 healthy · 2 warning', color: LO });
+    // A live connector in warning or error needs attention; a mock or a missing one never does.
+    const k = plumbingKpis({
+      eventsToday: 0, connectors: [...protoRows, row('Vigie', 'live', 'warning'), row('X', 'live', 'error'), row('Y', 'live', 'ok')], unread: 0, personaTitle: 'x', auditEntries: 0,
+    });
+    expect(k[1]).toEqual({ label: 'Connectors', value: '12', sub: '4 connected · 2 mock · 6 not connected · 2 warning', color: LO });
     expect(k[2].color).toBe(OK);
-    expect(plumbingKpis({ eventsToday: 0, connectorStatuses: ['ok', 'ready'], unread: 0, personaTitle: 'x', auditEntries: 0 })[1]).toMatchObject({ sub: '1 healthy · 0 warning', color: OK });
+    // A connector disabled by IT counts as not connected.
+    expect(plumbingKpis({ eventsToday: 0, connectors: [row('A', 'live', 'disabled'), row('B', 'mock', 'disabled')], unread: 0, personaTitle: 'x', auditEntries: 0 })[1])
+      .toMatchObject({ sub: '0 connected · 0 mock · 2 not connected', color: OK });
+  });
+
+  it('channels: in-app always, e-mail and Teams once their connector is live', () => {
+    const ch = (email: ConnectorLink, teams: ConnectorLink) =>
+      plumbingKpis({ eventsToday: 0, connectors: [row('E-mail (SMTP)', email, email === 'live' ? 'ok' : 'not_connected'), row('Microsoft Teams', teams, teams === 'live' ? 'ok' : 'not_connected')], unread: 0, personaTitle: 'x', auditEntries: 0 })[4];
+    expect(ch('none', 'none')).toMatchObject({ value: '1', sub: 'In-app · e-mail and Teams not connected' });
+    expect(ch('live', 'none')).toMatchObject({ value: '2', sub: 'In-app · e-mail · Teams not connected' });
+    expect(ch('none', 'live')).toMatchObject({ value: '2', sub: 'In-app · Teams · e-mail not connected' });
+    expect(ch('live', 'live')).toMatchObject({ value: '3', sub: 'In-app · e-mail · Teams' });
   });
 
   it('display options, source chips, row icons and filters', () => {

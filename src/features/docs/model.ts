@@ -14,6 +14,8 @@ import type { Lang, T } from '@/i18n/translate';
 import { CONFIDENTIALITY_TAG, DOCUMENT_STATUS_TAG, confidentiality, docFamily, docSavedView, documentStatus, shortDateOfIso } from '@/server/db/codes';
 import type { CodexSyncState, DocumentRecord, DocumentTypeRow, VaultDocument } from '@/server/dal/documents';
 import { approveLabelT, circuitT, exactT, revisionContextT, roleT } from './i18n';
+import { codexConnectorMode } from '@/server/integrations/codex/config';
+import { codexIndexLineT } from '@/server/integrations/codex/display';
 import { documentsHref, type DocsQuery } from './links';
 
 const tag = (tone: string) => `tag ${tone}`;
@@ -67,7 +69,7 @@ export interface VaultRowView {
 }
 
 export interface VaultView {
-  /** "Last sync 08:02 · 412 records" (translated). */
+  /** "Mock index · 412 records" (translated; "Last sync 08:02 · 412 records" once Codex is connected, R-021). */
   sync: string;
   /** Record count of the sync line, for the "Sync now" toast. */
   records: number;
@@ -129,7 +131,8 @@ export function vaultView({ project, docs, sync, state }: VaultInput, t: T, lang
     return vaultRowView(d, href({ ...keep, doc: open ? null : d.number }), open, t, lang);
   });
   return {
-    sync: sync ? t(`Last sync ${sync.time} · ${sync.records} records`) : '',
+    // R-021: Codex is a mock until its connector exists — "Mock index · 412 records", no sync time.
+    sync: sync ? codexIndexLineT(sync, codexConnectorMode(), t, lang) : '',
     records: sync?.records ?? 0,
     kpis,
     scope: { value: state.scope, options: scopeOptions },

@@ -16,6 +16,8 @@ import {
 } from '@/server/dal/documents';
 import { getProject } from '@/server/dal/projects';
 import { getProjectContext, type ProjectContext } from '@/server/project-context';
+import { codexConnectorMode } from '@/server/integrations/codex/config';
+import { codexSyncToastT } from '@/server/integrations/codex/display';
 import { getI18n } from '@/server/session';
 
 export type DocActionResult = { ok: true; toast?: string } | { error: string };
@@ -102,7 +104,10 @@ export async function logDownloadAction(project: string, number: string, format:
   return { ok: true };
 }
 
-/** "Sync now": records a sync of the Codex index; toast "Codex sync · index up to date · 412 records". */
+/**
+ * "Sync now": records a sync of the Codex index. R-021: Codex is a mock until its connector exists, so the toast says the
+ * run is simulated ("Codex · simulated sync (mock connector) · 412 records").
+ */
 export async function syncCodexAction(project: string): Promise<DocActionResult> {
   const access = await vault(project);
   if ('error' in access) return access;
@@ -110,7 +115,8 @@ export async function syncCodexAction(project: string): Promise<DocActionResult>
   if (!ctx.canEdit('docs')) return { error: await tr('The document vault is read-only for you') };
   const records = await syncCodexIndex(ctx.viewer.name);
   revalidatePath(`/projects/${ctx.project.code}/documents`);
-  return { ok: true, toast: await tr(`Codex sync · index up to date · ${records} records`) };
+  const { t, lang } = await getI18n();
+  return { ok: true, toast: codexSyncToastT(records, codexConnectorMode(), t, lang) };
 }
 
 /** Client portal "Acknowledge receipt" of a shared document's current revision (`engOv.ack[id|rev] = true`). */

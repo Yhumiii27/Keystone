@@ -237,22 +237,31 @@ describe('Activity & integrations Server Functions and the audit export', () => 
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 
-  it('"Sync now": simulated run for a recorded connector, the Codex index sync, the Vigie and Cursus connectors', async () => {
+  it('"Sync now" (R-021): refused for missing, file-only and retired connectors; mock runs say they are simulated', async () => {
     as('pm');
     expect(await syncConnectorAction('Nope')).toEqual({ error: 'Invalid request' });
-    expect(await syncConnectorAction('Lucca')).toEqual({ ok: true, toast: 'Lucca synced · 312 h · 8 people' });
-    expect((await listAudit())[0]).toMatchObject({ who: 'Romain Aubert', object: 'Connector Lucca', change: 'sync · 312 h · 8 people', area: 'Integrations' });
-    const before = (await getCodexSyncState())!;
+    // NEW-CURSUS-4: Lucca is unplugged, no longer listed (the prototype simulated "Lucca synced · 312 h · 8 people").
+    expect(await syncConnectorAction('Lucca')).toEqual({ error: 'Invalid request' });
+    const audits = (await listAudit()).length;
+    // A-15: no connector exists for Sage X3, Outlook, Teams, SMTP or the PDM — nothing to simulate any more.
+    expect(await syncConnectorAction('Sage X3')).toEqual({ error: 'Sage X3 is not connected — nothing to synchronise' });
+    expect(await syncConnectorAction('MS Project')).toEqual({ error: 'MS Project exchanges files only — use the export cards' });
     as('pm', 'fr');
-    expect(await syncConnectorAction('Codex')).toEqual({ ok: true, toast: 'Codex synchronisé · 412 fiches' });
+    expect(await syncConnectorAction('E-mail (SMTP)')).toEqual({ error: 'E-mail (SMTP) n’est pas connecté — rien à synchroniser' });
+    expect((await listAudit()).length).toBe(audits);
+    const before = (await getCodexSyncState())!;
+    expect(await syncConnectorAction('Codex')).toEqual({ ok: true, toast: 'Codex · synchro simulée (connecteur simulé) · 412 fiches' });
     expect((await getCodexSyncState())!.syncedAt > before.syncedAt).toBe(true);
+    expect((await listAudit())[0]).toMatchObject({ who: 'Romain Aubert', object: 'Connector Codex', change: 'sync (simulated) · 412 records · 38 linked to HLT-026' });
     const codex = (await listAdminConnectors()).find((c) => c.name === 'Codex')!;
-    expect([codex.mode, codex.lastSyncAt, codex.lastVolume]).toEqual(['mock', (await getCodexSyncState())!.syncedAt, '412 records · 38 linked to HLT-026']);
+    expect([codex.mode, codex.state, codex.lastSyncAt, codex.lastVolume]).toEqual(['mock', 'mock', null, '412 records · 38 linked to HLT-026']);
     as('director');
-    expect(await syncConnectorAction('Vigie')).toEqual({ ok: true, toast: 'Vigie synced · 0 sent · 0 pending · 0 refreshed' });
+    expect(await syncConnectorAction('Vigie')).toEqual({ ok: true, toast: 'Vigie · simulated sync (mock connector) · 0 sent · 0 pending · 0 refreshed' });
     const cursus = await syncConnectorAction('Cursus');
     expect(cursus).toMatchObject({ ok: true });
-    expect((cursus as { toast: string }).toast).toMatch(/^Cursus synced · \d+ approvals received$/);
+    expect((cursus as { toast: string }).toast).toMatch(/^Cursus · simulated sync \(mock connector\) · \d+ approvals received$/);
+    // A simulated run dates no sync.
+    expect((await listAdminConnectors()).filter((c) => c.link === 'mock').map((c) => c.lastSyncAt)).toEqual([null, null, null]);
     expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
   });
 
@@ -261,12 +270,20 @@ describe('Activity & integrations Server Functions and the audit export', () => 
     expect(await addConnectorAction({ system: 'Nope', direction: 'import', freq: 'Daily' })).toEqual({ error: 'Invalid request' });
     expect(await addConnectorAction({ system: 'SharePoint', direction: 'up', freq: 'Daily' })).toEqual({ error: 'Invalid direction' });
     expect(await addConnectorAction({ system: 'SharePoint', direction: 'import', freq: 'Weekly' })).toEqual({ error: 'Invalid frequency' });
-    expect(await addConnectorAction({ system: 'Sage X3', direction: 'import', freq: 'Daily' })).toEqual({ error: 'Sage X3 is already connected' });
-    expect(await addConnectorAction({ system: 'SharePoint', direction: 'both', freq: 'Hourly', owner: ' IT · Paul ' })).toEqual({ ok: true, toast: 'Connector added · first sync scheduled' });
-    expect((await listAdminConnectors()).at(-1)).toMatchObject({ name: 'SharePoint', status: 'ready', lastSyncAt: null, lastVolume: 'First sync scheduled', direction: 'both', owner: 'IT · Paul', addedInKeystone: true });
+    // R-021: a listed connector is not necessarily connected — "already listed" (the prototype said "already connected").
+    expect(await addConnectorAction({ system: 'Sage X3', direction: 'import', freq: 'Daily' })).toEqual({ error: 'Sage X3 is already listed' });
+    // NEW-CURSUS-4: Lucca is no longer offered.
+    expect(await addConnectorAction({ system: 'Lucca', direction: 'import', freq: 'Daily' })).toEqual({ error: 'Invalid request' });
+    // R-021: no connector code exists behind an added row — it stays "Not connected" (the prototype toasted "first sync scheduled").
+    expect(await addConnectorAction({ system: 'SharePoint', direction: 'both', freq: 'Hourly', owner: ' IT · Paul ' })).toEqual({ ok: true, toast: 'Connector added · not connected until IT sets it up' });
+    expect((await listAdminConnectors()).at(-1)).toMatchObject({
+      name: 'SharePoint', link: 'none', state: 'not_connected', statusLabel: 'Not connected', canSync: false, lastSyncAt: null, lastVolume: '', direction: 'both', owner: 'IT · Paul', addedInKeystone: true,
+    });
+    expect(await syncConnectorAction('SharePoint')).toEqual({ error: 'SharePoint is not connected — nothing to synchronise' });
     as('pm', 'fr');
-    expect(await addConnectorAction({ system: 'SharePoint', direction: 'import', freq: 'Daily' })).toEqual({ error: 'SharePoint est déjà connecté' });
-    expect(await addConnectorAction({ system: 'TIA Portal', direction: 'export', freq: 'Manual', owner: '' })).toEqual({ ok: true, toast: 'Connecteur ajouté · première synchronisation planifiée' });
+    expect(await addConnectorAction({ system: 'SharePoint', direction: 'import', freq: 'Daily' })).toEqual({ error: 'SharePoint figure déjà dans les connecteurs' });
+    expect(await addConnectorAction({ system: 'TIA Portal', direction: 'export', freq: 'Manual', owner: '' }))
+      .toEqual({ ok: true, toast: 'Connecteur ajouté · non connecté tant que l’informatique ne l’a pas mis en place' });
   });
 
   it('exports the audit trail as CSV (ISO 9001) for the director and the PM', async () => {

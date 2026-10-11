@@ -33,7 +33,8 @@ describe('shell badges (golden values, docs/spec/01 §4.3–4.4)', () => {
       mywork: '', myapprovals: '5', docs: '1',
       meetings: '1', interfaces: '1', eng: '4', 'eng-elec': '2', 'eng-auto': '2', pid: '9', risks: '1', changes: '1',
       quality: '1', site: 'NO GO', eco: '1', procurement: '3', orders: '1', deliveries: '1', stock: '1', sav: '2',
-      requests: '1', approvals: '2', plumbing: '!',
+      // R-021: the prototype's "!" came from Outlook's seeded "Warning" — no connector exists for Outlook (A-15).
+      requests: '1', approvals: '2', plumbing: '',
     };
     for (const [k, v] of Object.entries(want)) expect([k, b[k as keyof typeof b]]).toEqual([k, v]);
     for (const k of ['billing', 'itp', 'eng-process', 'eng-meca', 'contract', 'bom'] as const) expect([k, b[k] ?? '']).toEqual([k, '']);
