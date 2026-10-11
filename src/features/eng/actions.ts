@@ -19,6 +19,7 @@ import { getProject } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n, type Viewer } from '@/server/session';
 import { ENG_MSG } from './i18n';
+import { logError } from '@/server/log';
 
 export type EngActionResult = { ok: true } | { ok: false; error: string };
 
@@ -39,7 +40,7 @@ async function failed(where: string, e: unknown): Promise<{ ok: false; error: st
   const msg = e instanceof Error ? e.message : '';
   if (msg === ENG_MSG.pmOnly) return fail(ENG_MSG.pmOnly);
   if (msg.startsWith('Release blocked')) return fail(ENG_MSG.blocked);
-  console.error(where, e);
+  logError(where, e);
   return fail(ENG_MSG.failed);
 }
 

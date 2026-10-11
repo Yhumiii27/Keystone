@@ -8,7 +8,7 @@ import { MAX_FILE_BYTES, acceptOf } from '@/domain/ch4-defaults';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import {
-  FileRejectedError, checkUpload, contentDisposition, deleteStoredFile, fileResponse, filesRoot, getStoredFile, listStoredFiles, pruneOrphanFiles, readStoredFile,
+  FileRejectedError, ORPHAN_GRACE_MS, checkUpload, contentDisposition, deleteStoredFile, fileResponse, filesRoot, getStoredFile, listStoredFiles, pruneOrphanFiles, readStoredFile,
   readFormDataCapped, readStoredText, safeFileName, setFileOwner, setFilesRoot, storeFile, storeUploadedFile, streamStoredFile,
 } from './files';
 
@@ -89,10 +89,14 @@ describe('store, read, delete', () => {
     expect(await getStoredFile('not-a-uuid')).toBeNull();
   });
 
-  it('prunes files without a record', async () => {
+  it('prunes files without a record once they are older than the grace period (R-010)', async () => {
     fs.mkdirSync(path.join(dir, '2026', '10'), { recursive: true });
     fs.writeFileSync(path.join(dir, '2026', '10', 'orphan.txt'), 'x');
-    expect(await pruneOrphanFiles()).toBe(1);
+    // Just written: its transaction may not have committed yet — kept.
+    expect(await pruneOrphanFiles()).toBe(0);
+    expect(fs.existsSync(path.join(dir, '2026', '10', 'orphan.txt'))).toBe(true);
+    expect(await pruneOrphanFiles(Date.now() + ORPHAN_GRACE_MS + 1000)).toBe(1);
+    expect(fs.existsSync(path.join(dir, '2026', '10', 'orphan.txt'))).toBe(false);
   });
 });
 

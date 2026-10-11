@@ -10,8 +10,9 @@ import 'server-only';
 // - http (when VIGIE_API_URL is set): refreshes the mirror from Vigie and delivers the outbox — TODO(vigie): the
 //   endpoints are a proposal until Vigie publishes its API (OPEN QUESTION V-2).
 import { getDb } from '@/server/db/client';
-import { vigieApiUrl, vigieConnectorMode } from './config';
-import { markDelivery, progressSyncStatus, readMirror, undeliveredProgress, upsertMirror } from './mirror';
+import { logWarning } from '@/server/log';
+import { vigieApiUrl, vigieAuthHeaders, vigieConnectorMode } from './connection';
+import { claimProgressDelivery, markDelivery, progressSyncStatus, readMirror, undeliveredProgress, upsertMirror } from './mirror';
 import { recordProgressEntry } from './progress';
 import type { EcoListFilter, EcoProgressActor, EcoProgressInput, EcoProgressReceipt, VigieEcoConnector, VigieEcoRecord } from './types';
 
@@ -48,11 +49,14 @@ export const mockEcoConnector: VigieEcoConnector = {
 const HTTP_TIMEOUT_MS = 5000;
 /** Reads refresh the mirror at most once a minute (a failed refresh is retried at the next read). */
 const REFRESH_EVERY_MS = 60_000;
-const g = globalThis as unknown as { __ksVigieRefreshedAt?: number };
+// Per server process (R-010): with several instances each refreshes at most once a minute, which is the intent (bounded
+// load on Vigie); concurrent reads of one process share the refresh in flight instead of starting their own.
+const g = globalThis as unknown as { __ksVigieRefreshedAt?: number; __ksVigieRefreshing?: Promise<void> };
 
 /** Forgets the last refresh time (tests). */
 export function resetVigieRefreshThrottle(): void {
   g.__ksVigieRefreshedAt = undefined;
+  g.__ksVigieRefreshing = undefined;
 }
 
 async function vigieFetch(path: string, init?: RequestInit): Promise<Response> {
@@ -61,7 +65,7 @@ async function vigieFetch(path: string, init?: RequestInit): Promise<Response> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), HTTP_TIMEOUT_MS);
   try {
-    const res = await fetch(`${base}${path}`, { ...init, signal: ctrl.signal, headers: { 'content-type': 'application/json', accept: 'application/json', ...init?.headers } });
+    const res = await fetch(`${base}${path}`, { ...init, signal: ctrl.signal, headers: { 'content-type': 'application/json', accept: 'application/json', ...vigieAuthHeaders(), ...init?.headers } });
     if (!res.ok) throw new Error(`Vigie ${init?.method ?? 'GET'} ${path} → ${res.status}`);
     return res;
   } finally {
@@ -80,10 +84,14 @@ async function refreshFromVigie(): Promise<number> {
   return n;
 }
 
-/** Refresh unless one succeeded less than a minute ago. */
+/** Refresh unless one succeeded less than a minute ago (one refresh at a time per process). */
 async function refreshIfStale(): Promise<void> {
   if (g.__ksVigieRefreshedAt && Date.now() - g.__ksVigieRefreshedAt < REFRESH_EVERY_MS) return;
-  await refreshFromVigie().catch((e) => console.warn('[vigie] refresh failed, using the local mirror:', e instanceof Error ? e.message : e));
+  const running = (g.__ksVigieRefreshing ??= refreshFromVigie().then(
+    () => undefined,
+    (e) => logWarning('Vigie ECO refresh (the local mirror is used)', e, { component: 'vigie' }),
+  ).finally(() => { g.__ksVigieRefreshing = undefined; }));
+  await running;
 }
 
 /** TODO(vigie): POST /api/ecos/:number/progress — one outbox entry; Vigie answers { id }. */
@@ -92,6 +100,7 @@ async function deliverOutbox(): Promise<{ delivered: number; failed: number; pen
   let delivered = 0;
   let failed = 0;
   for (const e of await undeliveredProgress(db)) {
+    if (!(await claimProgressDelivery(db, e.id))) continue; // another delivery is sending it (R-010)
     try {
       const res = await vigieFetch(`/api/ecos/${encodeURIComponent(e.ecoNumber)}/progress`, {
         method: 'POST',

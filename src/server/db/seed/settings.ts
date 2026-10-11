@@ -39,16 +39,21 @@ export const VIGIE_CONNECTOR = {
   frequency: 'Every minute (on read)',
 };
 
-export async function seedSettings(tx: Tx): Promise<void> {
+/**
+ * Settings lists, health thresholds, connectors and import / export formats. `demo` (default) keeps the prototype's connector
+ * states (status, last sync, volume); the production seed (R-011) lists the same connectors as "Ready", never synced.
+ */
+export async function seedSettings(tx: Tx, opts: { demo: boolean } = { demo: true }): Promise<void> {
   await tx.insert(referenceValues).values(defaultReferenceValues().map((v) => ({ ...v, active: true, isDefault: true })));
   await tx.insert(appSettings).values({ key: APP_SETTING_HEALTH, value: { risk: HEALTH_DEFAULTS.risk, off: HEALTH_DEFAULTS.off } });
   const rows: (Omit<typeof connectors.$inferInsert, 'direction'>)[] = (PROTO.CONNECTORS as [string, string, string, string, string, string][]).map(([name, what, freq, status, last, vol], position) => ({
-    name, kind: name === 'Cursus' ? 'cursus' : 'static', dataScope: what, frequency: freq, status: connectorStatus.code(status),
-    lastSyncAt: parseStampText(last), lastVolume: vol, position,
+    name, kind: name === 'Cursus' ? 'cursus' : 'static', dataScope: what, frequency: freq,
+    ...(opts.demo ? { status: connectorStatus.code(status), lastSyncAt: parseStampText(last), lastVolume: vol } : { status: 'ready' as const, lastSyncAt: null, lastVolume: '' }),
+    position,
   }));
   rows.push({
-    name: VIGIE_CONNECTOR.name, kind: 'vigie', dataScope: VIGIE_CONNECTOR.dataScope, frequency: VIGIE_CONNECTOR.frequency, status: 'ok', lastSyncAt: mirrorSeedInstant(),
-    lastVolume: '', position: rows.length,
+    name: VIGIE_CONNECTOR.name, kind: 'vigie', dataScope: VIGIE_CONNECTOR.dataScope, frequency: VIGIE_CONNECTOR.frequency,
+    status: opts.demo ? 'ok' : 'ready', lastSyncAt: opts.demo ? mirrorSeedInstant() : null, lastVolume: '', position: rows.length,
   });
   await tx.insert(connectors).values(rows.map((r) => ({ ...r, direction: r.kind === 'static' ? null : 'both' as const })));
   await tx.insert(importFormats).values((PROTO.IMPORTS as [string, string, string][]).map(([name, description, icon], position) => ({

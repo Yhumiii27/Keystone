@@ -1,7 +1,8 @@
 import 'server-only';
 // Local mirror of the Cursus approvals and the outbox of what Keystone sends to Cursus (schema/cursus.ts). Shared by
 // the mock and HTTP connectors and the seed: `upsertClearances` is the only writer of `cursus_clearances`.
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, lt, ne, or, sql } from 'drizzle-orm';
+import { claimExpiry } from '../outbox';
 import { findPerson } from '@/server/db/helpers';
 import { cursusClearances, cursusRequests, cursusSyncRuns } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
@@ -71,14 +72,22 @@ export async function undeliveredRequests(q: Q) {
   return rows.filter((r) => r.syncStatus !== 'sent');
 }
 
-/** Marks a delivery attempt of an outbox entry. */
+/** Claims an outbox entry before sending it (R-010, ../outbox.ts): true when this delivery may send it. */
+export async function claimRequestDelivery(q: Q, id: string, at = new Date()): Promise<boolean> {
+  const rows = await q
+    .update(cursusRequests)
+    .set({ claimedAt: at })
+    .where(and(eq(cursusRequests.id, id), ne(cursusRequests.syncStatus, 'sent'), or(isNull(cursusRequests.claimedAt), lt(cursusRequests.claimedAt, claimExpiry(at)))))
+    .returning({ id: cursusRequests.id });
+  return rows.length > 0;
+}
+
+/** Marks a delivery attempt of an outbox entry (and releases its claim). */
 export async function markRequestDelivery(q: Q, id: string, result: { ok: true; cursusRef?: string | null } | { ok: false; error: string }, at = new Date()): Promise<void> {
-  const [r] = await q.select({ attempts: cursusRequests.attempts }).from(cursusRequests).where(eq(cursusRequests.id, id));
-  if (!r) return;
   await q
     .update(cursusRequests)
     .set(result.ok
-      ? { syncStatus: 'sent', sentAt: at, lastAttemptAt: at, attempts: r.attempts + 1, lastError: null, cursusRef: result.cursusRef ?? null }
-      : { syncStatus: 'failed', lastAttemptAt: at, attempts: r.attempts + 1, lastError: result.error.slice(0, 500) })
+      ? { syncStatus: 'sent', sentAt: at, lastAttemptAt: at, attempts: sql`${cursusRequests.attempts} + 1`, lastError: null, cursusRef: result.cursusRef ?? null, claimedAt: null }
+      : { syncStatus: 'failed', lastAttemptAt: at, attempts: sql`${cursusRequests.attempts} + 1`, lastError: result.error.slice(0, 500), claimedAt: null })
     .where(eq(cursusRequests.id, id));
 }

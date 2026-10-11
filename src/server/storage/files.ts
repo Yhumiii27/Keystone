@@ -13,6 +13,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { and, asc, eq } from 'drizzle-orm';
 import { FILE_EXTENSIONS, MAX_FILE_BYTES, MAX_FILE_TEXT } from '@/domain/ch4-defaults';
+import { getConfig } from '@/server/config';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import type { StoredFilePurpose } from '@/server/db/codes';
 import { storedFiles } from '@/server/db/schema';
@@ -51,9 +52,8 @@ const g = globalThis as unknown as { __ksFilesRoot?: string | null };
 /** <KEYSTONE_DATA_DIR or ./.data>/files (or the folder set by setFilesRoot). */
 export function filesRoot(): string {
   if (g.__ksFilesRoot) return g.__ksFilesRoot;
-  // turbopackIgnore: the folder is chosen at run time (data dir), it is not part of the build output.
-  const dataDir = process.env.KEYSTONE_DATA_DIR ? path.resolve(/*turbopackIgnore: true*/ process.env.KEYSTONE_DATA_DIR) : path.join(/*turbopackIgnore: true*/ process.cwd(), '.data');
-  return path.join(/*turbopackIgnore: true*/ dataDir, 'files');
+  // turbopackIgnore: the folder is chosen at run time (data dir, src/server/config), it is not part of the build output.
+  return path.join(/*turbopackIgnore: true*/ getConfig().dataDir, 'files');
 }
 
 /** Points the storage at another folder (tests and scripts use a temporary directory); null restores the default. */
@@ -254,8 +254,17 @@ export async function deleteStoredFile(id: string, q?: Q): Promise<boolean> {
   return true;
 }
 
-/** Removes files on disk that no stored_files row references (left by rolled-back transactions). Returns their count. */
-export async function pruneOrphanFiles(): Promise<number> {
+/**
+ * A file younger than this is never pruned (R-010): storeFile writes the bytes before the transaction recording them commits,
+ * so a file just written may not be visible yet to the prune's read.
+ */
+export const ORPHAN_GRACE_MS = 60 * 60_000;
+
+/**
+ * Removes files on disk that no stored_files row references (left by rolled-back transactions) and that are older than
+ * ORPHAN_GRACE_MS. Returns their count.
+ */
+export async function pruneOrphanFiles(now = Date.now()): Promise<number> {
   const root = filesRoot();
   const db = await getDb();
   const known = new Set((await db.select({ p: storedFiles.storagePath }).from(storedFiles)).map((r) => r.p));
@@ -271,6 +280,8 @@ export async function pruneOrphanFiles(): Promise<number> {
       const abs = path.join(/*turbopackIgnore: true*/ dir, e.name);
       if (e.isDirectory()) await walk(abs);
       else if (!known.has(path.relative(root, abs).split(path.sep).join('/'))) {
+        const st = await fs.stat(abs).catch(() => null);
+        if (!st || now - st.mtimeMs < ORPHAN_GRACE_MS) continue;
         await fs.rm(abs, { force: true });
         removed++;
       }

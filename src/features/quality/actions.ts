@@ -20,6 +20,7 @@ import { getProject } from '@/server/dal/projects';
 import { advanceNcr, decideDeliverable, getDeliverable, getNcr, linkDeliverableDocument, moveDeliverable, verifyNcr } from '@/server/dal/quality';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { logError } from '@/server/log';
 
 export type QualityResult = { ok: true; toast: string } | { ok: false; error: string };
 
@@ -92,7 +93,7 @@ export async function advanceNcrAction(input: { projectCode: string; number: str
     refreshAll();
     return { ok: true, toast: `${n.number} · ${ncrRequestText({ kind: 'step', decision: null, targetStatus: step })} · ${syncText(receipt.syncStatus)}` };
   } catch (e) {
-    console.error('advanceNcrAction', e);
+    logError('advanceNcrAction', e);
     return { ok: false, error: FAILED };
   }
 }
@@ -120,7 +121,7 @@ export async function verifyNcrAction(input: { projectCode: string; number: stri
     refreshAll();
     return { ok: true, toast: `${n.number} · ${ncrRequestText({ kind: 'verification', decision, targetStatus: receipt.targetStatus })} · ${syncText(receipt.syncStatus)}` };
   } catch (e) {
-    console.error('verifyNcrAction', e);
+    logError('verifyNcrAction', e);
     return { ok: false, error: FAILED };
   }
 }
@@ -145,7 +146,7 @@ export async function moveDeliverableAction(input: { projectCode: string; number
     refreshAll();
     return { ok: true, toast: `${d.number} · ${deliverableStatus.label(to)}` };
   } catch (e) {
-    console.error('moveDeliverableAction', e);
+    logError('moveDeliverableAction', e);
     return { ok: false, error: NOT_SAVED };
   }
 }
@@ -175,7 +176,7 @@ export async function decideDeliverableAction(input: { projectCode: string; numb
     refreshAll();
     return { ok: true, toast: `${d.number} · ${decision === 'accepted' ? 'Accepted' : 'Rejected'}` };
   } catch (e) {
-    console.error('decideDeliverableAction', e);
+    logError('decideDeliverableAction', e);
     return { ok: false, error: NOT_SAVED };
   }
 }
@@ -203,7 +204,7 @@ export async function linkDeliverableDocumentAction(projectCode: string, number:
     refreshAll();
     return { toast: await tr(`${d.number} · ${doc} · Issued document linked`) };
   } catch (e) {
-    console.error('linkDeliverableDocumentAction', e);
+    logError('linkDeliverableDocumentAction', e);
     return { error: await tr(NOT_SAVED) };
   }
 }

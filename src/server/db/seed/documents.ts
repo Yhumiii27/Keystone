@@ -30,9 +30,9 @@ const iso = (s: string) => {
 };
 export const circuitOf = (t: ProtoDocType) => t.circuit.split(' → ');
 
-export async function seedDocuments(tx: Tx, ctx: SeedCtx): Promise<void> {
+/** Document types and their approval circuits (DOC_TYPES) — reference data of both seeds (R-011). */
+export async function seedDocumentTypes(tx: Tx): Promise<ProtoDocType[]> {
   const types = PROTO.DOC_TYPES as ProtoDocType[];
-  const typeByCode = new Map(types.map((t) => [t.code, t]));
   await tx.insert(documentTypes).values(
     types.map((t, position) => ({
       code: t.code, label: t.label, family: docFamily.code(PROTO.DOC_FAM[t.fam]), retention: t.retention, isoClause: t.iso, isClientDeliverable: t.client, position,
@@ -41,6 +41,12 @@ export async function seedDocuments(tx: Tx, ctx: SeedCtx): Promise<void> {
   await tx.insert(documentTypeCircuitSteps).values(
     types.flatMap((t) => circuitOf(t).map((role, position) => ({ typeCode: t.code, position, role: approverRole.code(role) }))),
   );
+  return types;
+}
+
+export async function seedDocuments(tx: Tx, ctx: SeedCtx): Promise<void> {
+  const types = await seedDocumentTypes(tx);
+  const typeByCode = new Map(types.map((t) => [t.code, t]));
   const who = PROTO.DOC_WHO as Record<string, string>;
   await tx.insert(documentApproverAssignments).values(
     Object.entries(who).map(([role, name], position) => ({ id: newId(), role: approverRole.code(role), personId: must(ctx.personByShort, name, 'person'), position })),

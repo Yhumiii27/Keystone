@@ -14,6 +14,7 @@ import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { ordersHref } from '../orders/links';
 import { dataT } from './i18n';
+import { logError } from '@/server/log';
 
 export interface SparesOrderLineView {
   ref: string;
@@ -96,7 +97,7 @@ export async function createSparesOrderAction(
   try {
     numbers = await createSparesPurchaseOrders(a.code, v.lines, a.actor, scope.systemName);
   } catch (e) {
-    console.error('createSparesOrderAction', e);
+    logError('createSparesOrderAction', e);
     return fail('The change could not be saved');
   }
   revalidatePath(`/projects/${a.code}`, 'layout');

@@ -20,6 +20,7 @@ import {
   calendar, clientCode3, costType, machineType, type CalendarCode, type CostType, type MachineTypeCode, type StageCode, type TransitionMode,
 } from '@/server/db/codes';
 import { recordActivity, writeAudit } from '@/server/db/helpers';
+import { databaseSeedMode } from '@/server/db/seed/mode';
 import {
   activities, activityLinks, cities, clients, costCategories, countries, itpPlans, machineTypeCostCategories, machineTypeItpSystems, machineTypePhases, machineTypes,
   persons, projectSites, projectTemplates, projects, stageDeliverableChecks, stageDeliverableDefs, wbsNodes,
@@ -241,7 +242,8 @@ export async function getNewProjectSetup(viewer?: { name: string; role: string }
     }),
   ];
   const me = viewer?.role === 'pm' ? managers.find((p) => p.name === viewer.name || p.short === viewer.name) : undefined;
-  const fallback = managers.find((p) => p.short === NEW_PROJECT_DEFAULTS.pm);
+  // The prototype's default PM (S. Perrin) only on a demo database (R-011): elsewhere the first manager.
+  const fallback = (await databaseSeedMode(db)) === 'demo' ? managers.find((p) => p.short === NEW_PROJECT_DEFAULTS.pm) : undefined;
   return {
     templates,
     machineTypes: mts.map((m) => m.label),
@@ -321,10 +323,12 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
   const askedFinish = input.plannedFinish === undefined ? DEFAULT_PLANNED_FINISH : input.plannedFinish;
   const startM = monthOfIso(plannedStart);
   return db.transaction(async (tx) => {
+    // Without a chosen PM, the prototype's default (S. Perrin) on a demo database only (R-011); none on a production one.
+    const demo = (await databaseSeedMode(tx)) === 'demo';
     const [existing, [registered], [defaultPm], [{ min }], tplRows, phaseRows, itpRows, calendars] = await Promise.all([
       tx.select({ code: projects.code, number: projects.number, analytic: projects.analyticCode }).from(projects),
       client ? tx.select({ id: clients.id, code3: clients.code3 }).from(clients).where(eq(clients.name, client)) : Promise.resolve([]),
-      tx.select({ id: persons.id }).from(persons).where(eq(persons.shortName, NEW_PROJECT_DEFAULTS.pm)),
+      demo ? tx.select({ id: persons.id }).from(persons).where(eq(persons.shortName, NEW_PROJECT_DEFAULTS.pm)) : Promise.resolve([]),
       tx.select({ min: sql<number>`coalesce(min(${projects.sortOrder}), 1)::int` }).from(projects),
       tx.select({ code: projectTemplates.code }).from(projectTemplates).where(eq(projectTemplates.code, input.templateCode)),
       input.templateCode === 'blank'

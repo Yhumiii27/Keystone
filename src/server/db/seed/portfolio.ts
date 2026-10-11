@@ -13,6 +13,15 @@ import { must, newId, personId, type SeedCtx } from './context';
 const templateCode = (id: string) => (id === 'blank' ? 'blank' : machineType.code(id));
 
 export async function seedPortfolio(tx: Tx, ctx: SeedCtx): Promise<void> {
+  await seedPortfolioReference(tx, ctx, { rexReferences: true });
+  await seedProjects(tx, ctx);
+}
+
+/**
+ * Lifecycle stages, transitions and stage deliverables, machine types and new-project templates — reference data of both
+ * seeds (R-011). `rexReferences`: the reference projects of the payment patterns (demo only: fictitious projects).
+ */
+export async function seedPortfolioReference(tx: Tx, ctx: SeedCtx, opts: { rexReferences: boolean }): Promise<void> {
   // Lifecycle reference.
   await tx.insert(lifecycleStages).values(
     STAGES.map((s, i) => ({
@@ -38,13 +47,14 @@ export async function seedPortfolio(tx: Tx, ctx: SeedCtx): Promise<void> {
       return { code: machineType.code(mt), label: mt, depositPct: rex.dep, deliveryPct: rex.deliv, acceptancePct: rex.acc, sortOrder: i + 1 };
     }),
   );
-  await tx.insert(rexReferences).values(
-    (PROTO.MACHINE_TYPES as string[]).flatMap((mt) =>
-      (PROTO.REX_FIN[mt].refs as [string, string, string, string][]).map(([analyticCode, projectName, year, pattern], position) => ({
-        id: newId(), machineTypeCode: machineType.code(mt), position, analyticCode, projectName, year, pattern,
-      })),
-    ),
-  );
+  if (opts.rexReferences)
+    await tx.insert(rexReferences).values(
+      (PROTO.MACHINE_TYPES as string[]).flatMap((mt) =>
+        (PROTO.REX_FIN[mt].refs as [string, string, string, string][]).map(([analyticCode, projectName, year, pattern], position) => ({
+          id: newId(), machineTypeCode: machineType.code(mt), position, analyticCode, projectName, year, pattern,
+        })),
+      ),
+    );
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const templates = PROTO.NP_TEMPLATES as any[];
   await tx.insert(projectTemplates).values(
@@ -61,7 +71,10 @@ export async function seedPortfolio(tx: Tx, ctx: SeedCtx): Promise<void> {
     })),
   );
   if (catRows.length) await tx.insert(projectTemplateCostCategories).values(catRows);
+}
 
+/** The prototype's projects (initialProjects) with their sites, teams, stage checks and history, pipeline plans (demo). */
+async function seedProjects(tx: Tx, ctx: SeedCtx): Promise<void> {
   // Projects, in register order.
   const rows = PROTO_GEN.initialProjects.map((p, i) => {
     const pid = PROTO.PROJ_ID[p.code] as { id: string; das: string; mt: string; ana: string } | undefined;

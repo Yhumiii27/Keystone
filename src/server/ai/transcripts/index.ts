@@ -6,6 +6,7 @@ import { claudeSettings, TRANSCRIPT_AI } from '../config';
 import { ClaudeAnalysisError, CLAUDE_FAILURE_NOTICE, createClaudeAnalyzer, failureOf, LOCAL_FALLBACK_NOTICE } from './claude';
 import { analyseLocally } from './local';
 import type { AnalysisInput, AnalysisOutcome, TranscriptAnalyzerImpl } from './types';
+import { log } from '@/server/log';
 
 export type AnalysisEngine = 'auto' | 'local' | 'claude';
 
@@ -38,7 +39,7 @@ export async function analyseTranscriptText(input: AnalysisInput, opts: AnalyseO
     return { ...r, analyzer: 'claude', model: servedBy || claude.model, notice: null };
   } catch (e) {
     const f = failureOf(e);
-    console.error('Claude transcript analysis failed:', f.code, f.status ?? '', f.message);
+    log.error('Claude transcript analysis failed (local analysis used)', { component: 'ai', code: f.code, status: f.status ?? null, message: f.message });
     return local(input, `${CLAUDE_FAILURE_NOTICE[f.code]} · ${LOCAL_FALLBACK_NOTICE}`);
   }
 }

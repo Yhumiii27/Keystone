@@ -1,20 +1,43 @@
 import 'server-only';
-import path from 'node:path';
+import { getConfig } from '@/server/config';
+import { log } from '@/server/log';
+import { PendingMigrationsError, pendingMigrations } from './migrations';
 import { openDatabase } from './open';
 import type { DB } from './types';
 
-// Local database: embedded Postgres (PGlite) in <data dir>/pg, created on first use, migrated from ./drizzle and
-// seeded from the prototype data set. The data dir is ./.data, or KEYSTONE_DATA_DIR when set (the Mac app keeps its
-// own copy in ~/Library/Application Support/Keystone). Production targets Postgres (swap the driver to
-// drizzle-orm/node-postgres; schema and queries stay the same).
+// Database of this server process (R-002), chosen by the configuration (src/server/config):
+// - DATABASE_URL set → PostgreSQL server through a node-postgres pool (src/server/db/postgres.ts). Migrations and the seed
+//   run at deploy time (`npm run db:migrate`); a database with pending migrations is refused.
+// - otherwise → embedded PGlite in <data dir>/pg, created on first use, migrated from ./drizzle and seeded (KEYSTONE_SEED:
+//   demo data set by default, reference data only with "production"). The data dir is ./.data, or KEYSTONE_DATA_DIR when
+//   set (the Mac app keeps its own copy in ~/Library/Application Support/Keystone).
 export type { DB, Tx } from './types';
 
-const DATA_DIR = process.env.KEYSTONE_DATA_DIR ? path.resolve(process.env.KEYSTONE_DATA_DIR) : path.join(process.cwd(), '.data');
 const g = globalThis as unknown as { __ksDb?: Promise<DB> };
 
-/** Database handle (singleton per server process; survives dev hot reloads). */
+async function openConfigured(): Promise<DB> {
+  const cfg = getConfig();
+  if (cfg.database.driver === 'postgres') {
+    const { openPostgres } = await import('./postgres');
+    const h = await openPostgres({ url: cfg.database.url, poolMax: cfg.database.poolMax });
+    try {
+      const pending = await pendingMigrations(h.db);
+      if (pending.length) throw new PendingMigrationsError(pending.length);
+    } catch (e) {
+      await h.close().catch(() => null);
+      throw e;
+    }
+    log.info('Database opened', { component: 'db', driver: 'postgres', poolMax: cfg.database.poolMax });
+    return h.db;
+  }
+  const db = await openDatabase(cfg.database.dir, undefined, { seed: cfg.seed });
+  log.info('Database opened', { component: 'db', driver: 'pglite' });
+  return db;
+}
+
+/** Database handle (singleton per server process; survives dev hot reloads). A failed open is retried by the next call. */
 export function getDb(): Promise<DB> {
-  if (!g.__ksDb) g.__ksDb = openDatabase(path.join(DATA_DIR, 'pg')).catch((e) => { g.__ksDb = undefined; throw e; });
+  if (!g.__ksDb) g.__ksDb = openConfigured().catch((e) => { g.__ksDb = undefined; throw e; });
   return g.__ksDb;
 }
 

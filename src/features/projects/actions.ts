@@ -18,6 +18,7 @@ import { getProject } from '@/server/dal/projects';
 import { getScreenAccess, isMineProject } from '@/server/project-context';
 import { getViewer } from '@/server/session';
 import { CREATE_PROJECT_ROLES } from './permissions';
+import { logError } from '@/server/log';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -71,7 +72,7 @@ export async function moveStageAction(input: { code: string; to: string; mode: '
       requestedBy: viewer.short,
     });
   } catch (e) {
-    console.error('moveStageAction', e);
+    logError('moveStageAction', e);
     return { ok: false, error: FAILED };
   }
   refresh();
@@ -95,7 +96,7 @@ export async function setDeliverableAction(input: { code: string; stage: string;
     }
     await setDeliverableAndAdvance(code, input.stage, input.index, input.done);
   } catch (e) {
-    console.error('setDeliverableAction', e);
+    logError('setDeliverableAction', e);
     return { ok: false, error: FAILED };
   }
   refresh();
@@ -188,7 +189,7 @@ export async function createProjectAction(draft: NewProjectDraft): Promise<Creat
     refresh();
     return { ok: true, code: created.code, number: created.number, analytic: created.analytic, name: created.name };
   } catch (e) {
-    console.error('createProjectAction', e);
+    logError('createProjectAction', e);
     return { ok: false, error: 'The project could not be created' };
   }
 }

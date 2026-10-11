@@ -14,7 +14,7 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { putAwayAfterQc, qcPlan, registerPlan, remainingToAnnounce, type QcDecision, type ReceiptForAnnounce } from '@/domain/deliveries';
 import { getDb } from '@/server/db/client';
 import { STATUS_ISO, locationType, receiptStatus, type LocationType, type ReceiptStatus } from '@/server/db/codes';
-import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
+import { demoFloor, findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import {
   goodsReceipts, parts, persons, poLines, projectSites, projects, purchaseOrders, receiptAttachments, receiptLines, stockPositions, storageLocations, supplierInvoices, suppliers,
 } from '@/server/db/schema';
@@ -271,7 +271,7 @@ export async function announceDelivery(projectCode: string, input: AnnounceInput
       if (!loc) throw new Error(`Unknown location ${input.location}`);
     } else loc = await defaultPutAway(tx, p.id);
     const all = (await tx.select({ n: goodsReceipts.number }).from(goodsReceipts)).map((r) => r.n);
-    const number = nextReceiptNumber(all);
+    const number = nextReceiptNumber(all, await demoFloor(tx, RECEIPT_NUMBER_FLOOR));
     const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${goodsReceipts.position}), -1)::int` }).from(goodsReceipts).where(eq(goodsReceipts.projectId, p.id));
     const [r] = await tx
       .insert(goodsReceipts)
@@ -291,9 +291,12 @@ export async function announceDelivery(projectCode: string, input: AnnounceInput
   });
 }
 
-/** Next BL-2026-nnnn of the receipts announced in Keystone (from BL-2026-0600, as the prototype's `announce`). */
-export function nextReceiptNumber(existing: string[]): string {
-  let max = 599;
+/** The prototype numbered the receipts it announced from BL-2026-0600 (`announce`); a demo database keeps that floor (R-011). */
+export const RECEIPT_NUMBER_FLOOR = 599;
+
+/** Next BL-2026-nnnn of the receipts announced in Keystone (after `floor`: the demo floor, 0 on a production database). */
+export function nextReceiptNumber(existing: string[], floor = RECEIPT_NUMBER_FLOOR): string {
+  let max = floor;
   for (const n of existing) {
     const m = /^BL-2026-(\d{4})$/.exec(n);
     if (m && +m[1] > max) max = +m[1];

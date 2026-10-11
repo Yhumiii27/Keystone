@@ -29,6 +29,7 @@ import { getI18n } from '@/server/session';
 import { checkUpload, FileRejectedError } from '@/server/storage/files';
 import { MEETING_RESULT } from './forms';
 import { analysedToastText, importedToastText, sentToastText } from './i18n';
+import { logError } from '@/server/log';
 
 export type MeetingActionResult = { ok: true; toast?: string; done?: boolean } | { ok: false; error: string };
 
@@ -83,7 +84,7 @@ async function write<R>(label: string, fn: () => Promise<R>): Promise<{ ok: true
   } catch (e) {
     // Refusals with a user-facing reason (minutes sent meanwhile, transcript too long, file type…) keep their message.
     if (e instanceof TranscriptError || e instanceof FileRejectedError) return { ok: false, error: e.message };
-    console.error(label, e);
+    logError(label, e);
     return { ok: false, error: 'The change could not be saved' };
   }
 }

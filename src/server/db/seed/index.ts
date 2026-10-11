@@ -30,6 +30,10 @@ import { seedSite } from './site';
 import { seedStock } from './stock';
 import { seedVigie, seedVigieQuality } from './vigie';
 import { seedWork } from './work';
+import { readSeedRecord, writeSeedRecord } from './mode';
+import { seedReferenceData } from './reference';
+import type { SeedMode } from '@/server/config/parse';
+import { log, logError } from '@/server/log';
 
 /** Delivery 4 modules: technical reference, purchasing, stock and the Vigie ECO mirror. */
 async function seedDelivery4(tx: Tx, ctx: SeedCtx): Promise<void> {
@@ -56,34 +60,9 @@ async function seedDelivery5(tx: Tx, ctx: SeedCtx): Promise<void> {
   await seedCursus(tx);
 }
 
-/**
- * Seeds the database from the prototype data set (src/server/prototype: PROTO constants + PROTO_GEN, the
- * materialised initialProjects() / projectData()) when the projects table is empty — in one transaction.
- * A database seeded before Delivery 4 (migration 0003 applied to an existing data dir) gets the Delivery 4 modules
- * seeded once, when its catalogue is empty, against its own people, projects and activities; a database seeded before
- * Delivery 5 (migration 0004) gets the Delivery 5 modules once, when its Settings lists are empty; a database seeded before
- * chapter 4 (migration 0005) gets the chapter 4 data (calendars, BL1 snapshots, assignment quantities) once, when it has no
- * calendar. Each backfill runs in its own transaction; a failure there is logged and leaves the database as it was.
- */
-export async function seedIfEmpty(db: DB): Promise<boolean> {
-  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(projects);
-  if (n > 0) {
-    const [{ c }] = await db.select({ c: sql<number>`count(*)::int` }).from(parts);
-    if (c === 0) {
-      await db.transaction(async (tx) => seedDelivery4(tx, await ctxFromDb(tx))).catch((e) => console.error('[seed] Delivery 4 backfill failed:', e));
-    }
-    const [{ r }] = await db.select({ r: sql<number>`count(*)::int` }).from(referenceValues);
-    if (r === 0) {
-      await db.transaction(async (tx) => seedDelivery5(tx, await ctxFromDb(tx))).catch((e) => console.error('[seed] Delivery 5 backfill failed:', e));
-    }
-    const [{ k }] = await db.select({ k: sql<number>`count(*)::int` }).from(calendars);
-    if (k === 0) {
-      await db.transaction(async (tx) => seedChapter4(tx)).catch((e) => console.error('[seed] Chapter 4 backfill failed:', e));
-    }
-    return false;
-  }
-  await db.transaction(async (tx) => {
-    const ctx = newCtx();
+/** The prototype data set (demo seed). */
+async function seedDemoData(tx: Tx): Promise<void> {
+  const ctx = newCtx();
     await seedOrganisation(tx, ctx);
     await seedPortfolio(tx, ctx);
     await seedPlanning(tx, ctx);
@@ -101,6 +80,47 @@ export async function seedIfEmpty(db: DB): Promise<boolean> {
     await seedDelivery4(tx, ctx);
     await seedDelivery5(tx, ctx);
     await seedChapter4(tx);
+}
+
+/**
+ * Seeds an empty database in one transaction and records its seed (./mode.ts): `demo` (default) loads the prototype data set
+ * (src/server/prototype: PROTO constants + PROTO_GEN, the materialised initialProjects() / projectData()); `production` loads
+ * reference data only (./reference.ts, R-011). A database is empty when it has no seed record and no project.
+ *
+ * A demo database seeded before Delivery 4 (migration 0003 applied to an existing data dir) gets the Delivery 4 modules seeded
+ * once, when its catalogue is empty, against its own people, projects and activities; one seeded before Delivery 5 (migration
+ * 0004) gets the Delivery 5 modules once, when its Settings lists are empty; one seeded before chapter 4 (migration 0005) gets
+ * the chapter 4 data (calendars, BL1 snapshots, assignment quantities) once, when it has no calendar. Each backfill runs in its
+ * own transaction; a failure there is logged and leaves the database as it was. A production database never gets them (they
+ * load prototype data). Returns true when it seeded.
+ */
+export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promise<boolean> {
+  const record = await readSeedRecord(db);
+  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(projects);
+  if (record || n > 0) {
+    if ((record?.mode ?? 'demo') !== 'demo') return false;
+    const [{ c }] = await db.select({ c: sql<number>`count(*)::int` }).from(parts);
+    if (c === 0) {
+      await db.transaction(async (tx) => seedDelivery4(tx, await ctxFromDb(tx))).catch((e) => logError('Delivery 4 backfill', e, { component: 'seed' }));
+    }
+    const [{ r }] = await db.select({ r: sql<number>`count(*)::int` }).from(referenceValues);
+    if (r === 0) {
+      await db.transaction(async (tx) => seedDelivery5(tx, await ctxFromDb(tx))).catch((e) => logError('Delivery 5 backfill', e, { component: 'seed' }));
+    }
+    const [{ k }] = await db.select({ k: sql<number>`count(*)::int` }).from(calendars);
+    if (k === 0) {
+      await db.transaction(async (tx) => seedChapter4(tx)).catch((e) => logError('Chapter 4 backfill', e, { component: 'seed' }));
+    }
+    // Databases seeded before delivery 7 adopt their (demo) record.
+    if (!record) await writeSeedRecord(db, 'demo').catch((e) => logError('Seed record', e, { component: 'seed' }));
+    return false;
+  }
+  const mode = opts.mode ?? 'demo';
+  await db.transaction(async (tx) => {
+    if (mode === 'production') await seedReferenceData(tx);
+    else await seedDemoData(tx);
+    await writeSeedRecord(tx, mode);
   });
+  log.info('Database seeded', { component: 'seed', seed: mode });
   return true;
 }

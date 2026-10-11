@@ -4,6 +4,7 @@ import 'server-only';
 import { asc, eq } from 'drizzle-orm';
 import { savBadge } from '@/domain/aftersales';
 import { getDb } from '@/server/db/client';
+import { demoFloor } from '@/server/db/helpers';
 import {
   NOW_ISO, SEVERITY_TAG, claimCoverage, claimStatus, interventionStatus, interventionType, ncrSeverity, nextBusinessNumber,
   type ClaimCoverage, type ClaimStatus, type InterventionStatus, type InterventionType, type NcrSeverity, type ZoneCode,
@@ -162,7 +163,7 @@ export async function openClaim(input: NewClaimInput, actor: Actor, on: string =
     const [m] = await tx.select({ id: machines.id, name: machines.name }).from(machines).where(eq(machines.number, input.machineNumber.trim()));
     if (!m) throw new Error(`Unknown machine ${input.machineNumber}`);
     const existing = await tx.select({ n: warrantyClaims.number, pos: warrantyClaims.position }).from(warrantyClaims);
-    const number = nextBusinessNumber(existing.map((e) => e.n), 'WC-', 3, 19);
+    const number = nextBusinessNumber(existing.map((e) => e.n), 'WC-', 3, await demoFloor(tx, 19));
     const [o] = await tx.select({ id: persons.id }).from(persons).where(eq(persons.shortName, owner));
     const [row] = await tx.insert(warrantyClaims).values({
       number, machineId: m.id, issue, description, severity: input.severity, reportedOn: on, status: 'open', coverage: input.coverage, costKeur: 0, ecoNumber: null,

@@ -569,7 +569,8 @@ async function openRequests(q: Q, projectId: string, scenarioId?: string) {
  * the requests DAL (not sent to the departments until "Send"; the plan changes only at the next Reschedule), skips levers
  * already requested from this scenario, and — when it drafted something — stamps the scenario applied and records the
  * activity. The duplicate check, the drafts and the stamp run in ONE transaction: a double-click or a concurrent apply
- * finds the first one's drafts (PGlite serialises transactions), and a failure leaves no draft without the stamp.
+ * finds the first one's drafts (transactions are SERIALIZABLE, src/server/db/transactions.ts — the second is run again on
+ * fresh data), and a failure leaves no draft without the stamp.
  * `actorName` must be a person.
  */
 export async function applyScenario(projectCode: string, name: string, actorName: string): Promise<ApplyOutcome> {

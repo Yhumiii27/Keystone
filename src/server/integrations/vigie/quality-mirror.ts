@@ -3,7 +3,8 @@ import 'server-only';
 // recorded in Keystone (schema/vigie.ts). Shared by the mock and HTTP quality connectors and the seed: the upsert
 // functions are the only writers of the mirror tables (seed and Vigie refresh); `readNcrMirror` overlays the progress
 // Vigie has not reflected yet (quality-progress.ts queues it).
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, lt, ne, or, sql } from 'drizzle-orm';
+import { claimExpiry } from '../outbox';
 import { hseStatus, ncrStatus } from '@/server/db/codes';
 import { findPerson } from '@/server/db/helpers';
 import { vigieHseItems, vigieNcrProgress, vigieNcrs } from '@/server/db/schema';
@@ -91,15 +92,23 @@ export async function ncrProgressSyncStatus(q: Q, id: string) {
   return r?.s ?? null;
 }
 
-/** Marks a delivery attempt of an NCR outbox entry. */
+/** Claims an NCR outbox entry before sending it (R-010, ../outbox.ts): true when this delivery may send it. */
+export async function claimNcrDelivery(q: Q, id: string, at = new Date()): Promise<boolean> {
+  const rows = await q
+    .update(vigieNcrProgress)
+    .set({ claimedAt: at })
+    .where(and(eq(vigieNcrProgress.id, id), ne(vigieNcrProgress.syncStatus, 'sent'), or(isNull(vigieNcrProgress.claimedAt), lt(vigieNcrProgress.claimedAt, claimExpiry(at)))))
+    .returning({ id: vigieNcrProgress.id });
+  return rows.length > 0;
+}
+
+/** Marks a delivery attempt of an NCR outbox entry (and releases its claim). */
 export async function markNcrDelivery(q: Q, id: string, result: { ok: true; vigieRef?: string | null } | { ok: false; error: string }, at = new Date()): Promise<void> {
-  const [r] = await q.select({ attempts: vigieNcrProgress.attempts }).from(vigieNcrProgress).where(eq(vigieNcrProgress.id, id));
-  if (!r) return;
   await q
     .update(vigieNcrProgress)
     .set(result.ok
-      ? { syncStatus: 'sent', sentAt: at, lastAttemptAt: at, attempts: r.attempts + 1, lastError: null, vigieRef: result.vigieRef ?? null }
-      : { syncStatus: 'failed', lastAttemptAt: at, attempts: r.attempts + 1, lastError: result.error.slice(0, 500) })
+      ? { syncStatus: 'sent', sentAt: at, lastAttemptAt: at, attempts: sql`${vigieNcrProgress.attempts} + 1`, lastError: null, vigieRef: result.vigieRef ?? null, claimedAt: null }
+      : { syncStatus: 'failed', lastAttemptAt: at, attempts: sql`${vigieNcrProgress.attempts} + 1`, lastError: result.error.slice(0, 500), claimedAt: null })
     .where(eq(vigieNcrProgress.id, id));
 }
 

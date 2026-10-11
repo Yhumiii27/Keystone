@@ -8,6 +8,7 @@ import 'server-only';
 import { asc, eq } from 'drizzle-orm';
 import { addedWarrantyStatus, warrantyEnding } from '@/domain/aftersales';
 import { getDb } from '@/server/db/client';
+import { demoFloor } from '@/server/db/helpers';
 import {
   installedPartState, machineType, nextBusinessNumber, warrantyStatus, fmtDOfIso,
   type InstalledPartState, type WarrantyStatus, type ZoneCode,
@@ -210,7 +211,7 @@ export async function addMachine(input: NewMachineInput, actor: Actor): Promise<
       .where(eq(machineTypes.code, machineType.labels.includes(typeCode) ? machineType.code(typeCode) : typeCode));
     if (!mt) throw new Error(`Unknown machine type ${input.machineType}`);
     const existing = await tx.select({ n: machines.number, pos: machines.position }).from(machines);
-    const number = nextBusinessNumber(existing.map((e) => e.n), 'MCH-', 3, 49);
+    const number = nextBusinessNumber(existing.map((e) => e.n), 'MCH-', 3, await demoFloor(tx, 49));
     const [c] = await tx.select({ id: clients.id }).from(clients).where(eq(clients.name, client));
     const [row] = await tx.insert(machines).values({
       number, machineTypeCode: mt.code, name, clientName: client, clientId: c?.id ?? null, siteText: site, projectCode: null, projectId: null, deliveredOn, warrantyEndOn,

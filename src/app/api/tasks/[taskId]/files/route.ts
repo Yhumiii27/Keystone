@@ -9,6 +9,7 @@ import { isSameOrigin, taskFileGate } from '@/features/mywork/task-access';
 import { attachTaskFile, listTaskFiles } from '@/server/dal/task-files';
 import { getI18n } from '@/server/session';
 import { FileRejectedError, checkUpload, readFormDataCapped } from '@/server/storage/files';
+import { logError } from '@/server/log';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +43,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ taskId: st
     return Response.json({ ok: true, id }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) {
     if (e instanceof FileRejectedError) return fail(e.code === 'too_large' ? 413 : 415, e.message);
-    console.error('[task files] upload failed', e);
+    logError('Task file upload', e, { route: 'api/tasks/files' });
     return fail(500, 'The file could not be saved');
   }
 }

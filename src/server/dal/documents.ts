@@ -12,7 +12,7 @@ import {
   shortDateOfIso, type ApproverRole, type Confidentiality, type DocFamily, type DocLinkKind, type DocRecipient, type DocService,
   type DocumentStatus,
 } from '@/server/db/codes';
-import { findPerson, nameOf, writeAudit } from '@/server/db/helpers';
+import { demoFloor, findPerson, nameOf, writeAudit } from '@/server/db/helpers';
 import {
   clients, documentAcknowledgements, documentApprovals, documentApproverAssignments, documentDeposits, documentDownloads, documentIndexSyncs,
   documentLinks, documentRevisions, documentTypeCircuitSteps, documentTypes, documents, persons, projects, users,
@@ -383,7 +383,8 @@ async function depositNumber(q: Awaited<ReturnType<typeof getDb>> | Tx, input: {
     .from(documents)
     .where(and(eq(documents.typeCode, input.typeCode), projectId ? eq(documents.projectId, projectId) : isNull(documents.projectId)));
   const taken = new Set((await q.select({ number: documents.number }).from(documents)).map((r) => r.number));
-  for (let seq = sameScope.length + 40; ; seq++) {
+  // The prototype's preview started at records + 40; a production database numbers from records + 1 (R-011).
+  for (let seq = sameScope.length + 1 + (await demoFloor(q, 39)); ; seq++) {
     const n = `${input.typeCode}-${codexProjectCode(input.project)}-${String(seq).padStart(3, '0')}`;
     if (!taken.has(n)) return n;
   }

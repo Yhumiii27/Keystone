@@ -6,13 +6,14 @@ import 'server-only';
 // catalogue, the purchase orders (and so the BOM shortfall), the drawings (PDM vault mirror) and the ECOs (Vigie
 // mirror, src/server/integrations/vigie) come from the database too; since Delivery 5, the client's deliverables
 // (the deliverables register, src/server/dal/quality.ts) and open invoice (the billing plan, as on the client portal).
-import { DEFAULT_PROJECT, type RoleKey } from '@/config/screens';
+import type { RoleKey } from '@/config/screens';
 import { isNotNull } from 'drizzle-orm';
 import {
   clientHome, clientHomeDeliverables, clientOpenInvoice, deptHeadHome, directorHome, engLeadHome, homeHref, memberHome, pmHome, procurementHome,
   qualityHome, type ChangeRequest, type CurrentProject, type Drawing, type Eco, type EvmSeries, type HomeView, type Lookups, type Part,
   type Persona, type PersonLoad, type PortfolioAlert, type PurchaseOrder, type ResourceRequest, type ScheduleHeader, type Todo,
 } from '@/domain/home';
+import { noProjectHome } from '@/domain/home-empty';
 import { workingDayOf } from '@/domain/tasks';
 import type { Lang } from '@/i18n/translate';
 import { getDb } from '@/server/db/client';
@@ -34,12 +35,16 @@ import { listDeliverables } from './quality';
 import { listApprovalDepartments, listResourceRequests } from './requests';
 import { getResourcePool, listDepartments } from './resources';
 import { listTasks } from './tasks';
+import { resolveCurrentProject } from './current-project';
 
 export interface HomeQuery {
   role: RoleKey;
   persona: Persona;
-  /** Current project (last project used); unknown codes fall back to the default project. */
-  projectCode: string;
+  /**
+   * Current project (session getCurrentProject); an unknown code falls back to the current project of the register (R-011);
+   * null when the database has no project yet.
+   */
+  projectCode: string | null;
   /** Portfolio zone filter (shared with the Portfolio screens): director KPIs and alerts follow it. */
   zone: ZoneKey | null;
   lang: Lang;
@@ -157,10 +162,13 @@ async function todos(): Promise<Todo[]> {
 
 const currentOf = (p: ProjectRow): CurrentProject => ({ code: p.code, name: p.name, shortCode: p.shortCode });
 
-async function resolveProject(code: string): Promise<ProjectRow> {
-  const p = (await getProject(code)) ?? (await getProject(DEFAULT_PROJECT));
-  if (!p) throw new Error('No project in the database');
-  return p;
+/**
+ * The project of the Home: the code when it exists (and, for a client, belongs to their organisation), else the current
+ * project of the register (R-011); null when the viewer has no project.
+ */
+async function resolveProject(code: string | null, role: RoleKey): Promise<ProjectRow | null> {
+  const current = await resolveCurrentProject(code, { role });
+  return current ? getProject(current) : null;
 }
 
 async function evmAndSchedule(code: string): Promise<{ evm: EvmSeries | null; schedule: ScheduleHeader | null }> {
@@ -198,13 +206,7 @@ async function deptOfHead(name: string): Promise<string> {
 /** The Home of a role (docs/spec/03 §1.2). Roles without a dedicated Home get the director's, as the prototype. */
 export async function getHomeView(q: HomeQuery): Promise<HomeView> {
   const { persona, lang } = q;
-  const project = await resolveProject(q.projectCode);
-  const current = currentOf(project);
   switch (q.role) {
-    case 'pm': {
-      const [{ evm, schedule }, reqs, pos, ps, es] = await Promise.all([evmAndSchedule(project.code), requests(), purchaseOrders(project.code), parts(), ecos()]);
-      return pmHome({ lang, persona, project: current, evm, schedule, requests: reqs, purchaseOrders: pos, parts: ps, ecos: es });
-    }
     case 'depthead': {
       const [dept, reqs, pool, departments] = await Promise.all([deptOfHead(persona.name), requests(), people(), capacityRows()]);
       return deptHeadHome({
@@ -224,6 +226,16 @@ export async function getHomeView(q: HomeQuery): Promise<HomeView> {
       return engLeadHome({
         persona, ecos: es, ecoTypes: ECO_TYPE_LABELS, drawings: dwgs, parts: ps, skills: sk.skills, skillLevels: sk.levels, people: pool.loads,
       });
+    }
+  }
+  // The other Homes are built around the current project; a new production database has none yet (R-011).
+  const project = await resolveProject(q.projectCode, q.role);
+  if (!project) return noProjectHome(persona);
+  const current = currentOf(project);
+  switch (q.role) {
+    case 'pm': {
+      const [{ evm, schedule }, reqs, pos, ps, es] = await Promise.all([evmAndSchedule(project.code), requests(), purchaseOrders(project.code), parts(), ecos()]);
+      return pmHome({ lang, persona, project: current, evm, schedule, requests: reqs, purchaseOrders: pos, parts: ps, ecos: es });
     }
     case 'quality': {
       const [es, ps, reqs] = await Promise.all([ecos(), parts(), requests()]);

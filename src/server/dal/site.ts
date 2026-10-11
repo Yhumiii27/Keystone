@@ -21,7 +21,7 @@ import {
 } from '@/server/db/schema';
 import { cursusChantierUrl } from '@/server/integrations/cursus/links';
 import { getCursusConnector, type CursusClearanceView } from '@/server/integrations/cursus/connector';
-import { vigieConnectorMode } from '@/server/integrations/vigie/config';
+import { vigieConnectorMode } from '@/server/integrations/vigie/connection';
 import { getVigieQualityConnector } from '@/server/integrations/vigie/quality-connector';
 import { vigieCoactivityUrl, vigieHseListUrl, vigieReportIncidentUrl } from '@/server/integrations/vigie/links';
 import { getProjectCalendarCode, loadWorkCalendars } from './calendars';

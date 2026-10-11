@@ -3,6 +3,7 @@ import 'server-only';
 // checklist and the customer-satisfaction survey (read-only). Projects without data have none (empty tables, "—" KPIs).
 import { and, asc, eq } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
+import { demoFloor } from '@/server/db/helpers';
 import {
   CLOSURE_NEXT, LESSON_APPLIES_TO, closureItemStatus, lessonStatus, lessonTheme, nextBusinessNumber,
   type ClosureItemStatus, type LessonStatus, type LessonTheme,
@@ -90,7 +91,7 @@ export async function addLesson(projectCode: string, input: NewLessonInput, acto
   return db.transaction(async (tx) => {
     const p = await projectOf(tx, projectCode);
     const existing = await tx.select({ n: lessonsLearned.number, pos: lessonsLearned.position }).from(lessonsLearned).where(eq(lessonsLearned.projectId, p.id));
-    const number = nextBusinessNumber(existing.map((e) => e.n), 'LL-', 2, 9);
+    const number = nextBusinessNumber(existing.map((e) => e.n), 'LL-', 2, await demoFloor(tx, 9));
     const who = await whoIs(tx, actor);
     const [row] = await tx.insert(lessonsLearned).values({
       projectId: p.id, number, theme: input.theme, whatHappened, impact, recommendation, appliesTo, status: 'proposed', raisedByName: who.who, raisedByPersonId: who.personId,

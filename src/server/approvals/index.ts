@@ -26,6 +26,7 @@ import { purchaseOrderProvider } from './purchase-orders';
 import { resourceRequestProvider } from './resource-requests';
 import { rfqAwardProvider } from './rfq-awards';
 import type { ApprovalContext, ApprovalProvider } from './types';
+import { logError } from '@/server/log';
 
 export type { ApprovalContext, ApprovalProvider } from './types';
 
@@ -73,7 +74,7 @@ async function safeCount(p: ApprovalProvider, ctx: ApprovalContext): Promise<num
   try {
     return (await p.items(ctx)).length;
   } catch (e) {
-    console.error(`approvals: provider "${p.kind}" failed`, e);
+    logError("Approvals provider", e, { provider: p.kind });
     return 0;
   }
 }

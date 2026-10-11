@@ -4,7 +4,7 @@ import { PERSONA_BY_ROLE } from '@/config/personas';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { revalidatePath } from 'next/cache';
 import { canSnapshotFreely } from '@/domain/baseline-policy';
-import { createBaselineSnapshot, listProjectBaselines } from '@/server/dal/baselines';
+import { BaselinePolicyError, createBaselineSnapshot, listProjectBaselines } from '@/server/dal/baselines';
 import { listChangeRequestDetails } from '@/server/dal/changes';
 import { getProject } from '@/server/dal/projects';
 import { getScheduleControl } from '@/server/dal/planning';
@@ -45,10 +45,18 @@ export async function rebaselineSchedule(code: string, values: Record<string, st
   // Only an open request that proposes no baseline yet can carry the snapshot (it becomes current at its approval); a closed
   // one named while snapshots are still free is ignored, else the baseline would stay proposed for ever (correctness review).
   const linked = open && !taken ? open : null;
-  const res = await createBaselineSnapshot(project.code, {
-    actorName: ctx.viewer.name, name, comment: reason, source: linked ? 'change_request' : 'snapshot', changeRequestNumber: linked,
-    approverName: PERSONA_BY_ROLE[approver].name, scope, makeCurrent: free && !linked,
-  });
+  let res: { code: string; activityCount: number };
+  try {
+    // Checked again inside the snapshot transaction (R-010): a concurrent BL1 or a concurrent proposal on the same request.
+    res = await createBaselineSnapshot(project.code, {
+      actorName: ctx.viewer.name, name, comment: reason, source: linked ? 'change_request' : 'snapshot', changeRequestNumber: linked,
+      approverName: PERSONA_BY_ROLE[approver].name, scope, makeCurrent: free && !linked, enforcePolicy: true,
+    });
+  } catch (e) {
+    if (!(e instanceof BaselinePolicyError)) throw e;
+    if (e.reason === 'already_proposed') return { error: `${linked} · ${t('already proposes baseline')} ${e.baseline}` };
+    return { error: t('After BL1, a new baseline goes through a change request — name an open change request (CR-…)') };
+  }
   revalidatePath(`/projects/${project.code}`, 'layout');
   return { toast: `${name} · ${t(REBASELINE_RESULT)} · ${res.code}` };
 }
