@@ -151,7 +151,8 @@ function check(label: string, ok: boolean, detail?: unknown) {
   if (!ok) failures++;
   console.log(`${ok ? '  ok  ' : '  FAIL'} ${label}${!ok && detail !== undefined ? ' — ' + JSON.stringify(detail).slice(0, 600) : ''}`);
 }
-const same = (a: unknown, b: unknown) => isDeepStrictEqual(JSON.parse(JSON.stringify(a)), JSON.parse(JSON.stringify(b)));
+const norm = (x: unknown) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
+const same = (a: unknown, b: unknown) => isDeepStrictEqual(norm(a), norm(b));
 
 /** First differing path between two JSON values (for failure messages). */
 function diff(a: unknown, b: unknown, p = ''): string | null {
@@ -239,7 +240,9 @@ async function main() {
   const omitD7 = (o: unknown) => o && Object.fromEntries(Object.entries(JSON.parse(JSON.stringify(o)) as Record<string, unknown>).filter(([k]) => !D7_KEYS.includes(k)));
   for (const code of Object.keys(PROTO_GEN.projectData)) {
     const pd = omitD7(await getProjectData(code));
-    const want = omitD7(PROTO_GEN.projectData[code]);
+    const proto = PROTO_GEN.projectData[code] as { team: string[] };
+    // R-041 (P-2): Harbor Line's named team adds the seeded referents (engineering lead, quality manager) to DEFS.team.
+    const want = omitD7(code === 'HLT-026' ? { ...proto, team: [...proto.team, 'Antoine Girard', 'Gabriel Comte'] } : proto);
     check(`${code} projectData deep-equal (except the delivery 7 cost-control keys)`, same(pd, want), diff(pd, want));
   }
   const sums = await listScheduleSummaries();
@@ -610,9 +613,10 @@ async function delivery5Reads() {
   const conns = await listConnectors();
   const pc = await getPlumbingCounts();
   // A-12: "Events today" = events of the data date (Paris day); the prototype's 6 included one of 26 Sep.
-  check('connectors: 9 + Vigie (live: 6 ECOs · 15 NCRs · 5 HSE items) · Cursus live · 1 warning · 5 events today · 8 audit entries · 6 formats',
+  // R-021 (NEW-CURSUS-4): Lucca is no longer listed (hours come from Cursus) — 8 + Vigie.
+  check('connectors: 8 + Vigie (live: 6 ECOs · 15 NCRs · 5 HSE items) · Cursus live · 1 warning · 5 events today · 8 audit entries · 6 formats',
     same([conns.length, conns.at(-1)!.lastVolume, conns.find((c) => c.name === 'Cursus')!.lastVolume, conns.filter((c) => c.status === 'warning').map((c) => c.name), pc.eventsToday,
-      pc.auditLast7Days, (await listImportFormats()).length], [10, '6 ECOs · 15 NCRs · 5 HSE items', '5 people · HLT-026', ['Outlook / Exchange'], 5, 8, 6]));
+      pc.auditLast7Days, (await listImportFormats()).length], [9, '6 ECOs · 15 NCRs · 5 HSE items', '5 people · HLT-026', ['Outlook / Exchange'], 5, 8, 6]));
   check('My approvals: client contact D-014, D-016 · quality no NCR in verification',
     same([(await deliverableAcceptanceQueue('HLT-026', { name: 'Nadia Bensaïd', role: 'client' })).map((d) => d.number), (await ncrVerificationQueue('HLT-026', { name: 'Gabriel Comte', role: 'quality' })).length],
       [['D-014', 'D-016'], 0]));

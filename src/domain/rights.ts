@@ -2,7 +2,8 @@
 // R-9, NEW-D2-1 and NEW-D3-1 (docs/DECISIONS.md), as pure rules shared by the pages (which controls to render, what data
 // to send), the Server Functions and Route Handlers (which re-check on the server) and the exports. No I/O here: the
 // project-context helpers (src/server/project-context.ts) and the DAL feed these functions with facts from the database.
-import { canSee, type RoleKey, type ScreenId } from '@/config/screens';
+import { canSee } from '@/config/role-screens';
+import type { RoleKey, ScreenId } from '@/config/screens';
 import type { ApprovalKind } from './approvals';
 
 // ── R-041 · Named project team (P-2, L-4b) ──────────────────────────────────────────────────────────────────────────
