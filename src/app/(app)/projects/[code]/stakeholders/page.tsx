@@ -16,10 +16,10 @@ import { formT } from '@/features/team/i18n';
 import { stakeholdersView } from '@/features/team/model';
 import { StakeholdersBody } from '@/features/team/stakeholders-view';
 import { listClientIssuesForTeam } from '@/server/dal/client';
-import { projectLabel } from '@/server/dal/projects';
 import { getStakeholdersScreen } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -33,7 +33,7 @@ export default async function StakeholdersPage({ params, searchParams }: { param
 
   const primary =
     ctx.canEdit('stakeholders') && data ? (
-      <AddStakeholderButton code={projectCode} context={t(projectLabel(ctx.project))} form={localizeForm(stakeholderFormDef(data.team), formT(t, lang))} />
+      <AddStakeholderButton code={projectCode} context={projectLabelText(ctx.project, lang)} form={localizeForm(stakeholderFormDef(data.team), formT(t, lang))} />
     ) : undefined;
   const canHandle = ctx.canEdit('stakeholders') && CLIENT_ISSUE_HANDLER_ROLES.includes(ctx.viewer.role) && ctx.isLead;
   const selected = first(sp.issue)?.trim().toUpperCase().slice(0, 12) ?? null;

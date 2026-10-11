@@ -15,7 +15,7 @@ import {
   amendmentFormDef, billingView, bondFormDef, contractView, invoiceFormDef, milestoneFormDef, releaseFormDef, RESULT, sentText, signFormDef,
 } from './model';
 import { dataText } from './i18n';
-import { G, SCENARIOS, expectedFigures, scenarioData } from './test-fixtures';
+import { G, SCENARIOS, expectedFigures, scenarioData, sheetFieldsExpected } from './test-fixtures';
 
 const LANGS: Lang[] = ['en', 'fr'];
 const data = scenarioData;
@@ -40,10 +40,11 @@ describe('Contract view = prototype render (EN, FR)', () => {
         const f = (k: number) => money(k, lang);
         const v = contractView(d, makeT(lang), lang);
         expect(v.kpis).toEqual(g.kpis);
-        // The prototype's fields, the free "Payment terms" (C-6) replaced by the currency, the rule and its days.
+        // The prototype's fields, the free "Payment terms" (C-6) replaced by the currency, the rule and its days; R-148: the
+        // typed fields as typed (sheetFieldsExpected).
         const shown = (f: (typeof v.fields)[number]) => (f.type === 'select' ? f.options!.find((o) => o.value === f.value)!.label : f.value);
         expect(v.fields.filter((f) => !['currency', 'rule', 'days'].includes(f.key)).map((f) => [f.key, shown(f)])).toEqual(
-          g.fields.filter(([k]: [string]) => k !== 'terms').map(([k, value]: [string, string]) => [k, value]),
+          sheetFieldsExpected(name, lang).filter(([k]) => k !== 'terms'),
         );
         expect(v.fields.filter((f) => ['currency', 'rule', 'days'].includes(f.key)).map((f) => [f.key, f.value])).toEqual([
           ['currency', 'EUR'], ['rule', 'net'], ['days', String(d.sheet.paymentDays)],

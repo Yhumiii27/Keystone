@@ -13,7 +13,7 @@ import {
 import GOLDEN from './site.golden.json';
 import {
   COLLISION_TARGET, NO_CURSUS_VERDICT, collisionTagClass, equipmentSourceTagClass, execKpis, goChantier, goLabel, isPrerequisiteLate, manDaysConsumed, parseDailyReportForm,
-  preparationNote, prerequisiteStep, readinessKpis, siteBadge, siteTabOf, siteTagClass, teamKpis, type SiteFacts, type SiteKpi,
+  preparationNote, prerequisiteStep, readinessKpis, siteBadge, sitePremiumTile, siteTabOf, siteTagClass, teamKpis, type SiteFacts, type SiteKpi,
 } from './site';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -42,8 +42,12 @@ function facts(ov: { pre?: Record<number, ConfirmStatus>; eq?: Record<number, Co
     reports: (P.SITE_REPORTS as string[][]).map((r) => ({ reportOn: iso(r[0]), headcount: null, hseIncident: null })),
     punch: (P.SITE_PUNCH as string[][]).map((r) => ({ open: r[3] === 'Open', ownerParty: punchOwnerParty.code(r[4]) })),
     hse: (P.SITE_HSE as string[][]).map((h) => ({ status: (hseStatus.labels.includes(h[1]) ? hseStatus.code(h[1]) : 'recorded') as HseStatus })),
+    // R-169: the weekend premiums come from the rate grid (MULTS sat ×1.5, sun ×2 on the seed).
+    premium: { sat: 1.5, sun: 2 },
   };
 }
+/** R-169: the "Site premium" sub names the rate grid instead of the prototype's constant "6d · 10h calendar". */
+const premiumSub = (ks: any[]) => ks.map((k) => (k.label === 'Site premium' ? { ...k, sub: 'Saturday / Sunday rates · rate grid' } : k));
 const goOf = (f: SiteFacts) => goChantier({ prerequisites: f.prerequisites, people: f.people, equipment: f.equipment, collisions: f.collisions, hse: f.hse });
 const kpi = (k: SiteKpi) => ({ label: k.label, value: k.value, sub: k.sub, color: k.alert ? LO : OK });
 const golden = (ks: any[]) => ks.map((k) => ({ label: k.label, value: String(k.value), sub: k.sub, color: k.color }));
@@ -62,7 +66,7 @@ describe('Go chantier and the KPI tiles vs the prototype (EN)', () => {
     expect(go.conditions.map((c) => ({ label: c.label, ok: c.ok, sub: c.sub, icon: c.ok ? 'ph ph-check-circle' : 'ph ph-warning-circle', color: LO }))).toEqual(g.goItems);
     expect(goLabel(go.ok)).toBe(g.goLabel);
     expect(readinessKpis(f, go).map(kpi)).toEqual(golden(g.kpis));
-    expect(teamKpis(f, 'en').map(kpi)).toEqual(golden(g.teamKpis));
+    expect(teamKpis(f, 'en').map(kpi)).toEqual(premiumSub(golden(g.teamKpis)));
     expect(execKpis(f).map(kpi)).toEqual(golden(g.execKpis));
   });
 
@@ -204,5 +208,14 @@ describe('Daily report form (AF.site)', () => {
     expect(parse({ weather: 'Clear', progress: 'x' })).toEqual({ ok: false, error: 'Invalid request' });
     expect(parse({ incident: 'fire', progress: 'x' })).toEqual({ ok: false, error: 'Invalid request' });
     expect(parse({ progress: 'x'.repeat(2001) })).toEqual({ ok: false, error: 'Progress is too long' });
+  });
+});
+
+describe('R-169 — Site premium from the rate grid', () => {
+  it('prints the Saturday and Sunday multipliers, "—" when the grid has none', () => {
+    expect(sitePremiumTile({ sat: 1.5, sun: 2 })).toEqual({ value: '×1.5 / ×2', sub: 'Saturday / Sunday rates · rate grid' });
+    expect(sitePremiumTile({ sat: 1.25, sun: null })).toEqual({ value: '×1.25 / —', sub: 'Saturday / Sunday rates · rate grid' });
+    expect(sitePremiumTile(undefined)).toEqual({ value: '—', sub: 'No weekend rate in the rate grid' });
+    expect(sitePremiumTile({ sat: null, sun: null }).value).toBe('—');
   });
 });

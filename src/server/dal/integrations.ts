@@ -5,10 +5,11 @@ import 'server-only';
 // R-021 (A-15, D-7a, NEW-CURSUS-4): every row says how Keystone is really linked to the system (src/domain/connectors.ts) —
 // a connector that does not exist is "Not connected" (no seeded status, last sync or volume), a mock is "Mock" (no last
 // sync), Lucca is no longer listed; "Sync now" runs live and mock connectors only, a mock run being recorded as simulated.
-// "Add connector" records a connector that stays "Not connected" until IT builds it.
+// R-020 (D-7a): IT configures the connectors outside Keystone — the connectors file is applied before the connectors are
+// read (connector-config.ts); "Add connector" is gone from the app.
 import { and, asc, desc, eq, gte, sql } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
-import { STATUS_ISO, addDaysIso, connectorDirection, parisInstant, type ConnectorDirection, type ConnectorKind, type ConnectorStatus } from '@/server/db/codes';
+import { STATUS_ISO, addDaysIso, parisInstant, type ConnectorDirection, type ConnectorKind, type ConnectorStatus } from '@/server/db/codes';
 import {
   auditEntries, connectorSyncRuns, connectors, cursusClearances, cursusRequests, cursusSyncRuns, importFormats, siteSheets, projects, vigieEcoProgress, vigieEcos,
   vigieHseItems, vigieNcrProgress, vigieNcrs,
@@ -24,15 +25,12 @@ import {
   showsVolume, type ConnectorLink, type ConnectorState,
 } from '@/domain/connectors';
 import { fmt } from '@/server/interchange/messages';
+import { ensureConnectorsFileApplied } from './connector-config';
 import { eventsToday } from './kpis';
-import { requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
+import { requireWorkspace, trace, whoIs, type Actor } from './ops-common';
 
 export type { Actor };
 
-/** Systems offered by "Add connector" (AF.plumbing) — without Lucca, unplugged (NEW-CURSUS-4, R-021). */
-export const ADDABLE_SYSTEMS: readonly string[] = ['Sage X3', 'SharePoint', 'SeeElectrical', 'SolidWorks 3DX', 'TIA Portal'];
-/** Frequencies offered by "Add connector". */
-export const CONNECTOR_FREQUENCIES: readonly string[] = ['Real time', 'Hourly', 'Daily', 'Manual'];
 
 export interface ConnectorRow {
   name: string;
@@ -112,6 +110,7 @@ async function cursusState() {
  * real link of each one (R-021); retired connectors (Lucca) are left out.
  */
 export async function listConnectors(): Promise<ConnectorRow[]> {
+  await ensureConnectorsFileApplied();
   const db = await getDb();
   const [rows, vigie, cursus] = await Promise.all([db.select().from(connectors).orderBy(asc(connectors.position)), vigieState(), cursusState()]);
   return rows.filter((c) => !isRetiredConnector(c.name)).map((c) => {
@@ -165,6 +164,7 @@ export class ConnectorDisabledError extends Error {
  */
 export async function syncConnector(name: string, actor: Actor): Promise<{ ok: boolean; volume: string; error: string | null; simulated: boolean }> {
   requireWorkspace('plumbing', actor, 'Activity & integrations');
+  await ensureConnectorsFileApplied();
   const db = await getDb();
   const [c] = await db.select().from(connectors).where(eq(connectors.name, name));
   if (!c || isRetiredConnector(c.name)) throw new Error(`Unknown connector ${name}`);
@@ -217,38 +217,6 @@ export async function syncConnector(name: string, actor: Actor): Promise<{ ok: b
     });
   });
   return { ok, volume, error, simulated };
-}
-
-export interface NewConnectorInput {
-  system: string;
-  direction: ConnectorDirection;
-  frequency: string;
-  owner?: string | null;
-}
-
-/**
- * "Add connector" (AF.plumbing): listed at once (the prototype only toasted). R-021: no connector code exists behind it, so the
- * row is "Not connected" until IT builds the connector (D-7a).
- */
-export async function addConnector(input: NewConnectorInput, actor: Actor): Promise<void> {
-  requireWorkspace('plumbing', actor, 'Activity & integrations');
-  const system = requiredText(input.system, 'System', 80);
-  if (!connectorDirection.isCode(input.direction)) throw new Error('Invalid direction');
-  if (!CONNECTOR_FREQUENCIES.includes(input.frequency)) throw new Error('Invalid frequency');
-  const db = await getDb();
-  await db.transaction(async (tx) => {
-    const all = await tx.select({ name: connectors.name, position: connectors.position }).from(connectors);
-    if (all.some((c) => c.name.toLowerCase() === system.toLowerCase())) throw new Error(`${system} is already listed`);
-    const owner = (input.owner ?? '').trim().slice(0, 120) || null;
-    await tx.insert(connectors).values({
-      name: system, kind: 'static', dataScope: '', frequency: input.frequency, direction: input.direction, status: 'ready', lastSyncAt: null, lastVolume: '',
-      ownerName: owner, addedInKeystone: true, position: all.reduce((m, c) => Math.max(m, c.position + 1), 0),
-    });
-    await trace(tx, await whoIs(tx, actor), {
-      objectRef: `Connector ${system}`, change: `added · ${connectorDirection.label(input.direction)} · ${input.frequency}${owner ? ` · ${owner}` : ''}`, area: 'Integrations',
-      activity: { text: `Connector ${system} added · not connected yet`, kind: 'sync' },
-    });
-  });
 }
 
 /** Import / export formats (IMPORTS order). */

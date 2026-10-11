@@ -14,10 +14,10 @@ import { bomHref, parseBomState } from '@/features/bom/links';
 import { bomScreenView } from '@/features/bom/model';
 import { PartDrawer } from '@/features/plm/part-drawer';
 import { getBomActivityOptions, getBomScreen } from '@/server/dal/bom-screen';
-import { projectLabel } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { canSeeSupplierPrices } from '@/domain/rights';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 
@@ -39,7 +39,7 @@ export default async function BomPage({ params, searchParams }: { params: Promis
     canEdit && activities ? (
       <AddArticleButton
         code={projectCode}
-        context={t(projectLabel(ctx.project))}
+        context={projectLabelText(ctx.project, lang)}
         form={localizeBomForm(bomFormDef(activities), t)}
       />
     ) : undefined;

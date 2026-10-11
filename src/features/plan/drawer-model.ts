@@ -11,6 +11,7 @@ import type { PlanOwner, PlanRequest, PlanTodo } from '@/server/dal/plan';
 import { durationChangeText } from '@/domain/change-activities';
 import type { ChangeStatus } from '@/server/db/codes';
 import { awaitingApprovalText, baselineFinishKey, changesPendingText, daysText, forecastOverText, planT, rescheduleProposedText, todoCountText } from './i18n';
+import { dataText } from '@/i18n/data-text';
 
 export interface DrawerResourceInput {
   resource: string;
@@ -148,13 +149,13 @@ export function activityDrawerView(input: DrawerInput, baseT: T, lang: Lang): Dr
     .filter(([id]) => byId.has(id))
     .map(([id, type, lag], i) => ({
       id,
-      name: t(byId.get(id)!.name),
+      name: dataText(byId.get(id)!.name, lang),
       rel: daysText(relText(type, lag), lang) + (isDriving(id, i) ? ' · ' + t('driving') : ''),
       tone: isDriving(id, i) ? 'driving' : 'normal',
     }));
   const succs: DrawerLine[] = successorsOf(a.id, activities).map(({ act, type, lag }) => {
     const sf = effectiveFloat(act);
-    return { id: act.id, name: t(act.name), rel: daysText(relText(type, lag), lang), tone: sf != null && sf < 0 ? 'lo' : 'normal' };
+    return { id: act.id, name: dataText(act.name, lang), rel: daysText(relText(type, lag), lang), tone: sf != null && sf < 0 ? 'lo' : 'normal' };
   });
 
   const res = input.assignments.length
@@ -184,7 +185,7 @@ export function activityDrawerView(input: DrawerInput, baseT: T, lang: Lang): Dr
   const aTodos = input.todos.filter((x) => x.act === a.id);
   const todos: DrawerTodo[] = aTodos.map((x) => ({
     id: x.id,
-    title: t(x.title),
+    title: dataText(x.title, lang),
     meta: t(`${x.person.split(' ')[0]} · ${dueText(x.status, x.due)} · ${TODO_STATUS_LABEL[x.status]}`),
     done: x.status === 'done',
     initials: initials(x.person),
@@ -195,7 +196,7 @@ export function activityDrawerView(input: DrawerInput, baseT: T, lang: Lang): Dr
     .filter((r) => r.act === a.id && (r.status === 'pending' || r.status === 'reschedule'))
     .map((r) => ({
       id: r.id,
-      title: t(r.title),
+      title: dataText(r.title, lang),
       meta:
         r.person +
         ' · ' +
@@ -207,7 +208,8 @@ export function activityDrawerView(input: DrawerInput, baseT: T, lang: Lang): Dr
   const status = drawerStatus(a.pct);
   return {
     id: a.id,
-    name: t(a.name),
+    // R-148: activity, to-do and request titles as typed (or their seeded demo entry).
+    name: dataText(a.name, lang),
     status: { label: t(status.label), className: status.className },
     general,
     calendar: {

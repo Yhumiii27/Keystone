@@ -136,7 +136,8 @@ describe('global search (docs/spec/01 §5.4)', () => {
   it('kinds, limits and deep links', async () => {
     expect(await searchShell('w', 'HLT-026')).toEqual([]);
     const people = (await searchShell('wagner', 'HLT-026')).filter((h) => h.kind === 'Person');
-    expect(people).toEqual([{ kind: 'Person', title: 'Julien Wagner', sub: 'Structural engineer', href: '/resources' }]);
+    // R-148: the job title is data (shown as typed in the hit's sub-line).
+    expect(people).toEqual([{ kind: 'Person', title: 'Julien Wagner', sub: 'Structural engineer', subData: ['Structural engineer'], href: '/resources' }]);
     // Only the resource pool (PEOPLE) is searchable: personas outside it give no Person hit.
     expect((await searchShell('aubert', 'HLT-026')).filter((h) => h.kind === 'Person')).toEqual([]);
     const cr = (await searchShell('cr-008', 'HLT-026')).find((h) => h.kind === 'Change request');
@@ -219,7 +220,7 @@ describe('Delivery 4 badges and search follow the database (docs/spec/01 §4.4, 
   it('search reads parts and purchase orders from their modules', async () => {
     await createPart({ ref: 'ME-GBX-91', name: 'Gearbox 91 kW', family: 'mechanical', supplier: 'Flender', priceEur: 8400, unit: 'pc' }, 'Antoine Girard');
     const part = (await searchShell('gbx-91', 'HLT-026')).filter((h) => h.kind === 'Part');
-    expect(part).toEqual([{ kind: 'Part', title: 'ME-GBX-91 · Gearbox 91 kW', sub: 'Flender · Not validated', href: '/reference/parts?part=ME-GBX-91' }]);
+    expect(part).toEqual([{ kind: 'Part', title: 'ME-GBX-91 · Gearbox 91 kW', sub: 'Flender · Not validated', subData: ['Flender'], href: '/reference/parts?part=ME-GBX-91' }]);
     const smoke = (await searchShell('smoke', 'HLT-026')).filter((h) => h.kind === 'Part').map((h) => [h.title, h.sub]);
     expect(smoke[0]).toEqual(['FD-DET-OPT · Optical smoke detector', 'Cotswold Fire Systems · Outdated']);
     const po = (await searchShell('po-1082', 'HLT-026')).filter((h) => h.kind === 'Purchase order');

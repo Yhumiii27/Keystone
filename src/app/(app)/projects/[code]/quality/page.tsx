@@ -23,13 +23,13 @@ import { NewDeliverableButton } from '@/features/quality/quality-buttons';
 import { dlvDrawerView, dlvTabView, ncrDrawerView, ncrTabView, qualitySegView, type QualityState, type QualityViewerCtx } from '@/features/quality/model';
 import { QualityView } from '@/features/quality/quality-view';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
-import { projectLabel } from '@/server/dal/projects';
 import { deliverableWbsOptions, listDeliverableTypes } from '@/server/dal/quality';
 import { getQualityScreen } from '@/server/dal/quality-screen';
 import { teamOwnerOptions } from '@/server/dal/team';
 import { vigieReportNcrUrl } from '@/server/integrations/vigie/links';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -64,7 +64,7 @@ export default async function QualityPage({ params, searchParams }: { params: Pr
   };
 
   const input = { code: projectCode, state, viewer };
-  const context = t(projectLabel(ctx.project));
+  const context = projectLabelText(ctx.project, lang);
   // R-115 (Q-3b): on the deliverables register, the project's manager (and the director) adds deliverables.
   const creates = tab === 'dlv' && viewer.canEdit && DELIVERABLE_CREATOR_ROLES.includes(ctx.viewer.role) && ctx.isLead;
   let primary;

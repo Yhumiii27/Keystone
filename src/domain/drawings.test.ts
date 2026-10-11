@@ -5,20 +5,23 @@ import { describe, expect, it } from 'vitest';
 import PROTO from '@/server/prototype/prototype-data.json';
 import GOLD from '@/features/eco/eco.golden.json';
 import { drawingState } from '@/server/db/codes';
+import * as DRAWINGS from './drawings';
 import { drawingChips, drawingFilterOf, drawingKpis, drawingStateTag, filterDrawings, revisionHistory, vaultCountText, vaultSyncDayText } from './drawings';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const G = (GOLD as any).en.drawings;
 const ROWS = ((PROTO as any).DRAWINGS as { no: string; title: string; part: string; rev: string; state: string; date: string; eco: string }[]).map((d) => ({
-  number: d.no, title: d.title, partRef: d.part, state: drawingState.code(d.state), rev: d.rev, date: d.date, eco: d.eco,
+  number: d.no, title: d.title, partRef: d.part, state: drawingState.code(d.state), rev: d.rev, date: d.date, eco: d.eco, ecoNumber: d.eco || null,
 }));
 
 describe('drawings register (dwgKpis, dwgChips, dwgRows — 4371–4377)', () => {
   it('KPI tiles with the PDM sync record (1 248 drawings, last sync 07:40)', () => {
     // A run on the data date (25 Sep 07:40 Paris) reads "today", as the prototype printed it.
     const sync = { drawingsInVault: 1248, linkedDrawings: 13, time: '07:40', syncedAt: '2026-09-25T05:40:00.000Z' };
+    // R-169 (A-12): the "Obsolete still referenced" sub names the ECO of the obsolete drawing (DWG-MC-0031 · ECO-2026-012)
+    // instead of the prototype's constant "Superseded by rev 2"; the other tiles are the prototype's.
     expect(drawingKpis(ROWS, sync, '2026-09-25').map((k) => ({ label: k.label, value: k.value, sub: k.sub, color: k.lo ? 'var(--color-accent-300)' : 'var(--color-text)' })))
-      .toEqual(G.kpis.map((k: any) => ({ ...k, value: String(k.value) })));
+      .toEqual(G.kpis.map((k: any) => ({ ...k, value: String(k.value), sub: k.sub === 'Superseded by rev 2' ? 'Superseded · ECO-2026-012' : k.sub })));
     expect(drawingKpis([], null).map((k) => k.value)).toEqual(['—', '0', '0', '0', '—']);
     expect([vaultCountText(1248), vaultCountText(12), vaultCountText(1234567)]).toEqual(['1 248', '12', '1 234 567']);
   });
@@ -48,5 +51,14 @@ describe('drawings register (dwgKpis, dwgChips, dwgRows — 4371–4377)', () =>
       const hist = revisionHistory(letters.map((r, i) => ({ revision: r, isCurrent: i === 0, dateText: d.date, ecoNumber: i === 0 ? d.eco || null : null })));
       expect(hist).toEqual(G.drawers[d.number].hist);
     }
+  });
+});
+
+describe('R-169 — "Obsolete still referenced" sub-line from the data', () => {
+  it('names the ECOs of the obsolete drawings, else says what is known', () => {
+    const { obsoleteSub } = DRAWINGS;
+    expect(obsoleteSub([{ state: 'released', ecoNumber: 'ECO-1' }])).toBe('Nothing to withdraw');
+    expect(obsoleteSub([{ state: 'obsolete', ecoNumber: null }])).toBe('Superseded revision');
+    expect(obsoleteSub([{ state: 'obsolete', ecoNumber: 'ECO-2' }, { state: 'obsolete', ecoNumber: 'ECO-1' }, { state: 'obsolete', ecoNumber: 'ECO-2' }])).toBe('Superseded · ECO-2, ECO-1');
   });
 });

@@ -9,16 +9,17 @@ import { FlexRow, SectionCard } from '@/components/app/SectionCard';
 import { LO, OK } from '@/components/app/tones';
 import { cx } from '@/components/ds/cx';
 import { filterBySkill, levelDots, levelTone, skillCoverage, skillKpis, type LevelTone } from '@/domain/hr';
-import type { T } from '@/i18n/translate';
+import type { Lang, T } from '@/i18n/translate';
 import type { SkillsMatrix } from '@/server/dal/hr';
 import s from './hr.module.css';
+import { dataText } from '@/i18n/data-text';
 
 const DOT: Record<LevelTone, string | undefined> = { 'accent-400': s.lv4, 'accent-600': s.lv3, 'accent-800': s.lv2, 'neutral-800': s.lv1, none: undefined };
 
 /** `?filter=` link of a chip (null = "Everyone"). */
 export const skillFilterHref = (base: string, skill: number | null) => (skill == null ? base : `${base}?filter=${skill}`);
 
-export function SkillsView({ data, filter, base, t, expertRequests }: { data: SkillsMatrix; filter: number | null; base: string; t: T; /** Chapter 4 (A-12): computed "Open requests needing level ≥4" (domain/resources requestsNeedingExperts). */ expertRequests?: { count: number; skills: string[] } }) {
+export function SkillsView({ data, filter, base, t, lang, expertRequests }: { data: SkillsMatrix; filter: number | null; base: string; t: T; lang: Lang; /** Chapter 4 (A-12): computed "Open requests needing level ≥4" (domain/resources requestsNeedingExperts). */ expertRequests?: { count: number; skills: string[] } }) {
   const names = data.skills.map((x) => x.name);
   const coverage = skillCoverage(names, data.people);
   const k = skillKpis(coverage, data.people.filter((p) => p.certifications.length > 0).length);
@@ -87,7 +88,7 @@ export function SkillsView({ data, filter, base, t, expertRequests }: { data: Sk
         <SectionCard flex="1 1 260px" gap={6} title={t('Coverage')} subtitle={t('Experts = level 4–5 · flagged under 2')}>
           {coverage.map((c) => (
             <div key={c.name} className={s.coverageRow}>
-              <span>{t(c.name)}</span>
+              <span>{dataText(c.name, lang)}</span>
               <span className={cx(s.coverageText, c.gap && s.lo)}>{t(c.text)}</span>
             </div>
           ))}

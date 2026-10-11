@@ -20,6 +20,7 @@ import { formatsOf, getExportProvider } from './registry';
 import type { ExportContext, ExportFile, PdfDocument } from './types';
 import { toXlsx } from './xlsx';
 import './providers';
+import { dataText } from '@/i18n/data-text';
 
 /** Refusal with the HTTP status the route returns; `message` is an EN source sentence. */
 export class ExportError extends Error {
@@ -128,7 +129,7 @@ export async function runExport(ctx: ExportContext, format: ExportFormat, opts: 
     return { format, fileName: exportFileName(base, ctx, 'csv'), mime: MIME.csv, body, rowCount: wb.sheets[0].rows.length };
   }
   const body = await toXlsx(wb, {
-    lang: ctx.lang, labels: xlsxLabels(ctx.t), project: ctx.project ? `${ctx.project.code} · ${ctx.t(ctx.project.name)}` : null, exportedBy: ctx.viewer.name,
+    lang: ctx.lang, labels: xlsxLabels(ctx.t), project: ctx.project ? `${ctx.project.code} · ${dataText(ctx.project.name, ctx.lang)}` : null, exportedBy: ctx.viewer.name,
     exportedOn: ctx.now,
   });
   return { format, fileName: exportFileName(base, ctx, 'xlsx'), mime: MIME.xlsx, body, rowCount: wb.sheets.reduce((n, s) => n + s.rows.length, 0) };

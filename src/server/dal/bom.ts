@@ -14,8 +14,8 @@ import 'server-only';
 // src/domain/bom.ts, golden-tested against the prototype.
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import {
-  ORDERED_PO_STATUSES, assemblyPaths, assemblyRows, bomSummary, bomUnitPrice, buildAssembly, diffCostDelta, diffNewRef, isValuedByComponents, orderedUnitPrice,
-  pathQuantity, resolvePartQuery, systemQuantity, type AssemblyLink, type AssemblyNode, type BomPriceSource,
+  ORDERED_PO_STATUSES, assemblyPaths, assemblyRows, bomSummary, bomUnitPrice, buildAssembly, defaultWhereUsedRef, diffCostDelta, diffNewRef, isValuedByComponents,
+  orderedUnitPrice, pathQuantity, resolvePartQuery, systemQuantity, type AssemblyLink, type AssemblyNode, type BomPriceSource,
 } from '@/domain/bom';
 import { getDb } from '@/server/db/client';
 import { bomScope, revisionDiffKind, stage as stageCodec, type BomScope, type PartStatus, type RevisionDiffKind, type StageCode, type WearSpare } from '@/server/db/codes';
@@ -215,9 +215,13 @@ export async function getProjectAssembly(projectCode: string): Promise<ProjectAs
 
 // ── Where-used ─────────────────────────────────────────────────────────────────────────────────────────
 
-/** Part of the Where-used search (`usedPart` 4248): exact reference, else first ref / name containing the query, else CR-BRG-SKF. */
-export async function resolveWhereUsedQuery(query: string): Promise<string> {
-  const part = resolvePartQuery(await listParts(), query);
+/**
+ * Part of the Where-used search (`usedPart` 4248): exact reference, else first ref / name containing the query, else the
+ * part of the project used by the most projects (R-169, `defaultWhereUsedRef`; the prototype's constant was CR-BRG-SKF).
+ */
+export async function resolveWhereUsedQuery(query: string, projectCode: string | null = null): Promise<string> {
+  const all = await listParts();
+  const part = resolvePartQuery(all, query, defaultWhereUsedRef(all, projectCode));
   if (!part) throw new Error('The parts catalogue is empty');
   return part.ref;
 }

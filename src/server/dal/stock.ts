@@ -12,14 +12,13 @@ import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import { movementValueEur, planStockMovement, planX3Import, type MovementPlan } from '@/domain/stock';
 import { getDb } from '@/server/db/client';
 import {
-  STATUS_ISO, isoOfDisplayDate, locationType, parisInstant, parisParts, stampText, stockMoveInstant, stockMovementType, stockOperation, stockSource,
+  STATUS_ISO, locationType, parisInstant, parisParts, stampText, stockMoveInstant, stockMovementType, stockOperation, stockSource,
   type LocationType, type StockMovementType, type StockOperation, type StockSource,
 } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
 import { activities, parts, partLastPrices, projects, stockMovements, stockPositions, storageLocations, wbsNodes, x3SyncRuns } from '@/server/db/schema';
-import { X3_LAST_IMPORT } from '@/server/db/seed/stock';
-import { PROTO } from '@/server/prototype';
 import type { DB, Tx } from '@/server/db/types';
+import { X3_LAST_IMPORT, x3StockSnapshot } from '@/server/integrations/x3/prototype-snapshot';
 
 type Q = DB | Tx;
 
@@ -378,17 +377,7 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
 /** Instant of the X3 snapshot the database was seeded with (STOCK0 imported at 07:15 on the status date). */
 export const X3_SNAPSHOT_AT = parisInstant(STATUS_ISO, X3_LAST_IMPORT);
 
-interface ProtoStockLine { ref: string; loc: string; onHand: number; reserved: number; proj: string; min: number; last: string }
-
-/**
- * Stock positions as Sage X3 reports them. TODO(db): no X3 connector yet — the mock returns the prototype's snapshot
- * (STOCK0 3475, the data the database was seeded from), with reservations keyed by the 3-letter project code.
- */
-function x3StockSnapshot(): { ref: string; location: string; onHand: number; reserved: number; projectShort: string; minQty: number; lastMovementOn: string }[] {
-  return (PROTO.STOCK0 as ProtoStockLine[]).map((r) => ({
-    ref: r.ref, location: r.loc, onHand: r.onHand, reserved: r.reserved, projectShort: r.proj, minQty: r.min, lastMovementOn: isoOfDisplayDate(r.last)!,
-  }));
-}
+// Stock positions as Sage X3 reports them: the X3 mock connector (src/server/integrations/x3), until the X3 extracts.
 
 export interface X3ImportResult {
   /** "14:37" (Paris). */

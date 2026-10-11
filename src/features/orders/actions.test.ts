@@ -83,7 +83,9 @@ describe('purchase orders Server Functions', () => {
     // Each draft's drawer: the prototype's rows, plus the Sage X3 local-change flag (drafted in Keystone).
     for (const d of g.draftPOs as any[]) {
       const dr = (await view('en', d.id)).drawer!;
-      expect(dr.meta.slice(0, 5).map((m) => [m.k, m.v])).toEqual(g.drawers[d.id].meta.map((m: any) => [m.k, m.v]));
+      // R-169: a shortfall draft has no terms yet ("To be agreed"; the prototype wrote "Site gate 2 · DAP · Net 30").
+      const terms = (m: any) => (m.k === 'Delivery / terms' ? 'To be agreed' : m.v);
+      expect(dr.meta.slice(0, 5).map((m) => [m.k, m.v])).toEqual(g.drawers[d.id].meta.map((m: any) => [m.k, terms(m)]));
       expect(dr.meta.slice(5).map((m) => [m.k, m.v, m.color])).toEqual([['Sage X3', 'Local change · not yet pushed to X3', 'var(--color-accent-300)']]);
       expect(dr.canPush).toBe(false); // not approved yet
     }

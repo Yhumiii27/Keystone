@@ -15,10 +15,10 @@ import { getLaborCost, getProjectTeam, getRebalancingSuggestions, getResourcePoo
 import { canManageTeam } from '@/domain/rights';
 import { ProjectTeamCard } from '@/features/team/project-team';
 import { getNamedTeam, teamCandidates } from '@/server/dal/project-team';
-import { projectLabel } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { myWorkAccess } from '@/server/dal/mywork-data';
+import { projectLabelText } from '@/i18n/data-text';
 
 export default async function ProjectResourcesPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -63,8 +63,8 @@ export default async function ProjectResourcesPage({ params }: { params: Promise
         projectCode={p.code}
         primary={canEdit ? <NewRequestButton label="Request resource" projectCode={p.code} /> : undefined}
       />
-      <ResourcesView view={view} t={t} projectName={`${p.displayId} · ${t(p.name)}`} canEdit={canEdit} />
-      <ProjectTeamCard code={p.code} context={t(projectLabel(p))} members={named} candidates={candidates} t={t} />
+      <ResourcesView view={view} t={t} projectName={projectLabelText(p, lang)} canEdit={canEdit} />
+      <ProjectTeamCard code={p.code} context={projectLabelText(p, lang)} members={named} candidates={candidates} t={t} />
     </>
   );
 }

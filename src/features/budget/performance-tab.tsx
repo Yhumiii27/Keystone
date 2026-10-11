@@ -11,6 +11,7 @@ import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import type { CostControl } from '@/server/dal/cost';
 import s from './budget.module.css';
+import { dataText } from '@/i18n/data-text';
 
 export interface PerformanceTabProps {
   cost: CostControl;
@@ -139,7 +140,7 @@ export function PerformanceTab({ cost, core, offer, profileText, setupHref, lang
               const v = c.budget - c.forecast;
               return (
                 <tr key={c.code}>
-                  <Td className={s.strong}>{t(c.name)}</Td>
+                  <Td className={s.strong}>{dataText(c.name, lang)}</Td>
                   <Td align="right" numeric>
                     {f(c.budget)}
                   </Td>

@@ -10,6 +10,7 @@ import { getInterfacesScreen, getStakeholdersScreen } from '@/server/dal/team';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook, PdfBlock, PdfDocument } from '../types';
 import { col, compact, isoOf, param, projectRef, sheet } from './common';
+import { dataText } from '@/i18n/data-text';
 
 // ── Meetings ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 const LINE_LABEL: Record<string, string> = { info: 'Info', decision: 'Decision', action: 'Action' };
@@ -19,12 +20,12 @@ function lineSheets(ctx: ExportContext, ms: MeetingRow[]): { decisions: ExportSh
   const lines = ms.flatMap((m) => m.agenda.flatMap((p) => p.lines.map((l) => ({ m, p, l }))));
   return {
     decisions: sheet(t('Decisions'), [col('meeting', t('Meeting'), 'text', 10), col('date', t('Date'), 'date'), col('point', t('Agenda point'), 'text', 30), col('text', t('Decision'), 'text', 70)],
-      lines.filter((x) => x.l.type === 'decision').map(({ m, p, l }) => ({ meeting: m.number, date: m.startsOn, point: t(p.title), text: t(l.text) }))),
+      lines.filter((x) => x.l.type === 'decision').map(({ m, p, l }) => ({ meeting: m.number, date: m.startsOn, point: dataText(p.title, ctx.lang), text: dataText(l.text, ctx.lang) }))),
     actions: sheet(t('Actions'), [
       col('meeting', t('Meeting'), 'text', 10), col('date', t('Date'), 'date'), col('text', t('Action'), 'text', 60), col('owner', t('Owner'), 'text', 18), col('due', t('Due'), 'date'),
       col('done', t('Done'), 'boolean'), col('overdue', t('Overdue'), 'boolean'), col('task', t('Task'), 'text', 9),
     ], lines.filter((x) => x.l.type === 'action').map(({ m, l }) => ({
-      meeting: m.number, date: m.startsOn, text: t(l.text), owner: l.ownerFull ?? l.owner ?? '', due: l.dueDate ?? isoOf(l.due), done: l.done, overdue: l.overdue, task: l.taskNumber ?? '',
+      meeting: m.number, date: m.startsOn, text: dataText(l.text, ctx.lang), owner: l.ownerFull ?? l.owner ?? '', due: l.dueDate ?? isoOf(l.due), done: l.done, overdue: l.overdue, task: l.taskNumber ?? '',
     }))),
   };
 }
@@ -43,14 +44,14 @@ async function meetingsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | nu
     col('organizer', t('Organizer'), 'text', 16), col('status', t('Status'), 'text', 18), col('minutes', t('Minutes'), 'text', 14), col('sent', t('Minutes sent'), 'date'),
     col('participants', t('Participants'), 'integer'), col('actions', t('Actions'), 'integer'),
   ], shown.map((m) => ({
-    number: m.number, date: m.startsOn, time: m.time, duration: m.durationMin, title: t(m.title), series: t(m.seriesLabel), type: t(m.typeLabel), location: t(m.location),
+    number: m.number, date: m.startsOn, time: m.time, duration: m.durationMin, title: dataText(m.title, ctx.lang), series: t(m.seriesLabel), type: t(m.typeLabel), location: dataText(m.location, ctx.lang),
     organizer: m.organizer, status: t(m.statusLabel), minutes: m.minutesNumber ?? '', sent: m.minutesSentOn, participants: m.participants.length, actions: m.actionCount,
   })));
   const { decisions, actions } = lineSheets(ctx, data.meetings);
   const questions = sheet(t('Client questions'), [
     col('text', t('Question'), 'text', 60), col('askedBy', t('Asked by'), 'text', 18), col('department', t('Department'), 'text', 18), col('owner', t('Owner'), 'text', 16),
     col('state', t('Status'), 'text', 10), col('answer', t('Answer'), 'text', 60),
-  ], data.questions.map((q) => ({ text: t(q.text), askedBy: q.askedBy, department: t(q.department), owner: q.owner, state: t(q.state === 'open' ? 'Open' : 'Answered'), answer: q.answer ? t(q.answer) : '' })));
+  ], data.questions.map((q) => ({ text: dataText(q.text, ctx.lang), askedBy: q.askedBy, department: t(q.department), owner: q.owner, state: t(q.state === 'open' ? 'Open' : 'Answered'), answer: q.answer ? dataText(q.answer, ctx.lang) : '' })));
   const order = view === 'decisions' ? [decisions, register, actions] : view === 'actions' ? [actions, register, decisions] : [register, decisions, actions];
   return {
     title: t('Meetings & minutes'),
@@ -68,7 +69,7 @@ async function minutesDocument(ctx: ExportContext): Promise<PdfDocument | null> 
   if (!m) return null;
   const blocks: PdfBlock[] = [
     { kind: 'fields', columns: 3, items: [
-      [t('Date'), `${t(m.dateText)} · ${m.time}`], [t('Duration'), t(m.durationText)], [t('Location'), t(m.location)], [t('Organizer'), m.organizer],
+      [t('Date'), `${t(m.dateText)} · ${m.time}`], [t('Duration'), t(m.durationText)], [t('Location'), dataText(m.location, ctx.lang)], [t('Organizer'), m.organizer],
       [t('Type'), t(m.typeLabel)], [t('Status'), t(m.statusLabel)],
     ] },
     { kind: 'heading', text: t('Participants') },
@@ -76,13 +77,13 @@ async function minutesDocument(ctx: ExportContext): Promise<PdfDocument | null> 
       m.participants.map((p) => ({ name: p.name, present: p.present, read: p.readOn }))) },
   ];
   for (const p of m.agenda) {
-    blocks.push({ kind: 'heading', text: `${p.position + 1}. ${t(p.title)}` });
+    blocks.push({ kind: 'heading', text: `${p.position + 1}. ${dataText(p.title, ctx.lang)}` });
     if (!p.lines.length) blocks.push({ kind: 'paragraph', text: t('No note recorded'), muted: true });
     else blocks.push({ kind: 'table', sheet: sheet(t('Lines'), [col('type', t('Type'), 'text', 10), col('text', t('Note'), 'text', 60), col('owner', t('Owner'), 'text', 16), col('due', t('Due'), 'date', 12)],
-      p.lines.map((l) => ({ type: t(LINE_LABEL[l.type] ?? l.type), text: t(l.text), owner: l.ownerFull ?? l.owner ?? '', due: l.dueDate ?? isoOf(l.due) }))) });
+      p.lines.map((l) => ({ type: t(LINE_LABEL[l.type] ?? l.type), text: dataText(l.text, ctx.lang), owner: l.ownerFull ?? l.owner ?? '', due: l.dueDate ?? isoOf(l.due) }))) });
   }
   return {
-    title: `${t('Minutes')} · ${t(m.title)}`,
+    title: `${t('Minutes')} · ${dataText(m.title, ctx.lang)}`,
     subtitle: `${m.number}${m.minutesNumber ? ` · ${m.minutesNumber}` : ''}`,
     project: projectRef(ctx),
     reference: m.minutesNumber ?? m.number,
@@ -105,8 +106,8 @@ async function stakeholdersWorkbook(ctx: ExportContext): Promise<ExportWorkbook 
       col('owner', t('Relationship owner'), 'text', 16), col('last', t('Last contact'), 'date'), col('stale', t('No contact > 30 days'), 'boolean'), col('influence', t('Influence'), 'integer'),
       col('interest', t('Interest'), 'integer'), col('attitude', t('Attitude'), 'text', 12), col('email', t('E-mail'), 'text', 26), col('notes', t('Notes'), 'text', 40),
     ], stakeholders.map((s) => ({
-      name: s.name, organisation: t(s.organisation), role: t(s.role), type: t(s.typeLabel), owner: s.owner, last: s.lastContactOn, stale: s.stale, influence: s.influence,
-      interest: s.interest, attitude: t(s.attitude), email: s.contactEmail ?? '', notes: t(s.notes),
+      name: s.name, organisation: dataText(s.organisation, ctx.lang), role: dataText(s.role, ctx.lang), type: t(s.typeLabel), owner: s.owner, last: s.lastContactOn, stale: s.stale, influence: s.influence,
+      interest: s.interest, attitude: t(s.attitude), email: s.contactEmail ?? '', notes: dataText(s.notes, ctx.lang),
     }))),
   ];
   if (raci) {
@@ -131,7 +132,7 @@ async function interfacesWorkbook(ctx: ExportContext): Promise<ExportWorkbook | 
         col('data', t('Data expected'), 'text', 36), col('needed', t('Needed by'), 'date'), col('days', t('Days to need'), 'integer'), col('provided', t('Provided on'), 'date'),
         col('status', t('Status'), 'text', 12), col('owner', t('Owner'), 'text', 14), col('blocking', t('Blocking commissioning'), 'boolean'),
       ], data.interfaces.map((i) => ({
-        number: i.number, title: t(i.title), side: t(i.keystoneSideLabel), party: t(i.otherParty), data: t(i.dataExpected), needed: i.neededBy, days: i.daysToNeed,
+        number: i.number, title: dataText(i.title, ctx.lang), side: t(i.keystoneSideLabel), party: dataText(i.otherParty, ctx.lang), data: dataText(i.dataExpected, ctx.lang), needed: i.neededBy, days: i.daysToNeed,
         provided: i.providedOn, status: t(i.statusLabel), owner: i.owner, blocking: blocking.has(i.number),
       }))),
     ],

@@ -25,8 +25,6 @@ export const CHANGE_TYPE_LABEL: Record<ChangeType, string> = { budget: 'Budget',
 export const CHANGE_STEP_LABEL: Record<ChangeStep, string> = {
   pm: 'Project manager', director: 'Portfolio director', client: 'Client / sponsor', ccb: 'Change control board',
 };
-/** The change control board has no persona (07 OQ2): its approver line is the meeting cadence. */
-export const CCB_APPROVER = 'Monthly · next 8 Oct';
 /** Drawer tag of a step decision. */
 export const STEP_DECISION_TAG: Record<StepDecision, string> = { ok: 'Approved', rejected: 'Rejected', na: 'Not required', pending: 'Pending' };
 
@@ -34,7 +32,7 @@ export interface ChainStep {
   step: ChangeStep;
   /** EN source label ("Portfolio director"). */
   label: string;
-  /** Who decides: the project PM, the portfolio director, the project's client contact; the CCB cadence. */
+  /** Who decides: the project PM, the portfolio director, the project's client contact; the director who records the CCB decision (P-6a). */
   approver: string | null;
   /** Null when the dataset has no chain for this CR (CR-005, only known from the Budget dataset). */
   decision: StepDecision | null;
@@ -115,7 +113,9 @@ async function chainApprovers(projectCode: string): Promise<Record<ChangeStep, s
     pm: p ? (p.pmFull ?? p.pmShort) : null,
     director: director ? (director.full ?? director.short) : null,
     client: client ? (client.full ?? client.short) : null,
-    ccb: CCB_APPROVER,
+    // P-6a: the portfolio director records the change control board's decision (R-169: the prototype printed the
+    // constant cadence "Monthly · next 8 Oct").
+    ccb: director ? (director.full ?? director.short) : null,
   };
 }
 

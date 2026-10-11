@@ -20,6 +20,7 @@ import {
 import golden from './register.golden.json';
 import { registerTitleText } from './i18n';
 import { buildRegisterModel, type RegisterModel, type RegisterRow } from './register-model';
+import { dataText } from '@/i18n/data-text';
 
 type GRow = (typeof golden)['en']['rows'][number];
 
@@ -84,7 +85,11 @@ function expectedRow(g: GRow, lang: Lang, en?: GRow): GRow {
   const gap = !!en && en.msName !== '—' && g.msName === en.msName;
   const msName = gap ? t(en.msName) : g.msName;
   const attention = gap ? g.attention.split(en.msName).join(msName) : g.attention;
-  return { ...g, metaLine, msName, attention, ...D7_ROWS[lang][g.code] } as GRow;
+  // R-148 (NEW-D1-2): the project name is shown as typed — its exact French entry as on every other screen, not the
+  // prototype's segment translation of "#032 · ERP Migration — Phase 2" (which left it English).
+  const at = (en ?? g).name.indexOf(' · ');
+  const name = lang === 'fr' && en ? `${en.name.slice(0, at)} · ${dataText(en.name.slice(at + 3), 'fr')}` : g.name;
+  return { ...g, name, metaLine, msName, attention, ...D7_ROWS[lang][g.code] } as GRow;
 }
 
 describe('Projects register', () => {

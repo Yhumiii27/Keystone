@@ -11,7 +11,7 @@ import golden from '@/features/bom/bom.golden.json';
 import {
   BOM_SORT_KEYS, DEFAULT_BOM_SORT, assemblyPaths, assemblyRows, bomLineTotal, bomShortfall, bomSummary, bomSupplierOptions, bomTypeOptions, bomUnitPrice, buildAssembly,
   diffCostDelta, diffNewRef, filterBomLines, filterSpares, groupBySupplier, isValuedByComponents, leafCount, nextBomSort, nodeCost, orderedQtyByRef,
-  parseNewBomLine, parseQuantity, pathQuantity, resolvePartQuery, rollupCost, sortBomLines, spareShortfall, spareSummary, systemQuantity,
+  defaultWhereUsedRef, parseNewBomLine, parseQuantity, pathQuantity, resolvePartQuery, rollupCost, sortBomLines, spareShortfall, spareSummary, systemQuantity,
   visibleAssemblyRows, type AssemblyLink, type BomSortKey,
 } from './bom';
 
@@ -160,8 +160,13 @@ describe('assembly tree (treeRows, nodeVals)', () => {
 
 describe('where-used, compare revisions, PU/PR list', () => {
   it('where-used: part resolution (default CR-BRG-SKF) and assembly paths with Π q per project', () => {
-    for (const [q, g] of Object.entries(EN.used as Record<string, any>)) {
-      const part = resolvePartQuery(P, q === '(default)' ? '' : q)!;
+    // R-169 (A-12): the fallback part is the project's part used by the most projects (EL-TRF-2MVA on HLT-026) instead of
+    // the prototype's constant CR-BRG-SKF; the fallback cases are compared with the prototype's values for that part.
+    const fallback = defaultWhereUsedRef(P.map((p) => ({ ref: p.ref, usage: Object.keys(p.usage ?? {}).map((k) => ({ projectCode: k })) })), 'HLT');
+    expect(fallback).toBe('EL-TRF-2MVA');
+    for (const [q, g0] of Object.entries(EN.used as Record<string, any>)) {
+      const g = g0.ref === 'CR-BRG-SKF' && q !== 'CR-BRG-SKF' ? EN.used['EL-TRF-2MVA'] : g0;
+      const part = resolvePartQuery(P, q === '(default)' ? '' : q, fallback)!;
       expect(part.ref, q).toBe(g.ref);
       const paths = assemblyPaths(root, part.ref).map((p) => ({ chain: p.slice(0, -1).map((x) => `${x.ref} ×${x.q}`).join('  ›  '), qty: `${n(pathQuantity(p))} per project`, leaf: part.ref }));
       expect(paths, q).toEqual(g.rows);

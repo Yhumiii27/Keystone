@@ -364,7 +364,7 @@ export function whereUsedView(state: BomState, w: NonNullable<BomScreenData['whe
     paths: w.paths.map((p) => ({ chain: p.chain.map((c) => `${c.ref} ×${c.qty}`).join('  ›  '), qty: perProjectText(p.perProject, lang) })),
     noPaths: w.paths.length ? null : t('Not part of an assembly in this project'),
     projectsTitle: t('Projects'),
-    projects: w.projects.map((p) => ({ code: p.code, name: t(p.name), qty: unitsText(p.quantity, lang), stage: { label: t(p.stageLabel), cls: TAG_CLASS[lifecycleTone(p.stage)] } })),
+    projects: w.projects.map((p) => ({ code: p.code, name: dataT(p.name, lang), qty: unitsText(p.quantity, lang), stage: { label: t(p.stageLabel), cls: TAG_CLASS[lifecycleTone(p.stage)] } })),
     ordersTitle: t('Purchase orders'),
     orders: w.purchaseOrders.map((o) => ({ number: o.number, text: `${o.supplier} · ${o.projectCode}`, status: t(o.statusLabel) })),
     noOrders: w.purchaseOrders.length ? null : t('No open order'),

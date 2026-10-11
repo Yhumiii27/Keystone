@@ -451,3 +451,39 @@
 .zoneName {
   color: var(--color-neutral-200);
 }
+
+/* ── Tablet layout (R-146; media queries = TABLET_MEDIA / TOUCH_MEDIA in ./tablet.ts) ── */
+@media (max-width: 1024px) {
+  .title {
+    font-size: 22px;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+  }
+
+  /* The search box may wrap to the left edge: its result panel opens to the right. */
+  .searchPanel {
+    left: 0;
+    right: auto;
+  }
+}
+
+/* Touch targets of 40 px (R-146) */
+@media (max-width: 1024px), (pointer: coarse) {
+  .pickBtn,
+  .pickOpt,
+  .hit,
+  .notif {
+    min-height: 40px;
+  }
+
+  .searchInput:global(.input),
+  .pickInput:global(.input) {
+    min-height: 40px;
+  }
+
+  .searchIcon {
+    top: 13px;
+  }
+}

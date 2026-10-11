@@ -10,6 +10,7 @@ import type { Lang, T } from '@/i18n/translate';
 import type { AttachmentKind } from '@/server/db/codes';
 import type { TaskDetail, TaskRow } from '@/server/dal/tasks';
 import { defaultDescription, freshTagText } from './i18n';
+import { dataText } from '@/i18n/data-text';
 
 /** URL of My work for a person (`?person=` only when it is not the viewer), keeping a view. */
 export function myWorkHref(opts: { person?: string | null; view?: string | null; week?: number | null } = {}): string {
@@ -64,7 +65,7 @@ export function workItemData(r: TaskRow, t: T, lang: Lang): WorkItemData {
   return {
     id: r.id,
     href: taskHref(r.id),
-    title: t(r.title),
+    title: dataText(r.title, lang),
     status: r.status,
     priority: r.priority,
     start: r.startDay ?? workingDayOf(r.start, 'up'),
@@ -128,7 +129,7 @@ export function taskSheetData(d: TaskDetail, backHref: string, t: T, lang: Lang,
   const a = d.activity;
   return {
     id: d.id,
-    title: t(d.title),
+    title: dataText(d.title, lang),
     status: d.status,
     pct: d.pct,
     priority: d.priority,
@@ -139,7 +140,7 @@ export function taskSheetData(d: TaskDetail, backHref: string, t: T, lang: Lang,
     labels: d.labels.map((l) => t(l)),
     project: t(projectShortOf(d.project)),
     defaultLogNote: 'Work on ' + d.title,
-    activity: a ? { label: `${a.code} · ${t(a.name)}`, href: activityPlanHref(d.project.code, a.code) } : null,
+    activity: a ? { label: `${a.code} · ${dataText(a.name, lang)}`, href: activityPlanHref(d.project.code, a.code) } : null,
     backHref,
     description: d.description ?? defaultDescription(a?.code ?? '—', a ? { code: a.code, name: a.name, wbs: a.wbs, packageName: a.packageName } : null, t, lang),
     checklist: d.checklistItems.map((c) => ({ position: c.position, text: c.text, done: c.done })),
@@ -154,8 +155,8 @@ export function taskSheetData(d: TaskDetail, backHref: string, t: T, lang: Lang,
     projectName: projectShortOf(d.project),
     plan: a
       ? {
-          activity: `${a.code} · ${t(a.name)}`,
-          workPackage: `${a.wbs}${a.packageName ? ' ' + t(a.packageName) : ''}`,
+          activity: `${a.code} · ${dataText(a.name, lang)}`,
+          workPackage: `${a.wbs}${a.packageName ? ' ' + dataText(a.packageName, lang) : ''}`,
           finish: t(withActual(a.finish, a.finishActual)),
           float: a.totalFloat,
           progress: a.pct,

@@ -8,10 +8,10 @@ import { DrawDownButton } from '@/features/risks/add-buttons';
 import { ContingencyView } from '@/features/risks/contingency-view';
 import { drawDownFormDef } from '@/features/risks/forms';
 import { contingencyView } from '@/features/risks/model';
-import { projectLabel } from '@/server/dal/projects';
 import { getContingencyScreen } from '@/server/dal/risks-screen';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { fieldsText, projectLabelText } from '@/i18n/data-text';
 
 export default async function ContingencyPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -23,9 +23,9 @@ export default async function ContingencyPage({ params }: { params: Promise<{ co
     ctx.canEdit('contingency') && data ? (
       <DrawDownButton
         code={projectCode}
-        context={t(projectLabel(ctx.project))}
-        // Option labels "CR-004 · Additional piling…" translated per segment (data titles), the form's own strings by FormDialog.
-        form={drawDownFormDef(data.links.map((l) => ({ ...l, label: l.label.split(' · ').map(t).join(' · ') })))}
+        context={projectLabelText(ctx.project, lang)}
+        // Option labels "CR-004 · Additional piling…": the record titles as typed (R-148), the form's own strings by FormDialog.
+        form={drawDownFormDef(data.links.map((l) => ({ ...l, label: fieldsText(l.label, t, lang) })))}
       />
     ) : undefined;
 

@@ -28,6 +28,7 @@ import { reportAudience, reportPeriod, reportSections, type ReportAudience, type
 import { scheduleView } from '@/domain/schedule-gantt';
 import type { ExportContext, PdfBlock, PdfDocument } from '../types';
 import { col, daysText, monthIso, param, projectRef, ratioText, sheet, todayIso } from './common';
+import { dataText } from '@/i18n/data-text';
 
 export interface StatusReportOptions {
   audience: ReportAudience;
@@ -69,7 +70,7 @@ export async function statusReportDocument(ctx: ExportContext, options: StatusRe
   const milestones = schedule && sv
     ? sheet(t('Milestones'), [col('name', t('Milestone'), 'text', 30), col('baseline', t('Baseline'), 'date', 12), col('forecast', t('Forecast'), 'date', 12), col('slip', t('Slip (d)'), 'integer', 8), col('status', t('Status'), 'text', 12)],
       schedule.milestones.map((m, i) => ({
-        name: t(m.name), baseline: monthIso(schedule.header.start + m.baselineMonth), forecast: monthIso(schedule.header.start + m.forecastMonth), slip: sv.milestones[i]?.slip ?? null, status: t(m.statusLabel),
+        name: dataText(m.name, ctx.lang), baseline: monthIso(schedule.header.start + m.baselineMonth), forecast: monthIso(schedule.header.start + m.forecastMonth), slip: sv.milestones[i]?.slip ?? null, status: t(m.statusLabel),
       })))
     : null;
 
@@ -152,13 +153,13 @@ export async function statusReportDocument(ctx: ExportContext, options: StatusRe
         ]);
         const top = (risks?.register.risks ?? []).filter((r) => r.status === 'open').sort((a, b) => b.score - a.score).slice(0, 5);
         if (top.length) blocks.push({ kind: 'heading', text: t('Top risks') }, { kind: 'table', sheet: sheet(t('Risk register'), [col('id', t('Risk'), 'text', 7), col('title', t('Title'), 'text', 40), col('score', t('Score'), 'integer', 7), col('owner', t('Owner'), 'text', 16), col('emv', 'EMV', 'money_keur', 10)],
-          top.map((r) => ({ id: r.id, title: t(r.title), score: r.score, owner: r.owner ?? '', emv: r.emv || null }))) });
+          top.map((r) => ({ id: r.id, title: dataText(r.title, ctx.lang), score: r.score, owner: r.owner ?? '', emv: r.emv || null }))) });
         const open = cc ? withDerivedStatus(cc.changeRequests).filter((c) => c.status === 'in_review' || c.status === 'draft') : [];
         if (open.length) blocks.push({ kind: 'heading', text: t('Open change requests') }, { kind: 'table', sheet: sheet(t('Changes'), [col('id', t('Change'), 'text', 8), col('title', t('Title'), 'text', 40), col('amount', t('Amount'), 'money_keur', 10), col('days', t('Days'), 'integer', 7), col('status', t('Status'), 'text', 12)],
-          open.map((c) => ({ id: c.id, title: t(c.title), amount: c.amount, days: c.days, status: t(c.status === 'draft' ? 'Draft' : 'In review') }))) });
+          open.map((c) => ({ id: c.id, title: dataText(c.title, ctx.lang), amount: c.amount, days: c.days, status: t(c.status === 'draft' ? 'Draft' : 'In review') }))) });
         const waiting = dlvs.filter((d) => d.status === 'submitted' || d.status === 'rejected');
         if (waiting.length) blocks.push({ kind: 'heading', text: t('Deliverables awaiting the client') }, { kind: 'table', sheet: sheet(t('Deliverables'), [col('number', t('Deliverable'), 'text', 8), col('title', t('Title'), 'text', 40), col('status', t('Status'), 'text', 14), col('due', t('Acceptance due'), 'date', 12)],
-          waiting.map((d) => ({ number: d.number, title: t(d.title), status: t(d.statusLabel), due: d.acceptanceDueOn }))) });
+          waiting.map((d) => ({ number: d.number, title: dataText(d.title, ctx.lang), status: t(d.statusLabel), due: d.acceptanceDueOn }))) });
         // C-5: the internal report adds the resources assigned to the project.
         if (o.audience === 'internal') {
           blocks.push({ kind: 'heading', text: t('Assigned resources') });

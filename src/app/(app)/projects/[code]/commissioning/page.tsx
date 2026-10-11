@@ -15,10 +15,10 @@ import { commissioningScreenView } from '@/features/itpcom/model';
 import { shortName } from '@/lib/format';
 import { getCommissioning } from '@/server/dal/commissioning';
 import { listItpSystems, listPunchItems } from '@/server/dal/itp';
-import { projectLabel } from '@/server/dal/projects';
 import { getStakeholderRegister } from '@/server/dal/stakeholders';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 export default async function CommissioningPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -36,7 +36,7 @@ export default async function CommissioningPage({ params }: { params: Promise<{ 
       data ? data.systems.map((x) => x.name) : listItpSystems(projectCode),
     ]);
     const form = planSatFormDef(systems, { date: defaultSatDate(data?.systems[0]?.cells.find((c) => c.step === 'sat')?.dateOn ?? null), witnesses: clients.join(', ') });
-    primary = <ItpFormButton kind="sat" code={projectCode} label={t('Plan SAT')} context={t(projectLabel(ctx.project))} form={localizeForm(form, t, lang)} />;
+    primary = <ItpFormButton kind="sat" code={projectCode} label={t('Plan SAT')} context={projectLabelText(ctx.project, lang)} form={localizeForm(form, t, lang)} />;
   }
 
   return (

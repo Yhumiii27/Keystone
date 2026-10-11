@@ -3,28 +3,18 @@
 // ("2 lines · 98 unités", "1 ligne(s) · 180 units · part status issue", untranslated part-status warning), and both
 // languages get their singular forms ("1 order in total", "1 unit"). Quantities follow the language (the prototype
 // used the browser's locale).
-import FR_DICT_BASE from '@/i18n/fr-dict.json';
-import { EXTRA_FR } from '@/i18n/extra';
 import type { Lang, T } from '@/i18n/translate';
 import type { PartStatus } from '@/server/db/codes';
+import { dataText } from '@/i18n/data-text';
 
-const DICT: Record<string, string> = { ...(FR_DICT_BASE as Record<string, string>), ...EXTRA_FR };
-const exact = (s: string) => (Object.hasOwn(DICT, s) ? DICT[s] : s);
 const fr = (lang: Lang) => lang === 'fr';
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
 /**
- * Register data (supplier names, part names, delivery terms) in the viewer's language: exact dictionary matches only,
- * whole text then each " · " / " — " segment — never the month / day rules, which would rewrite names.
+ * Register data (names, descriptions, notes typed in Keystone or received): as typed, or a seeded string's exact
+ * dictionary entry — never segment by segment (R-148, NEW-D1-2: the shared helper, src/i18n/data-text.ts).
  */
-export function dataT(s: string, lang: Lang): string {
-  if (!fr(lang) || !s) return s;
-  if (Object.hasOwn(DICT, s)) return DICT[s];
-  return s
-    .split(/( · | — )/)
-    .map((p, i) => (i % 2 ? p : exact(p)))
-    .join('');
-}
+export const dataT = (s: string, lang: Lang): string => dataText(s, lang);
 
 /** Quantity with the language's grouping ("6,214" / "6 214"). */
 export const qtyText = (n: number, lang: Lang) => n.toLocaleString(fr(lang) ? 'fr-FR' : 'en-US');

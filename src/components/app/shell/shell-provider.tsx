@@ -2,11 +2,12 @@
 // Session-level client state of the shell, mounted once in the (app) layout so it survives page navigations:
 // notifications marked read in this session (docs/spec/01 §5.5 — optimistic overlay, per viewer role, of the
 // per-user read state the Server Functions persist), current/last project (from the URL, else the ks-project
-// cookie) and the project switcher scope (§5.2).
+// cookie), the project switcher scope (§5.2) and, on a tablet (R-146), whether the sidebar drawer is open.
 // The toast is the DS one (src/components/ds/Toast: useToast().showEn(english)), mounted by the layout.
 import { usePathname } from 'next/navigation';
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { codeFromPath } from './nav-model';
+import { navDrawerAfter } from './tablet';
 
 const NO_IDS: ReadonlySet<string> = new Set();
 
@@ -19,6 +20,9 @@ interface ShellCtx {
   markAllRead: (role: string, ids: string[]) => void;
   projScope: 'mine' | 'all';
   setProjScope: (v: 'mine' | 'all') => void;
+  /** Tablet layout (≤ 1024 px): the sidebar drawer is open. Closed again by any navigation to another path. */
+  navDrawer: boolean;
+  setNavDrawer: (open: boolean) => void;
 }
 
 const Ctx = createContext<ShellCtx | null>(null);
@@ -49,9 +53,16 @@ export function ShellProvider({ initialProject, projectCodes, children }: { init
 
   const [projScope, setProjScope] = useState<'mine' | 'all'>('mine');
 
+  // Sidebar drawer of the tablet layout: closed when the path changes (adjusted during render, as the last project).
+  const [drawer, setDrawer] = useState({ open: false, path: pathname });
+  const nextDrawer = navDrawerAfter(drawer, pathname);
+  if (nextDrawer !== drawer) setDrawer(nextDrawer);
+  const setNavDrawer = useCallback((open: boolean) => setDrawer((d) => (d.open === open ? d : { ...d, open })), []);
+  const navDrawer = nextDrawer.open;
+
   const value = useMemo(
-    () => ({ project, readNotifs, markRead, markAllRead, projScope, setProjScope }),
-    [project, readNotifs, markRead, markAllRead, projScope],
+    () => ({ project, readNotifs, markRead, markAllRead, projScope, setProjScope, navDrawer, setNavDrawer }),
+    [project, readNotifs, markRead, markAllRead, projScope, navDrawer, setNavDrawer],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

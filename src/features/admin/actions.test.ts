@@ -27,7 +27,7 @@ import { getMachineType } from '@/server/dal/mtypes';
 import { listAudit } from '@/server/dal/notifications';
 import { getHealthThresholds, getSettings } from '@/server/dal/settings';
 import {
-  addConnectorAction, addSettingsEntryAction, createMachineTypeAction, removeRexReferenceAction, removeSettingsEntryAction, resetSettingsAction,
+  addSettingsEntryAction, createMachineTypeAction, removeRexReferenceAction, removeSettingsEntryAction, resetSettingsAction,
   setHealthThresholdAction, setMachineTypeCostCategoriesAction, setMachineTypeItpSystemsAction, setMachineTypePhasesAction, syncConnectorAction,
   updateMachineTypeAction,
 } from './actions';
@@ -237,7 +237,6 @@ describe('Activity & integrations Server Functions and the audit export', () => 
     for (const role of ['depthead', 'member', 'englead', 'quality', 'procurement'] as RoleKey[]) {
       as(role);
       expect(await syncConnectorAction('Lucca')).toEqual({ error: 'Activity & integrations is read-only for you' });
-      expect(await addConnectorAction({ system: 'SharePoint', direction: 'import', freq: 'Daily', owner: '' })).toEqual({ error: 'Activity & integrations is read-only for you' });
       expect((await exportAudit(new Request('http://localhost/admin/integrations/audit.csv'))).status).toBe(403);
     }
     as('quality', 'fr');
@@ -273,25 +272,12 @@ describe('Activity & integrations Server Functions and the audit export', () => 
     expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
   });
 
-  it('"Add connector": the prototype\'s systems, frequencies and directions; listed at once; duplicates refused', async () => {
+  it('no "Add connector" Server Function any more (D-7a, R-020): connectors come from IT\'s connectors file', async () => {
+    const actions = await import('./actions');
+    expect('addConnectorAction' in actions).toBe(false);
+    // R-021: a listed connector without code behind it is not synchronised (the prototype simulated a run).
     as('director');
-    expect(await addConnectorAction({ system: 'Nope', direction: 'import', freq: 'Daily' })).toEqual({ error: 'Invalid request' });
-    expect(await addConnectorAction({ system: 'SharePoint', direction: 'up', freq: 'Daily' })).toEqual({ error: 'Invalid direction' });
-    expect(await addConnectorAction({ system: 'SharePoint', direction: 'import', freq: 'Weekly' })).toEqual({ error: 'Invalid frequency' });
-    // R-021: a listed connector is not necessarily connected — "already listed" (the prototype said "already connected").
-    expect(await addConnectorAction({ system: 'Sage X3', direction: 'import', freq: 'Daily' })).toEqual({ error: 'Sage X3 is already listed' });
-    // NEW-CURSUS-4: Lucca is no longer offered.
-    expect(await addConnectorAction({ system: 'Lucca', direction: 'import', freq: 'Daily' })).toEqual({ error: 'Invalid request' });
-    // R-021: no connector code exists behind an added row — it stays "Not connected" (the prototype toasted "first sync scheduled").
-    expect(await addConnectorAction({ system: 'SharePoint', direction: 'both', freq: 'Hourly', owner: ' IT · Paul ' })).toEqual({ ok: true, toast: 'Connector added · not connected until IT sets it up' });
-    expect((await listAdminConnectors()).at(-1)).toMatchObject({
-      name: 'SharePoint', link: 'none', state: 'not_connected', statusLabel: 'Not connected', canSync: false, lastSyncAt: null, lastVolume: '', direction: 'both', owner: 'IT · Paul', addedInKeystone: true,
-    });
-    expect(await syncConnectorAction('SharePoint')).toEqual({ error: 'SharePoint is not connected — nothing to synchronise' });
-    as('pm', 'fr');
-    expect(await addConnectorAction({ system: 'SharePoint', direction: 'import', freq: 'Daily' })).toEqual({ error: 'SharePoint figure déjà dans les connecteurs' });
-    expect(await addConnectorAction({ system: 'TIA Portal', direction: 'export', freq: 'Manual', owner: '' }))
-      .toEqual({ ok: true, toast: 'Connecteur ajouté · non connecté tant que l’informatique ne l’a pas mis en place' });
+    expect(await syncConnectorAction('Sage X3')).toEqual({ error: 'Sage X3 is not connected — nothing to synchronise' });
   });
 
   it('exports the audit trail as CSV (ISO 9001) for the director and the PM', async () => {

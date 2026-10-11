@@ -16,6 +16,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push() {}, replace() {},
 import { renderToStaticMarkup } from 'react-dom/server';
 import GOLDEN from '@/domain/site.golden.json';
 import { I18nProvider } from '@/i18n/client';
+import { fieldsText } from '@/i18n/data-text';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
@@ -49,6 +50,13 @@ async function view(lang: Lang, code = 'HLT-026', tab: SiteTab = 'ready') {
   return { data, t, v: siteView(code, data, { tab }, t, lang) };
 }
 
+/**
+ * R-148 (NEW-D1-2): a prerequisite's evidence is typed text — its date fields ("12 Sep · N. Bensaïd") are Keystone's
+ * format and translated (fieldsText), a sentence typed around a date ("Demande déposée 20 Sep") stays as typed (the
+ * prototype translated the month inside it).
+ */
+const evidenceAsTyped = (en: string, protoFr: string, lang: string) => (lang === 'fr' ? fieldsText(en, makeT('fr'), 'fr') : protoFr);
+
 describe('Site view model vs the prototype (EN and FR)', () => {
   for (const lang of ['en', 'fr'] as const) {
     it(`${lang} · Readiness & go: KPIs, Go card, site sheet, prerequisites, equipment, Cursus approvals`, async () => {
@@ -63,8 +71,10 @@ describe('Site view model vs the prototype (EN and FR)', () => {
       expect(r.prereqs.map((p) => ({
         title: p.title, act: p.act, due: p.due, status: p.status, tagClass: p.tagClass, note: p.note, late: p.late, dueColor: p.dueColor,
         canConfirm: p.step?.to === 'confirmed', canSign: p.step?.to === 'signed',
-      }))).toEqual(g.prereqs);
-      expect(r.equip.map((e) => ({ name: e.name, src: e.src, srcClass: e.srcClass, status: e.status, tagClass: e.tagClass, note: e.note, canConfirm: e.canConfirm }))).toEqual(g.equip);
+      }))).toEqual(g.prereqs.map((p: any, i: number) => ({ ...p, note: evidenceAsTyped(G.seed.en.prereqs[i].note, p.note, lang) })));
+      expect(r.equip.map((e) => ({ name: e.name, src: e.src, srcClass: e.srcClass, status: e.status, tagClass: e.tagClass, note: e.note, canConfirm: e.canConfirm }))).toEqual(
+        g.equip.map((e: any, i: number) => ({ ...e, note: evidenceAsTyped(G.seed.en.equip[i].note, e.note, lang) })),
+      );
       expect(r.cursus.rows.map((d) => ({
         who: d.who, visa: d.visa, visaClass: d.visaClass, vacc: d.vacc, vaccClass: d.vaccClass, hab: d.hab, habClass: d.habClass, habNote: d.habNote, habColor: d.habColor,
         status: d.status, tagClass: d.tagClass, rec: d.rec, canReq: d.remindable, reminded: d.reminded,
@@ -76,7 +86,9 @@ describe('Site view model vs the prototype (EN and FR)', () => {
     it(`${lang} · Team & mobilisation: KPIs, rotation plan, collisions, mission costs`, async () => {
       const g = G.seed[lang];
       const t = (await view(lang)).v.team!;
-      expect(t.kpis).toEqual(kpis(g.teamKpis).map(computed(1, '179')));
+      // R-169: the Site premium sub names the rate grid (×1.5 / ×2 read from it) instead of the prototype's "6d · 10h calendar".
+      const premium = { en: 'Saturday / Sunday rates · rate grid', fr: 'Taux samedi / dimanche · grille de taux' }[lang];
+      expect(t.kpis).toEqual(kpis(g.teamKpis).map(computed(1, '179')).map((k: any, i: number) => (i === 4 ? { ...k, sub: premium } : k)));
       expect(t.rotation.map((r) => ({
         who: r.who, role: r.role, from: r.from, to: r.to, lodging: r.lodging, travel: r.travel, rot: r.rot, collideIcon: r.collision ? 'ph ph-warning' : 'ph ph-check',
         collideColor: 'var(--color-accent-300)',

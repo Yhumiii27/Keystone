@@ -151,11 +151,11 @@ export function clientPlanningView(d: ScheduleInput, t: T, lang: Lang): ClientPl
   return {
     months: v.ganttMonths.map((m) => t(m)),
     // Owners are internal (initials of the project team): the client view leaves them out.
-    tasks: v.tasks.map((x) => ({ ...x, name: t(x.name), owner: '', slipText: slipText(x.slipText, lang) })),
-    milestones: v.milestones.map((m) => ({ name: t(m.name), bL: m.bL, fL: m.fL, done: m.done })),
+    tasks: v.tasks.map((x) => ({ ...x, name: exactText(x.name, lang), owner: '', slipText: slipText(x.slipText, lang) })),
+    milestones: v.milestones.map((m) => ({ name: exactText(m.name, lang), bL: m.bL, fL: m.fL, done: m.done })),
     todayL: v.todayL,
     list: v.milestones.map((m) => ({
-      name: t(m.name), dates: `${t('Baseline')} ${t(m.baseDate)} ${t('· Forecast')} ${t(m.fcDate)}`, slipText: slipText(m.slipText, lang), slipAlert: m.slipAlert,
+      name: exactText(m.name, lang), dates: `${t('Baseline')} ${t(m.baseDate)} ${t('· Forecast')} ${t(m.fcDate)}`, slipText: slipText(m.slipText, lang), slipAlert: m.slipAlert,
       status: m.status, statusLabel: t(m.statusLabel),
     })),
     finish: `${t('Forecast finish')} ${t(d.header.finishText)} · ${t('Baseline')} ${t(d.header.baselineText)}`,
@@ -185,10 +185,10 @@ export function clientScreenView({ code, tab, portal, schedule, billing }: Clien
     kpis: kpiViews(kpis, t, lang),
     progress: schedule && evm ? clientProgress(schedule.header.chartMonths, evm).map((p) => ({ ...p, label: t(p.label) })) : null,
     milestones: schedule
-      ? clientMilestones(schedule.milestones, schedule.header.start).map((m) => ({ name: t(m.name), baseDate: t(m.baseDate), fcDate: t(m.fcDate), status: t(m.status), tagClass: tag(m.tone) }))
+      ? clientMilestones(schedule.milestones, schedule.header.start).map((m) => ({ name: exactText(m.name, lang), baseDate: t(m.baseDate), fcDate: t(m.fcDate), status: t(m.status), tagClass: tag(m.tone) }))
       : [],
-    decisions: dec.waiting.map((d) => ({ kind: d.kind, kindLabel: t(d.kindLabel), id: d.id, when: t(d.when), title: t(d.title), sub: t(d.sub), approveLabel: t(d.approveLabel) })),
-    decided: dec.decided.map((d) => ({ id: d.id, title: t(d.title), state: t(d.state), tagClass: tag(d.tone), when: t(d.when) })),
+    decisions: dec.waiting.map((d) => ({ kind: d.kind, kindLabel: t(d.kindLabel), id: d.id, when: t(d.when), title: exactText(d.title, lang), sub: t(d.sub), approveLabel: t(d.approveLabel) })),
+    decided: dec.decided.map((d) => ({ id: d.id, title: exactText(d.title, lang), state: t(d.state), tagClass: tag(d.tone), when: t(d.when) })),
     invoices: portal.invoices.map((i) => {
       const r = invoiceRow({ milestone: i.milestone, amountKeur: i.amountKeur, status: i.status, invoiceNumber: i.invoiceNumber, dueOn: i.dueOn }, lang, portal.currency);
       return {
@@ -206,8 +206,8 @@ export function clientScreenView({ code, tab, portal, schedule, billing }: Clien
     }),
     docs: portal.documents.map((d) => {
       const r = sharedDocRow(d);
-      // Codex records as the prototype translates them; records created from Keystone only on an exact entry.
-      const title = d.isNew ? exactText(r.title, lang) : t(r.title);
+      // R-148: Codex record titles as typed (or their seeded demo entry), whoever created them.
+      const title = exactText(r.title, lang);
       return { id: r.id, title, typeLabel: t(r.typeLabel), date: t(r.date), rev: r.rev, status: t(r.status), tagClass: tag(r.tone), acknowledged: r.acknowledged, ackLabel: t(r.ackLabel) };
     }),
     docsLabels: { idHeader: t(DOCS_TAB.idHeader), sub: t(DOCS_TAB.sub), empty: t(DOCS_TAB.empty) },

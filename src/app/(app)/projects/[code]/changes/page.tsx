@@ -20,9 +20,9 @@ import { getChangeControl } from '@/server/dal/changes';
 import { listIssueActivityOptions } from '@/server/dal/stock';
 import { getBaselineRegister } from '@/server/dal/changes-baselines';
 import { getWbs } from '@/server/dal/planning';
-import { projectLabel } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -71,7 +71,7 @@ export default async function ChangesPage({ params, searchParams }: { params: Pr
   const primary = canEdit ? (
     <NewChangeRequestButton
       code={projectCode}
-      context={i18n.t(projectLabel(ctx.project))}
+      context={projectLabelText(ctx.project, i18n.lang)}
       defaultWbs={wbs.some((w) => w.code === CR_DEFAULT_WBS) ? CR_DEFAULT_WBS : '1'}
       autoOpen={autoOpen}
       closeHref={href({ filter, cr: selected })}

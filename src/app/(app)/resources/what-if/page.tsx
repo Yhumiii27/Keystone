@@ -15,13 +15,14 @@ import { getProject } from '@/server/dal/projects';
 import { getWhatIf } from '@/server/dal/resources';
 import { getProjectScope, getScreenAccess } from '@/server/project-context';
 import { getI18n, getLastProject } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 export default async function WhatIfPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
   const asked = Array.isArray(sp.project) ? sp.project[0] : sp.project;
   if (!asked) redirect(whatIfHref(await getLastProject()));
   const code = asked || (await getLastProject());
-  const [{ t }, access, scope, project] = await Promise.all([getI18n(), getScreenAccess('whatif'), getProjectScope(), getProject(code)]);
+  const [{ t, lang }, access, scope, project] = await Promise.all([getI18n(), getScreenAccess('whatif'), getProjectScope(), getProject(code)]);
   const w = project ? await getWhatIf(project.code) : null;
   const canEdit = !!project && !!w && access.canEdit && !scope.readOnly(project);
 
@@ -59,7 +60,7 @@ export default async function WhatIfPage({ searchParams }: { searchParams: Promi
       <PageHeader
         screen="whatif"
         projectParam={project.code}
-        primary={canEdit ? <NewScenarioButton code={project.code} context={`${project.displayId} · ${t(project.name)}`} /> : undefined}
+        primary={canEdit ? <NewScenarioButton code={project.code} context={projectLabelText(project, lang)} /> : undefined}
       />
       <WhatIfBoard data={data} canEdit={canEdit} />
     </>

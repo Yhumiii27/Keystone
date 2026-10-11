@@ -224,7 +224,7 @@ export function ImportTagsDialog({ code, context, currentRevision, onClose }: Im
               </span>
               {stage.lines.length > 0 && (
                 <div className={s.stageTable}>
-                  <Table size={12.5}>
+                  <Table size={12.5} scroll={false}>
                     <thead>
                       <tr>
                         <Th>{t('Line')}</Th>

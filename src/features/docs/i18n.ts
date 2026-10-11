@@ -8,8 +8,7 @@
 // - Keystone-created records (deposits, minutes): typed titles and tags are translated only on an exact dictionary
 //   match (`exactT`), never segment by segment.
 import { approveLabelText } from '@/domain/documents';
-import FR_DICT_BASE from '@/i18n/fr-dict.json';
-import { EXTRA_FR } from '@/i18n/extra';
+import { dataText } from '@/i18n/data-text';
 import type { Lang, T } from '@/i18n/translate';
 
 const fr = (lang: Lang) => lang === 'fr';
@@ -23,9 +22,8 @@ export const roleT = (t: T, lang: Lang) => (label: string) => (fr(lang) && Objec
 /** Approval circuit "Author → Quality manager → Direction", role by role. */
 export const circuitT = (labels: readonly string[], t: T, lang: Lang) => labels.map(roleT(t, lang)).join(' → ');
 
-const DICT: Record<string, string> = { ...(FR_DICT_BASE as Record<string, string>), ...EXTRA_FR };
-/** Free text typed in Keystone: French only when the whole text is a dictionary entry. */
-export const exactT = (s: string, lang: Lang) => (fr(lang) && s && Object.hasOwn(DICT, s) ? DICT[s] : s);
+/** Free text typed in Keystone: as typed, or a seeded string's exact dictionary entry (R-148: the shared helper). */
+export const exactT = (s: string, lang: Lang) => dataText(s, lang);
 
 /** Toast "Opening Codex · project HLT-026" (`openCodex`). */
 export const openingCodexProjectText = (code: string, lang: Lang) => (fr(lang) ? `Ouverture de Codex · projet ${code}` : `Opening Codex · project ${code}`);

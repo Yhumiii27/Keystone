@@ -11,6 +11,7 @@ import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook, PdfDocument } from '../types';
 import { col, kpiSheet, projectRef, sheet, sum, tableBlock, todayIso } from './common';
 import { moneyCol } from './currency-columns';
+import { dataText } from '@/i18n/data-text';
 
 const contractOf = async (ctx: ExportContext) => (ctx.project ? getContract(ctx.project.code) : null);
 
@@ -37,7 +38,7 @@ function invoiceSheet(ctx: ExportContext, c: ProjectContract): ExportSheet {
     moneyCol('amount', t('Amount'), c.sheet.currency, 'k'), col('paid', t('Paid on'), 'date'), col('status', t('Status'), 'text', 16), col('note', t('Note'), 'text', 30),
   ], c.invoices.map((i) => ({
     number: i.number, milestone: `${i.milestoneNumber} · ${t(i.milestoneLabel)}`, issued: i.issuedOn, due: i.dueOn, amount: i.amountKeur, paid: i.paidOn,
-    status: t(i.statusLabel), note: i.note ? t(i.note) : '',
+    status: t(i.statusLabel), note: i.note ? dataText(i.note, ctx.lang) : '',
   })));
 }
 
@@ -51,11 +52,11 @@ async function contractWorkbook(ctx: ExportContext): Promise<ExportWorkbook | nu
     title: `${t('Contract')} ${s.reference}`,
     sheets: [
       sheet(t('Contract'), [col('field', t('Field'), 'text', 24), col('value', t('Value'), 'text', 80)], [
-        [t('Reference'), s.reference], [t('Client'), t(s.client)], [t('Contract type'), t(s.typeLabel)], [t('Signed on'), t(s.signedText)],
+        [t('Reference'), s.reference], [t('Client'), dataText(s.client, ctx.lang)], [t('Contract type'), t(s.typeLabel)], [t('Signed on'), t(s.signedText)],
         [t(s.currency === 'EUR' ? 'Base amount (k€)' : `Base amount (${thousandsUnit(s.currency)})`), String(s.baseAmountKeur)], [t('Currency'), s.currency],
         [t('Contract value'), moneyIn(c.valueKeur, s.currency, lang)], [t('Payment terms'), paymentTermsText({ rule: s.paymentRule, days: s.paymentDays }, lang)],
-        [t('Retention (%)'), String(s.retentionPct)], [t('Retention release'), t(s.retentionNote)], [t('Liquidated damages'), t(s.liquidatedDamages)],
-        [t('Warranty'), t(s.warranty)], [t('Governing law'), t(s.governingLaw)], [t('Scope summary'), t(s.scope)],
+        [t('Retention (%)'), String(s.retentionPct)], [t('Retention release'), dataText(s.retentionNote, ctx.lang)], [t('Liquidated damages'), dataText(s.liquidatedDamages, ctx.lang)],
+        [t('Warranty'), dataText(s.warranty, ctx.lang)], [t('Governing law'), dataText(s.governingLaw, ctx.lang)], [t('Scope summary'), dataText(s.scope, ctx.lang)],
       ].map(([field, value]) => ({ field, value }))),
       sheet(t('Amendments'), [
         col('label', t('Amendment'), 'text', 50), col('cr', t('Change request'), 'text', 12), moneyCol('amount', t('Amount'), s.currency, 'k'), col('status', t('Status'), 'text', 14),
@@ -94,12 +95,12 @@ export async function statementDocument(ctx: ExportContext): Promise<PdfDocument
   const open = { ...milestoneSheet(ctx, c), rows: milestoneSheet(ctx, c).rows.filter((_, i) => c.milestones[i].status === 'planned' && c.milestones[i].billable) };
   return {
     title: t('Account statement'),
-    subtitle: `${t(c.sheet.client)} · ${t('Contract')} ${c.sheet.reference}`,
+    subtitle: `${dataText(c.sheet.client, ctx.lang)} · ${t('Contract')} ${c.sheet.reference}`,
     project: projectRef(ctx),
     reference: c.sheet.reference,
     date: todayIso(ctx),
     blocks: [
-      { kind: 'fields', items: [[t('Client'), t(c.sheet.client)], [t('Contract'), c.sheet.reference], [t('Payment terms'), view.terms], [t('Retention held'), view.progress.retention]], columns: 2 },
+      { kind: 'fields', items: [[t('Client'), dataText(c.sheet.client, ctx.lang)], [t('Contract'), c.sheet.reference], [t('Payment terms'), view.terms], [t('Retention held'), view.progress.retention]], columns: 2 },
       { kind: 'kpis', items: view.kpis.map((k) => ({ label: k.label, value: k.value, sub: k.sub })) },
       { kind: 'heading', text: t('Invoices') },
       invoices.rows.length

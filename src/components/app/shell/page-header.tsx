@@ -11,14 +11,15 @@ import { SCREEN_BY_ID, screenHref, type ScreenId } from '@/config/screens';
 import { HEALTH_LABEL, HEALTH_TAG } from '@/domain/health';
 import { exportFormatsOf } from '@/features/exports/catalog';
 import { STATUS_DATE } from '@/lib/format';
-import { PROTO } from '@/server/prototype';
-import { getProject, projectLabel, type ProjectRow } from '@/server/dal/projects';
+import { dataText, fieldsText, projectLabelText } from '@/i18n/data-text';
+import { getProject, type ProjectRow } from '@/server/dal/projects';
 import { crumbExtraOf, defaultTitleOf, notificationsFor, zoneBarOf } from '@/server/dal/shell';
 import { clientRefusedScreen } from '@/domain/rights';
 import { getProjectScope, refuseClient } from '@/server/project-context';
 import { getI18n, getLastProject, getViewer, getZone } from '@/server/session';
 import { ExportButton, GlobalSearch, LangToggle, Notifications, ProjectSwitcher, ZoneSeg } from './header-islands';
 import { PROJECT_EDITABLE, crumbBase, isOutside } from './nav-model';
+import { projectOptionHaystack, projectOptionSub } from './project-options';
 import type { ProjectOptionView } from './types';
 import styles from './header.module.css';
 
@@ -41,6 +42,9 @@ export interface PageHeaderProps {
   projectParam?: string;
 }
 
+/** Screens whose default crumb extra is typed text (contract reference, payment terms). */
+const DATA_CRUMB_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>(['contract', 'billing']);
+
 const healthView = (p: Pick<ProjectRow, 'health'>) =>
   p.health ? { label: HEALTH_LABEL[p.health], cls: HEALTH_TAG[p.health] } : { label: '—', cls: 'tag tag-neutral' };
 
@@ -60,30 +64,34 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
   const showPrimary = !!primary && !outside && !(readOnly && PROJECT_EDITABLE.includes(screen));
 
   const extra = crumbExtra !== undefined ? crumbExtra : await crumbExtraOf(screen, { role: viewer, code, zone, taskId });
-  const crumb = crumbBase(screen) + (extra ? ' · ' + extra : '');
+  // R-148: the contract's reference and payment terms are typed text (shown as typed); the other extras are Keystone's.
+  const crumbText = extra && crumbExtra === undefined && DATA_CRUMB_SCREENS.has(screen)
+    ? `${t(crumbBase(screen))} · ${fieldsText(extra, t, lang)}`
+    : t(crumbBase(screen) + (extra ? ' · ' + extra : ''));
 
   const [rawNotifs, defTitle] = await Promise.all([
     notificationsFor(viewer),
     title === undefined ? defaultTitleOf(screen, { taskId, role: viewer }) : Promise.resolve(null),
   ]);
-  const notifs = rawNotifs.map((n) => ({ ...n, title: t(n.title), sub: t(n.sub), when: t(n.when) }));
+  // R-148: a notification's sub-line joins typed fields (titles, people) with Keystone's amounts and dates.
+  const notifs = rawNotifs.map((n) => ({ ...n, title: t(n.title), sub: fieldsText(n.sub, t, lang), when: t(n.when) }));
 
   let options: ProjectOptionView[] = [];
   if (project) {
+    // R-170: number, analytic code, DAS and machine type come from the project record (the prototype constant PROJ_ID
+    // left a wizard project's line empty); R-148: the name is shown as typed (or its demo-data dictionary entry).
     options = scope.pool.map((p) => {
-      const pi = PROTO.PROJ_ID[p.code] ?? {};
       const h = healthView(p);
       return {
         code: p.code,
-        name: t(projectLabel(p)),
-        sub: t(`${pi.ana ?? ''} · DAS ${pi.das ?? '—'} · ${pi.mt ?? ''} · ${p.pm}`),
+        name: projectLabelText(p, lang),
+        sub: projectOptionSub(p),
         health: t(h.label),
         tagClass: h.cls,
         mine: scope.isMine(p),
         // R-041: read-only on every project the viewer is not on the team of.
         readOnly: scope.readOnly(p),
-        // Prototype projMatch fields, plus the displayed (FR) name so what the user reads also matches.
-        haystack: `${p.code} ${p.name} ${pi.id ?? ''} ${pi.ana ?? ''} ${p.pm} ${p.client} ${lang === 'fr' ? t(p.name) : ''}`.toLowerCase(),
+        haystack: projectOptionHaystack(p, dataText(p.name, lang)),
       };
     });
   }
@@ -95,13 +103,13 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
       <header className={styles.header}>
         <div className={styles.left}>
           <div className={styles.crumb}>
-            {t(crumb)}
+            {crumbText}
             {project && (
               <>
                 <span className={styles.sep}>/</span>
                 <ProjectSwitcher
                   current={project.code}
-                  currentName={t(projectLabel(project))}
+                  currentName={projectLabelText(project, lang)}
                   options={options}
                   scopeAvail={scope.scopeAvail}
                   mineCount={scope.mineCount}

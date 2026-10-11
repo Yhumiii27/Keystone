@@ -2,6 +2,7 @@
 // KPI tiles, parsing of the display strings some view models carry ("4 800 k€", "64 %", "0.90") back into numbers, EN date
 // strings → ISO, the project header of PDF documents and the URL parameters a screen reads. Pure (no DB access).
 import type { Lang } from '@/i18n/translate';
+import { dataText } from '@/i18n/data-text';
 import type { ColumnType, CellValue, ExportColumn, ExportContext, ExportSheet, ExportWorkbook, PdfBlock, PdfDocument } from '../types';
 
 /** A column: `col('budget', t('Budget'), 'money_keur')`. */
@@ -95,9 +96,9 @@ export const dot = (...parts: (string | number | null | undefined | false)[]) =>
 /** The export date (ISO) — the document date of the PDFs. */
 export const todayIso = (ctx: Pick<ExportContext, 'now'>) => ctx.now.toISOString().slice(0, 10);
 
-/** Project reference of a PDF header ("HLT-026", translated name). */
-export function projectRef(ctx: Pick<ExportContext, 'project' | 't'>): PdfDocument['project'] {
-  return ctx.project ? { code: ctx.project.code, name: ctx.t(ctx.project.name) } : null;
+/** Project reference of a PDF header ("HLT-026", the name as typed — R-148). */
+export function projectRef(ctx: Pick<ExportContext, 'project' | 't' | 'lang'>): PdfDocument['project'] {
+  return ctx.project ? { code: ctx.project.code, name: dataText(ctx.project.name, ctx.lang) } : null;
 }
 
 /** Sheets whose rows are empty are kept only when nothing else has rows (the screen's empty state). */

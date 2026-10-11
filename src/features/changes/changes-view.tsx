@@ -27,6 +27,7 @@ import { money } from '@/lib/format';
 import { StepDecisionButtons, SubmitForReviewButton } from './change-buttons';
 import { CrActivitiesEditor, type CrActivityRow } from './cr-activities';
 import s from './changes.module.css';
+import { dataText } from '@/i18n/data-text';
 
 export interface ChangesViewData {
   /** Register order, effective status. */
@@ -116,8 +117,8 @@ export function ChangesView({ code, data, filter, selected, role, canEdit, href,
                   <td>
                     <div className={s.reqCell}>
                       <span className={cx(s.reqId, isOpen && s.reqIdOn)}>{c.id}</span>
-                      <span className={s.pretty}>{t(c.title)}</span>
-                      <span className={s.reqBy}>{t(`${c.by} · ${c.date}`)}</span>
+                      <span className={s.pretty}>{dataText(c.title, lang)}</span>
+                      <span className={s.reqBy}>{`${c.by} · ${t(c.date)}`}</span>
                     </div>
                   </td>
                   <Td tone="secondary" nowrap>
@@ -176,7 +177,7 @@ export function ChangesView({ code, data, filter, selected, role, canEdit, href,
             {data.baselines.map((b) => (
               <tr key={b.code}>
                 <td className={s.blId}>{b.code}</td>
-                <td>{t(b.name)}</td>
+                <td>{dataText(b.name, lang)}</td>
                 <Td color="var(--color-neutral-300)">{t(b.setOn)}</Td>
                 <Td align="right" numeric>
                   {money(b.bac, lang)}
@@ -229,13 +230,13 @@ export interface CrDrawerProps {
 
 /** CR drawer (crVals 4607–4610) over the DS Drawer (client; closes to the register URL without `?cr=`). */
 function ChangeRequestDrawer(props: CrDrawerProps) {
-  const { cr, closeHref, t } = props;
+  const { cr, closeHref, lang, t } = props;
   return (
     <Drawer
       open
       closeHref={closeHref}
       id={cr.id}
-      title={t(cr.title)}
+      title={dataText(cr.title, lang)}
       meta={
         <>
           <Tag tone="neutral" nowrap={false}>

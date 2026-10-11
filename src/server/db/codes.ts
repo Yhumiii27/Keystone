@@ -816,7 +816,7 @@ export const stockOperation = codec<StockOperation, string>([
 ]);
 /** Movement type as the movement lists show it (MOVES0: "Transfer", "Receipt"…). */
 export const stockMovementType = codec<StockMovementType, string>([
-  ['adjust', 'Adjust'], ['transfer', 'Transfer'], ['reserve', 'Reserve'], ['release', 'Release'], ['issue', 'Issue'], ['return', 'Return'], ['scrap', 'Scrap'], ['receipt', 'Receipt'],
+  ['adjust', 'Adjust'], ['transfer', 'Transfer'], ['reserve', 'Reserve'], ['release', 'Release reservation'], ['issue', 'Issue'], ['return', 'Return'], ['scrap', 'Scrap'], ['receipt', 'Receipt'],
 ]);
 /** Storage location types (SETTINGS0.locTypes). */
 export type LocationType = 'central_warehouse' | 'workshop' | 'site_store' | 'consignment' | 'quarantine';

@@ -6,6 +6,7 @@ import { getBudgetData } from '@/server/dal/budget';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook, PdfDocument } from '../types';
 import { ratioText } from './common';
+import { dataText } from '@/i18n/data-text';
 
 async function budgetSheets(ctx: ExportContext): Promise<{ sheets: Record<'categories' | 'wps' | 'changes' | 'evm', ExportSheet>; data: NonNullable<Awaited<ReturnType<typeof getBudgetData>>> } | null> {
   const { t } = ctx;
@@ -21,7 +22,7 @@ async function budgetSheets(ctx: ExportContext): Promise<{ sheets: Record<'categ
       { key: 'forecast', header: t('Forecast'), type: 'money_keur' },
     ],
     rows: cost.categories.map((c) => ({
-      code: c.code, name: t(c.name), type: t(c.costTypeLabel), source: t(c.source), budget: c.budget, actual: c.actual, committed: c.committed, forecast: c.forecast,
+      code: c.code, name: dataText(c.name, ctx.lang), type: t(c.costTypeLabel), source: t(c.source), budget: c.budget, actual: c.actual, committed: c.committed, forecast: c.forecast,
     })),
   };
   const wps: ExportSheet = {
@@ -30,7 +31,7 @@ async function budgetSheets(ctx: ExportContext): Promise<{ sheets: Record<'categ
       { key: 'wbs', header: 'WBS', width: 8 }, { key: 'name', header: t('Work package'), width: 30 }, { key: 'original', header: t('Original'), type: 'money_keur' },
       { key: 'changes', header: t('Changes'), type: 'money_keur' }, { key: 'actual', header: t('Actual'), type: 'money_keur' }, { key: 'eac', header: 'EAC', type: 'money_keur' },
     ],
-    rows: cost.workPackages.map((w) => ({ wbs: w.wbs, name: t(w.name), original: w.original, changes: w.changes, actual: w.actual, eac: w.eac })),
+    rows: cost.workPackages.map((w) => ({ wbs: w.wbs, name: dataText(w.name, ctx.lang), original: w.original, changes: w.changes, actual: w.actual, eac: w.eac })),
   };
   const changes: ExportSheet = {
     name: t('Changes'),
@@ -38,7 +39,7 @@ async function budgetSheets(ctx: ExportContext): Promise<{ sheets: Record<'categ
       { key: 'id', header: t('Change'), width: 13 }, { key: 'title', header: t('Title'), width: 40 }, { key: 'amount', header: t('Amount'), type: 'money_keur' },
       { key: 'days', header: t('Days'), type: 'integer' }, { key: 'status', header: t('Status'), width: 12 }, { key: 'meta', header: t('Decision'), width: 30 },
     ],
-    rows: cost.changes.map((c) => ({ id: c.id, title: t(c.title), amount: c.amount, days: c.days, status: t(c.statusLabel), meta: t(c.meta) })),
+    rows: cost.changes.map((c) => ({ id: c.id, title: dataText(c.title, ctx.lang), amount: c.amount, days: c.days, status: t(c.statusLabel), meta: t(c.meta) })),
   };
   const evm: ExportSheet = {
     name: 'EVM',
@@ -74,7 +75,7 @@ export async function budgetReport(ctx: ExportContext): Promise<PdfDocument | nu
   return {
     title: t('Budget & cost'),
     subtitle: t('Cost report'),
-    project: { code: ctx.project.code, name: t(ctx.project.name) },
+    project: { code: ctx.project.code, name: dataText(ctx.project.name, ctx.lang) },
     reference: ctx.project.code,
     date: ctx.now.toISOString().slice(0, 10),
     blocks: [

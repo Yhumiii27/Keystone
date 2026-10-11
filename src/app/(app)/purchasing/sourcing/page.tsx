@@ -15,13 +15,14 @@ import {
 } from '@/features/procurement/model';
 import { NewRfqButton } from '@/features/procurement/new-rfq-button';
 import { SourcingBody, type SourcingBodyProps } from '@/features/procurement/sourcing-view';
-import { getProject, projectLabel } from '@/server/dal/projects';
+import { getProject } from '@/server/dal/projects';
 import { getPurchaseOrder, listRfqs, listSupplierInvoices } from '@/server/dal/purchasing';
 import { rfqKpiFacts } from '@/server/dal/kpis';
 import { getSupplierScorecard } from '@/server/dal/suppliers';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n, getLastProject } from '@/server/session';
 import { canSeeSupplierPrices } from '@/domain/rights';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? null;
@@ -62,7 +63,7 @@ export default async function SourcingPage({ searchParams }: { searchParams: Pro
     body.sup = supplierTabView(await getSupplierScorecard(project?.code ?? lastProject), ctx);
   }
 
-  const primary = access.canEdit ? <NewRfqButton form={newRfqFormDef(t)} context={project ? t(projectLabel(project)) : undefined} /> : undefined;
+  const primary = access.canEdit ? <NewRfqButton form={newRfqFormDef(t)} context={project ? projectLabelText(project, lang) : undefined} /> : undefined;
 
   return (
     <>

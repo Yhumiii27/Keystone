@@ -32,6 +32,11 @@ const DEVIATIONS: [string, string][] = [
   ['-6 d', '-6 j'],
 ];
 const fix = (lang: Lang, s: string) => (lang === 'fr' ? DEVIATIONS.reduce((x, [a, b]) => (x === a ? b : x), s) : s);
+/**
+ * R-148 (NEW-D1-2): a part or drawing name is shown as typed — its exact French entry or the stored text, never the
+ * prototype's partial translation ("Stainless mounting bracket · rev 2" was shown half translated as "… · rév. 2").
+ */
+const asTyped = (lang: Lang, s: string) => (lang === 'fr' ? s.replace('Stainless mounting bracket · rév. 2', 'Stainless mounting bracket · rev 2') : s);
 /** Zero-padded prototype dates ("03 Jul") are written "3 Jul" (as the Delivery 4 data layer). */
 const day = (s: string) => s.replace(/(^|· )0(\d)/g, '$1$2');
 
@@ -112,7 +117,7 @@ describe('ECO drawer — EN and FR, every persona of the screen', () => {
         expect(d.raisedBy, tag).toBe(`${lang === 'fr' ? 'Émise par' : 'Raised by'} ${g.by}`);
         expect(d.steps.map((s) => ({ label: s.label, dot: s.reached && !d.rejected ? 'var(--color-accent)' : 'var(--color-neutral-700)' })), tag).toEqual(g.steps.map((s: any) => ({ label: s.label, dot: s.dot })));
         expect(d.impact, tag).toEqual(g.impact.map((x: any) => ({ ...x, v: fix(lang, x.v) })));
-        expect(d.parts.map((p) => ({ ref: p.ref, name: p.name, status: p.status, tagClass: p.statusClass })), tag).toEqual(g.parts);
+        expect(d.parts.map((p) => ({ ref: p.ref, name: p.name, status: p.status, tagClass: p.statusClass })), tag).toEqual(g.parts.map((p: any) => ({ ...p, name: asTyped(lang, p.name) })));
         expect(d.parts.every((p) => p.href === `/reference/parts?part=${p.ref}`)).toBe(true);
         expect([d.revText, d.pending.text, d.pending.tagClass, d.locked], tag).toEqual([g.revText, g.pendText, g.pendTag, g.isLocked]);
         expect([d.interch.label, d.interch.tagClass, d.interch.hint, d.interch.manage], tag).toEqual([g.interchLabel, g.interchTag, g.interchHint, g.canSetInterch]);
@@ -141,34 +146,36 @@ describe('Drawings — PDM vault — EN and FR', () => {
   it.each(LANGS)('%s: KPI tiles, chips, rows, search and the drawer', async (lang) => {
     const t = makeT(lang);
     const data = await getDrawingsScreen(null);
-    const v = drawingsView({ drawings: data.drawings, sync: data.sync, state: { state: null, q: '', dwg: null } }, t);
+    const v = drawingsView({ drawings: data.drawings, sync: data.sync, state: { state: null, q: '', dwg: null } }, t, lang);
     const g = G[lang].drawings;
     // A-12 (chapter 4): the "Last vault sync" day is computed from the run against the data date (25 Sep). The latest run
     // is the PDM connector row's, seeded "26 Sep 07:40" from the prototype's CONNECTORS — the prototype printed "today".
     const lastSync = lang === 'fr' ? 'SolidWorks PDM · 26 sept. · lecture seule' : 'SolidWorks PDM · 26 Sep · read-only';
+    // R-169 (A-12): the "Obsolete still referenced" sub names the ECO of the obsolete drawing instead of "Superseded by rev 2".
+    const obsolete = lang === 'fr' ? 'Remplacée · ECO-2026-012' : 'Superseded · ECO-2026-012';
     expect(v.kpis.map((k) => ({ label: k.label, value: k.value, sub: k.sub, color: k.color })))
-      .toEqual(g.kpis.map((k: any, i: number) => ({ ...k, value: String(k.value), ...(i === 4 ? { sub: lastSync } : {}) })));
+      .toEqual(g.kpis.map((k: any, i: number) => ({ ...k, value: String(k.value), ...(i === 4 ? { sub: lastSync } : i === 3 ? { sub: obsolete } : {}) })));
     expect(v.chips.map((c) => ({ label: c.label, count: String(c.count) }))).toEqual(g.chips);
     expect(v.rows.map((r) => ({ no: r.number, title: r.title, part: r.part, partName: r.partName, rev: r.rev, state: r.state, tagClass: r.stateClass, path: r.path, byLine: r.byLine, eco: r.eco })))
-      .toEqual(g.rows.map((r: any) => ({ no: r.no, title: r.title, part: r.part, partName: r.partName, rev: r.rev, state: r.state, tagClass: r.tagClass, path: r.path, byLine: day(`${r.by} · ${r.date}`), eco: r.eco })));
+      .toEqual(g.rows.map((r: any) => ({ no: r.no, title: asTyped(lang, r.title), part: r.part, partName: asTyped(lang, r.partName), rev: r.rev, state: r.state, tagClass: r.tagClass, path: r.path, byLine: day(`${r.by} · ${r.date}`), eco: r.eco })));
     for (const [q, ids] of Object.entries(g.search as Record<string, string[]>)) {
-      const s = drawingsView({ drawings: data.drawings, sync: data.sync, state: { state: null, q, dwg: null } }, t);
+      const s = drawingsView({ drawings: data.drawings, sync: data.sync, state: { state: null, q, dwg: null } }, t, lang);
       expect(s.rows.map((r) => r.number), q).toEqual(ids);
       expect(s.empty).toBe(ids.length ? null : lang === 'fr' ? 'Aucun plan ne correspond' : 'No drawing matches');
     }
     for (const r of data.drawings) {
       const det = (await getDrawingsScreen(r.number)).detail!;
-      const d = drawingDrawerView({ drawing: det, state: { state: 'released', q: 'rmg', dwg: r.number } }, t);
+      const d = drawingDrawerView({ drawing: det, state: { state: 'released', q: 'rmg', dwg: r.number } }, t, lang);
       const gd = g.drawers[r.number];
-      expect([d.head, d.title, d.state, d.stateClass, d.closeHref]).toEqual([`${gd.no} ${lang === 'fr' ? '· rév.' : '· rev'} ${gd.rev}`, gd.title, gd.state, gd.tagClass, '/reference/drawings?state=released&q=rmg']);
-      expect(d.meta).toEqual(gd.meta.map((m: any) => ({ k: m.k, v: day(m.v) })));
+      expect([d.head, d.title, d.state, d.stateClass, d.closeHref]).toEqual([`${gd.no} ${lang === 'fr' ? '· rév.' : '· rev'} ${gd.rev}`, asTyped(lang, gd.title), gd.state, gd.tagClass, '/reference/drawings?state=released&q=rmg']);
+      expect(d.meta).toEqual(gd.meta.map((m: any) => ({ k: m.k, v: asTyped(lang, day(m.v)) })));
       expect(d.history).toEqual(gd.hist.map((h: any) => ({ ...h, label: day(h.label) })));
       expect([!!d.ecoHref, d.partHref]).toEqual([gd.hasEco, `/reference/parts?part=${r.partRef}`]);
       if (d.ecoHref) expect(d.ecoHref).toBe(`/reference/eco?eco=${r.ecoNumber}`);
     }
     // "Open in PDM" opens a new window: only an http(s) link from the PDM sync is kept.
     const det = (await getDrawingsScreen('DWG-AS-9000')).detail!;
-    const pdm = (u: string) => drawingDrawerView({ drawing: { ...det, pdmUrl: u }, state: { state: null, q: '', dwg: det.number } }, t).pdmUrl;
+    const pdm = (u: string) => drawingDrawerView({ drawing: { ...det, pdmUrl: u }, state: { state: null, q: '', dwg: det.number } }, t, lang).pdmUrl;
     expect([pdm('https://pdm.example/DWG-AS-9000'), pdm('javascript:alert(1)'), pdm('')]).toEqual(['https://pdm.example/DWG-AS-9000', null, null]);
   });
 });

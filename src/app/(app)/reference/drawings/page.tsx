@@ -14,9 +14,10 @@ import { SyncVaultButton } from '@/features/eco/drawings/sync-vault-button';
 import type { T } from '@/i18n/translate';
 import { vaultSyncScope, vaultSyncSource } from '@/server/db/codes';
 import { getDrawingsScreen } from '@/server/dal/eco-screen';
-import { getProject, projectLabel } from '@/server/dal/projects';
+import { getProject } from '@/server/dal/projects';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n, getLastProject } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -34,18 +35,18 @@ const syncVaultForm = (t: T): FormDef => ({
 
 export default async function DrawingsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const [{ t }, access, data, lastProject] = await Promise.all([getI18n(), getScreenAccess('drawings'), getDrawingsScreen(first(sp.dwg)?.trim().slice(0, 60) || null), getLastProject()]);
+  const [{ t, lang }, access, data, lastProject] = await Promise.all([getI18n(), getScreenAccess('drawings'), getDrawingsScreen(first(sp.dwg)?.trim().slice(0, 60) || null), getLastProject()]);
   // `?dwg=` as the vault writes the number (case-insensitive deep link); an unknown drawing opens nothing.
   const state: DrawingsState = { state: drawingFilterOf(first(sp.state)), q: (first(sp.q) ?? '').slice(0, 120), dwg: data.selected };
   const project = access.canEdit ? await getProject(lastProject) : null;
-  const view = drawingsView({ drawings: data.drawings, sync: data.sync, state }, t);
-  const drawer = data.detail ? drawingDrawerView({ drawing: data.detail, state }, t) : null;
+  const view = drawingsView({ drawings: data.drawings, sync: data.sync, state }, t, lang);
+  const drawer = data.detail ? drawingDrawerView({ drawing: data.detail, state }, t, lang) : null;
 
   return (
     <>
       <PageHeader
         screen="drawings"
-        primary={access.canEdit ? <SyncVaultButton label={t('Sync vault')} form={syncVaultForm(t)} context={project ? t(projectLabel(project)) : undefined} /> : undefined}
+        primary={access.canEdit ? <SyncVaultButton label={t('Sync vault')} form={syncVaultForm(t)} context={project ? projectLabelText(project, lang) : undefined} /> : undefined}
       />
       <DrawingsRegister view={view} t={t} />
       {drawer && <DrawingDrawer view={drawer} t={t} />}

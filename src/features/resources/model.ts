@@ -12,6 +12,7 @@ import { FR_MONTHS } from '@/i18n/fr-rules';
 import { money } from '@/lib/format';
 import type { Lang, T } from '@/i18n/translate';
 import { leverEffectText, leverText, type WhatIfLeverData } from './whatif-model';
+import { dataText } from '@/i18n/data-text';
 
 /** Moved to src/domain/resources.ts (shared with the department head's Home). */
 export { peakWeeksText, shortfallText };
@@ -184,7 +185,7 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
           projectCode: s.projectCode,
           leverCode: s.lever.code,
           title: leverText(s.lever, t, lang),
-          hint: `${s.lever.activity} · ${t(s.lever.activityName)}`,
+          hint: `${s.lever.activity} · ${dataText(s.lever.activityName, lang)}`,
           impact: [s.projectLabel ? t(s.projectLabel) : null, leverEffectText(s.effect, { peakPct: s.currentPeakPct }, t, lang)].filter(Boolean).join(' · '),
           requested: s.requested ? `${lang === 'fr' ? 'Demandée' : 'Requested'} · ${s.requested}` : null,
           canApply: s.canApply,

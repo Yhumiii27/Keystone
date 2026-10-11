@@ -17,6 +17,7 @@ import { useI18n } from '@/i18n/client';
 import { setBaseRateAction, setMultiplierAction, type HrEditResult } from './actions';
 import { hrT } from './i18n';
 import s from './hr.module.css';
+import { dataText } from '@/i18n/data-text';
 
 export interface RatesViewProps {
   roles: { role: string; baseRateEur: number }[];
@@ -144,7 +145,7 @@ export function RatesView({ roles, multipliers, canSee, canEdit }: RatesViewProp
                 <tr key={r.role}>
                   <Td>
                     <span className={s.roleCell}>
-                      {t(r.role)}
+                      {dataText(r.role, lang)}
                       {isExternalRole(r.role) && <span className={cx('tag', 'tag-outline', s.extTag)}>{t('External')}</span>}
                     </span>
                   </Td>
@@ -152,7 +153,7 @@ export function RatesView({ roles, multipliers, canSee, canEdit }: RatesViewProp
                     {masked ? (
                       <span className={s.masked}>{MASK}</span>
                     ) : canEdit ? (
-                      input({ kind: 'rate', key: r.role }, s.rateInput, `${t(r.role)} · ${t('Base €/h')}`)
+                      input({ kind: 'rate', key: r.role }, s.rateInput, `${dataText(r.role, lang)} · ${t('Base €/h')}`)
                     ) : (
                       <span className={s.num}>{eurRate(r.baseRateEur)}</span>
                     )}

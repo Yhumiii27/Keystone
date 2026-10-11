@@ -161,6 +161,8 @@ export interface SiteFacts {
   punch: readonly { open: boolean; ownerParty: PunchOwnerParty | null }[];
   /** Vigie's HSE register: `kind` and `statusText` give the incident counts of its registers ("0 déclaré"). */
   hse: readonly { status: HseStatus; kind?: string; statusText?: string | null }[];
+  /** R-169: weekend premiums of the rate grid ("Site premium" tile). */
+  premium?: SitePremium;
 }
 
 /** A KPI tile in English; `alert` = value in LO (accent-300), else plain text. */
@@ -184,8 +186,20 @@ export const declaredIncidents = (f: Pick<SiteFacts, 'reports'>) => f.reports.fi
 /** Rotations of the plan (distinct rotation numbers). */
 export const rotationCount = (f: Pick<SiteFacts, 'rotation'>) => new Set(f.rotation.map((r) => r.rotationNo)).size;
 
-/** "Site premium" tile — prototype constants (A-12). */
-export const SITE_PREMIUM = { value: '×1.5 / ×2', sub: 'Saturday / Sunday rates · 6d · 10h calendar' };
+/** Weekend premiums of the rate grid (Resources › Rates, rate_multipliers 'sat' and 'sun'); null when not in the grid. */
+export interface SitePremium { sat: number | null; sun: number | null }
+
+/** "×1.5": a premium factor as the Rates screen prints it; "—" when the grid has none. */
+const factorText = (f: number | null) => (f == null ? '—' : `×${f}`);
+
+/**
+ * "Site premium" tile (R-169, D-5 context, A-12): the Saturday and Sunday / public holiday multipliers of the rate grid
+ * (the prototype printed the constants "×1.5 / ×2" and "6d · 10h calendar"; the seeded grid gives the same ×1.5 / ×2).
+ */
+export function sitePremiumTile(p: SitePremium | undefined): { value: string; sub: string } {
+  if (!p || (p.sat == null && p.sun == null)) return { value: '—', sub: 'No weekend rate in the rate grid' };
+  return { value: `${factorText(p.sat)} / ${factorText(p.sun)}`, sub: 'Saturday / Sunday rates · rate grid' };
+}
 
 /** Readiness & go tiles: Go chantier, Client prerequisites, Individual go · Cursus, Equipment confirmed, Collisions. */
 export function readinessKpis(f: SiteFacts, go: GoVerdict): SiteKpi[] {
@@ -216,7 +230,7 @@ export function teamKpis(f: SiteFacts, lang: Lang): SiteKpi[] {
     { label: 'Man-days planned', value: String(f.manDaysPlanned), sub: `${manDaysConsumed(f)} consumed · site starts ${siteDateText(f.startOn)}`, alert: false },
     { label: 'Collisions open', value: String(collisions), sub: 'Arbitrated by department heads', alert: collisions > 0 },
     { label: 'Mission budget', value: money(b, lang), sub: `${money(a, lang)} committed · ${b ? Math.round((a / b) * 100) : 0}%`, alert: false },
-    { label: 'Site premium', value: SITE_PREMIUM.value, sub: SITE_PREMIUM.sub, alert: false },
+    { label: 'Site premium', ...sitePremiumTile(f.premium), alert: false },
   ];
 }
 

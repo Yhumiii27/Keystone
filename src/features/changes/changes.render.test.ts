@@ -65,7 +65,7 @@ describe('Change control & baselines', () => {
     expect(hlt.changeRequests.map((c) => [c.id, c.status])).toEqual([
       ['CR-004', 'approved'], ['CR-006', 'approved'], ['CR-007', 'approved'], ['CR-008', 'in_review'], ['CR-009', 'draft'], ['CR-005', 'rejected'],
     ]);
-    expect(hlt.changeRequests[3].chain.map((s) => s.approver)).toEqual(['Romain Aubert', 'Marie Lefebvre', 'Nadia Bensaïd', 'Monthly · next 8 Oct']);
+    expect(hlt.changeRequests[3].chain.map((s) => s.approver)).toEqual(['Romain Aubert', 'Marie Lefebvre', 'Nadia Bensaïd', 'Marie Lefebvre']);
     expect([hlt.originalBudget, hlt.bac, hlt.contingency]).toEqual([4600, 4800, 150]);
     expect(hlt.baselines.map((b) => [b.code, b.setOn, b.state])).toEqual([
       ['BL0', '18 Jan 2026', 'superseded'], ['BL1', '12 Mar 2026', 'current'], ['BL2', 'Pending CR-009', 'proposed'],
@@ -146,7 +146,8 @@ describe('Change control & baselines', () => {
     // the director decides the director step and records the change control board
     expect(d8).toContain('Portfolio director Marie Lefebvre Reject Approve Pending');
     expect(d8).toContain('Client / sponsor Nadia Bensaïd Pending');
-    expect(d8).toContain('Change control board Monthly · next 8 Oct Reject Approve Pending');
+    // R-169, P-6a: the director records the CCB decision (the prototype printed the cadence "Monthly · next 8 Oct").
+    expect(d8).toContain('Change control board Marie Lefebvre Reject Approve Pending');
     expect(d8).toContain('Open plan Open budget');
     // decision buttons name their step for screen readers
     expect(drawer(hlt, 'CR-008', 'en')).toContain('aria-label="Approve · Change control board"');
@@ -171,7 +172,8 @@ describe('Change control & baselines', () => {
     const fr = text(drawer(hlt, 'CR-008', 'fr'));
     expect(fr).toContain('Émise par R. Aubert · 24 sept.');
     expect(fr).toContain('Financé par la provision · 57 % de la réserve');
-    expect(fr).toContain('Comité de contrôle des modifications Mensuel · prochain le 8 oct. Refuser Approuver En attente');
+    // R-169, P-6a: the CCB line names the director who records the decision (the prototype printed "Monthly · next 8 Oct").
+    expect(fr).toContain('Comité de contrôle des modifications Marie Lefebvre Refuser Approuver En attente');
   });
 });
 

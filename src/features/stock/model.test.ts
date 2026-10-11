@@ -22,6 +22,11 @@ const S0: StockUrlState = { loc: null, q: '', stock: null, part: null };
 const day = (s: string) => s.replace(/(^|· )0(\d)/g, '$1$2');
 const FR_MOVE: Record<string, string> = { Transférer: 'Transfert' };
 const FR_WHERE: Record<string, string> = { 'QC failed · BL-2026-0533': 'QC non conforme · BL-2026-0533' };
+/**
+ * R-148 (NEW-D1-2): a part name is shown as typed — in French its exact dictionary entry or the stored name, never the
+ * prototype's partial translation ("Stainless mounting bracket · rev 2" was shown half translated as "… · rév. 2").
+ */
+const nameFix = (lang: Lang, protoFr: string) => (lang === 'fr' ? protoFr.replace(/ · rév\. 2$/, ' · rev 2') : protoFr);
 
 async function screen(lang: Lang, state: Partial<StockUrlState> = {}) {
   const [rows, locations, sync, moves, pins] = await Promise.all([listStock(), listStorageLocations(), getX3StockSync(), listStockMovements({ limit: 8 }), installedBasePins()]);
@@ -35,9 +40,9 @@ const viewRows = (rows: any[]) =>
     ref: r.ref, name: r.name, loc: r.location, locType: r.locationType, onHand: r.onHand, reserved: r.reserved, avail: r.available, availColor: r.availableColor,
     min: r.min, below: r.belowMin, value: r.value, source: r.source, srcClass: `tag tag-${r.sourceTone}`, last: r.last, pinned: !!r.pinned, pinnedText: r.pinned ?? '',
   }));
-const goldenRows = (rows: any[]) =>
+const goldenRows = (rows: any[], lang: Lang) =>
   rows.map((r) => ({
-    ref: r.ref, name: r.name, loc: r.loc, locType: r.locType, onHand: r.onHand, reserved: r.reserved, avail: r.avail, availColor: r.availColor, min: r.min,
+    ref: r.ref, name: nameFix(lang, r.name), loc: r.loc, locType: r.locType, onHand: r.onHand, reserved: r.reserved, avail: r.avail, availColor: r.availColor, min: r.min,
     below: !!r.below, value: r.value, source: r.source, srcClass: r.srcClass, last: day(r.last), pinned: r.pinned, pinnedText: r.pinnedText,
   }));
 
@@ -52,7 +57,7 @@ describe('Stock & storages view model (seed)', () => {
     expect(view.kpis).toEqual(g.kpis.map((k: any) => ({ ...k, value: String(k.value) })));
     expect(view.chips.map((c) => [c.label, c.count])).toEqual(g.chips.map((c: any) => [c.label, c.count]));
     expect(view.chipValue).toBe('');
-    expect(viewRows(view.rows)).toEqual(goldenRows(g.rows));
+    expect(viewRows(view.rows)).toEqual(goldenRows(g.rows, lang));
     expect(view.rows.every((r) => !r.selected)).toBe(true);
     expect(viewMoves(view.moves)).toEqual(goldenMoves(g.moves, lang));
     expect(view.empty).toBeNull();
@@ -68,8 +73,9 @@ describe('Stock & storages view model (seed)', () => {
     }
     for (const [q, g] of Object.entries(G.en.search)) expect(index((await screen('en', { q })).view.rows)).toEqual(g);
     expect(index((await screen('en', { loc: 'Entrepôt central — Lyon', q: 'fd' })).view.rows)).toEqual(G.en.searchInLocation);
-    // French: the name as shown matches too ("rév. 2"), as does the stored English one.
-    expect((await screen('fr', { q: 'rév. 2' })).view.rows.map((r) => r.ref)).toEqual(['SG-BRK-SS2']);
+    // French: the name is shown as typed (R-148), so the stored text is what matches; the prototype's partial
+    // translation ("rév. 2") no longer exists.
+    expect((await screen('fr', { q: 'rév. 2' })).view.rows).toEqual([]);
     expect((await screen('fr', { q: 'rev 2' })).view.rows.map((r) => r.ref)).toEqual(['SG-BRK-SS2']);
     expect((await screen('en', { q: 'rév. 2' })).view.rows).toEqual([]);
     const none = await screen('fr', { q: 'zzz' });
@@ -88,7 +94,7 @@ describe('Stock & storages view model (seed)', () => {
     for (const [i, r] of rows.entries()) {
       const g = G[lang].drawers[String(i)];
       const d = stockDrawerView({ detail: (await getStockPosition(r.id))!, locations, pins, state: { ...S0, stock: r.id } }, t, lang);
-      expect([d.header, d.name, d.locationType, d.source, `tag tag-${d.sourceTone}`]).toEqual([`${g.ref} · ${g.loc}`, g.name, g.locType, g.source, g.srcClass]);
+      expect([d.header, d.name, d.locationType, d.source, `tag tag-${d.sourceTone}`]).toEqual([`${g.ref} · ${g.loc}`, nameFix(lang, g.name), g.locType, g.source, g.srcClass]);
       expect(d.meta).toEqual(g.meta.map((m: any) => ({ k: m.k, v: day(String(m.v)) })));
       expect(d.ops.map((o) => o.label)).toEqual(g.opSeg.map((o: any) => o.label));
       expect(viewMoves(d.moves).map(({ when, type, qty, where, who }) => ({ when, type, qty, where, who }))).toEqual(
@@ -137,7 +143,7 @@ describe('Stock & storages after movements (DAL writes, the viewer as author)', 
     const g = JSON.parse(JSON.stringify(G.ops.sequence).replaceAll(' → HLT activity', ' → A1250 Steel erection — Bays 3–4'));
     const { view } = await screen('en');
     expect(viewRows(view.rows).map((r) => ({ ref: r.ref, loc: r.loc, onHand: r.onHand, reserved: r.reserved, avail: r.avail, source: r.source, last: r.last }))).toEqual(
-      goldenRows(g.rows).map((r) => ({ ref: r.ref, loc: r.loc, onHand: r.onHand, reserved: r.reserved, avail: r.avail, source: r.source, last: r.last })),
+      goldenRows(g.rows, 'en').map((r) => ({ ref: r.ref, loc: r.loc, onHand: r.onHand, reserved: r.reserved, avail: r.avail, source: r.source, last: r.last })),
     );
     expect(viewMoves(view.moves)).toEqual(goldenMoves(g.moves, 'en'));
     expect(view.kpis.filter((k) => k.label !== 'X3 import').map((k) => [k.value, k.sub])).toEqual(

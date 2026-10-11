@@ -372,9 +372,6 @@ export function invoiceApprovalItems(invoices: readonly InvoiceForInbox[], lang:
 
 // ── "New RFQ" form (AF.procurement) ────────────────────────────────────────────────────────────────────
 
-/** Form default of "Reply due" (AF.procurement). */
-export const NEW_RFQ_DEFAULT_DUE = '15 Oct 2026';
-export const NEW_RFQ_DEFAULT_DUE_ISO = '2026-10-15';
 export const NEW_RFQ_INCOTERMS: readonly Incoterm[] = incoterm.codes;
 
 export interface NewRfqValues {
@@ -392,7 +389,7 @@ const MAX_TEXT = 300;
 
 /**
  * Validates the New RFQ form: title, suppliers (comma, semicolon or line separated) and articles are required; the
- * reply date is a date (EN or FR, "15 Oct 2026" by default) not before the status date; the incoterm is a code.
+ * reply date is a date (EN or FR; by default the status date + 20 days, R-169) not before the status date; the incoterm is a code.
  */
 export function parseNewRfq(values: Record<string, unknown>, todayIso: string = STATUS_ISO): ParseResult<NewRfqValues> {
   const title = text(values.title);
@@ -403,10 +400,29 @@ export function parseNewRfq(values: Record<string, unknown>, todayIso: string = 
   if (!articles) return { ok: false, error: 'The articles are required' };
   if (title.length > MAX_TEXT || articles.length > MAX_TEXT || suppliers.length > 20 || suppliers.some((s) => s.length > 120)) return { ok: false, error: 'The text is too long' };
   const dueText = text(values.due);
-  const replyDueOn = dueText ? parseNeedDate(dueText) : NEW_RFQ_DEFAULT_DUE_ISO;
+  const replyDueOn = dueText ? parseNeedDate(dueText) : newRfqDefaultDueIso(todayIso);
   if (!replyDueOn) return { ok: false, error: 'Enter the reply date as a date (e.g. 15 Oct 2026)' };
   if (replyDueOn < todayIso) return { ok: false, error: 'The reply date is before the status date' };
   const inc = text(values.incoterm) || 'DAP';
   if (!incoterm.isCode(inc)) return { ok: false, error: 'Unknown incoterm' };
   return { ok: true, value: { title, suppliers: [...new Set(suppliers)], articles, replyDueOn, incoterm: inc } };
 }
+
+// ── Delivery 7 (R-169): computed tiles and form defaults instead of the prototype's constants ─────────────────────────
+
+/**
+ * "Award rule" tile (R-169, A-12; the prototype printed the constant "PM"): of the RFQs still to award (not Awarded),
+ * how many the project manager decides ("PM decides") — the others follow their own rule (lowest TCO, technical first,
+ * lowest price). "—" when nothing is left to award.
+ */
+export function awardRuleTile(rfqs: readonly { status: RfqStatus; awardRule: string }[]): { value: string; sub: string } {
+  const open = rfqs.filter((r) => r.status !== 'awarded');
+  if (!open.length) return { value: '—', sub: 'No RFQ to award' };
+  return { value: `${open.filter((r) => r.awardRule === 'pm_decides').length} / ${open.length}`, sub: 'RFQs to award decided by the project manager' };
+}
+
+/** Days from the data date to the default reply date of a new RFQ (25 Sep → 15 Oct on the seed, as the prototype). */
+export const NEW_RFQ_REPLY_DAYS = 20;
+
+/** Default "Reply due" of a new RFQ (R-169: the data date + 20 days, no longer the literal "15 Oct 2026"). */
+export const newRfqDefaultDueIso = (asOf: string = STATUS_ISO) => addDaysIso(asOf, NEW_RFQ_REPLY_DAYS);

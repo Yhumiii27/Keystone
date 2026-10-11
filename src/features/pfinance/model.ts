@@ -12,6 +12,7 @@ import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
 import { lowPointSubText, pctOrDash } from '@/features/kpis/i18n';
+import { dataText } from '@/i18n/data-text';
 
 const N300 = 'var(--color-neutral-300)';
 const N400 = 'var(--color-neutral-400)';
@@ -124,7 +125,7 @@ export function prioritisationView(d: PrioritisationData, weights: number[], t: 
   const rows = ranked.map(({ rank, score, item: p }): RankRowView => ({
     rank,
     code: p.code,
-    name: t(p.name),
+    name: dataText(p.name, lang),
     status: t(p.status),
     stage: p.stage,
     tone: lifecycleTone(p.stage),
@@ -141,7 +142,7 @@ export function prioritisationView(d: PrioritisationData, weights: number[], t: 
     kpis: [
       { label: t('Active projects'), value: String(d.active.count), sub: t(`${f(d.active.budgetKeur)} committed`), color: OK },
       { label: t('Pipeline'), value: String(d.pipeline.count), sub: t(`${f(d.pipeline.budgetKeur)} proposed · approved · planning`), color: OK },
-      { label: t('Top-ranked'), value: top ? top.code : '—', sub: top ? t(top.name) : '', color: OK },
+      { label: t('Top-ranked'), value: top ? top.code : '—', sub: top ? dataText(top.name, lang) : '', color: OK },
       {
         label: t('Portfolio margin'),
         value: d.canSeeMargin ? pctOrDash(d.portfolioMarginPct) : MASK,
@@ -204,7 +205,7 @@ export function capacityView({ project: p, departments }: CapacityInput, t: T, l
   const gapH = rows.reduce((a, r) => a + r.b.gapH, 0);
   const v = verdictOf(gapH);
   return {
-    name: t(p.name),
+    name: dataText(p.name, lang),
     status: t(p.status),
     stage: p.stage,
     tone: lifecycleTone(p.stage),
@@ -294,7 +295,7 @@ export function cashView(d: CashData, t: T, lang: Lang): CashView {
     const c = r.contractKeur;
     return {
       code: r.code,
-      name: t(r.name),
+      name: dataText(r.name, lang),
       model: t(r.modelLabel),
       contract: c ? f(c) : '—',
       invoiced: c ? f(b.invoicedKeur) : '—',

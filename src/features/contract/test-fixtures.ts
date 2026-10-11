@@ -10,6 +10,7 @@ import golden from './contract.golden.json';
 import data from '@/server/prototype/prototype-data.json';
 import { amendmentStatus, bondType, isoOfDisplayDate, paymentMilestoneStatus } from '@/server/db/codes';
 import type { ContractInput, InvoiceInput, MilestoneInput } from '@/domain/contract';
+import { dataText } from '@/i18n/data-text';
 import type { ContractData } from './model';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -129,4 +130,16 @@ export function scenarioData(name: string): ContractData {
     },
     nextInvoiceNumber: 'INV-2026-' + String(c.milestones.filter((m) => m.invoice).length + 1).padStart(3, '0'),
   };
+}
+
+/**
+ * R-148 (NEW-D1-2, X-12b): the contract sheet's typed fields are shown as typed — in French, the English value of the
+ * same scenario through `dataText` (its seeded dictionary entry, if any) instead of the prototype's partial translation
+ * ("Net 30 days" stays "Net 30 days", not "Net 30 jours").
+ */
+const TYPED_SHEET_FIELDS = new Set(['ref', 'client', 'terms', 'retentionNote', 'ld', 'warranty', 'law', 'scope']);
+export function sheetFieldsExpected(scenario: string, lang: 'en' | 'fr'): [string, string][] {
+  const g = G.scenarios[`${scenario}|contract|${lang}`];
+  const en = G.scenarios[`${scenario}|contract|en`];
+  return g.fields.map(([k, x]: [string, string]) => [k, lang === 'fr' && TYPED_SHEET_FIELDS.has(k) ? dataText(en.fields.find((f: [string, string]) => f[0] === k)[1], 'fr') : x]);
 }

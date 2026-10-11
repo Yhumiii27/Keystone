@@ -1,8 +1,10 @@
 // App shell (docs/spec/01 §2): 232px sidebar | main, radial accent background. Owned by the shell.
 // Demo mode: the "View as" switcher at the bottom of the sidebar; Entra mode (R-038): the signed-in user's account
 // menu (active role, sign out) instead.
+// Tablet layout (R-146): up to 1024 px, one column with a top bar whose menu button opens the sidebar as a drawer.
 import { PERSONAS } from '@/config/personas';
 import { ToastProvider } from '@/components/ds/Toast';
+import { NavToggle } from '@/components/app/shell/nav-toggle';
 import { Sidebar } from '@/components/app/shell/sidebar';
 import { ShellProvider } from '@/components/app/shell/shell-provider';
 import styles from '@/components/app/shell/shell.module.css';
@@ -14,6 +16,7 @@ import { getLastProject, getNavOpen, getViewer, getZone } from '@/server/session
 export default async function AppLayout({ children }: LayoutProps<'/'>) {
   const viewer = await getViewer();
   const [navOpen, lastProject, zone, nav] = await Promise.all([getNavOpen(), getLastProject(), getZone(), getShellNav(viewer)]);
+  const zoneName = await zoneLabel(zone);
   const codes = nav.projects.map((p) => p.code);
   const entra = authMode() === 'entra';
   return (
@@ -30,12 +33,15 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
                 : null
             }
             navOpen={navOpen}
-            zoneLabel={zoneLabel(zone)}
+            zoneLabel={zoneName}
             projects={nav.projects.map(({ code, label }) => ({ code, label }))}
             globalBadges={nav.globalBadges}
             projectBadges={nav.projectBadges}
           />
-          <main className={styles.main}>{children}</main>
+          <main className={styles.main}>
+            <NavToggle />
+            {children}
+          </main>
         </div>
       </ToastProvider>
     </ShellProvider>

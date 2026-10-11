@@ -11,6 +11,7 @@ import { getShellNav } from '@/server/dal/shell';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { ExportButton, GlobalSearch, LangToggle, Notifications, ZoneSeg } from './header-islands';
+import { NavToggle } from './nav-toggle';
 import { ShellProvider } from './shell-provider';
 import { Sidebar } from './sidebar';
 
@@ -37,5 +38,20 @@ describe('shell islands render', () => {
     expect(html).toContain('href="/projects/NDC-031/documents"');
     expect(html).toContain('Aller à une page…');
     expect(html).toContain('Romain Aubert');
+  });
+
+  it('tablet layout (R-146): the menu button controls the sidebar drawer, closed on first render', async () => {
+    const nav = await getShellNav('pm');
+    const islands = [
+      h(NavToggle, { key: 't' }),
+      h(Sidebar, { key: 's', role: 'pm', personas: PERSONAS, navOpen: {}, zoneLabel: '', projects: nav.projects, globalBadges: nav.globalBadges, projectBadges: nav.projectBadges }),
+    ];
+    const shell = h(ShellProvider, { initialProject: 'HLT-026', projectCodes: nav.projects.map((p) => p.code), children: islands });
+    const html = renderToStaticMarkup(h(I18nProvider, { lang: 'fr', children: shell }));
+    expect(html).toMatch(/<button id="ks-nav-toggle" type="button" class="btn btn-secondary[^"]*" aria-controls="ks-sidebar" aria-expanded="false">/);
+    expect(html).toContain('<span>Menu</span>');
+    expect(html).toMatch(/<aside id="ks-sidebar" class="[^"]*" aria-label="Menu principal">/);
+    expect(html).toContain('aria-label="Fermer le menu"');
+    expect(html).toMatch(/<div class="[^"]*" aria-hidden="true"><\/div><aside/);
   });
 });

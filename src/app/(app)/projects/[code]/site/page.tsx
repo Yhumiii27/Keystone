@@ -17,10 +17,10 @@ import { DailyReportButton } from '@/features/site/site-buttons';
 import { photoViews } from '@/features/photos/model';
 import { SiteBody } from '@/features/site/site-view';
 import { listProjectPhotos } from '@/server/dal/photos';
-import { projectLabel } from '@/server/dal/projects';
 import { getSite } from '@/server/dal/site';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -34,7 +34,7 @@ export default async function SitePage({ params, searchParams }: { params: Promi
   const view = siteView(projectCode, data, { tab: siteTabOf(first(sp.tab)) }, t, lang);
 
   const primary = canEdit ? (
-    <DailyReportButton code={projectCode} context={t(projectLabel(ctx.project))} form={dailyReportFormDef(t, lang)} execHref={siteHref(projectCode, 'exec')} />
+    <DailyReportButton code={projectCode} context={projectLabelText(ctx.project, lang)} form={dailyReportFormDef(t, lang)} execHref={siteHref(projectCode, 'exec')} />
   ) : undefined;
 
   // R-126: photos on the Daily execution tab (internal viewers; the client never sees the site's records — P-10b).

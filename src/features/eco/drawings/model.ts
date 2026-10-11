@@ -3,10 +3,11 @@
 // mirror of SolidWorks PDM (src/server/dal/drawings.ts); the derivations are src/domain/drawings.ts. Pure (no I/O).
 import { LO, OK } from '@/components/app/tones';
 import { drawingChips, drawingKpis, drawingStateTag, filterDrawings, revisionHistory, type DrawingState } from '@/domain/drawings';
-import type { T } from '@/i18n/translate';
+import type { Lang, T } from '@/i18n/translate';
 import { fmtDOfIso } from '@/server/db/codes';
 import type { DrawingDetail, DrawingRow, VaultSyncState } from '@/server/dal/drawings';
 import { drawingsHref, ecoScreenHref, partRecordHref } from '../links';
+import { dataText } from '@/i18n/data-text';
 
 export interface DrawingsState {
   state: DrawingState | null;
@@ -44,7 +45,7 @@ export interface DrawingsView {
 const dateText = (iso: string | null, t: T) => (iso ? t(fmtDOfIso(iso)) : '—');
 
 /** Register view: KPI tiles, State chips (links keeping the search), rows matching chip and search. */
-export function drawingsView(input: { drawings: DrawingRow[]; sync: VaultSyncState | null; state: DrawingsState }, t: T): DrawingsView {
+export function drawingsView(input: { drawings: DrawingRow[]; sync: VaultSyncState | null; state: DrawingsState }, t: T, lang: Lang): DrawingsView {
   const { drawings, sync, state } = input;
   const rows = filterDrawings(drawings, state.state, state.q).map((d): DrawingRowView => {
     const selected = state.dwg === d.number;
@@ -52,10 +53,10 @@ export function drawingsView(input: { drawings: DrawingRow[]; sync: VaultSyncSta
       number: d.number,
       href: drawingsHref({ state: state.state, q: state.q, dwg: selected ? null : d.number }),
       selected,
-      title: t(d.title),
+      title: dataText(d.title, lang),
       path: d.vaultPath,
       part: d.partRef ?? '—',
-      partName: d.partName ? t(d.partName) : '',
+      partName: d.partName ? dataText(d.partName, lang) : '',
       rev: d.revision,
       state: t(d.stateLabel),
       stateClass: drawingStateTag(d.state),
@@ -94,18 +95,18 @@ export interface DrawingDrawerView {
 }
 
 /** The drawing drawer. */
-export function drawingDrawerView(input: { drawing: DrawingDetail; state: DrawingsState }, t: T): DrawingDrawerView {
+export function drawingDrawerView(input: { drawing: DrawingDetail; state: DrawingsState }, t: T, lang: Lang): DrawingDrawerView {
   const d = input.drawing;
   return {
     number: d.number,
     head: `${d.number} ${t('· rev')} ${d.revision}`,
-    title: t(d.title),
+    title: dataText(d.title, lang),
     state: t(d.stateLabel),
     stateClass: drawingStateTag(d.state),
     closeHref: drawingsHref({ state: input.state.state, q: input.state.q }),
     previewSrc: d.previewRef && /^(https?:|\/)/.test(d.previewRef) ? d.previewRef : null,
     meta: [
-      { k: 'Part', v: d.partRef ? `${d.partRef}${d.partName ? ` · ${t(d.partName)}` : ''}` : '—' },
+      { k: 'Part', v: d.partRef ? `${d.partRef}${d.partName ? ` · ${dataText(d.partName, lang)}` : ''}` : '—' },
       { k: 'Vault path', v: d.vaultFile },
       { k: 'Checked in by', v: `${d.checkedInBy} · ${dateText(d.checkedInOn, t)}` },
       { k: 'Linked ECO', v: d.ecoNumber ?? t('None') },

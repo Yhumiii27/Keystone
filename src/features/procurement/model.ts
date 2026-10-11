@@ -5,7 +5,7 @@
 import { LO, OK } from '@/components/app/tones';
 import { screenHref, type RoleKey } from '@/config/screens';
 import {
-  MATCH_DOT, blockingReason, canAwardRfq, canDecideInvoiceRole, compareQuotes, invoiceChipStatuses,
+  MATCH_DOT, awardRuleTile, blockingReason, canAwardRfq, canDecideInvoiceRole, compareQuotes, invoiceChipStatuses,
   invoiceDecisions, invoiceKpis, match3, quotesText, receiptGap, rfqActions, rfqHint, rfqKpis, sourcingHref, supplierAttention, supplierKpis,
   type SourcingTab,
 } from '@/domain/procurement';
@@ -93,13 +93,15 @@ export function rfqTabView(rfqs: readonly RfqRow[], selected: string | null, c: 
   const { t, lang } = c;
   const pr = priced(c);
   const k = rfqKpis(rfqs.map((r) => ({ status: r.status, quoteCount: r.quotes.length })));
+  // R-169 (A-12): computed from the RFQs still to award (the prototype printed the constant "PM").
+  const award = awardRuleTile(rfqs);
   return {
     kpis: [
       kpi(t, 'Open RFQs', k.open, t(`${k.readyToAward} ready to award`)),
       kpi(t, 'Quotes received', k.quotes, t('Across open requests')),
       kpi(t, 'Savings vs list', pr(() => money(rfqSavingsKeur(facts, asOf), lang)), t('Awarded this quarter')),
       kpi(t, 'Average cycle', wholeDaysText(rfqAverageCycleDays(facts), lang), t('RFQ sent → award')),
-      kpi(t, 'Award rule', 'PM', t('Decided per RFQ by the project manager')),
+      kpi(t, 'Award rule', award.value, t(award.sub)),
     ],
     rows: rfqs.map((r) => {
       const actions = rfqActions({ status: r.status, quoteCount: r.quotes.length, awardedTo: r.awardedTo });
@@ -199,7 +201,7 @@ export function rfqDrawerView(r: RfqRow, c: SourcingCtx & { orderProject: string
       delta: cmp[i].deltaEur ? pr(() => '+' + moneyEur(cmp[i].deltaEur, lang)) : '—',
       lead: t(`${q.leadWeeks} ${q.leadWeeks === 1 ? 'wk' : 'wks'}`),
       fastest: cmp[i].isFastest,
-      terms: t(q.paymentTerms),
+      terms: dataText(q.paymentTerms, lang),
       rating: `${q.grade} · ${q.score}/100`,
       canAward,
     })),
@@ -372,7 +374,7 @@ export function invoiceDrawerView(i: SupplierInvoiceRow, filter: SupplierInvoice
     meta: [
       { k: t('Invoice date'), v: dateText(i.invoiceDate, t), color: OK },
       { k: t('Due date'), v: dateText(i.dueDate, t), color: OK },
-      { k: t('Terms'), v: t(i.paymentTerms), color: OK },
+      { k: t('Terms'), v: dataText(i.paymentTerms, lang), color: OK },
       { k: t('Variance invoice − receipt'), v: gap != null ? pr(() => moneyUnitsIn(gap, i.currency, lang)) : '—', color: OK },
       { k: t('Blocking reason'), v: reason ? t(reason) : '—', color: reason ? LO : OK },
     ],

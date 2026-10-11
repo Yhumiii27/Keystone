@@ -196,8 +196,9 @@ export function ecoDrawerView(input: { data: EcoDrawerData; state: EcoState; vie
     const d = dispositionView(x, e);
     const open = !!p && OPEN_BOM_STAGES.includes(p.stage as StageCode);
     return {
-      key: x.targetRef, name: t(x.label),
-      sub: t([p?.code ?? x.targetRef, open ? 'Open BOM' : 'Frozen BOM', p?.status ?? '—', p?.pm ?? ''].join(' · ')),
+      // The project name and its PM as typed (R-148); the BOM state and the status through t().
+      key: x.targetRef, name: dataText(x.label, lang),
+      sub: [p?.code ?? x.targetRef, t(open ? 'Open BOM' : 'Frozen BOM'), t(p?.status ?? '—'), p?.pm ?? ''].join(' · '),
       href: projectBomHref(p?.code ?? x.targetRef), revText: d.revText, label: t(d.label), tagClass: d.tagClass,
       decidedBy: `${t('Decided by')} ${t(d.decider)}${d.note ? ` · ${dataText(d.note, lang)}` : ''}`,
       manage: canDecideDisposition(e.status, 'project', viewer.role),
@@ -208,7 +209,8 @@ export function ecoDrawerView(input: { data: EcoDrawerData; state: EcoState; vie
     const d = dispositionView(x, e);
     return {
       key: x.targetRef, name: dataText(m?.name ?? x.label, lang),
-      sub: t([`${x.targetRef} · ${m?.client ?? ''}`, m?.generation ?? '', m?.warrantyStart ? displayOfIso(m.warrantyStart) : '', m?.warrantyText ?? ''].join(' · ')),
+      // The client as typed (R-148); generation, warranty date and warranty state through t().
+      sub: [`${x.targetRef} · ${dataText(m?.client ?? '', lang)}`, m?.generation ? t(m.generation) : '', m?.warrantyStart ? t(displayOfIso(m.warrantyStart)) : '', m?.warrantyText ? t(m.warrantyText) : ''].join(' · '),
       href: fleetHref(), revText: t(d.revText), label: t(d.label), tagClass: d.tagClass,
       decidedBy: `${t('Decided by')} ${t(d.decider)}${d.note ? ` · ${dataText(d.note, lang)}` : ''}`,
       manage: canDecideDisposition(e.status, 'machine', viewer.role),
@@ -241,7 +243,7 @@ export function ecoDrawerView(input: { data: EcoDrawerData; state: EcoState; vie
     ].map((x) => ({ ...x, k: t(x.k) })),
     parts: e.parts.map((ref) => {
       const p = partsByRef.get(ref);
-      return { ref, name: p ? t(p.name) : '', status: p ? t(p.statusLabel) : '', statusClass: p ? `tag ${PART_STATUS_TAG[p.status]}` : 'tag tag-neutral', href: partRecordHref(ref) };
+      return { ref, name: p ? dataText(p.name, lang) : '', status: p ? t(p.statusLabel) : '', statusClass: p ? `tag ${PART_STATUS_TAG[p.status]}` : 'tag tag-neutral', href: partRecordHref(ref) };
     }),
     revText: `${e.parts[0] ?? ''} · ${e.fromRevision} → ${e.toRevision}`,
     pending: { text: t(pend.text), tagClass: pend.tagClass },

@@ -72,7 +72,7 @@ describe('change control (07 §2.2)', () => {
     expect(cr8.typesLabel).toBe('Budget · Schedule');
     expect(cr8.wbs).toEqual([{ code: '1.4', name: 'Steel structure', amount: null }]);
     expect(cr8.chain.map((s) => [s.label, s.approver])).toEqual([
-      ['Project manager', 'Romain Aubert'], ['Portfolio director', 'Marie Lefebvre'], ['Client / sponsor', 'Nadia Bensaïd'], ['Change control board', 'Monthly · next 8 Oct'],
+      ['Project manager', 'Romain Aubert'], ['Portfolio director', 'Marie Lefebvre'], ['Client / sponsor', 'Nadia Bensaïd'], ['Change control board', 'Marie Lefebvre'],
     ]);
     expect(cc.changeRequests.find((c) => c.id === 'CR-005')!.chain.every((s) => s.decision === null)).toBe(true);
   });

@@ -111,13 +111,11 @@ describe('/admin/machine-types', () => {
 describe('/admin/integrations', () => {
   const page = async (sp: Record<string, string> = {}) => parts(await IntegrationsPage({ searchParams: Promise.resolve(sp) }));
 
-  it('`?view=` / `?source=`; "Add connector" opens on the first system not connected yet', async () => {
+  it('`?view=` / `?source=`; no "Add connector" (D-7a, R-020: IT configures the connectors outside Keystone)', async () => {
     const p = await page();
     expect(Object.keys(p)).toEqual(['PageHeader', 'PlumbingBody']);
     expect(p.PageHeader.props.screen).toBe('plumbing');
-    expect(primaryName(p)).toBe('AddConnectorButton');
-    expect((p.PageHeader.props.primary as El).props.initialSystem).toBe('SharePoint');
-    expect((p.PageHeader.props.primary as El).props.context).toBe('#026 · Harbor Line Terminal Expansion');
+    expect(p.PageHeader.props.primary).toBeUndefined();
     const v = (sp: Record<string, string>) => page(sp).then((x) => x.PlumbingBody.props.view as PlumbingView);
     expect((await v({})).view).toBe('activity');
     expect((await v({ view: 'audit' })).view).toBe('audit');

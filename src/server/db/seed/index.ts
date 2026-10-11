@@ -1,6 +1,7 @@
 import 'server-only';
-import { sql } from 'drizzle-orm';
-import { calendars, parts, projects, referenceValues } from '../schema';
+import { eq, sql } from 'drizzle-orm';
+import { APP_SETTING_DEFAULTS } from '@/domain/settings-defaults';
+import { appSettings, calendars, parts, projects, referenceValues } from '../schema';
 import type { DB, Tx } from '../types';
 import { seedAftersales } from './aftersales';
 import { seedCatalogue } from './catalogue';
@@ -26,7 +27,7 @@ import { seedPrioritisation } from './prioritisation';
 import { seedPurchasing } from './purchasing';
 import { seedQuality } from './quality';
 import { seedResources } from './resources';
-import { seedSettings } from './settings';
+import { seedSettings, seedSettingsDefaults } from './settings';
 import { seedSite } from './site';
 import { seedStock } from './stock';
 import { demoReferentsToBackfill, seedDemoReferents } from './project-team';
@@ -124,6 +125,11 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     }
     // Delivery 7 (cost-control): risk costs of a database seeded before migration 0007 (idempotent).
     await backfillCostControl(db).catch((e) => logError('Delivery 7 cost-control backfill', e, { component: 'seed' }));
+    // Delivery 7 (R-170): the stored "Reset to defaults" document (idempotent, never overwrites an existing one).
+    const [{ d }] = await db.select({ d: sql<number>`count(*)::int` }).from(appSettings).where(eq(appSettings.key, APP_SETTING_DEFAULTS));
+    if (d === 0) {
+      await db.transaction(async (tx) => seedSettingsDefaults(tx)).catch((e) => logError('Delivery 7 Settings defaults backfill', e, { component: 'seed' }));
+    }
     // Databases seeded before delivery 7 adopt their (demo) record.
     if (!record) await writeSeedRecord(db, 'demo').catch((e) => logError('Seed record', e, { component: 'seed' }));
     return false;

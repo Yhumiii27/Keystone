@@ -114,8 +114,12 @@ describe('project BOM (09 §1)', () => {
   });
 
   it('where-used reproduces usedVals (default CR-BRG-SKF; paths, projects, purchase orders)', async () => {
-    for (const [q, g] of Object.entries(G.used as Record<string, any>)) {
-      const ref = await resolveWhereUsedQuery(q === '(default)' ? '' : q);
+    // R-169 (A-12): the empty search no longer opens the prototype's constant CR-BRG-SKF but the project's part used by the
+    // most projects (EL-TRF-2MVA: HLT-026, NDC-031, WSA-044), compared with the prototype's own values for that part.
+    expect([await resolveWhereUsedQuery(''), await resolveWhereUsedQuery('', 'HLT-026'), await resolveWhereUsedQuery('', 'RCF-019')]).toEqual(['EL-TRF-2MVA', 'EL-TRF-2MVA', 'FD-DET-OPT']);
+    for (const [q, g0] of Object.entries(G.used as Record<string, any>)) {
+      const g = q === '(default)' ? G.used['EL-TRF-2MVA'] : g0;
+      const ref = await resolveWhereUsedQuery(q === '(default)' ? '' : q, 'HLT-026');
       const w = (await getWhereUsed(ref, 'HLT-026'))!;
       expect(w.part.ref).toBe(g.ref);
       expect(w.paths.map((p) => ({ chain: p.chain.map((c) => `${c.ref} ×${c.qty}`).join('  ›  '), qty: `${n(p.perProject)} per project`, leaf: ref }))).toEqual(g.rows);

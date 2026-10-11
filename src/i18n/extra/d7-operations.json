@@ -14,7 +14,6 @@
   "The effective date cannot be before the previous stage change": "La date effective ne peut pas être antérieure au changement d’étape précédent",
   "Stage changed": "Changement d’étape",
   "Release reservation": "Libérer la réservation",
-  "Release": "Libération",
   "Activity (required)": "Activité (obligatoire)",
   "Activity — credits its work package (optional)": "Activité — crédite son lot de travaux (facultatif)",
   "The current project has no plan activity: an issue cannot be recorded.": "Le projet courant n’a aucune activité planifiée : aucune sortie ne peut être enregistrée.",

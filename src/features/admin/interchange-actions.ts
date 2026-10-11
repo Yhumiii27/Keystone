@@ -117,8 +117,15 @@ export interface ConnectorConfigView {
   dataScope: string;
   direction: ConnectorDirection | null;
   enabled: boolean;
+  owner: string | null;
   configuredAt: string | null;
   configuredByName: string | null;
+  /** R-020: where the settings come from — IT's connectors file (its base name) or the stored settings. */
+  source: { kind: 'file'; file: string } | { kind: 'stored' };
+  /** The connectors file is set but invalid (nothing of it applied): its errors, English. */
+  fileErrors: string[] | null;
+  /** Server variables the connector reads, set or not (values are never sent). */
+  env: { name: string; purpose: string; set: boolean; whenUnset: string }[];
 }
 
 async function plumbingEditor(): Promise<{ name: string } | null> {
@@ -133,7 +140,10 @@ export async function connectorConfigAction(name: unknown): Promise<{ ok: true; 
   if (!c) return { ok: false, error: 'Invalid request' };
   return {
     ok: true,
-    config: { name: c.name, frequency: c.frequency, dataScope: c.dataScope, direction: c.direction, enabled: c.enabled, configuredAt: c.configuredAt?.toISOString() ?? null, configuredByName: c.configuredByName },
+    config: {
+      name: c.name, frequency: c.frequency, dataScope: c.dataScope, direction: c.direction, enabled: c.enabled, owner: c.owner,
+      configuredAt: c.configuredAt?.toISOString() ?? null, configuredByName: c.configuredByName, source: c.source, fileErrors: c.fileErrors, env: c.env,
+    },
   };
 }
 

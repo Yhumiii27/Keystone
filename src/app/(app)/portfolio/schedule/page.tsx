@@ -21,7 +21,7 @@ export default async function PortfolioSchedulePage({ searchParams }: { searchPa
   return (
     <>
       <PageHeader screen="pfplan" />
-      <PfPlanBody model={model} filter={filter} zoneSelected={!!zone} t={t} />
+      <PfPlanBody model={model} filter={filter} zoneSelected={!!zone} t={t} lang={lang} />
     </>
   );
 }

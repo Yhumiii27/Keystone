@@ -3,32 +3,30 @@
 // and Cursus with the mode and state of Keystone's connector layer), import / export cards (D-7b: the import cards only
 // while IMPORTS_ENABLED is on in src/domain/ch4-defaults.ts; the "Export — …" cards always) and the audit trail with its
 // ISO 9001 CSV export (./audit.csv). URL state: `?view=` display (activity default, connectors, imports, audit), `?source=`
-// activity kind. Primary "Add connector" (AF.plumbing). Roles: director, PM; the others see it outside their workspace
-// (banner, no Sync / Add / export).
+// activity kind. No primary action: IT configures the connectors outside Keystone (D-7a, R-020 — the connectors file and
+// the server environment; "Configure" shows them read-only). Roles: director, PM; the others see it outside their
+// workspace (banner, no Sync / export).
 import { PageHeader } from '@/components/app/shell/page-header';
 import { parseActivitySource, parsePlumbView } from '@/domain/admin';
-import { addConnectorForm, firstFreeSystem } from '@/features/admin/forms';
 import { plumbingView, visibleImportFormats } from '@/features/admin/model';
 import { PlumbingBody } from '@/features/admin/plumbing-view';
-import { AddConnectorButton } from '@/features/admin/primary-buttons';
 import { listAdminConnectors } from '@/server/dal/admin-connectors';
-import { ADDABLE_SYSTEMS, CONNECTOR_FREQUENCIES, getPlumbingCounts, listImportFormats } from '@/server/dal/integrations';
+import { getPlumbingCounts, listImportFormats } from '@/server/dal/integrations';
 import { countUnreadNotifications, listActivity, listAudit } from '@/server/dal/notifications';
-import { getProject, projectLabel } from '@/server/dal/projects';
 import { importKindsOf } from '@/server/interchange/rights';
 import { getScreenAccess } from '@/server/project-context';
-import { getI18n, getLastProject } from '@/server/session';
+import { getI18n } from '@/server/session';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 export default async function IntegrationsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const [{ t, lang }, access, activity, connectors, imports, audit, counts, lastProject] = await Promise.all([
-    getI18n(), getScreenAccess('plumbing'), listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts(), getLastProject(),
+  const [{ t, lang }, access, activity, connectors, imports, audit, counts] = await Promise.all([
+    getI18n(), getScreenAccess('plumbing'), listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts(),
   ]);
-  // The unread count and its persona title are the viewer's; the add-form sub-line names the current project.
-  const [unread, project] = await Promise.all([countUnreadNotifications(access.viewer), access.canEdit ? getProject(lastProject) : null]);
+  // The unread count and its persona title are the viewer's.
+  const unread = await countUnreadNotifications(access.viewer);
   const view = plumbingView(
     {
       view: parsePlumbView(first(sp.view)),
@@ -37,10 +35,9 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
     },
     t, lang,
   );
-  const form = addConnectorForm(ADDABLE_SYSTEMS, CONNECTOR_FREQUENCIES);
   return (
     <>
-      <PageHeader screen="plumbing" primary={<AddConnectorButton form={form} initialSystem={firstFreeSystem(ADDABLE_SYSTEMS, connectors.map((c) => c.name))} context={project ? t(projectLabel(project)) : undefined} />} />
+      <PageHeader screen="plumbing" />
       <PlumbingBody view={view} canEdit={access.canEdit} importKinds={importKindsOf(access.viewer.role)} t={t} />
     </>
   );

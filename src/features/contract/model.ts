@@ -179,8 +179,9 @@ export function contractView(c: ContractData, t: T, lang: Lang): ContractView {
   const s = c.sheet;
   const terms = termsOfSheet(s);
   const value: Record<SheetFieldKey, string> = {
-    ref: t(s.reference),
-    client: t(s.client),
+    // R-148: the contract sheet is typed text (shown as typed, or its seeded demo entry).
+    ref: dataText(s.reference, lang),
+    client: dataText(s.client, lang),
     type: s.type,
     signed: s.signedOn ? t(displayOfIso(s.signedOn)) : '',
     amount: String(s.baseAmountKeur),
@@ -188,11 +189,11 @@ export function contractView(c: ContractData, t: T, lang: Lang): ContractView {
     rule: terms.rule,
     days: String(terms.days),
     retention: String(s.retentionPct),
-    retentionNote: t(s.retentionNote),
-    ld: t(s.liquidatedDamages),
-    warranty: t(s.warranty),
-    law: t(s.governingLaw),
-    scope: t(s.scope),
+    retentionNote: dataText(s.retentionNote, lang),
+    ld: dataText(s.liquidatedDamages, lang),
+    warranty: dataText(s.warranty, lang),
+    law: dataText(s.governingLaw, lang),
+    scope: dataText(s.scope, lang),
   };
   const currencyChoices = [...new Set([...documentCurrencies(fx), cur])];
   const extra: Partial<Record<SheetFieldKey, Partial<SheetFieldView>>> = {

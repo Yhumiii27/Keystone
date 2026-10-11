@@ -5,14 +5,11 @@
 // - text typed in Keystone (lessons, client issues, contract milestone labels) is translated only on an exact
 //   dictionary match, never segment by segment ("Mar works" must not become "mars works");
 // - French decimals of the survey are formatted by the domain (oneDecimal).
-import FR_DICT_BASE from '@/i18n/fr-dict.json';
-import { EXTRA_FR } from '@/i18n/extra';
+import { dataText } from '@/i18n/data-text';
 import type { Lang, T } from '@/i18n/translate';
 
-const DICT: Record<string, string> = { ...(FR_DICT_BASE as Record<string, string>), ...EXTRA_FR };
-
-/** Free text typed by people: French only when the whole text is a dictionary entry. */
-export const exactText = (s: string, lang: Lang) => (lang === 'fr' && s && Object.hasOwn(DICT, s) ? DICT[s] : s);
+/** Free text typed by people: as typed, or a seeded string's exact dictionary entry (R-148: the shared helper). */
+export const exactText = (s: string, lang: Lang) => dataText(s, lang);
 
 /** Payment column "Due 10 Nov" → "Échéance 10 nov.". */
 export const dueText = (date: string, t: T, lang: Lang) => (lang === 'fr' ? `Échéance ${t(date)}` : `Due ${date}`);

@@ -21,10 +21,11 @@ import { SavBody } from '@/features/aftersales/sav-view';
 import { claimFormOptions, getSavScreen } from '@/server/dal/aftersales';
 import { CLAIM_OWNERS, getClaim, interventionPartOptions } from '@/server/dal/claims';
 import { machineConfigurations } from '@/server/dal/fleet';
-import { getProject, projectLabel } from '@/server/dal/projects';
+import { getProject } from '@/server/dal/projects';
 import { NOW_ISO, displayOfIso } from '@/server/db/codes';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n, getLastProject, getZone } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -39,7 +40,7 @@ export default async function WarrantyClaimsPage({ searchParams }: { searchParam
   let primary;
   if (access.canEdit) {
     const [opts, project] = await Promise.all([claimFormOptions(), getLastProject().then(getProject)]);
-    const context = project ? t(projectLabel(project)) : undefined;
+    const context = project ? projectLabelText(project, lang) : undefined;
     primary =
       view === 'interventions' ? (
         <FollowupFormButton kind="plan-preventive" target={null} label={t('Plan intervention')} context={context} form={localizeForm(planInterventionFormDef(opts.machines, { technicians: '' }), t, lang)} variant="primary" size="md" />

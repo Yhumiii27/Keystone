@@ -5,17 +5,15 @@
 // - Receipt statuses agree with "livraison" (feminine) in French; the prototype dictionary mixes "Annoncée",
 //   "Partiellement refusée" with "Reçu", "Accepté", "Refusé" (deliberate fix).
 // - Parameterised sentences the shared FR rule engine does not cover ("Failed on 3 units", toasts).
-import FR_DICT_BASE from '@/i18n/fr-dict.json';
-import { EXTRA_FR } from '@/i18n/extra';
 import type { Lang, T } from '@/i18n/translate';
 import type { ReceiptStatus } from '@/server/db/codes';
 import { receiptStatusLabel } from '@/domain/deliveries';
+import { dataText } from '@/i18n/data-text';
 
-const DICT: Record<string, string> = { ...(FR_DICT_BASE as Record<string, string>), ...EXTRA_FR };
 const fr = (lang: Lang) => lang === 'fr';
 
-/** Stored / typed text: FR only on an exact dictionary match. */
-export const dataText = (s: string, lang: Lang) => (fr(lang) && s && Object.hasOwn(DICT, s) ? DICT[s] : s);
+/** Typed / received text: as typed, or a seeded string's exact dictionary entry (R-148: the shared helper, src/i18n/data-text.ts). */
+export { dataText };
 
 /** Receipt statuses in French, agreed with "livraison". */
 const STATUS_FR: Record<ReceiptStatus, string> = {

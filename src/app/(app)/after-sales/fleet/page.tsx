@@ -15,9 +15,10 @@ import { localizeForm, machineFormDef } from '@/features/aftersales/forms';
 import { fleetView } from '@/features/aftersales/model';
 import { getFleetScreen, machineTypeOptions } from '@/server/dal/aftersales';
 import { listDeliveryCandidates } from '@/server/dal/fleet';
-import { getProject, listProjects, projectLabel } from '@/server/dal/projects';
+import { getProject, listProjects } from '@/server/dal/projects';
 import { getScreenAccess, projectAccessResolver } from '@/server/project-context';
 import { getI18n, getLastProject, getZone } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 export default async function InstalledBasePage() {
   const [{ t, lang }, access, zone] = await Promise.all([getI18n(), getScreenAccess('fleet'), getZone()]);
@@ -26,7 +27,7 @@ export default async function InstalledBasePage() {
   let primary;
   if (access.canEdit) {
     const [types, project] = await Promise.all([machineTypeOptions(), getLastProject().then(getProject)]);
-    primary = <AddMachineButton label={t('Add machine')} form={localizeForm(machineFormDef(types), t, lang)} context={project ? t(projectLabel(project)) : undefined} />;
+    primary = <AddMachineButton label={t('Add machine')} form={localizeForm(machineFormDef(types), t, lang)} context={project ? projectLabelText(project, lang) : undefined} />;
   }
   // A project manager registers the machines of the projects they lead (PM of record, co-PM or deputy, R-041).
   const leads = access.viewer.role === 'pm'

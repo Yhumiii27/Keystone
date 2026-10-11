@@ -3,15 +3,15 @@
 // whose ECO / NCR / HSE connector Keystone runs) and the import / export formats (IMPORTS 3571).
 import { PROTO } from '@/server/prototype';
 import {
-  APP_SETTING_HEALTH, HEALTH_DEFAULTS, connectorStatus, deliverableType, isoOfDisplayDate, locationType, parseStampText, riskCategory, slugOf, stage,
+  APP_SETTING_HEALTH, HEALTH_DEFAULTS, connectorStatus, deliverableType, locationType, parseStampText, riskCategory, slugOf, stage,
   type ReferenceListKey,
 } from '../codes';
+import { APP_SETTING_DEFAULTS, holidayCode, type SettingsDefaults } from '@/domain/settings-defaults';
 import { appSettings, connectors, importFormats, referenceValues } from '../schema';
 import type { Tx } from '../types';
 import { mirrorSeedInstant } from '@/server/integrations/vigie/prototype-snapshot';
 
-/** "14 Jul · Fête nationale" → 2026-07-14 (the list is "Public holidays 2026 — France"). */
-export const holidayCode = (label: string) => isoOfDisplayDate(label.split(' · ')[0]) ?? slugOf(label);
+export { holidayCode };
 
 /** Code of a Settings list entry: the stable domain code where one exists, else a slug of the label. */
 export function referenceCodeOf(list: ReferenceListKey, label: string): string {
@@ -32,6 +32,23 @@ export function defaultReferenceValues(): { listKey: ReferenceListKey; code: str
   return lists.flatMap((listKey) => (s[listKey] as string[]).map((label, position) => ({ listKey, code: referenceCodeOf(listKey, label), label, position })));
 }
 
+/**
+ * What Settings › "Reset to defaults" restores (R-170), stored in app_settings "settings.defaults": the SETTINGS0 lists,
+ * the six SETTINGS0 locations and the default health thresholds. The DAL reads only this document at run time.
+ */
+export function settingsDefaultsDocument(): SettingsDefaults {
+  return {
+    lists: defaultReferenceValues().map(({ listKey, code, label }) => ({ listKey, code, label })),
+    locations: (PROTO.SETTINGS0.locations as [string, string][]).map(([name, type]) => ({ name, type: locationType.code(type) })),
+    health: { risk: HEALTH_DEFAULTS.risk, off: HEALTH_DEFAULTS.off },
+  };
+}
+
+/** Stores the defaults document once (seed, and the Delivery 7 backfill of a database seeded before it). */
+export async function seedSettingsDefaults(tx: Tx): Promise<void> {
+  await tx.insert(appSettings).values({ key: APP_SETTING_DEFAULTS, value: settingsDefaultsDocument() }).onConflictDoNothing();
+}
+
 /** Vigie's row in the connectors table (not in the prototype's CONNECTORS: Vigie owns ECOs, NCRs and site HSE). */
 export const VIGIE_CONNECTOR = {
   name: 'Vigie',
@@ -46,6 +63,7 @@ export const VIGIE_CONNECTOR = {
 export async function seedSettings(tx: Tx, opts: { demo: boolean } = { demo: true }): Promise<void> {
   await tx.insert(referenceValues).values(defaultReferenceValues().map((v) => ({ ...v, active: true, isDefault: true })));
   await tx.insert(appSettings).values({ key: APP_SETTING_HEALTH, value: { risk: HEALTH_DEFAULTS.risk, off: HEALTH_DEFAULTS.off } });
+  await seedSettingsDefaults(tx);
   const rows: (Omit<typeof connectors.$inferInsert, 'direction'>)[] = (PROTO.CONNECTORS as [string, string, string, string, string, string][]).map(([name, what, freq, status, last, vol], position) => ({
     name, kind: name === 'Cursus' ? 'cursus' : 'static', dataScope: what, frequency: freq,
     ...(opts.demo ? { status: connectorStatus.code(status), lastSyncAt: parseStampText(last), lastVolume: vol } : { status: 'ready' as const, lastSyncAt: null, lastVolume: '' }),

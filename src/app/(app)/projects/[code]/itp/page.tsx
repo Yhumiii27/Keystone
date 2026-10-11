@@ -17,11 +17,11 @@ import { photoViews } from '@/features/photos/model';
 import { itpScreenView, itpViewOf } from '@/features/itpcom/model';
 import { getItpPlan, listItpSystems, listPunchItems, projectMachineTypeLabel } from '@/server/dal/itp';
 import { listProjectPhotos } from '@/server/dal/photos';
-import { projectLabel } from '@/server/dal/projects';
 import { teamOwnerOptions } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
 import { NOW_ISO } from '@/server/db/codes';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -41,7 +41,7 @@ export default async function ItpPage({ params, searchParams }: { params: Promis
 
   let primary: ReactNode;
   if (canEdit) {
-    const context = t(projectLabel(ctx.project));
+    const context = projectLabelText(ctx.project, lang);
     primary =
       view === 'plan' ? (
         <ItpFormButton kind="inspection" code={projectCode} label={t('Add inspection')} context={context} form={localizeForm(inspectionFormDef(await listItpSystems(projectCode)), t, lang)} />

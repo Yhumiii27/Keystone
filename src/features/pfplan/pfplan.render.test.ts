@@ -67,7 +67,7 @@ describe('portfolio schedule body', () => {
   it('French: header, legend, KPI tiles, groups, row links, gates, clip and today line', async () => {
     const t = makeT('fr');
     const model = portfolioScheduleModel(await getPortfolioSchedule(null), { filter: 'all', lang: 'fr' });
-    const html = renderToStaticMarkup(h(PfPlanBody, { model, filter: 'all', zoneSelected: false, t }));
+    const html = renderToStaticMarkup(h(PfPlanBody, { model, filter: 'all', zoneSelected: false, t, lang: 'fr' }));
     const txt = text(html);
     for (const s of [
       'Étape', 'Tous', 'En cours', 'Pipeline', 'Projets en cours', '14,35 M€', 'Projets dans le pipe', '13,08 M€', 'Décisions groupe en attente', 'EWA-051',
@@ -98,7 +98,7 @@ describe('portfolio schedule body', () => {
   it('pipeline filter keeps the KPI tiles over every row and shows the Pipeline group only', async () => {
     const t = makeT('en');
     const model = portfolioScheduleModel(await getPortfolioSchedule(null), { filter: 'pipe', lang: 'en' });
-    const txt = text(renderToStaticMarkup(h(PfPlanBody, { model, filter: 'pipe', zoneSelected: false, t })));
+    const txt = text(renderToStaticMarkup(h(PfPlanBody, { model, filter: 'pipe', zoneSelected: false, t, lang: 'en' })));
     expect(txt).toContain('Projects in progress 7 €14.35M');
     expect(txt).toContain('Pipeline 5');
     expect(txt).not.toContain('Harbor Line Terminal Expansion');
@@ -107,7 +107,7 @@ describe('portfolio schedule body', () => {
 
   it('a zone without live project shows the notice (empty tiles, no rows)', async () => {
     const data = { rows: [], averageBoardWaitDays: 28 };
-    const txt = text(renderToStaticMarkup(h(PfPlanBody, { model: portfolioScheduleModel(data, { filter: 'all', lang: 'en' }), filter: 'all', zoneSelected: true, t: makeT('en') })));
+    const txt = text(renderToStaticMarkup(h(PfPlanBody, { model: portfolioScheduleModel(data, { filter: 'all', lang: 'en' }), filter: 'all', zoneSelected: true, t: makeT('en'), lang: 'en' })));
     expect(txt).toContain('No project in this zone for this view');
     expect(txt).toContain('Projects in progress 0 €0k');
     expect(txt).toContain('Group decisions pending 0 —');

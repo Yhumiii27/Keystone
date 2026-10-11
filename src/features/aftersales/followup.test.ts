@@ -120,7 +120,7 @@ describe('R-143 / R-144 Server Functions', () => {
     for (const role of ROLES) {
       session.role = role;
       // R-042: the client is sent home from a screen outside their workspace (redirect), not answered.
-      const r = await updateClaimAction('WC-016', { ...EDIT, cover: 'extended_warranty', next: `By ${role}`, diagnosis: '' })
+      const r: { toast?: string; error?: string } = await updateClaimAction('WC-016', { ...EDIT, cover: 'extended_warranty', next: `By ${role}`, diagnosis: '' })
         .then((x) => x as { toast?: string; error?: string }, (e: Error) => ({ error: e.message }));
       outcome[role] = r.toast ? 'ok' : r.error!;
     }

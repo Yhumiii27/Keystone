@@ -16,11 +16,12 @@ import { useI18n } from '@/i18n/client';
 import { exportHref } from '@/lib/export-href';
 import { exportSetupAction, type ExportSetup } from './interchange-actions';
 import s from './interchange.module.css';
+import { fieldsText } from '@/i18n/data-text';
 
 export type ExportCardFormat = 'xml' | 'xlsx' | 'pdf';
 
 export function ExportDialog({ format, title, onClose }: { format: ExportCardFormat; title: string; onClose: () => void }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const id = useId();
   const [setup, setSetup] = useState<ExportSetup | null>(null);
   const [screen, setScreen] = useState('');
@@ -71,7 +72,7 @@ export function ExportDialog({ format, title, onClose }: { format: ExportCardFor
             )}
             {needsProject && (
               <Field label={t('Project')} htmlFor={`${id}-project`} span="full">
-                <Select id={`${id}-project`} value={project} onChange={(e) => setProject(e.target.value)} options={setup.projects.map((p) => ({ value: p.code, label: t(p.label) }))} />
+                <Select id={`${id}-project`} value={project} onChange={(e) => setProject(e.target.value)} options={setup.projects.map((p) => ({ value: p.code, label: fieldsText(p.label, t, lang) }))} />
               </Field>
             )}
             {format === 'xml' && (

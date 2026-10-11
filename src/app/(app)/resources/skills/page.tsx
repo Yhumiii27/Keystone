@@ -22,7 +22,7 @@ export default async function SkillsPage({ searchParams }: { searchParams: Promi
     <>
       <PageHeader screen="skills" primary={outside ? undefined : <AddSkillButton />} />
       <Stack>
-        <SkillsView data={data} filter={filter} base={screenHref('skills')} t={t} expertRequests={requestsNeedingExperts(pending, data.people, data.skills.map((x) => x.name))} />
+        <SkillsView data={data} filter={filter} base={screenHref('skills')} t={t} lang={i18n.lang} expertRequests={requestsNeedingExperts(pending, data.people, data.skills.map((x) => x.name))} />
       </Stack>
     </>
   );

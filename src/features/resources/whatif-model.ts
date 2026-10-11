@@ -12,6 +12,7 @@ import { FR_MONTHS } from '@/i18n/fr-rules';
 import { fmtDY, MINUS, MO, money } from '@/lib/format';
 import { isoWeekOf } from '@/server/db/codes';
 import type { Lang, T } from '@/i18n/translate';
+import { dataText } from '@/i18n/data-text';
 
 /** What-if levelling of a project: `/resources/what-if?project=HLT-026` (scenarios are per project). */
 export const whatIfHref = (code: string) => `${screenHref('whatif')}?project=${encodeURIComponent(code)}`;
@@ -287,7 +288,7 @@ export function scenarioCard(d: WhatIfData, s: WhatIfScenarioState, t: T, lang: 
     hypotheses: s.hypotheses,
     pending,
     levers: d.levers.map((l) => ({
-      code: l.code, label: leverText(l, t, lang), title: `${l.activity} · ${t(l.activityName)}`, on: !!s.levers[l.code], effect: leverEffectText(l.effect, d.current, t, lang),
+      code: l.code, label: leverText(l, t, lang), title: `${l.activity} · ${dataText(l.activityName, lang)}`, on: !!s.levers[l.code], effect: leverEffectText(l.effect, d.current, t, lang),
     })),
     bars: o.bars.map((v, i) => ({ label: (d.weeks[i] ?? '').split(' ')[1] ?? '', height: `${Math.round(Math.min(100, (v / WHATIF_RULES.barFullPct) * 100) * 10) / 10}%`, bg: BAR_BG[band(v)] })),
     results: resultRows(o, t, lang),

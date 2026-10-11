@@ -1,8 +1,8 @@
 'use server';
 // Administration Server Functions: Settings — personalisable lists (docs/spec/10 §1.5: add / remove entries, location
 // type, health thresholds, "Reset to defaults"), Standard machine types (09 §9: identity card, payment pattern, phases,
-// ITP systems, cost categories, REX references, "New machine type") and Activity & integrations (10 §2: "Sync now",
-// "Add connector"). Each one checks the viewer may edit the screen (roles with the screen in their workspace — the
+// ITP systems, cost categories, REX references, "New machine type") and Activity & integrations (10 §2: "Sync now"; the
+// connectors themselves are configured by IT outside Keystone — D-7a, R-020: no "Add connector" any more). Each one checks the viewer may edit the screen (roles with the screen in their workspace — the
 // "Outside my workspace · Read-only" rule; machine types: `mtCanEdit` = director, PM, engineering lead, quality, the same
 // roles), validates the raw input with the domain parsers, writes through the DAL with the viewer as the actor (the DAL
 // re-checks the workspace and records the audit row), then revalidates the app (lists used by other screens, badges).
@@ -14,7 +14,7 @@ import {
 } from '@/domain/admin';
 import { isoOfDisplayDate, locationType, type CalendarCode, type CostType } from '@/server/db/codes';
 import { listAdminConnectors, syncAdminConnector } from '@/server/dal/admin-connectors';
-import { ADDABLE_SYSTEMS, CONNECTOR_FREQUENCIES, ConnectorDisabledError, addConnector } from '@/server/dal/integrations';
+import { ConnectorDisabledError } from '@/server/dal/integrations';
 import {
   createMachineType, getMachineType, removeRexReference, setMachineTypeCostCategories, setMachineTypeItpSystems, setMachineTypePhases, updateMachineType,
   type MachineTypePatch,
@@ -316,23 +316,4 @@ export async function syncConnectorAction(name: unknown): Promise<AdminActionRes
     if (e instanceof ConnectorDisabledError) return { error: translateMessage(e.message, (await getI18n()).t) };
     return failure(e);
   }
-}
-
-/** Header primary "Add connector" (AF.plumbing): `system`, `direction` (code), `freq`, `owner`. */
-export async function addConnectorAction(values: FormValues): Promise<AdminActionResult> {
-  const ok = await editor('plumbing');
-  if ('error' in ok) return ok;
-  if (!values || typeof values !== 'object') return fail('Invalid request');
-  const { system, direction, freq, owner } = values;
-  if (!isText(system, 80) || !ADDABLE_SYSTEMS.includes(system)) return fail('Invalid request');
-  if (direction !== 'import' && direction !== 'export' && direction !== 'both') return fail('Invalid direction');
-  if (!isText(freq, 40) || !CONNECTOR_FREQUENCIES.includes(freq)) return fail('Invalid frequency');
-  if (!isText(owner ?? '', 120)) return fail('Invalid request');
-  try {
-    await addConnector({ system, direction, frequency: freq, owner: owner ?? null }, ok.actor);
-  } catch (e) {
-    return failure(e);
-  }
-  refresh();
-  return { ok: true, toast: await tr('Connector added · not connected until IT sets it up') };
 }

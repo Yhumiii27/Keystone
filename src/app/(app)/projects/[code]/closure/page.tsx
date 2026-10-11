@@ -7,9 +7,9 @@ import { PageHeader } from '@/components/app/shell/page-header';
 import { AddLessonButton } from '@/features/rexclient/buttons';
 import { RexView } from '@/features/rexclient/rex-view';
 import { getRexScreen } from '@/features/rexclient/screen';
-import { projectLabel } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 export default async function ClosurePage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -18,7 +18,7 @@ export default async function ClosurePage({ params }: { params: Promise<{ code: 
   const { t, lang } = await getI18n();
   const view = await getRexScreen(projectCode, t, lang);
   const canEdit = ctx.canEdit('rex');
-  const primary = canEdit ? <AddLessonButton code={projectCode} context={t(projectLabel(ctx.project))} /> : undefined;
+  const primary = canEdit ? <AddLessonButton code={projectCode} context={projectLabelText(ctx.project, lang)} /> : undefined;
   return (
     <>
       <PageHeader screen="rex" projectCode={projectCode} primary={primary} />

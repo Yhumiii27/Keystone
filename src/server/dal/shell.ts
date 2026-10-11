@@ -12,8 +12,9 @@ import 'server-only';
 // tags (P&ID badge), the Vigie NCR mirror (Quality badge, NCR search), the ITP punch list (Inspections badge), the site
 // sheet with Cursus's Go / No Go and Vigie's HSE mirror (Site badge), warranty claims (Warranty claims badge), the
 // connectors (Activity & integrations badge) and the installed base (zone bar of Installed base / Warranty claims).
-// Only reference constants (zones, city → country → zone) are still read from the prototype data set.
+// Delivery 7 (R-170): the zones and their managers come from the zones table; nothing is read from the prototype data.
 import { and, eq, sql } from 'drizzle-orm';
+import { cache } from 'react';
 import { personaOf, type Persona, type PersonaRef } from '@/config/personas';
 import { DEFAULT_PROJECT, canSee, screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import { fiscalYearLabel } from '@/domain/portfolio';
@@ -25,7 +26,7 @@ import { approvalCountsByProject } from '@/server/approvals';
 import { getDb } from '@/server/db/client';
 import { changeRequests, projects as projectsTable } from '@/server/db/schema';
 import { ncrHref } from '@/features/quality/links';
-import { PROTO } from '@/server/prototype';
+import { zoneLabelOf, zoneManagerLine, type ZoneEntry } from '@/domain/zones';
 import type { ZoneKey } from '@/server/session';
 import type { Badges } from '@/components/app/shell/nav-model';
 import { listChangeRequestDetails } from './changes';
@@ -45,6 +46,7 @@ import { openPunchAByProject } from './itp';
 import { meetingsToWriteByProject } from './meetings';
 import { listNotifications } from './notifications';
 import { listParts } from './parts';
+import { listZones } from './people';
 import { pidBadgeByProject } from './pid';
 import { getActivities } from './planning';
 import { listProjects, projectLabel, type ProjectRow } from './projects';
@@ -64,9 +66,14 @@ const n2s = (n: number) => (n ? String(n) : '');
 const count = <T,>(xs: T[], f: (x: T) => boolean) => xs.filter(f).length;
 
 // ── Zones (ZONES line 3170, zoneOf line 3173) ──────────────────────────────
-export interface ZoneDef { key: ZoneKey; label: string; manager: string }
-export const ZONES: ZoneDef[] = (PROTO.ZONES as [ZoneKey, string, string][]).map(([key, label, manager]) => ({ key, label, manager }));
-export const zoneLabel = (z: ZoneKey | null) => (z ? ZONES.find((x) => x.key === z)?.label ?? '' : '');
+// R-170: from the zones table and its manager (a person), no longer from the prototype constant ZONES.
+export type ZoneDef = ZoneEntry<ZoneKey>;
+
+/** The zones in display order, with their manager's full name (null when none). */
+export const listZoneDefs = cache(async (): Promise<ZoneDef[]> => (await listZones()).map((z) => ({ key: z.code, label: z.label, manager: z.manager })));
+
+/** EN label of a zone ('' for all zones). */
+export const zoneLabel = async (z: ZoneKey | null): Promise<string> => (z ? zoneLabelOf(await listZoneDefs(), z) : '');
 
 /** The viewer sees every resource request (director, or Resource requests outside their workspace), else the ones they sent. */
 const seesAllRequests = (role: RoleKey) => role === 'director' || !canSee(role, 'requests');
@@ -232,7 +239,7 @@ const inZone = (p: ProjectRow, z: ZoneKey | null) => !z || p.zone === z;
 /** Default `CRUMB_EXTRA[screen]` (EN), '' when none. Screens may override it (PageHeader `crumbExtra`). */
 export async function crumbExtraOf(screen: ScreenId, ctx: { role: PersonaRef; code: string; zone: ZoneKey | null; taskId?: string }): Promise<string> {
   const viewer = personaOf(ctx.role);
-  const zl = zoneLabel(ctx.zone);
+  const zl = await zoneLabel(ctx.zone);
   const zoneCrumb = zl ? ' · ' + zl : '';
   switch (screen) {
     case 'fleet':
@@ -365,10 +372,14 @@ export async function notificationsFor(who: UserRef): Promise<ShellNotification[
 
 // ── Global search (`searchHits`, line 4695) ───────────────────────────────
 export interface SearchHit {
-  /** EN source strings. */
+  /** EN source string (translated). */
   kind: string;
+  /** Data (ids, names, titles): shown as typed (R-148). */
   title: string;
+  /** " · " segments: EN labels (translated) and data (`subData`, shown as typed). */
   sub: string;
+  /** R-148: the segments of `sub` that are data (a PM, a manufacturer, a job title), never translated. */
+  subData?: string[];
   href: string;
 }
 
@@ -396,18 +407,20 @@ export async function searchShell(query: string, currentCode: string, who: Perso
   const add = (xs: SearchHit[], max: number) => hits.push(...xs.slice(0, max));
 
   const projects = await listProjects();
-  add(projects.filter((p) => has(p.name + ' ' + p.code)).map((p) => ({ kind: 'Project', title: p.name, sub: `${p.code} · ${p.status} · ${p.pm}`, href: screenHref('plan', { code: p.code }) })), 4);
+  add(projects.filter((p) => has(p.name + ' ' + p.code)).map((p) => ({ kind: 'Project', title: p.name, sub: `${p.code} · ${p.status} · ${p.pm}`, subData: [p.pm], href: screenHref('plan', { code: p.code }) })), 4);
   // Activities of every project with data (ALL_BYID), from the planning DAL.
   const acts = await Promise.all(projects.filter((p) => p.hasData).map(async (p) => (await safe(() => getActivities(p.code), [])).map((a) => ({ a, code: p.code }))));
   const sfx = (s: string, actual: boolean) => s + (actual ? ' A' : '');
   add(acts.flat().filter(({ a }) => has(a.id + ' ' + a.name)).map(({ a, code: c }) => ({ kind: 'Activity', title: `${a.id} · ${a.name}`, sub: `${sfx(a.start, a.startActual)} → ${sfx(a.finish, a.finishActual)}`, href: deepLink('plan', { sel: a.id }, c) })), 4);
   // Parts: the PLM catalogue (parts created in Keystone included).
   const parts = await safe(listParts, []);
-  add(parts.filter((p) => has(p.ref + ' ' + p.name + ' ' + (p.manufacturer ?? ''))).map((p) => ({ kind: 'Part', title: `${p.ref} · ${p.name}`, sub: `${p.manufacturer ?? '—'} · ${p.statusLabel}`, href: deepLink('plm', { part: p.ref }) })), 4);
+  add(parts.filter((p) => has(p.ref + ' ' + p.name + ' ' + (p.manufacturer ?? ''))).map((p) => ({
+    kind: 'Part', title: `${p.ref} · ${p.name}`, sub: `${p.manufacturer ?? '—'} · ${p.statusLabel}`, ...(p.manufacturer ? { subData: [p.manufacturer] } : {}), href: deepLink('plm', { part: p.ref }),
+  })), 4);
   // People: the resource pool listed on Resources (pool order) — the hit opens that screen, so people outside the
   // pool (personas, client contacts) would land on a page that does not show them.
   const pool = (await safe(getResourcePool, { weeks: [], people: [] })).people;
-  add(pool.filter((p) => has(p.name)).map((p) => ({ kind: 'Person', title: p.name, sub: p.jobTitle ?? '', href: screenHref('resources') })), 3);
+  add(pool.filter((p) => has(p.name)).map((p) => ({ kind: 'Person', title: p.name, sub: p.jobTitle ?? '', ...(p.jobTitle ? { subData: [p.jobTitle] } : {}), href: screenHref('resources') })), 3);
   const [crs, risks, pos] = await Promise.all([safe(() => listChangeRequestDetails(code), []), safe(() => listRisks(code), []), safe(() => listPurchaseOrders(code), [])]);
   // Purchase orders of the current project (drafts made in Keystone included).
   add(pos.filter((o) => has(o.number + ' ' + o.supplier)).map((o) => ({ kind: 'Purchase order', title: `${o.number} · ${o.supplier}`, sub: o.statusLabel, href: deepLink('orders', { po: o.number }, code) })), 3);
@@ -467,11 +480,10 @@ export async function zoneBarOf(screen: ScreenId, zone: ZoneKey | null): Promise
     zoneOf = (key) => count(projects, (p) => p.zone === key);
     total = projects.length;
   }
-  const cur = ZONES.find((z) => z.key === zone);
+  const zones = await listZoneDefs();
   return {
-    options: [{ key: null, label: 'All zones', count: total }, ...ZONES.map((z) => ({ key: z.key, label: z.label, count: zoneOf(z.key) }))],
-    ownerLabel: cur ? 'Zone manager' : 'Zone managers',
-    // "O. Castel · A. Diallo · S. Nguyen" when no zone is selected.
-    ownerName: cur ? cur.manager : ZONES.map((z) => z.manager.split(' ').map((w, i, a) => (i < a.length - 1 ? w[0] + '.' : w)).join(' ')).join(' · '),
+    options: [{ key: null, label: 'All zones', count: total }, ...zones.map((z) => ({ key: z.key, label: z.label, count: zoneOf(z.key) }))],
+    // "Olivier Castel" for a zone, "O. Castel · A. Diallo · S. Nguyen" when no zone is selected.
+    ...zoneManagerLine(zones, zone),
   };
 }

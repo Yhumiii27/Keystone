@@ -13,7 +13,7 @@ export { Field, Input, Select, Textarea, PseudoInput } from './Field';
 export type { FieldProps, InputProps, InputSize, SelectOption, SelectProps, TextareaProps, PseudoInputProps } from './Field';
 export { Segmented } from './Segmented';
 export type { SegmentedOption, SegmentedProps } from './Segmented';
-export { Table, Th, Td, Tr, CellStack, IdText, Ellipsis } from './Table';
+export { Table, TableScroll, Th, Td, Tr, CellStack, IdText, Ellipsis } from './Table';
 export type { TableProps, ThProps, TdProps, TrProps } from './Table';
 export { Dialog } from './Dialog';
 export type { DialogProps } from './Dialog';

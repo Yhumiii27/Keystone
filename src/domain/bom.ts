@@ -306,11 +306,19 @@ export function nodeCost(root: AssemblyNode, ref: string, listPriceEur: number, 
 
 // ── Where-used ─────────────────────────────────────────────────────────────────────────────────────────
 
-/** Part shown when the Where-used search is empty or matches nothing (`usedPart` 4248, 09 OQ22). */
-export const WHERE_USED_DEFAULT_REF = 'CR-BRG-SKF';
+/**
+ * Part shown when the Where-used search is empty or matches nothing (`usedPart` 4248, 09 OQ22). R-169: the prototype's
+ * constant CR-BRG-SKF is replaced by the data — the part of the current project used by the most projects (catalogue order
+ * on a tie; EL-TRF-2MVA, used by HLT-026, NDC-031 and WSA-044, on the seed), else the catalogue's most used part, else none.
+ */
+export function defaultWhereUsedRef(parts: readonly { ref: string; usage: readonly { projectCode: string }[] }[], projectCode: string | null): string | null {
+  const pick = (xs: readonly { ref: string; usage: readonly { projectCode: string }[] }[]) =>
+    xs.reduce<{ ref: string; n: number } | null>((best, p) => (p.usage.length > (best?.n ?? 0) ? { ref: p.ref, n: p.usage.length } : best), null)?.ref ?? null;
+  return (projectCode ? pick(parts.filter((p) => p.usage.some((u) => u.projectCode === projectCode))) : null) ?? pick(parts);
+}
 
-/** Where-used search (`usedPart` 4248): exact reference, else the first ref / name containing the query, else the default. */
-export function resolvePartQuery<T extends { ref: string; name: string }>(parts: readonly T[], query: string, fallbackRef = WHERE_USED_DEFAULT_REF): T | null {
+/** Where-used search (`usedPart` 4248): exact reference, else the first ref / name containing the query, else the default part, else the first. */
+export function resolvePartQuery<T extends { ref: string; name: string }>(parts: readonly T[], query: string, fallbackRef: string | null = null): T | null {
   const q = query.trim().toUpperCase();
   return parts.find((p) => p.ref === q) ?? parts.find((p) => !!q && (p.ref.includes(q) || p.name.toUpperCase().includes(q))) ?? parts.find((p) => p.ref === fallbackRef) ?? parts[0] ?? null;
 }

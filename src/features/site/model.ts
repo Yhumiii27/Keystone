@@ -19,6 +19,7 @@ import { cursusChantierUrl } from '@/server/integrations/cursus/links';
 import { vigieHseListUrl, vigieReportIncidentUrl } from '@/server/integrations/vigie/links';
 import { dataText, incidentText, siteText, weatherText } from './i18n';
 import { CURSUS_CARD_ID, qualityNcrHref, screenOf, siteHref } from './links';
+import { fieldsText } from '@/i18n/data-text';
 
 const LO = 'var(--color-accent-300)';
 const OK = 'var(--color-text)';
@@ -104,7 +105,7 @@ export function factsOf(d: SiteData): SiteFacts {
     startOn: d.sheet.startOn, planDays: d.sheet.planDays, doneDays: d.sheet.doneDays, manDaysPlanned: d.sheet.manDaysPlanned, clientDecisions: d.clientDecisions,
     prerequisites: d.prerequisites, people: d.cursus.people, equipment: d.equipment, collisions: d.collisions, rotation: d.rotation, missionCosts: d.missionCosts,
     reports: d.dailyReports.map((r) => ({ reportOn: r.reportOn, headcount: r.headcount, hseIncident: r.hseIncident })),
-    punch: d.punch, hse: d.hse,
+    punch: d.punch, hse: d.hse, premium: d.premium,
   };
 }
 
@@ -122,18 +123,18 @@ function readyView(code: string, d: SiteData, t: T, lang: Lang): ReadyView {
       ['Site', s.site], ['Country · time zone', `${s.country} · ${s.timeZone}`], ['Language · currency', `${s.language} · ${s.currency}`],
       ['Client contact on site', s.clientContact], ['Working hours', s.workingHours], ['Local holidays', s.localHolidays], ['Access constraints', s.accessConstraints],
       ['Window', `${siteDateText(s.startOn)} → ${siteDateText(s.endOn)} · ${s.planDays} working days`],
-    ] as const).map(([k, v]) => ({ k: t(k), v: t(v) })),
+    ] as const).map(([k, v]) => ({ k: t(k), v: k === 'Window' ? t(v) : fieldsText(v, t, lang) })),
     prereqs: d.prerequisites.map((p) => {
       const step = prerequisiteStep(p.status);
       return {
-        position: p.position, title: t(p.title), act: t(p.activityCode + (p.activityName ? ` · ${p.activityName}` : '')), due: day(p.neededBy, t),
-        dueColor: p.late ? LO : 'var(--color-neutral-300)', status: t(p.statusLabel), tagClass: siteTagClass(p.statusLabel), note: t(p.evidence), late: p.late,
+        position: p.position, title: dataText(p.title, lang), act: p.activityCode + (p.activityName ? ` · ${dataText(p.activityName, lang)}` : ''), due: day(p.neededBy, t),
+        dueColor: p.late ? LO : 'var(--color-neutral-300)', status: t(p.statusLabel), tagClass: siteTagClass(p.statusLabel), note: fieldsText(p.evidence, t, lang), late: p.late,
         step: step && { to: step.to, label: t(step.label) },
       };
     }),
     equip: d.equipment.map((e) => ({
-      position: e.position, name: t(e.name), src: t(e.sourceLabel), srcClass: equipmentSourceTagClass(e.source), status: t(e.statusLabel), tagClass: siteTagClass(e.statusLabel),
-      note: t(e.note), canConfirm: e.status === 'pending',
+      position: e.position, name: dataText(e.name, lang), src: t(e.sourceLabel), srcClass: equipmentSourceTagClass(e.source), status: t(e.statusLabel), tagClass: siteTagClass(e.statusLabel),
+      note: fieldsText(e.note, t, lang), canConfirm: e.status === 'pending',
     })),
     cursus: {
       rows: d.cursus.people.map((p) => {
@@ -142,7 +143,7 @@ function readyView(code: string, d: SiteData, t: T, lang: Lang): ReadyView {
         const hab = cursusClearance.label(p.clearance);
         const verdict = cursusVerdict.label(p.verdict);
         return {
-          person: p.personName, who: t(p.personName), visa: t(visa), visaClass: siteTagClass(visa), vacc: t(vacc), vaccClass: siteTagClass(vacc), hab: t(hab), habClass: siteTagClass(hab),
+          person: p.personName, who: p.personName, visa: t(visa), visaClass: siteTagClass(visa), vacc: t(vacc), vaccClass: siteTagClass(vacc), hab: t(hab), habClass: siteTagClass(hab),
           habNote: t(p.clearanceNote), habColor: p.clearance === 'ok' ? 'var(--color-neutral-400)' : LO, status: t(verdict), tagClass: siteTagClass(verdict),
           rec: t(stampText(new Date(p.receivedAt))), remindable: p.verdict !== 'go' && !p.reminded, reminded: p.reminded,
           reminderSync: p.reminderSyncStatus ? t(cursusSyncStatus.label(p.reminderSyncStatus)) : null,
@@ -159,7 +160,7 @@ function teamView(code: string, d: SiteData, t: T, lang: Lang): TeamView {
   return {
     kpis: teamKpis(factsOf(d), lang).map((k) => kpiView(k, t, lang)),
     rotation: d.rotation.map((r) => ({
-      who: t(r.person), role: t(r.roleOnSite), from: day(r.fromOn, t), to: day(r.toOn, t), rot: `R${r.rotationNo}`, lodging: t(r.lodging), travel: t(r.travel),
+      who: r.person, role: dataText(r.roleOnSite, lang), from: day(r.fromOn, t), to: day(r.toOn, t), rot: `R${r.rotationNo}`, lodging: dataText(r.lodging, lang), travel: dataText(r.travel, lang),
       collision: r.hasCollision, collisionLabel: t(r.hasCollision ? 'Collision' : 'No collision'),
     })),
     collisions: d.collisions
@@ -167,12 +168,12 @@ function teamView(code: string, d: SiteData, t: T, lang: Lang): TeamView {
       .map((c) => {
         const target = COLLISION_TARGET[c.kind];
         return {
-          position: c.position, who: t(c.person), kind: t(c.kindLabel), tagClass: collisionTagClass(c.kind), what: t(c.description), fix: t(c.proposedFix),
+          position: c.position, who: c.person, kind: t(c.kindLabel), tagClass: collisionTagClass(c.kind), what: dataText(c.description, lang), fix: dataText(c.proposedFix, lang),
           href: target === 'ready' ? siteHref(code, 'ready', CURSUS_CARD_ID) : screenOf(target),
         };
       }),
     missionCosts: d.missionCosts.map((m) => ({
-      name: t(m.name), budget: money(m.budgetKeur, lang), actual: m.actualKeur ? money(m.actualKeur, lang) : '—', pct: `${m.usedPct}%`, left: money(m.remainingKeur, lang),
+      name: dataText(m.name, lang), budget: money(m.budgetKeur, lang), actual: m.actualKeur ? money(m.actualKeur, lang) : '—', pct: `${m.usedPct}%`, left: money(m.remainingKeur, lang),
     })),
   };
 }
@@ -188,17 +189,17 @@ function execView(code: string, d: SiteData, t: T, lang: Lang, today: string): E
             .join(' · ')
         : null;
       return {
-        number: r.number, date: day(r.reportOn, t), act: t(r.activity), pct: r.percentComplete == null ? '—' : String(r.percentComplete),
-        txt: r.fromForm ? dataText(r.text, lang) : t(r.text), detail: detail || null, link: r.linkRef ?? '—', href: isNcrLink(r.linkRef) ? qualityNcrHref(code, r.linkRef) : null,
-        by: t(r.author),
+        number: r.number, date: day(r.reportOn, t), act: dataText(r.activity, lang), pct: r.percentComplete == null ? '—' : String(r.percentComplete),
+        txt: dataText(r.text, lang), detail: detail || null, link: r.linkRef ?? '—', href: isNcrLink(r.linkRef) ? qualityNcrHref(code, r.linkRef) : null,
+        by: r.author,
       };
     }),
     note: note && siteText(note, t, lang),
     punch: d.punch.map((p) => ({
-      id: p.number, title: t(p.description), ncr: p.ncrNumber ?? '—', owner: t(p.owner ?? '—'), due: day(p.dueOn, t), status: t(p.statusLabel), tagClass: siteTagClass(p.statusLabel),
+      id: p.number, title: dataText(p.description, lang), ncr: p.ncrNumber ?? '—', owner: dataText(p.owner ?? '—', lang), due: day(p.dueOn, t), status: t(p.statusLabel), tagClass: siteTagClass(p.statusLabel),
     })),
     hse: {
-      rows: d.hse.map((h) => ({ title: t(h.title), date: day(h.dateOn, t), status: t(h.statusText), tagClass: siteTagClass(h.statusText), vigieUrl: h.vigieUrl })),
+      rows: d.hse.map((h) => ({ title: dataText(h.title, lang), date: day(h.dateOn, t), status: t(h.statusText), tagClass: siteTagClass(h.statusText), vigieUrl: h.vigieUrl })),
       lastSync: lastSyncText(d.hseSource.lastSyncedAt, t, lang),
       listUrl: vigieHseListUrl(),
       reportUrl: vigieReportIncidentUrl({ projectCode: code, location: d.sheet.site }),

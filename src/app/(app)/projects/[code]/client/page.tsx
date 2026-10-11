@@ -10,9 +10,9 @@ import { parseClientTab } from '@/domain/rexclient';
 import { StatusReportButton } from '@/features/rexclient/buttons';
 import { ClientView } from '@/features/rexclient/client-view';
 import { getClientScreen } from '@/features/rexclient/screen';
-import { projectLabel } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -25,7 +25,7 @@ export default async function ClientPortalPage({ params, searchParams }: { param
   const view = await getClientScreen(projectCode, parseClientTab(first(sp.tab)), t, lang);
   const projectClient = !ctx.outside && ctx.viewer.role === 'client' && ctx.isMine;
   const can = { decide: projectClient, raise: projectClient || (!ctx.outside && ctx.viewer.role === 'director') };
-  const primary = ctx.outside ? undefined : <StatusReportButton code={projectCode} context={t(projectLabel(ctx.project))} />;
+  const primary = ctx.outside ? undefined : <StatusReportButton code={projectCode} context={projectLabelText(ctx.project, lang)} />;
   return (
     <>
       <PageHeader screen="client" projectCode={projectCode} primary={primary} />

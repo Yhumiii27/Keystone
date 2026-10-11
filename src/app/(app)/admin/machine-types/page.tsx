@@ -9,9 +9,10 @@ import { machineTypesView } from '@/features/admin/model';
 import { MachineTypesBody } from '@/features/admin/mtypes-view';
 import { NewMachineTypeButton } from '@/features/admin/primary-buttons';
 import { listMachineTypes } from '@/server/dal/mtypes';
-import { listProjects, projectLabel } from '@/server/dal/projects';
+import { listProjects } from '@/server/dal/projects';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n, getLastProject } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -24,7 +25,7 @@ export default async function MachineTypesPage({ searchParams }: { searchParams:
   const project = projects.find((p) => p.code === lastProject);
   return (
     <>
-      <PageHeader screen="mtypes" primary={<NewMachineTypeButton form={newMachineTypeForm()} context={project ? t(projectLabel(project)) : undefined} />} />
+      <PageHeader screen="mtypes" primary={<NewMachineTypeButton form={newMachineTypeForm()} context={project ? projectLabelText(project, lang) : undefined} />} />
       <MachineTypesBody view={view} canEdit={access.canEdit} t={t} />
     </>
   );

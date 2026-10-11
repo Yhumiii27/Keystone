@@ -12,8 +12,8 @@ import { getScreenAccess } from '@/server/project-context';
 export default async function ProjectsMapPage() {
   // R-042 (P-1): a client is sent home before anything is read.
   await getScreenAccess('worldmap');
-  const [{ t }, zone] = await Promise.all([getI18n(), getZone()]);
-  const model = buildWorldMapModel(await getProjectsMap(zone), t);
+  const [{ t, lang }, zone] = await Promise.all([getI18n(), getZone()]);
+  const model = buildWorldMapModel(await getProjectsMap(zone), t, lang);
   return (
     <>
       <PageHeader screen="worldmap" crumbExtra={model.crumbExtra} />

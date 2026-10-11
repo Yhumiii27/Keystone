@@ -7,27 +7,21 @@
 // - catalogue data is translated on exact dictionary matches only (`dataT`: part names such as "Safety PLC",
 //   restriction texts, spare notes), never through the month / day / sentence rules; supplier names and manufacturer
 //   references are shown as stored.
-import FR_DICT_BASE from '@/i18n/fr-dict.json';
-import { EXTRA_FR } from '@/i18n/extra';
 import type { Lang, T } from '@/i18n/translate';
 import { MINUS, moneyEur } from '@/lib/format';
+import { dataText } from '@/i18n/data-text';
 
-const DICT: Record<string, string> = { ...(FR_DICT_BASE as Record<string, string>), ...EXTRA_FR };
 const fr = (lang: Lang) => lang === 'fr';
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
 /** Integer / quantity in the viewer's language ("2,042" / "2 042"). */
 export const qtyText = (v: number, lang: Lang) => v.toLocaleString(fr(lang) ? 'fr-FR' : 'en-US');
 
-/** Data text (restriction, spare note): French only on an exact dictionary match, whole text then " · " / " — " segments. */
-export function dataT(s: string, lang: Lang): string {
-  if (!fr(lang) || !s) return s;
-  if (Object.hasOwn(DICT, s)) return DICT[s];
-  return s
-    .split(/( · | — )/)
-    .map((p, i) => (i % 2 ? p : Object.hasOwn(DICT, p) ? DICT[p] : p))
-    .join('');
-}
+/**
+ * Register data (names, descriptions, notes typed in Keystone or received): as typed, or a seeded string's exact
+ * dictionary entry — never segment by segment (R-148, NEW-D1-2: the shared helper, src/i18n/data-text.ts).
+ */
+export const dataT = (s: string, lang: Lang): string => dataText(s, lang);
 
 /** KPI sub "2,042 units in total". */
 export const unitsInTotalText = (n: number, lang: Lang) => (fr(lang) ? `${qtyText(n, lang)} unités au total` : `${qtyText(n, lang)} units in total`);

@@ -21,7 +21,7 @@ import { listClaims, openClaim } from './claims';
 import { getCommissioning, planSat } from './commissioning';
 import { closeEngCheck, confirmEngInput, freezeEngDeliverable, generateEngOutput, getEngineeringRegister, importEngList, proposeEngRelease, validateEngRelease } from './engineering';
 import { addMachine, getMachine, listMachines } from './fleet';
-import { addConnector, listConnectors, syncConnector } from './integrations';
+import { listConnectors, syncConnector } from './integrations';
 import { addItpInspection, addPunchItem, advancePunchItem, getItpPlan, listPunchItems } from './itp';
 import { createMachineType, getMachineType, removeRexReference, setMachineTypeCostCategories, setMachineTypeItpSystems, setMachineTypePhases, updateMachineType } from './mtypes';
 import { listAudit } from './notifications';
@@ -431,7 +431,7 @@ describe('settings', () => {
 });
 
 describe('connectors', () => {
-  it('Sync now (Vigie, Cursus, simulated), Add connector (duplicate refused), outside refused', async () => {
+  it('Sync now (Vigie, Cursus, simulated), outside refused', async () => {
     // R-021: Vigie and Cursus without their API URL are mocks — their runs are simulated.
     expect(await syncConnector('Vigie', A.director)).toMatchObject({ ok: true, simulated: true });
     // Cursus (mock again): the people the HTTP refresh above left in the mirror.
@@ -440,12 +440,10 @@ describe('connectors', () => {
     // R-021: Lucca is retired (NEW-CURSUS-4); a connector that does not exist is not "synced" any more (A-15).
     await expect(syncConnector('Lucca', A.pm)).rejects.toThrow(/Unknown connector Lucca/);
     await expect(syncConnector('Sage X3', A.pm)).rejects.toThrow(/Sage X3 is not connected/);
-    await addConnector({ system: 'SharePoint', direction: 'both', frequency: 'Hourly', owner: 'IT · L. Fontaine' }, A.director);
-    await expect(addConnector({ system: 'sharepoint', direction: 'both', frequency: 'Hourly' }, A.director)).rejects.toThrow(/already listed/);
-    await expect(addConnector({ system: 'X', direction: 'both', frequency: 'Weekly' }, A.director)).rejects.toThrow(/Invalid frequency/);
     await expect(syncConnector('Codex', A.quality)).rejects.toThrow(/outside your workspace/);
     const list = await listConnectors();
-    expect(list.at(-1)).toMatchObject({ name: 'SharePoint', state: 'not_connected', canSync: false, lastVolume: '', addedInKeystone: true, owner: 'IT · L. Fontaine' });
+    // R-020: connectors are added by IT's connectors file (src/server/dal/d7-debt-ux.test.ts), no longer from the app.
+    expect(list.map((c) => c.name)).not.toContain('SharePoint');
     expect(list.find((c) => c.name === 'Vigie')).toMatchObject({ pending: 0, failed: 0 });
     expect((await lastAudit()).area).toBe('Integrations');
   });
