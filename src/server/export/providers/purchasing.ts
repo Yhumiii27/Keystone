@@ -1,7 +1,7 @@
 // Export providers — Purchasing & stock: Sourcing (RFQs, supplier invoices, scorecard), Purchase orders, Deliveries &
 // goods receipt, Stock & storages.
 // Excel follows each screen's filters (`?tab=`, `?status=`, `?loc=&q=`); a client exports only its own projects' rows.
-// PDF documents: `po` = the purchase order (header, lines, totals, signatures — "Export PO") and `receipt` = the goods
+// PDF documents: `po` = the internal purchase order summary (SC-4b: the legal order is issued by Sage X3 — "Export PO") and `receipt` = the goods
 // receipt (lines with the QC result, put-away, signatures — "Print receipt").
 import { DEFAULT_PROJECT } from '@/config/screens';
 import { isPoStatus } from '@/domain/orders';
@@ -102,7 +102,12 @@ async function ordersWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null
   };
 }
 
-/** Purchase order (PDF): supplier, project, dates and terms, the lines with their total, approval and signatures. */
+/**
+ * Purchase order summary (PDF, "Export PO"): an internal recap, not the order sent to the supplier (SC-4b = a, R-097 —
+ * the legal purchase order, with its legal mentions and terms, is issued by Sage X3). It refers to the Sage X3 order
+ * (or says the order is not in X3 yet) and carries the internal approval trail: no supplier acknowledgement, no
+ * instructions to the supplier.
+ */
 async function poDocument(ctx: ExportContext): Promise<PdfDocument | null> {
   if (!ctx.project) return null;
   const id = (param(ctx, 'id') ?? '').toUpperCase();
@@ -114,24 +119,24 @@ async function poDocument(ctx: ExportContext): Promise<PdfDocument | null> {
     col('ref', t('Reference'), 'text', 16), col('name', t('Article'), 'text', 40), col('qty', t('Quantity'), 'number', 9), col('unit', t('Unit price'), 'money_eur', 12), col('total', t('Total'), 'money_eur', 13),
   ], o.lines.map((l) => ({ ref: l.ref, name: t(l.name), qty: l.orderedQty, unit: l.unitPriceEur, total: l.totalEur })));
   const draft = o.status === 'draft' || o.status === 'awaiting_approval';
+  const x3 = o.x3Ref ? `${t('Sage X3 order')} ${o.x3Ref}` : o.origin === 'x3' ? t('Imported from Sage X3') : t('Not yet in Sage X3');
   return {
-    title: `${t('Purchase order')} ${o.number}`,
-    subtitle: draft ? `${o.supplier} · ${t(o.statusLabel)} — ${t('not yet an order')}` : o.supplier,
+    title: `${t('Purchase order summary')} ${o.number}`,
+    subtitle: `${t('Internal document — not sent to the supplier')} · ${o.supplier}${draft ? ` · ${t(o.statusLabel)}` : ''}`,
     project: projectRef(ctx),
     reference: o.x3Ref ? `${o.number} · X3 ${o.x3Ref}` : o.number,
     date: o.orderedOn ?? todayIso(ctx),
     blocks: [
       { kind: 'fields', columns: 2, items: [
-        [t('Supplier'), o.supplier], [t('Status'), t(o.statusLabel)], [t('Order date'), fd(o.orderedOn)], [t('Expected delivery'), fd(o.expectedOn)],
+        [t('Sage X3 reference'), x3], [t('Status'), t(o.statusLabel)],
+        [t('Supplier'), o.supplier], [t('Order date'), fd(o.orderedOn)], [t('Expected delivery'), fd(o.expectedOn)],
         [t('Delivery terms'), t(o.deliveryTerms)], [t('Needed for'), o.neededFor ? `${o.neededFor.code} · ${t(o.neededFor.name)}` : '—'],
         [t('Requested by'), o.createdBy ?? '—'], [t('Approved by'), o.decidedBy && !draft ? o.decidedBy : '—'],
       ] },
       { kind: 'heading', text: t('Lines') },
       tableBlock(lines, undefined, { name: t('Total excl. VAT'), total: sum(lines.rows, 'total') }),
-      { kind: 'spacer', height: 16 },
-      { kind: 'signatures', parties: [{ role: t('For Keystone — buyer'), name: (draft ? null : o.decidedBy) ?? undefined }, { role: t('Supplier acknowledgement') }] },
     ],
-    footnote: t('Prices in euros excluding VAT. Delivery to the address and terms above; please quote the order number on the delivery note and the invoice.'),
+    footnote: t('Internal summary of the order recorded in Keystone. The purchase order sent to the supplier, with its legal mentions and terms, is issued by Sage X3. Prices in euros excluding VAT.'),
   };
 }
 

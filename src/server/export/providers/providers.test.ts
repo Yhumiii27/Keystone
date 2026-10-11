@@ -259,14 +259,40 @@ describe('PDF documents', () => {
     expect(m.text).toContain('Compte rendu');
   });
 
-  it('purchase order: header, lines and total, signatures; another project’s order is refused', async () => {
+  it('purchase order: an internal summary (SC-4b, R-097) — header, X3 reference, lines and total, no supplier signature; another project’s order is refused', async () => {
     const { text, file } = await pdfOf('orders', 'director', 'code=HLT-026&variant=po&id=PO-1082');
     expect(file.fileName).toBe('po-HLT-026-PO-1082-2026-10-09.pdf');
-    expect(text).toContain('Commande d’achat PO-1082');
+    expect(text).toContain('Récapitulatif de commande PO-1082');
+    expect(text).toContain('Document interne — non envoyé au fournisseur');
     expect(text).toContain('Cotswold Fire Systems');
+    expect(text).toContain('RÉFÉRENCE SAGE X3');
+    expect(text).toContain('Importée de Sage X3');
     expect(text).toContain('Total HT');
-    expect(text).toContain('Accusé de réception fournisseur');
+    expect(text).toContain('est édité par Sage X3');
+    // SC-4b = a: the legal order is Sage X3's — no supplier acknowledgement, no instructions to the supplier.
+    expect(text).not.toContain('Accusé de réception fournisseur');
+    expect(text).not.toContain('Pour Keystone — acheteur');
+    expect(text).not.toContain('merci de rappeler le numéro de commande');
+    const en = await pdfOf('orders', 'director', 'code=HLT-026&variant=po&id=PO-1082', 'en');
+    expect(en.text).toContain('Purchase order summary PO-1082');
+    expect(en.text).not.toContain('Supplier acknowledgement');
     await expect(runExport(await ctxOf('orders', 'director', 'code=NDC-031&variant=po&id=PO-1082'), 'pdf')).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('purchase order summary: an order with a Sage X3 reference names it; a local order is "not yet in Sage X3"', async () => {
+    const { getDb } = await import('@/server/db/client');
+    const { purchaseOrders } = await import('@/server/db/schema');
+    const { eq } = await import('drizzle-orm');
+    const db = await getDb();
+    const [o] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.number, 'PO-1082'));
+    try {
+      await db.update(purchaseOrders).set({ x3Ref: 'X3-PO-1082' }).where(eq(purchaseOrders.id, o.id));
+      expect((await pdfOf('orders', 'director', 'code=HLT-026&variant=po&id=PO-1082', 'en')).text).toContain('Sage X3 order X3-PO-1082');
+      await db.update(purchaseOrders).set({ x3Ref: null, origin: 'shortfall' }).where(eq(purchaseOrders.id, o.id));
+      expect((await pdfOf('orders', 'director', 'code=HLT-026&variant=po&id=PO-1082', 'en')).text).toContain('Not yet in Sage X3');
+    } finally {
+      await db.update(purchaseOrders).set({ x3Ref: o.x3Ref, origin: o.origin }).where(eq(purchaseOrders.id, o.id));
+    }
   });
 
   it('goods receipt: lines with ordered / delivered / accepted, QC and signatures', async () => {

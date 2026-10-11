@@ -1,0 +1,9 @@
+{
+  "Purchase order summary": "Récapitulatif de commande",
+  "Internal document — not sent to the supplier": "Document interne — non envoyé au fournisseur",
+  "Sage X3 reference": "Référence Sage X3",
+  "Sage X3 order": "Commande Sage X3",
+  "Not yet in Sage X3": "Pas encore dans Sage X3",
+  "Imported from Sage X3": "Importée de Sage X3",
+  "Internal summary of the order recorded in Keystone. The purchase order sent to the supplier, with its legal mentions and terms, is issued by Sage X3. Prices in euros excluding VAT.": "Récapitulatif interne de la commande enregistrée dans Keystone. Le bon de commande envoyé au fournisseur, avec ses mentions légales et conditions, est édité par Sage X3. Prix en euros hors TVA."
+}
