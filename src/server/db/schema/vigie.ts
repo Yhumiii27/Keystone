@@ -178,6 +178,11 @@ export const vigieNcrs = pgTable(
     partRef: text('part_ref'),
     deliverableNumber: text('deliverable_number'),
     supplierName: text('supplier_name'),
+    /**
+     * ITP inspection the NCR was reported from ("I-03"), when Vigie echoes the `inspection` prefill parameter (R-112,
+     * Q-6b; OPEN QUESTION V-3): the inspection then shows the Vigie NCR number.
+     */
+    inspectionNumber: text('inspection_number'),
     raisedByName: text('raised_by_name').notNull(),
     raisedByPersonId: uuid('raised_by_person_id').references(() => persons.id),
     raisedOn: date('raised_on', { mode: 'string' }).notNull(),

@@ -99,6 +99,13 @@
       "when": 1791752360349,
       "tag": "0013_glossy_ultimo",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791753170092,
+      "tag": "0014_slippery_kronos",
+      "breakpoints": true
     }
   ]
 }

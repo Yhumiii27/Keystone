@@ -30,7 +30,8 @@ export async function upsertNcrMirror(q: Q, records: VigieNcrRecord[], syncedAt:
     const [raised, owner] = await Promise.all([findPerson(q, r.raisedBy), findPerson(q, r.owner)]);
     const values = {
       projectCode: r.projectCode, number: r.number, vigieRef: r.vigieRef, title: r.title, severity: r.severity, source: r.source, status: r.status,
-      activityCode: r.activityCode, partRef: r.partRef, deliverableNumber: r.deliverableNumber, supplierName: r.supplierName, raisedByName: r.raisedBy,
+      activityCode: r.activityCode, partRef: r.partRef, deliverableNumber: r.deliverableNumber, supplierName: r.supplierName,
+      inspectionNumber: r.inspectionNumber ?? null, raisedByName: r.raisedBy,
       raisedByPersonId: raised?.id ?? null, raisedOn: r.raisedOn, ownerName: r.owner, ownerPersonId: owner?.id ?? null, rootCause: r.rootCause, action: r.action,
       dueOn: r.dueOn, costKeur: r.costKeur, isoClause: r.isoClause, vigieUpdatedAt: r.updatedAt ? new Date(r.updatedAt) : null, lastSyncedAt: syncedAt,
     };
@@ -71,7 +72,8 @@ export async function readNcrMirror(q: Q, filter: NcrListFilter = {}): Promise<V
     const pending = (byNcr.get(r.id) ?? []).filter((p) => unreflected(p, r.lastSyncedAt)).map(ncrEntryOf);
     return {
       projectCode: r.projectCode, number: r.number, vigieRef: r.vigieRef, title: r.title, severity: r.severity, source: r.source, status: r.status,
-      activityCode: r.activityCode, partRef: r.partRef, deliverableNumber: r.deliverableNumber, supplierName: r.supplierName, raisedBy: r.raisedByName,
+      activityCode: r.activityCode, partRef: r.partRef, deliverableNumber: r.deliverableNumber, supplierName: r.supplierName,
+      inspectionNumber: r.inspectionNumber, raisedBy: r.raisedByName,
       raisedOn: r.raisedOn, owner: r.ownerName, rootCause: r.rootCause, action: r.action, dueOn: r.dueOn, costKeur: r.costKeur, isoClause: r.isoClause,
       requestedStatus: pending.at(-1)?.targetStatus ?? null, pendingProgress: pending, lastSyncedAt: r.lastSyncedAt.toISOString(),
       vigieUrl: vigieNcrUrl({ number: r.number, vigieRef: r.vigieRef }),

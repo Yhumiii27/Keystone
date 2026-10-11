@@ -3,7 +3,7 @@
 // lines, point type, stage, reference, date, result and the Codex record button — or the punch list with the row step
 // Start / Close (client island, editors only; "No punch item yet" when the project has none). "Add inspection" / "Add
 // punch item" is the header's primary action. Server Component.
-import { ClipboardText, Eye, FileText, ListChecks } from '@phosphor-icons/react/dist/ssr';
+import { ArrowSquareOut, ClipboardText, Eye, FileText, ListChecks, ShieldWarning } from '@phosphor-icons/react/dist/ssr';
 import { EmptyState } from '@/components/app/EmptyState';
 import { FilterBar, FilterLabel } from '@/components/app/Filter';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
@@ -12,9 +12,12 @@ import { ButtonLink } from '@/components/ds/Button';
 import { Segmented } from '@/components/ds/Segmented';
 import { Ellipsis, Table, Td, Th } from '@/components/ds/Table';
 import { cx } from '@/components/ds/cx';
+import { PhotosButton, type PhotoView } from '@/features/photos/photo-gallery';
 import type { T } from '@/i18n/translate';
-import type { DocButtonView, InspectionGroupView, ItpScreenView, PunchRowView } from './model';
+import { VIGIE_LINK_ATTRS } from '@/server/integrations/vigie/links';
+import type { DocButtonView, InspectionGroupView, InspectionRowView, ItpScreenView, PunchRowView } from './model';
 import { PunchStep } from './punch-step';
+import { RecordResultButton } from './result-button';
 import s from './itpcom.module.css';
 
 export interface ItpBodyProps {
@@ -22,12 +25,14 @@ export interface ItpBodyProps {
   view: ItpScreenView;
   /** Row steps allowed (not outside the workspace, not a read-only project). */
   canEdit: boolean;
+  /** R-126: photos stored by Keystone of the punch items (by number), and whether the viewer adds / removes them. */
+  photos?: { canEdit: boolean; punch: Record<string, PhotoView[]> };
   t: T;
 }
 
 const VIEW_ICON = { plan: ClipboardText, punch: ListChecks } as const;
 
-export function ItpBody({ code, view, canEdit, t }: ItpBodyProps) {
+export function ItpBody({ code, view, canEdit, photos, t }: ItpBodyProps) {
   return (
     <Stack>
       <FilterBar>
@@ -44,7 +49,7 @@ export function ItpBody({ code, view, canEdit, t }: ItpBodyProps) {
       {view.plan && (
         <SectionCard title={view.plan.title} scroll>
           {view.plan.groups.map((g) => (
-            <PlanGroup key={g.system} group={g} />
+            <PlanGroup key={g.system} code={code} group={g} />
           ))}
           {view.plan.empty && <EmptyState variant="boxed">{view.plan.empty}</EmptyState>}
         </SectionCard>
@@ -55,7 +60,7 @@ export function ItpBody({ code, view, canEdit, t }: ItpBodyProps) {
           {view.punch.empty ? (
             <EmptyState variant="boxed">{view.punch.empty}</EmptyState>
           ) : (
-            <PunchTable code={code} rows={view.punch.rows} canEdit={canEdit} t={t} />
+            <PunchTable code={code} rows={view.punch.rows} canEdit={canEdit} photos={photos} t={t} />
           )}
         </SectionCard>
       )}
@@ -64,7 +69,7 @@ export function ItpBody({ code, view, canEdit, t }: ItpBodyProps) {
 }
 
 /** Punch list table (12.5px); the unlabelled first column (P-01…) is named for screen readers. */
-function PunchTable({ code, rows, canEdit, t }: { code: string; rows: PunchRowView[]; canEdit: boolean; t: T }) {
+function PunchTable({ code, rows, canEdit, photos, t }: { code: string; rows: PunchRowView[]; canEdit: boolean; photos?: ItpBodyProps['photos']; t: T }) {
   return (
     <Table size={12.5}>
       <thead>
@@ -82,7 +87,7 @@ function PunchTable({ code, rows, canEdit, t }: { code: string; rows: PunchRowVi
       </thead>
       <tbody>
         {rows.map((p) => (
-          <PunchRow key={p.number} code={code} row={p} canEdit={canEdit} />
+          <PunchRow key={p.number} code={code} row={p} canEdit={canEdit} photos={photos} t={t} />
         ))}
       </tbody>
     </Table>
@@ -98,7 +103,28 @@ export function DocButton({ doc }: { doc: DocButtonView }) {
   );
 }
 
-function PlanGroup({ group: g }: { group: InspectionGroupView }) {
+/** Vigie NCR tags of a failed inspection (internal viewers), or "Report the NCR in Vigie" while none is reported (Q-6b). */
+function NcrLinks({ row: r }: { row: InspectionRowView }) {
+  if (!r.ncrs.length && !r.reportNcr) return null;
+  return (
+    <span className={s.ncrLinks}>
+      {r.ncrs.map((n) => (
+        <a key={n.number} href={n.href} {...VIGIE_LINK_ATTRS} className={cx('tag tag-accent', s.small, s.ncrTag)} aria-label={n.label} title={n.label}>
+          <ShieldWarning aria-hidden />
+          {n.number}
+        </a>
+      ))}
+      {r.reportNcr && (
+        <a href={r.reportNcr.href} {...VIGIE_LINK_ATTRS} className={cx('btn btn-ghost', s.reportNcr)}>
+          {r.reportNcr.label}
+          <ArrowSquareOut aria-hidden />
+        </a>
+      )}
+    </span>
+  );
+}
+
+function PlanGroup({ code, group: g }: { code: string; group: InspectionGroupView }) {
   return (
     <div className={s.group}>
       <div className={s.groupHead}>
@@ -111,7 +137,12 @@ function PlanGroup({ group: g }: { group: InspectionGroupView }) {
           {g.rows.map((r) => (
             <tr key={r.number}>
               <Td className={s.idCell}>{r.number}</Td>
-              <Td className={s.name}>{r.name}</Td>
+              <Td className={s.name}>
+                {r.name}
+                {r.resultLine && <span className={s.resultLine}>{r.resultLine}</span>}
+                {r.comment && <span className={s.resultComment}>{r.comment}</span>}
+                <NcrLinks row={r} />
+              </Td>
               <Td>
                 <span className={cx(r.typeClass, s.small)}>{r.type}</span>
               </Td>
@@ -125,7 +156,14 @@ function PlanGroup({ group: g }: { group: InspectionGroupView }) {
                   {r.status}
                 </span>
               </Td>
-              <Td className={s.right}>{r.doc && <DocButton doc={r.doc} />}</Td>
+              <Td className={s.right}>
+                <span className={s.rowActions}>
+                  {r.doc && <DocButton doc={r.doc} />}
+                  {r.record && (
+                    <RecordResultButton code={code} number={r.number} from={r.record.from} label={r.record.label} ariaLabel={r.record.ariaLabel} context={`${r.number} · ${r.name}`} form={r.record.form} />
+                  )}
+                </span>
+              </Td>
             </tr>
           ))}
         </tbody>
@@ -134,7 +172,7 @@ function PlanGroup({ group: g }: { group: InspectionGroupView }) {
   );
 }
 
-function PunchRow({ code, row: p, canEdit }: { code: string; row: PunchRowView; canEdit: boolean }) {
+function PunchRow({ code, row: p, canEdit, photos, t }: { code: string; row: PunchRowView; canEdit: boolean; photos?: ItpBodyProps['photos']; t: T }) {
   return (
     <tr>
       <Td className={s.num400}>{p.number}</Td>
@@ -151,7 +189,20 @@ function PunchRow({ code, row: p, canEdit }: { code: string; row: PunchRowView; 
       <Td>
         <span className={cx(p.statusClass, s.nowrap)}>{p.status}</span>
       </Td>
-      <Td className={s.right}>{canEdit && <PunchStep code={code} number={p.number} label={p.step?.label ?? null} ariaLabel={p.step?.ariaLabel ?? null} from={p.step?.from ?? null} />}</Td>
+      <Td className={s.right}>
+        <span className={s.rowActions}>
+          {photos && (
+            <PhotosButton
+              title={`${p.number} · ${t('Photos')}`}
+              owner={{ kind: 'punch_item', code, ref: p.number, register: 'itp' }}
+              photos={photos.punch[p.number] ?? []}
+              canEdit={photos.canEdit}
+              empty={t('No photo yet')}
+            />
+          )}
+          {canEdit && <PunchStep code={code} number={p.number} label={p.step?.label ?? null} ariaLabel={p.step?.ariaLabel ?? null} from={p.step?.from ?? null} />}
+        </span>
+      </Td>
     </tr>
   );
 }

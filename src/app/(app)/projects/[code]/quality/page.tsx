@@ -4,7 +4,9 @@
 // opened in Vigie ("Open in Vigie", "8D report", "Manage in Vigie"); Keystone records the viewer's own step decisions
 // (the next step; the quality manager's verification → Closed / back to Corrective action), sent to Vigie. "New NCR"
 // opens Vigie's report form (no Keystone form). The deliverables register is Keystone's: Start → To internal review →
-// Submit to client, the client's acceptance (PV) or rejection, the issued Codex document.
+// Submit to client, the client's acceptance (PV) or rejection, back to In progress at the next revision after a
+// rejection (R-114), the issued Codex document; on that register the primary action is "New deliverable" for the
+// project's manager and the director (R-115, Q-3b), "New NCR" otherwise.
 // URL state (docs/spec/00 §8.3): `?tab=ncr|dlv` (default ncr; `?dlv=` alone opens the deliverables register),
 // `?filter=minor|major|critical` (NCR severity), `?status=<deliverable status>`, `?ncr=NCR-029`, `?dlv=D-015` (drawers,
 // case-insensitive; unknown → none). Unknown values fall back to All.
@@ -14,13 +16,17 @@
 // organisation's projects. P-10b (R-043): the client sees no NCR at all — the screen opens on the deliverables register, without
 // the NCR tab, and no NCR row is sent to the browser. Projects without data show empty registers.
 import { PageHeader } from '@/components/app/shell/page-header';
-import { deliverableFilterOf, ncrFilterOf, qualityTabOf } from '@/domain/quality';
+import { DELIVERABLE_CREATOR_ROLES, deliverableFilterOf, ncrFilterOf, qualityTabOf } from '@/domain/quality';
 import { VigieLink } from '@/features/eco/vigie-link';
+import { newDeliverableFormDef } from '@/features/quality/deliverable-form';
+import { NewDeliverableButton } from '@/features/quality/quality-buttons';
 import { dlvDrawerView, dlvTabView, ncrDrawerView, ncrTabView, qualitySegView, type QualityState, type QualityViewerCtx } from '@/features/quality/model';
 import { QualityView } from '@/features/quality/quality-view';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { projectLabel } from '@/server/dal/projects';
+import { deliverableWbsOptions, listDeliverableTypes } from '@/server/dal/quality';
 import { getQualityScreen } from '@/server/dal/quality-screen';
+import { teamOwnerOptions } from '@/server/dal/team';
 import { vigieReportNcrUrl } from '@/server/integrations/vigie/links';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -59,11 +65,19 @@ export default async function QualityPage({ params, searchParams }: { params: Pr
 
   const input = { code: projectCode, state, viewer };
   const context = t(projectLabel(ctx.project));
-  const primary = viewer.vigie ? (
-    <VigieLink href={vigieReportNcrUrl({ projectCode })} variant="primary" size="md" plus label={`${t('New NCR')} · ${t('Report in Vigie')}`}>
-      {t('New NCR')}
-    </VigieLink>
-  ) : undefined;
+  // R-115 (Q-3b): on the deliverables register, the project's manager (and the director) adds deliverables.
+  const creates = tab === 'dlv' && viewer.canEdit && DELIVERABLE_CREATOR_ROLES.includes(ctx.viewer.role) && ctx.isLead;
+  let primary;
+  if (creates) {
+    const [types, wbs, team] = await Promise.all([listDeliverableTypes(), deliverableWbsOptions(projectCode), teamOwnerOptions(projectCode)]);
+    primary = <NewDeliverableButton code={projectCode} label={t('New deliverable')} context={context} form={newDeliverableFormDef({ types, wbs, team }, t)} />;
+  } else if (viewer.vigie) {
+    primary = (
+      <VigieLink href={vigieReportNcrUrl({ projectCode })} variant="primary" size="md" plus label={`${t('New NCR')} · ${t('Report in Vigie')}`}>
+        {t('New NCR')}
+      </VigieLink>
+    );
+  }
 
   return (
     <>

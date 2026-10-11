@@ -879,6 +879,8 @@ export const deliverableStatus = codec<DeliverableStatus, string>([
 export const DELIVERABLE_STATUS_TAG: Record<DeliverableStatus, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = {
   planned: 'tag-neutral', in_progress: 'tag-outline', internal_review: 'tag-outline', submitted: 'tag-accent', accepted: 'tag-neutral', rejected: 'tag-accent',
 };
+/** Client decision recorded in a deliverable's review history (R-114, Q-3a). */
+export type DeliverableReviewDecision = 'accepted' | 'rejected';
 /** Client acceptance window of a submitted deliverable ("10-day acceptance window"). */
 export const DELIVERABLE_ACCEPTANCE_DAYS = 10;
 
@@ -887,8 +889,17 @@ export type ItpPointType = 'hold' | 'witness' | 'review' | 'surveillance';
 export const itpPointType = codec<ItpPointType, string>([['hold', 'Hold'], ['witness', 'Witness'], ['review', 'Review'], ['surveillance', 'Surveillance']]);
 export type ItpStage = 'workshop' | 'fat' | 'site' | 'sat';
 export const itpStage = codec<ItpStage, string>([['workshop', 'Workshop'], ['fat', 'FAT'], ['site', 'Site'], ['sat', 'SAT']]);
-export type ItpResult = 'planned' | 'scheduled' | 'passed' | 'failed';
-export const itpResult = codec<ItpResult, string>([['planned', 'Planned'], ['scheduled', 'Scheduled'], ['passed', 'Passed'], ['failed', 'Failed']]);
+/**
+ * ITP results. `reserved` (R-112, delivery 7) = passed with reservations: accepted, the reservations become punch items;
+ * it counts as passed in the plan's figures.
+ */
+export type ItpResult = 'planned' | 'scheduled' | 'passed' | 'reserved' | 'failed';
+export const itpResult = codec<ItpResult, string>([
+  ['planned', 'Planned'], ['scheduled', 'Scheduled'], ['passed', 'Passed'], ['reserved', 'Passed with reservations'], ['failed', 'Failed'],
+]);
+/** Results an inspector records (R-112, Q-6a): pass, pass with reservations, fail. */
+export type ItpRecordedResult = Extract<ItpResult, 'passed' | 'reserved' | 'failed'>;
+export const ITP_RECORDED_RESULTS: readonly ItpRecordedResult[] = ['passed', 'reserved', 'failed'];
 
 /** Punch items (PUNCH 3718, SITE_PUNCH 3581, AF.punch). Category letter = code. */
 export type PunchCategory = 'A' | 'B' | 'C';
@@ -1069,7 +1080,7 @@ export type BaselineSource = 'seed' | 'snapshot' | 'change_request' | 'import';
 export type ScheduleRunOutcome = 'ok' | 'cycle' | 'error';
 
 /** What a stored file is for (src/server/storage: allowlists and limits per purpose). */
-export type StoredFilePurpose = 'attachment' | 'transcript' | 'import' | 'export';
+export type StoredFilePurpose = 'attachment' | 'transcript' | 'import' | 'export' | 'photo';
 
 /** Import jobs (S-9 and the Excel / CSV table imports of /admin/integrations). */
 export type ImportKind = 'mspdi' | 'xer' | 'budget_lines' | 'bom' | 'parts' | 'assignments';

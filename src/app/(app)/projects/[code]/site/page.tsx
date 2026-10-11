@@ -6,14 +6,17 @@
 // sheet; the readiness steps and the Cursus reminder / sync follow the same rule. Projects without a site sheet show the
 // empty state. Cursus owns the individual go / no go, Vigie the HSE register: links open them. D-5: the HSE card's
 // "Client communication log" opens the project's Meetings screen on the decisions taken with the client (shown when the
-// viewer may see Meetings); the dedicated log of chapter 4 is retired from the screen.
+// viewer may see Meetings); the dedicated log of chapter 4 is retired from the screen. R-126 (X-15): photos of the daily
+// reports and of the site punch items are stored by Keystone (added by the Site's editors, seen by internal viewers).
 import { PageHeader } from '@/components/app/shell/page-header';
 import { canSee } from '@/config/screens';
 import { siteTabOf } from '@/domain/site';
 import { siteHref } from '@/features/site/links';
 import { dailyReportFormDef, siteView } from '@/features/site/model';
 import { DailyReportButton } from '@/features/site/site-buttons';
+import { photoViews } from '@/features/photos/model';
 import { SiteBody } from '@/features/site/site-view';
+import { listProjectPhotos } from '@/server/dal/photos';
 import { projectLabel } from '@/server/dal/projects';
 import { getSite } from '@/server/dal/site';
 import { getProjectContext } from '@/server/project-context';
@@ -34,10 +37,18 @@ export default async function SitePage({ params, searchParams }: { params: Promi
     <DailyReportButton code={projectCode} context={t(projectLabel(ctx.project))} form={dailyReportFormDef(t, lang)} execHref={siteHref(projectCode, 'exec')} />
   ) : undefined;
 
+  // R-126: photos on the Daily execution tab (internal viewers; the client never sees the site's records — P-10b).
+  let photos;
+  if (view.tab === 'exec' && data && ctx.viewer.role !== 'client') {
+    const [reports, punch] = await Promise.all([listProjectPhotos(projectCode, 'daily_report'), listProjectPhotos(projectCode, 'punch_item', 'site')]);
+    const views = (m: Map<string, Parameters<typeof photoViews>[0]>) => Object.fromEntries([...m].map(([k, v]) => [k, photoViews(v)]));
+    photos = { canEdit, reports: views(reports), punch: views(punch) };
+  }
+
   return (
     <>
       <PageHeader screen="site" projectCode={projectCode} primary={primary} />
-      <SiteBody code={projectCode} view={view} canEdit={canEdit} showCommLog={canSee(ctx.viewer.role, 'meetings')} t={t} />
+      <SiteBody code={projectCode} view={view} canEdit={canEdit} showCommLog={canSee(ctx.viewer.role, 'meetings')} photos={photos} t={t} />
     </>
   );
 }

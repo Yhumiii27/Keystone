@@ -53,6 +53,7 @@ import d7PlatformWeb from './d7-platform-web.json';
 import d7CostControl from './d7-cost-control.json';
 import d7ContractPortfolio from './d7-contract-portfolio.json';
 import d7Operations from './d7-operations.json';
+import d7QualitySite from './d7-quality-site.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -108,4 +109,5 @@ export const EXTRA_FR: Record<string, string> = {
   ...d7CostControl,
   ...d7ContractPortfolio,
   ...d7Operations,
+  ...d7QualitySite,
 };

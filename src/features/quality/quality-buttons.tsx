@@ -4,7 +4,7 @@
 // client), the client's Accept (PV) / Reject (row) and "Reject with comments" (dialog), and "Link a Codex document".
 // The Server Functions (./actions.ts) re-check everything; the page refreshes on revalidation. Clicks inside a register
 // row do not open the drawer (ClickableRow ignores buttons).
-import { ArrowRight, Check, Link as LinkIcon, PaperPlaneTilt } from '@phosphor-icons/react/dist/ssr';
+import { ArrowCounterClockwise, ArrowRight, Check, Link as LinkIcon, PaperPlaneTilt, Plus } from '@phosphor-icons/react/dist/ssr';
 import { useState, useTransition } from 'react';
 import { FormDialog } from '@/components/app/FormDialog';
 import type { FormDef } from '@/components/app/form-def';
@@ -13,7 +13,7 @@ import { useToast } from '@/components/ds/Toast';
 import type { NcrStatus, ProducerTarget } from '@/domain/quality';
 import { useI18n } from '@/i18n/client';
 import {
-  advanceNcrAction, decideDeliverableAction, linkDeliverableDocumentAction, moveDeliverableAction, rejectDeliverableWithCommentsAction, verifyNcrAction,
+  advanceNcrAction, createDeliverableAction, decideDeliverableAction, linkDeliverableDocumentAction, moveDeliverableAction, rejectDeliverableWithCommentsAction, verifyNcrAction,
   type QualityResult,
 } from './actions';
 
@@ -87,13 +87,15 @@ export function NcrVerifyButtons({ code, number, closeLabel, backLabel, place }:
 }
 
 /** "Start" / "To internal review" (secondary) and "Submit to client" (primary, paper plane) — row or drawer size. */
-export function DeliverableMoveButton({ code, number, to, label, variant, place }: Target & { to: ProducerTarget; label: string; variant: 'primary' | 'secondary'; place: 'row' | 'drawer' }) {
+export function DeliverableMoveButton({
+  code, number, to, label, variant, place, restart,
+}: Target & { to: ProducerTarget; label: string; variant: 'primary' | 'secondary'; place: 'row' | 'drawer'; /** "Start next revision" (R-114). */ restart?: boolean }) {
   const { pending, run } = useRun();
   return (
     <Button
       variant={variant}
       size={place === 'row' ? 'row' : 'sm'}
-      icon={to === 'submitted' ? PaperPlaneTilt : undefined}
+      icon={to === 'submitted' ? PaperPlaneTilt : restart ? ArrowCounterClockwise : undefined}
       disabled={pending}
       aria-label={`${label} ${number}`}
       onClick={() => run(() => moveDeliverableAction({ projectCode: code, number, to }))}
@@ -166,6 +168,19 @@ export function LinkDocumentButton({ code, number, context, options }: Target & 
         {t('Link a Codex document')}
       </Button>
       <FormDialog {...form} open={open} onClose={() => setOpen(false)} context={`${number} · ${context}`} onSubmit={(values) => linkDeliverableDocumentAction(code, number, values)} />
+    </>
+  );
+}
+
+/** "New deliverable" (R-115, Q-3b): header primary of the deliverables register for the project's manager and the director. */
+export function NewDeliverableButton({ code, label, context, form }: { code: string; label: string; context: string; form: FormDef }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="primary" icon={Plus} onClick={() => setOpen(true)}>
+        {label}
+      </Button>
+      <FormDialog {...form} open={open} onClose={() => setOpen(false)} context={context} onSubmit={(values) => createDeliverableAction(code, values)} />
     </>
   );
 }

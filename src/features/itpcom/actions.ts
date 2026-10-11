@@ -7,17 +7,17 @@
 // "Blocking A").
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
-import { parseNewInspection, parseNewPunch, parsePlanSat, punchStep } from '@/domain/itpcom';
+import { canRecordItpResult, parseInspectionResult, parseNewInspection, parseNewPunch, parsePlanSat, punchStep } from '@/domain/itpcom';
 import { shortName } from '@/lib/format';
-import { NOW_ISO, punchStatus } from '@/server/db/codes';
+import { NOW_ISO, itpResult, punchStatus } from '@/server/db/codes';
 import { listSatSystems, planSat } from '@/server/dal/commissioning';
-import { addItpInspection, addPunchItem, advancePunchItem, listItpSystems, listPunchItems } from '@/server/dal/itp';
+import { addItpInspection, addPunchItem, advancePunchItem, getItpInspection, listItpSystems, listPunchItems, recordItpResult } from '@/server/dal/itp';
 import type { Actor } from '@/server/dal/ops-common';
 import { getProject } from '@/server/dal/projects';
 import { teamOwnerOptions } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
-import { INSPECTION_RESULT, PUNCH_RESULT, SAT_RESULT } from './forms';
+import { INSPECTION_RESULT, PUNCH_RESULT, RESULT_RESULT, SAT_RESULT } from './forms';
 
 export type PunchStepResult = { ok: true } | { error: string };
 
@@ -136,4 +136,40 @@ export async function planSatAction(code: string, values: Record<string, string>
   }
   refresh(ok.code);
   return { toast: await tr(SAT_RESULT) };
+}
+
+const RESULT_CHANGED = 'This inspection has changed since you opened it';
+
+/**
+ * "Record result" (R-112, Q-6a): Passed / Passed with reservations / Failed, date, inspector, the client representative
+ * (hold / witness points) and a comment. Quality, the engineering lead and the director, on a project they may edit.
+ * `from` is the result the viewer saw: a line recorded meanwhile by someone else is refused rather than overwritten.
+ * A failure is then reported in Vigie from the row ("Report the NCR in Vigie", Q-6b).
+ */
+export async function recordInspectionResultAction(code: string, number: string, from: string, values: Record<string, string>): Promise<FormDialogResult> {
+  const ok = await editable(code, 'itp');
+  if ('error' in ok) return ok;
+  if (!canRecordItpResult(ok.actor.role)) return { error: await tr('Only quality and the engineering lead record inspection results') };
+  if (typeof number !== 'string' || !/^I-\d{2,}$/.test(number) || !itpResult.isCode(from)) return { error: await tr('Invalid request') };
+  const row = await getItpInspection(ok.code, number);
+  if (!row) return { error: await tr('Unknown inspection') };
+  if (row.result !== from) {
+    refresh(ok.code);
+    return { error: await tr(RESULT_CHANGED) };
+  }
+  const parsed = parseInspectionResult(strings(values), row.pointType);
+  if (!parsed.ok) return { error: await tr(parsed.error) };
+  const v = parsed.value;
+  try {
+    await recordItpResult(ok.code, row.number, { result: v.result, resultOn: v.resultOn, inspector: v.inspector, clientWitness: v.clientWitness, comment: v.comment }, ok.actor, from);
+  } catch (e) {
+    if (e instanceof Error && / has changed$/.test(e.message)) {
+      refresh(ok.code);
+      return { error: await tr(RESULT_CHANGED) };
+    }
+    console.error('recordInspectionResultAction', e);
+    return { error: await tr('The change could not be saved') };
+  }
+  refresh(ok.code);
+  return { toast: await tr(`${row.number} · ${itpResult.label(v.result)} · ${RESULT_RESULT}`) };
 }

@@ -22,6 +22,14 @@ export const clientIssues = pgTable(
     status: text('status').$type<ClientIssueStatus>().notNull(),
     /** Answer of the project manager ("Acknowledged — response within 2 working days" when raised). */
     response: text('response').notNull(),
+    // ── Handling by the project manager (R-137, L-6): Open → In progress → Closed ──
+    /** Who took the issue in charge (In progress) and when. */
+    handledByName: text('handled_by_name'),
+    handledByPersonId: uuid('handled_by_person_id').references(() => persons.id),
+    takenOn: date('taken_on', { mode: 'string' }),
+    /** Last answer written by the project manager (the client sees it as `response`). */
+    answeredOn: date('answered_on', { mode: 'string' }),
+    closedOn: date('closed_on', { mode: 'string' }),
     position: integer('position').notNull(),
     ...timestamps,
   },

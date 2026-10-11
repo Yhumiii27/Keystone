@@ -86,20 +86,26 @@ export interface GoVerdict {
 /** Number of Go chantier conditions ("{n} of 5 conditions open"). */
 export const GO_CONDITION_COUNT = 5;
 
+/** Sub-line of the Cursus condition while Cursus has sent no verdict for the site team (NEW-SITE-1). */
+export const NO_CURSUS_VERDICT = 'No Cursus verdict received';
+
 /**
- * GO ⇔ no client prerequisite pending ∧ no Cursus NO GO ∧ every equipment line confirmed ∧ no open collision ∧ no HSE
- * item pending (10 §3.4 b, `goItems` 4748). Otherwise NO GO (Readiness KPI, Go card, sidebar badge).
+ * GO ⇔ no client prerequisite pending ∧ at least one Cursus verdict received and no Cursus NO GO ∧ every equipment line
+ * confirmed ∧ no open collision ∧ no HSE item pending (10 §3.4 b, `goItems` 4748). Otherwise NO GO (Readiness KPI, Go
+ * card, sidebar badge). NEW-SITE-1 (owner's answer "a"): without any verdict the Cursus condition stays open ("No Cursus
+ * verdict received", one open record) instead of "Ready"; a GO with reserve is still accepted, a NO GO blocks.
  */
 export function goChantier(d: GoInput): GoVerdict {
   const c = (key: GoKey, label: string, open: number, sub: string): GoCondition => ({ key, label, ok: open === 0, sub: open ? sub : 'Ready', open });
   const pending = d.prerequisites.filter((p) => p.status === 'pending').length;
   const noGo = d.people.filter((p) => p.verdict === 'no_go').length;
+  const noVerdict = d.people.length === 0;
   const unconfirmed = d.equipment.filter((e) => e.status !== 'confirmed').length;
   const collisions = d.collisions.filter((x) => !x.resolved).length;
   const hsePending = d.hse.filter((h) => h.status === 'pending').length;
   const conditions = [
     c('prerequisites', 'Client prerequisites', pending, `${pending} pending`),
-    c('cursus', 'Individual go · Cursus', noGo, `${noGo} NO GO`),
+    noVerdict ? c('cursus', 'Individual go · Cursus', 1, NO_CURSUS_VERDICT) : c('cursus', 'Individual go · Cursus', noGo, `${noGo} NO GO`),
     c('equipment', 'Equipment on site', unconfirmed, `${unconfirmed} unconfirmed`),
     // "1 collision" once collisions can be resolved (the prototype's 4 constant collisions never reach one).
     c('collisions', 'Team without collisions', collisions, `${collisions} ${collisions === 1 ? 'collision' : 'collisions'}`),

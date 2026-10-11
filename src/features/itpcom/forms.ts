@@ -4,9 +4,9 @@
 // owner options are the project TEAM (full names). `localizeForm` translates a definition on the server — FormDialog
 // then renders it as is.
 import type { FormDef, FormOption } from '@/components/app/form-def';
-import { ITP_POINT_TYPES, ITP_STAGES, PUNCH_CATEGORIES, PUNCH_SOURCES } from '@/domain/itpcom';
+import { ITP_POINT_TYPES, ITP_STAGES, PUNCH_CATEGORIES, PUNCH_SOURCES, witnessFieldOf } from '@/domain/itpcom';
 import type { Lang, T } from '@/i18n/translate';
-import { itpPointType, itpStage, punchCategory, punchSource } from '@/server/db/codes';
+import { ITP_RECORDED_RESULTS, itpPointType, itpResult, itpStage, punchCategory, punchSource, type ItpPointType, type ItpResult } from '@/server/db/codes';
 import { dataT } from './i18n';
 
 /** AF_RESULT.itp. */
@@ -74,8 +74,44 @@ export function planSatFormDef(systems: readonly string[], defaults: PlanSatDefa
   };
 }
 
+/** Toast of "Record result" (R-112). */
+export const RESULT_RESULT = 'Inspection result recorded';
+
+export interface ResultFormDefaults {
+  /** Result code proposed (the recorded one, else Passed). */
+  result: ItpResult;
+  /** "30 Sep" (English; translated by localizeForm). */
+  date: string;
+  inspector: string;
+  witness: string;
+  comment: string;
+}
+
+/**
+ * "Record result" (R-112, Q-6a) — result · date · inspector · client representative (hold point: required; witness point:
+ * optional; absent otherwise) · comment (required for a failure or reservations; checked on submit).
+ */
+export function resultFormDef(pointType: ItpPointType, d: ResultFormDefaults): FormDef {
+  const witness = witnessFieldOf(pointType);
+  return {
+    title: 'Record result',
+    kind: 'create',
+    submit: 'Record result',
+    fields: [
+      {
+        id: 'result', label: 'Result', type: 'select', options: ITP_RECORDED_RESULTS.map((c) => ({ value: c, label: itpResult.label(c) })),
+        defaultValue: (ITP_RECORDED_RESULTS as readonly string[]).includes(d.result) ? d.result : 'passed',
+      },
+      { id: 'date', label: 'Date', type: 'text', required: true, defaultValue: d.date },
+      { id: 'inspector', label: 'Inspector', type: 'text', required: true, defaultValue: d.inspector },
+      ...(witness ? [{ id: 'witness', label: 'Client representative present', type: 'text' as const, required: witness === 'required', defaultValue: d.witness }] : []),
+      { id: 'comment', label: 'Comment', type: 'textarea', defaultValue: d.comment, placeholder: 'Required for a failure or reservations' },
+    ],
+  };
+}
+
 /** Selects whose option labels are codes' English labels (translated). */
-const CODE_SELECTS = new Set(['type', 'stage', 'cat', 'src']);
+const CODE_SELECTS = new Set(['type', 'stage', 'cat', 'src', 'result']);
 /** Selects listing systems: data text (exact dictionary matches), the value stays the English system name. */
 const SYSTEM_SELECTS = new Set(['system']);
 /** Defaults that are prototype text (translated); the witnesses' names are kept as is. */

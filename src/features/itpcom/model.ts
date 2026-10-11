@@ -3,8 +3,9 @@
 // record buttons, the punch list rows with the Start / Close step, the commissioning grid, "Blocking A" and the handover
 // dossier — translated. Built from the DAL rows with the pure rules of src/domain/itpcom.ts.
 import { OK } from '@/components/app/tones';
+import type { FormDef } from '@/components/app/form-def';
 import {
-  blockingAOf, commissioningCellLook, groupBySystem, inspectionLook, itpDateText, openByCategoryText, punchLook, punchStep,
+  blockingAOf, commissioningCellLook, groupBySystem, inspectionLook, inspectionNcrTitle, itpDateText, openByCategoryText, punchLook, punchStep, resultLineText,
   summariseCommissioning, summariseItp,
 } from '@/domain/itpcom';
 import { docHref, documentsHref } from '@/features/docs/links';
@@ -12,7 +13,9 @@ import type { Lang, T } from '@/i18n/translate';
 import { screenHref } from '@/config/screens';
 import type { Commissioning, SatPlanRow } from '@/server/dal/commissioning';
 import type { ItpPlan, PunchRow } from '@/server/dal/itp';
-import type { PunchStatus } from '@/server/db/codes';
+import type { ItpResult, PunchStatus } from '@/server/db/codes';
+import { vigieReportNcrUrl } from '@/server/integrations/vigie/links';
+import { localizeForm, resultFormDef } from './forms';
 import { blockedT, dataT, failedT, missingT, planShapeT, stepT } from './i18n';
 
 export interface KpiView {
@@ -62,6 +65,16 @@ export interface InspectionRowView {
   statusClass: string;
   statusColor: string;
   doc: DocButtonView | null;
+  /** Result recorded in Keystone (R-112): "Passed 24 Sep · S. Haddad · client N. Bensaïd" (translated); null otherwise. */
+  resultLine: string | null;
+  /** Comment of the recorded result (typed text, shown as is). */
+  comment: string | null;
+  /** Vigie NCRs reported from this inspection (internal viewers only, P-10b). */
+  ncrs: { number: string; href: string; label: string }[];
+  /** Failed without a Vigie NCR yet: "Report the NCR in Vigie", prefilled (internal viewers only, Q-6b). */
+  reportNcr: { href: string; label: string } | null;
+  /** "Record result" (quality, engineering lead, director on an editable project): the translated form and the result seen. */
+  record: { label: string; ariaLabel: string; form: FormDef; from: ItpResult } | null;
 }
 
 export interface InspectionGroupView {
@@ -101,6 +114,19 @@ export interface ItpScreenView {
   punch: { title: string; subtitle: string; rows: PunchRowView[]; empty: string | null } | null;
 }
 
+/** Who looks at the plan (R-112): may they record results, are they internal (Vigie links and NCR numbers), their name. */
+export interface ItpViewer {
+  /** Quality, engineering lead or director, screen editable for them. */
+  canRecord: boolean;
+  /** Not the client: Vigie is internal and the client does not see NCRs (P-10b). */
+  internal: boolean;
+  /** Full name: the inspector proposed by the result form. */
+  name: string;
+  /** Business "today" of the result form ("30 Sep", English). */
+  today: string;
+}
+const READER: ItpViewer = { canRecord: false, internal: true, name: '', today: '' };
+
 export interface ItpScreenInput {
   code: string;
   view: ItpViewKey;
@@ -109,9 +135,11 @@ export interface ItpScreenInput {
   punch: PunchRow[];
   /** Label of the project's machine type (KPI "Template" without a plan). */
   machineType: string | null;
+  /** Default: an internal reader who cannot record results. */
+  viewer?: ItpViewer;
 }
 
-export function itpScreenView({ code, view, plan, punch, machineType }: ItpScreenInput, t: T, lang: Lang): ItpScreenView {
+export function itpScreenView({ code, view, plan, punch, machineType, viewer = READER }: ItpScreenInput, t: T, lang: Lang): ItpScreenView {
   const inspections = plan?.inspections ?? [];
   const s = summariseItp(inspections, punch, plan && plan.template ? { template: plan.template, systems: plan.systems.length, custom: plan.customCount } : null, machineType);
   const kpis: KpiView[] = [
@@ -130,10 +158,33 @@ export function itpScreenView({ code, view, plan, punch, machineType }: ItpScree
     passedText: `${g.passed} / ${g.count}`,
     rows: g.rows.map((r) => {
       const look = inspectionLook(r.pointType, r.result);
+      const line = !!r.resultOn;
+      const name = dataT(r.name, lang);
+      const ncrs = viewer.internal ? (r.ncrs ?? []).map((n) => ({ number: n.number, href: n.vigieUrl, label: `${t('Open in Vigie')} · ${n.number}` })) : [];
+      const recordLabel = t('Record result');
       return {
-        number: r.number, name: dataT(r.name, lang), type: t(r.pointTypeLabel), typeClass: look.typeClass, stage: t(r.stageLabel), reference: r.reference,
+        number: r.number, name, type: t(r.pointTypeLabel), typeClass: look.typeClass, stage: t(r.stageLabel), reference: r.reference,
         date: t(itpDateText(r.plannedOn)), status: t(r.resultLabel), statusClass: look.statusClass, statusColor: look.statusColor,
         doc: docButton(r.recordRef, r.recordInCodex, code, t),
+        resultLine: line ? resultLineText(r, t) : null,
+        // The comment of a failure describes the non-conformity: internal (P-10b), not shown to the client.
+        comment: viewer.internal ? (r.resultComment ?? null) : null,
+        ncrs,
+        reportNcr:
+          viewer.internal && r.result === 'failed' && !ncrs.length
+            ? { href: vigieReportNcrUrl({ projectCode: code, title: inspectionNcrTitle(r), inspection: r.number }), label: t('Report the NCR in Vigie') }
+            : null,
+        record: viewer.canRecord
+          ? {
+              label: recordLabel,
+              ariaLabel: `${recordLabel} · ${r.number}`,
+              from: r.result,
+              form: localizeForm(resultFormDef(r.pointType, {
+                result: r.resultOn ? r.result : 'passed', date: r.resultOn ? itpDateText(r.resultOn) : viewer.today, inspector: r.inspector ?? viewer.name,
+                witness: r.clientWitness ?? '', comment: r.resultComment ?? '',
+              }), t, lang),
+            }
+          : null,
       };
     }),
   }));

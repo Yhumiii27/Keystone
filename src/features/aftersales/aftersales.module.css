@@ -37,3 +37,20 @@ a.ecoTag:hover { color: var(--color-accent-200); }
 .barCell { width: 160px; }
 .bar { height: 6px; border-radius: 3px; background: var(--color-neutral-800); overflow: hidden; }
 .barFill { height: 100%; background: var(--color-accent); }
+
+/* R-143 claim drawer and follow-up; R-144 delivered projects */
+.section { display: flex; flex-direction: column; gap: 6px; }
+.row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.muted { font-size: 12px; color: var(--color-neutral-400); }
+.inlineLink { font-size: 12px; padding: 3px 8px; display: inline-flex; align-items: center; gap: 4px; }
+.ivRow { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--color-neutral-800); font-size: 12.5px; }
+.ivRow > :first-child { flex: 1; min-width: 0; }
+.ivRow:last-of-type { border-bottom: 0; }
+.config { display: flex; flex-wrap: wrap; gap: 4px; }
+.hint { font-size: 12px; color: var(--color-neutral-400); }
+.drawerActions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
+.rowSelected td { background: var(--color-neutral-900); }
+.doneCell { display: flex; align-items: center; gap: 8px; }
+.delivered { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--color-neutral-800); }
+.delivered:last-of-type { border-bottom: 0; }
+.delivered > :first-child { flex: 1; min-width: 0; }

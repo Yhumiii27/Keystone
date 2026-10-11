@@ -1,18 +1,23 @@
 import 'server-only';
 // Inspection & test plan and punch lists DAL (docs/spec/07 §2.4; site punch list 10 §3.6). Keystone owns them.
-// The ITP is built from the machine-type template (machine_type_itp_systems); inspection results are read-only
-// (OPEN QUESTION Q-6). Punch items live in two registers (OPEN QUESTION A-6): `itp` — the categorised list of the
-// ITP screen (Start / Close, "Add punch item") — and `site` — the Site screen's punch list & reserves (read-only there).
-import { and, asc, eq } from 'drizzle-orm';
+// The ITP is built from the machine-type template (machine_type_itp_systems). Inspection results are recorded by quality
+// and the engineering lead (R-112, Q-6a: `recordItpResult`); a failure is reported as an NCR in Vigie (Q-6b), whose
+// number shows on the inspection once Vigie reports the NCR with the inspection (`vigie_ncrs.inspection_number`).
+// Punch items live in two registers (OPEN QUESTION A-6): `itp` — the categorised list of the ITP screen (Start / Close,
+// "Add punch item") — and `site` — the Site screen's punch list & reserves (read-only there).
+import { and, asc, eq, isNotNull } from 'drizzle-orm';
+import { canRecordItpResult } from '@/domain/itpcom';
 import { getDb } from '@/server/db/client';
 import { demoFloor } from '@/server/db/helpers';
 import {
-  itpPointType, itpResult, itpStage, machineType, nextBusinessNumber, punchCategory, punchOwnerParty, punchSource, punchStatus,
-  type ItpPointType, type ItpResult, type ItpStage, type PunchCategory, type PunchOwnerParty, type PunchRegister, type PunchSource, type PunchStatus,
+  ITP_RECORDED_RESULTS, itpPointType, itpResult, itpStage, machineType, nextBusinessNumber, punchCategory, punchOwnerParty, punchSource, punchStatus,
+  type ItpPointType, type ItpRecordedResult, type ItpResult, type ItpStage, type PunchCategory, type PunchOwnerParty, type PunchRegister, type PunchSource, type PunchStatus,
 } from '@/server/db/codes';
-import { documents, itpInspections, itpPlans, machineTypeItpSystems, machineTypes, persons, projects, punchItems } from '@/server/db/schema';
+import { findPerson, nameOf } from '@/server/db/helpers';
+import { documents, itpInspections, itpPlans, machineTypeItpSystems, machineTypes, persons, projects, punchItems, vigieNcrs } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
-import { optionalDate, optionalText, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
+import { vigieNcrUrl } from '@/server/integrations/vigie/links';
+import { isIsoDate, optionalDate, optionalText, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 
 export type { Actor };
 type Q = DB | Tx;
@@ -34,6 +39,13 @@ export interface ItpInspectionRow {
   recordRef: string | null;
   recordInCodex: boolean;
   isCustom: boolean;
+  /** Result recorded in Keystone (R-112): date, inspector, client representative, comment; null / empty for the seed's results. */
+  resultOn: string | null;
+  inspector: string | null;
+  clientWitness: string | null;
+  resultComment: string | null;
+  /** Vigie NCRs reported from this inspection (Vigie echoes the inspection, Q-6b / V-3), Vigie order. */
+  ncrs: { number: string; vigieUrl: string }[];
 }
 
 export interface ItpPlan {
@@ -67,12 +79,18 @@ export async function getItpPlan(projectCode: string): Promise<ItpPlan | null> {
     .leftJoin(documents, eq(documents.id, itpInspections.recordDocumentId))
     .where(eq(itpInspections.planId, plan.id))
     .orderBy(asc(itpInspections.position));
-  const [mt] = await db.select({ label: machineTypes.label }).from(machineTypes).where(eq(machineTypes.code, plan.machineTypeCode));
+  const [[mt], ncrRows] = await Promise.all([
+    db.select({ label: machineTypes.label }).from(machineTypes).where(eq(machineTypes.code, plan.machineTypeCode)),
+    db.select({ number: vigieNcrs.number, vigieRef: vigieNcrs.vigieRef, inspection: vigieNcrs.inspectionNumber }).from(vigieNcrs)
+      .where(and(eq(vigieNcrs.projectCode, projectCode), isNotNull(vigieNcrs.inspectionNumber))).orderBy(asc(vigieNcrs.position)),
+  ]);
   return {
     projectCode, template: mt?.label ?? plan.machineTypeCode, systems: await systemsOf(db, plan.machineTypeCode),
     inspections: rows.map(({ i, doc }) => ({
       number: i.number, system: i.system, name: i.name, pointType: i.pointType, pointTypeLabel: itpPointType.label(i.pointType), stage: i.stage, stageLabel: itpStage.label(i.stage),
       reference: i.reference, plannedOn: i.plannedOn, result: i.result, resultLabel: itpResult.label(i.result), recordRef: i.recordRef, recordInCodex: !!doc, isCustom: i.isCustom,
+      resultOn: i.resultOn, inspector: i.inspectorName, clientWitness: i.clientWitness, resultComment: i.resultComment,
+      ncrs: ncrRows.filter((n) => n.inspection === i.number).map((n) => ({ number: n.number, vigieUrl: vigieNcrUrl({ number: n.number, vigieRef: n.vigieRef }) })),
     })),
     customCount: rows.filter((r) => r.i.isCustom).length,
   };
@@ -133,6 +151,62 @@ export async function addItpInspection(projectCode: string, input: NewInspection
     });
     return number;
   });
+}
+
+export interface InspectionResultInput {
+  result: ItpRecordedResult;
+  /** ISO date of the inspection. */
+  resultOn: string;
+  inspector: string;
+  clientWitness?: string | null;
+  comment?: string | null;
+}
+
+/**
+ * "Record result" (R-112, Q-6a): the result of an inspection — Passed, Passed with reservations or Failed — with its date,
+ * inspector, the client representative present (hold / witness points) and a comment. Quality, the engineering lead and
+ * the director only. With `expected` (the result the viewer saw), a line whose result changed meanwhile is refused
+ * ("… has changed") instead of being overwritten blindly. A new result replaces the previous one (re-inspection after a
+ * failure); the audit trail keeps every result. Returns the inspection's number.
+ */
+export async function recordItpResult(projectCode: string, number: string, input: InspectionResultInput, actor: Actor, expected?: ItpResult): Promise<string> {
+  requireWorkspace('itp', actor, 'Inspections & punch list');
+  if (!canRecordItpResult(actor.role)) throw new Error('Only quality and the engineering lead record inspection results');
+  if (!ITP_RECORDED_RESULTS.includes(input.result)) throw new Error('Invalid result');
+  if (!isIsoDate(input.resultOn)) throw new Error('Invalid inspection date');
+  const inspector = requiredText(input.inspector, 'Inspector', 200);
+  const clientWitness = optionalText(input.clientWitness, 'Client representative', 200);
+  const comment = optionalText(input.comment, 'Comment', 1000);
+  if (input.result !== 'passed' && !comment) throw new Error('A comment is required for a failure or reservations');
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const p = await projectOf(tx, projectCode);
+    const [plan] = await tx.select({ id: itpPlans.id }).from(itpPlans).where(eq(itpPlans.projectId, p.id));
+    if (!plan) throw new Error(`No inspection plan on ${projectCode}`);
+    const [i] = await tx.select().from(itpInspections).where(and(eq(itpInspections.planId, plan.id), eq(itpInspections.number, number)));
+    if (!i) throw new Error(`Unknown inspection ${number} on ${projectCode}`);
+    if (expected && i.result !== expected) throw new Error(`${number} has changed`);
+    if (i.pointType === 'hold' && !clientWitness) throw new Error('A hold point names the client representative present');
+    const who = await whoIs(tx, actor);
+    const person = await findPerson(tx, inspector);
+    await tx.update(itpInspections).set({
+      result: input.result, resultOn: input.resultOn, inspectorName: person ? nameOf(person) : inspector, inspectorPersonId: person?.id ?? null,
+      clientWitness: i.pointType === 'hold' || i.pointType === 'witness' ? clientWitness : null, resultComment: comment, resultRecordedByName: who.who,
+      resultRecordedAt: new Date(), updatedAt: new Date(),
+    }).where(eq(itpInspections.id, i.id));
+    const label = itpResult.label(input.result);
+    await trace(tx, who, {
+      objectRef: number, change: `result: ${itpResult.label(i.result)} → ${label} · ${input.resultOn} · ${inspector}${comment ? ` · ${comment}` : ''}`, area: 'ITP',
+      entityType: 'itp_inspection', entityId: i.id, projectId: p.id,
+      activity: { text: `Recorded result ${label} for inspection ${number} ${i.name}`, kind: 'quality' },
+    });
+    return number;
+  });
+}
+
+/** One inspection of a project's plan ("I-03"); null when unknown. */
+export async function getItpInspection(projectCode: string, number: string): Promise<ItpInspectionRow | null> {
+  return (await getItpPlan(projectCode))?.inspections.find((i) => i.number === number) ?? null;
 }
 
 // ── Punch items ────────────────────────────────────────────────────────────────────────────────────────

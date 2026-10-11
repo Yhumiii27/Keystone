@@ -4,22 +4,27 @@ import 'server-only';
 // requests (client step of the approval chain, decided with changes.ts `decideChangeStep`) and the submitted
 // deliverables (quality.ts `decideDeliverable`); invoices the project's billing plan (the contract when there is one);
 // documents the Codex records shared with the client (documents.ts `listSharedDocuments`, acknowledged there).
-import { and, asc, eq } from 'drizzle-orm';
+// R-137 (L-6): the project manager is notified of a new issue, takes it in charge (In progress), answers and closes it
+// from the project's Stakeholders & RACI screen; the client is notified of the answer and of the closure (Keystone
+// notifications; no e-mail is sent, X-6). The client sees the answer and the status, never the internal handling.
+import { and, asc, eq, inArray, or } from 'drizzle-orm';
 import { registerReconciliation } from '@/domain/cost-control';
+import { CLIENT_ISSUE_HANDLER_ROLES, ISSUE_ACKNOWLEDGEMENT, ISSUE_NOTICE, hasRealAnswer, issueSteps, type IssueStep } from '@/domain/client-issues';
 import { getDb } from '@/server/db/client';
-import { STATUS_ISO, clientIssueStatus, nextBusinessNumber, type ClientIssueStatus } from '@/server/db/codes';
-import { clientDocumentCategories, clientIssues, projectControls } from '@/server/db/schema';
+import { NOW_ISO, STATUS_ISO, clientIssueStatus, nextBusinessNumber, type ClientIssueStatus } from '@/server/db/codes';
+import { clientDocumentCategories, clientIssues, persons, projectControls, users } from '@/server/db/schema';
 import { listChangeRequestDetails, type ChangeRequestDetail } from './changes';
 import { BASE_CURRENCY, type CurrencyCode } from '@/domain/currency';
 import { getBillingPlan } from './cashflow';
 import { listSharedDocuments, type VaultDocument } from './documents';
-import { isClientContactOf, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
+import { createNotification } from './notifications';
+import { isClientContactOf, managesProject, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 import { listDeliverables, type DeliverableRow } from './quality';
 
 export type { Actor };
 
 /** Answer recorded with every new issue ("Acknowledged within 2 working days · answered by the project manager"). */
-export const ISSUE_ACKNOWLEDGEMENT = 'Acknowledged — response within 2 working days';
+export { ISSUE_ACKNOWLEDGEMENT };
 
 export interface ClientIssueRow {
   number: string;
@@ -29,6 +34,18 @@ export interface ClientIssueRow {
   status: ClientIssueStatus;
   statusLabel: string;
   response: string;
+  /** Date of the project manager's last answer (R-137); null while only acknowledged. */
+  answeredOn: string | null;
+}
+
+/** An issue as the project team handles it (R-137): who took it in charge and when, the steps offered. Internal (P-10b). */
+export interface ClientIssueHandlingRow extends ClientIssueRow {
+  handledBy: string | null;
+  takenOn: string | null;
+  closedOn: string | null;
+  /** The answer the client sees is a real one (not the automatic acknowledgement). */
+  answered: boolean;
+  steps: IssueStep[];
 }
 
 export interface ClientDecision {
@@ -81,6 +98,18 @@ async function issuesOf(projectId: string): Promise<ClientIssueRow[]> {
   const rows = await db.select().from(clientIssues).where(eq(clientIssues.projectId, projectId)).orderBy(asc(clientIssues.position));
   return rows.map((r) => ({
     number: r.number, title: r.title, raisedOn: r.raisedOn, raisedBy: r.raisedByName, status: r.status, statusLabel: clientIssueStatus.label(r.status), response: r.response,
+    answeredOn: r.answeredOn,
+  }));
+}
+
+/** Client issues of a project as the project team handles them (newest first), with the internal handling (R-137). */
+export async function listClientIssuesForTeam(projectCode: string): Promise<ClientIssueHandlingRow[]> {
+  const db = await getDb();
+  const p = await projectOf(db, projectCode);
+  const rows = await db.select().from(clientIssues).where(eq(clientIssues.projectId, p.id)).orderBy(asc(clientIssues.position));
+  return rows.map((r) => ({
+    number: r.number, title: r.title, raisedOn: r.raisedOn, raisedBy: r.raisedByName, status: r.status, statusLabel: clientIssueStatus.label(r.status), response: r.response,
+    answeredOn: r.answeredOn, handledBy: r.handledByName, takenOn: r.takenOn, closedOn: r.closedOn, answered: hasRealAnswer(r.response), steps: issueSteps(r.status),
   }));
 }
 
@@ -153,8 +182,94 @@ export async function raiseClientIssue(projectCode: string, title: string, actor
       objectRef: number, change: `issue raised · ${text}`, area: 'Client portal', entityType: 'client_issue', entityId: row.id, projectId: p.id,
       activity: { text: `Raised issue ${number} · ${text}`, kind: 'client' },
     });
-    return number;
+    return { number, pmPersonId: p.pmPersonId, raisedBy: who.personId };
+  }).then(async (r) => {
+    // L-6: the project manager is told (Keystone notification; X-6: no e-mail is sent).
+    await notifyPersons([r.pmPersonId], r.raisedBy, {
+      kind: 'request', title: ISSUE_NOTICE.raised, sub: `${r.number} · ${text}`, screen: 'stakeholders', params: { issue: r.number }, projectCode,
+    });
+    return r.number;
   });
+}
+
+/**
+ * Keystone notification to the users of some persons (the actor excluded). Best effort: a failure is logged, never
+ * undoes the write that caused it (the notification store has its own transaction).
+ */
+async function notifyPersons(
+  personIds: (string | null)[], actorPersonId: string | null,
+  n: { kind: 'request' | 'approval'; title: string; sub: string; screen: string; params: Record<string, unknown>; projectCode: string },
+): Promise<void> {
+  const ids = personIds.filter((x): x is string => !!x && x !== actorPersonId);
+  if (!ids.length) return;
+  try {
+    const db = await getDb();
+    const roles = (await db.select({ roles: users.roles }).from(users).where(and(inArray(users.personId, ids), eq(users.active, true)))).flatMap((u) => u.roles);
+    if (roles.length) await createNotification({ ...n, audience: [...new Set(roles)], toPersonIds: ids });
+  } catch (e) {
+    console.error('[client issues] notification failed', e);
+  }
+}
+
+/** The client contacts to tell about an issue: the person who raised it, else the client organisation's contacts. */
+async function clientRecipients(projectClientId: string | null, raisedByPersonId: string | null): Promise<string[]> {
+  if (raisedByPersonId) return [raisedByPersonId];
+  if (!projectClientId) return [];
+  const db = await getDb();
+  const rows = await db.select({ id: persons.id }).from(persons).leftJoin(users, eq(users.personId, persons.id))
+    .where(or(eq(persons.clientId, projectClientId), eq(users.clientId, projectClientId)));
+  return [...new Set(rows.map((r) => r.id))];
+}
+
+export type IssueHandling = { step: 'take' } | { step: 'answer'; answer: string } | { step: 'close'; answer?: string | null };
+
+/**
+ * The project manager's handling of a client issue (R-137, L-6): "Take in charge" (Open → In progress), "Answer" (the
+ * answer the client sees; an Open issue is taken in charge at the same time) and "Close" (with a final answer, required
+ * when the issue has no real answer yet). The project's manager or the director; with `expected` (the status the viewer
+ * saw), an issue that moved on meanwhile is refused ("… has moved on"). The client is notified of an answer and of the
+ * closure. Returns the new status.
+ */
+export async function handleClientIssue(projectCode: string, number: string, h: IssueHandling, actor: Actor, expected?: ClientIssueStatus, on: string = NOW_ISO): Promise<ClientIssueStatus> {
+  if (!CLIENT_ISSUE_HANDLER_ROLES.includes(actor.role)) throw new Error('Only the project manager handles client issues');
+  const answer = h.step === 'take' ? null : h.answer?.trim() || null;
+  if (h.step === 'answer' && !answer) throw new Error('An answer is required');
+  if (answer && (answer.length > 2000 || answer === ISSUE_ACKNOWLEDGEMENT)) throw new Error('Invalid answer');
+  const db = await getDb();
+  const done = await db.transaction(async (tx) => {
+    const p = await projectOf(tx, projectCode);
+    if (!(await managesProject(tx, actor, p))) throw new Error('Only the project manager handles client issues');
+    const [i] = await tx.select().from(clientIssues).where(and(eq(clientIssues.projectId, p.id), eq(clientIssues.number, number)));
+    if (!i) throw new Error(`Unknown issue ${number} on ${projectCode}`);
+    if (expected && i.status !== expected) throw new Error(`${number} has moved on`);
+    if (!issueSteps(i.status).includes(h.step)) throw new Error(`${number} cannot be handled from ${clientIssueStatus.label(i.status)}`);
+    if (h.step === 'close' && !answer && !hasRealAnswer(i.response)) throw new Error('An answer is required to close the issue');
+    const who = await whoIs(tx, actor);
+    const to: ClientIssueStatus = h.step === 'close' ? 'closed' : 'in_progress';
+    const patch: Partial<typeof clientIssues.$inferInsert> = { status: to, updatedAt: new Date() };
+    if (i.status === 'open') Object.assign(patch, { handledByName: who.who, handledByPersonId: who.personId, takenOn: on });
+    if (answer) Object.assign(patch, { response: answer, answeredOn: on });
+    if (to === 'closed') patch.closedOn = on;
+    // Optimistic guard: the update only applies to the status read above (a concurrent step makes it a no-op).
+    const updated = await tx.update(clientIssues).set(patch).where(and(eq(clientIssues.id, i.id), eq(clientIssues.status, i.status))).returning({ id: clientIssues.id });
+    if (!updated.length) throw new Error(`${number} has moved on`);
+    const label = (s: ClientIssueStatus) => clientIssueStatus.label(s);
+    await trace(tx, who, {
+      objectRef: number,
+      change: `${h.step === 'take' ? 'taken in charge' : h.step === 'answer' ? 'answered' : 'closed'} · status: ${label(i.status)} → ${label(to)}${answer ? ` · ${answer}` : ''}`,
+      area: 'Client portal', entityType: 'client_issue', entityId: i.id, projectId: p.id,
+      activity: h.step === 'take' ? undefined : { text: `${h.step === 'answer' ? 'Answered' : 'Closed'} client issue ${number} · ${i.title}`, kind: 'client' },
+    });
+    return { to, notify: h.step !== 'take', clientId: p.clientId, raisedBy: i.raisedByPersonId, actorPersonId: who.personId, title: i.title };
+  });
+  if (done.notify) {
+    const recipients = await clientRecipients(done.clientId, done.raisedBy);
+    await notifyPersons(recipients, done.actorPersonId, {
+      kind: 'request', title: done.to === 'closed' ? ISSUE_NOTICE.closed : ISSUE_NOTICE.answered, sub: `${number} · ${done.title}`, screen: 'client', params: { tab: 'issues' },
+      projectCode,
+    });
+  }
+  return done.to;
 }
 
 /** Open (not closed) issues of a project ("Open issues · Raised by you"). */

@@ -70,11 +70,16 @@ export function vigieNcrListUrl(): string {
 
 /**
  * "Report in Vigie" — Vigie's report form, prefilled with what Keystone knows. OPEN QUESTION V-3: /signaler reads only
- * `lieu` today; `type`, `projet`, `article`, `activite`, `titre` and `source=keystone` are proposals.
+ * `lieu` today; `type`, `projet`, `article`, `activite`, `titre`, `inspection` and `source=keystone` are proposals
+ * (V-3b, owner's answer "a": project, part, activity, title and place; Q-6b adds the ITP inspection, which Vigie should
+ * echo on the NCR so Keystone shows its number on the inspection — `inspectionNumber` of the NCR mirror).
  */
-export function vigieReportNcrUrl(ctx: { projectCode?: string | null; partRef?: string | null; activityCode?: string | null; title?: string | null; location?: string | null } = {}): string {
+export function vigieReportNcrUrl(
+  ctx: { projectCode?: string | null; partRef?: string | null; activityCode?: string | null; title?: string | null; location?: string | null; inspection?: string | null } = {},
+): string {
   return `${vigiePublicUrl()}${VIGIE_REPORT_PATH}${qs({
-    type: 'NC', projet: ctx.projectCode, article: ctx.partRef, activite: ctx.activityCode, titre: ctx.title, lieu: ctx.location, source: 'keystone',
+    type: 'NC', projet: ctx.projectCode, article: ctx.partRef, activite: ctx.activityCode, titre: ctx.title, lieu: ctx.location, inspection: ctx.inspection,
+    source: 'keystone',
   })}`;
 }
 
