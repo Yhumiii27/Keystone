@@ -10,6 +10,7 @@ import { getLastProject, getNavOpen, getViewer, getZone } from '@/server/session
 export default async function AppLayout({ children }: LayoutProps<'/'>) {
   const viewer = await getViewer();
   const [navOpen, lastProject, zone, nav] = await Promise.all([getNavOpen(), getLastProject(), getZone(), getShellNav(viewer.role)]);
+  const zoneName = await zoneLabel(zone);
   const codes = nav.projects.map((p) => p.code);
   return (
     <ShellProvider initialProject={codes.includes(lastProject) ? lastProject : codes[0]} projectCodes={codes}>
@@ -20,7 +21,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
             role={viewer.role}
             personas={PERSONAS.map(({ role, name, title, initials }) => ({ role, name, title, initials }))}
             navOpen={navOpen}
-            zoneLabel={zoneLabel(zone)}
+            zoneLabel={zoneName}
             projects={nav.projects.map(({ code, label }) => ({ code, label }))}
             globalBadges={nav.globalBadges}
             projectBadges={nav.projectBadges}

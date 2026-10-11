@@ -28,7 +28,7 @@ export async function getBomScreen(projectCode: string, opts: { view: BomScreenV
   if (!bom) return null;
   const data: BomScreenData = { bom, assembly: null, whereUsed: null, comparison: null, spares: null };
   if (opts.view === 'tree' && bom.hasTree) data.assembly = await getProjectAssembly(projectCode);
-  if (opts.view === 'used') data.whereUsed = await getWhereUsed(await resolveWhereUsedQuery(opts.used ?? ''), projectCode);
+  if (opts.view === 'used') data.whereUsed = await getWhereUsed(await resolveWhereUsedQuery(opts.used ?? '', projectCode), projectCode);
   if (opts.view === 'compare' && bom.hasTree) data.comparison = await getRevisionComparison(projectCode);
   if (opts.view === 'spares' && bom.hasTree) data.spares = await getSpareList(projectCode, opts.system ?? null);
   return data;

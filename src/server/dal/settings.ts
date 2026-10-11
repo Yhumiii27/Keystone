@@ -2,25 +2,27 @@ import 'server-only';
 // Settings DAL — personalisable lists and project health rules (docs/spec/10 §1). Lists live in reference_values
 // (skills, cost categories, project statuses, risk categories, deliverable types, public holidays, location types);
 // stock locations are the storage locations (suppliers.ts), so receipts, transfers and reservations use them at once;
-// thresholds are app_settings "health.thresholds". "Reset to defaults" restores SETTINGS0 (the lists, the six default
-// locations and the thresholds).
+// thresholds are app_settings "health.thresholds". "Reset to defaults" restores the stored defaults (R-170:
+// app_settings "settings.defaults", src/domain/settings-defaults.ts — the lists, the default locations and the thresholds).
 // Chapter 4 (A-13, A-14 — rules in src/domain/settings-rules.ts): only the portfolio director edits; "Remove" deactivates
-// a value still in use (or a SETTINGS0 default) and deletes an unused custom one; the lists drive the modules through
+// a value still in use (or a default) and deletes an unused custom one; the lists drive the modules through
 // src/server/dal/settings-lists.ts; the thresholds drive the one health rule (src/server/dal/health-thresholds.ts).
 import { and, asc, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import {
-  APP_SETTING_HEALTH, HEALTH_DEFAULTS, REFERENCE_LIST_KEYS, locationType, slugOf,
+  APP_SETTING_HEALTH, REFERENCE_LIST_KEYS, locationType, slugOf,
   type LocationType, type ReferenceListKey,
 } from '@/server/db/codes';
 import { SETTINGS_CARDS } from '@/domain/admin';
+import {
+  APP_SETTING_DEFAULTS, defaultsOfList, fallbackSettingsDefaults, holidayCode, parseSettingsDefaults, type SettingsDefaults,
+} from '@/domain/settings-defaults';
 import {
   CUSTOM_STATUSES_ALLOWED, CUSTOM_STATUS_REFUSED, HOLIDAY_DATE_TAKEN, REQUIRED_STAGES, REQUIRED_STAGE_REFUSED, SETTINGS_DIRECTOR_ONLY, canEditSettings, removalModeOf,
   type RemovalMode,
 } from '@/domain/settings-rules';
 import { appSettings, referenceValues, skills, storageLocations } from '@/server/db/schema';
-import { defaultReferenceValues, holidayCode } from '@/server/db/seed/settings';
-import { PROTO } from '@/server/prototype';
+import type { Tx } from '@/server/db/types';
 import { readHealthThresholds } from './health-thresholds';
 import { requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 import { referenceUsage } from './settings-lists';
@@ -192,14 +194,35 @@ export async function setHealthThresholds(input: Partial<HealthThresholds>, acto
   return next;
 }
 
-/** "Reset to defaults": SETTINGS0 lists (custom entries deactivated), the six default locations, default thresholds. */
+/**
+ * The stored "Reset to defaults" document (R-170: app_settings "settings.defaults", written with the reference data);
+ * null when none is stored or it does not validate.
+ */
+export async function readSettingsDefaults(tx?: Tx): Promise<SettingsDefaults | null> {
+  const q = tx ?? (await getDb());
+  const [row] = await q.select({ value: appSettings.value }).from(appSettings).where(eq(appSettings.key, APP_SETTING_DEFAULTS));
+  return row ? parseSettingsDefaults(row.value) : null;
+}
+
+/**
+ * "Reset to defaults" (R-170: from the stored defaults, never from the seed module or the prototype data): each list's
+ * default entries active at their default position (custom entries deactivated), the default locations active in order
+ * (the others deactivated), the default thresholds. Without a stored document: the entries flagged default in their
+ * current order, the locations untouched, HEALTH_DEFAULTS.
+ */
 export async function resetSettings(actor: Actor): Promise<void> {
   ST(actor);
   const db = await getDb();
   await db.transaction(async (tx) => {
-    const defaults = defaultReferenceValues();
+    const stored = await readSettingsDefaults(tx);
+    const defaults = stored ?? fallbackSettingsDefaults(await tx.select({
+      listKey: referenceValues.listKey, code: referenceValues.code, label: referenceValues.label, position: referenceValues.position, isDefault: referenceValues.isDefault,
+    }).from(referenceValues));
+    const doc = { lists: defaults.lists, locations: [], health: defaults.health } satisfies SettingsDefaults;
     for (const listKey of REFERENCE_LIST_KEYS) {
-      const own = defaults.filter((d) => d.listKey === listKey);
+      const own = defaultsOfList(doc, listKey);
+      // A list without defaults is left as it is (a reset never empties a list, e.g. the lifecycle stages).
+      if (!own.length) continue;
       await tx.update(referenceValues).set({ active: false, updatedAt: new Date() })
         .where(and(eq(referenceValues.listKey, listKey), notInArray(referenceValues.code, own.map((d) => d.code))));
       for (const d of own) {
@@ -207,15 +230,18 @@ export async function resetSettings(actor: Actor): Promise<void> {
           .onConflictDoUpdate({ target: [referenceValues.listKey, referenceValues.code], set: { label: d.label, position: d.position, active: true, isDefault: true, updatedAt: new Date() } });
       }
     }
-    const locs = (PROTO.SETTINGS0.locations as [string, string][]).map(([name, type], position) => ({ name, type: locationType.code(type), position }));
-    await tx.update(storageLocations).set({ active: false, updatedAt: new Date() }).where(notInArray(storageLocations.name, locs.map((l) => l.name)));
-    for (const l of locs) {
-      await tx.insert(storageLocations).values({ ...l, active: true })
-        .onConflictDoUpdate({ target: storageLocations.name, set: { type: l.type, position: l.position, active: true, updatedAt: new Date() } });
+    if (defaults.locations?.length) {
+      const locs = defaults.locations.map((l, position) => ({ ...l, position }));
+      await tx.update(storageLocations).set({ active: false, updatedAt: new Date() }).where(notInArray(storageLocations.name, locs.map((l) => l.name)));
+      for (const l of locs) {
+        await tx.insert(storageLocations).values({ ...l, active: true })
+          .onConflictDoUpdate({ target: storageLocations.name, set: { type: l.type, position: l.position, active: true, updatedAt: new Date() } });
+      }
     }
     const who = await whoIs(tx, actor);
-    await tx.insert(appSettings).values({ key: APP_SETTING_HEALTH, value: { ...HEALTH_DEFAULTS }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
-      .onConflictDoUpdate({ target: appSettings.key, set: { value: { ...HEALTH_DEFAULTS }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
+    const health = { ...defaults.health };
+    await tx.insert(appSettings).values({ key: APP_SETTING_HEALTH, value: health, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value: health, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
     await trace(tx, who, { objectRef: 'Settings', change: 'reset to defaults', area: 'Settings', activity: { text: 'Reset the settings lists to their defaults', kind: 'change' } });
   });
 }

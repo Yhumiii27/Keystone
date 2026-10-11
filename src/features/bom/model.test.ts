@@ -148,7 +148,10 @@ describe.each(LANGS)('Project BOM screen model (%s)', (lang) => {
   });
 
   it('where-used reproduces usedVals (paths, projects, purchase orders, default CR-BRG-SKF)', async () => {
-    for (const [q, e] of Object.entries(g.used as Record<string, any>)) {
+    // R-169 (A-12): without a search (or when it matches nothing) the screen opens the project's part used by the most
+    // projects (EL-TRF-2MVA), no longer the prototype's constant CR-BRG-SKF: compared with the prototype's values for that part.
+    for (const [q, e0] of Object.entries(g.used as Record<string, any>)) {
+      const e = e0.ref === 'CR-BRG-SKF' && q !== 'CR-BRG-SKF' ? g.used['EL-TRF-2MVA'] : e0;
       const w = (await screen('HLT-026', q === '(default)' ? { view: 'used' } : { view: 'used', used: q }, lang)).used!;
       expect([w.part.ref, w.part.name, w.part.status.label, w.part.status.cls, w.part.equivalents], q).toEqual([e.ref, e.name, e.status, e.tagClass, e.equiv]);
       const perProject = (s: string) => (lang === 'fr' ? s.replace(' per project', ' par projet') : s);

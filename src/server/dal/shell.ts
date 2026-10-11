@@ -12,8 +12,9 @@ import 'server-only';
 // tags (P&ID badge), the Vigie NCR mirror (Quality badge, NCR search), the ITP punch list (Inspections badge), the site
 // sheet with Cursus's Go / No Go and Vigie's HSE mirror (Site badge), warranty claims (Warranty claims badge), the
 // connectors (Activity & integrations badge) and the installed base (zone bar of Installed base / Warranty claims).
-// Only reference constants (zones, city → country → zone) are still read from the prototype data set.
+// Delivery 7 (R-170): the zones and their managers come from the zones table; nothing is read from the prototype data.
 import { and, eq, sql } from 'drizzle-orm';
+import { cache } from 'react';
 import { PERSONA_BY_ROLE } from '@/config/personas';
 import { DEFAULT_PROJECT, canSee, screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import { defaultDepartment } from '@/domain/requests';
@@ -23,7 +24,7 @@ import { approvalCountsByProject } from '@/server/approvals';
 import { getDb } from '@/server/db/client';
 import { changeRequests, projects as projectsTable } from '@/server/db/schema';
 import { ncrHref } from '@/features/quality/links';
-import { PROTO } from '@/server/prototype';
+import { zoneLabelOf, zoneManagerLine, type ZoneEntry } from '@/domain/zones';
 import type { ZoneKey } from '@/server/session';
 import type { Badges } from '@/components/app/shell/nav-model';
 import { listChangeRequestDetails } from './changes';
@@ -43,6 +44,7 @@ import { openPunchAByProject } from './itp';
 import { meetingsToWriteByProject } from './meetings';
 import { listNotifications } from './notifications';
 import { listParts } from './parts';
+import { listZones } from './people';
 import { pidBadgeByProject } from './pid';
 import { getActivities } from './planning';
 import { listProjects, projectLabel, type ProjectRow } from './projects';
@@ -61,9 +63,14 @@ const n2s = (n: number) => (n ? String(n) : '');
 const count = <T,>(xs: T[], f: (x: T) => boolean) => xs.filter(f).length;
 
 // ── Zones (ZONES line 3170, zoneOf line 3173) ──────────────────────────────
-export interface ZoneDef { key: ZoneKey; label: string; manager: string }
-export const ZONES: ZoneDef[] = (PROTO.ZONES as [ZoneKey, string, string][]).map(([key, label, manager]) => ({ key, label, manager }));
-export const zoneLabel = (z: ZoneKey | null) => (z ? ZONES.find((x) => x.key === z)?.label ?? '' : '');
+// R-170: from the zones table and its manager (a person), no longer from the prototype constant ZONES.
+export type ZoneDef = ZoneEntry<ZoneKey>;
+
+/** The zones in display order, with their manager's full name (null when none). */
+export const listZoneDefs = cache(async (): Promise<ZoneDef[]> => (await listZones()).map((z) => ({ key: z.code, label: z.label, manager: z.manager })));
+
+/** EN label of a zone ('' for all zones). */
+export const zoneLabel = async (z: ZoneKey | null): Promise<string> => (z ? zoneLabelOf(await listZoneDefs(), z) : '');
 
 /** The viewer sees every resource request (director, or Resource requests outside their workspace), else the ones they sent. */
 const seesAllRequests = (role: RoleKey) => role === 'director' || !canSee(role, 'requests');
@@ -223,7 +230,7 @@ const inZone = (p: ProjectRow, z: ZoneKey | null) => !z || p.zone === z;
 
 /** Default `CRUMB_EXTRA[screen]` (EN), '' when none. Screens may override it (PageHeader `crumbExtra`). */
 export async function crumbExtraOf(screen: ScreenId, ctx: { role: RoleKey; code: string; zone: ZoneKey | null; taskId?: string }): Promise<string> {
-  const zl = zoneLabel(ctx.zone);
+  const zl = await zoneLabel(ctx.zone);
   const zoneCrumb = zl ? ' · ' + zl : '';
   switch (screen) {
     case 'fleet':
@@ -424,11 +431,10 @@ export async function zoneBarOf(screen: ScreenId, zone: ZoneKey | null): Promise
     zoneOf = (key) => count(projects, (p) => p.zone === key);
     total = projects.length;
   }
-  const cur = ZONES.find((z) => z.key === zone);
+  const zones = await listZoneDefs();
   return {
-    options: [{ key: null, label: 'All zones', count: total }, ...ZONES.map((z) => ({ key: z.key, label: z.label, count: zoneOf(z.key) }))],
-    ownerLabel: cur ? 'Zone manager' : 'Zone managers',
-    // "O. Castel · A. Diallo · S. Nguyen" when no zone is selected.
-    ownerName: cur ? cur.manager : ZONES.map((z) => z.manager.split(' ').map((w, i, a) => (i < a.length - 1 ? w[0] + '.' : w)).join(' ')).join(' · '),
+    options: [{ key: null, label: 'All zones', count: total }, ...zones.map((z) => ({ key: z.key, label: z.label, count: zoneOf(z.key) }))],
+    // "Olivier Castel" for a zone, "O. Castel · A. Diallo · S. Nguyen" when no zone is selected.
+    ...zoneManagerLine(zones, zone),
   };
 }

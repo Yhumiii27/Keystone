@@ -104,7 +104,7 @@ export function factsOf(d: SiteData): SiteFacts {
     startOn: d.sheet.startOn, planDays: d.sheet.planDays, doneDays: d.sheet.doneDays, manDaysPlanned: d.sheet.manDaysPlanned, clientDecisions: d.clientDecisions,
     prerequisites: d.prerequisites, people: d.cursus.people, equipment: d.equipment, collisions: d.collisions, rotation: d.rotation, missionCosts: d.missionCosts,
     reports: d.dailyReports.map((r) => ({ reportOn: r.reportOn, headcount: r.headcount, hseIncident: r.hseIncident })),
-    punch: d.punch, hse: d.hse,
+    punch: d.punch, hse: d.hse, premium: d.premium,
   };
 }
 

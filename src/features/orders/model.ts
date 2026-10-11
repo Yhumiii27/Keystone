@@ -3,6 +3,7 @@
 // render — KPI tiles, shortfall banner, status chips, table rows and the order drawer. Pure (no I/O): `t` and `lang`
 // come from the page; rules come from src/domain/orders.ts.
 import { LO, OK } from '@/components/app/tones';
+import { deliveryTermsText } from '@/domain/order-terms';
 import {
   PO_FLOW, canApprovePo, canPushPoToX3, canSubmitPo, filterPos, hasPartStatusIssue, isLatePo, lineSummary, needText, partWarnings, poKpis, poRisk,
   poRiskText, poStatusCounts, poSteps, poUnits, poValueEur, poX3State,
@@ -171,7 +172,8 @@ function drawerView(o: PurchaseOrderRow, input: OrdersViewInput, t: T, lang: Lan
     { k: t('Ordered on'), v: o.status === 'draft' || !o.orderedOn ? t('Not yet') : dateText(o.orderedOn, t), color: OK },
     { k: t('Expected delivery'), v: o.expectedOn ? dateText(o.expectedOn, t) : t('To confirm'), color: late ? LO : OK },
     { k: t('Needed by'), v: o.neededFor ? t(needText(o)) : '—', color: OK },
-    { k: t('Delivery / terms'), v: dataT(o.deliveryTerms, lang), color: OK },
+    // R-169: an order drafted in Keystone without an RFQ has no terms yet (the prototype wrote "Site gate 2 · DAP · Net 30").
+    { k: t('Delivery / terms'), v: deliveryTermsText(o.deliveryTerms, lang, t), color: OK },
   ];
   // Additions to the prototype drawer (08 §2.7): the receipts and invoices of the order, and its Sage X3 state when
   // it was drafted in Keystone.

@@ -5,7 +5,7 @@
 import { LO, OK } from '@/components/app/tones';
 import { screenHref, type RoleKey } from '@/config/screens';
 import {
-  MATCH_DOT, blockingReason, canAwardRfq, canDecideInvoiceRole, compareQuotes, invoiceChipStatuses,
+  MATCH_DOT, awardRuleTile, blockingReason, canAwardRfq, canDecideInvoiceRole, compareQuotes, invoiceChipStatuses,
   invoiceDecisions, invoiceKpis, match3, quotesText, receiptGap, rfqActions, rfqHint, rfqKpis, sourcingHref, supplierAttention, supplierKpis,
   type SourcingTab,
 } from '@/domain/procurement';
@@ -85,13 +85,15 @@ export interface RfqTabView {
 export function rfqTabView(rfqs: readonly RfqRow[], selected: string | null, c: SourcingCtx, facts: readonly RfqKpiFacts[] = [], asOf: string = DEFAULT_DATA_DATE): RfqTabView {
   const { t, lang } = c;
   const k = rfqKpis(rfqs.map((r) => ({ status: r.status, quoteCount: r.quotes.length })));
+  // R-169 (A-12): computed from the RFQs still to award (the prototype printed the constant "PM").
+  const award = awardRuleTile(rfqs);
   return {
     kpis: [
       kpi(t, 'Open RFQs', k.open, t(`${k.readyToAward} ready to award`)),
       kpi(t, 'Quotes received', k.quotes, t('Across open requests')),
       kpi(t, 'Savings vs list', money(rfqSavingsKeur(facts, asOf), lang), t('Awarded this quarter')),
       kpi(t, 'Average cycle', wholeDaysText(rfqAverageCycleDays(facts), lang), t('RFQ sent → award')),
-      kpi(t, 'Award rule', 'PM', t('Decided per RFQ by the project manager')),
+      kpi(t, 'Award rule', award.value, t(award.sub)),
     ],
     rows: rfqs.map((r) => {
       const actions = rfqActions({ status: r.status, quoteCount: r.quotes.length, awardedTo: r.awardedTo });

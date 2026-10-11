@@ -159,6 +159,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
     wp: data.packages.map((p) => `${p.code} · ${p.name}`),
     team: data.control.team.length ? data.control.team : data.owners.map((o) => o.name),
     actOpen: data.activities.filter((a) => a.pct < 100).map((a) => `${a.id} · ${a.name}`),
+    dataDate: settings?.dataDate,
   });
   const primary = canEdit ? (
     <PlanPrimaryButton form={view === 'structure' ? 'plan' : 'progress'} label={t(view === 'structure' ? 'Add activity' : 'Update progress')} />

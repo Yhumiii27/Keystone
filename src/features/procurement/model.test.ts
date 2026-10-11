@@ -42,8 +42,13 @@ const kpis = (ks: KpiView[]) => ks.map((k) => ({ label: k.label, value: k.value,
  * prototype's €12k and 9 d: the only awarded RFQ (RFQ-2026-029) went to Teufelberger at the catalogue price (€0k saved)
  * and no RFQ has both a "sent" and an award date ("—").
  */
-const protoRfqKpis = (ks: any[], lang: Lang) =>
-  ks.map((k, i) => ({ label: k.label, value: i === 2 ? money(0, lang) : i === 3 ? '—' : String(k.value), sub: k.sub, color: k.color }));
+// R-169 (A-12): "Award rule" counts the RFQs to award the PM decides (RFQ-2026-034 of 031 / 033 / 034: "1 / 3") instead of
+// the prototype's constant "PM" · "Decided per RFQ by the project manager".
+const AWARD_SUB: Record<Lang, string> = { en: 'RFQs to award decided by the project manager', fr: 'Consultations à attribuer décidées par le chef de projet' };
+const protoRfqKpis = (ks: any[], lang: Lang, award = '1 / 3') =>
+  ks.map((k, i) => ({
+    label: k.label, value: i === 2 ? money(0, lang) : i === 3 ? '—' : i === 4 ? award : String(k.value), sub: i === 4 ? AWARD_SUB[lang] : k.sub, color: k.color,
+  }));
 const protoKpis = (ks: any[]) => ks.map((k) => ({ label: k.label, value: String(k.value), sub: k.sub, color: k.color }));
 
 /** French texts this screen fixes (prototype → rebuild). */

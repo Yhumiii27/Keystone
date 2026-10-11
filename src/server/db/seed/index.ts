@@ -1,6 +1,7 @@
 import 'server-only';
-import { sql } from 'drizzle-orm';
-import { calendars, parts, projects, referenceValues } from '../schema';
+import { eq, sql } from 'drizzle-orm';
+import { APP_SETTING_DEFAULTS } from '@/domain/settings-defaults';
+import { appSettings, calendars, parts, projects, referenceValues } from '../schema';
 import type { DB, Tx } from '../types';
 import { seedAftersales } from './aftersales';
 import { seedCatalogue } from './catalogue';
@@ -25,7 +26,7 @@ import { seedPrioritisation } from './prioritisation';
 import { seedPurchasing } from './purchasing';
 import { seedQuality } from './quality';
 import { seedResources } from './resources';
-import { seedSettings } from './settings';
+import { seedSettings, seedSettingsDefaults } from './settings';
 import { seedSite } from './site';
 import { seedStock } from './stock';
 import { seedVigie, seedVigieQuality } from './vigie';
@@ -79,6 +80,11 @@ export async function seedIfEmpty(db: DB): Promise<boolean> {
     const [{ k }] = await db.select({ k: sql<number>`count(*)::int` }).from(calendars);
     if (k === 0) {
       await db.transaction(async (tx) => seedChapter4(tx)).catch((e) => console.error('[seed] Chapter 4 backfill failed:', e));
+    }
+    // Delivery 7 (R-170): the stored "Reset to defaults" document (idempotent, never overwrites an existing one).
+    const [{ d }] = await db.select({ d: sql<number>`count(*)::int` }).from(appSettings).where(eq(appSettings.key, APP_SETTING_DEFAULTS));
+    if (d === 0) {
+      await db.transaction(async (tx) => seedSettingsDefaults(tx)).catch((e) => console.error('[seed] Settings defaults backfill failed:', e));
     }
     return false;
   }

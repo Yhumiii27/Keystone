@@ -12,6 +12,9 @@ export const DEFAULT_LANG: Lang = 'fr';
 
 const FR_DICT: Record<string, string> = { ...(FR_DICT_BASE as Record<string, string>), ...EXTRA_FR };
 
+/** Exact FR dictionary entry of an English string (prototype dictionary + extra files), else undefined. */
+export const frExact = (s: string): string | undefined => (s && Object.hasOwn(FR_DICT, s) ? FR_DICT[s] : undefined);
+
 const MONTH_RE = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/g;
 const DAY_RE = /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Yesterday)\b/g;
 

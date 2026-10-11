@@ -146,8 +146,10 @@ describe('Drawings — PDM vault — EN and FR', () => {
     // A-12 (chapter 4): the "Last vault sync" day is computed from the run against the data date (25 Sep). The latest run
     // is the PDM connector row's, seeded "26 Sep 07:40" from the prototype's CONNECTORS — the prototype printed "today".
     const lastSync = lang === 'fr' ? 'SolidWorks PDM · 26 sept. · lecture seule' : 'SolidWorks PDM · 26 Sep · read-only';
+    // R-169 (A-12): the "Obsolete still referenced" sub names the ECO of the obsolete drawing instead of "Superseded by rev 2".
+    const obsolete = lang === 'fr' ? 'Remplacée · ECO-2026-012' : 'Superseded · ECO-2026-012';
     expect(v.kpis.map((k) => ({ label: k.label, value: k.value, sub: k.sub, color: k.color })))
-      .toEqual(g.kpis.map((k: any, i: number) => ({ ...k, value: String(k.value), ...(i === 4 ? { sub: lastSync } : {}) })));
+      .toEqual(g.kpis.map((k: any, i: number) => ({ ...k, value: String(k.value), ...(i === 4 ? { sub: lastSync } : i === 3 ? { sub: obsolete } : {}) })));
     expect(v.chips.map((c) => ({ label: c.label, count: String(c.count) }))).toEqual(g.chips);
     expect(v.rows.map((r) => ({ no: r.number, title: r.title, part: r.part, partName: r.partName, rev: r.rev, state: r.state, tagClass: r.stateClass, path: r.path, byLine: r.byLine, eco: r.eco })))
       .toEqual(g.rows.map((r: any) => ({ no: r.no, title: r.title, part: r.part, partName: r.partName, rev: r.rev, state: r.state, tagClass: r.tagClass, path: r.path, byLine: day(`${r.by} · ${r.date}`), eco: r.eco })));

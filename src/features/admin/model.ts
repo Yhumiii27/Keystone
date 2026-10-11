@@ -5,7 +5,7 @@
 import { screenHref } from '@/config/screens';
 import {
   ACTIVITY_ICON, MT_CALENDAR_OPTIONS, MT_COST_TYPES, PLUMB_VIEWS, SETTINGS_CARDS, activityChips, connectorTone, costCategoriesTotal, healthRuleText,
-  locationTypeShortLabel, machineTypeKpis, machineTypeUseText, paymentTerms, plumbingKpis, settingsKpis, thresholdText,
+  locationTypeShortLabel, machineTypeKpis, machineTypeUseText, notificationChannels, paymentTerms, plumbingKpis, settingsKpis, thresholdText,
   type ActivityIcon, type PlumbView, type SettingsCardKey, type SettingsIcon,
 } from '@/domain/admin';
 import { IMPORTS_ENABLED } from '@/domain/ch4-defaults';
@@ -265,7 +265,7 @@ export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
   return {
     kpis: plumbingKpis({
       eventsToday: i.counts.eventsToday, connectorStatuses: i.connectors.map((c) => c.status), unread: i.unread, personaTitle: i.personaTitle,
-      auditEntries: i.counts.auditLast7Days,
+      auditEntries: i.counts.auditLast7Days, channels: notificationChannels(i.connectors),
     }).map((k) => kpiT(k, t)),
     view: i.view,
     seg: PLUMB_VIEWS.map((v) => ({ value: v.value, label: t(v.label), href: integrationsHref({ view: v.value }) })),

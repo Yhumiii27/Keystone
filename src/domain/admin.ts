@@ -238,8 +238,24 @@ export const connectorTone = (status: ConnectorStatus): 'neutral' | 'accent' | '
 /** A connector needs attention (nav badge "!", KPI colour). */
 export const connectorNeedsAttention = (status: ConnectorStatus) => status === 'warning' || status === 'error';
 
-/** KPI tiles (`plumbKpis`, 4718). */
-export function plumbingKpis(i: { eventsToday: number; connectorStatuses: readonly ConnectorStatus[]; unread: number; personaTitle: string; auditEntries: number }): AdminKpi[] {
+/** Connectors that deliver Keystone's notifications outside the app, with the channel name the tile prints. */
+export const CHANNEL_CONNECTORS: readonly { connector: string; label: string }[] = [
+  { connector: 'E-mail (SMTP)', label: 'e-mail' },
+  { connector: 'Microsoft Teams', label: 'Teams' },
+];
+
+/**
+ * Notification channels (R-169; the prototype printed the constants "3" and "In-app · e-mail · Teams"): Keystone's own
+ * in-app notifications, plus each channel connector that IT keeps enabled (D-7a).
+ */
+export function notificationChannels(connectors: readonly { name: string; enabled: boolean }[]): string[] {
+  return ['In-app', ...CHANNEL_CONNECTORS.filter((c) => connectors.some((x) => x.name === c.connector && x.enabled)).map((c) => c.label)];
+}
+
+/** KPI tiles (`plumbKpis`, 4718). `channels` = `notificationChannels` of the connectors. */
+export function plumbingKpis(i: {
+  eventsToday: number; connectorStatuses: readonly ConnectorStatus[]; unread: number; personaTitle: string; auditEntries: number; channels: readonly string[];
+}): AdminKpi[] {
   const ok = i.connectorStatuses.filter((s) => s === 'ok').length;
   const warn = i.connectorStatuses.filter(connectorNeedsAttention).length;
   return [
@@ -247,7 +263,7 @@ export function plumbingKpis(i: { eventsToday: number; connectorStatuses: readon
     { label: 'Connectors', value: String(i.connectorStatuses.length), sub: `${ok} healthy · ${warn} warning`, color: warn ? LO : OK },
     { label: 'Unread notifications', value: String(i.unread), sub: i.personaTitle, color: i.unread ? LO : OK },
     { label: 'Audit entries · 7 days', value: String(i.auditEntries), sub: 'Every status, approval and value change', color: OK },
-    { label: 'Channels', value: '3', sub: 'In-app · e-mail · Teams', color: OK },
+    { label: 'Channels', value: String(i.channels.length), sub: i.channels.join(' · '), color: OK },
   ];
 }
 

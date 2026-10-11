@@ -22,12 +22,11 @@ import {
 } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
 import { bomShortfall, type ShortfallLine } from '@/domain/bom';
+import { orderDeliveryTerms } from '@/domain/order-terms';
 
 type Q = DB | Tx;
 export type { ShortfallLine };
 
-/** Delivery / terms of a new order (the prototype's constant for every order). */
-export const DEFAULT_DELIVERY_TERMS = 'Site gate 2 · DAP · Net 30';
 /** First number of the purchase orders drafted in Keystone (`createDrafts`: 'PO-' + (1100 + n)). */
 export const DRAFT_PO_FLOOR = 1100;
 
@@ -200,7 +199,11 @@ async function nextDraftNumber(tx: Tx): Promise<string> {
 /** Inserts a Draft order (next PO-1100… number) with its lines; returns the number. Also used by the spares orders (chapter 4). */
 export async function insertOrder(
   tx: Tx,
-  o: { projectId: string; supplierId: string; origin: PoOrigin; lines: { partId: string; qty: number; unitPriceEur: number }[]; createdBy: string | null; expectedOn?: string | null },
+  o: {
+    projectId: string; supplierId: string; origin: PoOrigin; lines: { partId: string; qty: number; unitPriceEur: number }[]; createdBy: string | null; expectedOn?: string | null;
+    /** R-169: what the data says (`orderDeliveryTerms`); empty ("To be agreed") by default. */
+    deliveryTerms?: string;
+  },
 ): Promise<string> {
   const number = await nextDraftNumber(tx);
   const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${purchaseOrders.position}), -1)::int` }).from(purchaseOrders).where(eq(purchaseOrders.projectId, o.projectId));
@@ -208,7 +211,7 @@ export async function insertOrder(
     .insert(purchaseOrders)
     .values({
       number, projectId: o.projectId, supplierId: o.supplierId, status: 'draft', origin: o.origin, orderedOn: STATUS_ISO, expectedOn: o.expectedOn ?? null,
-      deliveryTerms: DEFAULT_DELIVERY_TERMS, createdByPersonId: o.createdBy, position: pos + 1,
+      deliveryTerms: o.deliveryTerms ?? orderDeliveryTerms(), createdByPersonId: o.createdBy, position: pos + 1,
     })
     .returning({ id: purchaseOrders.id });
   await tx.insert(poLines).values(o.lines.map((l, position) => ({ poId: po.id, partId: l.partId, orderedQty: l.qty, receivedQty: 0, unitPriceEur: l.unitPriceEur, position })));
@@ -524,7 +527,11 @@ export async function awardRfq(number: string, supplierName: string, actorName: 
     let poNumber: string | null = null;
     const at = new Date();
     if (projectId && r.partId && r.quantity) {
-      poNumber = await insertOrder(tx, { projectId, supplierId: quote.supplierId, origin: 'rfq', createdBy: a.personId, lines: [{ partId: r.partId, qty: r.quantity, unitPriceEur: quote.q.unitPriceEur }] });
+      poNumber = await insertOrder(tx, {
+        projectId, supplierId: quote.supplierId, origin: 'rfq', createdBy: a.personId, lines: [{ partId: r.partId, qty: r.quantity, unitPriceEur: quote.q.unitPriceEur }],
+        // R-169: the RFQ's Incoterm and the winning quote's payment terms (no longer "Site gate 2 · DAP · Net 30").
+        deliveryTerms: orderDeliveryTerms({ incoterm: r.incoterm, paymentTerms: quote.q.paymentTerms }),
+      });
     }
     const [po] = poNumber ? await tx.select({ id: purchaseOrders.id }).from(purchaseOrders).where(eq(purchaseOrders.number, poNumber)) : [];
     await tx.update(rfqs).set({ status: 'awarded', awardedQuoteId: quote.q.id, awardedByPersonId: a.personId, awardedAt: at, purchaseOrderId: po?.id ?? null, updatedAt: at }).where(eq(rfqs.id, r.id));

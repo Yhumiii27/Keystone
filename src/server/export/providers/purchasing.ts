@@ -4,6 +4,7 @@
 // PDF documents: `po` = the purchase order (header, lines, totals, signatures — "Export PO") and `receipt` = the goods
 // receipt (lines with the QC result, put-away, signatures — "Print receipt").
 import { DEFAULT_PROJECT } from '@/config/screens';
+import { deliveryTermsText } from '@/domain/order-terms';
 import { isPoStatus } from '@/domain/orders';
 import { filterReceipts, receiptFilterOf } from '@/domain/deliveries';
 import { filterStockLines } from '@/domain/stock';
@@ -86,7 +87,7 @@ async function ordersWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null
         col('x3', 'X3', 'text', 12), col('receipts', t('Goods receipts'), 'text', 18), col('invoices', t('Supplier invoices'), 'text', 18),
       ], orders.map((o) => ({
         number: o.number, supplier: o.supplier, status: t(o.statusLabel), ordered: o.orderedOn, expected: o.expectedOn, value: o.valueEur, received: o.receivedValueEur,
-        units: o.orderedUnits, receivedUnits: o.receivedUnits, needed: o.neededFor ? `${o.neededFor.code} · ${t(o.neededFor.name)}` : '', late: o.late, terms: t(o.deliveryTerms),
+        units: o.orderedUnits, receivedUnits: o.receivedUnits, needed: o.neededFor ? `${o.neededFor.code} · ${t(o.neededFor.name)}` : '', late: o.late, terms: deliveryTermsText(o.deliveryTerms, ctx.lang, t),
         x3: o.x3Ref ?? '', receipts: (data.receipts[o.number] ?? []).map((r) => r.number).join(' · '), invoices: (data.invoices[o.number] ?? []).map((r) => r.number).join(' · '),
       }))),
       sheet(t('Order lines'), [
@@ -123,7 +124,7 @@ async function poDocument(ctx: ExportContext): Promise<PdfDocument | null> {
     blocks: [
       { kind: 'fields', columns: 2, items: [
         [t('Supplier'), o.supplier], [t('Status'), t(o.statusLabel)], [t('Order date'), fd(o.orderedOn)], [t('Expected delivery'), fd(o.expectedOn)],
-        [t('Delivery terms'), t(o.deliveryTerms)], [t('Needed for'), o.neededFor ? `${o.neededFor.code} · ${t(o.neededFor.name)}` : '—'],
+        [t('Delivery terms'), deliveryTermsText(o.deliveryTerms, lang, t)], [t('Needed for'), o.neededFor ? `${o.neededFor.code} · ${t(o.neededFor.name)}` : '—'],
         [t('Requested by'), o.createdBy ?? '—'], [t('Approved by'), o.decidedBy && !draft ? o.decidedBy : '—'],
       ] },
       { kind: 'heading', text: t('Lines') },

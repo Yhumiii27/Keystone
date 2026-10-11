@@ -7,9 +7,9 @@ import 'server-only';
 // src/domain/site.ts (`goChantier`).
 // Time model: a prerequisite is late when still pending at J-15 of its need date (J-15 rule of the card subtitle,
 // against the status date; the prototype listed two dates, 10 OQ6) — `isPrerequisiteLate`.
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { plannedManDays, standardCalendar } from '@/domain/kpis';
-import { PREREQUISITE_ALERT_DAYS, goChantier, isPrerequisiteLate, missionCostUse, type GoCondition } from '@/domain/site';
+import { PREREQUISITE_ALERT_DAYS, goChantier, isPrerequisiteLate, missionCostUse, type GoCondition, type SitePremium } from '@/domain/site';
 import { getDb } from '@/server/db/client';
 import {
   STATUS_ISO, collisionKind, confirmStatus, cursusClearance, cursusVaccination, cursusVerdict, cursusVisa, equipmentSource, hseIncident, hseStatus,
@@ -17,7 +17,7 @@ import {
   type CollisionKind, type ConfirmStatus, type CursusVerdict, type EquipmentSource, type HseIncident, type HseItemKind, type HseStatus, type Weather,
 } from '@/server/db/codes';
 import {
-  activities, dailyReports, missionCostLines, projects, siteCollisions, siteEquipment, sitePrerequisites, siteRotations, siteSheets,
+  activities, dailyReports, missionCostLines, projects, rateMultipliers, siteCollisions, siteEquipment, sitePrerequisites, siteRotations, siteSheets,
 } from '@/server/db/schema';
 import { cursusChantierUrl } from '@/server/integrations/cursus/links';
 import { getCursusConnector, type CursusClearanceView } from '@/server/integrations/cursus/connector';
@@ -92,7 +92,17 @@ export interface SiteData {
   hseSource: { mode: 'mock' | 'http'; lastSyncedAt: string | null };
   /** A-12: change requests of the project whose client step is decided ("Client decisions logged"). */
   clientDecisions: number;
+  /** R-169: Saturday and Sunday / public holiday multipliers of the rate grid ("Site premium"). */
+  premium?: SitePremium;
   go: { ok: boolean; conditions: GoCondition[] };
+}
+
+/** R-169: the weekend premiums of the rate grid (Resources › Rates; rate_multipliers 'sat' and 'sun'). */
+async function weekendPremium(): Promise<SitePremium> {
+  const db = await getDb();
+  const rows = await db.select({ key: rateMultipliers.key, factor: rateMultipliers.factor }).from(rateMultipliers).where(inArray(rateMultipliers.key, ['sat', 'sun']));
+  const of = (k: string) => rows.find((r) => r.key === k)?.factor ?? null;
+  return { sat: of('sat'), sun: of('sun') };
 }
 
 /** Go chantier (`goItems` 4747) from the site's records (`goChantier`, src/domain/site.ts). */
@@ -158,6 +168,7 @@ export async function getSite(projectCode: string, today: string = STATUS_ISO): 
     })),
     hseSource: { mode: vigieConnectorMode(), lastSyncedAt: hse.reduce<string | null>((m, h) => (!m || h.lastSyncedAt > m ? h.lastSyncedAt : m), null) },
     clientDecisions,
+    premium: await weekendPremium(),
   };
   return { ...data, go: goConditions(data) };
 }

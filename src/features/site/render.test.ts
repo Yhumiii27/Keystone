@@ -76,7 +76,9 @@ describe('Site view model vs the prototype (EN and FR)', () => {
     it(`${lang} · Team & mobilisation: KPIs, rotation plan, collisions, mission costs`, async () => {
       const g = G.seed[lang];
       const t = (await view(lang)).v.team!;
-      expect(t.kpis).toEqual(kpis(g.teamKpis).map(computed(1, '179')));
+      // R-169: the Site premium sub names the rate grid (×1.5 / ×2 read from it) instead of the prototype's "6d · 10h calendar".
+      const premium = { en: 'Saturday / Sunday rates · rate grid', fr: 'Taux samedi / dimanche · grille de taux' }[lang];
+      expect(t.kpis).toEqual(kpis(g.teamKpis).map(computed(1, '179')).map((k: any, i: number) => (i === 4 ? { ...k, sub: premium } : k)));
       expect(t.rotation.map((r) => ({
         who: r.who, role: r.role, from: r.from, to: r.to, lodging: r.lodging, travel: r.travel, rot: r.rot, collideIcon: r.collision ? 'ph ph-warning' : 'ph ph-check',
         collideColor: 'var(--color-accent-300)',

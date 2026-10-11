@@ -58,12 +58,24 @@ export interface DrawingKpi {
 export const vaultSyncDayText = (syncedAt: string, asOf: string = DEFAULT_DATA_DATE) => relativeDayText(parisDateOf(syncedAt), asOf);
 
 /**
+ * Sub-line of "Obsolete still referenced" (R-169; the prototype printed the constant "Superseded by rev 2"): the ECOs
+ * that made the referenced drawings obsolete ("Superseded · ECO-2026-012"), "Superseded revision" when none is known,
+ * "Nothing to withdraw" when no obsolete drawing is referenced.
+ */
+export function obsoleteSub(rows: readonly (Pick<DrawingLike, 'state'> & { ecoNumber?: string | null })[]): string {
+  const obsolete = rows.filter((d) => d.state === 'obsolete');
+  if (!obsolete.length) return 'Nothing to withdraw';
+  const ecos = [...new Set(obsolete.map((d) => d.ecoNumber).filter((e): e is string => !!e))];
+  return ecos.length ? `Superseded · ${ecos.join(', ')}` : 'Superseded revision';
+}
+
+/**
  * The five tiles (dwgKpis). The vault size and the last sync come from the PDM sync record (the prototype's
  * literals "1 248" and "07:40"); the rest counts the register. The sync's day is computed from its instant (`syncedAt`)
  * against the portfolio data date `asOf`.
  */
 export function drawingKpis(
-  rows: Pick<DrawingLike, 'state'>[],
+  rows: (Pick<DrawingLike, 'state'> & { ecoNumber?: string | null })[],
   sync: { drawingsInVault: number; linkedDrawings: number; time: string; syncedAt?: string } | null,
   asOf: string = DEFAULT_DATA_DATE,
 ): DrawingKpi[] {
@@ -72,7 +84,7 @@ export function drawingKpis(
     { label: 'Drawings in vault', value: sync ? vaultCountText(sync.drawingsInVault) : '—', sub: `${sync?.linkedDrawings ?? rows.length} linked to catalogue parts`, lo: false },
     { label: 'Released', value: String(n('released')), sub: 'Current revision', lo: false },
     { label: 'WIP / under review', value: String(n('wip') + n('under_review')), sub: 'Linked to open ECOs', lo: false },
-    { label: 'Obsolete still referenced', value: String(n('obsolete')), sub: 'Superseded by rev 2', lo: true },
+    { label: 'Obsolete still referenced', value: String(n('obsolete')), sub: obsoleteSub(rows), lo: true },
     {
       label: 'Last vault sync',
       value: sync?.time ?? '—',

@@ -17,7 +17,6 @@ import {
   activities, activityLinks, persons, projects, wbsNodes,
 } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
-import { PROTO } from '@/server/prototype';
 import { listProjectBaselines, type BaselineInfo } from './baselines';
 import { trashPlanRow } from './plan-trash';
 import { listCalendars } from './calendars';
@@ -134,7 +133,7 @@ export async function getPlanData(code: string): Promise<PlanData | null> {
   const seedTime = rootNode.createdAt.getTime();
   return {
     control,
-    projectIdx: projectIdxOf(code, acts.map(({ a }) => a.code)),
+    projectIdx: projectIdxOf(acts.map(({ a }) => a.code)),
     root: {
       code: rootNode.code, name: rootNode.name, start: rootNode.startText, finish: rootNode.finishText,
       baselineFinish: rootNode.baselineFinishText, totalFloat: rootNode.totalFloatDays,
@@ -177,10 +176,12 @@ async function defaultControl(db: Tx | Awaited<ReturnType<typeof getDb>>, code: 
   };
 }
 
-/** DEFS idx of a project (TODO(db): not stored) — else the digit after "A" of its activity ids, else 1. */
-function projectIdxOf(code: string, actCodes: string[]): number {
-  const idx = PROTO.DEFS?.[code]?.idx;
-  if (typeof idx === 'number') return idx;
+/**
+ * Numbering prefix of a project's added activities ('A' + idx + '9' + NN): the digit after "A" of its activity ids,
+ * else 1. R-170: the prototype's DEFS idx is no longer read — the six seeded projects' ids carry it (A1… HLT-026,
+ * A3… NDC-031, A2… RCF-019, A4… ERP-202, A5… WSA-044, A6… MSR-012), so the numbering is unchanged.
+ */
+export function projectIdxOf(actCodes: readonly string[]): number {
   const d = actCodes.map((c) => /^A(\d)/.exec(c)?.[1]).find(Boolean);
   return d ? parseInt(d, 10) : 1;
 }

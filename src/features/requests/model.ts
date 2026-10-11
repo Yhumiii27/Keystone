@@ -7,6 +7,7 @@ import {
   matchesFilter, pendingHoursByPerson, projectsText, requestChipCounts, requestImpact, requestKpis, requestSteps, shiftedDates, teamLoad,
   weekLabel, type PoolFacts, type RequestFilter,
 } from '@/domain/requests';
+import { nextWeekLabels } from '@/domain/form-dates';
 import { averageResponseDays } from '@/domain/kpis';
 import { responseDaysText } from '@/features/kpis/i18n';
 import { initials } from '@/lib/format';
@@ -197,8 +198,10 @@ export function approvalsModel(
   const weekStarts = data.pool.weeks.map((w) => w.start);
   const team = teamLoad(pool, d.name, pendingHoursByPerson(data.allPending));
   const k = approvalKpis([...data.pending, ...data.decided], team, d);
-  const w0 = weekStarts[0] ? shortDateOfIso(weekStarts[0]) : '28 Sep';
-  const w1 = weekStarts[1] ? shortDateOfIso(weekStarts[1]) : '5 Oct';
+  // R-169: without pool weeks, next week and the one after from the data date (the prototype's literals "28 Sep", "5 Oct").
+  const [n0, n1] = nextWeekLabels();
+  const w0 = weekStarts[0] ? shortDateOfIso(weekStarts[0]) : n0;
+  const w1 = weekStarts[1] ? shortDateOfIso(weekStarts[1]) : n1;
   const cell = (v: number) => ({ v: `${v}%`, ...shade(v) });
   return {
     head: d.head ? { name: d.head, initials: d.headInitials ?? initials(d.head), role: tt(d.headTitle ?? '') } : null,

@@ -11,13 +11,14 @@ import { SCREEN_BY_ID, screenHref, type ScreenId } from '@/config/screens';
 import { HEALTH_LABEL, HEALTH_TAG } from '@/domain/health';
 import { exportFormatsOf } from '@/features/exports/catalog';
 import { STATUS_DATE } from '@/lib/format';
-import { PROTO } from '@/server/prototype';
-import { getProject, projectLabel, type ProjectRow } from '@/server/dal/projects';
+import { dataText, projectLabelText } from '@/i18n/data-text';
+import { getProject, type ProjectRow } from '@/server/dal/projects';
 import { crumbExtraOf, defaultTitleOf, notificationsFor, zoneBarOf } from '@/server/dal/shell';
 import { getProjectScope } from '@/server/project-context';
 import { getI18n, getLastProject, getViewer, getZone } from '@/server/session';
 import { ExportButton, GlobalSearch, LangToggle, Notifications, ProjectSwitcher, ZoneSeg } from './header-islands';
 import { PROJECT_EDITABLE, crumbBase, isOutside } from './nav-model';
+import { projectOptionHaystack, projectOptionSub } from './project-options';
 import type { ProjectOptionView } from './types';
 import styles from './header.module.css';
 
@@ -65,19 +66,19 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
 
   let options: ProjectOptionView[] = [];
   if (project) {
+    // R-170: number, analytic code, DAS and machine type come from the project record (the prototype constant PROJ_ID
+    // left a wizard project's line empty); R-148: the name is shown as typed (or its demo-data dictionary entry).
     options = scope.pool.map((p) => {
-      const pi = PROTO.PROJ_ID[p.code] ?? {};
       const h = healthView(p);
       return {
         code: p.code,
-        name: t(projectLabel(p)),
-        sub: t(`${pi.ana ?? ''} · DAS ${pi.das ?? '—'} · ${pi.mt ?? ''} · ${p.pm}`),
+        name: projectLabelText(p, lang),
+        sub: projectOptionSub(p),
         health: t(h.label),
         tagClass: h.cls,
         mine: scope.isMine(p),
         readOnly: scope.scopeAvail && !scope.isMine(p),
-        // Prototype projMatch fields, plus the displayed (FR) name so what the user reads also matches.
-        haystack: `${p.code} ${p.name} ${pi.id ?? ''} ${pi.ana ?? ''} ${p.pm} ${p.client} ${lang === 'fr' ? t(p.name) : ''}`.toLowerCase(),
+        haystack: projectOptionHaystack(p, dataText(p.name, lang)),
       };
     });
   }
@@ -95,7 +96,7 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
                 <span className={styles.sep}>/</span>
                 <ProjectSwitcher
                   current={project.code}
-                  currentName={t(projectLabel(project))}
+                  currentName={projectLabelText(project, lang)}
                   options={options}
                   scopeAvail={scope.scopeAvail}
                   mineCount={scope.mineCount}
