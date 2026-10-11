@@ -1,7 +1,7 @@
 // Documents Server Functions against an in-memory database: access checks, the deposit hand-off (new document
-// numbered CER-HLT-042, new revision back to Draft), the approval circuit (named approver / director, release,
-// withdrawal of the previous revision, client acknowledgement pending again), downloads, "Sync now" and the client's
-// acknowledgement — with the viewer as the actor. Session and project context are mocked.
+// numbered CER-HLT-042, new revision back to Draft), the approval circuit (named approver / director; Delivery 7: the
+// decisions go to Codex through the outbox and the release comes from Codex's answer — P-7b, R-124), downloads, "Sync
+// now" and the client's acknowledgement — with the viewer as the actor. Session and project context are mocked.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const viewer = { name: 'Marie Lefebvre', short: 'M. Lefebvre', role: 'director', canEdit: true, isMine: true };
@@ -19,10 +19,12 @@ vi.mock('@/server/project-context', () => ({
   }),
 }));
 
-import { setDb } from '@/server/db/client';
+import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { freezeDocument, getCodexSyncState, getDocumentRecord, listVaultDocuments, proposeDocumentRelease } from '@/server/dal/documents';
 import { docsBadge } from '@/server/dal/docs-badge';
+import { validateEngRelease } from '@/server/dal/engineering';
+import { applyCodexDocumentStates } from '@/server/integrations/codex/mirror';
 import { listAudit } from '@/server/dal/notifications';
 import { acknowledgeDocumentAction, approveDocumentAction, depositInCodexAction, logDownloadAction, syncCodexAction } from './actions';
 
@@ -76,35 +78,52 @@ describe('documents Server Functions', () => {
     expect(d.approvals.map((a) => a.signed)).toEqual([true, false, false]);
   });
 
-  it('"Approve in Codex": only the named approver (or the director); the last step releases the record', async () => {
+  // P-7b = a, D-1b = a (Delivery 7, R-124): the approval goes to Codex through the outbox ("pending sync with Codex");
+  // the record keeps Codex's status and approval proof — before, the last approval released it in Keystone.
+  it('"Approve in Codex": only the named approver (or the director); the decisions wait for Codex, which releases the record', async () => {
     as('Romain Aubert', 'R. Aubert', 'pm');
+    expect(await approveDocumentAction('HLT-026', 'RPT-HLT-014')).toEqual({ error: 'You are not the approver of this step' });
+    as('Nadia Bensaïd', 'N. Bensaïd', 'client', { canEdit: false });
     expect(await approveDocumentAction('HLT-026', 'RPT-HLT-014')).toEqual({ error: 'You are not the approver of this step' });
     as('Gabriel Comte', 'G. Comte', 'quality');
-    expect(await approveDocumentAction('HLT-026', 'RPT-HLT-014')).toEqual({ ok: true });
+    expect(await approveDocumentAction('HLT-026', 'RPT-HLT-014')).toEqual({ ok: true, toast: 'RPT-HLT-014 · Approved · Pending sync with Codex' });
     let d = (await getDocumentRecord('RPT-HLT-014'))!;
-    expect([d.status, d.nextRoleLabel, d.nextApprover, d.approvalsGiven]).toEqual(['release_proposed', 'Project manager', 'R. Aubert', 1]);
-    expect(d.approvals.map((a) => [a.roleLabel, a.signed, a.signedOn])).toEqual([['Author', true, '2026-09-26'], ['Quality manager', true, '2026-09-29'], ['Project manager', false, null]]);
+    expect([d.status, d.nextRoleLabel, d.nextApprover, d.approvalsGiven, d.circuitNote]).toEqual(['release_proposed', 'Project manager', 'R. Aubert', 0, 'Approved · Pending sync with Codex']);
+    expect(d.approvals.map((a) => [a.roleLabel, a.signed, a.signedOn, a.keystone?.decision ?? null])).toEqual([
+      ['Author', true, '2026-09-26', null], ['Quality manager', false, null, 'approved'], ['Project manager', false, null, null],
+    ]);
     expect(await approveDocumentAction('HLT-026', 'RPT-HLT-014')).toEqual({ error: 'You are not the approver of this step' });
     as('Romain Aubert', 'R. Aubert', 'pm');
-    expect(await approveDocumentAction('HLT-026', 'RPT-HLT-014')).toEqual({ ok: true });
+    expect(await approveDocumentAction('HLT-026', 'RPT-HLT-014')).toEqual({ ok: true, toast: 'RPT-HLT-014 · Approved · Pending sync with Codex' });
     d = (await getDocumentRecord('RPT-HLT-014'))!;
-    // Released client deliverable: shared with the client, acknowledgement pending; rev A withdraws nothing.
-    expect([d.status, d.shared, d.acknowledged, d.withdrawal, d.canApprove]).toEqual(['released', true, false, null, false]);
+    // Every step decided: nothing left to approve in Keystone; Codex has not released it yet (not shared with the client).
+    expect([d.status, d.shared, d.acknowledged, d.withdrawal, d.canApprove, d.circuitNote]).toEqual(['release_proposed', false, false, null, false, 'Release approved · Pending sync with Codex']);
+    expect(await approveDocumentAction('HLT-026', 'RPT-HLT-014')).toEqual({ error: 'No approval step is pending on this document' });
     expect(await docsBadge()).toBe('');
   });
 
-  it('a revision > A released by the director withdraws the previous one', async () => {
-    // GA-HLT-026 (rev C) was handed back as Draft above: freeze, propose, two approvals.
+  it('an engineering deliverable waits for the PM’s validation; Codex’s release withdraws the previous revision', async () => {
+    // GA-HLT-026 (rev C) was handed back as Draft above: freeze, propose.
     await freezeDocument('GA-HLT-026', 'Antoine Girard');
     await proposeDocumentRelease('GA-HLT-026', 'Antoine Girard');
+    // P-7c = a (R-106): no step is open before "Validate release (PM)" starts the circuit.
+    expect(await docsBadge()).toBe('');
+    expect(await approveDocumentAction('HLT-026', 'GA-HLT-026')).toEqual({ error: 'No approval step is pending on this document' });
+    await validateEngRelease('HLT-026', 'GA-HLT-026', { name: 'Romain Aubert', role: 'pm' });
     expect(await docsBadge()).toBe('1');
-    expect(await approveDocumentAction('HLT-026', 'GA-HLT-026')).toEqual({ ok: true });
-    expect(await approveDocumentAction('HLT-026', 'GA-HLT-026')).toEqual({ ok: true });
-    const d = (await getDocumentRecord('GA-HLT-026'))!;
-    expect([d.status, d.withdrawal]).toEqual(['released', { revision: 'B', on: '2026-09-29' }]);
-    expect(d.approvals.map((a) => a.signed)).toEqual([true, true, true]);
-    // The proof names who signed: the director, on behalf of the engineering lead and the project manager.
-    expect(d.approvals.map((a) => a.who)).toEqual(['J. Wagner', 'M. Lefebvre', 'M. Lefebvre']);
+    // The director decides on behalf of the engineering lead and the project manager.
+    expect(await approveDocumentAction('HLT-026', 'GA-HLT-026')).toMatchObject({ ok: true });
+    expect(await approveDocumentAction('HLT-026', 'GA-HLT-026')).toMatchObject({ ok: true });
+    let d = (await getDocumentRecord('GA-HLT-026'))!;
+    expect([d.status, d.withdrawal, d.approvals.map((a) => a.keystone?.by ?? a.who)]).toEqual(['release_proposed', null, ['J. Wagner', 'M. Lefebvre', 'M. Lefebvre']]);
+    // Codex applies the circuit (HTTP connector refresh): released, rev B withdrawn automatically, the proof is Codex's.
+    await (await getDb()).transaction((tx) => applyCodexDocumentStates(tx, [{
+      number: 'GA-HLT-026', revision: 'C', status: 'released', withdrawnRevision: 'B', withdrawnOn: '2026-09-29',
+      approvals: [{ step: 1, signedOn: '2026-09-29', signedBy: 'M. Lefebvre' }, { step: 2, signedOn: '2026-09-29', signedBy: 'M. Lefebvre' }],
+    }]));
+    d = (await getDocumentRecord('GA-HLT-026'))!;
+    expect([d.status, d.withdrawal, d.circuitNote]).toEqual(['released', { revision: 'B', on: '2026-09-29' }, null]);
+    expect(d.approvals.map((a) => [a.who, a.signed, a.keystone])).toEqual([['J. Wagner', true, null], ['M. Lefebvre', true, null], ['M. Lefebvre', true, null]]);
   });
 
   it('downloads are logged for every viewer, with the format', async () => {
@@ -118,9 +137,10 @@ describe('documents Server Functions', () => {
     ]);
   });
 
-  it('"Sync now": toast with the index record count', async () => {
+  it('"Sync now": toast with the index record count and the decisions still waiting for Codex (mock connector)', async () => {
     const r = await syncCodexAction('HLT-026');
-    expect(r).toEqual({ ok: true, toast: 'Codex sync · index up to date · 414 records' });
+    // R-124: RPT-HLT-014's two approvals wait for Codex (GA-HLT-026's were reflected by Codex's answer above).
+    expect(r).toEqual({ ok: true, toast: 'Codex sync · index up to date · 414 records · 2 decisions pending sync with Codex' });
   });
 
   it('client "Acknowledge receipt": the client of the project only, shared records only', async () => {

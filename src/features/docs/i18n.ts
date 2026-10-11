@@ -36,6 +36,12 @@ export const revisionContextT = (english: string, lang: Lang) => (fr(lang) ? eng
 /** Selection bar "1 selected" / "3 selected". */
 export const selectedT = (n: number, t: T, lang: Lang) => (fr(lang) ? `${n} sélectionné${n > 1 ? 's' : ''}` : t(`${n} selected`));
 
+/** Delivery 7 (R-124): "Sync now" toast tail "2 decisions pending sync with Codex". */
+export const pendingSyncCountText = (n: number, lang: Lang) =>
+  fr(lang)
+    ? `${n} décision${n > 1 ? 's' : ''} en attente de synchronisation avec Codex`
+    : `${n} decision${n > 1 ? 's' : ''} pending sync with Codex`;
+
 /** "Approve in Codex · Quality manager · G. Comte" with the role translated. */
 export const approveLabelT = (roleLabel: string, approver: string, t: T, lang: Lang) =>
   t(approveLabelText(roleT(t, lang)(roleLabel), approver));

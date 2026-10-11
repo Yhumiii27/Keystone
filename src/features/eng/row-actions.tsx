@@ -23,6 +23,7 @@ function useEngAction() {
       try {
         const r = await call();
         if (!r.ok) toast.show(r.error);
+        else if (r.toast) toast.show(r.toast);
       } catch {
         toast.show(t(FAILED));
       }

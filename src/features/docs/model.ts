@@ -11,7 +11,8 @@ import {
   type ApproverViewer, type DocFamily, type DocScope, type DocView, type DocumentStatus,
 } from '@/domain/documents';
 import type { Lang, T } from '@/i18n/translate';
-import { CONFIDENTIALITY_TAG, DOCUMENT_STATUS_TAG, confidentiality, docFamily, docSavedView, documentStatus, shortDateOfIso } from '@/server/db/codes';
+import { codexSyncText } from '@/domain/codex-approvals';
+import { CONFIDENTIALITY_TAG, DOCUMENT_STATUS_TAG, codexDecision, confidentiality, docFamily, docSavedView, documentStatus, shortDateOfIso } from '@/server/db/codes';
 import type { CodexSyncState, DocumentRecord, DocumentTypeRow, VaultDocument } from '@/server/dal/documents';
 import { approveLabelT, circuitT, exactT, revisionContextT, roleT } from './i18n';
 import { documentsHref, type DocsQuery } from './links';
@@ -158,9 +159,11 @@ export interface DrawerRevisionView {
 export interface DrawerApprovalView {
   /** "{role} · {who}". */
   label: string;
-  /** "Signed · 27 Sep" / "Pending · —". */
+  /** "Signed · 27 Sep" / "Pending · —" / Delivery 7: "Approved · 11 Oct · Pending sync with Codex" (decided in Keystone). */
   state: string;
   signed: boolean;
+  /** Delivery 7: decided in Keystone, waiting for Codex. */
+  pendingSync: boolean;
 }
 
 export interface DrawerDistributionView {
@@ -195,6 +198,8 @@ export interface DocDrawerView {
   newRevisionHref: string | null;
   /** "Approve in Codex · {role} · {approver}" when the viewer may record the next step, else null. */
   approveLabel: string | null;
+  /** Delivery 7: the circuit as Keystone shows it ("Approved · Pending sync with Codex", "Awaiting PM validation"), translated; null when none. */
+  circuitNote: string | null;
   /** "Withdrawal · rev C withdrawn automatically · 29 Sep" after a release that withdrew the previous revision. */
   withdrawal: string | null;
   identity: { k: string; v: string }[];
@@ -251,11 +256,22 @@ export function drawerView({ project, record: r, state, viewer, canEdit }: Drawe
     statusClass: tag(DOCUMENT_STATUS_TAG[x.status]),
   }));
 
-  const approvals = r.approvals.map((a) => ({
-    label: `${role(a.roleLabel)} · ${a.who}`,
-    state: `${t(a.signed ? 'Signed' : 'Pending')} · ${a.signedOn ? date(a.signedOn) : '—'}`,
-    signed: a.signed,
-  }));
+  // Delivery 7 (R-124): a step decided in Keystone shows the decision, its author and day, and its sync with Codex.
+  const approvals = r.approvals.map((a) =>
+    a.keystone
+      ? {
+          label: `${role(a.roleLabel)} · ${a.keystone.by}`,
+          state: [t(codexDecision.label(a.keystone.decision)), date(a.keystone.on), t(codexSyncText(a.keystone.sync))].join(' · '),
+          signed: false,
+          pendingSync: true,
+        }
+      : {
+          label: `${role(a.roleLabel)} · ${a.who}`,
+          state: `${t(a.signed ? 'Signed' : 'Pending')} · ${a.signedOn ? date(a.signedOn) : '—'}`,
+          signed: a.signed,
+          pendingSync: false,
+        },
+  );
 
   const distribution = r.distribution.map((x) =>
     x.kind === 'client'
@@ -283,6 +299,7 @@ export function drawerView({ project, record: r, state, viewer, canEdit }: Drawe
     openToast: `${t(`Opening Codex · ${r.number}`)} ${t(`rev ${r.revision}`)}`,
     newRevisionHref: canEdit ? documentsHref(project, { ...keep, deposit: r.number }) : null,
     approveLabel: mayApprove ? approveLabelT(r.nextRoleLabel!, r.nextApprover!, t, lang) : null,
+    circuitNote: r.circuitNote ? t(r.circuitNote) : null,
     withdrawal: r.withdrawal ? `${t('Withdrawal')} · ${t(`rev ${r.withdrawal.revision} withdrawn automatically · ${shortDateOfIso(r.withdrawal.on)}`)}` : null,
     identity,
     // `tagList = tags.split(' · ')`: a record without classification shows a single "—" pill.

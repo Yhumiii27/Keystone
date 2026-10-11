@@ -3,20 +3,26 @@
 // raw input, resolves the project of the vault page and checks the viewer's access server-side, writes through the
 // data-layer writers (src/server/dal/documents.ts) with the viewer as the actor (audit rows), then revalidates.
 // - "Continue in Codex" (deposit hand-off, new document or new revision): viewers who may edit the vault.
-// - "Approve in Codex": the named approver of the next circuit step, or the portfolio director (canApproveDocument).
+// - "Approve in Codex" (drawer) and Approve / Reject in My approvals: the named approver of the open circuit step, or
+//   the portfolio director (canApproveDocument). Delivery 7 (P-7b = a, D-1b = a, R-124): the decision goes to Codex
+//   through the outbox ("pending sync with Codex"); the index record changes only when Codex answers. A rejection
+//   needs its reason.
 // - Downloads (table icon, "Download PDF", revision "Native" / "PDF"): every viewer of the record (a read).
-// - "Sync now": viewers who may edit the vault.
+// - "Sync now": viewers who may edit the vault; it also delivers the Codex outbox (mock: the decisions stay pending).
 // - "Acknowledge receipt" (client portal, cpVaultDocs): the client of the project's organisation.
 // The Codex hand-off itself is simulated (OPEN QUESTION D-1): the index record is created / reset at once.
 import { revalidatePath } from 'next/cache';
+import { codexDecisionToast, parseRejectComment, type CodexDecision } from '@/domain/codex-approvals';
 import { canApproveDocument, parseDeposit } from '@/domain/documents';
 import { DEPOSIT_TYPES } from '@/server/db/codes';
 import {
-  acknowledgeDocument, approveDocumentStep, depositInCodex, getDocumentRecord, listVaultDocuments, logDocumentDownload, syncCodexIndex,
+  CodexDecisionError, acknowledgeDocument, depositInCodex, getDocumentRecord, listVaultDocuments, logDocumentDownload, recordDocumentDecision, syncCodexIndex,
 } from '@/server/dal/documents';
 import { getProject } from '@/server/dal/projects';
-import { getProjectContext, type ProjectContext } from '@/server/project-context';
-import { getI18n } from '@/server/session';
+import { getCodexConnector } from '@/server/integrations/codex/connector';
+import { getProjectContext, getScreenAccess, type ProjectContext } from '@/server/project-context';
+import { getI18n, type Viewer } from '@/server/session';
+import { pendingSyncCountText } from './i18n';
 
 export type DocActionResult = { ok: true; toast?: string } | { error: string };
 export type DepositResult = { ok: true; number: string; created: boolean; toast: string } | { error: string };
@@ -71,23 +77,71 @@ export async function depositInCodexAction(raw: unknown): Promise<DepositResult>
   }
 }
 
-/** "Approve in Codex · {role} · {approver}": signs the next circuit step; the last one releases the record. */
+const NOT_YOURS = 'This decision is not waiting for you any more';
+
+/**
+ * Records the viewer's decision on the circuit step open in Keystone (the step they saw: `step`), sends it to Codex
+ * through the connector and answers the toast "RPT-HLT-014 · Approved · Pending sync with Codex" (EN source).
+ */
+async function decide(viewer: Viewer, number: string, decision: CodexDecision, step: number | null, comment: string | null): Promise<{ ok: true; toast: string } | { error: string }> {
+  const record = await getDocumentRecord(number);
+  if (!record) return { error: 'Unknown document' };
+  if (!record.canApprove || (step != null && record.circuitState.nextStep !== step)) return { error: step != null ? NOT_YOURS : 'No approval step is pending on this document' };
+  if (!canApproveDocument({ short: viewer.short, role: viewer.role }, record)) return { error: 'You are not the approver of this step' };
+  try {
+    const r = await recordDocumentDecision(number, { decision, step: record.circuitState.nextStep, comment }, { name: viewer.name, role: viewer.role });
+    const sync = await getCodexConnector().afterRecord(r.entryId).catch(() => 'pending' as const);
+    refreshAll();
+    return { ok: true, toast: codexDecisionToast(number, decision, sync) };
+  } catch (e) {
+    if (e instanceof CodexDecisionError && e.code === 'stale') {
+      refreshAll(); // the drawer or the inbox row is stale
+      return { error: NOT_YOURS };
+    }
+    console.error('decide document', e);
+    return { error: 'The approval could not be recorded' };
+  }
+}
+
+/**
+ * "Approve in Codex · {role} · {approver}" (drawer): records the approval of the open step for Codex — the record keeps
+ * its Codex status and approval proof until Codex answers ("Approved · Pending sync with Codex").
+ */
 export async function approveDocumentAction(project: string, number: string): Promise<DocActionResult> {
   const access = await vault(project);
   if ('error' in access) return access;
   const { ctx } = access;
   if (!(await findRecord(number))) return { error: await tr('Unknown document') };
-  const record = await getDocumentRecord(number);
-  if (!record || !record.canApprove) return { error: await tr('No approval step is pending on this document') };
-  if (!canApproveDocument({ short: ctx.viewer.short, role: ctx.viewer.role }, record))
-    return { error: await tr('You are not the approver of this step') };
-  try {
-    await approveDocumentStep(number, ctx.viewer.name);
-  } catch {
-    return { error: await tr('The approval could not be recorded') };
+  const r = await decide(ctx.viewer, number, 'approved', null, null);
+  if ('error' in r) return { error: await tr(r.error) };
+  return { ok: true, toast: await tr(r.toast) };
+}
+
+/** Result of an inline decision of My approvals: EN source strings (the inbox shows them with toast.showEn). */
+export type InboxDocDecisionResult = { ok: true; toast: string } | { ok: false; error: string };
+
+const DOC_NUMBER = /^[A-Z0-9]+(?:-[A-Z0-9]+){1,4}$/;
+
+/**
+ * Approve / Reject of a "Codex document" row of My approvals (Delivery 7, R-124): the same rules as the drawer — the
+ * named approver of the open step or the director, the step the row showed still open — plus the reason of a
+ * rejection. Refused outside the inbox's workspace.
+ */
+export async function decideDocumentFromInboxAction(input: { number: string; step: number; decision: string; comment?: string }): Promise<InboxDocDecisionResult> {
+  const { canEdit, viewer } = await getScreenAccess('myapprovals');
+  if (!canEdit) return { ok: false, error: 'Read-only — you cannot decide from this inbox' };
+  const number = typeof input?.number === 'string' ? input.number.trim() : '';
+  const step = input?.step;
+  const decision = input?.decision === 'approved' || input?.decision === 'rejected' ? input.decision : null;
+  if (!DOC_NUMBER.test(number) || !Number.isInteger(step) || step < 1 || step > 20 || !decision) return { ok: false, error: 'Invalid request' };
+  let comment: string | null = null;
+  if (decision === 'rejected') {
+    const c = parseRejectComment(input.comment);
+    if (!c.ok) return { ok: false, error: c.error };
+    comment = c.value;
   }
-  refreshAll();
-  return { ok: true };
+  const r = await decide(viewer, number, decision, step, comment);
+  return 'error' in r ? { ok: false, error: r.error } : r;
 }
 
 /** Download of the current revision: appends "{viewer} · rev D · 29 Sep · PDF" to the download log. */
@@ -108,9 +162,16 @@ export async function syncCodexAction(project: string): Promise<DocActionResult>
   if ('error' in access) return access;
   const { ctx } = access;
   if (!ctx.canEdit('docs')) return { error: await tr('The document vault is read-only for you') };
+  // Delivery 7 (R-124): delivers the approval outbox first (mock connector: the decisions stay pending).
+  const outbox = await getCodexConnector().sync().catch((e) => {
+    console.error('syncCodexAction: outbox', e);
+    return null;
+  });
   const records = await syncCodexIndex(ctx.viewer.name);
-  revalidatePath(`/projects/${ctx.project.code}/documents`);
-  return { ok: true, toast: await tr(`Codex sync · index up to date · ${records} records`) };
+  refreshAll();
+  const { t, lang } = await getI18n();
+  const toast = t(`Codex sync · index up to date · ${records} records`);
+  return { ok: true, toast: outbox?.pending ? `${toast} · ${pendingSyncCountText(outbox.pending, lang)}` : toast };
 }
 
 /** Client portal "Acknowledge receipt" of a shared document's current revision (`engOv.ack[id|rev] = true`). */

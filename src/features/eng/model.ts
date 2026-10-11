@@ -104,6 +104,8 @@ export interface DisciplineScreenView {
     proposeBlocked: boolean;
     blockedText: string;
     canValidate: boolean;
+    /** Delivery 7: "Awaiting PM validation", "Approval circuit started · Pending sync with Codex"… (translated); null when none. */
+    codexNote: string | null;
   }[];
   outputs: { id: string; name: string; toText: string; source: string; genText: string; stateText: string; stClass: string; canGen: boolean }[];
   checks: {
@@ -139,6 +141,11 @@ export function disciplineScreenView(reg: EngRegister, disc: Discipline, opts: D
   const code = reg.projectCode;
   const { canEdit, canValidate } = opts.rights;
   const inRegister = new Set(reg.deliverables.map((d) => d.number));
+  // Delivery 7 (R-106): the Codex circuit line of a deliverable, from the data layer.
+  const codexNoteOf = (n: string) => {
+    const note = reg.deliverables.find((d) => d.number === n)?.codexNote;
+    return note ? t(note) : null;
+  };
   const bodyTarget = canEdit ? importTargetFor(reg, disc) : null;
   return {
     disc,
@@ -155,7 +162,7 @@ export function disciplineScreenView(reg: EngRegister, disc: Discipline, opts: D
     docs: v.docs.map((d) => ({
       id: d.id, docHref: docHref(d.id, code), sub: `${t(d.title)} · ${t(d.date)} · ${t(d.by)}`, rev: d.rev, status: t(d.status), stClass: d.stClass, toText: t(d.toText),
       canFreeze: canEdit && d.canFreeze, canPropose: canEdit && d.canPropose, proposeBlocked: d.proposeBlocked, blockedText: t(d.blockedText),
-      canValidate: canEdit && canValidate && d.canValidate,
+      canValidate: canEdit && canValidate && d.canValidate, codexNote: codexNoteOf(d.id),
     })),
     outputs: v.outputs.map((o) => ({
       id: o.id, name: t(o.name), toText: t(o.toText), source: t(o.source), genText: generatedLine(o.generated, t, lang), stateText: t(o.stateText), stClass: o.stClass,

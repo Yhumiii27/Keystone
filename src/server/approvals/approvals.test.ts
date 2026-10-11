@@ -9,7 +9,7 @@ import { setDb } from '@/server/db/client';
 import { stage } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
 import { decideChangeStep } from '@/server/dal/changes';
-import { approveDocumentStep, listVaultDocuments } from '@/server/dal/documents';
+import { listVaultDocuments, recordDocumentDecision } from '@/server/dal/documents';
 import { recordStageChange } from '@/server/dal/lifecycle';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { createResourceRequest } from '@/server/dal/requests';
@@ -158,13 +158,21 @@ describe('My approvals registry', () => {
 
   it('Codex documents come from the database index: same items as the prototype on the seed, then follow the circuit', async () => {
     const vault = await listVaultDocuments();
+    // P-7b = a (Delivery 7, R-124): the rows are the prototype's, now decided inline (the prototype had no decision).
+    const inline = (xs: ReturnType<typeof codexVaultItems>) => xs.map((x) => ({ ...x, decision: null }));
     for (const p of Object.values(PERSONA_BY_ROLE)) {
-      expect([p.short, codexVaultItems(vault, p.short, 'HLT-026')]).toEqual([p.short, codexDocItems(PROTO.DOCS as ProtoDoc[], PROTO.DOC_TYPE, PROTO.DOC_WHO, p.short, 'HLT-026')]);
+      expect([p.short, inline(codexVaultItems(vault, p.short, 'HLT-026'))]).toEqual([p.short, codexDocItems(PROTO.DOCS as ProtoDoc[], PROTO.DOC_TYPE, PROTO.DOC_WHO, p.short, 'HLT-026')]);
     }
-    await approveDocumentStep('RPT-HLT-014', 'Gabriel Comte');
+    const quality = (await inbox('quality')).items.find((i) => i.id === 'RPT-HLT-014')!;
+    expect([quality.decision, quality.external?.label]).toEqual([{ mode: 'codex-document', number: 'RPT-HLT-014', step: 1 }, 'Open in Codex']);
+    const decidedBefore = (await inbox('quality')).decided;
+    await recordDocumentDecision('RPT-HLT-014', { decision: 'approved' }, { name: 'Gabriel Comte', role: 'quality' });
     expect(await queue('quality')).not.toContain('doc:RPT-HLT-014');
-    expect((await inbox('pm')).items.filter((i) => i.kind === 'doc').map((i) => [i.id, i.sub])).toEqual([['RPT-HLT-014', 'Test & inspection report · rev A · Project manager']]);
-    await approveDocumentStep('RPT-HLT-014', 'Romain Aubert');
+    expect((await inbox('quality')).decided).toBe(decidedBefore + 1);
+    expect((await inbox('pm')).items.filter((i) => i.kind === 'doc').map((i) => [i.id, i.sub, i.decision])).toEqual([
+      ['RPT-HLT-014', 'Test & inspection report · rev A · Project manager', { mode: 'codex-document', number: 'RPT-HLT-014', step: 2 }],
+    ]);
+    await recordDocumentDecision('RPT-HLT-014', { decision: 'approved' }, { name: 'Romain Aubert', role: 'pm' });
     expect(await queue('pm')).not.toContain('doc:RPT-HLT-014');
   });
 });

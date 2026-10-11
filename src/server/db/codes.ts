@@ -480,6 +480,19 @@ export const approverRole = codec<ApproverRole, string>([
 export type DocDownloadSource = 'keystone' | 'codex';
 /** Hand-off state of a deposit to Codex (simulated: recorded at once, OPEN QUESTION D-1). */
 export type DepositStatus = 'handed_off' | 'recorded';
+/**
+ * What a Codex outbox entry asks Codex (Delivery 7, P-7b / P-7c): a circuit step decision of the named approver, or
+ * the start of the approval circuit of an engineering deliverable ("Validate release (PM)").
+ */
+export type CodexOutboxKind = 'approval' | 'circuit_start';
+/** Decision on a circuit step recorded in Keystone. */
+export type CodexDecision = 'approved' | 'rejected';
+export const codexDecision = codec<CodexDecision, string>([['approved', 'Approved'], ['rejected', 'Rejected']]);
+/** Delivery state of a Codex outbox entry. */
+export type CodexSyncStatus = 'pending' | 'sent' | 'failed';
+export const codexSyncStatus = codec<CodexSyncStatus, string>([
+  ['pending', 'Pending sync with Codex'], ['sent', 'Sent to Codex'], ['failed', 'Sync with Codex failed'],
+]);
 
 // ── Contract & billing (docs/spec/11 §2.3, §3.5; 04 §3–4; 03 §7) ────────────────────────────────────
 /** Contract types (CTR_FIELDS 4873). */

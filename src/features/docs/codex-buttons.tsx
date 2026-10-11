@@ -75,7 +75,10 @@ export function DownloadButton({
   );
 }
 
-/** `btn btn-primary` + stamp: "Approve in Codex · Quality manager · G. Comte". */
+/**
+ * `btn btn-primary` + stamp: "Approve in Codex · Quality manager · G. Comte". Delivery 7 (R-124): the approval goes to
+ * Codex through the outbox — toast "RPT-HLT-014 · Approved · Pending sync with Codex".
+ */
 export function ApproveButton({ project, number, label }: { project: string; number: string; label: string }) {
   const [pending, start] = useTransition();
   return (
@@ -88,7 +91,7 @@ export function ApproveButton({ project, number, label }: { project: string; num
       onClick={() =>
         start(async () => {
           const r = await approveDocumentAction(project, number);
-          if ('error' in r) showToast(r.error);
+          showToast('error' in r ? r.error : (r.toast ?? ''));
         })
       }
     >

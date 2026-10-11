@@ -5,8 +5,10 @@
 // action (the row changed since the page was rendered), writes through the data-layer writers of
 // src/server/dal/engineering.ts with the viewer as the actor, then revalidates (screens, sidebar badges, the Codex
 // Documents screen that shares the deliverable statuses). "Validate release (PM)" is the project's PM or the director
-// (09 OQ11, the prototype had no role check). Messages come back translated.
+// (09 OQ11, the prototype had no role check); Delivery 7 (P-7c = a, R-106): it starts the Codex approval circuit through
+// the Codex outbox (toast "… · Approval circuit started · Pending sync with Codex"). Messages come back translated.
 import { revalidatePath } from 'next/cache';
+import { circuitStartToast } from '@/domain/codex-approvals';
 import {
   DELIVERABLE_STEP, SCREEN_OF_DISCIPLINE, canValidateRelease, isCheckClose, isDeliverableStep, isDiscipline, type CheckClose, type DeliverableStep, type Discipline,
   type EngScreen,
@@ -15,12 +17,15 @@ import {
   closeEngCheck, confirmEngInput, freezeEngDeliverable, generateEngOutput, getEngineeringRegister, importEngList, proposeEngRelease, validateEngRelease,
   type EngineeringRegister,
 } from '@/server/dal/engineering';
+import { CodexDecisionError } from '@/server/dal/documents';
 import { getProject } from '@/server/dal/projects';
+import { getCodexConnector } from '@/server/integrations/codex/connector';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n, type Viewer } from '@/server/session';
 import { ENG_MSG } from './i18n';
 
-export type EngActionResult = { ok: true } | { ok: false; error: string };
+/** `toast`: translated success message, when the action has one (the Codex circuit start). */
+export type EngActionResult = { ok: true; toast?: string } | { ok: false; error: string };
 
 const DOC_RE = /^[A-Z0-9]+(?:-[A-Z0-9]+){1,4}$/;
 const CHECK_RE = /^C-\d{2,4}$/;
@@ -38,6 +43,10 @@ async function fail(english: string): Promise<{ ok: false; error: string }> {
 async function failed(where: string, e: unknown): Promise<{ ok: false; error: string }> {
   const msg = e instanceof Error ? e.message : '';
   if (msg === ENG_MSG.pmOnly) return fail(ENG_MSG.pmOnly);
+  if (e instanceof CodexDecisionError && e.code === 'stale') {
+    refresh();
+    return fail(ENG_MSG.stale);
+  }
   if (msg.startsWith('Release blocked')) return fail(ENG_MSG.blocked);
   console.error(where, e);
   return fail(ENG_MSG.failed);
@@ -121,7 +130,8 @@ export async function deliverableStepAction(input: { code: string; disc: string;
   if ('error' in a) return fail(a.error);
   if (step === 'validate' && !canValidateRelease(a.viewer, a.isMine)) return fail(ENG_MSG.pmOnly);
   const d = a.reg.deliverables.find((x) => x.number === number && x.discipline === a.disc);
-  if (!d || d.status !== DELIVERABLE_STEP[step].from) {
+  // Validate: Release proposed and the Codex circuit not started yet (P-7c).
+  if (!d || d.status !== DELIVERABLE_STEP[step].from || (step === 'validate' && !d.canValidate)) {
     refresh();
     return fail(ENG_MSG.stale);
   }
@@ -130,7 +140,13 @@ export async function deliverableStepAction(input: { code: string; disc: string;
     const actor = actorOf(a.viewer);
     if (step === 'freeze') await freezeEngDeliverable(a.code, number, actor);
     else if (step === 'propose') await proposeEngRelease(a.code, number, actor);
-    else await validateEngRelease(a.code, number, actor);
+    else {
+      const { entryId } = await validateEngRelease(a.code, number, actor);
+      const sync = await getCodexConnector().afterRecord(entryId).catch(() => 'pending' as const);
+      refresh();
+      const { t } = await getI18n();
+      return { ok: true, toast: t(circuitStartToast(number, sync)) };
+    }
     refresh();
     return { ok: true };
   } catch (e) {

@@ -71,7 +71,12 @@ export type ApprovalDecision =
    * Chapter 4 (L-1): forced stage change (portfolio director): Approve keeps the stage, Reject reverts the project to
    * `fromLabel` (the stage it left; prototype label) after a confirmation with an optional comment.
    */
-  | { mode: 'stage'; projectCode: string; transitionId: string; fromLabel: string | null };
+  | { mode: 'stage'; projectCode: string; transitionId: string; fromLabel: string | null }
+  /**
+   * Delivery 7 (P-7b = a, R-124): the step of a Codex document's circuit open for the viewer (named approver): Approve, or
+   * Reject with the reason; sent to Codex through the outbox ("pending sync with Codex", src/features/docs/actions.ts).
+   */
+  | { mode: 'codex-document'; number: string; step: number };
 
 export interface ApprovalItem {
   kind: ApprovalKind;
@@ -160,20 +165,26 @@ export interface VaultDocForInbox {
   /** Next circuit step (label) and its named approver; null when no step is pending. */
   nextRoleLabel: string | null;
   nextApprover: string | null;
+  /** Delivery 7: the step open in Keystone (null before the PM's validation, after a rejection, or when every step waits for Codex). */
+  circuitState: { nextStep: number | null };
 }
 
 /**
- * Codex documents of the database index awaiting the viewer: "Release proposed" and the next pending circuit step
- * names the viewer. Same item as `codexDocItems` on the seed; the next step follows the approvals already signed
- * (after the quality manager signs RPT-HLT-014, the item moves to the project manager).
+ * Codex documents of the database index awaiting the viewer: "Release proposed" and the circuit step open in Keystone
+ * names the viewer. Same rows as `codexDocItems` on the seed; the next step follows the approvals already signed in
+ * Codex or recorded in Keystone (after the quality manager approves RPT-HLT-014, the item moves to the project manager).
+ * Delivery 7 (P-7b = a, R-124): decided inline (Approve, Reject with the reason), sent to Codex; "Open in Codex" opens
+ * Codex (its home until the deep links exist, D-1).
  */
-export function codexVaultItems(docs: VaultDocForInbox[], viewerShort: string, currentCode: string): ApprovalItem[] {
+export function codexVaultItems(docs: VaultDocForInbox[], viewerShort: string, currentCode: string, codexUrl?: string): ApprovalItem[] {
   return docs
-    .filter((d) => d.status === 'release_proposed' && !!d.nextRoleLabel && d.nextApprover === viewerShort)
+    .filter((d) => d.status === 'release_proposed' && d.circuitState.nextStep != null && !!d.nextRoleLabel && d.nextApprover === viewerShort)
     .map((d) =>
       item('doc', {
         id: d.number, title: d.title, sub: `${d.typeLabel} · rev ${d.revision} · ${d.nextRoleLabel}`, when: d.dateText, who: d.author,
-        href: href('docs', d.project === 'QMS' ? currentCode : d.project, { doc: d.number }), decision: null,
+        href: href('docs', d.project === 'QMS' ? currentCode : d.project, { doc: d.number }),
+        decision: { mode: 'codex-document', number: d.number, step: d.circuitState.nextStep! },
+        ...(codexUrl ? { external: { href: codexUrl, label: 'Open in Codex' } } : {}),
       }),
     );
 }

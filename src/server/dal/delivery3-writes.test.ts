@@ -3,13 +3,14 @@
 // meetings (new meeting, minutes lines, transcript analysis, send minutes → MIN record + tasks), stakeholders,
 // interfaces and prioritisation weights / scores. Each write appends an audit row with the viewer as the actor.
 import { beforeAll, describe, expect, it } from 'vitest';
-import { setDb } from '@/server/db/client';
+import { getDb, setDb } from '@/server/db/client';
+import { applyCodexDocumentStates } from '@/server/integrations/codex/mirror';
 import { openDatabase } from '@/server/db/open';
 import { getCashFlow, listBillingPlans } from './cashflow';
 import { addAmendment, addBond, addPaymentMilestone, getContract, issueInvoice, markInvoicePaid, updateContractSheet } from './contract';
 import {
-  acknowledgeDocument, approveDocumentStep, depositInCodex, freezeDocument, getCodexSyncState, getDocumentRecord, listVaultDocuments, logDocumentDownload,
-  proposeDocumentRelease,
+  acknowledgeDocument, depositInCodex, freezeDocument, getCodexSyncState, getDocumentRecord, listVaultDocuments, logDocumentDownload,
+  proposeDocumentRelease, recordCircuitStart, recordDocumentDecision,
 } from './documents';
 import { createInterface, freezeInterface, listInterfaces, markInterfaceReceived } from './interfaces';
 import {
@@ -28,18 +29,26 @@ const lastAudit = async () => (await listAudit({ limit: 1 }))[0];
 const vault = async (n: string) => (await listVaultDocuments()).find((d) => d.number === n)!;
 
 describe('Codex vault writers', () => {
-  it('approval circuit of RPT-HLT-014: quality manager, then project manager → Released, client acknowledgement pending', async () => {
-    expect(await approveDocumentStep('RPT-HLT-014', 'Gabriel Comte')).toEqual({ role: 'quality_manager', released: false });
+  // P-7b = a, D-1b = a (Delivery 7, R-124): the decisions go to Codex through the outbox; the index record (status,
+  // approval proof) changes only when Codex answers — before, the second approval released the record at once.
+  it('approval circuit of RPT-HLT-014: quality manager, then project manager → release requested, pending sync with Codex', async () => {
+    const QM = { name: 'Gabriel Comte', role: 'quality' };
+    const PM = { name: 'Romain Aubert', role: 'pm' };
+    expect(await recordDocumentDecision('RPT-HLT-014', { decision: 'approved' }, QM)).toMatchObject({ step: 1, role: 'quality_manager', releaseRequested: false });
     let d = await vault('RPT-HLT-014');
-    expect([d.statusLabel, d.approvalsGiven, d.nextRoleLabel, d.nextApprover]).toEqual(['Release proposed', 1, 'Project manager', 'R. Aubert']);
-    expect(await approveDocumentStep('RPT-HLT-014', 'Romain Aubert')).toEqual({ role: 'project_manager', released: true });
+    expect([d.statusLabel, d.approvalsGiven, d.nextRoleLabel, d.nextApprover, d.circuitNote]).toEqual(['Release proposed', 0, 'Project manager', 'R. Aubert', 'Approved · Pending sync with Codex']);
+    // A screen still showing step 1 is refused.
+    await expect(recordDocumentDecision('RPT-HLT-014', { decision: 'approved', step: 1 }, QM)).rejects.toThrow(/no longer open/);
+    expect(await recordDocumentDecision('RPT-HLT-014', { decision: 'approved', step: 2 }, PM)).toMatchObject({ step: 2, role: 'project_manager', releaseRequested: true });
     d = await vault('RPT-HLT-014');
-    expect([d.status, d.shared, d.acknowledged, d.canApprove, d.withdrawal]).toEqual(['released', true, false, false, null]);
+    expect([d.status, d.shared, d.canApprove, d.nextRoleLabel, d.circuitNote]).toEqual(['release_proposed', false, false, null, 'Release approved · Pending sync with Codex']);
     const r = (await getDocumentRecord('RPT-HLT-014'))!;
-    expect(r.approvals.map((a) => [a.roleLabel, a.signedOn])).toEqual([['Author', '2026-09-26'], ['Quality manager', '2026-09-29'], ['Project manager', '2026-09-29']]);
-    expect(r.distribution).toEqual([{ kind: 'client', organisation: 'Port authority', contact: 'N. Bensaïd', revision: 'A', date: '2026-09-28', acknowledgedOn: null }]);
-    await expect(approveDocumentStep('RPT-HLT-014', 'Romain Aubert')).rejects.toThrow(/not awaiting approval/);
-    expect(await lastAudit()).toMatchObject({ who: 'Romain Aubert', object: 'RPT-HLT-014', area: 'Documents', change: 'approved · Project manager · status: Release proposed → Released' });
+    expect(r.approvals.map((a) => [a.roleLabel, a.signedOn, a.keystone && [a.keystone.decision, a.keystone.by, a.keystone.sync]])).toEqual([
+      ['Author', '2026-09-26', null], ['Quality manager', null, ['approved', 'G. Comte', 'pending']], ['Project manager', null, ['approved', 'R. Aubert', 'pending']],
+    ]);
+    await expect(recordDocumentDecision('RPT-HLT-014', { decision: 'approved' }, PM)).rejects.toThrow(/no approval step open/);
+    expect(await lastAudit()).toMatchObject({ who: 'Romain Aubert', object: 'RPT-HLT-014', area: 'Documents', change: 'approved · Project manager · release requested · Pending sync with Codex' });
+    expect((await listActivity())[0]).toMatchObject({ who: 'Romain Aubert', what: 'RPT-HLT-014 rev A · Approved · Project manager · Pending sync with Codex', projectCode: 'HLT-026' });
   });
 
   it('client acknowledges PID-HLT-026; downloads are logged before the Codex log', async () => {
@@ -55,13 +64,28 @@ describe('Codex vault writers', () => {
   it('freeze → propose release on an engineering draft; wrong transitions are refused', async () => {
     await freezeDocument('SCH-ELE-026', 'Antoine Girard');
     await proposeDocumentRelease('SCH-ELE-026', 'Antoine Girard');
-    const d = await vault('SCH-ELE-026');
-    expect([d.statusLabel, d.nextRoleLabel, d.nextApprover, d.canApprove]).toEqual(['Release proposed', 'Engineering lead', 'A. Girard', true]);
+    let d = await vault('SCH-ELE-026');
+    // P-7c = a (Delivery 7, R-106): an engineering deliverable's circuit waits for the PM's "Validate release (PM)".
+    expect([d.statusLabel, d.nextRoleLabel, d.nextApprover, d.canApprove, d.circuitNote]).toEqual(['Release proposed', null, null, false, 'Awaiting PM validation']);
     await expect(freezeDocument('SCH-ELE-026', 'Antoine Girard')).rejects.toThrow(/not Draft/);
-    // Release of rev B withdraws rev A automatically.
-    await approveDocumentStep('SCH-ELE-026', 'Antoine Girard');
-    await approveDocumentStep('SCH-ELE-026', 'Romain Aubert');
-    expect((await vault('SCH-ELE-026')).withdrawal).toEqual({ revision: 'A', on: '2026-09-29' });
+    const db = await getDb();
+    await db.transaction((tx) => recordCircuitStart(tx, 'SCH-ELE-026', { name: 'Romain Aubert', role: 'pm' }));
+    await expect(db.transaction((tx) => recordCircuitStart(tx, 'SCH-ELE-026', { name: 'Romain Aubert', role: 'pm' }))).rejects.toThrow(/already started/);
+    await expect(db.transaction((tx) => recordCircuitStart(tx, 'RPT-HLT-016', { name: 'Romain Aubert', role: 'pm' }))).rejects.toThrow(/not an engineering deliverable/);
+    d = await vault('SCH-ELE-026');
+    expect([d.nextRoleLabel, d.nextApprover, d.canApprove, d.circuitNote]).toEqual(['Engineering lead', 'A. Girard', true, 'Approval circuit started · Pending sync with Codex']);
+    await recordDocumentDecision('SCH-ELE-026', { decision: 'approved' }, { name: 'Antoine Girard', role: 'englead' });
+    await recordDocumentDecision('SCH-ELE-026', { decision: 'approved' }, { name: 'Romain Aubert', role: 'pm' });
+    expect([(await vault('SCH-ELE-026')).status, (await vault('SCH-ELE-026')).withdrawal]).toEqual(['release_proposed', null]);
+    // Codex answers (the HTTP connector's refresh): released, rev A withdrawn automatically; the outbox entries close.
+    await db.transaction((tx) => applyCodexDocumentStates(tx, [{
+      number: 'SCH-ELE-026', revision: 'B', status: 'released', withdrawnRevision: 'A', withdrawnOn: '2026-09-29',
+      approvals: [{ step: 1, signedOn: '2026-09-29', signedBy: 'A. Girard' }, { step: 2, signedOn: '2026-09-29', signedBy: 'R. Aubert' }],
+    }]));
+    d = await vault('SCH-ELE-026');
+    expect([d.status, d.withdrawal, d.approvalsGiven, d.circuitNote, d.circuitState.approved]).toEqual(['released', { revision: 'A', on: '2026-09-29' }, 2, null, []]);
+    expect((await getDocumentRecord('SCH-ELE-026'))!.approvals.map((a) => [a.who, a.signed, a.keystone])).toEqual([['S. Haddad', true, null], ['A. Girard', true, null], ['R. Aubert', true, null]]);
+    expect(await lastAudit()).toMatchObject({ who: 'Codex', object: 'SCH-ELE-026', change: 'status: Release proposed → Released · synced from Codex' });
   });
 
   it('deposit a new certificate (CER-HLT-042, Draft, New, first in the vault) and a new revision of PID-HLT-026', async () => {

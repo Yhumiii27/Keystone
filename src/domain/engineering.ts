@@ -207,7 +207,10 @@ export interface EngDeliverableLike extends EngDocRecord {
   canFreeze: boolean;
   canPropose: boolean;
   proposeBlocked: boolean;
+  /** Delivery 7 (P-7c): Release proposed and the Codex approval circuit not started ("Validate release (PM)" starts it). */
   canValidate: boolean;
+  /** Delivery 7: circuit line under the status (EN source), from the data layer; absent in the prototype replay. */
+  codexNote?: string | null;
 }
 export interface EngCheckLike extends Omit<EngCheckRecord, 'note'> {
   lead: string;
@@ -394,7 +397,8 @@ export function synthesisView(reg: EngRegister): SynthesisV {
       { label: 'Outdated inputs', value: outdatedIn, sub: 'across the 4 disciplines', color: okLo(outdatedIn > 0) },
       {
         label: 'Deliverables released', value: `${relAll} / ${reg.deliverables.length}`,
-        sub: `${reg.deliverables.filter((d) => d.status === 'release_proposed').length} awaiting PM validation`, color: ENG_COLOR.text,
+        // Delivery 7 (P-7c): once the PM has started the Codex circuit, a deliverable no longer awaits the PM.
+        sub: `${reg.deliverables.filter((d) => d.canValidate).length} awaiting PM validation`, color: ENG_COLOR.text,
       },
       {
         label: 'Outputs ready', value: `${readyOut} / ${reg.outputs.length}`, sub: `${reg.outputs.filter((o) => o.state === 'blocked').length} blocked by inconsistencies`,

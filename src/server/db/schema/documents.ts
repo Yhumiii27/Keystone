@@ -8,7 +8,8 @@
 // the screens read data, never formulas; a real Codex sync replaces them (OPEN QUESTION D-1, 10 OQ13).
 import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type {
-  ApproverRole, Confidentiality, DepositStatus, DocDownloadSource, DocFamily, DocLinkKind, DocRecipient, DocService, DocumentStatus,
+  ApproverRole, CodexDecision, CodexOutboxKind, CodexSyncStatus, Confidentiality, DepositStatus, DocDownloadSource, DocFamily, DocLinkKind, DocRecipient,
+  DocService, DocumentStatus,
 } from '../codes';
 import { id, timestamps } from './_common';
 import { persons } from './organisation';
@@ -195,4 +196,39 @@ export const documentIndexSyncs = pgTable('document_index_syncs', {
   /** Records in Codex at that sync (beyond the documents indexed here). */
   recordCount: integer('record_count').notNull(),
   requestedByPersonId: uuid('requested_by_person_id').references(() => persons.id),
+});
+
+/**
+ * Outbox towards Codex (Delivery 7, P-7b = a, D-1b = a, P-7c = a): the circuit decisions the named approvers record in
+ * Keystone, and the start of an engineering deliverable's circuit ("Validate release (PM)"). Codex owns the circuit
+ * and the status: an entry never changes the index record; it stays "pending sync with Codex" until the connector
+ * delivers it (src/server/integrations/codex), and Codex's answer comes back through the index refresh, which closes
+ * the entries it reflects. Open entries (closedAt null) are shown over the mirrored circuit.
+ */
+export const codexDocumentOutbox = pgTable('codex_document_outbox', {
+  id: id(),
+  documentId: uuid('document_id').notNull().references(() => documents.id, { onDelete: 'cascade' }),
+  /** Number and revision at the time of recording (the payload does not depend on the index row). */
+  documentNumber: text('document_number').notNull(),
+  revision: text('revision').notNull(),
+  kind: text('kind').$type<CodexOutboxKind>().notNull(),
+  /** Approval: the circuit step decided (1…), its role and the decision. */
+  stepPosition: integer('step_position'),
+  role: text('role').$type<ApproverRole>(),
+  decision: text('decision').$type<CodexDecision>(),
+  /** Reason given with a rejection. */
+  comment: text('comment'),
+  actorName: text('actor_name').notNull(),
+  actorPersonId: uuid('actor_person_id').references(() => persons.id),
+  actorRole: text('actor_role').notNull(),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+  syncStatus: text('sync_status').$type<CodexSyncStatus>().notNull(),
+  attempts: integer('attempts').notNull().default(0),
+  lastAttemptAt: timestamp('last_attempt_at', { withTimezone: true }),
+  lastError: text('last_error'),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+  /** Codex's acknowledgement id. */
+  codexRef: text('codex_ref'),
+  /** Codex reflected the entry (step signed, status moved on) or a new revision superseded it. */
+  closedAt: timestamp('closed_at', { withTimezone: true }),
 });

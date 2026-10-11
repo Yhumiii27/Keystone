@@ -6,7 +6,7 @@ import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { openClaim } from './claims';
 import { addPaymentMilestone } from './contract';
-import { approveDocumentStep } from './documents';
+import { recordDocumentDecision } from './documents';
 import { addMachine } from './fleet';
 import { markInterfaceReceived } from './interfaces';
 import { addPunchItem, advancePunchItem } from './itp';
@@ -152,11 +152,12 @@ describe('Delivery 3 badges and crumbs follow the database (docs/spec/01 §4.4)'
   };
 
   it('Documents, Meetings, Interfaces and Billing badges move with the writes', async () => {
-    // Codex: RPT-HLT-014 is the only record in "Release proposed"; both approvals release it.
+    // Codex: RPT-HLT-014 is the only record in "Release proposed"; once both approvals are recorded (pending sync with
+    // Codex, P-7b / R-124) no step is open in Keystone any more.
     expect((await badges('HLT-026')).docs).toBe('1');
-    await approveDocumentStep('RPT-HLT-014', 'Gabriel Comte');
+    await recordDocumentDecision('RPT-HLT-014', { decision: 'approved' }, { name: 'Gabriel Comte', role: 'quality' });
     expect((await badges('HLT-026')).docs).toBe('1');
-    await approveDocumentStep('RPT-HLT-014', 'Romain Aubert');
+    await recordDocumentDecision('RPT-HLT-014', { decision: 'approved' }, { name: 'Romain Aubert', role: 'pm' });
     expect((await badges('HLT-026')).docs).toBe('');
     // Meetings: MTG-118 has its notes in progress; sending the minutes clears the badge.
     expect((await badges('HLT-026')).meetings).toBe('1');

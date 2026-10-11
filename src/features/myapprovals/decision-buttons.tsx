@@ -3,10 +3,12 @@
 // Function (change-request steps: the Change control writer; purchase orders: the Orders writers; delivery quality
 // checks: Deliveries' Accept → stock / Reject → quarantine, which the prototype's inbox call crashed on, 08 OQ28; NCR
 // verifications and deliverable acceptances: the Quality writers; chapter 4: resource requests through the Approvals
-// screen's Server Functions and forced stage changes through the lifecycle writer, L-1) and the row leaves the inbox on
+// screen's Server Functions and forced stage changes through the lifecycle writer, L-1; Delivery 7: Codex document
+// circuit steps through the Documents Server Function, sent to Codex, R-124) and the row leaves the inbox on
 // revalidation. Every mode is recorded — no row announces a decision it does not make.
-// Two rejections ask first (a small dialog, Esc / Cancel closes it): a resource request (the reason the PM sees, as on
-// Approvals) and a forced stage change (the project goes back to the stage it left; optional comment).
+// Three rejections ask first (a small dialog, Esc / Cancel closes it): a resource request (the reason the PM sees, as on
+// Approvals), a forced stage change (the project goes back to the stage it left; optional comment) and a Codex document
+// (the reason, required, sent to Codex with the rejection).
 import { Check, Warning, X } from '@phosphor-icons/react/dist/ssr';
 import { useId, useState, useTransition } from 'react';
 import { Callout } from '@/components/app/Callout';
@@ -17,7 +19,9 @@ import { Field, Textarea } from '@/components/ds/Field';
 import { useToast } from '@/components/ds/Toast';
 import type { ApprovalDecision } from '@/domain/approvals';
 import { FORCED_STAGE_COMMENT_MAX, FORCED_STAGE_REJECT_COMMENT_REQUIRED } from '@/domain/forced-stage';
+import { CODEX_REJECT_COMMENT_MAX } from '@/domain/codex-approvals';
 import { decideReceiptFromInboxAction } from '@/features/deliveries/actions';
+import { decideDocumentFromInboxAction } from '@/features/docs/actions';
 import { decideEcoApprovalAction } from '@/features/eco/actions';
 import { decidePurchaseOrderAction } from '@/features/orders/actions';
 import { decideDeliverableAction, verifyNcrAction } from '@/features/quality/actions';
@@ -55,6 +59,9 @@ function recorder(decision: ApprovalDecision): (ok: boolean, note?: string) => P
     case 'stage':
       // L-1: Approve keeps the stage; Reject reverts the project to the stage it left.
       return (ok, note) => decideForcedStageChangeAction({ projectCode: decision.projectCode, transitionId: decision.transitionId, decision: ok ? 'approved' : 'rejected', comment: note });
+    case 'codex-document':
+      // Delivery 7 (R-124): the circuit step decision goes to Codex ("… · Approved · Pending sync with Codex").
+      return (ok, note) => decideDocumentFromInboxAction({ number: decision.number, step: decision.step, decision: ok ? 'approved' : 'rejected', comment: note });
     default: {
       const unknown: never = decision;
       throw new Error(`Unknown decision mode ${JSON.stringify(unknown)}`);
@@ -74,6 +81,8 @@ interface RejectPrompt {
 
 function rejectPrompt(decision: ApprovalDecision): RejectPrompt | null {
   if (decision.mode === 'resource-request') return { label: 'Reason — the PM sees this', required: false, max: 1000, notice: null, noticeValue: null };
+  if (decision.mode === 'codex-document')
+    return { label: 'Reason — sent to Codex with the rejection', required: true, max: CODEX_REJECT_COMMENT_MAX, notice: null, noticeValue: null };
   if (decision.mode === 'stage')
     return {
       label: 'Comment — the project manager sees this', required: FORCED_STAGE_REJECT_COMMENT_REQUIRED, max: FORCED_STAGE_COMMENT_MAX,

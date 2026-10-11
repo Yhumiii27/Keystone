@@ -4,15 +4,22 @@ import 'server-only';
 // and acknowledgements and the download log, and hands deposits over to Codex (simulated: the index record is
 // created at once, OPEN QUESTION D-1). Writers follow the vault's state machine (10 §9): Draft → Frozen →
 // Release proposed → (approvals) → Released; client acknowledgement of released client deliverables.
+// Delivery 7 (P-7b = a, D-1b = a, P-7c = a; R-124, R-106): circuit decisions and the start of an engineering
+// deliverable's circuit are recorded in the Codex outbox (src/server/integrations/codex) and shown "pending sync with
+// Codex" over the mirrored circuit; the status and the approval proof change only when Codex answers.
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { cache } from 'react';
 import { getDb } from '@/server/db/client';
 import {
-  CODEX_TODAY_ISO, approverRole, confidentiality, docFamily, docLinkKind, docRecipient, docService, documentStatus, parisParts,
+  CODEX_TODAY_ISO, approverRole, codexDecision, codexSyncStatus, confidentiality, docFamily, docLinkKind, docRecipient, docService, documentStatus, parisParts,
   shortDateOfIso, type ApproverRole, type Confidentiality, type DocFamily, type DocLinkKind, type DocRecipient, type DocService,
   type DocumentStatus,
 } from '@/server/db/codes';
-import { findPerson, nameOf, writeAudit } from '@/server/db/helpers';
+import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
+import {
+  circuitNoteText, codexCircuitState, isEngineeringDeliverable, type CircuitState, type CodexDecision, type CodexSyncStatus,
+} from '@/domain/codex-approvals';
+import { closeCodexEntries, insertCodexEntry, openCodexEntries, type CodexOutboxEntry } from '@/server/integrations/codex/outbox';
 import {
   clients, documentAcknowledgements, documentApprovals, documentApproverAssignments, documentDeposits, documentDownloads, documentIndexSyncs,
   documentLinks, documentRevisions, documentTypeCircuitSteps, documentTypes, documents, persons, projects, users,
@@ -123,10 +130,14 @@ export interface VaultDocument {
   circuitText: string;
   retention: string;
   isoClause: string;
-  /** Signed approval steps after the originator, and the number required to release (steps − 1). */
+  /** Approval steps after the originator signed in Codex, and the number required to release (steps − 1). */
   approvalsGiven: number;
   approvalsRequired: number;
-  /** Next circuit role to approve and its named approver (DOC_WHO, else the author); null when none is pending. */
+  /**
+   * Next circuit role to approve and its named approver (DOC_WHO, else the author); null when none is pending. In
+   * Release proposed it is the step open in Keystone (Delivery 7): none before the PM's validation of an engineering
+   * deliverable, after a rejection, or once every step is decided and waits for Codex.
+   */
   nextRole: ApproverRole | null;
   nextRoleLabel: string | null;
   nextApprover: string | null;
@@ -134,6 +145,15 @@ export interface VaultDocument {
   canFreeze: boolean;
   canPropose: boolean;
   canApprove: boolean;
+  /**
+   * Delivery 7 (P-7b, P-7c): the circuit as Keystone shows it — Codex's signed steps, then the decisions recorded in
+   * Keystone that Codex has not applied yet ("pending sync with Codex").
+   */
+  circuitState: CircuitState;
+  /** Engineering deliverable: its circuit starts with the PM's "Validate release (PM)" (P-7c). */
+  needsCircuitStart: boolean;
+  /** Line under the status (EN source): "Awaiting PM validation", "Approved · Pending sync with Codex"…; null when none. */
+  circuitNote: string | null;
   /** Withdrawal of the previous revision on the last release ("rev C withdrawn automatically · 29 Sep"). */
   withdrawal: { revision: string; on: string } | null;
   /** Revisions withdrawn so far (obsolete revision rows). */
@@ -151,6 +171,8 @@ interface VaultBundle {
   acks: Set<string>;
   withdrawn: Map<string, number>;
   who: Partial<Record<ApproverRole, string>>;
+  /** Open Codex outbox entries per document. */
+  entries: Map<string, CodexOutboxEntry[]>;
 }
 
 async function loadVault(q: Awaited<ReturnType<typeof getDb>> | Tx, where?: ReturnType<typeof eq>): Promise<VaultBundle> {
@@ -162,7 +184,7 @@ async function loadVault(q: Awaited<ReturnType<typeof getDb>> | Tx, where?: Retu
     .orderBy(asc(documents.sortOrder));
   const ids = docRows.map((r) => r.d.id);
   const none = ids.length === 0;
-  const [types, steps, approvals, links, acks, revs, whoRows] = await Promise.all([
+  const [types, steps, approvals, links, acks, revs, whoRows, entries] = await Promise.all([
     q.select().from(documentTypes),
     q.select().from(documentTypeCircuitSteps).orderBy(asc(documentTypeCircuitSteps.position)),
     none ? [] : q.select().from(documentApprovals).where(inArray(documentApprovals.documentId, ids)).orderBy(asc(documentApprovals.stepPosition)),
@@ -171,6 +193,7 @@ async function loadVault(q: Awaited<ReturnType<typeof getDb>> | Tx, where?: Retu
     none ? [] : q.select({ documentId: documentRevisions.documentId, withdrawnOn: documentRevisions.withdrawnOn }).from(documentRevisions).where(inArray(documentRevisions.documentId, ids)),
     q.select({ role: documentApproverAssignments.role, short: persons.shortName }).from(documentApproverAssignments)
       .innerJoin(persons, eq(persons.id, documentApproverAssignments.personId)).where(isNull(documentApproverAssignments.projectId)),
+    none ? [] : openCodexEntries(q, ids),
   ]);
   const group = <T extends { documentId: string }>(xs: T[]) => {
     const m = new Map<string, T[]>();
@@ -190,6 +213,7 @@ async function loadVault(q: Awaited<ReturnType<typeof getDb>> | Tx, where?: Retu
     acks: new Set(acks.map((a) => `${a.documentId}|${a.revision}`)),
     withdrawn,
     who: Object.fromEntries(whoRows.map((w) => [w.role, w.short])),
+    entries: group(entries),
   };
 }
 
@@ -197,19 +221,27 @@ function toVault(b: VaultBundle, d: VaultBundle['docs'][number]): VaultDocument 
   const t = b.types.get(d.typeCode)!;
   const circuit = b.steps.get(d.typeCode) ?? [];
   const appr = (b.approvals.get(d.id) ?? []).filter((a) => a.revision === d.currentRevision);
-  const given = appr.filter((a) => a.stepPosition > 0 && a.signedOn).length;
-  const next = circuit.length > 1 + given ? circuit[1 + given] : null;
+  const signed = appr.filter((a) => a.stepPosition > 0 && a.signedOn).map((a) => a.stepPosition);
+  const given = signed.length;
+  const project = d.projectCode ?? QMS;
+  const needsCircuitStart = isEngineeringDeliverable({ project, service: d.service, recipients: d.recipients });
+  const state = codexCircuitState({
+    status: d.status, revision: d.currentRevision, steps: circuit.length, signed, entries: b.entries.get(d.id) ?? [], needsStart: needsCircuitStart,
+  });
+  // Release proposed: the step open in Keystone; other statuses: the step after Codex's signed ones (register exports).
+  const next = d.status === 'release_proposed' ? (state.nextStep != null ? circuit[state.nextStep] ?? null : null) : circuit.length > 1 + given ? circuit[1 + given] : null;
   const shared = t.isClientDeliverable && d.status === 'released';
   return {
     number: d.number, type: d.typeCode, typeLabel: t.label, family: t.family, familyLabel: docFamily.label(t.family), title: d.title,
-    project: d.projectCode ?? QMS, service: d.service, serviceLabel: docService.label(d.service), revision: d.currentRevision, status: d.status,
+    project, service: d.service, serviceLabel: docService.label(d.service), revision: d.currentRevision, status: d.status,
     statusLabel: documentStatus.label(d.status), issuedOn: d.issuedOn, dateText: shortDateOfIso(d.issuedOn), author: d.authorName,
     confidentiality: d.confidentiality, confidentialityLabel: confidentiality.label(d.confidentiality), tags: d.tags, tagsText: tagsTextOf(d.tags),
     recipients: d.recipients, links: (b.links.get(d.id) ?? []).map((l) => ({ kind: l.kind, kindLabel: docLinkKind.label(l.kind), ref: l.targetRef })),
     isNew: d.isNew, shared, acknowledged: shared && b.acks.has(`${d.id}|${d.currentRevision}`), circuit, circuitText: circuit.map((c) => c.label).join(' → '),
     retention: t.retention, isoClause: t.isoClause, approvalsGiven: given, approvalsRequired: Math.max(0, circuit.length - 1),
     nextRole: next?.role ?? null, nextRoleLabel: next?.label ?? null, nextApprover: next ? (b.who[next.role] ?? d.authorName) : null,
-    canFreeze: d.status === 'draft', canPropose: d.status === 'frozen', canApprove: d.status === 'release_proposed' && !!next,
+    canFreeze: d.status === 'draft', canPropose: d.status === 'frozen', canApprove: state.nextStep != null && !!next,
+    circuitState: state, needsCircuitStart, circuitNote: circuitNoteText(state, needsCircuitStart, d.status),
     withdrawal: d.lastWithdrawnRevision && d.lastWithdrawnOn ? { revision: d.lastWithdrawnRevision, on: d.lastWithdrawnOn } : null,
     withdrawnRevisions: b.withdrawn.get(d.id) ?? 0,
   };
@@ -232,11 +264,13 @@ export async function listSharedDocuments(projectCode: string): Promise<VaultDoc
   return (await listVaultDocuments()).filter((d) => d.shared && d.project === projectCode);
 }
 
-/** Documents waiting for an approval step, all projects (sidebar "Documents · Codex" badge). */
+/**
+ * Documents with a circuit step open for a decision, all projects (sidebar "Documents · Codex" badge). Delivery 7: a
+ * record whose remaining steps all wait for Codex, or an engineering deliverable awaiting the PM's validation, is not
+ * counted (nobody can approve it in Keystone).
+ */
 export async function countDocumentsAwaitingApproval(): Promise<number> {
-  const db = await getDb();
-  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(documents).where(eq(documents.status, 'release_proposed'));
-  return n;
+  return (await listVaultDocuments()).filter((d) => d.canApprove).length;
 }
 
 // ── Document record (drawer) ───────────────────────────────────────────────────────────────────────────
@@ -258,6 +292,11 @@ export interface ApprovalProofRow {
   position: number;
   role: ApproverRole;
   roleLabel: string;
+  /**
+   * Delivery 7: the decision recorded in Keystone on a step Codex has not signed yet — by whom (short name), the Paris
+   * day it was recorded and its delivery state; null otherwise.
+   */
+  keystone: { decision: CodexDecision; by: string; on: string; sync: CodexSyncStatus } | null;
   /**
    * Named approver (author for step 0), "—" when the role has no approver; a step signed in Keystone shows its
    * signer (the portfolio director may sign on the approver's behalf).
@@ -310,10 +349,17 @@ export async function getDocumentRecord(number: string): Promise<DocumentRecord 
   const signers = new Map(
     (signerIds.length ? await db.select({ id: persons.id, short: persons.shortName }).from(persons).where(inArray(persons.id, signerIds)) : []).map((p) => [p.id, p.short]),
   );
-  const approvals = current.map((a) => ({
-    position: a.stepPosition, role: a.role, roleLabel: approverRole.label(a.role),
-    who: (a.signedOn && a.signedByPersonId ? signers.get(a.signedByPersonId) : null) ?? a.approverName ?? '—', signed: !!a.signedOn, signedOn: a.signedOn,
-  }));
+  const decided = [...base.circuitState.approved, ...(base.circuitState.rejection ? [base.circuitState.rejection] : [])];
+  const deciders = new Map<string, string>();
+  for (const x of decided) if (!deciders.has(x.actorName)) deciders.set(x.actorName, (await findPerson(db, x.actorName))?.shortName ?? x.actorName);
+  const approvals = current.map((a) => {
+    const k = decided.find((x) => x.step === a.stepPosition && !a.signedOn);
+    return {
+      position: a.stepPosition, role: a.role, roleLabel: approverRole.label(a.role),
+      who: (a.signedOn && a.signedByPersonId ? signers.get(a.signedByPersonId) : null) ?? a.approverName ?? '—', signed: !!a.signedOn, signedOn: a.signedOn,
+      keystone: k ? { decision: k.decision, by: deciders.get(k.actorName) ?? k.actorName, on: parisParts(new Date(k.recordedAt)).iso, sync: k.syncStatus } : null,
+    };
+  });
   const distribution: DistributionRow[] = [
     ...(base.shared
       ? [{ kind: 'client' as const, organisation: client?.organisation ?? '—', contact: client?.contact ?? null, revision: d.currentRevision, date: d.issuedOn, acknowledgedOn: ack[0]?.acknowledgedOn ?? null }]
@@ -430,6 +476,8 @@ export async function depositInCodex(input: DepositInput, actorName: string, on:
       await tx.update(documents).set({ status: 'draft', updatedAt: new Date() }).where(eq(documents.id, doc.id));
       await tx.update(documentApprovals).set({ signedOn: null, signedByPersonId: null })
         .where(and(eq(documentApprovals.documentId, doc.id), eq(documentApprovals.revision, doc.currentRevision), sql`${documentApprovals.stepPosition} > 0`));
+      // Decisions still waiting for Codex concern the revision being replaced.
+      await closeCodexEntries(tx, (await openCodexEntries(tx, [doc.id])).map((e) => e.id));
       await tx.insert(documentDeposits).values({
         typeCode: type.code, projectId: doc.projectId, linkedPoRef: link, linkedPartRef: part, contextDocumentId: doc.id, number: doc.number, documentId: doc.id,
         status: 'recorded', requestedByPersonId: actor?.id ?? null, requestedOn: on,
@@ -535,37 +583,107 @@ export const freezeDocument = (number: string, actorName: string) => setStatus(n
 /** "Propose release" (engineering screens): Frozen → Release proposed. */
 export const proposeDocumentRelease = (number: string, actorName: string) => setStatus(number, 'frozen', 'release_proposed', actorName);
 
+/** A decision refused because the record moved on (stale screen) or the request does not fit the circuit. */
+export class CodexDecisionError extends Error {
+  constructor(public readonly code: 'stale' | 'invalid', message: string) {
+    super(message);
+    this.name = 'CodexDecisionError';
+  }
+}
+
+/** The record locked for the transaction, its circuit and the circuit state Keystone shows. */
+async function lockedCircuit(tx: Tx, number: string) {
+  const [row] = await tx.select({ d: documents, projectCode: projects.code }).from(documents).leftJoin(projects, eq(projects.id, documents.projectId))
+    .where(eq(documents.number, number)).for('update', { of: documents });
+  if (!row) throw new CodexDecisionError('invalid', `Unknown document ${number}`);
+  const d = row.d;
+  const [steps, appr, entries] = await Promise.all([
+    tx.select().from(documentTypeCircuitSteps).where(eq(documentTypeCircuitSteps.typeCode, d.typeCode)).orderBy(asc(documentTypeCircuitSteps.position)),
+    tx.select().from(documentApprovals).where(and(eq(documentApprovals.documentId, d.id), eq(documentApprovals.revision, d.currentRevision))),
+    openCodexEntries(tx, [d.id]),
+  ]);
+  const needsStart = isEngineeringDeliverable({ project: row.projectCode ?? QMS, service: d.service, recipients: d.recipients });
+  const signed = appr.filter((a) => a.stepPosition > 0 && a.signedOn).map((a) => a.stepPosition);
+  const state = codexCircuitState({ status: d.status, revision: d.currentRevision, steps: steps.length, signed, entries, needsStart });
+  return { d, steps, signed, state, needsStart };
+}
+
+export interface DocumentDecisionInput {
+  decision: CodexDecision;
+  /** The step the viewer saw open (stale-screen guard); the open step when omitted. */
+  step?: number | null;
+  /** Reason of a rejection (required by the Server Functions). */
+  comment?: string | null;
+}
+
 /**
- * "Approve in Codex · {role} · {approver}" (`approve`, logic 5026): signs the next circuit step of the current
- * revision. When the last step is signed the document is Released; a revision > A withdraws the previous one
- * ("rev C withdrawn automatically"), and a client deliverable waits for the client's acknowledgement again.
+ * "Approve in Codex · {role} · {approver}" (drawer) and Approve / Reject in My approvals (Delivery 7, R-124): records
+ * the decision on the step open in Keystone in the Codex outbox, "pending sync with Codex". The index record is not
+ * changed — Codex signs the step, releases the record (withdrawing the previous revision) or sends it back, and the
+ * refresh brings its answer (src/server/integrations/codex/mirror.ts). The next step opens in Keystone at once; a
+ * rejection stops the circuit until Codex answers. Who may decide is checked by the Server Functions.
  */
-export async function approveDocumentStep(number: string, actorName: string, on: string = CODEX_TODAY_ISO): Promise<{ role: ApproverRole; released: boolean }> {
+export async function recordDocumentDecision(
+  number: string, input: DocumentDecisionInput, actor: { name: string; role: string }, at: Date = new Date(),
+): Promise<{ entryId: string; step: number; role: ApproverRole; releaseRequested: boolean }> {
+  if (input.decision !== 'approved' && input.decision !== 'rejected') throw new CodexDecisionError('invalid', 'Invalid decision');
   const db = await getDb();
   return db.transaction(async (tx) => {
-    const d = await loadDoc(tx, number);
-    if (d.status !== 'release_proposed') throw new Error(`${number} is not awaiting approval`);
-    const steps = await tx.select().from(documentApprovals)
-      .where(and(eq(documentApprovals.documentId, d.id), eq(documentApprovals.revision, d.currentRevision))).orderBy(asc(documentApprovals.stepPosition));
-    const next = steps.find((s) => s.stepPosition > 0 && !s.signedOn);
-    if (!next) throw new Error(`${number} has no approval step pending`);
-    const actor = await findPerson(tx, actorName);
-    await tx.update(documentApprovals).set({ signedOn: on, signedByPersonId: actor?.id ?? null })
-      .where(and(eq(documentApprovals.documentId, d.id), eq(documentApprovals.revision, d.currentRevision), eq(documentApprovals.stepPosition, next.stepPosition)));
-    const released = !steps.some((s) => s.stepPosition > next.stepPosition && !s.signedOn);
-    const who = actor ? nameOf(actor) : actorName;
-    if (released) {
-      const prev = d.currentRevision > 'A' ? String.fromCharCode(d.currentRevision.charCodeAt(0) - 1) : null;
-      await tx.update(documents).set({ status: 'released', lastWithdrawnRevision: prev, lastWithdrawnOn: prev ? on : null, updatedAt: new Date() }).where(eq(documents.id, d.id));
-      if (prev) await tx.update(documentRevisions).set({ withdrawnOn: on }).where(and(eq(documentRevisions.documentId, d.id), eq(documentRevisions.revision, prev), isNull(documentRevisions.withdrawnOn)));
-      await tx.delete(documentAcknowledgements).where(and(eq(documentAcknowledgements.documentId, d.id), eq(documentAcknowledgements.revision, d.currentRevision)));
-    }
-    await writeAudit(tx, {
-      actorName: who, actorPersonId: actor?.id, objectRef: number,
-      change: `approved · ${approverRole.label(next.role)}${released ? ' · status: Release proposed → Released' : ''}`, area: 'Documents', entityType: 'document', entityId: d.id, projectId: d.projectId,
+    const { d, steps, signed, state } = await lockedCircuit(tx, number);
+    if (d.status !== 'release_proposed' || state.nextStep == null) throw new CodexDecisionError('stale', `${number} has no approval step open`);
+    if (input.step != null && input.step !== state.nextStep) throw new CodexDecisionError('stale', `${number}: step ${input.step} is no longer open`);
+    const step = steps.find((x) => x.position === state.nextStep);
+    if (!step) throw new CodexDecisionError('invalid', `${number}: unknown circuit step`);
+    const person = await findPerson(tx, actor.name);
+    const who = person ? nameOf(person) : actor.name;
+    const comment = input.decision === 'rejected' ? (input.comment?.trim() || null) : null;
+    const entry = await insertCodexEntry(tx, {
+      documentId: d.id, documentNumber: d.number, revision: d.currentRevision, kind: 'approval', stepPosition: step.position, role: step.role, decision: input.decision,
+      comment, actorName: who, actorPersonId: person?.id ?? null, actorRole: actor.role, recordedAt: at,
     });
-    return { role: next.role, released };
+    // The last open step approved: every step is signed in Codex or approved in Keystone — Codex releases on sync.
+    const releaseRequested = input.decision === 'approved'
+      && steps.every((x) => x.position === 0 || x.position === step.position || signed.includes(x.position) || state.approved.some((a) => a.step === x.position));
+    const sync = codexSyncStatus.label('pending');
+    const role = approverRole.label(step.role);
+    await writeAudit(tx, {
+      actorName: who, actorPersonId: person?.id, objectRef: number, occurredAt: at, area: 'Documents', entityType: 'codex_document_outbox', entityId: entry.id, projectId: d.projectId,
+      change: `${input.decision} · ${role}${releaseRequested ? ' · release requested' : ''} · ${sync}`,
+    });
+    await recordActivity(tx, {
+      actorName: who, actorPersonId: person?.id, kind: 'change', projectId: d.projectId, occurredAt: at,
+      text: `${number} rev ${d.currentRevision} · ${codexDecision.label(input.decision)} · ${role} · ${sync}`,
+    });
+    return { entryId: entry.id, step: step.position, role: step.role, releaseRequested };
   });
+}
+
+/**
+ * "Validate release (PM)" of an engineering deliverable (Delivery 7, P-7c = a, R-106): starts the type's approval
+ * circuit in Codex through the outbox. Runs inside the caller's transaction (the engineering writer checks the PM).
+ * The record stays Release proposed; it is Released when Codex has every step approved.
+ */
+export async function recordCircuitStart(tx: Tx, number: string, actor: { name: string; role: string }, at: Date = new Date()): Promise<{ entryId: string; revision: string }> {
+  const { d, state, needsStart } = await lockedCircuit(tx, number);
+  if (!needsStart) throw new CodexDecisionError('invalid', `${number} is not an engineering deliverable`);
+  if (d.status !== 'release_proposed') throw new CodexDecisionError('stale', `${number} is not proposed for release`);
+  if (state.started) throw new CodexDecisionError('stale', `${number}: the approval circuit has already started`);
+  const person = await findPerson(tx, actor.name);
+  const who = person ? nameOf(person) : actor.name;
+  const entry = await insertCodexEntry(tx, {
+    documentId: d.id, documentNumber: d.number, revision: d.currentRevision, kind: 'circuit_start', actorName: who, actorPersonId: person?.id ?? null, actorRole: actor.role,
+    recordedAt: at,
+  });
+  const sync = codexSyncStatus.label('pending');
+  await writeAudit(tx, {
+    actorName: who, actorPersonId: person?.id, objectRef: number, occurredAt: at, area: 'Documents', entityType: 'codex_document_outbox', entityId: entry.id, projectId: d.projectId,
+    change: `release validated by the PM · approval circuit started · ${sync}`,
+  });
+  await recordActivity(tx, {
+    actorName: who, actorPersonId: person?.id, kind: 'change', projectId: d.projectId, occurredAt: at,
+    text: `${number} rev ${d.currentRevision} · Release validated by the PM · Approval circuit started · ${sync}`,
+  });
+  return { entryId: entry.id, revision: d.currentRevision };
 }
 
 /** Client portal "Acknowledge receipt" of a shared document's current revision. */
