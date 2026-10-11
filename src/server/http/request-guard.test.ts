@@ -51,9 +51,9 @@ describe('rate limit', () => {
     expect(hitRateLimit('analysis', 'x', windowMs + 2).ok).toBe(true);
   });
 
-  it('the limits: uploads 30, imports 10, exports 60, analyses 10 a minute', () => {
+  it('the limits: uploads 30, imports 10, exports 60, analyses 10, browser error reports 20 a minute', () => {
     expect(Object.fromEntries(Object.entries(RATE_LIMITS).map(([k, v]) => [k, [v.limit, v.windowMs]]))).toEqual({
-      upload: [30, 60_000], import: [10, 60_000], export: [60, 60_000], analysis: [10, 60_000],
+      upload: [30, 60_000], import: [10, 60_000], export: [60, 60_000], analysis: [10, 60_000], report: [20, 60_000],
     });
   });
 
