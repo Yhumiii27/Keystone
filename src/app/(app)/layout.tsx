@@ -1,6 +1,8 @@
 // App shell (docs/spec/01 §2): 232px sidebar | main, radial accent background. Owned by the shell.
+// Tablet layout (R-146): up to 1024 px, one column with a top bar whose menu button opens the sidebar as a drawer.
 import { PERSONAS } from '@/config/personas';
 import { ToastProvider } from '@/components/ds/Toast';
+import { NavToggle } from '@/components/app/shell/nav-toggle';
 import { Sidebar } from '@/components/app/shell/sidebar';
 import { ShellProvider } from '@/components/app/shell/shell-provider';
 import styles from '@/components/app/shell/shell.module.css';
@@ -26,7 +28,10 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
             globalBadges={nav.globalBadges}
             projectBadges={nav.projectBadges}
           />
-          <main className={styles.main}>{children}</main>
+          <main className={styles.main}>
+            <NavToggle />
+            {children}
+          </main>
         </div>
       </ToastProvider>
     </ShellProvider>

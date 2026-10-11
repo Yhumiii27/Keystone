@@ -95,7 +95,7 @@ export function SparesOrderDialog({ scope, onClose }: { scope: SparesOrderScope;
       {!view && !error && <span className={s.muted}>{loading ? t('Loading…') : ''}</span>}
       {view && (
         <div className={s.tableWrap}>
-          <Table>
+          <Table scroll={false}>
             <thead>
               <tr>
                 <Th>

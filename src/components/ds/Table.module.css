@@ -32,3 +32,10 @@
 
 /* truncation idiom */
 .ellipsis { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Horizontal scroll box (TableScroll, R-146): no box above 1024 px; a horizontally scrolling block on tablets
+   (media query = TABLET_MEDIA in src/components/app/shell/tablet.ts). */
+.scrollX { display: contents; }
+@media (max-width: 1024px) {
+  .scrollX { display: block; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+}

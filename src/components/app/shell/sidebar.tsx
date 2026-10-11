@@ -2,7 +2,9 @@
 // Sidebar (docs/spec/01 §4, prototype lines 19–73): brand, page search (⌘K), fixed entries, collapsible
 // sections with Project groups, "Outside my workspace" section, "View as" switcher.
 // Fed by server data from the (app) layout; active entry and current project come from the URL.
-import { CaretDown, CaretRight, CaretUpDown, Eye, MagnifyingGlass, Polygon } from '@phosphor-icons/react/dist/ssr';
+// Tablet layout (R-146, X-4): up to 1024 px the sidebar is a drawer over the page, opened by the top bar's menu button
+// (nav-toggle.tsx), closed by its close button, the backdrop, Escape or any navigation; the page behind is inert.
+import { CaretDown, CaretRight, CaretUpDown, Eye, MagnifyingGlass, Polygon, X } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, useTransition, type KeyboardEvent } from 'react';
@@ -14,6 +16,7 @@ import { COOKIE_NAV } from './types';
 import { buildSidebar, matchScreen, searchNav, type Badges, type NavEntry, type NavSectionModel } from './nav-model';
 import { useShell } from './shell-provider';
 import styles from './sidebar.module.css';
+import { NAV_TOGGLE_ID, SIDEBAR_ID, TABLET_MEDIA } from './tablet';
 
 export interface SidebarPersona {
   role: RoleKey;
@@ -47,10 +50,45 @@ export function Sidebar({ role, personas, navOpen: initialOpen, zoneLabel, proje
   const { t } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
-  const { project: code } = useShell();
+  const { project: code, navDrawer, setNavDrawer } = useShell();
   const [navOpen, setOpenState] = useState(initialOpen);
   const [navQ, setNavQ] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef(false);
+
+  // Drawer open (tablet layout): the page behind is inert, focus moves to the close button, Escape closes and gives the
+  // focus back to the menu button. Widening the window past the tablet layout closes it (the page must not stay inert).
+  useEffect(() => {
+    if (!navDrawer) return;
+    const main = document.querySelector('main');
+    const media = window.matchMedia(TABLET_MEDIA);
+    // The menu button only exists in the tablet layout.
+    if (!media.matches) return;
+    if (main) main.inert = true;
+    closeRef.current?.focus();
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      returnFocus.current = true;
+      setNavDrawer(false);
+    };
+    const onMedia = () => {
+      if (!media.matches) setNavDrawer(false);
+    };
+    document.addEventListener('keydown', onKey);
+    media.addEventListener('change', onMedia);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      media.removeEventListener('change', onMedia);
+      if (main) main.inert = false;
+      if (returnFocus.current) document.getElementById(NAV_TOGGLE_ID)?.focus();
+      returnFocus.current = false;
+    };
+  }, [navDrawer, setNavDrawer]);
+  const closeDrawer = (focusToggle: boolean) => {
+    returnFocus.current = focusToggle;
+    setNavDrawer(false);
+  };
 
   const active = matchScreen(pathname)?.id ?? null;
   const projectLabel = projects.find((p) => p.code === code)?.label ?? code;
@@ -88,6 +126,7 @@ export function Sidebar({ role, personas, navOpen: initialOpen, zoneLabel, proje
     else if (e.key === 'Enter' && hits.length) {
       router.push(hrefOf(hits[0].id));
       setNavQ('');
+      closeDrawer(false);
     }
   };
 
@@ -105,6 +144,7 @@ export function Sidebar({ role, personas, navOpen: initialOpen, zoneLabel, proje
         href={hrefOf(n.id)}
         className={cx(styles.entry, kind === 'item' && styles.item, n.active && styles.active)}
         aria-current={n.active ? 'page' : undefined}
+        onClick={() => closeDrawer(false)}
       >
         <Icon size={16} className={styles.icon} />
         <span className={styles.label}>{t(n.label)}</span>
@@ -161,56 +201,65 @@ export function Sidebar({ role, personas, navOpen: initialOpen, zoneLabel, proje
   };
 
   return (
-    <aside className={styles.aside}>
-      <div className={styles.brand}>
-        <div className={styles.logo}>
-          <Polygon size={15} />
+    <>
+      <div className={cx(styles.backdrop, navDrawer && styles.backdropOn)} onClick={() => closeDrawer(true)} aria-hidden="true" />
+      <aside id={SIDEBAR_ID} className={cx(styles.aside, navDrawer && styles.open)} aria-label={t('Main menu')}>
+        <div className={styles.brand}>
+          <div className={styles.logo}>
+            <Polygon size={15} />
+          </div>
+          <div className={styles.wordmark}>{t('Keystone')}</div>
+          <button ref={closeRef} type="button" className={cx('btn btn-ghost btn-icon', styles.close)} onClick={() => closeDrawer(true)} aria-label={t('Close menu')}>
+            <X size={18} />
+          </button>
         </div>
-        <div className={styles.wordmark}>{t('Keystone')}</div>
-      </div>
-      <div className={styles.search}>
-        <MagnifyingGlass size={13} className={styles.searchIcon} />
-        <input
-          ref={searchRef}
-          className={cx('input', styles.searchInput)}
-          value={navQ}
-          onChange={(e) => setNavQ(e.target.value)}
-          onKeyDown={onSearchKey}
-          placeholder={t('Go to a page…')}
-          aria-label={t('Go to a page…')}
-        />
-        <span className={styles.kbd}>⌘K</span>
-      </div>
-      {searching ? (
-        <div className={styles.list}>
-          {hits.map((n) => {
-            const Icon = SCREEN_BY_ID[n.id].icon ?? Eye;
-            return (
-              <Link
-                key={n.id}
-                href={hrefOf(n.id)}
-                onClick={() => setNavQ('')}
-                className={cx(styles.entry, styles.hit, n.active && styles.active)}
-              >
-                <Icon size={16} className={styles.icon} />
-                <span className={styles.hitText}>
-                  <span className={styles.hitLabel}>{t(n.label)}</span>
-                  <span className={styles.hitSection}>{n.section ? t(n.section) : ''}</span>
-                </span>
-                {n.badge && <span className={styles.badge}>{t(n.badge)}</span>}
-              </Link>
-            );
-          })}
-          {!hits.length && <span className={styles.empty}>{t('No page matches')}</span>}
+        <div className={styles.search}>
+          <MagnifyingGlass size={13} className={styles.searchIcon} />
+          <input
+            ref={searchRef}
+            className={cx('input', styles.searchInput)}
+            value={navQ}
+            onChange={(e) => setNavQ(e.target.value)}
+            onKeyDown={onSearchKey}
+            placeholder={t('Go to a page…')}
+            aria-label={t('Go to a page…')}
+          />
+          <span className={styles.kbd}>⌘K</span>
         </div>
-      ) : (
-        <>
-          <div className={styles.list}>{model.fixed.map((n) => entry(n, 'fixed'))}</div>
-          <div className={styles.sections}>{model.sections.map(section)}</div>
-        </>
-      )}
-      <ViewAs role={role} personas={personas} />
-    </aside>
+        {searching ? (
+          <div className={styles.list}>
+            {hits.map((n) => {
+              const Icon = SCREEN_BY_ID[n.id].icon ?? Eye;
+              return (
+                <Link
+                  key={n.id}
+                  href={hrefOf(n.id)}
+                  onClick={() => {
+                    setNavQ('');
+                    closeDrawer(false);
+                  }}
+                  className={cx(styles.entry, styles.hit, n.active && styles.active)}
+                >
+                  <Icon size={16} className={styles.icon} />
+                  <span className={styles.hitText}>
+                    <span className={styles.hitLabel}>{t(n.label)}</span>
+                    <span className={styles.hitSection}>{n.section ? t(n.section) : ''}</span>
+                  </span>
+                  {n.badge && <span className={styles.badge}>{t(n.badge)}</span>}
+                </Link>
+              );
+            })}
+            {!hits.length && <span className={styles.empty}>{t('No page matches')}</span>}
+          </div>
+        ) : (
+          <>
+            <div className={styles.list}>{model.fixed.map((n) => entry(n, 'fixed'))}</div>
+            <div className={styles.sections}>{model.sections.map(section)}</div>
+          </>
+        )}
+        <ViewAs role={role} personas={personas} />
+      </aside>
+    </>
   );
 }
 

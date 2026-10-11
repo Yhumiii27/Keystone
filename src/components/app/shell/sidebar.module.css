@@ -409,3 +409,87 @@
   color: var(--color-neutral-500);
   flex: none;
 }
+
+/* ── Tablet layout (R-146, X-4; media queries = TABLET_MEDIA / TOUCH_MEDIA in ./tablet.ts) ──────────────────────────
+   Up to 1024 px the sidebar is a drawer over the page (below the centered modals, z 70), hidden — and out of the tab
+   order — until the top bar's menu button opens it. */
+.backdrop,
+.close {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .aside {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 66;
+    width: min(300px, 86vw);
+    height: 100dvh;
+    overscroll-behavior: contain;
+    background: var(--color-bg);
+    box-shadow: var(--shadow-lg);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 0.2s ease, visibility 0s linear 0.2s;
+  }
+
+  .open {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.2s ease;
+  }
+
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 65;
+    background: color-mix(in srgb, var(--color-bg) 60%, transparent);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .backdropOn {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .close:global(.btn) {
+    display: inline-flex;
+    margin-left: auto;
+  }
+
+  .kbd {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aside,
+  .open,
+  .backdrop {
+    transition: none;
+  }
+}
+
+/* Touch targets of 40 px (R-146) */
+@media (max-width: 1024px), (pointer: coarse) {
+  .entry,
+  .secHead,
+  .group,
+  .persona,
+  .trigger {
+    min-height: 40px;
+  }
+
+  .searchInput:global(.input) {
+    min-height: 40px;
+  }
+
+  .searchIcon {
+    top: 13px;
+  }
+}

@@ -329,7 +329,7 @@ export function ImportDialog({ card, title, file, onClose }: ImportDialogProps) 
           </div>
           {mapping.sample.length > 0 && (
             <div className={s.sample}>
-              <Table size={12.5}>
+              <Table size={12.5} scroll={false}>
                 <thead>
                   <tr>
                     {mapping.columns.map((c) => (
@@ -494,7 +494,7 @@ function PreviewBody({ preview, t, tr }: { preview: PreviewView; t: (s: string) 
         </div>
       )}
       <div className={s.tableWrap}>
-        <Table size={12.5}>
+        <Table size={12.5} scroll={false}>
           <thead>
             <tr>
               <Th>{isSchedule ? t('Type') : t('Line')}</Th>
