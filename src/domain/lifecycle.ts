@@ -3,6 +3,7 @@
 // (stVals 3905–3915), the register filter (3933) and the wizard helpers (nextProjectId/nextAnalytic 3177–3178,
 // npVals 3949–3969). Pure: strings are the prototype's English source strings (render them through t()).
 import { STAGES, clientCode3, nextStageOf, type StageCode } from '@/server/db/codes';
+import { isIsoDate } from './calendar';
 import { nextActiveStage } from './settings-rules';
 
 export type { StageCode };
@@ -82,6 +83,31 @@ export function moveError(
   if (!isTransitionAllowed(from, to, skip)) return 'This stage change is not allowed';
   if (mode === 'auto' && moveModeFor(to, missing) === 'forced') return 'Deliverables are missing — force the stage change';
   if (mode === 'forced' && !reason.trim()) return 'A reason is required to force the stage change';
+  return null;
+}
+
+// ── Effective date of a stage change (L-4c = a, Delivery 7 R-055) ────────────────────────────────────
+
+/**
+ * Bounds of the effective date the PM enters for a stage change: from the previous change's effective date (the
+ * history stays chronological; the same day is allowed) to "today" — the project's data date (S-4: the status date
+ * until a per-project data date is written). The time of entry stays in the audit trail.
+ */
+export interface EffectiveDateBounds {
+  /** Effective date of the project's latest stage change (ISO), null for a project without history. */
+  previous: string | null;
+  /** The project's data date (ISO). */
+  today: string;
+}
+
+/** Default effective date: today (L-4c), never before the previous change (a history dated after the data date). */
+export const defaultEffectiveDate = (b: EffectiveDateBounds): string => (b.previous && b.previous > b.today ? b.previous : b.today);
+
+/** Why an entered effective date is refused (EN source string), or null when it is valid. */
+export function effectiveDateError(effectiveOn: unknown, b: EffectiveDateBounds): string | null {
+  if (!isIsoDate(effectiveOn)) return 'Enter a valid effective date';
+  if (effectiveOn > defaultEffectiveDate(b)) return 'The effective date cannot be after today';
+  if (b.previous && effectiveOn < b.previous) return 'The effective date cannot be before the previous stage change';
   return null;
 }
 

@@ -5,11 +5,11 @@
 // My projects, the shell…). Messages are English source strings (the client shows them with toast showEn).
 import { revalidatePath } from 'next/cache';
 import {
-  CATEGORY_TYPES, CONTINGENCIES, DAS_LIST, WIZARD_CURRENCIES, isTransitionAllowed, moveError,
+  CATEGORY_TYPES, CONTINGENCIES, DAS_LIST, WIZARD_CURRENCIES, effectiveDateError, isTransitionAllowed, moveError,
 } from '@/domain/lifecycle';
 import { WIZARD_CALENDAR_OPTIONS, WIZARD_REQUIRED, wizardSiteError, wizardWindowError } from '@/domain/project-template';
 import { costType, machineType, stage as stageCodec, type MachineTypeCode, type StageCode } from '@/server/db/codes';
-import { listStages } from '@/server/dal/lifecycle';
+import { StageChangeError, getStageChangeBounds, listStages } from '@/server/dal/lifecycle';
 import {
   createWizardProject, getNewProjectSetup, getProjectStage, missingDeliverables, moveProjectStage, setDeliverableAndAdvance,
 } from '@/server/dal/projects-register';
@@ -44,16 +44,21 @@ async function mayManageLifecycle(code: string): Promise<boolean> {
 /**
  * Moves a project to the next stage or to Annulé (advance 3922). `auto` is refused when deliverables are missing
  * or the target is Annulé; `forced` needs a reason and is recorded with the missing deliverables, pending the
- * portfolio director's validation.
+ * portfolio director's validation. `effectiveOn` (L-4c = a, R-055): the real date of the change entered by the PM
+ * (ISO; absent = today, the project's data date), refused before the previous change or after today; the time of entry
+ * stays in the audit trail.
  */
-export async function moveStageAction(input: { code: string; to: string; mode: 'auto' | 'forced'; reason?: string }): Promise<ActionResult> {
+export async function moveStageAction(input: { code: string; to: string; mode: 'auto' | 'forced'; reason?: string; effectiveOn?: string }): Promise<ActionResult> {
   const { viewer } = await getScreenAccess('projects');
   const code = str(input?.code, 40);
   if (!(await mayManageLifecycle(code))) return { ok: false, error: NOT_ALLOWED };
   const to = input?.to;
   const mode = input?.mode === 'forced' ? 'forced' : 'auto';
   const reason = str(input?.reason, 500);
+  const rawDate: unknown = input?.effectiveOn;
   if (!isStage(to)) return { ok: false, error: 'This stage change is not allowed' };
+  if (rawDate !== undefined && rawDate !== null && rawDate !== '' && typeof rawDate !== 'string') return { ok: false, error: 'Enter a valid effective date' };
+  const effectiveOn = typeof rawDate === 'string' && rawDate !== '' ? rawDate : undefined;
   try {
     const from = await getProjectStage(code);
     if (!from) return { ok: false, error: UNKNOWN };
@@ -65,12 +70,23 @@ export async function moveStageAction(input: { code: string; to: string; mode: '
       refresh(); // the client may be showing a stale stage
       return { ok: false, error: err };
     }
+    if (effectiveOn !== undefined) {
+      const bounds = await getStageChangeBounds(code);
+      const dateErr = bounds ? effectiveDateError(effectiveOn, bounds) : UNKNOWN;
+      if (dateErr) return { ok: false, error: dateErr };
+    }
     await moveProjectStage(code, to, mode, {
       reason: mode === 'forced' ? reason : undefined,
       missing: mode === 'forced' ? missing : undefined,
       requestedBy: viewer.short,
+      effectiveOn,
+      from,
     });
   } catch (e) {
+    if (e instanceof StageChangeError) {
+      refresh();
+      return { ok: false, error: e.message };
+    }
     console.error('moveStageAction', e);
     return { ok: false, error: FAILED };
   }
@@ -93,7 +109,7 @@ export async function setDeliverableAction(input: { code: string; stage: string;
       refresh();
       return { ok: false, error: 'The project has already moved to another stage' };
     }
-    await setDeliverableAndAdvance(code, input.stage, input.index, input.done);
+    await setDeliverableAndAdvance(code, input.stage, input.index, input.done, (await getViewer()).short);
   } catch (e) {
     console.error('setDeliverableAction', e);
     return { ok: false, error: FAILED };

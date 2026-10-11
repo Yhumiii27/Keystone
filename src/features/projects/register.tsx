@@ -20,7 +20,7 @@ import {
 import { useI18n } from '@/i18n/client';
 import { moveStageAction } from './actions';
 import { PROJECTS_RESET_EVENT } from './events';
-import { ForceDialog, type ForceRequest } from './force-dialog';
+import { ForceDialog, MoveDialog, type ForceRequest, type MoveRequest } from './force-dialog';
 import { registerTitleText } from './i18n';
 import { DeliverablesCell, ProjectCell, StatusCell } from './register-cells';
 import type { RegisterRow, StageView } from './register-model';
@@ -57,6 +57,7 @@ export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, editableCod
   const [status, setStatusState] = useState<StageCode | null>(initialStatus);
   const [q, setQState] = useState(initialQuery);
   const [force, setForce] = useState<ForceRequest | null>(null);
+  const [moveReq, setMoveReq] = useState<MoveRequest | null>(null);
   // Status button to focus again once the "Move to" menu (and the Force dialog, when opened) has closed.
   const returnFocus = useRef<HTMLElement | null>(null);
   const restoreFocus = () => {
@@ -102,39 +103,46 @@ export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, editableCod
   const selLabel = status ? sel.label : t(sel.label);
   const tickLabels = [t('All'), ...stages.map((x) => x.short)];
 
-  const move = (row: RegisterRow, to: StageCode, reason?: string) => {
+  const move = (row: RegisterRow, to: StageCode, effectiveOn: string, reason?: string) => {
     const mode = reason === undefined ? 'auto' : 'forced';
     startTransition(async () => {
       setOptStage({ code: row.code, to });
-      const r = await moveStageAction({ code: row.code, to, mode, reason });
+      const r = await moveStageAction({ code: row.code, to, mode, reason, effectiveOn });
       if (!r.ok) toast.showEn(r.error);
     });
   };
 
-  // Line 3938: Annulé or missing deliverables → Force dialog; otherwise an immediate auto move.
+  // Line 3938: Annulé or missing deliverables → Force dialog; otherwise the Change stage dialog, which asks for the
+  // effective date of the move (L-4c = a, today by default).
   const requestMove = (row: RegisterRow, to: StageCode, trigger: HTMLElement | null) => {
     const from = stageOf(row);
     const missing = to === 'annule' || from !== row.stage ? [] : missingOf(row.delivs.map((d) => d.label), row.delivs.map((d) => d.done));
     returnFocus.current = trigger;
-    if (moveModeFor(to, missing) === 'forced')
-      setForce({ code: row.code, name: row.name, from: labelOf(from), to: labelOf(to), toCode: to, isCancel: to === 'annule', missing });
-    else {
-      move(row, to);
-      restoreFocus();
-    }
+    const req = { code: row.code, name: row.name, from: labelOf(from), to: labelOf(to), toCode: to, dateBounds: row.dateBounds };
+    if (moveModeFor(to, missing) === 'forced') setForce({ ...req, isCancel: to === 'annule', missing });
+    else setMoveReq(req);
   };
 
   const cancelForce = () => {
     setForce(null);
+    setMoveReq(null);
     restoreFocus();
   };
 
-  const confirmForce = (reason: string) => {
+  const confirmForce = (reason: string, effectiveOn: string) => {
     const req = force;
     setForce(null);
     restoreFocus();
     const row = req && rows.find((r) => r.code === req.code);
-    if (row) move(row, req.toCode, reason);
+    if (row) move(row, req.toCode, effectiveOn, reason);
+  };
+
+  const confirmMove = (effectiveOn: string) => {
+    const req = moveReq;
+    setMoveReq(null);
+    restoreFocus();
+    const row = req && rows.find((r) => r.code === req.code);
+    if (row) move(row, req.toCode, effectiveOn);
   };
 
   const viewOptions = [
@@ -319,6 +327,7 @@ export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, editableCod
       </div>
 
       <ForceDialog request={force} onCancel={cancelForce} onConfirm={confirmForce} />
+      <MoveDialog request={moveReq} onCancel={cancelForce} onConfirm={confirmMove} />
     </div>
   );
 }

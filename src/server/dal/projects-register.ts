@@ -8,6 +8,7 @@ import 'server-only';
 // Permission checks, input validation and revalidation belong to src/features/projects/actions.ts.
 import { and, asc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import { BUILTIN_CALENDAR_BY_CODE, WorkCalendar } from '@/domain/calendar';
+import { projectDataDate } from '@/domain/ch4-defaults';
 import {
   allocateProjectIdentity, deliverableToggle, NEW_PROJECT_DEFAULTS, nextProjectId, wizardTotal, type ProjectIdentity,
 } from '@/domain/lifecycle';
@@ -80,15 +81,19 @@ export interface RegisterData {
   planned?: string[];
   /** Settings health thresholds (A-13): the register's CPI / SPI colours and attention items. */
   thresholds?: HealthThresholds;
+  /** Data date of each project (ISO; the status date until S-4 writes one): "today" of the stage-change date (L-4c). */
+  dataDates?: Record<string, string>;
 }
 
 /** Everything the Projects register renders. */
 export async function getRegisterData(): Promise<RegisterData> {
-  const [list, stages, checklists, history, schedules, inactiveStages, planned, thresholds] = await Promise.all([
+  const db = await getDb();
+  const [list, stages, checklists, history, schedules, inactiveStages, planned, thresholds, dates] = await Promise.all([
     listProjects(), listStages(), listStageChecklists(), listStageHistory(), listScheduleSummaries(), inactiveStageCodes(), listPlannedProjectCodes(),
-    healthThresholds(),
+    healthThresholds(), db.select({ code: projects.code, dataDate: projects.dataDate }).from(projects),
   ]);
-  return { projects: list, stages, checklists, history, schedules, inactiveStages, planned, thresholds };
+  const dataDates = Object.fromEntries(dates.map((d) => [d.code, projectDataDate(d)]));
+  return { projects: list, stages, checklists, history, schedules, inactiveStages, planned, thresholds, dataDates };
 }
 
 /** Current stage of a project (null when unknown). */
@@ -107,28 +112,34 @@ export async function missingDeliverables(code: string, stage: StageCode): Promi
   return s.deliverables.filter((_, i) => !done[i]);
 }
 
-/** Moves a project (advance 3922). The caller validates the transition (domain `moveError`). */
+/**
+ * Moves a project (advance 3922). The caller validates the transition (domain `moveError`); the effective date (L-4c) and
+ * the stage the caller saw (`from`) are re-checked by the writer, which throws StageChangeError when they do not hold.
+ */
 export async function moveProjectStage(
   code: string,
   to: StageCode,
   mode: TransitionMode,
-  opts: { reason?: string; missing?: string[]; requestedBy?: string } = {},
-): Promise<void> {
-  await recordStageChange(code, to, mode, { reason: opts.reason, missing: opts.missing, requestedByShortName: opts.requestedBy });
+  opts: { reason?: string; missing?: string[]; requestedBy?: string; effectiveOn?: string; from?: StageCode } = {},
+): Promise<{ effectiveOn: string }> {
+  return recordStageChange(code, to, mode, {
+    reason: opts.reason, missing: opts.missing, requestedByShortName: opts.requestedBy, effectiveOn: opts.effectiveOn, from: opts.from,
+  });
 }
 
 /**
  * Sets one deliverable of `stage` (toggleDeliv 3923) and auto-advances the project when this completes its current
  * stage. Returns the stage entered, if any.
  */
-export async function setDeliverableAndAdvance(code: string, stage: StageCode, index: number, done: boolean): Promise<StageCode | null> {
+export async function setDeliverableAndAdvance(code: string, stage: StageCode, index: number, done: boolean, requestedBy?: string): Promise<StageCode | null> {
   await setStageDeliverable(code, stage, index, done);
   const [current, stages, checklists, inactive] = await Promise.all([getProjectStage(code), listStages(), listStageChecklists(), inactiveStageCodes()]);
   const s = stages.find((x) => x.code === stage);
   if (!current || !s) return null;
   // A-14: the auto-advance skips the stages deactivated in Settings › Project statuses.
   const { advanceTo } = deliverableToggle(current, stage, checklistOf(checklists, code, s), index, done, new Set<string>(inactive));
-  if (advanceTo) await recordStageChange(code, advanceTo, 'auto');
+  // The auto-advance is dated today (the project's data date, L-4c default); the time of the tick stays in the audit.
+  if (advanceTo) await recordStageChange(code, advanceTo, 'auto', { requestedByShortName: requestedBy, from: current });
   return advanceTo;
 }
 

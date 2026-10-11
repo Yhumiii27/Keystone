@@ -5,5 +5,13 @@
   "Sage X3 order": "Commande Sage X3",
   "Not yet in Sage X3": "Pas encore dans Sage X3",
   "Imported from Sage X3": "Importée de Sage X3",
+  "Effective date": "Date effective",
+  "Date of the real change (e.g. the signed FAT report). The time you enter it stays in the audit trail.": "Date du changement réel (par exemple le PV de FAT signé). L’heure de saisie reste dans le journal d’audit.",
+  "Change stage": "Changer d’étape",
+  "Every deliverable of the stage is ticked. The history keeps the effective date; the audit trail keeps who entered it and when.": "Tous les livrables de l’étape sont cochés. L’historique garde la date effective ; le journal d’audit garde qui l’a saisie et quand.",
+  "Enter a valid effective date": "Saisissez une date effective valide",
+  "The effective date cannot be after today": "La date effective ne peut pas être postérieure à aujourd’hui",
+  "The effective date cannot be before the previous stage change": "La date effective ne peut pas être antérieure au changement d’étape précédent",
+  "Stage changed": "Changement d’étape",
   "Internal summary of the order recorded in Keystone. The purchase order sent to the supplier, with its legal mentions and terms, is issued by Sage X3. Prices in euros excluding VAT.": "Récapitulatif interne de la commande enregistrée dans Keystone. Le bon de commande envoyé au fournisseur, avec ses mentions légales et conditions, est édité par Sage X3. Prix en euros hors TVA."
 }
