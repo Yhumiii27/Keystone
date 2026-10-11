@@ -6,6 +6,7 @@ import { date, integer, pgTable, text, timestamp, unique, uuid, type AnyPgColumn
 import type { AwardRule, Incoterm, PoOrigin, PoStatus, ReceiptAttachmentKind, ReceiptStatus, RfqStatus, SupplierGrade, SupplierInvoiceStatus } from '../codes';
 import { eur, id, num, timestamps } from './_common';
 import { parts } from './catalogue';
+import { storedFiles } from './files';
 import { persons } from './organisation';
 import { activities } from './planning';
 import { projects } from './portfolio';
@@ -172,6 +173,8 @@ export const receiptAttachments = pgTable('receipt_attachments', {
   kind: text('kind').$type<ReceiptAttachmentKind>().notNull(),
   fileName: text('file_name'),
   storageRef: text('storage_ref'),
+  /** Photo stored by Keystone (R-126, SC-4a); null for the seed's counted photos and the delivery-note names. */
+  fileId: uuid('file_id').references(() => storedFiles.id, { onDelete: 'set null' }),
   addedByPersonId: uuid('added_by_person_id').references(() => persons.id),
   position: integer('position').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

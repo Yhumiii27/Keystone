@@ -2,7 +2,7 @@
 // Deliverable / DeliverableRaci; screens 07 §2.3.b, client portal 03 §8.4, My approvals "Deliverable acceptance").
 // Keystone owns the deliverables. Non-conformities (NCR, 8D) are owned by Vigie: see the read-only mirror in vigie.ts.
 import { date, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
-import type { DeliverableStatus, DeliverableType, RaciCode } from '../codes';
+import type { DeliverableReviewDecision, DeliverableStatus, DeliverableType, RaciCode } from '../codes';
 import { id, timestamps } from './_common';
 import { documents } from './documents';
 import { persons } from './organisation';
@@ -68,3 +68,22 @@ export const deliverableRaci = pgTable(
   },
   (t) => [unique().on(t.deliverableId, t.role)],
 );
+
+/**
+ * Client review history of a deliverable (R-114, Q-3a): one row per client decision on a submitted revision — accepted (PV)
+ * or rejected with its comments. A rejected deliverable goes back to In progress at the next revision and is submitted
+ * again; the history keeps every refusal and its comments (the deliverable row only holds the latest decision).
+ */
+export const deliverableReviews = pgTable('deliverable_reviews', {
+  id: id(),
+  deliverableId: uuid('deliverable_id').notNull().references(() => deliverables.id, { onDelete: 'cascade' }),
+  /** Revision the client decided on ("C"); null = no revision letter ("—"). */
+  revision: text('revision'),
+  submittedOn: date('submitted_on', { mode: 'string' }),
+  decision: text('decision').$type<DeliverableReviewDecision>().notNull(),
+  decidedOn: date('decided_on', { mode: 'string' }).notNull(),
+  decidedByName: text('decided_by_name').notNull(),
+  decidedByPersonId: uuid('decided_by_person_id').references(() => persons.id),
+  comments: text('comments'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});

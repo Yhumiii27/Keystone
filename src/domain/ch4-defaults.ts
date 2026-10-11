@@ -63,6 +63,8 @@ export const FILE_EXTENSIONS: Readonly<Record<StoredFilePurpose, readonly string
   transcript: ['txt', 'vtt', 'srt'],
   import: ['xml', 'xer', 'csv', 'xlsx', 'txt'],
   export: ['csv', 'xlsx', 'pdf', 'xml'],
+  /** Photos of goods receipts, site daily reports and punch items (R-126, X-15 / SC-4a): images browsers display. */
+  photo: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
 };
 /** `accept` attribute of a file input for a purpose (".pdf,.png,…"). */
 export const acceptOf = (purpose: StoredFilePurpose) => FILE_EXTENSIONS[purpose].map((e) => '.' + e).join(',');

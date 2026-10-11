@@ -12,7 +12,7 @@ import {
 } from '@/server/db/codes';
 import GOLDEN from './site.golden.json';
 import {
-  COLLISION_TARGET, collisionTagClass, equipmentSourceTagClass, execKpis, goChantier, goLabel, isPrerequisiteLate, manDaysConsumed, parseDailyReportForm,
+  COLLISION_TARGET, NO_CURSUS_VERDICT, collisionTagClass, equipmentSourceTagClass, execKpis, goChantier, goLabel, isPrerequisiteLate, manDaysConsumed, parseDailyReportForm,
   preparationNote, prerequisiteStep, readinessKpis, siteBadge, siteTabOf, siteTagClass, teamKpis, type SiteFacts, type SiteKpi,
 } from './site';
 
@@ -91,6 +91,20 @@ describe('Go chantier and the KPI tiles vs the prototype (EN)', () => {
     // A GO with reserve does not block (only NO GO does); one resolved collision out of two still blocks.
     const one = goChantier({ ...ready, prerequisites: f.prerequisites.map((p) => ({ status: p.status === 'pending' ? 'signed' : p.status })), people: [{ verdict: 'go_with_reserve' }], equipment: f.equipment, collisions: [{ resolved: true }, { resolved: false }], hse: [] });
     expect(one.conditions.find((c) => c.key === 'collisions')).toMatchObject({ ok: false, sub: '1 collision', open: 1 });
+  });
+
+  it('NEW-SITE-1 (R-120): without any Cursus verdict the Cursus condition stays open, so no GO', () => {
+    // Owner's answer "a": at least one verdict received and no NO GO. Before, an empty list read "Ready" (false GO).
+    const allMet = { prerequisites: [{ status: 'signed' as const }], equipment: [{ status: 'confirmed' as const }], collisions: [], hse: [] };
+    const none = goChantier({ ...allMet, people: [] });
+    expect(none.ok).toBe(false);
+    expect(none.conditions.find((c) => c.key === 'cursus')).toEqual({ key: 'cursus', label: 'Individual go · Cursus', ok: false, sub: NO_CURSUS_VERDICT, open: 1 });
+    expect(none.conditions.filter((c) => !c.ok).map((c) => c.key)).toEqual(['cursus']);
+    expect(siteBadge(none)).toBe('NO GO');
+    // One verdict received: a GO with reserve is accepted, a NO GO blocks.
+    expect(goChantier({ ...allMet, people: [{ verdict: 'go_with_reserve' }] }).ok).toBe(true);
+    expect(goChantier({ ...allMet, people: [{ verdict: 'go' }] }).conditions.find((c) => c.key === 'cursus')).toMatchObject({ ok: true, sub: 'Ready', open: 0 });
+    expect(goChantier({ ...allMet, people: [{ verdict: 'go' }, { verdict: 'no_go' }] }).conditions.find((c) => c.key === 'cursus')).toMatchObject({ ok: false, sub: '1 NO GO', open: 1 });
   });
 });
 

@@ -165,6 +165,8 @@ export interface VigieNcrRecord {
   partRef: string | null;
   deliverableNumber: string | null;
   supplierName: string | null;
+  /** ITP inspection the NCR was reported from ("I-03"), when Vigie echoes Keystone's `inspection` prefill (R-112, V-3). */
+  inspectionNumber?: string | null;
   raisedBy: string;
   /** ISO date. */
   raisedOn: string;

@@ -3,7 +3,7 @@
 // lines, point type, stage, reference, date, result and the Codex record button — or the punch list with the row step
 // Start / Close (client island, editors only; "No punch item yet" when the project has none). "Add inspection" / "Add
 // punch item" is the header's primary action. Server Component.
-import { ClipboardText, Eye, FileText, ListChecks } from '@phosphor-icons/react/dist/ssr';
+import { ArrowSquareOut, ClipboardText, Eye, FileText, ListChecks, ShieldWarning } from '@phosphor-icons/react/dist/ssr';
 import { EmptyState } from '@/components/app/EmptyState';
 import { FilterBar, FilterLabel } from '@/components/app/Filter';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
@@ -13,8 +13,10 @@ import { Segmented } from '@/components/ds/Segmented';
 import { Ellipsis, Table, Td, Th } from '@/components/ds/Table';
 import { cx } from '@/components/ds/cx';
 import type { T } from '@/i18n/translate';
-import type { DocButtonView, InspectionGroupView, ItpScreenView, PunchRowView } from './model';
+import { VIGIE_LINK_ATTRS } from '@/server/integrations/vigie/links';
+import type { DocButtonView, InspectionGroupView, InspectionRowView, ItpScreenView, PunchRowView } from './model';
 import { PunchStep } from './punch-step';
+import { RecordResultButton } from './result-button';
 import s from './itpcom.module.css';
 
 export interface ItpBodyProps {
@@ -44,7 +46,7 @@ export function ItpBody({ code, view, canEdit, t }: ItpBodyProps) {
       {view.plan && (
         <SectionCard title={view.plan.title} scroll>
           {view.plan.groups.map((g) => (
-            <PlanGroup key={g.system} group={g} />
+            <PlanGroup key={g.system} code={code} group={g} />
           ))}
           {view.plan.empty && <EmptyState variant="boxed">{view.plan.empty}</EmptyState>}
         </SectionCard>
@@ -98,7 +100,28 @@ export function DocButton({ doc }: { doc: DocButtonView }) {
   );
 }
 
-function PlanGroup({ group: g }: { group: InspectionGroupView }) {
+/** Vigie NCR tags of a failed inspection (internal viewers), or "Report the NCR in Vigie" while none is reported (Q-6b). */
+function NcrLinks({ row: r }: { row: InspectionRowView }) {
+  if (!r.ncrs.length && !r.reportNcr) return null;
+  return (
+    <span className={s.ncrLinks}>
+      {r.ncrs.map((n) => (
+        <a key={n.number} href={n.href} {...VIGIE_LINK_ATTRS} className={cx('tag tag-accent', s.small, s.ncrTag)} aria-label={n.label} title={n.label}>
+          <ShieldWarning aria-hidden />
+          {n.number}
+        </a>
+      ))}
+      {r.reportNcr && (
+        <a href={r.reportNcr.href} {...VIGIE_LINK_ATTRS} className={cx('btn btn-ghost', s.reportNcr)}>
+          {r.reportNcr.label}
+          <ArrowSquareOut aria-hidden />
+        </a>
+      )}
+    </span>
+  );
+}
+
+function PlanGroup({ code, group: g }: { code: string; group: InspectionGroupView }) {
   return (
     <div className={s.group}>
       <div className={s.groupHead}>
@@ -111,7 +134,12 @@ function PlanGroup({ group: g }: { group: InspectionGroupView }) {
           {g.rows.map((r) => (
             <tr key={r.number}>
               <Td className={s.idCell}>{r.number}</Td>
-              <Td className={s.name}>{r.name}</Td>
+              <Td className={s.name}>
+                {r.name}
+                {r.resultLine && <span className={s.resultLine}>{r.resultLine}</span>}
+                {r.comment && <span className={s.resultComment}>{r.comment}</span>}
+                <NcrLinks row={r} />
+              </Td>
               <Td>
                 <span className={cx(r.typeClass, s.small)}>{r.type}</span>
               </Td>
@@ -125,7 +153,14 @@ function PlanGroup({ group: g }: { group: InspectionGroupView }) {
                   {r.status}
                 </span>
               </Td>
-              <Td className={s.right}>{r.doc && <DocButton doc={r.doc} />}</Td>
+              <Td className={s.right}>
+                <span className={s.rowActions}>
+                  {r.doc && <DocButton doc={r.doc} />}
+                  {r.record && (
+                    <RecordResultButton code={code} number={r.number} from={r.record.from} label={r.record.label} ariaLabel={r.record.ariaLabel} context={`${r.number} · ${r.name}`} form={r.record.form} />
+                  )}
+                </span>
+              </Td>
             </tr>
           ))}
         </tbody>

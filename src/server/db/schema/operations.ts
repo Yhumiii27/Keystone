@@ -75,6 +75,18 @@ export const itpInspections = pgTable(
     /** Line added beyond the machine-type template (the seed's `custom: 2`: I-12, I-13; every line added in Keystone). */
     isCustom: boolean('is_custom').notNull().default(false),
     position: integer('position').notNull(),
+    // ── Result recorded in Keystone (R-112, Q-6a: quality and the engineering lead) ──
+    /** Date of the inspection whose result is recorded; null while not recorded in Keystone (the seed's results). */
+    resultOn: date('result_on', { mode: 'string' }),
+    /** Inspector as recorded (full name of the person, or a third-party inspector as typed). */
+    inspectorName: text('inspector_name'),
+    inspectorPersonId: uuid('inspector_person_id').references(() => persons.id),
+    /** Client representative present at a witness / hold point (Q-6a); null otherwise. */
+    clientWitness: text('client_witness'),
+    resultComment: text('result_comment'),
+    /** Who recorded the result in Keystone, and when. */
+    resultRecordedByName: text('result_recorded_by_name'),
+    resultRecordedAt: timestamp('result_recorded_at', { withTimezone: true }),
     ...timestamps,
   },
   (t) => [unique().on(t.planId, t.number)],

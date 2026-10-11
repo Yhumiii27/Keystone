@@ -7,8 +7,8 @@
 // src/domain/itpcom.golden.json, scripts/proto-golden-itpcom.ts).
 import { LO, OK, TAG_CLASS, commissioningCell, statusTone, type Tone } from '@/components/app/tones';
 import {
-  STATUS_ISO, addDaysIso, displayOfIso, itpPointType, itpStage, punchCategory, punchSource, shortDateOfIso,
-  type CommissioningCellStatus, type HandoverItemStatus, type ItpPointType, type ItpResult, type ItpStage, type PunchCategory,
+  ITP_RECORDED_RESULTS, NOW_ISO, STATUS_ISO, addDaysIso, displayOfIso, itpPointType, itpResult, itpStage, punchCategory, punchSource, shortDateOfIso,
+  type CommissioningCellStatus, type HandoverItemStatus, type ItpPointType, type ItpRecordedResult, type ItpResult, type ItpStage, type PunchCategory,
   type PunchSource, type PunchStatus,
 } from '@/server/db/codes';
 import { parseNeedDate, type ParseResult } from './team';
@@ -49,6 +49,9 @@ export function parseForwardDate(input: string | undefined, today = STATUS_ISO):
 
 // ── Inspection & test plan (itpRows / itpBySys 4941–4943) ───────────────────────────────────────────────
 
+/** Passed, with or without reservations (R-112: an inspection passed with reservations is accepted; its reservations are punch items). */
+export const isPassedResult = (r: ItpResult) => r === 'passed' || r === 'reserved';
+
 export interface InspectionFacts {
   number: string;
   system: string;
@@ -72,7 +75,7 @@ export function groupBySystem<R extends InspectionFacts>(systems: readonly strin
   return order
     .map((system) => {
       const own = rows.filter((r) => r.system === system);
-      return { system, rows: own, count: own.length, passed: own.filter((r) => r.result === 'passed').length };
+      return { system, rows: own, count: own.length, passed: own.filter((r) => isPassedResult(r.result)).length };
     })
     .filter((g) => g.count > 0);
 }
@@ -90,7 +93,7 @@ export function inspectionLook(pointType: ItpPointType, result: ItpResult): Insp
   return {
     typeClass: TAG_CLASS[statusTone('itpType', pointType)],
     statusClass: TAG_CLASS[statusTone('itpResult', result)],
-    statusColor: result === 'failed' ? LO : result === 'passed' ? 'var(--color-accent-300)' : 'var(--color-neutral-400)',
+    statusColor: result === 'failed' ? LO : isPassedResult(result) ? 'var(--color-accent-300)' : 'var(--color-neutral-400)',
   };
 }
 
@@ -163,10 +166,10 @@ export function summariseItp(
   const failed = inspections.filter((r) => r.result === 'failed').length;
   const a = open.filter((p) => p.category === 'A').length;
   return {
-    passed: inspections.filter((r) => r.result === 'passed').length,
+    passed: inspections.filter((r) => isPassedResult(r.result)).length,
     total: inspections.length,
     failed,
-    holdAhead: inspections.filter((r) => r.pointType === 'hold' && r.result !== 'passed').length,
+    holdAhead: inspections.filter((r) => r.pointType === 'hold' && !isPassedResult(r.result)).length,
     open: open.length,
     openA: a,
     openB: open.filter((p) => p.category === 'B').length,
@@ -373,3 +376,77 @@ export function parsePlanSat(values: Record<string, string | undefined>, systems
 
 /** Default date of the Plan SAT form: the first system's SAT date ("10 Dec 2026", English), '' when none. */
 export const defaultSatDate = (satOn: string | null) => (satOn ? displayOfIso(satOn) : '');
+
+// ── Inspection results (R-112, Q-6a / Q-6b) ─────────────────────────────────────────────────────────────
+
+/**
+ * Roles that record inspection results (Q-6a, owner's answer "a": quality and the engineering lead; the portfolio director
+ * keeps every right). The project manager, the client and the others see the results read-only.
+ */
+export const ITP_RESULT_ROLES: readonly string[] = ['quality', 'englead', 'director'];
+export const canRecordItpResult = (role: string) => ITP_RESULT_ROLES.includes(role);
+
+/** Point types whose result names the client representative present (Q-6a): a hold point requires it, a witness point offers it. */
+export const witnessFieldOf = (pointType: ItpPointType): 'required' | 'optional' | null =>
+  pointType === 'hold' ? 'required' : pointType === 'witness' ? 'optional' : null;
+
+/** The year-less date typed is the latest such day on or before `today` ("28 Dec" typed on 5 Jan is last year's). */
+export function parsePastDate(input: string | undefined, today = NOW_ISO): string | null {
+  const iso = parseNeedDate(input, +today.slice(0, 4));
+  if (!iso) return null;
+  if (!hasYear(text(input)) && iso > today) return `${+iso.slice(0, 4) - 1}${iso.slice(4)}`;
+  return iso;
+}
+
+export interface InspectionResultValues {
+  result: ItpRecordedResult;
+  /** ISO date of the inspection (not after the business date). */
+  resultOn: string;
+  inspector: string;
+  /** Client representative present; null when none (never required outside hold points). */
+  clientWitness: string | null;
+  comment: string | null;
+}
+
+/**
+ * "Record result": Passed / Passed with reservations / Failed (codes or labels), the inspection date (required, not after
+ * the business date "today"), the inspector (required), the client representative (required on a hold point, Q-6a) and a
+ * comment — required for a failure (what is non-conforming, before the NCR is reported in Vigie) and for reservations
+ * (they are listed there).
+ */
+export function parseInspectionResult(values: Record<string, string | undefined>, pointType: ItpPointType, today = NOW_ISO): ParseResult<InspectionResultValues> {
+  const raw = text(values.result);
+  const result = (ITP_RECORDED_RESULTS as readonly string[]).includes(raw)
+    ? (raw as ItpRecordedResult)
+    : (ITP_RECORDED_RESULTS.find((r) => itpResult.label(r) === raw) ?? null);
+  if (!result) return { ok: false, error: 'Choose the result' };
+  const date = text(values.date);
+  if (!date) return { ok: false, error: 'Date is required' };
+  const resultOn = parsePastDate(date, today);
+  if (!resultOn) return { ok: false, error: 'Enter the inspection date as a date, e.g. 24 Sep' };
+  if (resultOn > today) return { ok: false, error: 'The inspection date cannot be in the future' };
+  const inspector = text(values.inspector);
+  if (!inspector) return { ok: false, error: 'Inspector is required' };
+  const witnessRule = witnessFieldOf(pointType);
+  const clientWitness = witnessRule ? text(values.witness) : '';
+  if (witnessRule === 'required' && !clientWitness) return { ok: false, error: 'Name the client representative present at this hold point' };
+  const comment = text(values.comment);
+  if (result !== 'passed' && !comment) return { ok: false, error: result === 'failed' ? 'Describe the non-conformity' : 'List the reservations' };
+  if (inspector.length > MAX_TEXT || clientWitness.length > MAX_TEXT || comment.length > MAX_NOTE) return { ok: false, error: 'Text is too long' };
+  return { ok: true, value: { result, resultOn, inspector, clientWitness: clientWitness || null, comment: comment || null } };
+}
+
+/**
+ * "Passed 24 Sep · Sophie Haddad · client N. Bensaïd" — the line under an inspection whose result was recorded in Keystone;
+ * `t` translates the result, the date and "client" (names stay as typed). Null when no result was recorded in Keystone.
+ */
+export function resultLineText(
+  r: { result: ItpResult; resultOn: string | null; inspector: string | null; clientWitness: string | null },
+  t: (s: string) => string = (s) => s,
+): string | null {
+  if (!r.resultOn) return null;
+  return [`${t(itpResult.label(r.result))} ${t(itpDateText(r.resultOn))}`, r.inspector ?? '', r.clientWitness ? `${t('client')} ${r.clientWitness}` : ''].filter(Boolean).join(' · ');
+}
+
+/** Title of the NCR reported in Vigie from a failed inspection (prefill `titre`): "ITP I-03 · Structure · Paint thickness (DFT)". */
+export const inspectionNcrTitle = (i: { number: string; system: string; name: string }) => `ITP ${i.number} · ${i.system} · ${i.name}`;
