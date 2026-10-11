@@ -8,7 +8,8 @@
 import { LO, OK, TAG_CLASS, lifecycleTone, statusTone } from '@/components/app/tones';
 import { screenHref } from '@/config/screens';
 import {
-  BOM_SORT_KEYS, assemblyPaths, bomSupplierOptions, bomTypeOptions, filterBomLines, filterSpares, nextBomSort, nodeCost, sortBomLines, spareSummary,
+  BOM_PRICE_SOURCE_LABEL, BOM_SORT_KEYS, ROLLUP_SOURCE_LABEL, assemblyPaths, bomSupplierOptions, bomTypeOptions, filterBomLines, filterSpares, nextBomSort, nodeCost,
+  sortBomLines, spareSummary,
   type AssemblyNode, type BomSortKey,
 } from '@/domain/bom';
 import type { Lang, T } from '@/i18n/translate';
@@ -56,7 +57,8 @@ export const ecoScreenHref = (number: string) => `${screenHref('eco')}?eco=${enc
 export function bomKpiView(s: BomScreenData['bom']['summary'], t: T, lang: Lang): KpiView[] {
   return [
     { label: t('Articles'), value: String(s.articles), sub: unitsInTotalText(s.units, lang), color: OK },
-    { label: t('BOM value'), value: money(s.valueEur / 1000, lang), sub: t('At unit list price'), color: OK },
+    // E-2a = a (R-103): valued at the ordered price, else the last purchase price, else the catalogue price.
+    { label: t('BOM value'), value: money(s.valueEur / 1000, lang), sub: t('Ordered, else last purchase, else catalogue price'), color: OK },
     { label: t('Not validated'), value: String(s.notValidated), sub: t('Blocked for purchasing'), color: s.notValidated ? LO : OK },
     { label: t('Outdated / obsolete'), value: String(s.outdatedOrObsolete), sub: t('Replace before ordering'), color: s.outdatedOrObsolete ? LO : OK },
     { label: t('Export-restricted'), value: String(s.exportRestricted), sub: t('Lines needing customs review'), color: OK },
@@ -95,7 +97,11 @@ export interface FlatRowView {
   makeBuy: string;
   pu: TagView;
   qty: string;
+  /** Valuation unit price (E-2a) and where it comes from ("Ordered price", "Last purchase price", "Catalogue price"). */
   price: string;
+  priceSource: string;
+  /** "Catalogue price: €48" when the valuation is not the catalogue price; null otherwise. */
+  priceTitle: string | null;
   total: string;
   /** Assembly valued through its components: its total is not added to the BOM value (09 OQ6). */
   totalNote: string | null;
@@ -162,7 +168,9 @@ export function flatView(code: string, state: BomState, lines: readonly BomLine[
     makeBuy: t(l.makeBuyLabel),
     pu: puTag(l.wearSpare),
     qty: qtyText(l.quantity, lang),
-    price: moneyEur(l.listPriceEur, lang),
+    price: moneyEur(l.unitPriceEur, lang),
+    priceSource: t(BOM_PRICE_SOURCE_LABEL[l.priceSource]),
+    priceTitle: l.priceSource === 'catalogue' ? null : `${t('Catalogue price')}: ${moneyEur(l.listPriceEur, lang)}`,
     total: moneyEur(l.totalEur, lang),
     totalNote: l.valuedByComponents ? t('Valued through its components — not added to the BOM value') : null,
     status: partTag(l.status, l.statusLabel, t),
@@ -206,6 +214,8 @@ export interface TreeRowView {
   rev: string;
   status: TagView;
   unit: string;
+  /** Source of the unit cost (E-2a): a leaf's price basis, "Roll-up of components" for an assembly. */
+  unitSource: string;
   total: string;
   /** Opens the node drawer (`bomNode`). */
   href: string;
@@ -231,7 +241,8 @@ export function treeView(code: string, state: BomState, rows: readonly BomTreeNo
     rows: rows.map((n) => ({
       ref: n.ref, name: dataT(n.name, lang), depth: n.depth, path: n.path, hasChildren: n.children.length > 0, qty: qtyText(n.qty, lang), ext: qtyText(n.extended, lang),
       makeBuy: t(n.makeBuyLabel), pu: puTag(n.wearSpare), rev: n.revision ?? '—', status: partTag(n.status, n.statusLabel, t),
-      unit: moneyEur(n.unitCostEur, lang), total: moneyEur(n.extendedCostEur, lang),
+      unit: moneyEur(n.unitCostEur, lang), unitSource: t(n.priceSource === 'rollup' ? ROLLUP_SOURCE_LABEL : BOM_PRICE_SOURCE_LABEL[n.priceSource]),
+      total: moneyEur(n.extendedCostEur, lang),
       href: bomHref(code, { ...state, part: null, node: n.ref }), selected: state.node === n.ref,
     })),
   };
@@ -278,7 +289,7 @@ export function nodeDrawerView(
 ): NodeDrawerView | null {
   const n = state.node ? data.rows.find((r) => r.ref === state.node) : undefined;
   if (!n) return null;
-  // A leaf's roll-up is its last purchase price; the domain rolls the assembly up from its leaves.
+  // A leaf's roll-up is its valuation (E-2a: ordered, else last purchase, else catalogue); the domain rolls the assembly up.
   const rolled = new Map(data.rows.map((r) => [r.ref, r.unitCostEur]));
   const c = nodeCost(data.structure, n.ref, n.listPriceEur, (r) => rolled.get(r) ?? 0)!;
   const paths = assemblyPaths(data.structure, n.ref);
@@ -297,7 +308,8 @@ export function nodeDrawerView(
     ],
     costTitle: t('Costed roll-up'),
     cost: [
-      { k: t('Rolled-up cost (last purchase)'), v: moneyEur(c.unitCostEur, lang) },
+      { k: t('Rolled-up cost'), v: moneyEur(c.unitCostEur, lang) },
+      { k: t('Price basis'), v: t(n.priceSource === 'rollup' ? ROLLUP_SOURCE_LABEL : BOM_PRICE_SOURCE_LABEL[n.priceSource]) },
       { k: t('List / standard price'), v: moneyEur(c.listPriceEur, lang) },
       { k: t('Delta'), v: signedEur(c.deltaEur, lang), color: c.overList ? LO : undefined },
       { k: t(`Per project (× ${c.perProjectQty})`), v: moneyEur(c.perProjectCostEur, lang) },
@@ -362,7 +374,8 @@ export interface CompareView {
   totalLabel: string;
   total: string;
   labels: Record<'line' | 'article' | 'from' | 'to' | 'change' | 'delta', string>;
-  rows: { line: string; name: string; a: string; b: string; kind: TagView; delta: string }[];
+  /** `deltaTitle`: the unit price and its basis behind the delta (E-2a), null when the line has no price. */
+  rows: { line: string; name: string; a: string; b: string; kind: TagView; delta: string; deltaTitle: string | null }[];
 }
 
 const DIFF_TAG: Record<RevisionDiffKind, string> = { added: 'tag tag-accent', substitution: 'tag tag-outline', quantity: 'tag tag-neutral' };
@@ -385,6 +398,7 @@ export function compareView(c: NonNullable<BomScreenData['comparison']>, t: T, l
     rows: c.lines.map((l) => ({
       line: l.path, name: dataT(l.name, lang), a: l.qtyFrom == null ? '—' : qtyText(l.qtyFrom, lang), b: l.qtyTo == null ? '—' : qtyText(l.qtyTo, lang),
       kind: { label: t(l.kindLabel), cls: DIFF_TAG[l.kind] }, delta: l.deltaEur ? signedEur(l.deltaEur, lang) : '—',
+      deltaTitle: l.unitPriceEur != null && l.priceSource ? `${moneyEur(l.unitPriceEur, lang)} · ${t(BOM_PRICE_SOURCE_LABEL[l.priceSource])}` : null,
     })),
   };
 }
@@ -518,7 +532,8 @@ export function bomScreenView(code: string, state: BomState, data: BomScreenData
     kpis: bomKpiView(data.bom.summary, t, lang),
     displayLabel: t('Display'),
     views: viewSegView(code, state, t),
-    note: t('Roll-ups use the last purchase price'),
+    // E-2a (R-103): the roll-ups use the BOM valuation (the prototype's template said "the last purchase price").
+    note: t('Roll-ups use the ordered price, else the last purchase price, else the catalogue price'),
     flat: v === 'flat' ? flatView(code, state, data.bom.lines, t, lang) : null,
     tree: v === 'tree' && data.assembly ? treeView(code, state, data.assembly.rows, t, lang) : null,
     node: v === 'tree' && data.assembly ? nodeDrawerView(code, state, data.assembly, opts, t, lang) : null,

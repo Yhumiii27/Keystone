@@ -35,7 +35,8 @@ async function render(sp: Record<string, string>, lang: Lang, code = 'HLT-026', 
 describe('Project BOM render', () => {
   it('flat list (EN): KPI tiles, Display segment, filters, sortable headers, ECO tag links, muted assembly totals', async () => {
     const html = await render({}, 'en');
-    for (const s of ['Articles', '€7.05M', 'Display', 'Flat list', 'Assembly tree', 'Where-used', 'Compare revisions', 'PU/PR list', 'Roll-ups use the last purchase price',
+    // E-2a (R-103): €7.02M at the ordered / last purchase / catalogue price (€7.05M at the catalogue price before Delivery 7).
+    for (const s of ['Articles', '€7.02M', 'Display', 'Flat list', 'Assembly tree', 'Where-used', 'Compare revisions', 'PU/PR list', 'Roll-ups use the ordered price, else the last purchase price, else the catalogue price',
       'Search reference, article, manufacturer ref', 'All types · 35', 'All suppliers · 35', '35 / 35 articles', 'Bill of materials · 35 articles', 'Click an article for its full record',
       'Also used in', 'Restrictions']) expect(html, s).toContain(s);
     expect(html).toContain('href="/reference/eco?eco=ECO-2026-015"');
@@ -51,7 +52,8 @@ describe('Project BOM render', () => {
 
   it('assembly tree, where-used and compare (EN and FR)', async () => {
     const tree = await render({ view: 'tree' }, 'en');
-    for (const s of ['Assembly tree', 'Reference · article', 'Extended cost', 'ASM-RMG-250', '€713,996', 'aria-expanded="true"', 'Fold ASM-RMG-250']) expect(tree, s).toContain(s);
+    // E-2a (R-103): a crane rolls up to €720,396 (€713,996 at the last purchase price before Delivery 7); each unit cost says its basis.
+    for (const s of ['Assembly tree', 'Reference · article', 'Extended cost', 'ASM-RMG-250', '€720,396', 'Roll-up of components', 'Ordered price', 'aria-expanded="true"', 'Fold ASM-RMG-250']) expect(tree, s).toContain(s);
     const used = await render({ view: 'used', used: 'EL-TRF-2MVA' }, 'fr');
     for (const s of ['Cas d’emploi', 'Chemins d’assemblage', 'PO-1063', 'Nordvolt · HLT-026', 'Équivalents :']) expect(used, s).toContain(s);
     const cmp = await render({ view: 'compare' }, 'fr');

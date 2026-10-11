@@ -98,8 +98,9 @@ function FlatList({ view }: { view: FlatView }) {
                 <Td align="right" numeric>
                   {r.qty}
                 </Td>
-                <Td align="right" numeric nowrap>
+                <Td align="right" numeric nowrap title={r.priceTitle ?? undefined}>
                   {r.price}
+                  <span className={s.priceSource}>{r.priceSource}</span>
                 </Td>
                 <Td align="right" numeric nowrap className={r.totalNote ? s.totalMuted : undefined} title={r.totalNote ?? undefined}>
                   {r.total}
@@ -223,7 +224,7 @@ function Compare({ view }: { view: CompareView }) {
               <td>
                 <span className={r.kind.cls}>{r.kind.label}</span>
               </td>
-              <Td align="right" numeric nowrap>
+              <Td align="right" numeric nowrap title={r.deltaTitle ?? undefined}>
                 {r.delta}
               </Td>
             </tr>

@@ -26,5 +26,12 @@
   "Only the reserving project’s manager or the director can release this reservation": "Seul le chef du projet qui a réservé ou le directeur peut libérer cette réservation",
   "Reservation reduced": "Réservation diminuée",
   "director override": "dérogation du directeur",
+  "Ordered price": "Prix commandé",
+  "Catalogue price": "Prix catalogue",
+  "Roll-up of components": "Cumul des composants",
+  "Ordered, else last purchase, else catalogue price": "Prix commandé, sinon dernier achat, sinon catalogue",
+  "Rolled-up cost": "Coût cumulé",
+  "Price basis": "Base de prix",
+  "Roll-ups use the ordered price, else the last purchase price, else the catalogue price": "Les cumuls utilisent le prix commandé, sinon le dernier prix d’achat, sinon le prix catalogue",
   "Internal summary of the order recorded in Keystone. The purchase order sent to the supplier, with its legal mentions and terms, is issued by Sage X3. Prices in euros excluding VAT.": "Récapitulatif interne de la commande enregistrée dans Keystone. Le bon de commande envoyé au fournisseur, avec ses mentions légales et conditions, est édité par Sage X3. Prix en euros hors TVA."
 }

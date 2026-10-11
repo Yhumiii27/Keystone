@@ -5,20 +5,23 @@ import 'server-only';
 // - the BOM value counts every physical article once: an assembly whose components are listed in the same BOM is valued
 //   through its components (`valueEur`; the prototype added both, `listValueEur` keeps its figure);
 // - the PU/PR "in stock" quantity is Σ on hand of the part across every location (the prototype always found 0);
-// - "Under change" and the open-ECO tags follow the ECO status Vigie reports.
+// - "Under change" and the open-ECO tags follow the ECO status Vigie reports;
+// - Delivery 7 (E-2a = a, A-11, R-103): the flat list, the tree, a node's roll-up and the revision comparison are valued
+//   with one rule — the project's ordered price (its approved orders' lines), else the last purchase price, else the
+//   catalogue price — and each price says where it comes from (`priceSource`).
 // Projects without a BOM get empty data (no Harbor Line fallback).
 // The rules themselves (value, roll-up, paths, where-used resolution, deltas, system quantity) are the pure functions of
 // src/domain/bom.ts, golden-tested against the prototype.
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import {
-  assemblyPaths, assemblyRows, bomSummary, buildAssembly, diffCostDelta, diffNewRef, isValuedByComponents, pathQuantity, resolvePartQuery, systemQuantity,
-  type AssemblyLink, type AssemblyNode,
+  ORDERED_PO_STATUSES, assemblyPaths, assemblyRows, bomSummary, bomUnitPrice, buildAssembly, diffCostDelta, diffNewRef, isValuedByComponents, orderedUnitPrice,
+  pathQuantity, resolvePartQuery, systemQuantity, type AssemblyLink, type AssemblyNode, type BomPriceSource,
 } from '@/domain/bom';
 import { getDb } from '@/server/db/client';
 import { bomScope, revisionDiffKind, stage as stageCodec, type BomScope, type PartStatus, type RevisionDiffKind, type StageCode, type WearSpare } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
 import {
-  activities, assemblyLinks, parts, projectAssemblyRoots, projectBomLines, projects, revisionDiffLines, revisionDiffs, spareListLines,
+  activities, assemblyLinks, parts, poLines, projectAssemblyRoots, projectBomLines, projects, purchaseOrders, revisionDiffLines, revisionDiffs, spareListLines,
 } from '@/server/db/schema';
 import { installedBasePins, openEcoByPart, partsUnderChange, pinSummary, type InstalledBasePin } from './eco';
 import { getPartsByRef, listParts, type PartRow } from './parts';
@@ -30,7 +33,10 @@ import { stockOnHandByRef } from './stock';
 export interface BomLine extends PartRow {
   /** Quantity in the project (`usage[p3]`). */
   quantity: number;
-  /** list price × quantity, €. */
+  /** Valuation unit price (E-2a: ordered, else last purchase, else catalogue), € — and where it comes from. */
+  unitPriceEur: number;
+  priceSource: BomPriceSource;
+  /** unit price × quantity, €. */
   totalEur: number;
   /** The part is an assembly whose components are listed in this BOM (valued through them). */
   valuedByComponents: boolean;
@@ -65,6 +71,29 @@ export interface ProjectBom {
   hasTree: boolean;
 }
 
+/** A part's valuation in a project (E-2a): unit price and its source. */
+export type PartValuation = { unitEur: number; source: BomPriceSource };
+
+/**
+ * The valuation of parts in a project (E-2a = a): the quantity-weighted price of the project's ordered lines (orders
+ * approved, partly or fully received), else the last purchase price, else the catalogue price. Unknown refs are left out.
+ */
+export async function projectPartValuation(projectId: string, refs: readonly string[]): Promise<Map<string, PartValuation>> {
+  if (!refs.length) return new Map();
+  const db = await getDb();
+  const [ordered, info] = await Promise.all([
+    db.select({ ref: parts.ref, qty: poLines.orderedQty, unitPriceEur: poLines.unitPriceEur })
+      .from(poLines).innerJoin(purchaseOrders, eq(purchaseOrders.id, poLines.poId)).innerJoin(parts, eq(parts.id, poLines.partId))
+      .where(and(eq(purchaseOrders.projectId, projectId), inArray(purchaseOrders.status, [...ORDERED_PO_STATUSES]), inArray(parts.ref, [...refs]))),
+    getPartsByRef([...refs]),
+  ]);
+  const byRef = new Map<string, { qty: number; unitPriceEur: number }[]>();
+  for (const o of ordered) byRef.set(o.ref, [...(byRef.get(o.ref) ?? []), { qty: o.qty, unitPriceEur: o.unitPriceEur }]);
+  return new Map(info.map((p) => [p.ref, bomUnitPrice({
+    orderedEur: orderedUnitPrice(byRef.get(p.ref) ?? []), lastPurchaseEur: p.hasLastPrice ? p.lastPriceEur : null, listPriceEur: p.listPriceEur,
+  })]));
+}
+
 /** Parent → children links of the whole catalogue. */
 async function childrenMap(): Promise<Map<string, AssemblyLink[]>> {
   const db = await getDb();
@@ -87,17 +116,19 @@ export async function getProjectBom(projectCode: string): Promise<ProjectBom | n
     .select({ ref: parts.ref, qty: projectBomLines.quantity, scope: projectBomLines.scope, note: projectBomLines.note, act: activities.code })
     .from(projectBomLines).innerJoin(parts, eq(parts.id, projectBomLines.partId)).leftJoin(activities, eq(activities.id, projectBomLines.activityId))
     .where(eq(projectBomLines.projectId, p.id)).orderBy(asc(parts.position), asc(projectBomLines.position));
-  const [rows, kids, ecoFor, roots] = await Promise.all([
+  const [rows, kids, ecoFor, roots, value] = await Promise.all([
     getPartsByRef(lines.map((l) => l.ref)), childrenMap(), openEcoByPart(),
     db.select({ id: projectAssemblyRoots.id }).from(projectAssemblyRoots).where(eq(projectAssemblyRoots.projectId, p.id)),
+    projectPartValuation(p.id, lines.map((l) => l.ref)),
   ]);
   const byRef = new Map(rows.map((r) => [r.ref, r]));
   const inBom = new Set(lines.map((l) => l.ref));
   const childrenOf = (ref: string) => kids.get(ref) ?? [];
   const out: BomLine[] = lines.map((l) => {
     const r = byRef.get(l.ref)!;
+    const v = value.get(l.ref) ?? { unitEur: r.listPriceEur, source: 'catalogue' as const };
     return {
-      ...r, quantity: l.qty, totalEur: r.listPriceEur * l.qty, valuedByComponents: isValuedByComponents(l.ref, childrenOf, inBom),
+      ...r, quantity: l.qty, unitPriceEur: v.unitEur, priceSource: v.source, totalEur: v.unitEur * l.qty, valuedByComponents: isValuedByComponents(l.ref, childrenOf, inBom),
       scope: l.scope, scopeLabel: bomScope.label(l.scope), activityCode: l.act ?? null, note: l.note,
       alsoUsedIn: r.usage.filter((u) => u.projectCode !== projectCode).map((u) => u.shortCode), openEco: ecoFor[l.ref] ?? null,
     };
@@ -115,8 +146,10 @@ export interface BomTreeNode {
   /** Total units in the project (q × parent extended). */
   extended: number;
   depth: number;
-  /** Rolled-up unit cost: leaf = last purchase price; assembly = Σ child q × roll-up (`rollup` 4231). */
+  /** Rolled-up unit cost: leaf = its valuation (E-2a); assembly = Σ child q × roll-up (`rollup` 4231). */
   unitCostEur: number;
+  /** Source of a leaf's price (E-2a); 'rollup' for an assembly. */
+  priceSource: BomPriceSource | 'rollup';
   /** unit × extended. */
   extendedCostEur: number;
   listPriceEur: number;
@@ -147,7 +180,7 @@ export interface ProjectAssembly {
 export async function getProjectAssembly(projectCode: string): Promise<ProjectAssembly | null> {
   const db = await getDb();
   const [root] = await db
-    .select({ ref: parts.ref, q: projectAssemblyRoots.quantity })
+    .select({ ref: parts.ref, q: projectAssemblyRoots.quantity, projectId: projects.id })
     .from(projectAssemblyRoots).innerJoin(projects, eq(projects.id, projectAssemblyRoots.projectId)).innerJoin(parts, eq(parts.id, projectAssemblyRoots.rootPartId))
     .where(eq(projects.code, projectCode)).orderBy(asc(projectAssemblyRoots.position)).limit(1);
   if (!root) return null;
@@ -156,8 +189,10 @@ export async function getProjectAssembly(projectCode: string): Promise<ProjectAs
   const refs = new Set<string>();
   const collect = (n: AssemblyNode) => { refs.add(n.ref); n.children.forEach(collect); };
   collect(structure);
-  const info = new Map((await getPartsByRef([...refs])).map((p) => [p.ref, p]));
-  const flat = assemblyRows(structure, (r) => info.get(r)?.lastPriceEur ?? 0);
+  const [infoRows, value] = await Promise.all([getPartsByRef([...refs]), projectPartValuation(root.projectId, [...refs])]);
+  const info = new Map(infoRows.map((p) => [p.ref, p]));
+  // E-2a: a leaf is valued at the project's ordered price, else its last purchase price, else the catalogue price.
+  const flat = assemblyRows(structure, (r) => value.get(r)?.unitEur ?? info.get(r)?.listPriceEur ?? 0);
   const rows: BomTreeNode[] = [];
   let i = 0;
   // assemblyRows walks depth-first in the same order as this build, so row i is the i-th node visited.
@@ -166,6 +201,7 @@ export async function getProjectAssembly(projectCode: string): Promise<ProjectAs
     const p = info.get(n.ref);
     const node: BomTreeNode = {
       ref: n.ref, name: p?.name ?? n.ref, qty: a.qty, extended: a.extended, depth: a.depth, unitCostEur: a.unitCostEur, extendedCostEur: a.extendedCostEur,
+      priceSource: n.children.length ? 'rollup' : (value.get(n.ref)?.source ?? 'catalogue'),
       listPriceEur: p?.listPriceEur ?? 0, makeBuyLabel: p?.makeBuyLabel ?? '', wearSpare: p?.wearSpare ?? null, revision: p?.revision ?? null,
       status: p?.status ?? 'validated', statusLabel: p?.statusLabel ?? '', manufacturer: p?.manufacturer ?? null, manufacturerRef: p?.manufacturerRef ?? null,
       leadWeeks: p?.leadWeeks ?? null, leafCount: a.leafCount, children: [], path: a.path,
@@ -225,8 +261,12 @@ export interface RevisionComparison {
   toRevision: string;
   date: string;
   ecoNumber: string | null;
-  lines: { path: string; name: string; qtyFrom: number | null; qtyTo: number | null; kind: RevisionDiffKind; kindLabel: string; newRef: string; lastPriceEur: number | null; deltaEur: number }[];
-  /** Σ quantity delta × last purchase price (per root unit — "per crane"). */
+  /** `unitPriceEur`: the new part's valuation (E-2a: ordered, else last purchase, else catalogue) and its source. */
+  lines: {
+    path: string; name: string; qtyFrom: number | null; qtyTo: number | null; kind: RevisionDiffKind; kindLabel: string; newRef: string;
+    unitPriceEur: number | null; priceSource: BomPriceSource | null; deltaEur: number;
+  }[];
+  /** Σ quantity delta × unit price (per root unit — "per crane"). */
   totalDeltaEur: number;
 }
 
@@ -238,12 +278,16 @@ export async function getRevisionComparison(projectCode: string): Promise<Revisi
   const [d] = await db.select({ d: revisionDiffs }).from(revisionDiffs).innerJoin(parts, eq(parts.id, revisionDiffs.assemblyPartId)).where(eq(parts.ref, asm.root.ref));
   if (!d) return null;
   const lines = await db.select().from(revisionDiffLines).where(eq(revisionDiffLines.diffId, d.d.id)).orderBy(asc(revisionDiffLines.position));
-  const prices = new Map((await getPartsByRef(lines.map((l) => diffNewRef(l.path)))).map((p) => [p.ref, p.lastPriceEur]));
+  const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, projectCode));
+  const prices = await projectPartValuation(p.id, lines.map((l) => diffNewRef(l.path)));
   const out = lines.map((l) => {
     const ref = diffNewRef(l.path);
-    const last = prices.get(ref) ?? null;
-    const delta = diffCostDelta(l.qtyFrom, l.qtyTo, last);
-    return { path: l.path, name: l.name, qtyFrom: l.qtyFrom, qtyTo: l.qtyTo, kind: l.kind, kindLabel: revisionDiffKind.label(l.kind), newRef: ref, lastPriceEur: last, deltaEur: delta };
+    const v = prices.get(ref) ?? null;
+    const delta = diffCostDelta(l.qtyFrom, l.qtyTo, v?.unitEur ?? null);
+    return {
+      path: l.path, name: l.name, qtyFrom: l.qtyFrom, qtyTo: l.qtyTo, kind: l.kind, kindLabel: revisionDiffKind.label(l.kind), newRef: ref,
+      unitPriceEur: v?.unitEur ?? null, priceSource: v?.source ?? null, deltaEur: delta,
+    };
   });
   return { assemblyRef: asm.root.ref, fromRevision: d.d.fromRevision, toRevision: d.d.toRevision, date: d.d.diffDate, ecoNumber: d.d.ecoNumber, lines: out, totalDeltaEur: out.reduce((s, l) => s + l.deltaEur, 0) };
 }

@@ -1,6 +1,6 @@
 'use client';
 // Assembly-tree node drawer (template 1233–1243; `nodeVals` 4242–4247), opened with `?node=<ref>`: identification,
-// costed roll-up at last purchase price against the list price, the paths that use the node, and three actions —
+// costed roll-up (E-2a: ordered, else last purchase, else catalogue price) against the list price, the paths that use the node, and three actions —
 // "Part record" (part drawer over the flat list), "Drawings" (PDM vault searched on the reference) and "Raise ECO",
 // which opens Vigie's new-ECO form prefilled with the part and the project (Vigie owns the ECOs; it opens outside
 // Keystone, so it ends with the "opens outside" arrow like every Vigie link).

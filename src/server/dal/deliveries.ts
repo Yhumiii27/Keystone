@@ -9,14 +9,18 @@ import 'server-only';
 //   (from quarantine to the central warehouse when they were held there), rejected units to quarantine; the order's
 //   received quantities and status follow the accepted quantities, and the invoices of the receipt see its value
 //   (3-way match);
-// - the inspector, the receiving clerk and the decision maker are the viewer.
+// - the inspector, the receiving clerk and the decision maker are the viewer;
+// - Delivery 7 (A-11, R-103): accepted goods update the part's last purchase price (the order line's price, the receipt's
+//   date, the order's supplier) unless a later purchase is already recorded — the BOM and the stock read it.
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { replacesLastPrice } from '@/domain/bom';
 import { putAwayAfterQc, qcPlan, registerPlan, remainingToAnnounce, type QcDecision, type ReceiptForAnnounce } from '@/domain/deliveries';
 import { getDb } from '@/server/db/client';
 import { STATUS_ISO, locationType, receiptStatus, type LocationType, type ReceiptStatus } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import {
-  goodsReceipts, parts, persons, poLines, projectSites, projects, purchaseOrders, receiptAttachments, receiptLines, stockPositions, storageLocations, supplierInvoices, suppliers,
+  goodsReceipts, partLastPrices, parts, persons, poLines, projectSites, projects, purchaseOrders, receiptAttachments, receiptLines, stockPositions, storageLocations,
+  supplierInvoices, suppliers,
 } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
 import { onTimeDeliveriesOf } from './kpis';
@@ -432,6 +436,15 @@ async function decideReceipt(number: string, mode: 'accept' | 'reject' | 'lines'
       }
       const pl = poLineRows.find((x) => x.partId === l.partId);
       if (pl) value += accepted * pl.unitPriceEur;
+      // A-11 (R-103): the accepted goods give the part its last purchase price.
+      if (pl && accepted > 0) {
+        const receivedOn = r.receivedOn ?? STATUS_ISO;
+        const [stored] = await tx.select({ purchasedOn: partLastPrices.purchasedOn }).from(partLastPrices).where(eq(partLastPrices.partId, l.partId));
+        if (replacesLastPrice(stored, receivedOn)) {
+          const row = { unitPriceEur: pl.unitPriceEur, purchasedOn: receivedOn, supplierId: po.supplierId, updatedAt: new Date() };
+          await tx.insert(partLastPrices).values({ partId: l.partId, ...row }).onConflictDoUpdate({ target: partLastPrices.partId, set: row });
+        }
+      }
     }
     // The order's received quantities follow the accepted quantities of all its receipts.
     const accByPart = await tx.select({ partId: receiptLines.partId, acc: sql<number>`sum(${receiptLines.acceptedQty})::float8` }).from(receiptLines)

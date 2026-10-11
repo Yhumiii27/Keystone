@@ -93,3 +93,6 @@
 .lead { font-size: 12px; color: var(--color-neutral-300); }
 .stock { font-size: 12px; color: var(--color-neutral-300); }
 .stockShort { color: var(--color-accent-300); }
+
+/* Delivery 7 (E-2a, R-103): where a unit price comes from, under the price. */
+.priceSource { display: block; font-size: 10.5px; color: var(--color-neutral-500); font-variant-numeric: normal; }

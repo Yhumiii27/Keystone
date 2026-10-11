@@ -107,6 +107,7 @@ describe('/projects/[code]/bom', () => {
   it('French: labels and figures through the dictionary', async () => {
     session.lang = 'fr';
     const v = body(await page());
-    expect([v.kpis[1].label, v.kpis[1].value, v.views[0].label, v.flat!.count]).toEqual(['Valeur nomenclature', '7,05 M€', 'Liste à plat', '35 / 35 article(s)']);
+    // E-2a (R-103): ordered, else last purchase, else catalogue price — 7,02 M€ (7,05 M€ at the catalogue price before Delivery 7).
+    expect([v.kpis[1].label, v.kpis[1].value, v.views[0].label, v.flat!.count]).toEqual(['Valeur nomenclature', '7,02 M€', 'Liste à plat', '35 / 35 article(s)']);
   });
 });
