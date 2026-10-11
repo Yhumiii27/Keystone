@@ -13,5 +13,18 @@
   "The effective date cannot be after today": "La date effective ne peut pas être postérieure à aujourd’hui",
   "The effective date cannot be before the previous stage change": "La date effective ne peut pas être antérieure au changement d’étape précédent",
   "Stage changed": "Changement d’étape",
+  "Release reservation": "Libérer la réservation",
+  "Release": "Libération",
+  "Activity (required)": "Activité (obligatoire)",
+  "Activity — credits its work package (optional)": "Activité — crédite son lot de travaux (facultatif)",
+  "The current project has no plan activity: an issue cannot be recorded.": "Le projet courant n’a aucune activité planifiée : aucune sortie ne peut être enregistrée.",
+  "Take them anyway (director override, recorded in the audit trail)": "Les prendre quand même (dérogation du directeur, tracée dans le journal d’audit)",
+  "Choose the activity the parts are issued to": "Choisissez l’activité à laquelle les pièces sont sorties",
+  "Choose an activity of the project plan": "Choisissez une activité du planning du projet",
+  "This line holds no reservation for this project": "Cette ligne ne porte aucune réservation pour ce projet",
+  "Only the portfolio director can take stock reserved for another project": "Seul le directeur de portefeuille peut prendre du stock réservé pour un autre projet",
+  "Only the reserving project’s manager or the director can release this reservation": "Seul le chef du projet qui a réservé ou le directeur peut libérer cette réservation",
+  "Reservation reduced": "Réservation diminuée",
+  "director override": "dérogation du directeur",
   "Internal summary of the order recorded in Keystone. The purchase order sent to the supplier, with its legal mentions and terms, is issued by Sage X3. Prices in euros excluding VAT.": "Récapitulatif interne de la commande enregistrée dans Keystone. Le bon de commande envoyé au fournisseur, avec ses mentions légales et conditions, est édité par Sage X3. Prix en euros hors TVA."
 }

@@ -101,7 +101,11 @@ describe('Stock & storages view model (seed)', () => {
     }
     // Quantity labels per operation, scrap warning of a pinned part (FD-DET-OPT, row 10).
     const pinned = stockDrawerView({ detail: (await getStockPosition(rows[10].id))!, locations, pins, state: S0 }, t, lang);
+    // "Release reservation" (R-099) only for who may release it (here nobody: the view gets no right).
     expect(pinned.ops.map((o) => o.qtyLabel)).toEqual(['adjust', 'transfer', 'reserve', 'issue', 'return', 'scrap'].map((op) => G[lang].drawerOps[op].qtyLabel));
+    const releasable = stockDrawerView({ detail: (await getStockPosition(rows[10].id))!, locations, pins, state: S0, canRelease: true, projectCode: 'MSR-012' }, t, lang);
+    expect(releasable.ops.map((o) => o.value)).toEqual(['adjust', 'transfer', 'reserve', 'release', 'issue', 'return', 'scrap']);
+    expect(releasable.reservedForOther).toEqual({ project: 'HLT-026', qty: 180 });
     expect(pinned.scrapWarning!.ecoHref).toBe('/reference/eco?eco=ECO-2026-015');
     expect(pinned.scrapWarning!.text).toBe(
       lang === 'en'
@@ -126,10 +130,11 @@ describe('Stock & storages after movements (DAL writes, the viewer as author)', 
     await applyStockMovement(id(0), { op: 'adjust', qty: 7 }, who);
     await applyStockMovement(id(4), { op: 'transfer', qty: 2, targetLocation: 'Magasin chantier — Marseille' }, who);
     await applyStockMovement(id(6), { op: 'reserve', qty: 4, projectCode: 'HLT-026' }, who);
-    await applyStockMovement(id(6), { op: 'issue', qty: 6, projectCode: 'HLT-026' }, who);
+    // SC-5a (R-098): the issue names its activity — the prototype's "→ HLT activity" reads "→ A1250 Steel erection — Bays 3–4".
+    await applyStockMovement(id(6), { op: 'issue', qty: 6, projectCode: 'HLT-026', activityCode: 'A1250' }, who);
     await applyStockMovement(id(17), { op: 'return', qty: 3, projectCode: 'HLT-026' }, who);
     await applyStockMovement(id(12), { op: 'scrap', qty: 1 }, who);
-    const g = G.ops.sequence;
+    const g = JSON.parse(JSON.stringify(G.ops.sequence).replaceAll(' → HLT activity', ' → A1250 Steel erection — Bays 3–4'));
     const { view } = await screen('en');
     expect(viewRows(view.rows).map((r) => ({ ref: r.ref, loc: r.loc, onHand: r.onHand, reserved: r.reserved, avail: r.avail, source: r.source, last: r.last }))).toEqual(
       goldenRows(g.rows).map((r) => ({ ref: r.ref, loc: r.loc, onHand: r.onHand, reserved: r.reserved, avail: r.avail, source: r.source, last: r.last })),
@@ -143,7 +148,7 @@ describe('Stock & storages after movements (DAL writes, the viewer as author)', 
     expect(viewMoves(fr.view.moves).slice(0, 3).map((m) => [m.type, m.where])).toEqual([
       ['Rebut', 'Entrepôt central — Lyon · reprise / rebut'],
       ['Retour', 'HLT → Magasin chantier — Marseille'],
-      ['Sortie', 'Entrepôt central — Lyon → activité HLT'],
+      ['Sortie', 'Entrepôt central — Lyon → A1250 Steel erection — Bays 3–4'],
     ]);
     expect(viewMoves(fr.view.moves)[5]).toMatchObject({ type: 'Ajustement', where: 'Entrepôt central — Lyon · inventaire', when: '25 sept. 16:15' });
   });

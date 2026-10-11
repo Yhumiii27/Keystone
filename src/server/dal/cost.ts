@@ -12,6 +12,7 @@ import {
   budgetChangeLines, changeRequestSteps, changeRequestWbs, changeRequests, costCategories, costStreamPeriods, costStreams, evmPeriods,
   offerQuotes, projectControls, projects, wpBudgets,
 } from '@/server/db/schema';
+import { stockCostByWorkPackage } from './stock';
 
 export interface OfferQuoteRow {
   /** "Structural steel — columns, beams, purlins". */
@@ -109,13 +110,14 @@ export async function getCostControl(code: string): Promise<CostControl | null> 
     .where(eq(projects.code, code));
   if (!head) return null;
   const pid = head.projectId;
-  const [evm, offer, streams, cats, wps, lines] = await Promise.all([
+  const [evm, offer, streams, cats, wps, lines, stockByWp] = await Promise.all([
     db.select().from(evmPeriods).where(eq(evmPeriods.projectId, pid)).orderBy(asc(evmPeriods.monthIndex)),
     db.select().from(offerQuotes).where(eq(offerQuotes.projectId, pid)).orderBy(asc(offerQuotes.position)),
     db.select().from(costStreams).where(eq(costStreams.projectId, pid)).orderBy(asc(costStreams.position)),
     db.select().from(costCategories).where(eq(costCategories.projectId, pid)).orderBy(asc(costCategories.position)),
     db.select().from(wpBudgets).where(eq(wpBudgets.projectId, pid)).orderBy(asc(wpBudgets.position)),
     db.select().from(budgetChangeLines).where(eq(budgetChangeLines.projectId, pid)).orderBy(asc(budgetChangeLines.position)),
+    stockCostByWorkPackage(pid),
   ]);
   const periods = streams.length
     ? await db.select().from(costStreamPeriods).where(inArray(costStreamPeriods.streamId, streams.map((s) => s.id))).orderBy(asc(costStreamPeriods.monthIndex))
@@ -140,7 +142,10 @@ export async function getCostControl(code: string): Promise<CostControl | null> 
       code: k.code, name: k.name, costType: k.costType, costTypeLabel: costType.label(k.costType), source: ACTUALS_SOURCE[k.costType],
       budget: k.budgetKeur, actual: k.actualKeur, committed: k.committedKeur, forecast: k.forecastKeur,
     })),
-    workPackages: wps.map((w) => ({ wbs: w.wbsCode, name: w.name, original: w.originalKeur, changes: w.changesKeur, actual: w.actualKeur, eac: w.eacKeur })),
+    // SC-5a (R-098): stock material issued to the package's activities in Keystone is added to its actual cost.
+    workPackages: wps.map((w) => ({
+      wbs: w.wbsCode, name: w.name, original: w.originalKeur, changes: w.changesKeur, actual: w.actualKeur + (stockByWp.get(w.wbsCode) ?? 0), eac: w.eacKeur,
+    })),
     changes: lines.map((l) => ({
       id: l.number, title: l.title, amount: l.amountKeur, days: l.scheduleDays, status: l.status, statusLabel: budgetChangeStatus.label(l.status), meta: l.meta,
     })),

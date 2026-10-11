@@ -52,6 +52,19 @@
   background: var(--color-accent-900);
 }
 .scrapIcon { color: var(--color-accent); flex: none; margin-top: 2px; }
+/* Delivery 7 (R-099): units reserved for another project, the director's override. */
+.reservedNote {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 12px;
+  color: var(--color-neutral-200);
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-neutral-800);
+}
+.override { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--color-accent-200); flex-basis: 100%; }
 .scrapText { text-wrap: pretty; margin-right: auto; }
 :global(.btn).ecoBtn { font-size: 12px; padding: 2px 6px; white-space: nowrap; }
 .qtyRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }

@@ -166,7 +166,9 @@ describe('stock movements and the mock X3 exchange', () => {
   it('adjust, transfer, reserve, issue, return, scrap with their guards; Local until pushed; import keeps local changes', async () => {
     const line = (ref: string, loc: string) => stockOf(ref, loc).then((s) => s!.id);
     const lt = await line('LT-HB-200W', 'Entrepôt central — Lyon');
-    await expect(applyStockMovement(lt, { op: 'issue', qty: 500, projectCode: 'HLT-026' }, 'Fabien Bertrand')).rejects.toThrow(/Only 120 on hand/);
+    // SC-5a (Delivery 7, R-098): an issue names its activity.
+    await expect(applyStockMovement(lt, { op: 'issue', qty: 5, projectCode: 'HLT-026' }, 'Fabien Bertrand')).rejects.toThrow(/Choose the activity/);
+    await expect(applyStockMovement(lt, { op: 'issue', qty: 500, projectCode: 'HLT-026', activityCode: 'A1420' }, 'Fabien Bertrand')).rejects.toThrow(/Only 120 on hand/);
     await expect(applyStockMovement(lt, { op: 'transfer', qty: 5 }, 'Fabien Bertrand')).rejects.toThrow(/destination/);
     await expect(applyStockMovement(lt, { op: 'reserve', qty: 5 }, 'Fabien Bertrand')).rejects.toThrow(/project is required/);
     await applyStockMovement(lt, { op: 'transfer', qty: 20, targetLocation: 'Magasin chantier — Le Havre' }, 'Fabien Bertrand');

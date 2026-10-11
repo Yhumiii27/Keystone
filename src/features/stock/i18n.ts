@@ -27,7 +27,8 @@ export function whereT(text: string, lang: Lang): string {
     .replace(/ · rework \/ scrap$/, ' · reprise / rebut')
     .replace(/^QC failed · /, 'QC non conforme · ')
     .replace(/ · QC failed$/, ' · QC non conforme')
-    .replace(/ · (\S+) accepted$/, ' · $1 accepté');
+    .replace(/ · (\S+) accepted$/, ' · $1 accepté')
+    .replace(/ · ([A-Z]{3}) released$/, ' · réservation $1 libérée');
 }
 
 /** KPI "Stock value" sub: "18 lines · 6 locations". */
@@ -60,11 +61,18 @@ export const pushToastText = (ref: string, location: string, movements: number, 
 
 /** Rule messages of the movement form (src/domain/stock.ts, the stock DAL) → the viewer's language; null when unknown. */
 export function stockErrorT(message: string, t: T, lang: Lang): string | null {
-  const only = /^Only (\d+) (on hand|available) at (.+)$/.exec(message);
+  const only = /^Only (\d+) (on hand|available|reserved) at (.+)$/.exec(message);
   if (only) {
     const [, n, kind, loc] = only;
     if (!fr(lang)) return message;
+    if (kind === 'reserved') return `Seulement ${n} ${plural(+n, 'réservé', 'réservés')} à ${loc}`;
     return kind === 'on hand' ? `Seulement ${n} en stock à ${loc}` : `Seulement ${n} ${plural(+n, 'disponible', 'disponibles')} à ${loc}`;
+  }
+  // R-099: units reserved for another project.
+  const others = /^(\d+) reserved for (\S+) — its project manager must release them first$/.exec(message);
+  if (others) {
+    const [, n, project] = others;
+    return fr(lang) ? `${n} ${plural(+n, 'réservé', 'réservés')} pour ${project} — son chef de projet doit d’abord les libérer` : message;
   }
   return KNOWN_ERRORS.has(message) ? t(message) : null;
 }
@@ -73,4 +81,6 @@ const KNOWN_ERRORS = new Set([
   'Invalid movement', 'Invalid quantity', 'Enter a whole quantity', 'Enter a quantity above 0', 'Choose a destination', 'The destination is the current location',
   'A project is required', 'This line is already reserved for another project', 'The destination is reserved for another project', 'Unknown stock line',
   'Unknown project',
+  // Delivery 7 (SC-5a, R-098 / R-099).
+  'Choose the activity the parts are issued to', 'Choose an activity of the project plan', 'This line holds no reservation for this project',
 ]);

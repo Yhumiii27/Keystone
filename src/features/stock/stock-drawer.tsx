@@ -1,21 +1,26 @@
 'use client';
 // Stock-line drawer (docs/spec/08 §4.4, template 1694–1711, `stockSel` 4488–4490): position key/values, the Movement
 // form (operation segment, destination for a transfer, the pinned-part scrap warning, quantity + "Apply movement"),
-// the movement history of the reference, "Part record" (`?part=`) and "Push to X3".
+// the movement history of the reference, "Part record" (`?part=`) and "Push to X3". Delivery 7: an issue names the
+// activity of the current project's plan (required, SC-5a — its value goes to the activity's work package; optional on a
+// return); a line reserved for another project shows what is protected and, for the director, the audited override
+// (R-099); "Release reservation" is offered to the reserving project's PM and the director.
 // Mounted for the whole screen so the chosen operation survives a change of row, as in the prototype (`stockOp` is not
 // reset); the quantity and the destination are reset per line. The Movement form and "Push to X3" are hidden for
 // viewers outside the workspace. Labels arrive translated in the view model or go through t().
-import { ArrowRight, Check, Cube, PushPin, UploadSimple } from '@phosphor-icons/react/dist/ssr';
+import { ArrowRight, Check, Cube, LockSimple, PushPin, UploadSimple } from '@phosphor-icons/react/dist/ssr';
 import { useId, useState, useTransition, type FormEvent } from 'react';
 import { Button, ButtonLink } from '@/components/ds/Button';
 import { cx } from '@/components/ds/cx';
 import { Drawer } from '@/components/ds/Drawer';
+import { Select } from '@/components/ds/Field';
 import { Segmented } from '@/components/ds/Segmented';
 import { showToast } from '@/components/ds/Toast';
 import { KeyValueList } from '@/components/app/KeyValueList';
-import type { StockOperation } from '@/domain/stock';
+import { reservedForOtherText, type StockOperation } from '@/domain/stock';
 import { useI18n } from '@/i18n/client';
 import { applyStockMovementAction, pushStockLineAction } from './actions';
+import { stockErrorT } from './i18n';
 import type { StockDrawerView } from './model';
 import s from './stock.module.css';
 
@@ -30,30 +35,44 @@ interface LineForm {
   id: string | null;
   qty: string;
   target: string | null;
+  /** Activity of an issue / a return (code), '' when none chosen. */
+  activity: string;
+  /** Director override of another project's reservation (R-099). */
+  override: boolean;
   error: string | null;
 }
 
 export function StockDrawer({ view, projectCode, canEdit }: StockDrawerProps) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [op, setOp] = useState<StockOperation>('adjust');
-  const [form, setForm] = useState<LineForm>({ id: null, qty: '', target: null, error: null });
+  const [form, setForm] = useState<LineForm>({ id: null, qty: '', target: null, activity: '', override: false, error: null });
   const [pending, start] = useTransition();
   const qtyId = useId();
   const errorId = useId();
+  const activityId = useId();
 
   if (!view) return <Drawer open={false} />;
   // Quantity, destination and error belong to the line shown (`select` resets stockQty / stockTarget).
-  const cur: LineForm = form.id === view.id ? form : { id: view.id, qty: '', target: null, error: null };
+  const cur: LineForm = form.id === view.id ? form : { id: view.id, qty: '', target: null, activity: '', override: false, error: null };
   const patch = (p: Partial<LineForm>) => setForm({ ...cur, ...p });
   const current = view.ops.find((o) => o.value === op) ?? view.ops[0];
+  const withActivity = current.value === 'issue' || current.value === 'return';
+  const protectedQty = (current.value === 'issue' || current.value === 'scrap') && view.reservedForOther ? view.reservedForOther : null;
 
   const apply = (e?: FormEvent) => {
     e?.preventDefault();
     if (pending) return;
     start(async () => {
-      const r = await applyStockMovementAction(view.id, { op, qty: cur.qty, target: op === 'transfer' ? cur.target : null }, projectCode);
+      const r = await applyStockMovementAction(
+        view.id,
+        {
+          op: current.value, qty: cur.qty, target: current.value === 'transfer' ? cur.target : null, activity: withActivity ? cur.activity : null,
+          override: protectedQty && view.canOverride ? cur.override : false,
+        },
+        projectCode,
+      );
       if ('error' in r) setForm({ ...cur, error: r.error });
-      else setForm({ ...cur, qty: '', error: null });
+      else setForm({ ...cur, qty: '', override: false, error: null });
     });
   };
   const push = () =>
@@ -84,12 +103,47 @@ export function StockDrawer({ view, projectCode, canEdit }: StockDrawerProps) {
             wrap
             label={t('Movement')}
             options={view.ops.map((o) => ({ value: o.value, label: o.label }))}
-            value={op}
+            value={current.value}
             onChange={(v) => {
               setOp(v);
               if (cur.error) patch({ error: null });
             }}
           />
+          {withActivity && (
+            <>
+              <label className={s.destLabel} htmlFor={activityId}>
+                {current.value === 'issue' ? t('Activity (required)') : t('Activity — credits its work package (optional)')}
+                {view.projectCode ? ` · ${view.projectCode}` : ''}
+              </label>
+              {view.activities.length ? (
+                <Select
+                  id={activityId}
+                  size="sm"
+                  value={cur.activity}
+                  required={current.value === 'issue'}
+                  aria-required={current.value === 'issue' || undefined}
+                  onChange={(e) => patch({ activity: e.target.value, error: null })}
+                  options={[{ value: '', label: t('Choose an activity') }, ...view.activities]}
+                />
+              ) : (
+                <span className={s.note}>{t('The current project has no plan activity: an issue cannot be recorded.')}</span>
+              )}
+            </>
+          )}
+          {protectedQty && (
+            <div className={s.reservedNote}>
+              <LockSimple className={s.scrapIcon} aria-hidden />
+              <span className={s.scrapText}>
+                {stockErrorT(reservedForOtherText(protectedQty.qty, protectedQty.project), t, lang)}
+              </span>
+              {view.canOverride && (
+                <label className={s.override}>
+                  <input type="checkbox" checked={cur.override} onChange={(e) => patch({ override: e.target.checked, error: null })} />
+                  {t('Take them anyway (director override, recorded in the audit trail)')}
+                </label>
+              )}
+            </div>
+          )}
           {op === 'transfer' && (
             <>
               <span className={s.destLabel}>{t('Destination')}</span>
