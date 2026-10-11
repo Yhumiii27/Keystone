@@ -8,6 +8,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { getTableName, is, sql } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 import { healthOf } from '@/domain/health';
+import { D7_ACTUAL, D7_HEALTH, D7_PROGRESS_PCT, D7_SPI } from '@/test/d7-cost-control';
 import { getCostControl, listChangeRequests } from '@/server/dal/cost';
 import { getStageChecklist, getStageHistory, listStages, toggleStageDeliverable } from '@/server/dal/lifecycle';
 import { getOwnerDirectory, getPersonByName, listDepartmentCapacities, listPeople, listUsers, listZones } from '@/server/dal/people';
@@ -197,31 +198,47 @@ async function main() {
   check('17 projects', list.length === 17, list.length);
   check('6 projects with data', list.filter((p) => p.hasData).length === 6);
   const hlt = await getProject('HLT-026');
-  check('HLT-026 budget 4800 · actual 3360 · progress .64', hlt?.budget === 4800 && hlt.actual === 3360 && hlt.progress === 0.64, hlt);
+  // Delivery 7 (R-073, C-2a): progress computed from the activities and BL1 at the data date (0.64 → 0.63, SPI 0.90 → 0.82).
+  check('HLT-026 budget 4800 · actual 3360 · progress .63 · SPI .82', hlt?.budget === 4800 && hlt.actual === 3360 && Math.round(hlt.progress * 100) === 63
+    && Math.round((hlt.spi ?? 0) * 100) === 82, hlt);
   check('HLT-026 #026 · HAV004 · DAS 2 · EMP · Fabrication & Assemblage · R. Aubert · Le Havre · euna',
     hlt?.displayId === '#026' && hlt.analytic === 'HAV004' && hlt.das === '2' && hlt.machineType === 'EMP' && hlt.status === 'Fabrication & Assemblage'
       && hlt.stage === 'fabrication_assemblage' && hlt.pm === 'R. Aubert' && hlt.city === 'Le Havre' && hlt.zone === 'euna', hlt);
-  check('Health HLT-026 at risk, RCF-019 off track', hlt?.health === 'at_risk' && (await getProject('RCF-019'))?.health === 'off_track');
+  // Delivery 7 (R-073; A-13 one health rule): health follows the computed SPI / CPI (was HLT-026 at risk, RCF-019 off track).
+  check('Health HLT-026 off track, RCF-019 at risk', hlt?.health === 'off_track' && (await getProject('RCF-019'))?.health === 'at_risk');
   check('ERP-202 machine type R&D (stored rnd)', (await getProject('ERP-202'))?.machineType === 'R&D');
 
-  // Same values as the former prototype-backed contract (TEMPORARY implementation of projects.ts).
+  // Same values as the former prototype-backed contract (TEMPORARY implementation of projects.ts). Delivery 7 (R-073; C-2a, A-12,
+  // A-13): the six projects with activities show the progress, actual cost and SPI computed from them, and their health follows
+  // (src/test/d7-cost-control.ts); progress and SPI are compared rounded.
   const legacy = PROTO_GEN.initialProjects.map((p) => {
     const id = PROTO.PROJ_ID[p.code];
     const geo = PROTO.GEO[p.code];
+    const d7 = D7_ACTUAL[p.code] != null;
     return {
       code: p.code, name: p.name, displayId: id?.id ?? p.code, analytic: id?.ana ?? null, das: id?.das ?? null, machineType: id?.mt ?? null,
-      status: p.status, pm: p.pm, client: p.client, start: p.start, finish: p.finish, budget: p.budget, actual: p.actual, progress: p.progress,
-      spi: p.spi ?? null, city: geo?.city ?? null, country: geo?.country ?? null, zone: (geo && (geo.zone || PROTO.COUNTRY_ZONE[geo.country])) || 'euna',
-      hasData: !!PROTO_GEN.projectData[p.code], health: healthOf(p),
+      status: p.status, pm: p.pm, client: p.client, start: p.start, finish: p.finish, budget: p.budget,
+      actual: d7 ? D7_ACTUAL[p.code] : p.actual, progress: d7 ? D7_PROGRESS_PCT[p.code] / 100 : p.progress, spi: d7 ? D7_SPI[p.code] : p.spi ?? null,
+      city: geo?.city ?? null, country: geo?.country ?? null, zone: (geo && (geo.zone || PROTO.COUNTRY_ZONE[geo.country])) || 'euna',
+      hasData: !!PROTO_GEN.projectData[p.code], health: d7 ? D7_HEALTH[p.code] : healthOf(p),
     };
   });
-  const current = list.map((p) => Object.fromEntries(Object.keys(legacy[0]).map((k) => [k, p[k as keyof typeof p]])));
+  const current = list.map((p) => {
+    const row = Object.fromEntries(Object.keys(legacy[0]).map((k) => [k, p[k as keyof typeof p]]));
+    return D7_ACTUAL[p.code] != null ? { ...row, progress: Math.round(p.progress * 100) / 100, spi: p.spi == null ? null : Math.round(p.spi * 100) / 100 } : row;
+  });
   check('listProjects() = prototype initialProjects() (legacy contract fields)', same(current, legacy), diff(current, legacy));
 
   console.log('\nprojectData() reproduced from the DB');
+  // Delivery 7 (lot cost-control) computes these keys from Keystone data instead of the seeded values: PV / EV / AC and pct (R-073,
+  // C-2a), categories, work packages and reconciliation (R-070 / A-8 contingency register, R-068 / A-4 change register), the change
+  // list and the generated note (A-12). They are checked in src/server/dal/cost-control.test.ts; the rest stays deep-equal.
+  const D7_KEYS = ['PV', 'EV', 'AC', 'pct', 'CATS', 'WPS', 'CRS', 'recon', 'note'];
+  const omitD7 = (o: unknown) => o && Object.fromEntries(Object.entries(JSON.parse(JSON.stringify(o)) as Record<string, unknown>).filter(([k]) => !D7_KEYS.includes(k)));
   for (const code of Object.keys(PROTO_GEN.projectData)) {
-    const pd = await getProjectData(code);
-    check(`${code} projectData deep-equal`, same(pd, PROTO_GEN.projectData[code]), diff(pd, PROTO_GEN.projectData[code]));
+    const pd = omitD7(await getProjectData(code));
+    const want = omitD7(PROTO_GEN.projectData[code]);
+    check(`${code} projectData deep-equal (except the delivery 7 cost-control keys)`, same(pd, want), diff(pd, want));
   }
   const sums = await listScheduleSummaries();
   check('listScheduleSummaries() = projectData headers + MILES', same(Object.keys(sums), Object.keys(PROTO_GEN.projectData))
@@ -229,7 +246,8 @@ async function main() {
   check('EWA-051 (no data) → null', (await getProjectData('EWA-051')) === null && (await getCostControl('EWA-051')) === null);
   const cc = await getCostControl('HLT-026');
   check('HLT-026 streams carry HLT_STREAMS monthly values', same(cc?.streams.map((s) => [s.name, s.basis, s.monthly]), PROTO.HLT_STREAMS));
-  check('HLT-026 EVM at data date: PV 3420 · EV 3080 · AC 3360', cc?.pv[8] === 3420 && cc.ev.at(-1) === 3080 && cc.ac.at(-1) === 3360);
+  // Delivery 7 (R-073, C-2a): PV follows the cost-loaded BL1, EV = progress × BAC (was PV 3420 · EV 3080 · AC 3360).
+  check('HLT-026 EVM at data date: PV 3663 · EV 3006 · AC 3360', cc?.pv[8] === 3663 && cc.ev.at(-1) === 3006 && cc.ac.at(-1) === 3360, cc && [cc.pv[8], cc.ev.at(-1), cc.ac.at(-1)]);
   const acts = await getActivities('HLT-026');
   const a1620 = acts.find((a) => a.id === 'A1620');
   check('A1620 FNLT 18 Dec violated, 05 Jan ’27 → 2027-01-05', a1620?.constraint === 'FNLT 18 Dec' && a1620.violated && a1620.startDate === '2027-01-05', a1620);
@@ -285,7 +303,10 @@ async function main() {
   check('HLT_SNAPS reproduced, next status report 2 Oct', same(tr?.series, PROTO.HLT_SNAPS) && tr?.nextReport?.text === '2 Oct');
   const cg = await getContingency('HLT-026');
   check('contingency 150 · drawn 48 · remaining 102 · exposure 340', cg?.initial === 150 && cg.drawn === 48 && cg.remaining === 102 && cg.exposure === 340);
-  check('contingency default round(BAC × 3 %) (NDC-031 = 63)', (await getContingency('NDC-031'))?.initial === 63);
+  // Delivery 7 (A-8: one contingency figure): without a register, the budget's contingency line (NDC-031 = 100, was round(BAC × 3 %)
+  // = 63); round(BAC × 3 %) stays for a project without a budget line (EWA-051 = 66).
+  check('contingency without a register: budget line (NDC-031 = 100), else round(BAC × 3 %) (EWA-051 = 66)',
+    (await getContingency('NDC-031'))?.initial === 100 && (await getContingency('EWA-051'))?.initial === 66);
   const pool = await getResourcePool();
   check('PEOPLE reproduced (pool order, job titles, loads)', same(pool.people.map((p) => [p.name, p.jobTitle, p.loads]), PROTO.PEOPLE));
   const reqs = (await listResourceRequests()).map((r) => ({
@@ -379,17 +400,19 @@ async function delivery3Reads() {
   check('invoices INV-2026-001…003, M3 due 10 Nov (calendar days)', same(ct?.invoices.map((i) => [i.number, i.milestoneNumber, i.dueOn, i.statusLabel]),
     [['INV-2026-001', 'M1', '2026-04-26', 'Paid'], ['INV-2026-002', 'M2', '2026-08-29', 'Paid'], ['INV-2026-003', 'M3', '2026-11-10', 'Awaiting payment']]));
   check('no late billing milestone (badge), no contract on NDC-031', same(await lateBillingMilestonesByProject(), {}) && (await getContract('NDC-031')) === null);
-  check('Budget cash tab reads the contract from the DB, orders placed 713', (await getBudgetContract('HLT-026'))?.openCommit === 713);
+  // Delivery 7 (R-073): orders placed = the open purchase orders (PO-1052, PO-1063, PO-1071, PO-1078), no longer the literal 713.
+  check('Budget cash tab reads the contract from the DB, orders placed 3 946.5 (open POs)', (await getBudgetContract('HLT-026'))?.openCommit === 3946.5);
   const plans = await listBillingPlans();
   check('billing plans: HLT-026 from the contract, BILLING elsewhere', plans['HLT-026']?.fromContract === true && plans['NDC-031']?.contractValueKeur === 2350 && plans['ERP-202']?.internal === true);
   const cash = await getCashFlow(null);
   const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
   // A-12 (chapter 4): the forecast is computed from the billing plans and cost forecasts (prototype plan: net +365, low −490).
-  check('cash flow: 5 rows · contract 10 090 · invoiced 5 258 · outstanding 1 940 · net +2 836 · low −521',
+  // Delivery 7 (R-073): the cost to complete starts from the actual cost computed from the activities (net +2 836 → +2 709, low −521 → −570).
+  check('cash flow: 5 rows · contract 10 090 · invoiced 5 258 · outstanding 1 940 · net +2 709 · low −570',
     same([cash.rows.map((r) => r.project.code), sum(cash.rows.map((r) => r.plan.contractValueKeur)), sum(cash.rows.map((r) => r.plan.invoicedKeur)),
       sum(cash.rows.map((r) => sum(r.plan.milestones.filter((m) => m.status === 'invoiced').map((m) => m.amountKeur)))),
       sum(cash.forecast.map((m) => m.cashInKeur - m.cashOutKeur)), Math.min(...cash.forecast.map((_, i) => sum(cash.forecast.slice(0, i + 1).map((m) => m.cashInKeur - m.cashOutKeur))))],
-    [['HLT-026', 'NDC-031', 'RCF-019', 'ERP-202', 'MSR-012'], 10090, 5258, 1940, 2836, -521]));
+    [['HLT-026', 'NDC-031', 'RCF-019', 'ERP-202', 'MSR-012'], 10090, 5258, 1940, 2709, -570]));
   const pf = await getPrioritisation('director', null);
   check('prioritisation: 10 ranked (SCORES remapped), WSA-044 first (81), HLT-026 72 · margin 13 % (contract)',
     pf.ranking.length === 10 && pf.ranking[0].project.code === 'WSA-044' && pf.ranking[0].score === 81

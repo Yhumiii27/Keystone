@@ -1,10 +1,12 @@
 // Risk register: pure business logic (docs/spec/07 §2.1, §3 AF `risks`, §4.1; prototype logic 4570–4590 and the
-// `risks` branch of afSubmit 5121). Score / level / cost if it occurs, register order and category filter, the five
-// KPI figures, the category chips, the 5×5 heat-map placement, the sidebar badge rule and the parsing of the
+// `risks` branch of afSubmit 5121). Score / level / cost if it occurs and EMV, register order and category filter, the
+// five KPI figures, the category chips, the 5×5 heat-map placement, the sidebar badge rule and the parsing of the
 // "New risk" form. No I/O and no translation: labels are the prototype's English source strings.
+// Delivery 7 (R-072, owner decision Q-1 "Coût saisi, EMV = coût × P/5"): the cost if the risk occurs is entered and stored;
+// the EMV is derived from it and the probability (P = 1 → 20 %, P = 5 → 100 %), so it follows every change of P.
 // Golden values: src/domain/risk.test.ts.
 import {
-  riskCategory, riskCostIfOccurs, riskLevel as riskLevelCodec, riskLevelOf, riskResponse, riskScore,
+  riskCategory, riskLevel as riskLevelCodec, riskLevelOf, riskResponse, riskScore,
   type RiskCategory, type RiskLevel, type RiskResponse, type RiskStatus, type RiskTrend,
 } from '@/server/db/codes';
 
@@ -19,7 +21,7 @@ export interface RiskFacts {
   probability: number;
   /** 1–5. */
   impact: number;
-  /** Expected monetary value, k€ (stored, not recomputed — 07 OQ4). */
+  /** Expected monetary value, k€ — derived: cost if it occurs × P / 5 (Q-1, `emvOf`). */
   emv: number;
   status: RiskStatus;
   trend: RiskTrend;
@@ -50,8 +52,24 @@ export const levelTone = (level: RiskLevel): 'accent' | 'outline' | 'neutral' =>
 /** Drawer tag text "Critical · 16" (English; translate per segment). */
 export const levelTagText = (r: Pick<RiskFacts, 'probability' | 'impact'>) => `${levelLabel(levelOf(scoreOf(r)))} · ${scoreOf(r)}`;
 
-/** "Contingency draw if it occurs" = round(EMV / (P/5)); null when the EMV is 0 (shown "—"). */
-export const costIfOccurs = (emv: number, probability: number): number | null => riskCostIfOccurs(emv, probability);
+/** Probability scale of the EMV (Q-1): P = 1 → 20 %, …, P = 5 → 100 %. */
+export const probabilityShare = (probability: number) => Math.max(1, Math.min(5, probability)) / 5;
+
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
+/** EMV = cost if it occurs × P / 5 (Q-1), k€ to two decimals. */
+export const emvOf = (costKeur: number | null | undefined, probability: number) =>
+  costKeur && costKeur > 0 ? round2((costKeur * Math.max(1, Math.min(5, probability))) / 5) : 0;
+
+/** "Contingency draw if it occurs" = the cost entered for the risk; null when none (shown "—"). */
+export const costIfOccurs = (costKeur: number | null | undefined): number | null => (costKeur && costKeur > 0 ? costKeur : null);
+
+/**
+ * Cost of a risk recorded before Q-1, when only its EMV was stored: EMV × 5 / P to two decimals — `emvOf` gives the EMV
+ * back exactly (for whole k€), so the EMV the screens showed is unchanged after the migration (backfill of `risks.cost_keur`).
+ */
+export const costOfLegacyEmv = (emvKeur: number | null | undefined, probability: number) =>
+  emvKeur && emvKeur > 0 ? round2((emvKeur * 5) / Math.max(1, Math.min(5, probability))) : 0;
 
 /** Status tag tone: Open → outline, Closed → neutral. */
 export const statusTone = (status: RiskStatus): 'outline' | 'neutral' => (status === 'open' ? 'outline' : 'neutral');
@@ -208,10 +226,19 @@ export function parseScale(raw: string | null | undefined): number {
   return Math.max(1, Math.min(5, n || 3));
 }
 
-/** `parseInt(v, 10) || 0`, never negative (k€). */
-export function parseEmv(raw: string | null | undefined): number {
-  const n = parseInt(String(raw ?? ''), 10);
-  return n > 0 ? n : 0;
+/** Upper bound of a risk cost (k€) — guards typing slips such as an amount in euros. */
+export const MAX_COST = 100_000;
+
+/**
+ * "Cost if it occurs (k€)" (Q-1): blank → 0 (no cost known yet); a number ≥ 0 with a decimal point or comma, two decimals
+ * kept; anything else is refused (null).
+ */
+export function parseCost(raw: string | null | undefined): number | null {
+  const v = String(raw ?? '').trim().replace(/\s/g, '').replace(',', '.');
+  if (!v) return 0;
+  if (!/^\d+(\.\d+)?$/.test(v)) return null;
+  const n = Math.round(parseFloat(v) * 100) / 100;
+  return Number.isFinite(n) && n <= MAX_COST ? n : null;
 }
 
 export interface NewRisk {
@@ -222,7 +249,8 @@ export interface NewRisk {
   /** Owner name from the team list; null when the team is empty. */
   owner: string | null;
   response: RiskResponse;
-  emvKeur: number;
+  /** Cost if it occurs, k€ (Q-1); the EMV is derived from it. */
+  costKeur: number;
   /** '—' when blank (the prototype's placeholder). */
   plan: string;
 }
@@ -233,7 +261,7 @@ export const MAX_TITLE = 200;
 export const MAX_PLAN = 2000;
 
 /**
- * Validates the raw "New risk" values (field ids title · cat · p · i · owner · resp · emv · plan). Selects must hold
+ * Validates the raw "New risk" values (field ids title · cat · p · i · owner · resp · cost · plan). Selects must hold
  * one of the offered values (blank → first option, as the dialog submits); errors are English source strings.
  * `categories` = the category codes the form offers (Settings › Risk categories, active — A-14); omitted = the defaults.
  */
@@ -251,25 +279,29 @@ export function parseNewRisk(values: Record<string, string | undefined>, team: r
   if (ownerRaw && !team.includes(ownerRaw)) return { ok: false, error: 'Unknown owner' };
   const plan = (values.plan ?? '').trim();
   if (plan.length > MAX_PLAN) return { ok: false, error: 'Response plan is too long' };
+  const cost = parseCost(values.cost);
+  if (cost == null) return { ok: false, error: 'Enter a cost of 0 or more (k€)' };
   return {
     ok: true,
     value: {
       title, category, probability: parseScale(values.p), impact: parseScale(values.i), owner: ownerRaw || null, response,
-      emvKeur: parseEmv(values.emv), plan: plan || '—',
+      costKeur: cost, plan: plan || '—',
     },
   };
 }
 
-// ── Drawer edits (riskOv: p, i, resp, status) ─────────────────────────────────────────────────────────
+// ── Drawer edits (riskOv: p, i, resp, status; delivery 7: the cost if it occurs, Q-1) ─────────────────────
 
 export interface RiskEdit {
   probability?: number;
   impact?: number;
   response?: RiskResponse;
   status?: RiskStatus;
+  /** Cost if it occurs, k€ (0 ≤ cost ≤ MAX_COST). */
+  costKeur?: number;
 }
 
-/** Validates a drawer edit: P / I integers 1–5, a response code, a status code; at least one field. */
+/** Validates a drawer edit: P / I integers 1–5, a response code, a status code, a cost; at least one field. */
 export function parseRiskEdit(patch: unknown): ParseResult<RiskEdit> {
   if (!patch || typeof patch !== 'object') return { ok: false, error: 'Invalid request' };
   const p = patch as Record<string, unknown>;
@@ -292,6 +324,11 @@ export function parseRiskEdit(patch: unknown): ParseResult<RiskEdit> {
   if (p.status !== undefined) {
     if (p.status !== 'open' && p.status !== 'closed') return { ok: false, error: 'Invalid request' };
     out.status = p.status;
+  }
+  if (p.costKeur !== undefined) {
+    const c = p.costKeur;
+    if (typeof c !== 'number' || !Number.isFinite(c) || c < 0 || c > MAX_COST) return { ok: false, error: 'Enter a cost of 0 or more (k€)' };
+    out.costKeur = Math.round(c * 100) / 100;
   }
   if (!Object.keys(out).length) return { ok: false, error: 'Invalid request' };
   return { ok: true, value: out };

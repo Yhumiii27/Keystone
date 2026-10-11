@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import PROTO from '@/server/prototype/prototype-data.json';
 import GEN from '@/server/prototype/prototype-generated.json';
 import {
-  cashRecovery, categoryBar, contingencyDrawn, contractValue, costVarianceBars, evmCore, milestoneAmount, monthAt, offerPoints,
+  cashRecovery, categoryBar, contractValue, costVarianceBars, evmCore, milestoneAmount, monthAt, offerPoints,
   offerSummary, openCommitment, plannedValueFromOffer, termsDays, workPackageBar, workPackageTotals, type OfferQuote, type PaymentMilestone,
 } from './evm';
 
@@ -114,10 +114,9 @@ describe('variance card & bars', () => {
     expect(tot.original + tot.changes - tot.eac).toBe(-436);
   });
 
-  it('contingency tile: 208 drawn of 150 → 139 % · +58 over', () => {
-    expect(contingencyDrawn(150, 208)).toEqual({ pct: 139, over: 58 });
-    expect(contingencyDrawn(100, 85)).toEqual({ pct: 85, over: 0 });
-  });
+  // The contingency tile ("208 drawn of 150 → 139 % · +58 over") moved to src/domain/cost-control.ts contingencyTile in
+  // delivery 7: A-8 makes the register's validated draw-downs the drawn figure (HLT-026: 48 → 32 %), the prototype's 208 is
+  // the forecast shown apart — tested in src/domain/cost-control.test.ts.
 });
 
 describe('cash recovery (HLT-026)', () => {

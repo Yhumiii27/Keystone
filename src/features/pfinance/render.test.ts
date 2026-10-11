@@ -144,15 +144,17 @@ describe('Cash flow & billing', () => {
     expect(x).toContain('Outstanding receivables €1.94M Invoiced, not yet paid');
     // A-12 (chapter 4): billing plan in, cost forecast out, at the data date (the prototype's stored plan gave +€365k / −€490k in
     // November with a static sub-line).
-    expect(x).toContain('Net cash · next 6 months +€2.84M Billing plan minus forecast spend');
-    expect(x).toContain('Lowest cumulative point −€521k October — before M3 payment lands (HLT-026)');
+    // Delivery 7 (R-073, C-2a): the cost forecast starts from the actual cost computed from the activities (+€2.84M / −€521k before).
+    expect(x).toContain('Net cash · next 6 months +€2.71M Billing plan minus forecast spend');
+    expect(x).toContain('Lowest cumulative point −€570k October — before M3 payment lands (HLT-026)');
     expect(x).toContain('Project Billing model Contract Invoiced · paid Outstanding Cost to date Margin Next milestone');
     expect(x).toContain('Harbor Line Terminal Expansion HLT-026 Client · milestones €5.52M €1.38M €3.36M 13% M4 Cranes operational · €1.10M');
-    expect(x).toContain('ERP Migration — Phase 2 ERP-202 Internal · capex — — €410k — —');
-    expect(x).toContain('Marseille Metro Signage Rollout MSR-012 Client · fixed price €720k €0k €550k 14% Line B · €288k');
+    // R-073: cost to date from the activities (ERP-202 €410k → €457k, MSR-012 €550k → €553k).
+    expect(x).toContain('ERP Migration — Phase 2 ERP-202 Internal · capex — — €457k — —');
+    expect(x).toContain('Marseille Metro Signage Rollout MSR-012 Client · fixed price €720k €0k €553k 14% Line B · €288k');
     expect(x).toContain('Paid Invoiced');
-    expect(x).toContain('Cash flow — next 6 months Billing plan in · forecast spend out −521k Oct +885k Nov −51k Dec +1083k Jan ’27 +1116k Feb +324k Mar Cash in Cash out Net per month above bars');
-    expect(m).toContain('height:57%');
+    expect(x).toContain('Cash flow — next 6 months Billing plan in · forecast spend out −570k Oct +827k Nov −81k Dec +1092k Jan ’27 +1125k Feb +316k Mar Cash in Cash out Net per month above bars');
+    expect(m).toContain('height:59%');
     expect(m).toContain('title="Invoiced · €3.04M"');
     expect(m).toContain('--ov-w:55%');
     expect(m).toContain('--ov-w:30%');
@@ -163,10 +165,10 @@ describe('Cash flow & billing', () => {
     const t = tOf('fr');
     const x = text(html(h(CashView, { view: cashView(await getCashScreen('pm', null), t, 'fr'), t }), 'fr'));
     expect(x).toContain('Montant du contrat 10,09 M€ 4 projets clients · 1 interne');
-    expect(x).toContain('Point bas cumulé −521 k€ Octobre — avant l’encaissement de M3 (HLT-026)'); // A-12
+    expect(x).toContain('Point bas cumulé −570 k€ Octobre — avant l’encaissement de M3 (HLT-026)'); // A-12, R-073
     expect(x).toContain('Projet Modèle de facturation Contrat Facturé · payé En attente de paiement Coût à date Marge Prochain jalon');
-    expect(x).toContain('Aménagement de la Clinique Pasteur Lyon RCF-019 Client · jalons 1,50 M€ 300 k€ 1,21 M€ 10% Livraison · 600 k€');
-    expect(x).toContain('Trésorerie — 6 prochains mois Plan de facturation en entrée · dépenses prévues en sortie −521k oct. +885k nov. −51k déc. +1083k janv. ’27 +1116k févr. +324k mars Encaissements Décaissements Net mensuel au-dessus des barres');
+    expect(x).toContain('Aménagement de la Clinique Pasteur Lyon RCF-019 Client · jalons 1,50 M€ 300 k€ 1,08 M€ 10% Livraison · 600 k€');
+    expect(x).toContain('Trésorerie — 6 prochains mois Plan de facturation en entrée · dépenses prévues en sortie −570k oct. +827k nov. −81k déc. +1092k janv. ’27 +1125k févr. +316k mars Encaissements Décaissements Net mensuel au-dessus des barres');
   });
 
   it('zone without projects in execution (apac): notice, zero figures; masked margins for other roles', async () => {

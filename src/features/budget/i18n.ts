@@ -10,6 +10,8 @@ const RULES: [RegExp, (...m: string[]) => string][] = [
   // Reconciliation › Contingency: "139% drawn" · "+58 k€ over".
   [/^(\d+)% drawn$/, (_, n) => `${n} % consommés`],
   [/^([+−-]?[\d,.]+ (?:k|M)€) over$/, (_, v) => `${v} de dépassement`],
+  // Delivery 7 (A-4): reconciliation "Pending" sub-line from the register.
+  [/^(\d+) change requests in review$/, (_, n) => `${n} demandes de modification en revue`],
   // Generated project notes (projectData().note, logic 3337).
   [
     /^Spending is running ahead of earned value \(CPI ([\d.]+)\); the forecast at completion exceeds the budget\.$/,

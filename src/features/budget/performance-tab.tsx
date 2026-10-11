@@ -80,7 +80,12 @@ export function PerformanceTab({ cost, core, offer, profileText, setupHref, lang
           />
           <div className={s.chartFoot}>
             <Steps className={s.chartFootIcon} aria-hidden />
-            <span className={s.chartFootText}>{`${t('Planned value follows the disbursement profile')} · ${profileText}`}</span>
+            <span className={s.chartFootText}>
+              {/* R-073: PV comes from the cost-loaded baseline; the prototype's series followed the offer's disbursement profile. */}
+              {cost.evmSource === 'keystone'
+                ? `${t('Planned value follows the cost-loaded baseline')} · ${t('Earned value = progress × budget')} · ${profileText}`
+                : `${t('Planned value follows the disbursement profile')} · ${profileText}`}
+            </span>
             <ButtonLink href={setupHref} variant="ghost" size="xs" push nowrap iconRight={ArrowRight} scroll={false}>
               {t('See profile')}
             </ButtonLink>
@@ -148,7 +153,8 @@ export function PerformanceTab({ cost, core, offer, profileText, setupHref, lang
                     {f(c.forecast)}
                   </Td>
                   <Td>
-                    <BulletBar actual={c.actual} committed={c.committed} budget={c.budget} forecast={c.forecast} />
+                    {/* The committed layer stops at the end of the track (open orders can exceed the line's budget). */}
+                    <BulletBar actual={c.actual} committed={Math.min(c.committed, Math.max(0, c.budget * 1.4 - c.actual))} budget={c.budget} forecast={c.forecast} />
                   </Td>
                   <Td align="right" numeric color={v < 0 ? LO : 'var(--color-neutral-300)'}>
                     {f(v, true)}

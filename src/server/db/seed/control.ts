@@ -1,6 +1,7 @@
 // Control seed: risk registers (RISKS_HLT + the prototype's generated registers), weekly status snapshots
 // (HLT_SNAPS + generated series) and contingency (CONTINGENCY). See schema/control.ts.
 import { evmCore } from '@/domain/evm';
+import { costOfLegacyEmv } from '@/domain/risk';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { addDaysIso, contingencyLinkTypeOf, isoOfDisplayDate, isoWeekOf, riskCategory, riskResponse, riskStatus, type RiskTrend } from '../codes';
 import { contingencyDraws, contingencyRegisters, risks, statusSnapshots } from '../schema';
@@ -71,7 +72,8 @@ export async function seedControl(tx: Tx, ctx: SeedCtx): Promise<void> {
       riskRows.push({
         id, projectId, number: r.id, title: r.title, category: riskCategory.code(r.cat), probability: r.p, impact: r.i,
         ownerPersonId: personId(ctx, r.owner), response: riskResponse.code(r.resp), responsePlan: r.plan,
-        activityId: r.act ? must(acts, r.act, `activity of ${r.id}`) : null, emvKeur: r.emv, trigger: r.trig,
+        // Q-1 (delivery 7): the cost if it occurs is stored, EMV = cost × P / 5 — the prototype's EMV is kept exactly.
+        activityId: r.act ? must(acts, r.act, `activity of ${r.id}`) : null, costKeur: costOfLegacyEmv(r.emv, r.p), trigger: r.trig,
         status: riskStatus.code(r.status), trend: r.trend, sortOrder: i + 1,
       });
     });
@@ -105,7 +107,8 @@ export async function seedControl(tx: Tx, ctx: SeedCtx): Promise<void> {
               : null;
         return {
           id: newId(), registerId, drawnOn: isoOfDisplayDate(dateText)!, amountKeur: amount, reason, linkRef: linkRef || null,
-          linkedEntityType, linkedEntityId, approvedByPersonId: personId(ctx, approver), position,
+          // Approved when recorded in the prototype: validated draw-downs (R-071; no Keystone decision is recorded for them).
+          linkedEntityType, linkedEntityId, approvedByPersonId: personId(ctx, approver), position, status: 'validated' as const,
         };
       }),
     );

@@ -8,6 +8,7 @@ import { getDb } from '@/server/db/client';
 import { machineTypes, projects, rexReferences } from '@/server/db/schema';
 import { getCashContract } from './contract';
 import { getCostControl, type CostControl } from './cost';
+import { getOpenCommitment } from './evm';
 
 export interface RexReference {
   /** Analytic code of the reference project, e.g. "HAV001". */
@@ -61,19 +62,21 @@ export interface BudgetContract {
   terms: string;
   amendments: { label: string; amount: number; signed: boolean }[];
   milestones: PaymentMilestone[];
-  /** Orders placed not yet in actual cost (k€) when known; null → 60 % of next month's planned value. */
+  /** Orders placed not yet received (k€): the project's purchase orders (delivery 7, R-073). */
   openCommit: number | null;
 }
 
 /**
  * The project's client contract, or null when none is registered (only HLT-026 in the seed). Billing's invoices and
  * payments and the contract-sheet edits are persisted by the contract module and flow in here. `openCommit` is the
- * project's "orders placed" figure (HLT-026: 713 k€ until purchase orders are modelled, 04 Q11).
+ * project's "orders placed" figure — since delivery 7 (R-073) its open purchase orders (getBudgetData), no longer the
+ * prototype's 713 k€ literal.
  */
 export async function getBudgetContract(code: string): Promise<BudgetContract | null> {
   const ct = await getCashContract(code);
   if (!ct) return null;
-  return { ref: ct.reference, amount: ct.amount, terms: ct.terms, amendments: ct.amendments, milestones: ct.milestones, openCommit: ct.openCommit };
+  // R-073: the open purchase orders of the project (src/server/dal/evm.ts), not the stored prototype figure.
+  return { ref: ct.reference, amount: ct.amount, terms: ct.terms, amendments: ct.amendments, milestones: ct.milestones, openCommit: await getOpenCommitment(code) };
 }
 
 export interface BudgetData {

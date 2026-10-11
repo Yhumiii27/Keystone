@@ -12,12 +12,15 @@ describe('portfolio DAL', () => {
 
   it('overview: six planned projects, seed KPIs, four alerts', async () => {
     const ov = await getPortfolioOverview(null, 'en');
+    // Delivery 7 (R-073, C-2a): progress, actual cost and SPI computed from the activities and BL1 — health HLT-026 at risk → off
+    // track, NDC-031 on track → at risk, RCF-019 off track → at risk, MSR-012 at risk → on track; actual cost €7.43M → €6.58M,
+    // EAC €13.50M → €13.25M, CPI 0.96 → 0.97, SPI 0.96 → 0.92.
     expect(ov.rows.map((r) => [r.code, r.metrics.health])).toEqual([
-      ['HLT-026', 'at_risk'], ['NDC-031', 'on_track'], ['RCF-019', 'off_track'], ['ERP-202', 'on_track'], ['WSA-044', 'on_track'], ['MSR-012', 'at_risk'],
+      ['HLT-026', 'off_track'], ['NDC-031', 'at_risk'], ['RCF-019', 'at_risk'], ['ERP-202', 'on_track'], ['WSA-044', 'on_track'], ['MSR-012', 'on_track'],
     ]);
     expect(ov.kpis.map((k) => [k.value, k.sub])).toEqual([
-      ['€13.23M', '6 active projects'], ['€7.43M', '56% of budget spent'], ['€13.50M', '−€270k vs budget'],
-      ['0.96', 'Earned per $1 spent'], ['0.96', 'Weighted by budget'], ['3 of 6', '1 off track'],
+      ['€13.23M', '6 active projects'], ['€6.58M', '50% of budget spent'], ['€13.25M', '−€17k vs budget'],
+      ['0.97', 'Earned per $1 spent'], ['0.92', 'Weighted by budget'], ['3 of 6', '1 off track'],
     ]);
     expect(ov.alerts).toHaveLength(4);
     expect(ov.rows[0]).toMatchObject({ displayId: '#026', pm: 'R. Aubert', finish: 'Dec 2026' });
@@ -35,7 +38,8 @@ describe('portfolio DAL', () => {
   it('my projects: director seed and department head', async () => {
     const d = await getMyProjects(PERSONA_BY_ROLE.director, 'HLT-026', 'en');
     expect(d.kpis.map((k) => k.value)).toEqual(['6', '3', '0', '5']);
-    expect(d.cards[0]).toMatchObject({ myRole: 'Portfolio director', progressPct: '64%', ind: { finishForecast: '14 Jan 2027', msLine: '23 Oct · Late' } });
+    // R-073: HLT-026's progress computed from its activities (64 % → 63 %).
+    expect(d.cards[0]).toMatchObject({ myRole: 'Portfolio director', progressPct: '63%', ind: { finishForecast: '14 Jan 2027', msLine: '23 Oct · Late' } });
     const h = await getMyProjects(PERSONA_BY_ROLE.depthead, 'HLT-026', 'en');
     expect(h.cards.map((c) => [c.project.code, c.myRole])).toEqual([['HLT-026', 'Department involved']]);
     expect(h.kpis[3]).toMatchObject({ value: '2', alert: true });

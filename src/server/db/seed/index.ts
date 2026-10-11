@@ -10,6 +10,7 @@ import { seedClient } from './client';
 import { seedCollaboration } from './collaboration';
 import { ctxFromDb, newCtx, type SeedCtx } from './context';
 import { seedControl } from './control';
+import { backfillCostControl } from './cost-control';
 import { seedContract } from './contract';
 import { seedCost } from './cost';
 import { seedCursus } from './cursus';
@@ -80,6 +81,8 @@ export async function seedIfEmpty(db: DB): Promise<boolean> {
     if (k === 0) {
       await db.transaction(async (tx) => seedChapter4(tx)).catch((e) => console.error('[seed] Chapter 4 backfill failed:', e));
     }
+    // Delivery 7 (cost-control): risk costs of a database seeded before migration 0007 (idempotent).
+    await backfillCostControl(db).catch((e) => console.error('[seed] Delivery 7 cost-control backfill failed:', e));
     return false;
   }
   await db.transaction(async (tx) => {

@@ -161,11 +161,8 @@ export function workPackageTotals(rows: WorkPackageAmounts[]): WorkPackageAmount
 }
 
 // ── Reconciliation (logic 4051) ────────────────────────────────────────────────────────────────────────
-
-/** Contingency tile: % drawn (rounded) and the overrun above the provision (0 when within). */
-export function contingencyDrawn(cont: number, used: number): { pct: number; over: number } {
-  return { pct: cont ? Math.round((used / cont) * 100) : 0, over: Math.max(0, used - cont) };
-}
+// The contingency tile is src/domain/cost-control.ts `contingencyTile` since delivery 7 (A-8: the register's validated
+// draw-downs are the drawn figure; the prototype's `contUsed` forecast shows apart).
 
 // ── Contract & cash recovery (logic 4871–4928) ─────────────────────────────────────────────────────────
 

@@ -3,8 +3,9 @@
 // Response strategy segment and the "Close risk" / "Reopen" toggle. Each click calls updateRiskAction with
 // an optimistic value; the server re-render then moves the row, the heat-map cell, the level tag and the KPIs.
 // Read-only viewers (outside the workspace, read-only project) see the selected values only.
-import { useOptimistic, useTransition } from 'react';
+import { useId, useOptimistic, useState, useTransition } from 'react';
 import { Button } from '@/components/ds/Button';
+import { Input } from '@/components/ds/Field';
 import { Segmented } from '@/components/ds/Segmented';
 import { showToast } from '@/components/ds/Toast';
 import { useI18n } from '@/i18n/client';
@@ -118,5 +119,58 @@ export function RiskStatusToggle({ code, riskId, label, next }: RiskStatusToggle
     >
       {label}
     </Button>
+  );
+}
+
+export interface RiskCostFieldProps {
+  code: string;
+  riskId: string;
+  /** Stored cost if it occurs, k€ (0 = none). */
+  cost: number;
+}
+
+/**
+ * Delivery 7 (R-072, Q-1): the cost if the risk occurs, edited in the drawer — the EMV (cost × P / 5) follows on the server
+ * re-render. Decimal comma accepted; an invalid value is refused by the server function (toast).
+ */
+export function RiskCostField({ code, riskId, cost }: RiskCostFieldProps) {
+  const { t, lang } = useI18n();
+  const id = useId();
+  const [value, setValue] = useState(cost ? String(cost).replace('.', lang === 'fr' ? ',' : '.') : '');
+  const [pending, start] = useTransition();
+  const parsed = Number(value.trim().replace(/\s/g, '').replace(',', '.') || '0');
+  const dirty = Number.isFinite(parsed) && parsed !== cost;
+  const save = () =>
+    start(async () => {
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        showToast(t('Enter a cost of 0 or more (k€)'));
+        return;
+      }
+      const r = await updateRiskAction(code, riskId, { costKeur: parsed });
+      if ('error' in r) showToast(r.error);
+    });
+  return (
+    <div className={s.field}>
+      <label className={s.fieldLabel} htmlFor={id}>
+        {t('Cost if it occurs (k€)')}
+      </label>
+      <div className={s.costRow}>
+        <Input
+          id={id}
+          className={s.costInput}
+          inputMode="decimal"
+          numeric
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && dirty) save();
+          }}
+        />
+        <Button variant="secondary" size="sm" disabled={pending || !dirty} aria-busy={pending || undefined} onClick={save}>
+          {t('Save')}
+        </Button>
+        <span className={s.costHint}>{t('EMV = cost × P / 5')}</span>
+      </div>
+    </div>
   );
 }

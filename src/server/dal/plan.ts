@@ -21,6 +21,7 @@ import { PROTO } from '@/server/prototype';
 import { listProjectBaselines, type BaselineInfo } from './baselines';
 import { trashPlanRow } from './plan-trash';
 import { listCalendars } from './calendars';
+import { getProjectEvm } from './evm';
 import { getScheduleControl, type ScheduleControl } from './planning';
 import { listResourceRequests } from './requests';
 import { listScheduleRuns } from './schedule-network';
@@ -171,8 +172,10 @@ async function defaultControl(db: Tx | Awaited<ReturnType<typeof getDb>>, code: 
   const [root] = await db.select({ id: wbsNodes.id }).from(wbsNodes).where(and(eq(wbsNodes.projectId, p.id), eq(wbsNodes.level, 0)));
   if (!root) return null;
   const start = Math.max(0, Math.floor(p.startMonth ?? 0));
+  // R-073 (delivery 7): progress computed from the activities.
+  const progress = (await getProjectEvm(code, db))?.progress ?? p.progress;
   return {
-    start, tNow: 0, pct: Math.round(p.progress * 100), p3: p.shortCode, floatDays: 0, chartMonths: monthLabels(start, 12), ganttMonths: monthLabels(start, 13),
+    start, tNow: 0, pct: Math.round(progress * 100), p3: p.shortCode, floatDays: 0, chartMonths: monthLabels(start, 12), ganttMonths: monthLabels(start, 13),
     finishText: '—', baselineText: '—', floatText: '—', floatShort: '—', critText: '', milesText: '—', milesSub: '', baselineSet: '—', team: [],
   };
 }

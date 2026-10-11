@@ -32,6 +32,19 @@ const f = (k: number, signed = false) => money(k, 'en', { signed });
 /** Copy of a golden object without one key (a field the DAL leaves to the screen). */
 const without = (o: Record<string, unknown>, key: string) => Object.fromEntries(Object.entries(o).filter(([k]) => k !== key));
 
+/**
+ * Delivery 7 (R-073; owner decisions C-2a "la valeur acquise vaut avancement × budget", A-12, A-15): the six projects with
+ * activities show their progress, actual cost and SPI computed from Keystone data (activities, cost-loaded BL1, validated
+ * contingency draw-downs) at the data date — no longer the prototype's seeded figures. Values of the seed:
+ *   actual cost  NDC-031 €1.02M → €884k · RCF-019 €1.21M → €1.08M · ERP-202 €410k → €457k · WSA-044 €880k → €247k · MSR-012 €550k → €553k
+ *   progress     HLT-026 64 → 63 % · NDC-031 51 → 46 % · RCF-019 82 → 77 % · ERP-202 45 → 52 % · WSA-044 27 → 8 % · MSR-012 91 → 92 %
+ *   health       HLT-026 At risk → Off track · NDC-031 On track → At risk · RCF-019 Off track → At risk · MSR-012 At risk → On track
+ */
+const R073_COST: Record<string, string> = { 'NDC-031': '€884k', 'RCF-019': '€1.08M', 'ERP-202': '€457k', 'WSA-044': '€247k', 'MSR-012': '€553k' };
+// WSA-044 is in the pipeline (APD): no execution fill and no health on the map, whatever its figures.
+const R073_FILL: Record<string, string> = { 'HLT-026': '63%', 'NDC-031': '46%', 'RCF-019': '77%', 'ERP-202': '52%', 'MSR-012': '92%' };
+const R073_HEALTH: Record<string, string> = { 'HLT-026': 'Off track', 'NDC-031': 'At risk', 'RCF-019': 'At risk', 'ERP-202': 'On track', 'MSR-012': 'On track' };
+
 beforeAll(async () => {
   setDb(await openDatabase());
 }, 60_000);
@@ -189,14 +202,16 @@ describe('billing (04 §4)', () => {
     expect(await lateBillingMilestonesByProject()).toEqual({});
   });
 
-  it('Budget › Cash & recovery reads the contract from the DB (same shape as the former CONTRACTS read, orders placed 713)', async () => {
+  // Delivery 7 (R-073): "orders placed" are the project's open purchase orders (PO-1052, PO-1063, PO-1071, PO-1078 at their line
+  // prices: 3 946.5 k€), no longer the prototype's literal 713.
+  it('Budget › Cash & recovery reads the contract from the DB (same shape as the former CONTRACTS read, orders placed from the POs)', async () => {
     const ct = PROTO.CONTRACTS['HLT-026'];
     const b = await getBudgetContract('HLT-026');
     expect(b).toEqual({
       ref: ct.ref, amount: ct.amount, terms: ct.terms,
       amendments: ct.amendments.map(([label, amount, status]: [string, number, string]) => ({ label, amount, signed: status === 'Signed' })),
       milestones: ct.milestones.map(([id, label, pct, due, status, inv, paid]: string[]) => ({ id, label, pct, due, status: status.toLowerCase(), invoiced: inv === '—' ? null : inv, paid: paid === '—' ? null : paid })),
-      openCommit: 713,
+      openCommit: 3946.5,
     });
     expect(await getBudgetContract('NDC-031')).toBeNull();
   });
@@ -214,7 +229,7 @@ describe('cash flow (03 §7) — billing plans from the contract or the legacy B
         outstanding: c ? f(plan.outstandingKeur) : '—', cost: f(p.actual), marginText: marginPct != null ? `${marginPct}%` : '—', next: next ? `${next.label} · ${f(next.amountKeur)}` : '—',
         invW: c ? `${Math.round((plan.invoicedKeur / c) * 100)}%` : '0%', paidW: c ? `${Math.round((plan.paidKeur / c) * 100)}%` : '0%', isInternal: plan.internal,
       };
-    })).toEqual(g.rows);
+    })).toEqual(g.rows.map((r: any) => ({ ...r, cost: R073_COST[r.code] ?? r.cost })));
     const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
     expect([
       f(sum(cf.rows.map((r) => r.plan.contractValueKeur))), f(sum(cf.rows.map((r) => r.plan.invoicedKeur))),
@@ -224,17 +239,19 @@ describe('cash flow (03 §7) — billing plans from the contract or the legacy B
     // A-12 (chapter 4): the 6 months after the data date are computed — receipts of the billing plans (contract dates and
     // payment terms, Net 30 for legacy plans, monthly progress billing) in, ETC spread to each finish out — instead of the
     // prototype's stored plan scaled by the zone share. [label, in, out] k€ per month and the lowest cumulative point.
+    // Delivery 7 (R-073): the cost to complete spread out starts from the computed actual cost (cash out moves, receipts do not).
     const A12: Record<string, [number, number][]> = {
-      null: [[560, 1081], [1911, 1026], [843, 894], [1347, 264], [1380, 264], [487, 163]],
-      euna: [[300, 917], [1668, 863], [600, 730], [1104, 100], [1380, 100], [0, 0]],
-      afr: [[260, 163], [243, 163], [243, 163], [243, 163], [0, 163], [487, 163]],
+      null: [[560, 1130], [1911, 1084], [843, 924], [1347, 255], [1380, 255], [487, 171]],
+      euna: [[300, 959], [1668, 913], [600, 753], [1104, 84], [1380, 84], [0, 0]],
+      afr: [[260, 171], [243, 171], [243, 171], [243, 171], [0, 171], [487, 171]],
       apac: [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
     };
     expect(cf.forecast.map((m) => [m.label, m.cashInKeur, m.cashOutKeur])).toEqual(g.bars.map((b: any, i: number) => [b.label, ...A12[String(zone)][i]]));
     expect(cf.lowPoint).toEqual({
-      null: { month: '2026-10-01', cumKeur: -521, next: { project: 'HLT-026', label: 'M3', progressMonth: undefined } },
-      euna: { month: '2026-10-01', cumKeur: -617, next: { project: 'HLT-026', label: 'M3', progressMonth: undefined } },
-      afr: { month: '2026-10-01', cumKeur: 97, next: { project: 'NDC-031', label: 'Oct', progressMonth: '2026-10-01' } },
+      // R-073: −€521k → −€570k (portfolio), −€617k → −€659k (euna), 97 → 89 k€ (afr).
+      null: { month: '2026-10-01', cumKeur: -570, next: { project: 'HLT-026', label: 'M3', progressMonth: undefined } },
+      euna: { month: '2026-10-01', cumKeur: -659, next: { project: 'HLT-026', label: 'M3', progressMonth: undefined } },
+      afr: { month: '2026-10-01', cumKeur: 89, next: { project: 'NDC-031', label: 'Oct', progressMonth: '2026-10-01' } },
       apac: { month: '2026-10-01', cumKeur: 0, next: null },
     }[String(zone)]);
   });
@@ -462,7 +479,7 @@ describe('portfolio schedule (05 §3)', () => {
     });
     const want = g.groups.flatMap((gr: any) => gr.rows).map((r: any) => ({
       code: r.code, pipe: r.pipe, gate: r.gate, gateSub: r.gateSub, hasExec: r.hasExec, exL: r.exL, exW: r.exW,
-      exFill: r.exFill, hasBase: r.hasBase, clipped: r.clipped, segs: r.segs,
+      exFill: R073_FILL[r.code] ?? r.exFill, hasBase: r.hasBase, clipped: r.clipped, segs: r.segs,
     }));
     const order = (xs: any[]) => [...xs.filter((x) => !x.pipe), ...xs.filter((x) => x.pipe)];
     expect(order(rows)).toEqual(want);
@@ -479,14 +496,18 @@ describe('projects map (03 §3)', () => {
     expect(m.points.map((p) => ({
       code: p.project.code, city: p.city, country: p.country, lat: p.lat, lng: p.lng, cat: p.category, health: p.health ? healthLabel(p.health) : '', status: p.project.status,
       client: p.project.client, pm: p.project.pm,
-    }))).toEqual(g.points.map((p: any) => without(p, 'name')));
+    }))).toEqual(g.points.map((p: any) => ({ ...without(p, 'name'), health: R073_HEALTH[p.code] ?? p.health })));
     expect(m.groups.map((x) => ({ city: x.city, country: x.country, codes: x.points.map((p) => p.project.code) }))).toEqual(g.groups);
     const risk = m.points.filter((p) => p.health && p.health !== 'on_track');
     expect([
       m.points.length, m.unlocated ? `${m.unlocated} without location` : (m.zone?.label ?? 'Whole portfolio'), m.groups.length, `${m.countries.length} ${m.countries.length === 1 ? 'country' : 'countries'}`,
       m.points.filter((p) => p.category === 'active').length, `${m.points.filter((p) => p.category === 'pipeline').length} in pipeline`, risk.length,
       `${m.points.filter((p) => p.health === 'off_track').length} off track`,
-    ]).toEqual(g.kpis.flatMap((k: any) => [k.value, k.sub]));
+    ]).toEqual(g.kpis.flatMap((k: any, i: number) => {
+      // R-073 health (see R073_HEALTH): projects at risk or off track — euna 3 → 2 (MSR-012 back on track), afr 0 → 1 (NDC-031).
+      const atRisk: Record<string, number> = { euna: 2, afr: 1 };
+      return i === 3 && atRisk[String(zone)] != null ? [atRisk[String(zone)], k.sub] : [k.value, k.sub];
+    }));
     expect(m.zone ? { label: m.zone.label, bounds: m.zone.bounds } : null).toEqual(g.zone);
   });
 });

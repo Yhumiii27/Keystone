@@ -6,7 +6,7 @@ import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { recordStageChange } from './lifecycle';
 import { createChangeRequest, decideChangeStep, getChangeControl, submitChangeRequest } from './changes';
-import { getContingency, recordContingencyDraw } from './contingency';
+import { decideContingencyDraw, getContingency, submitContingencyDraw } from './contingency';
 import { addRateRole, addSkill, assignUnassignedHours, getHoursReconciliation, getRateCard, getSkillsMatrix, markHoursImported, setBaseRate, setMultiplier } from './hr';
 import { countUnreadNotifications, createNotification, listAudit, listNotifications, markAllNotificationsRead, markNotificationRead } from './notifications';
 import {
@@ -26,7 +26,8 @@ const lastAudit = async () => (await listAudit({ limit: 1 }))[0];
 
 describe('risks', () => {
   it('adds R-21 on top of the register, then edits it from the drawer', async () => {
-    const n = await createRisk('HLT-026', { title: 'Port strike', category: 'contractual_client', probability: 9, impact: 2, owner: 'Romain Aubert', response: 'accept', emvKeur: 30 }, 'Romain Aubert');
+    // Q-1 (delivery 7): the cost if it occurs is entered (30) and EMV = cost × P / 5 → 30 at P 5 (clamped from 9).
+    const n = await createRisk('HLT-026', { title: 'Port strike', category: 'contractual_client', probability: 9, impact: 2, owner: 'Romain Aubert', response: 'accept', costKeur: 30 }, 'Romain Aubert');
     expect(n).toBe('R-21');
     let reg = (await getRiskRegister('HLT-026'))!;
     expect(reg.risks[0]).toMatchObject({ id: 'R-21', probability: 5, impact: 2, status: 'open', trend: 'flat', plan: '—', trigger: '—', owner: 'Romain Aubert' });
@@ -35,8 +36,9 @@ describe('risks', () => {
     await updateRisk('HLT-026', 'R-03', { probability: 3, response: 'transfer' }, 'Romain Aubert');
     await updateRisk('HLT-026', 'R-21', { status: 'closed' }, 'Romain Aubert');
     reg = (await getRiskRegister('HLT-026'))!;
-    expect(reg.risks.find((r) => r.id === 'R-03')).toMatchObject({ probability: 3, score: 12, level: 'high', response: 'transfer', costIfOccurs: 200 });
-    expect(reg.openEmv).toBe(340);
+    // Q-1: the cost if it occurs stays 150 and the EMV follows P (120 → 90); the prototype kept the EMV and showed a cost of 200.
+    expect(reg.risks.find((r) => r.id === 'R-03')).toMatchObject({ probability: 3, score: 12, level: 'high', response: 'transfer', costIfOccurs: 150, emv: 90 });
+    expect(reg.openEmv).toBe(310);
     expect(await lastAudit()).toMatchObject({ who: 'Romain Aubert', object: 'R-21', change: 'status: Open → Closed', area: 'Risks', projectCode: 'HLT-026' });
   });
 });
@@ -87,13 +89,19 @@ describe('trends and contingency', () => {
     expect(t.nextReport?.text).toBe('9 Oct');
   });
 
-  it('records draw-downs, creating the register with the default provision when absent', async () => {
-    await recordContingencyDraw('HLT-026', { amountKeur: 10, reason: 'Night shift lighting', linkRef: 'R-07', approvedBy: 'R. Aubert' }, 'Romain Aubert');
-    const hlt = (await getContingency('HLT-026'))!;
-    expect([hlt.drawn, hlt.remaining, hlt.draws.at(-1)?.dateText, hlt.draws.at(-1)?.linkType, hlt.draws.at(-1)?.approvedBy]).toEqual([58, 92, '25 Sep', 'risk', 'R. Aubert']);
-    await recordContingencyDraw('NDC-031', { amountKeur: 5, reason: 'UPS', approvedBy: 'M. Lefebvre' }, 'Marie Lefebvre');
+  // Delivery 7 (R-071, C-4): a draw-down is submitted, linked, and only drawn once the portfolio director validates it.
+  it('submits draw-downs (linked, not drawn yet), the director validates them; the register is created with the budget\'s provision', async () => {
+    await submitContingencyDraw('HLT-026', { amountKeur: 10, reason: 'Night shift lighting', linkRef: 'R-07', linkType: 'risk' }, 'Romain Aubert');
+    let hlt = (await getContingency('HLT-026'))!;
+    expect([hlt.drawn, hlt.pending, hlt.remaining, hlt.draws.at(-1)?.dateText, hlt.draws.at(-1)?.linkType, hlt.draws.at(-1)?.status, hlt.draws.at(-1)?.requestedBy])
+      .toEqual([48, 10, 102, '25 Sep', 'risk', 'submitted', 'R. Aubert']);
+    await decideContingencyDraw('HLT-026', hlt.draws.at(-1)!.id, 'validated', { name: 'Marie Lefebvre', role: 'director' });
+    hlt = (await getContingency('HLT-026'))!;
+    expect([hlt.drawn, hlt.pending, hlt.remaining, hlt.draws.at(-1)?.approvedBy]).toEqual([58, 0, 92, 'M. Lefebvre']);
+    // A-8: NDC-031's provision is its budget's contingency line (100), no longer round(BAC × 3 %) = 63.
+    await submitContingencyDraw('NDC-031', { amountKeur: 5, reason: 'UPS', linkRef: 'R-01', linkType: 'risk' }, 'Marie Lefebvre');
     const ndc = (await getContingency('NDC-031'))!;
-    expect([ndc.initial, ndc.isDefault, ndc.drawn, ndc.draws[0].linkRef]).toEqual([63, false, 5, null]);
+    expect([ndc.initial, ndc.isDefault, ndc.drawn, ndc.pending, ndc.draws[0].linkRef]).toEqual([100, false, 0, 5, 'R-01']);
   });
 });
 

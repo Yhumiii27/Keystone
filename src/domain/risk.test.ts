@@ -6,9 +6,9 @@ import PROTO from '@/server/prototype/prototype-data.json';
 import GEN from '@/server/prototype/prototype-generated.json';
 import { riskCategory, riskResponse, riskStatus } from '@/server/db/codes';
 import {
-  FORM_CATEGORIES, FORM_RESPONSES, badgeText, cellLevel, costIfOccurs, criticalOpenCount, levelOf, levelTagText, levelTone, onCriticalPath,
-  parseCategory, parseEmv, parseNewRisk, parseRiskEdit, parseScale, registerRows, riskChips, riskKpis, riskMatrix, scoreOf, statusTone, toggleOf,
-  type RiskFacts,
+  FORM_CATEGORIES, FORM_RESPONSES, MAX_COST, badgeText, cellLevel, costIfOccurs, costOfLegacyEmv, criticalOpenCount, emvOf, levelOf, levelTagText,
+  levelTone, onCriticalPath, parseCategory, parseCost, parseNewRisk, parseRiskEdit, parseScale, registerRows, riskChips, riskKpis, riskMatrix, scoreOf,
+  statusTone, toggleOf, type RiskFacts,
 } from './risk';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,11 +46,25 @@ describe('score, level, cost if it occurs', () => {
     expect(levelTagText(HLT[5])).toBe('Medium · 6');
   });
 
-  it('contingency draw if it occurs = round(EMV / (P/5)), "—" when EMV is 0', () => {
-    expect(HLT.map((r) => costIfOccurs(r.emv, r.probability))).toEqual([150, 150, 75, 45, 100, 60, 25, null]);
-    expect(generated('WSA-044').map((r) => costIfOccurs(r.emv, r.probability))).toEqual([106, 108, 53, 33]);
-    // The drawer re-computes it when P changes (EMV stays stored, 07 OQ4): R-03 at P 3 → 200.
-    expect(costIfOccurs(120, 3)).toBe(200);
+  // Q-1 (delivery 7, R-072): the cost if it occurs is entered and stored; EMV = cost × P / 5. The prototype stored the EMV and
+  // derived the cost the other way round (round(EMV / (P/5))): the seed's costs are the stored EMVs converted once.
+  it('Q-1: the seed\'s costs keep every EMV the prototype showed (HLT-026 and the scaled registers)', () => {
+    const costs = HLT.map((r) => costOfLegacyEmv(r.emv, r.probability));
+    expect(costs).toEqual([150, 150, 75, 45, 100, 60, 25, 0]);
+    expect(HLT.map((r, i) => emvOf(costs[i], r.probability))).toEqual(HLT.map((r) => r.emv));
+    expect(costs.map(costIfOccurs)).toEqual([150, 150, 75, 45, 100, 60, 25, null]);
+    const wsa = generated('WSA-044');
+    const wsaCosts = wsa.map((r) => costOfLegacyEmv(r.emv, r.probability));
+    // Two decimals (85 × 5 / 4 = 106.25), shown "€106k" as before; the EMV comes back exactly.
+    expect(wsaCosts).toEqual([106.25, 107.5, 53.33, 32.5]);
+    expect(wsa.map((r, i) => emvOf(wsaCosts[i], r.probability))).toEqual(wsa.map((r) => r.emv));
+  });
+
+  it('Q-1: EMV = cost × P / 5 follows the probability (P = 1 → 20 %, P = 5 → 100 %)', () => {
+    // R-03 (cost 150): P 4 → 120; P 3 → 90 (the prototype kept 120 and showed a cost of 200 instead — 07 OQ4).
+    expect([1, 2, 3, 4, 5].map((p) => emvOf(150, p))).toEqual([30, 60, 90, 120, 150]);
+    expect([emvOf(0, 5), emvOf(null, 3), emvOf(-10, 3), emvOf(100, 9), emvOf(100, 0)]).toEqual([0, 0, 0, 100, 20]);
+    expect([costIfOccurs(0), costIfOccurs(null), costIfOccurs(12.5)]).toEqual([null, null, 12.5]);
   });
 
   it('critical path = linked activity with total float ≤ 0', () => {
@@ -161,18 +175,22 @@ describe('"New risk" form', () => {
 
   it('P / I parsing as afSubmit: parseInt, || 3, clamped to 1–5', () => {
     expect(['3', '', '0', '7', '-2', '2.9', 'abc', undefined].map((v) => parseScale(v as string))).toEqual([3, 3, 3, 5, 1, 2, 3, 3]);
-    expect(['', '40', '12.7', '-5', 'x'].map(parseEmv)).toEqual([0, 40, 12, 0, 0]);
+  });
+
+  it('Q-1 cost if it occurs: blank → 0, decimals (point or comma) kept to two places, anything else refused', () => {
+    expect(['', ' ', '40', '12.7', '12,75', '1 250', '0.005'].map(parseCost)).toEqual([0, 0, 40, 12.7, 12.75, 1250, 0.01]);
+    expect(['-5', 'x', '1e3', '12.5.1', String(MAX_COST + 1)].map(parseCost)).toEqual([null, null, null, null, null]);
   });
 
   it('valid form → defaults, "—" plan, selects default to their first option', () => {
     const team = P.DEFS['HLT-026'].team as string[];
-    const r = parseNewRisk({ title: '  Port strike  ', cat: '', p: '9', i: '2', owner: '', resp: '', emv: '30', plan: '' }, team);
+    const r = parseNewRisk({ title: '  Port strike  ', cat: '', p: '9', i: '2', owner: '', resp: '', cost: '30', plan: '' }, team);
     expect(r).toEqual({
       ok: true,
-      value: { title: 'Port strike', category: 'supplier_delivery', probability: 5, impact: 2, owner: 'Amélie Ollivier', response: 'mitigate', emvKeur: 30, plan: '—' },
+      value: { title: 'Port strike', category: 'supplier_delivery', probability: 5, impact: 2, owner: 'Amélie Ollivier', response: 'mitigate', costKeur: 30, plan: '—' },
     });
-    const s = parseNewRisk({ title: 'x', cat: 'hse', p: '3', i: '3', owner: 'Léa Marchand', resp: 'avoid', emv: '', plan: 'Barriers' }, team);
-    expect(s.ok && s.value).toMatchObject({ category: 'hse', owner: 'Léa Marchand', response: 'avoid', emvKeur: 0, plan: 'Barriers' });
+    const s = parseNewRisk({ title: 'x', cat: 'hse', p: '3', i: '3', owner: 'Léa Marchand', resp: 'avoid', cost: '', plan: 'Barriers' }, team);
+    expect(s.ok && s.value).toMatchObject({ category: 'hse', owner: 'Léa Marchand', response: 'avoid', costKeur: 0, plan: 'Barriers' });
   });
 
   it('rejects a blank title and values outside the offered lists', () => {
@@ -182,6 +200,8 @@ describe('"New risk" form', () => {
     expect(parseNewRisk({ title: 'x', resp: 'pray' }, team)).toEqual({ ok: false, error: 'Unknown response' });
     expect(parseNewRisk({ title: 'x', owner: 'Somebody Else' }, team)).toEqual({ ok: false, error: 'Unknown owner' });
     expect(parseNewRisk({ title: 'x' }, [])).toMatchObject({ ok: true, value: { owner: null } });
+    expect(parseNewRisk({ title: 'x', cost: '-3' }, team)).toEqual({ ok: false, error: 'Enter a cost of 0 or more (k€)' });
+    expect(parseNewRisk({ title: 'x', cost: 'lots' }, team)).toEqual({ ok: false, error: 'Enter a cost of 0 or more (k€)' });
   });
 });
 
@@ -189,10 +209,16 @@ describe('drawer edits', () => {
   it('accepts P / I 1–5, response and status codes', () => {
     expect(parseRiskEdit({ probability: 3 })).toEqual({ ok: true, value: { probability: 3 } });
     expect(parseRiskEdit({ impact: 5, response: 'transfer', status: 'closed' })).toEqual({ ok: true, value: { impact: 5, response: 'transfer', status: 'closed' } });
+    // Q-1: the cost if it occurs (two decimals).
+    expect(parseRiskEdit({ costKeur: 180.456 })).toEqual({ ok: true, value: { costKeur: 180.46 } });
+    expect(parseRiskEdit({ costKeur: 0 })).toEqual({ ok: true, value: { costKeur: 0 } });
   });
 
   it('rejects anything else', () => {
-    for (const bad of [null, 'x', {}, { probability: 0 }, { probability: 6 }, { impact: 2.5 }, { response: 'Mitigate' }, { status: 'Open' }])
+    for (const bad of [
+      null, 'x', {}, { probability: 0 }, { probability: 6 }, { impact: 2.5 }, { response: 'Mitigate' }, { status: 'Open' },
+      { costKeur: -1 }, { costKeur: '40' }, { costKeur: Number.NaN }, { costKeur: MAX_COST + 1 },
+    ])
       expect(parseRiskEdit(bad).ok).toBe(false);
   });
 

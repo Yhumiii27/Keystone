@@ -1,5 +1,12 @@
 // Budget & cost: DAL integration (in-memory PGlite seeded from the prototype) + static render of the three tabs,
 // checked against the prototype's displayed values (docs/spec/04 §1.4–§1.6).
+// Delivery 7 (lot cost-control) changes these displayed values on purpose, each citing its owner decision:
+//  - R-073 / C-2a, A-12: EV = progress × BAC from the activities (€3.08M → €3.01M), PV from the cost-loaded BL1, AC = activities'
+//    actual cost + validated contingency draw-downs (€3.36M, unchanged) — so CPI 0.92 → 0.89, EAC €5.24M → €5.37M, VAC −€436k →
+//    −€565k, TCPI 1.19 → 1.25, CV −€280k → −€354k, SV −€340k → −€657k; orders placed = the open purchase orders (€713k → €3.95M);
+//  - R-068 / A-4: the change list, "Pending" and the work packages' changes read the single register (CR-007 "Yard drainage
+//    re-routing", CR-008 "Second steel crew — schedule recovery" −12 days in review; 1.3 +€120k, 1.5 +€65k, 1.7 +€15k);
+//  - R-070 / A-8: contingency drawn = the register's validated draw-downs (139 % · +€58k over → 32 %), forecast €208k apart.
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 vi.mock('next/navigation', () => ({ usePathname: () => '/projects/HLT-026/budget', useRouter: () => ({ push() {}, replace() {}, refresh() {} }), useSearchParams: () => new URLSearchParams() }));
 import { createElement as h, type ReactElement } from 'react';
@@ -48,7 +55,7 @@ describe('Budget & cost', () => {
     expect(hlt.cost.bac).toBe(4800);
     expect(hlt.rex).toMatchObject({ mt: 'EMP', dep: 30, deliv: 60, acc: 10 });
     expect(hlt.rex?.refs.map((r) => r.id)).toEqual(['HAV001', 'ANT002']);
-    expect(hlt.contract).toMatchObject({ ref: 'CTR-HLT-001', amount: 5400, terms: 'Net 45 days', openCommit: 713 });
+    expect(hlt.contract).toMatchObject({ ref: 'CTR-HLT-001', amount: 5400, terms: 'Net 45 days', openCommit: 3946.5 });
     expect(hlt.contract?.milestones.map((m) => m.status)).toEqual(['paid', 'paid', 'invoiced', 'planned', 'planned']);
     expect(await getBudgetData('SCP-033')).toBeNull();
     expect(await getBudgetContract('NDC-031')).toBeNull();
@@ -77,21 +84,26 @@ describe('Budget & cost', () => {
     for (const s of [
       'Budget (BAC) €4.80M Approved baseline',
       'Actual cost €3.36M 70% of budget',
-      'Earned value €3.08M Work completed',
-      'Forecast (EAC) €5.24M At current CPI',
-      'Variance (VAC) −€436k -9.1% of budget',
-      'CPI 0.92 Target ≥ 1.00',
-      'TCPI 1.19 Needed to hit BAC',
-      'Cost (EV−AC) −€280k',
-      'Schedule (EV−PV) −€340k',
+      'Earned value €3.01M Work completed',
+      'Forecast (EAC) €5.37M At current CPI',
+      'Variance (VAC) −€565k -11.8% of budget',
+      'CPI 0.89 Target ≥ 1.00',
+      'TCPI 1.25 Needed to hit BAC',
+      'Cost (EV−AC) −€354k',
+      'Schedule (EV−PV) −€657k',
       'Budget at completion · €4.80M',
-      'EAC €5.24M',
-      'Overrun is widening ~$40k a month, led by steel labor. To finish on budget the remaining work needs a CPI of 1.19 .',
+      'EAC €5.37M',
+      'Planned value follows the cost-loaded baseline · Earned value = progress × budget · PROFILE',
+      'Overrun is widening ~$40k a month, led by steel labor. To finish on budget the remaining work needs a CPI of 1.25 .',
       'Labor €1.85M €1.42M €180k €2.01M',
+      // R-073: the material line commits the open purchase orders.
+      'Materials €1.32M €960k €3.95M €1.46M',
       'Permits & fees €140k €62k — €128k',
+      // A-8: the reserve line is the register (drawn 48, forecast 208).
+      'Contingency €150k €48k — €208k −€58k',
     ])
       expect(tx).toContain(s);
-    expect(out).toContain('d="M52.0 260.0 L109.7 252.6 L167.3 242.9 L225.0 229.3');
+    expect(out).toContain('d="M52.0 260.0 L109.7 255.8 L167.3 251.5 L225.0 248.1');
     expect(out).toContain('<title>Structural steel — columns, beams, purlins · deposit 30 % · €192k · Mar</title>');
     expect(out).toContain('--bar-h:80%');
     expect(out).toContain('href="/b?tab=setup"');
@@ -99,7 +111,10 @@ describe('Budget & cost', () => {
 
   it('Performance (FR)', () => {
     const tx = text(render(hlt, 'perf', 'fr'));
-    for (const s of ['Coût réel 3,36 M€ 70 % du budget', 'Écart (VAC) −436 k€ -9,1 % du budget', 'Budget à l’achèvement · 4,80 M€', 'Aujourd’hui', 'janv.', 'Main-d’œuvre', 'Matériaux'])
+    for (const s of [
+      'Coût réel 3,36 M€ 70 % du budget', 'Écart (VAC) −565 k€ -11,8 % du budget', 'Budget à l’achèvement · 4,80 M€', 'Aujourd’hui', 'janv.', 'Main-d’œuvre', 'Matériaux',
+      'La valeur planifiée suit la référence chargée en coûts · Valeur acquise = avancement × budget',
+    ])
       expect(tx).toContain(s);
   });
 
@@ -115,14 +130,17 @@ describe('Budget & cost', () => {
       'Original budget €4.60M BL1 · 12 Mar 2026',
       'Approved changes +€200k 3 change requests',
       'Current budget (BAC) €4.80M Basis for CPI / EAC',
-      'Pending +€85k CR-008 · review 30 Sep',
-      'Contingency €150k 139% drawn · +€58k over',
+      'Pending +€85k CR-008 · In review',
+      'Contingency €150k 32% drawn · Forecast €208k',
       'C06 Contingency Reserve Drawn by change request €150k',
       'CR-004 Additional piling — soft ground at Bay 4 14 May · R. Aubert +€120k +12 days Approved',
       'CR-006 Crane specification upgrade to 250 t 02 Jul · Steering committee +€65k No schedule impact Approved',
-      'CR-008 Steel erection acceleration — second crew Review 30 Sep · Steering committee +€85k -18 days Pending',
+      'CR-007 Yard drainage re-routing 20 Aug · R. Aubert +€15k No schedule impact Approved',
+      'CR-008 Second steel crew — schedule recovery 24 Sep · R. Aubert +€85k -12 days In review',
       'CR-005 Value engineering — paving thickness 11 Jun · Client −€40k No schedule impact Rejected',
-      '1.4 Steel structure €960k +€65k €1.02M €816k €1.19M',
+      '1.3 Foundations €740k +€120k €860k €802k €802k',
+      '1.4 Steel structure €960k — €960k €816k €1.19M',
+      '1.5 Crane installation €620k +€65k €685k €372k €690k',
       'Total €4.60M +€200k €4.80M €3.36M €5.24M',
     ])
       expect(tx).toContain(s);
@@ -132,7 +150,7 @@ describe('Budget & cost', () => {
     expect(tx).toContain('Add category');
     expect(tx).toContain('New change request');
     expect(out).toContain('class="tag tag-accent">Approved');
-    expect(out).toContain('class="tag tag-outline">Pending');
+    expect(out).toContain('class="tag tag-outline">In review');
     expect(out).toContain('class="tag tag-neutral">Rejected');
   });
 
@@ -140,7 +158,7 @@ describe('Budget & cost', () => {
     const ro = text(render(hlt, 'setup', 'fr', false));
     expect(ro).not.toContain('Ajouter une catégorie');
     expect(ro).not.toContain('Nouvelle demande de modification');
-    for (const s of ['Budget initial', 'Réserve', '139 % consommés · +58 k€ de dépassement', 'Sans impact planning', 'Provision pour aléas (non affectée)', 'Ouvrir le plan'])
+    for (const s of ['Budget initial', 'Réserve', '32 % consommés · Prévision 208 k€', 'CR-008 · En revue', 'Sans impact planning', 'Provision pour aléas (non affectée)', 'Ouvrir le plan'])
       expect(ro).toContain(s);
   });
 
@@ -157,17 +175,19 @@ describe('Budget & cost', () => {
     const tx = text(out);
     for (const s of [
       'Client payments received €1.66M 2 milestones paid · 30 % of contract',
-      'Committed to date €4.07M €3.36M actual cost · €713k orders placed',
-      'Recovery −€2.42M we are financing the project',
-      'Coverage 41 % received ÷ committed',
+      // R-073: orders placed = the open purchase orders (€3.95M at their line prices; was the literal €713k), AC by month from the
+      // activities' actual spans — the recovery gap widens accordingly.
+      'Committed to date €7.31M €3.36M actual cost · €3.95M orders placed',
+      'Recovery −€5.65M we are financing the project',
+      'Coverage 23 % received ÷ committed',
       'Next receipt €1.38M M3 · Nov · Net 45 days',
-      'Lowest point −€2.50M Oct · still ahead',
-      'Apr €552k M1 €385k −€578k',
-      'Sep — €1.12M incl. €713k orders placed −€2.42M',
-      'Mar ’27 €1.38M M5 €0k +€655k',
+      'Lowest point −€5.65M Sep · already passed',
+      'Apr €552k M1 €97k +€193k',
+      'Sep — €4.54M incl. €3.95M orders placed −€5.65M',
+      'Mar ’27 €1.38M M5 €0k −€1.79M',
     ])
       expect(tx).toContain(s);
-    expect(out).toContain('d="M467.2 91.9 L513.3 88.5 L559.5 69.6');
+    expect(out).toContain('d="M467.2 32.2 L513.3 32.2 L559.5 32.2');
     expect(out).toContain('Jan’27');
     expect(out).toContain('background:var(--color-accent-900)');
   });

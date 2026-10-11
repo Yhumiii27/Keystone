@@ -16,6 +16,7 @@ import { getProject } from '@/server/dal/projects';
 import { getLastProject } from '@/server/session';
 import { changeRequestProvider } from './change-requests';
 import { codexDocumentProvider } from './codex-documents';
+import { contingencyDrawProvider } from './contingency-draws';
 import { deliverableProvider } from './deliverables';
 import { deliveryQcProvider } from './delivery-qc';
 import { ecoProvider } from './ecos';
@@ -37,6 +38,7 @@ export const APPROVAL_PROVIDERS: readonly ApprovalProvider[] = [
   deliveryQcProvider,
   forcedStageChangeProvider,
   changeRequestProvider,
+  contingencyDrawProvider,
   deliverableProvider,
   rfqAwardProvider,
   invoiceProvider,

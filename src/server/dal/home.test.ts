@@ -154,11 +154,33 @@ const DEPTHEAD_A12: Record<Lang, [Kpi, Kpi]> = {
   fr: [['Surchargés', '3 personnes', 'Pointe semaines 42–44', true], ['Demande non couverte', '280 h', 'Surtout ingénierie', true]],
 };
 
+/**
+ * Delivery 7 (R-073, owner decisions C-2a "EV = avancement × budget", A-12, A-15): progress, actual cost, SPI and CPI come from
+ * the activities, the cost-loaded BL1 and the validated contingency draw-downs at the data date, no longer the seeded
+ * projectData() series — the director's portfolio tiles (actual cost €7.43M → €6.58M, EAC €13.50M → €13.25M, CPI 0.96 → 0.97),
+ * the PM's HLT-026 tiles (SPI 0.90 → 0.82, CPI 0.92 → 0.89, EAC €5.24M → €5.37M) and the client's progress (64 % → 63 %).
+ */
+const R073: Partial<Record<RoleKey, Record<Lang, Record<number, Kpi>>>> = {
+  director: {
+    en: { 1: ['Actual cost', '€6.58M', '50% of budget spent', false], 2: ['Forecast (EAC)', '€13.25M', '−€17k vs budget', true], 3: ['Cost perf. (CPI)', '0.97', 'Earned per $1 spent', true] },
+    fr: { 1: ['Coût réel', '6,58 M€', '50 % du budget dépensé', false], 2: ['Prévision (EAC)', '13,25 M€', '−17 k€ vs budget', true], 3: ['Perf. coût (CPI)', '0.97', 'Acquis par € dépensé', true] },
+  },
+  pm: {
+    en: { 0: ['SPI', '0.82', 'Earning 82¢ of planned work per $1', true], 1: ['CPI', '0.89', 'Target ≥ 1.00', true], 2: ['Forecast (EAC)', '€5.37M', 'At current CPI', true] },
+    fr: { 0: ['SPI', '0.82', '82 ¢ de travail prévu acquis par € dépensé', true], 1: ['CPI', '0.89', 'Cible ≥ 1,00', true], 2: ['Prévision (EAC)', '5,37 M€', 'Au CPI actuel', true] },
+  },
+  client: {
+    en: { 0: ['Progress', '63%', 'Work completed · Harbor Line Terminal Expansion', false] },
+    fr: { 0: ['Avancement', '63%', 'Travail réalisé · Extension du terminal Harbor Line', false] },
+  },
+};
+
 function expected(role: RoleKey, lang: Lang): Golden {
   if (role === 'member') return structuredClone(MEMBER[lang]);
   const g = structuredClone(G[role][lang]);
   if (role === 'procurement') g.kpis[1] = LATE[lang];
   if (role === 'depthead') [g.kpis[2], g.kpis[3]] = DEPTHEAD_A12[lang];
+  for (const [i, k] of Object.entries(R073[role]?.[lang] ?? {})) g.kpis[Number(i)] = k;
   const out = lang === 'fr' ? mapStrings(g, fixFr) : g;
   if (role !== 'client') return out;
   const db = new Map(CLIENT_DB[lang]);
@@ -199,30 +221,32 @@ describe('Home view', () => {
   });
 
   it('director KPIs and alerts follow the zone filter', async () => {
+    // R-073 (C-2a): actual cost and CPI from the activities (euna €5.53M → €5.45M; afr: NDC-031 €1.02M → €884k, CPI 1.05 → 1.10).
     const euna = (await render('director', 'en', 'HLT-026', 'euna')).out;
     expect(euna.kpis).toEqual([
       ['Total budget', '€7.73M', '4 active projects', false],
-      ['Actual cost', '€5.53M', '72% of budget spent', false],
-      ['Forecast (EAC)', '€8.24M', '−€511k vs budget', true],
+      ['Actual cost', '€5.45M', '70% of budget spent', false],
+      ['Forecast (EAC)', '€8.24M', '−€510k vs budget', true],
       ['Cost perf. (CPI)', '0.94', 'Earned per $1 spent', true],
     ]);
     expect(euna.lr).toHaveLength(4);
     const afr = (await render('director', 'en', 'HLT-026', 'afr')).out;
     expect(afr.kpis).toEqual([
       ['Total budget', '€2.10M', '1 active project', false],
-      ['Actual cost', '€1.02M', '49% of budget spent', false],
-      ['Forecast (EAC)', '€2.00M', '+€100k vs budget', true],
-      ['Cost perf. (CPI)', '1.05', 'Earned per $1 spent', false],
+      ['Actual cost', '€884k', '42% of budget spent', false],
+      ['Forecast (EAC)', '€1.91M', '+€192k vs budget', true],
+      ['Cost perf. (CPI)', '1.10', 'Earned per $1 spent', false],
     ]);
     expect(afr.lr.map((r) => r[0])).toEqual(['3 people over 115% in October']);
   });
 
   it('PM home follows the current project (NDC-031)', async () => {
     const { out } = await render('pm', 'en', 'NDC-031');
+    // R-073 (C-2a): the prototype's synthetic EV gave SPI 1.34 (04 Q3); computed from the activities and BL1: 0.96, CPI 1.10.
     expect(out.kpis).toEqual([
-      ['SPI', '1.34', 'Earning 134¢ of planned work per $1', false],
-      ['CPI', '1.05', 'Target ≥ 1.00', true],
-      ['Forecast (EAC)', '€2.00M', 'At current CPI', true],
+      ['SPI', '0.96', 'Earning 96¢ of planned work per $1', true],
+      ['CPI', '1.10', 'Target ≥ 1.00', true],
+      ['Forecast (EAC)', '€1.91M', 'At current CPI', true],
       ['Critical path float', '−4 days', '2 of 6 packages critical', true],
     ]);
     expect(out.lt).toBe('My resource requests — Northgate Data Center Retrofit');
@@ -270,7 +294,8 @@ describe('Home view', () => {
   });
 
   it('unknown current project falls back to the default project', async () => {
-    expect((await render('client', 'en', 'NOPE-1')).out.kpis[0]).toEqual(['Progress', '64%', 'Work completed · Harbor Line Terminal Expansion', false]);
+    // R-073: HLT-026's progress computed from its activities (64 % → 63 %).
+    expect((await render('client', 'en', 'NOPE-1')).out.kpis[0]).toEqual(['Progress', '63%', 'Work completed · Harbor Line Terminal Expansion', false]);
   });
 });
 

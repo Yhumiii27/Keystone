@@ -227,8 +227,7 @@ export const riskLevel = codec<RiskLevel, string>([['critical', 'Critical'], ['h
 /** Score = probability × impact (1–5 each). */
 export const riskScore = (probability: number, impact: number) => probability * impact;
 export const riskLevelOf = (score: number): RiskLevel => (score >= 15 ? 'critical' : score >= 8 ? 'high' : score >= 4 ? 'medium' : 'low');
-/** "Contingency draw if it occurs" = round(EMV / (P/5)); null when the EMV is 0 (prototype shows "—"). */
-export const riskCostIfOccurs = (emvKeur: number, probability: number): number | null => (emvKeur ? Math.round(emvKeur / (probability / 5)) : null);
+// The cost if a risk occurs is entered since delivery 7 and its EMV derived (Q-1): src/domain/risk.ts emvOf / costIfOccurs.
 
 // ── Status report (AF.trends, 04 §2.5) ────────────────────────────────────────────────────────────────
 export type ReportPeriod = 'month' | 'quarter' | 'since_start';
@@ -239,7 +238,9 @@ export type ReportSections = 'full' | 'summary' | 'kpis';
 export const reportSections = codec<ReportSections, string>([['full', 'Full report'], ['summary', 'Summary + KPIs'], ['kpis', 'KPIs only']]);
 
 // ── Contingency (04 §5) ───────────────────────────────────────────────────────────────────────────────
-/** What a draw-down is linked to, parsed from its free-text reference ("CR-004", "R-03", "NCR-026"; OPEN QUESTION C-4). */
+/** Status of a contingency draw-down (delivery 7, C-4): awaiting the director's validation, validated (drawn), rejected. */
+export type ContingencyDrawStatus = 'submitted' | 'validated' | 'rejected';
+/** What a draw-down is linked to (C-4), parsed from its reference ("CR-004", "R-03", "NCR-026"). */
 export type ContingencyLinkType = 'change_request' | 'risk' | 'ncr';
 export function contingencyLinkTypeOf(ref: string | null | undefined): ContingencyLinkType | null {
   const r = (ref ?? '').trim();

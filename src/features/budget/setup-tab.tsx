@@ -1,12 +1,18 @@
 // Budget › Structure & changes tab (docs/spec/04 §1.5; template 379–447, logic 3829–3833, 4048–4056). Server Component.
 // Chapter 4 (A-14): "Add category" offers Settings › Cost categories and the row pencil edits name, type and budget.
+// Delivery 7: the reconciliation and the change list read the single change-request register (A-4: approved / pending
+// changes, each request opening Change control); the contingency tile shows what the register drew — validated
+// draw-downs — and the forecast consumption apart (A-8).
 import { ArrowRight, HourglassHigh } from '@phosphor-icons/react/dist/ssr';
+import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 import { CardGrid, EmptyState, LO, OK, ReconStep, SectionCard, statusTagClass } from '@/components/app';
 import { ButtonLink } from '@/components/ds/Button';
 import { CardTitle } from '@/components/ds/Card';
 import { Table, Td, Th } from '@/components/ds/Table';
-import { contingencyDrawn, isLongLead, workPackageBar, workPackageTotals, type OfferQuote } from '@/domain/evm';
+import { screenHref } from '@/config/screens';
+import { contingencyTile } from '@/domain/cost-control';
+import { isLongLead, workPackageBar, workPackageTotals, type OfferQuote } from '@/domain/evm';
 import type { Lang, T } from '@/i18n/translate';
 import { money, pct } from '@/lib/format';
 import type { CostControl } from '@/server/dal/cost';
@@ -58,7 +64,15 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
   const f = (k: number, signed?: boolean) => money(k, lang, { signed });
   const m = (i: number | null) => (i == null ? '' : (cost.chartMonths[i] ?? ''));
   const rc = cost.recon;
-  const cont = contingencyDrawn(rc.cont, rc.contUsed);
+  // A-8: drawn = the register's validated draw-downs; the forecast consumption shows apart (LO when above the provision).
+  const cont = contingencyTile(rc.cont, rc.contUsed, rc.contForecast);
+  const contSub = [
+    t(`${cont.pct}% drawn`),
+    cont.over ? t(`${f(cont.over, true)} over`) : null,
+    cont.forecast !== rc.contUsed ? `${t('Forecast')} ${f(cont.forecast)}` : null,
+    rc.contPending ? `${f(rc.contPending)} ${t('awaiting validation')}` : null,
+  ].filter(Boolean).join(' · ');
+  const crHref = (id: string) => `${screenHref('changes', { code: code ?? '' })}?cr=${encodeURIComponent(id)}`;
   const recon = [
     { label: 'Original budget', value: f(rc.orig), sub: t(`BL1 · ${cost.baselineSet}`) },
     {
@@ -68,13 +82,8 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
       color: rc.chg ? 'var(--color-accent-300)' : 'var(--color-neutral-400)',
     },
     { label: 'Current budget (BAC)', value: f(cost.bac), sub: t('Basis for CPI / EAC'), highlight: true },
-    { label: 'Pending', value: rc.pending ? f(rc.pending, true) : '—', sub: t(rc.pendingSub), color: 'var(--color-neutral-300)' },
-    {
-      label: 'Contingency',
-      value: f(rc.cont),
-      sub: t(`${cont.pct}% drawn`) + (cont.over ? ' · ' + t(`${f(cont.over, true)} over`) : ''),
-      color: cont.over ? LO : OK,
-    },
+    { label: 'Pending', value: rc.pending ? f(rc.pending, true) : '—', sub: rc.pendingSub.split(' · ').map(t).join(' · '), color: 'var(--color-neutral-300)' },
+    { label: 'Contingency', value: f(rc.cont), sub: contSub, color: cont.alert ? LO : OK },
   ];
   const wpRows = cost.workPackages.map((w) => ({ ...w, weight: 400 }));
   const tot = workPackageTotals(cost.workPackages);
@@ -205,7 +214,13 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
           />
           {cost.changes.map((cr) => (
             <div key={cr.id} className={s.crRow}>
-              <span className={s.crId}>{cr.id}</span>
+              {code ? (
+                <Link href={crHref(cr.id)} className={s.crId}>
+                  {cr.id}
+                </Link>
+              ) : (
+                <span className={s.crId}>{cr.id}</span>
+              )}
               <div className={s.crMain}>
                 <span className={s.crTitle}>{t(cr.title)}</span>
                 <span className={s.crMeta}>{t(cr.meta)}</span>

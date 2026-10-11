@@ -1,7 +1,8 @@
 // Risk drawer (docs/spec/07 §2.1 riskVals, template 1814–1828): opened by `?risk=R-03`, closed (×, scrim, Esc)
 // to the register URL. Header "R-03 · Supplier / delivery" + level tag "Critical · 16"; title; Probability and
-// Impact segments; Response strategy; Response plan; Assessment (owner, trigger, linked activity, EMV, contingency
-// draw if it occurs); actions Open activity · What-if levelling · Close risk / Reopen.
+// Impact segments; Response strategy; (delivery 7, Q-1) the cost if it occurs, editable; Response plan; Assessment (owner,
+// trigger, linked activity, EMV = cost × P / 5, contingency draw if it occurs); actions Open activity · What-if levelling ·
+// Close risk / Reopen.
 import { Scales, TreeStructure } from '@phosphor-icons/react/dist/ssr';
 import { Eyebrow } from '@/components/app/Eyebrow';
 import { KeyValueList } from '@/components/app/KeyValueList';
@@ -9,7 +10,7 @@ import { ButtonLink } from '@/components/ds/Button';
 import { Drawer } from '@/components/ds/Drawer';
 import type { T } from '@/i18n/translate';
 import type { RiskDrawerView } from './model';
-import { RiskScales, RiskStatusToggle } from './risk-controls';
+import { RiskCostField, RiskScales, RiskStatusToggle } from './risk-controls';
 import s from './risks.module.css';
 
 export interface RiskDrawerProps {
@@ -30,6 +31,7 @@ export function RiskDrawer({ code, view, canEdit, t }: RiskDrawerProps) {
         values={{ probability: view.probability, impact: view.impact, response: view.response, status: view.status }}
         canEdit={canEdit}
       />
+      {canEdit && <RiskCostField key={`${view.id}:${view.cost}`} code={code} riskId={view.id} cost={view.cost} />}
       <div className={s.section}>
         <Eyebrow>{t('Response plan')}</Eyebrow>
         <span className={s.plan}>{view.plan}</span>
