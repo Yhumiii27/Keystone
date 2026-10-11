@@ -172,7 +172,7 @@ export async function importTranscriptAction(form: FormData): Promise<MeetingAct
   if (!(form instanceof FormData)) return fail('Invalid request');
   const g = await transcriptMeeting(form.get('code'), form.get('meeting'));
   if (!g.ok) return fail(g.error);
-  if (!(await hitActionRateLimit('upload', g.actor)).ok) return fail(TOO_MANY_REQUESTS);
+  if (!(await hitActionRateLimit('upload', g.ctx.viewer)).ok) return fail(TOO_MANY_REQUESTS);
   const file = form.get('file');
   const text = form.get('text');
   let input: { text?: string; file?: { name: string; data: Uint8Array } };
@@ -206,7 +206,7 @@ export async function analyseTranscriptAction(input: { code: string; meeting: st
   const engine = input.engine ?? 'auto';
   if (engine !== 'auto' && engine !== 'local' && engine !== 'claude') return fail('Invalid request');
   if (engine === 'claude' && !transcriptAiInfo().claude) return fail('Claude is not configured (ANTHROPIC_API_KEY)');
-  if (!(await hitActionRateLimit('analysis', g.actor)).ok) return fail(TOO_MANY_REQUESTS);
+  if (!(await hitActionRateLimit('analysis', g.ctx.viewer)).ok) return fail(TOO_MANY_REQUESTS);
   const r = await write('analyseTranscriptAction', () => analyseTranscript(g.meeting.number, g.actor, { engine }));
   if (!r.ok) return fail(r.error);
   refresh(g.code);

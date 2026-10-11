@@ -37,7 +37,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!owner) return fail(400, 'Invalid request');
   const g = await photoGate(owner, 'edit');
   if (!g.ok) return fail(g.status, g.error);
-  const limited = hitRateLimit('upload', rateClient(request.headers, g.viewer.name));
+  const limited = hitRateLimit('upload', rateClient(request.headers, g.viewer));
   if (!limited.ok) return tooManyRequestsResponse('json', t(TOO_MANY_REQUESTS), limited.retryAfterSec);
   const file = form.get('file');
   if (!(file instanceof File)) return fail(400, 'Choose a photo to add');

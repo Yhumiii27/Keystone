@@ -14,6 +14,7 @@
 //   safe in client components (src/server/integrations/*/config.ts); they are only validated here.
 import path from 'node:path';
 import { z } from 'zod';
+import { parseGroupRoleMap } from '@/domain/auth';
 
 export const SEED_MODES = ['demo', 'production'] as const;
 /** What a NEW database is seeded with (KEYSTONE_SEED): the prototype data set, or reference data only (A-15). */
@@ -104,13 +105,42 @@ const VARS = {
   KEYSTONE_AI: onOff.optional(),
   KEYSTONE_AI_MODEL: z.string().regex(/^[a-z0-9][a-z0-9._:@-]*$/i, 'must be a model id').optional(),
   KEYSTONE_AI_FALLBACKS: onOff.optional(),
+  // Sign-in (R-038): src/server/auth/config.ts reads them at call time; validated here too so a production start fails on a
+  // bad value instead of every sign-in, and the secrets are masked in the logs.
+  KEYSTONE_AUTH: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .pipe(z.enum(['demo', 'entra'], { message: 'must be "demo" or "entra"' }))
+    .optional(),
+  KEYSTONE_SESSION_SECRET: z.string().min(32, 'must be at least 32 characters').optional(),
+  KEYSTONE_SESSION_HOURS: z.coerce.number().int().min(1, 'must be at least 1').max(168, 'must be at most 168').optional(),
+  ENTRA_TENANT_ID: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'must be a GUID').optional(),
+  ENTRA_ISSUER: httpUrl.optional(),
+  ENTRA_CLIENT_ID: z.string().optional(),
+  ENTRA_CLIENT_SECRET: z.string().optional(),
+  ENTRA_REDIRECT_URI: httpUrl.optional(),
+  ENTRA_POST_LOGOUT_REDIRECT_URI: httpUrl.optional(),
+  ENTRA_GROUP_ROLES: z
+    .string()
+    .refine((v) => {
+      try {
+        parseGroupRoleMap(v);
+        return true;
+      } catch {
+        return false;
+      }
+    }, 'must be a JSON object { "<group object id>": "<role>" | ["<role>", …] } of Keystone roles')
+    .optional(),
+  // Codex connector (R-124; read by src/server/integrations/codex/config.ts) and IT's connectors file (R-020).
+  CODEX_API_URL: httpUrl.optional(),
+  KEYSTONE_CONNECTORS_FILE: z.string().optional(),
 } as const;
 
 export type ConfigVariable = keyof typeof VARS;
 /** Every variable the configuration reads (the cache key of src/server/config/index.ts). */
 export const CONFIG_VARIABLES = Object.keys(VARS) as ConfigVariable[];
 /** Variables whose value is a secret (masked in logs, never echoed in messages). */
-const SECRET_VARIABLES: ConfigVariable[] = ['CURSUS_API_KEY', 'KEYSTONE_API_KEY', 'VIGIE_API_KEY', 'ANTHROPIC_API_KEY'];
+const SECRET_VARIABLES: ConfigVariable[] = ['CURSUS_API_KEY', 'KEYSTONE_API_KEY', 'VIGIE_API_KEY', 'ANTHROPIC_API_KEY', 'KEYSTONE_SESSION_SECRET', 'ENTRA_CLIENT_SECRET'];
 
 type Values = { [K in ConfigVariable]: z.output<(typeof VARS)[K]> };
 
@@ -198,6 +228,16 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
   if (production)
     for (const [name, app] of [['NEXT_PUBLIC_CODEX_URL', 'Codex'], ['NEXT_PUBLIC_CURSUS_URL', 'Cursus'], ['NEXT_PUBLIC_VIGIE_URL', 'Vigie']] as const)
       if (!v[name]) warnings.push({ variable: name, message: `is not set: links open ${app} on localhost` });
+
+  // Entra sign-in (R-038) needs its secret and app registration; without them every page would answer the sign-in error.
+  if (v.KEYSTONE_AUTH === 'entra') {
+    const missing: [ConfigVariable, unknown][] = [
+      ['KEYSTONE_SESSION_SECRET', v.KEYSTONE_SESSION_SECRET], ['ENTRA_CLIENT_ID', v.ENTRA_CLIENT_ID], ['ENTRA_CLIENT_SECRET', v.ENTRA_CLIENT_SECRET],
+      ['ENTRA_REDIRECT_URI', v.ENTRA_REDIRECT_URI], ['ENTRA_TENANT_ID', v.ENTRA_TENANT_ID ?? v.ENTRA_ISSUER],
+    ];
+    for (const [name, value] of missing)
+      if (!value && !errors.some((e) => e.variable === name)) errors.push({ variable: name, message: name === 'ENTRA_TENANT_ID' ? 'is required with KEYSTONE_AUTH=entra (or ENTRA_ISSUER)' : 'is required with KEYSTONE_AUTH=entra' });
+  }
 
   const anthropic = v.ANTHROPIC_API_KEY ?? null;
   const secrets = [...SECRET_VARIABLES.map((n) => v[n] as string | undefined), urlPassword(v.DATABASE_URL)].filter((s): s is string => !!s && s.length >= 4);

@@ -22,7 +22,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ code: strin
   const project = await getProject(code);
   if (!project || !project.hasData) return text(404, 'Unknown project');
   if (viewer.role === 'client') return text(403, 'Outside your workspace');
-  const limited = hitRateLimit('export', rateClient(request.headers, viewer.name));
+  const limited = hitRateLimit('export', rateClient(request.headers, viewer));
   if (!limited.ok) return tooManyRequestsResponse('text', t(TOO_MANY_REQUESTS), limited.retryAfterSec);
   const now = new Date();
   const out = await exportScheduleXml(project.code, now);

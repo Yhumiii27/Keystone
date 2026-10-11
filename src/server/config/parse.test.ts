@@ -114,6 +114,22 @@ describe('parseConfig', () => {
     expect(r.config.secrets.sort()).toEqual(['cursus-key', 'pw-123', 'sk-ant-abcdef']);
   });
 
+  it('sign-in (R-038): entra needs its secret and app registration; bad values are errors; the secrets are masked', () => {
+    expect(parse({ KEYSTONE_AUTH: 'Demo' }).errors).toEqual([]);
+    expect(vars(parse({ KEYSTONE_AUTH: 'entra' }).errors).sort()).toEqual(['ENTRA_CLIENT_ID', 'ENTRA_CLIENT_SECRET', 'ENTRA_REDIRECT_URI', 'ENTRA_TENANT_ID', 'KEYSTONE_SESSION_SECRET']);
+    const entra = {
+      KEYSTONE_AUTH: 'entra', KEYSTONE_SESSION_SECRET: 's'.repeat(32), ENTRA_TENANT_ID: '00000000-0000-0000-0000-000000000000', ENTRA_CLIENT_ID: 'app',
+      ENTRA_CLIENT_SECRET: 'entra-client-secret', ENTRA_REDIRECT_URI: 'https://keystone.example/api/auth/callback',
+    };
+    const ok = parse(entra);
+    expect(ok.errors).toEqual([]);
+    expect(ok.config.secrets).toEqual(expect.arrayContaining(['s'.repeat(32), 'entra-client-secret']));
+    const bad = parse({ ...entra, KEYSTONE_AUTH: 'saml', KEYSTONE_SESSION_SECRET: 'short', KEYSTONE_SESSION_HOURS: '500', ENTRA_TENANT_ID: 'contoso', ENTRA_GROUP_ROLES: '{"g": "admin"}', CODEX_API_URL: 'ftp://codex' });
+    expect(vars(bad.errors).sort()).toEqual(['CODEX_API_URL', 'ENTRA_GROUP_ROLES', 'ENTRA_TENANT_ID', 'KEYSTONE_AUTH', 'KEYSTONE_SESSION_HOURS', 'KEYSTONE_SESSION_SECRET']);
+    expect(formatIssues(bad.errors).join(' ')).not.toContain('short');
+    expect(parse({ ENTRA_GROUP_ROLES: '{"0f0e": ["pm", "englead"]}' }).errors).toEqual([]);
+  });
+
   it('lists every variable it reads (cache key of the server configuration)', () => {
     expect(CONFIG_VARIABLES).toEqual(expect.arrayContaining(['DATABASE_URL', 'KEYSTONE_SEED', 'LOG_LEVEL', 'CURSUS_API_KEY', 'VIGIE_API_KEY', 'KEYSTONE_DATA_DIR']));
   });

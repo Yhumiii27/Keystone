@@ -23,6 +23,7 @@ let dir: string;
 const run = (name: Parameters<typeof jobDefinition>[0]) => jobDefinition(name).run();
 const quiet = () => {
   vi.spyOn(console, 'log').mockImplementation(() => {});
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
 };
 
@@ -78,6 +79,8 @@ describe('one run', () => {
     ({ name: 'test-job' as never, everyMs: 60_000, leaseMs: 60_000, firstDelayMs: 0, run });
 
   it('ok: recorded and logged as one JSON line; skipped while another holder runs it; failure recorded, never thrown', async () => {
+    // The server logger (R-009) writes JSON in production; LOG_FORMAT forces it here.
+    vi.stubEnv('LOG_FORMAT', 'json');
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     const err = vi.spyOn(console, 'error').mockImplementation(() => {});
     const r = await runJob(job(async () => ({ summary: '2 done', counts: { done: 2 } })), 'W1');

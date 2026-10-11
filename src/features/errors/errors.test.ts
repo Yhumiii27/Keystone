@@ -34,7 +34,10 @@ beforeEach(() => {
   state.role = 'pm';
   resetRateLimits();
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+});
 
 describe('incident identifiers', () => {
   it('browser identifiers: "C-" + 8 hex digits, random', () => {
@@ -64,6 +67,8 @@ describe('incident identifiers', () => {
   });
 
   it('the report Server Function writes one JSON line to the server log, refuses bad input and floods', async () => {
+    // The server logger (R-009) writes JSON in production; LOG_FORMAT forces it here.
+    vi.stubEnv('LOG_FORMAT', 'json');
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(await reportClientIncidentAction({ incident: 'C-0a1b2c3d', message: 'Cannot read x', path: '/resources/what-if' })).toEqual({ ok: true });
     expect(log).toHaveBeenCalledTimes(1);

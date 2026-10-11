@@ -27,7 +27,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ taskId: st
   if (declared > MAX_FILE_BYTES + MULTIPART_SLACK) return fail(413, `The file is larger than ${MAX_FILE_TEXT}`);
   const g = await taskFileGate(taskId, 'edit');
   if (!g.ok) return fail(g.status, g.error);
-  const limited = hitRateLimit('upload', rateClient(request.headers, g.viewer.name));
+  const limited = hitRateLimit('upload', rateClient(request.headers, g.viewer));
   if (!limited.ok) return tooManyRequestsResponse('json', t(TOO_MANY_REQUESTS), limited.retryAfterSec);
   let file: FormDataEntryValue | null;
   try {

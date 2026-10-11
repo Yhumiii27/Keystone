@@ -23,7 +23,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!isSameOriginRequest(request)) return json({ ok: false, error: 'Invalid request' }, 403);
   if (!IMPORTS_ENABLED) return json({ ok: false, error: IMPORTS_OFF_MESSAGE }, 403);
   const viewer = await getViewer();
-  const limited = hitRateLimit('import', rateClient(request.headers, viewer.name));
+  const limited = hitRateLimit('import', rateClient(request.headers, viewer));
   if (!limited.ok) return tooManyRequestsResponse('json', TOO_MANY_REQUESTS, limited.retryAfterSec);
   const length = Number(request.headers.get('content-length') ?? 0);
   if (length > MAX_FILE_BYTES + 512 * 1024) return json({ ok: false, error: 'The file is larger than 20 MB' }, 413);

@@ -11,7 +11,7 @@ import { getI18n } from '@/server/session';
 export async function GET(request: Request): Promise<Response> {
   const [access, { t }] = await Promise.all([getScreenAccess('plumbing'), getI18n()]);
   if (!access.canEdit) return new Response(t('Activity & integrations is read-only for you'), { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-  const limited = hitRateLimit('export', rateClient(request.headers, access.viewer.name));
+  const limited = hitRateLimit('export', rateClient(request.headers, access.viewer));
   if (!limited.ok) return tooManyRequestsResponse('text', t(TOO_MANY_REQUESTS), limited.retryAfterSec);
   const rows = await listAudit({ limit: 1_000_000 });
   const csv = auditCsv(rows, [t('When (UTC)'), t('Who'), t('Object'), t('Change'), t('Area'), t('Project')]);

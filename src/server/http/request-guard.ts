@@ -73,8 +73,12 @@ export function clientAddress(headers: Headers): string {
   return hops.at(-1) ?? headers.get('x-real-ip')?.trim() ?? 'local';
 }
 
+/** Who a rate limit counts: the signed-in user (R-039) — two people may share a name — else the demo persona's name. */
+export type RateViewer = string | { userId?: string | null; name: string };
+const rateWho = (v: RateViewer) => (typeof v === 'string' ? v : (v.userId ?? v.name));
+
 /** Rate-limit key of a viewer at an address. */
-export const rateClient = (headers: Headers, viewer: string) => `${clientAddress(headers)}|${viewer}`;
+export const rateClient = (headers: Headers, viewer: RateViewer) => `${clientAddress(headers)}|${rateWho(viewer)}`;
 
 /** Headers of the current request in a Server Function; empty outside a request (scripts, tests). */
 export async function requestHeaders(): Promise<Headers> {
@@ -85,8 +89,8 @@ export async function requestHeaders(): Promise<Headers> {
   }
 }
 
-/** Rate limit of a Server Function: `viewer` = the acting viewer's name. */
-export async function hitActionRateLimit(bucket: RateBucket, viewer: string): Promise<RateDecision> {
+/** Rate limit of a Server Function: `viewer` = the acting viewer (or their name). */
+export async function hitActionRateLimit(bucket: RateBucket, viewer: RateViewer): Promise<RateDecision> {
   return hitRateLimit(bucket, rateClient(await requestHeaders(), viewer));
 }
 

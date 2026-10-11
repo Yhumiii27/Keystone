@@ -19,7 +19,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ screen: str
   const text = (status: number, msg: string) => new Response(t(msg), { status, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } });
   if (!isSameOriginRequest(request)) return text(403, 'Invalid request');
   if (!isExportFormat(format)) return text(400, 'Unknown export format');
-  const limited = hitRateLimit('export', rateClient(request.headers, viewer.name));
+  const limited = hitRateLimit('export', rateClient(request.headers, viewer));
   if (!limited.ok) return tooManyRequestsResponse('text', t(TOO_MANY_REQUESTS), limited.retryAfterSec);
   try {
     const ectx = await buildExportContext({ screen, viewer, lang, params, zoneCookie });
