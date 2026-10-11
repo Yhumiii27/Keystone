@@ -10,6 +10,10 @@
   {
    "date": "2026-10-11",
    "text": "Livraison 7 lancée : 57 points en cours (plateforme, authentification Entra ID, droits, coûts, contrat et portefeuille, opérations, qualité et chantier, dette technique) — plan dans docs/DELIVERY-7-PLAN.md."
+  },
+  {
+   "date": "2026-10-11",
+   "text": "Livraison 7 intégrée et vérifiée : 56 points faits (plateforme de production, connexion Entra ID et vrais utilisateurs, droits par équipe projet, maîtrise des coûts, contrat et portefeuille, opérations, qualité et chantier, dette technique et tablette) ; R-010 reste en cours (détection d’édition concurrente d’une même fiche). Détail dans docs/DELIVERY-7.md."
   }
  ],
  "items": [
@@ -63,7 +67,7 @@
     "PR #1 (Dockerfile Coolify, non fusionnée) garde PGlite dans /data/pg sur un volume, avec un seul conteneur ; la restauration à un instant donné exigée par I-1b suppose PostgreSQL"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -177,7 +181,7 @@
     "aucun envoi d’e-mail (grep nodemailer/smtp/sendMail vide ; commissioning.ts:113 « no mail connector »)"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -205,7 +209,7 @@
     ".gitignore autorise !.env.example mais le fichier n’existe pas ; variables lues : CURSUS_API_URL/KEY, VIGIE_API_URL, NEXT_PUBLIC_*_URL, KEYSTONE_DATA_DIR"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -231,7 +235,7 @@
     "src/server/actions/preferences.ts:12-31 : cookies sameSite lax, sans httpOnly ni secure"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -256,7 +260,7 @@
     "src/server/integrations/cursus/connector.ts:185 échec de rafraîchissement seulement en console.warn et recordFailedSync"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -285,7 +289,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 7"
+    "delivery": "Livraison 7",
+    "note": "Livraison 7 : transactions SERIALIZABLE avec reprise et réservation des envois faites ; reste la détection d’une fiche modifiée entre-temps par quelqu’un d’autre (choix d’ergonomie à faire)."
    }
   },
   {
@@ -315,7 +320,7 @@
     "DECISIONS.md:55 A-15 « Données réelles seulement » (Bloquant production) ; le Dockerfile de la PR #1 supprime .data au build, donc le conteneur charge la démo au premier démarrage"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -457,7 +462,7 @@
     "git worktree list : 3 worktrees d’agents encore présents"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -559,7 +564,7 @@
     "Seules variables d’environnement : src/server/integrations/{vigie,cursus,codex}/config.ts (URL, clé Cursus) ; connectors.enabled seulement en base ; scripts/ ne contient que db-check.ts et des scripts golden"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -586,8 +591,9 @@
     "src/server/dal/admin-connectors.ts:25 Codex forcé en mode 'mock' mais statut semé conservé ; src/server/dal/documents.ts:601 syncCodexIndex = comptage local"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 7"
+    "state": "fait",
+    "delivery": "Livraison 7",
+    "note": "Livraison 7 : état réel de chaque connecteur ; « Ajouter un connecteur » retiré (R-020, D-7a)."
    }
   },
   {
@@ -1078,7 +1084,7 @@
     "docs/decisions/questions.json I-2a (choix a, Entra ID pour toutes les applications) et I-2b (choix c, pas d’accès client au lancement)"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -1110,7 +1116,7 @@
     "docs/spec/00-overview.md §8.12 : rôles multivalués par utilisateur prévus, non implémentés"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -1168,7 +1174,7 @@
     "src/components/app/shell/nav-model.ts:90 PROJECT_EDITABLE : lecture seule par rôle et par écran, pas par membre"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -1198,7 +1204,7 @@
     "src/server/dal/shell.ts:362-401 searchShell ne filtre pas les projets d’autres organisations pour le client"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -1227,7 +1233,7 @@
     "src/config/screens.ts:164, :174 le client a 'quality', 'meetings', 'itp', 'commissioning'"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -1283,7 +1289,7 @@
     "NewProjectButton rendu sur src/app/(app)/page.tsx, portfolio/overview/page.tsx, portfolio/projects/page.tsx"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -1312,7 +1318,7 @@
     "docs/decisions/questions.json NEW-D2-1 choix a : « Taux et prix masqués pour tous les autres rôles, client compris, à l’écran comme dans les exports »"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -1345,7 +1351,7 @@
     "grep NEW-D3-1 dans src : aucune occurrence ; DECISIONS.md:241 = Bloquant production"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -1372,7 +1378,7 @@
     "src/config/screens.ts:159, :162 depthead et quality ont 'approvals' ; departments.headPersonId et r.departmentHead disponibles pour le contrôle"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -1399,7 +1405,7 @@
     "src/server/dal/mywork-data.ts:36-39 listMyWorkPeople renvoie tout le pool ; departments.headPersonId (organisation.ts:21) et project_members disponibles"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -1426,7 +1432,7 @@
     "src/config/screens.ts:173-175 member et client ont 'meetings' ; le client est éditeur sur son propre projet"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -1561,7 +1567,7 @@
     "grep effective dans src/features/projects : aucun champ date (force-dialog.tsx, register.tsx, register-cells.tsx, stage-slider.tsx)"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -1729,7 +1735,7 @@
     "src/server/dal/tasks.ts:253-259 setTaskProgress ne met pas à jour activities.percent_complete : aucun autre chemin pour qu’un responsable saisisse l’avancement d’une activité"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -1759,7 +1765,7 @@
     "DELIVERY-1.md:127 et DELIVERY-2.md:300 citent la note A1250 codée en dur"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -1923,7 +1929,7 @@
     "src/server/dal/client.ts:98,123 approvedChangesKeur du portail = projectControls.reconChangesKeur semé"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -1980,7 +1986,7 @@
     "src/server/dal/contingency.ts:61 drawn = Σ draws (registre) calculé à part, non repris par le Budget"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -2008,7 +2014,7 @@
     "src/features/risks/forms.ts:40-55 « \"Linked to\" is a placeholder here » ; aucune occurrence de contingency dans src/features/myapprovals"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -2034,7 +2040,7 @@
     "src/server/db/schema/control.ts:35-36 emvKeur stocké « not recomputed when P changes (OPEN QUESTION Q-1) »"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -2067,7 +2073,7 @@
     "Correction : src/domain/schedule-rollup.ts:96 actualsFromProgress est appliqué par rescheduleProject (src/server/dal/schedule.ts:353-359, 394) : les dates réelles sont déjà posées au Reschedule, seule la saisie du % (plan.ts:237-269) ne les pose pas immédiatement"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -2124,7 +2130,7 @@
     "src/lib/format.ts:14-24 money : « USD only swaps the symbol » ; moneyEur « Always € »"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -2151,7 +2157,7 @@
     "src/domain/contract.ts:141,155 dueOn = addDaysIso(issuedOn, delay) ; src/domain/kpis.ts:98-140 paymentDays « calendar days » pour la trésorerie ; grep « end of month / fin de mois » : aucun"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -2228,7 +2234,7 @@
     "src/server/db/schema/contract.ts:43-72 payment_milestones sans lien vers un avenant"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -2711,7 +2717,7 @@
     "src/server/export/providers/purchasing.ts:105-135 poDocument : titre « Purchase order », signatures « For Keystone — buyer » / « Supplier acknowledgement », footnote « please quote the order number on the delivery note and the invoice »"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -2739,7 +2745,7 @@
     "src/server/dal/bom.ts:325 listBomActivityOptions réutilisable pour le sélecteur"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -2767,7 +2773,7 @@
     "Priorité : NEW-D4-2 « Prochaine étape », SC-5b « Plus tard » ; la réponse la plus récente est retenue"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -2890,7 +2896,7 @@
     "src/server/dal/stock.ts:74-77 stock déjà au dernier prix d’achat (conforme A-11)"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -2942,7 +2948,7 @@
     "docs/DELIVERY-6.md §5 : E-5 non appliqué"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -2972,7 +2978,7 @@
     "src/server/integrations/codex/ ne contient que config.ts (aucun connecteur ni outbox Codex)"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -3136,7 +3142,7 @@
     "src/config/screens.ts:168-169 englead et quality ont déjà l’écran itp"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -3192,7 +3198,7 @@
     "src/server/dal/quality.ts:298 linkDeliverableDocument relie déjà un document de l’index Codex : le dépôt dans Codex ne bloque pas la partie Keystone"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -3220,7 +3226,7 @@
     "src/server/db/schema/quality.ts:29 wbs_code NOT NULL : le formulaire devra aussi fixer l’élément WBS (ou une valeur par défaut)"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -3351,7 +3357,7 @@
     "src/domain/site.test.ts:80-95 seuls tests de goChantier (aucun cas sans verdict) ; grep goChantier dans scripts/ : aucun résultat"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -3459,8 +3465,9 @@
     "DECISIONS.md:91 P-7b = Bloquant production ; :203 D-1b = Prochaine étape → bloquant_production retenu"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 7"
+    "state": "fait",
+    "delivery": "Livraison 7",
+    "note": "Livraison 7 : circuit vers Codex par file d’attente ; connecteur simulé tant que l’API Codex n’existe pas (CODEX_API_URL)."
    }
   },
   {
@@ -3520,7 +3527,7 @@
     "DECISIONS.md:172 SC-4a et :234 X-15 = Prochaine étape"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -3601,7 +3608,7 @@
     "A-13 déjà fait : DELIVERY-6.md §4 « One health rule everywhere »"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -3631,7 +3638,7 @@
     "Briques existantes réutilisables : healthThresholds() (Paramètres), retards de facture (src/domain/contract.ts) et de jalons (src/domain/schedule.ts)"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -3659,7 +3666,7 @@
     "src/server/db/codes.ts:236-237 audiences steering / client / internal"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -3687,7 +3694,7 @@
     "src/server/dal/prioritisation.ts:13,115 et src/server/dal/cashflow.ts:151 l’utilisent ; src/server/dal/pfinance.ts:39,79 l’affichent"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -3713,7 +3720,7 @@
     "src/domain/kpis.ts:118-145 expectedReceipts : encaissements selon le plan de facturation (fait)"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -3817,7 +3824,7 @@
     "docs/spec/11 §6.4 : « Client issue: open → in_progress → closed (the UI only creates open) »"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -3980,7 +3987,7 @@
     "docs/DELIVERY-6.md : aucune mention des réclamations ni du SAV"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -4011,7 +4018,7 @@
     "docs/DECISIONS.md:189 E-8 (Prochaine étape) : choix a ; docs/DELIVERY-6.md : aucune mention"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -4068,8 +4075,9 @@
     "docs/decisions/questions.json X-4 : choix « tablet » (menu repliable, Chantier, Réserves, Livraisons), priorité next"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 7"
+    "state": "fait",
+    "delivery": "Livraison 7",
+    "note": "Livraison 7 : tablette jusqu’à 1024 px (menu en tiroir, tableaux défilants, cibles de 40 px) ; pas de mise en page téléphone (X-4)."
    }
   },
   {
@@ -4127,7 +4135,7 @@
     "vérifié : 9 définitions identiques de dataText (quality, deliveries, eco, aftersales, meetings, contract, procurement, requests, site) ; ~199 appels t(x.name|title|client) hors tests ; fr-rules.ts:3 FR_DAYS Sun → « dim. »"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -4680,7 +4688,7 @@
     "DELIVERY-6.md:262 et :362 run PDM daté du 26 sept."
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -4710,7 +4718,7 @@
     "DECISIONS.md:55 A-15 (Bloquant production) : Données réelles seulement"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },
@@ -4876,7 +4884,7 @@
    "id": "R-176",
    "verdict": "ajout_critique",
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 7"
    }
   },

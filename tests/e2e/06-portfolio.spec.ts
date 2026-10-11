@@ -34,7 +34,9 @@ test('New project wizard: location required, the template is instantiated, the p
 /** Health cell (Project · Status · Health · SPI …) of a project's row in the Projects register. */
 const health = (page: Page, code: string) => page.getByRole('row').filter({ has: page.locator(`a[href="/projects/${code}/plan"]`) }).first().getByRole('cell').nth(2);
 
-test('health threshold: "At risk below" 0.99 puts NDC-031 At risk on Projects and in the export, then restored', async ({ page, context }) => {
+// R-073 (delivery 7): SPI and CPI are computed from Keystone's data — NDC-031 (SPI 0.96) is At risk at the default 0.97, so the
+// threshold is shown on MSR-012 (SPI 0.99, CPI 1.04): On track at 0.97, At risk below 1.
+test('health threshold: "At risk below" 1 puts MSR-012 At risk on Projects and in the export, then restored', async ({ page, context }) => {
   await viewAs(context, 'director');
   const w = watch(page);
   const setThreshold = async (value: string) => {
@@ -47,15 +49,15 @@ test('health threshold: "At risk below" 0.99 puts NDC-031 At risk on Projects an
     await expect(page.getByLabel('At risk below', { exact: true })).toHaveValue(value);
   };
   await page.goto('/portfolio/projects');
-  await expect(health(page, 'NDC-031')).toHaveText('On track');
-  await setThreshold('0.99');
+  await expect(health(page, 'MSR-012')).toHaveText('On track');
+  await setThreshold('1');
   await page.goto('/portfolio/projects');
-  await expect(health(page, 'NDC-031')).toHaveText('At risk');
+  await expect(health(page, 'MSR-012')).toHaveText('At risk');
   const csv = (await exportFile(page.request, '/api/export/projects?format=csv')).body.toString('utf8');
-  expect(csv.split('\n').find((l) => l.includes('NDC-031'))).toContain('At risk');
+  expect(csv.split('\n').find((l) => l.includes('MSR-012'))).toContain('At risk');
   await setThreshold('0.97');
   await page.goto('/portfolio/projects');
-  await expect(health(page, 'NDC-031')).toHaveText('On track');
+  await expect(health(page, 'MSR-012')).toHaveText('On track');
   w.check();
 });
 

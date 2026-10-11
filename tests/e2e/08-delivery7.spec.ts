@@ -26,7 +26,7 @@ test('tablet: the sidebar is a drawer behind the Menu button; Escape closes it (
   const w = watch(page);
   await page.setViewportSize({ width: 900, height: 1200 });
   await page.goto('/projects/HLT-026/site');
-  const menu = page.getByRole('button', { name: 'Menu' });
+  const menu = page.getByRole('button', { name: 'Menu', exact: true });
   const sidebar = page.locator('#ks-sidebar');
   await expect(menu).toBeVisible();
   await expect(menu).toHaveAttribute('aria-expanded', 'false');
@@ -39,8 +39,8 @@ test('tablet: the sidebar is a drawer behind the Menu button; Escape closes it (
   await expect(menu).toBeFocused();
   // A navigation from the drawer closes it.
   await menu.click();
-  await sidebar.getByRole('link', { name: 'Deliveries' }).first().click();
-  await expect(page).toHaveURL(/\/deliveries/);
+  await sidebar.getByRole('link', { name: 'My approvals' }).first().click();
+  await expect(page).toHaveURL(/\/my\/approvals/);
   await expect(sidebar).toBeHidden();
   w.check();
 });
@@ -54,6 +54,9 @@ test('ITP: quality records an inspection result (R-112); a punch photo is stored
   const number = /I-\d+/.exec((await record.getAttribute('aria-label')) ?? '')![0];
   await record.click();
   const d = page.getByRole('dialog', { name: 'Record result' });
+  // A hold point needs the client representative who witnessed it (Q-6a).
+  const witness = d.getByLabel('Client representative present');
+  if (await witness.count()) await witness.fill('N. Bensaïd');
   await d.getByLabel('Comment').fill('E2E — welds and bolting checked');
   await d.getByRole('button', { name: 'Record result' }).click();
   await expect(toast(page)).toContainText(`${number} ·`);
