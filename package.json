@@ -12,6 +12,8 @@
     "db:migrate": "tsx --conditions=react-server scripts/db-migrate.ts",
     "db:reset": "rm -rf .data",
     "test": "vitest run",
+    "test:e2e": "tsx tests/e2e/run.ts",
+    "worker": "tsx --conditions=react-server scripts/worker.ts",
     "app": "bash desktop/build-app.sh",
     "remaining:page": "tsx scripts/remaining-work/build.ts"
   },

@@ -21,6 +21,27 @@ export function mtListSubT(phases: number, cats: number, itp: number, lang: Lang
 /** Connector-layer mode line under the system name (Codex, Vigie, Cursus). */
 export const connectorModeT = (mode: 'mock' | 'http', t: T) => t(mode === 'http' ? 'Live connector · HTTP API' : 'Mock connector · local mirror');
 
+/**
+ * Line under the system name from the real link (R-021): the connector layer's mode (live, mock), "File exchange · no live
+ * connection" for MS Project; nothing for a connector that does not exist (its status says "Not connected").
+ */
+export function connectorLinkT(link: 'live' | 'mock' | 'file' | 'none', t: T): string | null {
+  if (link === 'live') return connectorModeT('http', t);
+  if (link === 'mock') return connectorModeT('mock', t);
+  return link === 'file' ? t('File exchange · no live connection') : null;
+}
+
+/** "Connectors" KPI sub-line (src/domain/admin.ts `plumbingKpis`) in French: "1 connecté · 3 simulés · 5 non connectés". */
+export function connectorsSubT(sub: string, t: T, lang: Lang): string {
+  const m = /^(\d+) connected · (\d+) mock · (\d+) not connected(?: · (\d+) warning)?$/.exec(sub);
+  if (!m || !fr(lang)) return t(sub);
+  // French takes the singular for 0 and 1.
+  const n = (x: string, one: string, many: string) => `${x} ${+x > 1 ? many : one}`;
+  const parts = [n(m[1], 'connecté', 'connectés'), n(m[2], 'simulé', 'simulés'), n(m[3], 'non connecté', 'non connectés')];
+  if (m[4]) parts.push(`${m[4]} en alerte`);
+  return parts.join(' · ');
+}
+
 /** Outbox note appended to the volume: "2 pending sync · 1 failed". */
 export function outboxT(pending: number, failed: number, lang: Lang): string {
   const parts: string[] = [];
@@ -44,10 +65,15 @@ export function volumeT(text: string, t: T, lang: Lang): string {
   return t(text);
 }
 
-/** "Sync now" toast ("Lucca synced · 312 h · 8 people"; no volume for a connector that exchanged nothing yet). */
-export function syncToastT(name: string, r: { ok: boolean; volume: string; error: string | null }, t: T, lang: Lang): string {
+/**
+ * "Sync now" toast ("Vigie synced · 2 sent · 0 pending · 1 refreshed"; no volume for a connector that exchanged nothing yet).
+ * R-021: a mock connector's run says it is simulated ("Codex · simulated sync (mock connector) · 412 records").
+ */
+export function syncToastT(name: string, r: { ok: boolean; volume: string; error: string | null; simulated?: boolean }, t: T, lang: Lang): string {
   if (r.ok) {
-    const head = fr(lang) ? `${name} synchronisé` : `${name} synced`;
+    const head = r.simulated
+      ? fr(lang) ? `${name} · synchro simulée (connecteur simulé)` : `${name} · simulated sync (mock connector)`
+      : fr(lang) ? `${name} synchronisé` : `${name} synced`;
     return r.volume ? `${head} · ${fr(lang) ? volumeT(r.volume, t, lang) : r.volume}` : head;
   }
   return fr(lang) ? `${name} · échec de la synchro · ${r.error ?? ''}` : `${name} · sync failed · ${r.error ?? ''}`;
@@ -75,8 +101,12 @@ export function adminErrorT(message: string, t: T, lang: Lang): string | null {
   if (dup) return fr(lang) ? `« ${dup[1]} » figure déjà dans la liste` : message;
   const loc = /^"(.+)" is already a location$/.exec(message);
   if (loc) return fr(lang) ? `« ${loc[1]} » est déjà un emplacement` : message;
-  const conn = /^(.+) is already connected$/.exec(message);
-  if (conn) return fr(lang) ? `${conn[1]} est déjà connecté` : message;
+  const conn = /^(.+) is already listed$/.exec(message);
+  if (conn) return fr(lang) ? `${conn[1]} figure déjà dans les connecteurs` : message;
+  const notConnected = /^(.+) is not connected — nothing to synchronise$/.exec(message);
+  if (notConnected) return fr(lang) ? `${notConnected[1]} n’est pas connecté — rien à synchroniser` : message;
+  const files = /^(.+) exchanges files only — use the export cards$/.exec(message);
+  if (files) return fr(lang) ? `${files[1]} échange uniquement des fichiers — utilisez les cartes d’export` : message;
   const unknownLoc = /^Unknown location (.+)$/.exec(message);
   if (unknownLoc) return fr(lang) ? `Emplacement inconnu : ${unknownLoc[1]}` : message;
   const pct = /^(Deposit|Delivery|Acceptance) must be a whole percentage \(0–100\)$/.exec(message);

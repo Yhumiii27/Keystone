@@ -22,8 +22,11 @@ export const ecoT = (t: T, lang: Lang): T => (lang === 'fr' ? (s) => daysFr(t(s)
 /** Data text from Vigie or the PDM vault: FR only on an exact dictionary match. */
 export const dataText = (s: string, lang: Lang) => (lang === 'fr' && s && Object.hasOwn(DICT, s) ? DICT[s] : s);
 
-/** "Vault synchronised · 6 drawings updated" (AF_RESULT.drawings) with the real count. */
+/**
+ * "Sync vault" toast with the real count. R-021: no SolidWorks PDM connector exists yet, so the run is said to be simulated
+ * (the prototype's "Vault synchronised · 6 drawings updated" claimed an exchange with the vault).
+ */
 export function vaultSyncedText(n: number, lang: Lang): string {
-  if (lang === 'fr') return `Coffre synchronisé · ${n} ${n > 1 ? 'plans mis à jour' : 'plan mis à jour'}`;
-  return `Vault synchronised · ${n} ${n === 1 ? 'drawing updated' : 'drawings updated'}`;
+  if (lang === 'fr') return `Synchro du coffre simulée (SolidWorks PDM non connecté) · ${n} ${n > 1 ? 'plans mis à jour' : 'plan mis à jour'}`;
+  return `Simulated vault sync (SolidWorks PDM not connected) · ${n} ${n === 1 ? 'drawing updated' : 'drawings updated'}`;
 }

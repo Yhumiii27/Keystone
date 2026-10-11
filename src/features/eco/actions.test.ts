@@ -136,9 +136,10 @@ describe('ECO and drawings Server Functions', () => {
     expect(await syncVaultAction({ source: 'Both', scope: 'all_projects' })).toEqual({ error: 'Invalid request' });
     expect(await syncVaultAction(null as never)).toEqual({ error: 'Invalid request' });
     const before = (await getVaultSyncState())!;
-    expect(await syncVaultAction({ source: 'both', scope: 'current_project' })).toEqual({ toast: 'Vault synchronised · 0 drawings updated' });
+    // R-021 (A-15): the PDM is not connected — the toast says the run is simulated.
+    expect(await syncVaultAction({ source: 'both', scope: 'current_project' })).toEqual({ toast: 'Simulated vault sync (SolidWorks PDM not connected) · 0 drawings updated' });
     as('englead', 'fr');
-    expect(await syncVaultAction({ source: 'solidworks_3dx', scope: 'all_projects' })).toEqual({ toast: 'Coffre synchronisé · 0 plan mis à jour' });
+    expect(await syncVaultAction({ source: 'solidworks_3dx', scope: 'all_projects' })).toEqual({ toast: 'Synchro du coffre simulée (SolidWorks PDM non connecté) · 0 plan mis à jour' });
     const after = (await getVaultSyncState())!;
     expect([after.drawingsInVault, after.linkedDrawings, after.syncedAt > before.syncedAt]).toEqual([1248, 13, true]);
     expect((await listAudit({ limit: 3 })).find((a) => a.object === 'SolidWorks PDM')).toMatchObject({ who: 'Antoine Girard', area: 'Drawings' });

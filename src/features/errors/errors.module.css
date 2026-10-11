@@ -1,0 +1,107 @@
+/* Error and "page not found" pages (R-176) — Nocturne card, centred; same tokens as the shell's boxed empty states. */
+
+/* Full page (no shell: root error boundary, global error, root not-found): the shell's background. */
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+  background: radial-gradient(1200px 600px at 70% -10%, var(--color-accent-900), transparent 60%), var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+/* Inside the shell's <main>: the card sits in the content column. */
+.inShell {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0 24px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  max-width: 520px;
+  padding: 24px 26px 22px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.icon {
+  font-size: 22px;
+  color: var(--color-accent);
+  flex: none;
+}
+
+.overline {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-neutral-500);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-neutral-100);
+}
+
+.text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-neutral-400);
+  text-wrap: pretty;
+}
+
+.incident {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--color-neutral-500);
+}
+
+.incidentId {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  color: var(--color-neutral-200);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-900);
+  user-select: all;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Both actions at the in-page button size (12.5px), the anchor like the <Button size="sm">. */
+.actions :global(.btn) {
+  font-size: 12.5px;
+}
+
+/* Anchor styled as a DS button: keep the variant colour on hover (the global a:hover would turn it accent-400). */
+.actions a:global(.btn-secondary):hover {
+  color: var(--color-text);
+}

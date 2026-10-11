@@ -146,3 +146,13 @@ export const httpEcoConnector: VigieEcoConnector = {
 export function getVigieEcoConnector(): VigieEcoConnector {
   return vigieConnectorMode() === 'http' ? httpEcoConnector : mockEcoConnector;
 }
+
+/**
+ * Outbox redelivery of the worker (R-006, job "vigie-outbox"): with Vigie's API configured, every entry not yet sent (pending
+ * or failed) is delivered again — only those, so a run never sends an entry twice; the mock sends nothing and reports what
+ * waits. The mirror is not refreshed here (reads refresh it).
+ */
+export async function redeliverEcoOutbox(): Promise<{ mode: 'mock' | 'http'; delivered: number; failed: number; pending: number }> {
+  if (vigieConnectorMode() === 'http') return { mode: 'http', ...(await deliverOutbox()) };
+  return { mode: 'mock', delivered: 0, failed: 0, pending: (await undeliveredProgress(await getDb())).length };
+}

@@ -29,20 +29,3 @@ export async function taskFileGate(taskId: unknown, need: 'view' | 'edit'): Prom
   }
   return { ok: true, task, viewer };
 }
-
-/**
- * CSRF guard of the upload Route Handler (Server Functions get Next's own Origin check, Route Handlers do not): a request
- * whose Origin names another host, or that the browser flags as cross-site, is refused. Requests without either header
- * (scripts, tests) pass, as Next does for Server Functions.
- */
-export function isSameOrigin(request: Request): boolean {
-  if (request.headers.get('sec-fetch-site') === 'cross-site') return false;
-  const origin = request.headers.get('origin');
-  if (!origin) return true;
-  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host');
-  try {
-    return !!host && new URL(origin).host === host;
-  } catch {
-    return false;
-  }
-}

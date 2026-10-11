@@ -430,17 +430,20 @@ describe('settings', () => {
 
 describe('connectors', () => {
   it('Sync now (Vigie, Cursus, simulated), Add connector (duplicate refused), outside refused', async () => {
-    expect(await syncConnector('Vigie', A.director)).toMatchObject({ ok: true });
+    // R-021: Vigie and Cursus without their API URL are mocks — their runs are simulated.
+    expect(await syncConnector('Vigie', A.director)).toMatchObject({ ok: true, simulated: true });
     // Cursus (mock again): the people the HTTP refresh above left in the mirror.
     const people = (await getSite(HLT))!.cursus.people.length;
-    expect(await syncConnector('Cursus', A.pm)).toMatchObject({ ok: true, volume: `${people} approvals received` });
-    expect(await syncConnector('Lucca', A.pm)).toMatchObject({ ok: true, volume: '312 h · 8 people' });
+    expect(await syncConnector('Cursus', A.pm)).toMatchObject({ ok: true, volume: `${people} approvals received`, simulated: true });
+    // R-021: Lucca is retired (NEW-CURSUS-4); a connector that does not exist is not "synced" any more (A-15).
+    await expect(syncConnector('Lucca', A.pm)).rejects.toThrow(/Unknown connector Lucca/);
+    await expect(syncConnector('Sage X3', A.pm)).rejects.toThrow(/Sage X3 is not connected/);
     await addConnector({ system: 'SharePoint', direction: 'both', frequency: 'Hourly', owner: 'IT · L. Fontaine' }, A.director);
-    await expect(addConnector({ system: 'sharepoint', direction: 'both', frequency: 'Hourly' }, A.director)).rejects.toThrow(/already connected/);
+    await expect(addConnector({ system: 'sharepoint', direction: 'both', frequency: 'Hourly' }, A.director)).rejects.toThrow(/already listed/);
     await expect(addConnector({ system: 'X', direction: 'both', frequency: 'Weekly' }, A.director)).rejects.toThrow(/Invalid frequency/);
-    await expect(syncConnector('Lucca', A.quality)).rejects.toThrow(/outside your workspace/);
+    await expect(syncConnector('Codex', A.quality)).rejects.toThrow(/outside your workspace/);
     const list = await listConnectors();
-    expect(list.at(-1)).toMatchObject({ name: 'SharePoint', status: 'ready', lastVolume: 'First sync scheduled', addedInKeystone: true, owner: 'IT · L. Fontaine' });
+    expect(list.at(-1)).toMatchObject({ name: 'SharePoint', state: 'not_connected', canSync: false, lastVolume: '', addedInKeystone: true, owner: 'IT · L. Fontaine' });
     expect(list.find((c) => c.name === 'Vigie')).toMatchObject({ pending: 0, failed: 0 });
     expect((await lastAudit()).area).toBe('Integrations');
   });

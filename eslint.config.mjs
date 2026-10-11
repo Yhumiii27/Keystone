@@ -16,6 +16,10 @@ const eslintConfig = defineConfig([
     // Design prototype sources (reference only)
     "design/**",
     ".data/**",
+    // Agent worktrees (each a full checkout) and end-to-end outputs (R-016).
+    ".claude/**",
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 

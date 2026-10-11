@@ -237,3 +237,13 @@ export const httpCursusConnector: CursusConnector = {
 export function getCursusConnector(): CursusConnector {
   return cursusConnectorMode() === 'http' ? httpCursusConnector : mockCursusConnector;
 }
+
+/**
+ * Outbox redelivery of the worker (R-006, job "cursus-outbox"): with Cursus's API configured, the travel requests not yet
+ * sent are delivered again (reminders have no Cursus endpoint and stay pending, C-2); the mock sends nothing and reports
+ * what waits.
+ */
+export async function redeliverCursusOutbox(): Promise<{ mode: 'mock' | 'http'; delivered: number; failed: number; pending: number }> {
+  if (cursusConnectorMode() === 'http') return { mode: 'http', ...(await deliverOutbox()) };
+  return { mode: 'mock', delivered: 0, failed: 0, pending: (await undeliveredRequests(await getDb())).length };
+}

@@ -11,6 +11,14 @@ export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     const { registerNodeServer } = await import('./server/startup');
     await registerNodeServer();
+    // R-006: with KEYSTONE_JOBS=inprocess the scheduled jobs (outbox redelivery, plan-trash purge, orphan-file prune —
+    // src/server/jobs) run inside this server — the way to run them with the embedded PGlite database; with PostgreSQL,
+    // `npm run worker` runs them in a process of its own (both may run: leases keep a job to one runner).
+    const { jobsInProcess } = await import('./server/jobs/cli');
+    if (jobsInProcess(process.env)) {
+      const { startInProcessJobs } = await import('./server/jobs/in-process');
+      startInProcessJobs();
+    }
   }
 }
 

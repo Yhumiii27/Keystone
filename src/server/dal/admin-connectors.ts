@@ -1,9 +1,10 @@
 import 'server-only';
 // Connectors of Activity & integrations (docs/spec/10 §2) as the screen shows them: the connectors of integrations.ts
 // (Vigie and Cursus already carry the live state of their connector layer) plus the Codex row read from Keystone's
-// Codex index connector (src/server/dal/documents.ts: simulated index sync — Codex has no API yet, so its mode is
-// "mock"): last sync and record count of the latest index sync, as the Documents screen shows them. "Sync now" on Codex
-// runs that index sync, then records the run like every other connector (integrations.ts `syncConnector`).
+// Codex index connector (src/server/dal/documents.ts). Codex has no API yet, so its mode is "mock" (R-021: shown "Mock",
+// without a last-sync date): the row shows the record count of Keystone's index, as the Documents screen does. "Sync now" on
+// Codex runs the index sync, recorded as a simulated run like every mock connector (integrations.ts `syncConnector`).
+import { codexConnectorMode } from '@/server/integrations/codex/config';
 import { getCodexSyncState, syncCodexIndex } from './documents';
 import { listConnectors, syncConnector, type ConnectorRow } from './integrations';
 import type { Actor } from './ops-common';
@@ -22,16 +23,16 @@ export async function listAdminConnectors(): Promise<ConnectorRow[]> {
   const [rows, codex] = await Promise.all([listConnectors(), getCodexSyncState()]);
   return rows.map((c) =>
     c.name === CODEX_CONNECTOR && c.kind === 'static'
-      ? { ...c, mode: 'mock', lastSyncAt: codex?.syncedAt ?? c.lastSyncAt, lastVolume: codex ? withCodexRecords(c.lastVolume, codex.records) : c.lastVolume }
+      ? { ...c, mode: codexConnectorMode(), lastVolume: codex ? withCodexRecords(c.lastVolume, codex.records) : c.lastVolume }
       : c,
   );
 }
 
-/** "Sync now" (workspace check and run log in `syncConnector`); Codex first syncs its index. */
-export async function syncAdminConnector(name: string, actor: Actor): Promise<{ ok: boolean; volume: string; error: string | null }> {
+/** "Sync now" (workspace check, refusals and run log in `syncConnector`); Codex then syncs its index. */
+export async function syncAdminConnector(name: string, actor: Actor): Promise<{ ok: boolean; volume: string; error: string | null; simulated: boolean }> {
   if (name !== CODEX_CONNECTOR) return syncConnector(name, actor);
   const r = await syncConnector(name, actor);
   if (!r.ok) return r;
   const records = await syncCodexIndex(actor.name);
-  return { ok: true, volume: `${records} records`, error: null };
+  return { ok: true, volume: `${records} records`, error: null, simulated: r.simulated };
 }

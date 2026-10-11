@@ -562,13 +562,18 @@ describe('administration (09 §9, 10 §1–2)', () => {
   it('activity & integrations: connectors (+ Vigie from the connector layer), imports, audit trail, KPI counts', async () => {
     const conns = await listConnectors();
     const g = G.plumbing;
-    // The prototype's 9 connectors, Cursus live from the Cursus connector (mock: same people, last sync 26 Sep 07:00).
-    expect(conns.slice(0, 9).map((c) => ({ name: c.name, what: c.dataScope, freq: c.frequency, st: c.statusLabel, last: c.lastSyncAt ? stampText(new Date(c.lastSyncAt)) : '—', vol: c.lastVolume })))
-      .toEqual(g.connectors);
-    // Deliberate: Vigie (ECOs, NCRs, site HSE) is listed as the 10th connector, its state read from the connector layer.
-    expect(conns[9]).toMatchObject({ name: 'Vigie', kind: 'vigie', mode: 'mock', status: 'ok', lastVolume: '6 ECOs · 15 NCRs · 5 HSE items', pending: 0, failed: 0 });
-    expect(conns.find((c) => c.name === 'Cursus')).toMatchObject({ kind: 'cursus', mode: 'mock' });
-    expect(await plumbingNavBadge()).toBe('!');
+    // The prototype's connectors with their real state (R-021: A-15, NEW-CURSUS-4): Lucca retired; Cursus and Codex mocks (no
+    // last sync, the mirror / index content); Sage X3, the PDM, Outlook, Teams and SMTP "Not connected" (no seeded status,
+    // last sync or volume); MS Project keeps its last export.
+    const expected = g.connectors.filter((r: any) => r.name !== 'Lucca').map((r: any) =>
+      r.name === 'Cursus' || r.name === 'Codex' ? { ...r, st: 'Mock', last: '—' } : r.name === 'MS Project' ? r : { ...r, st: 'Not connected', last: '—', vol: '' });
+    expect(conns.slice(0, 8).map((c) => ({ name: c.name, what: c.dataScope, freq: c.frequency, st: c.statusLabel, last: c.lastSyncAt ? stampText(new Date(c.lastSyncAt)) : '—', vol: c.lastVolume })))
+      .toEqual(expected);
+    // Deliberate: Vigie (ECOs, NCRs, site HSE) is listed last, its state read from the connector layer (a mock without its API URL).
+    expect(conns[8]).toMatchObject({ name: 'Vigie', kind: 'vigie', mode: 'mock', link: 'mock', state: 'mock', status: 'ok', lastSyncAt: null, lastVolume: '6 ECOs · 15 NCRs · 5 HSE items', pending: 0, failed: 0 });
+    expect(conns.find((c) => c.name === 'Cursus')).toMatchObject({ kind: 'cursus', mode: 'mock', link: 'mock' });
+    // R-021: the prototype's "!" came from Outlook's seeded "Warning · Token expires in 3 days"; no live connector fails.
+    expect(await plumbingNavBadge()).toBe('');
     expect((await listImportFormats()).map((x) => ({ name: x.name, desc: x.description, icon: x.icon }))).toEqual(g.imports);
     const audit = (await listAudit({ limit: 50 })).filter((a) => g.audit.some((x: any) => x.obj === a.object && x.change === a.change));
     expect(audit.map((a) => ({ when: a.when, who: a.who, obj: a.object, change: a.change, area: a.area }))).toEqual(g.audit);

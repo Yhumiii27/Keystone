@@ -6,10 +6,13 @@
 // which redirects, and a prefetch never starts a sign-in (it would replace the sign-in cookie of the one in progress).
 // This is the optimistic check (cookie only, no database): getViewer() re-checks the user on the server for every
 // page, Route Handler and Server Function.
+// R-008: every request the proxy lets through carries a per-request Content-Security-Policy with a nonce
+// (src/server/http/proxy-security.ts); the static security headers come from next.config.ts `headers()`.
 import { NextResponse, type NextRequest } from 'next/server';
 import { AUTH_PATHS, isPublicPath } from '@/domain/auth';
 import { authMode, sessionConfig } from '@/server/auth/config';
 import { readSession } from '@/server/auth/session-cookie';
+import { nextWithCsp } from '@/server/http/proxy-security';
 
 const unauthorized = () => new NextResponse('Sign-in required', { status: 401, headers: { 'Cache-Control': 'no-store', 'Content-Type': 'text/plain; charset=utf-8' } });
 
@@ -22,9 +25,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     console.error('[auth]', e instanceof Error ? e.message : e);
     return new NextResponse('Authentication is misconfigured', { status: 500 });
   }
-  if (mode !== 'entra') return NextResponse.next();
+  if (mode !== 'entra') return nextWithCsp(request);
   const { pathname, search } = request.nextUrl;
-  if (isPublicPath(pathname)) return NextResponse.next();
+  if (isPublicPath(pathname)) return nextWithCsp(request);
   let ok = false;
   try {
     const cfg = sessionConfig();
@@ -34,7 +37,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     const page = request.method === 'GET' && !pathname.startsWith('/api/');
     return page ? NextResponse.redirect(new URL(`${AUTH_PATHS.page}?error=config`, request.url)) : unauthorized();
   }
-  if (ok) return NextResponse.next();
+  if (ok) return nextWithCsp(request);
   const script = request.headers.get('sec-fetch-dest') === 'empty';
   if (pathname.startsWith('/api/') || script || (request.method !== 'GET' && request.method !== 'HEAD')) return unauthorized();
   const target = new URL(AUTH_PATHS.signIn, request.url);
@@ -44,5 +47,5 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
 export const config = {
   // Next's build output and image optimiser never need a session; everything else goes through the checks above.
-  matcher: ['/((?!_next/static|_next/image).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

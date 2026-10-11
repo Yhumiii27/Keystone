@@ -10,9 +10,11 @@
 // - the machine-type calendar select offers the stored calendar ("Site 6d · 10h" is the site calendar, so SPUR's
 //   "Chantier 6d · 10h" shows selected — E-9);
 // - connectors in error count with the warnings (needs attention);
+// - R-021 (A-15): the Connectors and Channels tiles count what is really connected (src/domain/connectors.ts);
 // - the audit trail exports to CSV (ISO 9001), RFC 4180 quoting, ISO-8601 timestamps.
 import { LO, OK } from '@/components/app/tones';
 import type { ActivityKind, CalendarCode, ConnectorStatus, CostType } from '@/server/db/codes';
+import { connectorsSummary, type ConnectorLink, type ConnectorState } from './connectors';
 
 /** KPI tile in English (label, value, sub) with its value colour. */
 export interface AdminKpi {
@@ -239,16 +241,46 @@ export const connectorTone = (status: ConnectorStatus): 'neutral' | 'accent' | '
 export const connectorNeedsAttention = (status: ConnectorStatus) => status === 'warning' || status === 'error';
 
 /** KPI tiles (`plumbKpis`, 4718). */
-export function plumbingKpis(i: { eventsToday: number; connectorStatuses: readonly ConnectorStatus[]; unread: number; personaTitle: string; auditEntries: number }): AdminKpi[] {
-  const ok = i.connectorStatuses.filter((s) => s === 'ok').length;
-  const warn = i.connectorStatuses.filter(connectorNeedsAttention).length;
+export function plumbingKpis(i: {
+  eventsToday: number;
+  /** The listed connectors with their real link and state (src/domain/connectors.ts). */
+  connectors: readonly { name: string; link: ConnectorLink; state: ConnectorState }[];
+  unread: number;
+  personaTitle: string;
+  auditEntries: number;
+}): AdminKpi[] {
+  // R-021 (A-15): the prototype counted the seeded statuses ("7 healthy · 1 warning", "3 channels"); the tiles now say what is
+  // really connected — mock and missing connectors are neither healthy nor failing, and e-mail / Teams are channels only
+  // once their connector is live.
+  const c = connectorsSummary(i.connectors);
+  const channels = notificationChannels(i.connectors);
   return [
     { label: 'Events today', value: String(i.eventsToday), sub: 'Across all projects', color: OK },
-    { label: 'Connectors', value: String(i.connectorStatuses.length), sub: `${ok} healthy · ${warn} warning`, color: warn ? LO : OK },
+    {
+      label: 'Connectors', value: String(i.connectors.length),
+      sub: `${c.connected} connected · ${c.mock} mock · ${c.notConnected} not connected${c.warning ? ` · ${c.warning} warning` : ''}`, color: c.warning ? LO : OK,
+    },
     { label: 'Unread notifications', value: String(i.unread), sub: i.personaTitle, color: i.unread ? LO : OK },
     { label: 'Audit entries · 7 days', value: String(i.auditEntries), sub: 'Every status, approval and value change', color: OK },
-    { label: 'Channels', value: '3', sub: 'In-app · e-mail · Teams', color: OK },
+    { label: 'Channels', value: String(channels.count), sub: channels.sub, color: OK },
   ];
+}
+
+/** Connector rows of the e-mail and Teams notification channels (CONNECTORS). */
+export const EMAIL_CONNECTOR = 'E-mail (SMTP)';
+export const TEAMS_CONNECTOR = 'Microsoft Teams';
+
+/**
+ * Notification channels really available: in-app always, e-mail and Teams when their connector is live (X-6: no mail is sent
+ * today). Sub-line "In-app · e-mail · Teams", or "In-app · e-mail and Teams not connected".
+ */
+export function notificationChannels(rows: readonly { name: string; link: ConnectorLink; state: ConnectorState }[]): { count: number; sub: string } {
+  const live = (name: string) => rows.some((r) => r.name === name && r.link === 'live' && r.state !== 'disabled');
+  const email = live(EMAIL_CONNECTOR);
+  const teams = live(TEAMS_CONNECTOR);
+  const missing = [email ? null : 'e-mail', teams ? null : 'Teams'].filter((x): x is string => !!x);
+  const on = ['In-app', email ? 'e-mail' : null, teams ? 'Teams' : null].filter((x): x is string => !!x);
+  return { count: on.length, sub: missing.length ? `${on.join(' · ')} · ${missing.join(' and ')} not connected` : on.join(' · ') };
 }
 
 export interface AuditCsvRow {

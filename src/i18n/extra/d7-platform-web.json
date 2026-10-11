@@ -1,0 +1,19 @@
+{
+  "Too many requests — please wait a minute and try again": "Trop de requêtes — patientez une minute puis réessayez",
+  "Something went wrong": "Une erreur est survenue",
+  "Keystone could not display this page. Try again; if the problem persists, give the incident ID to IT.": "Keystone n’a pas pu afficher cette page. Réessayez ; si le problème persiste, communiquez l’identifiant d’incident au service informatique.",
+  "Incident ID": "Identifiant d’incident",
+  "Try again": "Réessayer",
+  "Back to Home": "Retour à l’accueil",
+  "Error 404": "Erreur 404",
+  "Page not found": "Page introuvable",
+  "This address matches no Keystone page, or what it pointed to no longer exists.": "Cette adresse ne correspond à aucune page de Keystone, ou ce qu’elle désignait n’existe plus.",
+  "Not connected": "Non connecté",
+  "Mock": "Simulé",
+  "File exchange · no live connection": "Échange de fichiers · pas de connexion directe",
+  "e-mail and Teams not connected": "e-mail et Teams non connectés",
+  "e-mail not connected": "e-mail non connecté",
+  "Teams not connected": "Teams non connecté",
+  "Connector added · not connected until IT sets it up": "Connecteur ajouté · non connecté tant que l’informatique ne l’a pas mis en place",
+  "not connected yet": "pas encore connecté"
+}

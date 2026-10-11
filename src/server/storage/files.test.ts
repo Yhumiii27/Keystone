@@ -95,7 +95,7 @@ describe('store, read, delete', () => {
     // Just written: its transaction may not have committed yet — kept.
     expect(await pruneOrphanFiles()).toBe(0);
     expect(fs.existsSync(path.join(dir, '2026', '10', 'orphan.txt'))).toBe(true);
-    expect(await pruneOrphanFiles(Date.now() + ORPHAN_GRACE_MS + 1000)).toBe(1);
+    expect(await pruneOrphanFiles({ now: Date.now() + ORPHAN_GRACE_MS + 1000 })).toBe(1);
     expect(fs.existsSync(path.join(dir, '2026', '10', 'orphan.txt'))).toBe(false);
   });
 });

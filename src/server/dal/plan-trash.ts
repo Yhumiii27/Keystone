@@ -17,9 +17,12 @@ import 'server-only';
 //
 // Purge rule: each new removal on a project first purges that project's trash rows older than PLAN_TRASH_RETENTION_DAYS (real
 // clock, S-4: timestamps follow the real clock) and keeps at most PLAN_TRASH_MAX_ENTRIES; an expired row can no longer be restored.
+// R-006: the worker's "plan-trash-purge" job applies the same rule to every project on a schedule (`purgeExpiredPlanTrash`),
+// so expired entries and their attachment files also leave the projects nobody edits.
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { getTableColumns } from 'drizzle-orm';
 import { getTableConfig, PgTable, type PgColumn } from 'drizzle-orm/pg-core';
+import { trashEntriesToPurge } from '@/domain/jobs';
 import { getDb } from '@/server/db/client';
 import { findPerson, nameOf, nextNumber, recordActivity, writeAudit } from '@/server/db/helpers';
 import * as schema from '@/server/db/schema';
@@ -186,16 +189,41 @@ async function removeCaptured(tx: Tx, p: TrashPayload): Promise<void> {
   }
 }
 
-/** Purges the project's expired trash rows and those beyond the maximum; returns the stored files of their attachments. */
-async function purge(tx: Tx, projectId: string, now: Date): Promise<string[]> {
-  const cutoff = new Date(now.getTime() - PLAN_TRASH_RETENTION_DAYS * 86_400_000);
-  const keep = await tx.select({ id: planTrash.id }).from(planTrash).where(eq(planTrash.projectId, projectId)).orderBy(desc(planTrash.deletedAt)).limit(PLAN_TRASH_MAX_ENTRIES - 1);
-  const keepIds = new Set(keep.map((k) => k.id));
-  const all = await tx.select({ id: planTrash.id, at: planTrash.deletedAt, payload: planTrash.payload }).from(planTrash).where(eq(planTrash.projectId, projectId));
-  const gone = all.filter((r) => r.at < cutoff || !keepIds.has(r.id));
+/**
+ * Purges the project's expired trash rows and those beyond the `keep` newest (src/domain/jobs.ts `trashEntriesToPurge`);
+ * returns the stored files of their attachments. A removal keeps PLAN_TRASH_MAX_ENTRIES - 1 (room for its own entry).
+ */
+async function purge(tx: Tx, projectId: string, now: Date, keep = PLAN_TRASH_MAX_ENTRIES - 1): Promise<string[]> {
+  const all = await tx.select({ id: planTrash.id, deletedAt: planTrash.deletedAt, payload: planTrash.payload }).from(planTrash).where(eq(planTrash.projectId, projectId));
+  const gone = trashEntriesToPurge(all, now, PLAN_TRASH_RETENTION_DAYS, keep);
   if (!gone.length) return [];
   await tx.delete(planTrash).where(inArray(planTrash.id, gone.map((g) => g.id)));
   return gone.flatMap((g) => ((g.payload as unknown as TrashPayload).tables.find((t) => t.table === 'task_attachments')?.rows ?? []).map((r) => r.fileId as string | null).filter((x): x is string => !!x));
+}
+
+/**
+ * Scheduled purge (R-006, worker job "plan-trash-purge"): every project's trash entries older than PLAN_TRASH_RETENTION_DAYS
+ * or beyond PLAN_TRASH_MAX_ENTRIES are deleted, one transaction per project, then the stored files of their attachments.
+ * Idempotent (a second run finds nothing). Returns the entries and files removed.
+ */
+export async function purgeExpiredPlanTrash(now = new Date()): Promise<{ entries: number; files: number; projects: number }> {
+  const db = await getDb();
+  const owners = await db.selectDistinct({ projectId: planTrash.projectId }).from(planTrash);
+  let entries = 0;
+  let files = 0;
+  let projectsPurged = 0;
+  for (const { projectId } of owners) {
+    const out = await db.transaction(async (tx) => {
+      const before = await tx.select({ id: planTrash.id }).from(planTrash).where(eq(planTrash.projectId, projectId));
+      const stored = await purge(tx, projectId, now, PLAN_TRASH_MAX_ENTRIES);
+      const after = await tx.select({ id: planTrash.id }).from(planTrash).where(eq(planTrash.projectId, projectId));
+      return { removed: before.length - after.length, stored };
+    });
+    if (out.removed) projectsPurged++;
+    entries += out.removed;
+    for (const f of out.stored) if (await deleteStoredFile(f).catch(() => false)) files++;
+  }
+  return { entries, files, projects: projectsPurged };
 }
 
 /**
