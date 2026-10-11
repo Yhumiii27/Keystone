@@ -41,7 +41,8 @@ src/
     db/{client.ts, schema/<domain>.ts, seed/<domain>.ts}
     dal/<domain>.ts          data access (server-only). Pages read data ONLY through the DAL.
     prototype/               read-only prototype data (seeders; DAL fallback for unmodelled modules, marked TODO(db))
-    session.ts               viewer (persona), lang, prefs from cookies
+    session.ts               viewer (demo persona or signed-in user), lang, prefs from cookies
+    auth/                    Entra ID sign-in (config, OIDC + PKCE, sealed session cookie, routes, viewer)
     actions/preferences.ts   view-as, language, nav state, last project, zone
   config/{screens.ts, personas.ts}   screen registry (routes, nav, titles, role access) and personas
   i18n/{translate.ts, client.tsx, fr-dict.json, fr-rules.ts, extra/<feature>.json}
@@ -94,7 +95,12 @@ src/
   with the prototype's geometry (e.g. EVM 760×290).
 
 ### Permissions
-- Viewer = persona from the "View as" cookie (`getViewer()`); real auth comes later.
+- Viewer = `getViewer()`. `KEYSTONE_AUTH=demo` (default, tests): the persona of the "View as" cookie. `KEYSTONE_AUTH=entra`:
+  the user signed in with Microsoft Entra ID (`src/proxy.ts` redirects without a session; `getViewer()` re-reads the user
+  and redirects to `/sign-in` when the session is no longer valid). The Viewer carries `role` (active role), `roles`,
+  `personId`/`userId` (null for demo personas), `email`, `department` and `organisation` (client users) — see
+  `docs/delivery-7/notes-auth.md`. Per-user records are keyed by the user (`userIdOf(viewer)` in `dal/users.ts`), never by
+  the role; client scoping uses `viewer.organisation`.
 - Screen gating: `canSee(role, id)`. Opening a screen outside the role's list renders it with the
   "Outside my workspace · Read-only" banner and no primary action (shell handles banner; screens must hide
   their edit controls when `outside` or `readOnly` — see the project context helpers).

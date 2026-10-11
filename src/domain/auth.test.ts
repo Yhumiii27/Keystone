@@ -57,6 +57,9 @@ describe('identity e-mail', () => {
     expect(emailFromClaims({ preferred_username: 'R.Aubert@epc2i.fr' })).toBe('r.aubert@epc2i.fr');
     expect(emailFromClaims({ preferred_username: 'raubert', upn: 'raubert@epc2i.fr' })).toBe('raubert@epc2i.fr');
     expect(emailFromClaims({ email: 'not an address', preferred_username: '' })).toBeNull();
+    // An e-mail its domain owner did not verify is ignored (nOAuth): the UPN identifies the person instead.
+    expect(emailFromClaims({ email: 'marie.lefebvre@epc2i.fr', xms_edov: false, preferred_username: 'guest_x.com#EXT#@epc2i.onmicrosoft.com' })).toBe('guest_x.com#ext#@epc2i.onmicrosoft.com');
+    expect(emailFromClaims({ email: 'marie.lefebvre@epc2i.fr', xms_edov: true })).toBe('marie.lefebvre@epc2i.fr');
     expect(normaliseEmail('a@b')).toBeNull();
     expect(normaliseEmail('a b@c.fr')).toBeNull();
     expect(normaliseEmail(`${'a'.repeat(250)}@b.fr`)).toBeNull();

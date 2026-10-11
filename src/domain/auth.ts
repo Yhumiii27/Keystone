@@ -90,6 +90,8 @@ export interface IdentityClaims {
   roles?: unknown;
   /** Group object ids (when the app registration emits group claims). */
   groups?: unknown;
+  /** Optional claim "email domain owner verified": false when the `email` claim is not verified by its domain owner. */
+  xms_edov?: unknown;
 }
 
 /** Keystone roles granted by a token: its app roles plus the roles of its mapped groups. Unknown values are ignored. */
@@ -112,9 +114,14 @@ export function normaliseEmail(v: unknown): string | null {
   return s.length <= 254 && EMAIL_RE.test(s) ? s : null;
 }
 
-/** The e-mail that identifies the person: `email`, else `preferred_username`, else `upn` (Entra UPNs are addresses). */
+/**
+ * The e-mail that identifies the person: `email`, else `preferred_username`, else `upn` (Entra UPNs are addresses). An
+ * `email` the token marks as unverified (`xms_edov: false`) is not used. Only tokens of the EPC2i tenant reach this
+ * (issuer and tenant are checked), and the person is then bound to the Microsoft object id, not to the e-mail.
+ */
 export function emailFromClaims(claims: IdentityClaims): string | null {
-  return normaliseEmail(claims.email) ?? normaliseEmail(claims.preferred_username) ?? normaliseEmail(claims.upn);
+  const email = claims.xms_edov === false || claims.xms_edov === 'false' ? null : normaliseEmail(claims.email);
+  return email ?? normaliseEmail(claims.preferred_username) ?? normaliseEmail(claims.upn);
 }
 
 /** Why a sign-in is refused (the code is shown on the sign-in page through SIGN_IN_ERROR). */

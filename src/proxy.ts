@@ -1,8 +1,11 @@
 // Proxy (Next 16's middleware, R-038). Demo mode (KEYSTONE_AUTH=demo, the default): does nothing — the "View as"
 // cookie stays the session. Entra mode: every request needs a valid session cookie, except the sign-in page and routes,
-// the health probe and static assets. Without one, a page request is redirected to the Microsoft sign-in (back to the
-// same page afterwards); an API call or a Server Function POST gets 401. This is the optimistic check (cookie only, no
-// database): getViewer() re-checks the user on the server for every page, Route Handler and Server Function.
+// the health probe and static assets. Without one, a page load is redirected to the Microsoft sign-in (back to the same
+// page afterwards); an API call, a Server Function POST or a script request (Sec-Fetch-Dest: empty — client-side
+// navigations and prefetches; Next hides their RSC headers from the proxy) gets 401: the router then reloads the page,
+// which redirects, and a prefetch never starts a sign-in (it would replace the sign-in cookie of the one in progress).
+// This is the optimistic check (cookie only, no database): getViewer() re-checks the user on the server for every
+// page, Route Handler and Server Function.
 import { NextResponse, type NextRequest } from 'next/server';
 import { AUTH_PATHS, isPublicPath } from '@/domain/auth';
 import { authMode, sessionConfig } from '@/server/auth/config';
@@ -32,7 +35,8 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     return page ? NextResponse.redirect(new URL(`${AUTH_PATHS.page}?error=config`, request.url)) : unauthorized();
   }
   if (ok) return NextResponse.next();
-  if (pathname.startsWith('/api/') || (request.method !== 'GET' && request.method !== 'HEAD')) return unauthorized();
+  const script = request.headers.get('sec-fetch-dest') === 'empty';
+  if (pathname.startsWith('/api/') || script || (request.method !== 'GET' && request.method !== 'HEAD')) return unauthorized();
   const target = new URL(AUTH_PATHS.signIn, request.url);
   target.searchParams.set('returnTo', pathname + search);
   return NextResponse.redirect(target);

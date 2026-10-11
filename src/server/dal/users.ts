@@ -151,7 +151,7 @@ export async function signInUser(input: SignInInput): Promise<SignInResult> {
       let clientId = person.clientId;
       if (!clientId && decision.userId) [{ clientId }] = await tx.select({ clientId: users.clientId }).from(users).where(eq(users.id, decision.userId));
       const values = {
-        roles, entraObjectId: input.oid, email: input.email, title: userTitle(person.jobTitle, roles, decision.organisation),
+        roles, entraObjectId: input.oid, ...(input.email ? { email: input.email } : {}), title: userTitle(person.jobTitle, roles, decision.organisation),
         departmentId: person.departmentId, clientId, isExternal: !!clientId || roles.includes('client'), lastSignInAt: at, updatedAt: at,
       };
       let userId = decision.userId;
@@ -175,9 +175,18 @@ export async function signInUser(input: SignInInput): Promise<SignInResult> {
   } catch (e) {
     // Two first sign-ins of the same person at once: the second insert hits users_person_id_unique — run again, it
     // now finds the user created by the first one (and applies the object-id check to it).
-    if (/users_person_id_unique|users_entra_object_id_unique/.test(String((e as { message?: string })?.message ?? e))) return run();
+    if (isUniqueViolation(e, ['users_person_id_unique', 'users_entra_object_id_unique'])) return run();
     throw e;
   }
+}
+
+/** A unique-constraint violation on one of `constraints` (the driver error may be wrapped in Drizzle's query error). */
+export function isUniqueViolation(e: unknown, constraints: string[]): boolean {
+  for (let err = e as { message?: unknown; cause?: unknown; code?: unknown; constraint?: unknown } | undefined, i = 0; err && i < 5; err = err.cause as typeof err, i++) {
+    if (typeof err.constraint === 'string' && constraints.includes(err.constraint)) return true;
+    if (typeof err.message === 'string' && constraints.some((c) => (err!.message as string).includes(c))) return true;
+  }
+  return false;
 }
 
 /** Audit row of a sign-out. */

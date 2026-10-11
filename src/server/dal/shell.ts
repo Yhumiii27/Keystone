@@ -14,7 +14,7 @@ import 'server-only';
 // connectors (Activity & integrations badge) and the installed base (zone bar of Installed base / Warranty claims).
 // Only reference constants (zones, city → country → zone) are still read from the prototype data set.
 import { and, eq, sql } from 'drizzle-orm';
-import { personaOf, type PersonaRef } from '@/config/personas';
+import { personaOf, type Persona, type PersonaRef } from '@/config/personas';
 import { DEFAULT_PROJECT, canSee, screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import { defaultDepartment } from '@/domain/requests';
 import { dueTodayBadge, workingDayOf } from '@/domain/tasks';
@@ -78,7 +78,7 @@ async function approvalsDeptOf(who: PersonaRef) {
 }
 
 /** Badges that do not depend on the current project. */
-async function globalBadges(viewer: ReturnType<typeof personaOf>): Promise<Badges> {
+async function globalBadges(viewer: Persona): Promise<Badges> {
   const role = viewer.role;
   const [mine, rescheduled, dept, docs, eco, invoices, stock, sav, plumbing] = await Promise.all([
     listTasks({ person: viewer.name }),

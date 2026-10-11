@@ -14,7 +14,7 @@ import { notifyRequestEvent } from './requests-screens';
 import { countUnreadNotifications, createNotification, listNotifications, markAllNotificationsRead } from './notifications';
 import { getScoreWeights, setScoreWeight } from './prioritisation';
 import { listProjects } from './projects';
-import { getUserAccount, listUserAccounts, signInUser, userIdOf } from './users';
+import { getUserAccount, isUniqueViolation, listUserAccounts, signInUser, userIdOf } from './users';
 
 const personId = async (fullName: string) => {
   const db = await getDb();
@@ -121,6 +121,16 @@ describe('users', () => {
     expect(isMineProject(PERSONA_BY_ROLE.client, hlt)).toBe(true);
     expect(isMineProject({ ...PERSONA_BY_ROLE.client, organisation: 'Nordvolt' }, hlt)).toBe(false);
     expect(isMineProject({ ...PERSONA_BY_ROLE.client, organisation: null }, hlt)).toBe(false);
+  });
+
+  it('recognises the unique violation of a second account for the same person (retry of a racing first sign-in)', async () => {
+    const db = await getDb();
+    const romain = await personId('Romain Aubert');
+    const err = await db.insert(users).values({ personId: romain, title: 'x', sortOrder: 999 }).then(() => null, (e: unknown) => e);
+    expect(err).toBeTruthy();
+    expect(isUniqueViolation(err, ['users_person_id_unique'])).toBe(true);
+    expect(isUniqueViolation(err, ['users_entra_object_id_unique'])).toBe(false);
+    expect(isUniqueViolation(new Error('boom'), ['users_person_id_unique'])).toBe(false);
   });
 
   it('keeps one account per person even when two first sign-ins race', async () => {

@@ -37,6 +37,9 @@ describe('proxy', () => {
     useEntra();
     expect((await proxy(req('/api/export/budget?format=csv'))).status).toBe(401);
     expect((await proxy(req('/projects/HLT-026/plan', { method: 'POST', headers: { 'next-action': 'abc' } }))).status).toBe(401);
+    // Client-side navigations and prefetches (fetch requests) are not sent to Microsoft: the router reloads the page.
+    expect((await proxy(req('/projects/HLT-026/plan', { headers: { 'sec-fetch-dest': 'empty', 'sec-fetch-mode': 'cors' } }))).status).toBe(401);
+    expect((await proxy(req('/projects/HLT-026/plan', { headers: { 'sec-fetch-dest': 'document' } }))).status).toBe(307);
   });
 
   it('keeps the sign-in page and routes, the health probe and static files public', async () => {
