@@ -170,8 +170,9 @@ describe('Deliverables register — dlvKpis / dlvChips / dlvRows / dlvVals', () 
       expect(deliverableKpis(ds).map(kpiOut), k).toEqual(G.after[k].kpis);
       expect(deliverableChips(ds).map((c) => ({ label: c.label, count: c.count })), k).toEqual(G.after[k].chips);
     }
+    // Q-3a (R-114): a rejected deliverable goes back to In progress at the next revision (the prototype had no step after a rejection).
     expect([producerNextOf('planned'), producerNextOf('in_progress'), producerNextOf('internal_review'), producerNextOf('submitted'), producerNextOf('rejected')])
-      .toEqual(['in_progress', 'internal_review', 'submitted', null, null]);
+      .toEqual(['in_progress', 'internal_review', 'submitted', null, 'in_progress']);
   });
 
   it('My approvals "Deliverable acceptance": the client contact’s items (apprItems 4727)', () => {

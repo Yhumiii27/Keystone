@@ -122,7 +122,8 @@ describe('R-112 "Record result" Server Function and DAL', () => {
     for (const role of ROLES) {
       session.role = role;
       const r = await recordInspectionResultAction('HLT-026', 'I-02', 'passed', { result: 'passed', date: '12 Sep', inspector: 'Antoine Girard' });
-      outcome[role] = 'toast' in (r ?? {}) ? 'ok' : (r as { error: string }).error;
+      const res = r as { toast?: string; error?: string };
+      outcome[role] = res.toast ? 'ok' : (res.error ?? '');
     }
     expect(outcome).toEqual({
       director: 'ok',

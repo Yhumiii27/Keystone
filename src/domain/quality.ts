@@ -27,6 +27,7 @@ import {
   type DeliverableStatus, type NcrSeverity, type NcrSource, type NcrStatus, type NcrVerificationDecision, type RaciCode, type VigieSyncStatus,
 } from '@/server/db/codes';
 import { DEFAULT_DATA_DATE } from './ch4-defaults';
+import { parseDateInput, type ParseResult } from './contract';
 import { closedInQuarter } from './kpis';
 
 export type { DeliverableStatus, NcrSeverity, NcrStatus, NcrVerificationDecision, RaciCode };
@@ -275,6 +276,8 @@ const PRODUCER: Partial<Record<DeliverableStatus, { to: ProducerTarget; label: s
   planned: { to: 'in_progress', label: 'Start', variant: 'secondary' },
   in_progress: { to: 'internal_review', label: 'To internal review', variant: 'secondary' },
   internal_review: { to: 'submitted', label: 'Submit to client', variant: 'primary' },
+  // R-114 (Q-3a, owner's answer "a"): a deliverable rejected by the client goes back to In progress at the next revision.
+  rejected: { to: 'in_progress', label: 'Start next revision', variant: 'secondary' },
 };
 
 /** The row action of the viewer (dlvRows canStart / canSubmit / canAccept), following the viewer (07 OQ14). */
@@ -291,6 +294,95 @@ export const producerNextOf = (s: DeliverableStatus): ProducerTarget | null => P
 /** Drawer hint (dlvVals.hint): a submitted deliverable seen by someone who cannot decide it. */
 export function deliverableHint(d: Pick<DeliverableLike, 'status'>, viewer: DeliverableViewer): string {
   return d.status === 'submitted' && !viewer.isClientContact && viewer.role !== 'client' ? 'Switch to the Client role (bottom-left) to accept or reject.' : '';
+}
+
+/**
+ * Next revision of a deliverable after a client rejection (R-114, Q-3a): letters go A → B … Z → AA (case kept), numbers
+ * 0 → 1, 09 → 10 (width kept), a trailing number or letter of a mixed index is stepped ("P01" → "P02", "1A" → "1B"); no
+ * revision yet → "A"; anything else gets ".1".
+ */
+export function nextRevision(rev: string | null | undefined): string {
+  const r = (rev ?? '').trim();
+  if (!r || r === '—') return 'A';
+  const letters = (x: string) => {
+    const upper = x === x.toUpperCase();
+    const a = (upper ? 'A' : 'a').charCodeAt(0);
+    const digits = [...x].map((c) => c.charCodeAt(0) - a);
+    let i = digits.length - 1;
+    while (i >= 0 && digits[i] === 25) digits[i--] = 0;
+    if (i < 0) digits.unshift(0);
+    else digits[i]++;
+    return digits.map((d) => String.fromCharCode(a + d)).join('');
+  };
+  const num = (x: string) => String(+x + 1).padStart(x.length, '0');
+  let m = /^(.*?)(\d+)$/.exec(r);
+  if (m) return m[1] + num(m[2]);
+  m = /^(.*?)([A-Z]+|[a-z]+)$/.exec(r);
+  if (m) return m[1] + letters(m[2]);
+  return `${r}.1`;
+}
+
+/** One client decision of the review history (newest first in the drawer). */
+export interface DeliverableReviewLike {
+  revision: string | null;
+  decision: 'accepted' | 'rejected';
+  /** ISO date. */
+  decidedOn: string;
+  decidedBy: string;
+  comments: string | null;
+}
+
+/** "Rev C · Rejected 25 Sep · N. Bensaïd" (`t` translates the words and the date; the comments are shown under it as typed). */
+export const reviewLineText = (r: DeliverableReviewLike, t: (s: string) => string = (s) => s) =>
+  `${t('Rev')} ${r.revision ?? '—'} · ${t(r.decision === 'accepted' ? 'Accepted' : 'Rejected')} ${t(fmtDOfIso(r.decidedOn))} · ${r.decidedBy}`;
+
+// ── New deliverable (R-115, Q-3b: added by the project manager) ─────────────────────────────────────────
+
+/** Roles that create a project's contractual deliverables (Q-3b: the project manager — of that project — and the director). */
+export const DELIVERABLE_CREATOR_ROLES: readonly string[] = ['pm', 'director'];
+
+export interface NewDeliverableValues {
+  /** Settings › Deliverable types code. */
+  type: string;
+  title: string;
+  /** ISO due date. */
+  dueOn: string;
+  /** WBS element code ("1.5"). */
+  wbsCode: string;
+  /** Responsible (R) and backup (B), full names from the project team. */
+  responsible: string;
+  backup: string | null;
+}
+
+/**
+ * "New deliverable": a type of the Settings list (active), a title, a due date, a WBS element of the project, the
+ * responsible (R) and an optional backup (B) from the team, different from the responsible. Codes or labels accepted for
+ * the type; '' or "—" for no backup.
+ */
+export function parseNewDeliverable(
+  values: Record<string, string | undefined>,
+  opts: { types: readonly { code: string; label: string }[]; wbs: readonly string[]; team: readonly string[] },
+): ParseResult<NewDeliverableValues> {
+  const v = (k: string) => (values[k] ?? '').trim();
+  const rawType = v('type') || opts.types[0]?.code || '';
+  const type = opts.types.find((x) => x.code === rawType || x.label === rawType)?.code;
+  if (!type) return { ok: false, error: 'Unknown deliverable type' };
+  const title = v('title');
+  if (!title) return { ok: false, error: 'Title is required' };
+  if (title.length > 200) return { ok: false, error: 'Text is too long' };
+  const due = v('due');
+  if (!due) return { ok: false, error: 'Due date is required' };
+  const dueOn = parseDateInput(due);
+  if (!dueOn) return { ok: false, error: 'Enter the due date as a date, e.g. 15 Oct' };
+  const wbsCode = v('wbs') || opts.wbs[0] || '';
+  if (!opts.wbs.includes(wbsCode)) return { ok: false, error: 'Unknown WBS element' };
+  const responsible = v('r') || opts.team[0] || '';
+  if (!opts.team.includes(responsible)) return { ok: false, error: 'Unknown responsible' };
+  const b = v('b');
+  const backup = b && b !== '—' ? b : null;
+  if (backup && !opts.team.includes(backup)) return { ok: false, error: 'Unknown backup' };
+  if (backup && backup === responsible) return { ok: false, error: 'The backup must differ from the responsible' };
+  return { ok: true, value: { type, title, dueOn, wbsCode, responsible, backup } };
 }
 
 /** Deposit type proposed when the issued document of a deliverable is deposited in Codex (DEPOSIT_TYPES). */

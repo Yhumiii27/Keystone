@@ -4,19 +4,25 @@ import 'server-only';
 // - NCRs are owned by Vigie (user decision): read through the Vigie quality connector (mirror + progress waiting for
 //   Vigie); Keystone records the viewer's step decisions (one step forward; verification / closure by quality) through
 //   the connector's outbox ("pending sync with Vigie"). Creation and management happen in Vigie (links in vigie/links.ts).
-// - Deliverables are Keystone's: Start → To internal review → Submit to client, and the client's acceptance (PV).
-import { and, asc, eq, inArray } from 'drizzle-orm';
+// - Deliverables are Keystone's: Start → To internal review → Submit to client, and the client's acceptance (PV). A
+//   rejection goes back to In progress at the next revision ("Start next revision", R-114 / Q-3a); every client decision
+//   is kept in `deliverable_reviews`. The project manager creates deliverables ("New deliverable", R-115 / Q-3b).
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { DELIVERABLE_CREATOR_ROLES, nextRevision } from '@/domain/quality';
 import { getDb } from '@/server/db/client';
 import {
   DELIVERABLE_ACCEPTANCE_DAYS, DELIVERABLE_STATUS_TAG, NCR_FLOW, NCR_STATUS_TAG, NCR_VERIFIER_ROLES, RACI_CODES, SEVERITY_TAG, STATUS_ISO, addDaysIso, deliverableStatus, deliverableType,
-  fmtDOfIso, ncrNextStatus, ncrSeverity, ncrSource, ncrStatus, vigieSyncStatus,
-  type DeliverableStatus, type NcrStatus, type NcrVerificationDecision, type RaciCode,
+  fmtDOfIso, nextBusinessNumber, ncrNextStatus, ncrSeverity, ncrSource, ncrStatus, vigieSyncStatus,
+  type DeliverableReviewDecision, type DeliverableStatus, type NcrStatus, type NcrVerificationDecision, type RaciCode,
 } from '@/server/db/codes';
-import { activities, auditEntries, deliverableRaci, deliverables, documents, projects, referenceValues, vigieNcrProgress, vigieNcrs, wbsNodes } from '@/server/db/schema';
+import { findPerson, nameOf } from '@/server/db/helpers';
+import {
+  activities, auditEntries, deliverableRaci, deliverableReviews, deliverables, documents, persons, projects, referenceValues, vigieNcrProgress, vigieNcrs, wbsNodes,
+} from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 import { getVigieQualityConnector, type NcrProgressReceipt, type VigieNcr } from '@/server/integrations/vigie/quality-connector';
 import { vigieNcrListUrl, vigieNcrUrl, vigieReportNcrUrl } from '@/server/integrations/vigie/links';
-import { initialsOf, isClientContactOf, optionalText, projectOf, requireWorkspace, trace, whoIs, type Actor } from './ops-common';
+import { initialsOf, isClientContactOf, isIsoDate, managesProject, optionalText, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 
 export type { Actor, NcrProgressReceipt, VigieNcr };
 export { vigieNcrListUrl, vigieNcrUrl, vigieReportNcrUrl };
@@ -163,6 +169,21 @@ export interface DeliverableRow {
   /** Issued document in the Codex index. */
   documentNumber: string | null;
   position: number;
+  /**
+   * Client decisions, newest first (R-114): the `deliverable_reviews` rows, plus — for a deliverable rejected before the
+   * history existed (the seed) — its current rejection.
+   */
+  reviews: DeliverableReview[];
+}
+
+export interface DeliverableReview {
+  revision: string | null;
+  decision: DeliverableReviewDecision;
+  submittedOn: string | null;
+  decidedOn: string;
+  /** "N. Bensaïd" (short form of the person when known). */
+  decidedBy: string;
+  comments: string | null;
 }
 
 /** Display text of the acceptance fields (the prototype's `acc`). */
@@ -188,11 +209,13 @@ async function loadDeliverables(projectCode: string, numbers?: string[]): Promis
     .where(and(eq(deliverables.projectId, p.id), numbers?.length ? inArray(deliverables.number, numbers) : undefined))
     .orderBy(asc(deliverables.position));
   if (!rows.length) return [];
-  const [raci, types, ncrs, people] = await Promise.all([
+  const [raci, types, ncrs, people, reviewRows] = await Promise.all([
     db.select().from(deliverableRaci).where(inArray(deliverableRaci.deliverableId, rows.map((r) => r.d.id))),
     db.select({ code: referenceValues.code, label: referenceValues.label }).from(referenceValues).where(eq(referenceValues.listKey, 'delivTypes')),
     db.select({ number: vigieNcrs.number, deliv: vigieNcrs.deliverableNumber }).from(vigieNcrs).where(eq(vigieNcrs.projectCode, projectCode)).orderBy(asc(vigieNcrs.position)),
     db.query.persons.findMany({ columns: { id: true, shortName: true } }),
+    db.select().from(deliverableReviews).where(inArray(deliverableReviews.deliverableId, rows.map((r) => r.d.id)))
+      .orderBy(desc(deliverableReviews.decidedOn), desc(deliverableReviews.createdAt)),
   ]);
   const shortById = new Map(people.map((x) => [x.id, x.shortName]));
   const typeLabel = new Map(types.map((t) => [t.code, t.label]));
@@ -212,8 +235,29 @@ async function loadDeliverables(projectCode: string, numbers?: string[]): Promis
         return { role, name: c?.name ?? null, initials: c ? initialsOf(c.name) : '' };
       }),
       linkedNcrs: ncrs.filter((n) => n.deliv === d.number).map((n) => n.number), documentNumber: doc ?? null, position: d.position,
+      reviews: reviewsOf(d, reviewRows.filter((r) => r.deliverableId === d.id), shortById),
     };
   });
+}
+
+/** Review history of a deliverable; a rejection recorded before the history table (seed) is shown from the row itself. */
+function reviewsOf(d: typeof deliverables.$inferSelect, rows: (typeof deliverableReviews.$inferSelect)[], shortById: Map<string, string>): DeliverableReview[] {
+  const by = (personId: string | null, name: string) => (personId ? shortById.get(personId) ?? name : name);
+  const list: DeliverableReview[] = rows.map((r) => ({
+    revision: r.revision, decision: r.decision, submittedOn: r.submittedOn, decidedOn: r.decidedOn, decidedBy: by(r.decidedByPersonId, r.decidedByName), comments: r.comments,
+  }));
+  const legacy = legacyRejection(d, rows);
+  if (legacy) list.unshift({ revision: legacy.revision, decision: 'rejected', submittedOn: legacy.submittedOn, decidedOn: legacy.decidedOn, decidedBy: by(legacy.decidedByPersonId, legacy.decidedByName), comments: legacy.comments });
+  return list;
+}
+
+/** The current rejection of a deliverable when the history has no row for it (rejected before R-114: the seed). */
+function legacyRejection(d: typeof deliverables.$inferSelect, rows: { decision: DeliverableReviewDecision; decidedOn: string; revision: string | null }[]) {
+  if (d.status !== 'rejected' || !d.rejectedOn) return null;
+  if (rows.some((r) => r.decision === 'rejected' && r.decidedOn === d.rejectedOn && r.revision === d.revision)) return null;
+  return {
+    revision: d.revision, submittedOn: d.submittedOn, decidedOn: d.rejectedOn, decidedByPersonId: d.rejectedByPersonId, decidedByName: 'Client', comments: d.reviewComments,
+  };
 }
 
 /** Deliverables register of a project (HLT_DELIVS order; empty for projects without data). */
@@ -233,8 +277,10 @@ export async function listDeliverableTypes(): Promise<{ code: string; label: str
     .where(and(eq(referenceValues.listKey, 'delivTypes'), eq(referenceValues.active, true))).orderBy(asc(referenceValues.position));
 }
 
-/** Producer-side steps of the register (Start, To internal review, Submit to client). */
-const PRODUCER_NEXT: Partial<Record<DeliverableStatus, DeliverableStatus>> = { planned: 'in_progress', in_progress: 'internal_review', internal_review: 'submitted' };
+/** Producer-side steps of the register (Start, To internal review, Submit to client; Start next revision after a rejection, R-114). */
+const PRODUCER_NEXT: Partial<Record<DeliverableStatus, DeliverableStatus>> = {
+  planned: 'in_progress', in_progress: 'internal_review', internal_review: 'submitted', rejected: 'in_progress',
+};
 
 async function loadOne(tx: Tx, projectCode: string, number: string) {
   const p = await projectOf(tx, projectCode);
@@ -245,22 +291,51 @@ async function loadOne(tx: Tx, projectCode: string, number: string) {
 
 /**
  * "Start" (Planned → In progress), "To internal review" (In progress → Internal review), "Submit to client" (Internal review
- * → Submitted; the client has 10 days from the status date to accept: "Accept by 5 Oct"). `to` must be the next step.
+ * → Submitted; the client has 10 days from the status date to accept: "Accept by 5 Oct") and "Start next revision"
+ * (Rejected → In progress at the next revision, R-114: the rejection stays in the review history, the row's rejection,
+ * submission and acceptance window are cleared for the new submission). `to` must be the next step; with `expected`, a
+ * deliverable whose status changed meanwhile is refused ("… has moved on").
  */
-export async function moveDeliverable(projectCode: string, number: string, to: 'in_progress' | 'internal_review' | 'submitted', actor: Actor, on: string = STATUS_ISO): Promise<void> {
+export async function moveDeliverable(
+  projectCode: string, number: string, to: 'in_progress' | 'internal_review' | 'submitted', actor: Actor, on: string = STATUS_ISO, expected?: DeliverableStatus,
+): Promise<void> {
   requireWorkspace('quality', actor, 'Quality');
   if (actor.role === 'client') throw new Error('The client accepts or rejects submitted deliverables only');
   const db = await getDb();
   await db.transaction(async (tx) => {
     const { p, d } = await loadOne(tx, projectCode, number);
+    if (expected && d.status !== expected) throw new Error(`${number} has moved on`);
     if (PRODUCER_NEXT[d.status] !== to) throw new Error(`${number} cannot move from ${deliverableStatus.label(d.status)} to ${deliverableStatus.label(to)}`);
     const who = await whoIs(tx, actor);
     const patch: Partial<typeof deliverables.$inferInsert> = { status: to, updatedAt: new Date() };
     if (to === 'submitted') Object.assign(patch, { submittedOn: on, acceptanceDueOn: addDaysIso(on, DELIVERABLE_ACCEPTANCE_DAYS) });
+    let revision: string | null = null;
+    if (d.status === 'rejected') {
+      // Keep the rejection in the history (a seeded rejection has no row yet), then open the next revision.
+      const rows = await tx.select({ decision: deliverableReviews.decision, decidedOn: deliverableReviews.decidedOn, revision: deliverableReviews.revision })
+        .from(deliverableReviews).where(eq(deliverableReviews.deliverableId, d.id));
+      const legacy = legacyRejection(d, rows);
+      if (legacy) {
+        const [by] = legacy.decidedByPersonId ? await tx.select({ fullName: persons.fullName, shortName: persons.shortName }).from(persons).where(eq(persons.id, legacy.decidedByPersonId)) : [];
+        await tx.insert(deliverableReviews).values({
+          deliverableId: d.id, revision: legacy.revision, submittedOn: legacy.submittedOn, decision: 'rejected', decidedOn: legacy.decidedOn,
+          decidedByName: by ? nameOf(by) : legacy.decidedByName, decidedByPersonId: legacy.decidedByPersonId, comments: legacy.comments,
+        });
+      }
+      revision = nextRevision(d.revision);
+      Object.assign(patch, { revision, rejectedOn: null, rejectedByPersonId: null, reviewComments: null, submittedOn: null, acceptanceDueOn: null });
+    }
     await tx.update(deliverables).set(patch).where(eq(deliverables.id, d.id));
     await trace(tx, who, {
-      objectRef: number, change: `status: ${deliverableStatus.label(d.status)} → ${deliverableStatus.label(to)}`, area: 'Deliverables', entityType: 'deliverable', entityId: d.id,
-      projectId: p.id, activity: to === 'submitted' ? { text: `Submitted deliverable ${number} ${d.title} to the client`, kind: 'client' } : undefined,
+      objectRef: number,
+      change: `status: ${deliverableStatus.label(d.status)} → ${deliverableStatus.label(to)}${revision ? ` · revision ${d.revision ?? '—'} → ${revision}` : ''}`,
+      area: 'Deliverables', entityType: 'deliverable', entityId: d.id, projectId: p.id,
+      activity:
+        to === 'submitted'
+          ? { text: `Submitted deliverable ${number} ${d.title} to the client`, kind: 'client' }
+          : revision
+            ? { text: `Started revision ${revision} of deliverable ${number} ${d.title} after the client's rejection`, kind: 'quality' }
+            : undefined,
     });
   });
 }
@@ -286,12 +361,80 @@ export async function decideDeliverable(
       await tx.update(deliverables).set({ status: 'accepted', acceptedOn: on, acceptedByPersonId: who.personId, acceptedByName: who.who, updatedAt: at }).where(eq(deliverables.id, d.id));
     else
       await tx.update(deliverables).set({ status: 'rejected', rejectedOn: on, rejectedByPersonId: who.personId, reviewComments: note ?? 'comments issued', updatedAt: at }).where(eq(deliverables.id, d.id));
+    // R-114: every client decision is kept; the row only holds the latest one.
+    await tx.insert(deliverableReviews).values({
+      deliverableId: d.id, revision: d.revision, submittedOn: d.submittedOn, decision, decidedOn: on, decidedByName: who.who, decidedByPersonId: who.personId,
+      comments: decision === 'rejected' ? (note ?? 'comments issued') : note,
+    });
     await trace(tx, who, {
       objectRef: number, change: `status: Submitted → ${decision === 'accepted' ? 'Accepted (PV)' : 'Rejected'}${note ? ` · ${note}` : ''}`, area: 'Deliverables',
       entityType: 'deliverable', entityId: d.id, projectId: p.id,
       activity: { text: decision === 'accepted' ? `Accepted deliverable ${number} ${d.title} (PV signed)` : `Rejected deliverable ${number} ${d.title} · comments issued`, kind: 'client' },
     });
   });
+}
+
+export interface NewDeliverableInput {
+  /** Settings › Deliverable types code (active). */
+  type: string;
+  title: string;
+  dueOn: string;
+  /** WBS element of the project ("1.5"). */
+  wbsCode: string;
+  /** Responsible (R) and backup (B): people (full or short name). */
+  responsible: string;
+  backup?: string | null;
+}
+
+/**
+ * "New deliverable" (R-115, Q-3b): a contractual deliverable added by the project's manager (or the director) — type from
+ * the Settings list, title, due date, WBS element, responsible (R) and backup (B). Planned, no revision, numbered D-nnn
+ * after the project's highest number, appended to the register. Returns its number.
+ */
+export async function createDeliverable(projectCode: string, input: NewDeliverableInput, actor: Actor): Promise<string> {
+  requireWorkspace('quality', actor, 'Quality');
+  if (!DELIVERABLE_CREATOR_ROLES.includes(actor.role)) throw new Error('Only the project manager creates deliverables');
+  const title = requiredText(input.title, 'Title', 200);
+  if (!isIsoDate(input.dueOn)) throw new Error('Invalid due date');
+  const responsibleName = requiredText(input.responsible, 'Responsible', 200);
+  const backupName = optionalText(input.backup, 'Backup', 200);
+  if (backupName && backupName === responsibleName) throw new Error('The backup must differ from the responsible');
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const p = await projectOf(tx, projectCode);
+    if (!(await managesProject(tx, actor, p.pmPersonId))) throw new Error('Only the project manager creates deliverables');
+    const [type] = await tx.select({ code: referenceValues.code }).from(referenceValues)
+      .where(and(eq(referenceValues.listKey, 'delivTypes'), eq(referenceValues.code, input.type), eq(referenceValues.active, true)));
+    if (!type) throw new Error(`Unknown deliverable type ${input.type}`);
+    const [node] = await tx.select({ id: wbsNodes.id }).from(wbsNodes).where(and(eq(wbsNodes.projectId, p.id), eq(wbsNodes.code, input.wbsCode)));
+    if (!node) throw new Error(`Unknown WBS element ${input.wbsCode}`);
+    const [r, b] = await Promise.all([findPerson(tx, responsibleName), findPerson(tx, backupName)]);
+    if (!r) throw new Error(`Unknown person ${responsibleName}`);
+    if (backupName && !b) throw new Error(`Unknown person ${backupName}`);
+    if (b && b.id === r.id) throw new Error('The backup must differ from the responsible');
+    const existing = await tx.select({ n: deliverables.number, pos: deliverables.position }).from(deliverables).where(eq(deliverables.projectId, p.id));
+    const number = nextBusinessNumber(existing.map((e) => e.n), 'D-', 3);
+    const [row] = await tx.insert(deliverables).values({
+      projectId: p.id, number, title, type: type.code, wbsCode: input.wbsCode, wbsNodeId: node.id, dueOn: input.dueOn, status: 'planned', revision: null,
+      position: existing.reduce((m, e) => Math.max(m, e.pos + 1), 0),
+    }).returning({ id: deliverables.id });
+    await tx.insert(deliverableRaci).values([
+      { deliverableId: row.id, role: 'R' as const, name: nameOf(r), personId: r.id },
+      ...(b ? [{ deliverableId: row.id, role: 'B' as const, name: nameOf(b), personId: b.id }] : []),
+    ]);
+    await trace(tx, await whoIs(tx, actor), {
+      objectRef: number, change: `deliverable added · ${type.code} · ${title} · due ${input.dueOn} · R ${nameOf(r)}${b ? ` · B ${nameOf(b)}` : ''}`, area: 'Deliverables',
+      entityType: 'deliverable', entityId: row.id, projectId: p.id, activity: { text: `Added deliverable ${number} ${title}`, kind: 'quality' },
+    });
+    return number;
+  });
+}
+
+/** WBS elements of a project offered by "New deliverable" ("1.5 · Crane installation"), in WBS order. */
+export async function deliverableWbsOptions(projectCode: string): Promise<{ code: string; name: string }[]> {
+  const db = await getDb();
+  const p = await projectOf(db, projectCode);
+  return db.select({ code: wbsNodes.code, name: wbsNodes.name }).from(wbsNodes).where(eq(wbsNodes.projectId, p.id)).orderBy(asc(wbsNodes.position));
 }
 
 /** Links the issued document (a Codex index record) to a deliverable (the drawer's drop slot; OPEN QUESTION D-1). */

@@ -5,7 +5,7 @@
 import { LO, OK } from '@/components/app/tones';
 import {
   QUALITY_TABS, RACI_LABEL, RACI_ORDER, awaitsVerification, deliverableActionFor, deliverableChips, deliverableHint, deliverableKpis, deliverableSteps,
-  deliverableTagOf, depositTypeOf, ncrActionFor, ncrChips, ncrKpis, ncrSegments, ncrStatusTagOf, ncrSteps, ncrSyncLine, severityTagOf,
+  deliverableTagOf, depositTypeOf, ncrActionFor, ncrChips, ncrKpis, ncrSegments, ncrStatusTagOf, ncrSteps, ncrSyncLine, reviewLineText, severityTagOf,
   type DeliverableStatus, type DeliverableViewer, type NcrSeverity, type NcrStatus, type ProducerTarget, type QualityKpi, type QualityTab,
 } from '@/domain/quality';
 import type { Lang, T } from '@/i18n/translate';
@@ -252,7 +252,7 @@ export function ncrDrawerView(
 // ── Deliverables register ──────────────────────────────────────────────────────────────────────────────
 
 export type DlvRowAction =
-  | { kind: 'move'; to: ProducerTarget; label: string; variant: 'primary' | 'secondary' }
+  | { kind: 'move'; to: ProducerTarget; label: string; variant: 'primary' | 'secondary'; /** "Start next revision" of a rejected deliverable (R-114). */ restart?: boolean }
   | { kind: 'decide' };
 
 export interface DlvRowView {
@@ -311,7 +311,7 @@ export function dlvTabView(input: { code: string; deliverables: DeliverableRow[]
       acceptance: accText(d.acceptanceText, t),
       status: t(d.statusLabel),
       statusClass: deliverableTagOf(d.status),
-      action: a ? (a.kind === 'move' ? { ...a, label: t(a.label) } : a) : null,
+      action: a ? (a.kind === 'move' ? { ...a, label: t(a.label), ...(d.status === 'rejected' ? { restart: true } : {}) } : a) : null,
     };
   });
   const empty = rows.length ? null : t(deliverables.length ? 'No deliverable in this status' : 'No deliverable registered for this project');
@@ -340,6 +340,10 @@ export interface DlvDrawerView {
   hint: string;
   /** "Submit to client" (Internal review, producers). */
   canSubmit: boolean;
+  /** "Start next revision" (Rejected, producers; R-114): the label, else null. */
+  restart: string | null;
+  /** Client decisions, newest first (R-114): "Rev C · Rejected 25 Sep · N. Bensaïd" and the comments as typed. */
+  reviews: { line: string; comments: string | null }[];
   /** "Accept (PV)" / "Reject with comments" (Submitted, the project's client contact). */
   canDecide: boolean;
   planHref: string;
@@ -382,6 +386,11 @@ export function dlvDrawerView(
     documentOptions: input.documents.map((x) => ({ value: x.number, label: `${x.number} · ${t(x.title)}` })),
     hint: t(deliverableHint(d, viewer)),
     canSubmit: a?.kind === 'move' && a.to === 'submitted',
+    restart: a?.kind === 'move' && d.status === 'rejected' ? t(a.label) : null,
+    reviews: (d.reviews ?? []).map((r) => ({
+      line: reviewLineText(r, t),
+      comments: r.comments,
+    })),
     canDecide: a?.kind === 'decide',
     planHref: planHref(code),
     pvHref: d.status === 'accepted' ? exportHref('quality', { format: 'pdf', code, variant: 'pv', id: d.number }) : null,

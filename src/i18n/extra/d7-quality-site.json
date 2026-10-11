@@ -15,5 +15,18 @@
   "The inspection date cannot be in the future": "La date d’inspection ne peut pas être dans le futur",
   "Name the client representative present at this hold point": "Indiquez le représentant du client présent à ce point d’arrêt",
   "This inspection has changed since you opened it": "Cette inspection a changé depuis son ouverture",
-  "Only quality and the engineering lead record inspection results": "Seuls la qualité et le responsable ingénierie enregistrent les résultats d’inspection"
+  "Only quality and the engineering lead record inspection results": "Seuls la qualité et le responsable ingénierie enregistrent les résultats d’inspection",
+  "New deliverable": "Nouveau livrable",
+  "Add deliverable": "Ajouter le livrable",
+  "Responsible (R)": "Responsable (R)",
+  "Backup (B)": "Suppléant (B)",
+  "Start next revision": "Démarrer la révision suivante",
+  "Client review history": "Historique des revues du client",
+  "Deliverable added": "Livrable ajouté",
+  "Unknown deliverable type": "Type de livrable inconnu",
+  "Due date is required": "L’échéance est obligatoire",
+  "Unknown responsible": "Responsable inconnu",
+  "Unknown backup": "Suppléant inconnu",
+  "Only the project manager creates deliverables": "Seul le chef de projet crée les livrables",
+  "The backup must differ from the responsible": "Le suppléant doit être différent du responsable"
 }
