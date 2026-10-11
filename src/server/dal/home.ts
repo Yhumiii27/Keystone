@@ -28,6 +28,7 @@ import { getClientPortal } from './client';
 import { getActivities, getMilestones, getScheduleControl } from './planning';
 import { getPortfolioOverview } from './portfolio';
 import { getSkillsMatrix } from './hr';
+import { clientRefusedProject } from '@/domain/rights';
 import { getProject, listProjects, type ProjectRow } from './projects';
 import { listPurchaseOrders } from './purchasing';
 import { listDeliverables } from './quality';
@@ -40,6 +41,8 @@ export interface HomeQuery {
   persona: Persona;
   /** Current project (last project used); unknown codes fall back to the default project. */
   projectCode: string;
+  /** Client organisation of a client viewer (R-042, P-10a: their Home shows one of their organisation's projects only). */
+  organisation?: string | null;
   /** Portfolio zone filter (shared with the Portfolio screens): director KPIs and alerts follow it. */
   zone: ZoneKey | null;
   lang: Lang;
@@ -163,6 +166,15 @@ async function resolveProject(code: string): Promise<ProjectRow> {
   return p;
 }
 
+/**
+ * The client's current project (P-10a): the last project used when it belongs to their organisation, else their first project
+ * with data, else their first project; null when their organisation has none (never another organisation's project).
+ */
+async function resolveClientProject(code: string, organisation: string | null): Promise<ProjectRow | null> {
+  const own = (await listProjects()).filter((p) => !clientRefusedProject({ role: 'client', organisation }, p));
+  return own.find((p) => p.code === code) ?? own.find((p) => p.hasData) ?? own[0] ?? null;
+}
+
 async function evmAndSchedule(code: string): Promise<{ evm: EvmSeries | null; schedule: ScheduleHeader | null }> {
   const [cost, head, miles] = await Promise.all([getCostControl(code), getScheduleControl(code), getMilestones(code)]);
   const evm = cost ? { bac: cost.bac, pv: cost.pv, ev: cost.ev, ac: cost.ac } : null;
@@ -198,6 +210,12 @@ async function deptOfHead(name: string): Promise<string> {
 /** The Home of a role (docs/spec/03 §1.2). Roles without a dedicated Home get the director's, as the prototype. */
 export async function getHomeView(q: HomeQuery): Promise<HomeView> {
   const { persona, lang } = q;
+  if (q.role === 'client') {
+    const own = await resolveClientProject(q.projectCode, q.organisation ?? null);
+    if (!own) return clientHome({ lang, persona, project: { code: '', name: '', shortCode: '' }, evm: null, schedule: null, changeRequests: [], deliverables: [], invoice: null });
+    const [{ evm, schedule }, crs, { deliverables, invoice }] = await Promise.all([evmAndSchedule(own.code), changeRequestsOf([own]), clientInputs(own.code)]);
+    return clientHome({ lang, persona, project: currentOf(own), evm, schedule, changeRequests: crs, deliverables, invoice });
+  }
   const project = await resolveProject(q.projectCode);
   const current = currentOf(project);
   switch (q.role) {
@@ -235,10 +253,6 @@ export async function getHomeView(q: HomeQuery): Promise<HomeView> {
         lang, persona, project: current, purchaseOrders: pos, parts: ps, ecos: es,
         activityPct: Object.fromEntries(acts.map((a) => [a.id, a.pct])),
       });
-    }
-    case 'client': {
-      const [{ evm, schedule }, crs, { deliverables, invoice }] = await Promise.all([evmAndSchedule(project.code), changeRequestsOf([project]), clientInputs(project.code)]);
-      return clientHome({ lang, persona, project: current, evm, schedule, changeRequests: crs, deliverables, invoice });
     }
     default: {
       // KPI tiles and "Needs attention" are the Portfolio overview's own (same zone filter, docs/spec/03 §1.2 / §4).

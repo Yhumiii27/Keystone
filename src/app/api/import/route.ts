@@ -58,7 +58,7 @@ export async function POST(request: Request): Promise<Response> {
       kind, mode, projectCode: text('code'), fileName: file.name, data: new Uint8Array(await file.arrayBuffer()), matchOn: text('matchOn') === 'activity_id' ? 'activity_id' : text('matchOn') === 'uid' ? 'uid' : undefined,
       importBaselines: text('baselines') === '0' ? false : text('baselines') === '1' ? true : undefined, projectName: text('projectName'), client: text('client'), pmName: text('pm'),
     },
-    { name: viewer.name, short: viewer.short, role: viewer.role },
+    { name: viewer.name, short: viewer.short, role: viewer.role, personId: viewer.personId, organisation: viewer.organisation },
   );
   return json(step);
 }

@@ -41,7 +41,8 @@ src/
     db/{client.ts, schema/<domain>.ts, seed/<domain>.ts}
     dal/<domain>.ts          data access (server-only). Pages read data ONLY through the DAL.
     prototype/               read-only prototype data (seeders; DAL fallback for unmodelled modules, marked TODO(db))
-    session.ts               viewer (persona), lang, prefs from cookies
+    session.ts               viewer (demo persona or signed-in user), lang, prefs from cookies
+    auth/                    Entra ID sign-in (config, OIDC + PKCE, sealed session cookie, routes, viewer)
     actions/preferences.ts   view-as, language, nav state, last project, zone
   config/{screens.ts, personas.ts}   screen registry (routes, nav, titles, role access) and personas
   i18n/{translate.ts, client.tsx, fr-dict.json, fr-rules.ts, extra/<feature>.json}
@@ -94,11 +95,20 @@ src/
   with the prototype's geometry (e.g. EVM 760×290).
 
 ### Permissions
-- Viewer = persona from the "View as" cookie (`getViewer()`); real auth comes later.
-- Screen gating: `canSee(role, id)`. Opening a screen outside the role's list renders it with the
+- Viewer = `getViewer()`. `KEYSTONE_AUTH=demo` (default, tests): the persona of the "View as" cookie. `KEYSTONE_AUTH=entra`:
+  the user signed in with Microsoft Entra ID (`src/proxy.ts` redirects without a session; `getViewer()` re-reads the user
+  and redirects to `/sign-in` when the session is no longer valid). The Viewer carries `role` (active role), `roles`,
+  `personId`/`userId` (null for demo personas), `email`, `department` and `organisation` (client users) — see
+  `docs/delivery-7/notes-auth.md`. Per-user records are keyed by the user (`userIdOf(viewer)` in `dal/users.ts`), never by
+  the role; client scoping uses `viewer.organisation`.
+- Screen gating: `canSee(role, id)`. An internal role opening a screen outside its list gets it with the
   "Outside my workspace · Read-only" banner and no primary action (shell handles banner; screens must hide
-  their edit controls when `outside` or `readOnly` — see the project context helpers).
-- Project read-only (pm/client on a project they don't own) per docs/spec/01 §5.2.
+  their edit controls when `outside` or `readOnly` — see the project context helpers). A client is sent to their
+  Home instead (P-1), and refused every project of another organisation (P-10a).
+- Rights (delivery 7 lot "rights", `docs/delivery-7/notes-rights.md`): the pure rules live in `src/domain/rights.ts`.
+  Write rights on a project follow its named team (`project_members.project_role`: pm / deputy / referent / team, plus
+  `projects.pm_person_id`); everybody else reads it (`readOnly`), the director edits all. The PM rights (stage,
+  deliverables, plan structure, minutes, PO approval) follow `isLead` (PMs, deputies, director).
 
 ### Parallel work
 - Each feature owns its folders: `src/app/(app)/<its routes>`, `src/features/<feature>/`, `src/domain/<its modules>`,

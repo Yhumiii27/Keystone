@@ -171,6 +171,10 @@ base.quality.push('leave', 'meetings', 'itp', 'commissioning', 'rex', 'sav', 'fl
 base.depthead.push('meetings', 'hours');
 base.procurement.push('leave', 'meetings', 'contract', 'sav', 'fleet');
 base.member.push('meetings');
+// P-9a (R-061): activity owners enter the progress of their activities on the Plan — the team member and procurement own
+// activities (OWN) but had no Plan; they now have it, read-only except the % complete of their own activities.
+base.member.push('plan');
+base.procurement.push('plan');
 base.client.push('meetings', 'itp', 'commissioning');
 for (const k of Object.keys(base) as (keyof typeof base)[]) {
   base[k].push('docs');

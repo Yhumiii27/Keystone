@@ -10,6 +10,7 @@ import { cx } from '@/components/ds/cx';
 import { SCREEN_BY_ID, screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import { useI18n } from '@/i18n/client';
 import { setViewAs } from '@/server/actions/preferences';
+import { AccountMenu, type SidebarAccount } from './account-menu';
 import { COOKIE_NAV } from './types';
 import { buildSidebar, matchScreen, searchNav, type Badges, type NavEntry, type NavSectionModel } from './nav-model';
 import { useShell } from './shell-provider';
@@ -25,7 +26,10 @@ export interface SidebarPersona {
 
 export interface SidebarProps {
   role: RoleKey;
+  /** Demo mode: the "View as" personas. */
   personas: SidebarPersona[];
+  /** Entra mode (R-038): the signed-in user — the account menu replaces "View as". */
+  account?: SidebarAccount | null;
   navOpen: Record<string, boolean>;
   /** Selected zone label (EN), '' when none: sub line of Portfolio and Warranty & after-sales. */
   zoneLabel: string;
@@ -43,7 +47,7 @@ function persistNavOpen(map: Record<string, boolean>) {
   document.cookie = `${COOKIE_NAV}=${encodeURIComponent(JSON.stringify(map))}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
 }
 
-export function Sidebar({ role, personas, navOpen: initialOpen, zoneLabel, projects, globalBadges, projectBadges }: SidebarProps) {
+export function Sidebar({ role, personas, account, navOpen: initialOpen, zoneLabel, projects, globalBadges, projectBadges }: SidebarProps) {
   const { t } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
@@ -209,7 +213,7 @@ export function Sidebar({ role, personas, navOpen: initialOpen, zoneLabel, proje
           <div className={styles.sections}>{model.sections.map(section)}</div>
         </>
       )}
-      <ViewAs role={role} personas={personas} />
+      {account ? <AccountMenu account={account} /> : <ViewAs role={role} personas={personas} />}
     </aside>
   );
 }
@@ -243,7 +247,9 @@ function ViewAs({ role, personas }: { role: RoleKey; personas: SidebarPersona[] 
 
   const choose = (k: RoleKey) => {
     setOpen(false);
-    startTransition(() => setViewAs(k));
+    startTransition(async () => {
+      await setViewAs(k);
+    });
   };
 
   return (

@@ -11,7 +11,8 @@
 // Roles: director, PM, engineering lead, quality, client; others get the "Outside my workspace" banner (PageHeader), no
 // primary action and no buttons (refused server-side too). A read-only project (pm / client on a project not theirs)
 // hides the buttons. The client sees no Vigie link (Vigie is internal) and decides only the deliverables of their
-// organisation's projects. Projects without data show empty registers.
+// organisation's projects. P-10b (R-043): the client sees no NCR at all — the screen opens on the deliverables register, without
+// the NCR tab, and no NCR row is sent to the browser. Projects without data show empty registers.
 import { PageHeader } from '@/components/app/shell/page-header';
 import { deliverableFilterOf, ncrFilterOf, qualityTabOf } from '@/domain/quality';
 import { VigieLink } from '@/features/eco/vigie-link';
@@ -40,11 +41,14 @@ export default async function QualityPage({ params, searchParams }: { params: Pr
     vigie: ctx.viewer.role !== 'client',
   };
 
-  const ncrKey = key(first(sp.ncr));
+  // P-10b: the client's Quality screen is the deliverables register only (no NCR, not even the numbers linked to a deliverable).
+  const ncrs = viewer.vigie ? data.ncrs : [];
+  const deliverables = viewer.vigie ? data.deliverables : data.deliverables.map((d) => ({ ...d, linkedNcrs: [] }));
+  const ncrKey = viewer.vigie ? key(first(sp.ncr)) : null;
   const dlvKey = key(first(sp.dlv));
-  const tab = qualityTabOf(first(sp.tab)) ?? (dlvKey && !ncrKey ? 'dlv' : 'ncr');
-  const ncr = tab === 'ncr' && ncrKey ? data.ncrs.find((n) => n.number.toLowerCase() === ncrKey) ?? null : null;
-  const dlv = tab === 'dlv' && dlvKey ? data.deliverables.find((d) => d.number.toLowerCase() === dlvKey) ?? null : null;
+  const tab = viewer.vigie ? (qualityTabOf(first(sp.tab)) ?? (dlvKey && !ncrKey ? 'dlv' : 'ncr')) : 'dlv';
+  const ncr = tab === 'ncr' && ncrKey ? ncrs.find((n) => n.number.toLowerCase() === ncrKey) ?? null : null;
+  const dlv = tab === 'dlv' && dlvKey ? deliverables.find((d) => d.number.toLowerCase() === dlvKey) ?? null : null;
   const state: QualityState = {
     tab,
     filter: ncrFilterOf(first(sp.filter)),
@@ -68,10 +72,10 @@ export default async function QualityPage({ params, searchParams }: { params: Pr
         code={projectCode}
         context={context}
         tab={tab}
-        seg={qualitySegView(projectCode, state, t)}
-        ncr={tab === 'ncr' ? ncrTabView({ ...input, ncrs: data.ncrs, dataDate: data.dataDate }, t, lang) : null}
+        seg={viewer.vigie ? qualitySegView(projectCode, state, t) : qualitySegView(projectCode, state, t).filter((x) => x.value === 'dlv')}
+        ncr={tab === 'ncr' ? ncrTabView({ ...input, ncrs, dataDate: data.dataDate }, t, lang) : null}
         ncrDrawer={ncr ? ncrDrawerView({ ...input, ncr, ecoByPart: data.ecoByPart, ordersByPart: data.ordersByPart }, t, lang) : null}
-        dlv={tab === 'dlv' ? dlvTabView({ ...input, deliverables: data.deliverables }, t, lang) : null}
+        dlv={tab === 'dlv' ? dlvTabView({ ...input, deliverables }, t, lang) : null}
         dlvDrawer={dlv ? dlvDrawerView({ ...input, deliverable: dlv, documents: data.documents }, t, lang) : null}
         t={t}
       />

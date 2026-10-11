@@ -8,6 +8,7 @@ import type { CapacityInput, CashData, PrioritisationData } from '@/features/pfi
 import type { ZoneKey } from '@/server/session';
 import { getCashFlow, listBillingPlans } from './cashflow';
 import { getCapacityWhatIf, getPrioritisation } from './prioritisation';
+import type { UserRef } from './users';
 import { listProjects, projectLabel, type ProjectRow } from './projects';
 
 const PIPELINE = new Set(['initiative', 'aps', 'apd']);
@@ -17,9 +18,10 @@ export interface PrioritisationScreen extends PrioritisationData {
   candidates: Pick<ProjectRow, 'code' | 'name'>[];
 }
 
-/** Ranking population, weights and KPI figures for a viewer (role) and zone. */
-export async function getPrioritisationScreen(role: string, zone: ZoneKey | null): Promise<PrioritisationScreen> {
-  const [pf, all, plans] = await Promise.all([getPrioritisation(role, zone), listProjects(), listBillingPlans()]);
+/** Ranking population, weights and KPI figures for a viewer (or a role's demo persona) and zone. */
+export async function getPrioritisationScreen(who: UserRef, zone: ZoneKey | null): Promise<PrioritisationScreen> {
+  const role = typeof who === 'string' ? who : who.role;
+  const [pf, all, plans] = await Promise.all([getPrioritisation(who, zone), listProjects(), listBillingPlans()]);
   const see = canSeeMargins(role);
   const order = new Map(all.map((p, i) => [p.code, i]));
   const budget = (ps: ProjectRow[]) => ps.reduce((a, p) => a + p.budget, 0);

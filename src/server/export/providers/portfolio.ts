@@ -110,7 +110,7 @@ async function prioritisationWorkbook(ctx: ExportContext): Promise<ExportWorkboo
   const t = pfT(ctx.t, ctx.lang);
   const { lang } = ctx;
   const tab = parsePfTab(param(ctx, 'tab'));
-  const [{ candidates, ...data }, visible] = await Promise.all([getPrioritisationScreen(ctx.viewer.role, ctx.zone), projectFilter(ctx)]);
+  const [{ candidates, ...data }, visible] = await Promise.all([getPrioritisationScreen(ctx.viewer, ctx.zone), projectFilter(ctx)]);
   const scoped = { ...data, projects: data.projects.filter((p) => visible(p.code)) };
   const view = prioritisationView(scoped, scoped.weights, t, lang);
   const ranked = rankByScore(scoped.projects, scoped.weights);

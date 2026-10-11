@@ -55,9 +55,15 @@ describe('portfolio screens render', () => {
       expect(txt).toContain(s);
     expect(d).toContain('href="/projects/HLT-026/plan"');
     expect(txt).not.toContain('Aucun projet ne vous est affecté');
+    // R-041 (P-2): the quality manager is a referent of Harbor Line (seeded named team) → that project, tagged "Référent"
+    // (was: the fallback). Somebody on no team still gets the fallback.
     const q = text(renderToStaticMarkup(h(MyProjectsBody, { data: await getMyProjects(PERSONA_BY_ROLE.quality, 'HLT-026', 'fr'), t })));
-    expect(q).toContain('Aucun projet ne vous est affecté — tout le portefeuille est affiché.');
-    expect(q).toContain('Tout le portefeuille');
-    expect(q).toContain('Consultation');
+    expect(q).toContain('Référent');
+    expect(q).not.toContain('Aucun projet ne vous est affecté');
+    const nobody = { ...PERSONA_BY_ROLE.quality, name: 'Zoé Martin', short: 'Z. Martin', personId: null };
+    const n = text(renderToStaticMarkup(h(MyProjectsBody, { data: await getMyProjects(nobody, 'HLT-026', 'fr'), t })));
+    expect(n).toContain('Aucun projet ne vous est affecté — tout le portefeuille est affiché.');
+    expect(n).toContain('Tout le portefeuille');
+    expect(n).toContain('Consultation');
   });
 });

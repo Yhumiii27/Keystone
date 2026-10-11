@@ -7,12 +7,11 @@ import { inboxView, kpiTexts, APPROVAL_KIND_LABEL } from '@/domain/approvals';
 import { HEALTH_LABEL } from '@/domain/health';
 import { renderTxt } from '@/domain/home';
 import { laborCost } from '@/domain/tasks';
-import { canPickPerson } from '@/features/mywork/permissions';
 import { getApprovalInbox } from '@/server/approvals';
 import { getHomeView } from '@/server/dal/home';
 import { getMyProjects } from '@/server/dal/portfolio';
 import { getTask, listTasks, type TaskRow } from '@/server/dal/tasks';
-import { getMyWorkPerson } from '@/server/dal/mywork-data';
+import { getMyWorkPerson, myWorkAccess } from '@/server/dal/mywork-data';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
 import { col, filterLine, isoOf, kpiSheet, param, sheet, compact } from './common';
@@ -24,7 +23,7 @@ const currentProject = (ctx: ExportContext) => currentProjectCode(ctx, DEFAULT_P
 // ── Home ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 async function homeWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t, lang, viewer } = ctx;
-  const view = await getHomeView({ role: viewer.role, persona: viewer, projectCode: await currentProject(ctx), zone: ctx.zone, lang });
+  const view = await getHomeView({ role: viewer.role, persona: viewer, projectCode: await currentProject(ctx), zone: ctx.zone, lang, organisation: viewer.organisation });
   const list = (l: typeof view.left): ExportSheet =>
     sheet(renderTxt(l.title, t), [col('title', t('Item'), 'text', 44), col('sub', t('Details'), 'text', 48), col('tag', t('Status'), 'text', 18)], l.rows.map((r) => ({
       title: renderTxt(r.title, t), sub: renderTxt(r.sub, t), tag: renderTxt(r.tag, t),
@@ -86,7 +85,8 @@ const taskSheet = (ctx: ExportContext, rows: TaskRow[], name: string, withAssign
 async function myWorkWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t, viewer } = ctx;
   const asked = param(ctx, 'person');
-  const other = canPickPerson(viewer.role) && asked && asked !== viewer.name ? await getMyWorkPerson(asked) : null;
+  // R-049: someone else's work only along the hierarchy and the projects the viewer leads (as the page).
+  const other = asked && asked !== viewer.name && (await myWorkAccess(viewer)).canView(asked) ? await getMyWorkPerson(asked) : null;
   const person = other?.name ?? viewer.name;
   const rows = await listTasks({ person });
   return { title: `${t('My work')} · ${person}`, filters: [`${t('Person')}: ${person}`], sheets: [taskSheet(ctx, rows, t('Tasks'), false)] };
@@ -105,9 +105,10 @@ async function taskWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> 
     [t('Task'), d.id], [t('Title'), t(d.title)], [t('Assignee'), d.assignee], [t('Project'), `${d.project.code} · ${t(d.project.name)}`],
     [t('Activity'), a ? `${a.code} · ${t(a.name)}` : '—'], [t('Status'), t(d.statusLabel)], [t('Priority'), t(d.priorityLabel)], [t('Start date'), t(d.start)],
     [t('Due'), t(d.due)], [t('Estimate (h)'), d.estimateH], [t('Logged (h)'), d.loggedH], [t('Progress'), `${d.pct}%`],
-    // Rates are masked for the roles that may not see them (rates screen rule): the cost stays, the hourly rate does not.
-    ...(ctx.ratesMasked ? [] : ([[t('Hourly rate (€)'), d.costRate]] as [string, number][])),
-    [t('Actual cost (€)'), laborCost(d.loggedH, d.costRate)], [t('Description'), d.description ?? ''],
+    // R-046 (NEW-D2-1): the hourly rate and the actual cost (hours × rate, which reveals the rate) only for the roles that see
+    // rates (director, PM) — as the task sheet.
+    ...(ctx.ratesMasked ? [] : ([[t('Hourly rate (€)'), d.costRate], [t('Actual cost (€)'), laborCost(d.loggedH, d.costRate)]] as [string, number][])),
+    [t('Description'), d.description ?? ''],
   ];
   return {
     title: `${d.id} · ${t(d.title)}`,

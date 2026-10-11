@@ -4,10 +4,11 @@
 // MIN record in the Codex index, owners' to-dos, read receipts) and — chapter 4, S-10 — the meeting transcript: import
 // (paste or .txt / .vtt / .srt), analysis (Claude when configured, else the local rules), review of the proposals (discard,
 // restore, edit), "Add to minutes", a risk proposal into the risk register, a question proposal into the client questions.
-// Each one validates its raw input, checks the viewer may edit Meetings on this project (not outside the workspace, not a
-// read-only project — 05 OQ7 / P-9: no finer role gate, as the prototype; a risk also needs the right to edit the risk
-// register), checks the meeting belongs to the project, writes through the DAL with the viewer as the actor, then
-// revalidates. Error messages are English source strings translated here.
+// Each one validates its raw input, checks the viewer may edit Meetings on this project (not outside the workspace, on the
+// project's team — R-041), checks the meeting belongs to the project, writes through the DAL with the viewer as the actor, then
+// revalidates. P-9b (R-050): the internal team creates meetings, adds notes and ticks actions; the transcript (import,
+// analysis, review, proposals) and "Send minutes" belong to the meeting's organiser and the project's PM; the client reads
+// (a risk also needs the right to edit the risk register). Error messages are English source strings translated here.
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { parseClientQuestion, parseMinutesLine, parseNewMeeting, parseProposalEdit, pasteTooLong, TRANSCRIPT_IMPORT } from '@/domain/meetings';
@@ -24,7 +25,8 @@ import {
 import { getProject } from '@/server/dal/projects';
 import { createRisk } from '@/server/dal/risks';
 import { riskOwnerOptions } from '@/server/dal/risks-screen';
-import { getProjectContext } from '@/server/project-context';
+import { canWriteMinutes } from '@/domain/rights';
+import { getProjectContext, type ProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { checkUpload, FileRejectedError } from '@/server/storage/files';
 import { MEETING_RESULT } from './forms';
@@ -50,19 +52,19 @@ const strings = (values: unknown): Record<string, string> =>
 
 const isIndex = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < 1000;
 
-type Gate = { ok: true; code: string; actor: string } | { ok: false; error: string };
+type Gate = { ok: true; code: string; actor: string; ctx: ProjectContext } | { ok: false; error: string };
 
-/** Resolves the project and checks the viewer may edit Meetings on it. */
+/** Resolves the project and checks the viewer may edit Meetings on it (P-9b: never the client, who reads). */
 async function editable(code: unknown): Promise<Gate> {
   if (typeof code !== 'string' || !code) return { ok: false, error: 'Invalid request' };
   const project = await getProject(code);
   if (!project) return { ok: false, error: 'Unknown project' };
   const ctx = await getProjectContext(project.code, 'meetings');
-  if (!ctx.canEdit('meetings')) return { ok: false, error: READ_ONLY };
-  return { ok: true, code: project.code, actor: ctx.viewer.name };
+  if (!ctx.canEdit('meetings') || ctx.viewer.role === 'client') return { ok: false, error: READ_ONLY };
+  return { ok: true, code: project.code, actor: ctx.viewer.name, ctx };
 }
 
-type MeetingGate = { ok: true; code: string; actor: string; meeting: MeetingRow } | { ok: false; error: string };
+type MeetingGate = { ok: true; code: string; actor: string; ctx: ProjectContext; meeting: MeetingRow } | { ok: false; error: string };
 
 /** `editable` + the meeting exists on this project. */
 async function editableMeeting(code: unknown, number: unknown): Promise<MeetingGate> {
@@ -72,6 +74,17 @@ async function editableMeeting(code: unknown, number: unknown): Promise<MeetingG
   const meeting = await getMeeting(number);
   if (!meeting || meeting.projectCode !== g.code) return { ok: false, error: 'Unknown meeting' };
   return { ...g, meeting };
+}
+
+/** P-9b refusal: the minutes are written and sent by the meeting's organiser and the project's PM. */
+const MINUTES_WRITERS = 'Only the organiser or the project manager can write and send these minutes';
+
+/** `editableMeeting` + the viewer writes this meeting's minutes (P-9b: its organiser or the project's PM). */
+async function minutesMeeting(code: unknown, number: unknown): Promise<MeetingGate> {
+  const g = await editableMeeting(code, number);
+  if (!g.ok) return g;
+  if (!canWriteMinutes(g.ctx.viewer, g.ctx.access, g.meeting)) return { ok: false, error: MINUTES_WRITERS };
+  return g;
 }
 
 /** Project pages (screen, sidebar badge); `all` also refreshes My work, Home and Documents (tasks, MIN record). */
@@ -140,9 +153,9 @@ export async function toggleMeetingActionAction(input: { code: string; meeting: 
 
 // ── Transcript (chapter 4, S-10) ─────────────────────────────────────────────────────────────────────────────────────
 
-/** Meeting gate for the transcript: editable, minutes not sent. */
+/** Meeting gate for the transcript: the minutes' writers (P-9b), minutes not sent. */
 async function transcriptMeeting(code: unknown, number: unknown): Promise<MeetingGate> {
-  const g = await editableMeeting(code, number);
+  const g = await minutesMeeting(code, number);
   if (!g.ok) return g;
   if (g.meeting.status === 'minutes_sent') return { ok: false, error: 'Minutes already sent' };
   return g;
@@ -198,7 +211,7 @@ export async function analyseTranscriptAction(input: { code: string; meeting: st
 
 /** "Add to minutes": the kept decisions then actions go to the last agenda point, once (status unchanged, as the prototype). */
 export async function applyTranscriptAction(input: { code: string; meeting: string }): Promise<MeetingActionResult> {
-  const g = await editableMeeting(input?.code, input?.meeting);
+  const g = await minutesMeeting(input?.code, input?.meeting);
   if (!g.ok) return fail(g.error);
   if (!g.meeting.transcript) return fail('This meeting has no transcript');
   if (!g.meeting.transcript.analysed) return fail('Analyse the transcript first');
@@ -289,7 +302,7 @@ export async function addProposalQuestionAction(code: string, meeting: string, p
  * the resource pool, read receipts; toast "{MIN} · minutes sent to {n} invitees · {k} actions added to tasks".
  */
 export async function sendMinutesAction(input: { code: string; meeting: string }): Promise<MeetingActionResult> {
-  const g = await editableMeeting(input?.code, input?.meeting);
+  const g = await minutesMeeting(input?.code, input?.meeting);
   if (!g.ok) return fail(g.error);
   if (g.meeting.status === 'minutes_sent') return fail('Minutes already sent');
   const r = await write('sendMinutesAction', () => sendMinutes(g.meeting.number, g.actor));

@@ -235,6 +235,8 @@ describe('rights', () => {
       expect((await startImport({ kind: 'schedule', mode: 'new', projectCode: null, fileName: 'x.xml', data: xml }, viewer(role))).ok, role).toBe(false);
     expect((await startImport({ kind: 'bom', mode: 'update', projectCode: 'HLT-026', fileName: 'bom.csv', data: fixture('bom.en.csv') }, viewer('englead'))).ok).toBe(true);
     expect((await startImport({ kind: 'bom', mode: 'update', projectCode: 'HLT-026', fileName: 'bom.csv', data: fixture('bom.en.csv') }, PM)).ok).toBe(false);
+    // R-041 (P-2): the engineering lead imports into the projects whose named team they are on only (a referent of HLT-026).
+    expect(await startImport({ kind: 'bom', mode: 'update', projectCode: 'NDC-031', fileName: 'bom.csv', data: fixture('bom.en.csv') }, viewer('englead'))).toEqual({ ok: false, error: 'You may not import this file into this project' });
     expect((await startImport({ kind: 'assignments', mode: 'update', projectCode: 'NDC-031', fileName: 'a.csv', data: fixture('assignments.fr.csv') }, viewer('depthead'))).ok).toBe(true);
     expect((await startImport({ kind: 'budget_lines', mode: 'update', projectCode: 'HLT-026', fileName: 'b.csv', data: fixture('budget-lines.fr.csv') }, viewer('depthead'))).ok).toBe(false);
     expect(await startImport({ kind: 'budget_lines', mode: 'update', projectCode: null, fileName: 'b.csv', data: fixture('budget-lines.fr.csv') }, DIRECTOR)).toEqual({ ok: false, error: 'Choose the project to update' });

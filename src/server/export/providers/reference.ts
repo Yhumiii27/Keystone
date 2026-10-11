@@ -14,7 +14,7 @@ import { getPlmCatalogue } from '@/server/dal/plm';
 import { docFamily, documentStatus, drawingState, ecoStatus } from '@/server/db/codes';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportWorkbook } from '../types';
-import { col, compact, filterLine, kpiSheet, param, sheet } from './common';
+import { col, compact, filterLine, kpiSheet, param, pricedWorkbook, sheet } from './common';
 import { projectFilter } from './scope';
 
 // ── Documents (Codex index) ──────────────────────────────────────────────────────────────────────────────────────────
@@ -22,7 +22,8 @@ async function docsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> 
   if (!ctx.project) return null;
   const { t } = ctx;
   const [docs, visible] = await Promise.all([listVaultDocuments(), projectFilter(ctx)]);
-  const own = docs.filter((d) => visible(d.project));
+  // A client exports the documents shared with them on their organisation's projects (P-10a, P-10b).
+  const own = docs.filter((d) => visible(d.project) && (ctx.viewer.role !== 'client' || d.shared));
   const numbers = (param(ctx, 'numbers') ?? '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 500);
   const query = {
     scope: parseScope(param(ctx, 'scope')), project: ctx.project.code, view: parseView(param(ctx, 'view')), family: parseFamily(param(ctx, 'fam')),
@@ -127,6 +128,7 @@ async function drawingsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
 }
 
 registerExportProvider({ screen: 'docs', table: docsWorkbook, fileBase: () => 'documents-register' });
-registerExportProvider({ screen: 'plm', table: plmWorkbook, fileBase: () => 'parts' });
+// R-046 (NEW-D2-1): catalogue and last prices only for the director, the PMs and procurement.
+registerExportProvider({ screen: 'plm', table: pricedWorkbook(plmWorkbook), fileBase: () => 'parts' });
 registerExportProvider({ screen: 'eco', table: ecoWorkbook, fileBase: () => 'eco' });
 registerExportProvider({ screen: 'drawings', table: drawingsWorkbook });

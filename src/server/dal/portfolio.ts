@@ -2,7 +2,6 @@ import 'server-only';
 // Portfolio DAL — Portfolio overview (docs/spec/03 §4) and My projects (§2). Composes the projects, planning
 // and people DALs with the pure logic of src/domain/portfolio.ts. Strings are EN source strings with money
 // formatted for `lang`: render them through t().
-import { CLIENT_ORG } from '@/config/personas';
 import type { Lang } from '@/i18n/translate';
 import {
   overviewMetrics, portfolioAlerts, portfolioKpis, portfolioTotals, myProjectsModel,
@@ -15,6 +14,8 @@ import { listDepartments, listPeople } from './people';
 import { listScheduleSummaries } from './planning';
 import { listProjects, type ProjectRow } from './projects';
 import { listTasks } from './tasks';
+import { projectAccess } from '@/domain/rights';
+import { listProjectTeams } from './project-team';
 
 export interface OverviewRow extends ProjectRow {
   metrics: OverviewMetrics;
@@ -55,19 +56,25 @@ const todos = async (): Promise<TodoLite[]> =>
  * used for the "Pending decisions" count (My approvals queue, which is project-dependent in the prototype).
  */
 export async function getMyProjects(viewer: Viewer, currentProject: string, lang: Lang): Promise<MyProjectsModel<ProjectRow>> {
-  const [all, sched, people, depts, tasks, pendingDecisions, thresholds] = await Promise.all([
-    listProjects(), listScheduleSummaries(), listPeople(), listDepartments(), todos(), approvalCount(viewer, currentProject), healthThresholds(),
+  const [all, sched, people, depts, tasks, pendingDecisions, thresholds, teams] = await Promise.all([
+    listProjects(), listScheduleSummaries(), listPeople(), listDepartments(), todos(), approvalCount(viewer, currentProject), healthThresholds(), listProjectTeams(),
   ]);
+  // R-041: the viewer's team role (tag) and read-only state per project follow the named project team.
+  const access = (p: ProjectRow) => {
+    const a = projectAccess(viewer, { client: p.client, pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
+    return { teamRole: a.teamRole, readOnly: a.readOnly };
+  };
   const pool = all.filter((p) => p.hasData);
   const deptOf: Record<string, string> = {};
   for (const p of people) if (p.department) deptOf[p.name] = p.department;
-  // Department of a department head: the one they head (the prototype's `state.dept`, default Engineering).
-  const dept = viewer.role === 'depthead' ? depts.find((d) => d.head === viewer.name)?.name ?? 'Engineering' : null;
+  // Department of a department head: the one they head (the prototype's `state.dept`), else their own (R-039), else Engineering.
+  const dept = viewer.role === 'depthead' ? depts.find((d) => d.head === viewer.name)?.name ?? viewer.department ?? 'Engineering' : null;
   return myProjectsModel(
-    { role: viewer.role, name: viewer.name, short: viewer.short, clientOrg: CLIENT_ORG, dept },
+    // A client sees the projects of their own organisation (R-039: the viewer's, no longer the CLIENT_ORG constant).
+    { role: viewer.role, name: viewer.name, short: viewer.short, clientOrg: viewer.organisation ?? '', dept },
     pool,
     sched,
     { deptOf, todos: tasks },
-    { personaTitle: viewer.title, pendingDecisions, lang, thresholds },
+    { personaTitle: viewer.title, pendingDecisions, lang, thresholds, access },
   );
 }

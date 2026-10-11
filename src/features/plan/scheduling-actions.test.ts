@@ -13,7 +13,9 @@ vi.mock('@/server/project-context', async () => {
   const { getProject } = await import('@/server/dal/projects');
   return {
     getProjectContext: async (code: string) => ({
-      project: await getProject(code), viewer: { role: viewer.role, name: viewer.name }, canEdit: () => viewer.canEdit, isMine: viewer.isMine,
+      // `isMine` of the test viewer = the PM rights (`isLead`, R-041).
+      project: await getProject(code), viewer: { role: viewer.role, name: viewer.name, short: viewer.name, personId: null }, canEdit: () => viewer.canEdit,
+      isMine: true, isLead: viewer.isMine,
     }),
   };
 });
@@ -38,15 +40,23 @@ describe('Plan scheduling Server Functions', () => {
   }, 60_000);
   beforeEach(() => Object.assign(viewer, { role: 'director', name: 'Marie Lefebvre', canEdit: true, isMine: true, lang: 'en' }));
 
-  it('rights: scheduling is for the director and the project manager; editing for plan editors; never the client', async () => {
+  it('rights: scheduling and the structure (links, calendars, to-dos) are for the director and the project managers; never the client', async () => {
+    const STRUCTURE = 'Only the project manager or the director can change the plan structure — you can update the progress of your own activities';
     Object.assign(viewer, { role: 'englead', name: 'Antoine Girard', isMine: false });
     expect(await rescheduleAction('HLT-026')).toEqual({ error: 'Only the project manager or the director can do this' });
     expect(await setBaselineAction('HLT-026', { name: 'BL3' })).toEqual({ error: 'Only the project manager or the director can do this' });
+    // P-9a (R-061): a plan editor who is not one of the project's PMs no longer changes links, calendars or to-dos.
+    expect(await addTodoAction('HLT-026', 'A1250', 'x')).toEqual({ error: STRUCTURE });
+    expect(await addRelationshipAction('HLT-026', 'A1250', { activity: 'A1010', type: 'FS' })).toEqual({ error: STRUCTURE });
+    expect(await removeRelationshipAction('HLT-026', 'A1240', 'A1250')).toEqual({ error: STRUCTURE });
+    expect(await setActivityCalendarAction('HLT-026', 'A1250', '')).toEqual({ error: STRUCTURE });
+    Object.assign(viewer, { role: 'pm', name: 'Romain Aubert', isMine: true });
     expect(await addTodoAction('HLT-026', 'A1250', '')).toEqual({ error: 'Enter a to-do' });
     Object.assign(viewer, { role: 'client', name: 'Nadia Bensaïd', isMine: true });
     expect(await addTodoAction('HLT-026', 'A1250', 'x')).toEqual({ error: 'This plan is read-only for you' });
+    // A plan that is not editable at all (outside the workspace, not on the team) says so first (R-061).
     Object.assign(viewer, { role: 'pm', name: 'Romain Aubert', isMine: true, canEdit: false });
-    expect(await rescheduleAction('HLT-026')).toEqual({ error: 'Only the project manager or the director can do this' });
+    expect(await rescheduleAction('HLT-026')).toEqual({ error: 'This plan is read-only for you' });
     expect(await rescheduleAction('NOPE-1')).toEqual({ error: 'Invalid request' });
   });
 

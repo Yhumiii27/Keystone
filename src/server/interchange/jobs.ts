@@ -14,7 +14,7 @@ import { importKind } from '@/server/db/codes';
 import {
   cancelImportJob, createImportJob, getImportJob, getImportJobRows, markImportJobApplied, markImportJobFailed, saveImportPreview, setImportJobMapping, type ImportJobView,
 } from '@/server/dal/import-jobs';
-import { getProject, listProjects } from '@/server/dal/projects';
+import { getProject, listProjects, type ProjectRow } from '@/server/dal/projects';
 import { readXlsx } from '@/server/export/xlsx';
 import { FileRejectedError, readStoredFile, setFileOwner, storeFile } from '@/server/storage/files';
 import { fmt } from './messages';
@@ -27,11 +27,23 @@ import { TABLE_FIELDS, autoMapping, columnNames, decodeText, detectHeaderRow, de
 import { planTableImport, writeTableImport } from './table-import';
 import { parseXer } from './xer';
 import type { ImportedSchedule } from './model';
+import { projectAccess } from '@/domain/rights';
+import { listProjectTeams } from '@/server/dal/project-team';
 
 export interface ImportViewer {
   name: string;
   short: string;
   role: RoleKey;
+  /** The viewer's person (signed-in users) and client organisation — the project team rights (R-041). */
+  personId?: string | null;
+  organisation?: string | null;
+}
+
+/** The viewer's rights on a project for the import rules (R-041). */
+async function importRel(viewer: ImportViewer): Promise<(p: ProjectRow) => { member: boolean; lead: boolean }> {
+  const teams = await listProjectTeams();
+  const v = { role: viewer.role, name: viewer.name, short: viewer.short, personId: viewer.personId ?? null, organisation: viewer.organisation ?? null };
+  return (p) => projectAccess(v, { client: p.client, pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
 }
 
 /** One preview row as the dialog shows it. */
@@ -106,13 +118,13 @@ export interface StartImportInput {
 /** May the viewer import `kind` into `projectCode`? EN refusal or null. */
 async function refusal(viewer: ImportViewer, kind: ImportKind, mode: ImportMode, projectCode: string | null): Promise<string | null> {
   if (!IMPORTS_ENABLED) return IMPORTS_OFF_MESSAGE;
-  let own: boolean | null = null;
+  let rel: { member: boolean; lead: boolean } | null = null;
   if (projectCode) {
     const p = await getProject(projectCode);
     if (!p) return 'Unknown project';
-    own = viewer.role === 'director' || p.pm === viewer.short;
+    rel = (await importRel(viewer))(p);
   } else if (!(isScheduleKind(kind) && mode === 'new') && kind !== 'parts') return 'Choose the project to update';
-  return canImport(viewer.role, kind, own) ? null : 'You may not import this file into this project';
+  return canImport(viewer.role, kind, rel) ? null : 'You may not import this file into this project';
 }
 
 /** Detects MS Project XML vs P6 XER from the content (the drop zone may be the other card's). */
@@ -374,12 +386,12 @@ export async function cancelImport(jobId: string, viewer: ImportViewer): Promise
 
 /** Projects offered by the import dialogs for this viewer and kind (with planning data for schedules / assignments). */
 export async function importTargets(viewer: ImportViewer): Promise<Record<ImportKind, { code: string; label: string }[]>> {
-  const all = await listProjects();
+  const [all, rel] = await Promise.all([listProjects(), importRel(viewer)]);
   const out = {} as Record<ImportKind, { code: string; label: string }[]>;
   for (const kind of importKind.codes) {
     out[kind] = all
       .filter((p) => (kind === 'budget_lines' || kind === 'bom' ? true : p.hasData))
-      .filter((p) => canImport(viewer.role, kind, viewer.role === 'director' || p.pm === viewer.short))
+      .filter((p) => canImport(viewer.role, kind, rel(p)))
       .map((p) => ({ code: p.code, label: `${p.displayId} · ${p.name}` }));
   }
   return out;

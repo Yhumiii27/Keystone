@@ -7,8 +7,11 @@ import { buildWorldMapModel } from '@/features/worldmap/model';
 import { WorldMapBody } from '@/features/worldmap/worldmap-body';
 import { getProjectsMap } from '@/server/dal/geo';
 import { getI18n, getZone } from '@/server/session';
+import { getScreenAccess } from '@/server/project-context';
 
 export default async function ProjectsMapPage() {
+  // R-042 (P-1): a client is sent home before anything is read.
+  await getScreenAccess('worldmap');
   const [{ t }, zone] = await Promise.all([getI18n(), getZone()]);
   const model = buildWorldMapModel(await getProjectsMap(zone), t);
   return (

@@ -21,7 +21,7 @@ export const isRequester = (r: { requestedBy: string; requestedByName: string },
 export interface DraftFacts {
   /** The viewer drafted the request. */
   requester: boolean;
-  /** The viewer manages the request's project (`isMineP`: its PM; always true for the director). */
+  /** The viewer leads the request's project (its PMs and deputies, R-041; always true for the director). */
   projectPm: boolean;
   /** The project is read-only for the viewer (`projReadOnly`). */
   readOnly: boolean;
@@ -33,10 +33,11 @@ export function canHandleDraft(role: RoleKey, f: DraftFacts): boolean {
   return role === 'director' || f.requester || f.projectPm;
 }
 
-/** The viewer's project scope (`getProjectScope`): projects with data, `isMineP` and `projReadOnly`. */
+/** The viewer's project scope (`getProjectScope`): projects with data, PM rights (`isLead`, R-041) and `projReadOnly`. */
 export interface DraftScope<P extends { code: string }> {
   pool: readonly P[];
-  isMine: (p: P) => boolean;
+  /** PM of record, co-PM, deputy or the director (R-041). */
+  isLead: (p: P) => boolean;
   readOnly: (p: P) => boolean;
 }
 
@@ -47,6 +48,6 @@ export interface DraftScope<P extends { code: string }> {
 export function draftRights<P extends { code: string }>(viewer: { role: RoleKey; name: string; short: string }, scope: DraftScope<P>) {
   return (r: { projectCode: string; requestedBy: string; requestedByName: string }): boolean => {
     const p = scope.pool.find((x) => x.code === r.projectCode);
-    return !!p && canHandleDraft(viewer.role, { requester: isRequester(r, viewer), projectPm: scope.isMine(p), readOnly: scope.readOnly(p) });
+    return !!p && canHandleDraft(viewer.role, { requester: isRequester(r, viewer), projectPm: scope.isLead(p), readOnly: scope.readOnly(p) });
   };
 }

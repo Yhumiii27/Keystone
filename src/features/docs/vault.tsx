@@ -18,7 +18,7 @@ import s from './docs.module.css';
 export interface DocsVaultProps {
   project: string;
   view: VaultView;
-  /** "Sync now" records a sync (viewers who may edit the vault). */
+  /** "Sync now" records a sync of the Codex index (NEW-D3-1, R-047: the portfolio director). */
   canEdit: boolean;
   /** Toast of "Open Codex" ("Opening Codex · project HLT-026", translated). */
   openToast: string;

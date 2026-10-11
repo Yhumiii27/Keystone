@@ -15,10 +15,10 @@ import { SCORE_SAVED, parseScoreProposal } from './forms';
 
 export type WeightResult = { ok: true; value: number } | { error: string };
 
-async function editor(): Promise<{ role: string; name: string; t: (s: string) => string } | { error: string }> {
+async function editor(): Promise<{ role: string; name: string; userId: string | null; t: (s: string) => string } | { error: string }> {
   const [{ t }, { viewer, outside }] = await Promise.all([getI18n(), getScreenAccess('portfolio')]);
   if (outside) return { error: t('Outside my workspace · Read-only') };
-  return { role: viewer.role, name: viewer.name, t };
+  return { role: viewer.role, name: viewer.name, userId: viewer.userId ?? null, t };
 }
 
 /** Weight of one axis for the viewer (`setW`): 0 ≤ w ≤ 1 (the input's range); the ranking is not normalised on save. */
@@ -28,7 +28,7 @@ export async function setScoreWeightAction(axis: string, value: unknown): Promis
   if (typeof axis !== 'string' || !scoreAxis.isCode(axis)) return { error: who.t('Invalid request') };
   const w = validWeight(value);
   if (w == null) return { error: who.t('Weights are numbers from 0 to 1') };
-  await setScoreWeight(who.role, axis, w);
+  await setScoreWeight({ role: who.role, userId: who.userId }, axis, w);
   revalidatePath(screenHref('portfolio'));
   return { ok: true, value: w };
 }

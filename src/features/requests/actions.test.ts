@@ -92,6 +92,18 @@ describe('resource-request Server Functions', () => {
     expect(await reRequestAction('RQ-044')).toEqual({ ok: false, error: 'This request has already been decided' }); // 08 OQ21: only rejected
   });
 
+  it('R-048 (P-8a): a department head decides their own department\'s requests only (was: any department)', async () => {
+    const notTheirs = { ok: false, error: 'Read-only — you decide the requests of your own department only' };
+    state.role = 'depthead'; // Engineering
+    expect(await approveRequestAction('RQ-042')).toEqual(notTheirs); // Quality
+    expect(await rejectRequestAction('RQ-042', 'No')).toEqual(notTheirs);
+    expect(await proposeRescheduleAction('RQ-042', 2, 'Later')).toEqual(notTheirs);
+    state.role = 'quality'; // heads Quality
+    expect(await approveRequestAction('RQ-041')).toEqual(notTheirs); // Engineering
+    expect(await getResourceRequest('RQ-041')).toMatchObject({ status: 'pending' });
+    expect(await getResourceRequest('RQ-042')).toMatchObject({ status: 'pending' });
+  });
+
   it('approve: the decider is the viewer, the task T-2341 lands in the person’s list, requester and person notified', async () => {
     state.role = 'pm';
     expect(await approveRequestAction('RQ-041')).toEqual({ ok: false, error: 'Read-only — you cannot decide resource requests' });

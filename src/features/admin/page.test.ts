@@ -6,6 +6,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const session = { role: 'director' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/navigation', () => ({
+  redirect: (url: string) => {
+    throw new Error(`REDIRECT ${url}`);
+  },
   notFound: () => {
     throw new Error('NOT_FOUND');
   },
@@ -57,10 +60,10 @@ beforeEach(() => {
 
 describe('/admin/settings', () => {
   it('header with "Reset to defaults", the body editable by the portfolio director only (A-14)', async () => {
-    // A-14: the director edits; the other workspace roles read (no Reset, a read-only note); member and client are outside.
+    // A-14: the director edits; the other workspace roles read (no Reset, a read-only note); member is outside; the client is sent home (R-042).
     for (const [role, canEdit, note] of [
       ['director', true, false], ['pm', false, true], ['depthead', false, true], ['englead', false, true], ['quality', false, true], ['procurement', false, true],
-      ['member', false, false], ['client', false, false],
+      ['member', false, false],
     ] as const) {
       session.role = role;
       const p = parts(await SettingsPage());
@@ -71,6 +74,10 @@ describe('/admin/settings', () => {
       expect(p.SettingsBody.props.canEdit, role).toBe(canEdit);
       expect(p.SettingsBody.props.directorOnlyNote, role).toBe(note);
     }
+    // R-042 (P-1): the client is sent home (was: the read-only page).
+    session.role = 'client';
+    await expect(SettingsPage()).rejects.toThrow('REDIRECT /');
+    session.role = 'director';
     session.lang = 'fr';
     const view = parts(await SettingsPage()).SettingsBody.props.view as SettingsView;
     expect(view.cards[0].title).toBe('Emplacements de stock et ateliers');
@@ -92,10 +99,12 @@ describe('/admin/machine-types', () => {
   });
 
   it('mtCanEdit: director, PM, engineering lead, quality', async () => {
-    for (const [role, canEdit] of [['director', true], ['pm', true], ['englead', true], ['quality', true], ['depthead', false], ['member', false], ['procurement', false], ['client', false]] as const) {
+    for (const [role, canEdit] of [['director', true], ['pm', true], ['englead', true], ['quality', true], ['depthead', false], ['member', false], ['procurement', false]] as const) {
       session.role = role;
       expect((await page()).MachineTypesBody.props.canEdit, role).toBe(canEdit);
     }
+    session.role = 'client'; // R-042 (P-1): sent home
+    await expect(page()).rejects.toThrow('REDIRECT /');
   });
 });
 
@@ -119,11 +128,13 @@ describe('/admin/integrations', () => {
   });
 
   it('director and PM edit (Sync now, export); the others read; the unread KPI is the viewer’s', async () => {
-    for (const [role, canEdit, unread] of [['director', true, '3'], ['pm', true, '4'], ['quality', false, null], ['client', false, null]] as const) {
+    for (const [role, canEdit, unread] of [['director', true, '3'], ['pm', true, '4'], ['quality', false, null]] as const) {
       session.role = role;
       const p = await page();
       expect(p.PlumbingBody.props.canEdit, role).toBe(canEdit);
       if (unread) expect((p.PlumbingBody.props.view as PlumbingView).kpis[2].value).toBe(unread);
     }
+    session.role = 'client'; // R-042 (P-1): sent home
+    await expect(page()).rejects.toThrow('REDIRECT /');
   });
 });

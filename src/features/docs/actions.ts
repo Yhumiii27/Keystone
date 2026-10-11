@@ -2,10 +2,12 @@
 // Documents — Codex index Server Functions (docs/spec/10 §4.4–§4.6; 10 §9 document workflow). Each one validates the
 // raw input, resolves the project of the vault page and checks the viewer's access server-side, writes through the
 // data-layer writers (src/server/dal/documents.ts) with the viewer as the actor (audit rows), then revalidates.
-// - "Continue in Codex" (deposit hand-off, new document or new revision): viewers who may edit the vault.
+// - "Continue in Codex" (deposit hand-off, new document or new revision): the project's internal team and the director
+//   (NEW-D3-1, R-047 — never the client, never another project's vault).
 // - "Approve in Codex": the named approver of the next circuit step, or the portfolio director (canApproveDocument).
-// - Downloads (table icon, "Download PDF", revision "Native" / "PDF"): every viewer of the record (a read).
-// - "Sync now": viewers who may edit the vault.
+// - Downloads (table icon, "Download PDF", revision "Native" / "PDF"): every viewer of the record (a read); a client only the
+//   documents shared with them on their organisation's projects (P-10a, P-10b).
+// - "Sync now": the portfolio director (NEW-D3-1: "directeur et administrateur" — Keystone has no administrator role).
 // - "Acknowledge receipt" (client portal, cpVaultDocs): the client of the project's organisation.
 // The Codex hand-off itself is simulated (OPEN QUESTION D-1): the index record is created / reset at once.
 import { revalidatePath } from 'next/cache';
@@ -15,10 +17,14 @@ import {
   acknowledgeDocument, approveDocumentStep, depositInCodex, getDocumentRecord, listVaultDocuments, logDocumentDownload, syncCodexIndex,
 } from '@/server/dal/documents';
 import { getProject } from '@/server/dal/projects';
-import { getProjectContext, type ProjectContext } from '@/server/project-context';
+import { canDepositInCodex, canSyncCodex } from '@/domain/rights';
+import { clientProjectCodes, getProjectContext, type ProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 
 export type DocActionResult = { ok: true; toast?: string } | { error: string };
+
+/** NEW-D3-1 refusal: deposits and revisions are the project's internal team's. */
+const NOT_TEAM = 'Only the project’s internal team deposits documents in Codex';
 export type DepositResult = { ok: true; number: string; created: boolean; toast: string } | { error: string };
 
 /** Sidebar badge, My approvals, the vault and the screens listing documents change together. */
@@ -51,12 +57,14 @@ export async function depositInCodexAction(raw: unknown): Promise<DepositResult>
   const access = await vault(v.project);
   if ('error' in access) return access;
   const { ctx } = access;
-  if (!ctx.canEdit('docs')) return { error: await tr('The document vault is read-only for you') };
-  // A new revision keeps the record's own type (and title); a new document takes the type confirmed in the dialog.
+  if (!canDepositInCodex(ctx.viewer.role, ctx.outside, ctx.access)) return { error: await tr(NOT_TEAM) };
+  // A new revision keeps the record's own type (and title); a new document takes the type confirmed in the dialog. A revision
+  // is deposited from the record's own project vault (R-047: the team of that project).
   let typeCode = v.type;
   if (v.revisionOf) {
     const d = await findRecord(v.revisionOf);
     if (!d) return { error: await tr('Unknown document') };
+    if (d.project !== ctx.project.code) return { error: await tr(NOT_TEAM) };
     typeCode = d.type;
   }
   try {
@@ -96,7 +104,10 @@ export async function logDownloadAction(project: string, number: string, format:
   if ('error' in access) return access;
   const { ctx } = access;
   if (format !== 'PDF' && format !== 'Native') return { error: await tr('Invalid request') };
-  if (!(await findRecord(number))) return { error: await tr('Unknown document') };
+  const d = await findRecord(number);
+  if (!d) return { error: await tr('Unknown document') };
+  // P-10a / P-10b: a client downloads only the documents shared with them on their own projects.
+  if (ctx.viewer.role === 'client' && (!d.shared || !(await clientProjectCodes(ctx.viewer)).has(d.project))) return { error: await tr('Unknown document') };
   await logDocumentDownload(number, ctx.viewer.name, format);
   revalidatePath(`/projects/${ctx.project.code}/documents`);
   return { ok: true };
@@ -107,7 +118,7 @@ export async function syncCodexAction(project: string): Promise<DocActionResult>
   const access = await vault(project);
   if ('error' in access) return access;
   const { ctx } = access;
-  if (!ctx.canEdit('docs')) return { error: await tr('The document vault is read-only for you') };
+  if (!canSyncCodex(ctx.viewer.role, ctx.outside)) return { error: await tr('Only the portfolio director synchronises the Codex index') };
   const records = await syncCodexIndex(ctx.viewer.name);
   revalidatePath(`/projects/${ctx.project.code}/documents`);
   return { ok: true, toast: await tr(`Codex sync · index up to date · ${records} records`) };

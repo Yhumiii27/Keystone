@@ -1,5 +1,7 @@
 // Organisation seed: clients, departments, persons (unified), users (personas), zones, countries, cities.
 import { eq } from 'drizzle-orm';
+import { DEMO_CLIENT_ORG, PERSONAS, PERSONA_BY_ROLE } from '@/config/personas';
+import type { RoleKey } from '@/config/screens';
 import { initials, shortName } from '@/lib/format';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { clients, cities, countries, departmentCapacities, departments, persons, users, zones } from '../schema';
@@ -45,7 +47,7 @@ export function collectPersons(): PersonDraft[] {
   (PROTO.PEOPLE as [string, string][]).forEach(([name, title], i) => full(name, { jobTitle: title, poolPosition: i + 1 }));
   for (const [name, dept] of Object.entries(PROTO.DEPT_OF as Record<string, string>)) full(name, { departmentName: dept });
   for (const [role, [name, title]] of Object.entries(PROTO.PERSONAS as Record<string, [string, string]>))
-    full(name, role === 'client' ? { clientName: 'Port authority' } : { jobTitle: title });
+    full(name, role === 'client' ? { clientName: DEMO_CLIENT_ORG } : { jobTitle: title });
   for (const [dept, [name, title]] of Object.entries(PROTO.DEPTS as Record<string, [string, string]>)) full(name, { jobTitle: title, departmentName: dept });
   for (const [, , manager] of PROTO.ZONES as [string, string, string][]) full(manager);
   for (const [, , lead] of Object.values(PROTO.ENG_DISC as Record<string, [string, string, string, string]>)) full(lead);
@@ -80,6 +82,8 @@ export async function seedOrganisation(tx: Tx, ctx: SeedCtx): Promise<void> {
       jobTitle: p.jobTitle,
       departmentId: p.departmentName ? must(ctx.departmentByName, p.departmentName, 'department') : null,
       clientId: p.clientName ? must(ctx.clientByName, p.clientName, 'client') : null,
+      // Sign-in e-mails of the demo personas (R-038: Entra ID matches the token e-mail to the person).
+      email: PERSONAS.find((x) => x.name === p.fullName)?.email ?? null,
       resourcePoolPosition: p.poolPosition,
       sortOrder: i + 1,
     })),
@@ -99,12 +103,16 @@ export async function seedOrganisation(tx: Tx, ctx: SeedCtx): Promise<void> {
     })),
   );
 
-  // Users = personas.
-  const userRows = Object.entries(PROTO.PERSONAS as Record<string, [string, string]>).map(([role, [name, title]], i) => ({
-    id: newId(), role, personId: must(ctx.personByFull, name, 'person'), title,
-    clientId: role === 'client' ? must(ctx.clientByName, 'Port authority', 'client') : null, isExternal: role === 'client', sortOrder: i + 1,
-  }));
-  for (const u of userRows) ctx.userByRole.set(u.role, u.id);
+  // Users = the demo personas (R-039: one user per person; real users are added at their first Entra ID sign-in).
+  const userRows = Object.entries(PROTO.PERSONAS as Record<string, [string, string]>).map(([role, [name, title]], i) => {
+    const draft = drafts.find((p) => p.fullName === name)!;
+    return {
+      id: newId(), personaRole: role, roles: [role], personId: must(ctx.personByFull, name, 'person'), title, email: PERSONA_BY_ROLE[role as RoleKey].email,
+      departmentId: draft.departmentName ? must(ctx.departmentByName, draft.departmentName, 'department') : null,
+      clientId: role === 'client' ? must(ctx.clientByName, DEMO_CLIENT_ORG, 'client') : null, isExternal: role === 'client', sortOrder: i + 1,
+    };
+  });
+  for (const u of userRows) ctx.userByRole.set(u.personaRole, u.id);
   await tx.insert(users).values(userRows);
 
   // Zones, countries, cities.

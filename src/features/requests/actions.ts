@@ -18,6 +18,8 @@ import {
 } from '@/server/dal/requests';
 import { notifyRequestEvent, recordRequestActivity, type RequestNotice } from '@/server/dal/requests-screens';
 import { getResourcePool } from '@/server/dal/resources';
+import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
+import { canDecideDepartment } from '@/domain/rights';
 import { getProjectScope } from '@/server/project-context';
 import { getViewer, type Viewer } from '@/server/session';
 import { canDecideRequests, canManageOwnRequests, canSendRequests, draftRights, isRequester } from './permissions';
@@ -28,6 +30,7 @@ const NOT_SENDER = 'Read-only — you cannot send resource requests';
 const NOT_OWNER = 'Read-only — only the sender can change this request';
 const NOT_DRAFTER = 'Read-only — only the requester, the project manager or the director can send or discard this draft';
 const NOT_DECIDER = 'Read-only — you cannot decide resource requests';
+const NOT_DEPARTMENT = 'Read-only — you decide the requests of your own department only';
 const UNKNOWN = 'Unknown request';
 const STALE = 'This request has already been decided';
 const NOT_DRAFT = 'This request is no longer a draft';
@@ -46,7 +49,7 @@ const refresh = () => revalidatePath('/', 'layout');
 async function announce(viewer: Viewer, r: ResourceRequestRow | null, notices: (r: ResourceRequestRow) => RequestNotice[], activity: string) {
   if (!r) return;
   try {
-    await notifyRequestEvent(notices(r), viewer.role);
+    await notifyRequestEvent(notices(r), viewer);
     await recordRequestActivity(r.projectCode, viewer.name, `${activity} ${r.id} — ${r.title}`);
   } catch (e) {
     console.error('requests: notification failed', e);
@@ -234,13 +237,17 @@ export async function discardDraftRequestAction(id: string): Promise<RequestActi
 
 // ── Department side (Approvals) ────────────────────────────────────────────────────────────────────────
 
-/** Loads a pending request, checking the Approvals screen is in the viewer's workspace (any department, 08 OQ19). */
+/**
+ * Loads a pending request, checking the Approvals screen is in the viewer's workspace and that they decide for its department
+ * (P-8a, R-048: the director for all, a department head for the departments they head).
+ */
 async function pendingRequest(id: unknown): Promise<{ viewer: Viewer; r: ResourceRequestRow } | { error: string }> {
   const viewer = await getViewer();
   if (!canDecideRequests(viewer.role)) return { error: NOT_DECIDER };
   if (!isNumber(id)) return { error: INVALID };
   const r = await getResourceRequest(id);
   if (!r) return { error: UNKNOWN };
+  if (!canDecideDepartment(viewer.role, (await getApproverIdentity(viewer)).departments, r.department)) return { error: NOT_DEPARTMENT };
   if (r.status !== 'pending') return { error: STALE };
   return { viewer, r };
 }

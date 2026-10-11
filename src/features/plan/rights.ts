@@ -1,14 +1,27 @@
-// Who may do what on the Plan (docs/spec/05 §0.4, chapter 4 S-1). Shared by the page (which controls to render) and the
-// Server Functions (which re-check on the server).
+// Who may do what on the Plan (docs/spec/05 §0.4, chapter 4 S-1; P-9a, R-061). Shared by the page (which controls to render)
+// and the Server Functions (which re-check on the server).
+import { canEditActivityProgress, canEditPlanStructure } from '@/domain/rights';
 import type { ProjectContext } from '@/server/project-context';
 
-type Ctx = Pick<ProjectContext, 'canEdit' | 'viewer' | 'isMine'>;
+type Ctx = Pick<ProjectContext, 'canEdit' | 'viewer' | 'isLead'>;
 
-/** Activity edits (inline cells, relationships, calendar override, to-dos): not outside, not a read-only project, never the client. */
+/**
+ * The Plan is editable for the viewer at all: not outside the workspace, on the project's team (not a read-only project,
+ * R-041), never the client. What they may change then depends on `canEditStructure` / `canEditProgress`.
+ */
 export const canEditPlan = (ctx: Ctx) => ctx.canEdit('plan') && ctx.viewer.role !== 'client';
 
 /**
- * Scheduling decisions — Reschedule, Set baseline, the Baseline and Calendar chips: the director or the project's own manager
- * (S-1 default), on top of the edit rights.
+ * Structure (P-9a): add / rename / re-order / remove work packages and activities, names, owners, durations, budgets, links,
+ * calendars, to-dos — the project's PMs (PM of record, co-PMs, deputies) and the director.
  */
-export const canSchedulePlan = (ctx: Ctx) => canEditPlan(ctx) && (ctx.viewer.role === 'director' || ctx.isMine);
+export const canEditStructure = (ctx: Ctx) => canEditPlanStructure(canEditPlan(ctx), { lead: ctx.isLead });
+
+/** % complete of one activity (P-9a): the PM team and the director, and the activity's owner for their own activities. */
+export const canEditProgress = (ctx: Ctx, ownsActivity: boolean) => canEditActivityProgress(canEditPlan(ctx), { lead: ctx.isLead }, ownsActivity);
+
+/**
+ * Scheduling decisions — Reschedule, Set baseline, the Baseline and Calendar chips, removal and restore: the director or the
+ * project's PMs (S-1 default, R-041: PM of record, co-PMs and deputies).
+ */
+export const canSchedulePlan = canEditStructure;

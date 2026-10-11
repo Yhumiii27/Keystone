@@ -148,6 +148,8 @@ export interface ExportContext {
   zone: ZoneKey | null;
   /** Hourly rates are masked for this viewer (rates screen rule: only the director and the PM see them). */
   ratesMasked: boolean;
+  /** Supplier prices, order values and supplier invoices are masked (R-046, NEW-D2-1: only the director, PMs and procurement see them). */
+  pricesMasked: boolean;
   /** Document variant ('po', 'receipt', 'statement', 'status', 'pv'…) or null for the screen table / report. */
   variant: string | null;
   /** Export instant (real clock: file names and the "exported on" line). */

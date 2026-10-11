@@ -86,10 +86,13 @@ describe('what-if Server Functions', () => {
     expect(w.scenarios.map((s) => [s.name, s.selected, s.requests])).toEqual([['A', true, { draft: 3, sent: 0 }], ['B', false, { draft: 0, sent: 0 }]]);
     expect(w.scenarios[0].appliedByName).toBe('Romain Aubert');
     expect((await listActivity())[0]).toMatchObject({ who: 'Romain Aubert', what: 'Drafted 3 resource requests from what-if scenario A · RQ-045, RQ-046, RQ-047', kind: 'request' });
+    // R-041 (P-2): the head of engineering is not on Harbor Line's team — the project's what-if is read-only for her.
     as('depthead');
+    expect(await selectWhatIfScenario('HLT-026', 'B')).toEqual({ error: 'What-if levelling is read-only for you' });
+    as('director');
     expect(await selectWhatIfScenario('HLT-026', 'B')).toEqual({ ok: true, message: 'Scenario B selected · 1 draft request created (RQ-048) — send it from Resource requests' });
     const audit = (await listAudit()).filter((a) => a.object === 'Scenario B' && a.change === 'selected');
-    expect(audit.map((a) => a.who)).toEqual(['Marion Kerviel']);
+    expect(audit.map((a) => a.who)).toEqual(['Marie Lefebvre']);
   });
 
   it('rejects viewers outside the workspace and invalid input', async () => {

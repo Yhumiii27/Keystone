@@ -19,6 +19,7 @@ export const resourceRequestProvider: ApprovalProvider = {
   async items({ viewer }) {
     if (!viewer.departments.length) return [];
     const rows = await listResourceRequests({ status: 'pending' });
+    // P-8a (R-048): the items are the departments the viewer heads, decided by them (Approvals in their workspace).
     const decides = canDecideRequests(viewer.role);
     return rows
       .filter((r) => viewer.departments.includes(r.department))

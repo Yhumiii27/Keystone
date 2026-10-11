@@ -5,7 +5,7 @@
 import { HEALTH_LABEL } from '@/domain/health';
 import { isRegisterView, matchesQuery } from '@/domain/lifecycle';
 import { buildRegisterModel } from '@/features/projects/register-model';
-import { isMineProject } from '@/server/project-context';
+import { projectAccessResolver } from '@/server/project-context';
 import { stage as stageCodec } from '@/server/db/codes';
 import { getRegisterData } from '@/server/dal/projects-register';
 import { registerExportProvider } from '../registry';
@@ -14,7 +14,8 @@ import type { ExportColumn, ExportContext, ExportWorkbook } from '../types';
 export async function projectsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   const { t, lang } = ctx;
   const data = await getRegisterData();
-  const visible = ctx.viewer.role === 'client' ? { ...data, projects: data.projects.filter((p) => isMineProject(ctx.viewer, p)) } : data;
+  const access = ctx.viewer.role === 'client' ? await projectAccessResolver(ctx.viewer) : null;
+  const visible = access ? { ...data, projects: data.projects.filter((p) => !access(p).refused) } : data;
   const model = buildRegisterModel(visible, ctx.zone, t, lang);
   const status = ctx.params.get('status');
   const q = (ctx.params.get('q') ?? '').slice(0, 100);

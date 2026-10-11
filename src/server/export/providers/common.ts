@@ -2,7 +2,7 @@
 // KPI tiles, parsing of the display strings some view models carry ("4 800 k€", "64 %", "0.90") back into numbers, EN date
 // strings → ISO, the project header of PDF documents and the URL parameters a screen reads. Pure (no DB access).
 import type { Lang } from '@/i18n/translate';
-import type { ColumnType, CellValue, ExportColumn, ExportContext, ExportSheet, PdfDocument } from '../types';
+import type { ColumnType, CellValue, ExportColumn, ExportContext, ExportSheet, ExportWorkbook, PdfBlock, PdfDocument } from '../types';
 
 /** A column: `col('budget', t('Budget'), 'money_keur')`. */
 export function col(key: string, header: string, type?: ColumnType, width?: number, extra: Partial<ExportColumn> = {}): ExportColumn {
@@ -134,3 +134,39 @@ export const ratioText = (v: number, lang: Lang) => new Intl.NumberFormat(lang =
 
 /** Working days for a PDF tile in the viewer's language: "−27 d" / "−27 j" (U+2212 minus, as the screens write it). */
 export const daysText = (v: number, lang: Lang) => `${v < 0 ? '−' : ''}${Math.abs(v)} ${lang === 'fr' ? 'j' : 'd'}`;
+
+// ── R-046 (NEW-D2-1): supplier prices masked for the roles that may not see them ──────────────────────────────────────
+
+const PRICE_COLUMNS: readonly ColumnType[] = ['money_eur', 'money_keur'];
+const PRICE_MASK = '•••';
+const hasEuro = (v: CellValue) => typeof v === 'string' && /€/.test(v);
+
+/** A sheet without its euro amounts (supplier prices, order, stock and BOM values); a text cell showing an amount is masked. */
+export function stripPriceColumns(s: ExportSheet): ExportSheet {
+  const columns = s.columns.filter((c) => !PRICE_COLUMNS.includes(c.type ?? 'text'));
+  const keys = new Set(columns.map((c) => c.key));
+  return {
+    ...s,
+    columns,
+    rows: s.rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => keys.has(k)).map(([k, v]) => [k, hasEuro(v) ? PRICE_MASK : v]))),
+  };
+}
+
+/** A workbook builder whose result has no supplier price for a viewer whose prices are masked (`ctx.pricesMasked`). */
+export const pricedWorkbook = (fn: (ctx: ExportContext) => Promise<ExportWorkbook | null>) => async (ctx: ExportContext): Promise<ExportWorkbook | null> => {
+  const wb = await fn(ctx);
+  return wb && ctx.pricesMasked ? { ...wb, sheets: wb.sheets.map(stripPriceColumns) } : wb;
+};
+
+/** A PDF builder whose tables lose their amounts (and totals) and whose fields / KPI tiles mask them, for a masked viewer. */
+export const pricedPdf = (fn: (ctx: ExportContext) => Promise<PdfDocument | null>) => async (ctx: ExportContext): Promise<PdfDocument | null> => {
+  const doc = await fn(ctx);
+  if (!doc || !ctx.pricesMasked) return doc;
+  const blocks = doc.blocks.map((b): PdfBlock => {
+    if (b.kind === 'table') return { kind: 'table', sheet: stripPriceColumns(b.sheet) };
+    if (b.kind === 'fields') return { ...b, items: b.items.map(([k, v]): [string, string] => [k, hasEuro(v) ? PRICE_MASK : v]) };
+    if (b.kind === 'kpis') return { ...b, items: b.items.map((i) => (hasEuro(i.value) ? { ...i, value: PRICE_MASK } : i)) };
+    return b;
+  });
+  return { ...doc, blocks };
+};

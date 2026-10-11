@@ -6,7 +6,10 @@
 // - Budget lines: director and PM (own projects).
 // - Project BOM and parts catalogue: director, engineering lead, procurement.
 // - Resource assignments: director, PM (own projects), head of department.
-// The roles other than the PM work on any project; the client never imports. Questionnaire: these lists may change here only.
+// R-041 (P-2): on an existing project every role but the director imports only into a project whose named team they are on, and
+// the schedule and budget imports need the project's PM rights (PM of record, co-PM, deputy). A head of department staffs
+// every project from their department, so their resource assignments are not limited to their teams. The client never imports.
+// Questionnaire: these lists may change here only.
 import type { RoleKey } from '@/config/screens';
 import type { ImportKind } from '@/server/db/codes';
 
@@ -19,8 +22,14 @@ export const IMPORT_ROLES: Readonly<Record<ImportKind, readonly RoleKey[]>> = {
   assignments: ['director', 'pm', 'depthead'],
 };
 
-/** Roles limited to the projects they manage (`isMineProject`). */
-export const OWN_PROJECTS_ONLY: readonly RoleKey[] = ['pm'];
+/** Kinds that need the project's PM rights on an existing project (R-041); the others need its team. */
+export const LEAD_KINDS: readonly ImportKind[] = ['mspdi', 'xer', 'budget_lines'];
+
+/** The viewer's relation to the target project (src/domain/rights.ts `projectAccess`). */
+export interface ImportProjectRel {
+  member: boolean;
+  lead: boolean;
+}
 
 /** Import kinds a role may run (on at least one project). */
 export const importKindsOf = (role: RoleKey): ImportKind[] => (Object.keys(IMPORT_ROLES) as ImportKind[]).filter((k) => IMPORT_ROLES[k].includes(role));
@@ -28,11 +37,12 @@ export const importKindsOf = (role: RoleKey): ImportKind[] => (Object.keys(IMPOR
 /** Kinds of the "Excel / CSV" card. */
 export const TABLE_IMPORT_KINDS: readonly ImportKind[] = ['budget_lines', 'bom', 'parts', 'assignments'];
 
-/** May `role` import `kind` into a project (`own` = the viewer manages it; null = no project: parts catalogue or a new project)? */
-export function canImport(role: RoleKey, kind: ImportKind, own: boolean | null): boolean {
+/** May `role` import `kind` into a project (`rel` = the viewer's rights on it; null = no project: parts catalogue or a new project)? */
+export function canImport(role: RoleKey, kind: ImportKind, rel: ImportProjectRel | null): boolean {
   if (!IMPORT_ROLES[kind].includes(role)) return false;
-  if (own === null) return true;
-  return !OWN_PROJECTS_ONLY.includes(role) || own;
+  if (rel === null) return true;
+  if (kind === 'assignments' && role === 'depthead') return true;
+  return LEAD_KINDS.includes(kind) ? rel.lead : rel.member;
 }
 
 /** Import cards of Activity & integrations (IMPORTS names) → the kinds they cover. */

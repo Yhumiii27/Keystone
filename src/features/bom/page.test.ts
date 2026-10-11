@@ -5,6 +5,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const session = { role: 'director' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/navigation', () => ({
+  redirect: (url: string) => {
+    throw new Error(`REDIRECT ${url}`);
+  },
   notFound: () => {
     throw new Error('NOT_FOUND');
   },
@@ -66,9 +69,10 @@ describe('/projects/[code]/bom', () => {
     expect(p.BomBody.props.canEdit).toBe(true);
   });
 
+  // R-041 (P-2): only the project's named team edits — the quality manager is a referent of Harbor Line, not of NDC-031.
   it.each([
-    ['pm', 'HLT-026', true], ['pm', 'NDC-031', false], ['englead', 'HLT-026', true], ['quality', 'NDC-031', true], ['procurement', 'HLT-026', true],
-    ['member', 'HLT-026', false], ['depthead', 'HLT-026', false], ['client', 'HLT-026', false],
+    ['pm', 'HLT-026', true], ['pm', 'NDC-031', false], ['englead', 'HLT-026', true], ['quality', 'HLT-026', true], ['quality', 'NDC-031', false],
+    ['englead', 'NDC-031', false], ['procurement', 'HLT-026', true], ['member', 'HLT-026', false], ['depthead', 'HLT-026', false],
   ])('%s on %s: primary and edit controls %s', async (role, code, editable) => {
     session.role = role;
     const p = await page({ view: 'tree', node: 'ASM-BOG-300' }, code);
@@ -76,6 +80,25 @@ describe('/projects/[code]/bom', () => {
     expect(p.BomBody.props.canEdit).toBe(editable);
     const v = body(p);
     if (code === 'HLT-026') expect(!!v.node!.raiseEco).toBe(editable);
+  });
+
+  it('R-042 (P-1): the BOM is outside the client’s workspace — the client is sent home', async () => {
+    session.role = 'client';
+    await expect(page({}, 'HLT-026')).rejects.toThrow('REDIRECT /');
+  });
+
+  it('R-046 (NEW-D2-1): prices and values are masked for the engineering lead and the quality manager', async () => {
+    for (const [role, masked] of [['englead', true], ['quality', true], ['procurement', false], ['pm', false], ['director', false]] as const) {
+      session.role = role;
+      const v = body(await page({}, 'HLT-026'));
+      expect(v.kpis[1].value === '•••', role).toBe(masked);
+      expect(v.flat!.rows.every((r) => r.price === '•••' && r.total === '•••'), role).toBe(masked);
+      const tree = body(await page({ view: 'tree', node: 'ASM-BOG-300' }, 'HLT-026'));
+      expect(tree.node!.cost.every((c) => c.v === '•••'), role).toBe(masked);
+      expect(body(await page({ view: 'compare' }, 'HLT-026')).compare!.total === '•••', role).toBe(masked);
+      const sp = body(await page({ view: 'spares' }, 'HLT-026')).spares!;
+      expect(sp.rows.every((r) => r.price === '•••'), role).toBe(masked);
+    }
   });
 
   it('?part= opens the shared part drawer over any display; closing keeps the other state', async () => {

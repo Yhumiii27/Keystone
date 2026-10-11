@@ -13,6 +13,7 @@ import { openDatabase } from '@/server/db/open';
 import type { ZoneKey } from '@/server/session';
 import { recordEcoProgress } from './eco';
 import { getHomeView } from './home';
+import { getProject } from './projects';
 import { createDraftPurchaseOrders } from './purchasing';
 import { decideDeliverable } from './quality';
 
@@ -21,9 +22,9 @@ type Golden = { greeting: string; sub: string; kpis: (Kpi | null)[]; lt: string;
 const G = golden as unknown as Record<RoleKey, Record<Lang, Golden>>;
 const ROLES: RoleKey[] = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'];
 
-async function render(role: RoleKey, lang: Lang, projectCode = 'HLT-026', zone: ZoneKey | null = null) {
+async function render(role: RoleKey, lang: Lang, projectCode = 'HLT-026', zone: ZoneKey | null = null, organisation = PERSONA_BY_ROLE[role].organisation) {
   const p = PERSONA_BY_ROLE[role];
-  const view: HomeView = await getHomeView({ role, persona: { name: p.name, title: p.title }, projectCode, zone, lang });
+  const view: HomeView = await getHomeView({ role, persona: { name: p.name, title: p.title }, projectCode, zone, lang, organisation });
   const tx = (x: Txt) => renderTxt(x, makeT(lang));
   const out: Golden = {
     greeting: tx(view.greeting), sub: tx(view.sub),
@@ -235,7 +236,8 @@ describe('Home view', () => {
     const pm = (await render('pm', 'en', 'ALP-021')).out;
     expect(pm.kpis.map((k) => k?.[1])).toEqual(['—', '—', '—', '—']);
     expect(pm.rr).toEqual([]);
-    const client = (await render('client', 'en', 'ALP-021')).out;
+    // R-042 (P-10a): a contact of ALP-021's own client organisation (the demo client — Port authority — gets Harbor Line).
+    const client = (await render('client', 'en', 'ALP-021', null, (await getProject('ALP-021'))!.client)).out;
     expect(client.kpis.map((k) => k?.[1])).toEqual(['—', '—', '0', '0']);
     expect([client.lr, client.rr]).toEqual([[], []]);
   });
@@ -262,8 +264,10 @@ describe('Home view', () => {
   });
 
   it('client home on another project: next milestone in both languages', async () => {
-    const en = (await render('client', 'en', 'NDC-031')).out.kpis[1];
-    const fr = (await render('client', 'fr', 'NDC-031')).out.kpis[1];
+    // R-042 (P-10a): a contact of Northgate's client organisation (the demo client — Port authority — never sees NDC-031).
+    const org = (await getProject('NDC-031'))!.client;
+    const en = (await render('client', 'en', 'NDC-031', null, org)).out.kpis[1];
+    const fr = (await render('client', 'fr', 'NDC-031', null, org)).out.kpis[1];
     expect(en?.[2]).toMatch(/^Next: /);
     expect(fr?.[2]).toMatch(/^Prochain : \p{Ll}/u);
     expect(fr?.[2]).not.toMatch(/Next|complete/);
@@ -271,6 +275,12 @@ describe('Home view', () => {
 
   it('unknown current project falls back to the default project', async () => {
     expect((await render('client', 'en', 'NOPE-1')).out.kpis[0]).toEqual(['Progress', '64%', 'Work completed · Harbor Line Terminal Expansion', false]);
+  });
+
+  it('R-042 (P-10a): the client never sees another organisation\'s project — their own project instead; none → empty', async () => {
+    expect((await render('client', 'en', 'NDC-031')).out.kpis[0]).toEqual(['Progress', '64%', 'Work completed · Harbor Line Terminal Expansion', false]);
+    const none = (await render('client', 'en', 'HLT-026', null, null)).out;
+    expect([none.kpis.map((k) => k?.[1]), none.lr, none.rr]).toEqual([['—', '—', '0', '0'], [], []]);
   });
 });
 
@@ -315,7 +325,7 @@ describe('Home view — Delivery 5: the client Home reads the deliverables regis
   });
 
   it('another project shows its own register and its legacy monthly billing (no Harbor Line data)', async () => {
-    const { out } = await render('client', 'en', 'NDC-031');
+    const { out } = await render('client', 'en', 'NDC-031', null, (await getProject('NDC-031'))!.client); // R-042: its own client
     expect(out.rr.filter((r) => /^D-/.test(r[0])).map((r) => [r[0].split(' · ')[0], r[2]])).toEqual([['D-112', 'Submitted'], ['D-113', 'Accepted']]);
     expect(out.rr.at(-1)).toEqual(['Invoices', 'Sep · €260k', 'Open', 'tag tag-outline']);
   });

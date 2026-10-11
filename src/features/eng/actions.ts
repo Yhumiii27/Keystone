@@ -43,7 +43,7 @@ async function failed(where: string, e: unknown): Promise<{ ok: false; error: st
   return fail(ENG_MSG.failed);
 }
 
-type Access = { code: string; viewer: Viewer; isMine: boolean };
+type Access = { code: string; viewer: Viewer; isLead: boolean };
 
 /** The project and the viewer's right to edit `screen` on it. */
 async function access(code: unknown, screen: EngScreen): Promise<Access | { error: string }> {
@@ -52,7 +52,7 @@ async function access(code: unknown, screen: EngScreen): Promise<Access | { erro
   if (!project) return { error: ENG_MSG.invalid };
   const ctx = await getProjectContext(project.code, screen);
   if (!ctx.canEdit(screen)) return { error: ENG_MSG.readOnly };
-  return { code: project.code, viewer: ctx.viewer, isMine: ctx.isMine };
+  return { code: project.code, viewer: ctx.viewer, isLead: ctx.isLead };
 }
 
 const actorOf = (v: Viewer) => ({ name: v.name, role: v.role });
@@ -119,7 +119,7 @@ export async function deliverableStepAction(input: { code: string; disc: string;
   const step: DeliverableStep = input.step;
   const a = await disciplineAccess(input);
   if ('error' in a) return fail(a.error);
-  if (step === 'validate' && !canValidateRelease(a.viewer, a.isMine)) return fail(ENG_MSG.pmOnly);
+  if (step === 'validate' && !canValidateRelease(a.viewer, a.isLead)) return fail(ENG_MSG.pmOnly);
   const d = a.reg.deliverables.find((x) => x.number === number && x.discipline === a.disc);
   if (!d || d.status !== DELIVERABLE_STEP[step].from) {
     refresh();

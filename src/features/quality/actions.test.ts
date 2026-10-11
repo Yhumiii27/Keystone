@@ -62,8 +62,9 @@ describe('Quality Server Functions', () => {
     // The PM and the client on a project that is not theirs (read-only project, 01 §5.2).
     as('pm');
     expect(await advanceNcrAction({ projectCode: 'NDC-031', number: 'NCR-041', step: 'root_cause' })).toEqual(readOnly);
+    // R-042 (P-10a): another organisation's project is refused to the client (sent home), nothing written.
     as('client');
-    expect(await decideDeliverableAction({ projectCode: 'NDC-031', number: 'D-110', decision: 'accepted' })).toEqual(readOnly);
+    await expect(decideDeliverableAction({ projectCode: 'NDC-031', number: 'D-110', decision: 'accepted' })).rejects.toThrow('NEXT_REDIRECT');
     const team = { ok: false, error: 'Only the project team records this progress' };
     expect(await advanceNcrAction({ projectCode: HLT, number: 'NCR-030', step: 'containment' })).toEqual(team);
     expect(await moveDeliverableAction({ projectCode: HLT, number: 'D-018', to: 'in_progress' })).toEqual(team);

@@ -115,7 +115,7 @@ export async function decideForcedStageChangeAction(input: { projectCode: string
     return { ok: false, error: FAILED };
   }
   try {
-    await notifyRequestEvent(stageNotices(d), viewer.role);
+    await notifyRequestEvent(stageNotices(d), viewer);
   } catch (e) {
     console.error('decideForcedStageChangeAction: notification failed', e); // a courtesy: never undoes the decision
   }

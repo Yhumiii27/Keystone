@@ -36,8 +36,10 @@ export interface PlanTableProps {
   collapsed: Record<string, boolean>;
   /** Highlighted activity (`sel`). */
   selected: string | null;
-  /** Edits allowed (not outside, not read-only, not the client). */
+  /** Structure edits allowed (P-9a: the project's PMs and the director — not outside, on the team, not the client). */
   canEdit: boolean;
+  /** Activities whose % complete the viewer enters as their owner without the structure rights (P-9a). */
+  progressIds?: readonly string[];
   /** Removal with undo (S-5): the director or the project's manager, on top of the edit rights. */
   canRemove?: boolean;
   /** Owner select options (OWN: value = key, label = full name). */
@@ -384,7 +386,7 @@ function StructureTable({ rows, code, selected, canEdit, canRemove, owners, coll
 
 // ── Progress view (1071–1104) ──────────────────────────────────────────────────────────────────────────
 
-function ProgressTable({ rows, code, selected, canEdit, collapsed, toggle, href }: TableProps) {
+function ProgressTable({ rows, code, selected, canEdit: canEditAll, progressIds, collapsed, toggle, href }: TableProps) {
   const { t: baseT, lang } = useI18n();
   const t = planT(baseT, lang);
   const router = useRouter();
@@ -406,6 +408,7 @@ function ProgressTable({ rows, code, selected, canEdit, collapsed, toggle, href 
       </div>
       {rows.map((r) => {
         const act = r.kind === 'act';
+        const canEdit = canEditAll || (act && !!progressIds?.includes(r.id));
         return (
           <div
             key={r.kind + r.id}

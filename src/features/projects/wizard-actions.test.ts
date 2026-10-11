@@ -18,6 +18,7 @@ import { openDatabase } from '@/server/db/open';
 import { getProject } from '@/server/dal/projects';
 import { getNewProjectSetup } from '@/server/dal/projects-register';
 import { createProjectAction, type NewProjectDraft } from './actions';
+import { canCreateProject } from './permissions';
 
 const draft = (patch: Partial<NewProjectDraft> = {}): NewProjectDraft => ({
   name: 'Quay crane retrofit', client: 'Port authority', das: '2', mt: 'EMP', cur: 'EUR', template: 'EMP',
@@ -32,6 +33,16 @@ describe('createProjectAction (L-3)', () => {
   }, 60_000);
   beforeEach(() => {
     session.role = 'pm';
+  });
+
+  it('R-045 (P-3): only the director and the project managers create a project (was: the department heads too)', async () => {
+    const before = (await (await getDb()).select({ id: projects.id }).from(projects)).length;
+    for (const role of ['depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as RoleKey[]) {
+      session.role = role;
+      expect(await createProjectAction(draft()), role).toEqual({ ok: false, error: 'You are not allowed to create projects' });
+    }
+    expect((await (await getDb()).select({ id: projects.id }).from(projects)).length).toBe(before);
+    expect((['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as RoleKey[]).filter(canCreateProject)).toEqual(['director', 'pm']);
   });
 
   it('requires a name, a client, a valid window and an offered PM', async () => {

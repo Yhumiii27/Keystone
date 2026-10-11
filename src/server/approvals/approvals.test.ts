@@ -109,6 +109,17 @@ describe('My approvals registry', () => {
     expect(await queue('director', 'NOPE-999')).toEqual(['invoice:INV-HC-7781', 'invoice:INV-BX-55120', 'invoice:INV-LE-2210']);
   });
 
+  it('R-042 / R-043 (P-10a, P-10b): the client gets change requests and deliverables of their organisation\'s projects only', async () => {
+    for (const code of ['HLT-026', 'PRS-038', 'QFR-015', 'NDC-031', 'WSA-044']) {
+      const items = (await inbox('client', code)).items;
+      expect(items.filter((i) => i.kind !== 'cr' && i.kind !== 'deliverable'), code).toEqual([]);
+    }
+    // Another organisation's project: nothing, not even a global kind.
+    const counts = await approvalCountsByProject(PERSONA_BY_ROLE.client, ['HLT-026', 'NDC-031', 'WSA-044']);
+    expect([counts['NDC-031'], counts['WSA-044'], counts['HLT-026']]).toEqual([0, 0, (await inbox('client')).items.length]);
+    expect(await approvalCount(PERSONA_BY_ROLE.client, 'NDC-031')).toBe(0);
+  });
+
   it('badge counts: current project and per project', async () => {
     expect(await approvalCount(PERSONA_BY_ROLE.director, 'HLT-026')).toBe(5);
     expect(await approvalCount(PERSONA_BY_ROLE.quality, 'HLT-026')).toBe(3);

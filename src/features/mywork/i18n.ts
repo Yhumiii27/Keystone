@@ -60,9 +60,11 @@ export function defaultDescription(actCode: string, a: DescriptionActivity | nul
  * 95 €/h = 570 € de coût réel → Main-d’œuvre · Lot 1.4 …"). Rates are euros (RATES, €/h) — the prototype printed "$"
  * whatever the currency (10 OQ20). Without an activity the target is the project.
  */
-export function costNoteText(loggedH: number, rate: number, cost: number, target: { wbs: string; packageName: string | null } | null, project: string, t: T, lang: Lang): string {
+export function costNoteText(loggedH: number, rate: number | null, cost: number, target: { wbs: string; packageName: string | null } | null, project: string, t: T, lang: Lang): string {
   const where = target ? `${lang === 'fr' ? 'Lot' : 'WP'} ${target.wbs}${target.packageName ? ' ' + t(target.packageName) : ''}` : t(project);
   const h = loggedH.toFixed(1);
+  // R-046 (NEW-D2-1): the rate — and the cost, which reveals it — only for the director and the PMs.
+  if (rate == null) return lang === 'fr' ? `${h} h → ${t('Labor')} · ${where}` : `${h} h → Labor · ${where}`;
   return lang === 'fr'
     ? `${h} h × ${moneyEur(rate, 'fr')}/h = ${moneyEur(cost, 'fr')} de coût réel → ${t('Labor')} · ${where}`
     : `${h} h × ${moneyEur(rate, 'en')}/h = ${moneyEur(cost, 'en')} actual cost → Labor · ${where}`;

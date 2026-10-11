@@ -113,7 +113,10 @@ async function changesWorkbook(ctx: ExportContext): Promise<ExportWorkbook | nul
 async function qualityWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   if (!ctx.project) return null;
   const { t } = ctx;
-  const data = await getQualityScreen(ctx.project.code);
+  // P-10b (R-043): a client exports the deliverables register only — no NCR sheet, no linked NCR numbers.
+  const client = ctx.viewer.role === 'client';
+  const screen = await getQualityScreen(ctx.project.code);
+  const data = client ? { ...screen, ncrs: [], deliverables: screen.deliverables.map((d) => ({ ...d, linkedNcrs: [] })) } : screen;
   const severity = ncrFilterOf(param(ctx, 'filter'));
   const status = deliverableFilterOf(param(ctx, 'status'));
   const tab = qualityTabOf(param(ctx, 'tab')) ?? 'ncr';
@@ -141,7 +144,7 @@ async function qualityWorkbook(ctx: ExportContext): Promise<ExportWorkbook | nul
   return {
     title: t('Quality — NCR & deliverables'),
     filters: compact([severity ? `${t('Severity')}: ${t(ncrSeverity.label(severity))}` : null, status ? `${t('Status')}: ${t(deliverableStatus.label(status))}` : null]),
-    sheets: tab === 'dlv' ? [dlvs, ncrs] : [ncrs, dlvs],
+    sheets: client ? [dlvs] : tab === 'dlv' ? [dlvs, ncrs] : [ncrs, dlvs],
   };
 }
 
@@ -150,8 +153,10 @@ async function pvDocument(ctx: ExportContext): Promise<PdfDocument | null> {
   if (!ctx.project) return null;
   const id = (param(ctx, 'id') ?? '').toUpperCase();
   const [data, contract] = await Promise.all([getQualityScreen(ctx.project.code), getContract(ctx.project.code)]);
-  const d = data.deliverables.find((x) => x.number.toUpperCase() === id);
-  if (!d || d.status !== 'accepted') return null;
+  const found = data.deliverables.find((x) => x.number.toUpperCase() === id);
+  if (!found || found.status !== 'accepted') return null;
+  // P-10b (R-043): the client's copy names no NCR.
+  const d = ctx.viewer.role === 'client' ? { ...found, linkedNcrs: [] } : found;
   const { t } = ctx;
   const doc = d.documentNumber ? data.documents.find((x) => x.number === d.documentNumber) ?? null : null;
   const client = contract?.sheet.client ?? ctx.project.client;

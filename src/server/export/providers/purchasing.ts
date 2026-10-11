@@ -19,7 +19,7 @@ import { poStatus, receiptStatus, supplierInvoiceStatus } from '@/server/db/code
 import { formatDate } from '../format';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook, PdfDocument } from '../types';
-import { col, compact, filterLine, kpiSheet, param, projectRef, sheet, sum, tableBlock, todayIso } from './common';
+import { col, compact, filterLine, kpiSheet, param, pricedPdf, pricedWorkbook, projectRef, sheet, sum, tableBlock, todayIso } from './common';
 import { currentProjectCode, projectFilter } from './scope';
 
 // ── Sourcing, invoices & suppliers ───────────────────────────────────────────────────────────────────────────────────
@@ -131,7 +131,9 @@ async function poDocument(ctx: ExportContext): Promise<PdfDocument | null> {
       { kind: 'spacer', height: 16 },
       { kind: 'signatures', parties: [{ role: t('For Keystone — buyer'), name: (draft ? null : o.decidedBy) ?? undefined }, { role: t('Supplier acknowledgement') }] },
     ],
-    footnote: t('Prices in euros excluding VAT. Delivery to the address and terms above; please quote the order number on the delivery note and the invoice.'),
+    footnote: ctx.pricesMasked
+      ? t('Delivery to the address and terms above; please quote the order number on the delivery note and the invoice.')
+      : t('Prices in euros excluding VAT. Delivery to the address and terms above; please quote the order number on the delivery note and the invoice.'),
   };
 }
 
@@ -237,7 +239,9 @@ async function stockWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   };
 }
 
-registerExportProvider({ screen: 'procurement', table: procurementWorkbook, fileBase: () => 'sourcing' });
-registerExportProvider({ screen: 'orders', table: ordersWorkbook, fileBase: () => 'purchase-orders', documents: { po: poDocument } });
+// R-046 (NEW-D2-1): quotes, invoices, order, stock values and prices only for the director, the PMs and procurement — the other
+// viewers export the same tables without the euro columns (and the purchase order without its prices).
+registerExportProvider({ screen: 'procurement', table: pricedWorkbook(procurementWorkbook), fileBase: () => 'sourcing' });
+registerExportProvider({ screen: 'orders', table: pricedWorkbook(ordersWorkbook), fileBase: () => 'purchase-orders', documents: { po: pricedPdf(poDocument) } });
 registerExportProvider({ screen: 'deliveries', table: deliveriesWorkbook, documents: { receipt: receiptDocument } });
-registerExportProvider({ screen: 'stock', table: stockWorkbook });
+registerExportProvider({ screen: 'stock', table: pricedWorkbook(stockWorkbook) });

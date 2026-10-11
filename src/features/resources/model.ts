@@ -31,6 +31,8 @@ export interface ResourcePerson {
 export interface ResourcesInput {
   /** `resources` (whole pool) or `presources` (team of one project). */
   scope: 'portfolio' | 'project';
+  /** R-049: whose My work the viewer may open (the person cell links there); default: everyone's. */
+  canOpenWork?: (name: string) => boolean;
   /** Window week labels, EN ("Sep 28"). */
   weeks: string[];
   /** ISO Mondays of the window weeks (peak week numbers). */
@@ -75,8 +77,8 @@ export interface PersonRowView {
   name: string;
   role: string;
   initials: string;
-  /** My work filtered on that person. */
-  href: string;
+  /** My work filtered on that person; null when the viewer may not open their work (R-049). */
+  href: string | null;
   cells: { v: number; bg: string; fg: string }[];
   avgText: string;
   avgColor: string;
@@ -168,7 +170,7 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
       name: p.name,
       role: p.jobTitle ? t(p.jobTitle) : '',
       initials: p.initials,
-      href: myWorkHref(p.name),
+      href: !input.canOpenWork || input.canOpenWork(p.name) ? myWorkHref(p.name) : null,
       cells: p.loads.map((v) => ({ v, ...shade(v) })),
       avgText: `${p.load.avgPct}%`,
       avgColor: p.load.avgAlert ? LO : OK,

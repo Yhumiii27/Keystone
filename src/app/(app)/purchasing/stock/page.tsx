@@ -19,6 +19,7 @@ import { getStockPosition, getX3StockSync, listStock, listStockMovements } from 
 import { listStorageLocations } from '@/server/dal/suppliers';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n, getLastProject } from '@/server/session';
+import { canSeeSupplierPrices } from '@/domain/rights';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -39,8 +40,10 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
     getProject(last).then((p) => p ?? getProject(DEFAULT_PROJECT)),
   ]);
 
-  const view = stockScreenView({ rows, locations, sync, moves, pins, state }, t, lang);
-  const drawer = detail ? stockDrawerView({ detail, locations, pins, state }, t, lang) : null;
+  // R-046 (NEW-D2-1): stock values at purchase price only for the director, the PMs and procurement.
+  const prices = canSeeSupplierPrices(access.viewer.role);
+  const view = stockScreenView({ rows, locations, sync, moves, pins, state, prices }, t, lang);
+  const drawer = detail ? stockDrawerView({ detail, locations, pins, state, prices }, t, lang) : null;
   const closeHref = state.stock ? stockHref({ ...state, stock: null }) : null;
 
   return (

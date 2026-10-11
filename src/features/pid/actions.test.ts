@@ -8,6 +8,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 const session = { role: 'englead' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('next/navigation', () => ({
+  redirect: (url: string) => {
+    throw new Error(`REDIRECT ${url}`);
+  },
   notFound: () => {
     throw new Error('NOT_FOUND');
   },
@@ -29,6 +32,8 @@ import { parisParts } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
 import { listActivity, listAudit } from '@/server/dal/notifications';
 import { getPidValidation, pidBadgeByProject } from '@/server/dal/pid';
+import { getPersonByName } from '@/server/dal/people';
+import { addTeamMember } from '@/server/dal/project-team';
 import { applyPidImportAction, mapPidTagAction, stagePidImportAction, unlinkPidTagAction, type PidImportRequest } from './actions';
 import { xlsxOf } from './test-xlsx';
 
@@ -46,8 +51,12 @@ beforeEach(() => {
 });
 
 describe('permission gate', () => {
-  it('outside viewers (pm, client, procurement, member) and malformed requests are refused; nothing is written', async () => {
-    for (const role of ['pm', 'client', 'procurement', 'member']) {
+  it('outside viewers (pm, procurement, member; the client is sent home) and malformed requests are refused; nothing is written', async () => {
+    // R-042 (P-1): the client is sent home (was: the read-only refusal).
+    session.role = 'client';
+    await expect(mapPidTagAction(HLT, 'TT-102', 'EL-SWG-11KV')).rejects.toThrow('REDIRECT /');
+    await expect(applyPidImportAction(HLT, req('Tag,Description\nX-1,x'))).rejects.toThrow('REDIRECT /');
+    for (const role of ['pm', 'procurement', 'member']) {
       session.role = role;
       expect(await mapPidTagAction(HLT, 'TT-102', 'EL-SWG-11KV'), role).toEqual({ error: 'This P&ID is read-only for you' });
       expect(await unlinkPidTagAction(HLT, 'LT-101'), role).toEqual({ error: 'This P&ID is read-only for you' });
@@ -175,6 +184,9 @@ describe('Import P&ID tags (staging import)', () => {
   it('a project without a P&ID registers one from an .xlsx (French toast); Replace all removes the tags the file drops', async () => {
     session.role = 'quality';
     session.lang = 'fr';
+    // R-041 (P-2): the quality manager edits NDC-031's P&ID once on its named team (off the team, it is read-only).
+    expect(await stagePidImportAction('NDC-031', req('Tag,Description\nX-1,x'))).toEqual({ error: 'Ce PID est en lecture seule pour vous' });
+    await addTeamMember('NDC-031', (await getPersonByName('Gabriel Comte'))!.id, 'referent', { name: 'Marie Lefebvre', personId: null });
     expect(await getPidValidation('NDC-031')).toBeNull();
     const book = xlsxOf([
       ['P&ID tag list — NDC'],

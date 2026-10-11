@@ -2,6 +2,8 @@
 // Plan — WBS & activities Server Functions (docs/spec/05 §2.5): inline edits, re-order, removal and the three
 // add-forms (AF plan / wp / progress). Each one checks the viewer may edit the project's plan, validates the raw
 // input exactly as the prototype parses it, writes through the DAL and revalidates the project's pages.
+// P-9a (R-061): the structure — WBS, names, owners, durations, budgets, predecessors, order, additions — is the project's PM
+// team's (PM of record, co-PMs, deputies) and the director's; an activity's owner enters only its % complete.
 import { revalidatePath } from 'next/cache';
 import {
   applyBudget, clampPct, createsCycle, moveWithin, nextActivityCode, nextWorkPackageCode, parseDuration, parsePredecessors,
@@ -9,16 +11,16 @@ import {
 } from '@/domain/schedule';
 import { wbsFmtDate, wbsParseDate } from '@/lib/format';
 import {
-  getPackageOrder, getPlanData, insertActivity, insertWorkPackage, ownerCodeOfName, renameWorkPackage, reorderActivities, updateActivity,
+  getPackageOrder, getPlanData, insertActivity, insertWorkPackage, ownerCodeOfName, ownerCodeOfViewer, renameWorkPackage, reorderActivities, updateActivity,
   type ActivityPatch, type PlanData,
 } from '@/server/dal/plan';
 import { restorePlanTrash, trashPlanRow } from '@/server/dal/plan-trash';
 import { getProject } from '@/server/dal/projects';
 import { rescheduleIfAutomatic } from '@/server/dal/schedule';
-import { getProjectContext } from '@/server/project-context';
+import { getProjectContext, type ProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { removedText, restoreConflictText, restoredText } from './i18n';
-import { canEditPlan, canSchedulePlan } from './rights';
+import { canEditPlan, canEditProgress, canEditStructure, canSchedulePlan } from './rights';
 
 /** `value`: the normalised value of an edited cell. */
 export type PlanActionResult = { ok: true; value?: string } | { error: string };
@@ -38,17 +40,31 @@ function formDate(text: string): Date | null {
 }
 const isoOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-/** Loads the plan after checking the viewer may edit it (not outside, not read-only, not the client). */
-async function editablePlan(code: unknown): Promise<{ data: PlanData; actor: string } | { error: string }> {
+type EditablePlan = { data: PlanData; actor: string; ctx: ProjectContext; ownerCode: string | null };
+
+/**
+ * Loads the plan after checking the viewer may edit it (not outside, on the project's team, not the client) and, for
+ * `structure`, that they are one of its PMs or the director (P-9a). `progress` callers check the activity's owner themselves.
+ */
+async function editablePlan(code: unknown, need: 'structure' | 'progress' = 'structure'): Promise<EditablePlan | { error: string }> {
   const { t } = await getI18n();
   if (typeof code !== 'string' || !code) return { error: t('Invalid request') };
   if (!(await getProject(code))) return { error: t('Invalid request') };
   const ctx = await getProjectContext(code, 'plan');
-  if (!ctx.canEdit('plan') || ctx.viewer.role === 'client') return { error: t('This plan is read-only for you') };
+  if (!canEditPlan(ctx)) return { error: t('This plan is read-only for you') };
+  if (need === 'structure' && !canEditStructure(ctx)) return { error: t(STRUCTURE_ONLY) };
   const data = await getPlanData(code);
   if (!data) return { error: t('This project has no plan yet') };
-  return { data, actor: ctx.viewer.name };
+  return { data, actor: ctx.viewer.name, ctx, ownerCode: ctx.isLead ? null : await ownerCodeOfViewer(ctx.viewer) };
 }
+
+/** P-9a refusal: the structure belongs to the project's PMs and the director. */
+const STRUCTURE_ONLY = 'Only the project manager or the director can change the plan structure — you can update the progress of your own activities';
+/** P-9a refusal of a progress entry on someone else's activity. */
+const OWN_PROGRESS_ONLY = 'You can update the progress of your own activities only';
+
+/** The viewer may enter the % complete of this activity (PM team, director, or its owner). */
+const mayEnterProgress = (r: EditablePlan, a: { owner: string | null }) => canEditProgress(r.ctx, !!r.ownerCode && a.owner === r.ownerCode);
 
 const refresh = (code: string) => revalidatePath(`/projects/${code}`, 'layout');
 
@@ -81,11 +97,12 @@ async function predError(e: PredError): Promise<string> {
  * written, so they do not set the "edited" mark.
  */
 export async function editActivity(code: string, actId: string, field: ActivityField, value: string): Promise<PlanActionResult> {
-  const r = await editablePlan(code);
+  const r = await editablePlan(code, field === 'pct' ? 'progress' : 'structure');
   if ('error' in r) return r;
   const { t } = await getI18n();
   const a = r.data.activities.find((x) => x.id === actId);
   if (!a || !FIELDS.includes(field)) return { error: t('Invalid request') };
+  if (field === 'pct' && !mayEnterProgress(r, a)) return { error: t(OWN_PROGRESS_ONLY) };
   const v = str(value);
   let patch: ActivityPatch | null = null;
   let normalized: string;
@@ -267,12 +284,14 @@ export async function addWorkPackage(code: string, values: Record<string, string
 
 /** AF `progress` — "Update progress" (logic 5132). The note is not kept (as in the prototype). */
 export async function saveProgress(code: string, values: Record<string, string>): Promise<PlanFormResult> {
-  const r = await editablePlan(code);
+  const r = await editablePlan(code, 'progress');
   if ('error' in r) return r;
   const { t } = await getI18n();
   const id = str(values?.act).split(' · ')[0];
   if (!id) return { toast: await toastOf('Progress saved') };
-  if (!r.data.activities.some((a) => a.id === id)) return { error: t('Invalid request') };
+  const act = r.data.activities.find((a) => a.id === id);
+  if (!act) return { error: t('Invalid request') };
+  if (!mayEnterProgress(r, act)) return { error: t(OWN_PROGRESS_ONLY) };
   const pc = clampPct(str(values?.pc));
   await updateActivity(code, id, { pct: pc });
   await afterScheduleEdit(code, r.actor);

@@ -6,7 +6,8 @@ import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { NOTIFICATION_ICON, stampText, type ActivityKind, type NotificationKind } from '@/server/db/codes';
 import { nextNumber, recordActivity, writeAudit, type ActivityInput, type AuditInput } from '@/server/db/helpers';
-import { activityEvents, auditEntries, notificationRecipients, notifications, projects, users } from '@/server/db/schema';
+import { activityEvents, auditEntries, notificationRecipients, notifications, projects } from '@/server/db/schema';
+import { userIdOf, userIdsOfPersons, userIdsWithRoles, type UserRef } from './users';
 
 export interface NotificationRow {
   /** "n1". */
@@ -27,22 +28,20 @@ export interface NotificationRow {
   projectCode: string | null;
 }
 
-async function userIdOf(role: string): Promise<string | null> {
+/**
+ * Notifications delivered to a user (bell panel order), with that user's read state. `who` = the viewer (signed-in user
+ * or demo persona), or a role standing for its demo persona's user.
+ */
+export async function listNotifications(who: UserRef): Promise<NotificationRow[]> {
   const db = await getDb();
-  const [u] = await db.select({ id: users.id }).from(users).where(eq(users.role, role));
-  return u?.id ?? null;
-}
-
-/** Notifications delivered to the user holding `role` (bell panel order), with that user's read state. */
-export async function listNotifications(role: string): Promise<NotificationRow[]> {
-  const db = await getDb();
+  const userId = await userIdOf(db, who);
+  if (!userId) return [];
   const rows = await db
     .select({ n: notifications, readAt: notificationRecipients.readAt, code: projects.code })
     .from(notificationRecipients)
-    .innerJoin(users, eq(users.id, notificationRecipients.userId))
     .innerJoin(notifications, eq(notifications.id, notificationRecipients.notificationId))
     .leftJoin(projects, eq(projects.id, notifications.projectId))
-    .where(eq(users.role, role))
+    .where(eq(notificationRecipients.userId, userId))
     .orderBy(asc(notifications.sortOrder));
   return rows.map(({ n, readAt, code }) => ({
     id: n.code, kind: n.kind, icon: NOTIFICATION_ICON[n.kind], title: n.title, sub: n.body, occurredAt: n.occurredAt.toISOString(), when: stampText(n.occurredAt),
@@ -50,21 +49,22 @@ export async function listNotifications(role: string): Promise<NotificationRow[]
   }));
 }
 
-/** Unread count of a role (bell badge; Activity & integrations KPI). */
-export async function countUnreadNotifications(role: string): Promise<number> {
+/** Unread count of a user (bell badge; Activity & integrations KPI). */
+export async function countUnreadNotifications(who: UserRef): Promise<number> {
   const db = await getDb();
+  const userId = await userIdOf(db, who);
+  if (!userId) return 0;
   const [r] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(notificationRecipients)
-    .innerJoin(users, eq(users.id, notificationRecipients.userId))
-    .where(and(eq(users.role, role), isNull(notificationRecipients.readAt)));
+    .where(and(eq(notificationRecipients.userId, userId), isNull(notificationRecipients.readAt)));
   return r?.n ?? 0;
 }
 
 /** Opening a notification marks it read for that user only. */
-export async function markNotificationRead(role: string, code: string): Promise<void> {
+export async function markNotificationRead(who: UserRef, code: string): Promise<void> {
   const db = await getDb();
-  const userId = await userIdOf(role);
+  const userId = await userIdOf(db, who);
   if (!userId) return;
   const [n] = await db.select({ id: notifications.id }).from(notifications).where(eq(notifications.code, code));
   if (!n) return;
@@ -75,9 +75,9 @@ export async function markNotificationRead(role: string, code: string): Promise<
 }
 
 /** "Mark all read" — every notification of that user. */
-export async function markAllNotificationsRead(role: string): Promise<void> {
+export async function markAllNotificationsRead(who: UserRef): Promise<void> {
   const db = await getDb();
-  const userId = await userIdOf(role);
+  const userId = await userIdOf(db, who);
   if (!userId) return;
   await db.update(notificationRecipients).set({ readAt: new Date() }).where(and(eq(notificationRecipients.userId, userId), isNull(notificationRecipients.readAt)));
 }
@@ -89,12 +89,17 @@ export interface NewNotificationInput {
   screen: string;
   params?: Record<string, unknown>;
   projectCode?: string | null;
-  /** Roles whose users receive it. */
+  /** Roles whose users receive it (kept on the notification as its audience). */
   audience: string[];
+  /**
+   * Addressed to these persons instead (their active user accounts), e.g. the recipient of a resource request: with real
+   * users several people hold the same role, so a personal notice must not go to the whole role.
+   */
+  toPersonIds?: string[];
   occurredAt?: Date;
 }
 
-/** Creates a notification on top of the bell list for the users of the audience roles. Returns its code. */
+/** Creates a notification on top of the bell list for its recipients (persons, else the audience roles). Returns its code. */
 export async function createNotification(input: NewNotificationInput): Promise<string> {
   const db = await getDb();
   return db.transaction(async (tx) => {
@@ -109,8 +114,7 @@ export async function createNotification(input: NewNotificationInput): Promise<s
         targetParams: input.params ?? {}, audienceRoles: input.audience, sortOrder: minOrder - 1,
       })
       .returning({ id: notifications.id });
-    const recipients = await tx.select({ id: users.id, role: users.role }).from(users);
-    const to = recipients.filter((u) => input.audience.includes(u.role));
+    const to = input.toPersonIds ? await userIdsOfPersons(tx, input.toPersonIds) : await userIdsWithRoles(tx, input.audience);
     if (to.length) await tx.insert(notificationRecipients).values(to.map((u) => ({ notificationId: n.id, userId: u.id })));
     return code;
   });

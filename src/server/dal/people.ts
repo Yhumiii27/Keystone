@@ -164,7 +164,9 @@ export async function getClientCodes(): Promise<Record<string, string>> {
 }
 
 export interface UserRow {
+  /** Demo persona role, else the user's highest role. */
   role: string;
+  roles: string[];
   name: string;
   shortName: string;
   /** Persona title, EN source string. */
@@ -172,15 +174,17 @@ export interface UserRow {
   client: string | null;
 }
 
-/** Signed-in users = the "View as" personas. */
+/** User accounts (R-039: one per person — the demo "View as" personas and the users who signed in with Entra ID). */
 export async function listUsers(): Promise<UserRow[]> {
   const db = await getDb();
   const userClient = alias(clients, 'user_client');
   const rows = await db
-    .select({ role: users.role, fullName: persons.fullName, shortName: persons.shortName, title: users.title, client: userClient.name })
+    .select({ personaRole: users.personaRole, roles: users.roles, fullName: persons.fullName, shortName: persons.shortName, title: users.title, client: userClient.name })
     .from(users)
     .innerJoin(persons, eq(persons.id, users.personId))
     .leftJoin(userClient, eq(userClient.id, users.clientId))
     .orderBy(asc(users.sortOrder));
-  return rows.map((r) => ({ role: r.role, name: r.fullName ?? r.shortName, shortName: r.shortName, title: r.title, client: r.client }));
+  return rows.map((r) => ({
+    role: r.personaRole ?? r.roles[0] ?? '', roles: r.roles, name: r.fullName ?? r.shortName, shortName: r.shortName, title: r.title, client: r.client,
+  }));
 }

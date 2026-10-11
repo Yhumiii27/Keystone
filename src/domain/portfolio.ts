@@ -6,6 +6,7 @@ import type { RoleKey, ScreenId } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
 import { fmtD, mIdx, money, monthDate } from '@/lib/format';
 import { DEFAULT_HEALTH_THRESHOLDS, HEALTH_LABEL, clampHealthCpi, healthOf, type Health, type HealthThresholds } from './health';
+import type { ProjectTeamRole } from './rights';
 
 /** EVM inputs of a project record (ProjectRow subset). Amounts in k€. */
 export interface EvmInput {
@@ -299,7 +300,11 @@ export function projectIndicators(
 // ── My projects (§2) ───────────────────────────────────────────────────────────────────────────────
 
 /** EN labels of the viewer's role on a project (FR: Directrice de portefeuille, Client, Chef de projet…). */
-export type MyProjectRole = 'Portfolio director' | 'Client' | 'Project manager' | 'Team member' | 'Assigned tasks' | 'Department involved';
+export type MyProjectRole =
+  | 'Portfolio director' | 'Client' | 'Project manager' | 'Deputy project manager' | 'Referent' | 'Team member' | 'Assigned tasks' | 'Department involved';
+
+/** Named-team role → My projects tag (R-041). */
+const TEAM_ROLE_TAG: Record<ProjectTeamRole, MyProjectRole> = { pm: 'Project manager', deputy: 'Deputy project manager', referent: 'Referent', team: 'Team member' };
 
 /** Open-task record (TODOS: `project` is the 3-letter key the project code starts with). */
 export interface TodoLite {
@@ -329,14 +334,18 @@ export interface MyProjectsData {
 const isOpenTodoOf = (name: string, code?: string) => (t: TodoLite) =>
   t.person === name && t.status !== 'done' && (code === undefined || code.startsWith(t.project));
 
-/** `myProjRole` (line 5065), first match wins; null = not one of my projects. `team` = full names (DEFS.team). */
+/**
+ * `myProjRole` (line 5065), first match wins; null = not one of my projects. `team` = full names (DEFS.team); `teamRole` = the
+ * viewer's role in the project's named team (R-041: PM, co-PM, deputy, referent, member) when known.
+ */
 export function myProjectRole(
   v: MyProjectsViewer,
-  p: { code: string; pm: string; client: string; team: string[] | null },
+  p: { code: string; pm: string; client: string; team: string[] | null; teamRole?: ProjectTeamRole | null },
   data: MyProjectsData,
 ): MyProjectRole | null {
   if (v.role === 'director') return 'Portfolio director';
   if (v.role === 'client') return p.client === v.clientOrg ? 'Client' : null;
+  if (p.teamRole) return TEAM_ROLE_TAG[p.teamRole];
   if (p.pm === v.short) return 'Project manager';
   if (p.team?.includes(v.name)) return 'Team member';
   if (data.todos.some(isOpenTodoOf(v.name, p.code))) return 'Assigned tasks';
@@ -378,10 +387,14 @@ export function myProjectsModel<P extends EvmInput & { code: string; pm: string;
   pool: P[],
   sched: Record<string, ScheduleSummary & { team: string[] }>,
   data: MyProjectsData,
-  opts: { personaTitle: string; pendingDecisions: number; lang: Lang; thresholds?: HealthThresholds },
+  opts: {
+    personaTitle: string; pendingDecisions: number; lang: Lang; thresholds?: HealthThresholds;
+    /** The viewer's rights per project (R-041): team role and read-only; default = the prototype's rule (PM by short name). */
+    access?: (p: P) => { teamRole: ProjectTeamRole | null; readOnly: boolean };
+  },
 ): MyProjectsModel<P> {
   let list: (readonly [P, MyProjectRole | ''])[] = pool
-    .map((p) => [p, myProjectRole(v, { ...p, team: sched[p.code]?.team ?? null }, data) ?? ''] as const)
+    .map((p) => [p, myProjectRole(v, { ...p, team: sched[p.code]?.team ?? null, teamRole: opts.access?.(p).teamRole }, data) ?? ''] as const)
     .filter((x) => x[1]);
   const fallback = !list.length;
   if (fallback) list = pool.map((p) => [p, ''] as const);
@@ -392,7 +405,7 @@ export function myProjectsModel<P extends EvmInput & { code: string; pm: string;
       project: p,
       health,
       myRole: role,
-      readOnly: v.role !== 'director' && v.role !== 'client' && p.pm !== v.short,
+      readOnly: opts.access ? opts.access(p).readOnly : v.role !== 'director' && v.role !== 'client' && p.pm !== v.short,
       progressPct: Math.round(p.progress * 100) + '%',
       progressBar: wholePct(p.progress),
       ind: projectIndicators(p, sched[p.code] ?? null, !!health, opts.lang, opts.thresholds),

@@ -20,13 +20,15 @@ export interface ApprovalsScreenProps {
   /** Department chips in DEPTS order with their pending count. */
   departments: { name: string; pending: number }[];
   canDecide: boolean;
+  /** R-049: whose My work the viewer may open from the team list (names); default: everyone's. */
+  workable?: readonly string[];
   /** Translator of the feature (reqT). */
   t: T;
 }
 
 const workHref = (person: string) => `${screenHref('mywork')}?person=${encodeURIComponent(person)}`;
 
-export function ApprovalsScreen({ model, department, departments, canDecide, t }: ApprovalsScreenProps) {
+export function ApprovalsScreen({ model, department, departments, canDecide, workable, t }: ApprovalsScreenProps) {
   return (
     <div className={s.screen}>
       <div className={s.headRow}>
@@ -104,15 +106,27 @@ export function ApprovalsScreen({ model, department, departments, canDecide, t }
             <span className={cx(s.th, s.right)}>{t('Pending')}</span>
             {model.team.map((p) => (
               <div key={p.name} className={s.contents}>
-                <Link href={workHref(p.name)} className={s.member} title={t('Open their work')}>
-                  <span className={s.avatar26} aria-hidden>
-                    {p.initials}
+                {!workable || workable.includes(p.name) ? (
+                  <Link href={workHref(p.name)} className={s.member} title={t('Open their work')}>
+                    <span className={s.avatar26} aria-hidden>
+                      {p.initials}
+                    </span>
+                    <div className={s.memberText}>
+                      <span className={s.ellipsis}>{p.name}</span>
+                      <span className={s.sub11}>{p.role}</span>
+                    </div>
+                  </Link>
+                ) : (
+                  <span className={s.member}>
+                    <span className={s.avatar26} aria-hidden>
+                      {p.initials}
+                    </span>
+                    <div className={s.memberText}>
+                      <span className={s.ellipsis}>{p.name}</span>
+                      <span className={s.sub11}>{p.role}</span>
+                    </div>
                   </span>
-                  <div className={s.memberText}>
-                    <span className={s.ellipsis}>{p.name}</span>
-                    <span className={s.sub11}>{p.role}</span>
-                  </div>
-                </Link>
+                )}
                 <div className={s.heat} style={{ '--heat-bg': p.w1.bg, '--heat-fg': p.w1.fg } as CSSProperties}>
                   {p.w1.v}
                 </div>

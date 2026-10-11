@@ -402,6 +402,16 @@ export async function insertWorkPackage(code: string, input: NewWorkPackage): Pr
   });
 }
 
+/**
+ * OWN key of the viewer (P-9a: an activity's owner enters its progress) — by person for signed-in users, by short name for the
+ * demo personas; null when the viewer owns no activity anywhere.
+ */
+export async function ownerCodeOfViewer(v: { personId: string | null; short: string }): Promise<string | null> {
+  const db = await getDb();
+  const [p] = await db.select({ code: persons.ownerCode }).from(persons).where(v.personId ? eq(persons.id, v.personId) : eq(persons.shortName, v.short));
+  return p?.code ?? null;
+}
+
 /** OWN key of a full name (INIT_OF), or null. */
 export async function ownerCodeOfName(name: string): Promise<string | null> {
   const db = await getDb();

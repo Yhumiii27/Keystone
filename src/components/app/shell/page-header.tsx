@@ -14,7 +14,8 @@ import { STATUS_DATE } from '@/lib/format';
 import { PROTO } from '@/server/prototype';
 import { getProject, projectLabel, type ProjectRow } from '@/server/dal/projects';
 import { crumbExtraOf, defaultTitleOf, notificationsFor, zoneBarOf } from '@/server/dal/shell';
-import { getProjectScope } from '@/server/project-context';
+import { clientRefusedScreen } from '@/domain/rights';
+import { getProjectScope, refuseClient } from '@/server/project-context';
 import { getI18n, getLastProject, getViewer, getZone } from '@/server/session';
 import { ExportButton, GlobalSearch, LangToggle, Notifications, ProjectSwitcher, ZoneSeg } from './header-islands';
 import { PROJECT_EDITABLE, crumbBase, isOutside } from './nav-model';
@@ -45,21 +46,25 @@ const healthView = (p: Pick<ProjectRow, 'health'>) =>
 
 export async function PageHeader({ screen, projectCode, title, crumbExtra, primary, taskId, projectParam }: PageHeaderProps) {
   const [{ t, lang }, viewer, zone, lastProject, scope] = await Promise.all([getI18n(), getViewer(), getZone(), getLastProject(), getProjectScope()]);
+  // R-042 (P-1, P-10a): backstop of the pages' own refusal — a client never gets an outside screen or another
+  // organisation's project rendered.
+  if (clientRefusedScreen(viewer.role, screen)) refuseClient();
   const def = SCREEN_BY_ID[screen];
   const isProject = def.scope === 'project';
   const code = projectCode ?? lastProject;
   const project = isProject ? await getProject(code) : projectParam ? await getProject(projectParam) : null;
+  if (project && scope.access(project).refused) refuseClient();
 
   const outside = isOutside(viewer.role, screen);
   const readOnly = !!project && scope.readOnly(project);
   const showPrimary = !!primary && !outside && !(readOnly && PROJECT_EDITABLE.includes(screen));
 
-  const extra = crumbExtra !== undefined ? crumbExtra : await crumbExtraOf(screen, { role: viewer.role, code, zone, taskId });
+  const extra = crumbExtra !== undefined ? crumbExtra : await crumbExtraOf(screen, { role: viewer, code, zone, taskId });
   const crumb = crumbBase(screen) + (extra ? ' · ' + extra : '');
 
   const [rawNotifs, defTitle] = await Promise.all([
-    notificationsFor(viewer.role),
-    title === undefined ? defaultTitleOf(screen, { taskId, role: viewer.role }) : Promise.resolve(null),
+    notificationsFor(viewer),
+    title === undefined ? defaultTitleOf(screen, { taskId, role: viewer }) : Promise.resolve(null),
   ]);
   const notifs = rawNotifs.map((n) => ({ ...n, title: t(n.title), sub: t(n.sub), when: t(n.when) }));
 
@@ -75,7 +80,8 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
         health: t(h.label),
         tagClass: h.cls,
         mine: scope.isMine(p),
-        readOnly: scope.scopeAvail && !scope.isMine(p),
+        // R-041: read-only on every project the viewer is not on the team of.
+        readOnly: scope.readOnly(p),
         // Prototype projMatch fields, plus the displayed (FR) name so what the user reads also matches.
         haystack: `${p.code} ${p.name} ${pi.id ?? ''} ${pi.ana ?? ''} ${p.pm} ${p.client} ${lang === 'fr' ? t(p.name) : ''}`.toLowerCase(),
       };
@@ -123,8 +129,7 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
         </div>
         <LangToggle lang={lang} />
         <div className={styles.actions}>
-          {/* P-1: outside the workspace a client cannot export (the route answers 403). */}
-          {!(outside && viewer.role === 'client') && <ExportButton screen={screen} code={project?.code ?? code} formats={exportFormatsOf(screen)} task={taskId ?? null} />}
+          <ExportButton screen={screen} code={project?.code ?? code} formats={exportFormatsOf(screen)} task={taskId ?? null} />
           {showPrimary && primary}
         </div>
       </header>

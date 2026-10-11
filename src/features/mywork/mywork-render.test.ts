@@ -109,6 +109,31 @@ describe('My work render', () => {
     expect(html).toContain('aria-haspopup'); // person switcher
   });
 
+  it('R-049 (R-9 b): ?person= only within the hierarchy and the projects led — else ignored with a note', async () => {
+    state.lang = 'en';
+    const note = 'You can open the work of your department and of your projects’ teams only — showing yours';
+    // The quality manager heads Quality (Julien Wagner is in Engineering) and leads no project.
+    state.role = 'quality';
+    let html = await myWork({ person: 'Julien Wagner' });
+    expect(html).toContain('data-crumb="Gabriel Comte"');
+    expect(text(html)).toContain(note);
+    // The head of engineering opens Julien Wagner's work (no note); the PM of Harbor Line too (he works on it).
+    state.role = 'depthead';
+    html = await myWork({ person: 'Julien Wagner' });
+    expect([html.includes('data-crumb="Julien Wagner"'), text(html).includes(note)]).toEqual([true, false]);
+    state.role = 'pm';
+    expect(await myWork({ person: 'Julien Wagner' })).toContain('data-crumb="Julien Wagner"');
+    // The member: their own work only, with the note (was: silently ignored).
+    state.role = 'member';
+    html = await myWork({ person: 'Hélène Sauvage' });
+    expect([html.includes('data-crumb="Julien Wagner"'), text(html).includes(note)]).toEqual([true, true]);
+    // Their own name is never "ignored".
+    expect(text(await myWork({ person: 'Julien Wagner' }))).not.toContain(note);
+    state.lang = 'fr';
+    state.role = 'quality';
+    expect(text(await myWork({ person: 'Julien Wagner' }))).toContain('Vous ne pouvez ouvrir que le travail de votre service et des équipes de vos projets — voici le vôtre');
+  });
+
   it('outside the workspace (pm): read-only — no toggles, no primary', async () => {
     state.role = 'pm';
     state.lang = 'en';
@@ -200,7 +225,13 @@ describe('Task detail render', () => {
     html = await task('T-2305');
     expect(html).not.toContain('Write a comment');
     expect(html).not.toContain('Mark done');
-    expect(html).toContain('href="/my/tasks?person=Julien+Wagner"');
+    // R-049 (R-9 b): the quality manager heads Quality, not Julien Wagner's department, and leads no project — back to their own
+    // work; the head of engineering (his department) and the director open his.
+    expect(html).not.toContain('href="/my/tasks?person=Julien+Wagner"');
+    state.role = 'depthead';
+    expect(await task('T-2305')).toContain('href="/my/tasks?person=Julien+Wagner"');
+    state.role = 'director';
+    expect(await task('T-2305')).toContain('href="/my/tasks?person=Julien+Wagner"');
     await expect(task('T-9999')).rejects.toThrow('404');
     await expect(task('nope')).rejects.toThrow('404');
   });

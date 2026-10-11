@@ -24,6 +24,7 @@ import { getSupplierScorecard } from '@/server/dal/suppliers';
 import { procT } from './i18n';
 import { invoiceDrawerView, invoiceTabView, rfqDrawerView, rfqTabView, segView, supplierTabView, type SourcingCtx } from './model';
 import { SourcingBody } from './sourcing-view';
+import { canSeeSupplierPrices } from '@/domain/rights';
 
 const withI18n = (lang: Lang, el: ReactElement) => h(I18nProvider, { lang } as ComponentProps<typeof I18nProvider>, el);
 const text = (html: string) =>
@@ -46,7 +47,8 @@ function inOrder(seq: string[], expected: string[]) {
   }
 }
 const count = (s: string, sub: string) => s.split(sub).length - 1;
-const ctxOf = (lang: Lang, role: RoleKey = 'director'): SourcingCtx => ({ t: procT(makeT(lang), lang), lang, role, canEdit: canSee(role, 'procurement') });
+// R-046: prices follow the role (director, PM, procurement), as the page does.
+const ctxOf = (lang: Lang, role: RoleKey = 'director'): SourcingCtx => ({ t: procT(makeT(lang), lang), lang, role, canEdit: canSee(role, 'procurement'), prices: canSeeSupplierPrices(role) });
 
 async function rfqHtml(lang: Lang, role: RoleKey = 'director', open: string | null = null) {
   const c = ctxOf(lang, role);

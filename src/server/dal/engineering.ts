@@ -304,7 +304,7 @@ export async function validateEngRelease(projectCode: string, number: string, ac
   const db = await getDb();
   await db.transaction(async (tx) => {
     const p = await projectOf(tx, projectCode);
-    if (!(await managesProject(tx, actor, p.pmPersonId))) throw new Error('Only the project manager validates releases');
+    if (!(await managesProject(tx, actor, p))) throw new Error('Only the project manager validates releases');
     const [d] = await tx.select().from(documents).where(eq(documents.number, number));
     if (d.status !== 'release_proposed') throw new Error(`${number} is not proposed for release`);
     const prev = d.currentRevision > 'A' && /^[A-Z]$/.test(d.currentRevision) ? prevRev(d.currentRevision) : null;

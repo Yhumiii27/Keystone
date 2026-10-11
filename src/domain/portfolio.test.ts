@@ -1,7 +1,7 @@
 // Golden values of the Portfolio overview and My projects (docs/spec/03 §2.2 and §4 seed values), computed
 // from the prototype data set exactly as the prototype does.
 import { describe, expect, it } from 'vitest';
-import { PERSONA_BY_ROLE, CLIENT_ORG } from '@/config/personas';
+import { DEMO_CLIENT_ORG, PERSONA_BY_ROLE } from '@/config/personas';
 import type { RoleKey } from '@/config/screens';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { money } from '@/lib/format';
@@ -140,7 +140,7 @@ describe('My projects (spec §2.2)', () => {
   const todos = PROTO.TODOS as { person: string; status: string; project: string }[];
   const viewer = (role: RoleKey): MyProjectsViewer => {
     const p = PERSONA_BY_ROLE[role];
-    return { role, name: p.name, short: p.short, clientOrg: CLIENT_ORG, dept: role === 'depthead' ? 'Engineering' : null };
+    return { role, name: p.name, short: p.short, clientOrg: DEMO_CLIENT_ORG, dept: role === 'depthead' ? 'Engineering' : null };
   };
   const model = (role: RoleKey, pending = 0) =>
     myProjectsModel(viewer(role), POOL, SCHED, { deptOf, todos }, { personaTitle: PERSONA_BY_ROLE[role].title, pendingDecisions: pending, lang: 'en' });

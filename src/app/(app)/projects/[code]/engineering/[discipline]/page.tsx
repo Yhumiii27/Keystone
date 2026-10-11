@@ -49,7 +49,7 @@ export default async function EngineeringDisciplinePage({ params, searchParams }
     ? disciplineScreenView(
         reg,
         disc,
-        { filter, rights: { canEdit, canValidate: canValidateRelease(ctx.viewer, ctx.isMine) }, todayIso: parisParts(new Date()).iso, parisDay },
+        { filter, rights: { canEdit, canValidate: canValidateRelease(ctx.viewer, ctx.isLead) }, todayIso: parisParts(new Date()).iso, parisDay },
         t,
         lang,
       )

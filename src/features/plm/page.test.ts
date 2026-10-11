@@ -6,6 +6,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const session = { role: 'director' as string, lang: 'en' as 'en' | 'fr', project: 'HLT-026' };
 vi.mock('next/navigation', () => ({
+  redirect: (url: string) => {
+    throw new Error(`REDIRECT ${url}`);
+  },
   notFound: () => {
     throw new Error('NOT_FOUND');
   },
@@ -110,9 +113,21 @@ describe('/reference/parts', () => {
       session.role = role;
       expect((await page()).PageHeader.props.primary, role).toBeTruthy();
     }
-    for (const role of ['depthead', 'member', 'client']) {
+    for (const role of ['depthead', 'member']) {
       session.role = role;
       expect((await page()).PageHeader.props.primary, role).toBeUndefined();
+    }
+    // R-042 (P-1): outside their workspace the client is sent home.
+    session.role = 'client';
+    await expect(page()).rejects.toThrow('REDIRECT /');
+  });
+
+  it('R-046 (NEW-D2-1): catalogue prices for the director, the PMs and procurement only; masked prices are not sortable', async () => {
+    for (const [role, masked] of [['director', false], ['pm', false], ['procurement', false], ['englead', true], ['quality', true], ['member', true]] as const) {
+      session.role = role;
+      const v = (await page()).PlmCatalogue.props.view as { rows: { price: string }[]; headers: { key: string; sort: unknown }[] };
+      expect(v.rows.every((r) => r.price === '•••'), role).toBe(masked);
+      expect(!!v.headers.find((h) => h.key === 'price')!.sort, role).toBe(!masked);
     }
   });
 

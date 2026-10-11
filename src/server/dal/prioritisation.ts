@@ -8,11 +8,12 @@ import { and, asc, eq } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { scoreAxis, type ScoreAxis, type StageCode } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
-import { portfolioScores, projects, scoreAxes, scoreWeights, users } from '@/server/db/schema';
+import { portfolioScores, projects, scoreAxes, scoreWeights } from '@/server/db/schema';
 import type { ZoneKey } from '@/server/session';
 import { listBillingPlans, marginPct } from './cashflow';
 import { capacityModel } from './kpis';
 import { listProjects, type ProjectRow } from './projects';
+import { userIdOf, type UserRef } from './users';
 
 export interface ScoreAxisRow {
   code: ScoreAxis;
@@ -28,36 +29,34 @@ export async function listScoreAxes(): Promise<ScoreAxisRow[]> {
   return rows.map((r) => ({ code: r.code, label: r.label, defaultWeight: r.defaultWeight }));
 }
 
-/** Weights of a viewer (role) — their saved weights over the defaults (`pfWeights`). */
-export async function getScoreWeights(role: string): Promise<Record<ScoreAxis, number>> {
+/** Weights of a viewer (or a role's demo persona) — their saved weights over the defaults (`pfWeights`). */
+export async function getScoreWeights(who: UserRef): Promise<Record<ScoreAxis, number>> {
   const db = await getDb();
-  const axes = await listScoreAxes();
-  const saved = await db
-    .select({ axis: scoreWeights.axis, weight: scoreWeights.weight })
-    .from(scoreWeights)
-    .innerJoin(users, eq(users.id, scoreWeights.userId))
-    .where(eq(users.role, role));
+  const [axes, userId] = await Promise.all([listScoreAxes(), userIdOf(db, who)]);
+  const saved = userId
+    ? await db.select({ axis: scoreWeights.axis, weight: scoreWeights.weight }).from(scoreWeights).where(eq(scoreWeights.userId, userId))
+    : [];
   const w = Object.fromEntries(axes.map((a) => [a.code, a.defaultWeight])) as Record<ScoreAxis, number>;
   for (const s of saved) w[s.axis] = s.weight;
   return w;
 }
 
 /** Weight input of the Weights card (`setW`: NaN → 0, saved per user). Weights are not normalised (the sum is shown). */
-export async function setScoreWeight(role: string, axis: ScoreAxis, weight: number): Promise<void> {
+export async function setScoreWeight(who: UserRef, axis: ScoreAxis, weight: number): Promise<void> {
   if (!scoreAxis.isCode(axis)) throw new Error(`Unknown axis ${axis}`);
   const w = Number.isFinite(weight) ? Math.max(0, weight) : 0;
   const db = await getDb();
-  const [u] = await db.select({ id: users.id }).from(users).where(eq(users.role, role));
-  if (!u) throw new Error(`Unknown role ${role}`);
-  await db.insert(scoreWeights).values({ userId: u.id, axis, weight: w })
+  const userId = await userIdOf(db, who);
+  if (!userId) throw new Error('Unknown user');
+  await db.insert(scoreWeights).values({ userId, axis, weight: w })
     .onConflictDoUpdate({ target: [scoreWeights.userId, scoreWeights.axis], set: { weight: w, updatedAt: new Date() } });
 }
 
 /** Back to the SCORE_AXES defaults for a viewer. */
-export async function resetScoreWeights(role: string): Promise<void> {
+export async function resetScoreWeights(who: UserRef): Promise<void> {
   const db = await getDb();
-  const [u] = await db.select({ id: users.id }).from(users).where(eq(users.role, role));
-  if (u) await db.delete(scoreWeights).where(eq(scoreWeights.userId, u.id));
+  const userId = await userIdOf(db, who);
+  if (userId) await db.delete(scoreWeights).where(eq(scoreWeights.userId, userId));
 }
 
 /** Scores per project code, in axis order ([fit, margin, risk, res, client]). */
@@ -105,9 +104,9 @@ const PIPELINE: ReadonlySet<StageCode> = new Set(['initiative', 'aps', 'apd']);
 const EXECUTION: ReadonlySet<StageCode> = new Set(['etudes', 'approvisionnements', 'fabrication_assemblage', 'fat', 'expedition', 'chantier', 'mise_en_service_sat']);
 const CLOSED: ReadonlySet<StageCode> = new Set(['clos', 'annule']);
 
-/** Ranking, weights and KPI populations of the Prioritisation tab for a viewer (role) and zone. */
-export async function getPrioritisation(role: string, zone: ZoneKey | null): Promise<Prioritisation> {
-  const [axes, w, scores, plans, all] = await Promise.all([listScoreAxes(), getScoreWeights(role), listPortfolioScores(), listBillingPlans(), listProjects()]);
+/** Ranking, weights and KPI populations of the Prioritisation tab for a viewer (or a role's demo persona) and zone. */
+export async function getPrioritisation(who: UserRef, zone: ZoneKey | null): Promise<Prioritisation> {
+  const [axes, w, scores, plans, all] = await Promise.all([listScoreAxes(), getScoreWeights(who), listPortfolioScores(), listBillingPlans(), listProjects()]);
   const zp = all.filter((p) => !zone || p.zone === zone);
   const weights = axes.map((a) => w[a.code]);
   const ranking = zp

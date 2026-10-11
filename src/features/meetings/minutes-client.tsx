@@ -166,6 +166,8 @@ export interface MinutesEditorProps {
   /** Minutes not sent yet. */
   editable: boolean;
   canEdit: boolean;
+  /** "Send minutes to all invitees" (P-9b: the meeting's organiser and the project's PM); others add notes only. */
+  canSend?: boolean;
   /** This meeting's URL; the page switches to it after a write when the selection came from the default. */
   selfHref: string;
   pinned: boolean;
@@ -177,7 +179,7 @@ interface PendingLine {
 }
 
 /** Agenda & notes (one block per point, selectable when editable) + composer + "Send minutes to all invitees". */
-export function MinutesEditor({ code, meeting, organizer, agenda, editable, canEdit, selfHref, pinned }: MinutesEditorProps) {
+export function MinutesEditor({ code, meeting, organizer, agenda, editable, canEdit, canSend = canEdit, selfHref, pinned }: MinutesEditorProps) {
   const { t } = useI18n();
   const toast = useToast();
   const router = useRouter();
@@ -324,10 +326,14 @@ export function MinutesEditor({ code, meeting, organizer, agenda, editable, canE
             </div>
           </div>
           <div className={s.footer}>
-            <span className={s.footerText}>{t('Minutes become a numbered document (MIN) · actions go to the owners’ tasks · read receipts are tracked')}</span>
-            <Button variant="primary" size="sm" icon={PaperPlaneTilt} onClick={send} disabled={busy}>
-              {t('Send minutes to all invitees')}
-            </Button>
+            <span className={s.footerText}>
+              {t(canSend ? 'Minutes become a numbered document (MIN) · actions go to the owners’ tasks · read receipts are tracked' : 'The organiser or the project manager sends the minutes')}
+            </span>
+            {canSend && (
+              <Button variant="primary" size="sm" icon={PaperPlaneTilt} onClick={send} disabled={busy}>
+                {t('Send minutes to all invitees')}
+              </Button>
+            )}
           </div>
         </>
       )}

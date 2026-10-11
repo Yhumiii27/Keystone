@@ -1,6 +1,6 @@
-// Organisation and reference data (docs/spec/11 §3.1): persons, users (personas), departments, zones,
+// Organisation and reference data (docs/spec/11 §3.1): persons, users (one per person, R-039), departments, zones,
 // countries, cities, clients.
-import { boolean, date, doublePrecision, integer, pgTable, text, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { boolean, date, doublePrecision, integer, pgTable, text, timestamp, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { ZoneCode } from '../codes';
 import { id, num, timestamps } from './_common';
 
@@ -52,17 +52,34 @@ export const persons = pgTable('persons', {
   ...timestamps,
 });
 
-/** Users who sign in — the 8 "View as" personas (PERSONAS 3747). One row per role in the prototype. */
+/**
+ * User accounts — one row per person (R-039). Real users are created at their first Microsoft Entra ID sign-in (R-038):
+ * the token e-mail designates the person, the token roles (app roles or mapped groups) give `roles`. The 8 "View as"
+ * personas (PERSONAS 3747) are seeded as users too, with their persona role, for the demo mode (KEYSTONE_AUTH=demo).
+ */
 export const users = pgTable('users', {
   id: id(),
-  /** RoleKey (director, pm, depthead, member, englead, quality, procurement, client). */
-  role: text('role').notNull().unique(),
-  personId: uuid('person_id').notNull().references(() => persons.id),
-  /** Persona title, EN source string ("Client — Port authority"). */
+  /**
+   * Demo mode: the "View as" persona this user stands for (RoleKey; one user per persona role). Null for real users.
+   * The database column keeps its historical name `role`.
+   */
+  personaRole: text('role').unique(),
+  /** Every Keystone role held (RoleKey[], priority order); refreshed from the token at each sign-in. */
+  roles: text('roles').array().notNull().default([]),
+  personId: uuid('person_id').notNull().unique().references(() => persons.id),
+  /** Entra ID object id (`oid` claim) — the stable link to the Microsoft account, set at the first sign-in. */
+  entraObjectId: text('entra_object_id').unique(),
+  /** Sign-in e-mail (lower case) of the last sign-in; the persona e-mail for the demo users. */
+  email: text('email'),
+  /** Title under the user's name, EN source string ("Client — Port authority", the job title). */
   title: text('title').notNull(),
+  /** Department of the user (copied from the person at each sign-in; the staff directory stays the source). */
+  departmentId: uuid('department_id').references(() => departments.id),
+  /** Client organisation of an external user (replaces the CLIENT_ORG constant). */
   clientId: uuid('client_id').references(() => clients.id),
   isExternal: boolean('is_external').notNull().default(false),
   active: boolean('active').notNull().default(true),
+  lastSignInAt: timestamp('last_sign_in_at', { withTimezone: true }),
   sortOrder: integer('sort_order').notNull(),
   ...timestamps,
 });

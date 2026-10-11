@@ -11,9 +11,10 @@ vi.mock('@/server/session', async () => {
   return { getI18n: async () => ({ lang: viewer.lang, t: makeT(viewer.lang) }) };
 });
 vi.mock('@/server/project-context', () => ({
-  // isMine: the test's PM (Romain Aubert) manages HLT-026; the director manages everything.
+  // isLead (R-041): the test's PM (Romain Aubert) manages HLT-026; the director leads everything.
   getProjectContext: async (code: string) => ({
-    project: { code }, viewer: { role: viewer.role, name: viewer.name }, canEdit: () => viewer.canEdit, isMine: viewer.role === 'director' || viewer.name === 'Romain Aubert',
+    project: { code }, viewer: { role: viewer.role, name: viewer.name }, canEdit: () => viewer.canEdit,
+    isMine: true, isLead: viewer.role === 'director' || viewer.name === 'Romain Aubert',
   }),
 }));
 
@@ -65,6 +66,10 @@ describe('Change control Server Functions', () => {
     expect(await decideChangeStepAction('HLT-026', 'CR-008', 'director', 'ok')).toEqual({ error: 'This approval step is not yours to decide' });
     as('pm', 'Romain Aubert');
     expect(await decideChangeStepAction('HLT-026', 'CR-008', 'pm', 'ok')).toEqual({ error: 'This approval step is no longer pending' });
+    // R-041: the PM step belongs to the project's PMs and deputies, not to any PM of its team.
+    as('pm', 'Sophie Perrin');
+    expect(await decideChangeStepAction('HLT-026', 'CR-008', 'pm', 'ok')).toEqual({ error: 'This approval step is not yours to decide' });
+    as('pm', 'Romain Aubert');
     as('quality', 'Gabriel Comte');
     expect(await decideChangeStepAction('HLT-026', 'CR-008', 'ccb', 'ok')).toEqual({ error: 'This approval step is not yours to decide' });
 

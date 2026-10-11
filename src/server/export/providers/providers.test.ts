@@ -162,6 +162,41 @@ describe('rights', () => {
     expect((await lev('procurement')).rows[0]).not.toContain('Hourly rate');
   });
 
+  it('R-046 (NEW-D2-1): supplier prices are left out for the roles that do not see them (orders, PO, sourcing, stock, BOM, parts)', async () => {
+    const [pp] = await sheetsOf('orders', 'procurement', 'code=HLT-026');
+    expect(pp.rows[0]).toContain('Value');
+    const [pq] = await sheetsOf('orders', 'quality', 'code=HLT-026');
+    expect(pq.rows[0]).not.toContain('Value');
+    expect(col(pq.rows, 'Order')).toContain('PO-1082');
+    expect(pq.rows.length).toBe(pp.rows.length);
+    const masked = [
+      ...(await sheetsOf('orders', 'quality', 'code=HLT-026')), ...(await sheetsOf('procurement', 'englead', '')), ...(await sheetsOf('stock', 'member', '')),
+      ...(await sheetsOf('bom', 'englead', 'code=HLT-026')), ...(await sheetsOf('plm', 'quality', '')),
+    ];
+    const euros = masked.flatMap((s) => s.rows.slice(1).flat()).filter((v) => typeof v === 'string' && v.includes('€'));
+    expect(euros).toEqual([]);
+    expect((await sheetsOf('bom', 'pm', 'code=HLT-026')).flatMap((s) => s.rows.slice(1).flat()).some((v) => typeof v === 'number')).toBe(true);
+    const { text } = await pdfOf('orders', 'quality', 'code=HLT-026&variant=po&id=PO-1082', 'en');
+    expect(text).toContain('PO-1082');
+    expect(text).not.toMatch(/\d\s?€|€\s?\d/);
+  });
+
+  it('R-043 (P-10b): the client’s meetings export holds the external meetings only, without the client-questions bridge', async () => {
+    const d = await sheetsOf('meetings', 'director', 'code=HLT-026');
+    const c = await sheetsOf('meetings', 'client', 'code=HLT-026');
+    expect(d.map((s) => s.name)).toContain('Client questions');
+    expect(c.map((s) => s.name)).not.toContain('Client questions');
+    const types = new Set(col(c[0].rows, 'Type'));
+    expect(c[0].rows.length).toBeLessThan(d[0].rows.length);
+    expect(types.size).toBe(1);
+    const internal = col(d[0].rows, 'Meeting').find((n, i) => !types.has(col(d[0].rows, 'Type')[i]))!;
+    // An internal meeting asked by number falls back to the client's own (external) meetings — never its minutes.
+    const f = await runExport(await ctxOf('meetings', 'client', `code=HLT-026&meeting=${internal}`), 'pdf', { compressPdf: false });
+    const text = pdfTextLines(f.body).join('\n');
+    expect(text).not.toContain(String(internal));
+    expect(col(c[0].rows, 'Meeting').some((n) => text.includes(String(n)))).toBe(true);
+  });
+
   it('a client exports only its organisation’s projects, and nothing outside their workspace (P-1)', async () => {
     for (const screen of ['worldmap', 'overview', 'requests', 'task', 'mtypes', 'eco', 'plan', 'budget'] as const)
       await expect(ctxOf(screen, 'client', screen === 'task' ? 'task=T-2331' : 'code=HLT-026'), screen).rejects.toMatchObject({ status: 403 });

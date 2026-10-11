@@ -28,7 +28,7 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
     getI18n(), getScreenAccess('plumbing'), listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts(), getLastProject(),
   ]);
   // The unread count and its persona title are the viewer's; the add-form sub-line names the current project.
-  const [unread, project] = await Promise.all([countUnreadNotifications(access.viewer.role), access.canEdit ? getProject(lastProject) : null]);
+  const [unread, project] = await Promise.all([countUnreadNotifications(access.viewer), access.canEdit ? getProject(lastProject) : null]);
   const view = plumbingView(
     {
       view: parsePlumbView(first(sp.view)),

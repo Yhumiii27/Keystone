@@ -20,6 +20,8 @@ export interface ProjectRow {
   machineType: string | null; // 'EMP' | 'MEMU' | 'SPUR' | 'AUTRE' | 'R&D'
   status: string;          // lifecycle stage, French domain value (prototype label), e.g. 'Fabrication & Assemblage'
   pm: string;              // 'R. Aubert'
+  /** persons.id of the project manager (R-039: ownership by person for signed-in users). */
+  pmPersonId: string | null;
   client: string;          // 'Port authority'
   start: string;           // 'Jan 2026'
   finish: string;          // 'Dec 2026'
@@ -68,7 +70,7 @@ function toRow(r: Joined, th: HealthThresholds): ProjectRow {
   const row = {
     code: p.code, name: p.name, displayId: p.number ?? p.code, analytic: p.analyticCode, das: p.das,
     machineType: p.machineTypeCode ? (machineType.isCode(p.machineTypeCode) ? machineType.label(p.machineTypeCode) : p.machineTypeCode) : null,
-    status: stage.label(p.stage), pm: r.pm ?? '—', client: r.client ?? '—', start: p.startText, finish: p.finishText,
+    status: stage.label(p.stage), pm: r.pm ?? '—', pmPersonId: p.pmPersonId, client: r.client ?? '—', start: p.startText, finish: p.finishText,
     budget: p.budgetKeur, actual: p.actualKeur, progress: p.progress, spi: p.spi,
     city: r.city, country: r.country, zone: r.zoneOverride ?? r.countryZone ?? 'euna', hasData: r.controls != null,
     stage: p.stage, shortCode: p.shortCode, isNew: p.isNew, lat: r.lat, lng: r.lng,

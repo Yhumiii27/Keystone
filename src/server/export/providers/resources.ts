@@ -16,6 +16,8 @@ import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
 import { col, compact, filterLine, isoOf, kpiSheet, param, sheet } from './common';
 import { currentProjectCode, projectFilter } from './scope';
+import { canViewDepartmentApprovals } from '@/domain/rights';
+import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 
 
 function loadSheet(ctx: ExportContext, name: string, weeks: ResourceWeek[], people: PoolPerson[]): ExportSheet {
@@ -111,6 +113,8 @@ async function approvalsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | n
   const mine = asked ? null : await departmentOfPerson(ctx.viewer.name);
   const name = asked?.name ?? depts.find((d) => d.name === mine)?.name ?? depts[0]?.name;
   if (!name) return null;
+  // P-8a (R-048): a department head exports the departments they head only.
+  if (!canViewDepartmentApprovals(ctx.viewer.role, (await getApproverIdentity(ctx.viewer)).departments, name)) return null;
   const [data, visible] = await Promise.all([getApprovalsScreenData(name), projectFilter(ctx)]);
   if (!data) return null;
   const people = data.pool.people.filter((p) => p.department === name);

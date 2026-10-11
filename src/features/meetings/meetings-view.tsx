@@ -27,8 +27,10 @@ const VIEW_ICON: Record<ViewKey, Icon> = { meetings: ChatsCircle, decisions: Gav
 export interface MeetingsBodyProps {
   code: string;
   view: MeetingsScreenView;
-  /** Edits allowed (not outside the workspace, project not read-only). */
+  /** Notes and action ticks allowed (not outside the workspace, on the project's team, not the client — P-9b). */
   canEdit: boolean;
+  /** The selected meeting's transcript and "Send minutes" (P-9b: its organiser and the project's PM). Defaults to `canEdit`. */
+  canWrite?: boolean;
   /** The selected meeting came from `?meeting=` (else the page pins it after a write). */
   pinned: boolean;
   /** Organizer short name of the selected meeting (default owner of a new action). */
@@ -43,7 +45,7 @@ export interface MeetingsBodyProps {
 
 const LOCAL_AI: TranscriptAi = { claude: false, model: null };
 
-export function MeetingsBody({ code, view, canEdit, pinned, organizer, t, ai = LOCAL_AI, riskForm = null, riskTeam = [] }: MeetingsBodyProps) {
+export function MeetingsBody({ code, view, canEdit, canWrite = canEdit, pinned, organizer, t, ai = LOCAL_AI, riskForm = null, riskTeam = [] }: MeetingsBodyProps) {
   return (
     <Stack>
       <FilterGroup>
@@ -87,7 +89,7 @@ export function MeetingsBody({ code, view, canEdit, pinned, organizer, t, ai = L
             </nav>
           </div>
           {view.detail && (
-            <MeetingDetail code={code} d={view.detail} canEdit={canEdit} pinned={pinned} organizer={organizer} t={t} ai={ai} riskForm={riskForm} riskTeam={riskTeam} />
+            <MeetingDetail code={code} d={view.detail} canEdit={canEdit} canWrite={canWrite} pinned={pinned} organizer={organizer} t={t} ai={ai} riskForm={riskForm} riskTeam={riskTeam} />
           )}
         </div>
       )}
@@ -170,6 +172,7 @@ interface DetailProps {
   code: string;
   d: DetailView;
   canEdit: boolean;
+  canWrite: boolean;
   pinned: boolean;
   organizer: string;
   t: T;
@@ -179,7 +182,7 @@ interface DetailProps {
 }
 
 /** Detail card of the selected meeting (mtgSel). */
-function MeetingDetail({ code, d, canEdit, pinned, organizer, t, ai, riskForm, riskTeam }: DetailProps) {
+function MeetingDetail({ code, d, canEdit, canWrite, pinned, organizer, t, ai, riskForm, riskTeam }: DetailProps) {
   const prep = d.prep;
   const tr = prep?.transcript ?? null;
   return (
@@ -265,7 +268,7 @@ function MeetingDetail({ code, d, canEdit, pinned, organizer, t, ai, riskForm, r
           meeting={d.number}
           organizer={organizer}
           v={tr}
-          canEdit={canEdit}
+          canEdit={canWrite}
           ai={ai}
           riskForm={riskForm}
           riskTeam={riskTeam}
@@ -273,7 +276,7 @@ function MeetingDetail({ code, d, canEdit, pinned, organizer, t, ai, riskForm, r
           pinned={pinned}
         />
       )}
-      {prep && !tr && canEdit && <TranscriptImportPanel code={code} meeting={d.number} ai={ai} selfHref={d.selfHref} pinned={pinned} />}
+      {prep && !tr && canWrite && <TranscriptImportPanel code={code} meeting={d.number} ai={ai} selfHref={d.selfHref} pinned={pinned} />}
 
       <MinutesEditor
         key={d.number}
@@ -283,6 +286,7 @@ function MeetingDetail({ code, d, canEdit, pinned, organizer, t, ai, riskForm, r
         agenda={d.agenda}
         editable={d.editable}
         canEdit={canEdit}
+        canSend={canWrite}
         selfHref={d.selfHref}
         pinned={pinned}
       />

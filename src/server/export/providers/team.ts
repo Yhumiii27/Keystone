@@ -1,6 +1,7 @@
 // Export providers — Team & exchanges: Meetings & minutes, Stakeholders & RACI, Interface register.
 // Meetings: the register with its chip (`?filter=`), the decision and action registers (`?view=` puts the current one
 // first) and the client question bridge; PDF = the minutes of the selected meeting (`?meeting=`, else the screen's default).
+// A client exports what their screen shows (P-10b, R-043): external meetings only, no question bridge.
 // Stakeholders: the register and the RACI matrix. Interfaces: the register with the effective (late) status.
 import { MEETING_FILTER_LABEL, matchesFilter, parseMeetingFilter, parseMeetingsView, selectMeeting } from '@/domain/meetings';
 import { getMeetingsScreen } from '@/server/dal/meetings-screen';
@@ -31,7 +32,8 @@ function lineSheets(ctx: ExportContext, ms: MeetingRow[]): { decisions: ExportSh
 async function meetingsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   if (!ctx.project) return null;
   const { t } = ctx;
-  const data = await getMeetingsScreen(ctx.project.code);
+  const client = ctx.viewer.role === 'client';
+  const data = await getMeetingsScreen(ctx.project.code, { client });
   const view = parseMeetingsView(param(ctx, 'view'));
   const filter = parseMeetingFilter(param(ctx, 'filter'));
   const shown = data.meetings.filter((m) => matchesFilter(m, filter));
@@ -53,7 +55,7 @@ async function meetingsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | nu
   return {
     title: t('Meetings & minutes'),
     filters: compact([filter !== 'all' ? `${t('Filter')}: ${t(MEETING_FILTER_LABEL[filter])}` : null]),
-    sheets: [...order, questions],
+    sheets: client ? order : [...order, questions],
   };
 }
 
@@ -61,7 +63,7 @@ async function meetingsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | nu
 async function minutesDocument(ctx: ExportContext): Promise<PdfDocument | null> {
   if (!ctx.project) return null;
   const { t } = ctx;
-  const data = await getMeetingsScreen(ctx.project.code);
+  const data = await getMeetingsScreen(ctx.project.code, { client: ctx.viewer.role === 'client' });
   const m = selectMeeting(data.meetings, param(ctx, 'meeting') ?? param(ctx, 'id'));
   if (!m) return null;
   const blocks: PdfBlock[] = [

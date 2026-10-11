@@ -281,7 +281,8 @@ export function drawerView({ project, record: r, state, viewer, canEdit }: Drawe
     closeHref: documentsHref(project, keep),
     // "rev D" translated like the header ("rév. D"), as the prototype's segment-wise toast did.
     openToast: `${t(`Opening Codex · ${r.number}`)} ${t(`rev ${r.revision}`)}`,
-    newRevisionHref: canEdit ? documentsHref(project, { ...keep, deposit: r.number }) : null,
+    // R-047: a new revision is deposited by the team of the record's own project, from its vault (the page's `canEdit`).
+    newRevisionHref: canEdit && r.project === project ? documentsHref(project, { ...keep, deposit: r.number }) : null,
     approveLabel: mayApprove ? approveLabelT(r.nextRoleLabel!, r.nextApprover!, t, lang) : null,
     withdrawal: r.withdrawal ? `${t('Withdrawal')} · ${t(`rev ${r.withdrawal.revision} withdrawn automatically · ${shortDateOfIso(r.withdrawal.on)}`)}` : null,
     identity,
