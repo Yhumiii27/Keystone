@@ -151,6 +151,8 @@ error, run count). Nothing else in the schema changed. The integrator regenerate
 - The rate-limit key uses the viewer's name: with R-038 / R-039, use the signed-in user's id.
 - New env variables to document in `.env.example` (R-007): `KEYSTONE_JOBS`, `KEYSTONE_WORKER_PGLITE`, `KEYSTONE_TURBOPACK_ROOT`,
   `E2E_PORT` (optional, e2e).
+- `CLAUDE.md` "Setup and checks" can now list `npm run test:e2e` and `npm run worker`, and drop the lint `--ignore-pattern` note;
+  `docs/reste-a-developper.json` (progress of R-006, R-008, R-016, R-021, R-176) is left to the final delivery write-up.
 
 ## 6. Open questions for the owner
 
