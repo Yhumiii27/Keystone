@@ -45,7 +45,8 @@ async function overviewWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
       }))),
       kpiSheet(ctx, kpis.map((k) => ({ label: t(k.label), value: k.value, sub: t(k.sub) }))),
       sheet(t('Needs attention'), [col('project', t('Project'), 'text', 10), col('title', t('Alert'), 'text', 44), col('detail', t('Details'), 'text', 60), col('action', t('Action'), 'text', 20)],
-        data.alerts.filter((a) => visible(a.code)).map((a) => ({ project: a.code ?? '', title: t(a.title), detail: t(a.detail), action: t(a.action) }))),
+        // The alert texts are written in the export's language, typed names as typed (R-130, R-148): not translated again.
+        data.alerts.filter((a) => visible(a.code)).map((a) => ({ project: a.code ?? '', title: a.title, detail: a.detail, action: t(a.action) }))),
     ],
   };
 }

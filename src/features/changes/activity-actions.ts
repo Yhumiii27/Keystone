@@ -43,7 +43,7 @@ export async function linkCrActivityAction(code: string, number: string, input: 
   const days = parseNewDuration(input.days);
   if (!days.ok) return { error: t(days.error) };
   try {
-    await linkCrActivities(r.ctx.project.code, number, [{ code: input.activity, newDurationDays: days.value }], r.ctx.viewer.name);
+    await linkCrActivities(r.ctx.project.code, number, [{ code: input.activity, newDurationDays: days.value }], { name: r.ctx.viewer.name, role: r.ctx.viewer.role });
   } catch (e) {
     return failure(e);
   }
@@ -58,7 +58,7 @@ export async function unlinkCrActivityAction(code: string, number: string, activ
   const { t } = await getI18n();
   if (typeof number !== 'string' || !CR_RE.test(number) || !isPlanActivityCode(activity)) return { error: t('Invalid request') };
   try {
-    await unlinkCrActivity(r.ctx.project.code, number, activity, r.ctx.viewer.name);
+    await unlinkCrActivity(r.ctx.project.code, number, activity, { name: r.ctx.viewer.name, role: r.ctx.viewer.role });
   } catch (e) {
     return failure(e);
   }

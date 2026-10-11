@@ -93,11 +93,16 @@ describe('stock Server Functions', () => {
     expect(await stockNavBadge()).toBe('2'); // + KS-STL-0450 (0 < min 4)
     expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
     // Reserve for the current project; the destination of a transfer is created when missing.
+    // R-041: the pm persona (R. Aubert) is not on NDC-031's team — refused; procurement, a storekeeper, reserves for it.
     viewer.role = 'pm';
     const lt = (await line('LT-HB-200W', CENTRAL)).id;
+    expect(await applyStockMovementAction(lt, { op: 'reserve', qty: '30' }, 'NDC-031')).toEqual({
+      error: 'Only the project’s team, procurement or the director can reserve, issue or return stock for this project',
+    });
+    viewer.role = 'procurement';
     expect(await applyStockMovementAction(lt, { op: 'reserve', qty: '30' }, 'NDC-031')).toEqual({ ok: true });
     expect(await line('LT-HB-200W', CENTRAL)).toMatchObject({ reserved: 30, reservedForShort: 'NDC' });
-    expect((await listStockMovements({ limit: 1 }))[0]).toMatchObject({ where: `${CENTRAL} · NDC`, who: 'Romain Aubert' });
+    expect((await listStockMovements({ limit: 1 }))[0]).toMatchObject({ where: `${CENTRAL} · NDC`, who: 'Fabien Bertrand' });
     expect(await applyStockMovementAction(lt, { op: 'transfer', qty: '20', target: 'Consignation — Nordvolt' }, 'NDC-031')).toEqual({ ok: true });
     expect(await line('LT-HB-200W', 'Consignation — Nordvolt')).toMatchObject({ onHand: 20, source: 'local' });
   });
@@ -130,8 +135,10 @@ describe('stock Server Functions', () => {
     expect(await line('KS-STL-0450', HAVRE)).toMatchObject({ onHand: 8, reserved: 8, reservedForShort: 'HLT', available: 0 });
     expect(await line('KS-STL-0450', CENTRAL)).toMatchObject({ onHand: 6, reserved: 6, reservedForShort: 'HLT', available: 0, source: 'local' });
     // EL-CBL-XLPE: the consignment line is reserved for NDC; HLT's reserved cable may not join it, free cable may.
-    viewer.role = 'pm';
+    // R-041: reserved by procurement (a storekeeper of every project; the pm persona is not on NDC-031's team).
+    viewer.role = 'procurement';
     expect(await applyStockMovementAction((await line('EL-CBL-XLPE', NORDVOLT)).id, { op: 'reserve', qty: '5' }, 'NDC-031')).toEqual({ ok: true });
+    viewer.role = 'pm';
     const xlpe = (await line('EL-CBL-XLPE', CENTRAL)).id;
     viewer.lang = 'fr';
     expect(await applyStockMovementAction(xlpe, { op: 'transfer', qty: '17', target: NORDVOLT }, null)).toEqual({ error: 'La destination est réservée pour un autre projet' });

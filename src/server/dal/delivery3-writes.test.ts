@@ -34,11 +34,16 @@ describe('Codex vault writers', () => {
   it('approval circuit of RPT-HLT-014: quality manager, then project manager → release requested, pending sync with Codex', async () => {
     const QM = { name: 'Gabriel Comte', role: 'quality' };
     const PM = { name: 'Romain Aubert', role: 'pm' };
+    // Defense in depth (delivery 7): the DAL re-checks the step's approver (G. Comte for the quality manager step) or the
+    // director — the person counts, not the role a caller claims.
+    for (const wrong of [PM, { name: 'Romain Aubert', role: 'quality' }, { name: 'Nobody', role: 'quality' }])
+      await expect(recordDocumentDecision('RPT-HLT-014', { decision: 'approved' }, wrong)).rejects.toThrow('You are not the approver of this step');
     expect(await recordDocumentDecision('RPT-HLT-014', { decision: 'approved' }, QM)).toMatchObject({ step: 1, role: 'quality_manager', releaseRequested: false });
     let d = await vault('RPT-HLT-014');
     expect([d.statusLabel, d.approvalsGiven, d.nextRoleLabel, d.nextApprover, d.circuitNote]).toEqual(['Release proposed', 0, 'Project manager', 'R. Aubert', 'Approved · Pending sync with Codex']);
     // A screen still showing step 1 is refused.
     await expect(recordDocumentDecision('RPT-HLT-014', { decision: 'approved', step: 1 }, QM)).rejects.toThrow(/no longer open/);
+    await expect(recordDocumentDecision('RPT-HLT-014', { decision: 'approved', step: 2 }, QM)).rejects.toThrow('You are not the approver of this step');
     expect(await recordDocumentDecision('RPT-HLT-014', { decision: 'approved', step: 2 }, PM)).toMatchObject({ step: 2, role: 'project_manager', releaseRequested: true });
     d = await vault('RPT-HLT-014');
     expect([d.status, d.shared, d.canApprove, d.nextRoleLabel, d.circuitNote]).toEqual(['release_proposed', false, false, null, 'Release approved · Pending sync with Codex']);
@@ -49,6 +54,20 @@ describe('Codex vault writers', () => {
     await expect(recordDocumentDecision('RPT-HLT-014', { decision: 'approved' }, PM)).rejects.toThrow(/no approval step open/);
     expect(await lastAudit()).toMatchObject({ who: 'Romain Aubert', object: 'RPT-HLT-014', area: 'Documents', change: 'approved · Project manager · release requested · Pending sync with Codex' });
     expect((await listActivity())[0]).toMatchObject({ who: 'Romain Aubert', what: 'RPT-HLT-014 rev A · Approved · Project manager · Pending sync with Codex', projectCode: 'HLT-026' });
+  });
+
+  it('the director may decide any open step; another person or role is refused by the DAL', async () => {
+    // A draft outside this file's other tests, frozen and proposed for release: its first step opens.
+    const used = ['SCH-ELE-026', 'RPT-HLT-014', 'RPT-HLT-016', 'PID-HLT-026', 'BOM-MEC-026', 'CTR-HLT-001'];
+    const draft = (await listVaultDocuments()).find((x) => x.status === 'draft' && !x.needsCircuitStart && x.circuit.length > 1 && !used.includes(x.number))!;
+    await freezeDocument(draft.number, 'Antoine Girard');
+    await proposeDocumentRelease(draft.number, 'Antoine Girard');
+    const d = await vault(draft.number);
+    expect([d.canApprove, d.nextApprover === 'M. Lefebvre']).toEqual([true, false]);
+    for (const wrong of [{ name: 'Julien Wagner', role: 'member' }, { name: 'Marie Lefebvre', role: 'pm' }, { name: 'Nadia Bensaïd', role: 'client' }])
+      await expect(recordDocumentDecision(d.number, { decision: 'approved' }, wrong)).rejects.toThrow('You are not the approver of this step');
+    expect((await vault(d.number)).circuitState.approved).toEqual([]);
+    expect(await recordDocumentDecision(d.number, { decision: 'approved' }, { name: 'Marie Lefebvre', role: 'director' })).toMatchObject({ step: d.circuitState.nextStep });
   });
 
   it('client acknowledges PID-HLT-026; downloads are logged before the Codex log', async () => {

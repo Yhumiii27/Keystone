@@ -5,7 +5,8 @@
 //       progress = Σ activity budget × % complete / Σ activity budget            (budget-weighted, 0–1)
 //       EV(t)    = BAC × Σ budget × % × g(t) / Σ budget                         g = share of the activity's ACTUAL span elapsed at t
 //       PV(t)    = BAC × Σ baseline budget × f(t) / Σ baseline budget           f = share of the activity's BASELINE span elapsed at t
-//       AC(t)    = Σ activity actual cost × g(t) + validated contingency draws dated ≤ t
+//       AC(t)    = Σ activity actual cost × g(t) + dated costs ≤ t (validated contingency draws; Keystone stock issues
+//                  less returns, R-098)
 //     Spans are spread linearly over calendar days; the BAC scaling spreads the unallocated contingency pro rata (as the
 //     prototype's generated projects did, 04 §1.8). The series has one point per chart month (month end), the month of the
 //     data date holds the values AT the data date, EV / AC stop there. Time entries are not costs (C-2b: hours are entered
@@ -88,7 +89,10 @@ export interface EvmPlanRow {
   finish: string | null;
 }
 
-/** A dated cost that is not an activity's (a validated contingency draw-down: A-8 books it on the reserve line). */
+/**
+ * A dated cost that is not in an activity's actual cost, k€: a validated contingency draw-down (A-8 books it on the reserve
+ * line), or stock issued in Keystone (a return is negative; SC-5a, R-098).
+ */
 export interface EvmCostEvent {
   date: string;
   amount: number;

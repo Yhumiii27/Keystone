@@ -17,7 +17,7 @@ const contractOf = async (ctx: ExportContext) => (ctx.project ? getContract(ctx.
 
 /** Label of the basis of a milestone: "Base contract" or the amendment's (NEW-D3-3). */
 const basisOf = (ctx: ExportContext, c: ProjectContract, amendment: number | null) =>
-  amendment == null ? ctx.t('Base contract') : ctx.t(c.amendments.find((a) => a.position === amendment)?.label ?? '');
+  amendment == null ? ctx.t('Base contract') : dataText(c.amendments.find((a) => a.position === amendment)?.label ?? '', ctx.lang);
 
 function milestoneSheet(ctx: ExportContext, c: ProjectContract): ExportSheet {
   const { t } = ctx;
@@ -26,8 +26,8 @@ function milestoneSheet(ctx: ExportContext, c: ProjectContract): ExportSheet {
     moneyCol('amount', t('Amount'), c.sheet.currency, 'k'), col('due', t('Contractual date'), 'date'), col('condition', t('Condition'), 'text', 36), col('status', t('Status'), 'text', 14),
     col('late', t('Late'), 'boolean'), col('billable', t('Billable'), 'boolean'), col('invoice', t('Invoice'), 'text', 14),
   ], c.milestones.map((m) => ({
-    number: m.number, label: t(m.label), basis: basisOf(ctx, c, m.amendment), share: m.sharePct / 100, amount: m.amountKeur, due: m.contractualDue,
-    condition: m.condition ? t(m.condition) : '', status: t(m.statusLabel), late: m.late, billable: m.billable, invoice: m.invoice?.number ?? '',
+    number: m.number, label: dataText(m.label, ctx.lang), basis: basisOf(ctx, c, m.amendment), share: m.sharePct / 100, amount: m.amountKeur, due: m.contractualDue,
+    condition: m.condition ? dataText(m.condition, ctx.lang) : '', status: t(m.statusLabel), late: m.late, billable: m.billable, invoice: m.invoice?.number ?? '',
   })));
 }
 
@@ -37,7 +37,7 @@ function invoiceSheet(ctx: ExportContext, c: ProjectContract): ExportSheet {
     col('number', t('Invoice'), 'text', 14), col('milestone', t('Milestone'), 'text', 36), col('issued', t('Issued on'), 'date'), col('due', t('Due date'), 'date'),
     moneyCol('amount', t('Amount'), c.sheet.currency, 'k'), col('paid', t('Paid on'), 'date'), col('status', t('Status'), 'text', 16), col('note', t('Note'), 'text', 30),
   ], c.invoices.map((i) => ({
-    number: i.number, milestone: `${i.milestoneNumber} · ${t(i.milestoneLabel)}`, issued: i.issuedOn, due: i.dueOn, amount: i.amountKeur, paid: i.paidOn,
+    number: i.number, milestone: `${i.milestoneNumber} · ${dataText(i.milestoneLabel, ctx.lang)}`, issued: i.issuedOn, due: i.dueOn, amount: i.amountKeur, paid: i.paidOn,
     status: t(i.statusLabel), note: i.note ? dataText(i.note, ctx.lang) : '',
   })));
 }
@@ -62,7 +62,7 @@ async function contractWorkbook(ctx: ExportContext): Promise<ExportWorkbook | nu
         col('label', t('Amendment'), 'text', 50), col('cr', t('Change request'), 'text', 12), moneyCol('amount', t('Amount'), s.currency, 'k'), col('status', t('Status'), 'text', 14),
         col('sent', t('Sent for signature'), 'date'), col('signed', t('Signed on'), 'date'), col('document', t('Document'), 'text', 16),
       ], c.amendments.map((a) => ({
-        label: t(a.label), cr: a.changeRequestRef ?? '', amount: a.amountKeur, status: t(a.statusLabel), sent: a.sentOn, signed: a.signedOn, document: a.documentRef ?? '',
+        label: dataText(a.label, ctx.lang), cr: a.changeRequestRef ?? '', amount: a.amountKeur, status: t(a.statusLabel), sent: a.sentOn, signed: a.signedOn, document: a.documentRef ?? '',
       }))),
       sheet(t('Guarantees'), [
         col('label', t('Guarantee'), 'text', 40), col('issuer', t('Issuer'), 'text', 20), moneyCol('amount', t('Amount'), s.currency, 'k'), col('validUntil', t('Valid until'), 'date'),

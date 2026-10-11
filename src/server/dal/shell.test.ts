@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PERSONA_BY_ROLE } from '@/config/personas';
-import type { RoleKey } from '@/config/screens';
+import { canSee, type RoleKey, type ScreenId } from '@/config/screens';
 import { approvalCount } from '@/server/approvals';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
@@ -213,7 +213,7 @@ describe('Delivery 4 badges and search follow the database (docs/spec/01 §4.4, 
     // One stock line is below its minimum; a count at the minimum clears the badge.
     const low = (await listStock()).filter((r) => r.belowMin);
     expect([low.length, (await badges('HLT-026')).stock]).toEqual([1, '1']);
-    await applyStockMovement(low[0].id, { op: 'adjust', qty: low[0].minQty }, 'Fabien Bertrand');
+    await applyStockMovement(low[0].id, { op: 'adjust', qty: low[0].minQty }, { name: 'Fabien Bertrand', role: 'procurement' });
     expect((await badges('HLT-026')).stock).toBe('');
   }, 20_000);
 
@@ -288,4 +288,47 @@ describe('Delivery 5 badges, search and zone bar follow the database (docs/spec/
     // Staff search is unchanged.
     expect((await searchShell('northgate', 'HLT-026')).map((h) => h.kind)).toContain('Project');
   });
+});
+
+describe('R-043 (P-1, P-10b): the client\'s sidebar badges', () => {
+  const meetingsBadge = async (role: RoleKey) => Number((await getShellNav(role)).projectBadges['HLT-026'].meetings || 0);
+
+  it('only the entries of her workspace: no NCR count, no purchasing or other internal count, no global badge', async () => {
+    const staff = await getShellNav('director');
+    const nav = await getShellNav('client');
+    // Staff keep their badges (the open critical NCR of HLT-026 on Quality, purchasing, site Go / No Go…).
+    expect(staff.projectBadges['HLT-026'].quality).toMatch(/^\d+$/);
+    expect(staff.projectBadges['HLT-026'].site).toBe('NO GO');
+    expect(Object.values(staff.globalBadges).some(Boolean)).toBe(true);
+    // The client: nothing of the internal counts reaches her browser (the sidebar props).
+    expect(nav.globalBadges).toEqual({});
+    for (const [code, b] of Object.entries(nav.projectBadges)) {
+      for (const id of Object.keys(b)) expect([code, id, canSee('client', id as ScreenId)]).toEqual([code, id, true]);
+      expect([code, b.quality]).toEqual([code, undefined]);
+    }
+    const b = nav.projectBadges['HLT-026'];
+    for (const k of ['procurement', 'orders', 'deliveries', 'stock', 'eco', 'sav', 'risks', 'eng', 'pid', 'site', 'interfaces', 'billing', 'docs', 'mywork'] as const)
+      expect([k, b[k]]).toEqual([k, undefined]);
+    expect(JSON.stringify(nav)).not.toContain('NO GO');
+    // Her own entries keep their badges: My approvals (her inbox) and the change requests in review.
+    expect(b.myapprovals).toMatch(/^\d+$/);
+    expect(b.myapprovals).toBe((await projectBadges('client', 'HLT-026')).myapprovals);
+    expect(b.changes).toBe(staff.projectBadges['HLT-026'].changes);
+    // projectBadges() follows the same rule.
+    expect((await projectBadges('client', 'HLT-026')).quality).toBeUndefined();
+  });
+
+  it('her Meetings badge counts the external meetings with notes in progress only', async () => {
+    const [staff0, client0] = [await meetingsBadge('director'), await meetingsBadge('client')];
+    const write = async (type: 'internal' | 'external') => {
+      const n = await createMeeting('HLT-026', {
+        title: `${type} review`, type, series: 'one_off', date: '2026-10-07', time: '9:00', location: '', invitees: ['R. Aubert'], agenda: ['Progress'],
+      }, 'Romain Aubert');
+      await addMeetingLine(n, 0, { type: 'info', text: 'Noted', owner: '', due: '' }, 'Romain Aubert');
+    };
+    await write('internal');
+    expect([await meetingsBadge('director'), await meetingsBadge('client')]).toEqual([staff0 + 1, client0]);
+    await write('external');
+    expect([await meetingsBadge('director'), await meetingsBadge('client')]).toEqual([staff0 + 2, client0 + 1]);
+  }, 20_000);
 });

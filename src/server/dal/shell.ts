@@ -19,12 +19,12 @@ import { personaOf, type Persona, type PersonaRef } from '@/config/personas';
 import { DEFAULT_PROJECT, canSee, screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import { fiscalYearLabel } from '@/domain/portfolio';
 import { defaultDepartment } from '@/domain/requests';
-import { clientRefusedProject, clientSeesTarget } from '@/domain/rights';
+import { PURCHASING_SCREENS, clientRefusedProject, clientSeesMeeting, clientSeesTarget } from '@/domain/rights';
 import { dueTodayBadge, workingDayOf } from '@/domain/tasks';
 import { mapCrumbExtra } from '@/domain/worldmap';
 import { approvalCountsByProject } from '@/server/approvals';
 import { getDb } from '@/server/db/client';
-import { changeRequests, projects as projectsTable } from '@/server/db/schema';
+import { changeRequests, meetings as meetingsTable, projects as projectsTable } from '@/server/db/schema';
 import { ncrHref } from '@/features/quality/links';
 import { zoneLabelOf, zoneManagerLine, type ZoneEntry } from '@/domain/zones';
 import type { ZoneKey } from '@/server/session';
@@ -168,10 +168,28 @@ interface ProjectBadgeInputs {
   withData: Set<string>;
 }
 
+/**
+ * Meetings with notes in progress per project code that a client sees (P-10b, `clientSeesMeeting`: the external meetings) —
+ * her Meetings badge never counts the internal meetings.
+ */
+async function clientMeetingsToWriteByProject(): Promise<Record<string, number>> {
+  const db = await getDb();
+  const rows = await db
+    .select({ code: projectsTable.code, type: meetingsTable.type, n: sql<number>`count(*)::int` })
+    .from(meetingsTable)
+    .innerJoin(projectsTable, eq(projectsTable.id, meetingsTable.projectId))
+    .where(eq(meetingsTable.status, 'notes_in_progress'))
+    .groupBy(projectsTable.code, meetingsTable.type);
+  const out: Record<string, number> = {};
+  for (const r of rows) if (clientSeesMeeting(r.type)) out[r.code] = (out[r.code] ?? 0) + r.n;
+  return out;
+}
+
 async function projectBadgeInputs(who: PersonaRef, codes: string[]): Promise<ProjectBadgeInputs> {
+  const viewer = personaOf(who);
   const [approvals, risks, changes, meetings, interfaces, billing, deliveries, orders, eng, pid, quality, itp, site, projects] = await Promise.all([
-    approvalCountsByProject(personaOf(who), codes), riskBadges(), changesInReview(),
-    meetingsToWriteByProject(), lateInterfacesByProject(), lateBillingMilestonesByProject(), receiptsQcPendingByProject(),
+    approvalCountsByProject(viewer, codes), riskBadges(), changesInReview(),
+    viewer.role === 'client' ? clientMeetingsToWriteByProject() : meetingsToWriteByProject(), lateInterfacesByProject(), lateBillingMilestonesByProject(), receiptsQcPendingByProject(),
     posAwaitingApprovalByProject(), engNavBadgesByProject(), pidBadgeByProject(), safe(criticalOpenNcrsByProject, {}), openPunchAByProject(),
     safe(siteBadgeByProject, {}), listProjects(),
   ]);
@@ -201,9 +219,22 @@ function badgesOf(code: string, inp: ProjectBadgeInputs): Badges {
 /** Project entries that always carry a badge value ('' = none) on a project with data, as in the prototype. */
 const WITH_DATA_ENTRIES: ScreenId[] = ['meetings', 'interfaces', 'billing', 'itp', 'risks', 'changes', 'quality', 'orders', 'deliveries'];
 
+/** Entries of the client's workspace whose badge counts internal records: Quality's is the open critical NCRs (Vigie mirror). */
+const CLIENT_HIDDEN_BADGES: readonly ScreenId[] = ['quality', ...PURCHASING_SCREENS];
+
+/**
+ * R-043 (P-1, P-10b): the badges a client receives — those of the entries of her workspace (`canSee`), never an NCR count or
+ * a purchasing one. Applied here, in the DAL, so the internal counts never reach her browser (the sidebar props); other roles
+ * get every badge.
+ */
+function badgesFor(role: RoleKey, b: Badges): Badges {
+  if (role !== 'client') return b;
+  return Object.fromEntries(Object.entries(b).filter(([id]) => canSee('client', id as ScreenId) && !CLIENT_HIDDEN_BADGES.includes(id as ScreenId))) as Badges;
+}
+
 /** Badges of the project-dependent entries (Project section, orders, deliveries, My approvals) of one project. */
 export async function projectBadges(who: PersonaRef, code: string): Promise<Badges> {
-  return badgesOf(code, await projectBadgeInputs(who, [code]));
+  return badgesFor(personaOf(who).role, badgesOf(code, await projectBadgeInputs(who, [code])));
 }
 
 // ── Sidebar data ──────────────────────────────────────────────────────────
@@ -218,18 +249,21 @@ export interface ShellNavData {
 
 /**
  * Everything the sidebar needs, for the viewer (computed for every project; the client picks the current one). A role
- * stands for its demo persona (tests).
+ * stands for its demo persona (tests). R-043 (P-10b): a client gets the badges of her workspace only — no global badge (each
+ * counts internal records of every project: Codex approvals, ECOs, invoices, stock, claims…), no NCR count, her Meetings badge
+ * on the external meetings — so the internal counts never reach her browser.
  */
 export async function getShellNav(who: PersonaRef): Promise<ShellNavData> {
   const viewer = personaOf(who);
+  const client = viewer.role === 'client';
   // R-042 (P-10a): a client's sidebar and project switcher list their organisation's projects only.
   const projects = (await listProjects()).filter((p) => !clientRefusedProject(viewer, p));
   const codes = projects.map((p) => p.code);
-  const [global, inputs] = await Promise.all([globalBadges(viewer), projectBadgeInputs(viewer, codes)]);
+  const [global, inputs] = await Promise.all([client ? ({} as Badges) : globalBadges(viewer), projectBadgeInputs(viewer, codes)]);
   return {
     projects: projects.map((p) => ({ code: p.code, label: projectLabel(p), hasData: p.hasData })),
     globalBadges: global,
-    projectBadges: Object.fromEntries(codes.map((code) => [code, badgesOf(code, inputs)])),
+    projectBadges: Object.fromEntries(codes.map((code) => [code, badgesFor(viewer.role, badgesOf(code, inputs))])),
   };
 }
 

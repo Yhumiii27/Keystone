@@ -200,25 +200,27 @@ describe('R-068 — the Budget reads the single change register (A-4)', () => {
 });
 
 describe('R-071 — linked draw-downs validated by the portfolio director (C-4)', () => {
+  // The DAL re-checks the submitter with the actor's role (R-041): the project's team with the register in their workspace.
+  const PM_RA = { name: 'Romain Aubert', role: 'pm' };
   it('offers the project\'s change requests, risks and NCRs only', async () => {
     const links = await drawLinkOptions('HLT-026');
     expect(links.find((l) => l.value === 'R-03')).toMatchObject({ type: 'risk' });
     expect(links.find((l) => l.value === 'NCR-029')).toMatchObject({ type: 'ncr' });
     expect(links.some((l) => l.value === 'CR-009')).toBe(false); // still a draft
-    await expect(submitContingencyDraw('HLT-026', { amountKeur: 5, reason: 'x', linkRef: 'R-99', linkType: 'risk' }, 'Romain Aubert')).rejects.toThrow(ContingencyError);
+    await expect(submitContingencyDraw('HLT-026', { amountKeur: 5, reason: 'x', linkRef: 'R-99', linkType: 'risk' }, PM_RA)).rejects.toThrow(ContingencyError);
     // NDC-031's R-01 exists, but not on HLT-026 (R-01 is not an HLT-026 risk number).
-    await expect(submitContingencyDraw('HLT-026', { amountKeur: 5, reason: 'x', linkRef: 'R-01', linkType: 'risk' }, 'Romain Aubert')).rejects.toThrow('Unknown change request, risk or NCR');
+    await expect(submitContingencyDraw('HLT-026', { amountKeur: 5, reason: 'x', linkRef: 'R-01', linkType: 'risk' }, PM_RA)).rejects.toThrow('Unknown change request, risk or NCR');
   });
 
   it('a submitted draw-down is not drawn; the director validates (→ drawn, actual cost) or rejects it; the balance is checked', async () => {
     const before = (await getProjectEvm('HLT-026'))!.ac;
-    const r = await submitContingencyDraw('HLT-026', { amountKeur: 30, reason: 'Second mill audit', linkRef: 'NCR-029', linkType: 'ncr' }, 'Romain Aubert');
+    const r = await submitContingencyDraw('HLT-026', { amountKeur: 30, reason: 'Second mill audit', linkRef: 'NCR-029', linkType: 'ncr' }, PM_RA);
     expect([r.amount, r.requestedBy, r.director]).toEqual([30, 'Romain Aubert', 'Marie Lefebvre']);
     let c = (await getContingency('HLT-026'))!;
     expect([c.drawn, c.pending, c.remaining, c.draws.at(-1)!.status, c.draws.at(-1)!.approvedBy]).toEqual([48, 30, 102, 'submitted', null]);
     expect((await listDrawsAwaitingValidation()).map((d) => [d.projectCode, d.amount, d.linkRef, d.requestedBy])).toEqual([['HLT-026', 30, 'NCR-029', 'R. Aubert']]);
     // Balance: 150 − 48 drawn − 30 pending = 72 left to submit.
-    await expect(submitContingencyDraw('HLT-026', { amountKeur: 73, reason: 'x', linkRef: 'R-03', linkType: 'risk' }, 'Romain Aubert')).rejects.toThrow('The draw-down exceeds the remaining provision');
+    await expect(submitContingencyDraw('HLT-026', { amountKeur: 73, reason: 'x', linkRef: 'R-03', linkType: 'risk' }, PM_RA)).rejects.toThrow('The draw-down exceeds the remaining provision');
     // Only the director decides; then the draw-down is drawn and counts in the actual cost at its date.
     await expect(decideContingencyDraw('HLT-026', r.drawId, 'validated', { name: 'Romain Aubert', role: 'pm' })).rejects.toThrow('Only the portfolio director validates contingency draw-downs');
     const d = await decideContingencyDraw('HLT-026', r.drawId, 'validated', DIRECTOR, '');
@@ -229,7 +231,7 @@ describe('R-071 — linked draw-downs validated by the portfolio director (C-4)'
     expect((await getCostControl('HLT-026'))!.recon.contUsed).toBe(78);
     await expect(decideContingencyDraw('HLT-026', r.drawId, 'rejected', DIRECTOR)).rejects.toThrow('This draw-down is not waiting for a decision any more');
     // Rejected: kept in the register with its comment, never drawn.
-    const x = await submitContingencyDraw('HLT-026', { amountKeur: 10, reason: 'Extra lighting', linkRef: 'CR-004', linkType: 'change_request' }, 'Romain Aubert');
+    const x = await submitContingencyDraw('HLT-026', { amountKeur: 10, reason: 'Extra lighting', linkRef: 'CR-004', linkType: 'change_request' }, PM_RA);
     await decideContingencyDraw('HLT-026', x.drawId, 'rejected', DIRECTOR, 'Covered by CR-004');
     c = (await getContingency('HLT-026'))!;
     expect([c.drawn, c.pending, c.draws.at(-1)!.status, c.draws.at(-1)!.decisionComment, c.draws.at(-1)!.decidedBy]).toEqual([78, 0, 'rejected', 'Covered by CR-004', 'M. Lefebvre']);
@@ -237,18 +239,42 @@ describe('R-071 — linked draw-downs validated by the portfolio director (C-4)'
     expect(audit.find((a) => a.area === 'Contingency')!.change).toBe('draw-down rejected · 10 k€ · CR-004 · Covered by CR-004');
   });
 
+  it('the DAL refuses a draw-down by someone off the project’s team or without the register in their workspace', async () => {
+    const READ_ONLY = 'This contingency register is read-only for you';
+    const draw = { amountKeur: 1, reason: 'Fence repair', linkRef: 'R-01', linkType: 'risk' as const };
+    const wrong = [
+      { name: 'Romain Aubert', role: 'pm' }, // not on NDC-031's team
+      { name: 'Fabien Bertrand', role: 'procurement' }, // on NDC-031's team, Contingency outside the procurement workspace
+      { name: 'Nobody', role: 'pm' },
+      { name: 'Marie Lefebvre', role: 'admin' },
+      { name: 'Nadia Bensaïd', role: 'client' },
+    ];
+    for (const actor of wrong) {
+      const e = await submitContingencyDraw('NDC-031', draw, actor).catch((x) => x);
+      expect([e instanceof ContingencyError, e.message, e.code]).toEqual([true, READ_ONLY, 'forbidden']);
+    }
+    expect((await getContingency('NDC-031'))!.draws.some((d) => d.reason === 'Fence repair')).toBe(false);
+    // The PM of record and the director are accepted (then rejected, so that no draw-down is left awaiting validation).
+    const a = await submitContingencyDraw('NDC-031', draw, { name: 'S. Perrin', role: 'pm' });
+    const b = await submitContingencyDraw('NDC-031', { ...draw, reason: 'Gate repair' }, DIRECTOR);
+    expect([a.requestedBy, b.requestedBy]).toEqual(['S. Perrin', 'Marie Lefebvre']);
+    for (const x of [a, b]) await decideContingencyDraw('NDC-031', x.drawId, 'rejected', DIRECTOR, 'Test');
+  });
+
   it('validating cannot take the drawn total above the provision', async () => {
-    const a = await submitContingencyDraw('MSR-012', { amountKeur: 6, reason: 'Display rework', linkRef: 'R-01', linkType: 'risk' }, 'Antoine Naveau');
-    const b = await submitContingencyDraw('MSR-012', { amountKeur: 4, reason: 'Cabling', linkRef: 'R-02', linkType: 'risk' }, 'Antoine Naveau');
+    // MSR-012's PM of record, by the short name the persons table holds (the DAL re-checks the team, R-041).
+    const NAVEAU = { name: 'A. Naveau', role: 'pm' };
+    const a = await submitContingencyDraw('MSR-012', { amountKeur: 6, reason: 'Display rework', linkRef: 'R-01', linkType: 'risk' }, NAVEAU);
+    const b = await submitContingencyDraw('MSR-012', { amountKeur: 4, reason: 'Cabling', linkRef: 'R-02', linkType: 'risk' }, NAVEAU);
     // MSR-012's provision is its budget line, 10 k€: 6 + 4 fit; a third one does not.
-    await expect(submitContingencyDraw('MSR-012', { amountKeur: 1, reason: 'x', linkRef: 'R-01', linkType: 'risk' }, 'Antoine Naveau')).rejects.toThrow('The draw-down exceeds the remaining provision');
+    await expect(submitContingencyDraw('MSR-012', { amountKeur: 1, reason: 'x', linkRef: 'R-01', linkType: 'risk' }, NAVEAU)).rejects.toThrow('The draw-down exceeds the remaining provision');
     await decideContingencyDraw('MSR-012', a.drawId, 'validated', DIRECTOR);
     await decideContingencyDraw('MSR-012', b.drawId, 'validated', DIRECTOR);
     expect((await getContingency('MSR-012'))!).toMatchObject({ initial: 10, drawn: 10, remaining: 0, isDefault: false });
   });
 
   it('My approvals: the director\'s inbox lists the draw-downs awaiting validation; nobody else\'s does', async () => {
-    const s = await submitContingencyDraw('NDC-031', { amountKeur: 12, reason: 'UPS spare battery', linkRef: 'R-02', linkType: 'risk' }, 'S. Perrin');
+    const s = await submitContingencyDraw('NDC-031', { amountKeur: 12, reason: 'UPS spare battery', linkRef: 'R-02', linkType: 'risk' }, { name: 'S. Perrin', role: 'pm' });
     const inbox = await getApprovalInbox(PERSONA_BY_ROLE.director, { projectCode: 'HLT-026', lang: 'en' });
     const items = inbox.items.filter((i) => i.kind === 'contingency');
     expect(items.map((i) => [i.id, i.title, i.sub, i.who, i.when, i.href, i.decision])).toEqual([

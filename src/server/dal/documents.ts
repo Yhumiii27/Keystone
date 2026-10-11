@@ -584,9 +584,12 @@ export const freezeDocument = (number: string, actorName: string) => setStatus(n
 /** "Propose release" (engineering screens): Frozen → Release proposed. */
 export const proposeDocumentRelease = (number: string, actorName: string) => setStatus(number, 'frozen', 'release_proposed', actorName);
 
-/** A decision refused because the record moved on (stale screen) or the request does not fit the circuit. */
+/**
+ * A decision refused because the record moved on (stale screen), the request does not fit the circuit, or the actor is not
+ * the step's approver (`forbidden`).
+ */
 export class CodexDecisionError extends Error {
-  constructor(public readonly code: 'stale' | 'invalid', message: string) {
+  constructor(public readonly code: 'stale' | 'invalid' | 'forbidden', message: string) {
     super(message);
     this.name = 'CodexDecisionError';
   }
@@ -617,12 +620,16 @@ export interface DocumentDecisionInput {
   comment?: string | null;
 }
 
+/** Refusal of a decision by someone else than the step's approver or the director (EN source; FR in docs.json). */
+export const NOT_THE_APPROVER = 'You are not the approver of this step';
+
 /**
  * "Approve in Codex · {role} · {approver}" (drawer) and Approve / Reject in My approvals (Delivery 7, R-124): records
  * the decision on the step open in Keystone in the Codex outbox, "pending sync with Codex". The index record is not
  * changed — Codex signs the step, releases the record (withdrawing the previous revision) or sends it back, and the
  * refresh brings its answer (src/server/integrations/codex/mirror.ts). The next step opens in Keystone at once; a
- * rejection stops the circuit until Codex answers. Who may decide is checked by the Server Functions.
+ * rejection stops the circuit until Codex answers. Who may decide — the step's named approver or the portfolio director
+ * (`canApproveDocument`, src/domain/documents.ts) — is checked by the Server Functions and re-checked here with `actor`.
  */
 export async function recordDocumentDecision(
   number: string, input: DocumentDecisionInput, actor: { name: string; role: string }, at: Date = new Date(),
@@ -636,6 +643,13 @@ export async function recordDocumentDecision(
     const step = steps.find((x) => x.position === state.nextStep);
     if (!step) throw new CodexDecisionError('invalid', `${number}: unknown circuit step`);
     const person = await findPerson(tx, actor.name);
+    // The step's approver as the vault names it (the role's assigned person, else the author) — or the director (P-7).
+    if (actor.role !== 'director') {
+      const [assigned] = await tx.select({ short: persons.shortName }).from(documentApproverAssignments)
+        .innerJoin(persons, eq(persons.id, documentApproverAssignments.personId))
+        .where(and(eq(documentApproverAssignments.role, step.role), isNull(documentApproverAssignments.projectId)));
+      if (!person || (assigned?.short ?? d.authorName) !== person.shortName) throw new CodexDecisionError('forbidden', NOT_THE_APPROVER);
+    }
     const who = person ? nameOf(person) : actor.name;
     const comment = input.decision === 'rejected' ? (input.comment?.trim() || null) : null;
     const entry = await insertCodexEntry(tx, {

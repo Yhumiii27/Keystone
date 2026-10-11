@@ -21,7 +21,7 @@ import { formatDate } from '../format';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook, PdfDocument } from '../types';
 import { col, compact, filterLine, kpiSheet, param, pricedPdf, pricedWorkbook, projectRef, sheet, sum, tableBlock, todayIso } from './common';
-import { commonCurrency, moneyCol } from './currency-columns';
+import { amountsCol, commonCurrency, moneyCol } from './currency-columns';
 import { currentProjectCode, projectFilter } from './scope';
 import { dataText } from '@/i18n/data-text';
 
@@ -49,8 +49,9 @@ async function procurementWorkbook(ctx: ExportContext): Promise<ExportWorkbook> 
     rfq: r.number, supplier: q.supplier, unit: q.unitPriceEur, total: q.totalEur, lead: q.leadWeeks, terms: dataText(q.paymentTerms, ctx.lang), grade: q.grade, score: q.score, awarded: q.awarded,
   }))));
   // C-9: amounts in each invoice's currency — € columns when they are all in euros, else plain numbers and a Currency column.
+  // R-046: amount columns in any currency are price columns (left out for a viewer who may not see supplier prices).
   const icur = commonCurrency(invoices.map((i) => i.currency));
-  const amt = (key: string, header: string) => (icur ? moneyCol(key, header, icur, 'units') : col(key, header, 'number', undefined, { decimals: 2 }));
+  const amt = (key: string, header: string) => amountsCol(key, header, icur, 'units');
   const inv = sheet(t('Supplier invoices'), [
     col('number', t('Invoice'), 'text', 16), col('supplier', t('Supplier'), 'text', 20), col('po', t('Purchase order'), 'text', 10), col('receipt', t('Goods receipt'), 'text', 10),
     col('project', t('Project'), 'text', 10), ...(icur ? [] : [col('currency', t('Currency'), 'text', 8)]), amt('amount', t('Amount')), amt('invoiced', t('Invoiced amount')), amt('poAmount', t('PO amount')),
@@ -81,7 +82,8 @@ async function ordersWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null
   const s = param(ctx, 'status');
   const status = isPoStatus(s) ? s : null;
   const orders = data.orders.filter((o) => !status || o.status === status);
-  // C-9: amounts in the orders' currency — € columns when every order is in euros, else plain numbers with a Currency column.
+  // C-9: amounts in the orders' currency — € columns when every order is in euros, else plain numbers with a Currency column;
+  // R-046: price columns in any currency (a USD order no longer turns the values into unmasked plain numbers).
   const cur = commonCurrency(orders.map((o) => o.currency));
   return {
     title: t('Purchase orders'),
@@ -90,8 +92,7 @@ async function ordersWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null
       sheet(t('Purchase orders'), [
         col('number', t('Order'), 'text', 10), col('supplier', t('Supplier'), 'text', 22), col('status', t('Status'), 'text', 18), col('ordered', t('Order date'), 'date'),
         col('expected', t('Expected'), 'date'), ...(cur ? [] : [col('currency', t('Currency'), 'text', 8)]),
-        cur ? moneyCol('value', t('Value'), cur, 'units') : col('value', t('Value'), 'number', undefined, { decimals: 2 }),
-        cur ? moneyCol('received', t('Received value'), cur, 'units') : col('received', t('Received value'), 'number', undefined, { decimals: 2 }), col('units', t('Units ordered'), 'number', 8),
+        amountsCol('value', t('Value'), cur, 'units'), amountsCol('received', t('Received value'), cur, 'units'), col('units', t('Units ordered'), 'number', 8),
         col('receivedUnits', t('Units received'), 'number', 8), col('needed', t('Needed for'), 'text', 30), col('late', t('Late'), 'boolean'), col('terms', t('Delivery terms'), 'text', 24),
         col('x3', 'X3', 'text', 12), col('receipts', t('Goods receipts'), 'text', 18), col('invoices', t('Supplier invoices'), 'text', 18),
       ], orders.map((o) => ({
@@ -102,8 +103,7 @@ async function ordersWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null
       sheet(t('Order lines'), [
         col('number', t('Order'), 'text', 10), col('ref', t('Reference'), 'text', 16), col('name', t('Article'), 'text', 34), col('qty', t('Ordered'), 'number', 8), col('received', t('Received'), 'number', 8),
         ...(cur ? [] : [col('currency', t('Currency'), 'text', 8)]),
-        cur ? moneyCol('unit', t('Unit price'), cur, 'units') : col('unit', t('Unit price'), 'number', undefined, { decimals: 2 }),
-        cur ? moneyCol('total', t('Total'), cur, 'units') : col('total', t('Total'), 'number', undefined, { decimals: 2 }), col('status', t('Part status'), 'text', 14),
+        amountsCol('unit', t('Unit price'), cur, 'units'), amountsCol('total', t('Total'), cur, 'units'), col('status', t('Part status'), 'text', 14),
       ], orders.flatMap((o) => o.lines.map((l) => ({
         number: o.number, ref: l.ref, name: dataText(l.name, ctx.lang), qty: l.orderedQty, received: l.receivedQty, currency: o.currency, unit: l.unitPriceEur, total: l.totalEur, status: t(l.partStatusLabel),
       })))),

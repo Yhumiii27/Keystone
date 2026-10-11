@@ -105,7 +105,7 @@ export async function recordDrawDownAction(code: string, values: Record<string, 
   if (!parsed.ok) return { error: await tr(parsed.error) };
   let receipt;
   try {
-    receipt = await submitContingencyDraw(ok.code, parsed.value, ok.actor);
+    receipt = await submitContingencyDraw(ok.code, parsed.value, { name: ok.actor, role: ok.role });
   } catch (e) {
     if (e instanceof ContingencyError) return { error: await tr(e.message) };
     console.error('recordDrawDownAction', e);

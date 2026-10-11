@@ -8,6 +8,10 @@ import 'server-only';
 // value is charged to the activity's work package (SC-5a, R-098 — `stockCostByWorkPackage` feeds the Budget's work
 // packages); an issue or a scrap never takes another project's reservation, which its PM (or the director) releases
 // first ("Release reservation"), unless the director overrides — audited (NEW-D4-2 / SC-5b, R-099).
+// Rights (R-041, re-checked here as the Server Function checks them, so a direct call cannot bypass them): Stock & storages
+// in the actor's workspace; a reservation, issue or return for a project by that project's team — procurement and the
+// director being the storekeepers who act for any project (default, owner to confirm); "Release reservation" by the
+// reserving project's PMs and deputies or the director; the override of another project's reservation by the director.
 import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import { movementValueEur, planStockMovement, planX3Import, type MovementPlan } from '@/domain/stock';
 import { getDb } from '@/server/db/client';
@@ -19,6 +23,8 @@ import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/help
 import { activities, parts, partLastPrices, projects, stockMovements, stockPositions, storageLocations, wbsNodes, x3SyncRuns } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
 import { X3_LAST_IMPORT, x3StockSnapshot } from '@/server/integrations/x3/prototype-snapshot';
+import { managesProject, type Actor } from './ops-common';
+import { actorSees, onProjectTeam } from './team-guard';
 
 type Q = DB | Tx;
 
@@ -189,9 +195,22 @@ export interface StockMovementInput {
   projectCode?: string | null;
   /** Activity issued to ("A1250"), within the project: required for an issue (SC-5a), optional on a return. */
   activityCode?: string | null;
-  /** The portfolio director takes units reserved for another project (R-099; the Server Function checks the role). */
+  /** The portfolio director takes units reserved for another project (R-099; re-checked here). */
   override?: boolean;
 }
+
+/**
+ * Roles that reserve, issue and return stock for any project, on its team or not: the storekeepers — procurement (stock is
+ * their trade) and the portfolio director. Everybody else acts for the projects whose team they are on (R-041). Default
+ * chosen in delivery 7: the owner to confirm.
+ */
+export const STOCK_KEEPER_ROLES: readonly string[] = ['procurement', 'director'];
+
+/** R-041 refusal of a reservation, issue or return for a project whose team the actor is not on (EN; FR in d7-rights.json). */
+export const STOCK_NOT_TEAM = 'Only the project’s team, procurement or the director can reserve, issue or return stock for this project';
+/** R-099 refusals (the Server Function's messages, re-checked here). */
+export const STOCK_OVERRIDE_REFUSED = 'Only the portfolio director can take stock reserved for another project';
+export const STOCK_RELEASE_REFUSED = 'Only the reserving project’s manager or the director can release this reservation';
 
 /** Work package (level-1 WBS code, "1.4") of a WBS node: the node itself or its level-1 ancestor; null above level 1. */
 async function workPackageCodeOf(q: Q, wbsNodeId: string): Promise<string | null> {
@@ -273,9 +292,13 @@ async function activeLocations(q: Q) {
  * "Apply movement" of the stock-line drawer. The rules are the domain's (`planStockMovement`, src/domain/stock.ts):
  * the line is updated, a transfer feeds (or creates) the destination line — with the reservation of the reserved goods
  * it moves —, both are flagged Local, the movement is appended pending push to X3, with the audit and activity rows.
- * Throws the rule's English message when refused.
+ * `actor` = the viewer (name and role): the rights are re-checked here (see the header). Throws the rule's English message
+ * when refused.
  */
-export async function applyStockMovement(positionId: string, input: StockMovementInput, actorName: string): Promise<MovementPlan> {
+export async function applyStockMovement(positionId: string, input: StockMovementInput, actor: Actor): Promise<MovementPlan> {
+  if (!actorSees(actor, 'stock')) throw new Error('Stock is read-only for you');
+  if (input.override === true && actor.role !== 'director') throw new Error(STOCK_OVERRIDE_REFUSED);
+  const actorName = actor.name;
   const db = await getDb();
   return db.transaction(async (tx) => {
     // The line is locked for the transaction: two movements on it never read the same quantities.
@@ -287,12 +310,17 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
       .innerJoin(storageLocations, eq(storageLocations.id, s.locationId))
       .leftJoin(partLastPrices, eq(partLastPrices.partId, parts.id))
       .where(eq(parts.id, s.partId));
-    const actor = await findPerson(tx, actorName);
-    const who = actor ? nameOf(actor) : actorName;
+    const person = await findPerson(tx, actorName);
+    const who = person ? nameOf(person) : actorName;
     const project = input.projectCode
       ? (await tx.select({ id: projects.id, code: projects.code, short: projects.shortCode }).from(projects).where(eq(projects.code, input.projectCode)))[0]
       : undefined;
     if (input.projectCode && !project) throw new Error(`Unknown project ${input.projectCode}`);
+    // R-041: a reservation, issue or return for a project by its team or a storekeeper; a release by the PMs of the
+    // project whose reservation it is (the planner refuses any other project) or the director (R-099).
+    if (project && (input.op === 'reserve' || input.op === 'issue' || input.op === 'return')
+      && !STOCK_KEEPER_ROLES.includes(actor.role) && !(await onProjectTeam(tx, actor, project.id))) throw new Error(STOCK_NOT_TEAM);
+    if (project && input.op === 'release' && !(await managesProject(tx, actor, project))) throw new Error(STOCK_RELEASE_REFUSED);
     let activity: { id: string; code: string; name: string; wbsNodeId: string } | undefined;
     if (input.activityCode && (input.op === 'issue' || input.op === 'return')) {
       if (!project) throw new Error('A project is required');
@@ -345,26 +373,26 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
     const inward = plan.type === 'return';
     await insertMovement(tx, {
       type: plan.type, partId: s.partId, qty: plan.qty, fromLocationId: inward ? null : s.locationId, toLocationId: inward ? s.locationId : toLocationId,
-      projectId: plan.projectCode ? project!.id : plan.transferReserved ? s.reservedForProjectId : null, activityId: activity?.id ?? null, whereText: plan.whereText, personName: who, personId: actor?.id ?? null,
+      projectId: plan.projectCode ? project!.id : plan.transferReserved ? s.reservedForProjectId : null, activityId: activity?.id ?? null, whereText: plan.whereText, personName: who, personId: person?.id ?? null,
       unitCostEur: charged ? unitCostEur : null, valueEur, wbsCode, overrideQty: plan.overrideTaken || null, overrideFromProjectId: plan.overrideTaken ? s.reservedForProjectId : null,
     });
     const reservedChange = plan.reserved !== s.reserved ? ` · reserved ${s.reserved} → ${plan.reserved}` : '';
     const chargedText = charged ? ` · ${plan.type === 'issue' ? 'charged to' : 'credited to'} ${activity!.code}${wbsCode ? ` (WP ${wbsCode})` : ''} · €${valueEur!.toFixed(2)}` : '';
     const overrideText = plan.overrideTaken ? ` · director override: ${plan.overrideTaken} reserved for ${plan.overrideFrom} taken` : '';
     await writeAudit(tx, {
-      actorName: who, actorPersonId: actor?.id, objectRef: `${ref} · ${loc}`,
+      actorName: who, actorPersonId: person?.id, objectRef: `${ref} · ${loc}`,
       change: `${stockOperation.label(plan.type)} × ${plan.qty} · on hand ${s.onHand} → ${plan.onHand}${reservedChange}${chargedText}${overrideText} · ${stockSource.label('local')}`,
       area: 'Stock', entityType: 'stock_position', entityId: s.id, projectId: project?.id ?? null,
     });
-    await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, text: `${stockMovementType.label(plan.type)} ${ref} × ${plan.qty} · ${plan.whereText}`, kind: 'stock', projectId: project?.id ?? null });
+    await recordActivity(tx, { actorName: who, actorPersonId: person?.id, text: `${stockMovementType.label(plan.type)} ${ref} × ${plan.qty} · ${plan.whereText}`, kind: 'stock', projectId: project?.id ?? null });
     if (plan.overrideTaken && s.reservedForProjectId) {
       // The reserving project sees what was taken from its reservation, and by whom.
       await writeAudit(tx, {
-        actorName: who, actorPersonId: actor?.id, objectRef: `${ref} · ${loc}`, area: 'Stock', entityType: 'stock_position', entityId: s.id, projectId: s.reservedForProjectId,
+        actorName: who, actorPersonId: person?.id, objectRef: `${ref} · ${loc}`, area: 'Stock', entityType: 'stock_position', entityId: s.id, projectId: s.reservedForProjectId,
         change: `reservation ${s.reserved} → ${plan.reserved} · ${plan.overrideTaken} taken for ${project?.code ?? stockOperation.label(plan.type)} · director override`,
       });
       await recordActivity(tx, {
-        actorName: who, actorPersonId: actor?.id, kind: 'stock', projectId: s.reservedForProjectId,
+        actorName: who, actorPersonId: person?.id, kind: 'stock', projectId: s.reservedForProjectId,
         text: `Reservation reduced · ${ref} × ${plan.overrideTaken} · ${loc} · director override`,
       });
     }

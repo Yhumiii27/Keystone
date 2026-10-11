@@ -163,24 +163,26 @@ describe('supplier invoices', () => {
 });
 
 describe('stock movements and the mock X3 exchange', () => {
+  // The stock DAL re-checks the rights with the actor's role (R-041): procurement, a storekeeper of every project.
+  const FB = { name: 'Fabien Bertrand', role: 'procurement' };
   it('adjust, transfer, reserve, issue, return, scrap with their guards; Local until pushed; import keeps local changes', async () => {
     const line = (ref: string, loc: string) => stockOf(ref, loc).then((s) => s!.id);
     const lt = await line('LT-HB-200W', 'Entrepôt central — Lyon');
     // SC-5a (Delivery 7, R-098): an issue names its activity.
-    await expect(applyStockMovement(lt, { op: 'issue', qty: 5, projectCode: 'HLT-026' }, 'Fabien Bertrand')).rejects.toThrow(/Choose the activity/);
-    await expect(applyStockMovement(lt, { op: 'issue', qty: 500, projectCode: 'HLT-026', activityCode: 'A1420' }, 'Fabien Bertrand')).rejects.toThrow(/Only 120 on hand/);
-    await expect(applyStockMovement(lt, { op: 'transfer', qty: 5 }, 'Fabien Bertrand')).rejects.toThrow(/destination/);
-    await expect(applyStockMovement(lt, { op: 'reserve', qty: 5 }, 'Fabien Bertrand')).rejects.toThrow(/project is required/);
-    await applyStockMovement(lt, { op: 'transfer', qty: 20, targetLocation: 'Magasin chantier — Le Havre' }, 'Fabien Bertrand');
+    await expect(applyStockMovement(lt, { op: 'issue', qty: 5, projectCode: 'HLT-026' }, FB)).rejects.toThrow(/Choose the activity/);
+    await expect(applyStockMovement(lt, { op: 'issue', qty: 500, projectCode: 'HLT-026', activityCode: 'A1420' }, FB)).rejects.toThrow(/Only 120 on hand/);
+    await expect(applyStockMovement(lt, { op: 'transfer', qty: 5 }, FB)).rejects.toThrow(/destination/);
+    await expect(applyStockMovement(lt, { op: 'reserve', qty: 5 }, FB)).rejects.toThrow(/project is required/);
+    await applyStockMovement(lt, { op: 'transfer', qty: 20, targetLocation: 'Magasin chantier — Le Havre' }, FB);
     expect([(await stockOf('LT-HB-200W', 'Entrepôt central — Lyon'))!.onHand, (await stockOf('LT-HB-200W', 'Magasin chantier — Le Havre'))!.onHand]).toEqual([100, 20]);
-    await applyStockMovement(lt, { op: 'reserve', qty: 30, projectCode: 'HLT-026' }, 'Fabien Bertrand');
-    await expect(applyStockMovement(lt, { op: 'reserve', qty: 1, projectCode: 'NDC-031' }, 'Fabien Bertrand')).rejects.toThrow(/another project/);
-    await applyStockMovement(lt, { op: 'issue', qty: 10, projectCode: 'HLT-026', activityCode: 'A1420' }, 'Fabien Bertrand');
+    await applyStockMovement(lt, { op: 'reserve', qty: 30, projectCode: 'HLT-026' }, FB);
+    await expect(applyStockMovement(lt, { op: 'reserve', qty: 1, projectCode: 'NDC-031' }, FB)).rejects.toThrow(/another project/);
+    await applyStockMovement(lt, { op: 'issue', qty: 10, projectCode: 'HLT-026', activityCode: 'A1420' }, FB);
     expect(await stockOf('LT-HB-200W', 'Entrepôt central — Lyon')).toMatchObject({ onHand: 90, reserved: 20, reservedForShort: 'HLT', source: 'local' });
     expect((await listStockMovements({ limit: 1 }))[0].where).toMatch(/^Entrepôt central — Lyon → A1420 /);
-    await applyStockMovement(lt, { op: 'return', qty: 5, projectCode: 'HLT-026' }, 'Fabien Bertrand');
-    await applyStockMovement(lt, { op: 'scrap', qty: 5 }, 'Fabien Bertrand');
-    await applyStockMovement(lt, { op: 'adjust', qty: 0 }, 'Fabien Bertrand');
+    await applyStockMovement(lt, { op: 'return', qty: 5, projectCode: 'HLT-026' }, FB);
+    await applyStockMovement(lt, { op: 'scrap', qty: 5 }, FB);
+    await applyStockMovement(lt, { op: 'adjust', qty: 0 }, FB);
     expect(await stockOf('LT-HB-200W', 'Entrepôt central — Lyon')).toMatchObject({ onHand: 0, reserved: 0, reservedForProject: null });
     const moves = (await listStockMovements({ ref: 'LT-HB-200W', limit: 6 })).map((m) => [m.typeLabel, m.qty, m.who, m.pendingPush]);
     expect(moves.slice(0, 5)).toEqual([['Adjust', 0, 'Fabien Bertrand', true], ['Scrap', 5, 'Fabien Bertrand', true], ['Return', 5, 'Fabien Bertrand', true], ['Issue', 10, 'Fabien Bertrand', true], ['Reserve', 30, 'Fabien Bertrand', true]]);

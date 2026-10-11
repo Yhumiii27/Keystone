@@ -1,6 +1,7 @@
 // Shared helpers of the export providers (chapter 4, exports feature): column / sheet builders, a "Key figures" sheet for
 // KPI tiles, parsing of the display strings some view models carry ("4 800 k€", "64 %", "0.90") back into numbers, EN date
 // strings → ISO, the project header of PDF documents and the URL parameters a screen reads. Pure (no DB access).
+import { CURRENCIES } from '@/domain/currency';
 import type { Lang } from '@/i18n/translate';
 import { dataText } from '@/i18n/data-text';
 import type { ColumnType, CellValue, ExportColumn, ExportContext, ExportSheet, ExportWorkbook, PdfBlock, PdfDocument } from '../types';
@@ -140,16 +141,28 @@ export const daysText = (v: number, lang: Lang) => `${v < 0 ? '−' : ''}${Math.
 
 const PRICE_COLUMNS: readonly ColumnType[] = ['money_eur', 'money_keur'];
 const PRICE_MASK = '•••';
-const hasEuro = (v: CellValue) => typeof v === 'string' && /€/.test(v);
+// C-9: an amount may be in any currency of a project — a symbol ("€4,700", "$1.20M", "4 700 £") or an ISO code next to a number
+// ("CHF 4,700", "450 k CHF", "12 000 USD").
+const CODES = CURRENCIES.join('|');
+const AMOUNT_RE = new RegExp(`[€$£]|\\d\\s*(?:[kKM]\\s*)?(?:${CODES})\\b|\\b(?:${CODES})\\s*[−+-]?\\d`);
 
-/** A sheet without its euro amounts (supplier prices, order, stock and BOM values); a text cell showing an amount is masked. */
+/** A display text showing an amount in any currency (masked for a viewer who may not see supplier prices). */
+export const showsAmount = (v: CellValue): boolean => typeof v === 'string' && AMOUNT_RE.test(v);
+
+/** A supplier price / value column: marked `price` (any currency) or typed in euros. */
+export const isPriceColumn = (c: ExportColumn): boolean => c.price === true || PRICE_COLUMNS.includes(c.type ?? 'text');
+
+/**
+ * A sheet without its amounts (supplier prices, order, stock and BOM values, supplier invoices — in euros or in another
+ * currency); a text cell showing an amount is masked.
+ */
 export function stripPriceColumns(s: ExportSheet): ExportSheet {
-  const columns = s.columns.filter((c) => !PRICE_COLUMNS.includes(c.type ?? 'text'));
+  const columns = s.columns.filter((c) => !isPriceColumn(c));
   const keys = new Set(columns.map((c) => c.key));
   return {
     ...s,
     columns,
-    rows: s.rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => keys.has(k)).map(([k, v]) => [k, hasEuro(v) ? PRICE_MASK : v]))),
+    rows: s.rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => keys.has(k)).map(([k, v]) => [k, showsAmount(v) ? PRICE_MASK : v]))),
   };
 }
 
@@ -165,8 +178,8 @@ export const pricedPdf = (fn: (ctx: ExportContext) => Promise<PdfDocument | null
   if (!doc || !ctx.pricesMasked) return doc;
   const blocks = doc.blocks.map((b): PdfBlock => {
     if (b.kind === 'table') return { kind: 'table', sheet: stripPriceColumns(b.sheet) };
-    if (b.kind === 'fields') return { ...b, items: b.items.map(([k, v]): [string, string] => [k, hasEuro(v) ? PRICE_MASK : v]) };
-    if (b.kind === 'kpis') return { ...b, items: b.items.map((i) => (hasEuro(i.value) ? { ...i, value: PRICE_MASK } : i)) };
+    if (b.kind === 'fields') return { ...b, items: b.items.map(([k, v]): [string, string] => [k, showsAmount(v) ? PRICE_MASK : v]) };
+    if (b.kind === 'kpis') return { ...b, items: b.items.map((i) => ({ ...i, value: showsAmount(i.value) ? PRICE_MASK : i.value, ...(showsAmount(i.sub) ? { sub: PRICE_MASK } : {}) })) };
     return b;
   });
   return { ...doc, blocks };

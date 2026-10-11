@@ -101,7 +101,7 @@ export async function statusReportDocument(ctx: ExportContext, options: StatusRe
         blocks.push({ kind: 'heading', text: t('Deliverables') });
         blocks.push(dlvs.length
           ? { kind: 'table', sheet: sheet(t('Deliverables'), [col('number', t('Deliverable'), 'text', 8), col('title', t('Title'), 'text', 40), col('due', t('Due'), 'date', 12), col('status', t('Status'), 'text', 14), col('acceptance', t('Acceptance'), 'text', 22)],
-            dlvs.map((d) => ({ number: d.number, title: t(d.title), due: d.dueOn, status: t(d.statusLabel), acceptance: t(d.acceptanceText) }))) }
+            dlvs.map((d) => ({ number: d.number, title: dataText(d.title, ctx.lang), due: d.dueOn, status: t(d.statusLabel), acceptance: t(d.acceptanceText) }))) }
           : { kind: 'paragraph', text: t('No deliverable registered yet'), muted: true });
         blocks.push({ kind: 'heading', text: t('Invoices') });
         blocks.push(view.invoices.length

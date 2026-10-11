@@ -91,7 +91,7 @@ describe('trends and contingency', () => {
 
   // Delivery 7 (R-071, C-4): a draw-down is submitted, linked, and only drawn once the portfolio director validates it.
   it('submits draw-downs (linked, not drawn yet), the director validates them; the register is created with the budget\'s provision', async () => {
-    await submitContingencyDraw('HLT-026', { amountKeur: 10, reason: 'Night shift lighting', linkRef: 'R-07', linkType: 'risk' }, 'Romain Aubert');
+    await submitContingencyDraw('HLT-026', { amountKeur: 10, reason: 'Night shift lighting', linkRef: 'R-07', linkType: 'risk' }, { name: 'Romain Aubert', role: 'pm' });
     let hlt = (await getContingency('HLT-026'))!;
     expect([hlt.drawn, hlt.pending, hlt.remaining, hlt.draws.at(-1)?.dateText, hlt.draws.at(-1)?.linkType, hlt.draws.at(-1)?.status, hlt.draws.at(-1)?.requestedBy])
       .toEqual([48, 10, 102, '25 Sep', 'risk', 'submitted', 'R. Aubert']);
@@ -99,7 +99,7 @@ describe('trends and contingency', () => {
     hlt = (await getContingency('HLT-026'))!;
     expect([hlt.drawn, hlt.pending, hlt.remaining, hlt.draws.at(-1)?.approvedBy]).toEqual([58, 0, 92, 'M. Lefebvre']);
     // A-8: NDC-031's provision is its budget's contingency line (100), no longer round(BAC × 3 %) = 63.
-    await submitContingencyDraw('NDC-031', { amountKeur: 5, reason: 'UPS', linkRef: 'R-01', linkType: 'risk' }, 'Marie Lefebvre');
+    await submitContingencyDraw('NDC-031', { amountKeur: 5, reason: 'UPS', linkRef: 'R-01', linkType: 'risk' }, { name: 'Marie Lefebvre', role: 'director' });
     const ndc = (await getContingency('NDC-031'))!;
     expect([ndc.initial, ndc.isDefault, ndc.drawn, ndc.pending, ndc.draws[0].linkRef]).toEqual([100, false, 0, 5, 'R-01']);
   });

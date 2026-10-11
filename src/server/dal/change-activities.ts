@@ -3,7 +3,9 @@ import 'server-only';
 // A request names the activities it touches and, optionally, their new duration; the links are listed on the request
 // (Change control drawer) and on the activity (Plan drawer). Once the request is approved, `applyApprovedChangeDurations`
 // — called by "Reschedule" before the CPM runs — writes the new durations into the plan, once, audited. Links are by
-// activity code within the request's project (they survive the plan trash). Permission checks belong to the callers.
+// activity code within the request's project (they survive the plan trash). Permission checks belong to the callers; the
+// link writers re-check the rule with the actor (defense in depth): the project's team with Change control in their
+// workspace, or the director — never the client (the plan is internal; `canEditCrActivities`).
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { crActivitiesEditable, isPendingDuration, type CrActivityInput } from '@/domain/change-activities';
 import { deriveCrStatus } from '@/domain/change-control';
@@ -12,6 +14,8 @@ import { changeStatus, type ChangeStatus } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
 import { activities, changeRequestActivities, changeRequestSteps, changeRequests, projects } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
+import type { Actor } from './ops-common';
+import { editsProjectScreen } from './team-guard';
 
 type Q = DB | Tx;
 
@@ -86,6 +90,14 @@ export async function unknownActivityCodes(projectCode: string, codes: readonly 
   return codes.filter((c) => !known.has(c));
 }
 
+/** Refusal of a link change by someone off the project's team, or the client (EN source; FR in d7-operations.json). */
+export const CR_ACTIVITIES_TEAM_ONLY = 'Only the project team links plan activities to a change request';
+
+/** The actor may change the links of the project's requests (see the header), else throws. */
+async function requireLinkEditor(tx: Tx, actor: Actor, projectId: string): Promise<void> {
+  if (!(await editsProjectScreen(tx, actor, projectId, 'changes'))) throw new CrActivityError(CR_ACTIVITIES_TEAM_ONLY);
+}
+
 /** The request of a project by number, for a link change: refused unless it is still open. */
 async function openRequest(tx: Tx, projectId: string, number: string) {
   const [cr] = await tx.select({ id: changeRequests.id, status: changeRequests.status }).from(changeRequests)
@@ -98,12 +110,15 @@ async function openRequest(tx: Tx, projectId: string, number: string) {
 
 /**
  * Links activities to an open request (or updates the new duration of an activity already linked), in one transaction:
- * every code must be an activity of the project's plan. Audited on the request. Returns the codes linked.
+ * every code must be an activity of the project's plan. `actor` = the viewer (name and role), re-checked. Audited on the
+ * request. Returns the codes linked.
  */
-export async function linkCrActivities(projectCode: string, number: string, items: CrActivityInput[], actorName: string, q?: Tx): Promise<string[]> {
+export async function linkCrActivities(projectCode: string, number: string, items: CrActivityInput[], actor: Actor, q?: Tx): Promise<string[]> {
   if (!items.length) return [];
+  const actorName = actor.name;
   const run = async (tx: Tx) => {
     const pid = await projectIdOf(tx, projectCode);
+    await requireLinkEditor(tx, actor, pid);
     const cr = await openRequest(tx, pid, number);
     const known = new Map((await tx.select({ code: activities.code, days: activities.durationDays }).from(activities)
       .where(and(eq(activities.projectId, pid), inArray(activities.code, items.map((i) => i.code))))).map((a) => [a.code, a.days]));
@@ -111,34 +126,36 @@ export async function linkCrActivities(projectCode: string, number: string, item
     if (missing.length) throw new CrActivityError(`Unknown activity ${missing.join(', ')}`);
     const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${changeRequestActivities.position}), -1)::int` }).from(changeRequestActivities)
       .where(eq(changeRequestActivities.changeRequestId, cr.id));
-    const actor = await findPerson(tx, actorName);
+    const person = await findPerson(tx, actorName);
     let next = pos + 1;
     for (const i of items) {
       await tx.insert(changeRequestActivities)
-        .values({ changeRequestId: cr.id, activityCode: i.code, newDurationDays: i.newDurationDays, position: next++, createdByPersonId: actor?.id ?? null })
+        .values({ changeRequestId: cr.id, activityCode: i.code, newDurationDays: i.newDurationDays, position: next++, createdByPersonId: person?.id ?? null })
         .onConflictDoUpdate({ target: [changeRequestActivities.changeRequestId, changeRequestActivities.activityCode], set: { newDurationDays: i.newDurationDays } });
     }
-    const who = actor ? nameOf(actor) : actorName;
+    const who = person ? nameOf(person) : actorName;
     const text = items.map((i) => (i.newDurationDays == null ? i.code : `${i.code} ${known.get(i.code)} d → ${i.newDurationDays} d`)).join(', ');
-    await writeAudit(tx, { actorName: who, actorPersonId: actor?.id, objectRef: number, change: `activities touched: ${text}`, area: 'Change control', entityType: 'change_request', entityId: cr.id, projectId: pid });
+    await writeAudit(tx, { actorName: who, actorPersonId: person?.id, objectRef: number, change: `activities touched: ${text}`, area: 'Change control', entityType: 'change_request', entityId: cr.id, projectId: pid });
     return items.map((i) => i.code);
   };
   if (q) return run(q);
   return (await getDb()).transaction(run);
 }
 
-/** Removes an activity from an open request (audited). */
-export async function unlinkCrActivity(projectCode: string, number: string, code: string, actorName: string): Promise<void> {
+/** Removes an activity from an open request (audited). `actor` = the viewer (name and role), re-checked. */
+export async function unlinkCrActivity(projectCode: string, number: string, code: string, actor: Actor): Promise<void> {
+  const actorName = actor.name;
   const db = await getDb();
   await db.transaction(async (tx) => {
     const pid = await projectIdOf(tx, projectCode);
+    await requireLinkEditor(tx, actor, pid);
     const cr = await openRequest(tx, pid, number);
     const gone = await tx.delete(changeRequestActivities)
       .where(and(eq(changeRequestActivities.changeRequestId, cr.id), eq(changeRequestActivities.activityCode, code))).returning({ id: changeRequestActivities.id });
     if (!gone.length) throw new CrActivityError('This activity is not linked to the request');
-    const actor = await findPerson(tx, actorName);
+    const person = await findPerson(tx, actorName);
     await writeAudit(tx, {
-      actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number, change: `activity no longer touched: ${code}`, area: 'Change control',
+      actorName: person ? nameOf(person) : actorName, actorPersonId: person?.id, objectRef: number, change: `activity no longer touched: ${code}`, area: 'Change control',
       entityType: 'change_request', entityId: cr.id, projectId: pid,
     });
   });

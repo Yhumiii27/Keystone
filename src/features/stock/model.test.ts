@@ -132,7 +132,7 @@ describe('Stock & storages after movements (DAL writes, the viewer as author)', 
   it('the prototype sequence (adjust, transfer, reserve, issue, return, scrap) gives the same lines, movements and KPIs', async () => {
     const rows = await listStock();
     const id = (i: number) => rows[i].id;
-    const who = 'Marie Lefebvre';
+    const who = { name: 'Marie Lefebvre', role: 'director' }; // the stock DAL re-checks the actor's rights (R-041)
     await applyStockMovement(id(0), { op: 'adjust', qty: 7 }, who);
     await applyStockMovement(id(4), { op: 'transfer', qty: 2, targetLocation: 'Magasin chantier — Marseille' }, who);
     await applyStockMovement(id(6), { op: 'reserve', qty: 4, projectCode: 'HLT-026' }, who);

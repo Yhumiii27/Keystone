@@ -12,6 +12,7 @@ import { getDb } from '@/server/db/client';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import { contracts, customerInvoices, paymentMilestones, projects, purchaseOrders, supplierInvoices } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
+import type { Actor } from './ops-common';
 
 /** Currency and budget rate of every project, keyed by code (one read per request). */
 export const listProjectFx = cache(async (): Promise<Record<string, ProjectFx>> => {
@@ -46,12 +47,18 @@ export interface BudgetRateInput {
   rate: string | number | null;
 }
 
+/** Refusal of a budget-rate change by anyone but the portfolio director (EN source; FR in d7-contract-portfolio.json). */
+export const BUDGET_RATE_DIRECTOR_ONLY = 'Only the portfolio director sets the budget rate';
+
 /**
- * Sets a project's currency and budget rate (portfolio director; the Server Function checks the role). EUR clears the rate.
- * Another currency needs a rate (0.0001–10 000 € per unit). Changing the currency is refused while a document of the project
- * is in the current non-EUR currency. Writes an audit row and an activity event. Returns the stored values.
+ * Sets a project's currency and budget rate (portfolio director — checked by the Server Function and re-checked here with
+ * `actor`). EUR clears the rate. Another currency needs a rate (0.0001–10 000 € per unit). Changing the currency is refused
+ * while a document of the project is in the current non-EUR currency. Writes an audit row and an activity event. Returns
+ * the stored values.
  */
-export async function setProjectBudgetRate(projectCode: string, input: BudgetRateInput, actorName: string): Promise<ProjectFx> {
+export async function setProjectBudgetRate(projectCode: string, input: BudgetRateInput, actor: Actor): Promise<ProjectFx> {
+  if (actor.role !== 'director') throw new Error(BUDGET_RATE_DIRECTOR_ONLY);
+  const actorName = actor.name;
   if (!isCurrency(input.currency)) throw new Error('Unknown currency');
   const currency = input.currency;
   const rate = currency === BASE_CURRENCY ? null : parseBudgetRate(input.rate);
@@ -66,14 +73,14 @@ export async function setProjectBudgetRate(projectCode: string, input: BudgetRat
     if (old.currency !== currency && old.currency !== BASE_CURRENCY && (await documentsIn(tx, p.id, old.currency)) > 0)
       throw new Error('Documents of this project are in its currency: it cannot change');
     await tx.update(projects).set({ currency, budgetRate: rate, updatedAt: new Date() }).where(eq(projects.id, p.id));
-    const actor = await findPerson(tx, actorName);
-    const who = actor ? nameOf(actor) : actorName;
+    const person = await findPerson(tx, actorName);
+    const who = person ? nameOf(person) : actorName;
     const text = (fx: ProjectFx) => (fx.currency === BASE_CURRENCY ? 'EUR' : `${fx.currency} · 1 ${fx.currency} = ${fx.budgetRate ?? '—'} €`);
     await writeAudit(tx, {
-      actorName: who, actorPersonId: actor?.id, objectRef: projectCode, change: `budget rate: ${text(old)} → ${text({ currency, budgetRate: rate })}`,
+      actorName: who, actorPersonId: person?.id, objectRef: projectCode, change: `budget rate: ${text(old)} → ${text({ currency, budgetRate: rate })}`,
       area: 'Contract', entityType: 'project', entityId: p.id, projectId: p.id,
     });
-    await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, text: `Budget rate ${text({ currency, budgetRate: rate })}`, kind: 'change', projectId: p.id });
+    await recordActivity(tx, { actorName: who, actorPersonId: person?.id, text: `Budget rate ${text({ currency, budgetRate: rate })}`, kind: 'change', projectId: p.id });
     return { currency, budgetRate: rate };
   });
 }

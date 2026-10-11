@@ -19,7 +19,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { activities, auditEntries, changeRequestSteps, changeRequests, projects } from '@/server/db/schema';
-import { listCrActivityLinks } from '@/server/dal/change-activities';
+import { linkCrActivities, listCrActivityLinks, unlinkCrActivity } from '@/server/dal/change-activities';
 import { rescheduleProject } from '@/server/dal/schedule';
 import { createChangeRequestAction } from './actions';
 import { linkCrActivityAction, unlinkCrActivityAction } from './activity-actions';
@@ -90,6 +90,28 @@ describe('change request ↔ plan activities (NEW-D2-2)', () => {
     const decided = (await listCrActivityLinks(HLT)).length;
     expect(await linkCrActivityAction(HLT, 'CR-007', { activity: 'A1260' })).toEqual({ error: 'Une demande de modification décidée ne peut plus être modifiée' });
     expect((await listCrActivityLinks(HLT)).length).toBe(decided);
+  });
+
+  it('the link writers re-check the project team with the actor (defense in depth: a direct DAL call cannot bypass it)', async () => {
+    const TEAM_ONLY = 'Only the project team links plan activities to a change request';
+    const number = 'CR-008';
+    const before = (await linksOf(number)).map((l) => l.code);
+    const wrong = [
+      { name: 'Nadia Bensaïd', role: 'client' }, // the client of HLT-026: the plan is internal
+      { name: 'Gabriel Comte', role: 'quality' }, // referent of HLT-026, Change control outside the quality workspace
+      { name: 'S. Perrin', role: 'pm' }, // a PM, not on HLT-026's team
+      { name: 'Nobody', role: 'pm' },
+      { name: 'Marie Lefebvre', role: 'admin' },
+    ];
+    for (const actor of wrong) {
+      await expect(linkCrActivities(HLT, number, [{ code: 'A1260', newDurationDays: 9 }], actor)).rejects.toThrow(TEAM_ONLY);
+      await expect(unlinkCrActivity(HLT, number, 'A1250', actor)).rejects.toThrow(TEAM_ONLY);
+    }
+    expect((await linksOf(number)).map((l) => l.code)).toEqual(before);
+    // The project's PM and the director are accepted.
+    expect(await linkCrActivities(HLT, number, [{ code: 'A1260', newDurationDays: 9 }], { name: 'Romain Aubert', role: 'pm' })).toEqual(['A1260']);
+    await unlinkCrActivity(HLT, number, 'A1260', { name: 'Marie Lefebvre', role: 'director' });
+    expect((await linksOf(number)).map((l) => l.code)).toEqual(before);
   });
 
   it('once the request is approved, the next Reschedule applies the new durations — once, audited', async () => {

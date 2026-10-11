@@ -11,9 +11,11 @@ import 'server-only';
 //   (3-way match);
 // - the inspector, the receiving clerk and the decision maker are the viewer;
 // - Delivery 7 (A-11, R-103): accepted goods update the part's last purchase price (the order line's price, the receipt's
-//   date, the order's supplier) unless a later purchase is already recorded — the BOM and the stock read it.
+//   date, the order's supplier) unless a later purchase is already recorded — the BOM and the stock read it. The price is
+//   stored in euros: a line of an order in the project currency is converted at the project's budget rate (C-9, R-075).
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { replacesLastPrice } from '@/domain/bom';
+import { projectFxOf, toEur } from '@/domain/currency';
 import { putAwayAfterQc, qcPlan, registerPlan, remainingToAnnounce, type QcDecision, type ReceiptForAnnounce } from '@/domain/deliveries';
 import { getDb } from '@/server/db/client';
 import { STATUS_ISO, locationType, receiptStatus, type LocationType, type ReceiptStatus } from '@/server/db/codes';
@@ -412,6 +414,9 @@ async function decideReceipt(number: string, mode: 'accept' | 'reject' | 'lines'
     const status: ReceiptStatus = plan.value.status;
     const [po] = await tx.select().from(purchaseOrders).where(eq(purchaseOrders.id, r.poId));
     const poLineRows = await tx.select().from(poLines).where(eq(poLines.poId, po.id));
+    const [project] = await tx.select({ currency: projects.currency, budgetRate: projects.budgetRate }).from(projects).where(eq(projects.id, po.projectId));
+    const fx = projectFxOf(project ?? {});
+    // C-9 (R-075): `value` stays in the order's currency — the invoices' receipt amount is compared with invoices in it.
     let value = 0;
     for (const [i, { l, loc }] of lines.entries()) {
       const { accepted, rejected } = decisions[i];
@@ -446,12 +451,14 @@ async function decideReceipt(number: string, mode: 'accept' | 'reject' | 'lines'
       }
       const pl = poLineRows.find((x) => x.partId === l.partId);
       if (pl) value += accepted * pl.unitPriceEur;
-      // A-11 (R-103): the accepted goods give the part its last purchase price.
+      // A-11 (R-103): the accepted goods give the part its last purchase price — in euros (the catalogue, the BOM and the
+      // stock unit cost are), the line price converted from the order's currency at the project's budget rate (C-9, R-075).
       if (pl && accepted > 0) {
         const receivedOn = r.receivedOn ?? STATUS_ISO;
         const [stored] = await tx.select({ purchasedOn: partLastPrices.purchasedOn }).from(partLastPrices).where(eq(partLastPrices.partId, l.partId));
         if (replacesLastPrice(stored, receivedOn)) {
-          const row = { unitPriceEur: pl.unitPriceEur, purchasedOn: receivedOn, supplierId: po.supplierId, updatedAt: new Date() };
+          const unitPriceEur = Math.round(toEur(pl.unitPriceEur, po.currency, fx) * 100) / 100;
+          const row = { unitPriceEur, purchasedOn: receivedOn, supplierId: po.supplierId, updatedAt: new Date() };
           await tx.insert(partLastPrices).values({ partId: l.partId, ...row }).onConflictDoUpdate({ target: partLastPrices.partId, set: row });
         }
       }

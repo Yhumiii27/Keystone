@@ -13,7 +13,10 @@ import type { OrderActionResult } from './actions';
 
 const CODE_RE = /^[A-Z]{3}-\d{3}$/;
 const PO_RE = /^PO-\d{3,}$/;
-const KNOWN = new Set(['A document is in euros or in the project currency', 'Ask the portfolio director to set the project’s budget rate first', 'This order is no longer a draft']);
+const KNOWN = new Set([
+  'A document is in euros or in the project currency', 'Ask the portfolio director to set the project’s budget rate first', 'This order is no longer a draft',
+  'Purchase orders are read-only for you', // the DAL's re-check of the rule above (defense in depth)
+]);
 
 export async function setOrderCurrencyAction(code: string, number: string, currency: string): Promise<OrderActionResult> {
   if (typeof code !== 'string' || !CODE_RE.test(code) || typeof number !== 'string' || !PO_RE.test(number) || !isCurrency(currency)) return { ok: false, error: 'Invalid request' };
@@ -28,7 +31,7 @@ export async function setOrderCurrencyAction(code: string, number: string, curre
     return { ok: false, error: 'This order is no longer a draft' };
   }
   try {
-    await setPurchaseOrderCurrency(po.number, currency, ctx.viewer.name);
+    await setPurchaseOrderCurrency(po.number, currency, { name: ctx.viewer.name, role: ctx.viewer.role });
   } catch (e) {
     const msg = e instanceof Error && KNOWN.has(e.message) ? e.message : 'The change could not be saved';
     return { ok: false, error: msg };

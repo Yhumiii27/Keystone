@@ -4,10 +4,15 @@
 // screen (roles with Stock & storages in their workspace; outside the workspace it is read-only), validates the raw
 // input with the domain parsers, writes through the stock DAL with the viewer as the actor, then revalidates the app
 // (stock lines, KPIs, the sidebar badge and the stock figures other screens show).
+// R-041 (delivery 7): a reservation, issue or return for a project is made by that project's team; procurement and the
+// director are the storekeepers who act for any project (`STOCK_KEEPER_ROLES` — default, owner to confirm). The stock DAL
+// re-checks these rules, the release and the override with the same actor.
 import { revalidatePath } from 'next/cache';
 import { isActivityCode, parseMovementInput } from '@/domain/stock';
 import { getProject } from '@/server/dal/projects';
-import { applyStockMovement, getStockPosition, importStockFromX3, pushStockToX3 } from '@/server/dal/stock';
+import {
+  STOCK_KEEPER_ROLES, STOCK_NOT_TEAM, STOCK_OVERRIDE_REFUSED, STOCK_RELEASE_REFUSED, applyStockMovement, getStockPosition, importStockFromX3, pushStockToX3,
+} from '@/server/dal/stock';
 import { getScreenAccess, projectAccessResolver } from '@/server/project-context';
 import { getI18n, type Viewer } from '@/server/session';
 import { importToastText, pushToastText, stockErrorT } from './i18n';
@@ -30,10 +35,14 @@ async function editor(): Promise<{ actor: string; viewer: Viewer } | { error: st
   return { actor: access.viewer.name, viewer: access.viewer };
 }
 
+/** Rights refusals of the stock DAL (R-041, R-099), shown translated like the Server Function's own. */
+const RIGHTS_REFUSALS = new Set(['Stock is read-only for you', STOCK_NOT_TEAM, STOCK_OVERRIDE_REFUSED, STOCK_RELEASE_REFUSED]);
+
 /** Rule refusals keep their (translated) message; anything else is a generic failure. */
 async function failure(e: unknown): Promise<{ error: string }> {
   const { t, lang } = await getI18n();
   const msg = e instanceof Error ? e.message : '';
+  if (RIGHTS_REFUSALS.has(msg)) return { error: t(msg) };
   return { error: stockErrorT(msg, t, lang) ?? t('The change could not be saved') };
 }
 
@@ -61,7 +70,7 @@ export async function applyStockMovementAction(
   const override = values.override === true;
   if (values.override !== undefined && typeof values.override !== 'boolean') return { error: await tr('Invalid request') };
   if (override && !(op === 'issue' || op === 'scrap')) return { error: await tr('Invalid request') };
-  if (override && !OVERRIDE_ROLES.includes(ok.viewer.role)) return { error: await tr('Only the portfolio director can take stock reserved for another project') };
+  if (override && !OVERRIDE_ROLES.includes(ok.viewer.role)) return { error: await tr(STOCK_OVERRIDE_REFUSED) };
   const rawActivity = typeof values.activity === 'string' ? values.activity.trim() : values.activity ?? null;
   if (rawActivity !== null && rawActivity !== '' && !isActivityCode(rawActivity)) return { error: await tr('Choose an activity of the project plan') };
   const activity = typeof rawActivity === 'string' && rawActivity ? rawActivity : null;
@@ -74,19 +83,20 @@ export async function applyStockMovementAction(
     if (!line.reservedForProject || !line.reserved) return failure(new Error('This line holds no reservation for this project'));
     const owner = await getProject(line.reservedForProject);
     // R-041: the reserving project's PM team (PM of record, co-PMs, deputies) or the director.
-    if (!owner || !(await projectAccessResolver(ok.viewer))(owner).lead)
-      return { error: await tr('Only the reserving project’s manager or the director can release this reservation') };
+    if (!owner || !(await projectAccessResolver(ok.viewer))(owner).lead) return { error: await tr(STOCK_RELEASE_REFUSED) };
     project = owner.code;
   } else if (op === 'reserve' || op === 'issue' || op === 'return') {
     const p = typeof projectCode === 'string' && projectCode ? await getProject(projectCode) : null;
     if (!p) return { error: await tr('A project is required') };
+    // R-041: the project's team (an issue charges its work packages, R-098); the storekeepers act for any project.
+    if (!STOCK_KEEPER_ROLES.includes(ok.viewer.role) && !(await projectAccessResolver(ok.viewer))(p).member) return { error: await tr(STOCK_NOT_TEAM) };
     project = p.code;
   }
   try {
     await applyStockMovement(
       positionId,
       { op, qty, targetLocation: target, projectCode: project, activityCode: op === 'issue' || op === 'return' ? activity : null, override },
-      ok.actor,
+      { name: ok.viewer.name, role: ok.viewer.role },
     );
   } catch (e) {
     return failure(e);

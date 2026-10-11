@@ -5,6 +5,9 @@
 // - NEW-D4-2 / SC-5b = a (R-099): an issue or a scrap never takes units reserved for another project; "Release
 //   reservation" belongs to the reserving project's PM and the director; the director alone may override (audited, the
 //   reserving project sees it in its audit and activity).
+// - R-041 (P-2): a reservation, issue or return for a project is made by its team; procurement and the director are the
+//   storekeepers of every project (default, owner to confirm). The stock DAL re-checks the team, the release and the
+//   override with the actor (name and role), so a direct call cannot bypass them.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RoleKey } from '@/config/screens';
 
@@ -25,7 +28,7 @@ import { getDb, setDb } from '@/server/db/client';
 import { activityEvents, auditEntries, projects, stockMovements } from '@/server/db/schema';
 import { openDatabase } from '@/server/db/open';
 import { getCostControl } from '@/server/dal/cost';
-import { listIssueActivityOptions, listStock, stockCostByWorkPackage } from '@/server/dal/stock';
+import { applyStockMovement, listIssueActivityOptions, listStock, stockCostByWorkPackage } from '@/server/dal/stock';
 import { applyStockMovementAction } from './actions';
 
 const CENTRAL = 'Entrepôt central — Lyon';
@@ -160,5 +163,79 @@ describe('stock reserved for another project (R-099)', () => {
     // Once released, the units are free for any project.
     viewer.role = 'procurement';
     expect(await applyStockMovementAction(msr, { op: 'issue', qty: '40', activity: 'A1250' }, 'HLT-026')).toEqual({ ok: true });
+  });
+});
+
+describe('stock movements for a project follow its team (R-041)', () => {
+  const NOT_TEAM = 'Only the project’s team, procurement or the director can reserve, issue or return stock for this project';
+  const RELEASE = 'Only the reserving project’s manager or the director can release this reservation';
+  const OVERRIDE = 'Only the portfolio director can take stock reserved for another project';
+  const QUALITY = { name: 'Gabriel Comte', role: 'quality' };
+  beforeAll(async () => {
+    setDb(await openDatabase());
+  }, 60_000);
+  beforeEach(() => {
+    viewer.role = 'procurement';
+    viewer.lang = 'en';
+  });
+
+  it('Server Function: off the project’s team, no reservation, issue or return for it; the storekeepers act for any project', async () => {
+    const l = await line('FD-SPR-HD', CENTRAL);
+    const ndc = await projectId('NDC-031');
+    const ndcActivity = (await listIssueActivityOptions('NDC-031'))[0].code;
+    // Gabriel Comte (quality): referent of HLT-026, read-only on NDC-031 — the finding's issue charged NDC-031's work package.
+    viewer.role = 'quality';
+    for (const values of [{ op: 'issue', qty: '1', activity: ndcActivity }, { op: 'reserve', qty: '1' }, { op: 'return', qty: '1' }])
+      expect(await applyStockMovementAction(l.id, values, 'NDC-031')).toEqual({ error: NOT_TEAM });
+    viewer.lang = 'fr';
+    expect(await applyStockMovementAction(l.id, { op: 'issue', qty: '1', activity: ndcActivity }, 'NDC-031')).toEqual({
+      error: 'Seuls l’équipe du projet, les achats ou le directeur peuvent réserver, sortir ou retourner du stock pour ce projet',
+    });
+    viewer.lang = 'en';
+    expect((await line('FD-SPR-HD', CENTRAL)).onHand).toBe(l.onHand);
+    expect([...(await stockCostByWorkPackage(ndc)).values()]).toEqual([]);
+    // On their own project's team: accepted.
+    expect(await applyStockMovementAction(l.id, { op: 'issue', qty: '1', activity: 'A1250' }, 'HLT-026')).toEqual({ ok: true });
+    // The pm persona (R. Aubert) is not on NDC-031's team either.
+    viewer.role = 'pm';
+    expect(await applyStockMovementAction(l.id, { op: 'reserve', qty: '1' }, 'NDC-031')).toEqual({ error: NOT_TEAM });
+    // Storekeepers: procurement on a project whose team F. Bertrand is not on (RCF-019), the director anywhere.
+    viewer.role = 'procurement';
+    expect(await applyStockMovementAction(l.id, { op: 'return', qty: '1' }, 'RCF-019')).toEqual({ ok: true });
+    viewer.role = 'director';
+    expect(await applyStockMovementAction(l.id, { op: 'issue', qty: '1', activity: ndcActivity }, 'NDC-031')).toEqual({ ok: true });
+    expect((await line('FD-SPR-HD', CENTRAL)).onHand).toBe(l.onHand - 1);
+    expect([...(await stockCostByWorkPackage(ndc)).values()].length).toBe(1);
+  });
+
+  it('the stock DAL re-checks the workspace, the team, the release and the override with the actor', async () => {
+    const l = await line('FD-SPR-HD', CENTRAL);
+    const ndcActivity = (await listIssueActivityOptions('NDC-031'))[0].code;
+    // Wrong actors: refused, nothing written.
+    await expect(applyStockMovement(l.id, { op: 'issue', qty: 1, projectCode: 'NDC-031', activityCode: ndcActivity }, QUALITY)).rejects.toThrow(NOT_TEAM);
+    await expect(applyStockMovement(l.id, { op: 'reserve', qty: 1, projectCode: 'NDC-031' }, { name: 'Romain Aubert', role: 'pm' })).rejects.toThrow(NOT_TEAM);
+    await expect(applyStockMovement(l.id, { op: 'return', qty: 1, projectCode: 'HLT-026' }, { name: 'Nobody', role: 'quality' })).rejects.toThrow(NOT_TEAM);
+    await expect(applyStockMovement(l.id, { op: 'adjust', qty: 5 }, { name: 'Julien Wagner', role: 'member' })).rejects.toThrow('Stock is read-only for you');
+    await expect(applyStockMovement(l.id, { op: 'adjust', qty: 5 }, { name: 'Marie Lefebvre', role: 'admin' })).rejects.toThrow('Stock is read-only for you');
+    expect((await line('FD-SPR-HD', CENTRAL)).onHand).toBe(l.onHand);
+    // Right actors: accepted.
+    await applyStockMovement(l.id, { op: 'issue', qty: 1, projectCode: 'HLT-026', activityCode: 'A1250' }, QUALITY);
+    await applyStockMovement(l.id, { op: 'return', qty: 1, projectCode: 'RCF-019' }, { name: 'Fabien Bertrand', role: 'procurement' });
+    await applyStockMovement(l.id, { op: 'issue', qty: 1, projectCode: 'NDC-031', activityCode: ndcActivity }, { name: 'Marie Lefebvre', role: 'director' });
+    expect((await line('FD-SPR-HD', CENTRAL)).onHand).toBe(l.onHand - 1);
+    // Release (FD-DET-OPT central: 180 reserved for HLT-026): its PM or the director, not a referent nor procurement.
+    const hlt = (await line('FD-DET-OPT', CENTRAL)).id;
+    await expect(applyStockMovement(hlt, { op: 'release', qty: 10, projectCode: 'HLT-026' }, QUALITY)).rejects.toThrow(RELEASE);
+    await expect(applyStockMovement(hlt, { op: 'release', qty: 10, projectCode: 'HLT-026' }, { name: 'Fabien Bertrand', role: 'procurement' })).rejects.toThrow(RELEASE);
+    await applyStockMovement(hlt, { op: 'release', qty: 10, projectCode: 'HLT-026' }, { name: 'Romain Aubert', role: 'pm' });
+    await applyStockMovement(hlt, { op: 'release', qty: 10, projectCode: 'HLT-026' }, { name: 'Marie Lefebvre', role: 'director' });
+    expect(await line('FD-DET-OPT', CENTRAL)).toMatchObject({ reserved: 160, reservedForProject: 'HLT-026' });
+    // Override (SG-BRK-SS2 workshop: 140 on hand, 120 reserved for MSR-012): the director's role only.
+    const msr = (await line('SG-BRK-SS2', ATELIER)).id;
+    await expect(applyStockMovement(msr, { op: 'scrap', qty: 30, override: true }, { name: 'Fabien Bertrand', role: 'procurement' })).rejects.toThrow(OVERRIDE);
+    await expect(applyStockMovement(msr, { op: 'scrap', qty: 30, override: true }, { name: 'Marie Lefebvre', role: 'pm' })).rejects.toThrow(OVERRIDE);
+    expect(await line('SG-BRK-SS2', ATELIER)).toMatchObject({ onHand: 140, reserved: 120 });
+    await applyStockMovement(msr, { op: 'scrap', qty: 30, override: true }, { name: 'Marie Lefebvre', role: 'director' });
+    expect(await line('SG-BRK-SS2', ATELIER)).toMatchObject({ onHand: 110, reserved: 110, reservedForProject: 'MSR-012' });
   });
 });

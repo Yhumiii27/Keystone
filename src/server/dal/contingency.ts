@@ -7,7 +7,9 @@ import 'server-only';
 //  - a draw-down is linked to a change request, a risk or an NCR of the project (chosen from a list), cannot exceed the
 //    provision left, and is `submitted` until the portfolio director validates it in My approvals — only validated
 //    draw-downs are drawn (the Budget's "drawn" and the actual cost of the reserve line, src/server/dal/evm.ts);
-//  - every step is audited, traced in the activity feed and notified (director on submission, requester on decision).
+//  - every step is audited, traced in the activity feed and notified (director on submission, requester on decision);
+//  - who: a draw-down is submitted by the project's team with the Contingency register in their workspace (as the Server
+//    Function's `canEdit('contingency')`, R-041) and decided by the director — both re-checked here with the actor.
 import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
@@ -19,7 +21,9 @@ import { STATUS_ISO, shortDateOfIso, type ContingencyLinkType } from '@/server/d
 import { findPerson, nameOf, personOfRole, recordActivity, writeAudit } from '@/server/db/helpers';
 import { changeRequests, contingencyDraws, contingencyRegisters, persons, projectControls, projects, risks, vigieNcrs } from '@/server/db/schema';
 import { getProjectEvm } from './evm';
+import type { Actor } from './ops-common';
 import { getOpenRiskExposure } from './risks';
+import { editsProjectScreen } from './team-guard';
 
 type Q = DB | Tx;
 
@@ -189,12 +193,18 @@ export interface DrawReceipt {
   director: string | null;
 }
 
+/** Refusal of a draw-down by someone who may not edit the project's register (EN source; FR in risks.json). */
+export const CONTINGENCY_READ_ONLY = 'This contingency register is read-only for you';
+
 /**
  * "Record draw-down" (AF.contingency, C-4): a `submitted` draw-down linked to one of the project's change requests, risks or
  * NCRs, refused when it would exceed the provision left once the draw-downs already awaiting validation are counted. Creates
  * the register (with the project's provision) on the first draw-down. Audited and traced; the caller notifies the director.
+ * `actor` = the viewer: refused (`forbidden`) unless the register is in their workspace and they are on the project's team
+ * (or are the director) — the Server Function's `canEdit('contingency')`, re-checked here.
  */
-export async function submitContingencyDraw(projectCode: string, input: DrawInput, actorName: string): Promise<DrawReceipt> {
+export async function submitContingencyDraw(projectCode: string, input: DrawInput, actor: Actor): Promise<DrawReceipt> {
+  const actorName = actor.name;
   const amount = Math.round((Number(input.amountKeur) || 0) * 100) / 100;
   if (!(amount > 0)) throw new ContingencyError('Enter an amount greater than 0');
   const reason = (input.reason ?? '').trim();
@@ -203,6 +213,7 @@ export async function submitContingencyDraw(projectCode: string, input: DrawInpu
   return db.transaction(async (tx) => {
     let t = await totalsOf(tx, projectCode, true);
     if (!t) throw new ContingencyError('Unknown project');
+    if (!(await editsProjectScreen(tx, actor, t.projectId, 'contingency'))) throw new ContingencyError(CONTINGENCY_READ_ONLY, 'forbidden');
     const linkedId = await resolveLink(tx, t.projectId, projectCode, input.linkRef, input.linkType);
     if (!linkedId) throw new ContingencyError('Unknown change request, risk or NCR');
     if (!t.registerId) {
@@ -215,20 +226,20 @@ export async function submitContingencyDraw(projectCode: string, input: DrawInpu
       .select({ pos: sql<number>`coalesce(max(${contingencyDraws.position}), -1)::int` })
       .from(contingencyDraws)
       .where(eq(contingencyDraws.registerId, t.registerId!));
-    const actor = await findPerson(tx, actorName);
-    const who = actor ? nameOf(actor) : actorName;
+    const person = await findPerson(tx, actorName);
+    const who = person ? nameOf(person) : actorName;
     const [d] = await tx
       .insert(contingencyDraws)
       .values({
         registerId: t.registerId!, drawnOn: input.drawnOn ?? STATUS_ISO, amountKeur: amount, reason, linkRef: input.linkRef, linkedEntityType: input.linkType,
-        linkedEntityId: linkedId, approvedByPersonId: null, position: pos + 1, status: 'submitted', requestedByPersonId: actor?.id ?? null, requestedByName: who,
+        linkedEntityId: linkedId, approvedByPersonId: null, position: pos + 1, status: 'submitted', requestedByPersonId: person?.id ?? null, requestedByName: who,
       })
       .returning({ id: contingencyDraws.id });
     await writeAudit(tx, {
-      actorName: who, actorPersonId: actor?.id, objectRef: 'Contingency', change: `draw-down submitted · ${amount} k€ · ${input.linkRef} · awaiting validation`,
+      actorName: who, actorPersonId: person?.id, objectRef: 'Contingency', change: `draw-down submitted · ${amount} k€ · ${input.linkRef} · awaiting validation`,
       area: 'Contingency', entityType: 'contingency_draw', entityId: d.id, projectId: t.projectId,
     });
-    await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, text: `Submitted a ${amount} k€ contingency draw-down · ${input.linkRef}`, kind: 'change', projectId: t.projectId });
+    await recordActivity(tx, { actorName: who, actorPersonId: person?.id, text: `Submitted a ${amount} k€ contingency draw-down · ${input.linkRef}`, kind: 'change', projectId: t.projectId });
     const director = await personOfRole(tx, 'director');
     return { drawId: d.id, projectCode, amount, linkRef: input.linkRef, requestedBy: who, director: director ? (director.fullName ?? director.shortName) : null };
   });

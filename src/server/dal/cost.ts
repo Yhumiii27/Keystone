@@ -4,6 +4,8 @@ import 'server-only';
 // Delivery 7 (lot cost-control):
 //  - R-073: PV / EV / AC, progress, the work packages' actual / EAC and the orders placed are computed from Keystone data
 //    (src/server/dal/evm.ts); the seeded series (`evm_periods`) stay only for a project without activity budgets;
+//  - R-098 (SC-5a): stock issued to a package's activities in Keystone, less the returns, adds to its actual and its EAC
+//    (and to AC through src/server/dal/evm.ts);
 //  - R-068 (A-4): the change list, "Approved changes", "Pending" and the work packages' "Changes" read the single register
 //    (`change_requests`) — `budget_change_lines` and the seeded reconciliation figures are no longer read;
 //  - R-070 (A-8): the contingency drawn is the register's validated draw-downs; the forecast consumption shows apart.
@@ -200,10 +202,12 @@ export async function getCostControl(code: string): Promise<CostControl | null> 
     workPackages: wps.map((w) => {
       if (w.wbsCode === '—') return { wbs: w.wbsCode, name: w.name, original: w.originalKeur, changes: 0, actual: drawn, eac: tile.forecast };
       const has = acts.some((a) => a.wbs === w.wbsCode);
+      // SC-5a (R-098): stock material issued to the package's activities in Keystone (less the returns) is added to its actual
+      // cost and to its EAC — it is a cost the activities' figures do not hold (AC follows, src/server/dal/evm.ts).
+      const stock = stockByWp.get(w.wbsCode) ?? 0;
       return {
         wbs: w.wbsCode, name: w.name, original: w.originalKeur, changes: wpChanges.get(w.wbsCode) ?? 0,
-        // SC-5a (R-098): stock material issued to the package's activities in Keystone is added to its actual cost.
-        actual: (has ? sumBy(w.wbsCode, 'actual') : w.actualKeur) + (stockByWp.get(w.wbsCode) ?? 0), eac: has ? sumBy(w.wbsCode, 'eac') : w.eacKeur,
+        actual: (has ? sumBy(w.wbsCode, 'actual') : w.actualKeur) + stock, eac: (has ? sumBy(w.wbsCode, 'eac') : w.eacKeur) + stock,
       };
     }),
     changes: budgetChangeRows(crs).map((r) => ({

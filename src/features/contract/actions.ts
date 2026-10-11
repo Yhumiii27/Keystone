@@ -76,6 +76,8 @@ const KNOWN_ERRORS = [
   'Ask the portfolio director to set the project’s budget rate first', 'Documents of this project are in its currency: it cannot change',
   'Only a draft amendment can be sent for signature', 'Only an amendment sent for signature can be signed', 'This guarantee is already released',
   'Unknown amendment', 'Unknown guarantee', 'Enter a budget rate in euros per unit', 'Unknown currency',
+  // The DAL's re-check of the budget-rate rule (defense in depth).
+  'Only the portfolio director sets the budget rate',
 ];
 const knownError = (e: unknown) => (e instanceof Error && KNOWN_ERRORS.includes(e.message) ? e.message : null);
 const position = (v: unknown) => (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < 10_000 ? v : null);
@@ -246,7 +248,7 @@ export async function setBudgetRateAction(code: string, currency: string, rate: 
   // A read-only project (closed, archived) keeps its rate.
   if (!ctx.canEdit('contract')) return { error: await tr('This contract is read-only for you') };
   try {
-    await setProjectBudgetRate(project.code, { currency, rate }, ctx.viewer.name);
+    await setProjectBudgetRate(project.code, { currency, rate }, { name: ctx.viewer.name, role: ctx.viewer.role });
   } catch (e) {
     return { error: await tr(knownError(e) ?? 'The change could not be saved') };
   }

@@ -27,5 +27,6 @@
   "Read-only — you decide the requests of your own department only": "Consultation — vous ne décidez que les demandes de votre service",
   "You can open the work of your department and of your projects’ teams only — showing yours": "Vous ne pouvez ouvrir que le travail de votre service et des équipes de vos projets — voici le vôtre",
   "Only the project manager or the director can change the plan structure — you can update the progress of your own activities": "Seuls le chef de projet et le directeur modifient la structure du planning — vous saisissez l’avancement de vos activités",
-  "You can update the progress of your own activities only": "Vous ne saisissez que l’avancement de vos propres activités"
+  "You can update the progress of your own activities only": "Vous ne saisissez que l’avancement de vos propres activités",
+  "Only the project’s team, procurement or the director can reserve, issue or return stock for this project": "Seuls l’équipe du projet, les achats ou le directeur peuvent réserver, sortir ou retourner du stock pour ce projet"
 }

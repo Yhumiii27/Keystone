@@ -68,7 +68,7 @@ export async function createChangeRequestAction(code: string, values: Record<str
   const number = await createChangeRequest(r.ctx.project.code, { ...parsed.value, submit: true, proposeBaseline }, r.ctx.viewer.name);
   if (acts.value.length) {
     try {
-      await linkCrActivities(r.ctx.project.code, number, acts.value, r.ctx.viewer.name);
+      await linkCrActivities(r.ctx.project.code, number, acts.value, { name: r.ctx.viewer.name, role: r.ctx.viewer.role });
     } catch (e) {
       // The request exists: say which part failed instead of inviting a second request.
       console.error('createChangeRequestAction: activities', e);

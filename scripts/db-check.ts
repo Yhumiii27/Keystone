@@ -133,8 +133,9 @@ const D5_COUNTS: Record<string, number> = {
   site_collisions: 4, mission_cost_lines: 6, daily_reports: 2, cursus_clearances: 5, cursus_requests: 0, cursus_sync_runs: 1, client_issues: 3,
   client_document_categories: 5, eng_disciplines: 4, eng_inputs: 12, eng_consistency_rules: 6, eng_checks: 10, eng_outputs: 6, eng_changes: 4, eng_import_tools: 4,
   eng_column_mappings: 6, eng_import_deltas: 4, eng_imports: 0, pid_sheets: 1, pid_tags: 24, pid_validation_steps: 5, machine_type_phases: 28,
-  // app_settings: the health thresholds and, since delivery 7, the seed record "keystone.seed" (R-011, A-15).
-  machine_type_cost_categories: 25, machine_type_itp_systems: 17, reference_values: 60, app_settings: 2, connectors: 10, connector_sync_runs: 0, import_formats: 6,
+  // app_settings: the health thresholds and, since delivery 7, the seed record "keystone.seed" (R-011, A-15), the "Reset to
+  // defaults" document (R-170) and the record that the demo referents were seeded (R-041).
+  machine_type_cost_categories: 25, machine_type_itp_systems: 17, reference_values: 60, app_settings: 4, connectors: 10, connector_sync_runs: 0, import_formats: 6,
 };
 
 /**
@@ -302,8 +303,9 @@ async function main() {
     && reg.risks.filter((r) => r.status === 'open' && r.score >= 8).length === 5 && reg.openEmv === 340 && reg.contingency === 150);
   check('generated risk registers (NDC-031 EMV 53/26/20/16, owner S. Perrin)', same((await listRisks('NDC-031')).map((r) => [r.id, r.emv, r.ownerShort]), [['R-01', 53, 'S. Perrin'], ['R-02', 26, 'S. Perrin'], ['R-03', 20, 'S. Perrin'], ['R-04', 16, 'S. Perrin']]));
   const chg = await getChangeControl('HLT-026');
+  // R-169: the CCB step names the portfolio director who records the decision (was the prototype's "Monthly · next 8 Oct").
   check('change register = HLT_CRS_X + CR-005, approver chain follows the project', chg?.changeRequests.length === 6
-    && same(chg.changeRequests[3].chain.map((c) => c.approver), ['Romain Aubert', 'Marie Lefebvre', 'Nadia Bensaïd', 'Monthly · next 8 Oct']));
+    && same(chg.changeRequests[3].chain.map((c) => c.approver), ['Romain Aubert', 'Marie Lefebvre', 'Nadia Bensaïd', 'Marie Lefebvre']));
   const tr = await getTrends('HLT-026');
   check('HLT_SNAPS reproduced, next status report 2 Oct', same(tr?.series, PROTO.HLT_SNAPS) && tr?.nextReport?.text === '2 Oct');
   const cg = await getContingency('HLT-026');

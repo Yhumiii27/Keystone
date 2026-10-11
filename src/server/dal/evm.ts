@@ -1,19 +1,21 @@
 import 'server-only';
 // Earned value from Keystone data (delivery 7, R-073; owner decisions C-2a, A-7, A-12, A-15): progress, PV / EV / AC series,
 // SPI, CPI and the orders placed of a project, computed at its data date from its activities (budget, % complete, actual
-// cost, actual dates), the cost-loaded current baseline, its validated contingency draw-downs and its purchase orders
-// (rules: src/domain/cost-control.ts). Every screen reads them from here — the Budget, the Schedule's progression curve,
-// the client portal, the Home, the Contingency register and the projects register (progress, actual cost, SPI, health).
+// cost, actual dates), the cost-loaded current baseline, its validated contingency draw-downs, the stock issued to its
+// activities in Keystone less the returns (SC-5a, R-098) and its purchase orders (rules: src/domain/cost-control.ts).
+// Every screen reads them from here — the Budget, the Schedule's progression curve, the client portal, the Home, the
+// Contingency register and the projects register (progress, actual cost, SPI, health).
 // A project without activity budgets keeps the figures it has (the prototype's seeded ones: "no Keystone data").
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { cache } from 'react';
 import { projectDataDate } from '@/domain/ch4-defaults';
 import { computeEvm, monthIndexOf, openCommitmentKeur, type ComputedEvm, type EvmActivity, type EvmCostEvent, type EvmPlanRow } from '@/domain/cost-control';
 import { projectFxOf, toEur } from '@/domain/currency';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { getDb, type DB, type Tx } from '@/server/db/client';
+import { parisParts } from '@/server/db/codes';
 import {
-  activities, baselineActivities, baselines, contingencyDraws, contingencyRegisters, poLines, projectControls, projects, purchaseOrders,
+  activities, baselineActivities, baselines, contingencyDraws, contingencyRegisters, poLines, projectControls, projects, purchaseOrders, stockMovements,
 } from '@/server/db/schema';
 
 type Q = DB | Tx;
@@ -36,6 +38,14 @@ interface Head {
   ctlStart: number | null;
 }
 
+/**
+ * A Keystone stock issue (+) or return (−) as a dated cost of its project (SC-5a, R-098): its value in k€, on its Paris
+ * calendar day (the stock movement lists show Paris times).
+ */
+export function stockCostEvent(type: string, at: Date, valueEur: number): EvmCostEvent {
+  return { date: parisParts(at).iso, amount: (type === 'return' ? -valueEur : valueEur) / 1000 };
+}
+
 /** Loads the inputs of the projects `ids` (all projects when omitted) and computes their earned value. */
 async function computeFor(q: Q, ids?: string[]): Promise<Map<string, ProjectEvm>> {
   const heads: Head[] = (
@@ -47,9 +57,9 @@ async function computeFor(q: Q, ids?: string[]): Promise<Map<string, ProjectEvm>
   ).map((h) => ({ ...h, dataDate: projectDataDate(h) }));
   const out = new Map<string, ProjectEvm>();
   if (!heads.length) return out;
-  // Three reads for every project at once (the projects register calls this on each request).
+  // Four reads for every project at once (the projects register calls this on each request).
   const scope = (col: AnyPgColumn) => (ids ? inArray(col, ids) : undefined);
-  const [acts, snapshot, draws] = await Promise.all([
+  const [acts, snapshot, draws, stockMoves] = await Promise.all([
     q
       .select({
         projectId: activities.projectId, budget: activities.budgetKeur, actual: activities.actualKeur, pct: activities.percentComplete,
@@ -72,6 +82,12 @@ async function computeFor(q: Q, ids?: string[]): Promise<Map<string, ProjectEvm>
       .from(contingencyDraws)
       .innerJoin(contingencyRegisters, eq(contingencyRegisters.id, contingencyDraws.registerId))
       .where(and(scope(contingencyRegisters.projectId), eq(contingencyDraws.status, 'validated'))),
+    // SC-5a (R-098): stock issued to (returned from) the project's activities in Keystone, valued at the stock unit cost (€).
+    // Movements without a value (the X3 seed, whose cost is already in the activities' actuals) count for nothing.
+    q
+      .select({ projectId: stockMovements.projectId, type: stockMovements.type, at: stockMovements.occurredAt, value: stockMovements.valueEur })
+      .from(stockMovements)
+      .where(and(scope(stockMovements.projectId), inArray(stockMovements.type, ['issue', 'return']), isNotNull(stockMovements.valueEur))),
   ]);
   // One current baseline per project (the latest when several are marked current).
   const baselineOf = new Map<string, { id: string; position: number }>();
@@ -90,7 +106,10 @@ async function computeFor(q: Q, ids?: string[]): Promise<Map<string, ProjectEvm>
       budget: a.budget, actual: a.actual, pct: a.pct, start: a.start, finish: a.finish,
       started: a.startActual || a.pct > 0, finished: a.finishActual || a.pct >= 100,
     }));
-    const costs: EvmCostEvent[] = draws.filter((d) => d.projectId === h.id).map((d) => ({ date: d.date, amount: d.amount }));
+    const costs: EvmCostEvent[] = [
+      ...draws.filter((d) => d.projectId === h.id).map((d) => ({ date: d.date, amount: d.amount })),
+      ...stockMoves.filter((m) => m.projectId === h.id && m.value).map((m) => stockCostEvent(m.type, m.at, m.value!)),
+    ];
     // Chart month 0: the Budget's (project controls), else the project's start month, else the first activity's month.
     const firstStart = own.map((a) => a.start).filter((d): d is string => !!d).sort()[0];
     const startMonth = h.ctlStart ?? (h.startMonth != null ? Math.floor(h.startMonth) : monthIndexOf(firstStart ?? h.dataDate));

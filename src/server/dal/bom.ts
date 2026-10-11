@@ -8,7 +8,8 @@ import 'server-only';
 // - "Under change" and the open-ECO tags follow the ECO status Vigie reports;
 // - Delivery 7 (E-2a = a, A-11, R-103): the flat list, the tree, a node's roll-up and the revision comparison are valued
 //   with one rule — the project's ordered price (its approved orders' lines), else the last purchase price, else the
-//   catalogue price — and each price says where it comes from (`priceSource`).
+//   catalogue price — and each price says where it comes from (`priceSource`). An ordered price is converted from the
+//   order's currency to euros at the project's budget rate (C-9, R-075).
 // Projects without a BOM get empty data (no Harbor Line fallback).
 // The rules themselves (value, roll-up, paths, where-used resolution, deltas, system quantity) are the pure functions of
 // src/domain/bom.ts, golden-tested against the prototype.
@@ -17,6 +18,7 @@ import {
   ORDERED_PO_STATUSES, assemblyPaths, assemblyRows, bomSummary, bomUnitPrice, buildAssembly, defaultWhereUsedRef, diffCostDelta, diffNewRef, isValuedByComponents,
   orderedUnitPrice, pathQuantity, resolvePartQuery, systemQuantity, type AssemblyLink, type AssemblyNode, type BomPriceSource,
 } from '@/domain/bom';
+import { projectFxOf, toEur } from '@/domain/currency';
 import { getDb } from '@/server/db/client';
 import { bomScope, revisionDiffKind, stage as stageCodec, type BomScope, type PartStatus, type RevisionDiffKind, type StageCode, type WearSpare } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
@@ -77,18 +79,21 @@ export type PartValuation = { unitEur: number; source: BomPriceSource };
 /**
  * The valuation of parts in a project (E-2a = a): the quantity-weighted price of the project's ordered lines (orders
  * approved, partly or fully received), else the last purchase price, else the catalogue price. Unknown refs are left out.
+ * A line price is in its order's currency (C-9, R-075): converted to euros at the project's budget rate first.
  */
 export async function projectPartValuation(projectId: string, refs: readonly string[]): Promise<Map<string, PartValuation>> {
   if (!refs.length) return new Map();
   const db = await getDb();
-  const [ordered, info] = await Promise.all([
-    db.select({ ref: parts.ref, qty: poLines.orderedQty, unitPriceEur: poLines.unitPriceEur })
+  const [ordered, info, [project]] = await Promise.all([
+    db.select({ ref: parts.ref, qty: poLines.orderedQty, unitPrice: poLines.unitPriceEur, currency: purchaseOrders.currency })
       .from(poLines).innerJoin(purchaseOrders, eq(purchaseOrders.id, poLines.poId)).innerJoin(parts, eq(parts.id, poLines.partId))
       .where(and(eq(purchaseOrders.projectId, projectId), inArray(purchaseOrders.status, [...ORDERED_PO_STATUSES]), inArray(parts.ref, [...refs]))),
     getPartsByRef([...refs]),
+    db.select({ currency: projects.currency, budgetRate: projects.budgetRate }).from(projects).where(eq(projects.id, projectId)),
   ]);
+  const fx = projectFxOf(project ?? {});
   const byRef = new Map<string, { qty: number; unitPriceEur: number }[]>();
-  for (const o of ordered) byRef.set(o.ref, [...(byRef.get(o.ref) ?? []), { qty: o.qty, unitPriceEur: o.unitPriceEur }]);
+  for (const o of ordered) byRef.set(o.ref, [...(byRef.get(o.ref) ?? []), { qty: o.qty, unitPriceEur: toEur(o.unitPrice, o.currency, fx) }]);
   return new Map(info.map((p) => [p.ref, bomUnitPrice({
     orderedEur: orderedUnitPrice(byRef.get(p.ref) ?? []), lastPurchaseEur: p.hasLastPrice ? p.lastPriceEur : null, listPriceEur: p.listPriceEur,
   })]));

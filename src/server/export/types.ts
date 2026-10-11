@@ -37,6 +37,12 @@ export interface ExportColumn {
   width?: number;
   decimals?: number;
   align?: 'left' | 'right' | 'center';
+  /**
+   * R-046 (NEW-D2-1): a supplier price, an order / stock / BOM value or a supplier-invoice amount, whatever its type — an amount
+   * in another currency than the euro is a plain `number` column (C-9). The priced providers drop it for a viewer whose prices
+   * are masked (`stripPriceColumns`), as they drop every € column.
+   */
+  price?: true;
 }
 
 export interface ExportSheet {

@@ -109,6 +109,8 @@ async function decide(viewer: Viewer, number: string, decision: CodexDecision, s
       refreshAll(); // the drawer or the inbox row is stale
       return { error: NOT_YOURS };
     }
+    // The DAL re-checks the approver (defense in depth): same refusal as above.
+    if (e instanceof CodexDecisionError && e.code === 'forbidden') return { error: e.message };
     console.error('decide document', e);
     return { error: 'The approval could not be recorded' };
   }
