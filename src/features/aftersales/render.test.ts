@@ -70,7 +70,8 @@ describe('Warranty claims & interventions body', () => {
     expect(claims).toContain(lang === 'fr' ? '>Vue<' : '>Display<');
 
     const ivs = html(h(SavBody, { view: savView(data, 'interventions', null, t, lang), t }), lang);
-    expect(headers(ivs)).toEqual(['', ...['Machine', 'Date', 'Technician', 'Type', 'Duration', 'Status'].map((x) => tr(lang, x))]);
+    // R-143: a last, unlabelled column holds "Mark done" (editors).
+    expect(headers(ivs)).toEqual(['', ...['Machine', 'Date', 'Technician', 'Type', 'Duration', 'Status'].map((x) => tr(lang, x)), '']);
     expect(ivs).toContain('Corrective · WC-015');
     expect(ivs).toContain(lang === 'fr' ? '>Planifiée<' : '>Planned<');
 

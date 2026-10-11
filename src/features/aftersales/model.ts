@@ -13,12 +13,13 @@ import {
   SAV_VIEWS, SAV_VIEW_LABEL, SEVERITY_TONE, WARRANTY_TONE, claimCostRows, claimStatusTone, configItems, coverageTone, fleetKpis, fleetZoneEmpty,
   interventionTone, savKpis, savZoneEmpty, type KpiCard, type SavView, type ZoneCode,
 } from '@/domain/aftersales';
+import type { FormDef } from '@/components/app/form-def';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import { displayOfIso } from '@/server/db/codes';
 import { vigieEcoUrl } from '@/server/integrations/vigie/links';
 import { countText, dataText, interventionStatusText } from './i18n';
-import { ecoHref, savHref } from './links';
+import { claimHref, ecoHref, savHref } from './links';
 
 const LO = 'var(--color-accent-300)';
 const OK = 'var(--color-text)';
@@ -50,6 +51,12 @@ const zoneNotice = (show: boolean, t: T) => (show ? t('No project in this zone f
 export interface AftersalesViewer {
   /** Links to Vigie are shown (an internal application: not to the client). */
   vigie: boolean;
+  /** R-143: the viewer edits claims and interventions (workspace; the Server Functions re-check). Default false. */
+  canEdit?: boolean;
+  /** R-143: the claim whose drawer is open (`?claim=`). */
+  selectedClaim?: string | null;
+  /** R-143: "Mark done" form per planned intervention (translated), built by the page for editors. */
+  doneForms?: Record<string, FormDef>;
 }
 const STAFF: AftersalesViewer = { vigie: true };
 
@@ -144,6 +151,9 @@ export interface ClaimEcoView {
 
 export interface ClaimRowView {
   number: string;
+  /** Row click: opens the claim's drawer (`?claim=WC-014`), or closes it when open (R-143). */
+  href: string;
+  selected: boolean;
   machineName: string;
   /** "MCH-041 · Port authority". */
   machineSub: string;
@@ -175,6 +185,10 @@ export interface InterventionRowView {
   duration: string;
   status: string;
   statusClass: string;
+  /** R-143: "Mark done" (planned interventions, editors): the translated form; null otherwise. */
+  done: { label: string; ariaLabel: string; form: FormDef } | null;
+  /** R-143 / R-144: "Done 8 Oct · Replaced brake disc · HST-BRK-DSC → rev B" (typed text as typed); null when none. */
+  doneLine: string | null;
 }
 
 export interface CostRowView {
@@ -225,6 +239,8 @@ export function savView(data: SavScreenData, view: SavView, zone: ZoneCode | nul
       view === 'claims'
         ? data.claims.map((c) => ({
             number: c.number,
+            href: claimHref(viewer.selectedClaim === c.number ? null : c.number),
+            selected: viewer.selectedClaim === c.number,
             machineName: dataText(c.machineName, lang),
             machineSub: `${c.machineNumber} · ${dataText(c.client, lang)}`,
             color: c.open ? OK : MUTED,
@@ -255,6 +271,11 @@ export function savView(data: SavScreenData, view: SavView, zone: ZoneCode | nul
             duration: t(i.durationText),
             status: interventionStatusText(i.status, t, lang),
             statusClass: tag(interventionTone(i.status)),
+            done:
+              viewer.canEdit && i.status === 'planned' && viewer.doneForms?.[i.number]
+                ? { label: t('Mark done'), ariaLabel: `${t('Mark done')} · ${i.number}`, form: viewer.doneForms[i.number] }
+                : null,
+            doneLine: doneLineText(i, t),
           }))
         : null,
     costs:
@@ -270,4 +291,10 @@ export function savView(data: SavScreenData, view: SavView, zone: ZoneCode | nul
           }))
         : null,
   };
+}
+
+/** "Done 8 Oct · Replaced brake disc · HST-BRK-DSC → rev B" of a done intervention recorded in Keystone; null otherwise. */
+export function doneLineText(i: { doneOn: string | null; report: string | null; partRef: string | null; partRevision: string | null }, t: T): string | null {
+  if (!i.doneOn) return null;
+  return [`${t('Done')} ${dateText(i.doneOn, t)}`, i.report ?? '', i.partRef ? `${i.partRef} → ${t('rev')} ${i.partRevision ?? '—'}` : ''].filter(Boolean).join(' · ');
 }

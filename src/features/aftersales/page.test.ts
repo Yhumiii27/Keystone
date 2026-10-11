@@ -48,7 +48,8 @@ beforeEach(() => Object.assign(session, { role: 'director', lang: 'en', project:
 describe('/after-sales/fleet', () => {
   it('header "Add machine" with the current project as the dialog sub-line, then the register', async () => {
     const p = await fleetPage();
-    expect(Object.keys(p)).toEqual(['PageHeader', 'FleetBody']);
+    // R-144: the "Delivered projects" card follows the register (it renders nothing without a delivered project).
+    expect(Object.keys(p)).toEqual(['PageHeader', 'FleetBody', 'DeliveredCard']);
     expect(p.PageHeader.props).toMatchObject({ screen: 'fleet' });
     const primary = p.PageHeader.props.primary as El;
     expect((primary.type as { name: string }).name).toBe('AddMachineButton');

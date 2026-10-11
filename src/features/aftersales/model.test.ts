@@ -18,7 +18,7 @@ import { claimFormOptions, getFleetScreen, getSavScreen, machineTypeOptions } fr
 import { vigieEcoUrl } from '@/server/integrations/vigie/links';
 import GOLDEN from '@/domain/aftersales.golden.json';
 import { claimFormDef, localizeForm, machineFormDef } from './forms';
-import { ecoHref, savHref } from './links';
+import { claimHref, ecoHref, savHref } from './links';
 import { fleetView, savView } from './model';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -88,12 +88,16 @@ describe('Warranty claims & interventions view model', () => {
         eco: c.hasEco ? { text: c.eco, href: vigieEcoUrl(c.eco), external: true, label: `${t('Open in Vigie')} · ${c.eco}` } : null,
         severity: c.sev, severityClass: c.sevClass, date: c.date, status: c.status, statusClass: c.stClass, coverage: c.cover, coverageClass: c.coverClass,
         cost: c.costText, owner: c.owner, next: c.next,
+        // R-143: each row opens the claim's drawer (no displayed value changes).
+        href: claimHref(c.id), selected: false,
       })),
     );
     expect(v.interventions).toEqual(
       view !== 'interventions' ? null : g.interventions.map((i: any) => ({
         number: i.id, machineName: i.mname, machineSub: `${i.mch} · ${i.site}`, date: i.date, technicians: i.tech, type: i.type, duration: i.dur,
         status: lang === 'fr' ? FR_IV[i.status] : i.status, statusClass: i.stClass,
+        // R-143: "Mark done" for editors only (the view model's default viewer reads), no done line on the seed.
+        done: null, doneLine: null,
       })),
     );
     expect(v.costs).toEqual(
