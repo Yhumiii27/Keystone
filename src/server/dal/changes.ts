@@ -103,10 +103,12 @@ async function chainApprovers(projectCode: string): Promise<Record<ChangeStep, s
     .leftJoin(pm, eq(pm.id, projects.pmPersonId))
     .where(eq(projects.code, projectCode));
   const people = await db
-    .select({ role: users.role, clientId: users.clientId, full: persons.fullName, short: persons.shortName })
+    .select({ roles: users.roles, clientId: users.clientId, full: persons.fullName, short: persons.shortName })
     .from(users)
-    .innerJoin(persons, eq(persons.id, users.personId));
-  const director = people.find((u) => u.role === 'director');
+    .innerJoin(persons, eq(persons.id, users.personId))
+    .where(eq(users.active, true))
+    .orderBy(asc(users.sortOrder));
+  const director = people.find((u) => u.roles.includes('director'));
   const client = p?.clientId ? people.find((u) => u.clientId === p.clientId) : undefined;
   return {
     pm: p ? (p.pmFull ?? p.pmShort) : null,

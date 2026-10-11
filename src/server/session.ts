@@ -1,7 +1,10 @@
 import 'server-only';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { cache } from 'react';
 import { DEFAULT_ROLE, PERSONA_BY_ROLE, isRole, type Persona } from '@/config/personas';
+import { AUTH_PATHS } from '@/domain/auth';
+import { authMode } from '@/server/auth/config';
 import { DEFAULT_PROJECT } from '@/config/screens';
 import { DEFAULT_LANG, makeT, type Lang, type T } from '@/i18n/translate';
 
@@ -16,10 +19,22 @@ export const COOKIE = {
 
 export type ZoneKey = 'euna' | 'afr' | 'apac';
 
+/** The person using Keystone: a demo persona or a signed-in user (same shape, R-039). */
 export type Viewer = Persona;
 
-/** Current persona ("View as"). Real authentication replaces this later (docs/spec/00 §8.12). */
+/**
+ * Current viewer (docs/spec/00 §8.12, R-038). Demo mode (KEYSTONE_AUTH=demo, the default): the "View as" persona of
+ * the `ks-role` cookie, the director when none — exactly as before. Entra mode: the signed-in user, re-read from the
+ * database on every request (sealed session cookie → active user → active role); without a valid session the request
+ * is sent to the sign-in page (the proxy normally redirects first — this is the server-side check).
+ */
 export const getViewer = cache(async (): Promise<Viewer> => {
+  if (authMode() === 'entra') {
+    const { entraViewer } = await import('@/server/auth/viewer');
+    const v = await entraViewer();
+    if (!v) redirect(`${AUTH_PATHS.page}?error=session`);
+    return v;
+  }
   const v = (await cookies()).get(COOKIE.role)?.value;
   return PERSONA_BY_ROLE[isRole(v) ? v : DEFAULT_ROLE];
 });

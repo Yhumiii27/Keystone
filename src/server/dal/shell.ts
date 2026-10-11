@@ -14,7 +14,7 @@ import 'server-only';
 // connectors (Activity & integrations badge) and the installed base (zone bar of Installed base / Warranty claims).
 // Only reference constants (zones, city → country → zone) are still read from the prototype data set.
 import { and, eq, sql } from 'drizzle-orm';
-import { PERSONA_BY_ROLE } from '@/config/personas';
+import { personaOf, type PersonaRef } from '@/config/personas';
 import { DEFAULT_PROJECT, canSee, screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import { defaultDepartment } from '@/domain/requests';
 import { dueTodayBadge, workingDayOf } from '@/domain/tasks';
@@ -56,6 +56,7 @@ import { riskBadges } from './risks-badge';
 import { siteBadgeByProject } from './site';
 import { stockNavBadge } from './stock';
 import { getTask, listTasks } from './tasks';
+import type { UserRef } from './users';
 
 const n2s = (n: number) => (n ? String(n) : '');
 const count = <T,>(xs: T[], f: (x: T) => boolean) => xs.filter(f).length;
@@ -69,20 +70,20 @@ export const zoneLabel = (z: ZoneKey | null) => (z ? ZONES.find((x) => x.key ===
 const seesAllRequests = (role: RoleKey) => role === 'director' || !canSee(role, 'requests');
 
 /** Department whose Approvals queue the viewer gets by default: the one they head or belong to, else Engineering. */
-async function approvalsDeptOf(role: RoleKey) {
-  const viewer = PERSONA_BY_ROLE[role];
+async function approvalsDeptOf(who: PersonaRef) {
+  const viewer = personaOf(who);
   const [depts, own] = await Promise.all([listApprovalDepartments(), departmentOfPerson(viewer.name)]);
-  const name = defaultDepartment(depts, { name: viewer.name, department: own });
+  const name = defaultDepartment(depts, { name: viewer.name, department: own ?? viewer.department });
   return depts.find((d) => d.name === name) ?? null;
 }
 
 /** Badges that do not depend on the current project. */
-async function globalBadges(role: RoleKey): Promise<Badges> {
-  const viewer = PERSONA_BY_ROLE[role];
+async function globalBadges(viewer: ReturnType<typeof personaOf>): Promise<Badges> {
+  const role = viewer.role;
   const [mine, rescheduled, dept, docs, eco, invoices, stock, sav, plumbing] = await Promise.all([
     listTasks({ person: viewer.name }),
     listResourceRequests({ status: 'reschedule', ...(seesAllRequests(role) ? {} : { requestedBy: viewer.short }) }),
-    approvalsDeptOf(role),
+    approvalsDeptOf(viewer),
     docsBadge(),
     safe(ecoNavBadge, ''),
     countInvoicesToResolve(),
@@ -158,9 +159,9 @@ interface ProjectBadgeInputs {
   withData: Set<string>;
 }
 
-async function projectBadgeInputs(role: RoleKey, codes: string[]): Promise<ProjectBadgeInputs> {
+async function projectBadgeInputs(who: PersonaRef, codes: string[]): Promise<ProjectBadgeInputs> {
   const [approvals, risks, changes, meetings, interfaces, billing, deliveries, orders, eng, pid, quality, itp, site, projects] = await Promise.all([
-    approvalCountsByProject(PERSONA_BY_ROLE[role], codes), riskBadges(), changesInReview(),
+    approvalCountsByProject(personaOf(who), codes), riskBadges(), changesInReview(),
     meetingsToWriteByProject(), lateInterfacesByProject(), lateBillingMilestonesByProject(), receiptsQcPendingByProject(),
     posAwaitingApprovalByProject(), engNavBadgesByProject(), pidBadgeByProject(), safe(criticalOpenNcrsByProject, {}), openPunchAByProject(),
     safe(siteBadgeByProject, {}), listProjects(),
@@ -192,8 +193,8 @@ function badgesOf(code: string, inp: ProjectBadgeInputs): Badges {
 const WITH_DATA_ENTRIES: ScreenId[] = ['meetings', 'interfaces', 'billing', 'itp', 'risks', 'changes', 'quality', 'orders', 'deliveries'];
 
 /** Badges of the project-dependent entries (Project section, orders, deliveries, My approvals) of one project. */
-export async function projectBadges(role: RoleKey, code: string): Promise<Badges> {
-  return badgesOf(code, await projectBadgeInputs(role, [code]));
+export async function projectBadges(who: PersonaRef, code: string): Promise<Badges> {
+  return badgesOf(code, await projectBadgeInputs(who, [code]));
 }
 
 // ── Sidebar data ──────────────────────────────────────────────────────────
@@ -206,11 +207,15 @@ export interface ShellNavData {
   projectBadges: Record<string, Badges>;
 }
 
-/** Everything the sidebar needs, for the viewer's role (computed for every project; the client picks the current one). */
-export async function getShellNav(role: RoleKey): Promise<ShellNavData> {
+/**
+ * Everything the sidebar needs, for the viewer (computed for every project; the client picks the current one). A role
+ * stands for its demo persona (tests).
+ */
+export async function getShellNav(who: PersonaRef): Promise<ShellNavData> {
+  const viewer = personaOf(who);
   const projects = await listProjects();
   const codes = projects.map((p) => p.code);
-  const [global, inputs] = await Promise.all([globalBadges(role), projectBadgeInputs(role, codes)]);
+  const [global, inputs] = await Promise.all([globalBadges(viewer), projectBadgeInputs(viewer, codes)]);
   return {
     projects: projects.map((p) => ({ code: p.code, label: projectLabel(p), hasData: p.hasData })),
     globalBadges: global,
@@ -222,7 +227,8 @@ export async function getShellNav(role: RoleKey): Promise<ShellNavData> {
 const inZone = (p: ProjectRow, z: ZoneKey | null) => !z || p.zone === z;
 
 /** Default `CRUMB_EXTRA[screen]` (EN), '' when none. Screens may override it (PageHeader `crumbExtra`). */
-export async function crumbExtraOf(screen: ScreenId, ctx: { role: RoleKey; code: string; zone: ZoneKey | null; taskId?: string }): Promise<string> {
+export async function crumbExtraOf(screen: ScreenId, ctx: { role: PersonaRef; code: string; zone: ZoneKey | null; taskId?: string }): Promise<string> {
+  const viewer = personaOf(ctx.role);
   const zl = zoneLabel(ctx.zone);
   const zoneCrumb = zl ? ' · ' + zl : '';
   switch (screen) {
@@ -246,21 +252,20 @@ export async function crumbExtraOf(screen: ScreenId, ctx: { role: RoleKey; code:
     case 'cash':
       return 'FY2026' + zoneCrumb;
     case 'myprojects':
-      return PERSONA_BY_ROLE[ctx.role].title;
+      return viewer.title;
     case 'approvals': {
       // Head of the viewer's default department (the Approvals page passes its selected department's head).
-      const d = await approvalsDeptOf(ctx.role);
+      const d = await approvalsDeptOf(viewer);
       return d?.head ? `${d.head} · ${d.headTitle ?? ''}` : '';
     }
     case 'requests': {
       // Whose outbox Resource requests shows (the prototype: always "R. Aubert, project manager", 08 OQ18).
-      if (seesAllRequests(ctx.role)) return 'all project managers';
-      const v = PERSONA_BY_ROLE[ctx.role];
-      return `${v.short}, ${v.title.charAt(0).toLowerCase()}${v.title.slice(1)}`;
+      if (seesAllRequests(viewer.role)) return 'all project managers';
+      return `${viewer.short}, ${viewer.title.charAt(0).toLowerCase()}${viewer.title.slice(1)}`;
     }
     case 'mywork':
       // The viewer (the prototype always showed Hélène Sauvage, docs/spec/00 §7.16, 10 OQ17).
-      return PERSONA_BY_ROLE[ctx.role].name;
+      return viewer.name;
     case 'task':
       return ctx.taskId ?? 'T-2314';
     default:
@@ -272,7 +277,7 @@ export async function crumbExtraOf(screen: ScreenId, ctx: { role: RoleKey; code:
  * Default page title (`titles[screen]`, line 5109) when it is not the registry title: Approvals carries the selected
  * department ("Approvals — Engineering"), Task the task title. EN source; null = registry title.
  */
-export async function defaultTitleOf(screen: ScreenId, ctx: { taskId?: string; role?: RoleKey } = {}): Promise<string | null> {
+export async function defaultTitleOf(screen: ScreenId, ctx: { taskId?: string; role?: PersonaRef } = {}): Promise<string | null> {
   if (screen === 'approvals') return 'Approvals — ' + ((ctx.role ? (await approvalsDeptOf(ctx.role))?.name : null) ?? 'Engineering');
   if (screen === 'task') {
     const task = await getTask(ctx.taskId ?? 'T-2314');
@@ -331,9 +336,9 @@ export interface ShellNotification {
   href: string;
 }
 
-/** Notifications delivered to the viewer (the user holding `role`), bell order, with their read state. */
-export async function notificationsFor(role: RoleKey): Promise<ShellNotification[]> {
-  const rows = await listNotifications(role);
+/** Notifications delivered to the viewer (or the demo user of a role), bell order, with their read state. */
+export async function notificationsFor(who: UserRef): Promise<ShellNotification[]> {
+  const rows = await listNotifications(who);
   return rows.map((n) => ({
     id: n.id, kind: n.kind as NotifKind, title: n.title, sub: n.sub, when: n.when, read: n.read,
     // Portfolio-wide notifications (no project) target global screens; the default project is only a fallback.

@@ -54,12 +54,12 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
   const readOnly = !!project && scope.readOnly(project);
   const showPrimary = !!primary && !outside && !(readOnly && PROJECT_EDITABLE.includes(screen));
 
-  const extra = crumbExtra !== undefined ? crumbExtra : await crumbExtraOf(screen, { role: viewer.role, code, zone, taskId });
+  const extra = crumbExtra !== undefined ? crumbExtra : await crumbExtraOf(screen, { role: viewer, code, zone, taskId });
   const crumb = crumbBase(screen) + (extra ? ' · ' + extra : '');
 
   const [rawNotifs, defTitle] = await Promise.all([
-    notificationsFor(viewer.role),
-    title === undefined ? defaultTitleOf(screen, { taskId, role: viewer.role }) : Promise.resolve(null),
+    notificationsFor(viewer),
+    title === undefined ? defaultTitleOf(screen, { taskId, role: viewer }) : Promise.resolve(null),
   ]);
   const notifs = rawNotifs.map((n) => ({ ...n, title: t(n.title), sub: t(n.sub), when: t(n.when) }));
 

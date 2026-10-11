@@ -1,6 +1,6 @@
 'use server';
 // Shell server functions: global search (docs/spec/01 §5.4) and the notification read state (§5.5), persisted per
-// user (the viewer's persona) in the database.
+// user (the signed-in user, or the demo persona's user) in the database.
 import { searchShell } from '@/server/dal/shell';
 import { markAllNotificationsRead, markNotificationRead } from '@/server/dal/notifications';
 import { getI18n, getViewer } from '@/server/session';
@@ -18,11 +18,11 @@ export async function searchAction(query: string, code: string): Promise<SearchH
 export async function markNotificationReadAction(id: string): Promise<void> {
   if (typeof id !== 'string' || !/^n\d{1,6}$/.test(id)) return;
   const viewer = await getViewer();
-  await markNotificationRead(viewer.role, id);
+  await markNotificationRead(viewer, id);
 }
 
 /** "Mark all read": every notification of the viewer. */
 export async function markAllNotificationsReadAction(): Promise<void> {
   const viewer = await getViewer();
-  await markAllNotificationsRead(viewer.role);
+  await markAllNotificationsRead(viewer);
 }

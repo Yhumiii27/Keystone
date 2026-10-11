@@ -2,7 +2,7 @@ import 'server-only';
 // Write-side helpers shared by the DAL writers (server functions call the DAL, never this file directly):
 // lookups by business key, business numbering (RQ-045, T-2341, R-21, CR-011…) and the append-only audit trail
 // and activity feed (docs/spec/11 §0 "Every state change also writes an AuditEntry", §3.12).
-import { eq, or } from 'drizzle-orm';
+import { and, eq, or } from 'drizzle-orm';
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
 import { nextBusinessNumber, type ActivityKind } from './codes';
 import { activityEvents, auditEntries, persons, projects, users } from './schema';
@@ -27,13 +27,13 @@ export async function requirePerson(q: Q, name: string): Promise<{ id: string; f
   return p;
 }
 
-/** Person of the user holding a role (the "View as" persona). */
+/** Person of the demo user standing for a role (the "View as" persona; R-039: real users carry `roles` instead). */
 export async function personOfRole(q: Q, role: string): Promise<{ userId: string; personId: string; fullName: string | null; shortName: string } | null> {
   const [r] = await q
     .select({ userId: users.id, personId: persons.id, fullName: persons.fullName, shortName: persons.shortName })
     .from(users)
     .innerJoin(persons, eq(persons.id, users.personId))
-    .where(eq(users.role, role));
+    .where(eq(users.personaRole, role));
   return r ?? null;
 }
 
@@ -99,13 +99,14 @@ export async function recordActivity(q: Q, e: ActivityInput): Promise<void> {
 }
 
 /**
- * The person behind an actor name and the roles of their user accounts (the "View as" personas): writers that apply a
- * role rule (RFQ award, purchase-order approval) check it server-side. Unknown names get no person and no role.
+ * The person behind an actor name and the roles of their user account (R-039: every role held; a demo persona holds
+ * its own): writers that apply a role rule (RFQ award, purchase-order approval) check it server-side. Unknown names get
+ * no person and no role.
  */
 export async function actorOf(q: Q, name: string): Promise<{ personId: string | null; name: string; roles: string[] }> {
   const p = await findPerson(q, name);
   if (!p) return { personId: null, name, roles: [] };
-  const roles = (await q.select({ role: users.role }).from(users).where(eq(users.personId, p.id))).map((r) => r.role);
+  const roles = (await q.select({ roles: users.roles }).from(users).where(and(eq(users.personId, p.id), eq(users.active, true)))).flatMap((r) => r.roles);
   return { personId: p.id, name: nameOf(p), roles };
 }
 

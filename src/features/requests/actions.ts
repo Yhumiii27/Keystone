@@ -46,7 +46,7 @@ const refresh = () => revalidatePath('/', 'layout');
 async function announce(viewer: Viewer, r: ResourceRequestRow | null, notices: (r: ResourceRequestRow) => RequestNotice[], activity: string) {
   if (!r) return;
   try {
-    await notifyRequestEvent(notices(r), viewer.role);
+    await notifyRequestEvent(notices(r), viewer);
     await recordRequestActivity(r.projectCode, viewer.name, `${activity} ${r.id} — ${r.title}`);
   } catch (e) {
     console.error('requests: notification failed', e);

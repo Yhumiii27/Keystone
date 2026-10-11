@@ -5,16 +5,20 @@ import 'server-only';
 // the outside banner, the "Read-only" tag and the primary action.
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
-import { CLIENT_ORG } from '@/config/personas';
 import type { ScreenId } from '@/config/screens';
 import { PROJECT_EDITABLE, isOutside } from '@/components/app/shell/nav-model';
 import { getProject, listProjects, type ProjectRow } from '@/server/dal/projects';
 import { getViewer, type Viewer } from '@/server/session';
 
-/** `isMineP` (line 4164): director → all; client → client org; others → project manager = "R. Aubert" form of the name. */
-export function isMineProject(viewer: Viewer, p: Pick<ProjectRow, 'pm' | 'client'>): boolean {
+/**
+ * `isMineP` (line 4164): director → all; client → the projects of their organisation (R-039: the viewer's organisation,
+ * none when they have no organisation); others → they manage it: the project's PM is their person (signed-in users), or
+ * the "R. Aubert" short name (unique per person) of the demo persona.
+ */
+export function isMineProject(viewer: Viewer, p: Pick<ProjectRow, 'pm' | 'client'> & { pmPersonId?: string | null }): boolean {
   if (viewer.role === 'director') return true;
-  if (viewer.role === 'client') return p.client === CLIENT_ORG;
+  if (viewer.role === 'client') return !!viewer.organisation && p.client === viewer.organisation;
+  if (viewer.personId && p.pmPersonId !== undefined) return p.pmPersonId === viewer.personId;
   return p.pm === viewer.short;
 }
 

@@ -409,3 +409,23 @@
   color: var(--color-neutral-500);
   flex: none;
 }
+
+/* Account menu (Entra mode, account-menu.tsx): role check column, separator, sign-out form. */
+.roleCheck {
+  width: 14px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--color-accent);
+}
+
+.menuSep {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--color-divider);
+}
+
+.signOutForm {
+  display: flex;
+  flex-direction: column;
+}

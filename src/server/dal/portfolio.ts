@@ -2,7 +2,6 @@ import 'server-only';
 // Portfolio DAL — Portfolio overview (docs/spec/03 §4) and My projects (§2). Composes the projects, planning
 // and people DALs with the pure logic of src/domain/portfolio.ts. Strings are EN source strings with money
 // formatted for `lang`: render them through t().
-import { CLIENT_ORG } from '@/config/personas';
 import type { Lang } from '@/i18n/translate';
 import {
   overviewMetrics, portfolioAlerts, portfolioKpis, portfolioTotals, myProjectsModel,
@@ -61,10 +60,11 @@ export async function getMyProjects(viewer: Viewer, currentProject: string, lang
   const pool = all.filter((p) => p.hasData);
   const deptOf: Record<string, string> = {};
   for (const p of people) if (p.department) deptOf[p.name] = p.department;
-  // Department of a department head: the one they head (the prototype's `state.dept`, default Engineering).
-  const dept = viewer.role === 'depthead' ? depts.find((d) => d.head === viewer.name)?.name ?? 'Engineering' : null;
+  // Department of a department head: the one they head (the prototype's `state.dept`), else their own (R-039), else Engineering.
+  const dept = viewer.role === 'depthead' ? depts.find((d) => d.head === viewer.name)?.name ?? viewer.department ?? 'Engineering' : null;
   return myProjectsModel(
-    { role: viewer.role, name: viewer.name, short: viewer.short, clientOrg: CLIENT_ORG, dept },
+    // A client sees the projects of their own organisation (R-039: the viewer's, no longer the CLIENT_ORG constant).
+    { role: viewer.role, name: viewer.name, short: viewer.short, clientOrg: viewer.organisation ?? '', dept },
     pool,
     sched,
     { deptOf, todos: tasks },

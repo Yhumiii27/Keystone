@@ -2,7 +2,6 @@
 // Activity, integrations & audit. Settings: every list with its codes plus the health thresholds; machine types: the
 // templates (phases, cost categories, ITP systems, payment terms); document types: the Codex register; Activity &
 // integrations: the current view first (`?view=activity|connectors|imports|audit`, `?source=` chip of the feed).
-import { CLIENT_ORG } from '@/config/personas';
 import { SETTINGS_CARDS, parseActivitySource, parsePlumbView } from '@/domain/admin';
 import { listAdminConnectors } from '@/server/dal/admin-connectors';
 import { listDocumentTypes } from '@/server/dal/documents';
@@ -95,7 +94,7 @@ async function plumbingWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const first = view === 'connectors' ? conn : view === 'imports' ? formats : view === 'audit' ? trail : feed;
   return {
     title: t('Activity, integrations & audit'),
-    filters: compact([filterLine(t('Source'), source), ctx.viewer.role === 'client' ? `${t('Client')}: ${CLIENT_ORG}` : null]),
+    filters: compact([filterLine(t('Source'), source), ctx.viewer.role === 'client' ? `${t('Client')}: ${ctx.viewer.organisation ?? '—'}` : null]),
     sheets: [first, ...[feed, conn, formats, trail].filter((s) => s !== first)],
   };
 }

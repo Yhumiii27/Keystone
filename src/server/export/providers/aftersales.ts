@@ -1,7 +1,6 @@
 // Export providers — Warranty & after-sales (zone screens): Installed base and Warranty claims & interventions.
 // Rows follow the zone bar; a client exports only the machines of its organisation and their claims. The claims export
 // puts the screen's view first (`?view=claims|interventions|costs`); a claim's design ECO stays in Vigie (its number).
-import { CLIENT_ORG } from '@/config/personas';
 import { savViewOf } from '@/domain/aftersales';
 import { getFleetScreen, getSavScreen } from '@/server/dal/aftersales';
 import { claimCostsByMachine, type ClaimRow } from '@/server/dal/claims';
@@ -14,7 +13,8 @@ import { projectFilter } from './scope';
 async function machineFilter(ctx: ExportContext): Promise<(m: Pick<MachineRow, 'projectCode' | 'client'>) => boolean> {
   if (ctx.viewer.role !== 'client') return () => true;
   const visible = await projectFilter(ctx);
-  return (m) => m.client === CLIENT_ORG || (!!m.projectCode && visible(m.projectCode));
+  const org = ctx.viewer.organisation;
+  return (m) => (!!org && m.client === org) || (!!m.projectCode && visible(m.projectCode));
 }
 
 const zoneLine = (ctx: ExportContext) => filterLine(ctx.t('Zone'), ctx.zone?.toUpperCase());

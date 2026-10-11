@@ -33,7 +33,8 @@ export const getApproverIdentity = cache(async (viewer: Persona): Promise<Approv
   const [person] = await db
     .select({ id: persons.id, clientId: persons.clientId })
     .from(persons)
-    .where(or(eq(persons.fullName, viewer.name), eq(persons.shortName, viewer.short)));
+    // A signed-in user is their person (R-039); a demo persona is found by name.
+    .where(viewer.personId ? eq(persons.id, viewer.personId) : or(eq(persons.fullName, viewer.name), eq(persons.shortName, viewer.short)));
   const base = { role: viewer.role, name: viewer.name, short: viewer.short, title: viewer.title };
   if (!person) return { ...base, departments: [], managedProjects: [], clientProjects: [] };
   const [heads, managed, user] = await Promise.all([

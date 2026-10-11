@@ -28,6 +28,7 @@ import { seedResources } from './resources';
 import { seedSettings } from './settings';
 import { seedSite } from './site';
 import { seedStock } from './stock';
+import { backfillDemoUsers, demoUsersToBackfill } from './users';
 import { seedVigie, seedVigieQuality } from './vigie';
 import { seedWork } from './work';
 
@@ -63,7 +64,8 @@ async function seedDelivery5(tx: Tx, ctx: SeedCtx): Promise<void> {
  * seeded once, when its catalogue is empty, against its own people, projects and activities; a database seeded before
  * Delivery 5 (migration 0004) gets the Delivery 5 modules once, when its Settings lists are empty; a database seeded before
  * chapter 4 (migration 0005) gets the chapter 4 data (calendars, BL1 snapshots, assignment quantities) once, when it has no
- * calendar. Each backfill runs in its own transaction; a failure there is logged and leaves the database as it was.
+ * calendar; a database seeded before delivery 7 (migration 0007) gets its demo persona users' roles, e-mails and departments
+ * once (R-039). Each backfill runs in its own transaction; a failure there is logged and leaves the database as it was.
  */
 export async function seedIfEmpty(db: DB): Promise<boolean> {
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(projects);
@@ -79,6 +81,9 @@ export async function seedIfEmpty(db: DB): Promise<boolean> {
     const [{ k }] = await db.select({ k: sql<number>`count(*)::int` }).from(calendars);
     if (k === 0) {
       await db.transaction(async (tx) => seedChapter4(tx)).catch((e) => console.error('[seed] Chapter 4 backfill failed:', e));
+    }
+    if ((await demoUsersToBackfill(db)) > 0) {
+      await db.transaction(async (tx) => backfillDemoUsers(tx)).catch((e) => console.error('[seed] Delivery 7 users backfill failed:', e));
     }
     return false;
   }

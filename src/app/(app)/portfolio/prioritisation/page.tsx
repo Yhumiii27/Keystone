@@ -26,7 +26,7 @@ export default async function PrioritisationPage({ searchParams }: { searchParam
   const asked = first(sp.project);
   const [{ t: t0, lang }, zone, { viewer, outside }] = await Promise.all([getI18n(), getZone(), getScreenAccess('portfolio')]);
   const t = pfT(t0, lang);
-  const [{ candidates, ...data }, options] = await Promise.all([getPrioritisationScreen(viewer.role, zone), outside ? Promise.resolve([]) : listProposalOptions()]);
+  const [{ candidates, ...data }, options] = await Promise.all([getPrioritisationScreen(viewer, zone), outside ? Promise.resolve([]) : listProposalOptions()]);
 
   // Candidate of the what-if: `?project=` when it is a pipeline project of the zone, else the first one (`pfWhatif`).
   const candidate = candidates.find((c) => c.code === asked) ?? candidates[0] ?? null;
