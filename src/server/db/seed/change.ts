@@ -1,8 +1,10 @@
 // Change seed: change-request register (HLT_CRS_X + CR-005 from HCRS), approval steps, WBS links, the Budget
 // screen's change lines (projectData().CRS) and baselines (BASELINES). See schema/change.ts for the two datasets.
+// Delivery 7 (NEW-D2-2, R-062): the activity the prototype tied to a request in its own code — A1250's drawer read "second
+// crew (CR-008) pending approval" — becomes a real link (CR-008 touches A1250, no new duration given).
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { baselineState, budgetChangeStatus, CHANGE_STEPS, changeStatus, isoOfDisplayDate, stepDecision, type ChangeType } from '../codes';
-import { baselines, budgetChangeLines, changeRequestSteps, changeRequestWbs, changeRequests } from '../schema';
+import { baselines, budgetChangeLines, changeRequestActivities, changeRequestSteps, changeRequestWbs, changeRequests } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, type SeedCtx } from './context';
 
@@ -47,6 +49,15 @@ export async function seedChange(tx: Tx, ctx: SeedCtx): Promise<void> {
       c.wbs.map((wbsCode, position) => ({ id: newId(), changeRequestId: crIds.get(c.id)!, wbsCode, wbsNodeId: wbs.get(wbsCode) ?? null, position })),
     ),
   );
+
+  /** The prototype's hard-coded activity of a request (`drawerVals`: A1250 · "second crew (CR-008) pending approval"). */
+  const SEED_CR_ACTIVITIES: [cr: string, activity: string][] = [['CR-008', 'A1250']];
+  const links = SEED_CR_ACTIVITIES.filter(([cr]) => crIds.has(cr));
+  if (links.length) {
+    await tx.insert(changeRequestActivities).values(
+      links.map(([cr, activityCode], position) => ({ id: newId(), changeRequestId: crIds.get(cr)!, activityCode, newDurationDays: null, position })),
+    );
+  }
 
   // Budget change lines for every project with data (only HLT-026 has some).
   for (const [pCode, pd] of Object.entries(PROTO_GEN.projectData)) {

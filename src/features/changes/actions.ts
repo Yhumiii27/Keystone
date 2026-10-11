@@ -6,6 +6,8 @@
 import { revalidatePath } from 'next/cache';
 import { CR_STEPS, STEP_DECIDER, canDecideStep, deriveCrStatus } from '@/domain/change-control';
 import type { ChangeStep } from '@/server/db/codes';
+import { canEditCrActivities, parseCrActivities } from '@/domain/change-activities';
+import { linkCrActivities, unknownActivityCodes } from '@/server/dal/change-activities';
 import { createChangeRequest, decideChangeStep, listChangeRequestDetails, submitChangeRequest } from '@/server/dal/changes';
 import { getWbs } from '@/server/dal/planning';
 import { getProject } from '@/server/dal/projects';
@@ -55,9 +57,25 @@ export async function createChangeRequestAction(code: string, values: Record<str
   const known = new Set((await getWbs(r.ctx.project.code)).map((w) => w.code));
   const unknown = known.size ? parsed.value.wbsCodes.filter((c) => !known.has(c)) : [];
   if (unknown.length) return { error: `${t('Unknown WBS element')} ${unknown.join(', ')}` };
+  // NEW-D2-2 (Delivery 7, R-062): the optional plan activities touched, checked against the plan before the request is raised.
+  const acts = parseCrActivities(values?.acts);
+  if (!acts.ok) return { error: t(acts.error) };
+  if (acts.value.length && !canEditCrActivities(r.ctx.viewer, true)) return { error: t('Only the project team links plan activities to a change request') };
+  const unknownActs = await unknownActivityCodes(r.ctx.project.code, acts.value.map((a) => a.code));
+  if (unknownActs.length) return { error: `${t('Unknown activity')} ${unknownActs.join(', ')}` };
   // Baselines belong to the project's PM and the director (S-1 / S-3): a client's request never proposes one.
   const proposeBaseline = opts?.proposeBaseline === true && canSchedulePlan(r.ctx);
   const number = await createChangeRequest(r.ctx.project.code, { ...parsed.value, submit: true, proposeBaseline }, r.ctx.viewer.name);
+  if (acts.value.length) {
+    try {
+      await linkCrActivities(r.ctx.project.code, number, acts.value, r.ctx.viewer.name);
+    } catch (e) {
+      // The request exists: say which part failed instead of inviting a second request.
+      console.error('createChangeRequestAction: activities', e);
+      refresh();
+      return { toast: `${number} · ${await toastOf(NEW_CR_RESULT)} · ${t('The plan activities could not be linked')}` };
+    }
+  }
   refresh();
   if (proposeBaseline) {
     const bl = (await listChangeRequestDetails(r.ctx.project.code)).find((c) => c.id === number)?.baseline ?? '';

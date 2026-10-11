@@ -30,9 +30,11 @@ const WBS_RE = /^\d+(?:\.\d+)*$/;
 
 /**
  * AF.changes; the WBS default is "1.3" when the project has that work package, else the project root "1". `proposeBaseline`
- * (S-3, Plan "Set baseline" after BL1): the same form titled "New baseline · change request".
+ * (S-3, Plan "Set baseline" after BL1): the same form titled "New baseline · change request". `withActivities` (Delivery 7,
+ * NEW-D2-2, R-062 — the project team, not the client): the optional "Plan activities touched" field ("A1250=28, A1320": codes,
+ * each with its new duration in working days if any; src/domain/change-activities.ts parses it).
  */
-export function newChangeRequestForm(defaultWbs = CR_DEFAULT_WBS, opts?: { proposeBaseline?: boolean }): FormDef {
+export function newChangeRequestForm(defaultWbs = CR_DEFAULT_WBS, opts?: { proposeBaseline?: boolean; withActivities?: boolean }): FormDef {
   return {
     title: opts?.proposeBaseline ? 'New baseline · change request' : 'New change request',
     submit: 'Submit for review',
@@ -43,6 +45,9 @@ export function newChangeRequestForm(defaultWbs = CR_DEFAULT_WBS, opts?: { propo
       { id: 'amt', label: 'Amount (k€)', type: 'number', defaultValue: '0' },
       { id: 'days', label: 'Delay (days)', type: 'number', defaultValue: '0' },
       { id: 'wbs', label: 'WBS', type: 'text', defaultValue: defaultWbs },
+      ...(opts?.withActivities
+        ? [{ id: 'acts', label: 'Plan activities touched (optional)', type: 'text' as const, placeholder: 'A1250=28, A1320', span: 'full' as const }]
+        : []),
       { id: 'why', label: 'Justification', type: 'textarea', required: true },
     ],
   };

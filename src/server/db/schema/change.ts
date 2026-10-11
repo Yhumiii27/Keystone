@@ -69,6 +69,30 @@ export const changeRequestWbs = pgTable('change_request_wbs', {
   position: integer('position').notNull(),
 });
 
+/**
+ * Delivery 7 (NEW-D2-2 = a, R-062): plan activities a change request touches, in addition to its work packages, with
+ * the new duration it asks for (optional). Linked by the activity code within the request's project, so a link survives
+ * the activity's removal to the plan trash and its restore. Once the request is approved, the next "Reschedule" applies
+ * the new duration (`appliedAt`, `appliedFromDays` = the duration it replaced).
+ */
+export const changeRequestActivities = pgTable(
+  'change_request_activities',
+  {
+    id: id(),
+    changeRequestId: uuid('change_request_id').notNull().references(() => changeRequests.id, { onDelete: 'cascade' }),
+    /** "A1250". */
+    activityCode: text('activity_code').notNull(),
+    /** Working days; null = touched without a new duration. */
+    newDurationDays: integer('new_duration_days'),
+    appliedAt: timestamp('applied_at', { withTimezone: true }),
+    appliedFromDays: integer('applied_from_days'),
+    position: integer('position').notNull(),
+    createdByPersonId: uuid('created_by_person_id').references(() => persons.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.changeRequestId, t.activityCode)],
+);
+
 /** Budget screen change list (projectData().CRS = HCRS 3193) — see the file header. */
 export const budgetChangeLines = pgTable('budget_change_lines', {
   id: id(),

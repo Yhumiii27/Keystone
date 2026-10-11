@@ -29,7 +29,7 @@ import { baselineWhenText, trashMetaText } from '@/features/plan/i18n';
 import { RecentlyDeleted } from '@/features/plan/recently-deleted';
 import { PLAN_TRASH_RETENTION_DAYS, listPlanTrash } from '@/server/dal/plan-trash';
 import { listActivityTodos } from '@/server/dal/activity-todos';
-import { listChangeRequestDetails } from '@/server/dal/changes';
+import { listCrActivityLinks } from '@/server/dal/change-activities';
 import { listDepartments } from '@/server/dal/people';
 import { getPlanData, getPlanRequests, getPlanSettings, getPlanTodos } from '@/server/dal/plan';
 import { getActivityAssignments } from '@/server/dal/planning';
@@ -118,9 +118,11 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
 
   let drawer = null;
   if (act) {
-    const [assignments, depts, crs, actTodos] = await Promise.all([
-      getActivityAssignments(projectCode, act.id), listDepartments(), listChangeRequestDetails(projectCode), canEdit ? listActivityTodos(projectCode, act.id) : [],
+    const [assignments, depts, crLinks, actTodos] = await Promise.all([
+      getActivityAssignments(projectCode, act.id), listDepartments(), listCrActivityLinks(projectCode), canEdit ? listActivityTodos(projectCode, act.id) : [],
     ]);
+    // NEW-D2-2 (R-062): the change requests that name this activity, opened on Change control.
+    const changesBase = screenHref('changes', { code: projectCode });
     const view_ = activityDrawerView(
       {
         act,
@@ -131,7 +133,10 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
         todos,
         requests,
         deptHeads: Object.fromEntries(depts.map((d) => [d.name, d.head ?? d.headShort ?? d.name])),
-        pendingChanges: crs.filter((c) => c.status === 'in_review').map((c) => c.id),
+        changeLinks: crLinks.filter((l) => l.code === act.id).map((l) => ({
+          cr: l.cr, title: l.crTitle, status: l.crStatus, durationDays: l.durationDays, newDurationDays: l.newDurationDays, appliedAt: l.appliedAt,
+          appliedFromDays: l.appliedFromDays, href: `${changesBase}?cr=${encodeURIComponent(l.cr)}`,
+        })),
         taskHref: (x) => screenHref('task', { taskId: x.id }),
         calendars: settings?.calendars,
         projectCalendar: settings?.calendarCode,

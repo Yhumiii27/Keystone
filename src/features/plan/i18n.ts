@@ -45,6 +45,18 @@ export const removeQuestion = (kind: 'wp' | 'act', label: string, count: number,
 // Dates passed in are already translated ("18 janv. 2027").
 
 /** Reschedule toast: "Rescheduled at 25 Sep 2026 · finish 18 Jan 2027 · 11 activities changed" (or "· no change"). */
+/** NEW-D2-2 (Delivery 7, R-062): Reschedule toast addition "durations of CR-008, CR-011 applied". */
+export function appliedChangesText(crs: readonly string[], lang: Lang): string {
+  const ids = [...new Set(crs)].join(', ');
+  return lang === 'fr' ? `durées de ${ids} appliquées` : `durations of ${ids} applied`;
+}
+
+/** NEW-D2-2 (R-062): cost-note suffix of an over-budget activity touched by requests in review ("CR-008 pending approval"). */
+export function changesPendingText(crs: readonly string[], lang: Lang): string {
+  const ids = [...new Set(crs)].join(', ');
+  return lang === 'fr' ? `${ids} en attente d’approbation` : `${ids} pending approval`;
+}
+
 export function rescheduledText(dataDate: string, finish: string, changed: number, lang: Lang): string {
   if (lang === 'fr') {
     const what = changed ? `${changed} activité${changed > 1 ? 's' : ''} modifiée${changed > 1 ? 's' : ''}` : 'aucun changement';
