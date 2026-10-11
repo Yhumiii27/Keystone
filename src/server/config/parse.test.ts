@@ -81,6 +81,20 @@ describe('parseConfig', () => {
     expect(parse({ CURSUS_API_URL: 'http://localhost:3210' }).config.cursus.apiKey).toBe(DEMO_CURSUS_API_KEY);
   });
 
+  it('production with a Cursus on this machine (the Mac app): the demo key is accepted with a warning', () => {
+    const base = { NODE_ENV: 'production', NEXT_PUBLIC_CODEX_URL: 'https://codex', NEXT_PUBLIC_CURSUS_URL: 'https://cursus', NEXT_PUBLIC_VIGIE_URL: 'https://vigie' };
+    for (const url of ['http://localhost:3210', 'http://127.0.0.1:3210', 'http://[::1]:3210']) {
+      const r = parse({ ...base, CURSUS_API_URL: url });
+      expect(r.errors).toEqual([]);
+      expect(formatIssues(r.warnings)).toEqual(['CURSUS_API_KEY is the Cursus demo key: accepted for a Cursus on this machine only']);
+      expect(r.config.cursus.apiKey).toBe(DEMO_CURSUS_API_KEY);
+    }
+    // A host name that only starts like a loopback one is not local.
+    expect(vars(parse({ ...base, CURSUS_API_URL: 'http://127.0.0.1.evil.example' }).errors)).toEqual(['CURSUS_API_KEY']);
+    expect(vars(parse({ ...base, CURSUS_API_URL: 'http://localhost.example.com' }).errors)).toEqual(['CURSUS_API_KEY']);
+    expect(parse({ ...base, CURSUS_API_URL: 'http://localhost:3210', CURSUS_API_KEY: 'real-key-123' }).warnings).toEqual([]);
+  });
+
   it('production warnings: links to localhost, Vigie without a key (V-3)', () => {
     const r = parse({ NODE_ENV: 'production', VIGIE_API_URL: 'https://vigie/api' });
     expect(r.errors).toEqual([]);

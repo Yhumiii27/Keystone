@@ -11,6 +11,7 @@ import type { DB } from '@/server/db/types';
 import { addActivityTodo } from './activity-todos';
 import { createChangeRequest } from './changes';
 import { chooseCurrentProject, resolveCurrentProject } from './current-project';
+import { getPutAwayOptions } from './deliveries';
 import { getHomeView } from './home';
 import { getPortfolioOverview } from './portfolio';
 import { getProject, listProjects } from './projects';
@@ -75,6 +76,8 @@ describe('a new production database', () => {
     expect((await getProject(created.code))!.pm).toBe('—');
     expect(await resolveCurrentProject(null)).toBe(created.code);
     expect(await resolveCurrentProject('HLT-026')).toBe(created.code);
+    // No storage location yet (entered in Settings): the Deliveries page reads no default put-away instead of failing.
+    expect(await getPutAwayOptions(created.code)).toEqual({ locations: [], defaultLocation: '' });
     // Another organisation's project is never a client's fallback: the client Home stays empty.
     expect(await resolveCurrentProject(null, { role: 'client' })).toBeNull();
     expect((await home('client')).left.rows[0]?.title).toBe(NO_PROJECT_TITLE);

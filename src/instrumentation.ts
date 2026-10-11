@@ -4,25 +4,19 @@
 //   so the hosting platform sees a failed start instead of a server that errors on every page.
 // - onRequestError(): every error Next catches while rendering a page, running a Route Handler or a Server Function is
 //   written as one structured log line (src/server/log, R-009) — path without query string, no header, no secret.
+// Node.js only: the server modules are imported under the NEXT_RUNTIME check, as the guide recommends.
 import type { Instrumentation } from 'next';
 
 export async function register(): Promise<void> {
-  if (process.env.NEXT_RUNTIME !== 'nodejs') return;
-  const { startServer } = await import('./server/startup');
-  try {
-    await startServer();
-  } catch (e) {
-    if (process.env.NODE_ENV === 'production') {
-      const { logError } = await import('./server/log');
-      logError('Keystone start-up', e, { component: 'startup' });
-      process.exit(1);
-    }
-    throw e;
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { registerNodeServer } = await import('./server/startup');
+    await registerNodeServer();
   }
 }
 
 export const onRequestError: Instrumentation.onRequestError = async (err, request, context) => {
-  if (process.env.NEXT_RUNTIME !== 'nodejs') return;
-  const { logRequestError } = await import('./server/log');
-  logRequestError(err, { path: request.path, method: request.method }, context);
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { logRequestError } = await import('./server/log');
+    logRequestError(err, { path: request.path, method: request.method }, context);
+  }
 };

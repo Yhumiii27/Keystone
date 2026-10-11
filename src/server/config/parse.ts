@@ -7,7 +7,8 @@
 // - An empty value counts as unset (a blank line in a .env file must not switch a connector on).
 // - A value that is set but invalid is an error. In production (NODE_ENV=production) errors stop the server at start-up; in
 //   development and tests they are logged once and the variable falls back to its default.
-// - Production refuses the Cursus demo API key ("demo-keystone"): CURSUS_API_URL needs CURSUS_API_KEY (or KEYSTONE_API_KEY).
+// - Production refuses the Cursus demo API key ("demo-keystone"): CURSUS_API_URL needs CURSUS_API_KEY (or KEYSTONE_API_KEY),
+//   except for a Cursus on this machine (loopback URL — the Mac app next to a local Cursus), where it is only a warning.
 // - Messages name the variable, never its value (values may be secrets).
 // - NEXT_PUBLIC_* URLs are inlined in the bundles at build time (`next build`) and read by the integration modules that are
 //   safe in client components (src/server/integrations/*/config.ts); they are only validated here.
@@ -129,6 +130,16 @@ function urlPassword(url: string | undefined): string | null {
   }
 }
 
+/** True for a URL on this machine (localhost, 127.0.0.0/8, ::1). */
+export function isLoopbackUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.replace(/^\[|\]$/g, '');
+    return host === 'localhost' || host === '::1' || /^127(\.\d{1,3}){3}$/.test(host);
+  } catch {
+    return false;
+  }
+}
+
 /** postgres://user:***@host:5432/db — a database URL safe to print. */
 export function redactUrl(url: string): string {
   try {
@@ -168,14 +179,19 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
     : { driver: 'pglite', dir: path.join(dataDir, 'pg') };
   if (!v.DATABASE_URL && v.DATABASE_POOL_MAX != null) warnings.push({ variable: 'DATABASE_POOL_MAX', message: 'is ignored without DATABASE_URL (PGlite has one connection)' });
 
-  // Cursus: production never presents the demo key.
+  // Cursus: production never presents the demo key to a Cursus elsewhere on the network. A Cursus on this machine (loopback
+  // URL: the Mac app next to a local Cursus) may keep it, with a warning.
   const cursusKey = v.CURSUS_API_KEY ?? v.KEYSTONE_API_KEY ?? null;
-  const cursusApiKey = production ? (cursusKey === DEMO_CURSUS_API_KEY ? null : cursusKey) : (cursusKey ?? DEMO_CURSUS_API_KEY);
-  if (production && v.CURSUS_API_URL && !cursusApiKey)
+  const localCursus = !!v.CURSUS_API_URL && isLoopbackUrl(v.CURSUS_API_URL);
+  const strictCursus = production && !localCursus;
+  const cursusApiKey = strictCursus ? (cursusKey === DEMO_CURSUS_API_KEY ? null : cursusKey) : (cursusKey ?? DEMO_CURSUS_API_KEY);
+  if (strictCursus && v.CURSUS_API_URL && !cursusApiKey)
     errors.push({
       variable: 'CURSUS_API_KEY',
       message: cursusKey === DEMO_CURSUS_API_KEY ? 'is the Cursus demo key, refused in production' : 'is required in production when CURSUS_API_URL is set',
     });
+  if (production && localCursus && cursusApiKey === DEMO_CURSUS_API_KEY)
+    warnings.push({ variable: 'CURSUS_API_KEY', message: 'is the Cursus demo key: accepted for a Cursus on this machine only' });
 
   if (v.VIGIE_API_URL && !v.VIGIE_API_KEY && production)
     warnings.push({ variable: 'VIGIE_API_KEY', message: 'is not set: calls to Vigie are not authenticated (Vigie API authentication is open question V-3)' });

@@ -63,23 +63,23 @@ async function seedDelivery5(tx: Tx, ctx: SeedCtx): Promise<void> {
 /** The prototype data set (demo seed). */
 async function seedDemoData(tx: Tx): Promise<void> {
   const ctx = newCtx();
-    await seedOrganisation(tx, ctx);
-    await seedPortfolio(tx, ctx);
-    await seedPlanning(tx, ctx);
-    await seedCost(tx, ctx);
-    await seedChange(tx, ctx);
-    await seedControl(tx, ctx);
-    await seedWork(tx, ctx);
-    await seedResources(tx, ctx);
-    await seedPlatform(tx, ctx);
-    await seedDocuments(tx, ctx);
-    await seedContract(tx, ctx);
-    await seedCollaboration(tx, ctx);
-    await seedOperations(tx, ctx);
-    await seedPrioritisation(tx, ctx);
-    await seedDelivery4(tx, ctx);
-    await seedDelivery5(tx, ctx);
-    await seedChapter4(tx);
+  await seedOrganisation(tx, ctx);
+  await seedPortfolio(tx, ctx);
+  await seedPlanning(tx, ctx);
+  await seedCost(tx, ctx);
+  await seedChange(tx, ctx);
+  await seedControl(tx, ctx);
+  await seedWork(tx, ctx);
+  await seedResources(tx, ctx);
+  await seedPlatform(tx, ctx);
+  await seedDocuments(tx, ctx);
+  await seedContract(tx, ctx);
+  await seedCollaboration(tx, ctx);
+  await seedOperations(tx, ctx);
+  await seedPrioritisation(tx, ctx);
+  await seedDelivery4(tx, ctx);
+  await seedDelivery5(tx, ctx);
+  await seedChapter4(tx);
 }
 
 /**

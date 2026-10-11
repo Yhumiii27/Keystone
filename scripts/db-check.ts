@@ -131,7 +131,8 @@ const D5_COUNTS: Record<string, number> = {
   site_collisions: 4, mission_cost_lines: 6, daily_reports: 2, cursus_clearances: 5, cursus_requests: 0, cursus_sync_runs: 1, client_issues: 3,
   client_document_categories: 5, eng_disciplines: 4, eng_inputs: 12, eng_consistency_rules: 6, eng_checks: 10, eng_outputs: 6, eng_changes: 4, eng_import_tools: 4,
   eng_column_mappings: 6, eng_import_deltas: 4, eng_imports: 0, pid_sheets: 1, pid_tags: 24, pid_validation_steps: 5, machine_type_phases: 28,
-  machine_type_cost_categories: 25, machine_type_itp_systems: 17, reference_values: 60, app_settings: 1, connectors: 10, connector_sync_runs: 0, import_formats: 6,
+  // app_settings: the health thresholds and, since delivery 7, the seed record "keystone.seed" (R-011, A-15).
+  machine_type_cost_categories: 25, machine_type_itp_systems: 17, reference_values: 60, app_settings: 2, connectors: 10, connector_sync_runs: 0, import_formats: 6,
 };
 
 /**

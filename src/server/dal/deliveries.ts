@@ -167,13 +167,15 @@ async function locationOfType(tx: Tx, type: LocationType) {
 
 /** Default put-away of a project: its site store (the store named after the site's city), else the central warehouse. */
 async function defaultPutAway(tx: Tx, projectId: string) {
+  return (await siteStoreOf(tx, projectId)) ?? locationOfType(tx, 'central_warehouse');
+}
+
+/** The project's site store (the store named after the site's city), or undefined. */
+async function siteStoreOf(tx: Tx, projectId: string) {
   const [site] = await tx.select({ city: projectSites.city }).from(projectSites).where(eq(projectSites.projectId, projectId));
-  if (site) {
-    const stores = await tx.select().from(storageLocations).where(and(eq(storageLocations.type, 'site_store'), eq(storageLocations.active, true)));
-    const own = stores.find((s) => s.name.endsWith(`— ${site.city}`));
-    if (own) return own;
-  }
-  return locationOfType(tx, 'central_warehouse');
+  if (!site) return undefined;
+  const stores = await tx.select().from(storageLocations).where(and(eq(storageLocations.type, 'site_store'), eq(storageLocations.active, true)));
+  return stores.find((s) => s.name.endsWith(`— ${site.city}`));
 }
 
 const isIso = (s: string | null | undefined): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s));
@@ -222,13 +224,18 @@ export async function listAnnounceableOrders(projectCode: string): Promise<Annou
   return out;
 }
 
-/** Put-away offered by "Announce a delivery": active locations except the quarantine, and the project's default. */
+/**
+ * Put-away offered by "Announce a delivery": active locations except the quarantine, and the project's default ('' while no
+ * central warehouse is configured — a new production database has no storage location until Settings defines them, R-011;
+ * announcing then refuses with "No Central warehouse configured").
+ */
 export async function getPutAwayOptions(projectCode: string): Promise<{ locations: string[]; defaultLocation: string }> {
   const db = await getDb();
   return db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);
     const locs = await tx.select().from(storageLocations).where(eq(storageLocations.active, true)).orderBy(asc(storageLocations.position));
-    return { locations: locs.filter((l) => l.type !== 'quarantine').map((l) => l.name), defaultLocation: (await defaultPutAway(tx, p.id)).name };
+    const fallback = (await siteStoreOf(tx, p.id)) ?? locs.find((l) => l.type === 'central_warehouse');
+    return { locations: locs.filter((l) => l.type !== 'quarantine').map((l) => l.name), defaultLocation: fallback?.name ?? '' };
   });
 }
 

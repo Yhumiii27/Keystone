@@ -1,8 +1,9 @@
 import 'server-only';
-import { getConfig } from '@/server/config';
+import { getConfig, type SeedMode } from '@/server/config';
 import { log } from '@/server/log';
 import { PendingMigrationsError, pendingMigrations } from './migrations';
 import { openDatabase } from './open';
+import { databaseSeedMode } from './seed/mode';
 import type { DB } from './types';
 
 // Database of this server process (R-002), chosen by the configuration (src/server/config):
@@ -28,11 +29,21 @@ async function openConfigured(): Promise<DB> {
       throw e;
     }
     log.info('Database opened', { component: 'db', driver: 'postgres', poolMax: cfg.database.poolMax });
+    await warnSeedMismatch(h.db, cfg.seedExplicit ? cfg.seed : null);
     return h.db;
   }
   const db = await openDatabase(cfg.database.dir, undefined, { seed: cfg.seed });
   log.info('Database opened', { component: 'db', driver: 'pglite' });
+  await warnSeedMismatch(db, cfg.seedExplicit ? cfg.seed : null);
   return db;
+}
+
+/** KEYSTONE_SEED only applies to a new database: say so when an existing one was seeded otherwise (R-011). */
+async function warnSeedMismatch(db: DB, wanted: SeedMode | null): Promise<void> {
+  if (!wanted) return;
+  const actual = await databaseSeedMode(db).catch(() => null);
+  if (actual && actual !== wanted)
+    log.warn(`The database holds the ${actual} data set; KEYSTONE_SEED=${wanted} only applies to a new database`, { component: 'db', seed: actual });
 }
 
 /** Database handle (singleton per server process; survives dev hot reloads). A failed open is retried by the next call. */

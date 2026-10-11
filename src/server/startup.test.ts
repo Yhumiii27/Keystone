@@ -9,7 +9,7 @@ import { runMigrateCommand } from '@/server/db/migrate-command';
 import { migrationFiles } from '@/server/db/migrations';
 import { openDatabase } from '@/server/db/open';
 import type { DB } from '@/server/db/types';
-import { startServer } from './startup';
+import { registerNodeServer, startServer } from './startup';
 
 let db: DB;
 beforeAll(async () => {
@@ -65,6 +65,27 @@ describe('startServer', () => {
     // The database failing to open stops the start too.
     setDb(Promise.reject(new Error('The database has 1 pending migration: run "npm run db:migrate" before starting Keystone')));
     await expect(startServer()).rejects.toThrow(/pending migration/);
+  });
+});
+
+describe('registerNodeServer (instrumentation register)', () => {
+  it('production: logs the failure as one line and exits with code 1; development: rethrows', async () => {
+    capture();
+    vi.stubEnv('LOG_FORMAT', 'json');
+    vi.stubEnv('KEYSTONE_SEED', 'sample');
+    vi.stubEnv('NODE_ENV', 'production');
+    const exit = vi.fn((code: number): never => {
+      throw new Error(`exit ${code}`);
+    });
+    await expect(registerNodeServer(exit)).rejects.toThrow('exit 1');
+    expect(exit).toHaveBeenCalledWith(1);
+    const line = JSON.parse(lines.find((l) => l.level === 'error')!.line);
+    expect(line).toMatchObject({ msg: 'Keystone start-up failed', component: 'startup', err: { type: 'ConfigError', message: 'Invalid configuration: KEYSTONE_SEED must be "demo" or "production"' } });
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('KEYSTONE_SEED', '');
+    setDb(db);
+    await expect(registerNodeServer(exit)).resolves.toBeUndefined();
+    expect(exit).toHaveBeenCalledTimes(1);
   });
 });
 
