@@ -16,6 +16,7 @@ import {
   approvePurchaseOrder, canApprovePurchaseOrders, createDraftPurchaseOrders, getPurchaseOrder, rejectPurchaseOrder, submitPurchaseOrder, type PurchaseOrderRow,
 } from '@/server/dal/purchasing';
 import { getProjectContext, getScreenAccess } from '@/server/project-context';
+import { logError } from '@/server/log';
 
 export type OrderActionResult = { ok: true; message?: string } | { ok: false; error: string };
 /** My approvals decision result (same shape as the change-request decision). */
@@ -76,7 +77,7 @@ export async function createDraftOrdersAction(code: string): Promise<OrderAction
     refresh(); // nothing short any more = the banner / header button were stale
     return numbers.length ? { ok: true } : { ok: false, error: NOTHING_SHORT };
   } catch (e) {
-    console.error('createDraftOrdersAction', e);
+    logError('createDraftOrdersAction', e);
     return { ok: false, error: FAILED };
   }
 }
@@ -91,7 +92,7 @@ export async function submitOrderAction(code: string, number: string): Promise<O
   try {
     await submitPurchaseOrder(o.po.number, ok.actor);
   } catch (e) {
-    console.error('submitOrderAction', e);
+    logError('submitOrderAction', e);
     return { ok: false, error: FAILED };
   }
   refresh();
@@ -109,7 +110,7 @@ export async function approveOrderAction(code: string, number: string): Promise<
   try {
     await approvePurchaseOrder(o.po.number, ok.actor);
   } catch (e) {
-    console.error('approveOrderAction', e);
+    logError('approveOrderAction', e);
     return { ok: false, error: FAILED };
   }
   refresh();
@@ -128,7 +129,7 @@ export async function pushOrderToX3Action(code: string, number: string): Promise
     refresh();
     return { ok: true, message: `${o.po.number} · Pushed to X3 · ${ref}` };
   } catch (e) {
-    console.error('pushOrderToX3Action', e);
+    logError('pushOrderToX3Action', e);
     return { ok: false, error: FAILED };
   }
 }
@@ -155,7 +156,7 @@ export async function decidePurchaseOrderAction(input: { projectCode: string; nu
     refresh();
     return { ok: true, status: poStatus.label(decision === 'ok' ? 'ordered' : 'cancelled') };
   } catch (e) {
-    console.error('decidePurchaseOrderAction', e);
+    logError('decidePurchaseOrderAction', e);
     return { ok: false, error: INBOX_FAILED };
   }
 }

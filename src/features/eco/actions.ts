@@ -16,6 +16,7 @@ import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n, getLastProject } from '@/server/session';
 import { vaultSyncedText } from './i18n';
+import { logError } from '@/server/log';
 
 export type EcoProgressResult = { ok: true; toast: string } | { ok: false; error: string };
 
@@ -57,7 +58,7 @@ export async function decideEcoApprovalAction(input: { number: string; key: stri
     refreshAll();
     return { ok: true, toast: `${number} · ${decision === 'ok' ? 'Approved' : 'Rejected'} · ${syncText(receipt.syncStatus)}` };
   } catch (e) {
-    console.error('decideEcoApprovalAction', e);
+    logError('decideEcoApprovalAction', e);
     return { ok: false, error: FAILED };
   }
 }
@@ -83,7 +84,7 @@ export async function requestEcoStepAction(input: { number: string; step: string
     refreshAll();
     return { ok: true, toast: `${number} · ${requestedStepText(step)} · ${syncText(receipt.syncStatus)}` };
   } catch (e) {
-    console.error('requestEcoStepAction', e);
+    logError('requestEcoStepAction', e);
     return { ok: false, error: FAILED };
   }
 }
@@ -104,7 +105,7 @@ export async function syncVaultAction(values: Record<string, string>): Promise<F
     revalidatePath('/reference/drawings');
     return { toast: vaultSyncedText(state.drawingsUpdated, lang) };
   } catch (e) {
-    console.error('syncVaultAction', e);
+    logError('syncVaultAction', e);
     return { error: t('The change could not be saved') };
   }
 }

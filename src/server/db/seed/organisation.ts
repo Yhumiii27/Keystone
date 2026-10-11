@@ -65,10 +65,8 @@ export async function seedOrganisation(tx: Tx, ctx: SeedCtx): Promise<void> {
   await tx.insert(clients).values(clientRows);
 
   // Departments (heads set once persons exist).
+  await seedDepartments(tx, ctx);
   const depts = Object.entries(PROTO.DEPTS as Record<string, [string, string]>);
-  const deptRows = depts.map(([name, [, title]], i) => ({ id: newId(), name, headTitle: title, sortOrder: i + 1 }));
-  for (const d of deptRows) ctx.departmentByName.set(d.name, d.id);
-  await tx.insert(departments).values(deptRows);
 
   // Persons.
   const drafts = collectPersons();
@@ -116,10 +114,25 @@ export async function seedOrganisation(tx: Tx, ctx: SeedCtx): Promise<void> {
   await tx.insert(users).values(userRows);
 
   // Zones, countries, cities.
+  await seedGeography(tx, (manager) => must(ctx.personByFull, manager, 'person'));
+}
+
+/** Departments (DEPTS 3268) without their heads — reference data of both seeds (R-011); the demo sets the heads. */
+export async function seedDepartments(tx: Tx, ctx: SeedCtx): Promise<void> {
+  const deptRows = Object.entries(PROTO.DEPTS as Record<string, [string, string]>).map(([name, [, title]], i) => ({ id: newId(), name, headTitle: title, sortOrder: i + 1 }));
+  for (const d of deptRows) ctx.departmentByName.set(d.name, d.id);
+  await tx.insert(departments).values(deptRows);
+}
+
+/**
+ * Zones (with their bounds), countries and cities — reference data of both seeds (R-011). `managerOf` resolves the zone
+ * manager of the prototype (demo) or returns null (production: no fictitious people).
+ */
+export async function seedGeography(tx: Tx, managerOf: (name: string) => string | null): Promise<void> {
   await tx.insert(zones).values(
     (PROTO.ZONES as [string, string, string][]).map(([code, label, manager], i) => {
       const [w, n, e, s] = PROTO.ZONE_BOUNDS[code] as number[];
-      return { code: code as 'euna' | 'afr' | 'apac', label, managerPersonId: must(ctx.personByFull, manager, 'person'), boundsW: w, boundsN: n, boundsE: e, boundsS: s, sortOrder: i + 1 };
+      return { code: code as 'euna' | 'afr' | 'apac', label, managerPersonId: managerOf(manager), boundsW: w, boundsN: n, boundsE: e, boundsS: s, sortOrder: i + 1 };
     }),
   );
   await tx.insert(countries).values(

@@ -17,6 +17,7 @@ import { isoOfDisplayDate, type TranscriptProposalStatus, type TranscriptProposa
 import { findPerson, nameOf, recordActivity } from '@/server/db/helpers';
 import { clientQuestions, meetingAgendaPoints, meetingParticipants, meetingTranscriptProposals, meetingTranscripts, meetings, projects } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
+import { logError } from '@/server/log';
 import { deleteStoredFile, storeFile } from '@/server/storage/files';
 import { appendLines, auditMeeting, loadMeeting } from './meetings-core';
 
@@ -103,7 +104,7 @@ export async function importTranscript(meetingNumber: string, input: TranscriptI
     await auditMeeting(tx, actorName, meetingNumber, `transcript ${old ? 'replaced' : 'imported'} · ${what} · ${parsed.words} words · ${parsed.speakers.length} speakers`, m.projectId, m.id);
     await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, text: `Imported the transcript of ${meetingNumber}`, kind: 'comment', projectId: m.projectId });
   });
-  if (oldFileId) await deleteStoredFile(oldFileId).catch((e) => console.error('importTranscript: old file not deleted', e));
+  if (oldFileId) await deleteStoredFile(oldFileId).catch((e) => logError('importTranscript old file deletion', e, { meeting: meetingNumber }));
   return { replaced, format: parsed.format, words: parsed.words, speakers: parsed.speakers.length, language: parsed.language };
 }
 

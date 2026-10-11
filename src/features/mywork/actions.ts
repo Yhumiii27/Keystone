@@ -16,6 +16,7 @@ import { listTaskFiles, removeTaskFile } from '@/server/dal/task-files';
 import { getScreenAccess } from '@/server/project-context';
 import type { Viewer } from '@/server/session';
 import { canCommentTask, canEditTask } from './permissions';
+import { logError } from '@/server/log';
 
 export type TaskActionResult = { ok: true } | { ok: false; error: string };
 
@@ -48,7 +49,7 @@ async function write(label: string, fn: () => Promise<unknown>): Promise<TaskAct
   try {
     await fn();
   } catch (e) {
-    console.error(label, e);
+    logError(label, e);
     return fail(FAILED);
   }
   revalidatePath('/', 'layout');

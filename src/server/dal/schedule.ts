@@ -378,6 +378,7 @@ export async function rescheduleProject(code: string, actorName: string): Promis
   const changed: string[] = [];
   const now = new Date();
   await db.transaction(async (tx) => {
+    changed.length = 0; // the transaction may run again after a concurrent write (R-010, src/server/db/transactions.ts)
     for (const a of progressed) {
       const r = result.activities[a.code];
       const stored = net.activities.find((x) => x.dbId === a.dbId)!;

@@ -13,7 +13,7 @@ import {
   type MeetingLineOrigin, type MeetingLineType, type MeetingSeries, type MeetingStatus, type MeetingType, type TranscriptAnalyzer,
   type TranscriptProposalStatus, type TranscriptProposalType, type TranscriptSource,
 } from '@/server/db/codes';
-import { findPerson, nextNumber, requireProject } from '@/server/db/helpers';
+import { demoFloor, findPerson, nextNumber, requireProject } from '@/server/db/helpers';
 import {
   clientQuestions, documents, meetingAgendaPoints, meetingLines, meetingParticipants, meetingTranscriptProposals, meetingTranscripts, meetings, persons,
   projects, storedFiles, tasks,
@@ -373,7 +373,7 @@ async function minutesNumberOf(tx: Tx, projectId: string, shortCode: string): Pr
   const [{ sent }] = await tx.select({ sent: sql<number>`count(*)::int` }).from(meetings).where(and(eq(meetings.projectId, projectId), eq(meetings.status, 'minutes_sent')));
   const prefix = `MIN-${shortCode}-`;
   const existing = (await tx.select({ n: documents.number }).from(documents)).map((r) => r.n).filter((n) => n.startsWith(prefix));
-  return nextBusinessNumber(existing, prefix, 3, 24 + sent);
+  return nextBusinessNumber(existing, prefix, 3, (await demoFloor(tx, 24)) + sent);
 }
 
 export interface SentMinutes {

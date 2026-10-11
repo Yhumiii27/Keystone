@@ -28,15 +28,11 @@ export async function seedEngineering(tx: Tx, ctx: SeedCtx): Promise<void> {
   const projectId = must(ctx.projectByCode, ENG_PROJECT, 'project');
   const acts = ctx.activity.get(ENG_PROJECT) ?? new Map<string, string>();
 
-  await tx.insert(engDisciplines).values(Object.entries(PROTO.ENG_DISC as Record<string, [string, string, string, string]>).map(([code, [label, icon, lead, tools]], position) => {
-    discipline.code(label);
-    return { code: code as Discipline, icon, leadName: lead, leadPersonId: personIdOrNull(ctx, lead), tools, position };
-  }));
+  await seedEngineeringReference(tx, (lead) => ({ leadName: lead, leadPersonId: personIdOrNull(ctx, lead) }));
   await tx.insert(engInputs).values((PROTO.ENG_INPUTS as ProtoInput[]).map((i, position) => ({
     projectId, consumer: i.disc, documentNumber: i.doc, documentId: ctx.document.get(i.doc) ?? null, providerParty: (i.from || null) as DocRecipient | null,
     externalTitle: i.title || null, revisionInUse: i.rev, acknowledged: i.ack, position,
   })));
-  await tx.insert(engConsistencyRules).values(Object.entries(PROTO.ENG_RULES as Record<string, string>).map(([pair, label], position) => ({ pair, label, position })));
   await tx.insert(engChecks).values((PROTO.ENG_CHECKS as ProtoCheck[]).map((c, position) => ({
     projectId, number: c.id, rulePair: c.pair, severity: checkSeverity.code(c.sev[0].toUpperCase() + c.sev.slice(1)), title: c.title, detail: c.detail, owner: c.disc,
     status: checkStatus.code(c.status), position,
@@ -47,8 +43,6 @@ export async function seedEngineering(tx: Tx, ctx: SeedCtx): Promise<void> {
   await tx.insert(engChanges).values((PROTO.ENG_CHANGES as [string, string, string][]).map(([date, text, rcp], sortOrder) => ({
     projectId, changedOn: isoOfDisplayDate(date)!, text, recipients: rcp.split(',') as DocRecipient[], sortOrder,
   })));
-  await tx.insert(engImportTools).values((PROTO.ENG_TOOLS as [string, Discipline][]).map(([label, disc], position) => ({ position, label, discipline: disc })));
-  await tx.insert(engColumnMappings).values((PROTO.ENG_MAP as [string, string][]).map(([sourceColumn, targetField], position) => ({ position, sourceColumn, targetField })));
   await tx.insert(engImportDeltas).values((PROTO.ENG_DELTAS as [string, string, string][]).map(([sym, label], position) => ({ position, kind: sym === '+' ? 'new' as const : 'changed' as const, label })));
 
   // P&ID under validation.
@@ -69,6 +63,20 @@ export async function seedEngineering(tx: Tx, ctx: SeedCtx): Promise<void> {
   })));
 
   await seedMachineTypeAggregate(tx);
+}
+
+/**
+ * Engineering disciplines, consistency rules, import tools and column mapping — reference data of both seeds (R-011).
+ * `lead` gives a discipline's lead: the prototype's person (demo) or none (production: "—", no fictitious people).
+ */
+export async function seedEngineeringReference(tx: Tx, lead: (name: string) => { leadName: string; leadPersonId: string | null }): Promise<void> {
+  await tx.insert(engDisciplines).values(Object.entries(PROTO.ENG_DISC as Record<string, [string, string, string, string]>).map(([code, [label, icon, name, tools]], position) => {
+    discipline.code(label);
+    return { code: code as Discipline, icon, ...lead(name), tools, position };
+  }));
+  await tx.insert(engConsistencyRules).values(Object.entries(PROTO.ENG_RULES as Record<string, string>).map(([pair, label], position) => ({ pair, label, position })));
+  await tx.insert(engImportTools).values((PROTO.ENG_TOOLS as [string, Discipline][]).map(([label, disc], position) => ({ position, label, discipline: disc })));
+  await tx.insert(engColumnMappings).values((PROTO.ENG_MAP as [string, string][]).map(([sourceColumn, targetField], position) => ({ position, sourceColumn, targetField })));
 }
 
 /** Phases, cost categories, ITP systems, description and calendar of each machine type (MT_ALL 5085 sources). */

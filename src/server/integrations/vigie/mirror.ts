@@ -2,7 +2,8 @@ import 'server-only';
 // The local mirror of Vigie's ECOs and the outbox of progress recorded in Keystone (schema/vigie.ts). Shared by the
 // mock and HTTP connectors and the seed: `upsertMirror` is the only writer of the mirror tables (seed and Vigie
 // refresh), `readMirror` overlays the progress Vigie has not reflected yet (progress.ts queues it).
-import { asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, lt, ne, or, sql } from 'drizzle-orm';
+import { claimExpiry } from '../outbox';
 import { ecoStatus, type EcoApproverKey } from '@/server/db/codes';
 import { findPerson } from '@/server/db/helpers';
 import { vigieEcoApprovals, vigieEcoEffectivity, vigieEcoParts, vigieEcoProgress, vigieEcoProjects, vigieEcos } from '@/server/db/schema';
@@ -141,14 +142,25 @@ export async function progressSyncStatus(q: Q, id: string) {
   return r?.s ?? null;
 }
 
-/** Marks a delivery attempt of an outbox entry. */
+/**
+ * Claims an outbox entry before sending it (R-010, ../outbox.ts): true when it is still undelivered and no other delivery
+ * holds it — the caller then sends it and records the result with markDelivery.
+ */
+export async function claimProgressDelivery(q: Q, id: string, at = new Date()): Promise<boolean> {
+  const rows = await q
+    .update(vigieEcoProgress)
+    .set({ claimedAt: at })
+    .where(and(eq(vigieEcoProgress.id, id), ne(vigieEcoProgress.syncStatus, 'sent'), or(isNull(vigieEcoProgress.claimedAt), lt(vigieEcoProgress.claimedAt, claimExpiry(at)))))
+    .returning({ id: vigieEcoProgress.id });
+  return rows.length > 0;
+}
+
+/** Marks a delivery attempt of an outbox entry (and releases its claim). */
 export async function markDelivery(q: Q, id: string, result: { ok: true; vigieRef?: string | null } | { ok: false; error: string }, at = new Date()): Promise<void> {
-  const [r] = await q.select({ attempts: vigieEcoProgress.attempts }).from(vigieEcoProgress).where(eq(vigieEcoProgress.id, id));
-  if (!r) return;
   await q
     .update(vigieEcoProgress)
     .set(result.ok
-      ? { syncStatus: 'sent', sentAt: at, lastAttemptAt: at, attempts: r.attempts + 1, lastError: null, vigieRef: result.vigieRef ?? null }
-      : { syncStatus: 'failed', lastAttemptAt: at, attempts: r.attempts + 1, lastError: result.error.slice(0, 500) })
+      ? { syncStatus: 'sent', sentAt: at, lastAttemptAt: at, attempts: sql`${vigieEcoProgress.attempts} + 1`, lastError: null, vigieRef: result.vigieRef ?? null, claimedAt: null }
+      : { syncStatus: 'failed', lastAttemptAt: at, attempts: sql`${vigieEcoProgress.attempts} + 1`, lastError: result.error.slice(0, 500), claimedAt: null })
     .where(eq(vigieEcoProgress.id, id));
 }

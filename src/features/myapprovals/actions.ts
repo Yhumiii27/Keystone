@@ -16,6 +16,7 @@ import { decideChangeStep, listChangeRequestDetails } from '@/server/dal/changes
 import { StageDecisionError, decideForcedStageChange, type ForcedStageDecision } from '@/server/dal/lifecycle';
 import { notifyRequestEvent, type RequestNotice } from '@/server/dal/requests-screens';
 import { getScreenAccess } from '@/server/project-context';
+import { logError } from '@/server/log';
 
 export type DecisionResult = { ok: true; status: string } | { ok: false; error: string };
 
@@ -45,7 +46,7 @@ export async function decideChangeRequestAction(input: { projectCode: string; nu
     revalidatePath('/', 'layout');
     return { ok: true, status: changeStatus.label(status) };
   } catch (e) {
-    console.error('decideChangeRequestAction', e);
+    logError('decideChangeRequestAction', e);
     return { ok: false, error: FAILED };
   }
 }
@@ -111,13 +112,13 @@ export async function decideForcedStageChangeAction(input: { projectCode: string
   } catch (e) {
     revalidatePath('/', 'layout');
     if (e instanceof StageDecisionError) return { ok: false, error: e.code === 'stale' ? NOT_YOURS : e.message };
-    console.error('decideForcedStageChangeAction', e);
+    logError('decideForcedStageChangeAction', e);
     return { ok: false, error: FAILED };
   }
   try {
     await notifyRequestEvent(stageNotices(d), viewer);
   } catch (e) {
-    console.error('decideForcedStageChangeAction: notification failed', e); // a courtesy: never undoes the decision
+    logError('decideForcedStageChangeAction notification', e); // a courtesy: never undoes the decision
   }
   revalidatePath('/', 'layout');
   return { ok: true, toast: decision === 'approved' ? `${code} · Stage change approved` : `${code} · Stage change rejected · Reverted to the previous stage` };

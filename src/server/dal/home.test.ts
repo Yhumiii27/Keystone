@@ -280,7 +280,8 @@ describe('Home view', () => {
   it('R-042 (P-10a): the client never sees another organisation\'s project — their own project instead; none → empty', async () => {
     expect((await render('client', 'en', 'NDC-031')).out.kpis[0]).toEqual(['Progress', '64%', 'Work completed · Harbor Line Terminal Expansion', false]);
     const none = (await render('client', 'en', 'HLT-026', null, null)).out;
-    expect([none.kpis.map((k) => k?.[1]), none.lr, none.rr]).toEqual([['—', '—', '0', '0'], [], []]);
+    // Integration with R-011: a client whose organisation has no project gets the same "No project yet" Home as an empty database.
+    expect([none.kpis, JSON.stringify(none.lr).includes('No project yet'), none.rr]).toEqual([[], true, []]);
   });
 });
 

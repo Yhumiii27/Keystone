@@ -16,8 +16,9 @@ import { getDb } from '@/server/db/client';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
 import { cursusClearances, cursusRequests, projects, siteSheets } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
-import { cursusApiKey, cursusApiUrl, cursusConnectorMode } from './config';
-import { markRequestDelivery, readClearances, recordFailedSync, undeliveredRequests, upsertClearances } from './mirror';
+import { logWarning } from '@/server/log';
+import { cursusApiKey, cursusApiUrl, cursusConnectorMode } from './connection';
+import { claimRequestDelivery, markRequestDelivery, readClearances, recordFailedSync, undeliveredRequests, upsertClearances } from './mirror';
 import type {
   CursusActor, CursusClearanceRecord, CursusConnector, CursusGoNoGo, CursusGoNoGoPayload, CursusRequestReceipt, CursusTravelRequestInput,
 } from './types';
@@ -94,23 +95,29 @@ export const mockCursusConnector: CursusConnector = {
 const HTTP_TIMEOUT_MS = 5000;
 /** Reads refresh a project's verdicts at most once a minute (a failed refresh too: the mirror is used until the next attempt). */
 const REFRESH_EVERY_MS = 60_000;
-const g = globalThis as unknown as { __ksCursusRefreshedAt?: Map<string, number> };
+// Per server process (R-010): with several instances each refreshes a project at most once a minute (bounded load on
+// Cursus); concurrent reads of one process share the refresh in flight instead of starting their own.
+const g = globalThis as unknown as { __ksCursusRefreshedAt?: Map<string, number>; __ksCursusRefreshing?: Map<string, Promise<void>> };
 const refreshedAt = () => (g.__ksCursusRefreshedAt ??= new Map());
+const refreshing = () => (g.__ksCursusRefreshing ??= new Map());
 
 /** Forgets the last refresh times (tests). */
 export function resetCursusRefreshThrottle(): void {
   g.__ksCursusRefreshedAt = undefined;
+  g.__ksCursusRefreshing = undefined;
 }
 
 async function cursusFetch(path: string, init?: RequestInit): Promise<Response> {
   const base = cursusApiUrl();
   if (!base) throw new Error('CURSUS_API_URL is not set');
+  const apiKey = cursusApiKey();
+  if (!apiKey) throw new Error('CURSUS_API_KEY is not set');
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), HTTP_TIMEOUT_MS);
   try {
     const res = await fetch(`${base}${path}`, {
       ...init, signal: ctrl.signal,
-      headers: { 'content-type': 'application/json', accept: 'application/json', 'x-api-key': cursusApiKey(), ...init?.headers },
+      headers: { 'content-type': 'application/json', accept: 'application/json', 'x-api-key': apiKey, ...init?.headers },
     });
     if (!res.ok) throw new Error(`Cursus ${init?.method ?? 'GET'} ${path} → ${res.status}`);
     return res;
@@ -163,6 +170,7 @@ async function deliverOutbox(): Promise<{ delivered: number; failed: number; pen
   let failed = 0;
   for (const e of await undeliveredRequests(db)) {
     if (e.kind !== 'travel_request') continue;
+    if (!(await claimRequestDelivery(db, e.id))) continue; // another delivery is sending it (R-010)
     try {
       if (!e.matricule) throw new Error(`No Cursus matricule for ${e.personName}`);
       const chantierId = await db.transaction(async (tx) => (await chantierOf(tx, e.projectCode)).chantierId);
@@ -189,13 +197,23 @@ export const httpCursusConnector: CursusConnector = {
     // A site not linked to a Cursus site has nothing to refresh: the mirror as received, no failed run per page view.
     const chantierId = await db.transaction(async (tx) => (await chantierOf(tx, projectCode)).chantierId).catch(() => null);
     if (!chantierId) return readClearances(db, projectCode);
-    await refresh(projectCode).catch(async (e) => {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.warn('[cursus] go-no-go refresh failed, using the local mirror:', msg);
-      // Retried after the same interval (the sidebar badge reads on every page: one timeout a minute, not one per view).
-      refreshedAt().set(projectCode, Date.now());
-      await recordFailedSync(db, projectCode, new Date(), msg).catch(() => null);
-    });
+    let running = refreshing().get(projectCode);
+    if (!running) {
+      running = refresh(projectCode)
+        .then(
+          () => undefined,
+          async (e) => {
+            const msg = e instanceof Error ? e.message : String(e);
+            logWarning('Cursus go-no-go refresh (the local mirror is used)', e, { component: 'cursus', project: projectCode });
+            // Retried after the same interval (the sidebar badge reads on every page: one timeout a minute, not one per view).
+            refreshedAt().set(projectCode, Date.now());
+            await recordFailedSync(db, projectCode, new Date(), msg).catch(() => null);
+          },
+        )
+        .finally(() => refreshing().delete(projectCode));
+      refreshing().set(projectCode, running);
+    }
+    await running;
     return readClearances(db, projectCode);
   },
   async sync(projectCode) {

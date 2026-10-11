@@ -23,6 +23,7 @@ import { canDecideDepartment } from '@/domain/rights';
 import { getProjectScope } from '@/server/project-context';
 import { getViewer, type Viewer } from '@/server/session';
 import { canDecideRequests, canManageOwnRequests, canSendRequests, draftRights, isRequester } from './permissions';
+import { logError } from '@/server/log';
 
 export type RequestActionResult = { ok: true; number?: string } | { ok: false; error: string };
 
@@ -52,7 +53,7 @@ async function announce(viewer: Viewer, r: ResourceRequestRow | null, notices: (
     await notifyRequestEvent(notices(r), viewer);
     await recordRequestActivity(r.projectCode, viewer.name, `${activity} ${r.id} — ${r.title}`);
   } catch (e) {
-    console.error('requests: notification failed', e);
+    logError('Resource request notification', e);
   }
 }
 
@@ -105,7 +106,7 @@ export async function sendResourceRequestAction(input: SendRequestInput): Promis
       viewer.name,
     );
   } catch (e) {
-    console.error('sendResourceRequestAction', e);
+    logError('sendResourceRequestAction', e);
     return { ok: false, error: FAILED };
   }
   await announce(viewer, await getResourceRequest(number), (r) => [
@@ -136,7 +137,7 @@ export async function withdrawRequestAction(id: string): Promise<RequestActionRe
   try {
     await withdrawResourceRequest(o.r.id, o.viewer.name);
   } catch (e) {
-    console.error('withdrawRequestAction', e);
+    logError('withdrawRequestAction', e);
     return { ok: false, error: FAILED };
   }
   await announce(o.viewer, o.r, (r) => [
@@ -154,7 +155,7 @@ export async function reRequestAction(id: string): Promise<RequestActionResult> 
   try {
     await reRequestResourceRequest(o.r.id, o.viewer.name);
   } catch (e) {
-    console.error('reRequestAction', e);
+    logError('reRequestAction', e);
     return { ok: false, error: FAILED };
   }
   await announce(o.viewer, o.r, (r) => [
@@ -173,7 +174,7 @@ export async function acceptRescheduleAction(id: string): Promise<RequestActionR
   try {
     task = await acceptReschedule(o.r.id, o.viewer.name);
   } catch (e) {
-    console.error('acceptRescheduleAction', e);
+    logError('acceptRescheduleAction', e);
     return { ok: false, error: FAILED };
   }
   await announce(o.viewer, await getResourceRequest(o.r.id), (r) => [
@@ -209,7 +210,7 @@ export async function sendDraftRequestAction(id: string): Promise<RequestActionR
   try {
     await sendDraftRequest(o.r.id, o.viewer.name);
   } catch (e) {
-    console.error('sendDraftRequestAction', e);
+    logError('sendDraftRequestAction', e);
     return { ok: false, error: FAILED };
   }
   await announce(o.viewer, await getResourceRequest(o.r.id), (r) => [
@@ -226,7 +227,7 @@ export async function discardDraftRequestAction(id: string): Promise<RequestActi
   try {
     await discardDraftRequest(o.r.id, o.viewer.name);
   } catch (e) {
-    console.error('discardDraftRequestAction', e);
+    logError('discardDraftRequestAction', e);
     return { ok: false, error: FAILED };
   }
   // Nobody to notify (the department never saw it); the activity feed keeps the trace.
@@ -260,7 +261,7 @@ export async function approveRequestAction(id: string): Promise<RequestActionRes
   try {
     task = await approveResourceRequest(o.r.id, o.viewer.name);
   } catch (e) {
-    console.error('approveRequestAction', e);
+    logError('approveRequestAction', e);
     return { ok: false, error: FAILED };
   }
   await announce(o.viewer, o.r, (r) => [
@@ -280,7 +281,7 @@ export async function proposeRescheduleAction(id: string, shift: number, note: s
   try {
     await proposeReschedule(o.r.id, shift, reason, o.viewer.name);
   } catch (e) {
-    console.error('proposeRescheduleAction', e);
+    logError('proposeRescheduleAction', e);
     return { ok: false, error: FAILED };
   }
   const to = shiftedDates(o.r.start, o.r.due, shift);
@@ -299,7 +300,7 @@ export async function rejectRequestAction(id: string, note: string): Promise<Req
   try {
     await rejectResourceRequest(o.r.id, reason, o.viewer.name);
   } catch (e) {
-    console.error('rejectRequestAction', e);
+    logError('rejectRequestAction', e);
     return { ok: false, error: FAILED };
   }
   await announce(o.viewer, o.r, (r) => [

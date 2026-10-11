@@ -15,6 +15,7 @@ import { getScreenAccess } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { CLAIM_RESULT, MACHINE_RESULT } from './forms';
 import { messageText } from './i18n';
+import { logError } from '@/server/log';
 
 /** Form values as sent by the client, keeping string entries only (a forged payload never reaches `.trim()`). */
 const strings = (values: unknown): Record<string, string> =>
@@ -37,7 +38,7 @@ export async function addMachineAction(values: Record<string, string>): Promise<
       { name: access.viewer.name, role: access.viewer.role },
     );
   } catch (e) {
-    console.error('addMachineAction', e);
+    logError('addMachineAction', e);
     return { error: messageText('The change could not be saved', t) };
   }
   refreshAll();
@@ -57,7 +58,7 @@ export async function openClaimAction(values: Record<string, string>): Promise<F
   try {
     await openClaim(parsed.value, { name: access.viewer.name, role: access.viewer.role });
   } catch (e) {
-    console.error('openClaimAction', e);
+    logError('openClaimAction', e);
     return { error: messageText('The change could not be saved', t) };
   }
   refreshAll();

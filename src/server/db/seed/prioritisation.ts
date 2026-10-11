@@ -13,15 +13,21 @@ export const DEMAND_HOURS_PER_MEUR: readonly [string, number][] = [
 ];
 
 export async function seedPrioritisation(tx: Tx, ctx: SeedCtx): Promise<void> {
-  const axes = PROTO.SCORE_AXES as [ScoreAxis, string, number][];
-  await tx.insert(scoreAxes).values(axes.map(([code, label, defaultWeight], position) => ({ code, label, defaultWeight, position })));
+  const axes = await seedPrioritisationReference(tx, ctx);
   await tx.insert(portfolioScores).values(
     Object.entries(PROTO.SCORES as Record<string, number[]>).flatMap(([key, scores]) => {
       const projectId = must(ctx.projectByCode, SCORE_CODE_REMAP[key] ?? key, 'project');
       return axes.map(([axis], i) => ({ projectId, axis, score: scores[i] }));
     }),
   );
+}
+
+/** Scoring axes and the department demand rates of the capacity what-if — reference data of both seeds (R-011). */
+export async function seedPrioritisationReference(tx: Tx, ctx: SeedCtx): Promise<[ScoreAxis, string, number][]> {
+  const axes = PROTO.SCORE_AXES as [ScoreAxis, string, number][];
+  await tx.insert(scoreAxes).values(axes.map(([code, label, defaultWeight], position) => ({ code, label, defaultWeight, position })));
   await tx.insert(capacityDemandRates).values(
     DEMAND_HOURS_PER_MEUR.map(([name, hoursPerMeur], position) => ({ departmentId: must(ctx.departmentByName, name, 'department'), hoursPerMeur, position })),
   );
+  return axes;
 }

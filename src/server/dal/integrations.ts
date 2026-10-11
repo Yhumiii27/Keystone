@@ -11,10 +11,10 @@ import {
   auditEntries, connectorSyncRuns, connectors, cursusClearances, cursusRequests, cursusSyncRuns, importFormats, siteSheets, projects, vigieEcoProgress, vigieEcos,
   vigieHseItems, vigieNcrProgress, vigieNcrs,
 } from '@/server/db/schema';
-import { cursusConnectorMode } from '@/server/integrations/cursus/config';
+import { cursusConnectorMode } from '@/server/integrations/cursus/connection';
 import { getCursusConnector } from '@/server/integrations/cursus/connector';
 import { recordFailedSync } from '@/server/integrations/cursus/mirror';
-import { vigieConnectorMode } from '@/server/integrations/vigie/config';
+import { vigieConnectorMode } from '@/server/integrations/vigie/connection';
 import { getVigieEcoConnector } from '@/server/integrations/vigie/eco-connector';
 import { getVigieQualityConnector } from '@/server/integrations/vigie/quality-connector';
 import { fmt } from '@/server/interchange/messages';

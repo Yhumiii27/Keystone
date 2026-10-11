@@ -31,6 +31,21 @@ npm run dev          # http://localhost:3000
   Claude (Anthropic) »). Sans cette clé, un analyseur local à base de règles est utilisé et rien ne sort de Keystone.
   `KEYSTONE_AI_MODEL` permet de changer de modèle.
 
+## Configuration et mise en production
+
+Toutes les variables d'environnement sont décrites dans `.env.example` et vérifiées au démarrage
+(`src/server/config`). En production (`NODE_ENV=production`), une valeur invalide ou manquante arrête le serveur avec
+une ligne de journal qui nomme la variable.
+
+- **Base PostgreSQL :** définir `DATABASE_URL`. Les migrations et le premier remplissage se font au déploiement avec
+  `npm run db:migrate`, avant de démarrer la nouvelle version. Le serveur refuse une base en retard de migration.
+  Sans `DATABASE_URL`, la base PGlite locale est utilisée comme aujourd'hui.
+- **Données d'une nouvelle base :** `KEYSTONE_SEED=demo` (par défaut) charge le jeu du prototype.
+  `KEYSTONE_SEED=production` ne charge que les référentiels (étapes, calendriers, listes des Paramètres, types de
+  documents et de machine, départements et zones), sans projet ni personne. Une base existante garde son jeu de données.
+- **Journaux :** une ligne JSON par événement en production (`LOG_LEVEL`, `LOG_FORMAT`), sans secret.
+- **Supervision :** `GET /api/health` répond 200 quand la base répond et que son schéma est à jour, 503 sinon.
+
 ## Application Mac
 
 ```bash

@@ -62,6 +62,8 @@ export const cursusRequests = pgTable('cursus_requests', {
   sentAt: timestamp('sent_at', { withTimezone: true }),
   /** Cursus's acknowledgement ("demandesKeystone" id). */
   cursusRef: text('cursus_ref'),
+  /** Set while a delivery is in flight (R-010: two deliveries never send the same request); cleared by the result. */
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
 });
 
 /** Cursus synchronisations (mock: the seed's "26 Sep 07:00"; HTTP: each go-no-go refresh). */

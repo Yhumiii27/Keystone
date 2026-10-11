@@ -4,10 +4,10 @@ import { HOME_PRIMARY_ROLES } from '@/domain/home';
 import { HomeScreen } from '@/features/home/home-screen';
 import { NewProjectButton } from '@/features/projects/new-project-button';
 import { getHomeView } from '@/server/dal/home';
-import { getI18n, getLastProject, getViewer, getZone } from '@/server/session';
+import { getCurrentProject, getI18n, getViewer, getZone } from '@/server/session';
 
 export default async function HomePage() {
-  const [viewer, { t, lang }, projectCode, zone] = await Promise.all([getViewer(), getI18n(), getLastProject(), getZone()]);
+  const [viewer, { t, lang }, projectCode, zone] = await Promise.all([getViewer(), getI18n(), getCurrentProject(), getZone()]);
   const view = await getHomeView({ role: viewer.role, persona: { name: viewer.name, title: viewer.title }, projectCode, zone, lang, organisation: viewer.organisation });
   return (
     <>

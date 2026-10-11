@@ -9,6 +9,7 @@ import { getProject } from '@/server/dal/projects';
 import { exportScheduleXml, stampMsProjectConnector } from '@/server/interchange/schedule-export';
 import { getI18n, getViewer } from '@/server/session';
 import { contentDisposition } from '@/server/storage/files';
+import { logError } from '@/server/log';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +34,7 @@ export async function GET(_request: Request, ctx: { params: Promise<{ code: stri
       await stampMsProjectConnector(tx, volume, now);
     });
   } catch (e) {
-    console.error('[export] MS Project log failed:', e);
+    logError('MS Project export log', e, { route: 'api/interchange/mspdi' });
   }
   const body = new TextEncoder().encode(out.xml);
   return new Response(body, {

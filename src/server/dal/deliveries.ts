@@ -14,7 +14,7 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { putAwayAfterQc, qcPlan, registerPlan, remainingToAnnounce, type QcDecision, type ReceiptForAnnounce } from '@/domain/deliveries';
 import { getDb } from '@/server/db/client';
 import { STATUS_ISO, locationType, receiptStatus, type LocationType, type ReceiptStatus } from '@/server/db/codes';
-import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
+import { demoFloor, findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import {
   goodsReceipts, parts, persons, poLines, projectSites, projects, purchaseOrders, receiptAttachments, receiptLines, stockPositions, storageLocations, supplierInvoices, suppliers,
 } from '@/server/db/schema';
@@ -167,13 +167,15 @@ async function locationOfType(tx: Tx, type: LocationType) {
 
 /** Default put-away of a project: its site store (the store named after the site's city), else the central warehouse. */
 async function defaultPutAway(tx: Tx, projectId: string) {
+  return (await siteStoreOf(tx, projectId)) ?? locationOfType(tx, 'central_warehouse');
+}
+
+/** The project's site store (the store named after the site's city), or undefined. */
+async function siteStoreOf(tx: Tx, projectId: string) {
   const [site] = await tx.select({ city: projectSites.city }).from(projectSites).where(eq(projectSites.projectId, projectId));
-  if (site) {
-    const stores = await tx.select().from(storageLocations).where(and(eq(storageLocations.type, 'site_store'), eq(storageLocations.active, true)));
-    const own = stores.find((s) => s.name.endsWith(`— ${site.city}`));
-    if (own) return own;
-  }
-  return locationOfType(tx, 'central_warehouse');
+  if (!site) return undefined;
+  const stores = await tx.select().from(storageLocations).where(and(eq(storageLocations.type, 'site_store'), eq(storageLocations.active, true)));
+  return stores.find((s) => s.name.endsWith(`— ${site.city}`));
 }
 
 const isIso = (s: string | null | undefined): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s));
@@ -222,13 +224,18 @@ export async function listAnnounceableOrders(projectCode: string): Promise<Annou
   return out;
 }
 
-/** Put-away offered by "Announce a delivery": active locations except the quarantine, and the project's default. */
+/**
+ * Put-away offered by "Announce a delivery": active locations except the quarantine, and the project's default ('' while no
+ * central warehouse is configured — a new production database has no storage location until Settings defines them, R-011;
+ * announcing then refuses with "No Central warehouse configured").
+ */
 export async function getPutAwayOptions(projectCode: string): Promise<{ locations: string[]; defaultLocation: string }> {
   const db = await getDb();
   return db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);
     const locs = await tx.select().from(storageLocations).where(eq(storageLocations.active, true)).orderBy(asc(storageLocations.position));
-    return { locations: locs.filter((l) => l.type !== 'quarantine').map((l) => l.name), defaultLocation: (await defaultPutAway(tx, p.id)).name };
+    const fallback = (await siteStoreOf(tx, p.id)) ?? locs.find((l) => l.type === 'central_warehouse');
+    return { locations: locs.filter((l) => l.type !== 'quarantine').map((l) => l.name), defaultLocation: fallback?.name ?? '' };
   });
 }
 
@@ -271,7 +278,7 @@ export async function announceDelivery(projectCode: string, input: AnnounceInput
       if (!loc) throw new Error(`Unknown location ${input.location}`);
     } else loc = await defaultPutAway(tx, p.id);
     const all = (await tx.select({ n: goodsReceipts.number }).from(goodsReceipts)).map((r) => r.n);
-    const number = nextReceiptNumber(all);
+    const number = nextReceiptNumber(all, await demoFloor(tx, RECEIPT_NUMBER_FLOOR));
     const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${goodsReceipts.position}), -1)::int` }).from(goodsReceipts).where(eq(goodsReceipts.projectId, p.id));
     const [r] = await tx
       .insert(goodsReceipts)
@@ -291,9 +298,12 @@ export async function announceDelivery(projectCode: string, input: AnnounceInput
   });
 }
 
-/** Next BL-2026-nnnn of the receipts announced in Keystone (from BL-2026-0600, as the prototype's `announce`). */
-export function nextReceiptNumber(existing: string[]): string {
-  let max = 599;
+/** The prototype numbered the receipts it announced from BL-2026-0600 (`announce`); a demo database keeps that floor (R-011). */
+export const RECEIPT_NUMBER_FLOOR = 599;
+
+/** Next BL-2026-nnnn of the receipts announced in Keystone (after `floor`: the demo floor, 0 on a production database). */
+export function nextReceiptNumber(existing: string[], floor = RECEIPT_NUMBER_FLOOR): string {
+  let max = floor;
   for (const n of existing) {
     const m = /^BL-2026-(\d{4})$/.exec(n);
     if (m && +m[1] > max) max = +m[1];

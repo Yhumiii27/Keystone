@@ -16,6 +16,7 @@ import { advancePrerequisite, confirmEquipment, getSite, remindInCursus, saveDai
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { messageText } from './i18n';
+import { logError } from '@/server/log';
 
 export type SiteActionResult = { ok: true; toast?: string } | { ok: false; error: string };
 
@@ -66,7 +67,7 @@ export async function advancePrerequisiteAction(code: string, position: number, 
   try {
     await advancePrerequisite(ok.code, position, to, ok.actor);
   } catch (e) {
-    console.error('advancePrerequisiteAction', e);
+    logError('advancePrerequisiteAction', e);
     return fail(FAILED);
   }
   refresh();
@@ -87,7 +88,7 @@ export async function confirmEquipmentAction(code: string, position: number): Pr
   try {
     await confirmEquipment(ok.code, position, ok.actor);
   } catch (err) {
-    console.error('confirmEquipmentAction', err);
+    logError('confirmEquipmentAction', err);
     return fail(FAILED);
   }
   refresh();
@@ -110,7 +111,7 @@ export async function remindInCursusAction(code: string, person: string): Promis
   try {
     await remindInCursus(ok.code, p.personName, ok.actor);
   } catch (e) {
-    console.error('remindInCursusAction', e);
+    logError('remindInCursusAction', e);
     return fail(FAILED);
   }
   refresh();
@@ -129,7 +130,7 @@ export async function syncCursusAction(code: string): Promise<SiteActionResult> 
     const extra = r.delivered || r.failed ? ` · ${r.delivered} sent · ${r.failed} failed` : '';
     return { ok: true, toast: await tr(`Cursus sync · ${r.received} approvals received${extra}`) };
   } catch (e) {
-    console.error('syncCursusAction', e);
+    logError('syncCursusAction', e);
     return fail('Cursus could not be reached — the last approvals received are shown');
   }
 }
@@ -153,7 +154,7 @@ export async function saveDailyReportAction(code: string, values: Record<string,
     refresh();
     return { toast: await tr(`Daily report saved · ${number}`), number };
   } catch (e) {
-    console.error('saveDailyReportAction', e);
+    logError('saveDailyReportAction', e);
     return { error: await tr(FAILED) };
   }
 }

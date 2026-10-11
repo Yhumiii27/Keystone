@@ -19,6 +19,7 @@ import { getProject } from '@/server/dal/projects';
 import { getProjectContext, getScreenAccess } from '@/server/project-context';
 import { getI18n, type Viewer } from '@/server/session';
 import { messageText, statusText } from './i18n';
+import { logError } from '@/server/log';
 
 export type DeliveryActionResult = { ok: true; status?: string; message?: string } | { ok: false; error: string };
 
@@ -80,7 +81,7 @@ export async function announceDeliveryAction(code: string, values: Record<string
     refresh();
     return { toast: await tr(`Delivery ${number} announced`), number };
   } catch (e) {
-    console.error('announceDeliveryAction', e);
+    logError('announceDeliveryAction', e);
     return { error: await tr(FAILED) };
   }
 }
@@ -103,7 +104,7 @@ export async function registerReceiptAction(code: string, number: string, values
   try {
     await registerReceipt(r.number, { receivedOn: v.receivedOn, carrier: v.carrier, supplierDeliveryNote: v.supplierDeliveryNote, delivered: v.plan.delivered }, ok.viewer.name);
   } catch (e) {
-    console.error('registerReceiptAction', e);
+    logError('registerReceiptAction', e);
     return { error: await tr(FAILED) };
   }
   refresh();
@@ -132,7 +133,7 @@ async function decide(code: string, number: unknown, decision: QcDecision, remar
     else if (decision.mode === 'reject') status = await rejectReceipt(r.number, { remarks: text }, ok.viewer.name);
     else status = await recordReceiptQc(r.number, { lines: plan.value.lines, remarks: text }, ok.viewer.name);
   } catch (e) {
-    console.error('decideReceipt', e);
+    logError('decideReceipt', e);
     return { ok: false, error: await msg(english ? 'The decision could not be saved' : FAILED) };
   }
   refresh();
@@ -182,7 +183,7 @@ export async function attachDeliveryNoteAction(code: string, number: string, fil
   try {
     await attachReceiptDocument(r.number, name, ok.viewer.name);
   } catch (e) {
-    console.error('attachDeliveryNoteAction', e);
+    logError('attachDeliveryNoteAction', e);
     return fail(FAILED);
   }
   refresh();

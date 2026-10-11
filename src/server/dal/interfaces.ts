@@ -9,7 +9,7 @@ import { daysToNeed, effectiveInterfaceStatus as effective } from '@/domain/team
 import {
   interfaceStatus, keystoneSide, nextBusinessNumber, shortDateYearOfIso, type InterfaceEffectiveStatus, type InterfaceStatus, type KeystoneSide,
 } from '@/server/db/codes';
-import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
+import { demoFloor, findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
 import { persons, projectInterfaces, projects } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 
@@ -95,7 +95,7 @@ export async function createInterface(projectCode: string, input: NewInterface, 
     if (!keystoneSide.isCode(input.keystoneSide)) throw new Error('Invalid Keystone side');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.neededBy)) throw new Error('Invalid need date');
     const existing = await tx.select({ number: projectInterfaces.number, position: projectInterfaces.position }).from(projectInterfaces).where(eq(projectInterfaces.projectId, p.id));
-    const number = nextBusinessNumber(existing.map((e) => e.number), 'IF-', 2, 9);
+    const number = nextBusinessNumber(existing.map((e) => e.number), 'IF-', 2, await demoFloor(tx, 9));
     const owner = await findPerson(tx, input.owner);
     const [row] = await tx
       .insert(projectInterfaces)

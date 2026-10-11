@@ -374,7 +374,7 @@ const shortTitle = (s: string) => s.split(' — ')[0];
 const crAwaiting = (cr: ChangeRequest, step: 'client' | 'director') => changeRequestStatus(cr) === 'in_review' && cr.chain[step] === 'pending';
 
 /** "Good morning, Marie" / "Portfolio director · Friday 25 Sep 2026" (homeVals, line 4435). */
-function greeting(persona: Persona): Pick<HomeView, 'greeting' | 'sub'> {
+export function greeting(persona: Persona): Pick<HomeView, 'greeting' | 'sub'> {
   return { greeting: 'Good morning, ' + persona.name.split(' ')[0], sub: persona.title + ' · Friday ' + STATUS_DATE };
 }
 

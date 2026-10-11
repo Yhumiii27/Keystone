@@ -3,6 +3,7 @@
 // project → 404, a client on another organisation's project → 403, a provider refusal → 403. Every file is logged.
 import { isExportFormat } from '@/server/db/codes';
 import { contentDisposition } from '@/server/storage/files';
+import { logError } from '@/server/log';
 import { ExportError, buildExportContext, logExport, runExport } from '@/server/export/run';
 import { getI18n, getViewer, getZone } from '@/server/session';
 
@@ -17,7 +18,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ screen: str
   try {
     const ectx = await buildExportContext({ screen, viewer, lang, params, zoneCookie });
     const file = await runExport(ectx, format);
-    await logExport(ectx, file).catch((e) => console.error('[export] log failed:', e));
+    await logExport(ectx, file).catch((e) => logError('Export log', e, { route: 'api/export', screen }));
     return new Response(file.body as BodyInit, {
       headers: {
         'Content-Type': file.mime,
@@ -29,7 +30,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ screen: str
     });
   } catch (e) {
     if (e instanceof ExportError) return text(e.status, e.message);
-    console.error('[export] failed:', e);
+    logError('Export', e, { route: 'api/export', screen, format });
     return text(500, 'Export failed');
   }
 }

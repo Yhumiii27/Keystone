@@ -6,7 +6,10 @@ import { and, eq, or } from 'drizzle-orm';
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
 import { nextBusinessNumber, type ActivityKind } from './codes';
 import { activityEvents, auditEntries, persons, projects, users } from './schema';
+import { demoFloor } from './seed/mode';
 import type { DB, Tx } from './types';
+
+export { demoFloor } from './seed/mode';
 
 type Q = DB | Tx;
 
@@ -49,11 +52,13 @@ export async function requireProject(q: Q, code: string): Promise<{ id: string; 
 
 /**
  * Next "PREFIX-nnn" number over every row of `column` (global sequence, as in the prototype — OPEN QUESTION Q-7):
- * max(existing, floor) + 1. Call inside the writing transaction.
+ * max(existing, floor) + 1, where `floor` (the prototype's continuation number) applies to a demo database only (R-011,
+ * seed/mode.ts demoFloor). Call inside the writing transaction: it runs SERIALIZABLE (src/server/db/transactions.ts), so two
+ * concurrent writers never get the same number — one of them is run again (R-010).
  */
 export async function nextNumber(q: Q, table: PgTable, column: PgColumn, prefix: string, pad: number, floor = 0): Promise<string> {
   const rows = (await q.select({ n: column }).from(table)) as { n: string }[];
-  return nextBusinessNumber(rows.map((r) => r.n), prefix, pad, floor);
+  return nextBusinessNumber(rows.map((r) => r.n), prefix, pad, await demoFloor(q, floor));
 }
 
 export interface AuditInput {

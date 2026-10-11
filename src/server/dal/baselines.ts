@@ -5,6 +5,7 @@ import 'server-only';
 // baseline goes through a change request; it is filled and made current when the request is approved, dal/changes.ts).
 // The Change control register keeps reading `getBaselines` / `getBaselineRegister` (planning.ts, changes-baselines.ts).
 import { and, asc, eq, sql } from 'drizzle-orm';
+import { canSnapshotFreely } from '@/domain/baseline-policy';
 import { DEFAULT_DISPLAYED_BASELINE, displayedBaselineCode, nextBaselineCode, projectDataDate } from '@/domain/ch4-defaults';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import type { BaselineSource, BaselineState } from '@/server/db/codes';
@@ -140,6 +141,25 @@ export interface SnapshotInput {
   setOn?: string;
   approverName?: string | null;
   scope?: string | null;
+  /**
+   * Re-checks the S-3 policy inside the writing transaction (R-010: two simultaneous "Set baseline" at BL0 must not create
+   * BL2 without a change request): a snapshot made current, or one without change request, needs the project below BL1;
+   * a change request carries one proposed baseline at most. Violations throw BaselinePolicyError.
+   */
+  enforcePolicy?: boolean;
+}
+
+/** S-3 refusal raised inside the snapshot transaction (`SnapshotInput.enforcePolicy`). */
+export class BaselinePolicyError extends Error {
+  /** `change_request_required`: the project has BL1 already; `already_proposed`: the change request proposes `baseline`. */
+  readonly reason: 'change_request_required' | 'already_proposed';
+  readonly baseline: string | null;
+  constructor(reason: BaselinePolicyError['reason'], baseline: string | null = null) {
+    super(reason === 'already_proposed' ? `The change request already proposes ${baseline}` : 'After BL1, a new baseline goes through a change request');
+    this.name = 'BaselinePolicyError';
+    this.reason = reason;
+    this.baseline = baseline;
+  }
 }
 
 async function supersedeCurrent(tx: Q, projectId: string, exceptId: string): Promise<void> {
@@ -157,12 +177,21 @@ export async function createBaselineSnapshot(code: string, input: SnapshotInput,
   const run = async (tx: Q) => {
     const proj = await requireProject(tx, code);
     const p = await projectHead(tx, code);
-    const existing = (await tx.select({ code: baselines.code, position: baselines.position }).from(baselines).where(eq(baselines.projectId, proj.id)));
+    const existing = await tx
+      .select({ code: baselines.code, position: baselines.position, state: baselines.state, changeRequestId: baselines.changeRequestId })
+      .from(baselines)
+      .where(eq(baselines.projectId, proj.id));
     const blCode = nextBaselineCode(existing.map((b) => b.code));
     const cr = input.changeRequestNumber
       ? (await tx.select({ id: changeRequests.id }).from(changeRequests).where(and(eq(changeRequests.projectId, proj.id), eq(changeRequests.number, input.changeRequestNumber))))[0]
       : null;
     if (input.changeRequestNumber && !cr) throw new Error(`Unknown change request ${input.changeRequestNumber}`);
+    if (input.enforcePolicy) {
+      const free = canSnapshotFreely(existing.map((b) => b.code));
+      if (!free && (input.makeCurrent || !cr)) throw new BaselinePolicyError('change_request_required');
+      const taken = cr ? existing.find((b) => b.changeRequestId === cr.id && b.state === 'proposed') : undefined;
+      if (taken) throw new BaselinePolicyError('already_proposed', taken.code);
+    }
     const actor = await findPerson(tx, input.actorName);
     const approver = input.approverName ? await findPerson(tx, input.approverName) : null;
     const [{ finish }] = await tx.select({ finish: sql<string | null>`max(${activities.finishDate})::text` }).from(activities).where(eq(activities.projectId, proj.id));

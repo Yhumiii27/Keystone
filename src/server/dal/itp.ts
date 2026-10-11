@@ -5,6 +5,7 @@ import 'server-only';
 // ITP screen (Start / Close, "Add punch item") — and `site` — the Site screen's punch list & reserves (read-only there).
 import { and, asc, eq } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
+import { demoFloor } from '@/server/db/helpers';
 import {
   itpPointType, itpResult, itpStage, machineType, nextBusinessNumber, punchCategory, punchOwnerParty, punchSource, punchStatus,
   type ItpPointType, type ItpResult, type ItpStage, type PunchCategory, type PunchOwnerParty, type PunchRegister, type PunchSource, type PunchStatus,
@@ -121,7 +122,7 @@ export async function addItpInspection(projectCode: string, input: NewInspection
     const systems = await systemsOf(tx, plan.machineTypeCode);
     if (!systems.includes(input.system)) throw new Error(`Unknown system "${input.system}" for this plan`);
     const existing = await tx.select({ n: itpInspections.number, pos: itpInspections.position }).from(itpInspections).where(eq(itpInspections.planId, plan.id));
-    const number = nextBusinessNumber(existing.map((e) => e.n), 'I-', 2, 19);
+    const number = nextBusinessNumber(existing.map((e) => e.n), 'I-', 2, await demoFloor(tx, 19));
     const [row] = await tx.insert(itpInspections).values({
       planId: plan.id, number, system: input.system, name, pointType: input.pointType, stage: input.stage, reference, plannedOn, result: 'planned', isCustom: true,
       position: existing.reduce((m, e) => Math.max(m, e.pos + 1), 0),
@@ -214,7 +215,7 @@ export async function addPunchItem(projectCode: string, input: NewPunchInput, ac
       ownerPersonId = f?.id ?? null;
     }
     const existing = await tx.select({ n: punchItems.number, pos: punchItems.position }).from(punchItems).where(and(eq(punchItems.projectId, p.id), eq(punchItems.register, 'itp')));
-    const number = nextBusinessNumber(existing.map((e) => e.n), 'P-', 2, 9);
+    const number = nextBusinessNumber(existing.map((e) => e.n), 'P-', 2, await demoFloor(tx, 9));
     const [row] = await tx.insert(punchItems).values({
       projectId: p.id, register: 'itp', number, description, location, category: input.category, source: input.source, ownerName, ownerPersonId, dueOn, status: 'open',
       position: existing.reduce((m, e) => Math.max(m, e.pos + 1), 0),
