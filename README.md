@@ -13,6 +13,11 @@ reconstruction en Next.js 16 du prototype Claude Design `design/Keystone PM v8.d
 - Décisions du responsable produit (questionnaire) : `docs/DECISIONS.md`
 - Consignes pour les sessions Claude : `CLAUDE.md`
 - Évolutions demandées et proposées : `docs/BACKLOG.md`
+- **Guide utilisateur par rôle (bêta)** : [`docs/guide/`](docs/guide/README.md) — directeur, chef de projet, chef de service,
+  membre d’équipe, responsable ingénierie, qualité, achats, Finance (à venir), et les
+  [scénarios de recette de la bêta](docs/guide/recette-beta.md)
+- **Exploitation (DSI)** : [`docs/EXPLOITATION.md`](docs/EXPLOITATION.md) — installation, variables, Entra ID, tâches,
+  supervision, Coolify, sauvegardes et restauration, antivirus ; sécurité : [`docs/SECURITY.md`](docs/SECURITY.md)
 
 ## Développement
 
@@ -50,6 +55,28 @@ une ligne de journal qui nomme la variable.
   documents et de machine, départements et zones), sans projet ni personne. Une base existante garde son jeu de données.
 - **Journaux :** une ligne JSON par événement en production (`LOG_LEVEL`, `LOG_FORMAT`), sans secret.
 - **Supervision :** `GET /api/health` répond 200 quand la base répond et que son schéma est à jour, 503 sinon.
+- **Sauvegardes :** désactivées sans `KEYSTONE_BACKUP_DIR` ; un instantané toutes les 10 minutes (base, puis fichiers) par la
+  tâche `backup` ; `npm run backup` et `npm run restore -- <instantané> --target <cible vide>`
+  ([`docs/EXPLOITATION.md`](docs/EXPLOITATION.md) § 13).
+- **Antivirus des fichiers déposés :** `KEYSTONE_FILE_SCAN=clamav` avec un service clamd (obligatoire à choisir — `clamav` ou
+  `off` — avec `KEYSTONE_SEED=production`).
+
+## Mise en ligne (Docker, Coolify)
+
+Le `Dockerfile` construit **une seule image** pour le serveur web, la migration, le worker et les sauvegardes ;
+`deploy/compose.yaml` décrit la ressource **Docker Compose** de Coolify (PostgreSQL 16, migration à chaque déploiement, serveur
+web, worker). Détails, réglages Coolify et procédure de mise à jour : [`docs/EXPLOITATION.md`](docs/EXPLOITATION.md) § 2 et § 12.
+
+- **Port interne :** `3000`. **Données :** volume sur `/data`. **Santé :** `GET /api/health`.
+- **Variables à la construction :** seulement `NEXT_PUBLIC_CODEX_URL`, `NEXT_PUBLIC_CURSUS_URL`, `NEXT_PUBLIC_VIGIE_URL`
+  (adresses publiques figées dans l’application : redéployer après un changement). Toutes les autres sont des variables
+  d’exécution (`.env.example`).
+- **Bêta de démonstration :** `KEYSTONE_SEED=demo` et `KEYSTONE_AUTH=demo`, **uniquement derrière l’authentification HTTP de
+  Coolify** — le mode démo permet de « voir en tant que » n’importe quel profil, directeur compris.
+- **Production :** en attente — une base `KEYSTONE_SEED=production` n’a encore aucune personne pour se connecter
+  ([`docs/EXPLOITATION.md`](docs/EXPLOITATION.md) § 7) ; hébergement, copie hors site des sauvegardes et stockage des fichiers
+  attendent la décision I-1a.
+- **Variante mono-conteneur :** sans `DATABASE_URL` (PGlite dans `/data/pg`) et avec `KEYSTONE_JOBS=inprocess`.
 
 ## Application Mac
 
