@@ -15,7 +15,7 @@ import 'server-only';
 // src/domain/bom.ts, golden-tested against the prototype.
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import {
-  ORDERED_PO_STATUSES, assemblyPaths, assemblyRows, bomSummary, bomUnitPrice, buildAssembly, defaultWhereUsedRef, diffCostDelta, diffNewRef, diffOldRef, isValuedByComponents,
+  ORDERED_PO_STATUSES, assemblyPaths, assemblyRows, bomSummary, bomUnitPrice, buildAssembly, defaultWhereUsedRef, diffCostDelta, diffNewRef, diffOldRef, isValuedByComponents, possibleDuplicates,
   orderedUnitPrice, pathQuantity, resolvePartQuery, systemQuantity, type AssemblyLink, type AssemblyNode, type BomPriceSource,
 } from '@/domain/bom';
 import { projectFxOf, toEur } from '@/domain/currency';
@@ -52,6 +52,8 @@ export interface BomLine extends PartRow {
   alsoUsedIn: string[];
   /** First open Vigie ECO touching the part; null when none. */
   openEco: string | null;
+  /** R-111 (NEW-D4-5 = c): lines this one may duplicate (a purchased line and an assembly line), to be checked; [] when none. */
+  possibleDuplicateOf: string[];
 }
 
 export interface ProjectBom {
@@ -69,6 +71,8 @@ export interface ProjectBom {
     notValidated: number;
     outdatedOrObsolete: number;
     exportRestricted: number;
+    /** R-111: pairs of lines that may be the same article counted twice (never an amount). */
+    possibleDuplicates: number;
   };
   /** A multi-level structure is configured (Assembly tree, Compare revisions, PU/PR list). */
   hasTree: boolean;
@@ -130,6 +134,7 @@ export async function getProjectBom(projectCode: string): Promise<ProjectBom | n
   const byRef = new Map(rows.map((r) => [r.ref, r]));
   const inBom = new Set(lines.map((l) => l.ref));
   const childrenOf = (ref: string) => kids.get(ref) ?? [];
+  const dup = possibleDuplicates(lines.map((l) => ({ ...byRef.get(l.ref)!, quantity: l.qty })), childrenOf);
   const out: BomLine[] = lines.map((l) => {
     const r = byRef.get(l.ref)!;
     const v = value.get(l.ref) ?? { unitEur: r.listPriceEur, source: 'catalogue' as const };
@@ -137,9 +142,26 @@ export async function getProjectBom(projectCode: string): Promise<ProjectBom | n
       ...r, quantity: l.qty, unitPriceEur: v.unitEur, priceSource: v.source, totalEur: v.unitEur * l.qty, valuedByComponents: isValuedByComponents(l.ref, childrenOf, inBom),
       scope: l.scope, scopeLabel: bomScope.label(l.scope), activityCode: l.act ?? null, note: l.note,
       alsoUsedIn: r.usage.filter((u) => u.projectCode !== projectCode).map((u) => u.shortCode), openEco: ecoFor[l.ref] ?? null,
+      possibleDuplicateOf: dup.partners[l.ref] ?? [],
     };
   });
-  return { projectCode: p.code, shortCode: p.short, lines: out, summary: bomSummary(out), hasTree: roots.length > 0 };
+  return { projectCode: p.code, shortCode: p.short, lines: out, summary: { ...bomSummary(out), possibleDuplicates: dup.pairs }, hasTree: roots.length > 0 };
+}
+
+/**
+ * R-111 (NEW-D4-5 = c): the lines of the project's BOM that `ref` may duplicate (the part drawer opened on a project screen);
+ * [] when none, the part is not in the BOM, or the project is unknown. Same rule as the BOM screen (`possibleDuplicates`).
+ */
+export async function bomDuplicatePartners(projectCode: string, ref: string): Promise<string[]> {
+  const db = await getDb();
+  const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, projectCode));
+  if (!p) return [];
+  const lines = await db
+    .select({ ref: parts.ref, makeBuy: parts.makeBuy, type: parts.type, hsCode: parts.hsCode, listPriceEur: parts.listPriceEur, quantity: projectBomLines.quantity })
+    .from(projectBomLines).innerJoin(parts, eq(parts.id, projectBomLines.partId)).where(eq(projectBomLines.projectId, p.id));
+  if (!lines.some((l) => l.ref === ref)) return [];
+  const kids = await childrenMap();
+  return possibleDuplicates(lines, (r) => kids.get(r) ?? []).partners[ref] ?? [];
 }
 
 // ── Assembly tree ──────────────────────────────────────────────────────────────────────────────────────

@@ -72,3 +72,15 @@ export const countText = (shown: number, total: number, t: T) => t(`${shown} / $
 
 /** Flat list card title "Bill of materials · 35 articles". */
 export const bomTitleText = (n: number, t: T) => t(`Bill of materials · ${n} ${plural(n, 'article', 'articles')}`);
+
+/** R-111 (NEW-D4-5 = c): flat-list note of a line that may duplicate another ("Possible duplicate of ASM-RMG-250 · …"). */
+export const duplicateOfText = (refs: readonly string[], lang: Lang) =>
+  lang === 'fr'
+    ? `Doublon possible de ${refs.join(', ')} · à vérifier par le bureau d’études`
+    : `Possible duplicate of ${refs.join(', ')} · to be checked by the engineering office`;
+
+/** R-111: note under the KPI tiles — qualitative, never an amount (the two lines are valued differently). */
+export const possibleDuplicatesText = (n: number, lang: Lang) =>
+  lang === 'fr'
+    ? `${n} ${n === 1 ? 'doublon possible' : 'doublons possibles'} · la valeur de la nomenclature peut le compter deux fois`
+    : `${n} possible ${n === 1 ? 'duplicate' : 'duplicates'} · the BOM value may count it twice`;

@@ -22,6 +22,7 @@ import { belowMinT, countT, inStockT, leadLongT, leadShortT, qtyT, reservedT, re
 import { bomHref, drawingHref, ecoHref, fleetHref, openInPlmHref, plmHref, stockHref, withPart } from './links';
 import { PRICE_MASK, canSeeSupplierPrices } from '@/domain/rights';
 import { dataText } from '@/i18n/data-text';
+import { duplicateOfText } from '@/features/bom/i18n';
 
 const tag = (tone: string) => `tag tag-${tone}`;
 
@@ -197,6 +198,8 @@ export interface PartDrawerView {
   openPlm: { label: string; href: string; samePage: boolean };
   /** STATUS_NOTE banner; null for validated parts. */
   warn: string | null;
+  /** R-111 (NEW-D4-5 = c): "Possible duplicate of … · to be checked by the engineering office" in the project's BOM; null otherwise. */
+  duplicate: string | null;
   documents: { label: string; deposit: { label: string; href: string }; rows: DrawerRow[] };
   identification: { label: string; items: KeyValue[] };
   commercial: { label: string; items: KeyValue[] };
@@ -237,6 +240,8 @@ export interface DrawerContext {
   fallbackProject: string;
   /** Candidates of "Register equivalent" (null when the viewer may not edit the catalogue). */
   equivalentCandidates: { ref: string; name: string }[] | null;
+  /** R-111: lines of the page's project BOM the part may duplicate (only with `projectCode`; nothing on global screens). */
+  duplicateOf?: string[];
 }
 
 const kv = (k: string, v: string, alert = false): KeyValue => ({ k, v, color: alert ? LO : OK });
@@ -283,6 +288,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
       return { label: t('Open in PLM'), href, samePage: href === here };
     })(),
     warn: partStatusNote(p.status) ? t(partStatusNote(p.status)!) : null,
+    duplicate: ctx.projectCode && ctx.duplicateOf?.length ? duplicateOfText(ctx.duplicateOf, lang) : null,
 
     // Codex records citing the part — the prototype labelled this section «Freeze» (key misuse, 09 OQ3).
     documents: {

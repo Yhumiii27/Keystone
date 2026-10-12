@@ -168,6 +168,37 @@ export function isValuedByComponents(ref: string, childrenOf: ChildrenOf, inBom:
   return childrenOf(ref).some((c) => inBom.has(c.ref));
 }
 
+/**
+ * Possible duplicates of the BOM (R-111, NEW-D4-5 = c): a purchased line and an assembly line (type Assembly, or a part with
+ * components) with the same customs code and the same catalogue price, neither in the other's structure — on the seed,
+ * EQ-CRN-250T (the crane bought from Halvorsen) and ASM-RMG-250 (the crane assembly), possibly the same machine counted
+ * twice. A guess from the data, flagged for the engineering office to check: no amount, no effect on any value, no dismiss
+ * (R-169: no reference written in the code). Line ref → partner refs (both directions); `pairs` = number of pairs.
+ */
+export function possibleDuplicates(
+  lines: readonly { ref: string; makeBuy: PartMakeBuy; type: string; hsCode: string | null; listPriceEur: number; quantity: number }[],
+  childrenOf: ChildrenOf,
+): { partners: Record<string, string[]>; pairs: number } {
+  const live = lines.filter((l) => l.quantity > 0);
+  const isAssembly = (l: (typeof live)[number]) => l.type === 'assembly' || childrenOf(l.ref).length > 0;
+  const inside = (root: string, ref: string) => {
+    const walk = (n: AssemblyNode): boolean => n.children.some((c) => c.ref === ref || walk(c));
+    return walk(buildAssembly(root, 1, childrenOf));
+  };
+  const partners: Record<string, string[]> = {};
+  let pairs = 0;
+  for (const p of live.filter((l) => l.makeBuy === 'purchased' && !isAssembly(l))) {
+    for (const a of live.filter(isAssembly)) {
+      if (a.ref === p.ref || !p.hsCode || p.hsCode !== a.hsCode || p.listPriceEur !== a.listPriceEur) continue;
+      if (inside(a.ref, p.ref) || inside(p.ref, a.ref)) continue;
+      (partners[p.ref] ??= []).push(a.ref);
+      (partners[a.ref] ??= []).push(p.ref);
+      pairs++;
+    }
+  }
+  return { partners, pairs };
+}
+
 export interface BomSummaryInput {
   quantity: number;
   listPriceEur: number;

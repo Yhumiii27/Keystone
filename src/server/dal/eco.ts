@@ -3,7 +3,7 @@ import 'server-only';
 // (user decision, overrides docs/spec/09 §4): Keystone lists the ECOs relevant to its parts and projects, links to them
 // in Vigie and records progress (the viewer's approval-key decision, the step advancements of the prototype) that is
 // sent to Vigie. No ECO is created, edited or numbered here.
-import { syncLabelOf } from '@/domain/eco';
+import { installedBasePinsOf, syncLabelOf, type InstalledBasePin } from '@/domain/eco';
 import { getDb } from '@/server/db/client';
 import {
   ECO_APPROVER_SHORT, ECO_STEP_ADVANCE, ecoApproverKey, ecoDecision, ecoDisposition, ecoKeyOfRole, ecoStatus, ecoStepIndex, ecoType, interchangeability,
@@ -129,30 +129,19 @@ export async function partsUnderChange(): Promise<string[]> {
   return [...refs];
 }
 
-export interface InstalledBasePin {
-  eco: string;
-  /** Machine id ("MCH-029"). */
-  machine: string;
-  /** Revision fitted on the machine. */
-  revision: string | null;
-  disposition: 'pinned' | 'retrofit';
-}
+export type { InstalledBasePin };
 
 /**
- * Parts to keep for the installed base (`pinnedFor` 4198): for every non-rejected ECO with a machine target pinned or
- * retrofitted (Vigie's effectivity), each ECO part — as the prototype lists them (09 OQ21: also the parts the machine
- * does not carry). ref → pins.
+ * Parts to keep for the installed base (`pinnedFor` 4198), ref → pins. R-110 (E-4 = a, closes 09 OQ21): a targeted machine
+ * whose as-maintained configuration is recorded pins only the ECO parts it carries, at the revision fitted on it; a machine
+ * without a configuration keeps every ECO part (`installedBasePinsOf`, src/domain/eco.ts). The configurations of every
+ * targeted machine are read in one query (fleet.ts `machineConfigurations`, imported on demand: fleet.ts imports this file).
  */
 export async function installedBasePins(): Promise<Record<string, InstalledBasePin[]>> {
-  const out: Record<string, InstalledBasePin[]> = {};
-  for (const e of await getVigieEcoConnector().listEcos()) {
-    if (e.status === 'rejected') continue;
-    for (const t of e.effectivity) {
-      if (t.targetType !== 'machine' || (t.disposition !== 'pinned' && t.disposition !== 'retrofit')) continue;
-      for (const ref of e.parts) (out[ref] ??= []).push({ eco: e.number, machine: t.targetRef, revision: t.fittedRevision, disposition: t.disposition });
-    }
-  }
-  return out;
+  const ecos = (await getVigieEcoConnector().listEcos()).filter((e) => e.status !== 'rejected');
+  const machines = [...new Set(ecos.flatMap((e) => e.effectivity.filter((t) => t.targetType === 'machine').map((t) => t.targetRef)))];
+  const { machineConfigurations } = await import('./fleet');
+  return installedBasePinsOf(ecos, await machineConfigurations(machines));
 }
 
 /** Summary of the pins of a part ("Keep for the installed base · 1 machine · ECO-2026-015"): distinct machines and ECOs. */

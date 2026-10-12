@@ -25,6 +25,8 @@
 /* article cell: flex column, line-height 1.3; sub-line 11.5px neutral-400 */
 .article { display: flex; flex-direction: column; line-height: 1.3; }
 .articleSub { font-size: 11.5px; color: var(--color-neutral-400); }
+/* R-111: "Possible duplicate of …" under the article (wraps at tablet width, beside the total's "valued through its components"). */
+.duplicate { font-size: 11.5px; color: var(--color-accent-300); text-wrap: pretty; }
 
 /* status cell: tag + open-ECO tag button (10px) */
 .statusCell { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }

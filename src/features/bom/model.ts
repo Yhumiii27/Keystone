@@ -22,7 +22,7 @@ import { bomHref, type BomState, type BomView } from './links';
 import { PRICE_MASK } from '@/domain/rights';
 import {
   bomTitleText, componentsText, countText, dataT, keepForInstalledBaseText, perCraneText, perProjectText, qtyText, signedEur, stockText, systemsText,
-  unitsInTotalText, unitsText, wearSpareText, weeksText, wksText,
+  unitsInTotalText, unitsText, wearSpareText, weeksText, wksText, duplicateOfText, possibleDuplicatesText,
 } from './i18n';
 
 export interface KpiView {
@@ -106,6 +106,8 @@ export interface FlatRowView {
   total: string;
   /** Assembly valued through its components: its total is not added to the BOM value (09 OQ6). */
   totalNote: string | null;
+  /** R-111 (NEW-D4-5 = c): "Possible duplicate of ASM-RMG-250 · to be checked by the engineering office"; null when none. */
+  duplicate: string | null;
   status: TagView;
   /** Open ECO touching the part (Vigie), opened on the ECO screen. */
   eco: { number: string; href: string } | null;
@@ -175,6 +177,7 @@ export function flatView(code: string, state: BomState, lines: readonly BomLine[
     priceTitle: prices && l.priceSource !== 'catalogue' ? `${t('Catalogue price')}: ${moneyEur(l.listPriceEur, lang)}` : null,
     total: eur(l.totalEur),
     totalNote: l.valuedByComponents ? t('Valued through its components — not added to the BOM value') : null,
+    duplicate: l.possibleDuplicateOf.length ? duplicateOfText(l.possibleDuplicateOf, lang) : null,
     status: partTag(l.status, l.statusLabel, t),
     eco: l.openEco ? { number: l.openEco, href: ecoScreenHref(l.openEco) } : null,
     restriction: l.exportRestriction ? dataT(l.exportRestriction, lang) : '—',
@@ -522,6 +525,8 @@ export interface BomScreenView {
   spares: SparesView | null;
   /** "No multi-level assembly is registered…" (`bomNoTree`: no structure and a view other than the flat list). */
   noTree: string | null;
+  /** R-111 (NEW-D4-5 = c): note under the KPIs, "1 possible duplicate · the BOM value may count it twice" — never an amount. */
+  duplicates: string | null;
 }
 
 export interface BomViewOpts {
@@ -558,5 +563,6 @@ export function bomScreenView(code: string, state: BomState, data: BomScreenData
     compare: v === 'compare' && data.comparison ? compareView(data.comparison, t, lang, prices) : null,
     spares: v === 'spares' && data.spares ? sparesView(code, state, data.spares, t, lang, prices) : null,
     noTree: !data.bom.hasTree && v !== 'flat' ? t('No multi-level assembly is registered for this project — the flat list is the full BOM.') : null,
+    duplicates: data.bom.summary.possibleDuplicates ? possibleDuplicatesText(data.bom.summary.possibleDuplicates, lang) : null,
   };
 }

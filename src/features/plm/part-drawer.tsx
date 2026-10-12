@@ -12,7 +12,7 @@
 // "Open in Vigie", "Raise ECO" → Vigie's new-ECO form prefilled with the part; nothing is created in Keystone).
 // R-102 (E-1a, E-1b): a Qualification section under the banner — who validated and when, what is missing, "Complete the
 // record" and "Validate part" (engineering lead, director) — when there is something to show or do for the viewer.
-import { ArrowRight, ArrowSquareOut, ArrowsClockwise, Database, GitBranch, ListChecks, UploadSimple, Warning } from '@phosphor-icons/react/dist/ssr';
+import { ArrowRight, ArrowSquareOut, ArrowsClockwise, Copy, Database, GitBranch, ListChecks, UploadSimple, Warning } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import type { FormDef } from '@/components/app/form-def';
 import { KeyValueList } from '@/components/app/KeyValueList';
@@ -20,6 +20,7 @@ import { ButtonLink } from '@/components/ds/Button';
 import { cx } from '@/components/ds/cx';
 import { Drawer } from '@/components/ds/Drawer';
 import { canSee } from '@/config/screens';
+import { bomDuplicatePartners } from '@/server/dal/bom';
 import { getPartDrawer, listEquivalentCandidates } from '@/server/dal/plm';
 import { VIGIE_LINK_ATTRS } from '@/server/integrations/vigie/links';
 import { getI18n, getLastProject, getViewer } from '@/server/session';
@@ -42,8 +43,12 @@ export async function PartDrawer({ partRef, projectCode, closeHref }: PartDrawer
   const data = found ?? (ref !== ref.toUpperCase() ? await getPartDrawer(ref.toUpperCase()) : null);
   if (!data) return null;
   // "Register equivalent" for the viewers whose workspace holds the parts catalogue (the writers check it again).
-  const candidates = canSee(viewer.role, 'plm') ? await listEquivalentCandidates(data.record.ref) : null;
-  const view = partDrawerView(data, { role: viewer.role, closeHref, projectCode: projectCode ?? null, fallbackProject: lastProject, equivalentCandidates: candidates }, t, lang);
+  const [candidates, duplicateOf] = await Promise.all([
+    canSee(viewer.role, 'plm') ? listEquivalentCandidates(data.record.ref) : Promise.resolve(null),
+    // R-111: on a project screen, the lines of its BOM the part may duplicate (nothing on the catalogue or stock screens).
+    projectCode ? bomDuplicatePartners(projectCode, data.record.ref) : Promise.resolve([]),
+  ]);
+  const view = partDrawerView(data, { role: viewer.role, closeHref, projectCode: projectCode ?? null, fallbackProject: lastProject, equivalentCandidates: candidates, duplicateOf }, t, lang);
   const register = view.equivalents.register
     ? { form: localizePlmForm(registerEquivalentFormDef(view.equivalents.register.candidates), t, lang), context: `${view.ref} · ${view.name}` }
     : null;
@@ -137,6 +142,12 @@ export function PartDrawerPanel({ view: v, register, complete }: PartDrawerPanel
         <div className={s.warn} role="note">
           <Warning className={s.warnIcon} aria-hidden />
           <span className={s.warnText}>{v.warn}</span>
+        </div>
+      )}
+      {v.duplicate && (
+        <div className={s.warn} role="note">
+          <Copy className={s.warnIcon} aria-hidden />
+          <span className={s.warnText}>{v.duplicate}</span>
         </div>
       )}
 

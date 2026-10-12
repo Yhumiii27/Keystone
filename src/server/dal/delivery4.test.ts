@@ -51,6 +51,11 @@ beforeAll(async () => {
 
 // ── Project BOM ────────────────────────────────────────────────────────────────────────────────────────
 
+// E-4 = a (R-110): only the parts a machine actually carries are kept for the installed base. On the seed, the machines pinned by
+// ECO-2026-014 / -015 carry neither EL-HMI-15 nor FD-DET-OPT2: the prototype pinned them (09 OQ21), the goldens keep its values.
+const E4_UNPINNED = new Set(['EL-HMI-15', 'FD-DET-OPT2']);
+const e4 = (r: any) => (E4_UNPINNED.has(r.ref) ? { ...r, pinned: false, pinnedText: '' } : r);
+
 describe('project BOM (09 §1)', () => {
   it.each(DATA)('%s: flat list and KPI inputs reproduce bomRows / bomKpis', async (code) => {
     const bom = (await getProjectBom(code))!;
@@ -150,7 +155,7 @@ describe('project BOM (09 §1)', () => {
         ref: r.ref, kind: r.kind, qPer: r.qtyPerSystem, qTotal: r.recommendedQty, note: r.note ?? '—', price: $(r.lastPriceEur), total: $(r.totalEur), lead: r.leadWeeks ? `${r.leadWeeks} wks` : '—',
         frozen: r.underChange, pinned: r.pins.length > 0,
         pinnedText: r.pinSummary ? `Keep for the installed base · ${r.pinSummary.machines} ${r.pinSummary.machines === 1 ? 'machine' : 'machines'} · ${r.pinSummary.ecos.join(', ')}` : '',
-      }))).toEqual(g.rows.map((r: any) => omit(r, ['stock', 'stockText'])));
+      }))).toEqual(g.rows.map((r: any) => omit(e4(r), ['stock', 'stockText'])));
       const value = sl.rows.reduce((a, r) => a + r.totalEur, 0);
       expect([[sl.rows.length, `${sl.rows.filter((r) => r.kind === 'PU').length} wear · ${sl.rows.filter((r) => r.kind === 'PR').length} spare`],
         [f(value / 1000), `At last purchase price · × ${sl.systemQty} ${sl.systemQty > 1 ? 'systems' : 'system'}`],
@@ -266,8 +271,9 @@ describe('ECOs read through the Vigie connector (mock over the seeded mirror)', 
       const ps = pinSummary(pins[ref]);
       return ps ? `Keep for the installed base · ${ps.machines} ${ps.machines === 1 ? 'machine' : 'machines'} · ${ps.ecos.join(', ')}` : '';
     };
-    for (const r of G.stock.rows) expect(text(r.ref)).toBe(r.pinnedText);
+    for (const r of G.stock.rows) expect(text(r.ref)).toBe(e4(r).pinnedText);
     expect(text('FD-DET-OPT')).toBe('Keep for the installed base · 1 machine · ECO-2026-015');
+    expect([text('FD-DET-OPT2'), text('EL-HMI-15')]).toEqual(['', '']);
   });
 });
 
@@ -380,7 +386,7 @@ describe('stock & storages (08 §4)', () => {
         avail: n(r.available), min: r.minQty ? String(r.minQty) : '—', below: r.belowMin ? true : (r.minQty ? false : 0), value: $(r.valueEur), source: r.sourceLabel, last: day(fmtDOfIso(r.lastMovementOn)),
         pinned: !!ps, pinnedText: ps ? `Keep for the installed base · ${ps.machines} ${ps.machines === 1 ? 'machine' : 'machines'} · ${ps.ecos.join(', ')}` : '',
       };
-    })).toEqual(G.stock.rows.map((r: any) => ({ ...r, last: day(r.last) })));
+    })).toEqual(G.stock.rows.map((r: any) => ({ ...e4(r), last: day(r.last) })));
     const sync = (await getX3StockSync())!;
     const value = rows.reduce((a, r) => a + r.valueEur, 0);
     expect([[f(value / 1000), `${rows.length} lines · ${locs.length} locations`], [rows.filter((r) => r.belowMin).length, 'Reorder or transfer'],

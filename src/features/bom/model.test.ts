@@ -38,6 +38,10 @@ beforeAll(async () => {
   setDb(await openDatabase());
 }, 60_000);
 
+// E-4 = a (R-110): only the parts a machine actually carries are kept for the installed base. On the seed, the machines pinned by
+// ECO-2026-014 / -015 carry neither EL-HMI-15 nor FD-DET-OPT2: the prototype pinned them (09 OQ21), the goldens keep its values.
+const E4_UNPINNED = new Set(['EL-HMI-15', 'FD-DET-OPT2']);
+
 describe.each(LANGS)('Project BOM screen model (%s)', (lang) => {
   const g = G[lang];
 
@@ -194,7 +198,7 @@ describe.each(LANGS)('Project BOM screen model (%s)', (lang) => {
         return {
           ref: r.ref, name: r.name, kind: r.kind, tagClass: r.tagClass, qPer: String(r.qPer), qTotal: String(r.qTotal), note: r.note, price: r.price, total: r.total, lead: r.lead,
           status: r.status, statusClass: r.statusClass, stock: stock ? (lang === 'fr' ? `${stock} en stock` : `${stock} in stock`) : r.stockText, short: stock < r.qTotal,
-          pinned: r.pinned ? r.pinnedText : null,
+          pinned: r.pinned && !E4_UNPINNED.has(r.ref) ? r.pinnedText : null,
         };
       });
       expect(s.rows.map((r) => ({
