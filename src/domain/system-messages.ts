@@ -92,10 +92,19 @@ export function messageText(m: SystemMessage): string {
   return c.d.en(c.p as Values<Spec>);
 }
 
-/** French formatting of the viewer's translator. */
+const FORMATTERS = new Map<Lang, { nf: Intl.NumberFormat; df: Intl.DateTimeFormat }>();
+const formattersOf = (lang: Lang) => {
+  let f = FORMATTERS.get(lang);
+  if (!f) {
+    f = { nf: new Intl.NumberFormat(intlLocale(lang)), df: new Intl.DateTimeFormat(intlLocale(lang), { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) };
+    FORMATTERS.set(lang, f);
+  }
+  return f;
+};
+
+/** Formatting helpers of the viewer's language and translator. */
 export function messageFormat(t: T, lang: Lang): MessageFormat {
-  const nf = new Intl.NumberFormat(intlLocale(lang));
-  const df = new Intl.DateTimeFormat(intlLocale(lang), { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const { nf, df } = formattersOf(lang);
   return {
     data: (s) => dataText(s, lang),
     label: (s) => t(s),
