@@ -7,7 +7,7 @@
 //    (titles, days, status and "date · decider" meta differ) so the Budget screen renders the prototype exactly.
 //    Each line points to the register entry with the same number.
 import { date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
-import type { BaselineSource, BaselineState, BudgetChangeStatus, ChangeStatus, ChangeStep, ChangeType, StepDecision } from '../codes';
+import type { BaselineSource, BaselineState, BudgetChangeStatus, ChangeStatus, ChangeStep, ChangeType, ContractImpact, StepDecision } from '../codes';
 import { id, keur, timestamps } from './_common';
 import { persons } from './organisation';
 import { activities, wbsNodes } from './planning';
@@ -39,6 +39,16 @@ export const changeRequests = pgTable(
     baselineCode: text('baseline_code'),
     justification: text('justification'),
     position: integer('position').notNull(),
+    /**
+     * Delivery 8 (R-069, P-6c): contractual impact chosen on "New change request" — 'none' makes the client step not required,
+     * a price impact prepares the amendment at approval (A-4). Null on requests raised before it (backfilled from the chain).
+     */
+    contractImpact: text('contract_impact').$type<ContractImpact>(),
+    /**
+     * Delivery 8 (R-081, C-3a): project cost category ("C03") whose budget the approved request moves; null = only the BAC and
+     * the work packages move. Internal: never shown to the client.
+     */
+    costCategoryCode: text('cost_category_code'),
     ...timestamps,
   },
   (t) => [unique().on(t.projectId, t.number)],
