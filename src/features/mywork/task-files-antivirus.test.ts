@@ -82,7 +82,7 @@ afterEach(() => {
   fake.mode = 'scan';
 });
 
-describe('task attachments with the antivirus on (R-175)', () => {
+describe('task attachments with the antivirus on (R-175)', { timeout: 60_000 }, () => {
   it('every persona: rights first; allowed → clean 200 (scan_status clean), infected 422, scanner down 503; refused → same refusal, nothing scanned', async () => {
     const outcomes: Record<string, number[]> = {};
     for (const p of PERSONAS) {

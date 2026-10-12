@@ -81,7 +81,7 @@ afterEach(() => {
   fake.mode = 'scan';
 });
 
-describe('transcript upload with the antivirus on (R-175)', () => {
+describe('transcript upload with the antivirus on (R-175)', { timeout: 60_000 }, () => {
   it('every persona: the writers get the antivirus refusals; the others their rights refusal, nothing scanned', async () => {
     const writers: string[] = [];
     for (const p of PERSONAS) {

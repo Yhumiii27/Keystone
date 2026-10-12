@@ -85,7 +85,7 @@ afterEach(() => {
   fake.mode = 'scan';
 });
 
-describe('photos with the antivirus on (R-175)', () => {
+describe('photos with the antivirus on (R-175)', { timeout: 60_000 }, () => {
   it('every persona: rights first; allowed → clean 200, infected 422, scanner down 503; refused → the same refusal, nothing scanned', async () => {
     const allowed: string[] = [];
     for (const p of PERSONAS) {

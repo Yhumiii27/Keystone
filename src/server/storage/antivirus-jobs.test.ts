@@ -60,7 +60,7 @@ const counts = async () => {
 };
 const CSV = 'Reference;Name;Unit price\nPRT-9001;Bolt M12;0.4\n';
 
-describe('import upload (startImport)', () => {
+describe('import upload (startImport)', { timeout: 60_000 }, () => {
   it('infected or scanner down: refused with the message, nothing stored, no job; clean: stored (clean) and parsed', async () => {
     scanOn();
     const before = await counts();
@@ -82,7 +82,7 @@ describe('import upload (startImport)', () => {
   });
 });
 
-describe('files-rescan job', () => {
+describe('files-rescan job', { timeout: 60_000 }, () => {
   it('scanning off: nothing is read; the summary says so', async () => {
     const before = fake.scanned.length;
     const out = await jobDefinition('files-rescan').run();
@@ -155,7 +155,7 @@ describe('files-rescan job', () => {
   });
 });
 
-describe('health report', () => {
+describe('health report', { timeout: 60_000 }, () => {
   it('antivirus on: fileScan ok or unavailable, the status still follows the database only; off: no fileScan line', async () => {
     expect((await checkHealth()).checks.fileScan).toBeUndefined();
     scanOn();

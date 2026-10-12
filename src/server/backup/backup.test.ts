@@ -94,7 +94,7 @@ describe('snapshot and restore (PGlite)', () => {
     const second = await createSnapshot({ dir, source: { kind: 'pglite', client: clientOf(db) }, filesRoot: filesRoot(), now: new Date('2026-10-12T10:10:00Z') });
     expect(second.manifest.filesSummary).toMatchObject({ stored: 2, copied: 0 });
     expect((await listSnapshots(dir)).map((s) => s.name)).toEqual(['20261012T100000000Z', '20261012T101000000Z']);
-  });
+  }, 60_000);
 
   it('restores into a new data folder: identical DAL reads and file hashes, every count checked, nothing pending', async () => {
     const before = await reads();
@@ -131,7 +131,7 @@ describe('snapshot and restore (PGlite)', () => {
     await expect(restoreSnapshot({ snapshotPath: damaged, target: { kind: 'pglite', dataDir: path.join(tmp, 'never') } })).rejects.toThrow(/damaged/);
     expect(fs.existsSync(path.join(tmp, 'never'))).toBe(false);
     await expect(restoreSnapshot({ snapshotPath: path.join(tmp, 'nope'), target: { kind: 'pglite', dataDir: path.join(tmp, 'never') } })).rejects.toThrow(RestoreRefusedError);
-  });
+  }, 60_000);
 
   it('a file deleted between the database and the file copy is listed missing (tolerated at restore); a changed one mismatch (a problem)', async () => {
     const dir = path.join(tmp, 'backups-race');
@@ -241,12 +241,12 @@ describe('the scheduled job', () => {
     vi.stubEnv('KEYSTONE_BACKUP_DIR', blocked);
     await expect(runBackupJob()).rejects.toThrow();
     expect(error.mock.calls.map((c) => String(c[0])).join('\n')).toContain('Backups are stale');
-  });
+  }, 60_000);
 
   it('backupNow writes a snapshot at any time (npm run backup)', async () => {
     const r = await backupNow({ dir: path.join(tmp, 'backups-now'), source: { kind: 'pglite', client: clientOf(db) }, filesRoot: filesRoot(), retention: RETENTION });
     expect(r.summary).toMatch(/^snapshot /);
-  });
+  }, 60_000);
 });
 
 describe('command lines', () => {

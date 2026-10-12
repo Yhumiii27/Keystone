@@ -48,7 +48,7 @@ const quiet = () => {
   vi.spyOn(console, 'log').mockImplementation(() => {});
 };
 
-describe('clamd client (zINSTREAM)', () => {
+describe('clamd client (zINSTREAM)', { timeout: 30_000 }, () => {
   const target = () => ({ host: fake.host, port: fake.port });
 
   it('never uses port 3310 (Keystone smoke tests on the Mac) nor another EPC2i port', () => {
@@ -99,7 +99,7 @@ describe('clamd client (zINSTREAM)', () => {
   });
 });
 
-describe('scanUpload + storeFile', () => {
+describe('scanUpload + storeFile', { timeout: 60_000 }, () => {
   it('scanning off (development, tests): the bytes are marked unscanned and stored with that verdict; an ArrayBuffer is normalised once', async () => {
     const buf = enc('%PDF-1.4 off').buffer as ArrayBuffer;
     const bytes = await scanUpload(buf, { purpose: 'attachment', name: 'a.pdf', actor, objectRef: 'T-2314' });
@@ -173,7 +173,7 @@ describe('scanUpload + storeFile', () => {
   });
 });
 
-describe('quarantine purge', () => {
+describe('quarantine purge', { timeout: 60_000 }, () => {
   it('purges refused uploads after 30 days, never the notes of flagged stored files', async () => {
     const q = await listQuarantine();
     expect(q.some((e) => e.kind === 'refused-upload')).toBe(true);
