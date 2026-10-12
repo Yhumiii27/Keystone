@@ -12,8 +12,10 @@ import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { VIGIE_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
 import { vigieNcrs } from '@/server/db/schema';
-import { logWarning } from '@/server/log';
+import { newNcrs } from '@/domain/vigie-events';
+import { logError, logWarning } from '@/server/log';
 import { vigieApiUrl, vigieAuthHeaders, vigieConnectorMode } from './connection';
+import { notifyNewNcrs } from './notices';
 import { claimNcrDelivery, markNcrDelivery, ncrProgressSyncStatus, readHseMirror, readNcrMirror, undeliveredNcrProgress, upsertHseMirror, upsertNcrMirror } from './quality-mirror';
 import { recordNcrProgressEntry } from './quality-progress';
 import type { EcoProgressActor, NcrListFilter, NcrProgressInput, NcrProgressReceipt, VigieHseRecord, VigieNcrRecord, VigieQualityConnector } from './types';
@@ -88,8 +90,15 @@ async function refreshFromVigie(): Promise<number> {
   if (!Array.isArray(ncrs) || !Array.isArray(hse)) throw new Error('Vigie: unexpected NCR / HSE payload');
   const db = await getDb();
   const at = new Date();
-  const n = await db.transaction(async (tx) => (await upsertNcrMirror(tx, ncrs, at, { prune: true })) + (await upsertHseMirror(tx, hse, at, { prune: true })));
+  // R-015 (X-6a, dormant until V-3): the NCRs the mirror did not hold, read in the same transaction as the refresh and
+  // returned from it (the callback may run twice, R-010); notified after the commit.
+  const { n, raised } = await db.transaction(async (tx) => {
+    const before = await tx.select({ projectCode: vigieNcrs.projectCode, number: vigieNcrs.number }).from(vigieNcrs);
+    const count = (await upsertNcrMirror(tx, ncrs, at, { prune: true })) + (await upsertHseMirror(tx, hse, at, { prune: true }));
+    return { n: count, raised: newNcrs(before, ncrs) };
+  });
   g.__ksVigieQualityRefreshedAt = Date.now();
+  if (raised.length) await notifyNewNcrs(raised).catch((e) => logError('Vigie NCR notices', e, { component: 'vigie' }));
   return n;
 }
 

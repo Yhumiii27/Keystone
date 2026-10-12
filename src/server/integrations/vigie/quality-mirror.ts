@@ -3,7 +3,7 @@ import 'server-only';
 // recorded in Keystone (schema/vigie.ts). Shared by the mock and HTTP quality connectors and the seed: the upsert
 // functions are the only writers of the mirror tables (seed and Vigie refresh); `readNcrMirror` overlays the progress
 // Vigie has not reflected yet (quality-progress.ts queues it).
-import { and, asc, eq, inArray, isNull, lt, ne, or, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, lt, ne, notExists, or, sql } from 'drizzle-orm';
 import { claimExpiry } from '../outbox';
 import { hseStatus, ncrStatus } from '@/server/db/codes';
 import { findPerson } from '@/server/db/helpers';
@@ -19,7 +19,9 @@ const key = (projectCode: string, number: string) => `${projectCode}|${number}`;
 
 /**
  * Writes Vigie's NCRs into the mirror (insert or replace by project and number). With `prune`, mirror rows absent from
- * the records are deleted (a full refresh), together with their outbox entries.
+ * the records are deleted (a full refresh), together with their delivered outbox entries — except a row that still has
+ * progress Vigie has not received (pending or failed), kept until every entry is sent (R-023, V-2; NOT EXISTS inside the
+ * DELETE, as in upsertMirror).
  */
 export async function upsertNcrMirror(q: Q, records: VigieNcrRecord[], syncedAt: Date, opts: { prune?: boolean } = {}): Promise<number> {
   const existing = await q.select({ id: vigieNcrs.id, projectCode: vigieNcrs.projectCode, number: vigieNcrs.number, position: vigieNcrs.position }).from(vigieNcrs);
@@ -42,7 +44,11 @@ export async function upsertNcrMirror(q: Q, records: VigieNcrRecord[], syncedAt:
   if (opts.prune) {
     const keep = new Set(records.map((r) => key(r.projectCode, r.number)));
     const gone = existing.filter((e) => !keep.has(key(e.projectCode, e.number))).map((e) => e.id);
-    if (gone.length) await q.delete(vigieNcrs).where(inArray(vigieNcrs.id, gone));
+    if (gone.length)
+      await q.delete(vigieNcrs).where(and(
+        inArray(vigieNcrs.id, gone),
+        notExists(q.select({ one: sql`1` }).from(vigieNcrProgress).where(and(eq(vigieNcrProgress.ncrId, vigieNcrs.id), ne(vigieNcrProgress.syncStatus, 'sent')))),
+      ));
   }
   return records.length;
 }
@@ -134,6 +140,6 @@ export async function readHseMirror(q: Q, projectCode: string): Promise<VigieHse
   const rows = await q.select().from(vigieHseItems).where(eq(vigieHseItems.projectCode, projectCode)).orderBy(asc(vigieHseItems.position));
   return rows.map((r) => ({
     projectCode: r.projectCode, vigieRef: r.vigieRef, kind: r.kind, title: r.title, status: r.status, statusText: r.statusText, dateOn: r.dateOn,
-    lastSyncedAt: r.lastSyncedAt.toISOString(), vigieUrl: vigieHseUrl({ kind: r.kind, vigieRef: r.vigieRef }),
+    lastSyncedAt: r.lastSyncedAt.toISOString(), vigieUrl: vigieHseUrl({ kind: r.kind, vigieRef: r.vigieRef, projectCode: r.projectCode }),
   }));
 }

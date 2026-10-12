@@ -32,7 +32,8 @@ export default async function DeliveriesPage({ params, searchParams }: { params:
 
   const status = receiptFilterOf(first(sp.status));
   const receiptParam = first(sp.receipt ?? sp.deliv)?.trim().toUpperCase() || null;
-  const view = deliveriesView(projectCode, data, { status, receipt: receiptParam }, t, lang);
+  // R-096: the Vigie supplier NCR links are for internal viewers (the client never sees purchasing records, P-10b).
+  const view = deliveriesView(projectCode, data, { status, receipt: receiptParam }, t, lang, { vigieLinks: ctx.viewer.role !== 'client' });
   const registerForms = canEdit
     ? Object.fromEntries(data.receipts.filter((r) => r.status === 'announced').map((r) => [r.number, registerFormDef(r, t, lang)]))
     : {};

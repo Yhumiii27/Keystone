@@ -12,7 +12,7 @@ import { seedIfEmpty } from '@/server/db/seed';
 import { prototypeNcrSnapshot, type ProtoNcrRow } from '@/server/integrations/vigie/prototype-snapshot';
 import { upsertNcrMirror } from '@/server/integrations/vigie/quality-mirror';
 import { httpQualityConnector, mockQualityConnector, resetVigieQualityRefreshThrottle, getVigieQualityConnector } from '@/server/integrations/vigie/quality-connector';
-import { vigieHseUrl, vigieNcrUrl, vigieReportNcrUrl } from '@/server/integrations/vigie/links';
+import { vigieCoactivityUrl, vigieHseListUrl, vigieHseUrl, vigieNcrListUrl, vigieNcrUrl, vigieReportNcrUrl } from '@/server/integrations/vigie/links';
 import { getCursusConnector, httpCursusConnector, recordsOfPayload, resetCursusRefreshThrottle } from '@/server/integrations/cursus/connector';
 import { cursusChantierUrl } from '@/server/integrations/cursus/links';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
@@ -98,6 +98,15 @@ describe('NCRs — progress sent to Vigie (Vigie owns the NCRs)', () => {
     expect(vigieReportNcrUrl({ projectCode: HLT, partRef: 'KS-STL-0450' })).toBe('http://localhost:3200/signaler?type=NC&projet=HLT-026&article=KS-STL-0450&source=keystone');
     expect(vigieHseUrl({ kind: 'permit', vigieRef: 'PF-2026-030' })).toBe('http://localhost:3200/prevention?onglet=permis&permis=PF-2026-030');
     expect(vigieHseUrl({ kind: 'prevention_plan' })).toBe('http://localhost:3200/prevention');
+    // R-025 (V-3b "a"): the lists and the fallback links name the project as `projet` (the Keystone code until NEW-SYS-1 / R-022).
+    expect(vigieNcrListUrl()).toBe('http://localhost:3200/evenements?type=NC');
+    expect(vigieNcrListUrl({ projectCode: HLT })).toBe('http://localhost:3200/evenements?type=NC&projet=HLT-026');
+    expect(vigieHseListUrl({ projectCode: HLT })).toBe('http://localhost:3200/prevention?projet=HLT-026');
+    expect(vigieCoactivityUrl({ projectCode: HLT })).toBe('http://localhost:3200/prevention/carte?projet=HLT-026');
+    expect(vigieCoactivityUrl()).toBe('http://localhost:3200/prevention/carte');
+    expect(vigieHseUrl({ kind: 'permit', projectCode: HLT })).toBe('http://localhost:3200/prevention?onglet=permis&projet=HLT-026');
+    expect(vigieHseUrl({ kind: 'register', projectCode: HLT })).toBe('http://localhost:3200/evenements?etat=tous&type=PA&projet=HLT-026');
+    expect(vigieHseUrl({ kind: 'prevention_plan', vigieRef: 'PP-2026-013', projectCode: HLT })).toBe('http://localhost:3200/prevention?plan=PP-2026-013');
   });
 
   it('HTTP connector (VIGIE_API_URL): delivers the NCR outbox, then Vigie’s refresh becomes the mirror (NCRs and HSE)', async () => {

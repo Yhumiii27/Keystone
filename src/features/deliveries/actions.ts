@@ -17,8 +17,9 @@ import {
 } from '@/server/dal/deliveries';
 import { getProject } from '@/server/dal/projects';
 import { getProjectContext, getScreenAccess } from '@/server/project-context';
+import { invoiceStatusesOfReceipt, notifyReceiptDecision } from '@/server/dal/receipt-notices';
 import { getI18n, type Viewer } from '@/server/session';
-import { messageText, statusText } from './i18n';
+import { DECLARE_NCR_HINT, messageText, rejectedCountText, statusText } from './i18n';
 import { logError } from '@/server/log';
 
 export type DeliveryActionResult = { ok: true; status?: string; message?: string } | { ok: false; error: string };
@@ -127,6 +128,12 @@ async function decide(code: string, number: unknown, decision: QcDecision, remar
   // Same plan as the writer: an invalid split is refused with the domain's message before anything is written.
   const plan = qcPlan(r.lines, decision, text);
   if (!plan.ok) return { ok: false, error: await msg(plan.error) };
+  // R-015 (X-6a): the invoices of the receipt or its order as the 3-way match sees them before the decision, to tell
+  // who must know when one becomes blocked. Best effort: a failed read only loses that notice.
+  const invoicesBefore = await invoiceStatusesOfReceipt(r).catch((e) => {
+    logError('decideReceipt · invoices before QC', e);
+    return null;
+  });
   let status: ReceiptStatus;
   try {
     if (decision.mode === 'accept') status = await acceptReceipt(r.number, { remarks: text }, ok.viewer.name);
@@ -136,9 +143,25 @@ async function decide(code: string, number: unknown, decision: QcDecision, remar
     logError('decideReceipt', e);
     return { ok: false, error: await msg(english ? 'The decision could not be saved' : FAILED) };
   }
+  // R-096 / R-015: the buyer (else procurement) and the project's leads learn of rejected goods, the buyer and the director
+  // of an invoice the match now blocks — after the commit, never undoing the decision (bell only, X-6).
+  if (invoicesBefore) {
+    try {
+      await notifyReceiptDecision(r.number, invoicesBefore, ok.viewer);
+    } catch (e) {
+      logError('decideReceipt · notifications', e);
+    }
+  }
   refresh();
   const { t, lang } = await getI18n();
-  return { ok: true, status: english ? receiptStatus.label(status) : statusText(status, t, lang), message: english ? `${r.number} · ${receiptStatus.label(status)}` : `${r.number} · ${statusText(status, t, lang)}` };
+  const label = english ? receiptStatus.label(status) : statusText(status, t, lang);
+  // On the Deliveries screen a rejection reminds to declare the supplier NCR in Vigie (R-096, NEW-D4-3); the My approvals
+  // inbox (English, no Vigie link there) keeps the neutral message.
+  const rejected = plan.value.rejected;
+  const message = english || rejected <= 0
+    ? `${r.number} · ${label}`
+    : [r.number, label, messageText(rejectedCountText(rejected), t, lang), messageText(DECLARE_NCR_HINT, t, lang)].join(' · ');
+  return { ok: true, status: label, message };
 }
 
 /** "Accept" / "Accept → stock" (row, drawer): every delivered unit accepted, released to the put-away location. */

@@ -201,7 +201,7 @@ function execView(code: string, d: SiteData, t: T, lang: Lang, today: string): E
     hse: {
       rows: d.hse.map((h) => ({ title: dataText(h.title, lang), date: day(h.dateOn, t), status: t(h.statusText), tagClass: siteTagClass(h.statusText), vigieUrl: h.vigieUrl })),
       lastSync: lastSyncText(d.hseSource.lastSyncedAt, t, lang),
-      listUrl: vigieHseListUrl(),
+      listUrl: vigieHseListUrl({ projectCode: code }),
       reportUrl: vigieReportIncidentUrl({ projectCode: code, location: d.sheet.site }),
       mode: d.hseSource.mode,
     },

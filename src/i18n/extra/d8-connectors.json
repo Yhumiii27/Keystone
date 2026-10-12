@@ -1,1 +1,6 @@
-{}
+{
+  "Delivery rejected at receipt": "Livraison refusée à la réception",
+  "Invoice blocked by the 3-way match": "Facture bloquée par le rapprochement 3 voies",
+  "Declare the supplier NCR in Vigie": "Déclarer la NC fournisseur dans Vigie",
+  "declare the supplier NCR in Vigie": "déclarer la NC fournisseur dans Vigie"
+}

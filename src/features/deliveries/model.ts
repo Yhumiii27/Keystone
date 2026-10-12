@@ -13,7 +13,8 @@ import { bomHref } from '@/features/bom/links';
 import { ordersHref } from '@/features/orders/links';
 import type { Lang, T } from '@/i18n/translate';
 import { STATUS_ISO, displayOfIso, fmtDOfIso, type ReceiptStatus } from '@/server/db/codes';
-import { dataText, qcResultText, statusText } from './i18n';
+import { vigieReportNcrUrl } from '@/server/integrations/vigie/links';
+import { DECLARE_NCR_LINK, dataText, qcResultText, statusText } from './i18n';
 
 // ── URLs ───────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -109,6 +110,12 @@ export interface DrawerView {
   poHref: string;
   /** Lines of the QC decision (partial rejection dialog). */
   qcLines: { ref: string; name: string; delivered: number }[];
+  /**
+   * R-096 (NEW-D4-3 "a", SC-3b "a"): "Declare the supplier NCR in Vigie", one link per line with rejected units of a
+   * Rejected or Partially rejected receipt, Vigie's report form prefilled (V-3 proposal). Internal viewers only; nothing
+   * is recorded in Keystone.
+   */
+  ncrLinks: { href: string; label: string }[];
 }
 
 export interface DeliveriesView {
@@ -134,10 +141,11 @@ const kvText = (x: DrawerKv, t: T, lang: Lang) => {
  */
 export function deliveriesView(
   code: string,
-  data: { receipts: readonly ReceiptLike[]; openOrdersToReceive: number; onTimePct?: number | null },
+  data: { receipts: readonly (ReceiptLike & { supplierCode?: string | null })[]; openOrdersToReceive: number; onTimePct?: number | null },
   q: { status: ReceiptStatus | null; receipt: string | null },
   t: T,
   lang: Lang,
+  opts: { vigieLinks?: boolean } = {},
 ): DeliveriesView {
   const { receipts } = data;
   const open = q.receipt ? (receipts.find((r) => r.number === q.receipt) ?? null) : null;
@@ -165,6 +173,7 @@ export function deliveriesView(
       docs: d.docs.map((x) => dataText(x, lang)), canReceive: d.canReceive, canQc: d.canQc,
       closeHref: deliveriesHref(code, { status: q.status }), poHref: orderHref(code, d.po),
       qcLines: open.lines.map((l) => ({ ref: l.ref, name: dataText(l.name, lang), delivered: l.delivered })),
+      ncrLinks: opts.vigieLinks ? supplierNcrLinks(code, open, t, lang) : [],
     };
   }
   return {
@@ -177,6 +186,25 @@ export function deliveriesView(
     empty: !rows.length,
     drawer,
   };
+}
+
+/**
+ * R-096: the supplier NCR links of a rejected receipt — one per line with rejected units, labelled "· <ref> × <qty>"
+ * when several. The title prefilled in Vigie is data (receipt, part, article name), not UI text.
+ */
+export function supplierNcrLinks(
+  code: string, r: ReceiptLike & { supplierCode?: string | null }, t: T, lang: Lang,
+): { href: string; label: string }[] {
+  if (r.status !== 'rejected' && r.status !== 'partially_rejected') return [];
+  const lines = r.lines.filter((l) => l.rejected > 0);
+  const qty = (n: number) => n.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US');
+  return lines.map((l) => ({
+    href: vigieReportNcrUrl({
+      projectCode: code, partRef: l.ref, title: `${r.number} · ${l.ref} · ${l.name}`, supplier: r.supplier, supplierCode: r.supplierCode ?? null,
+      order: r.poNumber, receipt: r.number, quantity: l.rejected,
+    }),
+    label: lines.length > 1 ? `${t(DECLARE_NCR_LINK)} · ${l.ref} × ${qty(l.rejected)}` : t(DECLARE_NCR_LINK),
+  }));
 }
 
 // ── Forms ──────────────────────────────────────────────────────────────────────────────────────────────

@@ -110,12 +110,13 @@ describe('Site view model vs the prototype (EN and FR)', () => {
       expect(x.note).toBe(lang === 'en' ? 'Site starts 19 Oct — reports so far cover preparation visits.' : 'Le chantier démarre le 19 oct. — les rapports actuels couvrent les visites de préparation.');
       expect(x.punch.map((p) => ({ id: p.id, title: p.title, ncr: p.ncr, status: p.status, tagClass: p.tagClass, owner: p.owner, due: p.due }))).toEqual(g.punch);
       expect(x.hse.rows.map((r) => ({ title: r.title, status: r.status, tagClass: r.tagClass, date: r.date }))).toEqual(g.hse);
+      // R-025 (V-3b "a"): Vigie's lists receive the project (`projet`, the Keystone code until NEW-SYS-1 / R-022).
       expect(x.hse.rows.map((r) => r.vigieUrl)).toEqual([
-        'http://localhost:3200/prevention', 'http://localhost:3200/prevention', 'http://localhost:3200/prevention?onglet=permis', 'http://localhost:3200/prevention?onglet=permis',
-        'http://localhost:3200/evenements?etat=tous&type=PA',
+        'http://localhost:3200/prevention?projet=HLT-026', 'http://localhost:3200/prevention?projet=HLT-026', 'http://localhost:3200/prevention?onglet=permis&projet=HLT-026',
+        'http://localhost:3200/prevention?onglet=permis&projet=HLT-026', 'http://localhost:3200/evenements?etat=tous&type=PA&projet=HLT-026',
       ]);
       expect(x.hse.reportUrl).toBe('http://localhost:3200/signaler?projet=HLT-026&lieu=Terminal+Harbor+Line+%E2%80%94+Quai+4%2C+Le+Havre+%28FR%29&source=keystone');
-      expect(x.hse.listUrl).toBe('http://localhost:3200/prevention');
+      expect(x.hse.listUrl).toBe('http://localhost:3200/prevention?projet=HLT-026');
       expect(x.hse.lastSync).toBe(lang === 'en' ? 'Last sync 25 Sep 07:30' : 'Dernière synchro 25 sept. 07:30');
     });
   }
