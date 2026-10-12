@@ -1,6 +1,6 @@
 import 'server-only';
 // C-9 (R-075): project currency and budget rate. A project has a currency (`projects.currency`, EUR when null) and, when it is
-// not EUR, a budget rate (euros per unit) that the portfolio director sets; the project's contract, purchase orders and
+// not EUR, a budget rate (euros per unit) that the portfolio director and Finance set (R-044 default); the project's contract, purchase orders and
 // invoices are in EUR or in that currency, and every consolidation in euros (Budget › Cash & recovery, Cash flow,
 // Prioritisation, portfolio margin, alerts) converts at that rate (`toEur`, src/domain/currency.ts).
 // Write rule: the currency of a project changes only while none of its documents uses the current one (else they would be
@@ -8,6 +8,7 @@ import 'server-only';
 import { and, eq, sql } from 'drizzle-orm';
 import { cache } from 'react';
 import { BASE_CURRENCY, isCurrency, parseBudgetRate, projectFxOf, type CurrencyCode, type ProjectFx } from '@/domain/currency';
+import { canSetBudgetRate } from '@/domain/rights';
 import { getDb } from '@/server/db/client';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import { contracts, customerInvoices, paymentMilestones, projects, purchaseOrders, supplierInvoices } from '@/server/db/schema';
@@ -47,17 +48,20 @@ export interface BudgetRateInput {
   rate: string | number | null;
 }
 
-/** Refusal of a budget-rate change by anyone but the portfolio director (EN source; FR in d7-contract-portfolio.json). */
-export const BUDGET_RATE_DIRECTOR_ONLY = 'Only the portfolio director sets the budget rate';
+/**
+ * Refusal of a budget-rate change by anyone but the portfolio director and Finance (C-9; R-044 default, DELIVERY-7 §8 open
+ * question). EN source; FR in d8-roles-rates-hr.json.
+ */
+export const BUDGET_RATE_REFUSED = 'Only the portfolio director and Finance set the budget rate';
 
 /**
- * Sets a project's currency and budget rate (portfolio director — checked by the Server Function and re-checked here with
- * `actor`). EUR clears the rate. Another currency needs a rate (0.0001–10 000 € per unit). Changing the currency is refused
+ * Sets a project's currency and budget rate (portfolio director and Finance — `canSetBudgetRate`, checked by the Server
+ * Function and re-checked here with `actor`). EUR clears the rate. Another currency needs a rate (0.0001–10 000 € per unit). Changing the currency is refused
  * while a document of the project is in the current non-EUR currency. Writes an audit row and an activity event. Returns
  * the stored values.
  */
 export async function setProjectBudgetRate(projectCode: string, input: BudgetRateInput, actor: Actor): Promise<ProjectFx> {
-  if (actor.role !== 'director') throw new Error(BUDGET_RATE_DIRECTOR_ONLY);
+  if (!canSetBudgetRate(actor.role)) throw new Error(BUDGET_RATE_REFUSED);
   const actorName = actor.name;
   if (!isCurrency(input.currency)) throw new Error('Unknown currency');
   const currency = input.currency;

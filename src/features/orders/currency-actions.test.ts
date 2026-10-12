@@ -93,9 +93,11 @@ describe('purchase order currency (C-9)', () => {
     expect((await getPurchaseOrder('PO-1100'))!.currency).toBe('EUR');
   });
 
-  it('the budget rate: the DAL refuses anyone but the portfolio director (the role counts, not the name)', async () => {
+  it('the budget rate: the DAL refuses anyone but the portfolio director and Finance (R-044; the role counts, not the name)', async () => {
     for (const wrong of [{ name: 'Romain Aubert', role: 'pm' }, { name: 'Marie Lefebvre', role: 'pm' }, { name: 'Fabien Bertrand', role: 'procurement' }])
-      await expect(setProjectBudgetRate('HLT-026', { currency: 'USD', rate: '0.97' }, wrong)).rejects.toThrow('Only the portfolio director sets the budget rate');
+      await expect(setProjectBudgetRate('HLT-026', { currency: 'USD', rate: '0.97' }, wrong)).rejects.toThrow('Only the portfolio director and Finance set the budget rate');
+    // R-044 (C-9 default): Finance sets it too.
+    await expect(setProjectBudgetRate('HLT-026', { currency: 'USD', rate: '0.96' }, { name: 'Léa Marchand', role: 'finance' })).resolves.toEqual({ currency: 'USD', budgetRate: 0.96 });
     await expect(setProjectBudgetRate('HLT-026', { currency: 'USD', rate: '0.97' }, DIRECTOR)).resolves.toEqual({ currency: 'USD', budgetRate: 0.97 });
   });
 

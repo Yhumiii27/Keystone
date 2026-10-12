@@ -5,6 +5,9 @@
 // portal ignores the project read-only mode (01 §5.9), but only the client contact of the project's client organisation
 // decides (change-request client step, deliverable acceptance), acknowledges documents and — with the director —
 // raises issues; the Server Functions re-check. Primary action "Download status report" (AF `client`).
+// R-139 (P-11 a): the director and the project's leads open it from the "View as client" entry of the project screens; PageHeader
+// then shows the "Client view · preview · read-only" banner (with "Back to project") instead of the outside banner. The PM stays
+// outside here (no primary, no edits); the director keeps "Raise issue" (open question: P-11 "lecture seule" vs I-2b).
 import { PageHeader } from '@/components/app/shell/page-header';
 import { parseClientTab } from '@/domain/rexclient';
 import { StatusReportButton } from '@/features/rexclient/buttons';

@@ -8,10 +8,12 @@ import {
 
 describe('roles', () => {
   it('orders roles from the broadest workspace and drops unknown values', () => {
-    expect(ROLE_PRIORITY).toEqual(['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'member', 'client']);
-    expect(sortRoles(['member', 'pm', 'admin', 'pm', 42, 'director'])).toEqual(['director', 'pm', 'member']);
+    // R-044 (P-4, P-12 c): the Finance role, after procurement and before the team member.
+    expect(ROLE_PRIORITY).toEqual(['director', 'pm', 'depthead', 'englead', 'quality', 'procurement', 'finance', 'member', 'client']);
+    expect(sortRoles(['member', 'pm', 'admin', 'pm', 42, 'director', 'finance'])).toEqual(['director', 'pm', 'finance', 'member']);
     expect(isRoleKey('quality')).toBe(true);
-    expect(isRoleKey('finance')).toBe(false);
+    expect(isRoleKey('finance')).toBe(true);
+    expect(isRoleKey('accounting')).toBe(false);
   });
 
   it('starts in the highest role held, or the preferred one when held', () => {
@@ -27,6 +29,9 @@ describe('roles', () => {
     expect(roleOfAppRole('Keystone.PM')).toBe('pm');
     expect(roleOfAppRole('keystone.Director')).toBe('director');
     expect(roleOfAppRole(' Quality ')).toBe('quality');
+    // R-044: IT's app role "Keystone.Finance" (value "finance").
+    expect(roleOfAppRole('Keystone.Finance')).toBe('finance');
+    expect(roleOfAppRole('finance')).toBe('finance');
     expect(roleOfAppRole('Keystone.Admin')).toBeNull();
     expect(roleOfAppRole('Other.pm')).toBeNull();
     expect(roleOfAppRole(null)).toBeNull();

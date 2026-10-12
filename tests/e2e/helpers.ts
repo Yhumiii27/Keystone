@@ -3,7 +3,7 @@
 // fetched with the persona's cookies.
 import { expect, type APIRequestContext, type BrowserContext, type Page } from '@playwright/test';
 
-export type Role = 'director' | 'pm' | 'depthead' | 'member' | 'englead' | 'quality' | 'procurement' | 'client';
+export type Role = 'director' | 'pm' | 'depthead' | 'member' | 'englead' | 'quality' | 'procurement' | 'finance' | 'client';
 
 export const BASE = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3315';
 

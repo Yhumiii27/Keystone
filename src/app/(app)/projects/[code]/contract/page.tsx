@@ -4,7 +4,7 @@
 // (hidden when the screen is outside their workspace, the project is read-only for them, or there is no contract).
 // Breadcrumb extra = the contract reference as stored (it follows sheet edits).
 // Delivery 7: amounts in the contract's currency and the project's "Currency & budget rate" (C-9, R-075 — set by the
-// portfolio director, also on a project without contract), the payment rule (R-076), the amendments' signature cycle and own
+// portfolio director and, since R-044, Finance; also on a project without contract), the payment rule (R-076), the amendments' signature cycle and own
 // milestones, the guarantees' release (R-079).
 import { EmptyState } from '@/components/app/EmptyState';
 import { Stack } from '@/components/app/SectionCard';
@@ -14,6 +14,7 @@ import { FormButton } from '@/features/contract/form-button';
 import {
   amendmentFormDef, bondFormDef, contractView, currencyView, milestoneFormDef, releaseFormDef, signFormDef,
 } from '@/features/contract/model';
+import { canSetBudgetRate } from '@/domain/rights';
 import { getContract } from '@/server/dal/contract';
 import { getProjectFx } from '@/server/dal/currency';
 import { getProjectContext } from '@/server/project-context';
@@ -25,8 +26,8 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
   const ctx = await getProjectContext(code, 'contract');
   const projectCode = ctx.project.code;
   const [{ t, lang }, contract] = await Promise.all([getI18n(), getContract(projectCode)]);
-  // C-9: the portfolio director sets the project's currency and budget rate (not on a read-only project).
-  const canSetRate = ctx.viewer.role === 'director' && ctx.canEdit('contract');
+  // C-9: the portfolio director and Finance (R-044) set the project's currency and budget rate.
+  const canSetRate = canSetBudgetRate(ctx.viewer.role) && ctx.canEdit('contract');
 
   if (!contract)
     return (

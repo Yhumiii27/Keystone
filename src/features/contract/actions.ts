@@ -6,7 +6,7 @@
 // through the Contract DAL with the viewer as the actor, then revalidates the app (Contract, Billing, Budget › Cash
 // & recovery, Cash flow, the Billing badge all read the same rows).
 // Delivery 7: the amendment signature cycle and the release of a guarantee (R-079), the payment rule and the currency in the
-// sheet (R-076, R-075), and the project's budget rate — the portfolio director only (C-9).
+// sheet (R-076, R-075), and the project's budget rate — the portfolio director and Finance (C-9, R-044).
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import {
@@ -17,6 +17,7 @@ import {
   addAmendment, addBond, addPaymentMilestone, getContract, issueInvoice, markInvoicePaid, releaseBond, sendAmendmentForSignature, signAmendment,
   updateContractSheet, type ProjectContract,
 } from '@/server/dal/contract';
+import { canSetBudgetRate } from '@/domain/rights';
 import { setProjectBudgetRate } from '@/server/dal/currency';
 import { getProject } from '@/server/dal/projects';
 import { getProjectContext } from '@/server/project-context';
@@ -76,8 +77,8 @@ const KNOWN_ERRORS = [
   'Ask the portfolio director to set the project’s budget rate first', 'Documents of this project are in its currency: it cannot change',
   'Only a draft amendment can be sent for signature', 'Only an amendment sent for signature can be signed', 'This guarantee is already released',
   'Unknown amendment', 'Unknown guarantee', 'Enter a budget rate in euros per unit', 'Unknown currency',
-  // The DAL's re-check of the budget-rate rule (defense in depth).
-  'Only the portfolio director sets the budget rate',
+  // The DAL's re-check of the budget-rate rule (defense in depth; R-044: the director and Finance).
+  'Only the portfolio director and Finance set the budget rate',
 ];
 const knownError = (e: unknown) => (e instanceof Error && KNOWN_ERRORS.includes(e.message) ? e.message : null);
 const position = (v: unknown) => (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < 10_000 ? v : null);
@@ -235,17 +236,16 @@ export async function releaseBondAction(code: string, pos: number, values: Recor
 }
 
 /**
- * Project currency and budget rate (C-9, R-075): the portfolio director only (the plan's default; Finance has no role yet).
- * EUR clears the rate; another currency needs a rate in euros per unit. Budget, Cash flow and portfolio finance consolidate
- * the project's amounts at this rate.
+ * Project currency and budget rate (C-9, R-075): the portfolio director and Finance (R-044 — a delivery-8 default, DELIVERY-7
+ * §8 open question). EUR clears the rate; another currency needs a rate in euros per unit. Budget, Cash flow and portfolio
+ * finance consolidate the project's amounts at this rate.
  */
 export async function setBudgetRateAction(code: string, currency: string, rate: string): Promise<ContractEditResult> {
   if (typeof code !== 'string' || !code || typeof currency !== 'string' || (rate != null && typeof rate !== 'string')) return { error: await tr('Invalid request') };
   const project = await getProject(code);
   if (!project) return { error: await tr('Unknown project') };
   const ctx = await getProjectContext(project.code, 'contract');
-  if (ctx.viewer.role !== 'director') return { error: await tr('Only the portfolio director sets the budget rate') };
-  // A read-only project (closed, archived) keeps its rate.
+  if (!canSetBudgetRate(ctx.viewer.role)) return { error: await tr('Only the portfolio director and Finance set the budget rate') };
   if (!ctx.canEdit('contract')) return { error: await tr('This contract is read-only for you') };
   try {
     await setProjectBudgetRate(project.code, { currency, rate }, { name: ctx.viewer.name, role: ctx.viewer.role });

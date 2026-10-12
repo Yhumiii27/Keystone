@@ -307,10 +307,10 @@ describe('Currency and budget rate (C-9, R-075)', () => {
   beforeAll(fresh, 60_000);
 
   it('the budget rate is the portfolio director’s; a currency needs it; invoices fix the contract currency', async () => {
-    // The PM cannot set the rate; nor can anyone else but the director.
-    expect(await setBudgetRateAction('HLT-026', 'USD', '0.9')).toEqual({ error: 'Only the portfolio director sets the budget rate' });
+    // The PM cannot set the rate; nor can anyone else but the director — and Finance since R-044 (C-9 default).
+    expect(await setBudgetRateAction('HLT-026', 'USD', '0.9')).toEqual({ error: 'Only the portfolio director and Finance set the budget rate' });
     viewer.role = 'procurement';
-    expect(await setBudgetRateAction('HLT-026', 'USD', '0.9')).toEqual({ error: 'Only the portfolio director sets the budget rate' });
+    expect(await setBudgetRateAction('HLT-026', 'USD', '0.9')).toEqual({ error: 'Only the portfolio director and Finance set the budget rate' });
     // The contract cannot move to a currency the project does not use.
     viewer.role = 'pm';
     expect(await updateContractFieldAction('HLT-026', 'currency', 'USD')).toEqual({ error: 'The currency cannot change once an invoice is issued' });

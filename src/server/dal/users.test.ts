@@ -34,10 +34,11 @@ describe('users', () => {
     setDb(await openDatabase());
   }, 60_000);
 
-  it('seeds the 8 personas as users, one per person, with the e-mail and department of personas.ts', async () => {
+  it('seeds the 9 personas as users (R-044: + Finance), one per person, with the e-mail and department of personas.ts', async () => {
     const accounts = await listUserAccounts();
-    expect(accounts).toHaveLength(8);
-    expect(new Set(accounts.map((a) => a.personId)).size).toBe(8);
+    expect(accounts).toHaveLength(PERSONAS.length);
+    expect(PERSONAS).toHaveLength(9);
+    expect(new Set(accounts.map((a) => a.personId)).size).toBe(9);
     for (const p of PERSONAS) {
       const a = accounts.find((x) => x.personaRole === p.role)!;
       expect({ name: a.fullName, roles: a.roles, email: a.email, department: a.department, organisation: a.organisation, title: a.title }, p.role).toEqual({
@@ -65,7 +66,9 @@ describe('users', () => {
     expect(await userIdOf(db, 'pm')).toBe(pmUser);
     expect(await userIdOf(db, PERSONA_BY_ROLE.pm)).toBe(pmUser);
     expect(await userIdOf(db, { role: 'pm', userId: 'aaaaaaaa-0000-4000-8000-000000000000' })).toBe('aaaaaaaa-0000-4000-8000-000000000000');
-    expect(await userIdOf(db, 'finance')).toBeNull();
+    // R-044: Finance is a persona role since delivery 8; an unknown role has no user.
+    expect(await userIdOf(db, 'finance')).toBe((await listUserAccounts()).find((a) => a.personaRole === 'finance')!.userId);
+    expect(await userIdOf(db, 'accounting')).toBeNull();
   });
 
   it('delivers role notifications to every holder of the role, with a read state per user', async () => {

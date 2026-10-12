@@ -9,6 +9,10 @@ const base: Record<Exclude<RoleKey, 'director'>, ScreenId[]> = {
   englead: ['home', 'myapprovals', 'quality', 'pid', 'plan', 'bom', 'plm', 'eco', 'drawings', 'skills', 'requests', 'settings', 'mtypes'],
   quality: ['home', 'myapprovals', 'risks', 'quality', 'pid', 'plan', 'eco', 'plm', 'drawings', 'bom', 'approvals', 'deliveries', 'stock', 'settings', 'mtypes'],
   procurement: ['home', 'myapprovals', 'procurement', 'orders', 'deliveries', 'stock', 'bom', 'plm', 'eco', 'resources', 'settings'],
+  // R-044 (P-4, P-12 c, C-9): Finance — the contract (edited on every project), billing, budget and hours (read), the rate
+  // grid, the portfolio's money screens; plan (own activities' % only, P-9a), My work, leave and meetings because the
+  // persona owns activities and tasks. No Prioritisation: scoring and weights are not decided for Finance.
+  finance: ['home', 'overview', 'cash', 'contract', 'billing', 'budget', 'hours', 'rates', 'plan', 'mywork', 'task', 'leave', 'meetings'],
   client: ['home', 'myapprovals', 'client', 'trends', 'changes', 'quality'],
 };
 const ENG: ScreenId[] = ['eng', 'eng-process', 'eng-meca', 'eng-elec', 'eng-auto'];
@@ -17,7 +21,8 @@ base.pm.push('site', 'meetings', 'contract', 'billing', 'stakeholders', 'itp', '
 base.englead.push('leave', 'meetings', 'interfaces', 'itp', 'commissioning', 'rex');
 base.quality.push('leave', 'meetings', 'itp', 'commissioning', 'rex', 'sav', 'fleet');
 base.depthead.push('meetings', 'hours');
-base.procurement.push('leave', 'meetings', 'contract', 'sav', 'fleet');
+// P-4 (R-044): the contract is edited by the director, Finance and the project's PMs — procurement no longer has it.
+base.procurement.push('leave', 'meetings', 'sav', 'fleet');
 base.member.push('meetings');
 // P-9a (R-061): activity owners enter the progress of their activities on the Plan — the team member and procurement own
 // activities (OWN) but had no Plan; they now have it, read-only except the % complete of their own activities.

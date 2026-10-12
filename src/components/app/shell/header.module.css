@@ -404,6 +404,11 @@
   gap: 8px;
 }
 
+/* R-139 "View as client" (secondary): a link styled as a button; icon only on tablets (R-146) to keep the actions on one row. */
+.previewBtn:global(.btn) {
+  text-decoration: none;
+}
+
 /* Outside banner (lines 126–128) */
 .outside {
   display: flex;
@@ -460,6 +465,10 @@
 
   .actions {
     flex-wrap: wrap;
+  }
+
+  .previewLabel {
+    display: none;
   }
 
   /* The search box may wrap to the left edge: its result panel opens to the right. */
