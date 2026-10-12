@@ -52,8 +52,9 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0
 
-# A non-root user owns the data folder (and Next's runtime cache); the code stays read-only to it.
-RUN mkdir -p /data && chown node:node /data && chown -R node:node /app/.next
+# A non-root user owns the data folder, the backup folder (a named volume mounted there takes this ownership) and Next's
+# runtime cache; the code stays read-only to it.
+RUN mkdir -p /data /backups && chown node:node /data /backups && chown -R node:node /app/.next
 USER node
 
 EXPOSE 3000

@@ -86,6 +86,9 @@ async function main(): Promise<number> {
     VIGIE_API_URL: '',
     CURSUS_API_URL: '',
     ANTHROPIC_API_KEY: '',
+    // No antivirus (R-175) and no backups (R-004) in the end-to-end runs, whatever the shell sets.
+    KEYSTONE_FILE_SCAN: '',
+    KEYSTONE_BACKUP_DIR: '',
     NEXT_TELEMETRY_DISABLED: '1',
   };
   let server: ChildProcess | null = null;
