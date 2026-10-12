@@ -244,6 +244,7 @@ Rendering (per section, lines 46–54):
 - Group open state: `navOpen['sub:'+groupLabel]` if defined, else default **open only for "Steering"**.
 - Closed section → shows only the active item (if it belongs to the section).
 - Closed group → its items are hidden except the active one (`visible = groupOpen || isActive`). The group header itself only appears on the group's first item, so if a closed section/group contains the active item that is not the first of its group, the item shows without its group header.
+  - **Rebuild (X-8 = always, R-151, delivery 8):** the group header is shown before the first *shown* item of its group, so a collapsed section that shows only its active item always names its group ("Control › Change control"). Open state, brightness, badge and count are still computed over every item of the group. Open sections are unchanged.
 - `isActiveNav(n) = n.id===screen || (screen==='task' && n.id==='mywork')`.
 - Toggling a section or group writes the new map to `state.navOpen` and to `localStorage['keystone-nav-open']` (wrapped in try/catch).
 - Sections with zero gated items are not rendered.
@@ -948,7 +949,7 @@ Specs of the target screens: see the module spec files in `docs/spec/` (e.g. 06 
 18. **Search scope**: project-specific hits (POs, CRs, NCRs, risks) only cover the current project; Project hits for projects without data navigate to the Plan of the current project. Should search be portfolio-wide and open the hit's own project?
 19. **Notifications**: read state is session-only and the "e-mail digest / Teams channel / preferences in Settings" mentioned in the footer is not modelled. Confirm channels and preferences.
 20. **Popover dismissal**: the project switcher and role menu have no click-outside/Escape handling (search and notifications do). Expected behaviour?
-21. **Group header visibility** when a collapsed group's active item is not its first item (no header shown). Acceptable or should the header always show?
+21. **Group header visibility** when a collapsed group's active item is not its first item (no header shown). Acceptable or should the header always show? — *Answered X-8: always shown (R-151, delivery 8).*
 22. **Toast for NP / NR / Force**: none is shown on success. Should they confirm like the add-forms?
 
 ---

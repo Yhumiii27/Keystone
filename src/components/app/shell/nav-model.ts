@@ -201,7 +201,10 @@ export function buildSidebar({ role, active, badges, navOpen, subs }: SidebarInp
       }
       const gi = items.filter((y) => y.def.group === g);
       const gOpen = subOpen(g);
-      if (gi[0] === x) {
+      // X-8 (R-151): the group header comes before the first SHOWN item of its group, so a collapsed section that shows
+      // only its active item still names the group ("Control › Change control"); open, bright, badge and count stay
+      // computed over every item of the group.
+      if (shown.find((y) => y.def.group === g) === x) {
         const { nums, alert } = sumBadges(gi.map((y) => y.e));
         rows.push({
           kind: 'group', key: g, label: g, open: gOpen,
