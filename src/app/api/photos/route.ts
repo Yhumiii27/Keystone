@@ -12,7 +12,7 @@ import { addPhoto } from '@/server/dal/photos';
 import { TOO_MANY_REQUESTS, hitRateLimit, isSameOriginRequest, rateClient, tooManyRequestsResponse } from '@/server/http/request-guard';
 import { logError } from '@/server/log';
 import { getI18n } from '@/server/session';
-import { FileRejectedError, checkUpload, readFormDataCapped } from '@/server/storage/files';
+import { FileRejectedError, checkUpload, readFormDataCapped, uploadRefusalStatus } from '@/server/storage/files';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +47,8 @@ export async function POST(request: Request): Promise<Response> {
     revalidatePath(`/projects/${g.owner.code}`, 'layout');
     return Response.json({ ok: true, id }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) {
-    if (e instanceof FileRejectedError) return fail(e.code === 'too_large' ? 413 : 415, e.message);
+    // R-175: infected 422, antivirus unavailable 503 (fail-closed), generic messages.
+    if (e instanceof FileRejectedError) return fail(uploadRefusalStatus(e), e.message);
     if (e instanceof Error && /^At most \d+ photos$/.test(e.message)) return fail(409, `Too many photos · max ${MAX_PHOTOS_PER_OWNER}`);
     logError('Photo upload', e, { route: 'api/photos' });
     return fail(500, 'The file could not be saved');

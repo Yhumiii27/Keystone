@@ -52,6 +52,17 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
     return { summary: `${removed} orphan files removed`, counts: { removed } };
   },
   // ── Delivery 8 · platform-ops jobs ──
+  // Snapshot of the database and the stored files when due (R-004; nothing while KEYSTONE_BACKUP_DIR is unset). The modules
+  // are imported here (not at the top) so this lot's lines stay under its marker.
+  backup: async () => (await import('@/server/backup/job')).runBackupJob(),
+  // Antivirus rescan of the stored files, purge of expired quarantine copies (R-175).
+  'files-rescan': async () => {
+    const r = await (await import('@/server/storage/rescan')).rescanStoredFiles();
+    const counts = { scanned: r.scanned, flagged: r.flagged, released: r.released, missing: r.missing, purged: r.purged };
+    if (r.state === 'off') return { summary: `antivirus off · nothing rescanned · ${r.purged} quarantine entries purged`, counts };
+    const summary = `${r.scanned} files rescanned · ${r.flagged} blocked · ${r.released} released · ${r.missing} missing · ${r.purged} quarantine entries purged`;
+    return { summary: r.state === 'stopped' ? `antivirus unavailable · stopped after ${summary}` : summary, counts, warn: r.state === 'stopped' || r.flagged > 0 };
+  },
   // ── Delivery 8 · connectors jobs ──
   // ── Delivery 8 · docs-client-portfolio jobs ──
 };

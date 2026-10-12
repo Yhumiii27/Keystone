@@ -66,7 +66,8 @@ describe('transcript import', () => {
     expect(m.transcript!.text.split('\n')[0]).toBe('Romain Aubert: On valide la grue de 300 tonnes pour le levage.');
     const [meta] = await listStoredFiles('meeting', (await getMeetingId(n))!);
     expect(meta).toMatchObject({ purpose: 'transcript', name: 'levage.vtt', mime: 'text/vtt' });
-    expect((await readStoredText(meta.id))!.text).toBe(VTT);
+    const stored = await readStoredText(meta.id);
+    expect(stored && !stored.blocked && stored.text).toBe(VTT); // R-175: a flagged file would be { blocked }
 
     const again = await importTranscript(n, { file: { name: 'levage-v2.vtt', data: enc(VTT.replace('300', '400')) } }, 'Léa Fabre');
     expect(again.replaced).toBe(true);

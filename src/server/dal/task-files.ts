@@ -8,7 +8,8 @@ import { getDb } from '@/server/db/client';
 import { ATTACHMENT_ICON, STATUS_ISO, type AttachmentKind } from '@/server/db/codes';
 import { findPerson, nameOf, writeAudit } from '@/server/db/helpers';
 import { persons, taskAttachments, tasks } from '@/server/db/schema';
-import { checkUpload, deleteStoredFile, extensionOf, readStoredFile, setFileOwner, storeFile, type StoredFileMeta } from '@/server/storage/files';
+import { checkUpload, deleteStoredFile, extensionOf, readStoredFile, setFileOwner, storeFile, type BlockedStoredFile, type StoredFileMeta } from '@/server/storage/files';
+import { scanUpload } from '@/server/storage/scan';
 
 export interface TaskFileRow {
   /** Attachment id (task_attachments.id). */
@@ -60,14 +61,18 @@ export async function listTaskFiles(number: string): Promise<TaskFileRow[]> {
 }
 
 /**
- * Attaches a file to a task: checks size / type (storage limits) and the per-task limit, stores the bytes, records the
- * attachment ("48 KB · H. Sauvage · today", dated the status date) and the audit entry. Returns the attachment id.
+ * Attaches a file to a task: checks size / type (storage limits), the antivirus verdict (R-175, before the transaction) and
+ * the per-task limit, stores the bytes, records the attachment ("48 KB · H. Sauvage · today", dated the status date) and the
+ * audit entry. Returns the attachment id.
  */
 export async function attachTaskFile(number: string, file: { name: string; data: Uint8Array | ArrayBuffer } | File, actorName: string): Promise<string> {
   const t = await taskOf(number);
   const db = await getDb();
   const name = file.name;
-  const data = file instanceof File ? (checkUpload('attachment', file.name, file.size), new Uint8Array(await file.arrayBuffer())) : file.data;
+  const raw = file instanceof File ? (checkUpload('attachment', file.name, file.size), new Uint8Array(await file.arrayBuffer())) : file.data;
+  checkUpload('attachment', name, raw.byteLength);
+  const actorRow = await findPerson(db, actorName);
+  const data = await scanUpload(raw, { purpose: 'attachment', name, actor: { name: actorRow ? nameOf(actorRow) : actorName, personId: actorRow?.id }, objectRef: t.number, projectId: t.projectId });
   return db.transaction(async (tx) => {
     const [{ n, pos }] = await tx
       .select({ n: sql<number>`count(*)::int`, pos: sql<number>`coalesce(max(${taskAttachments.position}), -1)::int` })
@@ -89,8 +94,8 @@ export async function attachTaskFile(number: string, file: { name: string; data:
   });
 }
 
-/** Content of an attachment of the task (download); null when unknown or without stored content. */
-export async function getTaskFile(number: string, attachmentId: string): Promise<{ meta: StoredFileMeta; data: Buffer } | null> {
+/** Content of an attachment of the task (download); `{ blocked: true }` when the antivirus flagged it (R-175); null when unknown or without stored content. */
+export async function getTaskFile(number: string, attachmentId: string): Promise<{ blocked?: false; meta: StoredFileMeta; data: Buffer } | BlockedStoredFile | null> {
   if (!/^[0-9a-f-]{36}$/i.test(attachmentId)) return null;
   const t = await taskOf(number);
   const db = await getDb();

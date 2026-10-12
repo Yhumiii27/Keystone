@@ -18,7 +18,8 @@ import { findPerson, nameOf, recordActivity } from '@/server/db/helpers';
 import { clientQuestions, meetingAgendaPoints, meetingParticipants, meetingTranscriptProposals, meetingTranscripts, meetings, projects } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 import { logError } from '@/server/log';
-import { deleteStoredFile, storeFile } from '@/server/storage/files';
+import { checkUpload, deleteStoredFile, storeFile } from '@/server/storage/files';
+import { scanUpload } from '@/server/storage/scan';
 import { appendLines, auditMeeting, loadMeeting } from './meetings-core';
 
 /** A refused transcript operation; `message` is an EN source sentence the Server Functions translate. */
@@ -79,6 +80,8 @@ export async function importTranscript(meetingNumber: string, input: TranscriptI
   const parsed = parseTranscript(raw, file?.name ?? null);
   if (!parsed.text.trim()) throw new TranscriptError('The transcript is empty');
   if (parsed.text.length > TRANSCRIPT_IMPORT.maxChars) throw new TranscriptError('The transcript is too long');
+  // R-175: an uploaded file is checked by the antivirus before the transaction (a pasted text is not a file).
+  const data = file ? (checkUpload('transcript', file.name, file.data.byteLength), await scanUpload(file.data, { purpose: 'transcript', name: file.name, actor: { name: actorName }, objectRef: meetingNumber })) : null;
   const db = await getDb();
   let oldFileId: string | null = null;
   let replaced = false;
@@ -91,7 +94,7 @@ export async function importTranscript(meetingNumber: string, input: TranscriptI
     replaced = !!old;
     oldFileId = old?.fileId ?? null;
     const stored = file
-      ? await storeFile({ purpose: 'transcript', name: file.name, data: file.data, projectId: m.projectId, ownerType: 'meeting', ownerId: m.id, actor: { name: who, personId: actor?.id ?? null } }, tx)
+      ? await storeFile({ purpose: 'transcript', name: file.name, data: data!, projectId: m.projectId, ownerType: 'meeting', ownerId: m.id, actor: { name: who, personId: actor?.id ?? null } }, tx)
       : null;
     const row = {
       rawText: parsed.text, source: file ? ('file' as const) : ('paste' as const), summary: '', analysedAt: null, appliedAt: null, fileId: stored?.id ?? null,

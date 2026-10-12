@@ -17,6 +17,11 @@ export type JobName =
   | 'plan-trash-purge'
   | 'orphan-files-prune'
   // ── Delivery 8 · platform-ops jobs ──
+  // Backups (R-004): wakes every BACKUP_DEFAULTS.tickMin; a snapshot is taken when due (KEYSTONE_BACKUP_EVERY_MIN, default
+  // 10 min) and only when KEYSTONE_BACKUP_DIR is set — otherwise the run does nothing.
+  | 'backup'
+  // Antivirus rescan of the stored files and purge of expired quarantine copies (R-175), daily.
+  | 'files-rescan'
   // ── Delivery 8 · connectors jobs ──
   // ── Delivery 8 · docs-client-portfolio jobs ──
   ;
@@ -41,6 +46,8 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   { name: 'plan-trash-purge', everyMs: HOUR, leaseMs: 15 * MIN, firstDelayMs: 15_000 },
   { name: 'orphan-files-prune', everyMs: 24 * HOUR, leaseMs: HOUR, firstDelayMs: 20_000 },
   // ── Delivery 8 · platform-ops jobs ──
+  { name: 'backup', everyMs: 5 * MIN, leaseMs: 3 * HOUR, firstDelayMs: 25_000 },
+  { name: 'files-rescan', everyMs: 24 * HOUR, leaseMs: 6 * HOUR, firstDelayMs: 30_000 },
   // ── Delivery 8 · connectors jobs ──
   // ── Delivery 8 · docs-client-portfolio jobs ──
 ];

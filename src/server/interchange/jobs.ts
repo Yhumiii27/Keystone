@@ -17,6 +17,7 @@ import {
 import { getProject, listProjects, type ProjectRow } from '@/server/dal/projects';
 import { readXlsx } from '@/server/export/xlsx';
 import { FileRejectedError, readStoredFile, setFileOwner, storeFile } from '@/server/storage/files';
+import { SCAN_MESSAGES, scanUpload } from '@/server/storage/scan';
 import { fmt } from './messages';
 import { parseMspdi } from './mspdi';
 import { INTERCHANGE_DEFAULTS } from './defaults';
@@ -204,6 +205,8 @@ async function mappingView(job: ImportJobView, kind: TableKind, t: ReadTable): P
 async function fileOf(job: ImportJobView): Promise<Uint8Array> {
   const f = job.fileId ? await readStoredFile(job.fileId) : null;
   if (!f) throw new Error(fmt('The file could not be read'));
+  // R-175: a file the antivirus flagged since the upload is never parsed.
+  if (f.blocked) throw new Error(SCAN_MESSAGES.blocked);
   return new Uint8Array(f.data.buffer, f.data.byteOffset, f.data.byteLength);
 }
 
@@ -226,7 +229,9 @@ export async function startImport(input: StartImportInput, viewer: ImportViewer)
   if (refused) return { ok: false, error: refused };
   let fileId: string;
   try {
-    const meta = await storeFile({ purpose: 'import', name: input.fileName, data: input.data, actor: { name: viewer.name } });
+    // R-175: checked by the antivirus before it is stored (infected or scanner unavailable → the refusal's message).
+    const data = await scanUpload(input.data, { purpose: 'import', name: input.fileName, actor: { name: viewer.name, personId: viewer.personId ?? null }, objectRef: 'Import' });
+    const meta = await storeFile({ purpose: 'import', name: input.fileName, data, actor: { name: viewer.name } });
     fileId = meta.id;
   } catch (e) {
     return { ok: false, error: errorOf(e) };
