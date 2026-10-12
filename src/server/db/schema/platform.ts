@@ -49,28 +49,48 @@ export const activityEvents = pgTable('activity_events', {
   actorPersonId: uuid('actor_person_id').references(() => persons.id),
   /** Display name: the person's full name or the system name. */
   actorName: text('actor_name').notNull(),
-  /** EN source sentence. */
+  /** EN source sentence (also written for keyed rows: older readers and exports keep working). */
   text: text('text').notNull(),
+  /**
+   * R-184 (NEW-D1-2): the system message the sentence was built from (src/domain/system-messages.ts) and its typed
+   * parameters, so the feed is shown in the viewer's language; null for rows written as plain text (legacy writers).
+   */
+  messageKey: text('message_key'),
+  messageParams: jsonb('message_params').$type<Record<string, unknown>>(),
   kind: text('kind').$type<ActivityKind>().notNull(),
   projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** Append-only audit trail (AUDIT 3572): who changed what, when — exportable for ISO 9001 audits. */
+/**
+ * Append-only audit trail (AUDIT 3572): who changed what, when — exportable for ISO 9001 audits (spec 11 §3.12).
+ * R-168: a database trigger refuses UPDATE, DELETE and TRUNCATE (custom migration `audit_append_only`); no foreign key may
+ * act on its rows (project_id is NO ACTION: a project with audit rows cannot be deleted). A maintenance script that must
+ * rewrite rows (GDPR purge, R-173) disables the trigger inside one transaction as the table owner.
+ */
 export const auditEntries = pgTable('audit_entries', {
   id: id(),
   occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
   actorPersonId: uuid('actor_person_id').references(() => persons.id),
+  /** R-168: the user account that acted (from the person, or the signed-in user); null for systems (Lucca, Codex, jobs…). */
+  actorUserId: uuid('actor_user_id').references(() => users.id),
   /** Display name of the actor (person full name or system). */
   actorName: text('actor_name').notNull(),
   /** Business reference of the object: "CR-008", "Request RQ-014", "Rate card", "Stock SG-BRK-SS2". */
   objectRef: text('object_ref').notNull(),
-  /** "status: Draft → In review". */
+  /** "status: Draft → In review" — byte-identical to what readers match (kpis.ts, quality.ts). */
   change: text('change').notNull(),
   /** "Change control", "Approvals", "Settings"… */
   area: text('area').notNull(),
   /** Optional structured target (table name + id) and project. */
   entityType: text('entity_type'),
   entityId: uuid('entity_id'),
-  projectId: uuid('project_id').references(() => projects.id, { onDelete: 'set null' }),
+  projectId: uuid('project_id').references(() => projects.id),
+  /** R-168: the values before and after the change (writers that hold them), and the reason given by the actor. */
+  before: jsonb('before').$type<Record<string, unknown>>(),
+  after: jsonb('after').$type<Record<string, unknown>>(),
+  reason: text('reason'),
+  /** R-184: the system message the change text was built from, and its typed parameters (as on activity_events). */
+  messageKey: text('message_key'),
+  messageParams: jsonb('message_params').$type<Record<string, unknown>>(),
 });

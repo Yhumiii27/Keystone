@@ -120,7 +120,8 @@ describe('Activity, integrations & audit body', () => {
     expect(out).toContain('href="/admin/integrations?view=connectors"');
     expect(out).toContain('href="/admin/integrations?source=stock"');
     expect(count(out, /class="[^"]*actRow/g)).toBe(12);
-    expect(plain).toContain(lang === 'en' ? 'Lucca · Imported 312 h for W39' : 'Lucca · Imported 312 h for W39');
+    // R-184 (NEW-D1-2): the seeded feed reads in French from its exact entries (the prototype left it in English).
+    expect(plain).toContain(lang === 'en' ? 'Lucca · Imported 312 h for W39' : 'Lucca · 312 h importées pour S39');
   });
 
   it.each(['en', 'fr'] as const)('%s: connectors table with modes, Sync now / Configure for the workspace only', async (lang) => {
@@ -164,7 +165,8 @@ describe('Activity, integrations & audit body', () => {
     expect(text(html(h(PlumbingBody, { view: empty, canEdit: true, t }), 'fr'))).toContain('Aucune entrée d’audit pour l’instant');
     // The area of connector runs is translated by the feature (not the shared dictionary: ERP-202 has a package "Integrations").
     const run = plumbingView({ ...{ view: 'audit' as const, source: null, activity: [], connectors: [], imports: [], counts: { eventsToday: 0, auditLast7Days: 1 }, unread: 0, personaTitle: 'Portfolio director' },
-      audit: [{ occurredAt: '2026-09-25T07:00:00.000Z', when: '25 Sep 09:00', who: 'Marie Lefebvre', object: 'Connector Lucca', change: 'sync', area: 'Integrations', projectCode: null }] }, t, 'fr');
+      audit: [{ occurredAt: '2026-09-25T07:00:00.000Z', when: '25 Sep 09:00', who: 'Marie Lefebvre', object: 'Connector Lucca', change: 'sync', area: 'Integrations', projectCode: null,
+        userEmail: null, reason: null, before: null, after: null, messageKey: null, messageParams: null }] }, t, 'fr');
     expect(run.audit[0].area).toBe('Intégrations');
     expect(makeT('fr')('Integrations')).toBe('Integrations');
   });

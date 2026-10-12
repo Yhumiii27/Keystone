@@ -4,6 +4,8 @@ import 'server-only';
 // and activity feed (docs/spec/11 §0 "Every state change also writes an AuditEntry", §3.12).
 import { and, eq, or } from 'drizzle-orm';
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
+import { isSystemActor } from '@/domain/audit-trail';
+import { messageText, type SystemMessage } from '@/domain/system-messages';
 import { nextBusinessNumber, type ActivityKind } from './codes';
 import { activityEvents, auditEntries, persons, projects, users } from './schema';
 import { demoFloor } from './seed/mode';
@@ -61,45 +63,87 @@ export async function nextNumber(q: Q, table: PgTable, column: PgColumn, prefix:
   return nextBusinessNumber(rows.map((r) => r.n), prefix, pad, await demoFloor(q, floor));
 }
 
-export interface AuditInput {
+/** The text of an audit or activity row: plain English, or a system message (R-184) whose English template writes it. */
+type RowText<F extends string> = ({ [P in F]: string } & { message?: undefined }) | ({ [P in F]?: undefined } & { message: SystemMessage });
+
+interface AuditFields {
   /** Actor display name (person full name, or a system: "System", "Lucca"…). */
   actorName: string;
   actorPersonId?: string | null;
+  /**
+   * R-168: the user account that acted. Default: the user of `actorPersonId`, else of the person named `actorName`; null
+   * for a system actor (Lucca, Codex, Cursus, Vigie, jobs, the IT file…). Pass it when known (the signed-in user), and null
+   * explicitly when no account acted.
+   */
+  actorUserId?: string | null;
   /** "CR-008", "Request RQ-045", "Rate card". */
   objectRef: string;
-  /** "status: Draft → In review". */
-  change: string;
   /** "Change control", "Approvals", "Settings"… */
   area: string;
   entityType?: string | null;
   entityId?: string | null;
   projectId?: string | null;
   occurredAt?: Date;
+  /** R-168: the values before and after the change (the fields that changed), when the writer holds them. */
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
+  /** R-168: the reason the actor gave (rejection, cancellation, override…). */
+  reason?: string | null;
 }
 
-/** Appends one audit row (AUDIT shape: when, who, object, change, area). */
+/**
+ * One audit row: `change` ("status: Draft → In review") — kept byte-identical where readers match it (kpis.ts, quality.ts) —
+ * or a system `message` (R-184) whose English template writes `change`.
+ */
+export type AuditInput = AuditFields & RowText<'change'>;
+
+/** The user behind an audit actor (R-168): explicit, else the person's account, else the named person's; systems have none. */
+async function auditUserOf(q: Q, e: AuditFields): Promise<string | null> {
+  if (e.actorUserId !== undefined) return e.actorUserId;
+  let personId = e.actorPersonId ?? null;
+  if (!personId) {
+    if (isSystemActor(e.actorName)) return null;
+    personId = (await findPerson(q, e.actorName))?.id ?? null;
+  }
+  if (!personId) return null;
+  const [u] = await q.select({ id: users.id }).from(users).where(eq(users.personId, personId));
+  return u?.id ?? null;
+}
+
+/**
+ * Appends one audit row (AUDIT shape: when, who, object, change, area; R-168: user, before / after, reason; R-184: message
+ * key and parameters). The table is append-only: a database trigger refuses UPDATE, DELETE and TRUNCATE.
+ */
 export async function writeAudit(q: Q, e: AuditInput): Promise<void> {
+  const change = e.message ? messageText(e.message) : e.change!;
   await q.insert(auditEntries).values({
-    occurredAt: e.occurredAt ?? new Date(), actorName: e.actorName, actorPersonId: e.actorPersonId ?? null, objectRef: e.objectRef,
-    change: e.change, area: e.area, entityType: e.entityType ?? null, entityId: e.entityId ?? null, projectId: e.projectId ?? null,
+    occurredAt: e.occurredAt ?? new Date(), actorName: e.actorName, actorPersonId: e.actorPersonId ?? null, actorUserId: await auditUserOf(q, e),
+    objectRef: e.objectRef, change, area: e.area, entityType: e.entityType ?? null, entityId: e.entityId ?? null, projectId: e.projectId ?? null,
+    before: e.before ?? null, after: e.after ?? null, reason: e.reason?.trim() || null,
+    messageKey: e.message?.key ?? null, messageParams: e.message?.params ?? null,
   });
 }
 
-export interface ActivityInput {
+interface ActivityFields {
   actorName: string;
   actorPersonId?: string | null;
-  /** EN source sentence: "Submitted CR-008 for review · +85 k€ · −12 d". */
-  text: string;
   kind: ActivityKind;
   projectId?: string | null;
   occurredAt?: Date;
 }
 
+/**
+ * One activity-feed event: `text`, the EN source sentence ("Submitted CR-008 for review · +85 k€ · −12 d"), or a system
+ * `message` (R-184) whose English template writes `text` and whose key and parameters let the feed show it in the viewer's
+ * language.
+ */
+export type ActivityInput = ActivityFields & RowText<'text'>;
+
 /** Appends one activity-feed event (ACTIVITY shape: when, who, what, kind). */
 export async function recordActivity(q: Q, e: ActivityInput): Promise<void> {
   await q.insert(activityEvents).values({
-    occurredAt: e.occurredAt ?? new Date(), actorName: e.actorName, actorPersonId: e.actorPersonId ?? null, text: e.text, kind: e.kind,
-    projectId: e.projectId ?? null,
+    occurredAt: e.occurredAt ?? new Date(), actorName: e.actorName, actorPersonId: e.actorPersonId ?? null, text: e.message ? messageText(e.message) : e.text!,
+    messageKey: e.message?.key ?? null, messageParams: e.message?.params ?? null, kind: e.kind, projectId: e.projectId ?? null,
   });
 }
 

@@ -13,6 +13,7 @@ import { and, eq, inArray, like } from 'drizzle-orm';
 import { rfqAverageCycleDays } from '@/domain/kpis';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { writeAudit } from '@/server/db/helpers';
 import { auditEntries, rfqQuotes, rfqs, suppliers } from '@/server/db/schema';
 import { recordReceiptQc } from '@/server/dal/deliveries';
 import {
@@ -313,8 +314,13 @@ describe('Sourcing view models vs the prototype', () => {
       const number = await createRfq({ title: 'Column base plates', suppliers: 'Dillinger, Salzgitter', articles: 'KS-STL-0450', quantity: 12, replyDueOn: '2026-10-15', projectCode: 'HLT-026' }, 'Fabien Bertrand');
       const db = await getDb();
       const [r] = await db.select({ id: rfqs.id }).from(rfqs).where(eq(rfqs.number, number));
-      // The clock is real: date the "sent" audit entry 14 Sep and the award 23 Sep (Paris) to get a stable 9-day cycle.
-      await db.update(auditEntries).set({ occurredAt: new Date('2026-09-14T08:00:00Z') }).where(and(eq(auditEntries.entityId, r.id), like(auditEntries.change, 'RFQ sent to %')));
+      // The clock is real: an earlier "sent" audit entry on 14 Sep (the earliest counts) and the award 23 Sep (Paris) give a
+      // stable 9-day cycle. R-168: the audit trail is append-only — the entry is added, the one createRfq wrote is not changed.
+      const [sent] = await db.select().from(auditEntries).where(and(eq(auditEntries.entityId, r.id), like(auditEntries.change, 'RFQ sent to %')));
+      await writeAudit(db, {
+        actorName: sent.actorName, actorPersonId: sent.actorPersonId, objectRef: sent.objectRef, change: sent.change, area: sent.area, entityType: sent.entityType,
+        entityId: sent.entityId, projectId: sent.projectId, occurredAt: new Date('2026-09-14T08:00:00Z'),
+      });
       // Suppliers quote outside Keystone (no writer yet): two quotes recorded directly.
       const sups = await db.select({ id: suppliers.id, name: suppliers.name }).from(suppliers).where(inArray(suppliers.name, ['Dillinger', 'Salzgitter']));
       expect(sups).toHaveLength(2);

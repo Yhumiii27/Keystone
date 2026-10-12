@@ -185,6 +185,22 @@ async function main() {
   console.log('\nDelivery 2 tables (golden row counts)');
   for (const [table, n] of Object.entries(D2_COUNTS)) check(`${table} = ${n}`, counts[table] === n, counts[table]);
 
+  // Delivery 8, R-168: the seeded audit rows carry the user of their actor, and the trail is append-only (database trigger).
+  console.log('\nAudit trail (R-168)');
+  const auditUsers = await db.execute(sql`select count(*) filter (where a.actor_user_id is not null)::int as with_user,
+    count(*) filter (where a.actor_user_id is distinct from u.id)::int as wrong from audit_entries a left join users u on u.person_id = a.actor_person_id`);
+  const au = auditUsers.rows[0] as { with_user: number; wrong: number };
+  check('seeded audit rows carry the user of their actor (people with an account)', au.with_user > 0 && au.wrong === 0, au);
+  let refused = 0;
+  for (const stmt of [sql`update audit_entries set reason = 'db-check'`, sql`delete from audit_entries`, sql`truncate audit_entries`]) {
+    try {
+      await db.execute(stmt);
+    } catch {
+      refused++;
+    }
+  }
+  check('audit_entries refuses UPDATE, DELETE and TRUNCATE', refused === 3 && (await listAudit()).length === 8, refused);
+
   console.log('\nDelivery 3 tables (golden row counts)');
   for (const [table, n] of Object.entries(D3_COUNTS)) check(`${table} = ${n}`, counts[table] === n, counts[table]);
 

@@ -6,7 +6,7 @@ import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { NOTIFICATION_ICON, stampText, type ActivityKind, type NotificationKind } from '@/server/db/codes';
 import { nextNumber, recordActivity, writeAudit, type ActivityInput, type AuditInput } from '@/server/db/helpers';
-import { activityEvents, auditEntries, notificationRecipients, notifications, projects } from '@/server/db/schema';
+import { activityEvents, auditEntries, notificationRecipients, notifications, projects, users } from '@/server/db/schema';
 import { userIdOf, userIdsOfPersons, userIdsWithRoles, type UserRef } from './users';
 
 export interface NotificationRow {
@@ -128,7 +128,11 @@ export interface ActivityRow {
   when: string;
   /** Person full name or system ("Lucca", "System", "Sage X3"). */
   who: string;
+  /** EN text as stored. */
   what: string;
+  /** R-184: the system message the text was built from (null for plain-text rows): readers render it in the viewer's language. */
+  messageKey: string | null;
+  messageParams: Record<string, unknown> | null;
   kind: ActivityKind;
   projectCode: string | null;
 }
@@ -143,7 +147,10 @@ export async function listActivity(opts: { kind?: ActivityKind; limit?: number }
     .where(opts.kind ? eq(activityEvents.kind, opts.kind) : undefined)
     .orderBy(desc(activityEvents.occurredAt), asc(activityEvents.createdAt))
     .limit(opts.limit ?? 500);
-  return rows.map(({ a, code }) => ({ occurredAt: a.occurredAt.toISOString(), when: stampText(a.occurredAt), who: a.actorName, what: a.text, kind: a.kind, projectCode: code }));
+  return rows.map(({ a, code }) => ({
+    occurredAt: a.occurredAt.toISOString(), when: stampText(a.occurredAt), who: a.actorName, what: a.text, messageKey: a.messageKey, messageParams: a.messageParams,
+    kind: a.kind, projectCode: code,
+  }));
 }
 
 /** Appends an activity-feed event (server functions; the DAL writers of this delivery add audit rows). */
@@ -165,24 +172,35 @@ export interface AuditRow {
   /** "Change control". */
   area: string;
   projectCode: string | null;
+  /** R-168: sign-in e-mail of the user account that acted (null for a system actor or a person without account). */
+  userEmail: string | null;
+  /** R-168: the reason given, and the values before / after the change, when the writer recorded them. */
+  reason: string | null;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+  /** R-184: the system message the change text was built from (null for plain-text rows). */
+  messageKey: string | null;
+  messageParams: Record<string, unknown> | null;
 }
 
 /** Audit trail, newest first. */
 export async function listAudit(opts: { limit?: number; projectCode?: string } = {}): Promise<AuditRow[]> {
   const db = await getDb();
   const rows = await db
-    .select({ a: auditEntries, code: projects.code })
+    .select({ a: auditEntries, code: projects.code, email: users.email })
     .from(auditEntries)
     .leftJoin(projects, eq(projects.id, auditEntries.projectId))
+    .leftJoin(users, eq(users.id, auditEntries.actorUserId))
     .where(opts.projectCode ? eq(projects.code, opts.projectCode) : undefined)
     .orderBy(desc(auditEntries.occurredAt))
     .limit(opts.limit ?? 500);
-  return rows.map(({ a, code }) => ({
+  return rows.map(({ a, code, email }) => ({
     occurredAt: a.occurredAt.toISOString(), when: stampText(a.occurredAt), who: a.actorName, object: a.objectRef, change: a.change, area: a.area, projectCode: code,
+    userEmail: email, reason: a.reason, before: a.before, after: a.after, messageKey: a.messageKey, messageParams: a.messageParams,
   }));
 }
 
-/** Appends an audit row (for server functions writing outside this delivery's DAL writers). */
+/** Appends an audit row (for server functions writing outside this delivery's DAL writers); R-168: user, before / after, reason. */
 export async function addAudit(e: AuditInput): Promise<void> {
   await writeAudit(await getDb(), e);
 }

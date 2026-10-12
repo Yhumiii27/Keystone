@@ -32,9 +32,15 @@ const trFr = makeT('fr');
  * translates in full. Where the prototype left a string in English, the rebuild's French is its dictionary's.
  */
 const DICT_FIXES = new Set(['Financial / currency', 'Resources / skills']);
+/**
+ * R-184 (NEW-D1-2): the seeded activity feed and audit trail are shown from exact French entries (src/i18n/extra/
+ * d8-audit-i18n-shell.json) instead of the prototype's segment translation, which left them half English
+ * ("Submitted CR-008 for review · +85 k€ · −12 j").
+ */
+const SEEDED_FEED_FR = new Set(['Submitted CR-008 for review · +85 k€ · −12 d', 'Weekly snapshot W39 frozen · CPI 0.92 · SPI 0.90 · float −27 d']);
 /** FR value: the prototype's French, or — where the prototype left the English — the rebuild dictionary's French. */
 const fr = (en: unknown, frG: unknown): any => {
-  if (typeof en === 'string' && typeof frG === 'string') return frG === en || DICT_FIXES.has(en) ? trFr(en) : frG;
+  if (typeof en === 'string' && typeof frG === 'string') return frG === en || DICT_FIXES.has(en) || SEEDED_FEED_FR.has(en) ? trFr(en) : frG;
   if (Array.isArray(en)) return en.map((x, i) => fr(x, (frG as unknown[])[i]));
   if (en && typeof en === 'object') return Object.fromEntries(Object.entries(en).map(([k, v]) => [k, fr(v, (frG as any)[k])]));
   return frG;
@@ -73,7 +79,7 @@ describe('French of the administration screens', () => {
       else if (en && typeof en === 'object') for (const k of Object.keys(en)) walk(en[k], frG?.[k]);
     };
     walk(G.en, G.fr);
-    expect([...diff].sort()).toEqual([...DICT_FIXES].sort());
+    expect([...diff].sort()).toEqual([...DICT_FIXES, ...SEEDED_FEED_FR].sort());
     expect([...DICT_FIXES].map(trFr)).toEqual(['Financier / devise', 'Ressources / compétences']);
   });
 });
@@ -221,7 +227,16 @@ describe('Activity, integrations & audit view model', () => {
     expect(v.chipValue).toBe('');
     expect(v.activity.map((a) => ({ when: a.when, who: a.who, what: a.what, icon: `ph ph-${a.icon}` }))).toEqual(g((x) => x.plumbing.actRows.map((a: any) => ({ when: a.when, who: a.who, what: a.what, icon: a.icon }))));
     expect(v.imports.map((f) => ({ name: f.name, desc: f.description, icon: `ph ph-${f.icon}` }))).toEqual(g((x) => x.plumbing.importRows));
-    expect(v.audit.map((a) => ({ when: a.when, who: a.who, obj: a.object, change: a.change, area: a.area }))).toEqual(g((x) => x.plumbing.auditRows));
+    // R-184 (NEW-D1-2): the trail is no longer passed through the segment translator, which left "status: Draft → En revue"
+    // and "Request RQ-014": the generic "status: A → B" shape is rendered with translated status labels and the object's
+    // Keystone noun is translated before its reference.
+    const auditFr: Record<string, string> = {
+      'status: Draft → En revue': 'statut : Brouillon → En revue', 'status: Draft → En attente d’approbation': 'statut : Brouillon → En attente d’approbation',
+      'status: Impact analysis → En approbation': 'statut : Analyse d’impact → En approbation', 'status: Submitted → Accepté (PV)': 'statut : Soumis → Accepté (PV)',
+      'Request RQ-014': 'Demande RQ-014',
+    };
+    const audit = g((x) => x.plumbing.auditRows).map((r: any) => (lang === 'fr' ? { ...r, change: auditFr[r.change] ?? r.change, obj: auditFr[r.obj] ?? r.obj } : r));
+    expect(v.audit.map((a) => ({ when: a.when, who: a.who, obj: a.object, change: a.change, area: a.area }))).toEqual(audit);
   });
 
   it.each(['en', 'fr'] as const)('%s: connectors — the prototype rows with their real state (R-021), Codex / Cursus / Vigie mocks', async (lang) => {
