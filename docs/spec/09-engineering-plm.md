@@ -274,6 +274,8 @@ Card title `"<tree ref> · rev <from> → rev <to>"`, sub `"<date> · <eco>"` ("
 Table (12.5px): Line (12px tabular neutral-300) · Article · "Rev B" (right) · "Rev C" (right) · Change (tag: Added → accent, Substitution → outline, Quantity → neutral) · Cost delta (right).
 Formula: `ref = line.split(' / ').pop().split(' → ').pop()` (the new part); `d = int(b) − int(a)` (non-numbers → 0); delta = `±money$(|d| × lastPrice(ref))` or `—` if d = 0. Total = Σ d × lastPrice, formatted "`±€N` per crane". HLT: +€13,600 (VFD 2→3), —, —, +€860 (anemometer added), +€4,720 (plate 44→48) → "+€19,180 per crane".
 
+> **Delivery 8 (R-104, E-2b = a).** A line is priced new qty × new price − old qty × old price, both at the E-2a valuation (ordered, else last purchase, else catalogue); a quantity or added line is unchanged; an unknown price keeps the quantity-only rule. HLT: EL-HMI-10 → EL-HMI-15 "—" → "+€750", FD-DET-OPT → FD-DET-OPT2 "—" → "+€12" → "+€19,942 per crane". The delta's tooltip gives both prices old → new.
+
 ### 1.9 PU/PR list (`bomIsSpares` + `bomHasTree`, 1277–1307; 4255–4265)
 - **KPI row** `spKpis`:
 
@@ -903,7 +905,7 @@ Derived target: `{kind:'project'|'machine', key, disp, auto:boolean, note, pr?|m
 5. **Add article / New part / Sync vault / Import P&ID tags / New ECO** are toast-only. The New part form's "Family" (Structure, Mechanical, Electrical, Automation, Consumable) does not match the catalogue `type` list, and lacks make/buy, manufacturer ref, HS code, restrictions, lead time.
 6. **BOM value double counting**: the flat BOM includes both assemblies (ASM-*, with list prices) and their components, so "BOM value" (HLT €14.05M) adds both. Should the flat list/value exclude assemblies or components?
 7. **Price basis**: flat list and BOM value use list price; tree roll-up, PU/PR list and revision comparison use last purchase price. Confirm.
-8. **Compare revisions**: substitutions show no cost delta even when the new part costs more (only quantity changes are priced). Should substitutions be priced as (new − old)?
+8. **Compare revisions**: substitutions show no cost delta even when the new part costs more (only quantity changes are priced). Should substitutions be priced as (new − old)? — **Answered E-2b = a (Delivery 8, R-104):** yes, new qty × new price − old qty × old price (§1.8).
 9. **"Under change" in PU/PR list** reads raw `ECOS` statuses, ignoring user overrides; the rest of the area uses derived statuses.
 10. **PM approval of multi-project ECOs** is a single `pm` key although several PMs are listed. One approval per impacted PM? Director cannot approve at all.
 11. **"Validate release (PM)"** has no role check and bypasses the Codex approval circuit (`DOC_TYPES` circuits). Who may validate?

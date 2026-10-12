@@ -23,6 +23,7 @@ import {
 } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
 import { bomShortfall, type ShortfallLine } from '@/domain/bom';
+import { isCancellablePo, poCancelReason, poCancelRight, poX3State, type PoCancelActor, type PoCancelKind } from '@/domain/orders';
 import { leadsProject } from './project-team';
 import { orderDeliveryTerms } from '@/domain/order-terms';
 
@@ -92,6 +93,8 @@ export interface PurchaseOrderRow {
   submittedAt: string | null;
   decidedBy: string | null;
   decidedAt: string | null;
+  /** R-095: why, by whom and when the order was cancelled before it was placed (cancelled, withdrawn or rejected); null otherwise. */
+  cancellation: { at: string; by: string | null; reason: string } | null;
   x3Ref: string | null;
   position: number;
 }
@@ -102,8 +105,9 @@ async function loadOrders(q: Q, where: ReturnType<typeof eq> | undefined): Promi
   const creator = sql<string | null>`(select coalesce(${persons.fullName}, ${persons.shortName}) from ${persons} where ${persons.id} = ${purchaseOrders.createdByPersonId})`;
   const submitter = sql<string | null>`(select coalesce(${persons.fullName}, ${persons.shortName}) from ${persons} where ${persons.id} = ${purchaseOrders.submittedByPersonId})`;
   const decider = sql<string | null>`(select coalesce(${persons.fullName}, ${persons.shortName}) from ${persons} where ${persons.id} = ${purchaseOrders.decidedByPersonId})`;
+  const canceller = sql<string | null>`(select coalesce(${persons.fullName}, ${persons.shortName}) from ${persons} where ${persons.id} = ${purchaseOrders.cancelledByPersonId})`;
   const rows = await q
-    .select({ o: purchaseOrders, code: projects.code, supplier: suppliers.name, creator, submitter, decider, act: activities, pCurrency: projects.currency, pRate: projects.budgetRate })
+    .select({ o: purchaseOrders, code: projects.code, supplier: suppliers.name, creator, submitter, decider, canceller, act: activities, pCurrency: projects.currency, pRate: projects.budgetRate })
     .from(purchaseOrders)
     .innerJoin(projects, eq(projects.id, purchaseOrders.projectId))
     .innerJoin(suppliers, eq(suppliers.id, purchaseOrders.supplierId))
@@ -117,7 +121,7 @@ async function loadOrders(q: Q, where: ReturnType<typeof eq> | undefined): Promi
     .innerJoin(parts, eq(parts.id, poLines.partId))
     .where(inArray(poLines.poId, rows.map((r) => r.o.id)))
     .orderBy(asc(poLines.position));
-  return rows.map(({ o, code, supplier, creator: c, submitter: s, decider: d, act, pCurrency, pRate }) => {
+  return rows.map(({ o, code, supplier, creator: c, submitter: s, decider: d, canceller, act, pCurrency, pRate }) => {
     const fx = projectFxOf({ currency: pCurrency, budgetRate: pRate });
     // A Received order shows every line fully received (`allPOs` 4308).
     const ls = lines.filter((l) => l.l.poId === o.id).map(({ l, ref, name, status }) => {
@@ -134,6 +138,7 @@ async function loadOrders(q: Q, where: ReturnType<typeof eq> | undefined): Promi
       partStatusIssue: ls.some((l) => l.partStatus !== 'validated'), neededFor: need,
       late: !!need && need.percentComplete > 0 && !OPEN_LINE_STATUSES.includes(o.status), deliveryTerms: o.deliveryTerms,
       createdBy: c, submittedBy: s, submittedAt: o.submittedAt?.toISOString() ?? null, decidedBy: d, decidedAt: o.decidedAt?.toISOString() ?? null, x3Ref: o.x3Ref,
+      cancellation: o.status === 'cancelled' && o.cancelledAt && o.cancelReason ? { at: o.cancelledAt.toISOString(), by: canceller, reason: o.cancelReason } : null,
       position: o.position,
     };
   });
@@ -266,7 +271,9 @@ export async function createDraftPurchaseOrders(projectCode: string, actorName: 
 }
 
 async function loadPo(tx: Tx, number: string) {
-  const [o] = await tx.select().from(purchaseOrders).where(eq(purchaseOrders.number, number));
+  // Locked for the transaction (R-095): a withdrawal and an approval of the same order are serialised, the second one
+  // re-reads the status and is refused.
+  const [o] = await tx.select().from(purchaseOrders).where(eq(purchaseOrders.number, number)).for('update');
   if (!o) throw new Error(`Unknown purchase order ${number}`);
   return o;
 }
@@ -296,21 +303,117 @@ export async function approvePurchaseOrder(number: string, actorName: string): P
   await decidePurchaseOrder(number, 'ordered', actorName);
 }
 
-/** My approvals "Reject": Awaiting approval → Cancelled, by the director or the project's manager. */
-export async function rejectPurchaseOrder(number: string, actorName: string): Promise<void> {
-  await decidePurchaseOrder(number, 'cancelled', actorName);
+/**
+ * My approvals "Reject": Awaiting approval → Cancelled, by the director or the project's manager. R-095: the reason is
+ * required (trimmed, ≤ 1000 characters) and stored on the order with the rejecter and the time. Returns the persons to
+ * tell (author and submitter, the rejecter left out) for a best-effort notice after the commit.
+ */
+export async function rejectPurchaseOrder(number: string, actorName: string, reason: string): Promise<PoCancelOutcome> {
+  return decidePurchaseOrder(number, 'cancelled', actorName, checkedReason(reason));
 }
 
-async function decidePurchaseOrder(number: string, to: 'ordered' | 'cancelled', actorName: string): Promise<void> {
+async function decidePurchaseOrder(number: string, to: 'ordered' | 'cancelled', actorName: string, reason: string | null = null): Promise<PoCancelOutcome> {
   const db = await getDb();
-  await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     const o = await loadPo(tx, number);
-    if (o.status !== 'awaiting_approval') throw new Error(`${number} is not awaiting approval`);
+    if (o.status !== 'awaiting_approval') throw new PurchaseOrderError('stale', `${number} is not awaiting approval`);
     const a = await requirePoApprover(tx, o.projectId, actorName);
     const at = new Date();
-    await tx.update(purchaseOrders).set({ status: to, decidedByPersonId: a.personId, decidedAt: at, updatedAt: at }).where(eq(purchaseOrders.id, o.id));
-    await writeAudit(tx, { actorName: a.name, actorPersonId: a.personId, objectRef: number, change: `status: Awaiting approval → ${poStatus.label(to)}`, area: 'Purchase orders', entityType: 'purchase_order', entityId: o.id, projectId: o.projectId, occurredAt: at });
+    const cancel = to === 'cancelled' ? { cancelReason: reason, cancelledByPersonId: a.personId, cancelledAt: at } : {};
+    await tx.update(purchaseOrders).set({ status: to, decidedByPersonId: a.personId, decidedAt: at, updatedAt: at, ...cancel }).where(eq(purchaseOrders.id, o.id));
+    await writeAudit(tx, {
+      actorName: a.name, actorPersonId: a.personId, objectRef: number, change: `status: Awaiting approval → ${poStatus.label(to)}${reason ? ` · ${reason}` : ''}`, area: 'Purchase orders',
+      entityType: 'purchase_order', entityId: o.id, projectId: o.projectId, occurredAt: at,
+    });
     if (to === 'ordered') await recordActivity(tx, { actorName: a.name, actorPersonId: a.personId, text: `Approved and ordered ${number}`, kind: 'change', projectId: o.projectId, occurredAt: at });
+    else await recordActivity(tx, { actorName: a.name, actorPersonId: a.personId, text: `Rejected ${number}`, kind: 'change', projectId: o.projectId, occurredAt: at });
+    return { notify: othersThan([o.createdByPersonId, o.submittedByPersonId], a.personId) };
+  });
+}
+
+// ── R-095: cancel an order before it is placed (SC-3a = a, P-5c = a) ───────────────────────────────────
+
+/** Refusal of a cancellation / rejection: `stale` = the order moved on since the page was rendered. */
+export type PurchaseOrderErrorCode = 'stale' | 'not_allowed' | 'not_local' | 'reason_required' | 'reason_too_long';
+export class PurchaseOrderError extends Error {
+  constructor(readonly code: PurchaseOrderErrorCode, message: string) {
+    super(message);
+    this.name = 'PurchaseOrderError';
+  }
+}
+
+/** Who to tell after a cancellation or a rejection (persons, the actor left out). */
+export interface PoCancelOutcome {
+  notify: string[];
+}
+
+const othersThan = (ids: (string | null)[], actorId: string | null) => [...new Set(ids.filter((x): x is string => !!x && x !== actorId))];
+
+/** The reason of a cancellation / rejection, checked again by the writer (trimmed, required, ≤ 1000 characters). */
+function checkedReason(reason: unknown): string {
+  const r = poCancelReason(reason);
+  if (!r.ok) throw new PurchaseOrderError(r.error === 'The reason is too long' ? 'reason_too_long' : 'reason_required', r.error);
+  return r.value;
+}
+
+/** PM rights on the project (PM of record, co-PM, deputy) or the portfolio director among the actor's roles (as `requirePoApprover`). */
+async function poActor(q: Q, projectId: string, actorName: string): Promise<PoCancelActor & { name: string }> {
+  const a = await actorOf(q, actorName);
+  return { personId: a.personId, name: a.name, lead: a.roles.includes('director') || (await leadsProject(q, projectId, a.personId)) };
+}
+
+/** What the viewer may do to each order of the project before it is placed (`cancel` a Draft, `withdraw` from approval); absent = nothing. */
+export async function poCancelRights(projectCode: string, actorName: string): Promise<Record<string, PoCancelKind>> {
+  const db = await getDb();
+  const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, projectCode));
+  if (!p) return {};
+  const rows = await db
+    .select({
+      number: purchaseOrders.number, status: purchaseOrders.status, origin: purchaseOrders.origin, x3Ref: purchaseOrders.x3Ref, createdByPersonId: purchaseOrders.createdByPersonId,
+      submittedByPersonId: purchaseOrders.submittedByPersonId,
+    })
+    .from(purchaseOrders)
+    .where(and(eq(purchaseOrders.projectId, p.id), inArray(purchaseOrders.status, ['draft', 'awaiting_approval'])));
+  if (!rows.some(isCancellablePo)) return {};
+  const actor = await poActor(db, p.id, actorName);
+  const out: Record<string, PoCancelKind> = {};
+  for (const r of rows) {
+    const k = poCancelRight(r, actor);
+    if (k) out[r.number] = k;
+  }
+  return out;
+}
+
+/**
+ * "Cancel order" (Orders drawer): a Draft cancelled by its author, the project's leads or the director; an order awaiting
+ * approval withdrawn by whoever sent it (`poCancelRight`). Only orders drafted in Keystone and not in Sage X3; never once
+ * placed. The status, the origin and the actor's right are re-read inside the transaction (a withdrawal racing an approval
+ * loses cleanly); the reason (required, ≤ 1000 characters) is stored with the actor and the time, audited as
+ * "status: Draft → Cancelled · <reason>". The RFQ that drafted the order stays awarded. Returns who to tell after the commit.
+ */
+export async function cancelPurchaseOrder(number: string, reason: string, actorName: string, at: Date = new Date()): Promise<PoCancelOutcome & { kind: PoCancelKind }> {
+  const why = checkedReason(reason);
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const [o] = await tx.select().from(purchaseOrders).where(eq(purchaseOrders.number, number)).for('update');
+    if (!o) throw new Error(`Unknown purchase order ${number}`);
+    if (poX3State(o) !== 'local') throw new PurchaseOrderError('not_local', `${number} is in Sage X3: cancel it there`);
+    if (!isCancellablePo(o)) throw new PurchaseOrderError('stale', `${number} can no longer be cancelled`);
+    const actor = await poActor(tx, o.projectId, actorName);
+    const kind = poCancelRight(o, actor);
+    if (!kind) throw new PurchaseOrderError('not_allowed', `${actor.name} may not cancel ${number}`);
+    await tx.update(purchaseOrders)
+      .set({ status: 'cancelled', cancelReason: why, cancelledByPersonId: actor.personId, cancelledAt: at, updatedAt: at })
+      .where(eq(purchaseOrders.id, o.id));
+    await writeAudit(tx, {
+      actorName: actor.name, actorPersonId: actor.personId, objectRef: number, change: `status: ${poStatus.label(o.status)} → Cancelled · ${why}`, area: 'Purchase orders',
+      entityType: 'purchase_order', entityId: o.id, projectId: o.projectId, occurredAt: at,
+    });
+    await recordActivity(tx, {
+      actorName: actor.name, actorPersonId: actor.personId, text: kind === 'withdraw' ? `Withdrew ${number} from approval` : `Cancelled ${number}`, kind: 'change',
+      projectId: o.projectId, occurredAt: at,
+    });
+    return { kind, notify: othersThan([o.createdByPersonId, o.submittedByPersonId], actor.personId) };
   });
 }
 
@@ -365,12 +468,14 @@ export interface RfqRow {
   lastPriceEur: number | null;
   /** Draft order created by the award. */
   purchaseOrderNumber: string | null;
+  /** R-095: where that order stands now (Draft, Cancelled, Ordered…); null without an order. */
+  purchaseOrderStatus: PoStatus | null;
   position: number;
 }
 
 async function loadRfqs(q: Q, number?: string): Promise<RfqRow[]> {
   const rows = await q
-    .select({ r: rfqs, code: projects.code, ref: parts.ref, name: parts.name, list: parts.listPriceEur, last: partLastPrices.unitPriceEur, po: purchaseOrders.number, by: persons.fullName })
+    .select({ r: rfqs, code: projects.code, ref: parts.ref, name: parts.name, list: parts.listPriceEur, last: partLastPrices.unitPriceEur, po: purchaseOrders.number, poSt: purchaseOrders.status, by: persons.fullName })
     .from(rfqs)
     .leftJoin(projects, eq(projects.id, rfqs.projectId))
     .leftJoin(parts, eq(parts.id, rfqs.partId))
@@ -384,7 +489,7 @@ async function loadRfqs(q: Q, number?: string): Promise<RfqRow[]> {
     .select({ qt: rfqQuotes, supplier: suppliers.name })
     .from(rfqQuotes).innerJoin(suppliers, eq(suppliers.id, rfqQuotes.supplierId))
     .where(inArray(rfqQuotes.rfqId, rows.map((r) => r.r.id))).orderBy(asc(rfqQuotes.position));
-  return rows.map(({ r, code, ref, name, list, last, po, by }) => {
+  return rows.map(({ r, code, ref, name, list, last, po, poSt, by }) => {
     const qs = quotes.filter((x) => x.qt.rfqId === r.id);
     const best = qs.length ? Math.min(...qs.map((x) => x.qt.unitPriceEur)) : null;
     const fastest = qs.length ? Math.min(...qs.map((x) => x.qt.leadWeeks)) : null;
@@ -398,7 +503,7 @@ async function loadRfqs(q: Q, number?: string): Promise<RfqRow[]> {
         grade: qt.grade, score: qt.score, isBest: qt.unitPriceEur === best, isFastest: qt.leadWeeks === fastest,
         deltaEur: best == null ? 0 : (qt.unitPriceEur - best) * (r.quantity ?? 1), awarded: qt.id === r.awardedQuoteId,
       })),
-      bestUnitPriceEur: best, awardedTo: awarded?.supplier ?? null, awardedBy: by ?? null, lastPriceEur: ref ? (last ?? list) : null, purchaseOrderNumber: po ?? null, position: r.position,
+      bestUnitPriceEur: best, awardedTo: awarded?.supplier ?? null, awardedBy: by ?? null, lastPriceEur: ref ? (last ?? list) : null, purchaseOrderNumber: po ?? null, purchaseOrderStatus: poSt ?? null, position: r.position,
     };
   });
 }

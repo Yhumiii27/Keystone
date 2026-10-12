@@ -328,11 +328,25 @@ export function resolvePartQuery<T extends { ref: string; name: string }>(parts:
 /** The new part of a comparison line ("ASM-DRV-700 / EL-HMI-10 → EL-HMI-15" → EL-HMI-15). */
 export const diffNewRef = (path: string) => path.split(' / ').pop()!.split(' → ').pop()!;
 
+/** The old part of a comparison line ("ASM-DRV-700 / EL-HMI-10 → EL-HMI-15" → EL-HMI-10); without "→", the same part as `diffNewRef`. */
+export const diffOldRef = (path: string) => path.split(' / ').pop()!.split(' → ')[0];
+
 /** Quantity change of a comparison line ("—" counts 0). */
 export const diffQtyDelta = (from: number | null, to: number | null) => (to ?? 0) - (from ?? 0);
 
-/** Cost delta of a line: quantity change × the unit price (E-2a valuation; substitutions at equal quantity: 0, 09 OQ8). */
-export const diffCostDelta = (from: number | null, to: number | null, unitPriceEur: number | null) => diffQtyDelta(from, to) * (unitPriceEur ?? 0);
+/**
+ * Cost delta of a line (E-2b = a, R-104 — the 09 OQ8 "substitution at equal quantity costs 0" is closed): the new quantity
+ * at the new part's price minus the old quantity at the old part's price, both valued by the E-2a rule (ordered, else last
+ * purchase, else catalogue). A quantity line or an added line (same part, or no old quantity) gives the quantity change ×
+ * the price, as before. Default beyond E-2b (which only defines the equal-quantity case): a substitution whose quantity also
+ * changes uses the same formula. When the old price is unknown (`oldUnitEur` undefined / null — a part missing from the
+ * catalogue), the quantity-only rule applies: never the whole new price.
+ */
+export function diffCostDelta(from: number | null, to: number | null, newUnitEur: number | null, oldUnitEur?: number | null): number {
+  if (newUnitEur == null) return 0;
+  if (oldUnitEur == null) return diffQtyDelta(from, to) * newUnitEur;
+  return (to ?? 0) * newUnitEur - (from ?? 0) * oldUnitEur;
+}
 
 // ── PU/PR list ─────────────────────────────────────────────────────────────────────────────────────────
 

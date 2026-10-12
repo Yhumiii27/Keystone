@@ -15,7 +15,7 @@ import 'server-only';
 // src/domain/bom.ts, golden-tested against the prototype.
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import {
-  ORDERED_PO_STATUSES, assemblyPaths, assemblyRows, bomSummary, bomUnitPrice, buildAssembly, defaultWhereUsedRef, diffCostDelta, diffNewRef, isValuedByComponents,
+  ORDERED_PO_STATUSES, assemblyPaths, assemblyRows, bomSummary, bomUnitPrice, buildAssembly, defaultWhereUsedRef, diffCostDelta, diffNewRef, diffOldRef, isValuedByComponents,
   orderedUnitPrice, pathQuantity, resolvePartQuery, systemQuantity, type AssemblyLink, type AssemblyNode, type BomPriceSource,
 } from '@/domain/bom';
 import { projectFxOf, toEur } from '@/domain/currency';
@@ -270,12 +270,16 @@ export interface RevisionComparison {
   toRevision: string;
   date: string;
   ecoNumber: string | null;
-  /** `unitPriceEur`: the new part's valuation (E-2a: ordered, else last purchase, else catalogue) and its source. */
+  /**
+   * `unitPriceEur`: the new part's valuation (E-2a: ordered, else last purchase, else catalogue) and its source; `old*`: the
+   * old part's (R-104, E-2b — the same part on a quantity or added line).
+   */
   lines: {
     path: string; name: string; qtyFrom: number | null; qtyTo: number | null; kind: RevisionDiffKind; kindLabel: string; newRef: string;
     unitPriceEur: number | null; priceSource: BomPriceSource | null; deltaEur: number;
+    oldRef: string; oldUnitPriceEur: number | null; oldPriceSource: BomPriceSource | null;
   }[];
-  /** Σ quantity delta × unit price (per root unit — "per crane"). */
+  /** Σ line deltas (new qty × new price − old qty × old price, E-2b), per root unit — "per crane". */
   totalDeltaEur: number;
 }
 
@@ -288,14 +292,18 @@ export async function getRevisionComparison(projectCode: string): Promise<Revisi
   if (!d) return null;
   const lines = await db.select().from(revisionDiffLines).where(eq(revisionDiffLines.diffId, d.d.id)).orderBy(asc(revisionDiffLines.position));
   const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, projectCode));
-  const prices = await projectPartValuation(p.id, lines.map((l) => diffNewRef(l.path)));
+  // E-2b (R-104): the old and the new part of each line valued once, by the same E-2a rule.
+  const prices = await projectPartValuation(p.id, [...new Set(lines.flatMap((l) => [diffNewRef(l.path), diffOldRef(l.path)]))]);
   const out = lines.map((l) => {
     const ref = diffNewRef(l.path);
+    const oldRef = diffOldRef(l.path);
     const v = prices.get(ref) ?? null;
-    const delta = diffCostDelta(l.qtyFrom, l.qtyTo, v?.unitEur ?? null);
+    const o = prices.get(oldRef) ?? null;
+    // An unknown price on either side keeps the quantity-only rule (never the whole new price).
+    const delta = diffCostDelta(l.qtyFrom, l.qtyTo, v?.unitEur ?? null, v && o ? o.unitEur : null);
     return {
       path: l.path, name: l.name, qtyFrom: l.qtyFrom, qtyTo: l.qtyTo, kind: l.kind, kindLabel: revisionDiffKind.label(l.kind), newRef: ref,
-      unitPriceEur: v?.unitEur ?? null, priceSource: v?.source ?? null, deltaEur: delta,
+      unitPriceEur: v?.unitEur ?? null, priceSource: v?.source ?? null, deltaEur: delta, oldRef, oldUnitPriceEur: o?.unitEur ?? null, oldPriceSource: o?.source ?? null,
     };
   });
   return { assemblyRef: asm.root.ref, fromRevision: d.d.fromRevision, toRevision: d.d.toRevision, date: d.d.diffDate, ecoNumber: d.d.ecoNumber, lines: out, totalDeltaEur: out.reduce((s, l) => s + l.deltaEur, 0) };

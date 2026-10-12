@@ -111,12 +111,13 @@ describe('stock Server Functions', () => {
     const local = (await listStock()).filter((s) => s.source === 'local').length;
     const r = await importFromX3Action();
     const sync = (await getX3StockSync())!;
-    expect(r).toEqual({ ok: true, toast: `Imported from Sage X3 · ${sync.x3Lines} lines · ${local} local changes kept` });
+    // R-034 (A-15): Sage X3 is not connected — the demo database's import is a simulation and says so.
+    expect(r).toEqual({ ok: true, toast: `Simulated import (Sage X3 not connected) · ${sync.x3Lines} lines · ${local} local changes kept` });
     expect(sync.localLines).toBe(local);
     expect((await line('KS-STL-0450', CENTRAL)).onHand).toBe(0);
     const id = (await line('KS-STL-0450', CENTRAL)).id;
     viewer.lang = 'fr';
-    expect(await pushStockLineAction(id)).toEqual({ ok: true, toast: `Envoyé vers Sage X3 · KS-STL-0450 · ${CENTRAL} · 1 mouvement` });
+    expect(await pushStockLineAction(id)).toEqual({ ok: true, toast: `Envoi simulé (Sage X3 non connecté) · KS-STL-0450 · ${CENTRAL} · 1 mouvement` });
     expect(await line('KS-STL-0450', CENTRAL)).toMatchObject({ source: 'x3', onHand: 0 });
     expect((await getX3StockSync())!.localLines).toBe(local - 1);
     expect(await pushStockLineAction(id)).toEqual({ ok: true, toast: 'Rien à envoyer · cette ligne est à jour dans Sage X3' });

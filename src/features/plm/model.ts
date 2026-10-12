@@ -7,14 +7,14 @@ import { LO, OK, lifecycleTone } from '@/components/app/tones';
 import { canSee, type RoleKey } from '@/config/screens';
 import {
   clearPlmFilter, commercialLines, diffChangeText, diffKindTone, hasPlmFilter, identificationLines, nextPlmSort, partStatusNote, partStatusTone,
-  plmKpis, plmOptions, plmRows, restrictionCell, stockSummary, usedCountText, wearSpareTone,
+  plmKpis, plmOptions, plmRows, restrictionCell, stockSummary, usedCountText, wearSpareTone, canCompletePartRecord, canValidatePart, partValidationErrors,
   type PartFacts, type PlmSortKey, type PlmState,
 } from '@/domain/parts';
 import type { Lang, T } from '@/i18n/translate';
 import { moneyEur } from '@/lib/format';
 import { depositHref, docHref } from '@/features/docs/links';
 import { vaultRowView } from '@/features/docs/model';
-import { DRAWING_STATE_TAG, ECO_STATUS_TAG, displayOfIso, revisionDiffKind } from '@/server/db/codes';
+import { DRAWING_STATE_TAG, ECO_STATUS_TAG, displayOfIso, fmtDOfIso, revisionDiffKind } from '@/server/db/codes';
 import type { PartRow } from '@/server/dal/parts';
 import type { PartDrawerData } from '@/server/dal/plm';
 import { vigieNewEcoUrl } from '@/server/integrations/vigie/links';
@@ -209,6 +209,22 @@ export interface PartDrawerView {
   revisions: { label: string; current: KeyValue; events: RevisionEventView[]; empty: string | null };
   drawings: { label: string; rows: DrawerRow[]; empty: string | null };
   ecos: { label: string; rows: EcoRowView[]; empty: string | null; raise: { label: string; title: string; href: string } | null } | null;
+  /**
+   * R-102 (E-1a, E-1b): engineering's validation — who validated and when, what is still missing, "Complete the record" (the
+   * catalogue's editors while Not validated, the validators afterwards) and "Validate part" (engineering lead, director).
+   * Null when there is nothing to show or do (a seed Validated part, for a viewer who cannot change it).
+   */
+  qualification: PartQualificationView | null;
+}
+
+export interface PartQualificationView {
+  label: string;
+  items: KeyValue[];
+  /** Translated reasons the part cannot be validated yet ([] = complete). */
+  missing: string[];
+  complete: { label: string } | null;
+  /** Offered to the validators on a Not validated part; disabled while `missing` is not empty. */
+  validate: { label: string; enabled: boolean } | null;
 }
 
 export interface DrawerContext {
@@ -224,6 +240,25 @@ export interface DrawerContext {
 }
 
 const kv = (k: string, v: string, alert = false): KeyValue => ({ k, v, color: alert ? LO : OK });
+
+/** R-102: the drawer's Qualification section for this viewer (role in force), or null. */
+export function partQualificationView(p: PartRow, role: RoleKey, t: T): PartQualificationView | null {
+  const edits = canSee(role, 'plm');
+  const complete = canCompletePartRecord(p.status, role, edits);
+  const validating = p.status === 'not_validated';
+  if (!validating && !p.validatedAt && !complete) return null;
+  const missing = validating ? partValidationErrors(p).map((m) => t(m)) : [];
+  const items: KeyValue[] = [];
+  if (p.validatedAt) items.push(kv(t('Validated'), [t(fmtDOfIso(p.validatedAt.slice(0, 10))), p.validatedBy].filter(Boolean).join(' · ')));
+  if (validating) items.push(kv(t('Before validation'), missing.length ? missing.join(' · ') : t('Record complete'), missing.length > 0));
+  return {
+    label: t('Qualification'),
+    items,
+    missing,
+    complete: complete ? { label: t('Complete the record') } : null,
+    validate: canValidatePart(p.status, role) ? { label: t('Validate part'), enabled: !missing.length } : null,
+  };
+}
 
 export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, lang: Lang): PartDrawerView {
   const p = data.record;
@@ -370,5 +405,6 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
               : null,
           }
         : null,
+    qualification: partQualificationView(p, ctx.role, t),
   };
 }

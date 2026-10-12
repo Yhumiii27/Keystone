@@ -71,9 +71,14 @@ describe('BOM valuation on the seed (E-2a, R-103)', () => {
     const cmp = (await getRevisionComparison('HLT-026'))!;
     for (const l of cmp.lines) {
       if (l.unitPriceEur == null) continue;
-      expect(l.deltaEur).toBe(((l.qtyTo ?? 0) - (l.qtyFrom ?? 0)) * l.unitPriceEur);
+      // E-2b (R-104): new qty × new price − old qty × old price, both by the same E-2a rule (the same part except on a substitution).
+      expect(l.deltaEur).toBe((l.qtyTo ?? 0) * l.unitPriceEur - (l.qtyFrom ?? 0) * l.oldUnitPriceEur!);
       expect(['ordered', 'last_purchase', 'catalogue']).toContain(l.priceSource);
+      expect(['ordered', 'last_purchase', 'catalogue']).toContain(l.oldPriceSource);
     }
+    const subs = cmp.lines.filter((l) => l.kind === 'substitution').map((l) => [l.oldRef, l.newRef, l.deltaEur]);
+    expect(subs).toEqual([['EL-HMI-10', 'EL-HMI-15', 750], ['FD-DET-OPT', 'FD-DET-OPT2', 12]]);
+    expect(cmp.totalDeltaEur).toBe(19_942);
   });
 
   it('accepting goods updates the last purchase price (A-11) — the stock and the BOM read it', async () => {

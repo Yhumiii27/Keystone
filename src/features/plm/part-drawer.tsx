@@ -10,6 +10,8 @@
 // STOCK_BY_REF fixed), Projects equipped (where-used in project BOMs), Used in (assembly chains), Installed base
 // (the installed base and its as-maintained configuration), Revisions (REV_DIFF), Drawings, Engineering changes (Vigie ECOs,
 // "Open in Vigie", "Raise ECO" → Vigie's new-ECO form prefilled with the part; nothing is created in Keystone).
+// R-102 (E-1a, E-1b): a Qualification section under the banner — who validated and when, what is missing, "Complete the
+// record" and "Validate part" (engineering lead, director) — when there is something to show or do for the viewer.
 import { ArrowRight, ArrowSquareOut, ArrowsClockwise, Database, GitBranch, ListChecks, UploadSimple, Warning } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import type { FormDef } from '@/components/app/form-def';
@@ -21,9 +23,9 @@ import { canSee } from '@/config/screens';
 import { getPartDrawer, listEquivalentCandidates } from '@/server/dal/plm';
 import { VIGIE_LINK_ATTRS } from '@/server/integrations/vigie/links';
 import { getI18n, getLastProject, getViewer } from '@/server/session';
-import { localizePlmForm, registerEquivalentFormDef } from './forms';
+import { localizePlmForm, partQualificationFormDef, registerEquivalentFormDef } from './forms';
 import { partDrawerView, type DrawerRow, type EcoRowView, type PartDrawerView } from './model';
-import { RegisterEquivalentButton } from './plm-buttons';
+import { CompleteRecordButton, RegisterEquivalentButton, ValidatePartButton } from './plm-buttons';
 import s from './plm.module.css';
 
 export interface PartDrawerProps {
@@ -45,7 +47,9 @@ export async function PartDrawer({ partRef, projectCode, closeHref }: PartDrawer
   const register = view.equivalents.register
     ? { form: localizePlmForm(registerEquivalentFormDef(view.equivalents.register.candidates), t, lang), context: `${view.ref} · ${view.name}` }
     : null;
-  return <PartDrawerPanel key={view.ref} view={view} register={register} />;
+  // R-102: "Complete the record", prefilled with the part's values (the Server Function checks the rule again).
+  const complete = view.qualification?.complete ? { form: localizePlmForm(partQualificationFormDef(data.record), t, lang), context: `${view.ref} · ${view.name}` } : null;
+  return <PartDrawerPanel key={view.ref} view={view} register={register} complete={complete} />;
 }
 
 function RowBody({ r }: { r: DrawerRow }) {
@@ -109,9 +113,11 @@ export interface PartDrawerPanelProps {
   view: PartDrawerView;
   /** "Register equivalent" dialog (translated definition), when the viewer may edit the catalogue. */
   register: { form: FormDef; context: string } | null;
+  /** R-102 "Complete the record" dialog (translated definition), when the viewer may complete it. */
+  complete?: { form: FormDef; context: string } | null;
 }
 
-export function PartDrawerPanel({ view: v, register }: PartDrawerPanelProps) {
+export function PartDrawerPanel({ view: v, register, complete }: PartDrawerPanelProps) {
   return (
     <Drawer
       open
@@ -131,6 +137,20 @@ export function PartDrawerPanel({ view: v, register }: PartDrawerPanelProps) {
         <div className={s.warn} role="note">
           <Warning className={s.warnIcon} aria-hidden />
           <span className={s.warnText}>{v.warn}</span>
+        </div>
+      )}
+
+      {v.qualification && (
+        <div className={s.section}>
+          <KeyValueList title={v.qualification.label} items={v.qualification.items} />
+          {(v.qualification.complete || v.qualification.validate) && (
+            <div className={s.qualButtons}>
+              {v.qualification.complete && complete && <CompleteRecordButton partRef={v.ref} label={v.qualification.complete.label} form={complete.form} context={complete.context} />}
+              {v.qualification.validate && (
+                <ValidatePartButton partRef={v.ref} label={v.qualification.validate.label} disabled={!v.qualification.validate.enabled} title={v.qualification.missing.join(' · ') || undefined} />
+              )}
+            </div>
+          )}
         </div>
       )}
 

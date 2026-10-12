@@ -8,8 +8,8 @@
 // revalidation. Every mode is recorded — no row announces a decision it does not make.
 // Three rejections ask first (a small dialog, Esc / Cancel closes it): a resource request (the reason the PM sees, as on
 // Approvals), a forced stage change (the project goes back to the stage it left; optional comment) and, delivery 7, a
-// contingency draw-down (C-4, optional comment the requester sees) and a Codex document (R-124, the reason, required, sent to
-// Codex with the rejection).
+// contingency draw-down (C-4, optional comment the requester sees), a Codex document (R-124, the reason, required, sent to
+// Codex with the rejection) and, delivery 8, a purchase order (R-095, the reason, required, recorded on the cancelled order).
 import { Check, Warning, X } from '@phosphor-icons/react/dist/ssr';
 import { useId, useState, useTransition } from 'react';
 import { Callout } from '@/components/app/Callout';
@@ -21,6 +21,7 @@ import { useToast } from '@/components/ds/Toast';
 import type { ApprovalDecision } from '@/domain/approvals';
 import { FORCED_STAGE_COMMENT_MAX, FORCED_STAGE_REJECT_COMMENT_REQUIRED } from '@/domain/forced-stage';
 import { CODEX_REJECT_COMMENT_MAX } from '@/domain/codex-approvals';
+import { PO_CANCEL_REASON_MAX } from '@/domain/orders';
 import { decideReceiptFromInboxAction } from '@/features/deliveries/actions';
 import { decideDocumentFromInboxAction } from '@/features/docs/actions';
 import { decideEcoApprovalAction } from '@/features/eco/actions';
@@ -43,7 +44,8 @@ function recorder(decision: ApprovalDecision): (ok: boolean, note?: string) => P
     case 'change-request':
       return (ok) => decideChangeRequestAction({ projectCode: decision.projectCode, number: decision.number, step: decision.step, decision: ok ? 'ok' : 'rejected' });
     case 'purchase-order':
-      return (ok) => decidePurchaseOrderAction({ projectCode: decision.projectCode, number: decision.number, decision: ok ? 'ok' : 'rejected' });
+      // R-095: Reject cancels the order with its reason (required), stored on the order.
+      return (ok, note) => decidePurchaseOrderAction({ projectCode: decision.projectCode, number: decision.number, decision: ok ? 'ok' : 'rejected', reason: note });
     case 'delivery-qc':
       return (ok) => decideReceiptFromInboxAction({ projectCode: decision.projectCode, number: decision.number, decision: ok ? 'ok' : 'rejected' });
     case 'eco':
@@ -89,6 +91,9 @@ function rejectPrompt(decision: ApprovalDecision): RejectPrompt | null {
   if (decision.mode === 'contingency-draw') return { label: 'Comment — the requester sees this', required: false, max: 1000, notice: null, noticeValue: null };
   if (decision.mode === 'codex-document')
     return { label: 'Reason — sent to Codex with the rejection', required: true, max: CODEX_REJECT_COMMENT_MAX, notice: null, noticeValue: null };
+  // R-095 (SC-3a, P-5c): rejecting cancels the order; the reason is recorded on it and the buyer sees it.
+  if (decision.mode === 'purchase-order')
+    return { label: 'Reason — recorded on the cancelled order', required: true, max: PO_CANCEL_REASON_MAX, notice: 'Rejecting cancels the order', noticeValue: null };
   if (decision.mode === 'stage')
     return {
       label: 'Comment — the project manager sees this', required: FORCED_STAGE_REJECT_COMMENT_REQUIRED, max: FORCED_STAGE_COMMENT_MAX,

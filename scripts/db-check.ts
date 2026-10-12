@@ -482,7 +482,8 @@ async function delivery4Reads() {
   // E-2a (Delivery 7, R-103): roll-ups at the ordered price, else last purchase, else catalogue (was €713,996 at list price).
   check('assembly tree: ASM-RMG-250 ×2 unit €720,396 · extended €1,440,792; ASM-BOG-300 ext 8 · unit €11,222',
     same([asm.root.unitCostEur, asm.root.extendedCostEur, bog.extended, bog.unitCostEur], [720396, 1440792, 8, 11222]), [asm.root.unitCostEur, bog.unitCostEur]);
-  check('compare revisions B → C: +€19,180 per crane (ECO-2026-014)', (await getRevisionComparison('HLT-026'))?.totalDeltaEur === 19180);
+  // E-2b (R-104): the substitutions EL-HMI-10 → EL-HMI-15 (+€750) and FD-DET-OPT → FD-DET-OPT2 (+€12) are priced.
+  check('compare revisions B → C: +€19,942 per crane (ECO-2026-014)', (await getRevisionComparison('HLT-026'))?.totalDeltaEur === 19942);
   const sp = (await getSpareList('HLT-026'))!;
   check('PU/PR complete system ×2: 12 lines (4 PU) · €235k · 4 long lead · 3 under change · 10 below recommended stock (real on-hand)',
     same([sp.rows.length, sp.rows.filter((r) => r.kind === 'PU').length, Math.round(sp.rows.reduce((a, r) => a + r.totalEur, 0) / 1000), sp.rows.filter((r) => (r.leadWeeks ?? 0) > 8).length,

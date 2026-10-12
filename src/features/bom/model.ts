@@ -379,7 +379,7 @@ export interface CompareView {
   totalLabel: string;
   total: string;
   labels: Record<'line' | 'article' | 'from' | 'to' | 'change' | 'delta', string>;
-  /** `deltaTitle`: the unit price and its basis behind the delta (E-2a), null when the line has no price. */
+  /** `deltaTitle`: the unit price and its basis behind the delta (E-2a) — old → new for a substitution (R-104, E-2b); null when the line has no price. */
   rows: { line: string; name: string; a: string; b: string; kind: TagView; delta: string; deltaTitle: string | null }[];
 }
 
@@ -403,7 +403,12 @@ export function compareView(c: NonNullable<BomScreenData['comparison']>, t: T, l
     rows: c.lines.map((l) => ({
       line: l.path, name: dataT(l.name, lang), a: l.qtyFrom == null ? '—' : qtyText(l.qtyFrom, lang), b: l.qtyTo == null ? '—' : qtyText(l.qtyTo, lang),
       kind: { label: t(l.kindLabel), cls: DIFF_TAG[l.kind] }, delta: l.deltaEur ? (prices ? signedEur(l.deltaEur, lang) : PRICE_MASK) : '—',
-      deltaTitle: prices && l.unitPriceEur != null && l.priceSource ? `${moneyEur(l.unitPriceEur, lang)} · ${t(BOM_PRICE_SOURCE_LABEL[l.priceSource])}` : null,
+      // R-104 (E-2b): a substitution's tooltip gives both prices and their sources, old → new; masked with the prices (R-046).
+      deltaTitle: !prices || l.unitPriceEur == null || !l.priceSource
+        ? null
+        : l.kind === 'substitution' && l.oldUnitPriceEur != null && l.oldPriceSource && l.oldRef !== l.newRef
+          ? `${l.oldRef} ${moneyEur(l.oldUnitPriceEur, lang)} · ${t(BOM_PRICE_SOURCE_LABEL[l.oldPriceSource])} → ${l.newRef} ${moneyEur(l.unitPriceEur, lang)} · ${t(BOM_PRICE_SOURCE_LABEL[l.priceSource])}`
+          : `${moneyEur(l.unitPriceEur, lang)} · ${t(BOM_PRICE_SOURCE_LABEL[l.priceSource])}`,
     })),
   };
 }

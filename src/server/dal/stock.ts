@@ -23,6 +23,7 @@ import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/help
 import { activities, parts, partLastPrices, projects, stockMovements, stockPositions, storageLocations, wbsNodes, x3SyncRuns } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
 import { X3_LAST_IMPORT, x3StockSnapshot } from '@/server/integrations/x3/prototype-snapshot';
+import { requireX3Simulation } from '@/server/integrations/x3/mock-mode';
 import { managesProject, type Actor } from './ops-common';
 import { actorSees, onProjectTeam } from './team-guard';
 
@@ -424,6 +425,7 @@ export interface X3ImportResult {
  * theirs too (X3 holds them). Records the import run and the audit row.
  */
 export async function importStockFromX3(actorName: string, at: Date = new Date()): Promise<X3ImportResult> {
+  await requireX3Simulation(); // R-034: a simulation over the prototype snapshot — demo database only
   const db = await getDb();
   return db.transaction(async (tx) => {
     const [rows, pushed, locs, partRows, projectRows] = await Promise.all([
@@ -474,7 +476,7 @@ export async function importStockFromX3(actorName: string, at: Date = new Date()
     await tx.insert(x3SyncRuns).values({ kind: 'stock_import', occurredAt: at, lineCount: n, requestedByPersonId: actor?.id ?? null });
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: 'Sage X3',
-      change: `stock import · ${n} lines · ${plan.update.length + created} updated · ${plan.keptLocal} local kept`, area: 'Stock', occurredAt: at,
+      change: `simulated stock import (Sage X3 not connected) · ${n} lines · ${plan.update.length + created} updated · ${plan.keptLocal} local kept`, area: 'Stock', occurredAt: at,
     });
     const p = parisParts(at);
     return { time: `${p.hh}:${p.mm}`, lines: n, updated: plan.update.length + created, keptLocal: plan.keptLocal };
@@ -487,6 +489,7 @@ export async function importStockFromX3(actorName: string, at: Date = new Date()
  * Returns the lines and movements pushed.
  */
 export async function pushStockToX3(actorName: string, at: Date = new Date(), opts: { positionId?: string } = {}): Promise<{ lines: number; movements: number }> {
+  await requireX3Simulation(); // R-034: Sage X3 is not connected — demo database only
   const db = await getDb();
   return db.transaction(async (tx) => {
     let local: { id: string }[];
@@ -513,7 +516,7 @@ export async function pushStockToX3(actorName: string, at: Date = new Date(), op
     await tx.insert(x3SyncRuns).values({ kind: 'stock_push', occurredAt: at, lineCount: local.length, requestedByPersonId: actor?.id ?? null });
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef,
-      change: `stock push · ${local.length} lines · ${moves.length} movements`, area: 'Stock', occurredAt: at,
+      change: `simulated stock push (Sage X3 not connected) · ${local.length} lines · ${moves.length} movements`, area: 'Stock', occurredAt: at,
       entityType: opts.positionId ? 'stock_position' : undefined, entityId: opts.positionId,
     });
     return { lines: local.length, movements: moves.length };

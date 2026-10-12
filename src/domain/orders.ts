@@ -33,6 +33,57 @@ export const isOpenPo = (s: PoStatus) => s !== 'received' && s !== 'cancelled';
 /** Counted in "Committed" (Ordered, not cancelled — Awaiting approval included, as in the prototype). */
 export const isCommittedPo = (s: PoStatus) => s !== 'cancelled' && s !== 'draft';
 
+// ── Cancellation before the order is placed (R-095: SC-3a = a, P-5c = a) ──────────────────────────────
+
+/** Longest cancellation / rejection reason (characters, after trimming). */
+export const PO_CANCEL_REASON_MAX = 1000;
+
+/** `cancel` = a Draft cancelled; `withdraw` = an order awaiting approval withdrawn by whoever sent it. */
+export type PoCancelKind = 'cancel' | 'withdraw';
+
+export interface PoCancelInput {
+  status: PoStatus;
+  origin: PoOrigin;
+  x3Ref: string | null;
+  createdByPersonId: string | null;
+  submittedByPersonId: string | null;
+}
+
+export interface PoCancelActor {
+  personId: string | null;
+  /** PM rights on the order's project (PM of record, co-PM, deputy) or the portfolio director. */
+  lead: boolean;
+}
+
+/**
+ * Who may cancel an order before it is placed (R-095) — the one place of the rule, so the owner's purchasing procedure
+ * (P-5a, pending) changes it here only:
+ * - only an order drafted in Keystone and not in Sage X3 (`poX3State` local: BOM shortfall, RFQ award, spares list); an
+ *   order imported from X3 is cancelled in X3 (I-3b, A-1a);
+ * - Draft: its author (SC-3a), and — a default beyond SC-3a, for the owner to confirm — the project's leads and the director;
+ * - Awaiting approval: withdrawn by whoever sent it for approval (P-5c); the approvers keep Reject;
+ * - never once Ordered (placed): SC-3a and P-5c disagree there, nothing is built.
+ */
+export function poCancelRight(o: PoCancelInput, actor: PoCancelActor): PoCancelKind | null {
+  if (poX3State(o) !== 'local') return null;
+  const me = (id: string | null) => !!actor.personId && id === actor.personId;
+  if (o.status === 'draft') return me(o.createdByPersonId) || actor.lead ? 'cancel' : null;
+  if (o.status === 'awaiting_approval') return me(o.submittedByPersonId) ? 'withdraw' : null;
+  return null;
+}
+
+/** The order is still before placement and drafted in Keystone — the statuses `poCancelRight` may allow (role aside). */
+export const isCancellablePo = (o: Pick<PoCancelInput, 'status' | 'origin' | 'x3Ref'>) =>
+  poX3State(o) === 'local' && (o.status === 'draft' || o.status === 'awaiting_approval');
+
+/** A cancellation or rejection reason: trimmed, required, at most PO_CANCEL_REASON_MAX characters. */
+export function poCancelReason(v: unknown): { ok: true; value: string } | { ok: false; error: string } {
+  const s = typeof v === 'string' ? v.trim() : '';
+  if (!s) return { ok: false, error: 'Give the reason for the cancellation' };
+  if (s.length > PO_CANCEL_REASON_MAX) return { ok: false, error: 'The reason is too long' };
+  return { ok: true, value: s };
+}
+
 // ── Order shape read by the rules (the DAL's PurchaseOrderRow fits) ───────────────────────────────────
 
 export interface PoLineInput {

@@ -1,6 +1,7 @@
 'use server';
 // Stock & storages Server Functions (docs/spec/08 §4.4–4.5): "Apply movement" of the stock-line drawer, the header's
-// "Import from X3" and the drawer's "Push to X3" (mock Sage X3 connector). Each one checks the viewer may edit the
+// "Import from X3" and the drawer's "Push to X3" (mock Sage X3 connector — R-034: simulated on a demo database only,
+// refused on a production database: "Sage X3 is not connected"). Each one checks the viewer may edit the
 // screen (roles with Stock & storages in their workspace; outside the workspace it is read-only), validates the raw
 // input with the domain parsers, writes through the stock DAL with the viewer as the actor, then revalidates the app
 // (stock lines, KPIs, the sidebar badge and the stock figures other screens show).
@@ -13,6 +14,7 @@ import { getProject } from '@/server/dal/projects';
 import {
   STOCK_KEEPER_ROLES, STOCK_NOT_TEAM, STOCK_OVERRIDE_REFUSED, STOCK_RELEASE_REFUSED, applyStockMovement, getStockPosition, importStockFromX3, pushStockToX3,
 } from '@/server/dal/stock';
+import { X3_NOT_CONNECTED, x3Simulated } from '@/server/integrations/x3/mock-mode';
 import { getScreenAccess, projectAccessResolver } from '@/server/project-context';
 import { getI18n, type Viewer } from '@/server/session';
 import { importToastText, pushToastText, stockErrorT } from './i18n';
@@ -105,10 +107,17 @@ export async function applyStockMovementAction(
   return { ok: true };
 }
 
-/** "Import from X3" (header primary): merges the X3 snapshot, local changes kept. */
+/** R-034: the simulated X3 actions exist on a demo database only (and while IT has not disabled "Sage X3"). */
+async function x3Refusal(): Promise<{ error: string } | null> {
+  return (await x3Simulated()) ? null : { error: await tr(X3_NOT_CONNECTED) };
+}
+
+/** "Import from X3" (header primary): merges the X3 snapshot, local changes kept — simulated, Sage X3 is not connected (R-034). */
 export async function importFromX3Action(): Promise<StockActionResult> {
   const ok = await editor();
   if ('error' in ok) return ok;
+  const off = await x3Refusal();
+  if (off) return off;
   try {
     const r = await importStockFromX3(ok.actor);
     refresh();
@@ -119,11 +128,13 @@ export async function importFromX3Action(): Promise<StockActionResult> {
   }
 }
 
-/** "Push to X3" of the stock-line drawer: this line and the pending movements that touched it. */
+/** "Push to X3" of the stock-line drawer: this line and the pending movements that touched it (simulated, R-034). */
 export async function pushStockLineAction(positionId: string): Promise<StockActionResult> {
   const ok = await editor();
   if ('error' in ok) return ok;
   if (typeof positionId !== 'string' || !positionId) return { error: await tr('Invalid request') };
+  const off = await x3Refusal();
+  if (off) return off;
   const line = isPositionId(positionId) ? await getStockPosition(positionId) : null;
   if (!line) return { error: await tr('Unknown stock line') };
   try {

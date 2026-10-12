@@ -4,7 +4,7 @@
 // - BOM value counts each article once (09 OQ6): HLT-026 €7.05M (the prototype €14.05M);
 // - PU/PR stock is Σ on hand (the prototype always read 0): "16 in stock", "Not in stock" 10 of 12;
 // - quantities in French use the French format ("2 042"; the prototype used the browser locale);
-// - French the prototype left in English: "32 par projet", "32 unités", "+19 180 € par grue", "Plan / réf.",
+// - French the prototype left in English: "32 par projet", "32 unités", "+19 942 € par grue" (E-2b, R-104), "Plan / réf.",
 //   restriction texts (translated through the PLM dictionary entries); singular forms ("1 week", "1 semaine");
 // - projects without data (EWA-051) show an empty BOM instead of Harbor Line's.
 import { beforeAll, describe, expect, it } from 'vitest';

@@ -132,10 +132,15 @@ async function poDocument(ctx: ExportContext): Promise<PdfDocument | null> {
     moneyCol('unit', t('Unit price'), o.currency, 'units', 12), moneyCol('total', t('Total'), o.currency, 'units', 13),
   ], o.lines.map((l) => ({ ref: l.ref, name: dataText(l.name, ctx.lang), qty: l.orderedQty, unit: l.unitPriceEur, total: l.totalEur })));
   const draft = o.status === 'draft' || o.status === 'awaiting_approval';
+  // R-095: a cancelled order says so in the subtitle, and the internal recap gives why, by whom and when (typed reason as typed).
+  const cancelled = o.status === 'cancelled';
+  const cancellation = o.cancellation
+    ? [[t('Cancelled'), [formatDate(o.cancellation.at.slice(0, 10), lang), o.cancellation.by, dataText(o.cancellation.reason, ctx.lang)].filter(Boolean).join(' · ')] as [string, string]]
+    : [];
   const x3 = o.x3Ref ? `${t('Sage X3 order')} ${o.x3Ref}` : o.origin === 'x3' ? t('Imported from Sage X3') : t('Not yet in Sage X3');
   return {
     title: `${t('Purchase order summary')} ${o.number}`,
-    subtitle: `${t('Internal document — not sent to the supplier')} · ${o.supplier}${draft ? ` · ${t(o.statusLabel)}` : ''}`,
+    subtitle: `${t('Internal document — not sent to the supplier')} · ${o.supplier}${draft || cancelled ? ` · ${t(o.statusLabel)}` : ''}`,
     project: projectRef(ctx),
     reference: o.x3Ref ? `${o.number} · X3 ${o.x3Ref}` : o.number,
     date: o.orderedOn ?? todayIso(ctx),
@@ -144,7 +149,7 @@ async function poDocument(ctx: ExportContext): Promise<PdfDocument | null> {
         [t('Sage X3 reference'), x3], [t('Status'), t(o.statusLabel)],
         [t('Supplier'), o.supplier], [t('Order date'), fd(o.orderedOn)], [t('Expected delivery'), fd(o.expectedOn)],
         [t('Delivery terms'), deliveryTermsText(o.deliveryTerms, ctx.lang, t)], [t('Needed for'), o.neededFor ? `${o.neededFor.code} · ${dataText(o.neededFor.name, ctx.lang)}` : '—'],
-        [t('Requested by'), o.createdBy ?? '—'], [t('Approved by'), o.decidedBy && !draft ? o.decidedBy : '—'],
+        [t('Requested by'), o.createdBy ?? '—'], [t('Approved by'), o.decidedBy && !draft && !cancelled ? o.decidedBy : '—'], ...cancellation,
       ] },
       { kind: 'heading', text: t('Lines') },
       tableBlock(lines, undefined, { name: t('Total excl. VAT'), total: sum(lines.rows, 'total') }),

@@ -4,16 +4,22 @@
 // order", and the drawer's "Export PO" (the purchase order PDF) and "Push to X3". Rendered only for
 // viewers who may act (the page gates them; the Server Functions check again). A refused or failed change shows its
 // message as a toast; successful changes refresh the page through revalidation, as in the prototype (no toast),
-// except "Push to X3", which confirms with the X3 reference.
-import { Check, Plus, UploadSimple } from '@phosphor-icons/react/dist/ssr';
+// except "Push to X3", which confirms with the X3 reference, and R-095 "Cancel order" (reason dialog), which confirms the
+// cancellation.
+import { Check, Plus, UploadSimple, X } from '@phosphor-icons/react/dist/ssr';
 import { useRouter } from 'next/navigation';
-import { useTransition } from 'react';
+import { useId, useState, useTransition } from 'react';
 import { Button } from '@/components/ds/Button';
+import { Dialog } from '@/components/ds/Dialog';
+import { DialogActions } from '@/components/ds/DialogParts';
+import { Field, Textarea } from '@/components/ds/Field';
 import { useToast } from '@/components/ds/Toast';
+import { PO_CANCEL_REASON_MAX, type PoCancelKind } from '@/domain/orders';
 import { ExportFileButton } from '@/features/exports/export-file-button';
 import { useI18n } from '@/i18n/client';
 import { exportHref } from '@/lib/export-href';
-import { approveOrderAction, createDraftOrdersAction, pushOrderToX3Action, submitOrderAction, type OrderActionResult } from './actions';
+import { approveOrderAction, cancelOrderAction, createDraftOrdersAction, pushOrderToX3Action, submitOrderAction, type OrderActionResult } from './actions';
+import s from './orders.module.css';
 
 const FAILED = 'The change could not be saved';
 
@@ -107,5 +113,57 @@ export function PushToX3Button({ code, number }: { code: string; number: string 
     >
       {t('Push to X3')}
     </Button>
+  );
+}
+
+/**
+ * Drawer "Cancel order" (R-095, SC-3a = a, P-5c = a): a Draft (author, project leads, director) or an order awaiting approval
+ * withdrawn by whoever sent it, with a required reason (≤ 1000 characters) recorded on the order. Placed orders and orders
+ * imported from Sage X3 never offer it (the Server Function refuses them too).
+ */
+export function CancelOrderButton({ code, number, kind }: { code: string; number: string; kind: PoCancelKind }) {
+  const { t } = useI18n();
+  const { pending, run, toast } = useRun();
+  const fieldId = useId();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const close = () => {
+    setReason('');
+    setOpen(false);
+  };
+  const label = kind === 'withdraw' ? 'Withdraw from approval' : 'Cancel order';
+  const blocked = pending || !reason.trim();
+  return (
+    <>
+      <Button variant="ghost" size="sm" icon={X} disabled={pending} aria-haspopup="dialog" aria-label={`${t(label)} · ${number}`} onClick={() => setOpen(true)}>
+        {t(label)}
+      </Button>
+      <Dialog open={open} onClose={close} title={`${t(label)} · ${number}`} width={440} placement="center" maxHeight={null}>
+        <form
+          className={s.cancelForm}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (blocked) return;
+            run(() => cancelOrderAction(code, number, reason.trim()), (r) => {
+              if (r.message) toast.showEn(r.message);
+              close();
+            });
+          }}
+        >
+          <span className={s.cancelNote}>{t('The order is cancelled before it is placed; the RFQ that drafted it stays awarded.')}</span>
+          <Field label={t('Reason — recorded on the cancelled order')} required htmlFor={fieldId}>
+            <Textarea id={fieldId} short value={reason} maxLength={PO_CANCEL_REASON_MAX} autoFocus onChange={(e) => setReason(e.target.value)} />
+          </Field>
+          <DialogActions variant="flush">
+            <Button variant="secondary" onClick={close}>
+              {t('Keep the order')}
+            </Button>
+            <Button type="submit" variant="primary" icon={X} disabled={blocked} aria-busy={pending || undefined}>
+              {t(kind === 'withdraw' ? 'Confirm withdrawal' : 'Confirm cancellation')}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+    </>
   );
 }

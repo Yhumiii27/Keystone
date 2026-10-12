@@ -6,7 +6,7 @@ import { LO, OK } from '@/components/app/tones';
 import { deliveryTermsText } from '@/domain/order-terms';
 import {
   PO_FLOW, canApprovePo, canPushPoToX3, canSubmitPo, filterPos, hasPartStatusIssue, isLatePo, lineSummary, needText, partWarnings, poKpis, poRisk,
-  poRiskText, poStatusCounts, poSteps, poUnits, poValueEur, poX3State,
+  poRiskText, poStatusCounts, poSteps, poUnits, poValueEur, poX3State, type PoCancelKind,
 } from '@/domain/orders';
 import { PRICES_HIDDEN, PRICE_MASK } from '@/domain/rights';
 import type { Lang, T } from '@/i18n/translate';
@@ -108,6 +108,8 @@ export interface OrderDrawerView {
   activityHref: string;
   /** "Push to X3" offered (order drafted in Keystone, approved, not pushed yet). */
   canPush: boolean;
+  /** R-095: "Cancel order" offered to the viewer — `cancel` a Draft, `withdraw` an order awaiting approval; null = not offered. */
+  cancel: PoCancelKind | null;
   closeHref: string;
   /** C-9 (R-075): the order's currency; a Draft may switch between EUR and the project currency (`options`, ≥ 2). */
   currency: { value: string; options: string[]; canSet: boolean };
@@ -139,6 +141,8 @@ export interface OrdersViewInput {
   selected: string | null;
   /** Supplier prices and order values shown (R-046, NEW-D2-1: director, PMs, procurement); masked otherwise. Default true. */
   prices?: boolean;
+  /** R-034: the simulated "Push to X3" is available (demo database); false = "Sage X3 not connected". Default true. */
+  x3?: boolean;
 }
 
 const dateText = (iso: string, t: T) => t(fmtDOfIso(iso));
@@ -190,7 +194,17 @@ function drawerView(o: PurchaseOrderRow, input: OrdersViewInput, t: T, lang: Lan
   const invoices = docLinks(data.invoices[o.number], invoiceHref, t);
   if (invoices.length) meta.push({ k: t('Supplier invoices'), v: '', links: invoices, color: OK });
   const x3 = poX3State(o);
-  if (x3 !== 'x3') meta.push({ k: 'Sage X3', v: x3 === 'pushed' ? `${t('Pushed to X3')} · ${o.x3Ref}` : t('Local change · not yet pushed to X3'), color: x3 === 'local' ? LO : OK });
+  const simulated = input.x3 !== false;
+  // R-034: without the X3 simulation (production database) a Keystone order is not promised a push.
+  if (x3 !== 'x3')
+    meta.push({
+      k: 'Sage X3',
+      v: x3 === 'pushed' ? `${t('Pushed to X3')} · ${o.x3Ref}` : t(simulated ? 'Local change · not yet pushed to X3' : 'Not in Sage X3 · Sage X3 not connected'),
+      color: x3 === 'local' && simulated ? LO : OK,
+    });
+  // R-095: why, by whom and when a Keystone-drafted order was cancelled (typed reason shown as typed).
+  if (o.cancellation)
+    meta.push({ k: t('Cancelled'), v: [dateText(o.cancellation.at.slice(0, 10), t), o.cancellation.by, dataT(o.cancellation.reason, lang)].filter(Boolean).join(' · '), color: OK });
   const warn = partWarningText(partWarnings(o), lang);
   return {
     number: o.number,
@@ -211,7 +225,8 @@ function drawerView(o: PurchaseOrderRow, input: OrdersViewInput, t: T, lang: Lan
     })),
     meta,
     activityHref: planActivityHref(code, o.neededFor?.code ?? null),
-    canPush: canPushPoToX3(o),
+    canPush: simulated && canPushPoToX3(o),
+    cancel: data.cancelRights?.[o.number] ?? null,
     closeHref: ordersHref(code, { status: filter }),
     currency: currencyChoice(o),
   };

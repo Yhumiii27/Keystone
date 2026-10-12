@@ -190,7 +190,7 @@ export function StockDrawer({ view, projectCode, canEdit }: StockDrawerProps) {
               {cur.error}
             </span>
           )}
-          <span className={s.note}>{t('Local movements are flagged until the next push to X3 · X3 remains the accounting reference')}</span>
+          <span className={s.note}>{view.x3Note}</span>
         </form>
       )}
 
@@ -213,7 +213,7 @@ export function StockDrawer({ view, projectCode, canEdit }: StockDrawerProps) {
         <ButtonLink variant="secondary" size="sm" icon={Cube} href={view.partHref} scroll={false}>
           {t('Part record')}
         </ButtonLink>
-        {canEdit && (
+        {canEdit && view.canPush && (
           <Button
             variant="ghost"
             size="sm"

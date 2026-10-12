@@ -129,7 +129,8 @@ describe('project BOM (09 §1)', () => {
     }
   });
 
-  it('compare revisions reproduces cmpVals (+€19,180 per crane)', async () => {
+  // E-2b (R-104): golden regenerated with scripts/proto-e2b.ts — the two substitutions are now priced (+€750, +€12).
+  it('compare revisions reproduces cmpVals (+€19,942 per crane, E-2b)', async () => {
     const c = (await getRevisionComparison('HLT-026'))!;
     const g = G.compare;
     expect(`${c.assemblyRef} · rev ${c.fromRevision} → rev ${c.toRevision}`).toBe(g.title);

@@ -95,6 +95,13 @@ export const purchaseOrders = pgTable('purchase_orders', {
   /** Approver of "Approve & order" (or the rejecter when cancelled from the approval). */
   decidedByPersonId: uuid('decided_by_person_id').references(() => persons.id),
   decidedAt: timestamp('decided_at', { withTimezone: true }),
+  /**
+   * R-095 (SC-3a, P-5c): why a Keystone-drafted order was cancelled before it was placed — a Draft cancelled, an order
+   * withdrawn from approval, or rejected in My approvals — by whom and when. Null for the seed's cancelled orders.
+   */
+  cancelReason: text('cancel_reason'),
+  cancelledByPersonId: uuid('cancelled_by_person_id').references(() => persons.id),
+  cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
   /** Sage X3 order reference once pushed. */
   x3Ref: text('x3_ref'),
   /** Order of the project's list (genPOs order; new orders appended). */

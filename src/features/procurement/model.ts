@@ -169,7 +169,7 @@ export function rfqDrawerView(r: RfqRow, c: SourcingCtx & { orderProject: string
   const state = { status: r.status, quoteCount: r.quotes.length, awardedTo: r.awardedTo };
   const cmp = compareQuotes(r.quotes, r.quantity);
   const canAward = c.canEdit && canAwardRfq(state, c.role);
-  const hint = rfqHint({ ...state, purchaseOrderNumber: r.purchaseOrderNumber, awardedInKeystone: !!r.awardedBy }, c.role);
+  const hint = rfqHint({ ...state, purchaseOrderNumber: r.purchaseOrderNumber, purchaseOrderStatus: r.purchaseOrderStatus, awardedInKeystone: !!r.awardedBy }, c.role);
   const meta: { k: string; v: string }[] = [
     { k: t('Part'), v: r.partRef ? r.partRef + (r.partName ? ' · ' + dataText(r.partName, lang) : '') : '—' },
     { k: t('Quantity'), v: r.quantity != null ? qtyText(r.quantity, lang) : '—' },
