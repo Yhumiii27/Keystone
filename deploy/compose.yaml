@@ -1,0 +1,136 @@
+# Keystone PM on Coolify — a "Docker Compose" resource (R-003). Runbook in French: docs/EXPLOITATION.md § Coolify.
+#
+#   db       PostgreSQL 16 (named volume keystone-db), healthy when pg_isready answers
+#   migrate  one-shot `npm run db:migrate` before every start (migrations, then the seed of an EMPTY database: KEYSTONE_SEED
+#            must be set — demo for the beta, production for reference data only); left out of Coolify's health status
+#   app      the web server (port 3000, behind Coolify's proxy and TLS); starts once the migration has succeeded
+#   worker   `npm run worker`: outbox deliveries, purges, antivirus rescan, backups (R-004, pg_dump in the image)
+# One image, built once from the repository's Dockerfile (service app) and reused by migrate and worker.
+#
+# Coolify settings (docs/EXPLOITATION.md): Docker Compose location /deploy/compose.yaml; domain on the app service, port 3000;
+# environment from .env.example (POSTGRES_PASSWORD and KEYSTONE_SEED required; NEXT_PUBLIC_* marked "build time"); the demo
+# beta (KEYSTONE_AUTH=demo, "View as" anyone, the director included) ONLY behind Coolify's basic authentication — nothing in
+# Keystone enforces it. The key `exclude_from_hc` is Coolify's: remove it to run this file with plain `docker compose`.
+#
+# Single-container variant (no PostgreSQL): run the image alone with a volume on /data, no DATABASE_URL and
+# KEYSTONE_JOBS=inprocess — PGlite is migrated and seeded by the server itself (docs/EXPLOITATION.md).
+
+x-keystone-env: &keystone-env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://keystone:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/keystone
+  DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-}
+  KEYSTONE_SEED: ${KEYSTONE_SEED:?KEYSTONE_SEED is required (demo or production)}
+  KEYSTONE_AUTH: ${KEYSTONE_AUTH:-}
+  KEYSTONE_SESSION_SECRET: ${KEYSTONE_SESSION_SECRET:-}
+  KEYSTONE_SESSION_HOURS: ${KEYSTONE_SESSION_HOURS:-}
+  ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:-}
+  ENTRA_ISSUER: ${ENTRA_ISSUER:-}
+  ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
+  ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:-}
+  ENTRA_REDIRECT_URI: ${ENTRA_REDIRECT_URI:-}
+  ENTRA_POST_LOGOUT_REDIRECT_URI: ${ENTRA_POST_LOGOUT_REDIRECT_URI:-}
+  ENTRA_GROUP_ROLES: ${ENTRA_GROUP_ROLES:-}
+  KEYSTONE_FILE_SCAN: ${KEYSTONE_FILE_SCAN:-}
+  CLAMAV_HOST: ${CLAMAV_HOST:-}
+  CLAMAV_PORT: ${CLAMAV_PORT:-}
+  CLAMAV_SOCKET: ${CLAMAV_SOCKET:-}
+  NEXT_PUBLIC_CODEX_URL: ${NEXT_PUBLIC_CODEX_URL:-}
+  NEXT_PUBLIC_CURSUS_URL: ${NEXT_PUBLIC_CURSUS_URL:-}
+  NEXT_PUBLIC_VIGIE_URL: ${NEXT_PUBLIC_VIGIE_URL:-}
+  CURSUS_API_URL: ${CURSUS_API_URL:-}
+  CURSUS_API_KEY: ${CURSUS_API_KEY:-}
+  VIGIE_API_URL: ${VIGIE_API_URL:-}
+  VIGIE_API_KEY: ${VIGIE_API_KEY:-}
+  CODEX_API_URL: ${CODEX_API_URL:-}
+  KEYSTONE_CONNECTORS_FILE: ${KEYSTONE_CONNECTORS_FILE:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  KEYSTONE_AI: ${KEYSTONE_AI:-}
+  LOG_LEVEL: ${LOG_LEVEL:-}
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keystone
+      POSTGRES_USER: keystone
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - keystone-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keystone -d keystone"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  migrate:
+    image: keystone-pm:local
+    pull_policy: never
+    command: ["npm", "run", "db:migrate"]
+    environment: *keystone-env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    healthcheck:
+      disable: true
+    exclude_from_hc: true
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_CODEX_URL: ${NEXT_PUBLIC_CODEX_URL:-}
+        NEXT_PUBLIC_CURSUS_URL: ${NEXT_PUBLIC_CURSUS_URL:-}
+        NEXT_PUBLIC_VIGIE_URL: ${NEXT_PUBLIC_VIGIE_URL:-}
+    image: keystone-pm:local
+    restart: unless-stopped
+    environment: *keystone-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - keystone-data:/data
+      # IT's connectors file (R-020), read-only — set KEYSTONE_CONNECTORS_FILE=/config/connectors.json (Coolify: a file mount).
+      # - ./connectors.json:/config/connectors.json:ro
+    expose:
+      - "3000"
+
+  worker:
+    image: keystone-pm:local
+    pull_policy: never
+    command: ["npm", "run", "worker"]
+    environment:
+      <<: *keystone-env
+      # Backups (R-004): replicate this volume OFF the host, or the RPO is not met (I-1a).
+      KEYSTONE_BACKUP_DIR: /backups
+      KEYSTONE_BACKUP_EVERY_MIN: ${KEYSTONE_BACKUP_EVERY_MIN:-}
+      KEYSTONE_BACKUP_RETENTION: ${KEYSTONE_BACKUP_RETENTION:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    volumes:
+      - keystone-data:/data
+      - keystone-backups:/backups
+    healthcheck:
+      disable: true
+
+  # Antivirus (R-175), started only with the profile "antivirus" (COMPOSE_PROFILES=antivirus): clamd with freshclam
+  # updating its signatures; then KEYSTONE_FILE_SCAN=clamav, CLAMAV_HOST=clamav, CLAMAV_PORT=3310. Mount a clamd.conf with
+  # StreamMaxLength 21M and AlertExceedsMax yes (docs/EXPLOITATION.md § Antivirus). Never on the Mac (3310 is a test port).
+  clamav:
+    image: clamav/clamav:1.4
+    profiles: ["antivirus"]
+    restart: unless-stopped
+    volumes:
+      - keystone-clamav:/var/lib/clamav
+    expose:
+      - "3310"
+
+volumes:
+  keystone-db:
+  keystone-data:
+  keystone-backups:
+  keystone-clamav:

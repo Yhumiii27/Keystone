@@ -1,0 +1,19 @@
+# Left out of the image (R-003): local dependencies and builds, local data, secrets, the macOS app, and what the server never
+# reads (documentation, design sources, agent worktrees, test outputs).
+.git
+node_modules
+.next
+.next-ci
+.data
+.env
+.env.*
+!.env.example
+desktop
+.artifacts
+test-results
+playwright-report
+.claude
+design
+docs
+tsconfig.tsbuildinfo
+*.log

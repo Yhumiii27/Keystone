@@ -1,0 +1,39 @@
+# Dependency watch (R-174, docs/SECURITY.md): weekly version updates for npm and the GitHub Actions, minor and patch updates
+# grouped in one pull request per ecosystem; next and eslint-config-next always move together (both pinned to the same
+# release). Every pull request is reviewed by the team and goes through CI — never merged automatically.
+# Security updates (immediate pull requests for an advisory) are not set here: the owner turns on "Dependabot alerts" and
+# "Dependabot security updates" in the repository settings. This file acts only once it is on the default branch (main).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Paris
+    open-pull-requests-limit: 5
+    labels: [dependencies]
+    commit-message:
+      prefix: deps
+    groups:
+      # Next.js and its ESLint configuration are released together and pinned to the same version.
+      nextjs:
+        patterns: [next, eslint-config-next, "@next/*"]
+      minor-and-patch:
+        update-types: [minor, patch]
+        exclude-patterns: [next, eslint-config-next, "@next/*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Paris
+    labels: [dependencies]
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        update-types: [minor, patch]
