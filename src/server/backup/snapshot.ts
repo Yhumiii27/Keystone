@@ -96,9 +96,9 @@ async function dumpPostgres(url: string, out: string): Promise<DbState> {
     const { rows } = await client.query<{ s: string }>('select pg_export_snapshot() as s');
     const { url: bare, password } = splitPassword(url);
     const dump = runCommand('pg_dump', ['--format=custom', `--snapshot=${rows[0].s}`, `--file=${out}`, `--dbname=${bare}`], password ? { PGPASSWORD: password } : {});
-    // Read in the same snapshot while pg_dump runs (it imports the snapshot at its start; the transaction stays open until it ends).
-    const state = await readState(async <T,>(q: string) => (await client.query(q)).rows as T[]);
-    await dump;
+    // Read in the same snapshot while pg_dump runs (it imports the snapshot at its start; the transaction stays open until it
+    // ends). Promise.all also handles pg_dump's failure when the reads fail first.
+    const [state] = await Promise.all([readState(async <T,>(q: string) => (await client.query(q)).rows as T[]), dump]);
     await client.query('commit');
     return state;
   } finally {

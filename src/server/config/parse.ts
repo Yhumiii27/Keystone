@@ -262,7 +262,6 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
   if (backupDir && backupEveryMin > BACKUP_DEFAULTS.rpoMin)
     warnings.push({ variable: 'KEYSTONE_BACKUP_EVERY_MIN', message: `is above ${BACKUP_DEFAULTS.rpoMin}: the ${BACKUP_DEFAULTS.rpoMin}-minute recovery point objective (I-1b) cannot be met` });
 
-
   // Cursus: production never presents the demo key to a Cursus elsewhere on the network. A Cursus on this machine (loopback
   // URL: the Mac app next to a local Cursus) may keep it, with a warning.
   const cursusKey = v.CURSUS_API_KEY ?? v.KEYSTONE_API_KEY ?? null;
@@ -303,7 +302,7 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
   // clamd service, or off by an explicit choice; a warning in other production runs (the Mac app, demonstrations); off in
   // development and tests. clamd has no default port: its usual 3310 is the smoke-test port of Keystone on the Mac.
   const scanMode: FileScanMode = v.KEYSTONE_FILE_SCAN ?? 'off';
-  if (production && !v.KEYSTONE_FILE_SCAN) {
+  if (production && !v.KEYSTONE_FILE_SCAN && !errors.some((e) => e.variable === 'KEYSTONE_FILE_SCAN')) {
     if (v.KEYSTONE_SEED === 'production') errors.push({ variable: 'KEYSTONE_FILE_SCAN', message: 'must be set with KEYSTONE_SEED=production ("clamav" with a clamd service, or "off" explicitly)' });
     else warnings.push({ variable: 'KEYSTONE_FILE_SCAN', message: 'is not set: uploaded files are not checked by an antivirus — set it to "clamav", or "off" explicitly' });
   }
