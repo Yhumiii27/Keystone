@@ -260,6 +260,8 @@ Empty: "No change request of this type" (« Aucune demande de ce type »).
 `CHAIN` (logic 4598): `pm` Project manager — Romain Aubert; `director` Portfolio director — Marie Lefebvre; `client` Client / sponsor — Nadia Bensaïd; `ccb` Change control board — "Monthly · next 8 Oct".
 A step is actionable when `status==='In review' && chain[k]==='pending' && crRoleKey===k`, where `crRoleKey` = `pm` / `director` / `client` for those roles, `null` otherwise. No role maps to `ccb`. Approve → `crOv[id].chain[k]='ok'`; Reject → `'rejected'`. Steps are not sequential (any pending step whose owner is the current role can act).
 
+> **Rebuild (delivery 8, R-069 — owner answers P-6b, P-6c):** the chain is sequential PM → director → client → change control board: a step is actionable only when every earlier step is approved or not required (`currentStep`, `canDecideStep` in `src/domain/change-control.ts`, one rule for Change control, My approvals and the client portal); a later step answers "Not yours to decide yet". The steps are fixed when the request is submitted: the client step is "Not required" when the request's contractual impact is "None (internal)", the board step when |amount| is not strictly above the Settings threshold (`change.ccbThreshold`, default 50 k€). The board's decision is recorded by the portfolio director (P-6a).
+
 **Derived CR status (logic 4593):** `status = crOv[id].status || (any non-n/a step rejected ? 'Rejected' : all non-n/a steps ok ? 'Approved' : seed status)`.
 
 **Data.** `allCRs = [...state.added.crs (proj===project), ...(HLT ? HLT_CRS_X : [])]`. Non-HLT projects start empty.
@@ -851,7 +853,7 @@ Tuple `[id, machineId, date, technician, type, duration, status]`, e.g. `['IV-08
 
 1. **CR status stuck after submit (likely bug).** Submitting a Draft writes `crOv[id].status='In review'`, and `status = crOv.status || derived`, so a submitted CR (e.g. CR-009) never becomes Approved/Rejected even when all steps are decided. Expected behaviour: derive status from the chain once In review.
 2. **CCB step has no actor.** No role maps to `ccb`, so any CR with a pending CCB step (CR-008, CR-009, new CRs) can never reach Approved. Who records the Change control board decision (monthly meeting, next 8 Oct)?
-3. **Sequential or parallel CR approval?** The hint text implies PM → director → client → CCB, but any pending step can be decided in any order.
+3. **Sequential or parallel CR approval?** The hint text implies PM → director → client → CCB, but any pending step can be decided in any order. — *Answered (P-6b, P-6c; built in delivery 8, R-069): sequential, client step only for a contractual change, board only above the Settings threshold.*
 4. **EMV vs probability.** EMV is stored and not recomputed when P is changed in the drawer, while "Contingency draw if it occurs" = EMV / (P/5) changes inversely. Should cost impact be the stored field and EMV derived (= cost × P/5)?
 5. **Hard-coded dates.** NCR "Overdue actions" uses `due ∈ {30 Sep, 2 Oct}`; deliverable "Due in 30 days" uses `due ∈ {25 Sep, 30 Sep}`; acceptance stamps `25 Sep · N. Bensaïd`; created records `30 Sep`; `PG_NOW = 8.97`. All must be computed from the real current date and current user.
 6. **Interfaces "due within 30 days"** counts every Open interface with a future date (IF-05 is 45 days away). Intended filter is presumably ≤ 30 days.
