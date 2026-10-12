@@ -8,8 +8,8 @@
 import type { FormDef } from '@/components/app/form-def';
 import { LO, OK, statusTagClass } from '@/components/app/tones';
 import {
-  BASE_CONTRACT_OPTION, allInvoicedSub, collectedSub, contractFigures, contractValueSub, guaranteesSub, invoicedSub, liquidatedDamagesKpi, outstandingSub,
-  overdueSub, pendingSub, progressCss, progressText, scheduleHint, shareText, shareTotalText, SHEET_FIELDS, termsOfSheet,
+  BASE_CONTRACT_OPTION, INVOICE_BLOCKED_MESSAGE, allInvoicedSub, collectedSub, invoiceBlocked, contractFigures, contractValueSub, guaranteesSub, invoicedSub, liquidatedDamagesKpi, outstandingSub,
+  overdueSub, pendingSub, progressCss, progressText, scheduleGroupHint, shareText, shareTotalText, SHEET_FIELDS, termsOfSheet,
   type ContractFigures, type ContractInput, type ContractSheetInput, type SheetFieldKey,
 } from '@/domain/contract';
 import {
@@ -96,6 +96,12 @@ export interface MilestoneRowView {
   group: number | null;
   /** Not billable until the amendment is signed (muted row). */
   billable: boolean;
+  /**
+   * Delivery 8 (R-077, C-7a): a planned milestone can be edited or removed (row actions); `edit` = the dialog's opening values
+   * (label as typed, share, contractual date, condition).
+   */
+  planned: boolean;
+  edit: { label: string; pct: string; due: string; cond: string };
 }
 
 /** An amendment's own milestones (NEW-D3-3): header and subtotal rows of the schedule. */
@@ -246,6 +252,8 @@ export function contractView(c: ContractData, t: T, lang: Lang): ContractView {
       condition: m.condition ? dataText(m.condition, lang) : '—',
       group: m.amendment ?? null,
       billable: m.billable,
+      planned: m.status === 'planned',
+      edit: editMilestoneValues(m, t),
     })),
     groups: [...groupAt.values()].map((g) => ({
       key: g.amendment!,
@@ -257,10 +265,11 @@ export function contractView(c: ContractData, t: T, lang: Lang): ContractView {
       share: shareTotalText(g.sharePct, lang),
       amount: f(g.amountKeur),
       ok: g.shareOk,
-      hint: g.shareOk ? '' : g.milestones.length ? t(scheduleHint(false, lang)) : t('No payment milestone for this amendment'),
+      // R-077 (C-7): over 100 % the group's invoicing is blocked — said in the hint ("Shares total 105 % · invoicing blocked").
+      hint: g.shareOk ? '' : g.milestones.length ? scheduleGroupHint(g, lang, t) : t('No payment milestone for this amendment'),
     })),
-    baseTotal: { share: shareTotalText(fig.sharePct, lang), amount: f(fig.groups[0].amountKeur), ok: fig.groups[0].shareOk, hint: t(scheduleHint(fig.groups[0].shareOk, lang)) },
-    total: { share: shareTotalText(fig.sharePct, lang), amount: f(fig.scheduleAmountKeur), ok: fig.groups[0].shareOk, hint: t(scheduleHint(fig.groups[0].shareOk, lang)) },
+    baseTotal: { share: shareTotalText(fig.sharePct, lang), amount: f(fig.groups[0].amountKeur), ok: fig.groups[0].shareOk, hint: scheduleGroupHint(fig.groups[0], lang, t) },
+    total: { share: shareTotalText(fig.sharePct, lang), amount: f(fig.scheduleAmountKeur), ok: fig.groups[0].shareOk, hint: scheduleGroupHint(fig.groups[0], lang, t) },
     fx: currencyView(fx, lang),
     figures: fig,
   };
@@ -275,6 +284,8 @@ export interface ToInvoiceView {
   line: string;
   late: boolean;
   amount: string;
+  /** Delivery 8 (R-077, C-7): the reason "Issue invoice" is disabled (its group exceeds 100 %), translated; null when invoiceable. */
+  blocked: string | null;
 }
 
 export interface InvoiceView {
@@ -360,6 +371,7 @@ export function billingView(c: ContractData, t: T, lang: Lang): BillingView {
       line: `${m.contractualDue ? t(displayOfIso(m.contractualDue)) : '—'} · ${shareText(m.sharePct, lang)}${m.late ? ` · ${t('Late')}` : ''}`,
       late: m.late,
       amount: f(m.amountKeur),
+      blocked: m.blocked ? t(INVOICE_BLOCKED_MESSAGE) : null,
     })),
     invoices: fig.invoices.map((i) => ({
       number: i.number,
@@ -390,6 +402,9 @@ export const RESULT = {
   sent: 'Sent for signature',
   signed: 'Amendment signed',
   released: 'Guarantee released',
+  // Delivery 8 (R-077): schedule corrections.
+  milestoneUpdated: 'Payment milestone updated',
+  milestoneRemoved: 'Payment milestone removed',
 } as const;
 
 /** Date example shown as a placeholder of the free date fields (the rebuild validates dates). */
@@ -451,6 +466,25 @@ export function milestoneFormDef(t: T, amendments: readonly { position: number; 
   };
 }
 
+/**
+ * Delivery 8 (R-077, C-7a): "Edit milestone" — AF.milestone without "Applies to" (the basis does not change), opened with the
+ * milestone's values (`editMilestoneValues`).
+ */
+export function editMilestoneFormDef(t: T, onAmendment: boolean): FormDef {
+  const base = milestoneFormDef(t, [], 'en');
+  return {
+    ...base,
+    title: t('Edit payment milestone'),
+    submit: t('Save'),
+    fields: base.fields.map((f) => (f.id === 'pct' ? { ...f, label: t(onAmendment ? 'Share (%)' : 'Share of contract (%)'), defaultValue: undefined } : f)),
+  };
+}
+
+/** Values the edit dialog opens with: label as typed, share, contractual date in the form's format, condition. */
+export const editMilestoneValues = (m: { label: string; sharePct: number; contractualDue: string | null; condition: string | null }, t: T) => ({
+  label: m.label, pct: String(m.sharePct), due: m.contractualDue ? t(displayOfIso(m.contractualDue)) : '', cond: m.condition ?? '',
+});
+
 /** "Mark signed" (R-079): signature date (default NOWD) · document reference. */
 export function signFormDef(t: T, documentRef: string | null = null): FormDef {
   return {
@@ -480,7 +514,8 @@ export function releaseFormDef(t: T): FormDef {
  */
 export function invoiceFormDef(c: Pick<ContractData, 'milestones' | 'nextInvoiceNumber'> & Partial<Pick<ContractData, 'amendments'>>, t: T, lang: Lang): FormDef {
   const signed = new Set((c.amendments ?? []).filter((a) => a.status === 'signed').map((a) => a.position));
-  const billable = c.milestones.filter((m) => m.status === 'planned' && (m.amendment == null || signed.has(m.amendment)));
+  // R-077 (C-7): a milestone whose group exceeds 100 % is not offered (invoicing blocked until the schedule is corrected).
+  const billable = c.milestones.filter((m) => m.status === 'planned' && (m.amendment == null || signed.has(m.amendment)) && !invoiceBlocked(c.milestones, m.number));
   return {
     title: t('Issue invoice'),
     kind: 'run',

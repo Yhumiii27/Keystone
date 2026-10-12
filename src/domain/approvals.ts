@@ -18,7 +18,7 @@ import { screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import { isoOfDisplayDate, type ChangeStep, type StepDecision } from '@/server/db/codes';
-import { CR_STEP_LABEL, STEP_DECIDER } from './change-control';
+import { CR_STEP_LABEL, canDecideStep, currentStep } from './change-control';
 import { renderTxt, type Txt } from './home';
 
 // ── Kinds ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -217,27 +217,14 @@ export interface StepViewer {
   role: RoleKey;
 }
 
-/** Steps in the order the inbox offers them (one row per change request: the first step the viewer can decide). */
-const INBOX_STEPS: readonly ChangeStep[] = ['pm', 'director', 'client', 'ccb'];
-
 /**
  * The step of a change request the viewer decides now (apprItems 4726 by person instead of role): the CR is in
- * review and a step the viewer holds is pending. Null otherwise.
+ * review, its current step (delivery 8, R-069 — the chain is sequential, P-6b) is one the viewer holds. Null otherwise.
+ * The rule itself is Change control's `canDecideStep` (one rule for every screen, R-171).
  */
 export function pendingStepFor(cr: ChangeRequestForInbox, viewer: StepViewer): ChangeStep | null {
-  return INBOX_STEPS.find((step) => canDecideStep(cr, step, viewer)) ?? null;
-}
-
-/**
- * The viewer may record `step` of this change request now (the inline decision's permission check): request in
- * review, step pending, and the viewer is the step's named approver — or, for the change control board (no named
- * approver, 07 OQ2), holds the role that records it on Change control (STEP_DECIDER.ccb, the portfolio director).
- */
-export function canDecideStep(cr: ChangeRequestForInbox, step: ChangeStep, viewer: StepViewer): boolean {
-  if (cr.status !== 'in_review') return false;
-  const s = cr.chain.find((x) => x.step === step);
-  if (!s || s.decision !== 'pending') return false;
-  return step === 'ccb' ? viewer.role === STEP_DECIDER.ccb : !!s.approver && s.approver === viewer.name;
+  const step = currentStep(cr.chain);
+  return step && canDecideStep(cr, step, { role: viewer.role, name: viewer.name }) ? step : null;
 }
 
 /**

@@ -10,6 +10,7 @@ import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { decideChangeStep } from '@/server/dal/changes';
 import { ClientView, type ClientCapabilities } from './client-view';
 import { recordVerb } from './i18n';
 import { RexView } from './rex-view';
@@ -72,13 +73,18 @@ describe('client portal render', () => {
   });
 
   it('Decisions: buttons for the client only', async () => {
-    const c = await client('HLT-026', 'decisions', 'en', CLIENT);
-    expect(text(c)).toContain('Budget · Schedule · +€85k on contract · -12 d on handover');
+    // Deviation P-6b (delivery 8, R-069): CR-008 reaches the client once the portfolio director approved it.
+    let c = await client('HLT-026', 'decisions', 'en', CLIENT);
+    expect(text(c)).not.toContain('Budget · Schedule · +€85k on contract · -12 d on handover');
     expect(c.match(/>Accept \(PV\)</g)?.length).toBe(2);
-    expect(c.match(/>Reject</g)?.length).toBe(3);
+    expect(c.match(/>Reject</g)?.length).toBe(2);
     const d = await client('HLT-026', 'decisions', 'en', DIRECTOR);
     expect(d).not.toContain('>Reject<');
     expect(text(d)).toContain('Waiting for your decision');
+    await decideChangeStep('HLT-026', 'CR-008', 'director', 'ok', 'Marie Lefebvre');
+    c = await client('HLT-026', 'decisions', 'en', CLIENT);
+    expect(text(c)).toContain('Budget · Schedule · +€85k on contract · -12 d on handover');
+    expect(c.match(/>Reject</g)?.length).toBe(3);
   });
 
   it('Invoices: contract plan, summary, statement button', async () => {

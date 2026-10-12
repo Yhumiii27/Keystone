@@ -12,12 +12,13 @@
 //   file itself is not produced yet, 03 §8.8 / 04 OQ9).
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
-import { canDecideStep } from '@/domain/change-control';
+import { NOT_YOURS_YET, canDecideStep, stepWaitsForEarlier } from '@/domain/change-control';
 import {
   CLIENT_REPORT_FORMATS, LESSON_RESULT, REPORT_RESULT, parseClientReport, parseIssueText, parseNewLesson,
 } from '@/domain/rexclient';
 import { closureItemStatus, lessonStatus, type ClosureItemStatus, type LessonStatus } from '@/server/db/codes';
-import { decideChangeStep, listChangeRequestDetails } from '@/server/dal/changes';
+import { notifyChangeRequest } from '@/server/dal/change-notices';
+import { ChangeStepError, decideChangeStep, listChangeRequestDetails } from '@/server/dal/changes';
 import { raiseClientIssue } from '@/server/dal/client';
 import { acknowledgeDocument, listSharedDocuments } from '@/server/dal/documents';
 import { getProject } from '@/server/dal/projects';
@@ -127,7 +128,10 @@ async function clientPortal(code: unknown): Promise<{ ctx: ProjectContext } | { 
 /** Decisions change the change control, quality, Home, My approvals and the badges: refresh the whole app. */
 const refreshAll = () => revalidatePath('/', 'layout');
 
-/** "Approve" / "Reject" of a change request's client step (`setCR(id, {chain:{client}})`). */
+/**
+ * "Approve" / "Reject" of a change request's client step (`setCR(id, {chain:{client}})`). Delivery 8 (R-069, P-6b): only once
+ * the internal steps are decided ("Not yours to decide yet" before); the next approvers or the requester are notified (R-015).
+ */
 export async function decideClientChangeAction(code: string, number: string, decision: 'ok' | 'rejected'): Promise<RexClientResult> {
   const a = await clientPortal(code);
   if ('error' in a) return a;
@@ -136,12 +140,15 @@ export async function decideClientChangeAction(code: string, number: string, dec
   const code0 = a.ctx.project.code;
   const cr = (await listChangeRequestDetails(code0)).find((c) => c.id === number);
   if (!cr) return { error: await tr('Unknown change request') };
-  if (!canDecideStep('client', cr, 'client')) return { error: await tr('This decision is no longer pending') };
+  if (stepWaitsForEarlier(cr, 'client')) return { error: await tr(NOT_YOURS_YET) };
+  if (!canDecideStep(cr, 'client', { role: 'client' })) return { error: await tr('This decision is no longer pending') };
   try {
     await decideChangeStep(code0, cr.id, 'client', decision, a.ctx.viewer.name);
-  } catch {
-    return { error: await tr('This decision is no longer pending') };
+  } catch (e) {
+    refreshAll();
+    return { error: await tr(e instanceof ChangeStepError && e.code === 'not_current' ? NOT_YOURS_YET : 'This decision is no longer pending') };
   }
+  await notifyChangeRequest(code0, cr.id, a.ctx.viewer.name);
   refreshAll();
   return { ok: true };
 }

@@ -17,7 +17,7 @@ import type { T } from '@/i18n/translate';
 import { BudgetRateForm } from './budget-rate-form';
 import { FormButton } from './form-button';
 import type { ContractView, CurrencyView } from './model';
-import { ReleaseBondButton, SendAmendmentButton, SignAmendmentButton } from './row-actions';
+import { EditMilestoneButton, ReleaseBondButton, RemoveMilestoneButton, SendAmendmentButton, SignAmendmentButton } from './row-actions';
 import { ContractSheetForm } from './sheet-form';
 import s from './contract.module.css';
 
@@ -32,7 +32,11 @@ export interface ContractScreenProps {
   canSetRate: boolean;
   /** Translated project label, the dialogs' sub-line. */
   context: string;
-  forms: { amendment: FormDef; bond: FormDef; milestone: FormDef; sign: (documentRef: string | null) => FormDef; release: FormDef };
+  forms: {
+    amendment: FormDef; bond: FormDef; milestone: FormDef; sign: (documentRef: string | null) => FormDef; release: FormDef;
+    /** Delivery 8 (R-077): "Edit payment milestone" of a base-contract or an amendment milestone. */
+    editMilestone?: (onAmendment: boolean) => FormDef;
+  };
   t: T;
 }
 
@@ -71,6 +75,9 @@ export function ContractScreen({ view, code, canEdit, canSetRate, context, forms
   const add = (kind: 'amendment' | 'bond' | 'milestone', label: string) =>
     canEdit && <FormButton kind={kind} code={code} context={context} form={forms[kind]} label={t(label)} size="xs" push nowrap />;
   const base = view.milestones.filter((m) => m.group == null);
+  // Delivery 8 (R-077, C-7a): editors correct a planned milestone (Edit · Remove) — the actions column only for them.
+  const actions = canEdit && !!forms.editMilestone;
+  const cols = actions ? 6 : 5;
   const row = (m: ContractView['milestones'][number]) => (
     <tr key={m.id} className={cx(!m.billable && s.muted)}>
       <td>
@@ -82,6 +89,22 @@ export function ContractScreen({ view, code, canEdit, canSetRate, context, forms
       <td className={cx(s.right, s.num)}>{m.amount}</td>
       <td className={cx(s.num, s.nowrap)}>{m.due}</td>
       <td className={s.condition}>{m.condition}</td>
+      {actions && (
+        <td className={s.actionCell}>
+          {m.planned && forms.editMilestone && (
+            <span className={s.milestoneActions}>
+              <EditMilestoneButton
+                code={code} number={m.id} context={`${context} · ${m.id}`} form={forms.editMilestone(m.group != null)} values={m.edit}
+                label={t('Edit')} ariaLabel={`${t('Edit payment milestone')} ${m.id}`}
+              />
+              <RemoveMilestoneButton
+                code={code} number={m.id} label={t('Remove')} ariaLabel={`${t('Remove')} ${m.id}`} title={`${t('Remove payment milestone')} ${m.id}`}
+                text={t('The milestone leaves the contractual schedule; its number is not reused.')} cancel={t('Cancel')}
+              />
+            </span>
+          )}
+        </td>
+      )}
     </tr>
   );
   return (
@@ -173,6 +196,7 @@ export function ContractScreen({ view, code, canEdit, canSetRate, context, forms
               <Th align="right">{t('Amount')}</Th>
               <Th>{t('Contractual date')}</Th>
               <Th>{t('Condition')}</Th>
+              {actions && <Th aria-label={t('Actions')} />}
             </tr>
           </thead>
           <tbody>
@@ -183,11 +207,12 @@ export function ContractScreen({ view, code, canEdit, canSetRate, context, forms
               <td className={cx(s.right, s.num, s.totalCell)}>{view.groups.length ? view.baseTotal.amount : view.total.amount}</td>
               <td className={s.totalHint} />
               <td className={cx(s.totalHint, !view.total.ok && s.alert)}>{view.total.hint}</td>
+              {actions && <td className={s.totalHint} />}
             </tr>
             {view.groups.map((g) => (
               <Fragment key={g.key}>
                 <tr>
-                  <td colSpan={5} className={s.groupHead}>
+                  <td colSpan={cols} className={s.groupHead}>
                     <span className={s.pretty}>{g.label}</span> <span className={cx(g.tagClass, s.nowrap)}>{g.status}</span>
                     {g.note && <span className={s.meta}> · {g.note}</span>}
                   </td>
@@ -199,6 +224,7 @@ export function ContractScreen({ view, code, canEdit, canSetRate, context, forms
                   <td className={cx(s.right, s.num, s.subtotalCell)}>{g.amount}</td>
                   <td className={s.subtotalHint} />
                   <td className={cx(s.subtotalHint, !g.ok && s.alert)}>{g.hint}</td>
+                  {actions && <td className={s.subtotalHint} />}
                 </tr>
               </Fragment>
             ))}
@@ -209,6 +235,7 @@ export function ContractScreen({ view, code, canEdit, canSetRate, context, forms
                 <td className={cx(s.right, s.num, s.totalCell)}>{view.total.amount}</td>
                 <td className={s.totalHint} />
                 <td className={s.totalHint} />
+                {actions && <td className={s.totalHint} />}
               </tr>
             )}
           </tbody>

@@ -11,6 +11,7 @@ import {
 } from '@/domain/rexclient';
 import { scheduleView, type GanttTask, type MilestoneInput, type ScheduleInput, type ScheduleMilestone } from '@/domain/schedule-gantt';
 import { slipText } from '@/features/schedule/i18n';
+import { dataText } from '@/i18n/data-text';
 import type { Lang, T } from '@/i18n/translate';
 import { fmtDOfIso, type ClosureItemStatus, type LessonStatus } from '@/server/db/codes';
 import type { ClientPortal } from '@/server/dal/client';
@@ -109,7 +110,15 @@ export interface DecisionView {
   title: string;
   sub: string;
   approveLabel: string;
+  /**
+   * Delivery 8 (R-140, X-11 shared): a change request's justification as typed (dataText — never t()), null when blank; `long`
+   * when it may need more than three lines (the row then offers "Show more").
+   */
+  why: { text: string; long: boolean } | null;
 }
+
+/** A justification that may not fit the three clamped lines of the portal row (R-140). */
+const isLongText = (s: string) => s.length > 180 || s.split('\n').length > 3;
 
 export interface ClientScreenView {
   tab: ClientTab;
@@ -187,7 +196,11 @@ export function clientScreenView({ code, tab, portal, schedule, billing }: Clien
     milestones: schedule
       ? clientMilestones(schedule.milestones, schedule.header.start).map((m) => ({ name: exactText(m.name, lang), baseDate: t(m.baseDate), fcDate: t(m.fcDate), status: t(m.status), tagClass: tag(m.tone) }))
       : [],
-    decisions: dec.waiting.map((d) => ({ kind: d.kind, kindLabel: t(d.kindLabel), id: d.id, when: t(d.when), title: exactText(d.title, lang), sub: t(d.sub), approveLabel: t(d.approveLabel) })),
+    decisions: dec.waiting.map((d) => ({
+      kind: d.kind, kindLabel: t(d.kindLabel), id: d.id, when: t(d.when), title: exactText(d.title, lang), sub: t(d.sub), approveLabel: t(d.approveLabel),
+      // R-140 (X-11): the text as typed, apart from the translated sub-line.
+      why: d.justification ? { text: dataText(d.justification, lang) ?? d.justification, long: isLongText(d.justification) } : null,
+    })),
     decided: dec.decided.map((d) => ({ id: d.id, title: exactText(d.title, lang), state: t(d.state), tagClass: tag(d.tone), when: t(d.when) })),
     invoices: portal.invoices.map((i) => {
       const r = invoiceRow({ milestone: i.milestone, amountKeur: i.amountKeur, status: i.status, invoiceNumber: i.invoiceNumber, dueOn: i.dueOn }, lang, portal.currency);

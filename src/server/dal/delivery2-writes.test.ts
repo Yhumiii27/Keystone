@@ -51,9 +51,11 @@ describe('change control', () => {
     await expect(decideChangeStep('HLT-026', 'CR-008', 'ccb', 'ok', 'Marie Lefebvre')).rejects.toThrow();
     await expect(decideChangeStep('HLT-026', 'CR-009', 'pm', 'ok', 'Romain Aubert')).rejects.toThrow(/not in review/);
     await submitChangeRequest('HLT-026', 'CR-009', 'Romain Aubert');
-    for (const [step, who] of [['pm', 'Romain Aubert'], ['director', 'Marie Lefebvre'], ['client', 'Nadia Bensaïd']] as const)
+    for (const [step, who] of [['pm', 'Romain Aubert'], ['director', 'Marie Lefebvre']] as const)
       expect(await decideChangeStep('HLT-026', 'CR-009', step, 'ok', who)).toBe('in_review');
-    expect(await decideChangeStep('HLT-026', 'CR-009', 'ccb', 'ok', 'Marie Lefebvre')).toBe('approved');
+    // Delivery 8 (R-069, P-6c): CR-009 (0 k€, +27 d) no longer needs the board (not above the 50 k€ threshold): the client's
+    // approval is the last step (was: client, then the board).
+    expect(await decideChangeStep('HLT-026', 'CR-009', 'client', 'ok', 'Nadia Bensaïd')).toBe('approved');
     const cc = (await getChangeControl('HLT-026'))!;
     expect(cc.baselines.map((b) => [b.code, b.state, b.setOnDate])).toEqual([['BL0', 'superseded', '2026-01-18'], ['BL1', 'superseded', '2026-03-12'], ['BL2', 'current', '2026-09-25']]);
     const cr8 = cc.changeRequests.find((c) => c.id === 'CR-008')!;
@@ -61,17 +63,20 @@ describe('change control', () => {
     // S-3 / DELIVERY-6-PLAN §3.1 gap (1): the approval now also fills BL2's activity snapshot. Both audit lines are written in
     // one transaction and can share a millisecond, so look each one up instead of relying on their order.
     const recent = await listAudit({ limit: 5 });
-    expect(recent.find((a) => a.object === 'CR-009')).toMatchObject({ change: 'ccb: pending → ok · status: In review → Approved · BL2 snapshot · 21 activities · BL2 current', area: 'Change control' });
+    expect(recent.find((a) => a.object === 'CR-009')).toMatchObject({ change: 'client: pending → ok · status: In review → Approved · BL2 snapshot · 21 activities · BL2 current', area: 'Change control' });
     expect(recent.find((a) => a.object === 'HLT-026 BL2')).toMatchObject({ change: 'baseline snapshot · 21 activities · current', area: 'Planning' });
   });
 
-  it('raises CR-011 (submitted, every step pending) and a rejected step rejects it', async () => {
+  it('raises CR-011 (submitted, the steps it needs pending) and a rejected step rejects it', async () => {
     const n = await createChangeRequest('HLT-026', { title: 'Extra lighting', types: ['scope', 'budget'], amountKeur: 12, scheduleDays: 0, wbsCodes: ['1.6'], justification: 'Client ask' }, 'Romain Aubert');
     expect(n).toBe('CR-011');
     let cr = (await getChangeControl('HLT-026'))!.changeRequests[0];
     expect(cr).toMatchObject({ id: 'CR-011', status: 'in_review', by: 'R. Aubert', date: '25 Sep', justification: 'Client ask', wbs: [{ code: '1.6', name: 'MEP systems', amount: null }] });
-    expect(cr.chain.map((s) => s.decision)).toEqual(['pending', 'pending', 'pending', 'pending']);
-    expect(await decideChangeStep('HLT-026', 'CR-011', 'client', 'rejected', 'Nadia Bensaïd')).toBe('rejected');
+    // Delivery 8 (R-069): 12 k€ is not above the board threshold (50 k€) — its step is not required; the chain is decided in order
+    // (P-6b), so the PM's rejection rejects it (was: the client's, any order).
+    expect(cr.chain.map((s) => s.decision)).toEqual(['pending', 'pending', 'pending', 'na']);
+    await expect(decideChangeStep('HLT-026', 'CR-011', 'client', 'rejected', 'Nadia Bensaïd')).rejects.toThrow(/waits for an earlier step/);
+    expect(await decideChangeStep('HLT-026', 'CR-011', 'pm', 'rejected', 'Romain Aubert')).toBe('rejected');
     cr = (await getChangeControl('HLT-026'))!.changeRequests[0];
     expect(cr.statusLabel).toBe('Rejected');
     expect(await createChangeRequest('NDC-031', { title: 'Draft', types: ['schedule'], amountKeur: 0, scheduleDays: 5, submit: false }, 'Romain Aubert')).toBe('CR-012');

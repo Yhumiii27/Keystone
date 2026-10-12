@@ -10,7 +10,7 @@ import 'server-only';
 // now (PG_NOW); overdue invoice = awaiting payment and due before NOWD (30 Sep 2026).
 import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import {
-  canSendAmendment, canSignAmendment, contractFigures, isSignedAmendment, plannedMilestoneAmount, termsOfSheet,
+  INVOICE_BLOCKED_MESSAGE, canSendAmendment, canSignAmendment, contractFigures, invoiceBlocked, isSignedAmendment, plannedMilestoneAmount, termsOfSheet,
   type ContractFigures, type ContractInput,
 } from '@/domain/contract';
 import { BASE_CURRENCY, currencyOf, documentCurrencyError, eurRate, projectFxOf, type CurrencyCode, type ProjectFx } from '@/domain/currency';
@@ -23,9 +23,11 @@ import {
 } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import {
-  changeRequests, clients, contractAmendments, contractBonds, contracts, customerInvoices, documents, paymentMilestones, projectControls, projects,
+  auditEntries, changeRequests, clients, contractAmendments, contractBonds, contracts, customerInvoices, documents, paymentMilestones, projectControls, projects,
 } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
+import type { Actor } from './ops-common';
+import { editsProjectScreen } from './team-guard';
 
 // ── Read model ─────────────────────────────────────────────────────────────────────────────────────────
 
@@ -144,6 +146,8 @@ export interface ContractMilestoneRow {
   statusLabel: string;
   /** Planned, billable and contractual date before the prototype's now (Billing badge, "· Late"). */
   late: boolean;
+  /** Delivery 8 (R-077, C-7): its schedule group exceeds 100 % — "Issue invoice" is refused until the schedule is corrected. */
+  blocked: boolean;
   /** Invoice of an invoiced / paid milestone. */
   invoice: CustomerInvoiceRow | null;
 }
@@ -250,7 +254,7 @@ export async function getContract(projectCode: string): Promise<ProjectContract 
     return {
       number: m.number, label: m.label, sharePct: m.sharePct, amountKeur: m.amountKeur, amendment: m.amendment ?? null, billable: m.billable,
       contractualDue: m.contractualDue, dueText: dash(m.contractualDue, displayOfIso), condition: m.condition, status: m.status,
-      statusLabel: paymentMilestoneStatus.label(m.status), late: m.late,
+      statusLabel: paymentMilestoneStatus.label(m.status), late: m.late, blocked: m.blocked,
       invoice: i ? {
         number: i.number, milestoneNumber: m.number, milestoneLabel: m.label, issuedOn: i.issuedOn, issuedText: shortDateYearOfIso(i.issuedOn),
         amountKeur: i.amountKeur, currency: currencyOf(stored?.currency ?? currency), dueOn: i.dueOn, dueText: shortDateYearOfIso(i.dueOn),
@@ -632,9 +636,26 @@ export interface NewPaymentMilestone {
   amendment?: number | null;
 }
 
+/** "payment milestone M7 removed …": the audit line of a removal (R-077), read back so a removed number is never reused. */
+const REMOVED_RE = /^payment milestone (M\d+) removed\b/;
+
+/**
+ * Numbers of the project's removed milestones, from the audit trail (R-077: numbers are never reused — one contract per project;
+ * the reference may change, so the project and the entity type select the lines).
+ */
+async function removedMilestoneNumbers(tx: Tx, projectId: string): Promise<string[]> {
+  const rows = await tx
+    .select({ change: auditEntries.change })
+    .from(auditEntries)
+    .where(and(eq(auditEntries.projectId, projectId), eq(auditEntries.entityType, 'payment_milestone'), sql`${auditEntries.change} like 'payment milestone M% removed%'`));
+  return rows.map((r) => REMOVED_RE.exec(r.change)?.[1]).filter((n): n is string => !!n);
+}
+
 /**
  * "Add payment milestone" (AF.milestone): M6, M7… Planned — of the base contract, or of an amendment (R-079; billable once the
- * amendment is signed). Shares may exceed 100 % (only a hint, C-7). Returns the number.
+ * amendment is signed). Shares may exceed 100 % (C-7a: the schedule can be retouched), but then invoicing of the group is blocked
+ * until corrected (delivery 8, R-077). The number is above every number ever used on the contract (removed ones included, R-077).
+ * Returns the number.
  */
 export async function addPaymentMilestone(projectCode: string, input: NewPaymentMilestone, actorName: string): Promise<string> {
   const db = await getDb();
@@ -646,7 +667,7 @@ export async function addPaymentMilestone(projectCode: string, input: NewPayment
     if (!isIso(input.contractualDue)) throw new Error('Invalid contractual date');
     const a = input.amendment != null ? await amendmentAt(tx, c.id, input.amendment) : null;
     const existing = await tx.select({ number: paymentMilestones.number, position: paymentMilestones.position }).from(paymentMilestones).where(eq(paymentMilestones.contractId, c.id));
-    const number = nextBusinessNumber(existing.map((m) => m.number ?? ''), 'M', 1);
+    const number = nextBusinessNumber([...existing.map((m) => m.number ?? ''), ...(await removedMilestoneNumbers(tx, p.id))], 'M', 1);
     const [m] = await tx
       .insert(paymentMilestones)
       .values({
@@ -657,6 +678,85 @@ export async function addPaymentMilestone(projectCode: string, input: NewPayment
     const of = a ? ` of ${a.subject}` : '';
     await audit(tx, actorName, c.reference, `payment milestone ${number} added${of} · ${label} · ${input.sharePct} %`, p.id, 'Contract', { type: 'payment_milestone', id: m.id });
     return number;
+  });
+}
+
+// ── Delivery 8 (R-077, C-7 / C-7a): correcting the schedule ────────────────────────────────────────────────────────────
+
+/** A milestone change the schedule refuses (EN source message): not planned any more, unknown, or not the actor's to change. */
+export class MilestoneEditError extends Error {
+  readonly code: 'not_planned' | 'unknown' | 'not_allowed';
+  constructor(code: MilestoneEditError['code'], message: string) {
+    super(message);
+    this.name = 'MilestoneEditError';
+    this.code = code;
+  }
+}
+
+/** The actor edits the contract of this project (the Server Function's `canEdit('contract')`, re-checked — R-041, P-2). */
+async function requireContractEditor(tx: Tx, actor: Actor, projectId: string): Promise<void> {
+  if (!(await editsProjectScreen(tx, actor, projectId, 'contract'))) throw new MilestoneEditError('not_allowed', 'This contract is read-only for you');
+}
+
+export interface PaymentMilestonePatch {
+  label: string;
+  sharePct: number;
+  /** ISO contractual date. */
+  contractualDue: string;
+  condition: string | null;
+}
+
+/**
+ * "Edit milestone" (R-077, C-7a "on peut toujours retoucher"): label, share (0–100, of its basis), contractual date and condition
+ * of a PLANNED milestone; the basis (base contract or amendment) does not change. Guarded update (status still planned),
+ * audited (area Contract, entity payment_milestone). Returns the number.
+ */
+export async function updatePaymentMilestone(projectCode: string, number: string, patch: PaymentMilestonePatch, actor: Actor): Promise<string> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const { p, c } = await loadContract(tx, projectCode);
+    await requireContractEditor(tx, actor, p.id);
+    const label = patch.label.trim();
+    if (!label || label.length > 200) throw new Error('The milestone is required');
+    if (!Number.isFinite(patch.sharePct) || patch.sharePct < 0 || patch.sharePct > 100) throw new Error('Invalid share');
+    if (!isIso(patch.contractualDue)) throw new Error('Invalid contractual date');
+    const [m] = await tx.select().from(paymentMilestones).where(and(eq(paymentMilestones.contractId, c.id), eq(paymentMilestones.number, number)));
+    if (!m) throw new MilestoneEditError('unknown', 'Unknown milestone');
+    if (m.status !== 'planned') throw new MilestoneEditError('not_planned', 'Only a planned milestone can be changed');
+    const condition = patch.condition?.trim() || null;
+    const changes: string[] = [];
+    if (label !== m.label) changes.push(`label: ${m.label} → ${label}`);
+    if (patch.sharePct !== (m.sharePct ?? 0)) changes.push(`share: ${m.sharePct ?? 0} → ${patch.sharePct} %`);
+    if (patch.contractualDue !== m.contractualDue) changes.push(`contractual date: ${m.contractualDue ?? '—'} → ${patch.contractualDue}`);
+    if (condition !== (m.condition ?? null)) changes.push('condition changed');
+    if (!changes.length) return number;
+    const [done] = await tx.update(paymentMilestones)
+      .set({ label, sharePct: patch.sharePct, contractualDue: patch.contractualDue, condition, updatedAt: new Date() })
+      .where(and(eq(paymentMilestones.id, m.id), eq(paymentMilestones.status, 'planned')))
+      .returning({ id: paymentMilestones.id });
+    if (!done) throw new MilestoneEditError('not_planned', 'Only a planned milestone can be changed');
+    await audit(tx, actor.name, c.reference, `payment milestone ${number} changed · ${changes.join(' · ')}`, p.id, 'Contract', { type: 'payment_milestone', id: m.id });
+    return number;
+  });
+}
+
+/**
+ * "Remove milestone" (R-077, after a confirmation): a PLANNED milestone is deleted (nothing references it: invoices exist only
+ * for invoiced ones). Its number is never reused (the audit line is read back by addPaymentMilestone). Audited.
+ */
+export async function removePaymentMilestone(projectCode: string, number: string, actor: Actor): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    const { p, c } = await loadContract(tx, projectCode);
+    await requireContractEditor(tx, actor, p.id);
+    const [m] = await tx.select().from(paymentMilestones).where(and(eq(paymentMilestones.contractId, c.id), eq(paymentMilestones.number, number)));
+    if (!m) throw new MilestoneEditError('unknown', 'Unknown milestone');
+    if (m.status !== 'planned') throw new MilestoneEditError('not_planned', 'Only a planned milestone can be removed');
+    const [gone] = await tx.delete(paymentMilestones)
+      .where(and(eq(paymentMilestones.id, m.id), eq(paymentMilestones.status, 'planned')))
+      .returning({ id: paymentMilestones.id });
+    if (!gone) throw new MilestoneEditError('not_planned', 'Only a planned milestone can be removed');
+    await audit(tx, actor.name, c.reference, `payment milestone ${number} removed · ${m.label} · ${m.sharePct ?? 0} %`, p.id, 'Contract', { type: 'payment_milestone', id: m.id });
   });
 }
 
@@ -683,6 +783,13 @@ export async function issueInvoice(projectCode: string, input: IssueInvoiceInput
     const [m] = await tx.select().from(paymentMilestones).where(and(eq(paymentMilestones.contractId, c.id), eq(paymentMilestones.number, input.milestone)));
     if (!m) throw new Error(`Unknown milestone ${input.milestone}`);
     if (m.status !== 'planned') throw new Error(`${input.milestone} is already invoiced`);
+    // R-077 (C-7): no invoice while the milestone's group (base contract or its amendment) exceeds 100 % — recomputed here, the
+    // contract row being locked by loadContract.
+    const group = await tx.select({ number: paymentMilestones.number, sharePct: paymentMilestones.sharePct, amendmentId: paymentMilestones.amendmentId })
+      .from(paymentMilestones).where(eq(paymentMilestones.contractId, c.id));
+    if (invoiceBlocked(group.map((g) => ({ number: g.number ?? '', sharePct: g.sharePct ?? 0, amendment: g.amendmentId })), input.milestone)) {
+      throw new Error(INVOICE_BLOCKED_MESSAGE);
+    }
     let basis = c.baseAmountKeur;
     if (m.amendmentId) {
       const [a] = await tx.select().from(contractAmendments).where(eq(contractAmendments.id, m.amendmentId));

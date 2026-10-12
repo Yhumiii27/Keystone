@@ -172,7 +172,12 @@ describe('client portal (03 §8)', () => {
 
   it('decisions waiting for the client and decided ones', () => {
     const g = G.client.en['HLT-026'];
-    expect(decisionsOf(crs(), deliverables())).toEqual({ decisions: g.decisions, decided: g.decided });
+    // Deviation P-6b (delivery 8, R-069): the chain is sequential — the client sees CR-008 only once the portfolio director
+    // approved it (the prototype listed it while the director's step was still pending).
+    expect(decisionsOf(crs(), deliverables())).toEqual({ decisions: g.decisions.filter((d: { id: string }) => d.id !== 'CR-008'), decided: g.decided });
+    const afterDirector = crs();
+    afterDirector.find((x) => x.id === 'CR-008')!.chain[1].decision = 'ok';
+    expect(decisionsOf(afterDirector, deliverables())).toEqual({ decisions: g.decisions, decided: g.decided });
     // S-9a (docs/DECISIONS.md): the portal gains a "Schedule" tab after the prototype's first segment.
     expect(CLIENT_TABS.map((o) => o.label)).toEqual([g.seg[0], 'Schedule', ...g.seg.slice(1)]);
   });

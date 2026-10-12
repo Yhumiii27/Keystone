@@ -5,11 +5,12 @@ import 'server-only';
 // budget can be edited. The budget baseline (BAC) is not touched: it changes only through an approved change request.
 // Numbering C01, C02… per project. Writers record audit + activity; the Server Functions check the viewer first.
 import { and, asc, eq } from 'drizzle-orm';
+import { CATEGORY_FROZEN_MESSAGE, categoryAmountFrozen } from '@/domain/baseline-policy';
 import { getDb } from '@/server/db/client';
 import { costType, type CostType } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
-import { costCategories } from '@/server/db/schema';
-import type { Tx } from '@/server/db/types';
+import { baselines, costCategories } from '@/server/db/schema';
+import type { DB, Tx } from '@/server/db/types';
 
 /** Largest budget a category accepts, k€ (a typo guard: €1bn). */
 export const MAX_CATEGORY_BUDGET_KEUR = 1_000_000;
@@ -51,14 +52,25 @@ async function actorOf(tx: Tx, actorName: string) {
   return { actorName: p ? nameOf(p) : actorName, actorPersonId: p?.id ?? null };
 }
 
-/** "Add category": appended with the next code; actual and committed 0, forecast = budget. Same name twice is refused. */
+/** R-081 (C-3a): the project's category amounts are frozen — it has BL1 or a later BLn, any state (read inside the writer's transaction). */
+export async function categoryAmountsFrozen(q: DB | Tx, projectId: string): Promise<boolean> {
+  const rows = await q.select({ code: baselines.code }).from(baselines).where(eq(baselines.projectId, projectId));
+  return categoryAmountFrozen(rows.map((r) => r.code));
+}
+
+/**
+ * "Add category": appended with the next code; actual and committed 0, forecast = budget. Same name twice is refused.
+ * Delivery 8 (R-081): after BL1 the category is created at 0 k€ (forecast 0) whatever budget is given — its amount then moves only
+ * through an approved change request.
+ */
 export async function addProjectCostCategory(projectCode: string, input: CostCategoryInput, actorName: string): Promise<string> {
   const name = validName(input.name);
   const type = validType(input.type);
-  const budget = validBudget(input.budgetKeur);
+  const asked = validBudget(input.budgetKeur);
   const db = await getDb();
   return db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);
+    const budget = (await categoryAmountsFrozen(tx, p.id)) ? 0 : asked;
     const rows = await tx.select().from(costCategories).where(eq(costCategories.projectId, p.id)).orderBy(asc(costCategories.position));
     if (rows.some((r) => r.name.toLowerCase() === name.toLowerCase())) throw new Error(`"${name}" is already a cost category of this project`);
     const code = nextCategoryCode(rows.map((r) => r.code));
@@ -75,7 +87,8 @@ export async function addProjectCostCategory(projectCode: string, input: CostCat
 
 /**
  * "Edit category": name, type and budget. While nothing is spent or committed on it the forecast follows the budget;
- * afterwards the forecast is left to the cost forecast.
+ * afterwards the forecast is left to the cost forecast. Delivery 8 (R-081, C-3a): once the project has BL1 a budget change is
+ * refused (CATEGORY_FROZEN_MESSAGE), the director included; an absent budget means "unchanged" (name and type stay editable).
  */
 export async function updateProjectCostCategory(projectCode: string, categoryCode: string, patch: Partial<CostCategoryInput>, actorName: string): Promise<void> {
   const db = await getDb();
@@ -103,6 +116,7 @@ export async function updateProjectCostCategory(projectCode: string, categoryCod
     }
     if (patch.budgetKeur !== undefined) {
       const budget = validBudget(patch.budgetKeur);
+      if (budget !== c.budgetKeur && (await categoryAmountsFrozen(tx, p.id))) throw new Error(CATEGORY_FROZEN_MESSAGE);
       if (budget !== c.budgetKeur) {
         set.budgetKeur = budget;
         if (!c.actualKeur && !c.committedKeur) set.forecastKeur = budget;

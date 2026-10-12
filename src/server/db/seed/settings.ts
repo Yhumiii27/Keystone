@@ -3,9 +3,10 @@
 // whose ECO / NCR / HSE connector Keystone runs) and the import / export formats (IMPORTS 3571).
 import { PROTO } from '@/server/prototype';
 import {
-  APP_SETTING_HEALTH, HEALTH_DEFAULTS, connectorStatus, deliverableType, locationType, parseStampText, riskCategory, slugOf, stage,
+  APP_SETTING_CCB, APP_SETTING_HEALTH, HEALTH_DEFAULTS, connectorStatus, deliverableType, locationType, parseStampText, riskCategory, slugOf, stage,
   type ReferenceListKey,
 } from '../codes';
+import { DEFAULT_CCB_THRESHOLD_KEUR } from '@/domain/change-control';
 import { APP_SETTING_DEFAULTS, holidayCode, type SettingsDefaults } from '@/domain/settings-defaults';
 import { appSettings, connectors, importFormats, referenceValues } from '../schema';
 import type { Tx } from '../types';
@@ -42,6 +43,8 @@ export function settingsDefaultsDocument(opts: { demo: boolean } = { demo: true 
     lists: defaultReferenceValues().map(({ listKey, code, label }) => ({ listKey, code, label })),
     locations: opts.demo ? (PROTO.SETTINGS0.locations as [string, string][]).map(([name, type]) => ({ name, type: locationType.code(type) })) : [],
     health: { risk: HEALTH_DEFAULTS.risk, off: HEALTH_DEFAULTS.off },
+    // Delivery 8 (R-069, P-6c): the change control board threshold (the prototype's 50 k€ highlight, until management sets it).
+    change: { ccbThresholdKeur: DEFAULT_CCB_THRESHOLD_KEUR },
   };
 }
 
@@ -64,6 +67,8 @@ export const VIGIE_CONNECTOR = {
 export async function seedSettings(tx: Tx, opts: { demo: boolean } = { demo: true }): Promise<void> {
   await tx.insert(referenceValues).values(defaultReferenceValues().map((v) => ({ ...v, active: true, isDefault: true })));
   await tx.insert(appSettings).values({ key: APP_SETTING_HEALTH, value: { risk: HEALTH_DEFAULTS.risk, off: HEALTH_DEFAULTS.off } });
+  // Delivery 8 (R-069, P-6c): both seeds store the board threshold (a database without it reads the same default).
+  await tx.insert(appSettings).values({ key: APP_SETTING_CCB, value: { keur: DEFAULT_CCB_THRESHOLD_KEUR } });
   await seedSettingsDefaults(tx, opts);
   const rows: (Omit<typeof connectors.$inferInsert, 'direction'>)[] = (PROTO.CONNECTORS as [string, string, string, string, string, string][]).map(([name, what, freq, status, last, vol], position) => ({
     name, kind: name === 'Cursus' ? 'cursus' : 'static', dataScope: what, frequency: freq,

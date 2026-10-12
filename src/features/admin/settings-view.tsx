@@ -8,7 +8,7 @@
 // note. "Remove" toasts whether the value was deleted or deactivated (still in use / a default). The health card states
 // the one rule every screen applies.
 import {
-  CalendarX, Certificate, Coins, CurrencyEur, Files, Flag, Heartbeat, LockSimple, Plus, Warehouse, Warning, X,
+  CalendarX, Certificate, Coins, CurrencyEur, Files, Flag, Gavel, Heartbeat, LockSimple, Plus, Warehouse, Warning, X,
 } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
 import Link from 'next/link';
@@ -23,7 +23,7 @@ import type { SettingsIcon } from '@/domain/admin';
 import { REQUIRED_STAGES } from '@/domain/settings-rules';
 import { useI18n } from '@/i18n/client';
 import type { LocationType } from '@/server/db/codes';
-import { addSettingsEntryAction, removeSettingsEntryAction, setHealthThresholdAction, type AdminActionResult } from './actions';
+import { addSettingsEntryAction, removeSettingsEntryAction, setCcbThresholdAction, setHealthThresholdAction, type AdminActionResult } from './actions';
 import type { SettingsCardView, SettingsView } from './model';
 import s from './admin.module.css';
 import st from './settings-ch4.module.css';
@@ -87,6 +87,18 @@ export function SettingsBody({ view, canEdit, directorOnlyNote = false }: { view
           {t('page (directors and PMs).')}
         </div>
       </div>
+      {/* Delivery 8 (R-069, P-6c): the change control board threshold, on its own row next to the health rules. */}
+      <div className={cx('card', 'elev-sm', s.healthCard)}>
+        <div className={s.healthHead}>
+          <Gavel className={s.accent} aria-hidden />
+          <div className={s.healthTitle}>
+            <div className="card-title">{t('Change control board')}</div>
+            <span className={s.muted12}>{t('A change request whose amount exceeds the threshold also needs the board’s decision')}</span>
+            <span className={st.rule}>{t('Applies to change requests submitted afterwards')}</span>
+          </div>
+          <CcbField key={`ccb-${view.ccb.text}`} initial={view.ccb.text} label={t('Board above (k€)')} canEdit={canEdit} />
+        </div>
+      </div>
       <div className={s.cardGrid}>
         {view.cards.map((c) => (
           <ListCard key={c.key} card={c} locTypes={view.locTypes} canEdit={canEdit} />
@@ -115,6 +127,38 @@ function ThresholdField({ which, label, initial, canEdit }: { which: 'risk' | 'o
         className={cx('input', s.thresholdInput)}
         type="number"
         step="0.01"
+        value={value}
+        readOnly={!canEdit}
+        aria-busy={pending || undefined}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+        }}
+      />
+    </div>
+  );
+}
+
+/** R-069: the board threshold (k€, 0 or more), saved on blur / Enter when changed — the director only (the action re-checks). */
+function CcbField({ initial, label, canEdit }: { initial: string; label: string; canEdit: boolean }) {
+  const [value, setValue] = useState(initial);
+  const [pending, start] = useTransition();
+  const commit = () => {
+    if (!canEdit || pending || value.trim() === initial) return;
+    start(async () => {
+      if (!(await attempt(setCcbThresholdAction(value)))) setValue(initial);
+    });
+  };
+  return (
+    <div className={cx('field', s.thresholdField)}>
+      <label htmlFor="threshold-ccb">{label}</label>
+      <input
+        id="threshold-ccb"
+        className={cx('input', s.thresholdInput)}
+        type="number"
+        min={0}
+        step="any"
         value={value}
         readOnly={!canEdit}
         aria-busy={pending || undefined}

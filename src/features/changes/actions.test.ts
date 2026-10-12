@@ -97,12 +97,18 @@ describe('Change control Server Functions', () => {
     expect(await submitChangeRequestAction('HLT-026', 'CR-009')).toEqual({ ok: true });
     expect(await submitChangeRequestAction('HLT-026', 'CR-009')).toEqual({ error: 'This change request has already been submitted' });
     expect((await cr('CR-009')).status).toBe('in_review');
+    // R-069 (P-6c): the steps are fixed at submission — CR-009 (0 k€, a dates change) needs no board, the client's step stays.
+    expect(decisions(await cr('CR-009'))).toEqual(['pending', 'pending', 'pending', 'na']);
     expect(await decideChangeStepAction('HLT-026', 'CR-009', 'pm', 'ok')).toEqual({ ok: true });
+    as('client', 'Nadia Bensaïd');
+    // P-6b: the client decides after the director.
+    expect(await decideChangeStepAction('HLT-026', 'CR-009', 'client', 'ok')).toEqual({ error: 'Not yours to decide yet' });
+    as('director', 'Marie Lefebvre');
+    expect(await decideChangeStepAction('HLT-026', 'CR-009', 'director', 'ok')).toEqual({ ok: true });
     as('client', 'Nadia Bensaïd');
     expect(await decideChangeStepAction('HLT-026', 'CR-009', 'client', 'ok')).toEqual({ ok: true });
     as('director', 'Marie Lefebvre');
-    expect(await decideChangeStepAction('HLT-026', 'CR-009', 'director', 'ok')).toEqual({ ok: true });
-    expect(await decideChangeStepAction('HLT-026', 'CR-009', 'ccb', 'ok')).toEqual({ ok: true });
+    expect(await decideChangeStepAction('HLT-026', 'CR-009', 'ccb', 'ok')).toEqual({ error: 'This approval step is no longer pending' });
     const cc = (await getChangeControl('HLT-026'))!;
     expect(cc.changeRequests.find((c) => c.id === 'CR-009')!.status).toBe('approved');
     expect(cc.baselines.map((b) => [b.code, b.state])).toEqual([
@@ -122,45 +128,54 @@ describe('Change control Server Functions', () => {
 
   it('new change request: validated, numbered CR-011, submitted, raised by the viewer', async () => {
     as('pm', 'Romain Aubert');
-    expect(await createChangeRequestAction('HLT-026', { title: 'X', type: 'budget', amt: '5', days: '0', wbs: '1.9', why: 'Y' })).toEqual({ error: 'Unknown WBS element 1.9' });
+    expect(await createChangeRequestAction('HLT-026', { title: 'X', type: 'budget', impact: 'price', amt: '5', days: '0', wbs: '1.9', why: 'Y' })).toEqual({ error: 'Unknown WBS element 1.9' });
     expect(await createChangeRequestAction('HLT-026', { title: '', why: 'Y' })).toEqual({ error: 'Title is required' });
-    const r = await createChangeRequestAction('HLT-026', { title: 'Extra lighting', type: 'scope_budget', amt: '12', days: '2', wbs: '1.6', why: 'Client ask' });
+    // R-069 (P-6c): the contractual impact is required.
+    expect(await createChangeRequestAction('HLT-026', { title: 'X', type: 'budget', amt: '5', wbs: '1.6', why: 'Y' })).toEqual({ error: 'Choose the contractual impact' });
+    const r = await createChangeRequestAction('HLT-026', { title: 'Extra lighting', type: 'scope_budget', impact: 'price_dates', amt: '12', days: '2', wbs: '1.6', why: 'Client ask' });
     expect(r).toEqual({ toast: 'CR-011 · Change request submitted for review' });
     const c = (await getChangeControl('HLT-026'))!.changeRequests[0];
-    expect(c).toMatchObject({ id: 'CR-011', status: 'in_review', types: ['scope', 'budget'], amount: 12, days: 2, by: 'R. Aubert', justification: 'Client ask' });
-    expect(decisions(c)).toEqual(['pending', 'pending', 'pending', 'pending']);
+    expect(c).toMatchObject({ id: 'CR-011', status: 'in_review', types: ['scope', 'budget'], amount: 12, days: 2, by: 'R. Aubert', justification: 'Client ask', contractImpact: 'price_dates' });
+    // P-6c: 12 k€ is not above the 50 k€ board threshold — the board step is not required.
+    expect(decisions(c)).toEqual(['pending', 'pending', 'pending', 'na']);
     // a project without a WBS accepts any well-formed code
     as('director', 'Marie Lefebvre');
-    expect(await createChangeRequestAction('EWA-051', { title: 'Scope', type: 'scope', wbs: '1.3', why: 'Why' })).toEqual({ toast: 'CR-012 · Change request submitted for review' });
+    expect(await createChangeRequestAction('EWA-051', { title: 'Scope', type: 'scope', impact: 'none', wbs: '1.3', why: 'Why' })).toEqual({ toast: 'CR-012 · Change request submitted for review' });
+    // An internal change ("None (internal)") needs no client step.
+    expect(decisions((await getChangeControl('EWA-051'))!.changeRequests[0])).toEqual(['pending', 'pending', 'na', 'na']);
     expect((await getChangeControl('EWA-051'))!.changeRequests[0]).toMatchObject({ id: 'CR-012', by: 'M. Lefebvre' });
     expect((await listAudit()).some((a) => a.object === 'CR-012')).toBe(true);
   });
 
   it('a change request proposing the next baseline (Plan "Set baseline" after BL1, S-3): BL3 proposed, filled and current at approval', async () => {
     as('pm', 'Romain Aubert');
-    const r = await createChangeRequestAction('HLT-026', { title: 'New baseline BL3', type: 'schedule', wbs: '1', why: 'Recovery plan agreed' }, { proposeBaseline: true });
+    const r = await createChangeRequestAction('HLT-026', { title: 'New baseline BL3', type: 'schedule', impact: 'dates', wbs: '1', why: 'Recovery plan agreed' }, { proposeBaseline: true });
     expect(r).toEqual({ toast: 'CR-013 · Change request submitted for review · BL3 proposed' });
     expect((await cr('CR-013')).baseline).toBe('BL3');
     expect((await listProjectBaselines('HLT-026')).find((b) => b.code === 'BL3')).toMatchObject({
       name: 'BL3 — CR-013', state: 'proposed', source: 'change_request', changeRequest: 'CR-013', activityCount: 0, setOn: null, comment: 'Recovery plan agreed',
     });
+    // R-069 (P-6b, P-6c): PM → director → client; no board for a 0 k€ request — the client's approval approves it.
     expect(await decideChangeStepAction('HLT-026', 'CR-013', 'pm', 'ok')).toEqual({ ok: true });
-    as('client', 'Nadia Bensaïd');
-    expect(await decideChangeStepAction('HLT-026', 'CR-013', 'client', 'ok')).toEqual({ ok: true });
     as('director', 'Marie Lefebvre');
     expect(await decideChangeStepAction('HLT-026', 'CR-013', 'director', 'ok')).toEqual({ ok: true });
     expect((await listProjectBaselines('HLT-026')).find((b) => b.code === 'BL3')!.state).toBe('proposed');
-    expect(await decideChangeStepAction('HLT-026', 'CR-013', 'ccb', 'ok')).toEqual({ ok: true });
+    as('client', 'Nadia Bensaïd');
+    expect(await decideChangeStepAction('HLT-026', 'CR-013', 'client', 'ok')).toEqual({ ok: true });
     expect((await listProjectBaselines('HLT-026')).map((b) => [b.code, b.state, b.activityCount])).toEqual([
       ['BL0', 'superseded', 0], ['BL1', 'superseded', 21], ['BL2', 'superseded', 21], ['BL3', 'current', 21],
     ]);
-    // A rejected proposal stays proposed and empty.
-    expect(await createChangeRequestAction('HLT-026', { title: 'New baseline BL4', type: 'schedule', wbs: '1', why: 'x' }, { proposeBaseline: true })).toMatchObject({ toast: expect.stringContaining('BL4 proposed') });
-    expect(await decideChangeStepAction('HLT-026', 'CR-014', 'director', 'rejected')).toEqual({ ok: true });
+    // A rejected proposal stays proposed and empty (the PM's step comes first, P-6b).
+    as('pm', 'Romain Aubert');
+    expect(await createChangeRequestAction('HLT-026', { title: 'New baseline BL4', type: 'schedule', impact: 'dates', wbs: '1', why: 'x' }, { proposeBaseline: true })).toMatchObject({ toast: expect.stringContaining('BL4 proposed') });
+    as('director', 'Marie Lefebvre');
+    expect(await decideChangeStepAction('HLT-026', 'CR-014', 'director', 'rejected')).toEqual({ error: 'Not yours to decide yet' });
+    as('pm', 'Romain Aubert');
+    expect(await decideChangeStepAction('HLT-026', 'CR-014', 'pm', 'rejected')).toEqual({ ok: true });
     expect((await listProjectBaselines('HLT-026')).find((b) => b.code === 'BL4')).toMatchObject({ state: 'proposed', activityCount: 0 });
     // Security review: a client's request never proposes a baseline (S-1 / S-3: the PM and the director own baselines).
     as('client', 'Nadia Bensaïd');
-    expect(await createChangeRequestAction('HLT-026', { title: 'New baseline BL5', type: 'schedule', wbs: '1', why: 'x' }, { proposeBaseline: true })).toEqual({
+    expect(await createChangeRequestAction('HLT-026', { title: 'New baseline BL5', type: 'schedule', impact: 'dates', wbs: '1', why: 'x' }, { proposeBaseline: true })).toEqual({
       toast: 'CR-015 · Change request submitted for review',
     });
     expect((await listProjectBaselines('HLT-026')).some((b) => b.code === 'BL5')).toBe(false);
@@ -178,7 +193,7 @@ describe('Change control Server Functions', () => {
     viewer.lang = 'fr';
     expect(await generateStatusReportAction('HLT-026', {})).toEqual({ toast: 'Rapport d’avancement généré · PDF prêt' });
     // CR-013 … CR-015 were raised by the baseline-proposal test above.
-    expect(await createChangeRequestAction('HLT-026', { title: 'Signage', type: 'scope', wbs: '1.3', why: 'Port rules' })).toEqual({
+    expect(await createChangeRequestAction('HLT-026', { title: 'Signage', type: 'scope', impact: 'price', wbs: '1.3', why: 'Port rules' })).toEqual({
       toast: 'CR-016 · Demande de modification soumise en revue',
     });
   });

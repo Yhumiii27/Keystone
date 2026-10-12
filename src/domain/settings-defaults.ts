@@ -5,10 +5,12 @@
 // the prototype data or the seed module at run time:
 //   lists      the entries of each Settings list, in order (code + label), restored active at their position;
 //   locations  the stock locations and workshops (name + type), restored active in order;
-//   health     the project health thresholds.
+//   health     the project health thresholds;
+//   change     (delivery 8, R-069, optional) the change control board threshold — 50 k€ when the document predates it.
 // Without the document (a database loaded before Delivery 7 and not yet backfilled), Reset falls back to the list
 // entries flagged `is_default` in their current order, the current locations and HEALTH_DEFAULTS.
 import { HEALTH_DEFAULTS, REFERENCE_LIST_KEYS, isoOfDisplayDate, locationType, slugOf, type LocationType, type ReferenceListKey } from '@/server/db/codes';
+import { DEFAULT_CCB_THRESHOLD_KEUR, isCcbThreshold } from './change-control';
 
 /** app_settings key of the stored defaults. */
 export const APP_SETTING_DEFAULTS = 'settings.defaults';
@@ -20,6 +22,8 @@ export interface SettingsDefaults {
   lists: { listKey: ReferenceListKey; code: string; label: string }[];
   locations: { name: string; type: LocationType }[];
   health: { risk: number; off: number };
+  /** Delivery 8 (R-069, P-6c): change control board threshold, k€; absent in a document stored before it (Reset → 50 k€). */
+  change?: { ccbThresholdKeur: number };
 }
 
 const isText = (v: unknown, max = 200): v is string => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
@@ -54,7 +58,14 @@ export function parseSettingsDefaults(value: unknown): SettingsDefaults | null {
   }
   const h = v.health as Record<string, unknown>;
   if (!isThreshold(h.risk) || !isThreshold(h.off) || h.off >= h.risk) return null;
-  return { lists, locations, health: { risk: h.risk, off: h.off } };
+  // R-069: optional; when present it must be a usable threshold.
+  let change: SettingsDefaults['change'];
+  if (v.change !== undefined) {
+    const c = (v.change ?? {}) as Record<string, unknown>;
+    if (!isCcbThreshold(c.ccbThresholdKeur)) return null;
+    change = { ccbThresholdKeur: c.ccbThresholdKeur };
+  }
+  return { lists, locations, health: { risk: h.risk, off: h.off }, ...(change ? { change } : {}) };
 }
 
 /** The entries of one list with their Settings position (0-based, document order). */
@@ -64,5 +75,5 @@ export const defaultsOfList = (d: SettingsDefaults, listKey: ReferenceListKey) =
 /** Fallback when no document is stored: the entries flagged as defaults, current locations kept, HEALTH_DEFAULTS. */
 export function fallbackSettingsDefaults(rows: readonly { listKey: ReferenceListKey; code: string; label: string; position: number; isDefault: boolean }[]): Omit<SettingsDefaults, 'locations'> & { locations: null } {
   const lists = [...rows].filter((r) => r.isDefault).sort((a, b) => a.position - b.position).map(({ listKey, code, label }) => ({ listKey, code, label }));
-  return { lists, locations: null, health: { risk: HEALTH_DEFAULTS.risk, off: HEALTH_DEFAULTS.off } };
+  return { lists, locations: null, health: { risk: HEALTH_DEFAULTS.risk, off: HEALTH_DEFAULTS.off }, change: { ccbThresholdKeur: DEFAULT_CCB_THRESHOLD_KEUR } };
 }

@@ -3,6 +3,7 @@
 // templates (phases, cost categories, ITP systems, payment terms); document types: the Codex register; Activity &
 // integrations: the current view first (`?view=activity|connectors|imports|audit`, `?source=` chip of the feed).
 import { SETTINGS_CARDS, parseActivitySource, parsePlumbView } from '@/domain/admin';
+import { DEFAULT_CCB_THRESHOLD_KEUR } from '@/domain/change-control';
 import { listAdminConnectors } from '@/server/dal/admin-connectors';
 import { listDocumentTypes } from '@/server/dal/documents';
 import { visibleImportFormats } from '@/features/admin/model';
@@ -30,6 +31,10 @@ async function settingsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
         { label: t('On track'), value: `≥ ${data.health.risk}`, sub: t('Project health rules') },
         { label: t('At risk'), value: `< ${data.health.risk}` }, { label: t('Off track'), value: `< ${data.health.off}` },
       ], t('Project health rules')),
+      // Delivery 8 (R-069, P-6c): the change control board threshold.
+      kpiSheet(ctx, [
+        { label: t('Board above (k€)'), value: `> ${data.ccbThresholdKeur ?? DEFAULT_CCB_THRESHOLD_KEUR}`, sub: t('Applies to change requests submitted afterwards') },
+      ], t('Change control board')),
     ],
   };
 }

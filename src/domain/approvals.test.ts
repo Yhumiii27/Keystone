@@ -5,9 +5,10 @@ import { describe, expect, it } from 'vitest';
 import { makeT } from '@/i18n/translate';
 import { PROTO } from '@/server/prototype';
 import {
-  canDecideStep, changeRequestItems, changeRequestSub, codexDocItems, inboxView, isoOfWhen, kpiTexts, oldestItem, pendingStepFor,
+  changeRequestItems, changeRequestSub, codexDocItems, inboxView, isoOfWhen, kpiTexts, oldestItem, pendingStepFor,
   type ApprovalItem, type ChangeRequestForInbox, type ProtoDoc,
 } from './approvals';
+import { canDecideStep } from './change-control';
 
 const ids = (xs: ApprovalItem[]) => xs.map((x) => x.id);
 
@@ -37,22 +38,29 @@ describe('change requests (apprItems 4726 by person)', () => {
   const director = { name: 'Marie Lefebvre', role: 'director' } as const;
   const client = { name: 'Nadia Bensaïd', role: 'client' } as const;
   const pm = { name: 'Romain Aubert', role: 'pm' } as const;
-  it('CR-008 waits for the director and the client contact, not the PM (step already ok)', () => {
+  // Deviation P-6b (delivery 8, R-069): the chain is sequential — CR-008 waits for the director only; the client contact gets it
+  // once the director approved, the director again (change control board) once the client approved. The prototype offered it to
+  // the director and the client at once.
+  const withDecided = (list: ChangeRequestForInbox[], steps: ChangeRequestForInbox['chain'][number]['step'][]) =>
+    list.map((c) => (c.id === 'CR-008' ? { ...c, chain: c.chain.map((x) => (steps.includes(x.step) ? { ...x, decision: 'ok' as const } : x)) } : c));
+  it('CR-008 waits for the director only (sequential chain, P-6b), not the PM (step already ok)', () => {
     expect(ids(changeRequestItems(crs, director, 'HLT-026', 'en'))).toEqual(['CR-008']);
-    expect(ids(changeRequestItems(crs, client, 'HLT-026', 'en'))).toEqual(['CR-008']);
+    expect(ids(changeRequestItems(crs, client, 'HLT-026', 'en'))).toEqual([]);
     expect(changeRequestItems(crs, pm, 'HLT-026', 'en')).toEqual([]);
     const [d] = changeRequestItems(crs, director, 'HLT-026', 'en');
     expect(d).toEqual({
       kind: 'cr', id: 'CR-008', title: 'Second steel crew — schedule recovery', sub: 'Budget · Schedule · +€85k · -12 d', when: '24 Sep', whenIso: '2026-09-24', who: 'R. Aubert',
       href: '/projects/HLT-026/changes?cr=CR-008', decision: { mode: 'change-request', projectCode: 'HLT-026', number: 'CR-008', step: 'director' },
     });
-    expect(changeRequestItems(crs, client, 'HLT-026', 'fr')[0].sub).toBe('Budget · Schedule · +85 k€ · -12 d');
-    expect(changeRequestItems(crs, client, 'HLT-026', 'en')[0].decision).toMatchObject({ step: 'client' });
+    const afterDirector = withDecided(crs, ['director']);
+    expect(changeRequestItems(afterDirector, client, 'HLT-026', 'fr')[0].sub).toBe('Budget · Schedule · +85 k€ · -12 d');
+    expect(changeRequestItems(afterDirector, client, 'HLT-026', 'en')[0].decision).toMatchObject({ step: 'client' });
+    expect(changeRequestItems(afterDirector, director, 'HLT-026', 'en')).toEqual([]);
     // Another person holding the director role is not the named approver of the director step.
     expect(ids(changeRequestItems(crs, { name: 'Someone Else', role: 'pm' }, 'HLT-026', 'en'))).toEqual([]);
   });
-  it('once the director step is decided, CR-008 comes back to the director for the change control board (recorded by the director on Change control)', () => {
-    const decided = crs.map((c) => (c.id === 'CR-008' ? { ...c, chain: c.chain.map((x) => (x.step === 'director' ? { ...x, decision: 'ok' as const } : x)) } : c));
+  it('once the director and the client decided, CR-008 comes back to the director for the change control board (recorded by the director on Change control)', () => {
+    const decided = withDecided(crs, ['director', 'client']);
     const [d] = changeRequestItems(decided, director, 'HLT-026', 'en');
     expect([d.id, d.sub, d.decision]).toEqual([
       'CR-008', 'Budget · Schedule · +€85k · -12 d · Change control board', { mode: 'change-request', projectCode: 'HLT-026', number: 'CR-008', step: 'ccb' },
@@ -60,7 +68,7 @@ describe('change requests (apprItems 4726 by person)', () => {
     const fr = changeRequestItems(decided, director, 'HLT-026', 'fr')[0].sub;
     // Shared engine: the prototype's "-12 d" stays as is (the feature's inboxT renders "-12 j", see myapprovals.test.ts).
     expect(makeT('fr')(fr)).toBe('Budget · Planning · +85 k€ · -12 d · Comité de contrôle des modifications');
-    expect(changeRequestItems(decided, client, 'HLT-026', 'en')[0].decision).toMatchObject({ step: 'client' });
+    expect(changeRequestItems(decided, client, 'HLT-026', 'en')).toEqual([]);
   });
   it('sub line omits a zero amount or zero days; days are signed', () => {
     expect(changeRequestSub({ typesLabel: 'Schedule', amount: 0, days: 27 }, 'en')).toBe('Schedule · +27 d');
@@ -68,19 +76,24 @@ describe('change requests (apprItems 4726 by person)', () => {
     expect(changeRequestSub({ typesLabel: 'Budget · Schedule', amount: -4, days: -5 }, 'en')).toBe('Budget · Schedule · −€4k · -5 d');
     expect(changeRequestSub({ typesLabel: 'Scope', amount: 15, days: 0 }, 'en')).toBe('Scope · +€15k');
   });
-  it('permission rule: in review, own pending step (named approver; CCB = its recorder role), never a draft', () => {
+  it('permission rule: in review, own CURRENT step (named approver; CCB = its recorder role), never a draft — one rule with Change control (R-171)', () => {
     const cr8 = crs.find((c) => c.id === 'CR-008')!;
     const cr9 = crs.find((c) => c.id === 'CR-009')!;
     expect(canDecideStep(cr8, 'director', director)).toBe(true);
     expect(canDecideStep(cr8, 'client', director)).toBe(false);
     expect(canDecideStep(cr8, 'pm', pm)).toBe(false);
-    expect(canDecideStep(cr8, 'ccb', director)).toBe(true);
-    expect(canDecideStep(cr8, 'ccb', pm)).toBe(false);
-    expect(canDecideStep(cr8, 'ccb', client)).toBe(false);
+    // Deviation P-6b (R-069): the board step waits for the director and the client (the prototype let the director decide it at once).
+    expect(canDecideStep(cr8, 'ccb', director)).toBe(false);
+    expect(canDecideStep(cr8, 'client', client)).toBe(false);
+    const cr8Board = withDecided([cr8], ['director', 'client'])[0];
+    expect(canDecideStep(cr8Board, 'ccb', director)).toBe(true);
+    expect(canDecideStep(cr8Board, 'ccb', pm)).toBe(false);
+    expect(canDecideStep(cr8Board, 'ccb', client)).toBe(false);
     expect(canDecideStep(cr9, 'pm', pm)).toBe(false);
     expect(canDecideStep(cr9, 'ccb', director)).toBe(false);
     expect(pendingStepFor({ ...cr9, status: 'in_review' }, pm)).toBe('pm');
-    expect(pendingStepFor({ ...cr9, status: 'in_review' }, director)).toBe('director');
+    // R-069: once submitted, CR-009 waits for its PM first — the director's step comes after.
+    expect(pendingStepFor({ ...cr9, status: 'in_review' }, director)).toBeNull();
   });
 });
 

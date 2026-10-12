@@ -60,7 +60,8 @@ describe('Settings body', () => {
     expect(out).not.toContain('aria-label="Remove');
     expect(out).not.toContain('placeholder="Add an entry"');
     expect(out).not.toContain('aria-pressed=');
-    expect(count(out, /readOnly=""|readonly=""/gi)).toBe(2);
+    // Two health thresholds + (delivery 8, R-069) the change control board threshold.
+    expect(count(out, /readOnly=""|readonly=""/gi)).toBe(3);
     expect(text(out)).toContain('Software / IT');
   });
 });

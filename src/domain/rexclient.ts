@@ -13,7 +13,7 @@
 //   and empty state talk to the client ("Released documents shared with you", "No document shared with you yet"),
 //   not about the engineering register ("Deliverables", "Own documents · …");
 // - decimals of the satisfaction survey follow the language ("4,5" in French).
-import { CR_TYPE_LABEL } from '@/domain/change-control';
+import { CR_TYPE_LABEL, currentStep } from '@/domain/change-control';
 import { scheduleMilestone, scheduleProgression, type MilestoneInput } from '@/domain/schedule-gantt';
 import type { Lang } from '@/i18n/translate';
 import { money } from '@/lib/format';
@@ -326,6 +326,8 @@ export interface ChangeRequestLike {
   /** "24 Sep". */
   date: string;
   chain: { step: ChangeStep; decision: StepDecision | null }[];
+  /** Delivery 8 (R-140, X-11 shared): the justification as typed, shown to the client under a request waiting for them. */
+  justification?: string | null;
 }
 
 export interface DeliverableLike {
@@ -341,8 +343,11 @@ export interface DeliverableLike {
 }
 
 export const clientStepOf = (cr: Pick<ChangeRequestLike, 'chain'>) => cr.chain.find((s) => s.step === 'client')?.decision ?? null;
-/** A change request waits for the client: in review, client step pending. */
-export const crAwaitsClient = (cr: Pick<ChangeRequestLike, 'status' | 'chain'>) => cr.status === 'in_review' && clientStepOf(cr) === 'pending';
+/**
+ * A change request waits for the client: in review and its current step is the client's — delivery 8 (R-069, P-6b): the client
+ * sees a request only after the project manager and the portfolio director approved it.
+ */
+export const crAwaitsClient = (cr: Pick<ChangeRequestLike, 'status' | 'chain'>) => cr.status === 'in_review' && currentStep(cr.chain) === 'client';
 
 export interface DecisionRow {
   kind: 'change_request' | 'deliverable';
@@ -354,6 +359,8 @@ export interface DecisionRow {
   title: string;
   sub: string;
   approveLabel: 'Approve' | 'Accept (PV)';
+  /** Delivery 8 (R-140, X-11): a change request's justification as typed (null when blank, and for deliverables). */
+  justification: string | null;
 }
 
 /** "Budget · Schedule · +€85k on contract · -12 d on handover" (the prototype's hyphen for gains). */
@@ -367,11 +374,12 @@ export function crDecisionSub(cr: Pick<ChangeRequestLike, 'types' | 'amount' | '
 
 export const crDecisionRow = (cr: ChangeRequestLike, lang: Lang): DecisionRow => ({
   kind: 'change_request', kindLabel: 'Change request', id: cr.id, when: cr.date, title: cr.title, sub: crDecisionSub(cr, lang), approveLabel: 'Approve',
+  justification: cr.justification?.trim() ? cr.justification : null,
 });
 
 export const deliverableDecisionRow = (d: DeliverableLike): DecisionRow => ({
   kind: 'deliverable', kindLabel: 'Deliverable', id: d.number, when: fmtDOfIso(d.dueOn), title: d.title,
-  sub: `${d.typeLabel} · rev ${d.revision ?? '—'} · ${d.acceptanceText}`, approveLabel: 'Accept (PV)',
+  sub: `${d.typeLabel} · rev ${d.revision ?? '—'} · ${d.acceptanceText}`, approveLabel: 'Accept (PV)', justification: null,
 });
 
 export interface DecidedRow {

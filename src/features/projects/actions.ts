@@ -9,7 +9,8 @@ import {
 } from '@/domain/lifecycle';
 import { WIZARD_CALENDAR_OPTIONS, WIZARD_REQUIRED, wizardSiteError, wizardWindowError } from '@/domain/project-template';
 import { costType, machineType, stage as stageCodec, type MachineTypeCode, type StageCode } from '@/server/db/codes';
-import { StageChangeError, getStageChangeBounds, listStages } from '@/server/dal/lifecycle';
+import { BL1_DELIVERABLE_MESSAGE, bl1TickRefused } from '@/domain/baseline-policy';
+import { StageChangeError, getStageChangeBounds, listStages, projectHasBl1 } from '@/server/dal/lifecycle';
 import {
   createWizardProject, getNewProjectSetup, getProjectStage, missingDeliverables, moveProjectStage, setDeliverableAndAdvance,
 } from '@/server/dal/projects-register';
@@ -113,8 +114,14 @@ export async function setDeliverableAction(input: { code: string; stage: string;
       refresh();
       return { ok: false, error: 'The project has already moved to another stage' };
     }
+    // R-054 (L-2 "a"): « Planning BL1 posé » follows BL1 — no manual tick without it, no untick while it exists (forcing stays).
+    if (bl1TickRefused({ stage: input.stage, position: input.index, done: input.done }, (await projectHasBl1(code)).bl1)) {
+      refresh();
+      return { ok: false, error: BL1_DELIVERABLE_MESSAGE };
+    }
     await setDeliverableAndAdvance(code, input.stage, input.index, input.done, (await getViewer()).short);
   } catch (e) {
+    if (e instanceof Error && e.message === BL1_DELIVERABLE_MESSAGE) return { ok: false, error: BL1_DELIVERABLE_MESSAGE };
     logError('setDeliverableAction', e);
     return { ok: false, error: FAILED };
   }

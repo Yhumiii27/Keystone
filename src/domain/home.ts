@@ -7,6 +7,8 @@
 import { screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
 import { STATUS_DATE, TODAY, dateOf, dayLabel, money } from '@/lib/format';
+import type { StepDecision } from '@/server/db/codes';
+import { CR_STEPS, currentStep } from './change-control';
 import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import { weekHoursOf } from './kpis';
 import { mainShortfall, peakWeekNumbers, unmetDemand, weekRangesText, type CapacityRow } from './resources';
@@ -373,7 +375,13 @@ const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.le
 const lcFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 /** "Second steel crew — schedule recovery" → "Second steel crew". */
 const shortTitle = (s: string) => s.split(' — ')[0];
-const crAwaiting = (cr: ChangeRequest, step: 'client' | 'director') => changeRequestStatus(cr) === 'in_review' && cr.chain[step] === 'pending';
+/**
+ * The request waits for `step`: in review and `step` is its current step — delivery 8 (R-069, P-6b: PM → director → client →
+ * board, so the client's Home lists a request only once the PM and the director approved it).
+ */
+const crAwaiting = (cr: ChangeRequest, step: 'client' | 'director') =>
+  changeRequestStatus(cr) === 'in_review' &&
+  currentStep(CR_STEPS.map((s) => ({ step: s, decision: (cr.chain[s] === 'n/a' ? 'na' : (cr.chain[s] ?? null)) as StepDecision | null }))) === step;
 
 /** "Good morning, Marie" / "Portfolio director · Friday 25 Sep 2026" (homeVals, line 4435). */
 export function greeting(persona: Persona): Pick<HomeView, 'greeting' | 'sub'> {

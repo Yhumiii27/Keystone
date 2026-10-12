@@ -257,6 +257,11 @@ export interface RegisterChange {
   wbs: readonly { code: string; amount: number | null }[];
   /** Decision of the client step (null when the request has no chain). */
   clientStep: RegisterStep | null;
+  /**
+   * Delivery 8 (R-069, P-6c): contractual impact chosen when it was raised; null / absent on a request raised before it was
+   * asked (the approval then keeps delivery 7's rule: the client approved a request with an amount).
+   */
+  contractImpact?: 'none' | 'price' | 'dates' | 'price_dates' | null;
 }
 
 export interface RegisterReconciliation {
@@ -344,8 +349,13 @@ export function workPackageChanges(crs: readonly RegisterChange[], packages: rea
   return out;
 }
 
-/** The request changes the contract price: the client approved it (a client step "not required" is an internal change). */
-export const isContractualChange = (cr: Pick<RegisterChange, 'clientStep' | 'amount'>) => cr.clientStep === 'ok' && !!cr.amount;
+/**
+ * The request changes the contract price: the client approved it (a client step "not required" is an internal change), it has an
+ * amount and (delivery 8, R-069 — A-4 / P-6c) its contractual impact includes the price. A dates-only change prepares no money
+ * amendment (open question); a request without a recorded impact keeps delivery 7's rule.
+ */
+export const isContractualChange = (cr: Pick<RegisterChange, 'clientStep' | 'amount' | 'contractImpact'>) =>
+  cr.clientStep === 'ok' && !!cr.amount && (cr.contractImpact == null || cr.contractImpact === 'price' || cr.contractImpact === 'price_dates');
 
 export type AmendmentOutcome =
   /** A draft amendment is prepared for signature. */
@@ -358,11 +368,17 @@ export type AmendmentOutcome =
   | 'no_contract';
 
 /** What the approval of a request does to the contract (R-068, A-4 "l'avenant est préparé pour signature"). */
-export function amendmentOutcome(cr: Pick<RegisterChange, 'clientStep' | 'amount'>, ctx: { hasContract: boolean; amendmentExists: boolean }): AmendmentOutcome {
+export function amendmentOutcome(cr: Pick<RegisterChange, 'clientStep' | 'amount' | 'contractImpact'>, ctx: { hasContract: boolean; amendmentExists: boolean }): AmendmentOutcome {
   if (!isContractualChange(cr)) return 'not_contractual';
   if (!ctx.hasContract) return 'no_contract';
   return ctx.amendmentExists ? 'exists' : 'prepared';
 }
+
+/**
+ * Delivery 8 (R-081, C-3a): the budget a cost category gets when an approved request names it — before + amount, k€ to two
+ * decimals, never below 0 (a negative request that would overshoot is refused when raised; one that slips through is clamped).
+ */
+export const postedCategoryBudget = (before: number, amount: number) => Math.max(0, Math.round((before + amount) * 100) / 100);
 
 /** Subject of a prepared amendment ("Amendment 3 — Second steel crew — schedule recovery"); the label adds " (CR-008)". */
 export const amendmentSubject = (n: number, title: string) => `Amendment ${n} — ${title}`;

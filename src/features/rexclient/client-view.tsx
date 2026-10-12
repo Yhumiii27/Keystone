@@ -186,6 +186,23 @@ function DecisionsTab({ code, view, can, t }: { code: string; view: ClientScreen
               </span>
               <span className={s.decTitle}>{d.title}</span>
               <span className={s.decSub}>{d.sub}</span>
+              {/* R-140 (X-11 shared): why the change is asked, as typed; three lines, then "Show more". */}
+              {d.why &&
+                (d.why.long ? (
+                  <details className={s.decWhy}>
+                    <summary className={s.decWhySummary}>
+                      <span className={s.decWhyText}>
+                        <span className={s.decWhyLabel}>{t('Why:')}</span> {d.why.text}
+                      </span>
+                      <span className={s.decWhyMore}>{t('Show more')}</span>
+                      <span className={s.decWhyLess}>{t('Show less')}</span>
+                    </summary>
+                  </details>
+                ) : (
+                  <span className={s.decWhyText}>
+                    <span className={s.decWhyLabel}>{t('Why:')}</span> {d.why.text}
+                  </span>
+                ))}
             </div>
             {can.decide && <DecisionButtons code={code} kind={d.kind} id={d.id} approveLabel={d.approveLabel} rejectLabel={t('Reject')} />}
           </div>

@@ -1,7 +1,9 @@
 // Projects register view model (docs/spec/03 §5.4–§5.6): turns the register data (DAL) into serialisable,
 // translated rows for the client island. Pure — runs in the page (Server Component) and in tests.
 import { screenHref } from '@/config/screens';
+import { BL1_STAGE_DELIVERABLE } from '@/domain/baseline-policy';
 import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
+import { displayOfIso } from '@/server/db/codes';
 import { HEALTH_LABEL, type HealthThresholds } from '@/domain/health';
 import { isLiveRow, type SearchableProject, type StageCode } from '@/domain/lifecycle';
 import { projectIndicators, type Tint } from '@/domain/portfolio';
@@ -50,8 +52,11 @@ export interface RegisterRow {
   msLine: string;
   msColor: string;
   attention: string;
-  /** Deliverables of the current stage (STAGE_DELIVS) and their ticks. */
-  delivs: { label: string; done: boolean }[];
+  /**
+   * Deliverables of the current stage (STAGE_DELIVS) and their ticks. `lock` (delivery 8, R-054): « Planning BL1 posé » follows
+   * BL1 — read-only, with the reason (translated).
+   */
+  delivs: { label: string; done: boolean; lock?: string }[];
   /** Stage history, newest first. */
   history: { stage: string; date: string; forced: boolean; why: string }[];
   /** Bounds of the effective date of the next stage change (L-4c, ISO): the latest change and today (the data date). */
@@ -95,6 +100,14 @@ export interface RegisterInput {
   thresholds?: HealthThresholds;
   /** Data date per project (ISO): "today" of the stage-change effective date (L-4c). Default: the status date. */
   dataDates?: Record<string, string>;
+  /** Delivery 8 (R-054): BL1 per project (set, ISO date) — « Planning BL1 posé » follows it. */
+  bl1?: Record<string, { set: boolean; setOn: string | null }>;
+}
+
+/** R-054 (L-2 "a"): the hint of the read-only « Planning BL1 posé » tick. */
+function bl1Lock(b: { set: boolean; setOn: string | null } | undefined, t: T): string {
+  if (!b?.set) return t('Ticked when BL1 is set (Plan › Set baseline, up to BL1)');
+  return b.setOn ? `${t('Ticked by BL1')} · ${t(displayOfIso(b.setOn))}` : t('Ticked by BL1');
 }
 
 /** Indicator tints → CSS colours (LO = accent-300, OK = text). */
@@ -144,7 +157,10 @@ export function buildRegisterModel(data: RegisterInput, zone: ZoneKey | null, t:
       msLine: ind.msLine ? t(ind.msLine) : '',
       msColor: TINT[ind.msTint],
       attention: ind.attention.length ? ind.attention.map((a) => t(a)).join(' · ') : '—',
-      delivs: (st?.deliverables ?? []).map((label, i) => ({ label: t(label), done: !!ticks[i] })),
+      delivs: (st?.deliverables ?? []).map((label, i) => ({
+        label: t(label), done: !!ticks[i],
+        ...(p.stage === BL1_STAGE_DELIVERABLE.stage && i === BL1_STAGE_DELIVERABLE.position ? { lock: bl1Lock(data.bl1?.[p.code], t) } : {}),
+      })),
       history: (data.history[p.code] ?? [])
         .slice()
         .reverse()

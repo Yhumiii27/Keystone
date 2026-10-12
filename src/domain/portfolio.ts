@@ -7,7 +7,7 @@ import type { Lang } from '@/i18n/translate';
 import { fmtD, mIdx, money, monthDate } from '@/lib/format';
 import { STAGES, type StageCode } from '@/server/db/codes';
 import { DEFAULT_DATA_DATE } from './ch4-defaults';
-import { DEFAULT_HEALTH_THRESHOLDS, HEALTH_LABEL, clampHealthCpi, healthOf, type Health, type HealthThresholds } from './health';
+import { DEFAULT_HEALTH_THRESHOLDS, HEALTH_LABEL, clampHealthCpi, healthOf, indexAlert, type Health, type HealthThresholds } from './health';
 import type { ProjectTeamRole } from './rights';
 
 // ── Population (A-3) ───────────────────────────────────────────────────────────────────────────────
@@ -36,11 +36,8 @@ export interface EvmInput {
   spi: number | null;
 }
 
-/**
- * CPI / SPI below the Settings "At risk below" threshold are shown in LO (attention colour) and listed as attention items
- * (A-13: colours follow the same threshold as the health verdict; it was a fixed 0.97 before). Default 0.97.
- */
-export const indexAlert = (value: number, th: HealthThresholds = DEFAULT_HEALTH_THRESHOLDS) => value < th.risk;
+/** CPI / SPI alert of the Settings thresholds — moved to ./health (delivery 8, R-080: the Budget reads it without this module). */
+export { indexAlert };
 /** @deprecated The default "At risk below" threshold (0.97); screens pass the Settings thresholds to `indexAlert`. */
 export const INDEX_ALERT = DEFAULT_HEALTH_THRESHOLDS.risk;
 

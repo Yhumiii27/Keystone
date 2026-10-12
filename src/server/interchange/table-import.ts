@@ -14,6 +14,8 @@ import type { DB, Tx } from '@/server/db/client';
 import type { BomScope, CostType, ImportMode, PartMakeBuy, PartStatus, PartType, PartUnit, WearSpare } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
 import { activities, activityAssignments, calendars, costCategories, parts, persons, projectBomLines, projects, suppliers } from '@/server/db/schema';
+import { CATEGORY_FROZEN_MESSAGE } from '@/domain/baseline-policy';
+import { categoryAmountsFrozen } from '@/server/dal/budget-categories';
 import type { ImportPreviewRow } from '@/server/dal/import-jobs';
 import { INTERCHANGE_DEFAULTS } from './defaults';
 import { fmt } from './messages';
@@ -21,6 +23,9 @@ import { round2 } from './model';
 import type { NormalisedRow, TableKind } from './table';
 
 type Q = DB | Tx;
+
+/** R-081 (C-3a): warning of a budget line creating a category after BL1 (created at 0 k€). */
+export const CATEGORY_CREATED_AT_ZERO = 'After BL1 a new category starts at 0 k€ — its amount changes only through an approved change request';
 
 export interface TableSummary {
   kind: TableKind;
@@ -64,7 +69,11 @@ export async function planTableImport(kind: TableKind, input: NormalisedRow[], o
   const seen = new Set<string>();
 
   // Reference data per kind.
-  const cats = kind === 'budget_lines' ? await q.select({ id: costCategories.id, code: costCategories.code, name: costCategories.name }).from(costCategories).where(eq(costCategories.projectId, project!.id)) : [];
+  const cats = kind === 'budget_lines'
+    ? await q.select({ id: costCategories.id, code: costCategories.code, name: costCategories.name, budget: costCategories.budgetKeur }).from(costCategories).where(eq(costCategories.projectId, project!.id))
+    : [];
+  // R-081 (C-3a): after BL1 a category's amount changes only through an approved change request.
+  const frozen = kind === 'budget_lines' && (await categoryAmountsFrozen(q, project!.id));
   const refs = [...new Set(input.map((r) => r.values.ref).filter((x): x is string => typeof x === 'string'))];
   const partRows = (kind === 'bom' || kind === 'parts') && refs.length ? await q.select({ id: parts.id, ref: parts.ref }).from(parts).where(inArray(parts.ref, refs)) : [];
   const partByRef = new Map(partRows.map((p) => [p.ref, p.id]));
@@ -95,6 +104,14 @@ export async function planTableImport(kind: TableKind, input: NormalisedRow[], o
       if (kind === 'budget_lines') {
         const m = (v.code ? cats.find((c) => lc(c.code) === lc(v.code)) : undefined) ?? cats.find((c) => lc(c.name) === lc(v.name));
         targetId = m?.id ?? null;
+        // R-081: after BL1 a row changing an existing category's amount is refused (skipped); a new category is created at 0.
+        if (frozen && m && opts.mode !== 'new' && typeof v.budget === 'number' && round2(v.budget) !== m.budget) {
+          messages.push(CATEGORY_FROZEN_MESSAGE);
+          error = true;
+        } else if (frozen && !m && typeof v.budget === 'number' && v.budget !== 0) {
+          messages.push(CATEGORY_CREATED_AT_ZERO);
+          warning = true;
+        }
       } else if (kind === 'bom') {
         const partId = partByRef.get(String(v.ref));
         if (!partId) {
@@ -158,12 +175,15 @@ export async function writeTableImport(kind: TableKind, plan: TablePlan, project
   const todo = plan.planned.filter((p) => p.action !== 'skip');
 
   if (kind === 'budget_lines') {
-    const existing = await tx.select({ code: costCategories.code, position: costCategories.position }).from(costCategories).where(eq(costCategories.projectId, project!.id));
+    const existing = await tx.select({ id: costCategories.id, code: costCategories.code, position: costCategories.position, budget: costCategories.budgetKeur }).from(costCategories).where(eq(costCategories.projectId, project!.id));
     const codes = new Set(existing.map((c) => c.code.toUpperCase()));
     let pos = Math.max(0, ...existing.map((c) => c.position));
     let n = Math.max(0, ...existing.map((c) => (/^C(\d+)$/i.exec(c.code) ? +/^C(\d+)$/i.exec(c.code)![1] : 0)));
+    // R-081 (C-3a): re-checked in the writing transaction — BL1 may have been set since the preview.
+    const frozen = await categoryAmountsFrozen(tx, project!.id);
     for (const p of todo) {
       const v = p.values;
+      if (frozen && p.action === 'update' && round2(num(v.budget)!) !== existing.find((c) => c.id === p.targetId)?.budget) throw new Error(CATEGORY_FROZEN_MESSAGE);
       if (p.action === 'update') {
         await tx
           .update(costCategories)
@@ -180,9 +200,10 @@ export async function writeTableImport(kind: TableKind, plan: TablePlan, project
           while (codes.has(code));
         }
         codes.add(code);
+        // R-081: after BL1 a new category starts at 0 k€ (forecast 0).
         await tx.insert(costCategories).values({
-          projectId: project!.id, code, name: String(v.name), costType: v.costType as CostType, budgetKeur: round2(num(v.budget)!), actualKeur: round2(num(v.actual) ?? 0),
-          committedKeur: round2(num(v.committed) ?? 0), forecastKeur: round2(num(v.forecast) ?? num(v.budget)!), position: ++pos,
+          projectId: project!.id, code, name: String(v.name), costType: v.costType as CostType, budgetKeur: frozen ? 0 : round2(num(v.budget)!), actualKeur: round2(num(v.actual) ?? 0),
+          committedKeur: round2(num(v.committed) ?? 0), forecastKeur: frozen ? 0 : round2(num(v.forecast) ?? num(v.budget)!), position: ++pos,
         });
         created++;
       }

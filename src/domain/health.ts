@@ -56,6 +56,13 @@ export function usableThresholds(t: Partial<HealthThresholds> | null | undefined
   return { risk: t.risk, off: t.off };
 }
 
+/**
+ * CPI / SPI below the Settings "At risk below" threshold are shown in LO (attention colour) and listed as attention items
+ * (A-13: colours follow the same threshold as the health verdict; it was a fixed 0.97 before). Default 0.97. Moved here from
+ * ./portfolio in delivery 8 (R-080) so the Budget's tiles read it too (re-exported there).
+ */
+export const indexAlert = (value: number, th: HealthThresholds = DEFAULT_HEALTH_THRESHOLDS) => value < th.risk;
+
 /** Verdict of an index against the thresholds. */
 export function healthOfIndex(m: number, th: HealthThresholds = DEFAULT_HEALTH_THRESHOLDS): Health {
   return m < th.off ? 'off_track' : m < th.risk ? 'at_risk' : 'on_track';

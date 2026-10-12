@@ -31,9 +31,14 @@ export default async function BillingPage({ params }: { params: Promise<{ code: 
   const context = projectLabelText(ctx.project, lang);
   const view = billingView(contract, t, lang);
   const invoiceForm = invoiceFormDef(contract, t, lang);
+  // R-077 (C-7): disabled, with the reason, when every planned milestone is blocked (its group exceeds 100 %).
+  const allBlocked = view.toInvoice.length > 0 && view.toInvoice.every((m) => m.blocked);
   const primary =
     canEdit && view.toInvoice.length ? (
-      <FormButton kind="invoice" code={projectCode} context={context} form={invoiceForm} label={t('Issue invoice')} variant="primary" />
+      <FormButton
+        kind="invoice" code={projectCode} context={context} form={invoiceForm} label={t('Issue invoice')} variant="primary"
+        disabledReason={allBlocked ? view.toInvoice[0].blocked : null}
+      />
     ) : undefined;
 
   return (

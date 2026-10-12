@@ -20,7 +20,10 @@ import {
   type MachineTypePatch,
 } from '@/server/dal/mtypes';
 import type { Actor } from '@/server/dal/ops-common';
-import { addLocation, addReferenceValue, getHealthThresholds, removeLocation, removeReferenceValue, resetSettings, setHealthThresholds } from '@/server/dal/settings';
+import {
+  CCB_THRESHOLD_ERROR, addLocation, addReferenceValue, getHealthThresholds, removeLocation, removeReferenceValue, resetSettings, setCcbThreshold, setHealthThresholds,
+} from '@/server/dal/settings';
+import { isCcbThreshold } from '@/domain/change-control';
 import { translateMessage } from '@/server/interchange/messages';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -156,6 +159,24 @@ export async function setHealthThresholdAction(which: unknown, raw: unknown): Pr
   if (err) return fail(err);
   try {
     await setHealthThresholds({ [which]: v }, ok.actor);
+  } catch (e) {
+    return failure(e);
+  }
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * Delivery 8 (R-069, P-6c): "Change control board above (k€)" — a number of k€, 0 or more; the director only. It applies to the
+ * change requests submitted afterwards (the steps are fixed at submission).
+ */
+export async function setCcbThresholdAction(raw: unknown): Promise<AdminActionResult> {
+  const ok = await settingsEditor();
+  if ('error' in ok) return ok;
+  const v = parseThresholdInput(raw);
+  if (v === null || !isCcbThreshold(v)) return fail(CCB_THRESHOLD_ERROR);
+  try {
+    await setCcbThreshold(v, ok.actor);
   } catch (e) {
     return failure(e);
   }

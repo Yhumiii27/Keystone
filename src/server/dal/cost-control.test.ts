@@ -151,17 +151,19 @@ describe('R-068 — the Budget reads the single change register (A-4)', () => {
 
   it('an internal change (client step not required) moves the BAC only; a project without contract records "no contract"', async () => {
     const db = await getDb();
-    const n = await createChangeRequest('HLT-026', { title: 'Yard lighting', types: ['budget'], amountKeur: 12, scheduleDays: 0, wbsCodes: ['1.7'] }, 'Romain Aubert');
+    // Delivery 8 (R-069, P-6c): "None (internal)" sets the client step "not required" (as the seeded CR-007) and 12 k€ needs no
+    // board — PM then director approve it (was: the client step set by hand, then PM, director, board).
+    const n = await createChangeRequest('HLT-026', { title: 'Yard lighting', types: ['budget'], amountKeur: 12, scheduleDays: 0, wbsCodes: ['1.7'], contractImpact: 'none' }, 'Romain Aubert');
     const [cr] = await db.select({ id: changeRequests.id }).from(changeRequests).where(eq(changeRequests.number, n));
-    // The client step "not required" (as the seeded CR-007; set automatically once R-069 lands).
-    await db.update(changeRequestSteps).set({ decision: 'na' }).where(and(eq(changeRequestSteps.changeRequestId, cr.id), eq(changeRequestSteps.step, 'client')));
-    for (const [step, who] of [['pm', 'Romain Aubert'], ['director', 'Marie Lefebvre'], ['ccb', 'Marie Lefebvre']] as const) await decideChangeStep('HLT-026', n, step, 'ok', who);
+    expect((await db.select({ step: changeRequestSteps.step, d: changeRequestSteps.decision }).from(changeRequestSteps).where(and(eq(changeRequestSteps.changeRequestId, cr.id), eq(changeRequestSteps.step, 'client'))))[0].d).toBe('na');
+    for (const [step, who] of [['pm', 'Romain Aubert'], ['director', 'Marie Lefebvre']] as const) await decideChangeStep('HLT-026', n, step, 'ok', who);
     const [p] = await db.select().from(changeRequestPostings).where(eq(changeRequestPostings.changeRequestId, cr.id));
     expect([p.amountKeur, p.bacBeforeKeur, p.bacAfterKeur, p.amendmentOutcome, p.amendmentId, p.allocations]).toEqual([12, 4885, 4897, 'not_contractual', null, [{ code: '1.7', amountKeur: 12 }]]);
     expect((await getContract('HLT-026'))!.amendments.some((a) => a.changeRequestRef === n)).toBe(false);
 
+    // R-069: 30 k€ is not above the board threshold (50 k€) — the chain ends with the client.
     const m = await createChangeRequest('NDC-031', { title: 'UPS bypass', types: ['scope', 'budget'], amountKeur: 30, scheduleDays: 5, wbsCodes: ['1'] }, 'Sophie Perrin');
-    for (const [step, who] of [['pm', 'Sophie Perrin'], ['director', 'Marie Lefebvre'], ['client', 'Nadia Bensaïd'], ['ccb', 'Marie Lefebvre']] as const) await decideChangeStep('NDC-031', m, step, 'ok', who);
+    for (const [step, who] of [['pm', 'Sophie Perrin'], ['director', 'Marie Lefebvre'], ['client', 'Nadia Bensaïd']] as const) await decideChangeStep('NDC-031', m, step, 'ok', who);
     const [ndc] = await db.select({ id: projects.id, bac: projects.budgetKeur }).from(projects).where(eq(projects.code, 'NDC-031'));
     expect(ndc.bac).toBe(2130);
     const [q] = await db.select().from(changeRequestPostings).where(eq(changeRequestPostings.projectId, ndc.id));
@@ -177,8 +179,9 @@ describe('R-068 — the Budget reads the single change register (A-4)', () => {
     await db.update(projects).set({ currency: 'USD', budgetRate: 0.92 }).where(eq(projects.id, hlt.id));
     await db.update(contracts).set({ currency: 'USD' }).where(eq(contracts.projectId, hlt.id));
     try {
-      const n = await createChangeRequest('HLT-026', { title: 'Extra fenders', types: ['scope', 'budget'], amountKeur: 46, scheduleDays: 0, wbsCodes: ['1.7'] }, 'Romain Aubert');
-      for (const [step, who] of [['pm', 'Romain Aubert'], ['director', 'Marie Lefebvre'], ['client', 'Nadia Bensaïd'], ['ccb', 'Marie Lefebvre']] as const) await decideChangeStep('HLT-026', n, step, 'ok', who);
+      // R-069: 46 k€, no board step (threshold 50 k€).
+      const n = await createChangeRequest('HLT-026', { title: 'Extra fenders', types: ['scope', 'budget'], amountKeur: 46, scheduleDays: 0, wbsCodes: ['1.7'], contractImpact: 'price' }, 'Romain Aubert');
+      for (const [step, who] of [['pm', 'Romain Aubert'], ['director', 'Marie Lefebvre'], ['client', 'Nadia Bensaïd']] as const) await decideChangeStep('HLT-026', n, step, 'ok', who);
       const a = (await getContract('HLT-026'))!.amendments.find((x) => x.changeRequestRef === n)!;
       // 46 k€ ÷ 0.92 € per USD = 50 k$ (the BAC, in euros, moves by 46).
       expect([a.amountKeur, a.status]).toEqual([50, 'draft']);
@@ -192,6 +195,8 @@ describe('R-068 — the Budget reads the single change register (A-4)', () => {
   it('a rejected request posts nothing', async () => {
     const db = await getDb();
     const n = await createChangeRequest('RCF-019', { title: 'Extra panels', types: ['budget'], amountKeur: 20, scheduleDays: 0, wbsCodes: ['1.3'] }, 'Claire Moreau');
+    // R-069 (P-6b): the director decides after the PM.
+    await decideChangeStep('RCF-019', n, 'pm', 'ok', 'Claire Moreau');
     await decideChangeStep('RCF-019', n, 'director', 'rejected', 'Marie Lefebvre');
     const [cr] = await db.select({ id: changeRequests.id }).from(changeRequests).where(eq(changeRequests.number, n));
     expect(await db.select().from(changeRequestPostings).where(eq(changeRequestPostings.changeRequestId, cr.id))).toEqual([]);

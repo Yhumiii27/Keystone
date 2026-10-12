@@ -114,6 +114,10 @@ describe('My approvals feature', () => {
     expect(await decideChangeRequestAction(input)).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
     session.role = 'client';
     expect(await decideChangeRequestAction(input)).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
+    // R-069 (P-6b): the client's own step waits for the director's.
+    expect(await decideChangeRequestAction({ ...input, step: 'client' })).toEqual({ ok: false, error: 'Not yours to decide yet' });
+    session.role = 'director';
+    expect(await decideChangeRequestAction({ ...input, step: 'ccb' })).toEqual({ ok: false, error: 'Not yours to decide yet' });
     expect((await getChangeControl('HLT-026'))!.changeRequests.find((c) => c.id === 'CR-008')!.chain.map((s) => s.decision)).toEqual(['ok', 'pending', 'pending', 'pending']);
   });
 
@@ -121,8 +125,9 @@ describe('My approvals feature', () => {
     expect(await decideChangeRequestAction({ projectCode: 'HLT-026', number: 'CR-008', step: 'director', decision: 'ok' })).toEqual({ ok: true, status: 'In review' });
     expect((await listAudit({ limit: 1 }))[0]).toMatchObject({ who: 'Marie Lefebvre', object: 'CR-008', change: 'director: pending → ok', area: 'Change control' });
     expect(await decideChangeRequestAction({ projectCode: 'HLT-026', number: 'CR-008', step: 'director', decision: 'ok' })).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
-    // The CCB step is now the director's row (Change control's recorder); nobody else may record it.
-    expect(text(await render('director', 'en'))).toContain('Budget · Schedule · +€85k · -12 d · Change control board');
+    // Deviation P-6b (R-069): the board's step waits for the client — not in the director's queue yet; nobody else may record it.
+    expect(text(await render('director', 'en'))).not.toContain('Budget · Schedule · +€85k · -12 d · Change control board');
+    expect(text(await render('client', 'en'))).toContain('CR-008');
     session.role = 'pm';
     expect(await decideChangeRequestAction({ projectCode: 'HLT-026', number: 'CR-008', step: 'ccb', decision: 'ok' })).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
     session.role = 'client';

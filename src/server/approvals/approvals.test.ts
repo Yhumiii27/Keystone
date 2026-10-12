@@ -49,7 +49,8 @@ describe('My approvals registry', () => {
     // The quality manager heads the Quality department (RQ-042) and is the next Codex approver of RPT-HLT-014.
     expect(await queue('quality')).toEqual(['request:RQ-042', 'delivery:BL-2026-0521', 'doc:RPT-HLT-014']);
     expect(await queue('procurement')).toEqual(['delivery:BL-2026-0521', 'rfq:RFQ-2026-031', 'invoice:INV-HC-7781', 'invoice:INV-BX-55120', 'invoice:INV-LE-2210']);
-    expect(await queue('client')).toEqual(['cr:CR-008', 'deliverable:D-014', 'deliverable:D-016']);
+    // Deviation P-6b (delivery 8, R-069): CR-008 reaches the client once the director approved it (last CR test below).
+    expect(await queue('client')).toEqual(['deliverable:D-014', 'deliverable:D-016']);
     expect(await queue('member')).toEqual([]);
   });
 
@@ -76,7 +77,8 @@ describe('My approvals registry', () => {
       ['0', '0', '—', '4'],
       ['3', '3', '18 Sep', '4'],
       ['5', '3', '10 Sep', '0'],
-      ['3', '2', '24 Sep', '0'],
+      // P-6b (R-069): the client's CR-008 waits for the director — 3 · 2 · 24 Sep → 2 · 1 · 25 Sep.
+      ['2', '1', '25 Sep', '0'],
     ]);
   });
 
@@ -97,7 +99,7 @@ describe('My approvals registry', () => {
       kind: 'cr', id: 'CR-008', title: 'Second steel crew — schedule recovery', sub: 'Budget · Schedule · +€85k · -12 d', when: '24 Sep', whenIso: '2026-09-24', who: 'R. Aubert',
       href: '/projects/HLT-026/changes?cr=CR-008', decision: { mode: 'change-request', projectCode: 'HLT-026', number: 'CR-008', step: 'director' },
     });
-    expect((await inbox('client', 'HLT-026', 'fr')).items[0].sub).toBe('Budget · Schedule · +85 k€ · -12 d');
+    // The client's own line (FR) is checked once the director approved CR-008 (P-6b, R-069), below.
   });
 
   it('project-bound kinds follow the current project', async () => {
@@ -154,15 +156,15 @@ describe('My approvals registry', () => {
     expect(await queue('pm')).not.toContain('stage:NDC-031');
   });
 
-  it('a decided CR step leaves the decider’s queue and counts as decided; the director then records the CCB', async () => {
+  it('a decided CR step leaves the decider’s queue and counts as decided; the client decides next, then the board', async () => {
     await decideChangeStep('HLT-026', 'CR-008', 'director', 'ok', 'Marie Lefebvre');
     const d = await inbox('director');
-    // Same request, next step the director holds: the change control board (recorded by the director, 07 OQ2).
-    expect(d.items.filter((i) => i.kind === 'cr').map((i) => [i.id, i.sub, i.decision])).toEqual([
-      ['CR-008', 'Budget · Schedule · +€85k · -12 d · Change control board', { mode: 'change-request', projectCode: 'HLT-026', number: 'CR-008', step: 'ccb' }],
-    ]);
+    // Deviation P-6b (delivery 8, R-069): the chain is sequential — the board step the director records (07 OQ2) waits for the
+    // client's decision, so it is not in the director's queue yet (the prototype listed it right away).
+    expect(d.items.filter((i) => i.kind === 'cr')).toEqual([]);
     expect(d.decided).toBe(2);
     expect(await queue('client')).toContain('cr:CR-008');
+    expect((await inbox('client', 'HLT-026', 'fr')).items[0].sub).toBe('Budget · Schedule · +85 k€ · -12 d');
     await decideChangeStep('HLT-026', 'CR-008', 'client', 'rejected', 'Nadia Bensaïd');
     expect(await queue('client')).toEqual(['deliverable:D-014', 'deliverable:D-016']);
     // Rejected: nothing left to decide on it for anyone.

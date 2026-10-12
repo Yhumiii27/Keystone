@@ -5,12 +5,13 @@ import 'server-only';
 // baseline goes through a change request; it is filled and made current when the request is approved, dal/changes.ts).
 // The Change control register keeps reading `getBaselines` / `getBaselineRegister` (planning.ts, changes-baselines.ts).
 import { and, asc, eq, sql } from 'drizzle-orm';
-import { canSnapshotFreely } from '@/domain/baseline-policy';
+import { baselineNumber, canSnapshotFreely } from '@/domain/baseline-policy';
 import { DEFAULT_DISPLAYED_BASELINE, displayedBaselineCode, nextBaselineCode, projectDataDate } from '@/domain/ch4-defaults';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import type { BaselineSource, BaselineState } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import { activities, baselineActivities, baselines, changeRequests, projects, wbsNodes } from '@/server/db/schema';
+import { markBl1Deliverable } from './lifecycle';
 
 type Q = DB | Tx;
 
@@ -173,7 +174,7 @@ async function supersedeCurrent(tx: Q, projectId: string, exceptId: string): Pro
  * "Set baseline": snapshots every activity of the project into a new baseline BLn (next free number). Its finish is the
  * latest activity finish. Returns the new code. Pass `q` to run inside the caller's transaction.
  */
-export async function createBaselineSnapshot(code: string, input: SnapshotInput, q?: Q): Promise<{ code: string; activityCount: number }> {
+export async function createBaselineSnapshot(code: string, input: SnapshotInput, q?: Q): Promise<{ code: string; activityCount: number; bl1Ticked?: true }> {
   const run = async (tx: Q) => {
     const proj = await requireProject(tx, code);
     const p = await projectHead(tx, code);
@@ -211,7 +212,9 @@ export async function createBaselineSnapshot(code: string, input: SnapshotInput,
     const who = actor ? nameOf(actor) : input.actorName;
     await writeAudit(tx, { actorName: who, actorPersonId: actor?.id, objectRef: `${code} ${blCode}`, change: `baseline set · ${rows.length} activities`, area: 'Planning', entityType: 'baseline', entityId: b.id, projectId: proj.id });
     await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, text: `Set baseline ${blCode} · ${rows.length} activities`, kind: 'snapshot', projectId: proj.id });
-    return { code: blCode, activityCount: rows.length };
+    // R-054 (L-2 "a"): BL1 (or a later BLn) made current ticks « Planning BL1 posé » — returned, never kept outside (R-010).
+    const bl1Ticked = input.makeCurrent && baselineNumber(blCode) >= 1 ? await markBl1Deliverable(tx, proj.id, input.actorName) : false;
+    return { code: blCode, activityCount: rows.length, ...(bl1Ticked ? { bl1Ticked: true as const } : {}) };
   };
   if (q) return run(q);
   return (await getDb()).transaction(run);
@@ -244,6 +247,8 @@ export async function snapshotIntoBaseline(code: string, baselineCode: string, i
       actorName: actor ? nameOf(actor) : input.actorName, actorPersonId: actor?.id, objectRef: `${code} ${baselineCode}`, change: `baseline snapshot · ${rows.length} activities${input.makeCurrent ? ' · current' : ''}`,
       area: 'Planning', entityType: 'baseline', entityId: b.id, projectId: proj.id,
     });
+    // R-054 (L-2 "a"): a BLn ≥ 1 made current (the change request's re-baseline) ticks « Planning BL1 posé ».
+    if (input.makeCurrent && baselineNumber(baselineCode) >= 1) await markBl1Deliverable(tx, proj.id, input.actorName);
     return rows.length;
   };
   if (q) return run(q);

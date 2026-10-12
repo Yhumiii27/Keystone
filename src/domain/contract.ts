@@ -121,6 +121,8 @@ export interface MilestoneFigure extends MilestoneInput {
   billable: boolean;
   /** Planned, billable and contractual date before the status "now" (PG_NOW ≈ 30 Sep 2026). */
   late: boolean;
+  /** Delivery 8 (R-077, C-7): its schedule group (base contract or its amendment) exceeds 100 % — invoicing is blocked. */
+  blocked: boolean;
 }
 
 export interface InvoiceFigure {
@@ -155,8 +157,30 @@ export interface ScheduleGroup {
   sharePct: number;
   /** Shares total 100 % (an amendment without milestones is complete only while unsigned or worth 0). */
   shareOk: boolean;
+  /** Delivery 8 (R-077, C-7): Σ shares above 100 % (+ 0.01 tolerance) — no milestone of the group may be invoiced. */
+  over: boolean;
   /** Σ milestone amounts. */
   amountKeur: number;
+}
+
+// ── Delivery 8 (R-077, C-7): invoicing blocked while a schedule group exceeds 100 % ──────────────────────────────────
+
+/** Rounding tolerance of a share total (the prototype's "100 %" test, 0.01 %). */
+export const SHARE_TOLERANCE_PCT = 0.01;
+/** Σ shares of a group above 100 % (C-7 "aucune facture ne doit partir tant que le total dépasse 100 %"). */
+export const sharesOver = (sharePct: number) => sharePct > 100 + SHARE_TOLERANCE_PCT;
+/** Refusal of "Issue invoice" on a blocked group (Billing, the DAL re-checks it inside its transaction). */
+export const INVOICE_BLOCKED_MESSAGE = 'Payment milestones exceed 100 % — invoicing is blocked until the schedule is corrected';
+
+/**
+ * C-7 (default per group, owner to confirm vs the whole contract): the milestone's basis group — the base contract, or the
+ * amendment it belongs to — has Σ shares > 100 % (+ 0.01). Under 100 % stays a hint (C-7a "on peut toujours retoucher").
+ */
+export function invoiceBlocked(milestones: readonly { number: string; sharePct: number; amendment?: number | string | null }[], number: string): boolean {
+  const m = milestones.find((x) => x.number === number);
+  if (!m) return false;
+  const group = milestones.filter((x) => (x.amendment ?? null) === (m.amendment ?? null));
+  return sharesOver(group.reduce((a, x) => a + (x.sharePct || 0), 0));
 }
 
 export interface ContractFigures {
@@ -216,6 +240,7 @@ export function contractFigures(c: ContractInput): ContractFigures {
       amountKeur: m.status !== 'planned' && m.invoice ? m.invoice.amountKeur : plannedMilestoneAmount(basis, m.sharePct),
       billable,
       late: billable && m.status === 'planned' && beforePgNow(m.contractualDue),
+      blocked: invoiceBlocked(c.milestones, m.number),
     };
   });
   const invoices: InvoiceFigure[] = milestones.flatMap((m) => {
@@ -235,6 +260,7 @@ export function contractFigures(c: ContractInput): ContractFigures {
     return {
       amendment, label, status, basisKeur, billable, milestones: ms, sharePct,
       shareOk: Math.abs(sharePct - 100) < 0.01 || (amendment != null && !ms.length && (!billable || !basisKeur)),
+      over: sharesOver(sharePct),
       amountKeur: sum(ms, (m) => m.amountKeur),
     };
   };
@@ -323,6 +349,16 @@ export function liquidatedDamagesKpi(ld: string, warranty: string): { value: str
 
 /** `ctrSchedTotal.hint`: '' when Σ shares = 100 %. */
 export const scheduleHint = (ok: boolean, lang: Lang) => (ok ? '' : lang === 'fr' ? 'Les parts doivent totaliser 100 %' : 'Shares must total 100 %');
+
+/**
+ * Delivery 8 (R-077, C-7): the hint of one schedule group, in the viewer's language — over 100 % "Shares total 105 % · invoicing
+ * blocked" (the words through `t`, the total formatted for `lang`), under 100 % the prototype's "Shares must total 100 %" (a hint
+ * only, C-7a), '' when complete.
+ */
+export function scheduleGroupHint(g: Pick<ScheduleGroup, 'sharePct' | 'shareOk'>, lang: Lang, t: (english: string) => string = (x) => x): string {
+  if (sharesOver(g.sharePct)) return `${t('Shares total')} ${shareTotalText(g.sharePct, lang)} · ${t('invoicing blocked')}`;
+  return scheduleHint(g.shareOk, lang);
+}
 
 /** `billKpis[0].sub` "55 % of contract" (the FR rules give "55 % du contrat"). */
 export const invoicedSub = (invoiced: number, total: number) => `${total ? Math.round((invoiced / total) * 100) : 0} % of contract`;
@@ -474,7 +510,8 @@ export const BASE_CONTRACT_OPTION = 'base';
 
 /**
  * AF.milestone: applies to (the base contract, or an amendment — R-079) · milestone* · share* (0 < % ≤ 100, of the base amount or
- * of the amendment's amount) · contractual date* · condition. Σ > 100 % only warns (C-7).
+ * of the amendment's amount) · contractual date* · condition. Σ > 100 % is accepted (C-7a: the schedule can always be retouched)
+ * but blocks invoicing of its group until corrected (delivery 8, R-077). "Edit milestone" uses the same form without "Applies to".
  */
 export function parseMilestoneForm(v: Record<string, string | undefined>): ParseResult<MilestoneForm> {
   const basis = text(v.basis) || BASE_CONTRACT_OPTION;

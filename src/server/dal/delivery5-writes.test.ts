@@ -148,7 +148,8 @@ describe('deliverables — producer steps and client acceptance (PV)', () => {
     await expect(decideDeliverable(HLT, 'D-016', 'accepted', A.client)).rejects.toThrow(/not submitted/);
     expect(await deliverableDecidedCount(A.client)).toBe(2);
     const portal = await getClientPortal(HLT);
-    expect(portal.decisions.map((d) => d.id)).toEqual(['CR-008', 'D-018']);
+    // P-6b (delivery 8, R-069): CR-008 waits for the director before it reaches the client.
+    expect(portal.decisions.map((d) => d.id)).toEqual(['D-018']);
     expect(portal.decided.map((d) => d.id)).toEqual(['CR-004', 'CR-006', 'D-011', 'D-012', 'D-014', 'D-015', 'D-016']);
   });
 

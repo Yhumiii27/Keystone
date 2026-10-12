@@ -12,6 +12,7 @@ import { seedCollaboration } from './collaboration';
 import { ctxFromDb, newCtx, type SeedCtx } from './context';
 import { seedControl } from './control';
 import { backfillCostControl } from './cost-control';
+import { backfillContractImpacts } from './cost-change';
 import { seedContract } from './contract';
 import { seedCost } from './cost';
 import { seedCursus } from './cursus';
@@ -134,6 +135,8 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
       await db.transaction(async (tx) => seedSettingsDefaults(tx)).catch((e) => logError('Delivery 7 Settings defaults backfill', e, { component: 'seed' }));
     }
     // ── Delivery 8 · demo backfills · cost-change ──
+    // R-069: the contractual impact of the change requests raised before it was asked (idempotent).
+    await backfillContractImpacts(db).catch((e) => logError('Delivery 8 cost-change backfill', e, { component: 'seed' }));
     // ── Delivery 8 · demo backfills · roles-rates-hr ──
     // ── Delivery 8 · demo backfills · connectors ──
     // Databases seeded before delivery 7 adopt their (demo) record.

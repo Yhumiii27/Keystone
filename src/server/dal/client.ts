@@ -8,6 +8,7 @@ import 'server-only';
 // from the project's Stakeholders & RACI screen; the client is notified of the answer and of the closure (Keystone
 // notifications; no e-mail is sent, X-6). The client sees the answer and the status, never the internal handling.
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
+import { currentStep } from '@/domain/change-control';
 import { registerReconciliation } from '@/domain/cost-control';
 import { CLIENT_ISSUE_HANDLER_ROLES, ISSUE_ACKNOWLEDGEMENT, ISSUE_NOTICE, hasRealAnswer, issueSteps, type IssueStep } from '@/domain/client-issues';
 import { getDb } from '@/server/db/client';
@@ -133,13 +134,17 @@ export async function getClientPortal(projectCode: string): Promise<ClientPortal
     db.select({ id: projectControls.projectId }).from(projectControls).where(eq(projectControls.projectId, p.id)),
   ]);
   const clientStep = (c: ChangeRequestDetail) => c.chain.find((s) => s.step === 'client')?.decision ?? null;
+  // Delivery 8: a request reaches the client once its current step is theirs (R-069, P-6b — after the PM and the director); the
+  // internal cost category of a request (R-081) never leaves the team's screens.
+  const forClient = (c: ChangeRequestDetail): ChangeRequestDetail => ({ ...c, costCategoryCode: null, requestedByPersonId: null });
   const decisions: ClientDecision[] = [
-    ...crs.filter((c) => c.status === 'in_review' && clientStep(c) === 'pending').map((c) => ({ kind: 'change_request' as const, id: c.id, title: c.title, changeRequest: c, deliverable: null })),
+    ...crs.filter((c) => c.status === 'in_review' && currentStep(c.chain) === 'client')
+      .map((c) => ({ kind: 'change_request' as const, id: c.id, title: c.title, changeRequest: forClient(c), deliverable: null })),
     ...dlv.filter((d) => d.status === 'submitted').map((d) => ({ kind: 'deliverable' as const, id: d.number, title: d.title, changeRequest: null, deliverable: d })),
   ];
   const decided: ClientDecided[] = [
     ...crs.filter((c) => clientStep(c) === 'ok' || clientStep(c) === 'rejected').map((c) => ({
-      kind: 'change_request' as const, id: c.id, title: c.title, changeRequest: c, deliverable: null, state: clientStep(c) === 'ok' ? 'approved' as const : 'rejected' as const,
+      kind: 'change_request' as const, id: c.id, title: c.title, changeRequest: forClient(c), deliverable: null, state: clientStep(c) === 'ok' ? 'approved' as const : 'rejected' as const,
     })),
     ...dlv.filter((d) => d.status === 'accepted' || d.status === 'rejected').map((d) => ({
       kind: 'deliverable' as const, id: d.number, title: d.title, changeRequest: null, deliverable: d, state: d.status as 'accepted' | 'rejected',

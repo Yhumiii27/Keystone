@@ -24,6 +24,7 @@ import {
   scheduleBars, wbsNodes,
 } from '@/server/db/schema';
 import { settingsHolidayDates, upsertCalendar } from '@/server/dal/calendars';
+import { markBl1Deliverable } from '@/server/dal/lifecycle';
 import type { ImportPreviewRow } from '@/server/dal/import-jobs';
 import { INTERCHANGE_DEFAULTS } from './defaults';
 import { fmt } from './messages';
@@ -752,6 +753,8 @@ async function writeBaselines(
       durationDays: v!.durationDays, budgetKeur: v!.costKeur, percentComplete: null, totalFloatDays: null, position: i,
     }));
     for (let i = 0; i < rows.length; i += 500) await tx.insert(baselineActivities).values(rows.slice(i, i + 500));
+    // R-054 (L-2 "a"): a NEW import whose Baseline 0 becomes BL1 current ticks « Planning BL1 posé » (no stage move).
+    if (opts.mode === 'new' && code === 'BL1') await markBl1Deliverable(tx, projectId, who);
   }
 }
 

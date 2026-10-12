@@ -12,8 +12,16 @@ vi.mock('@/server/session', async () => {
 vi.mock('@/server/project-context', () => ({
   getProjectContext: async () => ({ viewer: { name: viewer.name }, canEdit: () => viewer.canEdit }),
 }));
+// Delivery 8 (R-081, C-3a): HLT-026 has BL1, so its category amounts are frozen. The chapter-4 tests below run as before BL1
+// (`policy.frozen = false`); the R-081 block reads the real rule.
+const policy = vi.hoisted(() => ({ frozen: null as boolean | null }));
+vi.mock('@/domain/baseline-policy', async (orig) => {
+  const actual = await orig<typeof import('@/domain/baseline-policy')>();
+  return { ...actual, categoryAmountFrozen: (codes: readonly string[]) => policy.frozen ?? actual.categoryAmountFrozen(codes) };
+});
 
 import { revalidatePath } from 'next/cache';
+import { CATEGORY_FROZEN_MESSAGE } from '@/domain/baseline-policy';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { getCostControl } from '@/server/dal/cost';
@@ -29,6 +37,7 @@ describe('cost category Server Functions', () => {
   beforeEach(() => {
     viewer.canEdit = true;
     viewer.lang = 'en';
+    policy.frozen = false;
     vi.mocked(revalidatePath).mockClear();
   });
 
@@ -75,5 +84,44 @@ describe('cost category Server Functions', () => {
     expect(await editCostCategoryAction('HLT-026', c.code, { name: 'x', type: 'equipment', budget: '-2' })).toEqual({ error: 'Enter a budget in k€ (0 or more)' });
     expect(await editCostCategoryAction('HLT-026', 'C99', { name: 'x', type: 'equipment', budget: '2' })).toEqual({ error: 'Unknown cost category' });
     expect(await editCostCategoryAction('HLT-026', 'DROP TABLE', { name: 'x', type: 'equipment', budget: '2' })).toEqual({ error: 'Unknown cost category' });
+  });
+});
+
+describe('R-081 (C-3a) — after BL1 a category amount changes only through an approved change request', () => {
+  beforeAll(async () => {
+    setDb(await openDatabase());
+  }, 60_000);
+  beforeEach(() => {
+    viewer.canEdit = true;
+    viewer.lang = 'en';
+    policy.frozen = null; // the real rule: HLT-026 has BL1
+  });
+
+  it('forms without the budget field', () => {
+    expect(addCategoryFormDef([{ code: 'labor', label: 'Labor' }], { frozen: true }).fields.map((f) => f.id)).toEqual(['cat', 'type', 'name']);
+    expect(editCategoryFormDef({ frozen: true }).fields.map((f) => f.id)).toEqual(['name', 'type']);
+    expect(editCategoryValues({ name: 'Études', costType: 'labor', budget: 160 }, { frozen: true })).toEqual({ name: 'Études', type: 'labor' });
+  });
+
+  it('add: created at 0 k€ without a budget; a budget sent anyway is refused (EN / FR); duplicates still refused', async () => {
+    expect(await addCostCategoryAction('HLT-026', { cat: 'permits_fees', type: 'auto', name: 'Permis chantier', budget: '45' })).toEqual({ error: CATEGORY_FROZEN_MESSAGE });
+    expect(await addCostCategoryAction('HLT-026', { cat: 'permits_fees', type: 'auto', name: '' })).toEqual({ error: '"Permits & fees" is already a cost category of this project' });
+    expect(await addCostCategoryAction('HLT-026', { cat: 'permits_fees', type: 'auto', name: 'Permis chantier' })).toMatchObject({ toast: expect.stringMatching(/^C\d{2} · Category added$/) });
+    expect(await last()).toMatchObject({ name: 'Permis chantier', costType: 'fees', budget: 0, forecast: 0, actual: 0 });
+    expect(await addCostCategoryAction('HLT-026', { cat: 'equipment', name: 'Grue', budget: '0' })).toMatchObject({ toast: expect.stringMatching(/ · Category added$/) });
+    viewer.lang = 'fr';
+    expect(await addCostCategoryAction('HLT-026', { cat: 'labor', name: 'X', budget: '12,5' })).toEqual({ error: 'Après BL1, le montant ne change que par une demande de modification approuvée' });
+    expect(await addCostCategoryAction('HLT-026', { cat: 'labor', name: 'X', budget: 'abc' })).toEqual({ error: 'Saisissez un budget en k€ (0 ou plus)' });
+  });
+
+  it('edit: name and type without a budget; the same budget passes; a changed budget is refused', async () => {
+    const c = await last();
+    expect(await editCostCategoryAction('HLT-026', c.code, { name: 'Grue mobile', type: 'equipment' })).toEqual({ toast: `${c.code} · Category updated` });
+    expect(await last()).toMatchObject({ code: c.code, name: 'Grue mobile', costType: 'equipment', budget: 0 });
+    expect(await editCostCategoryAction('HLT-026', c.code, { name: 'Grue mobile', type: 'equipment', budget: '0' })).toEqual({ toast: `${c.code} · Category updated` });
+    expect(await editCostCategoryAction('HLT-026', c.code, { name: 'Grue mobile', type: 'equipment', budget: '20' })).toEqual({ error: CATEGORY_FROZEN_MESSAGE });
+    expect(await editCostCategoryAction('HLT-026', 'C01', { name: 'Labor', type: 'labor', budget: '1' })).toEqual({ error: CATEGORY_FROZEN_MESSAGE });
+    expect(await editCostCategoryAction('HLT-026', c.code, { name: 'x', type: 'equipment', budget: '-2' })).toEqual({ error: 'Enter a budget in k€ (0 or more)' });
+    expect(await last()).toMatchObject({ budget: 0 });
   });
 });
