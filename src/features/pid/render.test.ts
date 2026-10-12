@@ -115,6 +115,14 @@ describe('P&ID screen — EN and FR', () => {
       docHref: '/projects/HLT-026/documents?doc=PID-HLT-026',
       docTitle: lang === 'fr' ? 'Codex · rév. D · Diffusé' : 'Codex · rev D · Released',
       placeholder: G.labels['Drop the P&ID (PDF / PNG) — sheets 1–4'] && (lang === 'fr' ? G.labels['Drop the P&ID (PDF / PNG) — sheets 1–4'] : 'Drop the P&ID (PDF / PNG) — sheets 1–4'),
+      // A-9 (R-109): declared deviation — the seed's tags come from rev C while Codex has rev D Released (the gap the owner
+      // described): a banner, absent from the prototype, suggests re-importing rev D.
+      gap: {
+        ahead: true, suggestedRevision: 'D',
+        text: lang === 'fr'
+          ? 'Codex a la rév. D de ce PID (Diffusé) — les tags viennent de la rév. C. Réimportez les tags de la rév. D.'
+          : 'Codex has rev D of this P&ID (Released) — the tags come from rev C. Re-import the tags of rev D.',
+      },
     });
   });
 });
@@ -124,12 +132,13 @@ describe('P&ID tag drawer — EN and FR', () => {
     const t = makeT(lang);
     for (const tag of DATA.tags) {
       const g = G[lang].drawers[tag.tag];
-      const cands = await pidCandidates(CODE, tag.tag);
+      const cands = (await pidCandidates(CODE, tag.tag)).rows;
       const d = pidTagDrawerView({ code: CODE, data: DATA, tag, candidates: cands, state: { ...DEFAULT_PID_STATE, tag: tag.tag }, bomHrefOf: (ref) => `/projects/HLT-026/bom?part=${ref}` }, t, lang);
       expect([d.head, d.title, d.scope, d.scopeClass, d.status, d.statusClass], tag.tag).toEqual([`${g.tag} · ${g.kind}`, descFix(lang, g.desc), g.scope, g.scopeClass, g.status, g.tagClass]);
       expect(d.record.map((r) => [r.k, r.v]), tag.tag).toEqual(g.meta);
       expect([d.isClient, d.fbWarn, d.candidates != null, d.partHref != null, d.bomHref != null], tag.tag).toEqual([g.isClient, g.fbWarn, g.canMap, g.hasPart, g.notInBom]);
-      if (d.candidates) expect(d.candidates, tag.tag).toEqual(g.candidates.map((c: any) => ({ ref: c.ref, name: c.name, status: c.status, tagClass: c.tagClass })));
+      // E-6 (R-108): the prototype's candidates are the first "In the BOM" rows of the catalogue search (their part status kept).
+      if (d.candidates) expect(d.candidates.filter((c) => c.inBom).slice(0, 8).map((c) => ({ ref: c.ref, name: c.name, status: c.partStatus })), tag.tag).toEqual(g.candidates.map((c: any) => ({ ref: c.ref, name: c.name, status: c.status })));
       expect(d.canUnlink, tag.tag).toBe(tag.scope !== 'client' && !!tag.partRef);
       expect(d.closeHref).toBe('/projects/HLT-026/pid');
     }

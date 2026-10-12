@@ -105,6 +105,9 @@ const MESSAGE_FR: [RegExp, string][] = [
   [/^Mapping to (\S+) removed: client-supplied equipment$/, 'Association à $1 retirée : équipement fourni par le client'],
   [/^Mapping to (\S+) lost$/, 'Association à $1 perdue'],
   [/^(\S+) is not a BOM article of a compatible type$/, '$1 n’est pas un article de la nomenclature de type compatible'],
+  // R-108.
+  [/^(\S+) is already in the project BOM$/, '$1 est déjà dans la nomenclature du projet'],
+  [/^(\S+) is in the project BOM with quantity 0 — change its quantity on the BOM screen$/, '$1 est dans la nomenclature du projet avec une quantité 0 — modifiez sa quantité dans la nomenclature'],
   [/^(.+) is not mapped$/, '$1 n’est associé à aucune référence'],
   [/^(.+) is already linked to (\S+)$/, '$1 est déjà lié à $2'],
   [/^Unknown tag (.+) on (\S+)$/, 'Tag $1 inconnu sur $2'],
@@ -121,3 +124,32 @@ export const fieldsT = (labels: readonly string[], t: T) => labels.map(t).join('
 /** Mapping toasts: "Tag linked · TT-102 → EL-SWG-11KV", "Tag unlinked · LT-101". */
 export const linkedToastT = (tag: string, ref: string, t: T) => `${t('Tag linked')} · ${tag} → ${ref}`;
 export const unlinkedToastT = (tag: string, t: T) => `${t('Tag unlinked')} · ${tag}`;
+
+/** R-108 "Link and add to the BOM" toast: "Tag linked · TT-102 → EL-PT-100 · added to the BOM × 1". */
+export const addedToBomToastT = (tag: string, ref: string, qty: number, t: T, lang: Lang) =>
+  `${linkedToastT(tag, ref, t)} · ${fr(lang) ? 'ajouté à la nomenclature' : 'added to the BOM'} × ${qty.toLocaleString(fr(lang) ? 'fr-FR' : 'en-GB')}`;
+
+/**
+ * R-109 (A-9) banner: Codex's reference revision is ahead of the tags' revision ("Codex has rev D of this P&ID (Released) — the
+ * tags come from rev C. Re-import the tags of rev D."), or the two cannot be compared (neutral "differs"). A Codex Draft names
+ * its reference revision (E-5: the previous one).
+ */
+export function revisionGapT(g: { ahead: boolean; referenceRevision: string }, sheetRev: string, codexRev: string, status: string, lang: Lang): string {
+  const ref = revT(g.referenceRevision, lang);
+  const codex = revT(codexRev, lang);
+  const sheet = revT(sheetRev, lang);
+  const draftRef = g.referenceRevision !== codexRev;
+  if (fr(lang)) {
+    const st = draftRef ? `${status} ; référence ${ref}` : status;
+    return g.ahead
+      ? `Codex a la ${codex} de ce PID (${st}) — les tags viennent de la ${sheet}. Réimportez les tags de la ${ref}.`
+      : `La ${codex} de ce PID dans Codex (${st}) diffère de la ${sheet} des tags — vérifiez la révision en vigueur.`;
+  }
+  const st = draftRef ? `${status}; reference ${ref}` : status;
+  return g.ahead
+    ? `Codex has ${codex} of this P&ID (${st}) — the tags come from ${sheet}. Re-import the tags of ${ref}.`
+    : `Codex’s ${codex} of this P&ID (${st}) differs from the tags’ ${sheet} — check which revision is current.`;
+}
+
+/** R-108: "20 first results · refine the search" under the candidates when there are more. */
+export const refineT = (n: number, lang: Lang) => (fr(lang) ? `${n} premiers résultats · affinez la recherche` : `First ${n} results · refine the search`);

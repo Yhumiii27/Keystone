@@ -78,7 +78,8 @@ describe('/projects/[code]/pid', () => {
     for (const role of ['englead', 'quality']) {
       session.role = role;
       const p = await page({ tag: 'TT-102' });
-      expect([!!p.PageHeader.props.primary, p.PidTagDrawer.props.canEdit, (p.PidTagDrawer.props.view as PidTagDrawerView).candidates?.length], role).toEqual([true, true, 8]);
+      // E-6 (R-108): the whole catalogue is searched (the prototype listed 8 BOM articles): 20 results, "refine the search" beyond.
+      expect([!!p.PageHeader.props.primary, p.PidTagDrawer.props.canEdit, (p.PidTagDrawer.props.view as PidTagDrawerView).candidates?.length], role).toEqual([true, true, 20]);
     }
     for (const role of ['pm', 'procurement', 'member']) {
       session.role = role;

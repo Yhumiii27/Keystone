@@ -45,5 +45,14 @@
   "Simulated push (Sage X3 not connected)": "Envoi simulé (Sage X3 non connecté)",
   "Sage X3 not connected": "Sage X3 non connecté",
   "Sage X3 not connected · movements are recorded in Keystone only": "Sage X3 non connecté · les mouvements sont enregistrés dans Keystone seulement",
-  "Not in Sage X3 · Sage X3 not connected": "Absente de Sage X3 · Sage X3 non connecté"
+  "Not in Sage X3 · Sage X3 not connected": "Absente de Sage X3 · Sage X3 non connecté",
+  "In the BOM": "Dans la nomenclature",
+  "Compatible types": "Types compatibles",
+  "No catalogue article matches": "Aucun article du catalogue ne correspond",
+  "Search reference or name": "Rechercher une référence ou un nom",
+  "Search the whole catalogue · articles of the project BOM first · pick one to link the tag": "Recherche dans tout le catalogue · articles de la nomenclature du projet en premier · choisissez-en un pour lier le tag",
+  "This article is not in the project BOM": "Cet article n’est pas dans la nomenclature du projet",
+  "Link only": "Lier seulement",
+  "Link and add to the BOM": "Lier et ajouter à la nomenclature",
+  "Enter a quantity greater than 0": "Saisissez une quantité supérieure à 0"
 }

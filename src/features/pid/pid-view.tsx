@@ -2,10 +2,12 @@
 // P&ID drawing card (DocumentPreview stand-in for the prototype's image slot; the document number opens the Codex
 // record) beside the process validation steps, the filter bar (status chips, scope segment, search), the tag register
 // and the overlay table. Rows open the tag drawer (`?tag=`). Server Component; the search, the inert buttons and the
-// row links are client islands.
-import { Funnel, Stack as StackIcon, Warning } from '@phosphor-icons/react/dist/ssr';
+// row links are client islands. R-109 (A-9 = a): a banner on top when Codex's reference revision of the P&ID is ahead of
+// (or not comparable with) the tags' revision, with "Import P&ID tags" (suggesting Codex's revision) for the P&ID editors.
+import { ArrowsClockwise, Funnel, Stack as StackIcon, Warning } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+import { Callout } from '@/components/app/Callout';
 import { ClickableRow } from '@/components/app/ClickableRow';
 import { DocumentPreview } from '@/components/app/DocumentPreview';
 import { EmptyState } from '@/components/app/EmptyState';
@@ -23,10 +25,15 @@ import type { PidScreenView } from './model';
 import { ComingSoonButton } from './pid-buttons';
 import s from './pid.module.css';
 
-export function PidBody({ view, t }: { view: PidScreenView; t: T }) {
+export function PidBody({ view, t, gapAction }: { view: PidScreenView; t: T; gapAction?: ReactNode }) {
   const d = view.drawing;
   return (
     <Stack>
+      {d.gap && (
+        <Callout variant={d.gap.ahead ? 'emphasis' : 'outlined'} icon={d.gap.ahead ? ArrowsClockwise : Warning} role="note" action={d.gap.ahead ? gapAction : undefined}>
+          {d.gap.text}
+        </Callout>
+      )}
       <KpiGrid>
         {view.kpis.map((k) => (
           <KpiTile key={k.label} label={k.label} value={k.value} sub={k.sub} color={k.color} />

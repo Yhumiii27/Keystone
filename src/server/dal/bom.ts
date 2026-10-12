@@ -22,6 +22,7 @@ import { projectFxOf, toEur } from '@/domain/currency';
 import { getDb } from '@/server/db/client';
 import { bomScope, revisionDiffKind, stage as stageCodec, type BomScope, type PartStatus, type RevisionDiffKind, type StageCode, type WearSpare } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
+import type { Tx } from '@/server/db/types';
 import {
   activities, assemblyLinks, parts, poLines, projectAssemblyRoots, projectBomLines, projects, purchaseOrders, revisionDiffLines, revisionDiffs, spareListLines,
 } from '@/server/db/schema';
@@ -398,35 +399,42 @@ export interface NewBomLineInput {
   note?: string | null;
 }
 
-/** "Add to BOM" (AF.bom): a catalogue article added to the project BOM (once per article). Returns the reference. */
-export async function addBomLine(projectCode: string, input: NewBomLineInput, actorName: string): Promise<string> {
+/**
+ * "Add to BOM" (AF.bom): a catalogue article added to the project BOM (once per article). Returns the reference. R-108: with
+ * `tx`, the line is added inside the caller's transaction (the P&ID tag drawer's "Link and add to the BOM").
+ */
+export async function addBomLine(projectCode: string, input: NewBomLineInput, actorName: string, tx?: Tx): Promise<string> {
+  if (tx) return insertBomLine(tx, projectCode, input, actorName);
   const db = await getDb();
-  return db.transaction(async (tx) => {
-    const p = await requireProject(tx, projectCode);
-    const ref = input.ref.trim().toUpperCase();
-    if (!ref) throw new Error('The article reference is required');
-    const [part] = await tx.select({ id: parts.id }).from(parts).where(eq(parts.ref, ref));
-    if (!part) throw new Error(`${ref} is not in the catalogue`);
-    if (!Number.isFinite(input.quantity) || input.quantity <= 0) throw new Error('Invalid quantity');
-    const scope = input.scope ?? 'keystone';
-    if (!bomScope.isCode(scope)) throw new Error('Invalid scope');
-    const [dup] = await tx.select({ id: projectBomLines.id }).from(projectBomLines).where(and(eq(projectBomLines.projectId, p.id), eq(projectBomLines.partId, part.id)));
-    if (dup) throw new Error(`${ref} is already in the project BOM`);
-    let activityId: string | null = null;
-    if (input.activityCode) {
-      const [a] = await tx.select({ id: activities.id }).from(activities).where(and(eq(activities.projectId, p.id), eq(activities.code, input.activityCode)));
-      if (!a) throw new Error(`Unknown activity ${input.activityCode}`);
-      activityId = a.id;
-    }
-    const actor = await findPerson(tx, actorName);
-    const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${projectBomLines.position}), -1)::int` }).from(projectBomLines).where(eq(projectBomLines.projectId, p.id));
-    const [line] = await tx.insert(projectBomLines).values({
-      projectId: p.id, partId: part.id, quantity: input.quantity, activityId, scope, note: input.note?.trim() || null, position: pos + 1, addedByPersonId: actor?.id ?? null,
-    }).returning({ id: projectBomLines.id });
-    await writeAudit(tx, {
-      actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `${p.code} BOM`,
-      change: `${ref} × ${input.quantity} added · ${bomScope.label(scope)}${input.activityCode ? ` · ${input.activityCode}` : ''}`, area: 'BOM', entityType: 'project_bom_line', entityId: line.id, projectId: p.id,
-    });
-    return ref;
+  return db.transaction((t) => insertBomLine(t, projectCode, input, actorName));
+}
+
+async function insertBomLine(tx: Tx, projectCode: string, input: NewBomLineInput, actorName: string): Promise<string> {
+  const p = await requireProject(tx, projectCode);
+  const ref = input.ref.trim().toUpperCase();
+  if (!ref) throw new Error('The article reference is required');
+  const [part] = await tx.select({ id: parts.id }).from(parts).where(eq(parts.ref, ref));
+  if (!part) throw new Error(`${ref} is not in the catalogue`);
+  if (!Number.isFinite(input.quantity) || input.quantity <= 0) throw new Error('Invalid quantity');
+  const scope = input.scope ?? 'keystone';
+  if (!bomScope.isCode(scope)) throw new Error('Invalid scope');
+  const [dup] = await tx.select({ id: projectBomLines.id, qty: projectBomLines.quantity }).from(projectBomLines).where(and(eq(projectBomLines.projectId, p.id), eq(projectBomLines.partId, part.id)));
+  // R-108: a line at quantity 0 (possible through the table import) reads "Not in BOM" on the P&ID: say how to fix it.
+  if (dup) throw new Error(dup.qty > 0 ? `${ref} is already in the project BOM` : `${ref} is in the project BOM with quantity 0 — change its quantity on the BOM screen`);
+  let activityId: string | null = null;
+  if (input.activityCode) {
+    const [a] = await tx.select({ id: activities.id }).from(activities).where(and(eq(activities.projectId, p.id), eq(activities.code, input.activityCode)));
+    if (!a) throw new Error(`Unknown activity ${input.activityCode}`);
+    activityId = a.id;
+  }
+  const actor = await findPerson(tx, actorName);
+  const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${projectBomLines.position}), -1)::int` }).from(projectBomLines).where(eq(projectBomLines.projectId, p.id));
+  const [line] = await tx.insert(projectBomLines).values({
+    projectId: p.id, partId: part.id, quantity: input.quantity, activityId, scope, note: input.note?.trim() || null, position: pos + 1, addedByPersonId: actor?.id ?? null,
+  }).returning({ id: projectBomLines.id });
+  await writeAudit(tx, {
+    actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `${p.code} BOM`,
+    change: `${ref} × ${input.quantity} added · ${bomScope.label(scope)}${input.activityCode ? ` · ${input.activityCode}` : ''}`, area: 'BOM', entityType: 'project_bom_line', entityId: line.id, projectId: p.id,
   });
+  return ref;
 }

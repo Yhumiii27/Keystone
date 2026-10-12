@@ -508,7 +508,8 @@ describe('P&ID validation (09 §6)', () => {
     expect(v.steps.map((s) => ({ label: s.label, who: s.who, date: s.dateOn ? d(s.dateOn) : '—', state: s.stateLabel }))).toEqual(g.steps);
     for (const tag of Object.keys(g.drawers)) {
       const t = v.tags.find((x) => x.tag === tag)!;
-      const c = await pidCandidates('HLT-026', tag);
+      // E-6 (R-108): the catalogue search lists the project BOM's articles first; the prototype's 8 are the first of them.
+      const c = (await pidCandidates('HLT-026', tag)).rows.filter((x) => x.inBom).slice(0, 8);
       expect(c.map((x) => [x.ref, x.statusLabel]), tag).toEqual(g.drawers[tag].candidates);
       expect([
         ['Reference', t.partRef ?? '—'], ['Part', (t.partName ?? (t.scope === 'client' ? t.note : '')) || '—'], ['Activity', `${t.activityCode}${t.activityName ? ' · ' + t.activityName : ''}`],
