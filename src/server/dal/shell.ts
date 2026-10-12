@@ -17,6 +17,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { cache } from 'react';
 import { personaOf, type Persona, type PersonaRef } from '@/config/personas';
 import { DEFAULT_PROJECT, canSee, screenHref, type RoleKey, type ScreenId } from '@/config/screens';
+import { clientSeesChangeRequest } from '@/domain/client-visibility';
 import { fiscalYearLabel } from '@/domain/portfolio';
 import { defaultDepartment } from '@/domain/requests';
 import { PURCHASING_SCREENS, clientRefusedProject, clientSeesMeeting, clientSeesTarget } from '@/domain/rights';
@@ -24,8 +25,10 @@ import { dueTodayBadge, workingDayOf } from '@/domain/tasks';
 import { mapCrumbExtra } from '@/domain/worldmap';
 import { approvalCountsByProject } from '@/server/approvals';
 import { getDb } from '@/server/db/client';
+import { ncrSeverity, ncrStatus } from '@/server/db/codes';
 import { changeRequests, meetings as meetingsTable, projects as projectsTable } from '@/server/db/schema';
 import { ncrHref } from '@/features/quality/links';
+import { getVigieQualityConnector } from '@/server/integrations/vigie/quality-connector';
 import { zoneLabelOf, zoneManagerLine, type ZoneEntry } from '@/domain/zones';
 import type { ZoneKey } from '@/server/session';
 import type { Badges } from '@/components/app/shell/nav-model';
@@ -50,8 +53,8 @@ import { listZones } from './people';
 import { pidBadgeByProject } from './pid';
 import { getActivities } from './planning';
 import { listProjects, projectLabel, type ProjectRow } from './projects';
-import { countInvoicesToResolve, listPurchaseOrders, posAwaitingApprovalByProject } from './purchasing';
-import { criticalOpenNcrsByProject, listNcrs } from './quality';
+import { countInvoicesToResolve, listAllPurchaseOrders, posAwaitingApprovalByProject } from './purchasing';
+import { criticalOpenNcrsByProject } from './quality';
 import { listApprovalDepartments, listResourceRequests } from './requests';
 import { departmentOfPerson } from './requests-screens';
 import { getResourcePool } from './resources';
@@ -357,14 +360,18 @@ const PARAM: Record<string, string | null> = { sel: 'act', selOpen: null, qTab: 
 /** URL of a screen with the prototype's extra state (`{cr:'CR-008'}` → `?cr=CR-008`). */
 export function deepLink(screen: ScreenId, extra: Record<string, unknown> = {}, code: string = DEFAULT_PROJECT): string {
   const qs = new URLSearchParams();
+  // The task sheet takes its id in the path (/my/tasks/T-2318), never in the query string (R-149 notifications).
+  const taskId = screen === 'task' && typeof extra.taskId === 'string' ? extra.taskId : undefined;
   // View params (tab, view) first, then the selection: stable URLs whatever the stored key order (jsonb sorts keys).
-  const entries = Object.entries(extra).map(([k, v]) => [k in PARAM ? PARAM[k] : k, v] as const);
+  const entries = Object.entries(extra)
+    .filter(([k]) => !(taskId !== undefined && k === 'taskId'))
+    .map(([k, v]) => [k in PARAM ? PARAM[k] : k, v] as const);
   const rank = (key: string | null) => (key === 'tab' || key === 'view' ? 0 : 1);
   for (const [key, v] of entries.sort((a, b) => rank(a[0]) - rank(b[0]))) {
     if (key && v != null && v !== false) qs.set(key, String(v));
   }
   const s = qs.toString();
-  return screenHref(screen, { code }) + (s ? '?' + s : '');
+  return screenHref(screen, { code, taskId }) + (s ? '?' + s : '');
 }
 
 // ── Notifications (NOTIFS line 3545, logic 4706) ──────────────────────────
@@ -426,9 +433,24 @@ async function safe<T>(p: () => Promise<T>, fallback: T): Promise<T> {
   }
 }
 
+/** Project-bound hits in search order (X-5, R-052): the current project's first, then the others in register order. */
+function currentFirst<T>(xs: T[], codeOf: (x: T) => string, currentCode: string, projects: ProjectRow[]): T[] {
+  const rank = new Map(projects.map((p, i) => [p.code, p.code === currentCode ? -1 : i]));
+  return xs
+    .map((x, i) => ({ x, i, r: rank.get(codeOf(x)) ?? projects.length }))
+    .sort((a, b) => a.r - b.r || a.i - b.i)
+    .map(({ x }) => x);
+}
+
+/** A project-bound hit's sub-line: the project code (a reference, shown as is), then Keystone's labels (X-5, R-148). */
+const projectSub = (projectCode: string, ...labels: string[]) => ({ sub: [projectCode, ...labels].join(' · '), subData: [projectCode] });
+
 /**
- * Global search hits (≥ 2 characters). Projects come from the projects DAL; project-specific kinds
- * (purchase orders, change requests, NCRs, risks) cover the current project, as in the prototype.
+ * Global search hits (≥ 2 characters). Projects come from the projects DAL. X-5 (R-052): purchase orders, change requests,
+ * NCRs and risks are searched across the portfolio (every project the readers return, wizard-created ones included), each
+ * hit opening its own project, with the project code in its sub-line; within each kind the current project's hits come
+ * first, then the others in register order (3 per kind). Activities stay on the projects with data. A client gets
+ * `searchShellClient`.
  */
 export async function searchShell(query: string, currentCode: string, who: PersonaRef = 'director'): Promise<SearchHit[]> {
   const q = query.trim().toLowerCase();
@@ -436,11 +458,12 @@ export async function searchShell(query: string, currentCode: string, who: Perso
   const viewer = personaOf(who);
   if (viewer.role === 'client') return searchShellClient(q, currentCode, viewer);
   const has = (s: string) => s.toLowerCase().includes(q);
-  const code = currentCode;
   const hits: SearchHit[] = [];
   const add = (xs: SearchHit[], max: number) => hits.push(...xs.slice(0, max));
 
   const projects = await listProjects();
+  const codes = projects.map((p) => p.code);
+  const ordered = <T,>(xs: T[], codeOf: (x: T) => string) => currentFirst(xs, codeOf, currentCode, projects);
   add(projects.filter((p) => has(p.name + ' ' + p.code)).map((p) => ({ kind: 'Project', title: p.name, sub: `${p.code} · ${p.status} · ${p.pm}`, subData: [p.pm], href: screenHref('plan', { code: p.code }) })), 4);
   // Activities of every project with data (ALL_BYID), from the planning DAL.
   const acts = await Promise.all(projects.filter((p) => p.hasData).map(async (p) => (await safe(() => getActivities(p.code), [])).map((a) => ({ a, code: p.code }))));
@@ -455,17 +478,31 @@ export async function searchShell(query: string, currentCode: string, who: Perso
   // pool (personas, client contacts) would land on a page that does not show them.
   const pool = (await safe(getResourcePool, { weeks: [], people: [] })).people;
   add(pool.filter((p) => has(p.name)).map((p) => ({ kind: 'Person', title: p.name, sub: p.jobTitle ?? '', ...(p.jobTitle ? { subData: [p.jobTitle] } : {}), href: screenHref('resources') })), 3);
-  const [crs, risks, pos] = await Promise.all([safe(() => listChangeRequestDetails(code), []), safe(() => listRisks(code), []), safe(() => listPurchaseOrders(code), [])]);
-  // Purchase orders of the current project (drafts made in Keystone included).
-  add(pos.filter((o) => has(o.number + ' ' + o.supplier)).map((o) => ({ kind: 'Purchase order', title: `${o.number} · ${o.supplier}`, sub: o.statusLabel, href: deepLink('orders', { po: o.number }, code) })), 3);
+  // X-5: every project's change requests and risks (per-project readers over the memoised register), every purchase
+  // order, and the NCRs of every project in ONE Vigie call (in HTTP mode a call may refresh the mirror).
+  const [crs, risks, pos, ncrs] = await Promise.all([
+    Promise.all(codes.map(async (c) => (await safe(() => listChangeRequestDetails(c), [])).map((cr) => ({ cr, code: c })))),
+    Promise.all(codes.map(async (c) => (await safe(() => listRisks(c), [])).map((r) => ({ r, code: c })))),
+    safe(listAllPurchaseOrders, []),
+    safe(() => getVigieQualityConnector().listNcrs({ projectCodes: codes }), []),
+  ]);
+  // Purchase orders (drafts made in Keystone included).
+  add(ordered(pos.filter((o) => has(o.number + ' ' + o.supplier)), (o) => o.projectCode).map((o) => ({
+    kind: 'Purchase order', title: `${o.number} · ${o.supplier}`, ...projectSub(o.projectCode, o.statusLabel), href: deepLink('orders', { po: o.number }, o.projectCode),
+  })), 3);
   // ECOs: the Vigie mirror (status as Vigie reports it).
   const ecos = await safe(() => listEcos(), []);
   add(ecos.filter((e) => has(e.number + ' ' + e.title)).map((e) => ({ kind: 'ECO', title: `${e.number} · ${e.title}`, sub: e.statusLabel, href: deepLink('eco', { eco: e.number }) })), 3);
-  add(crs.filter((c) => has(c.id + ' ' + c.title)).map((c) => ({ kind: 'Change request', title: `${c.id} · ${c.title}`, sub: c.statusLabel, href: deepLink('changes', { cr: c.id }, code) })), 3);
-  // NCRs of the current project: the Vigie mirror (severity and status as Vigie reports them).
-  const ncrs = await safe(() => listNcrs(code), []);
-  add(ncrs.filter((n) => has(n.number + ' ' + n.title)).map((n) => ({ kind: 'NCR', title: `${n.number} · ${n.title}`, sub: `${n.severityLabel} · ${n.statusLabel}`, href: ncrHref(code, n.number) })), 3);
-  add(risks.filter((r) => has(r.id + ' ' + r.title)).map((r) => ({ kind: 'Risk', title: `${r.id} · ${r.title}`, sub: r.categoryLabel, href: deepLink('risks', { risk: r.id }, code) })), 3);
+  add(ordered(crs.flat().filter(({ cr }) => has(cr.id + ' ' + cr.title)), (x) => x.code).map(({ cr, code: c }) => ({
+    kind: 'Change request', title: `${cr.id} · ${cr.title}`, ...projectSub(c, cr.statusLabel), href: deepLink('changes', { cr: cr.id }, c),
+  })), 3);
+  // NCRs: the Vigie mirror (severity and status as Vigie reports them), in Vigie's order within a project.
+  add(ordered(ncrs.filter((n) => has(n.number + ' ' + n.title)), (n) => n.projectCode).map((n) => ({
+    kind: 'NCR', title: `${n.number} · ${n.title}`, ...projectSub(n.projectCode, ncrSeverity.label(n.severity), ncrStatus.label(n.status)), href: ncrHref(n.projectCode, n.number),
+  })), 3);
+  add(ordered(risks.flat().filter(({ r }) => has(r.id + ' ' + r.title)), (x) => x.code).map(({ r, code: c }) => ({
+    kind: 'Risk', title: `${r.id} · ${r.title}`, ...projectSub(c, r.categoryLabel), href: deepLink('risks', { risk: r.id }, c),
+  })), 3);
   // Drawings: the PDM vault mirror.
   const drawings = await safe(() => listDrawings(), []);
   add(drawings.filter((d) => has(d.number + ' ' + d.title)).map((d) => ({ kind: 'Drawing', title: `${d.number} · ${d.title}`, sub: `rev ${d.revision} · ${d.stateLabel}`, href: deepLink('drawings', { dwg: d.number }) })), 3);
@@ -473,9 +510,10 @@ export async function searchShell(query: string, currentCode: string, who: Perso
 }
 
 /**
- * The client's search (R-042, R-043: P-1, P-10a, P-10b): their organisation's projects (opening their portal) and the change
- * requests of the current project when it is theirs — nothing outside their workspace (plan, parts, people, ECOs, risks,
- * drawings), no purchase order, no NCR.
+ * The client's search (R-042, R-043: P-1, P-10a, P-10b): their organisation's projects (opening their portal) and, X-5
+ * (R-052), the change requests of every project of their organisation that `clientSeesChangeRequest` lets them see, each
+ * opening that project's Changes page, the current project's first — nothing outside their workspace (plan, parts,
+ * people, ECOs, risks, drawings, activities), no purchase order, no NCR, nothing of another organisation.
  */
 async function searchShellClient(q: string, currentCode: string, viewer: Persona): Promise<SearchHit[]> {
   const has = (s: string) => s.toLowerCase().includes(q);
@@ -483,11 +521,13 @@ async function searchShellClient(q: string, currentCode: string, viewer: Persona
   const hits: SearchHit[] = own
     .filter((p) => has(p.name + ' ' + p.code))
     .slice(0, 4)
-    .map((p) => ({ kind: 'Project', title: p.name, sub: `${p.code} · ${p.status} · ${p.pm}`, href: screenHref('client', { code: p.code }) }));
-  if (own.some((p) => p.code === currentCode)) {
-    const crs = await safe(() => listChangeRequestDetails(currentCode), []);
-    hits.push(...crs.filter((c) => has(c.id + ' ' + c.title)).slice(0, 3).map((c) => ({ kind: 'Change request', title: `${c.id} · ${c.title}`, sub: c.statusLabel, href: deepLink('changes', { cr: c.id }, currentCode) })));
-  }
+    // R-148: the PM's name is typed data, never translated.
+    .map((p) => ({ kind: 'Project', title: p.name, sub: `${p.code} · ${p.status} · ${p.pm}`, subData: [p.pm], href: screenHref('client', { code: p.code }) }));
+  const crs = await Promise.all(own.map(async (p) => (await safe(() => listChangeRequestDetails(p.code), [])).map((cr) => ({ cr, code: p.code }))));
+  const seen = crs.flat().filter(({ cr }) => clientSeesChangeRequest(cr) && has(cr.id + ' ' + cr.title));
+  hits.push(...currentFirst(seen, (x) => x.code, currentCode, own).slice(0, 3).map(({ cr, code: c }) => ({
+    kind: 'Change request', title: `${cr.id} · ${cr.title}`, ...projectSub(c, cr.statusLabel), href: deepLink('changes', { cr: cr.id }, c),
+  })));
   return hits;
 }
 

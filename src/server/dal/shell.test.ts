@@ -224,8 +224,10 @@ describe('Delivery 4 badges and search follow the database (docs/spec/01 §4.4, 
     const smoke = (await searchShell('smoke', 'HLT-026')).filter((h) => h.kind === 'Part').map((h) => [h.title, h.sub]);
     expect(smoke[0]).toEqual(['FD-DET-OPT · Optical smoke detector', 'Cotswold Fire Systems · Outdated']);
     const po = (await searchShell('po-1082', 'HLT-026')).filter((h) => h.kind === 'Purchase order');
-    expect(po).toEqual([{ kind: 'Purchase order', title: 'PO-1082 · Cotswold Fire Systems', sub: 'Ordered', href: '/projects/HLT-026/orders?po=PO-1082' }]);
-    expect((await searchShell('po-1082', 'NDC-031')).filter((h) => h.kind === 'Purchase order')).toEqual([]);
+    // X-5 (R-052): the project code leads the sub-line (a reference, shown as typed).
+    expect(po).toEqual([{ kind: 'Purchase order', title: 'PO-1082 · Cotswold Fire Systems', sub: 'HLT-026 · Ordered', subData: ['HLT-026'], href: '/projects/HLT-026/orders?po=PO-1082' }]);
+    // X-5 (R-052): search covers the portfolio — from Northgate the Harbor Line order is found and opens its own project.
+    expect((await searchShell('po-1082', 'NDC-031')).filter((h) => h.kind === 'Purchase order')).toEqual(po);
   });
 });
 
@@ -256,11 +258,17 @@ describe('Delivery 5 badges, search and zone bar follow the database (docs/spec/
     expect(after.options.find((o) => o.key === 'euna')!.count).toBe(before.options.find((o) => o.key === 'euna')!.count + 1);
   });
 
-  it('NCR search reads the Vigie mirror of the current project', async () => {
+  it('NCR search reads the Vigie mirror of the portfolio, current project first (X-5, R-052)', async () => {
     const hits = (await searchShell('ncr-029', 'HLT-026')).filter((h) => h.kind === 'NCR');
-    expect(hits).toEqual([{ kind: 'NCR', title: expect.stringMatching(/^NCR-029 · /), sub: 'Critical · Root cause', href: '/projects/HLT-026/quality?ncr=NCR-029' }]);
-    expect((await searchShell('ncr-04', 'NDC-031')).filter((h) => h.kind === 'NCR').map((h) => h.title.split(' · ')[0])).toEqual(['NCR-040', 'NCR-041']);
-    expect((await searchShell('ncr', 'EWA-051')).filter((h) => h.kind === 'NCR')).toEqual([]);
+    expect(hits).toEqual([{ kind: 'NCR', title: expect.stringMatching(/^NCR-029 · /), sub: 'HLT-026 · Critical · Root cause', subData: ['HLT-026'], href: '/projects/HLT-026/quality?ncr=NCR-029' }]);
+    // X-5: Northgate's own NCR-040 / NCR-041 first, then the next project in register order (Riverside clinic's NCR-040).
+    expect((await searchShell('ncr-04', 'NDC-031')).filter((h) => h.kind === 'NCR').map((h) => h.href)).toEqual([
+      '/projects/NDC-031/quality?ncr=NCR-040', '/projects/NDC-031/quality?ncr=NCR-041', '/projects/RCF-019/quality?ncr=NCR-040',
+    ]);
+    // X-5: a project without NCRs finds the portfolio's (register order: Harbor Line first), at most 3.
+    expect((await searchShell('ncr', 'EWA-051')).filter((h) => h.kind === 'NCR').map((h) => h.href)).toEqual([
+      '/projects/HLT-026/quality?ncr=NCR-026', '/projects/HLT-026/quality?ncr=NCR-027', '/projects/HLT-026/quality?ncr=NCR-028',
+    ]);
   });
 
   it('a project without data carries no Delivery 5 badge', async () => {
@@ -275,16 +283,19 @@ describe('Delivery 5 badges, search and zone bar follow the database (docs/spec/
     expect(nav.projects.map((p) => p.code)).toContain('HLT-026');
     expect(nav.projects.map((p) => p.code)).not.toContain('NDC-031');
     expect(Object.keys(nav.projectBadges)).toEqual(nav.projects.map((p) => p.code));
-    // Their project opens their portal; another organisation's project is not found.
+    // Their project opens their portal; another organisation's project is not found. R-148: the PM's name is data.
     expect(await searchShell('harbor', 'HLT-026', 'client')).toEqual([
-      { kind: 'Project', title: 'Harbor Line Terminal Expansion', sub: expect.stringMatching(/^HLT-026 · /), href: '/projects/HLT-026/client' },
+      { kind: 'Project', title: 'Harbor Line Terminal Expansion', sub: expect.stringMatching(/^HLT-026 · /), subData: [expect.any(String)], href: '/projects/HLT-026/client' },
     ]);
     expect(await searchShell('northgate', 'HLT-026', 'client')).toEqual([]);
-    // No NCR, purchase order, part, person, ECO, risk, drawing or activity; the change requests of their current project only.
+    // No NCR, purchase order, part, person, ECO, risk, drawing or activity; change requests of their organisation's projects.
     for (const q of ['ncr-029', 'po-1082', 'gbx-91', 'wagner', 'eco-2026', 'dwg'])
       expect(await searchShell(q, 'HLT-026', 'client'), q).toEqual([]);
     expect((await searchShell('cr-008', 'HLT-026', 'client')).map((h) => [h.kind, h.href])).toEqual([['Change request', '/projects/HLT-026/changes?cr=CR-008']]);
-    expect(await searchShell('cr-0', 'NDC-031', 'client')).toEqual([]);
+    // X-5 (R-052): the change requests of every project of their organisation, wherever they search from (Harbor Line's here).
+    expect((await searchShell('cr-0', 'NDC-031', 'client')).map((h) => h.href)).toEqual([
+      '/projects/HLT-026/changes?cr=CR-004', '/projects/HLT-026/changes?cr=CR-006', '/projects/HLT-026/changes?cr=CR-007',
+    ]);
     // Staff search is unchanged.
     expect((await searchShell('northgate', 'HLT-026')).map((h) => h.kind)).toContain('Project');
   });
