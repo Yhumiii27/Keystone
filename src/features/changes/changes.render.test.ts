@@ -109,7 +109,7 @@ describe('Change control & baselines', () => {
     const tx = text(changes(hlt, 'fr'));
     expect(tx).toContain('Demandes de modification 6 1 en revue · 1 brouillon');
     expect(tx).toContain('Modifications budgétaires approuvées +200 k€ BL1 4,60 M€ → BAC 4,80 M€');
-    expect(tx).toContain('Net 27 j sur la livraison');
+    expect(tx).toContain('Net 27 j sur le transfert'); // NEW-D5-3 'a' (R-156): « Transfert », not « livraison »
     expect(tx).toContain('BL2 proposée · CR-009 brouillon');
     expect(tx).toContain('Demande Type Budget Planning WBS Référence Chaîne d’approbation Statut');
     expect(tx).toContain('+85 k€ -12 j');

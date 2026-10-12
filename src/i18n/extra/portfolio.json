@@ -13,7 +13,7 @@
   "Commissioning & IST complete": "Mise en service & essais intégrés terminés",
   "MEP — electrical & medical gas complete": "CVC-élec — électricité & gaz médicaux terminés",
   "Fire systems complete": "Systèmes incendie terminés",
-  "Commissioning & handover complete": "Mise en service & livraison terminées",
+  "Commissioning & handover complete": "Mise en service & transfert terminés",
   "Procurement module complete": "Module achats terminé",
   "Integrations complete": "Intégrations terminées",
   "Cutover & hypercare complete": "Bascule & hypercare terminées",
@@ -23,5 +23,5 @@
   "Commissioning complete": "Mise en service terminée",
   "Controller manufacturing complete": "Fabrication des contrôleurs terminée",
   "Station installation — Line A complete": "Installation en station — ligne A terminée",
-  "Acceptance & handover complete": "Réception & livraison terminées"
+  "Acceptance & handover complete": "Réception & transfert terminés"
 }

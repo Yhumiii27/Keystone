@@ -1,1 +1,8 @@
-{}
+{
+  "Handover": "Transfert",
+  "Forecast handover": "Transfert prévu",
+  "On the critical path — every day this activity finishes late moves the handover date.": "Sur le chemin critique — chaque jour de retard décale la date de transfert.",
+  "Steel structure forecast 39 days late; handover moves to 14 Jan 2027.": "Charpente prévue avec 39 jours de retard ; le transfert passe au 14 janv. 2027.",
+  "Re-baseline BL2 — handover 14 Jan 2027": "Nouvelle référence BL2 — transfert 14 janv. 2027",
+  "Change requests affect the contract value or the handover date · deliverables are accepted with a signed PV": "Les demandes de modification affectent le montant du contrat ou la date de transfert · les livrables sont acceptés par PV signé"
+}
