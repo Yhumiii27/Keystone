@@ -20,7 +20,10 @@ import {
   type MachineTypePatch,
 } from '@/server/dal/mtypes';
 import type { Actor } from '@/server/dal/ops-common';
-import { addLocation, addReferenceValue, getHealthThresholds, removeLocation, removeReferenceValue, resetSettings, setHealthThresholds } from '@/server/dal/settings';
+import {
+  HOURS_VARIANCE_RANGE, addLocation, addReferenceValue, getHealthThresholds, removeLocation, removeReferenceValue, resetSettings, setHealthThresholds, setHoursVariance,
+} from '@/server/dal/settings';
+import { parseHoursVarianceInput } from '@/domain/hr';
 import { translateMessage } from '@/server/interchange/messages';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -156,6 +159,21 @@ export async function setHealthThresholdAction(which: unknown, raw: unknown): Pr
   if (err) return fail(err);
   try {
     await setHealthThresholds({ [which]: v }, ok.actor);
+  } catch (e) {
+    return failure(e);
+  }
+  refresh();
+  return { ok: true };
+}
+
+/** R-088 (R-6b): "Hours variance threshold (%)" — an integer 1–50 (the portfolio director, A-14); the Hours screen follows it. */
+export async function setHoursVarianceAction(raw: unknown): Promise<AdminActionResult> {
+  const ok = await settingsEditor();
+  if ('error' in ok) return ok;
+  const pct = parseHoursVarianceInput(raw);
+  if (pct === null) return fail(HOURS_VARIANCE_RANGE);
+  try {
+    await setHoursVariance(pct, ok.actor);
   } catch (e) {
     return failure(e);
   }

@@ -1,6 +1,7 @@
 // My work / Task translation helpers. English stays the prototype's source text; these build the parameterised
 // sentences the shared FR rule engine (src/i18n/fr-rules.ts) does not cover (docs/spec/10 OQ19). Fixed strings go
 // through t() with their FR entries in src/i18n/extra/mywork.json.
+import type { TaskCost } from '@/domain/hr';
 import { moneyEur } from '@/lib/format';
 import type { Lang, T } from '@/i18n/translate';
 import { dataText } from '@/i18n/data-text';
@@ -58,15 +59,21 @@ export function defaultDescription(actCode: string, a: DescriptionActivity | nul
 
 /**
  * Cost note under the time log: "6.0 h × €95/h = €570 actual cost → Labor · WP 1.4 Steel structure" (FR "6.0 h ×
- * 95 €/h = 570 € de coût réel → Main-d’œuvre · Lot 1.4 …"). Rates are euros (RATES, €/h) — the prototype printed "$"
- * whatever the currency (10 OQ20). Without an activity the target is the project.
+ * 95 €/h = 570 € de coût réel → Main-d’œuvre · Lot 1.4 …"). Rates are euros (the grid's €/h) — the prototype printed "$"
+ * whatever the currency (10 OQ20). Without an activity the target is the project. R-083 (A-10): `cost` values each time entry
+ * at its person's rate on its date — "6.0 h = €545 actual cost" when several rates apply, "6.0 h · rate missing" when an hour
+ * has no rate (no grid role). `cost` null = the viewer may not see rates.
  */
-export function costNoteText(loggedH: number, rate: number | null, cost: number, target: { wbs: string; packageName: string | null } | null, project: string, t: T, lang: Lang): string {
+export function costNoteText(loggedH: number, cost: TaskCost | null, target: { wbs: string; packageName: string | null } | null, project: string, t: T, lang: Lang): string {
   const where = target ? `${lang === 'fr' ? 'Lot' : 'WP'} ${target.wbs}${target.packageName ? ' ' + dataText(target.packageName, lang) : ''}` : t(project);
   const h = loggedH.toFixed(1);
-  // R-046 (NEW-D2-1): the rate — and the cost, which reveals it — only for the director and the PMs.
-  if (rate == null) return lang === 'fr' ? `${h} h → ${t('Labor')} · ${where}` : `${h} h → Labor · ${where}`;
-  return lang === 'fr'
-    ? `${h} h × ${moneyEur(rate, 'fr')}/h = ${moneyEur(cost, 'fr')} de coût réel → ${t('Labor')} · ${where}`
-    : `${h} h × ${moneyEur(rate, 'en')}/h = ${moneyEur(cost, 'en')} actual cost → Labor · ${where}`;
+  const fr = lang === 'fr';
+  const tail = fr ? `→ ${t('Labor')} · ${where}` : `→ Labor · ${where}`;
+  // R-046 (NEW-D2-1): the rate — and the cost, which reveals it — only for the roles that see rates (director, PMs, Finance).
+  if (cost == null) return `${h} h ${tail}`;
+  if (cost.missing || cost.cost == null) return fr ? `${h} h · taux manquant ${tail}` : `${h} h · rate missing ${tail}`;
+  const amount = moneyEur(cost.cost, fr ? 'fr' : 'en');
+  if (cost.rate == null) return fr ? `${h} h = ${amount} de coût réel ${tail}` : `${h} h = ${amount} actual cost ${tail}`;
+  const rate = moneyEur(cost.rate, fr ? 'fr' : 'en');
+  return fr ? `${h} h × ${rate}/h = ${amount} de coût réel ${tail}` : `${h} h × ${rate}/h = ${amount} actual cost ${tail}`;
 }

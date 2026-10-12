@@ -1,11 +1,12 @@
 // Administration seed (docs/spec/11 §8.1, §8.5): the Settings reference lists (SETTINGS0 3467 — locations are the
-// storage locations of seed/catalogue.ts), the project health thresholds, the connectors (CONNECTORS 3570, plus Vigie,
+// storage locations of seed/catalogue.ts), the project health thresholds, the hours-variance threshold (R-088), the connectors (CONNECTORS 3570, plus Vigie,
 // whose ECO / NCR / HSE connector Keystone runs) and the import / export formats (IMPORTS 3571).
 import { PROTO } from '@/server/prototype';
 import {
-  APP_SETTING_HEALTH, HEALTH_DEFAULTS, connectorStatus, deliverableType, locationType, parseStampText, riskCategory, slugOf, stage,
+  APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, HEALTH_DEFAULTS, connectorStatus, deliverableType, locationType, parseStampText, riskCategory, slugOf, stage,
   type ReferenceListKey,
 } from '../codes';
+import { HOURS_VARIANCE_DEFAULT } from '@/domain/hr';
 import { APP_SETTING_DEFAULTS, holidayCode, type SettingsDefaults } from '@/domain/settings-defaults';
 import { appSettings, connectors, importFormats, referenceValues } from '../schema';
 import type { Tx } from '../types';
@@ -42,6 +43,8 @@ export function settingsDefaultsDocument(opts: { demo: boolean } = { demo: true 
     lists: defaultReferenceValues().map(({ listKey, code, label }) => ({ listKey, code, label })),
     locations: opts.demo ? (PROTO.SETTINGS0.locations as [string, string][]).map(([name, type]) => ({ name, type: locationType.code(type) })) : [],
     health: { risk: HEALTH_DEFAULTS.risk, off: HEALTH_DEFAULTS.off },
+    // R-088 (R-6b): the hours-variance threshold.
+    hours: { pct: HOURS_VARIANCE_DEFAULT },
   };
 }
 
@@ -64,6 +67,8 @@ export const VIGIE_CONNECTOR = {
 export async function seedSettings(tx: Tx, opts: { demo: boolean } = { demo: true }): Promise<void> {
   await tx.insert(referenceValues).values(defaultReferenceValues().map((v) => ({ ...v, active: true, isDefault: true })));
   await tx.insert(appSettings).values({ key: APP_SETTING_HEALTH, value: { risk: HEALTH_DEFAULTS.risk, off: HEALTH_DEFAULTS.off } });
+  // R-088 (R-6b): the hours-variance threshold (a database seeded earlier has no row: the reader falls back to the default).
+  await tx.insert(appSettings).values({ key: APP_SETTING_HOURS_VARIANCE, value: { pct: HOURS_VARIANCE_DEFAULT } });
   await seedSettingsDefaults(tx, opts);
   const rows: (Omit<typeof connectors.$inferInsert, 'direction'>)[] = (PROTO.CONNECTORS as [string, string, string, string, string, string][]).map(([name, what, freq, status, last, vol], position) => ({
     name, kind: name === 'Cursus' ? 'cursus' : 'static', dataScope: what, frequency: freq,

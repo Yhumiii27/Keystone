@@ -216,6 +216,15 @@ const DIRECTOR_D7: Record<Lang, Pick<Golden, 'kpis' | 'lr'>> = {
   },
 };
 
+/**
+ * Delivery 8 (R-087, R-5b): the engineering lead's watchlist names the case — a skill without any expert reads "No expert — …"
+ * (the prototype's "Single expert — 0 experts · …"); the single-expert rows are unchanged.
+ */
+const R5B: Record<Lang, [RegExp, string]> = {
+  en: [/^Single expert — 0 experts · (\d+) at level ≥3$/, 'No expert — $1 at level ≥3'],
+  fr: [/^Expert unique — 0 experts · (\d+) au niveau ≥3$/, 'Aucun expert — $1 au niveau ≥3'],
+};
+
 function expected(role: RoleKey, lang: Lang): Golden {
   if (role === 'member') return structuredClone(MEMBER[lang]);
   if (role === 'director') {
@@ -227,6 +236,7 @@ function expected(role: RoleKey, lang: Lang): Golden {
   if (role === 'depthead') [g.kpis[2], g.kpis[3]] = DEPTHEAD_A12[lang];
   for (const [i, k] of Object.entries(R073[role]?.[lang] ?? {})) g.kpis[Number(i)] = k;
   const out = lang === 'fr' ? mapStrings(g, fixFr) : g;
+  if (role === 'englead') out.rr = out.rr.map((r) => r.map((x) => x.replace(R5B[lang][0], R5B[lang][1])));
   if (role !== 'client') return out;
   const db = new Map(CLIENT_DB[lang]);
   return { ...out, rr: out.rr.map((r) => r.map((x) => db.get(x) ?? x)) };
@@ -256,7 +266,9 @@ describe('Home view', () => {
     expect(await sub('member', 'lr', 0)).toBe('Harbor Line · échéance ven. 25 sept.');
     expect(await sub('member', 'rr', 0)).toBe('Lu depuis Lucca · 14 h cette semaine');
     expect(await sub('member', 'rr', 1)).toBe('Moyenne 95 % sur les 2 prochaines semaines');
-    expect(await sub('englead', 'rr', 3)).toBe('Expert unique — 0 experts · 1 au niveau ≥3');
+    // R-5b (R-087): a skill without any expert is named as such (was "Expert unique — 0 experts · 1 au niveau ≥3").
+    expect(await sub('englead', 'rr', 3)).toBe('Aucun expert — 1 au niveau ≥3');
+    expect(await sub('englead', 'rr', 0)).toBe('Expert unique — 1 expert · 1 au niveau ≥3');
     expect(await sub('quality', 'rr', 1)).toBe('Utilisé dans HLT, RCF');
     expect(await sub('client', 'lr', 5)).toBe('Référence 18 déc. · Prévision 13 janv. ’27');
     expect(await sub('client', 'rr', 0)).toBe('+85 k€ · rattrapage de 12 jours · soumise le 24 sept.');

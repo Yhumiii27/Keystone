@@ -50,8 +50,12 @@ export const WHATIF_RULES = {
   helperMaxLoadPct: 100,
   /** Overtime multiplier when the rate card has no "ot" multiplier. */
   overtimeFactor: 1.25,
-  /** Hourly cost of a resource without a rate (crews, subcontractors), €. */
-  defaultRateEur: 60,
+  /**
+   * R-083 (A-10): hourly cost of a resource the rate grid does not value — a crew or a subcontractor without a grid role of its
+   * name, a person without a rate role — an isolated PLACEHOLDER (not a grid rate) until the grid has a crew role, so a crew's
+   * cost is never dropped from the comparison. €.
+   */
+  unratedFallbackEur: 60,
   /** External rate = internal rate × this when the rate card has no matching external role. */
   externalPremium: 1.4,
   /** Critical = total float ≤ this (working days), as the CPM engine. */
@@ -79,7 +83,7 @@ export interface WhatIfAssignment {
   /** Units and hours per day per unit (null when not counted in hours: equipment, material). */
   units: number | null;
   hoursPerDay: number | null;
-  /** Hourly cost rate when known (named people: rate card by job title). */
+  /** Hourly cost rate when known (R-083: a person's grid role, a crew's grid role of its name, at the horizon start). */
   rateEur: number | null;
 }
 
@@ -89,6 +93,8 @@ export interface WhatIfPerson {
   department: string | null;
   /** Load % per horizon week. */
   loads: number[];
+  /** R-083: the person's grid rate at the horizon start (a helper colleague is valued with it); null / absent when not valued. */
+  rateEur?: number | null;
 }
 
 export interface WhatIfDepartment {
@@ -98,7 +104,7 @@ export interface WhatIfDepartment {
 }
 
 export interface WhatIfRates {
-  /** Internal hourly cost per job title (rate card base rates). */
+  /** Internal hourly cost per grid role at the horizon start (R-083; people carry their own rate). */
   internal: Readonly<Record<string, number>>;
   /** External roles of the rate card ("Contractor — structural (external)"). */
   external: readonly { role: string; rateEur: number }[];
@@ -228,7 +234,7 @@ export function externalRateFor(rates: WhatIfRates, jobTitle: string | null, int
   const words = (jobTitle ?? '').toLowerCase().split(/[^a-zà-ÿ]+/).filter((w) => w.length >= 5);
   const hit = rates.external.find((e) => words.some((w) => e.role.toLowerCase().includes(w)));
   if (hit) return hit.rateEur;
-  return Math.round((internalRate ?? R.defaultRateEur) * R.externalPremium);
+  return Math.round((internalRate ?? R.unratedFallbackEur) * R.externalPremium);
 }
 
 /** "Contract structural engineer" — the contract role named after a job title (the prototype's RQ-043 wording). */
@@ -293,7 +299,8 @@ const idx = (ctx: WhatIfContext) => {
   return i;
 };
 
-const rateOf = (ctx: WhatIfContext, a: WhatIfAssignment) => a.rateEur ?? (a.jobTitle ? ctx.rates.internal[a.jobTitle] : undefined) ?? R.defaultRateEur;
+/** R-083: the assignment's own rate (person or crew role at the horizon start), else the isolated placeholder. */
+const rateOf = (a: WhatIfAssignment) => a.rateEur ?? R.unratedFallbackEur;
 
 /** Prepares a what-if: schedules the current plan once and derives the levers. */
 export function prepareWhatIf(ctx: WhatIfContext): WhatIfModel {
@@ -392,7 +399,7 @@ export function deriveLevers(ctx: WhatIfContext, base: CpmResult): WhatIfLever[]
  */
 function helperFor(ctx: WhatIfContext, j: WhatIfAssignment & { units: number; hoursPerDay: number }, dept: string | null, helperHoursPerDay: number, weeks: number[]): WhatIfLever['helper'] {
   const ix = idx(ctx);
-  const internalRate = rateOf(ctx, j);
+  const internalRate = rateOf(j);
   if (!j.person) return { kind: 'same', name: j.resource, rateEur: internalRate };
   if (dept && !ix.overloadedDepts.has(dept)) {
     const addPts = ((helperHoursPerDay * 5) / R.weekHours) * 100;
@@ -402,7 +409,7 @@ function helperFor(ctx: WhatIfContext, j: WhatIfAssignment & { units: number; ho
       .filter((c) => c.worst + addPts <= R.helperMaxLoadPct + EPS)
       .sort((x, y) => x.worst - y.worst);
     const c = candidates[0];
-    if (c) return { kind: 'internal', name: c.p.name, rateEur: (c.p.jobTitle ? ctx.rates.internal[c.p.jobTitle] : undefined) ?? internalRate };
+    if (c) return { kind: 'internal', name: c.p.name, rateEur: c.p.rateEur ?? internalRate };
   }
   return { kind: 'external', name: contractRoleOf(j.jobTitle, j.resource), rateEur: externalRateFor(ctx.rates, j.jobTitle, internalRate) };
 }
@@ -431,7 +438,7 @@ function activityPlan(model: WhatIfModel, code: string, levers: readonly WhatIfL
   const premiumOf = (units: number, h: number) => units * Math.max(0, h - R.normalHoursPerDay);
   let newRemaining: number | null = null;
   labour.forEach((j, i) => {
-    const rate = rateOf(ctx, j);
+    const rate = rateOf(j);
     const ot = levers.find((l) => l.kind === 'overtime' && l.resource === j.resource);
     const extra = levers.find((l) => l.kind === 'extra_resource' && l.resource === j.resource);
     const h = ot ? ot.to : j.hoursPerDay;

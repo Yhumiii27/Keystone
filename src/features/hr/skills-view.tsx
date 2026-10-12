@@ -1,5 +1,6 @@
 // Skills matrix body (docs/spec/06 §3, template 1452–1474): KPIs, skill filter chips (`?filter=<skill index>`),
-// people × skills dot matrix and the coverage list. Server Component.
+// people × skills dot matrix and the coverage list. Server Component. R-087 (R-5a, R-5b): one 1–5 scale; five tiles — skills
+// without an expert and single-expert skills apart; the coverage list names the case ("No expert", "1 expert").
 import { Certificate } from '@phosphor-icons/react/dist/ssr';
 import type { CSSProperties } from 'react';
 import { Avatar } from '@/components/app/Badges';
@@ -33,8 +34,11 @@ export function SkillsView({ data, filter, base, t, lang, expertRequests }: { da
     <>
       <KpiGrid min={150}>
         <KpiTile label={t('Skill families')} value={k.families} sub={t('Levels 1–5 · certifications noted')} color={OK} />
-        <KpiTile label={t('Single-expert skills')} value={k.singleExpert} sub={t('Fewer than 2 people at level ≥4')} color={k.singleExpert > 0 ? LO : OK} />
-        <KpiTile label={t('Certifications')} value={k.certifications} sub={t('Tracked with expiry in Lucca')} color={OK} />
+        {/* R-5b: two indicators — no expert at all, a single expert — instead of the prototype's "fewer than 2". */}
+        <KpiTile label={t('Skills without an expert')} value={k.noExpert} sub={t('No one at level ≥4')} color={k.noExpert > 0 ? LO : OK} />
+        <KpiTile label={t('Single-expert skills')} value={k.singleExpert} sub={t('Exactly one person at level ≥4')} color={k.singleExpert > 0 ? LO : OK} />
+        {/* R-087: a neutral sub-line — expiry is neither tracked in Lucca nor received from Cursus yet. */}
+        <KpiTile label={t('Certifications')} value={k.certifications} sub={t('People with a certification noted')} color={OK} />
         {/* A-12: computed from the pending requests the page passes; without them the tile shows "—" (no invented figure). */}
         <KpiTile
           label={t('Open requests needing level ≥4')}

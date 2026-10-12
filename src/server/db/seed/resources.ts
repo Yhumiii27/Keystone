@@ -1,13 +1,15 @@
-// Resources and HR seed: weekly allocations (PEOPLE), rate cards (RATE_ROLES, MULTS, legacy RATES), skills
+// Resources and HR seed: weekly allocations (PEOPLE), the dated rate grid (RATE_ROLES, MULTS — R-083), skills
 // (SKILLS, SKILL_LV, CERTS), leave (LEAVE_DAYS, LEAVE) and public holidays (SETTINGS0.holidays), Lucca hours
 // (HOURS) and what-if levelling (LEVERS, AUTO, the HLT-026 scenarios of the initial state). See schema/resources.ts.
 import { PROTO } from '@/server/prototype';
 import { addDaysIso, hoursMatching, isoOfDisplayDate, leaveType, whatIfPriority, type WhatIfPriority } from '../codes';
+import { sql } from 'drizzle-orm';
+import { RATE_GRID_START, RATE_MULTIPLIER_DEFAULTS } from '@/domain/rate-defaults';
 import {
-  allocations, certifications, hoursImports, hoursLines, jobTitleRates, leaveEntries, leaveTypes, personSkills, publicHolidays, rateMultipliers,
-  rateRoles, skills, unassignedHours, whatIfAutoLevers, whatIfContexts, whatIfLevers, whatIfScenarioLevers, whatIfScenarios,
+  allocations, certifications, hoursImports, hoursLines, leaveEntries, leaveTypes, personSkills, persons, publicHolidays, rateMultiplierRates, rateMultipliers,
+  rateRoleRates, rateRoles, skills, unassignedHours, whatIfAutoLevers, whatIfContexts, whatIfLevers, whatIfScenarioLevers, whatIfScenarios,
 } from '../schema';
-import type { Tx } from '../types';
+import type { DB, Tx } from '../types';
 import { must, newId, personId, type SeedCtx } from './context';
 
 /** Monday of the first week of the 8-week resource window (w/c 28 Sep 2026; `weeks` 5182). */
@@ -58,6 +60,27 @@ export async function seedResourceReference(tx: Tx): Promise<{ id: string; name:
   return skillRows;
 }
 
+/**
+ * R-178 / R-083: the five premium multipliers (shared constant RATE_MULTIPLIER_DEFAULTS — placeholder factors for the direction to
+ * confirm) with their first versions from RATE_GRID_START. Idempotent and production-safe: a missing key is added, an existing
+ * multiplier (and any factor edited since) is never overwritten. Used by the demo seed, the production seed and its backfill.
+ * Returns the number of multipliers added.
+ */
+export async function seedRateMultipliers(q: Tx | DB): Promise<number> {
+  const added = await q
+    .insert(rateMultipliers)
+    .values(RATE_MULTIPLIER_DEFAULTS.map(({ key, label }, i) => ({ key, label, position: i + 1 })))
+    .onConflictDoNothing()
+    .returning({ key: rateMultipliers.key });
+  if (!added.length) return 0;
+  const keys = new Set(added.map((a) => a.key));
+  await q
+    .insert(rateMultiplierRates)
+    .values(RATE_MULTIPLIER_DEFAULTS.filter((m) => keys.has(m.key)).map(({ key, factor }) => ({ key, effectiveFrom: RATE_GRID_START, factor })))
+    .onConflictDoNothing();
+  return added.length;
+}
+
 export async function seedResources(tx: Tx, ctx: SeedCtx): Promise<void> {
   const people = PROTO.PEOPLE as [string, string, number[]][];
   const skillRows = await seedResourceReference(tx);
@@ -69,16 +92,13 @@ export async function seedResources(tx: Tx, ctx: SeedCtx): Promise<void> {
     ),
   );
 
-  // Rates.
-  await tx.insert(rateRoles).values(
-    (PROTO.RATE_ROLES as [string, number][]).map(([role, rate], i) => ({ id: newId(), role, baseRateEur: rate, isExternal: /external/.test(role), position: i + 1 })),
-  );
-  await tx.insert(rateMultipliers).values(
-    (PROTO.MULTS as [string, string, number][]).map(([key, label, factor], i) => ({ key, label, factor, position: i + 1 })),
-  );
-  await tx.insert(jobTitleRates).values(
-    Object.entries(PROTO.RATES as Record<string, number>).map(([jobTitle, rateEur], i) => ({ jobTitle, rateEur, position: i + 1 })),
-  );
+  // Rates (R-083: the grid is dated — the prototype's RATE_ROLES are first versions from 1 Jan 2026; a person gets the grid role
+  // named exactly as their job title). The prototype's job-title rates (RATES) are retired (A-10: one valuation of hours).
+  const roleRows = (PROTO.RATE_ROLES as [string, number][]).map(([role, rate], i) => ({ id: newId(), role, rate, isExternal: /external/.test(role), position: i + 1 }));
+  await tx.insert(rateRoles).values(roleRows.map(({ id, role, isExternal, position }) => ({ id, role, isExternal, position })));
+  await tx.insert(rateRoleRates).values(roleRows.map((r) => ({ rateRoleId: r.id, effectiveFrom: RATE_GRID_START, baseRateEur: r.rate })));
+  await seedRateMultipliers(tx);
+  await tx.execute(sql`update ${persons} set rate_role_id = r.id from ${rateRoles} r where ${persons.rateRoleId} is null and ${persons.jobTitle} = r.role`);
 
   // Skill levels, certifications (the skills are reference data).
   await tx.insert(personSkills).values(

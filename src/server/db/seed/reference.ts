@@ -9,8 +9,10 @@
 // - the document types and their approval circuits (without approvers: people come from sign-in, R-039);
 // - departments and zones without heads or managers, countries and cities;
 // - leave types, the skills matrix columns, the what-if levers, the scoring axes and the departments' demand rates;
-// - the engineering disciplines (no lead), consistency rules, import tools and column mapping.
-// Clients, suppliers, storage locations, rates and people are entered by EPC2i (or arrive through sign-in and connectors).
+// - the engineering disciplines (no lead), consistency rules, import tools and column mapping;
+// - R-178: the five premium multipliers of the rate grid, as PLACEHOLDER factors for the direction to confirm (A-10 — shown
+//   and editable on Rate cards; src/domain/rate-defaults.ts), first versions from 1 Jan 2026.
+// Clients, suppliers, storage locations, rate roles and people are entered by EPC2i (or arrive through sign-in and connectors).
 import type { Tx } from '../types';
 import { builtinCalendarRows } from './chapter4';
 import { newCtx } from './context';
@@ -19,7 +21,7 @@ import { seedEngineeringReference, seedMachineTypeAggregate } from './engineerin
 import { seedDepartments, seedGeography } from './organisation';
 import { seedPortfolioReference } from './portfolio';
 import { seedPrioritisationReference } from './prioritisation';
-import { seedResourceReference } from './resources';
+import { seedRateMultipliers, seedResourceReference } from './resources';
 import { seedSettings } from './settings';
 import { calendars } from '../schema';
 
@@ -35,6 +37,7 @@ export async function seedReferenceData(tx: Tx): Promise<void> {
   await seedSettings(tx, { demo: false });
   await seedDocumentTypes(tx);
   await seedResourceReference(tx);
+  await seedRateMultipliers(tx);
   await seedPrioritisationReference(tx, ctx);
   await seedEngineeringReference(tx, () => ({ leadName: NO_LEAD, leadPersonId: null }));
   await seedMachineTypeAggregate(tx);

@@ -8,7 +8,7 @@ import { withActual } from '@/domain/schedule';
 import { workingDayOf, type TaskPriority, type TaskStatus } from '@/domain/tasks';
 import type { Lang, T } from '@/i18n/translate';
 import type { AttachmentKind } from '@/server/db/codes';
-import type { TaskDetail, TaskRow } from '@/server/dal/tasks';
+import type { TaskCostNote, TaskDetail, TaskRow } from '@/server/dal/tasks';
 import { defaultDescription, freshTagText } from './i18n';
 import { dataText } from '@/i18n/data-text';
 
@@ -116,8 +116,11 @@ export interface TaskSheetData {
   fileRules: { accept: string; maxBytes: number; maxText: string; maxFiles: number; uploadHref: string };
   comments: { author: string; initials: string; when: string; text: string }[];
   entries: { date: string; hours: number; note: string }[];
-  /** €/h of the assignee's job title (RATES, default 100); null when the viewer may not see rates (R-046, NEW-D2-1). */
-  costRate: number | null;
+  /**
+   * Cost note valuation (R-083, A-10: each entry at its person's rate on its date); null when the viewer may not see rates
+   * (R-046, NEW-D2-1).
+   */
+  costNote: TaskCostNote | null;
   /** Cost note target: work package of the activity, else the project (EN source). */
   costTarget: { wbs: string; packageName: string | null } | null;
   projectName: string;
@@ -150,7 +153,7 @@ export function taskSheetData(d: TaskDetail, backHref: string, t: T, lang: Lang,
     comments: d.comments.map((c) => ({ author: c.author, initials: c.initials, when: t(c.when), text: c.text })),
     entries: d.entries.map((e) => ({ date: t(e.dateText), hours: e.hours, note: e.note })),
     // R-046: the rate never reaches the browser of a viewer who may not see it.
-    costRate: opts.rates === false ? null : d.costRate,
+    costNote: opts.rates === false ? null : d.costNote,
     costTarget: a ? { wbs: a.wbs, packageName: a.packageName } : null,
     projectName: projectShortOf(d.project),
     plan: a

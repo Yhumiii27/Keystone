@@ -28,6 +28,8 @@ const REFERENCE_TABLES = [
   'eng_column_mappings', 'eng_consistency_rules', 'eng_disciplines', 'eng_import_tools', 'import_formats', 'leave_types', 'lifecycle_stages', 'lifecycle_transitions',
   'machine_type_cost_categories', 'machine_type_itp_systems', 'machine_type_phases', 'machine_types', 'project_template_cost_categories', 'project_template_phases',
   'project_templates', 'public_holidays', 'reference_values', 'score_axes', 'skills', 'stage_deliverable_defs', 'whatif_auto_levers', 'whatif_levers', 'zones',
+  // R-178 (A-10): the premium multipliers and their first versions — placeholders to confirm; rate roles stay EPC2i's (0 rows).
+  'rate_multipliers', 'rate_multiplier_rates',
 ].sort();
 
 describe('production seed (KEYSTONE_SEED=production)', () => {
@@ -40,7 +42,7 @@ describe('production seed (KEYSTONE_SEED=production)', () => {
   it('fills the reference tables only: no project, person, user, client, supplier, part or record of the prototype', async () => {
     const counts = await rowCounts(db);
     expect(Object.keys(counts).filter((t) => counts[t] > 0).sort()).toEqual(REFERENCE_TABLES);
-    for (const t of ['projects', 'persons', 'users', 'clients', 'suppliers', 'parts', 'storage_locations', 'rate_roles', 'documents', 'notifications', 'audit_entries', 'activity_events', 'vigie_ecos', 'cursus_clearances', 'rex_references'])
+    for (const t of ['projects', 'persons', 'users', 'clients', 'suppliers', 'parts', 'storage_locations', 'rate_roles', 'rate_role_rates', 'documents', 'notifications', 'audit_entries', 'activity_events', 'vigie_ecos', 'cursus_clearances', 'rex_references'])
       expect(counts[t], t).toBe(0);
   });
 

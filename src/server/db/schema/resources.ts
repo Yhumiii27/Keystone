@@ -1,5 +1,6 @@
 // Resources and HR (docs/spec/11 §3.3 Calendar / WhatIf, §3.6; screens 06 resources, rates, skills, leave,
-// hours; 05 §4 what-if levelling): weekly allocations, rate cards and multipliers, skills and certifications,
+// hours; 05 §4 what-if levelling): weekly allocations, the dated rate grid (roles, multipliers and their versions — R-083),
+// skills and certifications,
 // leave and public holidays, Lucca hours imports, what-if levers and scenarios.
 import { boolean, date, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { HoursMatching, LeaveType, RateMultiplierKey, WhatIfActionKind, WhatIfLeverCode, WhatIfPriority } from '../codes';
@@ -30,38 +31,68 @@ export const allocations = pgTable(
 
 // ── Rates ──────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Hourly cost rate per role (RATE_ROLES 3454). Visible to director and pm only (enforced by the screen). */
+/**
+ * Roles of the rate grid (RATE_ROLES 3454): the identity only — R-083 moved the base rate to its dated versions
+ * (`rate_role_rates`, the single source; the former base_rate_eur / effective_from columns are retired). Rates are visible to
+ * the director, the PMs and Finance (`canSeeRates`) and edited by the director and Finance (`canEditRates`, P-12 c).
+ */
 export const rateRoles = pgTable('rate_roles', {
   id: id(),
   /** "Project manager", "Contractor — structural (external)". */
   role: text('role').notNull().unique(),
-  baseRateEur: num('base_rate_eur').notNull(),
   /** /external/ in the role name. */
   isExternal: boolean('is_external').notNull(),
-  /** "Add role" form fields (OPEN QUESTION R-4). */
+  /** "Add role" form fields — information only (R-4b: the grade does not change the rate). */
   costCenter: text('cost_center'),
   grade: text('grade'),
-  effectiveFrom: date('effective_from', { mode: 'string' }),
   position: integer('position').notNull(),
   ...timestamps,
 });
 
-/** Premium multipliers (MULTS 3455). */
+/**
+ * R-083 (A-10, R-4a): dated base rates of a grid role — the single source of an hourly rate. The version in force on a date is
+ * the latest `effective_from` on or before it (`rateAt`, src/domain/hr.ts); one version per role and date.
+ */
+export const rateRoleRates = pgTable(
+  'rate_role_rates',
+  {
+    id: id(),
+    rateRoleId: uuid('rate_role_id').notNull().references(() => rateRoles.id, { onDelete: 'cascade' }),
+    effectiveFrom: date('effective_from', { mode: 'string' }).notNull(),
+    baseRateEur: num('base_rate_eur').notNull(),
+    createdByName: text('created_by_name'),
+    createdByPersonId: uuid('created_by_person_id').references(() => persons.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.rateRoleId, t.effectiveFrom)],
+);
+
+/** Premium multipliers (MULTS 3455): the identity — the factor is dated (`rate_multiplier_rates`, R-083). */
 export const rateMultipliers = pgTable('rate_multipliers', {
   key: text('key').$type<RateMultiplierKey>().primaryKey(),
   /** EN source string: "Overtime > 8 h/day". */
   label: text('label').notNull(),
-  factor: num('factor').notNull(),
   position: integer('position').notNull(),
   ...timestamps,
 });
 
-/** Legacy rate per job title (RATES 3262) — only the Task screen's cost note uses it (OPEN QUESTION A-10). */
-export const jobTitleRates = pgTable('job_title_rates', {
-  jobTitle: text('job_title').primaryKey(),
-  rateEur: num('rate_eur').notNull(),
-  position: integer('position').notNull(),
-});
+/** R-083 (A-10): dated factors of a premium multiplier (`multiplierAt`); one version per key and date. */
+export const rateMultiplierRates = pgTable(
+  'rate_multiplier_rates',
+  {
+    id: id(),
+    key: text('key').$type<RateMultiplierKey>().notNull().references(() => rateMultipliers.key, { onDelete: 'cascade' }),
+    effectiveFrom: date('effective_from', { mode: 'string' }).notNull(),
+    factor: num('factor').notNull(),
+    createdByName: text('created_by_name'),
+    createdByPersonId: uuid('created_by_person_id').references(() => persons.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.key, t.effectiveFrom)],
+);
+
+// The legacy rate per job title (RATES 3262, `job_title_rates`) is retired by R-083 (A-10: one valuation of hours, by the
+// person's grid role — persons.rate_role_id).
 
 // ── Skills ─────────────────────────────────────────────────────────────────────────────────────────────
 

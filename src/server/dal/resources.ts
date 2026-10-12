@@ -14,9 +14,14 @@ import { isoOfDisplayDate, weekLabelOfIso, whatIfPriority } from '@/server/db/co
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import {
   activities, activityAssignments, allocations, costCategories, departmentCapacities, departments, persons, projectControls, projectMembers, projects,
-  rateMultipliers, rateRoles, resourceRequests, wbsNodes, whatIfLevers, whatIfScenarioActions, whatIfScenarioLevers, whatIfScenarios,
+  resourceRequests, wbsNodes, whatIfLevers, whatIfScenarioActions, whatIfScenarioLevers, whatIfScenarios,
 } from '@/server/db/schema';
+import { multiplierAt, rateAt } from '@/domain/hr';
+import { inExecution } from '@/domain/portfolio';
+import type { ZoneKey } from '@/server/session';
 import { listProjectBaselines } from './baselines';
+import { listProjects } from './projects';
+import { getRateGrid } from './hr';
 import { createResourceRequest } from './requests';
 import { loadScheduleNetwork } from './schedule-network';
 import { markScenarioApplied } from './whatif-store';
@@ -139,16 +144,46 @@ export interface LaborCost {
   actual: number;
 }
 
-/** First cost category of a project whose name matches /labor|staff/i (Resources KPI "Labor cost to date"). */
+/**
+ * Labour cost of a project (Project resources KPI "Labor cost to date"): Σ budget and actual of its cost categories typed
+ * 'labor' (R-086: one rule with the portfolio figure — the former /labor|staff/ name match on the first category is retired; no
+ * seeded value changes, every such category is typed Labor). Null when the project has no labour category.
+ */
 export async function getLaborCost(projectCode: string): Promise<LaborCost | null> {
   const db = await getDb();
   const cats = await db
     .select({ name: costCategories.name, budget: costCategories.budgetKeur, actual: costCategories.actualKeur })
     .from(costCategories)
     .innerJoin(projects, eq(projects.id, costCategories.projectId))
-    .where(eq(projects.code, projectCode))
+    .where(and(eq(projects.code, projectCode), eq(costCategories.costType, 'labor')))
     .orderBy(asc(costCategories.position));
-  return cats.find((c) => /labor|staff/i.test(c.name)) ?? null;
+  if (!cats.length) return null;
+  return { name: cats[0].name, budget: cats.reduce((a, c) => a + c.budget, 0), actual: cats.reduce((a, c) => a + c.actual, 0) };
+}
+
+export interface PortfolioLaborCost {
+  /** Σ labour budget and actual, k€. */
+  budget: number;
+  actual: number;
+  /** Codes of the projects counted. */
+  projects: string[];
+}
+
+/**
+ * R-086 (R-2 a): labour cost of the portfolio in the displayed zone (Resources KPI "Labor cost to date"): the projects in the zone
+ * (`null` = all zones) and in execution (A-3 — the Overview's population; a delivery-8 default the owner may overturn), Σ budget
+ * and actual over every cost category typed 'labor'.
+ */
+export async function getPortfolioLaborCost(zone: ZoneKey | null): Promise<PortfolioLaborCost> {
+  const db = await getDb();
+  const codes = (await listProjects()).filter((p) => inExecution(p) && (!zone || p.zone === zone)).map((p) => p.code);
+  if (!codes.length) return { budget: 0, actual: 0, projects: [] };
+  const [row] = await db
+    .select({ budget: sql<number>`coalesce(sum(${costCategories.budgetKeur}), 0)::float`, actual: sql<number>`coalesce(sum(${costCategories.actualKeur}), 0)::float` })
+    .from(costCategories)
+    .innerJoin(projects, eq(projects.id, costCategories.projectId))
+    .where(and(inArray(projects.code, codes), eq(costCategories.costType, 'labor')));
+  return { budget: Number(row?.budget ?? 0), actual: Number(row?.actual ?? 0), projects: codes };
 }
 
 
@@ -232,7 +267,7 @@ async function loadWhatIfState(projectCode: string): Promise<WhatIfState | null>
   const who = alias(persons, 'who');
   const adept = alias(departments, 'adept');
   const pdept = alias(departments, 'pdept');
-  const [acts, asg, team, pool, depts, roles, mults] = await Promise.all([
+  const [acts, asg, team, pool, depts, grid, rated] = await Promise.all([
     db
       .select({ code: activities.code, name: activities.name, full: owner.fullName, short: owner.shortName })
       .from(activities)
@@ -241,7 +276,7 @@ async function loadWhatIfState(projectCode: string): Promise<WhatIfState | null>
     db
       .select({
         act: activities.code, resource: activityAssignments.resource, full: who.fullName, short: who.shortName, job: who.jobTitle, adept: adept.name, pdept: pdept.name,
-        units: activityAssignments.resourceCount, hpd: activityAssignments.hoursPerDay,
+        units: activityAssignments.resourceCount, hpd: activityAssignments.hoursPerDay, rateRoleId: who.rateRoleId,
       })
       .from(activityAssignments)
       .innerJoin(activities, eq(activities.id, activityAssignments.activityId))
@@ -253,24 +288,30 @@ async function loadWhatIfState(projectCode: string): Promise<WhatIfState | null>
     getProjectTeam(projectCode),
     getResourcePool(),
     listDepartments(),
-    db.select().from(rateRoles).orderBy(asc(rateRoles.position)),
-    db.select().from(rateMultipliers),
+    getRateGrid(),
+    db.select({ full: persons.fullName, short: persons.shortName, rateRoleId: persons.rateRoleId }).from(persons).where(isNotNull(persons.rateRoleId)),
   ]);
-  const internal: Record<string, number> = Object.fromEntries(roles.filter((r) => !r.isExternal).map((r) => [r.role, r.baseRateEur]));
+  // R-083 (A-10): everybody is valued through their grid role at the horizon start (the first week of the window); a crew or a
+  // subcontractor through the grid role bearing its name; otherwise the what-if's isolated placeholder (WHATIF_RULES).
+  const horizon = pool.weeks[0]?.start ?? network.dataDate;
+  const at = (role: string | null) => rateAt(grid, role, horizon);
+  const gridRates = grid.roles.map((r) => ({ role: r.role, isExternal: r.isExternal, rateEur: at(r.id) })).filter((r): r is typeof r & { rateEur: number } => r.rateEur != null);
+  const internal: Record<string, number> = Object.fromEntries(gridRates.filter((r) => !r.isExternal).map((r) => [r.role, r.rateEur]));
+  const roleOfPerson = new Map(rated.flatMap((p) => [[p.full ?? p.short, p.rateRoleId], [p.short, p.rateRoleId]] as [string, string | null][]));
   const ctx: WhatIfContext = {
     network: network.input,
     activities: Object.fromEntries(acts.map((a) => [a.code, { name: a.name, owner: a.short ? (a.full ?? a.short) : null }])),
     assignments: asg.map((a) => ({
       activity: a.act, resource: a.resource, person: a.short ? (a.full ?? a.short) : null, jobTitle: a.job, department: a.adept ?? a.pdept, units: a.units, hoursPerDay: a.hpd,
-      rateEur: a.job ? (internal[a.job] ?? null) : null,
+      rateEur: a.short ? at(a.rateRoleId) : (gridRates.find((r) => r.role.toLowerCase() === a.resource.trim().toLowerCase())?.rateEur ?? null),
     })),
-    people: team.map((p) => ({ name: p.name, jobTitle: p.jobTitle, department: p.department, loads: p.loads })),
+    people: team.map((p) => ({ name: p.name, jobTitle: p.jobTitle, department: p.department, loads: p.loads, rateEur: at(roleOfPerson.get(p.name) ?? null) })),
     weeks: pool.weeks.map((w) => w.start),
     departments: depts.filter((d) => d.capacityH != null && d.demandH != null).map((d) => ({ name: d.name, capacityH: d.capacityH!, demandH: d.demandH! })),
     rates: {
       internal,
-      external: roles.filter((r) => r.isExternal).map((r) => ({ role: r.role, rateEur: r.baseRateEur })),
-      overtimeFactor: mults.find((m) => m.key === 'ot')?.factor ?? WHATIF_RULES.overtimeFactor,
+      external: gridRates.filter((r) => r.isExternal).map((r) => ({ role: r.role, rateEur: r.rateEur })),
+      overtimeFactor: multiplierAt(grid, 'ot', horizon) ?? WHATIF_RULES.overtimeFactor,
     },
   };
   const model = prepareWhatIf(ctx);

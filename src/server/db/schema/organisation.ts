@@ -3,6 +3,7 @@
 import { boolean, date, doublePrecision, integer, pgTable, text, timestamp, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { ZoneCode } from '../codes';
 import { id, num, timestamps } from './_common';
+import { rateRoles } from './resources';
 
 /** Client organisations (CLIENT_CODES 3167 + clients cited by projects). */
 export const clients = pgTable('clients', {
@@ -46,6 +47,11 @@ export const persons = pgTable('persons', {
   clientId: uuid('client_id').references(() => clients.id),
   email: text('email'),
   isContractRole: boolean('is_contract_role').notNull().default(false),
+  /**
+   * R-083 (A-10, R-4a): the person's role on the rate grid — how their hours are valued (rate in force on the date worked).
+   * Seeded by exact job title; null = "not valued" (production has no source yet: open question until R-027).
+   */
+  rateRoleId: uuid('rate_role_id').references((): AnyPgColumn => rateRoles.id, { onDelete: 'set null' }),
   /** Position in the shared resource pool (PEOPLE 3123 order: allocations, skills, leave); null = not in the pool. */
   resourcePoolPosition: integer('resource_pool_position'),
   sortOrder: integer('sort_order').notNull(),

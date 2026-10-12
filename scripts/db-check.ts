@@ -80,7 +80,8 @@ import { loadScheduleNetwork } from '@/server/dal/schedule-network';
 const D2_COUNTS: Record<string, number> = {
   risks: 28, status_snapshots: 78, status_reports: 0, contingency_registers: 1, contingency_draws: 3,
   tasks: 27, task_checklist_items: 11, task_comments: 3, task_attachments: 3, time_entries: 4, resource_requests: 10, resource_request_events: 16, request_activity_choices: 5,
-  allocations: 64, rate_roles: 10, rate_multipliers: 5, job_title_rates: 8, skills: 10, person_skills: 80, certifications: 8, leave_types: 4,
+  // R-083: the dated grid — one version per role and multiplier from 1 Jan 2026; the job-title rates (RATES) are retired.
+  allocations: 64, rate_roles: 10, rate_role_rates: 10, rate_multipliers: 5, rate_multiplier_rates: 5, skills: 10, person_skills: 80, certifications: 8, leave_types: 4,
   leave_entries: 12, public_holidays: 11, hours_imports: 1, hours_lines: 10, unassigned_hours: 2,
   whatif_levers: 5, whatif_auto_levers: 9, whatif_contexts: 1, whatif_scenarios: 2, whatif_scenario_levers: 10,
   notifications: 10, notification_recipients: 24, activity_events: 12, audit_entries: 8,
@@ -133,9 +134,9 @@ const D5_COUNTS: Record<string, number> = {
   site_collisions: 4, mission_cost_lines: 6, daily_reports: 2, cursus_clearances: 5, cursus_requests: 0, cursus_sync_runs: 1, client_issues: 3,
   client_document_categories: 5, eng_disciplines: 4, eng_inputs: 12, eng_consistency_rules: 6, eng_checks: 10, eng_outputs: 6, eng_changes: 4, eng_import_tools: 4,
   eng_column_mappings: 6, eng_import_deltas: 4, eng_imports: 0, pid_sheets: 1, pid_tags: 24, pid_validation_steps: 5, machine_type_phases: 28,
-  // app_settings: the health thresholds and, since delivery 7, the seed record "keystone.seed" (R-011, A-15), the "Reset to
+  // app_settings: the health thresholds, the hours-variance threshold (delivery 8, R-088) and, since delivery 7, the seed record "keystone.seed" (R-011, A-15), the "Reset to
   // defaults" document (R-170) and the record that the demo referents were seeded (R-041).
-  machine_type_cost_categories: 25, machine_type_itp_systems: 17, reference_values: 60, app_settings: 4, connectors: 10, connector_sync_runs: 0, import_formats: 6,
+  machine_type_cost_categories: 25, machine_type_itp_systems: 17, reference_values: 60, app_settings: 5, connectors: 10, connector_sync_runs: 0, import_formats: 6,
 };
 
 /**
@@ -280,7 +281,10 @@ async function main() {
   const people = await listPeople();
   check('PMs cited by projects resolve to persons', PROTO_GEN.initialProjects.every((p) => people.some((x) => x.shortName === p.pm)));
   check('Marion Kerviel heads Engineering', (await getPersonByName('M. Kerviel'))?.department === 'Engineering');
-  check('8 users (personas)', same((await listUsers()).map((u) => [u.role, u.name, u.title]), Object.entries(PROTO.PERSONAS as Record<string, [string, string]>).map(([r, [n, t]]) => [r, n, t])));
+  // R-044: the prototype's 8 personas, then the Finance persona (Léa Marchand, not in the prototype).
+  check('9 users (personas)', same((await listUsers()).map((u) => [u.role, u.name, u.title]), [
+    ...Object.entries(PROTO.PERSONAS as Record<string, [string, string]>).map(([r, [n, t]]) => [r, n, t]), ['finance', 'Léa Marchand', 'Cost controller'],
+  ]));
   check('zones + bounds', same((await listZones()).map((z) => [z.code, z.label, z.manager]), PROTO.ZONES) && same(Object.fromEntries((await listZones()).map((z) => [z.code, z.bounds])), PROTO.ZONE_BOUNDS));
   check('department capacities = ROLES', same((await listDepartmentCapacities()).map((d) => [d.department, d.capacityH, d.demandH]), PROTO.ROLES));
 
