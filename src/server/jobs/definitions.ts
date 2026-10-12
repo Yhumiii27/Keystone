@@ -51,6 +51,9 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
     const removed = await pruneOrphanFiles({ graceMs: ORPHAN_FILE_GRACE_MS });
     return { summary: `${removed} orphan files removed`, counts: { removed } };
   },
+  // ── Delivery 8 · platform-ops jobs ──
+  // ── Delivery 8 · connectors jobs ──
+  // ── Delivery 8 · docs-client-portfolio jobs ──
 };
 
 export const JOB_DEFINITIONS: readonly JobDefinition[] = JOB_SCHEDULES.map((s) => ({ ...s, run: RUNS[s.name] }));

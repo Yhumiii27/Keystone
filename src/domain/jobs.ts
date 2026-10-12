@@ -10,7 +10,16 @@
 // - orphan-file prune: every day — files on disk without a record (a rolled-back upload) older than 24 hours.
 // Every job is idempotent: running it twice, or after a crash, removes or sends nothing more than once.
 
-export type JobName = 'vigie-outbox' | 'cursus-outbox' | 'codex-outbox' | 'plan-trash-purge' | 'orphan-files-prune';
+export type JobName =
+  | 'vigie-outbox'
+  | 'cursus-outbox'
+  | 'codex-outbox'
+  | 'plan-trash-purge'
+  | 'orphan-files-prune'
+  // ── Delivery 8 · platform-ops jobs ──
+  // ── Delivery 8 · connectors jobs ──
+  // ── Delivery 8 · docs-client-portfolio jobs ──
+  ;
 
 export interface JobSchedule {
   name: JobName;
@@ -31,6 +40,9 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   { name: 'codex-outbox', everyMs: 5 * MIN, leaseMs: 15 * MIN, firstDelayMs: 12_000 },
   { name: 'plan-trash-purge', everyMs: HOUR, leaseMs: 15 * MIN, firstDelayMs: 15_000 },
   { name: 'orphan-files-prune', everyMs: 24 * HOUR, leaseMs: HOUR, firstDelayMs: 20_000 },
+  // ── Delivery 8 · platform-ops jobs ──
+  // ── Delivery 8 · connectors jobs ──
+  // ── Delivery 8 · docs-client-portfolio jobs ──
 ];
 
 export const JOB_NAMES: readonly JobName[] = JOB_SCHEDULES.map((j) => j.name);

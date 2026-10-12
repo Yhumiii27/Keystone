@@ -104,7 +104,10 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
   const record = await readSeedRecord(db);
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(projects);
   if (record || n > 0) {
-    if ((record?.mode ?? 'demo') !== 'demo') return false;
+    if ((record?.mode ?? 'demo') !== 'demo') {
+      // ── Delivery 8 · production backfills · roles-rates-hr ──
+      return false;
+    }
     const [{ c }] = await db.select({ c: sql<number>`count(*)::int` }).from(parts);
     if (c === 0) {
       await db.transaction(async (tx) => seedDelivery4(tx, await ctxFromDb(tx))).catch((e) => logError('Delivery 4 backfill', e, { component: 'seed' }));
@@ -130,6 +133,9 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     if (d === 0) {
       await db.transaction(async (tx) => seedSettingsDefaults(tx)).catch((e) => logError('Delivery 7 Settings defaults backfill', e, { component: 'seed' }));
     }
+    // ── Delivery 8 · demo backfills · cost-change ──
+    // ── Delivery 8 · demo backfills · roles-rates-hr ──
+    // ── Delivery 8 · demo backfills · connectors ──
     // Databases seeded before delivery 7 adopt their (demo) record.
     if (!record) await writeSeedRecord(db, 'demo').catch((e) => logError('Seed record', e, { component: 'seed' }));
     return false;

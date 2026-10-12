@@ -55,6 +55,16 @@ import d7ContractPortfolio from './d7-contract-portfolio.json';
 import d7Operations from './d7-operations.json';
 import d7QualitySite from './d7-quality-site.json';
 import d7DebtUx from './d7-debt-ux.json';
+// Delivery 8: one file per lot (docs/DELIVERY-8-PLAN.md), registered here once so the lots never edit this index.
+import d8AuditI18nShell from './d8-audit-i18n-shell.json';
+import d8PlatformOps from './d8-platform-ops.json';
+import d8RolesRatesHr from './d8-roles-rates-hr.json';
+import d8CostChange from './d8-cost-change.json';
+import d8SupplyEngineering from './d8-supply-engineering.json';
+import d8Connectors from './d8-connectors.json';
+import d8DocsClientPortfolio from './d8-docs-client-portfolio.json';
+import d8WorkPlanning from './d8-work-planning.json';
+import d8SiteQuality from './d8-site-quality.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -112,4 +122,13 @@ export const EXTRA_FR: Record<string, string> = {
   ...d7Operations,
   ...d7QualitySite,
   ...d7DebtUx,
+  ...d8AuditI18nShell,
+  ...d8PlatformOps,
+  ...d8RolesRatesHr,
+  ...d8CostChange,
+  ...d8SupplyEngineering,
+  ...d8Connectors,
+  ...d8DocsClientPortfolio,
+  ...d8WorkPlanning,
+  ...d8SiteQuality,
 };

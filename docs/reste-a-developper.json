@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-10-11",
+ "updated": "2026-10-12",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -14,6 +14,10 @@
   {
    "date": "2026-10-11",
    "text": "Livraison 7 intégrée et vérifiée : 56 points faits (plateforme de production, connexion Entra ID et vrais utilisateurs, droits par équipe projet, maîtrise des coûts, contrat et portefeuille, opérations, qualité et chantier, dette technique et tablette) ; R-010 reste en cours (détection d’édition concurrente d’une même fiche). Détail dans docs/DELIVERY-7.md."
+  },
+  {
+   "date": "2026-10-12",
+   "text": "Livraison 8 lancée : 67 points en cours, en 9 lots (journal d’audit et traduction, plateforme d’exploitation, rôles et taux, demandes de modification et coûts, achats et ingénierie, connecteurs Vigie et Cursus, documents et portefeuille, travail et planning, qualité et chantier) — plan dans docs/DELIVERY-8-PLAN.md. Tri préalable des 103 points restants hors « à décider » : 36 écartés de cette livraison (en attente du responsable produit ou d’un autre système, ou trop transverses pour des lots parallèles)."
   }
  ],
  "items": [
@@ -96,7 +100,8 @@
     "desktop/KeystoneApp.swift:11-12 : serveur local 127.0.0.1:3000"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -121,7 +126,8 @@
     "PR #1 : volume /data sans aucune sauvegarde prévue ; DECISIONS.md:57 I-1b « Perte ≤ 15 min, reprise ≤ 4 h » (Bloquant production)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -437,7 +443,8 @@
     "src/server/db/codes.ts:290 types mention, task, eco, invoice, delivery, quality définis mais jamais produits"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -649,7 +656,8 @@
     "mirror.ts:54-57 et quality-mirror.ts:40-44 prune supprime ECO/NC absentes ; schema/vigie.ts:126 (vigie_eco_progress) et :207 (vigie_ncr_progress) en onDelete cascade ; httpEcoConnector.sync livre l’outbox puis rafraîchit avec prune : une entrée en échec est perdue"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -676,7 +684,8 @@
     "DECISIONS.md : NEW-VIGIE-1 choix a « Construire le module ECO de Vigie avant la mise en service » (Bloquant production) ; NEW-D4-1 choix a (Bloquant production)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -701,7 +710,8 @@
     "DECISIONS.md V-3b choix a (Plus tard)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -754,7 +764,8 @@
     "src/server/integrations/cursus/connector.ts:124-138 recordsOfPayload : nom = celui déjà dans le miroir, sinon le matricule"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -807,7 +818,8 @@
     "BACKLOG.md §1 bis : Cursus émet ces événements vers POST ${KEYSTONE_URL}/events, contrat non défini"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -868,7 +880,8 @@
     "95 lignes mentionnant Lucca dans 29 fichiers .ts/.tsx hors tests (plus les dictionnaires i18n)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -895,7 +908,8 @@
     "src/features/site/model.ts:147 remindable = verdict ≠ 'go' : la relance d’un GO avec réserve est déjà proposée côté Keystone (D-6a)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -930,7 +944,8 @@
     "src/features/docs/codex-buttons.tsx:33-39 OpenCodexButton = simple toast ; vault-table.tsx:63 « Download zip needs Codex » ; schema/documents.ts:85-87 codexId / codexUrl jamais alimentés (OPEN QUESTION D-1)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -967,7 +982,8 @@
     "aucun dossier src/server/integrations/sage ou x3 ; aucun planificateur (pas de cron ni instrumentation dans src/package.json)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -1052,7 +1068,8 @@
     "DECISIONS.md S-11 choix a « D’Outlook vers Keystone » (Plus tard) ; X-6b choix « mail » sans Teams ; ligne « Microsoft Teams · 14 messages today » semée (prototype CONNECTORS)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -1264,7 +1281,8 @@
     "docs/DELIVERY-6.md §5 : « Answers for later deliveries (Finance role P-4 / P-12…) » ; P-4 (Autre réponse) ne mentionne que la page Contrat, pas les factures"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -1482,7 +1500,8 @@
     "src/components/app/shell/actions.ts:10-15 searchAction n’appelle pas getViewer et ne transmet pas le lecteur — vérifié"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -1541,7 +1560,8 @@
     "src/features/projects/new-project-wizard.tsx:398 « Set BL1 at Planning → Active »"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -1621,7 +1641,8 @@
     "src/server/dal/mtypes.ts:149-150 setMachineTypeItpSystems remplace les lignes du type ; src/domain/itpcom.ts:70-78 groupBySystem garde les inspections des systèmes retirés (pas de perte de données, mais la liste et le décompte du modèle changent)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -1820,7 +1841,8 @@
     "src/features/plan/actions.ts:177-184 suppression et restauration réservées à canSchedulePlan (CP et directeur)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -1899,7 +1921,8 @@
     "src/features/meetings/meetings.golden.test.ts compare avec le prototype : les tests dorés seront à mettre à jour (S-12), d’où un effort M plutôt que S"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -1959,7 +1982,8 @@
     "src/server/db/schema/change.ts:26-29 amountKeur et scheduleDays sans indicateur d’impact contractuel ; aucun seuil CCB dans src/domain/ch4-defaults.ts ni les Paramètres (grep P-6 / ccbThreshold : aucun)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -2181,7 +2205,8 @@
     "src/server/dal/contract.ts:485-505 issueInvoice (seul écrivain de customer_invoices hors seed) sans contrôle du total ; src/features/contract/actions.ts:114-125 non plus"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -2261,7 +2286,8 @@
     "DELIVERY-6.md §4 : seuls Overview/Projects/portfolio/Home suivent les seuils A-13, pas l’onglet Performance du Budget"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -2287,7 +2313,8 @@
     "src/domain/baseline-policy.ts canSnapshotFreely (règle « libre jusqu’à BL1 ») réutilisable, non appelée ici"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -2345,7 +2372,8 @@
     "src/features/hr/actions.ts:38 + actions.test.ts:48 setBaseRateAction ouvert au directeur et au CP (P-12 demande Finance + directeur)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -2429,7 +2457,8 @@
     "Le cookie de zone existe (src/server/session.ts:14,50 ks-zone / getZone) mais n’est pas utilisé par la tuile"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -2453,7 +2482,8 @@
     "src/features/hr/skills-view.tsx:35 une seule tuile « Single-expert skills » (« Fewer than 2 people at level ≥4 ») ; src/domain/hr.ts:161 singleExpert = coverage.filter(gap)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -2478,7 +2508,8 @@
     "src/domain/hr.ts:320 varianceLo à 5 % en dur ; aucun paramètre de seuil dans les Paramètres (grep variance threshold vide)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -2503,7 +2534,8 @@
     "src/server/dal/tasks.ts : aucun writer de réaffectation de tâche (seuls statut, progression, checklist, commentaires, temps, pièces jointes)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -2526,7 +2558,8 @@
     "src/features/requests/request-row-actions.tsx:47-51 bouton « Re-request » seulement si isRejected ; aucune autre surface (grep Re-request)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -2667,7 +2700,8 @@
     "docs/decisions/questions.json : P-5c option a « une commande passée s’annule dans Sage X3 » vs SC-3a option a « annulation à tout stade… reportée dans Sage X3 », les deux choisies"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -2695,7 +2729,8 @@
     "src/server/dal/notifications.ts:98 createNotification existe et peut servir pour l’alerte acheteur"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -2865,7 +2900,8 @@
     "docs/DELIVERY-6.md §5 : E-1a / E-1b non appliqués"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -2922,7 +2958,8 @@
     "revision_diffs / revision_diff_lines n’ont pas de writer (seed seulement, src/server/db/seed/catalogue.ts)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3032,7 +3069,8 @@
     "src/server/dal/bom.ts:341 addBomLine réutilisable pour l’ajout à la nomenclature"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3058,7 +3096,8 @@
     "src/server/dal/pid-import.ts (stagePidImport / applyPidImport) et src/features/pid/import-dialog.tsx, pid-buttons.tsx:86-93 : ré-import réel déjà disponible, non soumis à IMPORTS_ENABLED"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3084,7 +3123,8 @@
     "machinePartRevisions n’a qu’un writer de seed (src/server/db/seed/aftersales.ts:50) : configuration non tenue à jour (E-8)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3111,7 +3151,8 @@
     "docs/decisions/questions.json NEW-D4-5 option c : « Le doublon possible reste signalé jusqu'à la réponse du bureau d'études »"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3252,7 +3293,8 @@
     "Fait : src/features/team/model.ts:144 utilise dueWithinDays(…, 30) (src/domain/kpis.ts:354, test kpis.test.ts:202) ; le champ dueWithin30 de src/domain/team.ts:129-150 et son commentaire « Kept as is » sont obsolètes"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3278,7 +3320,8 @@
     "src/server/dal/commissioning.ts:76-77 Bloquant A = registre 'itp' catégorie A seulement"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3307,7 +3350,8 @@
     "docs/DECISIONS.md:142 C-3 = catégories de coûts : la source « C-3 » de l’item désignait la question Cursus de DELIVERY-5 §8"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3334,7 +3378,8 @@
     "src/server/db/schema/cursus.ts:12-32 cursus_clearances (clearance, clearanceNote, reasonCodes HABILITATION…) déjà en miroir ; aucun endpoint congés dans src/server/integrations/cursus/connector.ts:5-6"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3409,7 +3454,8 @@
     "src/server/integrations/vigie/links.ts:83 vigieReportIncidentUrl existe pour le renvoi"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3555,7 +3601,8 @@
     "DECISIONS.md:204 D-2 = Plus tard"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3580,7 +3627,8 @@
     "Contexte de D-2 (questions.json) : « Les liens d’un document vers un livrable, une commande ou une réserve ouvriront la fiche Keystone correspondante »"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3746,7 +3794,8 @@
     "src/server/dal/prioritisation.ts:63 axes du classement [fit, margin, risk, res, client]"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3772,7 +3821,8 @@
     "src/components/charts/projects-map.tsx:296 tabIndex={-1} sur le svg ; marqueurs <g> l.309-323 sans tabIndex ni onKeyDown (souris seulement)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3797,7 +3847,8 @@
     "src/app/(app)/portfolio/schedule/page.tsx:14-17 seul le paramètre ?filter est lu, aucun décalage de fenêtre"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3851,7 +3902,8 @@
     "src/server/dal/documents.ts:202,232 « shared » = type isClientDeliverable et statut released : les contrats, comptes rendus et rapports HSE n’entrent pas dans la liste partagée"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3877,7 +3929,8 @@
     "grep 'Voir comme le client' / screenHref('client') : aucun lien interne vers le portail"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -3904,7 +3957,8 @@
     "docs/decisions/questions.json X-11 appliedNote : « n’est encore affichée ni dans la fiche ni sur le portail client »"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -4048,7 +4102,8 @@
     "src/server/db/codes.ts:404-406 PG_NOW / NOW_ISO fixes"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -4161,7 +4216,8 @@
     "vérifié : grep mention → seuls le type de notification 'mention' (codes.ts:290) et l’icône existent, aucun parseur ; src/server/db/schema/organisation.ts:59 users.role unique (un utilisateur par persona)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -4185,7 +4241,8 @@
     "vérifié : draggable/onDrop seulement dans admin/plumbing-islands.tsx et docs/deposit-wizard.tsx (dépôt de fichiers) ; setTaskStatusAction existe déjà (src/features/mywork/actions.ts:59), donc effort S"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -4208,7 +4265,8 @@
     "vérifié : nav-model.ts:194 shown = open ? items : items.filter(active) ; la ligne 'group' n’est poussée que pour le premier élément du groupe, absent quand la section est repliée"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -4235,7 +4293,8 @@
     "vérifié : moveStageAction n’est appelé que depuis register.tsx:109 ; DELIVERY-6.md §6 « A forced stage move in the Projects register shows no success toast »"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -4263,7 +4322,8 @@
     "X-10 : « Le sous-titre n’apparaît que lorsque la saisie est vraiment rattachée au projet »"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -4316,7 +4376,8 @@
     "vérifié : grep « No machine in this zone » → aucune occurrence dans src ni dans les dictionnaires"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -4341,7 +4402,8 @@
     "à revoir : fr-dict.json:1628, 1963, 2244, 2482, 2494 (« Livraison prévue ») ; fr-rules.ts « (.+) d on handover », « (.+) days on handover », « Net (.+) on handover » → livraison, « % at (SAT|handover…) » → « à la réception » ; src/i18n/extra/portfolio.json:16,26 et extra/home.json:37"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -4629,7 +4691,8 @@
     "tests : src/server/dal/delivery2.test.ts:329 ne couvre que o = 0..39"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -4654,7 +4717,8 @@
     "135 sites d’appel writeAudit / addAudit / trace / auditMeeting dans src (hors tests) ; pas de décision du propriétaire sur l’audit dans DECISIONS.md"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -4777,7 +4841,8 @@
     "DELIVERY-6.md §6 : l’export du plan affiche le code « SP » sur les nouveaux projets"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -4808,7 +4873,8 @@
    "id": "R-173",
    "verdict": "ajout_critique",
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -4835,7 +4901,8 @@
    "id": "R-174",
    "verdict": "ajout_critique",
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -4860,7 +4927,8 @@
    "id": "R-175",
    "verdict": "ajout_critique",
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -4909,7 +4977,8 @@
    "id": "R-177",
    "verdict": "ajout_critique",
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -4935,7 +5004,8 @@
    "id": "R-178",
    "verdict": "ajout_critique",
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   },
   {
@@ -5093,7 +5163,8 @@
    "id": "R-184",
    "verdict": "ajout_critique",
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8"
    }
   }
  ]
