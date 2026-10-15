@@ -6,11 +6,12 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
 
 ## Where the project stands — read this first
 
-- **Deliveries 1–7 are done and committed.** The shell and all 59 prototype screens are built, with prototype mock data (HLT-026, NDC-031…). Each delivery's status, APIs, deviations and open questions are in `docs/DELIVERY-1.md` … `docs/DELIVERY-7.md`.
+- **Deliveries 1–8 are done and committed.** The shell and all 59 prototype screens are built, with prototype mock data (HLT-026, NDC-031…). Each delivery's status, APIs, deviations and open questions are in `docs/DELIVERY-1.md` … `docs/DELIVERY-8.md`.
 - **Ignore older status sources.** Any older handoff or README describing "Home ~70 %, Budget ~30 %, other screens under construction" is the prototype's handoff and is obsolete.
 - **Chapter 4 = delivery 6 is done** (`docs/DELIVERY-6.md`): every simulated function is real when Keystone can do it with its own data, and the owner's answers that touch it are applied. `docs/DELIVERY-6-PLAN.md` is the historical plan and audit; the open questions are in `DELIVERY-6.md` §8.
 - **Delivery 7 is done** (`docs/DELIVERY-7.md`): production platform (PostgreSQL, production seed, configuration, logs and health, HTTP hardening, job worker, CI and end-to-end tests), Microsoft Entra ID sign-in with real users, rights by named project team, and the owner's answers on cost control, contract and portfolio, operations, quality and site, plus the prototype's technical debt. `docs/DELIVERY-7-PLAN.md` is the plan; each lot's notes are in `docs/delivery-7/`; the open questions are in `DELIVERY-7.md` §8.
-  - Next: read `docs/RESTE-A-DEVELOPPER.md` (what is left; data with code evidence in `docs/reste-a-developper.json`), `docs/DECISIONS.md` § "À traiter en priorité" and `DELIVERY-7.md` §8 before planning delivery 8.
+- **Delivery 8 is done** (`docs/DELIVERY-8.md`): append-only audit trail and French completeness guard, operations kit (container, backups, antivirus, runbook `docs/EXPLOITATION.md`, role guides `docs/guide/`), the Finance role (9th persona) and the dated rate grid, the sequential change-request chain, purchasing and engineering items, the Keystone side of the Vigie / Cursus / Codex connectors (Cursus events endpoint), client documents and portfolio views, work and meeting notices, one punch list per project and the site sheet. `docs/DELIVERY-8-PLAN.md` is the plan (§4: items left out and why); each lot's notes are in `docs/delivery-8/`; the open questions are in `DELIVERY-8.md` §8.
+  - Next: read `docs/RESTE-A-DEVELOPPER.md` (what is left; data with code evidence in `docs/reste-a-developper.json`), `docs/DECISIONS.md` § "À traiter en priorité" and `DELIVERY-8.md` §8 before planning delivery 9 (the plan puts R-013, the real clock, first as its own lot).
 - **Remaining-work page — keep it current (user's standing rule).** After every development (a delivery started, a lot merged, an item finished), update `docs/reste-a-developper.json`: each item's `progress` (`{ state: 'a_faire' | 'en_cours' | 'fait', delivery, note }`), a line in `history`, and `updated`. Then run `npm run remaining:page` (regenerates `docs/RESTE-A-DEVELOPPER.md` and `.artifacts/reste-a-developper.html`), commit, and republish the HTML with the Artifact tool to the same page, https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc (pass it as `url`). Mark an item "fait" only once it is integrated and verified on the branch.
 - **Product decisions.**
   - The product owner answered the 195 open questions (the "chapter-5 questionnaire"). See **`docs/DECISIONS.md`** (readable) and `docs/decisions/{questions,answers}.json` (raw).
@@ -39,10 +40,13 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
 ## Conventions
 
 - **Must read first:** `docs/ARCHITECTURE.md`, then the spec in `docs/spec/`: 00 overview and open questions §10, 01–10 by module, 11 data model, 12 coverage.
-- **Routing:** `src/config/screens.ts` holds the 59 screens. Use `screenHref`, `canSee` and `ROLE_SCREENS`.
+- **Routing:** `src/config/screens.ts` holds the 59 screens. Use `screenHref`, `canSee` and `ROLE_SCREENS`. The registry imports no component (icons are in `src/config/screen-icons.ts`) so server code and `tsx` scripts can load it; server rules take `canSee` from `src/config/role-screens.ts`.
 - **Viewer:** `getViewer()` (`src/server/session.ts`). `KEYSTONE_AUTH=demo` (default, tests and development): the "View as" cookie (`ks-role`) picks a persona. `KEYSTONE_AUTH=entra`: Microsoft Entra ID sign-in (R-038), the user's roles and person from the database; `ks-role` is ignored.
 - **Project rights (R-041):** `getProjectContext` / `projectAccessResolver` (`src/server/project-context.ts`) over `projectAccess` (`src/domain/rights.ts`): `isLead` for PM rights (PM of record, co-PM, deputy, director), `isMine` for team members; a client is sent home outside their workspace (`refuseClient`).
 - **Typed text (R-148):** what people typed (names, titles, notes) is shown with `dataText` / `projectLabelText` / `fieldsText` (`src/i18n/data-text.ts`), never through `t()`, which is for Keystone's own vocabulary.
+- **French completeness (R-184):** every new `t()` literal needs a French entry that differs from the English, a FR rule, or a reviewed place on `src/i18n/same-in-french.json` (`src/i18n/completeness.test.ts`); one French translation per key across the dictionaries (`src/i18n/extra/dictionaries.test.ts` lists the deliberate overrides).
+- **Audit trail (R-168):** `audit_entries` is append-only (database trigger) — never update or delete audit rows, in code or tests; date a test row with `writeAudit({ occurredAt })`.
+- **Personas:** nine, Finance included (R-044); persona tests loop over `PERSONAS` (`src/config/personas.ts`).
 - **Data access:**
   - DAL in `src/server/dal/`, Drizzle schema in `src/server/db/schema/`.
   - Migrations in `drizzle/`: generate a new one with `npm run db:generate` and never edit an existing one.
@@ -51,7 +55,7 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
 - **UI:**
   - Nocturne design system: `src/styles/nocturne.css`, `src/components/ds`, `src/components/app`, CSS Modules.
   - Phosphor icons come from `@phosphor-icons/react/dist/ssr`.
-- **Server Functions:** each one validates input and permission server-side (role, project ownership, read-only and outside-workspace rules), writes through DAL writers, records audit and activity, then calls `revalidatePath`.
+- **Server Functions:** each one validates input and permission server-side (role, project ownership, read-only and outside-workspace rules), writes through DAL writers, records audit and activity, then calls `revalidatePath`. A `'use server'` file exports async functions only (`src/server/use-server-exports.test.ts`).
 
 ## Setup and checks in a fresh clone
 

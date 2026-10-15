@@ -30,6 +30,10 @@
   {
    "date": "2026-10-15",
    "text": "Livraison 8 : lots 7 et 8 intégrés et vérifiés (documents et portefeuille, travail et planning) — 11 points faits, 7 restent en cours (Codex, Microsoft 365, annuaire Cursus, rétention de la corbeille, import P&ID). Suite complète : 3 866 tests verts. Le lot 9 (qualité et chantier) est en construction."
+  },
+  {
+   "date": "2026-10-15",
+   "text": "Livraison 8 terminée : lot 9 (qualité et chantier) intégré, deux revues croisées (26 constats confirmés, tous corrigés avec un test), vérification complète (4 000 tests, build, db-check, matrice des routes à 9 profils, tests de bout en bout). Bilan dans docs/DELIVERY-8.md."
   }
  ],
  "items": [
@@ -930,7 +934,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : lien vers la fiche Cursus d’une personne depuis le Chantier (NEW-CURSUS-3) ; l’adresse est une proposition à convenir avec Cursus, les matricules arrivent avec R-027."
    }
   },
   {
@@ -967,7 +972,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 8",
-    "note": "Livraison 8 : côté Keystone du connecteur Codex (liens, état réel, lecture de l’index toutes les heures) ; l’API Codex (D-1), le formulaire de dépôt (R-125) et les téléchargements restent à faire."
+    "note": "Livraison 8 : côté Keystone du connecteur Codex (liens, état réel, lecture horaire de l’index ; les fiches en attente d’un projet ou d’un type sont relues seules) ; l’API Codex (D-1), le formulaire de dépôt (R-125) et les téléchargements restent à faire."
    }
   },
   {
@@ -1668,8 +1673,9 @@
     "src/server/dal/mtypes.ts:149-150 setMachineTypeItpSystems remplace les lignes du type ; src/domain/itpcom.ts:70-78 groupBySystem garde les inspections des systèmes retirés (pas de perte de données, mais la liste et le décompte du modèle changent)"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : systèmes ITP figés dans le plan à sa création (assistant, données de démonstration, premier « Ajouter une inspection »), reprise des plans existants (E-9)."
    }
   },
   {
@@ -3368,8 +3374,9 @@
     "src/server/dal/commissioning.ts:76-77 Bloquant A = registre 'itp' catégorie A seulement"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8, lot qualité et chantier : une liste de réserves par projet (origines Inspection et Chantier), numérotée sur le projet ; les réserves chantier de HLT-026 deviennent P-06…P-08 (A-6)."
    }
   },
   {
@@ -3398,8 +3405,9 @@
     "docs/DECISIONS.md:142 C-3 = catégories de coûts : la source « C-3 » de l’item désignait la question Cursus de DELIVERY-5 §8"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : les responsables du projet préparent et renseignent la fiche chantier dès les Études (D-3) ; la création du chantier dans Cursus (R-028), les coûts réels saisis (R-074) et l’avancement en jours restent à faire."
    }
   },
   {
@@ -3426,8 +3434,9 @@
     "src/server/db/schema/cursus.ts:12-32 cursus_clearances (clearance, clearanceNote, reasonCodes HABILITATION…) déjà en miroir ; aucun endpoint congés dans src/server/integrations/cursus/connector.ts:5-6"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : conflits de l’équipe chantier calculés (charge, autre chantier, habilitations et absences Cursus) et arbitrés par le chef du service de la personne (D-6b) ; la table site_collisions est gardée jusqu’à confirmation."
    }
   },
   {
@@ -3502,8 +3511,9 @@
     "src/server/integrations/vigie/links.ts:83 vigieReportIncidentUrl existe pour le renvoi"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : plus de case incident HSE dans le rapport journalier ; un lien Vigie prérempli à la place (NEW-SITE-2)."
    }
   },
   {
@@ -3676,9 +3686,9 @@
     "Contexte de D-2 (questions.json) : « Les liens d’un document vers un livrable, une commande ou une réserve ouvriront la fiche Keystone correspondante »"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 8",
-    "note": "Livraison 8 : relations Livrable, Commande et Réserve cliquables ; les ancres des lignes de réserve arrivent avec le lot qualité et chantier (R-117)."
+    "note": "Livraison 8 : relations Livrable, Commande et Réserve cliquables ; les lignes de réserve ont leur ancre (R-117)."
    }
   },
   {
@@ -4500,7 +4510,9 @@
     "vérifié : src/features/itpcom/commissioning-view.tsx:62-66 cellules bloquées en texte simple ; src/features/meetings/meetings-view.tsx Décisions/Actions sans EmptyState ; src/features/contract/mark-paid-button.tsx sans gestion du focus ; local.ts FR_SELF/FR_NAMED sans « tu vas » / « vous allez »"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : textes des connecteurs en français dans Activité & intégrations (point 2) ; les autres finitions restent à faire."
    }
   },
   {
@@ -4656,7 +4668,8 @@
     "grep -i per.?diem|allowance|indemnit dans src : aucun résultat"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "a_faire",
+    "note": "Livraison 8 : la saisie des rotations existe désormais dans la fiche chantier (R-118) ; le reste de la proposition attend sa validation."
    }
   },
   {

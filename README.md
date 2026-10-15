@@ -8,13 +8,16 @@ reconstruction en Next.js 16 du prototype Claude Design `design/Keystone PM v8.d
 - État des livraisons : `docs/DELIVERY-1.md`, `docs/DELIVERY-2.md`, `docs/DELIVERY-3.md`, `docs/DELIVERY-4.md`, `docs/DELIVERY-5.md`,
   `docs/DELIVERY-6.md` (chapitre 4 : les fonctions simulées des 59 écrans sont devenues réelles ; plan d'origine dans
   `docs/DELIVERY-6-PLAN.md`), `docs/DELIVERY-7.md` (mise en production : PostgreSQL, connexion Microsoft Entra ID, droits par
-  équipe projet, réponses du responsable produit ; plan dans `docs/DELIVERY-7-PLAN.md`)
+  équipe projet, réponses du responsable produit ; plan dans `docs/DELIVERY-7-PLAN.md`), `docs/DELIVERY-8.md` (journal d’audit
+  infalsifiable, traduction française contrôlée, kit d’exploitation, rôle Finance et grille de taux datée, circuit séquentiel des
+  demandes de modification, connecteurs Vigie / Cursus / Codex côté Keystone, liste de réserves unique et fiche chantier ; plan dans
+  `docs/DELIVERY-8-PLAN.md`)
 - Reste à développer (inventaire du 10 octobre 2026, tenu à jour à chaque développement) : `docs/RESTE-A-DEVELOPPER.md`
 - Décisions du responsable produit (questionnaire) : `docs/DECISIONS.md`
 - Consignes pour les sessions Claude : `CLAUDE.md`
 - Évolutions demandées et proposées : `docs/BACKLOG.md`
 - **Guide utilisateur par rôle (bêta)** : [`docs/guide/`](docs/guide/README.md) — directeur, chef de projet, chef de service,
-  membre d’équipe, responsable ingénierie, qualité, achats, Finance (à venir), et les
+  membre d’équipe, responsable ingénierie, qualité, achats, Finance, et les
   [scénarios de recette de la bêta](docs/guide/recette-beta.md)
 - **Exploitation (DSI)** : [`docs/EXPLOITATION.md`](docs/EXPLOITATION.md) — installation, variables, Entra ID, tâches,
   supervision, Coolify, sauvegardes et restauration, antivirus ; sécurité : [`docs/SECURITY.md`](docs/SECURITY.md)
