@@ -92,8 +92,8 @@ describe('/admin/machine-types', () => {
     expect(Object.keys(p)).toEqual(['PageHeader', 'MachineTypesBody']);
     expect(p.PageHeader.props.screen).toBe('mtypes');
     expect(primaryName(p)).toBe('NewMachineTypeButton');
-    // The add-form sub-line names the current project (the prototype's `projectName`).
-    expect((p.PageHeader.props.primary as El).props.context).toBe('#026 · Harbor Line Terminal Expansion');
+    // R-153 (X-10): a machine type is not a project's — no project sub-line (the prototype's `projectName`).
+    expect((p.PageHeader.props.primary as El).props.context).toBeUndefined();
     const sel = async (type?: string) => ((await page(type ? { type } : {})).MachineTypesBody.props.view as MachineTypesView).mt!.displayCode;
     expect([await sel(), await sel('memu'), await sel('rnd'), await sel('R&D'), await sel('nope')]).toEqual(['EMP', 'MEMU', 'R&D', 'R&D', 'EMP']);
   });

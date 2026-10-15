@@ -46,19 +46,21 @@ beforeAll(async () => {
 beforeEach(() => Object.assign(session, { role: 'director', lang: 'en', project: 'HLT-026', zone: null }));
 
 describe('/after-sales/fleet', () => {
-  it('header "Add machine" with the current project as the dialog sub-line, then the register', async () => {
+  it('header "Add machine" without a project sub-line (R-153, X-10), then the register', async () => {
     const p = await fleetPage();
     // R-144: the "Delivered projects" card follows the register (it renders nothing without a delivered project).
     expect(Object.keys(p)).toEqual(['PageHeader', 'FleetBody', 'DeliveredCard']);
     expect(p.PageHeader.props).toMatchObject({ screen: 'fleet' });
     const primary = p.PageHeader.props.primary as El;
     expect((primary.type as { name: string }).name).toBe('AddMachineButton');
-    expect(primary.props).toMatchObject({ label: 'Add machine', context: '#026 · Harbor Line Terminal Expansion' });
+    // R-153 (X-10): a machine of the installed base is not the current project's — no sub-line (the prototype named it).
+    expect(primary.props).toMatchObject({ label: 'Add machine' });
+    expect(primary.props.context).toBeUndefined();
     session.lang = 'fr';
     session.project = 'NDC-031';
     const fr = ((await fleetPage()).PageHeader.props.primary as El).props;
     expect([fr.label, (fr.form as { title: string }).title]).toEqual(['Ajouter une machine', 'Ajouter une machine']);
-    expect(fr.context).toMatch(/^#031 · /);
+    expect(fr.context).toBeUndefined();
   });
 
   it('primary action only for the roles whose workspace has the screen (prototype hasPrimary); the client is refused (R-042, P-1)', async () => {
@@ -94,6 +96,9 @@ describe('/after-sales/claims', () => {
     const primary = p.PageHeader.props.primary as El;
     expect((primary.type as { name: string }).name).toBe('NewClaimButton');
     expect(primary.props).toMatchObject({ label: 'New claim' });
+    // R-153 (X-10): "New claim" and "Plan intervention" concern a machine — no project sub-line.
+    const ivPrimary = (await savPage({ view: 'interventions' })).PageHeader.props.primary as El;
+    expect([primary.props.context, ivPrimary.props.label, ivPrimary.props.context]).toEqual([undefined, 'Plan intervention', undefined]);
     expect(((primary.props.form as { fields: { id: string; options?: unknown[] }[] }).fields[0].options ?? []).length).toBe(8);
     for (const [view, expected] of [['interventions', 'interventions'], ['costs', 'costs'], ['claims', 'claims'], ['nope', 'claims']] as const) {
       const v = (await savPage({ view })).SavBody.props.view as SavScreenView;

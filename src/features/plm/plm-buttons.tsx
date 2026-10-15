@@ -12,7 +12,7 @@ import { useI18n } from '@/i18n/client';
 import { completePartRecordAction, registerEquivalentAction, createPartAction, validatePartAction } from './actions';
 import s from './plm.module.css';
 
-/** Header primary "New part" → "Create part" (toast "Part created in the catalogue"); `context` = the current project. */
+/** Header primary "New part" → "Create part" (toast "Part created in the catalogue"); no project sub-line (R-153, X-10). */
 export function NewPartButton({ label, form, context }: { label: string; form: FormDef; context?: string }) {
   const [open, setOpen] = useState(false);
   return (
