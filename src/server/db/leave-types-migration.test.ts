@@ -1,4 +1,4 @@
-// Custom data migration drizzle/0017_leave_types_simple.sql (delivery 8, lot connectors; R-031 / R-173, NEW-CURSUS-4 "a"):
+// Custom data migration drizzle/NNNN_leave_types_simple.sql (delivery 8, lot connectors; R-031 / R-173, NEW-CURSUS-4 "a"):
 // a database seeded before it (leave types CP, RTT, Sick, Training) gets the two simple types Leave and Absence, its absences
 // mapped onto them with their days unchanged; a new database (no leave type yet) is left for the seed. The SQL is run as
 // written, statement by statement, on an in-memory PGlite.
@@ -9,13 +9,15 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { openDatabase } from './open';
 import type { DB } from './types';
 
-const SQL = fs.readFileSync(path.join(process.cwd(), 'drizzle/0017_leave_types_simple.sql'), 'utf8');
+// Found by its name, whatever number the integrator gives it when migrations are regenerated in merge order.
+const FILE = fs.readdirSync(path.join(process.cwd(), 'drizzle')).find((f) => /^\d{4}_leave_types_simple\.sql$/.test(f));
+const SQL = fs.readFileSync(path.join(process.cwd(), 'drizzle', FILE ?? 'missing_leave_types_simple.sql'), 'utf8');
 const run = async (db: DB) => {
   for (const stmt of SQL.split('--> statement-breakpoint').map((s) => s.trim()).filter(Boolean)) await db.execute(sql.raw(stmt));
 };
 const rows = async <T,>(db: DB, q: string) => (await db.execute(sql.raw(q))).rows as T[];
 
-describe('0017_leave_types_simple', () => {
+describe('NNNN_leave_types_simple (custom data migration)', () => {
   let db: DB;
   beforeAll(async () => {
     db = await openDatabase();
