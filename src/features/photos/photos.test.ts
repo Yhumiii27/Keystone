@@ -49,7 +49,8 @@ const JPG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 16, 74, 70, 73, 70]);
 const RECEIPT: PhotoOwnerKey = { kind: 'goods_receipt', code: 'HLT-026', ref: 'BL-2026-0521' };
 const REPORT: PhotoOwnerKey = { kind: 'daily_report', code: 'HLT-026', ref: 'DR-001' };
 const ITP_PUNCH: PhotoOwnerKey = { kind: 'punch_item', code: 'HLT-026', ref: 'P-02', register: 'itp' };
-const SITE_PUNCH: PhotoOwnerKey = { kind: 'punch_item', code: 'HLT-026', ref: 'P-01', register: 'site' };
+// A-6 'a' (R-117): one punch list per project — the Site items of HLT-026 are P-06…P-08 (renumbered after the ITP items).
+const SITE_PUNCH: PhotoOwnerKey = { kind: 'punch_item', code: 'HLT-026', ref: 'P-06', register: 'site' };
 let dir: string;
 
 function upload(o: PhotoOwnerKey, file: File | null, headers: Record<string, string> = {}) {
@@ -85,8 +86,10 @@ describe('R-126 rules', () => {
     expect(parsePhotoOwner({ kind: 'punch_item', code: 'HLT-026', ref: 'P-02', register: 'itp' })).toEqual(ITP_PUNCH);
     expect([
       parsePhotoOwner({ kind: 'invoice', code: 'HLT-026', ref: 'X' }), parsePhotoOwner({ kind: 'daily_report', code: 'HLT-026', ref: 'BL-1' }),
-      parsePhotoOwner({ kind: 'punch_item', code: 'HLT-026', ref: 'P-02' }), parsePhotoOwner({ kind: 'daily_report', code: '../etc', ref: 'DR-001' }),
+      parsePhotoOwner({ kind: 'punch_item', code: 'HLT-026', ref: 'P-02', register: 'ncr' }), parsePhotoOwner({ kind: 'daily_report', code: '../etc', ref: 'DR-001' }),
     ]).toEqual([null, null, null, null]);
+    // A-6 'a' (R-117): a punch item is found by its number — the register is optional (and never trusted, photos/access.ts).
+    expect(parsePhotoOwner({ kind: 'punch_item', code: 'HLT-026', ref: 'P-02' })).toEqual({ ...ITP_PUNCH, register: null });
     expect([RECEIPT, REPORT, ITP_PUNCH, SITE_PUNCH].map(photoScreenOf)).toEqual(['deliveries', 'site', 'itp', 'site']);
     expect([RECEIPT, REPORT, ITP_PUNCH, SITE_PUNCH].map(clientSeesPhotos)).toEqual([false, false, true, false]);
   });
@@ -135,7 +138,7 @@ describe('R-126 upload, image, remove', () => {
   it('who may see: internal viewers; the client only the ITP punch list of their project', async () => {
     const [receipt] = (await listProjectPhotos('HLT-026', 'goods_receipt')).get('BL-2026-0521')!;
     const [report] = (await listProjectPhotos('HLT-026', 'daily_report')).get('DR-001')!;
-    const [punch] = (await listProjectPhotos('HLT-026', 'punch_item', 'itp')).get('P-02')!;
+    const [punch] = (await listProjectPhotos('HLT-026', 'punch_item')).get('P-02')!;
     const see = async (id: string) => {
       const out: Record<string, number> = {};
       for (const role of ROLES) {

@@ -1,14 +1,16 @@
-// Project execution seed (docs/spec/11 §8.4): the inspection & test plan (ITP 3717), the ITP punch list (PUNCH 3718)
-// and the site punch list (SITE_PUNCH 3581, the site sheet's project) as two registers of punch items, commissioning
-// and the handover dossier (COMMISSIONING 3721), lessons learned, closure checklist and customer satisfaction
-// (LESSONS / CLOSURE / SATISFACTION 3732–3734). Harbor Line only in the prototype; other projects get nothing.
+// Project execution seed (docs/spec/11 §8.4): the inspection & test plan (ITP 3717) with its systems frozen from the
+// template (ITP_TEMPLATES 3716, R-057 / E-9 'a'), the punch list — R-117 (A-6 'a'): one list per project, the ITP punch
+// list (PUNCH 3718, origin Inspection, owner party Keystone) then the site punch list (SITE_PUNCH 3581, origin Site,
+// category B) numbered after it (HLT-026: P-06…P-08) —, commissioning and the handover dossier (COMMISSIONING 3721),
+// lessons learned, closure checklist and customer satisfaction (LESSONS / CLOSURE / SATISFACTION 3732–3734). Harbor Line
+// only in the prototype; other projects get nothing.
 import { PROTO } from '@/server/prototype';
 import {
   closureItemStatus, commissioningCellStatus, commissioningStep, handoverItemStatus, itpPointType, itpResult, itpStage, lessonStatus, lessonTheme, machineType,
   punchOwnerParty, punchSource, punchStatus, type PunchCategory, type PunchSource,
 } from '../codes';
 import {
-  closureItems, commissioningSteps, commissioningSystems, handoverItems, itpInspections, itpPlans, lessonsLearned, punchItems, satisfactionScores,
+  closureItems, commissioningSteps, commissioningSystems, handoverItems, itpInspections, itpPlanSystems, itpPlans, lessonsLearned, punchItems, satisfactionScores,
 } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, personIdOrNull, type SeedCtx } from './context';
@@ -32,6 +34,11 @@ export async function seedExecution(tx: Tx, ctx: SeedCtx): Promise<void> {
     const projectId = must(ctx.projectByCode, code, 'project');
     const planId = newId();
     await tx.insert(itpPlans).values({ id: planId, projectId, machineTypeCode: machineType.code(plan.tpl) });
+    // R-057 (E-9 'a'): the plan keeps the systems of its template. Copied from the prototype's templates, not the database —
+    // the machine-type aggregate is seeded later (seedEngineering), also in the Delivery 5 backfill.
+    const templates = PROTO.ITP_TEMPLATES as Record<string, string[]>;
+    const systems = templates[plan.tpl]?.length ? templates[plan.tpl] : templates.AUTRE ?? [];
+    if (systems.length) await tx.insert(itpPlanSystems).values([...new Set(systems)].map((name, position) => ({ planId, position, name })));
     const customFrom = plan.items.length - plan.custom;
     const inspections = plan.items.map(([number, system, name, type, stage, reference, date, status, doc], position) => {
       const result = itpResult.code(status);
@@ -53,20 +60,25 @@ export async function seedExecution(tx: Tx, ctx: SeedCtx): Promise<void> {
         return {
           projectId, register: 'itp' as const, number, description, location, category: cat as PunchCategory, source: s.source,
           sourceInspectionId: s.inspection ? inspectionId.get(s.inspection) ?? null : null, ownerName: owner, ownerPersonId: personIdOrNull(ctx, owner),
-          dueOn: optionalIso(due, st === 'closed'), status: st, position,
+          ownerParty: 'keystone' as const, dueOn: optionalIso(due, st === 'closed'), status: st, position,
         };
       }));
   }
 
-  // Site punch list (SITE_PUNCH belongs to the site sheet's project).
+  // Site punch list (SITE_PUNCH belongs to the site sheet's project). R-117 (A-6 'a'): the same list as the ITP items, numbered
+  // after them (the prototype's P-01…P-03 become P-06…P-08 on HLT-026, as the custom migration renumbers an older database),
+  // category B, the owner party as recorded.
   const siteCode = PROTO.SITE.code as string;
   const sitePunch = PROTO.SITE_PUNCH as SitePunchRow[];
+  const itpPunch = (PROTO.PUNCH[siteCode] ?? []) as PunchRow[];
+  const after = itpPunch.reduce((m, [number]) => Math.max(m, parseInt(number.slice(2), 10) || 0), 0);
   if (sitePunch.length)
-    await tx.insert(punchItems).values(sitePunch.map(([number, description, ncr, status, owner, due], position) => {
+    await tx.insert(punchItems).values(sitePunch.map(([, description, ncr, status, owner, due], i) => {
       const st = punchStatus.code(status);
       return {
-        projectId: must(ctx.projectByCode, siteCode, 'project'), register: 'site' as const, number, description, location: '', ncrNumber: ncr && ncr !== '—' ? ncr : null,
-        ownerParty: punchOwnerParty.code(owner), dueOn: optionalIso(due, st === 'closed'), status: st, position,
+        projectId: must(ctx.projectByCode, siteCode, 'project'), register: 'site' as const, number: `P-${String(after + i + 1).padStart(2, '0')}`, description, location: '',
+        category: 'B' as const, ncrNumber: ncr && ncr !== '—' ? ncr : null, ownerParty: punchOwnerParty.code(owner), dueOn: optionalIso(due, st === 'closed'), status: st,
+        position: itpPunch.length + i,
       };
     }));
 

@@ -6,6 +6,7 @@ import 'server-only';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { fileSizeText } from '@/domain/ch4-defaults';
 import { MAX_PHOTOS_PER_OWNER, type PhotoOwnerKey, type PhotoOwnerKind } from '@/domain/photos';
+import type { PunchRegister } from '@/server/db/codes';
 import { getDb } from '@/server/db/client';
 import { findPerson, nameOf } from '@/server/db/helpers';
 import { dailyReports, goodsReceipts, projects, punchItems, receiptAttachments, storedFiles } from '@/server/db/schema';
@@ -36,9 +37,14 @@ interface ResolvedOwner {
   ref: string;
   /** Audit area. */
   area: string;
+  /** Punch items: the item's origin AS STORED (R-117) — the photo's rights follow it, never a register sent by a request. */
+  register?: PunchRegister;
 }
 
-/** The record a photo belongs to, on that project; null when unknown there. */
+/**
+ * The record a photo belongs to, on that project; null when unknown there. A punch item is found by its number in the project
+ * (R-117: one list, numbered over the project) and returns its stored origin.
+ */
 export async function resolvePhotoOwner(q: Q, o: PhotoOwnerKey): Promise<ResolvedOwner | null> {
   const [p] = await q.select({ id: projects.id }).from(projects).where(eq(projects.code, o.code));
   if (!p) return null;
@@ -50,17 +56,16 @@ export async function resolvePhotoOwner(q: Q, o: PhotoOwnerKey): Promise<Resolve
     const [r] = await q.select({ id: dailyReports.id }).from(dailyReports).where(and(eq(dailyReports.number, o.ref), eq(dailyReports.projectId, p.id)));
     return r ? { ownerId: r.id, projectId: p.id, ref: o.ref, area: 'Site' } : null;
   }
-  const [r] = await q.select({ id: punchItems.id }).from(punchItems)
-    .where(and(eq(punchItems.number, o.ref), eq(punchItems.projectId, p.id), eq(punchItems.register, o.register === 'site' ? 'site' : 'itp')));
-  return r ? { ownerId: r.id, projectId: p.id, ref: o.ref, area: 'Punch list' } : null;
+  const [r] = await q.select({ id: punchItems.id, register: punchItems.register }).from(punchItems).where(and(eq(punchItems.number, o.ref), eq(punchItems.projectId, p.id)));
+  return r ? { ownerId: r.id, projectId: p.id, ref: o.ref, area: 'Punch list', register: r.register } : null;
 }
 
 const rowOf = (f: Pick<StoredFileMeta, 'id' | 'name' | 'sizeBytes' | 'createdByName' | 'createdAt'>): PhotoRow => ({
   id: f.id, name: f.name, sizeText: fileSizeText(f.sizeBytes), uploadedBy: f.createdByName, uploadedAt: f.createdAt.toISOString(),
 });
 
-/** Photos of every record of one kind on a project, by record number (upload order). Punch items: one register. */
-export async function listProjectPhotos(projectCode: string, kind: PhotoOwnerKind, register?: 'itp' | 'site'): Promise<Map<string, PhotoRow[]>> {
+/** Photos of every record of one kind on a project, by record number (upload order). Punch items: every origin, or one. */
+export async function listProjectPhotos(projectCode: string, kind: PhotoOwnerKind, origin?: PunchRegister): Promise<Map<string, PhotoRow[]>> {
   const db = await getDb();
   const out = new Map<string, PhotoRow[]>();
   const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, projectCode));
@@ -70,7 +75,7 @@ export async function listProjectPhotos(projectCode: string, kind: PhotoOwnerKin
       ? await db.select({ id: goodsReceipts.id, ref: goodsReceipts.number }).from(goodsReceipts).where(eq(goodsReceipts.projectId, p.id))
       : kind === 'daily_report'
         ? await db.select({ id: dailyReports.id, ref: dailyReports.number }).from(dailyReports).where(eq(dailyReports.projectId, p.id))
-        : await db.select({ id: punchItems.id, ref: punchItems.number }).from(punchItems).where(and(eq(punchItems.projectId, p.id), eq(punchItems.register, register ?? 'itp')));
+        : await db.select({ id: punchItems.id, ref: punchItems.number }).from(punchItems).where(and(eq(punchItems.projectId, p.id), origin ? eq(punchItems.register, origin) : undefined));
   if (!owners.length) return out;
   const refOf = new Map(owners.map((o) => [o.id, o.ref]));
   const files = await db.select().from(storedFiles)

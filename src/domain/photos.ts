@@ -18,15 +18,18 @@ export interface PhotoOwnerKey {
   code: string;
   /** Receipt, report or punch item number. */
   ref: string;
-  /** Punch items: the register (ITP punch list or Site punch list & reserves). */
+  /**
+   * Punch items: the item's origin (R-117: Inspection or Site). Only the stored origin counts for rights
+   * (src/features/photos/access.ts resolves it); what a request sends is a hint at most.
+   */
   register?: PunchRegister | null;
 }
 
 /**
- * The screen whose rights govern a photo: Deliveries (receipts), Site (daily reports, the Site punch list), Inspections &
- * punch list (the ITP register). Adding or removing needs the right to edit that screen on the project; seeing it, the
- * screen (internal viewers) — the client sees only the photos of the ITP punch list of their own project (P-10b hides
- * purchasing and the site's internal records).
+ * The screen whose rights govern a photo: Deliveries (receipts), Site (daily reports, punch items raised on site),
+ * Inspections & punch list (punch items raised by an inspection). Adding or removing needs the right to edit that screen on
+ * the project; seeing it, the screen (internal viewers) — the client sees only the photos of the items raised by an
+ * inspection, on their own project (P-10b hides purchasing and the site's internal records, X-15).
  */
 export function photoScreenOf(o: Pick<PhotoOwnerKey, 'kind' | 'register'>): ScreenId {
   if (o.kind === 'goods_receipt') return 'deliveries';
@@ -34,8 +37,11 @@ export function photoScreenOf(o: Pick<PhotoOwnerKey, 'kind' | 'register'>): Scre
   return o.register === 'site' ? 'site' : 'itp';
 }
 
-/** The client may see this kind of photo (only the ITP punch list's, on their own project — checked by the caller). */
-export const clientSeesPhotos = (o: Pick<PhotoOwnerKey, 'kind' | 'register'>) => o.kind === 'punch_item' && o.register !== 'site';
+/**
+ * The client may see this kind of photo: a punch item raised by an inspection (stored origin 'itp'), on their own project —
+ * checked by the caller. Never a Site item's (X-15 still open), never an item whose origin is unknown.
+ */
+export const clientSeesPhotos = (o: Pick<PhotoOwnerKey, 'kind' | 'register'>) => o.kind === 'punch_item' && o.register === 'itp';
 
 const REF: Record<PhotoOwnerKind, RegExp> = {
   goods_receipt: /^BL-\d{4}-\d{3,6}$/,
@@ -50,8 +56,9 @@ export function parsePhotoOwner(v: { kind?: unknown; code?: unknown; ref?: unkno
   const code = typeof v.code === 'string' ? v.code.trim() : '';
   const ref = typeof v.ref === 'string' ? v.ref.trim().toUpperCase() : '';
   if (!/^[A-Z0-9-]{3,20}$/i.test(code) || !REF[kind].test(ref)) return null;
+  // R-117: a punch item is found by its number; a register sent by an older form is accepted but not trusted (access.ts).
   let register: PunchRegister | null = null;
-  if (kind === 'punch_item') {
+  if (kind === 'punch_item' && v.register != null && v.register !== '') {
     if (v.register !== 'itp' && v.register !== 'site') return null;
     register = v.register;
   }

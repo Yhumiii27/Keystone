@@ -62,7 +62,8 @@ test('ITP: quality records an inspection result (R-112); a punch photo is stored
   await expect(toast(page)).toContainText(`${number} ·`);
   await expect(toast(page)).toContainText('Inspection result recorded');
 
-  // Photo of a punch item of the ITP register, through the upload route.
+  // Photo of a punch item raised by an inspection, through the upload route (A-6 'a', R-117: one list per project — the item is
+  // found by its number and its stored origin governs the rights; the `register` field is ignored).
   const upload = (headers: Record<string, string> = {}) =>
     page.request.post('/api/photos', {
       multipart: { kind: 'punch_item', code: 'HLT-026', ref: 'P-02', register: 'itp', file: { name: 'E2E punch.png', mimeType: 'image/png', buffer: PNG } },

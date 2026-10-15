@@ -2,8 +2,10 @@ import 'server-only';
 // Who may add, remove and see the photos of a record (R-126, X-15: "adding is reserved to those who can edit the screen").
 // Edit: the screen that governs the record (Deliveries, Site or Inspections & punch list) is editable for the viewer on
 // that project (not outside their workspace, not a read-only project) and the viewer is not the client (the photos are
-// the team's records). View: internal viewers; the client only for the ITP punch list of their own organisation's project
-// (P-10a/P-10b).
+// the team's records). View: internal viewers; the client only the photos of the punch items raised by an inspection, on
+// their own organisation's project (P-10a/P-10b). R-117: a punch item is found by its number in the project and its ORIGIN
+// is the stored one — a `register` sent by the request is ignored, so a client cannot open a Site item's photos by claiming
+// it is an inspection's.
 import { clientSeesPhotos, photoScreenOf, type PhotoOwnerKey } from '@/domain/photos';
 import { getDb } from '@/server/db/client';
 import { resolvePhotoOwner } from '@/server/dal/photos';
@@ -20,8 +22,9 @@ export type PhotoGate =
 export async function photoGate(o: PhotoOwnerKey, need: 'view' | 'edit'): Promise<PhotoGate> {
   const project = await getProject(o.code);
   if (!project) return { ok: false, status: 404, error: 'Unknown project' };
-  const owner = { ...o, code: project.code };
-  if (!(await resolvePhotoOwner(await getDb(), owner))) return { ok: false, status: 404, error: 'File not found' };
+  const resolved = await resolvePhotoOwner(await getDb(), { ...o, code: project.code });
+  if (!resolved) return { ok: false, status: 404, error: 'File not found' };
+  const owner: PhotoOwnerKey = { ...o, code: project.code, register: o.kind === 'punch_item' ? (resolved.register ?? null) : null };
   const screen = photoScreenOf(owner);
   // The client is answered here (403) rather than sent home by getProjectContext (R-042): a Route Handler answers JSON or
   // a file, not a redirect.

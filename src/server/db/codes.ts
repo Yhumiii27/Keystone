@@ -934,11 +934,14 @@ export const punchSource = codec<PunchSource, string>([['site_walk', 'Site walk'
 export type PunchStatus = 'open' | 'in_progress' | 'closed';
 export const punchStatus = codec<PunchStatus, string>([['open', 'Open'], ['in_progress', 'In progress'], ['closed', 'Closed']]);
 /**
- * Register a punch item belongs to: the ITP punch list (PUNCH, categorised) or the Site punch list & reserves
- * (SITE_PUNCH, owner party + NCR). The two prototype lists clash on ids and statuses (11 §7 #4, OPEN QUESTION A-6):
- * one entity, two registers, numbered per register until A-6 is settled.
+ * Origin of a punch item (R-117, A-6 'a': one list per project, numbered over the project): raised by an inspection — the
+ * prototype's ITP punch list (PUNCH) — or on site — its Site punch list & reserves (SITE_PUNCH). Stored in the
+ * `punch_items.register` column (the name of the two former registers).
  */
 export type PunchRegister = 'itp' | 'site';
+export type PunchOrigin = PunchRegister;
+export const punchOrigin = codec<PunchOrigin, string>([['itp', 'Inspection'], ['site', 'Site']]);
+/** Responsible party of a punch item (every item has one: Keystone or the client). */
 export type PunchOwnerParty = 'client' | 'keystone';
 export const punchOwnerParty = codec<PunchOwnerParty, string>([['client', 'Client'], ['keystone', 'Keystone']]);
 

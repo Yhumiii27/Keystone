@@ -2,7 +2,7 @@ import 'server-only';
 // Commissioning & handover dossier DAL (docs/spec/07 §2.6). Keystone owns it. The grid (system × step) and the
 // dossier are read-only in the prototype (OPEN QUESTION Q-5); "Plan SAT" is recorded (sat_plans) and dates the
 // system's SAT step. "Blocking A" per system = open category-A punch items whose location starts with the system's
-// first word (`cmRows` 4973).
+// first word (`cmRows` 4973) — R-117 (A-6 'a'): items of every origin (one punch list per project).
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import {
@@ -29,7 +29,7 @@ export interface CommissioningCell {
 export interface CommissioningSystemRow {
   name: string;
   cells: CommissioningCell[];
-  /** Open category-A punch items of the system (ITP register). */
+  /** Open category-A punch items of the system, every origin (R-117). */
   blockingA: number;
 }
 
@@ -74,7 +74,7 @@ export async function getCommissioning(projectCode: string): Promise<Commissioni
     db.select({ h: handoverItems, doc: documents.number }).from(handoverItems).leftJoin(documents, eq(documents.id, handoverItems.documentId))
       .where(eq(handoverItems.projectId, p.id)).orderBy(asc(handoverItems.position)),
     db.select({ location: punchItems.location, status: punchItems.status }).from(punchItems)
-      .where(and(eq(punchItems.projectId, p.id), eq(punchItems.register, 'itp'), eq(punchItems.category, 'A'))),
+      .where(and(eq(punchItems.projectId, p.id), eq(punchItems.category, 'A'))),
     db.select().from(satPlans).where(eq(satPlans.projectId, p.id)).orderBy(asc(satPlans.createdAt)),
   ]);
   const openA = punch.filter((x) => x.status !== 'closed');

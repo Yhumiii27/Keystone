@@ -3,7 +3,8 @@
 // go / no go), Team & mobilisation (KPIs, rotation plan, collisions, mission costs) and Daily execution (KPIs, daily
 // reports, site punch list, Vigie's HSE register) — or the empty state of a project without a site sheet.
 // Server Component; the buttons that write are client islands (site-buttons.tsx), shown to editors only. Links to
-// Cursus and Vigie open outside Keystone.
+// Cursus and Vigie open outside Keystone. R-117: the punch list is the project's single list — the items raised on site by
+// default, "All" on demand — read-only here as in the prototype (Start / Close are on Inspections & punch list).
 import {
   ArrowSquareOut, ArrowsClockwise, Chats, Check, CheckCircle, Eye, FirstAid, LockSimple, Warning, WarningCircle,
 } from '@phosphor-icons/react/dist/ssr';
@@ -43,6 +44,8 @@ export interface SiteBodyProps {
 export interface SitePhotos {
   /** Add / remove (the viewer may edit the Site screen of the project). */
   canEdit: boolean;
+  /** R-117: the photos of the items raised by an inspection follow Inspections & punch list's rights (shown with "All"). */
+  canEditItp?: boolean;
   reports: Record<string, PhotoView[]>;
   punch: Record<string, PhotoView[]>;
 }
@@ -450,12 +453,25 @@ function ExecTab({ code, v, showCommLog, photos, t }: { code: string; v: ExecVie
         {v.note && <span className={s.footnote}>{v.note}</span>}
       </SectionCard>
       <CardGrid min={540}>
-        <SectionCard scroll title={t('Punch list & reserves')} subtitle={t('Linked to NCRs and to the SAT acceptance · signed off by the client')}>
+        <SectionCard
+          scroll
+          title={t('Punch list & reserves')}
+          subtitle={t('Linked to NCRs and to the SAT acceptance · signed off by the client')}
+          actions={
+            <Segmented
+              label={v.punchFilter.label}
+              value={v.punchFilter.value}
+              options={v.punchFilter.options.map((o) => ({ value: o.value, label: o.label, href: o.href }))}
+            />
+          }
+        >
+          {v.punchFilter.empty && <span className={s.footnote}>{v.punchFilter.empty}</span>}
           <Table size={12.5}>
             <thead>
               <tr>
                 <Th>#</Th>
                 <Th>{t('Item')}</Th>
+                {v.punchFilter.value === 'all' && <Th>{t('Origin')}</Th>}
                 <Th>NCR</Th>
                 <Th>{t('Owner')}</Th>
                 <Th>{t('Due')}</Th>
@@ -468,6 +484,7 @@ function ExecTab({ code, v, showCommLog, photos, t }: { code: string; v: ExecVie
                 <tr key={r.id}>
                   <td className={s.punchId}>{r.id}</td>
                   <td className={s.pretty}>{r.title}</td>
+                  {v.punchFilter.value === 'all' && <Td tone="secondary">{r.origin}</Td>}
                   <td className={s.ncr}>{r.ncr}</td>
                   <td className={s.cell12}>{r.owner}</td>
                   <td className={s.due}>{r.due}</td>
@@ -478,9 +495,9 @@ function ExecTab({ code, v, showCommLog, photos, t }: { code: string; v: ExecVie
                     <td>
                       <PhotosButton
                         title={`${r.id} · ${t('Photos')}`}
-                        owner={{ kind: 'punch_item', code, ref: r.id, register: 'site' }}
+                        owner={{ kind: 'punch_item', code, ref: r.id }}
                         photos={photos.punch[r.id] ?? []}
-                        canEdit={photos.canEdit}
+                        canEdit={r.siteOrigin ? photos.canEdit : !!photos.canEditItp}
                         empty={t('No photo yet')}
                       />
                     </td>

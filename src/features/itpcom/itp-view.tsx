@@ -1,9 +1,11 @@
 // Inspection & test plan · punch list screen body (docs/spec/07 §2.4, template 880–892): the Display switch (plan |
 // punch list, `?view=`), the KPI row (both views), then either the plan — one block per template system with its
 // lines, point type, stage, reference, date, result and the Codex record button — or the punch list with the row step
-// Start / Close (client island, editors only; "No punch item yet" when the project has none). "Add inspection" / "Add
-// punch item" is the header's primary action. Server Component.
-import { ArrowSquareOut, ClipboardText, Eye, FileText, ListChecks, ShieldWarning } from '@phosphor-icons/react/dist/ssr';
+// Start / Close (client island, editors only; "No punch item yet" when the project has none). R-117 (A-6 'a'): the punch
+// list is the project's single list — an Origin filter (All / Inspection / Site), an Origin column, the NCR column for
+// internal viewers (P-10b), Start / Close on every item and `id="punch-P-01"` on each row (R-128's document relations
+// scroll to it). "Add inspection" / "Add punch item" is the header's primary action. Server Component.
+import { ArrowSquareOut, ClipboardText, Eye, FileText, Funnel, ListChecks, ShieldWarning } from '@phosphor-icons/react/dist/ssr';
 import { EmptyState } from '@/components/app/EmptyState';
 import { FilterBar, FilterLabel } from '@/components/app/Filter';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
@@ -25,8 +27,11 @@ export interface ItpBodyProps {
   view: ItpScreenView;
   /** Row steps allowed (not outside the workspace, not a read-only project). */
   canEdit: boolean;
-  /** R-126: photos stored by Keystone of the punch items (by number), and whether the viewer adds / removes them. */
-  photos?: { canEdit: boolean; punch: Record<string, PhotoView[]> };
+  /**
+   * R-126: photos stored by Keystone of the punch items (by number), and whether the viewer adds / removes them — R-117: per
+   * origin, an item raised on site following the Site screen's rights (`canEditSite`).
+   */
+  photos?: { canEdit: boolean; canEditSite?: boolean; punch: Record<string, PhotoView[]> };
   t: T;
 }
 
@@ -56,11 +61,18 @@ export function ItpBody({ code, view, canEdit, photos, t }: ItpBodyProps) {
       )}
 
       {view.punch && (
+        <FilterBar>
+          <FilterLabel icon={Funnel}>{view.punch.originLabel}</FilterLabel>
+          <Segmented wrap label={view.punch.originLabel} value={view.punch.origin} options={view.punch.origins.map((o) => ({ value: o.value, label: o.label, href: o.href }))} />
+        </FilterBar>
+      )}
+
+      {view.punch && (
         <SectionCard title={view.punch.title} subtitle={view.punch.subtitle} scroll>
           {view.punch.empty ? (
             <EmptyState variant="boxed">{view.punch.empty}</EmptyState>
           ) : (
-            <PunchTable code={code} rows={view.punch.rows} canEdit={canEdit} photos={photos} t={t} />
+            <PunchTable code={code} rows={view.punch.rows} ncr={view.punch.ncr} canEdit={canEdit} photos={photos} t={t} />
           )}
         </SectionCard>
       )}
@@ -69,16 +81,18 @@ export function ItpBody({ code, view, canEdit, photos, t }: ItpBodyProps) {
 }
 
 /** Punch list table (12.5px); the unlabelled first column (P-01…) is named for screen readers. */
-function PunchTable({ code, rows, canEdit, photos, t }: { code: string; rows: PunchRowView[]; canEdit: boolean; photos?: ItpBodyProps['photos']; t: T }) {
+function PunchTable({ code, rows, ncr, canEdit, photos, t }: { code: string; rows: PunchRowView[]; ncr: boolean; canEdit: boolean; photos?: ItpBodyProps['photos']; t: T }) {
   return (
     <Table size={12.5}>
       <thead>
         <tr>
           <Th aria-label={t('Reference')} />
           <Th>{t('Item')}</Th>
+          <Th>{t('Origin')}</Th>
           <Th>{t('System')}</Th>
           <Th>{t('Cat.')}</Th>
           <Th>{t('Raised by')}</Th>
+          {ncr && <Th>NCR</Th>}
           <Th>{t('Owner')}</Th>
           <Th>{t('Due')}</Th>
           <Th>{t('Status')}</Th>
@@ -87,7 +101,7 @@ function PunchTable({ code, rows, canEdit, photos, t }: { code: string; rows: Pu
       </thead>
       <tbody>
         {rows.map((p) => (
-          <PunchRow key={p.number} code={code} row={p} canEdit={canEdit} photos={photos} t={t} />
+          <PunchRow key={p.number} code={code} row={p} ncr={ncr} canEdit={canEdit} photos={photos} t={t} />
         ))}
       </tbody>
     </Table>
@@ -172,18 +186,22 @@ function PlanGroup({ code, group: g }: { code: string; group: InspectionGroupVie
   );
 }
 
-function PunchRow({ code, row: p, canEdit, photos, t }: { code: string; row: PunchRowView; canEdit: boolean; photos?: ItpBodyProps['photos']; t: T }) {
+function PunchRow({ code, row: p, ncr, canEdit, photos, t }: { code: string; row: PunchRowView; ncr: boolean; canEdit: boolean; photos?: ItpBodyProps['photos']; t: T }) {
   return (
-    <tr>
+    <tr id={p.anchor}>
       <Td className={s.num400}>{p.number}</Td>
       <Td className={s.pretty} color={p.color}>
         {p.item}
+      </Td>
+      <Td tone="secondary" className={s.nowrap}>
+        {p.origin}
       </Td>
       <Td tone="secondary">{p.location}</Td>
       <Td>
         <span className={cx(p.categoryClass, s.small)}>{p.category}</span>
       </Td>
       <Td tone="secondary">{p.source}</Td>
+      {ncr && <Td className={cx(s.cell12, s.nowrap)}>{p.ncr}</Td>}
       <Td className={s.cell12}>{p.owner}</Td>
       <Td className={cx(s.cell12, s.nowrap)}>{p.due}</Td>
       <Td>
@@ -194,9 +212,9 @@ function PunchRow({ code, row: p, canEdit, photos, t }: { code: string; row: Pun
           {photos && (
             <PhotosButton
               title={`${p.number} · ${t('Photos')}`}
-              owner={{ kind: 'punch_item', code, ref: p.number, register: 'itp' }}
+              owner={{ kind: 'punch_item', code, ref: p.number }}
               photos={photos.punch[p.number] ?? []}
-              canEdit={photos.canEdit}
+              canEdit={p.siteOrigin ? !!photos.canEditSite : photos.canEdit}
               empty={t('No photo yet')}
             />
           )}

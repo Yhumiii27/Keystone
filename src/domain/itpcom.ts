@@ -7,9 +7,10 @@
 // src/domain/itpcom.golden.json, scripts/proto-golden-itpcom.ts).
 import { LO, OK, TAG_CLASS, commissioningCell, statusTone, type Tone } from '@/components/app/tones';
 import {
-  ITP_RECORDED_RESULTS, NOW_ISO, STATUS_ISO, addDaysIso, displayOfIso, itpPointType, itpResult, itpStage, punchCategory, punchSource, shortDateOfIso,
+  ITP_RECORDED_RESULTS, NOW_ISO, STATUS_ISO, addDaysIso, displayOfIso, itpPointType, itpResult, itpStage, punchCategory, punchOrigin, punchOwnerParty, punchSource,
+  shortDateOfIso,
   type CommissioningCellStatus, type HandoverItemStatus, type ItpPointType, type ItpRecordedResult, type ItpResult, type ItpStage, type PunchCategory,
-  type PunchSource, type PunchStatus,
+  type PunchOrigin, type PunchOwnerParty, type PunchSource, type PunchStatus,
 } from '@/server/db/codes';
 import { parseNeedDate, type ParseResult } from './team';
 
@@ -106,7 +107,18 @@ export interface PunchFacts {
   location: string;
 }
 
-/** Row step of the ITP register: Open → "Start" (In progress), In progress → "Close" (Closed); none once closed. */
+/**
+ * R-117 (A-6 'a'): which items a punch list shows — every origin (Inspections & punch list's default), or the items raised by
+ * an inspection or on site (the Site screen's default). `?origin=` / `?punch=` values; anything else is the default.
+ */
+export type PunchOriginFilter = 'all' | PunchOrigin;
+export const PUNCH_ORIGIN_FILTERS: readonly PunchOriginFilter[] = ['all', 'itp', 'site'];
+export const punchOriginFilterOf = (v: string | null | undefined, fallback: PunchOriginFilter = 'all'): PunchOriginFilter =>
+  (PUNCH_ORIGIN_FILTERS as readonly string[]).includes(v ?? '') ? (v as PunchOriginFilter) : fallback;
+/** The items of a list a filter keeps. */
+export const filterPunchByOrigin = <R extends { origin: PunchOrigin }>(rows: readonly R[], f: PunchOriginFilter): R[] => (f === 'all' ? [...rows] : rows.filter((r) => r.origin === f));
+
+/** Row step of a punch item (every origin, R-117): Open → "Start" (In progress), In progress → "Close" (Closed); none once closed. */
 export function punchStep(status: PunchStatus): { label: 'Start' | 'Close'; to: PunchStatus } | null {
   if (status === 'open') return { label: 'Start', to: 'in_progress' };
   if (status === 'in_progress') return { label: 'Close', to: 'closed' };
@@ -283,6 +295,11 @@ export const ITP_POINT_TYPES: readonly ItpPointType[] = itpPointType.codes;
 export const ITP_STAGES: readonly ItpStage[] = itpStage.codes;
 export const PUNCH_CATEGORIES: readonly PunchCategory[] = punchCategory.codes;
 export const PUNCH_SOURCES: readonly PunchSource[] = punchSource.codes;
+/** R-117: origins (Inspection first, the form's default) and responsible parties (Keystone first). */
+export const PUNCH_ORIGINS: readonly PunchOrigin[] = punchOrigin.codes;
+export const PUNCH_OWNER_PARTIES: readonly PunchOwnerParty[] = ['keystone', 'client'];
+/** A Vigie NCR reference as typed ("NCR-029"): letters, digits and separators, at most 40 characters (the DAL bound). */
+export const NCR_REF = /^[A-Za-z0-9][A-Za-z0-9\-/. ]{0,39}$/;
 
 export interface NewInspectionValues {
   name: string;
@@ -321,16 +338,26 @@ export interface NewPunchValues {
   location: string | null;
   category: PunchCategory;
   source: PunchSource;
-  /** Owner (a TEAM option, full name). */
-  owner: string;
+  /** Owner person (a TEAM option, full name); null when only a party owns the item (R-117). */
+  owner: string | null;
   dueOn: string | null;
+  /** R-117 (A-6 'a'): origin, responsible party and Vigie's NCR number (internal viewers only, P-10b). */
+  origin: PunchOrigin;
+  ownerParty: PunchOwnerParty;
+  ncrNumber: string | null;
 }
 
+/** "—" in the Owner select: no person, the party owns the item (R-117). */
+export const NO_OWNER = '';
+
 /**
- * "Add punch item": the item is required; category defaults to A (the select's first option), source to Site walk,
- * owner to the first TEAM name; the due date, when given, must be a date.
+ * "Add punch item": the item is required; category defaults to A (the select's first option), source to Site walk, owner
+ * to the first TEAM name when the field is absent ("—" = no person, the party owns it); the due date, when given, must be a
+ * date. R-117 (A-6 'a'): origin (Inspection by default, or Site), responsible party (Keystone by default, or the client)
+ * and, for internal viewers, Vigie's NCR number (optional; a client's is ignored — P-10b).
  */
-export function parseNewPunch(values: Record<string, string | undefined>, team: readonly string[]): ParseResult<NewPunchValues> {
+export function parseNewPunch(values: Record<string, string | undefined>, team: readonly string[], opts: { internal?: boolean } = {}): ParseResult<NewPunchValues> {
+  const internal = opts.internal ?? true;
   const description = text(values.item);
   if (!description) return { ok: false, error: 'Item is required' };
   const location = text(values.loc);
@@ -340,12 +367,19 @@ export function parseNewPunch(values: Record<string, string | undefined>, team: 
   if (!category) return { ok: false, error: 'Unknown category' };
   const source = codeOf(text(values.src) || PUNCH_SOURCES[0], punchSource);
   if (!source) return { ok: false, error: 'Unknown source' };
-  const owner = text(values.owner) || team[0] || '';
-  if (!owner || !team.includes(owner)) return { ok: false, error: 'Unknown owner' };
+  const origin = codeOf(text(values.origin) || PUNCH_ORIGINS[0], punchOrigin);
+  if (!origin) return { ok: false, error: 'Unknown origin' };
+  const ownerParty = codeOf(text(values.party) || PUNCH_OWNER_PARTIES[0], punchOwnerParty);
+  if (!ownerParty) return { ok: false, error: 'Unknown owner party' };
+  const typed = values.owner === undefined ? team[0] ?? '' : text(values.owner);
+  const owner = typed === NO_OWNER || typed === '—' ? null : typed;
+  if (owner !== null && !team.includes(owner)) return { ok: false, error: 'Unknown owner' };
+  const ncr = internal ? text(values.ncr) : '';
+  if (ncr && !NCR_REF.test(ncr)) return { ok: false, error: 'Enter the NCR number as Vigie gives it, e.g. NCR-029' };
   const due = text(values.due);
   const dueOn = due ? parseForwardDate(due) : null;
   if (due && !dueOn) return { ok: false, error: 'Enter the due date as a date, e.g. 15 Oct' };
-  return { ok: true, value: { description, location: location || null, category, source, owner, dueOn } };
+  return { ok: true, value: { description, location: location || null, category, source, owner, dueOn, origin, ownerParty, ncrNumber: ncr || null } };
 }
 
 export interface PlanSatValues {

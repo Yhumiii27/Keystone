@@ -4,9 +4,11 @@
 // owner options are the project TEAM (full names). `localizeForm` translates a definition on the server — FormDialog
 // then renders it as is.
 import type { FormDef, FormOption } from '@/components/app/form-def';
-import { ITP_POINT_TYPES, ITP_STAGES, PUNCH_CATEGORIES, PUNCH_SOURCES, witnessFieldOf } from '@/domain/itpcom';
+import { ITP_POINT_TYPES, ITP_STAGES, NO_OWNER, PUNCH_CATEGORIES, PUNCH_ORIGINS, PUNCH_OWNER_PARTIES, PUNCH_SOURCES, witnessFieldOf } from '@/domain/itpcom';
 import type { Lang, T } from '@/i18n/translate';
-import { ITP_RECORDED_RESULTS, itpPointType, itpResult, itpStage, punchCategory, punchSource, type ItpPointType, type ItpResult } from '@/server/db/codes';
+import {
+  ITP_RECORDED_RESULTS, itpPointType, itpResult, itpStage, punchCategory, punchOrigin, punchOwnerParty, punchSource, type ItpPointType, type ItpResult,
+} from '@/server/db/codes';
 import { dataT } from './i18n';
 
 /** AF_RESULT.itp. */
@@ -35,8 +37,13 @@ export function inspectionFormDef(systems: readonly string[]): FormDef {
   };
 }
 
-/** "Add punch item" — item · system / location · category · source · owner · due. */
-export function punchFormDef(team: readonly string[]): FormDef {
+/**
+ * "Add punch item" — item · system / location · category · source · owner · due (AF.punch), then R-117 (A-6 'a'): origin
+ * (Inspection / Site), responsible party (Keystone / Client) and, for internal viewers, Vigie's NCR number (P-10b: never the
+ * client's). The owner may be "—" (no person: the party owns the item); the first TEAM name stays the default.
+ */
+export function punchFormDef(team: readonly string[], opts: { internal?: boolean } = {}): FormDef {
+  const internal = opts.internal ?? true;
   return {
     title: 'Add punch item',
     kind: 'create',
@@ -46,8 +53,11 @@ export function punchFormDef(team: readonly string[]): FormDef {
       { id: 'loc', label: 'System / location', type: 'text' },
       { id: 'cat', label: 'Category', type: 'select', options: PUNCH_CATEGORIES.map((c) => ({ value: c, label: punchCategory.label(c) })) },
       { id: 'src', label: 'Source', type: 'select', options: PUNCH_SOURCES.map((c) => ({ value: c, label: punchSource.label(c) })) },
-      { id: 'owner', label: 'Owner', type: 'select', options: [...team] },
+      { id: 'owner', label: 'Owner', type: 'select', options: [{ value: NO_OWNER, label: '—' }, ...team], ...(team.length ? { defaultValue: team[0] } : {}) },
       { id: 'due', label: 'Due', type: 'text' },
+      { id: 'origin', label: 'Origin', type: 'select', options: PUNCH_ORIGINS.map((c) => ({ value: c, label: punchOrigin.label(c) })) },
+      { id: 'party', label: 'Owner party', type: 'select', options: PUNCH_OWNER_PARTIES.map((c) => ({ value: c, label: punchOwnerParty.label(c) })) },
+      ...(internal ? [{ id: 'ncr', label: 'NCR (Vigie)', type: 'text' as const, placeholder: 'e.g. NCR-029' }] : []),
     ],
   };
 }
@@ -111,7 +121,7 @@ export function resultFormDef(pointType: ItpPointType, d: ResultFormDefaults): F
 }
 
 /** Selects whose option labels are codes' English labels (translated). */
-const CODE_SELECTS = new Set(['type', 'stage', 'cat', 'src', 'result']);
+const CODE_SELECTS = new Set(['type', 'stage', 'cat', 'src', 'result', 'origin', 'party']);
 /** Selects listing systems: data text (exact dictionary matches), the value stays the English system name. */
 const SYSTEM_SELECTS = new Set(['system']);
 /** Defaults that are prototype text (translated); the witnesses' names are kept as is. */

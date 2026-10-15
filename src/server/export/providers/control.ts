@@ -4,8 +4,10 @@
 // requests with the type chip (`?filter=`), their approval chains and the baselines. Quality: NCRs (Vigie mirror — the 8D
 // stays in Vigie, the row carries its link) with the severity chip, deliverables with the status chip; `?tab=` puts the
 // current register first; PDF document `pv` = the acceptance certificate ("PV de réception") of an accepted deliverable.
-// ITP: inspections by system and the ITP punch list (`?view=` puts the current one first).
+// ITP: inspections by system and the project's punch list (R-117: every origin, with its origin; `?view=` puts the current
+// one first, `?origin=` filters the punch list as the screen does); the NCR column is left out for the client (P-10b).
 import { filterCrs, parseCrFilter, withDerivedStatus } from '@/domain/change-control';
+import { filterPunchByOrigin, punchOriginFilterOf } from '@/domain/itpcom';
 import { deliverableFilterOf, ncrFilterOf, qualityTabOf } from '@/domain/quality';
 import { parseCategory, riskKpis } from '@/domain/risk';
 import { changesT } from '@/features/changes/i18n';
@@ -189,9 +191,13 @@ async function pvDocument(ctx: ExportContext): Promise<PdfDocument | null> {
 // ── ITP ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
 async function itpWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   if (!ctx.project) return null;
-  const [plan, punch] = await Promise.all([getItpPlan(ctx.project.code), listPunchItems(ctx.project.code, 'itp')]);
-  if (!plan && !punch.length) return null;
+  const [plan, all] = await Promise.all([getItpPlan(ctx.project.code), listPunchItems(ctx.project.code)]);
+  if (!plan && !all.length) return null;
   const { t } = ctx;
+  const origin = punchOriginFilterOf(param(ctx, 'origin'));
+  const punch = filterPunchByOrigin(all, origin);
+  // P-10b: the client never gets Vigie's NCR numbers (the screen hides the column too).
+  const internal = ctx.viewer.role !== 'client';
   const inspections = sheet(t('Inspection & test plan'), [
     col('number', t('Inspection'), 'text', 8), col('system', t('System'), 'text', 24), col('name', t('Inspection'), 'text', 40), col('point', t('Point type'), 'text', 12),
     col('stage', t('Stage'), 'text', 14), col('reference', t('Reference'), 'text', 18), col('planned', t('Planned on'), 'date'), col('result', t('Result'), 'text', 12),
@@ -201,15 +207,17 @@ async function itpWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
     record: i.recordRef ?? '', custom: i.isCustom,
   })));
   const punchList = sheet(t('Punch list'), [
-    col('number', t('Item'), 'text', 8), col('description', t('Description'), 'text', 44), col('location', t('System / location'), 'text', 22), col('category', t('Category'), 'text', 8),
-    col('source', t('Raised by'), 'text', 18), col('ncr', 'NCR', 'text', 9), col('owner', t('Owner'), 'text', 16), col('due', t('Due'), 'date'), col('status', t('Status'), 'text', 12),
+    col('number', t('Item'), 'text', 8), col('description', t('Description'), 'text', 44), col('origin', t('Origin'), 'text', 12), col('location', t('System / location'), 'text', 22),
+    col('category', t('Category'), 'text', 8), col('source', t('Raised by'), 'text', 18), ...(internal ? [col('ncr', 'NCR', 'text', 9)] : []), col('owner', t('Owner'), 'text', 16),
+    col('due', t('Due'), 'date'), col('status', t('Status'), 'text', 12),
   ], punch.map((p) => ({
-    number: p.number, description: dataText(p.description, ctx.lang), location: dataText(p.location, ctx.lang), category: p.categoryLabel ? t(p.categoryLabel) : '', source: p.sourceText ? t(p.sourceText) : '',
-    ncr: p.ncrNumber ?? '', owner: p.owner ? dataText(p.owner, ctx.lang) : '', due: p.dueOn, status: t(p.statusLabel),
+    number: p.number, description: dataText(p.description, ctx.lang), origin: t(p.originLabel), location: dataText(p.location, ctx.lang), category: p.categoryLabel ? t(p.categoryLabel) : '',
+    source: p.sourceText ? t(p.sourceText) : '', ...(internal ? { ncr: p.ncrNumber ?? '' } : {}), owner: p.ownerName ? dataText(p.ownerName, ctx.lang) : p.owner ? t(p.owner) : '',
+    due: p.dueOn, status: t(p.statusLabel),
   })));
   return {
     title: t('Inspection & test plan · punch list'),
-    filters: compact([plan?.template ? `${t('Template')}: ${plan.template}` : null]),
+    filters: compact([plan?.template ? `${t('Template')}: ${plan.template}` : null, origin !== 'all' ? `${t('Origin')}: ${t(origin === 'itp' ? 'Inspection' : 'Site')}` : null]),
     sheets: param(ctx, 'view') === 'punch' ? [punchList, inspections] : [inspections, punchList],
   };
 }

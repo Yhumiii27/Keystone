@@ -1,8 +1,9 @@
 import 'server-only';
 // Site (chantier) DAL (docs/spec/10 §3). Keystone owns the site sheet, equipment, client prerequisites, rotation plan,
 // collisions, mission costs and daily reports. The people Go / No Go comes from Cursus (Cursus connector, mirror +
-// reminders); the HSE register from Vigie (Vigie quality connector, read-only, "Manage / Report in Vigie"); the site
-// punch list is the `site` register of punch items (itp.ts). "Go chantier" = no prerequisite pending ∧ no Cursus NO GO ∧
+// reminders); the HSE register from Vigie (Vigie quality connector, read-only, "Manage / Report in Vigie"); the punch list
+// is the project's single list (itp.ts, R-117: the Site shows the items raised on site by default, every origin on demand,
+// read-only; its KPIs count the whole list). "Go chantier" = no prerequisite pending ∧ no Cursus NO GO ∧
 // all equipment confirmed ∧ no open collision ∧ no HSE item pending (`goItems` 4747) — the rule lives in
 // src/domain/site.ts (`goChantier`).
 // Time model: a prerequisite is late when still pending at J-15 of its need date (J-15 rule of the card subtitle,
@@ -88,6 +89,7 @@ export interface SiteData {
   collisions: CollisionRow[];
   missionCosts: MissionCostRow[];
   dailyReports: DailyReportRow[];
+  /** The project's punch list, every origin (R-117, A-6 'a'). */
   punch: PunchRow[];
   hse: HseRow[];
   /** Vigie connector mode and the last refresh of the HSE register (ISO; null when nothing was received). */
@@ -128,7 +130,7 @@ export async function getSite(projectCode: string, today: string = STATUS_ISO): 
     db.select().from(siteCollisions).where(eq(siteCollisions.projectId, p.id)).orderBy(asc(siteCollisions.position)),
     db.select().from(missionCostLines).where(eq(missionCostLines.projectId, p.id)).orderBy(asc(missionCostLines.position)),
     db.select().from(dailyReports).where(eq(dailyReports.projectId, p.id)).orderBy(desc(dailyReports.reportOn), desc(dailyReports.number)),
-    listPunchItems(projectCode, 'site'),
+    listPunchItems(projectCode),
     getVigieQualityConnector().listHse(projectCode),
     cursus.getGoNoGo(projectCode),
     loadWorkCalendars(projectCode),

@@ -83,8 +83,12 @@ describe('/projects/[code]/itp', () => {
     const primary = p.PageHeader.props.primary as El;
     expect(primary.props).toMatchObject({ kind: 'punch', label: 'Ajouter une réserve' });
     // R-041 (P-2): the seeded referents of Harbor Line (engineering lead, quality manager) are on its named team → owners too.
-    expect((primary.props.form as any).fields.find((f: any) => f.id === 'owner').options).toEqual([...G.forms.fr.punch.fields.find((f: any) => f.id === 'owner').options, 'Antoine Girard', 'Gabriel Comte']);
-    expect((p.ItpBody.props.view as ItpScreenView).punch!.rows.length).toBe(5);
+    // A-6 'a' (R-117): "—" (no person, the party owns the item) before the TEAM owners.
+    expect((primary.props.form as any).fields.find((f: any) => f.id === 'owner').options).toEqual([
+      { value: '', label: '—' }, ...G.forms.fr.punch.fields.find((f: any) => f.id === 'owner').options, 'Antoine Girard', 'Gabriel Comte',
+    ]);
+    // A-6 'a' (R-117): one punch list per project — the 5 items raised by inspections and the 3 raised on site (P-06…P-08).
+    expect((p.ItpBody.props.view as ItpScreenView).punch!.rows.map((r) => r.number)).toEqual(['P-01', 'P-02', 'P-03', 'P-04', 'P-05', 'P-06', 'P-07', 'P-08']);
     expect(((await itp({ view: 'gantt' })).ItpBody.props.view as ItpScreenView).view).toBe('plan');
   });
 

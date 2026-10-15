@@ -1,8 +1,9 @@
 // Export providers — Site & handover: Site (readiness, mobilisation & execution) and Commissioning & handover dossier.
 // Site: the current tab first (`?tab=ready|team|exec`) — prerequisites and equipment with the Go chantier conditions,
-// the team (Cursus go / no go verdicts — approvals only — rotation and collisions), execution (daily reports, punch list,
-// HSE register mirrored from Vigie with its links, mission costs). Commissioning: the system × step grid, the handover
-// dossier and the SAT plans.
+// the team (Cursus go / no go verdicts — approvals only — rotation and collisions), execution (daily reports, the project's
+// punch list — R-117: every origin, with its origin and NCR; the Site screen is internal —, HSE register mirrored from Vigie
+// with its links, mission costs). Commissioning: the system × step grid, the handover dossier, the SAT plans and the open
+// punch items of every origin.
 import { siteTabOf } from '@/domain/site';
 import { getCommissioning } from '@/server/dal/commissioning';
 import { listPunchItems } from '@/server/dal/itp';
@@ -52,8 +53,13 @@ async function siteWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> 
       number: r.number, date: r.reportOn, activity: dataText(r.activity, ctx.lang), pct: r.percentComplete != null ? r.percentComplete / 100 : null, text: dataText(r.text, ctx.lang), weather: r.weatherLabel ? t(r.weatherLabel) : '',
       headcount: r.headcount, hse: r.hseIncidentLabel ? t(r.hseIncidentLabel) : '', author: r.author, link: r.linkRef ?? '',
     }))),
-    sheet(t('Site punch list'), [col('number', t('Item'), 'text', 8), col('description', t('Description'), 'text', 44), col('owner', t('Owner'), 'text', 16), col('due', t('Due'), 'date'), col('status', t('Status'), 'text', 12)],
-      d.punch.map((p) => ({ number: p.number, description: dataText(p.description, ctx.lang), owner: p.owner ? dataText(p.owner, ctx.lang) : '', due: p.dueOn, status: t(p.statusLabel) }))),
+    sheet(t('Punch list'), [
+      col('number', t('Item'), 'text', 8), col('description', t('Description'), 'text', 44), col('origin', t('Origin'), 'text', 12), col('ncr', 'NCR', 'text', 9),
+      col('owner', t('Owner'), 'text', 16), col('due', t('Due'), 'date'), col('status', t('Status'), 'text', 12),
+    ], d.punch.map((p) => ({
+      number: p.number, description: dataText(p.description, ctx.lang), origin: t(p.originLabel), ncr: p.ncrNumber ?? '',
+      owner: p.ownerName ? dataText(p.ownerName, ctx.lang) : p.owner ? t(p.owner) : '', due: p.dueOn, status: t(p.statusLabel),
+    }))),
     sheet(t('HSE (Vigie)'), [col('ref', t('Reference'), 'text', 14), col('title', t('Item'), 'text', 36), col('status', t('Status'), 'text', 14), col('date', t('Date'), 'date'), col('vigie', 'Vigie', 'text', 40)],
       d.hse.map((h) => ({ ref: h.vigieRef ?? '', title: dataText(h.title, ctx.lang), status: t(h.statusText), date: h.dateOn, vigie: h.vigieUrl }))),
     sheet(t('Mission costs'), [col('name', t('Cost item'), 'text', 30), col('budget', t('Budget'), 'money_keur'), col('actual', t('Actual'), 'money_keur'), col('remaining', t('Remaining'), 'money_keur'), col('used', t('Used'), 'percent')],
@@ -71,7 +77,7 @@ async function siteWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> 
 
 async function commissioningWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   if (!ctx.project) return null;
-  const [d, punch] = await Promise.all([getCommissioning(ctx.project.code), listPunchItems(ctx.project.code, 'itp')]);
+  const [d, punch] = await Promise.all([getCommissioning(ctx.project.code), listPunchItems(ctx.project.code)]);
   if (!d) return null;
   const { t } = ctx;
   return {

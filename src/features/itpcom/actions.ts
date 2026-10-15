@@ -69,15 +69,22 @@ export async function addInspectionAction(code: string, values: Record<string, s
   return { toast: await tr(INSPECTION_RESULT) };
 }
 
-/** "Add punch item" (AF `punch`, "Add item"): P-10… per project, Open; owner stored as the short name; toast "Punch item added". */
+/**
+ * "Add punch item" (AF `punch`, "Add item"): P-10… over the project's single list (R-117), Open; owner stored as the short
+ * name ("—": the party owns it); origin, owner party and — internal viewers only, P-10b — Vigie's NCR number; toast
+ * "Punch item added".
+ */
 export async function addPunchItemAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const ok = await editable(code, 'itp');
   if ('error' in ok) return ok;
-  const parsed = parseNewPunch(strings(values), await teamOwnerOptions(ok.code));
+  const parsed = parseNewPunch(strings(values), await teamOwnerOptions(ok.code), { internal: ok.actor.role !== 'client' });
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
   try {
-    await addPunchItem(ok.code, { description: v.description, location: v.location, category: v.category, source: v.source, owner: shortName(v.owner), dueOn: v.dueOn }, ok.actor);
+    await addPunchItem(ok.code, {
+      description: v.description, location: v.location, category: v.category, source: v.source, owner: v.owner ? shortName(v.owner) : null, dueOn: v.dueOn,
+      origin: v.origin, ownerParty: v.ownerParty, ncrNumber: ok.actor.role === 'client' ? null : v.ncrNumber,
+    }, ok.actor);
   } catch {
     return { error: await tr('The change could not be saved') };
   }
@@ -95,14 +102,15 @@ async function stale(code: string, english: string): Promise<PunchStepResult> {
 }
 
 /**
- * Punch row step: "Start" (Open → In progress) or "Close" (In progress → Closed, closed on the business date). `from` is
- * the status the viewer saw: an item someone else moved on meanwhile is refused instead of taking a second step.
+ * Punch row step: "Start" (Open → In progress) or "Close" (In progress → Closed, closed on the business date) on any item of
+ * the project's punch list (R-117: every origin). `from` is the status the viewer saw: an item someone else moved on
+ * meanwhile is refused instead of taking a second step.
  */
 export async function advancePunchItemAction(code: string, number: string, from: string): Promise<PunchStepResult> {
   const ok = await editable(code, 'itp');
   if ('error' in ok) return ok;
   if (typeof number !== 'string' || !number || !punchStatus.isCode(from)) return { error: await tr('Invalid request') };
-  const row = (await listPunchItems(ok.code, 'itp')).find((r) => r.number === number);
+  const row = (await listPunchItems(ok.code)).find((r) => r.number === number);
   if (!row) return { error: await tr('Unknown punch item') };
   if (!punchStep(row.status)) return stale(ok.code, CLOSED);
   if (row.status !== from) return stale(ok.code, MOVED_ON);

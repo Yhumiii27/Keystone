@@ -123,17 +123,19 @@ const D4_COUNTS: Record<string, number> = {
 
 /**
  * Seed row counts of the delivery-5 tables: deliverables HLT_DELIVS 10 + 5 × 4 generated (RACI 5 each); the Vigie NCR
- * mirror HLT_NCRS 5 + 5 × 2 generated and the site HSE register 5; ITP 13 inspections; punch PUNCH 5 + SITE_PUNCH 3;
+ * mirror HLT_NCRS 5 + 5 × 2 generated and the site HSE register 5; ITP 13 inspections and the plan's 6 frozen systems (R-057);
+ * punch PUNCH 5 + SITE_PUNCH 3 (one list, R-117);
  * commissioning 6 systems × 5 steps, 8 dossier items; LESSONS 4, CLOSURE 10, SATISFACTION 5; FLEET 8 (AS_MAINT 31 part
  * revisions), CLAIMS 8, INTERVENTIONS 6; the site sheet with 8 equipment, 6 prerequisites, 6 rotations, 4 collisions,
  * 6 cost lines, 2 reports; Cursus 5 people (1 sync); CLIENT_ISSUES 3 (CLIENT_DOCS dropped, L-9: computed from Codex); ENG_* registers; PID 1 / 24 / 5;
  * machine-type aggregate 28 phases, 25 cost categories, 17 ITP systems; SETTINGS0 60 values; CONNECTORS 9 + Vigie; IMPORTS 6.
  */
 const D5_COUNTS: Record<string, number> = {
-  deliverables: 30, deliverable_raci: 150, vigie_ncrs: 15, vigie_ncr_progress: 0, vigie_hse_items: 5, itp_plans: 1, itp_inspections: 13, punch_items: 8,
+  deliverables: 30, deliverable_raci: 150, vigie_ncrs: 15, vigie_ncr_progress: 0, vigie_hse_items: 5, itp_plans: 1, itp_plan_systems: 6, itp_inspections: 13, punch_items: 8,
   commissioning_systems: 6, commissioning_steps: 30, handover_items: 8, sat_plans: 0, lessons_learned: 4, closure_items: 10, satisfaction_scores: 5,
   machines: 8, machine_part_revisions: 31, warranty_claims: 8, interventions: 6, site_sheets: 1, site_equipment: 8, site_prerequisites: 6, site_rotations: 6,
-  site_collisions: 4, mission_cost_lines: 6, daily_reports: 2, cursus_clearances: 5, cursus_requests: 0, cursus_sync_runs: 1, cursus_events: 0, client_issues: 3,
+  site_collisions: 4, site_conflict_arbitrations: 0, mission_cost_lines: 6, daily_reports: 2, cursus_clearances: 5, cursus_requests: 0, cursus_sync_runs: 1, cursus_events: 0,
+  client_issues: 3,
   eng_disciplines: 4, eng_inputs: 12, eng_consistency_rules: 6, eng_checks: 10, eng_outputs: 6, eng_changes: 4, eng_import_tools: 4,
   eng_column_mappings: 6, eng_import_deltas: 4, eng_imports: 0, pid_sheets: 1, pid_tags: 24, pid_validation_steps: 5, machine_type_phases: 28,
   // app_settings: the health thresholds and, since delivery 7, the seed record "keystone.seed" (R-011, A-15), the "Reset to
@@ -598,6 +600,13 @@ async function delivery5Reads() {
     same([plan.inspections.filter((i) => i.result === 'passed').length, plan.inspections.length, plan.inspections.filter((i) => i.result === 'failed').length,
       plan.inspections.filter((i) => i.pointType === 'hold' && i.result !== 'passed').length, plan.template, plan.systems.length, plan.customCount, punch.length,
       punch.filter((p) => p.category === 'B').length, punch.filter((p) => p.category === 'C').length], [3, 13, 1, 5, 'EMP', 6, 2, 4, 2, 2]));
+  const all = await listPunchItems('HLT-026');
+  // A-6 'a' (R-117): one punch list per project, numbered over it — the Site items renumbered after the ITP items.
+  check('punch HLT-026: one list P-01…P-08 · ITP items Keystone · Site items P-06…P-08 category B · P-06 carries NCR-029',
+    same(all.map((p) => [p.number, p.origin, p.category, p.ownerParty, p.ncrNumber]), [
+      ['P-01', 'itp', 'A', 'keystone', null], ['P-02', 'itp', 'B', 'keystone', null], ['P-03', 'itp', 'C', 'keystone', null], ['P-04', 'itp', 'B', 'keystone', null],
+      ['P-05', 'itp', 'C', 'keystone', null], ['P-06', 'site', 'B', 'client', 'NCR-029'], ['P-07', 'site', 'B', 'keystone', null], ['P-08', 'site', 'B', 'client', null],
+    ]), all.map((p) => p.number));
   const cm = (await getCommissioning('HLT-026'))!;
   const cells = cm.systems.flatMap((x) => x.cells);
   check('commissioning HLT-026: 0 / 6 handed over · 1 / 30 steps done · 2 blocked (IF-02, IF-05) · dossier 19 % · 4 missing',

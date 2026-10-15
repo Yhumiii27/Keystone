@@ -1,7 +1,7 @@
 // Project operations (docs/spec/11 §3.7): the interface register (07 §2.5), the inspection & test plan and the punch
 // lists (07 §2.4, 10 §3.6), commissioning and the handover dossier (07 §2.6), lessons learned, the closure checklist and
 // the customer-satisfaction survey (07 §2.7). Keystone owns all of them.
-import { boolean, date, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type {
   ClosureItemStatus, CommissioningCellStatus, CommissioningStep, HandoverItemStatus, InterfaceStatus, ItpPointType, ItpResult, ItpStage, KeystoneSide, LessonStatus,
   LessonTheme, MachineTypeCode, PunchCategory, PunchOwnerParty, PunchRegister, PunchSource, PunchStatus,
@@ -29,7 +29,7 @@ export const projectInterfaces = pgTable(
     dataExpected: text('data_expected').notNull(),
     /** "15 Oct" → 2026-10-15 (2026 assumed, as the prototype). */
     neededBy: date('needed_by', { mode: 'string' }).notNull(),
-    /** Provided date; "Mark received" does not stamp it (OPEN QUESTION Q-4). */
+    /** Provided date: the received date "Mark received" stamps (Q-4 'a', R-116; today by default); null for older receipts. */
     providedOn: date('provided_on', { mode: 'string' }),
     status: text('status').$type<InterfaceStatus>().notNull(),
     ownerPersonId: uuid('owner_person_id').references(() => persons.id),
@@ -50,6 +50,22 @@ export const itpPlans = pgTable('itp_plans', {
   machineTypeCode: text('machine_type_code').$type<MachineTypeCode>().notNull().references(() => machineTypes.code),
   ...timestamps,
 });
+
+/**
+ * R-057 (E-9 'a': a machine type's changes apply to projects created afterwards): the ITP systems of a plan, copied from its
+ * machine type (else AUTRE's) when the plan is created — the groups of the plan, the "Add inspection" and "Plan SAT"
+ * systems. Editing the machine type's systems later leaves existing plans as they are. Plans that existed before delivery 8
+ * were frozen with their type's systems of that day (custom migration `itp_plan_systems_backfill`).
+ */
+export const itpPlanSystems = pgTable(
+  'itp_plan_systems',
+  {
+    planId: uuid('plan_id').notNull().references(() => itpPlans.id, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+    name: text('name').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.planId, t.position] }), unique().on(t.planId, t.name)],
+);
 
 /** Inspections and tests of a plan ("I-03 Paint thickness (DFT)"); results are read-only (OPEN QUESTION Q-6). */
 export const itpInspections = pgTable(
@@ -93,31 +109,36 @@ export const itpInspections = pgTable(
 );
 
 /**
- * Punch items (réserves). One entity for the ITP punch list (PUNCH 3718, categorised A/B/C) and the Site punch list
- * (SITE_PUNCH 3581, owner party and NCR); their seed ids and statuses clash (11 §7 #4, OPEN QUESTION A-6), so each item
- * belongs to a register and is numbered per register.
+ * Punch items (réserves) — R-117 (A-6 'a'): ONE list per project, numbered over the whole project (P-01…; items added in
+ * Keystone continue at P-10 in the demo). Each item carries its origin (`register`: 'itp' = raised by an inspection — the
+ * prototype's PUNCH 3718 —, 'site' = raised on site — SITE_PUNCH 3581), a category A/B/C, an owner (a person and / or a
+ * party: Client or Keystone), an optional NCR (Vigie's number) and an optional source inspection. The two prototype lists
+ * clashed on numbers (11 §7 #4): the Site items of a project were renumbered after its ITP items (custom migration
+ * `punch_unified_renumber`, before the unique key below replaced (project, register, number)).
  */
 export const punchItems = pgTable(
   'punch_items',
   {
     id: id(),
     projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+    /** Origin of the item (R-117): 'itp' Inspection, 'site' Site (codes.ts `punchOrigin`). */
     register: text('register').$type<PunchRegister>().notNull(),
-    /** "P-04" (per project and register; items added on the ITP screen continue at P-10). */
+    /** "P-04", unique in the project (R-117); items added in Keystone continue at P-10 (demo floor). */
     number: text('number').notNull(),
     description: text('description').notNull(),
-    /** System / location ("Structure · access"); '' on the Site register. */
+    /** System / location ("Structure · access"; its first word matches a commissioning system, "Blocking A"); '' when none. */
     location: text('location').notNull(),
-    /** ITP register: A blocking, B before SAT, C cosmetic. */
+    /** A blocking, B before SAT, C cosmetic (Site items raised before R-117: B). */
     category: text('category').$type<PunchCategory>(),
-    /** ITP register: how it was raised; the seed's "ITP I-03" is stored as `itp` + the inspection. */
+    /** How it was raised; the seed's "ITP I-03" is stored as `itp` + the inspection. Null for the Site items of the seed. */
     source: text('source').$type<PunchSource>(),
     sourceInspectionId: uuid('source_inspection_id').references(() => itpInspections.id, { onDelete: 'set null' }),
-    /** Site register: the NCR it comes from ("NCR-029", Vigie). */
+    /** The NCR it comes from ("NCR-029", Vigie's number); never shown to the client (P-10b). */
     ncrNumber: text('ncr_number'),
-    /** Owner: a person ("L. Fabre") on the ITP register, a party (client / Keystone) on the Site register. */
+    /** Owner person ("L. Fabre"); null when only a party owns it. */
     ownerName: text('owner_name'),
     ownerPersonId: uuid('owner_person_id').references(() => persons.id),
+    /** Responsible party: the client or Keystone (ITP items raised before R-117: Keystone). */
     ownerParty: text('owner_party').$type<PunchOwnerParty>(),
     dueOn: date('due_on', { mode: 'string' }),
     status: text('status').$type<PunchStatus>().notNull(),
@@ -125,7 +146,7 @@ export const punchItems = pgTable(
     position: integer('position').notNull(),
     ...timestamps,
   },
-  (t) => [unique().on(t.projectId, t.register, t.number)],
+  (t) => [unique().on(t.projectId, t.number)],
 );
 
 // ── Commissioning & handover dossier (07 §2.6) ─────────────────────────────────────────────────────────

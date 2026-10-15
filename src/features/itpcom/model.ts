@@ -5,8 +5,8 @@
 import { OK } from '@/components/app/tones';
 import type { FormDef } from '@/components/app/form-def';
 import {
-  blockingAOf, commissioningCellLook, groupBySystem, inspectionLook, inspectionNcrTitle, itpDateText, openByCategoryText, punchLook, punchStep, resultLineText,
-  summariseCommissioning, summariseItp,
+  PUNCH_ORIGIN_FILTERS, blockingAOf, commissioningCellLook, filterPunchByOrigin, groupBySystem, inspectionLook, inspectionNcrTitle, itpDateText, openByCategoryText,
+  punchLook, punchStep, resultLineText, summariseCommissioning, summariseItp, type PunchOriginFilter,
 } from '@/domain/itpcom';
 import { docHref, documentsHref } from '@/features/docs/links';
 import type { Lang, T } from '@/i18n/translate';
@@ -53,6 +53,15 @@ export const itpViewOf = (v: string | string[] | undefined): ItpViewKey => (v ==
 /** `/projects/{code}/itp` with its view (plan omitted). */
 export const itpHref = (code: string, view: ItpViewKey = 'plan') => screenHref('itp', { code }) + (view === 'punch' ? '?view=punch' : '');
 
+/** The punch list filtered on an origin (R-117): `?view=punch&origin=itp|site` (every origin omitted). */
+export const punchListHref = (code: string, origin: PunchOriginFilter = 'all') => itpHref(code, 'punch') + (origin === 'all' ? '' : `&origin=${origin}`);
+
+/** Id of a punch item's row (R-117 / R-128: a document relation "P-01" links to `…/itp?view=punch#punch-P-01`). */
+export const punchAnchorId = (number: string) => `punch-${number}`;
+
+/** "All" / "Inspection" / "Site" (English; translate with t()). */
+export const PUNCH_ORIGIN_FILTER_LABEL: Record<PunchOriginFilter, string> = { all: 'All', itp: 'Inspection', site: 'Site' };
+
 export interface InspectionRowView {
   number: string;
   name: string;
@@ -86,7 +95,15 @@ export interface InspectionGroupView {
 
 export interface PunchRowView {
   number: string;
+  /** Row id (`punch-P-01`): the target of the document relations (R-128). */
+  anchor: string;
   item: string;
+  /** "Inspection" / "Site" (translated, R-117). */
+  origin: string;
+  /** Raised on site (R-117): its photos follow the Site screen's rights and are never shown to the client (X-15). */
+  siteOrigin: boolean;
+  /** Vigie's NCR number or '—'; null for the client (P-10b: the column is not shown). */
+  ncr: string | null;
   location: string;
   category: string;
   categoryClass: string;
@@ -109,9 +126,13 @@ export interface ItpScreenView {
   plan: { title: string; groups: InspectionGroupView[]; empty: string | null } | null;
   /**
    * Punch view. `empty` = "No punch item yet" when the project has none (the prototype showed the bare header row; the
-   * rebuild's projects without data show an empty state).
+   * rebuild's projects without data show an empty state). R-117 (A-6 'a'): one list per project with its Origin filter
+   * (All / Inspection / Site); `ncr` = whether the NCR column is shown (internal viewers, P-10b).
    */
-  punch: { title: string; subtitle: string; rows: PunchRowView[]; empty: string | null } | null;
+  punch: {
+    title: string; subtitle: string; rows: PunchRowView[]; empty: string | null;
+    origin: PunchOriginFilter; originLabel: string; origins: { value: PunchOriginFilter; label: string; href: string }[]; ncr: boolean;
+  } | null;
 }
 
 /** Who looks at the plan (R-112): may they record results, are they internal (Vigie links and NCR numbers), their name. */
@@ -131,15 +152,17 @@ export interface ItpScreenInput {
   code: string;
   view: ItpViewKey;
   plan: ItpPlan | null;
-  /** ITP register punch items. */
+  /** The project's punch list, every origin (R-117): the KPIs count it whole. */
   punch: PunchRow[];
+  /** Origin filter of the punch view (`?origin=`, default all). */
+  origin?: PunchOriginFilter;
   /** Label of the project's machine type (KPI "Template" without a plan). */
   machineType: string | null;
   /** Default: an internal reader who cannot record results. */
   viewer?: ItpViewer;
 }
 
-export function itpScreenView({ code, view, plan, punch, machineType, viewer = READER }: ItpScreenInput, t: T, lang: Lang): ItpScreenView {
+export function itpScreenView({ code, view, plan, punch, origin = 'all', machineType, viewer = READER }: ItpScreenInput, t: T, lang: Lang): ItpScreenView {
   const inspections = plan?.inspections ?? [];
   const s = summariseItp(inspections, punch, plan && plan.template ? { template: plan.template, systems: plan.systems.length, custom: plan.customCount } : null, machineType);
   const kpis: KpiView[] = [
@@ -202,24 +225,36 @@ export function itpScreenView({ code, view, plan, punch, machineType, viewer = R
         : null,
     punch:
       view === 'punch'
-        ? {
-            title: t('Punch list'),
-            subtitle: t('A blocking · B before SAT · C cosmetic'),
-            rows: punch.map((p) => punchRowView(p, t, lang)),
-            empty: punch.length ? null : t('No punch item yet'),
-          }
+        ? (() => {
+            const rows = filterPunchByOrigin(punch, origin);
+            return {
+              title: t('Punch list'),
+              subtitle: t('A blocking · B before SAT · C cosmetic'),
+              rows: rows.map((p) => punchRowView(p, viewer.internal, t, lang)),
+              empty: rows.length ? null : t(punch.length ? 'No punch item of this origin' : 'No punch item yet'),
+              origin,
+              originLabel: t('Origin'),
+              origins: PUNCH_ORIGIN_FILTERS.map((o) => ({ value: o, label: t(PUNCH_ORIGIN_FILTER_LABEL[o]), href: punchListHref(code, o) })),
+              ncr: viewer.internal,
+            };
+          })()
         : null,
   };
 }
 
-function punchRowView(p: PunchRow, t: T, lang: Lang): PunchRowView {
+/**
+ * A row of the unified punch list (R-117). Typed text (item, location, owner person) as typed; the party and the codes'
+ * labels through t(); the NCR number for internal viewers only (P-10b).
+ */
+export function punchRowView(p: PunchRow, internal: boolean, t: T, lang: Lang): PunchRowView {
   const look = punchLook(p.category, p.status);
   const step = punchStep(p.status);
   const label = step ? stepT(step.label, t, lang) : '';
   return {
-    number: p.number, item: dataT(p.description, lang), location: dataT(p.location, lang), category: p.category ?? '—', categoryClass: look.categoryClass,
-    source: p.sourceText ? t(p.sourceText) : '—', owner: p.owner ?? '—', due: t(itpDateText(p.dueOn)), status: t(p.statusLabel), statusClass: look.statusClass,
-    color: look.color, step: step ? { label, ariaLabel: `${label} · ${p.number}`, from: p.status } : null,
+    number: p.number, anchor: punchAnchorId(p.number), item: dataT(p.description, lang), origin: t(p.originLabel), siteOrigin: p.origin === 'site',
+    ncr: internal ? (p.ncrNumber ?? '—') : null, location: dataT(p.location, lang), category: p.category ?? '—', categoryClass: look.categoryClass,
+    source: p.sourceText ? t(p.sourceText) : '—', owner: p.ownerName ? dataT(p.ownerName, lang) : p.owner ? t(p.owner) : '—', due: t(itpDateText(p.dueOn)),
+    status: t(p.statusLabel), statusClass: look.statusClass, color: look.color, step: step ? { label, ariaLabel: `${label} · ${p.number}`, from: p.status } : null,
   };
 }
 

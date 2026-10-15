@@ -101,14 +101,18 @@ describe('Site view model vs the prototype (EN and FR)', () => {
     it(`${lang} · Daily execution: KPIs, daily reports and their NCR link, site punch list, HSE register (Vigie)`, async () => {
       const g = G.seed[lang];
       const x = (await view(lang)).v.exec!;
-      // A-12 / D-5: "Client decisions logged" 3 → 2 (decisions of the meetings with the client).
-      expect(x.kpis).toEqual(kpis(g.execKpis).map(computed(4, '2')));
+      // A-12 / D-5: "Client decisions logged" 3 → 2 (decisions of the meetings with the client). A-6 'a' (R-117): "Punch list
+      // open" counts the project's single list — 4 open items raised by inspections + 2 raised on site = 6 (still 1 on the client).
+      expect(x.kpis).toEqual(kpis(g.execKpis).map(computed(4, '2')).map(computed(2, '6')));
       expect(x.reports.map((r) => ({ date: r.date, act: r.act, pct: r.pct, txt: r.txt, link: r.link, by: r.by }))).toEqual(g.reports);
       expect(x.reports.map((r) => !!r.href)).toEqual(g.reportLinks);
       expect(G.reportLink).toEqual({ screen: 'quality', qTab: 'ncr', ncr: 'NCR-029' });
       expect(x.reports[1].href).toBe('/projects/HLT-026/quality?ncr=NCR-029');
       expect(x.note).toBe(lang === 'en' ? 'Site starts 19 Oct — reports so far cover preparation visits.' : 'Le chantier démarre le 19 oct. — les rapports actuels couvrent les visites de préparation.');
-      expect(x.punch.map((p) => ({ id: p.id, title: p.title, ncr: p.ncr, status: p.status, tagClass: p.tagClass, owner: p.owner, due: p.due }))).toEqual(g.punch);
+      // A-6 'a' (R-117): the Site shows the items raised on site by default, numbered after the ITP items (P-01…P-03 → P-06…P-08).
+      const renumbered = (id: string) => `P-0${+id.slice(2) + 5}`;
+      expect(x.punch.map((p) => ({ id: p.id, title: p.title, ncr: p.ncr, status: p.status, tagClass: p.tagClass, owner: p.owner, due: p.due })))
+        .toEqual(g.punch.map((p: any) => ({ ...p, id: renumbered(p.id) })));
       expect(x.hse.rows.map((r) => ({ title: r.title, status: r.status, tagClass: r.tagClass, date: r.date }))).toEqual(g.hse);
       // R-025 (V-3b "a"): Vigie's lists receive the project (`projet`, the Keystone code until NEW-SYS-1 / R-022).
       expect(x.hse.rows.map((r) => r.vigieUrl)).toEqual([

@@ -24,7 +24,7 @@ import {
 import { recordActivity, writeAudit } from '@/server/db/helpers';
 import { databaseSeedMode } from '@/server/db/seed/mode';
 import {
-  activities, activityLinks, baselines, cities, clients, costCategories, countries, itpPlans, machineTypeCostCategories, machineTypeItpSystems, machineTypePhases, machineTypes,
+  activities, activityLinks, baselines, cities, clients, costCategories, countries, itpPlanSystems, itpPlans, machineTypeCostCategories, machineTypeItpSystems, machineTypePhases, machineTypes,
   persons, projectSites, projectTemplates, projects, stageDeliverableChecks, stageDeliverableDefs, wbsNodes,
 } from '@/server/db/schema';
 import { loadWorkCalendars } from './calendars';
@@ -335,8 +335,8 @@ export interface CreatedProject extends ProjectIdentity {
  * register, with the chosen PM, planned window, calendar, currency and contingency, stores the wizard's cost categories
  * ("C01"…; actual and committed 0, forecast = budget) and instantiates the machine-type template (A-2): WBS root + one
  * work package per phase, the template activities chained finish-to-start on the project calendar, and the ITP plan of
- * the machine type, and the site (L-3b; zone from the country). Validation and permission checks belong to the calling
- * Server Function.
+ * the machine type with its systems frozen (R-057, E-9 'a'), and the site (L-3b; zone from the country). Validation and
+ * permission checks belong to the calling Server Function.
  */
 export async function createWizardProject(input: WizardCreateInput): Promise<CreatedProject> {
   const db = await getDb();
@@ -361,7 +361,8 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
         : tx.select({ name: machineTypePhases.name }).from(machineTypePhases).where(eq(machineTypePhases.machineTypeCode, input.templateCode)).orderBy(asc(machineTypePhases.position)),
       input.templateCode === 'blank'
         ? Promise.resolve([])
-        : tx.select({ name: machineTypeItpSystems.name }).from(machineTypeItpSystems).where(eq(machineTypeItpSystems.machineTypeCode, input.templateCode)),
+        : tx.select({ name: machineTypeItpSystems.name }).from(machineTypeItpSystems).where(eq(machineTypeItpSystems.machineTypeCode, input.templateCode))
+          .orderBy(asc(machineTypeItpSystems.position)),
       loadWorkCalendars(null, tx),
     ]);
     // A-2: plan the machine-type template first — without a planned finish, the plan gives it (L-3b).
@@ -463,7 +464,11 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
         );
     }
     const itpPlan = itpRows.length > 0 && input.templateCode !== 'blank';
-    if (itpPlan) await tx.insert(itpPlans).values({ projectId, machineTypeCode: input.templateCode as MachineTypeCode });
+    if (itpPlan) {
+      const [{ id: planId }] = await tx.insert(itpPlans).values({ projectId, machineTypeCode: input.templateCode as MachineTypeCode }).returning({ id: itpPlans.id });
+      // R-057 (E-9 'a'): the plan keeps the type's ITP systems of today — later edits of the machine type apply to projects created afterwards.
+      await tx.insert(itpPlanSystems).values([...new Set(itpRows.map((r) => r.name))].map((name, position) => ({ planId, position, name })));
+    }
 
     const actorName = input.actorName ?? 'System';
     const [actor] = input.actorName

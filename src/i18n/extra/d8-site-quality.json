@@ -1,4 +1,12 @@
 {
   "HSE incident?": "Incident HSE ?",
-  "Declare it in Vigie": "Déclarez-le dans Vigie"
+  "Declare it in Vigie": "Déclarez-le dans Vigie",
+  "Origin": "Origine",
+  "Owner party": "Partie responsable",
+  "e.g. NCR-029": "ex. NCR-029",
+  "No punch item of this origin": "Aucune réserve de cette origine",
+  "Enter the NCR number as Vigie gives it, e.g. NCR-029": "Saisissez le numéro de NCR donné par Vigie, par ex. NCR-029",
+  "Unknown origin": "Origine inconnue",
+  "Unknown owner party": "Partie responsable inconnue",
+  "Changes apply to projects created afterwards": "Les modifications s’appliquent aux projets créés ensuite"
 }

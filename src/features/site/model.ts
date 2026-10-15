@@ -18,7 +18,7 @@ import type { SiteData } from '@/server/dal/site';
 import { cursusChantierUrl, cursusEmployeeUrl } from '@/server/integrations/cursus/links';
 import { vigieHseListUrl, vigieReportIncidentUrl } from '@/server/integrations/vigie/links';
 import { dataText, incidentText, siteText, weatherText } from './i18n';
-import { CURSUS_CARD_ID, qualityNcrHref, screenOf, siteHref } from './links';
+import { CURSUS_CARD_ID, qualityNcrHref, screenOf, siteHref, sitePunchHref } from './links';
 import { fieldsText } from '@/i18n/data-text';
 
 const LO = 'var(--color-accent-300)';
@@ -74,7 +74,12 @@ export interface ExecView {
   kpis: KpiView[];
   reports: { number: string; date: string; act: string; pct: string; txt: string; detail: string | null; link: string; href: string | null; by: string }[];
   note: string | null;
-  punch: { id: string; title: string; ncr: string; owner: string; due: string; status: string; tagClass: string }[];
+  /**
+   * R-117 (A-6 'a'): the project's single punch list, the items raised on site by default ("Site" | "All", `?punch=all`);
+   * `origin` (translated) is shown with "All". Read-only here, as in the prototype (Start / Close on Inspections & punch list).
+   */
+  punch: { id: string; title: string; origin: string; siteOrigin: boolean; ncr: string; owner: string; due: string; status: string; tagClass: string }[];
+  punchFilter: { value: 'site' | 'all'; options: { value: 'site' | 'all'; label: string; href: string }[]; label: string; empty: string | null };
   hse: {
     rows: { title: string; date: string; status: string; tagClass: string; vigieUrl: string }[];
     lastSync: string;
@@ -181,8 +186,9 @@ function teamView(code: string, d: SiteData, t: T, lang: Lang): TeamView {
   };
 }
 
-function execView(code: string, d: SiteData, t: T, lang: Lang, today: string): ExecView {
+function execView(code: string, d: SiteData, t: T, lang: Lang, today: string, punchFilter: 'site' | 'all'): ExecView {
   const note = preparationNote({ startOn: d.sheet.startOn, doneDays: d.sheet.doneDays }, today);
+  const punch = punchFilter === 'all' ? d.punch : d.punch.filter((p) => p.origin === 'site');
   return {
     kpis: execKpis(factsOf(d)).map((k) => kpiView(k, t, lang)),
     reports: d.dailyReports.map((r) => {
@@ -198,9 +204,16 @@ function execView(code: string, d: SiteData, t: T, lang: Lang, today: string): E
       };
     }),
     note: note && siteText(note, t, lang),
-    punch: d.punch.map((p) => ({
-      id: p.number, title: dataText(p.description, lang), ncr: p.ncrNumber ?? '—', owner: dataText(p.owner ?? '—', lang), due: day(p.dueOn, t), status: t(p.statusLabel), tagClass: siteTagClass(p.statusLabel),
+    punch: punch.map((p) => ({
+      id: p.number, title: dataText(p.description, lang), origin: t(p.originLabel), siteOrigin: p.origin === 'site', ncr: p.ncrNumber ?? '—',
+      owner: p.ownerName ? dataText(p.ownerName, lang) : p.owner ? t(p.owner) : '—', due: day(p.dueOn, t), status: t(p.statusLabel), tagClass: siteTagClass(p.statusLabel),
     })),
+    punchFilter: {
+      value: punchFilter,
+      label: t('Origin'),
+      options: (['site', 'all'] as const).map((v) => ({ value: v, label: t(v === 'site' ? 'Site' : 'All'), href: sitePunchHref(code, v) })),
+      empty: punch.length ? null : t('No punch item yet'),
+    },
     hse: {
       rows: d.hse.map((h) => ({ title: dataText(h.title, lang), date: day(h.dateOn, t), status: t(h.statusText), tagClass: siteTagClass(h.statusText), vigieUrl: h.vigieUrl })),
       lastSync: lastSyncText(d.hseSource.lastSyncedAt, t, lang),
@@ -211,8 +224,11 @@ function execView(code: string, d: SiteData, t: T, lang: Lang, today: string): E
   };
 }
 
-/** The Site screen of `code` for the selected tab (all three tabs are built; the view renders the selected one). */
-export function siteView(code: string, data: SiteData | null, opts: { tab: SiteTab; today?: string }, t: T, lang: Lang): SiteView {
+/**
+ * The Site screen of `code` for the selected tab (all three tabs are built; the view renders the selected one). `punch`: the
+ * Daily execution punch list's origin filter (R-117; default the items raised on site).
+ */
+export function siteView(code: string, data: SiteData | null, opts: { tab: SiteTab; today?: string; punch?: 'site' | 'all' }, t: T, lang: Lang): SiteView {
   const segs = SITE_TABS.map((v) => ({ value: v, label: t(SITE_TAB_LABEL[v]), href: siteHref(code, v) }));
   if (!data) return { tab: opts.tab, segs, empty: t(EMPTY_TEXT), ready: null, team: null, exec: null };
   return {
@@ -221,7 +237,7 @@ export function siteView(code: string, data: SiteData | null, opts: { tab: SiteT
     empty: null,
     ready: readyView(code, data, t, lang),
     team: teamView(code, data, t, lang),
-    exec: execView(code, data, t, lang, opts.today ?? STATUS_ISO),
+    exec: execView(code, data, t, lang, opts.today ?? STATUS_ISO, opts.punch ?? 'site'),
   };
 }
 

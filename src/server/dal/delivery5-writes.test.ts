@@ -181,7 +181,7 @@ describe('ITP and punch list', () => {
     expect((await getItpPlan('NDC-031'))!).toMatchObject({ template: 'AUTRE', systems: ['General'] });
   });
 
-  it('"Add punch item": P-10 Open; Start → In progress → Close; the site register is read-only', async () => {
+  it('"Add punch item": P-10 Open; Start → In progress → Close on every origin; outside the workspace refused', async () => {
     expect(await addPunchItem(HLT, { description: 'Missing anchor nut — bay 2', location: 'Structure · Bay 2', category: 'A', source: 'site_walk', owner: 'J. Wagner', dueOn: '2026-10-10' }, A.englead)).toBe('P-10');
     expect((await listPunchItems(HLT, 'itp')).at(-1)).toMatchObject({ number: 'P-10', status: 'open', category: 'A', owner: 'J. Wagner', sourceText: 'Site walk' });
     expect((await getCommissioning(HLT))!.systems[0].blockingA).toBe(1);
@@ -189,6 +189,10 @@ describe('ITP and punch list', () => {
     expect(await advancePunchItem(HLT, 'P-10', A.englead)).toBe('closed');
     await expect(advancePunchItem(HLT, 'P-10', A.englead)).rejects.toThrow(/closed/);
     await expect(advancePunchItem(HLT, 'P-02', A.member)).rejects.toThrow(/outside your workspace/);
+    // A-6 'a' (R-117): one list — an item raised on site (P-07, was the read-only Site register's P-02) takes the same steps,
+    // on Inspections & punch list; the Site screen stays read-only (no writer there), a team member is still refused.
+    expect(await advancePunchItem(HLT, 'P-07', A.quality)).toBe('in_progress');
+    await expect(advancePunchItem(HLT, 'P-07', A.member)).rejects.toThrow(/outside your workspace/);
   });
 });
 
