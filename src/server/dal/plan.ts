@@ -29,7 +29,13 @@ import { listTasks } from './tasks';
 // ── Types ──────────────────────────────────────────────────────────────────────────────────────────────
 
 export interface PlanActivityRow extends PlanActivity {
+  /** R-172: the owner's full name, else their short name ("S. Perrin" — the wizard's default PM has no full name); null without owner. */
   ownerName: string | null;
+  /**
+   * R-172: `owner` is an OWN key (persons.owner_code) — false when it fell back to the person's initials, which are not unique
+   * ("SP"): the Owner select then shows that person apart from the OWN list instead of a namesake.
+   */
+  ownerIsCode: boolean;
   description: string | null;
   critical: boolean | null;
   position: number;
@@ -102,7 +108,7 @@ export async function getPlanData(code: string): Promise<PlanData | null> {
       .where(eq(projects.code, code))
       .orderBy(asc(wbsNodes.position)),
     db
-      .select({ a: activities, wbs: wbsNodes.code, ownerCode: owner.ownerCode, ownerInitials: owner.initials, ownerName: owner.fullName })
+      .select({ a: activities, wbs: wbsNodes.code, ownerCode: owner.ownerCode, ownerInitials: owner.initials, ownerName: owner.fullName, ownerShort: owner.shortName })
       .from(activities)
       .innerJoin(projects, eq(projects.id, activities.projectId))
       .innerJoin(wbsNodes, eq(wbsNodes.id, activities.wbsNodeId))
@@ -142,12 +148,12 @@ export async function getPlanData(code: string): Promise<PlanData | null> {
     packages: nodes
       .filter(({ n }) => n.level === 1)
       .map(({ n, ownerName }) => ({ code: n.code, name: n.name, position: n.position, added: n.createdAt.getTime() > seedTime, ownerName, scope: n.scope })),
-    activities: acts.map(({ a, wbs, ownerCode, ownerInitials, ownerName }) => ({
+    activities: acts.map(({ a, wbs, ownerCode, ownerInitials, ownerName, ownerShort }) => ({
       id: a.code, wbs, name: a.name, durationDays: a.durationDays,
       start: a.startText, startActual: a.startActual, finish: a.finishText, finishActual: a.finishActual, startDate: a.startDate,
       baselineFinish: a.baselineFinishText, variance: a.varianceDays,
       constraint: constraintText(a.constraintType, a.constraintDateText), violated: a.constraintViolated,
-      totalFloat: a.totalFloatDays, pct: a.percentComplete, owner: ownerCode ?? ownerInitials ?? null, ownerName,
+      totalFloat: a.totalFloatDays, pct: a.percentComplete, owner: ownerCode ?? ownerInitials ?? null, ownerName: ownerName ?? ownerShort ?? null, ownerIsCode: !!ownerCode,
       budget: a.budgetKeur, actual: a.actualKeur, eac: a.eacKeur, preds: preds.get(a.id) ?? [],
       isAdded: a.isAdded, edited: !a.isAdded && a.updatedAt.getTime() > a.createdAt.getTime(),
       description: a.description, critical: a.critical, position: a.position,
