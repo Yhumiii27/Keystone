@@ -322,3 +322,10 @@ d7-operations' translation (not repeated). The prototype key "page (directors an
 
 **Progress suggestions for `docs/reste-a-developper.json`** (integrator only): R-086, R-087, R-088 → fait; R-044, R-139, R-083 →
 en_cours (built part merged; §6–§7 open); R-178 → en_cours (placeholders and the data sheet; real lists awaited).
+
+## Integration review fixes
+
+- R-046 / R-083: a rate-grid change writes its values in the audit row only (activity "Rate card · Planner base changed from
+  1 Nov 2026"); Activity & integrations and its export mask the "Rate card" audit changes and older feed events with values
+  ("•••") for the roles without `canSeeRates` (`ratesMaskedAudit` / `ratesMaskedActivity` in `src/domain/hr.ts`;
+  `src/features/admin/d8-rate-audit-mask.test.ts`, 9 personas).

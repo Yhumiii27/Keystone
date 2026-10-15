@@ -83,7 +83,7 @@ describe('Admin › Activity & audit and its export in French (R-184)', () => {
   async function view(lang: Lang, v: 'activity' | 'audit') {
     const t = makeT(lang);
     const [activity, connectors, imports, audit, counts] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
-    return { t, model: plumbingView({ view: v, source: null, activity, connectors, imports, audit, counts, unread: 0, personaTitle: 'Portfolio director' }, t, lang) };
+    return { t, model: plumbingView({ view: v, source: null, activity, connectors, imports, audit, counts, unread: 0, personaTitle: 'Portfolio director', ratesVisible: true }, t, lang) };
   }
 
   it('the feed and the trail read in French, typed values as typed; English unchanged', async () => {

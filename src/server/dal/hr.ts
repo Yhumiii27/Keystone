@@ -6,7 +6,7 @@ import 'server-only';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { cache } from 'react';
 import {
-  canEditRates, isExternalRole, parseEffectiveDate, rateAt, rateChangeText, versionAt, type RateGrid,
+  RATE_CARD_OBJECT, canEditRates, isExternalRole, parseEffectiveDate, rateActivityText, rateAt, rateChangeText, versionAt, type RateGrid,
 } from '@/domain/hr';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import {
@@ -114,9 +114,12 @@ function requireRateEditor(actor: Actor): void {
   if (!canEditRates(actor.role)) throw new Error(RATES_EDIT_REFUSED);
 }
 
-/** Audit + activity of a grid change (area Settings, object "Rate card" as before R-083). */
-async function traceRate(tx: Tx, actor: Actor, change: string): Promise<void> {
-  await trace(tx, await whoIs(tx, actor), { objectRef: 'Rate card', change, area: 'Settings', activity: { text: `Rate card · ${change}`, kind: 'change' } });
+/**
+ * Audit + activity of a grid change (area Settings, object "Rate card" as before R-083). R-046: the values are in the audit
+ * change only (masked on Activity & integrations for the roles that do not see rates); the activity text has none.
+ */
+async function traceRate(tx: Tx, actor: Actor, change: string, activity: string): Promise<void> {
+  await trace(tx, await whoIs(tx, actor), { objectRef: RATE_CARD_OBJECT, change, area: 'Settings', activity: { text: `${RATE_CARD_OBJECT} · ${activity}`, kind: 'change' } });
 }
 
 /**
@@ -155,7 +158,9 @@ export async function setBaseRate(role: string, rateEur: number, effectiveFrom: 
       insert: () => tx.insert(rateRoleRates).values({ rateRoleId: r.id, effectiveFrom, baseRateEur: rateEur, createdByName: who.who, createdByPersonId: who.personId }),
     });
     if (!done) return;
-    await traceRate(tx, actor, rateChangeText(`${role} base`, done.from, rateEur, '€/h', displayOfIso(effectiveFrom), effectiveFrom < STATUS_ISO));
+    const on = displayOfIso(effectiveFrom);
+    const backdated = effectiveFrom < STATUS_ISO;
+    await traceRate(tx, actor, rateChangeText(`${role} base`, done.from, rateEur, '€/h', on, backdated), rateActivityText(`${role} base`, on, backdated));
   });
 }
 
@@ -176,7 +181,9 @@ export async function setMultiplier(key: RateMultiplierKey, factor: number, effe
       insert: () => tx.insert(rateMultiplierRates).values({ key, effectiveFrom, factor, createdByName: who.who, createdByPersonId: who.personId }),
     });
     if (!done) return;
-    await traceRate(tx, actor, rateChangeText(`${m.label} multiplier`, done.from, factor, '×', displayOfIso(effectiveFrom), effectiveFrom < STATUS_ISO));
+    const on = displayOfIso(effectiveFrom);
+    const backdated = effectiveFrom < STATUS_ISO;
+    await traceRate(tx, actor, rateChangeText(`${m.label} multiplier`, done.from, factor, '×', on, backdated), rateActivityText(`${m.label} multiplier`, on, backdated));
   });
 }
 
@@ -203,7 +210,7 @@ export async function addRateRole(
       .returning({ id: rateRoles.id });
     const who = await whoIs(tx, actor);
     await tx.insert(rateRoleRates).values({ rateRoleId: r.id, effectiveFrom: input.effectiveFrom, baseRateEur: input.rateEur, createdByName: who.who, createdByPersonId: who.personId });
-    await traceRate(tx, actor, `role added: ${role} · ${input.rateEur} €/h from ${displayOfIso(input.effectiveFrom)}`);
+    await traceRate(tx, actor, `role added: ${role} · ${input.rateEur} €/h from ${displayOfIso(input.effectiveFrom)}`, `role added: ${role} from ${displayOfIso(input.effectiveFrom)}`);
   });
 }
 

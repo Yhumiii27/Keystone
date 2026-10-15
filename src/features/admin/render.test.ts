@@ -112,7 +112,7 @@ describe('Activity, integrations & audit body', () => {
   async function body(lang: Lang, view: 'activity' | 'connectors' | 'imports' | 'audit', canEdit = true) {
     const t = makeT(lang);
     const [activity, connectors, imports, audit, counts] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
-    const v = plumbingView({ view, source: null, activity, connectors, imports, audit, counts, unread: 3, personaTitle: 'Portfolio director' }, t, lang);
+    const v = plumbingView({ view, source: null, activity, connectors, imports, audit, counts, unread: 3, personaTitle: 'Portfolio director', ratesVisible: true }, t, lang);
     return html(h(PlumbingBody, { view: v, canEdit, t }), lang);
   }
 
@@ -166,10 +166,10 @@ describe('Activity, integrations & audit body', () => {
     expect(text(await body('fr', 'connectors'))).toContain('412 fiches · 38 liées à HLT-026');
     expect(text(await body('fr', 'connectors'))).not.toContain('1 248 plans');
     const t = makeT('fr');
-    const empty = plumbingView({ view: 'audit', source: null, activity: [], connectors: [], imports: [], audit: [], counts: { eventsToday: 0, auditLast7Days: 0 }, unread: 0, personaTitle: 'Portfolio director' }, t, 'fr');
+    const empty = plumbingView({ view: 'audit', source: null, activity: [], connectors: [], imports: [], audit: [], counts: { eventsToday: 0, auditLast7Days: 0 }, unread: 0, personaTitle: 'Portfolio director', ratesVisible: true }, t, 'fr');
     expect(text(html(h(PlumbingBody, { view: empty, canEdit: true, t }), 'fr'))).toContain('Aucune entrée d’audit pour l’instant');
     // The area of connector runs is translated by the feature (not the shared dictionary: ERP-202 has a package "Integrations").
-    const run = plumbingView({ ...{ view: 'audit' as const, source: null, activity: [], connectors: [], imports: [], counts: { eventsToday: 0, auditLast7Days: 1 }, unread: 0, personaTitle: 'Portfolio director' },
+    const run = plumbingView({ ...{ view: 'audit' as const, source: null, activity: [], connectors: [], imports: [], counts: { eventsToday: 0, auditLast7Days: 1 }, unread: 0, personaTitle: 'Portfolio director', ratesVisible: true },
       audit: [{ occurredAt: '2026-09-25T07:00:00.000Z', when: '25 Sep 09:00', who: 'Marie Lefebvre', object: 'Connector Lucca', change: 'sync', area: 'Integrations', projectCode: null,
         userEmail: null, reason: null, before: null, after: null, messageKey: null, messageParams: null }] }, t, 'fr');
     expect(run.audit[0].area).toBe('Intégrations');

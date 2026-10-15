@@ -141,7 +141,11 @@ describe('Server Functions × 9 personas', () => {
     const changes = (await listAudit({ limit: 5 })).map((a) => a.change);
     expect(changes).toContain('Planner base: 74 → 78 €/h from 1 Nov 2026');
     expect(changes).toContain('Planner base: 74 → 76 €/h from 1 Sep 2026 (backdated)');
-    expect((await listActivity()).some((a) => a.what === 'Rate card · Planner base: 74 → 78 €/h from 1 Nov 2026')).toBe(true);
+    // R-046 (integration review): the activity feed, read by every internal role, carries no rate values — the audit row does.
+    const feed = (await listActivity()).map((a) => a.what);
+    expect(feed).toContain('Rate card · Planner base changed from 1 Nov 2026');
+    expect(feed).toContain('Rate card · Planner base changed from 1 Sep 2026 (backdated)');
+    expect(feed.filter((w) => w.startsWith('Rate card · ') && /€\/h|→/.test(w))).toEqual([]);
     // R-083: Damien Roux (Planner) — his September hours are valued at the version in force on 1 Sep 2026.
     const h = (await getHoursReconciliation('HLT-026'))!;
     expect(h.lines.find((l) => l.person === 'Damien Roux')!.rateEur).toBe(76);

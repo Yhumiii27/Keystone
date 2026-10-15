@@ -181,6 +181,31 @@ export function rateChangeText(subject: string, from: number | null, to: number,
   return `${subject}: ${v(from)} → ${v(to)}${tail} from ${effectiveText}${backdated ? ' (backdated)' : ''}`;
 }
 
+// R-046 — the activity feed and the audit trail of Activity & integrations are read by every internal role (P-1 = a); the
+// rate values are for `canSeeRates` only (the rate card, the task cost note and the exports mask them for the others).
+
+/** Object of the rate grid's audit rows (area Settings). */
+export const RATE_CARD_OBJECT = 'Rate card';
+
+/** Activity text of a rate change, without its values (they stay in the audit row): "Planner base changed from 1 Nov 2026". */
+export const rateActivityText = (subject: string, effectiveText: string, backdated: boolean) =>
+  `${subject} changed from ${effectiveText}${backdated ? ' (backdated)' : ''}`;
+
+/** A rate value in a text: "78 €/h", "×1.6". */
+const RATE_VALUE = /€\/h|×\s*\d/;
+
+/** The audit trail for the viewer: the change of a "Rate card" row is masked for a viewer who does not see rates (R-046). */
+export function ratesMaskedAudit<R extends { object: string; change: string }>(rows: readonly R[], ratesVisible: boolean): R[] {
+  if (ratesVisible) return [...rows];
+  return rows.map((r) => (r.object === RATE_CARD_OBJECT ? { ...r, change: MASK, messageKey: null, messageParams: null, reason: null, before: null, after: null } : r));
+}
+
+/** The activity feed for the viewer: a "Rate card · …" event with values (written before R-046) is masked likewise. */
+export function ratesMaskedActivity<R extends { what: string }>(rows: readonly R[], ratesVisible: boolean): R[] {
+  if (ratesVisible) return [...rows];
+  return rows.map((r) => (r.what.startsWith(`${RATE_CARD_OBJECT} · `) && RATE_VALUE.test(r.what) ? { ...r, what: `${RATE_CARD_OBJECT} · ${MASK}`, messageKey: null, messageParams: null } : r));
+}
+
 export interface TaskCostInput {
   /** Hours logged on the task (the stored total). */
   loggedH: number;
