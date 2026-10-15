@@ -10,7 +10,7 @@ import { parseHoursView } from '@/domain/hr';
 import { GANTT_SPAN, scheduleView } from '@/domain/schedule-gantt';
 import { effectiveFloat, predsLabel } from '@/domain/schedule';
 import { hrT } from '@/features/hr/i18n';
-import { planKpis, planRows } from '@/features/plan/model';
+import { planKpis, planOwnerNames, planRows } from '@/features/plan/model';
 import { planT } from '@/features/plan/i18n';
 import { slipText } from '@/features/schedule/i18n';
 import { contingencyView } from '@/features/risks/model';
@@ -33,11 +33,12 @@ async function planSheet(ctx: ExportContext) {
   if (!data) return null;
   const t = planT(ctx.t, ctx.lang);
   const view: 'structure' | 'progress' = param(ctx, 'view') === 'structure' ? 'structure' : 'progress';
-  const owner = new Map(data.owners.map((o) => [o.code, o.name]));
+  // R-172: the owner's name (full, else short — "S. Perrin" on a wizard project), as on the screen; '' without owner.
+  const ownerName = planOwnerNames(data);
   const rows = planRows(data, todos).map((r) => {
     const a = r.act;
     return {
-      level: t(LEVEL[r.kind] ?? r.kind), id: r.id, wbs: r.wbs, name: dataText(r.name, ctx.lang), owner: a ? (a.owner ? owner.get(a.owner) ?? a.owner : '') : '',
+      level: t(LEVEL[r.kind] ?? r.kind), id: r.id, wbs: r.wbs, name: dataText(r.name, ctx.lang), owner: a?.owner ? ownerName(a) : '',
       duration: a ? a.durationDays : null, start: isoOf(r.start), startActual: a ? a.startActual : null, finish: isoOf(r.finish), finishActual: a ? a.finishActual : null,
       baselineFinish: isoOf(r.baselineFinish), variance: r.variance, float: a ? effectiveFloat(a) : r.tf, constraint: a?.constraint ? t(a.constraint) : '',
       pct: r.pct / 100, budget: r.budget, actual: a ? a.actual : null, eac: a ? a.eac : null, preds: a ? (a.preds.length ? predsLabel(a.preds) : '') : '',

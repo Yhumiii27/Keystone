@@ -157,11 +157,12 @@ describe('R-169 — prototype constants replaced by data', () => {
 
   it('notification channels: in-app only while no e-mail or Teams connector is live (R-021 over R-169)', async () => {
     const { notificationChannels } = await import('@/domain/admin');
-    // R-021 (A-15, X-6): the seeded e-mail and Teams rows have no connector code behind them — not channels, enabled or not.
-    expect(notificationChannels(await listConnectors())).toEqual({ count: 1, sub: 'In-app · e-mail and Teams not connected' });
+    // R-021 (A-15, X-6): the seeded e-mail row has no connector code behind it — not a channel, enabled or not; X-6b / S-11
+    // (R-037): Teams is no notification channel any more (was "In-app · e-mail and Teams not connected").
+    expect(notificationChannels(await listConnectors())).toEqual({ count: 1, sub: 'In-app · e-mail not connected' });
     const db = await getDb();
     await db.update(connectors).set({ enabled: false }).where(eq(connectors.name, 'Microsoft Teams'));
-    expect(notificationChannels(await listConnectors())).toEqual({ count: 1, sub: 'In-app · e-mail and Teams not connected' });
+    expect(notificationChannels(await listConnectors())).toEqual({ count: 1, sub: 'In-app · e-mail not connected' });
     await db.update(connectors).set({ enabled: true }).where(eq(connectors.name, 'Microsoft Teams'));
   });
 

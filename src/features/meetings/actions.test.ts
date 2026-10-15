@@ -119,8 +119,9 @@ describe('meetings Server Functions', () => {
     expect(m.agenda[2].lines.map((l) => l.type)).toEqual(['decision', 'decision', 'decision', 'action', 'action', 'action']);
   });
 
-  it('"Send minutes": MIN-HLT-027, tasks for the pool owners, toast EN / FR, then the minutes are locked', async () => {
-    expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual({ ok: true, toast: 'MIN-HLT-027 · minutes sent to 5 invitees · 2 actions added to tasks' });
+  it('"Send minutes": MIN-HLT-027, a task for every internal action owner, toast EN / FR, then the minutes are locked', async () => {
+    // S-12 a (R-067): L. Fabre (internal, outside the resource pool) gets a task too — 2 → 3 actions added to tasks.
+    expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual({ ok: true, toast: 'MIN-HLT-027 · minutes sent to 5 invitees · 3 actions added to tasks' });
     expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
     expect((await listTasks({ person: 'Julien Wagner' })).some((t) => t.labels.includes('MTG-118'))).toBe(true);
     expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual({ ok: false, error: 'Minutes already sent' });
@@ -134,7 +135,8 @@ describe('meetings Server Functions', () => {
 
   it('"New meeting": MTG-130 organized by the viewer, defaults, toast; validation errors translated', async () => {
     viewer.name = 'Marie Lefebvre';
-    expect(await createMeetingAction('HLT-026', NEW)).toEqual({ toast: 'Weekly site meeting #25 · Meeting created · invitation synced to the calendar' });
+    // S-11 / A-15 (R-037): no invitation goes out and nothing is synced to a calendar (was "… · invitation synced to the calendar").
+    expect(await createMeetingAction('HLT-026', NEW)).toEqual({ toast: 'Weekly site meeting #25 · Meeting created' });
     const m = (await getMeeting('MTG-130'))!;
     expect(m).toMatchObject({ status: 'scheduled', organizer: 'M. Lefebvre', dateText: '6 Oct 2026', time: '08:30', location: 'Teams', durationText: '1 h' });
     expect(m.agenda.map((a) => a.title)).toEqual(['Safety', 'Steel']);
@@ -142,7 +144,7 @@ describe('meetings Server Functions', () => {
     expect(await createMeetingAction('HLT-026', { ...NEW, invited: ' ' })).toEqual({ error: 'Invite at least one person' });
     expect(await createMeetingAction('HLT-026', { ...NEW, title: 42 } as never)).toEqual({ error: 'Title is required' });
     viewer.lang = 'fr';
-    expect(await createMeetingAction('HLT-026', { ...NEW, title: 'Revue', agenda: '' })).toEqual({ toast: 'Revue · Réunion créée · invitation synchronisée avec le calendrier' });
+    expect(await createMeetingAction('HLT-026', { ...NEW, title: 'Revue', agenda: '' })).toEqual({ toast: 'Revue · Réunion créée' }); // S-11 / A-15 (R-037)
     expect(await createMeetingAction('HLT-026', { ...NEW, type: 'secret' })).toEqual({ error: 'Type de réunion invalide' });
   });
 

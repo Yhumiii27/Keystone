@@ -1,7 +1,7 @@
 // Portfolio scenarios: the New project wizard (L-3b: name, client, PM, type, start and site required — Next disabled without a
 // location) creating a project that opens on its plan; the Settings health threshold driving the health everywhere (A-13:
 // "At risk below" 0.99 → NDC-031 At risk on Projects and in its CSV, then restored); a forced stage change approved and
-// another rejected (reverted) from My approvals (L-1).
+// another rejected (reverted) from My approvals (L-1); R-152: the forced move and the created project are confirmed by a toast.
 import { expect, test, type Page } from '@playwright/test';
 import { exportFile, toast, viewAs, watch } from './helpers';
 
@@ -25,6 +25,8 @@ test('New project wizard: location required, the template is instantiated, the p
   await next.click();
   await next.click();
   await d.getByRole('button', { name: 'Create project' }).click();
+  // R-152 (X-9): the confirmation carries the typed name as typed.
+  await expect(toast(page)).toContainText('· E2E Harbour Automation · Project created');
   await expect(page).toHaveURL(/\/projects\/[A-Z]{3}-\d{3}\/plan/, { timeout: 30_000 });
   await expect(page.locator('main')).toContainText('E2E Harbour Automation');
   await expect(page.getByRole('row').filter({ has: page.getByRole('link', { name: /^A\d{4}$/ }) }).first()).toBeVisible();
@@ -76,6 +78,8 @@ test('forced stage changes: one approved (kept), one rejected (reverted) from My
     await d.getByLabel(/^Reason for forcing/).fill('Agreed with the client — deliverable follows next week');
     await d.getByRole('button', { name: 'Confirm and request validation' }).click();
     await expect(d).toHaveCount(0);
+    // R-152 (X-9, L-1): confirmed once the server accepted the forced move.
+    await expect(toast(page)).toContainText(`${code} · Validation requested from the portfolio director`);
     await expect(status(code)).not.toHaveText(from);
     return { from, to: (await status(code).innerText()).trim() };
   };

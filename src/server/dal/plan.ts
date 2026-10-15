@@ -18,7 +18,7 @@ import {
 } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 import { listProjectBaselines, type BaselineInfo } from './baselines';
-import { trashPlanRow } from './plan-trash';
+import { lockProjectRow, maxTrashedPosition, shiftTrashedPositions, trashPlanRow } from './plan-trash';
 import { listCalendars } from './calendars';
 import { getProjectEvm } from './evm';
 import { getScheduleControl, type ScheduleControl } from './planning';
@@ -29,7 +29,13 @@ import { listTasks } from './tasks';
 // ── Types ──────────────────────────────────────────────────────────────────────────────────────────────
 
 export interface PlanActivityRow extends PlanActivity {
+  /** R-172: the owner's full name, else their short name ("S. Perrin" — the wizard's default PM has no full name); null without owner. */
   ownerName: string | null;
+  /**
+   * R-172: `owner` is an OWN key (persons.owner_code) — false when it fell back to the person's initials, which are not unique
+   * ("SP"): the Owner select then shows that person apart from the OWN list instead of a namesake.
+   */
+  ownerIsCode: boolean;
   description: string | null;
   critical: boolean | null;
   position: number;
@@ -81,11 +87,6 @@ export interface PlanRequest {
 
 // ── Reads ──────────────────────────────────────────────────────────────────────────────────────────────
 
-async function projectIdOf(tx: Tx, code: string): Promise<string | null> {
-  const [p] = await tx.select({ id: projects.id }).from(projects).where(eq(projects.code, code));
-  return p?.id ?? null;
-}
-
 /** Everything the Plan screen needs for one project; null for projects without planning data (empty state). */
 export async function getPlanData(code: string): Promise<PlanData | null> {
   const db = await getDb();
@@ -102,7 +103,7 @@ export async function getPlanData(code: string): Promise<PlanData | null> {
       .where(eq(projects.code, code))
       .orderBy(asc(wbsNodes.position)),
     db
-      .select({ a: activities, wbs: wbsNodes.code, ownerCode: owner.ownerCode, ownerInitials: owner.initials, ownerName: owner.fullName })
+      .select({ a: activities, wbs: wbsNodes.code, ownerCode: owner.ownerCode, ownerInitials: owner.initials, ownerName: owner.fullName, ownerShort: owner.shortName })
       .from(activities)
       .innerJoin(projects, eq(projects.id, activities.projectId))
       .innerJoin(wbsNodes, eq(wbsNodes.id, activities.wbsNodeId))
@@ -142,12 +143,12 @@ export async function getPlanData(code: string): Promise<PlanData | null> {
     packages: nodes
       .filter(({ n }) => n.level === 1)
       .map(({ n, ownerName }) => ({ code: n.code, name: n.name, position: n.position, added: n.createdAt.getTime() > seedTime, ownerName, scope: n.scope })),
-    activities: acts.map(({ a, wbs, ownerCode, ownerInitials, ownerName }) => ({
+    activities: acts.map(({ a, wbs, ownerCode, ownerInitials, ownerName, ownerShort }) => ({
       id: a.code, wbs, name: a.name, durationDays: a.durationDays,
       start: a.startText, startActual: a.startActual, finish: a.finishText, finishActual: a.finishActual, startDate: a.startDate,
       baselineFinish: a.baselineFinishText, variance: a.varianceDays,
       constraint: constraintText(a.constraintType, a.constraintDateText), violated: a.constraintViolated,
-      totalFloat: a.totalFloatDays, pct: a.percentComplete, owner: ownerCode ?? ownerInitials ?? null, ownerName,
+      totalFloat: a.totalFloatDays, pct: a.percentComplete, owner: ownerCode ?? ownerInitials ?? null, ownerName: ownerName ?? ownerShort ?? null, ownerIsCode: !!ownerCode,
       budget: a.budgetKeur, actual: a.actualKeur, eac: a.eacKeur, preds: preds.get(a.id) ?? [],
       isAdded: a.isAdded, edited: !a.isAdded && a.updatedAt.getTime() > a.createdAt.getTime(),
       description: a.description, critical: a.critical, position: a.position,
@@ -354,16 +355,21 @@ export interface NewActivity {
   description: string;
 }
 
-/** Inserts an activity at the end of its work package (positions after it shift by one). */
+/**
+ * Inserts an activity at the end of its work package (positions after it shift by one — R-064: the ghost slots of the removed
+ * rows in the Plan trash too, so a later restore lands back in place). The project row is locked for the transaction.
+ */
 export async function insertActivity(code: string, input: NewActivity): Promise<boolean> {
   const db = await getDb();
   return db.transaction(async (tx) => {
+    if (!(await lockProjectRow(tx, { code }))) return false;
     const n = await findNode(tx, code, input.wbs);
     if (!n || n.level !== 1) return false;
     const [{ last }] = await tx.select({ last: max(activities.position) }).from(activities).where(eq(activities.wbsNodeId, n.id));
     const position = Math.max(n.position, last ?? n.position) + 1;
     await tx.update(wbsNodes).set({ position: sql`${wbsNodes.position} + 1` }).where(and(eq(wbsNodes.projectId, n.projectId), gte(wbsNodes.position, position)));
     await tx.update(activities).set({ position: sql`${activities.position} + 1` }).where(and(eq(activities.projectId, n.projectId), gte(activities.position, position)));
+    await shiftTrashedPositions(tx, n.projectId, position, 1);
     const [owner] = await tx.select({ id: persons.id }).from(persons).where(eq(persons.ownerCode, input.ownerCode));
     await tx.insert(activities).values({
       projectId: n.projectId, wbsNodeId: n.id, code: input.id, name: input.name, durationDays: input.durationDays,
@@ -385,11 +391,14 @@ export interface NewWorkPackage {
   scope: string;
 }
 
-/** Appends a work package after the existing ones (no activities yet). */
+/**
+ * Appends a work package after the existing ones (no activities yet) — R-064: after the removed ones still in the Plan trash too
+ * (their ghost slots), so restoring them keeps the order. The project row is locked for the transaction.
+ */
 export async function insertWorkPackage(code: string, input: NewWorkPackage): Promise<boolean> {
   const db = await getDb();
   return db.transaction(async (tx) => {
-    const projectId = await projectIdOf(tx, code);
+    const projectId = (await lockProjectRow(tx, { code }))?.id;
     if (!projectId) return false;
     const [root] = await tx.select({ id: wbsNodes.id }).from(wbsNodes).where(and(eq(wbsNodes.projectId, projectId), eq(wbsNodes.level, 0)));
     if (!root) return false;
@@ -397,9 +406,10 @@ export async function insertWorkPackage(code: string, input: NewWorkPackage): Pr
       tx.select({ n: max(wbsNodes.position) }).from(wbsNodes).where(eq(wbsNodes.projectId, projectId)),
       tx.select({ a: max(activities.position) }).from(activities).where(eq(activities.projectId, projectId)),
     ]);
+    const ghost = await maxTrashedPosition(tx, projectId);
     const [owner] = await tx.select({ id: persons.id }).from(persons).where(eq(persons.fullName, input.ownerName));
     await tx.insert(wbsNodes).values({
-      projectId, code: input.code, name: input.name, level: 1, parentId: root.id, position: Math.max(n ?? 0, a ?? 0) + 1,
+      projectId, code: input.code, name: input.name, level: 1, parentId: root.id, position: Math.max(n ?? 0, a ?? 0, ghost ?? 0) + 1,
       ownerPersonId: owner?.id ?? null, scope: input.scope || null,
     });
     return true;

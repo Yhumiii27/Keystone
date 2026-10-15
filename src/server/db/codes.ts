@@ -276,7 +276,7 @@ export const REQUEST_STATUS_TAG: Record<RequestStatus, 'tag-outline' | 'tag-acce
   draft: 'tag-outline', pending: 'tag-outline', approved: 'tag-accent', reschedule: 'tag-outline', rejected: 'tag-neutral', withdrawn: 'tag-neutral',
 };
 /** Decision trail of a resource request. */
-export type RequestEventAction = 'drafted' | 'sent' | 'approved' | 'reschedule' | 'rejected' | 'withdrawn' | 'accepted' | 'resent';
+export type RequestEventAction = 'drafted' | 'sent' | 'approved' | 'reschedule' | 'rejected' | 'withdrawn' | 'accepted' | 'resent' | 'named'; // 'named': P-8b (R-089)
 /** Where a time entry comes from (keystone = logged on the Task screen, lucca = HRIS import). */
 export type TimeEntrySource = 'keystone' | 'lucca';
 /** File icon of a task attachment (FILES 3259: ph-file-xls / ph-image / ph-file-pdf). */

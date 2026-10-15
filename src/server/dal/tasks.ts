@@ -5,6 +5,7 @@ import 'server-only';
 import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { rateAt, taskLaborCost, type TaskCost } from '@/domain/hr';
+import { mentionedKeys } from '@/domain/mentions';
 import { applyProgress, applyStatus } from '@/domain/tasks';
 import { getDb, type Tx } from '@/server/db/client';
 import {
@@ -16,6 +17,7 @@ import {
   activities, departments, persons, projects, resourceRequests, taskAttachments, taskChecklistItems, taskComments, tasks, timeEntries, wbsNodes,
 } from '@/server/db/schema';
 import { getRateGrid } from './hr';
+import { listMentionablePersons } from './task-notices';
 
 export interface TaskRow {
   /** "T-2314". */
@@ -304,17 +306,40 @@ export async function addChecklistItem(number: string, text: string, actorName?:
   });
 }
 
-/** "Post": a comment by the viewer (not the prototype's fixed Marie Lefebvre). Empty text is ignored. */
-export async function addTaskComment(number: string, authorName: string, text: string): Promise<void> {
+/** A posted comment: who it mentions (R-149) — told by the Server Function once the comment is committed. */
+export interface PostedComment {
+  /** "T-2314" and its project. */
+  task: string;
+  projectCode: string;
+  /** Display name of the author. */
+  author: string;
+  /** Persons mentioned with an active internal account, the author excluded (person ids, order of first mention). */
+  mentioned: string[];
+}
+
+/**
+ * "Post": a comment by the viewer (not the prototype's fixed Marie Lefebvre). Empty text is ignored (null). R-149: the
+ * @mentions are resolved among the mentionable people (src/domain/mentions.ts; the author never mentions themself) in the same
+ * transaction, which records one audit line naming them; the caller notifies them after the commit.
+ */
+export async function addTaskComment(number: string, authorName: string, text: string): Promise<PostedComment | null> {
   const body = text.trim();
-  if (!body) return;
+  if (!body) return null;
   const db = await getDb();
-  await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     const t = await loadTask(tx, number);
     const author = await requirePerson(tx, authorName);
     const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${taskComments.position}), -1)::int` }).from(taskComments).where(eq(taskComments.taskId, t.id));
     await tx.insert(taskComments).values({ taskId: t.id, authorPersonId: author.id, postedAt: new Date(), text: body, position: pos + 1 });
     await auditTask(tx, t, nameOf(author), 'comment posted');
+    const people = await listMentionablePersons(tx);
+    const mentioned = mentionedKeys(body, people).filter((id) => id !== author.id);
+    if (mentioned.length) {
+      const names = mentioned.map((id) => people.find((p) => p.key === id)!).map((p) => p.fullName ?? p.shortName);
+      await auditTask(tx, t, nameOf(author), `mentioned: ${names.join(', ')}`);
+    }
+    const [p] = await tx.select({ code: projects.code }).from(projects).where(eq(projects.id, t.projectId));
+    return { task: t.number, projectCode: p.code, author: nameOf(author), mentioned };
   });
 }
 

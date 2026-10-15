@@ -13,6 +13,12 @@ import { clientRefusedScreen } from '@/domain/rights';
 export const canEditTask = (viewer: { role: RoleKey; name: string }, assignee: string, outside: boolean) =>
   !outside && (viewer.role === 'director' || viewer.name === assignee);
 
+/**
+ * P-8b (R-089) "Name the person" on a sourcing task (created from a contract-role request, not named yet): procurement and the
+ * portfolio director, inside the workspace. The writer re-checks the roles held (src/server/dal/requests.ts nameSourcedPerson).
+ */
+export const canNameSourcedPerson = (viewer: { role: RoleKey }, outside: boolean) => !outside && (viewer.role === 'procurement' || viewer.role === 'director');
+
 /** Comments: anyone whose workspace includes My work (the seed has colleagues commenting on each other's tasks). */
 export const canCommentTask = (outside: boolean) => !outside;
 

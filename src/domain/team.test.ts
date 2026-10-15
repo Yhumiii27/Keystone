@@ -83,19 +83,22 @@ describe('interfaces (ifcRows / ifcKpis / ifcBadge 4954–4957)', () => {
     ]);
   });
 
-  it('KPI figures: 7 (2 frozen · 2 received) · 2 open (2 due within 30 days) · 1 late (IF-07) · 2 blocking', () => {
+  it('KPI figures: 7 (2 frozen · 2 received) · 2 open · 1 late (IF-07) · 2 blocking', () => {
     const s = summariseInterfaces(seedFacts(), ['IF-02', 'IF-05']);
-    expect(s).toEqual({ count: 7, frozen: 2, received: 2, open: 2, dueWithin30: 2, late: ['IF-07'], blocking: ['IF-02', 'IF-05'] });
+    // A-12 / Q-4 (R-116): the summary no longer carries the prototype's "due within 30 days" count (every future need
+    // date); the screen computes it from the data date (dueWithinDays, src/features/team/render.test.ts), so the golden
+    // KPI sub k[1].sub is not compared here.
+    expect(s).toEqual({ count: 7, frozen: 2, received: 2, open: 2, late: ['IF-07'], blocking: ['IF-02', 'IF-05'] });
     const k = G.interfaces.kpis;
-    expect([s.count, `${s.frozen} frozen · ${s.received} received`, s.open, `${s.dueWithin30} due within 30 days`, s.late.length, s.late.join(' · '), s.blocking.length]).toEqual([
-      k[0].value, k[0].sub, k[1].value, k[1].sub, k[2].value, k[2].sub, k[3].value,
+    expect([s.count, `${s.frozen} frozen · ${s.received} received`, s.open, s.late.length, s.late.join(' · '), s.blocking.length]).toEqual([
+      k[0].value, k[0].sub, k[1].value, k[2].value, k[2].sub, k[3].value,
     ]);
     expect(interfacesBadge(seedFacts())).toBe('1');
   });
 
   it('after Mark received IF-07 and IF-02, Freeze IF-01 (ifcOv): 3 frozen · 3 received · 1 open · no late · 1 blocking', () => {
     const f = seedFacts({ 'IF-07': 'received', 'IF-02': 'received', 'IF-01': 'frozen' });
-    expect(summariseInterfaces(f, ['IF-02', 'IF-05'])).toEqual({ count: 7, frozen: 3, received: 3, open: 1, dueWithin30: 1, late: [], blocking: ['IF-05'] });
+    expect(summariseInterfaces(f, ['IF-02', 'IF-05'])).toEqual({ count: 7, frozen: 3, received: 3, open: 1, late: [], blocking: ['IF-05'] }); // A-12 / Q-4: no dueWithin30
     expect(f.map((r) => [r.number, interfaceStatus.label(r.status), neededSubEn(r), interfaceRowState(r).canReceive, interfaceRowState(r).canFreeze])).toEqual([
       ['IF-01', 'Frozen', '', false, false], ['IF-02', 'Received', '', false, true], ['IF-03', 'Frozen', '', false, false], ['IF-04', 'Received', '', false, true],
       ['IF-05', 'Open', 'in 45 d', true, false], ['IF-06', 'Frozen', '', false, false], ['IF-07', 'Received', '', false, true],
@@ -112,12 +115,12 @@ describe('interfaces (ifcRows / ifcKpis / ifcBadge 4954–4957)', () => {
       ['IF-10', 'Open', 'in 32 d', false], ['IF-11', 'Open', 'in 1 d', true], ['IF-12', 'Late', '2 d late', true],
     ]);
     const s = summariseInterfaces(f, ['IF-02', 'IF-05']);
-    expect([s.count, s.frozen, s.received, s.open, s.dueWithin30, s.late, s.blocking.length]).toEqual([10, 2, 2, 4, 4, ['IF-07', 'IF-12'], 2]);
+    expect([s.count, s.frozen, s.received, s.open, s.late, s.blocking.length]).toEqual([10, 2, 2, 4, ['IF-07', 'IF-12'], 2]); // A-12 / Q-4: no dueWithin30
     expect(interfacesBadge(f)).toBe('2');
   });
 
   it('a project without interfaces or commissioning blockers: zeros', () => {
-    expect(summariseInterfaces([], [])).toEqual({ count: 0, frozen: 0, received: 0, open: 0, dueWithin30: 0, late: [], blocking: [] });
+    expect(summariseInterfaces([], [])).toEqual({ count: 0, frozen: 0, received: 0, open: 0, late: [], blocking: [] });
   });
 
   it('received / frozen interfaces are never late, whatever their date; open and needed 30 Sep is late (mIdx 8.967 < PG_NOW 8.97), 0 d', () => {

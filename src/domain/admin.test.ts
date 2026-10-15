@@ -184,7 +184,8 @@ describe('Activity & integrations rules (plumbKpis / actChips / actRows / connRo
       // e-mail · Teams"; the tiles now count what is really connected (no e-mail or Teams connector exists).
       expect([expected[1].sub, expected[4].value, expected[4].sub]).toEqual(['7 healthy · 1 warning', '3', 'In-app · e-mail · Teams']);
       expected[1] = { ...expected[1], sub: '1 connected · 2 mock · 6 not connected', color: OK };
-      expected[4] = { ...expected[4], value: '1', sub: 'In-app · e-mail and Teams not connected' };
+      // X-6b / S-11 (R-037): Teams is no notification channel any more (was "In-app · e-mail and Teams not connected").
+      expected[4] = { ...expected[4], value: '1', sub: 'In-app · e-mail not connected' };
       expect(plumbingKpis({ eventsToday: 6, connectors: protoRows, unread, personaTitle: title, auditEntries: P.AUDIT.length })).toEqual(expected);
     }
     // A live connector in warning or error needs attention; a mock or a missing one never does.
@@ -198,13 +199,14 @@ describe('Activity & integrations rules (plumbKpis / actChips / actRows / connRo
       .toMatchObject({ sub: '0 connected · 0 mock · 2 not connected', color: OK });
   });
 
-  it('channels: in-app always, e-mail and Teams once their connector is live', () => {
+  // X-6b / S-11 (R-037): Teams is no notification channel any more, live or not (no channel posts) — the prototype counted it.
+  it('channels: in-app always, e-mail once its connector is live; Teams never', () => {
     const ch = (email: ConnectorLink, teams: ConnectorLink) =>
       plumbingKpis({ eventsToday: 0, connectors: [row('E-mail (SMTP)', email, email === 'live' ? 'ok' : 'not_connected'), row('Microsoft Teams', teams, teams === 'live' ? 'ok' : 'not_connected')], unread: 0, personaTitle: 'x', auditEntries: 0 })[4];
-    expect(ch('none', 'none')).toMatchObject({ value: '1', sub: 'In-app · e-mail and Teams not connected' });
-    expect(ch('live', 'none')).toMatchObject({ value: '2', sub: 'In-app · e-mail · Teams not connected' });
-    expect(ch('none', 'live')).toMatchObject({ value: '2', sub: 'In-app · Teams · e-mail not connected' });
-    expect(ch('live', 'live')).toMatchObject({ value: '3', sub: 'In-app · e-mail · Teams' });
+    expect(ch('none', 'none')).toMatchObject({ value: '1', sub: 'In-app · e-mail not connected' });
+    expect(ch('live', 'none')).toMatchObject({ value: '2', sub: 'In-app · e-mail' });
+    expect(ch('none', 'live')).toMatchObject({ value: '1', sub: 'In-app · e-mail not connected' });
+    expect(ch('live', 'live')).toMatchObject({ value: '2', sub: 'In-app · e-mail' });
   });
 
   it('display options, source chips, row icons and filters', () => {
@@ -252,9 +254,13 @@ describe('Activity & integrations rules (plumbKpis / actChips / actRows / connRo
 });
 
 describe('R-169 / R-021 — notification channels from the connectors', () => {
-  it('in-app always; a live channel connector disabled by IT (D-7a) is not a channel', () => {
-    expect(notificationChannels([])).toEqual({ count: 1, sub: 'In-app · e-mail and Teams not connected' });
-    expect(notificationChannels([{ name: 'E-mail (SMTP)', link: 'live', state: 'ok' }, { name: 'Microsoft Teams', link: 'live', state: 'disabled' }, { name: 'Codex', link: 'mock', state: 'mock' }]))
-      .toEqual({ count: 2, sub: 'In-app · e-mail · Teams not connected' });
+  // X-6b / S-11 (R-037): Teams is no notification channel any more (no channel posts) — was "In-app · e-mail and Teams not
+  // connected" / "In-app · e-mail · Teams not connected".
+  it('in-app always; e-mail when its connector is live and enabled (D-7a); Teams never', () => {
+    expect(notificationChannels([])).toEqual({ count: 1, sub: 'In-app · e-mail not connected' });
+    expect(notificationChannels([{ name: 'E-mail (SMTP)', link: 'live', state: 'ok' }, { name: 'Microsoft Teams', link: 'live', state: 'ok' }, { name: 'Codex', link: 'mock', state: 'mock' }]))
+      .toEqual({ count: 2, sub: 'In-app · e-mail' });
+    expect(notificationChannels([{ name: 'E-mail (SMTP)', link: 'live', state: 'disabled' }, { name: 'Microsoft Teams', link: 'live', state: 'ok' }]))
+      .toEqual({ count: 1, sub: 'In-app · e-mail not connected' });
   });
 });

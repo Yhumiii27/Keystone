@@ -22,6 +22,7 @@ import { editActivity, moveActivity, removeRow, renamePackage, restoreRow, type 
 import { COLLAPSE_COOKIE, serializeCollapsed } from './collapse';
 import { planT, removeQuestion } from './i18n';
 import type { PlanRowView, PlanView } from './model';
+import { CURRENT_OWNER, ownerSelectOptions } from './owner-select';
 import { openPlanForm } from './plan-forms';
 import s from './plan.module.css';
 
@@ -269,7 +270,7 @@ function OwnerSelect({ value, options, save, label }: { value: string; options: 
       onChange={(e) => {
         const v = e.target.value;
         setDraft(v);
-        run(() => save(v));
+        if (v !== CURRENT_OWNER) run(() => save(v));
       }}
     />
   );
@@ -344,7 +345,7 @@ function StructureTable({ rows, code, selected, canEdit, canRemove, owners, coll
             <span role="cell" className={s.flexCell}>
               {act &&
                 (canEdit ? (
-                  <OwnerSelect value={r.owner ?? ''} options={owners} label={t('Owner')} save={edit(r.id, 'owner')} />
+                  <OwnerSelect {...ownerSelectOptions(r, owners)} label={t('Owner')} save={edit(r.id, 'owner')} />
                 ) : (
                   <span className={s.readText}>{r.ownerName}</span>
                 ))}

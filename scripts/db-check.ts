@@ -488,7 +488,8 @@ async function delivery3Writes() {
   check('issue invoice on M4 → INV-2026-004', (await issueInvoice('HLT-026', { milestone: 'M4' }, 'Romain Aubert')) === 'INV-2026-004');
   check('new meeting MTG-130', (await createMeeting('HLT-026', { title: 'Check', type: 'internal', series: 'one_off', date: '2026-10-06', invitees: ['R. Aubert'], agenda: [] }, 'Romain Aubert')) === 'MTG-130');
   const sent = await sendMinutes('MTG-118', 'Romain Aubert');
-  check('MTG-118 minutes → MIN-HLT-027, tasks T-2342 / T-2343', same(sent, { minutesNumber: 'MIN-HLT-027', invited: 5, tasks: ['T-2342', 'T-2343'] }), sent);
+  // S-12 a (R-067): every internal action owner gets a task (L. Fabre too, outside the resource pool).
+  check('MTG-118 minutes → MIN-HLT-027, tasks T-2342 / T-2343 / T-2344', same(sent, { minutesNumber: 'MIN-HLT-027', invited: 5, tasks: ['T-2342', 'T-2343', 'T-2344'] }), sent);
   check('new interface IF-10', (await createInterface('HLT-026', { title: 'Check', keystoneSide: 'site', otherParty: 'Client', dataExpected: 'Data', neededBy: '2026-11-02', owner: 'R. Aubert' }, 'Romain Aubert')) === 'IF-10');
   check('audit rows appended (13 + 7)', (await listAudit()).length === 20);
 }

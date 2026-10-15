@@ -54,7 +54,8 @@ function expected(state: any, lang: Lang) {
       number: sel.id,
       title: dt(selEn.title),
       meta: `${sel.meta.split(' · ').slice(0, 3).join(' · ')} · ${selEn.loc} · ${sel.organizer}`,
-      synced: `${t('Synced from Outlook')} · ${sel.series}`,
+      // S-11 / A-15 (R-037): no meeting is synced from Outlook yet — the series alone (the prototype: "Synced from Outlook · {series}").
+      synced: sel.series,
       type: [sel.type, sel.typeClass, sel.status, sel.stClass],
       attendance: sel.attendance.map((a: any) => [a.label, a.cls, a.color === 'var(--color-neutral-500)']),
       carried: sel.carried.length ? sel.carried.map((c: any, i: number) => [dt(selEn.carried[i].text), `${c.owner} · ${c.due}`]) : null,
@@ -247,13 +248,14 @@ describe('meetings screen — interactions played on both sides', () => {
   it('minutes of MTG-118 sent: MIN-HLT-027 on 30 Sep, read receipts for every invitee but the organizer', async () => {
     const r = await sendMinutes('MTG-118', 'Romain Aubert');
     expect(r).toMatchObject({ minutesNumber: 'MIN-HLT-027', invited: 5 });
-    expect(r.tasks).toHaveLength(2);
+    // S-12 a (R-067): L. Fabre (internal, outside the resource pool) gets a task too — the prototype made 2.
+    expect(r.tasks).toHaveLength(3);
     set({ ov: { ...state.mtg.ov, 'MTG-118': { ...state.mtg.ov['MTG-118'], status: 'Minutes sent', doc: 'MIN-HLT-027', sent: '30 Sep', read: { 'L. Fabre': '', 'J. Wagner': '', 'H. Sauvage': '', 'T. Kerbrat': '' } } } });
     await same('MTG-118');
     await same('MTG-118', 'fr');
-    // The action of J. Wagner now links to its task.
+    // The action of J. Wagner now links to its task (S-12 a: the second task, after L. Fabre's).
     const m = await ours('HLT-026', 'en', { meeting: 'MTG-118' });
-    expect(m.detail!.agenda[1].lines[1]).toMatchObject({ taskNumber: r.tasks[0], taskHref: `/my/tasks/${r.tasks[0]}` });
+    expect(m.detail!.agenda[1].lines[1]).toMatchObject({ taskNumber: r.tasks[1], taskHref: `/my/tasks/${r.tasks[1]}` });
   });
 
   it('"New meeting" MTG-130 on top of the register, organized by the viewer', async () => {

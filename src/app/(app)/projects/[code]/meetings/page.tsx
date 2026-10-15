@@ -17,12 +17,13 @@ import { meetingsScreenView } from '@/features/meetings/model';
 import { NewMeetingButton } from '@/features/meetings/new-meeting-button';
 import { riskFormDef } from '@/features/risks/forms';
 import { transcriptAiInfo } from '@/server/ai/config';
+import { listMeetingActivityOptions } from '@/server/dal/meetings';
 import { getMeetingsScreen } from '@/server/dal/meetings-screen';
 import { riskOwnerOptions } from '@/server/dal/risks-screen';
 import { canWriteMinutes } from '@/domain/rights';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
-import { projectLabelText } from '@/i18n/data-text';
+import { dataText, projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -38,12 +39,14 @@ export default async function MeetingsPage({ params, searchParams }: { params: P
   const requested = first(sp.meeting)?.toUpperCase() ?? null;
   const pinned = !!requested && data.meetings.some((m) => m.number === requested);
   const query = { view: parseMeetingsView(first(sp.view)), filter: parseMeetingFilter(first(sp.filter)), meeting: pinned ? requested : null, decisions: parseDecisionScope(first(sp.decisions)) };
-  const view = meetingsScreenView({ code: projectCode, meetings: data.meetings, questions: data.questions, query }, t, lang);
+  const view = meetingsScreenView({ code: projectCode, meetings: data.meetings, questions: data.questions, query, client }, t, lang);
   const selected = selectMeeting(data.meetings, query.meeting);
   const canWrite = canEdit && !!selected && canWriteMinutes(ctx.viewer, ctx.access, selected);
   // A risk proposal of the selected meeting's transcript opens the risk register's "New risk" form (risk editors only).
   const riskProposal = canWrite && !!selected?.transcript?.items.some((x) => x.type === 'risk' && x.status === 'proposed');
   const riskTeam = riskProposal && (await getProjectContext(projectCode, 'risks')).canEdit('risks') ? await riskOwnerOptions(projectCode) : null;
+  // S-12 a (R-067): the composer's optional "Activity" of an action — loaded for the minutes' writers only (never a client).
+  const activities = canWrite ? (await listMeetingActivityOptions(projectCode)).map((a) => ({ value: a.code, label: `${a.code} · ${dataText(a.name, lang)}` })) : [];
 
   const primary = canEdit ? (
     <NewMeetingButton code={projectCode} context={projectLabelText(ctx.project, lang)} form={meetingFormDef(t, lang, defaultInvitees(ctx.viewer.short, ctx.project.pm))} />
@@ -63,6 +66,7 @@ export default async function MeetingsPage({ params, searchParams }: { params: P
         ai={transcriptAiInfo()}
         riskForm={riskTeam ? riskFormDef(riskTeam) : null}
         riskTeam={riskTeam ?? []}
+        activities={activities}
       />
     </>
   );

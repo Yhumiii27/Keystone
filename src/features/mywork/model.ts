@@ -4,6 +4,7 @@
 // optimistic updates re-render consistently.
 import { screenHref } from '@/config/screens';
 import { MAX_ATTACHMENTS_PER_TASK, MAX_FILE_BYTES, MAX_FILE_TEXT, acceptOf } from '@/domain/ch4-defaults';
+import { mentionParts, type MentionCandidate } from '@/domain/mentions';
 import { withActual } from '@/domain/schedule';
 import { workingDayOf, type TaskPriority, type TaskStatus } from '@/domain/tasks';
 import type { Lang, T } from '@/i18n/translate';
@@ -114,7 +115,8 @@ export interface TaskSheetData {
   files: { id: string; name: string; meta: string; kind: AttachmentKind; href: string | null }[];
   /** Upload rules of "Attach" (chapter 4 defaults): file input `accept`, size limit (bytes and text), files per task. */
   fileRules: { accept: string; maxBytes: number; maxText: string; maxFiles: number; uploadHref: string };
-  comments: { author: string; initials: string; when: string; text: string }[];
+  /** `parts`: the text cut around its @mentions (R-149), highlighted by the sheet; absent → plain text. */
+  comments: { author: string; initials: string; when: string; text: string; parts?: { text: string; mention: boolean }[] }[];
   entries: { date: string; hours: number; note: string }[];
   /**
    * Cost note valuation (R-083, A-10: each entry at its person's rate on its date); null when the viewer may not see rates
@@ -126,9 +128,15 @@ export interface TaskSheetData {
   projectName: string;
   /** "Where this sits in the plan" (translated values; float as days, signed later). */
   plan: { activity: string; workPackage: string; finish: string; float: number | null; progress: number } | null;
+  /** P-8b (R-089): a sourcing task — created from a contract-role request ("RQ-043"), the person not named yet. */
+  sourcing: { contractRole: string; request: string } | null;
 }
 
-export function taskSheetData(d: TaskDetail, backHref: string, t: T, lang: Lang, opts: { rates?: boolean } = {}): TaskSheetData {
+/**
+ * `rates`: the viewer may see hourly rates (R-046); `mentionables`: the people who can be @mentioned (R-149) — their mentions in
+ * the comments are highlighted (names only reach the sheet as the comments' own text).
+ */
+export function taskSheetData(d: TaskDetail, backHref: string, t: T, lang: Lang, opts: { rates?: boolean; mentionables?: readonly MentionCandidate[] } = {}): TaskSheetData {
   const a = d.activity;
   return {
     id: d.id,
@@ -150,7 +158,10 @@ export function taskSheetData(d: TaskDetail, backHref: string, t: T, lang: Lang,
     storedChecklist: d.checklist,
     files: d.attachments.map((f) => ({ id: f.id, name: f.name, meta: t(f.meta), kind: f.kind, href: f.hasFile ? taskFileHref(d.id, f.id) : null })),
     fileRules: { accept: acceptOf('attachment'), maxBytes: MAX_FILE_BYTES, maxText: MAX_FILE_TEXT, maxFiles: MAX_ATTACHMENTS_PER_TASK, uploadHref: taskFilesUploadHref(d.id) },
-    comments: d.comments.map((c) => ({ author: c.author, initials: c.initials, when: t(c.when), text: c.text })),
+    comments: d.comments.map((c) => {
+      const parts = opts.mentionables ? mentionParts(c.text, opts.mentionables) : [];
+      return { author: c.author, initials: c.initials, when: t(c.when), text: c.text, ...(parts.some((p) => p.mention) ? { parts } : {}) };
+    }),
     entries: d.entries.map((e) => ({ date: t(e.dateText), hours: e.hours, note: e.note })),
     // R-046: the rate never reaches the browser of a viewer who may not see it.
     costNote: opts.rates === false ? null : d.costNote,
@@ -165,5 +176,6 @@ export function taskSheetData(d: TaskDetail, backHref: string, t: T, lang: Lang,
           progress: a.pct,
         }
       : null,
+    sourcing: d.sourceRequest && d.contractRole ? { contractRole: d.contractRole, request: d.sourceRequest } : null,
   };
 }

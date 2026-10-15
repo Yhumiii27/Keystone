@@ -53,6 +53,9 @@ export const impactText = (first: string, load: number, week: string, after: num
     ? `${first} à ${pc(load, lang)} ${weekOfText(week, t, lang)} → ${pc(after, lang)} avec cette demande`
     : `${first} at ${load}% ${week} → ${after}% with this request`;
 
+/** X-9 (R-152): confirmation toast after sending a request — "Request RQ-045 sent" / "Demande RQ-045 envoyée" (the owner's example). */
+export const requestSentText = (number: string, lang: Lang) => (fr(lang) ? `Demande ${number} envoyée` : `Request ${number} sent`);
+
 /** Dialog sub-line "Harbor Line Terminal Expansion · sent by R. Aubert" (project name already translated). */
 export const sentByText = (projectName: string, sender: string, lang: Lang) =>
   fr(lang) ? `${projectName} · envoyée par ${sender}` : `${projectName} · sent by ${sender}`;

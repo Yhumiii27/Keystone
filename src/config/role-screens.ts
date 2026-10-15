@@ -28,6 +28,9 @@ base.member.push('meetings');
 // activities (OWN) but had no Plan; they now have it, read-only except the % complete of their own activities.
 base.member.push('plan');
 base.procurement.push('plan');
+// P-8b (R-089): an approved request for a contract role becomes a task for procurement to find and name the person — procurement
+// gets My work (and the task sheet) to work it. A consequence of the answer, listed for the owner to confirm.
+base.procurement.push('mywork');
 base.client.push('meetings', 'itp', 'commissioning');
 for (const k of Object.keys(base) as (keyof typeof base)[]) {
   base[k].push('docs');

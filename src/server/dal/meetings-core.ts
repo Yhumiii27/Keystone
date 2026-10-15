@@ -4,7 +4,7 @@ import 'server-only';
 import { and, eq, sql } from 'drizzle-orm';
 import { isoOfDisplayDate, type MeetingLineOrigin, type MeetingLineType } from '@/server/db/codes';
 import { findPerson, nameOf, writeAudit } from '@/server/db/helpers';
-import { meetingAgendaPoints, meetingLines, meetings } from '@/server/db/schema';
+import { activities, meetingAgendaPoints, meetingLines, meetings } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 
 export type MeetingRecord = typeof meetings.$inferSelect;
@@ -28,7 +28,12 @@ export interface NewMeetingLine {
   /** Actions: owner (default the organizer) and due as typed (default "—"). */
   owner?: string | null;
   due?: string | null;
+  /** Actions (S-12 a, R-067): plan activity code, resolved in the meeting's project (another project's activity is refused). */
+  activity?: string | null;
 }
+
+/** A minutes line refused for a reason the user can act on (the Server Function shows the message). */
+export class MeetingLineError extends Error {}
 
 /** Appends lines to an agenda point; returns their positions. Actions default to the organizer and "—". */
 export async function appendLines(tx: Tx, m: MeetingRecord, point: number, lines: (NewMeetingLine & { origin: MeetingLineOrigin })[]): Promise<number[]> {
@@ -40,9 +45,15 @@ export async function appendLines(tx: Tx, m: MeetingRecord, point: number, lines
     const isAction = l.type === 'action';
     const owner = isAction ? l.owner?.trim() || m.organizerName : null;
     const due = isAction ? l.due?.trim() || '—' : null;
+    let activityId: string | null = null;
+    if (isAction && l.activity) {
+      const [a] = await tx.select({ id: activities.id }).from(activities).where(and(eq(activities.projectId, m.projectId), eq(activities.code, l.activity)));
+      if (!a) throw new MeetingLineError('Unknown activity');
+      activityId = a.id;
+    }
     rows.push({
       agendaPointId: pt.id, position: maxPos + 1 + k, type: l.type, text: l.text.trim(), ownerName: owner, ownerPersonId: owner ? (await findPerson(tx, owner))?.id ?? null : null,
-      dueText: due, dueDate: due && due !== '—' ? isoOfDisplayDate(due) : null, origin: l.origin,
+      dueText: due, dueDate: due && due !== '—' ? isoOfDisplayDate(due) : null, activityId, origin: l.origin,
     });
   }
   if (rows.length) await tx.insert(meetingLines).values(rows);

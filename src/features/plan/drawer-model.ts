@@ -27,6 +27,11 @@ export interface DrawerInput {
   packages: PlanPackage[];
   /** OWN directory (full name and title per key). */
   owners: PlanOwner[];
+  /**
+   * R-172: display name of the activity's owner from the DAL (full name, else short name), for owners outside the OWN directory
+   * (the wizard's default PM "S. Perrin"); absent → the directory entry, else the key.
+   */
+  ownerName?: string | null;
   /** Recorded resource assignments of the activity (A1250_RES); empty → the owner as lead. */
   assignments: DrawerResourceInput[];
   /** To-dos of the project (linked by `act`). */
@@ -116,7 +121,7 @@ export function activityDrawerView(input: DrawerInput, baseT: T, lang: Lang): Dr
   const f = (k: number) => money(k, lang);
   const byId = new Map(activities.map((x) => [x.id, x]));
   const owner = input.owners.find((o) => o.code === a.owner);
-  const ownerName = owner?.name ?? a.owner ?? '—';
+  const ownerName = (a.owner && input.ownerName) || owner?.name || a.owner || '—';
   const pkg = input.packages.find((p) => p.code === a.wbs)?.name ?? '';
   // Calendar (S-2): the activity's override, else the project calendar; the prototype's WBS rule without calendar data.
   const cals = input.calendars ?? [];

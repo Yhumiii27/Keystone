@@ -19,6 +19,7 @@ import {
 } from '@/domain/lifecycle';
 import { useI18n } from '@/i18n/client';
 import { moveStageAction } from './actions';
+import { forcedMoveToastText } from './toasts';
 import { PROJECTS_RESET_EVENT } from './events';
 import { ForceDialog, MoveDialog, type ForceRequest, type MoveRequest } from './force-dialog';
 import { registerTitleText } from './i18n';
@@ -109,6 +110,8 @@ export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, editableCod
       setOptStage({ code: row.code, to });
       const r = await moveStageAction({ code: row.code, to, mode, reason, effectiveOn });
       if (!r.ok) toast.showEn(r.error);
+      // X-9 / L-1 (R-152): a forced move (Annulé included) is confirmed once the server accepted it; auto moves stay silent.
+      else if (mode === 'forced') toast.show(forcedMoveToastText(row.code, t));
     });
   };
 

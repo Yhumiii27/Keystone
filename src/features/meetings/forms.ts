@@ -8,8 +8,11 @@ import type { Lang, T } from '@/i18n/translate';
 import { meetingSeries, meetingType } from '@/server/db/codes';
 import { formT } from './i18n';
 
-/** AF_RESULT.meetings; the action prefixes the meeting title ("{title} · Meeting created · …"). */
-export const MEETING_RESULT = 'Meeting created · invitation synced to the calendar';
+/**
+ * AF_RESULT.meetings; the action prefixes the meeting title ("{title} · Meeting created"). S-11 / A-15 (R-037): no invitation is
+ * sent and nothing is synced to a calendar (the prototype said "invitation synced to the calendar").
+ */
+export const MEETING_RESULT = 'Meeting created';
 /**
  * Default date of the form: the Tuesday of the week after next from the data date (R-169; Tue 6 Oct 2026 on the seed, the
  * prototype's literal).
@@ -25,7 +28,8 @@ export function meetingFormDef(t: T, lang: Lang, invitees: string, dataDate?: st
   return {
     title: tr('New meeting'),
     kind: 'create',
-    submit: tr('Create & invite'),
+    // S-11 / A-15 (R-037): the meeting is created in Keystone, no invitation goes out (was "Create & invite").
+    submit: tr('Create meeting'),
     fields: [
       { id: 'title', label: tr('Title'), type: 'text', required: true },
       { id: 'type', label: tr('Type'), type: 'select', options: meetingType.codes.map((c) => ({ value: c, label: tr(meetingType.label(c)) })) },

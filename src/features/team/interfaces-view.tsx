@@ -1,6 +1,6 @@
 // Interface register screen body (docs/spec/07 §2.5, template 893–899): KPI row and the register of data owed by the
 // client or third parties — need date with its "in n d" / "n d late" line, provided date, status tag (Late derived),
-// owner and the row actions "Mark received" / "Freeze" (client island, editors only). "New interface" is the
+// owner and the row actions "Mark received" (with its received date, Q-4 a) / "Freeze" (client island, editors only). "New interface" is the
 // header's primary action. Server Component.
 import { EmptyState } from '@/components/app/EmptyState';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
@@ -16,10 +16,12 @@ export interface InterfacesBodyProps {
   view: InterfacesView;
   /** Row actions allowed (not outside the workspace, not a read-only project). */
   canEdit: boolean;
+  /** Q-4 a (R-116): default of the "Received on" dialog — today, in the viewer's language. */
+  receivedDefault: string;
   t: T;
 }
 
-export function InterfacesBody({ code, view, canEdit, t }: InterfacesBodyProps) {
+export function InterfacesBody({ code, view, canEdit, receivedDefault, t }: InterfacesBodyProps) {
   return (
     <Stack>
       <KpiGrid>
@@ -68,7 +70,9 @@ export function InterfacesBody({ code, view, canEdit, t }: InterfacesBodyProps) 
                   {r.owner}
                 </Td>
                 <Td className={s.actions}>
-                  {canEdit && (r.canReceive || r.canFreeze) && <InterfaceActions code={code} number={r.number} canReceive={r.canReceive} canFreeze={r.canFreeze} />}
+                  {canEdit && (r.canReceive || r.canFreeze) && (
+                    <InterfaceActions code={code} number={r.number} canReceive={r.canReceive} canFreeze={r.canFreeze} receivedDefault={receivedDefault} />
+                  )}
                 </Td>
               </tr>
             ))}

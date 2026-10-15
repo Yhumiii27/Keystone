@@ -135,6 +135,8 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
         activities: data.activities,
         packages: data.packages,
         owners: data.owners,
+        // R-172: the owner's name from the DAL (full, else short) — owners outside the OWN list ("S. Perrin") included.
+        ownerName: act.ownerName,
         assignments,
         todos,
         requests,

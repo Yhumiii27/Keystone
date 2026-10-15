@@ -3,12 +3,15 @@ import 'server-only';
 // (state.todos filtered by `act`, shown with their assignee and due date); the composer "Add a to-do…" had no handler. Here
 // it creates a task (T-nnnn, origin 'activity_todo') assigned to the activity owner by default, due at the activity finish;
 // ticking toggles done ↔ in progress like My work; only to-dos created by the composer without logged time can be removed.
+// R-015 (X-6a): the assignee of a new to-do is told in the bell ("Task assigned · T-xxxx") once it is committed, unless they
+// created it themself.
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { getDb } from '@/server/db/client';
 import { STATUS_ISO, taskStatus, type TaskStatus } from '@/server/db/codes';
 import { findPerson, nameOf, nextNumber, requireProject, writeAudit } from '@/server/db/helpers';
 import { activities, persons, tasks, timeEntries } from '@/server/db/schema';
+import { notifyTasksAssigned } from './task-notices';
 
 export interface ActivityTodo {
   number: string;
@@ -62,14 +65,14 @@ export interface NewActivityTodo {
   dueDate?: string | null;
 }
 
-/** "Add a to-do…": creates the task. Returns its number. */
+/** "Add a to-do…": creates the task, then tells its assignee (R-015, after the commit). Returns its number. */
 export async function addActivityTodo(code: string, activityCode: string, input: NewActivityTodo, actorName: string): Promise<string> {
   const title = input.title.trim();
   if (!title) throw new Error('A to-do needs a title');
   if (title.length > 200) throw new Error('A to-do title holds at most 200 characters');
   const a = await activityOf(code, activityCode);
   const db = await getDb();
-  return db.transaction(async (tx) => {
+  const number = await db.transaction(async (tx) => {
     const assignee = input.assignee ? await findPerson(tx, input.assignee) : null;
     if (input.assignee && !assignee) throw new Error(`Unknown person "${input.assignee}"`);
     const due = input.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(input.dueDate) ? input.dueDate : a.finish && a.finish >= STATUS_ISO ? a.finish : STATUS_ISO;
@@ -86,6 +89,8 @@ export async function addActivityTodo(code: string, activityCode: string, input:
     await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number, change: `to-do added on ${activityCode}`, area: 'Tasks', entityType: 'task', entityId: t.id, projectId: a.projectId });
     return number;
   });
+  await notifyTasksAssigned([number], actorName);
+  return number;
 }
 
 async function todoOf(code: string, number: string) {

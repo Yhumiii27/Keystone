@@ -99,6 +99,8 @@ describe('provider rows for HLT-026 (director)', () => {
     const h = (k: string) => a[wbs.rows[0].indexOf(k)];
     expect([h('Name'), typeof h('Budget'), typeof h('% complete'), h('Start date')]).toEqual(['Steel erection — Bays 3–4', 'number', 'number', expect.stringMatching(/^2026-\d\d-\d\d$/)]);
     expect(String(h('Predecessors'))).toMatch(/^A\d{4} (FS|SS|FF|SF)/);
+    // R-172: the Owner column names the owner as the screen does (HLT-026 unchanged: the OWN directory's full name).
+    expect(h('Owner')).toBe('Julien Wagner');
   });
 
   it('risks: sorted by score, the category chip filters; PDF register report', async () => {

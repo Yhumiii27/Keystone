@@ -6,8 +6,9 @@ import 'server-only';
 // revision (a project without a P&ID gets its sheet and the five validation steps — the empty state's invitation), the
 // first validation step "Tags extracted from P&ID rev X", the audit row and the activity event. The viewer is the
 // actor; the screen must be in their workspace (Server Functions also check the project read-only rule).
-// TODO(db): persist the staged plan as an ImportJob (docs/spec/11 §3.12: formatId, fileRef, mode, stagingRows) once
-// the platform table exists; the staging is recomputed from the submitted file today.
+// By design (R-172), the staging is not stored: it is re-planned from the submitted file inside the apply transaction, so
+// what is written always matches the current tags. An ImportJob of kind 'pid' (docs/spec/11 §3.12: formatId, fileRef, mode,
+// stagingRows, as the schedule imports keep) waits for the owner lifting the import freeze (D-7b).
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import {
   importModeLabel, importSourceLabel, normaliseTag, parsePidTagList, planHasChanges, planPidImport,

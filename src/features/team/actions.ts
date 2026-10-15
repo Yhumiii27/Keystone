@@ -5,7 +5,8 @@
 // writers with the viewer as the actor, then revalidates the project's pages (register, KPIs, sidebar badge).
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
-import { interfaceRowState, parseNewInterface, parseNewStakeholder } from '@/domain/team';
+import { interfaceRowState, parseNewInterface, parseNewStakeholder, parseReceivedOn } from '@/domain/team';
+import { NOW_ISO } from '@/server/db/codes';
 import { createInterface, freezeInterface, listInterfaces, markInterfaceReceived } from '@/server/dal/interfaces';
 import { getProject } from '@/server/dal/projects';
 import { addStakeholder } from '@/server/dal/stakeholders';
@@ -74,8 +75,11 @@ export async function createInterfaceAction(code: string, values: Record<string,
   return { toast: await tr(INTERFACE_RESULT) };
 }
 
-/** Row actions: "Mark received" (Open or Late → Received) and "Freeze" (Received → Frozen). */
-async function transition(code: string, number: string, to: 'received' | 'frozen'): Promise<InterfaceActionResult> {
+/**
+ * Row actions: "Mark received" (Open or Late → Received, with the received date — Q-4 a, R-116) and "Freeze" (Received →
+ * Frozen, the provided date kept).
+ */
+async function transition(code: string, number: string, to: 'received' | 'frozen', values?: unknown): Promise<InterfaceActionResult> {
   const ok = await editable(code, 'interfaces');
   if ('error' in ok) return ok;
   if (typeof number !== 'string' || !number) return { error: await tr('Invalid request') };
@@ -84,8 +88,15 @@ async function transition(code: string, number: string, to: 'received' | 'frozen
   const state = interfaceRowState(row);
   if (to === 'received' ? !state.canReceive : !state.canFreeze)
     return { error: await tr(to === 'received' ? 'This interface is no longer open' : 'Only a received interface can be frozen') };
+  let receivedOn: string | undefined;
+  if (to === 'received') {
+    const parsed = parseReceivedOn(strings(values).received, NOW_ISO);
+    if (!parsed.ok) return { error: await tr(parsed.error) };
+    receivedOn = parsed.value;
+  }
   try {
-    await (to === 'received' ? markInterfaceReceived : freezeInterface)(ok.code, row.number, ok.actor);
+    if (to === 'received') await markInterfaceReceived(ok.code, row.number, ok.actor, receivedOn);
+    else await freezeInterface(ok.code, row.number, ok.actor);
   } catch {
     return { error: await tr('The change could not be saved') };
   }
@@ -93,8 +104,9 @@ async function transition(code: string, number: string, to: 'received' | 'frozen
   return { ok: true };
 }
 
-export async function markInterfaceReceivedAction(code: string, number: string): Promise<InterfaceActionResult> {
-  return transition(code, number, 'received');
+/** "Mark received" → dialog "Received on" (`values.received`, today by default, never after today). */
+export async function markInterfaceReceivedAction(code: string, number: string, values?: Record<string, string>): Promise<InterfaceActionResult> {
+  return transition(code, number, 'received', values);
 }
 
 export async function freezeInterfaceAction(code: string, number: string): Promise<InterfaceActionResult> {

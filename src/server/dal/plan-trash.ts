@@ -17,23 +17,30 @@ import 'server-only';
 //
 // Purge rule: each new removal on a project first purges that project's trash rows older than PLAN_TRASH_RETENTION_DAYS (real
 // clock, S-4: timestamps follow the real clock) and keeps at most PLAN_TRASH_MAX_ENTRIES; an expired row can no longer be restored.
+// Both values are S-5 defaults still to be confirmed by the owner (src/domain/ch4-defaults.ts).
+//
+// Positions (R-064, "ghost slots"): work packages and activities share one position sequence per project. A removed row keeps
+// its slot: a writer that opens a slot below it (insertActivity) shifts the positions stored in the trash with the live rows
+// (`shiftTrashedPositions`), a new work package goes after the trashed ones too (`maxTrashedPosition`), so a restore puts the
+// rows back between the same neighbours with unique positions. If a stored slot is taken anyway, the rows at or above it are
+// shifted by the block size first. A restored link whose position among its successor's predecessors was taken since goes last.
+// The writers of the sequence lock the project row (FOR UPDATE) so concurrent inserts, removals and restores are serialised.
 // R-006: the worker's "plan-trash-purge" job applies the same rule to every project on a schedule (`purgeExpiredPlanTrash`),
 // so expired entries and their attachment files also leave the projects nobody edits.
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { getTableColumns } from 'drizzle-orm';
 import { getTableConfig, PgTable, type PgColumn } from 'drizzle-orm/pg-core';
+import { PLAN_TRASH_MAX_ENTRIES, PLAN_TRASH_RETENTION_DAYS } from '@/domain/ch4-defaults';
 import { trashEntriesToPurge } from '@/domain/jobs';
 import { getDb } from '@/server/db/client';
 import { findPerson, nameOf, nextNumber, recordActivity, writeAudit } from '@/server/db/helpers';
 import * as schema from '@/server/db/schema';
-import { activities, planTrash, projects, tasks, timeEntries, wbsNodes } from '@/server/db/schema';
+import { activities, activityLinks, planTrash, projects, tasks, timeEntries, wbsNodes } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 import { deleteStoredFile } from '@/server/storage/files';
 
-/** Days a removal stays restorable ("Recently deleted"); older rows are purged at the project's next removal. */
-export const PLAN_TRASH_RETENTION_DAYS = 30;
-/** Trash rows kept per project (the oldest beyond are purged at the next removal). */
-export const PLAN_TRASH_MAX_ENTRIES = 20;
+/** S-5 defaults (src/domain/ch4-defaults.ts), re-exported for the Plan page and the tests. */
+export { PLAN_TRASH_MAX_ENTRIES, PLAN_TRASH_RETENTION_DAYS };
 /** Entries shown in the Plan "Recently deleted" list. */
 export const PLAN_TRASH_LIST_LIMIT = 5;
 
@@ -106,6 +113,74 @@ const idColumn = (t: PgTable): PgColumn | undefined => colsOf(t).id;
 const OWNED: ReadonlySet<string> = new Set(['activities.wbsNodeId', 'schedule_bars.wbsNodeId']);
 /** Never followed: the WBS tree itself (only level-1 packages without child nodes are removable). */
 const IGNORED: ReadonlySet<string> = new Set(['wbs_nodes.parentId']);
+
+// ── Ghost slots (R-064) ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/** Tables of the shared WBS position sequence (work packages and activities). */
+const POSITIONED: ReadonlySet<string> = new Set(['wbs_nodes', 'activities']);
+
+/** Positions stored in a trash payload (work packages and activities). */
+const storedPositions = (p: TrashPayload) =>
+  p.tables.filter((g) => POSITIONED.has(g.table)).flatMap((g) => g.rows.map((r) => r.position)).filter((x): x is number => typeof x === 'number');
+
+/**
+ * Shifts by `by` the positions stored in the project's trash entries (work packages and activities) at or above `from` — the
+ * ghost slots move with the live rows when a writer opens a slot below them. Every entry of the project (rows handed over
+ * between entries included); `exceptId` = the entry being restored. Inside the writer's transaction.
+ */
+export async function shiftTrashedPositions(tx: Tx, projectId: string, from: number, by: number, exceptId?: string): Promise<void> {
+  const entries = await tx.select({ id: planTrash.id, payload: planTrash.payload }).from(planTrash).where(eq(planTrash.projectId, projectId));
+  for (const e of entries) {
+    if (e.id === exceptId) continue;
+    const pl = e.payload as unknown as TrashPayload;
+    let changed = false;
+    for (const g of pl.tables) {
+      if (!POSITIONED.has(g.table)) continue;
+      for (const r of g.rows) {
+        if (typeof r.position !== 'number' || r.position < from) continue;
+        r.position += by;
+        changed = true;
+      }
+    }
+    if (changed) await tx.update(planTrash).set({ payload: pl as unknown as Record<string, unknown> }).where(eq(planTrash.id, e.id));
+  }
+}
+
+/** Highest position held by a trashed work package or activity of the project (its ghost slot), null when none. */
+export async function maxTrashedPosition(tx: Tx, projectId: string): Promise<number | null> {
+  const entries = await tx.select({ payload: planTrash.payload }).from(planTrash).where(eq(planTrash.projectId, projectId));
+  const all = entries.flatMap((e) => storedPositions(e.payload as unknown as TrashPayload));
+  return all.length ? Math.max(...all) : null;
+}
+
+/** Locks the project row: the writers of its position sequence (insert, remove, restore) run one at a time. */
+export async function lockProjectRow(tx: Tx, where: { id: string } | { code: string }): Promise<{ id: string } | null> {
+  const [p] = await tx
+    .select({ id: projects.id })
+    .from(projects)
+    .where('id' in where ? eq(projects.id, where.id) : eq(projects.code, where.code))
+    .for('update');
+  return p ?? null;
+}
+
+/**
+ * Restored links (R-064): a link whose position among its successor's predecessors was taken since the removal (the successor's
+ * logic rewritten by updateActivity) goes after the successor's last predecessor instead.
+ */
+async function freeLinkPositions(tx: Tx, values: Row[]): Promise<Row[]> {
+  const succIds = [...new Set(values.map((v) => v.successorId).filter((x): x is string => typeof x === 'string'))];
+  if (!succIds.length) return values;
+  const live = await tx.select({ succ: activityLinks.successorId, position: activityLinks.position }).from(activityLinks).where(inArray(activityLinks.successorId, succIds));
+  const used = new Map<string, Set<number>>();
+  for (const l of live) used.set(l.succ, (used.get(l.succ) ?? new Set()).add(l.position));
+  return values.map((v) => {
+    const succ = v.successorId as string;
+    const taken = used.get(succ) ?? new Set<number>();
+    const position = taken.has(v.position as number) ? Math.max(...taken) + 1 : (v.position as number);
+    used.set(succ, taken.add(position));
+    return position === v.position ? v : { ...v, position };
+  });
+}
 
 // ── Capture & delete ───────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -233,7 +308,7 @@ export async function purgeExpiredPlanTrash(now = new Date()): Promise<{ entries
 export async function trashPlanRow(code: string, kind: 'wp' | 'act', key: string, actorName: string, now = new Date()): Promise<string | null> {
   const db = await getDb();
   const out = await db.transaction(async (tx) => {
-    const [p] = await tx.select({ id: projects.id }).from(projects).where(eq(projects.code, code));
+    const p = await lockProjectRow(tx, { code });
     if (!p) return null;
     let root: { id: string; name: string };
     let activityCount: number;
@@ -331,7 +406,7 @@ export async function restorePlanTrash(code: string, trashId: string, actorName:
   const db = await getDb();
   try {
     return await db.transaction(async (tx) => {
-      const [p] = await tx.select({ id: projects.id }).from(projects).where(eq(projects.code, code));
+      const p = await lockProjectRow(tx, { code });
       if (!p) return { error: 'unknown' as const };
       const cutoff = new Date(now.getTime() - PLAN_TRASH_RETENTION_DAYS * 86_400_000);
       const [entry] = await tx.select().from(planTrash).where(and(eq(planTrash.id, trashId), eq(planTrash.projectId, p.id)));
@@ -366,6 +441,22 @@ export async function restorePlanTrash(code: string, trashId: string, actorName:
         t.number = `T-${String(free++).padStart(4, '0')}`;
         kept.add(t.number as string);
       }
+      // R-064: the stored slots are kept free by the ghost-slot rule; if one is taken anyway (a writer that does not shift the
+      // trash), the rows at or above the block move up by its size first, so the rows come back in place with unique positions.
+      const slots = storedPositions(payload);
+      if (slots.length) {
+        const [lo, hi] = [Math.min(...slots), Math.max(...slots)];
+        const [[node], [act]] = await Promise.all([
+          tx.select({ id: wbsNodes.id }).from(wbsNodes).where(and(eq(wbsNodes.projectId, p.id), inArray(wbsNodes.position, slots))).limit(1),
+          tx.select({ id: activities.id }).from(activities).where(and(eq(activities.projectId, p.id), inArray(activities.position, slots))).limit(1),
+        ]);
+        if (node || act) {
+          const by = hi - lo + 1;
+          await tx.update(wbsNodes).set({ position: sql`${wbsNodes.position} + ${by}` }).where(and(eq(wbsNodes.projectId, p.id), sql`${wbsNodes.position} >= ${lo}`));
+          await tx.update(activities).set({ position: sql`${activities.position} + ${by}` }).where(and(eq(activities.projectId, p.id), sql`${activities.position} >= ${lo}`));
+          await shiftTrashedPositions(tx, p.id, lo, by, entry.id);
+        }
+      }
       const { tables, edges } = schemaGraph();
       const restored = new Map<string, Set<string>>();
       // Rows / references whose other end is not there (e.g. a link to an activity removed after this one): handed over to the
@@ -393,6 +484,7 @@ export async function restorePlanTrash(code: string, trashId: string, actorName:
           }
         }
         if (!values.length) continue;
+        if (table === 'activity_links') values = await freeLinkPositions(tx, values);
         await tx.insert(t).values(values as never);
         restored.set(table, new Set(values.map((v) => v.id).filter((x): x is string => typeof x === 'string')));
       }

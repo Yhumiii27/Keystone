@@ -17,8 +17,10 @@ import { parseNewRisk } from '@/domain/risk';
 import { RISK_RESULT } from '@/features/risks/forms';
 import { transcriptAiInfo } from '@/server/ai/config';
 import {
-  addMeetingLine, analyseTranscript, applyTranscriptToMinutes, createMeeting, getMeeting, sendMinutes, toggleMeetingAction, type MeetingRow,
+  addMeetingLine, analyseTranscript, applyTranscriptToMinutes, createMeeting, getMeeting, listMeetingActivityOptions, readerOf, recordMinutesRead, sendMinutes,
+  toggleMeetingAction, type MeetingRow,
 } from '@/server/dal/meetings';
+import { MeetingLineError } from '@/server/dal/meetings-core';
 import { ensureFirstAgendaPoint } from '@/server/dal/meetings-screen';
 import {
   addTranscriptQuestion, importTranscript, markTranscriptProposalApplied, setTranscriptProposalStatus, TranscriptError, updateTranscriptProposal,
@@ -98,13 +100,13 @@ async function write<R>(label: string, fn: () => Promise<R>): Promise<{ ok: true
     return { ok: true, value: await fn() };
   } catch (e) {
     // Refusals with a user-facing reason (minutes sent meanwhile, transcript too long, file type…) keep their message.
-    if (e instanceof TranscriptError || e instanceof FileRejectedError) return { ok: false, error: e.message };
+    if (e instanceof TranscriptError || e instanceof FileRejectedError || e instanceof MeetingLineError) return { ok: false, error: e.message };
     logError(label, e);
     return { ok: false, error: 'The change could not be saved' };
   }
 }
 
-/** "New meeting" → "Create & invite": MTG-130…, Scheduled, organized by the viewer; toast "{title} · Meeting created · …". */
+/** "New meeting" → "Create meeting": MTG-130…, Scheduled, organized by the viewer; toast "{title} · Meeting created" (no invitation sent, R-037). */
 export async function createMeetingAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const g = await editable(code);
   if (!g.ok) return { error: await tr(g.error) };
@@ -120,13 +122,23 @@ export async function createMeetingAction(code: string, values: Record<string, s
   return { toast: `${v.title} · ${t(MEETING_RESULT)}` };
 }
 
-/** Composer "+ Add" / Enter: a note on the selected agenda point; Scheduled → Notes in progress. */
-export async function addMinutesLineAction(input: { code: string; meeting: string; point: number; type: string; text: string; owner?: string; due?: string }): Promise<MeetingActionResult> {
+/**
+ * Composer "+ Add" / Enter: a note on the selected agenda point; Scheduled → Notes in progress. S-12 a (R-067): an action may
+ * name a plan activity of this project (the minutes' writers only — the organiser and the PM, who see the select); the task
+ * "Send minutes" creates carries it.
+ */
+export async function addMinutesLineAction(input: {
+  code: string; meeting: string; point: number; type: string; text: string; owner?: string; due?: string; activity?: string;
+}): Promise<MeetingActionResult> {
   const g = await editableMeeting(input?.code, input?.meeting);
   if (!g.ok) return fail(g.error);
   if (g.meeting.status === 'minutes_sent') return fail('Minutes already sent');
   const parsed = parseMinutesLine(input);
   if (!parsed.ok) return fail(parsed.error);
+  if (parsed.value.activity) {
+    if (!canWriteMinutes(g.ctx.viewer, g.ctx.access, g.meeting)) return fail(MINUTES_WRITERS);
+    if (!(await listMeetingActivityOptions(g.code)).some((a) => a.code === parsed.value.activity)) return fail('Unknown activity');
+  }
   const point = input.point;
   if (!isIndex(point)) return fail('Unknown agenda point');
   const noAgenda = g.meeting.agenda.length === 0;
@@ -303,8 +315,34 @@ export async function addProposalQuestionAction(code: string, meeting: string, p
 }
 
 /**
- * "Send minutes to all invitees": MIN-{project}-nnn released in the Codex index, to-dos for the action owners of
- * the resource pool, read receipts; toast "{MIN} · minutes sent to {n} invitees · {k} actions added to tasks".
+ * S-11 a (R-037): a read receipt recorded in Keystone when a minutes recipient clicks "Open minutes" in "Distribution & read
+ * receipts" (merely viewing the meeting does not count). Reading is not editing: the viewer only has to see the project's
+ * meetings (getProjectContext — read-only projects and screens outside the workspace included; a client only on their
+ * organisation's projects and the external meetings, P-10b). Nothing is recorded for a viewer who is not a recipient, the
+ * organizer, or a receipt already there. Returns whether a receipt was recorded.
+ */
+export async function recordMinutesReadAction(input: { code: string; meeting: string }): Promise<{ ok: true; recorded: boolean } | { ok: false; error: string }> {
+  const readFail = async (error: string) => ({ ok: false as const, error: await tr(error) });
+  if (typeof input?.code !== 'string' || !input.code) return readFail('Invalid request');
+  if (typeof input.meeting !== 'string' || !MTG_RE.test(input.meeting)) return readFail('Unknown meeting');
+  const project = await getProject(input.code);
+  if (!project) return readFail('Unknown project');
+  const ctx = await getProjectContext(project.code, 'meetings');
+  const meeting = await getMeeting(input.meeting);
+  if (!meeting || meeting.projectCode !== project.code || (ctx.viewer.role === 'client' && meeting.type !== 'external')) return readFail('Unknown meeting');
+  if (meeting.status !== 'minutes_sent') return { ok: true, recorded: false };
+  const reader = await readerOf(ctx.viewer);
+  if (!reader) return { ok: true, recorded: false };
+  const r = await write('recordMinutesReadAction', () => recordMinutesRead(meeting.number, reader));
+  if (!r.ok) return readFail(r.error);
+  if (r.value) refresh(project.code);
+  return { ok: true, recorded: r.value };
+}
+
+/**
+ * "Send minutes to all invitees": MIN-{project}-nnn released in the Codex index, a task per action (S-12 a: the internal owner,
+ * else a follow-up for the external owner's relationship owner or the PM — counted in the toast), read receipts; toast
+ * "{MIN} · minutes sent to {n} invitees · {k} actions added to tasks". The assignees are told in the bell (R-015, by the DAL).
  */
 export async function sendMinutesAction(input: { code: string; meeting: string }): Promise<MeetingActionResult> {
   const g = await minutesMeeting(input?.code, input?.meeting);

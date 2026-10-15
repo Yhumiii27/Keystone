@@ -4,12 +4,13 @@
 // state (useOptimistic) is shared through context by the body and the header's "Mark done" primary, so the status
 // ⇄ % coupling, ticks, comments and time entries show at once and reconcile when the Server Function revalidates.
 import {
-  ArrowLeft, ArrowSquareOut, DownloadSimple, File, FileDoc, FilePdf, FileXls, Image as ImageIcon, Lightning, Paperclip, Plus, Trash, TreeStructure,
+  ArrowLeft, ArrowSquareOut, DownloadSimple, File, FileDoc, FilePdf, FileXls, Image as ImageIcon, Lightning, Paperclip, Plus, Trash, TreeStructure, UserPlus,
 } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
 import { useRouter } from 'next/navigation';
 import { createContext, useContext, useOptimistic, useRef, useState, useTransition, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { Callout } from '@/components/app/Callout';
+import { FormDialog } from '@/components/app/FormDialog';
 import { CheckRow, CheckSquare } from '@/components/app/Check';
 import { KeyValueList } from '@/components/app/KeyValueList';
 import { AttachmentRow, CommentRow, TimeEntryRow } from '@/components/app/Rows';
@@ -27,11 +28,12 @@ import {
 } from '@/domain/tasks';
 import { liveTaskCost } from '@/domain/hr';
 import { useI18n } from '@/i18n/client';
+import { dataText } from '@/i18n/data-text';
 import { TODAY, dayLabel } from '@/lib/format';
 import type { AttachmentKind } from '@/server/db/codes';
 import {
-  addChecklistItemAction, addTaskCommentAction, logTaskTimeAction, markTaskDoneAction, removeTaskFileAction, setTaskProgressAction, setTaskStatusAction,
-  toggleChecklistItemAction, type TaskActionResult,
+  addChecklistItemAction, addTaskCommentAction, logTaskTimeAction, markTaskDoneAction, nameSourcedPersonAction, removeTaskFileAction, setTaskProgressAction,
+  setTaskStatusAction, toggleChecklistItemAction, type TaskActionResult,
 } from './actions';
 import { checkCountText, costNoteText, daysText } from './i18n';
 import type { TaskSheetData } from './model';
@@ -80,6 +82,8 @@ interface TaskCtx {
   live: LiveState;
   canEdit: boolean;
   canComment: boolean;
+  /** P-8b (R-089): the people the viewer may name on this sourcing task (procurement, director); null otherwise. */
+  naming: { candidates: string[] } | null;
   viewer: { name: string; initials: string };
   run: (op: Op, call: () => Promise<TaskActionResult>) => void;
 }
@@ -98,12 +102,14 @@ export interface TaskProviderProps {
   canEdit: boolean;
   /** Comments (inside the workspace). */
   canComment: boolean;
+  /** P-8b (R-089): "Name the person" on a sourcing task — the people offered (procurement and the director only). */
+  naming?: { candidates: string[] } | null;
   viewer: { name: string; initials: string };
   children: ReactNode;
 }
 
 /** Wraps the page header and the body: one optimistic state for both. */
-export function TaskProvider({ data, canEdit, canComment, viewer, children }: TaskProviderProps) {
+export function TaskProvider({ data, canEdit, canComment, naming = null, viewer, children }: TaskProviderProps) {
   const toast = useToast();
   const [, startTransition] = useTransition();
   const base: LiveState = { status: data.status, pct: data.pct, loggedH: data.loggedH, checklist: data.checklist, comments: data.comments, entries: data.entries };
@@ -114,7 +120,7 @@ export function TaskProvider({ data, canEdit, canComment, viewer, children }: Ta
       const r = await call();
       if (!r.ok) toast.showEn(r.error);
     });
-  return <Ctx.Provider value={{ data, live, canEdit, canComment, viewer, run }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ data, live, canEdit, canComment, naming, viewer, run }}>{children}</Ctx.Provider>;
 }
 
 /** Header primary "Mark done" (hidden by the page when the viewer cannot edit; inert once done). */
@@ -173,6 +179,7 @@ export function TaskBody() {
           <CommentsCard />
         </div>
         <div className={s.col}>
+          {data.sourcing && <SourcingCard />}
           <ProgressCard />
           <PlanCard />
         </div>
@@ -414,7 +421,18 @@ function CommentsCard() {
       <CardTitle compact>{t('Comments')}</CardTitle>
       {live.comments.map((c, i) => (
         <CommentRow key={i} author={c.author} initials={c.initials} when={c.when}>
-          {c.text}
+          {/* R-149: @mentions highlighted (typed text, shown as typed). */}
+          {c.parts
+            ? c.parts.map((p, j) =>
+                p.mention ? (
+                  <span key={j} className={s.mention}>
+                    {p.text}
+                  </span>
+                ) : (
+                  p.text
+                ),
+              )
+            : c.text}
         </CommentRow>
       ))}
       {!live.comments.length && <span className={s.empty}>{t('No comments yet')}</span>}
@@ -432,6 +450,51 @@ function CommentsCard() {
             {t('Post')}
           </button>
         </form>
+      )}
+    </div>
+  );
+}
+
+/**
+ * P-8b (R-089): a sourcing task — procurement finds the person for a contract role of a resource request and names them here
+ * (an existing person only); the task then goes to that person. Others see the card without the action.
+ */
+function SourcingCard() {
+  const { t, lang } = useI18n();
+  const { data, naming } = useTask();
+  const [open, setOpen] = useState(false);
+  const sourcing = data.sourcing!;
+  // The contract role is shown as typed (a seeded role keeps its dictionary entry, R-148).
+  const role = dataText(sourcing.contractRole, lang);
+  const name = async (values: Record<string, string>) => {
+    const person = values.person ?? '';
+    const r = await nameSourcedPersonAction({ taskId: data.id, person });
+    if (!r.ok) return { error: t(r.error) };
+    return { toast: `${data.id} · ${t('Person named')} · ${person}` };
+  };
+  return (
+    <div className={cx('card', 'elev-sm', s.sheet, s.gap8)}>
+      <CardTitle compact>{t('Person to find and name')}</CardTitle>
+      <span className={s.sourcingRole}>{`${role} · ${sourcing.request}`}</span>
+      {naming && (
+        <>
+          <span className={s.costNote}>{t('Choose an existing person: the resource pool first, then the other people Keystone knows. Not in Keystone yet? Leave a comment — the task stays with procurement.')}</span>
+          <Button variant="primary" icon={UserPlus} className={s.addBtn} disabled={!naming.candidates.length} onClick={() => setOpen(true)}>
+            {t('Name the person')}
+          </Button>
+          {open && (
+            <FormDialog
+              title={t('Name the person')}
+              submit={t('Name the person')}
+              kind="create"
+              fields={[{ id: 'person', label: t('Person'), type: 'select', required: true, options: naming.candidates }]}
+              open
+              onClose={() => setOpen(false)}
+              context={`${data.id} · ${role}`}
+              onSubmit={name}
+            />
+          )}
+        </>
       )}
     </div>
   );
