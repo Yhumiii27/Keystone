@@ -5,7 +5,7 @@
 // only adds the links to those applications and the last refresh.
 import type { FormDef } from '@/components/app/form-def';
 import {
-  COLLISION_TARGET, DEFAULT_HEADCOUNT, INCIDENT_OPTIONS, SITE_TABS, SITE_TAB_LABEL, WEATHER_OPTIONS, collisionTagClass, equipmentSourceTagClass,
+  COLLISION_TARGET, DEFAULT_HEADCOUNT, SITE_TABS, SITE_TAB_LABEL, WEATHER_OPTIONS, collisionTagClass, equipmentSourceTagClass,
   execKpis, goLabel, isNcrLink, preparationNote, prerequisiteStep, readinessKpis, siteDateText, siteTagClass, teamKpis,
   type SiteFacts, type SiteKpi, type SiteTab,
 } from '@/domain/site';
@@ -15,7 +15,7 @@ import {
   STATUS_ISO, cursusClearance, cursusSyncStatus, cursusVaccination, cursusVerdict, cursusVisa, shortDateOfIso, stampText,
 } from '@/server/db/codes';
 import type { SiteData } from '@/server/dal/site';
-import { cursusChantierUrl } from '@/server/integrations/cursus/links';
+import { cursusChantierUrl, cursusEmployeeUrl } from '@/server/integrations/cursus/links';
 import { vigieHseListUrl, vigieReportIncidentUrl } from '@/server/integrations/vigie/links';
 import { dataText, incidentText, siteText, weatherText } from './i18n';
 import { CURSUS_CARD_ID, qualityNcrHref, screenOf, siteHref } from './links';
@@ -45,7 +45,10 @@ export interface ReadyView {
     rows: {
       /** Cursus's name of the person (the reminder's key; `who` is the displayed text). */
       person: string;
-      who: string; visa: string; visaClass: string; vacc: string; vaccClass: string; hab: string; habClass: string; habNote: string; habColor: string;
+      who: string;
+      /** R-032 (NEW-CURSUS-3 'a'): the person in Cursus (by matricule, a proposed parameter); null without a matricule. */
+      personUrl: string | null;
+      visa: string; visaClass: string; vacc: string; vaccClass: string; hab: string; habClass: string; habNote: string; habColor: string;
       status: string; tagClass: string; rec: string;
       /** Verdict not GO and no reminder sent yet (the prototype's `canReq`). */
       remindable: boolean;
@@ -104,7 +107,7 @@ export function factsOf(d: SiteData): SiteFacts {
   return {
     startOn: d.sheet.startOn, planDays: d.sheet.planDays, doneDays: d.sheet.doneDays, manDaysPlanned: d.sheet.manDaysPlanned, clientDecisions: d.clientDecisions,
     prerequisites: d.prerequisites, people: d.cursus.people, equipment: d.equipment, collisions: d.collisions, rotation: d.rotation, missionCosts: d.missionCosts,
-    reports: d.dailyReports.map((r) => ({ reportOn: r.reportOn, headcount: r.headcount, hseIncident: r.hseIncident })),
+    reports: d.dailyReports.map((r) => ({ reportOn: r.reportOn, headcount: r.headcount })),
     punch: d.punch, hse: d.hse, premium: d.premium,
   };
 }
@@ -143,7 +146,7 @@ function readyView(code: string, d: SiteData, t: T, lang: Lang): ReadyView {
         const hab = cursusClearance.label(p.clearance);
         const verdict = cursusVerdict.label(p.verdict);
         return {
-          person: p.personName, who: p.personName, visa: t(visa), visaClass: siteTagClass(visa), vacc: t(vacc), vaccClass: siteTagClass(vacc), hab: t(hab), habClass: siteTagClass(hab),
+          person: p.personName, who: p.personName, personUrl: cursusEmployeeUrl(p.matricule), visa: t(visa), visaClass: siteTagClass(visa), vacc: t(vacc), vaccClass: siteTagClass(vacc), hab: t(hab), habClass: siteTagClass(hab),
           habNote: t(p.clearanceNote), habColor: p.clearance === 'ok' ? 'var(--color-neutral-400)' : LO, status: t(verdict), tagClass: siteTagClass(verdict),
           rec: t(stampText(new Date(p.receivedAt))), remindable: p.verdict !== 'go' && !p.reminded, reminded: p.reminded,
           reminderSync: p.reminderSyncStatus ? t(cursusSyncStatus.label(p.reminderSyncStatus)) : null,
@@ -222,8 +225,12 @@ export function siteView(code: string, data: SiteData | null, opts: { tab: SiteT
   };
 }
 
-/** The header primary's form (AF.site): weather and HSE codes as values, the status date as the default date. */
-export function dailyReportFormDef(t: T, lang: Lang, today: string = STATUS_ISO): FormDef {
+/**
+ * The header primary's form (AF.site): weather codes as values, the status date as the default date. NEW-SITE-2 'a' (R-122):
+ * no HSE field any more — `incidentUrl` (Vigie's "report an incident" page, prefilled with the project and the site) is the
+ * note under the fields, "HSE incident? Declare it in Vigie".
+ */
+export function dailyReportFormDef(t: T, lang: Lang, today: string = STATUS_ISO, incidentUrl?: string): FormDef {
   return {
     title: t('Daily report'),
     submit: t('Save report'),
@@ -233,7 +240,7 @@ export function dailyReportFormDef(t: T, lang: Lang, today: string = STATUS_ISO)
       { id: 'weather', label: t('Weather'), type: 'select', options: WEATHER_OPTIONS.map((w) => ({ value: w, label: weatherText(w, t, lang) })) },
       { id: 'headcount', label: t('Headcount on site'), type: 'number', defaultValue: String(DEFAULT_HEADCOUNT) },
       { id: 'progress', label: t('Progress'), type: 'textarea', required: true },
-      { id: 'incident', label: t('HSE'), type: 'select', options: INCIDENT_OPTIONS.map((i) => ({ value: i, label: incidentText(i, t) })) },
     ],
+    ...(incidentUrl ? { note: { text: t('HSE incident?'), linkLabel: t('Declare it in Vigie'), href: incidentUrl } } : {}),
   };
 }

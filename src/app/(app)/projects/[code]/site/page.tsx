@@ -18,6 +18,7 @@ import { photoViews } from '@/features/photos/model';
 import { SiteBody } from '@/features/site/site-view';
 import { listProjectPhotos } from '@/server/dal/photos';
 import { getSite } from '@/server/dal/site';
+import { vigieReportIncidentUrl } from '@/server/integrations/vigie/links';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { projectLabelText } from '@/i18n/data-text';
@@ -34,7 +35,13 @@ export default async function SitePage({ params, searchParams }: { params: Promi
   const view = siteView(projectCode, data, { tab: siteTabOf(first(sp.tab)) }, t, lang);
 
   const primary = canEdit ? (
-    <DailyReportButton code={projectCode} context={projectLabelText(ctx.project, lang)} form={dailyReportFormDef(t, lang)} execHref={siteHref(projectCode, 'exec')} />
+    <DailyReportButton
+      code={projectCode}
+      context={projectLabelText(ctx.project, lang)}
+      // NEW-SITE-2 'a' (R-122): no HSE field; incidents are declared in Vigie (prefilled with the project and the site).
+      form={dailyReportFormDef(t, lang, undefined, vigieReportIncidentUrl({ projectCode, location: data?.sheet.site }))}
+      execHref={siteHref(projectCode, 'exec')}
+    />
   ) : undefined;
 
   // R-126: photos on the Daily execution tab (internal viewers; the client never sees the site's records — P-10b).

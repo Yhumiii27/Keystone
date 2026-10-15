@@ -233,7 +233,16 @@ function CursusCard({ code, v, canEdit, t }: { code: string; v: ReadyView['cursu
         <tbody>
           {v.rows.map((r) => (
             <tr key={r.person}>
-              <td className={s.nowrap}>{r.who}</td>
+              <td className={s.nowrap}>
+                {/* R-032 (NEW-CURSUS-3 'a'): the person in Cursus when Cursus gave a matricule; plain text otherwise (the prototype). */}
+                {r.personUrl ? (
+                  <a href={r.personUrl} {...CURSUS_LINK_ATTRS} className={s.personLink} title={t('Opens Cursus in a new window')}>
+                    {r.who}
+                  </a>
+                ) : (
+                  r.who
+                )}
+              </td>
               <td>
                 <span className={cx(r.visaClass, s.nowrap)}>{r.visa}</span>
               </td>

@@ -132,18 +132,23 @@ describe('Site view model vs the prototype (EN and FR)', () => {
     expect((await view('fr', 'NDC-031')).v.empty).toBe('Le module chantier s’ouvre quand le projet atteint l’étape Expédition — pas encore de fiche chantier pour ce projet.');
   });
 
-  it('Daily report form: the prototype fields, weather and HSE codes as values, the status date by default, FR weather "Dégagé"', () => {
+  it('Daily report form: the prototype fields without HSE (NEW-SITE-2 a), weather codes as values, the status date by default, FR weather "Dégagé"', () => {
     const en = dailyReportFormDef(makeT('en'), 'en');
     expect([en.title, en.submit, en.kind]).toEqual([G.form.title, G.form.submit, 'create']);
-    expect(en.fields.map((f) => [f.id, f.label, f.type, !!f.required])).toEqual(G.form.fields.map((f: any[]) => [f[0], f[1], f[2], !!f[4]]));
-    expect(en.fields.map((f) => f.defaultValue ?? null)).toEqual(['25 Sep 2026', null, '24', null, null]);
+    // NEW-SITE-2 'a' (R-122): the prototype's fifth field (HSE incident, AF.site) is gone — incidents are declared in Vigie.
+    expect(G.form.fields[4][0]).toBe('incident');
+    expect(en.fields.map((f) => [f.id, f.label, f.type, !!f.required])).toEqual(G.form.fields.slice(0, 4).map((f: any[]) => [f[0], f[1], f[2], !!f[4]]));
+    expect(en.fields.map((f) => f.defaultValue ?? null)).toEqual(['25 Sep 2026', null, '24', null]);
     expect(en.fields[1].options).toEqual(G.form.fields[1][3].map((l: string, i: number) => ({ value: ['clear', 'rain', 'wind', 'storm'][i], label: l })));
-    expect(en.fields[4].options).toEqual(G.form.fields[4][3].map((l: string, i: number) => ({ value: ['none', 'near_miss', 'first_aid', 'incident'][i], label: l })));
+    expect(en.note).toBeUndefined();
     const fr = dailyReportFormDef(makeT('fr'), 'fr');
-    expect([fr.title, fr.submit, fr.fields.map((f) => f.label)]).toEqual(['Rapport journalier', 'Enregistrer le rapport', ['Date', 'Météo', 'Effectif sur site', 'Avancement', 'HSE']]);
+    expect([fr.title, fr.submit, fr.fields.map((f) => f.label)]).toEqual(['Rapport journalier', 'Enregistrer le rapport', ['Date', 'Météo', 'Effectif sur site', 'Avancement']]);
     expect(fr.fields[0].defaultValue).toBe('25 sept. 2026');
     expect(fr.fields[1].options!.map((o) => (typeof o === 'string' ? o : o.label))).toEqual(['Dégagé', 'Pluie', 'Vent > 50 km/h', 'Tempête']);
-    expect(fr.fields[4].options!.map((o) => (typeof o === 'string' ? o : o.label))).toEqual(['Aucun', 'Presque-accident', 'Premiers soins', 'Incident']);
+    // The link to Vigie's incident form (prefilled with the project and the site) under the fields.
+    const url = 'http://localhost:3200/signaler?projet=HLT-026&source=keystone';
+    expect(dailyReportFormDef(makeT('en'), 'en', undefined, url).note).toEqual({ text: 'HSE incident?', linkLabel: 'Declare it in Vigie', href: url });
+    expect(dailyReportFormDef(makeT('fr'), 'fr', undefined, url).note).toEqual({ text: 'Incident HSE ?', linkLabel: 'Déclarez-le dans Vigie', href: url });
   });
 
   it('FR counts agree in number (the shared rules gave "1 non confirmés", "1 conditions sur 5", "1 expédiés", "1 approbations")', () => {
@@ -230,15 +235,15 @@ describe('Site static render', () => {
 });
 
 describe('a daily report saved with the form (last: writes to the database)', () => {
-  it('listed first with its weather, headcount and HSE under the text; typed text kept as typed in FR; man-days follow', async () => {
-    await saveDailyReport('HLT-026', { date: '2026-09-25', weather: 'clear', headcount: 8, progress: 'Montage poteaux · Mon équipe', incident: 'incident' }, { name: 'Julien Wagner', role: 'member' });
+  it('listed first with its weather and headcount under the text (no HSE: NEW-SITE-2 a); typed text kept as typed in FR; man-days follow', async () => {
+    await saveDailyReport('HLT-026', { date: '2026-09-25', weather: 'clear', headcount: 8, progress: 'Montage poteaux · Mon équipe' }, { name: 'Julien Wagner', role: 'member' });
     const en = (await view('en', 'HLT-026', 'exec')).v.exec!;
-    expect(en.reports[0]).toMatchObject({ number: 'DR-003', date: '25 Sep', act: '—', pct: '—', txt: 'Montage poteaux · Mon équipe', detail: 'Clear · 8 on site · HSE: Incident', link: '—', href: null, by: 'J. Wagner' });
+    expect(en.reports[0]).toMatchObject({ number: 'DR-003', date: '25 Sep', act: '—', pct: '—', txt: 'Montage poteaux · Mon équipe', detail: 'Clear · 8 on site', link: '—', href: null, by: 'J. Wagner' });
     expect(en.kpis[1]).toMatchObject({ value: '3' });
     // A-12 (chapter 4): the HSE tile counts the incidents Vigie (the HSE owner) reports, not the daily report's field.
     expect(en.kpis[3]).toMatchObject({ value: '0 incident', sub: '2 permits pending' });
     const fr = (await view('fr', 'HLT-026', 'exec')).v.exec!;
-    expect(fr.reports[0]).toMatchObject({ date: '25 sept.', txt: 'Montage poteaux · Mon équipe', detail: 'Dégagé · 8 sur site · HSE : Incident' });
+    expect(fr.reports[0]).toMatchObject({ date: '25 sept.', txt: 'Montage poteaux · Mon équipe', detail: 'Dégagé · 8 sur site' });
     // Before the site start the headcount is preparation, not man-days on site.
     expect((await view('en', 'HLT-026', 'team')).v.team!.kpis[1].sub).toBe('0 consumed · site starts 19 Oct 2026');
   });

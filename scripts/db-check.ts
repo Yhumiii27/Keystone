@@ -672,7 +672,7 @@ async function delivery5Writes() {
     await addMachine({ name: 'Check crane', machineType: 'EMP', client: 'Port authority', site: 'Le Havre · quay 5' }, pm),
     await openClaim({ machineNumber: 'MCH-050', issue: 'Check', severity: 'minor', coverage: 'warranty', owner: 'T. Kerbrat' }, pm),
     await raiseClientIssue('HLT-026', 'Check', { name: 'Nadia Bensaïd', role: 'client' }),
-    await saveDailyReport('HLT-026', { date: '2026-09-30', weather: 'clear', progress: 'Check', incident: 'none' }, pm),
+    await saveDailyReport('HLT-026', { date: '2026-09-30', weather: 'clear', progress: 'Check' }, pm),
   ];
   check('numbering: P-10 · LL-10 · MCH-050 · WC-020 · CI-08 · DR-003', same(numbers, ['P-10', 'LL-10', 'MCH-050', 'WC-020', 'CI-08', 'DR-003']), numbers);
   const rem = await remindInCursus('HLT-026', 'Thomas Kerbrat', pm);

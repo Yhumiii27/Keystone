@@ -146,14 +146,16 @@ describe('site Server Functions', () => {
     }
   });
 
-  it('"Daily report": DR-003 listed first, by the viewer, with weather / headcount / HSE; date rules; FR messages', async () => {
+  it('"Daily report": DR-003 listed first, by the viewer, with weather / headcount (no HSE: NEW-SITE-2 a); date rules; FR messages', async () => {
     as('member', 'Julien Wagner');
+    // NEW-SITE-2 'a' (R-122): an incident sent by an older form is ignored — incidents are declared in Vigie.
     expect(await saveDailyReportAction(HLT, { date: '25 Sep 2026', weather: 'rain', headcount: '12', progress: 'Rail survey bays 1–4 · anchor bolts checked', incident: 'near_miss' }))
       .toEqual({ toast: 'Daily report saved · DR-003', number: 'DR-003' });
     const s = (await getSite(HLT))!;
     expect(s.dailyReports[0]).toMatchObject({
-      number: 'DR-003', reportOn: '2026-09-25', author: 'J. Wagner', text: 'Rail survey bays 1–4 · anchor bolts checked', weather: 'rain', headcount: 12, hseIncident: 'near_miss', fromForm: true,
+      number: 'DR-003', reportOn: '2026-09-25', author: 'J. Wagner', text: 'Rail survey bays 1–4 · anchor bolts checked', weather: 'rain', headcount: 12, hseIncident: null, fromForm: true,
     });
+    expect((await listAudit({ limit: 1 }))[0].change).toBe('daily report 2026-09-25 · Rain · 12 on site');
     expect(s.dailyReports.map((r) => r.number)).toEqual(['DR-003', 'DR-002', 'DR-001']);
     expect(await saveDailyReportAction(HLT, { date: '30 Sep 2026', progress: 'x' })).toEqual({ error: 'A daily report cannot be dated after today' });
     expect(await saveDailyReportAction(HLT, { date: 'tomorrow', progress: 'x' })).toEqual({ error: 'Enter a date such as 25 Sep 2026' });
@@ -162,7 +164,7 @@ describe('site Server Functions', () => {
     expect(await saveDailyReportAction(HLT, null as never)).toEqual({ error: 'Progress is required' });
     viewer.lang = 'fr';
     expect(await saveDailyReportAction(HLT, { headcount: 'douze', progress: 'x' })).toEqual({ error: 'L’effectif doit être un nombre entier' });
-    expect(await saveDailyReportAction(HLT, { date: '24 sept. 2026', weather: 'clear', headcount: '', progress: 'Préparation zone de levage', incident: 'none' }))
+    expect(await saveDailyReportAction(HLT, { date: '24 sept. 2026', weather: 'clear', headcount: '', progress: 'Préparation zone de levage' }))
       .toEqual({ toast: 'Rapport journalier enregistré · DR-004', number: 'DR-004' });
     expect((await getSite(HLT))!.dailyReports.find((r) => r.number === 'DR-004')).toMatchObject({ reportOn: '2026-09-24', headcount: null, weather: 'clear' });
     as('client', 'Nadia Bensaïd');

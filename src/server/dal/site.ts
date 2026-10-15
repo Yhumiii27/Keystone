@@ -242,16 +242,18 @@ export interface DailyReportInput {
   weather: Weather;
   headcount?: number | null;
   progress: string;
-  incident: HseIncident;
 }
 
-/** "Daily report" (AF.site): saved as the project's next report (DR-003…), by the viewer — listed with the others. */
+/**
+ * "Daily report" (AF.site): saved as the project's next report (DR-003…), by the viewer — listed with the others.
+ * NEW-SITE-2 'a' (R-122): no HSE incident is recorded any more (`hse_incident` stays null; incidents are declared in Vigie);
+ * the values saved before are kept and still shown.
+ */
 export async function saveDailyReport(projectCode: string, input: DailyReportInput, actor: Actor): Promise<string> {
   requireWorkspace('site', actor, 'Site');
   const text = requiredText(input.progress, 'Progress', 2000);
   if (!isIsoDate(input.date)) throw new Error('Invalid date');
   if (!weather.isCode(input.weather)) throw new Error('Invalid weather');
-  if (!hseIncident.isCode(input.incident)) throw new Error('Invalid HSE incident');
   const headcount = input.headcount == null ? null : Number(input.headcount);
   if (headcount != null && (!Number.isInteger(headcount) || headcount < 0 || headcount > 10000)) throw new Error('Invalid headcount');
   const db = await getDb();
@@ -262,10 +264,10 @@ export async function saveDailyReport(projectCode: string, input: DailyReportInp
     const who = await whoIs(tx, actor);
     const [row] = await tx.insert(dailyReports).values({
       projectId: p.id, number, reportOn: input.date, activityLabel: '—', text, linkRef: null, authorName: who.short, authorPersonId: who.personId, weather: input.weather,
-      headcount, hseIncident: input.incident, fromForm: true,
+      headcount, hseIncident: null, fromForm: true,
     }).returning({ id: dailyReports.id });
     await trace(tx, who, {
-      objectRef: number, change: `daily report ${input.date} · ${weather.label(input.weather)}${headcount != null ? ` · ${headcount} on site` : ''} · HSE ${hseIncident.label(input.incident)}`,
+      objectRef: number, change: `daily report ${input.date} · ${weather.label(input.weather)}${headcount != null ? ` · ${headcount} on site` : ''}`,
       area: 'Site', entityType: 'daily_report', entityId: row.id, projectId: p.id, activity: { text: `Daily report ${number} saved · ${text.slice(0, 80)}`, kind: 'comment' },
     });
     return number;

@@ -39,7 +39,7 @@ function facts(ov: { pre?: Record<number, ConfirmStatus>; eq?: Record<number, Co
     collisions: (P.SITE_COLLISIONS as string[][]).map(() => ({ resolved: false })),
     rotation: (P.SITE_ROTATION as string[][]).map((r) => ({ rotationNo: +r[6] })),
     missionCosts: (P.SITE_COSTS as [string, number, number][]).map(([, b, a]) => ({ budgetKeur: b, actualKeur: a })),
-    reports: (P.SITE_REPORTS as string[][]).map((r) => ({ reportOn: iso(r[0]), headcount: null, hseIncident: null })),
+    reports: (P.SITE_REPORTS as string[][]).map((r) => ({ reportOn: iso(r[0]), headcount: null })),
     punch: (P.SITE_PUNCH as string[][]).map((r) => ({ open: r[3] === 'Open', ownerParty: punchOwnerParty.code(r[4]) })),
     hse: (P.SITE_HSE as string[][]).map((h) => ({ status: (hseStatus.labels.includes(h[1]) ? hseStatus.code(h[1]) : 'recorded') as HseStatus })),
     // R-169: the weekend premiums come from the rate grid (MULTS sat ×1.5, sun ×2 on the seed).
@@ -165,10 +165,11 @@ describe('late prerequisites (J-15 rule, 10 OQ6)', () => {
 describe('computed literals of the prototype (10 OQ7)', () => {
   it('man-days consumed = headcounts reported from the site start; incidents from Vigie\'s register; rotations of the plan', () => {
     const f = facts();
+    // NEW-SITE-2 'a' (R-122): the reports' own HSE field no longer feeds anything (incidents come from Vigie).
     const reports = [
-      { reportOn: '2026-09-25', headcount: 6, hseIncident: 'none' as const },
-      { reportOn: '2026-10-19', headcount: 24, hseIncident: 'incident' as const },
-      { reportOn: '2026-10-20', headcount: 22, hseIncident: 'near_miss' as const },
+      { reportOn: '2026-09-25', headcount: 6 },
+      { reportOn: '2026-10-19', headcount: 24 },
+      { reportOn: '2026-10-20', headcount: 22 },
     ];
     expect(manDaysConsumed({ startOn: f.startOn, reports })).toBe(46);
     const g = { ...f, reports, rotation: [{ rotationNo: 1 }] };
@@ -187,16 +188,20 @@ describe('computed literals of the prototype (10 OQ7)', () => {
 
 describe('Daily report form (AF.site)', () => {
   const parse = (v: Record<string, string>) => parseDailyReportForm(v, { today: '2026-09-25', parseDate: (s) => parseDateInput(s) });
+  // Record of AF.site (the prototype form); NEW-SITE-2 'a' (R-122) removes its HSE field in Keystone (src/features/site/model.ts).
   it('the prototype form: date, weather, headcount, progress (required), HSE', () => {
     expect(G.form.fields.map((f: any[]) => [f[0], f[1], f[2], f[4] ?? 0])).toEqual([
       ['date', 'Date', 'text', 0], ['weather', 'Weather', 'select', 0], ['headcount', 'Headcount on site', 'number', 0], ['progress', 'Progress', 'textarea', 1], ['incident', 'HSE', 'select', 0],
     ]);
     expect(G.formResult).toBe('Daily report saved');
   });
-  it('valid values (EN and FR dates, blank date = today, blank headcount)', () => {
-    expect(parse({ date: '24 Sep 2026', weather: 'rain', headcount: '24', progress: ' Bay 3 columns set ', incident: 'near_miss' }))
-      .toEqual({ ok: true, value: { date: '2026-09-24', weather: 'rain', headcount: 24, progress: 'Bay 3 columns set', incident: 'near_miss' } });
-    expect(parse({ date: '25 sept. 2026', progress: 'x' })).toMatchObject({ ok: true, value: { date: '2026-09-25', weather: 'clear', headcount: null, incident: 'none' } });
+  it('valid values (EN and FR dates, blank date = today, blank headcount); no HSE incident (NEW-SITE-2 a)', () => {
+    expect(parse({ date: '24 Sep 2026', weather: 'rain', headcount: '24', progress: ' Bay 3 columns set ' }))
+      .toEqual({ ok: true, value: { date: '2026-09-24', weather: 'rain', headcount: 24, progress: 'Bay 3 columns set' } });
+    expect(parse({ date: '25 sept. 2026', progress: 'x' })).toEqual({ ok: true, value: { date: '2026-09-25', weather: 'clear', headcount: null, progress: 'x' } });
+    // NEW-SITE-2 'a' (R-122): an incident sent by an older form is ignored, whatever its value.
+    expect(parse({ progress: 'x', incident: 'near_miss' })).toEqual(parse({ progress: 'x' }));
+    expect(parse({ progress: 'x', incident: 'fire' })).toMatchObject({ ok: true });
     expect(parse({ date: '', progress: 'x' })).toMatchObject({ ok: true, value: { date: '2026-09-25' } });
   });
   it('refuses a blank progress, an unreadable or future date, a bad headcount and unknown codes', () => {
@@ -206,7 +211,6 @@ describe('Daily report form (AF.site)', () => {
     expect(parse({ headcount: '2.5', progress: 'x' })).toEqual({ ok: false, error: 'Headcount must be a whole number' });
     expect(parse({ headcount: '-1', progress: 'x' })).toEqual({ ok: false, error: 'Headcount must be a whole number' });
     expect(parse({ weather: 'Clear', progress: 'x' })).toEqual({ ok: false, error: 'Invalid request' });
-    expect(parse({ incident: 'fire', progress: 'x' })).toEqual({ ok: false, error: 'Invalid request' });
     expect(parse({ progress: 'x'.repeat(2001) })).toEqual({ ok: false, error: 'Progress is too long' });
   });
 });

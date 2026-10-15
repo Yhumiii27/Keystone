@@ -14,7 +14,8 @@
 //   the incidents Vigie reports (chapter 4, A-12; the daily reports' count before) — the prototype showed literals;
 // - the Go chantier tag follows `stTag` (GO neutral, NO GO accent) — the prototype always used the accent tag (10 OQ9);
 // - the Daily report form is saved (dated at most on the status date, default the status date — the prototype's
-//   default "30 Sep 2026" was after it) and listed with the other reports.
+//   default "30 Sep 2026" was after it) and listed with the other reports. NEW-SITE-2 'a' (R-122): it no longer asks for an
+//   HSE incident — incidents are declared in Vigie (the form links to it); the reports' saved values are kept and shown.
 // Kept as constants (A-12, 10 OQ7): the site premium "×1.5 / ×2" and its calendar text.
 // Chapter 4 (A-12, src/domain/kpis.ts): "Man-days planned" = Σ rotation crew × working days on the project calendar
 // (`plannedManDays`, computed by the DAL); "Client decisions logged" = decisions of the project's meetings with the client
@@ -24,8 +25,8 @@ import type { Lang } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import { vigieIncidentCount } from './kpis';
 import {
-  STATUS_ISO, addDaysIso, hseIncident, shortDateOfIso, weather,
-  type CollisionKind, type ConfirmStatus, type CursusVerdict, type EquipmentSource, type HseIncident, type HseStatus, type PunchOwnerParty, type Weather,
+  STATUS_ISO, addDaysIso, shortDateOfIso, weather,
+  type CollisionKind, type ConfirmStatus, type CursusVerdict, type EquipmentSource, type HseStatus, type PunchOwnerParty, type Weather,
 } from '@/server/db/codes';
 
 // ── Tabs ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -157,7 +158,7 @@ export interface SiteFacts {
   collisions: readonly { resolved: boolean }[];
   rotation: readonly { rotationNo: number }[];
   missionCosts: readonly { budgetKeur: number; actualKeur: number }[];
-  reports: readonly { reportOn: string; headcount: number | null; hseIncident: HseIncident | null }[];
+  reports: readonly { reportOn: string; headcount: number | null }[];
   punch: readonly { open: boolean; ownerParty: PunchOwnerParty | null }[];
   /** Vigie's HSE register: `kind` and `statusText` give the incident counts of its registers ("0 déclaré"). */
   hse: readonly { status: HseStatus; kind?: string; statusText?: string | null }[];
@@ -179,9 +180,6 @@ export const siteDateText = (iso: string) => `${shortDateOfIso(iso)} ${iso.slice
 /** Man-days reported on site since the start (Σ daily-report headcount from the start date). */
 export const manDaysConsumed = (f: Pick<SiteFacts, 'startOn' | 'reports'>) =>
   f.reports.filter((r) => r.reportOn >= f.startOn).reduce((s, r) => s + (r.headcount ?? 0), 0);
-
-/** Incidents declared in the daily reports (HSE = Incident). */
-export const declaredIncidents = (f: Pick<SiteFacts, 'reports'>) => f.reports.filter((r) => r.hseIncident === 'incident').length;
 
 /** Rotations of the plan (distinct rotation numbers). */
 export const rotationCount = (f: Pick<SiteFacts, 'rotation'>) => new Set(f.rotation.map((r) => r.rotationNo)).size;
@@ -265,13 +263,13 @@ export const isNcrLink = (link: string | null | undefined): link is string => !!
 
 export type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
+/** NEW-SITE-2 'a' (R-122): no HSE incident field — incidents are declared in Vigie. */
 export interface DailyReportForm {
   /** ISO date, at most the status date. */
   date: string;
   weather: Weather;
   headcount: number | null;
   progress: string;
-  incident: HseIncident;
 }
 
 export const DAILY_REPORT_DATE_ERROR = 'Enter a date such as 25 Sep 2026';
@@ -284,11 +282,11 @@ export const PROGRESS_MAX = 2000;
 /** Default headcount of the form (prototype). */
 export const DEFAULT_HEADCOUNT = 24;
 export const WEATHER_OPTIONS: readonly Weather[] = weather.codes;
-export const INCIDENT_OPTIONS: readonly HseIncident[] = hseIncident.codes;
 
 /**
  * Validates the Daily report form (raw strings from the client): date (any format `parseDate` reads, not after
- * `today`; blank = `today`), weather and HSE codes, optional whole headcount, required progress text.
+ * `today`; blank = `today`), weather code, optional whole headcount, required progress text. NEW-SITE-2 'a' (R-122): an
+ * `incident` value sent by an older form is ignored — incidents are declared in Vigie.
  */
 export function parseDailyReportForm(
   v: Record<string, string | undefined>,
@@ -304,13 +302,11 @@ export function parseDailyReportForm(
   if (date > today) return { ok: false, error: DAILY_REPORT_FUTURE_ERROR };
   const w = (v.weather ?? '').trim() || WEATHER_OPTIONS[0];
   if (!weather.isCode(w)) return { ok: false, error: 'Invalid request' };
-  const inc = (v.incident ?? '').trim() || INCIDENT_OPTIONS[0];
-  if (!hseIncident.isCode(inc)) return { ok: false, error: 'Invalid request' };
   const hc = (v.headcount ?? '').trim();
   let headcount: number | null = null;
   if (hc) {
     if (!/^\d+$/.test(hc) || +hc > 10000) return { ok: false, error: HEADCOUNT_ERROR };
     headcount = +hc;
   }
-  return { ok: true, value: { date, weather: w, headcount, progress, incident: inc } };
+  return { ok: true, value: { date, weather: w, headcount, progress } };
 }

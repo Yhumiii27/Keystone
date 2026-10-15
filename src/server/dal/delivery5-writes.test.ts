@@ -257,10 +257,11 @@ describe('site — readiness, daily reports, Cursus', () => {
   });
 
   it('"Daily report": DR-003 by the viewer, listed first', async () => {
-    expect(await saveDailyReport(HLT, { date: '2026-09-30', weather: 'wind', headcount: 24, progress: 'Crane rail survey bays 1–3', incident: 'none' }, A.pm)).toBe('DR-003');
+    // NEW-SITE-2 'a' (R-122): no HSE incident is recorded with the report any more (declared in Vigie).
+    expect(await saveDailyReport(HLT, { date: '2026-09-30', weather: 'wind', headcount: 24, progress: 'Crane rail survey bays 1–3' }, A.pm)).toBe('DR-003');
     const s = (await getSite(HLT))!;
-    expect(s.dailyReports[0]).toMatchObject({ number: 'DR-003', reportOn: '2026-09-30', author: 'R. Aubert', weatherLabel: 'Wind > 50 km/h', headcount: 24, hseIncidentLabel: 'None' });
-    await expect(saveDailyReport(HLT, { date: '2026-09-30', weather: 'clear', progress: ' ', incident: 'none' }, A.pm)).rejects.toThrow(/required/);
+    expect(s.dailyReports[0]).toMatchObject({ number: 'DR-003', reportOn: '2026-09-30', author: 'R. Aubert', weatherLabel: 'Wind > 50 km/h', headcount: 24, hseIncident: null, hseIncidentLabel: null });
+    await expect(saveDailyReport(HLT, { date: '2026-09-30', weather: 'clear', progress: ' ' }, A.pm)).rejects.toThrow(/required/);
   });
 
   it('Cursus (mock): remind once per person not GO; GO refused; sync reports the approvals', async () => {
