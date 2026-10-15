@@ -84,7 +84,7 @@ Integrator: if `work-planning` (merged first) also took 0027+, drop this lot's t
 
 ## Translations
 
-`src/i18n/extra/d8-site-quality.json` only (105 keys; Vigie / Cursus links, punch origin and party, the conflicts' texts, the arbitration, the site sheet forms, messages and toasts). `src/i18n/same-in-french.json`: "HSE" removed (no longer used), "Budget (k€)" added (sorted). No prototype key overridden; no `extra/index.ts` or `fr-dict.json` change.
+`src/i18n/extra/d8-site-quality.json` only (107 keys; Vigie / Cursus links, punch origin and party, the conflicts' texts, the arbitration, the site sheet forms, messages and toasts). `src/i18n/same-in-french.json`: "HSE" removed (no longer used), "Budget (k€)" added (sorted). No prototype key overridden; no `extra/index.ts` or `fr-dict.json` change.
 
 ## Tests
 
@@ -92,7 +92,7 @@ New files: `src/server/integrations/cursus/links.test.ts`, `src/features/site/cu
 
 Existing tests changed, each citing its decision: `domain/site.test.ts`, `domain/itpcom.test.ts`, `features/site/actions.test.ts`, `render.test.ts` (NEW-SITE-2 a, A-6 a, D-6b a, D-3 a: empty state EN / FR, "Cursus site" meta row, mission cost columns), `page.test.ts` (D-3 a), `features/itpcom/render.test.ts`, `page.test.ts` (A-6 a), `features/photos/photos.test.ts` (A-6 a: the site item is P-06), `server/dal/delivery5.test.ts`, `delivery5-writes.test.ts` (A-6 a, D-6b a, table list), `scripts/db-check.ts` (no incident in the daily report check; `itp_plan_systems` 6, `site_conflict_arbitrations` 0; the unified punch numbering), `tests/e2e/08-delivery7.spec.ts` (comment: the `register` field is ignored). Golden generator scripts unchanged.
 
-Checks: see the integrator notes below for the final run.
+Checks: `npm run typecheck` clean (tsc --noEmit); eslint clean on every changed file; `scripts/db-check.ts` "All checks passed" (run through a temporary vitest wrapper, see below); full `npx vitest run --testTimeout=60000` on `36b2827`: 335 files passed, 1 skipped; 3854 tests passed, 6 skipped (load ≈ 10 on 4 CPUs). After the last commit (empty messages, comments) the touched folders were re-run green (`src/features/site`, `src/i18n`, `src/domain/site*`, `src/features/itpcom`, `src/features/photos`, `src/server/dal/delivery5*`). The e2e spec was not run (instructions).
 
 ## Notes for the integrator
 
