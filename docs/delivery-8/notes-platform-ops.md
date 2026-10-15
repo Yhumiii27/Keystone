@@ -13,7 +13,7 @@ was written.
 
 ### R-003 — container and Coolify deployment (partly buildable)
 
-- **`Dockerfile`** (replaces PR #1's single container, which stays open for the owner): `node:22-bookworm-slim`; PostgreSQL 16
+- **`Dockerfile`** (replaces PR #1's single container — PR #1 was merged into `main` on 10 Oct; the merge of `main` into this branch keeps this kit): `node:22-bookworm-slim`; PostgreSQL 16
   client tools from the PGDG apt repository (bookworm ships 15, which cannot dump a 16 server) and `tzdata` (TZ needs it), curl
   removed again; `npm ci` **keeping the development dependencies** (tsx runs `db:migrate`, the worker, backup and restore);
   build arguments **only** `NEXT_PUBLIC_CODEX_URL` / `NEXT_PUBLIC_CURSUS_URL` / `NEXT_PUBLIC_VIGIE_URL`, unset when empty
@@ -282,7 +282,7 @@ independent of the other lots' tables).
 
 | Item | Question | Default built |
 |---|---|---|
-| R-003 | Close PR #1 in favour of this Compose kit? (changes the Coolify resource type if one was already created) | kit built, PR #1 left open |
+| R-003 | PR #1 (single container) was merged into `main`; delivery 8 replaces its Dockerfile with this Compose kit — a Coolify resource created from PR #1 must become a Docker Compose resource | kit built; `main` merged into the branch, the kit kept |
 | R-003 | Is a large image acceptable (full node_modules with the dev dependencies kept for tsx), or should the worker and scripts be bundled (R-006)? | dev deps kept |
 | R-003 / auth | Who signs in first on a production-seeded base (first list of people, or the Cursus directory R-027)? | only a demo-seeded beta can be used |
 | R-004 | Interval 10 min, retention 48h,30d,12m, stale alert 30 min — confirm; volume size for ~288 snapshots in 48 h | as listed |

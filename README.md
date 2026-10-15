@@ -80,6 +80,8 @@ web, worker). Détails, réglages Coolify et procédure de mise à jour : [`docs
   ([`docs/EXPLOITATION.md`](docs/EXPLOITATION.md) § 7) ; hébergement, copie hors site des sauvegardes et stockage des fichiers
   attendent la décision I-1a.
 - **Variante mono-conteneur :** sans `DATABASE_URL` (PGlite dans `/data/pg`) et avec `KEYSTONE_JOBS=inprocess`.
+- **Réseau à la construction :** le build télécharge les dépendances npm et la police Inter (Google Fonts) : le serveur de
+  build doit avoir accès à Internet.
 
 ## Application Mac
 

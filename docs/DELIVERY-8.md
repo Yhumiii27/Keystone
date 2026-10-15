@@ -253,7 +253,7 @@ Grouped from the lots' notes (each notes file has the detail and the default bui
 | Lot | Question |
 |---|---|
 | audit-i18n-shell | REVOKE / table owner on the hosting; GDPR purge of audit rows; French of the demo's typed names; « MT » for total float; 3 search hits per kind; client sees every CR of their projects |
-| platform-ops | PR #1 vs the Compose kit; image size; who signs in first on a production base; backup interval, retention, off-site copy, PITR; update deadlines and Dependabot; antivirus fail-closed and purge; support, training, beta calendar |
+| platform-ops | A Coolify resource created from PR #1's single container must become a Docker Compose resource; image size; who signs in first on a production base; backup interval, retention, off-site copy, PITR; update deadlines and Dependabot; antivirus fail-closed and purge; support, training, beta calendar |
 | roles-rates-hr | Finance on every project or its teams; Finance and invoices; budget rate; Finance's Home; who sets a person's grid role in production; backdated rate changes; real coefficients; a crew role; labour cost population; symmetric Variance KPI; "Raise issue" in the client preview |
 | cost-change | Real board threshold; "None (internal)" chosen by the client; dates-only amendments; PM step routing; client step without client accounts; CRs without a category; block per group; TCPI alert; frozen-amount import rows |
 | supply-engineering | Who cancels someone else's draft; the director as part validator; revision banner after release; "Extended" label; zone texts; Sage X3 extracts |

@@ -34,6 +34,10 @@
   {
    "date": "2026-10-15",
    "text": "Livraison 8 terminée : lot 9 (qualité et chantier) intégré, deux revues croisées (26 constats confirmés, tous corrigés avec un test), vérification complète (4 000 tests, build, db-check, matrice des routes à 9 profils, tests de bout en bout). Bilan dans docs/DELIVERY-8.md."
+  },
+  {
+   "date": "2026-10-15",
+   "text": "PR #2 (main-2a2fep → main) : main, qui contient la PR #1 (Dockerfile Coolify), fusionnée dans la branche ; le kit de la livraison 8 remplace ce Dockerfile."
   }
  ],
  "items": [
@@ -61,7 +65,9 @@
     "git worktree list : 3 worktrees .claude/worktrees/agent-a0c5…, agent-abbd…, agent-ad73… avec leurs branches worktree-agent-*"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 8",
+    "note": "PR #2 ouverte (main-2a2fep → main, livraisons 1 à 8) ; main (PR #1) fusionnée dans la branche et conflits résolus ; la fusion dans main attend l’accord du responsable produit."
    }
   },
   {
@@ -118,7 +124,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 8",
-    "note": "Livraison 8 : kit conteneur Compose pour Coolify et job CI d’image ; reste à construire l’image sur main et à choisir l’hébergement (I-1a)."
+    "note": "Livraison 8 : kit conteneur Compose pour Coolify et job CI d’image ; il remplace le Dockerfile de la PR #1 (fusionnée dans main). Reste à construire l’image sur main et à choisir l’hébergement (I-1a)."
    }
   },
   {

@@ -1,5 +1,6 @@
-# Keystone PM — one image for the web server, the job worker and the deploy-time migration (R-003; replaces PR #1's single
-# container, which the owner keeps open until this kit is reviewed). Runbook: docs/EXPLOITATION.md (French).
+# Keystone PM — one image for the web server, the job worker and the deploy-time migration (R-003). It replaces the single
+# container of PR #1 (merged into main on 10 Oct 2026) and keeps its settings: port 3000, data on /data, the sibling apps' public
+# URLs as build arguments. Runbook: docs/EXPLOITATION.md (French).
 #   web server  : the default command (next start on port 3000)
 #   migration   : npm run db:migrate     (PostgreSQL: before the new version starts; KEYSTONE_SEED explicit on an empty base)
 #   job worker  : npm run worker         (PostgreSQL; with PGlite set KEYSTONE_JOBS=inprocess on the web server instead)

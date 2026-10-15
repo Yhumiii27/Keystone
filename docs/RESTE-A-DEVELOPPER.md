@@ -8,7 +8,7 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-15 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 99 faits, 26 en cours, 59 à faire, sur 184 points.
+**Avancement** : 99 faits, 27 en cours, 58 à faire, sur 184 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
@@ -122,7 +122,7 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 
 **R-003 · Héberger une instance multi-utilisateur (bêta puis production)** — *Bloquant production · partiel · effort M* · **en cours (Livraison 8)**  
 La PR #1 (ouverte, non fusionnée) apporte un Dockerfile Coolify : un seul conteneur next start sur le port 3000, PGlite et fichiers sur un volume /data. Il reste à la rebaser sur la livraison 6, construire et tester l’image, ajouter NEXT_PUBLIC_CODEX_URL aux arguments de build, configurer TLS et domaine, et protéger l’accès tant que l’authentification manque. Ensuite viennent la préproduction et la production avec PostgreSQL et un worker ; leur cible (Azure, serveur interne ou cloud) reste à décider.  
-*Avancement : Livraison 8 : kit conteneur Compose pour Coolify et job CI d’image ; reste à construire l’image sur main et à choisir l’hébergement (I-1a). · Attend : Relecture et fusion de la PR #1 après la livraison 6 ; choix de la cible de production avec l’IT et la DSI (I-1a « À discuter ») · Sources : I-1a, 00 §8.15, DECISIONS.md « À traiter en priorité », PR #1 claude/deploiement-coolify*
+*Avancement : Livraison 8 : kit conteneur Compose pour Coolify et job CI d’image ; il remplace le Dockerfile de la PR #1 (fusionnée dans main). Reste à construire l’image sur main et à choisir l’hébergement (I-1a). · Attend : Relecture et fusion de la PR #1 après la livraison 6 ; choix de la cible de production avec l’IT et la DSI (I-1a « À discuter ») · Sources : I-1a, 00 §8.15, DECISIONS.md « À traiter en priorité », PR #1 claude/deploiement-coolify*
 
 **R-004 · Mettre en place sauvegardes et restauration (RPO ≤ 15 min, RTO ≤ 4 h)** — *Bloquant production · non commencé · effort M* · **en cours (Livraison 8)**  
 Sauvegarder la base en continu (restauration à un instant donné) ainsi que les fichiers stockés par Keystone, et écrire une procédure de restauration testée en moins de 4 h. Rien n’existe aujourd’hui : la base est un dossier PGlite local.  
@@ -152,9 +152,9 @@ Keystone stocke des données personnelles (absences dont « maladie » visibles 
 Les seules revues de sécurité sont les revues internes des livraisons. Avant d'exposer une instance multi-utilisateur avec des données financières et client, il faut un test d'intrusion externe (droits par rôle et par projet, routes d'envoi de fichiers et d'import, Server Functions) et une veille automatique des vulnérabilités des dépendances (Next.js, pdfkit, exceljs, PGlite), avec une politique de mise à jour.  
 *Avancement : Livraison 8 : processus de sécurité documenté, audit des dépendances en CI ; Dependabot à activer par le propriétaire, test d’intrusion après l’hébergement. · Attend : Choix de l'hébergement (I-1a) et d'un prestataire d'audit · Sources : 00 §8.12, 00 §8.15, I-1a, DELIVERY-6.md §1 (revues adverses internes), §1.1*
 
-**R-001 · Fusionner la livraison 6 dans main** — *Prochaine étape · non commencé · effort S*  
+**R-001 · Fusionner la livraison 6 dans main** — *Prochaine étape · non commencé · effort S* · **en cours (Livraison 8)**  
 La branche main-2a2fep (livraisons 1–6) a 30 commits d’avance sur origin/main (95412b5), et aucune PR n’est ouverte pour elle. La fusion peut se faire en avance rapide et seule la migration 0006 est nouvelle (0005 est déjà sur main). Il faut ouvrir et relire la PR, relancer typecheck, lint, tests et build, rebaser ensuite la PR #1 (Dockerfile Coolify, partie de 95412b5), puis supprimer les 3 worktrees et branches worktree-agent-*.  
-*Attend : Relecture et accord du responsable produit · Sources : CLAUDE.md, DELIVERY-6.md §1, docs/delivery-6/notes-planning.md §3*
+*Avancement : PR #2 ouverte (main-2a2fep → main, livraisons 1 à 8) ; main (PR #1) fusionnée dans la branche et conflits résolus ; la fusion dans main attend l’accord du responsable produit. · Attend : Relecture et accord du responsable produit · Sources : CLAUDE.md, DELIVERY-6.md §1, docs/delivery-6/notes-planning.md §3*
 
 **R-005 · Déplacer le stockage des fichiers hors du disque local** — *Prochaine étape · partiel · effort M*  
 Pièces jointes, transcriptions, fichiers d’import et futures photos sont écrits sur le disque du serveur (<data dir>/files). Le volume persistant /data de la PR #1 suffit pour une instance unique. Pour plusieurs instances, ou chez un hébergeur sans volume, il faut un stockage objet (S3, Azure Blob) derrière la même API storeFile / streamStoredFile.  
@@ -890,6 +890,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-15 — PR #2 (main-2a2fep → main) : main, qui contient la PR #1 (Dockerfile Coolify), fusionnée dans la branche ; le kit de la livraison 8 remplace ce Dockerfile.
 - 2026-10-15 — Livraison 8 terminée : lot 9 (qualité et chantier) intégré, deux revues croisées (26 constats confirmés, tous corrigés avec un test), vérification complète (4 000 tests, build, db-check, matrice des routes à 9 profils, tests de bout en bout). Bilan dans docs/DELIVERY-8.md.
 - 2026-10-15 — Livraison 8 : lots 7 et 8 intégrés et vérifiés (documents et portefeuille, travail et planning) — 11 points faits, 7 restent en cours (Codex, Microsoft 365, annuaire Cursus, rétention de la corbeille, import P&ID). Suite complète : 3 866 tests verts. Le lot 9 (qualité et chantier) est en construction.
 - 2026-10-15 — Livraison 8 : lots 5 et 6 intégrés et vérifiés (achats et ingénierie, connecteurs Vigie et Cursus) — 11 points faits, 9 restent en cours (en attente de Vigie, Cursus, Sage X3 ou d’un arbitrage). Suite complète : 3 696 tests verts.
