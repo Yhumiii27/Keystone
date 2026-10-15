@@ -215,8 +215,12 @@ connector, rate limit, duplicates, replacement, dispatch, replay, purge job, Cur
 `src/server/db/leave-types-migration.test.ts`, `tests/e2e/d8-connectors.spec.ts` (one post, duplicate, wrong key, invalid,
 Cursus row, Leave screen). Updated with the decision id: `domain/hr.test.ts`, `dal/delivery2.test.ts`, `features/hr/forms.test.ts`,
 `actions.test.ts`, `hr.render.test.ts` (NEW-CURSUS-4 / -7), `domain/admin.test.ts`, `features/admin/model.test.ts` (R-031),
-`domain/auth.test.ts`, `proxy.test.ts`, `domain/jobs.test.ts`, `features/deliveries/actions.test.ts`, `features/site/render.test.ts`,
+`domain/auth.test.ts`, `proxy.test.ts`, `domain/jobs.test.ts`, `server/http/request-guard.test.ts` (the `events` bucket), `features/deliveries/actions.test.ts`, `features/site/render.test.ts`,
 `dal/delivery4-writes.test.ts`, `dal/delivery5-writes.test.ts`, `scripts/db-check.ts`.
+
+Full suite (`npx vitest run`, machine shared with other lots, load ≈ 20 on 4 CPUs): 279 files; the only failures caused by
+the lot (the rate-limit list, a test edited mid-run) are fixed; 21 others were 5-second time-outs under load (bom, eco,
+meetings, photos, plm, quality page, shell, shell-render, home, health) and all pass when rerun alone.
 
 ## 5. Open questions for the owner
 
