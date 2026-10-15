@@ -11,6 +11,10 @@ import { approveLabelText } from '@/domain/documents';
 import { dataText } from '@/i18n/data-text';
 import type { Lang, T } from '@/i18n/translate';
 
+/** The hand-off toast of a download (the files are stored in Codex, D-2 = a). Not in ./actions.ts: a 'use server' file
+ * exports async functions only. */
+export const DOWNLOAD_IN_CODEX = 'Download needs Codex — the document files are stored in Codex';
+
 const fr = (lang: Lang) => lang === 'fr';
 
 /** Approver-role labels whose French differs from the shared dictionary entry. */

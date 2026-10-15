@@ -31,7 +31,8 @@ import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { getDocumentRecord, listVaultDocuments } from '@/server/dal/documents';
 import { listAudit } from '@/server/dal/notifications';
-import { DOWNLOAD_IN_CODEX, depositInCodexAction, logDownloadAction, syncCodexAction } from './actions';
+import { depositInCodexAction, logDownloadAction, syncCodexAction } from './actions';
+import { DOWNLOAD_IN_CODEX } from './i18n';
 
 const as = (p: (typeof PERSONAS)[number], isMine = true) => Object.assign(viewer, { name: p.name, short: p.short, role: p.role, isMine });
 

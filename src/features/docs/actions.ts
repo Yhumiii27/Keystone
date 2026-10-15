@@ -35,7 +35,7 @@ import { codexSyncToastT } from '@/server/integrations/codex/display';
 import { codexDocumentUrl, codexHomeUrl } from '@/server/integrations/codex/links';
 import { logError } from '@/server/log';
 import { getI18n, type Viewer } from '@/server/session';
-import { pendingSyncCountText } from './i18n';
+import { DOWNLOAD_IN_CODEX, pendingSyncCountText } from './i18n';
 
 export type DocActionResult = { ok: true; toast?: string } | { error: string };
 
@@ -177,9 +177,6 @@ export async function decideDocumentFromInboxAction(input: { number: string; ste
 
 /** Answer of a download: the Codex hand-off toast, with the "Open Codex" link to the record for the internal team. */
 export type DownloadResult = { ok: true; toast: string; link: { href: string; label: string } | null } | { error: string };
-
-/** The hand-off toast of a download (the files are stored in Codex, D-2 = a). */
-export const DOWNLOAD_IN_CODEX = 'Download needs Codex — the document files are stored in Codex';
 
 /**
  * Download of the current revision (table icon, drawer "Download PDF", revision "Native" / "PDF"). D-2 = a (R-127): the
