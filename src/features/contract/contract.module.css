@@ -63,3 +63,14 @@ textarea:global(.input).textarea { resize: vertical; min-height: 56px; }
 .dateCell { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .paidCell { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--color-neutral-300); }
 .actionCell { text-align: right; white-space: nowrap; }
+/* Delivery 8 (R-077): Edit · Remove of a planned payment milestone (wraps on a tablet, R-146). */
+.milestoneActions { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.confirmText { margin: 0; font-size: 13px; color: var(--color-neutral-300); text-wrap: pretty; }
+
+/* — Delivery 7: amendment milestones (NEW-D3-3), currency & budget rate (C-9) — */
+.muted { color: var(--color-neutral-500); }
+.groupHead { font-size: 12.5px; font-weight: 500; padding-top: 10px; border-top: 1px solid var(--color-neutral-800); }
+.subtotalCell { font-size: 12px; color: var(--color-neutral-300); }
+.subtotalHint { font-size: 12px; }
+.rateLine { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--color-neutral-900); font-size: 12.5px; }
+.rateForm { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)) auto; gap: 10px 14px; align-items: end; }

@@ -11,6 +11,7 @@ import 'server-only';
 //   and requests a credit note for the rest; an "Awaiting receipt" invoice whose receipt (accepted in Deliveries) covers
 //   only part of it reads as Blocked (`matchedInvoiceStatus`); a rejected invoice cannot be rejected again.
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { currencyOf, documentCurrencies, documentCurrencyError, eurRate, projectFxOf, type CurrencyCode } from '@/domain/currency';
 import { getDb } from '@/server/db/client';
 import {
   RFQ_AWARD_ROLES, STATUS_ISO, awardRule, incoterm, matchState, nextBusinessNumber, partStatus, poStatus, rfqStatus, splitActual, supplierInvoiceStatus,
@@ -22,12 +23,13 @@ import {
 } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
 import { bomShortfall, type ShortfallLine } from '@/domain/bom';
+import { isCancellablePo, poCancelReason, poCancelRight, poX3State, type PoCancelActor, type PoCancelKind } from '@/domain/orders';
+import { leadsProject } from './project-team';
+import { orderDeliveryTerms } from '@/domain/order-terms';
 
 type Q = DB | Tx;
 export type { ShortfallLine };
 
-/** Delivery / terms of a new order (the prototype's constant for every order). */
-export const DEFAULT_DELIVERY_TERMS = 'Site gate 2 · DAP · Net 30';
 /** First number of the purchase orders drafted in Keystone (`createDrafts`: 'PO-' + (1100 + n)). */
 export const DRAFT_PO_FLOOR = 1100;
 
@@ -67,7 +69,13 @@ export interface PurchaseOrderRow {
   /** Null = "To confirm". */
   expectedOn: string | null;
   lines: PoLineRow[];
-  /** Σ qty × unit price, €. */
+  /** C-9 (R-075): currency of the order — its line prices and value are in it (EUR or the project currency). */
+  currency: CurrencyCode;
+  /** Euros per unit of `currency` at the project's budget rate (1 for EUR): the Committed KPI consolidates with it. */
+  eurRate: number;
+  /** Currencies the order may use while Draft: EUR and the project currency (with its budget rate). */
+  currencyOptions: CurrencyCode[];
+  /** Σ qty × unit price, in `currency` (the name predates C-9). */
   valueEur: number;
   /** Σ received × unit price, €. */
   receivedValueEur: number;
@@ -85,6 +93,8 @@ export interface PurchaseOrderRow {
   submittedAt: string | null;
   decidedBy: string | null;
   decidedAt: string | null;
+  /** R-095: why, by whom and when the order was cancelled before it was placed (cancelled, withdrawn or rejected); null otherwise. */
+  cancellation: { at: string; by: string | null; reason: string } | null;
   x3Ref: string | null;
   position: number;
 }
@@ -95,8 +105,9 @@ async function loadOrders(q: Q, where: ReturnType<typeof eq> | undefined): Promi
   const creator = sql<string | null>`(select coalesce(${persons.fullName}, ${persons.shortName}) from ${persons} where ${persons.id} = ${purchaseOrders.createdByPersonId})`;
   const submitter = sql<string | null>`(select coalesce(${persons.fullName}, ${persons.shortName}) from ${persons} where ${persons.id} = ${purchaseOrders.submittedByPersonId})`;
   const decider = sql<string | null>`(select coalesce(${persons.fullName}, ${persons.shortName}) from ${persons} where ${persons.id} = ${purchaseOrders.decidedByPersonId})`;
+  const canceller = sql<string | null>`(select coalesce(${persons.fullName}, ${persons.shortName}) from ${persons} where ${persons.id} = ${purchaseOrders.cancelledByPersonId})`;
   const rows = await q
-    .select({ o: purchaseOrders, code: projects.code, supplier: suppliers.name, creator, submitter, decider, act: activities })
+    .select({ o: purchaseOrders, code: projects.code, supplier: suppliers.name, creator, submitter, decider, canceller, act: activities, pCurrency: projects.currency, pRate: projects.budgetRate })
     .from(purchaseOrders)
     .innerJoin(projects, eq(projects.id, purchaseOrders.projectId))
     .innerJoin(suppliers, eq(suppliers.id, purchaseOrders.supplierId))
@@ -110,7 +121,8 @@ async function loadOrders(q: Q, where: ReturnType<typeof eq> | undefined): Promi
     .innerJoin(parts, eq(parts.id, poLines.partId))
     .where(inArray(poLines.poId, rows.map((r) => r.o.id)))
     .orderBy(asc(poLines.position));
-  return rows.map(({ o, code, supplier, creator: c, submitter: s, decider: d, act }) => {
+  return rows.map(({ o, code, supplier, creator: c, submitter: s, decider: d, canceller, act, pCurrency, pRate }) => {
+    const fx = projectFxOf({ currency: pCurrency, budgetRate: pRate });
     // A Received order shows every line fully received (`allPOs` 4308).
     const ls = lines.filter((l) => l.l.poId === o.id).map(({ l, ref, name, status }) => {
       const received = o.status === 'received' ? l.orderedQty : l.receivedQty;
@@ -119,11 +131,14 @@ async function loadOrders(q: Q, where: ReturnType<typeof eq> | undefined): Promi
     const need: PoNeed | null = act ? { code: act.code, name: act.name, startText: splitActual(act.startText).text, startDate: act.startDate, percentComplete: act.percentComplete } : null;
     return {
       number: o.number, projectCode: code, supplier, status: o.status, statusLabel: poStatus.label(o.status), origin: o.origin, orderedOn: o.orderedOn, expectedOn: o.expectedOn,
-      lines: ls, valueEur: ls.reduce((a, l) => a + l.totalEur, 0), receivedValueEur: ls.reduce((a, l) => a + l.unitPriceEur * l.receivedQty, 0),
+      lines: ls, currency: currencyOf(o.currency), eurRate: eurRate(o.currency, fx),
+      currencyOptions: documentCurrencies(fx).filter((cur) => !documentCurrencyError(cur, fx)),
+      valueEur: ls.reduce((a, l) => a + l.totalEur, 0), receivedValueEur: ls.reduce((a, l) => a + l.unitPriceEur * l.receivedQty, 0),
       orderedUnits: ls.reduce((a, l) => a + l.orderedQty, 0), receivedUnits: ls.reduce((a, l) => a + l.receivedQty, 0),
       partStatusIssue: ls.some((l) => l.partStatus !== 'validated'), neededFor: need,
       late: !!need && need.percentComplete > 0 && !OPEN_LINE_STATUSES.includes(o.status), deliveryTerms: o.deliveryTerms,
       createdBy: c, submittedBy: s, submittedAt: o.submittedAt?.toISOString() ?? null, decidedBy: d, decidedAt: o.decidedAt?.toISOString() ?? null, x3Ref: o.x3Ref,
+      cancellation: o.status === 'cancelled' && o.cancelledAt && o.cancelReason ? { at: o.cancelledAt.toISOString(), by: canceller, reason: o.cancelReason } : null,
       position: o.position,
     };
   });
@@ -200,7 +215,11 @@ async function nextDraftNumber(tx: Tx): Promise<string> {
 /** Inserts a Draft order (next PO-1100… number) with its lines; returns the number. Also used by the spares orders (chapter 4). */
 export async function insertOrder(
   tx: Tx,
-  o: { projectId: string; supplierId: string; origin: PoOrigin; lines: { partId: string; qty: number; unitPriceEur: number }[]; createdBy: string | null; expectedOn?: string | null },
+  o: {
+    projectId: string; supplierId: string; origin: PoOrigin; lines: { partId: string; qty: number; unitPriceEur: number }[]; createdBy: string | null; expectedOn?: string | null;
+    /** R-169: what the data says (`orderDeliveryTerms`); empty ("To be agreed") by default. */
+    deliveryTerms?: string;
+  },
 ): Promise<string> {
   const number = await nextDraftNumber(tx);
   const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${purchaseOrders.position}), -1)::int` }).from(purchaseOrders).where(eq(purchaseOrders.projectId, o.projectId));
@@ -208,7 +227,7 @@ export async function insertOrder(
     .insert(purchaseOrders)
     .values({
       number, projectId: o.projectId, supplierId: o.supplierId, status: 'draft', origin: o.origin, orderedOn: STATUS_ISO, expectedOn: o.expectedOn ?? null,
-      deliveryTerms: DEFAULT_DELIVERY_TERMS, createdByPersonId: o.createdBy, position: pos + 1,
+      deliveryTerms: o.deliveryTerms ?? orderDeliveryTerms(), createdByPersonId: o.createdBy, position: pos + 1,
     })
     .returning({ id: purchaseOrders.id });
   await tx.insert(poLines).values(o.lines.map((l, position) => ({ poId: po.id, partId: l.partId, orderedQty: l.qty, receivedQty: 0, unitPriceEur: l.unitPriceEur, position })));
@@ -252,16 +271,17 @@ export async function createDraftPurchaseOrders(projectCode: string, actorName: 
 }
 
 async function loadPo(tx: Tx, number: string) {
-  const [o] = await tx.select().from(purchaseOrders).where(eq(purchaseOrders.number, number));
+  // Locked for the transaction (R-095): a withdrawal and an approval of the same order are serialised, the second one
+  // re-reads the status and is refused.
+  const [o] = await tx.select().from(purchaseOrders).where(eq(purchaseOrders.number, number)).for('update');
   if (!o) throw new Error(`Unknown purchase order ${number}`);
   return o;
 }
 
-/** Director or the project's manager (`apprItems` PO routing), else throws. */
+/** Director or the project's PMs — PM of record, co-PMs, deputies (`apprItems` PO routing, R-041) — else throws. */
 async function requirePoApprover(tx: Tx, projectId: string, actorName: string) {
   const a = await actorOf(tx, actorName);
-  const [p] = await tx.select({ pm: projects.pmPersonId }).from(projects).where(eq(projects.id, projectId));
-  if (a.roles.includes('director') || (a.personId && p?.pm === a.personId)) return a;
+  if (a.roles.includes('director') || (await leadsProject(tx, projectId, a.personId))) return a;
   throw new Error('Only the project manager or the portfolio director approves purchase orders');
 }
 
@@ -283,31 +303,127 @@ export async function approvePurchaseOrder(number: string, actorName: string): P
   await decidePurchaseOrder(number, 'ordered', actorName);
 }
 
-/** My approvals "Reject": Awaiting approval → Cancelled, by the director or the project's manager. */
-export async function rejectPurchaseOrder(number: string, actorName: string): Promise<void> {
-  await decidePurchaseOrder(number, 'cancelled', actorName);
+/**
+ * My approvals "Reject": Awaiting approval → Cancelled, by the director or the project's manager. R-095: the reason is
+ * required (trimmed, ≤ 1000 characters) and stored on the order with the rejecter and the time. Returns the persons to
+ * tell (author and submitter, the rejecter left out) for a best-effort notice after the commit.
+ */
+export async function rejectPurchaseOrder(number: string, actorName: string, reason: string): Promise<PoCancelOutcome> {
+  return decidePurchaseOrder(number, 'cancelled', actorName, checkedReason(reason));
 }
 
-async function decidePurchaseOrder(number: string, to: 'ordered' | 'cancelled', actorName: string): Promise<void> {
+async function decidePurchaseOrder(number: string, to: 'ordered' | 'cancelled', actorName: string, reason: string | null = null): Promise<PoCancelOutcome> {
   const db = await getDb();
-  await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     const o = await loadPo(tx, number);
-    if (o.status !== 'awaiting_approval') throw new Error(`${number} is not awaiting approval`);
+    if (o.status !== 'awaiting_approval') throw new PurchaseOrderError('stale', `${number} is not awaiting approval`);
     const a = await requirePoApprover(tx, o.projectId, actorName);
     const at = new Date();
-    await tx.update(purchaseOrders).set({ status: to, decidedByPersonId: a.personId, decidedAt: at, updatedAt: at }).where(eq(purchaseOrders.id, o.id));
-    await writeAudit(tx, { actorName: a.name, actorPersonId: a.personId, objectRef: number, change: `status: Awaiting approval → ${poStatus.label(to)}`, area: 'Purchase orders', entityType: 'purchase_order', entityId: o.id, projectId: o.projectId, occurredAt: at });
+    const cancel = to === 'cancelled' ? { cancelReason: reason, cancelledByPersonId: a.personId, cancelledAt: at } : {};
+    await tx.update(purchaseOrders).set({ status: to, decidedByPersonId: a.personId, decidedAt: at, updatedAt: at, ...cancel }).where(eq(purchaseOrders.id, o.id));
+    await writeAudit(tx, {
+      actorName: a.name, actorPersonId: a.personId, objectRef: number, change: `status: Awaiting approval → ${poStatus.label(to)}${reason ? ` · ${reason}` : ''}`, area: 'Purchase orders',
+      entityType: 'purchase_order', entityId: o.id, projectId: o.projectId, occurredAt: at,
+    });
     if (to === 'ordered') await recordActivity(tx, { actorName: a.name, actorPersonId: a.personId, text: `Approved and ordered ${number}`, kind: 'change', projectId: o.projectId, occurredAt: at });
+    else await recordActivity(tx, { actorName: a.name, actorPersonId: a.personId, text: `Rejected ${number}`, kind: 'change', projectId: o.projectId, occurredAt: at });
+    return { notify: othersThan([o.createdByPersonId, o.submittedByPersonId], a.personId) };
   });
 }
 
-/** Can this person approve the project's purchase orders (director or the project's manager)? For the screens' buttons. */
+// ── R-095: cancel an order before it is placed (SC-3a = a, P-5c = a) ───────────────────────────────────
+
+/** Refusal of a cancellation / rejection: `stale` = the order moved on since the page was rendered. */
+export type PurchaseOrderErrorCode = 'stale' | 'not_allowed' | 'not_local' | 'reason_required' | 'reason_too_long';
+export class PurchaseOrderError extends Error {
+  constructor(readonly code: PurchaseOrderErrorCode, message: string) {
+    super(message);
+    this.name = 'PurchaseOrderError';
+  }
+}
+
+/** Who to tell after a cancellation or a rejection (persons, the actor left out). */
+export interface PoCancelOutcome {
+  notify: string[];
+}
+
+const othersThan = (ids: (string | null)[], actorId: string | null) => [...new Set(ids.filter((x): x is string => !!x && x !== actorId))];
+
+/** The reason of a cancellation / rejection, checked again by the writer (trimmed, required, ≤ 1000 characters). */
+function checkedReason(reason: unknown): string {
+  const r = poCancelReason(reason);
+  if (!r.ok) throw new PurchaseOrderError(r.error === 'The reason is too long' ? 'reason_too_long' : 'reason_required', r.error);
+  return r.value;
+}
+
+/** PM rights on the project (PM of record, co-PM, deputy) or the portfolio director among the actor's roles (as `requirePoApprover`). */
+async function poActor(q: Q, projectId: string, actorName: string): Promise<PoCancelActor & { name: string }> {
+  const a = await actorOf(q, actorName);
+  return { personId: a.personId, name: a.name, lead: a.roles.includes('director') || (await leadsProject(q, projectId, a.personId)) };
+}
+
+/** What the viewer may do to each order of the project before it is placed (`cancel` a Draft, `withdraw` from approval); absent = nothing. */
+export async function poCancelRights(projectCode: string, actorName: string): Promise<Record<string, PoCancelKind>> {
+  const db = await getDb();
+  const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, projectCode));
+  if (!p) return {};
+  const rows = await db
+    .select({
+      number: purchaseOrders.number, status: purchaseOrders.status, origin: purchaseOrders.origin, x3Ref: purchaseOrders.x3Ref, createdByPersonId: purchaseOrders.createdByPersonId,
+      submittedByPersonId: purchaseOrders.submittedByPersonId,
+    })
+    .from(purchaseOrders)
+    .where(and(eq(purchaseOrders.projectId, p.id), inArray(purchaseOrders.status, ['draft', 'awaiting_approval'])));
+  if (!rows.some(isCancellablePo)) return {};
+  const actor = await poActor(db, p.id, actorName);
+  const out: Record<string, PoCancelKind> = {};
+  for (const r of rows) {
+    const k = poCancelRight(r, actor);
+    if (k) out[r.number] = k;
+  }
+  return out;
+}
+
+/**
+ * "Cancel order" (Orders drawer): a Draft cancelled by its author, the project's leads or the director; an order awaiting
+ * approval withdrawn by whoever sent it (`poCancelRight`). Only orders drafted in Keystone and not in Sage X3; never once
+ * placed. The status, the origin and the actor's right are re-read inside the transaction (a withdrawal racing an approval
+ * loses cleanly); the reason (required, ≤ 1000 characters) is stored with the actor and the time, audited as
+ * "status: Draft → Cancelled · <reason>". The RFQ that drafted the order stays awarded. Returns who to tell after the commit.
+ */
+export async function cancelPurchaseOrder(number: string, reason: string, actorName: string, at: Date = new Date()): Promise<PoCancelOutcome & { kind: PoCancelKind }> {
+  const why = checkedReason(reason);
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const [o] = await tx.select().from(purchaseOrders).where(eq(purchaseOrders.number, number)).for('update');
+    if (!o) throw new Error(`Unknown purchase order ${number}`);
+    if (poX3State(o) !== 'local') throw new PurchaseOrderError('not_local', `${number} is in Sage X3: cancel it there`);
+    if (!isCancellablePo(o)) throw new PurchaseOrderError('stale', `${number} can no longer be cancelled`);
+    const actor = await poActor(tx, o.projectId, actorName);
+    const kind = poCancelRight(o, actor);
+    if (!kind) throw new PurchaseOrderError('not_allowed', `${actor.name} may not cancel ${number}`);
+    await tx.update(purchaseOrders)
+      .set({ status: 'cancelled', cancelReason: why, cancelledByPersonId: actor.personId, cancelledAt: at, updatedAt: at })
+      .where(eq(purchaseOrders.id, o.id));
+    await writeAudit(tx, {
+      actorName: actor.name, actorPersonId: actor.personId, objectRef: number, change: `status: ${poStatus.label(o.status)} → Cancelled · ${why}`, area: 'Purchase orders',
+      entityType: 'purchase_order', entityId: o.id, projectId: o.projectId, occurredAt: at,
+    });
+    await recordActivity(tx, {
+      actorName: actor.name, actorPersonId: actor.personId, text: kind === 'withdraw' ? `Withdrew ${number} from approval` : `Cancelled ${number}`, kind: 'change',
+      projectId: o.projectId, occurredAt: at,
+    });
+    return { kind, notify: othersThan([o.createdByPersonId, o.submittedByPersonId], actor.personId) };
+  });
+}
+
+/** Can this person approve the project's purchase orders (director or the project's PMs and deputies)? For the screens' buttons. */
 export async function canApprovePurchaseOrders(projectCode: string, actorName: string): Promise<boolean> {
   const db = await getDb();
   const a = await actorOf(db, actorName);
   if (a.roles.includes('director')) return true;
-  const [p] = await db.select({ pm: projects.pmPersonId }).from(projects).where(eq(projects.code, projectCode));
-  return !!a.personId && p?.pm === a.personId;
+  const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, projectCode));
+  return !!p && leadsProject(db, p.id, a.personId);
 }
 
 // ── RFQs ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -352,12 +468,14 @@ export interface RfqRow {
   lastPriceEur: number | null;
   /** Draft order created by the award. */
   purchaseOrderNumber: string | null;
+  /** R-095: where that order stands now (Draft, Cancelled, Ordered…); null without an order. */
+  purchaseOrderStatus: PoStatus | null;
   position: number;
 }
 
 async function loadRfqs(q: Q, number?: string): Promise<RfqRow[]> {
   const rows = await q
-    .select({ r: rfqs, code: projects.code, ref: parts.ref, name: parts.name, list: parts.listPriceEur, last: partLastPrices.unitPriceEur, po: purchaseOrders.number, by: persons.fullName })
+    .select({ r: rfqs, code: projects.code, ref: parts.ref, name: parts.name, list: parts.listPriceEur, last: partLastPrices.unitPriceEur, po: purchaseOrders.number, poSt: purchaseOrders.status, by: persons.fullName })
     .from(rfqs)
     .leftJoin(projects, eq(projects.id, rfqs.projectId))
     .leftJoin(parts, eq(parts.id, rfqs.partId))
@@ -371,7 +489,7 @@ async function loadRfqs(q: Q, number?: string): Promise<RfqRow[]> {
     .select({ qt: rfqQuotes, supplier: suppliers.name })
     .from(rfqQuotes).innerJoin(suppliers, eq(suppliers.id, rfqQuotes.supplierId))
     .where(inArray(rfqQuotes.rfqId, rows.map((r) => r.r.id))).orderBy(asc(rfqQuotes.position));
-  return rows.map(({ r, code, ref, name, list, last, po, by }) => {
+  return rows.map(({ r, code, ref, name, list, last, po, poSt, by }) => {
     const qs = quotes.filter((x) => x.qt.rfqId === r.id);
     const best = qs.length ? Math.min(...qs.map((x) => x.qt.unitPriceEur)) : null;
     const fastest = qs.length ? Math.min(...qs.map((x) => x.qt.leadWeeks)) : null;
@@ -385,7 +503,7 @@ async function loadRfqs(q: Q, number?: string): Promise<RfqRow[]> {
         grade: qt.grade, score: qt.score, isBest: qt.unitPriceEur === best, isFastest: qt.leadWeeks === fastest,
         deltaEur: best == null ? 0 : (qt.unitPriceEur - best) * (r.quantity ?? 1), awarded: qt.id === r.awardedQuoteId,
       })),
-      bestUnitPriceEur: best, awardedTo: awarded?.supplier ?? null, awardedBy: by ?? null, lastPriceEur: ref ? (last ?? list) : null, purchaseOrderNumber: po ?? null, position: r.position,
+      bestUnitPriceEur: best, awardedTo: awarded?.supplier ?? null, awardedBy: by ?? null, lastPriceEur: ref ? (last ?? list) : null, purchaseOrderNumber: po ?? null, purchaseOrderStatus: poSt ?? null, position: r.position,
     };
   });
 }
@@ -524,7 +642,11 @@ export async function awardRfq(number: string, supplierName: string, actorName: 
     let poNumber: string | null = null;
     const at = new Date();
     if (projectId && r.partId && r.quantity) {
-      poNumber = await insertOrder(tx, { projectId, supplierId: quote.supplierId, origin: 'rfq', createdBy: a.personId, lines: [{ partId: r.partId, qty: r.quantity, unitPriceEur: quote.q.unitPriceEur }] });
+      poNumber = await insertOrder(tx, {
+        projectId, supplierId: quote.supplierId, origin: 'rfq', createdBy: a.personId, lines: [{ partId: r.partId, qty: r.quantity, unitPriceEur: quote.q.unitPriceEur }],
+        // R-169: the RFQ's Incoterm and the winning quote's payment terms (no longer "Site gate 2 · DAP · Net 30").
+        deliveryTerms: orderDeliveryTerms({ incoterm: r.incoterm, paymentTerms: quote.q.paymentTerms }),
+      });
     }
     const [po] = poNumber ? await tx.select({ id: purchaseOrders.id }).from(purchaseOrders).where(eq(purchaseOrders.number, poNumber)) : [];
     await tx.update(rfqs).set({ status: 'awarded', awardedQuoteId: quote.q.id, awardedByPersonId: a.personId, awardedAt: at, purchaseOrderId: po?.id ?? null, updatedAt: at }).where(eq(rfqs.id, r.id));
@@ -558,6 +680,10 @@ export interface SupplierInvoiceRow {
   receiptNumber: string | null;
   /** Project of the order (null without PO). */
   projectCode: string | null;
+  /** C-9 (R-075): currency of the invoice as received from Sage X3 — its amounts below are in it. */
+  currency: CurrencyCode;
+  /** Euros per unit of `currency` at the order's project budget rate (1 for EUR or without project). */
+  eurRate: number;
   /** Amount as the screens show it: the approved amount once approved, else the invoiced amount (`amount` after `invOv`). */
   amountEur: number;
   invoicedAmountEur: number;
@@ -611,7 +737,10 @@ function blockingReasonOf(status: SupplierInvoiceStatus, m: { po: MatchState; gr
 
 async function loadInvoices(q: Q, number?: string): Promise<SupplierInvoiceRow[]> {
   const rows = await q
-    .select({ i: supplierInvoices, supplier: suppliers.name, po: purchaseOrders.number, gr: goodsReceipts.number, code: projects.code, by: persons.fullName })
+    .select({
+      i: supplierInvoices, supplier: suppliers.name, po: purchaseOrders.number, poCurrency: purchaseOrders.currency, gr: goodsReceipts.number, code: projects.code,
+      pCurrency: projects.currency, pRate: projects.budgetRate, by: persons.fullName,
+    })
     .from(supplierInvoices)
     .innerJoin(suppliers, eq(suppliers.id, supplierInvoices.supplierId))
     .leftJoin(purchaseOrders, eq(purchaseOrders.id, supplierInvoices.poId))
@@ -620,13 +749,16 @@ async function loadInvoices(q: Q, number?: string): Promise<SupplierInvoiceRow[]
     .leftJoin(persons, eq(persons.id, supplierInvoices.decidedByPersonId))
     .where(number ? eq(supplierInvoices.number, number) : undefined)
     .orderBy(asc(supplierInvoices.position));
-  return rows.map(({ i, supplier, po, gr, code, by }) => {
+  return rows.map(({ i, supplier, po, poCurrency, gr, code, pCurrency, pRate, by }) => {
     const amount = i.approvedAmountEur ?? i.amountEur;
-    const m = threeWayMatch({ hasPo: !!po, hasReceipt: !!gr, amountEur: amount, poAmountEur: i.poAmountEur, receiptAmountEur: i.receiptAmountEur });
+    const matched = threeWayMatch({ hasPo: !!po, hasReceipt: !!gr, amountEur: amount, poAmountEur: i.poAmountEur, receiptAmountEur: i.receiptAmountEur });
+    // C-9: an invoice in another currency than its order does not match the order (amounts are not comparable).
+    const m = po && poCurrency && currencyOf(poCurrency) !== currencyOf(i.currency) ? { ...matched, po: 'diff' as const } : matched;
     const gap = amount - i.receiptAmountEur;
     const status = matchedInvoiceStatus(i.status, m.gr);
     return {
-      number: i.number, supplier, poNumber: po ?? null, receiptNumber: gr ?? null, projectCode: code ?? null, amountEur: amount, invoicedAmountEur: i.amountEur,
+      number: i.number, supplier, poNumber: po ?? null, receiptNumber: gr ?? null, projectCode: code ?? null, currency: currencyOf(i.currency),
+      eurRate: eurRate(i.currency, projectFxOf({ currency: pCurrency, budgetRate: pRate })), amountEur: amount, invoicedAmountEur: i.amountEur,
       approvedAmountEur: i.approvedAmountEur, creditNoteEur: i.approvedAmountEur != null ? i.amountEur - i.approvedAmountEur : 0, poAmountEur: i.poAmountEur,
       receiptAmountEur: i.receiptAmountEur, gapEur: gr && gap > 0 ? gap : null, match: m, matchLabels: { po: matchState.label(m.po), gr: matchState.label(m.gr) },
       invoiceDate: i.invoiceDate, dueDate: i.dueDate, paymentTerms: i.paymentTerms, status, statusLabel: supplierInvoiceStatus.label(status),
@@ -700,7 +832,9 @@ export async function rejectSupplierInvoice(number: string, actorName: string): 
 export interface PoApprovalItem {
   number: string;
   supplier: string;
+  /** Value in `currency` (C-9). */
   valueEur: number;
+  currency: CurrencyCode;
   refs: string[];
   orderedOn: string | null;
   /** Who sent it for approval (the seed's buyer for the prototype orders). */
@@ -712,7 +846,7 @@ export async function poApprovalQueue(projectCode: string, actorName: string): P
   if (!(await canApprovePurchaseOrders(projectCode, actorName))) return [];
   return (await listPurchaseOrders(projectCode))
     .filter((o) => o.status === 'awaiting_approval')
-    .map((o) => ({ number: o.number, supplier: o.supplier, valueEur: o.valueEur, refs: o.lines.map((l) => l.ref), orderedOn: o.orderedOn, submittedBy: o.submittedBy }));
+    .map((o) => ({ number: o.number, supplier: o.supplier, valueEur: o.valueEur, currency: o.currency, refs: o.lines.map((l) => l.ref), orderedOn: o.orderedOn, submittedBy: o.submittedBy }));
 }
 
 /** Orders of the project the person approved and ordered ("Decided this week": the prototype counted every Ordered PO). */

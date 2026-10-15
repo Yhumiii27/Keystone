@@ -36,9 +36,14 @@ describe('Plan DAL', () => {
         return [a.id, a.w, a.n, a.d, s.text, s.actual, f.text, f.actual, isoOfDisplayDate(s.text), a.bl, a.v, a.c, !!a.viol, a.tf, a.pc, a.o, a.b[0], a.b[1], a.b[2], a.p, false, false];
       }),
     );
-    expect(d.control).toMatchObject({ pct: pd.pct, floatDays: pd.floatDays, floatShort: pd.floatShort, finishText: pd.finishText, baselineText: pd.baselineText, baselineSet: pd.baselineSet, p3: pd.p3 });
+    // Delivery 7 (R-073, C-2a): % complete = budget-weighted progress of the prototype's own activities (Σ b × pc / Σ b), no longer
+    // the seeded `pct` (HLT-026 64 → 63, NDC-031 51 → 46, RCF-019 82 → 77, ERP-202 45 → 52, WSA-044 27 → 8, MSR-012 91 → 92).
+    const own = acts.filter((a) => a.id);
+    const pct = Math.round((own.reduce((t: number, a: Proto) => t + a.b[0] * a.pc, 0) / own.reduce((t: number, a: Proto) => t + a.b[0], 0)));
+    expect(d.control).toMatchObject({ pct, floatDays: pd.floatDays, floatShort: pd.floatShort, finishText: pd.finishText, baselineText: pd.baselineText, baselineSet: pd.baselineSet, p3: pd.p3 });
     expect(d.projectIdx).toBe(PROTO.DEFS[code].idx);
-    expect(d.control.team).toEqual(PROTO.DEFS[code].team);
+    // R-041 (P-2): Harbor Line's named team adds the seeded referents to DEFS.team.
+    expect(d.control.team).toEqual(code === 'HLT-026' ? [...PROTO.DEFS[code].team, 'Antoine Girard', 'Gabriel Comte'] : PROTO.DEFS[code].team);
   });
 
   it('owners are the 9 OWN people in prototype order', async () => {

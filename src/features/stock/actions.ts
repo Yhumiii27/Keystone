@@ -1,15 +1,22 @@
 'use server';
 // Stock & storages Server Functions (docs/spec/08 §4.4–4.5): "Apply movement" of the stock-line drawer, the header's
-// "Import from X3" and the drawer's "Push to X3" (mock Sage X3 connector). Each one checks the viewer may edit the
+// "Import from X3" and the drawer's "Push to X3" (mock Sage X3 connector — R-034: simulated on a demo database only,
+// refused on a production database: "Sage X3 is not connected"). Each one checks the viewer may edit the
 // screen (roles with Stock & storages in their workspace; outside the workspace it is read-only), validates the raw
 // input with the domain parsers, writes through the stock DAL with the viewer as the actor, then revalidates the app
 // (stock lines, KPIs, the sidebar badge and the stock figures other screens show).
+// R-041 (delivery 7): a reservation, issue or return for a project is made by that project's team; procurement and the
+// director are the storekeepers who act for any project (`STOCK_KEEPER_ROLES` — default, owner to confirm). The stock DAL
+// re-checks these rules, the release and the override with the same actor.
 import { revalidatePath } from 'next/cache';
-import { parseMovementInput } from '@/domain/stock';
+import { isActivityCode, parseMovementInput } from '@/domain/stock';
 import { getProject } from '@/server/dal/projects';
-import { applyStockMovement, getStockPosition, importStockFromX3, pushStockToX3 } from '@/server/dal/stock';
-import { getScreenAccess } from '@/server/project-context';
-import { getI18n } from '@/server/session';
+import {
+  STOCK_KEEPER_ROLES, STOCK_NOT_TEAM, STOCK_OVERRIDE_REFUSED, STOCK_RELEASE_REFUSED, applyStockMovement, getStockPosition, importStockFromX3, pushStockToX3,
+} from '@/server/dal/stock';
+import { X3_NOT_CONNECTED, x3Simulated } from '@/server/integrations/x3/mock-mode';
+import { getScreenAccess, projectAccessResolver } from '@/server/project-context';
+import { getI18n, type Viewer } from '@/server/session';
 import { importToastText, pushToastText, stockErrorT } from './i18n';
 
 export type StockActionResult = { ok: true; toast?: string } | { error: string };
@@ -24,24 +31,37 @@ async function tr(english: string) {
 }
 
 /** The viewer may change stock (not outside the workspace); returns the actor's name or an error. */
-async function editor(): Promise<{ actor: string } | { error: string }> {
+async function editor(): Promise<{ actor: string; viewer: Viewer } | { error: string }> {
   const access = await getScreenAccess('stock');
   if (!access.canEdit) return { error: await tr('Stock is read-only for you') };
-  return { actor: access.viewer.name };
+  return { actor: access.viewer.name, viewer: access.viewer };
 }
+
+/** Rights refusals of the stock DAL (R-041, R-099), shown translated like the Server Function's own. */
+const RIGHTS_REFUSALS = new Set(['Stock is read-only for you', STOCK_NOT_TEAM, STOCK_OVERRIDE_REFUSED, STOCK_RELEASE_REFUSED]);
 
 /** Rule refusals keep their (translated) message; anything else is a generic failure. */
 async function failure(e: unknown): Promise<{ error: string }> {
   const { t, lang } = await getI18n();
   const msg = e instanceof Error ? e.message : '';
+  if (RIGHTS_REFUSALS.has(msg)) return { error: t(msg) };
   return { error: stockErrorT(msg, t, lang) ?? t('The change could not be saved') };
 }
 
+/** R-099: who may take units reserved for another project (issue / scrap beyond the free quantity). */
+const OVERRIDE_ROLES: readonly string[] = ['director'];
+
 /**
- * "Apply movement": `values` = the drawer's operation, quantity (text) and transfer destination; `projectCode` = the
- * current project (reserve, issue, return).
+ * "Apply movement": `values` = the drawer's operation, quantity (text), transfer destination, the activity of an issue
+ * (required, SC-5a — optional on a return) and the director's override of another project's reservation (R-099);
+ * `projectCode` = the current project (reserve, issue, return). "Release reservation" (R-099) acts on the line's own
+ * reservation: the PM of the reserving project or the director only.
  */
-export async function applyStockMovementAction(positionId: string, values: { op?: unknown; qty?: unknown; target?: unknown }, projectCode: string | null): Promise<StockActionResult> {
+export async function applyStockMovementAction(
+  positionId: string,
+  values: { op?: unknown; qty?: unknown; target?: unknown; activity?: unknown; override?: unknown },
+  projectCode: string | null,
+): Promise<StockActionResult> {
   const ok = await editor();
   if ('error' in ok) return ok;
   if (typeof positionId !== 'string' || !positionId || !values || typeof values !== 'object') return { error: await tr('Invalid request') };
@@ -49,14 +69,37 @@ export async function applyStockMovementAction(positionId: string, values: { op?
   const parsed = parseMovementInput(values);
   if (!parsed.ok) return failure(new Error(parsed.error));
   const { op, qty, target } = parsed.value;
+  const override = values.override === true;
+  if (values.override !== undefined && typeof values.override !== 'boolean') return { error: await tr('Invalid request') };
+  if (override && !(op === 'issue' || op === 'scrap')) return { error: await tr('Invalid request') };
+  if (override && !OVERRIDE_ROLES.includes(ok.viewer.role)) return { error: await tr(STOCK_OVERRIDE_REFUSED) };
+  const rawActivity = typeof values.activity === 'string' ? values.activity.trim() : values.activity ?? null;
+  if (rawActivity !== null && rawActivity !== '' && !isActivityCode(rawActivity)) return { error: await tr('Choose an activity of the project plan') };
+  const activity = typeof rawActivity === 'string' && rawActivity ? rawActivity : null;
+  if (op === 'issue' && !activity) return { error: await tr('Choose the activity the parts are issued to') };
   let project: string | null = null;
-  if (op === 'reserve' || op === 'issue' || op === 'return') {
+  if (op === 'release') {
+    // The reservation belongs to its project: only that project's PM (or the director) gives it back.
+    const line = await getStockPosition(positionId);
+    if (!line) return { error: await tr('Unknown stock line') };
+    if (!line.reservedForProject || !line.reserved) return failure(new Error('This line holds no reservation for this project'));
+    const owner = await getProject(line.reservedForProject);
+    // R-041: the reserving project's PM team (PM of record, co-PMs, deputies) or the director.
+    if (!owner || !(await projectAccessResolver(ok.viewer))(owner).lead) return { error: await tr(STOCK_RELEASE_REFUSED) };
+    project = owner.code;
+  } else if (op === 'reserve' || op === 'issue' || op === 'return') {
     const p = typeof projectCode === 'string' && projectCode ? await getProject(projectCode) : null;
     if (!p) return { error: await tr('A project is required') };
+    // R-041: the project's team (an issue charges its work packages, R-098); the storekeepers act for any project.
+    if (!STOCK_KEEPER_ROLES.includes(ok.viewer.role) && !(await projectAccessResolver(ok.viewer))(p).member) return { error: await tr(STOCK_NOT_TEAM) };
     project = p.code;
   }
   try {
-    await applyStockMovement(positionId, { op, qty, targetLocation: target, projectCode: project }, ok.actor);
+    await applyStockMovement(
+      positionId,
+      { op, qty, targetLocation: target, projectCode: project, activityCode: op === 'issue' || op === 'return' ? activity : null, override },
+      { name: ok.viewer.name, role: ok.viewer.role },
+    );
   } catch (e) {
     return failure(e);
   }
@@ -64,10 +107,17 @@ export async function applyStockMovementAction(positionId: string, values: { op?
   return { ok: true };
 }
 
-/** "Import from X3" (header primary): merges the X3 snapshot, local changes kept. */
+/** R-034: the simulated X3 actions exist on a demo database only (and while IT has not disabled "Sage X3"). */
+async function x3Refusal(): Promise<{ error: string } | null> {
+  return (await x3Simulated()) ? null : { error: await tr(X3_NOT_CONNECTED) };
+}
+
+/** "Import from X3" (header primary): merges the X3 snapshot, local changes kept — simulated, Sage X3 is not connected (R-034). */
 export async function importFromX3Action(): Promise<StockActionResult> {
   const ok = await editor();
   if ('error' in ok) return ok;
+  const off = await x3Refusal();
+  if (off) return off;
   try {
     const r = await importStockFromX3(ok.actor);
     refresh();
@@ -78,11 +128,13 @@ export async function importFromX3Action(): Promise<StockActionResult> {
   }
 }
 
-/** "Push to X3" of the stock-line drawer: this line and the pending movements that touched it. */
+/** "Push to X3" of the stock-line drawer: this line and the pending movements that touched it (simulated, R-034). */
 export async function pushStockLineAction(positionId: string): Promise<StockActionResult> {
   const ok = await editor();
   if ('error' in ok) return ok;
   if (typeof positionId !== 'string' || !positionId) return { error: await tr('Invalid request') };
+  const off = await x3Refusal();
+  if (off) return off;
   const line = isPositionId(positionId) ? await getStockPosition(positionId) : null;
   if (!line) return { error: await tr('Unknown stock line') };
   try {

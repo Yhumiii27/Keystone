@@ -13,11 +13,14 @@ import { SetupTab } from '@/features/budget/setup-tab';
 import { BudgetViewBar, budgetTabHref, parseBudgetTab } from '@/features/budget/view-bar';
 import s from '@/features/budget/budget.module.css';
 import { money } from '@/lib/format';
+import { categoryAmountFrozen } from '@/domain/baseline-policy';
 import { getBudgetData } from '@/server/dal/budget';
-import { projectLabel } from '@/server/dal/projects';
+import { listProjectBaselines } from '@/server/dal/baselines';
+import { healthThresholds } from '@/server/dal/health-thresholds';
 import { costCategoryOptions } from '@/server/dal/settings-lists';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 export default async function BudgetPage({
   params,
@@ -27,7 +30,9 @@ export default async function BudgetPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const [{ code }, sp] = await Promise.all([params, searchParams]);
-  const [ctx, i18n, data] = await Promise.all([getProjectContext(code, 'budget'), getI18n(), getBudgetData(code)]);
+  // Delivery 8: the Settings health thresholds colour the Performance tiles (R-080, C-1); the category amounts are frozen after
+  // BL1 (R-081, C-3a — the same "after BL1" test as Set baseline).
+  const [ctx, i18n, data, th] = await Promise.all([getProjectContext(code, 'budget'), getI18n(), getBudgetData(code), healthThresholds()]);
   const { lang } = i18n;
   const t = budgetT(i18n.t, lang);
   const projectCode = ctx.project.code;
@@ -56,6 +61,7 @@ export default async function BudgetPage({
 
   let body;
   if (tab === 'setup') {
+    const [options, bls] = ctx.canEdit('budget') ? await Promise.all([costCategoryOptions(), listProjectBaselines(projectCode)]) : [[], []];
     body = (
       <SetupTab
         cost={cost}
@@ -65,8 +71,9 @@ export default async function BudgetPage({
         planHref={screenHref('plan', { code: projectCode })}
         canEdit={ctx.canEdit('budget')}
         code={projectCode}
-        context={t(projectLabel(ctx.project))}
-        categoryOptions={ctx.canEdit('budget') ? await costCategoryOptions() : []}
+        context={projectLabelText(ctx.project, lang)}
+        categoryOptions={options}
+        amountsFrozen={categoryAmountFrozen(bls.map((b) => b.code))}
         lang={lang}
         t={t}
       />
@@ -88,7 +95,7 @@ export default async function BudgetPage({
       : null;
     body = <CashTab recovery={recovery} contractTotal={total} terms={contract?.terms ?? ''} ac={core.ac} lang={lang} t={t} />;
   } else {
-    body = <PerformanceTab cost={cost} core={core} offer={offer} profileText={profileText} setupHref={budgetTabHref(base, 'setup')} lang={lang} t={t} />;
+    body = <PerformanceTab cost={cost} core={core} offer={offer} profileText={profileText} setupHref={budgetTabHref(base, 'setup')} th={th} lang={lang} t={t} />;
   }
 
   return (

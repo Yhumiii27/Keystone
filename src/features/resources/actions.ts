@@ -10,7 +10,7 @@ import { screenHref } from '@/config/screens';
 import { WHATIF_PRIORITIES, type WhatIfPriority } from '@/domain/whatif';
 import { getProject } from '@/server/dal/projects';
 import {
-  applyLever, applyScenario, autoLevelScenario, createScenario, deleteScenario, hasWhatIf, listScenarioNames, renameScenario, selectScenario, setScenarioPriority,
+  applyLever, applyScenario, autoLevelScenario, createScenario, deleteScenario, hasWhatIf, listScenarioNames, renameScenario, retainedScenario, selectScenario, setScenarioPriority,
   toggleScenarioLever,
 } from '@/server/dal/resources';
 import { getProjectScope, getScreenAccess } from '@/server/project-context';
@@ -105,7 +105,10 @@ export async function selectWhatIfScenario(code: string, scenario: string): Prom
   return { ok: true, message: applyMessage(done, scenarioTitle(r.scenario, t), lang) };
 }
 
-/** "New scenario" (AF whatif): a card with no lever enabled, priority "Protect date"; audited under the viewer. */
+/**
+ * "New scenario" (AF whatif), audited under the viewer: a card with no lever enabled and priority "Protect date", or —
+ * basis "Selected scenario" — a copy of the retained scenario's levers and priority.
+ */
 export async function createWhatIfScenario(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const r = await editableWhatIf(code);
   if ('error' in r) return r;
@@ -113,7 +116,8 @@ export async function createWhatIfScenario(code: string, values: Record<string, 
   const parsed = parseNewScenario(values, await listScenarioNames(r.code));
   if (!parsed.ok) return { error: t(parsed.error) };
   const v = parsed.value;
-  const done = await attempt(() => createScenario(r.code, { name: v.name, basis: v.basis, horizonMonths: v.horizonMonths, hypotheses: v.hypotheses || undefined }, r.actor));
+  if (v.basis === 'last_approved' && !(await retainedScenario(r.code))) return { error: t('No scenario is selected or applied yet — start from the current plan') };
+  const done = await attempt(() => createScenario(r.code, { name: v.name, basis: v.basis, hypotheses: v.hypotheses || undefined }, r.actor));
   if (done && typeof done === 'object' && 'error' in done) return done;
   refresh();
   return { toast: t(NEW_SCENARIO_RESULT) };

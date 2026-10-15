@@ -1,12 +1,13 @@
 // Shared view helpers of the portfolio screens. Server-compatible.
-import { Briefcase, ClockCountdown, Coins, Gauge, Lightning, Receipt, Timer, TrendUp, UsersThree, Warning } from '@phosphor-icons/react/dist/ssr';
+import { Briefcase, ClockCountdown, Coins, Gauge, Lightning, Receipt, Stamp, Timer, TrendUp, UsersThree, Warning } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
 import { Tag, type TagTone } from '@/components/ds/Tag';
 import { KpiTile } from '@/components/app/Kpi';
 import { LO, OK } from '@/components/app/tones';
 import type { Health } from '@/domain/health';
 import { healthLabel, type AlertIcon, type KpiIcon, type KpiView, type Tint } from '@/domain/portfolio';
-import type { T } from '@/i18n/translate';
+import type { Lang, T } from '@/i18n/translate';
+import { projectLabelText } from '@/i18n/data-text';
 
 /** Indicator tints → tokens (LO = accent-300, OK = text). */
 export const TINT: Record<Tint, string> = {
@@ -20,7 +21,9 @@ export const TINT: Record<Tint, string> = {
 };
 
 export const KPI_ICON: Record<KpiIcon, Icon> = { briefcase: Briefcase, receipt: Receipt, 'trend-up': TrendUp, gauge: Gauge, timer: Timer, warning: Warning };
-export const ALERT_ICON: Record<AlertIcon, Icon> = { lightning: Lightning, coins: Coins, 'users-three': UsersThree, 'clock-countdown': ClockCountdown };
+export const ALERT_ICON: Record<AlertIcon, Icon> = {
+  lightning: Lightning, coins: Coins, 'users-three': UsersThree, 'clock-countdown': ClockCountdown, receipt: Receipt, stamp: Stamp, warning: Warning,
+};
 
 const HEALTH_TAG_TONE: Record<Health, TagTone> = { off_track: 'accent', at_risk: 'outline', on_track: 'neutral' };
 
@@ -28,7 +31,8 @@ const HEALTH_TAG_TONE: Record<Health, TagTone> = { off_track: 'accent', at_risk:
  * "#026 · Harbor Line Terminal Expansion" (pname) with the name translated on its own: translating the joined
  * label splits names containing " — " ("ERP Migration — Phase 2") and leaves them in English.
  */
-export const projectName = (p: { displayId: string; name: string }, t: T) => `${p.displayId} · ${t(p.name)}`;
+/** "#026 · Harbor Line Terminal Expansion": the name as typed (R-148, or its seeded demo entry). */
+export const projectName = (p: { displayId: string; name: string }, lang: Lang) => projectLabelText(p, lang);
 
 /** Health tag as the prototype renders it on these screens: no health → "—" in a neutral tag. */
 export function HealthBadge({ health, t, nowrap = true }: { health: Health | null; t: T; nowrap?: boolean }) {

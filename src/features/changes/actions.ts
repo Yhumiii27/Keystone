@@ -3,14 +3,22 @@
 // Each one checks that the viewer may edit the project's screen (not outside the workspace, not a read-only
 // project), validates the untrusted input, writes through the DAL writers with the viewer as the actor (never
 // the prototype's fixed names, 00 §7.16) and revalidates the app (CR decisions feed Home, My approvals, Budget).
+// Delivery 8: the chain is decided in order (R-069, P-6b — a later step answers "Not yours to decide yet"), the request records its
+// contractual impact (R-069) and, for the project team, the cost category it moves (R-081); the approvers of the next step, then
+// the requester, are notified after each write (R-015, X-6a).
 import { revalidatePath } from 'next/cache';
-import { CR_STEPS, STEP_DECIDER, canDecideStep, deriveCrStatus } from '@/domain/change-control';
+import { CR_STEPS, NOT_YOURS_YET, STEP_DECIDER, canDecideStep, deriveCrStatus, stepWaitsForEarlier } from '@/domain/change-control';
 import type { ChangeStep } from '@/server/db/codes';
-import { createChangeRequest, decideChangeStep, listChangeRequestDetails, submitChangeRequest } from '@/server/dal/changes';
+import { canEditCrActivities, parseCrActivities } from '@/domain/change-activities';
+import { linkCrActivities, unknownActivityCodes } from '@/server/dal/change-activities';
+import { notifyChangeRequest } from '@/server/dal/change-notices';
+import { ChangeStepError, createChangeRequest, decideChangeStep, listChangeRequestDetails, submitChangeRequest } from '@/server/dal/changes';
+import { getCostControl } from '@/server/dal/cost';
 import { getWbs } from '@/server/dal/planning';
 import { getProject } from '@/server/dal/projects';
 import { recordStatusReport } from '@/server/dal/trends';
 import { getProjectContext, type ProjectContext } from '@/server/project-context';
+import { canSchedulePlan } from '@/features/plan/rights';
 import { getI18n } from '@/server/session';
 import { NEW_CR_RESULT, STATUS_REPORT_RESULT, parseNewChangeRequest, parseStatusReport } from './forms';
 
@@ -40,8 +48,12 @@ async function toastOf(english: string) {
   return whole !== english ? whole : english.split(' · ').map(t).join(' · ');
 }
 
-/** "New change request" (AF `changes`): raises a CR submitted for review (CR-011…), toast "CR-011 · Change request submitted for review". */
-export async function createChangeRequestAction(code: string, values: Record<string, string>): Promise<ChangeFormResult> {
+/**
+ * "New change request" (AF `changes`): raises a CR submitted for review (CR-011…), toast "CR-011 · Change request submitted for review".
+ * `opts.proposeBaseline` (Plan "Set baseline" after BL1, S-3): the request also proposes the project's next baseline BLn, filled
+ * with the activity snapshot and made current when the request is approved.
+ */
+export async function createChangeRequestAction(code: string, values: Record<string, string>, opts?: { proposeBaseline?: boolean }): Promise<ChangeFormResult> {
   const r = await editable(code, 'changes');
   if ('error' in r) return r;
   const { t } = await getI18n();
@@ -50,8 +62,41 @@ export async function createChangeRequestAction(code: string, values: Record<str
   const known = new Set((await getWbs(r.ctx.project.code)).map((w) => w.code));
   const unknown = known.size ? parsed.value.wbsCodes.filter((c) => !known.has(c)) : [];
   if (unknown.length) return { error: `${t('Unknown WBS element')} ${unknown.join(', ')}` };
-  const number = await createChangeRequest(r.ctx.project.code, { ...parsed.value, submit: true }, r.ctx.viewer.name);
+  // NEW-D2-2 (Delivery 7, R-062): the optional plan activities touched, checked against the plan before the request is raised.
+  const acts = parseCrActivities(values?.acts);
+  if (!acts.ok) return { error: t(acts.error) };
+  if (acts.value.length && !canEditCrActivities(r.ctx.viewer, true)) return { error: t('Only the project team links plan activities to a change request') };
+  const unknownActs = await unknownActivityCodes(r.ctx.project.code, acts.value.map((a) => a.code));
+  if (unknownActs.length) return { error: `${t('Unknown activity')} ${unknownActs.join(', ')}` };
+  // R-081 (C-3a, A-4): the cost category the approved request moves — internal cost data, the project team only (never the
+  // client), one of the project's categories, and a negative change may not take its budget below 0.
+  const catCode = parsed.value.costCategoryCode;
+  if (catCode) {
+    if (!canEditCrActivities(r.ctx.viewer, true)) return { error: t('Only the project team links a cost category to a change request') };
+    const cat = (await getCostControl(r.ctx.project.code))?.categories.find((c) => c.code === catCode);
+    if (!cat) return { error: t('Unknown cost category') };
+    if (cat.budget + parsed.value.amountKeur < 0) return { error: t('This change would take the cost category below 0') };
+  }
+  // Baselines belong to the project's PM and the director (S-1 / S-3): a client's request never proposes one.
+  const proposeBaseline = opts?.proposeBaseline === true && canSchedulePlan(r.ctx);
+  const number = await createChangeRequest(r.ctx.project.code, { ...parsed.value, submit: true, proposeBaseline }, r.ctx.viewer.name);
+  // R-015 (X-6a): the approvers of the request's first step, after the write committed (best effort).
+  await notifyChangeRequest(r.ctx.project.code, number, r.ctx.viewer.name);
+  if (acts.value.length) {
+    try {
+      await linkCrActivities(r.ctx.project.code, number, acts.value, { name: r.ctx.viewer.name, role: r.ctx.viewer.role });
+    } catch (e) {
+      // The request exists: say which part failed instead of inviting a second request.
+      console.error('createChangeRequestAction: activities', e);
+      refresh();
+      return { toast: `${number} · ${await toastOf(NEW_CR_RESULT)} · ${t('The plan activities could not be linked')}` };
+    }
+  }
   refresh();
+  if (proposeBaseline) {
+    const bl = (await listChangeRequestDetails(r.ctx.project.code)).find((c) => c.id === number)?.baseline ?? '';
+    return { toast: `${number} · ${await toastOf(NEW_CR_RESULT)} · ${bl} ${t('proposed')}` };
+  }
   return { toast: `${number} · ${await toastOf(NEW_CR_RESULT)}` };
 }
 
@@ -69,14 +114,21 @@ export async function submitChangeRequestAction(code: string, number: string): P
   const cr = await loadCr(r.ctx.project.code, number);
   if (!cr) return { error: t('Unknown change request') };
   if (cr.status !== 'draft') return { error: t('This change request has already been submitted') };
-  await submitChangeRequest(r.ctx.project.code, cr.id, r.ctx.viewer.name);
+  try {
+    await submitChangeRequest(r.ctx.project.code, cr.id, r.ctx.viewer.name);
+  } catch {
+    refresh(); // a concurrent submit: the row is stale
+    return { error: t('This change request has already been submitted') };
+  }
+  await notifyChangeRequest(r.ctx.project.code, cr.id, r.ctx.viewer.name);
   refresh();
   return { ok: true };
 }
 
 /**
- * Approve / Reject one step of the approval chain. Only the persona owning the step decides it (pm, director,
- * client; the change control board is recorded by the director), on a request in review whose step is pending.
+ * Approve / Reject one step of the approval chain. Only the persona owning the step decides it (pm — one of the project's
+ * PMs or deputies, R-041 —, director, client; the change control board is recorded by the director), on a request in review
+ * whose step is the current one (R-069, P-6b: a later step answers "Not yours to decide yet").
  * The status is re-derived from the chain by the DAL (approved → BL2 becomes current for CR-009).
  */
 export async function decideChangeStepAction(code: string, number: string, step: string, decision: string): Promise<ChangeActionResult> {
@@ -86,10 +138,22 @@ export async function decideChangeStepAction(code: string, number: string, step:
   if (!(CR_STEPS as string[]).includes(step) || (decision !== 'ok' && decision !== 'rejected')) return { error: t('Invalid request') };
   const s = step as ChangeStep;
   if (STEP_DECIDER[s] !== r.ctx.viewer.role) return { error: t('This approval step is not yours to decide') };
+  // R-041: the PM step belongs to the project's PMs (PM of record, co-PMs, deputies), not to any PM on its team.
+  if (s === 'pm' && !r.ctx.isLead) return { error: t('This approval step is not yours to decide') };
   const cr = await loadCr(r.ctx.project.code, number);
   if (!cr) return { error: t('Unknown change request') };
-  if (!canDecideStep(r.ctx.viewer.role, cr, s)) return { error: t('This approval step is no longer pending') };
-  await decideChangeStep(r.ctx.project.code, cr.id, s, decision, r.ctx.viewer.name);
+  if (stepWaitsForEarlier(cr, s)) return { error: t(NOT_YOURS_YET) };
+  if (!canDecideStep(cr, s, { role: r.ctx.viewer.role })) return { error: t('This approval step is no longer pending') };
+  try {
+    await decideChangeStep(r.ctx.project.code, cr.id, s, decision, r.ctx.viewer.name);
+  } catch (e) {
+    // Decided meanwhile by someone else (R-010): the row is stale.
+    refresh();
+    if (e instanceof ChangeStepError) return { error: t(e.code === 'not_current' ? NOT_YOURS_YET : 'This approval step is no longer pending') };
+    throw e;
+  }
+  // R-015 (X-6a): the next step's approvers, or the requester once decided (after the commit, best effort).
+  await notifyChangeRequest(r.ctx.project.code, cr.id, r.ctx.viewer.name);
   refresh();
   return { ok: true };
 }

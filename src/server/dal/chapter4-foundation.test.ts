@@ -10,20 +10,21 @@ import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { seedIfEmpty } from '@/server/db/seed';
 import {
-  activityAssignments, auditEntries, baselineActivities, baselines, calendars, connectors, projects, resourceRequests, scheduleRuns, storedFiles,
+  activityAssignments, auditEntries, baselineActivities, baselines, calendars, connectors, projects, resourceRequests, scheduleRuns, storedFiles, whatIfScenarios,
 } from '@/server/db/schema';
 import { setFilesRoot } from '@/server/storage/files';
 import { addActivityTodo, listActivityTodos, removeActivityTodo, setActivityTodoDone } from './activity-todos';
-import { createBaselineSnapshot, getBaselineActivities, getDisplayedBaselineCode, listProjectBaselines, setDisplayedBaseline, snapshotIntoBaseline } from './baselines';
+import { createBaselineSnapshot, getBaselineActivities, getDisplayedBaselineCode, listProjectBaselines, snapshotIntoBaseline } from './baselines';
 import { getProjectCalendarCode, listCalendars, loadWorkCalendars, setActivityCalendar, setProjectCalendar, upsertCalendar } from './calendars';
 import { getBaselineRegister } from './changes-baselines';
 import { addClientCommunication, listClientCommunications, openClientFollowUps, setClientCommunicationFollowUpDone } from './client-comms';
 import { getConnectorConfig, updateConnectorConfig } from './connector-config';
 import { cancelImportJob, createImportJob, getImportJob, getImportJobRows, listImportJobs, markImportJobApplied, saveImportPreview, setImportJobMapping } from './import-jobs';
 import { createResourceRequest, discardDraftRequest, getDepartmentApprovals, sendDraftRequest } from './requests';
+import { showProjectBaseline } from './schedule';
 import { listScheduleRuns, loadScheduleNetwork, recordScheduleRun } from './schedule-network';
 import { attachTaskFile, getTaskFile, listTaskFiles, removeTaskFile } from './task-files';
-import { listScenarioActions, markScenarioApplied, replaceScenarioActions, saveScenarioResult } from './whatif-store';
+import { markScenarioApplied } from './whatif-store';
 
 const DIRECTOR = 'Marie Lefebvre';
 const PM = 'Romain Aubert';
@@ -123,15 +124,16 @@ describe('schedule network', () => {
 });
 
 describe('baselines', () => {
+  // The Baseline chip writes through schedule.ts showProjectBaseline (baselines.ts setDisplayedBaseline, a dead duplicate, was removed).
   it('lists with the displayed flag; the chip stores the choice', async () => {
     expect((await listProjectBaselines('HLT-026')).map((b) => [b.code, b.activityCount, b.displayed, b.state])).toEqual([
       ['BL0', 0, false, 'superseded'], ['BL1', 21, true, 'current'], ['BL2', 0, false, 'proposed'],
     ]);
     expect(await getDisplayedBaselineCode('HLT-026')).toBe('BL1');
-    await setDisplayedBaseline('HLT-026', 'BL0', PM);
+    await showProjectBaseline('HLT-026', 'BL0', PM);
     expect(await getDisplayedBaselineCode('HLT-026')).toBe('BL0');
-    await expect(setDisplayedBaseline('HLT-026', 'BL9', PM)).rejects.toThrow('Unknown baseline');
-    await setDisplayedBaseline('HLT-026', 'BL1', PM);
+    await expect(showProjectBaseline('HLT-026', 'BL9', PM)).rejects.toThrow('Unknown baseline');
+    await showProjectBaseline('HLT-026', 'BL1', PM);
   });
   it('"Set baseline" snapshots BL3; the CR re-baseline fills BL2 and makes it current', async () => {
     const r = await createBaselineSnapshot('HLT-026', { actorName: PM, comment: 'Before recovery' }, undefined);
@@ -195,21 +197,22 @@ describe('client communication log', () => {
 });
 
 describe('what-if persistence and draft requests', () => {
-  it('scenario actions, result, apply → draft requests outside the department queue until sent', async () => {
-    await replaceScenarioActions('HLT-026', 'A', [
-      { kind: 'overtime', activityCode: 'A1250', params: { hoursPerDay: 10 }, label: 'Overtime 10 h/d on A1250' },
-      { kind: 'extra_resource', activityCode: 'A1260', department: 'Engineering', params: { extraUnits: 1 } },
-    ], PM);
-    expect((await listScenarioActions('HLT-026', 'A')).map((a) => [a.kind, a.activityCode, a.department, a.params])).toEqual([
-      ['overtime', 'A1250', null, { hoursPerDay: 10 }], ['extra_resource', 'A1260', 'Engineering', { extraUnits: 1 }],
-    ]);
-    await expect(replaceScenarioActions('HLT-026', 'A', [{ kind: 'overtime', activityCode: 'A9999', params: {} }], PM)).rejects.toThrow('Unknown activity');
-    await saveScenarioResult('HLT-026', 'A', { finish: '2027-01-08', costDeltaKeur: 42 });
+  it('apply stamp → draft requests outside the department queue until sent', async () => {
     const db = await getDb();
+    // The stamp and the draft commit together (createResourceRequest inside the caller's transaction, as applyScenario does).
     const number = await db.transaction(async (tx) => {
       const scenarioId = await markScenarioApplied('HLT-026', 'A', PM, tx);
-      return scenarioId;
-    }).then((scenarioId) => createResourceRequest({ projectCode: 'HLT-026', title: 'Overtime crew', activityCode: 'A1250', person: 'J. Wagner', hours: 40, priority: 'high', draft: true, scenarioId }, 'R. Aubert'));
+      return createResourceRequest({ projectCode: 'HLT-026', title: 'Overtime crew', activityCode: 'A1250', person: 'J. Wagner', hours: 40, priority: 'high', draft: true, scenarioId }, 'R. Aubert', tx);
+    });
+    // A failure inside the transaction rolls both back: no stamp, no draft.
+    const before = (await db.select().from(resourceRequests)).length;
+    await expect(db.transaction(async (tx) => {
+      const scenarioId = await markScenarioApplied('HLT-026', 'B', PM, tx);
+      await createResourceRequest({ projectCode: 'HLT-026', title: 'Lost', activityCode: 'A1250', person: 'J. Wagner', hours: 8, priority: 'med', draft: true, scenarioId }, 'R. Aubert', tx);
+      await createResourceRequest({ projectCode: 'HLT-026', title: 'Fails', activityCode: 'A1250', person: 'Nobody Here', hours: 8, priority: 'med', draft: true, scenarioId }, 'R. Aubert', tx);
+    })).rejects.toThrow();
+    expect((await db.select().from(resourceRequests)).length).toBe(before);
+    expect((await db.select({ at: whatIfScenarios.appliedAt }).from(whatIfScenarios).where(eq(whatIfScenarios.name, 'B')))[0].at).toBeNull();
     const [r] = await db.select().from(resourceRequests).where(eq(resourceRequests.number, number));
     expect([r.status, !!r.scenarioId]).toEqual(['draft', true]);
     const dept = (await getDepartmentApprovals('Engineering'))!;
@@ -242,7 +245,7 @@ describe('task attachments', () => {
     expect(files.filter((f) => !f.hasFile).length).toBeGreaterThan(0); // the seed's FILES rows
     const got = await getTaskFile('T-2314', id);
     expect(got!.meta.ownerType).toBe('task_attachment');
-    expect(Buffer.from(got!.data).toString()).toBe('%PDF-1.4 test');
+    expect(got && !got.blocked && Buffer.from(got.data).toString()).toBe('%PDF-1.4 test'); // R-175: a flagged file would be { blocked }
     expect(await getTaskFile('T-2318', id)).toBeNull();
     await removeTaskFile('T-2314', id, 'Julien Wagner');
     expect((await listTaskFiles('T-2314')).some((f) => f.id === id)).toBe(false);

@@ -1,25 +1,24 @@
 // Contract & Billing view models against the prototype's own renderVals() (EN and FR), for the seed and every
 // mutation the two screens offer (scripts/proto-golden-contract.ts → contract.golden.json). The deliberate
-// differences are applied to the prototype values explicitly (see `deviate`).
+// differences are applied to the prototype values explicitly (see `deviate`), and the amounts follow the owner's decisions:
+// - NEW-D3-3 (R-079): an amendment carries its own milestones; nothing is re-priced (amounts from `expectedFigures`);
+// - C-6 (R-076): the free "Payment terms" field becomes the payment rule and its days (the seed's net 45: same dates);
+// - C-9 (R-075): the contract has a currency field (EUR on the seed: every amount prints as before).
 import { describe, expect, it } from 'vitest';
+import {
+  allInvoicedSub, collectedSub, invoicedSub, outstandingSub, overdueSub, progressCss, progressText,
+} from '@/domain/contract';
 import { makeT, type Lang } from '@/i18n/translate';
-import { displayOfIso, isoOfDisplayDate } from '@/server/db/codes';
-import { amendmentFormDef, billingView, bondFormDef, contractView, invoiceFormDef, milestoneFormDef, RESULT, type ContractData } from './model';
-import { CT, G, SCENARIOS, seedInput } from './test-fixtures';
+import { money } from '@/lib/format';
+import { displayOfIso } from '@/server/db/codes';
+import {
+  amendmentFormDef, billingView, bondFormDef, contractView, invoiceFormDef, milestoneFormDef, releaseFormDef, RESULT, sentText, signFormDef,
+} from './model';
+import { dataText } from './i18n';
+import { G, SCENARIOS, expectedFigures, scenarioData, sheetFieldsExpected } from './test-fixtures';
 
 const LANGS: Lang[] = ['en', 'fr'];
-const data = (name: string): ContractData => {
-  const c = SCENARIOS[name](seedInput());
-  return {
-    ...c,
-    sheet: {
-      ...c.sheet, client: 'Port authority', type: 'lump_sum_epc', signedOn: isoOfDisplayDate(CT.signed),
-      governingLaw: 'French law · Commercial court of Le Havre',
-      scope: 'Terminal extension: steel structure, two 250 t gantry cranes, HV connection and yard works — design, supply, erection and commissioning.',
-    },
-    nextInvoiceNumber: 'INV-2026-' + String(c.milestones.filter((m) => m.invoice).length + 1).padStart(3, '0'),
-  };
-};
+const data = scenarioData;
 
 /**
  * Deliberate differences with the prototype render:
@@ -28,29 +27,79 @@ const data = (name: string): ContractData => {
  */
 const deviate = (s: string, lang: Lang) =>
   lang === 'fr' ? s.replace(/^(\d+)\.(\d+) %$/, '$1,$2 %') : s.replace(/^0 invoice awaiting payment/, '0 invoices awaiting payment');
+/** The golden's added milestone "M6" is M7 here (M6 is Amendment 1's own milestone, NEW-D3-3). */
+const gid = (name: string, id: string) => (name.startsWith('milestone') && id === 'M6' ? 'M7' : id);
 
 describe('Contract view = prototype render (EN, FR)', () => {
   for (const name of Object.keys(SCENARIOS))
     for (const lang of LANGS)
       it(`${name} · ${lang}`, () => {
         const g = G.scenarios[`${name}|contract|${lang}`];
-        const v = contractView(data(name), makeT(lang), lang);
+        const d = data(name);
+        const x = expectedFigures(d);
+        const f = (k: number) => money(k, lang);
+        const v = contractView(d, makeT(lang), lang);
         expect(v.kpis).toEqual(g.kpis);
-        expect(v.fields.map((f) => [f.key, f.type === 'select' ? f.options!.find((o) => o.value === f.value)!.label : f.value])).toEqual(
-          g.fields.map(([k, value]: [string, string]) => [k, value]),
+        // The prototype's fields, the free "Payment terms" (C-6) replaced by the currency, the rule and its days; R-148: the
+        // typed fields as typed (sheetFieldsExpected).
+        const shown = (f: (typeof v.fields)[number]) => (f.type === 'select' ? f.options!.find((o) => o.value === f.value)!.label : f.value);
+        expect(v.fields.filter((f) => !['currency', 'rule', 'days'].includes(f.key)).map((f) => [f.key, shown(f)])).toEqual(
+          sheetFieldsExpected(name, lang).filter(([k]) => k !== 'terms'),
         );
+        expect(v.fields.filter((f) => ['currency', 'rule', 'days'].includes(f.key)).map((f) => [f.key, f.value])).toEqual([
+          ['currency', 'EUR'], ['rule', 'net'], ['days', String(d.sheet.paymentDays)],
+        ]);
         expect(v.amendments.map((a) => [a.label, a.amount, a.status, a.date, a.doc ?? '', a.tagClass])).toEqual(
           g.amendments.map((a: Record<string, string>) => [a.label, a.amtText, a.status, a.date, a.doc, a.stClass]),
         );
         expect(v.bonds.map((b) => [b.label, b.amount, b.state, b.released])).toEqual(g.bonds.map((b: Record<string, string>) => [b.label, b.amtText, b.state, b.released]));
-        expect(v.milestones.map((m) => [m.id, m.label, m.share, m.amount, m.due, m.condition])).toEqual(
-          g.milestones.map((m: Record<string, string>) => [m.id, m.label, deviate(m.pctText, lang), m.amtText, m.due, m.condText]),
+        // Base milestones as the prototype lists them, amounts by NEW-D3-3; the amendments' own milestones follow in their group.
+        const baseRows = v.milestones.filter((m) => m.group == null);
+        expect(baseRows.map((m) => [m.id, m.label, m.share, m.due, m.condition])).toEqual(
+          g.milestones.map((m: Record<string, string>) => [gid(name, m.id), m.label, deviate(m.pctText, lang), m.due, m.condText]),
         );
-        expect([v.total.share, v.total.amount, v.total.ok ? 'var(--color-text)' : 'var(--color-accent-300)', v.total.hint]).toEqual([
-          deviate(g.schedTotal.pct, lang), g.schedTotal.amt, g.schedTotal.color, g.schedTotal.hint,
+        expect(v.milestones.map((m) => m.amount)).toEqual(d.milestones.map((m) => f(x.amount(m))));
+        // Delivery 8 (R-077, C-7): above 100 % the hint says invoicing is blocked (was "Shares must total 100 %", a hint only).
+        const over = v.figures.groups[0].over;
+        expect([v.total.share, v.total.ok ? 'var(--color-text)' : 'var(--color-accent-300)', v.total.hint]).toEqual([
+          deviate(g.schedTotal.pct, lang), g.schedTotal.color,
+          over ? (lang === 'en' ? `Shares total ${v.total.share} · invoicing blocked` : `Total des parts ${v.total.share} · facturation bloquée`) : g.schedTotal.hint,
         ]);
+        expect(v.total.amount).toBe(f(x.schedule));
         expect(v.reference).toBe(g.crumb.split(' · ').at(-1));
       });
+
+  it('NEW-D3-3 groups: Amendment 1’s M6 under its amendment; an unsigned amendment’s milestones are not billable', () => {
+    const t = makeT('en');
+    const v = contractView(data('seed'), t, 'en');
+    expect(v.groups).toEqual([{
+      key: 0, label: 'Amendment 1 — anti-collision lidar (CR-004)', status: 'Signed', tagClass: 'tag tag-neutral', billable: true, note: '', share: '100 %', amount: '€120k', ok: true, hint: '',
+    }]);
+    expect([v.baseTotal.amount, v.total.amount]).toEqual(['€5.40M', '€5.52M']);
+    const d = data('seed');
+    const withPending = { ...d, milestones: [...d.milestones, { number: 'M7', label: 'Crane upgrade delivered', sharePct: 100, contractualDue: '2027-01-14', condition: null, status: 'planned' as const, invoice: null, amendment: 1 }] };
+    const fr = contractView(withPending, makeT('fr'), 'fr');
+    expect(fr.groups[1]).toMatchObject({ key: 1, status: 'En attente de signature', billable: false, note: 'Non facturable avant signature', amount: '260 k€' });
+    expect(fr.milestones.at(-1)).toMatchObject({ id: 'M7', billable: false, group: 1 });
+    // An amendment signed without its own milestones: hint.
+    const bare = contractView({ ...d, milestones: d.milestones.filter((m) => m.amendment == null) }, t, 'en');
+    expect(bare.groups[0]).toMatchObject({ key: 0, ok: false, hint: 'No payment milestone for this amendment' });
+    expect(sentText('30 sept. 2026', 'fr')).toBe('Envoyé pour signature le 30 sept. 2026');
+  });
+
+  it('C-9: amounts in the contract’s currency, the euro equivalent at the budget rate beside the value', () => {
+    const d = { ...data('seed'), sheet: { ...data('seed').sheet, currency: 'USD' as const }, fx: { currency: 'USD' as const, budgetRate: 0.9 } };
+    const en = contractView(d, makeT('en'), 'en');
+    expect(en.kpis[0]).toMatchObject({ value: '$5.52M', sub: '$5.40M base · 1 signed amendment · ≈ €4.97M' });
+    expect(en.fields.find((f) => f.key === 'amount')!.label).toBe('Base amount (k$)');
+    expect(en.fields.find((f) => f.key === 'currency')!.options!.map((o) => o.value)).toEqual(['EUR', 'USD']);
+    const fr = contractView({ ...d, hasInvoices: true }, makeT('fr'), 'fr');
+    expect(fr.kpis[0].value).toBe('5,52 M$');
+    expect(fr.fields.find((f) => f.key === 'amount')!.label).toBe('Montant de base (k$)');
+    expect(fr.fields.find((f) => f.key === 'currency')).toMatchObject({ locked: true, hint: 'Factures émises · la devise est figée' });
+    expect(fr.fx).toMatchObject({ currency: 'USD', rate: '0.9', rateText: '1 USD = 0,9 €' });
+    expect(billingView(d, makeT('en'), 'en').kpis[0].value).toBe('$2.97M');
+  });
 });
 
 describe('Billing view = prototype render (EN, FR)', () => {
@@ -58,22 +107,44 @@ describe('Billing view = prototype render (EN, FR)', () => {
     for (const lang of LANGS)
       it(`${name} · ${lang}`, () => {
         const g = G.scenarios[`${name}|billing|${lang}`];
-        const v = billingView(data(name), makeT(lang), lang);
-        expect(v.kpis).toEqual(g.kpis.map((k: Record<string, string>) => ({ ...k, sub: deviate(k.sub, lang) })));
+        const d = data(name);
+        const x = expectedFigures(d);
+        const t = makeT(lang);
+        const f = (k: number) => money(k, lang);
+        const v = billingView(d, t, lang);
+        // Labels and colours are the prototype's; the amounts are NEW-D3-3's.
+        expect(v.kpis.map((k) => [k.label, k.color])).toEqual(g.kpis.map((k: Record<string, string>) => [k.label, k.color]));
+        const awaiting = d.milestones.filter((m) => m.status === 'invoiced').length;
+        const overdue = v.figures.invoices.filter((i) => i.overdue);
+        expect(v.kpis.map((k) => [k.value, k.sub])).toEqual([
+          [f(x.invoiced), t(invoicedSub(x.invoiced, x.value))],
+          [f(x.paid), t(collectedSub(x.paid, x.invoiced, lang))],
+          [f(x.invoiced - x.paid), t(outstandingSub(awaiting, lang === 'fr' ? `Net ${d.sheet.paymentDays} jours` : `Net ${d.sheet.paymentDays} days`, lang))],
+          [f(overdue.reduce((s, i) => s + i.amountKeur, 0)), t(overdueSub(overdue.length, lang))],
+          [x.next ? x.next.number : '—', x.next ? `${dataText(x.next.label, lang)} · ${t(displayOfIso(x.next.contractualDue!))} · ${f(x.amount(x.next))}` : t(allInvoicedSub(lang))],
+        ]);
         const p = v.progress;
-        expect([p.paidW, p.invW, p.retention, p.retentionNote, p.total]).toEqual([g.bill.paidW, g.bill.invW, g.bill.retention, g.bill.retNote, g.bill.total]);
-        expect(p.rows.map((r) => [r.label, r.amount, r.dot, r.share])).toEqual(g.bill.rows.map((r: Record<string, string>) => [r.k, r.v, r.dot, deviate(r.pct, lang)]));
-        const late = makeT(lang)('Late');
-        expect(v.toInvoice.map((m) => [m.id, m.label, m.line, m.late, m.amount])).toEqual(
-          g.toInvoice.map((m: Record<string, string>) => [m.id, m.label, `${m.due} · ${deviate(m.pctText, lang)}${m.late ? ` · ${late}` : ''}`, m.late, m.amtText]),
+        expect([p.paidW, p.invW, p.retention, p.retentionNote, p.total]).toEqual([
+          progressCss(x.paid, x.value), progressCss(x.invoiced - x.paid, x.value), f(Math.round((x.paid * d.sheet.retentionPct) / 100)), g.bill.retNote, f(x.value),
+        ]);
+        expect(p.rows.map((r) => [r.label, r.dot])).toEqual(g.bill.rows.map((r: Record<string, string>) => [r.k, r.dot]));
+        expect(p.rows.map((r) => [r.amount, r.share])).toEqual([
+          [f(x.paid), progressText(x.paid, x.value, lang)], [f(x.invoiced - x.paid), progressText(x.invoiced - x.paid, x.value, lang)],
+          [f(x.value - x.invoiced), progressText(x.value - x.invoiced, x.value, lang)],
+        ]);
+        const late = t('Late');
+        // The prototype's planned milestones (M6, Amendment 1's own, follows them — NEW-D3-3).
+        expect(v.toInvoice.filter((m) => m.id !== 'M6').map((m) => [m.id, m.label, m.line, m.late])).toEqual(
+          g.toInvoice.map((m: Record<string, string>) => [gid(name, m.id), m.label, `${m.due} · ${deviate(m.pctText, lang)}${m.late ? ` · ${late}` : ''}`, m.late]),
         );
-        expect(v.toInvoice.map((m) => (m.late ? 'var(--color-accent-300)' : 'var(--color-text)'))).toEqual(g.toInvoice.map((m: Record<string, string>) => m.dueColor));
-        expect(v.invoices.map((i) => [i.number, i.milestone, i.label, i.issued, i.amount, i.due, i.overdue ? 'var(--color-accent-300)' : 'var(--color-text)', i.paid, i.status, i.tagClass, i.canPay, i.note ?? ''])).toEqual(
-          g.invoices.map((i: Record<string, string>) => [i.no, i.msId, i.label, i.issued, i.amtText, i.due, i.dueColor, i.paid, i.status, i.stClass, i.canPay, i.note]),
+        expect(v.toInvoice.map((m) => m.amount)).toEqual(x.billable.filter((m) => m.status === 'planned').map((m) => f(x.amount(m))));
+        expect(v.invoices.map((i) => [i.number, i.milestone, i.label, i.issued, i.due, i.overdue ? 'var(--color-accent-300)' : 'var(--color-text)', i.paid, i.status, i.tagClass, i.canPay, i.note ?? ''])).toEqual(
+          g.invoices.map((i: Record<string, string>) => [i.no, i.msId, i.label, i.issued, i.due, i.dueColor, i.paid, i.status, i.stClass, i.canPay, i.note]),
         );
+        expect(v.invoices.map((i) => i.amount)).toEqual(d.milestones.filter((m) => m.invoice && m.status !== 'planned').map((m) => f(m.invoice!.amountKeur)));
         expect(String(v.figures.lateCount || '')).toBe(g.badge);
-        expect(v.toInvoice.length === 0).toBe(g.noToInvoice);
         expect(v.invoices.length === 0).toBe(g.noInvoices);
+        expect(v.terms).toBe(lang === 'fr' ? `Net ${d.sheet.paymentDays} jours` : `Net ${d.sheet.paymentDays} days`);
       });
 });
 
@@ -92,12 +163,17 @@ describe('add-forms and toasts = prototype dialogs (EN, FR)', () => {
         const gOpts = G.dialogs[`${key}|${lang}`].fields.find((f: { options: unknown[] }) => f.options.length)?.options.map((o: { v: string }) => o.v);
         expect(opts).toEqual(gOpts);
       }
+      // NEW-D3-3: with amendments the milestone form starts with "Applies to" (base contract or an amendment).
+      const withAmendments = milestoneFormDef(t, data('seed').amendments, lang);
+      expect(withAmendments.fields.map((f) => f.id)).toEqual(['basis', 'label', 'pct', 'due', 'cond']);
+      expect(withAmendments.fields[0].options!.map((o) => (o as { value: string }).value)).toEqual(['base', '0', '1']);
       const inv = invoiceFormDef(data('seed'), t, lang);
       const gInv = G.dialogs[`billing-primary|${lang}`];
       expect([inv.title, inv.submit, inv.kind]).toEqual([gInv.title, gInv.submit, 'run']);
       expect(fields(inv)).toEqual(proto(`billing-primary|${lang}`));
-      expect(inv.fields[0].options!.map((o) => (o as { label: string }).label)).toEqual(gInv.fields[0].options.map((o: { v: string }) => o.v));
-      expect(inv.fields[0].options!.map((o) => (o as { value: string }).value)).toEqual(['M4', 'M5']);
+      // The prototype's planned milestones, then Amendment 1's own M6 (NEW-D3-3).
+      expect(inv.fields[0].options!.map((o) => (o as { label: string }).label).slice(0, 2)).toEqual(gInv.fields[0].options.map((o: { v: string }) => o.v));
+      expect(inv.fields[0].options!.map((o) => (o as { value: string }).value)).toEqual(['M4', 'M5', 'M6']);
       // Row "Issue invoice" pre-selects its milestone (afOpenWith('billing', {ms})).
       expect(G.dialogs[`billing-row-m5|${lang}`].fields[0].value).toBe(`M5 · ${lang === 'fr' ? 'Handover (SAT)' : 'Handover (SAT)'}`);
       // Toasts (AF_RESULT, translated per " · " segment by showToast).
@@ -106,18 +182,27 @@ describe('add-forms and toasts = prototype dialogs (EN, FR)', () => {
       expect(`${t('Warranty bond')} · ${t(RESULT.bond)}`).toBe(G.toasts[`bond|${lang}`]);
       expect(t(RESULT.milestone)).toBe(G.toasts[`milestone|${lang}`]);
       expect(displayOfIso('2026-09-30')).toBe('30 Sep 2026');
+      // R-079 dialogs.
+      expect(signFormDef(t, 'CTR-HLT-004').fields.map((f) => [f.id, f.defaultValue])).toEqual([['date', t('30 Sep 2026')], ['doc', 'CTR-HLT-004']]);
+      expect(releaseFormDef(t).fields.map((f) => f.id)).toEqual(['date']);
+      expect(amendmentFormDef(t, 'USD').fields.find((f) => f.id === 'amt')!.label).toBe(lang === 'fr' ? 'Montant (k$)' : 'Amount (k$)');
     });
 
-  it('contract-sheet fields: labels, controls, full-row textarea and contract types = the prototype (EN, FR)', () => {
+  it('contract-sheet fields: labels, controls, full-row textarea and contract types = the prototype (EN, FR) + currency, rule, days', () => {
     for (const lang of LANGS) {
       const v = contractView(data('seed'), makeT(lang), lang);
       const kind = (f: { isSelect: boolean; isNumber: boolean; isTextarea: boolean }) => (f.isSelect ? 'select' : f.isNumber ? 'number' : f.isTextarea ? 'textarea' : 'text');
-      expect(v.fields.map((f) => [f.key, f.label, f.type, f.type === 'textarea' ? '1 / -1' : 'auto'])).toEqual(
-        G[`fieldDefs|${lang}`].map((f: { k: string; label: string; isSelect: boolean; isNumber: boolean; isTextarea: boolean; span: string }) => [f.k, f.label, kind(f), f.span]),
+      expect(v.fields.filter((f) => !['currency', 'rule', 'days'].includes(f.key)).map((f) => [f.key, f.label, f.type, f.type === 'textarea' ? '1 / -1' : 'auto'])).toEqual(
+        G[`fieldDefs|${lang}`].filter((f: { k: string }) => f.k !== 'terms')
+          .map((f: { k: string; label: string; isSelect: boolean; isNumber: boolean; isTextarea: boolean; span: string }) => [f.k, f.label, kind(f), f.span]),
       );
       expect(v.fields.find((f) => f.key === 'type')!.options!.map((o) => o.label)).toEqual(
         G[`fieldDefs|${lang}`].find((f: { k: string }) => f.k === 'type').options.map((o: { v: string }) => o.v),
       );
+      const rule = v.fields.find((f) => f.key === 'rule')!;
+      expect([rule.label, rule.options!.map((o) => o.label), rule.hint]).toEqual(lang === 'fr'
+        ? ['Règle de paiement', ['N jours date de facture', 'N jours fin de mois', 'Fin de mois + N jours'], 'Net 45 jours']
+        : ['Payment rule', ['N days from invoice date', 'N days end of month', 'End of month + N days'], 'Net 45 days']);
     }
   });
 

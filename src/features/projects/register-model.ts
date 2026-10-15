@@ -1,7 +1,10 @@
 // Projects register view model (docs/spec/03 §5.4–§5.6): turns the register data (DAL) into serialisable,
 // translated rows for the client island. Pure — runs in the page (Server Component) and in tests.
 import { screenHref } from '@/config/screens';
-import { HEALTH_LABEL } from '@/domain/health';
+import { BL1_STAGE_DELIVERABLE } from '@/domain/baseline-policy';
+import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
+import { displayOfIso } from '@/server/db/codes';
+import { HEALTH_LABEL, type HealthThresholds } from '@/domain/health';
 import { isLiveRow, type SearchableProject, type StageCode } from '@/domain/lifecycle';
 import { projectIndicators, type Tint } from '@/domain/portfolio';
 import { healthTone, type Tone } from '@/components/app/tones';
@@ -11,6 +14,7 @@ import type { StageHistoryRow, StageInfo } from '@/server/dal/lifecycle';
 import type { ProjectRow } from '@/server/dal/projects';
 import type { ScheduleSummaries, StageChecklists } from '@/server/dal/projects-register';
 import type { ZoneKey } from '@/server/session';
+import { dataText } from '@/i18n/data-text';
 
 /** A stage as the client needs it (labels already translated; LIFE and GATES are French domain text). */
 export interface StageView {
@@ -48,10 +52,15 @@ export interface RegisterRow {
   msLine: string;
   msColor: string;
   attention: string;
-  /** Deliverables of the current stage (STAGE_DELIVS) and their ticks. */
-  delivs: { label: string; done: boolean }[];
+  /**
+   * Deliverables of the current stage (STAGE_DELIVS) and their ticks. `lock` (delivery 8, R-054): « Planning BL1 posé » follows
+   * BL1 — read-only, with the reason (translated).
+   */
+  delivs: { label: string; done: boolean; lock?: string }[];
   /** Stage history, newest first. */
   history: { stage: string; date: string; forced: boolean; why: string }[];
+  /** Bounds of the effective date of the next stage change (L-4c, ISO): the latest change and today (the data date). */
+  dateBounds: { previous: string | null; today: string };
   progress: number;
   progressPct: string;
   finishPlanned: string;
@@ -87,6 +96,18 @@ export interface RegisterInput {
   inactiveStages?: readonly StageCode[];
   /** Projects with a WBS but no cost controls yet (wizard template, A-2): their plan opens too. */
   planned?: readonly string[];
+  /** Settings health thresholds (A-13): CPI / SPI colours and attention items. Default 0.97 / 0.90. */
+  thresholds?: HealthThresholds;
+  /** Data date per project (ISO): "today" of the stage-change effective date (L-4c). Default: the status date. */
+  dataDates?: Record<string, string>;
+  /** Delivery 8 (R-054): BL1 per project (set, ISO date) — « Planning BL1 posé » follows it. */
+  bl1?: Record<string, { set: boolean; setOn: string | null }>;
+}
+
+/** R-054 (L-2 "a"): the hint of the read-only « Planning BL1 posé » tick. */
+function bl1Lock(b: { set: boolean; setOn: string | null } | undefined, t: T): string {
+  if (!b?.set) return t('Ticked when BL1 is set (Plan › Set baseline, up to BL1)');
+  return b.setOn ? `${t('Ticked by BL1')} · ${t(displayOfIso(b.setOn))}` : t('Ticked by BL1');
 }
 
 /** Indicator tints → CSS colours (LO = accent-300, OK = text). */
@@ -113,6 +134,7 @@ export function buildRegisterModel(data: RegisterInput, zone: ZoneKey | null, t:
       sched && { start: sched.start, floatDays: sched.floatDays, finishText: sched.finishText, baselineText: sched.baselineText, milestones: sched.milestones },
       live,
       lang,
+      data.thresholds,
     );
     const st = stageByCode.get(p.stage);
     const ticks = data.checklists[p.code]?.[p.stage] ?? [];
@@ -120,26 +142,30 @@ export function buildRegisterModel(data: RegisterInput, zone: ZoneKey | null, t:
     return {
       code: p.code,
       stage: p.stage,
-      search: { names: [p.name, t(p.name)], code: p.code, number, analytic: p.analytic ?? '', machineType: p.machineType ?? '' },
-      name: t(`${p.displayId} · ${p.name}`),
+      search: { names: [p.name, dataText(p.name, lang)], code: p.code, number, analytic: p.analytic ?? '', machineType: p.machineType ?? '' },
+      name: `${p.displayId} · ${dataText(p.name, lang)}`,
       openHref: p.hasData || planned.has(p.code) ? screenHref('plan', { code: p.code }) : null,
       isNew: p.isNew,
       idLine: `${p.analytic ?? '—'} · ${p.das ? 'DAS ' + p.das : '—'} · ${p.machineType ?? '—'}`,
-      metaLine: `${t(p.pm)} · ${t(p.client)} · ${t(`${p.start} → ${p.finish}`)}`,
+      metaLine: `${p.pm} · ${dataText(p.client, lang)} · ${t(`${p.start} → ${p.finish}`)}`,
       health: live && p.health ? { label: t(HEALTH_LABEL[p.health]), tone: healthTone(p.health) } : { label: '—', tone: 'muted' },
       spiText: ind.spiText,
       spiColor: TINT[ind.spiTint],
       cpiText: ind.cpiText,
       cpiColor: TINT[ind.cpiTint],
-      msName: ind.msName === '—' ? '—' : t(ind.msName),
+      msName: ind.msName === '—' ? '—' : dataText(ind.msName, lang),
       msLine: ind.msLine ? t(ind.msLine) : '',
       msColor: TINT[ind.msTint],
       attention: ind.attention.length ? ind.attention.map((a) => t(a)).join(' · ') : '—',
-      delivs: (st?.deliverables ?? []).map((label, i) => ({ label: t(label), done: !!ticks[i] })),
+      delivs: (st?.deliverables ?? []).map((label, i) => ({
+        label: t(label), done: !!ticks[i],
+        ...(p.stage === BL1_STAGE_DELIVERABLE.stage && i === BL1_STAGE_DELIVERABLE.position ? { lock: bl1Lock(data.bl1?.[p.code], t) } : {}),
+      })),
       history: (data.history[p.code] ?? [])
         .slice()
         .reverse()
         .map((h) => ({ stage: t(h.label), date: t(h.date), forced: h.mode === 'forced', why: h.reason })),
+      dateBounds: { previous: data.history[p.code]?.at(-1)?.dateIso ?? null, today: data.dataDates?.[p.code] ?? DEFAULT_DATA_DATE },
       progress: p.progress,
       progressPct: Math.round(p.progress * 100) + '%',
       finishPlanned: t(ind.finishPlanned),

@@ -3,7 +3,7 @@
 // state of a project without planning data. Shell pieces (PageHeader) and the session are mocked.
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-const state = { lang: 'fr' as 'fr' | 'en', canEdit: true, role: 'director', isMine: true, cookie: undefined as string | undefined };
+const state = { lang: 'fr' as 'fr' | 'en', canEdit: true, role: 'director', isMine: true, cookie: undefined as string | undefined, short: 'M. Lefebvre' };
 vi.mock('next/navigation', () => ({ usePathname: () => '/projects/HLT-026/plan', useRouter: () => ({ push() {}, replace() {}, refresh() {} }), useSearchParams: () => new URLSearchParams(), notFound: () => { throw new Error('404'); } }));
 vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => (state.cookie ? { value: state.cookie } : undefined) }) }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
@@ -14,7 +14,10 @@ vi.mock('@/server/session', async () => {
 vi.mock('@/server/project-context', async () => {
   const { getProject } = await import('@/server/dal/projects');
   return {
-    getProjectContext: async (code: string) => ({ project: await getProject(code), viewer: { role: state.role }, canEdit: () => state.canEdit, isMine: state.isMine }),
+    // `isMine` of the test state = the PM rights (`isLead`, R-041).
+    getProjectContext: async (code: string) => ({
+      project: await getProject(code), viewer: { role: state.role, name: state.short, short: state.short, personId: null }, canEdit: () => state.canEdit, isMine: true, isLead: state.isMine,
+    }),
   };
 });
 vi.mock('@/components/app/shell/page-header', async () => {
@@ -131,9 +134,15 @@ describe('Plan page render', () => {
     expect(eng).not.toContain('aria-label="Calendar · Standard 5d · 8h"');
     expect(text(eng)).toContain('Calendar Standard 5d · 8h');
     expect(text(eng)).not.toContain('Reschedule');
-    expect(text(eng)).toContain('Update progress');
-    state.role = 'director';
-    state.isMine = true;
+    // P-9a (R-061): a team member who does not lead the project enters the progress of their own activities only — the engineering
+    // referent owns none (no "Update progress"), Julien Wagner (JW) does: the button and his rows' progress inputs, no structure.
+    expect(text(eng)).not.toContain('Update progress');
+    Object.assign(state, { role: 'member', short: 'J. Wagner' });
+    const jw = await render('HLT-026');
+    expect(text(jw)).toContain('Update progress');
+    expect(text(jw)).not.toContain('Reschedule');
+    expect(jw).not.toContain('Add work package');
+    Object.assign(state, { role: 'director', isMine: true, short: 'M. Lefebvre' });
   });
 
   it('project without planning data → empty state, no other project’s data', async () => {

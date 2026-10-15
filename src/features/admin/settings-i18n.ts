@@ -2,11 +2,11 @@
 // lifecycle stages) and the "Remove" toast, which says whether the value was deleted or only deactivated because records
 // still use it. Exact strings translate through t() (src/i18n/extra/ch4-settings.json); counted ones are built here.
 import {
-  CUSTOM_STATUS_REFUSED, REQUIRED_STAGE_REFUSED, SETTINGS_DIRECTOR_ONLY, type RemovalMode,
+  CUSTOM_STATUS_REFUSED, HOLIDAY_DATE_TAKEN, REQUIRED_STAGE_REFUSED, SETTINGS_DIRECTOR_ONLY, type RemovalMode,
 } from '@/domain/settings-rules';
 import type { Lang, T } from '@/i18n/translate';
 
-const KNOWN = new Set<string>([SETTINGS_DIRECTOR_ONLY, CUSTOM_STATUS_REFUSED, REQUIRED_STAGE_REFUSED]);
+const KNOWN = new Set<string>([SETTINGS_DIRECTOR_ONLY, CUSTOM_STATUS_REFUSED, REQUIRED_STAGE_REFUSED, HOLIDAY_DATE_TAKEN]);
 
 /** A chapter-4 Settings refusal, translated; null when the message is not one of them. */
 export const settingsErrorT = (message: string, t: T): string | null => (KNOWN.has(message) ? t(message) : null);

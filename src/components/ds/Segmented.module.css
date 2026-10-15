@@ -40,3 +40,8 @@
 .full { flex: 1; justify-content: center; }
 
 .count { font-variant-numeric: tabular-nums; font-size: 11px; color: var(--color-neutral-400); }
+
+/* Touch targets of 40 px on tablets (R-146; media query = TOUCH_MEDIA in src/components/app/shell/tablet.ts). */
+@media (max-width: 1024px), (pointer: coarse) {
+  .opt { min-height: 40px; }
+}

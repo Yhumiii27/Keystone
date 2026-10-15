@@ -9,7 +9,7 @@ import { setDb } from '@/server/db/client';
 import { stage } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
 import { decideChangeStep } from '@/server/dal/changes';
-import { approveDocumentStep, listVaultDocuments } from '@/server/dal/documents';
+import { listVaultDocuments, recordDocumentDecision } from '@/server/dal/documents';
 import { recordStageChange } from '@/server/dal/lifecycle';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { createResourceRequest } from '@/server/dal/requests';
@@ -27,6 +27,8 @@ describe('My approvals registry', () => {
   it('registers one provider per kind, in inbox order', () => {
     expect(APPROVAL_PROVIDERS.map((p) => `${p.kind}/${p.scope}/${p.source}`)).toEqual([
       'request/global/db', 'po/project/db', 'eco/global/db', 'delivery/project/db', 'stage/global/db', 'cr/project/db',
+      // Delivery 7 (R-071, C-4): contingency draw-downs of every project wait for the portfolio director.
+      'contingency/global/db',
       'deliverable/project/db', 'rfq/global/db', 'invoice/global/db', 'ncr/project/db', 'doc/global/db',
     ]);
   });
@@ -47,7 +49,8 @@ describe('My approvals registry', () => {
     // The quality manager heads the Quality department (RQ-042) and is the next Codex approver of RPT-HLT-014.
     expect(await queue('quality')).toEqual(['request:RQ-042', 'delivery:BL-2026-0521', 'doc:RPT-HLT-014']);
     expect(await queue('procurement')).toEqual(['delivery:BL-2026-0521', 'rfq:RFQ-2026-031', 'invoice:INV-HC-7781', 'invoice:INV-BX-55120', 'invoice:INV-LE-2210']);
-    expect(await queue('client')).toEqual(['cr:CR-008', 'deliverable:D-014', 'deliverable:D-016']);
+    // Deviation P-6b (delivery 8, R-069): CR-008 reaches the client once the director approved it (last CR test below).
+    expect(await queue('client')).toEqual(['deliverable:D-014', 'deliverable:D-016']);
     expect(await queue('member')).toEqual([]);
   });
 
@@ -74,7 +77,8 @@ describe('My approvals registry', () => {
       ['0', '0', '—', '4'],
       ['3', '3', '18 Sep', '4'],
       ['5', '3', '10 Sep', '0'],
-      ['3', '2', '24 Sep', '0'],
+      // P-6b (R-069): the client's CR-008 waits for the director — 3 · 2 · 24 Sep → 2 · 1 · 25 Sep.
+      ['2', '1', '25 Sep', '0'],
     ]);
   });
 
@@ -95,7 +99,7 @@ describe('My approvals registry', () => {
       kind: 'cr', id: 'CR-008', title: 'Second steel crew — schedule recovery', sub: 'Budget · Schedule · +€85k · -12 d', when: '24 Sep', whenIso: '2026-09-24', who: 'R. Aubert',
       href: '/projects/HLT-026/changes?cr=CR-008', decision: { mode: 'change-request', projectCode: 'HLT-026', number: 'CR-008', step: 'director' },
     });
-    expect((await inbox('client', 'HLT-026', 'fr')).items[0].sub).toBe('Budget · Schedule · +85 k€ · -12 d');
+    // The client's own line (FR) is checked once the director approved CR-008 (P-6b, R-069), below.
   });
 
   it('project-bound kinds follow the current project', async () => {
@@ -107,6 +111,17 @@ describe('My approvals registry', () => {
     // Projects without data: no project-bound item (never Harbor Line's).
     expect(await queue('director', 'EWA-051')).toEqual(['invoice:INV-HC-7781', 'invoice:INV-BX-55120', 'invoice:INV-LE-2210']);
     expect(await queue('director', 'NOPE-999')).toEqual(['invoice:INV-HC-7781', 'invoice:INV-BX-55120', 'invoice:INV-LE-2210']);
+  });
+
+  it('R-042 / R-043 (P-10a, P-10b): the client gets change requests and deliverables of their organisation\'s projects only', async () => {
+    for (const code of ['HLT-026', 'PRS-038', 'QFR-015', 'NDC-031', 'WSA-044']) {
+      const items = (await inbox('client', code)).items;
+      expect(items.filter((i) => i.kind !== 'cr' && i.kind !== 'deliverable'), code).toEqual([]);
+    }
+    // Another organisation's project: nothing, not even a global kind.
+    const counts = await approvalCountsByProject(PERSONA_BY_ROLE.client, ['HLT-026', 'NDC-031', 'WSA-044']);
+    expect([counts['NDC-031'], counts['WSA-044'], counts['HLT-026']]).toEqual([0, 0, (await inbox('client')).items.length]);
+    expect(await approvalCount(PERSONA_BY_ROLE.client, 'NDC-031')).toBe(0);
   });
 
   it('badge counts: current project and per project', async () => {
@@ -141,15 +156,15 @@ describe('My approvals registry', () => {
     expect(await queue('pm')).not.toContain('stage:NDC-031');
   });
 
-  it('a decided CR step leaves the decider’s queue and counts as decided; the director then records the CCB', async () => {
+  it('a decided CR step leaves the decider’s queue and counts as decided; the client decides next, then the board', async () => {
     await decideChangeStep('HLT-026', 'CR-008', 'director', 'ok', 'Marie Lefebvre');
     const d = await inbox('director');
-    // Same request, next step the director holds: the change control board (recorded by the director, 07 OQ2).
-    expect(d.items.filter((i) => i.kind === 'cr').map((i) => [i.id, i.sub, i.decision])).toEqual([
-      ['CR-008', 'Budget · Schedule · +€85k · -12 d · Change control board', { mode: 'change-request', projectCode: 'HLT-026', number: 'CR-008', step: 'ccb' }],
-    ]);
+    // Deviation P-6b (delivery 8, R-069): the chain is sequential — the board step the director records (07 OQ2) waits for the
+    // client's decision, so it is not in the director's queue yet (the prototype listed it right away).
+    expect(d.items.filter((i) => i.kind === 'cr')).toEqual([]);
     expect(d.decided).toBe(2);
     expect(await queue('client')).toContain('cr:CR-008');
+    expect((await inbox('client', 'HLT-026', 'fr')).items[0].sub).toBe('Budget · Schedule · +85 k€ · -12 d');
     await decideChangeStep('HLT-026', 'CR-008', 'client', 'rejected', 'Nadia Bensaïd');
     expect(await queue('client')).toEqual(['deliverable:D-014', 'deliverable:D-016']);
     // Rejected: nothing left to decide on it for anyone.
@@ -158,13 +173,21 @@ describe('My approvals registry', () => {
 
   it('Codex documents come from the database index: same items as the prototype on the seed, then follow the circuit', async () => {
     const vault = await listVaultDocuments();
+    // P-7b = a (Delivery 7, R-124): the rows are the prototype's, now decided inline (the prototype had no decision).
+    const inline = (xs: ReturnType<typeof codexVaultItems>) => xs.map((x) => ({ ...x, decision: null }));
     for (const p of Object.values(PERSONA_BY_ROLE)) {
-      expect([p.short, codexVaultItems(vault, p.short, 'HLT-026')]).toEqual([p.short, codexDocItems(PROTO.DOCS as ProtoDoc[], PROTO.DOC_TYPE, PROTO.DOC_WHO, p.short, 'HLT-026')]);
+      expect([p.short, inline(codexVaultItems(vault, p.short, 'HLT-026'))]).toEqual([p.short, codexDocItems(PROTO.DOCS as ProtoDoc[], PROTO.DOC_TYPE, PROTO.DOC_WHO, p.short, 'HLT-026')]);
     }
-    await approveDocumentStep('RPT-HLT-014', 'Gabriel Comte');
+    const quality = (await inbox('quality')).items.find((i) => i.id === 'RPT-HLT-014')!;
+    expect([quality.decision, quality.external?.label]).toEqual([{ mode: 'codex-document', number: 'RPT-HLT-014', step: 1 }, 'Open in Codex']);
+    const decidedBefore = (await inbox('quality')).decided;
+    await recordDocumentDecision('RPT-HLT-014', { decision: 'approved' }, { name: 'Gabriel Comte', role: 'quality' });
     expect(await queue('quality')).not.toContain('doc:RPT-HLT-014');
-    expect((await inbox('pm')).items.filter((i) => i.kind === 'doc').map((i) => [i.id, i.sub])).toEqual([['RPT-HLT-014', 'Test & inspection report · rev A · Project manager']]);
-    await approveDocumentStep('RPT-HLT-014', 'Romain Aubert');
+    expect((await inbox('quality')).decided).toBe(decidedBefore + 1);
+    expect((await inbox('pm')).items.filter((i) => i.kind === 'doc').map((i) => [i.id, i.sub, i.decision])).toEqual([
+      ['RPT-HLT-014', 'Test & inspection report · rev A · Project manager', { mode: 'codex-document', number: 'RPT-HLT-014', step: 2 }],
+    ]);
+    await recordDocumentDecision('RPT-HLT-014', { decision: 'approved' }, { name: 'Romain Aubert', role: 'pm' });
     expect(await queue('pm')).not.toContain('doc:RPT-HLT-014');
   });
 });

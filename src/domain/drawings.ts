@@ -2,7 +2,9 @@
 // `dwgKpis` / `dwgVals`, logic 4371–4380). The vault is a read-only mirror of SolidWorks PDM: revisions and states
 // change in the vault, Keystone lists them, filters them and opens the linked part and ECO. No I/O, no translation:
 // labels are the prototype's English source strings. Golden values: src/domain/drawings.test.ts.
-import { DRAWING_STATE_TAG, drawingState, type DrawingState } from '@/server/db/codes';
+import { DRAWING_STATE_TAG, drawingState, relativeDayText, type DrawingState } from '@/server/db/codes';
+import { DEFAULT_DATA_DATE } from './ch4-defaults';
+import { parisDateOf } from './kpis';
 
 export type { DrawingState };
 
@@ -50,17 +52,45 @@ export interface DrawingKpi {
 }
 
 /**
- * The five tiles (dwgKpis). The vault size and the last sync come from the PDM sync record (the prototype's
- * literals "1 248" and "07:40"); the rest counts the register.
+ * Day of the last vault sync against the data date (A-12; the prototype always said "today"): "today", "yesterday", else
+ * the run's date ("26 Sep" — the seeded PDM connector run is dated the day after the data date). EN source; t() translates.
  */
-export function drawingKpis(rows: Pick<DrawingLike, 'state'>[], sync: { drawingsInVault: number; linkedDrawings: number; time: string } | null): DrawingKpi[] {
+export const vaultSyncDayText = (syncedAt: string, asOf: string = DEFAULT_DATA_DATE) => relativeDayText(parisDateOf(syncedAt), asOf);
+
+/**
+ * Sub-line of "Obsolete still referenced" (R-169; the prototype printed the constant "Superseded by rev 2"): the ECOs
+ * that made the referenced drawings obsolete ("Superseded · ECO-2026-012"), "Superseded revision" when none is known,
+ * "Nothing to withdraw" when no obsolete drawing is referenced.
+ */
+export function obsoleteSub(rows: readonly (Pick<DrawingLike, 'state'> & { ecoNumber?: string | null })[]): string {
+  const obsolete = rows.filter((d) => d.state === 'obsolete');
+  if (!obsolete.length) return 'Nothing to withdraw';
+  const ecos = [...new Set(obsolete.map((d) => d.ecoNumber).filter((e): e is string => !!e))];
+  return ecos.length ? `Superseded · ${ecos.join(', ')}` : 'Superseded revision';
+}
+
+/**
+ * The five tiles (dwgKpis). The vault size and the last sync come from the PDM sync record (the prototype's
+ * literals "1 248" and "07:40"); the rest counts the register. The sync's day is computed from its instant (`syncedAt`)
+ * against the portfolio data date `asOf`.
+ */
+export function drawingKpis(
+  rows: (Pick<DrawingLike, 'state'> & { ecoNumber?: string | null })[],
+  sync: { drawingsInVault: number; linkedDrawings: number; time: string; syncedAt?: string } | null,
+  asOf: string = DEFAULT_DATA_DATE,
+): DrawingKpi[] {
   const n = (s: DrawingState) => rows.filter((d) => d.state === s).length;
   return [
     { label: 'Drawings in vault', value: sync ? vaultCountText(sync.drawingsInVault) : '—', sub: `${sync?.linkedDrawings ?? rows.length} linked to catalogue parts`, lo: false },
     { label: 'Released', value: String(n('released')), sub: 'Current revision', lo: false },
     { label: 'WIP / under review', value: String(n('wip') + n('under_review')), sub: 'Linked to open ECOs', lo: false },
-    { label: 'Obsolete still referenced', value: String(n('obsolete')), sub: 'Superseded by rev 2', lo: true },
-    { label: 'Last vault sync', value: sync?.time ?? '—', sub: 'SolidWorks PDM · today · read-only', lo: false },
+    { label: 'Obsolete still referenced', value: String(n('obsolete')), sub: obsoleteSub(rows), lo: true },
+    {
+      label: 'Last vault sync',
+      value: sync?.time ?? '—',
+      sub: sync?.syncedAt ? `SolidWorks PDM · ${vaultSyncDayText(sync.syncedAt, asOf)} · read-only` : 'SolidWorks PDM · read-only',
+      lo: false,
+    },
   ];
 }
 

@@ -37,6 +37,12 @@ export interface ExportColumn {
   width?: number;
   decimals?: number;
   align?: 'left' | 'right' | 'center';
+  /**
+   * R-046 (NEW-D2-1): a supplier price, an order / stock / BOM value or a supplier-invoice amount, whatever its type — an amount
+   * in another currency than the euro is a plain `number` column (C-9). The priced providers drop it for a viewer whose prices
+   * are masked (`stripPriceColumns`), as they drop every € column.
+   */
+  price?: true;
 }
 
 export interface ExportSheet {
@@ -68,7 +74,50 @@ export type PdfBlock =
   /** Signature boxes ("PV de réception", purchase order): one per party. */
   | { kind: 'signatures'; parties: { role: string; name?: string }[] }
   | { kind: 'spacer'; height?: number }
-  | { kind: 'pageBreak' };
+  | { kind: 'pageBreak' }
+  /** A Gantt chart drawn in the PDF (Schedule / client portal planning): bars and diamonds on a month timeline. */
+  | PdfGanttBlock;
+
+/** One bar row of a PDF Gantt; positions are fractions of the timeline (0 = first month's start, 1 = last month's end). */
+export interface PdfGanttRow {
+  name: string;
+  /** Second, muted text after the name (owner). */
+  sub?: string;
+  /** "72%" (done column). */
+  done?: string;
+  /** "+39 d" / "—" (slip column); `slipAlert` prints it in the attention colour. */
+  slip?: string;
+  slipAlert?: boolean;
+  critical?: boolean;
+  /** Baseline bar (thin, grey); null / absent → none. */
+  baseline?: [start: number, end: number] | null;
+  /** Forecast bar. */
+  forecast: [start: number, end: number];
+  /** Share of the forecast bar filled (0–1). */
+  progress?: number;
+}
+
+export interface PdfGanttMilestone {
+  name: string;
+  slip?: string;
+  slipAlert?: boolean;
+  /** Baseline (outline) and forecast (filled) diamonds, as timeline fractions. */
+  baseline?: number | null;
+  forecast: number;
+  done?: boolean;
+}
+
+export interface PdfGanttBlock {
+  kind: 'gantt';
+  /** Month labels of the timeline (translated), one column each. */
+  months: string[];
+  rows: PdfGanttRow[];
+  milestones?: PdfGanttMilestone[];
+  /** Data date line, as a timeline fraction. */
+  today?: number | null;
+  /** Translated labels: column headers and legend. */
+  labels: { name: string; done: string; slip: string; milestones: string; baseline: string; forecast: string; progress: string; critical: string; today: string };
+}
 
 export interface PdfDocument {
   /** Title, translated ("Purchase order PO-1082"). */
@@ -105,6 +154,8 @@ export interface ExportContext {
   zone: ZoneKey | null;
   /** Hourly rates are masked for this viewer (rates screen rule: only the director and the PM see them). */
   ratesMasked: boolean;
+  /** Supplier prices, order values and supplier invoices are masked (R-046, NEW-D2-1: only the director, PMs and procurement see them). */
+  pricesMasked: boolean;
   /** Document variant ('po', 'receipt', 'statement', 'status', 'pv'…) or null for the screen table / report. */
   variant: string | null;
   /** Export instant (real clock: file names and the "exported on" line). */

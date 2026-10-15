@@ -3,13 +3,14 @@
 // receipt when it names them) and the last Sage X3 import ("07:15 · 15 lines"). A movement is pending push to X3 when
 // it touched a position flagged Local (the others came from X3).
 import { PROTO } from '@/server/prototype';
+import { X3_LAST_IMPORT } from '@/server/integrations/x3/prototype-snapshot';
 import { STATUS_ISO, isoOfDisplayDate, parisInstant, parseStampText, stockMovementType, stockSource } from '../codes';
 import { stockMovements, stockPositions, x3SyncRuns } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, personIdOrNull, projectCodeOfShort, type SeedCtx } from './context';
 
-/** Time of the last X3 stock import (`x3Sync` initial state 3774: "07:15"). */
-export const X3_LAST_IMPORT = '07:15';
+/** Time of the last X3 stock import (`x3Sync` initial state 3774: "07:15"), from the X3 mock connector. */
+export { X3_LAST_IMPORT };
 
 interface ProtoStock { ref: string; loc: string; onHand: number; reserved: number; proj: string; min: number; source: string; last: string }
 

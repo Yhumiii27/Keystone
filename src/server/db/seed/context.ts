@@ -86,7 +86,7 @@ export async function ctxFromDb(tx: Tx): Promise<SeedCtx> {
     ctx.wbs.get(w.project)!.set(w.code, w.id);
   }
   for (const d of await tx.select({ id: documents.id, number: documents.number }).from(documents)) ctx.document.set(d.number, d.id);
-  for (const u of await tx.select({ id: users.id, role: users.role }).from(users)) ctx.userByRole.set(u.role, u.id);
+  for (const u of await tx.select({ id: users.id, role: users.personaRole }).from(users)) if (u.role) ctx.userByRole.set(u.role, u.id);
   return ctx;
 }
 

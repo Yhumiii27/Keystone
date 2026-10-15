@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_CALENDAR_BY_CODE, WorkCalendar } from './calendar';
 import {
-  holidaysText, instantiateTemplate, monthOfIso, plannedWindowError, shareDays, templateActivitiesText, templateWbsText, workingTimeText,
+  TEMPLATE_ACTIVITY_DAYS, WIZARD_REQUIRED, holidaysText, instantiateTemplate, monthOfIso, plannedWindowError, shareDays, templateActivitiesText, templateWbsText,
+  wizardSiteError, wizardWindowError, workingTimeText,
 } from './project-template';
 
 const std = new WorkCalendar(BUILTIN_CALENDAR_BY_CODE.standard_5x8);
@@ -20,6 +21,26 @@ describe('machine-type template instantiation (A-2 / L-3)', () => {
     expect(plannedWindowError('2027-01-11', '2045-01-01')).toBe('The planned window is too long');
     expect(monthOfIso('2027-01-11')).toEqual({ text: 'Jan 2027', month: 12 });
     expect(monthOfIso('2027-09-30')).toEqual({ text: 'Sep 2027', month: 20 });
+  });
+
+  it('L-3b: required name, client, PM, type, start and location; the planned finish is optional', () => {
+    expect(WIZARD_REQUIRED).toEqual({ name: true, client: true, pm: true, type: true, start: true, location: true, finish: false });
+    expect(wizardWindowError('2027-01-11', '')).toBeNull();
+    expect(wizardWindowError('2027-01-11', null)).toBeNull();
+    expect(wizardWindowError('', '')).toBe('Enter the planned start date');
+    expect(wizardWindowError('2027-01-11', '2027-01-01')).toBe('The planned finish must be after the planned start');
+    const countries = ['France', 'Morocco'];
+    expect(wizardSiteError('Le Havre', 'France', countries)).toBeNull();
+    expect(wizardSiteError('  ', 'France', countries)).toBe('Enter the site city');
+    expect(wizardSiteError('x'.repeat(121), 'France', countries)).toBe('The site city is too long');
+    expect(wizardSiteError('Lyon', 'Atlantis', countries)).toBe('Choose the site country among the proposed countries');
+  });
+
+  it('L-3b: without a planned finish, each template activity lasts TEMPLATE_ACTIVITY_DAYS and the plan gives the finish', () => {
+    const plan = instantiateTemplate({ phases: ['A', 'B'], start: '2027-01-11', finish: null, calendar: std, budgetKeur: 0 });
+    expect(plan.activities.map((a) => a.durationDays)).toEqual([TEMPLATE_ACTIVITY_DAYS, TEMPLATE_ACTIVITY_DAYS]);
+    // 60 working days from Mon 11 Jan 2027: 12 weeks to Fri 2 Apr, plus Easter Monday 29 Mar: Mon 5 Apr.
+    expect([plan.startDate, plan.finishDate]).toEqual(['2027-01-11', '2027-04-05']);
   });
 
   it('shares the working days evenly (remainder first, at least 1)', () => {

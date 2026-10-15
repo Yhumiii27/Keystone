@@ -3,7 +3,8 @@ import 'server-only';
 // recorded in Keystone (schema/vigie.ts). Shared by the mock and HTTP quality connectors and the seed: the upsert
 // functions are the only writers of the mirror tables (seed and Vigie refresh); `readNcrMirror` overlays the progress
 // Vigie has not reflected yet (quality-progress.ts queues it).
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, lt, ne, notExists, or, sql } from 'drizzle-orm';
+import { claimExpiry } from '../outbox';
 import { hseStatus, ncrStatus } from '@/server/db/codes';
 import { findPerson } from '@/server/db/helpers';
 import { vigieHseItems, vigieNcrProgress, vigieNcrs } from '@/server/db/schema';
@@ -18,7 +19,9 @@ const key = (projectCode: string, number: string) => `${projectCode}|${number}`;
 
 /**
  * Writes Vigie's NCRs into the mirror (insert or replace by project and number). With `prune`, mirror rows absent from
- * the records are deleted (a full refresh), together with their outbox entries.
+ * the records are deleted (a full refresh), together with their delivered outbox entries — except a row that still has
+ * progress Vigie has not received (pending or failed), kept until every entry is sent (R-023, V-2; NOT EXISTS inside the
+ * DELETE, as in upsertMirror).
  */
 export async function upsertNcrMirror(q: Q, records: VigieNcrRecord[], syncedAt: Date, opts: { prune?: boolean } = {}): Promise<number> {
   const existing = await q.select({ id: vigieNcrs.id, projectCode: vigieNcrs.projectCode, number: vigieNcrs.number, position: vigieNcrs.position }).from(vigieNcrs);
@@ -29,7 +32,8 @@ export async function upsertNcrMirror(q: Q, records: VigieNcrRecord[], syncedAt:
     const [raised, owner] = await Promise.all([findPerson(q, r.raisedBy), findPerson(q, r.owner)]);
     const values = {
       projectCode: r.projectCode, number: r.number, vigieRef: r.vigieRef, title: r.title, severity: r.severity, source: r.source, status: r.status,
-      activityCode: r.activityCode, partRef: r.partRef, deliverableNumber: r.deliverableNumber, supplierName: r.supplierName, raisedByName: r.raisedBy,
+      activityCode: r.activityCode, partRef: r.partRef, deliverableNumber: r.deliverableNumber, supplierName: r.supplierName,
+      inspectionNumber: r.inspectionNumber ?? null, raisedByName: r.raisedBy,
       raisedByPersonId: raised?.id ?? null, raisedOn: r.raisedOn, ownerName: r.owner, ownerPersonId: owner?.id ?? null, rootCause: r.rootCause, action: r.action,
       dueOn: r.dueOn, costKeur: r.costKeur, isoClause: r.isoClause, vigieUpdatedAt: r.updatedAt ? new Date(r.updatedAt) : null, lastSyncedAt: syncedAt,
     };
@@ -40,7 +44,11 @@ export async function upsertNcrMirror(q: Q, records: VigieNcrRecord[], syncedAt:
   if (opts.prune) {
     const keep = new Set(records.map((r) => key(r.projectCode, r.number)));
     const gone = existing.filter((e) => !keep.has(key(e.projectCode, e.number))).map((e) => e.id);
-    if (gone.length) await q.delete(vigieNcrs).where(inArray(vigieNcrs.id, gone));
+    if (gone.length)
+      await q.delete(vigieNcrs).where(and(
+        inArray(vigieNcrs.id, gone),
+        notExists(q.select({ one: sql`1` }).from(vigieNcrProgress).where(and(eq(vigieNcrProgress.ncrId, vigieNcrs.id), ne(vigieNcrProgress.syncStatus, 'sent')))),
+      ));
   }
   return records.length;
 }
@@ -70,7 +78,8 @@ export async function readNcrMirror(q: Q, filter: NcrListFilter = {}): Promise<V
     const pending = (byNcr.get(r.id) ?? []).filter((p) => unreflected(p, r.lastSyncedAt)).map(ncrEntryOf);
     return {
       projectCode: r.projectCode, number: r.number, vigieRef: r.vigieRef, title: r.title, severity: r.severity, source: r.source, status: r.status,
-      activityCode: r.activityCode, partRef: r.partRef, deliverableNumber: r.deliverableNumber, supplierName: r.supplierName, raisedBy: r.raisedByName,
+      activityCode: r.activityCode, partRef: r.partRef, deliverableNumber: r.deliverableNumber, supplierName: r.supplierName,
+      inspectionNumber: r.inspectionNumber, raisedBy: r.raisedByName,
       raisedOn: r.raisedOn, owner: r.ownerName, rootCause: r.rootCause, action: r.action, dueOn: r.dueOn, costKeur: r.costKeur, isoClause: r.isoClause,
       requestedStatus: pending.at(-1)?.targetStatus ?? null, pendingProgress: pending, lastSyncedAt: r.lastSyncedAt.toISOString(),
       vigieUrl: vigieNcrUrl({ number: r.number, vigieRef: r.vigieRef }),
@@ -91,15 +100,23 @@ export async function ncrProgressSyncStatus(q: Q, id: string) {
   return r?.s ?? null;
 }
 
-/** Marks a delivery attempt of an NCR outbox entry. */
+/** Claims an NCR outbox entry before sending it (R-010, ../outbox.ts): true when this delivery may send it. */
+export async function claimNcrDelivery(q: Q, id: string, at = new Date()): Promise<boolean> {
+  const rows = await q
+    .update(vigieNcrProgress)
+    .set({ claimedAt: at })
+    .where(and(eq(vigieNcrProgress.id, id), ne(vigieNcrProgress.syncStatus, 'sent'), or(isNull(vigieNcrProgress.claimedAt), lt(vigieNcrProgress.claimedAt, claimExpiry(at)))))
+    .returning({ id: vigieNcrProgress.id });
+  return rows.length > 0;
+}
+
+/** Marks a delivery attempt of an NCR outbox entry (and releases its claim). */
 export async function markNcrDelivery(q: Q, id: string, result: { ok: true; vigieRef?: string | null } | { ok: false; error: string }, at = new Date()): Promise<void> {
-  const [r] = await q.select({ attempts: vigieNcrProgress.attempts }).from(vigieNcrProgress).where(eq(vigieNcrProgress.id, id));
-  if (!r) return;
   await q
     .update(vigieNcrProgress)
     .set(result.ok
-      ? { syncStatus: 'sent', sentAt: at, lastAttemptAt: at, attempts: r.attempts + 1, lastError: null, vigieRef: result.vigieRef ?? null }
-      : { syncStatus: 'failed', lastAttemptAt: at, attempts: r.attempts + 1, lastError: result.error.slice(0, 500) })
+      ? { syncStatus: 'sent', sentAt: at, lastAttemptAt: at, attempts: sql`${vigieNcrProgress.attempts} + 1`, lastError: null, vigieRef: result.vigieRef ?? null, claimedAt: null }
+      : { syncStatus: 'failed', lastAttemptAt: at, attempts: sql`${vigieNcrProgress.attempts} + 1`, lastError: result.error.slice(0, 500), claimedAt: null })
     .where(eq(vigieNcrProgress.id, id));
 }
 
@@ -123,6 +140,6 @@ export async function readHseMirror(q: Q, projectCode: string): Promise<VigieHse
   const rows = await q.select().from(vigieHseItems).where(eq(vigieHseItems.projectCode, projectCode)).orderBy(asc(vigieHseItems.position));
   return rows.map((r) => ({
     projectCode: r.projectCode, vigieRef: r.vigieRef, kind: r.kind, title: r.title, status: r.status, statusText: r.statusText, dateOn: r.dateOn,
-    lastSyncedAt: r.lastSyncedAt.toISOString(), vigieUrl: vigieHseUrl({ kind: r.kind, vigieRef: r.vigieRef }),
+    lastSyncedAt: r.lastSyncedAt.toISOString(), vigieUrl: vigieHseUrl({ kind: r.kind, vigieRef: r.vigieRef, projectCode: r.projectCode }),
   }));
 }

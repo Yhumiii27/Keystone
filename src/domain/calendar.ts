@@ -39,14 +39,17 @@ export interface Holiday {
   name: string;
 }
 
+/** Public-holiday set of the built-in calendars (S-2: metropolitan France) — re-exported by src/domain/ch4-defaults.ts. */
+export const DEFAULT_HOLIDAY_SET = 'FR';
+
 /**
  * The four built-in calendars (S-2 default). Codes are `CalendarCode` (src/server/db/codes.ts): the template label
  * "Standard 5d · 8h + Atelier" is the Atelier calendar.
  */
 export const BUILTIN_CALENDARS: readonly CalendarDef[] = [
-  { code: 'standard_5x8', name: 'Standard 5d · 8h', workDays: [1, 2, 3, 4, 5], hoursPerDay: 8, holidaySet: 'FR', useSettingsHolidays: true },
-  { code: 'standard_5x8_workshop', name: 'Atelier 5d · 8h', workDays: [1, 2, 3, 4, 5], hoursPerDay: 8, holidaySet: 'FR', useSettingsHolidays: true },
-  { code: 'site_6x10', name: 'Chantier 6d · 10h', workDays: [1, 2, 3, 4, 5, 6], hoursPerDay: 10, holidaySet: 'FR', useSettingsHolidays: true },
+  { code: 'standard_5x8', name: 'Standard 5d · 8h', workDays: [1, 2, 3, 4, 5], hoursPerDay: 8, holidaySet: DEFAULT_HOLIDAY_SET, useSettingsHolidays: true },
+  { code: 'standard_5x8_workshop', name: 'Atelier 5d · 8h', workDays: [1, 2, 3, 4, 5], hoursPerDay: 8, holidaySet: DEFAULT_HOLIDAY_SET, useSettingsHolidays: true },
+  { code: 'site_6x10', name: 'Chantier 6d · 10h', workDays: [1, 2, 3, 4, 5, 6], hoursPerDay: 10, holidaySet: DEFAULT_HOLIDAY_SET, useSettingsHolidays: true },
   { code: 'continuous_24h', name: 'Continu 24h / 7d', workDays: [1, 2, 3, 4, 5, 6, 7], hoursPerDay: 24, holidaySet: null, useSettingsHolidays: false },
 ];
 export const BUILTIN_CALENDAR_BY_CODE: Readonly<Record<string, CalendarDef>> = Object.fromEntries(BUILTIN_CALENDARS.map((c) => [c.code, c]));

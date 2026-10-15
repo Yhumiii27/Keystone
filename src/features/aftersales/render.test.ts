@@ -45,13 +45,16 @@ describe('Installed base body', () => {
     expect(out).toMatch(/href="http:\/\/localhost:3200\/modifications-techniques\/ECO-2026-0\d\d" target="_blank" rel="noopener noreferrer"/);
     expect(out).toContain(lang === 'fr' ? 'finit dans 31 j' : 'ends in 31 d');
     expect(out).toContain('20 k€');
-    expect(out).not.toContain('Aucun projet dans cette zone');
+    // R-155 (X-16): the machine list's notice (never shown without a zone).
+    expect(out).not.toContain(lang === 'fr' ? 'Aucune machine dans cette zone' : 'No machine in this zone');
   });
 
   it('a zone without machine shows the notice', () => {
     const t = makeT('fr');
     const out = html(h(FleetBody, { view: fleetView({ machines: [] }, 'apac', t, 'fr'), t }), 'fr');
-    expect(out).toContain('Aucun projet dans cette zone pour cette vue');
+    // R-155 (X-16): « Aucune machine dans cette zone » (the prototype reused the project screens' text).
+    expect(out).toContain('Aucune machine dans cette zone');
+    expect(out).not.toContain('Aucun projet dans cette zone');
     expect(out).toContain('role="status"');
   });
 });
@@ -70,7 +73,8 @@ describe('Warranty claims & interventions body', () => {
     expect(claims).toContain(lang === 'fr' ? '>Vue<' : '>Display<');
 
     const ivs = html(h(SavBody, { view: savView(data, 'interventions', null, t, lang), t }), lang);
-    expect(headers(ivs)).toEqual(['', ...['Machine', 'Date', 'Technician', 'Type', 'Duration', 'Status'].map((x) => tr(lang, x))]);
+    // R-143: a last, unlabelled column holds "Mark done" (editors).
+    expect(headers(ivs)).toEqual(['', ...['Machine', 'Date', 'Technician', 'Type', 'Duration', 'Status'].map((x) => tr(lang, x)), '']);
     expect(ivs).toContain('Corrective · WC-015');
     expect(ivs).toContain(lang === 'fr' ? '>Planifiée<' : '>Planned<');
 
@@ -83,7 +87,8 @@ describe('Warranty claims & interventions body', () => {
   it('Asia Pacific › Interventions: no intervention in the zone → the notice (the prototype showed an empty table)', async () => {
     const t = makeT('en');
     const out = html(h(SavBody, { view: savView(await getSavScreen('apac'), 'interventions', 'apac', t, 'en'), t }), 'en');
-    expect(out).toContain('No project in this zone for this view');
+    // R-155 (X-16 + 07 A.1): the zone has a machine (MCH-040): the notice names the interventions.
+    expect(out).toContain('No intervention in this zone');
     expect(out.match(/<tr>/g)!.length).toBe(1);
   });
 });

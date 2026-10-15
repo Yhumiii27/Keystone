@@ -1,28 +1,37 @@
 // Contract and Billing & payments: pure business logic (docs/spec/04 §3 Contract, §4 Billing; prototype logic
 // 4869–4903 and the `amendment` / `bond` / `milestone` / `billing` buckets of afSubmit 5121–5127).
-// - Figures: contract value (base + signed amendments), milestone amounts round(value × share / 100), late
-//   milestones (planned, contractual date before PG_NOW), invoices (due = issued + payment delay in CALENDAR days —
-//   not the prototype's DST-sensitive ms arithmetic, 04 Q12 / 00 §7.16), receivables, retention, schedule total.
+// - Figures: contract value (base + signed amendments); payment milestones of the base contract priced on the base amount
+//   and an amendment's own milestones priced on the amendment's amount, billable once it is signed (NEW-D3-3, R-079: an
+//   amendment no longer re-prices the existing milestones, the invoiced ones included); an invoiced milestone keeps the
+//   amount of its invoice; late milestones (planned, billable, contractual date before PG_NOW); invoices due by the
+//   contract's payment rule (C-6, R-076 — calendar days, not the prototype's DST-sensitive ms arithmetic, 04 Q12);
+//   receivables, retention, schedule totals per basis. Every amount is in the contract's currency (C-9, R-075).
 // - The KPI sub-lines the prototype builds with explicit FR branches (4883, 4899), returned in the render language
 //   but still to be passed through t() like the prototype's deepTr.
-// - Parsing of the four add-forms and of the contract-sheet fields (codes, amounts with a French comma, dates typed
+// - Parsing of the add-forms and of the contract-sheet fields (codes, amounts with a French comma, dates typed
 //   "14 Dec 2026" / "14 déc. 2026" / ISO).
 // No I/O, no translation. Golden values: src/domain/contract.test.ts (prototype renderVals, EN and FR).
 import type { Lang } from '@/i18n/translate';
 import {
-  NOW_ISO, addDaysIso, amendmentStatus, beforePgNow, bondType, contractType,
+  AMENDMENT_AWAITING, NOW_ISO, amendmentStatus, beforePgNow, bondType, contractType,
   type AmendmentStatus, type BondType, type ContractType, type CustomerInvoiceStatus, type PaymentMilestoneStatus,
 } from '@/server/db/codes';
-import { termsDays } from './evm';
+import { BASE_CURRENCY, isCurrency, type CurrencyCode } from './currency';
+import { DEFAULT_PAYMENT_DAYS, DEFAULT_PAYMENT_RULE, isPaymentRule, parsePaymentDays, paymentDueOn, type PaymentRule } from './payment-terms';
 
 // ── Input (structural: the Contract DAL rows satisfy it) ───────────────────────────────────────────────
 
 export interface ContractSheetInput {
   reference: string;
-  /** Base amount, k€. */
+  /** Base amount, thousands of the contract currency. */
   baseAmountKeur: number;
-  /** "Net 45 days" — payment delay = first integer (default 45). */
+  /** C-9: currency of every amount of the contract (EUR when absent). */
+  currency?: CurrencyCode;
+  /** "Net 45 days" — the terms in words (rebuilt from the rule). */
   paymentTerms: string;
+  /** C-6: payment rule and N (calendar days); 'net' 45 when absent. */
+  paymentRule?: PaymentRule;
+  paymentDays?: number;
   retentionPct: number;
   retentionNote: string;
   /** "0.5 % per week · cap 10 %" (rate · cap). */
@@ -31,6 +40,8 @@ export interface ContractSheetInput {
 }
 
 export interface AmendmentInput {
+  /** Position in the contract's list — the key of its milestones (`MilestoneInput.amendment`). */
+  position: number;
   /** "Amendment 1 — anti-collision lidar (CR-004)". */
   label: string;
   amountKeur: number;
@@ -40,6 +51,8 @@ export interface AmendmentInput {
 }
 
 export interface BondInput {
+  /** Position in the contract's list (row actions); index order when absent. */
+  position?: number;
   type: BondType;
   issuer: string | null;
   amountKeur: number;
@@ -53,11 +66,14 @@ export interface InvoiceInput {
   issuedOn: string;
   paidOn: string | null;
   note: string | null;
+  /** Amount invoiced at issue (frozen). */
+  amountKeur: number;
 }
 
 export interface MilestoneInput {
   number: string;
   label: string;
+  /** Share, %, of the base amount or of the amendment's amount (`amendment`). */
   sharePct: number;
   /** ISO contractual date. */
   contractualDue: string | null;
@@ -65,6 +81,8 @@ export interface MilestoneInput {
   status: PaymentMilestoneStatus;
   /** Invoice of an invoiced / paid milestone. */
   invoice: InvoiceInput | null;
+  /** Position of the amendment the milestone belongs to (NEW-D3-3); null or absent = the base contract. */
+  amendment?: number | null;
 }
 
 export interface ContractInput {
@@ -77,11 +95,34 @@ export interface ContractInput {
 
 // ── Figures ────────────────────────────────────────────────────────────────────────────────────────────
 
+/** Payment rule of a contract sheet ('net' 45 when the sheet predates C-6). */
+export const termsOfSheet = (s: Pick<ContractSheetInput, 'paymentRule' | 'paymentDays'>) => ({
+  rule: s.paymentRule ?? DEFAULT_PAYMENT_RULE,
+  days: s.paymentDays ?? DEFAULT_PAYMENT_DAYS,
+});
+
+/** An amendment counts in the contract value, and its milestones may be invoiced, once signed. */
+export const isSignedAmendment = (a: Pick<AmendmentInput, 'status'>) => a.status === 'signed';
+/** "Send for signature" applies to a draft (R-079). */
+export const canSendAmendment = (s: AmendmentStatus) => s === 'draft';
+/** "Mark signed" applies to an amendment sent for signature (or awaiting it, the seed's wording) — R-079. */
+export const canSignAmendment = (s: AmendmentStatus) => AMENDMENT_AWAITING.includes(s);
+
+/** The current amount of a planned milestone (what "Issue invoice" records): round(basis × share / 100) — NEW-D3-3. */
+export const plannedMilestoneAmount = (basisKeur: number, sharePct: number) => Math.round((basisKeur * sharePct) / 100);
+
 export interface MilestoneFigure extends MilestoneInput {
-  /** round(contract value × share / 100), k€ — live: a signed amendment re-prices every milestone (as the prototype). */
+  /**
+   * Thousands of the contract currency: the invoice's amount once invoiced (frozen), else round(basis × share / 100) — basis =
+   * the base amount, or the amendment's amount for an amendment milestone (NEW-D3-3: signing an amendment re-prices nothing).
+   */
   amountKeur: number;
-  /** Planned and contractual date before the status "now" (PG_NOW ≈ 30 Sep 2026). */
+  /** A base-contract milestone, or one of a signed amendment: it may be invoiced and counts in the billing plan. */
+  billable: boolean;
+  /** Planned, billable and contractual date before the status "now" (PG_NOW ≈ 30 Sep 2026). */
   late: boolean;
+  /** Delivery 8 (R-077, C-7): its schedule group (base contract or its amendment) exceeds 100 % — invoicing is blocked. */
+  blocked: boolean;
 }
 
 export interface InvoiceFigure {
@@ -89,9 +130,9 @@ export interface InvoiceFigure {
   milestone: string;
   label: string;
   issuedOn: string;
-  /** Amount of the milestone (live, as `m.amt`). */
+  /** Amount invoiced (frozen at issue). */
   amountKeur: number;
-  /** issuedOn + payment delay, calendar days. */
+  /** Due by the contract's payment rule (R-076). */
   dueOn: string;
   paidOn: string | null;
   note: string | null;
@@ -102,7 +143,48 @@ export interface InvoiceFigure {
   canPay: boolean;
 }
 
+/** The milestones of one basis: the base contract (`amendment` null) or one amendment (NEW-D3-3). */
+export interface ScheduleGroup {
+  amendment: number | null;
+  /** Amendment label ("Amendment 1 — anti-collision lidar (CR-004)"); '' for the base contract. */
+  label: string;
+  status: AmendmentStatus | null;
+  /** Base amount or amendment amount. */
+  basisKeur: number;
+  billable: boolean;
+  milestones: MilestoneFigure[];
+  /** Σ shares (%), raw. */
+  sharePct: number;
+  /** Shares total 100 % (an amendment without milestones is complete only while unsigned or worth 0). */
+  shareOk: boolean;
+  /** Delivery 8 (R-077, C-7): Σ shares above 100 % (+ 0.01 tolerance) — no milestone of the group may be invoiced. */
+  over: boolean;
+  /** Σ milestone amounts. */
+  amountKeur: number;
+}
+
+// ── Delivery 8 (R-077, C-7): invoicing blocked while a schedule group exceeds 100 % ──────────────────────────────────
+
+/** Rounding tolerance of a share total (the prototype's "100 %" test, 0.01 %). */
+export const SHARE_TOLERANCE_PCT = 0.01;
+/** Σ shares of a group above 100 % (C-7 "aucune facture ne doit partir tant que le total dépasse 100 %"). */
+export const sharesOver = (sharePct: number) => sharePct > 100 + SHARE_TOLERANCE_PCT;
+/** Refusal of "Issue invoice" on a blocked group (Billing, the DAL re-checks it inside its transaction). */
+export const INVOICE_BLOCKED_MESSAGE = 'Payment milestones exceed 100 % — invoicing is blocked until the schedule is corrected';
+
+/**
+ * C-7 (default per group, owner to confirm vs the whole contract): the milestone's basis group — the base contract, or the
+ * amendment it belongs to — has Σ shares > 100 % (+ 0.01). Under 100 % stays a hint (C-7a "on peut toujours retoucher").
+ */
+export function invoiceBlocked(milestones: readonly { number: string; sharePct: number; amendment?: number | string | null }[], number: string): boolean {
+  const m = milestones.find((x) => x.number === number);
+  if (!m) return false;
+  const group = milestones.filter((x) => (x.amendment ?? null) === (m.amendment ?? null));
+  return sharesOver(group.reduce((a, x) => a + (x.sharePct || 0), 0));
+}
+
 export interface ContractFigures {
+  currency: CurrencyCode;
   termsDays: number;
   /** Base + signed amendments (`ctrTotal`). */
   valueKeur: number;
@@ -110,16 +192,19 @@ export interface ContractFigures {
   pending: { count: number; amountKeur: number };
   /** Bonds not released / all bonds / Σ amount in force. */
   bonds: { live: number; total: number; liveAmountKeur: number };
+  /** Every milestone in contractual order (amendment milestones included, billable or not). */
   milestones: MilestoneFigure[];
-  /** Σ share, raw (%). */
+  /** Base contract first, then each amendment that has milestones or is signed (amendment order). */
+  groups: ScheduleGroup[];
+  /** Σ share of the base contract's milestones, raw (%) — the prototype's "Total" share. */
   sharePct: number;
-  /** |Σ share − 100| < 0.01. */
+  /** Every group's shares total 100 % (a signed amendment without milestones is not complete). */
   shareOk: boolean;
-  /** Σ milestone amounts. */
+  /** Σ billable milestone amounts. */
   scheduleAmountKeur: number;
   /** Invoices in milestone order. */
   invoices: InvoiceFigure[];
-  /** Σ milestones not planned / paid (`ctrInvoiced`, `ctrPaid`). */
+  /** Σ invoiced / paid milestones (`ctrInvoiced`, `ctrPaid`) at their invoiced amounts. */
   invoicedKeur: number;
   paidKeur: number;
   outstandingKeur: number;
@@ -129,30 +214,39 @@ export interface ContractFigures {
   overdueKeur: number;
   /** round(paid × retention % / 100) — on collected amounts (C-8). */
   retentionKeur: number;
-  /** Planned milestones, contractual order (`ctrToInvoice`). */
+  /** Planned billable milestones, contractual order (`ctrToInvoice`). */
   toInvoice: MilestoneFigure[];
-  /** First planned milestone (`ctrNext`). */
+  /** First planned billable milestone (`ctrNext`). */
   next: MilestoneFigure | null;
   /** Late planned milestones (Billing nav badge `ctrBadge`). */
   lateCount: number;
 }
 
+const sum = <T>(xs: readonly T[], f: (x: T) => number) => xs.reduce((s, x) => s + f(x), 0);
+
 export function contractFigures(c: ContractInput): ContractFigures {
-  const delay = termsDays(c.sheet.paymentTerms);
-  const signed = c.amendments.filter((a) => a.status === 'signed');
-  const pending = c.amendments.filter((a) => a.status !== 'signed');
-  const sum = <T>(xs: readonly T[], f: (x: T) => number) => xs.reduce((s, x) => s + f(x), 0);
+  const terms = termsOfSheet(c.sheet);
+  const signed = c.amendments.filter(isSignedAmendment);
+  const pending = c.amendments.filter((a) => !isSignedAmendment(a));
   const valueKeur = c.sheet.baseAmountKeur + sum(signed, (a) => a.amountKeur);
   const live = c.bonds.filter((b) => !b.releasedOn);
-  const milestones: MilestoneFigure[] = c.milestones.map((m) => ({
-    ...m,
-    amountKeur: Math.round((valueKeur * m.sharePct) / 100),
-    late: m.status === 'planned' && beforePgNow(m.contractualDue),
-  }));
+  const amendmentAt = new Map(c.amendments.map((a) => [a.position, a]));
+  const milestones: MilestoneFigure[] = c.milestones.map((m) => {
+    const a = m.amendment != null ? amendmentAt.get(m.amendment) ?? null : null;
+    const basis = m.amendment != null ? a?.amountKeur ?? 0 : c.sheet.baseAmountKeur;
+    const billable = m.amendment == null || (!!a && isSignedAmendment(a));
+    return {
+      ...m,
+      amountKeur: m.status !== 'planned' && m.invoice ? m.invoice.amountKeur : plannedMilestoneAmount(basis, m.sharePct),
+      billable,
+      late: billable && m.status === 'planned' && beforePgNow(m.contractualDue),
+      blocked: invoiceBlocked(c.milestones, m.number),
+    };
+  });
   const invoices: InvoiceFigure[] = milestones.flatMap((m) => {
     if (m.status === 'planned' || !m.invoice) return [];
     const i = m.invoice;
-    const dueOn = addDaysIso(i.issuedOn, delay);
+    const dueOn = paymentDueOn(i.issuedOn, terms);
     const paid = m.status === 'paid';
     const overdue = !paid && dueOn < NOW_ISO;
     return [{
@@ -160,21 +254,39 @@ export function contractFigures(c: ContractInput): ContractFigures {
       status: paid ? 'paid' : overdue ? 'overdue' : 'awaiting_payment', overdue, canPay: m.status === 'invoiced',
     }];
   });
-  const invoicedKeur = sum(milestones.filter((m) => m.status !== 'planned'), (m) => m.amountKeur);
-  const paidKeur = sum(milestones.filter((m) => m.status === 'paid'), (m) => m.amountKeur);
+  const groupOf = (amendment: number | null, label: string, status: AmendmentStatus | null, basisKeur: number, billable: boolean): ScheduleGroup => {
+    const ms = milestones.filter((m) => (m.amendment ?? null) === amendment);
+    const sharePct = sum(ms, (m) => m.sharePct);
+    return {
+      amendment, label, status, basisKeur, billable, milestones: ms, sharePct,
+      shareOk: Math.abs(sharePct - 100) < 0.01 || (amendment != null && !ms.length && (!billable || !basisKeur)),
+      over: sharesOver(sharePct),
+      amountKeur: sum(ms, (m) => m.amountKeur),
+    };
+  };
+  const groups = [
+    groupOf(null, '', null, c.sheet.baseAmountKeur, true),
+    ...c.amendments
+      .map((a) => groupOf(a.position, a.label, a.status, a.amountKeur, isSignedAmendment(a)))
+      .filter((g) => g.milestones.length || (g.billable && g.basisKeur)),
+  ];
+  const billable = milestones.filter((m) => m.billable);
+  const invoicedKeur = sum(billable.filter((m) => m.status !== 'planned'), (m) => m.amountKeur);
+  const paidKeur = sum(billable.filter((m) => m.status === 'paid'), (m) => m.amountKeur);
   const overdue = invoices.filter((i) => i.overdue);
-  const sharePct = sum(milestones, (m) => m.sharePct);
-  const toInvoice = milestones.filter((m) => m.status === 'planned');
+  const toInvoice = billable.filter((m) => m.status === 'planned');
   return {
-    termsDays: delay,
+    currency: c.sheet.currency ?? BASE_CURRENCY,
+    termsDays: terms.days,
     valueKeur,
     signed: { count: signed.length, amountKeur: sum(signed, (a) => a.amountKeur) },
     pending: { count: pending.length, amountKeur: sum(pending, (a) => a.amountKeur) },
     bonds: { live: live.length, total: c.bonds.length, liveAmountKeur: sum(live, (b) => b.amountKeur) },
     milestones,
-    sharePct,
-    shareOk: Math.abs(sharePct - 100) < 0.01,
-    scheduleAmountKeur: sum(milestones, (m) => m.amountKeur),
+    groups,
+    sharePct: groups[0].sharePct,
+    shareOk: groups.every((g) => g.shareOk),
+    scheduleAmountKeur: sum(billable, (m) => m.amountKeur),
     invoices,
     invoicedKeur,
     paidKeur,
@@ -237,6 +349,16 @@ export function liquidatedDamagesKpi(ld: string, warranty: string): { value: str
 
 /** `ctrSchedTotal.hint`: '' when Σ shares = 100 %. */
 export const scheduleHint = (ok: boolean, lang: Lang) => (ok ? '' : lang === 'fr' ? 'Les parts doivent totaliser 100 %' : 'Shares must total 100 %');
+
+/**
+ * Delivery 8 (R-077, C-7): the hint of one schedule group, in the viewer's language — over 100 % "Shares total 105 % · invoicing
+ * blocked" (the words through `t`, the total formatted for `lang`), under 100 % the prototype's "Shares must total 100 %" (a hint
+ * only, C-7a), '' when complete.
+ */
+export function scheduleGroupHint(g: Pick<ScheduleGroup, 'sharePct' | 'shareOk'>, lang: Lang, t: (english: string) => string = (x) => x): string {
+  if (sharesOver(g.sharePct)) return `${t('Shares total')} ${shareTotalText(g.sharePct, lang)} · ${t('invoicing blocked')}`;
+  return scheduleHint(g.shareOk, lang);
+}
 
 /** `billKpis[0].sub` "55 % of contract" (the FR rules give "55 % du contrat"). */
 export const invoicedSub = (invoiced: number, total: number) => `${total ? Math.round((invoiced / total) * 100) : 0} % of contract`;
@@ -345,6 +467,8 @@ export function parseAmendmentForm(v: Record<string, string | undefined>): Parse
   const date = text(v.date);
   const signedOn = date ? parseDateInput(date) : null;
   if (date && !signedOn) return { ok: false, error: DATE_ERROR };
+  // R-079: an amendment registered as already signed carries its signature date (the value it adds starts that day).
+  if (status === 'signed' && !signedOn) return { ok: false, error: 'Enter the signature date of a signed amendment' };
   const cr = text(v.cr);
   const doc = text(v.doc);
   if (cr.length > 40 || doc.length > 60) return { ok: false, error: 'Reference is too long' };
@@ -377,10 +501,22 @@ export interface MilestoneForm {
   sharePct: number;
   contractualDue: string;
   condition: string | null;
+  /** Position of the amendment the milestone belongs to (NEW-D3-3); null = the base contract. */
+  amendment: number | null;
 }
 
-/** AF.milestone: milestone* · share of contract* (0 < % ≤ 100) · contractual date* · condition. Σ > 100 % only warns (C-7). */
+/** Value of the "Applies to" option of the base contract. */
+export const BASE_CONTRACT_OPTION = 'base';
+
+/**
+ * AF.milestone: applies to (the base contract, or an amendment — R-079) · milestone* · share* (0 < % ≤ 100, of the base amount or
+ * of the amendment's amount) · contractual date* · condition. Σ > 100 % is accepted (C-7a: the schedule can always be retouched)
+ * but blocks invoicing of its group until corrected (delivery 8, R-077). "Edit milestone" uses the same form without "Applies to".
+ */
 export function parseMilestoneForm(v: Record<string, string | undefined>): ParseResult<MilestoneForm> {
+  const basis = text(v.basis) || BASE_CONTRACT_OPTION;
+  if (basis !== BASE_CONTRACT_OPTION && !/^\d{1,4}$/.test(basis)) return { ok: false, error: 'Choose the base contract or an amendment' };
+  const amendment = basis === BASE_CONTRACT_OPTION ? null : Number(basis);
   const label = text(v.label);
   if (!label) return { ok: false, error: 'Milestone is required' };
   if (label.length > MAX_TEXT) return { ok: false, error: 'Milestone is too long' };
@@ -390,7 +526,27 @@ export function parseMilestoneForm(v: Record<string, string | undefined>): Parse
   if (!due) return { ok: false, error: DATE_ERROR };
   const cond = text(v.cond);
   if (cond.length > MAX_LONG_TEXT) return { ok: false, error: 'Condition is too long' };
-  return { ok: true, value: { label, sharePct: Math.round(pct * 100) / 100, contractualDue: due, condition: cond || null } };
+  return { ok: true, value: { label, sharePct: Math.round(pct * 100) / 100, contractualDue: due, condition: cond || null, amendment } };
+}
+
+export interface SignAmendmentForm {
+  signedOn: string;
+  documentRef: string | null;
+}
+
+/** "Mark signed" (R-079): signature date* · document reference (Codex number of the signed amendment). */
+export function parseSignAmendmentForm(v: Record<string, string | undefined>): ParseResult<SignAmendmentForm> {
+  const signedOn = parseDateInput(v.date);
+  if (!signedOn) return { ok: false, error: DATE_ERROR };
+  const doc = text(v.doc);
+  if (doc.length > 60) return { ok: false, error: 'Reference is too long' };
+  return { ok: true, value: { signedOn, documentRef: doc || null } };
+}
+
+/** "Release" of a bond (R-079): release date*. */
+export function parseReleaseBondForm(v: Record<string, string | undefined>): ParseResult<{ releasedOn: string }> {
+  const releasedOn = parseDateInput(v.date);
+  return releasedOn ? { ok: true, value: { releasedOn } } : { ok: false, error: DATE_ERROR };
 }
 
 export interface InvoiceForm {
@@ -424,7 +580,11 @@ export const SHEET_FIELDS = [
   { key: 'type', label: 'Contract type', type: 'select' },
   { key: 'signed', label: 'Signed on', type: 'text' },
   { key: 'amount', label: 'Base amount (k€)', type: 'number' },
-  { key: 'terms', label: 'Payment terms', type: 'text' },
+  // C-9 (R-075): EUR or the project currency, while no invoice is issued.
+  { key: 'currency', label: 'Currency', type: 'select' },
+  // C-6 (R-076): the payment rule and its N replace the free "Payment terms" text (rebuilt from them).
+  { key: 'rule', label: 'Payment rule', type: 'select' },
+  { key: 'days', label: 'Payment days', type: 'number' },
   { key: 'retention', label: 'Retention (%)', type: 'number' },
   { key: 'retentionNote', label: 'Retention release', type: 'text' },
   { key: 'ld', label: 'Liquidated damages', type: 'text' },
@@ -439,12 +599,14 @@ export const isSheetField = (k: unknown): k is SheetFieldKey => typeof k === 'st
 /** One sheet edit, in the DAL's patch vocabulary. */
 export type SheetPatch =
   | { reference: string } | { client: string } | { type: ContractType } | { signedOn: string | null } | { baseAmountKeur: number }
-  | { paymentTerms: string } | { retentionPct: number } | { retentionNote: string } | { liquidatedDamages: string } | { warranty: string }
+  | { currency: CurrencyCode } | { paymentRule: PaymentRule } | { paymentDays: number }
+  | { retentionPct: number } | { retentionNote: string } | { liquidatedDamages: string } | { warranty: string }
   | { governingLaw: string } | { scope: string };
 
 /**
  * A contract-sheet field as typed (`setCtr`, saved per field): amounts ≥ 0, retention 0–100, the contract type
- * code, a parsable signature date (or empty), a non-empty reference; other texts as typed (trimmed).
+ * code, a parsable signature date (or empty), a non-empty reference, a currency code (the DAL checks it against the project),
+ * a payment rule code and its days (0–180); other texts as typed (trimmed).
  */
 export function parseSheetField(key: unknown, raw: unknown): ParseResult<SheetPatch> {
   if (!isSheetField(key) || typeof raw !== 'string') return { ok: false, error: 'Invalid request' };
@@ -471,8 +633,14 @@ export function parseSheetField(key: unknown, raw: unknown): ParseResult<SheetPa
       const n = parseNumber(v);
       return Number.isFinite(n) && n >= 0 && n <= 100 ? { ok: true, value: { retentionPct: n } } : { ok: false, error: 'Enter a percentage between 0 and 100' };
     }
-    case 'terms':
-      return { ok: true, value: { paymentTerms: v } };
+    case 'currency':
+      return isCurrency(v) ? { ok: true, value: { currency: v } } : { ok: false, error: 'Unknown currency' };
+    case 'rule':
+      return isPaymentRule(v) ? { ok: true, value: { paymentRule: v } } : { ok: false, error: 'Unknown payment rule' };
+    case 'days': {
+      const n = parsePaymentDays(v);
+      return n != null ? { ok: true, value: { paymentDays: n } } : { ok: false, error: 'Enter a number of days between 0 and 180' };
+    }
     case 'retentionNote':
       return { ok: true, value: { retentionNote: v } };
     case 'ld':

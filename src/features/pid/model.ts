@@ -4,14 +4,14 @@
 // src/server/dal/pid.ts. Pure (no I/O): the page passes the data, the URL state, `t` and the language.
 import { LO, OK } from '@/components/app/tones';
 import {
-  PID_SCOPE_SEG, activityText, candidateTag, feedbackMissing, feedbackView, filterPidTags, kindLabel, overlayTags, partLine, pidChips, pidCoverage, pidKpis,
+  PID_SCOPE_SEG, PID_SEARCH_LIMIT, activityText, candidateTag, feedbackMissing, feedbackView, filterPidTags, kindLabel, overlayTags, partLine, pidChips, pidCoverage, pidKpis,
   pidScopeTag, pidStatusTag, pidStepView, pidTagActions, plcView, refText, scopeLabel, scopeNote, statusLabel, type PidTagLike,
 } from '@/domain/pid';
 import type { Lang, T } from '@/i18n/translate';
 import { exportHref } from '@/lib/export-href';
-import { documentStatus, partStatus, type DocumentStatus, type PartStatus } from '@/server/db/codes';
+import { documentStatus, partStatus, partType, type DocumentStatus, type PartStatus } from '@/server/db/codes';
 import type { PidValidation } from '@/server/dal/pid';
-import { dataT, linkedSubT, pidValueT, placeholderT, revT, scopeSubT, sheetLabelT, sheetsSubT, stepDateT, stepLabelT, stepWhoT } from './i18n';
+import { dataT, linkedSubT, pidValueT, placeholderT, refineT, revT, revisionGapT, scopeSubT, sheetLabelT, sheetsSubT, stepDateT, stepLabelT, stepWhoT } from './i18n';
 import { activityHref, pidHref, type PidState } from './links';
 
 export interface KpiView {
@@ -72,6 +72,11 @@ export interface PidScreenView {
     /** "Codex · rev D · Released" (tooltip of the document link — OPEN QUESTION A-9: Codex is ahead of the tag list). */
     docTitle: string | null;
     placeholder: string;
+    /**
+     * R-109 (A-9 = a): banner when Codex's reference revision is ahead of the tags' (`ahead`, with the revision to re-import)
+     * or not comparable with it (neutral); null when there is no Codex record or nothing to report.
+     */
+    gap: { text: string; ahead: boolean; suggestedRevision: string } | null;
   };
   steps: StepView[];
   chips: { value: string; label: string; count: number; href: string }[];
@@ -90,8 +95,26 @@ export interface PidScreenView {
 export interface CandidateView {
   ref: string;
   name: string;
+  /** The part status, or "In the BOM" for an article of the project BOM (R-108). */
   status: string;
   tagClass: string;
+  /** R-108: in the project BOM (picking it links the tag); otherwise the pick asks "Link and add to the BOM" / "Link only". */
+  inBom: boolean;
+  /** The part's own status (Not validated / Outdated / Obsolete stay selectable — default, E-6). */
+  partStatus: string;
+}
+
+/** R-108 (E-6 = a): the tag drawer's catalogue search — text, type filter, and the "refine" note beyond 20 results. */
+export interface CandidateSearchView {
+  /** The register's filters kept by the search URL (with the open tag). */
+  keep: { status: PidState['status']; scope: PidState['scope']; q: string };
+  q: string;
+  type: string;
+  types: { value: string; label: string }[];
+  /** "First 20 results · refine the search"; null when everything is shown. */
+  more: string | null;
+  /** "No catalogue article matches" when the search finds nothing. */
+  empty: string | null;
 }
 
 export interface PidTagDrawerView {
@@ -106,6 +129,8 @@ export interface PidTagDrawerView {
   record: { k: string; v: string; href?: string }[];
   /** Mapping candidates (null: client-supplied equipment — no BOM reference expected). */
   candidates: CandidateView[] | null;
+  /** R-108: the catalogue search of the candidates (null with the candidates). */
+  search: CandidateSearchView | null;
   isClient: boolean;
   fbWarn: boolean;
   /** "Part record": the shared part drawer over this screen (`?part=`); null when the reference is not in the catalogue. */
@@ -186,6 +211,16 @@ export function pidScreenView(
       docHref: input.docHref,
       docTitle: codex,
       placeholder: placeholderT(data.sheet.sheetCount, t, lang),
+      gap: data.sheet.gap && data.sheet.codexRevision && data.sheet.codexStatus
+        ? {
+            text: revisionGapT(
+              data.sheet.gap, data.sheet.revision, data.sheet.codexRevision,
+              t(documentStatus.isCode(data.sheet.codexStatus) ? documentStatus.label(data.sheet.codexStatus as DocumentStatus) : data.sheet.codexStatus), lang,
+            ),
+            ahead: data.sheet.gap.ahead,
+            suggestedRevision: data.sheet.gap.referenceRevision,
+          }
+        : null,
     },
     steps: data.steps.map((s) => {
       const v = pidStepView(s.state);
@@ -217,9 +252,11 @@ export function pidTagDrawerView(
     code: string;
     data: PidValidation;
     tag: PidValidation['tags'][number];
-    candidates: { ref: string; name: string; status: PartStatus }[];
+    candidates: { ref: string; name: string; status: PartStatus; inBom?: boolean }[];
     state: PidState;
     bomHrefOf: (ref: string) => string;
+    /** R-108: more than the 20 candidates shown (refine the search). */
+    more?: boolean;
   },
   t: T,
   lang: Lang,
@@ -249,7 +286,24 @@ export function pidTagDrawerView(
       { k: t('Scope'), v: t(scopeNote(r.scope)) },
     ],
     candidates: a.canMap
-      ? input.candidates.map((x) => ({ ref: x.ref, name: dataT(x.name, lang), status: t(partStatus.label(x.status)), tagClass: candidateTag(x.status) }))
+      ? input.candidates.map((x) => ({
+          ref: x.ref, name: dataT(x.name, lang), status: x.inBom ? t('In the BOM') : t(partStatus.label(x.status)), tagClass: x.inBom ? 'tag tag-neutral' : candidateTag(x.status),
+          inBom: !!x.inBom, partStatus: t(partStatus.label(x.status)),
+        }))
+      : null,
+    search: a.canMap
+      ? {
+          keep,
+          q: state.cq ?? '',
+          type: state.ctype ?? 'compatible',
+          types: [
+            { value: 'compatible', label: t('Compatible types') },
+            { value: 'all', label: t('All types') },
+            ...partType.codes.map((c) => ({ value: c, label: t(partType.label(c)) })),
+          ],
+          more: input.more ? refineT(PID_SEARCH_LIMIT, lang) : null,
+          empty: input.candidates.length ? null : t('No catalogue article matches'),
+        }
       : null,
     isClient: a.isClient,
     fbWarn: feedbackMissing(r),

@@ -19,8 +19,9 @@ import {
 } from '@/domain/lifecycle';
 import { useI18n } from '@/i18n/client';
 import { moveStageAction } from './actions';
+import { forcedMoveToastText } from './toasts';
 import { PROJECTS_RESET_EVENT } from './events';
-import { ForceDialog, type ForceRequest } from './force-dialog';
+import { ForceDialog, MoveDialog, type ForceRequest, type MoveRequest } from './force-dialog';
 import { registerTitleText } from './i18n';
 import { DeliverablesCell, ProjectCell, StatusCell } from './register-cells';
 import type { RegisterRow, StageView } from './register-model';
@@ -33,6 +34,8 @@ export interface ProjectsRegisterProps {
   zoneEmpty: boolean;
   /** Edit controls (status menu, deliverable ticks): false outside the viewer's workspace. */
   canEdit: boolean;
+  /** Projects whose lifecycle the viewer manages (the director: all; a PM: their own); absent = every row. */
+  editableCodes?: string[];
   initialView: RegisterView;
   initialStatus: StageCode | null;
   initialQuery: string;
@@ -46,13 +49,16 @@ function replaceParam(key: string, value: string | null) {
   window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
 }
 
-export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, initialView, initialStatus, initialQuery }: ProjectsRegisterProps) {
+export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, editableCodes, initialView, initialStatus, initialQuery }: ProjectsRegisterProps) {
+  const editable = editableCodes ? new Set(editableCodes) : null;
+  const canEditRow = (code: string) => canEdit && (!editable || editable.has(code));
   const { t, lang } = useI18n();
   const toast = useToast();
   const [view, setViewState] = useState<RegisterView>(initialView);
   const [status, setStatusState] = useState<StageCode | null>(initialStatus);
   const [q, setQState] = useState(initialQuery);
   const [force, setForce] = useState<ForceRequest | null>(null);
+  const [moveReq, setMoveReq] = useState<MoveRequest | null>(null);
   // Status button to focus again once the "Move to" menu (and the Force dialog, when opened) has closed.
   const returnFocus = useRef<HTMLElement | null>(null);
   const restoreFocus = () => {
@@ -98,39 +104,48 @@ export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, initialView
   const selLabel = status ? sel.label : t(sel.label);
   const tickLabels = [t('All'), ...stages.map((x) => x.short)];
 
-  const move = (row: RegisterRow, to: StageCode, reason?: string) => {
+  const move = (row: RegisterRow, to: StageCode, effectiveOn: string, reason?: string) => {
     const mode = reason === undefined ? 'auto' : 'forced';
     startTransition(async () => {
       setOptStage({ code: row.code, to });
-      const r = await moveStageAction({ code: row.code, to, mode, reason });
+      const r = await moveStageAction({ code: row.code, to, mode, reason, effectiveOn });
       if (!r.ok) toast.showEn(r.error);
+      // X-9 / L-1 (R-152): a forced move (Annulé included) is confirmed once the server accepted it; auto moves stay silent.
+      else if (mode === 'forced') toast.show(forcedMoveToastText(row.code, t));
     });
   };
 
-  // Line 3938: Annulé or missing deliverables → Force dialog; otherwise an immediate auto move.
+  // Line 3938: Annulé or missing deliverables → Force dialog; otherwise the Change stage dialog, which asks for the
+  // effective date of the move (L-4c = a, today by default).
   const requestMove = (row: RegisterRow, to: StageCode, trigger: HTMLElement | null) => {
     const from = stageOf(row);
     const missing = to === 'annule' || from !== row.stage ? [] : missingOf(row.delivs.map((d) => d.label), row.delivs.map((d) => d.done));
     returnFocus.current = trigger;
-    if (moveModeFor(to, missing) === 'forced')
-      setForce({ code: row.code, name: row.name, from: labelOf(from), to: labelOf(to), toCode: to, isCancel: to === 'annule', missing });
-    else {
-      move(row, to);
-      restoreFocus();
-    }
+    const req = { code: row.code, name: row.name, from: labelOf(from), to: labelOf(to), toCode: to, dateBounds: row.dateBounds };
+    if (moveModeFor(to, missing) === 'forced') setForce({ ...req, isCancel: to === 'annule', missing });
+    else setMoveReq(req);
   };
 
   const cancelForce = () => {
     setForce(null);
+    setMoveReq(null);
     restoreFocus();
   };
 
-  const confirmForce = (reason: string) => {
+  const confirmForce = (reason: string, effectiveOn: string) => {
     const req = force;
     setForce(null);
     restoreFocus();
     const row = req && rows.find((r) => r.code === req.code);
-    if (row) move(row, req.toCode, reason);
+    if (row) move(row, req.toCode, effectiveOn, reason);
+  };
+
+  const confirmMove = (effectiveOn: string) => {
+    const req = moveReq;
+    setMoveReq(null);
+    restoreFocus();
+    const row = req && rows.find((r) => r.code === req.code);
+    if (row) move(row, req.toCode, effectiveOn);
   };
 
   const viewOptions = [
@@ -140,7 +155,7 @@ export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, initialView
   ];
 
   const statusCell = (r: RegisterRow) => (
-    <StatusCell stage={stageOf(r)} stages={stageMap} canEdit={canEdit} onMove={(to, trigger) => requestMove(r, to, trigger)} />
+    <StatusCell stage={stageOf(r)} stages={stageMap} canEdit={canEditRow(r.code)} onMove={(to, trigger) => requestMove(r, to, trigger)} />
   );
 
   return (
@@ -251,7 +266,7 @@ export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, initialView
                       <ProjectCell row={r} />
                     </td>
                     {statusCell(r)}
-                    <DeliverablesCell row={r} stageLabel={labelOf(r.stage)} canEdit={canEdit} />
+                    <DeliverablesCell row={r} stageLabel={labelOf(r.stage)} canEdit={canEditRow(r.code)} />
                     <td>
                       <ProgressBar variant="inline" value={r.progress} label={r.progressPct} labelSize="sm" />
                     </td>
@@ -315,6 +330,7 @@ export function ProjectsRegister({ rows, stages, zoneEmpty, canEdit, initialView
       </div>
 
       <ForceDialog request={force} onCancel={cancelForce} onConfirm={confirmForce} />
+      <MoveDialog request={moveReq} onCancel={cancelForce} onConfirm={confirmMove} />
     </div>
   );
 }

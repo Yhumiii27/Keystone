@@ -1,0 +1,21 @@
+{
+  "Delivery rejected at receipt": "Livraison refusée à la réception",
+  "Invoice blocked by the 3-way match": "Facture bloquée par le rapprochement 3 voies",
+  "Declare the supplier NCR in Vigie": "Déclarer la NC fournisseur dans Vigie",
+  "declare the supplier NCR in Vigie": "déclarer la NC fournisseur dans Vigie",
+  "Non-conformity raised in Vigie": "Non-conformité déclarée dans Vigie",
+  "Change order waiting for your approval": "Ordre de modification (ECO) en attente de votre approbation",
+  "Absence": "Absence",
+  "Cursus": "Cursus",
+  "Last absence received": "Dernière absence reçue",
+  "None received yet": "Aucune reçue pour l’instant",
+  "Approved in Cursus": "Approuvés dans Cursus",
+  "Received from Cursus · 35 h week · 7 h per leave day · public holidays removed": "Reçu de Cursus · semaine de 35 h · 7 h par jour d’absence · jours fériés retirés",
+  "Leave is requested and approved in Cursus": "Les congés se demandent et s’approuvent dans Cursus",
+  "Leave · paid leave or RTT": "Congés · congés payés ou RTT",
+  "Absence · any other absence": "Absence · toute autre absence",
+  "Removed from capacity · Cursus is the source for leave": "Retirés de la capacité · Cursus est la source des congés",
+  "Last Cursus event": "Dernier événement Cursus",
+  "Unresolved events": "Événements non résolus",
+  "Individual go / no go (visa, vaccination, clearances & badges) · approved leave and absences · staff directory: name, e-mail, matricule, team (R-027, R-031)": "Go / no go individuel (visa, vaccinations, habilitations & badges) · congés et absences approuvés · annuaire du personnel : nom, e-mail, matricule, équipe (R-027, R-031)"
+}

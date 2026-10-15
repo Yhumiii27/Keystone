@@ -20,6 +20,9 @@
 :global(.input).multInput { min-height: 30px; text-align: right; padding: 2px 8px; font-variant-numeric: tabular-nums; }
 .multValue { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--color-neutral-300); padding: 2px 9px; }
 .footNote { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+/* R-083: "since 1 Jan 2026 · 70 € from …" under a role or a multiplier; the date the card shows. */
+.versions { display: block; font-size: 11px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; margin-top: 2px; }
+:global(.input).dateInput { width: auto; min-height: 30px; padding: 2px 8px; }
 
 /* ── Skills matrix ── */
 .matrix { display: grid; grid-template-columns: minmax(150px, 210px) repeat(var(--skill-cols, 10), minmax(48px, 1fr)); gap: 4px; align-items: center; }
@@ -50,10 +53,11 @@
 .leaveLabel { font-size: 11.5px; color: var(--color-neutral-400); }
 .leaveHours { font-size: 10.5px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
 .cellLeave { background: var(--color-accent-900); }
-.cellSick { background: var(--color-accent-800); }
+/* NEW-CURSUS-4 / R-173: an absence (any reason) takes the prototype's former sick-leave look. */
+.cellAbsence { background: var(--color-accent-800); }
 .cellHoliday { background: var(--color-neutral-800); }
 .cellLeave .leaveLabel,
-.cellSick .leaveLabel { color: var(--color-accent-200); }
+.cellAbsence .leaveLabel { color: var(--color-accent-200); }
 .rightNum { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--color-neutral-300); }
 .legend { display: flex; gap: 14px; font-size: 11.5px; color: var(--color-neutral-400); flex-wrap: wrap; }
 
@@ -70,7 +74,11 @@
 .hrLineNum { font-variant-numeric: tabular-nums; text-align: right; }
 .hrLineLabel { padding-left: 6px; }
 .varOk { color: var(--color-neutral-300); }
-.varLo { color: var(--color-accent-300); }
+/* R-6b (R-088): over and under plan differ in colour AND shape (▲ / ▼ glyph + visually hidden words) — no red/amber/green. */
+.varOver { color: var(--color-accent-300); }
+.varUnder { color: var(--color-neutral-400); }
+.varGlyph { font-size: 0.8em; margin-right: 3px; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .track { height: 6px; border-radius: 3px; background: var(--color-neutral-800); overflow: hidden; }
 .fill { height: 100%; background: var(--color-accent); }
 .fillOver { background: var(--color-accent-700); }

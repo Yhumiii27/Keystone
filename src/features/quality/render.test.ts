@@ -108,6 +108,8 @@ describe('NCR log — EN and FR', () => {
     expect(empty.kpis.map((k) => k.value)).toEqual(['0', '0', lang === 'en' ? '€0k' : '0 k€', '0', '0']);
   });
 
+  // R-184 (NEW-D1-2): "Action due" has its French (« Échéance de l’action »); the prototype left it in English.
+  const actionDue = (lang: Lang, k: string) => (lang === 'fr' && k === 'Action due' ? 'Échéance de l’action' : k);
   it.each(LANGS)('%s: NCR drawers of HLT-026 and NDC-031 (record, causes, steps, severity, next step, links)', async (lang) => {
     for (const code of ['HLT-026', 'NDC-031']) {
       const data = await screen(code);
@@ -120,7 +122,7 @@ describe('NCR log — EN and FR', () => {
           hasAct: !!d.activityHref, hasPart: !!d.partHref, ecoId: d.eco?.number ?? '',
         }, n.number).toEqual({
           head: `${g.id} · ${g.src}`, title: g.title, sev: g.sev, sevClass: g.sevClass, status: g.status, tagClass: g.tagClass, root: g.root, action: g.action,
-          steps: g.steps.map((s: any) => ({ label: s.label, reached: s.dot === 'var(--color-accent)' })), meta: g.meta.map((m: any) => ({ k: m.k, v: fix(lang, day(m.v)) })),
+          steps: g.steps.map((s: any) => ({ label: s.label, reached: s.dot === 'var(--color-accent)' })), meta: g.meta.map((m: any) => ({ k: actionDue(lang, m.k), v: fix(lang, day(m.v)) })),
           sevSeg: g.sevSeg, next: g.canAdvance ? fix(lang, g.nextLabel) : null, hasAct: g.hasAct, hasPart: g.hasPart, ecoId: g.ecoId,
         });
         expect(d.vigieUrl).toBe(n.vigieUrl);

@@ -8,17 +8,15 @@
 // - Intervention statuses agree with "intervention" (feminine): "Planifiée", "Terminée" (the dictionary's "Planifié",
 //   "Terminé" are masculine).
 // - The claim form's "Issue" is the reported problem ("Problème"), not the stock issue ("Sortie") of the dictionary.
-import FR_DICT_BASE from '@/i18n/fr-dict.json';
-import { EXTRA_FR } from '@/i18n/extra';
 import type { Lang, T } from '@/i18n/translate';
 import { countTextEn, type CountKind } from '@/domain/aftersales';
 import { interventionStatus, type InterventionStatus } from '@/server/db/codes';
+import { dataText } from '@/i18n/data-text';
 
-const DICT: Record<string, string> = { ...(FR_DICT_BASE as Record<string, string>), ...EXTRA_FR };
 const fr = (lang: Lang) => lang === 'fr';
 
-/** Stored / typed text: FR only on an exact dictionary match. */
-export const dataText = (s: string, lang: Lang) => (fr(lang) && s && Object.hasOwn(DICT, s) ? DICT[s] : s);
+/** Typed / received text: as typed, or a seeded string's exact dictionary entry (R-148: the shared helper, src/i18n/data-text.ts). */
+export { dataText };
 
 const FR_COUNT: Record<CountKind, [string, string]> = {
   clients: ['client', 'clients'],

@@ -3,13 +3,16 @@
 // highlighted (`?sel=`). Four sections: General · Relationships · Resources & cost · To-dos.
 // Chapter 4: editors override the activity calendar, add / remove relationships and add, tick and remove to-dos
 // (./plan-controls.tsx); read-only viewers see the prototype's static content.
-import { CalendarDots, Check, Hourglass } from '@phosphor-icons/react/dist/ssr';
+// Delivery 7 (NEW-D2-2, R-062): a "Change requests" section lists the requests that name the activity (with the new
+// duration each asks for), linked to Change control.
+import { ArrowsLeftRight, CalendarDots, Check, Hourglass } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 import { Avatar } from '@/components/app/Badges';
 import { ButtonLink } from '@/components/ds/Button';
 import { cx } from '@/components/ds/cx';
 import { Drawer } from '@/components/ds/Drawer';
+import { Tag } from '@/components/ds/Tag';
 import type { T } from '@/i18n/translate';
 import type { DrawerLine, DrawerView } from './drawer-model';
 import { ActivityCalendarSelect, AddRelationshipButton, RemoveLinkButton, RemoveTodoButton, TodoComposer, TodoRing } from './plan-controls';
@@ -119,6 +122,24 @@ export function ActivityDrawer({ view, closeHref, scheduleHref, t, code, canEdit
           </div>
           <span className={s.costNote}>{view.costNote}</span>
         </section>
+
+        {view.changes.length > 0 && (
+          <section className={s.section} aria-label={t('Change requests')}>
+            <span className={s.kicker}>{t('Change requests')}</span>
+            {view.changes.map((c) => (
+              <Link key={c.id} href={c.href} className={cx(s.todo, s.crRow)}>
+                <ArrowsLeftRight className={s.crIcon} aria-hidden />
+                <span className={s.todoText}>
+                  <span className={s.todoTitle}>
+                    {c.id} · {c.title}
+                  </span>
+                  <span className={s.todoMeta}>{c.duration}</span>
+                </span>
+                <Tag tone={c.status.tone}>{c.status.label}</Tag>
+              </Link>
+            ))}
+          </section>
+        )}
 
         <section className={s.section} aria-label={t('To-dos')}>
           <div className={s.todoHead}>

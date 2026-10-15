@@ -1,12 +1,13 @@
 // Golden values of the Portfolio overview and My projects (docs/spec/03 §2.2 and §4 seed values), computed
 // from the prototype data set exactly as the prototype does.
 import { describe, expect, it } from 'vitest';
-import { PERSONA_BY_ROLE, CLIENT_ORG } from '@/config/personas';
+import { makeT } from '@/i18n/translate';
+import { DEMO_CLIENT_ORG, PERSONA_BY_ROLE } from '@/config/personas';
 import type { RoleKey } from '@/config/screens';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { money } from '@/lib/format';
 import {
-  activeProjectsHint, myProjectsModel, overviewMetrics, portfolioAlerts, portfolioKpis, portfolioTotals, projectIndicators,
+  EXECUTION_STAGES, activeProjectsHint, fiscalYearLabel, inExecution, myProjectsModel, overviewMetrics, portfolioKpis, portfolioTotals, projectIndicators,
   type MyProjectsViewer, type ScheduleSummary,
 } from './portfolio';
 
@@ -72,16 +73,18 @@ describe('Portfolio overview (spec §4)', () => {
     const none = portfolioTotals([]);
     expect(portfolioKpis(none, 'en').map((k) => k.value)).toEqual(['€0k', '€0k', '€0k', '1.00', '1.00', '0 of 0']);
     expect([activeProjectsHint(6), activeProjectsHint(1)]).toEqual(['6 projects · FY2026', '1 project · FY2026']);
+    // R-129: the fiscal year comes from the data date (was a fixed "FY2026").
+    expect([activeProjectsHint(4, '2027-02-26'), fiscalYearLabel('2027-02-26'), fiscalYearLabel()]).toEqual(['4 projects · FY2027', 'FY2027', 'FY2026']);
+    expect([makeT('fr')('6 projects · FY2026'), makeT('fr')(activeProjectsHint(6, '2027-01-05')), makeT('fr')('FY2027 · 17 projects')]).toEqual([
+      '6 projets · exercice 2026', '6 projets · Exercice 2027', 'Exercice 2027 · 17 projets',
+    ]);
   });
 
-  it('lists the four static alerts with money in the current language', () => {
-    expect(portfolioAlerts('en').map((a) => [a.title, a.target])).toEqual([
-      ['Harbor Line — critical path slip', { screen: 'schedule', code: 'HLT-026' }],
-      ['Harbor Line — labor overrun', { screen: 'budget', code: 'HLT-026' }],
-      ['3 people over 115% in October', { screen: 'resources' }],
-      ['Clinique Pasteur Lyon — SPI 0.84', { screen: 'schedule', code: 'RCF-019' }],
+  it('A-3: the population is the execution group, Études → Mise en service', () => {
+    expect([...EXECUTION_STAGES]).toEqual(['etudes', 'approvisionnements', 'fabrication_assemblage', 'fat', 'expedition', 'chantier', 'mise_en_service_sat']);
+    expect(['initiative', 'aps', 'apd', 'etudes', 'mise_en_service_sat', 'garantie', 'clos', 'annule'].map((stage) => inExecution({ stage: stage as never }))).toEqual([
+      false, false, false, true, true, false, false, false,
     ]);
-    expect(portfolioAlerts('fr')[1].detail).toBe('Labor forecast +160 k€ over its line budget; contingency 139% drawn.');
   });
 });
 
@@ -107,6 +110,24 @@ describe('pvExtra indicators (spec §5.5)', () => {
     expect([x.floatText, x.spentText, x.earnedText, x.eacText, x.vacText, x.spentPct, x.spentTint]).toEqual(['−27 d', '€3.36M', '€3.07M', '€5.25M', '−€450k', '70%', 'lo']);
   });
 
+  it('A-13: CPI / SPI colours and attention items follow the Settings "At risk below" threshold', () => {
+    const p = { budget: 1000, actual: 500, progress: 0.48, spi: 0.96, finish: 'Dec 2026' };
+    // CPI = 480 / 500 = 0.96, SPI 0.96: below the default 0.97 → attention and LO tints.
+    expect(projectIndicators(p, null, true, 'en')).toMatchObject({ spiTint: 'lo', cpiTint: 'lo' });
+    expect(projectIndicators(p, null, true, 'en').attention.slice(0, 2)).toEqual(['SPI 0.96', 'CPI 0.96']);
+    // The director lowers "At risk below" to 0.95: 0.96 is no longer an attention value.
+    const th = { risk: 0.95, off: 0.9 };
+    const x = projectIndicators(p, null, true, 'en', th);
+    expect([x.spiTint, x.cpiTint, x.attention.filter((a) => /^(SPI|CPI) /.test(a))]).toEqual(['ok', 'ok', []]);
+    expect(overviewMetrics(p)).toMatchObject({ cpiAlert: true, spiAlert: true });
+    expect(overviewMetrics(p, th)).toMatchObject({ cpiAlert: false, spiAlert: false });
+    const totals = portfolioTotals([{ ...p, metrics: overviewMetrics(p, th) }]);
+    expect(portfolioKpis(totals, 'en').filter((k) => k.key === 'cpi' || k.key === 'spi').map((k) => k.alert)).toEqual([true, true]);
+    expect(portfolioKpis(totals, 'en', th).filter((k) => k.key === 'cpi' || k.key === 'spi').map((k) => k.alert)).toEqual([false, false]);
+    // The display clamp is the health rule's [0.70, 1.25] (clampHealthCpi).
+    expect(projectIndicators({ ...p, actual: 100 }, null, true, 'en').cpiText).toBe('1.25');
+  });
+
   it('dash values when the project has no health, and fallbacks without planning data', () => {
     const p = { budget: 2200, actual: 0, progress: 0, spi: 1, finish: 'Nov 2027' };
     expect(projectIndicators(p, null, false, 'en')).toMatchObject({ spiText: '—', cpiText: '—', msName: '—', msLine: '', finishForecast: '—', spentPct: '0%' });
@@ -122,7 +143,7 @@ describe('My projects (spec §2.2)', () => {
   const todos = PROTO.TODOS as { person: string; status: string; project: string }[];
   const viewer = (role: RoleKey): MyProjectsViewer => {
     const p = PERSONA_BY_ROLE[role];
-    return { role, name: p.name, short: p.short, clientOrg: CLIENT_ORG, dept: role === 'depthead' ? 'Engineering' : null };
+    return { role, name: p.name, short: p.short, clientOrg: DEMO_CLIENT_ORG, dept: role === 'depthead' ? 'Engineering' : null };
   };
   const model = (role: RoleKey, pending = 0) =>
     myProjectsModel(viewer(role), POOL, SCHED, { deptOf, todos }, { personaTitle: PERSONA_BY_ROLE[role].title, pendingDecisions: pending, lang: 'en' });

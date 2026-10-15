@@ -3,10 +3,11 @@
 // Server Components and their client islands. Pure (no server-only import at runtime).
 import { LO, OK, shade } from '@/components/app/tones';
 import {
-  REQUEST_FILTERS, RESCHEDULE_SHIFTS, approvalKpis, approveTarget, datesText, firstName,
+  REQUEST_FILTERS, RESCHEDULE_SHIFTS, approvalKpis, approveTarget, datesText, firstName, isSentRequest,
   matchesFilter, pendingHoursByPerson, projectsText, requestChipCounts, requestImpact, requestKpis, requestSteps, shiftedDates, teamLoad,
   weekLabel, type PoolFacts, type RequestFilter,
 } from '@/domain/requests';
+import { nextWeekLabels } from '@/domain/form-dates';
 import { averageResponseDays } from '@/domain/kpis';
 import { responseDaysText } from '@/features/kpis/i18n';
 import { initials } from '@/lib/format';
@@ -18,6 +19,7 @@ import {
   approveLabelText, committedText, dataText, decidedSubText, hoursNum, hoursRequestedText, hoursText, impactText, inListText, nothingWaitingText, reqT,
   responseText, teamLoadLabel,
 } from './i18n';
+import { isRequester } from './permissions';
 
 export interface KpiView {
   label: string;
@@ -35,7 +37,7 @@ export interface ChipView {
 /** One row of the Requests grid table (and the shared fields of the Approvals cards). */
 export interface RequestRowView {
   id: string;
-  /** "Sent Fri 25 Sep". */
+  /** "Sent Fri 25 Sep" — "Not sent" for a draft (S-7). */
   sent: string;
   title: string;
   critical: boolean;
@@ -51,28 +53,42 @@ export interface RequestRowView {
   tagClass: string;
   steps: [boolean, boolean, boolean];
   stepLabel: string;
-  /** Decision line, or "Awaiting {department head}". */
+  /** Decision line, or "Awaiting {department head}"; "—" for a draft (S-7: not sent, nobody is awaited). */
   response: string;
   isPending: boolean;
   isReschedule: boolean;
   isRejected: boolean;
+  /** P-8c (R-090): a rejected or withdrawn request can be sent again by its sender. */
+  canReRequest: boolean;
+  /** Chapter 4 (S-7): drafted by the what-if levelling, not sent to the department yet. */
+  isDraft: boolean;
   /** "12 Oct – 16 Oct" (reschedule proposals). */
   proposed: string;
   /** Sent by the viewer: PM actions (withdraw, accept, re-request) are available. */
   mine: boolean;
+  /** A draft the viewer may send or discard (`canHandleDraft`: requester, project PM or director; S-7). */
+  canSendDraft: boolean;
 }
 
-/** `reqRow` (4117) translated. `viewer` = full and short name of the viewer (PM actions on their own requests only). */
-export function requestRowView(r: ResourceRequestRow, t: T, lang: Lang, viewer: { name: string; short: string }): RequestRowView {
+/** Decides, per request, whether the viewer may send / discard it while it is a draft (`draftRights`, ./permissions). */
+export type DraftRights = (r: ResourceRequestRow) => boolean;
+
+/**
+ * `reqRow` (4117) translated. `viewer` = full and short name of the viewer (PM actions on their own requests only);
+ * `draftRights` = who may send / discard a draft (none when omitted).
+ */
+export function requestRowView(r: ResourceRequestRow, t: T, lang: Lang, viewer: { name: string; short: string }, draftRights?: DraftRights): RequestRowView {
   const tt = reqT(t, lang);
   const who = r.person ? firstName(r.person) : r.resource;
+  const draft = !isSentRequest(r);
   return {
     id: r.id,
-    sent: tt('Sent ' + r.sentText),
+    // S-7: a draft has not been sent — its stored date is the drafting date, not shown as "Sent …".
+    sent: draft ? tt('Not sent') : tt('Sent ' + r.sentText),
     title: dataText(r.title, lang),
     critical: !!r.activity?.critical,
     high: r.priority === 'high',
-    actLine: r.activity ? `${r.activity.code} · ${tt(r.activity.name)}` : tt('Activity'),
+    actLine: r.activity ? `${r.activity.code} · ${dataText(r.activity.name, lang)}` : tt('Activity'),
     initials: initials(r.resource),
     person: tt(r.resource),
     dept: tt(r.department),
@@ -81,13 +97,16 @@ export function requestRowView(r: ResourceRequestRow, t: T, lang: Lang, viewer: 
     statusLabel: tt(r.statusLabel),
     tagClass: `tag ${REQUEST_STATUS_TAG[r.status]}`,
     steps: requestSteps(r.status),
-    stepLabel: r.status === 'approved' ? inListText(who, lang) : tt('Not sent to the person yet'),
-    response: r.response ? responseText(r.response, tt, lang) : tt(`Awaiting ${r.departmentHead ?? r.department}`),
+    stepLabel: r.status === 'approved' ? inListText(who, lang) : tt(draft ? 'Not sent to the department yet' : 'Not sent to the person yet'),
+    response: draft ? '—' : r.response ? responseText(r.response, tt, lang) : tt(`Awaiting ${r.departmentHead ?? r.department}`),
     isPending: r.status === 'pending',
     isReschedule: r.status === 'reschedule',
     isRejected: r.status === 'rejected',
+    canReRequest: r.status === 'rejected' || r.status === 'withdrawn',
+    isDraft: draft,
     proposed: r.proposedStart && r.proposedDue ? tt(datesText(r.proposedStart, r.proposedDue)) : '',
-    mine: r.requestedBy === viewer.short || r.requestedByName === viewer.name,
+    mine: isRequester(r, viewer),
+    canSendDraft: draft && !!draftRights?.(r),
   };
 }
 
@@ -97,18 +116,23 @@ export interface RequestsScreenModel {
   rows: RequestRowView[];
 }
 
-/** Requests screen (`reqKpis`, `reqChips`, `reqRows`, 4134–4138). `rows` = the outbox shown (all statuses). */
+/**
+ * Requests screen (`reqKpis`, `reqChips`, `reqRows`, 4134–4138). `rows` = the outbox shown (all statuses, drafts listed
+ * under All); `draftRights` = who may send / discard a draft (S-7).
+ */
 export function requestsScreenModel(
   rows: readonly ResourceRequestRow[],
   filter: RequestFilter | null,
   t: T,
   lang: Lang,
   viewer: { name: string; short: string },
+  draftRights?: DraftRights,
 ): RequestsScreenModel {
   const tt = reqT(t, lang);
   const k = requestKpis(rows);
   const counts = requestChipCounts(rows);
-  const projects = projectsText(rows.map((r) => r.projectShortName ?? r.projectShort));
+  // "Requests sent" sub-line: the projects of the requests counted (S-7: not those of drafts only).
+  const projects = projectsText(rows.filter(isSentRequest).map((r) => r.projectShortName ?? r.projectShort));
   return {
     kpis: [
       { label: tt('Requests sent'), value: String(k.sent), sub: tt(projects ? `${projects} · last 2 weeks` : 'last 2 weeks'), color: OK },
@@ -119,7 +143,7 @@ export function requestsScreenModel(
       { label: tt('Avg response'), value: responseDaysText(averageResponseDays(rows), lang), sub: tt('Department heads'), color: OK },
     ],
     chips: REQUEST_FILTERS.map((f, i) => ({ value: f.value, label: tt(f.label), count: counts[i] })),
-    rows: rows.filter((r) => matchesFilter(r.status, filter)).map((r) => requestRowView(r, t, lang, viewer)),
+    rows: rows.filter((r) => matchesFilter(r.status, filter)).map((r) => requestRowView(r, t, lang, viewer, draftRights)),
   };
 }
 
@@ -177,8 +201,10 @@ export function approvalsModel(
   const weekStarts = data.pool.weeks.map((w) => w.start);
   const team = teamLoad(pool, d.name, pendingHoursByPerson(data.allPending));
   const k = approvalKpis([...data.pending, ...data.decided], team, d);
-  const w0 = weekStarts[0] ? shortDateOfIso(weekStarts[0]) : '28 Sep';
-  const w1 = weekStarts[1] ? shortDateOfIso(weekStarts[1]) : '5 Oct';
+  // R-169: without pool weeks, next week and the one after from the data date (the prototype's literals "28 Sep", "5 Oct").
+  const [n0, n1] = nextWeekLabels();
+  const w0 = weekStarts[0] ? shortDateOfIso(weekStarts[0]) : n0;
+  const w1 = weekStarts[1] ? shortDateOfIso(weekStarts[1]) : n1;
   const cell = (v: number) => ({ v: `${v}%`, ...shade(v) });
   return {
     head: d.head ? { name: d.head, initials: d.headInitials ?? initials(d.head), role: tt(d.headTitle ?? '') } : null,

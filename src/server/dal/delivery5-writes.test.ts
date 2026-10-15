@@ -12,7 +12,7 @@ import { seedIfEmpty } from '@/server/db/seed';
 import { prototypeNcrSnapshot, type ProtoNcrRow } from '@/server/integrations/vigie/prototype-snapshot';
 import { upsertNcrMirror } from '@/server/integrations/vigie/quality-mirror';
 import { httpQualityConnector, mockQualityConnector, resetVigieQualityRefreshThrottle, getVigieQualityConnector } from '@/server/integrations/vigie/quality-connector';
-import { vigieHseUrl, vigieNcrUrl, vigieReportNcrUrl } from '@/server/integrations/vigie/links';
+import { vigieCoactivityUrl, vigieHseListUrl, vigieHseUrl, vigieNcrListUrl, vigieNcrUrl, vigieReportNcrUrl } from '@/server/integrations/vigie/links';
 import { getCursusConnector, httpCursusConnector, recordsOfPayload, resetCursusRefreshThrottle } from '@/server/integrations/cursus/connector';
 import { cursusChantierUrl } from '@/server/integrations/cursus/links';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
@@ -21,7 +21,7 @@ import { listClaims, openClaim } from './claims';
 import { getCommissioning, planSat } from './commissioning';
 import { closeEngCheck, confirmEngInput, freezeEngDeliverable, generateEngOutput, getEngineeringRegister, importEngList, proposeEngRelease, validateEngRelease } from './engineering';
 import { addMachine, getMachine, listMachines } from './fleet';
-import { addConnector, listConnectors, syncConnector } from './integrations';
+import { listConnectors, syncConnector } from './integrations';
 import { addItpInspection, addPunchItem, advancePunchItem, getItpPlan, listPunchItems } from './itp';
 import { createMachineType, getMachineType, removeRexReference, setMachineTypeCostCategories, setMachineTypeItpSystems, setMachineTypePhases, updateMachineType } from './mtypes';
 import { listAudit } from './notifications';
@@ -98,6 +98,15 @@ describe('NCRs — progress sent to Vigie (Vigie owns the NCRs)', () => {
     expect(vigieReportNcrUrl({ projectCode: HLT, partRef: 'KS-STL-0450' })).toBe('http://localhost:3200/signaler?type=NC&projet=HLT-026&article=KS-STL-0450&source=keystone');
     expect(vigieHseUrl({ kind: 'permit', vigieRef: 'PF-2026-030' })).toBe('http://localhost:3200/prevention?onglet=permis&permis=PF-2026-030');
     expect(vigieHseUrl({ kind: 'prevention_plan' })).toBe('http://localhost:3200/prevention');
+    // R-025 (V-3b "a"): the lists and the fallback links name the project as `projet` (the Keystone code until NEW-SYS-1 / R-022).
+    expect(vigieNcrListUrl()).toBe('http://localhost:3200/evenements?type=NC');
+    expect(vigieNcrListUrl({ projectCode: HLT })).toBe('http://localhost:3200/evenements?type=NC&projet=HLT-026');
+    expect(vigieHseListUrl({ projectCode: HLT })).toBe('http://localhost:3200/prevention?projet=HLT-026');
+    expect(vigieCoactivityUrl({ projectCode: HLT })).toBe('http://localhost:3200/prevention/carte?projet=HLT-026');
+    expect(vigieCoactivityUrl()).toBe('http://localhost:3200/prevention/carte');
+    expect(vigieHseUrl({ kind: 'permit', projectCode: HLT })).toBe('http://localhost:3200/prevention?onglet=permis&projet=HLT-026');
+    expect(vigieHseUrl({ kind: 'register', projectCode: HLT })).toBe('http://localhost:3200/evenements?etat=tous&type=PA&projet=HLT-026');
+    expect(vigieHseUrl({ kind: 'prevention_plan', vigieRef: 'PP-2026-013', projectCode: HLT })).toBe('http://localhost:3200/prevention?plan=PP-2026-013');
   });
 
   it('HTTP connector (VIGIE_API_URL): delivers the NCR outbox, then Vigie’s refresh becomes the mirror (NCRs and HSE)', async () => {
@@ -148,7 +157,8 @@ describe('deliverables — producer steps and client acceptance (PV)', () => {
     await expect(decideDeliverable(HLT, 'D-016', 'accepted', A.client)).rejects.toThrow(/not submitted/);
     expect(await deliverableDecidedCount(A.client)).toBe(2);
     const portal = await getClientPortal(HLT);
-    expect(portal.decisions.map((d) => d.id)).toEqual(['CR-008', 'D-018']);
+    // P-6b (delivery 8, R-069): CR-008 waits for the director before it reaches the client.
+    expect(portal.decisions.map((d) => d.id)).toEqual(['D-018']);
     expect(portal.decided.map((d) => d.id)).toEqual(['CR-004', 'CR-006', 'D-011', 'D-012', 'D-014', 'D-015', 'D-016']);
   });
 
@@ -171,7 +181,7 @@ describe('ITP and punch list', () => {
     expect((await getItpPlan('NDC-031'))!).toMatchObject({ template: 'AUTRE', systems: ['General'] });
   });
 
-  it('"Add punch item": P-10 Open; Start → In progress → Close; the site register is read-only', async () => {
+  it('"Add punch item": P-10 Open; Start → In progress → Close on every origin; outside the workspace refused', async () => {
     expect(await addPunchItem(HLT, { description: 'Missing anchor nut — bay 2', location: 'Structure · Bay 2', category: 'A', source: 'site_walk', owner: 'J. Wagner', dueOn: '2026-10-10' }, A.englead)).toBe('P-10');
     expect((await listPunchItems(HLT, 'itp')).at(-1)).toMatchObject({ number: 'P-10', status: 'open', category: 'A', owner: 'J. Wagner', sourceText: 'Site walk' });
     expect((await getCommissioning(HLT))!.systems[0].blockingA).toBe(1);
@@ -179,6 +189,10 @@ describe('ITP and punch list', () => {
     expect(await advancePunchItem(HLT, 'P-10', A.englead)).toBe('closed');
     await expect(advancePunchItem(HLT, 'P-10', A.englead)).rejects.toThrow(/closed/);
     await expect(advancePunchItem(HLT, 'P-02', A.member)).rejects.toThrow(/outside your workspace/);
+    // A-6 'a' (R-117): one list — an item raised on site (P-07, was the read-only Site register's P-02) takes the same steps,
+    // on Inspections & punch list; the Site screen stays read-only (no writer there), a team member is still refused.
+    expect(await advancePunchItem(HLT, 'P-07', A.quality)).toBe('in_progress');
+    await expect(advancePunchItem(HLT, 'P-07', A.member)).rejects.toThrow(/outside your workspace/);
   });
 });
 
@@ -234,23 +248,30 @@ describe('installed base and warranty claims', () => {
 
 describe('site — readiness, daily reports, Cursus', () => {
   it('prerequisites (Client confirms → Signed on site), equipment confirmation, Go conditions follow', async () => {
-    await advancePrerequisite(HLT, 3, 'confirmed', A.member);
-    await expect(advancePrerequisite(HLT, 3, 'confirmed', A.member)).rejects.toThrow(/Confirmed/);
-    await advancePrerequisite(HLT, 3, 'signed', A.member);
-    await confirmEquipment(HLT, 2, A.depthead);
-    await expect(confirmEquipment(HLT, 2, A.depthead)).rejects.toThrow(/already confirmed/);
-    await expect(confirmEquipment(HLT, 4, A.quality)).rejects.toThrow(/outside your workspace/);
+    // R-118: each step names the line as the page showed it (its stamp); a stale one is refused.
+    const pre = async (i: number) => (await getSite(HLT))!.prerequisites[i].stamp;
+    const eqp = async (i: number) => (await getSite(HLT))!.equipment[i].stamp;
+    const pending = await pre(3);
+    await advancePrerequisite(HLT, 3, 'confirmed', pending, A.member);
+    await expect(advancePrerequisite(HLT, 3, 'confirmed', pending, A.member)).rejects.toThrow(/This line has changed/);
+    await expect(advancePrerequisite(HLT, 3, 'confirmed', await pre(3), A.member)).rejects.toThrow(/Confirmed/);
+    await advancePrerequisite(HLT, 3, 'signed', await pre(3), A.member);
+    await confirmEquipment(HLT, 2, await eqp(2), A.depthead);
+    await expect(confirmEquipment(HLT, 2, await eqp(2), A.depthead)).rejects.toThrow(/already confirmed/);
+    await expect(confirmEquipment(HLT, 4, await eqp(4), A.quality)).rejects.toThrow(/outside your workspace/);
     const s = (await getSite(HLT))!;
     // HSE: the HTTP refresh above left Vigie's single signed prevention plan in the mirror — no permit pending.
-    expect(s.go.conditions.map((c) => c.sub)).toEqual(['1 pending', '2 NO GO', '1 unconfirmed', '4 collisions', 'Ready']);
-    await expect(advancePrerequisite('NDC-031', 0, 'confirmed', A.pm)).rejects.toThrow(/no site sheet/);
+    // D-6b 'a' (R-119): 8 conflicts computed from the rotation plan (the prototype's 4 authored collisions).
+    expect(s.go.conditions.map((c) => c.sub)).toEqual(['1 pending', '2 NO GO', '1 unconfirmed', '8 collisions', 'Ready']);
+    await expect(advancePrerequisite('NDC-031', 0, 'confirmed', 'abc', A.pm)).rejects.toThrow(/no site sheet/);
   });
 
   it('"Daily report": DR-003 by the viewer, listed first', async () => {
-    expect(await saveDailyReport(HLT, { date: '2026-09-30', weather: 'wind', headcount: 24, progress: 'Crane rail survey bays 1–3', incident: 'none' }, A.pm)).toBe('DR-003');
+    // NEW-SITE-2 'a' (R-122): no HSE incident is recorded with the report any more (declared in Vigie).
+    expect(await saveDailyReport(HLT, { date: '2026-09-30', weather: 'wind', headcount: 24, progress: 'Crane rail survey bays 1–3' }, A.pm)).toBe('DR-003');
     const s = (await getSite(HLT))!;
-    expect(s.dailyReports[0]).toMatchObject({ number: 'DR-003', reportOn: '2026-09-30', author: 'R. Aubert', weatherLabel: 'Wind > 50 km/h', headcount: 24, hseIncidentLabel: 'None' });
-    await expect(saveDailyReport(HLT, { date: '2026-09-30', weather: 'clear', progress: ' ', incident: 'none' }, A.pm)).rejects.toThrow(/required/);
+    expect(s.dailyReports[0]).toMatchObject({ number: 'DR-003', reportOn: '2026-09-30', author: 'R. Aubert', weatherLabel: 'Wind > 50 km/h', headcount: 24, hseIncident: null, hseIncidentLabel: null });
+    await expect(saveDailyReport(HLT, { date: '2026-09-30', weather: 'clear', progress: ' ' }, A.pm)).rejects.toThrow(/required/);
   });
 
   it('Cursus (mock): remind once per person not GO; GO refused; sync reports the approvals', async () => {
@@ -346,9 +367,11 @@ describe('engineering register', () => {
     await expect(proposeEngRelease(HLT, 'VAR-PLC-026', A.englead)).rejects.toThrow(/Release blocked · 2 blocking/);
     await expect(validateEngRelease(HLT, 'SCH-ELE-026', A.englead)).rejects.toThrow(/Only the project manager/);
     await expect(validateEngRelease(HLT, 'SCH-ELE-026', { role: 'pm', name: 'Sophie Renard' })).rejects.toThrow(/Only the project manager/);
+    // P-7c = a (Delivery 7, R-106): the validation starts the Codex approval circuit; Codex releases the deliverable.
     await validateEngRelease(HLT, 'SCH-ELE-026', A.pm);
     const d = (await getEngineeringRegister(HLT))!.deliverables.find((x) => x.number === 'SCH-ELE-026')!;
-    expect([d.status, d.revision]).toEqual(['released', 'B']);
+    expect([d.status, d.revision, d.canValidate, d.codexNote]).toEqual(['release_proposed', 'B', false, 'Approval circuit started · Pending sync with Codex']);
+    await expect(validateEngRelease(HLT, 'SCH-ELE-026', A.pm)).rejects.toThrow(/already started/);
     await expect(freezeEngDeliverable(HLT, 'PRO-QMS-021', A.englead)).rejects.toThrow(/not an engineering deliverable/);
   });
 
@@ -366,7 +389,7 @@ describe('engineering register', () => {
 
 describe('P&ID mapping', () => {
   it('maps an unmapped tag to a candidate, unlinks it; client scope and non-candidates refused; outside refused', async () => {
-    const [cand] = (await pidCandidates(HLT, 'TT-102')).filter((c) => c.status === 'validated');
+    const [cand] = (await pidCandidates(HLT, 'TT-102')).rows.filter((c) => c.status === 'validated' && c.inBom);
     await mapPidTag(HLT, 'TT-102', cand.ref, A.englead);
     let v = (await getPidValidation(HLT))!;
     expect(v.tags.find((t) => t.tag === 'TT-102')).toMatchObject({ partRef: cand.ref, status: 'linked' });
@@ -375,7 +398,12 @@ describe('P&ID mapping', () => {
     v = (await getPidValidation(HLT))!;
     expect(v.tags.find((t) => t.tag === 'TT-102')!.status).toBe('unmapped');
     await expect(mapPidTag(HLT, 'T-101', 'EQ-CRN-250T', A.englead)).rejects.toThrow(/Client-supplied/);
-    await expect(mapPidTag(HLT, 'TT-102', 'KS-STL-0450', A.englead)).rejects.toThrow(/not a BOM article of a compatible type/);
+    // E-6 (R-108): any catalogue article may be linked (KS-STL-0450 was refused as "not a BOM article of a compatible type");
+    // an unknown reference is still refused.
+    await expect(mapPidTag(HLT, 'TT-102', 'NOPE-999', A.englead)).rejects.toThrow(/not in the catalogue/);
+    await mapPidTag(HLT, 'TT-102', 'KS-STL-0450', A.englead);
+    expect((await getPidValidation(HLT))!.tags.find((t) => t.tag === 'TT-102')!.partRef).toBe('KS-STL-0450');
+    await mapPidTag(HLT, 'TT-102', null, A.englead);
     await expect(mapPidTag(HLT, 'TT-102', cand.ref, A.pm)).rejects.toThrow(/outside your workspace/);
   });
 });
@@ -429,18 +457,19 @@ describe('settings', () => {
 });
 
 describe('connectors', () => {
-  it('Sync now (Vigie, Cursus, simulated), Add connector (duplicate refused), outside refused', async () => {
-    expect(await syncConnector('Vigie', A.director)).toMatchObject({ ok: true });
+  it('Sync now (Vigie, Cursus, simulated), outside refused', async () => {
+    // R-021: Vigie and Cursus without their API URL are mocks — their runs are simulated.
+    expect(await syncConnector('Vigie', A.director)).toMatchObject({ ok: true, simulated: true });
     // Cursus (mock again): the people the HTTP refresh above left in the mirror.
     const people = (await getSite(HLT))!.cursus.people.length;
-    expect(await syncConnector('Cursus', A.pm)).toMatchObject({ ok: true, volume: `${people} approvals received` });
-    expect(await syncConnector('Lucca', A.pm)).toMatchObject({ ok: true, volume: '312 h · 8 people' });
-    await addConnector({ system: 'SharePoint', direction: 'both', frequency: 'Hourly', owner: 'IT · L. Fontaine' }, A.director);
-    await expect(addConnector({ system: 'sharepoint', direction: 'both', frequency: 'Hourly' }, A.director)).rejects.toThrow(/already connected/);
-    await expect(addConnector({ system: 'X', direction: 'both', frequency: 'Weekly' }, A.director)).rejects.toThrow(/Invalid frequency/);
-    await expect(syncConnector('Lucca', A.quality)).rejects.toThrow(/outside your workspace/);
+    expect(await syncConnector('Cursus', A.pm)).toMatchObject({ ok: true, volume: `${people} approvals received`, simulated: true });
+    // R-021: Lucca is retired (NEW-CURSUS-4); a connector that does not exist is not "synced" any more (A-15).
+    await expect(syncConnector('Lucca', A.pm)).rejects.toThrow(/Unknown connector Lucca/);
+    await expect(syncConnector('Sage X3', A.pm)).rejects.toThrow(/Sage X3 is not connected/);
+    await expect(syncConnector('Codex', A.quality)).rejects.toThrow(/outside your workspace/);
     const list = await listConnectors();
-    expect(list.at(-1)).toMatchObject({ name: 'SharePoint', status: 'ready', lastVolume: 'First sync scheduled', addedInKeystone: true, owner: 'IT · L. Fontaine' });
+    // R-020: connectors are added by IT's connectors file (src/server/dal/d7-debt-ux.test.ts), no longer from the app.
+    expect(list.map((c) => c.name)).not.toContain('SharePoint');
     expect(list.find((c) => c.name === 'Vigie')).toMatchObject({ pending: 0, failed: 0 });
     expect((await lastAudit()).area).toBe('Integrations');
   });
@@ -452,8 +481,8 @@ describe('Delivery 5 backfill (database seeded before migration 0004)', () => {
     const tables = [
       'deliverable_raci', 'deliverables', 'vigie_ncr_progress', 'vigie_ncrs', 'vigie_hse_items', 'punch_items', 'itp_inspections', 'itp_plans', 'commissioning_steps', 'commissioning_systems',
       'handover_items', 'sat_plans', 'lessons_learned', 'closure_items', 'satisfaction_scores', 'interventions', 'warranty_claims', 'machine_part_revisions', 'machines', 'daily_reports',
-      'mission_cost_lines', 'site_collisions', 'site_rotations', 'site_prerequisites', 'site_equipment', 'site_sheets', 'cursus_requests', 'cursus_sync_runs', 'cursus_clearances',
-      'client_document_categories', 'client_issues', 'eng_imports', 'eng_changes', 'eng_outputs', 'eng_checks', 'eng_consistency_rules', 'eng_inputs', 'eng_disciplines', 'eng_import_tools',
+      'mission_cost_lines', 'site_conflict_arbitrations', 'site_collisions', 'site_rotations', 'site_prerequisites', 'site_equipment', 'site_sheets', 'cursus_requests', 'cursus_sync_runs', 'cursus_clearances',
+      'client_issues', 'eng_imports', 'eng_changes', 'eng_outputs', 'eng_checks', 'eng_consistency_rules', 'eng_inputs', 'eng_disciplines', 'eng_import_tools',
       'eng_column_mappings', 'eng_import_deltas', 'pid_validation_steps', 'pid_tags', 'pid_sheets', 'machine_type_phases', 'machine_type_cost_categories', 'machine_type_itp_systems',
       'connector_sync_runs', 'connectors', 'import_formats', 'app_settings', 'reference_values',
     ];

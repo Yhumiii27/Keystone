@@ -4,6 +4,7 @@ import 'server-only';
 // without an agenda — the prototype appended such notes to a point that was never shown (they were lost); here the
 // first note opens agenda point 1, titled like the meeting (as "Add to minutes" does for the transcript proposals).
 import { and, eq } from 'drizzle-orm';
+import { clientSeesMeeting } from '@/domain/rights';
 import { getDb } from '@/server/db/client';
 import { meetingAgendaPoints, meetings } from '@/server/db/schema';
 import { listClientQuestions, listMeetings, type ClientQuestionRow, type MeetingRow } from './meetings';
@@ -13,8 +14,16 @@ export interface MeetingsScreenData {
   questions: ClientQuestionRow[];
 }
 
-/** Register of the project (MEETINGS order) and its internal ⇄ client question bridge. */
-export async function getMeetingsScreen(projectCode: string): Promise<MeetingsScreenData> {
+/**
+ * Register of the project (MEETINGS order) and its internal ⇄ client question bridge. `client` (P-10b, R-043): what the client
+ * sees of their own project — the external meetings only, without their transcript, and no question bridge (internal questions
+ * and their internal routing) — filtered here so that no hidden row reaches the page or an export.
+ */
+export async function getMeetingsScreen(projectCode: string, opts: { client?: boolean } = {}): Promise<MeetingsScreenData> {
+  if (opts.client) {
+    const ms = await listMeetings(projectCode);
+    return { meetings: ms.filter((m) => clientSeesMeeting(m.type)).map((m) => ({ ...m, transcript: null })), questions: [] };
+  }
   const [ms, questions] = await Promise.all([listMeetings(projectCode), listClientQuestions(projectCode)]);
   return { meetings: ms, questions };
 }

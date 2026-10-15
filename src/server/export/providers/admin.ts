@@ -1,11 +1,15 @@
 // Export providers — Administration: Settings (personalisable lists), Machine types, Document types register (Codex) and
 // Activity, integrations & audit. Settings: every list with its codes plus the health thresholds; machine types: the
 // templates (phases, cost categories, ITP systems, payment terms); document types: the Codex register; Activity &
-// integrations: the current view first (`?view=activity|connectors|imports|audit`, `?source=` chip of the feed).
-import { CLIENT_ORG } from '@/config/personas';
+// integrations: the current view first (`?view=activity|connectors|imports|audit`, `?source=` chip of the feed); R-046: the
+// rate values of "Rate card" changes masked for the roles that do not see rates, as on the screen.
 import { SETTINGS_CARDS, parseActivitySource, parsePlumbView } from '@/domain/admin';
+import { DEFAULT_CCB_THRESHOLD_KEUR } from '@/domain/change-control';
+import { ratesMaskedActivity, ratesMaskedAudit } from '@/domain/hr';
 import { listAdminConnectors } from '@/server/dal/admin-connectors';
 import { listDocumentTypes } from '@/server/dal/documents';
+import { activityWhatT, auditAreaT, auditChangeT, auditObjectT } from '@/features/admin/i18n';
+import { visibleImportFormats } from '@/features/admin/model';
 import { listImportFormats } from '@/server/dal/integrations';
 import { listMachineTypes } from '@/server/dal/mtypes';
 import { listActivity, listAudit } from '@/server/dal/notifications';
@@ -14,28 +18,36 @@ import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
 import { col, compact, filterLine, kpiSheet, param, sheet } from './common';
 import { projectFilter } from './scope';
+import { dataText, fieldsText } from '@/i18n/data-text';
 
 async function settingsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
   const data = await getSettings();
   const lists = data.lists as Record<string, { code: string; label: string }[]>;
-  const values = SETTINGS_CARDS.filter((c) => c.key !== 'locations' && lists[c.key]).flatMap((c) => lists[c.key].map((v, i) => ({ list: t(c.title), position: i + 1, code: v.code, label: t(v.label) })));
+  const values = SETTINGS_CARDS.filter((c) => c.key !== 'locations' && lists[c.key]).flatMap((c) => lists[c.key].map((v, i) => ({ list: t(c.title), position: i + 1, code: v.code, label: fieldsText(v.label, t, ctx.lang) })));
   return {
     title: t('Settings — personalisable lists'),
     sheets: [
       sheet(t('Lists'), [col('list', t('List'), 'text', 30), col('position', '#', 'integer', 5), col('code', t('Code'), 'text', 18), col('label', t('Value'), 'text', 36)], values),
-      sheet(t('Stock locations & workshops'), [col('name', t('Location'), 'text', 34), col('type', t('Type'), 'text', 20)], data.locations.map((l) => ({ name: t(l.name), type: t(l.typeLabel) }))),
+      sheet(t('Stock locations & workshops'), [col('name', t('Location'), 'text', 34), col('type', t('Type'), 'text', 20)], data.locations.map((l) => ({ name: dataText(l.name, ctx.lang), type: t(l.typeLabel) }))),
       kpiSheet(ctx, [
         { label: t('On track'), value: `≥ ${data.health.risk}`, sub: t('Project health rules') },
         { label: t('At risk'), value: `< ${data.health.risk}` }, { label: t('Off track'), value: `< ${data.health.off}` },
+        // R-088 (R-6b): the hours-variance threshold.
+        { label: t('Hours variance threshold (%)'), value: `± ${data.hoursVariance} %`, sub: t('Hours variance') },
       ], t('Project health rules')),
+      // Delivery 8 (R-069, P-6c): the change control board threshold.
+      kpiSheet(ctx, [
+        { label: t('Board above (k€)'), value: `> ${data.ccbThresholdKeur ?? DEFAULT_CCB_THRESHOLD_KEUR}`, sub: t('Applies to change requests submitted afterwards') },
+      ], t('Change control board')),
     ],
   };
 }
 
 async function machineTypesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
-  const types = await listMachineTypes();
+  // A client sees only its own organisation's projects in the "Projects" column.
+  const [types, visible] = await Promise.all([listMachineTypes(), projectFilter(ctx)]);
   return {
     title: t('Standard machine types'),
     sheets: [
@@ -44,15 +56,15 @@ async function machineTypesWorkbook(ctx: ExportContext): Promise<ExportWorkbook>
         col('active', t('Active'), 'boolean'), col('standard', t('Standard'), 'boolean'), col('phases', t('Phases'), 'text', 40), col('budget', t('Reference budget'), 'money_keur'),
         col('deposit', t('Deposit'), 'percent'), col('delivery', t('Delivery'), 'percent'), col('acceptance', t('Acceptance'), 'percent'), col('projects', t('Projects'), 'text', 30),
       ], types.map((m) => ({
-        code: m.displayCode, label: t(m.label), description: t(m.description), calendar: t(m.calendarLabel), active: m.active, standard: m.isStandard, phases: m.phases.map((p) => t(p)).join(' → '),
-        budget: m.costTotalKeur, deposit: m.depositPct / 100, delivery: m.deliveryPct / 100, acceptance: m.acceptancePct / 100, projects: m.projects.map((p) => p.code).join(' · '),
+        code: m.displayCode, label: t(m.label), description: dataText(m.description, ctx.lang), calendar: t(m.calendarLabel), active: m.active, standard: m.isStandard, phases: m.phases.map((p) => t(p)).join(' → '),
+        budget: m.costTotalKeur, deposit: m.depositPct / 100, delivery: m.deliveryPct / 100, acceptance: m.acceptancePct / 100, projects: m.projects.filter((p) => visible(p.code)).map((p) => p.code).join(' · '),
       }))),
       sheet(t('Cost categories'), [col('type', t('Machine type'), 'text', 10), col('name', t('Category'), 'text', 30), col('costType', t('Type'), 'text', 14), col('budget', t('Budget'), 'money_keur')],
-        types.flatMap((m) => m.costCategories.map((c) => ({ type: m.displayCode, name: t(c.name), costType: t(c.typeLabel), budget: c.budgetKeur })))),
+        types.flatMap((m) => m.costCategories.map((c) => ({ type: m.displayCode, name: dataText(c.name, ctx.lang), costType: t(c.typeLabel), budget: c.budgetKeur })))),
       sheet(t('ITP systems'), [col('type', t('Machine type'), 'text', 10), col('position', '#', 'integer', 5), col('system', t('System'), 'text', 34)],
         types.flatMap((m) => m.itpSystems.map((s, i) => ({ type: m.displayCode, position: i + 1, system: t(s) })))),
       sheet(t('Lessons learned references'), [col('type', t('Machine type'), 'text', 10), col('analytic', t('Analytic code'), 'text', 12), col('project', t('Project'), 'text', 30), col('year', t('Year'), 'text', 6), col('pattern', t('Pattern'), 'text', 40)],
-        types.flatMap((m) => m.rexReferences.map((r) => ({ type: m.displayCode, analytic: r.analyticCode, project: t(r.projectName), year: r.year, pattern: t(r.pattern) })))),
+        types.flatMap((m) => m.rexReferences.map((r) => ({ type: m.displayCode, analytic: r.analyticCode, project: dataText(r.projectName, ctx.lang), year: r.year, pattern: dataText(r.pattern, ctx.lang) })))),
     ],
   };
 }
@@ -71,27 +83,33 @@ async function docTypesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
 
 async function plumbingWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
-  const [activity, connectors, imports, audit, visible] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), projectFilter(ctx)]);
+  const [activity, connectors, allFormats, audit, visible] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), projectFilter(ctx)]);
+  // D-7b: the import cards are hidden while imports are off; the export lists what the screen shows.
+  const imports = visibleImportFormats(allFormats);
   const view = parsePlumbView(param(ctx, 'view'));
   const source = parseActivitySource(param(ctx, 'source'), activity.map((a) => a.kind));
   // A client sees its own projects' events only; events without a project are company-wide and stay internal.
   const own = <R extends { projectCode: string | null }>(r: R) => (ctx.viewer.role === 'client' ? !!r.projectCode && visible(r.projectCode) : true);
   const feed = sheet(t('Activity feed'), [col('when', t('Date'), 'datetime'), col('who', t('Who'), 'text', 18), col('what', t('What'), 'text', 60), col('kind', t('Source'), 'text', 14), col('project', t('Project'), 'text', 10)],
-    activity.filter((a) => (!source || a.kind === source) && own(a)).map((a) => ({ when: a.occurredAt, who: a.who, what: t(a.what), kind: a.kind, project: a.projectCode ?? '' })));
+    // R-184 (NEW-D1-2): as on the screen — from the message key, else as written; names as typed.
+    ratesMaskedActivity(activity, !ctx.ratesMasked).filter((a) => (!source || a.kind === source) && own(a)).map((a) => ({ when: a.occurredAt, who: dataText(a.who, ctx.lang), what: activityWhatT(a, t, ctx.lang), kind: a.kind, project: a.projectCode ?? '' })));
   const conn: ExportSheet = sheet(t('Connectors'), [
     col('name', t('System'), 'text', 20), col('data', t('Data'), 'text', 44), col('frequency', t('Frequency'), 'text', 18), col('direction', t('Direction'), 'text', 10), col('status', t('Status'), 'text', 10),
     col('last', t('Last sync'), 'datetime'), col('volume', t('Last volume'), 'text', 26), col('pending', t('Pending'), 'integer'), col('failed', t('Failed'), 'integer'), col('owner', t('Owner'), 'text', 16),
   ], connectors.map((c) => ({
-    name: c.name, data: t(c.dataScope), frequency: t(c.frequency), direction: c.direction ?? '', status: t(c.statusLabel), last: c.lastSyncAt, volume: t(c.lastVolume), pending: c.pending, failed: c.failed, owner: c.owner ?? '',
+    name: c.name, data: dataText(c.dataScope, ctx.lang), frequency: dataText(c.frequency, ctx.lang), direction: c.direction ?? '', status: t(c.statusLabel), last: c.lastSyncAt, volume: t(c.lastVolume), pending: c.pending, failed: c.failed, owner: c.owner ?? '',
   })));
   const formats = sheet(t('Import & export formats'), [col('name', t('Format'), 'text', 26), col('direction', t('Direction'), 'text', 10), col('description', t('Description'), 'text', 60)],
     imports.map((f) => ({ name: t(f.name), direction: t(f.direction === 'import' ? 'Import' : 'Export'), description: t(f.description) })));
   const trail = sheet(t('Audit trail'), [col('when', t('Date'), 'datetime'), col('who', t('Who'), 'text', 18), col('object', t('Object'), 'text', 18), col('change', t('Change'), 'text', 50), col('area', t('Area'), 'text', 18), col('project', t('Project'), 'text', 10)],
-    audit.filter(own).map((a) => ({ when: a.occurredAt, who: a.who, object: a.object, change: a.change, area: t(a.area), project: a.projectCode ?? '' })));
+    ratesMaskedAudit(audit, !ctx.ratesMasked).filter(own).map((a) => ({
+      when: a.occurredAt, who: dataText(a.who, ctx.lang), object: auditObjectT(a.object, t, ctx.lang), change: auditChangeT(a, t, ctx.lang), area: auditAreaT(a.area, t, ctx.lang),
+      project: a.projectCode ?? '',
+    })));
   const first = view === 'connectors' ? conn : view === 'imports' ? formats : view === 'audit' ? trail : feed;
   return {
     title: t('Activity, integrations & audit'),
-    filters: compact([filterLine(t('Source'), source), ctx.viewer.role === 'client' ? `${t('Client')}: ${CLIENT_ORG}` : null]),
+    filters: compact([filterLine(t('Source'), source), ctx.viewer.role === 'client' ? `${t('Client')}: ${ctx.viewer.organisation ?? '—'}` : null]),
     sheets: [first, ...[feed, conn, formats, trail].filter((s) => s !== first)],
   };
 }

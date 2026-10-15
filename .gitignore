@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+# end-to-end outputs (npm run test:e2e)
+/playwright-report/
+/test-results/
 
 # next.js
 /.next/
@@ -82,3 +85,6 @@ next-env.d.ts
 # local test servers / temp data
 /tmp/
 *.log
+
+# Generated pages to publish (npm run remaining:page)
+.artifacts/

@@ -1,10 +1,11 @@
-// HR action forms vs the prototype AF catalogue (AF.rates / skills / leave / hours, AF_RESULT) and input validation.
+// HR action forms vs the prototype AF catalogue (AF.rates / skills / hours, AF_RESULT) and input validation. AF.leave
+// ("Sync Lucca") is retired: absences come from Cursus (NEW-CURSUS-7 "a", R-031; Lucca unplugged, NEW-CURSUS-4).
 import { describe, expect, it } from 'vitest';
 import PROTO from '@/server/prototype/prototype-data.json';
 import { formDefFromPrototype, optionLabel, type FormDef } from '@/components/app/form-def';
 import {
-  ADD_ROLE_FORM, ADD_ROLE_RESULT, ADD_SKILL_FORM, ADD_SKILL_RESULT, SYNC_LUCCA_FORM, SYNC_LUCCA_RESULT, importHoursForm, importHoursResult,
-  parseAddRole, parseAddSkill, parseFactor, parseImportHours, parseRate, parseSyncLucca, periodCovers,
+  ADD_ROLE_FORM, ADD_ROLE_RESULT, ADD_SKILL_FORM, ADD_SKILL_RESULT, addRoleForm, importHoursForm, importHoursResult,
+  parseAddRole, parseAddSkill, parseFactor, parseImportHours, parseRate, periodCovers,
 } from './forms';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -19,17 +20,23 @@ const shape = (f: FormDef) => ({
 });
 
 describe('HR forms = prototype AF catalogue', () => {
-  it('Add role, Add skill, Sync Lucca, Import Lucca hours', () => {
+  // NEW-CURSUS-7 (R-031): the prototype's AF.leave "Sync Lucca" form is no longer offered.
+  it('Add role, Add skill, Import Lucca hours', () => {
     expect(shape(ADD_ROLE_FORM)).toEqual(shape(formDefFromPrototype(P.AF.rates)));
-    expect(shape(ADD_SKILL_FORM)).toEqual(shape(formDefFromPrototype(P.AF.skills)));
-    expect(shape(SYNC_LUCCA_FORM)).toEqual(shape(formDefFromPrototype(P.AF.leave)));
+    // R-083 (A-10, R-4a): the rate card's "Add role" adds an explicit "Effective from" date to the prototype's form.
+    const proto = shape(formDefFromPrototype(P.AF.rates));
+    expect(shape(addRoleForm('25 Sep 2026'))).toEqual({ ...proto, fields: [...proto.fields, ['from', 'Effective from', 'text', true, [], '25 Sep 2026']] });
+    // R-5a (R-087): one 1–5 scale for every skill — the prototype's "Levels" select (1–4, 1–3, Yes / No; never stored) is removed.
+    const skills = shape(formDefFromPrototype(P.AF.skills));
+    expect(shape(ADD_SKILL_FORM)).toEqual({ ...skills, fields: skills.fields.filter((f) => f[0] !== 'levels') });
+    expect(skills.fields.map((f) => f[0])).toContain('levels');
     // the analytic code defaults to the project's code (HAV004 for HLT-026 = the prototype's constant)
     expect(shape(importHoursForm('HAV004'))).toEqual(shape(formDefFromPrototype(P.AF.hours)));
     expect(importHoursForm(null).fields.find((f) => f.id === 'code')!.defaultValue).toBe('');
   });
 
   it('toasts = AF_RESULT (hours with the real counts)', () => {
-    expect([ADD_ROLE_RESULT, ADD_SKILL_RESULT, SYNC_LUCCA_RESULT]).toEqual([P.AF_RESULT.rates, P.AF_RESULT.skills, P.AF_RESULT.leave]);
+    expect([ADD_ROLE_RESULT, ADD_SKILL_RESULT]).toEqual([P.AF_RESULT.rates, P.AF_RESULT.skills]);
     expect(importHoursResult(12, 2)).toBe(P.AF_RESULT.hours);
     expect(importHoursResult(1, 0)).toBe('Lucca hours imported · 1 line matched · 0 to assign');
   });
@@ -48,11 +55,15 @@ describe('validation', () => {
   });
 
   it('Add role: required, unique (case-insensitive), codes, selects default to the first option', () => {
-    expect(parseAddRole({ role: '  Commissioning   engineer ', rate: '78' })).toEqual({
+    expect(parseAddRole({ role: '  Commissioning   engineer ', rate: '78', from: '1 Nov 2026' })).toEqual({
       ok: true,
-      value: { role: 'Commissioning engineer', rateEur: 78, costCenter: 'engineering', grade: 'junior' },
+      value: { role: 'Commissioning engineer', rateEur: 78, costCenter: 'engineering', grade: 'junior', effectiveFrom: '2026-11-01' },
     });
-    expect(parseAddRole({ role: 'X', rate: '70', cc: 'site', grade: 'expert' })).toMatchObject({ ok: true, value: { costCenter: 'site', grade: 'expert' } });
+    expect(parseAddRole({ role: 'X', rate: '70', cc: 'site', grade: 'expert', from: '2027-01-01' })).toMatchObject({ ok: true, value: { costCenter: 'site', grade: 'expert', effectiveFrom: '2027-01-01' } });
+    // R-083: the effective date is required, in the forms' date formats (FR included), and must be a real day.
+    expect(parseAddRole({ role: 'X', rate: '70', from: '1 nov. 2026' })).toMatchObject({ ok: true, value: { effectiveFrom: '2026-11-01' } });
+    expect(parseAddRole({ role: 'X', rate: '70', from: '' })).toEqual({ ok: false, error: 'Enter a valid effective date' });
+    expect(parseAddRole({ role: 'X', rate: '70', from: '31 Feb 2026' })).toEqual({ ok: false, error: 'Enter a valid effective date' });
     expect(parseAddRole({ role: '', rate: '70' })).toEqual({ ok: false, error: 'Role is required' });
     expect(parseAddRole({ role: 'planner', rate: '70' }, ['Planner'])).toEqual({ ok: false, error: 'This role is already on the rate card' });
     expect(parseAddRole({ role: 'X', rate: 'abc' })).toEqual({ ok: false, error: 'Enter a valid hourly rate' });
@@ -61,15 +72,11 @@ describe('validation', () => {
   });
 
   it('Add skill', () => {
-    expect(parseAddSkill({ name: 'Welding', cat: 'site', levels: 'yes_no' })).toEqual({ ok: true, value: { name: 'Welding', category: 'site', scale: 'yes_no' } });
+    // R-5a: no level scale any more (a stray "levels" value is ignored).
+    expect(parseAddSkill({ name: 'Welding', cat: 'site', levels: 'yes_no' })).toEqual({ ok: true, value: { name: 'Welding', category: 'site' } });
     expect(parseAddSkill({ name: 'mep' }, ['MEP'])).toEqual({ ok: false, error: 'This skill is already in the matrix' });
     expect(parseAddSkill({ name: ' ' })).toEqual({ ok: false, error: 'Skill is required' });
     expect(parseAddSkill({ name: 'X', cat: 'hr' })).toEqual({ ok: false, error: 'Unknown category' });
-  });
-
-  it('Sync Lucca', () => {
-    expect(parseSyncLucca({})).toEqual({ ok: true, value: { period: 'next_3m', teams: 'all' } });
-    expect(parseSyncLucca({ period: 'x' })).toEqual({ ok: false, error: 'Unknown period' });
   });
 
   it('Import Lucca hours: project analytic code (blank → default), period coverage', () => {

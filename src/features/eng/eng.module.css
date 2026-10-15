@@ -88,6 +88,8 @@ a.docId:hover { color: var(--color-accent-300); }
 .actionsCell { text-align: right; }
 .actionsCell > * + * { margin-left: 6px; }
 .blocked { font-size: 11.5px; color: var(--color-accent-300); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+/* Delivery 7: Codex approval circuit line under the deliverable status ("Approval circuit started · Pending sync with Codex"). */
+.codexNote { display: block; margin-top: 4px; font-size: 11px; color: var(--color-neutral-400); text-wrap: pretty; }
 
 /* ── Generated outputs ────────────────────────────────────────────────────── */
 .out { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--color-neutral-900); }

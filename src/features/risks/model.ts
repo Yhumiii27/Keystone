@@ -6,13 +6,14 @@ import { LO, OK, TAG_CLASS } from '@/components/app/tones';
 import { screenHref } from '@/config/screens';
 import { contingencySummary, drawCountText, drawRows } from '@/domain/contingency';
 import {
-  costIfOccurs, levelLabel, levelOf, levelTagText, levelTone, registerRows, riskChips, riskKpis, riskMatrix, scoreOf, statusTone, toggleOf,
+  levelLabel, levelOf, levelTagText, levelTone, registerRows, riskChips, riskKpis, riskMatrix, scoreOf, statusTone, toggleOf,
   type RiskCategory, type RiskLevel, type RiskResponse, type RiskStatus, type RiskTrend,
 } from '@/domain/risk';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import type { Contingency } from '@/server/dal/contingency';
 import type { RiskRow } from '@/server/dal/risks';
+import { dataText } from '@/i18n/data-text';
 
 export interface KpiView {
   label: string;
@@ -78,6 +79,8 @@ export interface RiskDrawerView {
   impact: number;
   response: RiskResponse;
   status: RiskStatus;
+  /** Cost if it occurs, k€ (Q-1: entered; the EMV follows it and P); 0 when none. */
+  cost: number;
   plan: string;
   meta: { k: string; v: string }[];
   /** Plan with the activity drawer open (`?act=`); null without a linked activity. */
@@ -109,7 +112,7 @@ export interface RiskRegisterInput {
   selected: string | null;
 }
 
-const activityText = (r: RiskRow, t: T) => (r.activity ? `${r.activity.code} · ${t(r.activity.name)}` : '—');
+const activityText = (r: RiskRow, lang: Lang) => (r.activity ? `${r.activity.code} · ${dataText(r.activity.name, lang)}` : '—');
 const emvText = (k: number, lang: Lang) => (k ? money(k, lang) : '—');
 
 export function riskRegisterView(input: RiskRegisterInput, t: T, lang: Lang): RiskRegisterView {
@@ -141,9 +144,9 @@ export function riskRegisterView(input: RiskRegisterInput, t: T, lang: Lang): Ri
     const level = levelOf(score);
     const isSel = selected?.id === r.id;
     return {
-      id: r.id, title: t(r.title), category: t(r.categoryLabel), p: r.probability, i: r.impact, score,
+      id: r.id, title: dataText(r.title, lang), category: t(r.categoryLabel), p: r.probability, i: r.impact, score,
       level: t(levelLabel(level)), levelClass: TAG_CLASS[levelTone(level)], response: t(r.responseLabel), owner: r.owner ?? '—',
-      emvText: emvText(r.emv, lang), actText: activityText(r, t), trend: r.trend,
+      emvText: emvText(r.emv, lang), actText: activityText(r, lang), trend: r.trend,
       status: t(r.statusLabel), statusClass: TAG_CLASS[statusTone(r.status)], selected: isSel,
       href: risksHref(code, { filter, risk: isSel ? null : r.id }),
     };
@@ -159,22 +162,23 @@ export function riskRegisterView(input: RiskRegisterInput, t: T, lang: Lang): Ri
     const r = selected;
     const level = levelOf(scoreOf(r));
     const tog = toggleOf(r.status);
-    const cost = costIfOccurs(r.emv, r.probability);
+    const cost = r.costIfOccurs;
     drawer = {
       id: r.id,
       head: `${r.id} · ${t(r.categoryLabel)}`,
       levelText: levelTagText(r).split(' · ').map(t).join(' · '),
       levelClass: TAG_CLASS[levelTone(level)],
-      title: t(r.title),
+      title: dataText(r.title, lang),
       probability: r.probability,
       impact: r.impact,
       response: r.response,
       status: r.status,
+      cost: cost ?? 0,
       plan: t(r.plan),
       meta: [
         { k: t('Owner'), v: r.owner ?? '—' },
         { k: t('Trigger'), v: t(r.trigger) },
-        { k: t('Linked activity'), v: activityText(r, t) },
+        { k: t('Linked activity'), v: activityText(r, lang) },
         { k: t('EMV (P × cost impact)'), v: emvText(r.emv, lang) },
         { k: t('Contingency draw if it occurs'), v: cost != null ? money(cost, lang) : '—' },
       ],
@@ -205,7 +209,14 @@ export interface DrawRowView {
   amount: string;
   reason: string;
   link: string;
+  /** The linked change request / risk / NCR on its own screen; null when the reference resolves to nothing. */
+  linkHref: string | null;
+  /** Validator (validated), or empty when the status tag says it all. */
   by: string;
+  /** Status tag (C-4): null for a validated draw-down (the approver shows), else "Awaiting validation" / "Rejected". */
+  status: { text: string; className: string } | null;
+  /** Rejection comment (the requester sees it). */
+  note: string | null;
 }
 
 export interface ContingencyView {
@@ -219,14 +230,24 @@ export interface ContingencyView {
   rows: DrawRowView[];
 }
 
+/** The linked item on its own screen (C-4): change request → Change control, risk → Risk register, NCR → Quality. */
+function linkHref(code: string, d: Pick<Contingency['draws'][number], 'linkRef' | 'linkType' | 'linkResolved'>): string | null {
+  const { linkRef: ref, linkType: type } = d;
+  if (!ref || !type || !d.linkResolved) return null;
+  const [screen, param] = type === 'change_request' ? (['changes', 'cr'] as const) : type === 'risk' ? (['risks', 'risk'] as const) : (['quality', 'ncr'] as const);
+  return `${screenHref(screen, { code })}?${param}=${encodeURIComponent(ref)}`;
+}
+
 export function contingencyView(c: Contingency, t: T, lang: Lang): ContingencyView {
   const s = contingencySummary({ initial: c.initial, draws: c.draws, exposure: c.exposure, progress: c.progress, bac: c.bac });
   const f = (k: number) => money(k, lang);
+  // C-4: the draw-downs awaiting the director's validation are not drawn yet — counted apart in the "Remaining" sub-line.
+  const remainingSub = t(drawCountText(s.drawCount)) + (s.pendingCount ? ` · ${s.pendingCount} ${t('awaiting validation')} (${f(s.pending)})` : '');
   return {
     kpis: [
       { label: t('Initial provision'), value: f(s.initial), sub: t(`${s.initialPctOfBudget} % of budget`), color: 'var(--color-neutral-200)' },
       { label: t('Drawn'), value: f(s.drawn), sub: t(`${s.usedPct} % used · project ${s.progPct} % complete`), color: s.drawnAlert ? LO : OK },
-      { label: t('Remaining'), value: f(s.remaining), sub: t(drawCountText(s.drawCount)), color: OK },
+      { label: t('Remaining'), value: f(s.remaining), sub: remainingSub, color: OK },
       {
         label: t('Exposure (open risks EMV)'),
         value: f(s.exposure),
@@ -242,9 +263,12 @@ export function contingencyView(c: Contingency, t: T, lang: Lang): ContingencyVi
     rows: drawRows(c.draws).map((d) => ({
       date: t(d.dateText),
       amount: f(d.amount),
-      reason: t(d.reason),
+      reason: dataText(d.reason, lang),
       link: d.linkRef || '—',
-      by: d.approvedBy ?? '—',
+      linkHref: linkHref(c.projectCode, d),
+      by: d.status === 'validated' ? (d.approvedBy ?? '—') : '',
+      status: d.status === 'validated' ? null : { text: t(d.statusLabel), className: TAG_CLASS[d.status === 'submitted' ? 'outline' : 'neutral'] },
+      note: d.status === 'rejected' ? d.decisionComment : null,
     })),
   };
 }

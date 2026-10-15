@@ -4,6 +4,12 @@
 // types, Contract, Billing, Cash flow, Prioritisation, Meetings, Stakeholders, Interfaces, Portfolio schedule and
 // Projects map. The screen-side formatting is redone here with the prototype's rules to show the data is complete.
 // Deliberate deviations are asserted explicitly (A-5 billing source, SCORES remap, invoice due date, client contact).
+// Delivery 7: NEW-D3-3 (R-079) — the base contract's milestones are priced on the base amount and Amendment 1 has its own
+// milestone M6 (`D7_AMOUNTS`); C-10b (R-132) — margins at completion; C-10a / C-6 (R-133, R-076) — the cash forecast spreads
+// the remaining spend along the PV curve and receives at the payment rule's exact dates; A-3 (R-129) — execution population.
+
+/** NEW-D3-3: milestone amounts on the base amount (the prototype re-priced them on base + signed amendments: 552, 1 104…). */
+const D7_AMOUNTS: Record<string, number> = { M1: 540, M2: 1080, M3: 1350, M4: 1080, M5: 1350 };
 import { beforeAll, describe, expect, it } from 'vitest';
 import { healthLabel, projectIndicators } from '@/domain/portfolio';
 import { fmtD, money, monthDate } from '@/lib/format';
@@ -31,6 +37,19 @@ const G = golden as any;
 const f = (k: number, signed = false) => money(k, 'en', { signed });
 /** Copy of a golden object without one key (a field the DAL leaves to the screen). */
 const without = (o: Record<string, unknown>, key: string) => Object.fromEntries(Object.entries(o).filter(([k]) => k !== key));
+
+/**
+ * Delivery 7 (R-073; owner decisions C-2a "la valeur acquise vaut avancement × budget", A-12, A-15): the six projects with
+ * activities show their progress, actual cost and SPI computed from Keystone data (activities, cost-loaded BL1, validated
+ * contingency draw-downs) at the data date — no longer the prototype's seeded figures. Values of the seed:
+ *   actual cost  NDC-031 €1.02M → €884k · RCF-019 €1.21M → €1.08M · ERP-202 €410k → €457k · WSA-044 €880k → €247k · MSR-012 €550k → €553k
+ *   progress     HLT-026 64 → 63 % · NDC-031 51 → 46 % · RCF-019 82 → 77 % · ERP-202 45 → 52 % · WSA-044 27 → 8 % · MSR-012 91 → 92 %
+ *   health       HLT-026 At risk → Off track · NDC-031 On track → At risk · RCF-019 Off track → At risk · MSR-012 At risk → On track
+ */
+const R073_COST: Record<string, string> = { 'NDC-031': '€884k', 'RCF-019': '€1.08M', 'ERP-202': '€457k', 'WSA-044': '€247k', 'MSR-012': '€553k' };
+// WSA-044 is in the pipeline (APD): no execution fill and no health on the map, whatever its figures.
+const R073_FILL: Record<string, string> = { 'HLT-026': '63%', 'NDC-031': '46%', 'RCF-019': '77%', 'ERP-202': '52%', 'MSR-012': '92%' };
+const R073_HEALTH: Record<string, string> = { 'HLT-026': 'Off track', 'NDC-031': 'At risk', 'RCF-019': 'At risk', 'ERP-202': 'On track', 'MSR-012': 'On track' };
 
 beforeAll(async () => {
   setDb(await openDatabase());
@@ -91,7 +110,7 @@ describe('documents — Codex index (10 §4)', () => {
     expect(`Last sync ${s.time} · ${s.records} records`).toBe(G.docs.sync);
   });
 
-  it('every record drawer: identity, revisions, approval proof, distribution, download log, relations', async () => {
+  it('every record drawer: identity, current revision, approval proof, distribution, relations', async () => {
     const all = await listVaultDocuments();
     for (const doc of all) {
       const r = (await getDocumentRecord(doc.number))!;
@@ -106,7 +125,8 @@ describe('documents — Codex index (10 §4)', () => {
         rev: x.revision, date: x.dateText, by: x.author, status: x.current ? r.statusLabel : 'Obsolete', versions: x.current ? 'A.3' : `${x.workingVersions} working versions`,
         note: x.current ? (x.revision === 'A' ? 'First issue' : `Rev ${x.revision} · changes recorded in transmittal`) : `Withdrawn ${shortDateOfIso(x.withdrawnOn!)}`,
       }));
-      expect(revs, doc.number).toEqual(g.revs);
+      // D-2 = a (R-127): the current revision only (the prototype's first, newest row); the history stays in Codex.
+      expect(revs, doc.number).toEqual(g.revs.slice(0, 1));
       expect(r.approvals.map((a) => ({ role: a.roleLabel, who: a.who, when: a.signedOn ? shortDateOfIso(a.signedOn) : '—', state: a.signed ? 'Signed' : 'Pending' })), doc.number).toEqual(g.appr);
       // Client row: the project's client contact (the prototype printed Port authority · N. Bensaïd on every project).
       const dist = r.distribution.map((x) => x.kind === 'client'
@@ -114,7 +134,8 @@ describe('documents — Codex index (10 §4)', () => {
         : { to: x.label, rev: x.revision, date: shortDateOfIso(x.date), ack: 'Received' });
       const want = doc.project === 'NDC-031' ? g.dist.map((x: any) => ({ ...x, to: x.to.replace('Port authority · N. Bensaïd', 'Infrastructure BU · null') })) : g.dist;
       expect(dist, doc.number).toEqual(want);
-      expect(r.downloads.map((x) => ({ text: x.text })), doc.number).toEqual(g.dl);
+      // D-2 = a (R-127): no download log in Keystone (the prototype's g.dl stays in Codex).
+      expect(r, doc.number).not.toHaveProperty('downloads');
       expect(r.links.map((l) => ({ kind: l.kindLabel, id: l.ref })), doc.number).toEqual(g.links);
     }
   });
@@ -154,11 +175,16 @@ describe('contract (04 §3)', () => {
     expect(c.amendments.map((a) => ({ label: a.label, amtText: f(a.amountKeur), status: a.statusLabel, date: a.dateText, doc: a.documentRef ?? '' }))).toEqual(G.contract.amendments);
     expect(c.amendments.map((a) => [a.changeRequestLinked, a.documentIndexed])).toEqual([[true, true], [true, false]]);
     expect(c.bonds.map((b) => ({ label: b.label, amtText: f(b.amountKeur), state: b.stateText, released: !b.inForce }))).toEqual(G.contract.bonds);
-    expect(c.milestones.map((m) => ({
+    expect(c.milestones.filter((m) => m.amendment == null).map((m) => ({
       id: m.number, label: m.label, pct: m.sharePct, due: m.dueText, status: m.statusLabel, inv: m.invoice?.issuedText ?? '—', paid: m.invoice?.paidText ?? '—',
       amt: m.amountKeur, late: m.late, condText: m.condition || '—',
-    }))).toEqual(G.contract.milestones);
-    expect([`${c.sharePctTotal} %`, f(c.milestones.reduce((x, m) => x + m.amountKeur, 0))]).toEqual([G.contract.schedTotal.pct, G.contract.schedTotal.amt]);
+    }))).toEqual(G.contract.milestones.map((m: any) => ({ ...m, amt: D7_AMOUNTS[m.id] })));
+    // NEW-D3-3: Amendment 1 (signed, €120k) carries its own milestone; the billable schedule totals the contract value.
+    expect(c.milestones.filter((m) => m.amendment != null).map((m) => [m.number, m.amendment, m.sharePct, m.amountKeur, m.billable, m.dueText])).toEqual([
+      ['M6', 0, 100, 120, true, '14 Dec 2026'],
+    ]);
+    expect([`${c.sharePctTotal} %`, f(c.milestones.filter((m) => m.billable).reduce((x, m) => x + m.amountKeur, 0))]).toEqual([G.contract.schedTotal.pct, G.contract.schedTotal.amt]);
+    expect([s.currency, s.paymentRule, s.paymentDays, c.fx, c.hasInvoices]).toEqual(['EUR', 'net', 45, { currency: 'EUR', budgetRate: null }, true]);
     expect(s.documentIndexed).toBe(true);
     expect(await getContractHeader('HLT-026')).toEqual({ reference: 'CTR-HLT-001', paymentTerms: 'Net 45 days' });
     expect(await getContract('NDC-031')).toBeNull();
@@ -171,17 +197,26 @@ describe('billing (04 §4)', () => {
     const awaiting = c.invoices.filter((i) => i.status !== 'paid');
     const overdue = c.invoices.filter((i) => i.overdue);
     const next = c.milestones.find((m) => m.status === 'planned')!;
-    expect([
+    const pairs = [
       [f(c.invoicedKeur), `${Math.round((c.invoicedKeur / c.valueKeur) * 100)} % of contract`],
       [f(c.paidKeur), `${Math.round((c.paidKeur / c.invoicedKeur) * 100)} % of invoiced`],
       [f(c.invoicedKeur - c.paidKeur), `${awaiting.length} invoice awaiting payment · ${c.sheet.paymentTerms}`],
       [f(overdue.reduce((s, i) => s + i.amountKeur, 0)), overdue.length ? '' : 'no late payment'],
       [next.number, `${next.label} · ${next.dueText} · ${f(next.amountKeur)}`],
-    ]).toEqual(kpiPairs(G.billing.kpis));
+    ];
+    // NEW-D3-3: the prototype's €3.04M (55 %) · €1.66M · €1.38M · M4 €1.10M.
+    expect(pairs).toEqual([
+      ['€2.97M', '54 % of contract'], ['€1.62M', '55 % of invoiced'], ['€1.35M', '1 invoice awaiting payment · Net 45 days'], ['€0k', 'no late payment'],
+      ['M4', 'Cranes operational · 14 Dec 2026 · €1.08M'],
+    ]);
+    expect(pairs.map((x) => x[1]).slice(2)).toEqual(kpiPairs(G.billing.kpis).map((x: any) => x[1]).slice(2).map((x: string) => x.replace('€1.10M', '€1.08M')));
     expect([f(c.paidKeur), f(c.invoicedKeur - c.paidKeur), f(c.valueKeur - c.invoicedKeur), f(c.retentionKeur), `${c.sheet.retentionPct} % · ${c.sheet.retentionNote}`])
-      .toEqual([...G.billing.bill.rows.map((r: any) => r.v), G.billing.bill.retention, G.billing.bill.retNote]);
-    expect(c.milestones.filter((m) => m.status === 'planned').map((m) => ({ id: m.number, label: m.label, due: m.dueText, pct: m.sharePct, late: m.late, amt: m.amountKeur }))).toEqual(G.billing.toInvoice);
-    const want = G.billing.invoices.map((i: any) => (i.no === 'INV-2026-003' ? { ...i, due: '10 Nov' } : i));
+      .toEqual(['€1.62M', '€1.35M', '€2.55M', '€81k', G.billing.bill.retNote]);
+    expect(c.milestones.filter((m) => m.status === 'planned').map((m) => ({ id: m.number, label: m.label, due: m.dueText, pct: m.sharePct, late: m.late, amt: m.amountKeur }))).toEqual([
+      ...G.billing.toInvoice.map((m: any) => ({ ...m, amt: D7_AMOUNTS[m.id] })),
+      { id: 'M6', label: 'Anti-collision lidar commissioned', due: '14 Dec 2026', pct: 100, late: false, amt: 120 },
+    ]);
+    const want = G.billing.invoices.map((i: any) => ({ ...(i.no === 'INV-2026-003' ? { ...i, due: '10 Nov' } : i), amt: D7_AMOUNTS[i.msId] }));
     expect(c.invoices.map((i) => ({ no: i.number, msId: i.milestoneNumber, label: i.milestoneLabel, issued: i.issuedText, amt: i.amountKeur, due: i.dueText, paid: i.paidText, status: i.statusLabel, overdue: i.overdue })))
       .toEqual(want);
     expect(c.nextInvoiceNumber).toBe('INV-2026-004');
@@ -189,14 +224,24 @@ describe('billing (04 §4)', () => {
     expect(await lateBillingMilestonesByProject()).toEqual({});
   });
 
-  it('Budget › Cash & recovery reads the contract from the DB (same shape as the former CONTRACTS read, orders placed 713)', async () => {
+  // Delivery 7 (R-073): "orders placed" are the project's open purchase orders (PO-1052, PO-1063, PO-1071, PO-1078 at their line
+  // prices: 3 946.5 k€), no longer the prototype's literal 713.
+  it('Budget › Cash & recovery reads the contract from the DB (same shape as the former CONTRACTS read, orders placed from the POs)', async () => {
     const ct = PROTO.CONTRACTS['HLT-026'];
     const b = await getBudgetContract('HLT-026');
+    // NEW-D3-3: each milestone carries its own amount (no longer value × share) and Amendment 1's M6; R-076: the payment date of
+    // the contract's rule (net 45: the invoice's due date, else the contractual date + 45 days). In euros (C-9; EUR contract).
+    const PAY: Record<string, string> = { M1: '26 Apr', M2: '29 Aug', M3: '10 Nov', M4: '28 Jan 2027', M5: '28 Feb 2027' };
     expect(b).toEqual({
       ref: ct.ref, amount: ct.amount, terms: ct.terms,
       amendments: ct.amendments.map(([label, amount, status]: [string, number, string]) => ({ label, amount, signed: status === 'Signed' })),
-      milestones: ct.milestones.map(([id, label, pct, due, status, inv, paid]: string[]) => ({ id, label, pct, due, status: status.toLowerCase(), invoiced: inv === '—' ? null : inv, paid: paid === '—' ? null : paid })),
-      openCommit: 713,
+      milestones: [
+        ...ct.milestones.map(([id, label, pct, due, status, inv, paid]: string[]) => ({
+          id, label, pct, due, status: status.toLowerCase(), invoiced: inv === '—' ? null : inv, paid: paid === '—' ? null : paid, amount: D7_AMOUNTS[id], paymentDue: PAY[id],
+        })),
+        { id: 'M6', label: 'Anti-collision lidar commissioned', pct: 100, due: '14 Dec 2026', status: 'planned', invoiced: null, paid: null, amount: 120, paymentDue: '28 Jan 2027' },
+      ],
+      openCommit: 3946.5, // R-073: the open purchase orders at their line prices
     });
     expect(await getBudgetContract('NDC-031')).toBeNull();
   });
@@ -206,6 +251,15 @@ describe('cash flow (03 §7) — billing plans from the contract or the legacy B
   it.each([null, 'euna', 'afr', 'apac'] as const)('zone %s: rows, KPIs and 6-month bars', async (zone) => {
     const g = G.cash[String(zone)];
     const cf = await getCashFlow(zone);
+    // C-10b (R-132): margins at completion (contract − EAC) — the prototype's budgeted margins were 13 / 11 / 10 / 14 % — with the
+    // EAC of R-073's computed progress and actual cost (lot cost-control; on the prototype's figures the margins at completion were
+    // HLT 5 %, NDC 15 %, RCF 2 %, MSR 16 %): HLT-026 EAC €5.37M on €5.52M → 3 %, NDC-031 €1.91M on €2.35M → 19 %, RCF-019 €1.40M
+    // on €1.50M → 7 %, MSR-012 €599k on €720k → 17 %. NEW-D3-3: HLT-026 invoiced / paid at base-amount prices (prototype €3.04M /
+    // €1.66M / €1.38M, next M4 €1.10M).
+    const D7: Record<string, Record<string, string>> = {
+      'HLT-026': { marginText: '3%', invoiced: '€2.97M', paid: '€1.62M', outstanding: '€1.35M', next: 'M4 Cranes operational · €1.08M', invW: '54%', paidW: '29%' },
+      'NDC-031': { marginText: '19%' }, 'RCF-019': { marginText: '7%' }, 'MSR-012': { marginText: '17%' },
+    };
     expect(cf.rows.map(({ project: p, plan, marginPct }) => {
       const c = plan.contractValueKeur;
       const next = plan.next;
@@ -214,27 +268,34 @@ describe('cash flow (03 §7) — billing plans from the contract or the legacy B
         outstanding: c ? f(plan.outstandingKeur) : '—', cost: f(p.actual), marginText: marginPct != null ? `${marginPct}%` : '—', next: next ? `${next.label} · ${f(next.amountKeur)}` : '—',
         invW: c ? `${Math.round((plan.invoicedKeur / c) * 100)}%` : '0%', paidW: c ? `${Math.round((plan.paidKeur / c) * 100)}%` : '0%', isInternal: plan.internal,
       };
-    })).toEqual(g.rows);
+    })).toEqual(g.rows.map((r: any) => ({ ...r, cost: R073_COST[r.code] ?? r.cost, ...D7[r.code] })));
     const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
     expect([
       f(sum(cf.rows.map((r) => r.plan.contractValueKeur))), f(sum(cf.rows.map((r) => r.plan.invoicedKeur))),
       f(sum(cf.rows.map((r) => sum(r.plan.milestones.filter((m) => m.status === 'invoiced').map((m) => m.amountKeur))))),
-    ]).toEqual(g.kpis.slice(0, 3).map((k: any) => k.value));
+    ]).toEqual(g.kpis.slice(0, 3).map((k: any) => ({ '€5.26M': '€5.19M', '€1.94M': '€1.91M', '€4.37M': '€4.30M', '€1.68M': '€1.65M' } as Record<string, string>)[k.value] ?? k.value)); // NEW-D3-3
     expect(`${cf.rows.filter((r) => !r.plan.internal).length} client projects · ${cf.rows.filter((r) => r.plan.internal).length} internal`).toBe(g.kpis[0].sub);
     // A-12 (chapter 4): the 6 months after the data date are computed — receipts of the billing plans (contract dates and
-    // payment terms, Net 30 for legacy plans, monthly progress billing) in, ETC spread to each finish out — instead of the
-    // prototype's stored plan scaled by the zone share. [label, in, out] k€ per month and the lowest cumulative point.
+    // payment terms, Net 30 for legacy plans, monthly progress billing) in, remaining spend out — instead of the prototype's
+    // stored plan scaled by the zone share. [label, in, out] k€ per month and the lowest cumulative point.
+    // Delivery 7: C-10a (R-133) the ETC follows each project's planned (PV) curve instead of an even spread to the finish
+    // (chapter 4: null [[560, 1081], [1911, 1026], [843, 894], [1347, 264], [1380, 264], [487, 163]], low −521); C-6 (R-076) a
+    // planned milestone is paid at its date + 45 days (M4 14 Dec → 28 Jan); NEW-D3-3 the base milestones at base-amount prices
+    // and Amendment 1's own M6 (€120k, 14 Dec → 28 Jan). R-073 (lot cost-control) feeds both sides of the cash out: the planned
+    // curve is the Budget's PV computed from the cost-loaded BL1, and ETC = EAC − actual with the computed progress and actual
+    // cost (HLT-026 €2.01M over Oct–Dec, 687 / 357 / 93 of the remaining PV → €1.21M in Oct). On the prototype's PV and figures
+    // (contract-portfolio alone) the cash out was null [1645, 931, 705, 124, 190, 96], low −1 085; euna −1 034; afr −51.
     const A12: Record<string, [number, number][]> = {
-      null: [[560, 1081], [1911, 1026], [843, 894], [1347, 264], [1380, 264], [487, 163]],
-      euna: [[300, 917], [1668, 863], [600, 730], [1104, 100], [1380, 100], [0, 0]],
-      afr: [[260, 163], [243, 163], [243, 163], [243, 163], [0, 163], [487, 163]],
+      null: [[560, 1972], [1881, 1080], [843, 415], [1443, 112], [1350, 154], [487, 85]],
+      euna: [[300, 1604], [1638, 865], [600, 247], [1200, 44], [1350, 33], [0, 1]],
+      afr: [[260, 367], [243, 215], [243, 168], [243, 68], [0, 121], [487, 84]],
       apac: [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
     };
     expect(cf.forecast.map((m) => [m.label, m.cashInKeur, m.cashOutKeur])).toEqual(g.bars.map((b: any, i: number) => [b.label, ...A12[String(zone)][i]]));
     expect(cf.lowPoint).toEqual({
-      null: { month: '2026-10-01', cumKeur: -521, next: { project: 'HLT-026', label: 'M3', progressMonth: undefined } },
-      euna: { month: '2026-10-01', cumKeur: -617, next: { project: 'HLT-026', label: 'M3', progressMonth: undefined } },
-      afr: { month: '2026-10-01', cumKeur: 97, next: { project: 'NDC-031', label: 'Oct', progressMonth: '2026-10-01' } },
+      null: { month: '2026-10-01', cumKeur: -1412, next: { project: 'HLT-026', label: 'M3', progressMonth: undefined } },
+      euna: { month: '2026-10-01', cumKeur: -1304, next: { project: 'HLT-026', label: 'M3', progressMonth: undefined } },
+      afr: { month: '2026-10-01', cumKeur: -107, next: { project: 'NDC-031', label: 'Oct', progressMonth: '2026-10-01' } },
       apac: { month: '2026-10-01', cumKeur: 0, next: null },
     }[String(zone)]);
   });
@@ -242,8 +303,12 @@ describe('cash flow (03 §7) — billing plans from the contract or the legacy B
   it('billing plans: contract-derived for HLT-026 (€5.52M), migrated BILLING rows elsewhere, ERP-202 internal', async () => {
     const plans = await listBillingPlans();
     expect(Object.keys(plans).sort()).toEqual(Object.keys(PROTO.BILLING).sort());
-    expect(plans['HLT-026']).toMatchObject({ fromContract: true, contractValueKeur: 5520, invoicedKeur: 3036, paidKeur: 1656, outstandingKeur: 1380 });
-    expect(plans['HLT-026'].milestones.map((m) => m.label)).toEqual(['M1 Permits approved', 'M2 Foundations complete', 'M3 Structure topped out', 'M4 Cranes operational', 'M5 Handover']);
+    // NEW-D3-3: the prototype's 3 036 / 1 656 / 1 380 (re-priced on €5.52M); Amendment 1's own M6.
+    expect(plans['HLT-026']).toMatchObject({ fromContract: true, contractValueKeur: 5520, invoicedKeur: 2970, paidKeur: 1620, outstandingKeur: 1350, currency: 'EUR', eurRate: 1 });
+    expect(plans['HLT-026'].milestones.map((m) => m.label)).toEqual([
+      'M1 Permits approved', 'M2 Foundations complete', 'M3 Structure topped out', 'M4 Cranes operational', 'M5 Handover', 'M6 Anti-collision lidar commissioned',
+    ]);
+    expect(plans['HLT-026'].terms).toEqual({ rule: 'net', days: 45 });
     for (const code of ['NDC-031', 'RCF-019', 'WSA-044', 'MSR-012']) {
       const [model, value, rows] = PROTO.BILLING[code];
       expect([plans[code].modelLabel, plans[code].contractValueKeur, plans[code].milestones.map((m) => [m.label, m.amountKeur, m.statusLabel])]).toEqual([model, value, rows]);
@@ -256,15 +321,19 @@ describe('cash flow (03 §7) — billing plans from the contract or the legacy B
 // ── Prioritisation ─────────────────────────────────────────────────────────────────────────────────────
 
 describe('prioritisation & capacity (03 §6)', () => {
-  it('ranking: the prototype rows (HLT-026 margin 13 % from the contract) + the 3 projects SCORES keyed by obsolete codes', async () => {
+  it('ranking: the prototype rows (margins at completion, C-10b) + the 3 projects SCORES keyed by obsolete codes', async () => {
     const pf = await getPrioritisation('director', null);
+    // C-10b (R-132): (contract − EAC) / contract — the prototype's (contract − budget) / contract gave WSA 13 %, NDC 11 %, HLT 11 %
+    // (13 % from the contract since Delivery 3), MSR 14 %, RCF 10 %. The EAC follows R-073's computed progress and actual cost (lot
+    // cost-control; on the prototype's figures: WSA 16 %, NDC 15 %, HLT 5 %, MSR 16 %, RCF 2 %) — WSA-044 €3.10M on €3.90M → 21 %.
+    const MARGIN_D7: Record<string, string> = { 'WSA-044': '21%', 'NDC-031': '19%', 'HLT-026': '3%', 'MSR-012': '17%', 'RCF-019': '7%' };
     expect(pf.weights).toEqual([0.25, 0.25, 0.2, 0.15, 0.15]);
     expect(pf.axes.map((a) => a.label)).toEqual(G.prioritisation.weights.map((w: any) => w.l));
     const byCode = new Map(pf.ranking.map((r) => [r.project.code, r]));
     for (const g of G.prioritisation.rows) {
       const r = byCode.get(g.code)!;
       expect([r.score, r.scores, r.marginPct != null ? `${r.marginPct}%` : 'Internal', r.pipeline, r.project.status], g.code)
-        .toEqual([g.score, g.axes, g.code === 'HLT-026' ? '13%' : g.marginText, g.isPipeline, g.status]);
+        .toEqual([g.score, g.axes, MARGIN_D7[g.code] ?? g.marginText, g.isPipeline, g.status]);
     }
     const remapped = { 'EWA-051': 'EWA-041', 'RBR-048': 'RBR-038', 'CER-047': 'CER-045' } as const;
     for (const [code, old] of Object.entries(remapped)) {
@@ -462,7 +531,7 @@ describe('portfolio schedule (05 §3)', () => {
     });
     const want = g.groups.flatMap((gr: any) => gr.rows).map((r: any) => ({
       code: r.code, pipe: r.pipe, gate: r.gate, gateSub: r.gateSub, hasExec: r.hasExec, exL: r.exL, exW: r.exW,
-      exFill: r.exFill, hasBase: r.hasBase, clipped: r.clipped, segs: r.segs,
+      exFill: R073_FILL[r.code] ?? r.exFill, hasBase: r.hasBase, clipped: r.clipped, segs: r.segs,
     }));
     const order = (xs: any[]) => [...xs.filter((x) => !x.pipe), ...xs.filter((x) => x.pipe)];
     expect(order(rows)).toEqual(want);
@@ -479,14 +548,18 @@ describe('projects map (03 §3)', () => {
     expect(m.points.map((p) => ({
       code: p.project.code, city: p.city, country: p.country, lat: p.lat, lng: p.lng, cat: p.category, health: p.health ? healthLabel(p.health) : '', status: p.project.status,
       client: p.project.client, pm: p.project.pm,
-    }))).toEqual(g.points.map((p: any) => without(p, 'name')));
+    }))).toEqual(g.points.map((p: any) => ({ ...without(p, 'name'), health: R073_HEALTH[p.code] ?? p.health })));
     expect(m.groups.map((x) => ({ city: x.city, country: x.country, codes: x.points.map((p) => p.project.code) }))).toEqual(g.groups);
     const risk = m.points.filter((p) => p.health && p.health !== 'on_track');
     expect([
       m.points.length, m.unlocated ? `${m.unlocated} without location` : (m.zone?.label ?? 'Whole portfolio'), m.groups.length, `${m.countries.length} ${m.countries.length === 1 ? 'country' : 'countries'}`,
       m.points.filter((p) => p.category === 'active').length, `${m.points.filter((p) => p.category === 'pipeline').length} in pipeline`, risk.length,
       `${m.points.filter((p) => p.health === 'off_track').length} off track`,
-    ]).toEqual(g.kpis.flatMap((k: any) => [k.value, k.sub]));
+    ]).toEqual(g.kpis.flatMap((k: any, i: number) => {
+      // R-073 health (see R073_HEALTH): projects at risk or off track — euna 3 → 2 (MSR-012 back on track), afr 0 → 1 (NDC-031).
+      const atRisk: Record<string, number> = { euna: 2, afr: 1 };
+      return i === 3 && atRisk[String(zone)] != null ? [atRisk[String(zone)], k.sub] : [k.value, k.sub];
+    }));
     expect(m.zone ? { label: m.zone.label, bounds: m.zone.bounds } : null).toEqual(g.zone);
   });
 });

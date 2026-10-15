@@ -14,12 +14,13 @@ import { getDb } from '@/server/db/client';
 import { constraintText, type LinkType } from '@/server/db/codes';
 import { findPerson, nameOf, writeAudit } from '@/server/db/helpers';
 import {
-  activities, activityLinks, changeRequestWbs, milestones, persons, projects, scheduleBars, wbsNodes, wpBudgets,
+  activities, activityLinks, persons, projects, wbsNodes,
 } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
-import { PROTO } from '@/server/prototype';
 import { listProjectBaselines, type BaselineInfo } from './baselines';
+import { lockProjectRow, maxTrashedPosition, shiftTrashedPositions, trashPlanRow } from './plan-trash';
 import { listCalendars } from './calendars';
+import { getProjectEvm } from './evm';
 import { getScheduleControl, type ScheduleControl } from './planning';
 import { listResourceRequests } from './requests';
 import { listScheduleRuns } from './schedule-network';
@@ -28,7 +29,13 @@ import { listTasks } from './tasks';
 // ── Types ──────────────────────────────────────────────────────────────────────────────────────────────
 
 export interface PlanActivityRow extends PlanActivity {
+  /** R-172: the owner's full name, else their short name ("S. Perrin" — the wizard's default PM has no full name); null without owner. */
   ownerName: string | null;
+  /**
+   * R-172: `owner` is an OWN key (persons.owner_code) — false when it fell back to the person's initials, which are not unique
+   * ("SP"): the Owner select then shows that person apart from the OWN list instead of a namesake.
+   */
+  ownerIsCode: boolean;
   description: string | null;
   critical: boolean | null;
   position: number;
@@ -80,11 +87,6 @@ export interface PlanRequest {
 
 // ── Reads ──────────────────────────────────────────────────────────────────────────────────────────────
 
-async function projectIdOf(tx: Tx, code: string): Promise<string | null> {
-  const [p] = await tx.select({ id: projects.id }).from(projects).where(eq(projects.code, code));
-  return p?.id ?? null;
-}
-
 /** Everything the Plan screen needs for one project; null for projects without planning data (empty state). */
 export async function getPlanData(code: string): Promise<PlanData | null> {
   const db = await getDb();
@@ -101,7 +103,7 @@ export async function getPlanData(code: string): Promise<PlanData | null> {
       .where(eq(projects.code, code))
       .orderBy(asc(wbsNodes.position)),
     db
-      .select({ a: activities, wbs: wbsNodes.code, ownerCode: owner.ownerCode, ownerInitials: owner.initials, ownerName: owner.fullName })
+      .select({ a: activities, wbs: wbsNodes.code, ownerCode: owner.ownerCode, ownerInitials: owner.initials, ownerName: owner.fullName, ownerShort: owner.shortName })
       .from(activities)
       .innerJoin(projects, eq(projects.id, activities.projectId))
       .innerJoin(wbsNodes, eq(wbsNodes.id, activities.wbsNodeId))
@@ -133,7 +135,7 @@ export async function getPlanData(code: string): Promise<PlanData | null> {
   const seedTime = rootNode.createdAt.getTime();
   return {
     control,
-    projectIdx: projectIdxOf(code, acts.map(({ a }) => a.code)),
+    projectIdx: projectIdxOf(acts.map(({ a }) => a.code)),
     root: {
       code: rootNode.code, name: rootNode.name, start: rootNode.startText, finish: rootNode.finishText,
       baselineFinish: rootNode.baselineFinishText, totalFloat: rootNode.totalFloatDays,
@@ -141,12 +143,12 @@ export async function getPlanData(code: string): Promise<PlanData | null> {
     packages: nodes
       .filter(({ n }) => n.level === 1)
       .map(({ n, ownerName }) => ({ code: n.code, name: n.name, position: n.position, added: n.createdAt.getTime() > seedTime, ownerName, scope: n.scope })),
-    activities: acts.map(({ a, wbs, ownerCode, ownerInitials, ownerName }) => ({
+    activities: acts.map(({ a, wbs, ownerCode, ownerInitials, ownerName, ownerShort }) => ({
       id: a.code, wbs, name: a.name, durationDays: a.durationDays,
       start: a.startText, startActual: a.startActual, finish: a.finishText, finishActual: a.finishActual, startDate: a.startDate,
       baselineFinish: a.baselineFinishText, variance: a.varianceDays,
       constraint: constraintText(a.constraintType, a.constraintDateText), violated: a.constraintViolated,
-      totalFloat: a.totalFloatDays, pct: a.percentComplete, owner: ownerCode ?? ownerInitials ?? null, ownerName,
+      totalFloat: a.totalFloatDays, pct: a.percentComplete, owner: ownerCode ?? ownerInitials ?? null, ownerName: ownerName ?? ownerShort ?? null, ownerIsCode: !!ownerCode,
       budget: a.budgetKeur, actual: a.actualKeur, eac: a.eacKeur, preds: preds.get(a.id) ?? [],
       isAdded: a.isAdded, edited: !a.isAdded && a.updatedAt.getTime() > a.createdAt.getTime(),
       description: a.description, critical: a.critical, position: a.position,
@@ -170,16 +172,20 @@ async function defaultControl(db: Tx | Awaited<ReturnType<typeof getDb>>, code: 
   const [root] = await db.select({ id: wbsNodes.id }).from(wbsNodes).where(and(eq(wbsNodes.projectId, p.id), eq(wbsNodes.level, 0)));
   if (!root) return null;
   const start = Math.max(0, Math.floor(p.startMonth ?? 0));
+  // R-073 (delivery 7): progress computed from the activities.
+  const progress = (await getProjectEvm(code, db))?.progress ?? p.progress;
   return {
-    start, tNow: 0, pct: Math.round(p.progress * 100), p3: p.shortCode, floatDays: 0, chartMonths: monthLabels(start, 12), ganttMonths: monthLabels(start, 13),
+    start, tNow: 0, pct: Math.round(progress * 100), p3: p.shortCode, floatDays: 0, chartMonths: monthLabels(start, 12), ganttMonths: monthLabels(start, 13),
     finishText: '—', baselineText: '—', floatText: '—', floatShort: '—', critText: '', milesText: '—', milesSub: '', baselineSet: '—', team: [],
   };
 }
 
-/** DEFS idx of a project (TODO(db): not stored) — else the digit after "A" of its activity ids, else 1. */
-function projectIdxOf(code: string, actCodes: string[]): number {
-  const idx = PROTO.DEFS?.[code]?.idx;
-  if (typeof idx === 'number') return idx;
+/**
+ * Numbering prefix of a project's added activities ('A' + idx + '9' + NN): the digit after "A" of its activity ids,
+ * else 1. R-170: the prototype's DEFS idx is no longer read — the six seeded projects' ids carry it (A1… HLT-026,
+ * A3… NDC-031, A2… RCF-019, A4… ERP-202, A5… WSA-044, A6… MSR-012), so the numbering is unchanged.
+ */
+export function projectIdxOf(actCodes: readonly string[]): number {
   const d = actCodes.map((c) => /^A(\d)/.exec(c)?.[1]).find(Boolean);
   return d ? parseInt(d, 10) : 1;
 }
@@ -251,6 +257,8 @@ export async function updateActivity(code: string, actId: string, patch: Activit
     }
     const structural = Object.keys(set).some((k) => k !== 'percentComplete') || patch.preds !== undefined;
     if (structural) set.updatedAt = new Date();
+    // A remaining duration stored by an import (MSPDI / XER) wins over % complete in the CPM: a new % or duration replaces it.
+    if (patch.pct !== undefined || patch.durationDays !== undefined) set.remainingDays = null;
     if (Object.keys(set).length) await tx.update(activities).set(set).where(eq(activities.id, a.id));
     if (patch.preds !== undefined) {
       await tx.delete(activityLinks).where(eq(activityLinks.successorId, a.id));
@@ -312,41 +320,22 @@ export async function getPackageOrder(code: string, actId: string): Promise<{ wb
   });
 }
 
-async function deleteActivities(tx: Tx, ids: string[]) {
-  if (!ids.length) return;
-  await tx.update(milestones).set({ activityId: null }).where(inArray(milestones.activityId, ids));
-  await tx.delete(activities).where(inArray(activities.id, ids));
-}
-
-/** Removes an activity (`rmKey`); its logic links and assignments go with it. */
-export async function deleteActivity(code: string, actId: string): Promise<boolean> {
-  const db = await getDb();
-  return db.transaction(async (tx) => {
-    const a = await findActivity(tx, code, actId);
-    if (!a) return false;
-    await deleteActivities(tx, [a.id]);
-    return true;
-  });
+/**
+ * Removes an activity (`rmKey`) into the Plan trash (S-5): its logic links, assignments and Plan to-dos go with it and can be
+ * restored (plan-trash.ts). False when not found.
+ */
+export async function deleteActivity(code: string, actId: string, actorName = 'Keystone'): Promise<boolean> {
+  return !!(await trashPlanRow(code, 'act', actId, actorName));
 }
 
 /**
- * Removes a work package and all its activities (`rmKey` on a WP); their logic links go with them (cascade, S-5). Rows of
- * other modules that point at the node (Budget WP lines, change-request WBS) keep their own code/name and lose only the
- * link; the package's Schedule bar is removed (A-7: bars are WBS roll-ups).
+ * Removes a work package and all its activities (`rmKey` on a WP) into the Plan trash (S-5): their links, assignments, to-dos
+ * and the package's Schedule bar (A-7 roll-up) go with them. Rows of other modules that point at the node or the activities
+ * (Budget WP lines, change-request WBS, milestones…) keep their own code/name and lose only the link, given back on restore.
+ * False for the root or an unknown package.
  */
-export async function deleteWorkPackage(code: string, w: string): Promise<boolean> {
-  const db = await getDb();
-  return db.transaction(async (tx) => {
-    const n = await findNode(tx, code, w);
-    if (!n || n.level !== 1) return false;
-    await deleteActivities(tx, (await packageActivities(tx, n.id)).map((k) => k.id));
-    await tx.update(wpBudgets).set({ wbsNodeId: null }).where(eq(wpBudgets.wbsNodeId, n.id));
-    await tx.update(changeRequestWbs).set({ wbsNodeId: null }).where(eq(changeRequestWbs.wbsNodeId, n.id));
-    // A-7: Schedule bars are roll-ups of the work packages — the package's bar goes with it (S-5).
-    await tx.delete(scheduleBars).where(eq(scheduleBars.wbsNodeId, n.id));
-    await tx.delete(wbsNodes).where(eq(wbsNodes.id, n.id));
-    return true;
-  });
+export async function deleteWorkPackage(code: string, w: string, actorName = 'Keystone'): Promise<boolean> {
+  return !!(await trashPlanRow(code, 'wp', w, actorName));
 }
 
 export interface NewActivity {
@@ -366,16 +355,21 @@ export interface NewActivity {
   description: string;
 }
 
-/** Inserts an activity at the end of its work package (positions after it shift by one). */
+/**
+ * Inserts an activity at the end of its work package (positions after it shift by one — R-064: the ghost slots of the removed
+ * rows in the Plan trash too, so a later restore lands back in place). The project row is locked for the transaction.
+ */
 export async function insertActivity(code: string, input: NewActivity): Promise<boolean> {
   const db = await getDb();
   return db.transaction(async (tx) => {
+    if (!(await lockProjectRow(tx, { code }))) return false;
     const n = await findNode(tx, code, input.wbs);
     if (!n || n.level !== 1) return false;
     const [{ last }] = await tx.select({ last: max(activities.position) }).from(activities).where(eq(activities.wbsNodeId, n.id));
     const position = Math.max(n.position, last ?? n.position) + 1;
     await tx.update(wbsNodes).set({ position: sql`${wbsNodes.position} + 1` }).where(and(eq(wbsNodes.projectId, n.projectId), gte(wbsNodes.position, position)));
     await tx.update(activities).set({ position: sql`${activities.position} + 1` }).where(and(eq(activities.projectId, n.projectId), gte(activities.position, position)));
+    await shiftTrashedPositions(tx, n.projectId, position, 1);
     const [owner] = await tx.select({ id: persons.id }).from(persons).where(eq(persons.ownerCode, input.ownerCode));
     await tx.insert(activities).values({
       projectId: n.projectId, wbsNodeId: n.id, code: input.id, name: input.name, durationDays: input.durationDays,
@@ -397,11 +391,14 @@ export interface NewWorkPackage {
   scope: string;
 }
 
-/** Appends a work package after the existing ones (no activities yet). */
+/**
+ * Appends a work package after the existing ones (no activities yet) — R-064: after the removed ones still in the Plan trash too
+ * (their ghost slots), so restoring them keeps the order. The project row is locked for the transaction.
+ */
 export async function insertWorkPackage(code: string, input: NewWorkPackage): Promise<boolean> {
   const db = await getDb();
   return db.transaction(async (tx) => {
-    const projectId = await projectIdOf(tx, code);
+    const projectId = (await lockProjectRow(tx, { code }))?.id;
     if (!projectId) return false;
     const [root] = await tx.select({ id: wbsNodes.id }).from(wbsNodes).where(and(eq(wbsNodes.projectId, projectId), eq(wbsNodes.level, 0)));
     if (!root) return false;
@@ -409,13 +406,24 @@ export async function insertWorkPackage(code: string, input: NewWorkPackage): Pr
       tx.select({ n: max(wbsNodes.position) }).from(wbsNodes).where(eq(wbsNodes.projectId, projectId)),
       tx.select({ a: max(activities.position) }).from(activities).where(eq(activities.projectId, projectId)),
     ]);
+    const ghost = await maxTrashedPosition(tx, projectId);
     const [owner] = await tx.select({ id: persons.id }).from(persons).where(eq(persons.fullName, input.ownerName));
     await tx.insert(wbsNodes).values({
-      projectId, code: input.code, name: input.name, level: 1, parentId: root.id, position: Math.max(n ?? 0, a ?? 0) + 1,
+      projectId, code: input.code, name: input.name, level: 1, parentId: root.id, position: Math.max(n ?? 0, a ?? 0, ghost ?? 0) + 1,
       ownerPersonId: owner?.id ?? null, scope: input.scope || null,
     });
     return true;
   });
+}
+
+/**
+ * OWN key of the viewer (P-9a: an activity's owner enters its progress) — by person for signed-in users, by short name for the
+ * demo personas; null when the viewer owns no activity anywhere.
+ */
+export async function ownerCodeOfViewer(v: { personId: string | null; short: string }): Promise<string | null> {
+  const db = await getDb();
+  const [p] = await db.select({ code: persons.ownerCode }).from(persons).where(v.personId ? eq(persons.id, v.personId) : eq(persons.shortName, v.short));
+  return p?.code ?? null;
 }
 
 /** OWN key of a full name (INIT_OF), or null. */

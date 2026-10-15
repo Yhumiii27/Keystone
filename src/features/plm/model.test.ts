@@ -7,6 +7,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { LO, OK } from '@/components/app/tones';
 import { parsePlmState, type PlmState } from '@/domain/parts';
+import { dataText } from '@/i18n/data-text';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { partMakeBuy, partStatus, partType } from '@/server/db/codes';
@@ -38,6 +39,11 @@ const FR_TEXT: Record<string, string> = {
 };
 /** The French render of an English prototype text the rebuild translates (FR_TEXT), else the prototype's own French. */
 const frFix = (lang: Lang, en: string, protoFr: string) => (lang === 'fr' && Object.hasOwn(FR_TEXT, en) ? FR_TEXT[en] : protoFr);
+/**
+ * R-148 (NEW-D1-2): a part name is shown as typed — in French its exact dictionary entry or the English name, never the
+ * prototype's partial translation ("Stainless mounting bracket · rev 2" stayed half translated as "… · rév. 2").
+ */
+const nameFix = (lang: Lang, en: string, protoFr: string) => (lang === 'fr' ? dataText(en, 'fr') : protoFr);
 /** French thousands ("6,200" → "6 200", narrow no-break space as toLocaleString('fr-FR')). */
 const frThousands = (lang: Lang, s: string) => (lang === 'fr' ? s.replace(/(\d),(\d{3})/g, '$1 $2') : s);
 /** Projects equipped quantity: the prototype left "6 units" in English in French mode. */
@@ -85,7 +91,7 @@ describe.each(LANGS)('catalogue (%s)', (lang) => {
       lead: r.lead, status: r.status, tagClass: r.statusClass, hasEco: !!r.eco, eco: r.eco?.number ?? '', restr: r.restriction,
       restrColor: r.restrictionAlert ? LO : 'var(--color-neutral-500)', usedCount: r.usedIn,
     }))).toEqual(g.default.rows.map((r: any, i: number) => ({
-      ...r, lead: FIX_LEAD(r.lead), restr: frFix(lang, G.en.default.rows[i].restr, r.restr),
+      ...r, name: nameFix(lang, G.en.default.rows[i].name, r.name), lead: FIX_LEAD(r.lead), restr: frFix(lang, G.en.default.rows[i].restr, r.restr),
     })));
   });
 
@@ -151,7 +157,7 @@ describe.each(LANGS)('part record drawer (%s)', (lang) => {
       const d = await drawer(ref);
       const gd = g.drawers[ref];
       const en = G.en.drawers[ref];
-      expect([d.ref, d.name, d.status, d.statusClass], ref).toEqual([gd.ref, gd.name, gd.status, gd.tagClass]);
+      expect([d.ref, d.name, d.status, d.statusClass], ref).toEqual([gd.ref, nameFix(lang, en.name, gd.name), gd.status, gd.tagClass]);
       expect(d.warn ?? '', ref).toBe(gd.warn ? frFix(lang, en.warn, gd.warn) : '');
       expect(d.identification.items.map((x) => ({ k: x.k, v: x.v, color: x.color })), ref).toEqual(gd.ident.map((x: any) => ({ ...x, v: FIX_LEAD(x.v).replace(/^1 semaines$/, '1 semaine') })));
       expect(d.commercial.items.map((x) => ({ k: x.k, v: x.v, color: x.color })), ref).toEqual(
@@ -164,7 +170,10 @@ describe.each(LANGS)('part record drawer (%s)', (lang) => {
     for (const ref of Object.keys(g.drawers)) {
       const d = await drawer(ref);
       const gd = g.drawers[ref];
-      expect(d.equivalents.rows.map((r) => ({ ref: r.title, name: r.sub, status: r.tagLabel, tagClass: r.tagClass })), ref).toEqual(gd.equiv);
+      const en = G.en.drawers[ref];
+      expect(d.equivalents.rows.map((r) => ({ ref: r.title, name: r.sub, status: r.tagLabel, tagClass: r.tagClass })), ref).toEqual(
+        gd.equiv.map((x: any, i: number) => ({ ...x, name: nameFix(lang, en.equiv[i].name, x.name) })),
+      );
       expect(!!d.equivalents.empty, ref).toBe(gd.noEquiv);
       expect((d.spares?.rows ?? []).map((r) => ({ ref: r.title, name: r.sub, kind: r.tagLabel, tagClass: r.tagClass, qty: Number(r.aside!.replace('× ', '')) })), ref).toEqual(gd.spares);
       expect(!!d.spares, ref).toBe(gd.hasSpares);

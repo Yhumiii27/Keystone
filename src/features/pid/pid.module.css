@@ -65,6 +65,11 @@
 .candName { font-size: 11px; color: var(--color-neutral-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .candCurrent { color: var(--color-accent-300); }
 .hint { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+/* R-108: the candidates' catalogue search and the "Link and add to the BOM" confirmation. */
+.candSearch { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; margin-bottom: 4px; }
+.candSearch > :first-child { padding-left: 26px; }
+.candSearchIcon { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--color-neutral-400); pointer-events: none; }
+.linkForm { display: flex; flex-direction: column; gap: 12px; }
 .callout {
   display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.45; color: var(--color-neutral-200); padding: 10px 12px;
   border-radius: var(--radius-md);

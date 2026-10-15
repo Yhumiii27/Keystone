@@ -7,7 +7,7 @@ import { ArrowsClockwise, Calendar, CaretDown, Check, FlagBanner, Plus, X } from
 import { useState, useTransition } from 'react';
 import { FormDialog } from '@/components/app/FormDialog';
 import type { FormDef } from '@/components/app/form-def';
-import { Button, IconButton } from '@/components/ds/Button';
+import { Button, ButtonLink, IconButton } from '@/components/ds/Button';
 import { cx } from '@/components/ds/cx';
 import { Input, Select } from '@/components/ds/Field';
 import { MenuHeader, MenuItem } from '@/components/ds/Menu';
@@ -117,10 +117,19 @@ export function RescheduleButton({ code }: { code: string }) {
   );
 }
 
-/** "Set baseline": dialog (name = next code, comment) snapshotting every activity. */
-export function SetBaselineButton({ code, context, defaultName }: { code: string; context: string; defaultName: string }) {
+/**
+ * "Set baseline": dialog (name = next code, comment) snapshotting every activity — up to BL1 only (S-3, L-2). From BL2 on
+ * (`changeRequestHref` given) the same button opens the Change control form proposing the next baseline instead.
+ */
+export function SetBaselineButton({ code, context, defaultName, changeRequestHref }: { code: string; context: string; defaultName: string; changeRequestHref?: string }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  if (changeRequestHref)
+    return (
+      <ButtonLink variant="secondary" icon={FlagBanner} className={s.btn13} href={changeRequestHref} title={t('After BL1, a new baseline goes through a change request')}>
+        {t('Set baseline')}
+      </ButtonLink>
+    );
   const def: FormDef = {
     title: 'Set baseline',
     submit: 'Set baseline',

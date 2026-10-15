@@ -82,6 +82,7 @@ export function TreeTable({ view }: { view: TreeView }) {
                   </td>
                   <Td align="right" numeric nowrap>
                     {r.unit}
+                    <span className={s.priceSource}>{r.unitSource}</span>
                   </Td>
                   <Td align="right" numeric nowrap>
                     {r.total}

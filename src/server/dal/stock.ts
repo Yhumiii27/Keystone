@@ -4,19 +4,28 @@ import 'server-only';
 // Push to X3). Movement rules (`applyOp` 4479–4487) are the domain's (src/domain/stock.ts, SC-5): a count may be 0, no
 // movement may take more than the quantity on hand, a reservation belongs to one project, an issue consumes the
 // reservation of its own project only, a transfer of reserved goods moves their reservation to the destination,
-// Import from X3 keeps local changes (merge) instead of discarding them.
+// Import from X3 keeps local changes (merge) instead of discarding them. Delivery 7: an issue names its activity and its
+// value is charged to the activity's work package (SC-5a, R-098 — `stockCostByWorkPackage` feeds the Budget's work
+// packages); an issue or a scrap never takes another project's reservation, which its PM (or the director) releases
+// first ("Release reservation"), unless the director overrides — audited (NEW-D4-2 / SC-5b, R-099).
+// Rights (R-041, re-checked here as the Server Function checks them, so a direct call cannot bypass them): Stock & storages
+// in the actor's workspace; a reservation, issue or return for a project by that project's team — procurement and the
+// director being the storekeepers who act for any project (default, owner to confirm); "Release reservation" by the
+// reserving project's PMs and deputies or the director; the override of another project's reservation by the director.
 import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
-import { planStockMovement, planX3Import, type MovementPlan } from '@/domain/stock';
+import { movementValueEur, planStockMovement, planX3Import, type MovementPlan } from '@/domain/stock';
 import { getDb } from '@/server/db/client';
 import {
-  STATUS_ISO, isoOfDisplayDate, locationType, parisInstant, parisParts, stampText, stockMoveInstant, stockMovementType, stockOperation, stockSource,
+  STATUS_ISO, locationType, parisInstant, parisParts, stampText, stockMoveInstant, stockMovementType, stockOperation, stockSource,
   type LocationType, type StockMovementType, type StockOperation, type StockSource,
 } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
-import { activities, parts, partLastPrices, projects, stockMovements, stockPositions, storageLocations, x3SyncRuns } from '@/server/db/schema';
-import { X3_LAST_IMPORT } from '@/server/db/seed/stock';
-import { PROTO } from '@/server/prototype';
+import { activities, parts, partLastPrices, projects, stockMovements, stockPositions, storageLocations, wbsNodes, x3SyncRuns } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
+import { X3_LAST_IMPORT, x3StockSnapshot } from '@/server/integrations/x3/prototype-snapshot';
+import { requireX3Simulation } from '@/server/integrations/x3/mock-mode';
+import { managesProject, type Actor } from './ops-common';
+import { actorSees, onProjectTeam } from './team-guard';
 
 type Q = DB | Tx;
 
@@ -185,8 +194,64 @@ export interface StockMovementInput {
   targetLocation?: string | null;
   /** Current project (reserve, issue, return — prototype `PD.p3`). */
   projectCode?: string | null;
-  /** Activity issued to ("A1250"), within the project. */
+  /** Activity issued to ("A1250"), within the project: required for an issue (SC-5a), optional on a return. */
   activityCode?: string | null;
+  /** The portfolio director takes units reserved for another project (R-099; re-checked here). */
+  override?: boolean;
+}
+
+/**
+ * Roles that reserve, issue and return stock for any project, on its team or not: the storekeepers — procurement (stock is
+ * their trade) and the portfolio director. Everybody else acts for the projects whose team they are on (R-041). Default
+ * chosen in delivery 7: the owner to confirm.
+ */
+export const STOCK_KEEPER_ROLES: readonly string[] = ['procurement', 'director'];
+
+/** R-041 refusal of a reservation, issue or return for a project whose team the actor is not on (EN; FR in d7-rights.json). */
+export const STOCK_NOT_TEAM = 'Only the project’s team, procurement or the director can reserve, issue or return stock for this project';
+/** R-099 refusals (the Server Function's messages, re-checked here). */
+export const STOCK_OVERRIDE_REFUSED = 'Only the portfolio director can take stock reserved for another project';
+export const STOCK_RELEASE_REFUSED = 'Only the reserving project’s manager or the director can release this reservation';
+
+/** Work package (level-1 WBS code, "1.4") of a WBS node: the node itself or its level-1 ancestor; null above level 1. */
+async function workPackageCodeOf(q: Q, wbsNodeId: string): Promise<string | null> {
+  let id: string | null = wbsNodeId;
+  for (let guard = 0; id && guard < 20; guard++) {
+    const [n]: { code: string; level: number; parentId: string | null }[] = await q
+      .select({ code: wbsNodes.code, level: wbsNodes.level, parentId: wbsNodes.parentId }).from(wbsNodes).where(eq(wbsNodes.id, id));
+    if (!n) return null;
+    if (n.level <= 1) return n.level === 1 ? n.code : null;
+    id = n.parentId;
+  }
+  return null;
+}
+
+/** Activities a stock issue may name (the project's plan, plan order): "A1250 · Steel erection — Bays 3–4". */
+export async function listIssueActivityOptions(projectCode: string): Promise<{ code: string; name: string; label: string }[]> {
+  const db = await getDb();
+  const rows = await db.select({ code: activities.code, name: activities.name }).from(activities).innerJoin(projects, eq(projects.id, activities.projectId))
+    .where(eq(projects.code, projectCode)).orderBy(asc(activities.position));
+  return rows.map((r) => ({ ...r, label: `${r.code} · ${r.name}` }));
+}
+
+/**
+ * Stock material charged to each work package of a project (SC-5a, R-098), in k€: Σ value of the issues recorded in
+ * Keystone − Σ value of the returns credited to a work package, by level-1 WBS code. Movements without a value (the X3
+ * seed, whose cost is already in the actuals) count for nothing.
+ */
+export async function stockCostByWorkPackage(projectId: string, q?: Q): Promise<Map<string, number>> {
+  const db = q ?? (await getDb());
+  const rows = await db
+    .select({ wbs: stockMovements.wbsCode, type: stockMovements.type, value: sql<number>`sum(${stockMovements.valueEur})::float8` })
+    .from(stockMovements)
+    .where(and(eq(stockMovements.projectId, projectId), inArray(stockMovements.type, ['issue', 'return'])))
+    .groupBy(stockMovements.wbsCode, stockMovements.type);
+  const out = new Map<string, number>();
+  for (const r of rows) {
+    if (!r.wbs || !r.value) continue;
+    out.set(r.wbs, (out.get(r.wbs) ?? 0) + (r.type === 'issue' ? r.value : -r.value) / 1000);
+  }
+  return out;
 }
 
 /**
@@ -196,7 +261,11 @@ export interface StockMovementInput {
  */
 export async function insertMovement(
   tx: Tx,
-  m: { type: StockMovementType; partId: string; qty: number; fromLocationId?: string | null; toLocationId?: string | null; projectId?: string | null; activityId?: string | null; receiptId?: string | null; whereText: string; personName: string; personId: string | null },
+  m: {
+    type: StockMovementType; partId: string; qty: number; fromLocationId?: string | null; toLocationId?: string | null; projectId?: string | null; activityId?: string | null;
+    receiptId?: string | null; whereText: string; personName: string; personId: string | null;
+    unitCostEur?: number | null; valueEur?: number | null; wbsCode?: string | null; overrideQty?: number | null; overrideFromProjectId?: string | null;
+  },
 ): Promise<void> {
   const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(stockMovements);
   await tx.insert(stockMovements).values({ ...m, occurredAt: stockMoveInstant(n), pushedToX3At: null });
@@ -224,30 +293,41 @@ async function activeLocations(q: Q) {
  * "Apply movement" of the stock-line drawer. The rules are the domain's (`planStockMovement`, src/domain/stock.ts):
  * the line is updated, a transfer feeds (or creates) the destination line — with the reservation of the reserved goods
  * it moves —, both are flagged Local, the movement is appended pending push to X3, with the audit and activity rows.
- * Throws the rule's English message when refused.
+ * `actor` = the viewer (name and role): the rights are re-checked here (see the header). Throws the rule's English message
+ * when refused.
  */
-export async function applyStockMovement(positionId: string, input: StockMovementInput, actorName: string): Promise<MovementPlan> {
+export async function applyStockMovement(positionId: string, input: StockMovementInput, actor: Actor): Promise<MovementPlan> {
+  if (!actorSees(actor, 'stock')) throw new Error('Stock is read-only for you');
+  if (input.override === true && actor.role !== 'director') throw new Error(STOCK_OVERRIDE_REFUSED);
+  const actorName = actor.name;
   const db = await getDb();
   return db.transaction(async (tx) => {
-    const [s] = await tx.select().from(stockPositions).where(eq(stockPositions.id, positionId));
+    // The line is locked for the transaction: two movements on it never read the same quantities.
+    const [s] = await tx.select().from(stockPositions).where(eq(stockPositions.id, positionId)).for('update');
     if (!s) throw new Error('Unknown stock line');
-    const [{ ref, loc }] = await tx
-      .select({ ref: parts.ref, loc: storageLocations.name })
+    const [{ ref, loc, list, last }] = await tx
+      .select({ ref: parts.ref, loc: storageLocations.name, list: parts.listPriceEur, last: partLastPrices.unitPriceEur })
       .from(parts)
       .innerJoin(storageLocations, eq(storageLocations.id, s.locationId))
+      .leftJoin(partLastPrices, eq(partLastPrices.partId, parts.id))
       .where(eq(parts.id, s.partId));
-    const actor = await findPerson(tx, actorName);
-    const who = actor ? nameOf(actor) : actorName;
+    const person = await findPerson(tx, actorName);
+    const who = person ? nameOf(person) : actorName;
     const project = input.projectCode
       ? (await tx.select({ id: projects.id, code: projects.code, short: projects.shortCode }).from(projects).where(eq(projects.code, input.projectCode)))[0]
       : undefined;
     if (input.projectCode && !project) throw new Error(`Unknown project ${input.projectCode}`);
-    let activity: { id: string; code: string; name: string } | undefined;
-    if (input.activityCode) {
+    // R-041: a reservation, issue or return for a project by its team or a storekeeper; a release by the PMs of the
+    // project whose reservation it is (the planner refuses any other project) or the director (R-099).
+    if (project && (input.op === 'reserve' || input.op === 'issue' || input.op === 'return')
+      && !STOCK_KEEPER_ROLES.includes(actor.role) && !(await onProjectTeam(tx, actor, project.id))) throw new Error(STOCK_NOT_TEAM);
+    if (project && input.op === 'release' && !(await managesProject(tx, actor, project))) throw new Error(STOCK_RELEASE_REFUSED);
+    let activity: { id: string; code: string; name: string; wbsNodeId: string } | undefined;
+    if (input.activityCode && (input.op === 'issue' || input.op === 'return')) {
       if (!project) throw new Error('A project is required');
-      [activity] = await tx.select({ id: activities.id, code: activities.code, name: activities.name }).from(activities)
+      [activity] = await tx.select({ id: activities.id, code: activities.code, name: activities.name, wbsNodeId: activities.wbsNodeId }).from(activities)
         .where(and(eq(activities.projectId, project.id), eq(activities.code, input.activityCode)));
-      if (!activity) throw new Error(`Unknown activity ${input.activityCode}`);
+      if (!activity) throw new Error('Choose an activity of the project plan');
     }
     const reservedFor = s.reservedForProjectId
       ? (await tx.select({ code: projects.code }).from(projects).where(eq(projects.id, s.reservedForProjectId)))[0]?.code ?? null
@@ -264,13 +344,19 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
       { location: loc, onHand: s.onHand, reserved: s.reserved, reservedFor },
       {
         op: input.op, qty: input.qty, target: input.targetLocation ?? null, targetReservedFor: targetLine && targetLine.reserved > 0 ? targetLine.code : null,
-        project: project ? { code: project.code, short: project.short } : null, activity: activity ?? null,
+        project: project ? { code: project.code, short: project.short } : null, activity: activity ?? null, override: input.override === true,
       },
       locs.map((l) => l.name),
     );
     if (!planned.ok) throw new Error(planned.error);
     const plan = planned.value;
     const reservedForProjectId = plan.reservedFor === null ? null : plan.reservedFor === project?.code ? project.id : s.reservedForProjectId;
+    // SC-5a (R-098): an issue (and a return naming an activity) is valued at the stock unit cost and charged (credited)
+    // to the activity's work package.
+    const unitCostEur = last ?? list;
+    const charged = activity && (plan.type === 'issue' || plan.type === 'return');
+    const wbsCode = charged ? await workPackageCodeOf(tx, activity!.wbsNodeId) : null;
+    const valueEur = charged ? movementValueEur(plan.qty, unitCostEur) : null;
     await tx.update(stockPositions)
       .set({ onHand: plan.onHand, reserved: plan.reserved, reservedForProjectId, source: 'local', lastMovementOn: STATUS_ISO, updatedAt: new Date() })
       .where(eq(stockPositions.id, s.id));
@@ -288,15 +374,29 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
     const inward = plan.type === 'return';
     await insertMovement(tx, {
       type: plan.type, partId: s.partId, qty: plan.qty, fromLocationId: inward ? null : s.locationId, toLocationId: inward ? s.locationId : toLocationId,
-      projectId: plan.projectCode ? project!.id : plan.transferReserved ? s.reservedForProjectId : null, activityId: activity?.id ?? null, whereText: plan.whereText, personName: who, personId: actor?.id ?? null,
+      projectId: plan.projectCode ? project!.id : plan.transferReserved ? s.reservedForProjectId : null, activityId: activity?.id ?? null, whereText: plan.whereText, personName: who, personId: person?.id ?? null,
+      unitCostEur: charged ? unitCostEur : null, valueEur, wbsCode, overrideQty: plan.overrideTaken || null, overrideFromProjectId: plan.overrideTaken ? s.reservedForProjectId : null,
     });
     const reservedChange = plan.reserved !== s.reserved ? ` · reserved ${s.reserved} → ${plan.reserved}` : '';
+    const chargedText = charged ? ` · ${plan.type === 'issue' ? 'charged to' : 'credited to'} ${activity!.code}${wbsCode ? ` (WP ${wbsCode})` : ''} · €${valueEur!.toFixed(2)}` : '';
+    const overrideText = plan.overrideTaken ? ` · director override: ${plan.overrideTaken} reserved for ${plan.overrideFrom} taken` : '';
     await writeAudit(tx, {
-      actorName: who, actorPersonId: actor?.id, objectRef: `${ref} · ${loc}`,
-      change: `${stockOperation.label(plan.type)} × ${plan.qty} · on hand ${s.onHand} → ${plan.onHand}${reservedChange} · ${stockSource.label('local')}`,
+      actorName: who, actorPersonId: person?.id, objectRef: `${ref} · ${loc}`,
+      change: `${stockOperation.label(plan.type)} × ${plan.qty} · on hand ${s.onHand} → ${plan.onHand}${reservedChange}${chargedText}${overrideText} · ${stockSource.label('local')}`,
       area: 'Stock', entityType: 'stock_position', entityId: s.id, projectId: project?.id ?? null,
     });
-    await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, text: `${stockMovementType.label(plan.type)} ${ref} × ${plan.qty} · ${plan.whereText}`, kind: 'stock', projectId: project?.id ?? null });
+    await recordActivity(tx, { actorName: who, actorPersonId: person?.id, text: `${stockMovementType.label(plan.type)} ${ref} × ${plan.qty} · ${plan.whereText}`, kind: 'stock', projectId: project?.id ?? null });
+    if (plan.overrideTaken && s.reservedForProjectId) {
+      // The reserving project sees what was taken from its reservation, and by whom.
+      await writeAudit(tx, {
+        actorName: who, actorPersonId: person?.id, objectRef: `${ref} · ${loc}`, area: 'Stock', entityType: 'stock_position', entityId: s.id, projectId: s.reservedForProjectId,
+        change: `reservation ${s.reserved} → ${plan.reserved} · ${plan.overrideTaken} taken for ${project?.code ?? stockOperation.label(plan.type)} · director override`,
+      });
+      await recordActivity(tx, {
+        actorName: who, actorPersonId: person?.id, kind: 'stock', projectId: s.reservedForProjectId,
+        text: `Reservation reduced · ${ref} × ${plan.overrideTaken} · ${loc} · director override`,
+      });
+    }
     return plan;
   });
 }
@@ -306,17 +406,7 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
 /** Instant of the X3 snapshot the database was seeded with (STOCK0 imported at 07:15 on the status date). */
 export const X3_SNAPSHOT_AT = parisInstant(STATUS_ISO, X3_LAST_IMPORT);
 
-interface ProtoStockLine { ref: string; loc: string; onHand: number; reserved: number; proj: string; min: number; last: string }
-
-/**
- * Stock positions as Sage X3 reports them. TODO(db): no X3 connector yet — the mock returns the prototype's snapshot
- * (STOCK0 3475, the data the database was seeded from), with reservations keyed by the 3-letter project code.
- */
-function x3StockSnapshot(): { ref: string; location: string; onHand: number; reserved: number; projectShort: string; minQty: number; lastMovementOn: string }[] {
-  return (PROTO.STOCK0 as ProtoStockLine[]).map((r) => ({
-    ref: r.ref, location: r.loc, onHand: r.onHand, reserved: r.reserved, projectShort: r.proj, minQty: r.min, lastMovementOn: isoOfDisplayDate(r.last)!,
-  }));
-}
+// Stock positions as Sage X3 reports them: the X3 mock connector (src/server/integrations/x3), until the X3 extracts.
 
 export interface X3ImportResult {
   /** "14:37" (Paris). */
@@ -335,6 +425,7 @@ export interface X3ImportResult {
  * theirs too (X3 holds them). Records the import run and the audit row.
  */
 export async function importStockFromX3(actorName: string, at: Date = new Date()): Promise<X3ImportResult> {
+  await requireX3Simulation(); // R-034: a simulation over the prototype snapshot — demo database only
   const db = await getDb();
   return db.transaction(async (tx) => {
     const [rows, pushed, locs, partRows, projectRows] = await Promise.all([
@@ -385,7 +476,7 @@ export async function importStockFromX3(actorName: string, at: Date = new Date()
     await tx.insert(x3SyncRuns).values({ kind: 'stock_import', occurredAt: at, lineCount: n, requestedByPersonId: actor?.id ?? null });
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: 'Sage X3',
-      change: `stock import · ${n} lines · ${plan.update.length + created} updated · ${plan.keptLocal} local kept`, area: 'Stock', occurredAt: at,
+      change: `simulated stock import (Sage X3 not connected) · ${n} lines · ${plan.update.length + created} updated · ${plan.keptLocal} local kept`, area: 'Stock', occurredAt: at,
     });
     const p = parisParts(at);
     return { time: `${p.hh}:${p.mm}`, lines: n, updated: plan.update.length + created, keptLocal: plan.keptLocal };
@@ -398,6 +489,7 @@ export async function importStockFromX3(actorName: string, at: Date = new Date()
  * Returns the lines and movements pushed.
  */
 export async function pushStockToX3(actorName: string, at: Date = new Date(), opts: { positionId?: string } = {}): Promise<{ lines: number; movements: number }> {
+  await requireX3Simulation(); // R-034: Sage X3 is not connected — demo database only
   const db = await getDb();
   return db.transaction(async (tx) => {
     let local: { id: string }[];
@@ -424,7 +516,7 @@ export async function pushStockToX3(actorName: string, at: Date = new Date(), op
     await tx.insert(x3SyncRuns).values({ kind: 'stock_push', occurredAt: at, lineCount: local.length, requestedByPersonId: actor?.id ?? null });
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef,
-      change: `stock push · ${local.length} lines · ${moves.length} movements`, area: 'Stock', occurredAt: at,
+      change: `simulated stock push (Sage X3 not connected) · ${local.length} lines · ${moves.length} movements`, area: 'Stock', occurredAt: at,
       entityType: opts.positionId ? 'stock_position' : undefined, entityId: opts.positionId,
     });
     return { lines: local.length, movements: moves.length };

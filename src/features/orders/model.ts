@@ -3,12 +3,15 @@
 // render — KPI tiles, shortfall banner, status chips, table rows and the order drawer. Pure (no I/O): `t` and `lang`
 // come from the page; rules come from src/domain/orders.ts.
 import { LO, OK } from '@/components/app/tones';
+import { deliveryTermsText } from '@/domain/order-terms';
 import {
   PO_FLOW, canApprovePo, canPushPoToX3, canSubmitPo, filterPos, hasPartStatusIssue, isLatePo, lineSummary, needText, partWarnings, poKpis, poRisk,
-  poRiskText, poStatusCounts, poSteps, poUnits, poValueEur, poX3State,
+  poRiskText, poStatusCounts, poSteps, poUnits, poValueEur, poX3State, type PoCancelKind,
 } from '@/domain/orders';
+import { PRICES_HIDDEN, PRICE_MASK } from '@/domain/rights';
 import type { Lang, T } from '@/i18n/translate';
-import { money, moneyEur } from '@/lib/format';
+import { money } from '@/lib/format';
+import { BASE_CURRENCY, moneyIn, moneyUnitsIn } from '@/domain/currency';
 import { PART_STATUS_TAG, PO_STATUS_TAG, fmtDOfIso, poStatus, type PoStatus } from '@/server/db/codes';
 import type { OrdersScreenData, PoDocRef } from '@/server/dal/orders';
 import type { PurchaseOrderRow } from '@/server/dal/purchasing';
@@ -105,7 +108,11 @@ export interface OrderDrawerView {
   activityHref: string;
   /** "Push to X3" offered (order drafted in Keystone, approved, not pushed yet). */
   canPush: boolean;
+  /** R-095: "Cancel order" offered to the viewer — `cancel` a Draft, `withdraw` an order awaiting approval; null = not offered. */
+  cancel: PoCancelKind | null;
   closeHref: string;
+  /** C-9 (R-075): the order's currency; a Draft may switch between EUR and the project currency (`options`, ≥ 2). */
+  currency: { value: string; options: string[]; canSet: boolean };
 }
 
 export interface OrdersView {
@@ -132,11 +139,15 @@ export interface OrdersViewInput {
   filter: PoStatus | null;
   /** `?po=` (null = no drawer; an unknown number opens nothing). */
   selected: string | null;
+  /** Supplier prices and order values shown (R-046, NEW-D2-1: director, PMs, procurement); masked otherwise. Default true. */
+  prices?: boolean;
+  /** R-034: the simulated "Push to X3" is available (demo database); false = "Sage X3 not connected". Default true. */
+  x3?: boolean;
 }
 
 const dateText = (iso: string, t: T) => t(fmtDOfIso(iso));
 
-function rowView(o: PurchaseOrderRow, code: string, filter: PoStatus | null, selected: string | null, t: T, lang: Lang): OrderRowView {
+function rowView(o: PurchaseOrderRow, code: string, filter: PoStatus | null, selected: string | null, t: T, lang: Lang, prices = true): OrderRowView {
   const risk = poRisk(o);
   const late = risk?.kind === 'late';
   return {
@@ -146,7 +157,7 @@ function rowView(o: PurchaseOrderRow, code: string, filter: PoStatus | null, sel
     supplier: dataT(o.supplier, lang),
     lineSummary: lineSummary(o.lines.map((l) => l.ref)),
     lineCount: lineCountText(o.lines.length, poUnits(o), hasPartStatusIssue(o), lang),
-    value: money(poValueEur(o) / 1000, lang),
+    value: prices ? moneyIn(poValueEur(o) / 1000, o.currency, lang) : PRICE_MASK,
     status: t(poStatus.label(o.status)),
     statusClass: `tag ${PO_STATUS_TAG[o.status]}`,
     ordered: o.status === 'draft' || !o.orderedOn ? '—' : dateText(o.orderedOn, t),
@@ -165,13 +176,16 @@ const docLinks = (refs: PoDocRef[] | undefined, href: (n: string) => string, t: 
 
 function drawerView(o: PurchaseOrderRow, input: OrdersViewInput, t: T, lang: Lang): OrderDrawerView {
   const { code, data, filter } = input;
+  const prices = input.prices !== false;
   const late = isLatePo(o);
   const meta: MetaRowView[] = [
-    { k: t('Order value'), v: money(poValueEur(o) / 1000, lang), color: OK },
+    // C-9: in the order's currency, with its euro equivalent at the project's budget rate.
+    { k: t('Order value'), v: prices ? moneyIn(poValueEur(o) / 1000, o.currency, lang) + (o.currency === BASE_CURRENCY ? '' : ` · ≈ ${money((poValueEur(o) * o.eurRate) / 1000, lang)}`) : PRICE_MASK, color: OK },
     { k: t('Ordered on'), v: o.status === 'draft' || !o.orderedOn ? t('Not yet') : dateText(o.orderedOn, t), color: OK },
     { k: t('Expected delivery'), v: o.expectedOn ? dateText(o.expectedOn, t) : t('To confirm'), color: late ? LO : OK },
     { k: t('Needed by'), v: o.neededFor ? t(needText(o)) : '—', color: OK },
-    { k: t('Delivery / terms'), v: dataT(o.deliveryTerms, lang), color: OK },
+    // R-169: an order drafted in Keystone without an RFQ has no terms yet (the prototype wrote "Site gate 2 · DAP · Net 30").
+    { k: t('Delivery / terms'), v: deliveryTermsText(o.deliveryTerms, lang, t), color: OK },
   ];
   // Additions to the prototype drawer (08 §2.7): the receipts and invoices of the order, and its Sage X3 state when
   // it was drafted in Keystone.
@@ -180,7 +194,17 @@ function drawerView(o: PurchaseOrderRow, input: OrdersViewInput, t: T, lang: Lan
   const invoices = docLinks(data.invoices[o.number], invoiceHref, t);
   if (invoices.length) meta.push({ k: t('Supplier invoices'), v: '', links: invoices, color: OK });
   const x3 = poX3State(o);
-  if (x3 !== 'x3') meta.push({ k: 'Sage X3', v: x3 === 'pushed' ? `${t('Pushed to X3')} · ${o.x3Ref}` : t('Local change · not yet pushed to X3'), color: x3 === 'local' ? LO : OK });
+  const simulated = input.x3 !== false;
+  // R-034: without the X3 simulation (production database) a Keystone order is not promised a push.
+  if (x3 !== 'x3')
+    meta.push({
+      k: 'Sage X3',
+      v: x3 === 'pushed' ? `${t('Pushed to X3')} · ${o.x3Ref}` : t(simulated ? 'Local change · not yet pushed to X3' : 'Not in Sage X3 · Sage X3 not connected'),
+      color: x3 === 'local' && simulated ? LO : OK,
+    });
+  // R-095: why, by whom and when a Keystone-drafted order was cancelled (typed reason shown as typed).
+  if (o.cancellation)
+    meta.push({ k: t('Cancelled'), v: [dateText(o.cancellation.at.slice(0, 10), t), o.cancellation.by, dataT(o.cancellation.reason, lang)].filter(Boolean).join(' · '), color: OK });
   const warn = partWarningText(partWarnings(o), lang);
   return {
     number: o.number,
@@ -193,40 +217,49 @@ function drawerView(o: PurchaseOrderRow, input: OrdersViewInput, t: T, lang: Lan
       ref: l.ref,
       name: dataT(l.name, lang),
       qty: qtyText(l.orderedQty, lang),
-      price: moneyEur(l.unitPriceEur, lang),
-      total: moneyEur(l.unitPriceEur * l.orderedQty, lang),
+      price: prices ? moneyUnitsIn(l.unitPriceEur, o.currency, lang) : PRICE_MASK,
+      total: prices ? moneyUnitsIn(l.unitPriceEur * l.orderedQty, o.currency, lang) : PRICE_MASK,
       status: t(l.partStatusLabel),
       statusClass: `tag ${PART_STATUS_TAG[l.partStatus]}`,
       href: bomPartHref(code, l.ref),
     })),
     meta,
     activityHref: planActivityHref(code, o.neededFor?.code ?? null),
-    canPush: canPushPoToX3(o),
+    canPush: simulated && canPushPoToX3(o),
+    cancel: data.cancelRights?.[o.number] ?? null,
     closeHref: ordersHref(code, { status: filter }),
+    currency: currencyChoice(o),
   };
+}
+
+/** EUR first, then the project currency; an order in a currency no longer offered keeps it listed. */
+function currencyChoice(o: PurchaseOrderRow): OrderDrawerView['currency'] {
+  const options = [...new Set([...o.currencyOptions, o.currency])];
+  return { value: o.currency, options, canSet: o.status === 'draft' && options.length > 1 };
 }
 
 /** The whole screen. */
 export function ordersView(input: OrdersViewInput, t: T, lang: Lang): OrdersView {
   const { code, data, filter, selected } = input;
+  const prices = input.prices !== false;
   const orders = data.orders;
   const k = poKpis(orders);
   const counts = poStatusCounts(orders);
-  const rows = filterPos(orders, filter).map((o) => rowView(o, code, filter, selected, t, lang));
+  const rows = filterPos(orders, filter).map((o) => rowView(o, code, filter, selected, t, lang, prices));
   const sel = selected ? orders.find((o) => o.number === selected) : undefined;
   const sf = data.shortfall;
   return {
     code,
     kpis: [
       { label: t('Open orders'), value: String(k.open), sub: ordersInTotalText(k.total, lang), color: OK },
-      { label: t('Committed'), value: money(k.committedEur / 1000, lang), sub: t('Ordered, not cancelled'), color: OK },
+      { label: t('Committed'), value: prices ? money(k.committedEur / 1000, lang) : PRICE_MASK, sub: t('Ordered, not cancelled'), color: OK },
       { label: t('Late deliveries'), value: String(k.late), sub: t('See Deliveries for goods receipt'), color: k.late ? LO : OK },
       { label: t('Awaiting approval'), value: String(k.awaitingApproval), sub: t('Blocks ordering'), color: k.awaitingApproval ? LO : OK },
     ],
     shortfall: sf.lines.length
       ? {
           title: shortfallTitleText(sf.lines.length, lang),
-          sub: t(`${money(sf.valueEur / 1000, lang)} still to commit at list price`),
+          sub: prices ? t(`${money(sf.valueEur / 1000, lang)} still to commit at list price`) : t(PRICES_HIDDEN),
           chips: sf.lines.map((l) => toOrderText(l.ref, l.need, t, lang)),
         }
       : null,

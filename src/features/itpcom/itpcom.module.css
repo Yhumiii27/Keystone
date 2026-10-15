@@ -11,6 +11,13 @@
 .num400 { font-variant-numeric: tabular-nums; color: var(--color-neutral-400); }
 .idCell { font-variant-numeric: tabular-nums; color: var(--color-neutral-400); width: 52px; }
 .name { text-wrap: pretty; min-width: 220px; }
+/* R-112: recorded result line, comment, Vigie NCR tags / report link under the inspection name */
+.resultLine { display: block; margin-top: 2px; font-size: 11.5px; color: var(--color-neutral-400); }
+.resultComment { display: block; margin-top: 2px; font-size: 11.5px; color: var(--color-neutral-300); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ncrLinks { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+.ncrTag { display: inline-flex; align-items: center; gap: 4px; text-decoration: none; }
+.reportNcr { font-size: 11.5px; padding: 2px 6px; display: inline-flex; align-items: center; gap: 4px; }
+.rowActions { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
 /* tags 10.5px (out-ranks the DS .tag 11px, as the prototype's inline style) */
 :global(.tag).small { font-size: 10.5px; }
 .ref { font-size: 11.5px; color: var(--color-neutral-400); max-width: 200px; }

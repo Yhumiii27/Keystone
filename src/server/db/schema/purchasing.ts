@@ -6,6 +6,7 @@ import { date, integer, pgTable, text, timestamp, unique, uuid, type AnyPgColumn
 import type { AwardRule, Incoterm, PoOrigin, PoStatus, ReceiptAttachmentKind, ReceiptStatus, RfqStatus, SupplierGrade, SupplierInvoiceStatus } from '../codes';
 import { eur, id, num, timestamps } from './_common';
 import { parts } from './catalogue';
+import { storedFiles } from './files';
 import { persons } from './organisation';
 import { activities } from './planning';
 import { projects } from './portfolio';
@@ -86,12 +87,21 @@ export const purchaseOrders = pgTable('purchase_orders', {
   neededForActivityId: uuid('needed_for_activity_id').references(() => activities.id, { onDelete: 'set null' }),
   /** "Site gate 2 · DAP · Net 30" (drawer "Delivery / terms"). */
   deliveryTerms: text('delivery_terms').notNull(),
+  /** C-9 (R-075): currency of the order (EUR or the project currency); the line prices (`unit_price_eur`) are in it. */
+  currency: text('currency').notNull().default('EUR'),
   createdByPersonId: uuid('created_by_person_id').references(() => persons.id),
   submittedByPersonId: uuid('submitted_by_person_id').references(() => persons.id),
   submittedAt: timestamp('submitted_at', { withTimezone: true }),
   /** Approver of "Approve & order" (or the rejecter when cancelled from the approval). */
   decidedByPersonId: uuid('decided_by_person_id').references(() => persons.id),
   decidedAt: timestamp('decided_at', { withTimezone: true }),
+  /**
+   * R-095 (SC-3a, P-5c): why a Keystone-drafted order was cancelled before it was placed — a Draft cancelled, an order
+   * withdrawn from approval, or rejected in My approvals — by whom and when. Null for the seed's cancelled orders.
+   */
+  cancelReason: text('cancel_reason'),
+  cancelledByPersonId: uuid('cancelled_by_person_id').references(() => persons.id),
+  cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
   /** Sage X3 order reference once pushed. */
   x3Ref: text('x3_ref'),
   /** Order of the project's list (genPOs order; new orders appended). */
@@ -172,6 +182,8 @@ export const receiptAttachments = pgTable('receipt_attachments', {
   kind: text('kind').$type<ReceiptAttachmentKind>().notNull(),
   fileName: text('file_name'),
   storageRef: text('storage_ref'),
+  /** Photo stored by Keystone (R-126, SC-4a); null for the seed's counted photos and the delivery-note names. */
+  fileId: uuid('file_id').references(() => storedFiles.id, { onDelete: 'set null' }),
   addedByPersonId: uuid('added_by_person_id').references(() => persons.id),
   position: integer('position').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -191,8 +203,10 @@ export const supplierInvoices = pgTable('supplier_invoices', {
   poId: uuid('po_id').references(() => purchaseOrders.id, { onDelete: 'set null' }),
   /** Null = no goods receipt yet. */
   receiptId: uuid('receipt_id').references(() => goodsReceipts.id, { onDelete: 'set null' }),
-  /** Amount invoiced, €. */
+  /** Amount invoiced, in `currency` (€ unless stated). */
   amountEur: eur('amount_eur').notNull(),
+  /** C-9 (R-075): currency of the invoice as received from Sage X3 (amounts of this row are in it). */
+  currency: text('currency').notNull().default('EUR'),
   /** Order amount the match compares with (`poAmt`; 0 when no PO). */
   poAmountEur: eur('po_amount_eur').notNull(),
   /** Value of the goods accepted at receipt (`grAmt`). */

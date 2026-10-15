@@ -4,7 +4,8 @@
 // Server Functions and the tests share it.
 import type { FormDef } from '@/components/app/form-def';
 import type { Lang, T } from '@/i18n/translate';
-import { PART_UNITS, partFamily, type PartFamily, type PartUnit } from '@/server/db/codes';
+import { EXPORT_CHOICES, exportChoiceOf } from '@/domain/parts';
+import { PART_UNITS, exportControl, partFamily, type ExportControl, type PartFamily, type PartUnit } from '@/server/db/codes';
 import { formLabelT } from './i18n';
 
 /** AF_RESULT.plm. */
@@ -37,8 +38,35 @@ export function registerEquivalentFormDef(candidates: readonly { ref: string; na
   };
 }
 
+/**
+ * R-102 "Complete the record" (part drawer): customs code or an explicit "Not applicable", export restriction confirmed (None,
+ * or a family with its text), lead time in weeks, manufacturer reference — prefilled with the part's values. Parsed by
+ * `parsePartQualification` (src/domain/parts.ts).
+ */
+export function partQualificationFormDef(p: {
+  hsCode: string | null; hsNotApplicable: boolean; exportRestriction: string | null; exportReviewed: boolean; exportControl: ExportControl | null;
+  leadWeeks: number | null; manufacturerRef: string | null;
+}): FormDef {
+  return {
+    title: 'Complete the record',
+    kind: 'create',
+    submit: 'Save the record',
+    fields: [
+      { id: 'hsMode', label: 'Customs (HS) code', type: 'select', options: [{ value: 'code', label: 'Code below' }, { value: 'na', label: 'Not applicable' }], defaultValue: p.hsNotApplicable ? 'na' : 'code' },
+      { id: 'hs', label: 'HS code', type: 'text', defaultValue: p.hsCode ?? '', placeholder: '8504.40' },
+      {
+        id: 'export', label: 'Export restriction', type: 'select', defaultValue: exportChoiceOf(p),
+        options: EXPORT_CHOICES.map((c) => ({ value: c, label: c === 'unconfirmed' ? 'Not confirmed yet' : c === 'none' ? 'None' : exportControl.label(c) })),
+      },
+      { id: 'restriction', label: 'Restriction (text)', type: 'textarea', defaultValue: p.exportRestriction ?? '' },
+      { id: 'lead', label: 'Lead time (weeks)', type: 'number', defaultValue: p.leadWeeks == null ? '' : String(p.leadWeeks) },
+      { id: 'mfrRef', label: 'Manufacturer ref.', type: 'text', defaultValue: p.manufacturerRef ?? '' },
+    ],
+  };
+}
+
 /** Selects whose option labels are codes' English labels (translated); the others (units, part refs) stay as they are. */
-const CODE_SELECTS = new Set(['family']);
+const CODE_SELECTS = new Set(['family', 'hsMode', 'export']);
 
 /** Translates title, submit, labels and the code options of a definition (form-specific fixes in `formLabelT`). */
 export function localizePlmForm(def: FormDef, t: T, lang: Lang): FormDef {

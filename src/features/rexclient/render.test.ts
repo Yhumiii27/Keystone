@@ -10,6 +10,7 @@ import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { decideChangeStep } from '@/server/dal/changes';
 import { ClientView, type ClientCapabilities } from './client-view';
 import { recordVerb } from './i18n';
 import { RexView } from './rex-view';
@@ -63,21 +64,27 @@ describe('client portal render', () => {
   it('Progress & milestones: tiles, Display segments, bars, milestones', async () => {
     const m = await client('HLT-026', 'progress', 'en', CLIENT);
     const x = text(m);
-    for (const s of ['Progress', '64%', 'Planned 71% by today', 'Forecast handover', '14 Jan 2027', 'Contract date 18 Dec 2026', '2 of 6', 'Awaiting your decision', 'Open issues',
+    // Delivery 7 (R-073, C-2a): progress and planned value computed from the activities and BL1 (64 % / 71 % → 63 % / 76 %).
+    for (const s of ['Progress', '63%', 'Planned 76% by today', 'Forecast handover', '14 Jan 2027', 'Contract date 18 Dec 2026', '2 of 6', 'Awaiting your decision', 'Open issues',
       'Display', 'Progress & milestones', 'Progress to date', 'Cumulative % complete · planned vs actual', 'Milestones', 'Contract 15 Mar · Forecast 1 Apr', 'Handover'])
       expect(x).toContain(s);
-    expect(m.match(/height:71.3%/g)?.length).toBe(1);
+    expect(m.match(/height:76.3%/g)?.length).toBe(1);
     expect(m).toContain('href="/projects/HLT-026/client?tab=decisions"');
   });
 
   it('Decisions: buttons for the client only', async () => {
-    const c = await client('HLT-026', 'decisions', 'en', CLIENT);
-    expect(text(c)).toContain('Budget · Schedule · +€85k on contract · -12 d on handover');
+    // Deviation P-6b (delivery 8, R-069): CR-008 reaches the client once the portfolio director approved it.
+    let c = await client('HLT-026', 'decisions', 'en', CLIENT);
+    expect(text(c)).not.toContain('Budget · Schedule · +€85k on contract · -12 d on handover');
     expect(c.match(/>Accept \(PV\)</g)?.length).toBe(2);
-    expect(c.match(/>Reject</g)?.length).toBe(3);
+    expect(c.match(/>Reject</g)?.length).toBe(2);
     const d = await client('HLT-026', 'decisions', 'en', DIRECTOR);
     expect(d).not.toContain('>Reject<');
     expect(text(d)).toContain('Waiting for your decision');
+    await decideChangeStep('HLT-026', 'CR-008', 'director', 'ok', 'Marie Lefebvre');
+    c = await client('HLT-026', 'decisions', 'en', CLIENT);
+    expect(text(c)).toContain('Budget · Schedule · +€85k on contract · -12 d on handover');
+    expect(c.match(/>Reject</g)?.length).toBe(3);
   });
 
   it('Invoices: contract plan, summary, statement button', async () => {
@@ -123,5 +130,15 @@ describe('client portal render', () => {
     expect(x).toContain('No schedule recorded for this project');
     expect(x).toContain('No milestone recorded for this project');
     expect(text(await client('EWA-051', 'decisions', 'en', NONE))).toContain('Nothing waiting for you');
+  });
+
+  it('"Schedule" tab (S-9a): read-only summary Gantt and milestones, the Gantt PDF, no owners; empty state without a schedule', async () => {
+    const m = await client('HLT-026', 'planning', 'fr', NONE);
+    const x = text(m);
+    for (const s of ['Planning — référence vs prévision', 'Fin prévisionnelle', 'Lot de travaux', 'Jalons', 'Télécharger le PDF']) expect(x).toContain(s);
+    expect(x).not.toContain('R. Aubert');
+    // Only the export button: no edit control on this tab.
+    expect(m.match(/<button/g)?.length).toBe(1);
+    expect(text(await client('EWA-051', 'planning', 'en', NONE))).toContain('No schedule recorded for this project');
   });
 });

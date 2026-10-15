@@ -3,9 +3,10 @@
 // activity drawer's calendar override, relationships and to-dos. Each one re-checks the viewer's rights on the server
 // (src/features/plan/rights.ts), validates the untrusted input, writes through the DAL (which audits) and revalidates.
 import { revalidatePath } from 'next/cache';
+import { BL1_TICKED, canSnapshotFreely } from '@/domain/baseline-policy';
 import { longDateText } from '@/domain/schedule-rollup';
 import { addActivityTodo, listActivityTodos, removeActivityTodo, setActivityTodoDone } from '@/server/dal/activity-todos';
-import { createBaselineSnapshot, listProjectBaselines } from '@/server/dal/baselines';
+import { BaselinePolicyError, createBaselineSnapshot, listProjectBaselines } from '@/server/dal/baselines';
 import { setActivityCalendar, setProjectCalendar } from '@/server/dal/calendars';
 import { addActivityLink, getPlanData, getPlanSettings, removeActivityLink } from '@/server/dal/plan';
 import { getProject } from '@/server/dal/projects';
@@ -14,10 +15,11 @@ import { isLinkType, type LinkType } from '@/server/db/codes';
 import { getProjectContext, type ProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import {
-  activityCalendarText, baselineSetText, baselineShownText, calendarSetText, cycleText, linkAddedText, linkCycleText, linkRemovedText, rescheduledText,
-  todoAddedText, todoRemovedText,
+  activityCalendarText, appliedChangesText, baselineSetText, baselineShownText, calendarSetText, cycleText, linkAddedText, linkCycleText, linkRemovedText,
+  rescheduledText, todoAddedText, todoRemovedText,
 } from './i18n';
-import { canEditPlan, canSchedulePlan } from './rights';
+import { canEditTask } from '@/features/mywork/permissions';
+import { canEditPlan, canEditStructure, canSchedulePlan } from './rights';
 
 export type PlanToastResult = { ok: true; toast?: string } | { error: string };
 export type PlanDialogResult = { toast?: string; error?: string };
@@ -31,15 +33,23 @@ const COMMENT_MAX = 2000;
 const TODO_MAX = 200;
 const LAG_MAX = 999;
 
-/** Project context after the right check: `schedule` = Reschedule / baselines / project calendar, `edit` = activity edits. */
-async function allowed(code: unknown, right: 'schedule' | 'edit'): Promise<{ ctx: ProjectContext } | { error: string }> {
+/**
+ * Project context after the right check: `schedule` = Reschedule / baselines / project calendar; `structure` = relationships, the
+ * activity calendar and the activity's to-dos (P-9a: the project's PMs and the director); `edit` = the Plan is editable at all
+ * (ticking a to-do: the caller also checks its assignee).
+ */
+async function allowed(code: unknown, right: 'schedule' | 'structure' | 'edit'): Promise<{ ctx: ProjectContext } | { error: string }> {
   const { t } = await getI18n();
   if (typeof code !== 'string' || !code || !(await getProject(code))) return { error: t('Invalid request') };
   const ctx = await getProjectContext(code, 'plan');
-  if (!(right === 'schedule' ? canSchedulePlan(ctx) : canEditPlan(ctx)))
-    return { error: t(right === 'schedule' ? 'Only the project manager or the director can do this' : 'This plan is read-only for you') };
+  if (!canEditPlan(ctx)) return { error: t('This plan is read-only for you') };
+  if (right === 'schedule' && !canSchedulePlan(ctx)) return { error: t('Only the project manager or the director can do this') };
+  if (right === 'structure' && !canEditStructure(ctx)) return { error: t(STRUCTURE_ONLY) };
   return { ctx };
 }
+
+const STRUCTURE_ONLY = 'Only the project manager or the director can change the plan structure — you can update the progress of your own activities';
+
 
 /** Project screens (Plan, Schedule, Change control…) — and, for schedule-wide changes, Home and the portfolio. */
 const refresh = (code: string, scope: 'project' | 'all' = 'project') => (scope === 'all' ? revalidatePath('/', 'layout') : revalidatePath(`/projects/${code}`, 'layout'));
@@ -58,23 +68,42 @@ export async function rescheduleAction(code: string): Promise<PlanToastResult> {
     return { error: `${t('The schedule data is invalid')} · ${res.issues?.[0] ?? ''}` };
   }
   refresh(r.ctx.project.code, 'all');
-  return { ok: true, toast: rescheduledText(t(longDateText(res.dataDate)), t(longDateText(res.finishDate)), res.changed.length, lang) };
+  const toast = rescheduledText(t(longDateText(res.dataDate)), t(longDateText(res.finishDate)), res.changed.length, lang);
+  // NEW-D2-2 (R-062): the new durations of approved change requests applied by this run.
+  return { ok: true, toast: res.appliedChanges?.length ? `${toast} · ${appliedChangesText(res.appliedChanges.map((c) => c.cr), lang)}` : toast };
 }
 
 // ── Baselines (S-3) ───────────────────────────────────────────────────────────────────────────────────────────────
 
-/** "Set baseline" (name, comment): snapshots every activity into BLn, proposed (it becomes current through a change request). */
+/**
+ * "Set baseline" (name, comment) while the project is below BL1 (src/domain/baseline-policy.ts, S-3 + L-2): snapshots every
+ * activity into BL0 / BL1, current at once. From BL2 on it is refused: a new baseline goes through a change request (the Plan
+ * button links to the Change control form instead).
+ */
 export async function setBaselineAction(code: string, values: Record<string, string>): Promise<PlanDialogResult> {
   const r = await allowed(code, 'schedule');
   if ('error' in r) return r;
   const { t, lang } = await getI18n();
+  if (!canSnapshotFreely((await listProjectBaselines(r.ctx.project.code)).map((b) => b.code))) return { error: t('After BL1, a new baseline goes through a change request') };
   const name = str(values?.name).trim();
   const comment = str(values?.comment).trim();
   if (name.length > NAME_MAX) return { error: t('Baseline name is too long') };
   if (comment.length > COMMENT_MAX) return { error: t('Comment is too long') };
-  const res = await createBaselineSnapshot(r.ctx.project.code, { actorName: r.ctx.viewer.name, name: name || undefined, comment: comment || null, source: 'snapshot' });
+  let res: Awaited<ReturnType<typeof createBaselineSnapshot>>;
+  try {
+    // The S-3 rule is checked again inside the snapshot transaction (R-010): two "Set baseline" sent at BL0 at the same time
+    // create BL1 once; the second is refused instead of creating BL2 without a change request.
+    res = await createBaselineSnapshot(r.ctx.project.code, {
+      actorName: r.ctx.viewer.name, name: name || undefined, comment: comment || null, source: 'snapshot', makeCurrent: true, enforcePolicy: true,
+    });
+  } catch (e) {
+    if (e instanceof BaselinePolicyError) return { error: t('After BL1, a new baseline goes through a change request') };
+    throw e;
+  }
   refresh(r.ctx.project.code);
-  return { toast: baselineSetText(res.code, res.activityCount, lang) };
+  // R-054 (L-2 "a"): BL1 ticked the APD deliverable « Planning BL1 posé » — said only when the tick changed.
+  const toast = baselineSetText(res.code, res.activityCount, lang);
+  return { toast: res.bl1Ticked ? `${toast} · ${t(BL1_TICKED)}` : toast };
 }
 
 /** Baseline chip: shows another baseline (variance columns, Gantt baseline bars). */
@@ -110,7 +139,7 @@ export async function setProjectCalendarAction(code: string, calendarCode: strin
 
 /** Drawer "Calendar": per-activity override ('' = back to the project calendar). */
 export async function setActivityCalendarAction(code: string, activity: string, calendarCode: string): Promise<PlanToastResult> {
-  const r = await allowed(code, 'edit');
+  const r = await allowed(code, 'structure');
   if ('error' in r) return r;
   const { t, lang } = await getI18n();
   const act = str(activity).toUpperCase();
@@ -132,7 +161,7 @@ export async function setActivityCalendarAction(code: string, activity: string, 
  * successor; type FS/SS/FF/SF, lag in working days (negative = lead). No self link, duplicate or loop.
  */
 export async function addRelationshipAction(code: string, activity: string, values: Record<string, string>): Promise<PlanDialogResult> {
-  const r = await allowed(code, 'edit');
+  const r = await allowed(code, 'structure');
   if ('error' in r) return r;
   const { t, lang } = await getI18n();
   const act = str(activity).toUpperCase();
@@ -161,7 +190,7 @@ export async function addRelationshipAction(code: string, activity: string, valu
 
 /** Drawer link removal. */
 export async function removeRelationshipAction(code: string, pred: string, succ: string): Promise<PlanToastResult> {
-  const r = await allowed(code, 'edit');
+  const r = await allowed(code, 'structure');
   if ('error' in r) return r;
   const { t, lang } = await getI18n();
   const p = str(pred).toUpperCase();
@@ -178,7 +207,7 @@ export async function removeRelationshipAction(code: string, pred: string, succ:
 
 /** Drawer composer "Add a to-do…": a task on the activity, assigned to its owner, due at its finish. */
 export async function addTodoAction(code: string, activity: string, title: string): Promise<PlanToastResult> {
-  const r = await allowed(code, 'edit');
+  const r = await allowed(code, 'structure');
   if ('error' in r) return r;
   const { t, lang } = await getI18n();
   const act = str(activity).toUpperCase();
@@ -205,6 +234,8 @@ export async function toggleTodoAction(code: string, activity: string, number: s
   const { t } = await getI18n();
   const todo = await todoOfActivity(r.ctx.project.code, str(activity), str(number));
   if (!todo) return { error: t('Invalid request') };
+  // Ticking someone's task follows My work (its assignee or the director), plus the project's PM who plans the activity.
+  if (!canSchedulePlan(r.ctx) && !canEditTask(r.ctx.viewer, todo.assignee ?? '', false)) return { error: t('Only the assignee or the project manager can change this to-do') };
   await setActivityTodoDone(r.ctx.project.code, todo.number, done === true, r.ctx.viewer.name);
   refresh(r.ctx.project.code, 'all');
   return { ok: true };
@@ -212,7 +243,7 @@ export async function toggleTodoAction(code: string, activity: string, number: s
 
 /** "Remove" on a to-do created here without logged time (other tasks are managed in My work). */
 export async function removeTodoAction(code: string, activity: string, number: string): Promise<PlanToastResult> {
-  const r = await allowed(code, 'edit');
+  const r = await allowed(code, 'structure');
   if ('error' in r) return r;
   const { t, lang } = await getI18n();
   const todo = await todoOfActivity(r.ctx.project.code, str(activity), str(number));

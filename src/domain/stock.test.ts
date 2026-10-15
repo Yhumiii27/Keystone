@@ -8,9 +8,9 @@ import { stampText, stockMoveInstant, stockMovementType, stockOperation, type Lo
 import PROTO from '@/server/prototype/prototype-data.json';
 import GOLDEN from '@/features/stock/stock.golden.json';
 import {
-  STOCK_OPS, availableQty, filterStockLines, isBelowMin, lineValueEur, locationChipCounts, locationShortLabel, matchesStockQuery, parseLocationFilter,
-  parseMovementInput, pinnedText, planStockMovement, planX3Import, quantityLabel, reservedText, scrapWarningText, stockBadge, stockFigures,
-  transferTargetOptions, type MovementRequest, type StockLineFacts, type X3PositionState,
+  PROTOTYPE_STOCK_OPS, STOCK_OPS, availableQty, filterStockLines, isActivityCode, isBelowMin, lineStockOps, lineValueEur, locationChipCounts, locationShortLabel,
+  matchesStockQuery, movementValueEur, parseLocationFilter, parseMovementInput, pinnedText, planStockMovement, planX3Import, quantityLabel, reservedForOthers,
+  reservedText, scrapWarningText, stockBadge, stockFigures, transferTargetOptions, type MovementRequest, type StockLineFacts, type X3PositionState,
 } from './stock';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -58,6 +58,12 @@ function apply(stock: Line[], moves: any[], row: number, req: MovementRequest, w
 }
 const moves0 = () => (P.MOVES0 as any[]).map(([when, type, ref, qty, where, who]) => ({ when, type, ref, qty, where, who }));
 const HLT = { code: 'HLT-026', short: 'HLT' };
+/**
+ * SC-5a = a (Delivery 7, R-098): an issue names its activity. The prototype's issues read "→ HLT activity"; the same
+ * issues named to A1250 read "→ A1250 Steel erection" — every other value of the golden is unchanged.
+ */
+const ACT = { code: 'A1250', name: 'Steel erection' };
+const withAct = (g: any): any => JSON.parse(JSON.stringify(g).replaceAll(' → HLT activity', ' → A1250 Steel erection'));
 
 /** Row cells as the prototype renders them (stockRows), from the model. */
 const cells = (l: Line) => ({
@@ -119,8 +125,13 @@ describe('stock lines, KPIs, chips and filters (stockRows / stockKpis / stockLoc
 
 describe('stock-line drawer (stockSel 4488–4490)', () => {
   it('operation labels, quantity label per operation, reserved text', () => {
-    expect(STOCK_OPS.map((o) => stockOperation.label(o))).toEqual(G.en.drawerOps.adjust.opSeg.map((o: any) => o.label));
-    for (const op of STOCK_OPS) expect(quantityLabel(op)).toBe(G.en.drawerOps[op].qtyLabel);
+    expect(PROTOTYPE_STOCK_OPS.map((o) => stockOperation.label(o))).toEqual(G.en.drawerOps.adjust.opSeg.map((o: any) => o.label));
+    for (const op of PROTOTYPE_STOCK_OPS) expect(quantityLabel(op)).toBe(G.en.drawerOps[op].qtyLabel);
+    // R-099 (NEW-D4-2 / SC-5b): "Release reservation" after "Reserve for project", offered on a reserved line only.
+    expect(STOCK_OPS.map((o) => stockOperation.label(o))).toEqual(['Adjust (count)', 'Transfer', 'Reserve for project', 'Release reservation', 'Issue to activity', 'Return to stock', 'Scrap / rework']);
+    expect(lineStockOps(0)).toEqual(PROTOTYPE_STOCK_OPS);
+    expect(lineStockOps(4)).toEqual(STOCK_OPS);
+    expect(quantityLabel('release')).toBe('Quantity');
     expect(reservedText(4, 'HLT')).toBe('4 · HLT');
     expect(reservedText(0, 'HLT')).toBe('—');
   });
@@ -167,15 +178,15 @@ describe('movements (applyOp 4479–4487)', () => {
     check(G.ops.transferExisting, run([[4, { op: 'transfer', qty: 3, target: 'Atelier mécanique — Lyon' }]]));
     check(G.ops.transferNew, run([[9, { op: 'transfer', qty: 20, target: 'Magasin chantier — Le Havre' }]]));
     check(G.ops.reserve, run([[9, { op: 'reserve', qty: 30, project: HLT }]]));
-    check(G.ops.issue, run([[6, { op: 'issue', qty: 10, project: HLT }]]));
+    check(withAct(G.ops.issue), run([[6, { op: 'issue', qty: 10, project: HLT, activity: ACT }]]));
     check(G.ops.return, run([[7, { op: 'return', qty: 5, project: HLT }]]));
     check(G.ops.scrap, run([[10, { op: 'scrap', qty: 5 }]]));
   });
 
   it('a sequence of six movements (stamps 16:15 → 16:20, the viewer as author)', () => {
-    check(G.ops.sequence, run([
+    check(withAct(G.ops.sequence), run([
       [0, { op: 'adjust', qty: 7 }], [4, { op: 'transfer', qty: 2, target: 'Magasin chantier — Marseille' }], [6, { op: 'reserve', qty: 4, project: HLT }],
-      [6, { op: 'issue', qty: 6, project: HLT }], [17, { op: 'return', qty: 3, project: HLT }], [12, { op: 'scrap', qty: 1 }],
+      [6, { op: 'issue', qty: 6, project: HLT, activity: ACT }], [17, { op: 'return', qty: 3, project: HLT }], [12, { op: 'scrap', qty: 1 }],
     ]));
   });
 
@@ -202,11 +213,11 @@ describe('movements (applyOp 4479–4487)', () => {
     it('no movement takes more than the quantity on hand (the prototype went to −3)', () => {
       expect(G.ops.issueBeyondOnHand.rows[0].onHand).toBe('-3');
       const stock = seed();
-      expect(apply(stock, [], 0, { op: 'issue', qty: 9, project: HLT })).toBe('Only 6 on hand at Entrepôt central — Lyon');
+      expect(apply(stock, [], 0, { op: 'issue', qty: 9, project: HLT, activity: ACT })).toBe('Only 6 on hand at Entrepôt central — Lyon');
       expect(apply(stock, [], 0, { op: 'scrap', qty: 7 })).toBe('Only 6 on hand at Entrepôt central — Lyon');
       expect(apply(stock, [], 0, { op: 'transfer', qty: 7, target: 'Atelier mécanique — Lyon' })).toBe('Only 6 on hand at Entrepôt central — Lyon');
       expect(apply(stock, [], 0, { op: 'reserve', qty: 3, project: HLT })).toBe('Only 2 available at Entrepôt central — Lyon');
-      expect(apply(stock, [], 0, { op: 'issue', qty: 6, project: HLT })).toBeNull();
+      expect(apply(stock, [], 0, { op: 'issue', qty: 6, project: HLT, activity: ACT })).toBeNull();
       expect([stock[0].onHand, stock[0].reserved, stock[0].reservedFor]).toEqual([0, 0, null]);
     });
 
@@ -218,14 +229,59 @@ describe('movements (applyOp 4479–4487)', () => {
       expect(cells(stock[13]).reserved).toBe('125 · MSR');
     });
 
-    it('an issue consumes only the reservation of its own project (the prototype took MSR’s for HLT)', () => {
+    it('an issue never takes another project’s reservation (the prototype took MSR’s for HLT) — R-099, NEW-D4-2 / SC-5b', () => {
       expect(G.ops.issueOtherProject.rows[13].reserved).toBe('110 · MSR');
       const stock = seed();
-      expect(apply(stock, [], 13, { op: 'issue', qty: 10, project: HLT })).toBeNull();
+      // SG-BRK-SS2 140 on hand, 120 reserved for MSR: HLT may take the 20 free units only.
+      expect(apply(stock, [], 13, { op: 'issue', qty: 10, project: HLT, activity: ACT })).toBeNull();
       expect([stock[13].onHand, cells(stock[13]).reserved]).toEqual([130, '120 · MSR']);
-      // Issued beyond the free quantity, the other project's reservation is capped by what remains.
-      expect(apply(stock, [], 13, { op: 'issue', qty: 120, project: HLT })).toBeNull();
-      expect([stock[13].onHand, cells(stock[13]).reserved]).toEqual([10, '10 · MSR']);
+      expect(apply(stock, [], 13, { op: 'issue', qty: 11, project: HLT, activity: ACT })).toBe('120 reserved for MSR-012 — its project manager must release them first');
+      expect(apply(stock, [], 13, { op: 'scrap', qty: 11 })).toBe('120 reserved for MSR-012 — its project manager must release them first');
+      expect(apply(stock, [], 13, { op: 'issue', qty: 10, project: HLT, activity: ACT })).toBeNull();
+      expect([stock[13].onHand, cells(stock[13]).reserved]).toEqual([120, '120 · MSR']);
+      // The director's override takes reserved units: MSR's reservation drops by what is taken (recorded in the plan).
+      const pos = { location: 'Atelier mécanique — Lyon', onHand: 120, reserved: 120, reservedFor: 'MSR-012' };
+      const r = planStockMovement(pos, { op: 'issue', qty: 110, project: HLT, activity: ACT, override: true }, LOC_NAMES);
+      expect(r.ok && [r.value.onHand, r.value.reserved, r.value.reservedFor, r.value.overrideTaken, r.value.overrideFrom]).toEqual([10, 10, 'MSR-012', 110, 'MSR-012']);
+      const sc = planStockMovement(pos, { op: 'scrap', qty: 120, override: true }, LOC_NAMES);
+      expect(sc.ok && [sc.value.onHand, sc.value.reserved, sc.value.reservedFor, sc.value.overrideTaken]).toEqual([0, 0, null, 120]);
+      // The reserving project's own issue consumes its reservation (MSR on its line), no override needed.
+      const own = planStockMovement(pos, { op: 'issue', qty: 30, project: { code: 'MSR-012', short: 'MSR' }, activity: ACT }, LOC_NAMES);
+      expect(own.ok && [own.value.onHand, own.value.reserved, own.value.overrideTaken]).toEqual([90, 90, 0]);
+    });
+
+    it('an issue names its activity (SC-5a, R-098); a return may credit one', () => {
+      const pos = { location: 'Entrepôt central — Lyon', onHand: 6, reserved: 4, reservedFor: 'HLT-026' };
+      expect(planStockMovement(pos, { op: 'issue', qty: 1, project: HLT }, LOC_NAMES)).toEqual({ ok: false, error: 'Choose the activity the parts are issued to' });
+      const r = planStockMovement(pos, { op: 'issue', qty: 2, project: HLT, activity: ACT }, LOC_NAMES);
+      expect(r.ok && [r.value.whereText, r.value.onHand, r.value.reserved, r.value.projectCode, r.value.overrideTaken]).toEqual(['Entrepôt central — Lyon → A1250 Steel erection', 4, 2, 'HLT-026', 0]);
+      const back = planStockMovement(pos, { op: 'return', qty: 2, project: HLT, activity: ACT }, LOC_NAMES);
+      expect(back.ok && [back.value.whereText, back.value.onHand]).toEqual(['HLT A1250 → Entrepôt central — Lyon', 8]);
+      expect(movementValueEur(6, 412.5)).toBe(2475);
+      expect(movementValueEur(3, 0.333)).toBe(1);
+      expect(movementValueEur(7, 1.115)).toBe(7.81);
+      expect([isActivityCode('A1250'), isActivityCode('WP-1.4_a'), isActivityCode(''), isActivityCode('A 1'), isActivityCode('x'.repeat(41)), isActivityCode(12)]).toEqual([true, true, false, false, false, false]);
+    });
+
+    it('"Release reservation" gives units back to the free stock — the reserving project only (R-099)', () => {
+      const pos = { location: 'Atelier mécanique — Lyon', onHand: 140, reserved: 120, reservedFor: 'MSR-012' };
+      const MSR = { code: 'MSR-012', short: 'MSR' };
+      const r = planStockMovement(pos, { op: 'release', qty: 50, project: MSR }, LOC_NAMES);
+      expect(r.ok && [r.value.onHand, r.value.reserved, r.value.reservedFor, r.value.projectCode, r.value.whereText]).toEqual([140, 70, 'MSR-012', 'MSR-012', 'Atelier mécanique — Lyon · MSR released']);
+      const all = planStockMovement(pos, { op: 'release', qty: 120, project: MSR }, LOC_NAMES);
+      expect(all.ok && [all.value.reserved, all.value.reservedFor]).toEqual([0, null]);
+      expect(planStockMovement(pos, { op: 'release', qty: 121, project: MSR }, LOC_NAMES)).toEqual({ ok: false, error: 'Only 120 reserved at Atelier mécanique — Lyon' });
+      expect(planStockMovement(pos, { op: 'release', qty: 1, project: HLT }, LOC_NAMES)).toEqual({ ok: false, error: 'This line holds no reservation for this project' });
+      expect(planStockMovement(pos, { op: 'release', qty: 1 }, LOC_NAMES)).toEqual({ ok: false, error: 'A project is required' });
+      expect(planStockMovement({ ...pos, reserved: 0, reservedFor: null }, { op: 'release', qty: 1, project: MSR }, LOC_NAMES)).toEqual({ ok: false, error: 'This line holds no reservation for this project' });
+    });
+
+    it('units held for another project: none for its own project or an unowned (X3) reservation', () => {
+      expect(reservedForOthers({ reserved: 120, reservedFor: 'MSR-012' }, 'HLT-026')).toBe(120);
+      expect(reservedForOthers({ reserved: 120, reservedFor: 'MSR-012' }, 'MSR-012')).toBe(0);
+      expect(reservedForOthers({ reserved: 120, reservedFor: 'MSR-012' }, null)).toBe(120);
+      expect(reservedForOthers({ reserved: 5, reservedFor: null }, null)).toBe(0);
+      expect(reservedForOthers({ reserved: 0, reservedFor: 'MSR-012' }, 'HLT-026')).toBe(0);
     });
 
     it('a transfer needs another configured destination (the prototype silently did nothing)', () => {
@@ -268,7 +324,7 @@ describe('movements (applyOp 4479–4487)', () => {
 
     it('reserve, issue and return need a project; quantities are whole and positive', () => {
       const pos = { location: 'Entrepôt central — Lyon', onHand: 6, reserved: 4, reservedFor: 'HLT-026' };
-      for (const op of ['reserve', 'issue', 'return'] as const) expect(planStockMovement(pos, { op, qty: 1 }, LOC_NAMES)).toEqual({ ok: false, error: 'A project is required' });
+      for (const op of ['reserve', 'release', 'issue', 'return'] as const) expect(planStockMovement(pos, { op, qty: 1 }, LOC_NAMES)).toEqual({ ok: false, error: 'A project is required' });
       for (const qty of [0, -1, 1.5, Number.NaN]) expect(planStockMovement(pos, { op: 'scrap', qty }, LOC_NAMES)).toEqual({ ok: false, error: 'Invalid quantity' });
       expect(planStockMovement(pos, { op: 'adjust', qty: -1 }, LOC_NAMES)).toEqual({ ok: false, error: 'Invalid quantity' });
       expect(planStockMovement(pos, { op: 'melt' as never, qty: 1 }, LOC_NAMES)).toEqual({ ok: false, error: 'Invalid movement' });

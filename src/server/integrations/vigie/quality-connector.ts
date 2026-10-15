@@ -10,9 +10,13 @@ import 'server-only';
 //   below are a proposal until Vigie publishes its API (OPEN QUESTION V-3).
 import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
+import { VIGIE_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
 import { vigieNcrs } from '@/server/db/schema';
-import { vigieApiUrl, vigieConnectorMode } from './config';
-import { markNcrDelivery, ncrProgressSyncStatus, readHseMirror, readNcrMirror, undeliveredNcrProgress, upsertHseMirror, upsertNcrMirror } from './quality-mirror';
+import { ncrsToAnnounce } from '@/domain/vigie-events';
+import { logError, logWarning } from '@/server/log';
+import { vigieApiUrl, vigieAuthHeaders, vigieConnectorMode } from './connection';
+import { notifyNewNcrs } from './notices';
+import { claimNcrDelivery, markNcrDelivery, ncrProgressSyncStatus, readHseMirror, readNcrMirror, undeliveredNcrProgress, upsertHseMirror, upsertNcrMirror } from './quality-mirror';
 import { recordNcrProgressEntry } from './quality-progress';
 import type { EcoProgressActor, NcrListFilter, NcrProgressInput, NcrProgressReceipt, VigieHseRecord, VigieNcrRecord, VigieQualityConnector } from './types';
 
@@ -54,11 +58,13 @@ export const mockQualityConnector: VigieQualityConnector = {
 
 const HTTP_TIMEOUT_MS = 5000;
 const REFRESH_EVERY_MS = 60_000;
-const g = globalThis as unknown as { __ksVigieQualityRefreshedAt?: number };
+// Per server process (R-010): concurrent reads share the refresh in flight (see eco-connector.ts).
+const g = globalThis as unknown as { __ksVigieQualityRefreshedAt?: number; __ksVigieQualityRefreshing?: Promise<void> };
 
 /** Forgets the last refresh time (tests). */
 export function resetVigieQualityRefreshThrottle(): void {
   g.__ksVigieQualityRefreshedAt = undefined;
+  g.__ksVigieQualityRefreshing = undefined;
 }
 
 async function vigieFetch(path: string, init?: RequestInit): Promise<Response> {
@@ -67,7 +73,7 @@ async function vigieFetch(path: string, init?: RequestInit): Promise<Response> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), HTTP_TIMEOUT_MS);
   try {
-    const res = await fetch(`${base}${path}`, { ...init, signal: ctrl.signal, headers: { 'content-type': 'application/json', accept: 'application/json', ...init?.headers } });
+    const res = await fetch(`${base}${path}`, { ...init, signal: ctrl.signal, headers: { 'content-type': 'application/json', accept: 'application/json', ...vigieAuthHeaders(), ...init?.headers } });
     if (!res.ok) throw new Error(`Vigie ${init?.method ?? 'GET'} ${path} → ${res.status}`);
     return res;
   } finally {
@@ -77,28 +83,44 @@ async function vigieFetch(path: string, init?: RequestInit): Promise<Response> {
 
 /** TODO(vigie): GET /api/ncrs?source=keystone (VigieNcrRecord[]) and GET /api/hse?source=keystone (VigieHseRecord[]). */
 async function refreshFromVigie(): Promise<number> {
+  if (!(await connectorEnabled(VIGIE_CONNECTOR_NAME))) return 0; // D-7a: disabled by IT — the local mirror is read
   const [ncrRes, hseRes] = await Promise.all([vigieFetch('/api/ncrs?source=keystone'), vigieFetch('/api/hse?source=keystone')]);
   const ncrs = (await ncrRes.json()) as VigieNcrRecord[];
   const hse = (await hseRes.json()) as VigieHseRecord[];
   if (!Array.isArray(ncrs) || !Array.isArray(hse)) throw new Error('Vigie: unexpected NCR / HSE payload');
   const db = await getDb();
   const at = new Date();
-  const n = await db.transaction(async (tx) => (await upsertNcrMirror(tx, ncrs, at, { prune: true })) + (await upsertHseMirror(tx, hse, at, { prune: true })));
+  // R-015 (X-6a, dormant until V-3): the NCRs the mirror did not hold, read in the same transaction as the refresh and
+  // returned from it (the callback may run twice, R-010); notified after the commit. The first refresh of an empty mirror is
+  // the baseline (nothing announced) and a closed NCR is never announced (`ncrsToAnnounce`).
+  const { n, raised } = await db.transaction(async (tx) => {
+    const before = await tx.select({ projectCode: vigieNcrs.projectCode, number: vigieNcrs.number }).from(vigieNcrs);
+    const count = (await upsertNcrMirror(tx, ncrs, at, { prune: true })) + (await upsertHseMirror(tx, hse, at, { prune: true }));
+    return { n: count, raised: ncrsToAnnounce(before, ncrs) };
+  });
   g.__ksVigieQualityRefreshedAt = Date.now();
+  if (raised.length) await notifyNewNcrs(raised).catch((e) => logError('Vigie NCR notices', e, { component: 'vigie' }));
   return n;
 }
 
 async function refreshIfStale(): Promise<void> {
   if (g.__ksVigieQualityRefreshedAt && Date.now() - g.__ksVigieQualityRefreshedAt < REFRESH_EVERY_MS) return;
-  await refreshFromVigie().catch((e) => console.warn('[vigie] NCR / HSE refresh failed, using the local mirror:', e instanceof Error ? e.message : e));
+  const running = (g.__ksVigieQualityRefreshing ??= refreshFromVigie().then(
+    () => undefined,
+    (e) => logWarning('Vigie NCR / HSE refresh (the local mirror is used)', e, { component: 'vigie' }),
+  ).finally(() => { g.__ksVigieQualityRefreshing = undefined; }));
+  await running;
 }
 
 /** TODO(vigie): POST /api/ncrs/:project/:number/progress — one outbox entry; Vigie answers { id }. */
 async function deliverOutbox(): Promise<{ delivered: number; failed: number; pending: number }> {
   const db = await getDb();
+  // D-7a: a connector IT disabled exchanges nothing; the entries stay pending until it is enabled again.
+  if (!(await connectorEnabled(VIGIE_CONNECTOR_NAME))) return { delivered: 0, failed: 0, pending: (await undeliveredNcrProgress(db)).length };
   let delivered = 0;
   let failed = 0;
   for (const e of await undeliveredNcrProgress(db)) {
+    if (!(await claimNcrDelivery(db, e.id))) continue; // another delivery is sending it (R-010)
     try {
       const res = await vigieFetch(`/api/ncrs/${encodeURIComponent(e.projectCode)}/${encodeURIComponent(e.ncrNumber)}/progress`, {
         method: 'POST',
@@ -148,4 +170,10 @@ export const httpQualityConnector: VigieQualityConnector = {
 /** The quality / HSE connector in use (http when VIGIE_API_URL is set, else the mock). */
 export function getVigieQualityConnector(): VigieQualityConnector {
   return vigieConnectorMode() === 'http' ? httpQualityConnector : mockQualityConnector;
+}
+
+/** Outbox redelivery of the worker (R-006, job "vigie-outbox"): the NCR progress not yet sent, as `redeliverEcoOutbox`. */
+export async function redeliverNcrOutbox(): Promise<{ mode: 'mock' | 'http'; delivered: number; failed: number; pending: number }> {
+  if (vigieConnectorMode() === 'http') return { mode: 'http', ...(await deliverOutbox()) };
+  return { mode: 'mock', delivered: 0, failed: 0, pending: (await undeliveredNcrProgress(await getDb())).length };
 }

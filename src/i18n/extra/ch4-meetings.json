@@ -62,5 +62,6 @@
   "Claude’s answer could not be read": "La réponse de Claude est illisible",
   "The transcript is too long for Claude": "La transcription est trop longue pour Claude",
   "Claude could not analyse the transcript": "Claude n’a pas pu analyser la transcription",
-  "local analysis used instead": "analyse locale utilisée à la place"
+  "local analysis used instead": "analyse locale utilisée à la place",
+  "Download the transcript": "Télécharger la transcription"
 }

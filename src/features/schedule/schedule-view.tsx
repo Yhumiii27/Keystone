@@ -14,6 +14,7 @@ import type { ScheduleView as ScheduleModel } from '@/domain/schedule-gantt';
 import { getI18n } from '@/server/session';
 import { slipText } from './i18n';
 import s from './schedule.module.css';
+import { dataText } from '@/i18n/data-text';
 
 export async function ScheduleView({ view, showBaseline = true }: { view: ScheduleModel; showBaseline?: boolean }) {
   const { t, lang } = await getI18n();
@@ -34,8 +35,8 @@ export async function ScheduleView({ view, showBaseline = true }: { view: Schedu
         {hasGantt ? (
           <ProjectGantt
             months={view.ganttMonths.map((m) => t(m))}
-            tasks={view.tasks.map((x) => ({ ...x, name: t(x.name), slipText: slipText(x.slipText, lang) }))}
-            milestones={view.milestones.map((m) => ({ name: t(m.name), bL: m.bL, fL: m.fL, done: m.done }))}
+            tasks={view.tasks.map((x) => ({ ...x, name: dataText(x.name, lang), slipText: slipText(x.slipText, lang) }))}
+            milestones={view.milestones.map((m) => ({ name: dataText(m.name, lang), bL: m.bL, fL: m.fL, done: m.done }))}
             todayL={view.todayL}
             showBaseline={showBaseline}
             labels={{ workPackage: t('Work package'), done: t('Done'), slip: t('Slip'), milestones: t('Milestones'), today: t('Today') }}
@@ -69,7 +70,7 @@ export async function ScheduleView({ view, showBaseline = true }: { view: Schedu
           {view.milestones.map((m, i) => (
             <div key={i} className={s.msRow}>
               <div className={s.msText}>
-                <span>{t(m.name)}</span>
+                <span>{dataText(m.name, lang)}</span>
                 <span className={s.msSub}>{`${t('Baseline')} ${t(m.baseDate)} ${t('· Forecast')} ${t(m.fcDate)}`}</span>
               </div>
               <span className={cx(s.msSlip, m.slipAlert && s.msSlipAlert)}>{slipText(m.slipText, lang)}</span>

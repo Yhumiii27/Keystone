@@ -27,7 +27,7 @@ import { getMachineType } from '@/server/dal/mtypes';
 import { listAudit } from '@/server/dal/notifications';
 import { getHealthThresholds, getSettings } from '@/server/dal/settings';
 import {
-  addConnectorAction, addSettingsEntryAction, createMachineTypeAction, removeRexReferenceAction, removeSettingsEntryAction, resetSettingsAction,
+  addSettingsEntryAction, createMachineTypeAction, removeRexReferenceAction, removeSettingsEntryAction, resetSettingsAction,
   setHealthThresholdAction, setMachineTypeCostCategoriesAction, setMachineTypeItpSystemsAction, setMachineTypePhasesAction, syncConnectorAction,
   updateMachineTypeAction,
 } from './actions';
@@ -46,15 +46,18 @@ beforeEach(() => {
 });
 
 describe('Settings Server Functions', () => {
-  it('refuses viewers outside the workspace (member, client), in their language', async () => {
-    for (const role of ['member', 'client'] as RoleKey[]) {
+  it('refuses viewers outside the workspace (member), in their language; the client is sent home (R-042, P-1)', async () => {
+    as('client');
+    await expect(addSettingsEntryAction('skills', 'Welding')).rejects.toThrow('NEXT_REDIRECT');
+    await expect(resetSettingsAction()).rejects.toThrow('NEXT_REDIRECT');
+    for (const role of ['member'] as RoleKey[]) {
       as(role);
       expect(await addSettingsEntryAction('skills', 'Welding')).toEqual({ error: 'Settings are read-only for you' });
       expect(await removeSettingsEntryAction('skills', 'structural')).toEqual({ error: 'Settings are read-only for you' });
       expect(await setHealthThresholdAction('risk', '0.95')).toEqual({ error: 'Settings are read-only for you' });
       expect(await resetSettingsAction()).toEqual({ error: 'Settings are read-only for you' });
     }
-    as('client', 'fr');
+    as('member', 'fr');
     expect(await removeSettingsEntryAction('nope', '')).toEqual({ error: 'Les paramètres sont en lecture seule pour vous' });
     expect(revalidatePath).not.toHaveBeenCalled();
     expect((await getSettings()).lists.skills).toHaveLength(10);
@@ -101,7 +104,10 @@ describe('Settings Server Functions', () => {
     expect(await addSettingsEntryAction('holidays', 'Saint-Étienne')).toEqual({ error: 'A holiday reads "14 Jul · Fête nationale"' });
     expect(await addSettingsEntryAction('holidays', '31 Feb · Nope')).toEqual({ error: 'A holiday reads "14 Jul · Fête nationale"' });
     expect(await addSettingsEntryAction('skills', 'Structural')).toEqual({ error: '"Structural" is already in the list' });
+    // One holiday per date: the calendars key holidays by date (a second label would be listed but ignored).
+    expect(await addSettingsEntryAction('holidays', '14 Jul · Bastille Day')).toEqual({ error: 'A holiday is already listed on that date' });
     as('director', 'fr');
+    expect(await addSettingsEntryAction('holidays', '14 juil. · Fête de la Fédération')).toEqual({ error: 'Un jour férié est déjà inscrit à cette date' });
     expect(await addSettingsEntryAction('skills', 'structural')).toEqual({ error: '« structural » figure déjà dans la liste' });
     expect(await addSettingsEntryAction('locations', 'Entrepôt central — Lyon', 'workshop')).toEqual({ error: '« Entrepôt central — Lyon » est déjà un emplacement' });
     expect(await addSettingsEntryAction('holidays', 'Toussaint')).toEqual({ error: 'Un jour férié s’écrit « 14 juil. · Fête nationale »' });
@@ -152,8 +158,10 @@ describe('Settings Server Functions', () => {
 });
 
 describe('Machine types Server Functions', () => {
-  it('refuses viewers outside the workspace (depthead, member, procurement, client): mtCanEdit', async () => {
-    for (const role of ['depthead', 'member', 'procurement', 'client'] as RoleKey[]) {
+  it('refuses viewers outside the workspace (depthead, member, procurement): mtCanEdit; the client is sent home (R-042, P-1)', async () => {
+    as('client');
+    await expect(updateMachineTypeAction('EMP', { active: false })).rejects.toThrow('NEXT_REDIRECT');
+    for (const role of ['depthead', 'member', 'procurement'] as RoleKey[]) {
       as(role);
       expect(await updateMachineTypeAction('EMP', { active: false })).toEqual({ error: 'Machine types are read-only for you' });
       expect(await setMachineTypePhasesAction('EMP', ['A'])).toEqual({ error: 'Machine types are read-only for you' });
@@ -222,61 +230,70 @@ describe('Machine types Server Functions', () => {
 });
 
 describe('Activity & integrations Server Functions and the audit export', () => {
-  it('refuses viewers outside the workspace (every role but director and PM)', async () => {
-    for (const role of ['depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as RoleKey[]) {
+  it('refuses viewers outside the workspace (every role but director and PM); the client is sent home (R-042, P-1)', async () => {
+    as('client');
+    await expect(syncConnectorAction('Lucca')).rejects.toThrow('NEXT_REDIRECT');
+    await expect(exportAudit(new Request('http://localhost/admin/integrations/audit.csv'))).rejects.toThrow('NEXT_REDIRECT');
+    for (const role of ['depthead', 'member', 'englead', 'quality', 'procurement'] as RoleKey[]) {
       as(role);
       expect(await syncConnectorAction('Lucca')).toEqual({ error: 'Activity & integrations is read-only for you' });
-      expect(await addConnectorAction({ system: 'SharePoint', direction: 'import', freq: 'Daily', owner: '' })).toEqual({ error: 'Activity & integrations is read-only for you' });
-      expect((await exportAudit()).status).toBe(403);
+      expect((await exportAudit(new Request('http://localhost/admin/integrations/audit.csv'))).status).toBe(403);
     }
     as('quality', 'fr');
     expect(await syncConnectorAction('Lucca')).toEqual({ error: 'Activité et intégrations est en lecture seule pour vous' });
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 
-  it('"Sync now": simulated run for a recorded connector, the Codex index sync, the Vigie and Cursus connectors', async () => {
+  it('"Sync now" (R-021): refused for missing, file-only and retired connectors; mock runs say they are simulated', async () => {
     as('pm');
     expect(await syncConnectorAction('Nope')).toEqual({ error: 'Invalid request' });
-    expect(await syncConnectorAction('Lucca')).toEqual({ ok: true, toast: 'Lucca synced · 312 h · 8 people' });
-    expect((await listAudit())[0]).toMatchObject({ who: 'Romain Aubert', object: 'Connector Lucca', change: 'sync · 312 h · 8 people', area: 'Integrations' });
-    const before = (await getCodexSyncState())!;
+    // NEW-CURSUS-4: Lucca is unplugged, no longer listed (the prototype simulated "Lucca synced · 312 h · 8 people").
+    expect(await syncConnectorAction('Lucca')).toEqual({ error: 'Invalid request' });
+    const audits = (await listAudit()).length;
+    // A-15: no connector exists for Sage X3, Outlook, Teams, SMTP or the PDM — nothing to simulate any more.
+    expect(await syncConnectorAction('Sage X3')).toEqual({ error: 'Sage X3 is not connected — nothing to synchronise' });
+    expect(await syncConnectorAction('MS Project')).toEqual({ error: 'MS Project exchanges files only — use the export cards' });
     as('pm', 'fr');
-    expect(await syncConnectorAction('Codex')).toEqual({ ok: true, toast: 'Codex synchronisé · 412 fiches' });
+    expect(await syncConnectorAction('E-mail (SMTP)')).toEqual({ error: 'E-mail (SMTP) n’est pas connecté — rien à synchroniser' });
+    expect((await listAudit()).length).toBe(audits);
+    const before = (await getCodexSyncState())!;
+    expect(await syncConnectorAction('Codex')).toEqual({ ok: true, toast: 'Codex · synchro simulée (connecteur simulé) · 412 fiches' });
     expect((await getCodexSyncState())!.syncedAt > before.syncedAt).toBe(true);
+    expect((await listAudit())[0]).toMatchObject({ who: 'Romain Aubert', object: 'Connector Codex', change: 'sync (simulated) · 412 records · 38 linked to HLT-026' });
     const codex = (await listAdminConnectors()).find((c) => c.name === 'Codex')!;
-    expect([codex.mode, codex.lastSyncAt, codex.lastVolume]).toEqual(['mock', (await getCodexSyncState())!.syncedAt, '412 records · 38 linked to HLT-026']);
+    expect([codex.mode, codex.state, codex.lastSyncAt, codex.lastVolume]).toEqual(['mock', 'mock', null, '412 records · 38 linked to HLT-026']);
     as('director');
-    expect(await syncConnectorAction('Vigie')).toEqual({ ok: true, toast: 'Vigie synced · 0 sent · 0 pending · 0 refreshed' });
+    expect(await syncConnectorAction('Vigie')).toEqual({ ok: true, toast: 'Vigie · simulated sync (mock connector) · 0 sent · 0 pending · 0 refreshed' });
     const cursus = await syncConnectorAction('Cursus');
     expect(cursus).toMatchObject({ ok: true });
-    expect((cursus as { toast: string }).toast).toMatch(/^Cursus synced · \d+ approvals received$/);
+    expect((cursus as { toast: string }).toast).toMatch(/^Cursus · simulated sync \(mock connector\) · \d+ approvals received$/);
+    // A simulated run dates no sync.
+    expect((await listAdminConnectors()).filter((c) => c.link === 'mock').map((c) => c.lastSyncAt)).toEqual([null, null, null]);
     expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
   });
 
-  it('"Add connector": the prototype\'s systems, frequencies and directions; listed at once; duplicates refused', async () => {
+  it('no "Add connector" Server Function any more (D-7a, R-020): connectors come from IT\'s connectors file', async () => {
+    const actions = await import('./actions');
+    expect('addConnectorAction' in actions).toBe(false);
+    // R-021: a listed connector without code behind it is not synchronised (the prototype simulated a run).
     as('director');
-    expect(await addConnectorAction({ system: 'Nope', direction: 'import', freq: 'Daily' })).toEqual({ error: 'Invalid request' });
-    expect(await addConnectorAction({ system: 'SharePoint', direction: 'up', freq: 'Daily' })).toEqual({ error: 'Invalid direction' });
-    expect(await addConnectorAction({ system: 'SharePoint', direction: 'import', freq: 'Weekly' })).toEqual({ error: 'Invalid frequency' });
-    expect(await addConnectorAction({ system: 'Sage X3', direction: 'import', freq: 'Daily' })).toEqual({ error: 'Sage X3 is already connected' });
-    expect(await addConnectorAction({ system: 'SharePoint', direction: 'both', freq: 'Hourly', owner: ' IT · Paul ' })).toEqual({ ok: true, toast: 'Connector added · first sync scheduled' });
-    expect((await listAdminConnectors()).at(-1)).toMatchObject({ name: 'SharePoint', status: 'ready', lastSyncAt: null, lastVolume: 'First sync scheduled', direction: 'both', owner: 'IT · Paul', addedInKeystone: true });
-    as('pm', 'fr');
-    expect(await addConnectorAction({ system: 'SharePoint', direction: 'import', freq: 'Daily' })).toEqual({ error: 'SharePoint est déjà connecté' });
-    expect(await addConnectorAction({ system: 'TIA Portal', direction: 'export', freq: 'Manual', owner: '' })).toEqual({ ok: true, toast: 'Connecteur ajouté · première synchronisation planifiée' });
+    expect(await syncConnectorAction('Sage X3')).toEqual({ error: 'Sage X3 is not connected — nothing to synchronise' });
   });
 
   it('exports the audit trail as CSV (ISO 9001) for the director and the PM', async () => {
     as('director', 'fr');
-    const res = await exportAudit();
+    const res = await exportAudit(new Request('http://localhost/admin/integrations/audit.csv'));
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toBe('text/csv; charset=utf-8');
     expect(res.headers.get('Content-Disposition')).toMatch(/^attachment; filename="keystone-audit-trail-\d{4}-\d{2}-\d{2}\.csv"$/);
     const body = await res.text();
     const lines = body.replace(/^﻿/, '').split('\r\n');
-    expect(lines[0]).toBe('Quand (UTC),Qui,Objet,Modification,Domaine,Projet');
+    // R-168: the user account (e-mail), the reason and the values before / after follow the prototype's columns.
+    expect(lines[0]).toBe('Quand (UTC),Qui,Objet,Modification,Domaine,Projet,Utilisateur,Motif,Avant,Après');
     const all = await listAudit({ limit: 1_000_000 });
     expect(lines.length).toBe(all.length + 2);
-    expect(lines).toContain('2026-09-25T07:12:00.000Z,Romain Aubert,CR-008,status: Draft → In review,Change control,');
+    const pm = all.find((a) => a.object === 'CR-008' && a.who === 'Romain Aubert')!;
+    expect(pm.userEmail).toMatch(/@/);
+    expect(lines).toContain(`2026-09-25T07:12:00.000Z,Romain Aubert,CR-008,status: Draft → In review,Change control,,${pm.userEmail},,,`);
   });
 });

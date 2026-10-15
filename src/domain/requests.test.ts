@@ -6,9 +6,9 @@ import PROTO from '@/server/prototype/prototype-data.json';
 import { addDaysIso, isoOfDayOffset } from '@/server/db/codes';
 import {
   CONTRACT_ROLE, NR_DEFAULTS, REQUEST_FILTERS, addedLoad, approvalKpis, approveTarget, datesText,
-  defaultDepartment, deptOfSlug, deptSlug, isRequestFilter, loadAt, matchesFilter, nrDates, parseHours, pendingHoursByPerson, projectsText,
+  defaultDepartment, deptOfSlug, deptSlug, isRequestFilter, isSentRequest, loadAt, matchesFilter, nrDates, parseHours, pendingHoursByPerson, projectsText,
   requestChipCounts, requestImpact, requestKpis, requestSteps, requestTitle, routing, shiftedDates, teamLoad, weekIndex, weekLabel,
-  type PoolFacts, type RequestFacts, type RequestStatus,
+  type PoolFacts, type RequestFacts, type RequestFilter, type RequestStatus,
 } from './requests';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -54,6 +54,18 @@ describe('Resource requests (PM outbox, 08 §5.4)', () => {
     expect(requestSteps('reschedule')).toEqual([true, true, false]);
     expect(requestSteps('approved')).toEqual([true, true, true]);
     expect(requestSteps('rejected')).toEqual([true, true, false]);
+  });
+
+  // Chapter 4 (S-7): the what-if levelling drafts requests; the prototype had none, so the goldens above are unchanged.
+  it('drafts: listed under All but not sent — no "Requests sent" count, stepper all off', () => {
+    const drafts: RequestFacts[] = ['RQ-045', 'RQ-046'].map((id) => ({ id, status: 'draft', hours: 16, person: 'Julien Wagner', department: 'Engineering', start: '2026-09-28', due: '2026-10-02' }));
+    expect(requestKpis([...drafts, ...mine])).toEqual({ sent: 9, pending: 4, pendingHours: 64, reschedule: 1, approved: 3 });
+    expect(requestChipCounts([...drafts, ...mine])).toEqual([11, 4, 1, 3, 1]);
+    expect([isSentRequest(drafts[0]), isSentRequest({ status: 'pending' }), isSentRequest({ status: 'withdrawn' })]).toEqual([false, true, true]);
+    expect(requestSteps('draft')).toEqual([false, false, false]);
+    expect(matchesFilter('draft', null)).toBe(true);
+    expect(['pending', 'reschedule', 'approved', 'rejected'].some((f) => matchesFilter('draft', f as RequestFilter))).toBe(false);
+    expect(pendingHoursByPerson(drafts)).toEqual({});
   });
 });
 

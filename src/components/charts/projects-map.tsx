@@ -8,6 +8,9 @@
 // Projects view buttons, legend and attribution. Geometry, clustering and framing rules: src/domain/worldmap.ts.
 // Host contract (replaces the postMessage protocol): `highlight` prop (list hover), `ref.focus(code)` (site
 // header), `ref.view(v)`; tooltip rows are links (the host computes `href`: Plan, or the Projects register).
+// Delivery 8 (L-7 = a, R-135): keyboard markers — each visible marker is a tab stop (role button, named after its
+// tooltip); focus shows the tooltip as hover does, Enter / Space acts as a click (zoom, or pin with focus on the
+// tooltip's first link), Esc or × returns focus to the marker that opened it (the map when a re-cluster removed it).
 import { geoGraticule10, geoNaturalEarth1, geoPath, type GeoPermissibleObjects } from 'd3-geo';
 import { select, type TransitionLike } from 'd3-selection';
 import { zoom as d3zoom, zoomIdentity, type ZoomBehavior } from 'd3-zoom';
@@ -20,8 +23,8 @@ import { Tag, type TagTone } from '@/components/ds/Tag';
 import { cx } from '@/components/ds/cx';
 import {
   DEFAULT_SIZE, IDENTITY, MAP_VIEWS, SCALE_EXTENT, SPHERE_INSET, VIEW_MS, clusterClick, clusterKey, clusterPoints, focusTransform, homeView,
-  markerLabelText, placeTooltip, showMarkerLabels, tooltipTitle, viewTransform, type GeoBounds, type MapTransform, type MapView,
-  type MarkerStyle,
+  markerAriaLabel, markerKeyAction, markerLabelText, markerTabIndex, placeTooltip, showMarkerLabels, tooltipTitle, viewTransform,
+  type GeoBounds, type MapTransform, type MapView, type MarkerStyle,
 } from '@/domain/worldmap';
 import { useI18n } from '@/i18n/client';
 import s from './projects-map.module.css';
@@ -121,6 +124,10 @@ export function ProjectsMap({ points, labels, zone, highlight = null, ref, class
   const [tr, setTr] = useState<MapTransform>(IDENTITY);
   const [view, setView] = useState<MapView | null>(null);
   const [tip, setTip] = useState<Tip | null>(null);
+  /** Marker elements by cluster key, the marker that opened the tooltip from the keyboard, and a pending focus move. */
+  const markerEls = useRef(new Map<string, SVGGElement>());
+  const openerRef = useRef<string | null>(null);
+  const focusTipRef = useRef(false);
   const { W, H } = size;
 
   const projection = useMemo(() => geoNaturalEarth1().fitExtent([[SPHERE_INSET, SPHERE_INSET], [W - SPHERE_INSET, H - SPHERE_INSET]], SPHERE), [W, H]);
@@ -270,9 +277,26 @@ export function ProjectsMap({ points, labels, zone, highlight = null, ref, class
     el.style.left = `${x}px`;
     el.style.top = `${y}px`;
   });
-  /** Hides the tooltip; when focus was inside it (a pinned tooltip's links), focus moves to the map, not the page. */
+  // L-7 (R-135): a tooltip pinned from the keyboard takes focus on its first link once rendered.
+  useLayoutEffect(() => {
+    if (!focusTipRef.current || !tipVisible) return;
+    focusTipRef.current = false;
+    tipRef.current?.querySelector<HTMLElement>('a[href]')?.focus({ preventScroll: true });
+  });
+  /**
+   * Hides the tooltip. When focus was inside it (a pinned tooltip's links) or it was opened from the keyboard, focus
+   * returns to the marker that opened it — the map when a re-cluster unmounted that marker —, never to the page.
+   */
   const closeTip = useCallback(() => {
-    if (tipRef.current?.contains(document.activeElement)) svgRef.current?.focus({ preventScroll: true });
+    const opener = openerRef.current;
+    openerRef.current = null;
+    focusTipRef.current = false;
+    const active = document.activeElement;
+    const lost = !active || active === document.body || active === svgRef.current; // the focused marker was re-clustered away
+    if (tipRef.current?.contains(active) || (opener && lost)) {
+      const el = opener ? markerEls.current.get(opener) : undefined;
+      (el ?? svgRef.current)?.focus({ preventScroll: true });
+    }
     setTip(null);
   }, []);
   // Esc dismisses the tooltip, hovered or pinned (content shown on hover must be dismissible, WCAG 1.4.13).
@@ -294,7 +318,7 @@ export function ProjectsMap({ points, labels, zone, highlight = null, ref, class
         className={s.svg}
         viewBox={`0 0 ${W} ${H}`}
         tabIndex={-1}
-        role="img"
+        role="group"
         aria-label={labels.map}
         onClick={() => setTip(null)}
       >
@@ -306,22 +330,61 @@ export function ProjectsMap({ points, labels, zone, highlight = null, ref, class
               const n = c.items.length;
               const hl = !!highlight && c.items.some((i) => i.code === highlight);
               const one = c.items[0];
+              const codes = c.items.map((i) => i.code);
               return (
                 <g
                   key={key}
+                  ref={(el) => {
+                    if (el) markerEls.current.set(key, el);
+                    else markerEls.current.delete(key);
+                  }}
                   className={s.mk}
                   transform={`translate(${c.x},${c.y}) scale(${1 / tr.k})`}
-                  onMouseEnter={() => setTip((cur) => (cur?.pinned ? cur : { codes: c.items.map((i) => i.code), pinned: false }))}
+                  role="button"
+                  tabIndex={markerTabIndex(c, tr, W, H)}
+                  aria-label={markerAriaLabel(c.items, t)}
+                  onMouseEnter={() => {
+                    if (!tip?.pinned) openerRef.current = null;
+                    setTip((cur) => (cur?.pinned ? cur : { codes, pinned: false }));
+                  }}
                   onMouseLeave={() => setTip((cur) => (cur?.pinned ? cur : null))}
+                  onFocus={() => {
+                    // Focus shows the tooltip as hover does (a pinned one stays as it is).
+                    if (tip?.pinned) return;
+                    openerRef.current = key;
+                    setTip({ codes, pinned: false });
+                  }}
+                  onBlur={(e) => {
+                    // Blur hides it unless pinned (focus moving into the pinned tooltip keeps it).
+                    if (tipRef.current?.contains(e.relatedTarget as Node | null)) return;
+                    setTip((cur) => (cur?.pinned ? cur : null));
+                  }}
+                  onKeyDown={(e) => {
+                    const r = markerKeyAction(e.key, c, W, H);
+                    if (!r) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (r.kind === 'zoom') {
+                      openerRef.current = null;
+                      setTip(null);
+                      svgRef.current?.focus({ preventScroll: true });
+                      apply(r.transform, true);
+                    } else {
+                      openerRef.current = key;
+                      focusTipRef.current = true;
+                      setTip({ codes, pinned: true });
+                    }
+                  }}
                   onClick={(e) => {
                     e.stopPropagation();
                     const r = clusterClick(c, W, H);
                     if (r.kind === 'zoom') {
                       setTip(null);
                       apply(r.transform, true);
-                    } else setTip({ codes: c.items.map((i) => i.code), pinned: true });
+                    } else setTip({ codes, pinned: true });
                   }}
                 >
+                  <circle className={s.focusRing} r={n > 1 ? 16 : 13} aria-hidden />
                   {n > 1 ? (
                     <>
                       <circle className={cx(s.dot, s.cluster)} r={11} />

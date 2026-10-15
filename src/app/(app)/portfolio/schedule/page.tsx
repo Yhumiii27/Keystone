@@ -1,24 +1,29 @@
 // Portfolio schedule — projects in progress & pipeline (docs/spec/05 §3; template 972–1023, logic 4523–4555).
 // 24-month portfolio Gantt of the live projects of the selected zone (zone cookie): pipeline stage gates and group
-// boards, execution bars with progress, baseline finish and forecast slip. Stage filter `?filter=exec|pipe`.
+// boards, execution bars with progress, baseline finish and forecast slip. Stage filter `?filter=exec|pipe`; window
+// `?from=YYYY-MM` (L-8 = a, R-136: a quarter month within Jan 2020 – Oct 2035, else the default window around now).
 // Read-only for every persona (no primary action, spec 01 §5.9); outside the workspace the shell adds the banner.
 import { PageHeader } from '@/components/app/shell/page-header';
-import { isPgFilter, portfolioScheduleModel } from '@/domain/pfplan';
+import { isPgFilter, parseWindowParam, portfolioScheduleModel } from '@/domain/pfplan';
 import { PfPlanBody } from '@/features/pfplan/view';
 import { getPortfolioSchedule } from '@/server/dal/pipeline';
 import { getI18n, getZone } from '@/server/session';
+import { getScreenAccess } from '@/server/project-context';
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 export default async function PortfolioSchedulePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  // R-042 (P-1): a client is sent home before anything is read.
+  await getScreenAccess('pfplan');
   const [sp, { t, lang }, zone] = await Promise.all([searchParams, getI18n(), getZone()]);
   const f = one(sp.filter);
   const filter = isPgFilter(f) ? f : 'all';
-  const model = portfolioScheduleModel(await getPortfolioSchedule(zone), { filter, lang });
+  const from = parseWindowParam(one(sp.from));
+  const model = portfolioScheduleModel(await getPortfolioSchedule(zone), { filter, lang, from });
   return (
     <>
       <PageHeader screen="pfplan" />
-      <PfPlanBody model={model} filter={filter} zoneSelected={!!zone} t={t} />
+      <PfPlanBody model={model} filter={filter} zoneSelected={!!zone} t={t} lang={lang} />
     </>
   );
 }

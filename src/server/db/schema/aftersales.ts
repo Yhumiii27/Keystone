@@ -71,6 +71,10 @@ export const warrantyClaims = pgTable('warranty_claims', {
   ownerPersonId: uuid('owner_person_id').references(() => persons.id),
   /** "Replace brake disc · intervention 8 Oct"; '—' when none. */
   nextStep: text('next_step').notNull(),
+  /** Diagnosis entered by after-sales (R-143, Q-8; required to mark the claim Diagnosed); null for the seed. */
+  diagnosis: text('diagnosis'),
+  /** Closure date (R-143). */
+  closedOn: date('closed_on', { mode: 'string' }),
   position: integer('position').notNull(),
   ...timestamps,
 });
@@ -92,5 +96,13 @@ export const interventions = pgTable('interventions', {
   durationDays: num('duration_days').notNull(),
   status: text('status').$type<InterventionStatus>().notNull(),
   position: integer('position').notNull(),
+  // ── Closure in Keystone (R-143) and the configuration update it brings (R-144, E-8) ──
+  /** Date the intervention was done; null while planned (and for the seed). */
+  doneOn: date('done_on', { mode: 'string' }),
+  /** What was done (intervention report). */
+  report: text('report'),
+  /** Part replaced or upgraded on the machine and the revision fitted: updates the as-maintained configuration. */
+  partRef: text('part_ref'),
+  partRevision: text('part_revision'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

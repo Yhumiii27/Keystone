@@ -49,11 +49,15 @@ export interface MachineFacts {
   zone: ZoneCode;
   warrantyStatus: WarrantyStatus;
   warrantyEndOn: string | null;
+  /** R-145: end of a recorded warranty extension (ISO); absent / null = none. */
+  extendedUntil?: string | null;
 }
 
 export interface ClaimFacts {
   number: string;
   machineNumber: string;
+  /** ISO date the claim was reported (R-145: the year's warranty cost counts the claims reported this calendar year). */
+  reportedOn: string;
   severity: NcrSeverity;
   status: ClaimStatus;
   coverage: ClaimCoverage;
@@ -99,11 +103,26 @@ export function warrantyEnding(endIso: string | null, now = PG_NOW): { soon: boo
 }
 
 /**
+ * The warranty in force on `today` (R-145, NEW-D5-2 = a), computed on read: "Extended" while a recorded extension runs (its
+ * end later than the contractual end — or no contractual end — and not past; default: also before the contractual end has
+ * passed, no prototype precedent); else "In warranty" while the end in force (the extension's once it is the later one) is not
+ * past; "Out of warranty" once it has passed. Without any date, the stored status. `endOn` = the end in force (the warranty
+ * ending alert and its days count from it); the "Warranty end" column keeps the contractual date.
+ */
+export function warrantyInForce(m: { warrantyEndOn: string | null; extendedUntil?: string | null; warrantyStatus: WarrantyStatus }, today = NOW_ISO): { status: WarrantyStatus; endOn: string | null } {
+  const ext = m.extendedUntil && (!m.warrantyEndOn || m.extendedUntil > m.warrantyEndOn) ? m.extendedUntil : null;
+  if (ext && ext >= today) return { status: 'extended', endOn: ext };
+  const endOn = ext ?? m.warrantyEndOn;
+  if (!endOn) return { status: m.warrantyStatus, endOn: null };
+  return { status: endOn >= today ? 'in_warranty' : 'out_of_warranty', endOn };
+}
+
+/**
  * Warranty state of a machine added in Keystone ("Add machine"): Out of warranty when its warranty end is already past
  * (before the prototype's today, 30 Sep 2026), else In warranty — also without a warranty end, as the prototype.
  */
 export const addedWarrantyStatus = (warrantyEndOn: string | null, todayIso = NOW_ISO): WarrantyStatus =>
-  warrantyEndOn && warrantyEndOn < todayIso ? 'out_of_warranty' : 'in_warranty';
+  warrantyInForce({ warrantyEndOn, extendedUntil: null, warrantyStatus: 'in_warranty' }, todayIso).status;
 
 // ── Configuration (as-maintained vs ECOs) ───────────────────────────────────────────────────────────────
 
@@ -227,14 +246,19 @@ export interface FleetKpiFacts extends MachineFacts {
   openClaims: number;
 }
 
-/** Installed base tiles (`fleetKpis` 4993) over the machines shown (zone filter applied). */
-export function fleetKpis(machines: readonly FleetKpiFacts[]): KpiCard[] {
+/**
+ * Installed base tiles (`fleetKpis` 4993) over the machines shown (zone filter applied). R-145 (NEW-D5-2 = a): the tiles
+ * read the warranty in force on `today` (`warrantyInForce`), and "Warranty ending < 90 days" counts from the end in force —
+ * an extension ending within three months is ending soon.
+ */
+export function fleetKpis(machines: readonly FleetKpiFacts[], today = NOW_ISO): KpiCard[] {
   const clients = new Set(machines.map((m) => m.client)).size;
-  const extended = machines.filter((m) => m.warrantyStatus === 'extended').length;
-  const ending = machines.filter((m) => warrantyEnding(m.warrantyEndOn).soon).map((m) => m.number);
+  const inForce = machines.map((m) => ({ number: m.number, ...warrantyInForce(m, today) }));
+  const extended = inForce.filter((w) => w.status === 'extended').length;
+  const ending = inForce.filter((w) => warrantyEnding(w.endOn).soon).map((w) => w.number);
   return [
     { label: 'Machines in service', value: String(machines.length), sub: countTextEn('clients', clients), count: { kind: 'clients', n: clients }, alert: false },
-    { label: 'In warranty', value: String(machines.filter((m) => m.warrantyStatus === 'in_warranty').length), sub: countTextEn('extended', extended), count: { kind: 'extended', n: extended }, alert: false },
+    { label: 'In warranty', value: String(inForce.filter((w) => w.status === 'in_warranty').length), sub: countTextEn('extended', extended), count: { kind: 'extended', n: extended }, alert: false },
     { label: 'Warranty ending < 90 days', value: String(ending.length), sub: ending.join(' · ') || '—', alert: ending.length > 0 },
     { label: 'Machines with open claims', value: String(machines.filter((m) => m.openClaims > 0).length), sub: 'see warranty claims', alert: false },
   ];
@@ -242,15 +266,19 @@ export function fleetKpis(machines: readonly FleetKpiFacts[]): KpiCard[] {
 
 /**
  * Warranty claims tiles (`savKpis` 4992) over the claims and interventions shown (zone filter applied); the same in
- * every view. Amounts in k€ (`money`); "Warranty cost YTD" sums every claim not Chargeable, as the prototype.
+ * every view. Amounts in k€ (`money`); "Warranty cost YTD" sums the claims not Chargeable and its sub-line the Chargeable
+ * ones — R-145 (NEW-D5-2 = a): of the calendar year of `today` only (the claim's report date; no upper bound, so a claim
+ * dated after the frozen business date still counts in its year). Two clocks until R-013: `today` (NOW_ISO) here, PG_NOW for
+ * the warranty ending alert — they agree on 30 Sep 2026 and must move together.
  */
-export function savKpis(claims: readonly ClaimFacts[], ivs: readonly InterventionFacts[], lang: Lang): KpiCard[] {
+export function savKpis(claims: readonly ClaimFacts[], ivs: readonly InterventionFacts[], lang: Lang, today = NOW_ISO): KpiCard[] {
   const open = claims.filter((c) => c.status !== 'closed');
   const major = open.filter((c) => c.severity === 'major' || c.severity === 'critical').length;
   const planned = ivs.filter((i) => i.status === 'planned').length;
   const next = nextPlanned(ivs);
-  const warranty = claims.filter((c) => c.coverage !== 'chargeable').reduce((s, c) => s + c.costKeur, 0);
-  const chargeable = claims.filter((c) => c.coverage === 'chargeable').reduce((s, c) => s + c.costKeur, 0);
+  const year = claims.filter((c) => c.reportedOn.slice(0, 4) === today.slice(0, 4));
+  const warranty = year.filter((c) => c.coverage !== 'chargeable').reduce((s, c) => s + c.costKeur, 0);
+  const chargeable = year.filter((c) => c.coverage === 'chargeable').reduce((s, c) => s + c.costKeur, 0);
   return [
     { label: 'Open claims', value: String(open.length), sub: countTextEn('major', major), count: { kind: 'major', n: major }, alert: major > 0 },
     { label: 'Interventions planned', value: String(planned), sub: `next · ${next ? displayOfIso(next.scheduledOn) : '—'}`, alert: false },

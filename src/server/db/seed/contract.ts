@@ -2,6 +2,9 @@
 // milestones and the customer invoices of the milestones already invoiced (INV-2026-001…003, numbered in milestone
 // order as `ctrInvoices` does); the legacy billing plans (BILLING 3541) of the projects without a contract,
 // migrated into payment milestones (A-5, 11 §7 #3); and the portfolio cash forecast (CASH_M 3542 + logic 4518).
+// Delivery 7: the terms text becomes a payment rule (C-6, R-076: "Net 45 days" = net 45); the contract is in euros (C-9);
+// NEW-D3-3 (R-079): the base contract's milestones are priced on the base amount — the invoices already issued too — and each
+// signed amendment carries its own milestone (`AMENDMENT_MILESTONES`).
 import { PROTO } from '@/server/prototype';
 import {
   amendmentStatus, billingModel, bondType, contractType, isoOfDisplayDate, paymentMilestoneStatus, type PaymentMilestoneStatus,
@@ -11,6 +14,7 @@ import {
 } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, type SeedCtx } from './context';
+import { paymentTermsText, termsOfText } from '@/domain/payment-terms';
 
 export interface ProtoContract {
   ref: string; client: string; signed: string; amount: number; terms: string; retention: number; retentionNote: string; ld: string; warranty: string;
@@ -37,6 +41,19 @@ export const CASH_FORECAST: readonly { month: string; cashIn: number; cashOut: n
 ];
 
 const dateOrNull = (s: string | null | undefined) => (!s || s === '—' ? null : isoOfDisplayDate(s));
+
+/**
+ * NEW-D3-3 (owner answer a, R-079): the amendment's own payment milestones. The prototype spread a signed amendment over every
+ * milestone (re-pricing the invoiced ones); the seed now gives Amendment 1 (anti-collision lidar, €120k, signed 8 Jul 2026)
+ * one milestone for its whole amount, due with the cranes it equips (M4, 14 Dec 2026). Keyed by contract and amendment label.
+ */
+export const AMENDMENT_MILESTONES: Record<string, Record<string, { label: string; sharePct: number; due: string; condition: string | null }[]>> = {
+  'HLT-026': {
+    'Amendment 1 — anti-collision lidar (CR-004)': [
+      { label: 'Anti-collision lidar commissioned', sharePct: 100, due: '2026-12-14', condition: 'Lidar tested on both cranes' },
+    ],
+  },
+};
 /** "Amendment 1 — anti-collision lidar (CR-004)" → subject + change request reference. */
 export function splitAmendmentLabel(label: string): { subject: string; crRef: string | null } {
   const m = /^(.*) \((CR-\d+)\)$/.exec(label);
@@ -57,24 +74,23 @@ export async function seedContract(tx: Tx, ctx: SeedCtx): Promise<void> {
     await tx.insert(contracts).values({
       id: contractId, projectId, reference: ct.ref, documentId: ctx.document.get(ct.ref) ?? null, clientName: ct.client,
       clientId: ctx.clientByName.get(ct.client) ?? null, type: contractType.code(ct.type), signedOn: dateOrNull(ct.signed), baseAmountKeur: ct.amount,
-      paymentTerms: ct.terms, retentionPct: ct.retention, retentionNote: ct.retentionNote, liquidatedDamages: ct.ld, warranty: ct.warranty,
+      currency: 'EUR', paymentRule: termsOfText(ct.terms).rule, paymentDays: termsOfText(ct.terms).days, paymentTerms: paymentTermsText(termsOfText(ct.terms)), retentionPct: ct.retention, retentionNote: ct.retentionNote, liquidatedDamages: ct.ld, warranty: ct.warranty,
       governingLaw: ct.law, scope: ct.scope,
     });
     const crs = ctx.changeRequest.get(code);
-    await tx.insert(contractAmendments).values(
-      ct.amendments.map(([label, amount, status, date, doc], position) => {
-        const { subject, crRef } = splitAmendmentLabel(label);
-        return {
-          id: newId(), contractId, position, subject, changeRequestRef: crRef, changeRequestId: (crRef && crs?.get(crRef)) || null, amountKeur: amount,
-          status: amendmentStatus.code(status), signedOn: dateOrNull(date), documentRef: doc || null, documentId: (doc && ctx.document.get(doc)) || null,
-        };
-      }),
-    );
+    const amendmentRows = ct.amendments.map(([label, amount, status, date, doc], position) => {
+      const { subject, crRef } = splitAmendmentLabel(label);
+      return {
+        id: newId(), contractId, position, subject, changeRequestRef: crRef, changeRequestId: (crRef && crs?.get(crRef)) || null, amountKeur: amount,
+        status: amendmentStatus.code(status), signedOn: dateOrNull(date), documentRef: doc || null, documentId: (doc && ctx.document.get(doc)) || null,
+      };
+    });
+    await tx.insert(contractAmendments).values(amendmentRows);
     await tx.insert(contractBonds).values(
       ct.bonds.map(([label, amount, state], position) => ({ id: newId(), contractId, position, type: bondType.code(label), issuer: null, amountKeur: amount, ...parseBondState(state) })),
     );
-    // Contract value at seed time (base + signed amendments) prices the invoices already issued.
-    const value = ct.amount + ct.amendments.filter((a) => a[2] === 'Signed').reduce((s, a) => s + a[1], 0);
+    // NEW-D3-3: the base amount prices the base milestones' invoices (the prototype used base + signed amendments).
+    const value = ct.amount;
     let seq = 0;
     for (const [number, label, pct, due, status, inv, paid] of ct.milestones) {
       const msId = newId();
@@ -86,8 +102,20 @@ export async function seedContract(tx: Tx, ctx: SeedCtx): Promise<void> {
       if (st !== 'planned')
         await tx.insert(customerInvoices).values({
           id: newId(), paymentMilestoneId: msId, number: 'INV-2026-' + String(++seq).padStart(3, '0'), issuedOn: dateOrNull(inv)!,
-          amountKeur: Math.round((value * pct) / 100), paidOn: st === 'paid' ? dateOrNull(paid) : null, note: null,
+          amountKeur: Math.round((value * pct) / 100), currency: 'EUR', paidOn: st === 'paid' ? dateOrNull(paid) : null, note: null,
         });
+    }
+    // NEW-D3-3: the amendments' own milestones, numbered after the base contract's (M6…), planned.
+    let n = ct.milestones.length;
+    for (const a of ct.amendments) {
+      const row = amendmentRows[ct.amendments.indexOf(a)];
+      for (const m of AMENDMENT_MILESTONES[code]?.[a[0]] ?? []) {
+        n++;
+        await tx.insert(paymentMilestones).values({
+          id: newId(), projectId, contractId, amendmentId: row.id, number: `M${n}`, label: m.label, sharePct: m.sharePct, amountKeur: null,
+          contractualDue: m.due, condition: m.condition, status: 'planned', position: n - 1,
+        });
+      }
     }
   }
 

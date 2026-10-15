@@ -6,14 +6,18 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const viewer = { name: 'Romain Aubert', canEdit: true, canEditRisks: true, lang: 'en' as 'en' | 'fr' };
+// `pm` = the viewer is one of the project's PMs (R-041 access.pm); P-9b: the organiser and the PM write and send the minutes.
+const viewer = { name: 'Romain Aubert', short: 'R. Aubert', role: 'pm', pm: true, canEdit: true, canEditRisks: true, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@/server/session', async () => {
   const { makeT } = await import('@/i18n/translate');
   return { getI18n: async () => ({ lang: viewer.lang, t: makeT(viewer.lang) }) };
 });
 vi.mock('@/server/project-context', () => ({
-  getProjectContext: async () => ({ viewer: { name: viewer.name }, canEdit: (screen?: string) => (screen === 'risks' ? viewer.canEditRisks : viewer.canEdit) }),
+  getProjectContext: async () => ({
+    viewer: { name: viewer.name, short: viewer.short, role: viewer.role, personId: null }, access: { pm: viewer.pm },
+    canEdit: (screen?: string) => (screen === 'risks' ? viewer.canEditRisks : viewer.canEdit),
+  }),
 }));
 
 import { revalidatePath } from 'next/cache';
@@ -37,8 +41,30 @@ describe('meetings Server Functions', () => {
     setDb(await openDatabase());
   }, 60_000);
   beforeEach(() => {
-    Object.assign(viewer, { name: 'Romain Aubert', canEdit: true, canEditRisks: true, lang: 'en' });
+    Object.assign(viewer, { name: 'Romain Aubert', short: 'R. Aubert', role: 'pm', pm: true, canEdit: true, canEditRisks: true, lang: 'en' });
     vi.mocked(revalidatePath).mockClear();
+  });
+
+  it('P-9b (R-050): the internal team adds notes and ticks actions; the organiser and the project’s PM write and send; the client reads', async () => {
+    const WRITERS = { ok: false, error: 'Only the organiser or the project manager can write and send these minutes' };
+    // Julien Wagner, on the team but neither organiser nor PM: a note yes, the transcript and the sending no.
+    Object.assign(viewer, { name: 'Julien Wagner', short: 'J. Wagner', role: 'member', pm: false });
+    expect(await addMinutesLineAction({ code: 'HLT-026', meeting: 'MTG-118', point: 0, type: 'info', text: 'Crane inspection booked' })).toEqual({ ok: true });
+    expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual(WRITERS);
+    expect(await analyseTranscriptAction({ code: 'HLT-026', meeting: 'MTG-119' })).toEqual(WRITERS);
+    expect(await applyTranscriptAction({ code: 'HLT-026', meeting: 'MTG-119' })).toEqual(WRITERS);
+    expect(await reviewProposalAction({ code: 'HLT-026', meeting: 'MTG-119', position: 0, status: 'rejected' })).toEqual(WRITERS);
+    viewer.lang = 'fr';
+    expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual({ ok: false, error: 'Seuls l’organisateur et le chef de projet rédigent et envoient ce compte rendu' });
+    viewer.lang = 'en';
+    // Antoine Girard organised MTG-119 (not MTG-118): he writes its minutes only.
+    Object.assign(viewer, { name: 'Antoine Girard', short: 'A. Girard', role: 'englead', pm: false });
+    expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual(WRITERS);
+    expect(await analyseTranscriptAction({ code: 'HLT-026', meeting: 'MTG-119', engine: 'claude' })).toEqual({ ok: false, error: 'Claude is not configured (ANTHROPIC_API_KEY)' });
+    // The client reads: no meeting, no note.
+    Object.assign(viewer, { name: 'Nadia Bensaïd', short: 'N. Bensaïd', role: 'client', pm: false });
+    expect(await createMeetingAction('HLT-026', NEW)).toEqual({ error: 'These meetings are read-only for you' });
+    expect(await addMinutesLineAction({ code: 'HLT-026', meeting: 'MTG-118', point: 0, type: 'info', text: 'x' })).toEqual({ ok: false, error: 'These meetings are read-only for you' });
   });
 
   it('refuses read-only viewers, unknown projects and meetings of another project — nothing is written', async () => {
@@ -93,8 +119,9 @@ describe('meetings Server Functions', () => {
     expect(m.agenda[2].lines.map((l) => l.type)).toEqual(['decision', 'decision', 'decision', 'action', 'action', 'action']);
   });
 
-  it('"Send minutes": MIN-HLT-027, tasks for the pool owners, toast EN / FR, then the minutes are locked', async () => {
-    expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual({ ok: true, toast: 'MIN-HLT-027 · minutes sent to 5 invitees · 2 actions added to tasks' });
+  it('"Send minutes": MIN-HLT-027, a task for every internal action owner, toast EN / FR, then the minutes are locked', async () => {
+    // S-12 a (R-067): L. Fabre (internal, outside the resource pool) gets a task too — 2 → 3 actions added to tasks.
+    expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual({ ok: true, toast: 'MIN-HLT-027 · minutes sent to 5 invitees · 3 actions added to tasks' });
     expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
     expect((await listTasks({ person: 'Julien Wagner' })).some((t) => t.labels.includes('MTG-118'))).toBe(true);
     expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual({ ok: false, error: 'Minutes already sent' });
@@ -108,7 +135,8 @@ describe('meetings Server Functions', () => {
 
   it('"New meeting": MTG-130 organized by the viewer, defaults, toast; validation errors translated', async () => {
     viewer.name = 'Marie Lefebvre';
-    expect(await createMeetingAction('HLT-026', NEW)).toEqual({ toast: 'Weekly site meeting #25 · Meeting created · invitation synced to the calendar' });
+    // S-11 / A-15 (R-037): no invitation goes out and nothing is synced to a calendar (was "… · invitation synced to the calendar").
+    expect(await createMeetingAction('HLT-026', NEW)).toEqual({ toast: 'Weekly site meeting #25 · Meeting created' });
     const m = (await getMeeting('MTG-130'))!;
     expect(m).toMatchObject({ status: 'scheduled', organizer: 'M. Lefebvre', dateText: '6 Oct 2026', time: '08:30', location: 'Teams', durationText: '1 h' });
     expect(m.agenda.map((a) => a.title)).toEqual(['Safety', 'Steel']);
@@ -116,7 +144,7 @@ describe('meetings Server Functions', () => {
     expect(await createMeetingAction('HLT-026', { ...NEW, invited: ' ' })).toEqual({ error: 'Invite at least one person' });
     expect(await createMeetingAction('HLT-026', { ...NEW, title: 42 } as never)).toEqual({ error: 'Title is required' });
     viewer.lang = 'fr';
-    expect(await createMeetingAction('HLT-026', { ...NEW, title: 'Revue', agenda: '' })).toEqual({ toast: 'Revue · Réunion créée · invitation synchronisée avec le calendrier' });
+    expect(await createMeetingAction('HLT-026', { ...NEW, title: 'Revue', agenda: '' })).toEqual({ toast: 'Revue · Réunion créée' }); // S-11 / A-15 (R-037)
     expect(await createMeetingAction('HLT-026', { ...NEW, type: 'secret' })).toEqual({ error: 'Type de réunion invalide' });
   });
 
@@ -168,6 +196,8 @@ describe('transcript Server Functions (chapter 4, S-10)', () => {
     expect(await importTranscriptAction(form({ code: 'HLT-026', meeting: 'MTG-130', file: new File(['x'], 'notes.docx') }))).toEqual({ ok: false, error: 'File type not accepted' });
     expect(await importTranscriptAction(form({ code: 'HLT-026', meeting: 'MTG-118', text: TEXT }))).toEqual({ ok: false, error: 'Minutes already sent' });
     expect(await importTranscriptAction(form({ code: 'NDC-031', meeting: 'MTG-130', text: TEXT }))).toEqual({ ok: false, error: 'Unknown meeting' });
+    // Under 800 000 characters but over 800 000 bytes in UTF-8 (accents): refused with its own message, before Next's 1 MB limit.
+    expect(await importTranscriptAction(form({ code: 'HLT-026', meeting: 'MTG-130', text: 'Décidé. '.repeat(90_000) }))).toEqual({ ok: false, error: 'The transcript is too long' });
     expect(await importTranscriptAction(form({ code: 'HLT-026', meeting: 'MTG-130', text: TEXT }))).toEqual({ ok: true, toast: 'Transcript imported · 37 words · 3 speakers' });
     viewer.lang = 'fr';
     const srt = '1\n00:00:01,000 --> 00:00:03,000\nR. Aubert: We agreed to keep the night shift.\n';

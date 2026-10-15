@@ -22,9 +22,10 @@
 import { screenHref, type RoleKey } from '@/config/screens';
 import type { Lang, T } from '@/i18n/translate';
 import { moneyEur } from '@/lib/format';
+import { BASE_CURRENCY, moneyUnitsIn, type CurrencyCode } from './currency';
 import {
   RFQ_AWARD_ROLES, STATUS_ISO, addDaysIso, incoterm, shortDateYearOfIso,
-  type Incoterm, type MatchState, type RfqStatus, type SupplierGrade, type SupplierInvoiceStatus,
+  type Incoterm, type MatchState, type PoStatus, type RfqStatus, type SupplierGrade, type SupplierInvoiceStatus,
 } from '@/server/db/codes';
 import type { ApprovalItem } from './approvals';
 import { parseNeedDate } from './team';
@@ -129,7 +130,10 @@ export function invoiceChipStatuses(invoices: readonly { status: SupplierInvoice
 
 export interface InvoiceForKpi {
   status: SupplierInvoiceStatus;
+  /** Amount in the invoice's currency (C-9). */
   amountEur: number;
+  /** Euros per unit of the invoice's currency at its project's budget rate (1 when absent): the KPI is consolidated in €. */
+  eurRate?: number;
   /** ISO due date. */
   dueDate: string;
 }
@@ -151,7 +155,7 @@ export function invoiceKpis(invoices: readonly InvoiceForKpi[], todayIso: string
   const horizon = addDaysIso(todayIso, 30);
   return {
     toProcess: open.length,
-    toProcessEur: open.reduce((a, i) => a + i.amountEur, 0),
+    toProcessEur: open.reduce((a, i) => a + i.amountEur * (i.eurRate ?? 1), 0),
     blocked: invoices.filter((i) => isInvoiceToResolve(i.status)).length,
     awaitingReceipt: invoices.filter((i) => i.status === 'awaiting_receipt').length,
     approved: invoices.filter((i) => i.status === 'approved_for_payment').length,
@@ -235,11 +239,21 @@ export const canAwardRfq = (r: RfqStateInput, role: RoleKey) => r.status === 'co
 /**
  * Footnote of the quote comparison (`rfqVals.hint`, EN source): who awards while Comparing, the award once Awarded.
  * An award made in Keystone without an order to draft (no project or quantity) says so instead of promising one.
+ * R-095: once the drafted order moved on, the footnote says where it stands (sent for approval, placed, or cancelled before
+ * it was placed — the RFQ itself stays awarded); a Draft keeps the prototype's sentence.
  */
-export function rfqHint(r: RfqStateInput & { purchaseOrderNumber: string | null; awardedInKeystone: boolean }, role: RoleKey): string {
+export function rfqHint(
+  r: RfqStateInput & { purchaseOrderNumber: string | null; awardedInKeystone: boolean; purchaseOrderStatus?: PoStatus | null },
+  role: RoleKey,
+): string {
   if (r.status === 'comparing' && !canAwardRole(role)) return 'Switch to Project manager or Procurement to award.';
   if (r.status === 'awarded' && r.awardedTo) {
     if (r.awardedInKeystone && !r.purchaseOrderNumber) return `Awarded to ${r.awardedTo} — no purchase order drafted (no project or quantity on the RFQ).`;
+    const po = r.purchaseOrderNumber;
+    const st = r.purchaseOrderStatus;
+    if (po && st === 'cancelled') return `Awarded to ${r.awardedTo} — purchase order ${po} cancelled before it was placed.`;
+    if (po && st === 'awaiting_approval') return `Awarded to ${r.awardedTo} — purchase order ${po} awaiting approval.`;
+    if (po && (st === 'ordered' || st === 'partially_received' || st === 'received')) return `Awarded to ${r.awardedTo} — purchase order ${po} placed.`;
     return `Awarded to ${r.awardedTo} — purchase order created as draft.`;
   }
   return '';
@@ -337,7 +351,9 @@ export interface InvoiceForInbox {
   number: string;
   supplier: string;
   status: SupplierInvoiceStatus;
+  /** Amount in `currency` (C-9; € when absent). */
   amountEur: number;
+  currency?: CurrencyCode;
   match: Match3;
   /** ISO invoice date. */
   invoiceDate: string;
@@ -354,7 +370,7 @@ export function invoiceApprovalItems(invoices: readonly InvoiceForInbox[], lang:
     .map((i) => ({
       kind: 'invoice',
       id: i.number,
-      title: `${i.supplier} · ${moneyEur(i.amountEur, lang)}`,
+      title: `${i.supplier} · ${moneyUnitsIn(i.amountEur, i.currency ?? BASE_CURRENCY, lang)}`,
       sub: invoiceInboxSub(i),
       who: 'Accounts payable',
       when: shortDateYearOfIso(i.invoiceDate),
@@ -366,9 +382,6 @@ export function invoiceApprovalItems(invoices: readonly InvoiceForInbox[], lang:
 
 // ── "New RFQ" form (AF.procurement) ────────────────────────────────────────────────────────────────────
 
-/** Form default of "Reply due" (AF.procurement). */
-export const NEW_RFQ_DEFAULT_DUE = '15 Oct 2026';
-export const NEW_RFQ_DEFAULT_DUE_ISO = '2026-10-15';
 export const NEW_RFQ_INCOTERMS: readonly Incoterm[] = incoterm.codes;
 
 export interface NewRfqValues {
@@ -386,7 +399,7 @@ const MAX_TEXT = 300;
 
 /**
  * Validates the New RFQ form: title, suppliers (comma, semicolon or line separated) and articles are required; the
- * reply date is a date (EN or FR, "15 Oct 2026" by default) not before the status date; the incoterm is a code.
+ * reply date is a date (EN or FR; by default the status date + 20 days, R-169) not before the status date; the incoterm is a code.
  */
 export function parseNewRfq(values: Record<string, unknown>, todayIso: string = STATUS_ISO): ParseResult<NewRfqValues> {
   const title = text(values.title);
@@ -397,10 +410,29 @@ export function parseNewRfq(values: Record<string, unknown>, todayIso: string = 
   if (!articles) return { ok: false, error: 'The articles are required' };
   if (title.length > MAX_TEXT || articles.length > MAX_TEXT || suppliers.length > 20 || suppliers.some((s) => s.length > 120)) return { ok: false, error: 'The text is too long' };
   const dueText = text(values.due);
-  const replyDueOn = dueText ? parseNeedDate(dueText) : NEW_RFQ_DEFAULT_DUE_ISO;
+  const replyDueOn = dueText ? parseNeedDate(dueText) : newRfqDefaultDueIso(todayIso);
   if (!replyDueOn) return { ok: false, error: 'Enter the reply date as a date (e.g. 15 Oct 2026)' };
   if (replyDueOn < todayIso) return { ok: false, error: 'The reply date is before the status date' };
   const inc = text(values.incoterm) || 'DAP';
   if (!incoterm.isCode(inc)) return { ok: false, error: 'Unknown incoterm' };
   return { ok: true, value: { title, suppliers: [...new Set(suppliers)], articles, replyDueOn, incoterm: inc } };
 }
+
+// ── Delivery 7 (R-169): computed tiles and form defaults instead of the prototype's constants ─────────────────────────
+
+/**
+ * "Award rule" tile (R-169, A-12; the prototype printed the constant "PM"): of the RFQs still to award (not Awarded),
+ * how many the project manager decides ("PM decides") — the others follow their own rule (lowest TCO, technical first,
+ * lowest price). "—" when nothing is left to award.
+ */
+export function awardRuleTile(rfqs: readonly { status: RfqStatus; awardRule: string }[]): { value: string; sub: string } {
+  const open = rfqs.filter((r) => r.status !== 'awarded');
+  if (!open.length) return { value: '—', sub: 'No RFQ to award' };
+  return { value: `${open.filter((r) => r.awardRule === 'pm_decides').length} / ${open.length}`, sub: 'RFQs to award decided by the project manager' };
+}
+
+/** Days from the data date to the default reply date of a new RFQ (25 Sep → 15 Oct on the seed, as the prototype). */
+export const NEW_RFQ_REPLY_DAYS = 20;
+
+/** Default "Reply due" of a new RFQ (R-169: the data date + 20 days, no longer the literal "15 Oct 2026"). */
+export const newRfqDefaultDueIso = (asOf: string = STATUS_ISO) => addDaysIso(asOf, NEW_RFQ_REPLY_DAYS);

@@ -1,21 +1,23 @@
 'use server';
-// HR Server Functions (docs/spec/06 §2–§5): rate card edits and "Add role", "Add skill", "Sync Lucca", "Import Lucca
-// hours" and the "Assign" of hours declared without a planned task. Each one checks the viewer's access to the
-// screen (not outside the workspace; rates: director/pm; hours: project editable), validates the untrusted input,
-// writes through the DAL (the viewer is the actor of the audit row) and revalidates the screen.
+// HR Server Functions (docs/spec/06 §2–§5): rate card edits and "Add role", "Add skill", "Import Lucca hours" and the
+// "Assign" of hours declared without a planned task ("Sync Lucca" is retired: absences come from Cursus, NEW-CURSUS-7). Each
+// one checks the viewer's access to the screen (not outside the workspace; rates: director and Finance — P-12 c, R-044; hours:
+// project editable), validates the untrusted input, writes through the DAL (the viewer is the actor; the rate writers re-check
+// the role) and revalidates.
+// R-083: a rate or multiplier edit and "Add role" carry an explicit effective date (the version of that date is written).
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { screenHref } from '@/config/screens';
-import { canSeeRates } from '@/domain/hr';
+import { canEditRates, parseEffectiveDate } from '@/domain/hr';
 import {
-  addRateRole, addSkill, assignUnassignedHours, getHoursReconciliation, getRateCard, getSkillsMatrix, markHoursImported, setBaseRate, setMultiplier,
+  HOURS_READ_ONLY, RATES_EDIT_REFUSED, addRateRole, addSkill, assignUnassignedHours, getHoursReconciliation, getRateCard, getSkillsMatrix, markHoursImported,
+  setBaseRate, setMultiplier,
 } from '@/server/dal/hr';
 import { getProject } from '@/server/dal/projects';
 import { getProjectContext, getScreenAccess } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import {
-  ADD_ROLE_RESULT, ADD_SKILL_RESULT, SYNC_LUCCA_RESULT, importHoursResult, parseAddRole, parseAddSkill, parseFactor, parseImportHours, parseRate,
-  parseSyncLucca, periodCovers,
+  ADD_ROLE_RESULT, ADD_SKILL_RESULT, importHoursResult, parseAddRole, parseAddSkill, parseFactor, parseImportHours, parseRate, periodCovers,
 } from './forms';
 import { hrT } from './i18n';
 
@@ -26,43 +28,66 @@ async function tr() {
   return hrT(t, lang);
 }
 
-/** Rate card writes: director and pm inside their workspace (multipliers included — 06 OQ6). */
-async function rateEditor(): Promise<{ actor: string } | { error: string }> {
+/** Rate card writes: the director and Finance inside their workspace (P-12 c, R-044 — PMs read the values). */
+async function rateEditor(): Promise<{ actor: { name: string; role: string } } | { error: string }> {
   const t = await tr();
   const { viewer, outside } = await getScreenAccess('rates');
-  if (outside || !canSeeRates(viewer.role)) return { error: t('Rates are visible to directors and project managers only') };
-  return { actor: viewer.name };
+  if (outside || !canEditRates(viewer.role)) return { error: t(RATES_EDIT_REFUSED) };
+  return { actor: { name: viewer.name, role: viewer.role } };
 }
 
-/** Base €/h of a role (`setRate`); the cell keeps the stored value. */
-export async function setBaseRateAction(role: string, value: number): Promise<HrEditResult> {
+/** DAL refusals worth showing as they are (EN source, translated); anything else is a generic failure. */
+const RATE_ERRORS = new Set([RATES_EDIT_REFUSED, 'This role is already on the rate card', 'Invalid effective date']);
+async function rateFailure(e: unknown): Promise<{ error: string }> {
+  const t = await tr();
+  const msg = e instanceof Error ? e.message : '';
+  return { error: t(RATE_ERRORS.has(msg) ? msg : 'The change could not be saved') };
+}
+
+/** Rates value hours on every project (Hours, task cost notes, what-if, site premiums): the whole app is revalidated. */
+const refreshRates = () => revalidatePath('/', 'layout');
+
+/** Base €/h of a role from `effectiveFrom` (ISO; `setRate`); the cell keeps the stored value. */
+export async function setBaseRateAction(role: string, value: number, effectiveFrom: string): Promise<HrEditResult> {
   const t = await tr();
   const who = await rateEditor();
   if ('error' in who) return who;
   const rate = parseRate(value);
   if (!rate.ok) return { error: t(rate.error) };
-  const card = await getRateCard();
+  const on = parseEffectiveDate(effectiveFrom);
+  if (!on) return { error: t('Enter a valid effective date') };
+  const card = await getRateCard(on);
   if (typeof role !== 'string' || !card.roles.some((r) => r.role === role)) return { error: t('Invalid request') };
-  await setBaseRate(role, rate.value, who.actor);
-  revalidatePath(screenHref('rates'));
+  try {
+    await setBaseRate(role, rate.value, on, who.actor);
+  } catch (e) {
+    return rateFailure(e);
+  }
+  refreshRates();
   return { ok: true, value: rate.value };
 }
 
-/** Multiplier factor (`setMult`). */
-export async function setMultiplierAction(key: string, value: number): Promise<HrEditResult> {
+/** Multiplier factor from `effectiveFrom` (`setMult`). */
+export async function setMultiplierAction(key: string, value: number, effectiveFrom: string): Promise<HrEditResult> {
   const t = await tr();
   const who = await rateEditor();
   if ('error' in who) return who;
   const factor = parseFactor(value);
   if (!factor.ok) return { error: t(factor.error) };
-  const card = await getRateCard();
+  const on = parseEffectiveDate(effectiveFrom);
+  if (!on) return { error: t('Enter a valid effective date') };
+  const card = await getRateCard(on);
   if (typeof key !== 'string' || !card.multipliers.some((m) => m.key === key)) return { error: t('Invalid request') };
-  await setMultiplier(key, factor.value, who.actor);
-  revalidatePath(screenHref('rates'));
+  try {
+    await setMultiplier(key, factor.value, on, who.actor);
+  } catch (e) {
+    return rateFailure(e);
+  }
+  refreshRates();
   return { ok: true, value: factor.value };
 }
 
-/** "Add role" (AF.rates): appends the role to the rate card (the prototype only toasts — 06 OQ8). */
+/** "Add role" (AF.rates): appends the role to the rate grid with its first version from the form's effective date. */
 export async function addRateRoleAction(values: Record<string, string>): Promise<FormDialogResult> {
   const t = await tr();
   const who = await rateEditor();
@@ -70,9 +95,13 @@ export async function addRateRoleAction(values: Record<string, string>): Promise
   const card = await getRateCard();
   const parsed = parseAddRole(values, card.roles.map((r) => r.role));
   if (!parsed.ok) return { error: t(parsed.error) };
-  const { role, rateEur, costCenter, grade } = parsed.value;
-  await addRateRole({ role, rateEur, costCenter, grade }, who.actor);
-  revalidatePath(screenHref('rates'));
+  const { role, rateEur, costCenter, grade, effectiveFrom } = parsed.value;
+  try {
+    await addRateRole({ role, rateEur, costCenter, grade, effectiveFrom }, who.actor);
+  } catch (e) {
+    return rateFailure(e);
+  }
+  refreshRates();
   return { toast: t(ADD_ROLE_RESULT) };
 }
 
@@ -89,27 +118,20 @@ export async function addSkillAction(values: Record<string, string>): Promise<Fo
   return { toast: t(ADD_SKILL_RESULT) };
 }
 
-/**
- * "Sync Lucca" (AF.leave): toast only, as in the prototype — the Lucca connector is not modelled, leave stays the
- * seeded mirror. TODO(db): call the Lucca connector, upsert leave entries, stamp the connector's last sync.
- */
-export async function syncLuccaAction(values: Record<string, string>): Promise<FormDialogResult> {
-  const t = await tr();
-  const { outside } = await getScreenAccess('leave');
-  if (outside) return { error: t('Outside my workspace · Read-only') };
-  const parsed = parseSyncLucca(values);
-  if (!parsed.ok) return { error: t(parsed.error) };
-  return { toast: t(SYNC_LUCCA_RESULT) };
-}
-
-async function hoursEditor(code: unknown): Promise<{ code: string; analytic: string | null; actor: string } | { error: string }> {
+async function hoursEditor(code: unknown): Promise<{ code: string; analytic: string | null; actor: { name: string; role: string } } | { error: string }> {
   const t = await tr();
   if (typeof code !== 'string' || !code) return { error: t('Invalid request') };
   const project = await getProject(code);
   if (!project) return { error: t('Invalid request') };
   const ctx = await getProjectContext(project.code, 'hours');
-  if (!ctx.canEdit('hours')) return { error: t('Hours are read-only for you on this project') };
-  return { code: project.code, analytic: project.analytic, actor: ctx.viewer.name };
+  if (!ctx.canEdit('hours')) return { error: t(HOURS_READ_ONLY) };
+  return { code: project.code, analytic: project.analytic, actor: { name: ctx.viewer.name, role: ctx.viewer.role } };
+}
+
+/** The DAL's re-check of the Hours rule (a team or role change since the check above) keeps its message. */
+async function hoursFailure(e: unknown): Promise<{ error: string }> {
+  const t = await tr();
+  return { error: t(e instanceof Error && e.message === HOURS_READ_ONLY ? HOURS_READ_ONLY : 'The change could not be saved') };
 }
 
 /**
@@ -125,7 +147,11 @@ export async function importHoursAction(code: string, values: Record<string, str
   if (!parsed.ok) return { error: t(parsed.error) };
   const recon = await getHoursReconciliation(who.code);
   if (!recon || !periodCovers(parsed.value.period, recon.periodStart)) return { error: t('No hours declared in Lucca for this period') };
-  await markHoursImported(who.code, { analyticCode: parsed.value.analyticCode, matchingMode: parsed.value.matchingMode }, who.actor);
+  try {
+    await markHoursImported(who.code, { analyticCode: parsed.value.analyticCode, matchingMode: parsed.value.matchingMode }, who.actor);
+  } catch (e) {
+    return hoursFailure(e);
+  }
   revalidatePath(screenHref('hours', { code: who.code }));
   return { toast: t(importHoursResult(recon.lines.length, recon.unassigned.filter((u) => !u.assignedWbs).length)) };
 }
@@ -144,7 +170,11 @@ export async function assignHoursAction(code: string, index: number, wbsCode: st
   if (line.assignedWbs) return { error: t('These hours are already assigned') };
   const wp = recon.workPackages.find((w) => w.code === wbsCode);
   if (!wp) return { error: t('Choose a work package') };
-  await assignUnassignedHours(who.code, index, wp.code, who.actor);
+  try {
+    await assignUnassignedHours(who.code, index, wp.code, who.actor);
+  } catch (e) {
+    return hoursFailure(e);
+  }
   revalidatePath(screenHref('hours', { code: who.code }));
   return { toast: t(`${line.hours} h assigned to ${wp.label}`) };
 }

@@ -1,7 +1,7 @@
 // Planning (docs/spec/11 §3.3, docs/spec/05 §0.5 / §1 / §2): WBS nodes, activities, logic links, resource
 // assignments, milestones, schedule bars (TASKS), pipeline stage plans and the project control header
 // (the display figures of projectData()).
-import { boolean, date, integer, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { boolean, date, index, integer, jsonb, pgTable, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { CalendarCode, ConstraintType, LinkType, MilestoneStatus, PipelineWindow } from '../codes';
 import { id, keur, months, num, timestamps } from './_common';
 import { departments, persons } from './organisation';
@@ -215,11 +215,16 @@ export const projectControls = pgTable('project_controls', {
   reconCrCount: integer('recon_cr_count').notNull(),
   reconPendingKeur: keur('recon_pending_keur').notNull(),
   reconPendingSub: text('recon_pending_sub').notNull(),
+  /** Contingency line of the budget (k€): the provision of a project without a contingency register (delivery 7, A-8). */
   contingencyKeur: keur('contingency_keur').notNull(),
+  /**
+   * FORECAST consumption of the contingency (k€; the prototype's `contUsed`, e.g. HLT-026 208). Since delivery 7 (A-8) the
+   * consumed figure is the register's validated draw-downs; this stays the forecast the Budget shows apart.
+   */
   contingencyUsedKeur: keur('contingency_used_keur').notNull(),
   /**
-   * Orders placed not yet in actual cost (Cash & recovery `openCommit`, 04 §1.6): HLT-026's 713 k€ until purchase
-   * orders are modelled (04 Q11); null → 60 % of next month's planned value.
+   * Legacy: orders placed not yet in actual cost (the prototype's literal 713 k€ of HLT-026, 04 Q11). Since delivery 7
+   * (R-073) the Budget computes them from the project's purchase orders; no longer read.
    */
   ordersPlacedKeur: keur('orders_placed_keur'),
   /** Narrative under the variance card. */
@@ -227,3 +232,30 @@ export const projectControls = pgTable('project_controls', {
   ...timestamps,
 });
 
+
+/**
+ * Plan trash (chapter 4, S-5 "confirmation and keep the possibility to undo"): one row per removal of a work package or an
+ * activity on the Plan. The removed rows (the node, its activities, their links, assignments and Plan to-dos, the package's
+ * Schedule bar…) leave their tables — so no read anywhere has to filter them out — and are kept here as JSON with the
+ * references other modules had to them, until "Undo" / "Recently deleted" restores them exactly or the purge drops the row
+ * (src/server/dal/plan-trash.ts).
+ */
+export const planTrash = pgTable(
+  'plan_trash',
+  {
+    id: id(),
+    projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+    /** 'wp' (work package with its activities) | 'act'. */
+    kind: text('kind').$type<'wp' | 'act'>().notNull(),
+    /** "1.7" / "A1250" and the name at removal. */
+    code: text('code').notNull(),
+    name: text('name').notNull(),
+    activityCount: integer('activity_count').notNull(),
+    /** Removed rows per table and the cleared references (plan-trash.ts TrashPayload). */
+    payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedByPersonId: uuid('deleted_by_person_id').references(() => persons.id),
+    deletedByName: text('deleted_by_name').notNull(),
+  },
+  (t) => [index('plan_trash_project_idx').on(t.projectId, t.deletedAt)],
+);

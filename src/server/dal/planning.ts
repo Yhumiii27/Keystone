@@ -13,6 +13,7 @@ import {
   activities, activityAssignments, activityLinks, baselines, changeRequests, milestones, persons, pipelineStagePlans, projectControls,
   projectMembers, projects, scheduleBars, wbsNodes,
 } from '@/server/db/schema';
+import { getProjectEvm, listProjectEvms } from './evm';
 
 // ── Types ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -346,7 +347,9 @@ export async function getScheduleControl(code: string): Promise<ScheduleControl 
     .innerJoin(persons, eq(persons.id, projectMembers.personId))
     .where(eq(projectMembers.projectId, row.projectId))
     .orderBy(asc(projectMembers.position));
-  return toScheduleControl(row.c, row.progress, row.shortCode, team.map((m) => m.fullName ?? m.shortName));
+  // R-073 (delivery 7): progress computed from the activities when the project has activity budgets.
+  const progress = (await getProjectEvm(code))?.progress ?? row.progress;
+  return toScheduleControl(row.c, progress, row.shortCode, team.map((m) => m.fullName ?? m.shortName));
 }
 
 /**
@@ -355,7 +358,7 @@ export async function getScheduleControl(code: string): Promise<ScheduleControl 
  */
 export async function listScheduleSummaries(): Promise<Record<string, ScheduleControl & { milestones: MilestoneRow[] }>> {
   const db = await getDb();
-  const [heads, miles, team] = await Promise.all([
+  const [heads, miles, team, evms] = await Promise.all([
     db
       .select({ c: projectControls, code: projects.code, progress: projects.progress, shortCode: projects.shortCode })
       .from(projectControls)
@@ -372,11 +375,12 @@ export async function listScheduleSummaries(): Promise<Record<string, ScheduleCo
       .innerJoin(projects, eq(projects.id, projectMembers.projectId))
       .innerJoin(persons, eq(persons.id, projectMembers.personId))
       .orderBy(asc(projectMembers.position)),
+    listProjectEvms(),
   ]);
   const out: Record<string, ScheduleControl & { milestones: MilestoneRow[] }> = {};
   for (const h of heads)
     out[h.code] = {
-      ...toScheduleControl(h.c, h.progress, h.shortCode, team.filter((t) => t.code === h.code).map((t) => t.fullName ?? t.shortName)),
+      ...toScheduleControl(h.c, evms.get(h.code)?.progress ?? h.progress, h.shortCode, team.filter((t) => t.code === h.code).map((t) => t.fullName ?? t.shortName)),
       milestones: miles.filter((x) => x.code === h.code).map(({ m }) => ({
         name: m.name, baselineMonth: m.baselineMonth, forecastMonth: m.forecastMonth, status: m.status,
         statusLabel: milestoneStatus.label(m.status), position: m.position,

@@ -1,7 +1,9 @@
 // "My project — client view" body (docs/spec/03 §8, template 2180–2236): KPI tiles, the "Display" segments (URL state
-// `?tab=`) and one of the five tabs — Progress & milestones, Decisions, Invoices, Issues, Documents. Server Component;
+// `?tab=`) and one of the six tabs — Progress & milestones, Schedule (S-9a: summary Gantt + PDF, not in the prototype),
+// Decisions, Invoices, Issues, Documents. Server Component;
 // the decisions, "Raise issue" and "Acknowledge receipt" are client islands shown to the viewers allowed to act (the
-// project's client contact; the director may also raise issues). Shared documents link to their Codex record.
+// project's client contact; the director may also raise issues). Shared documents link to their Codex record; Delivery 8
+// (L-9 = a, R-138): a "By category" strip, computed from the Codex index, sits above them (a grouped display, no filter).
 import { Eye } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import { EmptyState } from '@/components/app/EmptyState';
@@ -12,7 +14,11 @@ import { SectionCard } from '@/components/app/SectionCard';
 import { CardTitle } from '@/components/ds/Card';
 import { Segmented } from '@/components/ds/Segmented';
 import { Table, Td, Th } from '@/components/ds/Table';
+import { ObjectStatusTag } from '@/components/app/StatusTag';
+import { ProjectGantt, ProjectGanttLegend } from '@/components/charts/project-gantt';
 import { DownloadButton } from '@/features/docs/codex-buttons';
+import { ExportFileButton } from '@/features/exports/export-file-button';
+import { exportHref } from '@/lib/export-href';
 import { docHref } from '@/features/docs/links';
 import type { T } from '@/i18n/translate';
 import { AcknowledgeButton, DecisionButtons, DownloadStatementButton, RaiseIssueForm } from './buttons';
@@ -46,6 +52,7 @@ export function ClientView({ code, view, can, t }: Props) {
         <Segmented wrap label={t('Display')} value={view.tab} options={view.tabs} />
       </FilterBar>
       {view.tab === 'progress' && <ProgressTab view={view} t={t} />}
+      {view.tab === 'planning' && <PlanningTab code={code} view={view} t={t} />}
       {view.tab === 'decisions' && <DecisionsTab code={code} view={view} can={can} t={t} />}
       {view.tab === 'invoices' && <InvoicesTab code={code} view={view} t={t} />}
       {view.tab === 'issues' && <IssuesTab code={code} view={view} can={can} t={t} />}
@@ -107,6 +114,60 @@ function ProgressTab({ view, t }: { view: ClientScreenView; t: T }) {
   );
 }
 
+/**
+ * "Schedule" (S-9a, read-only): the Schedule screen's Gantt — work packages baseline vs forecast, today line, milestone
+ * diamonds — and the milestone list, with the Gantt PDF (export document `planning` of the portal).
+ */
+function PlanningTab({ code, view, t }: { code: string; view: ClientScreenView; t: T }) {
+  const p = view.planning;
+  if (!p)
+    return (
+      <SectionCard gap={10}>
+        <CardTitle>{t('Schedule — baseline vs forecast')}</CardTitle>
+        <EmptyState variant="boxed">{t('No schedule recorded for this project')}</EmptyState>
+      </SectionCard>
+    );
+  return (
+    <>
+      <SectionCard gap={10} scroll>
+        <div className={s.chartHead}>
+          <div className={s.chartTitle}>
+            <CardTitle>{t('Schedule — baseline vs forecast')}</CardTitle>
+            <span className={s.chartSub}>{p.finish}</span>
+          </div>
+          <ProjectGanttLegend labels={{ critical: t('Critical path'), task: t('Task'), baseline: t('Baseline'), milestone: t('Milestone') }} />
+          <ExportFileButton href={exportHref('client', { format: 'pdf', code, variant: 'planning' })} label={t('Download PDF')} variant="secondary" size="sm" />
+        </div>
+        {p.tasks.length || p.milestones.length ? (
+          <ProjectGantt
+            months={p.months}
+            tasks={p.tasks}
+            milestones={p.milestones}
+            todayL={p.todayL}
+            labels={{ workPackage: t('Work package'), done: t('Done'), slip: t('Slip'), milestones: t('Milestones'), today: t('Today') }}
+          />
+        ) : (
+          <EmptyState variant="boxed">{t('No work package scheduled for this project')}</EmptyState>
+        )}
+      </SectionCard>
+      <SectionCard gap={4}>
+        <CardTitle className={s.titleGap}>{t('Milestones')}</CardTitle>
+        {p.list.map((m, i) => (
+          <div key={i} className={s.planMsRow}>
+            <div className={s.stackText}>
+              <span>{m.name}</span>
+              <span className={s.msSub}>{m.dates}</span>
+            </div>
+            <span className={`${s.planSlip} ${m.slipAlert ? s.planSlipAlert : ''}`}>{m.slipText}</span>
+            <ObjectStatusTag kind="milestone" code={m.status} label={m.statusLabel} />
+          </div>
+        ))}
+        {!p.list.length && <EmptyState>{t('No milestone recorded for this project')}</EmptyState>}
+      </SectionCard>
+    </>
+  );
+}
+
 function DecisionsTab({ code, view, can, t }: { code: string; view: ClientScreenView; can: ClientCapabilities; t: T }) {
   return (
     <div className={s.grid460}>
@@ -126,6 +187,23 @@ function DecisionsTab({ code, view, can, t }: { code: string; view: ClientScreen
               </span>
               <span className={s.decTitle}>{d.title}</span>
               <span className={s.decSub}>{d.sub}</span>
+              {/* R-140 (X-11 shared): why the change is asked, as typed; three lines, then "Show more". */}
+              {d.why &&
+                (d.why.long ? (
+                  <details className={s.decWhy}>
+                    <summary className={s.decWhySummary}>
+                      <span className={s.decWhyText}>
+                        <span className={s.decWhyLabel}>{t('Why:')}</span> {d.why.text}
+                      </span>
+                      <span className={s.decWhyMore}>{t('Show more')}</span>
+                      <span className={s.decWhyLess}>{t('Show less')}</span>
+                    </summary>
+                  </details>
+                ) : (
+                  <span className={s.decWhyText}>
+                    <span className={s.decWhyLabel}>{t('Why:')}</span> {d.why.text}
+                  </span>
+                ))}
             </div>
             {can.decide && <DecisionButtons code={code} kind={d.kind} id={d.id} approveLabel={d.approveLabel} rejectLabel={t('Reject')} />}
           </div>
@@ -217,6 +295,23 @@ function IssuesTab({ code, view, can, t }: { code: string; view: ClientScreenVie
 function DocumentsTab({ code, view, can, t }: { code: string; view: ClientScreenView; can: ClientCapabilities; t: T }) {
   return (
     <SectionCard title={t('Documents')} subtitle={view.docsLabels.sub} scroll>
+      {view.docCategories.length > 0 && (
+        <div className={s.docCats}>
+          <span className={s.docCatsTitle}>{view.docsLabels.byCategory}</span>
+          <ul className={s.docCatList} aria-label={view.docsLabels.byCategory}>
+            {view.docCategories.map((c) => (
+              <li key={c.key} className={s.docCat}>
+                <span className={s.docCatHead}>
+                  <span className={s.docCatName}>{c.name}</span>
+                  <span className={s.docCatCount}>{c.files}</span>
+                </span>
+                <span className={s.docCatSub}>{c.description}</span>
+                <span className={s.docCatSub}>{c.latest}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <Table size={12.5}>
         <thead>
           <tr>

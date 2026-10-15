@@ -14,9 +14,14 @@ import { isoOfDisplayDate, weekLabelOfIso, whatIfPriority } from '@/server/db/co
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import {
   activities, activityAssignments, allocations, costCategories, departmentCapacities, departments, persons, projectControls, projectMembers, projects,
-  rateMultipliers, rateRoles, resourceRequests, wbsNodes, whatIfLevers, whatIfScenarioActions, whatIfScenarioLevers, whatIfScenarios,
+  resourceRequests, wbsNodes, whatIfLevers, whatIfScenarioActions, whatIfScenarioLevers, whatIfScenarios,
 } from '@/server/db/schema';
+import { multiplierAt, rateAt } from '@/domain/hr';
+import { inExecution } from '@/domain/portfolio';
+import type { ZoneKey } from '@/server/session';
 import { listProjectBaselines } from './baselines';
+import { listProjects } from './projects';
+import { getRateGrid } from './hr';
 import { createResourceRequest } from './requests';
 import { loadScheduleNetwork } from './schedule-network';
 import { markScenarioApplied } from './whatif-store';
@@ -139,16 +144,46 @@ export interface LaborCost {
   actual: number;
 }
 
-/** First cost category of a project whose name matches /labor|staff/i (Resources KPI "Labor cost to date"). */
+/**
+ * Labour cost of a project (Project resources KPI "Labor cost to date"): Σ budget and actual of its cost categories typed
+ * 'labor' (R-086: one rule with the portfolio figure — the former /labor|staff/ name match on the first category is retired; no
+ * seeded value changes, every such category is typed Labor). Null when the project has no labour category.
+ */
 export async function getLaborCost(projectCode: string): Promise<LaborCost | null> {
   const db = await getDb();
   const cats = await db
     .select({ name: costCategories.name, budget: costCategories.budgetKeur, actual: costCategories.actualKeur })
     .from(costCategories)
     .innerJoin(projects, eq(projects.id, costCategories.projectId))
-    .where(eq(projects.code, projectCode))
+    .where(and(eq(projects.code, projectCode), eq(costCategories.costType, 'labor')))
     .orderBy(asc(costCategories.position));
-  return cats.find((c) => /labor|staff/i.test(c.name)) ?? null;
+  if (!cats.length) return null;
+  return { name: cats[0].name, budget: cats.reduce((a, c) => a + c.budget, 0), actual: cats.reduce((a, c) => a + c.actual, 0) };
+}
+
+export interface PortfolioLaborCost {
+  /** Σ labour budget and actual, k€. */
+  budget: number;
+  actual: number;
+  /** Codes of the projects counted. */
+  projects: string[];
+}
+
+/**
+ * R-086 (R-2 a): labour cost of the portfolio in the displayed zone (Resources KPI "Labor cost to date"): the projects in the zone
+ * (`null` = all zones) and in execution (A-3 — the Overview's population; a delivery-8 default the owner may overturn), Σ budget
+ * and actual over every cost category typed 'labor'.
+ */
+export async function getPortfolioLaborCost(zone: ZoneKey | null): Promise<PortfolioLaborCost> {
+  const db = await getDb();
+  const codes = (await listProjects()).filter((p) => inExecution(p) && (!zone || p.zone === zone)).map((p) => p.code);
+  if (!codes.length) return { budget: 0, actual: 0, projects: [] };
+  const [row] = await db
+    .select({ budget: sql<number>`coalesce(sum(${costCategories.budgetKeur}), 0)::float`, actual: sql<number>`coalesce(sum(${costCategories.actualKeur}), 0)::float` })
+    .from(costCategories)
+    .innerJoin(projects, eq(projects.id, costCategories.projectId))
+    .where(and(inArray(projects.code, codes), eq(costCategories.costType, 'labor')));
+  return { budget: Number(row?.budget ?? 0), actual: Number(row?.actual ?? 0), projects: codes };
 }
 
 
@@ -232,7 +267,7 @@ async function loadWhatIfState(projectCode: string): Promise<WhatIfState | null>
   const who = alias(persons, 'who');
   const adept = alias(departments, 'adept');
   const pdept = alias(departments, 'pdept');
-  const [acts, asg, team, pool, depts, roles, mults] = await Promise.all([
+  const [acts, asg, team, pool, depts, grid, rated] = await Promise.all([
     db
       .select({ code: activities.code, name: activities.name, full: owner.fullName, short: owner.shortName })
       .from(activities)
@@ -241,7 +276,7 @@ async function loadWhatIfState(projectCode: string): Promise<WhatIfState | null>
     db
       .select({
         act: activities.code, resource: activityAssignments.resource, full: who.fullName, short: who.shortName, job: who.jobTitle, adept: adept.name, pdept: pdept.name,
-        units: activityAssignments.resourceCount, hpd: activityAssignments.hoursPerDay,
+        units: activityAssignments.resourceCount, hpd: activityAssignments.hoursPerDay, rateRoleId: who.rateRoleId,
       })
       .from(activityAssignments)
       .innerJoin(activities, eq(activities.id, activityAssignments.activityId))
@@ -253,24 +288,30 @@ async function loadWhatIfState(projectCode: string): Promise<WhatIfState | null>
     getProjectTeam(projectCode),
     getResourcePool(),
     listDepartments(),
-    db.select().from(rateRoles).orderBy(asc(rateRoles.position)),
-    db.select().from(rateMultipliers),
+    getRateGrid(),
+    db.select({ full: persons.fullName, short: persons.shortName, rateRoleId: persons.rateRoleId }).from(persons).where(isNotNull(persons.rateRoleId)),
   ]);
-  const internal: Record<string, number> = Object.fromEntries(roles.filter((r) => !r.isExternal).map((r) => [r.role, r.baseRateEur]));
+  // R-083 (A-10): everybody is valued through their grid role at the horizon start (the first week of the window); a crew or a
+  // subcontractor through the grid role bearing its name; otherwise the what-if's isolated placeholder (WHATIF_RULES).
+  const horizon = pool.weeks[0]?.start ?? network.dataDate;
+  const at = (role: string | null) => rateAt(grid, role, horizon);
+  const gridRates = grid.roles.map((r) => ({ role: r.role, isExternal: r.isExternal, rateEur: at(r.id) })).filter((r): r is typeof r & { rateEur: number } => r.rateEur != null);
+  const internal: Record<string, number> = Object.fromEntries(gridRates.filter((r) => !r.isExternal).map((r) => [r.role, r.rateEur]));
+  const roleOfPerson = new Map(rated.flatMap((p) => [[p.full ?? p.short, p.rateRoleId], [p.short, p.rateRoleId]] as [string, string | null][]));
   const ctx: WhatIfContext = {
     network: network.input,
     activities: Object.fromEntries(acts.map((a) => [a.code, { name: a.name, owner: a.short ? (a.full ?? a.short) : null }])),
     assignments: asg.map((a) => ({
       activity: a.act, resource: a.resource, person: a.short ? (a.full ?? a.short) : null, jobTitle: a.job, department: a.adept ?? a.pdept, units: a.units, hoursPerDay: a.hpd,
-      rateEur: a.job ? (internal[a.job] ?? null) : null,
+      rateEur: a.short ? at(a.rateRoleId) : (gridRates.find((r) => r.role.toLowerCase() === a.resource.trim().toLowerCase())?.rateEur ?? null),
     })),
-    people: team.map((p) => ({ name: p.name, jobTitle: p.jobTitle, department: p.department, loads: p.loads })),
+    people: team.map((p) => ({ name: p.name, jobTitle: p.jobTitle, department: p.department, loads: p.loads, rateEur: at(roleOfPerson.get(p.name) ?? null) })),
     weeks: pool.weeks.map((w) => w.start),
     departments: depts.filter((d) => d.capacityH != null && d.demandH != null).map((d) => ({ name: d.name, capacityH: d.capacityH!, demandH: d.demandH! })),
     rates: {
       internal,
-      external: roles.filter((r) => r.isExternal).map((r) => ({ role: r.role, rateEur: r.baseRateEur })),
-      overtimeFactor: mults.find((m) => m.key === 'ot')?.factor ?? WHATIF_RULES.overtimeFactor,
+      external: gridRates.filter((r) => r.isExternal).map((r) => ({ role: r.role, rateEur: r.rateEur })),
+      overtimeFactor: multiplierAt(grid, 'ot', horizon) ?? WHATIF_RULES.overtimeFactor,
     },
   };
   const model = prepareWhatIf(ctx);
@@ -449,8 +490,8 @@ async function requireState(projectCode: string): Promise<WhatIfState> {
   return st;
 }
 
-async function enabledOf(st: WhatIfState, name: string): Promise<ScenarioRow> {
-  const row = (await scenarioRows(st)).find((r) => r.row.name === name);
+async function enabledOf(st: WhatIfState, name: string, q?: Q): Promise<ScenarioRow> {
+  const row = (await scenarioRows(st, q)).find((r) => r.row.name === name);
   if (!row) throw new Error(`Unknown what-if scenario ${name} on ${st.projectCode}`);
   return row;
 }
@@ -531,7 +572,9 @@ export interface ApplyOutcome {
 /** Open (not closed) statuses: a lever with such a request is not drafted again. */
 const OPEN_REQUEST = ['draft', 'pending', 'approved', 'reschedule'] as const;
 
-async function draftRequests(st: WhatIfState, drafts: WhatIfRequestDraft[], scenario: { id: string; name: string } | null, actorName: string, existing: { title: string; act: string | null }[]) {
+async function draftRequests(
+  tx: Tx, st: WhatIfState, drafts: WhatIfRequestDraft[], scenario: { id: string; name: string } | null, actorName: string, existing: { title: string; act: string | null }[],
+) {
   const created: string[] = [];
   let skipped = 0;
   for (const d of drafts) {
@@ -547,15 +590,15 @@ async function draftRequests(st: WhatIfState, drafts: WhatIfRequestDraft[], scen
           draft: true, scenarioId: scenario?.id ?? null,
         },
         actorName,
+        tx,
       ),
     );
   }
   return { created, skipped };
 }
 
-async function openRequests(projectId: string, scenarioId?: string) {
-  const db = await getDb();
-  return db
+async function openRequests(q: Q, projectId: string, scenarioId?: string) {
+  return q
     .select({ number: resourceRequests.number, title: resourceRequests.title, act: activities.code })
     .from(resourceRequests)
     .leftJoin(activities, eq(activities.id, resourceRequests.activityId))
@@ -566,16 +609,19 @@ async function openRequests(projectId: string, scenarioId?: string) {
  * "Apply" / "Select scenario → create requests": turns the scenario's enabled levers into DRAFT resource requests through
  * the requests DAL (not sent to the departments until "Send"; the plan changes only at the next Reschedule), skips levers
  * already requested from this scenario, and — when it drafted something — stamps the scenario applied and records the
- * activity. `actorName` must be a person.
+ * activity. The duplicate check, the drafts and the stamp run in ONE transaction: a double-click or a concurrent apply
+ * finds the first one's drafts (transactions are SERIALIZABLE, src/server/db/transactions.ts — the second is run again on
+ * fresh data), and a failure leaves no draft without the stamp.
+ * `actorName` must be a person.
  */
 export async function applyScenario(projectCode: string, name: string, actorName: string): Promise<ApplyOutcome> {
   const st = await requireState(projectCode);
-  const sc = await enabledOf(st, name);
-  const drafts = scenarioRequests(st.model, sc.enabled);
-  const shifts = st.model.levers.filter((l) => sc.enabled.includes(l.code) && !createsRequest(l)).length;
-  const { created, skipped } = await draftRequests(st, drafts, { id: sc.row.id, name }, actorName, await openRequests(st.projectId, sc.row.id));
   const db = await getDb();
-  await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
+    const sc = await enabledOf(st, name, tx);
+    const drafts = scenarioRequests(st.model, sc.enabled);
+    const shifts = st.model.levers.filter((l) => sc.enabled.includes(l.code) && !createsRequest(l)).length;
+    const { created, skipped } = await draftRequests(tx, st, drafts, { id: sc.row.id, name }, actorName, await openRequests(tx, st.projectId, sc.row.id));
     if (!sc.saved) await saveScenarioLevers(tx, st, sc.row.id, sc.enabled);
     if (created.length) {
       await markScenarioApplied(st.projectCode, name, actorName, tx);
@@ -585,8 +631,8 @@ export async function applyScenario(projectCode: string, name: string, actorName
         text: `Drafted ${created.length} resource ${created.length === 1 ? 'request' : 'requests'} from what-if scenario ${name} · ${created.join(', ')}`,
       });
     }
+    return { created, skipped, shifts };
   });
-  return { created, skipped, shifts };
 }
 
 /** "Apply" on a Suggested rebalancing line: one DRAFT request for one lever (no scenario). Null when already requested. */
@@ -594,42 +640,71 @@ export async function applyLever(projectCode: string, lever: string, actorName: 
   const st = await requireState(projectCode);
   const l = st.model.levers.find((x) => x.code === lever);
   if (!l || !createsRequest(l)) throw new Error(`Unknown what-if lever ${lever} on ${projectCode}`);
-  const { created } = await draftRequests(st, scenarioRequests(st.model, [lever]), null, actorName, await openRequests(st.projectId));
-  if (!created.length) return null;
   const db = await getDb();
-  const actor = await findPerson(db, actorName);
-  await recordActivity(db, {
-    actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, kind: 'request', projectId: st.projectId,
-    text: `Drafted ${created[0]} from a suggested rebalancing · ${leverLabelEn(l)}`,
+  // One transaction: a double-click finds the first draft instead of drafting the lever twice.
+  return db.transaction(async (tx) => {
+    const { created } = await draftRequests(tx, st, scenarioRequests(st.model, [lever]), null, actorName, await openRequests(tx, st.projectId));
+    if (!created.length) return null;
+    const actor = await findPerson(tx, actorName);
+    await recordActivity(tx, {
+      actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, kind: 'request', projectId: st.projectId,
+      text: `Drafted ${created[0]} from a suggested rebalancing · ${leverLabelEn(l)}`,
+    });
+    return created[0];
   });
-  return created[0];
 }
 
 export interface NewScenarioInput {
   name: string;
+  /** 'current_plan' (default: no lever) or 'last_approved' (the levers and priority of `retainedScenario`). Stored as given. */
   basis?: string;
+  /** Kept for the stored column only: the form no longer asks for it (the pool has 8 allocation weeks). */
   horizonMonths?: number;
   hypotheses?: string;
   priority?: WhatIfPriority;
 }
 
-/** "New scenario" (AF.whatif): a scenario with no lever enabled, audited under the viewer when `actorName` is given. */
+/** Scenario the PM retained, the basis "last_approved" copies: the selected one, else the one applied last; null when none. */
+export async function retainedScenario(projectCode: string, q?: Q): Promise<string | null> {
+  const db = q ?? (await getDb());
+  const rows = await db
+    .select({ name: whatIfScenarios.name, selected: whatIfScenarios.selected, appliedAt: whatIfScenarios.appliedAt })
+    .from(whatIfScenarios)
+    .innerJoin(projects, eq(projects.id, whatIfScenarios.projectId))
+    .where(eq(projects.code, projectCode))
+    .orderBy(asc(whatIfScenarios.position));
+  const applied = rows.filter((r) => r.appliedAt).sort((a, b) => b.appliedAt!.getTime() - a.appliedAt!.getTime());
+  return (rows.find((r) => r.selected) ?? applied[0])?.name ?? null;
+}
+
+/**
+ * "New scenario" (AF.whatif), audited under the viewer when `actorName` is given: no lever enabled, or — basis
+ * "last_approved" — the levers and priority of the retained scenario (refused when there is none).
+ */
 export async function createScenario(projectCode: string, input: NewScenarioInput, actorName?: string): Promise<void> {
+  const st = input.basis === 'last_approved' ? await requireState(projectCode) : null;
   const db = await getDb();
   await db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);
+    let source: ScenarioRow | null = null;
+    if (st) {
+      const name = await retainedScenario(projectCode, tx);
+      source = name ? ((await scenarioRows(st, tx)).find((r) => r.row.name === name) ?? null) : null;
+      if (!source) throw new Error(`No selected or applied scenario on ${projectCode}`);
+    }
     const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${whatIfScenarios.position}), -1)::int` }).from(whatIfScenarios).where(eq(whatIfScenarios.projectId, p.id));
     const actor = actorName ? await findPerson(tx, actorName) : null;
     const [s] = await tx
       .insert(whatIfScenarios)
       .values({
-        projectId: p.id, name: input.name.trim(), priority: input.priority ?? 'date', basis: input.basis ?? null, horizonMonths: input.horizonMonths ?? null,
+        projectId: p.id, name: input.name.trim(), priority: input.priority ?? source?.row.priority ?? 'date', basis: input.basis ?? null, horizonMonths: input.horizonMonths ?? null,
         hypotheses: input.hypotheses?.trim() || null, position: pos + 1, createdByPersonId: actor?.id ?? null, createdByName: actor ? nameOf(actor) : (actorName ?? null),
         // Saved with no lever: the seed's prototype lever codes never apply to it.
         computedAt: new Date(),
       })
       .returning({ id: whatIfScenarios.id });
-    await audit(tx, actorName, { id: s.id, projectId: p.id }, `Scenario ${input.name.trim()}`, 'created');
+    if (st && source) await saveScenarioLevers(tx, st, s.id, source.enabled);
+    await audit(tx, actorName, { id: s.id, projectId: p.id }, `Scenario ${input.name.trim()}`, source ? `created from scenario ${source.row.name} (${source.enabled.length} levers)` : 'created');
   });
 }
 
@@ -689,7 +764,7 @@ export async function getRebalancingSuggestions(opts: { projectCode?: string; li
   for (const p of list) {
     const st = await loadWhatIfState(p.code);
     if (!st) continue;
-    const open = await openRequests(p.id);
+    const open = await openRequests(db, p.id);
     for (const lever of st.model.levers) {
       if (!createsRequest(lever)) continue;
       const effect = st.effects[lever.code];

@@ -3,8 +3,8 @@
 // visa, vaccinations, clearances & badges, verdict, received) and an outbox of what it sends to Cursus (reminders,
 // travel requests). Passports, visa files, vaccination records and medical data stay in Cursus: only approvals, their
 // confirmation and dates are stored here (10 §3.4.f). Written only by the Cursus connector (src/server/integrations/cursus).
-import { boolean, date, integer, jsonb, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
-import type { CursusClearance, CursusRequestKind, CursusSyncStatus, CursusVaccination, CursusVerdict, CursusVisa } from '../codes';
+import { boolean, date, index, integer, jsonb, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import type { CursusClearance, CursusEventStatus, CursusRequestKind, CursusSyncStatus, CursusVaccination, CursusVerdict, CursusVisa } from '../codes';
 import { id } from './_common';
 import { persons } from './organisation';
 
@@ -17,7 +17,10 @@ export const cursusClearances = pgTable(
     projectCode: text('project_code').notNull(),
     /** Cursus's id of the site ("K-2614") when known. */
     chantierId: text('chantier_id'),
-    /** Cursus employee id ("EMP-0018"); null for the prototype seed (names only). OPEN QUESTION C-3: matricule ↔ Keystone person. */
+    /**
+     * Cursus employee id ("EMP-0018"); null for the prototype seed (names only). Matricule ↔ Keystone person: persons.matricule
+     * (R-027, NEW-CURSUS-2 'a'); the Site links the person to Cursus by it (R-032, NEW-CURSUS-3 'a').
+     */
     matricule: text('matricule'),
     /** Display name; the Keystone person when the name resolves. */
     personName: text('person_name').notNull(),
@@ -62,6 +65,8 @@ export const cursusRequests = pgTable('cursus_requests', {
   sentAt: timestamp('sent_at', { withTimezone: true }),
   /** Cursus's acknowledgement ("demandesKeystone" id). */
   cursusRef: text('cursus_ref'),
+  /** Set while a delivery is in flight (R-010: two deliveries never send the same request); cleared by the result. */
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
 });
 
 /** Cursus synchronisations (mock: the seed's "26 Sep 07:00"; HTTP: each go-no-go refresh). */
@@ -75,3 +80,35 @@ export const cursusSyncRuns = pgTable('cursus_sync_runs', {
   ok: boolean('ok').notNull().default(true),
   error: text('error'),
 });
+
+/**
+ * Inbox of the events Cursus pushes to POST /api/integrations/cursus/events (R-029, NEW-CURSUS-7 "a"; contract in
+ * docs/integrations/cursus-contract.md). One row per accepted event: the event id is the idempotency key (a repeated id is
+ * answered as a duplicate and stored once); an event with a replacement key (validated hours of a person's week, an absence)
+ * replaces the previous one of that key. Kept 13 months (job "cursus-events-purge"). Unresolved events (a matricule no
+ * person carries yet) stay for replay. Minimised (R-173): an absence keeps its dates and simple type, never its reason.
+ */
+export const cursusEvents = pgTable(
+  'cursus_events',
+  {
+    id: id(),
+    /** Cursus's event id. */
+    eventId: text('event_id').notNull().unique(),
+    /** "heures.validees", "absence.validee", "verdict.modifie", "demande.decision"… */
+    type: text('type').notNull(),
+    /** When Cursus emitted it (`emis_le`). */
+    emittedAt: timestamp('emitted_at', { withTimezone: true }).notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull(),
+    /** Replacement key: "<matricule>|<semaine>" (hours), the absence id or "<matricule>|<start>|<end>" (absence); null when none. */
+    replaceKey: text('replace_key'),
+    /** Person concerned when the event names one (Cursus employee id). */
+    matricule: text('matricule'),
+    /** The event's data as stored (minimised for absences: dates and Leave / Absence only). */
+    data: jsonb('data').$type<Record<string, unknown>>().notNull(),
+    status: text('status').$type<CursusEventStatus>().notNull(),
+    /** Why the event is unresolved, ignored or in error (EN, no personal data). */
+    note: text('note'),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+  },
+  (t) => [index('cursus_events_replace_idx').on(t.type, t.replaceKey), index('cursus_events_status_idx').on(t.status), index('cursus_events_received_idx').on(t.receivedAt)],
+);

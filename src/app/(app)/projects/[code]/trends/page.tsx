@@ -11,10 +11,10 @@ import { parseTrendKey, type TrendKey } from '@/domain/trends';
 import { StatusReportButton } from '@/features/changes/change-buttons';
 import { changesT } from '@/features/changes/i18n';
 import { TrendsView } from '@/features/changes/trends-view';
-import { projectLabel } from '@/server/dal/projects';
 import { getTrends } from '@/server/dal/trends';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -40,7 +40,7 @@ export default async function TrendsPage({ params, searchParams }: { params: Pro
 
   const base = screenHref('trends', { code: projectCode });
   const href = (key: TrendKey) => (key === 'cpi' ? base : `${base}?kpi=${key}`);
-  const primary = ctx.canEdit('trends') ? <StatusReportButton code={projectCode} context={i18n.t(projectLabel(ctx.project))} /> : undefined;
+  const primary = ctx.canEdit('trends') ? <StatusReportButton code={projectCode} context={projectLabelText(ctx.project, i18n.lang)} /> : undefined;
 
   return (
     <>

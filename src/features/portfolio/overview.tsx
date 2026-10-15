@@ -4,13 +4,14 @@ import { ButtonLink } from '@/components/ds/Button';
 import { CellStack, Table, Td, Th } from '@/components/ds/Table';
 import { IconTile } from '@/components/app/Badges';
 import { Callout } from '@/components/app/Callout';
+import { EmptyState } from '@/components/app/EmptyState';
 import { KpiGrid } from '@/components/app/Kpi';
 import { Legend, LegendItem } from '@/components/app/Legend';
 import { ProgressBar, SpendVsEarned } from '@/components/app/Progress';
 import { CardGrid, SectionCard, Stack } from '@/components/app/SectionCard';
 import { LO, OK } from '@/components/app/tones';
 import { screenHref } from '@/config/screens';
-import { INDEX_ALERT, activeProjectsHint } from '@/domain/portfolio';
+import { activeProjectsHint } from '@/domain/portfolio';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import type { PortfolioOverview } from '@/server/dal/portfolio';
@@ -64,7 +65,7 @@ function ActiveProjectsCard({ data, t, lang }: { data: PortfolioOverview; t: T; 
             return (
               <RowLink key={p.code} href={screenHref('plan', { code: p.code })}>
                 <Td>
-                  <CellStack title={projectName(p, t)} sub={`${p.pm} ${t('· due')} ${t(p.finish)}`} />
+                  <CellStack title={projectName(p, lang)} sub={`${p.pm} ${t('· due')} ${t(p.finish)}`} />
                 </Td>
                 <Td>
                   <HealthBadge health={m.health} t={t} nowrap={false} />
@@ -75,10 +76,10 @@ function ActiveProjectsCard({ data, t, lang }: { data: PortfolioOverview; t: T; 
                 <Td>
                   <SpendVsEarned spent={m.spentBar} earned={m.progressBar} label={m.spentPct} />
                 </Td>
-                <Td numeric color={m.cpi < INDEX_ALERT ? LO : OK}>
+                <Td numeric color={m.cpiAlert ? LO : OK}>
                   {m.cpi.toFixed(2)}
                 </Td>
-                <Td numeric color={m.spi < INDEX_ALERT ? LO : OK}>
+                <Td numeric color={m.spiAlert ? LO : OK}>
                   {m.spi.toFixed(2)}
                 </Td>
                 <Td numeric>{money(m.eac, lang)}</Td>
@@ -103,17 +104,22 @@ function ActiveProjectsCard({ data, t, lang }: { data: PortfolioOverview; t: T; 
   );
 }
 
-/** "Needs attention" (line 3809): static alerts, zone-filtered, each with a link to the screen that resolves it. */
+/**
+ * "Needs attention" (line 3809): alerts computed by rules (R-130, NEW-D1-1 — were the prototype's static texts), zone-filtered,
+ * each with a link to the screen that resolves it. Their title and detail come in the render language.
+ */
 function NeedsAttentionCard({ data, t }: { data: PortfolioOverview; t: T }) {
   return (
     <SectionCard title={t('Needs attention')} gap={10}>
+      {!data.alerts.length && <EmptyState pad={6}>{t('Nothing needs attention')}</EmptyState>}
       <CardGrid min={260} gap="0 24px" align="stretch">
         {data.alerts.map((a) => (
           <div key={a.key} className={s.alert}>
             <IconTile icon={ALERT_ICON[a.icon]} variant="alert" />
             <div className={s.alertBody}>
-              <span className={s.alertTitle}>{t(a.title)}</span>
-              <span className={s.alertDetail}>{t(a.detail)}</span>
+              {/* The alert texts are written in the viewer's language with the typed names as typed (R-130, R-148). */}
+              <span className={s.alertTitle}>{a.title}</span>
+              <span className={s.alertDetail}>{a.detail}</span>
               <ButtonLink variant="ghost" size="inline" iconRight={ArrowRight} href={screenHref(a.target.screen, { code: a.target.code })}>
                 {t(a.action)}
               </ButtonLink>

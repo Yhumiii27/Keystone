@@ -7,6 +7,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const session = { role: 'director' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/navigation', () => ({
+  redirect: (url: string) => {
+    throw new Error(`REDIRECT ${url}`);
+  },
   notFound: () => {
     throw new Error('NOT_FOUND');
   },
@@ -16,7 +19,7 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('./actions', () => ({
   advanceNcrAction: vi.fn(), verifyNcrAction: vi.fn(), moveDeliverableAction: vi.fn(), decideDeliverableAction: vi.fn(),
-  rejectDeliverableWithCommentsAction: vi.fn(), linkDeliverableDocumentAction: vi.fn(),
+  rejectDeliverableWithCommentsAction: vi.fn(), linkDeliverableDocumentAction: vi.fn(), createDeliverableAction: vi.fn(),
 }));
 vi.mock('@/server/session', async () => {
   const { makeT } = await import('@/i18n/translate');
@@ -111,10 +114,33 @@ describe('/projects/[code]/quality', () => {
     const cv = props(c);
     expect(cv.dlv!.rows.filter((r) => r.action?.kind === 'decide').map((r) => r.number)).toEqual(['D-014', 'D-016']);
     expect([cv.dlvDrawer!.canDecide, cv.dlvDrawer!.canLinkDocument, cv.dlvDrawer!.hint]).toEqual([true, false, '']);
-    const cn = props(await page({ ncr: 'NCR-030' }));
-    expect([cn.ncr!.rows.every((r) => r.vigieUrl === null && r.action === null), cn.ncrDrawer!.vigieUrl, cn.ncrDrawer!.move]).toEqual([true, null, null]);
-    // Another organisation's project: read-only for the client.
-    expect(props(await page({ tab: 'dlv' }, 'NDC-031')).dlv!.rows.every((r) => r.action === null)).toBe(true);
+    // P-10b (R-043): no NCR for the client — the screen is the deliverables register (no NCR tab, no NCR drawer, no linked NCR).
+    const cn = props(await page({ ncr: 'NCR-030', tab: 'ncr' }));
+    expect([cn.tab, cn.ncr, cn.ncrDrawer, cn.seg.map((x) => x.value)]).toEqual(['dlv', null, null, ['dlv']]);
+    expect(JSON.stringify(cn.dlv)).not.toContain('NCR-');
+    // R-042 (P-10a): another organisation's project is refused (sent home).
+    await expect(page({ tab: 'dlv' }, 'NDC-031')).rejects.toThrow('REDIRECT /');
+  });
+
+  it('R-115 (Q-3b): on the deliverables register the primary is "New deliverable" for the project’s PM and the director, "New NCR" otherwise', async () => {
+    const primaryOf = async (role: string, code = 'HLT-026') => {
+      session.role = role;
+      const pr = (await page({ tab: 'dlv' }, code)).PageHeader.props.primary as El | undefined;
+      return pr ? ((pr.type as { name: string }).name === 'NewDeliverableButton' ? 'new-deliverable' : 'new-ncr') : null;
+    };
+    const out: Record<string, string | null> = {};
+    for (const role of ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client']) out[role] = await primaryOf(role);
+    expect(out).toEqual({
+      director: 'new-deliverable', pm: 'new-deliverable', depthead: 'new-ncr', member: 'new-ncr', englead: 'new-ncr', quality: 'new-ncr', procurement: 'new-ncr', client: null,
+    });
+    // Another PM's project (read-only for him) and the NCR tab: "New NCR".
+    expect(await primaryOf('pm', 'NDC-031')).toBe('new-ncr');
+    session.role = 'pm';
+    expect(((await page({})).PageHeader.props.primary as El).props).toMatchObject({ label: 'New NCR · Report in Vigie' });
+    session.role = 'director';
+    const form = ((await page({ tab: 'dlv' })).PageHeader.props.primary as El).props.form as { fields: { id: string; options?: unknown[] }[] };
+    expect(form.fields.map((f) => f.id)).toEqual(['type', 'title', 'due', 'wbs', 'r', 'b']);
+    expect(form.fields[0].options!.length).toBeGreaterThan(5);
   });
 
   it('projects without data: empty registers (no Harbor Line fallback)', async () => {

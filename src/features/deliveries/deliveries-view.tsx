@@ -4,7 +4,8 @@
 // Component; the actions are client islands (src/features/deliveries/receipt-actions.tsx), shown only to viewers who
 // may act: `canEdit` (not outside the workspace, not a read-only project) for Register receipt and documents,
 // `canQc` (quality manager, procurement, director) for the quality decision.
-import { FilePdf, Funnel, ShoppingCart } from '@phosphor-icons/react/dist/ssr';
+import { ArrowSquareOut, FilePdf, Funnel, ShoppingCart } from '@phosphor-icons/react/dist/ssr';
+import type { ReactNode } from 'react';
 import { ClickableRow } from '@/components/app/ClickableRow';
 import { DocumentPreview } from '@/components/app/DocumentPreview';
 import { EmptyState } from '@/components/app/EmptyState';
@@ -20,6 +21,7 @@ import { Drawer } from '@/components/ds/Drawer';
 import { Table, Td, Th } from '@/components/ds/Table';
 import { Tag } from '@/components/ds/Tag';
 import type { T } from '@/i18n/translate';
+import { VIGIE_LINK_ATTRS } from '@/server/integrations/vigie/links';
 import type { DeliveriesView, DrawerView } from './model';
 import { AttachNoteButton, PrintReceiptButton, QcPanel, RegisterReceiptButton, RowQcButtons } from './receipt-actions';
 import s from './deliveries.module.css';
@@ -33,10 +35,12 @@ export interface DeliveriesBodyProps {
   canQc: boolean;
   /** "Register receipt" form of each Announced receipt (translated), by number. */
   registerForms: Record<string, { def: FormDef; context: string }>;
+  /** R-126: the open receipt's photo gallery (stored by Keystone); the empty preview frame when not given. */
+  photos?: ReactNode;
   t: T;
 }
 
-export function DeliveriesBody({ code, view, canEdit, canQc, registerForms, t }: DeliveriesBodyProps) {
+export function DeliveriesBody({ code, view, canEdit, canQc, registerForms, photos, t }: DeliveriesBodyProps) {
   return (
     <div className={s.stack}>
       <KpiGrid>
@@ -111,7 +115,7 @@ export function DeliveriesBody({ code, view, canEdit, canQc, registerForms, t }:
         {view.empty && <EmptyState>{t('No delivery in this status')}</EmptyState>}
       </SectionCard>
 
-      {view.drawer && <DeliveryDrawer code={code} d={view.drawer} canEdit={canEdit} canQc={canQc} register={registerForms[view.drawer.id] ?? null} t={t} />}
+      {view.drawer && <DeliveryDrawer code={code} d={view.drawer} canEdit={canEdit} canQc={canQc} register={registerForms[view.drawer.id] ?? null} photos={photos} t={t} />}
     </div>
   );
 }
@@ -122,6 +126,8 @@ export interface DrawerProps {
   canEdit: boolean;
   canQc: boolean;
   register: { def: FormDef; context: string } | null;
+  /** R-126: the receipt's photo gallery. */
+  photos?: ReactNode;
   t: T;
 }
 
@@ -141,7 +147,7 @@ function DeliveryDrawer(props: DrawerProps) {
 }
 
 /** Drawer content: lines, Delivery and Quality check sections (with the QC / receive actions), Documents, Photos, footer. */
-export function DeliveryDrawerBody({ code, d, canEdit, canQc, register, t }: DrawerProps) {
+export function DeliveryDrawerBody({ code, d, canEdit, canQc, register, photos, t }: DrawerProps) {
   return (
     <>
       <div className={s.linesWrap}>
@@ -185,6 +191,13 @@ export function DeliveryDrawerBody({ code, d, canEdit, canQc, register, t }: Dra
         <KeyValueList title={t('Delivery')} items={d.meta.map((m) => ({ k: m.k, v: m.v, color: m.color }))} />
         <div className={s.col}>
           <KeyValueList title={t('Quality check')} items={d.qc.map((m) => ({ k: m.k, v: m.v, color: m.color }))} />
+          {/* R-096 (NEW-D4-3): the supplier NCR is declared in Vigie, which owns it — prefilled report form, opens outside. */}
+          {d.ncrLinks.map((l) => (
+            <a key={l.href} href={l.href} {...VIGIE_LINK_ATTRS} className={cx('btn btn-ghost', s.vigieNcr)}>
+              {l.label}
+              <ArrowSquareOut aria-hidden />
+            </a>
+          ))}
           {canQc && d.canQc && (
             <QcPanel key={d.id} code={code} number={d.id} context={`${d.id} · ${d.supplier}`} lines={d.qcLines} deliveredText={d.lines.map((l) => l.d)} />
           )}
@@ -208,7 +221,7 @@ export function DeliveryDrawerBody({ code, d, canEdit, canQc, register, t }: Dra
         </div>
         <div className={s.photos}>
           <Eyebrow>{t('Photos')}</Eyebrow>
-          <DocumentPreview ratio="16/9" fit="cover" placeholder={t('Drop receipt photos')} />
+          {photos ?? <DocumentPreview ratio="16/9" fit="cover" placeholder={t('Drop receipt photos')} />}
         </div>
       </div>
 

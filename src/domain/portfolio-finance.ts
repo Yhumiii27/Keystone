@@ -5,8 +5,11 @@
 
 // ── Margin rights ──────────────────────────────────────────────────────────────────────────────────────
 
-/** Margins (ranking "Margin", cash "Margin", "Portfolio margin") are shown to these roles only (`canSeeMargin`). */
-export const MARGIN_ROLES = ['director', 'pm'] as const;
+/**
+ * Margins (ranking "Margin", cash "Margin", "Portfolio margin") are shown to these roles only (`canSeeMargin`). R-044 (P-4,
+ * default to confirm): Finance sees them too — Cash flow, Prioritisation, the status report and the exports are not masked.
+ */
+export const MARGIN_ROLES = ['director', 'pm', 'finance'] as const;
 export const canSeeMargins = (role: string) => (MARGIN_ROLES as readonly string[]).includes(role);
 
 /** A margin below this % is shown in the attention colour (strict). */
@@ -15,10 +18,8 @@ export const MARGIN_ALERT_PCT = 15;
 // "Portfolio margin" KPI: computed since chapter 4 (A-12) — `portfolioMarginPct`, src/domain/kpis.ts (the prototype
 // printed a constant 18 %).
 
-/** `(contract − budget) / contract` in whole %, null for internal projects (contract 0) or without a billing plan. */
-export function marginPct(contractKeur: number | null | undefined, budgetKeur: number): number | null {
-  return contractKeur ? Math.round(((contractKeur - budgetKeur) / contractKeur) * 100) : null;
-}
+// Project margin: one rule since R-132 (C-10b) — the margin at completion `projectMarginPct` (src/domain/kpis.ts), computed
+// on the contract consolidated in euros and the project's EAC. The prototype's (contract − budget) / contract is retired.
 
 export const marginAlert = (pct: number | null) => pct != null && pct < MARGIN_ALERT_PCT;
 

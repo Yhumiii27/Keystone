@@ -8,6 +8,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const session = { role: 'director' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/navigation', () => ({
+  redirect: (url: string) => {
+    throw new Error(`REDIRECT ${url}`);
+  },
   notFound: () => {
     throw new Error('NOT_FOUND');
   },
@@ -73,7 +76,8 @@ describe('/projects/[code]/engineering', () => {
     expect(primaryHref(p)).toBe('/projects/HLT-026/engineering?import=elec&doc=LST-INS-026&tool=2');
     const v = p.SynthesisBody.props.view as SynthesisScreenView;
     expect([v.kpis.map((k) => k.value), v.gate.text, v.discCards.map((d) => d.href)]).toEqual([
-      ['4', '4', '5 / 13', '2 / 6'],
+      // E-5 = a (R-105): 3 outdated inputs — LST-IO-026 rev B (Frozen) is up to date (prototype 4).
+      ['4', '3', '5 / 13', '2 / 6'],
       'Blocked by 4 blocking inconsistencies',
       ['/projects/HLT-026/engineering/process', '/projects/HLT-026/engineering/mechanical', '/projects/HLT-026/engineering/electrical', '/projects/HLT-026/engineering/automation'],
     ]);
@@ -101,7 +105,21 @@ describe('/projects/[code]/engineering', () => {
     expect(html((await syn({}, 'NDC-031')).EngEmpty)).toContain('Pas encore de registre ingénierie pour ce projet — importez une première liste pour démarrer.');
   });
 
-  it.each(['depthead', 'member', 'procurement', 'client'])('outside the workspace (%s): read-only, no primary, no wizard', async (role) => {
+  it('R-042 (P-1): engineering is outside the client’s workspace — the client is sent home', async () => {
+    session.role = 'client';
+    await expect(syn({})).rejects.toThrow('REDIRECT /');
+    await expect(dis('mechanical', {})).rejects.toThrow('REDIRECT /');
+  });
+
+  it('R-041 (P-2): the engineering lead and the quality manager edit Harbor Line (referents), not NDC-031', async () => {
+    for (const role of ['englead', 'quality']) {
+      session.role = role;
+      expect(!!(await syn({}, 'HLT-026')).PageHeader.props.primary, role).toBe(true);
+      expect((await syn({}, 'NDC-031')).PageHeader.props.primary, role).toBeUndefined();
+    }
+  });
+
+  it.each(['depthead', 'member', 'procurement'])('outside the workspace (%s): read-only, no primary, no wizard', async (role) => {
     session.role = role;
     const p = await syn({ import: 'elec', doc: 'LST-INS-026', tool: '2' });
     expect([p.PageHeader.props.primary, p.ImportWizard, !!p.SynthesisBody]).toEqual([undefined, undefined, true]);
@@ -169,7 +187,7 @@ describe('/projects/[code]/engineering/[discipline]', () => {
     expect([w.from, w.target, w.closeHref]).toEqual(['elec', { disc: 'elec', doc: 'PID-HLT-026', tool: 0 }, '/projects/HLT-026/engineering/electrical?status=open']);
   });
 
-  it.each(['depthead', 'member', 'procurement', 'client'])('outside the workspace (%s): no primary, no wizard, no row action', async (role) => {
+  it.each(['depthead', 'member', 'procurement'])('outside the workspace (%s): no primary, no wizard, no row action', async (role) => {
     session.role = role;
     const p = await dis('mechanical', { import: 'meca', doc: 'LST-INS-026', tool: '0' });
     const v = p.DisciplineBody.props.view as DisciplineScreenView;

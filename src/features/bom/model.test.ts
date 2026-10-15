@@ -4,7 +4,7 @@
 // - BOM value counts each article once (09 OQ6): HLT-026 €7.05M (the prototype €14.05M);
 // - PU/PR stock is Σ on hand (the prototype always read 0): "16 in stock", "Not in stock" 10 of 12;
 // - quantities in French use the French format ("2 042"; the prototype used the browser locale);
-// - French the prototype left in English: "32 par projet", "32 unités", "+19 180 € par grue", "Plan / réf.",
+// - French the prototype left in English: "32 par projet", "32 unités", "+19 942 € par grue" (E-2b, R-104), "Plan / réf.",
 //   restriction texts (translated through the PLM dictionary entries); singular forms ("1 week", "1 semaine");
 // - projects without data (EWA-051) show an empty BOM instead of Harbor Line's.
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -38,6 +38,10 @@ beforeAll(async () => {
   setDb(await openDatabase());
 }, 60_000);
 
+// E-4 = a (R-110): only the parts a machine actually carries are kept for the installed base. On the seed, the machines pinned by
+// ECO-2026-014 / -015 carry neither EL-HMI-15 nor FD-DET-OPT2: the prototype pinned them (09 OQ21), the goldens keep its values.
+const E4_UNPINNED = new Set(['EL-HMI-15', 'FD-DET-OPT2']);
+
 describe.each(LANGS)('Project BOM screen model (%s)', (lang) => {
   const g = G[lang];
 
@@ -45,7 +49,9 @@ describe.each(LANGS)('Project BOM screen model (%s)', (lang) => {
     const v = await screen(code, {}, lang);
     const p = g.projects[code];
     const expected = gKpis(p.kpis, lang);
-    if (code === 'HLT-026') expected[1].value = lang === 'fr' ? '7,05 M€' : '€7.05M'; // 09 OQ6 (prototype €14.05M)
+    // 09 OQ6: each article once (the prototype added assemblies and their components, €14.01M at E-2a prices); E-2a (R-103):
+    // ordered price, else last purchase, else catalogue — €7.02M (€7.05M at list price before Delivery 7).
+    if (code === 'HLT-026') expected[1].value = lang === 'fr' ? '7,02 M€' : '€7.02M';
     expect(kpis(v.kpis)).toEqual(expected);
     expect(v.views.map((o) => [o.label, o.active])).toEqual(p.viewSeg.map((o: any) => [o.label, o.color === 'var(--color-accent)']));
     expect(v.displayLabel).toBe(p.FL.view);
@@ -148,7 +154,10 @@ describe.each(LANGS)('Project BOM screen model (%s)', (lang) => {
   });
 
   it('where-used reproduces usedVals (paths, projects, purchase orders, default CR-BRG-SKF)', async () => {
-    for (const [q, e] of Object.entries(g.used as Record<string, any>)) {
+    // R-169 (A-12): without a search (or when it matches nothing) the screen opens the project's part used by the most
+    // projects (EL-TRF-2MVA), no longer the prototype's constant CR-BRG-SKF: compared with the prototype's values for that part.
+    for (const [q, e0] of Object.entries(g.used as Record<string, any>)) {
+      const e = e0.ref === 'CR-BRG-SKF' && q !== 'CR-BRG-SKF' ? g.used['EL-TRF-2MVA'] : e0;
       const w = (await screen('HLT-026', q === '(default)' ? { view: 'used' } : { view: 'used', used: q }, lang)).used!;
       expect([w.part.ref, w.part.name, w.part.status.label, w.part.status.cls, w.part.equivalents], q).toEqual([e.ref, e.name, e.status, e.tagClass, e.equiv]);
       const perProject = (s: string) => (lang === 'fr' ? s.replace(' per project', ' par projet') : s);
@@ -189,7 +198,7 @@ describe.each(LANGS)('Project BOM screen model (%s)', (lang) => {
         return {
           ref: r.ref, name: r.name, kind: r.kind, tagClass: r.tagClass, qPer: String(r.qPer), qTotal: String(r.qTotal), note: r.note, price: r.price, total: r.total, lead: r.lead,
           status: r.status, statusClass: r.statusClass, stock: stock ? (lang === 'fr' ? `${stock} en stock` : `${stock} in stock`) : r.stockText, short: stock < r.qTotal,
-          pinned: r.pinned ? r.pinnedText : null,
+          pinned: r.pinned && !E4_UNPINNED.has(r.ref) ? r.pinnedText : null,
         };
       });
       expect(s.rows.map((r) => ({
@@ -225,7 +234,7 @@ describe('projects without data (no Harbor Line fallback, 00 §7.16)', () => {
   it('EWA-051: empty BOM, zero KPIs, empty-state message', async () => {
     const v = await screen('EWA-051', {}, 'en');
     expect(G.en.projects['EWA-051'].kpis[0].value).toBe(35); // the prototype showed Harbor Line's BOM
-    expect(kpis(v.kpis).map((k) => [k.value, k.sub])).toEqual([['0', '0 units in total'], ['€0k', 'At unit list price'], ['0', 'Blocked for purchasing'], ['0', 'Replace before ordering'], ['0', 'Lines needing customs review']]);
+    expect(kpis(v.kpis).map((k) => [k.value, k.sub])).toEqual([['0', '0 units in total'], ['€0k', 'Ordered, else last purchase, else catalogue price'], ['0', 'Blocked for purchasing'], ['0', 'Replace before ordering'], ['0', 'Lines needing customs review']]);
     expect([v.flat!.rows.length, v.flat!.count, v.flat!.title, v.flat!.empty]).toEqual([0, '0 / 0 articles', 'Bill of materials · 0 articles', 'No article is registered in this project’s BOM yet']);
     const fr = await screen('EWA-051', {}, 'fr');
     expect(fr.flat!.empty).toBe('Aucun article n’est encore enregistré dans la nomenclature de ce projet');

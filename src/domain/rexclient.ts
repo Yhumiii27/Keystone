@@ -13,14 +13,15 @@
 //   and empty state talk to the client ("Released documents shared with you", "No document shared with you yet"),
 //   not about the engineering register ("Deliverables", "Own documents · …");
 // - decimals of the satisfaction survey follow the language ("4,5" in French).
-import { CR_TYPE_LABEL } from '@/domain/change-control';
+import { CR_TYPE_LABEL, currentStep } from '@/domain/change-control';
 import { scheduleMilestone, scheduleProgression, type MilestoneInput } from '@/domain/schedule-gantt';
 import type { Lang } from '@/i18n/translate';
 import { money } from '@/lib/format';
+import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import {
-  CLOSURE_NEXT, DOCUMENT_STATUS_TAG, LESSON_APPLIES_TO, STATUS_ISO, closureItemStatus, clientIssueStatus, fmtDOfIso, lessonStatus,
+  CLOSURE_NEXT, DOCUMENT_STATUS_TAG, LESSON_APPLIES_TO, STATUS_ISO, closureItemStatus, clientIssueStatus, docFamily, fmtDOfIso, lessonStatus,
   lessonTheme, reportPeriod,
-  type ChangeStatus, type ChangeStep, type ChangeType, type ClientIssueStatus, type ClosureItemStatus, type DeliverableStatus, type DocumentStatus,
+  type ChangeStatus, type ChangeStep, type ChangeType, type ClientIssueStatus, type ClosureItemStatus, type DeliverableStatus, type DocFamily, type DocumentStatus,
   type LessonStatus, type LessonTheme, type PaymentMilestoneStatus, type ReportPeriod, type StepDecision,
 } from '@/server/db/codes';
 
@@ -232,10 +233,14 @@ export function parseNewLesson(values: unknown): Parsed<NewLesson> {
 
 // ── Client portal ──────────────────────────────────────────────────────────────────────────────────────
 
-export type ClientTab = 'progress' | 'decisions' | 'invoices' | 'issues' | 'docs';
-/** Display segments (`cpSeg`), default Progress & milestones. */
+export type ClientTab = 'progress' | 'planning' | 'decisions' | 'invoices' | 'issues' | 'docs';
+/**
+ * Display segments (`cpSeg`), default Progress & milestones. "Schedule" (`planning`, read-only summary Gantt and milestones
+ * with its PDF) is not in the prototype: the owner's answer S-9a puts the plan in the client portal.
+ */
 export const CLIENT_TABS: { value: ClientTab; label: string }[] = [
   { value: 'progress', label: 'Progress & milestones' },
+  { value: 'planning', label: 'Schedule' },
   { value: 'decisions', label: 'Decisions' },
   { value: 'invoices', label: 'Invoices' },
   { value: 'issues', label: 'Issues' },
@@ -321,6 +326,8 @@ export interface ChangeRequestLike {
   /** "24 Sep". */
   date: string;
   chain: { step: ChangeStep; decision: StepDecision | null }[];
+  /** Delivery 8 (R-140, X-11 shared): the justification as typed, shown to the client under a request waiting for them. */
+  justification?: string | null;
 }
 
 export interface DeliverableLike {
@@ -336,8 +343,11 @@ export interface DeliverableLike {
 }
 
 export const clientStepOf = (cr: Pick<ChangeRequestLike, 'chain'>) => cr.chain.find((s) => s.step === 'client')?.decision ?? null;
-/** A change request waits for the client: in review, client step pending. */
-export const crAwaitsClient = (cr: Pick<ChangeRequestLike, 'status' | 'chain'>) => cr.status === 'in_review' && clientStepOf(cr) === 'pending';
+/**
+ * A change request waits for the client: in review and its current step is the client's — delivery 8 (R-069, P-6b): the client
+ * sees a request only after the project manager and the portfolio director approved it.
+ */
+export const crAwaitsClient = (cr: Pick<ChangeRequestLike, 'status' | 'chain'>) => cr.status === 'in_review' && currentStep(cr.chain) === 'client';
 
 export interface DecisionRow {
   kind: 'change_request' | 'deliverable';
@@ -349,6 +359,8 @@ export interface DecisionRow {
   title: string;
   sub: string;
   approveLabel: 'Approve' | 'Accept (PV)';
+  /** Delivery 8 (R-140, X-11): a change request's justification as typed (null when blank, and for deliverables). */
+  justification: string | null;
 }
 
 /** "Budget · Schedule · +€85k on contract · -12 d on handover" (the prototype's hyphen for gains). */
@@ -362,11 +374,12 @@ export function crDecisionSub(cr: Pick<ChangeRequestLike, 'types' | 'amount' | '
 
 export const crDecisionRow = (cr: ChangeRequestLike, lang: Lang): DecisionRow => ({
   kind: 'change_request', kindLabel: 'Change request', id: cr.id, when: cr.date, title: cr.title, sub: crDecisionSub(cr, lang), approveLabel: 'Approve',
+  justification: cr.justification?.trim() ? cr.justification : null,
 });
 
 export const deliverableDecisionRow = (d: DeliverableLike): DecisionRow => ({
   kind: 'deliverable', kindLabel: 'Deliverable', id: d.number, when: fmtDOfIso(d.dueOn), title: d.title,
-  sub: `${d.typeLabel} · rev ${d.revision ?? '—'} · ${d.acceptanceText}`, approveLabel: 'Accept (PV)',
+  sub: `${d.typeLabel} · rev ${d.revision ?? '—'} · ${d.acceptanceText}`, approveLabel: 'Accept (PV)', justification: null,
 });
 
 export interface DecidedRow {
@@ -435,17 +448,24 @@ export function paymentOf(i: Pick<InvoiceLike, 'status' | 'dueOn'>): PaymentText
   return i.dueOn ? { kind: 'due', date: fmtDOfIso(i.dueOn) } : { kind: 'text', text: '—' };
 }
 
-export const invoiceRow = (i: InvoiceLike, lang: Lang): InvoiceRow => ({
-  no: i.invoiceNumber ?? '—', name: i.milestone, amount: money(i.amountKeur, lang), status: INVOICE_LOOK[i.status].label, tone: INVOICE_LOOK[i.status].tone,
+/** An invoice row in the invoice's currency (C-9: the contract's; EUR by default). */
+export const invoiceRow = (i: InvoiceLike, lang: Lang, currency: CurrencyCode = BASE_CURRENCY): InvoiceRow => ({
+  no: i.invoiceNumber ?? '—', name: i.milestone, amount: moneyIn(i.amountKeur, currency, lang), status: INVOICE_LOOK[i.status].label, tone: INVOICE_LOOK[i.status].tone,
   payment: paymentOf(i),
 });
 
-/** "Contract summary" rows (`cpInvKpis`): value, invoiced, paid, approved changes (signed, "—" when none). */
-export function contractSummary(c: { valueKeur: number; invoicedKeur: number; paidKeur: number; approvedChangesKeur: number }, lang: Lang): { k: string; v: string }[] {
+/**
+ * "Contract summary" rows (`cpInvKpis`): value, invoiced, paid — in the contract's currency (C-9) — and approved changes (k€,
+ * signed, "—" when none).
+ */
+export function contractSummary(
+  c: { valueKeur: number; invoicedKeur: number; paidKeur: number; approvedChangesKeur: number; currency?: CurrencyCode }, lang: Lang,
+): { k: string; v: string }[] {
+  const cur = c.currency ?? BASE_CURRENCY;
   return [
-    { k: 'Contract value', v: money(c.valueKeur, lang) },
-    { k: 'Invoiced', v: money(c.invoicedKeur, lang) },
-    { k: 'Paid', v: money(c.paidKeur, lang) },
+    { k: 'Contract value', v: moneyIn(c.valueKeur, cur, lang) },
+    { k: 'Invoiced', v: moneyIn(c.invoicedKeur, cur, lang) },
+    { k: 'Paid', v: moneyIn(c.paidKeur, cur, lang) },
     { k: 'Approved changes', v: c.approvedChangesKeur ? money(c.approvedChangesKeur, lang, { signed: true }) : '—' },
   ];
 }
@@ -526,6 +546,63 @@ export const sharedDocRow = (d: SharedDocLike): SharedDocRow => ({
  * and "Own documents · files stay in the business tool…" (empty state); the rebuild uses client-facing strings.
  */
 export const DOCS_TAB = { idHeader: 'Reference', sub: 'Released documents shared with you', empty: 'No document shared with you yet' } as const;
+
+/**
+ * Client document categories (Delivery 8, L-9 = a, R-138): the prototype's typed CLIENT_DOCS rows (defined, never
+ * rendered) give way to categories computed from the Codex index — the documents shared with the client. One constant
+ * maps a Codex type to its category; any other type falls back to its Codex family. Keys are stable; the order is the
+ * prototype's (contract, minutes, HSE, accepted deliverables), then the families in Codex order. The owner's own list
+ * can replace this constant. "HSE documents", not "HSE reports": the Codex HSE type is a prevention plan, and the
+ * monthly safety statistics and incident reports are Vigie site-HSE records, never in the Codex index. "Monthly progress
+ * reports" has no Codex type (Keystone's status report is not a Codex record): it is left out until the owner decides.
+ */
+export const CLIENT_DOC_CATEGORY_OF_TYPE: Readonly<Record<string, { key: string; label: string }>> = {
+  CTR: { key: 'contract', label: 'Contract & amendments' },
+  MIN: { key: 'minutes', label: 'Meeting minutes' },
+  HSE: { key: 'hse', label: 'HSE documents' },
+  PV: { key: 'accepted', label: 'Accepted deliverables' },
+};
+/** Order of the categories: the typed ones above, then the Codex families (DOC_FAM order). */
+const CLIENT_DOC_CATEGORY_ORDER: readonly string[] = ['contract', 'minutes', 'hse', 'accepted', ...docFamily.codes];
+
+export interface SharedDocCategoryInput {
+  /** Codex type code ("MIN") and its EN label ("Meeting minutes"). */
+  type: string;
+  typeLabel: string;
+  family: DocFamily;
+  issuedOn: string;
+}
+
+export interface ClientDocCategory {
+  /** Stable key ("minutes", "hse", "eng"…). */
+  key: string;
+  /** EN source label ("Meeting minutes", "Engineering"). */
+  category: string;
+  fileCount: number;
+  /** The distinct type labels of its files (EN source, first-seen order). */
+  types: string[];
+  /** Description: the type labels joined with " · " (EN source). */
+  description: string;
+  /** Latest issue date of its files (ISO). */
+  latestIssuedOn: string;
+}
+
+/** Categories of the documents shared with the client, in a fixed order; a category without file is left out. */
+export function clientDocCategories(docs: readonly SharedDocCategoryInput[]): ClientDocCategory[] {
+  const by = new Map<string, ClientDocCategory>();
+  for (const d of docs) {
+    const c = CLIENT_DOC_CATEGORY_OF_TYPE[d.type] ?? { key: d.family, label: docFamily.label(d.family) };
+    const cur = by.get(c.key) ?? { key: c.key, category: c.label, fileCount: 0, types: [], description: '', latestIssuedOn: d.issuedOn };
+    cur.fileCount++;
+    if (!cur.types.includes(d.typeLabel)) cur.types.push(d.typeLabel);
+    if (d.issuedOn > cur.latestIssuedOn) cur.latestIssuedOn = d.issuedOn;
+    by.set(c.key, cur);
+  }
+  return CLIENT_DOC_CATEGORY_ORDER.flatMap((k) => {
+    const c = by.get(k);
+    return c ? [{ ...c, description: c.types.join(' · ') }] : [];
+  });
+}
 
 // ── Download status report (AF.client) ─────────────────────────────────────────────────────────────────
 

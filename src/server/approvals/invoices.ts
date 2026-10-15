@@ -3,7 +3,7 @@ import 'server-only';
 // the portfolio director (apprItems 4729), all projects. Decided on Sourcing only (row opens `?tab=inv&inv=…`; no
 // inline decision): approving the payment, approving the received part or rejecting takes the invoice out of the queue.
 // "Decided this week": the invoices the viewer decided in Keystone.
-import { INVOICE_DECIDER_ROLES, invoiceApprovalItems, match3 } from '@/domain/procurement';
+import { INVOICE_DECIDER_ROLES, invoiceApprovalItems } from '@/domain/procurement';
 import { invoiceQueue, listSupplierInvoices } from '@/server/dal/purchasing';
 import type { ApprovalProvider } from './types';
 
@@ -16,8 +16,9 @@ export const invoiceProvider: ApprovalProvider = {
     const invoices = await invoiceQueue();
     return invoiceApprovalItems(
       invoices.map((i) => ({
-        number: i.number, supplier: i.supplier, status: i.status, amountEur: i.amountEur, invoiceDate: i.invoiceDate,
-        match: match3({ hasPo: !!i.poNumber, hasReceipt: !!i.receiptNumber, amountEur: i.amountEur, poAmountEur: i.poAmountEur, receiptAmountEur: i.receiptAmountEur }),
+        number: i.number, supplier: i.supplier, status: i.status, amountEur: i.amountEur, currency: i.currency, invoiceDate: i.invoiceDate,
+        // The row's own match (C-9: an invoice in another currency than its order does not match it).
+        match: i.match,
       })),
       lang,
     );

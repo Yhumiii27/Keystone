@@ -82,6 +82,8 @@ export function MachineTypeEditor({ mt, canEdit }: { mt: MtDetailView; canEdit: 
           canEdit={canEdit}
           onSave={(list, fail) => save(() => setMachineTypeItpSystemsAction(mt.code, list), fail)}
           newItem={NEW_ITP_SYSTEM}
+          // E-9 'a' (R-057): the inspection plans of existing projects keep the systems they were created with.
+          hint={t('Changes apply to projects created afterwards')}
         />
       </div>
       <CostCategories key={`cats-${mt.code}`} mt={mt} canEdit={canEdit} save={save} />
@@ -259,7 +261,7 @@ const rowsOf = (list: EditableText[]): TextRow[] => list.map((x) => ({ stored: x
 /** Value written back: the stored text when the row was not edited (the input may show a translation). */
 const sendValue = (r: TextRow) => (r.stored != null && r.text === r.shown ? r.stored : r.text);
 
-function TextListCard({ title, addLabel, numbered, rows: server, canEdit, onSave, newItem }: {
+function TextListCard({ title, addLabel, numbered, rows: server, canEdit, onSave, newItem, hint }: {
   title: string;
   addLabel: string;
   numbered?: boolean;
@@ -267,6 +269,8 @@ function TextListCard({ title, addLabel, numbered, rows: server, canEdit, onSave
   canEdit: boolean;
   onSave: (list: string[], fail: () => void) => void;
   newItem: string;
+  /** Help line under the list (translated). */
+  hint?: string;
 }) {
   const { t } = useI18n();
   const [rows, setRows] = useServerState(rowsOf(server), JSON.stringify(server));
@@ -309,6 +313,7 @@ function TextListCard({ title, addLabel, numbered, rows: server, canEdit, onSave
           )}
         </div>
       ))}
+      {hint && <span className={s.emptyNote}>{hint}</span>}
     </div>
   );
 }

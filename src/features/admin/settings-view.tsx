@@ -3,12 +3,13 @@
 // card (thresholds saved on blur / Enter, validated), and the seven list cards (remove ×, location type, "Add an entry"
 // + Add). Every edit is persisted through src/features/admin/actions.ts; outside the workspace (member, client) the
 // controls are hidden and the thresholds read-only. No toast on success, as in the prototype; refusals toast.
-// "Rate cards" links to the Rate cards screen (the prototype styled it as a link without one, 10 OQ2).
+// "Rate cards" links to the Rate cards screen (the prototype styled it as a link without one, 10 OQ2). R-088 (R-6b): the
+// hours-variance threshold on its own row (director only, saved on blur / Enter).
 // Chapter 4 (A-13, A-14): only the portfolio director edits (`canEdit`); the other roles of the workspace get a read-only
 // note. "Remove" toasts whether the value was deleted or deactivated (still in use / a default). The health card states
 // the one rule every screen applies.
 import {
-  CalendarX, Certificate, Coins, CurrencyEur, Files, Flag, Heartbeat, LockSimple, Plus, Warehouse, Warning, X,
+  CalendarX, Certificate, ClockCountdown, Coins, CurrencyEur, Files, Flag, Gavel, Heartbeat, LockSimple, Plus, Warehouse, Warning, X,
 } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
 import Link from 'next/link';
@@ -23,7 +24,7 @@ import type { SettingsIcon } from '@/domain/admin';
 import { REQUIRED_STAGES } from '@/domain/settings-rules';
 import { useI18n } from '@/i18n/client';
 import type { LocationType } from '@/server/db/codes';
-import { addSettingsEntryAction, removeSettingsEntryAction, setHealthThresholdAction, type AdminActionResult } from './actions';
+import { addSettingsEntryAction, removeSettingsEntryAction, setCcbThresholdAction, setHealthThresholdAction, setHoursVarianceAction, type AdminActionResult } from './actions';
 import type { SettingsCardView, SettingsView } from './model';
 import s from './admin.module.css';
 import st from './settings-ch4.module.css';
@@ -84,7 +85,30 @@ export function SettingsBody({ view, canEdit, directorOnlyNote = false }: { view
           <Link href={screenHref('rates')} className={s.rateCards}>
             {t('Rate cards')}
           </Link>
-          {t('page (directors and PMs).')}
+          {t('page (director and Finance).')}
+        </div>
+      </div>
+      {/* R-088 (R-6b): its own row, apart from the A-13 health rule. */}
+      <div className={cx('card', 'elev-sm', s.healthCard)}>
+        <div className={s.healthHead}>
+          <ClockCountdown className={s.accent} aria-hidden />
+          <div className={s.healthTitle}>
+            <div className="card-title">{t('Hours variance')}</div>
+            <span className={s.muted12}>{view.hoursVariance.text}</span>
+          </div>
+          <HoursVarianceField key={`hours-${view.hoursVariance.pct}`} initial={String(view.hoursVariance.pct)} canEdit={canEdit} label={t('Hours variance threshold (%)')} />
+        </div>
+      </div>
+      {/* Delivery 8 (R-069, P-6c): the change control board threshold, on its own row next to the health rules. */}
+      <div className={cx('card', 'elev-sm', s.healthCard)}>
+        <div className={s.healthHead}>
+          <Gavel className={s.accent} aria-hidden />
+          <div className={s.healthTitle}>
+            <div className="card-title">{t('Change control board')}</div>
+            <span className={s.muted12}>{t('A change request whose amount exceeds the threshold also needs the board’s decision')}</span>
+            <span className={st.rule}>{t('Applies to change requests submitted afterwards')}</span>
+          </div>
+          <CcbField key={`ccb-${view.ccb.text}`} initial={view.ccb.text} label={t('Board above (k€)')} canEdit={canEdit} />
         </div>
       </div>
       <div className={s.cardGrid}>
@@ -115,6 +139,71 @@ function ThresholdField({ which, label, initial, canEdit }: { which: 'risk' | 'o
         className={cx('input', s.thresholdInput)}
         type="number"
         step="0.01"
+        value={value}
+        readOnly={!canEdit}
+        aria-busy={pending || undefined}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+        }}
+      />
+    </div>
+  );
+}
+
+/** R-088: "Hours variance threshold (%)" — an integer 1–50, saved on blur / Enter when changed; read-only for non-directors. */
+function HoursVarianceField({ initial, canEdit, label }: { initial: string; canEdit: boolean; label: string }) {
+  const [value, setValue] = useState(initial);
+  const [pending, start] = useTransition();
+  const commit = () => {
+    if (!canEdit || pending || value.trim() === initial) return;
+    start(async () => {
+      if (!(await attempt(setHoursVarianceAction(value)))) setValue(initial);
+    });
+  };
+  return (
+    <div className={cx('field', s.thresholdField)}>
+      <label htmlFor="hours-variance">{label}</label>
+      <input
+        id="hours-variance"
+        className={cx('input', s.thresholdInput)}
+        type="number"
+        step="1"
+        min={1}
+        max={50}
+        value={value}
+        readOnly={!canEdit}
+        aria-busy={pending || undefined}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+        }}
+      />
+    </div>
+  );
+}
+
+/** R-069: the board threshold (k€, 0 or more), saved on blur / Enter when changed — the director only (the action re-checks). */
+function CcbField({ initial, label, canEdit }: { initial: string; label: string; canEdit: boolean }) {
+  const [value, setValue] = useState(initial);
+  const [pending, start] = useTransition();
+  const commit = () => {
+    if (!canEdit || pending || value.trim() === initial) return;
+    start(async () => {
+      if (!(await attempt(setCcbThresholdAction(value)))) setValue(initial);
+    });
+  };
+  return (
+    <div className={cx('field', s.thresholdField)}>
+      <label htmlFor="threshold-ccb">{label}</label>
+      <input
+        id="threshold-ccb"
+        className={cx('input', s.thresholdInput)}
+        type="number"
+        min={0}
+        step="any"
         value={value}
         readOnly={!canEdit}
         aria-busy={pending || undefined}

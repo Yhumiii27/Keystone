@@ -4,16 +4,20 @@
 // URL state (docs/spec/00 §8.3): `?status=<code>` (status chip; unknown → All), `?receipt=BL-2026-0533` opens the
 // delivery drawer (unknown → none; `?deliv=`, the prototype's state key, is accepted as an alias). Primary action "Announce a delivery" for viewers who may edit the project;
 // Register receipt and documents follow the same rule; the quality decision also needs a QC role (quality manager,
-// procurement, director). Projects without receipts show the empty register.
+// procurement, director). Projects without receipts show the empty register. R-126 (SC-4a): the drawer's photos are stored
+// by Keystone — added and removed by the viewers who may edit the screen, seen by the internal viewers.
 import { PageHeader } from '@/components/app/shell/page-header';
 import { canDecideQc, receiptFilterOf } from '@/domain/deliveries';
 import { AnnounceDeliveryButton } from '@/features/deliveries/announce-button';
 import { DeliveriesBody } from '@/features/deliveries/deliveries-view';
 import { announceFormDef, deliveriesHref, deliveriesView, registerFormDef } from '@/features/deliveries/model';
+import { PhotoGallery } from '@/features/photos/photo-gallery';
+import { photoViews } from '@/features/photos/model';
 import { getDeliveriesScreen } from '@/server/dal/deliveries';
-import { projectLabel } from '@/server/dal/projects';
+import { legacyReceiptPhotoCount, listProjectPhotos } from '@/server/dal/photos';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -28,7 +32,8 @@ export default async function DeliveriesPage({ params, searchParams }: { params:
 
   const status = receiptFilterOf(first(sp.status));
   const receiptParam = first(sp.receipt ?? sp.deliv)?.trim().toUpperCase() || null;
-  const view = deliveriesView(projectCode, data, { status, receipt: receiptParam }, t, lang);
+  // R-096: the Vigie supplier NCR links are for internal viewers (the client never sees purchasing records, P-10b).
+  const view = deliveriesView(projectCode, data, { status, receipt: receiptParam }, t, lang, { vigieLinks: ctx.viewer.role !== 'client' });
   const registerForms = canEdit
     ? Object.fromEntries(data.receipts.filter((r) => r.status === 'announced').map((r) => [r.number, registerFormDef(r, t, lang)]))
     : {};
@@ -36,17 +41,32 @@ export default async function DeliveriesPage({ params, searchParams }: { params:
   const primary = canEdit ? (
     <AnnounceDeliveryButton
       code={projectCode}
-      context={t(projectLabel(ctx.project))}
+      context={projectLabelText(ctx.project, lang)}
       form={data.announceable.length ? announceFormDef(data.announceable, data.putAway, t, lang) : null}
       path={deliveriesHref(projectCode)}
       status={status}
     />
   ) : undefined;
 
+  // R-126: photos of the open receipt (the client, outside this screen, never sees purchasing records — P-10b).
+  let photos;
+  if (view.drawer && ctx.viewer.role !== 'client') {
+    const [byReceipt, legacy] = await Promise.all([listProjectPhotos(projectCode, 'goods_receipt'), legacyReceiptPhotoCount(view.drawer.id)]);
+    photos = (
+      <PhotoGallery
+        owner={{ kind: 'goods_receipt', code: projectCode, ref: view.drawer.id }}
+        photos={photoViews(byReceipt.get(view.drawer.id))}
+        canEdit={canEdit}
+        empty={t('Drop receipt photos')}
+        legacyCount={legacy}
+      />
+    );
+  }
+
   return (
     <>
       <PageHeader screen="deliveries" projectCode={projectCode} primary={primary} />
-      <DeliveriesBody code={projectCode} view={view} canEdit={canEdit} canQc={canQc} registerForms={registerForms} t={t} />
+      <DeliveriesBody code={projectCode} view={view} canEdit={canEdit} canQc={canQc} registerForms={registerForms} photos={photos} t={t} />
     </>
   );
 }

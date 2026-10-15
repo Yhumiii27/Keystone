@@ -22,13 +22,13 @@ import { Field, Textarea } from '@/components/ds/Field';
 import { Segmented } from '@/components/ds/Segmented';
 import { useToast } from '@/components/ds/Toast';
 import { acceptOf } from '@/domain/ch4-defaults';
-import { TRANSCRIPT_IMPORT, type ProposalKind } from '@/domain/meetings';
+import { pasteTooLong, TRANSCRIPT_IMPORT, type ProposalKind } from '@/domain/meetings';
 import { useI18n } from '@/i18n/client';
 import {
   addProposalQuestionAction, addProposalRiskAction, analyseTranscriptAction, applyTranscriptAction, editProposalAction, importTranscriptAction,
   reviewProposalAction,
 } from './actions';
-import { LINE_COLOR, type TranscriptItemView, type TranscriptView } from './model';
+import { LINE_COLOR, transcriptFileHref, type TranscriptItemView, type TranscriptView } from './model';
 import s from './meetings.module.css';
 
 /** What the server says about the analyser (src/server/ai/config.ts `transcriptAiInfo`). */
@@ -81,7 +81,7 @@ function ImportDialog({ code, meeting, replace, onClose, onDone }: { code: strin
 
   const submit = () => {
     if (!ready || pending) return;
-    if (mode === 'paste' && text.length > TRANSCRIPT_IMPORT.maxUploadBytes) return setError(t('The transcript is too long'));
+    if (mode === 'paste' && pasteTooLong(text)) return setError(t('The transcript is too long'));
     setError(null);
     const form = new FormData();
     form.set('code', code);
@@ -469,7 +469,20 @@ export function TranscriptBox(props: TranscriptBoxProps) {
         {canEdit && v.analysed && !v.locked && <AnalyseButton code={code} meeting={meeting} ai={ai} again selfHref={selfHref} pinned={pinned} />}
         {canEdit && !v.analysed && <AnalyseButton code={code} meeting={meeting} ai={ai} again={false} selfHref={selfHref} pinned={pinned} />}
       </div>
-      {v.sourceText && <span className={s.trSource}>{v.sourceText}</span>}
+      {v.sourceText && (
+        <span className={s.trSource}>
+          {v.fileName && v.sourceText.startsWith(v.fileName) ? (
+            <>
+              <a href={transcriptFileHref(meeting)} download={v.fileName} className={s.trFile} title={t('Download the transcript')}>
+                {v.fileName}
+              </a>
+              {v.sourceText.slice(v.fileName.length)}
+            </>
+          ) : (
+            v.sourceText
+          )}
+        </span>
+      )}
       <p className={s.transcriptText} tabIndex={0}>
         {v.text}
       </p>

@@ -61,9 +61,12 @@ describe('resourcesView — Resources (portfolio)', () => {
       // (prototype constant 240 h), Engineering short the most.
       ['Over-allocated', '3 people', 'Peak weeks 42–44', LO],
       ['Unmet demand', '280 h', 'Mostly engineering', LO],
-      ['Labor cost to date', '€1.42M', '77% of labor budget', OK],
+      // R-086 (R-2 a): the portfolio tile names its zone ("All zones" when none is chosen).
+      ['Labor cost to date', '€1.42M', '77% of labor budget · All zones', OK],
       ['Open requests', '4', 'Across all projects', OK],
     ]);
+    expect(resourcesView({ ...portfolio, zoneLabel: 'Africa' }, en, 'en').kpis[3].sub).toBe('77% of labor budget · Africa');
+    expect(resourcesView({ ...portfolio, labor: null, zoneLabel: 'Asia Pacific' }, en, 'en').kpis[3]).toMatchObject({ value: '—', sub: 'Asia Pacific' });
   });
 
   it('KPI tiles (FR)', () => {
@@ -72,9 +75,10 @@ describe('resourcesView — Resources (portfolio)', () => {
       ['Taux d’occupation', '83%', 'Cible 85–95 %'],
       ['Surchargés', '3 personnes', 'Pointe semaines 42–44'],
       ['Demande non couverte', '280 h', 'Surtout ingénierie'],
-      ['Main-d’œuvre à date', '1,42 M€', '77 % du budget main-d’œuvre'],
+      ['Main-d’œuvre à date', '1,42 M€', '77 % du budget main-d’œuvre · Toutes zones'],
       ['Demandes ouvertes', '4', 'Tous projets'],
     ]);
+    expect(resourcesView({ ...portfolio, zoneLabel: 'Europe & North America' }, fr, 'fr').kpis[3].sub).toBe('77 % du budget main-d’œuvre · Europe & Amérique du Nord');
   });
 
   it('heatmap rows: cells with shade() colours, Avg text and colour, My work link', () => {
@@ -238,6 +242,8 @@ describe('whatIfView', () => {
       ['Cost impact (EAC)', '—', '+<€1k', '+€1k'],
       ['Peak load', '120%', '140%', '120%'],
       ['People above 100%', '1', '1', '1'],
+      // S-7 (recommended option of DELIVERY-6-PLAN §3.3): the team hours each lever set frees (−) or adds (+) over the horizon.
+      ['Load change (h)', '0', '−24', '−36'],
       ['Side effects', 'None', 'Ben above 100% · week of 5 Oct', 'None'],
     ]);
     expect(v.compare[3].values.map((x) => x.color)).toEqual([LO, LO, LO]);
@@ -282,6 +288,7 @@ describe('whatIfView', () => {
       ['Impact coût (EAC)', '+< 1 k€'],
       ['Charge de pointe', '140%'],
       ['Personnes au-dessus de 100 %', '1'],
+      ['Variation de charge (h)', '−24'],
       ['Effets de bord', 'Ben au-dessus de 100 % · semaine du 5 oct.'],
     ]);
     expect(a.appliedText).toBe('2 demande(s) en brouillon · 0 envoyée(s)');

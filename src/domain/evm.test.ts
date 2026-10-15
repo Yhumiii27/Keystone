@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import PROTO from '@/server/prototype/prototype-data.json';
 import GEN from '@/server/prototype/prototype-generated.json';
 import {
-  cashRecovery, categoryBar, contingencyDrawn, contractValue, costVarianceBars, evmCore, milestoneAmount, monthAt, offerPoints,
+  cashRecovery, categoryBar, contractValue, costVarianceBars, evmCore, milestoneAmount, monthAt, offerPoints,
   offerSummary, openCommitment, plannedValueFromOffer, termsDays, workPackageBar, workPackageTotals, type OfferQuote, type PaymentMilestone,
 } from './evm';
 
@@ -77,13 +77,24 @@ describe('commercial offer', () => {
 });
 
 describe('variance card & bars', () => {
-  it('cost variance bars: cv −5…−280, heights 3 %…80 %', () => {
+  it('cost variance bars: cv −5…−280, signed heights 4 %…90 % of half the plot (C-1)', () => {
     const bars = costVarianceBars(HLT.ev, HLT.ac);
     expect(bars.map((b) => b.cv)).toEqual([-5, -20, -45, -70, -110, -150, -190, -240, -280]);
+    // Deviation C-1 (delivery 8, R-080): the bars are signed around a centre axis — heights are % of HALF the plot (max 90 %,
+    // stub 4 %) instead of the prototype's 3 %…80 % of the whole column, and every HLT-026 month is an overrun (down).
     expect(bars.map((b) => b.h + '%')).toEqual([
-      '3%', '5.7142857142857135%', '12.857142857142858%', '20%', '31.428571428571427%', '42.857142857142854%', '54.28571428571429%',
-      '68.57142857142857%', '80%',
+      '4%', '6.428571428571428%', '14.464285714285715%', '22.5%', '35.357142857142854%', '48.214285714285715%', '61.07142857142858%',
+      '77.14285714285714%', '90%',
     ]);
+    expect(new Set(bars.map((b) => b.dir))).toEqual(new Set(['down']));
+  });
+
+  it('signed bars: savings up, overruns down, zero a neutral stub (C-1)', () => {
+    expect(costVarianceBars([10, 20, 30], [10, 10, 60])).toEqual([
+      { cv: 0, h: 4, dir: 'flat' }, { cv: 10, h: 30, dir: 'up' }, { cv: -30, h: 90, dir: 'down' },
+    ]);
+    // A tiny variance next to a large one keeps a visible stub.
+    expect(costVarianceBars([1, 1000], [0, 0])[0]).toEqual({ cv: 1, h: 4, dir: 'up' });
   });
 
   it('cost breakdown bullets (HCATS)', () => {
@@ -114,10 +125,9 @@ describe('variance card & bars', () => {
     expect(tot.original + tot.changes - tot.eac).toBe(-436);
   });
 
-  it('contingency tile: 208 drawn of 150 → 139 % · +58 over', () => {
-    expect(contingencyDrawn(150, 208)).toEqual({ pct: 139, over: 58 });
-    expect(contingencyDrawn(100, 85)).toEqual({ pct: 85, over: 0 });
-  });
+  // The contingency tile ("208 drawn of 150 → 139 % · +58 over") moved to src/domain/cost-control.ts contingencyTile in
+  // delivery 7: A-8 makes the register's validated draw-downs the drawn figure (HLT-026: 48 → 32 %), the prototype's 208 is
+  // the forecast shown apart — tested in src/domain/cost-control.test.ts.
 });
 
 describe('cash recovery (HLT-026)', () => {

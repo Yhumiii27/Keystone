@@ -5,7 +5,7 @@ import { money, ratio } from '@/lib/format';
 import { makeT } from '@/i18n/translate';
 import { overviewMetrics, portfolioKpis, portfolioTotals, type EvmInput } from './portfolio';
 import {
-  bomShortfall, changeRequestStatus, clientHomeDeliverables, clientOpenInvoice, directorHome, ecoStatus, evmAtDate, homeHref, procurementHome, renderTxt, skillCoverage, teamLoad, workSummary,
+  bomShortfall, changeRequestStatus, clientHomeDeliverables, clientOpenInvoice, directorHome, ecoStatus, evmAtDate, homeHref, peakWeeksTxt, procurementHome, renderTxt, shortfallTxt, skillCoverage, teamLoad, workSummary,
   type Eco, type Part, type PersonLoad, type ResourceRequest, type Todo,
 } from './home';
 
@@ -135,9 +135,27 @@ describe('client Home inputs from the register and the billing plan (Delivery 5)
   it('open invoice: first invoiced milestone; none when everything is paid or planned', () => {
     const m = (status: string, n: string | null, label: string) => ({ milestoneNumber: n, milestone: label, amountKeur: 100, status, invoiceNumber: n ? 'INV-1' : null, dueText: n ? '10 Nov' : null });
     expect(clientOpenInvoice([m('paid', 'M1', 'M1 Permits'), m('invoiced', 'M3', 'M3 Structure topped out')])).toEqual({
-      invoiceNumber: 'INV-1', milestoneNumber: 'M3', name: 'Structure topped out', amount: 100, due: '10 Nov',
+      invoiceNumber: 'INV-1', milestoneNumber: 'M3', name: 'Structure topped out', amount: 100, due: '10 Nov', currency: 'EUR',
     });
+    // C-9: in the contract's currency.
+    expect(clientOpenInvoice([m('invoiced', 'M3', 'M3 Structure topped out')], 'USD')?.currency).toBe('USD');
     expect(clientOpenInvoice([m('invoiced', null, 'Sep')])?.name).toBe('Sep');
     expect(clientOpenInvoice([m('paid', 'M1', 'M1 Permits'), m('planned', 'M2', 'M2 X')])).toBeNull();
+  });
+});
+
+describe('department head KPI subs (A-12: computed as on Resources, no longer "Peak weeks 41–43" / "Mostly engineering")', () => {
+  const weeks = ['2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26'];
+  it('peak weeks: ISO weeks with someone above 110 % (strict), singular / plural / none, EN and FR', () => {
+    const r = (x: Parameters<typeof renderTxt>[0], lang: 'en' | 'fr') => renderTxt(x, makeT(lang));
+    const many = peakWeeksTxt([{ loads: [100, 111, 120, 110, 130] }], weeks);
+    expect([r(many, 'en'), r(many, 'fr')]).toEqual(['Peak weeks 41–42, 44', 'Pointe semaines 41–42, 44']);
+    expect(r(peakWeeksTxt([{ loads: [0, 0, 0, 115, 0] }], weeks), 'fr')).toBe('Pointe semaine 43');
+    expect(r(peakWeeksTxt([{ loads: [110, 110, 110, 110, 110] }], weeks), 'en')).toBe('No week above 110%');
+  });
+  it('shortfall: the department short the most, lower-cased after "Mostly" in both languages', () => {
+    const rows = [{ name: 'Site operations', capacityH: 480, demandH: 510 }, { name: 'Engineering', capacityH: 960, demandH: 1110 }];
+    expect([renderTxt(shortfallTxt(rows), makeT('en')), renderTxt(shortfallTxt(rows), makeT('fr'))]).toEqual(['Mostly engineering', 'Surtout ingénierie']);
+    expect(renderTxt(shortfallTxt([{ name: 'Engineering', capacityH: 960, demandH: 900 }]), makeT('fr'))).toBe('Aucun service au-delà de sa capacité');
   });
 });

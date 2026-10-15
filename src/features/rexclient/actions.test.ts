@@ -23,7 +23,7 @@ vi.mock('@/server/project-context', () => ({
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { STATUS_ISO } from '@/server/db/codes';
-import { listChangeRequestDetails } from '@/server/dal/changes';
+import { decideChangeStep, listChangeRequestDetails } from '@/server/dal/changes';
 import { listClientIssues } from '@/server/dal/client';
 import { listSharedDocuments } from '@/server/dal/documents';
 import { listAudit } from '@/server/dal/notifications';
@@ -128,6 +128,10 @@ describe('client portal Server Functions', () => {
     expect(await decideClientChangeAction('HLT-026', 'CR-008', 'maybe' as never)).toEqual({ error: 'Invalid request' });
     expect(await decideClientChangeAction('HLT-026', 'CR-999', 'ok')).toEqual({ error: 'Unknown change request' });
     expect(await decideClientChangeAction('HLT-026', 'CR-004', 'ok')).toEqual({ error: 'This decision is no longer pending' });
+    // R-069 (P-6b): the client decides after the portfolio director.
+    expect(await decideClientChangeAction('HLT-026', 'CR-008', 'ok')).toEqual({ error: 'Not yours to decide yet' });
+    expect(await clientStep('CR-008')).toBe('pending');
+    await decideChangeStep('HLT-026', 'CR-008', 'director', 'ok', 'Marie Lefebvre');
     expect(await decideClientChangeAction('HLT-026', 'CR-008', 'ok')).toEqual({ ok: true });
     expect(await clientStep('CR-008')).toBe('ok');
     expect(await decideClientChangeAction('HLT-026', 'CR-008', 'rejected')).toEqual({ error: 'This decision is no longer pending' });

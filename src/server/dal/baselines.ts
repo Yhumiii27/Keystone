@@ -1,13 +1,17 @@
 import 'server-only';
 // Baselines DAL (chapter 4, S-3): the project's baselines with their activity snapshots, the displayed baseline (Baseline chip,
-// stored on the project, BL1 by default) and the writers behind "Set baseline" and the change-request re-baseline.
+// stored on the project, BL1 by default — written by schedule.ts showProjectBaseline) and the writers behind "Set baseline",
+// the change-request re-baseline and the baseline a change request proposes (src/domain/baseline-policy.ts: after BL1, a new
+// baseline goes through a change request; it is filled and made current when the request is approved, dal/changes.ts).
 // The Change control register keeps reading `getBaselines` / `getBaselineRegister` (planning.ts, changes-baselines.ts).
 import { and, asc, eq, sql } from 'drizzle-orm';
+import { baselineNumber, canSnapshotFreely } from '@/domain/baseline-policy';
 import { DEFAULT_DISPLAYED_BASELINE, displayedBaselineCode, nextBaselineCode, projectDataDate } from '@/domain/ch4-defaults';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import type { BaselineSource, BaselineState } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import { activities, baselineActivities, baselines, changeRequests, projects, wbsNodes } from '@/server/db/schema';
+import { markBl1Deliverable } from './lifecycle';
 
 type Q = DB | Tx;
 
@@ -92,23 +96,6 @@ export async function getDisplayedBaselineCode(code: string, q?: Q): Promise<str
   return resolveDisplayed(p.displayed, codes);
 }
 
-/** Baseline chip: stores the displayed baseline on the project (audited). */
-export async function setDisplayedBaseline(code: string, baselineCode: string, actorName: string): Promise<void> {
-  const db = await getDb();
-  await db.transaction(async (tx) => {
-    const p = await projectHead(tx, code);
-    const [b] = await tx.select({ id: baselines.id }).from(baselines).where(and(eq(baselines.projectId, p.id), eq(baselines.code, baselineCode)));
-    if (!b) throw new Error(`Unknown baseline ${baselineCode}`);
-    if (p.displayed === baselineCode) return;
-    await tx.update(projects).set({ displayedBaselineCode: baselineCode, updatedAt: new Date() }).where(eq(projects.id, p.id));
-    const actor = await findPerson(tx, actorName);
-    await writeAudit(tx, {
-      actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: code, change: `displayed baseline: ${p.displayed ?? DEFAULT_DISPLAYED_BASELINE} → ${baselineCode}`,
-      area: 'Planning', entityType: 'project', projectId: p.id,
-    });
-  });
-}
-
 /** Activity snapshot of a baseline, in plan order ([] for a baseline without snapshot). */
 export async function getBaselineActivities(code: string, baselineCode: string, q?: Q): Promise<BaselineActivityRow[]> {
   const db = q ?? (await getDb());
@@ -155,6 +142,25 @@ export interface SnapshotInput {
   setOn?: string;
   approverName?: string | null;
   scope?: string | null;
+  /**
+   * Re-checks the S-3 policy inside the writing transaction (R-010: two simultaneous "Set baseline" at BL0 must not create
+   * BL2 without a change request): a snapshot made current, or one without change request, needs the project below BL1;
+   * a change request carries one proposed baseline at most. Violations throw BaselinePolicyError.
+   */
+  enforcePolicy?: boolean;
+}
+
+/** S-3 refusal raised inside the snapshot transaction (`SnapshotInput.enforcePolicy`). */
+export class BaselinePolicyError extends Error {
+  /** `change_request_required`: the project has BL1 already; `already_proposed`: the change request proposes `baseline`. */
+  readonly reason: 'change_request_required' | 'already_proposed';
+  readonly baseline: string | null;
+  constructor(reason: BaselinePolicyError['reason'], baseline: string | null = null) {
+    super(reason === 'already_proposed' ? `The change request already proposes ${baseline}` : 'After BL1, a new baseline goes through a change request');
+    this.name = 'BaselinePolicyError';
+    this.reason = reason;
+    this.baseline = baseline;
+  }
 }
 
 async function supersedeCurrent(tx: Q, projectId: string, exceptId: string): Promise<void> {
@@ -168,16 +174,25 @@ async function supersedeCurrent(tx: Q, projectId: string, exceptId: string): Pro
  * "Set baseline": snapshots every activity of the project into a new baseline BLn (next free number). Its finish is the
  * latest activity finish. Returns the new code. Pass `q` to run inside the caller's transaction.
  */
-export async function createBaselineSnapshot(code: string, input: SnapshotInput, q?: Q): Promise<{ code: string; activityCount: number }> {
+export async function createBaselineSnapshot(code: string, input: SnapshotInput, q?: Q): Promise<{ code: string; activityCount: number; bl1Ticked?: true }> {
   const run = async (tx: Q) => {
     const proj = await requireProject(tx, code);
     const p = await projectHead(tx, code);
-    const existing = (await tx.select({ code: baselines.code, position: baselines.position }).from(baselines).where(eq(baselines.projectId, proj.id)));
+    const existing = await tx
+      .select({ code: baselines.code, position: baselines.position, state: baselines.state, changeRequestId: baselines.changeRequestId })
+      .from(baselines)
+      .where(eq(baselines.projectId, proj.id));
     const blCode = nextBaselineCode(existing.map((b) => b.code));
     const cr = input.changeRequestNumber
       ? (await tx.select({ id: changeRequests.id }).from(changeRequests).where(and(eq(changeRequests.projectId, proj.id), eq(changeRequests.number, input.changeRequestNumber))))[0]
       : null;
     if (input.changeRequestNumber && !cr) throw new Error(`Unknown change request ${input.changeRequestNumber}`);
+    if (input.enforcePolicy) {
+      const free = canSnapshotFreely(existing.map((b) => b.code));
+      if (!free && (input.makeCurrent || !cr)) throw new BaselinePolicyError('change_request_required');
+      const taken = cr ? existing.find((b) => b.changeRequestId === cr.id && b.state === 'proposed') : undefined;
+      if (taken) throw new BaselinePolicyError('already_proposed', taken.code);
+    }
     const actor = await findPerson(tx, input.actorName);
     const approver = input.approverName ? await findPerson(tx, input.approverName) : null;
     const [{ finish }] = await tx.select({ finish: sql<string | null>`max(${activities.finishDate})::text` }).from(activities).where(eq(activities.projectId, proj.id));
@@ -197,7 +212,9 @@ export async function createBaselineSnapshot(code: string, input: SnapshotInput,
     const who = actor ? nameOf(actor) : input.actorName;
     await writeAudit(tx, { actorName: who, actorPersonId: actor?.id, objectRef: `${code} ${blCode}`, change: `baseline set · ${rows.length} activities`, area: 'Planning', entityType: 'baseline', entityId: b.id, projectId: proj.id });
     await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, text: `Set baseline ${blCode} · ${rows.length} activities`, kind: 'snapshot', projectId: proj.id });
-    return { code: blCode, activityCount: rows.length };
+    // R-054 (L-2 "a"): BL1 (or a later BLn) made current ticks « Planning BL1 posé » — returned, never kept outside (R-010).
+    const bl1Ticked = input.makeCurrent && baselineNumber(blCode) >= 1 ? await markBl1Deliverable(tx, proj.id, input.actorName) : false;
+    return { code: blCode, activityCount: rows.length, ...(bl1Ticked ? { bl1Ticked: true as const } : {}) };
   };
   if (q) return run(q);
   return (await getDb()).transaction(run);
@@ -230,8 +247,44 @@ export async function snapshotIntoBaseline(code: string, baselineCode: string, i
       actorName: actor ? nameOf(actor) : input.actorName, actorPersonId: actor?.id, objectRef: `${code} ${baselineCode}`, change: `baseline snapshot · ${rows.length} activities${input.makeCurrent ? ' · current' : ''}`,
       area: 'Planning', entityType: 'baseline', entityId: b.id, projectId: proj.id,
     });
+    // R-054 (L-2 "a"): a BLn ≥ 1 made current (the change request's re-baseline) ticks « Planning BL1 posé ».
+    if (input.makeCurrent && baselineNumber(baselineCode) >= 1) await markBl1Deliverable(tx, proj.id, input.actorName);
     return rows.length;
   };
   if (q) return run(q);
   return (await getDb()).transaction(run);
+}
+
+/**
+ * The baseline a change request proposes (S-3, after BL1): an empty proposed row BLn linked to the request, like the seed's
+ * BL2 "Pending CR-009". The activity snapshot is taken when the request is approved (dal/changes.ts decideChangeStep). Runs in
+ * the caller's transaction; returns the new code.
+ */
+export async function createProposedBaseline(tx: Q, input: { projectId: string; changeRequestId: string; changeRequestNumber: string; actorName: string; comment?: string | null }): Promise<string> {
+  const [p] = await tx.select({ budget: projects.budgetKeur, dataDate: projects.dataDate }).from(projects).where(eq(projects.id, input.projectId));
+  if (!p) throw new Error('Unknown project');
+  const existing = await tx.select({ code: baselines.code, position: baselines.position }).from(baselines).where(eq(baselines.projectId, input.projectId));
+  const blCode = nextBaselineCode(existing.map((b) => b.code));
+  const [{ finish }] = await tx.select({ finish: sql<string | null>`max(${activities.finishDate})::text` }).from(activities).where(eq(activities.projectId, input.projectId));
+  const actor = await findPerson(tx, input.actorName);
+  const [b] = await tx
+    .insert(baselines)
+    .values({
+      projectId: input.projectId, code: blCode, name: `${blCode} — ${input.changeRequestNumber}`, setOn: null, bacKeur: p.budget, finishDate: finish ?? projectDataDate(p),
+      state: 'proposed', changeRequestId: input.changeRequestId, comment: input.comment?.trim() || null, source: 'change_request', dataDate: null,
+      createdByPersonId: actor?.id ?? null, createdByName: actor ? nameOf(actor) : input.actorName, position: Math.max(-1, ...existing.map((e) => e.position)) + 1,
+    })
+    .returning({ id: baselines.id });
+  await writeAudit(tx, {
+    actorName: actor ? nameOf(actor) : input.actorName, actorPersonId: actor?.id, objectRef: blCode, change: `baseline proposed by ${input.changeRequestNumber}`,
+    area: 'Planning', entityType: 'baseline', entityId: b.id, projectId: input.projectId,
+  });
+  return blCode;
+}
+
+/** Number of activity rows in a baseline's snapshot. */
+export async function baselineSnapshotSize(baselineId: string, q?: Q): Promise<number> {
+  const db = q ?? (await getDb());
+  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(baselineActivities).where(eq(baselineActivities.baselineId, baselineId));
+  return n;
 }

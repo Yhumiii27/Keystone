@@ -4,6 +4,9 @@
 // (candidates — editors only, saved); the client-equipment and missing-feedback notices; "Part record" (the shared
 // part drawer over this screen), "Unlink", and "Add reference to project BOM" (status Not in BOM → the project BOM
 // with the part open, where "Add article" adds it). Server Component; the mapping buttons are client islands.
+// R-108 (E-6 = a): the candidates come from the whole catalogue (search field and type filter, the project BOM's articles
+// first and marked "In the BOM"); picking an article outside the BOM asks "Link and add to the BOM" (with a quantity, for the
+// BOM's editors) or "Link only". The drawer never offers to create a part (A-1b).
 import { Cube, Info, Plus, Warning } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import { Eyebrow } from '@/components/app/Eyebrow';
@@ -13,7 +16,7 @@ import { cx } from '@/components/ds/cx';
 import { Drawer } from '@/components/ds/Drawer';
 import type { T } from '@/i18n/translate';
 import type { PidTagDrawerView } from './model';
-import { CandidateButton, UnlinkButton } from './pid-buttons';
+import { CandidateButton, CandidateSearch, UnlinkButton } from './pid-buttons';
 import s from './pid.module.css';
 
 export interface PidTagDrawerProps {
@@ -21,10 +24,12 @@ export interface PidTagDrawerProps {
   view: PidTagDrawerView;
   /** Mapping allowed (P&ID inside the viewer's workspace, project not read-only). */
   canEdit: boolean;
+  /** R-108: "Link and add to the BOM" allowed (the project's BOM editable for the viewer). */
+  canEditBom?: boolean;
   t: T;
 }
 
-export function PidTagDrawer({ code, view: d, canEdit, t }: PidTagDrawerProps) {
+export function PidTagDrawer({ code, view: d, canEdit, canEditBom = false, t }: PidTagDrawerProps) {
   return (
     <Drawer
       open
@@ -57,10 +62,13 @@ export function PidTagDrawer({ code, view: d, canEdit, t }: PidTagDrawerProps) {
       {canEdit && d.candidates && (
         <div className={s.section}>
           <Eyebrow>{t('Map to a BOM reference')}</Eyebrow>
+          {d.search && <CandidateSearch code={code} tag={d.tag} search={d.search} />}
           {d.candidates.map((c) => (
-            <CandidateButton key={c.ref} code={code} tag={d.tag} c={c} current={c.ref === d.partRef} />
+            <CandidateButton key={c.ref} code={code} tag={d.tag} c={c} current={c.ref === d.partRef} canAddToBom={canEditBom} />
           ))}
-          <span className={s.hint}>{t('Candidates are BOM articles of a compatible type · pick one to link the tag')}</span>
+          {d.search?.empty && <span className={s.hint}>{d.search.empty}</span>}
+          {d.search?.more && <span className={s.hint}>{d.search.more}</span>}
+          <span className={s.hint}>{t('Search the whole catalogue · articles of the project BOM first · pick one to link the tag')}</span>
         </div>
       )}
 

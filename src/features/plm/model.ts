@@ -7,19 +7,22 @@ import { LO, OK, lifecycleTone } from '@/components/app/tones';
 import { canSee, type RoleKey } from '@/config/screens';
 import {
   clearPlmFilter, commercialLines, diffChangeText, diffKindTone, hasPlmFilter, identificationLines, nextPlmSort, partStatusNote, partStatusTone,
-  plmKpis, plmOptions, plmRows, restrictionCell, stockSummary, usedCountText, wearSpareTone,
+  plmKpis, plmOptions, plmRows, restrictionCell, stockSummary, usedCountText, wearSpareTone, canCompletePartRecord, canValidatePart, partValidationErrors,
   type PartFacts, type PlmSortKey, type PlmState,
 } from '@/domain/parts';
 import type { Lang, T } from '@/i18n/translate';
 import { moneyEur } from '@/lib/format';
 import { depositHref, docHref } from '@/features/docs/links';
 import { vaultRowView } from '@/features/docs/model';
-import { DRAWING_STATE_TAG, ECO_STATUS_TAG, displayOfIso, revisionDiffKind } from '@/server/db/codes';
+import { DRAWING_STATE_TAG, ECO_STATUS_TAG, displayOfIso, fmtDOfIso, revisionDiffKind } from '@/server/db/codes';
 import type { PartRow } from '@/server/dal/parts';
 import type { PartDrawerData } from '@/server/dal/plm';
 import { vigieNewEcoUrl } from '@/server/integrations/vigie/links';
 import { belowMinT, countT, inStockT, leadLongT, leadShortT, qtyT, reservedT, revStepT, revT, totalQuantityT, unitsT } from './i18n';
 import { bomHref, drawingHref, ecoHref, fleetHref, openInPlmHref, plmHref, stockHref, withPart } from './links';
+import { PRICE_MASK, canSeeSupplierPrices } from '@/domain/rights';
+import { dataText } from '@/i18n/data-text';
+import { duplicateOfText } from '@/features/bom/i18n';
 
 const tag = (tone: string) => `tag tag-${tone}`;
 
@@ -90,20 +93,24 @@ export interface CatalogueInput {
   state: PlmState;
   /** `?part=` (open drawer). */
   part: string | null;
+  /** Catalogue prices shown (R-046, NEW-D2-1: director, PMs, procurement); masked otherwise (no price sort). Default true. */
+  prices?: boolean;
 }
 
 /** Part name as the prototype translates it (deepTr: "Safety PLC" → "Automate sécurité"). */
-const nameT = (p: Pick<PartFacts, 'name'>, t: T) => t(p.name);
+/** R-148: a part name as typed (or its seeded demo entry). */
+const nameT = (p: Pick<PartFacts, 'name'>, lang: Lang) => dataText(p.name, lang);
 
-export function catalogueView({ parts, openEco, state, part }: CatalogueInput, t: T, lang: Lang): CatalogueView {
+export function catalogueView({ parts, openEco, state, part, prices = true }: CatalogueInput, t: T, lang: Lang): CatalogueView {
   const href = (s: PlmState, p: string | null = part) => plmHref(s, p);
   const f = state.filter;
-  const rows = plmRows(parts, state, lang === 'fr' ? (p) => nameT(p, t) : undefined);
+  const rows = plmRows(parts, state, lang === 'fr' ? (p) => nameT(p, lang) : undefined);
   const o = plmOptions(parts);
   const select = (param: SelectView['param'], label: string, value: string, options: { value: string; label: string }[]): SelectView => ({
     param, label, value, options: options.map((x) => ({ value: x.value, label: t(x.label) })),
   });
-  const sortable: Record<string, PlmSortKey> = { ref: 'ref', name: 'name', type: 'type', price: 'price', status: 'status' };
+  // A masked price is not sortable either (the order would reveal it).
+  const sortable: Record<string, PlmSortKey> = { ref: 'ref', name: 'name', type: 'type', ...(prices ? { price: 'price' as const } : {}), status: 'status' };
   const head = (key: string, label: string, align?: 'right'): HeaderView => {
     const k = sortable[key];
     const active = !!k && state.sort.key === k;
@@ -133,9 +140,9 @@ export function catalogueView({ parts, openEco, state, part }: CatalogueInput, t
     rows: rows.map((p) => {
       const eco = openEco[p.ref] ?? null;
       return {
-        ref: p.ref, href: href(state, part === p.ref ? null : p.ref), selected: part === p.ref, name: nameT(p, t), type: t(p.typeLabel), makeBuy: t(p.makeBuyLabel),
+        ref: p.ref, href: href(state, part === p.ref ? null : p.ref), selected: part === p.ref, name: nameT(p, lang), type: t(p.typeLabel), makeBuy: t(p.makeBuyLabel),
         pu: p.wearSpare ?? '—', puClass: tag(wearSpareTone(p.wearSpare)), manufacturer: p.manufacturer ?? '—', manufacturerRef: p.manufacturerRef ?? '',
-        price: moneyEur(p.listPriceEur, lang), lead: leadShortT(p.leadWeeks, t), status: t(p.statusLabel), statusClass: tag(partStatusTone(p.status)),
+        price: prices ? moneyEur(p.listPriceEur, lang) : PRICE_MASK, lead: leadShortT(p.leadWeeks, t), status: t(p.statusLabel), statusClass: tag(partStatusTone(p.status)),
         eco: eco ? { number: eco, href: ecoHref(eco) } : null, restriction: t(restrictionCell(p)), restrictionAlert: !!p.exportRestriction,
         usedIn: t(usedCountText(p.usage.length)),
       };
@@ -191,6 +198,8 @@ export interface PartDrawerView {
   openPlm: { label: string; href: string; samePage: boolean };
   /** STATUS_NOTE banner; null for validated parts. */
   warn: string | null;
+  /** R-111 (NEW-D4-5 = c): "Possible duplicate of … · to be checked by the engineering office" in the project's BOM; null otherwise. */
+  duplicate: string | null;
   documents: { label: string; deposit: { label: string; href: string }; rows: DrawerRow[] };
   identification: { label: string; items: KeyValue[] };
   commercial: { label: string; items: KeyValue[] };
@@ -203,6 +212,22 @@ export interface PartDrawerView {
   revisions: { label: string; current: KeyValue; events: RevisionEventView[]; empty: string | null };
   drawings: { label: string; rows: DrawerRow[]; empty: string | null };
   ecos: { label: string; rows: EcoRowView[]; empty: string | null; raise: { label: string; title: string; href: string } | null } | null;
+  /**
+   * R-102 (E-1a, E-1b): engineering's validation — who validated and when, what is still missing, "Complete the record" (the
+   * catalogue's editors while Not validated, the validators afterwards) and "Validate part" (engineering lead, director).
+   * Null when there is nothing to show or do (a seed Validated part, for a viewer who cannot change it).
+   */
+  qualification: PartQualificationView | null;
+}
+
+export interface PartQualificationView {
+  label: string;
+  items: KeyValue[];
+  /** Translated reasons the part cannot be validated yet ([] = complete). */
+  missing: string[];
+  complete: { label: string } | null;
+  /** Offered to the validators on a Not validated part; disabled while `missing` is not empty. */
+  validate: { label: string; enabled: boolean } | null;
 }
 
 export interface DrawerContext {
@@ -215,9 +240,30 @@ export interface DrawerContext {
   fallbackProject: string;
   /** Candidates of "Register equivalent" (null when the viewer may not edit the catalogue). */
   equivalentCandidates: { ref: string; name: string }[] | null;
+  /** R-111: lines of the page's project BOM the part may duplicate (only with `projectCode`; nothing on global screens). */
+  duplicateOf?: string[];
 }
 
 const kv = (k: string, v: string, alert = false): KeyValue => ({ k, v, color: alert ? LO : OK });
+
+/** R-102: the drawer's Qualification section for this viewer (role in force), or null. */
+export function partQualificationView(p: PartRow, role: RoleKey, t: T): PartQualificationView | null {
+  const edits = canSee(role, 'plm');
+  const complete = canCompletePartRecord(p.status, role, edits);
+  const validating = p.status === 'not_validated';
+  if (!validating && !p.validatedAt && !complete) return null;
+  const missing = validating ? partValidationErrors(p).map((m) => t(m)) : [];
+  const items: KeyValue[] = [];
+  if (p.validatedAt) items.push(kv(t('Validated'), [t(fmtDOfIso(p.validatedAt.slice(0, 10))), p.validatedBy].filter(Boolean).join(' · ')));
+  if (validating) items.push(kv(t('Before validation'), missing.length ? missing.join(' · ') : t('Record complete'), missing.length > 0));
+  return {
+    label: t('Qualification'),
+    items,
+    missing,
+    complete: complete ? { label: t('Complete the record') } : null,
+    validate: canValidatePart(p.status, role) ? { label: t('Validate part'), enabled: !missing.length } : null,
+  };
+}
 
 export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, lang: Lang): PartDrawerView {
   const p = data.record;
@@ -232,7 +278,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
 
   return {
     ref: p.ref,
-    name: nameT(p, t),
+    name: nameT(p, lang),
     status: t(p.statusLabel),
     statusClass: tag(partStatusTone(p.status)),
     closeHref: ctx.closeHref,
@@ -242,6 +288,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
       return { label: t('Open in PLM'), href, samePage: href === here };
     })(),
     warn: partStatusNote(p.status) ? t(partStatusNote(p.status)!) : null,
+    duplicate: ctx.projectCode && ctx.duplicateOf?.length ? duplicateOfText(ctx.duplicateOf, lang) : null,
 
     // Codex records citing the part — the prototype labelled this section «Freeze» (key misuse, 09 OQ3).
     documents: {
@@ -262,7 +309,8 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
     },
     commercial: {
       label: t('Commercial & export'),
-      items: commercialLines(p, (v) => moneyEur(v, lang), (n) => qtyT(n, lang)).map((l) =>
+      // R-046 (NEW-D2-1): catalogue prices only for the director, the PMs and procurement.
+      items: commercialLines(p, (v) => (canSeeSupplierPrices(ctx.role) ? moneyEur(v, lang) : PRICE_MASK), (n) => qtyT(n, lang)).map((l) =>
         kv(t(l.k), l.k === 'Total quantity' ? totalQuantityT(p.totalQuantity, p.usage.length, lang) : l.translate ? t(l.v) : l.v, l.alert),
       ),
     },
@@ -270,18 +318,18 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
     equivalents: {
       label: t('Equivalent parts'),
       rows: p.equivalentParts.map((e) => ({
-        key: e.ref, title: e.ref, sub: t(e.name), tagLabel: t(e.statusLabel), tagClass: tag(partStatusTone(e.status)), href: select(e.ref), samePage: true,
+        key: e.ref, title: e.ref, sub: dataText(e.name, lang), tagLabel: t(e.statusLabel), tagClass: tag(partStatusTone(e.status)), href: select(e.ref), samePage: true,
       })),
       empty: p.equivalentParts.length ? null : t('No equivalent registered'),
       // Candidate names displayed as the catalogue displays them (French part names in French).
-      register: ctx.equivalentCandidates ? { label: t('Register equivalent'), candidates: ctx.equivalentCandidates.map((c) => ({ ref: c.ref, name: t(c.name) })) } : null,
+      register: ctx.equivalentCandidates ? { label: t('Register equivalent'), candidates: ctx.equivalentCandidates.map((c) => ({ ref: c.ref, name: dataText(c.name, lang) })) } : null,
     },
 
     spares: p.spareList.length
       ? {
           label: t('Spare parts list'),
           rows: p.spareList.map((s) => ({
-            key: s.ref, title: s.ref, sub: t(s.name), aside: `× ${qtyT(s.qtyPerSystem, lang)}`, tagLabel: s.kind, tagClass: tag(wearSpareTone(s.kind)), href: select(s.ref), samePage: true,
+            key: s.ref, title: s.ref, sub: dataText(s.name, lang), aside: `× ${qtyT(s.qtyPerSystem, lang)}`, tagLabel: s.kind, tagClass: tag(wearSpareTone(s.kind)), href: select(s.ref), samePage: true,
           })),
           open: { label: t('Open PU/PR list'), href: bomHref(spareProject, { spares: p.ref }) },
         }
@@ -293,7 +341,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
         const sub = [t(s.locationTypeLabel), s.reserved > 0 ? reservedT(s.reserved, s.reservedForShort, lang) : null, s.belowMin ? belowMinT(s.minQty, lang) : null]
           .filter(Boolean)
           .join(' · ');
-        return { key: s.id, title: t(s.location), sub, aside: inStockT(s.onHand, lang), href: stockHref(s.id), arrow: true, tagLabel: s.belowMin ? t('Below minimum') : undefined, tagClass: s.belowMin ? tag('accent') : undefined };
+        return { key: s.id, title: dataText(s.location, lang), sub, aside: inStockT(s.onHand, lang), href: stockHref(s.id), arrow: true, tagLabel: s.belowMin ? t('Below minimum') : undefined, tagClass: s.belowMin ? tag('accent') : undefined };
       }),
       empty: data.stock.length ? null : t('None in stock'),
       totals: data.stock.length
@@ -304,7 +352,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
     projects: {
       label: t('Projects equipped'),
       rows: p.projects.map((pr) => ({
-        key: pr.code, title: t(pr.name), sub: `${pr.shortCode} · ${unitsT(pr.quantity, lang)}`, tagLabel: t(pr.stageLabel), tagClass: tag(lifecycleTone(pr.stage)),
+        key: pr.code, title: dataText(pr.name, lang), sub: `${pr.shortCode} · ${unitsT(pr.quantity, lang)}`, tagLabel: t(pr.stageLabel), tagClass: tag(lifecycleTone(pr.stage)),
         href: bomHref(pr.code, { part: p.ref }), arrow: true,
       })),
       empty: p.projects.length ? null : t('Not used in any project yet'),
@@ -316,7 +364,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
     machines: {
       label: t('Installed base'),
       rows: data.machines.map((m) => ({
-        key: m.id, title: t(m.name), sub: `${m.id} · ${t(m.generation)} · ${revT(m.revision, lang)}`,
+        key: m.id, title: dataText(m.name, lang), sub: `${m.id} · ${t(m.generation)} · ${revT(m.revision, lang)}`,
         tagLabel: t(m.stateLabel) + (m.ecoNumber ? ` · ${m.ecoNumber}` : ''), tagClass: tag(machineState(m.state)),
         href: m.ecoNumber ? ecoHref(m.ecoNumber) : fleetHref(), arrow: true,
       })),
@@ -332,7 +380,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
         sub: [t(displayOfIso(e.date)), e.ecoNumber].filter(Boolean).join(' · '),
         ecoHref: e.ecoNumber ? ecoHref(e.ecoNumber) : null,
         lines: e.lines.map((l, i) => ({
-          key: `${i}`, path: l.path, name: t(l.name), change: diffChangeText(l), kind: t(revisionDiffKind.label(l.kind)), kindClass: tag(diffKindTone(l.kind)),
+          key: `${i}`, path: l.path, name: dataText(l.name, lang), change: diffChangeText(l), kind: t(revisionDiffKind.label(l.kind)), kindClass: tag(diffKindTone(l.kind)),
         })),
       })),
       empty: data.revisions.length ? null : t('No revision comparison recorded'),
@@ -341,7 +389,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
     drawings: {
       label: t('Drawings'),
       rows: data.drawings.map((d) => ({
-        key: d.number, title: `${d.number} · ${revT(d.revision, lang)}`, sub: t(d.title), aside: d.revisions.length > 1 ? d.revisions.map((r) => r.revision).join(' · ') : undefined,
+        key: d.number, title: `${d.number} · ${revT(d.revision, lang)}`, sub: dataText(d.title, lang), aside: d.revisions.length > 1 ? d.revisions.map((r) => r.revision).join(' · ') : undefined,
         tagLabel: t(d.stateLabel), tagClass: `tag ${DRAWING_STATE_TAG[d.state]}`, href: drawingHref(d.number), arrow: true,
       })),
       empty: data.drawings.length ? null : t('No drawing linked to this part'),
@@ -354,7 +402,7 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
         ? {
             label: t('Engineering changes'),
             rows: ecosShown.map((e) => ({
-              key: e.number, title: e.number, sub: t(e.title), tagLabel: t(e.statusLabel), tagClass: `tag ${ECO_STATUS_TAG[e.status]}`, href: ecoHref(e.number), arrow: true,
+              key: e.number, title: e.number, sub: dataText(e.title, lang), tagLabel: t(e.statusLabel), tagClass: `tag ${ECO_STATUS_TAG[e.status]}`, href: ecoHref(e.number), arrow: true,
               syncNote: e.pendingSyncLabel ? t(e.pendingSyncLabel) : null, vigieHref: e.vigieUrl, vigieLabel: t('Open in Vigie'),
             })),
             empty: ecosShown.length ? null : t('No engineering change on this part'),
@@ -363,5 +411,6 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
               : null,
           }
         : null,
+    qualification: partQualificationView(p, ctx.role, t),
   };
 }

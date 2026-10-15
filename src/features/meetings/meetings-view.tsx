@@ -3,7 +3,7 @@
 // register. Server Component; ticks, the agenda/composer and the transcript buttons are client islands
 // (minutes-client.tsx). The Decisions register's headers say what the columns hold — "Agenda point" and "Type" —
 // where the prototype titled them "Project" and "Status" (00 §7.16, 05 OQ13).
-import { ArrowBendDownRight, ArrowsLeftRight, CalendarCheck, ChatsCircle, Eye, FileText, Gavel } from '@phosphor-icons/react/dist/ssr';
+import { ArrowBendDownRight, ArrowsLeftRight, CalendarCheck, ChatsCircle, Eye, Gavel } from '@phosphor-icons/react/dist/ssr';
 import type { FormDef } from '@/components/app/form-def';
 import type { Icon } from '@phosphor-icons/react';
 import Link from 'next/link';
@@ -11,13 +11,12 @@ import { EmptyState } from '@/components/app/EmptyState';
 import { FilterChips, FilterGroup, FilterLabel } from '@/components/app/Filter';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
 import { SectionCard, Stack } from '@/components/app/SectionCard';
-import { ButtonLink } from '@/components/ds/Button';
 import { Segmented } from '@/components/ds/Segmented';
 import { Table, Th } from '@/components/ds/Table';
 import { cx } from '@/components/ds/cx';
 import type { MeetingsView as ViewKey } from '@/domain/meetings';
 import type { T } from '@/i18n/translate';
-import { ActionRows, CarriedRows, MinutesEditor, PrevActionRows } from './minutes-client';
+import { ActionRows, CarriedRows, MinutesEditor, OpenMinutesLink, PrevActionRows } from './minutes-client';
 import { type DetailView, type MeetingsScreenView } from './model';
 import { TranscriptBox, TranscriptImportPanel, type TranscriptAi } from './transcript-client';
 import s from './meetings.module.css';
@@ -27,8 +26,10 @@ const VIEW_ICON: Record<ViewKey, Icon> = { meetings: ChatsCircle, decisions: Gav
 export interface MeetingsBodyProps {
   code: string;
   view: MeetingsScreenView;
-  /** Edits allowed (not outside the workspace, project not read-only). */
+  /** Notes and action ticks allowed (not outside the workspace, on the project's team, not the client — P-9b). */
   canEdit: boolean;
+  /** The selected meeting's transcript and "Send minutes" (P-9b: its organiser and the project's PM). Defaults to `canEdit`. */
+  canWrite?: boolean;
   /** The selected meeting came from `?meeting=` (else the page pins it after a write). */
   pinned: boolean;
   /** Organizer short name of the selected meeting (default owner of a new action). */
@@ -39,11 +40,13 @@ export interface MeetingsBodyProps {
   /** "New risk" form for a risk proposal and its owner options (null: the viewer may not edit the risk register). */
   riskForm?: FormDef | null;
   riskTeam?: string[];
+  /** S-12 a (R-067): plan activities an action may serve (composer select; the minutes' writers only). */
+  activities?: { value: string; label: string }[];
 }
 
 const LOCAL_AI: TranscriptAi = { claude: false, model: null };
 
-export function MeetingsBody({ code, view, canEdit, pinned, organizer, t, ai = LOCAL_AI, riskForm = null, riskTeam = [] }: MeetingsBodyProps) {
+export function MeetingsBody({ code, view, canEdit, canWrite = canEdit, pinned, organizer, t, ai = LOCAL_AI, riskForm = null, riskTeam = [], activities = [] }: MeetingsBodyProps) {
   return (
     <Stack>
       <FilterGroup>
@@ -87,11 +90,35 @@ export function MeetingsBody({ code, view, canEdit, pinned, organizer, t, ai = L
             </nav>
           </div>
           {view.detail && (
-            <MeetingDetail code={code} d={view.detail} canEdit={canEdit} pinned={pinned} organizer={organizer} t={t} ai={ai} riskForm={riskForm} riskTeam={riskTeam} />
+            <MeetingDetail
+              code={code}
+              d={view.detail}
+              canEdit={canEdit}
+              canWrite={canWrite}
+              pinned={pinned}
+              organizer={organizer}
+              t={t}
+              ai={ai}
+              riskForm={riskForm}
+              riskTeam={riskTeam}
+              activities={activities}
+            />
           )}
         </div>
       )}
 
+      {view.view === 'decisions' && (
+        <div className={s.chipsRow}>
+          <FilterGroup>
+            <FilterLabel>{t('Decisions')}</FilterLabel>
+            <FilterChips
+              label={t('Decisions')}
+              value={view.decisionScope}
+              options={view.decisionChips.map((c) => ({ value: c.value, label: c.label, count: String(c.count), href: c.href }))}
+            />
+          </FilterGroup>
+        </div>
+      )}
       {view.view === 'decisions' && (
         <SectionCard title={t('Decisions register')} scroll>
           <Table size={12.5}>
@@ -158,16 +185,18 @@ interface DetailProps {
   code: string;
   d: DetailView;
   canEdit: boolean;
+  canWrite: boolean;
   pinned: boolean;
   organizer: string;
   t: T;
   ai: TranscriptAi;
   riskForm: FormDef | null;
   riskTeam: string[];
+  activities: { value: string; label: string }[];
 }
 
 /** Detail card of the selected meeting (mtgSel). */
-function MeetingDetail({ code, d, canEdit, pinned, organizer, t, ai, riskForm, riskTeam }: DetailProps) {
+function MeetingDetail({ code, d, canEdit, canWrite, pinned, organizer, t, ai, riskForm, riskTeam, activities }: DetailProps) {
   const prep = d.prep;
   const tr = prep?.transcript ?? null;
   return (
@@ -177,7 +206,7 @@ function MeetingDetail({ code, d, canEdit, pinned, organizer, t, ai, riskForm, r
           <div className={cx('card-title', s.headTitle)}>{d.title}</div>
           <span className={s.meta}>{d.meta}</span>
           <span className={s.synced}>
-            <CalendarCheck aria-hidden />
+            {d.syncedFromOutlook && <CalendarCheck aria-hidden />}
             {d.synced}
           </span>
         </div>
@@ -253,7 +282,7 @@ function MeetingDetail({ code, d, canEdit, pinned, organizer, t, ai, riskForm, r
           meeting={d.number}
           organizer={organizer}
           v={tr}
-          canEdit={canEdit}
+          canEdit={canWrite}
           ai={ai}
           riskForm={riskForm}
           riskTeam={riskTeam}
@@ -261,7 +290,7 @@ function MeetingDetail({ code, d, canEdit, pinned, organizer, t, ai, riskForm, r
           pinned={pinned}
         />
       )}
-      {prep && !tr && canEdit && <TranscriptImportPanel code={code} meeting={d.number} ai={ai} selfHref={d.selfHref} pinned={pinned} />}
+      {prep && !tr && canWrite && <TranscriptImportPanel code={code} meeting={d.number} ai={ai} selfHref={d.selfHref} pinned={pinned} />}
 
       <MinutesEditor
         key={d.number}
@@ -271,8 +300,10 @@ function MeetingDetail({ code, d, canEdit, pinned, organizer, t, ai, riskForm, r
         agenda={d.agenda}
         editable={d.editable}
         canEdit={canEdit}
+        canSend={canWrite}
         selfHref={d.selfHref}
         pinned={pinned}
+        activities={canWrite ? activities : []}
       />
 
       {d.sent && (
@@ -280,9 +311,7 @@ function MeetingDetail({ code, d, canEdit, pinned, organizer, t, ai, riskForm, r
           <div className={s.distHead}>
             <span className={cx(s.kicker, s.push)}>{t('Distribution & read receipts')}</span>
             {d.sent.text && <span className={s.sentText}>{d.sent.text}</span>}
-            <ButtonLink variant="ghost" size="xs" icon={FileText} href={d.sent.openHref}>
-              {t('Open minutes')}
-            </ButtonLink>
+            <OpenMinutesLink code={code} meeting={d.number} href={d.sent.openHref} label={t('Open minutes')} />
           </div>
           <div className={s.tags}>
             {d.sent.dist.map((x) => (

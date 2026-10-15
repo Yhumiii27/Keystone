@@ -22,10 +22,14 @@ export const projectDataDate = (p: { dataDate?: string | null }) => p.dataDate |
 // ── S-2 calendars ─────────────────────────────────────────────────────────────────────────────────────────────────────
 /** Calendar of a project whose `projects.calendar` is null (the seed): Standard 5d · 8h. */
 export const DEFAULT_PROJECT_CALENDAR: CalendarCode = 'standard_5x8';
-/** Built-in calendars: Standard 5d · 8h, Atelier 5d · 8h, Chantier 6d · 10h (Mon–Sat), Continu 24h / 7d. */
+/**
+ * Built-in calendars: Standard 5d · 8h, Atelier 5d · 8h, Chantier 6d · 10h (Mon–Sat), Continu 24h / 7d. Documentation
+ * only: the definitions live in src/domain/calendar.ts (BUILTIN_CALENDARS, which reads DEFAULT_HOLIDAY_SET below); this
+ * re-export lets the questionnaire reader find them from here.
+ */
 export const DEFAULT_CALENDARS = BUILTIN_CALENDARS;
 /** Public-holiday set of the built-in calendars (metropolitan France, computed per year) — Settings holidays are added. */
-export const DEFAULT_HOLIDAY_SET = 'FR';
+export { DEFAULT_HOLIDAY_SET } from './calendar';
 export const projectCalendarCode = (p: { calendar?: string | null }) => p.calendar || DEFAULT_PROJECT_CALENDAR;
 
 // ── S-3 baselines ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -43,8 +47,20 @@ export function nextBaselineCode(existing: readonly string[]): string {
   return `${BASELINE_PREFIX}${max + 1}`;
 }
 
+// ── S-5 plan trash ────────────────────────────────────────────────────────────────────────────────────────────────────
+// Unconfirmed by the owner (DELIVERY-6 §8 S-5, R-064): the retention, the number of entries kept and who may remove and
+// restore. The rights rule stays with the Plan's rights (src/features/plan/rights.ts `canSchedulePlan` = `canEditPlanStructure`
+// of src/domain/rights.ts: the project's PMs and the director); the trash itself is src/server/dal/plan-trash.ts.
+/** Days a removal stays restorable ("Recently deleted"); older entries are purged (next removal, "plan-trash-purge" job). */
+export const PLAN_TRASH_RETENTION_DAYS = 30;
+/** Trash entries kept per project (the oldest beyond are purged). */
+export const PLAN_TRASH_MAX_ENTRIES = 20;
+
 // ── S-8 units ─────────────────────────────────────────────────────────────────────────────────────────────────────────
-/** Durations, lags, floats and slips are in working days of the activity's calendar. */
+/**
+ * Durations, lags, floats and slips are in working days of the activity's calendar. Documentation only: the CPM engine
+ * (src/domain/cpm.ts) and the calendars count working days by construction, nothing reads this constant.
+ */
 export const DURATION_UNIT = 'working_days' as const;
 
 // ── Files stored by Keystone (task attachments, transcripts, imports) ──────────────────────────────────────────────
@@ -56,6 +72,8 @@ export const FILE_EXTENSIONS: Readonly<Record<StoredFilePurpose, readonly string
   transcript: ['txt', 'vtt', 'srt'],
   import: ['xml', 'xer', 'csv', 'xlsx', 'txt'],
   export: ['csv', 'xlsx', 'pdf', 'xml'],
+  /** Photos of goods receipts, site daily reports and punch items (R-126, X-15 / SC-4a): images browsers display. */
+  photo: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
 };
 /** `accept` attribute of a file input for a purpose (".pdf,.png,…"). */
 export const acceptOf = (purpose: StoredFilePurpose) => FILE_EXTENSIONS[purpose].map((e) => '.' + e).join(',');
@@ -68,8 +86,28 @@ export const CSV_DIALECT = {
   fr: { separator: ';', decimal: ',' },
   en: { separator: ',', decimal: '.' },
 } as const;
-/** PDFs are French by default (the viewer's language when the export URL says so). */
+/**
+ * PDFs are French by default. The export route renders every file in the viewer's language (`ks-lang` cookie); a viewer
+ * without that cookie gets the session default, i18n DEFAULT_LANG — ch4-defaults.test.ts keeps both equal, so changing the
+ * PDF default means changing DEFAULT_LANG (or reading this constant in src/app/api/export/[screen]/route.ts).
+ */
 export const PDF_DEFAULT_LANG: 'fr' | 'en' = 'fr';
+
+// ── D-7b imports, D-7a connector settings ─────────────────────────────────────────────────────────────────────────────
+/**
+ * D-7b ("Ne traite rien pour le moment concernant les imports"): the import cards of Activity & integrations (MS Project
+ * XML, Primavera P6 XER, Excel / CSV) are hidden and the upload route and the import Server Functions refuse every import.
+ * The importers (src/server/interchange) and their tests stay; the tests turn this flag on with `vi.mock`. Turn it on here
+ * when the owner asks for the one-time import at project start (S-9b). The "Export — …" cards are not imports and stay.
+ */
+export const IMPORTS_ENABLED: boolean = false;
+/** EN refusal of the import steps while IMPORTS_ENABLED is off (FR in src/i18n/extra/ch4-interchange.json). */
+export const IMPORTS_OFF_MESSAGE = 'Imports are not available for now';
+/**
+ * D-7a ("Par l'informatique, en dehors de l'application"): connectors are configured by IT outside Keystone. The
+ * connector "Configure" dialog shows the stored settings read-only and the save Server Function refuses every change.
+ */
+export const CONNECTOR_SETTINGS_BY_IT = true;
 
 // ── Task attachments (R-8) ────────────────────────────────────────────────────────────────────────────────────────────
 /** Maximum number of files on one task. */
@@ -84,4 +122,6 @@ export function fileSizeText(bytes: number): string {
 // ── A-13 health, A-14 Settings, A-2 / L-3 wizard (settings feature) — defined next to their logic, re-exported here ──
 export { DEFAULT_HEALTH_THRESHOLDS, HEALTH_CPI_CLAMP } from './health';
 export { CUSTOM_STATUSES_ALLOWED, REQUIRED_STAGES, SETTINGS_COST_TYPE, SETTINGS_EDIT_ROLES, removalModeOf } from './settings-rules';
-export { DEFAULT_PLANNED_FINISH, DEFAULT_PLANNED_START, TEMPLATE_ACTIVITIES_PER_PHASE, TEMPLATE_LINK, WIZARD_REQUIRED } from './project-template';
+export {
+  DEFAULT_PLANNED_FINISH, DEFAULT_PLANNED_START, TEMPLATE_ACTIVITIES_PER_PHASE, TEMPLATE_ACTIVITY_DAYS, TEMPLATE_LINK, WIZARD_REQUIRED,
+} from './project-template';

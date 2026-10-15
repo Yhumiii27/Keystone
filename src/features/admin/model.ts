@@ -4,10 +4,14 @@
 // French goes through t() as the prototype's `deepTr` did (data texts included), with the fixes of ./i18n.ts.
 import { screenHref } from '@/config/screens';
 import {
-  ACTIVITY_ICON, MT_CALENDAR_OPTIONS, MT_COST_TYPES, PLUMB_VIEWS, SETTINGS_CARDS, activityChips, connectorTone, costCategoriesTotal, healthRuleText,
+  ACTIVITY_ICON, MT_CALENDAR_OPTIONS, MT_COST_TYPES, PLUMB_VIEWS, SETTINGS_CARDS, activityChips, costCategoriesTotal, healthRuleText,
   locationTypeShortLabel, machineTypeKpis, machineTypeUseText, paymentTerms, plumbingKpis, settingsKpis, thresholdText,
   type ActivityIcon, type PlumbView, type SettingsCardKey, type SettingsIcon,
 } from '@/domain/admin';
+import { IMPORTS_ENABLED } from '@/domain/ch4-defaults';
+import { DEFAULT_CCB_THRESHOLD_KEUR } from '@/domain/change-control';
+import { HOURS_VARIANCE_RULE, ratesMaskedActivity, ratesMaskedAudit } from '@/domain/hr';
+import { connectorStateTone } from '@/domain/connectors';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import { calendar, costType, locationType, stampText, type ActivityKind, type CalendarCode, type CostType, type LocationType } from '@/server/db/codes';
@@ -16,8 +20,9 @@ import type { MachineTypeRow } from '@/server/dal/mtypes';
 import type { ActivityRow, AuditRow } from '@/server/dal/notifications';
 import type { ProjectRow } from '@/server/dal/projects';
 import type { SettingsData } from '@/server/dal/settings';
-import { activityChipT, addedConnectorDataT, auditAreaT, connectorModeT, mtListSubT, outboxT, volumeT } from './i18n';
+import { activityChipT, activityWhatT, addedConnectorDataT, auditAreaT, auditChangeT, auditObjectT, connectorLinkT, connectorsSubT, mtListSubT, outboxT, volumeT } from './i18n';
 import { integrationsHref, machineTypesHref } from './links';
+import { dataText, fieldsText } from '@/i18n/data-text';
 
 export interface KpiView {
   label: string;
@@ -51,18 +56,23 @@ export interface SettingsCardView {
 export interface SettingsView {
   kpis: KpiView[];
   health: { risk: number; off: number; riskText: string; offText: string; text: string };
+  /** R-088 (R-6b): the hours-variance threshold (% of planned) and its rule, translated. */
+  hoursVariance: { pct: number; text: string };
+  /** Delivery 8 (R-069, P-6c): the change control board threshold as the field shows it ("50"). */
+  ccb: { text: string };
   cards: SettingsCardView[];
   /** Location type options of the Locations card (shortened labels). */
   locTypes: { value: LocationType; label: string }[];
 }
 
-export function settingsView(data: SettingsData, t: T): SettingsView {
+export function settingsView(data: SettingsData, t: T, lang: Lang): SettingsView {
   const items: Record<SettingsCardKey, SettingsItemView[]> = {
-    locations: data.locations.map((l) => ({ id: l.name, label: t(l.name), sub: t(l.typeLabel) })),
+    locations: data.locations.map((l) => ({ id: l.name, label: dataText(l.name, lang), sub: t(l.typeLabel) })),
     skills: [], costCats: [], statuses: [], riskCats: [], delivTypes: [], holidays: [],
   };
   for (const key of ['skills', 'costCats', 'statuses', 'riskCats', 'delivTypes', 'holidays'] as const) {
-    items[key] = data.lists[key].map((v) => ({ id: v.code, label: t(v.label), sub: null }));
+    // R-148: entries typed by the director are shown as typed (a holiday's date part is Keystone's format, translated).
+    items[key] = data.lists[key].map((v) => ({ id: v.code, label: fieldsText(v.label, t, lang), sub: null }));
   }
   const locTypeCodes = data.lists.locTypes.length ? data.lists.locTypes.map((v) => v.code as LocationType).filter((c) => locationType.isCode(c)) : locationType.codes;
   return {
@@ -71,6 +81,8 @@ export function settingsView(data: SettingsData, t: T): SettingsView {
       health: data.health,
     }).map((k) => kpiT(k, t)),
     health: { risk: data.health.risk, off: data.health.off, riskText: thresholdText(data.health.risk), offText: thresholdText(data.health.off), text: t(healthRuleText(data.health)) },
+    hoursVariance: { pct: data.hoursVariance, text: t(HOURS_VARIANCE_RULE) },
+    ccb: { text: String(data.ccbThresholdKeur ?? DEFAULT_CCB_THRESHOLD_KEUR) },
     cards: SETTINGS_CARDS.map((c) => ({ key: c.key, title: t(c.title), sub: t(c.sub), icon: c.icon, count: String(items[c.key].length), isLoc: c.key === 'locations', items: items[c.key] })),
     locTypes: locTypeCodes.map((code) => ({ value: code, label: t(locationTypeShortLabel(locationType.label(code))) })),
   };
@@ -160,11 +172,11 @@ export function machineTypesView(input: { types: MachineTypeRow[]; projects: Pro
       costCategories: sel.costCategories.map((c) => ({ name: editable(c.name, t), type: c.type, budget: String(c.budgetKeur), budgetKeur: c.budgetKeur })),
       costTypeOptions: MT_COST_TYPES.map((c) => ({ value: c, label: t(costType.label(c)) })),
       costTotal: money(costCategoriesTotal(sel.costCategories), lang),
-      refs: sel.rexReferences.map((r) => ({ analyticCode: r.analyticCode, name: t(`${r.analyticCode} · ${r.projectName} · ${r.year}`) })),
+      refs: sel.rexReferences.map((r) => ({ analyticCode: r.analyticCode, name: `${r.analyticCode} · ${dataText(r.projectName, lang)} · ${r.year}` })),
       projects: sel.projects.map((p) => {
         const row = byCode.get(p.code);
         return {
-          code: p.code, name: t(`${row?.displayId ?? p.number ?? p.code} · ${p.name}`), sub: `${p.code} · ${t(row?.status ?? '—')}`,
+          code: p.code, name: `${row?.displayId ?? p.number ?? p.code} · ${dataText(p.name, lang)}`, sub: `${p.code} · ${t(row?.status ?? '—')}`,
           openHref: row?.hasData ? screenHref('plan', { code: p.code }) : null,
         };
       }),
@@ -186,8 +198,10 @@ export interface ConnectorRowView {
   /** Stored name (the key "Sync now" sends). */
   rawName: string;
   name: string;
-  /** Connector-layer mode line (Codex, Vigie, Cursus); null for the recorded connectors. */
+  /** Line under the name: connector-layer mode (Codex, Vigie, Cursus), file exchange (MS Project); null otherwise (R-021). */
   mode: string | null;
+  /** "Sync now" offered (live and mock connectors not disabled, R-021). */
+  canSync: boolean;
   data: string;
   frequency: string;
   status: string;
@@ -238,6 +252,16 @@ export interface PlumbingInput {
   unread: number;
   /** Persona title of the viewer (EN source). */
   personaTitle: string;
+  /** R-046: the viewer sees rate values (`canSeeRates`); else the "Rate card" changes are masked in the feed and the trail. */
+  ratesVisible: boolean;
+}
+
+/**
+ * Import / export cards listed on the screen. D-7b ("Ne traite rien pour le moment concernant les imports"): the import cards
+ * (MS Project XML, Excel / CSV, Primavera P6 XER) only while IMPORTS_ENABLED is on; the "Export — …" cards always.
+ */
+export function visibleImportFormats<F extends { direction: 'import' | 'export' }>(formats: readonly F[], importsEnabled: boolean = IMPORTS_ENABLED): F[] {
+  return formats.filter((f) => importsEnabled || f.direction === 'export');
 }
 
 const IMPORT_ICONS: readonly ImportIcon[] = ['file-arrow-down', 'file-xls', 'file-arrow-up', 'file-pdf'];
@@ -252,34 +276,43 @@ const stampOf = (iso: string | null, t: T) => (iso ? t(stampText(new Date(iso)))
 export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
   const kinds = i.activity.map((a) => a.kind);
   const chips = activityChips(kinds);
-  const rows = i.source ? i.activity.filter((a) => a.kind === i.source) : i.activity;
+  const activity = ratesMaskedActivity(i.activity, i.ratesVisible);
+  const rows = i.source ? activity.filter((a) => a.kind === i.source) : activity;
   return {
     kpis: plumbingKpis({
-      eventsToday: i.counts.eventsToday, connectorStatuses: i.connectors.map((c) => c.status), unread: i.unread, personaTitle: i.personaTitle,
-      auditEntries: i.counts.auditLast7Days,
-    }).map((k) => kpiT(k, t)),
+      eventsToday: i.counts.eventsToday, connectors: i.connectors, unread: i.unread, personaTitle: i.personaTitle, auditEntries: i.counts.auditLast7Days,
+    }).map((k) => (k.label === 'Connectors' ? { ...kpiT(k, t), sub: connectorsSubT(k.sub, t, lang) } : kpiT(k, t))),
     view: i.view,
     seg: PLUMB_VIEWS.map((v) => ({ value: v.value, label: t(v.label), href: integrationsHref({ view: v.value }) })),
     chips: chips.map((c) => ({ value: c.value ?? '', label: activityChipT(c.label, t, lang), count: String(c.count), href: integrationsHref({ source: c.value }) })),
     chipValue: i.source ?? '',
-    activity: rows.map((a, n) => ({ key: `${a.occurredAt}-${n}`, icon: ACTIVITY_ICON[a.kind] ?? 'arrows-clockwise', who: t(a.who), what: t(a.what), when: t(a.when) })),
+    // R-184 (NEW-D1-2): the text from its message key in the viewer's language, else as written (typed values as typed).
+    activity: rows.map((a, n) => ({ key: `${a.occurredAt}-${n}`, icon: ACTIVITY_ICON[a.kind] ?? 'arrows-clockwise', who: dataText(a.who, lang), what: activityWhatT(a, t, lang), when: t(a.when) })),
     connectors: i.connectors.map((c) => {
       const outbox = outboxT(c.pending, c.failed, lang);
       const volume = volumeT(c.lastVolume, t, lang);
       return {
         rawName: c.name,
-        name: t(c.name),
-        mode: c.mode ? connectorModeT(c.mode, t) : null,
-        data: c.dataScope ? t(c.dataScope) : addedConnectorDataT(c.direction ? directionLabel(c.direction) : null, c.owner, t),
-        frequency: t(c.frequency),
+        name: dataText(c.name, lang),
+        mode: connectorLinkT(c.link, t),
+        canSync: c.canSync,
+        // R-148: the data scope and frequency are IT's typed settings (connectors file), shown as typed.
+        data: c.dataScope ? dataText(c.dataScope, lang) : addedConnectorDataT(c.direction ? directionLabel(c.direction) : null, c.owner, t),
+        frequency: dataText(c.frequency, lang),
+        // R-021: the real state — the live status, Mock, Not connected, Ready (file exchange); D-7a: "Disabled" (calm tone)
+        // for a connector disabled by IT.
         status: t(c.statusLabel),
-        tone: connectorTone(c.status),
+        tone: connectorStateTone(c.state),
         last: stampOf(c.lastSyncAt, t),
         volume: [volume, outbox].filter(Boolean).join(' · ') || '—',
       };
     }),
     imports: i.imports.map((f) => ({ name: t(f.name), description: t(f.description), icon: importIcon(f.icon), direction: f.direction })),
-    audit: i.audit.map((a, n) => ({ key: `${a.occurredAt}-${n}`, when: t(a.when), who: t(a.who), object: t(a.object), change: t(a.change), area: auditAreaT(a.area, t, lang) })),
+    // R-184: the trail is not passed through the segment translator — its generic shapes are rendered, typed values kept.
+    audit: ratesMaskedAudit(i.audit, i.ratesVisible).map((a, n) => ({
+      key: `${a.occurredAt}-${n}`, when: t(a.when), who: dataText(a.who, lang), object: auditObjectT(a.object, t, lang), change: auditChangeT(a, t, lang),
+      area: auditAreaT(a.area, t, lang),
+    })),
   };
 }
 

@@ -1,15 +1,16 @@
 import 'server-only';
 // Interface register DAL (docs/spec/07 §2.5; 11 §3.7 Interface). Effective status = stored status, except an open
 // interface needed before the prototype's now (PG_NOW) is Late; days to the need date = round((mIdx(need) − PG_NOW)
-// × 30) (logic 4955). Writers: register (IF-10… per project), "Mark received" (open or late → received; the
-// provided date is not stamped, OPEN QUESTION Q-4) and "Freeze" (received → frozen).
+// × 30) (logic 4955). Writers: register (IF-10… per project), "Mark received" (open or late → received, the provided
+// date stamped with the received date the user confirmed — today by default, never after today; Q-4 a, R-116) and
+// "Freeze" (received → frozen, the provided date kept).
 import { and, asc, eq } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { daysToNeed, effectiveInterfaceStatus as effective } from '@/domain/team';
 import {
-  interfaceStatus, keystoneSide, nextBusinessNumber, shortDateYearOfIso, type InterfaceEffectiveStatus, type InterfaceStatus, type KeystoneSide,
+  NOW_ISO, interfaceStatus, keystoneSide, nextBusinessNumber, shortDateYearOfIso, type InterfaceEffectiveStatus, type InterfaceStatus, type KeystoneSide,
 } from '@/server/db/codes';
-import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
+import { demoFloor, findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
 import { persons, projectInterfaces, projects } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 
@@ -95,7 +96,7 @@ export async function createInterface(projectCode: string, input: NewInterface, 
     if (!keystoneSide.isCode(input.keystoneSide)) throw new Error('Invalid Keystone side');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.neededBy)) throw new Error('Invalid need date');
     const existing = await tx.select({ number: projectInterfaces.number, position: projectInterfaces.position }).from(projectInterfaces).where(eq(projectInterfaces.projectId, p.id));
-    const number = nextBusinessNumber(existing.map((e) => e.number), 'IF-', 2, 9);
+    const number = nextBusinessNumber(existing.map((e) => e.number), 'IF-', 2, await demoFloor(tx, 9));
     const owner = await findPerson(tx, input.owner);
     const [row] = await tx
       .insert(projectInterfaces)
@@ -113,23 +114,30 @@ export async function createInterface(projectCode: string, input: NewInterface, 
   });
 }
 
-async function transition(tx: Tx, projectCode: string, number: string, from: InterfaceStatus, to: InterfaceStatus, actorName: string) {
+/** `receivedOn`: the received date stamped as the provided date (Mark received only); the audit line names it. */
+async function transition(tx: Tx, projectCode: string, number: string, from: InterfaceStatus, to: InterfaceStatus, actorName: string, receivedOn?: string) {
   const p = await requireProject(tx, projectCode);
   const [i] = await tx.select().from(projectInterfaces).where(and(eq(projectInterfaces.projectId, p.id), eq(projectInterfaces.number, number)));
   if (!i) throw new Error(`Unknown interface ${number} on ${projectCode}`);
   if (i.status !== from) throw new Error(`${number} is ${interfaceStatus.label(effective(i.status, i.neededBy))}`);
-  await tx.update(projectInterfaces).set({ status: to, updatedAt: new Date() }).where(eq(projectInterfaces.id, i.id));
+  await tx.update(projectInterfaces).set({ status: to, ...(receivedOn ? { providedOn: receivedOn } : {}), updatedAt: new Date() }).where(eq(projectInterfaces.id, i.id));
   const actor = await findPerson(tx, actorName);
   await writeAudit(tx, {
     actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number,
-    change: `status: ${interfaceStatus.label(effective(i.status, i.neededBy))} → ${interfaceStatus.label(to)}`, area: 'Interfaces', entityType: 'interface', entityId: i.id, projectId: p.id,
+    change: `status: ${interfaceStatus.label(effective(i.status, i.neededBy))} → ${interfaceStatus.label(to)}${receivedOn ? ` · received ${shortDateYearOfIso(receivedOn)}` : ''}`,
+    area: 'Interfaces', entityType: 'interface', entityId: i.id, projectId: p.id,
   });
 }
 
-/** "Mark received" (open or late). */
-export async function markInterfaceReceived(projectCode: string, number: string, actorName: string): Promise<void> {
+/**
+ * "Mark received" (open or late), Q-4 a (R-116): the provided date is the received date the user confirmed — today
+ * (NOW_ISO) by default, never after today. Rows received before delivery 8 keep no date ('—', no backfill).
+ */
+export async function markInterfaceReceived(projectCode: string, number: string, actorName: string, receivedOn: string = NOW_ISO): Promise<void> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(receivedOn)) throw new Error('Invalid received date');
+  if (receivedOn > NOW_ISO) throw new Error('The received date cannot be after today');
   const db = await getDb();
-  await db.transaction((tx) => transition(tx, projectCode, number, 'open', 'received', actorName));
+  await db.transaction((tx) => transition(tx, projectCode, number, 'open', 'received', actorName, receivedOn));
 }
 
 /** "Freeze" (received). */

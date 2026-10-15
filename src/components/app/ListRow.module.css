@@ -25,3 +25,10 @@ a.row:hover:not(.hoverText) { color: var(--color-text); }
 .titleStrong { font-weight: 500; }
 .sub { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
 .right { display: flex; align-items: center; gap: 8px; justify-self: end; }
+
+/* Touch targets of 40 px on tablets (R-146; media query = TOUCH_MEDIA in src/components/app/shell/tablet.ts). */
+@media (max-width: 1024px), (pointer: coarse) {
+  .clickable,
+  a.row,
+  button.row { min-height: 40px; }
+}

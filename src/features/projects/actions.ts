@@ -5,18 +5,21 @@
 // My projects, the shell…). Messages are English source strings (the client shows them with toast showEn).
 import { revalidatePath } from 'next/cache';
 import {
-  CATEGORY_TYPES, CONTINGENCIES, DAS_LIST, WIZARD_CURRENCIES, isTransitionAllowed, moveError,
+  CATEGORY_TYPES, CONTINGENCIES, DAS_LIST, WIZARD_CURRENCIES, effectiveDateError, isTransitionAllowed, moveError,
 } from '@/domain/lifecycle';
-import { WIZARD_CALENDAR_OPTIONS, WIZARD_REQUIRED, plannedWindowError } from '@/domain/project-template';
+import { WIZARD_CALENDAR_OPTIONS, WIZARD_REQUIRED, wizardSiteError, wizardWindowError } from '@/domain/project-template';
 import { costType, machineType, stage as stageCodec, type MachineTypeCode, type StageCode } from '@/server/db/codes';
-import { listStages } from '@/server/dal/lifecycle';
+import { BL1_DELIVERABLE_MESSAGE, bl1TickRefused } from '@/domain/baseline-policy';
+import { StageChangeError, getStageChangeBounds, listStages, projectHasBl1 } from '@/server/dal/lifecycle';
 import {
   createWizardProject, getNewProjectSetup, getProjectStage, missingDeliverables, moveProjectStage, setDeliverableAndAdvance,
 } from '@/server/dal/projects-register';
 import { inactiveStageCodes } from '@/server/dal/settings-lists';
-import { getScreenAccess } from '@/server/project-context';
+import { getProject } from '@/server/dal/projects';
+import { getScreenAccess, projectAccessResolver } from '@/server/project-context';
 import { getViewer } from '@/server/session';
 import { CREATE_PROJECT_ROLES } from './permissions';
+import { logError } from '@/server/log';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -33,18 +36,34 @@ function refresh() {
 }
 
 /**
+ * Lifecycle writes (L-4b, R-041): the director, or the project's PMs — PM of record, co-PMs and deputies — with the Projects
+ * register in their workspace (another PM's project is read-only, 01 §5.2).
+ */
+async function mayManageLifecycle(code: string): Promise<boolean> {
+  const { canEdit, viewer } = await getScreenAccess('projects');
+  if (!canEdit) return false;
+  const project = await getProject(code);
+  return !!project && (await projectAccessResolver(viewer))(project).lead;
+}
+
+/**
  * Moves a project to the next stage or to Annulé (advance 3922). `auto` is refused when deliverables are missing
  * or the target is Annulé; `forced` needs a reason and is recorded with the missing deliverables, pending the
- * portfolio director's validation.
+ * portfolio director's validation. `effectiveOn` (L-4c = a, R-055): the real date of the change entered by the PM
+ * (ISO; absent = today, the project's data date), refused before the previous change or after today; the time of entry
+ * stays in the audit trail.
  */
-export async function moveStageAction(input: { code: string; to: string; mode: 'auto' | 'forced'; reason?: string }): Promise<ActionResult> {
-  const { canEdit, viewer } = await getScreenAccess('projects');
-  if (!canEdit) return { ok: false, error: NOT_ALLOWED };
+export async function moveStageAction(input: { code: string; to: string; mode: 'auto' | 'forced'; reason?: string; effectiveOn?: string }): Promise<ActionResult> {
+  const { viewer } = await getScreenAccess('projects');
   const code = str(input?.code, 40);
+  if (!(await mayManageLifecycle(code))) return { ok: false, error: NOT_ALLOWED };
   const to = input?.to;
   const mode = input?.mode === 'forced' ? 'forced' : 'auto';
   const reason = str(input?.reason, 500);
+  const rawDate: unknown = input?.effectiveOn;
   if (!isStage(to)) return { ok: false, error: 'This stage change is not allowed' };
+  if (rawDate !== undefined && rawDate !== null && rawDate !== '' && typeof rawDate !== 'string') return { ok: false, error: 'Enter a valid effective date' };
+  const effectiveOn = typeof rawDate === 'string' && rawDate !== '' ? rawDate : undefined;
   try {
     const from = await getProjectStage(code);
     if (!from) return { ok: false, error: UNKNOWN };
@@ -56,13 +75,24 @@ export async function moveStageAction(input: { code: string; to: string; mode: '
       refresh(); // the client may be showing a stale stage
       return { ok: false, error: err };
     }
+    if (effectiveOn !== undefined) {
+      const bounds = await getStageChangeBounds(code);
+      const dateErr = bounds ? effectiveDateError(effectiveOn, bounds) : UNKNOWN;
+      if (dateErr) return { ok: false, error: dateErr };
+    }
     await moveProjectStage(code, to, mode, {
       reason: mode === 'forced' ? reason : undefined,
       missing: mode === 'forced' ? missing : undefined,
       requestedBy: viewer.short,
+      effectiveOn,
+      from,
     });
   } catch (e) {
-    console.error('moveStageAction', e);
+    if (e instanceof StageChangeError) {
+      refresh();
+      return { ok: false, error: e.message };
+    }
+    logError('moveStageAction', e);
     return { ok: false, error: FAILED };
   }
   refresh();
@@ -71,9 +101,8 @@ export async function moveStageAction(input: { code: string; to: string; mode: '
 
 /** Ticks / unticks a deliverable of the project's current stage (toggleDeliv 3923); may auto-advance the project. */
 export async function setDeliverableAction(input: { code: string; stage: string; index: number; done: boolean }): Promise<ActionResult> {
-  const { canEdit } = await getScreenAccess('projects');
-  if (!canEdit) return { ok: false, error: NOT_ALLOWED };
   const code = str(input?.code, 40);
+  if (!(await mayManageLifecycle(code))) return { ok: false, error: NOT_ALLOWED };
   if (!isStage(input?.stage) || !Number.isInteger(input?.index) || typeof input?.done !== 'boolean')
     return { ok: false, error: 'Invalid deliverable' };
   try {
@@ -85,9 +114,15 @@ export async function setDeliverableAction(input: { code: string; stage: string;
       refresh();
       return { ok: false, error: 'The project has already moved to another stage' };
     }
-    await setDeliverableAndAdvance(code, input.stage, input.index, input.done);
+    // R-054 (L-2 "a"): « Planning BL1 posé » follows BL1 — no manual tick without it, no untick while it exists (forcing stays).
+    if (bl1TickRefused({ stage: input.stage, position: input.index, done: input.done }, (await projectHasBl1(code)).bl1)) {
+      refresh();
+      return { ok: false, error: BL1_DELIVERABLE_MESSAGE };
+    }
+    await setDeliverableAndAdvance(code, input.stage, input.index, input.done, (await getViewer()).short);
   } catch (e) {
-    console.error('setDeliverableAction', e);
+    if (e instanceof Error && e.message === BL1_DELIVERABLE_MESSAGE) return { ok: false, error: BL1_DELIVERABLE_MESSAGE };
+    logError('setDeliverableAction', e);
     return { ok: false, error: FAILED };
   }
   refresh();
@@ -111,9 +146,12 @@ export interface NewProjectDraft {
   cal: string;
   /** Project manager, person id (L-3). */
   pm?: string | null;
-  /** Planned window, ISO dates (L-3). */
+  /** Planned window, ISO dates (L-3). The finish is optional (L-3b): '' / absent → taken from the instantiated plan. */
   start?: string;
-  finish?: string;
+  finish?: string | null;
+  /** Site (L-3b, required): city, and a country of the countries table (EN name). */
+  city?: string;
+  country?: string;
 }
 
 export type CreateProjectResult =
@@ -124,17 +162,21 @@ const INVALID_SETUP = 'Invalid project setup';
 
 /**
  * npCreate (3969): creates the project at Initiative with the next number, its analytic code and cost categories, and
- * instantiates the machine-type template (chapter 4, A-2 / L-3): name and client required, PM among the wizard's
- * project managers, a valid planned window, calendar and currency stored.
+ * instantiates the machine-type template (chapter 4, A-2 / L-3): required name, client, PM (among the wizard's project
+ * managers), type, planned start and location (L-3b: site city + a country of the countries table; zone from the country);
+ * the planned finish is optional and comes from the instantiated plan when absent; calendar and currency stored.
  */
 export async function createProjectAction(draft: NewProjectDraft): Promise<CreateProjectResult> {
   const viewer = await getViewer();
   if (!CREATE_PROJECT_ROLES.includes(viewer.role)) return { ok: false, error: 'You are not allowed to create projects' };
   if (WIZARD_REQUIRED.name && !str(draft?.name)) return { ok: false, error: 'Project name is required' };
   if (WIZARD_REQUIRED.client && !str(draft?.client)) return { ok: false, error: 'Client / sponsor is required' };
-  const windowError = plannedWindowError(draft?.start, draft?.finish);
+  const finish = typeof draft?.finish === 'string' && draft.finish ? draft.finish : null;
+  const windowError = wizardWindowError(draft?.start, finish);
   if (windowError) return { ok: false, error: windowError };
   const setup = await getNewProjectSetup({ name: viewer.name, role: viewer.role });
+  const siteError = WIZARD_REQUIRED.location ? wizardSiteError(draft?.city, draft?.country, setup.countries) : null;
+  if (siteError) return { ok: false, error: siteError };
   const das = (DAS_LIST as readonly string[]).includes(draft?.das) ? draft.das : null;
   const mt = typeof draft?.mt === 'string' && setup.machineTypes.includes(draft.mt) ? draft.mt : null;
   const cur = (WIZARD_CURRENCIES as readonly string[]).includes(draft?.cur) ? (draft.cur as 'EUR' | 'USD') : null;
@@ -143,7 +185,7 @@ export async function createProjectAction(draft: NewProjectDraft): Promise<Creat
   const template = draft?.template === 'blank' || draft?.template === mt ? draft.template : null;
   const cats = Array.isArray(draft?.cats) && draft.cats.length <= 50 ? draft.cats : null;
   const pm = draft?.pm == null ? setup.defaultManagerId : setup.managers.some((m) => m.id === draft.pm) ? draft.pm : undefined;
-  if (pm === undefined) return { ok: false, error: 'Choose the project manager among the proposed people' };
+  if (pm === undefined || (WIZARD_REQUIRED.pm && !pm)) return { ok: false, error: 'Choose the project manager among the proposed people' };
   if (!das || !mt || !cur || cont == null || !cal || !template || !cats) return { ok: false, error: INVALID_SETUP };
   const mtCode = (machineType.labels.includes(mt) ? machineType.code(mt) : mt) as MachineTypeCode;
   const categories = [];
@@ -166,13 +208,14 @@ export async function createProjectAction(draft: NewProjectDraft): Promise<Creat
       calendar: cal,
       pmPersonId: pm,
       plannedStart: draft.start,
-      plannedFinish: draft.finish,
+      plannedFinish: finish,
+      site: typeof draft.city === 'string' && typeof draft.country === 'string' ? { city: draft.city.trim().slice(0, 120), country: draft.country } : null,
       actorName: viewer.name,
     });
     refresh();
     return { ok: true, code: created.code, number: created.number, analytic: created.analytic, name: created.name };
   } catch (e) {
-    console.error('createProjectAction', e);
+    logError('createProjectAction', e);
     return { ok: false, error: 'The project could not be created' };
   }
 }

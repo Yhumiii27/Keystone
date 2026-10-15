@@ -34,7 +34,7 @@
   "Single expert — {e} experts · {a} at level ≥3": "Expert unique — {e} experts · {a} au niveau ≥3",
   "Baseline {b} · Forecast {f}": "Référence {b} · Prévision {f}",
   "{amt} · schedule recovery {n} days · submitted {date}": "{amt} · rattrapage de {n} jours · soumise le {date}",
-  "{amt} · handover +{n} days · submitted {date}": "{amt} · livraison +{n} jours · soumise le {date}",
+  "{amt} · handover +{n} days · submitted {date}": "{amt} · transfert +{n} jours · soumise le {date}",
   "{amt} · submitted {date}": "{amt} · soumise le {date}",
   "{type} · {note}": "{type} · {note}"
 }

@@ -10,9 +10,11 @@
 // - the machine-type calendar select offers the stored calendar ("Site 6d · 10h" is the site calendar, so SPUR's
 //   "Chantier 6d · 10h" shows selected — E-9);
 // - connectors in error count with the warnings (needs attention);
+// - R-021 (A-15): the Connectors and Channels tiles count what is really connected (src/domain/connectors.ts);
 // - the audit trail exports to CSV (ISO 9001), RFC 4180 quoting, ISO-8601 timestamps.
 import { LO, OK } from '@/components/app/tones';
 import type { ActivityKind, CalendarCode, ConnectorStatus, CostType } from '@/server/db/codes';
+import { connectorsSummary, type ConnectorLink, type ConnectorState } from './connectors';
 
 /** KPI tile in English (label, value, sub) with its value colour. */
 export interface AdminKpi {
@@ -38,7 +40,7 @@ export const SETTINGS_CARDS: readonly { key: SettingsCardKey; title: string; sub
   { key: 'statuses', title: 'Project statuses', sub: 'Lifecycle stages available on the Projects page', icon: 'flag' },
   { key: 'riskCats', title: 'Risk categories', sub: 'Used by the risk register (5×5 + EMV)', icon: 'warning' },
   { key: 'delivTypes', title: 'Deliverable types', sub: 'Register with RACI-B (B = backup)', icon: 'files' },
-  { key: 'holidays', title: 'Public holidays 2026 — France', sub: 'Removed from capacity · Lucca stays the source for leave', icon: 'calendar-x' },
+  { key: 'holidays', title: 'Public holidays 2026 — France', sub: 'Removed from capacity · Cursus is the source for leave', icon: 'calendar-x' },
 ];
 
 export const isSettingsCardKey = (v: unknown): v is SettingsCardKey => typeof v === 'string' && SETTINGS_CARDS.some((c) => c.key === v);
@@ -239,16 +241,44 @@ export const connectorTone = (status: ConnectorStatus): 'neutral' | 'accent' | '
 export const connectorNeedsAttention = (status: ConnectorStatus) => status === 'warning' || status === 'error';
 
 /** KPI tiles (`plumbKpis`, 4718). */
-export function plumbingKpis(i: { eventsToday: number; connectorStatuses: readonly ConnectorStatus[]; unread: number; personaTitle: string; auditEntries: number }): AdminKpi[] {
-  const ok = i.connectorStatuses.filter((s) => s === 'ok').length;
-  const warn = i.connectorStatuses.filter(connectorNeedsAttention).length;
+export function plumbingKpis(i: {
+  eventsToday: number;
+  /** The listed connectors with their real link and state (src/domain/connectors.ts). */
+  connectors: readonly { name: string; link: ConnectorLink; state: ConnectorState }[];
+  unread: number;
+  personaTitle: string;
+  auditEntries: number;
+}): AdminKpi[] {
+  // R-021 (A-15): the prototype counted the seeded statuses ("7 healthy · 1 warning", "3 channels"); the tiles now say what is
+  // really connected — mock and missing connectors are neither healthy nor failing, and e-mail / Teams are channels only
+  // once their connector is live.
+  const c = connectorsSummary(i.connectors);
+  const channels = notificationChannels(i.connectors);
   return [
     { label: 'Events today', value: String(i.eventsToday), sub: 'Across all projects', color: OK },
-    { label: 'Connectors', value: String(i.connectorStatuses.length), sub: `${ok} healthy · ${warn} warning`, color: warn ? LO : OK },
+    {
+      label: 'Connectors', value: String(i.connectors.length),
+      sub: `${c.connected} connected · ${c.mock} mock · ${c.notConnected} not connected${c.warning ? ` · ${c.warning} warning` : ''}`, color: c.warning ? LO : OK,
+    },
     { label: 'Unread notifications', value: String(i.unread), sub: i.personaTitle, color: i.unread ? LO : OK },
     { label: 'Audit entries · 7 days', value: String(i.auditEntries), sub: 'Every status, approval and value change', color: OK },
-    { label: 'Channels', value: '3', sub: 'In-app · e-mail · Teams', color: OK },
+    { label: 'Channels', value: String(channels.count), sub: channels.sub, color: OK },
   ];
+}
+
+/** Connector rows of the e-mail and Teams notification channels (CONNECTORS). */
+export const EMAIL_CONNECTOR = 'E-mail (SMTP)';
+export const TEAMS_CONNECTOR = 'Microsoft Teams';
+
+/**
+ * Notification channels really available: in-app always, e-mail when its connector is live (X-6: no mail is sent today).
+ * X-6b / S-11 (R-037): Teams is no notification channel any more — no channel posts; its row stands for the Teams meetings of
+ * Microsoft 365 (`TEAMS_CONNECTOR`, src/domain/connectors.ts `connectorScopeText`). Sub-line "In-app · e-mail", or
+ * "In-app · e-mail not connected".
+ */
+export function notificationChannels(rows: readonly { name: string; link: ConnectorLink; state: ConnectorState }[]): { count: number; sub: string } {
+  const email = rows.some((r) => r.name === EMAIL_CONNECTOR && r.link === 'live' && r.state !== 'disabled');
+  return email ? { count: 2, sub: 'In-app · e-mail' } : { count: 1, sub: 'In-app · e-mail not connected' };
 }
 
 export interface AuditCsvRow {
@@ -259,17 +289,37 @@ export interface AuditCsvRow {
   change: string;
   area: string;
   projectCode: string | null;
+  /** R-168: sign-in e-mail of the user that acted (null: a system, or a person without account). */
+  userEmail?: string | null;
+  /** R-168: the reason given and the values before / after, when the writer recorded them. */
+  reason?: string | null;
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
 }
 
-const csvCell = (v: string) => (/[",\r\n;]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+/** Column titles of the ISO 9001 audit CSV (EN source strings; the route translates them). */
+export const AUDIT_CSV_HEADERS: readonly string[] = ['When (UTC)', 'Who', 'Object', 'Change', 'Area', 'Project', 'User', 'Reason', 'Before', 'After'];
+
+/** RFC 4180 cell; a cell starting with = + - @ (or a tab / CR) is prefixed with ' so a spreadsheet never runs it as a formula. */
+const csvCell = (raw: string) => {
+  const v = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
+  return /[",\r\n;]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+};
+
+/** A before / after value as one cell: compact JSON, empty when none. */
+const jsonCell = (v: Record<string, unknown> | null | undefined) => (v && Object.keys(v).length ? JSON.stringify(v) : '');
 
 /**
  * ISO 9001 export of the audit trail: one row per entry, newest first, RFC 4180 (comma separator, CRLF, quoted cells
- * when needed), timestamps in ISO 8601 UTC. `headers` = the column titles in the viewer's language.
+ * when needed), timestamps in ISO 8601 UTC, values verbatim. R-168: after the prototype's columns, the user account that
+ * acted (e-mail), the reason and the values before / after (JSON). `headers` = the column titles in the viewer's language.
  */
-export function auditCsv(rows: readonly AuditCsvRow[], headers: readonly [string, string, string, string, string, string] = ['When (UTC)', 'Who', 'Object', 'Change', 'Area', 'Project']): string {
+export function auditCsv(rows: readonly AuditCsvRow[], headers: readonly string[] = AUDIT_CSV_HEADERS): string {
+  if (headers.length !== AUDIT_CSV_HEADERS.length) throw new Error(`The audit CSV has ${AUDIT_CSV_HEADERS.length} columns`);
   const lines = [headers.map(csvCell).join(',')];
-  for (const r of rows) lines.push([r.occurredAt, r.who, r.object, r.change, r.area, r.projectCode ?? ''].map(csvCell).join(','));
+  for (const r of rows) {
+    lines.push([r.occurredAt, r.who, r.object, r.change, r.area, r.projectCode ?? '', r.userEmail ?? '', r.reason ?? '', jsonCell(r.before), jsonCell(r.after)].map(csvCell).join(','));
+  }
   return lines.join('\r\n') + '\r\n';
 }
 

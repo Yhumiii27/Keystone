@@ -60,14 +60,8 @@ export function markerStyleOf(category: MapCategory, health: Health | null): Mar
   return category === 'pipeline' ? 'pipeline' : 'closed';
 }
 
-/**
- * Tone of the status tag in the map tooltip (`tagClass`, map file): the map derives it from the category and
- * health — not from the stage like the side list (`statusTag`, open question 02 Q-2, kept as the prototype).
- */
-export function tooltipStatusTone(category: MapCategory, health: Health | null): 'accent' | 'outline' | 'neutral' {
-  if (category === 'active') return health === 'on_track' ? 'neutral' : health === 'at_risk' ? 'outline' : 'accent';
-  return category === 'pipeline' ? 'outline' : 'neutral';
-}
+// The prototype coloured the tooltip's stage tag from the category and health (`tagClass`, open question 02 Q-2);
+// Delivery 8 (L-7 = a, R-135) colours it from the stage like the side list (`lifecycleTone`, src/features/worldmap/model.ts).
 
 // ── Clustering ─────────────────────────────────────────────────────────────────────────────────────────
 
@@ -198,6 +192,31 @@ export function clusterClick(c: Cluster, W: number, H: number): { kind: 'zoom'; 
   return { kind: 'pin' };
 }
 
+// ── Keyboard (Delivery 8, L-7 = a, R-135) ──────────────────────────────────────────────────────────────
+
+/**
+ * A marker is a tab stop (0) while its screen position (k × projected + translation) lies inside the frame; a marker
+ * panned out of view is skipped (−1). No arrow-key navigation: markers are tabbed in cluster order.
+ */
+export function markerTabIndex(c: { x: number; y: number }, tr: MapTransform, W: number, H: number): 0 | -1 {
+  const sx = tr.k * c.x + tr.x;
+  const sy = tr.k * c.y + tr.y;
+  return sx >= 0 && sx <= W && sy >= 0 && sy <= H ? 0 : -1;
+}
+
+/**
+ * Key on a focused marker: Enter or Space applies the click rule (`clusterClick`) — a spread cluster zooms and focus
+ * moves to the map, anything else pins the tooltip and focus moves to its first link. Any other key is left alone (Esc
+ * is handled once, by the tooltip's document listener, which returns focus to the marker that opened it).
+ */
+export function markerKeyAction(
+  key: string, c: Cluster, W: number, H: number,
+): { kind: 'zoom'; transform: MapTransform; focus: 'map' } | { kind: 'pin'; focus: 'tooltip' } | null {
+  if (key !== 'Enter' && key !== ' ') return null;
+  const r = clusterClick(c, W, H);
+  return r.kind === 'zoom' ? { ...r, focus: 'map' } : { kind: 'pin', focus: 'tooltip' };
+}
+
 // ── Tooltip ────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -236,6 +255,12 @@ type Tr = (s: string) => string;
 export function tooltipTitle(items: { city: string; country: string }[], t: Tr): string {
   const h = tooltipHeader(items);
   return `${h.place ?? t(`${h.sites} sites`)} · ${t(`${h.projects} ${h.projects === 1 ? 'project' : 'projects'}`)}`;
+}
+
+/** Accessible name of a marker (L-7, R-135): the tooltip title, plus the project's name for a single marker. */
+export function markerAriaLabel(items: { city: string; country: string; name: string }[], t: Tr): string {
+  const title = tooltipTitle(items, t);
+  return items.length === 1 ? `${title} · ${items[0].name}` : title;
 }
 
 /** Marker label text: the city, or "{n} sites". */

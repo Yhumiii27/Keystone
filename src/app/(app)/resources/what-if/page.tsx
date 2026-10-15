@@ -1,33 +1,35 @@
-// What-if levelling (docs/spec/05 §4, template 1504–1528; chapter 4, S-7). Not project-scoped in the prototype (no picker):
-// the page shows the levelling of `?project=` or, by default, HLT-026 (the prototype's Harbor Line steel slip). Any project
-// with a plan has a what-if: levers derived from its data, effects computed by the CPM engine on a copy of the plan,
-// scenarios persisted per project. KPI tiles, scenario cards and the side-by-side table are the client board; primary
-// action "New scenario" (AF whatif).
+// What-if levelling (docs/spec/05 §4, template 1504–1528; chapter 4, S-7). Scenarios are per project: the page shows the
+// levelling of `?project=`; without it, it redirects to the viewer's current project (the last project used), so the URL —
+// and the header's Export, which reads `?project=` — always names the project shown. The prototype had no picker and was
+// hard-wired to Harbor Line; the header's project switcher now sets `?project=`. Any project with a plan has a what-if:
+// levers derived from its data, effects computed by the CPM engine on a copy of the plan, scenarios persisted per project.
+// KPI tiles, scenario cards and the side-by-side table are the client board; primary action "New scenario" (AF whatif).
+import { redirect } from 'next/navigation';
 import { EmptyState } from '@/components/app/EmptyState';
 import { SectionCard } from '@/components/app/SectionCard';
 import { PageHeader } from '@/components/app/shell/page-header';
 import { NewScenarioButton } from '@/features/resources/new-scenario-button';
 import { WhatIfBoard } from '@/features/resources/whatif-board';
-import { leverData, type WhatIfData } from '@/features/resources/whatif-model';
+import { leverData, whatIfHref, type WhatIfData } from '@/features/resources/whatif-model';
 import { getProject } from '@/server/dal/projects';
 import { getWhatIf } from '@/server/dal/resources';
 import { getProjectScope, getScreenAccess } from '@/server/project-context';
-import { getI18n } from '@/server/session';
-
-/** The prototype's what-if screen is hard-wired to Harbor Line. */
-const WHATIF_DEFAULT_PROJECT = 'HLT-026';
+import { getI18n, getLastProject } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
 
 export default async function WhatIfPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
   const asked = Array.isArray(sp.project) ? sp.project[0] : sp.project;
-  const [{ t }, access, scope, project] = await Promise.all([getI18n(), getScreenAccess('whatif'), getProjectScope(), getProject(asked || WHATIF_DEFAULT_PROJECT)]);
+  if (!asked) redirect(whatIfHref(await getLastProject()));
+  const code = asked || (await getLastProject());
+  const [{ t, lang }, access, scope, project] = await Promise.all([getI18n(), getScreenAccess('whatif'), getProjectScope(), getProject(code)]);
   const w = project ? await getWhatIf(project.code) : null;
   const canEdit = !!project && !!w && access.canEdit && !scope.readOnly(project);
 
   if (!project || !w) {
     return (
       <>
-        <PageHeader screen="whatif" />
+        <PageHeader screen="whatif" projectParam={project?.code} />
         <SectionCard gap={10}>
           <EmptyState variant="boxed">{t('No levelling scenario for this project')}</EmptyState>
         </SectionCard>
@@ -57,7 +59,8 @@ export default async function WhatIfPage({ searchParams }: { searchParams: Promi
     <>
       <PageHeader
         screen="whatif"
-        primary={canEdit ? <NewScenarioButton code={project.code} context={`${project.displayId} · ${t(project.name)}`} /> : undefined}
+        projectParam={project.code}
+        primary={canEdit ? <NewScenarioButton code={project.code} context={projectLabelText(project, lang)} /> : undefined}
       />
       <WhatIfBoard data={data} canEdit={canEdit} />
     </>

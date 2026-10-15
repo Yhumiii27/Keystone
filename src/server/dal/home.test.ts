@@ -11,8 +11,10 @@ import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import type { ZoneKey } from '@/server/session';
+import { decideChangeStep } from './changes';
 import { recordEcoProgress } from './eco';
 import { getHomeView } from './home';
+import { getProject } from './projects';
 import { createDraftPurchaseOrders } from './purchasing';
 import { decideDeliverable } from './quality';
 
@@ -21,9 +23,9 @@ type Golden = { greeting: string; sub: string; kpis: (Kpi | null)[]; lt: string;
 const G = golden as unknown as Record<RoleKey, Record<Lang, Golden>>;
 const ROLES: RoleKey[] = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'];
 
-async function render(role: RoleKey, lang: Lang, projectCode = 'HLT-026', zone: ZoneKey | null = null) {
+async function render(role: RoleKey, lang: Lang, projectCode = 'HLT-026', zone: ZoneKey | null = null, organisation = PERSONA_BY_ROLE[role].organisation) {
   const p = PERSONA_BY_ROLE[role];
-  const view: HomeView = await getHomeView({ role, persona: { name: p.name, title: p.title }, projectCode, zone, lang });
+  const view: HomeView = await getHomeView({ role, persona: { name: p.name, title: p.title }, projectCode, zone, lang, organisation });
   const tx = (x: Txt) => renderTxt(x, makeT(lang));
   const out: Golden = {
     greeting: tx(view.greeting), sub: tx(view.sub),
@@ -134,24 +136,115 @@ const CLIENT_DB: Record<Lang, [string, string][]> = {
     ['Test & inspection reports · Accept by 02 Oct', 'Test & inspection reports · Accept by 2 Oct'],
     ['Calculation notes · Accept by 09 Oct', 'Calculation notes · Accept by 9 Oct'],
     ['Due', 'In progress'],
-    ['Milestone 4 invoice €640k · due 15 Oct', 'INV-2026-003 · M3 Structure topped out · €1.38M · due 10 Nov'],
+    // NEW-D3-3 (R-079): M3 invoiced at 25 % of the base amount (€1.35M; the prototype's re-priced value was €1.38M).
+    ['Milestone 4 invoice €640k · due 15 Oct', 'INV-2026-003 · M3 Structure topped out · €1.35M · due 10 Nov'],
   ],
   fr: [
     ['Rapports d’essais et d’inspection · Accepter avant le 02 oct.', 'Rapports d’essais et d’inspection · Accepter avant le 2 oct.'],
     ['Notes de calcul · Accepter avant le 09 oct.', 'Notes de calcul · Accepter avant le 9 oct.'],
     ['Échéance', 'En cours'],
-    ['Facture jalon 4 640 k€ · échéance 15 oct.', 'INV-2026-003 · M3 Structure hors d’eau · 1,38 M€ · échéance 10 nov.'],
+    ['Facture jalon 4 640 k€ · échéance 15 oct.', 'INV-2026-003 · M3 Structure hors d’eau · 1,35 M€ · échéance 10 nov.'],
   ],
+};
+
+/**
+ * A-12 (chapter 4): the department head's "Over-allocated" sub and "Unmet demand" are computed as on Resources (pool loads
+ * above 110 % in ISO weeks 42–44; Σ demand − capacity of the department bars = 280 h, Engineering the largest gap). The
+ * prototype's constants were "Peak weeks 41–43" and "240 h · Mostly engineering".
+ */
+const DEPTHEAD_A12: Record<Lang, [Kpi, Kpi]> = {
+  en: [['Over-allocated', '3 people', 'Peak weeks 42–44', true], ['Unmet demand', '280 h', 'Mostly engineering', true]],
+  fr: [['Surchargés', '3 personnes', 'Pointe semaines 42–44', true], ['Demande non couverte', '280 h', 'Surtout ingénierie', true]],
+};
+
+/**
+ * Delivery 7 (R-073, owner decisions C-2a "EV = avancement × budget", A-12, A-15): progress, actual cost, SPI and CPI come from
+ * the activities, the cost-loaded BL1 and the validated contingency draw-downs at the data date, no longer the seeded
+ * projectData() series — the PM's HLT-026 tiles (SPI 0.90 → 0.82, CPI 0.92 → 0.89, EAC €5.24M → €5.37M) and the client's
+ * progress (64 % → 63 %). The director's tiles combine R-073 with A-3: see `DIRECTOR_D7`.
+ */
+const R073: Partial<Record<RoleKey, Record<Lang, Record<number, Kpi>>>> = {
+  pm: {
+    en: { 0: ['SPI', '0.82', 'Earning 82¢ of planned work per $1', true], 1: ['CPI', '0.89', 'Target ≥ 1.00', true], 2: ['Forecast (EAC)', '€5.37M', 'At current CPI', true] },
+    fr: { 0: ['SPI', '0.82', '82 ¢ de travail prévu acquis par € dépensé', true], 1: ['CPI', '0.89', 'Cible ≥ 1,00', true], 2: ['Prévision (EAC)', '5,37 M€', 'Au CPI actuel', true] },
+  },
+  client: {
+    en: { 0: ['Progress', '63%', 'Work completed · Harbor Line Terminal Expansion', false] },
+    fr: { 0: ['Avancement', '63%', 'Travail réalisé · Extension du terminal Harbor Line', false] },
+  },
+};
+
+/**
+ * Delivery 7: the director's KPI tiles count the projects in execution (A-3: PRS-038 in, WSA-044 out — the prototype's
+ * €13.23M · €7.43M, 56 % · €13.50M, −€270k · 0.96) with R-073's computed actual cost and progress (lot cost-control: A-3 on the
+ * prototype's figures gave €6.96M, 51 % · €13.97M, −€338k · 0.96; R-073 on the prototype's population €6.58M, 50 % · €13.25M,
+ * −€17k · 0.97), and "Needs attention" lists the alerts computed by rules (R-130, NEW-D1-1) on those figures, not the
+ * prototype's four fixed texts: HLT-026 off track (SPI 0.82 · CPI 0.89) and the RCF-019 cost overrun (on the prototype's
+ * figures: RCF-019 off track, HLT-026 cost overrun €5.25M · CPI 0.91).
+ */
+const DIRECTOR_D7: Record<Lang, Pick<Golden, 'kpis' | 'lr'>> = {
+  en: {
+    kpis: [
+      ['Total budget', '€13.63M', '6 active projects', false], ['Actual cost', '€6.74M', '49% of budget spent', false],
+      ['Forecast (EAC)', '€13.88M', '−€245k vs budget', true], ['Cost perf. (CPI)', '0.97', 'Earned per $1 spent', true],
+    ],
+    lr: [
+      ['Harbor Line Terminal Expansion — off track', 'SPI 0.82 · CPI 0.89 — below the off-track threshold 0.90.', '', ''],
+      ['Clinique Pasteur Lyon Fit-out — critical path slip', 'Critical path −29 d · forecast finish 27 Dec 2026 (baseline 1 Dec 2026) · 2 milestones late: Fire systems complete, Commissioning & handover complete.', '', ''],
+      ['Harbor Line Terminal Expansion — critical path slip', 'Critical path −27 d · forecast finish 14 Jan 2027 (baseline 18 Dec 2026) · 2 milestones late: Structure topped out, Cranes operational.', '', ''],
+      ['Marseille Metro Signage Rollout — critical path slip', 'Critical path −9 d · forecast finish 9 Nov 2026 (baseline 1 Nov 2026).', '', ''],
+      ['Northgate Data Center Retrofit — critical path slip', 'Critical path −4 d · forecast finish 5 Apr 2027 (baseline 1 Apr 2027).', '', ''],
+      ['Clinique Pasteur Lyon Fit-out — cost overrun', 'Forecast €1.40M vs budget €1.35M (+€46k) · CPI 0.97.', '', ''],
+      ['3 people over 110%', 'Weeks 42–44 · Amélie Ollivier, Julien Wagner, Pauline Noguès.', '', ''],
+      ['1 approval waiting more than 5 days', 'Oldest: INV-HC-7781 · Halvorsen Cranes · €1,286,400 · since 10 Sep 2026 (15 d).', '', ''],
+    ],
+  },
+  fr: {
+    kpis: [
+      ['Budget total', '13,63 M€', '6 projets actifs', false], ['Coût réel', '6,74 M€', '49 % du budget dépensé', false],
+      ['Prévision (EAC)', '13,88 M€', '−245 k€ vs budget', true], ['Perf. coût (CPI)', '0.97', 'Acquis par € dépensé', true],
+    ],
+    lr: [
+      ['Extension du terminal Harbor Line — hors trajectoire', 'SPI 0,82 · CPI 0,89 — sous le seuil « hors trajectoire » 0,90.', '', ''],
+      ['Aménagement de la Clinique Pasteur Lyon — glissement du chemin critique', 'Chemin critique −29 j · fin prévue 27 déc. 2026 (référence 1 déc. 2026) · 2 jalons en retard : Systèmes incendie terminés, Mise en service & transfert terminés.', '', ''],
+      ['Extension du terminal Harbor Line — glissement du chemin critique', 'Chemin critique −27 j · fin prévue 14 janv. 2027 (référence 18 déc. 2026) · 2 jalons en retard : Structure hors d’eau, Grues opérationnelles.', '', ''],
+      ['Déploiement signalétique métro de Marseille — glissement du chemin critique', 'Chemin critique −9 j · fin prévue 9 nov. 2026 (référence 1 nov. 2026).', '', ''],
+      ['Rénovation du data center Northgate — glissement du chemin critique', 'Chemin critique −4 j · fin prévue 5 avr. 2027 (référence 1 avr. 2027).', '', ''],
+      ['Aménagement de la Clinique Pasteur Lyon — dépassement de coût', 'Prévision 1,40 M€ pour un budget de 1,35 M€ (+46 k€) · CPI 0,97.', '', ''],
+      ['3 personnes au-delà de 110 %', 'Semaines 42–44 · Amélie Ollivier, Julien Wagner, Pauline Noguès.', '', ''],
+      ['1 approbation en attente depuis plus de 5 jours', 'La plus ancienne : INV-HC-7781 · Halvorsen Cranes · 1 286 400 € · depuis le 10 sept. 2026 (15 j).', '', ''],
+    ],
+  },
+};
+
+/**
+ * Delivery 8 (R-087, R-5b): the engineering lead's watchlist names the case — a skill without any expert reads "No expert — …"
+ * (the prototype's "Single expert — 0 experts · …"); the single-expert rows are unchanged.
+ */
+const R5B: Record<Lang, [RegExp, string]> = {
+  en: [/^Single expert — 0 experts · (\d+) at level ≥3$/, 'No expert — $1 at level ≥3'],
+  fr: [/^Expert unique — 0 experts · (\d+) au niveau ≥3$/, 'Aucun expert — $1 au niveau ≥3'],
 };
 
 function expected(role: RoleKey, lang: Lang): Golden {
   if (role === 'member') return structuredClone(MEMBER[lang]);
+  if (role === 'director') {
+    const g = lang === 'fr' ? mapStrings(structuredClone(G.director.fr), fixFr) : structuredClone(G.director.en);
+    return { ...g, ...structuredClone(DIRECTOR_D7[lang]) };
+  }
   const g = structuredClone(G[role][lang]);
   if (role === 'procurement') g.kpis[1] = LATE[lang];
+  if (role === 'depthead') [g.kpis[2], g.kpis[3]] = DEPTHEAD_A12[lang];
+  for (const [i, k] of Object.entries(R073[role]?.[lang] ?? {})) g.kpis[Number(i)] = k;
   const out = lang === 'fr' ? mapStrings(g, fixFr) : g;
+  if (role === 'englead') out.rr = out.rr.map((r) => r.map((x) => x.replace(R5B[lang][0], R5B[lang][1])));
   if (role !== 'client') return out;
   const db = new Map(CLIENT_DB[lang]);
-  return { ...out, rr: out.rr.map((r) => r.map((x) => db.get(x) ?? x)) };
+  // Deviation P-6b (delivery 8, R-069): CR-008 reaches the client once the portfolio director approved it — not yet in the seed:
+  // the KPI reads 0 · None and its row leaves "Waiting for your decision" (back once the director approved, see the last test).
+  const crKpi = out.kpis.findIndex((k) => k?.[0] === (lang === 'en' ? 'Change requests to approve' : 'Demandes de modification à approuver'));
+  out.kpis[crKpi] = [out.kpis[crKpi]![0], '0', lang === 'en' ? 'None' : 'Aucun', false];
+  return { ...out, rr: out.rr.filter((r) => !/^CR-008/.test(r[0]) ).map((r) => r.map((x) => db.get(x) ?? x)) };
 }
 
 describe('Home view', () => {
@@ -178,40 +271,46 @@ describe('Home view', () => {
     expect(await sub('member', 'lr', 0)).toBe('Harbor Line · échéance ven. 25 sept.');
     expect(await sub('member', 'rr', 0)).toBe('Lu depuis Lucca · 14 h cette semaine');
     expect(await sub('member', 'rr', 1)).toBe('Moyenne 95 % sur les 2 prochaines semaines');
-    expect(await sub('englead', 'rr', 3)).toBe('Expert unique — 0 experts · 1 au niveau ≥3');
+    // R-5b (R-087): a skill without any expert is named as such (was "Expert unique — 0 experts · 1 au niveau ≥3").
+    expect(await sub('englead', 'rr', 3)).toBe('Aucun expert — 1 au niveau ≥3');
+    expect(await sub('englead', 'rr', 0)).toBe('Expert unique — 1 expert · 1 au niveau ≥3');
     expect(await sub('quality', 'rr', 1)).toBe('Utilisé dans HLT, RCF');
     expect(await sub('client', 'lr', 5)).toBe('Référence 18 déc. · Prévision 13 janv. ’27');
-    expect(await sub('client', 'rr', 0)).toBe('+85 k€ · rattrapage de 12 jours · soumise le 24 sept.');
-    expect(await sub('client', 'rr', 1)).toBe('Rapports d’essais et d’inspection · Accepter avant le 2 oct.');
-    expect(await sub('client', 'rr', 2)).toBe('Manuels / plans de récolement · Signé le 18 sept.');
-    expect(await sub('client', 'rr', 5)).toBe('INV-2026-003 · M3 Structure hors d’eau · 1,38 M€ · échéance 10 nov.');
+    // P-6b (R-069): CR-008's row comes back once the director approved it (last test of this block).
+    expect(await sub('client', 'rr', 0)).toBe('Rapports d’essais et d’inspection · Accepter avant le 2 oct.');
+    expect(await sub('client', 'rr', 1)).toBe('Manuels / plans de récolement · Signé le 18 sept.');
+    expect(await sub('client', 'rr', 4)).toBe('INV-2026-003 · M3 Structure hors d’eau · 1,35 M€ · échéance 10 nov.'); // NEW-D3-3
   });
 
   it('director KPIs and alerts follow the zone filter', async () => {
+    // A-3: the zone's projects in execution (PRS-038 included); R-130: the zone's alerts plus the portfolio-wide ones. R-073
+    // (C-2a): actual cost and CPI from the activities — euna RCF-019 €1.21M → €1.08M, ERP-202 €410k → €457k, MSR-012 €550k →
+    // €553k (A-3 alone: €5.94M, 52 % · −€438k · 0.94); afr: NDC-031 €1.02M → €884k, CPI 1.05 → 1.10.
     const euna = (await render('director', 'en', 'HLT-026', 'euna')).out;
     expect(euna.kpis).toEqual([
-      ['Total budget', '€7.73M', '4 active projects', false],
-      ['Actual cost', '€5.53M', '72% of budget spent', false],
-      ['Forecast (EAC)', '€8.24M', '−€511k vs budget', true],
-      ['Cost perf. (CPI)', '0.94', 'Earned per $1 spent', true],
+      ['Total budget', '€11.53M', '5 active projects', false],
+      ['Actual cost', '€5.86M', '51% of budget spent', false],
+      ['Forecast (EAC)', '€11.97M', '−€437k vs budget', true],
+      ['Cost perf. (CPI)', '0.95', 'Earned per $1 spent', true],
     ]);
-    expect(euna.lr).toHaveLength(4);
+    expect(euna.lr).toHaveLength(7);
     const afr = (await render('director', 'en', 'HLT-026', 'afr')).out;
     expect(afr.kpis).toEqual([
       ['Total budget', '€2.10M', '1 active project', false],
-      ['Actual cost', '€1.02M', '49% of budget spent', false],
-      ['Forecast (EAC)', '€2.00M', '+€100k vs budget', true],
-      ['Cost perf. (CPI)', '1.05', 'Earned per $1 spent', false],
+      ['Actual cost', '€884k', '42% of budget spent', false],
+      ['Forecast (EAC)', '€1.91M', '+€192k vs budget', true],
+      ['Cost perf. (CPI)', '1.10', 'Earned per $1 spent', false],
     ]);
-    expect(afr.lr.map((r) => r[0])).toEqual(['3 people over 115% in October']);
+    expect(afr.lr.map((r) => r[0])).toEqual(['Northgate Data Center Retrofit — critical path slip', '3 people over 110%', '1 approval waiting more than 5 days']);
   });
 
   it('PM home follows the current project (NDC-031)', async () => {
     const { out } = await render('pm', 'en', 'NDC-031');
+    // R-073 (C-2a): the prototype's synthetic EV gave SPI 1.34 (04 Q3); computed from the activities and BL1: 0.96, CPI 1.10.
     expect(out.kpis).toEqual([
-      ['SPI', '1.34', 'Earning 134¢ of planned work per $1', false],
-      ['CPI', '1.05', 'Target ≥ 1.00', true],
-      ['Forecast (EAC)', '€2.00M', 'At current CPI', true],
+      ['SPI', '0.96', 'Earning 96¢ of planned work per $1', true],
+      ['CPI', '1.10', 'Target ≥ 1.00', true],
+      ['Forecast (EAC)', '€1.91M', 'At current CPI', true],
       ['Critical path float', '−4 days', '2 of 6 packages critical', true],
     ]);
     expect(out.lt).toBe('My resource requests — Northgate Data Center Retrofit');
@@ -224,7 +323,8 @@ describe('Home view', () => {
     const pm = (await render('pm', 'en', 'ALP-021')).out;
     expect(pm.kpis.map((k) => k?.[1])).toEqual(['—', '—', '—', '—']);
     expect(pm.rr).toEqual([]);
-    const client = (await render('client', 'en', 'ALP-021')).out;
+    // R-042 (P-10a): a contact of ALP-021's own client organisation (the demo client — Port authority — gets Harbor Line).
+    const client = (await render('client', 'en', 'ALP-021', null, (await getProject('ALP-021'))!.client)).out;
     expect(client.kpis.map((k) => k?.[1])).toEqual(['—', '—', '0', '0']);
     expect([client.lr, client.rr]).toEqual([[], []]);
   });
@@ -235,7 +335,12 @@ describe('Home view', () => {
       return { l: view.left.rows.map((r) => r.href), r: view.right.rows.map((r) => r.href) };
     };
     expect(await hrefs('director')).toEqual({
-      l: ['/projects/HLT-026/schedule', '/projects/HLT-026/budget', '/resources', '/projects/RCF-019/schedule'],
+      // R-130: each computed alert opens the screen that resolves it (on the R-073 figures: HLT-026 off track on its schedule
+      // side, SPI 0.82 ≤ CPI 0.89; RCF-019's cost overrun on its budget).
+      l: [
+        '/projects/HLT-026/schedule', '/projects/RCF-019/schedule', '/projects/HLT-026/schedule', '/projects/MSR-012/schedule', '/projects/NDC-031/schedule',
+        '/projects/RCF-019/budget', '/resources', '/my/approvals',
+      ],
       r: ['/projects/HLT-026/changes?cr=CR-008', '/projects/HLT-026/orders', '/reference/eco', '/resources/requests'],
     });
     expect((await hrefs('pm')).r).toEqual(['/projects/HLT-026/orders?po=PO-1082', '/reference/eco?eco=ECO-2026-015', '/projects/HLT-026/schedule']);
@@ -251,15 +356,35 @@ describe('Home view', () => {
   });
 
   it('client home on another project: next milestone in both languages', async () => {
-    const en = (await render('client', 'en', 'NDC-031')).out.kpis[1];
-    const fr = (await render('client', 'fr', 'NDC-031')).out.kpis[1];
+    // R-042 (P-10a): a contact of Northgate's client organisation (the demo client — Port authority — never sees NDC-031).
+    const org = (await getProject('NDC-031'))!.client;
+    const en = (await render('client', 'en', 'NDC-031', null, org)).out.kpis[1];
+    const fr = (await render('client', 'fr', 'NDC-031', null, org)).out.kpis[1];
     expect(en?.[2]).toMatch(/^Next: /);
     expect(fr?.[2]).toMatch(/^Prochain : \p{Ll}/u);
     expect(fr?.[2]).not.toMatch(/Next|complete/);
   });
 
   it('unknown current project falls back to the default project', async () => {
-    expect((await render('client', 'en', 'NOPE-1')).out.kpis[0]).toEqual(['Progress', '64%', 'Work completed · Harbor Line Terminal Expansion', false]);
+    // R-073: HLT-026's progress computed from its activities (64 % → 63 %).
+    expect((await render('client', 'en', 'NOPE-1')).out.kpis[0]).toEqual(['Progress', '63%', 'Work completed · Harbor Line Terminal Expansion', false]);
+  });
+
+  it('R-042 (P-10a): the client never sees another organisation\'s project — their own project instead; none → empty', async () => {
+    // R-073: the progress is computed from Keystone's activities (64 % seeded → 63 %).
+    expect((await render('client', 'en', 'NDC-031')).out.kpis[0]).toEqual(['Progress', '63%', 'Work completed · Harbor Line Terminal Expansion', false]);
+    const none = (await render('client', 'en', 'HLT-026', null, null)).out;
+    // Integration with R-011: a client whose organisation has no project gets the same "No project yet" Home as an empty database.
+    expect([none.kpis, JSON.stringify(none.lr).includes('No project yet'), none.rr]).toEqual([[], true, []]);
+  });
+
+  it('P-6b (delivery 8, R-069): once the director approved CR-008, the client Home lists it as in the prototype', async () => {
+    await decideChangeStep('HLT-026', 'CR-008', 'director', 'ok', 'Marie Lefebvre');
+    const en = (await render('client', 'en')).out;
+    const g = G.client.en;
+    const crKpi = g.kpis.findIndex((k) => k?.[0] === 'Change requests to approve');
+    expect([en.kpis[crKpi], en.rr[0]]).toEqual([g.kpis[crKpi], g.rr[0]]);
+    expect((await render('client', 'fr')).out.rr[0][1]).toBe('+85 k€ · rattrapage de 12 jours · soumise le 24 sept.');
   });
 });
 
@@ -304,7 +429,7 @@ describe('Home view — Delivery 5: the client Home reads the deliverables regis
   });
 
   it('another project shows its own register and its legacy monthly billing (no Harbor Line data)', async () => {
-    const { out } = await render('client', 'en', 'NDC-031');
+    const { out } = await render('client', 'en', 'NDC-031', null, (await getProject('NDC-031'))!.client); // R-042: its own client
     expect(out.rr.filter((r) => /^D-/.test(r[0])).map((r) => [r[0].split(' · ')[0], r[2]])).toEqual([['D-112', 'Submitted'], ['D-113', 'Accepted']]);
     expect(out.rr.at(-1)).toEqual(['Invoices', 'Sep · €260k', 'Open', 'tag tag-outline']);
   });

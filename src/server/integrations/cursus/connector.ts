@@ -4,25 +4,32 @@ import 'server-only';
 // Cursus's contract (Cursus README, server/src/index.ts, shared/domain.ts):
 //   GET  /api/integrations/keystone/chantiers/:id/go-no-go   → { chantier, evalue_le, statut, ressources: [{ matricule, statut, motifs }] }
 //   POST /api/integrations/keystone/demandes                 { matricule, chantier, destination, depart, retour } → 201 { id, statut }
+//   GET  /api/integrations/keystone/annuaire                 → [{ matricule, nom, prenom, email, equipe }]  TODO(cursus): proposal (R-027)
 //   header X-Api-Key (Cursus's KEYSTONE_API_KEY, "demo-keystone" by default)
+// What Cursus pushes to Keystone (POST /api/integrations/cursus/events, R-029) is received by ./events.ts and ./inbox.ts.
 // Two implementations behind one interface:
 // - mock (default; tests and the default run never need Cursus): the local mirror seeded from the prototype's SITE_DOCS;
 //   reminders and travel requests wait in the outbox ("pending sync with Cursus");
 // - http (CURSUS_API_URL set): refreshes the mirror from the go-no-go endpoint and delivers travel requests. Cursus has
 //   no reminder endpoint: reminders stay pending (TODO(cursus), OPEN QUESTION C-2).
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
+import { directoryEntryOf } from '@/domain/directory';
 import { STATUS_ISO, cursusSyncStatus, inWorkspace, type CursusClearance, type CursusVerdict } from '@/server/db/codes';
 import { getDb } from '@/server/db/client';
+import { CURSUS_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
-import { cursusClearances, cursusRequests, projects, siteSheets } from '@/server/db/schema';
+import { cursusClearances, cursusRequests, persons, projects, siteSheets } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
-import { cursusApiKey, cursusApiUrl, cursusConnectorMode } from './config';
-import { markRequestDelivery, readClearances, recordFailedSync, undeliveredRequests, upsertClearances } from './mirror';
+import { logWarning } from '@/server/log';
+import { cursusApiKey, cursusApiUrl, cursusConnectorMode } from './connection';
+import { claimRequestDelivery, markRequestDelivery, readClearances, recordFailedSync, undeliveredRequests, upsertClearances } from './mirror';
 import type {
-  CursusActor, CursusClearanceRecord, CursusConnector, CursusGoNoGo, CursusGoNoGoPayload, CursusRequestReceipt, CursusTravelRequestInput,
+  CursusActor, CursusClearanceRecord, CursusConnector, CursusDirectoryPayload, CursusGoNoGo, CursusGoNoGoPayload, CursusRequestReceipt, CursusTravelRequestInput,
 } from './types';
 
-export type { CursusActor, CursusClearanceView, CursusConnector, CursusGoNoGo, CursusRequestReceipt, CursusTravelRequestInput } from './types';
+export type {
+  CursusActor, CursusClearanceView, CursusConnector, CursusDirectoryPayload, CursusGoNoGo, CursusRequestReceipt, CursusTravelRequestInput,
+} from './types';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -87,6 +94,8 @@ export const mockCursusConnector: CursusConnector = {
   },
   remind: (projectCode, personName, actor) => queue(projectCode, 'reminder', personName, {}, actor),
   requestTravel: (projectCode, input, actor) => queue(projectCode, 'travel_request', input.personName, travelPayload(input), actor),
+  // R-027: the mock has no staff directory ("not connected").
+  listDirectory: async () => null,
 };
 
 // ── HTTP (Cursus's real contract) ───────────────────────────────────────────────────────────────────────
@@ -94,23 +103,33 @@ export const mockCursusConnector: CursusConnector = {
 const HTTP_TIMEOUT_MS = 5000;
 /** Reads refresh a project's verdicts at most once a minute (a failed refresh too: the mirror is used until the next attempt). */
 const REFRESH_EVERY_MS = 60_000;
-const g = globalThis as unknown as { __ksCursusRefreshedAt?: Map<string, number> };
+// Per server process (R-010): with several instances each refreshes a project at most once a minute (bounded load on
+// Cursus); concurrent reads of one process share the refresh in flight instead of starting their own.
+const g = globalThis as unknown as {
+  __ksCursusRefreshedAt?: Map<string, number>; __ksCursusRefreshing?: Map<string, Promise<void>>; __ksCursusInFlight?: Map<string, Promise<number>>;
+};
 const refreshedAt = () => (g.__ksCursusRefreshedAt ??= new Map());
+const refreshing = () => (g.__ksCursusRefreshing ??= new Map());
+const inFlight = () => (g.__ksCursusInFlight ??= new Map());
 
 /** Forgets the last refresh times (tests). */
 export function resetCursusRefreshThrottle(): void {
   g.__ksCursusRefreshedAt = undefined;
+  g.__ksCursusRefreshing = undefined;
+  g.__ksCursusInFlight = undefined;
 }
 
 async function cursusFetch(path: string, init?: RequestInit): Promise<Response> {
   const base = cursusApiUrl();
   if (!base) throw new Error('CURSUS_API_URL is not set');
+  const apiKey = cursusApiKey();
+  if (!apiKey) throw new Error('CURSUS_API_KEY is not set');
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), HTTP_TIMEOUT_MS);
   try {
     const res = await fetch(`${base}${path}`, {
       ...init, signal: ctrl.signal,
-      headers: { 'content-type': 'application/json', accept: 'application/json', 'x-api-key': cursusApiKey(), ...init?.headers },
+      headers: { 'content-type': 'application/json', accept: 'application/json', 'x-api-key': apiKey, ...init?.headers },
     });
     if (!res.ok) throw new Error(`Cursus ${init?.method ?? 'GET'} ${path} → ${res.status}`);
     return res;
@@ -143,26 +162,67 @@ export function recordsOfPayload(projectCode: string, payload: CursusGoNoGoPaylo
 }
 
 async function refresh(projectCode: string): Promise<number> {
+  if (!(await connectorEnabled(CURSUS_CONNECTOR_NAME))) return 0; // D-7a: disabled by IT — the local mirror is read
   const db = await getDb();
   const chantierId = await db.transaction(async (tx) => (await chantierOf(tx, projectCode)).chantierId);
   if (!chantierId) throw new Error(`No Cursus site is linked to ${projectCode}`);
   const res = await cursusFetch(`/api/integrations/keystone/chantiers/${encodeURIComponent(chantierId)}/go-no-go`);
   const payload = (await res.json()) as CursusGoNoGoPayload;
   if (!payload || !Array.isArray(payload.ressources)) throw new Error('Cursus: unexpected go-no-go payload');
+  // R-027: a person imported from Cursus's staff directory names its matricule first; else the name the mirror already has.
   const known = await db.select({ m: cursusClearances.matricule, n: cursusClearances.personName }).from(cursusClearances).where(eq(cursusClearances.projectCode, projectCode));
   const names = new Map(known.filter((k) => k.m).map((k) => [k.m!, k.n]));
+  const matricules = [...new Set(payload.ressources.map((r) => r.matricule).filter((m): m is string => typeof m === 'string' && !!m))];
+  if (matricules.length)
+    for (const p of await db.select({ m: persons.matricule, full: persons.fullName, short: persons.shortName }).from(persons).where(inArray(persons.matricule, matricules)))
+      if (p.m) names.set(p.m, p.full ?? p.short);
   const n = await db.transaction((tx) => upsertClearances(tx, projectCode, recordsOfPayload(projectCode, payload, names), new Date(), 'http'));
   refreshedAt().set(projectCode, Date.now());
   return n;
 }
 
+/** One refresh of a project's verdicts at a time per process (R-010): concurrent callers share the one in flight. */
+function refreshShared(projectCode: string): Promise<number> {
+  let running = inFlight().get(projectCode);
+  if (!running) {
+    running = refresh(projectCode).finally(() => inFlight().delete(projectCode));
+    inFlight().set(projectCode, running);
+  }
+  return running;
+}
+
+/**
+ * R-029 (NEW-CURSUS-7): refreshes a project's verdicts now — Cursus pushed a "verdict.modifie" event — bypassing the
+ * one-minute read throttle but sharing a refresh already in flight. HTTP mode only (the mock has nothing to refresh);
+ * throws when Cursus is unreachable or the site is not linked.
+ */
+export async function refreshCursusSiteNow(projectCode: string): Promise<number> {
+  if (cursusConnectorMode() !== 'http') return 0;
+  return refreshShared(projectCode);
+}
+
+/**
+ * R-027: Cursus's staff directory. TODO(cursus): GET /api/integrations/keystone/annuaire is Keystone's proposal (NEW-CURSUS-2:
+ * Cursus needs a new access) — field names, team codes and paging may change when Cursus publishes it.
+ */
+async function fetchDirectory(): Promise<CursusDirectoryPayload> {
+  const res = await cursusFetch('/api/integrations/keystone/annuaire');
+  const body = (await res.json()) as unknown;
+  if (!Array.isArray(body)) throw new Error('Cursus: unexpected directory payload');
+  const entries = body.map(directoryEntryOf);
+  return { entries: entries.filter((e): e is NonNullable<typeof e> => !!e), invalid: entries.filter((e) => !e).length };
+}
+
 /** Delivers the outbox: travel requests go to POST /demandes; reminders have no Cursus endpoint (TODO(cursus), C-2). */
 async function deliverOutbox(): Promise<{ delivered: number; failed: number; pending: number }> {
   const db = await getDb();
+  // D-7a: a connector IT disabled exchanges nothing; the entries stay pending until it is enabled again.
+  if (!(await connectorEnabled(CURSUS_CONNECTOR_NAME))) return { delivered: 0, failed: 0, pending: (await undeliveredRequests(db)).length };
   let delivered = 0;
   let failed = 0;
   for (const e of await undeliveredRequests(db)) {
     if (e.kind !== 'travel_request') continue;
+    if (!(await claimRequestDelivery(db, e.id))) continue; // another delivery is sending it (R-010)
     try {
       if (!e.matricule) throw new Error(`No Cursus matricule for ${e.personName}`);
       const chantierId = await db.transaction(async (tx) => (await chantierOf(tx, e.projectCode)).chantierId);
@@ -189,13 +249,23 @@ export const httpCursusConnector: CursusConnector = {
     // A site not linked to a Cursus site has nothing to refresh: the mirror as received, no failed run per page view.
     const chantierId = await db.transaction(async (tx) => (await chantierOf(tx, projectCode)).chantierId).catch(() => null);
     if (!chantierId) return readClearances(db, projectCode);
-    await refresh(projectCode).catch(async (e) => {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.warn('[cursus] go-no-go refresh failed, using the local mirror:', msg);
-      // Retried after the same interval (the sidebar badge reads on every page: one timeout a minute, not one per view).
-      refreshedAt().set(projectCode, Date.now());
-      await recordFailedSync(db, projectCode, new Date(), msg).catch(() => null);
-    });
+    let running = refreshing().get(projectCode);
+    if (!running) {
+      running = refreshShared(projectCode)
+        .then(
+          () => undefined,
+          async (e) => {
+            const msg = e instanceof Error ? e.message : String(e);
+            logWarning('Cursus go-no-go refresh (the local mirror is used)', e, { component: 'cursus', project: projectCode });
+            // Retried after the same interval (the sidebar badge reads on every page: one timeout a minute, not one per view).
+            refreshedAt().set(projectCode, Date.now());
+            await recordFailedSync(db, projectCode, new Date(), msg).catch(() => null);
+          },
+        )
+        .finally(() => refreshing().delete(projectCode));
+      refreshing().set(projectCode, running);
+    }
+    await running;
     return readClearances(db, projectCode);
   },
   async sync(projectCode) {
@@ -213,9 +283,20 @@ export const httpCursusConnector: CursusConnector = {
     const [row] = await db.select({ s: cursusRequests.syncStatus }).from(cursusRequests).where(eq(cursusRequests.id, r.id));
     return { ...r, syncStatus: row?.s ?? r.syncStatus };
   },
+  listDirectory: fetchDirectory,
 };
 
 /** The connector in use (http when CURSUS_API_URL is set, else the mock). */
 export function getCursusConnector(): CursusConnector {
   return cursusConnectorMode() === 'http' ? httpCursusConnector : mockCursusConnector;
+}
+
+/**
+ * Outbox redelivery of the worker (R-006, job "cursus-outbox"): with Cursus's API configured, the travel requests not yet
+ * sent are delivered again (reminders have no Cursus endpoint and stay pending, C-2); the mock sends nothing and reports
+ * what waits.
+ */
+export async function redeliverCursusOutbox(): Promise<{ mode: 'mock' | 'http'; delivered: number; failed: number; pending: number }> {
+  if (cursusConnectorMode() === 'http') return { mode: 'http', ...(await deliverOutbox()) };
+  return { mode: 'mock', delivered: 0, failed: 0, pending: (await undeliveredRequests(await getDb())).length };
 }

@@ -2,7 +2,8 @@
 // scrim, Esc) to the register URL: step indicator (grey when rejected), RACI-B, the record (linked NCRs open the NCR
 // log), the issued document — the prototype's drop slot becomes the Codex record of the document (Codex owns the
 // documents: "Deposit in Codex" hand-off, "Link a Codex document" for the project team) — the role hint, and the
-// actions "Submit to client" (project team), "Accept (PV)" / "Reject with comments" (the project's client contact),
+// client review history (R-114), the actions "Submit to client" and "Start next revision" after a rejection (project
+// team), "Accept (PV)" / "Reject with comments" (the project's client contact),
 // "Open plan", and on an accepted deliverable "Download PV (PDF)" (acceptance certificate, chapter 4 exports). Server
 // Component; the buttons are client islands.
 import { FilePlus, FileText, TreeStructure } from '@phosphor-icons/react/dist/ssr';
@@ -48,7 +49,7 @@ export function DeliverableDrawer({ code, view: d, context, t }: { code: string;
               <Link href={docHref(d.document.number, code)} className={s.docLink} scroll={false}>
                 <FileText className={s.docIcon} aria-hidden />
                 <span className={s.docNumber}>{d.document.number}</span>
-                {d.document.title && <span>{t(d.document.title)}</span>}
+                {d.document.title && <span>{d.document.title}</span>}
                 {d.document.revision && (
                   <span className={s.docMeta}>
                     {t('Rev')} {d.document.revision} · {t(d.document.statusLabel)}
@@ -70,11 +71,24 @@ export function DeliverableDrawer({ code, view: d, context, t }: { code: string;
         )}
       </div>
 
+      {d.reviews.length > 0 && (
+        <div className={s.section6}>
+          <Eyebrow>{t('Client review history')}</Eyebrow>
+          {d.reviews.map((r, i) => (
+            <div key={i} className={s.reviewRow}>
+              <span className={s.reviewLine}>{r.line}</span>
+              {r.comments && <span className={s.reviewComments}>{r.comments}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Always rendered, as the prototype's span (template 1964): an empty hint still takes its 12px gap. */}
       <span className={s.hint}>{d.hint}</span>
 
       <div className={s.drawerActions}>
         {d.canSubmit && <DeliverableMoveButton code={code} number={d.number} to="submitted" label={t('Submit to client')} variant="primary" place="drawer" />}
+        {d.restart && <DeliverableMoveButton code={code} number={d.number} to="in_progress" label={d.restart} variant="primary" place="drawer" restart />}
         {d.canDecide && <DeliverableDecideDrawer code={code} number={d.number} context={context} />}
         {d.pvHref && <ExportFileButton href={d.pvHref} label={t('Download PV (PDF)')} variant="secondary" ariaLabel={`${t('Download PV (PDF)')} · ${d.number}`} />}
         <ButtonLink variant="secondary" size="sm" icon={TreeStructure} href={d.planHref}>

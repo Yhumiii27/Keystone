@@ -7,6 +7,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const session = { role: 'director' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/navigation', () => ({
+  redirect: (url: string) => {
+    throw new Error(`REDIRECT ${url}`);
+  },
   notFound: () => {
     throw new Error('NOT_FOUND');
   },
@@ -47,6 +50,8 @@ function parts(tree: unknown): Record<string, El> {
 }
 const page = async (sp: Record<string, string> = {}, code = 'HLT-026') => parts(await SitePage({ params: Promise.resolve({ code }), searchParams: Promise.resolve(sp) }));
 const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'];
+/** R-041 (P-2): workspace personas not on the project's named team. */
+const OFF_TEAM: Record<string, string[]> = { 'HLT-026': ['depthead'], 'NDC-031': ['depthead', 'englead', 'quality'] };
 
 beforeAll(async () => {
   setDb(await openDatabase());
@@ -84,16 +89,23 @@ describe('/projects/[code]/site', () => {
   it.each(['HLT-026', 'NDC-031'])('%s: primary and edit rights per persona (prototype hasPrimary; none without a site sheet)', async (code) => {
     for (const role of ROLES) {
       session.role = role;
+      if (role === 'client') {
+        await expect(page({}, code)).rejects.toThrow('REDIRECT /'); // R-042 (P-1): Site is outside the client's workspace
+        continue;
+      }
       const p = await page({}, code);
       const g = (GOLDEN as any).header[code][role];
       const hasSheet = code === 'HLT-026';
-      expect([role, !!p.PageHeader.props.primary, p.SiteBody.props.canEdit]).toEqual([role, g.hasPrimary && hasSheet, g.hasPrimary && hasSheet]);
+      // R-041 (P-2): write rights follow the named team — off-team personas read (was: every workspace role edited).
+      const has = g.hasPrimary && hasSheet && !OFF_TEAM[code].includes(role);
+      expect([role, !!p.PageHeader.props.primary, p.SiteBody.props.canEdit]).toEqual([role, has, has]);
     }
   });
 
   it('a project without a site sheet: empty state; an unknown project → not found', async () => {
     const v = (await page({}, 'EWA-051')).SiteBody.props.view as SiteView;
-    expect([v.empty, v.ready]).toEqual(['The site module opens when the project reaches the Expédition stage — no site sheet yet for this project.', null]);
+    // D-3 'a' (R-118): the leads prepare the sheet from Études — EWA-051 is at Initiative, so no "Prepare the site" either.
+    expect([v.empty, v.ready, v.prepare]).toEqual(['No site sheet yet for this project — the project’s leads prepare it from the Études stage.', null, null]);
     await expect(page({}, 'XXX-999')).rejects.toThrow('NOT_FOUND');
   });
 });

@@ -13,9 +13,10 @@ import { openDatabase } from '@/server/db/open';
 import { createMeeting, getMeeting, listClientQuestions, sendMinutes } from '@/server/dal/meetings';
 import { listAudit } from '@/server/dal/notifications';
 import { createRisk, listRisks } from '@/server/dal/risks';
+import type { Tx } from '@/server/db/types';
 import { listStoredFiles, readStoredText, setFilesRoot } from '@/server/storage/files';
 import {
-  addTranscriptQuestion, analyseTranscript, applyTranscriptToMinutes, decodeTranscriptFile, importTranscript, markTranscriptProposalApplied, setTranscriptProposalStatus,
+  addTranscriptQuestion, analyseTranscript, applyTranscriptToMinutes, decodeTranscriptFile, getTranscriptFileRef, importTranscript, markTranscriptProposalApplied, setTranscriptProposalStatus,
   TranscriptError, updateTranscriptProposal,
 } from './meetings-transcripts';
 
@@ -65,13 +66,18 @@ describe('transcript import', () => {
     expect(m.transcript!.text.split('\n')[0]).toBe('Romain Aubert: On valide la grue de 300 tonnes pour le levage.');
     const [meta] = await listStoredFiles('meeting', (await getMeetingId(n))!);
     expect(meta).toMatchObject({ purpose: 'transcript', name: 'levage.vtt', mime: 'text/vtt' });
-    expect((await readStoredText(meta.id))!.text).toBe(VTT);
+    const stored = await readStoredText(meta.id);
+    expect(stored && !stored.blocked && stored.text).toBe(VTT); // R-175: a flagged file would be { blocked }
 
     const again = await importTranscript(n, { file: { name: 'levage-v2.vtt', data: enc(VTT.replace('300', '400')) } }, 'Léa Fabre');
     expect(again.replaced).toBe(true);
     const files = await listStoredFiles('meeting', (await getMeetingId(n))!);
     expect(files.map((f) => f.name)).toEqual(['levage-v2.vtt']);
     expect(await readStoredText(meta.id)).toBeNull();
+    // The download route finds the stored file and the meeting's project; a paste or an unknown meeting has none.
+    expect(await getTranscriptFileRef(n)).toEqual({ projectCode: 'HLT-026', fileId: files[0].id });
+    expect(await getTranscriptFileRef('MTG-118')).toBeNull();
+    expect(await getTranscriptFileRef('MTG-999')).toBeNull();
   });
 
   it('refusals: empty, too long, minutes sent; Windows-1252 files are decoded', async () => {
@@ -130,11 +136,17 @@ describe('analysis and review', () => {
     await expect(setTranscriptProposalStatus('MTG-130', 1, 'rejected', 'Romain Aubert')).rejects.toThrow('This proposal was already added');
   });
 
-  it('a risk proposal → the risk register (the Server Function calls createRisk, then marks the proposal)', async () => {
-    const number = await createRisk('HLT-026', { title: 'Vent fort la semaine du 12', category: 'hse', response: 'mitigate', owner: 'L. Fabre' }, 'Romain Aubert');
-    await markTranscriptProposalApplied('MTG-130', 2, number, 'Romain Aubert');
+  it('a risk proposal → the risk register in one transaction (the risk is created and the proposal marked, or neither)', async () => {
+    const risk = (tx: Tx) =>
+      createRisk('HLT-026', { title: 'Vent fort la semaine du 12', category: 'hse', response: 'mitigate', owner: 'L. Fabre' }, 'Romain Aubert', tx);
+    const number = await markTranscriptProposalApplied('MTG-130', 2, risk, 'Romain Aubert');
+    expect(number).toMatch(/^R-\d+$/);
     expect((await getMeeting('MTG-130'))!.transcript!.items[2]).toMatchObject({ status: 'applied', appliedRef: number });
     expect((await listRisks('HLT-026')).some((r) => r.id === number)).toBe(true);
+    // Already added: refused before the risk is created — no second risk in the register.
+    const count = (await listRisks('HLT-026')).length;
+    await expect(markTranscriptProposalApplied('MTG-130', 2, risk, 'Romain Aubert')).rejects.toThrow('This proposal was already added');
+    expect((await listRisks('HLT-026')).length).toBe(count);
   });
 
   it('a question proposal → an open question of the client bridge', async () => {

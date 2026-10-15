@@ -1,0 +1,36 @@
+// Text people typed in Keystone or that Vigie / Cursus sent (titles, names of projects, clients, work packages and
+// activities, contract clauses, change requests, comments…) is shown exactly as typed in both languages (NEW-D1-2 = a,
+// X-12b = as_typed; R-148). It never goes through the prototype translator `t()`, whose segment, month and day rules
+// alter typed text ("Sun Valley Farm" → "dim. Valley Farm", "Mon équipe" → "lun. équipe").
+// The only exception is the demonstration data set: a seeded English string that has an entry of its own in the FR
+// dictionary ("Harbor Line Terminal Expansion" → "Extension du terminal Harbor Line") is shown in French, so the demo
+// reads as the prototype did. A partial match never applies.
+import { frExact, type Lang } from './translate';
+
+/** Typed / received text in the viewer's language: as typed, or the exact FR dictionary entry of a seeded string. */
+export function dataText(s: string, lang: Lang): string;
+export function dataText(s: string | null | undefined, lang: Lang): string | null | undefined;
+export function dataText(s: string | null | undefined, lang: Lang): string | null | undefined {
+  if (lang !== 'fr' || !s) return s;
+  return frExact(s) ?? s;
+}
+
+/** A segment Keystone formats itself: numbers, amounts, units, dates ("+85 k€", "12 Oct – 16 Oct", "−27 d"). */
+const FORMATTED = /^[\d\s+\-−–→.,:;%€$/()×]*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|k€|M€|d|h|wk|wks)(?![A-Za-z])[\d\s+\-−–→.,:;%€$/()×]*)*$/;
+
+/**
+ * A line Keystone joins from separate fields with " · " (a notification sub-line: title · department · person · dates):
+ * each field as typed (or its exact demo entry), the fields Keystone formats itself (amounts, dates) translated.
+ */
+export function fieldsText(s: string, t: (english: string) => string, lang: Lang): string {
+  if (lang !== 'fr' || !s) return s;
+  const whole = frExact(s);
+  if (whole !== undefined) return whole;
+  return s.split(' · ').map((f) => frExact(f) ?? (FORMATTED.test(f) ? t(f) : f)).join(' · ');
+}
+
+/** `dataText` bound to a language, for `.map(dt)` and models that receive a translator. */
+export const makeDataT = (lang: Lang) => (s: string) => dataText(s, lang);
+
+/** "#026 · Harbor Line Terminal Expansion": the project number as is, the name as typed (or its demo entry). */
+export const projectLabelText = (p: { displayId: string; name: string }, lang: Lang) => `${p.displayId} · ${dataText(p.name, lang)}`;

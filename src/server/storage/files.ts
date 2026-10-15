@@ -6,6 +6,9 @@ import 'server-only';
 // Checks on every upload: size (MAX_FILE_BYTES, 20 MB), non-empty, extension allowlist per purpose (FILE_EXTENSIONS) and a
 // content sniff (PDF / image / Office / ZIP signatures; text files must not contain NUL bytes). Callers check the viewer's
 // rights before storing, reading or deleting (the storage layer does not know who may see a task or a meeting).
+// Antivirus (R-175, ./scan.ts): the upload paths scan the bytes before their transaction and pass the marked bytes here;
+// storeFile records the verdict, and refuses unchecked bytes while scanning is on. A stored file a rescan flagged is blocked:
+// readStoredFile / streamStoredFile return { blocked: true } (the download routes answer 410), never its bytes.
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
@@ -13,9 +16,16 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { and, asc, eq } from 'drizzle-orm';
 import { FILE_EXTENSIONS, MAX_FILE_BYTES, MAX_FILE_TEXT } from '@/domain/ch4-defaults';
+import { getConfig } from '@/server/config';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import type { StoredFilePurpose } from '@/server/db/codes';
+import { orphanFilesToPrune } from '@/domain/jobs';
+import type { FileScanStatus } from '@/domain/file-scan';
 import { storedFiles } from '@/server/db/schema';
+import { FileRejectedError } from './file-errors';
+import { scanMarkOf } from './scan-mark';
+
+export { FileRejectedError, uploadRefusalStatus } from './file-errors';
 
 type Q = DB | Tx;
 
@@ -33,16 +43,14 @@ export interface StoredFileMeta {
   createdByName: string;
   createdByPersonId: string | null;
   createdAt: Date;
+  /** Antivirus verdict (R-175); 'infected' files are blocked. */
+  scanStatus: FileScanStatus;
 }
 
-/** Why an upload was refused. `message` is an EN source sentence with a French entry (translate with t()); `acceptOf(purpose)` lists the types. */
-export class FileRejectedError extends Error {
-  readonly code: 'too_large' | 'empty' | 'type' | 'content' | 'name';
-  constructor(code: FileRejectedError['code'], message: string) {
-    super(message);
-    this.name = 'FileRejectedError';
-    this.code = code;
-  }
+/** A stored file the antivirus flagged (R-175): its record, never its bytes — the download routes answer 410. */
+export interface BlockedStoredFile {
+  blocked: true;
+  meta: StoredFileMeta;
 }
 
 // ── Root folder ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -51,9 +59,8 @@ const g = globalThis as unknown as { __ksFilesRoot?: string | null };
 /** <KEYSTONE_DATA_DIR or ./.data>/files (or the folder set by setFilesRoot). */
 export function filesRoot(): string {
   if (g.__ksFilesRoot) return g.__ksFilesRoot;
-  // turbopackIgnore: the folder is chosen at run time (data dir), it is not part of the build output.
-  const dataDir = process.env.KEYSTONE_DATA_DIR ? path.resolve(/*turbopackIgnore: true*/ process.env.KEYSTONE_DATA_DIR) : path.join(/*turbopackIgnore: true*/ process.cwd(), '.data');
-  return path.join(/*turbopackIgnore: true*/ dataDir, 'files');
+  // turbopackIgnore: the folder is chosen at run time (data dir, src/server/config), it is not part of the build output.
+  return path.join(/*turbopackIgnore: true*/ getConfig().dataDir, 'files');
 }
 
 /** Points the storage at another folder (tests and scripts use a temporary directory); null restores the default. */
@@ -138,15 +145,19 @@ export interface StoreFileInput {
 
 const toMeta = (r: typeof storedFiles.$inferSelect): StoredFileMeta => ({
   id: r.id, purpose: r.purpose, name: r.name, mime: r.mime, sizeBytes: r.sizeBytes, sha256: r.sha256, projectId: r.projectId, ownerType: r.ownerType,
-  ownerId: r.ownerId, createdByName: r.createdByName, createdByPersonId: r.createdByPersonId, createdAt: r.createdAt,
+  ownerId: r.ownerId, createdByName: r.createdByName, createdByPersonId: r.createdByPersonId, createdAt: r.createdAt, scanStatus: r.scanStatus,
 });
 
 /**
  * Checks and stores a file, then records it. Pass the writer's transaction as `q` to record it atomically with the owner;
- * if that transaction rolls back, the bytes stay on disk until `pruneOrphanFiles()`.
+ * if that transaction rolls back, the bytes stay on disk until `pruneOrphanFiles()`. With the antivirus on (R-175) the
+ * bytes must be the Uint8Array `scanUpload` returned (scanned before the transaction); its verdict is recorded.
  */
 export async function storeFile(input: StoreFileInput, q?: Q): Promise<StoredFileMeta> {
   const data = input.data instanceof Uint8Array ? input.data : new Uint8Array(input.data);
+  const mark = scanMarkOf(data);
+  // Fail-closed: a new upload path that forgot the scan stores nothing while the antivirus is on.
+  if (!mark && getConfig().fileScan.mode === 'clamav') throw new Error('storeFile: the bytes were not checked by the antivirus (call scanUpload first)');
   const { ext, mime, name } = checkUpload(input.purpose, input.name, data.byteLength, data);
   const id = randomUUID();
   const now = new Date();
@@ -164,6 +175,7 @@ export async function storeFile(input: StoreFileInput, q?: Q): Promise<StoredFil
       .values({
         id, purpose: input.purpose, name, mime, sizeBytes: data.byteLength, sha256, storagePath: rel, projectId: input.projectId ?? null,
         ownerType: input.ownerType ?? null, ownerId: input.ownerId ?? null, createdByName: input.actor.name, createdByPersonId: input.actor.personId ?? null, createdAt: now,
+        scanStatus: mark?.status ?? 'unscanned', scannedAt: mark?.at ?? null,
       })
       .returning();
     return toMeta(row);
@@ -171,12 +183,6 @@ export async function storeFile(input: StoreFileInput, q?: Q): Promise<StoredFil
     await fs.rm(abs, { force: true });
     throw e;
   }
-}
-
-/** Stores a `File` received by a Server Function (FormData). Size and type are checked before the bytes are read. */
-export async function storeUploadedFile(file: File, opts: Omit<StoreFileInput, 'name' | 'data'>, q?: Q): Promise<StoredFileMeta> {
-  checkUpload(opts.purpose, file.name, file.size);
-  return storeFile({ ...opts, name: file.name, data: new Uint8Array(await file.arrayBuffer()) }, q);
 }
 
 /** Metadata of a stored file, or null. */
@@ -198,10 +204,11 @@ async function absPathOf(id: string, q?: Q): Promise<{ meta: StoredFileMeta; abs
   return { meta: toMeta(r), abs };
 }
 
-/** Bytes and metadata of a stored file; null when unknown or missing on disk. */
-export async function readStoredFile(id: string, q?: Q): Promise<{ meta: StoredFileMeta; data: Buffer } | null> {
+/** Bytes and metadata of a stored file; `{ blocked: true }` when the antivirus flagged it (R-175); null when unknown or missing on disk. */
+export async function readStoredFile(id: string, q?: Q): Promise<{ blocked?: false; meta: StoredFileMeta; data: Buffer } | BlockedStoredFile | null> {
   const f = await absPathOf(id, q);
   if (!f) return null;
+  if (f.meta.scanStatus === 'infected') return { blocked: true, meta: f.meta };
   try {
     return { meta: f.meta, data: await fs.readFile(f.abs) };
   } catch {
@@ -209,17 +216,18 @@ export async function readStoredFile(id: string, q?: Q): Promise<{ meta: StoredF
   }
 }
 
-/** Text content of a stored text file (transcripts, CSV, XML, XER), UTF-8 with the BOM removed. */
-export async function readStoredText(id: string, q?: Q): Promise<{ meta: StoredFileMeta; text: string } | null> {
+/** Text content of a stored text file (transcripts, CSV, XML, XER), UTF-8 with the BOM removed; `{ blocked: true }` when flagged. */
+export async function readStoredText(id: string, q?: Q): Promise<{ blocked?: false; meta: StoredFileMeta; text: string } | BlockedStoredFile | null> {
   const f = await readStoredFile(id, q);
-  if (!f) return null;
+  if (!f || f.blocked) return f;
   return { meta: f.meta, text: f.data.toString('utf8').replace(/^\uFEFF/, '') };
 }
 
-/** Streams a stored file (large downloads). */
-export async function streamStoredFile(id: string, q?: Q): Promise<{ meta: StoredFileMeta; stream: ReadableStream<Uint8Array> } | null> {
+/** Streams a stored file (large downloads); `{ blocked: true }` when the antivirus flagged it (R-175). */
+export async function streamStoredFile(id: string, q?: Q): Promise<{ blocked?: false; meta: StoredFileMeta; stream: ReadableStream<Uint8Array> } | BlockedStoredFile | null> {
   const f = await absPathOf(id, q);
   if (!f) return null;
+  if (f.meta.scanStatus === 'infected') return { blocked: true, meta: f.meta };
   try {
     await fs.access(f.abs);
   } catch {
@@ -254,12 +262,22 @@ export async function deleteStoredFile(id: string, q?: Q): Promise<boolean> {
   return true;
 }
 
-/** Removes files on disk that no stored_files row references (left by rolled-back transactions). Returns their count. */
-export async function pruneOrphanFiles(): Promise<number> {
+/**
+ * A file younger than this is never pruned (R-010): storeFile writes the bytes before the transaction recording them commits,
+ * so a file just written may not be visible yet to the prune's read.
+ */
+export const ORPHAN_GRACE_MS = 60 * 60_000;
+
+/**
+ * Removes files on disk that no stored_files row references (left by rolled-back transactions). Returns their count.
+ * `graceMs` (R-006 worker job "orphan-files-prune": 24 h) spares recent files, never less than ORPHAN_GRACE_MS: an upload
+ * writes its bytes before its record is committed, so a file younger than that may still be on its way. The records are read
+ * after the files are listed, so a record committed meanwhile protects its file.
+ */
+export async function pruneOrphanFiles(opts: { graceMs?: number; now?: number } = {}): Promise<number> {
   const root = filesRoot();
-  const db = await getDb();
-  const known = new Set((await db.select({ p: storedFiles.storagePath }).from(storedFiles)).map((r) => r.p));
-  let removed = 0;
+  const now = opts.now ?? Date.now();
+  const files: { rel: string; abs: string; mtimeMs: number }[] = [];
   const walk = async (dir: string): Promise<void> => {
     let entries: import('node:fs').Dirent[];
     try {
@@ -270,17 +288,55 @@ export async function pruneOrphanFiles(): Promise<number> {
     for (const e of entries) {
       const abs = path.join(/*turbopackIgnore: true*/ dir, e.name);
       if (e.isDirectory()) await walk(abs);
-      else if (!known.has(path.relative(root, abs).split(path.sep).join('/'))) {
-        await fs.rm(abs, { force: true });
-        removed++;
+      else if (e.isFile()) {
+        const st = await fs.stat(abs).catch(() => null);
+        if (st) files.push({ rel: path.relative(root, abs).split(path.sep).join('/'), abs, mtimeMs: st.mtimeMs });
       }
     }
   };
   await walk(root);
+  const db = await getDb();
+  const known = new Set((await db.select({ p: storedFiles.storagePath }).from(storedFiles)).map((r) => r.p));
+  let removed = 0;
+  for (const f of orphanFilesToPrune(files, known, now, Math.max(opts.graceMs ?? 0, ORPHAN_GRACE_MS))) {
+    await fs.rm(f.abs, { force: true });
+    removed++;
+  }
   return removed;
 }
 
 /** HTTP response serving a file (attachment by default; `inline` for PDFs and images shown in the browser). */
+/**
+ * Multipart body of an upload request read with a byte cap: `request.formData()` alone buffers the whole body, and a chunked
+ * request has no Content-Length to check first. Returns null as soon as the body exceeds `maxBytes` (the stream is
+ * cancelled), else the parsed form. Throws on a malformed body, like `formData()`.
+ */
+export async function readFormDataCapped(request: Request, maxBytes: number): Promise<FormData | null> {
+  const declared = Number(request.headers.get('content-length') ?? NaN);
+  if (Number.isFinite(declared) && declared > maxBytes) return null;
+  if (!request.body) return request.formData();
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => undefined);
+      return null;
+    }
+    chunks.push(value);
+  }
+  const body = new Uint8Array(total);
+  let at = 0;
+  for (const c of chunks) {
+    body.set(c, at);
+    at += c.byteLength;
+  }
+  return new Response(body, { headers: { 'content-type': request.headers.get('content-type') ?? '' } }).formData();
+}
+
 export function fileResponse(meta: Pick<StoredFileMeta, 'name' | 'mime' | 'sizeBytes'>, body: BodyInit, opts: { inline?: boolean } = {}): Response {
   return new Response(body, {
     headers: {

@@ -1,8 +1,8 @@
 'use server';
 // Administration Server Functions: Settings — personalisable lists (docs/spec/10 §1.5: add / remove entries, location
 // type, health thresholds, "Reset to defaults"), Standard machine types (09 §9: identity card, payment pattern, phases,
-// ITP systems, cost categories, REX references, "New machine type") and Activity & integrations (10 §2: "Sync now",
-// "Add connector"). Each one checks the viewer may edit the screen (roles with the screen in their workspace — the
+// ITP systems, cost categories, REX references, "New machine type") and Activity & integrations (10 §2: "Sync now"; the
+// connectors themselves are configured by IT outside Keystone — D-7a, R-020: no "Add connector" any more). Each one checks the viewer may edit the screen (roles with the screen in their workspace — the
 // "Outside my workspace · Read-only" rule; machine types: `mtCanEdit` = director, PM, engineering lead, quality, the same
 // roles), validates the raw input with the domain parsers, writes through the DAL with the viewer as the actor (the DAL
 // re-checks the workspace and records the audit row), then revalidates the app (lists used by other screens, badges).
@@ -14,13 +14,18 @@ import {
 } from '@/domain/admin';
 import { isoOfDisplayDate, locationType, type CalendarCode, type CostType } from '@/server/db/codes';
 import { listAdminConnectors, syncAdminConnector } from '@/server/dal/admin-connectors';
-import { ADDABLE_SYSTEMS, CONNECTOR_FREQUENCIES, addConnector } from '@/server/dal/integrations';
+import { ConnectorDisabledError } from '@/server/dal/integrations';
 import {
   createMachineType, getMachineType, removeRexReference, setMachineTypeCostCategories, setMachineTypeItpSystems, setMachineTypePhases, updateMachineType,
   type MachineTypePatch,
 } from '@/server/dal/mtypes';
 import type { Actor } from '@/server/dal/ops-common';
-import { addLocation, addReferenceValue, getHealthThresholds, removeLocation, removeReferenceValue, resetSettings, setHealthThresholds } from '@/server/dal/settings';
+import {
+  CCB_THRESHOLD_ERROR, HOURS_VARIANCE_RANGE, addLocation, addReferenceValue, getHealthThresholds, removeLocation, removeReferenceValue, resetSettings, setCcbThreshold, setHealthThresholds, setHoursVariance,
+} from '@/server/dal/settings';
+import { isCcbThreshold } from '@/domain/change-control';
+import { parseHoursVarianceInput } from '@/domain/hr';
+import { translateMessage } from '@/server/interchange/messages';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { canEditSettings, SETTINGS_DIRECTOR_ONLY } from '@/domain/settings-rules';
@@ -155,6 +160,39 @@ export async function setHealthThresholdAction(which: unknown, raw: unknown): Pr
   if (err) return fail(err);
   try {
     await setHealthThresholds({ [which]: v }, ok.actor);
+  } catch (e) {
+    return failure(e);
+  }
+  refresh();
+  return { ok: true };
+}
+
+/** R-088 (R-6b): "Hours variance threshold (%)" — an integer 1–50 (the portfolio director, A-14); the Hours screen follows it. */
+export async function setHoursVarianceAction(raw: unknown): Promise<AdminActionResult> {
+  const ok = await settingsEditor();
+  if ('error' in ok) return ok;
+  const pct = parseHoursVarianceInput(raw);
+  if (pct === null) return fail(HOURS_VARIANCE_RANGE);
+  try {
+    await setHoursVariance(pct, ok.actor);
+  } catch (e) {
+    return failure(e);
+  }
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * Delivery 8 (R-069, P-6c): "Change control board above (k€)" — a number of k€, 0 or more; the director only. It applies to the
+ * change requests submitted afterwards (the steps are fixed at submission).
+ */
+export async function setCcbThresholdAction(raw: unknown): Promise<AdminActionResult> {
+  const ok = await settingsEditor();
+  if ('error' in ok) return ok;
+  const v = parseThresholdInput(raw);
+  if (v === null || !isCcbThreshold(v)) return fail(CCB_THRESHOLD_ERROR);
+  try {
+    await setCcbThreshold(v, ok.actor);
   } catch (e) {
     return failure(e);
   }
@@ -300,7 +338,7 @@ export async function createMachineTypeAction(values: FormValues): Promise<Admin
 
 // ── Activity & integrations ────────────────────────────────────────────────────────────────────────────
 
-/** "Sync now" of a connector row (Codex index, Vigie and Cursus connectors for real; the others simulated). */
+/** "Sync now" of a connector row (Codex index, Vigie and Cursus connectors for real; the others simulated; refused when disabled). */
 export async function syncConnectorAction(name: unknown): Promise<AdminActionResult> {
   const ok = await editor('plumbing');
   if ('error' in ok) return ok;
@@ -311,25 +349,8 @@ export async function syncConnectorAction(name: unknown): Promise<AdminActionRes
     const { t, lang } = await getI18n();
     return r.ok ? { ok: true, toast: syncToastT(name, r, t, lang) } : { error: syncToastT(name, r, t, lang) };
   } catch (e) {
+    // D-7a: a connector disabled by IT is not synchronised (checked in the DAL `syncConnector`).
+    if (e instanceof ConnectorDisabledError) return { error: translateMessage(e.message, (await getI18n()).t) };
     return failure(e);
   }
-}
-
-/** Header primary "Add connector" (AF.plumbing): `system`, `direction` (code), `freq`, `owner`. */
-export async function addConnectorAction(values: FormValues): Promise<AdminActionResult> {
-  const ok = await editor('plumbing');
-  if ('error' in ok) return ok;
-  if (!values || typeof values !== 'object') return fail('Invalid request');
-  const { system, direction, freq, owner } = values;
-  if (!isText(system, 80) || !ADDABLE_SYSTEMS.includes(system)) return fail('Invalid request');
-  if (direction !== 'import' && direction !== 'export' && direction !== 'both') return fail('Invalid direction');
-  if (!isText(freq, 40) || !CONNECTOR_FREQUENCIES.includes(freq)) return fail('Invalid frequency');
-  if (!isText(owner ?? '', 120)) return fail('Invalid request');
-  try {
-    await addConnector({ system, direction, frequency: freq, owner: owner ?? null }, ok.actor);
-  } catch (e) {
-    return failure(e);
-  }
-  refresh();
-  return { ok: true, toast: await tr('Connector added · first sync scheduled') };
 }

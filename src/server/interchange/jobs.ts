@@ -4,17 +4,20 @@ import 'server-only';
 // plan still matches the preview, writes the business rows, marks the job imported and writes audit + activity.
 //
 // Rights are checked at every step (./rights.ts): the viewer's role, project ownership for the PM, and the job's author (a job
-// is continued only by the persona who started it). Messages are EN source sentences (./messages.ts); the screen translates them.
+// is continued only by the persona who started it). D-7b: while IMPORTS_ENABLED (src/domain/ch4-defaults.ts) is off, every step
+// is refused (cancelling a job stays possible). Messages are EN source sentences (./messages.ts); the screen translates them.
 import type { RoleKey } from '@/config/screens';
+import { IMPORTS_ENABLED, IMPORTS_OFF_MESSAGE } from '@/domain/ch4-defaults';
 import { getDb } from '@/server/db/client';
 import type { ImportJobStatus, ImportKind, ImportMode, ImportRowAction, ImportRowStatus } from '@/server/db/codes';
 import { importKind } from '@/server/db/codes';
 import {
   cancelImportJob, createImportJob, getImportJob, getImportJobRows, markImportJobApplied, markImportJobFailed, saveImportPreview, setImportJobMapping, type ImportJobView,
 } from '@/server/dal/import-jobs';
-import { getProject, listProjects } from '@/server/dal/projects';
+import { getProject, listProjects, type ProjectRow } from '@/server/dal/projects';
 import { readXlsx } from '@/server/export/xlsx';
 import { FileRejectedError, readStoredFile, setFileOwner, storeFile } from '@/server/storage/files';
+import { SCAN_MESSAGES, scanUpload } from '@/server/storage/scan';
 import { fmt } from './messages';
 import { parseMspdi } from './mspdi';
 import { INTERCHANGE_DEFAULTS } from './defaults';
@@ -25,11 +28,23 @@ import { TABLE_FIELDS, autoMapping, columnNames, decodeText, detectHeaderRow, de
 import { planTableImport, writeTableImport } from './table-import';
 import { parseXer } from './xer';
 import type { ImportedSchedule } from './model';
+import { projectAccess } from '@/domain/rights';
+import { listProjectTeams } from '@/server/dal/project-team';
 
 export interface ImportViewer {
   name: string;
   short: string;
   role: RoleKey;
+  /** The viewer's person (signed-in users) and client organisation — the project team rights (R-041). */
+  personId?: string | null;
+  organisation?: string | null;
+}
+
+/** The viewer's rights on a project for the import rules (R-041). */
+async function importRel(viewer: ImportViewer): Promise<(p: ProjectRow) => { member: boolean; lead: boolean }> {
+  const teams = await listProjectTeams();
+  const v = { role: viewer.role, name: viewer.name, short: viewer.short, personId: viewer.personId ?? null, organisation: viewer.organisation ?? null };
+  return (p) => projectAccess(v, { client: p.client, pm: p.pm, pmPersonId: p.pmPersonId, team: teams.get(p.code) ?? [] });
 }
 
 /** One preview row as the dialog shows it. */
@@ -103,13 +118,14 @@ export interface StartImportInput {
 
 /** May the viewer import `kind` into `projectCode`? EN refusal or null. */
 async function refusal(viewer: ImportViewer, kind: ImportKind, mode: ImportMode, projectCode: string | null): Promise<string | null> {
-  let own: boolean | null = null;
+  if (!IMPORTS_ENABLED) return IMPORTS_OFF_MESSAGE;
+  let rel: { member: boolean; lead: boolean } | null = null;
   if (projectCode) {
     const p = await getProject(projectCode);
     if (!p) return 'Unknown project';
-    own = viewer.role === 'director' || p.pm === viewer.short;
+    rel = (await importRel(viewer))(p);
   } else if (!(isScheduleKind(kind) && mode === 'new') && kind !== 'parts') return 'Choose the project to update';
-  return canImport(viewer.role, kind, own) ? null : 'You may not import this file into this project';
+  return canImport(viewer.role, kind, rel) ? null : 'You may not import this file into this project';
 }
 
 /** Detects MS Project XML vs P6 XER from the content (the drop zone may be the other card's). */
@@ -189,6 +205,8 @@ async function mappingView(job: ImportJobView, kind: TableKind, t: ReadTable): P
 async function fileOf(job: ImportJobView): Promise<Uint8Array> {
   const f = job.fileId ? await readStoredFile(job.fileId) : null;
   if (!f) throw new Error(fmt('The file could not be read'));
+  // R-175: a file the antivirus flagged since the upload is never parsed.
+  if (f.blocked) throw new Error(SCAN_MESSAGES.blocked);
   return new Uint8Array(f.data.buffer, f.data.byteOffset, f.data.byteLength);
 }
 
@@ -197,10 +215,12 @@ const errorOf = (e: unknown) => (e instanceof FileRejectedError || e instanceof 
 
 /** Step 1: stores the file, records the job and parses it (schedule → preview; table → column mapping). */
 export async function startImport(input: StartImportInput, viewer: ImportViewer): Promise<ImportStep> {
+  if (!IMPORTS_ENABLED) return { ok: false, error: IMPORTS_OFF_MESSAGE };
   let kind: ImportKind;
   if (input.kind === 'schedule') {
+    // Either schedule card accepts both formats (the kind is detected from the content), so the message names both.
     const k = scheduleKindOf(input.fileName, decodeText(input.data.subarray(0, 8192)));
-    if (!k) return { ok: false, error: 'The file is not an MS Project XML file (MSPDI)' };
+    if (!k) return { ok: false, error: 'The file is neither an MS Project XML file (MSPDI) nor a Primavera P6 XER file' };
     kind = k;
   } else if (isTableKind(input.kind)) kind = input.kind;
   else return { ok: false, error: 'Invalid request' };
@@ -209,7 +229,9 @@ export async function startImport(input: StartImportInput, viewer: ImportViewer)
   if (refused) return { ok: false, error: refused };
   let fileId: string;
   try {
-    const meta = await storeFile({ purpose: 'import', name: input.fileName, data: input.data, actor: { name: viewer.name } });
+    // R-175: checked by the antivirus before it is stored (infected or scanner unavailable → the refusal's message).
+    const data = await scanUpload(input.data, { purpose: 'import', name: input.fileName, actor: { name: viewer.name, personId: viewer.personId ?? null }, objectRef: 'Import' });
+    const meta = await storeFile({ purpose: 'import', name: input.fileName, data, actor: { name: viewer.name } });
     fileId = meta.id;
   } catch (e) {
     return { ok: false, error: errorOf(e) };
@@ -247,6 +269,7 @@ async function previewSchedule(job: ImportJobView): Promise<ImportStep> {
 
 /** The job if this viewer may continue it, else an EN refusal. */
 async function ownJob(jobId: string, viewer: ImportViewer, statuses: ImportJobStatus[]): Promise<ImportJobView | string> {
+  if (!IMPORTS_ENABLED) return IMPORTS_OFF_MESSAGE;
   const job = typeof jobId === 'string' ? await getImportJob(jobId) : null;
   if (!job || job.createdByName !== viewer.name) return 'Unknown import';
   if (!statuses.includes(job.status)) return job.status === 'applied' ? 'This import is already imported' : job.status === 'cancelled' ? 'This import is cancelled' : 'Preview the import before confirming it';
@@ -368,12 +391,12 @@ export async function cancelImport(jobId: string, viewer: ImportViewer): Promise
 
 /** Projects offered by the import dialogs for this viewer and kind (with planning data for schedules / assignments). */
 export async function importTargets(viewer: ImportViewer): Promise<Record<ImportKind, { code: string; label: string }[]>> {
-  const all = await listProjects();
+  const [all, rel] = await Promise.all([listProjects(), importRel(viewer)]);
   const out = {} as Record<ImportKind, { code: string; label: string }[]>;
   for (const kind of importKind.codes) {
     out[kind] = all
       .filter((p) => (kind === 'budget_lines' || kind === 'bom' ? true : p.hasData))
-      .filter((p) => canImport(viewer.role, kind, viewer.role === 'director' || p.pm === viewer.short))
+      .filter((p) => canImport(viewer.role, kind, rel(p)))
       .map((p) => ({ code: p.code, label: `${p.displayId} · ${p.name}` }));
   }
   return out;

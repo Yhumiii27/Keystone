@@ -1,7 +1,8 @@
 // Portfolio schedule (docs/spec/05 §3) on a seeded in-memory database: the DAL rows (`getPortfolioSchedule`) through
 // the domain model must reproduce the prototype's own render values (src/domain/pfplan.golden.json, EN and FR, every
 // zone); then the page and its body are rendered to static markup (filter links, zone notice, row links, today line,
-// read-only for every persona).
+// read-only for every persona). L-8 (R-136): the comparisons with the prototype pin its fixed window (`from: 0`,
+// Jan 2026 – Dec 2027); the default sliding window is tested in pfplan.window.test.ts.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 const jar = new Map<string, string>();
 vi.mock('next/headers', () => ({ cookies: async () => ({ get: (k: string) => (jar.has(k) ? { name: k, value: jar.get(k)! } : undefined) }) }));
@@ -12,6 +13,7 @@ import PortfolioSchedulePage from '@/app/(app)/portfolio/schedule/page';
 import { canSee, type RoleKey } from '@/config/screens';
 import { portfolioScheduleModel, type PgFilter, type PgRow } from '@/domain/pfplan';
 import golden from '@/domain/pfplan.golden.json';
+import { D7_PROGRESS_PCT } from '@/test/d7-cost-control';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
@@ -36,7 +38,9 @@ const rowView = (r: PgRow, t: (s: string) => string) => ({
 const goldenView = (g: any) => ({
   code: g.code, name: g.name, pm: g.pm, status: g.status, pipe: g.pipe,
   segs: g.segs.map((s: any) => (s.diamond ? { left: s.left, title: s.title, diamond: true } : { left: s.left, width: s.width, title: s.title, label: s.label })),
-  hasExec: g.hasExec, exL: g.exL, exW: g.exW, exFill: g.exFill, hasBase: g.hasBase, ...(g.hasBase ? { bL: g.bL, bW: g.bW } : {}),
+  // Delivery 7 (R-073, C-2a): the execution fill is the progress computed from the activities (src/test/d7-cost-control.ts).
+  hasExec: g.hasExec, exL: g.exL, exW: g.exW, exFill: !g.pipe && g.hasExec && D7_PROGRESS_PCT[g.code] != null ? `${D7_PROGRESS_PCT[g.code]}%` : g.exFill,
+  hasBase: g.hasBase, ...(g.hasBase ? { bL: g.bL, bW: g.bW } : {}),
   clipText: g.clipText, gate: g.gate, gateSub: g.gateSub, gateColor: g.gateColor,
 });
 
@@ -49,12 +53,12 @@ describe.each(['en', 'fr'] as Lang[])('portfolio schedule on the database vs pro
   it.each(ZONES)('zone %s: KPI tiles, groups, filters and rows', async (zone) => {
     const gz = G[lang].zones[String(zone)];
     const data = await getPortfolioSchedule(zone);
-    const model = portfolioScheduleModel(data, { filter: 'all', lang });
+    const model = portfolioScheduleModel(data, { filter: 'all', lang, from: 0 });
     expect(model.kpis.map((k) => ({ label: t(k.label), value: t(k.value), sub: t(k.sub), color: KPI_TINT[k.tint] }))).toEqual(
       gz.kpis.map((k: any) => ({ ...k, value: String(k.value) })),
     );
     expect(model.groups.map((g) => ({ key: g.key, label: t(g.label), count: g.count, codes: g.rows.map((r) => r.code) }))).toEqual(gz.groups);
-    for (const f of ['all', 'exec', 'pipe'] as PgFilter[]) expect(portfolioScheduleModel(data, { filter: f, lang }).groups.map((g) => g.key)).toEqual(gz.filters[f]);
+    for (const f of ['all', 'exec', 'pipe'] as PgFilter[]) expect(portfolioScheduleModel(data, { filter: f, lang, from: 0 }).groups.map((g) => g.key)).toEqual(gz.filters[f]);
     for (const r of model.groups.flatMap((g) => g.rows)) expect(rowView(r, t)).toEqual(goldenView(G[lang].rows[r.code]));
     expect([model.empty, gz.zoneEmpty]).toEqual([false, false]);
   });
@@ -63,8 +67,8 @@ describe.each(['en', 'fr'] as Lang[])('portfolio schedule on the database vs pro
 describe('portfolio schedule body', () => {
   it('French: header, legend, KPI tiles, groups, row links, gates, clip and today line', async () => {
     const t = makeT('fr');
-    const model = portfolioScheduleModel(await getPortfolioSchedule(null), { filter: 'all', lang: 'fr' });
-    const html = renderToStaticMarkup(h(PfPlanBody, { model, filter: 'all', zoneSelected: false, t }));
+    const model = portfolioScheduleModel(await getPortfolioSchedule(null), { filter: 'all', lang: 'fr', from: 0 });
+    const html = renderToStaticMarkup(h(PfPlanBody, { model, filter: 'all', zoneSelected: false, t, lang: 'fr' }));
     const txt = text(html);
     for (const s of [
       'Étape', 'Tous', 'En cours', 'Pipeline', 'Projets en cours', '14,35 M€', 'Projets dans le pipe', '13,08 M€', 'Décisions groupe en attente', 'EWA-051',
@@ -82,8 +86,11 @@ describe('portfolio schedule body', () => {
     // Projects with planning data open their Plan; the others open the Projects register searched by code.
     for (const c of ['HLT-026', 'NDC-031', 'RCF-019', 'ERP-202', 'MSR-012', 'WSA-044']) expect(html).toContain(`href="/projects/${c}/plan"`);
     for (const c of ['PRS-038', 'ALP-021', 'EWA-051', 'FTU-052', 'RBR-048', 'CER-047']) expect(html).toContain(`href="/portfolio/projects?q=${c}"`);
-    expect(html).toContain('href="/portfolio/schedule?filter=exec"');
-    expect(html).toContain('href="/portfolio/schedule?filter=pipe"');
+    // L-8 (R-136): the filter links keep the window shown — pinned here to the prototype's Jan 2026 (`?from=2026-01`);
+    // "Today" goes back to the default window (no `?from=`).
+    expect(html).toContain('href="/portfolio/schedule?filter=exec&amp;from=2026-01"');
+    expect(html).toContain('href="/portfolio/schedule?filter=pipe&amp;from=2026-01"');
+    expect(html).toContain('href="/portfolio/schedule?from=2026-01"');
     expect(html).toContain('href="/portfolio/schedule"');
     expect(html.match(/left:37\.38%/g)?.length).toBe(12);
     expect(html).toContain('title="Board groupe · Décision en attente"');
@@ -94,8 +101,8 @@ describe('portfolio schedule body', () => {
 
   it('pipeline filter keeps the KPI tiles over every row and shows the Pipeline group only', async () => {
     const t = makeT('en');
-    const model = portfolioScheduleModel(await getPortfolioSchedule(null), { filter: 'pipe', lang: 'en' });
-    const txt = text(renderToStaticMarkup(h(PfPlanBody, { model, filter: 'pipe', zoneSelected: false, t })));
+    const model = portfolioScheduleModel(await getPortfolioSchedule(null), { filter: 'pipe', lang: 'en', from: 0 });
+    const txt = text(renderToStaticMarkup(h(PfPlanBody, { model, filter: 'pipe', zoneSelected: false, t, lang: 'en' })));
     expect(txt).toContain('Projects in progress 7 €14.35M');
     expect(txt).toContain('Pipeline 5');
     expect(txt).not.toContain('Harbor Line Terminal Expansion');
@@ -104,7 +111,7 @@ describe('portfolio schedule body', () => {
 
   it('a zone without live project shows the notice (empty tiles, no rows)', async () => {
     const data = { rows: [], averageBoardWaitDays: 28 };
-    const txt = text(renderToStaticMarkup(h(PfPlanBody, { model: portfolioScheduleModel(data, { filter: 'all', lang: 'en' }), filter: 'all', zoneSelected: true, t: makeT('en') })));
+    const txt = text(renderToStaticMarkup(h(PfPlanBody, { model: portfolioScheduleModel(data, { filter: 'all', lang: 'en', from: 0 }), filter: 'all', zoneSelected: true, t: makeT('en'), lang: 'en' })));
     expect(txt).toContain('No project in this zone for this view');
     expect(txt).toContain('Projects in progress 0 €0k');
     expect(txt).toContain('Group decisions pending 0 —');

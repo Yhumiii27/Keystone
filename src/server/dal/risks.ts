@@ -1,15 +1,19 @@
 import 'server-only';
-// Risk register DAL (docs/spec/07 §2.1, 11 §3.7): risks with derived score / level / cost-if-occurs, linked
-// activity (float for the "On critical path" KPI), the category chips in Settings order, the contingency the
-// exposure is compared with, and the writers of the register (add risk, drawer edits, close / reopen).
+// Risk register DAL (docs/spec/07 §2.1, 11 §3.7): risks with derived score / level / EMV, linked activity (float for the
+// "On critical path" KPI), the category chips in Settings order, the contingency the exposure is compared with, and the
+// writers of the register (add risk, drawer edits, close / reopen).
+// Delivery 7 (R-072, owner decision Q-1): the cost if the risk occurs is stored; EMV = cost × P / 5 is derived on every read,
+// so the register, the exposure KPI, the Contingency register and the exports follow a change of probability.
 import { and, asc, eq, sql } from 'drizzle-orm';
+import { costIfOccurs, costOfLegacyEmv, emvOf } from '@/domain/risk';
 import { getDb } from '@/server/db/client';
 import {
-  riskCategory, riskCostIfOccurs, riskLevel, riskLevelOf, riskResponse, riskScore, riskStatus,
+  riskCategory, riskLevel, riskLevelOf, riskResponse, riskScore, riskStatus,
   type RiskCategory, type RiskLevel, type RiskResponse, type RiskStatus, type RiskTrend,
 } from '@/server/db/codes';
 import { findPerson, nameOf, nextNumber, requireProject, writeAudit } from '@/server/db/helpers';
 import { activities, persons, projectControls, projects, risks, wbsNodes } from '@/server/db/schema';
+import type { Tx } from '@/server/db/types';
 import { settingsEntries } from './settings-lists';
 
 export interface LinkedActivity {
@@ -45,9 +49,9 @@ export interface RiskRow {
   responseLabel: string;
   plan: string;
   activity: LinkedActivity | null;
-  /** Expected monetary value, k€ (0 → the screens show "—"). */
+  /** Expected monetary value, k€ = cost × P / 5 (Q-1; 0 → the screens show "—"). */
   emv: number;
-  /** Contingency draw if it occurs = round(EMV / (P/5)); null when EMV is 0. */
+  /** Cost if it occurs = the contingency draw if it occurs, k€ (entered, Q-1); null when none. */
   costIfOccurs: number | null;
   trigger: string;
   status: RiskStatus;
@@ -77,6 +81,9 @@ export interface RiskRegister {
   bac: number;
 }
 
+/** Cost if it occurs of a stored risk; a row not backfilled yet falls back to its legacy EMV (Q-1). */
+const costOf = (r: { costKeur: number | null; emvKeur: number | null; probability: number }) => r.costKeur ?? costOfLegacyEmv(r.emvKeur, r.probability);
+
 /** Risks of a project (empty for projects without a register). */
 export async function listRisks(projectCode: string): Promise<RiskRow[]> {
   const db = await getDb();
@@ -103,21 +110,21 @@ export async function listRisks(projectCode: string): Promise<RiskRow[]> {
       score, level, levelLabel: riskLevel.label(level), owner: ownerFull ?? ownerShort, ownerShort,
       response: r.response, responseLabel: riskResponse.label(r.response), plan: r.responsePlan,
       activity: actCode ? { code: actCode, name: actName!, wbs: actWbs!, totalFloat: actFloat, pct: actPct! } : null,
-      emv: r.emvKeur, costIfOccurs: riskCostIfOccurs(r.emvKeur, r.probability), trigger: r.trigger,
+      emv: emvOf(costOf(r), r.probability), costIfOccurs: costIfOccurs(costOf(r)), trigger: r.trigger,
       status: r.status, statusLabel: riskStatus.label(r.status), trend: r.trend,
     };
   });
 }
 
-/** Σ EMV of the open risks of a project (Risk KPI "Exposure", Contingency "Exposure", Trends risk series). */
+/** Σ EMV of the open risks of a project (Risk KPI "Exposure", Contingency "Exposure", Trends risk series), k€. */
 export async function getOpenRiskExposure(projectCode: string): Promise<number> {
   const db = await getDb();
-  const [r] = await db
-    .select({ emv: sql<string | null>`sum(${risks.emvKeur})` })
+  const rows = await db
+    .select({ costKeur: risks.costKeur, emvKeur: risks.emvKeur, probability: risks.probability })
     .from(risks)
     .innerJoin(projects, eq(projects.id, risks.projectId))
     .where(and(eq(projects.code, projectCode), eq(risks.status, 'open')));
-  return Number(r?.emv ?? 0);
+  return Math.round(rows.reduce((a, r) => a + emvOf(costOf(r), r.probability), 0) * 100) / 100;
 }
 
 /** Everything the Risk register screen reads; null for an unknown project. */
@@ -138,7 +145,7 @@ export async function getRiskRegister(projectCode: string): Promise<RiskRegister
       ...list.map((r) => ({ code: r.category, label: r.categoryLabel }))]
       .filter((c, i, all) => all.findIndex((x) => x.code === c.code) === i)
       .map((c) => ({ ...c, count: list.filter((r) => r.category === c.code).length })),
-    openEmv: list.filter((r) => r.status === 'open').reduce((a, r) => a + r.emv, 0),
+    openEmv: Math.round(list.filter((r) => r.status === 'open').reduce((a, r) => a + r.emv, 0) * 100) / 100,
     contingency: p.cont ?? null, bac: p.bac,
   };
 }
@@ -155,20 +162,22 @@ export interface NewRiskInput {
   owner?: string | null;
   response: RiskResponse;
   plan?: string;
-  emvKeur?: number;
+  /** Cost if it occurs, k€ (Q-1); the EMV is derived. */
+  costKeur?: number;
   trigger?: string;
   activityCode?: string | null;
 }
 
 const clamp15 = (v: number | undefined) => Math.max(1, Math.min(5, Math.round(v ?? 3) || 3));
+/** A cost of 0 or more, two decimals (k€). */
+const cost2 = (v: number | undefined) => (v != null && Number.isFinite(v) ? Math.max(0, Math.round(v * 100) / 100) : 0);
 
 /**
  * Adds a risk to a project's register (AF.risks): number R-21… (global sequence, OPEN QUESTION Q-7), status
  * Open, trend flat, prepended to the register. Returns the new number.
  */
-export async function createRisk(projectCode: string, input: NewRiskInput, actorName: string): Promise<string> {
-  const db = await getDb();
-  return db.transaction(async (tx) => {
+export async function createRisk(projectCode: string, input: NewRiskInput, actorName: string, inTx?: Tx): Promise<string> {
+  const run = async (tx: Tx) => {
     const p = await requireProject(tx, projectCode);
     const number = await nextNumber(tx, risks, risks.number, 'R-', 2, 20);
     const [{ minOrder }] = await tx
@@ -187,7 +196,7 @@ export async function createRisk(projectCode: string, input: NewRiskInput, actor
       .values({
         projectId: p.id, number, title: input.title.trim(), category: input.category, probability: clamp15(input.probability), impact: clamp15(input.impact),
         ownerPersonId: owner?.id ?? null, response: input.response, responsePlan: input.plan?.trim() || '—', activityId,
-        emvKeur: Math.max(0, Math.round(input.emvKeur ?? 0)), trigger: input.trigger?.trim() || '—', status: 'open', trend: 'flat', sortOrder: minOrder - 1,
+        costKeur: cost2(input.costKeur), emvKeur: null, trigger: input.trigger?.trim() || '—', status: 'open', trend: 'flat', sortOrder: minOrder - 1,
       })
       .returning({ id: risks.id });
     await writeAudit(tx, {
@@ -195,7 +204,9 @@ export async function createRisk(projectCode: string, input: NewRiskInput, actor
       area: 'Risks', entityType: 'risk', entityId: row.id, projectId: p.id,
     });
     return number;
-  });
+  };
+  // `inTx`: part of a caller's transaction (a risk registered from a meeting transcript proposal, marked applied with it).
+  return inTx ? run(inTx) : (await getDb()).transaction(run);
 }
 
 export interface RiskPatch {
@@ -207,7 +218,8 @@ export interface RiskPatch {
   title?: string;
   plan?: string;
   owner?: string | null;
-  emvKeur?: number;
+  /** Cost if it occurs, k€ (Q-1). */
+  costKeur?: number;
   trigger?: string;
 }
 
@@ -240,10 +252,15 @@ export async function updateRisk(projectCode: string, riskNumber: string, patch:
     if (patch.title?.trim() && patch.title.trim() !== r.title) set.title = patch.title.trim();
     if (patch.plan != null && patch.plan.trim() !== r.responsePlan) set.responsePlan = patch.plan.trim() || '—';
     if (patch.trigger != null && patch.trigger.trim() !== r.trigger) set.trigger = patch.trigger.trim() || '—';
-    if (patch.emvKeur != null && Math.round(patch.emvKeur) !== r.emvKeur) {
-      set.emvKeur = Math.max(0, Math.round(patch.emvKeur));
-      changes.push(`EMV: ${r.emvKeur} → ${set.emvKeur} k€`);
-    }
+    const oldCost = costOf(r);
+    if (patch.costKeur != null && cost2(patch.costKeur) !== oldCost) {
+      set.costKeur = cost2(patch.costKeur);
+      changes.push(`cost if it occurs: ${oldCost} → ${set.costKeur} k€`);
+    } else if (r.costKeur == null) set.costKeur = oldCost;
+    // Q-1: the EMV follows the cost and the probability.
+    const newEmv = emvOf(set.costKeur ?? oldCost, set.probability ?? r.probability);
+    const oldEmv = emvOf(oldCost, r.probability);
+    if (newEmv !== oldEmv) changes.push(`EMV: ${oldEmv} → ${newEmv} k€`);
     if (patch.owner !== undefined) set.ownerPersonId = (await findPerson(tx, patch.owner))?.id ?? null;
     await tx.update(risks).set(set).where(eq(risks.id, r.id));
     if (changes.length) {

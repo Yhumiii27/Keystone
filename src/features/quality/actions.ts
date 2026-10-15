@@ -4,22 +4,27 @@
 //   Containment") or the quality manager's verification (close / back to corrective action) — through the Vigie
 //   connector's outbox (src/server/dal/quality.ts → integrations/vigie), "pending sync with Vigie" until Vigie takes it.
 //   No Server Function creates or edits an NCR ("New NCR" opens Vigie's report form).
-// - Deliverables are Keystone's: Start / To internal review / Submit to client (the project team, not the client), the
-//   client's acceptance (PV) or rejection with comments (a client contact of the project's client organisation), and
-//   the link to the issued document in the Codex index.
+// - Deliverables are Keystone's: Start / To internal review / Submit to client / Start next revision after a rejection
+//   (the project team, not the client; R-114), the client's acceptance (PV) or rejection with comments (a client contact
+//   of the project's client organisation), the link to the issued document in the Codex index, and "New deliverable"
+//   (the project's manager or the director; R-115).
 // Each function validates the raw input, checks the viewer server-side with the screen's rules (src/domain/quality.ts:
 // not outside the workspace, project not read-only, the role / person that holds the step), writes with the viewer as
 // the actor, then revalidates (screen, sidebar badge, My approvals, Home). Messages are English source strings: the
 // client shows them with toast `showEn` (FormDialog results are translated here).
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
-import { deliverableActionFor, ncrActionFor, ncrRequestText, producerNextOf, type ProducerTarget } from '@/domain/quality';
+import { DELIVERABLE_CREATOR_ROLES, deliverableActionFor, ncrActionFor, ncrRequestText, parseNewDeliverable, producerNextOf, type ProducerTarget } from '@/domain/quality';
 import { NCR_VERIFIER_ROLES, deliverableStatus, ncrStatus, vigieSyncStatus, type NcrStatus } from '@/server/db/codes';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { getProject } from '@/server/dal/projects';
-import { advanceNcr, decideDeliverable, getDeliverable, getNcr, linkDeliverableDocument, moveDeliverable, verifyNcr } from '@/server/dal/quality';
+import {
+  advanceNcr, createDeliverable, decideDeliverable, deliverableWbsOptions, getDeliverable, getNcr, linkDeliverableDocument, listDeliverableTypes, moveDeliverable, verifyNcr,
+} from '@/server/dal/quality';
+import { teamOwnerOptions } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { logError } from '@/server/log';
 
 export type QualityResult = { ok: true; toast: string } | { ok: false; error: string };
 
@@ -35,7 +40,11 @@ const NOT_YOURS = 'This decision is not waiting for you any more';
 const FAILED = 'The progress could not be recorded';
 const NOT_SAVED = 'The change could not be saved';
 
-const NCR_NUMBER = /^NCR-\d{2,}$/i;
+/**
+ * An NCR reference: the demo numbers ("NCR-029") and Vigie's own event numbers ("EV-2026-130"; V-3a, R-023) — letters,
+ * then one to four dash-separated groups of letters and digits. Nothing else (no space, slash or dot) reaches the DAL.
+ */
+const NCR_NUMBER = /^[A-Z]{1,10}(?:-[A-Z0-9]{1,12}){1,4}$/i;
 const DLV_NUMBER = /^D-\d{2,}$/i;
 const PRODUCER_TARGETS: readonly ProducerTarget[] = ['in_progress', 'internal_review', 'submitted'];
 
@@ -92,7 +101,7 @@ export async function advanceNcrAction(input: { projectCode: string; number: str
     refreshAll();
     return { ok: true, toast: `${n.number} · ${ncrRequestText({ kind: 'step', decision: null, targetStatus: step })} · ${syncText(receipt.syncStatus)}` };
   } catch (e) {
-    console.error('advanceNcrAction', e);
+    logError('advanceNcrAction', e);
     return { ok: false, error: FAILED };
   }
 }
@@ -120,7 +129,7 @@ export async function verifyNcrAction(input: { projectCode: string; number: stri
     refreshAll();
     return { ok: true, toast: `${n.number} · ${ncrRequestText({ kind: 'verification', decision, targetStatus: receipt.targetStatus })} · ${syncText(receipt.syncStatus)}` };
   } catch (e) {
-    console.error('verifyNcrAction', e);
+    logError('verifyNcrAction', e);
     return { ok: false, error: FAILED };
   }
 }
@@ -141,11 +150,21 @@ export async function moveDeliverableAction(input: { projectCode: string; number
       refreshAll();
       return { ok: false, error: STEP_GONE };
     }
-    await moveDeliverable(a.code, d.number, to, a.actor);
+    try {
+      await moveDeliverable(a.code, d.number, to, a.actor, undefined, d.status);
+    } catch (e) {
+      if (e instanceof Error && / has moved on$| cannot move from /.test(e.message)) {
+        refreshAll();
+        return { ok: false, error: STEP_GONE };
+      }
+      throw e;
+    }
     refreshAll();
-    return { ok: true, toast: `${d.number} · ${deliverableStatus.label(to)}` };
+    // "Start next revision" names the new revision (R-114).
+    const after = d.status === 'rejected' ? await getDeliverable(a.code, d.number) : null;
+    return { ok: true, toast: `${d.number} · ${deliverableStatus.label(to)}${after?.revision ? ` · Rev ${after.revision}` : ''}` };
   } catch (e) {
-    console.error('moveDeliverableAction', e);
+    logError('moveDeliverableAction', e);
     return { ok: false, error: NOT_SAVED };
   }
 }
@@ -175,7 +194,7 @@ export async function decideDeliverableAction(input: { projectCode: string; numb
     refreshAll();
     return { ok: true, toast: `${d.number} · ${decision === 'accepted' ? 'Accepted' : 'Rejected'}` };
   } catch (e) {
-    console.error('decideDeliverableAction', e);
+    logError('decideDeliverableAction', e);
     return { ok: false, error: NOT_SAVED };
   }
 }
@@ -203,7 +222,41 @@ export async function linkDeliverableDocumentAction(projectCode: string, number:
     refreshAll();
     return { toast: await tr(`${d.number} · ${doc} · Issued document linked`) };
   } catch (e) {
-    console.error('linkDeliverableDocumentAction', e);
+    logError('linkDeliverableDocumentAction', e);
+    return { error: await tr(NOT_SAVED) };
+  }
+}
+
+const PM_ONLY = 'Only the project manager creates deliverables';
+
+/** Options of "New deliverable": Settings deliverable types (active), the project's WBS elements and team. */
+async function newDeliverableOptions(code: string) {
+  const [types, wbs, team] = await Promise.all([listDeliverableTypes(), deliverableWbsOptions(code), teamOwnerOptions(code)]);
+  return { types, wbs, team };
+}
+
+/**
+ * "New deliverable" (R-115, Q-3b): type (Settings list), title, due date, WBS element, responsible (R) and backup (B). The
+ * project's manager or the director, on a project they may edit; the data layer re-checks the role and the ownership.
+ */
+export async function createDeliverableAction(projectCode: string, values: Record<string, string>): Promise<FormDialogResult> {
+  const a = await access(projectCode);
+  if ('error' in a) return { error: await tr(a.error) };
+  if (!a.canEdit) return { error: await tr(READ_ONLY) };
+  if (!DELIVERABLE_CREATOR_ROLES.includes(a.actor.role)) return { error: await tr(PM_ONLY) };
+  const ctx = await getProjectContext(a.code, 'quality');
+  if (!ctx.isLead) return { error: await tr(PM_ONLY) };
+  const opts = await newDeliverableOptions(a.code);
+  const raw = values && typeof values === 'object' ? Object.fromEntries(Object.entries(values).filter((e): e is [string, string] => typeof e[1] === 'string')) : {};
+  const parsed = parseNewDeliverable(raw, { types: opts.types, wbs: opts.wbs.map((w) => w.code), team: opts.team });
+  if (!parsed.ok) return { error: await tr(parsed.error) };
+  const v = parsed.value;
+  try {
+    const number = await createDeliverable(a.code, { type: v.type, title: v.title, dueOn: v.dueOn, wbsCode: v.wbsCode, responsible: v.responsible, backup: v.backup }, a.actor);
+    refreshAll();
+    return { toast: await tr(`${number} · Deliverable added`) };
+  } catch (e) {
+    console.error('createDeliverableAction', e);
     return { error: await tr(NOT_SAVED) };
   }
 }

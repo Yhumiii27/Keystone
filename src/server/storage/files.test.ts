@@ -8,8 +8,8 @@ import { MAX_FILE_BYTES, acceptOf } from '@/domain/ch4-defaults';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import {
-  FileRejectedError, checkUpload, contentDisposition, deleteStoredFile, fileResponse, filesRoot, getStoredFile, listStoredFiles, pruneOrphanFiles, readStoredFile,
-  readStoredText, safeFileName, setFileOwner, setFilesRoot, storeFile, storeUploadedFile, streamStoredFile,
+  FileRejectedError, ORPHAN_GRACE_MS, checkUpload, contentDisposition, deleteStoredFile, fileResponse, filesRoot, getStoredFile, listStoredFiles, pruneOrphanFiles, readStoredFile,
+  readFormDataCapped, readStoredText, safeFileName, setFileOwner, setFilesRoot, storeFile, streamStoredFile,
 } from './files';
 
 const PDF = new TextEncoder().encode('%PDF-1.7\n1 0 obj\n<<>>\nendobj\n');
@@ -56,17 +56,19 @@ describe('store, read, delete', () => {
     expect(f.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(filesRoot()).toBe(dir);
     const back = await readStoredFile(f.id);
-    expect(Buffer.from(back!.data).equals(Buffer.from(PDF))).toBe(true);
+    if (!back || back.blocked) throw new Error('stored file expected'); // R-175: { blocked } only for a flagged file
+    expect(Buffer.from(back.data).equals(Buffer.from(PDF))).toBe(true);
     const files = fs.readdirSync(dir, { recursive: true }).map(String).filter((p) => p.endsWith('.pdf'));
     expect(files).toHaveLength(1);
     expect(files[0]).not.toContain('Spec');
     await setFileOwner(f.id, { ownerType: 'task_attachment', ownerId: '00000000-0000-4000-8000-000000000001' });
     expect((await listStoredFiles('task_attachment', '00000000-0000-4000-8000-000000000001')).map((x) => x.id)).toEqual([f.id]);
     const s = await streamStoredFile(f.id);
+    if (!s || s.blocked) throw new Error('stored file expected');
     const chunks: Uint8Array[] = [];
-    for await (const c of s!.stream as unknown as AsyncIterable<Uint8Array>) chunks.push(c);
+    for await (const c of s.stream as unknown as AsyncIterable<Uint8Array>) chunks.push(c);
     expect(Buffer.concat(chunks).length).toBe(PDF.byteLength);
-    const res = fileResponse(f, back!.data as BodyInit);
+    const res = fileResponse(f, back.data as BodyInit);
     expect(res.headers.get('Content-Type')).toBe('application/pdf');
     expect(res.headers.get('Content-Disposition')).toContain('filename="Spec.pdf"');
     expect(await deleteStoredFile(f.id)).toBe(true);
@@ -75,11 +77,13 @@ describe('store, read, delete', () => {
     expect(fs.readdirSync(dir, { recursive: true }).map(String).filter((p) => p.endsWith('.pdf'))).toHaveLength(0);
   });
 
-  it('stores an uploaded File and reads text without its BOM', async () => {
+  it('stores an uploaded file and reads text without its BOM', async () => {
+    // R-175: the unused storeUploadedFile (an unscanned path) was removed; uploads go through scanUpload + storeFile.
     const file = new File(['\uFEFFWEBVTT\n\n00:00.000 --> 00:02.000\n<v Romain>On valide le planning.'], 'Réunion.vtt', { type: 'text/vtt' });
-    const f = await storeUploadedFile(file, { purpose: 'transcript', actor });
+    const f = await storeFile({ purpose: 'transcript', name: file.name, data: await file.arrayBuffer(), actor });
     expect(f.name).toBe('Réunion.vtt');
-    expect((await readStoredText(f.id))!.text.startsWith('WEBVTT')).toBe(true);
+    const text = await readStoredText(f.id);
+    expect(text && !text.blocked && text.text.startsWith('WEBVTT')).toBe(true);
   });
 
   it('refuses before writing anything', async () => {
@@ -89,9 +93,44 @@ describe('store, read, delete', () => {
     expect(await getStoredFile('not-a-uuid')).toBeNull();
   });
 
-  it('prunes files without a record', async () => {
+  it('prunes files without a record once they are older than the grace period (R-010)', async () => {
     fs.mkdirSync(path.join(dir, '2026', '10'), { recursive: true });
     fs.writeFileSync(path.join(dir, '2026', '10', 'orphan.txt'), 'x');
-    expect(await pruneOrphanFiles()).toBe(1);
+    // Just written: its transaction may not have committed yet — kept.
+    expect(await pruneOrphanFiles()).toBe(0);
+    expect(fs.existsSync(path.join(dir, '2026', '10', 'orphan.txt'))).toBe(true);
+    expect(await pruneOrphanFiles({ now: Date.now() + ORPHAN_GRACE_MS + 1000 })).toBe(1);
+    expect(fs.existsSync(path.join(dir, '2026', '10', 'orphan.txt'))).toBe(false);
+  });
+});
+
+describe('readFormDataCapped (security review: chunked uploads)', () => {
+  const chunked = (parts: Uint8Array[], type: string) =>
+    new Request('http://localhost/upload', {
+      method: 'POST',
+      headers: { 'content-type': type },
+      body: new ReadableStream<Uint8Array>({ pull(c) { const p = parts.shift(); if (p) c.enqueue(p); else c.close(); } }),
+      duplex: 'half',
+    } as RequestInit & { duplex: 'half' });
+
+  it('parses a form under the cap and refuses a body without Content-Length as soon as it exceeds it', async () => {
+    const form = new FormData();
+    form.set('file', new File([PDF], 'a.pdf', { type: 'application/pdf' }));
+    const multipart = new Response(form);
+    const body = new Uint8Array(await multipart.arrayBuffer());
+    const type = multipart.headers.get('content-type')!;
+    const ok = await readFormDataCapped(chunked([body.slice(0, 50), body.slice(50)], type), body.byteLength);
+    expect((ok!.get('file') as File).size).toBe(PDF.byteLength);
+    let pulled = 0;
+    const big = new Request('http://localhost/upload', {
+      method: 'POST',
+      headers: { 'content-type': type },
+      body: new ReadableStream<Uint8Array>({ pull(c) { pulled++; c.enqueue(new Uint8Array(1024 * 1024)); } }),
+      duplex: 'half',
+    } as RequestInit & { duplex: 'half' });
+    expect(await readFormDataCapped(big, 3 * 1024 * 1024)).toBeNull();
+    expect(pulled).toBeLessThan(8);
+    const declared = new Request('http://localhost/upload', { method: 'POST', headers: { 'content-type': type, 'content-length': String(10 ** 9) }, body });
+    expect(await readFormDataCapped(declared, 1024)).toBeNull();
   });
 });

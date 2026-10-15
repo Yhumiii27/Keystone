@@ -11,8 +11,8 @@
      },
      {
       "label": "BOM value",
-      "value": "€14.05M",
-      "sub": "At unit list price",
+      "value": "€14.01M",
+      "sub": "Ordered, else last purchase, else catalogue price",
       "color": "var(--color-text)"
      },
      {
@@ -337,9 +337,9 @@
       "puClass": "tag tag-neutral",
       "mfr": "Bromma",
       "mfrRef": "STS45",
-      "price": "€118,000",
+      "price": "€114,000",
       "qty": "2",
-      "total": "€236,000",
+      "total": "€228,000",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -379,9 +379,9 @@
       "puClass": "tag tag-accent",
       "mfr": "SKF",
       "mfrRef": "22326 CC/W33",
-      "price": "€640",
+      "price": "€598",
       "qty": "32",
-      "total": "€20,480",
+      "total": "€19,136",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -400,9 +400,9 @@
       "puClass": "tag tag-outline",
       "mfr": "SEW-Eurodrive",
       "mfrRef": "K107-15",
-      "price": "€4,800",
+      "price": "€4,650",
       "qty": "8",
-      "total": "€38,400",
+      "total": "€37,200",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -442,9 +442,9 @@
       "puClass": "tag tag-accent",
       "mfr": "Halvorsen Cranes",
       "mfrRef": "HC-W630",
-      "price": "€2,150",
+      "price": "€2,090",
       "qty": "16",
-      "total": "€34,400",
+      "total": "€33,440",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -463,9 +463,9 @@
       "puClass": "tag tag-outline",
       "mfr": "SICK",
       "mfrRef": "LMS511",
-      "price": "€5,200",
+      "price": "€4,980",
       "qty": "8",
-      "total": "€41,600",
+      "total": "€39,840",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -484,9 +484,9 @@
       "puClass": "tag tag-outline",
       "mfr": "Camco",
       "mfrRef": "OCR-4K",
-      "price": "€3,100",
+      "price": "€2,950",
       "qty": "12",
-      "total": "€37,200",
+      "total": "€35,400",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "Encryption module — export notification",
@@ -568,9 +568,9 @@
       "puClass": "tag tag-outline",
       "mfr": "Siemens",
       "mfrRef": "S7-1516F",
-      "price": "€6,900",
+      "price": "€6,700",
       "qty": "2",
-      "total": "€13,800",
+      "total": "€13,400",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "Encryption module — export notification",
@@ -631,9 +631,9 @@
       "puClass": "tag tag-outline",
       "mfr": "ABB",
       "mfrRef": "ACS880-200",
-      "price": "€14,200",
+      "price": "€13,600",
       "qty": "6",
-      "total": "€85,200",
+      "total": "€81,600",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "Encryption module — export notification",
@@ -778,9 +778,9 @@
       "puClass": "tag tag-outline",
       "mfr": "ABB",
       "mfrRef": "M3BP 315",
-      "price": "€28,500",
+      "price": "€27,900",
       "qty": "2",
-      "total": "€57,000",
+      "total": "€55,800",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -799,9 +799,9 @@
       "puClass": "tag tag-accent",
       "mfr": "Teufelberger",
       "mfrRef": "TK16-28",
-      "price": "€9,600",
+      "price": "€9,200",
       "qty": "4",
-      "total": "€38,400",
+      "total": "€36,800",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -820,9 +820,9 @@
       "puClass": "tag tag-neutral",
       "mfr": "ArcelorMittal",
       "mfrRef": "S355J2-20",
-      "price": "€1,240",
+      "price": "€1,180",
       "qty": "192",
-      "total": "€238,080",
+      "total": "€226,560",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -958,7 +958,7 @@
      {
       "label": "BOM value",
       "value": "€3.83M",
-      "sub": "At unit list price",
+      "sub": "Ordered, else last purchase, else catalogue price",
       "color": "var(--color-text)"
      },
      {
@@ -1257,7 +1257,7 @@
      {
       "label": "BOM value",
       "value": "€150k",
-      "sub": "At unit list price",
+      "sub": "Ordered, else last purchase, else catalogue price",
       "color": "var(--color-text)"
      },
      {
@@ -1485,7 +1485,7 @@
      {
       "label": "BOM value",
       "value": "€1.32M",
-      "sub": "At unit list price",
+      "sub": "Ordered, else last purchase, else catalogue price",
       "color": "var(--color-text)"
      },
      {
@@ -1646,7 +1646,7 @@
      {
       "label": "BOM value",
       "value": "€4.01M",
-      "sub": "At unit list price",
+      "sub": "Ordered, else last purchase, else catalogue price",
       "color": "var(--color-text)"
      },
      {
@@ -1899,7 +1899,7 @@
      {
       "label": "BOM value",
       "value": "€351k",
-      "sub": "At unit list price",
+      "sub": "Ordered, else last purchase, else catalogue price",
       "color": "var(--color-text)"
      },
      {
@@ -2084,8 +2084,8 @@
      },
      {
       "label": "BOM value",
-      "value": "€14.05M",
-      "sub": "At unit list price",
+      "value": "€13.99M",
+      "sub": "Ordered, else last purchase, else catalogue price",
       "color": "var(--color-text)"
      },
      {
@@ -2410,9 +2410,9 @@
       "puClass": "tag tag-neutral",
       "mfr": "Bromma",
       "mfrRef": "STS45",
-      "price": "€118,000",
+      "price": "€114,000",
       "qty": "2",
-      "total": "€236,000",
+      "total": "€228,000",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -2452,9 +2452,9 @@
       "puClass": "tag tag-accent",
       "mfr": "SKF",
       "mfrRef": "22326 CC/W33",
-      "price": "€640",
+      "price": "€598",
       "qty": "32",
-      "total": "€20,480",
+      "total": "€19,136",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -2473,9 +2473,9 @@
       "puClass": "tag tag-outline",
       "mfr": "SEW-Eurodrive",
       "mfrRef": "K107-15",
-      "price": "€4,800",
+      "price": "€4,650",
       "qty": "8",
-      "total": "€38,400",
+      "total": "€37,200",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -2515,9 +2515,9 @@
       "puClass": "tag tag-accent",
       "mfr": "Halvorsen Cranes",
       "mfrRef": "HC-W630",
-      "price": "€2,150",
+      "price": "€2,090",
       "qty": "16",
-      "total": "€34,400",
+      "total": "€33,440",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -2536,9 +2536,9 @@
       "puClass": "tag tag-outline",
       "mfr": "SICK",
       "mfrRef": "LMS511",
-      "price": "€5,200",
+      "price": "€4,980",
       "qty": "8",
-      "total": "€41,600",
+      "total": "€39,840",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -2557,9 +2557,9 @@
       "puClass": "tag tag-outline",
       "mfr": "Camco",
       "mfrRef": "OCR-4K",
-      "price": "€3,100",
+      "price": "€2,950",
       "qty": "12",
-      "total": "€37,200",
+      "total": "€35,400",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "Encryption module — export notification",
@@ -2599,9 +2599,9 @@
       "puClass": "tag tag-neutral",
       "mfr": "Brightline Electrics",
       "mfrRef": "BX-11-3240",
-      "price": "€3,900",
+      "price": "€3,750",
       "qty": "42",
-      "total": "€163,800",
+      "total": "€157,500",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -2641,9 +2641,9 @@
       "puClass": "tag tag-outline",
       "mfr": "Siemens",
       "mfrRef": "S7-1516F",
-      "price": "€6,900",
+      "price": "€6,700",
       "qty": "2",
-      "total": "€13,800",
+      "total": "€13,400",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "Encryption module — export notification",
@@ -2662,9 +2662,9 @@
       "puClass": "tag tag-neutral",
       "mfr": "Nordvolt",
       "mfrRef": "NV-SG11-8",
-      "price": "€86,400",
+      "price": "€84,000",
       "qty": "2",
-      "total": "€172,800",
+      "total": "€168,000",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "Dual-use — export licence for some destinations",
@@ -2683,9 +2683,9 @@
       "puClass": "tag tag-neutral",
       "mfr": "Nordvolt",
       "mfrRef": "NV-T2000-D",
-      "price": "€124,000",
+      "price": "€121,500",
       "qty": "2",
-      "total": "€248,000",
+      "total": "€243,000",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -2704,9 +2704,9 @@
       "puClass": "tag tag-outline",
       "mfr": "ABB",
       "mfrRef": "ACS880-200",
-      "price": "€14,200",
+      "price": "€13,600",
       "qty": "6",
-      "total": "€85,200",
+      "total": "€81,600",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "Encryption module — export notification",
@@ -2851,9 +2851,9 @@
       "puClass": "tag tag-outline",
       "mfr": "ABB",
       "mfrRef": "M3BP 315",
-      "price": "€28,500",
+      "price": "€27,900",
       "qty": "2",
-      "total": "€57,000",
+      "total": "€55,800",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -2872,9 +2872,9 @@
       "puClass": "tag tag-accent",
       "mfr": "Teufelberger",
       "mfrRef": "TK16-28",
-      "price": "€9,600",
+      "price": "€9,200",
       "qty": "4",
-      "total": "€38,400",
+      "total": "€36,800",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -2893,9 +2893,9 @@
       "puClass": "tag tag-neutral",
       "mfr": "ArcelorMittal",
       "mfrRef": "S355J2-20",
-      "price": "€1,240",
+      "price": "€1,180",
       "qty": "192",
-      "total": "€238,080",
+      "total": "€226,560",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -2935,9 +2935,9 @@
       "puClass": "tag tag-neutral",
       "mfr": "Keystone Steelworks",
       "mfrRef": "DWG-ST-1120",
-      "price": "€4,850",
+      "price": "€4,700",
       "qty": "48",
-      "total": "€232,800",
+      "total": "€225,600",
       "status": "Validated",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -3445,20 +3445,20 @@
      "HST-BRK-DSC",
      "CR-WHL-630",
      "CTL-CAM-OCR",
-     "CR-MOT-15K",
      "HST-ROP-28",
+     "CR-MOT-15K",
      "CTL-ANT-COL",
      "LT-HB-200W",
      "HST-MOT-160",
-     "HST-DRM-2000",
      "EL-VFD-200",
+     "HST-DRM-2000",
      "EL-CBL-XLPE",
      "EL-SWG-11KV",
      "ASM-DRV-700",
      "KS-STL-0301",
-     "KS-STL-0450",
-     "ASM-SPR-500",
      "KS-PLT-S355",
+     "ASM-SPR-500",
+     "KS-STL-0450",
      "EL-TRF-2MVA",
      "ASM-CTL-800",
      "ASM-BOG-300",
@@ -3497,15 +3497,15 @@
      "ASM-BOG-300",
      "ASM-CTL-800",
      "EL-TRF-2MVA",
-     "KS-PLT-S355",
-     "ASM-SPR-500",
      "KS-STL-0450",
+     "ASM-SPR-500",
+     "KS-PLT-S355",
      "KS-STL-0301",
      "ASM-DRV-700",
      "EL-SWG-11KV",
      "EL-CBL-XLPE",
-     "EL-VFD-200",
      "HST-DRM-2000",
+     "EL-VFD-200",
      "HST-MOT-160",
      "LT-HB-200W",
      "CTL-ANT-COL",
@@ -3715,8 +3715,8 @@
     "rev": "C",
     "status": "Validated",
     "tagClass": "tag tag-neutral",
-    "unit": "€713,996",
-    "total": "€1,427,992",
+    "unit": "€720,396",
+    "total": "€1,440,792",
     "nameColor": "var(--color-text)",
     "bg": "transparent"
    },
@@ -3734,8 +3734,8 @@
     "rev": "B",
     "status": "Validated",
     "tagClass": "tag tag-neutral",
-    "unit": "€180,408",
-    "total": "€360,816",
+    "unit": "€181,008",
+    "total": "€362,016",
     "nameColor": "var(--color-text)",
     "bg": "transparent"
    },
@@ -3753,8 +3753,8 @@
     "rev": "C",
     "status": "Validated",
     "tagClass": "tag tag-neutral",
-    "unit": "€4,700",
-    "total": "€37,600",
+    "unit": "€4,850",
+    "total": "€38,800",
     "nameColor": "var(--color-neutral-300)",
     "bg": "transparent"
    },
@@ -4019,8 +4019,8 @@
     "rev": "B",
     "status": "Validated",
     "tagClass": "tag tag-neutral",
-    "unit": "€277,900",
-    "total": "€555,800",
+    "unit": "€283,700",
+    "total": "€567,400",
     "nameColor": "var(--color-text)",
     "bg": "transparent"
    },
@@ -4038,8 +4038,8 @@
     "rev": "D",
     "status": "Validated",
     "tagClass": "tag tag-neutral",
-    "unit": "€84,000",
-    "total": "€168,000",
+    "unit": "€86,400",
+    "total": "€172,800",
     "nameColor": "var(--color-neutral-300)",
     "bg": "transparent"
    },
@@ -4057,8 +4057,8 @@
     "rev": "B",
     "status": "Validated",
     "tagClass": "tag tag-neutral",
-    "unit": "€121,500",
-    "total": "€243,000",
+    "unit": "€124,000",
+    "total": "€248,000",
     "nameColor": "var(--color-neutral-300)",
     "bg": "transparent"
    },
@@ -4076,8 +4076,8 @@
     "rev": "A",
     "status": "Validated",
     "tagClass": "tag tag-neutral",
-    "unit": "€3,750",
-    "total": "€45,000",
+    "unit": "€3,900",
+    "total": "€46,800",
     "nameColor": "var(--color-neutral-300)",
     "bg": "transparent"
    },
@@ -4371,8 +4371,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
-      "v": "€713,996",
+      "k": "Rolled-up cost",
+      "v": "€720,396",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Roll-up of components",
       "color": "var(--color-text)"
      },
      {
@@ -4382,12 +4387,12 @@
      },
      {
       "k": "Delta",
-      "v": "−€1,136,004",
+      "v": "−€1,129,604",
       "color": "var(--color-text)"
      },
      {
       "k": "Per project (× 2)",
-      "v": "€1,427,992",
+      "v": "€1,440,792",
       "color": "var(--color-text)"
      }
     ],
@@ -4435,8 +4440,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
-      "v": "€180,408",
+      "k": "Rolled-up cost",
+      "v": "€181,008",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Roll-up of components",
       "color": "var(--color-text)"
      },
      {
@@ -4446,12 +4456,12 @@
      },
      {
       "k": "Delta",
-      "v": "−€231,592",
+      "v": "−€230,992",
       "color": "var(--color-text)"
      },
      {
       "k": "Per project (× 2)",
-      "v": "€360,816",
+      "v": "€362,016",
       "color": "var(--color-text)"
      }
     ],
@@ -4499,8 +4509,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
-      "v": "€4,700",
+      "k": "Rolled-up cost",
+      "v": "€4,850",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Ordered price",
       "color": "var(--color-text)"
      },
      {
@@ -4510,12 +4525,12 @@
      },
      {
       "k": "Delta",
-      "v": "−€150",
+      "v": "+€0",
       "color": "var(--color-text)"
      },
      {
       "k": "Per project (× 8)",
-      "v": "€37,600",
+      "v": "€38,800",
       "color": "var(--color-text)"
      }
     ],
@@ -4563,8 +4578,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€58,360",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Roll-up of components",
       "color": "var(--color-text)"
      },
      {
@@ -4627,8 +4647,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€1,180",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Last purchase price",
       "color": "var(--color-text)"
      },
      {
@@ -4691,8 +4716,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€860",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Catalogue price",
       "color": "var(--color-text)"
      },
      {
@@ -4755,8 +4785,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€11,222",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Roll-up of components",
       "color": "var(--color-text)"
      },
      {
@@ -4819,8 +4854,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€2,090",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Last purchase price",
       "color": "var(--color-text)"
      },
      {
@@ -4883,8 +4923,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€598",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Last purchase price",
       "color": "var(--color-text)"
      },
      {
@@ -4947,8 +4992,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€4,650",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Last purchase price",
       "color": "var(--color-text)"
      },
      {
@@ -5011,8 +5061,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€217,100",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Roll-up of components",
       "color": "var(--color-text)"
      },
      {
@@ -5075,8 +5130,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€42,000",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Catalogue price",
       "color": "var(--color-text)"
      },
      {
@@ -5139,8 +5199,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€9,200",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Last purchase price",
       "color": "var(--color-text)"
      },
      {
@@ -5203,8 +5268,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€27,900",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Last purchase price",
       "color": "var(--color-text)"
      },
      {
@@ -5267,8 +5337,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€7,400",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Catalogue price",
       "color": "var(--color-text)"
      },
      {
@@ -5331,8 +5406,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€114,000",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Last purchase price",
       "color": "var(--color-text)"
      },
      {
@@ -5395,8 +5475,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
-      "v": "€277,900",
+      "k": "Rolled-up cost",
+      "v": "€283,700",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Roll-up of components",
       "color": "var(--color-text)"
      },
      {
@@ -5406,12 +5491,12 @@
      },
      {
       "k": "Delta",
-      "v": "−€86,100",
+      "v": "−€80,300",
       "color": "var(--color-text)"
      },
      {
       "k": "Per project (× 2)",
-      "v": "€555,800",
+      "v": "€567,400",
       "color": "var(--color-text)"
      }
     ],
@@ -5459,8 +5544,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
-      "v": "€84,000",
+      "k": "Rolled-up cost",
+      "v": "€86,400",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Ordered price",
       "color": "var(--color-text)"
      },
      {
@@ -5470,12 +5560,12 @@
      },
      {
       "k": "Delta",
-      "v": "−€2,400",
+      "v": "+€0",
       "color": "var(--color-text)"
      },
      {
       "k": "Per project (× 2)",
-      "v": "€168,000",
+      "v": "€172,800",
       "color": "var(--color-text)"
      }
     ],
@@ -5523,8 +5613,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
-      "v": "€121,500",
+      "k": "Rolled-up cost",
+      "v": "€124,000",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Ordered price",
       "color": "var(--color-text)"
      },
      {
@@ -5534,12 +5629,12 @@
      },
      {
       "k": "Delta",
-      "v": "−€2,500",
+      "v": "+€0",
       "color": "var(--color-text)"
      },
      {
       "k": "Per project (× 2)",
-      "v": "€243,000",
+      "v": "€248,000",
       "color": "var(--color-text)"
      }
     ],
@@ -5587,8 +5682,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
-      "v": "€3,750",
+      "k": "Rolled-up cost",
+      "v": "€3,900",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Ordered price",
       "color": "var(--color-text)"
      },
      {
@@ -5598,12 +5698,12 @@
      },
      {
       "k": "Delta",
-      "v": "−€150",
+      "v": "+€0",
       "color": "var(--color-text)"
      },
      {
       "k": "Per project (× 12)",
-      "v": "€45,000",
+      "v": "€46,800",
       "color": "var(--color-text)"
      }
     ],
@@ -5651,8 +5751,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€49,900",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Roll-up of components",
       "color": "var(--color-text)"
      },
      {
@@ -5715,8 +5820,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€13,600",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Last purchase price",
       "color": "var(--color-text)"
      },
      {
@@ -5779,8 +5889,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€6,700",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Last purchase price",
       "color": "var(--color-text)"
      },
      {
@@ -5843,8 +5958,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€2,400",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Catalogue price",
       "color": "var(--color-text)"
      },
      {
@@ -5907,8 +6027,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€38,588",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Roll-up of components",
       "color": "var(--color-text)"
      },
      {
@@ -5971,8 +6096,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€4,980",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Last purchase price",
       "color": "var(--color-text)"
      },
      {
@@ -6035,8 +6165,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€2,950",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Last purchase price",
       "color": "var(--color-text)"
      },
      {
@@ -6099,8 +6234,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€860",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Catalogue price",
       "color": "var(--color-text)"
      },
      {
@@ -6163,8 +6303,13 @@
     ],
     "cost": [
      {
-      "k": "Rolled-up cost (last purchase)",
+      "k": "Rolled-up cost",
       "v": "€54",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Price basis",
+      "v": "Catalogue price",
       "color": "var(--color-text)"
      },
      {
@@ -6602,7 +6747,7 @@
       "b": "1",
       "kind": "Substitution",
       "tagClass": "tag tag-outline",
-      "delta": "—"
+      "delta": "+€750"
      },
      {
       "line": "ASM-CTL-800 / FD-DET-OPT → FD-DET-OPT2",
@@ -6611,7 +6756,7 @@
       "b": "2",
       "kind": "Substitution",
       "tagClass": "tag tag-outline",
-      "delta": "—"
+      "delta": "+€12"
      },
      {
       "line": "ASM-CTL-800 / CTL-WIND-SN",
@@ -6632,7 +6777,7 @@
       "delta": "+€4,720"
      }
     ],
-    "total": "+€19,180 per crane",
+    "total": "+€19,942 per crane",
     "from": "B",
     "to": "C"
    }
@@ -8903,8 +9048,8 @@
      },
      {
       "label": "Valeur nomenclature",
-      "value": "14,05 M€",
-      "sub": "Au prix catalogue unitaire",
+      "value": "14,01 M€",
+      "sub": "Prix commandé, sinon dernier achat, sinon catalogue",
       "color": "var(--color-text)"
      },
      {
@@ -9229,9 +9374,9 @@
       "puClass": "tag tag-neutral",
       "mfr": "Bromma",
       "mfrRef": "STS45",
-      "price": "118 000 €",
+      "price": "114 000 €",
       "qty": "2",
-      "total": "236 000 €",
+      "total": "228 000 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -9271,9 +9416,9 @@
       "puClass": "tag tag-accent",
       "mfr": "SKF",
       "mfrRef": "22326 CC/W33",
-      "price": "640 €",
+      "price": "598 €",
       "qty": "32",
-      "total": "20 480 €",
+      "total": "19 136 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -9292,9 +9437,9 @@
       "puClass": "tag tag-outline",
       "mfr": "SEW-Eurodrive",
       "mfrRef": "K107-15",
-      "price": "4 800 €",
+      "price": "4 650 €",
       "qty": "8",
-      "total": "38 400 €",
+      "total": "37 200 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -9334,9 +9479,9 @@
       "puClass": "tag tag-accent",
       "mfr": "Halvorsen Cranes",
       "mfrRef": "HC-W630",
-      "price": "2 150 €",
+      "price": "2 090 €",
       "qty": "16",
-      "total": "34 400 €",
+      "total": "33 440 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -9355,9 +9500,9 @@
       "puClass": "tag tag-outline",
       "mfr": "SICK",
       "mfrRef": "LMS511",
-      "price": "5 200 €",
+      "price": "4 980 €",
       "qty": "8",
-      "total": "41 600 €",
+      "total": "39 840 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -9376,9 +9521,9 @@
       "puClass": "tag tag-outline",
       "mfr": "Camco",
       "mfrRef": "OCR-4K",
-      "price": "3 100 €",
+      "price": "2 950 €",
       "qty": "12",
-      "total": "37 200 €",
+      "total": "35 400 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "Encryption module — export notification",
@@ -9460,9 +9605,9 @@
       "puClass": "tag tag-outline",
       "mfr": "Siemens",
       "mfrRef": "S7-1516F",
-      "price": "6 900 €",
+      "price": "6 700 €",
       "qty": "2",
-      "total": "13 800 €",
+      "total": "13 400 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "Encryption module — export notification",
@@ -9523,9 +9668,9 @@
       "puClass": "tag tag-outline",
       "mfr": "ABB",
       "mfrRef": "ACS880-200",
-      "price": "14 200 €",
+      "price": "13 600 €",
       "qty": "6",
-      "total": "85 200 €",
+      "total": "81 600 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "Encryption module — export notification",
@@ -9670,9 +9815,9 @@
       "puClass": "tag tag-outline",
       "mfr": "ABB",
       "mfrRef": "M3BP 315",
-      "price": "28 500 €",
+      "price": "27 900 €",
       "qty": "2",
-      "total": "57 000 €",
+      "total": "55 800 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -9691,9 +9836,9 @@
       "puClass": "tag tag-accent",
       "mfr": "Teufelberger",
       "mfrRef": "TK16-28",
-      "price": "9 600 €",
+      "price": "9 200 €",
       "qty": "4",
-      "total": "38 400 €",
+      "total": "36 800 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -9712,9 +9857,9 @@
       "puClass": "tag tag-neutral",
       "mfr": "ArcelorMittal",
       "mfrRef": "S355J2-20",
-      "price": "1 240 €",
+      "price": "1 180 €",
       "qty": "192",
-      "total": "238 080 €",
+      "total": "226 560 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -9850,7 +9995,7 @@
      {
       "label": "Valeur nomenclature",
       "value": "3,83 M€",
-      "sub": "Au prix catalogue unitaire",
+      "sub": "Prix commandé, sinon dernier achat, sinon catalogue",
       "color": "var(--color-text)"
      },
      {
@@ -10149,7 +10294,7 @@
      {
       "label": "Valeur nomenclature",
       "value": "150 k€",
-      "sub": "Au prix catalogue unitaire",
+      "sub": "Prix commandé, sinon dernier achat, sinon catalogue",
       "color": "var(--color-text)"
      },
      {
@@ -10377,7 +10522,7 @@
      {
       "label": "Valeur nomenclature",
       "value": "1,32 M€",
-      "sub": "Au prix catalogue unitaire",
+      "sub": "Prix commandé, sinon dernier achat, sinon catalogue",
       "color": "var(--color-text)"
      },
      {
@@ -10538,7 +10683,7 @@
      {
       "label": "Valeur nomenclature",
       "value": "4,01 M€",
-      "sub": "Au prix catalogue unitaire",
+      "sub": "Prix commandé, sinon dernier achat, sinon catalogue",
       "color": "var(--color-text)"
      },
      {
@@ -10791,7 +10936,7 @@
      {
       "label": "Valeur nomenclature",
       "value": "351 k€",
-      "sub": "Au prix catalogue unitaire",
+      "sub": "Prix commandé, sinon dernier achat, sinon catalogue",
       "color": "var(--color-text)"
      },
      {
@@ -10976,8 +11121,8 @@
      },
      {
       "label": "Valeur nomenclature",
-      "value": "14,05 M€",
-      "sub": "Au prix catalogue unitaire",
+      "value": "13,99 M€",
+      "sub": "Prix commandé, sinon dernier achat, sinon catalogue",
       "color": "var(--color-text)"
      },
      {
@@ -11302,9 +11447,9 @@
       "puClass": "tag tag-neutral",
       "mfr": "Bromma",
       "mfrRef": "STS45",
-      "price": "118 000 €",
+      "price": "114 000 €",
       "qty": "2",
-      "total": "236 000 €",
+      "total": "228 000 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -11344,9 +11489,9 @@
       "puClass": "tag tag-accent",
       "mfr": "SKF",
       "mfrRef": "22326 CC/W33",
-      "price": "640 €",
+      "price": "598 €",
       "qty": "32",
-      "total": "20 480 €",
+      "total": "19 136 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -11365,9 +11510,9 @@
       "puClass": "tag tag-outline",
       "mfr": "SEW-Eurodrive",
       "mfrRef": "K107-15",
-      "price": "4 800 €",
+      "price": "4 650 €",
       "qty": "8",
-      "total": "38 400 €",
+      "total": "37 200 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -11407,9 +11552,9 @@
       "puClass": "tag tag-accent",
       "mfr": "Halvorsen Cranes",
       "mfrRef": "HC-W630",
-      "price": "2 150 €",
+      "price": "2 090 €",
       "qty": "16",
-      "total": "34 400 €",
+      "total": "33 440 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -11428,9 +11573,9 @@
       "puClass": "tag tag-outline",
       "mfr": "SICK",
       "mfrRef": "LMS511",
-      "price": "5 200 €",
+      "price": "4 980 €",
       "qty": "8",
-      "total": "41 600 €",
+      "total": "39 840 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -11449,9 +11594,9 @@
       "puClass": "tag tag-outline",
       "mfr": "Camco",
       "mfrRef": "OCR-4K",
-      "price": "3 100 €",
+      "price": "2 950 €",
       "qty": "12",
-      "total": "37 200 €",
+      "total": "35 400 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "Encryption module — export notification",
@@ -11491,9 +11636,9 @@
       "puClass": "tag tag-neutral",
       "mfr": "Brightline Electrics",
       "mfrRef": "BX-11-3240",
-      "price": "3 900 €",
+      "price": "3 750 €",
       "qty": "42",
-      "total": "163 800 €",
+      "total": "157 500 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -11533,9 +11678,9 @@
       "puClass": "tag tag-outline",
       "mfr": "Siemens",
       "mfrRef": "S7-1516F",
-      "price": "6 900 €",
+      "price": "6 700 €",
       "qty": "2",
-      "total": "13 800 €",
+      "total": "13 400 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "Encryption module — export notification",
@@ -11554,9 +11699,9 @@
       "puClass": "tag tag-neutral",
       "mfr": "Nordvolt",
       "mfrRef": "NV-SG11-8",
-      "price": "86 400 €",
+      "price": "84 000 €",
       "qty": "2",
-      "total": "172 800 €",
+      "total": "168 000 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "Dual-use — export licence for some destinations",
@@ -11575,9 +11720,9 @@
       "puClass": "tag tag-neutral",
       "mfr": "Nordvolt",
       "mfrRef": "NV-T2000-D",
-      "price": "124 000 €",
+      "price": "121 500 €",
       "qty": "2",
-      "total": "248 000 €",
+      "total": "243 000 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -11596,9 +11741,9 @@
       "puClass": "tag tag-outline",
       "mfr": "ABB",
       "mfrRef": "ACS880-200",
-      "price": "14 200 €",
+      "price": "13 600 €",
       "qty": "6",
-      "total": "85 200 €",
+      "total": "81 600 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "Encryption module — export notification",
@@ -11743,9 +11888,9 @@
       "puClass": "tag tag-outline",
       "mfr": "ABB",
       "mfrRef": "M3BP 315",
-      "price": "28 500 €",
+      "price": "27 900 €",
       "qty": "2",
-      "total": "57 000 €",
+      "total": "55 800 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -11764,9 +11909,9 @@
       "puClass": "tag tag-accent",
       "mfr": "Teufelberger",
       "mfrRef": "TK16-28",
-      "price": "9 600 €",
+      "price": "9 200 €",
       "qty": "4",
-      "total": "38 400 €",
+      "total": "36 800 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -11785,9 +11930,9 @@
       "puClass": "tag tag-neutral",
       "mfr": "ArcelorMittal",
       "mfrRef": "S355J2-20",
-      "price": "1 240 €",
+      "price": "1 180 €",
       "qty": "192",
-      "total": "238 080 €",
+      "total": "226 560 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -11827,9 +11972,9 @@
       "puClass": "tag tag-neutral",
       "mfr": "Keystone Steelworks",
       "mfrRef": "DWG-ST-1120",
-      "price": "4 850 €",
+      "price": "4 700 €",
       "qty": "48",
-      "total": "232 800 €",
+      "total": "225 600 €",
       "status": "Validé",
       "tagClass": "tag tag-neutral",
       "restr": "—",
@@ -12337,20 +12482,20 @@
      "HST-BRK-DSC",
      "CR-WHL-630",
      "CTL-CAM-OCR",
-     "CR-MOT-15K",
      "HST-ROP-28",
+     "CR-MOT-15K",
      "CTL-ANT-COL",
      "LT-HB-200W",
      "HST-MOT-160",
-     "HST-DRM-2000",
      "EL-VFD-200",
+     "HST-DRM-2000",
      "EL-CBL-XLPE",
      "EL-SWG-11KV",
      "ASM-DRV-700",
      "KS-STL-0301",
-     "KS-STL-0450",
-     "ASM-SPR-500",
      "KS-PLT-S355",
+     "ASM-SPR-500",
+     "KS-STL-0450",
      "EL-TRF-2MVA",
      "ASM-CTL-800",
      "ASM-BOG-300",
@@ -12389,15 +12534,15 @@
      "ASM-BOG-300",
      "ASM-CTL-800",
      "EL-TRF-2MVA",
-     "KS-PLT-S355",
-     "ASM-SPR-500",
      "KS-STL-0450",
+     "ASM-SPR-500",
+     "KS-PLT-S355",
      "KS-STL-0301",
      "ASM-DRV-700",
      "EL-SWG-11KV",
      "EL-CBL-XLPE",
-     "EL-VFD-200",
      "HST-DRM-2000",
+     "EL-VFD-200",
      "HST-MOT-160",
      "LT-HB-200W",
      "CTL-ANT-COL",
@@ -12607,8 +12752,8 @@
     "rev": "C",
     "status": "Validé",
     "tagClass": "tag tag-neutral",
-    "unit": "713 996 €",
-    "total": "1 427 992 €",
+    "unit": "720 396 €",
+    "total": "1 440 792 €",
     "nameColor": "var(--color-text)",
     "bg": "transparent"
    },
@@ -12626,8 +12771,8 @@
     "rev": "B",
     "status": "Validé",
     "tagClass": "tag tag-neutral",
-    "unit": "180 408 €",
-    "total": "360 816 €",
+    "unit": "181 008 €",
+    "total": "362 016 €",
     "nameColor": "var(--color-text)",
     "bg": "transparent"
    },
@@ -12645,8 +12790,8 @@
     "rev": "C",
     "status": "Validé",
     "tagClass": "tag tag-neutral",
-    "unit": "4 700 €",
-    "total": "37 600 €",
+    "unit": "4 850 €",
+    "total": "38 800 €",
     "nameColor": "var(--color-neutral-300)",
     "bg": "transparent"
    },
@@ -12911,8 +13056,8 @@
     "rev": "B",
     "status": "Validé",
     "tagClass": "tag tag-neutral",
-    "unit": "277 900 €",
-    "total": "555 800 €",
+    "unit": "283 700 €",
+    "total": "567 400 €",
     "nameColor": "var(--color-text)",
     "bg": "transparent"
    },
@@ -12930,8 +13075,8 @@
     "rev": "D",
     "status": "Validé",
     "tagClass": "tag tag-neutral",
-    "unit": "84 000 €",
-    "total": "168 000 €",
+    "unit": "86 400 €",
+    "total": "172 800 €",
     "nameColor": "var(--color-neutral-300)",
     "bg": "transparent"
    },
@@ -12949,8 +13094,8 @@
     "rev": "B",
     "status": "Validé",
     "tagClass": "tag tag-neutral",
-    "unit": "121 500 €",
-    "total": "243 000 €",
+    "unit": "124 000 €",
+    "total": "248 000 €",
     "nameColor": "var(--color-neutral-300)",
     "bg": "transparent"
    },
@@ -12968,8 +13113,8 @@
     "rev": "A",
     "status": "Validé",
     "tagClass": "tag tag-neutral",
-    "unit": "3 750 €",
-    "total": "45 000 €",
+    "unit": "3 900 €",
+    "total": "46 800 €",
     "nameColor": "var(--color-neutral-300)",
     "bg": "transparent"
    },
@@ -13263,8 +13408,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
-      "v": "713 996 €",
+      "k": "Coût cumulé",
+      "v": "720 396 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Cumul des composants",
       "color": "var(--color-text)"
      },
      {
@@ -13274,12 +13424,12 @@
      },
      {
       "k": "Écart",
-      "v": "−1 136 004 €",
+      "v": "−1 129 604 €",
       "color": "var(--color-text)"
      },
      {
       "k": "Par projet (× 2)",
-      "v": "1 427 992 €",
+      "v": "1 440 792 €",
       "color": "var(--color-text)"
      }
     ],
@@ -13327,8 +13477,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
-      "v": "180 408 €",
+      "k": "Coût cumulé",
+      "v": "181 008 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Cumul des composants",
       "color": "var(--color-text)"
      },
      {
@@ -13338,12 +13493,12 @@
      },
      {
       "k": "Écart",
-      "v": "−231 592 €",
+      "v": "−230 992 €",
       "color": "var(--color-text)"
      },
      {
       "k": "Par projet (× 2)",
-      "v": "360 816 €",
+      "v": "362 016 €",
       "color": "var(--color-text)"
      }
     ],
@@ -13391,8 +13546,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
-      "v": "4 700 €",
+      "k": "Coût cumulé",
+      "v": "4 850 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Prix commandé",
       "color": "var(--color-text)"
      },
      {
@@ -13402,12 +13562,12 @@
      },
      {
       "k": "Écart",
-      "v": "−150 €",
+      "v": "+0 €",
       "color": "var(--color-text)"
      },
      {
       "k": "Par projet (× 8)",
-      "v": "37 600 €",
+      "v": "38 800 €",
       "color": "var(--color-text)"
      }
     ],
@@ -13455,8 +13615,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "58 360 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Cumul des composants",
       "color": "var(--color-text)"
      },
      {
@@ -13519,8 +13684,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "1 180 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Dernier prix d’achat",
       "color": "var(--color-text)"
      },
      {
@@ -13583,8 +13753,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "860 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Prix catalogue",
       "color": "var(--color-text)"
      },
      {
@@ -13647,8 +13822,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "11 222 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Cumul des composants",
       "color": "var(--color-text)"
      },
      {
@@ -13711,8 +13891,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "2 090 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Dernier prix d’achat",
       "color": "var(--color-text)"
      },
      {
@@ -13775,8 +13960,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "598 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Dernier prix d’achat",
       "color": "var(--color-text)"
      },
      {
@@ -13839,8 +14029,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "4 650 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Dernier prix d’achat",
       "color": "var(--color-text)"
      },
      {
@@ -13903,8 +14098,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "217 100 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Cumul des composants",
       "color": "var(--color-text)"
      },
      {
@@ -13967,8 +14167,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "42 000 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Prix catalogue",
       "color": "var(--color-text)"
      },
      {
@@ -14031,8 +14236,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "9 200 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Dernier prix d’achat",
       "color": "var(--color-text)"
      },
      {
@@ -14095,8 +14305,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "27 900 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Dernier prix d’achat",
       "color": "var(--color-text)"
      },
      {
@@ -14159,8 +14374,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "7 400 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Prix catalogue",
       "color": "var(--color-text)"
      },
      {
@@ -14223,8 +14443,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "114 000 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Dernier prix d’achat",
       "color": "var(--color-text)"
      },
      {
@@ -14287,8 +14512,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
-      "v": "277 900 €",
+      "k": "Coût cumulé",
+      "v": "283 700 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Cumul des composants",
       "color": "var(--color-text)"
      },
      {
@@ -14298,12 +14528,12 @@
      },
      {
       "k": "Écart",
-      "v": "−86 100 €",
+      "v": "−80 300 €",
       "color": "var(--color-text)"
      },
      {
       "k": "Par projet (× 2)",
-      "v": "555 800 €",
+      "v": "567 400 €",
       "color": "var(--color-text)"
      }
     ],
@@ -14351,8 +14581,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
-      "v": "84 000 €",
+      "k": "Coût cumulé",
+      "v": "86 400 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Prix commandé",
       "color": "var(--color-text)"
      },
      {
@@ -14362,12 +14597,12 @@
      },
      {
       "k": "Écart",
-      "v": "−2 400 €",
+      "v": "+0 €",
       "color": "var(--color-text)"
      },
      {
       "k": "Par projet (× 2)",
-      "v": "168 000 €",
+      "v": "172 800 €",
       "color": "var(--color-text)"
      }
     ],
@@ -14415,8 +14650,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
-      "v": "121 500 €",
+      "k": "Coût cumulé",
+      "v": "124 000 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Prix commandé",
       "color": "var(--color-text)"
      },
      {
@@ -14426,12 +14666,12 @@
      },
      {
       "k": "Écart",
-      "v": "−2 500 €",
+      "v": "+0 €",
       "color": "var(--color-text)"
      },
      {
       "k": "Par projet (× 2)",
-      "v": "243 000 €",
+      "v": "248 000 €",
       "color": "var(--color-text)"
      }
     ],
@@ -14479,8 +14719,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
-      "v": "3 750 €",
+      "k": "Coût cumulé",
+      "v": "3 900 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Prix commandé",
       "color": "var(--color-text)"
      },
      {
@@ -14490,12 +14735,12 @@
      },
      {
       "k": "Écart",
-      "v": "−150 €",
+      "v": "+0 €",
       "color": "var(--color-text)"
      },
      {
       "k": "Par projet (× 12)",
-      "v": "45 000 €",
+      "v": "46 800 €",
       "color": "var(--color-text)"
      }
     ],
@@ -14543,8 +14788,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "49 900 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Cumul des composants",
       "color": "var(--color-text)"
      },
      {
@@ -14607,8 +14857,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "13 600 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Dernier prix d’achat",
       "color": "var(--color-text)"
      },
      {
@@ -14671,8 +14926,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "6 700 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Dernier prix d’achat",
       "color": "var(--color-text)"
      },
      {
@@ -14735,8 +14995,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "2 400 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Prix catalogue",
       "color": "var(--color-text)"
      },
      {
@@ -14799,8 +15064,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "38 588 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Cumul des composants",
       "color": "var(--color-text)"
      },
      {
@@ -14863,8 +15133,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "4 980 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Dernier prix d’achat",
       "color": "var(--color-text)"
      },
      {
@@ -14927,8 +15202,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "2 950 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Dernier prix d’achat",
       "color": "var(--color-text)"
      },
      {
@@ -14991,8 +15271,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "860 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Prix catalogue",
       "color": "var(--color-text)"
      },
      {
@@ -15055,8 +15340,13 @@
     ],
     "cost": [
      {
-      "k": "Coût cumulé (dernier achat)",
+      "k": "Coût cumulé",
       "v": "54 €",
+      "color": "var(--color-text)"
+     },
+     {
+      "k": "Base de prix",
+      "v": "Prix catalogue",
       "color": "var(--color-text)"
      },
      {
@@ -15494,7 +15784,7 @@
       "b": "1",
       "kind": "Substitution",
       "tagClass": "tag tag-outline",
-      "delta": "—"
+      "delta": "+750 €"
      },
      {
       "line": "ASM-CTL-800 / FD-DET-OPT → FD-DET-OPT2",
@@ -15503,7 +15793,7 @@
       "b": "2",
       "kind": "Substitution",
       "tagClass": "tag tag-outline",
-      "delta": "—"
+      "delta": "+12 €"
      },
      {
       "line": "ASM-CTL-800 / CTL-WIND-SN",
@@ -15524,7 +15814,7 @@
       "delta": "+4 720 €"
      }
     ],
-    "total": "+19 180 € per crane",
+    "total": "+19 942 € per crane",
     "from": "B",
     "to": "C"
    }

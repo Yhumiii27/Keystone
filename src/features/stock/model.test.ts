@@ -22,6 +22,11 @@ const S0: StockUrlState = { loc: null, q: '', stock: null, part: null };
 const day = (s: string) => s.replace(/(^|· )0(\d)/g, '$1$2');
 const FR_MOVE: Record<string, string> = { Transférer: 'Transfert' };
 const FR_WHERE: Record<string, string> = { 'QC failed · BL-2026-0533': 'QC non conforme · BL-2026-0533' };
+/**
+ * R-148 (NEW-D1-2): a part name is shown as typed — in French its exact dictionary entry or the stored name, never the
+ * prototype's partial translation ("Stainless mounting bracket · rev 2" was shown half translated as "… · rév. 2").
+ */
+const nameFix = (lang: Lang, protoFr: string) => (lang === 'fr' ? protoFr.replace(/ · rév\. 2$/, ' · rev 2') : protoFr);
 
 async function screen(lang: Lang, state: Partial<StockUrlState> = {}) {
   const [rows, locations, sync, moves, pins] = await Promise.all([listStock(), listStorageLocations(), getX3StockSync(), listStockMovements({ limit: 8 }), installedBasePins()]);
@@ -35,11 +40,15 @@ const viewRows = (rows: any[]) =>
     ref: r.ref, name: r.name, loc: r.location, locType: r.locationType, onHand: r.onHand, reserved: r.reserved, avail: r.available, availColor: r.availableColor,
     min: r.min, below: r.belowMin, value: r.value, source: r.source, srcClass: `tag tag-${r.sourceTone}`, last: r.last, pinned: !!r.pinned, pinnedText: r.pinned ?? '',
   }));
-const goldenRows = (rows: any[]) =>
-  rows.map((r) => ({
-    ref: r.ref, name: r.name, loc: r.loc, locType: r.locType, onHand: r.onHand, reserved: r.reserved, avail: r.avail, availColor: r.availColor, min: r.min,
+const goldenRows = (rows: any[], lang: Lang) =>
+  rows.map((r0) => (E4_UNPINNED.has(r0.ref) ? { ...r0, pinned: false, pinnedText: '' } : r0)).map((r) => ({
+    ref: r.ref, name: nameFix(lang, r.name), loc: r.loc, locType: r.locType, onHand: r.onHand, reserved: r.reserved, avail: r.avail, availColor: r.availColor, min: r.min,
     below: !!r.below, value: r.value, source: r.source, srcClass: r.srcClass, last: day(r.last), pinned: r.pinned, pinnedText: r.pinnedText,
   }));
+
+// E-4 = a (R-110): only the parts a machine actually carries are kept for the installed base. On the seed, the machines pinned by
+// ECO-2026-014 / -015 carry neither EL-HMI-15 nor FD-DET-OPT2: the prototype pinned them (09 OQ21), the goldens keep its values.
+const E4_UNPINNED = new Set(['EL-HMI-15', 'FD-DET-OPT2']);
 
 describe('Stock & storages view model (seed)', () => {
   beforeAll(async () => {
@@ -52,7 +61,7 @@ describe('Stock & storages view model (seed)', () => {
     expect(view.kpis).toEqual(g.kpis.map((k: any) => ({ ...k, value: String(k.value) })));
     expect(view.chips.map((c) => [c.label, c.count])).toEqual(g.chips.map((c: any) => [c.label, c.count]));
     expect(view.chipValue).toBe('');
-    expect(viewRows(view.rows)).toEqual(goldenRows(g.rows));
+    expect(viewRows(view.rows)).toEqual(goldenRows(g.rows, lang));
     expect(view.rows.every((r) => !r.selected)).toBe(true);
     expect(viewMoves(view.moves)).toEqual(goldenMoves(g.moves, lang));
     expect(view.empty).toBeNull();
@@ -68,8 +77,9 @@ describe('Stock & storages view model (seed)', () => {
     }
     for (const [q, g] of Object.entries(G.en.search)) expect(index((await screen('en', { q })).view.rows)).toEqual(g);
     expect(index((await screen('en', { loc: 'Entrepôt central — Lyon', q: 'fd' })).view.rows)).toEqual(G.en.searchInLocation);
-    // French: the name as shown matches too ("rév. 2"), as does the stored English one.
-    expect((await screen('fr', { q: 'rév. 2' })).view.rows.map((r) => r.ref)).toEqual(['SG-BRK-SS2']);
+    // French: the name is shown as typed (R-148), so the stored text is what matches; the prototype's partial
+    // translation ("rév. 2") no longer exists.
+    expect((await screen('fr', { q: 'rév. 2' })).view.rows).toEqual([]);
     expect((await screen('fr', { q: 'rev 2' })).view.rows.map((r) => r.ref)).toEqual(['SG-BRK-SS2']);
     expect((await screen('en', { q: 'rév. 2' })).view.rows).toEqual([]);
     const none = await screen('fr', { q: 'zzz' });
@@ -88,7 +98,7 @@ describe('Stock & storages view model (seed)', () => {
     for (const [i, r] of rows.entries()) {
       const g = G[lang].drawers[String(i)];
       const d = stockDrawerView({ detail: (await getStockPosition(r.id))!, locations, pins, state: { ...S0, stock: r.id } }, t, lang);
-      expect([d.header, d.name, d.locationType, d.source, `tag tag-${d.sourceTone}`]).toEqual([`${g.ref} · ${g.loc}`, g.name, g.locType, g.source, g.srcClass]);
+      expect([d.header, d.name, d.locationType, d.source, `tag tag-${d.sourceTone}`]).toEqual([`${g.ref} · ${g.loc}`, nameFix(lang, g.name), g.locType, g.source, g.srcClass]);
       expect(d.meta).toEqual(g.meta.map((m: any) => ({ k: m.k, v: day(String(m.v)) })));
       expect(d.ops.map((o) => o.label)).toEqual(g.opSeg.map((o: any) => o.label));
       expect(viewMoves(d.moves).map(({ when, type, qty, where, who }) => ({ when, type, qty, where, who }))).toEqual(
@@ -101,7 +111,11 @@ describe('Stock & storages view model (seed)', () => {
     }
     // Quantity labels per operation, scrap warning of a pinned part (FD-DET-OPT, row 10).
     const pinned = stockDrawerView({ detail: (await getStockPosition(rows[10].id))!, locations, pins, state: S0 }, t, lang);
+    // "Release reservation" (R-099) only for who may release it (here nobody: the view gets no right).
     expect(pinned.ops.map((o) => o.qtyLabel)).toEqual(['adjust', 'transfer', 'reserve', 'issue', 'return', 'scrap'].map((op) => G[lang].drawerOps[op].qtyLabel));
+    const releasable = stockDrawerView({ detail: (await getStockPosition(rows[10].id))!, locations, pins, state: S0, canRelease: true, projectCode: 'MSR-012' }, t, lang);
+    expect(releasable.ops.map((o) => o.value)).toEqual(['adjust', 'transfer', 'reserve', 'release', 'issue', 'return', 'scrap']);
+    expect(releasable.reservedForOther).toEqual({ project: 'HLT-026', qty: 180 });
     expect(pinned.scrapWarning!.ecoHref).toBe('/reference/eco?eco=ECO-2026-015');
     expect(pinned.scrapWarning!.text).toBe(
       lang === 'en'
@@ -122,17 +136,18 @@ describe('Stock & storages after movements (DAL writes, the viewer as author)', 
   it('the prototype sequence (adjust, transfer, reserve, issue, return, scrap) gives the same lines, movements and KPIs', async () => {
     const rows = await listStock();
     const id = (i: number) => rows[i].id;
-    const who = 'Marie Lefebvre';
+    const who = { name: 'Marie Lefebvre', role: 'director' }; // the stock DAL re-checks the actor's rights (R-041)
     await applyStockMovement(id(0), { op: 'adjust', qty: 7 }, who);
     await applyStockMovement(id(4), { op: 'transfer', qty: 2, targetLocation: 'Magasin chantier — Marseille' }, who);
     await applyStockMovement(id(6), { op: 'reserve', qty: 4, projectCode: 'HLT-026' }, who);
-    await applyStockMovement(id(6), { op: 'issue', qty: 6, projectCode: 'HLT-026' }, who);
+    // SC-5a (R-098): the issue names its activity — the prototype's "→ HLT activity" reads "→ A1250 Steel erection — Bays 3–4".
+    await applyStockMovement(id(6), { op: 'issue', qty: 6, projectCode: 'HLT-026', activityCode: 'A1250' }, who);
     await applyStockMovement(id(17), { op: 'return', qty: 3, projectCode: 'HLT-026' }, who);
     await applyStockMovement(id(12), { op: 'scrap', qty: 1 }, who);
-    const g = G.ops.sequence;
+    const g = JSON.parse(JSON.stringify(G.ops.sequence).replaceAll(' → HLT activity', ' → A1250 Steel erection — Bays 3–4'));
     const { view } = await screen('en');
     expect(viewRows(view.rows).map((r) => ({ ref: r.ref, loc: r.loc, onHand: r.onHand, reserved: r.reserved, avail: r.avail, source: r.source, last: r.last }))).toEqual(
-      goldenRows(g.rows).map((r) => ({ ref: r.ref, loc: r.loc, onHand: r.onHand, reserved: r.reserved, avail: r.avail, source: r.source, last: r.last })),
+      goldenRows(g.rows, 'en').map((r) => ({ ref: r.ref, loc: r.loc, onHand: r.onHand, reserved: r.reserved, avail: r.avail, source: r.source, last: r.last })),
     );
     expect(viewMoves(view.moves)).toEqual(goldenMoves(g.moves, 'en'));
     expect(view.kpis.filter((k) => k.label !== 'X3 import').map((k) => [k.value, k.sub])).toEqual(
@@ -143,7 +158,7 @@ describe('Stock & storages after movements (DAL writes, the viewer as author)', 
     expect(viewMoves(fr.view.moves).slice(0, 3).map((m) => [m.type, m.where])).toEqual([
       ['Rebut', 'Entrepôt central — Lyon · reprise / rebut'],
       ['Retour', 'HLT → Magasin chantier — Marseille'],
-      ['Sortie', 'Entrepôt central — Lyon → activité HLT'],
+      ['Sortie', 'Entrepôt central — Lyon → A1250 Steel erection — Bays 3–4'],
     ]);
     expect(viewMoves(fr.view.moves)[5]).toMatchObject({ type: 'Ajustement', where: 'Entrepôt central — Lyon · inventaire', when: '25 sept. 16:15' });
   });

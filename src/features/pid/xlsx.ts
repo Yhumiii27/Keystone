@@ -73,7 +73,13 @@ function firstSheetPath(files: Map<string, () => Buffer>): string {
   const rels = files.get('xl/_rels/workbook.xml.rels');
   if (wb && rels) {
     const rid = /<sheet\b[^>]*\br:id="([^"]+)"/.exec(wb().toString('utf8'))?.[1];
-    const target = rid ? new RegExp(`<Relationship\\b[^>]*\\bId="${rid}"[^>]*\\bTarget="([^"]+)"`).exec(rels().toString('utf8'))?.[1] ?? new RegExp(`<Relationship\\b[^>]*\\bTarget="([^"]+)"[^>]*\\bId="${rid}"`).exec(rels().toString('utf8'))?.[1] : undefined;
+    // The relationship id is compared as a string (never pasted into a RegExp: a crafted id could make it backtrack for hours).
+    const target = rid
+      ? [...rels().toString('utf8').matchAll(/<Relationship\b[^>]*>/g)]
+          .map((m) => m[0])
+          .find((tag) => /\bId="([^"]*)"/.exec(tag)?.[1] === rid)
+          ?.match(/\bTarget="([^"]+)"/)?.[1]
+      : undefined;
     if (target) {
       const path = target.startsWith('/') ? target.slice(1) : `xl/${target}`;
       if (files.has(path)) return path;

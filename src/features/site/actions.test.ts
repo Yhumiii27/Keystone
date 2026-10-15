@@ -28,6 +28,9 @@ import { advancePrerequisiteAction, confirmEquipmentAction, remindInCursusAction
 
 const as = (role: string, name: string) => Object.assign(viewer, { role, name });
 const HLT = 'HLT-026';
+/** R-118: the steps send the line's stamp as the page showed it. */
+const preStamp = async (i: number) => (await getSite(HLT))!.prerequisites[i].stamp;
+const eqStamp = async (i: number) => (await getSite(HLT))!.equipment[i].stamp;
 
 describe('site Server Functions', () => {
   beforeAll(async () => {
@@ -42,43 +45,50 @@ describe('site Server Functions', () => {
 
   it('refuses read-only / outside viewers, projects without a site sheet, unknown projects and forged input', async () => {
     viewer.canEdit = false;
-    expect(await advancePrerequisiteAction(HLT, 3, 'confirmed')).toEqual({ ok: false, error: 'The site is read-only for you' });
-    expect(await confirmEquipmentAction(HLT, 2)).toEqual({ ok: false, error: 'The site is read-only for you' });
+    expect(await advancePrerequisiteAction(HLT, 3, 'confirmed', 'abc')).toEqual({ ok: false, error: 'The site is read-only for you' });
+    expect(await confirmEquipmentAction(HLT, 2, 'abc')).toEqual({ ok: false, error: 'The site is read-only for you' });
     expect(await remindInCursusAction(HLT, 'Thomas Kerbrat')).toEqual({ ok: false, error: 'The site is read-only for you' });
     expect(await syncCursusAction(HLT)).toEqual({ ok: false, error: 'The site is read-only for you' });
     expect(await saveDailyReportAction(HLT, { progress: 'x' })).toEqual({ error: 'The site is read-only for you' });
     viewer.lang = 'fr';
-    expect(await confirmEquipmentAction(HLT, 2)).toEqual({ ok: false, error: 'Le chantier est en lecture seule pour vous' });
+    expect(await confirmEquipmentAction(HLT, 2, 'abc')).toEqual({ ok: false, error: 'Le chantier est en lecture seule pour vous' });
     viewer.lang = 'en';
     viewer.canEdit = true;
-    expect(await advancePrerequisiteAction('NDC-031', 0, 'confirmed')).toEqual({ ok: false, error: 'This project has no site sheet' });
-    expect(await advancePrerequisiteAction('NOPE-000', 0, 'confirmed')).toEqual({ ok: false, error: 'Unknown project' });
-    expect(await advancePrerequisiteAction('' as string, 0, 'confirmed')).toEqual({ ok: false, error: 'Invalid request' });
-    expect(await advancePrerequisiteAction(HLT, -1, 'confirmed')).toEqual({ ok: false, error: 'Invalid request' });
-    expect(await advancePrerequisiteAction(HLT, 1.5, 'confirmed')).toEqual({ ok: false, error: 'Invalid request' });
-    expect(await advancePrerequisiteAction(HLT, 3, 'accepted' as never)).toEqual({ ok: false, error: 'Invalid request' });
-    expect(await advancePrerequisiteAction(HLT, 99, 'confirmed')).toEqual({ ok: false, error: 'Unknown prerequisite' });
-    expect(await confirmEquipmentAction(HLT, '2' as never)).toEqual({ ok: false, error: 'Invalid request' });
-    expect(await confirmEquipmentAction(HLT, 99)).toEqual({ ok: false, error: 'Unknown equipment' });
+    expect(await advancePrerequisiteAction('NDC-031', 0, 'confirmed', 'abc')).toEqual({ ok: false, error: 'This project has no site sheet' });
+    expect(await advancePrerequisiteAction('NOPE-000', 0, 'confirmed', 'abc')).toEqual({ ok: false, error: 'Unknown project' });
+    expect(await advancePrerequisiteAction('' as string, 0, 'confirmed', 'abc')).toEqual({ ok: false, error: 'Invalid request' });
+    expect(await advancePrerequisiteAction(HLT, -1, 'confirmed', 'abc')).toEqual({ ok: false, error: 'Invalid request' });
+    expect(await advancePrerequisiteAction(HLT, 1.5, 'confirmed', 'abc')).toEqual({ ok: false, error: 'Invalid request' });
+    expect(await advancePrerequisiteAction(HLT, 3, 'accepted' as never, 'abc')).toEqual({ ok: false, error: 'Invalid request' });
+    expect(await advancePrerequisiteAction(HLT, 3, 'confirmed', undefined as never)).toEqual({ ok: false, error: 'Invalid request' });
+    expect(await advancePrerequisiteAction(HLT, 3, 'confirmed', 'NOT A STAMP')).toEqual({ ok: false, error: 'Invalid request' });
+    expect(await advancePrerequisiteAction(HLT, 99, 'confirmed', 'abc')).toEqual({ ok: false, error: 'Unknown prerequisite' });
+    expect(await confirmEquipmentAction(HLT, '2' as never, 'abc')).toEqual({ ok: false, error: 'Invalid request' });
+    expect(await confirmEquipmentAction(HLT, 2, 42 as never)).toEqual({ ok: false, error: 'Invalid request' });
+    expect(await confirmEquipmentAction(HLT, 99, 'abc')).toEqual({ ok: false, error: 'Unknown equipment' });
     expect(await remindInCursusAction(HLT, 42 as never)).toEqual({ ok: false, error: 'Invalid request' });
     expect(await remindInCursusAction(HLT, 'Nobody')).toEqual({ ok: false, error: 'This person is not mobilised on the site in Cursus' });
     // A role outside the Site workspace is refused even if the context said otherwise (the writers re-check it too).
     as('quality', 'Gabriel Comte');
-    expect(await advancePrerequisiteAction(HLT, 3, 'confirmed')).toEqual({ ok: false, error: 'The site is read-only for you' });
+    expect(await advancePrerequisiteAction(HLT, 3, 'confirmed', await preStamp(3))).toEqual({ ok: false, error: 'The site is read-only for you' });
     expect((await getSite(HLT))!.prerequisites[3].status).toBe('pending');
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 
   it('"Client confirms" then "Signed on site" on a prerequisite; a stale step is refused; Go conditions follow', async () => {
-    expect(await advancePrerequisiteAction(HLT, 4, 'signed')).toEqual({ ok: false, error: 'This step is not available any more' });
-    expect(await advancePrerequisiteAction(HLT, 3, 'confirmed')).toEqual({ ok: true });
+    expect(await advancePrerequisiteAction(HLT, 4, 'signed', await preStamp(4))).toEqual({ ok: false, error: 'This step is not available any more' });
+    const pending = await preStamp(3);
+    expect(await advancePrerequisiteAction(HLT, 3, 'confirmed', pending)).toEqual({ ok: true });
     expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
-    expect(await advancePrerequisiteAction(HLT, 3, 'confirmed')).toEqual({ ok: false, error: 'This step is not available any more' });
-    expect(await advancePrerequisiteAction(HLT, 3, 'signed')).toEqual({ ok: true });
+    // The page that still shows it Pending (its stamp), or a fresh one asking the same step again: refused.
+    expect(await advancePrerequisiteAction(HLT, 3, 'confirmed', pending)).toEqual({ ok: false, error: 'This step is not available any more' });
+    expect(await advancePrerequisiteAction(HLT, 3, 'confirmed', await preStamp(3))).toEqual({ ok: false, error: 'This step is not available any more' });
+    expect(await advancePrerequisiteAction(HLT, 3, 'signed', pending)).toEqual({ ok: false, error: 'This step is not available any more' });
+    expect(await advancePrerequisiteAction(HLT, 3, 'signed', await preStamp(3))).toEqual({ ok: true });
     let s = (await getSite(HLT))!;
     expect(s.prerequisites[3].status).toBe('signed');
     expect(s.go.conditions[0]).toMatchObject({ key: 'prerequisites', ok: false, sub: '1 pending' });
-    expect(await advancePrerequisiteAction(HLT, 4, 'confirmed')).toEqual({ ok: true });
+    expect(await advancePrerequisiteAction(HLT, 4, 'confirmed', await preStamp(4))).toEqual({ ok: true });
     s = (await getSite(HLT))!;
     expect(s.go.conditions[0]).toMatchObject({ ok: true, sub: 'Ready' });
     const audit = await listAudit();
@@ -87,10 +97,12 @@ describe('site Server Functions', () => {
 
   it('equipment "Confirm" (once); the equipment condition follows; the NO GO badge stays (Cursus, collisions, HSE)', async () => {
     as('depthead', 'Marion Kerviel');
-    expect(await confirmEquipmentAction(HLT, 0)).toEqual({ ok: false, error: 'This step is not available any more' });
-    expect(await confirmEquipmentAction(HLT, 2)).toEqual({ ok: true });
-    expect(await confirmEquipmentAction(HLT, 2)).toEqual({ ok: false, error: 'This step is not available any more' });
-    expect(await confirmEquipmentAction(HLT, 4)).toEqual({ ok: true });
+    expect(await confirmEquipmentAction(HLT, 0, await eqStamp(0))).toEqual({ ok: false, error: 'This step is not available any more' });
+    const pending = await eqStamp(2);
+    expect(await confirmEquipmentAction(HLT, 2, pending)).toEqual({ ok: true });
+    expect(await confirmEquipmentAction(HLT, 2, pending)).toEqual({ ok: false, error: 'This step is not available any more' });
+    expect(await confirmEquipmentAction(HLT, 2, await eqStamp(2))).toEqual({ ok: false, error: 'This step is not available any more' });
+    expect(await confirmEquipmentAction(HLT, 4, await eqStamp(4))).toEqual({ ok: true });
     const s = (await getSite(HLT))!;
     expect(s.go.conditions.find((c) => c.key === 'equipment')).toMatchObject({ ok: true, sub: 'Ready' });
     expect(s.go.ok).toBe(false);
@@ -146,14 +158,16 @@ describe('site Server Functions', () => {
     }
   });
 
-  it('"Daily report": DR-003 listed first, by the viewer, with weather / headcount / HSE; date rules; FR messages', async () => {
+  it('"Daily report": DR-003 listed first, by the viewer, with weather / headcount (no HSE: NEW-SITE-2 a); date rules; FR messages', async () => {
     as('member', 'Julien Wagner');
+    // NEW-SITE-2 'a' (R-122): an incident sent by an older form is ignored — incidents are declared in Vigie.
     expect(await saveDailyReportAction(HLT, { date: '25 Sep 2026', weather: 'rain', headcount: '12', progress: 'Rail survey bays 1–4 · anchor bolts checked', incident: 'near_miss' }))
       .toEqual({ toast: 'Daily report saved · DR-003', number: 'DR-003' });
     const s = (await getSite(HLT))!;
     expect(s.dailyReports[0]).toMatchObject({
-      number: 'DR-003', reportOn: '2026-09-25', author: 'J. Wagner', text: 'Rail survey bays 1–4 · anchor bolts checked', weather: 'rain', headcount: 12, hseIncident: 'near_miss', fromForm: true,
+      number: 'DR-003', reportOn: '2026-09-25', author: 'J. Wagner', text: 'Rail survey bays 1–4 · anchor bolts checked', weather: 'rain', headcount: 12, hseIncident: null, fromForm: true,
     });
+    expect((await listAudit({ limit: 1 }))[0].change).toBe('daily report 2026-09-25 · Rain · 12 on site');
     expect(s.dailyReports.map((r) => r.number)).toEqual(['DR-003', 'DR-002', 'DR-001']);
     expect(await saveDailyReportAction(HLT, { date: '30 Sep 2026', progress: 'x' })).toEqual({ error: 'A daily report cannot be dated after today' });
     expect(await saveDailyReportAction(HLT, { date: 'tomorrow', progress: 'x' })).toEqual({ error: 'Enter a date such as 25 Sep 2026' });
@@ -162,7 +176,7 @@ describe('site Server Functions', () => {
     expect(await saveDailyReportAction(HLT, null as never)).toEqual({ error: 'Progress is required' });
     viewer.lang = 'fr';
     expect(await saveDailyReportAction(HLT, { headcount: 'douze', progress: 'x' })).toEqual({ error: 'L’effectif doit être un nombre entier' });
-    expect(await saveDailyReportAction(HLT, { date: '24 sept. 2026', weather: 'clear', headcount: '', progress: 'Préparation zone de levage', incident: 'none' }))
+    expect(await saveDailyReportAction(HLT, { date: '24 sept. 2026', weather: 'clear', headcount: '', progress: 'Préparation zone de levage' }))
       .toEqual({ toast: 'Rapport journalier enregistré · DR-004', number: 'DR-004' });
     expect((await getSite(HLT))!.dailyReports.find((r) => r.number === 'DR-004')).toMatchObject({ reportOn: '2026-09-24', headcount: null, weather: 'clear' });
     as('client', 'Nadia Bensaïd');

@@ -8,8 +8,11 @@ import { pfT } from '@/features/pfinance/i18n';
 import { cashView } from '@/features/pfinance/model';
 import { getCashScreen } from '@/server/dal/pfinance';
 import { getI18n, getViewer, getZone } from '@/server/session';
+import { getScreenAccess } from '@/server/project-context';
 
 export default async function CashFlowPage() {
+  // R-042 (P-1): a client is sent home before anything is read.
+  await getScreenAccess('cash');
   const [{ t: t0, lang }, zone, viewer] = await Promise.all([getI18n(), getZone(), getViewer()]);
   const t = pfT(t0, lang);
   const data = await getCashScreen(viewer.role, zone);

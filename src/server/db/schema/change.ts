@@ -7,7 +7,7 @@
 //    (titles, days, status and "date · decider" meta differ) so the Budget screen renders the prototype exactly.
 //    Each line points to the register entry with the same number.
 import { date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
-import type { BaselineSource, BaselineState, BudgetChangeStatus, ChangeStatus, ChangeStep, ChangeType, StepDecision } from '../codes';
+import type { BaselineSource, BaselineState, BudgetChangeStatus, ChangeStatus, ChangeStep, ChangeType, ContractImpact, StepDecision } from '../codes';
 import { id, keur, timestamps } from './_common';
 import { persons } from './organisation';
 import { activities, wbsNodes } from './planning';
@@ -39,6 +39,16 @@ export const changeRequests = pgTable(
     baselineCode: text('baseline_code'),
     justification: text('justification'),
     position: integer('position').notNull(),
+    /**
+     * Delivery 8 (R-069, P-6c): contractual impact chosen on "New change request" — 'none' makes the client step not required,
+     * a price impact prepares the amendment at approval (A-4). Null on requests raised before it (backfilled from the chain).
+     */
+    contractImpact: text('contract_impact').$type<ContractImpact>(),
+    /**
+     * Delivery 8 (R-081, C-3a): project cost category ("C03") whose budget the approved request moves; null = only the BAC and
+     * the work packages move. Internal: never shown to the client.
+     */
+    costCategoryCode: text('cost_category_code'),
     ...timestamps,
   },
   (t) => [unique().on(t.projectId, t.number)],
@@ -68,6 +78,30 @@ export const changeRequestWbs = pgTable('change_request_wbs', {
   amountKeur: keur('amount_keur'),
   position: integer('position').notNull(),
 });
+
+/**
+ * Delivery 7 (NEW-D2-2 = a, R-062): plan activities a change request touches, in addition to its work packages, with
+ * the new duration it asks for (optional). Linked by the activity code within the request's project, so a link survives
+ * the activity's removal to the plan trash and its restore. Once the request is approved, the next "Reschedule" applies
+ * the new duration (`appliedAt`, `appliedFromDays` = the duration it replaced).
+ */
+export const changeRequestActivities = pgTable(
+  'change_request_activities',
+  {
+    id: id(),
+    changeRequestId: uuid('change_request_id').notNull().references(() => changeRequests.id, { onDelete: 'cascade' }),
+    /** "A1250". */
+    activityCode: text('activity_code').notNull(),
+    /** Working days; null = touched without a new duration. */
+    newDurationDays: integer('new_duration_days'),
+    appliedAt: timestamp('applied_at', { withTimezone: true }),
+    appliedFromDays: integer('applied_from_days'),
+    position: integer('position').notNull(),
+    createdByPersonId: uuid('created_by_person_id').references(() => persons.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.changeRequestId, t.activityCode)],
+);
 
 /** Budget screen change list (projectData().CRS = HCRS 3193) — see the file header. */
 export const budgetChangeLines = pgTable('budget_change_lines', {

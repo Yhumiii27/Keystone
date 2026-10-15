@@ -1,9 +1,10 @@
 // Export providers — Purchasing & stock: Sourcing (RFQs, supplier invoices, scorecard), Purchase orders, Deliveries &
 // goods receipt, Stock & storages.
 // Excel follows each screen's filters (`?tab=`, `?status=`, `?loc=&q=`); a client exports only its own projects' rows.
-// PDF documents: `po` = the purchase order (header, lines, totals, signatures — "Export PO") and `receipt` = the goods
+// PDF documents: `po` = the internal purchase order summary (SC-4b: the legal order is issued by Sage X3 — "Export PO") and `receipt` = the goods
 // receipt (lines with the QC result, put-away, signatures — "Print receipt").
 import { DEFAULT_PROJECT } from '@/config/screens';
+import { deliveryTermsText } from '@/domain/order-terms';
 import { isPoStatus } from '@/domain/orders';
 import { filterReceipts, receiptFilterOf } from '@/domain/deliveries';
 import { filterStockLines } from '@/domain/stock';
@@ -19,15 +20,18 @@ import { poStatus, receiptStatus, supplierInvoiceStatus } from '@/server/db/code
 import { formatDate } from '../format';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook, PdfDocument } from '../types';
-import { col, compact, filterLine, kpiSheet, param, projectRef, sheet, sum, tableBlock, todayIso } from './common';
-import { projectFilter } from './scope';
+import { col, compact, filterLine, kpiSheet, param, pricedPdf, pricedWorkbook, projectRef, sheet, sum, tableBlock, todayIso } from './common';
+import { amountsCol, commonCurrency, moneyCol } from './currency-columns';
+import { currentProjectCode, projectFilter } from './scope';
+import { dataText } from '@/i18n/data-text';
 
 // ── Sourcing, invoices & suppliers ───────────────────────────────────────────────────────────────────────────────────
 async function procurementWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const t = procT(ctx.t, ctx.lang);
   const raw = param(ctx, 'tab');
   const tab = isSourcingTab(raw) ? raw : 'rfq';
-  const current = param(ctx, 'code')?.toUpperCase() ?? DEFAULT_PROJECT;
+  // A client's `?code=` falls back to one of their own projects (never another organisation's NCR counts).
+  const current = await currentProjectCode(ctx, DEFAULT_PROJECT);
   const [rfqs, invoices, card, visible] = await Promise.all([listRfqs(), listSupplierInvoices(), getSupplierScorecard(current), projectFilter(ctx)]);
   const filter = parseInvoiceFilter(param(ctx, 'status') ?? undefined, invoices);
   const rfq = sheet(t('Requests for quotation'), [
@@ -35,22 +39,26 @@ async function procurementWorkbook(ctx: ExportContext): Promise<ExportWorkbook> 
     col('due', t('Reply due'), 'date'), col('status', t('Status'), 'text', 14), col('rule', t('Award rule'), 'text', 18), col('owner', t('Owner'), 'text', 16),
     col('suppliers', t('Invited suppliers'), 'text', 36), col('best', t('Best unit price'), 'money_eur'), col('awarded', t('Awarded to'), 'text', 18), col('po', t('Purchase order'), 'text', 10),
   ], rfqs.filter((r) => visible(r.projectCode)).map((r) => ({
-    number: r.number, title: t(r.title), project: r.projectCode ?? '', part: r.partRef ?? '', qty: r.quantity, due: r.replyDueOn, status: t(r.statusLabel), rule: t(r.awardRuleLabel), owner: r.owner,
+    number: r.number, title: dataText(r.title, ctx.lang), project: r.projectCode ?? '', part: r.partRef ?? '', qty: r.quantity, due: r.replyDueOn, status: t(r.statusLabel), rule: t(r.awardRuleLabel), owner: r.owner,
     suppliers: r.invitedSuppliers.join(' · '), best: r.bestUnitPriceEur, awarded: r.awardedTo ?? '', po: r.purchaseOrderNumber ?? '',
   })));
   const quotes = sheet(t('Quotes'), [
     col('rfq', t('RFQ'), 'text', 10), col('supplier', t('Supplier'), 'text', 20), col('unit', t('Unit price'), 'money_eur'), col('total', t('Total'), 'money_eur'), col('lead', t('Lead time (weeks)'), 'integer'),
     col('terms', t('Payment terms'), 'text', 14), col('grade', t('Grade'), 'text', 6), col('score', t('Score'), 'number', 8, { decimals: 1 }), col('awarded', t('Awarded'), 'boolean'),
   ], rfqs.filter((r) => visible(r.projectCode)).flatMap((r) => r.quotes.map((q) => ({
-    rfq: r.number, supplier: q.supplier, unit: q.unitPriceEur, total: q.totalEur, lead: q.leadWeeks, terms: t(q.paymentTerms), grade: q.grade, score: q.score, awarded: q.awarded,
+    rfq: r.number, supplier: q.supplier, unit: q.unitPriceEur, total: q.totalEur, lead: q.leadWeeks, terms: dataText(q.paymentTerms, ctx.lang), grade: q.grade, score: q.score, awarded: q.awarded,
   }))));
+  // C-9: amounts in each invoice's currency — € columns when they are all in euros, else plain numbers and a Currency column.
+  // R-046: amount columns in any currency are price columns (left out for a viewer who may not see supplier prices).
+  const icur = commonCurrency(invoices.map((i) => i.currency));
+  const amt = (key: string, header: string) => amountsCol(key, header, icur, 'units');
   const inv = sheet(t('Supplier invoices'), [
     col('number', t('Invoice'), 'text', 16), col('supplier', t('Supplier'), 'text', 20), col('po', t('Purchase order'), 'text', 10), col('receipt', t('Goods receipt'), 'text', 10),
-    col('project', t('Project'), 'text', 10), col('amount', t('Amount'), 'money_eur'), col('invoiced', t('Invoiced amount'), 'money_eur'), col('poAmount', t('PO amount'), 'money_eur'),
-    col('grAmount', t('Receipt amount'), 'money_eur'), col('gap', t('Gap'), 'money_eur'), col('matchPo', t('PO match'), 'text', 14), col('matchGr', t('Receipt match'), 'text', 14),
+    col('project', t('Project'), 'text', 10), ...(icur ? [] : [col('currency', t('Currency'), 'text', 8)]), amt('amount', t('Amount')), amt('invoiced', t('Invoiced amount')), amt('poAmount', t('PO amount')),
+    amt('grAmount', t('Receipt amount')), amt('gap', t('Gap')), col('matchPo', t('PO match'), 'text', 14), col('matchGr', t('Receipt match'), 'text', 14),
     col('date', t('Invoice date'), 'date'), col('due', t('Due date'), 'date'), col('status', t('Status'), 'text', 16), col('blocking', t('Blocking reason'), 'text', 30), col('x3', 'X3', 'text', 12),
   ], invoices.filter((i) => (filter === 'all' || i.status === filter) && visible(i.projectCode)).map((i) => ({
-    number: i.number, supplier: i.supplier, po: i.poNumber ?? '', receipt: i.receiptNumber ?? '', project: i.projectCode ?? '', amount: i.amountEur, invoiced: i.invoicedAmountEur,
+    number: i.number, supplier: i.supplier, po: i.poNumber ?? '', receipt: i.receiptNumber ?? '', project: i.projectCode ?? '', currency: i.currency, amount: i.amountEur, invoiced: i.invoicedAmountEur,
     poAmount: i.poAmountEur, grAmount: i.receiptAmountEur, gap: i.gapEur, matchPo: t(i.matchLabels.po), matchGr: t(i.matchLabels.gr), date: i.invoiceDate, due: i.dueDate,
     status: t(i.statusLabel), blocking: i.blockingReason ? t(i.blockingReason) : '', x3: i.x3ApRef ?? '',
   })));
@@ -74,34 +82,44 @@ async function ordersWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null
   const s = param(ctx, 'status');
   const status = isPoStatus(s) ? s : null;
   const orders = data.orders.filter((o) => !status || o.status === status);
+  // C-9: amounts in the orders' currency — € columns when every order is in euros, else plain numbers with a Currency column;
+  // R-046: price columns in any currency (a USD order no longer turns the values into unmasked plain numbers).
+  const cur = commonCurrency(orders.map((o) => o.currency));
   return {
     title: t('Purchase orders'),
     filters: compact([status ? `${t('Status')}: ${t(poStatus.label(status))}` : null]),
     sheets: [
       sheet(t('Purchase orders'), [
         col('number', t('Order'), 'text', 10), col('supplier', t('Supplier'), 'text', 22), col('status', t('Status'), 'text', 18), col('ordered', t('Order date'), 'date'),
-        col('expected', t('Expected'), 'date'), col('value', t('Value'), 'money_eur'), col('received', t('Received value'), 'money_eur'), col('units', t('Units ordered'), 'number', 8),
+        col('expected', t('Expected'), 'date'), ...(cur ? [] : [col('currency', t('Currency'), 'text', 8)]),
+        amountsCol('value', t('Value'), cur, 'units'), amountsCol('received', t('Received value'), cur, 'units'), col('units', t('Units ordered'), 'number', 8),
         col('receivedUnits', t('Units received'), 'number', 8), col('needed', t('Needed for'), 'text', 30), col('late', t('Late'), 'boolean'), col('terms', t('Delivery terms'), 'text', 24),
         col('x3', 'X3', 'text', 12), col('receipts', t('Goods receipts'), 'text', 18), col('invoices', t('Supplier invoices'), 'text', 18),
       ], orders.map((o) => ({
-        number: o.number, supplier: o.supplier, status: t(o.statusLabel), ordered: o.orderedOn, expected: o.expectedOn, value: o.valueEur, received: o.receivedValueEur,
-        units: o.orderedUnits, receivedUnits: o.receivedUnits, needed: o.neededFor ? `${o.neededFor.code} · ${t(o.neededFor.name)}` : '', late: o.late, terms: t(o.deliveryTerms),
+        number: o.number, supplier: o.supplier, status: t(o.statusLabel), ordered: o.orderedOn, expected: o.expectedOn, currency: o.currency, value: o.valueEur, received: o.receivedValueEur,
+        units: o.orderedUnits, receivedUnits: o.receivedUnits, needed: o.neededFor ? `${o.neededFor.code} · ${dataText(o.neededFor.name, ctx.lang)}` : '', late: o.late, terms: deliveryTermsText(o.deliveryTerms, ctx.lang, t),
         x3: o.x3Ref ?? '', receipts: (data.receipts[o.number] ?? []).map((r) => r.number).join(' · '), invoices: (data.invoices[o.number] ?? []).map((r) => r.number).join(' · '),
       }))),
       sheet(t('Order lines'), [
         col('number', t('Order'), 'text', 10), col('ref', t('Reference'), 'text', 16), col('name', t('Article'), 'text', 34), col('qty', t('Ordered'), 'number', 8), col('received', t('Received'), 'number', 8),
-        col('unit', t('Unit price'), 'money_eur'), col('total', t('Total'), 'money_eur'), col('status', t('Part status'), 'text', 14),
+        ...(cur ? [] : [col('currency', t('Currency'), 'text', 8)]),
+        amountsCol('unit', t('Unit price'), cur, 'units'), amountsCol('total', t('Total'), cur, 'units'), col('status', t('Part status'), 'text', 14),
       ], orders.flatMap((o) => o.lines.map((l) => ({
-        number: o.number, ref: l.ref, name: t(l.name), qty: l.orderedQty, received: l.receivedQty, unit: l.unitPriceEur, total: l.totalEur, status: t(l.partStatusLabel),
+        number: o.number, ref: l.ref, name: dataText(l.name, ctx.lang), qty: l.orderedQty, received: l.receivedQty, currency: o.currency, unit: l.unitPriceEur, total: l.totalEur, status: t(l.partStatusLabel),
       })))),
       sheet(t('BOM shortfall'), [col('ref', t('Reference'), 'text', 16), col('name', t('Article'), 'text', 34), col('supplier', t('Supplier'), 'text', 20), col('bom', t('BOM quantity'), 'number', 8),
         col('ordered', t('Ordered'), 'number', 8), col('qty', t('Missing'), 'number', 8), col('price', t('List price'), 'money_eur'), col('value', t('Value'), 'money_eur')],
-        data.shortfall.lines.map((l) => ({ ref: l.ref, name: t(l.name), supplier: l.supplier ?? '', bom: l.bomQty, ordered: l.orderedQty, qty: l.need, price: l.listPriceEur, value: l.valueEur }))),
+        data.shortfall.lines.map((l) => ({ ref: l.ref, name: dataText(l.name, ctx.lang), supplier: l.supplier ?? '', bom: l.bomQty, ordered: l.orderedQty, qty: l.need, price: l.listPriceEur, value: l.valueEur }))),
     ],
   };
 }
 
-/** Purchase order (PDF): supplier, project, dates and terms, the lines with their total, approval and signatures. */
+/**
+ * Purchase order summary (PDF, "Export PO"): an internal recap, not the order sent to the supplier (SC-4b = a, R-097 —
+ * the legal purchase order, with its legal mentions and terms, is issued by Sage X3). It refers to the Sage X3 order
+ * (or says the order is not in X3 yet) and carries the internal approval trail: no supplier acknowledgement, no
+ * instructions to the supplier.
+ */
 async function poDocument(ctx: ExportContext): Promise<PdfDocument | null> {
   if (!ctx.project) return null;
   const id = (param(ctx, 'id') ?? '').toUpperCase();
@@ -110,27 +128,39 @@ async function poDocument(ctx: ExportContext): Promise<PdfDocument | null> {
   const { t, lang } = ctx;
   const fd = (iso: string | null) => (iso ? formatDate(iso, lang) : t('To confirm'));
   const lines = sheet(t('Lines'), [
-    col('ref', t('Reference'), 'text', 16), col('name', t('Article'), 'text', 40), col('qty', t('Quantity'), 'number', 9), col('unit', t('Unit price'), 'money_eur', 12), col('total', t('Total'), 'money_eur', 13),
-  ], o.lines.map((l) => ({ ref: l.ref, name: t(l.name), qty: l.orderedQty, unit: l.unitPriceEur, total: l.totalEur })));
+    col('ref', t('Reference'), 'text', 16), col('name', t('Article'), 'text', 40), col('qty', t('Quantity'), 'number', 9),
+    moneyCol('unit', t('Unit price'), o.currency, 'units', 12), moneyCol('total', t('Total'), o.currency, 'units', 13),
+  ], o.lines.map((l) => ({ ref: l.ref, name: dataText(l.name, ctx.lang), qty: l.orderedQty, unit: l.unitPriceEur, total: l.totalEur })));
   const draft = o.status === 'draft' || o.status === 'awaiting_approval';
+  // R-095: a cancelled order says so in the subtitle, and the internal recap gives why, by whom and when (typed reason as typed).
+  const cancelled = o.status === 'cancelled';
+  const cancellation = o.cancellation
+    ? [[t('Cancelled'), [formatDate(o.cancellation.at.slice(0, 10), lang), o.cancellation.by, dataText(o.cancellation.reason, ctx.lang)].filter(Boolean).join(' · ')] as [string, string]]
+    : [];
+  const x3 = o.x3Ref ? `${t('Sage X3 order')} ${o.x3Ref}` : o.origin === 'x3' ? t('Imported from Sage X3') : t('Not yet in Sage X3');
   return {
-    title: `${t('Purchase order')} ${o.number}`,
-    subtitle: draft ? `${o.supplier} · ${t(o.statusLabel)} — ${t('not yet an order')}` : o.supplier,
+    title: `${t('Purchase order summary')} ${o.number}`,
+    subtitle: `${t('Internal document — not sent to the supplier')} · ${o.supplier}${draft || cancelled ? ` · ${t(o.statusLabel)}` : ''}`,
     project: projectRef(ctx),
     reference: o.x3Ref ? `${o.number} · X3 ${o.x3Ref}` : o.number,
     date: o.orderedOn ?? todayIso(ctx),
     blocks: [
       { kind: 'fields', columns: 2, items: [
-        [t('Supplier'), o.supplier], [t('Status'), t(o.statusLabel)], [t('Order date'), fd(o.orderedOn)], [t('Expected delivery'), fd(o.expectedOn)],
-        [t('Delivery terms'), t(o.deliveryTerms)], [t('Needed for'), o.neededFor ? `${o.neededFor.code} · ${t(o.neededFor.name)}` : '—'],
-        [t('Requested by'), o.createdBy ?? '—'], [t('Approved by'), o.decidedBy && !draft ? o.decidedBy : '—'],
+        [t('Sage X3 reference'), x3], [t('Status'), t(o.statusLabel)],
+        [t('Supplier'), o.supplier], [t('Order date'), fd(o.orderedOn)], [t('Expected delivery'), fd(o.expectedOn)],
+        [t('Delivery terms'), deliveryTermsText(o.deliveryTerms, ctx.lang, t)], [t('Needed for'), o.neededFor ? `${o.neededFor.code} · ${dataText(o.neededFor.name, ctx.lang)}` : '—'],
+        [t('Requested by'), o.createdBy ?? '—'], [t('Approved by'), o.decidedBy && !draft && !cancelled ? o.decidedBy : '—'], ...cancellation,
       ] },
       { kind: 'heading', text: t('Lines') },
       tableBlock(lines, undefined, { name: t('Total excl. VAT'), total: sum(lines.rows, 'total') }),
-      { kind: 'spacer', height: 16 },
-      { kind: 'signatures', parties: [{ role: t('For Keystone — buyer'), name: (draft ? null : o.decidedBy) ?? undefined }, { role: t('Supplier acknowledgement') }] },
     ],
-    footnote: t('Prices in euros excluding VAT. Delivery to the address and terms above; please quote the order number on the delivery note and the invoice.'),
+    // SC-4b (R-097): the Keystone PDF is an internal recap — the legal order is issued by Sage X3. R-046: no price sentence when
+    // prices are masked; C-9: an order in another currency states it.
+    footnote: ctx.pricesMasked
+      ? t('Internal summary of the order recorded in Keystone. The purchase order sent to the supplier, with its legal mentions and terms, is issued by Sage X3.')
+      : o.currency === 'EUR'
+        ? t('Internal summary of the order recorded in Keystone. The purchase order sent to the supplier, with its legal mentions and terms, is issued by Sage X3. Prices in euros excluding VAT.')
+        : `${t('Internal summary of the order recorded in Keystone. The purchase order sent to the supplier, with its legal mentions and terms, is issued by Sage X3.')} ${t('Prices in the order currency excluding VAT')} (${o.currency}).`,
   };
 }
 
@@ -158,7 +188,7 @@ async function deliveriesWorkbook(ctx: ExportContext): Promise<ExportWorkbook | 
       sheet(t('Receipt lines'), [
         col('number', t('Receipt'), 'text', 10), col('ref', t('Reference'), 'text', 16), col('name', t('Article'), 'text', 34), col('ordered', t('Ordered'), 'number', 8),
         col('delivered', t('Delivered'), 'number', 8), col('accepted', t('Accepted'), 'number', 8), col('rejected', t('Rejected'), 'number', 8), col('location', t('Location'), 'text', 26),
-      ], rs.flatMap((r) => r.lines.map((l) => ({ number: r.number, ref: l.ref, name: t(l.name), ordered: l.ordered, delivered: l.delivered, accepted: l.accepted, rejected: l.rejected, location: t(l.location) })))),
+      ], rs.flatMap((r) => r.lines.map((l) => ({ number: r.number, ref: l.ref, name: dataText(l.name, ctx.lang), ordered: l.ordered, delivered: l.delivered, accepted: l.accepted, rejected: l.rejected, location: dataText(l.location, ctx.lang) })))),
       kpiSheet(ctx, [
         { label: t('Open orders to receive'), value: String(data.openOrdersToReceive) },
         { label: t('On-time deliveries'), value: data.onTimePct != null ? `${data.onTimePct}%` : '—' },
@@ -178,7 +208,7 @@ async function receiptDocument(ctx: ExportContext): Promise<PdfDocument | null> 
   const lines = sheet(t('Lines'), [
     col('ref', t('Reference'), 'text', 16), col('name', t('Article'), 'text', 34), col('ordered', t('Ordered'), 'number', 9), col('delivered', t('Delivered'), 'number', 9),
     col('accepted', t('Accepted'), 'number', 9), col('rejected', t('Rejected'), 'number', 9), col('location', t('Put-away'), 'text', 24),
-  ], r.lines.map((l) => ({ ref: l.ref, name: t(l.name), ordered: l.ordered, delivered: l.delivered, accepted: l.accepted, rejected: l.rejected, location: t(l.location) })));
+  ], r.lines.map((l) => ({ ref: l.ref, name: dataText(l.name, ctx.lang), ordered: l.ordered, delivered: l.delivered, accepted: l.accepted, rejected: l.rejected, location: dataText(l.location, ctx.lang) })));
   return {
     title: `${t('Goods receipt')} ${r.number}`,
     subtitle: `${r.supplier} · ${t('Purchase order')} ${r.poNumber}`,
@@ -216,7 +246,7 @@ async function stockWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
     col('min', t('Minimum'), 'number', 9), col('belowMin', t('Below minimum'), 'boolean'), col('unit', t('Unit cost'), 'money_eur'), col('value', t('Value'), 'money_eur'),
     col('source', t('Source'), 'text', 8), col('last', t('Last movement'), 'date'),
   ], shown.map((r) => ({
-    ref: r.ref, name: t(r.name), location: t(r.location), type: t(r.locationTypeLabel), onHand: r.onHand, reserved: r.reserved, project: r.reservedForProject ?? '', available: r.available,
+    ref: r.ref, name: dataText(r.name, ctx.lang), location: dataText(r.location, ctx.lang), type: t(r.locationTypeLabel), onHand: r.onHand, reserved: r.reserved, project: r.reservedForProject ?? '', available: r.available,
     min: r.minQty || null, belowMin: r.belowMin, unit: r.unitCostEur, value: r.valueEur, source: r.sourceLabel, last: r.lastMovementOn,
   })));
   return {
@@ -236,7 +266,9 @@ async function stockWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   };
 }
 
-registerExportProvider({ screen: 'procurement', table: procurementWorkbook, fileBase: () => 'sourcing' });
-registerExportProvider({ screen: 'orders', table: ordersWorkbook, fileBase: () => 'purchase-orders', documents: { po: poDocument } });
+// R-046 (NEW-D2-1): quotes, invoices, order, stock values and prices only for the director, the PMs and procurement — the other
+// viewers export the same tables without the euro columns (and the purchase order without its prices).
+registerExportProvider({ screen: 'procurement', table: pricedWorkbook(procurementWorkbook), fileBase: () => 'sourcing' });
+registerExportProvider({ screen: 'orders', table: pricedWorkbook(ordersWorkbook), fileBase: () => 'purchase-orders', documents: { po: pricedPdf(poDocument) } });
 registerExportProvider({ screen: 'deliveries', table: deliveriesWorkbook, documents: { receipt: receiptDocument } });
-registerExportProvider({ screen: 'stock', table: stockWorkbook });
+registerExportProvider({ screen: 'stock', table: pricedWorkbook(stockWorkbook) });

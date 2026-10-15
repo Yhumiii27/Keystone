@@ -2,7 +2,9 @@
 // Expected values are the prototype's own render values (design lines 3096–5239 run in node:vm, renderVals() for the
 // director, EN and FR — deepTr applied; src/domain/itpcom.golden.json), except the deliberate deviations noted inline:
 // French singular forms ("1 échouée"), the punch step "Clôturer" (the prototype left "Close" in English), the Codex
-// record buttons as links, and the punch list's empty panel ("No punch item yet") on a project without punch items.
+// record buttons as links, and the punch list's empty panel ("No punch item yet") on a project without punch items. A-6 'a'
+// (R-117): the screens read the project's single punch list — HLT-026's 3 items raised on site (P-06…P-08) join the
+// prototype's 5 ITP items (the "Open punch items" tile and the list follow; Blocking A is unchanged: they are B).
 import { createElement as h, type ReactElement } from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 vi.mock('./actions', () => ({ addInspectionAction: vi.fn(), addPunchItemAction: vi.fn(), advancePunchItemAction: vi.fn(), planSatAction: vi.fn() }));
@@ -31,12 +33,12 @@ beforeAll(async () => {
 }, 60_000);
 
 async function itp(lang: Lang, code = 'HLT-026', view: ItpViewKey = 'plan') {
-  const [plan, punch, machineType] = await Promise.all([getItpPlan(code), listPunchItems(code, 'itp'), projectMachineTypeLabel(code)]);
+  const [plan, punch, machineType] = await Promise.all([getItpPlan(code), listPunchItems(code), projectMachineTypeLabel(code)]);
   const t = makeT(lang);
   return { t, view: itpScreenView({ code, view, plan, punch, machineType }, t, lang) };
 }
 async function cm(lang: Lang, code = 'HLT-026') {
-  const [c, punch] = await Promise.all([getCommissioning(code), listPunchItems(code, 'itp')]);
+  const [c, punch] = await Promise.all([getCommissioning(code), listPunchItems(code)]);
   const t = makeT(lang);
   return { t, c, view: commissioningScreenView(code, c, punch, t, lang) };
 }
@@ -45,13 +47,16 @@ async function cm(lang: Lang, code = 'HLT-026') {
 const kpis = (ks: any[]) => ks.map((k) => ({ label: k.label, value: String(k.value), sub: k.sub, color: k.color }));
 /** French singular forms of the rebuild (deviation: the prototype wrote "1 échouées"). */
 const frSingular = (s: string) => s.replace(/^1 échouées/, '1 échouée');
+/** A-6 'a' (R-117): HLT-026's "Open punch items" counts the 2 open items raised on site too (both B): 4 → 6, B 2 → 4. */
+const unifiedPunch = (code: string) => (k: { label: string; value: string; sub: string; color: string }, i: number) =>
+  code === 'HLT-026' && i === 2 ? { ...k, value: '6', sub: 'A 0 · B 4 · C 2' } : k;
 
 describe('ITP · plan view', () => {
   it.each(PROJECTS)('%s EN / FR: KPI tiles, groups and rows equal the prototype', async (code) => {
     for (const lang of ['en', 'fr'] as const) {
       const g = G.itp[lang][code].plan;
       const { view } = await itp(lang, code);
-      expect(view.kpis).toEqual(kpis(g.kpis).map((k) => ({ ...k, sub: frSingular(k.sub) })));
+      expect(view.kpis).toEqual(kpis(g.kpis).map((k) => ({ ...k, sub: frSingular(k.sub) })).map(unifiedPunch(code)));
       expect(view.views.map((o) => o.label)).toEqual(g.seg.map((o: any) => o.label));
       expect(view.plan!.groups.map((x) => ({ sys: x.system, passed: x.passedText, rows: x.rows.map((r) => [r.number, r.name, r.type, r.typeClass, r.stage, r.reference, r.date, r.status, r.statusClass, r.statusColor, r.doc?.ref ?? '']) }))).toEqual(
         g.groups.map((x: any) => ({ sys: x.sys, passed: `${x.passed} / ${x.count}`, rows: x.rows.map((r: any) => [r.id, r.name, r.type, r.typeClass, r.stage, r.ref, r.date, r.status, r.stClass, r.stColor, r.doc]) })),
@@ -96,9 +101,17 @@ describe('ITP · punch view', () => {
       const { view } = await itp(lang, 'HLT-026', 'punch');
       expect(view.plan).toBeNull();
       expect([view.punch!.title, view.punch!.subtitle]).toEqual(lang === 'en' ? ['Punch list', 'A blocking · B before SAT · C cosmetic'] : ['Liste de réserves', 'A bloquante · B avant SAT · C esthétique']);
-      expect(view.punch!.rows.map((r) => [r.number, r.item, r.location, r.category, r.categoryClass, r.source, r.owner, r.due, r.status, r.statusClass, r.color, r.step?.label ?? null])).toEqual(
+      // A-6 'a' (R-117): the prototype's 5 ITP items first (origin Inspection), then the 3 items raised on site.
+      expect(view.punch!.rows.slice(0, 5).map((r) => [r.number, r.item, r.location, r.category, r.categoryClass, r.source, r.owner, r.due, r.status, r.statusClass, r.color, r.step?.label ?? null])).toEqual(
         g.punch.map((r: any) => [r.id, r.item, r.loc, r.cat, r.catClass, r.src, r.owner, r.due, r.status, r.stClass, r.color, r.canAdvance ? (lang === 'fr' && r.next === 'Close' ? 'Clôturer' : r.next) : null]),
       );
+      // "Inspection" and "Site" read the same in French.
+      expect(view.punch!.rows.map((r) => r.origin)).toEqual([...Array(5).fill('Inspection'), ...Array(3).fill('Site')]);
+      expect(view.punch!.rows.slice(5).map((r) => [r.number, r.category, r.ncr, r.owner, r.status, r.step?.label ?? null])).toEqual([
+        ['P-06', 'B', 'NCR-029', 'Client', lang === 'en' ? 'Open' : 'Ouverte', lang === 'en' ? 'Start' : 'Démarrer'],
+        ['P-07', 'B', '—', 'Keystone', lang === 'en' ? 'Open' : 'Ouverte', lang === 'en' ? 'Start' : 'Démarrer'],
+        ['P-08', 'B', '—', 'Client', lang === 'en' ? 'Closed' : 'Clôturée', null],
+      ]);
     }
     expect((await itp('fr', 'HLT-026', 'punch')).view.punch!.rows[3].step).toEqual({ label: 'Clôturer', ariaLabel: 'Clôturer · P-04', from: 'in_progress' });
   });
@@ -108,7 +121,8 @@ describe('ITP · punch view', () => {
     const edit = html(ItpBody({ code: 'HLT-026', view, canEdit: true, t }), 'fr');
     for (const s of ['aria-label="Référence"', 'Élément', 'Système', 'Cat.', 'Émise par', 'Responsable', 'Échéance', 'Statut', 'aria-label="Démarrer · P-02"', 'aria-label="Clôturer · P-04"', 'data-punch-step', 'Inspection client'])
       expect(edit).toContain(s);
-    expect(edit.match(/data-punch-step/g)?.length).toBe(4);
+    // A-6 'a' (R-117): Start / Close on every open item, the 2 open items raised on site included (4 → 6).
+    expect(edit.match(/data-punch-step/g)?.length).toBe(6);
     const ro = html(ItpBody({ code: 'HLT-026', view, canEdit: false, t }), 'fr');
     expect(ro).not.toContain('data-punch-step');
     expect(ro).toContain('Clôturée');
@@ -141,7 +155,8 @@ describe('Commissioning', () => {
       const g = G.commissioning[lang]['HLT-026'];
       const { view } = await cm(lang);
       expect(view!.kpis).toEqual(kpis(g.kpis));
-      expect(view!.columns).toEqual(g.cols);
+      // NEW-D5-3 'a' (R-156): the prototype's French 'Handover' column « Livraison » is « Transfert ».
+      expect(view!.columns).toEqual(lang === 'fr' ? g.cols.map((c: string) => (c === 'Livraison' ? 'Transfert' : c)) : g.cols);
       expect(view!.rows.map((r) => ({ sys: r.system, punchA: r.blockingA, cells: r.cells.map((c) => [c.status, c.date, c.bg, c.border, c.color]) }))).toEqual(
         g.rows.map((r: any) => ({ sys: r.sys, punchA: r.punchA, cells: r.cells.map((c: any) => [c.st, c.date, c.bg, c.border, c.color]) })),
       );
@@ -189,10 +204,18 @@ describe('action forms', () => {
     const team = await teamOwnerOptions('HLT-026');
     for (const lang of ['en', 'fr'] as const) {
       const g = G.forms[lang].punch;
-      const f = localizeForm(punchFormDef(team), makeT(lang), lang);
+      const all = localizeForm(punchFormDef(team), makeT(lang), lang);
+      // A-6 'a' (R-117): origin, owner party and the NCR (internal viewers) follow the prototype's six fields.
+      expect(all.fields.slice(6).map((x) => x.id)).toEqual(['origin', 'party', 'ncr']);
+      const f = { ...all, fields: all.fields.slice(0, 6) };
       expect([f.title, f.submit]).toEqual([g.title, g.submit]);
       expect(f.fields.map((x) => [x.id, x.label, !!x.required])).toEqual(g.fields.map((x: any) => [x.id, x.label, x.req]));
-      expect(f.fields.map((x) => (x.options ?? []).map((o) => (typeof o === 'string' ? o : o.label)))).toEqual(g.fields.map((x: any) => x.options));
+      // R-041 (P-2): Harbor Line's named team adds the seeded referents to the prototype's TEAM owners. A-6 'a' (R-117): "—"
+      // first (no person, the party owns the item), the first TEAM name stays the default.
+      expect(f.fields.map((x) => (x.options ?? []).map((o) => (typeof o === 'string' ? o : o.label)))).toEqual(
+        g.fields.map((x: any) => (x.id === 'owner' ? ['—', ...x.options, 'Antoine Girard', 'Gabriel Comte'] : x.options)),
+      );
+      expect(f.fields[4].defaultValue).toBe(g.fields[4].value);
       expect(f.fields[2].options).toEqual([
         { value: 'A', label: g.fields[2].options[0] }, { value: 'B', label: g.fields[2].options[1] }, { value: 'C', label: g.fields[2].options[2] },
       ]);

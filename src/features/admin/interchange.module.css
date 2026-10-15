@@ -49,3 +49,20 @@
 @media (max-width: 560px) {
   .grid, .mapGrid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Connector configure (read-only, D-7a) */
+.readGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.readRow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.readRow:nth-child(3) { grid-column: 1 / -1; }
+.readLabel { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-neutral-500); }
+.readValue { margin: 0; font-size: 13px; color: var(--color-text); text-wrap: pretty; overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  .readGrid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* R-020: where a connector is configured (connectors file, server variables) — read-only. */
+.sourceBox { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--color-divider); border-radius: var(--radius-md); }
+.envList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.envRow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 12px; color: var(--color-text); }
+.envName { font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--color-neutral-300); }
+.envPurpose { flex: 1 1 160px; min-width: 0; color: var(--color-neutral-400); }

@@ -4,9 +4,11 @@ import 'server-only';
 // role key) and re-check, server-side, that the screen is in the viewer's workspace (`D5_SCREEN_ROLES`); Server
 // Functions additionally check the project read-only rule with `getProjectContext(code).canEdit(screen)` before calling.
 import { and, eq } from 'drizzle-orm';
+import type { SystemMessage } from '@/domain/system-messages';
 import { inWorkspace, type ActivityKind, type D5Screen } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
 import { persons, projects, users } from '@/server/db/schema';
+import { leadsProject } from './project-team';
 import type { DB, Tx } from '@/server/db/types';
 
 type Q = DB | Tx;
@@ -49,24 +51,40 @@ export async function isClientContactOf(q: Q, actor: Actor, projectClientId: str
   return !!u;
 }
 
-/** The actor manages the project (PM) — or is the portfolio director. */
-export async function managesProject(q: Q, actor: Actor, pmPersonId: string | null): Promise<boolean> {
+/** The actor leads the project — PM of record, co-PM or deputy (R-041, L-4b) — or is the portfolio director. */
+export async function managesProject(q: Q, actor: Actor, project: { id: string }): Promise<boolean> {
   if (actor.role === 'director') return true;
-  if (actor.role !== 'pm' || !pmPersonId) return false;
+  if (actor.role === 'client') return false;
   const p = await findPerson(q, actor.name);
-  return !!p && p.id === pmPersonId;
+  return !!p && leadsProject(q, project.id, p.id);
 }
 
-/** Audit row + activity event for one change by the actor (activity optional). */
-export async function trace(
-  q: Q, actor: { personId: string | null; who: string },
-  e: { objectRef: string; change: string; area: string; entityType?: string; entityId?: string | null; projectId?: string | null; activity?: { text: string; kind: ActivityKind } },
-): Promise<void> {
-  await writeAudit(q, {
-    actorName: actor.who, actorPersonId: actor.personId, objectRef: e.objectRef, change: e.change, area: e.area, entityType: e.entityType ?? null,
-    entityId: e.entityId ?? null, projectId: e.projectId ?? null,
-  });
-  if (e.activity) await recordActivity(q, { actorName: actor.who, actorPersonId: actor.personId, text: e.activity.text, kind: e.activity.kind, projectId: e.projectId ?? null });
+/** A row text: plain English, or a system message (R-184) whose English template writes it. */
+type TraceText<F extends string> = ({ [P in F]: string } & { message?: undefined }) | ({ [P in F]?: undefined } & { message: SystemMessage });
+
+/** What one change records: the audit row (R-168: before / after, reason) and, optionally, an activity event. */
+export type TraceInput = {
+  objectRef: string; area: string; entityType?: string; entityId?: string | null; projectId?: string | null;
+  before?: Record<string, unknown> | null; after?: Record<string, unknown> | null; reason?: string | null;
+  activity?: { kind: ActivityKind } & TraceText<'text'>;
+} & TraceText<'change'>;
+
+/**
+ * Audit row + activity event for one change by the actor (activity optional). The audit row's user is the actor's
+ * (`userId` when the caller knows it, else resolved from the person — R-168).
+ */
+export async function trace(q: Q, actor: { personId: string | null; who: string; userId?: string | null }, e: TraceInput): Promise<void> {
+  const base = {
+    actorName: actor.who, actorPersonId: actor.personId, objectRef: e.objectRef, area: e.area, entityType: e.entityType ?? null, entityId: e.entityId ?? null,
+    projectId: e.projectId ?? null, before: e.before ?? null, after: e.after ?? null, reason: e.reason ?? null,
+    ...(actor.userId !== undefined ? { actorUserId: actor.userId } : {}),
+  };
+  await writeAudit(q, e.message ? { ...base, message: e.message } : { ...base, change: e.change! });
+  const a = e.activity;
+  if (a) {
+    const act = { actorName: actor.who, actorPersonId: actor.personId, kind: a.kind, projectId: e.projectId ?? null };
+    await recordActivity(q, a.message ? { ...act, message: a.message } : { ...act, text: a.text! });
+  }
 }
 
 /** ISO 'YYYY-MM-DD' of a real calendar day. */

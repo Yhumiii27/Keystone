@@ -148,6 +148,18 @@ export type StepDecision = 'pending' | 'ok' | 'rejected' | 'na';
 export const stepDecision = codec<StepDecision, string>([
   ['pending', 'pending'], ['ok', 'ok'], ['rejected', 'rejected'], ['na', 'n/a'],
 ]);
+/**
+ * Delivery 8 (R-069, P-6c): what a change request changes in the contract, chosen on "New change request". 'none' (an
+ * internal change) makes the client step not required; the price makes an approved request prepare an amendment (A-4).
+ */
+export type ContractImpact = 'none' | 'price' | 'dates' | 'price_dates';
+export const contractImpact = codec<ContractImpact, string>([
+  ['price', 'Contract price'], ['dates', 'Contractual dates'], ['price_dates', 'Contract price and dates'], ['none', 'None (internal)'],
+]);
+/** The impact includes the contract price (A-4: the approval prepares an amendment for the request's amount). */
+export const impactIncludesPrice = (i: ContractImpact | null | undefined) => i === 'price' || i === 'price_dates';
+/** app_settings key of the change control board threshold (R-069, P-6c): { keur }. */
+export const APP_SETTING_CCB = 'change.ccbThreshold';
 
 // ── Dates ──────────────────────────────────────────────────────────────────────────────────────────────
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -227,8 +239,7 @@ export const riskLevel = codec<RiskLevel, string>([['critical', 'Critical'], ['h
 /** Score = probability × impact (1–5 each). */
 export const riskScore = (probability: number, impact: number) => probability * impact;
 export const riskLevelOf = (score: number): RiskLevel => (score >= 15 ? 'critical' : score >= 8 ? 'high' : score >= 4 ? 'medium' : 'low');
-/** "Contingency draw if it occurs" = round(EMV / (P/5)); null when the EMV is 0 (prototype shows "—"). */
-export const riskCostIfOccurs = (emvKeur: number, probability: number): number | null => (emvKeur ? Math.round(emvKeur / (probability / 5)) : null);
+// The cost if a risk occurs is entered since delivery 7 and its EMV derived (Q-1): src/domain/risk.ts emvOf / costIfOccurs.
 
 // ── Status report (AF.trends, 04 §2.5) ────────────────────────────────────────────────────────────────
 export type ReportPeriod = 'month' | 'quarter' | 'since_start';
@@ -239,7 +250,9 @@ export type ReportSections = 'full' | 'summary' | 'kpis';
 export const reportSections = codec<ReportSections, string>([['full', 'Full report'], ['summary', 'Summary + KPIs'], ['kpis', 'KPIs only']]);
 
 // ── Contingency (04 §5) ───────────────────────────────────────────────────────────────────────────────
-/** What a draw-down is linked to, parsed from its free-text reference ("CR-004", "R-03", "NCR-026"; OPEN QUESTION C-4). */
+/** Status of a contingency draw-down (delivery 7, C-4): awaiting the director's validation, validated (drawn), rejected. */
+export type ContingencyDrawStatus = 'submitted' | 'validated' | 'rejected';
+/** What a draw-down is linked to (C-4), parsed from its reference ("CR-004", "R-03", "NCR-026"). */
 export type ContingencyLinkType = 'change_request' | 'risk' | 'ncr';
 export function contingencyLinkTypeOf(ref: string | null | undefined): ContingencyLinkType | null {
   const r = (ref ?? '').trim();
@@ -263,7 +276,7 @@ export const REQUEST_STATUS_TAG: Record<RequestStatus, 'tag-outline' | 'tag-acce
   draft: 'tag-outline', pending: 'tag-outline', approved: 'tag-accent', reschedule: 'tag-outline', rejected: 'tag-neutral', withdrawn: 'tag-neutral',
 };
 /** Decision trail of a resource request. */
-export type RequestEventAction = 'drafted' | 'sent' | 'approved' | 'reschedule' | 'rejected' | 'withdrawn' | 'accepted' | 'resent';
+export type RequestEventAction = 'drafted' | 'sent' | 'approved' | 'reschedule' | 'rejected' | 'withdrawn' | 'accepted' | 'resent' | 'named'; // 'named': P-8b (R-089)
 /** Where a time entry comes from (keystone = logged on the Task screen, lucca = HRIS import). */
 export type TimeEntrySource = 'keystone' | 'lucca';
 /** File icon of a task attachment (FILES 3259: ph-file-xls / ph-image / ph-file-pdf). */
@@ -273,9 +286,20 @@ export const ATTACHMENT_ICON: Record<AttachmentKind, string> = {
 };
 
 // ── Resources and HR (docs/spec/11 §2.6, 06) ──────────────────────────────────────────────────────────
-/** Leave types (LEAVE_DAYS 3460: working days lost in the week). Labels are Lucca codes (no FR). */
-export type LeaveType = 'cp' | 'rtt' | 'sick' | 'training';
-export const leaveType = codec<LeaveType, string>([['cp', 'CP'], ['rtt', 'RTT'], ['sick', 'Sick'], ['training', 'Training']]);
+/**
+ * Leave types (NEW-CURSUS-4 "a", R-031 / R-173): Keystone keeps two simple types and never the reason of an absence —
+ * Leave (paid leave, RTT) and Absence (sickness, training, anything else). Labels are EN source strings.
+ */
+export type LeaveType = 'leave' | 'absence';
+export const leaveType = codec<LeaveType, string>([['leave', 'Leave'], ['absence', 'Absence']]);
+/**
+ * The simple type of an absence nature as Cursus or the prototype names it (provisional: Cursus's nature codes are not
+ * known, R-031): paid leave and RTT are Leave, everything else is Absence. The nature itself is never stored.
+ */
+export function leaveTypeOfNature(nature: string | null | undefined): LeaveType {
+  const n = (nature ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s_-]+/g, ' ');
+  return /^(cp|rtt|leave|paid leave|conge|conges|conges payes|conge paye)$/.test(n) ? 'leave' : 'absence';
+}
 /** Rate multipliers (MULTS 3455). */
 export type RateMultiplierKey = 'ot' | 'sat' | 'sun' | 'night' | 'oncall' | (string & {});
 /** Lucca hours matching mode (AF.hours). */
@@ -305,9 +329,13 @@ export const DAY_ZERO = '2026-09-21';
 /** Status date of the frozen data set (Fri 25 Sep 2026, TODAY = 4): the business date stamped on writes. */
 export const STATUS_ISO = '2026-09-25';
 
-/** Prototype working-day offset → ISO date (dayDate: 5 working days per week from Mon 21 Sep 2026). */
+/**
+ * Prototype working-day offset → ISO date (dayDate: 5 working days per week from Mon 21 Sep 2026). Correct for negative
+ * offsets too, as dayDate is (R-167): the weekday is the floored remainder, so −1 is Fri 18 Sep, not Sun 20 Sep.
+ */
 export function isoOfDayOffset(o: number): string {
-  return isoOfUtc(utcOf(DAY_ZERO) + (Math.floor(o / 5) * 7 + (o % 5)) * DAY_MS);
+  const w = Math.floor(o / 5);
+  return isoOfUtc(utcOf(DAY_ZERO) + (w * 7 + (o - w * 5)) * DAY_MS);
 }
 /** ISO date → working-day offset (inverse of isoOfDayOffset); null for a Saturday or Sunday. */
 export function dayOffsetOfIso(iso: string): number | null {
@@ -476,10 +504,21 @@ export const approverRole = codec<ApproverRole, string>([
   ['direction', 'Direction'], ['client', 'Client'], ['quality_verification', 'Quality (verification)'], ['hse_officer', 'HSE officer'],
   ['buyer', 'Buyer'], ['site_manager', 'Site manager'], ['auditor', 'Auditor'],
 ]);
-/** Where a download log entry comes from: made from Keystone, or synced from the Codex log. */
-export type DocDownloadSource = 'keystone' | 'codex';
 /** Hand-off state of a deposit to Codex (simulated: recorded at once, OPEN QUESTION D-1). */
 export type DepositStatus = 'handed_off' | 'recorded';
+/**
+ * What a Codex outbox entry asks Codex (Delivery 7, P-7b / P-7c): a circuit step decision of the named approver, or
+ * the start of the approval circuit of an engineering deliverable ("Validate release (PM)").
+ */
+export type CodexOutboxKind = 'approval' | 'circuit_start';
+/** Decision on a circuit step recorded in Keystone. */
+export type CodexDecision = 'approved' | 'rejected';
+export const codexDecision = codec<CodexDecision, string>([['approved', 'Approved'], ['rejected', 'Rejected']]);
+/** Delivery state of a Codex outbox entry. */
+export type CodexSyncStatus = 'pending' | 'sent' | 'failed';
+export const codexSyncStatus = codec<CodexSyncStatus, string>([
+  ['pending', 'Pending sync with Codex'], ['sent', 'Sent to Codex'], ['failed', 'Sync with Codex failed'],
+]);
 
 // ── Contract & billing (docs/spec/11 §2.3, §3.5; 04 §3–4; 03 §7) ────────────────────────────────────
 /** Contract types (CTR_FIELDS 4873). */
@@ -491,6 +530,17 @@ export const contractType = codec<ContractType, string>([
 export type AmendmentStatus = 'draft' | 'sent_for_signature' | 'awaiting_signature' | 'signed';
 export const amendmentStatus = codec<AmendmentStatus, string>([
   ['draft', 'Draft'], ['sent_for_signature', 'Sent for signature'], ['awaiting_signature', 'Awaiting signature'], ['signed', 'Signed'],
+]);
+/** Amendment statuses that wait for the client's signature (R-079: "Mark signed" applies). */
+export const AMENDMENT_AWAITING: readonly AmendmentStatus[] = ['sent_for_signature', 'awaiting_signature'];
+/**
+ * Payment rule of a contract (C-6 answer a, R-076): "N days from invoice date" (due = invoice date + N), "N days end of month"
+ * (invoice date + N, then the end of that month — "45 jours fin de mois") or "End of month + N days" (end of the invoice month,
+ * then + N). Labels in the owner's words.
+ */
+export type PaymentRule = 'net' | 'days_eom' | 'eom_days';
+export const paymentRule = codec<PaymentRule, string>([
+  ['net', 'N days from invoice date'], ['days_eom', 'N days end of month'], ['eom_days', 'End of month + N days'],
 ]);
 /** Bond / guarantee types (AF.bond). */
 export type BondType = 'performance' | 'advance_payment' | 'retention' | 'warranty' | 'parent_company';
@@ -783,15 +833,15 @@ export const stockSource = codec<StockSource, string>([['x3', 'X3'], ['local', '
 /** Sage X3 exchanges recorded by Keystone (mock connector): stock import ("Import from X3"), push of local changes. */
 export type X3SyncKind = 'stock_import' | 'stock_push';
 /** Stock operations of the stock-line drawer (STOCK_OPS 3483), plus the system movement `receipt` (MOVES0 3484). */
-export type StockOperation = 'adjust' | 'transfer' | 'reserve' | 'issue' | 'return' | 'scrap';
+export type StockOperation = 'adjust' | 'transfer' | 'reserve' | 'release' | 'issue' | 'return' | 'scrap';
 export type StockMovementType = StockOperation | 'receipt';
 export const stockOperation = codec<StockOperation, string>([
-  ['adjust', 'Adjust (count)'], ['transfer', 'Transfer'], ['reserve', 'Reserve for project'], ['issue', 'Issue to activity'], ['return', 'Return to stock'],
+  ['adjust', 'Adjust (count)'], ['transfer', 'Transfer'], ['reserve', 'Reserve for project'], ['release', 'Release reservation'], ['issue', 'Issue to activity'], ['return', 'Return to stock'],
   ['scrap', 'Scrap / rework'],
 ]);
 /** Movement type as the movement lists show it (MOVES0: "Transfer", "Receipt"…). */
 export const stockMovementType = codec<StockMovementType, string>([
-  ['adjust', 'Adjust'], ['transfer', 'Transfer'], ['reserve', 'Reserve'], ['issue', 'Issue'], ['return', 'Return'], ['scrap', 'Scrap'], ['receipt', 'Receipt'],
+  ['adjust', 'Adjust'], ['transfer', 'Transfer'], ['reserve', 'Reserve'], ['release', 'Release reservation'], ['issue', 'Issue'], ['return', 'Return'], ['scrap', 'Scrap'], ['receipt', 'Receipt'],
 ]);
 /** Storage location types (SETTINGS0.locTypes). */
 export type LocationType = 'central_warehouse' | 'workshop' | 'site_store' | 'consignment' | 'quarantine';
@@ -854,6 +904,8 @@ export const deliverableStatus = codec<DeliverableStatus, string>([
 export const DELIVERABLE_STATUS_TAG: Record<DeliverableStatus, 'tag-neutral' | 'tag-accent' | 'tag-outline'> = {
   planned: 'tag-neutral', in_progress: 'tag-outline', internal_review: 'tag-outline', submitted: 'tag-accent', accepted: 'tag-neutral', rejected: 'tag-accent',
 };
+/** Client decision recorded in a deliverable's review history (R-114, Q-3a). */
+export type DeliverableReviewDecision = 'accepted' | 'rejected';
 /** Client acceptance window of a submitted deliverable ("10-day acceptance window"). */
 export const DELIVERABLE_ACCEPTANCE_DAYS = 10;
 
@@ -862,8 +914,17 @@ export type ItpPointType = 'hold' | 'witness' | 'review' | 'surveillance';
 export const itpPointType = codec<ItpPointType, string>([['hold', 'Hold'], ['witness', 'Witness'], ['review', 'Review'], ['surveillance', 'Surveillance']]);
 export type ItpStage = 'workshop' | 'fat' | 'site' | 'sat';
 export const itpStage = codec<ItpStage, string>([['workshop', 'Workshop'], ['fat', 'FAT'], ['site', 'Site'], ['sat', 'SAT']]);
-export type ItpResult = 'planned' | 'scheduled' | 'passed' | 'failed';
-export const itpResult = codec<ItpResult, string>([['planned', 'Planned'], ['scheduled', 'Scheduled'], ['passed', 'Passed'], ['failed', 'Failed']]);
+/**
+ * ITP results. `reserved` (R-112, delivery 7) = passed with reservations: accepted, the reservations become punch items;
+ * it counts as passed in the plan's figures.
+ */
+export type ItpResult = 'planned' | 'scheduled' | 'passed' | 'reserved' | 'failed';
+export const itpResult = codec<ItpResult, string>([
+  ['planned', 'Planned'], ['scheduled', 'Scheduled'], ['passed', 'Passed'], ['reserved', 'Passed with reservations'], ['failed', 'Failed'],
+]);
+/** Results an inspector records (R-112, Q-6a): pass, pass with reservations, fail. */
+export type ItpRecordedResult = Extract<ItpResult, 'passed' | 'reserved' | 'failed'>;
+export const ITP_RECORDED_RESULTS: readonly ItpRecordedResult[] = ['passed', 'reserved', 'failed'];
 
 /** Punch items (PUNCH 3718, SITE_PUNCH 3581, AF.punch). Category letter = code. */
 export type PunchCategory = 'A' | 'B' | 'C';
@@ -873,11 +934,14 @@ export const punchSource = codec<PunchSource, string>([['site_walk', 'Site walk'
 export type PunchStatus = 'open' | 'in_progress' | 'closed';
 export const punchStatus = codec<PunchStatus, string>([['open', 'Open'], ['in_progress', 'In progress'], ['closed', 'Closed']]);
 /**
- * Register a punch item belongs to: the ITP punch list (PUNCH, categorised) or the Site punch list & reserves
- * (SITE_PUNCH, owner party + NCR). The two prototype lists clash on ids and statuses (11 §7 #4, OPEN QUESTION A-6):
- * one entity, two registers, numbered per register until A-6 is settled.
+ * Origin of a punch item (R-117, A-6 'a': one list per project, numbered over the project): raised by an inspection — the
+ * prototype's ITP punch list (PUNCH) — or on site — its Site punch list & reserves (SITE_PUNCH). Stored in the
+ * `punch_items.register` column (the name of the two former registers).
  */
 export type PunchRegister = 'itp' | 'site';
+export type PunchOrigin = PunchRegister;
+export const punchOrigin = codec<PunchOrigin, string>([['itp', 'Inspection'], ['site', 'Site']]);
+/** Responsible party of a punch item (every item has one: Keystone or the client). */
 export type PunchOwnerParty = 'client' | 'keystone';
 export const punchOwnerParty = codec<PunchOwnerParty, string>([['client', 'Client'], ['keystone', 'Keystone']]);
 
@@ -932,6 +996,12 @@ export type CursusVerdict = 'go' | 'go_with_reserve' | 'no_go';
 export const cursusVerdict = codec<CursusVerdict, string>([['go', 'GO'], ['go_with_reserve', 'GO with reserve'], ['no_go', 'NO GO']]);
 /** What Keystone sends to Cursus: a reminder on a person's pending approvals ("Remind in Cursus"), or a travel request. */
 export type CursusRequestKind = 'reminder' | 'travel_request';
+/**
+ * State of an event Cursus pushed (R-029, cursus_events): received (stored, and applied where Keystone applies it), unresolved
+ * (kept for replay: no person or site matches yet), ignored (unknown type, or older than the event already received for its
+ * key), error (the dispatch failed; kept for replay).
+ */
+export type CursusEventStatus = 'received' | 'unresolved' | 'ignored' | 'error';
 export type CursusSyncStatus = 'pending' | 'sent' | 'failed';
 export const cursusSyncStatus = codec<CursusSyncStatus, string>([['pending', 'Pending sync with Cursus'], ['sent', 'Sent to Cursus'], ['failed', 'Sync with Cursus failed']]);
 
@@ -992,6 +1062,8 @@ export const REFERENCE_LIST_KEYS: readonly ReferenceListKey[] = ['skills', 'cost
 /** Project health thresholds (SETTINGS0.health): at risk below 0.97, off track below 0.90. */
 export const HEALTH_DEFAULTS = { risk: 0.97, off: 0.9 } as const;
 export const APP_SETTING_HEALTH = 'health.thresholds';
+/** R-088 (R-6b): the hours-variance threshold { pct } (default and bounds: src/domain/hr.ts HOURS_VARIANCE_*). */
+export const APP_SETTING_HOURS_VARIANCE = 'hours.variance';
 
 /** Slug of a free label (custom Settings entries, custom machine types): "Permits & fees" → "permits_fees". */
 export const slugOf = (label: string) =>
@@ -1044,7 +1116,7 @@ export type BaselineSource = 'seed' | 'snapshot' | 'change_request' | 'import';
 export type ScheduleRunOutcome = 'ok' | 'cycle' | 'error';
 
 /** What a stored file is for (src/server/storage: allowlists and limits per purpose). */
-export type StoredFilePurpose = 'attachment' | 'transcript' | 'import' | 'export';
+export type StoredFilePurpose = 'attachment' | 'transcript' | 'import' | 'export' | 'photo';
 
 /** Import jobs (S-9 and the Excel / CSV table imports of /admin/integrations). */
 export type ImportKind = 'mspdi' | 'xer' | 'budget_lines' | 'bom' | 'parts' | 'assignments';

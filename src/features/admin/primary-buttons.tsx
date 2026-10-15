@@ -5,7 +5,7 @@
 //   the prototype reset its in-memory copy without asking, 10 OQ2).
 // - Machine types "New machine type" (AF.mtype): creates the type and selects it (`?type=`).
 // - Activity & integrations "Add connector" (AF.plumbing): the connector is listed at once, waiting for its first sync.
-// The add-forms name the current project in their sub-line, as every add-form of the prototype (`projectName`, template 142).
+// R-153 (X-10): these add-forms do not target a project — no project sub-line (the prototype's `projectName`, template 142).
 import { Plus } from '@phosphor-icons/react/dist/ssr';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
@@ -16,7 +16,7 @@ import { Dialog } from '@/components/ds/Dialog';
 import { DialogActions } from '@/components/ds/DialogParts';
 import { showToast } from '@/components/ds/Toast';
 import { useI18n } from '@/i18n/client';
-import { addConnectorAction, createMachineTypeAction, resetSettingsAction, type AdminActionResult } from './actions';
+import { createMachineTypeAction, resetSettingsAction, type AdminActionResult } from './actions';
 import { machineTypesHref } from './links';
 import s from './admin.module.css';
 
@@ -73,27 +73,6 @@ export function NewMachineTypeButton({ form, context }: { form: FormDef; context
         {t('New machine type')}
       </Button>
       <FormDialog {...form} translate open={open} onClose={() => setOpen(false)} context={context} onSubmit={submit} />
-    </>
-  );
-}
-
-export function AddConnectorButton({ form, initialSystem, context }: { form: FormDef; initialSystem: string; context?: string }) {
-  const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <Button variant="primary" icon={Plus} onClick={() => setOpen(true)}>
-        {t('Add connector')}
-      </Button>
-      <FormDialog
-        {...form}
-        translate
-        open={open}
-        onClose={() => setOpen(false)}
-        context={context}
-        initialValues={{ system: initialSystem }}
-        onSubmit={async (values) => asResult(await addConnectorAction(values))}
-      />
     </>
   );
 }

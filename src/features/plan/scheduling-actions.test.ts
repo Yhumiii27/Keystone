@@ -1,5 +1,5 @@
 // Chapter 4 Plan Server Functions against an in-memory database: rights (director / project manager schedule, editors edit),
-// Reschedule toast (EN / FR, "no change" on the second run), Set baseline, the Baseline and Calendar chips, the drawer's
+// Reschedule toast (EN / FR, "no change" on the second run), Set baseline (free up to BL1, S-3), the Baseline and Calendar chips, the drawer's
 // calendar override, relationships (errors, loops) and to-dos. Session and project context are mocked.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -13,13 +13,18 @@ vi.mock('@/server/project-context', async () => {
   const { getProject } = await import('@/server/dal/projects');
   return {
     getProjectContext: async (code: string) => ({
-      project: await getProject(code), viewer: { role: viewer.role, name: viewer.name }, canEdit: () => viewer.canEdit, isMine: viewer.isMine,
+      // `isMine` of the test viewer = the PM rights (`isLead`, R-041).
+      project: await getProject(code), viewer: { role: viewer.role, name: viewer.name, short: viewer.name, personId: null }, canEdit: () => viewer.canEdit,
+      isMine: true, isLead: viewer.isMine,
     }),
   };
 });
 
+import { eq } from 'drizzle-orm';
 import { listActivityTodos } from '@/server/dal/activity-todos';
-import { setDb } from '@/server/db/client';
+import { createBaselineSnapshot } from '@/server/dal/baselines';
+import { baselines, projects } from '@/server/db/schema';
+import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { getPlanData, getPlanSettings } from '@/server/dal/plan';
 import {
@@ -35,15 +40,23 @@ describe('Plan scheduling Server Functions', () => {
   }, 60_000);
   beforeEach(() => Object.assign(viewer, { role: 'director', name: 'Marie Lefebvre', canEdit: true, isMine: true, lang: 'en' }));
 
-  it('rights: scheduling is for the director and the project manager; editing for plan editors; never the client', async () => {
+  it('rights: scheduling and the structure (links, calendars, to-dos) are for the director and the project managers; never the client', async () => {
+    const STRUCTURE = 'Only the project manager or the director can change the plan structure — you can update the progress of your own activities';
     Object.assign(viewer, { role: 'englead', name: 'Antoine Girard', isMine: false });
     expect(await rescheduleAction('HLT-026')).toEqual({ error: 'Only the project manager or the director can do this' });
     expect(await setBaselineAction('HLT-026', { name: 'BL3' })).toEqual({ error: 'Only the project manager or the director can do this' });
+    // P-9a (R-061): a plan editor who is not one of the project's PMs no longer changes links, calendars or to-dos.
+    expect(await addTodoAction('HLT-026', 'A1250', 'x')).toEqual({ error: STRUCTURE });
+    expect(await addRelationshipAction('HLT-026', 'A1250', { activity: 'A1010', type: 'FS' })).toEqual({ error: STRUCTURE });
+    expect(await removeRelationshipAction('HLT-026', 'A1240', 'A1250')).toEqual({ error: STRUCTURE });
+    expect(await setActivityCalendarAction('HLT-026', 'A1250', '')).toEqual({ error: STRUCTURE });
+    Object.assign(viewer, { role: 'pm', name: 'Romain Aubert', isMine: true });
     expect(await addTodoAction('HLT-026', 'A1250', '')).toEqual({ error: 'Enter a to-do' });
     Object.assign(viewer, { role: 'client', name: 'Nadia Bensaïd', isMine: true });
     expect(await addTodoAction('HLT-026', 'A1250', 'x')).toEqual({ error: 'This plan is read-only for you' });
+    // A plan that is not editable at all (outside the workspace, not on the team) says so first (R-061).
     Object.assign(viewer, { role: 'pm', name: 'Romain Aubert', isMine: true, canEdit: false });
-    expect(await rescheduleAction('HLT-026')).toEqual({ error: 'Only the project manager or the director can do this' });
+    expect(await rescheduleAction('HLT-026')).toEqual({ error: 'This plan is read-only for you' });
     expect(await rescheduleAction('NOPE-1')).toEqual({ error: 'Invalid request' });
   });
 
@@ -54,14 +67,28 @@ describe('Plan scheduling Server Functions', () => {
     expect(await rescheduleAction('HLT-026')).toEqual({ ok: true, toast: 'Replanifié au 25 sept. 2026 · fin 18 janv. 2027 · aucun changement' });
   });
 
-  it('Set baseline: BL3 snapshot of the 21 activities, proposed; name validated', async () => {
-    expect(await setBaselineAction('HLT-026', { name: 'x'.repeat(81) })).toEqual({ error: 'Baseline name is too long' });
-    expect(await setBaselineAction('HLT-026', { name: 'BL3 — after reschedule', comment: 'September data date' })).toEqual({ toast: 'BL3 · Baseline set · 21 activities' });
-    const b = (await getPlanSettings('HLT-026'))!.baselines.find((x) => x.code === 'BL3')!;
-    expect([b.name, b.state, b.comment, b.activityCount, b.displayed, b.createdByName]).toEqual(['BL3 — after reschedule', 'proposed', 'September data date', 21, false, 'Marie Lefebvre']);
+  // S-3 (docs/DECISIONS.md, S-3 = a; L-2 = a): "Set baseline" snapshots freely up to BL1 only — the snapshot is then current at
+  // once. HLT-026 already has BL0–BL2: a new baseline there goes through a change request (it used to give a proposed BL3).
+  it('Set baseline: refused after BL1; up to BL1 a current snapshot of every activity; name validated', async () => {
+    expect(await setBaselineAction('HLT-026', { name: 'BL3 — after reschedule' })).toEqual({ error: 'After BL1, a new baseline goes through a change request' });
+    expect((await getPlanSettings('HLT-026'))!.baselines.map((b) => b.code)).toEqual(['BL0', 'BL1', 'BL2']);
+    const db = await getDb();
+    const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, 'NDC-031'));
+    await db.delete(baselines).where(eq(baselines.projectId, p.id));
+    const n = (await getPlanData('NDC-031'))!.activities.length;
+    expect(await setBaselineAction('NDC-031', { name: 'x'.repeat(81) })).toEqual({ error: 'Baseline name is too long' });
+    expect(await setBaselineAction('NDC-031', { name: 'Initial plan', comment: 'Kick-off' })).toEqual({ toast: `BL0 · Baseline set · ${n} activities` });
+    expect(await setBaselineAction('NDC-031', { name: 'BL1 — end of APD' })).toEqual({ toast: `BL1 · Baseline set · ${n} activities` });
+    const bls = (await getPlanSettings('NDC-031'))!.baselines;
+    expect(bls.map((b) => [b.code, b.name, b.state, b.activityCount, b.createdByName])).toEqual([
+      ['BL0', 'Initial plan', 'superseded', n, 'Marie Lefebvre'], ['BL1', 'BL1 — end of APD', 'current', n, 'Marie Lefebvre'],
+    ]);
+    expect(await setBaselineAction('NDC-031', { name: 'BL2' })).toEqual({ error: 'After BL1, a new baseline goes through a change request' });
   });
 
   it('Baseline chip: refuses unknown baselines and baselines without snapshot; shows BL3', async () => {
+    // BL3 with its snapshot, as a change request's re-baseline writes it (the Plan no longer snapshots after BL1).
+    await createBaselineSnapshot('HLT-026', { actorName: 'Marie Lefebvre', name: 'BL3 — after reschedule', changeRequestNumber: 'CR-008', source: 'change_request' });
     expect(await showBaselineAction('HLT-026', 'BL9')).toEqual({ error: 'Unknown baseline' });
     expect(await showBaselineAction('HLT-026', 'BL0')).toEqual({ error: 'This baseline has no activity snapshot' });
     expect(await showBaselineAction('HLT-026', 'BL3')).toEqual({ ok: true, toast: 'BL3 displayed · variances recomputed' });
@@ -112,6 +139,10 @@ describe('Plan scheduling Server Functions', () => {
     const number = /^(T-\d+) · To-do added$/.exec((r as { toast: string }).toast)![1];
     let todo = (await listActivityTodos('HLT-026', 'A1250')).find((x) => x.number === number)!;
     expect([todo.title, todo.assignee, todo.dueDate, todo.removable, todo.done]).toEqual(['Check bolt torques on bay 4', 'Julien Wagner', '2026-10-09', true, false]);
+    // Security review: a Plan editor who is neither the assignee nor the project's PM cannot tick someone else's task.
+    Object.assign(viewer, { role: 'englead', name: 'Antoine Girard', isMine: false });
+    expect(await toggleTodoAction('HLT-026', 'A1250', number, true)).toEqual({ error: 'Only the assignee or the project manager can change this to-do' });
+    Object.assign(viewer, { role: 'director', name: 'Marie Lefebvre', isMine: true });
     expect(await toggleTodoAction('HLT-026', 'A1250', number, true)).toEqual({ ok: true });
     todo = (await listActivityTodos('HLT-026', 'A1250')).find((x) => x.number === number)!;
     expect(todo.done).toBe(true);

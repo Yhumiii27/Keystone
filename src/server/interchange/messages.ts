@@ -8,6 +8,8 @@ export const MESSAGES = [
   // File and job level
   'The file is not an MS Project XML file (MSPDI)',
   'The file is not a Primavera P6 XER file',
+  'The file is neither an MS Project XML file (MSPDI) nor a Primavera P6 XER file',
+  'Imports are not available for now',
   'The file contains a DOCTYPE declaration, which is not accepted',
   'The file could not be read',
   'The file contains no activity',
@@ -28,7 +30,8 @@ export const MESSAGES = [
   'The data changed since the preview — check the new preview',
   'The import failed',
   'Nothing to import',
-  'Connector {0} is disabled — enable it in Configure',
+  'Connector {0} is disabled — IT configures connectors outside Keystone',
+  'Connectors are configured by IT outside Keystone',
   'Imported · {0} created · {1} updated',
   '{0} more rows are not shown',
   // Not imported / mapped differently

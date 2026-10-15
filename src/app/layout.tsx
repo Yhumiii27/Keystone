@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import '@/styles/nocturne.css';
 import './globals.css';
+import '@/styles/touch.css';
 import { I18nProvider } from '@/i18n/client';
 import { getLang } from '@/server/session';
 

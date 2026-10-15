@@ -32,6 +32,8 @@
 .docName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .noDocs { font-size: 12.5px; color: var(--color-neutral-500); padding: 4px 0; }
 .attach { align-self: flex-start; margin-top: 4px; }
+/* R-096: "Declare the supplier NCR in Vigie" (ghost link under the quality check, opens Vigie) */
+.vigieNcr { align-self: flex-start; margin-top: 4px; font-size: 12.5px; gap: 6px; white-space: normal; text-align: left; }
 .footer { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* ── Partial rejection dialog ── */

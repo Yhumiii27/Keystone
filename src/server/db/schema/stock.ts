@@ -60,6 +60,17 @@ export const stockMovements = pgTable('stock_movements', {
   personId: uuid('person_id').references(() => persons.id),
   /** Pushed back to Sage X3 (null = local, pending push). The seed movements come from X3. */
   pushedToX3At: timestamp('pushed_to_x3_at', { withTimezone: true }),
+  /**
+   * Delivery 7 (SC-5a, R-098): the stock unit cost at the movement (A-11: last purchase price, else list price) and the
+   * value charged to (issue) or credited back to (return) the work package `wbsCode` (level-1 WBS code of the activity at
+   * the time, kept when the activity is removed). Null on movements without a work package (seed, transfers…).
+   */
+  unitCostEur: num('unit_cost_eur'),
+  valueEur: num('value_eur'),
+  wbsCode: text('wbs_code'),
+  /** Delivery 7 (R-099): units reserved for another project taken by the portfolio director's override, and that project. */
+  overrideQty: num('override_qty'),
+  overrideFromProjectId: uuid('override_from_project_id').references(() => projects.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

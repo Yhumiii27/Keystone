@@ -10,10 +10,11 @@ import { formT } from '@/features/team/i18n';
 import { InterfacesBody } from '@/features/team/interfaces-view';
 import { interfacesView } from '@/features/team/model';
 import { projectDataDateOf } from '@/server/dal/kpis';
-import { projectLabel } from '@/server/dal/projects';
 import { getInterfacesScreen } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { projectLabelText } from '@/i18n/data-text';
+import { NOW_ISO, displayOfIso } from '@/server/db/codes';
 
 export default async function InterfacesPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -24,13 +25,22 @@ export default async function InterfacesPage({ params }: { params: Promise<{ cod
 
   const primary =
     canEdit && data ? (
-      <NewInterfaceButton code={projectCode} context={t(projectLabel(ctx.project))} form={localizeForm(interfaceFormDef(data.team), formT(t, lang))} />
+      <NewInterfaceButton code={projectCode} context={projectLabelText(ctx.project, lang)} form={localizeForm(interfaceFormDef(data.team), formT(t, lang))} />
     ) : undefined;
 
   return (
     <>
       <PageHeader screen="interfaces" projectCode={projectCode} primary={primary} />
-      {data && <InterfacesBody code={projectCode} view={interfacesView(data.interfaces, data.blockers, t, lang, dataDate)} canEdit={canEdit} t={t} />}
+      {data && (
+        <InterfacesBody
+          code={projectCode}
+          view={interfacesView(data.interfaces, data.blockers, t, lang, dataDate)}
+          canEdit={canEdit}
+          // Q-4 a (R-116): "Received on" proposes today (NOW_ISO until the real clock, R-013), in the viewer's language.
+          receivedDefault={t(displayOfIso(NOW_ISO))}
+          t={t}
+        />
+      )}
     </>
   );
 }

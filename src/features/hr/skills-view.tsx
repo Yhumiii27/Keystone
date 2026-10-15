@@ -1,5 +1,6 @@
 // Skills matrix body (docs/spec/06 §3, template 1452–1474): KPIs, skill filter chips (`?filter=<skill index>`),
-// people × skills dot matrix and the coverage list. Server Component.
+// people × skills dot matrix and the coverage list. Server Component. R-087 (R-5a, R-5b): one 1–5 scale; five tiles — skills
+// without an expert and single-expert skills apart; the coverage list names the case ("No expert", "1 expert").
 import { Certificate } from '@phosphor-icons/react/dist/ssr';
 import type { CSSProperties } from 'react';
 import { Avatar } from '@/components/app/Badges';
@@ -8,17 +9,18 @@ import { KpiGrid, KpiTile } from '@/components/app/Kpi';
 import { FlexRow, SectionCard } from '@/components/app/SectionCard';
 import { LO, OK } from '@/components/app/tones';
 import { cx } from '@/components/ds/cx';
-import { OPEN_REQUESTS_LEVEL4, filterBySkill, levelDots, levelTone, skillCoverage, skillKpis, type LevelTone } from '@/domain/hr';
-import type { T } from '@/i18n/translate';
+import { filterBySkill, levelDots, levelTone, skillCoverage, skillKpis, type LevelTone } from '@/domain/hr';
+import type { Lang, T } from '@/i18n/translate';
 import type { SkillsMatrix } from '@/server/dal/hr';
 import s from './hr.module.css';
+import { dataText } from '@/i18n/data-text';
 
 const DOT: Record<LevelTone, string | undefined> = { 'accent-400': s.lv4, 'accent-600': s.lv3, 'accent-800': s.lv2, 'neutral-800': s.lv1, none: undefined };
 
 /** `?filter=` link of a chip (null = "Everyone"). */
 export const skillFilterHref = (base: string, skill: number | null) => (skill == null ? base : `${base}?filter=${skill}`);
 
-export function SkillsView({ data, filter, base, t, expertRequests }: { data: SkillsMatrix; filter: number | null; base: string; t: T; /** Chapter 4 (A-12): computed "Open requests needing level ≥4" (domain/resources requestsNeedingExperts). */ expertRequests?: { count: number; skills: string[] } }) {
+export function SkillsView({ data, filter, base, t, lang, expertRequests }: { data: SkillsMatrix; filter: number | null; base: string; t: T; lang: Lang; /** Chapter 4 (A-12): computed "Open requests needing level ≥4" (domain/resources requestsNeedingExperts). */ expertRequests?: { count: number; skills: string[] } }) {
   const names = data.skills.map((x) => x.name);
   const coverage = skillCoverage(names, data.people);
   const k = skillKpis(coverage, data.people.filter((p) => p.certifications.length > 0).length);
@@ -32,13 +34,16 @@ export function SkillsView({ data, filter, base, t, expertRequests }: { data: Sk
     <>
       <KpiGrid min={150}>
         <KpiTile label={t('Skill families')} value={k.families} sub={t('Levels 1–5 · certifications noted')} color={OK} />
-        <KpiTile label={t('Single-expert skills')} value={k.singleExpert} sub={t('Fewer than 2 people at level ≥4')} color={k.singleExpert > 0 ? LO : OK} />
-        <KpiTile label={t('Certifications')} value={k.certifications} sub={t('Tracked with expiry in Lucca')} color={OK} />
-        {/* A-12: computed from the pending requests when the page passes them; else the prototype constant. */}
+        {/* R-5b: two indicators — no expert at all, a single expert — instead of the prototype's "fewer than 2". */}
+        <KpiTile label={t('Skills without an expert')} value={k.noExpert} sub={t('No one at level ≥4')} color={k.noExpert > 0 ? LO : OK} />
+        <KpiTile label={t('Single-expert skills')} value={k.singleExpert} sub={t('Exactly one person at level ≥4')} color={k.singleExpert > 0 ? LO : OK} />
+        {/* R-087: a neutral sub-line — expiry is neither tracked in Lucca nor received from Cursus yet. */}
+        <KpiTile label={t('Certifications')} value={k.certifications} sub={t('People with a certification noted')} color={OK} />
+        {/* A-12: computed from the pending requests the page passes; without them the tile shows "—" (no invented figure). */}
         <KpiTile
           label={t('Open requests needing level ≥4')}
-          value={expertRequests ? expertRequests.count : OPEN_REQUESTS_LEVEL4.value}
-          sub={expertRequests ? expertRequests.skills.map((n) => t(n)).join(' · ') || t('None') : t(OPEN_REQUESTS_LEVEL4.sub)}
+          value={expertRequests ? expertRequests.count : '—'}
+          sub={expertRequests ? expertRequests.skills.map((n) => t(n)).join(' · ') || t('None') : ''}
           color={OK}
         />
       </KpiGrid>
@@ -87,7 +92,7 @@ export function SkillsView({ data, filter, base, t, expertRequests }: { data: Sk
         <SectionCard flex="1 1 260px" gap={6} title={t('Coverage')} subtitle={t('Experts = level 4–5 · flagged under 2')}>
           {coverage.map((c) => (
             <div key={c.name} className={s.coverageRow}>
-              <span>{t(c.name)}</span>
+              <span>{dataText(c.name, lang)}</span>
               <span className={cx(s.coverageText, c.gap && s.lo)}>{t(c.text)}</span>
             </div>
           ))}

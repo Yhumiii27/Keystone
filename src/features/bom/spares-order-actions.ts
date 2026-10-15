@@ -6,6 +6,7 @@
 // their workspace, project not read-only). Messages come back translated.
 import { revalidatePath } from 'next/cache';
 import { screenHref } from '@/config/screens';
+import { canSeeSupplierPrices } from '@/domain/rights';
 import { isPreselected, suggestedSpareQty, validateSparesOrder } from '@/domain/spares-order';
 import { partStatus, type WearSpare } from '@/server/db/codes';
 import { getProject } from '@/server/dal/projects';
@@ -14,6 +15,7 @@ import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { ordersHref } from '../orders/links';
 import { dataT } from './i18n';
+import { logError } from '@/server/log';
 
 export interface SparesOrderLineView {
   ref: string;
@@ -25,7 +27,8 @@ export interface SparesOrderLineView {
   inStock: number;
   onOrder: number;
   suggestedQty: number;
-  unitPriceEur: number;
+  /** Null for a viewer who may not see supplier prices (R-046, NEW-D2-1) — never sent to their browser. */
+  unitPriceEur: number | null;
   preselected: boolean;
   /** Warnings shown on the line (translated): "Not validated", "Under change", "No preferred supplier". */
   warnings: string[];
@@ -48,13 +51,13 @@ const fail = async (english: string): Promise<{ ok: false; error: string }> => (
 const kindOf = (v: unknown): WearSpare | null => (v === 'PU' || v === 'PR' ? v : null);
 const systemOf = (v: unknown): string | null => (typeof v === 'string' && /^[A-Z0-9-]{2,40}$/.test(v) ? v : null);
 
-async function access(code: unknown): Promise<{ code: string; actor: string } | { error: string }> {
+async function access(code: unknown): Promise<{ code: string; actor: string; prices: boolean } | { error: string }> {
   if (typeof code !== 'string' || !code) return { error: 'Invalid request' };
   const project = await getProject(code);
   if (!project) return { error: 'Unknown project' };
   const ctx = await getProjectContext(project.code, 'bom');
   if (!ctx.canEdit('bom')) return { error: 'This project BOM is read-only for you' };
-  return { code: project.code, actor: ctx.viewer.name };
+  return { code: project.code, actor: ctx.viewer.name, prices: canSeeSupplierPrices(ctx.viewer.role) };
 }
 
 /** The dialog's lines: the PU/PR list of `system` (null = complete system) filtered by `kind`, as displayed. */
@@ -70,7 +73,7 @@ export async function loadSparesOrderAction(code: string, system: string | null,
       systemName: dataT(scope.systemName, lang),
       lines: scope.candidates.map((c) => ({
         ref: c.ref, name: dataT(c.name, lang), kind: c.kind, supplier: c.supplier, recommendedQty: c.recommendedQty, inStock: c.inStock, onOrder: c.onOrder,
-        suggestedQty: suggestedSpareQty(c), unitPriceEur: c.unitPriceEur, preselected: isPreselected(c),
+        suggestedQty: suggestedSpareQty(c), unitPriceEur: a.prices ? c.unitPriceEur : null, preselected: isPreselected(c),
         warnings: [
           ...(c.status !== 'validated' ? [t(partStatus.label(c.status))] : []),
           ...(c.underChange ? [t('Under change')] : []),
@@ -96,7 +99,7 @@ export async function createSparesOrderAction(
   try {
     numbers = await createSparesPurchaseOrders(a.code, v.lines, a.actor, scope.systemName);
   } catch (e) {
-    console.error('createSparesOrderAction', e);
+    logError('createSparesOrderAction', e);
     return fail('The change could not be saved');
   }
   revalidatePath(`/projects/${a.code}`, 'layout');

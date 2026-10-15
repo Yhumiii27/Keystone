@@ -8,7 +8,10 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { canSee, type RoleKey, type ScreenId } from '@/config/screens';
 import { money } from '@/lib/format';
-import { setDb } from '@/server/db/client';
+import { and, eq } from 'drizzle-orm';
+import { ncrKpis } from '@/domain/quality';
+import { getDb, setDb } from '@/server/db/client';
+import { vigieNcrs } from '@/server/db/schema';
 import {
   D5_SCREEN_ROLES, NCR_FLOW, STATUS_ISO, addDaysIso, fmtDOfIso, ncrStatus, shortDateOfIso, stampText, type D5Screen,
 } from '@/server/db/codes';
@@ -29,6 +32,7 @@ import { getPidValidation, pidBadgeByProject, pidCandidates } from './pid';
 import {
   criticalOpenNcrsByProject, deliverableAcceptanceQueue, listDeliverables, listNcrs, listProjectNcrRefs, ncrVerificationQueue,
 } from './quality';
+import { getQualityScreen } from './quality-screen';
 import { getRex } from './rex';
 import { getSettings } from './settings';
 import { cursusLabels, getSite, siteBadgeByProject } from './site';
@@ -186,8 +190,15 @@ describe('inspection & test plan, punch lists (07 §2.4)', () => {
   });
 
   it('site register: SITE_PUNCH with its NCR and the owner party; open A per project (ITP badge) is none at seed', async () => {
+    // A-6 'a' (R-117): one list per project — the items raised on site are numbered after the ITP items (P-01…P-03 → P-06…P-08),
+    // category B; the ITP items have the Keystone party.
     expect((await listPunchItems('HLT-026', 'site')).map((p) => ({ id: p.number, title: p.description, ncr: p.ncrNumber ?? '—', status: p.statusLabel, owner: p.owner, due: d(p.dueOn) })))
-      .toEqual(G.site.punch);
+      .toEqual(G.site.punch.map((p: { id: string }) => ({ ...p, id: `P-0${+p.id.slice(2) + 5}` })));
+    const all = await listPunchItems('HLT-026');
+    expect(all.map((p) => [p.number, p.origin, p.category, p.ownerParty])).toEqual([
+      ['P-01', 'itp', 'A', 'keystone'], ['P-02', 'itp', 'B', 'keystone'], ['P-03', 'itp', 'C', 'keystone'], ['P-04', 'itp', 'B', 'keystone'], ['P-05', 'itp', 'C', 'keystone'],
+      ['P-06', 'site', 'B', 'client'], ['P-07', 'site', 'B', 'keystone'], ['P-08', 'site', 'B', 'client'],
+    ]);
     expect(await openPunchAByProject()).toEqual({});
   });
 });
@@ -313,7 +324,10 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
   it('HLT-026: Go chantier, prerequisites, equipment, Cursus approvals and the Readiness KPIs', async () => {
     const s = (await getSite('HLT-026'))!;
     const g = G.site;
-    expect(s.go.conditions.map((c) => ({ label: c.label, ok: c.ok, sub: c.sub }))).toEqual(g.goItems);
+    // D-6b 'a' (R-119): the conflicts are computed — 8 on the seed (the prototype's 4 authored collisions).
+    expect(s.go.conditions.map((c) => ({ label: c.label, ok: c.ok, sub: c.sub }))).toEqual(
+      g.goItems.map((i: { sub: string }) => (i.sub === '4 collisions' ? { ...i, sub: '8 collisions' } : i)),
+    );
     expect(s.go.ok ? 'GO' : 'NO GO').toBe(g.goLabel);
     expect([
       ['Site', s.sheet.site], ['Country · time zone', `${s.sheet.country} · ${s.sheet.timeZone}`], ['Language · currency', `${s.sheet.language} · ${s.sheet.currency}`],
@@ -335,7 +349,7 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
       [`${s.cursus.people.filter((p) => p.verdict !== 'no_go').length} / ${s.cursus.people.length}`, `${s.cursus.people.filter((p) => p.verdict === 'go_with_reserve').length} with reserve · approvals only`],
       [`${s.equipment.filter((e) => e.status === 'confirmed').length} / ${s.equipment.length}`, `${s.equipment.filter((e) => e.source === 'shipped').length} shipped · ${s.equipment.filter((e) => e.source !== 'shipped').length} local / client`],
       [s.collisions.length, 'Load · leave · certificates · badges'],
-    ]).toEqual(kv(g.kpis));
+    ]).toEqual(kv(g.kpis).map((x: unknown[], i: number) => (i === 4 ? [8, x[1]] : x)));
     expect(s.cursus.verdict).toBe('no_go');
     expect(s.cursus.openUrl).toBe('http://localhost:5173/chantiers');
   });
@@ -343,9 +357,15 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
   it('HLT-026: rotation, collisions, mission costs and the Team KPIs', async () => {
     const s = (await getSite('HLT-026'))!;
     const g = G.site;
+    // D-6b 'a' (R-119): computed conflicts — Amélie Ollivier (over 110 % in the week of 19 Oct, absent 12–23 Oct) gets the icon too.
     expect(s.rotation.map((r) => ({ who: r.person, role: r.roleOnSite, from: d(r.fromOn), to: d(r.toOn), lodging: r.lodging, travel: r.travel, rot: `R${r.rotationNo}`, collideIcon: r.hasCollision ? 'ph ph-warning' : 'ph ph-check' })))
-      .toEqual(g.rotation);
-    expect(s.collisions.map((c) => ({ who: c.person, what: c.description, kind: c.kindLabel, fix: c.proposedFix }))).toEqual(g.collisions);
+      .toEqual(g.rotation.map((r: { who: string }) => (r.who === 'Amélie Ollivier' ? { ...r, collideIcon: 'ph ph-warning' } : r)));
+    expect(g.collisions.map((c: { who: string; kind: string }) => [c.who, c.kind])).toEqual([['Julien Wagner', 'Load'], ['Pauline Noguès', 'Certificate'], ['Thomas Kerbrat', 'Document'], ['Hélène Sauvage', 'Leave']]);
+    expect(s.collisions.map((c) => [c.person, c.kindLabel, c.department, c.resolved])).toEqual([
+      ['Amélie Ollivier', 'Load', 'Site operations', false], ['Amélie Ollivier', 'Leave', 'Site operations', false], ['Julien Wagner', 'Load', 'Engineering', false],
+      ['Julien Wagner', 'Leave', 'Engineering', false], ['Thomas Kerbrat', 'Document', 'Site operations', false], ['Thomas Kerbrat', 'Leave', 'Site operations', false],
+      ['Pauline Noguès', 'Certificate', 'MEP', false], ['Hélène Sauvage', 'Document', 'Quality', false],
+    ]);
     expect(s.missionCosts.map((m) => ({ name: m.name, budget: f(m.budgetKeur), actual: m.actualKeur ? f(m.actualKeur) : '—', pct: `${m.usedPct}%`, left: f(m.remainingKeur) }))).toEqual(g.missionCosts);
     const b = s.missionCosts.reduce((x, m) => x + m.budgetKeur, 0);
     const a = s.missionCosts.reduce((x, m) => x + m.actualKeur, 0);
@@ -354,7 +374,8 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
       [s.collisions.filter((c) => !c.resolved).length, 'Arbitrated by department heads'], [f(b), `${f(a)} committed · ${Math.round((a / b) * 100)}%`],
       ['×1.5 / ×2', 'Saturday / Sunday rates · 6d · 10h calendar'],
     // A-12 (chapter 4): "Man-days planned" = Σ rotation crew × working days on the project calendar — 179, not the literal 168.
-    ]).toEqual(kv(g.teamKpis).map((x: any[], i: number) => (i === 1 ? ['179', x[1]] : x)));
+    // D-6b 'a' (R-119): 8 computed conflicts open (the prototype's 4).
+    ]).toEqual(kv(g.teamKpis).map((x: any[], i: number) => (i === 1 ? ['179', x[1]] : i === 2 ? [8, x[1]] : x)));
   });
 
   it('HLT-026: daily reports (newest first), site punch list, HSE register (Vigie) and the Execution KPIs', async () => {
@@ -364,7 +385,10 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
       .toEqual(g.reports);
     expect(s.hse.map((h) => ({ title: h.title, status: h.statusText, date: h.dateOn ? d(h.dateOn) : '—' }))).toEqual(g.hse);
     expect(s.hse.map((h) => h.kind)).toEqual(['prevention_plan', 'induction', 'permit', 'permit', 'register']);
-    const open = s.punch.filter((p) => p.status === 'open');
+    // A-6 'a' (R-117): getSite returns the project's single punch list; the prototype's figure is that of its items raised on
+    // site (the screen's "Punch list open" tile counts the whole list: 6 — src/features/site/render.test.ts).
+    expect(s.punch.map((p) => p.origin)).toEqual(['itp', 'itp', 'itp', 'itp', 'itp', 'site', 'site', 'site']);
+    const open = s.punch.filter((p) => p.origin === 'site' && p.status === 'open');
     expect([
       [`${s.sheet.doneDays} / ${s.sheet.planDays} d`, 'Daily reports feed the data date'], [s.dailyReports.length, 'Mobile · hours, %, photos, weather'],
       [open.length, `${open.filter((p) => p.ownerParty === 'client').length} on the client`], ['0 incident', `${s.hse.filter((h) => h.status === 'pending').length} permits pending`],
@@ -388,7 +412,8 @@ describe('client portal (03 §8)', () => {
     expect(c.decisions.map((x) => x.changeRequest
       ? { kind: 'Change request', id: x.id, title: x.title, sub: `${x.changeRequest.typesLabel}${x.changeRequest.amount ? ` · ${f(x.changeRequest.amount, true)} on contract` : ''}${x.changeRequest.days ? ` · ${x.changeRequest.days > 0 ? '+' : ''}${x.changeRequest.days} d on handover` : ''}`, when: x.changeRequest.date, approveLabel: 'Approve' }
       : { kind: 'Deliverable', id: x.id, title: x.title, sub: `${x.deliverable!.typeLabel} · rev ${x.deliverable!.revision ?? '—'} · ${x.deliverable!.acceptanceText}`, when: d(x.deliverable!.dueOn), approveLabel: 'Accept (PV)' }))
-      .toEqual(g.decisions);
+      // Deviation P-6b (delivery 8, R-069): CR-008 reaches the client once the portfolio director approved it.
+      .toEqual(g.decisions.filter((x: any) => x.id !== 'CR-008'));
     expect(c.decided.map((x) => ({
       id: x.id, title: x.title, state: x.changeRequest ? (x.state === 'approved' ? 'Approved' : 'Rejected') : x.deliverable!.statusLabel,
       when: x.changeRequest ? x.changeRequest.date : x.deliverable!.acceptanceText,
@@ -396,19 +421,27 @@ describe('client portal (03 §8)', () => {
     // Deliberate (A-5, Delivery 3 "billing source of truth"): the invoices and the contract summary follow the contract's billing
     // plan — base + signed amendments, milestone = round(value × share / 100), as the Billing screen — not the static BILLING
     // rows of the prototype (M1 Permits €540k … value €5.40M); the real invoice numbers replace "F-2026-101".
+    // Delivery 7, NEW-D3-3 (R-079): the base milestones are priced on the base amount and the signed Amendment 1 adds its own
+    // billable milestone M6 (planned); C-9 (R-075): the summary carries the contract currency.
     const contract = (await getContract('HLT-026'))!;
-    expect(c.invoices.map((i) => i.statusLabel)).toEqual(g.invoices.map((i: any) => i.status));
-    expect(c.invoices.map((i) => [i.milestoneNumber, i.amountKeur])).toEqual(contract.milestones.map((m) => [m.number, m.amountKeur]));
-    expect(c.invoices.map((i) => i.invoiceNumber)).toEqual(['INV-2026-001', 'INV-2026-002', 'INV-2026-003', null, null]);
-    expect(c.contract).toEqual({ valueKeur: contract.valueKeur, invoicedKeur: contract.invoicedKeur, paidKeur: contract.paidKeur, approvedChangesKeur: 200 });
+    expect(c.invoices.map((i) => i.statusLabel)).toEqual([...g.invoices.map((i: any) => i.status), 'Planned']);
+    expect(c.invoices.map((i) => [i.milestoneNumber, i.amountKeur])).toEqual(contract.milestones.filter((m) => m.billable).map((m) => [m.number, m.amountKeur]));
+    expect(c.invoices.map((i) => i.invoiceNumber)).toEqual(['INV-2026-001', 'INV-2026-002', 'INV-2026-003', null, null, null]);
+    expect(c.contract).toEqual({ valueKeur: contract.valueKeur, invoicedKeur: contract.invoicedKeur, paidKeur: contract.paidKeur, approvedChangesKeur: 200, currency: 'EUR' });
     expect(f(c.contract!.approvedChangesKeur, true)).toBe(g.invKpis[3][1]);
     expect(c.issues.map((i) => ({ id: i.number, title: i.title, when: `Raised ${d(i.raisedOn)}`, status: i.statusLabel, resp: i.response }))).toEqual(g.issues);
     expect(c.documents.map((x) => ({ id: x.number, title: x.title, rev: x.revision, status: x.statusLabel, ack: x.acknowledged }))).toEqual(g.docs.map((x: any) => pickKeys(x, ['id', 'title', 'rev', 'status', 'ack'])));
-    expect(c.documentCategories.length).toBe(5);
+    // L-9 (R-138): the categories are computed from the shared documents of the Codex index (the prototype's 5 typed
+    // CLIENT_DOCS rows are gone): every shared file is in exactly one category.
+    expect(c.documentCategories.reduce((a, x) => a + x.fileCount, 0)).toBe(c.documents.length);
+    expect(c.documentCategories.map((x) => x.key)).toEqual(HLT_DOC_CATEGORIES.map(([k]) => k));
+    expect(c.documentCategories.map((x) => x.fileCount)).toEqual(HLT_DOC_CATEGORIES.map(([, n]) => n));
   });
 });
 
 const pickKeys = (o: any, ks: string[]) => Object.fromEntries(ks.map((k) => [k, o[k]]));
+/** HLT-026's client document categories on the seed (L-9, R-138): key and file count. */
+const HLT_DOC_CATEGORIES: [string, number][] = [['minutes', 1], ['hse', 1], ['accepted', 1], ['eng', 2], ['client', 1], ['purchasing', 1]];
 
 // ── Engineering ────────────────────────────────────────────────────────────────────────────────────────
 
@@ -502,7 +535,8 @@ describe('P&ID validation (09 §6)', () => {
     expect(v.steps.map((s) => ({ label: s.label, who: s.who, date: s.dateOn ? d(s.dateOn) : '—', state: s.stateLabel }))).toEqual(g.steps);
     for (const tag of Object.keys(g.drawers)) {
       const t = v.tags.find((x) => x.tag === tag)!;
-      const c = await pidCandidates('HLT-026', tag);
+      // E-6 (R-108): the catalogue search lists the project BOM's articles first; the prototype's 8 are the first of them.
+      const c = (await pidCandidates('HLT-026', tag)).rows.filter((x) => x.inBom).slice(0, 8);
       expect(c.map((x) => [x.ref, x.statusLabel]), tag).toEqual(g.drawers[tag].candidates);
       expect([
         ['Reference', t.partRef ?? '—'], ['Part', (t.partName ?? (t.scope === 'client' ? t.note : '')) || '—'], ['Activity', `${t.activityCode}${t.activityName ? ' · ' + t.activityName : ''}`],
@@ -558,13 +592,26 @@ describe('administration (09 §9, 10 §1–2)', () => {
   it('activity & integrations: connectors (+ Vigie from the connector layer), imports, audit trail, KPI counts', async () => {
     const conns = await listConnectors();
     const g = G.plumbing;
-    // The prototype's 9 connectors, Cursus live from the Cursus connector (mock: same people, last sync 26 Sep 07:00).
-    expect(conns.slice(0, 9).map((c) => ({ name: c.name, what: c.dataScope, freq: c.frequency, st: c.statusLabel, last: c.lastSyncAt ? stampText(new Date(c.lastSyncAt)) : '—', vol: c.lastVolume })))
-      .toEqual(g.connectors);
-    // Deliberate: Vigie (ECOs, NCRs, site HSE) is listed as the 10th connector, its state read from the connector layer.
-    expect(conns[9]).toMatchObject({ name: 'Vigie', kind: 'vigie', mode: 'mock', status: 'ok', lastVolume: '6 ECOs · 15 NCRs · 5 HSE items', pending: 0, failed: 0 });
-    expect(conns.find((c) => c.name === 'Cursus')).toMatchObject({ kind: 'cursus', mode: 'mock' });
-    expect(await plumbingNavBadge()).toBe('!');
+    // The prototype's connectors with their real state (R-021: A-15, NEW-CURSUS-4): Lucca retired; Cursus and Codex mocks (no
+    // last sync, the mirror / index content); Sage X3, the PDM, Outlook, Teams and SMTP "Not connected" (no seeded status,
+    // last sync or volume); MS Project keeps its last export.
+    // S-11 a, X-6b, I-3c (R-037): the Microsoft 365 rows requalified (Outlook / Teams meetings into Keystone, no channel posts).
+    // Delivery 8 (R-027, R-031): the Cursus row says what Keystone now receives (absences, staff directory) instead of the
+    // prototype's "approvals only, no personal data imported".
+    const SCOPE: Record<string, string> = {
+      'Outlook / Exchange': 'Meetings carrying the project code, Outlook / Teams → Keystone (S-11)',
+      'Microsoft Teams': 'Teams meetings through the Microsoft 365 app with Outlook, no channel posts',
+      Cursus: 'Individual go / no go (visa, vaccination, clearances & badges) · approved leave and absences · staff directory: name, e-mail, matricule, team (R-027, R-031)',
+    };
+    const expected = g.connectors.filter((r: any) => r.name !== 'Lucca').map((r: any) =>
+      r.name === 'Cursus' || r.name === 'Codex' ? { ...r, what: SCOPE[r.name] ?? r.what, st: 'Mock', last: '—' } : r.name === 'MS Project' ? r : { ...r, what: SCOPE[r.name] ?? r.what, st: 'Not connected', last: '—', vol: '' });
+    expect(conns.slice(0, 8).map((c) => ({ name: c.name, what: c.dataScope, freq: c.frequency, st: c.statusLabel, last: c.lastSyncAt ? stampText(new Date(c.lastSyncAt)) : '—', vol: c.lastVolume })))
+      .toEqual(expected);
+    // Deliberate: Vigie (ECOs, NCRs, site HSE) is listed last, its state read from the connector layer (a mock without its API URL).
+    expect(conns[8]).toMatchObject({ name: 'Vigie', kind: 'vigie', mode: 'mock', link: 'mock', state: 'mock', status: 'ok', lastSyncAt: null, lastVolume: '6 ECOs · 15 NCRs · 5 HSE items', pending: 0, failed: 0 });
+    expect(conns.find((c) => c.name === 'Cursus')).toMatchObject({ kind: 'cursus', mode: 'mock', link: 'mock' });
+    // R-021: the prototype's "!" came from Outlook's seeded "Warning · Token expires in 3 days"; no live connector fails.
+    expect(await plumbingNavBadge()).toBe('');
     expect((await listImportFormats()).map((x) => ({ name: x.name, desc: x.description, icon: x.icon }))).toEqual(g.imports);
     const audit = (await listAudit({ limit: 50 })).filter((a) => g.audit.some((x: any) => x.obj === a.object && x.change === a.change));
     expect(audit.map((a) => ({ when: a.when, who: a.who, obj: a.object, change: a.change, area: a.area }))).toEqual(g.audit);
@@ -573,5 +620,28 @@ describe('administration (09 §9, 10 §1–2)', () => {
     // prototype's 6 included an event of 26 Sep.
     expect(g.kpis[0].value).toBe(6);
     expect([counts.eventsToday, counts.auditLast7Days]).toEqual([5, g.kpis[3].value]);
+  });
+});
+
+// ── A-12: "closed this quarter" ───────────────────────────────────────────────────────────────────────────────
+
+describe('quality — "N closed this quarter" counts the data date\'s quarter only (A-12, 07 OQ23)', () => {
+  it('a closed NCR whose Vigie closure date falls in another quarter (Q2) is not counted', async () => {
+    const db = await getDb();
+    const closed = await db.select({ id: vigieNcrs.id, at: vigieNcrs.vigieUpdatedAt }).from(vigieNcrs)
+      .where(and(eq(vigieNcrs.projectCode, 'HLT-026'), eq(vigieNcrs.status, 'closed')));
+    expect(closed.length).toBeGreaterThan(0);
+    const sub = async () => {
+      const q = await getQualityScreen('HLT-026');
+      return ncrKpis(q.ncrs, undefined, q.dataDate)[0].sub;
+    };
+    // Seed: every closed NCR was closed in Q3 2026, the data date's quarter (the prototype counted every closed NCR).
+    expect(await sub()).toBe(`${closed.length} closed this quarter`);
+    await db.update(vigieNcrs).set({ vigieUpdatedAt: new Date('2026-06-15T10:00:00Z') }).where(eq(vigieNcrs.id, closed[0].id));
+    try {
+      expect(await sub()).toBe(`${closed.length - 1} closed this quarter`);
+    } finally {
+      await db.update(vigieNcrs).set({ vigieUpdatedAt: closed[0].at }).where(eq(vigieNcrs.id, closed[0].id));
+    }
   });
 });

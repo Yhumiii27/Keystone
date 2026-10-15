@@ -46,17 +46,19 @@ export interface ImportTagsDialogProps {
   context: string;
   /** Revision of the registered P&ID (null: none — the import registers it). */
   currentRevision: string | null;
+  /** R-109: the revision to suggest (Codex's reference revision when it is ahead); else the next one after `currentRevision`. */
+  suggestedRevision?: string | null;
   onClose: () => void;
 }
 
-export function ImportTagsDialog({ code, context, currentRevision, onClose }: ImportTagsDialogProps) {
+export function ImportTagsDialog({ code, context, currentRevision, suggestedRevision, onClose }: ImportTagsDialogProps) {
   const { t } = useI18n();
   const id = useId();
   const fileRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<'source' | 'check'>('source');
   const [file, setFile] = useState<{ name: string; kind: 'text' | 'xlsx'; data: string } | null>(null);
   const [paste, setPaste] = useState('');
-  const [rev, setRev] = useState(currentRevision ? nextRevision(currentRevision) : 'A');
+  const [rev, setRev] = useState(suggestedRevision || (currentRevision ? nextRevision(currentRevision) : 'A'));
   const [source, setSource] = useState<PidImportSource>('autocad');
   const [mode, setMode] = useState<PidImportMode>('merge');
   const [stage, setStage] = useState<PidStageView | null>(null);
@@ -224,7 +226,7 @@ export function ImportTagsDialog({ code, context, currentRevision, onClose }: Im
               </span>
               {stage.lines.length > 0 && (
                 <div className={s.stageTable}>
-                  <Table size={12.5}>
+                  <Table size={12.5} scroll={false}>
                     <thead>
                       <tr>
                         <Th>{t('Line')}</Th>

@@ -153,7 +153,10 @@ export interface VigieEcoConnector {
 export interface VigieNcrRecord {
   /** Keystone project code ("HLT-026"). */
   projectCode: string;
-  /** "NCR-029" (unique per project). */
+  /**
+   * The NCR's number, unique per project. Vigie's own number once its API is connected (V-3a: "EV-2026-130"); the
+   * prototype mirror keeps Keystone's demo numbers ("NCR-029"). Keystone never sends NCR numbers of its own (R-023).
+   */
   number: string;
   /** Vigie's own record id ("EV-2026-130") when Vigie gives it. */
   vigieRef: string | null;
@@ -165,6 +168,8 @@ export interface VigieNcrRecord {
   partRef: string | null;
   deliverableNumber: string | null;
   supplierName: string | null;
+  /** ITP inspection the NCR was reported from ("I-03"), when Vigie echoes Keystone's `inspection` prefill (R-112, V-3). */
+  inspectionNumber?: string | null;
   raisedBy: string;
   /** ISO date. */
   raisedOn: string;

@@ -1,6 +1,8 @@
 import 'server-only';
 // Client communication log (chapter 4, Site › "Client communication log"; Keystone-owned): every exchange with the client
-// and its follow-up. Numbered COM-001… per project. Server Functions check who may write (project team, not the client).
+// and its follow-up. Numbered COM-001… per project. D-5: retired from the Site screen (no Server Function calls this any
+// more — the Site button opens the client decisions of the project meetings); kept with its data until the owner confirms
+// deleting them in a later migration.
 import { and, desc, eq } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { getDb } from '@/server/db/client';

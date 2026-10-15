@@ -140,6 +140,8 @@
 :global(.input).draftText { flex: 1; min-width: 200px; min-height: 34px; }
 :global(.input).draftOwner { width: 140px; min-height: 34px; }
 :global(.input).draftDue { width: 110px; min-height: 34px; }
+/* S-12 a (R-067): optional plan activity of an action (the minutes' writers). */
+:global(.input).draftActivity { width: 200px; max-width: 100%; min-height: 34px; }
 
 /* registers */
 .cellText { text-wrap: pretty; }
@@ -154,6 +156,8 @@
 
 /* transcript import, analyser and review (chapter 4, S-10) */
 .trSource { font-size: 11px; color: var(--color-neutral-500); }
+.trFile { color: var(--color-neutral-300); text-decoration: underline; text-underline-offset: 2px; }
+.trFile:hover { color: var(--color-neutral-100); }
 .trHint { font-size: 11px; color: var(--color-neutral-500); display: inline-flex; align-items: center; gap: 5px; text-wrap: pretty; }
 .trHint svg { flex: none; color: var(--color-accent-300); }
 .itemKind { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-neutral-400); margin-right: 4px; }

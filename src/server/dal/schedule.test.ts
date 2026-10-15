@@ -6,6 +6,7 @@ import type { MilestoneStatus } from '@/server/db/codes';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { PROTO_GEN } from '@/server/prototype';
+import { getProjectEvm } from './evm';
 import { getScheduleData } from './schedule';
 
 const STATUS: Record<string, MilestoneStatus> = { Done: 'done', Late: 'late', 'At risk': 'at_risk', 'On track': 'on_track' };
@@ -29,9 +30,13 @@ describe('getScheduleData', () => {
         name, owner, baselineStart: bs, baselineEnd: be, forecastStart: as, forecastEnd: ae, pct: p, critical: crit,
       })),
       milestones: (pd.MILES as [string, number, number, string][]).map(([name, b, fc, st]) => ({ name, baselineMonth: b, forecastMonth: fc, status: STATUS[st], statusLabel: st })),
-      pv: pd.PV, ev: pd.EV, bac: pd.BAC,
+      // Delivery 7 (R-073): the progression curve reads PV / EV computed from the activities and the cost-loaded BL1 (the
+      // evm DAL, tested in src/server/dal/cost-control.test.ts); the seeded series are no longer read.
+      pv: d!.pv, ev: d!.ev, bac: pd.BAC,
     });
     expect(scheduleView(d!)).toEqual(want);
+    const evm = (await getProjectEvm(code))!;
+    expect([d!.pv, d!.ev]).toEqual([evm.series.pv, evm.series.ev]);
   });
 
   it('HLT-026 header', async () => {

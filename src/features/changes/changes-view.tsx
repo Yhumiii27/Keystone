@@ -18,13 +18,17 @@ import { Table, Td, Th } from '@/components/ds/Table';
 import { Tag } from '@/components/ds/Tag';
 import type { RoleKey } from '@/config/screens';
 import {
-  BASELINE_STATE_LABEL, BASELINE_TONE, CR_STATUS_LABEL, CR_STATUS_TONE, CR_STEP_LABEL, amountCell, canDecideStep, chainDots, crChips, crHint,
+  BASELINE_STATE_LABEL, BASELINE_TONE, CR_STATUS_LABEL, CR_STATUS_TONE, CR_STEP_LABEL, DEFAULT_CCB_THRESHOLD_KEUR, amountCell, canDecideStep, chainDots, crChips, crHint,
   crImpact, crKpis, daysCell, filterCrs, stepState, typesText, type BaselineLike, type ChangeRequestLike, type CrFilter,
 } from '@/domain/change-control';
+import { contractImpact } from '@/server/db/codes';
+import { crActivitiesEditable } from '@/domain/change-activities';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import { StepDecisionButtons, SubmitForReviewButton } from './change-buttons';
+import { CrActivitiesEditor, type CrActivityRow } from './cr-activities';
 import s from './changes.module.css';
+import { dataText } from '@/i18n/data-text';
 
 export interface ChangesViewData {
   /** Register order, effective status. */
@@ -50,11 +54,20 @@ export interface ChangesViewProps {
   budgetHref: string;
   lang: Lang;
   t: T;
+  /**
+   * Delivery 7 (NEW-D2-2, R-062): plan activities each request touches (by request number), the plan's activities offered
+   * to link, and whether the viewer edits the links (the project team; never the client, who does not see the section).
+   */
+  crActivities?: { byCr: Record<string, CrActivityRow[]>; options: { value: string; label: string }[]; canEdit: boolean; visible: boolean };
+  /** Delivery 8 (R-069, P-6c): the Settings board threshold in force, k€ (workflow note). */
+  ccbThresholdKeur?: number;
+  /** Delivery 8 (R-081): "C03 · Steel" of each request naming a cost category — given for the project team only, never the client. */
+  costCategoryOf?: Record<string, string>;
 }
 
 const DAYS_COLOR = { delay: LO, gain: 'var(--color-accent-300)', none: 'var(--color-neutral-400)' } as const;
 
-export function ChangesView({ code, data, filter, selected, role, canEdit, href, planHref, budgetHref, lang, t }: ChangesViewProps) {
+export function ChangesView({ code, data, filter, selected, role, canEdit, href, planHref, budgetHref, lang, t, crActivities, ccbThresholdKeur, costCategoryOf }: ChangesViewProps) {
   const { crs } = data;
   const kpis = crKpis(crs, { originalBudget: data.originalBudget, bac: data.bac, baselines: data.baselines }, lang);
   const rows = filterCrs(crs, filter);
@@ -81,7 +94,13 @@ export function ChangesView({ code, data, filter, selected, role, canEdit, href,
             options={crChips(crs).map((c) => ({ value: c.value, label: t(c.label), count: c.count, href: href({ filter: c.value, cr: selected }) }))}
           />
         </FilterGroup>
-        <FilterNote>{t('Draft → in review (PM → director → client → change control board) → approved · approved changes revise budget, schedule and WBS')}</FilterNote>
+        <FilterNote>
+          {t('Draft → in review (PM → director → client → change control board) → approved · approved changes revise budget, schedule and WBS')}
+          {/* R-069 (P-6b, P-6c): the steps run in turn; the client and the board only when required. */}
+          {' '}
+          {t('Each step waits for the previous one; the client decides contractual changes, the board changes above')}{' '}
+          {money(ccbThresholdKeur ?? DEFAULT_CCB_THRESHOLD_KEUR, lang)}
+        </FilterNote>
       </FilterBar>
 
       <SectionCard title={t('Change requests')} hint={t('Click a request for its impact and approval chain')} scroll>
@@ -109,8 +128,8 @@ export function ChangesView({ code, data, filter, selected, role, canEdit, href,
                   <td>
                     <div className={s.reqCell}>
                       <span className={cx(s.reqId, isOpen && s.reqIdOn)}>{c.id}</span>
-                      <span className={s.pretty}>{t(c.title)}</span>
-                      <span className={s.reqBy}>{t(`${c.by} · ${c.date}`)}</span>
+                      <span className={s.pretty}>{dataText(c.title, lang)}</span>
+                      <span className={s.reqBy}>{`${c.by} · ${t(c.date)}`}</span>
                     </div>
                   </td>
                   <Td tone="secondary" nowrap>
@@ -169,7 +188,7 @@ export function ChangesView({ code, data, filter, selected, role, canEdit, href,
             {data.baselines.map((b) => (
               <tr key={b.code}>
                 <td className={s.blId}>{b.code}</td>
-                <td>{t(b.name)}</td>
+                <td>{dataText(b.name, lang)}</td>
                 <Td color="var(--color-neutral-300)">{t(b.setOn)}</Td>
                 <Td align="right" numeric>
                   {money(b.bac, lang)}
@@ -191,7 +210,7 @@ export function ChangesView({ code, data, filter, selected, role, canEdit, href,
         <ChangeRequestDrawer
           cr={open}
           code={code}
-          ctx={{ bac: data.bac, contingency: data.contingency }}
+          ctx={{ bac: data.bac, contingency: data.contingency, proposedBaseline: data.baselines.find((b) => b.changeRequest === open.id)?.code ?? null, ccbThresholdKeur }}
           role={role}
           canEdit={canEdit}
           closeHref={href({ filter, cr: null })}
@@ -199,6 +218,8 @@ export function ChangesView({ code, data, filter, selected, role, canEdit, href,
           budgetHref={budgetHref}
           lang={lang}
           t={t}
+          crActivities={crActivities}
+          costCategory={costCategoryOf?.[open.id] ?? null}
         />
       )}
     </div>
@@ -208,7 +229,8 @@ export function ChangesView({ code, data, filter, selected, role, canEdit, href,
 export interface CrDrawerProps {
   cr: ChangeRequestLike;
   code: string;
-  ctx: { bac: number; contingency: number | null };
+  /** `ccbThresholdKeur`: the board threshold in force (Settings), for the Budget row's highlight (R-069 / P-6c). */
+  ctx: { bac: number; contingency: number | null; proposedBaseline?: string | null; ccbThresholdKeur?: number };
   role: RoleKey;
   canEdit: boolean;
   closeHref: string;
@@ -216,17 +238,20 @@ export interface CrDrawerProps {
   budgetHref: string;
   lang: Lang;
   t: T;
+  crActivities?: ChangesViewProps['crActivities'];
+  /** R-081: "C03 · Steel" when the request names a cost category — passed for the project team only. */
+  costCategory?: string | null;
 }
 
 /** CR drawer (crVals 4607–4610) over the DS Drawer (client; closes to the register URL without `?cr=`). */
 function ChangeRequestDrawer(props: CrDrawerProps) {
-  const { cr, closeHref, t } = props;
+  const { cr, closeHref, lang, t } = props;
   return (
     <Drawer
       open
       closeHref={closeHref}
       id={cr.id}
-      title={t(cr.title)}
+      title={dataText(cr.title, lang)}
       meta={
         <>
           <Tag tone="neutral" nowrap={false}>
@@ -243,22 +268,42 @@ function ChangeRequestDrawer(props: CrDrawerProps) {
   );
 }
 
-/** Drawer content: raised by, impact, approval chain with the viewer's decisions, hint, actions. */
-export function CrDrawerBody({ cr, code, ctx, role, canEdit, planHref, budgetHref, lang, t }: Omit<CrDrawerProps, 'closeHref'>) {
+/** Impact value in the viewer's language: "Requires re-baseline → BL3" keeps its code (any BLn, S-3). */
+const impactText = (v: string, t: (s: string) => string) => {
+  const m = /^Requires re-baseline → (BL\d+)$/.exec(v);
+  return m ? `${t('Requires re-baseline →')} ${m[1]}` : t(v);
+};
+
+/**
+ * Drawer content: raised by, the justification (R-140), impact (with the contractual impact, R-069, and — for the project team —
+ * the cost category, R-081), approval chain with the viewer's decisions, hint, actions.
+ */
+export function CrDrawerBody({ cr, code, ctx, role, canEdit, planHref, budgetHref, lang, t, crActivities, costCategory }: Omit<CrDrawerProps, 'closeHref'>) {
   const impact = crImpact(cr, ctx, lang);
   // A read-only / outside viewer gets no "Submit the request…" instruction: the Submit button is hidden for them.
   const hint = cr.status === 'draft' && !canEdit ? '' : crHint(cr, role);
+  const items = impact.map((r) => ({ k: t(r.k), v: impactText(r.v, t), color: r.lo ? LO : OK }));
+  if (cr.contractImpact) items.push({ k: t('Contractual impact'), v: t(contractImpact.label(cr.contractImpact)), color: OK });
+  if (costCategory) items.push({ k: t('Cost category'), v: costCategory, color: OK });
+  const why = cr.justification?.trim();
   return (
     <>
       <span className={s.raised}>
         {t('Raised by')} {t(`${cr.by} · ${cr.date}`)}
       </span>
-      <KeyValueList title={t('Impact')} items={impact.map((r) => ({ k: t(r.k), v: t(r.v), color: r.lo ? LO : OK }))} />
+      {/* R-140 (X-11 shared): the justification as typed, for every viewer of the drawer — the client included. */}
+      {why && (
+        <section className={s.justification} aria-label={t('Justification')}>
+          <Eyebrow>{t('Justification')}</Eyebrow>
+          <p className={s.justificationText}>{dataText(why, lang)}</p>
+        </section>
+      )}
+      <KeyValueList title={t('Impact')} items={items} />
       <section className={s.chainSection} aria-label={t('Approval chain')}>
         <Eyebrow>{t('Approval chain')}</Eyebrow>
         {cr.chain.map((st) => {
           const state = stepState(st.decision);
-          const act = canEdit && canDecideStep(role, cr, st.step);
+          const act = canEdit && canDecideStep(cr, st.step, { role });
           return (
             <div key={st.step} className={s.step}>
               <span className={s.stepText}>
@@ -280,6 +325,18 @@ export function CrDrawerBody({ cr, code, ctx, role, canEdit, planHref, budgetHre
         })}
         <span className={s.hint}>{hint ? t(hint) : ''}</span>
       </section>
+      {crActivities?.visible && (
+        <section className={s.chainSection} aria-label={t('Plan activities')}>
+          <Eyebrow>{t('Plan activities')}</Eyebrow>
+          <CrActivitiesEditor
+            code={code}
+            number={cr.id}
+            rows={crActivities.byCr[cr.id] ?? []}
+            options={crActivities.options.filter((o) => !(crActivities.byCr[cr.id] ?? []).some((r) => r.code === o.value))}
+            editable={crActivities.canEdit && crActivitiesEditable(cr.status)}
+          />
+        </section>
+      )}
       <div className={s.actions}>
         {canEdit && cr.status === 'draft' && <SubmitForReviewButton code={code} number={cr.id} variant="drawer" />}
         <ButtonLink variant="secondary" size="sm" icon={TreeStructure} href={planHref}>

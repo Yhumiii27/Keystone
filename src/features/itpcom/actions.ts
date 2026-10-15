@@ -7,17 +7,17 @@
 // "Blocking A").
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
-import { parseNewInspection, parseNewPunch, parsePlanSat, punchStep } from '@/domain/itpcom';
+import { canRecordItpResult, parseInspectionResult, parseNewInspection, parseNewPunch, parsePlanSat, punchStep } from '@/domain/itpcom';
 import { shortName } from '@/lib/format';
-import { NOW_ISO, punchStatus } from '@/server/db/codes';
+import { NOW_ISO, itpResult, punchStatus } from '@/server/db/codes';
 import { listSatSystems, planSat } from '@/server/dal/commissioning';
-import { addItpInspection, addPunchItem, advancePunchItem, listItpSystems, listPunchItems } from '@/server/dal/itp';
+import { addItpInspection, addPunchItem, advancePunchItem, getItpInspection, listItpSystems, listPunchItems, recordItpResult } from '@/server/dal/itp';
 import type { Actor } from '@/server/dal/ops-common';
 import { getProject } from '@/server/dal/projects';
 import { teamOwnerOptions } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
-import { INSPECTION_RESULT, PUNCH_RESULT, SAT_RESULT } from './forms';
+import { INSPECTION_RESULT, PUNCH_RESULT, RESULT_RESULT, SAT_RESULT } from './forms';
 
 export type PunchStepResult = { ok: true } | { error: string };
 
@@ -69,15 +69,22 @@ export async function addInspectionAction(code: string, values: Record<string, s
   return { toast: await tr(INSPECTION_RESULT) };
 }
 
-/** "Add punch item" (AF `punch`, "Add item"): P-10… per project, Open; owner stored as the short name; toast "Punch item added". */
+/**
+ * "Add punch item" (AF `punch`, "Add item"): P-10… over the project's single list (R-117), Open; owner stored as the short
+ * name ("—": the party owns it); origin, owner party and — internal viewers only, P-10b — Vigie's NCR number; toast
+ * "Punch item added".
+ */
 export async function addPunchItemAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const ok = await editable(code, 'itp');
   if ('error' in ok) return ok;
-  const parsed = parseNewPunch(strings(values), await teamOwnerOptions(ok.code));
+  const parsed = parseNewPunch(strings(values), await teamOwnerOptions(ok.code), { internal: ok.actor.role !== 'client' });
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
   try {
-    await addPunchItem(ok.code, { description: v.description, location: v.location, category: v.category, source: v.source, owner: shortName(v.owner), dueOn: v.dueOn }, ok.actor);
+    await addPunchItem(ok.code, {
+      description: v.description, location: v.location, category: v.category, source: v.source, owner: v.owner ? shortName(v.owner) : null, dueOn: v.dueOn,
+      origin: v.origin, ownerParty: v.ownerParty, ncrNumber: ok.actor.role === 'client' ? null : v.ncrNumber,
+    }, ok.actor);
   } catch {
     return { error: await tr('The change could not be saved') };
   }
@@ -95,14 +102,15 @@ async function stale(code: string, english: string): Promise<PunchStepResult> {
 }
 
 /**
- * Punch row step: "Start" (Open → In progress) or "Close" (In progress → Closed, closed on the business date). `from` is
- * the status the viewer saw: an item someone else moved on meanwhile is refused instead of taking a second step.
+ * Punch row step: "Start" (Open → In progress) or "Close" (In progress → Closed, closed on the business date) on any item of
+ * the project's punch list (R-117: every origin). `from` is the status the viewer saw: an item someone else moved on
+ * meanwhile is refused instead of taking a second step.
  */
 export async function advancePunchItemAction(code: string, number: string, from: string): Promise<PunchStepResult> {
   const ok = await editable(code, 'itp');
   if ('error' in ok) return ok;
   if (typeof number !== 'string' || !number || !punchStatus.isCode(from)) return { error: await tr('Invalid request') };
-  const row = (await listPunchItems(ok.code, 'itp')).find((r) => r.number === number);
+  const row = (await listPunchItems(ok.code)).find((r) => r.number === number);
   if (!row) return { error: await tr('Unknown punch item') };
   if (!punchStep(row.status)) return stale(ok.code, CLOSED);
   if (row.status !== from) return stale(ok.code, MOVED_ON);
@@ -136,4 +144,40 @@ export async function planSatAction(code: string, values: Record<string, string>
   }
   refresh(ok.code);
   return { toast: await tr(SAT_RESULT) };
+}
+
+const RESULT_CHANGED = 'This inspection has changed since you opened it';
+
+/**
+ * "Record result" (R-112, Q-6a): Passed / Passed with reservations / Failed, date, inspector, the client representative
+ * (hold / witness points) and a comment. Quality, the engineering lead and the director, on a project they may edit.
+ * `from` is the result the viewer saw: a line recorded meanwhile by someone else is refused rather than overwritten.
+ * A failure is then reported in Vigie from the row ("Report the NCR in Vigie", Q-6b).
+ */
+export async function recordInspectionResultAction(code: string, number: string, from: string, values: Record<string, string>): Promise<FormDialogResult> {
+  const ok = await editable(code, 'itp');
+  if ('error' in ok) return ok;
+  if (!canRecordItpResult(ok.actor.role)) return { error: await tr('Only quality and the engineering lead record inspection results') };
+  if (typeof number !== 'string' || !/^I-\d{2,}$/.test(number) || !itpResult.isCode(from)) return { error: await tr('Invalid request') };
+  const row = await getItpInspection(ok.code, number);
+  if (!row) return { error: await tr('Unknown inspection') };
+  if (row.result !== from) {
+    refresh(ok.code);
+    return { error: await tr(RESULT_CHANGED) };
+  }
+  const parsed = parseInspectionResult(strings(values), row.pointType);
+  if (!parsed.ok) return { error: await tr(parsed.error) };
+  const v = parsed.value;
+  try {
+    await recordItpResult(ok.code, row.number, { result: v.result, resultOn: v.resultOn, inspector: v.inspector, clientWitness: v.clientWitness, comment: v.comment }, ok.actor, from);
+  } catch (e) {
+    if (e instanceof Error && / has changed$/.test(e.message)) {
+      refresh(ok.code);
+      return { error: await tr(RESULT_CHANGED) };
+    }
+    console.error('recordInspectionResultAction', e);
+    return { error: await tr('The change could not be saved') };
+  }
+  refresh(ok.code);
+  return { toast: await tr(`${row.number} · ${itpResult.label(v.result)} · ${RESULT_RESULT}`) };
 }

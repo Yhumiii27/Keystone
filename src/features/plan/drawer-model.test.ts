@@ -28,9 +28,20 @@ const requests = (PROTO.REQUESTS as (PlanRequest & { project: string })[]).filte
 const deptHeads = Object.fromEntries(Object.entries(PROTO.DEPTS as Record<string, [string, string]>).map(([k, [head]]) => [k, head]));
 const A1250_RES = (PROTO.A1250_RES as [string, string, string, string][]).map(([resource, detail, units, progressText]) => ({ resource, detail, units, progressText }));
 
+/**
+ * NEW-D2-2 (Delivery 7, R-062): CR-008 names A1250 (the seed's link — the prototype hard-coded "second crew (CR-008)" on it).
+ * The cost note names the requests in review touching the activity; a "Change requests" section lists them.
+ */
+const CR008 = (status: 'in_review' | 'approved', extra: Partial<NonNullable<DrawerInput['changeLinks']>[number]> = {}) => ({
+  cr: 'CR-008', title: 'Steel erection acceleration — second crew', status, durationDays: 20, newDurationDays: null, appliedAt: null, appliedFromDays: null,
+  href: '/projects/HLT-026/changes?cr=CR-008', ...extra,
+});
 const view = (id: string, lang: Lang, assignments: DrawerInput['assignments'] = []) =>
   activityDrawerView(
-    { act: activities.find((a) => a.id === id)!, activities, packages, owners, assignments, todos, requests, deptHeads, pendingChanges: ['CR-008'], taskHref: (x) => `/my/tasks/${x.id}` },
+    {
+      act: activities.find((a) => a.id === id)!, activities, packages, owners, assignments, todos, requests, deptHeads, changeLinks: id === 'A1250' ? [CR008('in_review')] : [],
+      taskHref: (x) => `/my/tasks/${x.id}`,
+    },
     makeT(lang),
     lang,
   );
@@ -77,14 +88,33 @@ describe('activity drawer — A1250 (EN)', () => {
     ]);
     expect([v.budget, v.actual, v.eac, v.eacLo]).toEqual(['€280k', '€210k', '€470k', true]);
     expect(v.bar).toEqual({ actualW: '53.6%', budgetW: '71.4%', eacW: '100%', over: true, overBy: 190 });
-    expect(v.costNote).toBe('Forecast +€190k over this package’s budget — second crew (CR-008) pending approval');
-    // Once CR-008 is decided (no longer in review), the pending-change mention goes.
+    // NEW-D2-2 (R-062): "— CR-008 pending approval" from the activity's links (the prototype's hard-coded "second crew (CR-008) pending approval").
+    expect(v.costNote).toBe('Forecast +€190k over this package’s budget — CR-008 pending approval');
+    expect(v.changes).toEqual([
+      { id: 'CR-008', title: 'Steel erection acceleration — second crew', status: { label: 'In review', tone: 'accent' }, duration: '20d', href: '/projects/HLT-026/changes?cr=CR-008' },
+    ]);
+    // Once CR-008 is decided (no longer in review), the pending-change mention goes; the request stays listed.
     const decided = activityDrawerView(
-      { act: activities.find((a) => a.id === 'A1250')!, activities, packages, owners, assignments: A1250_RES, todos, requests, deptHeads, pendingChanges: [], taskHref: (x) => `/my/tasks/${x.id}` },
+      {
+        act: activities.find((a) => a.id === 'A1250')!, activities, packages, owners, assignments: A1250_RES, todos, requests, deptHeads,
+        changeLinks: [CR008('approved', { newDurationDays: 28, appliedAt: '2026-09-25T10:00:00Z', appliedFromDays: 20, durationDays: 28 })], taskHref: (x) => `/my/tasks/${x.id}`,
+      },
       makeT('en'),
       'en',
     );
     expect(decided.costNote).toBe('Forecast +€190k over this package’s budget');
+    expect(decided.changes.map((c) => [c.status.label, c.duration])).toEqual([['Approved', '20d → 28d · applied']]);
+    const fr = activityDrawerView(
+      {
+        act: activities.find((a) => a.id === 'A1250')!, activities, packages, owners, assignments: A1250_RES, todos, requests, deptHeads,
+        changeLinks: [CR008('in_review', { newDurationDays: 28 })], taskHref: (x) => `/my/tasks/${x.id}`,
+      },
+      makeT('fr'),
+      'fr',
+    );
+    expect(fr.costNote).toMatch(/ — CR-008 en attente d’approbation$/);
+    expect(fr.changes.map((c) => [c.status.label, c.duration])).toEqual([['En revue', '20 j → 28 j']]);
+    expect(view('A1260', 'en').changes).toEqual([]);
   });
 
   it('to-dos and pending requests', () => {
@@ -137,7 +167,8 @@ describe('activity drawer — other cases', () => {
     ]);
     expect(v.preds[0].rel).toBe('FS · pilotant');
     expect(v.res[0]).toEqual({ name: 'Julien Wagner', sub: 'Ingénieur structure · responsable · 296 / 400 h', units: '40 h/sem.' });
-    expect(v.costNote).toBe('Prévision +190 k€ au-dessus du budget de ce lot — seconde équipe (CR-008) en attente d’approbation');
+    // NEW-D2-2 (R-062): the requests in review touching the activity (the prototype's hard-coded « seconde équipe (CR-008) »).
+    expect(v.costNote).toBe('Prévision +190 k€ au-dessus du budget de ce lot — CR-008 en attente d’approbation');
     expect(v.todoCount).toBe('0 sur 5 terminées');
     expect(v.todos[0].meta).toBe('Hélène · Aujourd’hui · En cours');
     expect(v.pending[0].meta).toBe('Contract structural engineer · en attente de validation Ingénierie — pas encore dans leur liste');
@@ -156,7 +187,7 @@ describe('activity drawer — chapter 4 (S-1, S-2, S-3)', () => {
   const ch4 = (id: string, patch: Partial<PlanActivity>, extra: Partial<DrawerInput> = {}, lang: Lang = 'en') =>
     activityDrawerView(
       {
-        act: { ...activities.find((a) => a.id === id)!, ...patch }, activities, packages, owners, assignments: [], todos, requests, deptHeads, pendingChanges: [],
+        act: { ...activities.find((a) => a.id === id)!, ...patch }, activities, packages, owners, assignments: [], todos, requests, deptHeads, changeLinks: [],
         taskHref: (x) => `/my/tasks/${x.id}`, calendars: cals, projectCalendar: 'standard_5x8', baselineCode: 'BL2', removableTodos: new Set(['T-2314']), ...extra,
       },
       makeT(lang),

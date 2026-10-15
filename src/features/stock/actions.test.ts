@@ -37,9 +37,13 @@ describe('stock Server Functions', () => {
     vi.mocked(revalidatePath).mockClear();
   });
 
-  it('refuses viewers outside the workspace (depthead, member, englead, client), in their language', async () => {
+  it('refuses viewers outside the workspace (depthead, member, englead; the client is sent home), in their language', async () => {
     const id = (await line('KS-STL-0450', CENTRAL)).id;
-    for (const role of ['depthead', 'member', 'englead', 'client'] as RoleKey[]) {
+    // R-042 (P-1): stock is outside the client's workspace — a redirect home (NEXT_REDIRECT), nothing written.
+    viewer.role = 'client';
+    await expect(importFromX3Action()).rejects.toThrow('NEXT_REDIRECT');
+    await expect(applyStockMovementAction(id, { op: 'adjust', qty: '5' }, 'HLT-026')).rejects.toThrow('NEXT_REDIRECT');
+    for (const role of ['depthead', 'member', 'englead'] as RoleKey[]) {
       viewer.role = role;
       expect(await applyStockMovementAction(id, { op: 'adjust', qty: '5' }, 'HLT-026')).toEqual({ error: 'Stock is read-only for you' });
       expect(await importFromX3Action()).toEqual({ error: 'Stock is read-only for you' });
@@ -63,13 +67,13 @@ describe('stock Server Functions', () => {
     expect(await applyStockMovementAction(id, { op: 'transfer', qty: '1', target: 'Magasin chantier — Lyon' }, null)).toEqual({ error: 'Choose a destination' });
     expect(await applyStockMovementAction(id, { op: 'reserve', qty: '1' }, null)).toEqual({ error: 'A project is required' });
     expect(await applyStockMovementAction(id, { op: 'reserve', qty: '1' }, 'NOPE-000')).toEqual({ error: 'A project is required' });
-    expect(await applyStockMovementAction(id, { op: 'issue', qty: '9' }, 'HLT-026')).toEqual({ error: `Only 6 on hand at ${CENTRAL}` });
+    expect(await applyStockMovementAction(id, { op: 'issue', qty: '9', activity: 'A1250' }, 'HLT-026')).toEqual({ error: `Only 6 on hand at ${CENTRAL}` });
     expect(await applyStockMovementAction(id, { op: 'reserve', qty: '3' }, 'HLT-026')).toEqual({ error: `Only 2 available at ${CENTRAL}` });
     expect(await applyStockMovementAction('00000000-0000-0000-0000-000000000000', { op: 'adjust', qty: '1' }, null)).toEqual({ error: 'Unknown stock line' });
     const msr = (await line('SG-BRK-SS2', 'Atelier mécanique — Lyon')).id;
     viewer.lang = 'fr';
     expect(await applyStockMovementAction(msr, { op: 'reserve', qty: '5' }, 'HLT-026')).toEqual({ error: 'Cette ligne est déjà réservée pour un autre projet' });
-    expect(await applyStockMovementAction(id, { op: 'issue', qty: '9' }, 'HLT-026')).toEqual({ error: `Seulement 6 en stock à ${CENTRAL}` });
+    expect(await applyStockMovementAction(id, { op: 'issue', qty: '9', activity: 'A1250' }, 'HLT-026')).toEqual({ error: `Seulement 6 en stock à ${CENTRAL}` });
     expect(await applyStockMovementAction(id, { op: 'reserve', qty: '3' }, 'HLT-026')).toEqual({ error: `Seulement 2 disponibles à ${CENTRAL}` });
     expect(await applyStockMovementAction(id, { op: 'scrap', qty: '-1' }, null)).toEqual({ error: 'Saisissez une quantité entière' });
     expect((await line('KS-STL-0450', CENTRAL)).onHand).toBe(6);
@@ -89,11 +93,16 @@ describe('stock Server Functions', () => {
     expect(await stockNavBadge()).toBe('2'); // + KS-STL-0450 (0 < min 4)
     expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
     // Reserve for the current project; the destination of a transfer is created when missing.
+    // R-041: the pm persona (R. Aubert) is not on NDC-031's team — refused; procurement, a storekeeper, reserves for it.
     viewer.role = 'pm';
     const lt = (await line('LT-HB-200W', CENTRAL)).id;
+    expect(await applyStockMovementAction(lt, { op: 'reserve', qty: '30' }, 'NDC-031')).toEqual({
+      error: 'Only the project’s team, procurement or the director can reserve, issue or return stock for this project',
+    });
+    viewer.role = 'procurement';
     expect(await applyStockMovementAction(lt, { op: 'reserve', qty: '30' }, 'NDC-031')).toEqual({ ok: true });
     expect(await line('LT-HB-200W', CENTRAL)).toMatchObject({ reserved: 30, reservedForShort: 'NDC' });
-    expect((await listStockMovements({ limit: 1 }))[0]).toMatchObject({ where: `${CENTRAL} · NDC`, who: 'Romain Aubert' });
+    expect((await listStockMovements({ limit: 1 }))[0]).toMatchObject({ where: `${CENTRAL} · NDC`, who: 'Fabien Bertrand' });
     expect(await applyStockMovementAction(lt, { op: 'transfer', qty: '20', target: 'Consignation — Nordvolt' }, 'NDC-031')).toEqual({ ok: true });
     expect(await line('LT-HB-200W', 'Consignation — Nordvolt')).toMatchObject({ onHand: 20, source: 'local' });
   });
@@ -102,12 +111,13 @@ describe('stock Server Functions', () => {
     const local = (await listStock()).filter((s) => s.source === 'local').length;
     const r = await importFromX3Action();
     const sync = (await getX3StockSync())!;
-    expect(r).toEqual({ ok: true, toast: `Imported from Sage X3 · ${sync.x3Lines} lines · ${local} local changes kept` });
+    // R-034 (A-15): Sage X3 is not connected — the demo database's import is a simulation and says so.
+    expect(r).toEqual({ ok: true, toast: `Simulated import (Sage X3 not connected) · ${sync.x3Lines} lines · ${local} local changes kept` });
     expect(sync.localLines).toBe(local);
     expect((await line('KS-STL-0450', CENTRAL)).onHand).toBe(0);
     const id = (await line('KS-STL-0450', CENTRAL)).id;
     viewer.lang = 'fr';
-    expect(await pushStockLineAction(id)).toEqual({ ok: true, toast: `Envoyé vers Sage X3 · KS-STL-0450 · ${CENTRAL} · 1 mouvement` });
+    expect(await pushStockLineAction(id)).toEqual({ ok: true, toast: `Envoi simulé (Sage X3 non connecté) · KS-STL-0450 · ${CENTRAL} · 1 mouvement` });
     expect(await line('KS-STL-0450', CENTRAL)).toMatchObject({ source: 'x3', onHand: 0 });
     expect((await getX3StockSync())!.localLines).toBe(local - 1);
     expect(await pushStockLineAction(id)).toEqual({ ok: true, toast: 'Rien à envoyer · cette ligne est à jour dans Sage X3' });
@@ -126,8 +136,10 @@ describe('stock Server Functions', () => {
     expect(await line('KS-STL-0450', HAVRE)).toMatchObject({ onHand: 8, reserved: 8, reservedForShort: 'HLT', available: 0 });
     expect(await line('KS-STL-0450', CENTRAL)).toMatchObject({ onHand: 6, reserved: 6, reservedForShort: 'HLT', available: 0, source: 'local' });
     // EL-CBL-XLPE: the consignment line is reserved for NDC; HLT's reserved cable may not join it, free cable may.
-    viewer.role = 'pm';
+    // R-041: reserved by procurement (a storekeeper of every project; the pm persona is not on NDC-031's team).
+    viewer.role = 'procurement';
     expect(await applyStockMovementAction((await line('EL-CBL-XLPE', NORDVOLT)).id, { op: 'reserve', qty: '5' }, 'NDC-031')).toEqual({ ok: true });
+    viewer.role = 'pm';
     const xlpe = (await line('EL-CBL-XLPE', CENTRAL)).id;
     viewer.lang = 'fr';
     expect(await applyStockMovementAction(xlpe, { op: 'transfer', qty: '17', target: NORDVOLT }, null)).toEqual({ error: 'La destination est réservée pour un autre projet' });

@@ -16,6 +16,7 @@ import { Input } from '@/components/ds/Field';
 import { Table, Td, Th } from '@/components/ds/Table';
 import { showToast } from '@/components/ds/Toast';
 import { cx } from '@/components/ds/cx';
+import { PRICE_MASK } from '@/domain/rights';
 import { SPARES_ORDER_MAX_QTY, groupBySupplier, sparesOrderValue } from '@/domain/spares-order';
 import { useI18n } from '@/i18n/client';
 import { moneyEur } from '@/lib/format';
@@ -60,7 +61,9 @@ export function SparesOrderDialog({ scope, onClose }: { scope: SparesOrderScope;
 
   const chosen = (view?.lines ?? [])
     .filter((l) => picks[l.ref]?.on && l.supplier)
-    .map((l) => ({ ref: l.ref, qty: Number(picks[l.ref].qty), supplier: l.supplier!, unitPriceEur: l.unitPriceEur }));
+    .map((l) => ({ ref: l.ref, qty: Number(picks[l.ref].qty), supplier: l.supplier!, unitPriceEur: l.unitPriceEur ?? 0 }));
+  // R-046: prices are not sent to a viewer who may not see them — the value is masked too.
+  const priced = !!view && view.lines.every((l) => l.unitPriceEur != null);
   const invalid = chosen.some((l) => !Number.isInteger(l.qty) || l.qty < 1 || l.qty > SPARES_ORDER_MAX_QTY);
   const orders = groupBySupplier(chosen).length;
 
@@ -95,7 +98,7 @@ export function SparesOrderDialog({ scope, onClose }: { scope: SparesOrderScope;
       {!view && !error && <span className={s.muted}>{loading ? t('Loading…') : ''}</span>}
       {view && (
         <div className={s.tableWrap}>
-          <Table>
+          <Table scroll={false}>
             <thead>
               <tr>
                 <Th>
@@ -163,7 +166,7 @@ export function SparesOrderDialog({ scope, onClose }: { scope: SparesOrderScope;
                       />
                     </Td>
                     <Td align="right" numeric>
-                      {moneyEur(l.unitPriceEur, lang)}
+                      {l.unitPriceEur != null ? moneyEur(l.unitPriceEur, lang) : PRICE_MASK}
                     </Td>
                   </tr>
                 );
@@ -173,7 +176,7 @@ export function SparesOrderDialog({ scope, onClose }: { scope: SparesOrderScope;
           {!view.lines.length && <span className={s.muted}>{t('No line in this list')}</span>}
         </div>
       )}
-      {view && <span className={s.summary}>{sparesOrderSummaryText(chosen.length, orders, moneyEur(sparesOrderValue(chosen), lang), lang)}</span>}
+      {view && <span className={s.summary}>{sparesOrderSummaryText(chosen.length, orders, priced ? moneyEur(sparesOrderValue(chosen), lang) : PRICE_MASK, lang)}</span>}
       {invalid && <span className={s.warn}>{t('Enter a whole quantity of at least 1')}</span>}
       {error && (
         <Callout variant="emphasis" icon={Warning} role="alert">

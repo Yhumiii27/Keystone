@@ -3,12 +3,12 @@
 // PEOPLE, REQUESTS, TODOS…, NOTIFS, ACTIVITY, AUDIT) and the KPI figures quoted by the screen specs.
 import { beforeAll, describe, expect, it } from 'vitest';
 import { setDb } from '@/server/db/client';
-import { dayOffsetOfIso, isoOfDayOffset, riskCategory, riskResponse, riskStatus, stepDecision } from '@/server/db/codes';
+import { dayOffsetOfIso, dowOfIso, isoOfDayOffset, riskCategory, riskResponse, riskStatus, stepDecision } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
 import { PROTO } from '@/server/prototype';
 import { getChangeControl } from './changes';
 import { getContingency } from './contingency';
-import { getHoursReconciliation, getJobTitleRates, getLeaveCalendar, getRateCard, getSkillsMatrix, listPublicHolidays } from './hr';
+import { getHoursReconciliation, getLeaveCalendar, getRateCard, getSkillsMatrix, listPublicHolidays } from './hr';
 import { countUnreadNotifications, listActivity, listAudit, listNotifications } from './notifications';
 import { getDepartmentApprovals, listApprovalDepartments, listPendingForcedStageChanges, listRequestActivities, listResourceRequests } from './requests';
 import { getLaborCost, getProjectTeam, getResourcePool, getWhatIf, listDepartments } from './resources';
@@ -72,7 +72,7 @@ describe('change control (07 §2.2)', () => {
     expect(cr8.typesLabel).toBe('Budget · Schedule');
     expect(cr8.wbs).toEqual([{ code: '1.4', name: 'Steel structure', amount: null }]);
     expect(cr8.chain.map((s) => [s.label, s.approver])).toEqual([
-      ['Project manager', 'Romain Aubert'], ['Portfolio director', 'Marie Lefebvre'], ['Client / sponsor', 'Nadia Bensaïd'], ['Change control board', 'Monthly · next 8 Oct'],
+      ['Project manager', 'Romain Aubert'], ['Portfolio director', 'Marie Lefebvre'], ['Client / sponsor', 'Nadia Bensaïd'], ['Change control board', 'Marie Lefebvre'],
     ]);
     expect(cc.changeRequests.find((c) => c.id === 'CR-005')!.chain.every((s) => s.decision === null)).toBe(true);
   });
@@ -117,14 +117,18 @@ describe('trends (04 §2)', () => {
 describe('contingency (04 §5)', () => {
   it('HLT-026: €150k · drawn €48k (32 %) · remaining €102k · exposure €340k', async () => {
     const c = (await getContingency('HLT-026'))!;
-    expect([c.initial, c.drawn, c.remaining, c.exposure, c.isDefault, Math.round((c.drawn / c.initial) * 100), Math.round(c.progress * 100)]).toEqual([150, 48, 102, 340, false, 32, 64]);
+    // Delivery 7 (R-073): project progress computed from the activities (63 %, was the seeded 64 %).
+    expect([c.initial, c.drawn, c.remaining, c.exposure, c.isDefault, Math.round((c.drawn / c.initial) * 100), Math.round(c.progress * 100)]).toEqual([150, 48, 102, 340, false, 32, 63]);
     expect(c.draws.map((d) => [d.dateText, d.amount, d.reason, d.linkRef, d.approvedBy])).toEqual(P.CONTINGENCY['HLT-026'].draws);
     expect(c.draws.map((d) => d.linkType)).toEqual(['change_request', 'risk', 'ncr']);
   });
 
-  it('default provision round(BAC × 3 %) without a register', async () => {
+  // Delivery 7 (A-8: one contingency figure): a project without a register takes its budget's contingency line (NDC-031: 100,
+  // as the Budget and the Risk register show it — was round(BAC × 3 %) = 63); round(BAC × 3 %) stays for a project without one.
+  it('provision without a register: the budget\'s contingency line, else round(BAC × 3 %)', async () => {
     const c = (await getContingency('NDC-031'))!;
-    expect([c.initial, c.isDefault, c.draws.length, c.exposure]).toEqual([63, true, 0, 115]);
+    expect([c.initial, c.isDefault, c.draws.length, c.exposure]).toEqual([100, true, 0, 115]);
+    expect((await getContingency('EWA-051'))!.initial).toBe(66);
   });
 });
 
@@ -144,7 +148,7 @@ describe('resources (06 §1, 05 §4)', () => {
     expect(d.map((x) => [x.name, x.head?.name, x.headTitle])).toEqual(Object.entries(P.DEPTS as Record<string, [string, string]>).map(([n, [h, t]]) => [n, h, t]));
     expect(d.filter((x) => x.capacityH != null).sort((a, b) => a.capacityPosition! - b.capacityPosition!).map((x) => [x.name, x.capacityH, x.demandH])).toEqual(P.ROLES);
     expect((await getProjectTeam('NDC-031')).map((p) => p.name)).toEqual(['Pauline Noguès', 'Damien Roux', 'Léa Marchand', 'Fabien Bertrand']);
-    expect((await getProjectTeam('HLT-026')).length).toBe(8);
+    expect((await getProjectTeam('HLT-026')).length).toBe(10); // R-041 (P-2): + the 2 seeded referents (was 8)
     expect(await getLaborCost('HLT-026')).toEqual({ name: 'Labor', budget: 1850, actual: 1420 });
     expect((await getLaborCost('ERP-202'))?.name).toBe('Internal staff');
   });
@@ -225,14 +229,18 @@ describe('tasks (10 §6–7)', () => {
     expect([...new Set(mine.map((t) => t.project.shortName))]).toEqual(['Harbor Line', 'Clinique Pasteur Lyon']);
   });
 
-  it('task sheet T-2314: description, checklist, comments, files, entries, cost rate', async () => {
+  it('task sheet T-2314: description, checklist, comments, files, entries, cost valuation', async () => {
     const t = (await getTask('T-2314'))!;
     expect(t.description).toBe(P.DESC['T-2314']);
     expect(t.checklistItems.map((i) => [i.text, i.done ? 1 : 0])).toEqual(P.CHECKS['T-2314']);
     expect(t.comments.map((c) => [c.author, c.when, c.text])).toEqual(P.COMMENTS['T-2314']);
     expect(t.attachments.map((f) => [f.name, f.meta, f.icon])).toEqual(P.FILES['T-2314']);
     expect(t.entries.map((e) => [e.dateText, e.hours, e.note])).toEqual(P.ENTRIES['T-2314']);
-    expect([t.costRate, t.activity?.code, t.activity?.wbs, t.activity?.packageName, t.priorityLabel, t.statusLabel]).toEqual([95, 'A1250', '1.4', 'Steel structure', 'High', 'In progress']);
+    // A-10 (R-083): the hours are valued at Hélène Sauvage's grid role "QA / QC" on each entry's date (60 €/h) — the prototype's
+    // job-title rate (RATES "QA / QC" 95 €/h) is retired: 6 h → 360 € (was 570 €).
+    expect([t.costNote, t.activity?.code, t.activity?.wbs, t.activity?.packageName, t.priorityLabel, t.statusLabel]).toEqual([
+      { cost: 360, rate: 60, missing: false, todayRate: 60 }, 'A1250', '1.4', 'Steel structure', 'High', 'In progress',
+    ]);
     expect((await getTask('T-2305'))!.attachments.map((f) => [f.name, f.meta, f.icon])).toEqual(P.FILES['T-2305']);
     expect((await getTask('T-2290'))!.checklist).toEqual({ done: 2, total: 2 });
     expect(await getTask('T-9999')).toBeNull();
@@ -240,15 +248,17 @@ describe('tasks (10 §6–7)', () => {
 });
 
 describe('HR (06 §2–5)', () => {
-  it('rate card: RATE_ROLES, MULTS; average internal 72,33 €/h; contractor premium +39 %; legacy RATES', async () => {
+  it('rate card: RATE_ROLES, MULTS (R-083: first versions from 1 Jan 2026); average internal 72,33 €/h; contractor premium +39 %', async () => {
     const rc = await getRateCard();
     expect(rc.roles.map((r) => [r.role, r.baseRateEur])).toEqual(P.RATE_ROLES);
     expect(rc.multipliers.map((m) => [m.key, m.label, m.factor])).toEqual(P.MULTS);
     const internal = rc.roles.filter((r) => !r.isExternal);
-    expect((internal.reduce((a, r) => a + r.baseRateEur, 0) / internal.length).toFixed(2)).toBe('72.33');
-    const rate = (n: string) => rc.roles.find((r) => r.role === n)!.baseRateEur;
+    expect((internal.reduce((a, r) => a + r.baseRateEur!, 0) / internal.length).toFixed(2)).toBe('72.33');
+    const rate = (n: string) => rc.roles.find((r) => r.role === n)!.baseRateEur!;
     expect(Math.round((rate('Contractor — structural (external)') / rate('Structural engineer') - 1) * 100)).toBe(39);
-    expect(await getJobTitleRates()).toEqual(P.RATES);
+    // R-083 (A-10): one dated grid — every rate and factor since 1 Jan 2026; the legacy job-title rates (RATES) are retired.
+    expect([...new Set([...rc.roles, ...rc.multipliers].map((r) => r.effectiveFrom))]).toEqual(['2026-01-01']);
+    expect((await getRateCard('2025-12-31')).roles.every((r) => r.baseRateEur === null)).toBe(true);
   });
 
   it('skills matrix: SKILL_LV, CERTS; 8 single-expert skills', async () => {
@@ -262,9 +272,14 @@ describe('HR (06 §2–5)', () => {
 
   it('leave calendar: LEAVE, LEAVE_DAYS, HOLIDAYS; 43 leave days, 85 % availability', async () => {
     const lc = await getLeaveCalendar();
-    expect(Object.fromEntries(lc.leaveTypes.map((t) => [t.label, t.days]))).toEqual(P.LEAVE_DAYS);
+    // NEW-CURSUS-4 (R-031, R-173): two simple types instead of LEAVE_DAYS' CP / RTT / Sick / Training; the prototype's weeks
+    // keep their days, CP and RTT as Leave, Sick and Training as Absence (the reason is not kept).
+    const SIMPLE: Record<string, string> = { CP: 'Leave', RTT: 'Leave', Sick: 'Absence', Training: 'Absence' };
+    expect(lc.leaveTypes.map((t) => [t.code, t.label, t.days])).toEqual([['leave', 'Leave', 5], ['absence', 'Absence', 5]]);
     expect(Object.fromEntries(lc.holidays.map((h) => [h.weekIndex, h.label]))).toEqual(P.HOLIDAYS);
-    expect(Object.fromEntries(lc.people.map((p) => [p.name, Object.fromEntries(p.weeks.flatMap((w, i) => (w.typeLabel ? [[String(i), w.typeLabel]] : [])))]))).toEqual(P.LEAVE);
+    expect(Object.fromEntries(lc.people.map((p) => [p.name, Object.fromEntries(p.weeks.flatMap((w, i) => (w.typeLabel ? [[String(i), w.typeLabel]] : [])))])))
+      .toEqual(Object.fromEntries(Object.entries(P.LEAVE as Record<string, Record<string, string>>).map(([n, ws]) => [n, Object.fromEntries(Object.entries(ws).map(([i, l]) => [i, SIMPLE[l]]))])));
+    expect(lc.lastAbsenceReceivedAt).toBeNull();
     const avail = lc.people.map((p) => Math.round((p.weeks.reduce((a, w) => a + Math.max(0, 5 - w.days - w.holidays) * 7, 0) / (lc.weeks.length * 35)) * 100));
     expect(avail).toEqual([73, 95, 78, 73, 93, 98, 93, 75]);
     expect(lc.people.reduce((a, p) => a + p.weeks.reduce((b, w) => b + w.days, 0), 0)).toBe(43);
@@ -326,7 +341,16 @@ describe('notifications, activity, audit (01 §5.5, 10 §2)', () => {
 
 describe('day offsets', () => {
   it('round-trips the prototype working-day axis', () => {
-    for (let o = 0; o < 40; o++) expect(dayOffsetOfIso(isoOfDayOffset(o))).toBe(o);
+    // R-167: negative offsets land on working days before Mon 21 Sep 2026, as the prototype's dayDate does.
+    for (let o = -40; o < 40; o++) {
+      const iso = isoOfDayOffset(o);
+      expect(dayOffsetOfIso(iso)).toBe(o);
+      expect(dowOfIso(iso)).toBeGreaterThanOrEqual(1);
+      expect(dowOfIso(iso)).toBeLessThanOrEqual(5);
+    }
+    expect(isoOfDayOffset(-1)).toBe('2026-09-18');
+    expect(isoOfDayOffset(-5)).toBe('2026-09-14');
+    expect(isoOfDayOffset(-6)).toBe('2026-09-11');
     expect(isoOfDayOffset(4)).toBe('2026-09-25');
     expect(isoOfDayOffset(15)).toBe('2026-10-12');
     expect(dayOffsetOfIso('2026-09-26')).toBeNull();

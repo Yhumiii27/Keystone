@@ -3,13 +3,14 @@
 // meetings (new meeting, minutes lines, transcript analysis, send minutes → MIN record + tasks), stakeholders,
 // interfaces and prioritisation weights / scores. Each write appends an audit row with the viewer as the actor.
 import { beforeAll, describe, expect, it } from 'vitest';
-import { setDb } from '@/server/db/client';
+import { getDb, setDb } from '@/server/db/client';
+import { applyCodexDocumentStates } from '@/server/integrations/codex/mirror';
 import { openDatabase } from '@/server/db/open';
 import { getCashFlow, listBillingPlans } from './cashflow';
 import { addAmendment, addBond, addPaymentMilestone, getContract, issueInvoice, markInvoicePaid, updateContractSheet } from './contract';
 import {
-  acknowledgeDocument, approveDocumentStep, depositInCodex, freezeDocument, getCodexSyncState, getDocumentRecord, listVaultDocuments, logDocumentDownload,
-  proposeDocumentRelease,
+  acknowledgeDocument, depositInCodex, freezeDocument, getCodexSyncState, getDocumentRecord, listVaultDocuments,
+  proposeDocumentRelease, recordCircuitStart, recordDocumentDecision,
 } from './documents';
 import { createInterface, freezeInterface, listInterfaces, markInterfaceReceived } from './interfaces';
 import {
@@ -28,40 +29,80 @@ const lastAudit = async () => (await listAudit({ limit: 1 }))[0];
 const vault = async (n: string) => (await listVaultDocuments()).find((d) => d.number === n)!;
 
 describe('Codex vault writers', () => {
-  it('approval circuit of RPT-HLT-014: quality manager, then project manager → Released, client acknowledgement pending', async () => {
-    expect(await approveDocumentStep('RPT-HLT-014', 'Gabriel Comte')).toEqual({ role: 'quality_manager', released: false });
+  // P-7b = a, D-1b = a (Delivery 7, R-124): the decisions go to Codex through the outbox; the index record (status,
+  // approval proof) changes only when Codex answers — before, the second approval released the record at once.
+  it('approval circuit of RPT-HLT-014: quality manager, then project manager → release requested, pending sync with Codex', async () => {
+    const QM = { name: 'Gabriel Comte', role: 'quality' };
+    const PM = { name: 'Romain Aubert', role: 'pm' };
+    // Defense in depth (delivery 7): the DAL re-checks the step's approver (G. Comte for the quality manager step) or the
+    // director — the person counts, not the role a caller claims.
+    for (const wrong of [PM, { name: 'Romain Aubert', role: 'quality' }, { name: 'Nobody', role: 'quality' }])
+      await expect(recordDocumentDecision('RPT-HLT-014', { decision: 'approved' }, wrong)).rejects.toThrow('You are not the approver of this step');
+    expect(await recordDocumentDecision('RPT-HLT-014', { decision: 'approved' }, QM)).toMatchObject({ step: 1, role: 'quality_manager', releaseRequested: false });
     let d = await vault('RPT-HLT-014');
-    expect([d.statusLabel, d.approvalsGiven, d.nextRoleLabel, d.nextApprover]).toEqual(['Release proposed', 1, 'Project manager', 'R. Aubert']);
-    expect(await approveDocumentStep('RPT-HLT-014', 'Romain Aubert')).toEqual({ role: 'project_manager', released: true });
+    expect([d.statusLabel, d.approvalsGiven, d.nextRoleLabel, d.nextApprover, d.circuitNote]).toEqual(['Release proposed', 0, 'Project manager', 'R. Aubert', 'Approved · Pending sync with Codex']);
+    // A screen still showing step 1 is refused.
+    await expect(recordDocumentDecision('RPT-HLT-014', { decision: 'approved', step: 1 }, QM)).rejects.toThrow(/no longer open/);
+    await expect(recordDocumentDecision('RPT-HLT-014', { decision: 'approved', step: 2 }, QM)).rejects.toThrow('You are not the approver of this step');
+    expect(await recordDocumentDecision('RPT-HLT-014', { decision: 'approved', step: 2 }, PM)).toMatchObject({ step: 2, role: 'project_manager', releaseRequested: true });
     d = await vault('RPT-HLT-014');
-    expect([d.status, d.shared, d.acknowledged, d.canApprove, d.withdrawal]).toEqual(['released', true, false, false, null]);
+    expect([d.status, d.shared, d.canApprove, d.nextRoleLabel, d.circuitNote]).toEqual(['release_proposed', false, false, null, 'Release approved · Pending sync with Codex']);
     const r = (await getDocumentRecord('RPT-HLT-014'))!;
-    expect(r.approvals.map((a) => [a.roleLabel, a.signedOn])).toEqual([['Author', '2026-09-26'], ['Quality manager', '2026-09-29'], ['Project manager', '2026-09-29']]);
-    expect(r.distribution).toEqual([{ kind: 'client', organisation: 'Port authority', contact: 'N. Bensaïd', revision: 'A', date: '2026-09-28', acknowledgedOn: null }]);
-    await expect(approveDocumentStep('RPT-HLT-014', 'Romain Aubert')).rejects.toThrow(/not awaiting approval/);
-    expect(await lastAudit()).toMatchObject({ who: 'Romain Aubert', object: 'RPT-HLT-014', area: 'Documents', change: 'approved · Project manager · status: Release proposed → Released' });
+    expect(r.approvals.map((a) => [a.roleLabel, a.signedOn, a.keystone && [a.keystone.decision, a.keystone.by, a.keystone.sync]])).toEqual([
+      ['Author', '2026-09-26', null], ['Quality manager', null, ['approved', 'G. Comte', 'pending']], ['Project manager', null, ['approved', 'R. Aubert', 'pending']],
+    ]);
+    await expect(recordDocumentDecision('RPT-HLT-014', { decision: 'approved' }, PM)).rejects.toThrow(/no approval step open/);
+    expect(await lastAudit()).toMatchObject({ who: 'Romain Aubert', object: 'RPT-HLT-014', area: 'Documents', change: 'approved · Project manager · release requested · Pending sync with Codex' });
+    expect((await listActivity())[0]).toMatchObject({ who: 'Romain Aubert', what: 'RPT-HLT-014 rev A · Approved · Project manager · Pending sync with Codex', projectCode: 'HLT-026' });
   });
 
-  it('client acknowledges PID-HLT-026; downloads are logged before the Codex log', async () => {
+  it('the director may decide any open step; another person or role is refused by the DAL', async () => {
+    // A draft outside this file's other tests, frozen and proposed for release: its first step opens.
+    const used = ['SCH-ELE-026', 'RPT-HLT-014', 'RPT-HLT-016', 'PID-HLT-026', 'BOM-MEC-026', 'CTR-HLT-001'];
+    const draft = (await listVaultDocuments()).find((x) => x.status === 'draft' && !x.needsCircuitStart && x.circuit.length > 1 && !used.includes(x.number))!;
+    await freezeDocument(draft.number, 'Antoine Girard');
+    await proposeDocumentRelease(draft.number, 'Antoine Girard');
+    const d = await vault(draft.number);
+    expect([d.canApprove, d.nextApprover === 'M. Lefebvre']).toEqual([true, false]);
+    for (const wrong of [{ name: 'Julien Wagner', role: 'member' }, { name: 'Marie Lefebvre', role: 'pm' }, { name: 'Nadia Bensaïd', role: 'client' }])
+      await expect(recordDocumentDecision(d.number, { decision: 'approved' }, wrong)).rejects.toThrow('You are not the approver of this step');
+    expect((await vault(d.number)).circuitState.approved).toEqual([]);
+    expect(await recordDocumentDecision(d.number, { decision: 'approved' }, { name: 'Marie Lefebvre', role: 'director' })).toMatchObject({ step: d.circuitState.nextStep });
+  });
+
+  it('client acknowledges PID-HLT-026; the record keeps no download log (D-2: it stays in Codex)', async () => {
     await acknowledgeDocument('PID-HLT-026', 'Nadia Bensaïd');
     expect((await vault('PID-HLT-026')).acknowledged).toBe(true);
     await expect(acknowledgeDocument('BOM-MEC-026', 'Nadia Bensaïd')).rejects.toThrow(/not shared/);
-    await logDocumentDownload('PID-HLT-026', 'Marie Lefebvre');
-    expect((await getDocumentRecord('PID-HLT-026'))!.downloads.map((x) => x.text)).toEqual([
-      'Marie Lefebvre · rev D · 29 Sep · PDF', 'S. Haddad · rev D · 27 Sep · PDF', 'N. Bensaïd · rev D · 28 Sep · PDF',
-    ]);
+    // D-2 = a (R-127): no Keystone download log (logDocumentDownload and document_downloads are gone).
+    expect(await getDocumentRecord('PID-HLT-026')).not.toHaveProperty('downloads');
   });
 
   it('freeze → propose release on an engineering draft; wrong transitions are refused', async () => {
     await freezeDocument('SCH-ELE-026', 'Antoine Girard');
     await proposeDocumentRelease('SCH-ELE-026', 'Antoine Girard');
-    const d = await vault('SCH-ELE-026');
-    expect([d.statusLabel, d.nextRoleLabel, d.nextApprover, d.canApprove]).toEqual(['Release proposed', 'Engineering lead', 'A. Girard', true]);
+    let d = await vault('SCH-ELE-026');
+    // P-7c = a (Delivery 7, R-106): an engineering deliverable's circuit waits for the PM's "Validate release (PM)".
+    expect([d.statusLabel, d.nextRoleLabel, d.nextApprover, d.canApprove, d.circuitNote]).toEqual(['Release proposed', null, null, false, 'Awaiting PM validation']);
     await expect(freezeDocument('SCH-ELE-026', 'Antoine Girard')).rejects.toThrow(/not Draft/);
-    // Release of rev B withdraws rev A automatically.
-    await approveDocumentStep('SCH-ELE-026', 'Antoine Girard');
-    await approveDocumentStep('SCH-ELE-026', 'Romain Aubert');
-    expect((await vault('SCH-ELE-026')).withdrawal).toEqual({ revision: 'A', on: '2026-09-29' });
+    const db = await getDb();
+    await db.transaction((tx) => recordCircuitStart(tx, 'SCH-ELE-026', { name: 'Romain Aubert', role: 'pm' }));
+    await expect(db.transaction((tx) => recordCircuitStart(tx, 'SCH-ELE-026', { name: 'Romain Aubert', role: 'pm' }))).rejects.toThrow(/already started/);
+    await expect(db.transaction((tx) => recordCircuitStart(tx, 'RPT-HLT-016', { name: 'Romain Aubert', role: 'pm' }))).rejects.toThrow(/not an engineering deliverable/);
+    d = await vault('SCH-ELE-026');
+    expect([d.nextRoleLabel, d.nextApprover, d.canApprove, d.circuitNote]).toEqual(['Engineering lead', 'A. Girard', true, 'Approval circuit started · Pending sync with Codex']);
+    await recordDocumentDecision('SCH-ELE-026', { decision: 'approved' }, { name: 'Antoine Girard', role: 'englead' });
+    await recordDocumentDecision('SCH-ELE-026', { decision: 'approved' }, { name: 'Romain Aubert', role: 'pm' });
+    expect([(await vault('SCH-ELE-026')).status, (await vault('SCH-ELE-026')).withdrawal]).toEqual(['release_proposed', null]);
+    // Codex answers (the HTTP connector's refresh): released, rev A withdrawn automatically; the outbox entries close.
+    await db.transaction((tx) => applyCodexDocumentStates(tx, [{
+      number: 'SCH-ELE-026', revision: 'B', status: 'released', withdrawnRevision: 'A', withdrawnOn: '2026-09-29',
+      approvals: [{ step: 1, signedOn: '2026-09-29', signedBy: 'A. Girard' }, { step: 2, signedOn: '2026-09-29', signedBy: 'R. Aubert' }],
+    }]));
+    d = await vault('SCH-ELE-026');
+    expect([d.status, d.withdrawal, d.approvalsGiven, d.circuitNote, d.circuitState.approved]).toEqual(['released', { revision: 'A', on: '2026-09-29' }, 2, null, []]);
+    expect((await getDocumentRecord('SCH-ELE-026'))!.approvals.map((a) => [a.who, a.signed, a.keystone])).toEqual([['S. Haddad', true, null], ['A. Girard', true, null], ['R. Aubert', true, null]]);
+    expect(await lastAudit()).toMatchObject({ who: 'Codex', object: 'SCH-ELE-026', change: 'status: Release proposed → Released · synced from Codex' });
   });
 
   it('deposit a new certificate (CER-HLT-042, Draft, New, first in the vault) and a new revision of PID-HLT-026', async () => {
@@ -85,32 +126,36 @@ describe('contract & billing writers', () => {
     expect(await issueInvoice('HLT-026', { milestone: 'M4', note: 'Cranes 1–2' }, 'Romain Aubert')).toBe('INV-2026-004');
     let c = (await getContract('HLT-026'))!;
     const inv = c.invoices.find((i) => i.number === 'INV-2026-004')!;
-    expect([inv.issuedText, inv.amountKeur, inv.dueText, inv.statusLabel, inv.note]).toEqual(['30 Sep', 1104, '14 Nov', 'Awaiting payment', 'Cranes 1–2']);
-    expect([c.invoicedKeur, c.nextInvoiceNumber]).toEqual([4140, 'INV-2026-005']);
+    // NEW-D3-3 (R-079): M4 is 20 % of the base amount (€1 080k; the prototype re-priced it on base + signed amendments, 1 104).
+    expect([inv.issuedText, inv.amountKeur, inv.dueText, inv.statusLabel, inv.note]).toEqual(['30 Sep', 1080, '14 Nov', 'Awaiting payment', 'Cranes 1–2']);
+    expect([c.invoicedKeur, c.nextInvoiceNumber]).toEqual([4050, 'INV-2026-005']);
     await expect(issueInvoice('HLT-026', { milestone: 'M4' }, 'Romain Aubert')).rejects.toThrow(/already invoiced/);
     await markInvoicePaid('HLT-026', 'M3', 'Romain Aubert');
     c = (await getContract('HLT-026'))!;
-    expect(c.milestones.map((m) => m.statusLabel)).toEqual(['Paid', 'Paid', 'Paid', 'Invoiced', 'Planned']);
+    expect(c.milestones.map((m) => m.statusLabel)).toEqual(['Paid', 'Paid', 'Paid', 'Invoiced', 'Planned', 'Planned']);
     expect(c.invoices.find((i) => i.milestoneNumber === 'M3')).toMatchObject({ paidText: '30 Sep', status: 'paid' });
-    expect([c.paidKeur, c.retentionKeur]).toEqual([3036, 152]);
-    expect((await listBillingPlans())['HLT-026'].next).toMatchObject({ label: 'M5 Handover', amountKeur: 1380 });
-    expect((await getCashFlow(null)).rows[0].plan.outstandingKeur).toBe(1104);
+    expect([c.paidKeur, c.retentionKeur]).toEqual([2970, 149]);
+    expect((await listBillingPlans())['HLT-026'].next).toMatchObject({ label: 'M5 Handover', amountKeur: 1350 });
+    expect((await getCashFlow(null)).rows[0].plan.outstandingKeur).toBe(1080);
     expect((await listActivity())[0]).toMatchObject({ who: 'Romain Aubert', kind: 'invoice' });
   });
 
-  it('a signed amendment re-prices the milestones; bonds and milestones are appended; sheet edits are validated', async () => {
+  it('a signed amendment re-prices no milestone (NEW-D3-3); bonds and milestones are appended; sheet edits are validated', async () => {
     expect(await addAmendment('HLT-026', { subject: 'Amendment 3 — extra lighting', changeRequestRef: 'CR-007', amountKeur: 80, status: 'signed', signedOn: '2026-09-30' }, 'Romain Aubert'))
       .toBe('Amendment 3 — extra lighting (CR-007)');
     let c = (await getContract('HLT-026'))!;
-    expect([c.valueKeur, c.milestones[4].amountKeur, c.amendments[2].changeRequestLinked, c.amendments[2].dateText]).toEqual([5600, 1400, true, '30 Sep 2026']);
+    // NEW-D3-3: the value rises, M5 stays at 25 % of the base amount (the prototype re-priced it to 1 400).
+    expect([c.valueKeur, c.milestones[4].amountKeur, c.amendments[2].changeRequestLinked, c.amendments[2].dateText]).toEqual([5600, 1350, true, '30 Sep 2026']);
     expect(await addBond('HLT-026', { type: 'warranty', amountKeur: 280, issuer: 'BNP Paribas', validUntil: '2029-01-14' }, 'Romain Aubert')).toBe('Warranty bond · BNP Paribas');
-    expect(await addPaymentMilestone('HLT-026', { label: 'Final acceptance', sharePct: 5, contractualDue: '2028-01-14' }, 'Romain Aubert')).toBe('M6');
+    expect(await addPaymentMilestone('HLT-026', { label: 'Final acceptance', sharePct: 5, contractualDue: '2028-01-14' }, 'Romain Aubert')).toBe('M7');
     c = (await getContract('HLT-026'))!;
     expect([c.bondsInForce.count, c.bondsInForce.total, c.sharePctTotal, c.milestones.at(-1)!.dueText]).toEqual([2, 3, 105, '14 Jan 2028']);
     await updateContractSheet('HLT-026', { paymentTerms: 'Net 60 days', baseAmountKeur: 5500 }, 'Romain Aubert');
     c = (await getContract('HLT-026'))!;
     expect([c.sheet.termsDays, c.valueKeur, c.invoices[0].dueText]).toEqual([60, 5700, '11 May']);
-    expect(await lastAudit()).toMatchObject({ object: 'CTR-HLT-001', change: 'baseAmountKeur: 5400 → 5500 · paymentTerms: Net 45 days → Net 60 days', area: 'Contract' });
+    // C-6 (R-076): a terms text is read into the rule and its days (net 60).
+    expect(await lastAudit()).toMatchObject({ object: 'CTR-HLT-001', change: 'baseAmountKeur: 5400 → 5500 · paymentDays: 45 → 60', area: 'Contract' });
+    expect(c.sheet.paymentTerms).toBe('Net 60 days');
     await expect(updateContractSheet('HLT-026', { retentionPct: 120 }, 'Romain Aubert')).rejects.toThrow();
     await expect(addAmendment('NDC-031', { subject: 'x', amountKeur: 1, status: 'draft' }, 'Romain Aubert')).rejects.toThrow(/No contract/);
   });
@@ -147,20 +192,24 @@ describe('meetings writers', () => {
     expect([m.status, m.agenda[2].lines.length, m.agenda[2].lines[3]]).toEqual(['scheduled', 6, expect.objectContaining({ type: 'action', owner: 'S. Haddad', dueDate: '2026-10-06', origin: 'transcript' })]);
   });
 
-  it('send the minutes of MTG-118: MIN-HLT-027 released in the vault, tasks for J. Wagner and H. Sauvage, read receipts', async () => {
+  it('send the minutes of MTG-118: MIN-HLT-027 released in the vault, tasks for L. Fabre, J. Wagner and H. Sauvage, read receipts', async () => {
     expect(await toggleMeetingAction('MTG-118', 1, 1, 'Romain Aubert')).toBe(true);
     const tasksBefore = (await listTasks()).length;
     const sent = await sendMinutes('MTG-118', 'Romain Aubert');
-    expect(sent).toEqual({ minutesNumber: 'MIN-HLT-027', invited: 5, tasks: ['T-2341', 'T-2342'] });
+    // S-12 a (R-067): every internal owner gets a task (L. Fabre, outside the resource pool, too), due on the typed date.
+    expect(sent).toEqual({ minutesNumber: 'MIN-HLT-027', invited: 5, tasks: ['T-2341', 'T-2342', 'T-2343'] });
     const m = (await getMeeting('MTG-118'))!;
     expect([m.status, m.sentText, m.minutesIndexed]).toEqual(['minutes_sent', '30 Sep', true]);
     expect(m.participants.filter((p) => p.minutesRecipient).map((p) => [p.name, p.readOn])).toEqual([['L. Fabre', null], ['J. Wagner', null], ['H. Sauvage', null], ['T. Kerbrat', null]]);
-    expect(m.agenda[1].lines.filter((l) => l.type === 'action').map((l) => l.taskNumber)).toEqual(['T-2341', 'T-2342']);
-    const t = (await getTask('T-2341'))!;
-    expect([t.assignee, t.title, t.labels, t.status, t.estimateH, t.start, t.due]).toEqual(['Julien Wagner', 'Electrode oven on site and WPS reminder to welders', ['Meeting', 'MTG-118'], 'todo', 2, '2026-09-25', '2026-09-30']);
-    expect((await listTasks()).length).toBe(tasksBefore + 2);
+    expect(m.agenda[1].lines.filter((l) => l.type === 'action').map((l) => l.taskNumber)).toEqual(['T-2342', 'T-2343']);
+    expect((await getTask('T-2341'))!.assignee).toBe('L. Fabre');
+    const t = (await getTask('T-2342'))!;
+    // S-12 a: the typed due (1 Oct) — was today + 3 working days (30 Sep).
+    expect([t.assignee, t.title, t.labels, t.status, t.estimateH, t.start, t.due]).toEqual(['Julien Wagner', 'Electrode oven on site and WPS reminder to welders', ['Meeting', 'MTG-118'], 'todo', 2, '2026-09-25', '2026-10-01']);
+    expect((await listTasks()).length).toBe(tasksBefore + 3);
     const doc = (await listVaultDocuments())[0];
-    expect(doc).toMatchObject({ number: 'MIN-HLT-027', type: 'MIN', status: 'released', title: 'Weekly site meeting #24', author: 'R. Aubert', confidentiality: 'internal', tagsText: 'MTG-118 · Weekly site meeting', isNew: true, shared: true, acknowledged: false });
+    // P-10b / R-043 (integration review of delivery 8): the minutes of an internal meeting are Internal, never shared with the client.
+    expect(doc).toMatchObject({ number: 'MIN-HLT-027', type: 'MIN', status: 'released', title: 'Weekly site meeting #24', author: 'R. Aubert', confidentiality: 'internal', tagsText: 'MTG-118 · Weekly site meeting', isNew: true, shared: false, acknowledged: false });
     await expect(addMeetingLine('MTG-118', 0, { type: 'info', text: 'late' }, 'Romain Aubert')).rejects.toThrow(/already sent/);
     expect((await sendMinutes('MTG-121', 'Sophie Perrin')).minutesNumber).toBe('MIN-NDC-025');
   });
@@ -195,9 +244,10 @@ describe('stakeholders, interfaces, prioritisation writers', () => {
     expect(pf.weightSum).toBeCloseTo(1.2);
     await resetScoreWeights('pm');
     expect((await getScoreWeights('pm')).risk).toBe(0.2);
-    await saveProposalScore('FTU-052', { fit: 5, margin: 4, risk: 9, comment: 'Strong fit' }, 'Marie Lefebvre');
+    // L-5a (R-134): the 5 axes are saved (out-of-range values clamped to 1–5).
+    await saveProposalScore('FTU-052', { fit: 5, margin: 4, risk: 9, res: 4, client: 0, comment: 'Strong fit' }, 'Marie Lefebvre');
     const row = (await getPrioritisation('director', null)).ranking.find((r) => r.project.code === 'FTU-052')!;
-    expect(row.scores).toEqual([5, 4, 5, 4, 2]);
-    expect(await lastAudit()).toMatchObject({ who: 'Marie Lefebvre', object: 'FTU-052', change: 'score: fit 5 · margin 4 · risk 5', area: 'Prioritisation' });
+    expect(row.scores).toEqual([5, 4, 5, 4, 1]);
+    expect(await lastAudit()).toMatchObject({ who: 'Marie Lefebvre', object: 'FTU-052', change: 'score: fit 5 · margin 4 · risk 5 · resources 4 · client 1', area: 'Prioritisation' });
   });
 });

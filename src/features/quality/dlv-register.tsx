@@ -1,7 +1,7 @@
 // Quality — Deliverables register (docs/spec/07 §2.3.b, template 1926–1954): KPI tiles, the status chips with the
 // flow / RACI-B note, and the "Deliverables register" card with the RACI-B avatars. Each row opens the deliverable drawer
-// (`?dlv=`) and carries the viewer's action: Start / To internal review / Submit to client (project team), Accept /
-// Reject (the project's client contact). Server Component; the buttons are client islands.
+// (`?dlv=`) and carries the viewer's action: Start / To internal review / Submit to client / Start next revision after a
+// rejection (project team, R-114), Accept / Reject (the project's client contact). Server Component; the buttons are client islands.
 import { Funnel } from '@phosphor-icons/react/dist/ssr';
 import { Avatar } from '@/components/app/Badges';
 import { ClickableRow } from '@/components/app/ClickableRow';
@@ -80,7 +80,7 @@ export function DeliverablesRegister({ code, view, t }: { code: string; view: Dl
                 <td>
                   <div className={s.actions}>
                     {r.action?.kind === 'move' && (
-                      <DeliverableMoveButton code={code} number={r.number} to={r.action.to} label={r.action.label} variant={r.action.variant} place="row" />
+                      <DeliverableMoveButton code={code} number={r.number} to={r.action.to} label={r.action.label} variant={r.action.variant} place="row" restart={r.action.restart} />
                     )}
                     {r.action?.kind === 'decide' && <DeliverableDecideRow code={code} number={r.number} />}
                   </div>

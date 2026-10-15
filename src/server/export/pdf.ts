@@ -6,13 +6,16 @@ import 'server-only';
 import PDFDocument from 'pdfkit';
 import type { Lang } from '@/i18n/translate';
 import { displayCell, formatDate, isNumericType } from './format';
-import type { CellValue, ExportColumn, PdfBlock, PdfDocument } from './types';
+import type { CellValue, ExportColumn, PdfBlock, PdfDocument, PdfGanttBlock } from './types';
 
 const INK = '#1d1d1f';
 const MUTED = '#6b6b70';
 const RULE = '#d0d0d4';
 const FILL = '#f2f2f4';
 const ACCENT = '#3a3a8c';
+const BASELINE = '#b9b9c2';
+const FORECAST = '#a9a9dc';
+const ALERT = '#b3261e';
 const FONT = 'Helvetica';
 const BOLD = 'Helvetica-Bold';
 
@@ -181,6 +184,9 @@ function block(doc: Doc, b: PdfBlock, lang: Lang): void {
     case 'table':
       table(doc, b.sheet.columns, b.sheet.rows, lang, b.totals);
       return;
+    case 'gantt':
+      gantt(doc, b);
+      return;
     case 'signatures': {
       const n = Math.max(1, b.parties.length);
       const gap = 14;
@@ -245,4 +251,111 @@ function table(doc: Doc, columns: ExportColumn[], rows: Record<string, CellValue
   if (totals) drawRow(totals, true);
   doc.x = x;
   doc.moveDown(0.6);
+}
+
+/**
+ * Gantt chart (Schedule, client portal planning — S-9a): name · done · slip columns, then the month timeline with, per work
+ * package, the baseline bar (thin, grey) over the forecast bar (progress filled, critical path in the accent colour), the
+ * data date line, and one row per milestone (baseline diamond outlined, forecast diamond filled). The header row repeats
+ * on each page.
+ */
+function gantt(doc: Doc, b: PdfGanttBlock): void {
+  const x0 = doc.page.margins.left;
+  const w = contentWidth(doc);
+  const nameW = Math.min(230, w * 0.27);
+  const doneW = 34;
+  const slipW = 52;
+  const tlX = x0 + nameW + doneW + slipW;
+  const tlW = x0 + w - tlX;
+  const n = Math.max(1, b.months.length);
+  const colW = tlW / n;
+  const rowH = 20;
+  const fx = (f: number) => tlX + Math.max(0, Math.min(1, f)) * tlW;
+  const pad = 3;
+
+  const legend = () => {
+    ensure(doc, 16);
+    const y = doc.y;
+    let lx = x0;
+    const item = (draw: (x: number) => void, label: string) => {
+      draw(lx);
+      doc.font(FONT).fontSize(7).fillColor(MUTED).text(pdfText(label), lx + 16, y, { lineBreak: false });
+      lx += 16 + doc.widthOfString(pdfText(label)) + 14;
+    };
+    item((x) => doc.rect(x, y + 2, 12, 2.5).fillColor(BASELINE).fill(), b.labels.baseline);
+    item((x) => doc.rect(x, y + 1, 12, 5).fillColor(FORECAST).fill(), b.labels.forecast);
+    item((x) => doc.rect(x, y + 1, 12, 5).fillColor(ACCENT).fill(), `${b.labels.critical} (*)`);
+    item((x) => diamond(doc, x + 6, y + 3.5, 3.5, INK, true), b.labels.milestones);
+    if (b.today != null) item((x) => doc.moveTo(x + 6, y - 1).lineTo(x + 6, y + 8).lineWidth(1).strokeColor(ALERT).stroke(), b.labels.today);
+    doc.y = y + 14;
+  };
+  const header = () => {
+    const y = doc.y;
+    const h = 16;
+    doc.rect(x0, y, w, h).fillColor(FILL).fill();
+    doc.font(BOLD).fontSize(7.5).fillColor(INK);
+    doc.text(pdfText(b.labels.name), x0 + pad, y + 4.5, { width: nameW - 2 * pad, lineBreak: false, ellipsis: true });
+    doc.text(pdfText(b.labels.done), x0 + nameW, y + 4.5, { width: doneW - pad, align: 'right', lineBreak: false });
+    doc.text(pdfText(b.labels.slip), x0 + nameW + doneW, y + 4.5, { width: slipW - pad, align: 'right', lineBreak: false });
+    doc.font(FONT).fontSize(6.5).fillColor(MUTED);
+    b.months.forEach((m, i) => doc.text(pdfText(m), tlX + i * colW, y + 5, { width: colW, align: 'center', lineBreak: false, ellipsis: true }));
+    doc.y = y + h;
+  };
+  const grid = (y: number, h: number) => {
+    for (let i = 0; i <= n; i++) doc.moveTo(tlX + i * colW, y).lineTo(tlX + i * colW, y + h).lineWidth(0.3).strokeColor(RULE).stroke();
+    if (b.today != null && b.today >= 0 && b.today <= 1) doc.moveTo(fx(b.today), y).lineTo(fx(b.today), y + h).lineWidth(0.9).strokeColor(ALERT).stroke();
+  };
+  const row = (draw: (y: number) => void) => {
+    if (doc.y + rowH > bottom(doc)) {
+      doc.addPage();
+      header();
+    }
+    const y = doc.y;
+    grid(y, rowH);
+    draw(y);
+    doc.moveTo(x0, y + rowH).lineTo(x0 + w, y + rowH).lineWidth(0.4).strokeColor(RULE).stroke();
+    doc.y = y + rowH;
+  };
+  const cells = (y: number, name: string, sub: string | undefined, bold: boolean, done?: string, slip?: string, slipAlert?: boolean) => {
+    doc.font(bold ? BOLD : FONT).fontSize(7.5).fillColor(INK).text(pdfText(name), x0 + pad, y + (sub ? 3 : 6.5), { width: nameW - 2 * pad, lineBreak: false, ellipsis: true });
+    if (sub) doc.font(FONT).fontSize(6.5).fillColor(MUTED).text(pdfText(sub), x0 + pad, y + 11.5, { width: nameW - 2 * pad, lineBreak: false, ellipsis: true });
+    if (done) doc.font(FONT).fontSize(7.5).fillColor(INK).text(pdfText(done), x0 + nameW, y + 6.5, { width: doneW - pad, align: 'right', lineBreak: false });
+    if (slip) doc.font(FONT).fontSize(7.5).fillColor(slipAlert ? ALERT : MUTED).text(pdfText(slip), x0 + nameW + doneW, y + 6.5, { width: slipW - pad, align: 'right', lineBreak: false });
+  };
+
+  ensure(doc, 16 + 16 + rowH * 2);
+  legend();
+  header();
+  for (const r of b.rows)
+    row((y) => {
+      cells(y, r.critical ? `${r.name} *` : r.name, r.sub, !!r.critical, r.done, r.slip, r.slipAlert);
+      if (r.baseline) {
+        const [bs, be] = r.baseline;
+        doc.rect(fx(bs), y + 4, Math.max(1, fx(be) - fx(bs)), 3).fillColor(BASELINE).fill();
+      }
+      const [fs, fe] = r.forecast;
+      const bw = Math.max(1.5, fx(fe) - fx(fs));
+      doc.rect(fx(fs), y + 9, bw, 7).fillColor(r.critical ? ACCENT : FORECAST).fill();
+      const p = Math.max(0, Math.min(1, r.progress ?? 0));
+      if (p > 0) doc.rect(fx(fs), y + 9, bw * p, 7).fillColor(INK).fillOpacity(0.35).fill().fillOpacity(1);
+    });
+  if (b.milestones?.length) {
+    row((y) => {
+      doc.font(BOLD).fontSize(7.5).fillColor(MUTED).text(pdfText(b.labels.milestones.toUpperCase()), x0 + pad, y + 6.5, { width: nameW - 2 * pad, lineBreak: false });
+    });
+    for (const m of b.milestones)
+      row((y) => {
+        cells(y, m.name, undefined, false, undefined, m.slip, m.slipAlert);
+        if (m.baseline != null) diamond(doc, fx(m.baseline), y + rowH / 2, 4, BASELINE, false);
+        diamond(doc, fx(m.forecast), y + rowH / 2, 4, m.done ? INK : ACCENT, true);
+      });
+  }
+  doc.x = x0;
+  doc.moveDown(0.6);
+}
+
+function diamond(doc: Doc, cx: number, cy: number, r: number, color: string, filled: boolean): void {
+  doc.polygon([cx, cy - r], [cx + r, cy], [cx, cy + r], [cx - r, cy]);
+  if (filled) doc.fillColor(color).fill();
+  else doc.lineWidth(1).strokeColor(color).stroke();
 }

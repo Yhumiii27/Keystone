@@ -7,10 +7,12 @@
 // - the status is always derived from the chain once submitted (the prototype's "In review" override stuck);
 // - the change control board step is recorded by the portfolio director (no persona maps to `ccb`);
 // - the Baseline KPI follows the baseline register instead of the static "BL1 / BL2 proposed · CR-009 draft".
+// Delivery 8 (R-069, P-6b / P-6c): the chain is sequential (PM → director → client → board), the client step is not required
+// for an internal change and the board only above the Settings threshold; the "Pending value" sub-line names the current steps.
 import type { RoleKey } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
 import { money } from '@/lib/format';
-import type { BaselineState, ChangeStatus, ChangeStep, ChangeType, StepDecision } from '@/server/db/codes';
+import type { BaselineState, ChangeStatus, ChangeStep, ChangeType, ContractImpact, StepDecision } from '@/server/db/codes';
 
 // ── Data shapes (structural subset of the DAL's ChangeRequestDetail / BaselineRow) ──────────────────────
 
@@ -41,6 +43,10 @@ export interface ChangeRequestLike {
   chain: ChainStepLike[];
   /** WBS impacted, with the summary name when the code exists in the project WBS. */
   wbs: { code: string; name: string | null }[];
+  /** Delivery 8 (R-069): contractual impact chosen when it was raised (null before it was asked). */
+  contractImpact?: ContractImpact | null;
+  /** Delivery 8 (R-140, X-11 shared): the justification as typed, shown in the drawer to every viewer, the client included. */
+  justification?: string | null;
 }
 
 export interface BaselineLike {
@@ -149,17 +155,160 @@ export const STEP_DECIDER: Record<ChangeStep, RoleKey> = { pm: 'pm', director: '
 /** Steps a role may decide. */
 export const stepsOfRole = (role: RoleKey): ChangeStep[] => CR_STEPS.filter((s) => STEP_DECIDER[s] === role);
 
-/** `canAct` (4609): request in review, step pending and owned by the viewer's role (steps are not sequential, 07 OQ3). */
-export function canDecideStep(role: RoleKey, cr: Pick<ChangeRequestLike, 'status' | 'chain'>, step: ChangeStep): boolean {
-  if (cr.status !== 'in_review' || STEP_DECIDER[step] !== role) return false;
-  return cr.chain.find((c) => c.step === step)?.decision === 'pending';
+// ── Sequential chain (delivery 8, R-069 — P-6b, P-6c) ──────────────────────────────────────────────────
+
+/**
+ * Default change control board threshold, k€ (P-6c "au-delà d'un seuil réglable"): the prototype highlights a budget impact
+ * `amt > 50`. A value Keystone chose until management sets it in Settings (app_settings "change.ccbThreshold").
+ */
+export const DEFAULT_CCB_THRESHOLD_KEUR = 50;
+/** Largest board threshold accepted, k€ (a typo guard, like the cost category budgets). */
+export const MAX_CCB_THRESHOLD_KEUR = 1_000_000;
+/** A usable board threshold: a number of k€ in [0, MAX]. */
+export const isCcbThreshold = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= MAX_CCB_THRESHOLD_KEUR;
+
+/**
+ * Steps a new request needs, fixed when it is submitted (P-6b, P-6c): the project manager and the portfolio director always;
+ * the client unless the contractual impact is 'none' (an internal change; a request without a recorded impact keeps the client
+ * step); the change control board only when |amount| is strictly greater than the threshold in force ("au-delà").
+ */
+export function requiredSteps(input: { contractImpact: ContractImpact | null | undefined; amountKeur: number; ccbThresholdKeur: number }): Record<ChangeStep, 'pending' | 'na'> {
+  const threshold = Number.isFinite(input.ccbThresholdKeur) && input.ccbThresholdKeur >= 0 ? input.ccbThresholdKeur : DEFAULT_CCB_THRESHOLD_KEUR;
+  return {
+    pm: 'pending',
+    director: 'pending',
+    client: input.contractImpact === 'none' ? 'na' : 'pending',
+    ccb: Math.abs(input.amountKeur || 0) > threshold ? 'pending' : 'na',
+  };
 }
 
-/** Drawer hint (crVals.hint 4610). */
-export function crHint(cr: Pick<ChangeRequestLike, 'status'>, role: RoleKey): string {
+/**
+ * The step the request waits for (P-6b: PM → director → client → change control board): the first pending step whose
+ * earlier steps are all approved or not required. Null when a step is rejected or unrecorded before it, or nothing is pending.
+ */
+export function currentStep(chain: readonly Pick<ChainStepLike, 'step' | 'decision'>[]): ChangeStep | null {
+  for (const step of CR_STEPS) {
+    const d = chain.find((c) => c.step === step)?.decision ?? null;
+    if (d === 'ok' || d === 'na') continue;
+    return d === 'pending' ? step : null;
+  }
+  return null;
+}
+
+/**
+ * Contractual impact of a request raised before it was asked (seed and existing-database backfill, R-069): a client step not
+ * required → 'none' (internal); else from the figures — amount and days → 'price_dates', amount → 'price', days → 'dates';
+ * neither → null (not recorded: the client step it holds stays as stored).
+ */
+export function inferredContractImpact(cr: { clientStep: StepDecision | null; amountKeur: number; scheduleDays: number }): ContractImpact | null {
+  if (cr.clientStep === 'na') return 'none';
+  if (cr.amountKeur && cr.scheduleDays) return 'price_dates';
+  if (cr.amountKeur) return 'price';
+  if (cr.scheduleDays) return 'dates';
+  return null;
+}
+
+/** A request as the step rules read it: its (stored or derived) status and its chain — Change control's rows and the inbox's. */
+export interface ChainCarrier {
+  status: string;
+  chain: readonly ChainStepLike[];
+}
+
+/** The request is in review and `step` is the one it waits for (pending, every earlier step approved or not required). */
+export const isStepOpen = (cr: ChainCarrier, step: ChangeStep) => cr.status === 'in_review' && currentStep(cr.chain) === step;
+
+/** A pending step of a request in review that waits for an earlier step (R-069: answered "Not yours to decide yet"). */
+export const stepWaitsForEarlier = (cr: ChainCarrier, step: ChangeStep) =>
+  cr.status === 'in_review' && cr.chain.find((c) => c.step === step)?.decision === 'pending' && currentStep(cr.chain) !== step;
+
+/** Refusal of a step that waits for an earlier one (Change control, client portal, My approvals — R-069). */
+export const NOT_YOURS_YET = 'Not yours to decide yet';
+
+/**
+ * Who records a step. `role` alone (Change control, client portal): the role owning the step (STEP_DECIDER). With `name`
+ * (My approvals routes by person): the step's named approver for pm / director / client, the CCB recorder's role for ccb
+ * (no named approver, 07 OQ2).
+ */
+export interface StepDecider {
+  role: RoleKey;
+  name?: string;
+}
+
+/**
+ * The one rule deciding whether a step may be recorded now (`canAct` 4609, unified in delivery 8 — R-069, R-171): the request
+ * is in review, the step is the current one (sequential chain, P-6b — the prototype's steps were not sequential, 07 OQ3), and
+ * the decider holds it. Change control, the client portal and My approvals all call it; the PM-step routing (PM of record by
+ * name in My approvals, the project's PMs and deputies on Change control) is unchanged.
+ */
+export function canDecideStep(cr: ChainCarrier, step: ChangeStep, who: StepDecider): boolean {
+  return isStepOpen(cr, step) && holdsStep(cr, step, who);
+}
+
+/** The decider holds `step` (whether or not it is open): its role, or — routed by person — its named approver. */
+export function holdsStep(cr: Pick<ChainCarrier, 'chain'>, step: ChangeStep, who: StepDecider): boolean {
+  if (step === 'ccb' || who.name === undefined) return STEP_DECIDER[step] === who.role;
+  const approver = cr.chain.find((c) => c.step === step)?.approver;
+  return !!approver && approver === who.name;
+}
+
+// ── Notifications (delivery 8, R-015 part — X-6a) ───────────────────────────────────────────────────────
+
+/** People the chain notifies (person ids): the PM of record, the portfolio directors, the project's client contacts, the requester. */
+export interface ChainPeople {
+  pm: string | null;
+  directors: readonly string[];
+  clientContacts: readonly string[];
+  requester: string | null;
+}
+
+/**
+ * The bell notice of a request after it is submitted or a step is decided (X-6a: to the approver, not a whole role): in review →
+ * the approvers of its current step (PM: the PM of record — routing unchanged, notes-rights Q4; director and change control board:
+ * the portfolio directors, P-6a; client: the client contacts of the project's organisation); approved or rejected → the
+ * requester. Never the actor. Fixed English title (translated by the bell), the typed title goes in the sub-line. Null when
+ * nobody is to be told.
+ */
+export function crNoticeOf(
+  cr: Pick<ChangeRequestLike, 'id' | 'status' | 'chain'>, people: ChainPeople, actorPersonId: string | null,
+): { title: string; toPersonIds: string[] } | null {
+  let title: string;
+  let to: (string | null)[];
+  if (cr.status === 'approved' || cr.status === 'rejected') {
+    title = `Change request ${cr.status === 'approved' ? 'approved' : 'rejected'} · ${cr.id}`;
+    to = [people.requester];
+  } else if (cr.status === 'in_review') {
+    const step = currentStep(cr.chain);
+    if (!step) return null;
+    title = `Change request awaiting your decision · ${cr.id}`;
+    to = step === 'pm' ? [people.pm] : step === 'client' ? [...people.clientContacts] : [...people.directors];
+  } else return null;
+  const toPersonIds = [...new Set(to.filter((p): p is string => !!p && p !== actorPersonId))];
+  return toPersonIds.length ? { title, toPersonIds } : null;
+}
+
+/** Short names of the steps in the "Pending value" KPI sub-line ("Awaiting director · client"). */
+const STEP_SHORT: Record<ChangeStep, string> = { pm: 'PM', director: 'director', client: 'client', ccb: 'CCB' };
+
+/** "Awaiting director · client": the current steps of the requests in review, chain order; null when none is in review. */
+export function awaitingStepsText(crs: readonly Pick<ChangeRequestLike, 'status' | 'chain'>[]): string | null {
+  const steps = new Set(crs.filter((c) => c.status === 'in_review').map((c) => currentStep(c.chain)).filter((s): s is ChangeStep => !!s));
+  const names = CR_STEPS.filter((s) => steps.has(s)).map((s) => STEP_SHORT[s]);
+  return names.length ? `Awaiting ${names.join(' · ')}` : null;
+}
+
+/**
+ * Drawer hint (crVals.hint 4610): a draft asks to be submitted; a viewer who holds a later step of a request in review reads
+ * which step it waits for ("Waiting for Portfolio director", P-6b); a viewer holding no step is told who decides.
+ */
+export function crHint(cr: Pick<ChangeRequestLike, 'status'> & Partial<Pick<ChangeRequestLike, 'chain'>>, role: RoleKey): string {
   if (cr.status === 'draft') return 'Submit the request to start the approval chain.';
-  if (cr.status === 'in_review' && !stepsOfRole(role).length) return 'Switch to Project manager, Portfolio director or Client (bottom-left) to decide.';
-  return '';
+  if (cr.status !== 'in_review') return '';
+  const mine = stepsOfRole(role);
+  if (!mine.length) return 'Switch to Project manager, Portfolio director or Client (bottom-left) to decide.';
+  const chain = cr.chain ?? [];
+  const current = currentStep(chain);
+  const waiting = mine.some((s) => s !== current && chain.find((c) => c.step === s)?.decision === 'pending');
+  return current && waiting && !mine.includes(current) ? `Waiting for ${CR_STEP_LABEL[current]}` : '';
 }
 
 // ── Filter chips (crChips 4602) ─────────────────────────────────────────────────────────────────────
@@ -238,7 +387,8 @@ export function crKpis(crs: ChangeRequestLike[], ctx: CrKpiContext, lang: Lang):
       sub: ctx.originalBudget != null ? `BL1 ${f(ctx.originalBudget)} → BAC ${f(ctx.bac)}` : `BAC ${f(ctx.bac)}`,
       alert: false,
     },
-    { label: 'Pending value', value: pendingAmt ? f(pendingAmt, true) : '—', sub: 'Awaiting director · client · CCB', alert: !!pendingAmt },
+    // R-069 (P-6b): the sub-line names the steps the requests in review wait for ("Awaiting director · client").
+    { label: 'Pending value', value: pendingAmt ? f(pendingAmt, true) : '—', sub: awaitingStepsText(crs) ?? 'No change request in review', alert: !!pendingAmt },
     { label: 'Schedule changes', value: String(crs.filter((c) => c.types.includes('schedule')).length), sub: `Net ${net} d on handover`, alert: false },
     { label: 'Baseline', value: bl.value, sub: bl.sub, alert: false },
   ];
@@ -249,22 +399,33 @@ export function crKpis(crs: ChangeRequestLike[], ctx: CrKpiContext, lang: Lang):
 export interface ImpactRow {
   k: string;
   v: string;
-  /** Value in LO (budget impact over 50 k€). */
+  /** Value in LO (budget impact over the change control board threshold: |amount| > threshold, as `requiredSteps`). */
   lo: boolean;
 }
 
-export function crImpact(cr: ChangeRequestLike, ctx: { bac: number; contingency: number | null }, lang: Lang): ImpactRow[] {
+/**
+ * `ctx.proposedBaseline`: the baseline this request proposes (Baselines register, linked to the request — BL2 for the seeded
+ * CR-009, BL3… for a request raised from the Plan, S-3); without it the prototype's rule applies (baseline column BL2).
+ * `ctx.ccbThresholdKeur`: the board threshold in force (Settings, R-069 / P-6c; DEFAULT_CCB_THRESHOLD_KEUR without it). The
+ * Budget row is highlighted when |amount| is over it — the prototype's `amt > 50`, made the adjustable threshold of the board
+ * step, so a −120 k€ request is highlighted and, with 100 k€, a +60 k€ one is not.
+ */
+export function crImpact(
+  cr: ChangeRequestLike, ctx: { bac: number; contingency: number | null; proposedBaseline?: string | null; ccbThresholdKeur?: number }, lang: Lang,
+): ImpactRow[] {
   const f = (k: number, signed = false) => money(k, lang, { signed });
   const amt = cr.amount;
   const budget = amt ? `${f(amt, true)} → BAC ${f(ctx.bac + (cr.status === 'approved' ? 0 : amt))}` : 'None';
   const schedule = cr.days ? `${cr.days > 0 ? '+' : ''}${cr.days} days on handover` : 'None';
   const wbs = cr.wbs.map((w) => w.code + (w.name ? ' · ' + w.name : '')).join(' · ');
+  const proposed = ctx.proposedBaseline !== undefined ? ctx.proposedBaseline : cr.baseline === 'BL2' ? 'BL2' : null;
   const contingency = amt > 0 && ctx.contingency ? `Funded from contingency · ${Math.round((amt / ctx.contingency) * 100)}% of reserve` : '—';
+  const threshold = isCcbThreshold(ctx.ccbThresholdKeur) ? ctx.ccbThresholdKeur : DEFAULT_CCB_THRESHOLD_KEUR;
   return [
-    { k: 'Budget', v: budget, lo: amt > 50 },
+    { k: 'Budget', v: budget, lo: Math.abs(amt) > threshold },
     { k: 'Schedule', v: schedule, lo: false },
     { k: 'WBS impacted', v: wbs || '—', lo: false },
-    { k: 'Baseline', v: cr.baseline === 'BL2' ? 'Requires re-baseline → BL2' : 'Within BL1', lo: false },
+    { k: 'Baseline', v: proposed ? `Requires re-baseline → ${proposed}` : 'Within BL1', lo: false },
     { k: 'Contingency', v: contingency, lo: false },
   ];
 }

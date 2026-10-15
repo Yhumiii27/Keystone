@@ -136,6 +136,9 @@ describe('auto-level, legacy mapping, ranking and requests', () => {
     expect(autoLevel(m.levers, e, 'date')).toEqual([OT_A, EX_A, OT_B, EX_B]);
     expect(autoLevel(m.levers, e, 'budget')).toEqual([EX_A, EX_B]);
     expect(autoLevel(m.levers, e, 'people')).toEqual([RELIEF]);
+    // Correctness review: "0.0 k€" after rounding but +€40 in fact is a cost — budget must not take it.
+    const costly = { ...e, [EX_A]: { ...e[EX_A], costKeur: 0, costEur: 40 } };
+    expect(autoLevel(m.levers, costly, 'budget')).toEqual([EX_B]);
   });
 
   it('seed scenarios A / B: contractor → extra resources (not colleagues), overtime → overtime, delay → shifts, move → colleagues, split → none', () => {

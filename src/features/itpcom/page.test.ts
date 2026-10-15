@@ -8,6 +8,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const session = { role: 'director' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/navigation', () => ({
+  redirect: (url: string) => {
+    throw new Error(`REDIRECT ${url}`);
+  },
   notFound: () => {
     throw new Error('NOT_FOUND');
   },
@@ -50,6 +53,8 @@ function parts(tree: unknown): Record<string, El> {
 const itp = async (sp: Record<string, string> = {}, code = 'HLT-026') => parts(await ItpPage({ params: Promise.resolve({ code }), searchParams: Promise.resolve(sp) }));
 const cm = async (code = 'HLT-026') => parts(await CommissioningPage({ params: Promise.resolve({ code }) }));
 const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'];
+/** R-041 (P-2): workspace personas not on the project's named team (Harbor Line has the seeded referents). */
+const OFF_TEAM: Record<string, string[]> = { 'HLT-026': [], 'NDC-031': ['englead', 'quality'] };
 const G = GOLDEN as any;
 
 beforeAll(async () => {
@@ -77,18 +82,30 @@ describe('/projects/[code]/itp', () => {
     const p = await itp({ view: 'punch' });
     const primary = p.PageHeader.props.primary as El;
     expect(primary.props).toMatchObject({ kind: 'punch', label: 'Ajouter une réserve' });
-    expect((primary.props.form as any).fields.find((f: any) => f.id === 'owner').options).toEqual(G.forms.fr.punch.fields.find((f: any) => f.id === 'owner').options);
-    expect((p.ItpBody.props.view as ItpScreenView).punch!.rows.length).toBe(5);
+    // R-041 (P-2): the seeded referents of Harbor Line (engineering lead, quality manager) are on its named team → owners too.
+    // A-6 'a' (R-117): "—" (no person, the party owns the item) before the TEAM owners.
+    expect((primary.props.form as any).fields.find((f: any) => f.id === 'owner').options).toEqual([
+      { value: '', label: '—' }, ...G.forms.fr.punch.fields.find((f: any) => f.id === 'owner').options, 'Antoine Girard', 'Gabriel Comte',
+    ]);
+    // A-6 'a' (R-117): one punch list per project — the 5 items raised by inspections and the 3 raised on site (P-06…P-08).
+    expect((p.ItpBody.props.view as ItpScreenView).punch!.rows.map((r) => r.number)).toEqual(['P-01', 'P-02', 'P-03', 'P-04', 'P-05', 'P-06', 'P-07', 'P-08']);
     expect(((await itp({ view: 'gantt' })).ItpBody.props.view as ItpScreenView).view).toBe('plan');
   });
 
   it.each(['HLT-026', 'NDC-031'])('%s: primary and row steps per persona (prototype hasPrimary)', async (code) => {
     for (const role of ROLES) {
       session.role = role;
+      // R-042 (P-10a): the client persona (Harbor Line's organisation) is sent home from another organisation's project.
+      if (role === 'client' && code !== 'HLT-026') {
+        await expect(itp({}, code)).rejects.toThrow('REDIRECT /');
+        continue;
+      }
       for (const view of ['plan', 'punch']) {
         const p = await itp({ view }, code);
         const g = G.header.itp[code][role];
-        expect([role, view, !!p.PageHeader.props.primary, p.ItpBody.props.canEdit]).toEqual([role, view, g.hasPrimary, g.hasPrimary]);
+        // R-041 (P-2): write rights follow the named team — off-team personas read (was: every workspace role edited).
+        const has = g.hasPrimary && !OFF_TEAM[code].includes(role);
+        expect([role, view, !!p.PageHeader.props.primary, p.ItpBody.props.canEdit]).toEqual([role, view, has, has]);
       }
     }
   });
@@ -116,9 +133,13 @@ describe('/projects/[code]/commissioning', () => {
   it.each(['HLT-026', 'NDC-031'])('%s: primary per persona (prototype hasPrimary)', async (code) => {
     for (const role of ROLES) {
       session.role = role;
+      if (role === 'client' && code !== 'HLT-026') {
+        await expect(cm(code)).rejects.toThrow('REDIRECT /'); // R-042 (P-10a)
+        continue;
+      }
       const p = await cm(code);
       const g = G.header.commissioning[code][role];
-      expect([role, !!p.PageHeader.props.primary]).toEqual([role, g.hasPrimary]);
+      expect([role, !!p.PageHeader.props.primary]).toEqual([role, g.hasPrimary && !OFF_TEAM[code].includes(role)]); // R-041 (P-2)
     }
   });
 

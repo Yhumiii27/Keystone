@@ -7,9 +7,10 @@
 // src/domain/itpcom.golden.json, scripts/proto-golden-itpcom.ts).
 import { LO, OK, TAG_CLASS, commissioningCell, statusTone, type Tone } from '@/components/app/tones';
 import {
-  STATUS_ISO, addDaysIso, displayOfIso, itpPointType, itpStage, punchCategory, punchSource, shortDateOfIso,
-  type CommissioningCellStatus, type HandoverItemStatus, type ItpPointType, type ItpResult, type ItpStage, type PunchCategory,
-  type PunchSource, type PunchStatus,
+  ITP_RECORDED_RESULTS, NOW_ISO, STATUS_ISO, addDaysIso, displayOfIso, itpPointType, itpResult, itpStage, punchCategory, punchOrigin, punchOwnerParty, punchSource,
+  shortDateOfIso,
+  type CommissioningCellStatus, type HandoverItemStatus, type ItpPointType, type ItpRecordedResult, type ItpResult, type ItpStage, type PunchCategory,
+  type PunchOrigin, type PunchOwnerParty, type PunchSource, type PunchStatus,
 } from '@/server/db/codes';
 import { parseNeedDate, type ParseResult } from './team';
 
@@ -49,6 +50,9 @@ export function parseForwardDate(input: string | undefined, today = STATUS_ISO):
 
 // ── Inspection & test plan (itpRows / itpBySys 4941–4943) ───────────────────────────────────────────────
 
+/** Passed, with or without reservations (R-112: an inspection passed with reservations is accepted; its reservations are punch items). */
+export const isPassedResult = (r: ItpResult) => r === 'passed' || r === 'reserved';
+
 export interface InspectionFacts {
   number: string;
   system: string;
@@ -72,7 +76,7 @@ export function groupBySystem<R extends InspectionFacts>(systems: readonly strin
   return order
     .map((system) => {
       const own = rows.filter((r) => r.system === system);
-      return { system, rows: own, count: own.length, passed: own.filter((r) => r.result === 'passed').length };
+      return { system, rows: own, count: own.length, passed: own.filter((r) => isPassedResult(r.result)).length };
     })
     .filter((g) => g.count > 0);
 }
@@ -90,7 +94,7 @@ export function inspectionLook(pointType: ItpPointType, result: ItpResult): Insp
   return {
     typeClass: TAG_CLASS[statusTone('itpType', pointType)],
     statusClass: TAG_CLASS[statusTone('itpResult', result)],
-    statusColor: result === 'failed' ? LO : result === 'passed' ? 'var(--color-accent-300)' : 'var(--color-neutral-400)',
+    statusColor: result === 'failed' ? LO : isPassedResult(result) ? 'var(--color-accent-300)' : 'var(--color-neutral-400)',
   };
 }
 
@@ -103,7 +107,18 @@ export interface PunchFacts {
   location: string;
 }
 
-/** Row step of the ITP register: Open → "Start" (In progress), In progress → "Close" (Closed); none once closed. */
+/**
+ * R-117 (A-6 'a'): which items a punch list shows — every origin (Inspections & punch list's default), or the items raised by
+ * an inspection or on site (the Site screen's default). `?origin=` / `?punch=` values; anything else is the default.
+ */
+export type PunchOriginFilter = 'all' | PunchOrigin;
+export const PUNCH_ORIGIN_FILTERS: readonly PunchOriginFilter[] = ['all', 'itp', 'site'];
+export const punchOriginFilterOf = (v: string | null | undefined, fallback: PunchOriginFilter = 'all'): PunchOriginFilter =>
+  (PUNCH_ORIGIN_FILTERS as readonly string[]).includes(v ?? '') ? (v as PunchOriginFilter) : fallback;
+/** The items of a list a filter keeps. */
+export const filterPunchByOrigin = <R extends { origin: PunchOrigin }>(rows: readonly R[], f: PunchOriginFilter): R[] => (f === 'all' ? [...rows] : rows.filter((r) => r.origin === f));
+
+/** Row step of a punch item (every origin, R-117): Open → "Start" (In progress), In progress → "Close" (Closed); none once closed. */
 export function punchStep(status: PunchStatus): { label: 'Start' | 'Close'; to: PunchStatus } | null {
   if (status === 'open') return { label: 'Start', to: 'in_progress' };
   if (status === 'in_progress') return { label: 'Close', to: 'closed' };
@@ -163,10 +178,10 @@ export function summariseItp(
   const failed = inspections.filter((r) => r.result === 'failed').length;
   const a = open.filter((p) => p.category === 'A').length;
   return {
-    passed: inspections.filter((r) => r.result === 'passed').length,
+    passed: inspections.filter((r) => isPassedResult(r.result)).length,
     total: inspections.length,
     failed,
-    holdAhead: inspections.filter((r) => r.pointType === 'hold' && r.result !== 'passed').length,
+    holdAhead: inspections.filter((r) => r.pointType === 'hold' && !isPassedResult(r.result)).length,
     open: open.length,
     openA: a,
     openB: open.filter((p) => p.category === 'B').length,
@@ -280,6 +295,11 @@ export const ITP_POINT_TYPES: readonly ItpPointType[] = itpPointType.codes;
 export const ITP_STAGES: readonly ItpStage[] = itpStage.codes;
 export const PUNCH_CATEGORIES: readonly PunchCategory[] = punchCategory.codes;
 export const PUNCH_SOURCES: readonly PunchSource[] = punchSource.codes;
+/** R-117: origins (Inspection first, the form's default) and responsible parties (Keystone first). */
+export const PUNCH_ORIGINS: readonly PunchOrigin[] = punchOrigin.codes;
+export const PUNCH_OWNER_PARTIES: readonly PunchOwnerParty[] = ['keystone', 'client'];
+/** A Vigie NCR reference as typed ("NCR-029"): letters, digits and separators, at most 40 characters (the DAL bound). */
+export const NCR_REF = /^[A-Za-z0-9][A-Za-z0-9\-/. ]{0,39}$/;
 
 export interface NewInspectionValues {
   name: string;
@@ -318,16 +338,26 @@ export interface NewPunchValues {
   location: string | null;
   category: PunchCategory;
   source: PunchSource;
-  /** Owner (a TEAM option, full name). */
-  owner: string;
+  /** Owner person (a TEAM option, full name); null when only a party owns the item (R-117). */
+  owner: string | null;
   dueOn: string | null;
+  /** R-117 (A-6 'a'): origin, responsible party and Vigie's NCR number (internal viewers only, P-10b). */
+  origin: PunchOrigin;
+  ownerParty: PunchOwnerParty;
+  ncrNumber: string | null;
 }
 
+/** "—" in the Owner select: no person, the party owns the item (R-117). */
+export const NO_OWNER = '';
+
 /**
- * "Add punch item": the item is required; category defaults to A (the select's first option), source to Site walk,
- * owner to the first TEAM name; the due date, when given, must be a date.
+ * "Add punch item": the item is required; category defaults to A (the select's first option), source to Site walk, owner
+ * to the first TEAM name when the field is absent ("—" = no person, the party owns it); the due date, when given, must be a
+ * date. R-117 (A-6 'a'): origin (Inspection by default, or Site), responsible party (Keystone by default, or the client)
+ * and, for internal viewers, Vigie's NCR number (optional; a client's is ignored — P-10b).
  */
-export function parseNewPunch(values: Record<string, string | undefined>, team: readonly string[]): ParseResult<NewPunchValues> {
+export function parseNewPunch(values: Record<string, string | undefined>, team: readonly string[], opts: { internal?: boolean } = {}): ParseResult<NewPunchValues> {
+  const internal = opts.internal ?? true;
   const description = text(values.item);
   if (!description) return { ok: false, error: 'Item is required' };
   const location = text(values.loc);
@@ -337,12 +367,19 @@ export function parseNewPunch(values: Record<string, string | undefined>, team: 
   if (!category) return { ok: false, error: 'Unknown category' };
   const source = codeOf(text(values.src) || PUNCH_SOURCES[0], punchSource);
   if (!source) return { ok: false, error: 'Unknown source' };
-  const owner = text(values.owner) || team[0] || '';
-  if (!owner || !team.includes(owner)) return { ok: false, error: 'Unknown owner' };
+  const origin = codeOf(text(values.origin) || PUNCH_ORIGINS[0], punchOrigin);
+  if (!origin) return { ok: false, error: 'Unknown origin' };
+  const ownerParty = codeOf(text(values.party) || PUNCH_OWNER_PARTIES[0], punchOwnerParty);
+  if (!ownerParty) return { ok: false, error: 'Unknown owner party' };
+  const typed = values.owner === undefined ? team[0] ?? '' : text(values.owner);
+  const owner = typed === NO_OWNER || typed === '—' ? null : typed;
+  if (owner !== null && !team.includes(owner)) return { ok: false, error: 'Unknown owner' };
+  const ncr = internal ? text(values.ncr) : '';
+  if (ncr && !NCR_REF.test(ncr)) return { ok: false, error: 'Enter the NCR number as Vigie gives it, e.g. NCR-029' };
   const due = text(values.due);
   const dueOn = due ? parseForwardDate(due) : null;
   if (due && !dueOn) return { ok: false, error: 'Enter the due date as a date, e.g. 15 Oct' };
-  return { ok: true, value: { description, location: location || null, category, source, owner, dueOn } };
+  return { ok: true, value: { description, location: location || null, category, source, owner, dueOn, origin, ownerParty, ncrNumber: ncr || null } };
 }
 
 export interface PlanSatValues {
@@ -373,3 +410,77 @@ export function parsePlanSat(values: Record<string, string | undefined>, systems
 
 /** Default date of the Plan SAT form: the first system's SAT date ("10 Dec 2026", English), '' when none. */
 export const defaultSatDate = (satOn: string | null) => (satOn ? displayOfIso(satOn) : '');
+
+// ── Inspection results (R-112, Q-6a / Q-6b) ─────────────────────────────────────────────────────────────
+
+/**
+ * Roles that record inspection results (Q-6a, owner's answer "a": quality and the engineering lead; the portfolio director
+ * keeps every right). The project manager, the client and the others see the results read-only.
+ */
+export const ITP_RESULT_ROLES: readonly string[] = ['quality', 'englead', 'director'];
+export const canRecordItpResult = (role: string) => ITP_RESULT_ROLES.includes(role);
+
+/** Point types whose result names the client representative present (Q-6a): a hold point requires it, a witness point offers it. */
+export const witnessFieldOf = (pointType: ItpPointType): 'required' | 'optional' | null =>
+  pointType === 'hold' ? 'required' : pointType === 'witness' ? 'optional' : null;
+
+/** The year-less date typed is the latest such day on or before `today` ("28 Dec" typed on 5 Jan is last year's). */
+export function parsePastDate(input: string | undefined, today = NOW_ISO): string | null {
+  const iso = parseNeedDate(input, +today.slice(0, 4));
+  if (!iso) return null;
+  if (!hasYear(text(input)) && iso > today) return `${+iso.slice(0, 4) - 1}${iso.slice(4)}`;
+  return iso;
+}
+
+export interface InspectionResultValues {
+  result: ItpRecordedResult;
+  /** ISO date of the inspection (not after the business date). */
+  resultOn: string;
+  inspector: string;
+  /** Client representative present; null when none (never required outside hold points). */
+  clientWitness: string | null;
+  comment: string | null;
+}
+
+/**
+ * "Record result": Passed / Passed with reservations / Failed (codes or labels), the inspection date (required, not after
+ * the business date "today"), the inspector (required), the client representative (required on a hold point, Q-6a) and a
+ * comment — required for a failure (what is non-conforming, before the NCR is reported in Vigie) and for reservations
+ * (they are listed there).
+ */
+export function parseInspectionResult(values: Record<string, string | undefined>, pointType: ItpPointType, today = NOW_ISO): ParseResult<InspectionResultValues> {
+  const raw = text(values.result);
+  const result = (ITP_RECORDED_RESULTS as readonly string[]).includes(raw)
+    ? (raw as ItpRecordedResult)
+    : (ITP_RECORDED_RESULTS.find((r) => itpResult.label(r) === raw) ?? null);
+  if (!result) return { ok: false, error: 'Choose the result' };
+  const date = text(values.date);
+  if (!date) return { ok: false, error: 'Date is required' };
+  const resultOn = parsePastDate(date, today);
+  if (!resultOn) return { ok: false, error: 'Enter the inspection date as a date, e.g. 24 Sep' };
+  if (resultOn > today) return { ok: false, error: 'The inspection date cannot be in the future' };
+  const inspector = text(values.inspector);
+  if (!inspector) return { ok: false, error: 'Inspector is required' };
+  const witnessRule = witnessFieldOf(pointType);
+  const clientWitness = witnessRule ? text(values.witness) : '';
+  if (witnessRule === 'required' && !clientWitness) return { ok: false, error: 'Name the client representative present at this hold point' };
+  const comment = text(values.comment);
+  if (result !== 'passed' && !comment) return { ok: false, error: result === 'failed' ? 'Describe the non-conformity' : 'List the reservations' };
+  if (inspector.length > MAX_TEXT || clientWitness.length > MAX_TEXT || comment.length > MAX_NOTE) return { ok: false, error: 'Text is too long' };
+  return { ok: true, value: { result, resultOn, inspector, clientWitness: clientWitness || null, comment: comment || null } };
+}
+
+/**
+ * "Passed 24 Sep · Sophie Haddad · client N. Bensaïd" — the line under an inspection whose result was recorded in Keystone;
+ * `t` translates the result, the date and "client" (names stay as typed). Null when no result was recorded in Keystone.
+ */
+export function resultLineText(
+  r: { result: ItpResult; resultOn: string | null; inspector: string | null; clientWitness: string | null },
+  t: (s: string) => string = (s) => s,
+): string | null {
+  if (!r.resultOn) return null;
+  return [`${t(itpResult.label(r.result))} ${t(itpDateText(r.resultOn))}`, r.inspector ?? '', r.clientWitness ? `${t('client')} ${r.clientWitness}` : ''].filter(Boolean).join(' · ');
+}
+
+/** Title of the NCR reported in Vigie from a failed inspection (prefill `titre`): "ITP I-03 · Structure · Paint thickness (DFT)". */
+export const inspectionNcrTitle = (i: { number: string; system: string; name: string }) => `ITP ${i.number} · ${i.system} · ${i.name}`;

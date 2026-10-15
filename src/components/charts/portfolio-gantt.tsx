@@ -1,6 +1,7 @@
 // CH-9 Portfolio Gantt — projects in progress & pipeline (docs/spec/02 CH-9, docs/spec/05 §3.3–3.4, template
 // 979–1020). Div grid with the prototype geometry: 240px project · 172px status · 170px next decision / finish ·
-// 24-month timeline (Jan 2026 – Dec 2027); positions are percentages from `pgRow()` (src/domain/pfplan.ts).
+// 24-month timeline (the window of the screen — Oct 2025 – Sep 2027 by default on the seed, L-8 / R-136; the
+// prototype's was Jan 2026 – Dec 2027); positions are percentages from `pgRow()` (src/domain/pfplan.ts).
 // Server-compatible: rows link to their target (Plan or Projects register), segments carry native `title` tooltips.
 // Labels and titles arrive translated.
 import Link from 'next/link';
@@ -49,11 +50,11 @@ export interface PortfolioGanttLabels {
 }
 
 export interface PortfolioGanttProps {
-  /** 24 month headers: translated label, year on January. */
+  /** 24 month headers: translated label, year on January and on the first column. */
   months: { label: string; year: string; yearStart: boolean }[];
   groups: PortfolioGanttGroup[];
-  /** Today line position ("37.38%"). */
-  todayL: string;
+  /** Today line position ("49.88%"); null when today is outside the window (no line). */
+  todayL: string | null;
   labels: PortfolioGanttLabels;
   className?: string;
 }
@@ -117,7 +118,7 @@ export function PortfolioGantt({ months, groups, todayL, labels, className }: Po
                   </div>
                 )}
                 {r.clipText && <span className={s.clip}>{r.clipText}</span>}
-                <div className={s.today} style={{ left: todayL }} aria-hidden />
+                {todayL && <div className={s.today} style={{ left: todayL }} aria-hidden />}
               </div>
             </div>
           ))}

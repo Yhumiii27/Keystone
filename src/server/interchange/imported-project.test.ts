@@ -6,6 +6,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+// D-7b: imports are off in the app (IMPORTS_ENABLED); this test imports, so it turns the flag on.
+vi.mock('@/domain/ch4-defaults', async (orig) => ({ ...(await orig<typeof import('@/domain/ch4-defaults')>()), IMPORTS_ENABLED: true }));
+
 const session = { role: 'director' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/navigation', () => ({
   notFound: () => {

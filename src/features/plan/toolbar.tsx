@@ -24,12 +24,14 @@ export interface PlanToolbarProps {
   dataDate: string;
   /** Next baseline code ("BL3"), the default name of "Set baseline". */
   nextBaseline: string;
+  /** S-3: after BL1, "Set baseline" links to this Change control form (new request proposing the next baseline). */
+  baselineChangeRequestHref?: string;
   /** Director / project manager: chips change, Reschedule and Set baseline shown. */
   canSchedule: boolean;
   t: T;
 }
 
-export function PlanToolbar({ view, hrefs, code, context, calendar, baseline, dataDate, nextBaseline, canSchedule, t }: PlanToolbarProps) {
+export function PlanToolbar({ view, hrefs, code, context, calendar, baseline, dataDate, nextBaseline, baselineChangeRequestHref, canSchedule, t }: PlanToolbarProps) {
   return (
     <div className={s.toolbar}>
       <FilterGroup>
@@ -54,7 +56,7 @@ export function PlanToolbar({ view, hrefs, code, context, calendar, baseline, da
       {canSchedule && (
         <div className={s.toolbarRight}>
           <RescheduleButton code={code} />
-          <SetBaselineButton code={code} context={context} defaultName={nextBaseline} />
+          <SetBaselineButton code={code} context={context} defaultName={nextBaseline} changeRequestHref={baselineChangeRequestHref} />
         </div>
       )}
     </div>

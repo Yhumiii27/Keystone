@@ -1,13 +1,18 @@
 import 'server-only';
 // Cash flow & billing DAL (docs/spec/03 §7 Cash flow, §6 margins, §8.5 client invoices; 11 §7 #3). One billing plan
 // per project: derived from the contract when one exists (`billingOf`, logic 4515: value = base + signed
-// amendments, milestones "{M} {label before ' ('}" priced round(value × share / 100), live status), else the legacy
-// plan migrated from BILLING (fixed amounts). The 6-month cash forecast is computed from the billing plans and cost
-// forecasts (A-12, chapter 4; the stored portfolio plan of the prototype is kept but no longer read).
+// amendments; milestones "{M} {label before ' ('}" — the base contract's and the signed amendments' own ones (NEW-D3-3) —
+// at the contract's amounts, live status), else the legacy plan migrated from BILLING (fixed amounts). A plan is in its
+// document's currency (C-9); the portfolio screens read it consolidated in euros at the project's budget rate
+// (`listEurBillingPlans`). The 6-month cash forecast is computed from the billing plans and cost forecasts (A-12, chapter 4;
+// the stored portfolio plan of the prototype is kept but no longer read).
 import { asc, eq, isNull } from 'drizzle-orm';
 import { cache } from 'react';
 import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
-import { cashForecast, lowestCumulativePoint } from '@/domain/kpis';
+import { BASE_CURRENCY, eurRate, type CurrencyCode } from '@/domain/currency';
+import { cashForecast, lowestCumulativePoint, projectEacKeur, projectMarginPct } from '@/domain/kpis';
+import type { PaymentTerms } from '@/domain/payment-terms';
+import { inExecution } from '@/domain/portfolio';
 import { getDb } from '@/server/db/client';
 import { billingModel, paymentMilestoneStatus, type BillingModel, type PaymentMilestoneStatus } from '@/server/db/codes';
 import { billingPlans, paymentMilestones, portfolioCashForecasts, projects } from '@/server/db/schema';
@@ -21,9 +26,17 @@ export interface BillingPlanMilestone {
   number: string | null;
   /** "M4 Cranes operational" (contract) / "Jun", "Strip-out" (legacy plan). */
   label: string;
+  /** In the plan's currency. */
   amountKeur: number;
   status: PaymentMilestoneStatus;
   statusLabel: string;
+  /** Contractual date (contract milestones), null for legacy rows. */
+  contractualDue: string | null;
+  /** Due date of the milestone's invoice (invoiced / paid contract milestones, payment rule R-076), else null. */
+  paymentDueOn: string | null;
+  /** Invoice number and payment date (contract milestones). */
+  invoiceNumber: string | null;
+  paidOn: string | null;
 }
 
 export interface BillingPlan {
@@ -31,12 +44,18 @@ export interface BillingPlan {
   model: BillingModel;
   /** "Client · milestones", "Internal · capex". */
   modelLabel: string;
-  /** Contract value (k€); 0 for internal projects. */
+  /** C-9: currency of the amounts of this plan (the contract's; EUR for legacy plans, or once consolidated). */
+  currency: CurrencyCode;
+  /** Euros per unit of `currency` at the project's budget rate (1 for EUR). */
+  eurRate: number;
+  /** Contract value; 0 for internal projects. */
   contractValueKeur: number;
   /** No client revenue (contract value 0). */
   internal: boolean;
   /** The plan is derived from a registered contract. */
   fromContract: boolean;
+  /** Payment rule of the contract (R-076); null for a legacy plan (Net 30 by default). */
+  terms: PaymentTerms | null;
   milestones: BillingPlanMilestone[];
   /** Σ milestones not planned, Σ paid, Σ invoiced not paid. */
   invoicedKeur: number;
@@ -46,55 +65,78 @@ export interface BillingPlan {
   next: BillingPlanMilestone | null;
 }
 
-function summarise(projectCode: string, model: BillingModel, value: number, fromContract: boolean, milestones: BillingPlanMilestone[]): BillingPlan {
+function summarise(
+  projectCode: string, model: BillingModel, value: number, fromContract: boolean, milestones: BillingPlanMilestone[],
+  currency: CurrencyCode, rate: number, terms: PaymentTerms | null,
+): BillingPlan {
   const invoicedKeur = milestones.filter((m) => m.status !== 'planned').reduce((s, m) => s + m.amountKeur, 0);
   const paidKeur = milestones.filter((m) => m.status === 'paid').reduce((s, m) => s + m.amountKeur, 0);
   return {
-    projectCode, model, modelLabel: billingModel.label(model), contractValueKeur: value, internal: !value, fromContract, milestones, invoicedKeur, paidKeur,
-    outstandingKeur: invoicedKeur - paidKeur, next: milestones.find((m) => m.status === 'planned') ?? null,
+    projectCode, model, modelLabel: billingModel.label(model), currency, eurRate: rate, contractValueKeur: value, internal: !value, fromContract, terms, milestones,
+    invoicedKeur, paidKeur, outstandingKeur: invoicedKeur - paidKeur, next: milestones.find((m) => m.status === 'planned') ?? null,
   };
 }
 
-/** Billing plans keyed by project code (projects with a billing plan only: the 6 with data). Memoised per request. */
+/**
+ * Billing plans keyed by project code (projects with a billing plan only), each in its document's currency — the client portal
+ * shows them so. Memoised per request. Portfolio screens read `listEurBillingPlans`.
+ */
 export const listBillingPlans = cache(async (): Promise<Record<string, BillingPlan>> => {
   const db = await getDb();
-  const plans = await db
-    .select({ code: projects.code, plan: billingPlans })
-    .from(billingPlans)
-    .innerJoin(projects, eq(projects.id, billingPlans.projectId))
-    .orderBy(asc(projects.sortOrder));
-  const legacy = await db
-    .select({ code: projects.code, m: paymentMilestones })
-    .from(paymentMilestones)
-    .innerJoin(projects, eq(projects.id, paymentMilestones.projectId))
-    .where(isNull(paymentMilestones.contractId))
-    .orderBy(asc(paymentMilestones.position));
+  const [plans, legacy] = await Promise.all([
+    db.select({ code: projects.code, plan: billingPlans }).from(billingPlans).innerJoin(projects, eq(projects.id, billingPlans.projectId)).orderBy(asc(projects.sortOrder)),
+    db.select({ code: projects.code, m: paymentMilestones }).from(paymentMilestones).innerJoin(projects, eq(projects.id, paymentMilestones.projectId))
+      .where(isNull(paymentMilestones.contractId)).orderBy(asc(paymentMilestones.position)),
+  ]);
   const out: Record<string, BillingPlan> = {};
   for (const { code, plan } of plans) {
     if (plan.contractValueKeur == null) {
       const c = await getContract(code);
       if (c) {
-        out[code] = summarise(code, plan.model, c.valueKeur, true, c.milestones.map((m) => ({
+        out[code] = summarise(code, plan.model, c.valueKeur, true, c.milestones.filter((m) => m.billable).map((m) => ({
           number: m.number, label: `${m.number} ${m.label.split(' (')[0]}`, amountKeur: m.amountKeur, status: m.status, statusLabel: m.statusLabel,
-        })));
+          contractualDue: m.contractualDue, paymentDueOn: m.invoice?.dueOn ?? null, invoiceNumber: m.invoice?.number ?? null, paidOn: m.invoice?.paidOn ?? null,
+        })), c.sheet.currency, eurRate(c.sheet.currency, c.fx), { rule: c.sheet.paymentRule, days: c.sheet.paymentDays });
         continue;
       }
     }
+    // Legacy plans are the prototype's k€ figures (no contract, no currency).
     out[code] = summarise(code, plan.model, plan.contractValueKeur ?? 0, false, legacy.filter((r) => r.code === code).map(({ m }) => ({
       number: m.number, label: m.label, amountKeur: m.amountKeur ?? 0, status: m.status, statusLabel: paymentMilestoneStatus.label(m.status),
-    })));
+      contractualDue: null, paymentDueOn: null, invoiceNumber: null, paidOn: null,
+    })), BASE_CURRENCY, 1, null);
   }
   return out;
 });
 
-/** Billing plan of one project, null when it has none. */
+/** A plan consolidated in euros at its budget rate (C-9): every amount × `eurRate`; currency EUR. */
+export function inEuros(plan: BillingPlan): BillingPlan {
+  if (plan.currency === BASE_CURRENCY && plan.eurRate === 1) return plan;
+  const r = plan.eurRate;
+  const milestones = plan.milestones.map((m) => ({ ...m, amountKeur: m.amountKeur * r }));
+  return {
+    ...plan, currency: BASE_CURRENCY, eurRate: 1, contractValueKeur: plan.contractValueKeur * r, milestones,
+    invoicedKeur: plan.invoicedKeur * r, paidKeur: plan.paidKeur * r, outstandingKeur: plan.outstandingKeur * r,
+    next: plan.next ? milestones[plan.milestones.indexOf(plan.next)] : null,
+  };
+}
+
+/** Billing plans consolidated in euros (Cash flow, Prioritisation, capacity, portfolio margin, alerts). Memoised per request. */
+export const listEurBillingPlans = cache(async (): Promise<Record<string, BillingPlan>> =>
+  Object.fromEntries(Object.entries(await listBillingPlans()).map(([code, p]) => [code, inEuros(p)])),
+);
+
+/** Billing plan of one project in its document's currency, null when it has none. */
 export async function getBillingPlan(projectCode: string): Promise<BillingPlan | null> {
   return (await listBillingPlans())[projectCode] ?? null;
 }
 
-/** Margin of a project (`(contract − budget) / contract`, rounded %), null for internal projects or without a plan. */
-export const marginPct = (plan: BillingPlan | null | undefined, budgetKeur: number): number | null =>
-  plan && plan.contractValueKeur ? Math.round(((plan.contractValueKeur - budgetKeur) / plan.contractValueKeur) * 100) : null;
+/**
+ * Margin at completion of a project (C-10b, R-132): (contract in euros − EAC) / contract — `projectMarginPct` over the plan
+ * consolidated in euros and `projectEacKeur`; null for internal projects or without a plan.
+ */
+export const marginAtCompletion = (plan: BillingPlan | null | undefined, p: Pick<ProjectRow, 'budget' | 'actual' | 'progress'>): number | null =>
+  plan ? projectMarginPct(inEuros(plan).contractValueKeur, projectEacKeur(p)) : null;
 
 export interface CashForecastMonth {
   /** First day of the month (ISO). */
@@ -120,8 +162,9 @@ export async function getPortfolioCashForecast(): Promise<CashForecastMonth[]> {
 
 export interface CashFlowRow {
   project: ProjectRow;
+  /** Billing plan consolidated in euros (C-9). */
   plan: BillingPlan;
-  /** Margin %, null for internal projects. */
+  /** Margin at completion % (C-10b), null for internal projects. */
   marginPct: number | null;
 }
 
@@ -139,16 +182,17 @@ export interface CashFlowData {
   lowPoint: { month: string; cumKeur: number; next: { project: string; label: string; progressMonth?: string } | null } | null;
 }
 
-const EXECUTION = new Set(['etudes', 'approvisionnements', 'fabrication_assemblage', 'fat', 'expedition', 'chantier', 'mise_en_service_sat']);
 
 /** Everything the Cash flow screen reads (03 §7). */
 export async function getCashFlow(zone: ZoneKey | null): Promise<CashFlowData> {
-  const [projects_, plans] = await Promise.all([listProjects(), listBillingPlans()]);
-  const all = projects_.filter((p) => plans[p.code] && EXECUTION.has(p.stage));
+  // C-9: the portfolio is consolidated in euros at each project's budget rate.
+  const [projects_, plans] = await Promise.all([listProjects(), listEurBillingPlans()]);
+  const all = projects_.filter((p) => plans[p.code] && inExecution(p));
   const inZone = all.filter((p) => !zone || p.zone === zone);
   const cv = (rows: ProjectRow[]) => rows.reduce((s, p) => s + plans[p.code].contractValueKeur, 0);
   const zoneShare = zone ? (cv(all) ? cv(inZone) / cv(all) : 0) : 1;
-  const rows = inZone.map((p) => ({ project: p, plan: plans[p.code], marginPct: marginPct(plans[p.code], p.budget) }));
+  // C-10b (R-132): margin at completion (contract − EAC) / contract.
+  const rows = inZone.map((p) => ({ project: p, plan: plans[p.code], marginPct: marginAtCompletion(plans[p.code], p) }));
   // A-12: billing plan in, cost forecast out, at the portfolio data date (was the stored plan × zone share).
   const months = cashForecast(await cashProjectInputs(rows), DEFAULT_DATA_DATE);
   const low = lowestCumulativePoint(months);

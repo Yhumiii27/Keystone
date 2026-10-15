@@ -1,23 +1,26 @@
 // PageHeader — the header every screen renders first (docs/spec/01 §5, §7; docs/spec/02 C-02, C-03).
 // Server Component with client islands. Renders, as siblings inside <main> (gap 18):
 //   <header> breadcrumb (+ project switcher) · title (+ health, Read-only) · search · bell · status date · FR/EN · Export · primary
+//   (R-139: "View as client" before Export, for the director and the project's leads on project screens)
 //   outside banner (screen outside the viewer's workspace)
 //   zone bar (zone-scoped screens)
 // Usage: return <><PageHeader screen="plan" projectCode={code} primary={<…/>} />{…screen body…}</>
-import { CalendarBlank, Eye, GlobeHemisphereEast, House, UserCircle } from '@phosphor-icons/react/dist/ssr';
+import { ArrowLeft, CalendarBlank, Eye, GlobeHemisphereEast, House, UserCircle } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { SCREEN_BY_ID, screenHref, type ScreenId } from '@/config/screens';
 import { HEALTH_LABEL, HEALTH_TAG } from '@/domain/health';
 import { exportFormatsOf } from '@/features/exports/catalog';
 import { STATUS_DATE } from '@/lib/format';
-import { PROTO } from '@/server/prototype';
-import { getProject, projectLabel, type ProjectRow } from '@/server/dal/projects';
+import { dataText, fieldsText, projectLabelText } from '@/i18n/data-text';
+import { getProject, type ProjectRow } from '@/server/dal/projects';
 import { crumbExtraOf, defaultTitleOf, notificationsFor, zoneBarOf } from '@/server/dal/shell';
-import { getProjectScope } from '@/server/project-context';
+import { canEditContract, canPreviewClientView, clientRefusedScreen, financeReadOnly } from '@/domain/rights';
+import { getProjectScope, refuseClient } from '@/server/project-context';
 import { getI18n, getLastProject, getViewer, getZone } from '@/server/session';
 import { ExportButton, GlobalSearch, LangToggle, Notifications, ProjectSwitcher, ZoneSeg } from './header-islands';
 import { PROJECT_EDITABLE, crumbBase, isOutside } from './nav-model';
+import { projectOptionHaystack, projectOptionSub } from './project-options';
 import type { ProjectOptionView } from './types';
 import styles from './header.module.css';
 
@@ -33,46 +36,79 @@ export interface PageHeaderProps {
   primary?: ReactNode;
   /** Task screen (`/my/tasks/[taskId]`): the task shown — default crumb extra (its id) and title (its title). */
   taskId?: string;
+  /**
+   * Global screen showing one project chosen by `?project=` (What-if levelling): that project, with the project switcher
+   * setting the query parameter instead of the path.
+   */
+  projectParam?: string;
 }
+
+/** Screens whose default crumb extra is typed text (contract reference, payment terms). */
+const DATA_CRUMB_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>(['contract', 'billing']);
 
 const healthView = (p: Pick<ProjectRow, 'health'>) =>
   p.health ? { label: HEALTH_LABEL[p.health], cls: HEALTH_TAG[p.health] } : { label: '—', cls: 'tag tag-neutral' };
 
-export async function PageHeader({ screen, projectCode, title, crumbExtra, primary, taskId }: PageHeaderProps) {
+export async function PageHeader({ screen, projectCode, title, crumbExtra, primary, taskId, projectParam }: PageHeaderProps) {
   const [{ t, lang }, viewer, zone, lastProject, scope] = await Promise.all([getI18n(), getViewer(), getZone(), getLastProject(), getProjectScope()]);
+  // R-042 (P-1, P-10a): backstop of the pages' own refusal — a client never gets an outside screen or another
+  // organisation's project rendered.
+  if (clientRefusedScreen(viewer.role, screen)) refuseClient();
   const def = SCREEN_BY_ID[screen];
   const isProject = def.scope === 'project';
   const code = projectCode ?? lastProject;
-  const project = isProject ? await getProject(code) : null;
+  const project = isProject ? await getProject(code) : projectParam ? await getProject(projectParam) : null;
+  if (project && scope.access(project).refused) refuseClient();
 
   const outside = isOutside(viewer.role, screen);
-  const readOnly = !!project && scope.readOnly(project);
-  const showPrimary = !!primary && !outside && !(readOnly && PROJECT_EDITABLE.includes(screen));
+  const access = project ? scope.access(project) : null;
+  // Same rule as getProjectContext().canEdit (src/server/project-context.ts): the Contract follows `canEditContract` (P-4 —
+  // Finance edits it on every project), Finance reads Budget, Hours and Billing (R-044); elsewhere the team rule (R-041).
+  const editable = !outside && (
+    screen === 'contract' && access
+      ? canEditContract(viewer.role, access)
+      : !financeReadOnly(viewer.role, screen) && !(!!access?.readOnly && PROJECT_EDITABLE.includes(screen))
+  );
+  // "Read-only" tag: the project's team rule, except where the screen's own rule decides (Contract, Finance's read-only screens).
+  const ownRule = !outside && (screen === 'contract' || financeReadOnly(viewer.role, screen));
+  const readOnly = !!project && (ownRule ? !editable : scope.readOnly(project));
+  const showPrimary = !!primary && editable;
+  // R-139 (P-11 a): the director and the project's leads preview the client portal from every project screen but the portal.
+  const preview = isProject && !!project && !!access && canPreviewClientView(viewer.role, access);
+  const previewHref = preview && screen !== 'client' ? screenHref('client', { code: project.code }) : null;
+  // On the portal itself, the preview banner replaces the generic outside banner (the PM is outside there: the primary and the
+  // edits stay hidden by `outside`; deciding and acknowledging stay the client's).
+  const previewBanner = preview && screen === 'client';
 
-  const extra = crumbExtra !== undefined ? crumbExtra : await crumbExtraOf(screen, { role: viewer.role, code, zone, taskId });
-  const crumb = crumbBase(screen) + (extra ? ' · ' + extra : '');
+  const extra = crumbExtra !== undefined ? crumbExtra : await crumbExtraOf(screen, { role: viewer, code, zone, taskId });
+  // R-148: the contract's reference and payment terms are typed text (shown as typed); the other extras are Keystone's.
+  const crumbText = extra && crumbExtra === undefined && DATA_CRUMB_SCREENS.has(screen)
+    ? `${t(crumbBase(screen))} · ${fieldsText(extra, t, lang)}`
+    : t(crumbBase(screen) + (extra ? ' · ' + extra : ''));
 
   const [rawNotifs, defTitle] = await Promise.all([
-    notificationsFor(viewer.role),
-    title === undefined ? defaultTitleOf(screen, { taskId, role: viewer.role }) : Promise.resolve(null),
+    notificationsFor(viewer),
+    title === undefined ? defaultTitleOf(screen, { taskId, role: viewer }) : Promise.resolve(null),
   ]);
-  const notifs = rawNotifs.map((n) => ({ ...n, title: t(n.title), sub: t(n.sub), when: t(n.when) }));
+  // R-148: a notification's sub-line joins typed fields (titles, people) with Keystone's amounts and dates.
+  const notifs = rawNotifs.map((n) => ({ ...n, title: t(n.title), sub: fieldsText(n.sub, t, lang), when: t(n.when) }));
 
   let options: ProjectOptionView[] = [];
   if (project) {
+    // R-170: number, analytic code, DAS and machine type come from the project record (the prototype constant PROJ_ID
+    // left a wizard project's line empty); R-148: the name is shown as typed (or its demo-data dictionary entry).
     options = scope.pool.map((p) => {
-      const pi = PROTO.PROJ_ID[p.code] ?? {};
       const h = healthView(p);
       return {
         code: p.code,
-        name: t(projectLabel(p)),
-        sub: t(`${pi.ana ?? ''} · DAS ${pi.das ?? '—'} · ${pi.mt ?? ''} · ${p.pm}`),
+        name: projectLabelText(p, lang),
+        sub: projectOptionSub(p),
         health: t(h.label),
         tagClass: h.cls,
         mine: scope.isMine(p),
-        readOnly: scope.scopeAvail && !scope.isMine(p),
-        // Prototype projMatch fields, plus the displayed (FR) name so what the user reads also matches.
-        haystack: `${p.code} ${p.name} ${pi.id ?? ''} ${pi.ana ?? ''} ${p.pm} ${p.client} ${lang === 'fr' ? t(p.name) : ''}`.toLowerCase(),
+        // R-041: read-only on every project the viewer is not on the team of.
+        readOnly: scope.readOnly(p),
+        haystack: projectOptionHaystack(p, dataText(p.name, lang)),
       };
     });
   }
@@ -84,16 +120,17 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
       <header className={styles.header}>
         <div className={styles.left}>
           <div className={styles.crumb}>
-            {t(crumb)}
+            {crumbText}
             {project && (
               <>
                 <span className={styles.sep}>/</span>
                 <ProjectSwitcher
                   current={project.code}
-                  currentName={t(projectLabel(project))}
+                  currentName={projectLabelText(project, lang)}
                   options={options}
                   scopeAvail={scope.scopeAvail}
                   mineCount={scope.mineCount}
+                  param={isProject ? undefined : 'project'}
                 />
               </>
             )}
@@ -117,11 +154,27 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
         </div>
         <LangToggle lang={lang} />
         <div className={styles.actions}>
+          {previewHref && (
+            <Link href={previewHref} className={`btn btn-secondary ${styles.previewBtn}`} title={t('View as client')} aria-label={t('View as client')}>
+              <Eye />
+              <span className={styles.previewLabel}>{t('View as client')}</span>
+            </Link>
+          )}
           <ExportButton screen={screen} code={project?.code ?? code} formats={exportFormatsOf(screen)} task={taskId ?? null} />
           {showPrimary && primary}
         </div>
       </header>
-      {outside && (
+      {previewBanner && (
+        <div className={styles.outside}>
+          <Eye size={16} className={styles.accentIcon} />
+          <span className={styles.outsideText}>{t('Client view · preview · read-only')}</span>
+          <Link href={screenHref('plan', { code: project.code })} className={`btn btn-ghost ${styles.homeBtn}`}>
+            <ArrowLeft />
+            {t('Back to project')}
+          </Link>
+        </div>
+      )}
+      {outside && !previewBanner && (
         <div className={styles.outside}>
           <Eye size={16} className={styles.accentIcon} />
           <span className={styles.outsideText}>{t('Outside my workspace · Read-only · ' + viewer.title)}</span>

@@ -12,6 +12,7 @@ import { STATUS_DATE, money } from '@/lib/format';
 import type { BaselineInfo } from '@/server/dal/baselines';
 import type { PlanData, PlanTodo } from '@/server/dal/plan';
 import { baselineKpiSub, daysText, finishVsBaselineText } from './i18n';
+import { dataText } from '@/i18n/data-text';
 
 export type PlanView = 'structure' | 'progress';
 
@@ -29,9 +30,11 @@ export interface PlanRowView {
   wpOption?: string;
   indent: number;
   mark: boolean;
-  /** OWN key and full name (activities). */
+  /** OWN key (or the owner's initials, `ownerIsCode` false) and display name (activities; '—' without owner, R-172). */
   owner: string | null;
   ownerName: string;
+  /** R-172: `owner` is an OWN key of the Owner select (false: initials of a person outside the OWN list, or no owner). */
+  ownerIsCode: boolean;
   /** Structure: "4 act." / "—" (WP), '' (root); activity input value in `durValue`. */
   dur: string;
   durValue: string;
@@ -90,8 +93,19 @@ export function planRows(data: PlanData, todos: PlanTodo[]): PlanRow[] {
   });
 }
 
+/**
+ * R-172 (TODO(db) closed): display name of an activity's owner — the person's full name, else short name (DAL, by activity id
+ * in `data.activities`), else the OWN directory entry, else the key; '—' for an activity without owner.
+ */
+export function planOwnerNames(data: Pick<PlanData, 'activities' | 'owners'>): (a: { id: string; owner: string | null }) => string {
+  const byAct = new Map(data.activities.map((x) => [x.id, x.ownerName]));
+  const own = new Map(data.owners.map((o) => [o.code, o.name]));
+  return (a) => (a.owner ? (byAct.get(a.id) ?? own.get(a.owner) ?? a.owner) : '—');
+}
+
 export function planRowViews(rows: PlanRow[], data: PlanData, t: T, lang: Lang): PlanRowView[] {
-  const ownerName = new Map(data.owners.map((o) => [o.code, o.name]));
+  const ownerName = planOwnerNames(data);
+  const ownerIsCode = new Map(data.activities.map((x) => [x.id, x.ownerIsCode]));
   return rows.map((r) => {
     const a = r.act;
     const sum = r.kind !== 'act';
@@ -100,13 +114,15 @@ export function planRowViews(rows: PlanRow[], data: PlanData, t: T, lang: Lang):
       kind: r.kind,
       id: r.id,
       wbs: r.wbs,
-      name: t(r.name),
+      // R-148: work package and activity names are shown as typed (or their seeded demo entry).
+      name: dataText(r.name, lang),
       nameValue: r.name,
       wpOption: r.kind === 'wp' ? `${r.id} · ${r.name}` : undefined,
       indent: r.indent,
       mark: r.mark,
       owner: a?.owner ?? null,
-      ownerName: a?.owner ? (ownerName.get(a.owner) ?? a.owner) : '',
+      ownerName: a ? ownerName(a) : '',
+      ownerIsCode: !!a?.owner && (ownerIsCode.get(a.id) ?? false),
       dur: r.kind === 'wp' ? (r.count ? `${r.count} act.` : '—') : '',
       durValue: a ? String(a.durationDays) : '',
       budget: sum ? (r.budget ? money(r.budget, lang) : '—') : String(r.budget),

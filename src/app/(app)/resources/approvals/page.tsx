@@ -5,11 +5,14 @@ import { defaultDepartment, deptSlug } from '@/domain/requests';
 import { approvalsHref } from '@/features/requests/routes';
 import { listApprovalDepartments } from '@/server/dal/requests';
 import { departmentOfPerson } from '@/server/dal/requests-screens';
+import { getScreenAccess } from '@/server/project-context';
 import { getViewer } from '@/server/session';
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 export default async function ApprovalsIndexPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  // R-042 (P-1): a client is sent home.
+  await getScreenAccess('approvals');
   const [sp, depts, viewer] = await Promise.all([searchParams, listApprovalDepartments(), getViewer()]);
   const want = one(sp.dept);
   const asked = want ? depts.find((d) => d.name === want || deptSlug(d.name) === deptSlug(want)) : undefined;

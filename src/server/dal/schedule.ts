@@ -29,8 +29,10 @@ import { milestoneStatus } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
 import { activities, activityLinks, baselines, evmPeriods, milestones, persons, projectControls, projects, scheduleBars, wbsNodes } from '@/server/db/schema';
 import { getBaselineActivities, getDisplayedBaselineCode } from './baselines';
+import { getProjectEvm } from './evm';
 import { loadWorkCalendars } from './calendars';
 import { getMilestones, getScheduleBars, getScheduleControl, type ScheduleControl } from './planning';
+import { applyApprovedChangeDurations } from './change-activities';
 import { loadScheduleNetwork, recordScheduleRun, toCpmActivity } from './schedule-network';
 
 type Q = DB | Tx;
@@ -42,11 +44,17 @@ export interface ScheduleData extends ScheduleInput {
   rolledUp: boolean;
 }
 
-/** Cumulative EVM series (k€) and BAC of a project. EV stops at the data date. */
+/**
+ * Cumulative EVM series (k€) and BAC of a project. EV stops at the data date. Delivery 7 (R-073): computed from the activities
+ * and the cost-loaded baseline (src/server/dal/evm.ts) — the progression curve's monthly SPI follows the plan; the seeded
+ * series stay only for a project without activity budgets.
+ */
 async function getEvmSeries(code: string): Promise<{ bac: number; pv: number[]; ev: number[] } | null> {
   const db = await getDb();
   const [head] = await db.select({ id: projects.id, bac: projects.budgetKeur }).from(projects).where(eq(projects.code, code));
   if (!head) return null;
+  const evm = await getProjectEvm(code);
+  if (evm) return { bac: head.bac, pv: evm.series.pv, ev: evm.series.ev };
   const rows = await db
     .select({ pv: evmPeriods.pvKeur, ev: evmPeriods.evKeur })
     .from(evmPeriods)
@@ -337,6 +345,8 @@ export type RescheduleResult =
       critical: number;
       violations: number;
       projectFloat: number;
+      /** Delivery 7 (NEW-D2-2, R-062): new durations of approved change requests applied before this run. */
+      appliedChanges?: { cr: string; code: string; from: number; to: number }[];
     }
   | { ok: false; reason: 'empty' | 'cycle' | 'invalid'; dataDate: string; cycle?: string[]; issues?: string[] };
 
@@ -347,6 +357,8 @@ export type RescheduleResult =
  */
 export async function rescheduleProject(code: string, actorName: string): Promise<RescheduleResult> {
   const db = await getDb();
+  // NEW-D2-2 (R-062): the approved change requests' new activity durations enter the plan at the next Reschedule.
+  const appliedChanges = await applyApprovedChangeDurations(code, actorName);
   const net = await loadScheduleNetwork(code);
   if (!net) throw new Error(`Unknown project ${code}`);
   const dataDate = net.dataDate;
@@ -378,6 +390,7 @@ export async function rescheduleProject(code: string, actorName: string): Promis
   const changed: string[] = [];
   const now = new Date();
   await db.transaction(async (tx) => {
+    changed.length = 0; // the transaction may run again after a concurrent write (R-010, src/server/db/transactions.ts)
     for (const a of progressed) {
       const r = result.activities[a.code];
       const stored = net.activities.find((x) => x.dbId === a.dbId)!;
@@ -427,6 +440,7 @@ export async function rescheduleProject(code: string, actorName: string): Promis
   return {
     ok: true, dataDate, finishDate: result.projectFinish, previousFinishDate, changed, critical: result.criticalPath.length,
     violations: Object.values(result.activities).filter((x) => x.violation).length, projectFloat: projectFloat(Object.values(result.activities).map((x) => x.totalFloat)),
+    ...(appliedChanges.length ? { appliedChanges } : {}),
   };
 }
 

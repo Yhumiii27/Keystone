@@ -1,10 +1,9 @@
 import 'server-only';
 // Access to a task's stored files (chapter 4, R-8) for the Route Handlers (upload, download) and the remove Server Function:
 // the task, the viewer and whether they may act. Rules: src/features/mywork/permissions.ts.
-import { getProject } from '@/server/dal/projects';
 import { listTasks, type TaskRow } from '@/server/dal/tasks';
-import { getScreenAccess, isMineProject } from '@/server/project-context';
-import type { Viewer } from '@/server/session';
+import { getScreenAccess } from '@/server/project-context';
+import { getViewer, type Viewer } from '@/server/session';
 import { canAttachTaskFiles, canDownloadTaskFiles } from './permissions';
 
 const TASK_RE = /^T-\d{1,6}$/;
@@ -18,6 +17,8 @@ export type TaskFileGate =
 export async function taskFileGate(taskId: unknown, need: 'view' | 'edit'): Promise<TaskFileGate> {
   const id = typeof taskId === 'string' ? decodeURIComponent(taskId).toUpperCase() : '';
   if (!TASK_RE.test(id)) return { ok: false, status: 404, error: 'Unknown task' };
+  // R-042 (P-1): the task sheet is outside the client's workspace — a client gets 403 (not the screens' redirect home).
+  if (!canDownloadTaskFiles(await getViewer())) return { ok: false, status: 403, error: 'You cannot open this file' };
   const { viewer, outside } = await getScreenAccess('task');
   const [task] = await listTasks({ number: id });
   if (!task) return { ok: false, status: 404, error: 'Unknown task' };
@@ -26,24 +27,5 @@ export async function taskFileGate(taskId: unknown, need: 'view' | 'edit'): Prom
     if (!canAttachTaskFiles(viewer, task.assignee, outside)) return { ok: false, status: 403, error: 'Read-only — only the assignee or the portfolio director can update this task' };
     return { ok: true, task, viewer };
   }
-  const project = viewer.role === 'client' ? await getProject(task.project.code) : null;
-  if (!canDownloadTaskFiles(viewer, !!project && isMineProject(viewer, project))) return { ok: false, status: 403, error: 'You cannot open this file' };
   return { ok: true, task, viewer };
-}
-
-/**
- * CSRF guard of the upload Route Handler (Server Functions get Next's own Origin check, Route Handlers do not): a request
- * whose Origin names another host, or that the browser flags as cross-site, is refused. Requests without either header
- * (scripts, tests) pass, as Next does for Server Functions.
- */
-export function isSameOrigin(request: Request): boolean {
-  if (request.headers.get('sec-fetch-site') === 'cross-site') return false;
-  const origin = request.headers.get('origin');
-  if (!origin) return true;
-  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host');
-  try {
-    return !!host && new URL(origin).host === host;
-  } catch {
-    return false;
-  }
 }

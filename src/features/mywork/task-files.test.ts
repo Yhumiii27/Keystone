@@ -51,6 +51,7 @@ import { openDatabase } from '@/server/db/open';
 import { listAudit } from '@/server/dal/notifications';
 import { listTaskFiles } from '@/server/dal/task-files';
 import { listTasks } from '@/server/dal/tasks';
+import { resetRateLimits } from '@/server/http/request-guard';
 import { setFilesRoot } from '@/server/storage/files';
 import { removeTaskFileAction } from './actions';
 
@@ -79,6 +80,8 @@ afterAll(() => {
 beforeEach(() => {
   state.role = 'director';
   state.lang = 'en';
+  // R-008: the upload rate limit counts per viewer and minute; each test starts with a fresh window.
+  resetRateLimits();
 });
 
 describe('task attachments (R-8)', () => {
@@ -138,13 +141,13 @@ describe('task attachments (R-8)', () => {
     expect(r.status).toBe(404);
   });
 
-  it('downloads: everyone who opens the sheet, a client only on their own organisation’s projects; seed files have no content', async () => {
+  it('downloads: everyone who opens the sheet, never a client (P-1, R-042: the task sheet is outside their workspace); seed files have no content', async () => {
     const stored = (await listTaskFiles('T-2314')).find((f) => f.hasFile)!;
     const seed = (await listTaskFiles('T-2314')).find((f) => !f.hasFile)!;
     state.role = 'quality';
     expect((await download('T-2314', stored.id)).status).toBe(200);
     state.role = 'client';
-    expect((await download('T-2314', stored.id)).status).toBe(200); // Harbor Line is the client's project
+    expect((await download('T-2314', stored.id)).status).toBe(403); // Harbor Line is the client's project, the task sheet is not theirs
     const other = (await listTasks()).find((t) => !['HLT-026', 'PRS-038', 'QFR-015'].includes(t.project.code))!;
     expect(other).toBeDefined();
     state.role = 'director';

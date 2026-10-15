@@ -51,19 +51,27 @@ beforeAll(async () => {
 
 // ── Project BOM ────────────────────────────────────────────────────────────────────────────────────────
 
+// E-4 = a (R-110): only the parts a machine actually carries are kept for the installed base. On the seed, the machines pinned by
+// ECO-2026-014 / -015 carry neither EL-HMI-15 nor FD-DET-OPT2: the prototype pinned them (09 OQ21), the goldens keep its values.
+const E4_UNPINNED = new Set(['EL-HMI-15', 'FD-DET-OPT2']);
+const e4 = (r: any) => (E4_UNPINNED.has(r.ref) ? { ...r, pinned: false, pinnedText: '' } : r);
+
 describe('project BOM (09 §1)', () => {
   it.each(DATA)('%s: flat list and KPI inputs reproduce bomRows / bomKpis', async (code) => {
     const bom = (await getProjectBom(code))!;
     const g = G.bom[code];
     const ecos = await openEcoByPart();
     const rows = [...bom.lines].sort((a, b) => a.ref.localeCompare(b.ref)).map((l) => ({
-      ref: l.ref, qty: n(l.quantity), total: $(l.totalEur), price: $(l.listPriceEur), status: l.statusLabel, eco: ecos[l.ref] ?? '', used: l.alsoUsedIn.join(', ') || '—',
+      // E-2a (R-103): the unit price is the ordered price, else the last purchase price, else the catalogue price.
+      ref: l.ref, qty: n(l.quantity), total: $(l.totalEur), price: $(l.unitPriceEur), status: l.statusLabel, eco: ecos[l.ref] ?? '', used: l.alsoUsedIn.join(', ') || '—',
       usedCount: l.usage.length ? `${l.usage.length} ${l.usage.length === 1 ? 'project' : 'projects'}` : '—', restr: l.exportRestriction ?? '—',
       lead: l.leadWeeks ? `${l.leadWeeks} wks` : '—', pu: l.wearSpare ?? '—', mfr: l.manufacturer,
     }));
     expect(rows).toEqual(g.rows);
     const s = bom.summary;
-    expect([[s.articles, `${n(s.units)} units in total`], [f(s.listValueEur / 1000), 'At unit list price'], [s.notValidated, 'Blocked for purchasing'],
+    // The prototype's BOM value adds every line (09 OQ6), here at the E-2a prices (golden generated with scripts/proto-e2a.ts).
+    const protoValue = bom.lines.reduce((a, l) => a + l.totalEur, 0);
+    expect([[s.articles, `${n(s.units)} units in total`], [f(protoValue / 1000), 'Ordered, else last purchase, else catalogue price'], [s.notValidated, 'Blocked for purchasing'],
       [s.outdatedOrObsolete, 'Replace before ordering'], [s.exportRestricted, 'Lines needing customs review']]).toEqual(kv(g.kpis));
     expect(bom.hasTree).toBe(g.hasTree);
   });
@@ -82,7 +90,7 @@ describe('project BOM (09 §1)', () => {
     expect(G.bom['EWA-051'].kpis[0].value).toBe(35); // the prototype showed Harbor Line's
   });
 
-  it('assembly tree of HLT-026 reproduces treeRows (roll-up at last purchase price)', async () => {
+  it('assembly tree of HLT-026 reproduces treeRows (roll-up at the E-2a price, R-103)', async () => {
     const asm = (await getProjectAssembly('HLT-026'))!;
     expect(asm.rows.map((r) => ({ ref: r.ref, qty: r.qty, ext: n(r.extended), unit: $(r.unitCostEur), total: $(r.extendedCostEur), rev: r.revision ?? '—', status: r.statusLabel, pad: `${r.depth * 18 + 6}px`, has: r.children.length > 0 })))
       .toEqual(G.tree);
@@ -100,8 +108,10 @@ describe('project BOM (09 §1)', () => {
       const has = r.children.length > 0;
       expect(g.ident.map((x: any) => x.v)).toEqual([r.revision ?? '—', r.makeBuyLabel, r.manufacturer, r.manufacturerRef, r.leadWeeks ? `${r.leadWeeks} weeks` : '—', has ? `${r.leafCount} parts · ${r.children.length} direct children` : 'Leaf part']);
       const d = r.unitCostEur - r.listPriceEur;
+      // E-2a (R-103): "Rolled-up cost" and its price basis (ordered, last purchase, catalogue; roll-up for an assembly).
+      const basis = { ordered: 'Ordered price', last_purchase: 'Last purchase price', catalogue: 'Catalogue price', rollup: 'Roll-up of components' }[r.priceSource];
       expect(g.cost.map((x: any) => [x.k, x.v])).toEqual([
-        ['Rolled-up cost (last purchase)', $(r.unitCostEur)], ['List / standard price', $(r.listPriceEur)], ['Delta', (d >= 0 ? '+' : '−') + $(Math.abs(d))],
+        ['Rolled-up cost', $(r.unitCostEur)], ['Price basis', basis], ['List / standard price', $(r.listPriceEur)], ['Delta', (d >= 0 ? '+' : '−') + $(Math.abs(d))],
         [`Per project (× ${perProject(r)})`, $(r.unitCostEur * perProject(r))],
       ]);
       expect(g.parents).toEqual([r.path.join(' › ') || 'Top level']);
@@ -109,8 +119,12 @@ describe('project BOM (09 §1)', () => {
   });
 
   it('where-used reproduces usedVals (default CR-BRG-SKF; paths, projects, purchase orders)', async () => {
-    for (const [q, g] of Object.entries(G.used as Record<string, any>)) {
-      const ref = await resolveWhereUsedQuery(q === '(default)' ? '' : q);
+    // R-169 (A-12): the empty search no longer opens the prototype's constant CR-BRG-SKF but the project's part used by the
+    // most projects (EL-TRF-2MVA: HLT-026, NDC-031, WSA-044), compared with the prototype's own values for that part.
+    expect([await resolveWhereUsedQuery(''), await resolveWhereUsedQuery('', 'HLT-026'), await resolveWhereUsedQuery('', 'RCF-019')]).toEqual(['EL-TRF-2MVA', 'EL-TRF-2MVA', 'FD-DET-OPT']);
+    for (const [q, g0] of Object.entries(G.used as Record<string, any>)) {
+      const g = q === '(default)' ? G.used['EL-TRF-2MVA'] : g0;
+      const ref = await resolveWhereUsedQuery(q === '(default)' ? '' : q, 'HLT-026');
       const w = (await getWhereUsed(ref, 'HLT-026'))!;
       expect(w.part.ref).toBe(g.ref);
       expect(w.paths.map((p) => ({ chain: p.chain.map((c) => `${c.ref} ×${c.qty}`).join('  ›  '), qty: `${n(p.perProject)} per project`, leaf: ref }))).toEqual(g.rows);
@@ -120,7 +134,8 @@ describe('project BOM (09 §1)', () => {
     }
   });
 
-  it('compare revisions reproduces cmpVals (+€19,180 per crane)', async () => {
+  // E-2b (R-104): golden regenerated with scripts/proto-e2b.ts — the two substitutions are now priced (+€750, +€12).
+  it('compare revisions reproduces cmpVals (+€19,942 per crane, E-2b)', async () => {
     const c = (await getRevisionComparison('HLT-026'))!;
     const g = G.compare;
     expect(`${c.assemblyRef} · rev ${c.fromRevision} → rev ${c.toRevision}`).toBe(g.title);
@@ -140,7 +155,7 @@ describe('project BOM (09 §1)', () => {
         ref: r.ref, kind: r.kind, qPer: r.qtyPerSystem, qTotal: r.recommendedQty, note: r.note ?? '—', price: $(r.lastPriceEur), total: $(r.totalEur), lead: r.leadWeeks ? `${r.leadWeeks} wks` : '—',
         frozen: r.underChange, pinned: r.pins.length > 0,
         pinnedText: r.pinSummary ? `Keep for the installed base · ${r.pinSummary.machines} ${r.pinSummary.machines === 1 ? 'machine' : 'machines'} · ${r.pinSummary.ecos.join(', ')}` : '',
-      }))).toEqual(g.rows.map((r: any) => omit(r, ['stock', 'stockText'])));
+      }))).toEqual(g.rows.map((r: any) => omit(e4(r), ['stock', 'stockText'])));
       const value = sl.rows.reduce((a, r) => a + r.totalEur, 0);
       expect([[sl.rows.length, `${sl.rows.filter((r) => r.kind === 'PU').length} wear · ${sl.rows.filter((r) => r.kind === 'PR').length} spare`],
         [f(value / 1000), `At last purchase price · × ${sl.systemQty} ${sl.systemQty > 1 ? 'systems' : 'system'}`],
@@ -256,8 +271,9 @@ describe('ECOs read through the Vigie connector (mock over the seeded mirror)', 
       const ps = pinSummary(pins[ref]);
       return ps ? `Keep for the installed base · ${ps.machines} ${ps.machines === 1 ? 'machine' : 'machines'} · ${ps.ecos.join(', ')}` : '';
     };
-    for (const r of G.stock.rows) expect(text(r.ref)).toBe(r.pinnedText);
+    for (const r of G.stock.rows) expect(text(r.ref)).toBe(e4(r).pinnedText);
     expect(text('FD-DET-OPT')).toBe('Keep for the installed base · 1 machine · ECO-2026-015');
+    expect([text('FD-DET-OPT2'), text('EL-HMI-15')]).toEqual(['', '']);
   });
 });
 
@@ -370,7 +386,7 @@ describe('stock & storages (08 §4)', () => {
         avail: n(r.available), min: r.minQty ? String(r.minQty) : '—', below: r.belowMin ? true : (r.minQty ? false : 0), value: $(r.valueEur), source: r.sourceLabel, last: day(fmtDOfIso(r.lastMovementOn)),
         pinned: !!ps, pinnedText: ps ? `Keep for the installed base · ${ps.machines} ${ps.machines === 1 ? 'machine' : 'machines'} · ${ps.ecos.join(', ')}` : '',
       };
-    })).toEqual(G.stock.rows.map((r: any) => ({ ...r, last: day(r.last) })));
+    })).toEqual(G.stock.rows.map((r: any) => ({ ...e4(r), last: day(r.last) })));
     const sync = (await getX3StockSync())!;
     const value = rows.reduce((a, r) => a + r.valueEur, 0);
     expect([[f(value / 1000), `${rows.length} lines · ${locs.length} locations`], [rows.filter((r) => r.belowMin).length, 'Reorder or transfer'],

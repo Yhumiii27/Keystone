@@ -1,7 +1,10 @@
 // Shared helpers of the export providers (chapter 4, exports feature): column / sheet builders, a "Key figures" sheet for
 // KPI tiles, parsing of the display strings some view models carry ("4 800 k€", "64 %", "0.90") back into numbers, EN date
 // strings → ISO, the project header of PDF documents and the URL parameters a screen reads. Pure (no DB access).
-import type { ColumnType, CellValue, ExportColumn, ExportContext, ExportSheet, PdfDocument } from '../types';
+import { CURRENCIES } from '@/domain/currency';
+import type { Lang } from '@/i18n/translate';
+import { dataText } from '@/i18n/data-text';
+import type { ColumnType, CellValue, ExportColumn, ExportContext, ExportSheet, ExportWorkbook, PdfBlock, PdfDocument } from '../types';
 
 /** A column: `col('budget', t('Budget'), 'money_keur')`. */
 export function col(key: string, header: string, type?: ColumnType, width?: number, extra: Partial<ExportColumn> = {}): ExportColumn {
@@ -94,9 +97,9 @@ export const dot = (...parts: (string | number | null | undefined | false)[]) =>
 /** The export date (ISO) — the document date of the PDFs. */
 export const todayIso = (ctx: Pick<ExportContext, 'now'>) => ctx.now.toISOString().slice(0, 10);
 
-/** Project reference of a PDF header ("HLT-026", translated name). */
-export function projectRef(ctx: Pick<ExportContext, 'project' | 't'>): PdfDocument['project'] {
-  return ctx.project ? { code: ctx.project.code, name: ctx.t(ctx.project.name) } : null;
+/** Project reference of a PDF header ("HLT-026", the name as typed — R-148). */
+export function projectRef(ctx: Pick<ExportContext, 'project' | 't' | 'lang'>): PdfDocument['project'] {
+  return ctx.project ? { code: ctx.project.code, name: dataText(ctx.project.name, ctx.lang) } : null;
 }
 
 /** Sheets whose rows are empty are kept only when nothing else has rows (the screen's empty state). */
@@ -127,3 +130,57 @@ export function monthIso(m: number): string {
   const day = Math.min(28, 1 + Math.round((m - whole) * 27));
   return `${y}-${String(mo + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
+
+/** An index (SPI, CPI) for a PDF tile in the viewer's language: "0.90" / "0,90". */
+export const ratioText = (v: number, lang: Lang) => new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+
+/** Working days for a PDF tile in the viewer's language: "−27 d" / "−27 j" (U+2212 minus, as the screens write it). */
+export const daysText = (v: number, lang: Lang) => `${v < 0 ? '−' : ''}${Math.abs(v)} ${lang === 'fr' ? 'j' : 'd'}`;
+
+// ── R-046 (NEW-D2-1): supplier prices masked for the roles that may not see them ──────────────────────────────────────
+
+const PRICE_COLUMNS: readonly ColumnType[] = ['money_eur', 'money_keur'];
+const PRICE_MASK = '•••';
+// C-9: an amount may be in any currency of a project — a symbol ("€4,700", "$1.20M", "4 700 £") or an ISO code next to a number
+// ("CHF 4,700", "450 k CHF", "12 000 USD").
+const CODES = CURRENCIES.join('|');
+const AMOUNT_RE = new RegExp(`[€$£]|\\d\\s*(?:[kKM]\\s*)?(?:${CODES})\\b|\\b(?:${CODES})\\s*[−+-]?\\d`);
+
+/** A display text showing an amount in any currency (masked for a viewer who may not see supplier prices). */
+export const showsAmount = (v: CellValue): boolean => typeof v === 'string' && AMOUNT_RE.test(v);
+
+/** A supplier price / value column: marked `price` (any currency) or typed in euros. */
+export const isPriceColumn = (c: ExportColumn): boolean => c.price === true || PRICE_COLUMNS.includes(c.type ?? 'text');
+
+/**
+ * A sheet without its amounts (supplier prices, order, stock and BOM values, supplier invoices — in euros or in another
+ * currency); a text cell showing an amount is masked.
+ */
+export function stripPriceColumns(s: ExportSheet): ExportSheet {
+  const columns = s.columns.filter((c) => !isPriceColumn(c));
+  const keys = new Set(columns.map((c) => c.key));
+  return {
+    ...s,
+    columns,
+    rows: s.rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => keys.has(k)).map(([k, v]) => [k, showsAmount(v) ? PRICE_MASK : v]))),
+  };
+}
+
+/** A workbook builder whose result has no supplier price for a viewer whose prices are masked (`ctx.pricesMasked`). */
+export const pricedWorkbook = (fn: (ctx: ExportContext) => Promise<ExportWorkbook | null>) => async (ctx: ExportContext): Promise<ExportWorkbook | null> => {
+  const wb = await fn(ctx);
+  return wb && ctx.pricesMasked ? { ...wb, sheets: wb.sheets.map(stripPriceColumns) } : wb;
+};
+
+/** A PDF builder whose tables lose their amounts (and totals) and whose fields / KPI tiles mask them, for a masked viewer. */
+export const pricedPdf = (fn: (ctx: ExportContext) => Promise<PdfDocument | null>) => async (ctx: ExportContext): Promise<PdfDocument | null> => {
+  const doc = await fn(ctx);
+  if (!doc || !ctx.pricesMasked) return doc;
+  const blocks = doc.blocks.map((b): PdfBlock => {
+    if (b.kind === 'table') return { kind: 'table', sheet: stripPriceColumns(b.sheet) };
+    if (b.kind === 'fields') return { ...b, items: b.items.map(([k, v]): [string, string] => [k, showsAmount(v) ? PRICE_MASK : v]) };
+    if (b.kind === 'kpis') return { ...b, items: b.items.map((i) => ({ ...i, value: showsAmount(i.value) ? PRICE_MASK : i.value, ...(showsAmount(i.sub) ? { sub: PRICE_MASK } : {}) })) };
+    return b;
+  });
+  return { ...doc, blocks };
+};

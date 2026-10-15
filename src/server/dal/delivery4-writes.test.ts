@@ -59,11 +59,12 @@ describe('purchase orders', () => {
     await approvePurchaseOrder('PO-1100', 'Romain Aubert');
     const po = (await getPurchaseOrder('PO-1100'))!;
     expect([po.status, po.submittedBy, po.decidedBy]).toEqual(['ordered', 'Fabien Bertrand', 'Romain Aubert']);
-    await rejectPurchaseOrder('PO-1082', 'Marie Lefebvre');
+    // R-095 (SC-3a, P-5c): a rejection carries its reason, stored on the order and appended to the audit change.
+    await rejectPurchaseOrder('PO-1082', 'Marie Lefebvre', 'Wrong supplier');
     expect((await getPurchaseOrder('PO-1082'))!.status).toBe('cancelled');
     // A cancelled order no longer covers the BOM: FD-DET-OPT is short again.
     expect((await getBomShortfall('HLT-026')).lines.map((l) => [l.ref, l.need])).toEqual([['FD-DET-OPT', 180]]);
-    expect(await lastAudit()).toMatchObject({ who: 'Marie Lefebvre', object: 'PO-1082', change: 'status: Awaiting approval → Cancelled' });
+    expect(await lastAudit()).toMatchObject({ who: 'Marie Lefebvre', object: 'PO-1082', change: 'status: Awaiting approval → Cancelled · Wrong supplier' });
   });
 });
 
@@ -163,22 +164,26 @@ describe('supplier invoices', () => {
 });
 
 describe('stock movements and the mock X3 exchange', () => {
+  // The stock DAL re-checks the rights with the actor's role (R-041): procurement, a storekeeper of every project.
+  const FB = { name: 'Fabien Bertrand', role: 'procurement' };
   it('adjust, transfer, reserve, issue, return, scrap with their guards; Local until pushed; import keeps local changes', async () => {
     const line = (ref: string, loc: string) => stockOf(ref, loc).then((s) => s!.id);
     const lt = await line('LT-HB-200W', 'Entrepôt central — Lyon');
-    await expect(applyStockMovement(lt, { op: 'issue', qty: 500, projectCode: 'HLT-026' }, 'Fabien Bertrand')).rejects.toThrow(/Only 120 on hand/);
-    await expect(applyStockMovement(lt, { op: 'transfer', qty: 5 }, 'Fabien Bertrand')).rejects.toThrow(/destination/);
-    await expect(applyStockMovement(lt, { op: 'reserve', qty: 5 }, 'Fabien Bertrand')).rejects.toThrow(/project is required/);
-    await applyStockMovement(lt, { op: 'transfer', qty: 20, targetLocation: 'Magasin chantier — Le Havre' }, 'Fabien Bertrand');
+    // SC-5a (Delivery 7, R-098): an issue names its activity.
+    await expect(applyStockMovement(lt, { op: 'issue', qty: 5, projectCode: 'HLT-026' }, FB)).rejects.toThrow(/Choose the activity/);
+    await expect(applyStockMovement(lt, { op: 'issue', qty: 500, projectCode: 'HLT-026', activityCode: 'A1420' }, FB)).rejects.toThrow(/Only 120 on hand/);
+    await expect(applyStockMovement(lt, { op: 'transfer', qty: 5 }, FB)).rejects.toThrow(/destination/);
+    await expect(applyStockMovement(lt, { op: 'reserve', qty: 5 }, FB)).rejects.toThrow(/project is required/);
+    await applyStockMovement(lt, { op: 'transfer', qty: 20, targetLocation: 'Magasin chantier — Le Havre' }, FB);
     expect([(await stockOf('LT-HB-200W', 'Entrepôt central — Lyon'))!.onHand, (await stockOf('LT-HB-200W', 'Magasin chantier — Le Havre'))!.onHand]).toEqual([100, 20]);
-    await applyStockMovement(lt, { op: 'reserve', qty: 30, projectCode: 'HLT-026' }, 'Fabien Bertrand');
-    await expect(applyStockMovement(lt, { op: 'reserve', qty: 1, projectCode: 'NDC-031' }, 'Fabien Bertrand')).rejects.toThrow(/another project/);
-    await applyStockMovement(lt, { op: 'issue', qty: 10, projectCode: 'HLT-026', activityCode: 'A1420' }, 'Fabien Bertrand');
+    await applyStockMovement(lt, { op: 'reserve', qty: 30, projectCode: 'HLT-026' }, FB);
+    await expect(applyStockMovement(lt, { op: 'reserve', qty: 1, projectCode: 'NDC-031' }, FB)).rejects.toThrow(/another project/);
+    await applyStockMovement(lt, { op: 'issue', qty: 10, projectCode: 'HLT-026', activityCode: 'A1420' }, FB);
     expect(await stockOf('LT-HB-200W', 'Entrepôt central — Lyon')).toMatchObject({ onHand: 90, reserved: 20, reservedForShort: 'HLT', source: 'local' });
     expect((await listStockMovements({ limit: 1 }))[0].where).toMatch(/^Entrepôt central — Lyon → A1420 /);
-    await applyStockMovement(lt, { op: 'return', qty: 5, projectCode: 'HLT-026' }, 'Fabien Bertrand');
-    await applyStockMovement(lt, { op: 'scrap', qty: 5 }, 'Fabien Bertrand');
-    await applyStockMovement(lt, { op: 'adjust', qty: 0 }, 'Fabien Bertrand');
+    await applyStockMovement(lt, { op: 'return', qty: 5, projectCode: 'HLT-026' }, FB);
+    await applyStockMovement(lt, { op: 'scrap', qty: 5 }, FB);
+    await applyStockMovement(lt, { op: 'adjust', qty: 0 }, FB);
     expect(await stockOf('LT-HB-200W', 'Entrepôt central — Lyon')).toMatchObject({ onHand: 0, reserved: 0, reservedForProject: null });
     const moves = (await listStockMovements({ ref: 'LT-HB-200W', limit: 6 })).map((m) => [m.typeLabel, m.qty, m.who, m.pendingPush]);
     expect(moves.slice(0, 5)).toEqual([['Adjust', 0, 'Fabien Bertrand', true], ['Scrap', 5, 'Fabien Bertrand', true], ['Return', 5, 'Fabien Bertrand', true], ['Issue', 10, 'Fabien Bertrand', true], ['Reserve', 30, 'Fabien Bertrand', true]]);
@@ -297,7 +302,7 @@ describe('ECO progress sent to Vigie (outbox)', () => {
   });
 });
 
-describe('links to Vigie (OPEN QUESTION V-1)', () => {
+describe('links to Vigie (routes and parameters agreed by NEW-D4-1 "a")', () => {
   it('default base http://localhost:3200, NEXT_PUBLIC_VIGIE_URL overrides; new-ECO link prefilled', () => {
     expect(vigieEcoUrl('ECO-2026-015')).toBe('http://localhost:3200/modifications-techniques/ECO-2026-015');
     expect(vigieNewEcoUrl({ partRef: 'HST-BRK-DSC', projectCode: 'HLT-026', title: 'Disc brake' })).toBe('http://localhost:3200/modifications-techniques/nouvelle?part=HST-BRK-DSC&project=HLT-026&title=Disc+brake&source=keystone');

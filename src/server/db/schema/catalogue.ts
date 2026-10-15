@@ -3,7 +3,7 @@
 // recommended wear & spare parts lists of the systems. Project usage (BOM lines), drawings and revision diffs live in
 // plm.ts. HS code, quantities and values are first-class columns: the future "Expédition & transport" module
 // (docs/BACKLOG.md §1) reads them for customs summaries and packing-list checks.
-import { date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { ExportControl, PartMakeBuy, PartStatus, PartType, PartUnit, WearSpare } from '../codes';
 import { eur, id, num, timestamps } from './_common';
 import { persons } from './organisation';
@@ -31,6 +31,16 @@ export const parts = pgTable('parts', {
   /** Export-control family of the restriction (null = none). */
   exportControl: text('export_control').$type<ExportControl>(),
   status: text('status').$type<PartStatus>().notNull(),
+  /**
+   * R-102 (E-1a, E-1b): engineering's qualification. `hs_not_applicable` = an explicit "no customs code" (null `hs_code` alone
+   * also means "not filled in"); `export_reviewed` = the export restriction was confirmed, "None" included (a null
+   * `export_restriction` alone also means "not checked"; false on the rows that existed before); who validated the part and
+   * when (null for the seed's Validated parts).
+   */
+  hsNotApplicable: boolean('hs_not_applicable').notNull().default(false),
+  exportReviewed: boolean('export_reviewed').notNull().default(false),
+  validatedAt: timestamp('validated_at', { withTimezone: true }),
+  validatedByPersonId: uuid('validated_by_person_id').references(() => persons.id),
   /** Current revision letter / index; null = "—" (software, no revision). */
   revision: text('revision'),
   /** Lead time in weeks; null = none ("—", prototype 0). */

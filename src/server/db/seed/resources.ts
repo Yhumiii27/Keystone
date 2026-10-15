@@ -1,13 +1,16 @@
-// Resources and HR seed: weekly allocations (PEOPLE), rate cards (RATE_ROLES, MULTS, legacy RATES), skills
+// Resources and HR seed: weekly allocations (PEOPLE), the dated rate grid (RATE_ROLES, MULTS — R-083), skills
 // (SKILLS, SKILL_LV, CERTS), leave (LEAVE_DAYS, LEAVE) and public holidays (SETTINGS0.holidays), Lucca hours
 // (HOURS) and what-if levelling (LEVERS, AUTO, the HLT-026 scenarios of the initial state). See schema/resources.ts.
 import { PROTO } from '@/server/prototype';
-import { addDaysIso, hoursMatching, isoOfDisplayDate, leaveType, whatIfPriority, type WhatIfPriority } from '../codes';
+import { LEAVE_TYPE_ROWS } from '@/domain/absences';
+import { addDaysIso, hoursMatching, isoOfDisplayDate, leaveTypeOfNature, whatIfPriority, type WhatIfPriority } from '../codes';
+import { sql } from 'drizzle-orm';
+import { RATE_GRID_START, RATE_MULTIPLIER_DEFAULTS } from '@/domain/rate-defaults';
 import {
-  allocations, certifications, hoursImports, hoursLines, jobTitleRates, leaveEntries, leaveTypes, personSkills, publicHolidays, rateMultipliers,
-  rateRoles, skills, unassignedHours, whatIfAutoLevers, whatIfContexts, whatIfLevers, whatIfScenarioLevers, whatIfScenarios,
+  allocations, certifications, hoursImports, hoursLines, leaveEntries, leaveTypes, personSkills, persons, publicHolidays, rateMultiplierRates, rateMultipliers,
+  rateRoleRates, rateRoles, skills, unassignedHours, whatIfAutoLevers, whatIfContexts, whatIfLevers, whatIfScenarioLevers, whatIfScenarios,
 } from '../schema';
-import type { Tx } from '../types';
+import type { DB, Tx } from '../types';
 import { must, newId, personId, type SeedCtx } from './context';
 
 /** Monday of the first week of the 8-week resource window (w/c 28 Sep 2026; `weeks` 5182). */
@@ -23,8 +26,64 @@ export const WHATIF_SCENARIOS: { name: string; priority: WhatIfPriority; levers:
   { name: 'B', priority: 'people', levers: ['delay', 'move'] },
 ];
 
+/** The skills matrix columns (SKILLS = the Settings skills list), in order. */
+export const skillRowsOf = () => (PROTO.SKILLS as string[]).map((name, i) => ({ id: newId(), name, position: i + 1 }));
+
+/**
+ * Reference data of both seeds (R-011): skills, leave types, public holidays (Settings holiday list) and the what-if
+ * levelling levers. Returns the skill rows (the demo rates people against them).
+ */
+export async function seedResourceReference(tx: Tx): Promise<{ id: string; name: string; position: number }[]> {
+  const skillRows = skillRowsOf();
+  await tx.insert(skills).values(skillRows);
+  // NEW-CURSUS-4 (R-031, R-173): two simple types, Leave and Absence — never the reason of an absence.
+  await tx.insert(leaveTypes).values(LEAVE_TYPE_ROWS.map((t, i) => ({ code: t.code, label: t.label, daysPerWeek: t.daysPerWeek, position: i + 1 })));
+  await tx.insert(publicHolidays).values(
+    (PROTO.SETTINGS0.holidays as string[]).map((h, i) => {
+      const [day, name] = h.split(' · ');
+      return { id: newId(), countryCode: 'FR', date: isoOfDisplayDate(day)!, name, position: i + 1 };
+    }),
+  );
+  await tx.insert(whatIfLevers).values(
+    (PROTO.LEVERS as [string, string, { float: number; cost: number; peak: number; over: number; side?: string }][]).map(([code, label, e], i) => ({
+      code, label, floatDays: e.float, costKeur: e.cost, peakPts: e.peak, overPeople: e.over, sideEffect: e.side ?? null, position: i + 1,
+    })),
+  );
+  await tx.insert(whatIfAutoLevers).values(
+    Object.entries(PROTO.AUTO as Record<string, string[]>).flatMap(([prio, levers]) =>
+      levers.map((leverCode, position) => {
+        if (!whatIfPriority.isCode(prio)) throw new Error(`Seed: unknown what-if priority "${prio}"`);
+        return { priority: prio, leverCode, position };
+      }),
+    ),
+  );
+  return skillRows;
+}
+
+/**
+ * R-178 / R-083: the five premium multipliers (shared constant RATE_MULTIPLIER_DEFAULTS — placeholder factors for the direction to
+ * confirm) with their first versions from RATE_GRID_START. Idempotent and production-safe: a missing key is added, an existing
+ * multiplier (and any factor edited since) is never overwritten. Used by the demo seed, the production seed and its backfill.
+ * Returns the number of multipliers added.
+ */
+export async function seedRateMultipliers(q: Tx | DB): Promise<number> {
+  const added = await q
+    .insert(rateMultipliers)
+    .values(RATE_MULTIPLIER_DEFAULTS.map(({ key, label }, i) => ({ key, label, position: i + 1 })))
+    .onConflictDoNothing()
+    .returning({ key: rateMultipliers.key });
+  if (!added.length) return 0;
+  const keys = new Set(added.map((a) => a.key));
+  await q
+    .insert(rateMultiplierRates)
+    .values(RATE_MULTIPLIER_DEFAULTS.filter((m) => keys.has(m.key)).map(({ key, factor }) => ({ key, effectiveFrom: RATE_GRID_START, factor })))
+    .onConflictDoNothing();
+  return added.length;
+}
+
 export async function seedResources(tx: Tx, ctx: SeedCtx): Promise<void> {
   const people = PROTO.PEOPLE as [string, string, number[]][];
+  const skillRows = await seedResourceReference(tx);
 
   // Allocations: 8 persons × 8 weeks.
   await tx.insert(allocations).values(
@@ -33,20 +92,15 @@ export async function seedResources(tx: Tx, ctx: SeedCtx): Promise<void> {
     ),
   );
 
-  // Rates.
-  await tx.insert(rateRoles).values(
-    (PROTO.RATE_ROLES as [string, number][]).map(([role, rate], i) => ({ id: newId(), role, baseRateEur: rate, isExternal: /external/.test(role), position: i + 1 })),
-  );
-  await tx.insert(rateMultipliers).values(
-    (PROTO.MULTS as [string, string, number][]).map(([key, label, factor], i) => ({ key, label, factor, position: i + 1 })),
-  );
-  await tx.insert(jobTitleRates).values(
-    Object.entries(PROTO.RATES as Record<string, number>).map(([jobTitle, rateEur], i) => ({ jobTitle, rateEur, position: i + 1 })),
-  );
+  // Rates (R-083: the grid is dated — the prototype's RATE_ROLES are first versions from 1 Jan 2026; a person gets the grid role
+  // named exactly as their job title). The prototype's job-title rates (RATES) are retired (A-10: one valuation of hours).
+  const roleRows = (PROTO.RATE_ROLES as [string, number][]).map(([role, rate], i) => ({ id: newId(), role, rate, isExternal: /external/.test(role), position: i + 1 }));
+  await tx.insert(rateRoles).values(roleRows.map(({ id, role, isExternal, position }) => ({ id, role, isExternal, position })));
+  await tx.insert(rateRoleRates).values(roleRows.map((r) => ({ rateRoleId: r.id, effectiveFrom: RATE_GRID_START, baseRateEur: r.rate })));
+  await seedRateMultipliers(tx);
+  await tx.execute(sql`update ${persons} set rate_role_id = r.id from ${rateRoles} r where ${persons.rateRoleId} is null and ${persons.jobTitle} = r.role`);
 
-  // Skills, levels, certifications.
-  const skillRows = (PROTO.SKILLS as string[]).map((name, i) => ({ id: newId(), name, position: i + 1 }));
-  await tx.insert(skills).values(skillRows);
+  // Skill levels, certifications (the skills are reference data).
   await tx.insert(personSkills).values(
     Object.entries(PROTO.SKILL_LV as Record<string, number[]>).flatMap(([name, levels]) =>
       levels.map((level, i) => ({ personId: personId(ctx, name), skillId: skillRows[i].id, level })),
@@ -58,28 +112,20 @@ export async function seedResources(tx: Tx, ctx: SeedCtx): Promise<void> {
     ),
   );
 
-  // Leave and public holidays.
+  // Leave (leave types and public holidays are reference data). NEW-CURSUS-4: the prototype's CP / RTT weeks are Leave,
+  // its Sick / Training weeks Absence; their working days are kept (availability and KPIs unchanged).
   const leaveDays = PROTO.LEAVE_DAYS as Record<string, number>;
-  await tx.insert(leaveTypes).values(
-    Object.entries(leaveDays).map(([label, days], i) => ({ code: leaveType.code(label), label, daysPerWeek: days, position: i + 1 })),
-  );
   const leaveRows = Object.entries(PROTO.LEAVE as Record<string, Record<string, string>>).flatMap(([name, byWeek]) =>
     Object.entries(byWeek).map(([week, label]) => {
       const weekStart = resourceWeekStart(+week);
       const days = leaveDays[label];
       return {
-        id: newId(), personId: personId(ctx, name), leaveType: leaveType.code(label), weekStart, startDate: weekStart,
+        id: newId(), personId: personId(ctx, name), leaveType: leaveTypeOfNature(label), weekStart, startDate: weekStart,
         endDate: addDaysIso(weekStart, days - 1), days,
       };
     }),
   );
   await tx.insert(leaveEntries).values(leaveRows);
-  await tx.insert(publicHolidays).values(
-    (PROTO.SETTINGS0.holidays as string[]).map((h, i) => {
-      const [day, name] = h.split(' · ');
-      return { id: newId(), countryCode: 'FR', date: isoOfDisplayDate(day)!, name, position: i + 1 };
-    }),
-  );
 
   // Lucca hours (HLT-026, September 2026).
   for (const [code, h] of Object.entries(PROTO.HOURS as Record<string, { imported: string; code: string; lines: [string, string, number, number][]; unassigned: [string, number, string][] }>)) {
@@ -99,20 +145,7 @@ export async function seedResources(tx: Tx, ctx: SeedCtx): Promise<void> {
     );
   }
 
-  // What-if levelling.
-  await tx.insert(whatIfLevers).values(
-    (PROTO.LEVERS as [string, string, { float: number; cost: number; peak: number; over: number; side?: string }][]).map(([code, label, e], i) => ({
-      code, label, floatDays: e.float, costKeur: e.cost, peakPts: e.peak, overPeople: e.over, sideEffect: e.side ?? null, position: i + 1,
-    })),
-  );
-  await tx.insert(whatIfAutoLevers).values(
-    Object.entries(PROTO.AUTO as Record<string, string[]>).flatMap(([prio, levers]) =>
-      levers.map((leverCode, position) => {
-        if (!whatIfPriority.isCode(prio)) throw new Error(`Seed: unknown what-if priority "${prio}"`);
-        return { priority: prio, leverCode, position };
-      }),
-    ),
-  );
+  // What-if levelling (the levers are reference data): the HLT-026 context and scenarios.
   const hlt = must(ctx.projectByCode, 'HLT-026', 'project');
   await tx.insert(whatIfContexts).values({ projectId: hlt, weekStart: RESOURCE_WINDOW_START, peakLoad: WHATIF_BASE_LOAD });
   const allLevers = (PROTO.LEVERS as [string][]).map(([code]) => code);

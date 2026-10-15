@@ -5,11 +5,12 @@ import { FR_MONTHS } from '@/i18n/fr-rules';
 
 const MONTHS = 'Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec';
 
-/** Leave codes the prototype leaves in English in FR (06 OQ12). CP and RTT are French already. */
+/**
+ * Leave codes the prototype leaves in English in FR (06 OQ12). NEW-CURSUS-4 / R-173: the leave types are Leave and Absence
+ * (shared dictionary); the reason of an absence (sick leave…) is never shown, so it has no entry any more.
+ */
 const LEAVE_FR: Record<string, string> = {
-  Sick: 'Maladie',
   'Hol.': 'Férié',
-  'Sick · sick leave': 'Maladie · arrêt maladie',
   'Hol. · public holiday': 'Férié · jour férié',
   // Tag of hours routed to a work package ("heures affectées").
   Assigned: 'Affectées',
@@ -36,6 +37,11 @@ const RULES: [RegExp, (t: T, ...m: string[]) => string][] = [
   ],
   // Assign toast.
   [/^(\d+(?:[.,]\d+)?) h assigned to (.+)$/, (t, _s, h, wp) => `${h.replace('.', ',')} h affectées à ${t(wp)}`],
+  // R-083: dated rates on the rate card ("since 1 Jan 2026", "70 € from 1 Nov 2026", "×1.5 from 1 Jan 2027").
+  [/^since (\d{1,2} \w{3} \d{4})$/, (t, _s, d) => `depuis le ${t(d)}`],
+  [/^(.+) from (\d{1,2} \w{3} \d{4})$/, (t, _s, v, d) => `${v} à partir du ${t(d)}`],
+  // R-083: Hours KPI — lines whose person has no rate on the import's month.
+  [/^(\d+) lines not valued$/, (_t, _s, n) => `${n} lignes non valorisées`],
 ];
 
 /** t() extended with the HR screens' FR forms. */

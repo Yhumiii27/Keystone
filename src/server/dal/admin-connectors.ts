@@ -1,10 +1,14 @@
 import 'server-only';
 // Connectors of Activity & integrations (docs/spec/10 §2) as the screen shows them: the connectors of integrations.ts
 // (Vigie and Cursus already carry the live state of their connector layer) plus the Codex row read from Keystone's
-// Codex index connector (src/server/dal/documents.ts: simulated index sync — Codex has no API yet, so its mode is
-// "mock"): last sync and record count of the latest index sync, as the Documents screen shows them. "Sync now" on Codex
-// runs that index sync, then records the run like every other connector (integrations.ts `syncConnector`).
-import { getCodexSyncState, syncCodexIndex } from './documents';
+// Codex index connector (src/server/dal/documents.ts). Without CODEX_API_URL its mode is "mock" (R-021: shown "Mock",
+// without a last-sync date): the row shows the record count of Keystone's index, as the Documents screen does, and "Sync
+// now" runs the index sync, recorded as a simulated run like every mock connector (integrations.ts `syncConnector`).
+// Delivery 8 (R-033): with CODEX_API_URL the row is live — "Sync now" delivers the approval outbox
+// (getCodexConnector().sync()) before reading Codex's index, and a failure of either marks the row.
+import { codexConnectorMode } from '@/server/integrations/codex/config';
+import { getCodexConnector } from '@/server/integrations/codex/connector';
+import { getCodexSyncState, refreshCodexIndex, syncCodexIndex } from './documents';
 import { listConnectors, syncConnector, type ConnectorRow } from './integrations';
 import type { Actor } from './ops-common';
 
@@ -22,16 +26,29 @@ export async function listAdminConnectors(): Promise<ConnectorRow[]> {
   const [rows, codex] = await Promise.all([listConnectors(), getCodexSyncState()]);
   return rows.map((c) =>
     c.name === CODEX_CONNECTOR && c.kind === 'static'
-      ? { ...c, mode: 'mock', lastSyncAt: codex?.syncedAt ?? c.lastSyncAt, lastVolume: codex ? withCodexRecords(c.lastVolume, codex.records) : c.lastVolume }
+      ? { ...c, lastVolume: codex ? withCodexRecords(c.lastVolume, codex.records) : c.lastVolume }
       : c,
   );
 }
 
-/** "Sync now" (workspace check and run log in `syncConnector`); Codex first syncs its index. */
-export async function syncAdminConnector(name: string, actor: Actor): Promise<{ ok: boolean; volume: string; error: string | null }> {
+/**
+ * "Sync now" (workspace check, refusals and run log in `syncConnector`). Codex: live (HTTP), the outbox is delivered, then
+ * Codex's index is read, both inside the logged run; mock, the run is simulated and Keystone's index sync recorded.
+ */
+export async function syncAdminConnector(name: string, actor: Actor): Promise<{ ok: boolean; volume: string; error: string | null; simulated: boolean }> {
   if (name !== CODEX_CONNECTOR) return syncConnector(name, actor);
+  if (codexConnectorMode() === 'http')
+    return syncConnector(name, actor, {
+      exchange: async () => {
+        const out = await getCodexConnector().sync();
+        const idx = await refreshCodexIndex(actor.name);
+        if (!idx.read) return { ok: false, volume: '', error: 'Codex disabled' };
+        const volume = `${out.delivered} sent · ${out.pending} pending · ${out.refreshed + idx.applied} refreshed`;
+        return { ok: out.failed === 0, volume, error: out.failed ? `${out.failed} failed` : null };
+      },
+    });
   const r = await syncConnector(name, actor);
   if (!r.ok) return r;
   const records = await syncCodexIndex(actor.name);
-  return { ok: true, volume: `${records} records`, error: null };
+  return { ok: true, volume: `${records} records`, error: null, simulated: r.simulated };
 }

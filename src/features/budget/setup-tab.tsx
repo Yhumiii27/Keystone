@@ -1,12 +1,19 @@
 // Budget › Structure & changes tab (docs/spec/04 §1.5; template 379–447, logic 3829–3833, 4048–4056). Server Component.
 // Chapter 4 (A-14): "Add category" offers Settings › Cost categories and the row pencil edits name, type and budget.
+// Delivery 7: the reconciliation and the change list read the single change-request register (A-4: approved / pending
+// changes, each request opening Change control); the contingency tile shows what the register drew — validated
+// draw-downs — and the forecast consumption apart (A-8).
 import { ArrowRight, HourglassHigh } from '@phosphor-icons/react/dist/ssr';
+import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 import { CardGrid, EmptyState, LO, OK, ReconStep, SectionCard, statusTagClass } from '@/components/app';
 import { ButtonLink } from '@/components/ds/Button';
 import { CardTitle } from '@/components/ds/Card';
 import { Table, Td, Th } from '@/components/ds/Table';
-import { contingencyDrawn, isLongLead, workPackageBar, workPackageTotals, type OfferQuote } from '@/domain/evm';
+import { screenHref } from '@/config/screens';
+import { CATEGORY_FROZEN_MESSAGE } from '@/domain/baseline-policy';
+import { contingencyTile } from '@/domain/cost-control';
+import { isLongLead, workPackageBar, workPackageTotals, type OfferQuote } from '@/domain/evm';
 import type { Lang, T } from '@/i18n/translate';
 import { money, pct } from '@/lib/format';
 import type { CostControl } from '@/server/dal/cost';
@@ -15,8 +22,9 @@ import type { ListOption } from '@/domain/settings-rules';
 import { AddCategoryButton, EditCategoryButton } from './category-buttons';
 import { addCategoryFormDef, editCategoryFormDef, editCategoryValues } from './category-forms';
 import { costTypeLabel } from './i18n';
-import { NewChangeRequestLink } from './soon-button';
+import { NewChangeRequestLink } from './change-request-link';
 import s from './budget.module.css';
+import { dataText } from '@/i18n/data-text';
 
 export interface SetupTabProps {
   cost: CostControl;
@@ -34,6 +42,11 @@ export interface SetupTabProps {
   context?: string;
   /** Settings › Cost categories offered by "Add category" (active values, A-14). */
   categoryOptions?: readonly ListOption[];
+  /**
+   * Delivery 8 (R-081, C-3a): the project has BL1 — the dialogs drop the budget field (a new category starts at 0) and a hint
+   * points to Change control: the amount changes only through an approved change request.
+   */
+  amountsFrozen?: boolean;
   lang: Lang;
   t: T;
 }
@@ -54,11 +67,19 @@ function CardHead({ title, subtitle, actions }: { title: string; subtitle: strin
   );
 }
 
-export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, code, context, categoryOptions = [], lang, t }: SetupTabProps) {
+export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, code, context, categoryOptions = [], amountsFrozen = false, lang, t }: SetupTabProps) {
   const f = (k: number, signed?: boolean) => money(k, lang, { signed });
   const m = (i: number | null) => (i == null ? '' : (cost.chartMonths[i] ?? ''));
   const rc = cost.recon;
-  const cont = contingencyDrawn(rc.cont, rc.contUsed);
+  // A-8: drawn = the register's validated draw-downs; the forecast consumption shows apart (LO when above the provision).
+  const cont = contingencyTile(rc.cont, rc.contUsed, rc.contForecast);
+  const contSub = [
+    t(`${cont.pct}% drawn`),
+    cont.over ? t(`${f(cont.over, true)} over`) : null,
+    cont.forecast !== rc.contUsed ? `${t('Forecast')} ${f(cont.forecast)}` : null,
+    rc.contPending ? `${f(rc.contPending)} ${t('awaiting validation')}` : null,
+  ].filter(Boolean).join(' · ');
+  const crHref = (id: string) => `${screenHref('changes', { code: code ?? '' })}?cr=${encodeURIComponent(id)}`;
   const recon = [
     { label: 'Original budget', value: f(rc.orig), sub: t(`BL1 · ${cost.baselineSet}`) },
     {
@@ -68,13 +89,8 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
       color: rc.chg ? 'var(--color-accent-300)' : 'var(--color-neutral-400)',
     },
     { label: 'Current budget (BAC)', value: f(cost.bac), sub: t('Basis for CPI / EAC'), highlight: true },
-    { label: 'Pending', value: rc.pending ? f(rc.pending, true) : '—', sub: t(rc.pendingSub), color: 'var(--color-neutral-300)' },
-    {
-      label: 'Contingency',
-      value: f(rc.cont),
-      sub: t(`${cont.pct}% drawn`) + (cont.over ? ' · ' + t(`${f(cont.over, true)} over`) : ''),
-      color: cont.over ? LO : OK,
-    },
+    { label: 'Pending', value: rc.pending ? f(rc.pending, true) : '—', sub: rc.pendingSub.split(' · ').map(t).join(' · '), color: 'var(--color-neutral-300)' },
+    { label: 'Contingency', value: f(rc.cont), sub: contSub, color: cont.alert ? LO : OK },
   ];
   const wpRows = cost.workPackages.map((w) => ({ ...w, weight: 400 }));
   const tot = workPackageTotals(cost.workPackages);
@@ -99,8 +115,8 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
             <tbody>
               {offer.map((q, i) => (
                 <tr key={i}>
-                  <Td className={s.strong}>{t(q.system)}</Td>
-                  <Td color="var(--color-neutral-300)">{t(q.supplier)}</Td>
+                  <Td className={s.strong}>{dataText(q.system, lang)}</Td>
+                  <Td color="var(--color-neutral-300)">{q.supplier}</Td>
                   <Td align="right" numeric>
                     {f(q.amount)}
                   </Td>
@@ -124,7 +140,7 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
               <div key={r.id} className={s.refRow}>
                 <span className={s.refId}>{r.id}</span>
                 <span className={s.refName}>
-                  <span>{t(r.name)}</span>
+                  <span>{dataText(r.name, lang)}</span>
                   <span className={s.refPattern}>{t(r.pattern)}</span>
                 </span>
                 <span className={s.refYear}>{r.year}</span>
@@ -135,7 +151,7 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
             <span className={s.kicker}>{t('Other cost streams')}</span>
             {cost.streams.map((st, i) => (
               <div key={i} className={s.streamRow}>
-                <span>{t(st.name)}</span>
+                <span>{dataText(st.name, lang)}</span>
                 <span className={s.streamBasis}>{t(st.basis)}</span>
               </div>
             ))}
@@ -158,8 +174,17 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
           <CardHead
             title={t('Cost categories')}
             subtitle={t('Defined per project · actuals map in by rule')}
-            actions={canEdit ? <AddCategoryButton code={code} context={context} form={addCategoryFormDef(categoryOptions)} /> : undefined}
+            actions={canEdit ? <AddCategoryButton code={code} context={context} form={addCategoryFormDef(categoryOptions, { frozen: amountsFrozen })} /> : undefined}
           />
+          {canEdit && amountsFrozen && (
+            // R-081 (C-3a, A-4): after BL1 an amount moves only through an approved change request.
+            <p className={s.frozenHint}>
+              {t(CATEGORY_FROZEN_MESSAGE)} ·{' '}
+              <Link href={`${screenHref('changes', { code })}?new=1`} className={s.frozenLink}>
+                {t('New change request')}
+              </Link>
+            </p>
+          )}
           <Table size={13}>
             <thead>
               <tr>
@@ -177,7 +202,7 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
                   <Td tone="muted" numeric>
                     {c.code}
                   </Td>
-                  <Td className={s.strong}>{t(c.name)}</Td>
+                  <Td className={s.strong}>{dataText(c.name, lang)}</Td>
                   <Td>
                     <span className="tag tag-neutral">{costTypeLabel(c.costTypeLabel, t, lang)}</span>
                   </Td>
@@ -187,7 +212,7 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
                   </Td>
                   {canEdit && (
                     <Td align="right">
-                      <EditCategoryButton code={code} context={context} form={editCategoryFormDef()} category={c.code} values={editCategoryValues(c)} />
+                      <EditCategoryButton code={code} context={context} form={editCategoryFormDef({ frozen: amountsFrozen })} category={c.code} values={editCategoryValues(c, { frozen: amountsFrozen })} />
                     </Td>
                   )}
                 </tr>
@@ -205,9 +230,15 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
           />
           {cost.changes.map((cr) => (
             <div key={cr.id} className={s.crRow}>
-              <span className={s.crId}>{cr.id}</span>
+              {code ? (
+                <Link href={crHref(cr.id)} className={s.crId}>
+                  {cr.id}
+                </Link>
+              ) : (
+                <span className={s.crId}>{cr.id}</span>
+              )}
               <div className={s.crMain}>
-                <span className={s.crTitle}>{t(cr.title)}</span>
+                <span className={s.crTitle}>{dataText(cr.title, lang)}</span>
                 <span className={s.crMeta}>{t(cr.meta)}</span>
               </div>
               <div className={s.crAmounts}>
@@ -258,7 +289,7 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
                   <Td tone="muted" numeric>
                     {w.wbs}
                   </Td>
-                  <Td>{t(w.name)}</Td>
+                  <Td>{dataText(w.name, lang)}</Td>
                   <Td align="right" numeric>
                     {f(w.original)}
                   </Td>

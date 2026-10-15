@@ -12,3 +12,6 @@ export const savHref = (view: SavView = 'claims') => (view === 'claims' ? screen
 
 /** An ECO on Keystone's Change orders screen (`/reference/eco?eco=ECO-2026-015`) — the configuration tags' target. */
 export const ecoHref = (eco: string) => `${screenHref('eco')}?eco=${encodeURIComponent(eco)}`;
+
+/** A claim's drawer on the Claims view (`/after-sales/claims?claim=WC-014`); null closes it (R-143). */
+export const claimHref = (claim: string | null) => (claim ? `${screenHref('sav')}?claim=${encodeURIComponent(claim)}` : screenHref('sav'));

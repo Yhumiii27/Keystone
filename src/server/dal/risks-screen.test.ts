@@ -17,7 +17,7 @@ describe('getRiskScreen', () => {
     const s = (await getRiskScreen('HLT-026'))!;
     expect(s.register.risks).toHaveLength(8);
     expect(s.contingency).toBe(150);
-    expect(s.team).toEqual(PROTO.DEFS['HLT-026'].team);
+    expect(s.team).toEqual([...PROTO.DEFS['HLT-026'].team, 'Antoine Girard', 'Gabriel Comte']); // R-041 (P-2): + the seeded referents
   });
 
   it('other projects with data compare with DEFS.cont (NDC-031 → 100)', async () => {
@@ -37,13 +37,15 @@ describe('getRiskScreen', () => {
 });
 
 describe('getContingencyScreen', () => {
-  it('HLT-026 register and approvers "R. Aubert · Project manager" / "M. Lefebvre · Portfolio director"', async () => {
+  // Delivery 7 (C-4): no approver is chosen any more; "Linked to" offers the project's change requests (not drafts), risks
+  // (open first) and NCRs.
+  it('HLT-026 register and the items a draw-down can be linked to', async () => {
     const s = (await getContingencyScreen('HLT-026'))!;
     expect([s.contingency.initial, s.contingency.drawn, s.contingency.remaining, s.contingency.exposure]).toEqual([150, 48, 102, 340]);
-    expect(s.approvers).toEqual([
-      { name: 'R. Aubert', title: 'Project manager' },
-      { name: 'M. Lefebvre', title: 'Portfolio director' },
-    ]);
+    expect(s.links.filter((l) => l.type === 'change_request').map((l) => l.value)).toEqual(['CR-004', 'CR-006', 'CR-007', 'CR-008', 'CR-005']);
+    expect(s.links.find((l) => l.value === 'CR-004')!.label).toBe('CR-004 · Additional piling — soft ground at Bay 4');
+    expect(s.links.filter((l) => l.type === 'risk').map((l) => l.value).at(-1)).toBe('R-05');
+    expect(s.links.some((l) => l.type === 'ncr')).toBe(true);
     expect(await getContingencyScreen('NOPE-000')).toBeNull();
   });
 });

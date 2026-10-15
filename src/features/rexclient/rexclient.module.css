@@ -85,6 +85,20 @@ button.clRow:disabled { cursor: progress; }
 .decMeta { font-size: 11.5px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
 .decTitle { font-size: 13px; text-wrap: pretty; margin-top: 4px; }
 .decSub { font-size: 11.5px; color: var(--color-neutral-400); text-wrap: pretty; }
+/* Delivery 8 (R-140): the justification of a change request waiting for the client — three lines, then "Show more". */
+.decWhy { margin-top: 4px; }
+.decWhySummary { list-style: none; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.decWhySummary::-webkit-details-marker { display: none; }
+.decWhySummary:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 4px; }
+.decWhyText {
+  margin-top: 4px; font-size: 12px; line-height: 1.45; color: var(--color-neutral-300); white-space: pre-wrap; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
+}
+.decWhy[open] .decWhyText { display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow: visible; }
+.decWhyLabel { color: var(--color-neutral-400); }
+.decWhyMore, .decWhyLess { font-size: 11.5px; color: var(--color-accent-300); }
+.decWhyLess, .decWhy[open] .decWhyMore { display: none; }
+.decWhy[open] .decWhyLess { display: inline; }
 .decActions { display: flex; gap: 6px; margin-left: auto; }
 .decidedRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--color-neutral-900); font-size: 12.5px; }
 .decidedText { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
@@ -116,3 +130,17 @@ button.clRow:disabled { cursor: progress; }
 .tabular { font-variant-numeric: tabular-nums; }
 .docActions { text-align: right; white-space: nowrap; }
 .emptyDocs { font-size: 12.5px; color: var(--color-neutral-500); }
+/* Delivery 8 (R-138): "By category" strip of the shared documents (computed from the Codex index; display only). */
+.docCats { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.docCatsTitle { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-neutral-400); }
+.docCatList { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 8px; }
+.docCat { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--color-neutral-900); border-radius: var(--radius-md); min-width: 0; }
+.docCatHead { display: flex; align-items: baseline; gap: 8px; }
+.docCatName { font-size: 12.5px; font-weight: 500; margin-right: auto; text-wrap: pretty; }
+.docCatCount { font-size: 11.5px; color: var(--color-accent-300); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.docCatSub { font-size: 11px; color: var(--color-neutral-400); text-wrap: pretty; }
+
+/* "Schedule" tab (S-9a): summary Gantt + milestone list, as the Schedule screen draws them. */
+.planMsRow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--color-neutral-900); font-size: 13px; }
+.planSlip { font-variant-numeric: tabular-nums; color: var(--color-neutral-300); }
+.planSlipAlert { color: var(--color-accent-300); }

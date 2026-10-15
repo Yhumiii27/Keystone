@@ -1,6 +1,7 @@
 // Resource requests — the PM's outbox (docs/spec/08 §5.3–§5.6; template 2689–2730, logic 4117–4138): KPI tiles, status
 // chips (`?status=`), the grid table with the 3-dot stepper, decision line and the PM's row actions. Server Component;
-// the row actions are a client island shown only on the viewer's own requests when they may act.
+// the row actions are a client island shown only on the viewer's own requests when they may act — and on the what-if
+// drafts the viewer may send or discard (chapter 4, S-7).
 import { ArrowFatUp, Lightning } from '@phosphor-icons/react/dist/ssr';
 import { FilterBar, FilterChips, FilterGroup, FilterLabel, FilterNote } from '@/components/app/Filter';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
@@ -8,7 +9,7 @@ import { cx } from '@/components/ds/cx';
 import type { RequestFilter } from '@/domain/requests';
 import type { T } from '@/i18n/translate';
 import type { RequestsScreenModel } from './model';
-import { RequestRowActions } from './request-row-actions';
+import { DraftRowActions, RequestRowActions } from './request-row-actions';
 import { requestsHref } from './routes';
 import s from './requests.module.css';
 
@@ -96,9 +97,10 @@ export function RequestsScreen({ model, filter, canAct, t }: RequestsScreenProps
                 {r.response}
               </span>
               <div className={s.rowActions} role="cell">
-                {canAct && r.mine && (r.isPending || r.isReschedule || r.isRejected) && (
-                  <RequestRowActions id={r.id} isPending={r.isPending} isReschedule={r.isReschedule} isRejected={r.isRejected} proposed={r.proposed} />
+                {canAct && r.mine && (r.isPending || r.isReschedule || r.canReRequest) && (
+                  <RequestRowActions id={r.id} isPending={r.isPending} isReschedule={r.isReschedule} canReRequest={r.canReRequest} proposed={r.proposed} />
                 )}
+                {canAct && r.canSendDraft && <DraftRowActions id={r.id} title={r.title} />}
               </div>
             </div>
           ))}

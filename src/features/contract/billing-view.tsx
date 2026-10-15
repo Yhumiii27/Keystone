@@ -82,6 +82,8 @@ export function BillingScreen({ view, code, canEdit, context, invoiceForm, t }: 
                   {m.id} · {m.label}
                 </span>
                 <span className={cx(s.dueLine, m.late && s.late)}>{m.line}</span>
+                {/* R-077 (C-7): no invoice while its group exceeds 100 % — the reason, for every viewer. */}
+                {m.blocked && <span className={cx(s.meta, s.late)}>{m.blocked}</span>}
               </span>
               <span className={s.num}>{m.amount}</span>
               {canEdit && (
@@ -97,6 +99,7 @@ export function BillingScreen({ view, code, canEdit, context, invoiceForm, t }: 
                   icon={null}
                   nowrap
                   initialValues={{ ms: m.id }}
+                  disabledReason={m.blocked}
                 />
               )}
             </div>

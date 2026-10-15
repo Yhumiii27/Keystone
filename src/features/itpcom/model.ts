@@ -3,16 +3,19 @@
 // record buttons, the punch list rows with the Start / Close step, the commissioning grid, "Blocking A" and the handover
 // dossier — translated. Built from the DAL rows with the pure rules of src/domain/itpcom.ts.
 import { OK } from '@/components/app/tones';
+import type { FormDef } from '@/components/app/form-def';
 import {
-  blockingAOf, commissioningCellLook, groupBySystem, inspectionLook, itpDateText, openByCategoryText, punchLook, punchStep,
-  summariseCommissioning, summariseItp,
+  PUNCH_ORIGIN_FILTERS, blockingAOf, commissioningCellLook, filterPunchByOrigin, groupBySystem, inspectionLook, inspectionNcrTitle, itpDateText, openByCategoryText,
+  punchLook, punchStep, resultLineText, summariseCommissioning, summariseItp, type PunchOriginFilter,
 } from '@/domain/itpcom';
 import { docHref, documentsHref } from '@/features/docs/links';
 import type { Lang, T } from '@/i18n/translate';
 import { screenHref } from '@/config/screens';
 import type { Commissioning, SatPlanRow } from '@/server/dal/commissioning';
 import type { ItpPlan, PunchRow } from '@/server/dal/itp';
-import type { PunchStatus } from '@/server/db/codes';
+import type { ItpResult, PunchStatus } from '@/server/db/codes';
+import { vigieReportNcrUrl } from '@/server/integrations/vigie/links';
+import { localizeForm, resultFormDef } from './forms';
 import { blockedT, dataT, failedT, missingT, planShapeT, stepT } from './i18n';
 
 export interface KpiView {
@@ -50,6 +53,15 @@ export const itpViewOf = (v: string | string[] | undefined): ItpViewKey => (v ==
 /** `/projects/{code}/itp` with its view (plan omitted). */
 export const itpHref = (code: string, view: ItpViewKey = 'plan') => screenHref('itp', { code }) + (view === 'punch' ? '?view=punch' : '');
 
+/** The punch list filtered on an origin (R-117): `?view=punch&origin=itp|site` (every origin omitted). */
+export const punchListHref = (code: string, origin: PunchOriginFilter = 'all') => itpHref(code, 'punch') + (origin === 'all' ? '' : `&origin=${origin}`);
+
+/** Id of a punch item's row (R-117 / R-128: a document relation "P-01" links to `…/itp?view=punch#punch-P-01`). */
+export const punchAnchorId = (number: string) => `punch-${number}`;
+
+/** "All" / "Inspection" / "Site" (English; translate with t()). */
+export const PUNCH_ORIGIN_FILTER_LABEL: Record<PunchOriginFilter, string> = { all: 'All', itp: 'Inspection', site: 'Site' };
+
 export interface InspectionRowView {
   number: string;
   name: string;
@@ -62,6 +74,16 @@ export interface InspectionRowView {
   statusClass: string;
   statusColor: string;
   doc: DocButtonView | null;
+  /** Result recorded in Keystone (R-112): "Passed 24 Sep · S. Haddad · client N. Bensaïd" (translated); null otherwise. */
+  resultLine: string | null;
+  /** Comment of the recorded result (typed text, shown as is). */
+  comment: string | null;
+  /** Vigie NCRs reported from this inspection (internal viewers only, P-10b). */
+  ncrs: { number: string; href: string; label: string }[];
+  /** Failed without a Vigie NCR yet: "Report the NCR in Vigie", prefilled (internal viewers only, Q-6b). */
+  reportNcr: { href: string; label: string } | null;
+  /** "Record result" (quality, engineering lead, director on an editable project): the translated form and the result seen. */
+  record: { label: string; ariaLabel: string; form: FormDef; from: ItpResult } | null;
 }
 
 export interface InspectionGroupView {
@@ -73,7 +95,15 @@ export interface InspectionGroupView {
 
 export interface PunchRowView {
   number: string;
+  /** Row id (`punch-P-01`): the target of the document relations (R-128). */
+  anchor: string;
   item: string;
+  /** "Inspection" / "Site" (translated, R-117). */
+  origin: string;
+  /** Raised on site (R-117): its photos follow the Site screen's rights and are never shown to the client (X-15). */
+  siteOrigin: boolean;
+  /** Vigie's NCR number or '—'; null for the client (P-10b: the column is not shown). */
+  ncr: string | null;
   location: string;
   category: string;
   categoryClass: string;
@@ -96,22 +126,43 @@ export interface ItpScreenView {
   plan: { title: string; groups: InspectionGroupView[]; empty: string | null } | null;
   /**
    * Punch view. `empty` = "No punch item yet" when the project has none (the prototype showed the bare header row; the
-   * rebuild's projects without data show an empty state).
+   * rebuild's projects without data show an empty state). R-117 (A-6 'a'): one list per project with its Origin filter
+   * (All / Inspection / Site); `ncr` = whether the NCR column is shown (internal viewers, P-10b).
    */
-  punch: { title: string; subtitle: string; rows: PunchRowView[]; empty: string | null } | null;
+  punch: {
+    title: string; subtitle: string; rows: PunchRowView[]; empty: string | null;
+    origin: PunchOriginFilter; originLabel: string; origins: { value: PunchOriginFilter; label: string; href: string }[]; ncr: boolean;
+  } | null;
 }
+
+/** Who looks at the plan (R-112): may they record results, are they internal (Vigie links and NCR numbers), their name. */
+export interface ItpViewer {
+  /** Quality, engineering lead or director, screen editable for them. */
+  canRecord: boolean;
+  /** Not the client: Vigie is internal and the client does not see NCRs (P-10b). */
+  internal: boolean;
+  /** Full name: the inspector proposed by the result form. */
+  name: string;
+  /** Business "today" of the result form ("30 Sep", English). */
+  today: string;
+}
+const READER: ItpViewer = { canRecord: false, internal: true, name: '', today: '' };
 
 export interface ItpScreenInput {
   code: string;
   view: ItpViewKey;
   plan: ItpPlan | null;
-  /** ITP register punch items. */
+  /** The project's punch list, every origin (R-117): the KPIs count it whole. */
   punch: PunchRow[];
+  /** Origin filter of the punch view (`?origin=`, default all). */
+  origin?: PunchOriginFilter;
   /** Label of the project's machine type (KPI "Template" without a plan). */
   machineType: string | null;
+  /** Default: an internal reader who cannot record results. */
+  viewer?: ItpViewer;
 }
 
-export function itpScreenView({ code, view, plan, punch, machineType }: ItpScreenInput, t: T, lang: Lang): ItpScreenView {
+export function itpScreenView({ code, view, plan, punch, origin = 'all', machineType, viewer = READER }: ItpScreenInput, t: T, lang: Lang): ItpScreenView {
   const inspections = plan?.inspections ?? [];
   const s = summariseItp(inspections, punch, plan && plan.template ? { template: plan.template, systems: plan.systems.length, custom: plan.customCount } : null, machineType);
   const kpis: KpiView[] = [
@@ -130,10 +181,33 @@ export function itpScreenView({ code, view, plan, punch, machineType }: ItpScree
     passedText: `${g.passed} / ${g.count}`,
     rows: g.rows.map((r) => {
       const look = inspectionLook(r.pointType, r.result);
+      const line = !!r.resultOn;
+      const name = dataT(r.name, lang);
+      const ncrs = viewer.internal ? (r.ncrs ?? []).map((n) => ({ number: n.number, href: n.vigieUrl, label: `${t('Open in Vigie')} · ${n.number}` })) : [];
+      const recordLabel = t('Record result');
       return {
-        number: r.number, name: dataT(r.name, lang), type: t(r.pointTypeLabel), typeClass: look.typeClass, stage: t(r.stageLabel), reference: r.reference,
+        number: r.number, name, type: t(r.pointTypeLabel), typeClass: look.typeClass, stage: t(r.stageLabel), reference: r.reference,
         date: t(itpDateText(r.plannedOn)), status: t(r.resultLabel), statusClass: look.statusClass, statusColor: look.statusColor,
         doc: docButton(r.recordRef, r.recordInCodex, code, t),
+        resultLine: line ? resultLineText(r, t) : null,
+        // The comment of a failure describes the non-conformity: internal (P-10b), not shown to the client.
+        comment: viewer.internal ? (r.resultComment ?? null) : null,
+        ncrs,
+        reportNcr:
+          viewer.internal && r.result === 'failed' && !ncrs.length
+            ? { href: vigieReportNcrUrl({ projectCode: code, title: inspectionNcrTitle(r), inspection: r.number }), label: t('Report the NCR in Vigie') }
+            : null,
+        record: viewer.canRecord
+          ? {
+              label: recordLabel,
+              ariaLabel: `${recordLabel} · ${r.number}`,
+              from: r.result,
+              form: localizeForm(resultFormDef(r.pointType, {
+                result: r.resultOn ? r.result : 'passed', date: r.resultOn ? itpDateText(r.resultOn) : viewer.today, inspector: r.inspector ?? viewer.name,
+                witness: r.clientWitness ?? '', comment: r.resultComment ?? '',
+              }), t, lang),
+            }
+          : null,
       };
     }),
   }));
@@ -151,24 +225,36 @@ export function itpScreenView({ code, view, plan, punch, machineType }: ItpScree
         : null,
     punch:
       view === 'punch'
-        ? {
-            title: t('Punch list'),
-            subtitle: t('A blocking · B before SAT · C cosmetic'),
-            rows: punch.map((p) => punchRowView(p, t, lang)),
-            empty: punch.length ? null : t('No punch item yet'),
-          }
+        ? (() => {
+            const rows = filterPunchByOrigin(punch, origin);
+            return {
+              title: t('Punch list'),
+              subtitle: t('A blocking · B before SAT · C cosmetic'),
+              rows: rows.map((p) => punchRowView(p, viewer.internal, t, lang)),
+              empty: rows.length ? null : t(punch.length ? 'No punch item of this origin' : 'No punch item yet'),
+              origin,
+              originLabel: t('Origin'),
+              origins: PUNCH_ORIGIN_FILTERS.map((o) => ({ value: o, label: t(PUNCH_ORIGIN_FILTER_LABEL[o]), href: punchListHref(code, o) })),
+              ncr: viewer.internal,
+            };
+          })()
         : null,
   };
 }
 
-function punchRowView(p: PunchRow, t: T, lang: Lang): PunchRowView {
+/**
+ * A row of the unified punch list (R-117). Typed text (item, location, owner person) as typed; the party and the codes'
+ * labels through t(); the NCR number for internal viewers only (P-10b).
+ */
+export function punchRowView(p: PunchRow, internal: boolean, t: T, lang: Lang): PunchRowView {
   const look = punchLook(p.category, p.status);
   const step = punchStep(p.status);
   const label = step ? stepT(step.label, t, lang) : '';
   return {
-    number: p.number, item: dataT(p.description, lang), location: dataT(p.location, lang), category: p.category ?? '—', categoryClass: look.categoryClass,
-    source: p.sourceText ? t(p.sourceText) : '—', owner: p.owner ?? '—', due: t(itpDateText(p.dueOn)), status: t(p.statusLabel), statusClass: look.statusClass,
-    color: look.color, step: step ? { label, ariaLabel: `${label} · ${p.number}`, from: p.status } : null,
+    number: p.number, anchor: punchAnchorId(p.number), item: dataT(p.description, lang), origin: t(p.originLabel), siteOrigin: p.origin === 'site',
+    ncr: internal ? (p.ncrNumber ?? '—') : null, location: dataT(p.location, lang), category: p.category ?? '—', categoryClass: look.categoryClass,
+    source: p.sourceText ? t(p.sourceText) : '—', owner: p.ownerName ? dataT(p.ownerName, lang) : p.owner ? t(p.owner) : '—', due: t(itpDateText(p.dueOn)),
+    status: t(p.statusLabel), statusClass: look.statusClass, color: look.color, step: step ? { label, ariaLabel: `${label} · ${p.number}`, from: p.status } : null,
   };
 }
 

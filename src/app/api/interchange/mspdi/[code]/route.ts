@@ -1,23 +1,29 @@
 // "Export — MS Project XML" (chapter 4, S-9) — GET /api/interchange/mspdi/<project code>: the project's schedule as an MSPDI file
 // with its displayed baseline as Baseline 0 (src/server/interchange/schedule-export.ts). Same reading rights as the screens: an
-// unknown project or one without planning → 404, a client on another organisation's project → 403. Every export is audited,
-// listed in the activity feed and stamped on the "MS Project" connector row ("HLT-026 exported · BL1").
+// unknown project or one without planning → 404, a client → 403 (the export carries costs and resources and lives on Activity &
+// integrations, outside the client's workspace — P-1). Every export is audited,
+// listed in the activity feed and stamped on the "MS Project" connector row ("HLT-026 exported · BL1"). R-008: since it
+// writes, a request from another site is refused (403); it counts in the export rate limit (429 with Retry-After).
 import { getDb } from '@/server/db/client';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import { getProject } from '@/server/dal/projects';
 import { exportScheduleXml, stampMsProjectConnector } from '@/server/interchange/schedule-export';
-import { isMineProject } from '@/server/project-context';
+import { TOO_MANY_REQUESTS, hitRateLimit, isSameOriginRequest, rateClient, tooManyRequestsResponse } from '@/server/http/request-guard';
 import { getI18n, getViewer } from '@/server/session';
 import { contentDisposition } from '@/server/storage/files';
+import { logError } from '@/server/log';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_request: Request, ctx: { params: Promise<{ code: string }> }): Promise<Response> {
+export async function GET(request: Request, ctx: { params: Promise<{ code: string }> }): Promise<Response> {
   const [{ code }, viewer, { t }] = await Promise.all([ctx.params, getViewer(), getI18n()]);
   const text = (status: number, msg: string) => new Response(t(msg), { status, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } });
+  if (!isSameOriginRequest(request)) return text(403, 'Invalid request');
   const project = await getProject(code);
   if (!project || !project.hasData) return text(404, 'Unknown project');
-  if (viewer.role === 'client' && !isMineProject(viewer, project)) return text(403, 'Clients export their own projects only');
+  if (viewer.role === 'client') return text(403, 'Outside your workspace');
+  const limited = hitRateLimit('export', rateClient(request.headers, viewer));
+  if (!limited.ok) return tooManyRequestsResponse('text', t(TOO_MANY_REQUESTS), limited.retryAfterSec);
   const now = new Date();
   const out = await exportScheduleXml(project.code, now);
   if (!out) return text(404, 'Unknown project');
@@ -33,7 +39,7 @@ export async function GET(_request: Request, ctx: { params: Promise<{ code: stri
       await stampMsProjectConnector(tx, volume, now);
     });
   } catch (e) {
-    console.error('[export] MS Project log failed:', e);
+    logError('MS Project export log', e, { route: 'api/interchange/mspdi' });
   }
   const body = new TextEncoder().encode(out.xml);
   return new Response(body, {

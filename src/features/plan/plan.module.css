@@ -133,6 +133,9 @@
 .todoTitle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .todoTitleDone { text-decoration: line-through; }
 .todoMeta { font-size: 11px; color: var(--color-neutral-400); }
+/* Delivery 7 (NEW-D2-2): change requests touching the activity. */
+.crRow { grid-template-columns: 16px minmax(0, 1fr) auto; }
+.crIcon { font-size: 14px; color: var(--color-accent); }
 .pending {
   display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; align-items: center; padding: 5px 0;
   border-bottom: 1px dashed var(--color-neutral-800); font-size: 12.5px; color: var(--color-neutral-400);
@@ -157,6 +160,16 @@
 
 /* ── Removal confirmation ── */
 .confirmText { font-size: 13px; color: var(--color-neutral-300); text-wrap: pretty; }
+
+/* ── Recently deleted (S-5) ── */
+.trashList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.trashItem {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 0; font-size: 12.5px;
+  border-top: 1px solid var(--color-neutral-800);
+}
+.trashItem:first-child { border-top: none; }
+.trashLabel { color: var(--color-neutral-100); }
+.trashMeta { color: var(--color-neutral-400); font-size: 12px; margin-right: auto; }
 
 /* LO (attention) colour — last so it wins over the cells' default colours (same specificity). */
 .lo { color: var(--color-accent-300); }

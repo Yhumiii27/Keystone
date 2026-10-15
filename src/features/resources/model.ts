@@ -5,15 +5,17 @@
 import { LO, OK, shade } from '@/components/app/tones';
 import { screenHref } from '@/config/screens';
 import {
-  capacityBar, laborShare, mainShortfall, OVER_ALLOCATED_PCT, overAllocatedCount, personLoad, projectDepartmentDemand, teamUtilization, unmetDemand,
-  weekRangesText, weeksAbove, type CapacityRow,
+  capacityBar, laborShare, overAllocatedCount, peakWeeksText, personLoad, projectDepartmentDemand, shortfallText, teamUtilization, unmetDemand, type CapacityRow,
 } from '@/domain/resources';
 import type { WhatIfResult } from '@/domain/whatif';
 import { FR_MONTHS } from '@/i18n/fr-rules';
 import { money } from '@/lib/format';
-import { isoWeekOf } from '@/server/db/codes';
 import type { Lang, T } from '@/i18n/translate';
 import { leverEffectText, leverText, type WhatIfLeverData } from './whatif-model';
+import { dataText } from '@/i18n/data-text';
+
+/** Moved to src/domain/resources.ts (shared with the department head's Home). */
+export { peakWeeksText, shortfallText };
 
 export interface ResourcePerson {
   /** Full name ("Julien Wagner"). */
@@ -30,6 +32,8 @@ export interface ResourcePerson {
 export interface ResourcesInput {
   /** `resources` (whole pool) or `presources` (team of one project). */
   scope: 'portfolio' | 'project';
+  /** R-049: whose My work the viewer may open (the person cell links there); default: everyone's. */
+  canOpenWork?: (name: string) => boolean;
   /** Window week labels, EN ("Sep 28"). */
   weeks: string[];
   /** ISO Mondays of the window weeks (peak week numbers). */
@@ -38,8 +42,13 @@ export interface ResourcesInput {
   people: ResourcePerson[];
   /** Portfolio: department capacity vs demand over the window (ROLES order). Ignored for a project (derived from the team). */
   departments: CapacityRow[];
-  /** Labour cost category of the current project (first /labor|staff/i category), null when none. */
+  /**
+   * "Labor cost to date": portfolio — Σ labour categories of the projects in execution of the displayed zone (R-086, R-2 a);
+   * project — the project's labour categories. Null when none.
+   */
   labor: { budget: number; actual: number } | null;
+  /** Portfolio scope: EN label of the displayed zone ('' or null = all zones), named in the sub-line (R-086). */
+  zoneLabel?: string | null;
   /** Pending resource requests (all projects, or the project's). */
   openRequests: number;
   /**
@@ -74,8 +83,8 @@ export interface PersonRowView {
   name: string;
   role: string;
   initials: string;
-  /** My work filtered on that person. */
-  href: string;
+  /** My work filtered on that person; null when the viewer may not open their work (R-049). */
+  href: string | null;
   cells: { v: number; bg: string; fg: string }[];
   avgText: string;
   avgColor: string;
@@ -109,29 +118,6 @@ export interface ResourcesView {
   people: PersonRowView[];
   roles: RoleBarView[];
   suggestions: SuggestionView[] | null;
-}
-
-/**
- * "Over-allocated" sub (A-12; the prototype's constant "Peak weeks 41–43"): ISO weeks in which someone is above 110 %
- * ("Peak weeks 42–44", FR "Pointe semaines 42–44").
- */
-export function peakWeeksText(people: { loads: number[] }[], weekStarts: string[], lang: Lang): string {
-  const weeks = weeksAbove(people, OVER_ALLOCATED_PCT).flatMap((i) => (weekStarts[i] ? [isoWeekOf(weekStarts[i])] : []));
-  const fr = lang === 'fr';
-  if (!weeks.length) return fr ? 'Aucune semaine au-dessus de 110 %' : 'No week above 110%';
-  const range = weekRangesText(weeks);
-  if (fr) return `${weeks.length === 1 ? 'Pointe semaine' : 'Pointe semaines'} ${range}`;
-  return `${weeks.length === 1 ? 'Peak week' : 'Peak weeks'} ${range}`;
-}
-
-/** First letter in lower case, unless the word is an acronym ("MEP", "CVC-élec"). */
-const lowerFirst = (s: string) => (/^[A-ZÀ-Ý]{2}/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1));
-
-/** Portfolio "Unmet demand" sub (A-12; the prototype's constant "Mostly engineering"): the department short the most. */
-export function shortfallText(rows: CapacityRow[], t: T, lang: Lang): string {
-  const top = mainShortfall(rows);
-  if (!top) return lang === 'fr' ? 'Aucun service au-delà de sa capacité' : 'No department over capacity';
-  return lang === 'fr' ? `Surtout ${lowerFirst(t(top.name))}` : `Mostly ${lowerFirst(top.name)}`;
 }
 
 const WEEK_RE = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2})$/;
@@ -177,7 +163,10 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
     {
       label: t('Labor cost to date'),
       value: input.labor ? money(input.labor.actual, lang) : '—',
-      sub: share != null ? t(`${share}% of labor budget`) : '',
+      // R-086: the portfolio figure names its zone (Resources has no zone bar: the zone is the one chosen on the zone screens).
+      sub: isProject
+        ? (share != null ? t(`${share}% of labor budget`) : '')
+        : [share != null ? t(`${share}% of labor budget`) : '', t(input.zoneLabel || 'All zones')].filter(Boolean).join(' · '),
       color: OK,
     },
     { label: t('Open requests'), value: String(input.openRequests), sub: t(isProject ? 'Awaiting department approval' : 'Across all projects'), color: OK },
@@ -190,7 +179,7 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
       name: p.name,
       role: p.jobTitle ? t(p.jobTitle) : '',
       initials: p.initials,
-      href: myWorkHref(p.name),
+      href: !input.canOpenWork || input.canOpenWork(p.name) ? myWorkHref(p.name) : null,
       cells: p.loads.map((v) => ({ v, ...shade(v) })),
       avgText: `${p.load.avgPct}%`,
       avgColor: p.load.avgAlert ? LO : OK,
@@ -204,7 +193,7 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
           projectCode: s.projectCode,
           leverCode: s.lever.code,
           title: leverText(s.lever, t, lang),
-          hint: `${s.lever.activity} · ${t(s.lever.activityName)}`,
+          hint: `${s.lever.activity} · ${dataText(s.lever.activityName, lang)}`,
           impact: [s.projectLabel ? t(s.projectLabel) : null, leverEffectText(s.effect, { peakPct: s.currentPeakPct }, t, lang)].filter(Boolean).join(' · '),
           requested: s.requested ? `${lang === 'fr' ? 'Demandée' : 'Requested'} · ${s.requested}` : null,
           canApply: s.canApply,

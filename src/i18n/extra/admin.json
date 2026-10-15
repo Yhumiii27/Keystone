@@ -30,8 +30,6 @@
   "Live connector · HTTP API": "Connecteur réel · API HTTP",
   "Every minute (on read)": "Toutes les minutes (à la lecture)",
   "Engineering change orders, non-conformities (NCR, 8D) and site HSE (prevention plans, permits) — managed in Vigie, Keystone records progress": "Ordres de modification, non-conformités (NCR, 8D) et HSE chantier (plans de prévention, permis) — gérés dans Vigie, Keystone enregistre l’avancement",
-  "Configure — coming soon": "Configurer — bientôt disponible",
-  "File received — import coming soon": "Fichier reçu — import bientôt disponible",
   "No activity yet": "Aucune activité pour l’instant",
   "Export CSV": "Exporter en CSV",
   "Export the audit trail (CSV, ISO 9001)": "Exporter la piste d’audit (CSV, ISO 9001)",

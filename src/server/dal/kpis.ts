@@ -4,13 +4,14 @@ import 'server-only';
 // (cash flow, prioritisation, sourcing, deliveries, site, drawings, quality, My work, Home, Activity & integrations).
 // Values are computed at the project's data date (`projects.data_date`, default the status date) or the portfolio data
 // date — never the real clock. No writer here.
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, like, lt, or } from 'drizzle-orm';
 import { projectDataDate, DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
 import {
-  CAPACITY_WINDOW_WEEKS, DEFAULT_PAYMENT_DAYS, clientDecisionsLogged, demandPerMeur, departmentCapacity, eventsOnDay, finishOfMonthText,
-  latestVaultSync, leadingCount, loggedInWeek, nextWeeksLoad, onTimeDeliveryPct, parisDateOf, projectEacKeur, projectValueKeur, weekHoursOf,
+  CAPACITY_WINDOW_WEEKS, DEFAULT_PAYMENT_DAYS, demandPerMeur, departmentCapacity, eventsOnDay, finishOfMonthText,
+  latestVaultSync, leadingCount, loggedInWeek, nextWeeksLoad, onTimeDeliveryPct, parisDateOf, plannedSpendOfPv, projectEacKeur, projectValueKeur, weekHoursOf, weekMondayOf,
   type CashProjectInput, type RfqKpiFacts, type VaultSyncFacts,
 } from '@/domain/kpis';
+import { clientDecisionCount } from '@/domain/meetings';
 import { getDb } from '@/server/db/client';
 import { addDaysIso, parisInstant } from '@/server/db/codes';
 import {
@@ -18,8 +19,8 @@ import {
   purchaseOrders, rfqQuotes, rfqs, timeEntries, vigieNcrs,
 } from '@/server/db/schema';
 import type { BillingPlan } from './cashflow';
-import { getContract } from './contract';
-import { listChangeRequests } from './cost';
+import { getCostControl } from './cost';
+import { listMeetings } from './meetings';
 import type { ProjectRow } from './projects';
 
 // ── Data date ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -34,10 +35,11 @@ export async function projectDataDateOf(code: string): Promise<string> {
 // ── Cash flow & billing (03 OQ7) ─────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Inputs of the cash forecast for the Cash flow rows (project + billing plan): contract milestones with their dates and
- * the invoices' due dates (payment delay of the terms), legacy plans undated at Net 30, monthly progress plans billing
- * the rest of the contract value month by month; ETC = max(0, EAC − actual);
- * finish = `planned_finish_date`, else the end of the register's finish month.
+ * Inputs of the cash forecast for the Cash flow rows (project + billing plan consolidated in euros, C-9): contract milestones
+ * with their dates and the invoices' due dates, paid by the contract's payment rule (R-076), legacy plans undated at Net 30,
+ * monthly progress plans billing the rest of the contract value month by month; ETC = max(0, EAC − actual) spread along the
+ * planned curve — the PV increments of the project's cost control (C-10a, R-133); finish = `planned_finish_date`, else the end
+ * of the register's finish month.
  */
 export async function cashProjectInputs(rows: readonly { project: ProjectRow; plan: BillingPlan }[]): Promise<CashProjectInput[]> {
   if (!rows.length) return [];
@@ -47,13 +49,14 @@ export async function cashProjectInputs(rows: readonly { project: ProjectRow; pl
       .map((r) => [r.code, r.finish]),
   );
   return Promise.all(rows.map(async ({ project: p, plan }) => {
-    const contract = plan.fromContract ? await getContract(p.code) : null;
-    const milestones = contract
-      ? contract.milestones.map((m) => ({ label: m.number, amountKeur: m.amountKeur, status: m.status, dueOn: m.contractualDue, paymentDueOn: m.invoice?.dueOn ?? null }))
+    const cost = await getCostControl(p.code);
+    const milestones = plan.fromContract
+      ? plan.milestones.map((m) => ({ label: m.number ?? m.label, amountKeur: m.amountKeur, status: m.status, dueOn: m.contractualDue, paymentDueOn: m.paymentDueOn }))
       : plan.milestones.map((m) => ({ label: m.number ?? m.label, amountKeur: m.amountKeur, status: m.status, dueOn: null }));
     return {
-      code: p.code, milestones, paymentDays: contract ? contract.sheet.termsDays || DEFAULT_PAYMENT_DAYS : DEFAULT_PAYMENT_DAYS,
+      code: p.code, milestones, paymentDays: plan.terms ? plan.terms.days : DEFAULT_PAYMENT_DAYS, paymentRule: plan.terms?.rule,
       etcKeur: Math.max(0, projectEacKeur(p) - p.actual), finishOn: finishes.get(p.code) ?? finishOfMonthText(p.finish),
+      plannedSpend: cost ? plannedSpendOfPv(cost.pv, cost.start) : undefined,
       progressBillingKeur: plan.model === 'client_monthly_progress' ? Math.max(0, plan.contractValueKeur - plan.invoicedKeur) : 0,
     };
   }));
@@ -72,16 +75,20 @@ export interface CapacityModelRow {
 /**
  * Capacity model of the departments (department_capacities order): capacity and commitments from the resource pool's
  * weekly loads (people with a pool position, allocations without project), demand per €1M = commitments ÷ value of the active portfolio (`activeProjects`: contract
- * value from `plans`, else budget).
+ * value from `plans`, else budget). The window starts at the week of `asOf` (the portfolio data date).
  */
-export async function capacityModel(activeProjects: readonly ProjectRow[], plans: Readonly<Record<string, Pick<BillingPlan, 'contractValueKeur'>>>): Promise<CapacityModelRow[]> {
+export async function capacityModel(
+  activeProjects: readonly ProjectRow[], plans: Readonly<Record<string, Pick<BillingPlan, 'contractValueKeur'>>>, asOf: string = DEFAULT_DATA_DATE,
+): Promise<CapacityModelRow[]> {
   const db = await getDb();
   const [depts, pool, allocs] = await Promise.all([
     db.select({ name: departments.name }).from(departmentCapacities).innerJoin(departments, eq(departments.id, departmentCapacities.departmentId)).orderBy(asc(departmentCapacities.position)),
     db.select({ id: persons.id, dept: departments.name }).from(persons).leftJoin(departments, eq(departments.id, persons.departmentId)).where(isNotNull(persons.resourcePoolPosition)),
     db.select({ personId: allocations.personId, weekStart: allocations.weekStart, loadPct: allocations.loadPct }).from(allocations).where(isNull(allocations.projectId)).orderBy(asc(allocations.weekStart)),
   ]);
-  const weeks = [...new Set(allocs.map((a) => a.weekStart))].sort().slice(0, CAPACITY_WINDOW_WEEKS);
+  // The window: the 8 pool weeks from the data date's week on (the seed's pool starts the Monday after, 28 Sep).
+  const from = weekMondayOf(asOf);
+  const weeks = [...new Set(allocs.map((a) => a.weekStart))].filter((w) => w >= from).sort().slice(0, CAPACITY_WINDOW_WEEKS);
   const people = pool.map((p) => ({
     department: p.dept, loads: weeks.map((w) => allocs.find((a) => a.personId === p.id && a.weekStart === w)?.loadPct ?? 0),
   }));
@@ -96,8 +103,9 @@ export async function capacityModel(activeProjects: readonly ProjectRow[], plans
 
 /**
  * RFQ facts of the "Savings vs list" and "Average cycle" tiles: catalogue list price, awarded unit price, award date
- * (`awarded_at`; the seed's awarded RFQ has none, so its quotes-due date stands for it) and the "Send to suppliers"
- * date from the audit trail (status Draft → Open).
+ * (`awarded_at`; the seed's awarded RFQ has none, so its quotes-due date stands for it) and the date the RFQ went to the
+ * suppliers, from the audit trail: "Send to suppliers" on a draft (status Draft → Open), or "New RFQ", which creates it
+ * Open and audits "RFQ sent to …". The earliest such entry counts.
  */
 export async function rfqKpiFacts(): Promise<RfqKpiFacts[]> {
   const db = await getDb();
@@ -110,8 +118,14 @@ export async function rfqKpiFacts(): Promise<RfqKpiFacts[]> {
   const sent = await db
     .select({ id: auditEntries.entityId, at: auditEntries.occurredAt })
     .from(auditEntries)
-    .where(and(eq(auditEntries.entityType, 'rfq'), eq(auditEntries.change, 'status: Draft → Open'), inArray(auditEntries.entityId, rows.map((r) => r.id))));
-  const sentOn = new Map(sent.map((s) => [s.id, parisDateOf(s.at)]));
+    .where(and(
+      eq(auditEntries.entityType, 'rfq'),
+      or(eq(auditEntries.change, 'status: Draft → Open'), like(auditEntries.change, 'RFQ sent to %')),
+      inArray(auditEntries.entityId, rows.map((r) => r.id)),
+    ))
+    .orderBy(asc(auditEntries.occurredAt));
+  const sentOn = new Map<string | null, string>();
+  for (const s of sent) if (!sentOn.has(s.id)) sentOn.set(s.id, parisDateOf(s.at));
   return rows.map((r) => ({
     awardedOn: r.status === 'awarded' ? (r.awardedAt ? parisDateOf(r.awardedAt) : r.due) : null,
     sentOn: sentOn.get(r.id) ?? null,
@@ -139,9 +153,13 @@ export async function onTimeDeliveriesOf(projectCode: string): Promise<number | 
 
 // ── Site (10 OQ7) ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** "Client decisions logged" of a project: change requests whose client step is decided. */
+/**
+ * "Client decisions logged" of a project — A-12 / D-5: the decisions recorded in the minutes of the project's meetings with
+ * the client (external meetings; the owner answered D-5 "use the project's meetings and decisions"). It counted the change
+ * requests whose client step was decided before D-5 (HLT-026: 2 → 2, the same value from another source).
+ */
 export async function clientDecisionsOf(projectCode: string): Promise<number> {
-  return clientDecisionsLogged(await listChangeRequests(projectCode));
+  return clientDecisionCount(await listMeetings(projectCode));
 }
 
 // ── Quality (07 OQ23) ────────────────────────────────────────────────────────────────────────────────────────────────

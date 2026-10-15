@@ -7,6 +7,13 @@
 import { screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
 import { STATUS_DATE, TODAY, dateOf, dayLabel, money } from '@/lib/format';
+import type { StepDecision } from '@/server/db/codes';
+import { CR_STEPS, currentStep } from './change-control';
+import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
+import { weekHoursOf } from './kpis';
+import { mainShortfall, peakWeekNumbers, unmetDemand, weekRangesText, type CapacityRow } from './resources';
+import { nextWeekEnd, spanText } from './tasks';
+import { skillCoverage as hrSkillCoverage } from './hr';
 
 // ── View model ───────────────────────────────────────────────────────────────────────────────────────────
 
@@ -284,17 +291,18 @@ export interface BillingInvoice {
 }
 
 /** The client's open invoice: the first invoiced, unpaid milestone of the billing plan; null when none. */
-export function clientOpenInvoice(plan: BillingInvoice[]): ClientInput['invoice'] {
+export function clientOpenInvoice(plan: BillingInvoice[], currency: CurrencyCode = BASE_CURRENCY): ClientInput['invoice'] {
   const m = plan.find((x) => x.status === 'invoiced');
   if (!m) return null;
   // "M3 Structure topped out" → number "M3" + name "Structure topped out" (the name is translated, the number is not).
   const name = m.milestoneNumber && m.milestone.startsWith(m.milestoneNumber + ' ') ? m.milestone.slice(m.milestoneNumber.length + 1) : m.milestone;
-  return { invoiceNumber: m.invoiceNumber, milestoneNumber: m.milestoneNumber, name, amount: m.amountKeur, due: m.dueText };
+  return { invoiceNumber: m.invoiceNumber, milestoneNumber: m.milestoneNumber, name, amount: m.amountKeur, due: m.dueText, currency };
 }
 
 /** "INV-2026-003 · M3 Structure topped out · €1.38M · due 10 Nov" (parts the plan does not have are left out). */
 function invoiceSub(inv: NonNullable<ClientInput['invoice']>, lang: Lang): Txt {
-  const p: Record<string, string> = { name: inv.name, amt: money(inv.amount, lang), inv: inv.invoiceNumber ?? '', no: inv.milestoneNumber ?? '', date: inv.due ?? '' };
+  // C-9: in the invoice's currency (the contract's).
+  const p: Record<string, string> = { name: inv.name, amt: moneyIn(inv.amount, inv.currency ?? BASE_CURRENCY, lang), inv: inv.invoiceNumber ?? '', no: inv.milestoneNumber ?? '', date: inv.due ?? '' };
   const parts = [inv.invoiceNumber ? '{inv}' : '', inv.milestoneNumber ? '{no} {name}' : '{name}', '{amt}', inv.due ? 'due {date}' : ''];
   return { tpl: parts.filter(Boolean).join(' · '), p };
 }
@@ -368,10 +376,16 @@ const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.le
 const lcFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 /** "Second steel crew — schedule recovery" → "Second steel crew". */
 const shortTitle = (s: string) => s.split(' — ')[0];
-const crAwaiting = (cr: ChangeRequest, step: 'client' | 'director') => changeRequestStatus(cr) === 'in_review' && cr.chain[step] === 'pending';
+/**
+ * The request waits for `step`: in review and `step` is its current step — delivery 8 (R-069, P-6b: PM → director → client →
+ * board, so the client's Home lists a request only once the PM and the director approved it).
+ */
+const crAwaiting = (cr: ChangeRequest, step: 'client' | 'director') =>
+  changeRequestStatus(cr) === 'in_review' &&
+  currentStep(CR_STEPS.map((s) => ({ step: s, decision: (cr.chain[s] === 'n/a' ? 'na' : (cr.chain[s] ?? null)) as StepDecision | null }))) === step;
 
 /** "Good morning, Marie" / "Portfolio director · Friday 25 Sep 2026" (homeVals, line 4435). */
-function greeting(persona: Persona): Pick<HomeView, 'greeting' | 'sub'> {
+export function greeting(persona: Persona): Pick<HomeView, 'greeting' | 'sub'> {
   return { greeting: 'Good morning, ' + persona.name.split(' ')[0], sub: persona.title + ' · Friday ' + STATUS_DATE };
 }
 
@@ -505,6 +519,26 @@ export interface DeptHeadInput {
   /** REQ_STATUS: status → [label, tag class]. */
   reqStatus: Record<string, [string, string]>;
   lookups: Lookups;
+  /** ISO Mondays of the pool's window weeks (peak week numbers, A-12). */
+  weekStarts: string[];
+  /** Department capacity vs demand over the window, as the Resources bars (unmet demand, A-12). */
+  departments: CapacityRow[];
+}
+
+/**
+ * "Over-allocated" sub of the department head's Home, as Resources computes it (A-12; the prototype's constant "Peak
+ * weeks 41–43"): the ISO weeks in which someone is above 110 %.
+ */
+export function peakWeeksTxt(people: Pick<PersonLoad, 'loads'>[], weekStarts: readonly string[]): Txt {
+  const weeks = peakWeekNumbers(people, weekStarts);
+  if (!weeks.length) return 'No week above 110%';
+  return { tpl: weeks.length === 1 ? 'Peak week {range}' : 'Peak weeks {range}', p: { range: weekRangesText(weeks) } };
+}
+
+/** "Unmet demand" sub (A-12; the prototype's constant "Mostly engineering"): the department short the most. */
+export function shortfallTxt(rows: readonly CapacityRow[]): Txt {
+  const top = mainShortfall(rows);
+  return top ? { tpl: 'Mostly {dept|lc}', p: { dept: top.name } } : 'No department over capacity';
 }
 
 /** Resource KPIs of the Resources screen (logic 3869–3882): utilization = mean of 8-week averages; over-allocated = peak > 110 %. */
@@ -519,15 +553,17 @@ export function teamLoad(people: PersonLoad[]) {
 export function deptHeadHome(i: DeptHeadInput): HomeView {
   const pending = i.requests.filter((r) => r.dept === i.dept && r.status === 'pending');
   const { utilization, over } = teamLoad(i.people);
+  const unmet = unmetDemand(i.departments);
   const dates = (r: ResourceRequest) => dayLabel(r.start).slice(4) + ' – ' + dayLabel(r.due).slice(4);
   return {
     ...greeting(i.persona),
     kpis: [
       kpi('Awaiting my approval', pending.length, 'Resource requests · ' + i.dept, pending.length > 0),
       kpi('Team utilization', utilization + '%', 'Target 85–95%', false),
-      kpi('Over-allocated', over + plural(over, ' person', ' people'), 'Peak weeks 41–43', over > 0),
-      // TODO(db): unmet demand is a constant in the prototype ("240 h"); derive from demand vs capacity once modelled.
-      kpi('Unmet demand', '240 h', 'Mostly engineering', true),
+      // A-12 (chapter 4): the peak weeks and the unmet demand are computed as on Resources — the prototype's constants were
+      // "Peak weeks 41–43" and "240 h · Mostly engineering".
+      kpi('Over-allocated', over + plural(over, ' person', ' people'), peakWeeksTxt(i.people, i.weekStarts), over > 0),
+      kpi('Unmet demand', `${unmet} h`, shortfallTxt(i.departments), unmet > 0),
     ],
     left: {
       title: { tpl: 'Approval queue — {dept}', p: { dept: i.dept } },
@@ -575,7 +611,7 @@ export function workSummary(todos: Todo[], person: string, people: PersonLoad[])
     open,
     dueToday: open.filter((t) => t.due === TODAY).length,
     overdue: open.filter((t) => t.due < TODAY).length,
-    nextWeek: open.filter((t) => t.due > TODAY && t.due <= 9).length,
+    nextWeek: open.filter((t) => t.due > TODAY && t.due <= nextWeekEnd()).length,
     logged,
     load: Math.round((loads[0] + loads[1]) / 2),
   };
@@ -584,13 +620,16 @@ export function workSummary(todos: Todo[], person: string, people: PersonLoad[])
 export function memberHome(i: MemberInput): HomeView {
   const w = workSummary(i.todos, i.person, i.people);
   const logged = i.loggedThisWeekH ?? w.logged;
+  // Computed instead of the prototype's literals "28 Sep – 2 Oct" and "of 40 h" (same values at the status date): next
+  // week's span (as My work's calendar) and the standard calendar's weekly hours (5 × 8 h, S-2).
+  const weekH = weekHoursOf();
   return {
     ...greeting(i.persona),
     kpis: [
       kpi('Due today', w.dueToday, dayLabel(TODAY), false),
       kpi('Overdue', w.overdue, 'Needs a new date or a push', w.overdue > 0),
-      kpi('Next week', w.nextWeek, '28 Sep – 2 Oct', false),
-      kpi('Logged this week', logged.toFixed(1) + ' h', { tpl: 'of 40 h · {pct}%', p: { pct: Math.round((logged / 40) * 100) } }, false),
+      kpi('Next week', w.nextWeek, spanText(nextWeekEnd() - 4, nextWeekEnd()), false),
+      kpi('Logged this week', logged.toFixed(1) + ' h', { tpl: 'of {h} h · {pct}%', p: { h: weekH, pct: Math.round((logged / weekH) * 100) } }, false),
     ],
     left: {
       title: 'My tasks',
@@ -626,15 +665,19 @@ export interface EngLeadInput {
   people: PersonLoad[];
 }
 
-/** Skill coverage (logic 4394): a skill family is a gap when fewer than 2 people are at level ≥ 4. */
+/**
+ * Skill coverage (logic 4394): a skill family is a gap when fewer than 2 people are at level ≥ 4. One definition with the Skills
+ * matrix (`skillCoverage` of src/domain/hr.ts, R-5b: no expert / a single expert).
+ */
 export function skillCoverage(skills: string[], people: PersonLoad[], levels: Record<string, number[]>) {
-  return skills.map((name, i) => {
-    const lv = people.map((p) => levels[p.name]?.[i] ?? 0);
-    const experts = lv.filter((v) => v >= 4).length;
-    const able = lv.filter((v) => v >= 3).length;
-    return { name, experts, able, gap: experts < 2, text: `${experts} expert${experts === 1 ? '' : 's'} · ${able} at level ≥3` };
-  });
+  return hrSkillCoverage(skills, people.map((p) => ({ name: p.name, levels: levels[p.name] ?? [] })));
 }
+
+/** R-5b: the watchlist sub-line names the case — no expert, or a single expert. */
+const skillGapSub = (c: { experts: number; able: number }): Txt =>
+  c.experts === 0
+    ? { tpl: 'No expert — {a} at level ≥3', p: { a: c.able } }
+    : { tpl: `Single expert — {e} expert${c.experts === 1 ? '' : 's'} · {a} at level ≥3`, p: { e: c.experts, a: c.able } };
 
 export function engLeadHome(i: EngLeadInput): HomeView {
   const ecos = i.ecos.map((e) => ({ ...e, status: ecoStatus(e) }));
@@ -665,7 +708,7 @@ export function engLeadHome(i: EngLeadInput): HomeView {
           .map((c) =>
             row(
               c.name,
-              { tpl: `Single expert — {e} expert${c.experts === 1 ? '' : 's'} · {a} at level ≥3`, p: { e: c.experts, a: c.able } },
+              skillGapSub(c),
               'Skill gap',
               TAG.outline,
               homeHref('skills'),
@@ -782,7 +825,7 @@ export interface ClientInput {
   /** Deliverables awaiting / past client acceptance (current project). */
   deliverables: ClientDeliverable[];
   /** Open invoice of the billing plan (INV-2026-003, "M3", "Structure topped out", 1380 k€, "10 Nov"), null when none. */
-  invoice: { invoiceNumber: string | null; milestoneNumber: string | null; name: string; amount: number; due: string | null } | null;
+  invoice: { invoiceNumber: string | null; milestoneNumber: string | null; name: string; amount: number; due: string | null; currency?: CurrencyCode } | null;
 }
 
 export function clientHome(i: ClientInput): HomeView {

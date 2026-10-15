@@ -18,6 +18,9 @@ vi.mock('@/server/session', async () => {
   };
 });
 vi.mock('next/navigation', () => ({
+  redirect: (url: string) => {
+    throw new Error(`REDIRECT ${url}`);
+  },
   notFound: () => {
     throw new Error('NOT_FOUND');
   },
@@ -51,7 +54,10 @@ describe('engineering Server Functions', () => {
   });
 
   it('refuses viewers outside the workspace, read-only projects and malformed requests', async () => {
-    for (const role of ['depthead', 'member', 'procurement', 'client']) {
+    // R-042 (P-1): engineering is outside the client's workspace — the client is sent home.
+    as('client');
+    await expect(confirmInputAction({ code: HLT, disc: 'meca', doc: 'PID-HLT-026' })).rejects.toThrow('REDIRECT /');
+    for (const role of ['depthead', 'member', 'procurement']) {
       as(role);
       expect(await confirmInputAction({ code: HLT, disc: 'meca', doc: 'PID-HLT-026' })).toEqual(READ_ONLY);
       expect(await closeCheckAction({ code: HLT, disc: 'elec', number: 'C-01', how: 'resolved' })).toEqual(READ_ONLY);
@@ -143,9 +149,17 @@ describe('engineering Server Functions', () => {
       ok: false, error: 'Seul le chef de projet valide les diffusions',
     });
     as('pm');
-    expect(await deliverableStepAction({ code: HLT, disc: 'elec', number: 'SCH-ELE-026', step: 'validate' })).toEqual({ ok: true });
-    expect((await getDocumentRecord('SCH-ELE-026'))?.status).toBe('released');
-    expect((await reg()).deliverables.find((d) => d.number === 'SCH-ELE-026')).toMatchObject({ status: 'released', canValidate: false });
+    // P-7c = a (Delivery 7, R-106): "Validate release (PM)" starts the Codex approval circuit through the outbox; the
+    // deliverable stays Release proposed until Codex has every step approved (it was Released at once).
+    expect(await deliverableStepAction({ code: HLT, disc: 'elec', number: 'SCH-ELE-026', step: 'validate' })).toEqual({
+      ok: true, toast: 'SCH-ELE-026 · Approval circuit started · Pending sync with Codex',
+    });
+    expect((await getDocumentRecord('SCH-ELE-026'))).toMatchObject({ status: 'release_proposed', nextApprover: 'A. Girard', canApprove: true });
+    expect((await reg()).deliverables.find((d) => d.number === 'SCH-ELE-026')).toMatchObject({
+      status: 'release_proposed', canValidate: false, codexNote: 'Approval circuit started · Pending sync with Codex',
+    });
+    // Started once: a second validation is stale.
+    expect(await deliverableStepAction({ code: HLT, disc: 'elec', number: 'SCH-ELE-026', step: 'validate' })).toEqual(STALE);
   });
 
   it('import wizard: the revision in use is updated (to confirm), the P&ID input too, the revision check closes', async () => {

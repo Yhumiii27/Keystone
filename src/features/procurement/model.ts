@@ -5,12 +5,13 @@
 import { LO, OK } from '@/components/app/tones';
 import { screenHref, type RoleKey } from '@/config/screens';
 import {
-  MATCH_DOT, blockingReason, canAwardRfq, canDecideInvoiceRole, compareQuotes, invoiceChipStatuses,
+  MATCH_DOT, awardRuleTile, blockingReason, canAwardRfq, canDecideInvoiceRole, compareQuotes, invoiceChipStatuses,
   invoiceDecisions, invoiceKpis, match3, quotesText, receiptGap, rfqActions, rfqHint, rfqKpis, sourcingHref, supplierAttention, supplierKpis,
   type SourcingTab,
 } from '@/domain/procurement';
 import type { Lang, T } from '@/i18n/translate';
 import { money, moneyEur } from '@/lib/format';
+import { moneyUnitsIn } from '@/domain/currency';
 import {
   RFQ_STATUS_TAG, SUPPLIER_GRADE_TAG, SUPPLIER_INVOICE_STATUS_TAG, incoterm, matchState, shortDateYearOfIso, supplierInvoiceStatus,
   type MatchState, type SupplierInvoiceStatus,
@@ -21,6 +22,7 @@ import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
 import { rfqAverageCycleDays, rfqSavingsKeur, type RfqKpiFacts } from '@/domain/kpis';
 import { wholeDaysText } from '@/features/kpis/i18n';
 import { dataText } from './i18n';
+import { PRICE_MASK } from '@/domain/rights';
 
 export interface KpiView {
   label: string;
@@ -40,7 +42,12 @@ export interface SourcingCtx {
   role: RoleKey;
   /** Screen in the viewer's workspace (send, compare, New RFQ…). */
   canEdit: boolean;
+  /** Supplier prices and invoice amounts shown (R-046, NEW-D2-1: director, PMs, procurement); masked otherwise. */
+  prices: boolean;
 }
+
+/** A price text, or the mask for a viewer who may not see supplier prices (R-046). */
+const priced = (c: Pick<SourcingCtx, 'prices'>) => (text: () => string) => (c.prices ? text() : PRICE_MASK);
 
 // ── Display switch (`pSeg`) ────────────────────────────────────────────────────────────────────────────
 
@@ -84,14 +91,17 @@ export interface RfqTabView {
  */
 export function rfqTabView(rfqs: readonly RfqRow[], selected: string | null, c: SourcingCtx, facts: readonly RfqKpiFacts[] = [], asOf: string = DEFAULT_DATA_DATE): RfqTabView {
   const { t, lang } = c;
+  const pr = priced(c);
   const k = rfqKpis(rfqs.map((r) => ({ status: r.status, quoteCount: r.quotes.length })));
+  // R-169 (A-12): computed from the RFQs still to award (the prototype printed the constant "PM").
+  const award = awardRuleTile(rfqs);
   return {
     kpis: [
       kpi(t, 'Open RFQs', k.open, t(`${k.readyToAward} ready to award`)),
       kpi(t, 'Quotes received', k.quotes, t('Across open requests')),
-      kpi(t, 'Savings vs list', money(rfqSavingsKeur(facts, asOf), lang), t('Awarded this quarter')),
+      kpi(t, 'Savings vs list', pr(() => money(rfqSavingsKeur(facts, asOf), lang)), t('Awarded this quarter')),
       kpi(t, 'Average cycle', wholeDaysText(rfqAverageCycleDays(facts), lang), t('RFQ sent → award')),
-      kpi(t, 'Award rule', 'PM', t('Decided per RFQ by the project manager')),
+      kpi(t, 'Award rule', award.value, t(award.sub)),
     ],
     rows: rfqs.map((r) => {
       const actions = rfqActions({ status: r.status, quoteCount: r.quotes.length, awardedTo: r.awardedTo });
@@ -155,17 +165,18 @@ export interface RfqDrawerView {
  */
 export function rfqDrawerView(r: RfqRow, c: SourcingCtx & { orderProject: string | null; currentProject: string }): RfqDrawerView {
   const { t, lang } = c;
+  const pr = priced(c);
   const state = { status: r.status, quoteCount: r.quotes.length, awardedTo: r.awardedTo };
   const cmp = compareQuotes(r.quotes, r.quantity);
   const canAward = c.canEdit && canAwardRfq(state, c.role);
-  const hint = rfqHint({ ...state, purchaseOrderNumber: r.purchaseOrderNumber, awardedInKeystone: !!r.awardedBy }, c.role);
+  const hint = rfqHint({ ...state, purchaseOrderNumber: r.purchaseOrderNumber, purchaseOrderStatus: r.purchaseOrderStatus, awardedInKeystone: !!r.awardedBy }, c.role);
   const meta: { k: string; v: string }[] = [
     { k: t('Part'), v: r.partRef ? r.partRef + (r.partName ? ' · ' + dataText(r.partName, lang) : '') : '—' },
     { k: t('Quantity'), v: r.quantity != null ? qtyText(r.quantity, lang) : '—' },
     { k: t('Quotes due'), v: dateText(r.replyDueOn, t) },
     { k: t('Buyer'), v: r.owner },
     { k: t('Award rule'), v: t(r.awardRuleLabel) },
-    { k: t('Last purchase price'), v: r.lastPriceEur != null ? moneyEur(r.lastPriceEur, lang) : '—' },
+    { k: t('Last purchase price'), v: r.lastPriceEur != null ? pr(() => moneyEur(r.lastPriceEur!, lang)) : '—' },
   ];
   // RFQs sent from Keystone also show what was asked (the prototype's form fields).
   if (r.articlesText != null) {
@@ -183,13 +194,14 @@ export function rfqDrawerView(r: RfqRow, c: SourcingCtx & { orderProject: string
     quotes: r.quotes.map((q, i) => ({
       supplier: q.supplier,
       awarded: q.awarded,
-      price: moneyEur(q.unitPriceEur, lang),
-      best: cmp[i].isBest,
-      total: cmp[i].totalEur != null ? moneyEur(cmp[i].totalEur!, lang) : '—',
-      delta: cmp[i].deltaEur ? '+' + moneyEur(cmp[i].deltaEur, lang) : '—',
+      price: pr(() => moneyEur(q.unitPriceEur, lang)),
+      // Masked prices: the best-price highlight would still rank the suppliers by price.
+      best: !!c.prices && cmp[i].isBest,
+      total: cmp[i].totalEur != null ? pr(() => moneyEur(cmp[i].totalEur!, lang)) : '—',
+      delta: cmp[i].deltaEur ? pr(() => '+' + moneyEur(cmp[i].deltaEur, lang)) : '—',
       lead: t(`${q.leadWeeks} ${q.leadWeeks === 1 ? 'wk' : 'wks'}`),
       fastest: cmp[i].isFastest,
-      terms: t(q.paymentTerms),
+      terms: dataText(q.paymentTerms, lang),
       rating: `${q.grade} · ${q.score}/100`,
       canAward,
     })),
@@ -264,12 +276,13 @@ export function parseInvoiceFilter(v: string | undefined, invoices: readonly { s
 
 export function invoiceTabView(invoices: readonly SupplierInvoiceRow[], filter: SupplierInvoiceStatus | 'all', selected: string | null, c: SourcingCtx): InvoiceTabView {
   const { t, lang } = c;
+  const pr = priced(c);
   const k = invoiceKpis(invoices.map((i) => ({ status: i.status, amountEur: i.amountEur, dueDate: i.dueDate })));
   const statuses = invoiceChipStatuses(invoices);
   const status = filter === 'all' ? null : filter;
   return {
     kpis: [
-      kpi(t, 'Invoices to process', k.toProcess, moneyEur(k.toProcessEur, lang)),
+      kpi(t, 'Invoices to process', k.toProcess, pr(() => moneyEur(k.toProcessEur, lang))),
       kpi(t, 'Blocked by 3-way match', k.blocked, t('Quantity or PO mismatch'), k.blocked > 0),
       kpi(t, 'Awaiting goods receipt', k.awaitingReceipt, t('Invoice before delivery')),
       kpi(t, 'Approved for payment', k.approved, t('Pushed to X3 accounts payable')),
@@ -293,8 +306,8 @@ export function invoiceTabView(invoices: readonly SupplierInvoiceRow[], filter: 
           supplier: i.supplier,
           po: i.poNumber ?? '—',
           gr: i.receiptNumber ?? '—',
-          amount: moneyEur(i.amountEur, lang),
-          gap: gap != null ? moneyEur(gap, lang) : '—',
+          amount: pr(() => moneyUnitsIn(i.amountEur, i.currency, lang)),
+          gap: gap != null ? pr(() => moneyUnitsIn(gap, i.currency, lang)) : '—',
           gapColor: gap != null ? LO : 'var(--color-neutral-500)',
           dots: [
             { label: 'PO', color: MATCH_DOT[m.po], state: t(legState(m.po)) },
@@ -342,12 +355,13 @@ export interface InvoiceDrawerView {
 
 export function invoiceDrawerView(i: SupplierInvoiceRow, filter: SupplierInvoiceStatus | 'all', c: SourcingCtx & { currentProject: string }): InvoiceDrawerView {
   const { t, lang } = c;
+  const pr = priced(c);
   const m = matchOf(i);
   const gap = receiptGap({ hasReceipt: !!i.receiptNumber, amountEur: i.amountEur, receiptAmountEur: i.receiptAmountEur });
   const reason = blockingReason(i.status, m);
   const d = decisionsFor(i, c);
   const leg = (label: string, ref: string | null, amount: number, s: MatchState): MatchLegView => ({
-    label: t(label), ref: ref ?? '—', amount: moneyEur(amount, lang), dot: MATCH_DOT[s], state: t(legState(s)), color: s === 'ok' ? OK : LO,
+    label: t(label), ref: ref ?? '—', amount: pr(() => moneyUnitsIn(amount, i.currency, lang)), dot: MATCH_DOT[s], state: t(legState(s)), color: s === 'ok' ? OK : LO,
   });
   const code = i.projectCode ?? c.currentProject;
   return {
@@ -360,13 +374,13 @@ export function invoiceDrawerView(i: SupplierInvoiceRow, filter: SupplierInvoice
     meta: [
       { k: t('Invoice date'), v: dateText(i.invoiceDate, t), color: OK },
       { k: t('Due date'), v: dateText(i.dueDate, t), color: OK },
-      { k: t('Terms'), v: t(i.paymentTerms), color: OK },
-      { k: t('Variance invoice − receipt'), v: gap != null ? moneyEur(gap, lang) : '—', color: OK },
+      { k: t('Terms'), v: dataText(i.paymentTerms, lang), color: OK },
+      { k: t('Variance invoice − receipt'), v: gap != null ? pr(() => moneyUnitsIn(gap, i.currency, lang)) : '—', color: OK },
       { k: t('Blocking reason'), v: reason ? t(reason) : '—', color: reason ? LO : OK },
     ],
     canApprove: d.canApprove,
     canApprovePart: d.canApprovePart,
-    partialLabel: t(`Approve ${moneyEur(i.receiptAmountEur, lang)} · request credit note`),
+    partialLabel: c.prices ? t(`Approve ${moneyUnitsIn(i.receiptAmountEur, i.currency, lang)} · request credit note`) : t('Approve the received amount · request credit note'),
     canReject: d.canReject,
     poHref: i.poNumber ? `${screenHref('orders', { code })}?po=${encodeURIComponent(i.poNumber)}` : null,
     grHref: i.receiptNumber ? `${screenHref('deliveries', { code })}?receipt=${encodeURIComponent(i.receiptNumber)}` : null,

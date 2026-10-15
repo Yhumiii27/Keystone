@@ -2,7 +2,8 @@
 // (§4.5, template 2346–2362), the "Deposit in Codex" hand-off (§4.6, template 2363–2374, depVals) and the Document
 // types register (§5, template 2375–2383): the domain figures (src/domain/documents.ts) and the DAL rows turned into
 // the translated strings, tag classes and links the components render. Pure (no I/O): `t` and `lang` come from the
-// page.
+// page. Delivery 8: links to Codex open it in a new tab (R-033); the drawer keeps the current revision and circuit, the
+// history stays in Codex (R-127, D-2 = a); deliverable, order and punch-item relations are links (R-128).
 import { LO, OK } from '@/components/app/tones';
 import { screenHref } from '@/config/screens';
 import {
@@ -11,9 +12,16 @@ import {
   type ApproverViewer, type DocFamily, type DocScope, type DocView, type DocumentStatus,
 } from '@/domain/documents';
 import type { Lang, T } from '@/i18n/translate';
-import { CONFIDENTIALITY_TAG, DOCUMENT_STATUS_TAG, confidentiality, docFamily, docSavedView, documentStatus, shortDateOfIso } from '@/server/db/codes';
-import type { CodexSyncState, DocumentRecord, DocumentTypeRow, VaultDocument } from '@/server/dal/documents';
+import { codexSyncText } from '@/domain/codex-approvals';
+import { CONFIDENTIALITY_TAG, DOCUMENT_STATUS_TAG, codexDecision, confidentiality, docFamily, docSavedView, documentStatus, shortDateOfIso } from '@/server/db/codes';
+import type { CodexSyncState, DocumentLinkRow, DocumentRecord, DocumentTypeRow, VaultDocument } from '@/server/dal/documents';
 import { approveLabelT, circuitT, exactT, revisionContextT, roleT } from './i18n';
+import { codexConnectorMode } from '@/server/integrations/codex/config';
+import { codexIndexLineT } from '@/server/integrations/codex/display';
+import { codexDocumentUrl } from '@/server/integrations/codex/links';
+import { itpHref } from '@/features/itpcom/model';
+import { ordersHref } from '@/features/orders/links';
+import { deliverableHref } from '@/features/quality/links';
 import { documentsHref, type DocsQuery } from './links';
 
 const tag = (tone: string) => `tag ${tone}`;
@@ -67,7 +75,7 @@ export interface VaultRowView {
 }
 
 export interface VaultView {
-  /** "Last sync 08:02 · 412 records" (translated). */
+  /** "Mock index · 412 records" (translated; "Last sync 08:02 · 412 records" once Codex is connected, R-021). */
   sync: string;
   /** Record count of the sync line, for the "Sync now" toast. */
   records: number;
@@ -84,14 +92,12 @@ export interface VaultView {
   empty: string | null;
 }
 
-/** Title / tags of a record: Codex records as the prototype translates them; Keystone-created ones only on an exact entry. */
-const dataT = (d: Pick<VaultDocument, 'isNew'>, s: string, t: T, lang: Lang) => (d.isNew ? exactT(s, lang) : t(s));
 
 export function vaultRowView(d: VaultDocument, href: string, open: boolean, t: T, lang: Lang): VaultRowView {
   return {
-    number: d.number, isNew: d.isNew, title: dataT(d, d.title, t, lang), kind: t(d.typeLabel), service: t(d.serviceLabel), project: d.project,
+    number: d.number, isNew: d.isNew, title: exactT(d.title, lang), kind: t(d.typeLabel), service: t(d.serviceLabel), project: d.project,
     revision: d.revision, status: t(d.statusLabel), statusClass: tag(DOCUMENT_STATUS_TAG[d.status]), conf: t(d.confidentialityLabel),
-    confClass: tag(CONFIDENTIALITY_TAG[d.confidentiality]), tags: dataT(d, d.tagsText, t, lang), href, open,
+    confClass: tag(CONFIDENTIALITY_TAG[d.confidentiality]), tags: exactT(d.tagsText, lang), href, open,
   };
 }
 
@@ -105,7 +111,7 @@ export interface VaultInput {
 export function vaultView({ project, docs, sync, state }: VaultInput, t: T, lang: Lang): VaultView {
   const keep = keepQuery(state);
   const href = (q: DocsQuery) => documentsHref(project, q);
-  const display = (d: VaultDocument) => `${dataT(d, d.title, t, lang)} ${t(d.typeLabel)} ${dataT(d, d.tagsText, t, lang)}`;
+  const display = (d: VaultDocument) => `${exactT(d.title, lang)} ${t(d.typeLabel)} ${exactT(d.tagsText, lang)}`;
   const { scoped, list } = vaultList(docs, { scope: state.scope, project, view: state.view, family: state.family, status: state.status, q: state.q }, display);
 
   const kpis = vaultKpis(scoped).map((k) => ({ label: t(k.label), value: String(k.value), sub: t(k.sub), color: k.alert ? LO : OK }));
@@ -129,7 +135,8 @@ export function vaultView({ project, docs, sync, state }: VaultInput, t: T, lang
     return vaultRowView(d, href({ ...keep, doc: open ? null : d.number }), open, t, lang);
   });
   return {
-    sync: sync ? t(`Last sync ${sync.time} · ${sync.records} records`) : '',
+    // R-021: Codex is a mock until its connector exists — "Mock index · 412 records", no sync time.
+    sync: sync ? codexIndexLineT(sync, codexConnectorMode(), t, lang) : '',
     records: sync?.records ?? 0,
     kpis,
     scope: { value: state.scope, options: scopeOptions },
@@ -158,9 +165,11 @@ export interface DrawerRevisionView {
 export interface DrawerApprovalView {
   /** "{role} · {who}". */
   label: string;
-  /** "Signed · 27 Sep" / "Pending · —". */
+  /** "Signed · 27 Sep" / "Pending · —" / Delivery 7: "Approved · 11 Oct · Pending sync with Codex" (decided in Keystone). */
   state: string;
   signed: boolean;
+  /** Delivery 7: decided in Keystone, waiting for Codex. */
+  pendingSync: boolean;
 }
 
 export interface DrawerDistributionView {
@@ -174,7 +183,12 @@ export interface DrawerDistributionView {
 export interface DrawerLinkView {
   kind: string;
   ref: string;
-  /** Article → PLM part drawer, change request → Change control drawer; other kinds have no target yet (D-2). */
+  /**
+   * Article → PLM part drawer, change request → Change control drawer; R-128: deliverable → Quality › Deliverables, purchase
+   * order → Orders, punch item → the project's punch list row (`#punch-P-01`), each resolved in the record's own project.
+   * Null (inert pill) for a QMS record or a reference not found there. Not gated by the viewer's screens: the target pages
+   * apply their own rights and read-only banner, as for the article and change-request links.
+   */
   href: string | null;
 }
 
@@ -189,20 +203,27 @@ export interface DocDrawerView {
   status: string;
   statusClass: string;
   closeHref: string;
-  /** Toast of "Open in Codex": "Opening Codex · PID-HLT-026 rev D". */
-  openToast: string;
+  /**
+   * "Open in Codex" (R-033): the record in Codex, new tab — Codex's own link once the index read brought it, else Codex's
+   * home (TODO(codex) D-1); null for the client role (no Codex access).
+   */
+  codexHref: string | null;
+  /** R-127 (D-2 = a): "Earlier revisions and download log in Codex" under the current revision; null for the client role. */
+  historyHref: string | null;
   /** "New revision · Codex" → the deposit hand-off in revision mode; null for read-only viewers. */
   newRevisionHref: string | null;
   /** "Approve in Codex · {role} · {approver}" when the viewer may record the next step, else null. */
   approveLabel: string | null;
+  /** Delivery 7: the circuit as Keystone shows it ("Approved · Pending sync with Codex", "Awaiting PM validation"), translated; null when none. */
+  circuitNote: string | null;
   /** "Withdrawal · rev C withdrawn automatically · 29 Sep" after a release that withdrew the previous revision. */
   withdrawal: string | null;
   identity: { k: string; v: string }[];
   tags: string[];
+  /** The current revision only (D-2 = a, R-127). */
   revisions: DrawerRevisionView[];
   approvals: DrawerApprovalView[];
   distribution: DrawerDistributionView[];
-  downloads: string[];
   links: DrawerLinkView[];
 }
 
@@ -216,11 +237,19 @@ export interface DrawerInput {
   canEdit: boolean;
 }
 
-/** Link targets of a relation (`docLinks` 5047). */
-function linkHref(kind: string, ref: string, project: string): string | null {
-  if (kind === 'article') return `${screenHref('plm')}?part=${encodeURIComponent(ref)}`;
-  if (kind === 'change_request' && project !== QMS) return `${screenHref('changes', { code: project })}?cr=${encodeURIComponent(ref)}`;
-  return null;
+/**
+ * Link targets of a relation (`docLinks` 5047): article and change request as before; R-128 (D-2 context, 10 OQ15):
+ * deliverable, purchase order and punch item through the target the DAL resolved in the record's own project.
+ */
+function linkHref(l: DocumentLinkRow, project: string): string | null {
+  if (l.kind === 'article') return `${screenHref('plm')}?part=${encodeURIComponent(l.ref)}`;
+  if (l.kind === 'change_request' && project !== QMS) return `${screenHref('changes', { code: project })}?cr=${encodeURIComponent(l.ref)}`;
+  const x = l.target;
+  if (!x) return null;
+  if (x.screen === 'deliverable') return deliverableHref(x.project, x.ref);
+  if (x.screen === 'order') return ordersHref(x.project, { po: x.ref });
+  // The punch list of the project; the row carries id="punch-{number}" (site-quality lot, R-117).
+  return `${itpHref(x.project, 'punch')}#punch-${encodeURIComponent(x.ref)}`;
 }
 
 export function drawerView({ project, record: r, state, viewer, canEdit }: DrawerInput, t: T, lang: Lang): DocDrawerView {
@@ -251,11 +280,22 @@ export function drawerView({ project, record: r, state, viewer, canEdit }: Drawe
     statusClass: tag(DOCUMENT_STATUS_TAG[x.status]),
   }));
 
-  const approvals = r.approvals.map((a) => ({
-    label: `${role(a.roleLabel)} · ${a.who}`,
-    state: `${t(a.signed ? 'Signed' : 'Pending')} · ${a.signedOn ? date(a.signedOn) : '—'}`,
-    signed: a.signed,
-  }));
+  // Delivery 7 (R-124): a step decided in Keystone shows the decision, its author and day, and its sync with Codex.
+  const approvals = r.approvals.map((a) =>
+    a.keystone
+      ? {
+          label: `${role(a.roleLabel)} · ${a.keystone.by}`,
+          state: [t(codexDecision.label(a.keystone.decision)), date(a.keystone.on), t(codexSyncText(a.keystone.sync))].join(' · '),
+          signed: false,
+          pendingSync: true,
+        }
+      : {
+          label: `${role(a.roleLabel)} · ${a.who}`,
+          state: `${t(a.signed ? 'Signed' : 'Pending')} · ${a.signedOn ? date(a.signedOn) : '—'}`,
+          signed: a.signed,
+          pendingSync: false,
+        },
+  );
 
   const distribution = r.distribution.map((x) =>
     x.kind === 'client'
@@ -269,29 +309,34 @@ export function drawerView({ project, record: r, state, viewer, canEdit }: Drawe
   );
 
   const mayApprove = canApproveDocument(viewer, r) && r.nextRoleLabel && r.nextApprover;
+  // Clients have no Codex access: no link to Codex in their drawer (R-127; R-033 opens the record in Codex for the team).
+  const client = viewer.role === 'client';
+  const inCodex = client ? null : codexDocumentUrl(r.number, r.revision, r.codexUrl);
   return {
     number: r.number,
     revision: r.revision,
     head: `${t('Document record')} · ${r.number} · ${t(`rev ${r.revision}`)}`,
-    title: dataT(r, r.title, t, lang),
+    title: exactT(r.title, lang),
     conf: t(confidentiality.label(r.confidentiality)),
     confClass: tag(CONFIDENTIALITY_TAG[r.confidentiality]),
     status: t(r.statusLabel),
     statusClass: tag(DOCUMENT_STATUS_TAG[r.status]),
     closeHref: documentsHref(project, keep),
-    // "rev D" translated like the header ("rév. D"), as the prototype's segment-wise toast did.
-    openToast: `${t(`Opening Codex · ${r.number}`)} ${t(`rev ${r.revision}`)}`,
-    newRevisionHref: canEdit ? documentsHref(project, { ...keep, deposit: r.number }) : null,
+    codexHref: inCodex,
+    historyHref: inCodex,
+    // R-047: a new revision is deposited by the team of the record's own project, from its vault (the page's `canEdit`).
+    newRevisionHref: canEdit && r.project === project ? documentsHref(project, { ...keep, deposit: r.number }) : null,
     approveLabel: mayApprove ? approveLabelT(r.nextRoleLabel!, r.nextApprover!, t, lang) : null,
+    circuitNote: r.circuitNote ? t(r.circuitNote) : null,
     withdrawal: r.withdrawal ? `${t('Withdrawal')} · ${t(`rev ${r.withdrawal.revision} withdrawn automatically · ${shortDateOfIso(r.withdrawal.on)}`)}` : null,
     identity,
     // `tagList = tags.split(' · ')`: a record without classification shows a single "—" pill.
-    tags: r.tags.length ? r.tags.map((x) => dataT(r, x, t, lang)) : ['—'],
+    tags: r.tags.length ? r.tags.map((x) => exactT(x, lang)) : ['—'],
     revisions,
     approvals,
     distribution,
-    downloads: r.downloads.map((x) => t(x.text)),
-    links: r.links.map((l) => ({ kind: t(l.kindLabel), ref: l.ref, href: linkHref(l.kind, l.ref, r.project) })),
+    // A client's relations stay inert: every target is an internal screen that sends the client home (P-1).
+    links: r.links.map((l) => ({ kind: t(l.kindLabel), ref: l.ref, href: client ? null : linkHref(l, r.project) })),
   };
 }
 
@@ -362,7 +407,7 @@ export function depositView(input: DepositInput, t: T, lang: Lang): DepositView 
       page: project,
       project: doc.project,
       projectText: t(projectText(doc.project)),
-      revision: { number: doc.number, title: dataT(doc, doc.title, t, lang), context: revisionContextT(revisionContextText(doc.number, doc.revision), lang), type: doc.type },
+      revision: { number: doc.number, title: exactT(doc.title, lang), context: revisionContextT(revisionContextText(doc.number, doc.revision), lang), type: doc.type },
       // `openDep` from the drawer: type of the record, linked order = its first relation, no article.
       initial: { type: doc.type, po: doc.links[0]?.ref ?? '', part: '' },
       types: [{ ...typeView(doc.type, doc.project, doc.number), confidentiality: t(doc.confidentialityLabel) }],

@@ -52,6 +52,8 @@ export interface AnalysisResult {
   summary: string;
   language: string;
   proposals: ProposalDraft[];
+  /** Model that actually answered (Claude: `response.model`, which names the fallback model after a server-side refusal fallback). */
+  servedBy?: string | null;
 }
 
 export type AnalyzerId = 'local' | 'claude';

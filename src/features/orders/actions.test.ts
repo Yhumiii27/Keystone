@@ -83,7 +83,9 @@ describe('purchase orders Server Functions', () => {
     // Each draft's drawer: the prototype's rows, plus the Sage X3 local-change flag (drafted in Keystone).
     for (const d of g.draftPOs as any[]) {
       const dr = (await view('en', d.id)).drawer!;
-      expect(dr.meta.slice(0, 5).map((m) => [m.k, m.v])).toEqual(g.drawers[d.id].meta.map((m: any) => [m.k, m.v]));
+      // R-169: a shortfall draft has no terms yet ("To be agreed"; the prototype wrote "Site gate 2 · DAP · Net 30").
+      const terms = (m: any) => (m.k === 'Delivery / terms' ? 'To be agreed' : m.v);
+      expect(dr.meta.slice(0, 5).map((m) => [m.k, m.v])).toEqual(g.drawers[d.id].meta.map((m: any) => [m.k, terms(m)]));
       expect(dr.meta.slice(5).map((m) => [m.k, m.v, m.color])).toEqual([['Sage X3', 'Local change · not yet pushed to X3', 'var(--color-accent-300)']]);
       expect(dr.canPush).toBe(false); // not approved yet
     }
@@ -118,10 +120,11 @@ describe('purchase orders Server Functions', () => {
     expect(dr.steps.map((s) => [s.label, s.reached, s.current])).toEqual([['Draft', true, false], ['Approved', true, false], ['Ordered', true, true]]);
     expect(dr.canPush).toBe(true);
     viewer.name = 'Fabien Bertrand';
-    expect(await pushOrderToX3Action('HLT-026', first)).toEqual({ ok: true, message: `${first} · Pushed to X3 · X3-${first}` });
+    // R-034 (A-15): Sage X3 is not connected — on the demo database the push is a simulation and says so.
+    expect(await pushOrderToX3Action('HLT-026', first)).toEqual({ ok: true, message: `${first} · Simulated push (Sage X3 not connected) · X3-${first}` });
     const pushed = (await view('en', first)).drawer!;
     expect([pushed.canPush, pushed.meta.at(-1)!.v, pushed.meta.at(-1)!.color]).toEqual([false, `Pushed to X3 · X3-${first}`, 'var(--color-text)']);
-    expect(await lastAudit()).toMatchObject({ who: 'Fabien Bertrand', object: first, change: `pushed to Sage X3 · X3-${first}` });
+    expect(await lastAudit()).toMatchObject({ who: 'Fabien Bertrand', object: first, change: `simulated push to Sage X3 (not connected) · X3-${first}` });
     expect(await pushOrderToX3Action('HLT-026', first)).toEqual({ ok: false, error: 'Only an approved order drafted in Keystone can be pushed to X3' });
     expect(await pushOrderToX3Action('HLT-026', 'PO-1041')).toEqual({ ok: false, error: 'Only an approved order drafted in Keystone can be pushed to X3' });
     expect(await pushOrderToX3Action('HLT-026', 'PO-1101')).toEqual({ ok: false, error: 'Only an approved order drafted in Keystone can be pushed to X3' });
@@ -132,11 +135,16 @@ describe('purchase orders Server Functions', () => {
     expect(await decidePurchaseOrderAction({ projectCode: 'HLT-026', number: 'PO-1082', decision: 'rejected' })).toEqual({ ok: false, error: 'Read-only — you cannot decide from this inbox' });
     viewer.inbox = true;
     expect(await decidePurchaseOrderAction({ projectCode: 'HLT-026', number: 'PO-1082', decision: 'maybe' })).toEqual({ ok: false, error: 'Invalid request' });
-    expect(await decidePurchaseOrderAction({ projectCode: 'HLT-026', number: 'PO-1082', decision: 'rejected' })).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
+    // R-095 (SC-3a, P-5c): a rejection needs its reason (≤ 1000 characters), stored on the order and in the audit change.
+    const reason = 'Supplier changed after the design review';
+    expect(await decidePurchaseOrderAction({ projectCode: 'HLT-026', number: 'PO-1082', decision: 'rejected' })).toEqual({ ok: false, error: 'Give the reason for the cancellation' });
+    expect(await decidePurchaseOrderAction({ projectCode: 'HLT-026', number: 'PO-1082', decision: 'rejected', reason })).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
     viewer.name = 'Marie Lefebvre';
-    expect(await decidePurchaseOrderAction({ projectCode: 'NDC-031', number: 'PO-1082', decision: 'rejected' })).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
-    expect(await decidePurchaseOrderAction({ projectCode: 'HLT-026', number: 'PO-1082', decision: 'rejected' })).toEqual({ ok: true, status: 'Cancelled' });
-    expect(await lastAudit()).toMatchObject({ who: 'Marie Lefebvre', object: 'PO-1082', change: 'status: Awaiting approval → Cancelled' });
+    expect(await decidePurchaseOrderAction({ projectCode: 'NDC-031', number: 'PO-1082', decision: 'rejected', reason })).toEqual({ ok: false, error: 'This decision is not waiting for you any more' });
+    expect(await decidePurchaseOrderAction({ projectCode: 'HLT-026', number: 'PO-1082', decision: 'rejected', reason: 'x'.repeat(1001) })).toEqual({ ok: false, error: 'The reason is too long' });
+    expect(await decidePurchaseOrderAction({ projectCode: 'HLT-026', number: 'PO-1082', decision: 'rejected', reason: `  ${reason} ` })).toEqual({ ok: true, status: 'Cancelled' });
+    expect(await lastAudit()).toMatchObject({ who: 'Marie Lefebvre', object: 'PO-1082', change: `status: Awaiting approval → Cancelled · ${reason}` });
+    expect((await getPurchaseOrder('PO-1082'))!.cancellation).toMatchObject({ by: 'Marie Lefebvre', reason });
     const g = G.flow.en.cancelled;
     const v = await view('en', 'PO-1082');
     const row = v.rows.find((r) => r.number === 'PO-1082')!;

@@ -30,6 +30,10 @@
 .pipeline { fill: var(--color-bg); stroke: var(--color-accent-300); stroke-width: 1.5; stroke-dasharray: 2.5 2; }
 .closed { fill: var(--color-neutral-600); }
 .hl { fill: none; stroke: var(--color-accent-200); stroke-width: 1.5; }
+/* Delivery 8 (R-135): keyboard focus ring drawn as an SVG circle (an outline on a <g> does not render everywhere). */
+.mk:focus { outline: none; }
+.focusRing { display: none; fill: none; stroke: var(--color-accent); stroke-width: 2; }
+.mk:focus-visible .focusRing { display: inline; }
 .label,
 .count {
   font-size: 11px;

@@ -6,8 +6,14 @@
 // Rules settled here (open questions 08 OQ13–16, 00 §10 SC-5), applied by the data layer and the Server Functions:
 // - a count (adjust) may be 0; every other operation needs a whole quantity > 0;
 // - no movement takes more than the quantity on hand (transfer, issue, scrap), a reservation never exceeds it;
-// - a reservation belongs to one project: reserving for another project is refused, an issue consumes only the
-//   reservation of its own project, and a reservation that drops to 0 is released;
+// - a reservation belongs to one project: reserving for another project is refused, and a reservation that drops to 0
+//   is released;
+// - Delivery 7 (SC-5a = a, R-098): an issue names the activity of the project's plan that consumes the parts — required;
+//   its value (quantity × the stock unit cost, A-11: last purchase price, else list price) is charged to the activity's
+//   work package in the cost tracking;
+// - Delivery 7 (NEW-D4-2 / SC-5b = a, R-099): an issue or a scrap never takes units reserved for another project: the
+//   reserving project's PM releases them first ("Release reservation", that project's PM or the director), unless the
+//   portfolio director overrides (audited, the other project's reservation drops by what is taken);
 // - a transfer that moves reserved goods (more than the free quantity) moves their reservation with them to the
 //   destination, which must not hold another project's reservation (the prototype left it behind, available < 0);
 // - "Import from X3" merges: lines changed in Keystone and not yet pushed keep their values (the prototype
@@ -22,7 +28,11 @@ export type { LocationType, StockMovementType, StockOperation, StockSource };
 export type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
 /** STOCK_OPS (3483) order: the segmented control of the stock-line drawer. */
-export const STOCK_OPS: readonly StockOperation[] = ['adjust', 'transfer', 'reserve', 'issue', 'return', 'scrap'];
+export const STOCK_OPS: readonly StockOperation[] = ['adjust', 'transfer', 'reserve', 'release', 'issue', 'return', 'scrap'];
+/** The prototype's six operations (STOCK_OPS 3483); "Release reservation" is Delivery 7's (R-099). */
+export const PROTOTYPE_STOCK_OPS: readonly StockOperation[] = STOCK_OPS.filter((op) => op !== 'release');
+/** Operations offered on a line: "Release reservation" only while the line holds a reservation. */
+export const lineStockOps = (reserved: number): StockOperation[] => STOCK_OPS.filter((op) => op !== 'release' || reserved > 0);
 
 export const isStockOperation = (v: unknown): v is StockOperation => typeof v === 'string' && (STOCK_OPS as readonly string[]).includes(v);
 
@@ -159,10 +169,15 @@ export interface MovementRequest {
   target?: string | null;
   /** Project holding a reservation on the destination line of a transfer (null when none). */
   targetReservedFor?: string | null;
-  /** Current project (reserve, issue, return — the prototype's `PD.p3`). */
+  /** Current project (reserve, issue, return, scrap — the prototype's `PD.p3`). */
   project?: ProjectRef | null;
-  /** Activity issued to (optional). */
+  /** Activity issued to (required for an issue, SC-5a; optional on a return: credits its work package). */
   activity?: { code: string; name: string } | null;
+  /**
+   * The portfolio director takes units reserved for another project (issue or scrap beyond the free quantity, R-099).
+   * The caller checks the role; the plan records how many were taken (`overrideTaken`).
+   */
+  override?: boolean;
 }
 
 export interface MovementPlan {
@@ -178,11 +193,25 @@ export interface MovementPlan {
   transferReserved: number;
   /** Project of that reservation (the source line's). */
   transferReservedFor: string | null;
-  /** Project of the movement (reserve, issue, return). */
+  /** Project of the movement (reserve, release, issue, return). */
   projectCode: string | null;
   /** "Where" text of the movement lists (MOVES0 format). */
   whereText: string;
+  /** Units reserved for another project taken by the director's override (0 when none) and that project. */
+  overrideTaken: number;
+  overrideFrom: string | null;
 }
+
+/** Refusal of an issue / scrap that would take units reserved for another project (EN source, R-099). */
+export const reservedForOtherText = (n: number, project: string) =>
+  `${n} reserved for ${project} — its project manager must release them first`;
+
+/**
+ * Units of a line held for another project than `project` (every reserved unit of a project when none is given, e.g. a
+ * scrap); a reservation without a project (X3 data) belongs to nobody and counts as free.
+ */
+export const reservedForOthers = (pos: Pick<PositionFacts, 'reserved' | 'reservedFor'>, project: string | null | undefined) =>
+  pos.reserved > 0 && pos.reservedFor && pos.reservedFor !== project ? pos.reserved : 0;
 
 /** Validates a whole quantity for an operation: ≥ 0 for a count, > 0 otherwise. */
 export function checkQuantity(op: StockOperation, qty: number): string | null {
@@ -207,7 +236,24 @@ export function planStockMovement(pos: PositionFacts, req: MovementRequest, loca
   let reservedFor = pos.reservedFor;
   let transferTo: string | null = null;
   let transferReserved = 0;
+  let overrideTaken = 0;
   let whereText: string;
+  /**
+   * An issue / scrap never takes units reserved for another project, unless the director overrides (R-099): then the
+   * other project's reservation drops by what is taken. Otherwise an issue consumes its own project's reservation first
+   * (as before), a scrap the free units first (the final cap trims the own reservation when needed). Returns the
+   * refusal, or null with the reservation set.
+   */
+  const takeFree = (ownFirst: boolean): string | null => {
+    const others = reservedForOthers(pos, project?.code);
+    const free = Math.max(0, pos.onHand - others);
+    if (qty > free) {
+      if (!req.override) return reservedForOtherText(others, pos.reservedFor ?? '—');
+      overrideTaken = qty - free;
+    }
+    reserved = others ? pos.reserved - overrideTaken : ownFirst ? Math.max(0, pos.reserved - qty) : pos.reserved;
+    return null;
+  };
   switch (op) {
     case 'adjust':
       onHand = qty;
@@ -239,23 +285,32 @@ export function planStockMovement(pos: PositionFacts, req: MovementRequest, loca
       whereText = `${loc} · ${project.short}`;
       break;
     }
+    case 'release': {
+      // "Release reservation" (R-099): the reserving project gives units back to the free stock.
+      if (!project) return { ok: false, error: 'A project is required' };
+      if (!pos.reserved || pos.reservedFor !== project.code) return { ok: false, error: 'This line holds no reservation for this project' };
+      if (qty > pos.reserved) return { ok: false, error: `Only ${pos.reserved} reserved at ${loc}` };
+      reserved -= qty;
+      whereText = `${loc} · ${project.short} released`;
+      break;
+    }
     case 'issue': {
       if (!project) return { ok: false, error: 'A project is required' };
-      const e = takeOut();
+      // SC-5a = a: the activity of the plan that consumes the parts is required.
+      if (!req.activity) return { ok: false, error: 'Choose the activity the parts are issued to' };
+      const e = takeOut() ?? takeFree(true);
       if (e) return { ok: false, error: e };
       onHand -= qty;
-      // The reservation is consumed only when it is held for the issuing project.
-      if (!pos.reservedFor || pos.reservedFor === project.code) reserved = Math.max(0, reserved - qty);
-      whereText = req.activity ? `${loc} → ${req.activity.code} ${req.activity.name}` : `${loc} → ${project.short} activity`;
+      whereText = `${loc} → ${req.activity.code} ${req.activity.name}`;
       break;
     }
     case 'return':
       if (!project) return { ok: false, error: 'A project is required' };
       onHand += qty;
-      whereText = `${project.short} → ${loc}`;
+      whereText = req.activity ? `${project.short} ${req.activity.code} → ${loc}` : `${project.short} → ${loc}`;
       break;
     case 'scrap': {
-      const e = takeOut();
+      const e = takeOut() ?? takeFree(false);
       if (e) return { ok: false, error: e };
       onHand -= qty;
       whereText = `${loc} · rework / scrap`;
@@ -268,10 +323,18 @@ export function planStockMovement(pos: PositionFacts, req: MovementRequest, loca
   return {
     ok: true,
     value: {
-      type: op, qty, onHand, reserved, reservedFor, transferTo, transferReserved, transferReservedFor: transferReserved ? pos.reservedFor : null, projectCode: op === 'reserve' || op === 'issue' || op === 'return' ? project!.code : null, whereText,
+      type: op, qty, onHand, reserved, reservedFor, transferTo, transferReserved, transferReservedFor: transferReserved ? pos.reservedFor : null,
+      projectCode: op === 'reserve' || op === 'release' || op === 'issue' || op === 'return' ? project!.code : null, whereText,
+      overrideTaken, overrideFrom: overrideTaken ? pos.reservedFor : null,
     },
   };
 }
+
+/** Activity code of the plan ("A1250"): letters, digits, dots, dashes, underscores (≤ 40). */
+export const isActivityCode = (v: unknown): v is string => typeof v === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$/.test(v);
+
+/** Value of a movement in euros (quantity × stock unit cost; A-11: last purchase price, else list price), cents kept. */
+export const movementValueEur = (qty: number, unitCostEur: number) => Math.round(qty * unitCostEur * 100) / 100;
 
 /** Raw drawer input (Server Function payload) → movement fields. The quantity field accepts digits only. */
 export function parseMovementInput(raw: { op?: unknown; qty?: unknown; target?: unknown }): ParseResult<{ op: StockOperation; qty: number; target: string | null }> {

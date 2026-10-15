@@ -23,7 +23,16 @@ const ctx: any = {
   },
 };
 vm.createContext(ctx);
-vm.runInContext(lines.slice(3095, 5239).join('\n') + '\n;globalThis.__C = Component;', ctx);
+// E-5 = a (docs/DECISIONS.md, Delivery 7 R-105): the latest frozen or released revision is the reference of an
+// engineering input — the prototype took only a Released one (`inRows` 4794), so a Frozen LST-IO-026 rev B read
+// "latest rev A". The rule is applied to the prototype logic before it runs, so every derived value follows.
+const E5_FROM = "(eo.docs[d.id]||d.status)==='Released'?d.rev:prevRev(d.rev)";
+const E5_TO = "['Frozen','Release proposed','Released','Obsolete'].includes(eo.docs[d.id]||d.status)?d.rev:prevRev(d.rev)";
+const applyE5 = (src: string) => {
+  if (!src.includes(E5_FROM)) throw new Error('E-5 patch: inRows rule not found');
+  return src.replace(E5_FROM, E5_TO);
+};
+vm.runInContext(applyE5(lines.slice(3095, 5239).join('\n')) + '\n;globalThis.__C = Component;', ctx);
 
 const make = (state: any = {}) => {
   const c = new ctx.__C({});

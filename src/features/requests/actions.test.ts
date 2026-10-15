@@ -20,6 +20,8 @@ vi.mock('@/server/project-context', () => ({
   getProjectScope: async () => ({ readOnly: (p: { pm: string }) => state.role === 'pm' && p.pm !== 'R. Aubert' }),
 }));
 
+import { fieldsText } from '@/i18n/data-text';
+import { makeT } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { listNotifications } from '@/server/dal/notifications';
@@ -89,7 +91,27 @@ describe('resource-request Server Functions', () => {
     expect(await withdrawRequestAction('RQ-044')).toEqual({ ok: true });
     expect(await getResourceRequest('RQ-044')).toMatchObject({ status: 'withdrawn', response: 'Withdrawn by PM · Fri 25 Sep' });
     expect(await withdrawRequestAction('RQ-044')).toEqual({ ok: false, error: 'This request has already been decided' });
-    expect(await reRequestAction('RQ-044')).toEqual({ ok: false, error: 'This request has already been decided' }); // 08 OQ21: only rejected
+    // P-8c a (R-090): a withdrawn request is re-sent as it was, by its sender (was 08 OQ21: only rejected → stale).
+    state.role = 'depthead';
+    expect(await reRequestAction('RQ-044')).toEqual({ ok: false, error: 'Read-only — only the sender can change this request' });
+    state.role = 'pm';
+    expect(await reRequestAction('RQ-044')).toEqual({ ok: true });
+    expect(await getResourceRequest('RQ-044')).toMatchObject({ status: 'pending', response: '', sentText: 'Fri 25 Sep' });
+    expect(await top('depthead')).toMatchObject({ kind: 'request', title: 'New resource request', screen: 'approvals' });
+    // Pending again: a second re-request is stale.
+    expect(await reRequestAction('RQ-044')).toEqual({ ok: false, error: 'This request has already been decided' });
+  });
+
+  it('R-048 (P-8a): a department head decides their own department\'s requests only (was: any department)', async () => {
+    const notTheirs = { ok: false, error: 'Read-only — you decide the requests of your own department only' };
+    state.role = 'depthead'; // Engineering
+    expect(await approveRequestAction('RQ-042')).toEqual(notTheirs); // Quality
+    expect(await rejectRequestAction('RQ-042', 'No')).toEqual(notTheirs);
+    expect(await proposeRescheduleAction('RQ-042', 2, 'Later')).toEqual(notTheirs);
+    state.role = 'quality'; // heads Quality
+    expect(await approveRequestAction('RQ-041')).toEqual(notTheirs); // Engineering
+    expect(await getResourceRequest('RQ-041')).toMatchObject({ status: 'pending' });
+    expect(await getResourceRequest('RQ-042')).toMatchObject({ status: 'pending' });
   });
 
   it('approve: the decider is the viewer, the task T-2341 lands in the person’s list, requester and person notified', async () => {
@@ -101,7 +123,9 @@ describe('resource-request Server Functions', () => {
     expect(await getTask('T-2341')).toMatchObject({ assignee: 'Julien Wagner', status: 'todo', estimateH: 12 });
     expect(await approveRequestAction('RQ-041')).toEqual({ ok: false, error: 'This request has already been decided' });
     expect(await top('pm')).toMatchObject({ kind: 'approval', title: 'Resource request approved', screen: 'requests' });
-    expect(await top('member')).toMatchObject({ kind: 'task', title: 'New task assigned', sub: 'Erection sequence review — Bay 4 rafters, second crew · Approved by Marion Kerviel · due 30 Sep', screen: 'mywork' });
+    expect(await top('member')).toMatchObject({ kind: 'task', title: 'New task assigned', sub: 'Erection sequence review — Bay 4 rafters, second crew · Marion Kerviel · 30 Sep', screen: 'mywork' });
+    // Integration review (R-148): fields only — the French bell shows the title and name as typed and translates the date.
+    expect(fieldsText((await top('member'))!.sub, makeT('fr'), 'fr')).toBe('Erection sequence review — Bay 4 rafters, second crew · Marion Kerviel · 30 sept.');
   });
 
   it('propose reschedule (+2 weeks, reason) then the PM accepts: dates move, task created', async () => {

@@ -2,7 +2,7 @@
 // readAt), activity feed (ACTIVITY) and audit trail (AUDIT). See schema/platform.ts.
 import { PROTO } from '@/server/prototype';
 import { parseStampText, type ActivityKind, type NotificationKind } from '../codes';
-import { activityEvents, auditEntries, notificationRecipients, notifications } from '../schema';
+import { activityEvents, auditEntries, notificationRecipients, notifications, users } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, type SeedCtx } from './context';
 
@@ -37,9 +37,16 @@ export async function seedPlatform(tx: Tx, ctx: SeedCtx): Promise<void> {
     })),
   );
 
+  // R-168: the rows carry the user account of their actor at insert — the trail is append-only, a later UPDATE is refused
+  // (on a fresh database the migration's backfill runs before the seed, on an empty table).
+  const userOfPerson = new Map((await tx.select({ id: users.id, personId: users.personId }).from(users)).map((u) => [u.personId, u.id]));
   await tx.insert(auditEntries).values(
-    (PROTO.AUDIT as [string, string, string, string, string][]).map(([when, who, objectRef, change, area]) => ({
-      id: newId(), occurredAt: parseStampText(when), actorPersonId: personOf(who), actorName: who, objectRef, change, area,
-    })),
+    (PROTO.AUDIT as [string, string, string, string, string][]).map(([when, who, objectRef, change, area]) => {
+      const personId = personOf(who);
+      return {
+        id: newId(), occurredAt: parseStampText(when), actorPersonId: personId, actorUserId: personId ? userOfPerson.get(personId) ?? null : null, actorName: who,
+        objectRef, change, area,
+      };
+    }),
   );
 }

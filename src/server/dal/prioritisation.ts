@@ -2,17 +2,22 @@ import 'server-only';
 // Portfolio prioritisation & capacity DAL (docs/spec/03 §6; 11 §3.2 PortfolioScore / ScoreWeight). Score =
 // 100 × Σ (s_i / 5) × (w_i / Σw) (logic 4499). Ranked population: zone projects with scores, excluding Clos and
 // Annulé (the prototype compared legacy English statuses and so excluded nothing, 03 A.1). SCORES' obsolete keys are
-// remapped at seed (00 §7.16). Margin comes from the billing plan, i.e. the contract when one exists (A-5): HLT-026
-// shows 13 % (contract €5.52M) where the prototype's BILLING gave 11 % (€5.40M).
+// remapped at seed (00 §7.16). Margin = margin at completion (C-10b, R-132): (contract − EAC) / contract, the contract
+// from the billing plan (the contract when one exists, A-5) consolidated in euros (C-9) — it was (contract − budget) / contract.
 import { and, asc, eq } from 'drizzle-orm';
+// The role rules without the navigation icons (./screens.ts loads them; scripts such as db-check import this module).
+import { canSee } from '@/config/role-screens';
+import type { RoleKey } from '@/config/screens';
+import { inExecution } from '@/domain/portfolio';
 import { getDb } from '@/server/db/client';
 import { scoreAxis, type ScoreAxis, type StageCode } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
-import { portfolioScores, projects, scoreAxes, scoreWeights, users } from '@/server/db/schema';
+import { portfolioScores, projects, scoreAxes, scoreWeights } from '@/server/db/schema';
 import type { ZoneKey } from '@/server/session';
-import { listBillingPlans, marginPct } from './cashflow';
+import { listEurBillingPlans, marginAtCompletion } from './cashflow';
 import { capacityModel } from './kpis';
 import { listProjects, type ProjectRow } from './projects';
+import { userIdOf, type UserRef } from './users';
 
 export interface ScoreAxisRow {
   code: ScoreAxis;
@@ -28,36 +33,34 @@ export async function listScoreAxes(): Promise<ScoreAxisRow[]> {
   return rows.map((r) => ({ code: r.code, label: r.label, defaultWeight: r.defaultWeight }));
 }
 
-/** Weights of a viewer (role) — their saved weights over the defaults (`pfWeights`). */
-export async function getScoreWeights(role: string): Promise<Record<ScoreAxis, number>> {
+/** Weights of a viewer (or a role's demo persona) — their saved weights over the defaults (`pfWeights`). */
+export async function getScoreWeights(who: UserRef): Promise<Record<ScoreAxis, number>> {
   const db = await getDb();
-  const axes = await listScoreAxes();
-  const saved = await db
-    .select({ axis: scoreWeights.axis, weight: scoreWeights.weight })
-    .from(scoreWeights)
-    .innerJoin(users, eq(users.id, scoreWeights.userId))
-    .where(eq(users.role, role));
+  const [axes, userId] = await Promise.all([listScoreAxes(), userIdOf(db, who)]);
+  const saved = userId
+    ? await db.select({ axis: scoreWeights.axis, weight: scoreWeights.weight }).from(scoreWeights).where(eq(scoreWeights.userId, userId))
+    : [];
   const w = Object.fromEntries(axes.map((a) => [a.code, a.defaultWeight])) as Record<ScoreAxis, number>;
   for (const s of saved) w[s.axis] = s.weight;
   return w;
 }
 
 /** Weight input of the Weights card (`setW`: NaN → 0, saved per user). Weights are not normalised (the sum is shown). */
-export async function setScoreWeight(role: string, axis: ScoreAxis, weight: number): Promise<void> {
+export async function setScoreWeight(who: UserRef, axis: ScoreAxis, weight: number): Promise<void> {
   if (!scoreAxis.isCode(axis)) throw new Error(`Unknown axis ${axis}`);
   const w = Number.isFinite(weight) ? Math.max(0, weight) : 0;
   const db = await getDb();
-  const [u] = await db.select({ id: users.id }).from(users).where(eq(users.role, role));
-  if (!u) throw new Error(`Unknown role ${role}`);
-  await db.insert(scoreWeights).values({ userId: u.id, axis, weight: w })
+  const userId = await userIdOf(db, who);
+  if (!userId) throw new Error('Unknown user');
+  await db.insert(scoreWeights).values({ userId, axis, weight: w })
     .onConflictDoUpdate({ target: [scoreWeights.userId, scoreWeights.axis], set: { weight: w, updatedAt: new Date() } });
 }
 
 /** Back to the SCORE_AXES defaults for a viewer. */
-export async function resetScoreWeights(role: string): Promise<void> {
+export async function resetScoreWeights(who: UserRef): Promise<void> {
   const db = await getDb();
-  const [u] = await db.select({ id: users.id }).from(users).where(eq(users.role, role));
-  if (u) await db.delete(scoreWeights).where(eq(scoreWeights.userId, u.id));
+  const userId = await userIdOf(db, who);
+  if (userId) await db.delete(scoreWeights).where(eq(scoreWeights.userId, userId));
 }
 
 /** Scores per project code, in axis order ([fit, margin, risk, res, client]). */
@@ -85,7 +88,7 @@ export interface RankedProject {
   scores: number[];
   /** Rounded score (0–100). */
   score: number;
-  /** Margin % from the billing plan; null = internal or no plan. */
+  /** Margin at completion % (C-10b); null = internal or no plan. */
   marginPct: number | null;
   pipeline: boolean;
 }
@@ -102,22 +105,21 @@ export interface Prioritisation {
 }
 
 const PIPELINE: ReadonlySet<StageCode> = new Set(['initiative', 'aps', 'apd']);
-const EXECUTION: ReadonlySet<StageCode> = new Set(['etudes', 'approvisionnements', 'fabrication_assemblage', 'fat', 'expedition', 'chantier', 'mise_en_service_sat']);
 const CLOSED: ReadonlySet<StageCode> = new Set(['clos', 'annule']);
 
-/** Ranking, weights and KPI populations of the Prioritisation tab for a viewer (role) and zone. */
-export async function getPrioritisation(role: string, zone: ZoneKey | null): Promise<Prioritisation> {
-  const [axes, w, scores, plans, all] = await Promise.all([listScoreAxes(), getScoreWeights(role), listPortfolioScores(), listBillingPlans(), listProjects()]);
+/** Ranking, weights and KPI populations of the Prioritisation tab for a viewer (or a role's demo persona) and zone. */
+export async function getPrioritisation(who: UserRef, zone: ZoneKey | null): Promise<Prioritisation> {
+  const [axes, w, scores, plans, all] = await Promise.all([listScoreAxes(), getScoreWeights(who), listPortfolioScores(), listEurBillingPlans(), listProjects()]);
   const zp = all.filter((p) => !zone || p.zone === zone);
   const weights = axes.map((a) => w[a.code]);
   const ranking = zp
     .filter((p) => scores[p.code] && !CLOSED.has(p.stage))
-    .map((p) => ({ project: p, scores: scores[p.code], score: Math.round(priorityScore(scores[p.code], weights)), marginPct: marginPct(plans[p.code], p.budget), pipeline: PIPELINE.has(p.stage) }))
+    .map((p) => ({ project: p, scores: scores[p.code], score: Math.round(priorityScore(scores[p.code], weights)), marginPct: marginAtCompletion(plans[p.code], p), pipeline: PIPELINE.has(p.stage) }))
     .sort((a, b) => b.score - a.score)
     .map((r, i) => ({ rank: i + 1, ...r }));
   return {
     axes, weights, weightSum: weights.reduce((a, b) => a + b, 0), ranking,
-    active: zp.filter((p) => EXECUTION.has(p.stage)), pipeline: zp.filter((p) => PIPELINE.has(p.stage)),
+    active: zp.filter(inExecution), pipeline: zp.filter((p) => PIPELINE.has(p.stage)),
   };
 }
 
@@ -135,12 +137,12 @@ export interface CapacityDepartment {
 
 /** Capacity what-if for a candidate project (logic 4505–4512): demand by department vs capacity. */
 export async function getCapacityWhatIf(projectCode: string): Promise<{ project: ProjectRow; departments: CapacityDepartment[]; gapH: number } | null> {
-  const [all, plans] = await Promise.all([listProjects(), listBillingPlans()]);
+  const [all, plans] = await Promise.all([listProjects(), listEurBillingPlans()]);
   const project = all.find((p) => p.code === projectCode);
   if (!project) return null;
   // A-12 (chapter 4): capacity and commitments from the resource pool's allocations, demand per €1M from the active
   // portfolio's value (`capacityModel`, src/server/dal/kpis.ts) — the prototype's capBase and coefficients were constants.
-  const rows = await capacityModel(all.filter((p) => EXECUTION.has(p.stage)), plans);
+  const rows = await capacityModel(all.filter(inExecution), plans);
   const k = project.budget / 1000;
   const depts = rows.map((r) => {
     const addH = Math.round(r.hoursPerMeur * k);
@@ -151,24 +153,32 @@ export async function getCapacityWhatIf(projectCode: string): Promise<{ project:
 }
 
 export interface ProposalScore {
-  /** Strategic fit, financial return (margin axis), risk (5 = low) — 1–5 each (AF.portfolio). */
+  /** Strategic fit, financial return (margin axis), risk (5 = low), resource fit, client priority — 1–5 each (AF.portfolio, L-5a). */
   fit: number;
   margin: number;
   risk: number;
+  res: number;
+  client: number;
   comment?: string | null;
 }
 
 /**
- * "Score a proposal" (AF.portfolio, "Save score"): records the three axes of the form on a pipeline project (the
- * prototype only toasted, OPEN QUESTION L-5) with the scorer and comment; the other axes keep their values (1 when new).
+ * "Score a proposal" (AF.portfolio, "Save score"): records the 5 axes of the ranking on a pipeline project (the
+ * prototype only toasted, OPEN QUESTION L-5; L-5a = a, R-134: the form scores every axis of the ranking) with the
+ * scorer and comment. An axis added to the register later and absent from the form gets 1 when new.
  */
-export async function saveProposalScore(projectCode: string, input: ProposalScore, actorName: string, at: Date = new Date()): Promise<void> {
+export async function saveProposalScore(projectCode: string, input: ProposalScore, by: string | { name: string; role: string }, at: Date = new Date()): Promise<void> {
+  // The Server Function's rule re-checked with the actor (R-134): scoring is the Portfolio screen's (its workspace roles).
+  if (typeof by !== 'string' && !canSee(by.role as RoleKey, 'portfolio')) throw new Error('Prioritisation is outside your workspace');
+  const actorName = typeof by === 'string' ? by : by.name;
   const db = await getDb();
   await db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);
     const actor = await findPerson(tx, actorName);
     const clamp = (v: number) => Math.max(1, Math.min(5, Math.round(Number.isFinite(v) ? v : 3)));
-    const values: [ScoreAxis, number][] = [['fit', clamp(input.fit)], ['margin', clamp(input.margin)], ['risk', clamp(input.risk)]];
+    const values: [ScoreAxis, number][] = [
+      ['fit', clamp(input.fit)], ['margin', clamp(input.margin)], ['risk', clamp(input.risk)], ['res', clamp(input.res)], ['client', clamp(input.client)],
+    ];
     const axes = await tx.select({ code: scoreAxes.code }).from(scoreAxes);
     for (const a of axes) {
       const v = values.find(([k]) => k === a.code);
@@ -183,7 +193,7 @@ export async function saveProposalScore(projectCode: string, input: ProposalScor
     }
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: projectCode,
-      change: `score: fit ${values[0][1]} · margin ${values[1][1]} · risk ${values[2][1]}`, area: 'Prioritisation', entityType: 'project', entityId: p.id, projectId: p.id,
+      change: `score: fit ${values[0][1]} · margin ${values[1][1]} · risk ${values[2][1]} · resources ${values[3][1]} · client ${values[4][1]}`, area: 'Prioritisation', entityType: 'project', entityId: p.id, projectId: p.id,
     });
   });
 }

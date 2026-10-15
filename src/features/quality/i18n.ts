@@ -6,11 +6,8 @@
 //   "1 clôturées", "1 acceptés");
 // - texts that come from Vigie (NCR titles, causes, actions, ISO clauses) are translated on an exact dictionary match
 //   only, so a French text typed in Vigie is never altered and an English one is never half-translated.
-import FR_DICT_BASE from '@/i18n/fr-dict.json';
-import { EXTRA_FR } from '@/i18n/extra';
 import type { Lang, T } from '@/i18n/translate';
-
-const DICT: Record<string, string> = { ...(FR_DICT_BASE as Record<string, string>), ...EXTRA_FR };
+import { dataText } from '@/i18n/data-text';
 
 const SINGULAR: [RegExp, string][] = [
   [/^([01]) clôturées ce trimestre$/, '$1 clôturée ce trimestre'],
@@ -21,8 +18,8 @@ const SINGULAR: [RegExp, string][] = [
 export const qualityT = (t: T, lang: Lang): T =>
   lang === 'fr' ? (s) => SINGULAR.reduce((x, [re, rep]) => x.replace(re, rep), t(s)) : t;
 
-/** Data text from Vigie: French only on an exact dictionary match. */
-export const dataText = (s: string, lang: Lang) => (lang === 'fr' && s && Object.hasOwn(DICT, s) ? DICT[s] : s);
+/** Typed / received text: as typed, or a seeded string's exact dictionary entry (R-148: the shared helper, src/i18n/data-text.ts). */
+export { dataText };
 
 /** "Move to Containment" (drawer button, ncrVals.nextLabel) with the step translated. */
 export const moveToText = (stepLabel: string, t: T, lang: Lang) => (lang === 'fr' ? `Passer à ${t(stepLabel)}` : `Move to ${stepLabel}`);

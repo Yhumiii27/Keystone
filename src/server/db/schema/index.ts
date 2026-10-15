@@ -29,3 +29,5 @@ export * from './engineering';
 export * from './settings';
 export * from './scheduling';
 export * from './files';
+export * from './jobs';
+export * from './cost-control';

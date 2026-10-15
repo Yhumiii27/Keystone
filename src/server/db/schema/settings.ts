@@ -56,7 +56,7 @@ export const connectors = pgTable('connectors', {
   /** "312 h · 8 people", "Token expires in 3 days" (EN source text). */
   lastVolume: text('last_volume').notNull(),
   ownerName: text('owner_name'),
-  /** Connector added in Keystone ("Add connector"): waiting for its first sync. */
+  /** Connector added after the initial data (by IT's connectors file, R-020; "Add connector" before Delivery 7): waiting for its first sync. */
   addedInKeystone: boolean('added_in_keystone').notNull().default(false),
   position: integer('position').notNull(),
   // ── Chapter 4 (D-7 "Configure"): Keystone-side settings only — remote credentials stay in the remote system. ──

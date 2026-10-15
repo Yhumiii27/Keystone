@@ -30,16 +30,19 @@ beforeAll(async () => {
 describe('A-13 — one health rule with the Settings thresholds', () => {
   it('the register, the header and the Overview give the same verdict and follow the thresholds', async () => {
     const health = async () => Object.fromEntries((await listProjects()).filter((p) => p.hasData).map((p) => [p.code, p.health]));
-    expect(await health()).toMatchObject({ 'HLT-026': 'at_risk', 'RCF-019': 'off_track', 'NDC-031': 'on_track' });
+    // Delivery 7 (R-073, C-2a): progress, actual cost and SPI come from the activities and the BL1 baseline, no longer the seeded
+    // figures — HLT-026 min(CPI 0.89, SPI 0.82) = 0.82 (was 0.90) → off track (was at risk); NDC-031 SPI 0.96 → at risk (was on
+    // track); RCF-019 min(0.97, 0.91) → at risk (was off track at 0.84).
+    expect(await health()).toMatchObject({ 'HLT-026': 'off_track', 'RCF-019': 'at_risk', 'NDC-031': 'at_risk' });
     const overview = await getPortfolioOverview(null, 'en');
     for (const r of overview.rows) expect([r.code, r.metrics.health]).toEqual([r.code, r.health]);
-    // HLT-026: min(CPI 0.91, SPI 0.90) = 0.90 → on track once "At risk below" is 0.89.
-    await setHealthThresholds({ off: 0.8 }, DIRECTOR);
-    await setHealthThresholds({ risk: 0.89 }, DIRECTOR);
+    // HLT-026: 0.82 → on track once "At risk below" is 0.80 (off track below 0.75).
+    await setHealthThresholds({ off: 0.75 }, DIRECTOR);
+    await setHealthThresholds({ risk: 0.8 }, DIRECTOR);
     expect((await getProject('HLT-026'))!.health).toBe('on_track');
     expect((await getPortfolioOverview(null, 'en')).rows.find((r) => r.code === 'HLT-026')!.metrics.health).toBe('on_track');
     await resetSettings(DIRECTOR);
-    expect((await getProject('HLT-026'))!.health).toBe('at_risk');
+    expect((await getProject('HLT-026'))!.health).toBe('off_track');
   });
 });
 
@@ -103,9 +106,12 @@ describe('A-14 — Settings lists drive the modules', () => {
     const code = await addProjectCostCategory('NDC-031', { name: 'Permits & fees', type: 'fees', budgetKeur: 40 }, 'Marie Lefebvre');
     await expect(addProjectCostCategory('NDC-031', { name: 'permits & FEES', type: 'fees', budgetKeur: 1 }, 'Marie Lefebvre')).rejects.toThrow(/already a cost category/);
     await expect(addProjectCostCategory('NDC-031', { name: 'X', type: 'fees', budgetKeur: -1 }, 'Marie Lefebvre')).rejects.toThrow(/budget/);
-    await updateProjectCostCategory('NDC-031', code, { name: 'Permits & local fees', budgetKeur: 55.5 }, 'Marie Lefebvre');
+    // Delivery 8 (R-081, C-3a): NDC-031 has BL1 — the category starts at 0 k€ (was: the 40 k€ given) and its amount changes only
+    // through an approved change request (was: edited to 55.5 k€); the name stays editable.
+    await expect(updateProjectCostCategory('NDC-031', code, { name: 'Permits & local fees', budgetKeur: 55.5 }, 'Marie Lefebvre')).rejects.toThrow(/approved change request/);
+    await updateProjectCostCategory('NDC-031', code, { name: 'Permits & local fees' }, 'Marie Lefebvre');
     const after = (await getCostControl('NDC-031'))!;
-    expect(after.categories.at(-1)).toMatchObject({ code, name: 'Permits & local fees', costType: 'fees', budget: 55.5, forecast: 55.5, actual: 0 });
+    expect(after.categories.at(-1)).toMatchObject({ code, name: 'Permits & local fees', costType: 'fees', budget: 0, forecast: 0, actual: 0 });
     expect(after.bac).toBe(before.bac);
     const db = await getDb();
     const [a] = await db.select().from(auditEntries).where(eq(auditEntries.objectRef, `NDC-031 · ${code}`)).orderBy(asc(auditEntries.occurredAt));

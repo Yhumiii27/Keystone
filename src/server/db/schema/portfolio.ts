@@ -189,7 +189,13 @@ export const projects = pgTable('projects', {
   spi: num('spi'),
   /** Wizard-created, cleared at the first stage change. */
   isNew: boolean('is_new').notNull().default(false),
+  /** Project currency ("EUR", "USD"…); null = EUR. Contracts and purchase orders are in EUR or in this currency (C-9). */
   currency: text('currency'),
+  /**
+   * C-9 (R-075): budget rate of the project currency — euros per unit (1 USD = 0.92 €), set by the portfolio director; null for
+   * a EUR project or until set. Budget, cash flow and portfolio finance consolidate the project's amounts in euros at this rate.
+   */
+  budgetRate: num('budget_rate'),
   calendar: text('calendar').$type<CalendarCode>(),
   contingencyPct: num('contingency_pct'),
   templateCode: text('template_code').references(() => projectTemplates.code),

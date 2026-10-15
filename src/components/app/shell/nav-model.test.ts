@@ -61,10 +61,26 @@ describe('buildSidebar (docs/spec/01 §4.3–4.6)', () => {
     expect(project.rows.filter((r) => r.kind === 'item').map((r) => (r.kind === 'item' ? r.entry.id : ''))).toEqual(['changes']);
   });
 
+  it('a collapsed section keeps the group header of its active item (X-8, R-151)', () => {
+    const rowsOf = (role: 'director' | 'pm', active: 'changes' | 'schedule') =>
+      buildSidebar({ ...base, role, active, navOpen: { project: false } }).sections.find((s) => s.key === 'project')!.rows;
+    // 'changes' is not the first item of Control (Risk register is): the header used to be dropped.
+    for (const role of ['director', 'pm'] as const) {
+      const rows = rowsOf(role, 'changes');
+      expect(rows.map((r) => (r.kind === 'group' ? `group:${r.label}` : r.entry.id))).toEqual(['group:Control', 'changes']);
+      expect(rows[0]).toMatchObject({ kind: 'group', open: false, bright: true });
+    }
+    // 'schedule' comes after 'plan' in Steering (open by default).
+    const steering = rowsOf('director', 'schedule');
+    expect(steering.map((r) => (r.kind === 'group' ? `group:${r.label}` : r.entry.id))).toEqual(['group:Steering', 'schedule']);
+    expect(steering[0]).toMatchObject({ kind: 'group', open: true, bright: true });
+  });
+
   it('prepends the Outside my workspace section', () => {
-    const m = buildSidebar({ ...base, role: 'member', active: 'plan' });
+    // R-061 (P-9a): the member has the Plan now (owners enter their progress) — Budget stays outside their workspace.
+    const m = buildSidebar({ ...base, role: 'member', active: 'budget' });
     expect(m.sections[0].key).toBe('outside');
-    expect(m.sections[0].rows).toEqual([{ kind: 'item', entry: { id: 'plan', label: 'Plan — WBS', badge: '', active: true } }]);
+    expect(m.sections[0].rows).toEqual([{ kind: 'item', entry: { id: 'budget', label: 'Budget & cost', badge: '', active: true } }]);
     const t = buildSidebar({ ...base, role: 'pm', active: 'task' });
     expect(t.sections[0].rows[0]).toMatchObject({ entry: { id: 'mywork', label: 'My tasks' } });
   });

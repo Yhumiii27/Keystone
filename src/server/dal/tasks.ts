@@ -4,6 +4,8 @@ import 'server-only';
 // coupling, checklist ticks and items, comments by the viewer, time logging.
 import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { rateAt, taskLaborCost, type TaskCost } from '@/domain/hr';
+import { mentionedKeys } from '@/domain/mentions';
 import { applyProgress, applyStatus } from '@/domain/tasks';
 import { getDb, type Tx } from '@/server/db/client';
 import {
@@ -12,8 +14,10 @@ import {
 } from '@/server/db/codes';
 import { findPerson, nameOf, requirePerson, writeAudit } from '@/server/db/helpers';
 import {
-  activities, departments, jobTitleRates, persons, projects, resourceRequests, taskAttachments, taskChecklistItems, taskComments, tasks, timeEntries, wbsNodes,
+  activities, departments, persons, projects, resourceRequests, taskAttachments, taskChecklistItems, taskComments, tasks, timeEntries, wbsNodes,
 } from '@/server/db/schema';
+import { getRateGrid } from './hr';
+import { listMentionablePersons } from './task-notices';
 
 export interface TaskRow {
   /** "T-2314". */
@@ -98,8 +102,16 @@ export interface TaskDetail extends TaskRow {
   comments: TaskComment[];
   attachments: TaskAttachment[];
   entries: TimeEntryRow[];
-  /** Cost note rate (RATES by the assignee's job title, else 100 — OPEN QUESTION A-10). */
-  costRate: number;
+  /** Cost note valuation (A-10, R-083 — `taskLaborCost`): replaces the job-title rate and its 100 €/h default. */
+  costNote: TaskCostNote;
+}
+
+/**
+ * The task's actual labour cost (R-083): each time entry at the rate of the person who logged it on the entry's date, the logged
+ * hours without an entry at the assignee's rate in force today; `todayRate` values hours logged since the page was read.
+ */
+export interface TaskCostNote extends TaskCost {
+  todayRate: number | null;
 }
 
 export interface TaskFilter {
@@ -171,7 +183,7 @@ export async function getTask(number: string): Promise<TaskDetail | null> {
   const author = alias(persons, 'author');
   const uploader = alias(persons, 'uploader');
   const entryPerson = alias(persons, 'entry_person');
-  const [items, comments, files, entries, [rate]] = await Promise.all([
+  const [items, comments, files, entries, [assignee], grid] = await Promise.all([
     db.select().from(taskChecklistItems).where(eq(taskChecklistItems.taskId, id)).orderBy(asc(taskChecklistItems.position)),
     db
       .select({ c: taskComments, full: author.fullName, short: author.shortName, initials: author.initials })
@@ -186,13 +198,20 @@ export async function getTask(number: string): Promise<TaskDetail | null> {
       .where(eq(taskAttachments.taskId, id))
       .orderBy(asc(taskAttachments.position)),
     db
-      .select({ e: timeEntries, full: entryPerson.fullName, short: entryPerson.shortName })
+      .select({ e: timeEntries, full: entryPerson.fullName, short: entryPerson.shortName, rateRoleId: entryPerson.rateRoleId })
       .from(timeEntries)
       .leftJoin(entryPerson, eq(entryPerson.id, timeEntries.personId))
       .where(eq(timeEntries.taskId, id))
       .orderBy(asc(timeEntries.position)),
-    row.assigneeJobTitle ? db.select({ rate: jobTitleRates.rateEur }).from(jobTitleRates).where(eq(jobTitleRates.jobTitle, row.assigneeJobTitle)) : Promise.resolve([]),
+    db.select({ rateRoleId: persons.rateRoleId }).from(tasks).innerJoin(persons, eq(persons.id, tasks.assigneePersonId)).where(eq(tasks.id, id)),
+    getRateGrid(),
   ]);
+  // R-083 (A-10): one valuation of hours — the grid role's rate in force on the date worked (no job-title rate, no 100 €/h).
+  const todayRate = rateAt(grid, assignee?.rateRoleId ?? null, STATUS_ISO);
+  const valuation = taskLaborCost({
+    loggedH: row.loggedH, restRateEur: todayRate,
+    entries: entries.map(({ e, rateRoleId }) => ({ hours: e.hours, rateEur: rateAt(grid, rateRoleId, e.workDate) })),
+  });
   return {
     ...row,
     checklistItems: items.map((i) => ({ position: i.position, text: i.text, done: i.done })),
@@ -207,7 +226,7 @@ export async function getTask(number: string): Promise<TaskDetail | null> {
     entries: entries.map(({ e, full, short }) => ({
       date: e.workDate, dateText: dayLabelOfIso(e.workDate), hours: e.hours, note: e.note, person: short ? (full ?? short) : null, source: e.source,
     })),
-    costRate: (rate as { rate: number } | undefined)?.rate ?? 100,
+    costNote: { ...valuation, todayRate },
   };
 }
 
@@ -287,17 +306,40 @@ export async function addChecklistItem(number: string, text: string, actorName?:
   });
 }
 
-/** "Post": a comment by the viewer (not the prototype's fixed Marie Lefebvre). Empty text is ignored. */
-export async function addTaskComment(number: string, authorName: string, text: string): Promise<void> {
+/** A posted comment: who it mentions (R-149) — told by the Server Function once the comment is committed. */
+export interface PostedComment {
+  /** "T-2314" and its project. */
+  task: string;
+  projectCode: string;
+  /** Display name of the author. */
+  author: string;
+  /** Persons mentioned with an active internal account, the author excluded (person ids, order of first mention). */
+  mentioned: string[];
+}
+
+/**
+ * "Post": a comment by the viewer (not the prototype's fixed Marie Lefebvre). Empty text is ignored (null). R-149: the
+ * @mentions are resolved among the mentionable people (src/domain/mentions.ts; the author never mentions themself) in the same
+ * transaction, which records one audit line naming them; the caller notifies them after the commit.
+ */
+export async function addTaskComment(number: string, authorName: string, text: string): Promise<PostedComment | null> {
   const body = text.trim();
-  if (!body) return;
+  if (!body) return null;
   const db = await getDb();
-  await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     const t = await loadTask(tx, number);
     const author = await requirePerson(tx, authorName);
     const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${taskComments.position}), -1)::int` }).from(taskComments).where(eq(taskComments.taskId, t.id));
     await tx.insert(taskComments).values({ taskId: t.id, authorPersonId: author.id, postedAt: new Date(), text: body, position: pos + 1 });
     await auditTask(tx, t, nameOf(author), 'comment posted');
+    const people = await listMentionablePersons(tx);
+    const mentioned = mentionedKeys(body, people).filter((id) => id !== author.id);
+    if (mentioned.length) {
+      const names = mentioned.map((id) => people.find((p) => p.key === id)!).map((p) => p.fullName ?? p.shortName);
+      await auditTask(tx, t, nameOf(author), `mentioned: ${names.join(', ')}`);
+    }
+    const [p] = await tx.select({ code: projects.code }).from(projects).where(eq(projects.id, t.projectId));
+    return { task: t.number, projectCode: p.code, author: nameOf(author), mentioned };
   });
 }
 

@@ -6,11 +6,14 @@ import { EvmSCurve } from '@/components/charts/evm-s-curve';
 import { ButtonLink } from '@/components/ds/Button';
 import { CardTitle } from '@/components/ds/Card';
 import { Table, Td, Th } from '@/components/ds/Table';
-import { costVarianceBars, offerPoints, type EvmCore, type OfferQuote } from '@/domain/evm';
+import { cx } from '@/components/ds/cx';
+import { budgetKpiAlerts, costVarianceBars, offerPoints, type EvmCore, type OfferQuote } from '@/domain/evm';
+import { DEFAULT_HEALTH_THRESHOLDS, type HealthThresholds } from '@/domain/health';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import type { CostControl } from '@/server/dal/cost';
 import s from './budget.module.css';
+import { dataText } from '@/i18n/data-text';
 
 export interface PerformanceTabProps {
   cost: CostControl;
@@ -20,22 +23,26 @@ export interface PerformanceTabProps {
   profileText: string;
   /** Link to the Structure & changes tab ("See profile"). */
   setupHref: string;
+  /** Delivery 8 (R-080, C-1): the Settings health thresholds the tiles follow (default 0.97 / 0.90). */
+  th?: HealthThresholds;
   lang: Lang;
   t: T;
 }
 
-export function PerformanceTab({ cost, core, offer, profileText, setupHref, lang, t }: PerformanceTabProps) {
+export function PerformanceTab({ cost, core, offer, profileText, setupHref, th = DEFAULT_HEALTH_THRESHOLDS, lang, t }: PerformanceTabProps) {
   const f = (k: number, signed?: boolean) => money(k, lang, { signed });
   const { bac } = cost;
+  // R-080 (C-1): the tiles follow the Settings health thresholds (the prototype coloured EAC, VAC, CPI and TCPI LO whatever the value).
+  const alert = budgetKpiAlerts(core, th);
+  const tone = (on: boolean) => (on ? LO : OK);
   const kpis = [
     { label: 'Budget (BAC)', value: f(bac), sub: 'Approved baseline', color: OK },
     { label: 'Actual cost', value: f(core.ac), sub: `${Math.round((core.ac / bac) * 100)}% of budget`, color: OK },
     { label: 'Earned value', value: f(core.ev), sub: 'Work completed', color: OK },
-    // Q1: the prototype colours these four LO whatever the value.
-    { label: 'Forecast (EAC)', value: f(core.eac), sub: 'At current CPI', color: LO },
-    { label: 'Variance (VAC)', value: f(core.vac, true), sub: `${Math.round((core.vac / bac) * 1000) / 10}% of budget`, color: LO },
-    { label: 'CPI', value: core.cpi.toFixed(2), sub: 'Target ≥ 1.00', color: LO },
-    { label: 'TCPI', value: core.tcpi.toFixed(2), sub: 'Needed to hit BAC', color: LO },
+    { label: 'Forecast (EAC)', value: f(core.eac), sub: 'At current CPI', color: tone(alert.eac) },
+    { label: 'Variance (VAC)', value: f(core.vac, true), sub: `${Math.round((core.vac / bac) * 1000) / 10}% of budget`, color: tone(alert.vac) },
+    { label: 'CPI', value: core.cpi.toFixed(2), sub: 'Target ≥ 1.00', color: tone(alert.cpi) },
+    { label: 'TCPI', value: core.tcpi.toFixed(2), sub: 'Needed to hit BAC', color: tone(alert.tcpi) },
   ];
   const bars = costVarianceBars(cost.ev, cost.ac);
 
@@ -80,7 +87,12 @@ export function PerformanceTab({ cost, core, offer, profileText, setupHref, lang
           />
           <div className={s.chartFoot}>
             <Steps className={s.chartFootIcon} aria-hidden />
-            <span className={s.chartFootText}>{`${t('Planned value follows the disbursement profile')} · ${profileText}`}</span>
+            <span className={s.chartFootText}>
+              {/* R-073: PV comes from the cost-loaded baseline; the prototype's series followed the offer's disbursement profile. */}
+              {cost.evmSource === 'keystone'
+                ? `${t('Planned value follows the cost-loaded baseline')} · ${t('Earned value = progress × budget')} · ${profileText}`
+                : `${t('Planned value follows the disbursement profile')} · ${profileText}`}
+            </span>
             <ButtonLink href={setupHref} variant="ghost" size="xs" push nowrap iconRight={ArrowRight} scroll={false}>
               {t('See profile')}
             </ButtonLink>
@@ -92,18 +104,21 @@ export function PerformanceTab({ cost, core, offer, profileText, setupHref, lang
           <div className={s.varGrid}>
             <div className={s.varItem}>
               <span className={s.varLabel}>{t('Cost (EV−AC)')}</span>
-              <span className={s.varValue}>{f(core.cv, true)}</span>
+              <span className={s.varValue} style={{ color: tone(alert.cv) }}>{f(core.cv, true)}</span>
             </div>
             <div className={s.varItem}>
               <span className={s.varLabel}>{t('Schedule (EV−PV)')}</span>
-              <span className={s.varValue}>{f(core.sv, true)}</span>
+              <span className={s.varValue} style={{ color: tone(alert.sv) }}>{f(core.sv, true)}</span>
             </div>
           </div>
           <div className={s.caption}>{t('Cumulative cost variance by month')}</div>
-          <div className={s.bars}>
+          {/* R-080 (C-1): savings rise from the axis, overruns go down; a zero variance is a neutral stub. */}
+          <div className={s.bars} role="img" aria-label={bars.map((b, i) => `${t(cost.chartMonths[i] ?? '')} ${f(b.cv, true)}`).join(' · ')}>
             {bars.map((b, i) => (
               <div key={i} className={s.barCol}>
-                <div className={s.bar} style={{ '--bar-h': `${b.h}%` } as CSSProperties} title={f(b.cv, true)} />
+                <div className={s.barPlot}>
+                  <div className={cx(s.bar, b.dir === 'up' ? s.barUp : b.dir === 'down' ? s.barDown : s.barFlat)} style={{ '--bar-h': `${b.h}%` } as CSSProperties} title={f(b.cv, true)} />
+                </div>
                 <span className={s.barLabel}>{t((cost.chartMonths[i] ?? '')[0] ?? '')}</span>
               </div>
             ))}
@@ -134,7 +149,7 @@ export function PerformanceTab({ cost, core, offer, profileText, setupHref, lang
               const v = c.budget - c.forecast;
               return (
                 <tr key={c.code}>
-                  <Td className={s.strong}>{t(c.name)}</Td>
+                  <Td className={s.strong}>{dataText(c.name, lang)}</Td>
                   <Td align="right" numeric>
                     {f(c.budget)}
                   </Td>
@@ -148,7 +163,8 @@ export function PerformanceTab({ cost, core, offer, profileText, setupHref, lang
                     {f(c.forecast)}
                   </Td>
                   <Td>
-                    <BulletBar actual={c.actual} committed={c.committed} budget={c.budget} forecast={c.forecast} />
+                    {/* The committed layer stops at the end of the track (open orders can exceed the line's budget). */}
+                    <BulletBar actual={c.actual} committed={Math.min(c.committed, Math.max(0, c.budget * 1.4 - c.actual))} budget={c.budget} forecast={c.forecast} />
                   </Td>
                   <Td align="right" numeric color={v < 0 ? LO : 'var(--color-neutral-300)'}>
                     {f(v, true)}

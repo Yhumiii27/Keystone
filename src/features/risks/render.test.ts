@@ -143,17 +143,19 @@ describe('contingency register', () => {
   it('HLT-026 view model (FR): KPIs, bars, draw-downs most recent first', async () => {
     const d = (await getContingencyScreen('HLT-026'))!;
     const v = contingencyView(d.contingency, makeT('fr'), 'fr');
+    // Delivery 7 (R-073): the project progress is computed from the activities (64 → 63 %).
     expect(v.kpis.map((k) => [k.label, k.value, k.sub, k.color])).toEqual([
       ['Provision initiale', '150 k€', '3 % du budget', 'var(--color-neutral-200)'],
-      ['Consommé', '48 k€', '32 % consommé · projet avancé à 64 %', 'var(--color-text)'],
+      ['Consommé', '48 k€', '32 % consommé · projet avancé à 63 %', 'var(--color-text)'],
       ['Reste', '102 k€', '3 prélèvements', 'var(--color-text)'],
       ['Exposition (EMV des risques ouverts)', '340 k€', 'dépasse la provision restante', 'var(--color-accent-300)'],
     ]);
-    expect([v.usedPct, v.progPct, v.barUsed, v.barExposure, v.barProgress]).toEqual(['32 %', '64 %', '32%', '100%', '64%']);
-    expect(v.rows.map((r) => [r.date, r.amount, r.link, r.by])).toEqual([
-      ['12 sept.', '12 k€', 'NCR-026', 'R. Aubert'],
-      ['30 juil.', '14 k€', 'R-03', 'R. Aubert'],
-      ['18 juin', '22 k€', 'CR-004', 'M. Lefebvre'],
+    expect([v.usedPct, v.progPct, v.barUsed, v.barExposure, v.barProgress]).toEqual(['32 %', '63 %', '32%', '100%', '63%']);
+    // Delivery 7 (C-4): the linked change request / risk opens on its screen; NCR-026 is not in the Vigie mirror (plain text).
+    expect(v.rows.map((r) => [r.date, r.amount, r.link, r.linkHref, r.by, r.status])).toEqual([
+      ['12 sept.', '12 k€', 'NCR-026', null, 'R. Aubert', null],
+      ['30 juil.', '14 k€', 'R-03', '/projects/HLT-026/risks?risk=R-03', 'R. Aubert', null],
+      ['18 juin', '22 k€', 'CR-004', '/projects/HLT-026/changes?cr=CR-004', 'M. Lefebvre', null],
     ]);
     expect(v.rows[0].reason).toBe('Reprise de soudure de l’éclissage K-12 — NCR-026');
   });
@@ -163,9 +165,9 @@ describe('contingency register', () => {
     const t = makeT('en');
     const html = renderToStaticMarkup(ContingencyView({ view: contingencyView(d.contingency, t, 'en'), t }));
     for (const s of [
-      'Initial provision', '€150k', '3 % of budget', '€48k', '32 % used · project 64 % complete', '€102k', '3 draw-downs', 'Exposure (open risks EMV)', '€340k',
+      'Initial provision', '€150k', '3 % of budget', '€48k', '32 % used · project 63 % complete', '€102k', '3 draw-downs', 'Exposure (open risks EMV)', '€340k',
       'exceeds remaining provision', 'Contingency use vs project progress', 'Project progress', 'Exposure (drawn + open risks EMV)', 'Draw-downs',
-      '--bar-w:32%', '--bar-w:100%', '--bar-w:64%', 'Re-weld K-12 splice — NCR-026',
+      '--bar-w:32%', '--bar-w:100%', '--bar-w:63%', 'Re-weld K-12 splice — NCR-026', 'href="/projects/HLT-026/changes?cr=CR-004"',
     ])
       expect(html).toContain(s);
     expect(html).not.toContain('No draw-down recorded yet');

@@ -1,7 +1,8 @@
 'use server';
 // Server Functions of the resource-request workflow (docs/spec/08 §5.5–§5.6, §6.5, 01 §12): send (New resource request
-// dialog), the PM's withdraw / accept reschedule / re-request on their own requests, and the department decisions
-// approve / propose reschedule / reject. Each validates its input, checks the viewer (persona) may act, writes through
+// dialog), the PM's withdraw / accept reschedule / re-request on their own requests, send / discard of the DRAFTS made by
+// the what-if levelling (chapter 4, S-7), and the department decisions approve / propose reschedule / reject. Each
+// validates its input, checks the viewer (persona) may act, writes through
 // the requests DAL with the viewer as actor (never the prototype's hard-wired R. Aubert or department head, 00 §7.16),
 // notifies the other party and revalidates every screen (badges, Home, My work). Messages are English source strings
 // (the client shows them with toast showEn).
@@ -12,22 +13,29 @@ import {
 import { shortDateOfIso } from '@/server/db/codes';
 import { getProject } from '@/server/dal/projects';
 import {
-  acceptReschedule, approveResourceRequest, createResourceRequest, getResourceRequest, listRequestActivities, proposeReschedule,
-  reRequestResourceRequest, rejectResourceRequest, withdrawResourceRequest, type ResourceRequestRow,
+  acceptReschedule, approveResourceRequest, createResourceRequest, discardDraftRequest, getResourceRequest, listRequestActivities, proposeReschedule,
+  reRequestResourceRequest, rejectResourceRequest, sendDraftRequest, withdrawResourceRequest, type ResourceRequestRow,
 } from '@/server/dal/requests';
 import { notifyRequestEvent, recordRequestActivity, type RequestNotice } from '@/server/dal/requests-screens';
+import { notifySourcingTask } from '@/server/dal/task-notices';
 import { getResourcePool } from '@/server/dal/resources';
+import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
+import { canDecideDepartment } from '@/domain/rights';
 import { getProjectScope } from '@/server/project-context';
 import { getViewer, type Viewer } from '@/server/session';
-import { canDecideRequests, canManageOwnRequests, canSendRequests } from './permissions';
+import { canDecideRequests, canManageOwnRequests, canSendRequests, draftRights, isRequester } from './permissions';
+import { logError } from '@/server/log';
 
 export type RequestActionResult = { ok: true; number?: string } | { ok: false; error: string };
 
 const NOT_SENDER = 'Read-only — you cannot send resource requests';
 const NOT_OWNER = 'Read-only — only the sender can change this request';
+const NOT_DRAFTER = 'Read-only — only the requester, the project manager or the director can send or discard this draft';
 const NOT_DECIDER = 'Read-only — you cannot decide resource requests';
+const NOT_DEPARTMENT = 'Read-only — you decide the requests of your own department only';
 const UNKNOWN = 'Unknown request';
 const STALE = 'This request has already been decided';
+const NOT_DRAFT = 'This request is no longer a draft';
 const INVALID = 'Invalid request';
 const NO_PLAN = 'This project has no plan yet';
 const FAILED = 'The change could not be saved';
@@ -39,15 +47,30 @@ const isNumber = (v: unknown): v is string => typeof v === 'string' && /^RQ-\d{3
 
 const refresh = () => revalidatePath('/', 'layout');
 
-/** Notifications and activity are a courtesy: a failure there must not undo or fail the decision. */
-async function announce(viewer: Viewer, r: ResourceRequestRow | null, notices: (r: ResourceRequestRow) => RequestNotice[], activity: string) {
+/** Notifications and activity are a courtesy: a failure there must not undo or fail the decision. `extra`: activity suffix. */
+async function announce(viewer: Viewer, r: ResourceRequestRow | null, notices: (r: ResourceRequestRow) => RequestNotice[], activity: string, extra?: string) {
   if (!r) return;
   try {
-    await notifyRequestEvent(notices(r), viewer.role);
-    await recordRequestActivity(r.projectCode, viewer.name, `${activity} ${r.id} — ${r.title}`);
+    await notifyRequestEvent(notices(r), viewer);
+    await recordRequestActivity(r.projectCode, viewer.name, `${activity} ${r.id} — ${r.title}${extra ? ` · ${extra}` : ''}`);
   } catch (e) {
-    console.error('requests: notification failed', e);
+    logError('Resource request notification', e);
   }
+}
+
+/** P-8b (R-089): a request for a contract role (no person) — its task goes to procurement to find and name the person. */
+const isSourcing = (r: ResourceRequestRow) => !r.person && !!r.contractRole;
+
+/**
+ * The notices of a task created from a request: the named person ("New task assigned"), or — P-8b, contract role — every
+ * procurement user ("Person to find and name"), never the actor. The PM is told by the decision notice. `sub`: "{task title}
+ * · {decider} · {due date}" — fields only, no English words around them, so the bell shows the title as typed and translates
+ * the date (fieldsText, R-148).
+ */
+async function announceTask(r: ResourceRequestRow, task: string, viewer: Viewer, sub: string): Promise<RequestNotice[]> {
+  if (!isSourcing(r)) return [{ kind: 'task', title: 'New task assigned', sub, screen: 'mywork', params: {}, projectCode: r.projectCode, to: r.person }];
+  await notifySourcingTask(task, { contractRole: r.contractRole!, title: r.title, due: shortDateOfIso(r.due), projectCode: r.projectCode }, viewer.name);
+  return [];
 }
 
 const who = (r: ResourceRequestRow) => r.resource;
@@ -99,7 +122,7 @@ export async function sendResourceRequestAction(input: SendRequestInput): Promis
       viewer.name,
     );
   } catch (e) {
-    console.error('sendResourceRequestAction', e);
+    logError('sendResourceRequestAction', e);
     return { ok: false, error: FAILED };
   }
   await announce(viewer, await getResourceRequest(number), (r) => [
@@ -118,7 +141,7 @@ async function ownRequest(id: unknown): Promise<{ viewer: Viewer; r: ResourceReq
   if (!isNumber(id)) return { error: INVALID };
   const r = await getResourceRequest(id);
   if (!r) return { error: UNKNOWN };
-  if (r.requestedBy !== viewer.short && r.requestedByName !== viewer.name) return { error: NOT_OWNER };
+  if (!isRequester(r, viewer)) return { error: NOT_OWNER };
   return { viewer, r };
 }
 
@@ -130,7 +153,7 @@ export async function withdrawRequestAction(id: string): Promise<RequestActionRe
   try {
     await withdrawResourceRequest(o.r.id, o.viewer.name);
   } catch (e) {
-    console.error('withdrawRequestAction', e);
+    logError('withdrawRequestAction', e);
     return { ok: false, error: FAILED };
   }
   await announce(o.viewer, o.r, (r) => [
@@ -140,15 +163,18 @@ export async function withdrawRequestAction(id: string): Promise<RequestActionRe
   return { ok: true };
 }
 
-/** "Re-request" (rejected): back to pending, sent today. */
+/**
+ * "Re-request" (rejected or withdrawn — P-8c a, R-090): back to pending, sent today, with the dates it was sent with; the
+ * department head is told as for a new request. Every other status (draft, pending, reschedule, approved) is stale.
+ */
 export async function reRequestAction(id: string): Promise<RequestActionResult> {
   const o = await ownRequest(id);
   if ('error' in o) return { ok: false, error: o.error };
-  if (o.r.status !== 'rejected') return { ok: false, error: STALE };
+  if (o.r.status !== 'rejected' && o.r.status !== 'withdrawn') return { ok: false, error: STALE };
   try {
     await reRequestResourceRequest(o.r.id, o.viewer.name);
   } catch (e) {
-    console.error('reRequestAction', e);
+    logError('reRequestAction', e);
     return { ok: false, error: FAILED };
   }
   await announce(o.viewer, o.r, (r) => [
@@ -167,26 +193,83 @@ export async function acceptRescheduleAction(id: string): Promise<RequestActionR
   try {
     task = await acceptReschedule(o.r.id, o.viewer.name);
   } catch (e) {
-    console.error('acceptRescheduleAction', e);
+    logError('acceptRescheduleAction', e);
     return { ok: false, error: FAILED };
   }
-  await announce(o.viewer, await getResourceRequest(o.r.id), (r) => [
+  const accepted = await getResourceRequest(o.r.id);
+  const taskNotices = accepted ? await announceTask(accepted, task, o.viewer, `${accepted.title} · ${o.viewer.name} · ${shortDateOfIso(accepted.due)}`) : [];
+  await announce(o.viewer, accepted, (r) => [
     { kind: 'approval', title: 'Reschedule accepted', sub: `${r.title} · ${who(r)} · ${datesText(r.start, r.due)} · ${o.viewer.name}`, screen: 'approvals', params: { dept: r.department }, projectCode: r.projectCode, to: r.departmentHead },
-    { kind: 'task', title: 'New task assigned', sub: `${r.title} · Accepted by ${o.viewer.name} · due ${shortDateOfIso(r.due)}`, screen: 'mywork', params: {}, projectCode: r.projectCode, to: r.person },
-  ], 'Accepted reschedule of resource request');
+    ...taskNotices,
+  ], 'Accepted reschedule of resource request', accepted && isSourcing(accepted) ? 'task created for Procurement' : undefined);
   refresh();
   return { ok: true, number: task };
 }
 
+// ── Drafts (chapter 4, S-7: what-if "Apply" / "Select scenario → create requests") ────────────────────────────
+
+/**
+ * Loads a DRAFT the viewer may send or discard — the rules of sending a request (`canHandleDraft`, shared with the page
+ * through `draftRights`): the requester, the project's PM or the director, with Resource requests in their workspace,
+ * never on a project read-only for them.
+ */
+async function draftRequest(id: unknown): Promise<{ viewer: Viewer; r: ResourceRequestRow } | { error: string }> {
+  const viewer = await getViewer();
+  if (!canSendRequests(viewer.role) || !canManageOwnRequests(viewer.role)) return { error: NOT_SENDER };
+  if (!isNumber(id)) return { error: INVALID };
+  const r = await getResourceRequest(id);
+  if (!r) return { error: UNKNOWN };
+  if (!draftRights(viewer, await getProjectScope())(r)) return { error: NOT_DRAFTER };
+  if (r.status !== 'draft') return { error: NOT_DRAFT };
+  return { viewer, r };
+}
+
+/** "Send" on a draft: draft → pending review, sent today; the department head is notified as for a new request. */
+export async function sendDraftRequestAction(id: string): Promise<RequestActionResult> {
+  const o = await draftRequest(id);
+  if ('error' in o) return { ok: false, error: o.error };
+  try {
+    await sendDraftRequest(o.r.id, o.viewer.name);
+  } catch (e) {
+    logError('sendDraftRequestAction', e);
+    return { ok: false, error: FAILED };
+  }
+  await announce(o.viewer, await getResourceRequest(o.r.id), (r) => [
+    { kind: 'request', title: 'New resource request', sub: `${r.title} · ${who(r)} · ${o.viewer.name}`, screen: 'approvals', params: { dept: r.department }, projectCode: r.projectCode, to: r.departmentHead },
+  ], 'Sent draft resource request');
+  refresh();
+  return { ok: true, number: o.r.id };
+}
+
+/** "Discard" on a draft (confirmed in a dialog): the draft is deleted — it never reached the department. */
+export async function discardDraftRequestAction(id: string): Promise<RequestActionResult> {
+  const o = await draftRequest(id);
+  if ('error' in o) return { ok: false, error: o.error };
+  try {
+    await discardDraftRequest(o.r.id, o.viewer.name);
+  } catch (e) {
+    logError('discardDraftRequestAction', e);
+    return { ok: false, error: FAILED };
+  }
+  // Nobody to notify (the department never saw it); the activity feed keeps the trace.
+  await announce(o.viewer, o.r, () => [], 'Discarded draft resource request');
+  refresh();
+  return { ok: true, number: o.r.id };
+}
+
 // ── Department side (Approvals) ────────────────────────────────────────────────────────────────────────
 
-/** Loads a pending request, checking the Approvals screen is in the viewer's workspace (any department, 08 OQ19). */
+/**
+ * Loads a pending request, checking the Approvals screen is in the viewer's workspace and that they decide for its department
+ * (P-8a, R-048: the director for all, a department head for the departments they head).
+ */
 async function pendingRequest(id: unknown): Promise<{ viewer: Viewer; r: ResourceRequestRow } | { error: string }> {
   const viewer = await getViewer();
   if (!canDecideRequests(viewer.role)) return { error: NOT_DECIDER };
   if (!isNumber(id)) return { error: INVALID };
   const r = await getResourceRequest(id);
   if (!r) return { error: UNKNOWN };
+  if (!canDecideDepartment(viewer.role, (await getApproverIdentity(viewer)).departments, r.department)) return { error: NOT_DEPARTMENT };
   if (r.status !== 'pending') return { error: STALE };
   return { viewer, r };
 }
@@ -199,13 +282,14 @@ export async function approveRequestAction(id: string): Promise<RequestActionRes
   try {
     task = await approveResourceRequest(o.r.id, o.viewer.name);
   } catch (e) {
-    console.error('approveRequestAction', e);
+    logError('approveRequestAction', e);
     return { ok: false, error: FAILED };
   }
+  const taskNotices = await announceTask(o.r, task, o.viewer, `${o.r.title} · ${o.viewer.name} · ${shortDateOfIso(o.r.due)}`);
   await announce(o.viewer, o.r, (r) => [
     { kind: 'approval', title: 'Resource request approved', sub: `${r.title} · ${who(r)} · ${o.viewer.name}`, screen: 'requests', params: { status: 'approved' }, projectCode: r.projectCode, to: r.requestedByName },
-    { kind: 'task', title: 'New task assigned', sub: `${r.title} · Approved by ${o.viewer.name} · due ${shortDateOfIso(r.due)}`, screen: 'mywork', params: {}, projectCode: r.projectCode, to: r.person },
-  ], 'Approved resource request');
+    ...taskNotices,
+  ], 'Approved resource request', isSourcing(o.r) ? 'task created for Procurement' : undefined);
   refresh();
   return { ok: true, number: task };
 }
@@ -219,7 +303,7 @@ export async function proposeRescheduleAction(id: string, shift: number, note: s
   try {
     await proposeReschedule(o.r.id, shift, reason, o.viewer.name);
   } catch (e) {
-    console.error('proposeRescheduleAction', e);
+    logError('proposeRescheduleAction', e);
     return { ok: false, error: FAILED };
   }
   const to = shiftedDates(o.r.start, o.r.due, shift);
@@ -238,7 +322,7 @@ export async function rejectRequestAction(id: string, note: string): Promise<Req
   try {
     await rejectResourceRequest(o.r.id, reason, o.viewer.name);
   } catch (e) {
-    console.error('rejectRequestAction', e);
+    logError('rejectRequestAction', e);
     return { ok: false, error: FAILED };
   }
   await announce(o.viewer, o.r, (r) => [

@@ -3,14 +3,17 @@
 // in this context or the prototype left parameterised strings in English:
 // - approver role "Direction" (management) is "Sens" in the shared dictionary (the connector form's direction
 //   field), so circuit roles go through `roleT`;
-// - "Opening Codex · project HLT-026", "PID-HLT-026 · new revision E", "1 selected", "Approve in Codex · {role} ·
-//   {name}" (the prototype translated neither the word "project", the revision banner, the singular nor the role);
+// - "PID-HLT-026 · new revision E", "1 selected", "Approve in Codex · {role} · {name}" (the prototype translated neither
+//   the revision banner, the singular nor the role);
 // - Keystone-created records (deposits, minutes): typed titles and tags are translated only on an exact dictionary
 //   match (`exactT`), never segment by segment.
 import { approveLabelText } from '@/domain/documents';
-import FR_DICT_BASE from '@/i18n/fr-dict.json';
-import { EXTRA_FR } from '@/i18n/extra';
+import { dataText } from '@/i18n/data-text';
 import type { Lang, T } from '@/i18n/translate';
+
+/** The hand-off toast of a download (the files are stored in Codex, D-2 = a). Not in ./actions.ts: a 'use server' file
+ * exports async functions only. */
+export const DOWNLOAD_IN_CODEX = 'Download needs Codex — the document files are stored in Codex';
 
 const fr = (lang: Lang) => lang === 'fr';
 
@@ -23,18 +26,20 @@ export const roleT = (t: T, lang: Lang) => (label: string) => (fr(lang) && Objec
 /** Approval circuit "Author → Quality manager → Direction", role by role. */
 export const circuitT = (labels: readonly string[], t: T, lang: Lang) => labels.map(roleT(t, lang)).join(' → ');
 
-const DICT: Record<string, string> = { ...(FR_DICT_BASE as Record<string, string>), ...EXTRA_FR };
-/** Free text typed in Keystone: French only when the whole text is a dictionary entry. */
-export const exactT = (s: string, lang: Lang) => (fr(lang) && s && Object.hasOwn(DICT, s) ? DICT[s] : s);
-
-/** Toast "Opening Codex · project HLT-026" (`openCodex`). */
-export const openingCodexProjectText = (code: string, lang: Lang) => (fr(lang) ? `Ouverture de Codex · projet ${code}` : `Opening Codex · project ${code}`);
+/** Free text typed in Keystone: as typed, or a seeded string's exact dictionary entry (R-148: the shared helper). */
+export const exactT = (s: string, lang: Lang) => dataText(s, lang);
 
 /** Deposit banner "PID-HLT-026 · new revision E" (EN source from the domain). */
 export const revisionContextT = (english: string, lang: Lang) => (fr(lang) ? english.replace(' · new revision', ' · nouvelle révision') : english);
 
 /** Selection bar "1 selected" / "3 selected". */
 export const selectedT = (n: number, t: T, lang: Lang) => (fr(lang) ? `${n} sélectionné${n > 1 ? 's' : ''}` : t(`${n} selected`));
+
+/** Delivery 7 (R-124): "Sync now" toast tail "2 decisions pending sync with Codex". */
+export const pendingSyncCountText = (n: number, lang: Lang) =>
+  fr(lang)
+    ? `${n} décision${n > 1 ? 's' : ''} en attente de synchronisation avec Codex`
+    : `${n} decision${n > 1 ? 's' : ''} pending sync with Codex`;
 
 /** "Approve in Codex · Quality manager · G. Comte" with the role translated. */
 export const approveLabelT = (roleLabel: string, approver: string, t: T, lang: Lang) =>

@@ -4,8 +4,10 @@
 // requests with the type chip (`?filter=`), their approval chains and the baselines. Quality: NCRs (Vigie mirror — the 8D
 // stays in Vigie, the row carries its link) with the severity chip, deliverables with the status chip; `?tab=` puts the
 // current register first; PDF document `pv` = the acceptance certificate ("PV de réception") of an accepted deliverable.
-// ITP: inspections by system and the ITP punch list (`?view=` puts the current one first).
+// ITP: inspections by system and the project's punch list (R-117: every origin, with its origin; `?view=` puts the current
+// one first, `?origin=` filters the punch list as the screen does); the NCR column is left out for the client (P-10b).
 import { filterCrs, parseCrFilter, withDerivedStatus } from '@/domain/change-control';
+import { filterPunchByOrigin, punchOriginFilterOf } from '@/domain/itpcom';
 import { deliverableFilterOf, ncrFilterOf, qualityTabOf } from '@/domain/quality';
 import { parseCategory, riskKpis } from '@/domain/risk';
 import { changesT } from '@/features/changes/i18n';
@@ -20,6 +22,7 @@ import { formatDate } from '../format';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook, PdfDocument } from '../types';
 import { col, compact, filterLine, kpiSheet, param, projectRef, sheet, tableBlock, todayIso } from './common';
+import { dataText } from '@/i18n/data-text';
 
 // ── Risks ────────────────────────────────────────────────────────────────────────────────────────────────────────────
 async function riskSheets(ctx: ExportContext) {
@@ -35,7 +38,7 @@ async function riskSheets(ctx: ExportContext) {
     col('plan', t('Response plan'), 'text', 44), col('activity', t('Activity'), 'text', 10), col('emv', 'EMV', 'money_keur'), col('costIfOccurs', t('Cost if it occurs'), 'money_keur'),
     col('trigger', t('Trigger'), 'text', 30), col('status', t('Status'), 'text', 8),
   ], risks.map((r) => ({
-    id: r.id, title: t(r.title), category: t(r.categoryLabel), p: r.probability, i: r.impact, score: r.score, level: t(r.levelLabel), owner: r.owner ?? '', response: t(r.responseLabel),
+    id: r.id, title: dataText(r.title, ctx.lang), category: t(r.categoryLabel), p: r.probability, i: r.impact, score: r.score, level: t(r.levelLabel), owner: r.owner ?? '', response: t(r.responseLabel),
     plan: t(r.plan), activity: r.activity?.code ?? '', emv: r.emv || null, costIfOccurs: r.costIfOccurs, trigger: t(r.trigger), status: t(r.statusLabel),
   })));
   const k = riskKpis(data.register.risks, data.contingency);
@@ -88,8 +91,8 @@ async function changesWorkbook(ctx: ExportContext): Promise<ExportWorkbook | nul
         col('status', t('Status'), 'text', 12), col('by', t('Requested by'), 'text', 18), col('date', t('Date'), 'date'), col('baseline', t('Baseline'), 'text', 8),
         col('wbs', 'WBS', 'text', 30), col('justification', t('Justification'), 'text', 50),
       ], crs.map((c) => ({
-        id: c.id, title: t(c.title), types: t(c.typesLabel), amount: c.amount, days: c.days, status: t(changeStatus.label(c.status)), by: t(c.by), date: c.requestedOn, baseline: c.baseline ?? '',
-        wbs: c.wbs.map((w) => `${w.code}${w.name ? ' ' + t(w.name) : ''}`).join(' · '), justification: c.justification ? t(c.justification) : '',
+        id: c.id, title: dataText(c.title, ctx.lang), types: t(c.typesLabel), amount: c.amount, days: c.days, status: t(changeStatus.label(c.status)), by: dataText(c.by, ctx.lang), date: c.requestedOn, baseline: c.baseline ?? '',
+        wbs: c.wbs.map((w) => `${w.code}${w.name ? ' ' + dataText(w.name, ctx.lang) : ''}`).join(' · '), justification: c.justification ? dataText(c.justification, ctx.lang) : '',
       }))),
       sheet(t('Approval chain'), [
         col('id', t('Change'), 'text', 8), col('step', t('Step'), 'text', 20), col('approver', t('Approver'), 'text', 20), col('decision', t('Decision'), 'text', 10),
@@ -100,7 +103,7 @@ async function changesWorkbook(ctx: ExportContext): Promise<ExportWorkbook | nul
       sheet(t('Baselines'), [
         col('code', t('Baseline'), 'text', 8), col('name', t('Name'), 'text', 30), col('setOn', t('Set on'), 'date'), col('bac', 'BAC', 'money_keur'), col('finish', t('Finish'), 'date'),
         col('state', t('Status'), 'text', 12), col('cr', t('Change request'), 'text', 10),
-      ], baselines.map((b) => ({ code: b.code, name: t(b.name), setOn: b.setOnDate, bac: b.bac, finish: b.finishDate, state: t(b.stateLabel), cr: b.changeRequest ?? '' }))),
+      ], baselines.map((b) => ({ code: b.code, name: dataText(b.name, ctx.lang), setOn: b.setOnDate, bac: b.bac, finish: b.finishDate, state: t(b.stateLabel), cr: b.changeRequest ?? '' }))),
       kpiSheet(ctx, [
         { label: t('Original budget'), value: cc.originalBudget != null ? `${cc.originalBudget} k€` : '—' }, { label: 'BAC', value: `${cc.bac} k€` },
         { label: t('Contingency'), value: cc.contingency != null ? `${cc.contingency} k€` : '—' },
@@ -113,7 +116,10 @@ async function changesWorkbook(ctx: ExportContext): Promise<ExportWorkbook | nul
 async function qualityWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   if (!ctx.project) return null;
   const { t } = ctx;
-  const data = await getQualityScreen(ctx.project.code);
+  // P-10b (R-043): a client exports the deliverables register only — no NCR sheet, no linked NCR numbers.
+  const client = ctx.viewer.role === 'client';
+  const screen = await getQualityScreen(ctx.project.code);
+  const data = client ? { ...screen, ncrs: [], deliverables: screen.deliverables.map((d) => ({ ...d, linkedNcrs: [] })) } : screen;
   const severity = ncrFilterOf(param(ctx, 'filter'));
   const status = deliverableFilterOf(param(ctx, 'status'));
   const tab = qualityTabOf(param(ctx, 'tab')) ?? 'ncr';
@@ -124,8 +130,8 @@ async function qualityWorkbook(ctx: ExportContext): Promise<ExportWorkbook | nul
     col('action', t('Corrective action'), 'text', 36), col('due', t('Due'), 'date'), col('cost', t('Cost'), 'money_keur'), col('iso', 'ISO 9001', 'text', 8),
     col('pending', t('Pending sync with Vigie'), 'text', 18), col('vigie', t('Vigie (8D)'), 'text', 40),
   ], data.ncrs.filter((n) => !severity || n.severity === severity).map((n) => ({
-    number: n.number, title: t(n.title), severity: t(n.severityLabel), source: t(n.sourceLabel), status: t(n.statusLabel), activity: n.activityCode ?? '', part: n.partRef ?? '',
-    deliverable: n.deliverableNumber ?? '', supplier: n.supplierName ?? '', raisedBy: n.raisedBy, raisedOn: n.raisedOn, owner: n.owner, rootCause: t(n.rootCause), action: t(n.action),
+    number: n.number, title: dataText(n.title, ctx.lang), severity: t(n.severityLabel), source: t(n.sourceLabel), status: t(n.statusLabel), activity: n.activityCode ?? '', part: n.partRef ?? '',
+    deliverable: n.deliverableNumber ?? '', supplier: n.supplierName ?? '', raisedBy: n.raisedBy, raisedOn: n.raisedOn, owner: n.owner, rootCause: dataText(n.rootCause, ctx.lang), action: dataText(n.action, ctx.lang),
     due: n.dueOn, cost: n.costKeur, iso: n.isoClause, pending: n.pendingSyncLabel ? t(n.pendingSyncLabel) : '', vigie: n.vigieUrl,
   })));
   const dlvs: ExportSheet = sheet(t('Deliverables'), [
@@ -134,14 +140,14 @@ async function qualityWorkbook(ctx: ExportContext): Promise<ExportWorkbook | nul
     col('acceptBy', t('Acceptance due'), 'date'), col('accepted', t('Accepted on'), 'date'), col('acceptedBy', t('Accepted by'), 'text', 16), col('rejected', t('Rejected on'), 'date'),
     col('comments', t('Review comments'), 'text', 36), col('document', t('Document'), 'text', 16), col('ncrs', 'NCR', 'text', 14),
   ], data.deliverables.filter((d) => !status || d.status === status).map((d) => ({
-    number: d.number, title: t(d.title), type: t(d.typeLabel), wbs: `${d.wbsCode}${d.wbsName ? ' · ' + t(d.wbsName) : ''}`, due: d.dueOn, status: t(d.statusLabel), revision: d.revision ?? '',
+    number: d.number, title: dataText(d.title, ctx.lang), type: t(d.typeLabel), wbs: `${d.wbsCode}${d.wbsName ? ' · ' + dataText(d.wbsName, ctx.lang) : ''}`, due: d.dueOn, status: t(d.statusLabel), revision: d.revision ?? '',
     issue: d.issueOn, submitted: d.submittedOn, acceptBy: d.acceptanceDueOn, accepted: d.acceptedOn, acceptedBy: d.acceptedBy ?? '', rejected: d.rejectedOn,
     comments: d.reviewComments ? t(d.reviewComments) : '', document: d.documentNumber ?? '', ncrs: d.linkedNcrs.join(' · '),
   })));
   return {
     title: t('Quality — NCR & deliverables'),
     filters: compact([severity ? `${t('Severity')}: ${t(ncrSeverity.label(severity))}` : null, status ? `${t('Status')}: ${t(deliverableStatus.label(status))}` : null]),
-    sheets: tab === 'dlv' ? [dlvs, ncrs] : [ncrs, dlvs],
+    sheets: client ? [dlvs] : tab === 'dlv' ? [dlvs, ncrs] : [ncrs, dlvs],
   };
 }
 
@@ -150,23 +156,25 @@ async function pvDocument(ctx: ExportContext): Promise<PdfDocument | null> {
   if (!ctx.project) return null;
   const id = (param(ctx, 'id') ?? '').toUpperCase();
   const [data, contract] = await Promise.all([getQualityScreen(ctx.project.code), getContract(ctx.project.code)]);
-  const d = data.deliverables.find((x) => x.number.toUpperCase() === id);
-  if (!d || d.status !== 'accepted') return null;
+  const found = data.deliverables.find((x) => x.number.toUpperCase() === id);
+  if (!found || found.status !== 'accepted') return null;
+  // P-10b (R-043): the client's copy names no NCR.
+  const d = ctx.viewer.role === 'client' ? { ...found, linkedNcrs: [] } : found;
   const { t } = ctx;
   const doc = d.documentNumber ? data.documents.find((x) => x.number === d.documentNumber) ?? null : null;
   const client = contract?.sheet.client ?? ctx.project.client;
   const fd = (iso: string | null) => (iso ? formatDate(iso, ctx.lang) : '—');
   return {
     title: t('Acceptance certificate (PV de réception)'),
-    subtitle: `${d.number} · ${t(d.title)}`,
+    subtitle: `${d.number} · ${dataText(d.title, ctx.lang)}`,
     project: projectRef(ctx),
     reference: `PV ${d.number}`,
     date: d.acceptedOn ?? todayIso(ctx),
     blocks: [
       { kind: 'fields', columns: 2, items: [
-        [t('Client'), t(client)], [t('Contract'), contract?.sheet.reference ?? '—'], [t('Deliverable'), `${d.number} · ${t(d.title)}`], [t('Type'), t(d.typeLabel)],
-        ['WBS', `${d.wbsCode}${d.wbsName ? ' · ' + t(d.wbsName) : ''}`], [t('Revision'), d.revision ?? '—'],
-        [t('Issued document'), doc ? `${doc.number} · ${t(doc.title)} · ${t('Rev')} ${doc.revision}` : d.documentNumber ?? '—'], [t('Submitted on'), fd(d.submittedOn)],
+        [t('Client'), dataText(client, ctx.lang)], [t('Contract'), contract?.sheet.reference ?? '—'], [t('Deliverable'), `${d.number} · ${dataText(d.title, ctx.lang)}`], [t('Type'), t(d.typeLabel)],
+        ['WBS', `${d.wbsCode}${d.wbsName ? ' · ' + dataText(d.wbsName, ctx.lang) : ''}`], [t('Revision'), d.revision ?? '—'],
+        [t('Issued document'), doc ? `${doc.number} · ${dataText(doc.title, ctx.lang)} · ${t('Rev')} ${doc.revision}` : d.documentNumber ?? '—'], [t('Submitted on'), fd(d.submittedOn)],
         [t('Accepted on'), fd(d.acceptedOn)], [t('Accepted by'), d.acceptedBy ?? '—'],
       ] },
       { kind: 'heading', text: t('Acceptance') },
@@ -183,27 +191,33 @@ async function pvDocument(ctx: ExportContext): Promise<PdfDocument | null> {
 // ── ITP ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
 async function itpWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   if (!ctx.project) return null;
-  const [plan, punch] = await Promise.all([getItpPlan(ctx.project.code), listPunchItems(ctx.project.code, 'itp')]);
-  if (!plan && !punch.length) return null;
+  const [plan, all] = await Promise.all([getItpPlan(ctx.project.code), listPunchItems(ctx.project.code)]);
+  if (!plan && !all.length) return null;
   const { t } = ctx;
+  const origin = punchOriginFilterOf(param(ctx, 'origin'));
+  const punch = filterPunchByOrigin(all, origin);
+  // P-10b: the client never gets Vigie's NCR numbers (the screen hides the column too).
+  const internal = ctx.viewer.role !== 'client';
   const inspections = sheet(t('Inspection & test plan'), [
     col('number', t('Inspection'), 'text', 8), col('system', t('System'), 'text', 24), col('name', t('Inspection'), 'text', 40), col('point', t('Point type'), 'text', 12),
     col('stage', t('Stage'), 'text', 14), col('reference', t('Reference'), 'text', 18), col('planned', t('Planned on'), 'date'), col('result', t('Result'), 'text', 12),
     col('record', t('Record'), 'text', 16), col('custom', t('Added'), 'boolean'),
   ], (plan?.inspections ?? []).map((i) => ({
-    number: i.number, system: t(i.system), name: t(i.name), point: t(i.pointTypeLabel), stage: t(i.stageLabel), reference: i.reference, planned: i.plannedOn, result: t(i.resultLabel),
+    number: i.number, system: dataText(i.system, ctx.lang), name: dataText(i.name, ctx.lang), point: t(i.pointTypeLabel), stage: t(i.stageLabel), reference: i.reference, planned: i.plannedOn, result: t(i.resultLabel),
     record: i.recordRef ?? '', custom: i.isCustom,
   })));
   const punchList = sheet(t('Punch list'), [
-    col('number', t('Item'), 'text', 8), col('description', t('Description'), 'text', 44), col('location', t('System / location'), 'text', 22), col('category', t('Category'), 'text', 8),
-    col('source', t('Raised by'), 'text', 18), col('ncr', 'NCR', 'text', 9), col('owner', t('Owner'), 'text', 16), col('due', t('Due'), 'date'), col('status', t('Status'), 'text', 12),
+    col('number', t('Item'), 'text', 8), col('description', t('Description'), 'text', 44), col('origin', t('Origin'), 'text', 12), col('location', t('System / location'), 'text', 22),
+    col('category', t('Category'), 'text', 8), col('source', t('Raised by'), 'text', 18), ...(internal ? [col('ncr', 'NCR', 'text', 9)] : []), col('owner', t('Owner'), 'text', 16),
+    col('due', t('Due'), 'date'), col('status', t('Status'), 'text', 12),
   ], punch.map((p) => ({
-    number: p.number, description: t(p.description), location: t(p.location), category: p.categoryLabel ? t(p.categoryLabel) : '', source: p.sourceText ? t(p.sourceText) : '',
-    ncr: p.ncrNumber ?? '', owner: p.owner ? t(p.owner) : '', due: p.dueOn, status: t(p.statusLabel),
+    number: p.number, description: dataText(p.description, ctx.lang), origin: t(p.originLabel), location: dataText(p.location, ctx.lang), category: p.categoryLabel ? t(p.categoryLabel) : '',
+    source: p.sourceText ? t(p.sourceText) : '', ...(internal ? { ncr: p.ncrNumber ?? '' } : {}), owner: p.ownerName ? dataText(p.ownerName, ctx.lang) : p.owner ? t(p.owner) : '',
+    due: p.dueOn, status: t(p.statusLabel),
   })));
   return {
     title: t('Inspection & test plan · punch list'),
-    filters: compact([plan?.template ? `${t('Template')}: ${plan.template}` : null]),
+    filters: compact([plan?.template ? `${t('Template')}: ${plan.template}` : null, origin !== 'all' ? `${t('Origin')}: ${t(origin === 'itp' ? 'Inspection' : 'Site')}` : null]),
     sheets: param(ctx, 'view') === 'punch' ? [punchList, inspections] : [inspections, punchList],
   };
 }

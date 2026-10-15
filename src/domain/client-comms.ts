@@ -1,7 +1,9 @@
 // Client communication log (chapter 4; Site › "Client communication log", Keystone-owned — docs/spec/00 D-5): every
 // exchange with the client of a project (date, channel, direction, client contact, subject, summary) and its follow-up
-// (owner, due date, done). Pure rules shared by the Server Functions, the drawer and the tests; every default the
-// chapter-5 questionnaire may change is a constant here.
+// (owner, due date, done). Pure rules; every default the chapter-5 questionnaire may change is a constant here.
+// D-5 (owner's answer "a": use the project's meetings and decisions): the log is retired from the Site screen — its
+// drawer and Server Functions are removed, the Site button opens the client decisions of the project meetings. These
+// rules, the table and its DAL (src/server/dal/client-comms.ts) stay until the owner confirms deleting the data.
 import type { RoleKey } from '@/config/screens';
 import { clientCommChannel, clientCommDirection, type ClientCommChannel, type ClientCommDirection } from '@/server/db/codes';
 

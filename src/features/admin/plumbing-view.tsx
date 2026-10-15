@@ -10,6 +10,7 @@ import type { Icon } from '@phosphor-icons/react';
 import { FilterBar, FilterChips, FilterGroup, FilterLabel } from '@/components/app/Filter';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
 import { cx } from '@/components/ds/cx';
+import { TableScroll } from '@/components/ds/Table';
 import { Segmented } from '@/components/ds/Segmented';
 import type { ActivityIcon } from '@/domain/admin';
 import type { T } from '@/i18n/translate';
@@ -105,39 +106,41 @@ function Connectors({ view, canEdit, t }: { view: PlumbingView; canEdit: boolean
         <div className={cx('card-title', s.cardTitle)}>{t('Connectors')}</div>
         <span className={s.muted12}>{t('Source systems stay the reference — Keystone reads, links and pushes back approved changes')}</span>
       </div>
-      <table className={cx('table', s.table13)}>
-        <thead>
-          <tr>
-            <th>{t('System')}</th>
-            <th>{t('Data')}</th>
-            <th>{t('Frequency')}</th>
-            <th>{t('Status')}</th>
-            <th>{t('Last sync')}</th>
-            <th>{t('Last volume')}</th>
-            <th>
-              <span className={s.srOnly}>{t('Actions')}</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {view.connectors.map((c) => (
-            <tr key={c.name}>
-              <td className={s.connName}>
-                {c.name}
-                {c.mode && <span className={s.connMode}>{c.mode}</span>}
-              </td>
-              <td className={s.connData}>{c.data}</td>
-              <td className={s.cell12}>{c.frequency}</td>
-              <td>
-                <span className={`tag tag-${c.tone}`}>{c.status}</span>
-              </td>
-              <td className={s.cell12Soft}>{c.last}</td>
-              <td className={s.cell12Muted}>{c.volume}</td>
-              <td>{canEdit && <ConnectorActions name={c.rawName} label={c.name} />}</td>
+      <TableScroll>
+        <table className={cx('table', s.table13)}>
+          <thead>
+            <tr>
+              <th>{t('System')}</th>
+              <th>{t('Data')}</th>
+              <th>{t('Frequency')}</th>
+              <th>{t('Status')}</th>
+              <th>{t('Last sync')}</th>
+              <th>{t('Last volume')}</th>
+              <th>
+                <span className={s.srOnly}>{t('Actions')}</span>
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {view.connectors.map((c) => (
+              <tr key={c.name}>
+                <td className={s.connName}>
+                  {c.name}
+                  {c.mode && <span className={s.connMode}>{c.mode}</span>}
+                </td>
+                <td className={s.connData}>{c.data}</td>
+                <td className={s.cell12}>{c.frequency}</td>
+                <td>
+                  <span className={`tag tag-${c.tone}`}>{c.status}</span>
+                </td>
+                <td className={s.cell12Soft}>{c.last}</td>
+                <td className={s.cell12Muted}>{c.volume}</td>
+                <td>{canEdit && <ConnectorActions name={c.rawName} label={c.name} canSync={c.canSync} />}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TableScroll>
     </section>
   );
 }
@@ -155,35 +158,37 @@ function AuditTrail({ view, canEdit, t }: { view: PlumbingView; canEdit: boolean
           </a>
         )}
       </div>
-      <table className={cx('table', s.table125)}>
-        <thead>
-          <tr>
-            <th>{t('When')}</th>
-            <th>{t('Who')}</th>
-            <th>{t('Object')}</th>
-            <th>{t('Change')}</th>
-            <th>{t('Area')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {view.audit.map((a) => (
-            <tr key={a.key}>
-              <td className={s.when}>{a.when}</td>
-              <td className={s.nowrap}>{a.who}</td>
-              <td className={s.obj}>{a.object}</td>
-              <td className={s.pretty}>{a.change}</td>
-              <td className={s.areaCell}>{a.area}</td>
-            </tr>
-          ))}
-          {!view.audit.length && (
+      <TableScroll>
+        <table className={cx('table', s.table125)}>
+          <thead>
             <tr>
-              <td colSpan={5} className={s.tableEmpty}>
-                {t('No audit entry yet')}
-              </td>
+              <th>{t('When')}</th>
+              <th>{t('Who')}</th>
+              <th>{t('Object')}</th>
+              <th>{t('Change')}</th>
+              <th>{t('Area')}</th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {view.audit.map((a) => (
+              <tr key={a.key}>
+                <td className={s.when}>{a.when}</td>
+                <td className={s.nowrap}>{a.who}</td>
+                <td className={s.obj}>{a.object}</td>
+                <td className={s.pretty}>{a.change}</td>
+                <td className={s.areaCell}>{a.area}</td>
+              </tr>
+            ))}
+            {!view.audit.length && (
+              <tr>
+                <td colSpan={5} className={s.tableEmpty}>
+                  {t('No audit entry yet')}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </TableScroll>
     </section>
   );
 }

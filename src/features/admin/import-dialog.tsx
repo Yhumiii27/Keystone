@@ -30,6 +30,7 @@ import { INTERCHANGE_DEFAULTS } from '@/server/interchange/defaults';
 import type { TableKind } from '@/server/interchange/table';
 import { applyImportAction, cancelImportAction, importSetupAction, previewTableAction, tableMappingAction, type ImportSetup } from './interchange-actions';
 import s from './interchange.module.css';
+import { fieldsText } from '@/i18n/data-text';
 
 /** EN labels of the import kinds (as importKind in src/server/db/codes.ts). */
 export const KIND_LABEL: Record<ImportKind, string> = {
@@ -49,7 +50,7 @@ export interface ImportDialogProps {
 }
 
 export function ImportDialog({ card, title, file, onClose }: ImportDialogProps) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const tr = (m: string) => translateMessage(m, t);
   const router = useRouter();
   const id = useId();
@@ -246,7 +247,7 @@ export function ImportDialog({ card, title, file, onClose }: ImportDialogProps) 
                 ) : (
                   <>
                     <Field label={t('Project')} htmlFor={`${id}-project`} span="full">
-                      <Select id={`${id}-project`} value={project} onChange={(e) => setProject(e.target.value)} options={projects.map((p) => ({ value: p.code, label: t(p.label) }))} />
+                      <Select id={`${id}-project`} value={project} onChange={(e) => setProject(e.target.value)} options={projects.map((p) => ({ value: p.code, label: fieldsText(p.label, t, lang) }))} />
                     </Field>
                     <Field label={t('Match activities on')} span="full" hint={t('The other key is used when the first one finds nothing')}>
                       <Segmented
@@ -283,7 +284,7 @@ export function ImportDialog({ card, title, file, onClose }: ImportDialogProps) 
               </Field>
               {kind !== 'parts' && (
                 <Field label={t('Project')} htmlFor={`${id}-tproject`} span="full">
-                  <Select id={`${id}-tproject`} value={project} onChange={(e) => setProject(e.target.value)} options={projects.map((p) => ({ value: p.code, label: t(p.label) }))} />
+                  <Select id={`${id}-tproject`} value={project} onChange={(e) => setProject(e.target.value)} options={projects.map((p) => ({ value: p.code, label: fieldsText(p.label, t, lang) }))} />
                 </Field>
               )}
               <span className={cx(s.hint, s.full)}>{t('CSV (; or , separated, UTF-8 or Windows) or Excel (.xlsx) · one row per line under a header row · empty cells never erase a value')}</span>
@@ -328,7 +329,7 @@ export function ImportDialog({ card, title, file, onClose }: ImportDialogProps) 
           </div>
           {mapping.sample.length > 0 && (
             <div className={s.sample}>
-              <Table size={12.5}>
+              <Table size={12.5} scroll={false}>
                 <thead>
                   <tr>
                     {mapping.columns.map((c) => (
@@ -493,7 +494,7 @@ function PreviewBody({ preview, t, tr }: { preview: PreviewView; t: (s: string) 
         </div>
       )}
       <div className={s.tableWrap}>
-        <Table size={12.5}>
+        <Table size={12.5} scroll={false}>
           <thead>
             <tr>
               <Th>{isSchedule ? t('Type') : t('Line')}</Th>

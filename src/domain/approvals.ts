@@ -18,13 +18,13 @@ import { screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import { isoOfDisplayDate, type ChangeStep, type StepDecision } from '@/server/db/codes';
-import { CR_STEP_LABEL, STEP_DECIDER } from './change-control';
+import { CR_STEP_LABEL, canDecideStep, currentStep } from './change-control';
 import { renderTxt, type Txt } from './home';
 
 // ── Kinds ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Kind codes (URL `?filter=`), in the prototype's push order (routing matrix 08 §7.5), Codex documents last. */
-export const APPROVAL_KINDS = ['request', 'po', 'eco', 'delivery', 'stage', 'cr', 'deliverable', 'rfq', 'invoice', 'ncr', 'doc'] as const;
+export const APPROVAL_KINDS = ['request', 'po', 'eco', 'delivery', 'stage', 'cr', 'contingency', 'deliverable', 'rfq', 'invoice', 'ncr', 'doc'] as const;
 export type ApprovalKind = (typeof APPROVAL_KINDS)[number];
 
 /** Kind tag / chip label (EN source; FR from the prototype dictionary, "Codex document" from extra/myapprovals.json). */
@@ -35,6 +35,8 @@ export const APPROVAL_KIND_LABEL: Record<ApprovalKind, string> = {
   delivery: 'Delivery — quality check',
   stage: 'Forced stage change',
   cr: 'Change request',
+  // Delivery 7 (R-071, C-4): the portfolio director validates the contingency draw-downs.
+  contingency: 'Contingency draw-down',
   deliverable: 'Deliverable acceptance',
   rfq: 'RFQ award',
   invoice: 'Invoice — 3-way match',
@@ -71,7 +73,17 @@ export type ApprovalDecision =
    * Chapter 4 (L-1): forced stage change (portfolio director): Approve keeps the stage, Reject reverts the project to
    * `fromLabel` (the stage it left; prototype label) after a confirmation with an optional comment.
    */
-  | { mode: 'stage'; projectCode: string; transitionId: string; fromLabel: string | null };
+  | { mode: 'stage'; projectCode: string; transitionId: string; fromLabel: string | null }
+  /**
+   * Delivery 7 (R-071, C-4): contingency draw-down awaiting the portfolio director: Approve → validated (drawn), Reject → rejected
+   * after a confirmation with an optional comment the requester sees (src/features/risks/actions.ts decideDrawDownAction).
+   */
+  | { mode: 'contingency-draw'; projectCode: string; drawId: string }
+  /**
+   * Delivery 7 (P-7b = a, R-124): the step of a Codex document's circuit open for the viewer (named approver): Approve, or
+   * Reject with the reason; sent to Codex through the outbox ("pending sync with Codex", src/features/docs/actions.ts).
+   */
+  | { mode: 'codex-document'; number: string; step: number };
 
 export interface ApprovalItem {
   kind: ApprovalKind;
@@ -160,20 +172,29 @@ export interface VaultDocForInbox {
   /** Next circuit step (label) and its named approver; null when no step is pending. */
   nextRoleLabel: string | null;
   nextApprover: string | null;
+  /** Delivery 7: the step open in Keystone (null before the PM's validation, after a rejection, or when every step waits for Codex). */
+  circuitState: { nextStep: number | null };
 }
 
 /**
- * Codex documents of the database index awaiting the viewer: "Release proposed" and the next pending circuit step
- * names the viewer. Same item as `codexDocItems` on the seed; the next step follows the approvals already signed
- * (after the quality manager signs RPT-HLT-014, the item moves to the project manager).
+ * Codex documents of the database index awaiting the viewer: "Release proposed" and the circuit step open in Keystone
+ * names the viewer. Same rows as `codexDocItems` on the seed; the next step follows the approvals already signed in
+ * Codex or recorded in Keystone (after the quality manager approves RPT-HLT-014, the item moves to the project manager).
+ * Delivery 7 (P-7b = a, R-124): decided inline (Approve, Reject with the reason), sent to Codex; "Open in Codex" opens
+ * Codex (its home until the deep links exist, D-1).
  */
-export function codexVaultItems(docs: VaultDocForInbox[], viewerShort: string, currentCode: string): ApprovalItem[] {
+export function codexVaultItems(
+  docs: VaultDocForInbox[], viewerShort: string, currentCode: string, codexUrl?: string | ((d: VaultDocForInbox) => string),
+): ApprovalItem[] {
   return docs
-    .filter((d) => d.status === 'release_proposed' && !!d.nextRoleLabel && d.nextApprover === viewerShort)
+    .filter((d) => d.status === 'release_proposed' && d.circuitState.nextStep != null && !!d.nextRoleLabel && d.nextApprover === viewerShort)
     .map((d) =>
       item('doc', {
         id: d.number, title: d.title, sub: `${d.typeLabel} · rev ${d.revision} · ${d.nextRoleLabel}`, when: d.dateText, who: d.author,
-        href: href('docs', d.project === 'QMS' ? currentCode : d.project, { doc: d.number }), decision: null,
+        href: href('docs', d.project === 'QMS' ? currentCode : d.project, { doc: d.number }),
+        decision: { mode: 'codex-document', number: d.number, step: d.circuitState.nextStep! },
+        // Delivery 8 (R-033): "Open in Codex" opens the record in Codex (`codexUrl` per record; Codex's home before).
+        ...(codexUrl ? { external: { href: typeof codexUrl === 'function' ? codexUrl(d) : codexUrl, label: 'Open in Codex' } } : {}),
       }),
     );
 }
@@ -199,27 +220,14 @@ export interface StepViewer {
   role: RoleKey;
 }
 
-/** Steps in the order the inbox offers them (one row per change request: the first step the viewer can decide). */
-const INBOX_STEPS: readonly ChangeStep[] = ['pm', 'director', 'client', 'ccb'];
-
 /**
  * The step of a change request the viewer decides now (apprItems 4726 by person instead of role): the CR is in
- * review and a step the viewer holds is pending. Null otherwise.
+ * review, its current step (delivery 8, R-069 — the chain is sequential, P-6b) is one the viewer holds. Null otherwise.
+ * The rule itself is Change control's `canDecideStep` (one rule for every screen, R-171).
  */
 export function pendingStepFor(cr: ChangeRequestForInbox, viewer: StepViewer): ChangeStep | null {
-  return INBOX_STEPS.find((step) => canDecideStep(cr, step, viewer)) ?? null;
-}
-
-/**
- * The viewer may record `step` of this change request now (the inline decision's permission check): request in
- * review, step pending, and the viewer is the step's named approver — or, for the change control board (no named
- * approver, 07 OQ2), holds the role that records it on Change control (STEP_DECIDER.ccb, the portfolio director).
- */
-export function canDecideStep(cr: ChangeRequestForInbox, step: ChangeStep, viewer: StepViewer): boolean {
-  if (cr.status !== 'in_review') return false;
-  const s = cr.chain.find((x) => x.step === step);
-  if (!s || s.decision !== 'pending') return false;
-  return step === 'ccb' ? viewer.role === STEP_DECIDER.ccb : !!s.approver && s.approver === viewer.name;
+  const step = currentStep(cr.chain);
+  return step && canDecideStep(cr, step, { role: viewer.role, name: viewer.name }) ? step : null;
 }
 
 /**

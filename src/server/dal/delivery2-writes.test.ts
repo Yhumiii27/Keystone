@@ -6,7 +6,7 @@ import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { recordStageChange } from './lifecycle';
 import { createChangeRequest, decideChangeStep, getChangeControl, submitChangeRequest } from './changes';
-import { getContingency, recordContingencyDraw } from './contingency';
+import { decideContingencyDraw, getContingency, submitContingencyDraw } from './contingency';
 import { addRateRole, addSkill, assignUnassignedHours, getHoursReconciliation, getRateCard, getSkillsMatrix, markHoursImported, setBaseRate, setMultiplier } from './hr';
 import { countUnreadNotifications, createNotification, listAudit, listNotifications, markAllNotificationsRead, markNotificationRead } from './notifications';
 import {
@@ -26,7 +26,8 @@ const lastAudit = async () => (await listAudit({ limit: 1 }))[0];
 
 describe('risks', () => {
   it('adds R-21 on top of the register, then edits it from the drawer', async () => {
-    const n = await createRisk('HLT-026', { title: 'Port strike', category: 'contractual_client', probability: 9, impact: 2, owner: 'Romain Aubert', response: 'accept', emvKeur: 30 }, 'Romain Aubert');
+    // Q-1 (delivery 7): the cost if it occurs is entered (30) and EMV = cost × P / 5 → 30 at P 5 (clamped from 9).
+    const n = await createRisk('HLT-026', { title: 'Port strike', category: 'contractual_client', probability: 9, impact: 2, owner: 'Romain Aubert', response: 'accept', costKeur: 30 }, 'Romain Aubert');
     expect(n).toBe('R-21');
     let reg = (await getRiskRegister('HLT-026'))!;
     expect(reg.risks[0]).toMatchObject({ id: 'R-21', probability: 5, impact: 2, status: 'open', trend: 'flat', plan: '—', trigger: '—', owner: 'Romain Aubert' });
@@ -35,8 +36,9 @@ describe('risks', () => {
     await updateRisk('HLT-026', 'R-03', { probability: 3, response: 'transfer' }, 'Romain Aubert');
     await updateRisk('HLT-026', 'R-21', { status: 'closed' }, 'Romain Aubert');
     reg = (await getRiskRegister('HLT-026'))!;
-    expect(reg.risks.find((r) => r.id === 'R-03')).toMatchObject({ probability: 3, score: 12, level: 'high', response: 'transfer', costIfOccurs: 200 });
-    expect(reg.openEmv).toBe(340);
+    // Q-1: the cost if it occurs stays 150 and the EMV follows P (120 → 90); the prototype kept the EMV and showed a cost of 200.
+    expect(reg.risks.find((r) => r.id === 'R-03')).toMatchObject({ probability: 3, score: 12, level: 'high', response: 'transfer', costIfOccurs: 150, emv: 90 });
+    expect(reg.openEmv).toBe(310);
     expect(await lastAudit()).toMatchObject({ who: 'Romain Aubert', object: 'R-21', change: 'status: Open → Closed', area: 'Risks', projectCode: 'HLT-026' });
   });
 });
@@ -49,23 +51,32 @@ describe('change control', () => {
     await expect(decideChangeStep('HLT-026', 'CR-008', 'ccb', 'ok', 'Marie Lefebvre')).rejects.toThrow();
     await expect(decideChangeStep('HLT-026', 'CR-009', 'pm', 'ok', 'Romain Aubert')).rejects.toThrow(/not in review/);
     await submitChangeRequest('HLT-026', 'CR-009', 'Romain Aubert');
-    for (const [step, who] of [['pm', 'Romain Aubert'], ['director', 'Marie Lefebvre'], ['client', 'Nadia Bensaïd']] as const)
+    for (const [step, who] of [['pm', 'Romain Aubert'], ['director', 'Marie Lefebvre']] as const)
       expect(await decideChangeStep('HLT-026', 'CR-009', step, 'ok', who)).toBe('in_review');
-    expect(await decideChangeStep('HLT-026', 'CR-009', 'ccb', 'ok', 'Marie Lefebvre')).toBe('approved');
+    // Delivery 8 (R-069, P-6c): CR-009 (0 k€, +27 d) no longer needs the board (not above the 50 k€ threshold): the client's
+    // approval is the last step (was: client, then the board).
+    expect(await decideChangeStep('HLT-026', 'CR-009', 'client', 'ok', 'Nadia Bensaïd')).toBe('approved');
     const cc = (await getChangeControl('HLT-026'))!;
     expect(cc.baselines.map((b) => [b.code, b.state, b.setOnDate])).toEqual([['BL0', 'superseded', '2026-01-18'], ['BL1', 'superseded', '2026-03-12'], ['BL2', 'current', '2026-09-25']]);
     const cr8 = cc.changeRequests.find((c) => c.id === 'CR-008')!;
     expect(cr8.chain.find((s) => s.step === 'director')).toMatchObject({ decision: 'ok', decidedBy: 'Marie Lefebvre' });
-    expect(await lastAudit()).toMatchObject({ object: 'CR-009', change: 'ccb: pending → ok · status: In review → Approved · BL2 current', area: 'Change control' });
+    // S-3 / DELIVERY-6-PLAN §3.1 gap (1): the approval now also fills BL2's activity snapshot. Both audit lines are written in
+    // one transaction and can share a millisecond, so look each one up instead of relying on their order.
+    const recent = await listAudit({ limit: 5 });
+    expect(recent.find((a) => a.object === 'CR-009')).toMatchObject({ change: 'client: pending → ok · status: In review → Approved · BL2 snapshot · 21 activities · BL2 current', area: 'Change control' });
+    expect(recent.find((a) => a.object === 'HLT-026 BL2')).toMatchObject({ change: 'baseline snapshot · 21 activities · current', area: 'Planning' });
   });
 
-  it('raises CR-011 (submitted, every step pending) and a rejected step rejects it', async () => {
+  it('raises CR-011 (submitted, the steps it needs pending) and a rejected step rejects it', async () => {
     const n = await createChangeRequest('HLT-026', { title: 'Extra lighting', types: ['scope', 'budget'], amountKeur: 12, scheduleDays: 0, wbsCodes: ['1.6'], justification: 'Client ask' }, 'Romain Aubert');
     expect(n).toBe('CR-011');
     let cr = (await getChangeControl('HLT-026'))!.changeRequests[0];
     expect(cr).toMatchObject({ id: 'CR-011', status: 'in_review', by: 'R. Aubert', date: '25 Sep', justification: 'Client ask', wbs: [{ code: '1.6', name: 'MEP systems', amount: null }] });
-    expect(cr.chain.map((s) => s.decision)).toEqual(['pending', 'pending', 'pending', 'pending']);
-    expect(await decideChangeStep('HLT-026', 'CR-011', 'client', 'rejected', 'Nadia Bensaïd')).toBe('rejected');
+    // Delivery 8 (R-069): 12 k€ is not above the board threshold (50 k€) — its step is not required; the chain is decided in order
+    // (P-6b), so the PM's rejection rejects it (was: the client's, any order).
+    expect(cr.chain.map((s) => s.decision)).toEqual(['pending', 'pending', 'pending', 'na']);
+    await expect(decideChangeStep('HLT-026', 'CR-011', 'client', 'rejected', 'Nadia Bensaïd')).rejects.toThrow(/waits for an earlier step/);
+    expect(await decideChangeStep('HLT-026', 'CR-011', 'pm', 'rejected', 'Romain Aubert')).toBe('rejected');
     cr = (await getChangeControl('HLT-026'))!.changeRequests[0];
     expect(cr.statusLabel).toBe('Rejected');
     expect(await createChangeRequest('NDC-031', { title: 'Draft', types: ['schedule'], amountKeur: 0, scheduleDays: 5, submit: false }, 'Romain Aubert')).toBe('CR-012');
@@ -83,13 +94,19 @@ describe('trends and contingency', () => {
     expect(t.nextReport?.text).toBe('9 Oct');
   });
 
-  it('records draw-downs, creating the register with the default provision when absent', async () => {
-    await recordContingencyDraw('HLT-026', { amountKeur: 10, reason: 'Night shift lighting', linkRef: 'R-07', approvedBy: 'R. Aubert' }, 'Romain Aubert');
-    const hlt = (await getContingency('HLT-026'))!;
-    expect([hlt.drawn, hlt.remaining, hlt.draws.at(-1)?.dateText, hlt.draws.at(-1)?.linkType, hlt.draws.at(-1)?.approvedBy]).toEqual([58, 92, '25 Sep', 'risk', 'R. Aubert']);
-    await recordContingencyDraw('NDC-031', { amountKeur: 5, reason: 'UPS', approvedBy: 'M. Lefebvre' }, 'Marie Lefebvre');
+  // Delivery 7 (R-071, C-4): a draw-down is submitted, linked, and only drawn once the portfolio director validates it.
+  it('submits draw-downs (linked, not drawn yet), the director validates them; the register is created with the budget\'s provision', async () => {
+    await submitContingencyDraw('HLT-026', { amountKeur: 10, reason: 'Night shift lighting', linkRef: 'R-07', linkType: 'risk' }, { name: 'Romain Aubert', role: 'pm' });
+    let hlt = (await getContingency('HLT-026'))!;
+    expect([hlt.drawn, hlt.pending, hlt.remaining, hlt.draws.at(-1)?.dateText, hlt.draws.at(-1)?.linkType, hlt.draws.at(-1)?.status, hlt.draws.at(-1)?.requestedBy])
+      .toEqual([48, 10, 102, '25 Sep', 'risk', 'submitted', 'R. Aubert']);
+    await decideContingencyDraw('HLT-026', hlt.draws.at(-1)!.id, 'validated', { name: 'Marie Lefebvre', role: 'director' });
+    hlt = (await getContingency('HLT-026'))!;
+    expect([hlt.drawn, hlt.pending, hlt.remaining, hlt.draws.at(-1)?.approvedBy]).toEqual([58, 0, 92, 'M. Lefebvre']);
+    // A-8: NDC-031's provision is its budget's contingency line (100), no longer round(BAC × 3 %) = 63.
+    await submitContingencyDraw('NDC-031', { amountKeur: 5, reason: 'UPS', linkRef: 'R-01', linkType: 'risk' }, { name: 'Marie Lefebvre', role: 'director' });
     const ndc = (await getContingency('NDC-031'))!;
-    expect([ndc.initial, ndc.isDefault, ndc.drawn, ndc.draws[0].linkRef]).toEqual([63, false, 5, null]);
+    expect([ndc.initial, ndc.isDefault, ndc.drawn, ndc.pending, ndc.draws[0].linkRef]).toEqual([100, false, 0, 5, 'R-01']);
   });
 });
 
@@ -169,14 +186,16 @@ describe('tasks', () => {
 
 describe('HR and what-if', () => {
   it('rates, multipliers, roles and skills', async () => {
-    await setBaseRate('Structural engineer', 88, 'Léa Marchand');
-    await setMultiplier('sun', 2.1, 'Léa Marchand');
-    await addRateRole({ role: 'Commissioning engineer (external)', rateEur: 110, costCenter: 'Site', grade: 'Senior' }, 'Marie Lefebvre');
+    // R-083 (A-10, R-4a): dated versions, written by the director or Finance (P-12 c — the DAL re-checks the role).
+    const FINANCE = { name: 'Léa Marchand', role: 'finance' };
+    await setBaseRate('Structural engineer', 88, '2026-09-25', FINANCE);
+    await setMultiplier('sun', 2.1, '2026-09-25', FINANCE);
+    await addRateRole({ role: 'Commissioning engineer (external)', rateEur: 110, costCenter: 'Site', grade: 'Senior', effectiveFrom: '2026-09-25' }, { name: 'Marie Lefebvre', role: 'director' });
     const rc = await getRateCard();
     expect(rc.roles.find((r) => r.role === 'Structural engineer')!.baseRateEur).toBe(88);
     expect(rc.roles.at(-1)).toMatchObject({ role: 'Commissioning engineer (external)', isExternal: true, costCenter: 'Site', grade: 'Senior' });
     expect(rc.multipliers.find((m) => m.key === 'sun')!.factor).toBe(2.1);
-    expect((await listAudit({ limit: 3 })).map((a) => a.change)).toContain('Structural engineer base: 85 → 88 €/h');
+    expect((await listAudit({ limit: 3 })).map((a) => a.change)).toContain('Structural engineer base: 85 → 88 €/h from 25 Sep 2026');
     await addSkill({ name: 'Rope access', category: 'Safety' }, 'Marion Kerviel');
     const m = await getSkillsMatrix();
     expect(m.skills.at(-1)).toEqual({ name: 'Rope access', category: 'Safety' });
@@ -184,8 +203,11 @@ describe('HR and what-if', () => {
   });
 
   it('hours import and assignment', async () => {
-    await markHoursImported('HLT-026', {}, 'Romain Aubert');
-    await assignUnassignedHours('HLT-026', 0, '1.4', 'Romain Aubert');
+    // Delivery 8: the hours writers re-check the project rule with the actor (R-044: Finance reads Hours).
+    const PM = { name: 'Romain Aubert', role: 'pm' };
+    await expect(markHoursImported('HLT-026', {}, { name: 'Léa Marchand', role: 'finance' })).rejects.toThrow('Hours are read-only for you on this project');
+    await markHoursImported('HLT-026', {}, PM);
+    await assignUnassignedHours('HLT-026', 0, '1.4', PM);
     const h = (await getHoursReconciliation('HLT-026'))!;
     expect([h.importedText, h.unassigned[0].assignedWbs, h.unassigned[1].assignedWbs]).toEqual(['30 Sep 2026', '1.4', null]);
   });

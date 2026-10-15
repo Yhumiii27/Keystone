@@ -1,30 +1,33 @@
 import 'server-only';
 // Project engineering register DAL — Synthesis and the four discipline screens (docs/spec/09 §7–8). Keystone owns
 // the register; files stay in the business tools. Deliverables are Codex index records of the project whose service is
-// a discipline (documents.ts): Freeze / Propose release / Validate release (PM) change their Codex status, shared with
-// the Documents screen. Rules:
-// - input state: the provider document's latest revision is its current one when Released, else the previous letter
-//   (`prevRev`; "A" stays "A"); external documents (the client's BOD-CLI-026) are always up to date. Outdated when the
-//   revision in use differs from the latest, else Up to date when confirmed, else To confirm (`inRows` 4794);
+// a discipline (documents.ts): Freeze / Propose release change their Codex status, shared with the Documents screen;
+// Validate release (PM) starts their Codex approval circuit. Rules:
+// - input state (E-5 = a): the provider document's latest revision is its current one once frozen or released, else
+//   (a Draft) the previous letter (`prevRev`; "A" stays "A"); external documents (the client's BOD-CLI-026) are always
+//   up to date. Outdated when the revision in use differs from the latest, else Up to date when confirmed, else To
+//   confirm (`inRows` 4794; domain `inputLatest`);
 // - an output recorded "Blocked" is Ready once its discipline has no open blocking check (`outRows` 4795);
 // - "Propose release" is refused while the discipline owns an open blocking check; "Validate release" is the PM's
-//   (the project's PM or the director — the prototype had no role check, 09 §8.6);
+//   (the project's PM or the director — the prototype had no role check, 09 §8.6). Delivery 7 (P-7c = a, R-106): it
+//   starts the type's approval circuit in Codex through the outbox; the deliverable is Released when Codex has every
+//   step approved (the status is never set here);
 // - the import wizard freezes the imported revision as the consumer's input (to confirm), resolves the consumer's
 //   revision-alignment checks not resolved yet, sent back ones included ("Closed by import of rev D") and, for the
 //   instrument list extracted from the P&ID, also updates the consumer's P&ID input (`finish` 4813).
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import {
-  CODEX_TODAY_ISO, DISCIPLINES, checkSeverity, checkStatus, discipline, docRecipient, documentStatus, inputState, isOpenCheck, outputState,
+  DISCIPLINES, checkSeverity, checkStatus, discipline, docRecipient, documentStatus, inputState, isOpenCheck, outputState,
   type CheckSeverity, type CheckStatus, type Discipline, type DocRecipient, type DocumentStatus, type InputState, type OutputState,
 } from '@/server/db/codes';
 import {
-  documentAcknowledgements, documentRevisions, documents, engChanges, engChecks, engColumnMappings, engConsistencyRules, engDisciplines, engImportDeltas, engImportTools,
+  documents, engChanges, engChecks, engColumnMappings, engConsistencyRules, engDisciplines, engImportDeltas, engImportTools,
   engImports, engInputs, engOutputs, projects,
 } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
-import { CLOSED_BY_IMPORT } from '@/domain/engineering';
-import { freezeDocument, listProjectDocuments, proposeDocumentRelease, type VaultDocument } from './documents';
+import { CLOSED_BY_IMPORT, inputLatest } from '@/domain/engineering';
+import { freezeDocument, listProjectDocuments, proposeDocumentRelease, recordCircuitStart, type VaultDocument } from './documents';
 import { managesProject, projectOf, requireWorkspace, trace, whoIs, type Actor } from './ops-common';
 
 export type { Actor };
@@ -68,7 +71,10 @@ export interface EngDeliverableRow {
   canFreeze: boolean;
   canPropose: boolean;
   proposeBlocked: boolean;
+  /** Release proposed and the Codex approval circuit not started yet (P-7c): "Validate release (PM)" starts it. */
   canValidate: boolean;
+  /** Circuit line under the status (EN source): "Awaiting PM validation", "Approval circuit started · Pending sync with Codex"…; null when none. */
+  codexNote: string | null;
 }
 
 export interface EngCheckRow {
@@ -162,7 +168,7 @@ export async function getEngineeringRegister(projectCode: string): Promise<Engin
     inputs: inputs.map((i) => {
       const doc = docByNumber.get(i.documentNumber);
       const internal = !!doc && (DISCIPLINES as readonly string[]).includes(doc.service);
-      const latest = doc ? (doc.status === 'released' ? doc.revision : prevRev(doc.revision)) : i.revisionInUse;
+      const latest = inputLatest(i.revisionInUse, doc);
       const outdated = i.revisionInUse !== latest;
       const state: InputState = outdated ? 'outdated' : i.acknowledged ? 'up_to_date' : 'to_confirm';
       const provider = (internal ? doc!.service : i.providerParty ?? 'client') as DocRecipient;
@@ -176,7 +182,7 @@ export async function getEngineeringRegister(projectCode: string): Promise<Engin
       return {
         number: d.number, title: d.title, discipline: d.service as Discipline, revision: d.revision, status: d.status, statusLabel: documentStatus.label(d.status), issuedOn: d.issuedOn,
         author: d.author, recipients: d.recipients, blockingChecks: nb, canFreeze: d.status === 'draft', canPropose: d.status === 'frozen' && !nb,
-        proposeBlocked: d.status === 'frozen' && nb > 0, canValidate: d.status === 'release_proposed',
+        proposeBlocked: d.status === 'frozen' && nb > 0, canValidate: d.status === 'release_proposed' && !d.circuitState.started, codexNote: d.circuitNote,
       };
     }),
     checks: checkRows,
@@ -295,26 +301,19 @@ export async function proposeEngRelease(projectCode: string, number: string, act
 }
 
 /**
- * "Validate release (PM)" (Release proposed → Released, BPE): the project's PM or the director. A revision > A
- * withdraws the previous one and a client-shared document waits for a new acknowledgement (as the Codex release).
+ * "Validate release (PM)" (Delivery 7, P-7c = a, R-106): the project's PM or the director starts the document type's
+ * approval circuit in Codex (outbox, "pending sync with Codex"). The deliverable stays Release proposed; Codex
+ * releases it once every step is approved (withdrawing the previous revision, the client acknowledging again).
  */
-export async function validateEngRelease(projectCode: string, number: string, actor: Actor, on: string = CODEX_TODAY_ISO): Promise<void> {
+export async function validateEngRelease(projectCode: string, number: string, actor: Actor, at: Date = new Date()): Promise<{ entryId: string }> {
   ENG(actor);
   await engDeliverable(projectCode, number);
   const db = await getDb();
-  await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     const p = await projectOf(tx, projectCode);
-    if (!(await managesProject(tx, actor, p.pmPersonId))) throw new Error('Only the project manager validates releases');
-    const [d] = await tx.select().from(documents).where(eq(documents.number, number));
-    if (d.status !== 'release_proposed') throw new Error(`${number} is not proposed for release`);
-    const prev = d.currentRevision > 'A' && /^[A-Z]$/.test(d.currentRevision) ? prevRev(d.currentRevision) : null;
-    await tx.update(documents).set({ status: 'released', lastWithdrawnRevision: prev, lastWithdrawnOn: prev ? on : null, updatedAt: new Date() }).where(eq(documents.id, d.id));
-    if (prev) await tx.update(documentRevisions).set({ withdrawnOn: on }).where(and(eq(documentRevisions.documentId, d.id), eq(documentRevisions.revision, prev), isNull(documentRevisions.withdrawnOn)));
-    await tx.delete(documentAcknowledgements).where(and(eq(documentAcknowledgements.documentId, d.id), eq(documentAcknowledgements.revision, d.currentRevision)));
-    await trace(tx, await whoIs(tx, actor), {
-      objectRef: number, change: 'status: Release proposed → Released (BPE, validated by the PM)', area: 'Documents', entityType: 'document', entityId: d.id, projectId: p.id,
-      activity: { text: `Released ${number} rev ${d.currentRevision} (BPE)`, kind: 'change' },
-    });
+    if (!(await managesProject(tx, actor, p))) throw new Error('Only the project manager validates releases');
+    const { entryId } = await recordCircuitStart(tx, number, { name: actor.name, role: actor.role }, at);
+    return { entryId };
   });
 }
 

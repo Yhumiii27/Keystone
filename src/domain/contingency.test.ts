@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import PROTO from '@/server/prototype/prototype-data.json';
 import GEN from '@/server/prototype/prototype-generated.json';
 import {
-  approverLabel, approversOf, contingencySummary, defaultProvision, drawCountText, drawRows, parseAmount, parseDrawDown,
+  contingencySummary, defaultProvision, drawCountText, drawRows, linkOptionLabel, parseAmount, parseDrawDown, type DrawLinkOption,
 } from './contingency';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -25,8 +25,16 @@ describe('contingencySummary', () => {
     });
     expect(s).toEqual({
       initial: 150, initialPctOfBudget: 3, drawn: 48, usedPct: 32, progPct: 64, drawnAlert: false, remaining: 102, drawCount: 3,
-      exposure: 340, exposureExceeds: true, barUsed: 32, barExposure: 100, barProgress: 64,
+      pending: 0, pendingCount: 0, exposure: 340, exposureExceeds: true, barUsed: 32, barExposure: 100, barProgress: 64,
     });
+  });
+
+  it('delivery 7 (C-4, A-8): only validated draw-downs are drawn; those awaiting validation show apart, rejected ones count nowhere', () => {
+    const s = contingencySummary({
+      initial: 150, exposure: 0, progress: 0.5, bac: 4800,
+      draws: [{ amount: 22, status: 'validated' }, { amount: 14 }, { amount: 30, status: 'submitted' }, { amount: 9, status: 'rejected' }, { amount: 5, status: 'submitted' }],
+    });
+    expect([s.drawn, s.drawCount, s.pending, s.pendingCount, s.remaining, s.usedPct]).toEqual([36, 2, 35, 2, 114, 24]);
   });
 
   it('projects without a register: default round(BAC × 3 %), no draws, exposure of their generated risks', () => {
@@ -68,34 +76,43 @@ describe('draw-down list and texts', () => {
   });
 });
 
-describe('"Contingency draw-down" form', () => {
-  const approvers = approversOf('R. Aubert', 'M. Lefebvre');
+describe('"Contingency draw-down" form (delivery 7, C-4: link required from a list, no approver)', () => {
+  const links: DrawLinkOption[] = [
+    { value: 'CR-004', label: linkOptionLabel('CR-004', 'Additional piling — soft ground at Bay 4'), type: 'change_request' },
+    { value: 'R-07', label: linkOptionLabel('R-07', 'Night works'), type: 'risk' },
+    { value: 'NCR-029', label: linkOptionLabel('NCR-029', 'Weld defect'), type: 'ncr' },
+  ];
 
-  it('approvers: the project manager then the portfolio director (prototype labels for Harbor Line)', () => {
-    expect(approvers.map(approverLabel)).toEqual(P.AF.contingency.fields[3][3]);
-    expect(approversOf('—', 'M. Lefebvre').map(approverLabel)).toEqual(['M. Lefebvre · Portfolio director']);
-    expect(approversOf('J. Wagner', 'M. Lefebvre').map((a) => a.name)).toEqual(['J. Wagner', 'M. Lefebvre']);
+  it('option label "CR-004 · title"', () => {
+    expect(links[0].label).toBe('CR-004 · Additional piling — soft ground at Bay 4');
   });
 
   it('amount as parseFloat, with a decimal comma', () => {
     expect(['12', '12.5', '12,5', ' 7 ', 'abc', ''].map(parseAmount)).toEqual([12, 12.5, 12.5, 7, 0, 0]);
   });
 
-  it('valid draw-down: trimmed, link optional, approver by name or label, default the first approver', () => {
-    expect(parseDrawDown({ amount: '10', reason: ' Night shift lighting ', link: 'R-07', approver: 'R. Aubert' }, approvers)).toEqual({
-      ok: true, value: { amountKeur: 10, reason: 'Night shift lighting', linkRef: 'R-07', approvedBy: 'R. Aubert' },
+  it('valid draw-down: trimmed, linked by value or by label, with the kind of the link', () => {
+    expect(parseDrawDown({ amount: '10', reason: ' Night shift lighting ', link: 'R-07' }, links)).toEqual({
+      ok: true, value: { amountKeur: 10, reason: 'Night shift lighting', linkRef: 'R-07', linkType: 'risk' },
     });
-    expect(parseDrawDown({ amount: '5,25', reason: 'UPS', link: '', approver: 'M. Lefebvre · Portfolio director' }, approvers)).toEqual({
-      ok: true, value: { amountKeur: 5.25, reason: 'UPS', linkRef: null, approvedBy: 'M. Lefebvre' },
+    expect(parseDrawDown({ amount: '5,25', reason: 'UPS', link: 'CR-004 · Additional piling — soft ground at Bay 4' }, links)).toEqual({
+      ok: true, value: { amountKeur: 5.25, reason: 'UPS', linkRef: 'CR-004', linkType: 'change_request' },
     });
-    expect(parseDrawDown({ amount: '3', reason: 'x' }, approvers)).toMatchObject({ ok: true, value: { approvedBy: 'R. Aubert' } });
+    expect(parseDrawDown({ amount: '3', reason: 'x', link: 'NCR-029' }, links)).toMatchObject({ ok: true, value: { linkType: 'ncr' } });
   });
 
-  it('rejects a missing / non-positive amount, a blank reason and an unknown approver', () => {
-    expect(parseDrawDown({ amount: '', reason: 'x' }, approvers)).toEqual({ ok: false, error: 'Enter an amount greater than 0' });
-    expect(parseDrawDown({ amount: '-4', reason: 'x' }, approvers)).toEqual({ ok: false, error: 'Enter an amount greater than 0' });
-    expect(parseDrawDown({ amount: '4', reason: '  ' }, approvers)).toEqual({ ok: false, error: 'Reason is required' });
-    expect(parseDrawDown({ amount: '4', reason: 'x', approver: 'N. Bensaïd' }, approvers)).toEqual({ ok: false, error: 'Unknown approver' });
-    expect(parseDrawDown({ amount: '400000', reason: 'x' }, approvers)).toEqual({ ok: false, error: 'Amount is too large' });
+  it('rejects a missing / non-positive amount, a blank reason, a missing link and a link that is not offered', () => {
+    const missing = 'Choose the change request, risk or NCR the draw-down covers';
+    const unknown = 'Unknown change request, risk or NCR';
+    expect(parseDrawDown({ amount: '', reason: 'x', link: 'R-07' }, links)).toEqual({ ok: false, error: 'Enter an amount greater than 0' });
+    expect(parseDrawDown({ amount: '-4', reason: 'x', link: 'R-07' }, links)).toEqual({ ok: false, error: 'Enter an amount greater than 0' });
+    expect(parseDrawDown({ amount: '4', reason: '  ', link: 'R-07' }, links)).toEqual({ ok: false, error: 'Reason is required' });
+    expect(parseDrawDown({ amount: '4', reason: 'x', link: '' }, links)).toEqual({ ok: false, error: missing });
+    expect(parseDrawDown({ amount: '4', reason: 'x' }, links)).toEqual({ ok: false, error: missing });
+    // The prototype's pre-filled literal (04 Q8) and a reference of another project are refused.
+    expect(parseDrawDown({ amount: '4', reason: 'x', link: 'CR / risk / NCR' }, links)).toEqual({ ok: false, error: unknown });
+    expect(parseDrawDown({ amount: '4', reason: 'x', link: 'R-99' }, links)).toEqual({ ok: false, error: unknown });
+    expect(parseDrawDown({ amount: '400000', reason: 'x', link: 'R-07' }, links)).toEqual({ ok: false, error: 'Amount is too large' });
+    expect(parseDrawDown({ amount: '4', reason: 'x'.repeat(501), link: 'R-07' }, links)).toEqual({ ok: false, error: 'Reason is too long' });
   });
 });

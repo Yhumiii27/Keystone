@@ -23,6 +23,8 @@ export interface MeetingLine {
   overdue: boolean;
   /** Task created for the owner by "Send minutes". */
   taskNumber: string | null;
+  /** Actions (S-12 a, R-067): the plan activity code the action serves. */
+  activity?: string | null;
 }
 
 export interface MeetingParticipant {
@@ -91,6 +93,8 @@ export interface Meeting {
   location: string;
   /** Short name ("R. Aubert"). */
   organizer: string;
+  /** S-11 (R-037): the meeting came from Outlook / Teams (meetings.external_calendar_id) — none until the Microsoft 365 link exists. */
+  syncedFromOutlook?: boolean;
   minutesNumber: string | null;
   /** The minutes record exists in the Codex index. */
   minutesIndexed: boolean;
@@ -126,6 +130,18 @@ export type MeetingFilter = (typeof MEETING_FILTERS)[number];
 export const MEETING_FILTER_LABEL: Record<MeetingFilter, string> = { all: 'All', todo: 'Minutes to write', upcoming: 'Upcoming', sent: 'Minutes sent' };
 const FILTER_STATUS: Record<Exclude<MeetingFilter, 'all'>, MeetingStatus> = { todo: 'notes_in_progress', upcoming: 'scheduled', sent: 'minutes_sent' };
 export const parseMeetingFilter = (v: unknown): MeetingFilter => (MEETING_FILTERS as readonly unknown[]).includes(v) ? (v as MeetingFilter) : 'all';
+
+/**
+ * `?decisions=` of the Decisions register (D-5): every decision, or the client decisions only — the target of the Site's
+ * "Client communication log" button (the owner answered D-5 "use the project's meetings and decisions").
+ */
+export const DECISION_SCOPES = ['all', 'client'] as const;
+export type DecisionScope = (typeof DECISION_SCOPES)[number];
+export const DECISION_SCOPE_LABEL: Record<DecisionScope, string> = { all: 'All', client: 'With the client' };
+export const parseDecisionScope = (v: unknown): DecisionScope => (v === 'client' ? 'client' : 'all');
+
+/** A meeting with the client: an external meeting (the prototype's "decisions … with the client", mtgKpis 4866). */
+export const isClientMeeting = (m: Pick<Meeting, 'type'>) => m.type === 'external';
 
 /** Composer type segment (draftSeg 4861; default Action). */
 export const LINE_TYPES: readonly MeetingLineType[] = ['info', 'decision', 'action'];
@@ -194,7 +210,7 @@ export function meetingKpis(ms: readonly Meeting[], now = PG_NOW): MeetingKpis {
     openActions: actions.filter((x) => !x.l.done).length,
     overdueActions: actions.filter((x) => actionState(x.l) === 'overdue').length,
     decisionsThisMonth: decisions.filter((x) => x.m.monthIndex >= Math.floor(now)).length,
-    decisionsWithClient: decisions.filter((x) => x.m.type === 'external').length,
+    decisionsWithClient: decisions.filter((x) => isClientMeeting(x.m)).length,
   };
 }
 
@@ -325,6 +341,16 @@ export function decisionRows(ms: readonly Meeting[]): DecisionRow[] {
     .sort((a, b) => b.meeting.monthIndex - a.meeting.monthIndex);
 }
 
+/** Decisions of the register in a scope (D-5: 'client' = decisions of meetings with the client). */
+export const decisionRowsIn = (ms: readonly Meeting[], scope: DecisionScope): DecisionRow[] =>
+  decisionRows(ms).filter((d) => scope === 'all' || isClientMeeting(d.meeting));
+
+/**
+ * "Client decisions logged" (Site tile, A-12 / D-5): decisions recorded in the minutes of the project's meetings with the
+ * client. Before D-5 the tile counted the change requests whose client step was decided.
+ */
+export const clientDecisionCount = (ms: readonly Meeting[]) => decisionRowsIn(ms, 'client').length;
+
 export type ActionState = 'done' | 'overdue' | 'open';
 /** Done / Overdue (due before now) / Open (`stText`, 4863). */
 export const actionState = (l: Pick<MeetingLine, 'done' | 'overdue'>): ActionState => (l.done ? 'done' : l.overdue ? 'overdue' : 'open');
@@ -448,6 +474,8 @@ export interface MinutesLineInput {
   owner: string | null;
   /** Actions only; blank → "—". A recognisable date is stored in the English short form ("2 Oct", "5 Jan 2027"). */
   due: string | null;
+  /** Actions only (S-12 a, R-067): the plan activity code the action serves; resolved in the meeting's project by the writer. */
+  activity?: string | null;
 }
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -463,7 +491,7 @@ export function normaliseDue(text: string | null | undefined): string | null {
 }
 
 /** Composer "+ Add" (addLine 4848): type, non-blank text; owner and due kept for actions only. */
-export function parseMinutesLine(v: { type?: unknown; text?: unknown; owner?: unknown; due?: unknown }): Parsed<MinutesLineInput> {
+export function parseMinutesLine(v: { type?: unknown; text?: unknown; owner?: unknown; due?: unknown; activity?: unknown }): Parsed<MinutesLineInput> {
   const type = v.type as MeetingLineType;
   if (!LINE_TYPES.includes(type)) return { ok: false, error: 'Invalid note type' };
   const text = typeof v.text === 'string' ? v.text.trim().replace(/\s+/g, ' ') : '';
@@ -473,7 +501,86 @@ export function parseMinutesLine(v: { type?: unknown; text?: unknown; owner?: un
   const owner = typeof v.owner === 'string' ? v.owner.trim().replace(/\s+/g, ' ') : '';
   const due = typeof v.due === 'string' ? normaliseDue(v.due) : null;
   if (owner.length > MAX.name || (due?.length ?? 0) > MAX.due) return { ok: false, error: 'The note is too long' };
-  return { ok: true, value: { type, text, owner: owner || null, due } };
+  // S-12 a (R-067): an optional plan activity, by its code (checked against the project's plan by the Server Function and the writer).
+  const activity = typeof v.activity === 'string' ? v.activity.trim() : '';
+  if (activity && !ACTIVITY_CODE_RE.test(activity)) return { ok: false, error: 'Unknown activity' };
+  return { ok: true, value: { type, text, owner: owner || null, due, ...(activity ? { activity } : {}) } };
+}
+
+/** Shape of a plan activity code ("A1250", imported codes "ACT-1020"…). */
+const ACTIVITY_CODE_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$/;
+
+// ── Follow-up tasks of the minutes (S-12 a, R-067) ─────────────────────────────────────────────────────────────────
+
+/** Labels of a follow-up task (an action owned by someone outside the company). */
+export const FOLLOW_UP_LABEL = 'Follow-up';
+/** Longest task title (the Plan's to-do composer limit). */
+export const TASK_TITLE_MAX = 200;
+
+/** A project stakeholder as the follow-up rule reads it (register order). */
+export interface FollowUpStakeholder {
+  personId: string | null;
+  name: string;
+  /** Relationship owner (internal person) — gets the follow-up. */
+  ownerPersonId: string | null;
+  position: number;
+}
+
+export interface FollowUpInput {
+  /** The action owner as typed ("K. Lindqvist (Nordvolt)", "N. Bensaïd"). */
+  ownerName: string;
+  /** The person behind it when known, and whether they are internal (no client organisation, not an external user). */
+  owner: { personId: string; internal: boolean } | null;
+  stakeholders: readonly FollowUpStakeholder[];
+  /** The project's PM of record. */
+  pmPersonId: string | null;
+}
+
+export type FollowUpTarget = { personId: string; followUp: boolean } | null;
+
+/** "K. Lindqvist (Nordvolt)" → "K. Lindqvist": the trailing organisation in parentheses is not part of the name. */
+export const ownerBaseName = (owner: string) => owner.replace(/\s*\([^()]*\)\s*$/, '').trim();
+
+/** "Karin Lindqvist" → "K. Lindqvist" (the short form people are cited by). */
+const shortFormOf = (name: string) => {
+  const [first, ...rest] = name.trim().split(/\s+/);
+  return rest.length ? `${first[0]}. ${rest.join(' ')}` : name.trim();
+};
+
+/**
+ * Who gets the task of an action when the minutes are sent (S-12 a: "Keystone crée une tâche pour chaque responsable interne";
+ * an external owner's action is followed up internally):
+ * - an internal person gets the task themself (`followUp` false);
+ * - any other owner is external: the project's stakeholder matching them — by person, else by exact full name or short form
+ *   once a trailing "(Org)" is stripped, first in register order — and its relationship owner gets a follow-up task;
+ * - the project's PM when no stakeholder matches or the one matched has no relationship owner;
+ * - nobody (no task) without a PM.
+ */
+export function followUpTarget({ ownerName, owner, stakeholders, pmPersonId }: FollowUpInput): FollowUpTarget {
+  if (owner?.internal) return { personId: owner.personId, followUp: false };
+  const ordered = [...stakeholders].sort((a, b) => a.position - b.position);
+  const base = ownerBaseName(ownerName);
+  const byPerson = owner ? ordered.find((s) => s.personId === owner.personId) : undefined;
+  const byName = base ? ordered.find((s) => s.name.trim() === base || shortFormOf(s.name) === base) : undefined;
+  const match = byPerson ?? byName;
+  const to = match?.ownerPersonId ?? pmPersonId;
+  return to ? { personId: to, followUp: true } : null;
+}
+
+/** Follow-up task title: the action + " — " + the owner as typed, at most TASK_TITLE_MAX characters. */
+export function followUpTitle(action: string, ownerName: string): string {
+  const title = `${action} — ${ownerName}`;
+  return title.length <= TASK_TITLE_MAX ? title : title.slice(0, TASK_TITLE_MAX - 1).trimEnd() + '…';
+}
+
+/**
+ * Dates of a minutes task (S-12 a "reprend l'échéance saisie"): due = the typed due date, else `defaultDue` (today + 3 working
+ * days); start = today, or the due date when the typed due is earlier — kept as typed even when past (unlike the Plan's to-dos,
+ * which clamp the due to the status date).
+ */
+export function minutesTaskDates(typedDue: string | null, today: string, defaultDue: string): { start: string; due: string } {
+  const due = typedDue ?? defaultDue;
+  return { start: due < today ? due : today, due };
 }
 
 /** Due shown as a date ("2 Oct" → translated months) when it parses like the DAL does, else free text. */
@@ -485,9 +592,18 @@ export const isDateDue = (due: string | null | undefined) => !!due && due !== '�
 export const TRANSCRIPT_IMPORT = {
   /** Largest stored transcript, in characters after parsing (≈ 60 000 words — several hours of meeting). */
   maxChars: 400_000,
-  /** Largest file or paste sent to the server. */
+  /** Largest file or paste sent to the server, in bytes (a paste counts in UTF-8: accents take 2 bytes, ’ « » 3). */
   maxUploadBytes: 800_000,
 } as const;
+
+/**
+ * A pasted transcript too large to send: its UTF-8 size is above `maxUploadBytes`, so the Server Function request stays under
+ * Next's 1 MB body limit and the user reads "The transcript is too long" instead of a generic save error.
+ */
+export function pasteTooLong(text: string): boolean {
+  if (text.length > TRANSCRIPT_IMPORT.maxUploadBytes) return true;
+  return new TextEncoder().encode(text).length > TRANSCRIPT_IMPORT.maxUploadBytes;
+}
 
 /** Review order of the proposals: decisions, actions, risks, client questions — each in analysis order. */
 export const PROPOSAL_ORDER = ['decision', 'action', 'risk', 'question'] as const;

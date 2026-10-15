@@ -112,6 +112,8 @@
 .apprPending { color: var(--color-neutral-500); }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-accent); }
 .dotPending { background: var(--color-neutral-700); }
+/* Delivery 7: step decided in Keystone, waiting for Codex (hollow accent dot). */
+.dotSync { background: transparent; box-shadow: inset 0 0 0 2px var(--color-accent); }
 .apprState { font-size: 11.5px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
 .distRow {
   display: grid;
@@ -123,7 +125,9 @@
   font-size: 12.5px;
 }
 .muted { color: var(--color-neutral-400); }
-.dlRow { font-size: 12.5px; padding: 4px 0; border-bottom: 1px solid var(--color-neutral-900); color: var(--color-neutral-300); }
+/* Delivery 8 (R-127, D-2): the history stays in Codex — link under the current revision (the Download log section is gone). */
+.historyLink { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; margin-top: 6px; font-size: 12px; color: var(--color-accent-300); text-decoration: none; }
+.historyLink:hover { color: var(--color-accent); text-decoration: underline; }
 .relation {
   display: inline-flex;
   align-items: center;

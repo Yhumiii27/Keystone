@@ -1,8 +1,8 @@
 import 'server-only';
 // Screen loaders of the Resource requests feature (docs/spec/08 §5–§6, 01 §12) on top of the requests and resources
-// DAL: the Approvals screen data of one department, the New resource request dialog setup, the person → persona role
+// DAL: the Approvals screen data of one department, the New resource request dialog setup, the person → user account
 // lookup used to notify the requester / department head / assignee, and the request notifications + activity feed.
-import { eq } from 'drizzle-orm';
+import { and, eq, or } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { recordActivity } from '@/server/db/helpers';
 import { departments, persons, projects, users } from '@/server/db/schema';
@@ -101,15 +101,23 @@ export async function getNewRequestSetup(project: ProjectRow | string): Promise<
 
 // ── Notifications & activity feed ──────────────────────────────────────────────────────────────────────
 
-/** Persona role of a person (users.person), by full or short name; null when the person has no user. */
-export async function roleOfPerson(name: string | null | undefined): Promise<string | null> {
+/** The active user account of a person (by full or short name): their person id and roles; null when they have none. */
+export async function userOfPerson(name: string | null | undefined): Promise<{ personId: string; roles: string[] } | null> {
   if (!name) return null;
   const db = await getDb();
-  const rows = await db
-    .select({ role: users.role, full: persons.fullName, short: persons.shortName })
+  const [r] = await db
+    .select({ personId: users.personId, roles: users.roles })
     .from(users)
-    .innerJoin(persons, eq(persons.id, users.personId));
-  return rows.find((r) => r.full === name || r.short === name)?.role ?? null;
+    .innerJoin(persons, eq(persons.id, users.personId))
+    .where(and(eq(users.active, true), or(eq(persons.fullName, name), eq(persons.shortName, name))));
+  return r ?? null;
+}
+
+/** Who acts: the viewer (person id when signed in, else the demo persona's name). */
+export interface NoticeActor {
+  name: string;
+  short?: string;
+  personId?: string | null;
 }
 
 export interface RequestNotice {
@@ -121,16 +129,24 @@ export interface RequestNotice {
   screen: string;
   params?: Record<string, unknown>;
   projectCode: string;
-  /** Recipient person (full or short name); nothing is sent when they hold no persona or are the actor. */
+  /** Recipient person (full or short name); nothing is sent when they have no user account or are the actor. */
   to: string | null;
 }
 
-/** Sends request notifications to the personas of the recipients, skipping the actor's own role. */
-export async function notifyRequestEvent(notices: RequestNotice[], actorRole: string): Promise<void> {
+/** Sends request notifications to the recipients' own user accounts (R-039: a person, not their role), never to the actor. */
+export async function notifyRequestEvent(notices: RequestNotice[], actor: NoticeActor): Promise<void> {
+  const db = await getDb();
+  let actorPersonId = actor.personId ?? null;
+  if (!actorPersonId) {
+    const [p] = await db.select({ id: persons.id }).from(persons).where(or(eq(persons.fullName, actor.name), eq(persons.shortName, actor.short ?? actor.name)));
+    actorPersonId = p?.id ?? null;
+  }
   for (const n of notices) {
-    const role = await roleOfPerson(n.to);
-    if (!role || role === actorRole) continue;
-    await createNotification({ kind: n.kind, title: n.title, sub: n.sub, screen: n.screen, params: n.params ?? {}, projectCode: n.projectCode, audience: [role] });
+    const to = await userOfPerson(n.to);
+    if (!to || to.personId === actorPersonId) continue;
+    await createNotification({
+      kind: n.kind, title: n.title, sub: n.sub, screen: n.screen, params: n.params ?? {}, projectCode: n.projectCode, audience: to.roles, toPersonIds: [to.personId],
+    });
   }
 }
 

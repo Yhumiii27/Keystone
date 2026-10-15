@@ -13,7 +13,7 @@
 // - the received quantity is driven by goods receipts (Deliveries): no "Receive" action here (08 OQ10).
 import { screenHref } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
-import { money } from '@/lib/format';
+import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import type { PartStatus, PoOrigin, PoStatus } from '@/server/db/codes';
 import { isoOfWhen, type ApprovalItem } from './approvals';
 
@@ -32,6 +32,57 @@ export const canApprovePo = (s: PoStatus) => s === 'awaiting_approval';
 export const isOpenPo = (s: PoStatus) => s !== 'received' && s !== 'cancelled';
 /** Counted in "Committed" (Ordered, not cancelled — Awaiting approval included, as in the prototype). */
 export const isCommittedPo = (s: PoStatus) => s !== 'cancelled' && s !== 'draft';
+
+// ── Cancellation before the order is placed (R-095: SC-3a = a, P-5c = a) ──────────────────────────────
+
+/** Longest cancellation / rejection reason (characters, after trimming). */
+export const PO_CANCEL_REASON_MAX = 1000;
+
+/** `cancel` = a Draft cancelled; `withdraw` = an order awaiting approval withdrawn by whoever sent it. */
+export type PoCancelKind = 'cancel' | 'withdraw';
+
+export interface PoCancelInput {
+  status: PoStatus;
+  origin: PoOrigin;
+  x3Ref: string | null;
+  createdByPersonId: string | null;
+  submittedByPersonId: string | null;
+}
+
+export interface PoCancelActor {
+  personId: string | null;
+  /** PM rights on the order's project (PM of record, co-PM, deputy) or the portfolio director. */
+  lead: boolean;
+}
+
+/**
+ * Who may cancel an order before it is placed (R-095) — the one place of the rule, so the owner's purchasing procedure
+ * (P-5a, pending) changes it here only:
+ * - only an order drafted in Keystone and not in Sage X3 (`poX3State` local: BOM shortfall, RFQ award, spares list); an
+ *   order imported from X3 is cancelled in X3 (I-3b, A-1a);
+ * - Draft: its author (SC-3a), and — a default beyond SC-3a, for the owner to confirm — the project's leads and the director;
+ * - Awaiting approval: withdrawn by whoever sent it for approval (P-5c); the approvers keep Reject;
+ * - never once Ordered (placed): SC-3a and P-5c disagree there, nothing is built.
+ */
+export function poCancelRight(o: PoCancelInput, actor: PoCancelActor): PoCancelKind | null {
+  if (poX3State(o) !== 'local') return null;
+  const me = (id: string | null) => !!actor.personId && id === actor.personId;
+  if (o.status === 'draft') return me(o.createdByPersonId) || actor.lead ? 'cancel' : null;
+  if (o.status === 'awaiting_approval') return me(o.submittedByPersonId) ? 'withdraw' : null;
+  return null;
+}
+
+/** The order is still before placement and drafted in Keystone — the statuses `poCancelRight` may allow (role aside). */
+export const isCancellablePo = (o: Pick<PoCancelInput, 'status' | 'origin' | 'x3Ref'>) =>
+  poX3State(o) === 'local' && (o.status === 'draft' || o.status === 'awaiting_approval');
+
+/** A cancellation or rejection reason: trimmed, required, at most PO_CANCEL_REASON_MAX characters. */
+export function poCancelReason(v: unknown): { ok: true; value: string } | { ok: false; error: string } {
+  const s = typeof v === 'string' ? v.trim() : '';
+  if (!s) return { ok: false, error: 'Give the reason for the cancellation' };
+  if (s.length > PO_CANCEL_REASON_MAX) return { ok: false, error: 'The reason is too long' };
+  return { ok: true, value: s };
+}
 
 // ── Order shape read by the rules (the DAL's PurchaseOrderRow fits) ───────────────────────────────────
 
@@ -62,9 +113,13 @@ export interface PoInput {
   neededFor: PoNeedInput | null;
   /** Sage X3 order reference once pushed. */
   x3Ref: string | null;
+  /** C-9 (R-075): currency of the line prices (EUR when absent). */
+  currency?: CurrencyCode;
+  /** Euros per unit of `currency` at the project's budget rate (1 when absent). */
+  eurRate?: number;
 }
 
-/** Order value, € (poValue 4309: Σ ordered qty × unit price of the line). */
+/** Order value in the order's currency (poValue 4309: Σ ordered qty × unit price of the line) — € unless stated (C-9). */
 export const poValueEur = (o: Pick<PoInput, 'lines'>) => o.lines.reduce((a, l) => a + l.unitPriceEur * l.orderedQty, 0);
 /** Units ordered (poQty). */
 export const poUnits = (o: Pick<PoInput, 'lines'>) => o.lines.reduce((a, l) => a + l.orderedQty, 0);
@@ -81,7 +136,7 @@ export interface PoKpis {
   /** Not Received / Cancelled. */
   open: number;
   total: number;
-  /** Σ value of the orders neither Cancelled nor Draft, €. */
+  /** Σ value of the orders neither Cancelled nor Draft, € — consolidated at the project's budget rate (C-9). */
   committedEur: number;
   /** Open orders whose activity has started. */
   late: number;
@@ -93,7 +148,7 @@ export function poKpis(orders: readonly PoInput[]): PoKpis {
   return {
     open: orders.filter((o) => isOpenPo(o.status)).length,
     total: orders.length,
-    committedEur: orders.filter((o) => isCommittedPo(o.status)).reduce((a, o) => a + poValueEur(o), 0),
+    committedEur: orders.filter((o) => isCommittedPo(o.status)).reduce((a, o) => a + poValueEur(o) * (o.eurRate ?? 1), 0),
     late: orders.filter(isLatePo).length,
     awaitingApproval: orders.filter((o) => o.status === 'awaiting_approval').length,
   };
@@ -172,7 +227,9 @@ export const mockX3OrderRef = (number: string) => `X3-${number}`;
 export interface PoQueueEntry {
   number: string;
   supplier: string;
+  /** Value in `currency` (€ unless stated, C-9). */
   valueEur: number;
+  currency?: CurrencyCode;
   refs: string[];
   /** ISO order date. */
   orderedOn: string | null;
@@ -194,7 +251,7 @@ export function poApprovalItems(queue: readonly PoQueueEntry[], code: string, la
     return {
       kind: 'po',
       id: o.number,
-      title: `${o.supplier} · ${money(o.valueEur / 1000, lang)}`,
+      title: `${o.supplier} · ${moneyIn(o.valueEur / 1000, o.currency ?? BASE_CURRENCY, lang)}`,
       sub: o.refs.join(', '),
       who: o.submittedBy ?? '',
       when,

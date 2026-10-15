@@ -13,7 +13,7 @@ import { addMachineAction, openClaimAction } from './actions';
 interface AddButtonProps {
   /** Translated button label. */
   label: string;
-  /** Translated dialog sub-line context (the current project, as every add-form of the prototype), when known. */
+  /** Translated dialog sub-line context; the screens pass none (R-153, X-10: a machine or a claim is not a project's). */
   context?: string;
   /** Translated form definition. */
   form: FormDef;

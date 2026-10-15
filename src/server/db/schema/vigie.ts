@@ -147,6 +147,8 @@ export const vigieEcoProgress = pgTable('vigie_eco_progress', {
   sentAt: timestamp('sent_at', { withTimezone: true }),
   /** Vigie's acknowledgement id. */
   vigieRef: text('vigie_ref'),
+  /** Set while a delivery is in flight (R-010: two deliveries never send the same entry); cleared by the result. */
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
 });
 
 // ── Non-conformities (NCR) — Vigie mirror (user decision: Vigie owns project NCRs, the 8D, causes and action plans) ──
@@ -176,6 +178,11 @@ export const vigieNcrs = pgTable(
     partRef: text('part_ref'),
     deliverableNumber: text('deliverable_number'),
     supplierName: text('supplier_name'),
+    /**
+     * ITP inspection the NCR was reported from ("I-03"), when Vigie echoes the `inspection` prefill parameter (R-112,
+     * Q-6b; OPEN QUESTION V-3): the inspection then shows the Vigie NCR number.
+     */
+    inspectionNumber: text('inspection_number'),
     raisedByName: text('raised_by_name').notNull(),
     raisedByPersonId: uuid('raised_by_person_id').references(() => persons.id),
     raisedOn: date('raised_on', { mode: 'string' }).notNull(),
@@ -224,6 +231,8 @@ export const vigieNcrProgress = pgTable('vigie_ncr_progress', {
   lastError: text('last_error'),
   sentAt: timestamp('sent_at', { withTimezone: true }),
   vigieRef: text('vigie_ref'),
+  /** Set while a delivery is in flight (R-010); cleared by the result. */
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
 });
 
 // ── Site HSE — Vigie mirror (prevention plans, inductions, permits, near-miss register) ───────────────────

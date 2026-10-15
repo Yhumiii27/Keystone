@@ -1,10 +1,13 @@
 // Document record drawer (docs/spec/10 §4.5, template 2346–2362, logic 5040–5047): opened by `?doc=PID-HLT-026` over
 // the vault, whatever its filters; closed (×, scrim, Esc) to the vault URL. Header "Document record · id · rev D" with
 // the Codex, confidentiality and status tags; title; Open in Codex · Download PDF · New revision · Codex · Approve in
-// Codex (named next approver / director); the mirror note; the withdrawal note after a release; Identity,
-// Classification, Revisions (newest first, Native / PDF downloads), Approval proof, Distribution, Download log and
-// Relations. Server Component; the buttons are client islands.
-import { ArrowsClockwise, Books, GitBranch, Info } from '@phosphor-icons/react/dist/ssr';
+// Codex (named next approver / director); the mirror note; Delivery 7: the circuit note (decisions recorded in
+// Keystone, pending sync with Codex — R-124); the withdrawal note after a release; Identity,
+// Classification, Revisions, Approval proof, Distribution and Relations. Server Component; the buttons are client islands.
+// Delivery 8: "Open in Codex" opens the record in Codex in a new tab (R-033); "Revisions" shows the current revision only,
+// with a link to the earlier revisions and the download log in Codex, and the Download log section is gone (R-127, D-2 = a)
+// — neither Codex link is shown to a client (no Codex access); deliverable, order and punch-item relations are links (R-128).
+import { ArrowSquareOut, ArrowsClockwise, Books, CloudArrowUp, GitBranch, Info } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import { Callout } from '@/components/app/Callout';
 import { Eyebrow } from '@/components/app/Eyebrow';
@@ -13,6 +16,7 @@ import { ButtonLink } from '@/components/ds/Button';
 import { cx } from '@/components/ds/cx';
 import { Drawer } from '@/components/ds/Drawer';
 import type { T } from '@/i18n/translate';
+import { CODEX_LINK_ATTRS } from '@/server/integrations/codex/links';
 import { ApproveButton, DownloadButton, OpenCodexButton } from './codex-buttons';
 import type { DocDrawerView } from './model';
 import s from './docs.module.css';
@@ -45,7 +49,7 @@ export function DocumentDrawer({ project, view: d, t }: DocumentDrawerProps) {
       }
     >
       <div className={s.actions}>
-        <OpenCodexButton label={t('Open in Codex')} toast={d.openToast} size="sm" />
+        {d.codexHref && <OpenCodexButton label={t('Open in Codex')} href={d.codexHref} size="sm" />}
         <DownloadButton project={project} number={d.number} label={t('Download PDF')} variant="secondary" />
         {d.newRevisionHref && (
           <ButtonLink variant="ghost" size="sm" icon={GitBranch} href={d.newRevisionHref} scroll={false}>
@@ -58,6 +62,11 @@ export function DocumentDrawer({ project, view: d, t }: DocumentDrawerProps) {
         <ArrowsClockwise aria-hidden />
         {t('Record mirrored from Codex · revisions, approvals and distribution are read-only here')}
       </span>
+      {d.circuitNote && (
+        <Callout variant="emphasis" icon={CloudArrowUp} role="status">
+          {d.circuitNote}
+        </Callout>
+      )}
       {d.withdrawal && (
         <Callout variant="emphasis" icon={Info} role="status">
           {d.withdrawal}
@@ -93,13 +102,19 @@ export function DocumentDrawer({ project, view: d, t }: DocumentDrawerProps) {
             </span>
           </div>
         ))}
+        {d.historyHref && (
+          <a href={d.historyHref} {...CODEX_LINK_ATTRS} className={s.historyLink}>
+            {t('Earlier revisions and download log in Codex')}
+            <ArrowSquareOut aria-hidden />
+          </a>
+        )}
       </div>
 
       <div className={s.section}>
         <Eyebrow>{t('Approval proof')}</Eyebrow>
         {d.approvals.map((a, i) => (
-          <div key={i} className={cx(s.apprRow, !a.signed && s.apprPending)}>
-            <span className={cx(s.dot, !a.signed && s.dotPending)} role="img" aria-label={a.state} />
+          <div key={i} className={cx(s.apprRow, !a.signed && !a.pendingSync && s.apprPending)}>
+            <span className={cx(s.dot, !a.signed && (a.pendingSync ? s.dotSync : s.dotPending))} role="img" aria-label={a.state} />
             <span>{a.label}</span>
             <span className={s.apprState}>{a.state}</span>
           </div>
@@ -119,15 +134,6 @@ export function DocumentDrawer({ project, view: d, t }: DocumentDrawerProps) {
           ))}
         </div>
       )}
-
-      <div className={s.section}>
-        <Eyebrow>{t('Download log')}</Eyebrow>
-        {d.downloads.map((x, i) => (
-          <span key={i} className={s.dlRow}>
-            {x}
-          </span>
-        ))}
-      </div>
 
       {d.links.length > 0 && (
         <div className={s.section}>

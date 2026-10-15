@@ -6,12 +6,14 @@ import { LO, OK } from '@/components/app/tones';
 import { screenHref } from '@/config/screens';
 import {
   CLIENT_TABS, DOCS_TAB, clientDecisions, clientKpis, clientMilestones, clientProgress, issueRow, openIssueCount, rexView, sharedDocRow,
-  contractSummary, invoiceRow, type ChangeRequestLike, type ClientTab, type ClosureMark, type DeliverableLike, type EvmLike, type Kpi,
-  type ScheduleHeaderLike, type Tone,
+  contractSummary, invoiceRow, type ChangeRequestLike, type ClientDocCategory, type ClientTab, type ClosureMark, type DeliverableLike, type EvmLike,
+  type Kpi, type ScheduleHeaderLike, type Tone,
 } from '@/domain/rexclient';
-import type { MilestoneInput } from '@/domain/schedule-gantt';
+import { scheduleView, type GanttTask, type MilestoneInput, type ScheduleInput, type ScheduleMilestone } from '@/domain/schedule-gantt';
+import { slipText } from '@/features/schedule/i18n';
+import { dataText } from '@/i18n/data-text';
 import type { Lang, T } from '@/i18n/translate';
-import type { ClosureItemStatus, LessonStatus } from '@/server/db/codes';
+import { fmtDOfIso, type ClosureItemStatus, type LessonStatus } from '@/server/db/codes';
 import type { ClientPortal } from '@/server/dal/client';
 import type { ProjectRex } from '@/server/dal/rex';
 import { dueText, exactText, milestoneText, subText } from './i18n';
@@ -108,7 +110,15 @@ export interface DecisionView {
   title: string;
   sub: string;
   approveLabel: string;
+  /**
+   * Delivery 8 (R-140, X-11 shared): a change request's justification as typed (dataText — never t()), null when blank; `long`
+   * when it may need more than three lines (the row then offers "Show more").
+   */
+  why: { text: string; long: boolean } | null;
 }
+
+/** A justification that may not fit the three clamped lines of the portal row (R-140). */
+const isLongText = (s: string) => s.length > 180 || s.split('\n').length > 3;
 
 export interface ClientScreenView {
   tab: ClientTab;
@@ -125,9 +135,67 @@ export interface ClientScreenView {
   summary: { k: string; v: string }[] | null;
   /** Contract summary empty state (no billing plan), null when there is a summary (internal projects: €0k rows). */
   summaryEmpty: string | null;
+  /** `when`: "Raised 22 Sep", followed by "· Answered 30 Sep" once the project manager answered (R-137). */
   issues: { id: string; title: string; when: string; status: string; tagClass: string; response: string }[];
   docs: { id: string; title: string; typeLabel: string; date: string; rev: string; status: string; tagClass: string; acknowledged: boolean; ackLabel: string }[];
-  docsLabels: { idHeader: string; sub: string; empty: string };
+  /**
+   * "By category" strip above the table (L-9 = a, R-138): the categories of the shared documents computed from the Codex
+   * index, translated ("Meeting minutes · 2 files · Meeting minutes · Last issued 26 Sep"); empty when nothing is shared.
+   */
+  docCategories: DocCategoryView[];
+  docsLabels: { idHeader: string; sub: string; empty: string; byCategory: string };
+  /** "Schedule" tab (S-9a): the summary Gantt and the milestones, read-only; null on the other tabs / without a schedule. */
+  planning?: ClientPlanningView | null;
+}
+
+export interface DocCategoryView {
+  key: string;
+  /** Translated category ("Comptes rendus de réunion"). */
+  name: string;
+  /** "3 files" / « 3 fichiers ». */
+  files: string;
+  /** Translated type labels of its files, " · ". */
+  description: string;
+  /** "Last issued 26 Sep". */
+  latest: string;
+}
+
+/** Categories of the shared documents (R-138), translated: Keystone's vocabulary through t(), no typed text involved. */
+export const docCategoryViews = (cats: readonly ClientDocCategory[], t: T): DocCategoryView[] =>
+  cats.map((c) => ({
+    key: c.key,
+    name: t(c.category),
+    files: t(c.fileCount === 1 ? '1 file' : `${c.fileCount} files`),
+    description: c.types.map((x) => t(x)).join(' · '),
+    latest: `${t('Last issued')} ${t(fmtDOfIso(c.latestIssuedOn))}`,
+  }));
+
+/** Client portal "Schedule" tab (S-9a): the Schedule screen's Gantt (work packages without owners) and milestone list. */
+export interface ClientPlanningView {
+  months: string[];
+  tasks: GanttTask[];
+  milestones: Pick<ScheduleMilestone, 'name' | 'bL' | 'fL' | 'done'>[];
+  todayL: string;
+  /** Milestone list: translated name, "Baseline 15 Mar · Forecast 2 Apr", signed slip, status code and label. */
+  list: { name: string; dates: string; slipText: string; slipAlert: boolean; status: ScheduleMilestone['status']; statusLabel: string }[];
+  /** "Forecast finish 14 Jan 2027 · Baseline 15 Dec 2026". */
+  finish: string;
+}
+
+export function clientPlanningView(d: ScheduleInput, t: T, lang: Lang): ClientPlanningView {
+  const v = scheduleView(d);
+  return {
+    months: v.ganttMonths.map((m) => t(m)),
+    // Owners are internal (initials of the project team): the client view leaves them out.
+    tasks: v.tasks.map((x) => ({ ...x, name: exactText(x.name, lang), owner: '', slipText: slipText(x.slipText, lang) })),
+    milestones: v.milestones.map((m) => ({ name: exactText(m.name, lang), bL: m.bL, fL: m.fL, done: m.done })),
+    todayL: v.todayL,
+    list: v.milestones.map((m) => ({
+      name: exactText(m.name, lang), dates: `${t('Baseline')} ${t(m.baseDate)} ${t('· Forecast')} ${t(m.fcDate)}`, slipText: slipText(m.slipText, lang), slipAlert: m.slipAlert,
+      status: m.status, statusLabel: t(m.statusLabel),
+    })),
+    finish: `${t('Forecast finish')} ${t(d.header.finishText)} · ${t('Baseline')} ${t(d.header.baselineText)}`,
+  };
 }
 
 export interface ClientScreenInput {
@@ -153,12 +221,16 @@ export function clientScreenView({ code, tab, portal, schedule, billing }: Clien
     kpis: kpiViews(kpis, t, lang),
     progress: schedule && evm ? clientProgress(schedule.header.chartMonths, evm).map((p) => ({ ...p, label: t(p.label) })) : null,
     milestones: schedule
-      ? clientMilestones(schedule.milestones, schedule.header.start).map((m) => ({ name: t(m.name), baseDate: t(m.baseDate), fcDate: t(m.fcDate), status: t(m.status), tagClass: tag(m.tone) }))
+      ? clientMilestones(schedule.milestones, schedule.header.start).map((m) => ({ name: exactText(m.name, lang), baseDate: t(m.baseDate), fcDate: t(m.fcDate), status: t(m.status), tagClass: tag(m.tone) }))
       : [],
-    decisions: dec.waiting.map((d) => ({ kind: d.kind, kindLabel: t(d.kindLabel), id: d.id, when: t(d.when), title: t(d.title), sub: t(d.sub), approveLabel: t(d.approveLabel) })),
-    decided: dec.decided.map((d) => ({ id: d.id, title: t(d.title), state: t(d.state), tagClass: tag(d.tone), when: t(d.when) })),
+    decisions: dec.waiting.map((d) => ({
+      kind: d.kind, kindLabel: t(d.kindLabel), id: d.id, when: t(d.when), title: exactText(d.title, lang), sub: t(d.sub), approveLabel: t(d.approveLabel),
+      // R-140 (X-11): the text as typed, apart from the translated sub-line.
+      why: d.justification ? { text: dataText(d.justification, lang) ?? d.justification, long: isLongText(d.justification) } : null,
+    })),
+    decided: dec.decided.map((d) => ({ id: d.id, title: exactText(d.title, lang), state: t(d.state), tagClass: tag(d.tone), when: t(d.when) })),
     invoices: portal.invoices.map((i) => {
-      const r = invoiceRow({ milestone: i.milestone, amountKeur: i.amountKeur, status: i.status, invoiceNumber: i.invoiceNumber, dueOn: i.dueOn }, lang);
+      const r = invoiceRow({ milestone: i.milestone, amountKeur: i.amountKeur, status: i.status, invoiceNumber: i.invoiceNumber, dueOn: i.dueOn }, lang, portal.currency);
       return {
         no: r.no, name: milestoneText(r.name, i.milestoneNumber, t, lang), amount: r.amount, status: t(r.status), tagClass: tag(r.tone),
         payment: r.payment.kind === 'due' ? dueText(r.payment.date, t, lang) : t(r.payment.text),
@@ -169,14 +241,16 @@ export function clientScreenView({ code, tab, portal, schedule, billing }: Clien
     summaryEmpty: portal.contract ? null : t('No contract recorded for this project'),
     issues: portal.issues.map((i) => {
       const r = issueRow({ number: i.number, title: i.title, raisedOn: i.raisedOn, status: i.status, response: i.response });
-      return { id: r.id, title: exactText(r.title, lang), when: t(r.when), status: t(r.status), tagClass: tag(r.tone), response: exactText(r.response, lang) };
+      const when = i.answeredOn ? `${t(r.when)} · ${t('Answered')} ${t(fmtDOfIso(i.answeredOn))}` : t(r.when);
+      return { id: r.id, title: exactText(r.title, lang), when, status: t(r.status), tagClass: tag(r.tone), response: exactText(r.response, lang) };
     }),
     docs: portal.documents.map((d) => {
       const r = sharedDocRow(d);
-      // Codex records as the prototype translates them; records created from Keystone only on an exact entry.
-      const title = d.isNew ? exactText(r.title, lang) : t(r.title);
+      // R-148: Codex record titles as typed (or their seeded demo entry), whoever created them.
+      const title = exactText(r.title, lang);
       return { id: r.id, title, typeLabel: t(r.typeLabel), date: t(r.date), rev: r.rev, status: t(r.status), tagClass: tag(r.tone), acknowledged: r.acknowledged, ackLabel: t(r.ackLabel) };
     }),
-    docsLabels: { idHeader: t(DOCS_TAB.idHeader), sub: t(DOCS_TAB.sub), empty: t(DOCS_TAB.empty) },
+    docCategories: docCategoryViews(portal.documentCategories, t),
+    docsLabels: { idHeader: t(DOCS_TAB.idHeader), sub: t(DOCS_TAB.sub), empty: t(DOCS_TAB.empty), byCategory: t('By category') },
   };
 }

@@ -1,22 +1,26 @@
 // Export providers — Resources: Resources (pool load), Project resources, Resource requests, Approvals (department),
 // What-if levelling, Skills matrix, Leave & working calendar, Rate cards.
-// Rights as on screen: hourly rates and premium multipliers only for the roles that see rates (director, PM) — the
+// Rights as on screen: hourly rates and premium multipliers only for the roles that see rates (director, PMs, Finance) — the
 // columns are left out otherwise; requests are the viewer's own unless the screen shows them all (director, outside
 // the workspace); a client exports only its own projects' rows. Weekly loads are fractions (1 = 100 % of the hours).
-import { matchesFilter as matchesRequestFilter, isRequestFilter, deptOfSlug, REQUEST_FILTERS } from '@/domain/requests';
-import { parseSkillFilter } from '@/domain/hr';
+import { matchesFilter as matchesRequestFilter, isRequestFilter, isSentRequest, deptOfSlug, REQUEST_FILTERS } from '@/domain/requests';
+import { parseEffectiveDate, parseSkillFilter } from '@/domain/hr';
+import { STATUS_ISO } from '@/server/db/codes';
 import { leverLabel, type WhatIfResult } from '@/domain/whatif';
 import { getRateCard, getLeaveCalendar, getSkillsMatrix } from '@/server/dal/hr';
 import { getProject } from '@/server/dal/projects';
 import { listResourceRequests, type ResourceRequestRow } from '@/server/dal/requests';
 import { departmentOfPerson, getApprovalsScreenData, listApprovalDepartmentsFull } from '@/server/dal/requests-screens';
-import { getLaborCost, getProjectTeam, getResourcePool, getWhatIf, listDepartments, type PoolPerson, type ResourceWeek } from '@/server/dal/resources';
+import { getLaborCost, getPortfolioLaborCost, getProjectTeam, getResourcePool, getWhatIf, listDepartments, type PoolPerson, type ResourceWeek } from '@/server/dal/resources';
+import { zoneLabel } from '@/server/dal/shell';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
-import { col, compact, filterLine, kpiSheet, param, sheet } from './common';
+import { col, compact, filterLine, isoOf, kpiSheet, param, sheet } from './common';
 import { projectFilter } from './scope';
+import { canViewDepartmentApprovals } from '@/domain/rights';
+import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
+import { dataText } from '@/i18n/data-text';
 
-const currentProject = (ctx: ExportContext) => param(ctx, 'code')?.toUpperCase() ?? 'HLT-026';
 
 function loadSheet(ctx: ExportContext, name: string, weeks: ResourceWeek[], people: PoolPerson[]): ExportSheet {
   const { t } = ctx;
@@ -33,13 +37,14 @@ function requestSheet(ctx: ExportContext, name: string, rows: ResourceRequestRow
   const { t } = ctx;
   return sheet(name, [
     col('id', t('Request'), 'text', 8), col('project', t('Project'), 'text', 10), col('title', t('Title'), 'text', 36), col('resource', t('Resource'), 'text', 20),
-    col('department', t('Department'), 'text', 18), col('activity', t('Activity'), 'text', 26), col('hours', t('Hours'), 'number', 8), col('start', t('Start date'), 'text', 12),
-    col('due', t('Due'), 'text', 12), col('priority', t('Priority'), 'text', 10), col('status', t('Status'), 'text', 18), col('requestedBy', t('Requested by'), 'text', 16),
-    col('sent', t('Sent'), 'text', 12), col('response', t('Response'), 'text', 36), col('task', t('Task'), 'text', 9),
+    col('department', t('Department'), 'text', 18), col('activity', t('Activity'), 'text', 26), col('hours', t('Hours'), 'number', 8), col('start', t('Start date'), 'date'),
+    col('due', t('Due'), 'date'), col('priority', t('Priority'), 'text', 10), col('status', t('Status'), 'text', 18), col('requestedBy', t('Requested by'), 'text', 16),
+    col('sent', t('Sent'), 'date'), col('response', t('Response'), 'text', 36), col('task', t('Task'), 'text', 9),
   ], rows.map((r) => ({
-    id: r.id, project: r.projectCode, title: t(r.title), resource: t(r.resource), department: t(r.department), activity: r.activity ? `${r.activity.code} · ${t(r.activity.name)}` : '',
-    hours: r.hours, start: t(r.start), due: t(r.due), priority: t(r.priority === 'high' ? 'High' : r.priority === 'low' ? 'Low' : 'Medium'), status: t(r.statusLabel),
-    requestedBy: r.requestedBy, sent: t(r.sentText), response: t(r.response), task: r.taskId ?? '',
+    id: r.id, project: r.projectCode, title: dataText(r.title, ctx.lang), resource: t(r.resource), department: t(r.department), activity: r.activity ? `${r.activity.code} · ${dataText(r.activity.name, ctx.lang)}` : '',
+    hours: r.hours, start: isoOf(r.start) ?? t(r.start), due: isoOf(r.due) ?? t(r.due), priority: t(r.priority === 'high' ? 'High' : r.priority === 'low' ? 'Low' : 'Medium'), status: t(r.statusLabel),
+    // S-7: a draft (status "Draft") has no sent date — its stored date is when the what-if levelling drafted it.
+    requestedBy: r.requestedBy, sent: isSentRequest(r) ? (isoOf(r.sent) ?? isoOf(r.sentText) ?? t(r.sentText)) : null, response: t(r.response), task: r.taskId ?? '',
   })));
 }
 
@@ -58,15 +63,19 @@ function loadKpis(ctx: ExportContext, people: PoolPerson[], openRequests: number
 // ── Resources (pool) ─────────────────────────────────────────────────────────────────────────────────────────────────
 async function resourcesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
-  const [pool, departments, pending, labor] = await Promise.all([getResourcePool(), listDepartments(), listResourceRequests({ status: 'pending' }), getLaborCost(currentProject(ctx))]);
+  // R-086 (R-2 a): the labour cost of the projects in execution of the displayed zone, as on screen.
+  const [pool, departments, pending, labor, zoneText] = await Promise.all([
+    getResourcePool(), listDepartments(), listResourceRequests({ status: 'pending' }), getPortfolioLaborCost(ctx.zone), zoneLabel(ctx.zone),
+  ]);
   const caps = departments.filter((d) => d.capacityH != null && d.demandH != null).sort((a, b) => (a.capacityPosition ?? 0) - (b.capacityPosition ?? 0));
   return {
     title: t('Resources'),
+    filters: [`${t('Zone')}: ${t(zoneText || 'All zones')}`],
     sheets: [
       loadSheet(ctx, t('Weekly load'), pool.weeks, pool.people),
       sheet(t('Department capacity'), [col('department', t('Department'), 'text', 22), col('head', t('Head'), 'text', 18), col('capacity', t('Capacity (h)'), 'integer'), col('demand', t('Demand (h)'), 'integer'), col('gap', t('Gap (h)'), 'integer')],
         caps.map((d) => ({ department: t(d.name), head: d.head?.name ?? '', capacity: d.capacityH, demand: d.demandH, gap: (d.demandH ?? 0) - (d.capacityH ?? 0) }))),
-      loadKpis(ctx, pool.people, pending.length, labor),
+      loadKpis(ctx, pool.people, pending.length, labor.projects.length ? { name: t('Labor'), budget: labor.budget, actual: labor.actual } : null),
     ],
   };
 }
@@ -110,6 +119,8 @@ async function approvalsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | n
   const mine = asked ? null : await departmentOfPerson(ctx.viewer.name);
   const name = asked?.name ?? depts.find((d) => d.name === mine)?.name ?? depts[0]?.name;
   if (!name) return null;
+  // P-8a (R-048): a department head exports the departments they head only.
+  if (!canViewDepartmentApprovals(ctx.viewer.role, (await getApproverIdentity(ctx.viewer)).departments, name)) return null;
   const [data, visible] = await Promise.all([getApprovalsScreenData(name), projectFilter(ctx)]);
   if (!data) return null;
   const people = data.pool.people.filter((p) => p.department === name);
@@ -140,14 +151,15 @@ async function whatIfWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null
   const label = new Map(w.levers.map((l) => [l.code, leverLabel(l)]));
   const result = (r: WhatIfResult | undefined) => ({
     finish: r?.finish ?? null, float: r?.floatDays ?? null, gained: r?.daysGained ?? null, cost: r?.costKeur ?? null, peak: r ? r.peakPct / 100 : null, over: r?.overPeople ?? null,
+    load: r ? Math.round(r.loadDeltaH) : null,
   });
   const resultCols = [
     col('finish', t('Project finish'), 'date'), col('float', t('Float (d)'), 'integer'), col('gained', t('Days gained'), 'integer'), col('cost', t('Cost'), 'money_keur'),
-    col('peak', t('Peak load'), 'percent'), col('over', t('People above 100%'), 'integer'),
+    col('peak', t('Peak load'), 'percent'), col('over', t('People above 100%'), 'integer'), col('load', t('Load change (h)'), 'integer'),
   ];
   return {
     title: `${t('What-if levelling')} · ${project.code}`,
-    filters: [`${t('Project')}: ${project.code} · ${t(project.name)}`, `${t('Data date')}: ${w.dataDate}`],
+    filters: [`${t('Project')}: ${project.code} · ${dataText(project.name, ctx.lang)}`, `${t('Data date')}: ${w.dataDate}`],
     sheets: [
       sheet(t('Scenarios'), [
         col('name', t('Scenario'), 'text', 10), col('priority', t('Priority'), 'text', 16), col('selected', t('Selected'), 'boolean'), col('levers', t('Levers'), 'text', 60), ...resultCols,
@@ -164,7 +176,7 @@ async function whatIfWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null
         col('from', t('From'), 'number', 7), col('to', t('To'), 'number', 7), col('helper', t('Helper'), 'text', 24), ...(ctx.ratesMasked ? [] : [col('rate', t('Hourly rate'), 'money_eur')]),
         col('critical', t('Critical'), 'boolean'), ...resultCols,
       ], w.levers.map((l) => ({
-        label: t(leverLabel(l)), activity: `${l.activity} · ${t(l.activityName)}`, resource: l.resource ? t(l.resource) : '', department: l.department ? t(l.department) : '', from: l.from, to: l.to,
+        label: t(leverLabel(l)), activity: `${l.activity} · ${dataText(l.activityName, ctx.lang)}`, resource: l.resource ? t(l.resource) : '', department: l.department ? t(l.department) : '', from: l.from, to: l.to,
         helper: l.helper ? t(l.helper.name) : '', rate: ctx.ratesMasked ? null : l.helper?.rateEur ?? null, critical: l.critical, ...result(w.effects[l.code]),
       }))),
       sheet(t('Peak load profile'), [col('week', t('Week of'), 'date'), col('load', t('Peak load'), 'percent'), col('over', t('People above 100%'), 'integer')],
@@ -188,11 +200,15 @@ async function skillsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
     title: t('Skills matrix'),
     filters: compact([f != null ? filterLine(t('Skill'), t(data.skills[f].name)) : null]),
     sheets: [sheet(t('Skills matrix'), [
-      col('name', t('Person'), 'text', 22), col('job', t('Job title'), 'text', 22), ...data.skills.map((s, i) => col(`s${i}`, t(s.name), 'integer', 12)), col('certs', t('Certifications'), 'text', 40),
+      col('name', t('Person'), 'text', 22), col('job', t('Job title'), 'text', 22), ...data.skills.map((s, i) => col(`s${i}`, dataText(s.name, ctx.lang), 'integer', 12)), col('certs', t('Certifications'), 'text', 40),
     ], people.map((p) => ({ name: p.name, job: p.jobTitle ? t(p.jobTitle) : '', ...Object.fromEntries(p.levels.map((l, i) => [`s${i}`, l || null])), certs: p.certifications.map((c) => t(c)).join(' · ') })))],
   };
 }
 
+/**
+ * Leave & working calendar workbook. NEW-CURSUS-4 / R-173: cells name the simple type only ("Leave · 5 d", "Absence · 2 d"),
+ * never the reason of an absence; the "Leave types" sheet lists the two types.
+ */
 async function leaveWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
   const data = await getLeaveCalendar();
@@ -204,26 +220,33 @@ async function leaveWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
           name: p.name, job: p.jobTitle ? t(p.jobTitle) : '', ...Object.fromEntries(p.weeks.map((c, i) => [`w${i}`, c.typeLabel ? `${t(c.typeLabel)} · ${c.days} ${t('d')}` : c.holidays ? t('Public holiday') : ''])),
           days: p.weeks.reduce((a, c) => a + c.days, 0),
         }))),
-      sheet(t('Public holidays'), [col('date', t('Date'), 'date'), col('name', t('Holiday'), 'text', 30)], data.holidays.map((h) => ({ date: h.date, name: t(h.name) }))),
-      sheet(t('Leave types'), [col('code', t('Code'), 'text', 8), col('label', t('Type'), 'text', 20), col('days', t('Days'), 'number', 8)], data.leaveTypes.map((l) => ({ code: l.code, label: t(l.label), days: l.days }))),
+      sheet(t('Public holidays'), [col('date', t('Date'), 'date'), col('name', t('Holiday'), 'text', 30)], data.holidays.map((h) => ({ date: h.date, name: dataText(h.name, ctx.lang) }))),
+      sheet(t('Leave types'), [col('code', t('Code'), 'text', 10), col('label', t('Type'), 'text', 20)], data.leaveTypes.map((l) => ({ code: l.code, label: t(l.label) }))),
     ],
   };
 }
 
 async function ratesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
-  const card = await getRateCard();
+  // R-083 (A-10): the grid in force on the card's date (`?on=`, default the business date) and every dated version.
+  const on = parseEffectiveDate(param(ctx, 'on')) ?? STATUS_ISO;
+  const card = await getRateCard(on);
   const masked = ctx.ratesMasked;
   return {
     title: t('Rate cards'),
-    filters: masked ? [t('Rates are visible to directors and project managers only')] : [],
+    filters: [`${t('Rates in force on')}: ${on}`, ...(masked ? [t('Rates are visible to the director, project managers and Finance only — switch role (bottom-left) to see them.')] : [])],
     sheets: [
       sheet(t('Rate cards'), [
         col('role', t('Role'), 'text', 26), ...(masked ? [] : [col('rate', t('Hourly rate'), 'money_eur')]), col('external', t('External'), 'boolean'), col('costCenter', t('Cost centre'), 'text', 12),
-        col('grade', t('Grade'), 'text', 8), col('from', t('Effective from'), 'date'),
-      ], card.roles.map((r) => ({ role: t(r.role), rate: masked ? null : r.baseRateEur, external: r.isExternal, costCenter: r.costCenter ?? '', grade: r.grade ?? '', from: r.effectiveFrom }))),
-      sheet(t('Premium multipliers'), [col('label', t('Premium'), 'text', 30), ...(masked ? [] : [col('factor', t('Multiplier'), 'number', 10, { decimals: 2 })])],
-        card.multipliers.map((m) => ({ label: t(m.label), factor: masked ? null : m.factor }))),
+        col('grade', t('Grade'), 'text', 8), ...(masked ? [] : [col('from', t('Effective from'), 'date')]),
+      ], card.roles.map((r) => ({ role: dataText(r.role, ctx.lang), rate: masked ? null : r.baseRateEur, external: r.isExternal, costCenter: r.costCenter ?? '', grade: r.grade ?? '', from: masked ? null : r.effectiveFrom }))),
+      sheet(t('Premium multipliers'), [col('label', t('Premium'), 'text', 30), ...(masked ? [] : [col('factor', t('Multiplier'), 'number', 10, { decimals: 2 }), col('from', t('Effective from'), 'date')])],
+        card.multipliers.map((m) => ({ label: t(m.label), factor: masked ? null : m.factor, from: masked ? null : m.effectiveFrom }))),
+      // R-083: every version of the grid (none for the roles that may not see rates — R-046).
+      ...(masked ? [] : [sheet(t('Rate history'), [col('item', t('Role or premium'), 'text', 30), col('from', t('Effective from'), 'date'), col('value', t('Rate or factor'), 'number', 10, { decimals: 2 })], [
+        ...card.roles.flatMap((r) => r.versions.map((v) => ({ item: dataText(r.role, ctx.lang), from: v.effectiveFrom, value: v.value }))),
+        ...card.multipliers.flatMap((m) => m.versions.map((v) => ({ item: t(m.label), from: v.effectiveFrom, value: v.value }))),
+      ])]),
     ],
   };
 }

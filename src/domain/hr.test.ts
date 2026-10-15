@@ -64,8 +64,8 @@ describe('rate cards (06 §2)', () => {
     expect(parseRateInput('12abc')).toBe(12);
   });
 
-  it('visibility: director and pm only; multiplier hints', () => {
-    expect(['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'].filter(canSeeRates)).toEqual(['director', 'pm']);
+  it('visibility: director and pm only — and Finance since R-044 (P-12 c); multiplier hints', () => {
+    expect(['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'finance', 'client'].filter(canSeeRates)).toEqual(['director', 'pm', 'finance']);
     expect(mults.map((m) => multiplierHint(m.key))).toEqual(['× base rate', '× base rate', '× base rate', '× base rate', '× base, per hour on call']);
   });
 });
@@ -87,12 +87,16 @@ describe('skills matrix (06 §3)', () => {
       ['Software / IT', 0, 2, true],
     ]);
     expect(cov[0].text).toBe('1 expert · 1 at level ≥3');
-    expect(cov[3].text).toBe('0 experts · 1 at level ≥3');
+    // R-5b (R-087): the case is named — "No expert" instead of the prototype's "0 experts".
+    expect(cov[3].text).toBe('No expert · 1 at level ≥3');
+    expect(cov.map((c) => [c.noExpert, c.singleExpert])).toEqual([
+      [false, true], [false, true], [false, true], [true, false], [false, false], [false, true], [false, false], [false, true], [false, true], [true, false],
+    ]);
     expect(cov[4].text).toBe('2 experts · 3 at level ≥3');
   });
 
-  it('KPIs: 10 families, 8 single-expert skills, 5 certifications', () => {
-    expect(skillKpis(cov, Object.keys(P.CERTS).length)).toEqual({ families: 10, singleExpert: 8, certifications: 5 });
+  it('KPIs: 10 families, 2 skills without an expert + 6 single-expert skills (R-5b; the prototype counted 8 under 2 experts), 5 certifications', () => {
+    expect(skillKpis(cov, Object.keys(P.CERTS).length)).toEqual({ families: 10, noExpert: 2, singleExpert: 6, certifications: 5 });
   });
 
   it('filter: people at level ≥3 on the chosen skill', () => {
@@ -112,10 +116,13 @@ describe('skills matrix (06 §3)', () => {
 });
 
 describe('leave & working calendar (06 §4)', () => {
+  // NEW-CURSUS-4 (R-031, R-173): the prototype's CP / RTT weeks are Leave, its Sick / Training weeks Absence — the reason of
+  // an absence is never kept; the days (and so the hours and KPIs) are the prototype's.
+  const SIMPLE: Record<string, string> = { CP: 'Leave', RTT: 'Leave', Sick: 'Absence', Training: 'Absence' };
   const weeksOf = (name: string): LeaveWeekInput[] =>
     Array.from({ length: 8 }, (_, i) => {
       const t = (P.LEAVE[name] ?? {})[i] ?? null;
-      return { type: t, days: t ? P.LEAVE_DAYS[t] : 0, holidays: P.HOLIDAYS[i] ? 1 : 0 };
+      return { type: t ? SIMPLE[t] : null, days: t ? P.LEAVE_DAYS[t] : 0, holidays: P.HOLIDAYS[i] ? 1 : 0 };
     });
   const rows = (P.PEOPLE as [string][]).map(([n]) => [n, leaveRow(weeksOf(n))] as const);
 
@@ -135,18 +142,20 @@ describe('leave & working calendar (06 §4)', () => {
 
   it('cells: labels and tones (leave wins over the holiday label, both deducted)', () => {
     const am = rows[0][1].cells;
-    expect(am.map((c) => c.label)).toEqual(['', '', 'CP', 'CP', '', '', 'Hol.', '']);
+    // NEW-CURSUS-4: "Leave" / "Absence" instead of the prototype's CP, RTT, Sick, Training; an absence takes the former
+    // sick-leave look (tone "absence"), whatever its reason (training included).
+    expect(am.map((c) => c.label)).toEqual(['', '', 'Leave', 'Leave', '', '', 'Hol.', '']);
     expect(am.map((c) => c.tone)).toEqual(['none', 'none', 'leave', 'leave', 'none', 'none', 'holiday', 'none']);
-    expect(rows[6][1].cells[3]).toEqual({ label: 'Sick', tone: 'sick', hours: 21 });
-    expect(rows[2][1].cells[0]).toEqual({ label: 'Training', tone: 'leave', hours: 14 });
-    expect(leaveCell({ type: 'RTT', days: 1, holidays: 1 })).toEqual({ label: 'RTT', tone: 'leave', hours: 21 });
-    expect(rows[7][1].cells[6]).toEqual({ label: 'CP', tone: 'leave', hours: 0 });
+    expect(rows[6][1].cells[3]).toEqual({ label: 'Absence', tone: 'absence', hours: 21 });
+    expect(rows[2][1].cells[0]).toEqual({ label: 'Absence', tone: 'absence', hours: 14 });
+    expect(leaveCell({ type: 'Leave', days: 1, holidays: 1 })).toEqual({ label: 'Leave', tone: 'leave', hours: 21 });
+    expect(rows[7][1].cells[6]).toEqual({ label: 'Leave', tone: 'leave', hours: 0 });
   });
 
   it('KPIs: team availability 85 %, 43 leave days, 0 weeks under 60 %', () => {
     expect(leaveKpis(rows.map(([, r]) => r), 8)).toEqual({ teamAvailabilityPct: 85, leaveDays: 43, weeksUnder60: 0 });
     // under-capacity week: everybody on CP in week 0
-    const allOff = leaveRow([{ type: 'CP', days: 5, holidays: 0 }, { type: null, days: 0, holidays: 0 }]);
+    const allOff = leaveRow([{ type: 'Leave', days: 5, holidays: 0 }, { type: null, days: 0, holidays: 0 }]);
     expect(allOff.lo).toBe(true);
     expect(leaveKpis([allOff, allOff], 2).weeksUnder60).toBe(1);
   });
@@ -170,42 +179,53 @@ describe('hours — Lucca reconciliation (06 §5)', () => {
   };
 
   it('by resource = spec §5.4 table', () => {
+    // R-6b (R-088): one symmetric ±10 % threshold, inclusive — under-declarations within 10 % are no longer flagged (Thomas
+    // Kerbrat −8/96, Damien Roux −2/30: 'under' in the prototype); exactly −10 % (Amélie Ollivier) stays 'under'.
     expect(groupBy((l) => l.res)).toEqual([
       ['Julien Wagner', 280, 303, '+23 h', 'ok', 100, false],
       ['Amélie Ollivier', 100, 90, '-10 h', 'under', 90, false],
-      ['Thomas Kerbrat', 96, 88, '-8 h', 'under', 92, false],
+      ['Thomas Kerbrat', 96, 88, '-8 h', 'ok', 92, false],
       ['Pauline Noguès', 110, 97, '-13 h', 'under', 88, false],
       ['Hélène Sauvage', 100, 115, '+15 h', 'over', 100, true],
-      ['Damien Roux', 30, 28, '-2 h', 'under', 93, false],
+      ['Damien Roux', 30, 28, '-2 h', 'ok', 93, false],
       ['Léa Marchand', 24, 31, '+7 h', 'over', 100, true],
     ]);
   });
 
   it('by work package = spec §5.4 table', () => {
+    // R-6b (R-088): WP 1.2 (−4/80) and WP 1.5 (−8/96) are within 10 %: no longer flagged.
     expect(groupBy((l) => l.wp).map((g) => g.slice(0, 5))).toEqual([
       ['1.3 · Foundations', 160, 184, '+24 h', 'over'],
       ['1.4 · Steel structure', 220, 234, '+14 h', 'ok'],
-      ['1.2 · Site preparation', 80, 76, '-4 h', 'under'],
+      ['1.2 · Site preparation', 80, 76, '-4 h', 'ok'],
       ['1.7 · Paving & yard', 20, 14, '-6 h', 'under'],
-      ['1.5 · Crane installation', 96, 88, '-8 h', 'under'],
+      ['1.5 · Crane installation', 96, 88, '-8 h', 'ok'],
       ['1.6 · MEP systems', 110, 97, '-13 h', 'under'],
       ['1.1 · Design & permits', 54, 59, '+5 h', 'ok'],
     ]);
   });
 
-  it('line variance edge cases: exactly +10 % is not flagged; zero plan', () => {
-    expect(hoursVariance(100, 110).tone).toBe('ok');
+  it('line variance edge cases: exactly +10 % is flagged (R-6b, inclusive — the prototype did not flag it); zero plan', () => {
+    expect(hoursVariance(100, 110).tone).toBe('over');
+    expect(hoursVariance(100, 109).tone).toBe('ok');
     expect(hoursVariance(100, 111).tone).toBe('over');
     expect(hoursVariance(100, 100).varText).toBe('0 h');
     expect(hoursVariance(0, 5)).toMatchObject({ varText: '+5 h', tone: 'over', barPct: 100, barOver: true });
   });
 
   it('KPIs: 779 h declared · 740 h planned · +12 h (2 % · ≈ 1 k€) · 27 h to assign on 2 lines', () => {
+    // A-10 (R-083): the variance is valued at each person's grid rate — lines without a rate are not valued (the prototype's
+    // flat 62 €/h is retired): here the prototype lines carry no rate → 0 k€, 10 lines not valued.
     const k = hoursKpis({ lines, unassigned: (H.unassigned as [string, number, string][]).map(([, hours]) => ({ hours })) });
     expect(k).toEqual({
-      declaredTotalH: 779, plannedH: 740, matchedDeclaredH: 752, lineCount: 10, varianceH: 12, variancePct: 2, varianceCostK: 1, varianceLo: false,
+      declaredTotalH: 779, plannedH: 740, matchedDeclaredH: 752, lineCount: 10, varianceH: 12, variancePct: 2, varianceCostK: 0, unvaluedLines: 10, varianceLo: false,
       toAssignH: 27, toAssignCount: 2,
     });
+    // With the people's grid rates (RATE_ROLES by job title): Σ (d − p) × rate = 955 € → 1 k€, as the prototype displayed.
+    const rate = Object.fromEntries((P.RATE_ROLES as [string, number][]));
+    const job = Object.fromEntries((P.PEOPLE as [string, string][]).map(([n, j]) => [n, j]));
+    const valued = hoursKpis({ lines: lines.map((l) => ({ ...l, rateEur: rate[job[l.res]] ?? null })), unassigned: [] });
+    expect([valued.varianceCostK, valued.unvaluedLines]).toEqual([1, 0]);
     // after assigning one line, the Lucca total is unchanged and "To assign" drops
     const k2 = hoursKpis({ lines, unassigned: [{ hours: 9 }], unassignedTotalH: 27 });
     expect([k2.declaredTotalH, k2.toAssignH, k2.toAssignCount]).toEqual([779, 9, 1]);

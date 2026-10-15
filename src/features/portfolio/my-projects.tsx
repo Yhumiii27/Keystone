@@ -10,14 +10,15 @@ import { CardGrid, SectionCard, Stack } from '@/components/app/SectionCard';
 import { LifecycleTag } from '@/components/app/StatusTag';
 import { screenHref } from '@/config/screens';
 import type { MyProjectCard, MyProjectsModel, Tint } from '@/domain/portfolio';
-import type { T } from '@/i18n/translate';
+import type { Lang, T } from '@/i18n/translate';
 import type { ProjectRow } from '@/server/dal/projects';
 import { HealthBadge, Kpi, TINT, projectName } from './view';
 import s from './portfolio.module.css';
+import { dataText } from '@/i18n/data-text';
 
 const tint = (x: Tint) => ({ '--tint': TINT[x] }) as CSSProperties;
 
-export function MyProjectsBody({ data, t }: { data: MyProjectsModel<ProjectRow>; t: T }) {
+export function MyProjectsBody({ data, t, lang }: { data: MyProjectsModel<ProjectRow>; t: T; lang: Lang }) {
   return (
     <Stack gap={14}>
       <KpiGrid min={160}>
@@ -32,7 +33,7 @@ export function MyProjectsBody({ data, t }: { data: MyProjectsModel<ProjectRow>;
       )}
       <CardGrid min={300} gap={12} fill align="stretch">
         {data.cards.map((c) => (
-          <ProjectCard key={c.project.code} card={c} t={t} />
+          <ProjectCard key={c.project.code} card={c} t={t} lang={lang} />
         ))}
       </CardGrid>
     </Stack>
@@ -40,15 +41,15 @@ export function MyProjectsBody({ data, t }: { data: MyProjectsModel<ProjectRow>;
 }
 
 /** Whole card opens the project's Plan (`p.open`). */
-function ProjectCard({ card: c, t }: { card: MyProjectCard<ProjectRow>; t: T }) {
+function ProjectCard({ card: c, t, lang }: { card: MyProjectCard<ProjectRow>; t: T; lang: Lang }) {
   const p = c.project;
   const x = c.ind;
   return (
     <SectionCard href={screenHref('plan', { code: p.code })} gap={10}>
       <div className={s.head}>
         <div className={s.headText}>
-          <span className={s.name}>{projectName(p, t)}</span>
-          <span className={s.sub}>{t(`${p.analytic || p.code} · ${p.pm} · ${p.client}`)}</span>
+          <span className={s.name}>{projectName(p, lang)}</span>
+          <span className={s.sub}>{`${p.analytic || p.code} · ${p.pm} · ${dataText(p.client, lang)}`}</span>
         </div>
         <HealthBadge health={c.health} t={t} />
       </div>
@@ -76,7 +77,7 @@ function ProjectCard({ card: c, t }: { card: MyProjectCard<ProjectRow>; t: T }) 
       </div>
       <div className={s.milestone}>
         <span className={s.metricLabel}>{t('Next milestone')}</span>
-        <span className={s.milestoneName}>{t(x.msName)}</span>
+        <span className={s.milestoneName}>{dataText(x.msName, lang)}</span>
         <span className={s.milestoneLine} style={tint(x.msTint)}>
           {t(x.msLine || x.msDate || '—')}
         </span>

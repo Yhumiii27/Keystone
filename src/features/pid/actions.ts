@@ -3,17 +3,21 @@
 // this project's P&ID (screen in their workspace — director, engineering lead, quality — and project not read-only
 // for them; the DAL writers re-check the workspace), writes through the P&ID data layer with the viewer as the actor
 // (audit row), then revalidates the project's pages (the P&ID screen and the nav badge).
-// - mapPidTagAction / unlinkPidTagAction: the tag drawer's candidate pick and "Unlink" (`pidOv` of the prototype).
+// - mapPidTagAction / unlinkPidTagAction: the tag drawer's candidate pick and "Unlink" (`pidOv` of the prototype). R-108
+//   (E-6 = a): any catalogue article; "Link and add to the BOM" also adds it to the project BOM (the viewer must edit the
+//   project's BOM — checked here and by the writer).
 // - stagePidImportAction: "Import P&ID tags" step 1 → the staged plan (no write).
 // - applyPidImportAction: step 2 → the import, re-planned on the server; toast "27 tags · rev E imported · 3 new · 1 updated".
 import { revalidatePath } from 'next/cache';
+import { screenHref } from '@/config/screens';
+import { pidBomQuantity } from '@/domain/pid';
 import { isPidImportMode, isPidImportSource, normaliseRevision, parseDelimited, PID_IMPORT_LIMITS, type PidImportMode, type PidImportSource } from '@/domain/pid-import';
 import { getProject } from '@/server/dal/projects';
-import { mapPidTag, pidCandidates } from '@/server/dal/pid';
+import { mapPidTag } from '@/server/dal/pid';
 import { applyPidImport, stagePidImport } from '@/server/dal/pid-import';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
-import { importToastT, linkedToastT, messageT, unlinkedToastT } from './i18n';
+import { addedToBomToastT, importToastT, linkedToastT, messageT, unlinkedToastT } from './i18n';
 import { pidStageView, type PidStageView } from './import-model';
 import { isZip, readXlsxFirstSheet } from './xlsx';
 
@@ -24,7 +28,8 @@ export interface PidActionResult {
 
 /** Messages of the data layer and the import that may be shown as they are (translated); anything else is generic. */
 const KNOWN = [
-  /is not a BOM article of a compatible type$/, /is not mapped$/, / is already linked to \S+$/, /^Unknown tag /, /^Client-supplied equipment: no BOM reference expected$/, /is outside your workspace$/,
+  / is not in the catalogue$/, /is not mapped$/, / is already linked to \S+$/, /^Unknown tag /, /^Client-supplied equipment: no BOM reference expected$/, /is outside your workspace$/,
+  / is already in the project BOM$/, / is in the project BOM with quantity 0 — change its quantity on the BOM screen$/, /^This project BOM is read-only for you$/,
   /^No valid tag in the file$/, /^Nothing to import: every tag is unchanged$/, /^The file is empty$/, /^No "Tag" column/, /^No "Description" column/, /^The file lists no tag$/,
   /^Too many lines/, /^The file is not an Excel workbook/, /^The workbook /,
 ];
@@ -43,7 +48,7 @@ async function guard(code: unknown) {
   if (!project) return { error: await tr('Unknown project') } as const;
   const ctx = await getProjectContext(project.code, 'pid');
   if (!ctx.canEdit('pid')) return { error: await tr('This P&ID is read-only for you') } as const;
-  return { code: project.code, actor: { name: ctx.viewer.name, role: ctx.viewer.role } } as const;
+  return { code: project.code, actor: { name: ctx.viewer.name, role: ctx.viewer.role }, canEditBom: ctx.canEdit('bom') } as const;
 }
 
 const ident = (v: unknown, max = 60): string | null => (typeof v === 'string' && /^[A-Za-z0-9][\w ./#×-]*$/.test(v.trim()) && v.trim().length <= max ? v.trim() : null);
@@ -52,24 +57,32 @@ function revalidate(code: string) {
   revalidatePath(`/projects/${code}`, 'layout');
 }
 
-/** Candidate pick: the tag is linked to a BOM article of a compatible type. */
-export async function mapPidTagAction(code: unknown, tag: unknown, ref: unknown): Promise<PidActionResult> {
+/**
+ * Candidate pick (R-108, E-6 = a): the tag is linked to a catalogue article. `opts.addToBom` ("Link and add to the BOM", only
+ * for an article outside the project BOM): the article joins the project BOM with `opts.quantity` (default 1) — the viewer
+ * must edit the project's BOM. "Link only" leaves the tag Not in BOM (the drawer keeps "Add reference to project BOM").
+ */
+export async function mapPidTagAction(code: unknown, tag: unknown, ref: unknown, opts?: { addToBom?: unknown; quantity?: unknown }): Promise<PidActionResult> {
   const g = await guard(code);
   if ('error' in g) return { error: g.error };
   const tg = ident(tag);
   const rf = ident(ref);
   if (!tg || !rf) return { error: await tr('Invalid request') };
-  const candidates = await pidCandidates(g.code, tg);
-  const cand = candidates.find((c) => c.ref.toUpperCase() === rf.toUpperCase());
-  if (!cand) return { error: await tr(`${rf} is not a BOM article of a compatible type`) };
+  const addToBom = opts?.addToBom === true;
+  if (opts?.addToBom != null && typeof opts.addToBom !== 'boolean') return { error: await tr('Invalid request') };
+  const quantity = addToBom ? pidBomQuantity(opts?.quantity) : null;
+  if (addToBom && quantity == null) return { error: await tr('Enter a quantity greater than 0') };
+  if (addToBom && !g.canEditBom) return { error: await tr('This project BOM is read-only for you') };
+  const partRef = rf.toUpperCase();
   try {
-    await mapPidTag(g.code, tg, cand.ref, g.actor);
+    await mapPidTag(g.code, tg, partRef, g.actor, addToBom ? { quantity: quantity! } : undefined);
   } catch (e) {
     return { error: await errorText(e) };
   }
   revalidate(g.code);
-  const { t } = await getI18n();
-  return { toast: linkedToastT(tg, cand.ref, t) };
+  if (addToBom) revalidatePath(screenHref('plm'));
+  const { t, lang } = await getI18n();
+  return { toast: addToBom ? addedToBomToastT(tg, partRef, quantity!, t, lang) : linkedToastT(tg, partRef, t) };
 }
 
 /** "Unlink": the tag loses its BOM reference. */

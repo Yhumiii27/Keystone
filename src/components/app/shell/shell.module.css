@@ -42,3 +42,53 @@
   font-size: 12px;
   color: var(--color-neutral-500);
 }
+
+/* ── Tablet layout (R-146, X-4; media query = TABLET_MEDIA in ./tablet.ts) ──────────────────────────────────────────
+   Up to 1024 px the sidebar leaves the grid (it becomes a drawer, sidebar.module.css) and a sticky top bar carries the
+   menu button. Above, the top bar is not rendered and the layout is the prototype's. */
+.topbar {
+  display: none;
+}
+
+.menuBtn:global(.btn) {
+  gap: 8px;
+  min-height: 40px;
+  font-size: 13px;
+}
+
+.topbarBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.topbarLogo {
+  color: var(--color-accent);
+}
+
+@media (max-width: 1024px) {
+  .root {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .main {
+    gap: 14px;
+    padding: 0 18px 32px;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin: 0 -18px;
+    padding: 8px 18px;
+    background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--color-neutral-900);
+  }
+}

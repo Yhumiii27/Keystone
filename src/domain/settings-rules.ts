@@ -40,6 +40,11 @@ export const REQUIRED_STAGES: readonly StageCode[] = ['initiative', 'clos', 'ann
 export const CUSTOM_STATUSES_ALLOWED = false;
 export const CUSTOM_STATUS_REFUSED = 'Project statuses are the lifecycle stages — a new stage needs a lifecycle definition';
 export const REQUIRED_STAGE_REFUSED = 'This stage is required by the lifecycle';
+/**
+ * Settings › Holidays: one entry per date — the calendars key holidays by date, so a second label on a listed date
+ * ("14 Jul · Bastille Day" next to "14 Jul · Fête nationale") would be listed but ignored by the calendars.
+ */
+export const HOLIDAY_DATE_TAKEN = 'A holiday is already listed on that date';
 
 // ── Cost categories ───────────────────────────────────────────────────────────────────────────────────────────────────
 /** Cost type of the SETTINGS0 cost categories (Settings codes); a custom category defaults to Labor (editable). */

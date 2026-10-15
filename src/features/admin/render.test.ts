@@ -37,9 +37,11 @@ beforeAll(async () => {
 describe('Settings body', () => {
   it.each(['en', 'fr'] as const)('%s: template labels, KPI tiles, seven cards with their entries and controls', async (lang) => {
     const t = makeT(lang);
-    const out = html(h(SettingsBody, { view: settingsView(await getSettings(), t), canEdit: true }), lang);
+    const out = html(h(SettingsBody, { view: settingsView(await getSettings(), t, lang), canEdit: true }), lang);
     const plain = text(out);
-    for (const l of ['Project health rules', 'At risk below', 'Off track below', 'Labor rates and multipliers are edited on the', 'Rate cards', 'page (directors and PMs).', 'Add']) {
+    // R-044 (P-12 c): the rate grid is edited by the director and Finance — the prototype's "page (directors and PMs)." is replaced.
+    // R-088 (R-6b): the hours-variance threshold on its own row.
+    for (const l of ['Project health rules', 'At risk below', 'Off track below', 'Labor rates and multipliers are edited on the', 'Rate cards', 'page (director and Finance).', 'Add', 'Hours variance', 'Hours variance threshold (%)']) {
       expect(plain, l).toContain(label(l, lang));
     }
     expect(out).toContain(`placeholder="${label('Add an entry', lang)}"`);
@@ -49,18 +51,21 @@ describe('Settings body', () => {
     expect(count(out, /aria-label="(Remove|Retirer) · /g)).toBe(58);
     expect(count(out, /aria-pressed=/g)).toBe(5);
     expect(out).toContain('type="number" step="0.01" value="0.97"');
+    expect(out).toContain('id="hours-variance" class="input');
+    expect(out).toMatch(/id="hours-variance"[^>]*type="number" step="1" min="1" max="50" value="10"/);
     // The footnote's text, link and text are three flex items 8px apart, as the prototype's (template 1581).
     const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    expect(out).toMatch(new RegExp(`</svg>${esc(label('Labor rates and multipliers are edited on the', lang))}<a [^>]*href="/resources/rates"[^>]*>${esc(label('Rate cards', lang))}</a>${esc(label('page (directors and PMs).', lang))}</div>`));
+    expect(out).toMatch(new RegExp(`</svg>${esc(label('Labor rates and multipliers are edited on the', lang))}<a [^>]*href="/resources/rates"[^>]*>${esc(label('Rate cards', lang))}</a>${esc(label('page (director and Finance).', lang))}</div>`));
     expect(plain).toContain(lang === 'en' ? 'Entrepôt central — Lyon Central warehouse' : 'Entrepôt central — Lyon Entrepôt central');
   });
 
   it('outside the workspace: entries listed, no remove / add / location type, thresholds read-only', async () => {
-    const out = html(h(SettingsBody, { view: settingsView(await getSettings(), makeT('en')), canEdit: false }), 'en');
+    const out = html(h(SettingsBody, { view: settingsView(await getSettings(), makeT('en'), 'en'), canEdit: false }), 'en');
     expect(out).not.toContain('aria-label="Remove');
     expect(out).not.toContain('placeholder="Add an entry"');
     expect(out).not.toContain('aria-pressed=');
-    expect(count(out, /readOnly=""|readonly=""/gi)).toBe(2);
+    // The two health thresholds, the hours-variance threshold (R-088) and (delivery 8, R-069) the change control board threshold.
+    expect(count(out, /readOnly=""|readonly=""/gi)).toBe(4);
     expect(text(out)).toContain('Software / IT');
   });
 });
@@ -107,7 +112,7 @@ describe('Activity, integrations & audit body', () => {
   async function body(lang: Lang, view: 'activity' | 'connectors' | 'imports' | 'audit', canEdit = true) {
     const t = makeT(lang);
     const [activity, connectors, imports, audit, counts] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
-    const v = plumbingView({ view, source: null, activity, connectors, imports, audit, counts, unread: 3, personaTitle: 'Portfolio director' }, t, lang);
+    const v = plumbingView({ view, source: null, activity, connectors, imports, audit, counts, unread: 3, personaTitle: 'Portfolio director', ratesVisible: true }, t, lang);
     return html(h(PlumbingBody, { view: v, canEdit, t }), lang);
   }
 
@@ -120,24 +125,34 @@ describe('Activity, integrations & audit body', () => {
     expect(out).toContain('href="/admin/integrations?view=connectors"');
     expect(out).toContain('href="/admin/integrations?source=stock"');
     expect(count(out, /class="[^"]*actRow/g)).toBe(12);
-    expect(plain).toContain(lang === 'en' ? 'Lucca · Imported 312 h for W39' : 'Lucca · Imported 312 h for W39');
+    // R-184 (NEW-D1-2): the seeded feed reads in French from its exact entries (the prototype left it in English).
+    expect(plain).toContain(lang === 'en' ? 'Lucca · Imported 312 h for W39' : 'Lucca · 312 h importées pour S39');
   });
 
   it.each(['en', 'fr'] as const)('%s: connectors table with modes, Sync now / Configure for the workspace only', async (lang) => {
     const out = await body(lang, 'connectors');
     const plain = text(out);
     for (const l of ['Connectors', 'System', 'Data', 'Frequency', 'Status', 'Last sync', 'Last volume', 'Sync now', 'Configure']) expect(plain, l).toContain(label(l, lang));
-    expect(count(out, /<tr>/g)).toBe(11);
-    expect(count(out, /class="[^"]*connMode/g)).toBe(3);
-    expect(count(out, /class="tag tag-accent"/g)).toBe(1);
+    // R-021: Lucca is no longer listed (header + 9 rows); Codex, Cursus and Vigie are mocks, MS Project a file exchange, the
+    // other five "Not connected" — no seeded "Warning" (Outlook) any more, and "Sync now" only on the three mocks.
+    expect(count(out, /<tr>/g)).toBe(10);
+    expect(count(out, /class="[^"]*connMode/g)).toBe(4);
+    expect(count(out, /class="tag tag-accent"/g)).toBe(0);
+    expect(count(out, new RegExp(`>${lang === 'en' ? 'Not connected' : 'Non connecté'}<`, 'g'))).toBe(5);
+    expect(count(out, new RegExp(`>${lang === 'en' ? 'Mock' : 'Simulé'}<`, 'g'))).toBe(3);
+    expect(count(out, new RegExp(`aria-label="${label('Sync now', lang)} · `, 'g'))).toBe(3);
+    expect(count(out, new RegExp(`aria-label="${label('Configure', lang)} · `, 'g'))).toBe(9);
     expect(plain).toContain(lang === 'en' ? 'Vigie Mock connector · local mirror' : 'Vigie Connecteur simulé · miroir local');
+    expect(plain).toContain(lang === 'en' ? 'MS Project File exchange · no live connection' : 'MS Project Échange de fichiers · pas de connexion directe');
     const ro = await body(lang, 'connectors', false);
     expect(text(ro)).not.toContain(label('Sync now', lang));
   });
 
   it('import / export cards and the audit trail with its CSV export', async () => {
     const imp = await body('en', 'imports');
-    expect(count(imp, />Drop a file or click to choose</g)).toBe(6);
+    // The three import cards keep the drop-zone text; the three export cards say what a click does (e2e review).
+    expect(count(imp, />Drop a file or click to choose</g)).toBe(3);
+    expect(count(imp, />Click to choose what to export</g)).toBe(3);
     expect(count(imp, /type="file"/g)).toBe(3);
     const fr = await body('fr', 'audit');
     const plain = text(fr);
@@ -146,14 +161,17 @@ describe('Activity, integrations & audit body', () => {
     expect(plain).toContain('Exporter en CSV');
     expect(count(fr, /<tr>/g)).toBe(9);
     expect(await body('en', 'audit', false)).not.toContain('audit.csv');
-    // French connector volumes the prototype left in English; an empty audit trail says so.
-    expect(text(await body('fr', 'connectors'))).toContain('1 248 plans · 13 liés');
+    // French connector volumes the prototype left in English (R-021: the not-connected PDM shows none); an empty audit trail
+    // says so.
+    expect(text(await body('fr', 'connectors'))).toContain('412 fiches · 38 liées à HLT-026');
+    expect(text(await body('fr', 'connectors'))).not.toContain('1 248 plans');
     const t = makeT('fr');
-    const empty = plumbingView({ view: 'audit', source: null, activity: [], connectors: [], imports: [], audit: [], counts: { eventsToday: 0, auditLast7Days: 0 }, unread: 0, personaTitle: 'Portfolio director' }, t, 'fr');
+    const empty = plumbingView({ view: 'audit', source: null, activity: [], connectors: [], imports: [], audit: [], counts: { eventsToday: 0, auditLast7Days: 0 }, unread: 0, personaTitle: 'Portfolio director', ratesVisible: true }, t, 'fr');
     expect(text(html(h(PlumbingBody, { view: empty, canEdit: true, t }), 'fr'))).toContain('Aucune entrée d’audit pour l’instant');
     // The area of connector runs is translated by the feature (not the shared dictionary: ERP-202 has a package "Integrations").
-    const run = plumbingView({ ...{ view: 'audit' as const, source: null, activity: [], connectors: [], imports: [], counts: { eventsToday: 0, auditLast7Days: 1 }, unread: 0, personaTitle: 'Portfolio director' },
-      audit: [{ occurredAt: '2026-09-25T07:00:00.000Z', when: '25 Sep 09:00', who: 'Marie Lefebvre', object: 'Connector Lucca', change: 'sync', area: 'Integrations', projectCode: null }] }, t, 'fr');
+    const run = plumbingView({ ...{ view: 'audit' as const, source: null, activity: [], connectors: [], imports: [], counts: { eventsToday: 0, auditLast7Days: 1 }, unread: 0, personaTitle: 'Portfolio director', ratesVisible: true },
+      audit: [{ occurredAt: '2026-09-25T07:00:00.000Z', when: '25 Sep 09:00', who: 'Marie Lefebvre', object: 'Connector Lucca', change: 'sync', area: 'Integrations', projectCode: null,
+        userEmail: null, reason: null, before: null, after: null, messageKey: null, messageParams: null }] }, t, 'fr');
     expect(run.audit[0].area).toBe('Intégrations');
     expect(makeT('fr')('Integrations')).toBe('Integrations');
   });

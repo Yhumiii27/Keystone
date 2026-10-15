@@ -2,8 +2,9 @@
 // Generic schema-driven add-form dialog (docs/spec/01 §8, docs/spec/02 C-21 FormDialog).
 // Fields text / number / textarea / select in a 2-column grid; required marks `*`; submit disabled until
 // every required non-select field is non-blank; calls `onSubmit`, then toasts and closes on success.
-// Values are rebuilt on every opening (no carry-over).
-import { Check, Play, Warning } from '@phosphor-icons/react/dist/ssr';
+// Values are rebuilt on every opening (no carry-over). An optional `note` (R-122) shows a line with an outside link under
+// the fields (new tab, rel noopener); forms without it render as before.
+import { ArrowSquareOut, Check, Play, Warning } from '@phosphor-icons/react/dist/ssr';
 import { useId, useState, useTransition } from 'react';
 import { Button } from '@/components/ds/Button';
 import { Dialog } from '@/components/ds/Dialog';
@@ -75,7 +76,7 @@ export function FormDialog(props: FormDialogProps) {
   );
 }
 
-function FormBody({ fields, submit, kind = 'create', onClose, onSubmit, initialValues, successToast, labels, tr }: FormDialogProps & { tr: (s: string) => string }) {
+function FormBody({ fields, submit, kind = 'create', note, onClose, onSubmit, initialValues, successToast, labels, tr }: FormDialogProps & { tr: (s: string) => string }) {
   const { t } = useI18n();
   const baseId = useId();
   const [values, setValues] = useState<FormValues>(() => initialFormValues(fields, initialValues));
@@ -143,6 +144,15 @@ function FormBody({ fields, submit, kind = 'create', onClose, onSubmit, initialV
           </Field>
         ))}
       </div>
+      {note && (
+        <p className={s.note}>
+          {tr(note.text)}{' '}
+          <a href={note.href} target="_blank" rel="noopener noreferrer" className={s.noteLink}>
+            {tr(note.linkLabel)}
+            <ArrowSquareOut aria-hidden className={s.noteIcon} />
+          </a>
+        </p>
+      )}
       {error && (
         <Callout variant="emphasis" icon={Warning} role="alert" className={s.error}>
           {error}

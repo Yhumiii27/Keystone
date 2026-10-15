@@ -5,13 +5,14 @@ import 'server-only';
 import { SCREEN_BY_ID, type ScreenId } from '@/config/screens';
 import { isOutside } from '@/components/app/shell/nav-model';
 import { canSeeRates } from '@/domain/hr';
+import { canSeeSupplierPrices } from '@/domain/rights';
 import { makeT, type Lang } from '@/i18n/translate';
 import { getDb } from '@/server/db/client';
 import { findPerson, requireProject } from '@/server/db/helpers';
 import type { ExportFormat } from '@/server/db/codes';
 import { exportLog } from '@/server/db/schema';
-import { getProject, listProjects } from '@/server/dal/projects';
-import { isMineProject } from '@/server/project-context';
+import { getProject } from '@/server/dal/projects';
+import { projectAccessResolver } from '@/server/project-context';
 import type { Viewer, ZoneKey } from '@/server/session';
 import { toCsv } from './csv';
 import { renderPdf } from './pdf';
@@ -19,6 +20,7 @@ import { formatsOf, getExportProvider } from './registry';
 import type { ExportContext, ExportFile, PdfDocument } from './types';
 import { toXlsx } from './xlsx';
 import './providers';
+import { dataText } from '@/i18n/data-text';
 
 /** Refusal with the HTTP status the route returns; `message` is an EN source sentence. */
 export class ExportError extends Error {
@@ -46,12 +48,14 @@ export interface ExportRequest {
 /**
  * Export context with the screen's access rules: unknown screen → 404; project-scoped screens need `code` (unknown → 404);
  * a client exports only the projects of their organisation (403). Screens outside the viewer's workspace stay exportable
- * read-only, as the screen itself is (`outside`), unless the provider refuses.
+ * read-only for internal roles, as the screen itself is (`outside`), unless the provider refuses; a client gets 403 there
+ * (P-1: "lecture seule en interne, accès refusé pour le client").
  */
 export async function buildExportContext(req: ExportRequest): Promise<ExportContext> {
   const def = SCREEN_BY_ID[req.screen as ScreenId];
   if (!def) throw new ExportError(404, 'Unknown screen');
   const screen = def.id;
+  if (req.viewer.role === 'client' && isOutside(req.viewer.role, screen)) throw new ExportError(403, 'Outside your workspace');
   const code = req.params.get('code');
   let project = null;
   let readOnly = false;
@@ -59,11 +63,11 @@ export async function buildExportContext(req: ExportRequest): Promise<ExportCont
     if (!code) throw new ExportError(400, 'Project code missing');
     project = await getProject(code);
     if (!project) throw new ExportError(404, 'Unknown project');
-    if (req.viewer.role === 'client' && !isMineProject(req.viewer, project)) throw new ExportError(403, 'Clients export their own projects only');
-    // Same rule as getProjectScope (project read-only, 01 §5.2) for an explicit viewer.
-    const pool = (await listProjects()).filter((p) => p.hasData);
-    const mine = pool.filter((p) => isMineProject(req.viewer, p)).length;
-    readOnly = req.viewer.role !== 'director' && mine > 0 && mine < pool.length && !isMineProject(req.viewer, project);
+    // Same rules as getProjectContext for an explicit viewer: a client exports their organisation's projects only (P-10a);
+    // a project the viewer is not on the team of is read-only (R-041, P-2).
+    const access = (await projectAccessResolver(req.viewer))(project);
+    if (access.refused) throw new ExportError(403, 'Clients export their own projects only');
+    readOnly = access.readOnly;
   }
   const z = req.params.get('zone');
   const zone = (z && ZONES.has(z) ? (z as ZoneKey) : null) ?? req.zoneCookie ?? null;
@@ -73,7 +77,7 @@ export async function buildExportContext(req: ExportRequest): Promise<ExportCont
   });
   return {
     viewer: req.viewer, lang: req.lang, t: makeT(req.lang), screen, outside: isOutside(req.viewer.role, screen), project, readOnly, params, zone,
-    ratesMasked: !canSeeRates(req.viewer.role), variant: req.params.get('variant') || null, now: req.now ?? new Date(),
+    ratesMasked: !canSeeRates(req.viewer.role), pricesMasked: !canSeeSupplierPrices(req.viewer.role), variant: req.params.get('variant') || null, now: req.now ?? new Date(),
   };
 }
 
@@ -96,7 +100,8 @@ const xlsxLabels = (t: (s: string) => string) => ({
   sheet: t('Export'), title: t('Title'), project: t('Project'), filters: t('Filters'), exportedBy: t('Exported by'), exportedOn: t('Exported on'),
 });
 
-const pdfRows = (doc: PdfDocument) => doc.blocks.reduce((n, b) => n + (b.kind === 'table' ? b.sheet.rows.length : 0), 0);
+const pdfRows = (doc: PdfDocument) =>
+  doc.blocks.reduce((n, b) => n + (b.kind === 'table' ? b.sheet.rows.length : b.kind === 'gantt' ? b.rows.length + (b.milestones?.length ?? 0) : 0), 0);
 
 /**
  * Produces the file. Throws ExportError (404 no provider / nothing to export, 403 refused, 400 bad format).
@@ -124,7 +129,7 @@ export async function runExport(ctx: ExportContext, format: ExportFormat, opts: 
     return { format, fileName: exportFileName(base, ctx, 'csv'), mime: MIME.csv, body, rowCount: wb.sheets[0].rows.length };
   }
   const body = await toXlsx(wb, {
-    lang: ctx.lang, labels: xlsxLabels(ctx.t), project: ctx.project ? `${ctx.project.code} · ${ctx.t(ctx.project.name)}` : null, exportedBy: ctx.viewer.name,
+    lang: ctx.lang, labels: xlsxLabels(ctx.t), project: ctx.project ? `${ctx.project.code} · ${dataText(ctx.project.name, ctx.lang)}` : null, exportedBy: ctx.viewer.name,
     exportedOn: ctx.now,
   });
   return { format, fileName: exportFileName(base, ctx, 'xlsx'), mime: MIME.xlsx, body, rowCount: wb.sheets.reduce((n, s) => n + s.rows.length, 0) };

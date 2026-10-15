@@ -1,16 +1,17 @@
 // Projects map view model (docs/spec/03 §3; template 215–236; logic 5072–5081). Builds, from the DAL map
 // (getProjectsMap), everything the screen renders — translated: KPI tiles, the "Sites" list grouped by city and
 // the map points (marker style, tooltip tags, open link) and labels. Pure; server-compatible.
+// Delivery 8 (L-7 = a, R-135): the tooltip's stage tag takes the stage colour, like the list (the prototype coloured it
+// from the health); the legend's grey marker reads "Closed / cancelled" (it said "Closed / on hold").
 import type { TagTone } from '@/components/ds/Tag';
 import type { MapTagView, ProjectsMapLabels, ProjectsMapPoint } from '@/components/charts/projects-map';
 import { HEALTH_TONE, lifecycleTone, type Tone } from '@/components/app/tones';
 import { screenHref } from '@/config/screens';
 import { HEALTH_LABEL } from '@/domain/health';
-import {
-  mapCrumbExtra, mapKpis, markerStyleOf, tooltipStatusTone, type GeoBounds, type MapCategory, type MapKpiView,
-} from '@/domain/worldmap';
-import type { T } from '@/i18n/translate';
+import { mapCrumbExtra, mapKpis, markerStyleOf, type GeoBounds, type MapCategory, type MapKpiView } from '@/domain/worldmap';
+import type { Lang, T } from '@/i18n/translate';
 import type { MapPoint, ProjectsMap } from '@/server/dal/geo';
+import { dataText, projectLabelText } from '@/i18n/data-text';
 
 /** One project on the map (tooltip row): `mapPts` with codes kept and labels translated. */
 export type MapPointView = ProjectsMapPoint & { category: MapCategory };
@@ -53,18 +54,21 @@ export interface WorldMapModel {
   crumbExtra: string;
 }
 
-const name = (p: MapPoint, t: T) => `${p.project.displayId} · ${t(p.project.name)}`;
-const sub = (p: MapPoint, t: T) => [p.project.code, p.project.pm, t(p.project.client)].filter(Boolean).join(' · ');
+// R-148: project and client names as typed (or their seeded demo entry).
+const name = (p: MapPoint, lang: Lang) => projectLabelText(p.project, lang);
+const sub = (p: MapPoint, lang: Lang) => [p.project.code, p.project.pm, dataText(p.project.client, lang)].filter(Boolean).join(' · ');
 /** DS tag tone of a status tone ("muted" never applies to a stage or a health). */
 const tagTone = (tone: Tone): TagTone => (tone === 'muted' ? 'neutral' : tone);
 const healthTag = (p: MapPoint, t: T): MapTagView | null => (p.health ? { label: t(HEALTH_LABEL[p.health]), tone: tagTone(HEALTH_TONE[p.health]) } : null);
+/** Stage tag in the stage colour (`statusTag`): the list rows and, since L-7 (R-135), the map tooltip. */
+const stageTag = (p: MapPoint, t: T): MapTagView => ({ label: t(p.project.status), tone: tagTone(lifecycleTone(p.project.status)) });
 
 /** Where a map or list row leads (`p.open`, logic 5081 / map message `open`, logic 3765). */
 export function openHref(p: { code: string; hasData: boolean }): string {
   return p.hasData ? screenHref('plan', { code: p.code }) : `${screenHref('projects')}?q=${encodeURIComponent(p.code)}`;
 }
 
-export function buildWorldMapModel(map: ProjectsMap, t: T): WorldMapModel {
+export function buildWorldMapModel(map: ProjectsMap, t: T, lang: Lang): WorldMapModel {
   const zoneLabel = map.zone?.label ?? null;
   const kpis = mapKpis(
     map.points.map((p) => ({ category: p.category, health: p.health, site: `${p.city}|${p.country}`, country: p.country })),
@@ -74,15 +78,15 @@ export function buildWorldMapModel(map: ProjectsMap, t: T): WorldMapModel {
 
   const points: MapPointView[] = map.points.map((p) => ({
     code: p.project.code,
-    name: name(p, t),
-    sub: sub(p, t),
+    name: name(p, lang),
+    sub: sub(p, lang),
     city: p.city,
     country: t(p.country),
     lat: p.lat,
     lng: p.lng,
     category: p.category,
     style: markerStyleOf(p.category, p.health),
-    status: { label: t(p.project.status), tone: tooltipStatusTone(p.category, p.health) },
+    status: stageTag(p, t),
     health: healthTag(p, t),
     href: openHref(p.project),
   }));
@@ -95,9 +99,9 @@ export function buildWorldMapModel(map: ProjectsMap, t: T): WorldMapModel {
     focusCode: g.points[0].project.code,
     items: g.points.map((p) => ({
       code: p.project.code,
-      name: name(p, t),
-      sub: `${p.project.code} · ${p.project.pm} · ${t(p.project.client)}`,
-      status: { label: t(p.project.status), tone: tagTone(lifecycleTone(p.project.status)) },
+      name: name(p, lang),
+      sub: `${p.project.code} · ${p.project.pm} · ${dataText(p.project.client, lang)}`,
+      status: stageTag(p, t),
       health: healthTag(p, t),
       href: openHref(p.project),
     })),
@@ -116,7 +120,8 @@ export function buildWorldMapModel(map: ProjectsMap, t: T): WorldMapModel {
       ontrack: t('On track'),
       risk: t('At risk / off track'),
       pipeline: t('Pipeline'),
-      closed: t('Closed / on hold'),
+      // L-7 (R-135): the grey marker is a closed or cancelled project (it also covers an execution project without a health yet).
+      closed: t('Closed / cancelled'),
       open: t('Open project'),
       loading: t('Loading map geometry…'),
       failed: t('Map geometry could not be loaded.'),

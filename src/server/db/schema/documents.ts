@@ -1,14 +1,16 @@
 // Documents — the Codex index (docs/spec/11 §3.10, screens 10 §4 Documents and §5 Document types register).
 // Codex (the document management system) owns the files, numbering, approval circuits and retention; Keystone
 // keeps a synced index of the records (number, revision, status, confidentiality, tags, links), the approval proof,
-// distribution / client acknowledgements and the download log, and hands deposits over to Codex.
+// distribution / client acknowledgements, and hands deposits over to Codex. Delivery 8 (D-2 = a, R-127): the download log
+// stays in Codex (table `document_downloads` dropped); the revision rows are kept for the "Obsolete revisions withdrawn" KPI.
 //
 // The prototype synthesises part of the history (one revision every 21 days, approval dates counted back from the
 // document date, two fixed download entries per released document). The seed materialises that history as rows so
 // the screens read data, never formulas; a real Codex sync replaces them (OPEN QUESTION D-1, 10 OQ13).
 import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type {
-  ApproverRole, Confidentiality, DepositStatus, DocDownloadSource, DocFamily, DocLinkKind, DocRecipient, DocService, DocumentStatus,
+  ApproverRole, CodexDecision, CodexOutboxKind, CodexSyncStatus, Confidentiality, DepositStatus, DocFamily, DocLinkKind, DocRecipient,
+  DocService, DocumentStatus,
 } from '../codes';
 import { id, timestamps } from './_common';
 import { persons } from './organisation';
@@ -82,7 +84,7 @@ export const documents = pgTable('documents', {
   lastWithdrawnOn: date('last_withdrawn_on', { mode: 'string' }),
   /** Created from Keystone (deposit hand-off, meeting minutes) — "New" tag. */
   isNew: boolean('is_new').notNull().default(false),
-  /** Codex deep link (OPEN QUESTION D-1). */
+  /** Codex's id and own link of the record, filled by the index read (R-033; OPEN QUESTION D-1); null until then. */
   codexId: text('codex_id'),
   codexUrl: text('codex_url'),
   /** Vault order: DOCS order; Keystone-created records are prepended with a lower value. */
@@ -152,20 +154,8 @@ export const documentAcknowledgements = pgTable(
   (t) => [primaryKey({ columns: [t.documentId, t.revision] })],
 );
 
-/** Download log (`engOv.dl` + the Codex log). */
-export const documentDownloads = pgTable('document_downloads', {
-  id: id(),
-  documentId: uuid('document_id').notNull().references(() => documents.id, { onDelete: 'cascade' }),
-  revision: text('revision').notNull(),
-  personId: uuid('person_id').references(() => persons.id),
-  /** "S. Haddad" / persona full name. */
-  personName: text('person_name').notNull(),
-  downloadedOn: date('downloaded_on', { mode: 'string' }).notNull(),
-  /** "PDF" | "Native". */
-  format: text('format').notNull(),
-  source: text('source').$type<DocDownloadSource>().notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+// The download log (`engOv.dl` + the Codex log, table `document_downloads`) was dropped in Delivery 8 (D-2 = a, R-127): it
+// stays in Codex, which the drawer links to.
 
 /** Deposit hand-offs to Codex (`dv.dep`): a new document, or a new revision of an existing one. */
 export const documentDeposits = pgTable('document_deposits', {
@@ -192,7 +182,72 @@ export const documentDeposits = pgTable('document_deposits', {
 export const documentIndexSyncs = pgTable('document_index_syncs', {
   id: id(),
   syncedAt: timestamp('synced_at', { withTimezone: true }).notNull(),
-  /** Records in Codex at that sync (beyond the documents indexed here). */
+  /** Records in Codex at that sync (beyond the documents indexed here); a read of Codex's index: the records of the index. */
   recordCount: integer('record_count').notNull(),
   requestedByPersonId: uuid('requested_by_person_id').references(() => persons.id),
+  /**
+   * Delivery 8 (R-033): `codex` = a read of Codex's index by the HTTP connector (the banner's "Last sync"; the next read's
+   * `since` is `nextSince`); `keystone` = Keystone's own index (seed, mock "Sync now"), never shown as a sync with Codex.
+   */
+  source: text('source').$type<'keystone' | 'codex'>().notNull().default('keystone'),
+  /**
+   * A read of Codex's index: the `since` of the next read (integration review) — the read's time. Records it skipped because
+   * Keystone did not know their project or document type yet wait in `codex_index_awaiting` instead of holding the mark: a
+   * held mark had every read apply unchanged records again over Keystone's own state. `syncedAt` stays the banner's "Last sync".
+   */
+  nextSince: timestamp('next_since', { withTimezone: true }),
+});
+
+/**
+ * Records of Codex's index waiting for Keystone data (Delivery 8, R-033; integration review): a read skipped them because
+ * Keystone did not know their project or document type yet. Once both exist, the next read asks Codex again for that
+ * project from `readSince` and creates these records only, when Keystone has not indexed them meanwhile (`refreshCodexIndex`).
+ */
+export const codexIndexAwaiting = pgTable('codex_index_awaiting', {
+  /** Codex number of the record ("RPT-XYZ-001"). */
+  number: text('number').primaryKey(),
+  /** Project code ("XYZ-999") or "QMS", and document type code, as Codex sent them. */
+  projectCode: text('project_code').notNull(),
+  typeCode: text('type_code').notNull(),
+  /** `since` of the read that skipped it (null = the whole index): a read from there brings it again. */
+  readSince: timestamp('read_since', { withTimezone: true }),
+  /** Time of the read that skipped it. */
+  skippedAt: timestamp('skipped_at', { withTimezone: true }).notNull(),
+});
+
+/**
+ * Outbox towards Codex (Delivery 7, P-7b = a, D-1b = a, P-7c = a): the circuit decisions the named approvers record in
+ * Keystone, and the start of an engineering deliverable's circuit ("Validate release (PM)"). Codex owns the circuit
+ * and the status: an entry never changes the index record; it stays "pending sync with Codex" until the connector
+ * delivers it (src/server/integrations/codex), and Codex's answer comes back through the index refresh, which closes
+ * the entries it reflects. Open entries (closedAt null) are shown over the mirrored circuit.
+ */
+export const codexDocumentOutbox = pgTable('codex_document_outbox', {
+  id: id(),
+  documentId: uuid('document_id').notNull().references(() => documents.id, { onDelete: 'cascade' }),
+  /** Number and revision at the time of recording (the payload does not depend on the index row). */
+  documentNumber: text('document_number').notNull(),
+  revision: text('revision').notNull(),
+  kind: text('kind').$type<CodexOutboxKind>().notNull(),
+  /** Approval: the circuit step decided (1…), its role and the decision. */
+  stepPosition: integer('step_position'),
+  role: text('role').$type<ApproverRole>(),
+  decision: text('decision').$type<CodexDecision>(),
+  /** Reason given with a rejection. */
+  comment: text('comment'),
+  actorName: text('actor_name').notNull(),
+  actorPersonId: uuid('actor_person_id').references(() => persons.id),
+  actorRole: text('actor_role').notNull(),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+  syncStatus: text('sync_status').$type<CodexSyncStatus>().notNull(),
+  attempts: integer('attempts').notNull().default(0),
+  lastAttemptAt: timestamp('last_attempt_at', { withTimezone: true }),
+  /** Set while a delivery is sending the entry (R-010: one sender across processes; expired claims are taken over). */
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  lastError: text('last_error'),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+  /** Codex's acknowledgement id. */
+  codexRef: text('codex_ref'),
+  /** Codex reflected the entry (step signed, status moved on) or a new revision superseded it. */
+  closedAt: timestamp('closed_at', { withTimezone: true }),
 });

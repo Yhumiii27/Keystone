@@ -2,8 +2,9 @@
 // on the server from the screen loaders (src/server/dal/aftersales.ts) and the domain rules (src/domain/aftersales.ts),
 // translated with t() and the feature's helpers (./i18n.ts). Pure: no I/O.
 // Deliberate deviations from the prototype: the Interventions column headed "Project" showed the intervention type —
-// it is headed "Type" (00 §7.16, 07 OQ7); the claims screen's zone notice tests the list on show (07 A.1); the machine
-// sub-line drops the trailing " · " when no configuration generation is recorded; a claim's design ECO opens Keystone's
+// it is headed "Type" (00 §7.16, 07 OQ7); the claims screen's zone notice tests the list on show (07 A.1) and names what
+// is missing — the machines, else the view's list (R-155, X-16); the machine sub-line drops the trailing " · " when no
+// configuration generation is recorded; a claim's design ECO opens Keystone's
 // Change orders screen when Vigie reports it, else the ECO in Vigie (the prototype's tag was inert, 07 OQ20); the
 // configuration tags also offer "Open in Vigie" (Vigie owns the ECOs). Vigie is an internal application: the client
 // (who reaches these screens outside their workspace) gets no Vigie link — a design ECO Vigie does not report to
@@ -13,12 +14,13 @@ import {
   SAV_VIEWS, SAV_VIEW_LABEL, SEVERITY_TONE, WARRANTY_TONE, claimCostRows, claimStatusTone, configItems, coverageTone, fleetKpis, fleetZoneEmpty,
   interventionTone, savKpis, savZoneEmpty, type KpiCard, type SavView, type ZoneCode,
 } from '@/domain/aftersales';
+import type { FormDef } from '@/components/app/form-def';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import { displayOfIso } from '@/server/db/codes';
 import { vigieEcoUrl } from '@/server/integrations/vigie/links';
 import { countText, dataText, interventionStatusText } from './i18n';
-import { ecoHref, savHref } from './links';
+import { claimHref, ecoHref, savHref } from './links';
 
 const LO = 'var(--color-accent-300)';
 const OK = 'var(--color-text)';
@@ -44,12 +46,25 @@ function kpiViews(cards: KpiCard[], t: T, lang: Lang): KpiView[] {
   }));
 }
 
-const zoneNotice = (show: boolean, t: T) => (show ? t('No project in this zone for this view') : null);
+/**
+ * Zone notice of the machine lists (R-155, X-16): "No machine in this zone" when the zone has no machine; on Warranty &
+ * claims, a zone with machines whose view lists nothing names that view's list (07 A.1 — the notice tests the list on
+ * show; deviation from X-16's literal text, which would be false for Asia Pacific › Interventions on the seed). The
+ * project screens keep "No project in this zone for this view".
+ */
+const NO_MACHINE = 'No machine in this zone';
+const SAV_ZONE_EMPTY: Record<SavView, string> = { claims: 'No claim in this zone', interventions: 'No intervention in this zone', costs: 'No warranty cost in this zone' };
 
 /** Who looks at the screens. */
 export interface AftersalesViewer {
   /** Links to Vigie are shown (an internal application: not to the client). */
   vigie: boolean;
+  /** R-143: the viewer edits claims and interventions (workspace; the Server Functions re-check). Default false. */
+  canEdit?: boolean;
+  /** R-143: the claim whose drawer is open (`?claim=`). */
+  selectedClaim?: string | null;
+  /** R-143: "Mark done" form per planned intervention (translated), built by the page for editors. */
+  doneForms?: Record<string, FormDef>;
 }
 const STAFF: AftersalesViewer = { vigie: true };
 
@@ -126,7 +141,7 @@ export function fleetView(data: FleetScreenData, zone: ZoneCode | null, t: T, la
   });
   return {
     kpis: kpiViews(fleetKpis(data.machines), t, lang),
-    zoneEmpty: zoneNotice(fleetZoneEmpty(zone, rows.length), t),
+    zoneEmpty: fleetZoneEmpty(zone, rows.length) ? t(NO_MACHINE) : null,
     rows,
   };
 }
@@ -144,6 +159,9 @@ export interface ClaimEcoView {
 
 export interface ClaimRowView {
   number: string;
+  /** Row click: opens the claim's drawer (`?claim=WC-014`), or closes it when open (R-143). */
+  href: string;
+  selected: boolean;
   machineName: string;
   /** "MCH-041 · Port authority". */
   machineSub: string;
@@ -175,6 +193,10 @@ export interface InterventionRowView {
   duration: string;
   status: string;
   statusClass: string;
+  /** R-143: "Mark done" (planned interventions, editors): the translated form; null otherwise. */
+  done: { label: string; ariaLabel: string; form: FormDef } | null;
+  /** R-143 / R-144: "Done 8 Oct · Replaced brake disc · HST-BRK-DSC → rev B" (typed text as typed); null when none. */
+  doneLine: string | null;
 }
 
 export interface CostRowView {
@@ -220,11 +242,13 @@ export function savView(data: SavScreenData, view: SavView, zone: ZoneCode | nul
     view,
     seg: SAV_VIEWS.map((v) => ({ value: v, label: t(SAV_VIEW_LABEL[v]), href: savHref(v) })),
     kpis: kpiViews(savKpis(data.claims, data.interventions, lang), t, lang),
-    zoneEmpty: zoneNotice(savZoneEmpty(zone, listShown), t),
+    zoneEmpty: savZoneEmpty(zone, listShown) ? t(data.machines.length ? SAV_ZONE_EMPTY[view] : NO_MACHINE) : null,
     claims:
       view === 'claims'
         ? data.claims.map((c) => ({
             number: c.number,
+            href: claimHref(viewer.selectedClaim === c.number ? null : c.number),
+            selected: viewer.selectedClaim === c.number,
             machineName: dataText(c.machineName, lang),
             machineSub: `${c.machineNumber} · ${dataText(c.client, lang)}`,
             color: c.open ? OK : MUTED,
@@ -255,6 +279,11 @@ export function savView(data: SavScreenData, view: SavView, zone: ZoneCode | nul
             duration: t(i.durationText),
             status: interventionStatusText(i.status, t, lang),
             statusClass: tag(interventionTone(i.status)),
+            done:
+              viewer.canEdit && i.status === 'planned' && viewer.doneForms?.[i.number]
+                ? { label: t('Mark done'), ariaLabel: `${t('Mark done')} · ${i.number}`, form: viewer.doneForms[i.number] }
+                : null,
+            doneLine: doneLineText(i, t),
           }))
         : null,
     costs:
@@ -270,4 +299,10 @@ export function savView(data: SavScreenData, view: SavView, zone: ZoneCode | nul
           }))
         : null,
   };
+}
+
+/** "Done 8 Oct · Replaced brake disc · HST-BRK-DSC → rev B" of a done intervention recorded in Keystone; null otherwise. */
+export function doneLineText(i: { doneOn: string | null; report: string | null; partRef: string | null; partRevision: string | null }, t: T): string | null {
+  if (!i.doneOn) return null;
+  return [`${t('Done')} ${dateText(i.doneOn, t)}`, i.report ?? '', i.partRef ? `${i.partRef} → ${t('rev')} ${i.partRevision ?? '—'}` : ''].filter(Boolean).join(' · ');
 }

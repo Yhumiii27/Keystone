@@ -24,6 +24,7 @@ import { getSupplierScorecard } from '@/server/dal/suppliers';
 import { procT } from './i18n';
 import { invoiceDrawerView, invoiceTabView, rfqDrawerView, rfqTabView, segView, supplierTabView, type SourcingCtx } from './model';
 import { SourcingBody } from './sourcing-view';
+import { canSeeSupplierPrices } from '@/domain/rights';
 
 const withI18n = (lang: Lang, el: ReactElement) => h(I18nProvider, { lang } as ComponentProps<typeof I18nProvider>, el);
 const text = (html: string) =>
@@ -46,7 +47,8 @@ function inOrder(seq: string[], expected: string[]) {
   }
 }
 const count = (s: string, sub: string) => s.split(sub).length - 1;
-const ctxOf = (lang: Lang, role: RoleKey = 'director'): SourcingCtx => ({ t: procT(makeT(lang), lang), lang, role, canEdit: canSee(role, 'procurement') });
+// R-046: prices follow the role (director, PM, procurement), as the page does.
+const ctxOf = (lang: Lang, role: RoleKey = 'director'): SourcingCtx => ({ t: procT(makeT(lang), lang), lang, role, canEdit: canSee(role, 'procurement'), prices: canSeeSupplierPrices(role) });
 
 async function rfqHtml(lang: Lang, role: RoleKey = 'director', open: string | null = null) {
   const c = ctxOf(lang, role);
@@ -77,7 +79,7 @@ describe('RFQ & quotes', () => {
     inOrder(text(html), [
       'Display', 'RFQ & quotes', 'Invoices — 3-way match', 'Supplier performance',
       'Open RFQs', '3', '1 ready to award', 'Quotes received', '8', 'Across open requests', 'Savings vs list', '€0k' /* A-12: computed (prototype €12k) */, 'Awarded this quarter', 'Average cycle', '—' /* A-12 (prototype 9 d) */,
-      'RFQ sent → award', 'Award rule', 'PM', 'Decided per RFQ by the project manager',
+      'RFQ sent → award', 'Award rule', '1 / 3', 'RFQs to award decided by the project manager', // R-169 (prototype "PM")
       'Requests for quotation', 'Draft → sent → comparing → awarded · the award creates a draft purchase order',
       'RFQ', 'Part', 'Qty', 'Quotes due', 'Buyer', 'Quotes', 'Award rule', 'Awarded to', 'Status',
       'RFQ-2026-031', 'Steel plate S355 · 20 mm — 192 plates', 'KS-STL-0450', '192', '30 Sep', 'Fabien Bertrand', '3 quotes · from €1,195', 'Lowest total cost of ownership', '—', 'Comparing',
@@ -99,7 +101,7 @@ describe('RFQ & quotes', () => {
     const seq = text(await rfqHtml('fr'));
     inOrder(seq, [
       'Vue', 'Consultations et devis', 'Consultations ouvertes', '1 prête à attribuer', 'Économies vs catalogue', '0 k€', 'Cycle moyen', '—', // A-12: computed (prototype 12 k€, 9 j)
-      'Règle d’attribution', 'CP',
+      'Règle d’attribution', '1 / 3', 'Consultations à attribuer décidées par le chef de projet', // R-169 (prototype « CP »)
       'Demandes de devis (RFQ)', 'RFQ', 'Article', 'Qté', 'Devis attendus', 'Acheteur', 'Devis', 'Règle d’attribution', 'Attribuée à', 'Statut',
       'Tôle acier S355 · 20 mm — 192 tôles', '30 sept.', '3 devis · à partir de 1 195 €', 'Coût total de possession le plus bas', 'Comparaison',
       'Comparer les devis', 'Lidar anticollision — 8 unités', 'Aucun devis', 'Le chef de projet décide', 'Brouillon', 'Envoyer aux fournisseurs',

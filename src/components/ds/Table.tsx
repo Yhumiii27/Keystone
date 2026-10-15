@@ -7,15 +7,29 @@ import s from './Table.module.css';
 export interface TableProps extends HTMLAttributes<HTMLTableElement> {
   /** Font size: 13 (registers), 12.5 (secondary tables), `ds` = DS 14px. Default 13. */
   size?: 13 | 12.5 | 'ds';
+  /**
+   * Tablet layout (R-146): the table scrolls horizontally inside its own box when it is wider than the screen. Default
+   * true; false for a table already inside a scrolling box (its sticky header needs that box as scroll container).
+   */
+  scroll?: boolean;
 }
 
 /** `<table class="table">` — themed header, fading row rules, row hover tint. */
-export function Table({ size = 13, className, children, ...rest }: TableProps) {
-  return (
+export function Table({ size = 13, scroll = true, className, children, ...rest }: TableProps) {
+  const table = (
     <table className={cx('table', size === 13 ? s.t13 : size === 12.5 ? s.t125 : undefined, className)} {...rest}>
       {children}
     </table>
   );
+  return scroll ? <TableScroll>{table}</TableScroll> : table;
+}
+
+/**
+ * Horizontal scroll box of a table on tablets (R-146): no box of its own above 1024 px (`display: contents`, the
+ * prototype's layout), a horizontally scrolling block up to 1024 px. For tables written as a plain `<table>`.
+ */
+export function TableScroll({ children }: { children: ReactNode }) {
+  return <div className={s.scrollX}>{children}</div>;
 }
 
 type Align = 'left' | 'right' | 'center';

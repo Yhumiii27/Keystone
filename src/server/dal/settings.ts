@@ -2,26 +2,32 @@ import 'server-only';
 // Settings DAL — personalisable lists and project health rules (docs/spec/10 §1). Lists live in reference_values
 // (skills, cost categories, project statuses, risk categories, deliverable types, public holidays, location types);
 // stock locations are the storage locations (suppliers.ts), so receipts, transfers and reservations use them at once;
-// thresholds are app_settings "health.thresholds". "Reset to defaults" restores SETTINGS0 (the lists, the six default
-// locations and the thresholds).
+// thresholds are app_settings "health.thresholds". "Reset to defaults" restores the stored defaults (R-170:
+// app_settings "settings.defaults", src/domain/settings-defaults.ts — the lists, the default locations and the thresholds).
 // Chapter 4 (A-13, A-14 — rules in src/domain/settings-rules.ts): only the portfolio director edits; "Remove" deactivates
-// a value still in use (or a SETTINGS0 default) and deletes an unused custom one; the lists drive the modules through
+// a value still in use (or a default) and deletes an unused custom one; the lists drive the modules through
 // src/server/dal/settings-lists.ts; the thresholds drive the one health rule (src/server/dal/health-thresholds.ts).
 import { and, asc, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import {
-  APP_SETTING_HEALTH, HEALTH_DEFAULTS, REFERENCE_LIST_KEYS, locationType, slugOf,
+  APP_SETTING_CCB, APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, REFERENCE_LIST_KEYS, locationType, slugOf,
   type LocationType, type ReferenceListKey,
 } from '@/server/db/codes';
 import { SETTINGS_CARDS } from '@/domain/admin';
+import { DEFAULT_CCB_THRESHOLD_KEUR, isCcbThreshold } from '@/domain/change-control';
+import { isHoursVariancePct } from '@/domain/hr';
 import {
-  CUSTOM_STATUSES_ALLOWED, CUSTOM_STATUS_REFUSED, REQUIRED_STAGES, REQUIRED_STAGE_REFUSED, SETTINGS_DIRECTOR_ONLY, canEditSettings, removalModeOf,
+  APP_SETTING_DEFAULTS, defaultHoursVariance, defaultsOfList, fallbackSettingsDefaults, holidayCode, parseSettingsDefaults, type SettingsDefaults,
+} from '@/domain/settings-defaults';
+import {
+  CUSTOM_STATUSES_ALLOWED, CUSTOM_STATUS_REFUSED, HOLIDAY_DATE_TAKEN, REQUIRED_STAGES, REQUIRED_STAGE_REFUSED, SETTINGS_DIRECTOR_ONLY, canEditSettings, removalModeOf,
   type RemovalMode,
 } from '@/domain/settings-rules';
 import { appSettings, referenceValues, skills, storageLocations } from '@/server/db/schema';
-import { defaultReferenceValues, holidayCode } from '@/server/db/seed/settings';
-import { PROTO } from '@/server/prototype';
+import type { Tx } from '@/server/db/types';
+import { readCcbThreshold } from './change-settings';
 import { readHealthThresholds } from './health-thresholds';
+import { readHoursVariance } from './hours-variance';
 import { requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 import { referenceUsage } from './settings-lists';
 
@@ -34,11 +40,17 @@ export type { Actor };
 export interface ReferenceValueRow { code: string; label: string }
 export interface LocationRow { name: string; type: LocationType; typeLabel: string }
 export interface HealthThresholds { risk: number; off: number }
+/** R-088: refusal of an hours-variance threshold out of range (EN source; FR in d8-roles-rates-hr.json). */
+export const HOURS_VARIANCE_RANGE = 'Enter a whole percentage between 1 and 50';
 
 export interface SettingsData {
   lists: Record<ReferenceListKey, ReferenceValueRow[]>;
   locations: LocationRow[];
   health: HealthThresholds;
+  /** R-088 (R-6b): the hours-variance threshold, % of planned (default 10). */
+  hoursVariance: number;
+  /** Delivery 8 (R-069, P-6c): change control board threshold, k€ (optional for callers building the data by hand). */
+  ccbThresholdKeur?: number;
 }
 
 /** Active values of one list, in order. */
@@ -56,13 +68,15 @@ export async function getHealthThresholds(): Promise<HealthThresholds> {
 /** Everything the Settings screen shows. */
 export async function getSettings(): Promise<SettingsData> {
   const db = await getDb();
-  const [values, locs, health] = await Promise.all([
+  const [values, locs, health, hoursVariance, ccbThresholdKeur] = await Promise.all([
     db.select().from(referenceValues).where(eq(referenceValues.active, true)).orderBy(asc(referenceValues.position)),
     db.select().from(storageLocations).where(eq(storageLocations.active, true)).orderBy(asc(storageLocations.position)),
     getHealthThresholds(),
+    readHoursVariance(),
+    readCcbThreshold(),
   ]);
   const lists = Object.fromEntries(REFERENCE_LIST_KEYS.map((k) => [k, values.filter((v) => v.listKey === k).map((v) => ({ code: v.code, label: v.label }))])) as Record<ReferenceListKey, ReferenceValueRow[]>;
-  return { lists, locations: locs.map((l) => ({ name: l.name, type: l.type, typeLabel: locationType.label(l.type) })), health };
+  return { lists, locations: locs.map((l) => ({ name: l.name, type: l.type, typeLabel: locationType.label(l.type) })), health, hoursVariance, ccbThresholdKeur };
 }
 
 /** Writers: the Settings workspace, and only the roles that edit Settings (A-14: the portfolio director). */
@@ -90,6 +104,8 @@ export async function addReferenceValue(listKey: ReferenceListKey, label: string
     if (same?.active) throw new Error(`"${text}" is already in the list`);
     // A-14: project statuses are the lifecycle stages; only a deactivated stage can come back.
     if (listKey === 'statuses' && !same && !CUSTOM_STATUSES_ALLOWED) throw new Error(CUSTOM_STATUS_REFUSED);
+    // Holidays are keyed by date (calendars, leave calendar): an active entry on that date refuses a second label.
+    if (listKey === 'holidays' && !same && rows.some((r) => r.active && r.code === holidayCode(text))) throw new Error(HOLIDAY_DATE_TAKEN);
     const position = rows.reduce((m, r) => Math.max(m, r.position + 1), 0);
     let code: string;
     if (same) {
@@ -190,14 +206,90 @@ export async function setHealthThresholds(input: Partial<HealthThresholds>, acto
   return next;
 }
 
-/** "Reset to defaults": SETTINGS0 lists (custom entries deactivated), the six default locations, default thresholds. */
+/** Refusal of a board threshold that is not a number of k€ in [0, 1 000 000]. */
+export const CCB_THRESHOLD_ERROR = 'Enter a threshold in k€ (0 or more)';
+
+/**
+ * Delivery 8 (R-069, P-6c): the change control board threshold, k€ — a number in [0, 1 000 000] (0 = the board decides every
+ * request with an amount). Applies to change requests submitted afterwards: the steps of a request are fixed at submission.
+ * Director only (Settings, A-14); audited and written to the activity feed. Returns the new value.
+ */
+export async function setCcbThreshold(keur: number, actor: Actor): Promise<number> {
+  ST(actor);
+  if (!isCcbThreshold(keur)) throw new Error(CCB_THRESHOLD_ERROR);
+  const value = Math.round(keur * 100) / 100;
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const cur = await readCcbThreshold(tx);
+    const who = await whoIs(tx, actor);
+    await tx.insert(appSettings).values({ key: APP_SETTING_CCB, value: { keur: value }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value: { keur: value }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
+    if (cur !== value) {
+      await trace(tx, who, {
+        objectRef: 'Change control board', change: `threshold ${cur} → ${value} k€`, area: 'Settings', entityType: 'app_setting',
+        activity: { text: `Change control board threshold · ${cur} → ${value} k€`, kind: 'change' },
+      });
+    }
+    return value;
+  });
+}
+
+/**
+ * R-088 (R-6b): the hours-variance threshold — an integer % of the planned hours, 1–50 (A-14: the portfolio director). Audit and
+ * activity "Hours variance threshold: ±10 % → ±7 %". Returns the stored value.
+ */
+export async function setHoursVariance(pct: unknown, actor: Actor): Promise<number> {
+  ST(actor);
+  if (!isHoursVariancePct(pct)) throw new Error(HOURS_VARIANCE_RANGE);
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    // Read inside the transaction (R-010: it may run again; nothing accumulates outside it).
+    const cur = await readHoursVariance(tx);
+    if (cur === pct) return cur;
+    const who = await whoIs(tx, actor);
+    const value = { pct };
+    await tx.insert(appSettings).values({ key: APP_SETTING_HOURS_VARIANCE, value, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
+    const change = `±${cur} % → ±${pct} %`;
+    await trace(tx, who, {
+      objectRef: 'Hours variance threshold', change, area: 'Settings', entityType: 'app_setting',
+      activity: { text: `Hours variance threshold ${change}`, kind: 'change' },
+    });
+    return pct;
+  });
+}
+
+/**
+ * The stored "Reset to defaults" document (R-170: app_settings "settings.defaults", written with the reference data);
+ * null when none is stored or it does not validate.
+ */
+export async function readSettingsDefaults(tx?: Tx): Promise<SettingsDefaults | null> {
+  const q = tx ?? (await getDb());
+  const [row] = await q.select({ value: appSettings.value }).from(appSettings).where(eq(appSettings.key, APP_SETTING_DEFAULTS));
+  return row ? parseSettingsDefaults(row.value) : null;
+}
+
+/**
+ * "Reset to defaults" (R-170: from the stored defaults, never from the seed module or the prototype data): each list's
+ * default entries active at their default position (custom entries deactivated), the default locations active in order
+ * (the others deactivated), the default thresholds. Without a stored document: the entries flagged default in their
+ * current order, the locations untouched, HEALTH_DEFAULTS.
+ */
 export async function resetSettings(actor: Actor): Promise<void> {
   ST(actor);
   const db = await getDb();
   await db.transaction(async (tx) => {
-    const defaults = defaultReferenceValues();
+    const stored = await readSettingsDefaults(tx);
+    const defaults = stored ?? fallbackSettingsDefaults(await tx.select({
+      listKey: referenceValues.listKey, code: referenceValues.code, label: referenceValues.label, position: referenceValues.position, isDefault: referenceValues.isDefault,
+    }).from(referenceValues));
+    const doc = { lists: defaults.lists, locations: [], health: defaults.health } satisfies SettingsDefaults;
+    // R-069: a document stored before delivery 8 has no board threshold — the default (50 k€).
+    const ccb = defaults.change?.ccbThresholdKeur ?? DEFAULT_CCB_THRESHOLD_KEUR;
     for (const listKey of REFERENCE_LIST_KEYS) {
-      const own = defaults.filter((d) => d.listKey === listKey);
+      const own = defaultsOfList(doc, listKey);
+      // A list without defaults is left as it is (a reset never empties a list, e.g. the lifecycle stages).
+      if (!own.length) continue;
       await tx.update(referenceValues).set({ active: false, updatedAt: new Date() })
         .where(and(eq(referenceValues.listKey, listKey), notInArray(referenceValues.code, own.map((d) => d.code))));
       for (const d of own) {
@@ -205,22 +297,26 @@ export async function resetSettings(actor: Actor): Promise<void> {
           .onConflictDoUpdate({ target: [referenceValues.listKey, referenceValues.code], set: { label: d.label, position: d.position, active: true, isDefault: true, updatedAt: new Date() } });
       }
     }
-    const locs = (PROTO.SETTINGS0.locations as [string, string][]).map(([name, type], position) => ({ name, type: locationType.code(type), position }));
-    await tx.update(storageLocations).set({ active: false, updatedAt: new Date() }).where(notInArray(storageLocations.name, locs.map((l) => l.name)));
-    for (const l of locs) {
-      await tx.insert(storageLocations).values({ ...l, active: true })
-        .onConflictDoUpdate({ target: storageLocations.name, set: { type: l.type, position: l.position, active: true, updatedAt: new Date() } });
+    if (defaults.locations?.length) {
+      const locs = defaults.locations.map((l, position) => ({ ...l, position }));
+      await tx.update(storageLocations).set({ active: false, updatedAt: new Date() }).where(notInArray(storageLocations.name, locs.map((l) => l.name)));
+      for (const l of locs) {
+        await tx.insert(storageLocations).values({ ...l, active: true })
+          .onConflictDoUpdate({ target: storageLocations.name, set: { type: l.type, position: l.position, active: true, updatedAt: new Date() } });
+      }
     }
     const who = await whoIs(tx, actor);
-    await tx.insert(appSettings).values({ key: APP_SETTING_HEALTH, value: { ...HEALTH_DEFAULTS }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
-      .onConflictDoUpdate({ target: appSettings.key, set: { value: { ...HEALTH_DEFAULTS }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
+    const health = { ...defaults.health };
+    await tx.insert(appSettings).values({ key: APP_SETTING_HEALTH, value: health, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value: health, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
+    // R-088: the hours-variance threshold (a document stored before delivery 8 has none: the default 10 %).
+    const hours = { pct: defaultHoursVariance(defaults) };
+    await tx.insert(appSettings).values({ key: APP_SETTING_HOURS_VARIANCE, value: hours, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value: hours, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
+    await tx.insert(appSettings).values({ key: APP_SETTING_CCB, value: { keur: ccb }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value: { keur: ccb }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
     await trace(tx, who, { objectRef: 'Settings', change: 'reset to defaults', area: 'Settings', activity: { text: 'Reset the settings lists to their defaults', kind: 'change' } });
   });
-}
-
-/** Stage codes still offered on the Projects page (Settings › Project statuses, active). */
-export async function activeStatusCodes(): Promise<string[]> {
-  return (await listReferenceValues('statuses')).map((v) => v.code);
 }
 
 /** Labels of several lists at once (forms: risk categories, deliverable types, cost categories). */

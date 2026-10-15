@@ -4,7 +4,8 @@
 // The configuration counts come from Vigie's ECO effectivity (DAL); here only their tags are checked.
 // Deliberate deviations asserted inline: "1 client" (the prototype wrote "1 clients"); the claims screen's zone notice
 // tests the list on show, not the machine list (07 A.1); dates and numbers parsed by the add-forms; a machine added
-// with a past warranty end is Out of warranty.
+// with a past warranty end is Out of warranty; R-145 (NEW-D5-2 = a): the warranty cost tile counts the calendar year's
+// claims and the warranty status is the one in force (the seed's figures do not move: every claim is of 2026).
 import { describe, expect, it } from 'vitest';
 import PROTO from '@/server/prototype/prototype-data.json';
 import { claimCoverage, claimStatus, interventionStatus, isoOfDisplayDate, ncrSeverity, warrantyStatus, type ZoneCode } from '@/server/db/codes';
@@ -13,7 +14,7 @@ import GOLDEN from './aftersales.golden.json';
 import {
   SAV_VIEWS, SAV_VIEW_LABEL, SEVERITY_TONE, WARRANTY_TONE, addedWarrantyStatus, claimCostRows, claimStatusTone, configItems, costBarPct, coverageTone, fleetKpis,
   fleetZoneEmpty, interventionTone, machineClaimStats, machinesInZone, nextPlanned, ofMachinesInZone, openFirst, parseNewClaim, parseNewMachine,
-  savBadge, savKpis, savViewOf, savZoneEmpty, warrantyEnding, warrantyStatusText, type ClaimFacts, type InterventionFacts,
+  savBadge, savKpis, savViewOf, savZoneEmpty, warrantyEnding, warrantyInForce, warrantyStatusText, type ClaimFacts, type InterventionFacts,
 } from './aftersales';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -39,8 +40,8 @@ const machines = (P.FLEET as string[][]).map(([number, type, name, client, site,
     warrantyStatus: ext ? ('extended' as const) : warrantyStatus.code(status), extendedUntil: ext ? iso(ext[1]) : null,
   };
 });
-const claims: ClaimFacts[] = (P.CLAIMS as any[][]).map(([number, machineNumber, , sev, , status, cover, cost, eco]) => ({
-  number, machineNumber, severity: ncrSeverity.code(sev), status: claimStatus.code(status), coverage: claimCoverage.code(cover), costKeur: cost, ecoNumber: eco || null,
+const claims: ClaimFacts[] = (P.CLAIMS as any[][]).map(([number, machineNumber, , sev, date, status, cover, cost, eco]) => ({
+  number, machineNumber, reportedOn: iso(date)!, severity: ncrSeverity.code(sev), status: claimStatus.code(status), coverage: claimCoverage.code(cover), costKeur: cost, ecoNumber: eco || null,
 }));
 const ivs: InterventionFacts[] = (P.INTERVENTIONS as string[][]).map(([number, machineNumber, date, , , , status]) => ({
   number, machineNumber, scheduledOn: iso(date)!, status: interventionStatus.code(status),
@@ -183,10 +184,77 @@ describe('add-forms (AF fleet / AF sav, afSubmit 5121)', () => {
   });
 
   it('a claim opened by the prototype counts in the KPIs and the badge (Critical = major)', () => {
-    const extra: ClaimFacts = { number: 'WC-020', machineNumber: 'MCH-044', severity: 'critical', status: 'open', coverage: 'extended_warranty', costKeur: 0, ecoNumber: null };
+    const extra: ClaimFacts = { number: 'WC-020', machineNumber: 'MCH-044', reportedOn: '2026-09-30', severity: 'critical', status: 'open', coverage: 'extended_warranty', costKeur: 0, ecoNumber: null };
     const all = openFirst([...claims, extra]);
     expect(kpiView(savKpis(all, ivs, 'en'))).toEqual(goldenKpis(G.en.added.claim.sav.claims.kpis));
     expect(savBadge(all)).toBe(G.en.added.claim.sav.claims.badge);
     expect(all.map((c) => c.number).slice(0, 6)).toEqual(G.en.added.claim.sav.claims.claims.slice(0, 6).map((c: any) => c.id.replace('WC-20', 'WC-020')));
+  });
+});
+
+describe('R-145 (NEW-D5-2 = a): warranty cost of the calendar year, warranty in force', () => {
+  const cost = (cs: readonly ClaimFacts[], today?: string) => {
+    const k = savKpis(cs, ivs, 'en', today).find((x) => x.label === 'Warranty cost YTD')!;
+    return [k.value, k.sub];
+  };
+  const claim = (over: Partial<ClaimFacts>): ClaimFacts => ({ number: 'WC-099', machineNumber: 'MCH-041', reportedOn: '2025-12-20', severity: 'minor', status: 'closed', coverage: 'warranty', costKeur: 7, ecoNumber: null, ...over });
+
+  it('a claim reported last year counts in neither the value nor the chargeable sub-line', () => {
+    const seed = cost(claims);
+    expect(seed).toEqual(['€34k', '€6k chargeable']); // every seeded claim is of 2026: the prototype's figures
+    expect(cost([...claims, claim({}), claim({ number: 'WC-098', coverage: 'chargeable', costKeur: 5 })])).toEqual(seed);
+    // A claim of the current year counts — also one dated after the frozen business date (no upper bound).
+    expect(cost([...claims, claim({ reportedOn: '2026-10-02' })])).toEqual(['€41k', '€6k chargeable']);
+    expect(cost([...claims, claim({ reportedOn: '2026-01-01', coverage: 'chargeable', costKeur: 5 })])).toEqual(['€34k', '€11k chargeable']);
+    // The other tiles keep every claim shown (open claims).
+    expect(savKpis([...claims, claim({ status: 'open' })], ivs, 'en')[0].value).toBe(String(claims.filter((c) => c.status !== 'closed').length + 1));
+  });
+
+  it('a new year starts at 0', () => {
+    expect(cost(claims, '2027-01-05')).toEqual(['€0k', '€0k chargeable']);
+    expect(cost(claims, '2026-01-01')).toEqual(['€34k', '€6k chargeable']);
+  });
+
+  it('warranty in force: extension running, expired, contractual end passed, no dates', () => {
+    type W = 'in_warranty' | 'extended' | 'out_of_warranty';
+    const m = (warrantyEndOn: string | null, extendedUntil: string | null, warrantyStatus: W = 'in_warranty') => ({ warrantyEndOn, extendedUntil, warrantyStatus });
+    // MCH-022 of the seed: contractual end 4 Jun 2025, extended to 4 Jun 2027 → Extended, end in force = the extension's.
+    expect(warrantyInForce(m('2025-06-04', '2027-06-04', 'extended'))).toEqual({ status: 'extended', endOn: '2027-06-04' });
+    // An expired extension is Out of warranty (the stored status still says Extended).
+    expect(warrantyInForce(m('2025-06-04', '2026-09-29', 'extended'))).toEqual({ status: 'out_of_warranty', endOn: '2026-09-29' });
+    // The extension's last day is still covered.
+    expect(warrantyInForce(m('2025-06-04', '2026-09-30', 'extended')).status).toBe('extended');
+    // A contractual end just passed, no extension → Out of warranty (the stored status still says In warranty).
+    expect(warrantyInForce(m('2026-09-29', null))).toEqual({ status: 'out_of_warranty', endOn: '2026-09-29' });
+    expect(warrantyInForce(m('2026-09-30', null))).toEqual({ status: 'in_warranty', endOn: '2026-09-30' });
+    // Default (no prototype precedent): an extension recorded before the contractual end has passed already reads Extended.
+    expect(warrantyInForce(m('2026-12-31', '2027-12-31'))).toEqual({ status: 'extended', endOn: '2027-12-31' });
+    // An extension that is not later than the contractual end is ignored.
+    expect(warrantyInForce(m('2027-12-31', '2027-06-30', 'extended'))).toEqual({ status: 'in_warranty', endOn: '2027-12-31' });
+    // An extension without a contractual end.
+    expect(warrantyInForce(m(null, '2027-01-31'))).toEqual({ status: 'extended', endOn: '2027-01-31' });
+    // No date at all: the stored status.
+    expect([warrantyInForce(m(null, null, 'out_of_warranty')), warrantyInForce(m(null, null, 'extended'))]).toEqual([
+      { status: 'out_of_warranty', endOn: null },
+      { status: 'extended', endOn: null },
+    ]);
+    // The clock is a parameter (R-013 later): the seed's extension lapses after 4 Jun 2027.
+    expect(warrantyInForce(m('2025-06-04', '2027-06-04', 'extended'), '2027-06-05').status).toBe('out_of_warranty');
+  });
+
+  it('Installed base tiles: an extension ending within three months is ending soon; an expired one is not in warranty', () => {
+    const base = withOpen(machines);
+    const tiles = (ms: typeof base) => Object.fromEntries(fleetKpis(ms).map((k) => [k.label, [k.value, k.sub]]));
+    const seed = tiles(base);
+    expect([seed['In warranty'], seed['Warranty ending < 90 days']]).toEqual([['6', '1 extended'], ['1', 'MCH-035']]);
+    // MCH-022's extension ending on 15 Dec 2026 is ending soon (its contractual end of 2025 never was).
+    const soon = base.map((m) => (m.number === 'MCH-022' ? { ...m, extendedUntil: '2026-12-15' } : m));
+    expect([tiles(soon)['In warranty'], tiles(soon)['Warranty ending < 90 days']]).toEqual([['6', '1 extended'], ['2', 'MCH-035 · MCH-022']]);
+    // An expired extension: neither In warranty nor Extended any more.
+    const expired = base.map((m) => (m.number === 'MCH-022' ? { ...m, extendedUntil: '2026-08-31' } : m));
+    expect(tiles(expired)['In warranty']).toEqual(['6', '0 extended']);
+    // A contractual end just passed (stored In warranty): no longer counted In warranty.
+    const lapsed = base.map((m) => (m.number === 'MCH-041' ? { ...m, warrantyEndOn: '2026-09-29' } : m));
+    expect(tiles(lapsed)['In warranty']).toEqual(['5', '1 extended']);
   });
 });

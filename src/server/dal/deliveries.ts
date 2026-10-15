@@ -9,14 +9,20 @@ import 'server-only';
 //   (from quarantine to the central warehouse when they were held there), rejected units to quarantine; the order's
 //   received quantities and status follow the accepted quantities, and the invoices of the receipt see its value
 //   (3-way match);
-// - the inspector, the receiving clerk and the decision maker are the viewer.
+// - the inspector, the receiving clerk and the decision maker are the viewer;
+// - Delivery 7 (A-11, R-103): accepted goods update the part's last purchase price (the order line's price, the receipt's
+//   date, the order's supplier) unless a later purchase is already recorded — the BOM and the stock read it. The price is
+//   stored in euros: a line of an order in the project currency is converted at the project's budget rate (C-9, R-075).
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { replacesLastPrice } from '@/domain/bom';
+import { projectFxOf, toEur } from '@/domain/currency';
 import { putAwayAfterQc, qcPlan, registerPlan, remainingToAnnounce, type QcDecision, type ReceiptForAnnounce } from '@/domain/deliveries';
 import { getDb } from '@/server/db/client';
 import { STATUS_ISO, locationType, receiptStatus, type LocationType, type ReceiptStatus } from '@/server/db/codes';
-import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
+import { demoFloor, findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import {
-  goodsReceipts, parts, persons, poLines, projectSites, projects, purchaseOrders, receiptAttachments, receiptLines, stockPositions, storageLocations, supplierInvoices, suppliers,
+  goodsReceipts, partLastPrices, parts, persons, poLines, projectSites, projects, purchaseOrders, receiptAttachments, receiptLines, stockPositions, storageLocations,
+  supplierInvoices, suppliers,
 } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
 import { onTimeDeliveriesOf } from './kpis';
@@ -44,6 +50,8 @@ export interface ReceiptRow {
   projectCode: string;
   poNumber: string;
   supplier: string;
+  /** Sage X3 supplier code (R-096: `code_fournisseur` of the Vigie supplier NCR); null until the Sage supplier file is loaded (NEW-D4-4). */
+  supplierCode: string | null;
   status: ReceiptStatus;
   /** "QC pending". */
   statusLabel: string;
@@ -67,7 +75,7 @@ export interface ReceiptRow {
 
 async function loadReceipts(q: Q, where: ReturnType<typeof eq>): Promise<ReceiptRow[]> {
   const rows = await q
-    .select({ r: goodsReceipts, code: projects.code, po: purchaseOrders.number, supplier: suppliers.name, by: persons.fullName })
+    .select({ r: goodsReceipts, code: projects.code, po: purchaseOrders.number, supplier: suppliers.name, supplierCode: suppliers.x3Code, by: persons.fullName })
     .from(goodsReceipts)
     .innerJoin(projects, eq(projects.id, goodsReceipts.projectId))
     .innerJoin(purchaseOrders, eq(purchaseOrders.id, goodsReceipts.poId))
@@ -83,14 +91,14 @@ async function loadReceipts(q: Q, where: ReturnType<typeof eq>): Promise<Receipt
       .where(inArray(receiptLines.receiptId, ids)).orderBy(asc(receiptLines.position)),
     q.select().from(receiptAttachments).where(inArray(receiptAttachments.receiptId, ids)).orderBy(asc(receiptAttachments.position)),
   ]);
-  return rows.map(({ r, code, po, supplier, by }) => {
+  return rows.map(({ r, code, po, supplier, supplierCode, by }) => {
     const ls = lines.filter((l) => l.l.receiptId === r.id).map(({ l, ref, name, loc, type }) => ({
       ref, name, ordered: l.orderedQty, delivered: l.deliveredQty, accepted: l.acceptedQty, rejected: l.rejectedQty, location: loc, locationType: type,
     }));
     const a = att.filter((x) => x.receiptId === r.id);
     const sum = (k: 'ordered' | 'delivered' | 'accepted' | 'rejected') => ls.reduce((s, l) => s + l[k], 0);
     return {
-      number: r.number, projectCode: code, poNumber: po, supplier, status: r.status, statusLabel: receiptStatus.label(r.status), date: r.receivedOn ?? r.expectedOn,
+      number: r.number, projectCode: code, poNumber: po, supplier, supplierCode: supplierCode ?? null, status: r.status, statusLabel: receiptStatus.label(r.status), date: r.receivedOn ?? r.expectedOn,
       expectedOn: r.expectedOn, receivedOn: r.receivedOn, carrier: r.carrier, supplierDeliveryNote: r.supplierDeliveryNote, lines: ls,
       totals: { ordered: sum('ordered'), delivered: sum('delivered'), accepted: sum('accepted'), rejected: sum('rejected') }, putAway: ls[0]?.location ?? null,
       qc: { by: r.qcByName, result: r.qcResult, remarks: r.qcRemarks }, receivedBy: by ?? null,
@@ -167,13 +175,15 @@ async function locationOfType(tx: Tx, type: LocationType) {
 
 /** Default put-away of a project: its site store (the store named after the site's city), else the central warehouse. */
 async function defaultPutAway(tx: Tx, projectId: string) {
+  return (await siteStoreOf(tx, projectId)) ?? locationOfType(tx, 'central_warehouse');
+}
+
+/** The project's site store (the store named after the site's city), or undefined. */
+async function siteStoreOf(tx: Tx, projectId: string) {
   const [site] = await tx.select({ city: projectSites.city }).from(projectSites).where(eq(projectSites.projectId, projectId));
-  if (site) {
-    const stores = await tx.select().from(storageLocations).where(and(eq(storageLocations.type, 'site_store'), eq(storageLocations.active, true)));
-    const own = stores.find((s) => s.name.endsWith(`— ${site.city}`));
-    if (own) return own;
-  }
-  return locationOfType(tx, 'central_warehouse');
+  if (!site) return undefined;
+  const stores = await tx.select().from(storageLocations).where(and(eq(storageLocations.type, 'site_store'), eq(storageLocations.active, true)));
+  return stores.find((s) => s.name.endsWith(`— ${site.city}`));
 }
 
 const isIso = (s: string | null | undefined): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s));
@@ -222,13 +232,18 @@ export async function listAnnounceableOrders(projectCode: string): Promise<Annou
   return out;
 }
 
-/** Put-away offered by "Announce a delivery": active locations except the quarantine, and the project's default. */
+/**
+ * Put-away offered by "Announce a delivery": active locations except the quarantine, and the project's default ('' while no
+ * central warehouse is configured — a new production database has no storage location until Settings defines them, R-011;
+ * announcing then refuses with "No Central warehouse configured").
+ */
 export async function getPutAwayOptions(projectCode: string): Promise<{ locations: string[]; defaultLocation: string }> {
   const db = await getDb();
   return db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);
     const locs = await tx.select().from(storageLocations).where(eq(storageLocations.active, true)).orderBy(asc(storageLocations.position));
-    return { locations: locs.filter((l) => l.type !== 'quarantine').map((l) => l.name), defaultLocation: (await defaultPutAway(tx, p.id)).name };
+    const fallback = (await siteStoreOf(tx, p.id)) ?? locs.find((l) => l.type === 'central_warehouse');
+    return { locations: locs.filter((l) => l.type !== 'quarantine').map((l) => l.name), defaultLocation: fallback?.name ?? '' };
   });
 }
 
@@ -271,7 +286,7 @@ export async function announceDelivery(projectCode: string, input: AnnounceInput
       if (!loc) throw new Error(`Unknown location ${input.location}`);
     } else loc = await defaultPutAway(tx, p.id);
     const all = (await tx.select({ n: goodsReceipts.number }).from(goodsReceipts)).map((r) => r.n);
-    const number = nextReceiptNumber(all);
+    const number = nextReceiptNumber(all, await demoFloor(tx, RECEIPT_NUMBER_FLOOR));
     const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${goodsReceipts.position}), -1)::int` }).from(goodsReceipts).where(eq(goodsReceipts.projectId, p.id));
     const [r] = await tx
       .insert(goodsReceipts)
@@ -291,9 +306,12 @@ export async function announceDelivery(projectCode: string, input: AnnounceInput
   });
 }
 
-/** Next BL-2026-nnnn of the receipts announced in Keystone (from BL-2026-0600, as the prototype's `announce`). */
-export function nextReceiptNumber(existing: string[]): string {
-  let max = 599;
+/** The prototype numbered the receipts it announced from BL-2026-0600 (`announce`); a demo database keeps that floor (R-011). */
+export const RECEIPT_NUMBER_FLOOR = 599;
+
+/** Next BL-2026-nnnn of the receipts announced in Keystone (after `floor`: the demo floor, 0 on a production database). */
+export function nextReceiptNumber(existing: string[], floor = RECEIPT_NUMBER_FLOOR): string {
+  let max = floor;
   for (const n of existing) {
     const m = /^BL-2026-(\d{4})$/.exec(n);
     if (m && +m[1] > max) max = +m[1];
@@ -398,6 +416,9 @@ async function decideReceipt(number: string, mode: 'accept' | 'reject' | 'lines'
     const status: ReceiptStatus = plan.value.status;
     const [po] = await tx.select().from(purchaseOrders).where(eq(purchaseOrders.id, r.poId));
     const poLineRows = await tx.select().from(poLines).where(eq(poLines.poId, po.id));
+    const [project] = await tx.select({ currency: projects.currency, budgetRate: projects.budgetRate }).from(projects).where(eq(projects.id, po.projectId));
+    const fx = projectFxOf(project ?? {});
+    // C-9 (R-075): `value` stays in the order's currency — the invoices' receipt amount is compared with invoices in it.
     let value = 0;
     for (const [i, { l, loc }] of lines.entries()) {
       const { accepted, rejected } = decisions[i];
@@ -432,6 +453,17 @@ async function decideReceipt(number: string, mode: 'accept' | 'reject' | 'lines'
       }
       const pl = poLineRows.find((x) => x.partId === l.partId);
       if (pl) value += accepted * pl.unitPriceEur;
+      // A-11 (R-103): the accepted goods give the part its last purchase price — in euros (the catalogue, the BOM and the
+      // stock unit cost are), the line price converted from the order's currency at the project's budget rate (C-9, R-075).
+      if (pl && accepted > 0) {
+        const receivedOn = r.receivedOn ?? STATUS_ISO;
+        const [stored] = await tx.select({ purchasedOn: partLastPrices.purchasedOn }).from(partLastPrices).where(eq(partLastPrices.partId, l.partId));
+        if (replacesLastPrice(stored, receivedOn)) {
+          const unitPriceEur = Math.round(toEur(pl.unitPriceEur, po.currency, fx) * 100) / 100;
+          const row = { unitPriceEur, purchasedOn: receivedOn, supplierId: po.supplierId, updatedAt: new Date() };
+          await tx.insert(partLastPrices).values({ partId: l.partId, ...row }).onConflictDoUpdate({ target: partLastPrices.partId, set: row });
+        }
+      }
     }
     // The order's received quantities follow the accepted quantities of all its receipts.
     const accByPart = await tx.select({ partId: receiptLines.partId, acc: sql<number>`sum(${receiptLines.acceptedQty})::float8` }).from(receiptLines)

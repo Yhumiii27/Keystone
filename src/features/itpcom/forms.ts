@@ -4,9 +4,11 @@
 // owner options are the project TEAM (full names). `localizeForm` translates a definition on the server — FormDialog
 // then renders it as is.
 import type { FormDef, FormOption } from '@/components/app/form-def';
-import { ITP_POINT_TYPES, ITP_STAGES, PUNCH_CATEGORIES, PUNCH_SOURCES } from '@/domain/itpcom';
+import { ITP_POINT_TYPES, ITP_STAGES, NO_OWNER, PUNCH_CATEGORIES, PUNCH_ORIGINS, PUNCH_OWNER_PARTIES, PUNCH_SOURCES, witnessFieldOf } from '@/domain/itpcom';
 import type { Lang, T } from '@/i18n/translate';
-import { itpPointType, itpStage, punchCategory, punchSource } from '@/server/db/codes';
+import {
+  ITP_RECORDED_RESULTS, itpPointType, itpResult, itpStage, punchCategory, punchOrigin, punchOwnerParty, punchSource, type ItpPointType, type ItpResult,
+} from '@/server/db/codes';
 import { dataT } from './i18n';
 
 /** AF_RESULT.itp. */
@@ -35,8 +37,13 @@ export function inspectionFormDef(systems: readonly string[]): FormDef {
   };
 }
 
-/** "Add punch item" — item · system / location · category · source · owner · due. */
-export function punchFormDef(team: readonly string[]): FormDef {
+/**
+ * "Add punch item" — item · system / location · category · source · owner · due (AF.punch), then R-117 (A-6 'a'): origin
+ * (Inspection / Site), responsible party (Keystone / Client) and, for internal viewers, Vigie's NCR number (P-10b: never the
+ * client's). The owner may be "—" (no person: the party owns the item); the first TEAM name stays the default.
+ */
+export function punchFormDef(team: readonly string[], opts: { internal?: boolean } = {}): FormDef {
+  const internal = opts.internal ?? true;
   return {
     title: 'Add punch item',
     kind: 'create',
@@ -46,8 +53,11 @@ export function punchFormDef(team: readonly string[]): FormDef {
       { id: 'loc', label: 'System / location', type: 'text' },
       { id: 'cat', label: 'Category', type: 'select', options: PUNCH_CATEGORIES.map((c) => ({ value: c, label: punchCategory.label(c) })) },
       { id: 'src', label: 'Source', type: 'select', options: PUNCH_SOURCES.map((c) => ({ value: c, label: punchSource.label(c) })) },
-      { id: 'owner', label: 'Owner', type: 'select', options: [...team] },
+      { id: 'owner', label: 'Owner', type: 'select', options: [{ value: NO_OWNER, label: '—' }, ...team], ...(team.length ? { defaultValue: team[0] } : {}) },
       { id: 'due', label: 'Due', type: 'text' },
+      { id: 'origin', label: 'Origin', type: 'select', options: PUNCH_ORIGINS.map((c) => ({ value: c, label: punchOrigin.label(c) })) },
+      { id: 'party', label: 'Owner party', type: 'select', options: PUNCH_OWNER_PARTIES.map((c) => ({ value: c, label: punchOwnerParty.label(c) })) },
+      ...(internal ? [{ id: 'ncr', label: 'NCR (Vigie)', type: 'text' as const, placeholder: 'e.g. NCR-029' }] : []),
     ],
   };
 }
@@ -74,8 +84,44 @@ export function planSatFormDef(systems: readonly string[], defaults: PlanSatDefa
   };
 }
 
+/** Toast of "Record result" (R-112). */
+export const RESULT_RESULT = 'Inspection result recorded';
+
+export interface ResultFormDefaults {
+  /** Result code proposed (the recorded one, else Passed). */
+  result: ItpResult;
+  /** "30 Sep" (English; translated by localizeForm). */
+  date: string;
+  inspector: string;
+  witness: string;
+  comment: string;
+}
+
+/**
+ * "Record result" (R-112, Q-6a) — result · date · inspector · client representative (hold point: required; witness point:
+ * optional; absent otherwise) · comment (required for a failure or reservations; checked on submit).
+ */
+export function resultFormDef(pointType: ItpPointType, d: ResultFormDefaults): FormDef {
+  const witness = witnessFieldOf(pointType);
+  return {
+    title: 'Record result',
+    kind: 'create',
+    submit: 'Record result',
+    fields: [
+      {
+        id: 'result', label: 'Result', type: 'select', options: ITP_RECORDED_RESULTS.map((c) => ({ value: c, label: itpResult.label(c) })),
+        defaultValue: (ITP_RECORDED_RESULTS as readonly string[]).includes(d.result) ? d.result : 'passed',
+      },
+      { id: 'date', label: 'Date', type: 'text', required: true, defaultValue: d.date },
+      { id: 'inspector', label: 'Inspector', type: 'text', required: true, defaultValue: d.inspector },
+      ...(witness ? [{ id: 'witness', label: 'Client representative present', type: 'text' as const, required: witness === 'required', defaultValue: d.witness }] : []),
+      { id: 'comment', label: 'Comment', type: 'textarea', defaultValue: d.comment, placeholder: 'Required for a failure or reservations' },
+    ],
+  };
+}
+
 /** Selects whose option labels are codes' English labels (translated). */
-const CODE_SELECTS = new Set(['type', 'stage', 'cat', 'src']);
+const CODE_SELECTS = new Set(['type', 'stage', 'cat', 'src', 'result', 'origin', 'party']);
 /** Selects listing systems: data text (exact dictionary matches), the value stays the English system name. */
 const SYSTEM_SELECTS = new Set(['system']);
 /** Defaults that are prototype text (translated); the witnesses' names are kept as is. */

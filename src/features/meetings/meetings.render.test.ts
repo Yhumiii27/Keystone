@@ -40,7 +40,7 @@ describe('meetings screen render', () => {
     const h = text(await html('fr'));
     for (const s of [
       'Vue', 'Réunions', 'Décisions', 'Actions', 'Réunions cette semaine', '2 à venir', 'CR à rédiger', 'à envoyer sous 24 h', 'Statut', 'Tous 5', 'CR à rédiger 1',
-      'Réunion de chantier hebdo n°24', '29 sept. 2026 · 08:30 · 5 conviés · 3 actions', 'Notes en cours', 'Synchronisé depuis Outlook · Réunion de chantier hebdo',
+      'Réunion de chantier hebdo n°24', '29 sept. 2026 · 08:30 · 5 conviés · 3 actions', 'Notes en cours', 'Réunion de chantier hebdo', // S-11 / A-15 (R-037): was "Synchronisé depuis Outlook · Réunion de chantier hebdo"
       'Participants · 5 Conviés', 'T. Kerbrat · absent', 'Décisions de la réunion précédente', 'Réunion de chantier hebdo n°23 · 22 sept. 2026', '2 / 2', 'Close depuis',
       'Issu de la réunion client — questions à préparer', 'Question client · N. Bensaïd · S. Haddad', 'Ordre du jour & notes', 'L. Fabre · 2 oct.',
       'Ajouter une note au point sélectionné', 'Envoyer le CR à tous les conviés',
@@ -121,5 +121,22 @@ describe('meetings screen render — transcript (chapter 4, S-10)', () => {
     const ro = await html('fr', { meeting: 'MTG-119' }, false);
     expect(ro).not.toContain('Écarter la proposition');
     expect(text(ro)).toContain('Update the electrical schematics for the three tags');
+  });
+
+  it('D-5: the Decisions register filters on the decisions taken with the client (?decisions=client)', async () => {
+    const d = await getMeetingsScreen('HLT-026');
+    const t = makeT('en');
+    const all = meetingsScreenView({ code: 'HLT-026', meetings: d.meetings, questions: d.questions, query: { view: 'decisions', filter: 'all', meeting: null } }, t, 'en');
+    const client = meetingsScreenView({ code: 'HLT-026', meetings: d.meetings, questions: d.questions, query: { view: 'decisions', filter: 'all', meeting: null, decisions: 'client' } }, t, 'en');
+    expect(all.decisionScope).toBe('all');
+    expect(all.decisionChips.map((c) => [c.value, c.label, c.count, c.href])).toEqual([
+      ['all', 'All', all.decisions.length, '/projects/HLT-026/meetings?view=decisions'],
+      ['client', 'With the client', 2, '/projects/HLT-026/meetings?view=decisions&decisions=client'],
+    ]);
+    expect(client.decisions.map((x) => x.meetingRef.slice(0, 7))).toEqual(['MTG-117', 'MTG-117']);
+    expect(client.decisions.every((x) => x.typeLabel === 'External')).toBe(true);
+    const fr = meetingsScreenView({ code: 'HLT-026', meetings: d.meetings, questions: d.questions, query: { view: 'decisions', filter: 'all', meeting: null, decisions: 'client' } }, makeT('fr'), 'fr');
+    const raw = renderToStaticMarkup(h(I18nProvider, { lang: 'fr', children: h(MeetingsBody, { code: 'HLT-026', view: fr, canEdit: true, pinned: false, organizer: 'R. Aubert', t: makeT('fr') }) }));
+    expect(text(raw)).toContain('Avec le client');
   });
 });

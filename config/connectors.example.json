@@ -1,0 +1,10 @@
+{
+  "connectors": {
+    "Sage X3": { "enabled": true, "frequency": "Daily 06:00", "direction": "both", "owner": "IT · finance systems" },
+    "Lucca": { "enabled": false },
+    "Microsoft Teams": { "enabled": false },
+    "E-mail (SMTP)": { "enabled": true, "frequency": "Real time", "owner": "IT · messaging" },
+    "Vigie": { "enabled": true, "owner": "IT · QHSE applications" },
+    "Cursus": { "enabled": true, "owner": "IT · HR applications" }
+  }
+}
