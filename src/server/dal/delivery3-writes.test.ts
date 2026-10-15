@@ -208,7 +208,8 @@ describe('meetings writers', () => {
     expect([t.assignee, t.title, t.labels, t.status, t.estimateH, t.start, t.due]).toEqual(['Julien Wagner', 'Electrode oven on site and WPS reminder to welders', ['Meeting', 'MTG-118'], 'todo', 2, '2026-09-25', '2026-10-01']);
     expect((await listTasks()).length).toBe(tasksBefore + 3);
     const doc = (await listVaultDocuments())[0];
-    expect(doc).toMatchObject({ number: 'MIN-HLT-027', type: 'MIN', status: 'released', title: 'Weekly site meeting #24', author: 'R. Aubert', confidentiality: 'internal', tagsText: 'MTG-118 · Weekly site meeting', isNew: true, shared: true, acknowledged: false });
+    // P-10b / R-043 (integration review of delivery 8): the minutes of an internal meeting are Internal, never shared with the client.
+    expect(doc).toMatchObject({ number: 'MIN-HLT-027', type: 'MIN', status: 'released', title: 'Weekly site meeting #24', author: 'R. Aubert', confidentiality: 'internal', tagsText: 'MTG-118 · Weekly site meeting', isNew: true, shared: false, acknowledged: false });
     await expect(addMeetingLine('MTG-118', 0, { type: 'info', text: 'late' }, 'Romain Aubert')).rejects.toThrow(/already sent/);
     expect((await sendMinutes('MTG-121', 'Sophie Perrin')).minutesNumber).toBe('MIN-NDC-025');
   });

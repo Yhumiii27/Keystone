@@ -151,13 +151,24 @@ export interface CodexIndexResult {
   skipped: { number: string; reason: string }[];
 }
 
+const UNKNOWN_TYPE = 'unknown document type';
+const UNKNOWN_PROJECT = 'unknown project';
+
+/**
+ * A record skipped because Keystone does not know its project or document type yet (integration review): once the project or
+ * the type exists, the next read must bring it again — the read mark does not move past it (`refreshCodexIndex`). A
+ * malformed record is dropped.
+ */
+export const awaitsKeystoneData = (s: { reason: string }): boolean => s.reason.startsWith(`${UNKNOWN_TYPE} `) || s.reason.startsWith(`${UNKNOWN_PROJECT} `);
+
 /**
  * Writes Codex's index records into Keystone's index (Delivery 8, R-033): the record (codexId, codexUrl included), its
  * current revision row and its approval proof. A record whose project or type code Keystone does not know is skipped and
  * logged — never filed as a QMS record (projectId null), which every project's vault would show. Authors, approvers and
  * signers are matched to persons by name (null when unknown, the name kept). A status change, the withdrawal of the
  * previous revision, the client acknowledgement reset and the closing of the outbox entries Codex reflects go through
- * `applyCodexDocumentStates` (one rule for both reads). Runs in the caller's transaction.
+ * `applyCodexDocumentStates` (one rule for both reads); a new revision of an indexed record is audited, and released over a
+ * released one it withdraws the previous revision here. Runs in the caller's transaction.
  */
 export async function applyCodexIndex(tx: Tx, records: readonly unknown[], at = new Date()): Promise<CodexIndexResult> {
   const result: CodexIndexResult = { applied: 0, created: 0, skipped: [] };
@@ -174,14 +185,14 @@ export async function applyCodexIndex(tx: Tx, records: readonly unknown[], at = 
     }
     const rec = raw;
     if (!knownTypes.has(rec.type)) {
-      skip(rec.number, `unknown document type ${rec.type}`);
+      skip(rec.number, `${UNKNOWN_TYPE} ${rec.type}`);
       continue;
     }
     let projectId: string | null = null;
     if (rec.project !== 'QMS') {
       const [p] = await tx.select({ id: projects.id }).from(projects).where(eq(projects.code, rec.project));
       if (!p) {
-        skip(rec.number, `unknown project ${rec.project}`);
+        skip(rec.number, `${UNKNOWN_PROJECT} ${rec.project}`);
         continue;
       }
       projectId = p.id;
@@ -234,6 +245,20 @@ export async function applyCodexIndex(tx: Tx, records: readonly unknown[], at = 
       };
       await tx.insert(documentApprovals).values({ documentId, revision: rec.revision.letter, stepPosition: a.step, ...proof })
         .onConflictDoUpdate({ target: [documentApprovals.documentId, documentApprovals.revision, documentApprovals.stepPosition], set: proof });
+    }
+    if (existing && existing.currentRevision !== rec.revision.letter) {
+      // A new revision of a record Keystone already indexed (integration review): audited, and when it was released over a
+      // released one (both reads between Codex's release), the previous revision is withdrawn as on a status change — the
+      // status-change rule below does not run when the status stays Released.
+      await writeAudit(tx, {
+        actorName: 'Codex', objectRef: rec.number, change: `revision ${existing.currentRevision} → ${rec.revision.letter} · synced from Codex`, area: 'Documents',
+        entityType: 'document', entityId: documentId, projectId, occurredAt: at,
+      });
+      if (existing.status === 'released' && rec.status === 'released' && rec.withdrawnRevision && rec.withdrawnOn) {
+        await tx.update(documents).set({ lastWithdrawnRevision: rec.withdrawnRevision, lastWithdrawnOn: rec.withdrawnOn }).where(eq(documents.id, documentId));
+        await tx.update(documentRevisions).set({ withdrawnOn: rec.withdrawnOn })
+          .where(and(eq(documentRevisions.documentId, documentId), eq(documentRevisions.revision, rec.withdrawnRevision), isNull(documentRevisions.withdrawnOn)));
+      }
     }
     if (existing)
       await applyCodexDocumentStates(tx, [{

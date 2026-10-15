@@ -186,10 +186,16 @@ export const documentIndexSyncs = pgTable('document_index_syncs', {
   recordCount: integer('record_count').notNull(),
   requestedByPersonId: uuid('requested_by_person_id').references(() => persons.id),
   /**
-   * Delivery 8 (R-033): `codex` = a read of Codex's index by the HTTP connector (the banner's "Last sync" and the next read's
-   * `since`); `keystone` = Keystone's own index (seed, mock "Sync now"), never shown as a sync with Codex.
+   * Delivery 8 (R-033): `codex` = a read of Codex's index by the HTTP connector (the banner's "Last sync"; the next read's
+   * `since` is `nextSince`); `keystone` = Keystone's own index (seed, mock "Sync now"), never shown as a sync with Codex.
    */
   source: text('source').$type<'keystone' | 'codex'>().notNull().default('keystone'),
+  /**
+   * A read of Codex's index: the `since` of the next read (integration review) — the read's time, or the read's own `since`
+   * (null = the whole index) when it skipped a record whose project or document type Keystone did not know yet, so the next
+   * reads ask for it again. `syncedAt` stays the banner's "Last sync".
+   */
+  nextSince: timestamp('next_since', { withTimezone: true }),
 });
 
 /**

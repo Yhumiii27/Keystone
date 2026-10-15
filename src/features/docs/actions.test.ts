@@ -33,6 +33,7 @@ import { docsBadge } from '@/server/dal/docs-badge';
 import { validateEngRelease } from '@/server/dal/engineering';
 import { applyCodexDocumentStates } from '@/server/integrations/codex/mirror';
 import { listAudit } from '@/server/dal/notifications';
+import { sendMinutes } from '@/server/dal/meetings';
 import { acknowledgeDocumentAction, approveDocumentAction, depositInCodexAction, logDownloadAction, syncCodexAction } from './actions';
 
 const as = (name: string, short: string, role: string, extra: Partial<typeof viewer> = {}) => Object.assign(viewer, { name, short, role, canEdit: true, isMine: true }, extra);
@@ -179,5 +180,15 @@ describe('documents Server Functions', () => {
     const d = (await getDocumentRecord('PID-HLT-026'))!;
     expect(d.acknowledged).toBe(true);
     expect(d.distribution[0]).toMatchObject({ kind: 'client', acknowledgedOn: '2026-09-29' });
+  });
+
+  it('P-10b (integration review): the minutes of an internal meeting are not shared — the client can neither download nor acknowledge them', async () => {
+    const { minutesNumber } = await sendMinutes('MTG-118', 'Romain Aubert');
+    as('Romain Aubert', 'R. Aubert', 'pm');
+    expect(await logDownloadAction('HLT-026', minutesNumber)).toMatchObject({ ok: true });
+    as('Nadia Bensaïd', 'N. Bensaïd', 'client');
+    expect(await logDownloadAction('HLT-026', minutesNumber)).toEqual({ error: 'Unknown document' });
+    expect(await acknowledgeDocumentAction('HLT-026', minutesNumber)).toEqual({ error: 'Unknown document' });
+    expect((await getDocumentRecord(minutesNumber))!.acknowledged).toBe(false);
   });
 });
