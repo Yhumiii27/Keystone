@@ -260,3 +260,4 @@ threshold row is seeded by both seeds; a database without it reads 50 k€.
   `editsContract` (`team-guard.ts`: director and Finance on every project, else a lead whose workspace has Contract) instead of
   the P-2 team rule — Finance off the team is no longer refused, a 'pm'-role plain member no longer passes
   (`src/features/contract/d8-milestone-rights.test.ts`).
+- R-069 / P-6c: the CR drawer's Budget row is highlighted when |amount| is over the Settings board threshold (`crImpact` `ctx.ccbThresholdKeur`, passed by `ChangesView`), the board step's own rule, instead of the prototype's fixed `amt > 50` (`d8-ccb-highlight.test.ts`; seeded values unchanged at the 50 k€ default).

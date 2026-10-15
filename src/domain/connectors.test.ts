@@ -1,9 +1,10 @@
 // R-021 — real connector state: link of each connector, what the status column shows, when "Sync now" exists, what the
 // last-sync and volume columns may show, and the KPI summary.
 import { describe, expect, it } from 'vitest';
+import { dataText } from '@/i18n/data-text';
 import {
-  CONNECTOR_STATE_LABEL, connectorCanSync, connectorLink, connectorState, connectorStateNeedsAttention, connectorStateTone, connectorsSummary, isRetiredConnector,
-  isSimulatedSync, showsLastSync, showsVolume,
+  CONNECTOR_STATE_LABEL, connectorCanSync, connectorLink, connectorScopeText, connectorState, connectorStateNeedsAttention, connectorStateTone, connectorsSummary,
+  isRetiredConnector, isSimulatedSync, showsLastSync, showsVolume,
 } from './connectors';
 
 describe('connector link', () => {
@@ -70,5 +71,23 @@ describe('what the row shows', () => {
       { link: 'none', state: 'not_connected' }, { link: 'mock', state: 'disabled' },
     ])).toEqual({ connected: 3, mock: 1, notConnected: 2, warning: 1 });
     expect(connectorsSummary([])).toEqual({ connected: 0, mock: 0, notConnected: 0, warning: 0 });
+  });
+});
+
+describe('data scope shown (requalified seeded texts)', () => {
+  const CURSUS_SEEDED = 'Individual go / no go: visa approval, vaccination confirmation, clearances & badges — approvals only, no personal data imported';
+  const CURSUS_SCOPE = 'Individual go / no go (visa, vaccination, clearances & badges) · approved leave and absences · staff directory: name, e-mail, matricule, team (R-027, R-031)';
+
+  it('Cursus: the prototype’s "no personal data imported" becomes what the connector receives since delivery 8 (R-027, R-031)', () => {
+    expect(connectorScopeText('Cursus', CURSUS_SEEDED)).toBe(CURSUS_SCOPE);
+    expect(dataText(connectorScopeText('Cursus', CURSUS_SEEDED), 'fr')).toBe(
+      'Go / no go individuel (visa, vaccinations, habilitations & badges) · congés et absences approuvés · annuaire du personnel : nom, e-mail, matricule, équipe (R-027, R-031)',
+    );
+  });
+
+  it('a scope IT set in the connectors file (R-020) is shown as set; other rows as stored', () => {
+    expect(connectorScopeText('Cursus', 'Go / no go and absences')).toBe('Go / no go and absences');
+    expect(connectorScopeText('Sage X3', CURSUS_SEEDED)).toBe(CURSUS_SEEDED);
+    expect(connectorScopeText('Outlook / Exchange', 'Calendar sync for milestones and approvals')).toBe('Meetings carrying the project code, Outlook / Teams → Keystone (S-11)');
   });
 });

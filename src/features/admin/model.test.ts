@@ -256,7 +256,15 @@ describe('Activity, integrations & audit view model', () => {
     const mock = lang === 'en' ? 'Mock' : 'Simulé';
     const none = lang === 'en' ? 'Not connected' : 'Non connecté';
     const expected = g.filter((r: any) => r.name !== 'Lucca').map((r: any) => {
-      if (r.name === 'Cursus') return { ...r, st: mock, last: '—', tagClass: 'tag tag-outline' };
+      // Delivery 8 (R-027, R-031): the Cursus scope says what Keystone now receives (absences, staff directory) instead of the
+      // prototype's "approvals only, no personal data imported".
+      if (r.name === 'Cursus')
+        return {
+          ...r, what: lang === 'en'
+            ? 'Individual go / no go (visa, vaccination, clearances & badges) · approved leave and absences · staff directory: name, e-mail, matricule, team (R-027, R-031)'
+            : 'Go / no go individuel (visa, vaccinations, habilitations & badges) · congés et absences approuvés · annuaire du personnel : nom, e-mail, matricule, équipe (R-027, R-031)',
+          st: mock, last: '—', tagClass: 'tag tag-outline',
+        };
       if (r.name === 'Codex') return { ...r, st: mock, last: '—', vol: lang === 'en' ? r.vol : '412 fiches · 38 liées à HLT-026', tagClass: 'tag tag-outline' };
       if (r.name === 'MS Project') return r;
       // S-11 a, X-6b, I-3c (R-037): the Microsoft 365 rows requalified — Outlook / Teams meetings into Keystone, no channel posts.

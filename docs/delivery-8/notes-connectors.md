@@ -268,3 +268,8 @@ meetings, photos, plm, quality page, shell, shell-render, home, health) and all 
 - **Remaining-work page (suggestion):** R-096, R-029 → fait; R-023, R-027, R-031 → fait for their buildable Keystone half
   (plan §3 does not keep them en_cours; what waits on Vigie / Cursus is in §5 — the integrator may prefer en_cours); R-015,
   R-024, R-025, R-173 → en_cours by design (plan §3).
+
+## Integration review fixes
+
+- R-027 / R-031: the Cursus row's data scope is requalified at read time over the prototype's "approvals only, no personal data imported" (go / no go, approved leave and absences, staff directory: name, e-mail, matricule, team); a scope IT set is kept (`connectorScopeText`, FR in `d8-connectors.json`; `connectors.test.ts`, admin and delivery-5 tests).
+- R-015: the first refresh of an empty Vigie mirror (a production database) is the baseline — no "Non-conformity raised" / "Change order waiting for your approval" flood — and an NCR already closed in Vigie is never announced (`ncrsToAnnounce`, `ecosToAnnounce` in `vigie-events.ts`; `refresh-d8.test.ts`). Not covered: an NCR pruned by a partial Vigie list and listed again later is announced again — closing it needs a persisted "notified" marker, to decide with Vigie's API (V-3).

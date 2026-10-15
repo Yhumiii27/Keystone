@@ -20,6 +20,8 @@ vi.mock('@/server/project-context', () => ({
   getProjectScope: async () => ({ readOnly: (p: { pm: string }) => state.role === 'pm' && p.pm !== 'R. Aubert' }),
 }));
 
+import { fieldsText } from '@/i18n/data-text';
+import { makeT } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { listNotifications } from '@/server/dal/notifications';
@@ -121,7 +123,9 @@ describe('resource-request Server Functions', () => {
     expect(await getTask('T-2341')).toMatchObject({ assignee: 'Julien Wagner', status: 'todo', estimateH: 12 });
     expect(await approveRequestAction('RQ-041')).toEqual({ ok: false, error: 'This request has already been decided' });
     expect(await top('pm')).toMatchObject({ kind: 'approval', title: 'Resource request approved', screen: 'requests' });
-    expect(await top('member')).toMatchObject({ kind: 'task', title: 'New task assigned', sub: 'Erection sequence review — Bay 4 rafters, second crew · Approved by Marion Kerviel · due 30 Sep', screen: 'mywork' });
+    expect(await top('member')).toMatchObject({ kind: 'task', title: 'New task assigned', sub: 'Erection sequence review — Bay 4 rafters, second crew · Marion Kerviel · 30 Sep', screen: 'mywork' });
+    // Integration review (R-148): fields only — the French bell shows the title and name as typed and translates the date.
+    expect(fieldsText((await top('member'))!.sub, makeT('fr'), 'fr')).toBe('Erection sequence review — Bay 4 rafters, second crew · Marion Kerviel · 30 sept.');
   });
 
   it('propose reschedule (+2 weeks, reason) then the PM accepts: dates move, task created', async () => {

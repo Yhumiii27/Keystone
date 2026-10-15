@@ -6,7 +6,7 @@
 // fetch is stubbed; the HTTP connectors are used through VIGIE_API_URL.
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { and, desc, eq, inArray } from 'drizzle-orm';
-import { ecosEnteringApproval, newNcrs, pendingApprovalKeys } from '@/domain/vigie-events';
+import { ecosEnteringApproval, ecosToAnnounce, ncrsToAnnounce, newNcrs, pendingApprovalKeys } from '@/domain/vigie-events';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { notificationRecipients, notifications, persons, users, vigieEcoProgress, vigieEcos, vigieNcrProgress, vigieNcrs } from '@/server/db/schema';
@@ -82,6 +82,14 @@ describe('pure diff rules (R-015)', () => {
     expect(ecosEnteringApproval(statuses, [{ number: 'ECO-1', status: 'in_approval' }, { number: 'ECO-2', status: 'in_approval' }, { number: 'ECO-3', status: 'in_approval' }, { number: 'ECO-4', status: 'draft' }])
       .map((e) => e.number)).toEqual(['ECO-2', 'ECO-3']);
     expect(pendingApprovalKeys({ approvals: [{ key: 'englead', decision: 'ok' }, { key: 'quality', decision: 'pending' }, { key: 'pm', decision: 'pending' }] })).toEqual(['quality', 'pm']);
+  });
+
+  it('integration review: an empty mirror is the baseline (nothing announced); a closed NCR is never announced as raised', () => {
+    const records = [{ projectCode: 'HLT-026', number: 'NCR-027', status: 'closed' }, { projectCode: 'HLT-026', number: 'EV-2026-130', status: 'open' }];
+    expect(ncrsToAnnounce([], records)).toEqual([]);
+    expect(ncrsToAnnounce([{ projectCode: 'HLT-026', number: 'NCR-029' }], records)).toEqual([{ projectCode: 'HLT-026', number: 'EV-2026-130', status: 'open' }]);
+    expect(ecosToAnnounce(new Map(), [{ number: 'ECO-1', status: 'in_approval' }])).toEqual([]);
+    expect(ecosToAnnounce(new Map([['ECO-2', 'draft']]), [{ number: 'ECO-1', status: 'in_approval' }])).toEqual([{ number: 'ECO-1', status: 'in_approval' }]);
   });
 });
 
@@ -184,5 +192,48 @@ describe('R-015 — dormant Vigie hooks (HTTP refresh only)', () => {
     expect(await mockQualityConnector.sync()).toMatchObject({ refreshed: 0 });
     expect(await mockEcoConnector.sync()).toMatchObject({ refreshed: 0 });
     expect(await notices('Non-conformity raised in Vigie')).toHaveLength(before);
+  });
+});
+
+describe('R-015 — integration review: no flood on the first live refresh, no closed NCR announced', () => {
+  beforeAll(async () => {
+    setDb(await openDatabase());
+  }, 60_000);
+
+  it('a new NCR already closed in Vigie is not announced; a new open one is', async () => {
+    const records = await ncrRecords();
+    const hlt = records.find((r) => r.projectCode === 'HLT-026')!;
+    const closed: VigieNcrRecord = { ...hlt, number: 'EV-2026-140', vigieRef: 'EV-2026-140', title: 'Closed before Keystone read it', status: 'closed' };
+    const open: VigieNcrRecord = { ...hlt, number: 'EV-2026-141', vigieRef: 'EV-2026-141', title: 'Anchor bolt misaligned', severity: 'minor', status: 'containment', raisedBy: 'Thomas Kerbrat' };
+    const before = (await notices('Non-conformity raised in Vigie')).length;
+    stubVigie({ ncrs: [...records, closed, open] }, { status: 200 });
+    await httpQualityConnector.sync();
+    const after = await notices('Non-conformity raised in Vigie');
+    expect(after).toHaveLength(before + 1);
+    expect(after[0].sub).toMatch(/^EV-2026-141 · /);
+  });
+
+  it('first refresh of an empty mirror (production database): Vigie’s history is the baseline — no NCR or ECO notice', async () => {
+    const ncrs = await ncrRecords();
+    const ecos = (await mockEcoConnector.listEcos()).map((e) => ecoRecord(e));
+    expect(ncrs.some((r) => r.projectCode === 'HLT-026' && r.status !== 'closed')).toBe(true);
+    expect(ecos.some((e) => e.status === 'in_approval')).toBe(true);
+    const db = await getDb();
+    await db.delete(vigieNcrs);
+    await db.delete(vigieEcos);
+    const ncrBefore = (await notices('Non-conformity raised in Vigie')).length;
+    const ecoBefore = (await notices('Change order waiting for your approval')).length;
+    stubVigie({ ncrs, ecos }, { status: 200 });
+    await httpQualityConnector.sync();
+    await httpEcoConnector.sync();
+    expect((await db.select({ n: vigieNcrs.number }).from(vigieNcrs)).length).toBe(ncrs.length);
+    expect((await notices('Non-conformity raised in Vigie')).length).toBe(ncrBefore);
+    expect((await notices('Change order waiting for your approval')).length).toBe(ecoBefore);
+    // The next refresh compares with that baseline: a new NCR is announced.
+    const raised: VigieNcrRecord = { ...ncrs.find((r) => r.projectCode === 'HLT-026')!, number: 'EV-2026-150', vigieRef: 'EV-2026-150', title: 'Grout voids at base plate', status: 'open' };
+    stubVigie({ ncrs: [...ncrs, raised], ecos }, { status: 200 });
+    resetVigieQualityRefreshThrottle();
+    await httpQualityConnector.sync();
+    expect((await notices('Non-conformity raised in Vigie')).length).toBe(ncrBefore + 1);
   });
 });

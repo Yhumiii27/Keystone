@@ -399,15 +399,20 @@ export function crKpis(crs: ChangeRequestLike[], ctx: CrKpiContext, lang: Lang):
 export interface ImpactRow {
   k: string;
   v: string;
-  /** Value in LO (budget impact over 50 k€). */
+  /** Value in LO (budget impact over the change control board threshold: |amount| > threshold, as `requiredSteps`). */
   lo: boolean;
 }
 
 /**
  * `ctx.proposedBaseline`: the baseline this request proposes (Baselines register, linked to the request — BL2 for the seeded
  * CR-009, BL3… for a request raised from the Plan, S-3); without it the prototype's rule applies (baseline column BL2).
+ * `ctx.ccbThresholdKeur`: the board threshold in force (Settings, R-069 / P-6c; DEFAULT_CCB_THRESHOLD_KEUR without it). The
+ * Budget row is highlighted when |amount| is over it — the prototype's `amt > 50`, made the adjustable threshold of the board
+ * step, so a −120 k€ request is highlighted and, with 100 k€, a +60 k€ one is not.
  */
-export function crImpact(cr: ChangeRequestLike, ctx: { bac: number; contingency: number | null; proposedBaseline?: string | null }, lang: Lang): ImpactRow[] {
+export function crImpact(
+  cr: ChangeRequestLike, ctx: { bac: number; contingency: number | null; proposedBaseline?: string | null; ccbThresholdKeur?: number }, lang: Lang,
+): ImpactRow[] {
   const f = (k: number, signed = false) => money(k, lang, { signed });
   const amt = cr.amount;
   const budget = amt ? `${f(amt, true)} → BAC ${f(ctx.bac + (cr.status === 'approved' ? 0 : amt))}` : 'None';
@@ -415,8 +420,9 @@ export function crImpact(cr: ChangeRequestLike, ctx: { bac: number; contingency:
   const wbs = cr.wbs.map((w) => w.code + (w.name ? ' · ' + w.name : '')).join(' · ');
   const proposed = ctx.proposedBaseline !== undefined ? ctx.proposedBaseline : cr.baseline === 'BL2' ? 'BL2' : null;
   const contingency = amt > 0 && ctx.contingency ? `Funded from contingency · ${Math.round((amt / ctx.contingency) * 100)}% of reserve` : '—';
+  const threshold = isCcbThreshold(ctx.ccbThresholdKeur) ? ctx.ccbThresholdKeur : DEFAULT_CCB_THRESHOLD_KEUR;
   return [
-    { k: 'Budget', v: budget, lo: amt > 50 },
+    { k: 'Budget', v: budget, lo: Math.abs(amt) > threshold },
     { k: 'Schedule', v: schedule, lo: false },
     { k: 'WBS impacted', v: wbs || '—', lo: false },
     { k: 'Baseline', v: proposed ? `Requires re-baseline → ${proposed}` : 'Within BL1', lo: false },

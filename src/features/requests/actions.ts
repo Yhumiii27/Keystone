@@ -63,7 +63,9 @@ const isSourcing = (r: ResourceRequestRow) => !r.person && !!r.contractRole;
 
 /**
  * The notices of a task created from a request: the named person ("New task assigned"), or — P-8b, contract role — every
- * procurement user ("Person to find and name"), never the actor. The PM is told by the decision notice.
+ * procurement user ("Person to find and name"), never the actor. The PM is told by the decision notice. `sub`: "{task title}
+ * · {decider} · {due date}" — fields only, no English words around them, so the bell shows the title as typed and translates
+ * the date (fieldsText, R-148).
  */
 async function announceTask(r: ResourceRequestRow, task: string, viewer: Viewer, sub: string): Promise<RequestNotice[]> {
   if (!isSourcing(r)) return [{ kind: 'task', title: 'New task assigned', sub, screen: 'mywork', params: {}, projectCode: r.projectCode, to: r.person }];
@@ -195,7 +197,7 @@ export async function acceptRescheduleAction(id: string): Promise<RequestActionR
     return { ok: false, error: FAILED };
   }
   const accepted = await getResourceRequest(o.r.id);
-  const taskNotices = accepted ? await announceTask(accepted, task, o.viewer, `${accepted.title} · Accepted by ${o.viewer.name} · due ${shortDateOfIso(accepted.due)}`) : [];
+  const taskNotices = accepted ? await announceTask(accepted, task, o.viewer, `${accepted.title} · ${o.viewer.name} · ${shortDateOfIso(accepted.due)}`) : [];
   await announce(o.viewer, accepted, (r) => [
     { kind: 'approval', title: 'Reschedule accepted', sub: `${r.title} · ${who(r)} · ${datesText(r.start, r.due)} · ${o.viewer.name}`, screen: 'approvals', params: { dept: r.department }, projectCode: r.projectCode, to: r.departmentHead },
     ...taskNotices,
@@ -283,7 +285,7 @@ export async function approveRequestAction(id: string): Promise<RequestActionRes
     logError('approveRequestAction', e);
     return { ok: false, error: FAILED };
   }
-  const taskNotices = await announceTask(o.r, task, o.viewer, `${o.r.title} · Approved by ${o.viewer.name} · due ${shortDateOfIso(o.r.due)}`);
+  const taskNotices = await announceTask(o.r, task, o.viewer, `${o.r.title} · ${o.viewer.name} · ${shortDateOfIso(o.r.due)}`);
   await announce(o.viewer, o.r, (r) => [
     { kind: 'approval', title: 'Resource request approved', sub: `${r.title} · ${who(r)} · ${o.viewer.name}`, screen: 'requests', params: { status: 'approved' }, projectCode: r.projectCode, to: r.requestedByName },
     ...taskNotices,

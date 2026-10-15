@@ -32,18 +32,26 @@ export async function listMentionablePersons(q?: Q): Promise<MentionCandidate[]>
 
 /**
  * P-8b (R-089): every active procurement user is told about a new sourcing task — "Person to find and name · T-xxxx", sub
- * "{contract role} · {request title} · due {date}", opening the task — never the actor. Never throws.
+ * "{contract role} · {request title} · {due date}", opening the task — never the actor. The due date is a field of its own
+ * (no English "due" before it), so the bell translates it like every date Keystone formats (fieldsText, R-148). With no
+ * active procurement user the task went to the director (`procurementAssignee`, P-8b default): its assignee is then told
+ * as for any task created for them ("Task assigned", R-015). Never throws.
  */
 export async function notifySourcingTask(
   taskNumber: string, request: { contractRole: string; title: string; due: string; projectCode: string }, actorName: string,
 ): Promise<void> {
   try {
     const db = await getDb();
+    const procurement = await procurementPersonIds();
+    if (!procurement.length) {
+      await notifyTasksAssigned([taskNumber], actorName);
+      return;
+    }
     const [actor] = await db.select({ id: persons.id }).from(persons).where(sql`${persons.fullName} = ${actorName} or ${persons.shortName} = ${actorName}`);
-    const to = (await procurementPersonIds()).filter((id) => id !== actor?.id);
+    const to = procurement.filter((id) => id !== actor?.id);
     if (!to.length) return;
     await createNotification({
-      kind: 'task', title: `Person to find and name · ${taskNumber}`, sub: `${request.contractRole} · ${request.title} · due ${request.due}`, screen: 'task',
+      kind: 'task', title: `Person to find and name · ${taskNumber}`, sub: `${request.contractRole} · ${request.title} · ${request.due}`, screen: 'task',
       params: { taskId: taskNumber }, projectCode: request.projectCode, audience: [], toPersonIds: to,
     });
   } catch (e) {

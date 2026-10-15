@@ -29,9 +29,11 @@ import { and, eq } from 'drizzle-orm';
 import { isOutside } from '@/components/app/shell/nav-model';
 import { PERSONAS } from '@/config/personas';
 import { canSee } from '@/config/role-screens';
+import { fieldsText } from '@/i18n/data-text';
 import { makeT } from '@/i18n/translate';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
+import { shortDateOfIso } from '@/server/db/codes';
 import { users } from '@/server/db/schema';
 import { listActivity, listAudit, listNotifications } from '@/server/dal/notifications';
 import { createResourceRequest, getResourceRequest, listSourcingCandidates, nameSourcedPerson, proposeReschedule } from '@/server/dal/requests';
@@ -83,7 +85,12 @@ describe('R-089 — the sourcing task goes to procurement', () => {
       'Fabien Bertrand', 'Find and name: Contract structural engineer — Steel connection checks — second crew', 'Contract structural engineer', 40, rq.start, rq.due, 'RQ-043',
     ]);
     expect(await sourcingNotices('procurement', task)).toHaveLength(1);
-    expect((await sourcingNotices('procurement', task))[0]).toMatchObject({ kind: 'task', screen: 'task', params: { taskId: task }, sub: expect.stringMatching(/^Contract structural engineer · Steel connection checks — second crew · due /) });
+    const notice = (await sourcingNotices('procurement', task))[0];
+    // Integration review: the due date is a field of its own (no English "due" before it), so the French bell translates it.
+    expect(notice).toMatchObject({ kind: 'task', screen: 'task', params: { taskId: task }, sub: `Contract structural engineer · Steel connection checks — second crew · ${shortDateOfIso(rq.due)}` });
+    const fr = fieldsText(notice.sub, makeT('fr'), 'fr');
+    expect(fr.endsWith(` · ${makeT('fr')(shortDateOfIso(rq.due))}`)).toBe(true);
+    expect(fr).not.toMatch(/\bdue\b|\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/);
     expect((await listNotifications('pm'))[0]).toMatchObject({ title: 'Resource request approved' });
     expect((await listAudit({ limit: 20 })).find((a) => a.object === 'Request RQ-043')).toMatchObject({ change: 'approved → task created for Procurement' });
     expect((await listActivity({ limit: 20 })).find((a) => a.what.startsWith('Approved resource request RQ-043'))!.what).toMatch(/· task created for Procurement$/);
@@ -99,6 +106,11 @@ describe('R-089 — the sourcing task goes to procurement', () => {
     expect(r.ok).toBe(true);
     const n = (await getResourceRequest(rq))!.taskId!;
     expect((await getTask(n))!.assignee).toBe('Marie Lefebvre');
+    // Integration review (R-015): the director standing in for procurement is told about the task, like any assignee.
+    expect((await listNotifications('director')).filter((x) => x.title === `Task assigned · ${n}`)).toMatchObject([
+      { kind: 'task', screen: 'task', params: { taskId: n }, sub: 'Find and name: Contract welder — Welding of the gantry rails' },
+    ]);
+    expect(await sourcingNotices('procurement', n)).toHaveLength(0);
   });
 
   it('accept reschedule: the PM accepts → the sourcing task goes to procurement (the PM is the actor, not told)', async () => {
