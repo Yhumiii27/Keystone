@@ -215,7 +215,12 @@ additions are independent of the other lots' tables. No backfill: `export_review
 ## Checks
 
 - `npm run typecheck`: clean. ESLint on every file of the lot: clean.
-- `npx vitest run` (whole suite): see the integrator notes below for the result of the final run.
+- `npx vitest run` (whole suite, machine load average ~20 on 4 CPUs): 261 files passed, 14 failed — 22 tests timed out at 5 s
+  and one assertion failed. Every failed file was rerun alone or two at a time and passes (plm/model, bom/model, delivery4,
+  aftersales/page, eco/render, health, meetings.golden, shell, itpcom/page, home-screen, quality/actions, quality/page,
+  reschedule). The assertion was a pre-existing flake in `src/features/aftersales/followup.test.ts` (R-144, delivery 7): the
+  project audit row and the last machine row of `registerDeliveredMachines` can share their millisecond, so "the latest audit
+  row" was ambiguous; the test now looks for the project row among the latest three (no code change).
 - `scripts/db-check.ts`: all checks passed (run under vitest's resolver; `npx tsx --conditions=react-server scripts/db-check.ts`
   fails in this sandbox before any check — `@phosphor-icons/react/dist/ssr` resolves to its CommonJS build under tsx's CJS loader,
   unrelated to the lot).
