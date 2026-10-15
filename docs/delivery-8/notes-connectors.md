@@ -141,7 +141,8 @@ empty. The migration test finds the custom file by name (`NNNN_leave_types_simpl
   migration. The demo seed maps the prototype's CP / RTT weeks to Leave and Sick / Training to Absence, days unchanged.
 - Writer `replaceCursusAbsence` (`src/server/dal/hr.ts`, after `getLeaveCalendar`): replaces the rows of the absence's key,
   one row per week covered, source `cursus`, days = weekdays inside the range minus the Settings public holidays; runs in the
-  inbox transaction. Pure splitting in `absenceWeeks` (whole days; > 400 days refused). The nature is reduced to the type at
+  inbox transaction. Pure splitting in `absenceWeeks` (whole days; an absence over 400 days is refused at parsing with a 400,
+  so Cursus never retries it forever). The nature is reduced to the type at
   parsing and never stored. `absenceOverlapsRotation` is provided for R-119 (site-quality).
 - `getLeaveCalendar` adds up several rows of a person's week (at most 5 days); the cell shows the type with the most days
   (Leave on a tie); `lastAbsenceReceivedAt` from the inbox.

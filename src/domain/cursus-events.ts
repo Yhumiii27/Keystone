@@ -11,7 +11,7 @@
 // - demande.decision { demande, statut } — a decision on a travel request: stored only (other fields dropped).
 // Any other type is accepted and ignored (Cursus may add types before Keystone reads them).
 import { z } from 'zod';
-import { absenceKey, isIsoDate } from './absences';
+import { MAX_ABSENCE_DAYS, absenceKey, isIsoDate } from './absences';
 import { leaveTypeOfNature, type LeaveType } from '@/server/db/codes';
 
 /** Largest request body the endpoint reads (256 KB). */
@@ -105,6 +105,9 @@ export function parseCursusEvent(body: unknown): ParseResult {
       const end = d.data.end ?? d.data.fin;
       if (!start || !end) return { ok: false, error: 'Invalid absence.validee · start and end are required' };
       if (end < start) return { ok: false, error: 'Invalid absence.validee · the absence ends before it starts' };
+      // Refused here (400: Cursus must not retry it as is) rather than failing the storage (503: retried forever).
+      if (Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`) > MAX_ABSENCE_DAYS * 86_400_000)
+        return { ok: false, error: `Invalid absence.validee · longer than ${MAX_ABSENCE_DAYS} days` };
       const a = { matricule: d.data.matricule, start, end, type: leaveTypeOfNature(d.data.nature), id: d.data.id ?? null };
       // R-173: the nature (the reason) is reduced to Leave / Absence here and never stored.
       return {

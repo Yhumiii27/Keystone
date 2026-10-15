@@ -71,6 +71,9 @@ describe('absence.validee (provisional, R-031) — minimised (R-173)', () => {
     expect(parseCursusEvent(env('absence.validee', { matricule: 'EMP-1', start: '2026-10-12' }))).toMatchObject({ ok: false, error: 'Invalid absence.validee · start and end are required' });
     expect(parseCursusEvent(env('absence.validee', { matricule: 'EMP-1', start: '2026-02-30', end: '2026-03-01' }))).toMatchObject({ ok: false });
     expect(parseCursusEvent(env('absence.validee', { matricule: 'EMP-1', start: '2026-10-14', end: '2026-10-12' }))).toMatchObject({ ok: false, error: 'Invalid absence.validee · the absence ends before it starts' });
+    // Longer than 400 days: refused (400), never a storage failure Cursus would retry forever.
+    expect(parseCursusEvent(env('absence.validee', { matricule: 'EMP-1', start: '2026-01-01', end: '2027-02-06' }))).toMatchObject({ ok: false, error: 'Invalid absence.validee · longer than 400 days' });
+    expect(parseCursusEvent(env('absence.validee', { matricule: 'EMP-1', start: '2026-01-01', end: '2027-02-05' }))).toMatchObject({ ok: true });
   });
 });
 
