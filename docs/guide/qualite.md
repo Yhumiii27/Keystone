@@ -25,9 +25,20 @@ Il ne voit ni les taux horaires ni les prix fournisseurs.
 3. Un résultat **non conforme** se signale dans **Vigie** (lien prérempli) : la NCR y est créée et suivie ; Keystone garde le
    lien.
 4. **Réserves** : catégorie A (bloquante), B (avant SAT), C (cosmétique), avec **photos** (PNG, JPEG…). Le client voit les
-   réserves et leurs photos de son projet, sans pouvoir en ajouter.
+   réserves de son projet et les photos des réserves d’inspection, sans pouvoir en ajouter.
 
-*Liste de réserves unique (ITP et chantier) et systèmes ITP figés par projet : à vérifier après intégration (R-117, R-057).*
+**Une seule liste de réserves par projet** (R-117) : les réserves levées en inspection et celles levées sur le chantier sont
+dans la même liste, numérotées à la suite (sur HLT-026 : P-01 à P-05 en inspection, P-06 à P-08 sur site).
+
+- Filtre **Origine** (Tous, Inspection, Site) et colonne Origine.
+- « Ajouter une réserve » : les champs habituels, plus l’origine, la partie responsable (Keystone ou client) et le numéro de
+  NCR donné par Vigie (par exemple NCR-029).
+- « Démarrer » et « Clôturer » sur toute réserve ouverte, quelle que soit son origine.
+- Le client voit toute la liste de son projet, sans les numéros de NCR.
+
+**Systèmes de l’ITP** (R-057) : chaque plan d’inspection garde les systèmes de son type de machine tels qu’ils étaient à sa
+création. Dans Types de machines, la carte des systèmes ITP l’indique : « Les modifications s’appliquent aux projets créés
+ensuite ».
 
 ### 2. Livrables et PV de réception
 
@@ -38,8 +49,13 @@ listées depuis Vigie.
 ### 3. Réceptions
 
 **Livraisons** : le contrôle qualité d’une réception (accepter ou refuser les quantités) ; les quantités acceptées entrent en
-stock. Les photos de réception sont stockées par Keystone. *Réception refusée : NCR fournisseur préremplie dans Vigie et
-alerte à l’acheteur — à vérifier après intégration (R-096).*
+stock. Les photos de réception sont stockées par Keystone.
+
+**Réception refusée** (R-096) : après un refus (total ou partiel), le volet de la livraison propose, sous « Contrôle
+qualité », un lien « Déclarer la NC fournisseur dans Vigie » par ligne refusée, prérempli avec le fournisseur, la commande,
+la réception et la quantité. Le message de confirmation le rappelle (« … · déclarer la NC fournisseur dans Vigie »).
+L’acheteur de la commande et les responsables du projet sont prévenus (« Livraison refusée à la réception »). Keystone
+n’enregistre pas la NC : elle vit dans Vigie.
 
 ### 4. Risques, mise en service, REX
 
@@ -55,5 +71,5 @@ réelle. Une réclamation peut mener à un ECO (dans Vigie).
 ## Points d’attention
 
 - Les NCR, les 8D et les plans d’action vivent dans **Vigie** ; les HSE du chantier aussi.
-- L’incident HSE du rapport journalier se déclare dans Vigie. *Case incident retirée du rapport : à vérifier après
-  intégration (R-122).*
+- Un incident HSE du chantier se déclare dans Vigie : le rapport journalier n’a plus de case incident, seulement le lien
+  « Incident HSE ? Déclarez-le dans Vigie » (R-122). Les incidents saisis avant restent affichés sous leur rapport.
