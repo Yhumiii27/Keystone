@@ -189,17 +189,19 @@ describe('Interface register view model', () => {
 
   it('static render: row actions for editors only, with the item named for screen readers', async () => {
     const { t, view } = await ifc('fr');
-    const edit = html(InterfacesBody({ code: 'HLT-026', view, canEdit: true, t }), 'fr');
+    const edit = html(InterfacesBody({ code: 'HLT-026', view, canEdit: true, receivedDefault: '30 sept. 2026', t }), 'fr');
     for (const s of [
       'Registre des interfaces', 'Une donnée en retard du client ou d’un tiers coûte des jours de planning · gardez-en la trace ici', 'Côté Keystone', 'Autre partie',
       'Donnée attendue', 'Requis pour le', 'Fournie le', 'Statut', 'Responsable', 'aria-label="Marquer reçu · IF-07"', 'aria-label="Geler · IF-01"',
       'aria-label="Actions"',
     ])
       expect(edit).toContain(s);
+    // Q-4 a (R-116): "Mark received" opens its "Received on" dialog — closed on render, so the row buttons are unchanged.
     expect(edit.match(/>Marquer reçu</g)?.length).toBe(3);
+    expect(edit).not.toContain('Reçu le');
     expect(edit.match(/>Geler</g)?.length).toBe(2);
     expect(edit.match(/class="tag tag-accent [^"]*">En retard</g)?.length).toBe(1);
-    const ro = html(InterfacesBody({ code: 'HLT-026', view, canEdit: false, t }), 'fr');
+    const ro = html(InterfacesBody({ code: 'HLT-026', view, canEdit: false, receivedDefault: '30 sept. 2026', t }), 'fr');
     expect(ro).not.toContain('Marquer reçu');
     expect(ro).not.toContain('>Geler<');
     expect(ro).toContain('10 j de retard');

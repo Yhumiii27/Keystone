@@ -123,14 +123,29 @@ describe('team Server Functions', () => {
   it('"Mark received" (Open or Late) then "Freeze" (Received); refused out of order', async () => {
     viewer.name = 'Antoine Girard';
     expect(await freezeInterfaceAction('HLT-026', 'IF-07')).toEqual({ error: 'Only a received interface can be frozen' });
-    expect(await markInterfaceReceivedAction('HLT-026', 'IF-07')).toEqual({ ok: true });
-    expect(await ifc('IF-07')).toMatchObject({ status: 'received', statusLabel: 'Received' });
-    expect((await listAudit())[0]).toMatchObject({ who: 'Antoine Girard', object: 'IF-07', change: 'status: Late → Received' });
-    expect(await markInterfaceReceivedAction('HLT-026', 'IF-07')).toEqual({ error: 'This interface is no longer open' });
+    // Q-4 a (R-116): the received date the user confirmed is stamped as the provided date and named in the audit line.
+    expect(await markInterfaceReceivedAction('HLT-026', 'IF-07', { received: '28 Sep 2026' })).toEqual({ ok: true });
+    expect(await ifc('IF-07')).toMatchObject({ status: 'received', statusLabel: 'Received', providedOn: '2026-09-28', providedText: '28 Sep' });
+    expect((await listAudit())[0]).toMatchObject({ who: 'Antoine Girard', object: 'IF-07', change: 'status: Late → Received · received 28 Sep' });
+    expect(await markInterfaceReceivedAction('HLT-026', 'IF-07', { received: '28 Sep 2026' })).toEqual({ error: 'This interface is no longer open' });
     expect(await freezeInterfaceAction('HLT-026', 'IF-07')).toEqual({ ok: true });
-    expect((await ifc('IF-07'))!.status).toBe('frozen');
-    expect(await markInterfaceReceivedAction('HLT-026', 'IF-03')).toEqual({ error: 'This interface is no longer open' });
-    expect(await markInterfaceReceivedAction('HLT-026', 'IF-02')).toEqual({ ok: true });
+    // Freeze keeps the provided date.
+    expect(await ifc('IF-07')).toMatchObject({ status: 'frozen', providedOn: '2026-09-28' });
+    expect(await markInterfaceReceivedAction('HLT-026', 'IF-03', { received: '30 Sep 2026' })).toEqual({ error: 'This interface is no longer open' });
+    // The French default of the dialog ("30 sept. 2026") is read too.
+    expect(await markInterfaceReceivedAction('HLT-026', 'IF-02', { received: '30 sept. 2026' })).toEqual({ ok: true });
+    expect(await ifc('IF-02')).toMatchObject({ providedOn: '2026-09-30', providedText: '30 Sep' });
     expect(revalidatePath).toHaveBeenCalledWith('/projects/HLT-026', 'layout');
+  });
+
+  it('R-116 (Q-4 a): "Received on" required, a readable date, never after today (30 Sep); nothing written when refused', async () => {
+    viewer.name = 'Antoine Girard';
+    const before = await ifc('IF-05');
+    for (const values of [undefined, {}, { received: '' }, { received: '   ' }, { received: 'yesterday' }, { received: '31 Feb 2026' }, { received: 42 }] as unknown[])
+      expect(await markInterfaceReceivedAction('HLT-026', 'IF-05', values as Record<string, string>)).toEqual({ error: 'Enter a date such as 14 Dec 2026' });
+    expect(await markInterfaceReceivedAction('HLT-026', 'IF-05', { received: '1 Oct 2026' })).toEqual({ error: 'The received date cannot be after today' });
+    viewer.lang = 'fr';
+    expect(await markInterfaceReceivedAction('HLT-026', 'IF-05', { received: '2026-10-01' })).toEqual({ error: 'La date de réception ne peut pas être postérieure à aujourd’hui' });
+    expect(await ifc('IF-05')).toEqual(before);
   });
 });

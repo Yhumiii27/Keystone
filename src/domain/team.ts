@@ -7,6 +7,7 @@ import {
   PG_NOW, interfaceStatus, keystoneSide, monthIndexOfIso, stakeholderType,
   type InterfaceEffectiveStatus, type InterfaceStatus, type KeystoneSide, type StakeholderType,
 } from '@/server/db/codes';
+import { DATE_ERROR, parseDateInput } from './contract';
 
 export type { InterfaceEffectiveStatus, InterfaceStatus, KeystoneSide, StakeholderType };
 
@@ -125,11 +126,8 @@ export interface InterfaceSummary {
   frozen: number;
   received: number;
   open: number;
-  /**
-   * "<n> due within 30 days": the prototype counts every open interface with a future need date (IF-05, due in
-   * 45 days, included). Kept as is — OPEN QUESTION Q-4 / 07 OQ6.
-   */
-  dueWithin30: number;
+  // "<n> due within 30 days" is computed from the data date by the screen (A-12, dueWithinDays in src/domain/kpis.ts):
+  // the prototype's count of every future need date was removed here in delivery 8 (R-116).
   /** Numbers of the late interfaces, register order. */
   late: string[];
   /** Interfaces blocking a commissioning step that are neither received nor frozen (register order). */
@@ -147,7 +145,6 @@ export function summariseInterfaces(rows: readonly InterfaceFacts[], blockers: r
     frozen: byStatus('frozen').length,
     received: byStatus('received').length,
     open: byStatus('open').length,
-    dueWithin30: rows.filter((r) => interfaceRowState(r).neededSub?.kind === 'in').length,
     late: byStatus('late').map((r) => r.number),
     blocking: rows.filter((r) => blockers.includes(r.number) && (r.status === 'open' || r.status === 'late')).map((r) => r.number),
   };
@@ -289,6 +286,20 @@ export function parseNewInterface(values: Record<string, string | undefined>, te
   const owner = ownerOf(values.owner, team);
   if (!owner.ok) return owner;
   return { ok: true, value: { title, keystoneSide: side, otherParty, dataExpected, neededBy, owner: owner.value } };
+}
+
+/** "Mark received" refused: a received date after today (Q-4 a, R-116). EN source string. */
+export const RECEIVED_AFTER_TODAY = 'The received date cannot be after today';
+
+/**
+ * "Received on" of "Mark received" (Q-4 a, R-116): a date as typed in either language (parseDateInput, year 2026 by
+ * default) → ISO; empty or unreadable → DATE_ERROR; after `today` (the business date, NOW_ISO until R-013) refused.
+ */
+export function parseReceivedOn(raw: string | undefined, today: string): ParseResult<string> {
+  const iso = parseDateInput(raw);
+  if (!iso) return { ok: false, error: DATE_ERROR };
+  if (iso > today) return { ok: false, error: RECEIVED_AFTER_TODAY };
+  return { ok: true, value: iso };
 }
 
 /** English status label of an interface ("Late"). */
