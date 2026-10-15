@@ -1,9 +1,10 @@
 // Delivery 8, lot cost-change — the Change control Server Functions with the real project context (the persona comes from the
 // mocked session): R-069 the contractual impact asked on "New change request" and the sequential chain ("Not yours to decide
 // yet" for a later step, P-6b), R-081 the optional cost category (project team only, one of the project's, never below 0, posted
-// at approval), R-015 the bell notices after each write (X-6a), for the 8 personas, with malformed input and stale clicks.
+// at approval), R-015 the bell notices after each write (X-6a), for the 9 personas, with malformed input and stale clicks.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RoleKey } from '@/config/screens';
+import { PERSONAS } from '@/config/personas';
 
 const session = { role: 'director' as RoleKey, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
@@ -35,7 +36,8 @@ import { getProjectContext } from '@/server/project-context';
 import { createChangeRequestAction, decideChangeStepAction } from './actions';
 import { newChangeRequestForm, translatedChangeRequestForm } from './forms';
 
-const ROLES: RoleKey[] = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'];
+// Every persona, Finance (R-044) included.
+const ROLES: RoleKey[] = PERSONAS.map((p) => p.role);
 const FORM = { title: 'Extra fenders', type: 'scope_budget', impact: 'price', amt: '20', days: '0', wbs: '1.7', why: 'Berth 3 fender upgrade asked by the port' };
 const crOf = async (id: string) => (await getChangeControl('HLT-026'))!.changeRequests.find((c) => c.id === id)!;
 const numberOf = (toast: string | undefined) => /^(CR-\d{3,})/.exec(toast ?? '')?.[1] ?? '';
@@ -47,7 +49,7 @@ beforeEach(() => {
   session.lang = 'en';
 });
 
-describe('R-069 / R-081 — "New change request" for the 8 personas', () => {
+describe('R-069 / R-081 — "New change request" for the 9 personas', () => {
   for (const role of ROLES)
     it(role, async () => {
       session.role = role;

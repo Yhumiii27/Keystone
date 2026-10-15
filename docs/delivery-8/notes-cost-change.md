@@ -253,3 +253,7 @@ threshold row is seeded by both seeds; a database without it reads 50 k€.
 - `tests/e2e/02-planning.spec.ts` updated (impact select, chain order, no board step) — not run in the lot.
 - Suggested `docs/reste-a-developper.json` progress: R-069, R-081, R-077, R-080, R-054, R-140 → `fait` (delivery 8, after
   integration); R-015 → `en_cours` (change-request notices done).
+
+## Integration review fixes
+
+- The CCB-threshold and New change request persona tests loop over `PERSONAS` (9, Finance included); a role without Settings in its workspace (member, Finance) expects "Settings are read-only for you".

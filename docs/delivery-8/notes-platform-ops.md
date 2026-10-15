@@ -294,3 +294,7 @@ independent of the other lots' tables).
 | R-175 | Purge of refused uploads after 30 days; flagged stored files kept until IT acts; automatic release when clamd later passes a flagged file | as listed |
 | R-175 | Should the lists (task attachments, photo galleries) show that a file is blocked? Today only the download answers 410 (no new UI state, no-new-tools rule) | download only |
 | R-177 | Support contact, training plan, beta calendar and testers | placeholders |
+
+## Integration review fixes
+
+- R-175 / R-168: the files-rescan job now changes a file's scan status and writes its audit row in one transaction per file (row locked with `for update`); a failed audit leaves the status for the next run, which then audits the block or release. The quarantine note and the logs follow the commit (`src/server/storage/rescan-atomic.test.ts`).

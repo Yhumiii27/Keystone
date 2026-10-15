@@ -6,7 +6,7 @@ import { TODAY, dayDate, dayLabel } from '@/lib/format';
 import { PROTO } from '@/server/prototype';
 import {
   applyProgress, applyStatus, boardColumns, calendarBars, calendarDays, calendarStart, checklistCounts, checklistPct, dueBucket, dueText,
-  dueTodayBadge, dueTone, floatText, hoursBar, hoursCellText, hoursText, initialPct, isCritical, laborCost, logTimeTarget, nextWeekEnd,
+  dueTodayBadge, dueTone, floatText, hoursBar, hoursCellText, hoursText, initialPct, isCritical, logTimeTarget, nextWeekEnd,
   parseHours, plannedHours, sortByDue, spanText, toggleDone, todayColumn, workGroups, workKpis, workingDayOf,
   type TaskPriority, type TaskStatus, type WorkTask,
 } from './tasks';
@@ -20,7 +20,6 @@ type Person = [string, string, number[]];
 const TODOS = PROTO.TODOS as ProtoTodo[];
 const PEOPLE = PROTO.PEOPLE as Person[];
 const CHECKS = PROTO.CHECKS as Record<string, [string, number][]>;
-const RATES = PROTO.RATES as Record<string, number>;
 const PERSONS = [...new Set(TODOS.map((t) => t.person))];
 
 type Item = WorkTask & { id: string };
@@ -218,12 +217,11 @@ describe('task sheet (10 §7.4, T-2314 Survey verticality — Bay 3 columns)', (
     expect(checklistCounts([], { done: 0, total: 3 })).toEqual({ done: 0, total: 3 });
     expect(checklistPct({ done: 0, total: 0 })).toBe(0);
   });
-  it('time 6.0 / 8 h (75 % bar), cost 6.0 h × 95 = 570; over-estimate bar is LO and capped', () => {
+  // The cost note (6.0 h × rate) is valued at the dated rates since R-083 (src/features/mywork/model.ts `costNote`).
+  it('time 6.0 / 8 h (75 % bar); over-estimate bar is LO and capped', () => {
     expect(hoursBar(6, 8)).toEqual({ share: 0.75, over: false });
     expect(hoursBar(4.5, 4)).toEqual({ share: 1, over: true });
     expect(hoursBar(0, 0)).toEqual({ share: 0, over: false });
-    expect(laborCost(6, RATES['QA / QC'])).toBe(570);
-    expect(laborCost(7, RATES['Structural engineer'])).toBe(840);
   });
   it('plan card: float "-27d" critical while open; "— (complete)" for finished activities', () => {
     expect(floatText(-27)).toBe('-27d');

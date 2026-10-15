@@ -322,3 +322,7 @@ d7-operations' translation (not repeated). The prototype key "page (directors an
 
 **Progress suggestions for `docs/reste-a-developper.json`** (integrator only): R-086, R-087, R-088 → fait; R-044, R-139, R-083 →
 en_cours (built part merged; §6–§7 open); R-178 → en_cours (placeholders and the data sheet; real lists awaited).
+
+## Integration review fixes
+
+- Dead code removed: `laborCost` (`src/domain/tasks.ts`) and its two `tasks.test.ts` assertions; the cost note uses the dated-rate valuation (R-083, `costNote`).
