@@ -92,8 +92,9 @@ empty. The migration test finds the custom file by name (`NNNN_leave_types_simpl
   ("J. Wagner (2)"), initials; an existing short name, full name or e-mail is never overwritten (missing ones filled in);
   team → department only on an exact name, else kept in `directory_team`; nothing deleted.
 - Writer `importStaffDirectory` (`src/server/dal/persons-directory.ts`): one transaction, audit per created / changed person
-  (actor "Cursus", area Integrations, matricule only — no name or e-mail from the directory in audit or logs), one activity
-  event, never a user account or a role.
+  (actor "Cursus", area Integrations; the row names the person by short name like every audit row, the change gives the
+  matricule and the fields changed — never an e-mail; the logs carry matricules only), one activity event with counts,
+  never a user account or a role.
 - Connector `listDirectory()` (`cursus/types.ts`, `connector.ts`): `GET /api/integrations/keystone/annuaire` with `X-Api-Key`,
   `TODO(cursus)`; the mock returns nothing.
 - Switch `CURSUS_DIRECTORY=on` (default off) in `parse.ts` / `.env.example`. Daily job `cursus-directory` (under the
