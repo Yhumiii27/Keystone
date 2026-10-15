@@ -242,9 +242,10 @@ describe('stakeholders, interfaces, prioritisation writers', () => {
     expect(pf.weightSum).toBeCloseTo(1.2);
     await resetScoreWeights('pm');
     expect((await getScoreWeights('pm')).risk).toBe(0.2);
-    await saveProposalScore('FTU-052', { fit: 5, margin: 4, risk: 9, comment: 'Strong fit' }, 'Marie Lefebvre');
+    // L-5a (R-134): the 5 axes are saved (out-of-range values clamped to 1–5).
+    await saveProposalScore('FTU-052', { fit: 5, margin: 4, risk: 9, res: 4, client: 0, comment: 'Strong fit' }, 'Marie Lefebvre');
     const row = (await getPrioritisation('director', null)).ranking.find((r) => r.project.code === 'FTU-052')!;
-    expect(row.scores).toEqual([5, 4, 5, 4, 2]);
-    expect(await lastAudit()).toMatchObject({ who: 'Marie Lefebvre', object: 'FTU-052', change: 'score: fit 5 · margin 4 · risk 5', area: 'Prioritisation' });
+    expect(row.scores).toEqual([5, 4, 5, 4, 1]);
+    expect(await lastAudit()).toMatchObject({ who: 'Marie Lefebvre', object: 'FTU-052', change: 'score: fit 5 · margin 4 · risk 5 · resources 4 · client 1', area: 'Prioritisation' });
   });
 });
