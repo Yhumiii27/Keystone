@@ -210,7 +210,7 @@ export function ChangesView({ code, data, filter, selected, role, canEdit, href,
         <ChangeRequestDrawer
           cr={open}
           code={code}
-          ctx={{ bac: data.bac, contingency: data.contingency, proposedBaseline: data.baselines.find((b) => b.changeRequest === open.id)?.code ?? null }}
+          ctx={{ bac: data.bac, contingency: data.contingency, proposedBaseline: data.baselines.find((b) => b.changeRequest === open.id)?.code ?? null, ccbThresholdKeur }}
           role={role}
           canEdit={canEdit}
           closeHref={href({ filter, cr: null })}
@@ -229,7 +229,8 @@ export function ChangesView({ code, data, filter, selected, role, canEdit, href,
 export interface CrDrawerProps {
   cr: ChangeRequestLike;
   code: string;
-  ctx: { bac: number; contingency: number | null; proposedBaseline?: string | null };
+  /** `ccbThresholdKeur`: the board threshold in force (Settings), for the Budget row's highlight (R-069 / P-6c). */
+  ctx: { bac: number; contingency: number | null; proposedBaseline?: string | null; ccbThresholdKeur?: number };
   role: RoleKey;
   canEdit: boolean;
   closeHref: string;

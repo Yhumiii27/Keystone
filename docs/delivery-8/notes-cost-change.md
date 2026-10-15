@@ -253,3 +253,7 @@ threshold row is seeded by both seeds; a database without it reads 50 k€.
 - `tests/e2e/02-planning.spec.ts` updated (impact select, chain order, no board step) — not run in the lot.
 - Suggested `docs/reste-a-developper.json` progress: R-069, R-081, R-077, R-080, R-054, R-140 → `fait` (delivery 8, after
   integration); R-015 → `en_cours` (change-request notices done).
+
+## Integration review fixes
+
+- R-069 / P-6c: the CR drawer's Budget row is highlighted when |amount| is over the Settings board threshold (`crImpact` `ctx.ccbThresholdKeur`, passed by `ChangesView`), the board step's own rule, instead of the prototype's fixed `amt > 50` (`d8-ccb-highlight.test.ts`; seeded values unchanged at the 50 k€ default).

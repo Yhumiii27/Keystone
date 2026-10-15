@@ -9,7 +9,7 @@ import 'server-only';
 //   outbox, where it stays "pending sync with Vigie";
 // - http (when VIGIE_API_URL is set): refreshes the mirror from Vigie and delivers the outbox — TODO(vigie): the
 //   endpoints are a proposal until Vigie publishes its API (OPEN QUESTION V-2).
-import { ecosEnteringApproval } from '@/domain/vigie-events';
+import { ecosToAnnounce } from '@/domain/vigie-events';
 import { getDb } from '@/server/db/client';
 import { vigieEcos } from '@/server/db/schema';
 import { VIGIE_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
@@ -85,11 +85,12 @@ async function refreshFromVigie(): Promise<number> {
   if (!Array.isArray(records)) throw new Error('Vigie: unexpected ECO payload');
   const db = await getDb();
   // R-015 (X-6a, dormant until V-3): the ECOs entering "In approval", from the statuses read in the refresh's transaction
-  // and returned from it (the callback may run twice, R-010); notified after the commit.
+  // and returned from it (the callback may run twice, R-010); notified after the commit. The first refresh of an empty
+  // mirror is the baseline: nothing announced (`ecosToAnnounce`).
   const { n, toApprove } = await db.transaction(async (tx) => {
     const before = await tx.select({ number: vigieEcos.number, status: vigieEcos.status }).from(vigieEcos);
     const count = await upsertMirror(tx, records, new Date(), { prune: true });
-    return { n: count, toApprove: ecosEnteringApproval(new Map(before.map((e) => [e.number, e.status])), records) };
+    return { n: count, toApprove: ecosToAnnounce(new Map(before.map((e) => [e.number, e.status])), records) };
   });
   g.__ksVigieRefreshedAt = Date.now();
   if (toApprove.length) await notifyEcosToApprove(toApprove).catch((e) => logError('Vigie ECO notices', e, { component: 'vigie' }));

@@ -294,3 +294,7 @@ independent of the other lots' tables).
 | R-175 | Purge of refused uploads after 30 days; flagged stored files kept until IT acts; automatic release when clamd later passes a flagged file | as listed |
 | R-175 | Should the lists (task attachments, photo galleries) show that a file is blocked? Today only the download answers 410 (no new UI state, no-new-tools rule) | download only |
 | R-177 | Support contact, training plan, beta calendar and testers | placeholders |
+
+## Integration review fixes
+
+- R-177: `docs/EXPLOITATION.md` § 8 lists the delivery-8 jobs `cursus-directory`, `cursus-events-purge` and `codex-index`, and § 7 says the Cursus directory import exists but stays dormant until `CURSUS_DIRECTORY=on` (guard `src/domain/jobs-runbook.test.ts`: every job of `JOB_SCHEDULES` is in the § 8 table).

@@ -12,7 +12,7 @@ import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { VIGIE_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
 import { vigieNcrs } from '@/server/db/schema';
-import { newNcrs } from '@/domain/vigie-events';
+import { ncrsToAnnounce } from '@/domain/vigie-events';
 import { logError, logWarning } from '@/server/log';
 import { vigieApiUrl, vigieAuthHeaders, vigieConnectorMode } from './connection';
 import { notifyNewNcrs } from './notices';
@@ -91,11 +91,12 @@ async function refreshFromVigie(): Promise<number> {
   const db = await getDb();
   const at = new Date();
   // R-015 (X-6a, dormant until V-3): the NCRs the mirror did not hold, read in the same transaction as the refresh and
-  // returned from it (the callback may run twice, R-010); notified after the commit.
+  // returned from it (the callback may run twice, R-010); notified after the commit. The first refresh of an empty mirror is
+  // the baseline (nothing announced) and a closed NCR is never announced (`ncrsToAnnounce`).
   const { n, raised } = await db.transaction(async (tx) => {
     const before = await tx.select({ projectCode: vigieNcrs.projectCode, number: vigieNcrs.number }).from(vigieNcrs);
     const count = (await upsertNcrMirror(tx, ncrs, at, { prune: true })) + (await upsertHseMirror(tx, hse, at, { prune: true }));
-    return { n: count, raised: newNcrs(before, ncrs) };
+    return { n: count, raised: ncrsToAnnounce(before, ncrs) };
   });
   g.__ksVigieQualityRefreshedAt = Date.now();
   if (raised.length) await notifyNewNcrs(raised).catch((e) => logError('Vigie NCR notices', e, { component: 'vigie' }));

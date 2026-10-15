@@ -255,3 +255,8 @@ R-089 → en_cours (person creation waits for R-027). R-015 → en_cours (work-p
 6. **R-116.** Can the received date be corrected after receipt?
 7. **R-064 / S-5.** 30 days, 20 entries, PM + director — still to confirm.
 8. **R-150.** Drag-and-drop departs from spec 10 §6.4 by R-8c — recorded here so prototype-parity reviews do not flag it.
+
+## Integration review fixes
+
+- R-089 / R-148: the "Person to find and name" sub is `{role} · {title} · {date}` and the "New task assigned" sub `{title} · {decider} · {date}` — no English "due" / "Approved by" / "Accepted by" left beside the fields, so the French bell translates the date (`task-notices.ts`, `features/requests/actions.ts`; `sourcing.test.ts`, `actions.test.ts`).
+- R-089 / R-015: with no active procurement user the sourcing task goes to the director (P-8b default), who is now told ("Task assigned · T-xxxx", `notifyTasksAssigned`) instead of nobody (`notifySourcingTask`; `sourcing.test.ts`).

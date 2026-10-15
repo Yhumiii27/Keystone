@@ -37,22 +37,29 @@ export const FILE_CONNECTORS: readonly string[] = ['MS Project'];
 
 export const isRetiredConnector = (name: string) => RETIRED_CONNECTORS.includes(name);
 
-// ── S-11 a, X-6b, I-3c (R-037): what the Microsoft 365 rows stand for ─────────────────────────────────────────────────────
+// ── Requalified data scopes: the Microsoft 365 rows (S-11 a, X-6b, I-3c — R-037) and Cursus (R-027, R-031) ────────────────
 /**
  * The prototype seeded "Outlook / Exchange" as a calendar sync of milestones and "Microsoft Teams" as notifications to project
  * channels. S-11: Outlook / Teams meetings carrying the project code come into Keystone (once IT registers Keystone in Microsoft
  * 365 with Graph access); X-6b: no notification goes to Teams channels; I-3c keeps Teams (meetings, in the same Microsoft app
- * as Outlook) — the row is requalified, not retired (owner to confirm). Both stay "Not connected". Applied at read time over
- * the seeded texts only: a scope IT set in the connectors file (R-020) is shown as set.
+ * as Outlook) — the row is requalified, not retired (owner to confirm). Both stay "Not connected".
+ * Cursus: the prototype seeded "approvals only, no personal data imported"; since delivery 8 Keystone also receives the
+ * approved leave and absences of each person (R-031, NEW-CURSUS-4) and imports the staff directory — name, e-mail, matricule,
+ * team (R-027, NEW-CURSUS-2, dormant until CURSUS_DIRECTORY=on) — so the row says so (R-173 GDPR is open).
+ * Applied at read time over the seeded texts only: a scope IT set in the connectors file (R-020) is shown as set.
  */
-const MICROSOFT_SCOPES: Readonly<Record<string, { seeded: string; scope: string }>> = {
+const REQUALIFIED_SCOPES: Readonly<Record<string, { seeded: string; scope: string }>> = {
   'Outlook / Exchange': { seeded: 'Calendar sync for milestones and approvals', scope: 'Meetings carrying the project code, Outlook / Teams → Keystone (S-11)' },
   'Microsoft Teams': { seeded: 'Notifications to project channels', scope: 'Teams meetings through the Microsoft 365 app with Outlook, no channel posts' },
+  Cursus: {
+    seeded: 'Individual go / no go: visa approval, vaccination confirmation, clearances & badges — approvals only, no personal data imported',
+    scope: 'Individual go / no go (visa, vaccination, clearances & badges) · approved leave and absences · staff directory: name, e-mail, matricule, team (R-027, R-031)',
+  },
 };
 
-/** Data scope shown for a connector row: the Microsoft 365 rows' requalified texts over their seeded ones (R-037), else as stored. */
+/** Data scope shown for a connector row: the requalified texts (Microsoft 365 rows, R-037; Cursus, R-027 / R-031) over their seeded ones, else as stored. */
 export function connectorScopeText(name: string, stored: string): string {
-  const m = Object.hasOwn(MICROSOFT_SCOPES, name) ? MICROSOFT_SCOPES[name] : null;
+  const m = Object.hasOwn(REQUALIFIED_SCOPES, name) ? REQUALIFIED_SCOPES[name] : null;
   return m && stored === m.seeded ? m.scope : stored;
 }
 

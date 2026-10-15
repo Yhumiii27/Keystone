@@ -370,3 +370,7 @@ The stale French row of `src/server/dal/home.test.ts`'s DIRECTOR_D7 table was al
    3-per-kind limit. Keep 3?
 6. **Client CRs:** the shared predicate shows every CR of the client's projects; cost-control open question 4 (internal CRs, e.g.
    CR-007) may restrict it.
+
+## Integration review fixes
+
+- R-052 / P-10b: `src/domain/client-visibility.ts` no longer claims the portal shares its rule — it names the global search as its only caller and points to `crAwaitsClient` / `getClientPortal` (portal: requests waiting for the client only), which an answer to open question 6 must change too (`client-visibility.test.ts` pins the difference).
