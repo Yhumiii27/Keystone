@@ -22,7 +22,7 @@ import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { recordStageChange } from '@/server/dal/lifecycle';
 import { listAudit } from '@/server/dal/notifications';
-import { listPortfolioScores } from '@/server/dal/prioritisation';
+import { listPortfolioScores, saveProposalScore } from '@/server/dal/prioritisation';
 import { scoreProposalAction } from './actions';
 
 beforeAll(async () => {
@@ -45,6 +45,12 @@ describe('Score a proposal — 5 axes (L-5a), every persona', () => {
       expect((await listAudit({ projectCode: 'CER-047' })).length).toBe(audit);
       expect(revalidatePath).not.toHaveBeenCalled();
     }
+  });
+
+  it('the DAL writer re-checks the workspace with the actor', async () => {
+    for (const p of PERSONAS.filter((x) => x.role !== 'director' && x.role !== 'pm'))
+      await expect(saveProposalScore('CER-047', { fit: 1, margin: 1, risk: 1, res: 1, client: 1 }, { name: p.name, role: p.role }), p.role).rejects.toThrow('Prioritisation is outside your workspace');
+    await expect(saveProposalScore('CER-047', { fit: 4, margin: 3, risk: 4, res: 2, client: 5 }, { name: 'Romain Aubert', role: 'pm' })).resolves.toBeUndefined();
   });
 
   it('malformed values for the new axes are refused; a project that left the pipeline (stale form) too', async () => {

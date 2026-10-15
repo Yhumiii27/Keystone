@@ -10,7 +10,7 @@ import '.';
 
 const workbook = async (query: string, lang: 'en' | 'fr' = 'en') => {
   const ctx = await buildExportContext({ screen: 'pfplan', viewer: PERSONA_BY_ROLE.director, lang, params: new URLSearchParams(query), now: new Date('2026-10-09T08:00:00Z') });
-  return getExportProvider('pfplan')!.table!(ctx);
+  return (await getExportProvider('pfplan')!.table!(ctx))!;
 };
 
 beforeAll(async () => {

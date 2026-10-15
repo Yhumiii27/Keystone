@@ -34,7 +34,7 @@ Integrator: the base already had `0015`; drop this lot's `0016_*` files and rege
 
 - `src/features/pfinance/forms.ts`: required number fields `res` "Resource fit (1–5)" and `client` "Client priority (1–5)" after `risk`, before `comment`, default 3; `parseScoreProposal` validates them with `validScore` (same message); `ScoreProposalInput` gains `res`, `client`.
 - `src/server/dal/prioritisation.ts` (`ProposalScore`, `saveProposalScore` only): the 5 axes are upserted with the scorer, date and comment; "score 1 when new" stays only for an axis added to the register later. Audit text: `score: fit 5 · margin 4 · risk 5 · resources 4 · client 1`.
-- `scoreProposalAction` passes the 5 values; rights unchanged (director and PM in their workspace, everyone else "Outside my workspace · Read-only").
+- `scoreProposalAction` passes the 5 values; rights unchanged (director and PM in their workspace, everyone else "Outside my workspace · Read-only"). The DAL writer now re-checks the rule when given the actor (`saveProposalScore(code, scores, { name, role })` refuses a role without the Portfolio screen; a plain name — tests, seeds — is accepted as before).
 - Prototype labels kept: "Financial return" still scores the "Margin / NPV" axis (deviation for the owner, see questions).
 - Displayed: the dialog has 6 fields (was 4). Re-scoring overwrites the seeded Resource fit / Client priority with what is typed; the dialog cannot prefill a proposal's current scores (FormDialog defaults are static), so leaving the defaults turns EWA-051's resource fit 2 → 3.
 - FR: « Adéquation ressources (1–5) », « Priorité client (1–5) ».

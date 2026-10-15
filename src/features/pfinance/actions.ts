@@ -45,7 +45,7 @@ export async function scoreProposalAction(values: Record<string, string>): Promi
   const parsed = parseScoreProposal(values, options.map((o) => o.value));
   if (!parsed.ok) return { error: who.t(parsed.error) };
   const { projectCode, fit, margin, risk, res, client, comment } = parsed.value;
-  await saveProposalScore(projectCode, { fit, margin, risk, res, client, comment }, who.name);
+  await saveProposalScore(projectCode, { fit, margin, risk, res, client, comment }, { name: who.name, role: who.role });
   revalidatePath(screenHref('portfolio'));
   return { toast: who.t(SCORE_SAVED) };
 }
