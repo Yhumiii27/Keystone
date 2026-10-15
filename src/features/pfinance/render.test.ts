@@ -174,7 +174,8 @@ describe('Cash flow & billing', () => {
     expect(x).toContain('Point bas cumulé −1,41 M€ Octobre — avant l’encaissement de M3 (HLT-026)'); // A-12, C-10a, C-6, NEW-D3-3, R-073
     expect(x).toContain('Projet Modèle de facturation Contrat Facturé · payé En attente de paiement Coût à date Marge Prochain jalon');
     // C-10b (10 %) on R-073's figures: cost to date 1,21 M€ → 1,08 M€, margin at completion 2 % → 7 %.
-    expect(x).toContain('Aménagement de la Clinique Pasteur Lyon RCF-019 Client · jalons 1,50 M€ 300 k€ 1,08 M€ 7% Livraison · 600 k€');
+    // NEW-D5-3 'a' (R-156): the Handover milestone is « Transfert » in French (the prototype said « Livraison »).
+    expect(x).toContain('Aménagement de la Clinique Pasteur Lyon RCF-019 Client · jalons 1,50 M€ 300 k€ 1,08 M€ 7% Transfert · 600 k€');
     expect(x).toContain('Trésorerie — 6 prochains mois Plan de facturation en entrée · dépenses prévues en sortie −1412k oct. +801k nov. +428k déc. +1331k janv. ’27 +1196k févr. +402k mars Encaissements Décaissements Net mensuel au-dessus des barres');
   });
 

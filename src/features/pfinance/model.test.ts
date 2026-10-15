@@ -250,6 +250,8 @@ describe('cash flow & billing (03 §7)', () => {
             ...(r.code === 'HLT-026' ? HLT_D7[lang] : {}),
             ...(role === 'director' && MARGIN_D7[r.code] ? { marginText: MARGIN_D7[r.code] } : {}),
             marginColor: role === 'director' ? (MARGIN_D7[r.code] ? marginColorD7(r.code) : r.marginColor) : OK,
+            // NEW-D5-3 'a' (R-156): in French RCF-019's next milestone, Handover, is « Transfert » (the prototype said « Livraison »).
+            ...(lang === 'fr' && r.code === 'RCF-019' ? { next: r.next.replace(/^Livraison · /, 'Transfert · ') } : {}),
           })),
         );
         expect(v.bars.map((b) => ({ label: b.label, inH: `${b.inPct}%`, outH: `${b.outPct}%`, net: b.net, netColor: b.netColor }))).toEqual(
