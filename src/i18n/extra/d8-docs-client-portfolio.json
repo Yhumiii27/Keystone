@@ -3,5 +3,9 @@
   "Client priority (1–5)": "Priorité client (1–5)",
   "Previous quarter": "Trimestre précédent",
   "Next quarter": "Trimestre suivant",
-  "Closed / cancelled": "Clos / annulé"
+  "Closed / cancelled": "Clos / annulé",
+  "By category": "Par catégorie",
+  "HSE documents": "Documents HSE",
+  "Last issued": "Dernière diffusion",
+  "1 file": "1 fichier"
 }

@@ -116,6 +116,15 @@ button.clRow:disabled { cursor: progress; }
 .tabular { font-variant-numeric: tabular-nums; }
 .docActions { text-align: right; white-space: nowrap; }
 .emptyDocs { font-size: 12.5px; color: var(--color-neutral-500); }
+/* Delivery 8 (R-138): "By category" strip of the shared documents (computed from the Codex index; display only). */
+.docCats { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.docCatsTitle { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-neutral-400); }
+.docCatList { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 8px; }
+.docCat { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--color-neutral-900); border-radius: var(--radius-md); min-width: 0; }
+.docCatHead { display: flex; align-items: baseline; gap: 8px; }
+.docCatName { font-size: 12.5px; font-weight: 500; margin-right: auto; text-wrap: pretty; }
+.docCatCount { font-size: 11.5px; color: var(--color-accent-300); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.docCatSub { font-size: 11px; color: var(--color-neutral-400); text-wrap: pretty; }
 
 /* "Schedule" tab (S-9a): summary Gantt + milestone list, as the Schedule screen draws them. */
 .planMsRow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--color-neutral-900); font-size: 13px; }

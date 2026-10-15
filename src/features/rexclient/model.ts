@@ -6,8 +6,8 @@ import { LO, OK } from '@/components/app/tones';
 import { screenHref } from '@/config/screens';
 import {
   CLIENT_TABS, DOCS_TAB, clientDecisions, clientKpis, clientMilestones, clientProgress, issueRow, openIssueCount, rexView, sharedDocRow,
-  contractSummary, invoiceRow, type ChangeRequestLike, type ClientTab, type ClosureMark, type DeliverableLike, type EvmLike, type Kpi,
-  type ScheduleHeaderLike, type Tone,
+  contractSummary, invoiceRow, type ChangeRequestLike, type ClientDocCategory, type ClientTab, type ClosureMark, type DeliverableLike, type EvmLike,
+  type Kpi, type ScheduleHeaderLike, type Tone,
 } from '@/domain/rexclient';
 import { scheduleView, type GanttTask, type MilestoneInput, type ScheduleInput, type ScheduleMilestone } from '@/domain/schedule-gantt';
 import { slipText } from '@/features/schedule/i18n';
@@ -129,10 +129,37 @@ export interface ClientScreenView {
   /** `when`: "Raised 22 Sep", followed by "· Answered 30 Sep" once the project manager answered (R-137). */
   issues: { id: string; title: string; when: string; status: string; tagClass: string; response: string }[];
   docs: { id: string; title: string; typeLabel: string; date: string; rev: string; status: string; tagClass: string; acknowledged: boolean; ackLabel: string }[];
-  docsLabels: { idHeader: string; sub: string; empty: string };
+  /**
+   * "By category" strip above the table (L-9 = a, R-138): the categories of the shared documents computed from the Codex
+   * index, translated ("Meeting minutes · 2 files · Meeting minutes · Last issued 26 Sep"); empty when nothing is shared.
+   */
+  docCategories: DocCategoryView[];
+  docsLabels: { idHeader: string; sub: string; empty: string; byCategory: string };
   /** "Schedule" tab (S-9a): the summary Gantt and the milestones, read-only; null on the other tabs / without a schedule. */
   planning?: ClientPlanningView | null;
 }
+
+export interface DocCategoryView {
+  key: string;
+  /** Translated category ("Comptes rendus de réunion"). */
+  name: string;
+  /** "3 files" / « 3 fichiers ». */
+  files: string;
+  /** Translated type labels of its files, " · ". */
+  description: string;
+  /** "Last issued 26 Sep". */
+  latest: string;
+}
+
+/** Categories of the shared documents (R-138), translated: Keystone's vocabulary through t(), no typed text involved. */
+export const docCategoryViews = (cats: readonly ClientDocCategory[], t: T): DocCategoryView[] =>
+  cats.map((c) => ({
+    key: c.key,
+    name: t(c.category),
+    files: t(c.fileCount === 1 ? '1 file' : `${c.fileCount} files`),
+    description: c.types.map((x) => t(x)).join(' · '),
+    latest: `${t('Last issued')} ${t(fmtDOfIso(c.latestIssuedOn))}`,
+  }));
 
 /** Client portal "Schedule" tab (S-9a): the Schedule screen's Gantt (work packages without owners) and milestone list. */
 export interface ClientPlanningView {
@@ -210,6 +237,7 @@ export function clientScreenView({ code, tab, portal, schedule, billing }: Clien
       const title = exactText(r.title, lang);
       return { id: r.id, title, typeLabel: t(r.typeLabel), date: t(r.date), rev: r.rev, status: t(r.status), tagClass: tag(r.tone), acknowledged: r.acknowledged, ackLabel: t(r.ackLabel) };
     }),
-    docsLabels: { idHeader: t(DOCS_TAB.idHeader), sub: t(DOCS_TAB.sub), empty: t(DOCS_TAB.empty) },
+    docCategories: docCategoryViews(portal.documentCategories, t),
+    docsLabels: { idHeader: t(DOCS_TAB.idHeader), sub: t(DOCS_TAB.sub), empty: t(DOCS_TAB.empty), byCategory: t('By category') },
   };
 }

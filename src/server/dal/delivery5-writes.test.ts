@@ -456,7 +456,7 @@ describe('Delivery 5 backfill (database seeded before migration 0004)', () => {
       'deliverable_raci', 'deliverables', 'vigie_ncr_progress', 'vigie_ncrs', 'vigie_hse_items', 'punch_items', 'itp_inspections', 'itp_plans', 'commissioning_steps', 'commissioning_systems',
       'handover_items', 'sat_plans', 'lessons_learned', 'closure_items', 'satisfaction_scores', 'interventions', 'warranty_claims', 'machine_part_revisions', 'machines', 'daily_reports',
       'mission_cost_lines', 'site_collisions', 'site_rotations', 'site_prerequisites', 'site_equipment', 'site_sheets', 'cursus_requests', 'cursus_sync_runs', 'cursus_clearances',
-      'client_document_categories', 'client_issues', 'eng_imports', 'eng_changes', 'eng_outputs', 'eng_checks', 'eng_consistency_rules', 'eng_inputs', 'eng_disciplines', 'eng_import_tools',
+      'client_issues', 'eng_imports', 'eng_changes', 'eng_outputs', 'eng_checks', 'eng_consistency_rules', 'eng_inputs', 'eng_disciplines', 'eng_import_tools',
       'eng_column_mappings', 'eng_import_deltas', 'pid_validation_steps', 'pid_tags', 'pid_sheets', 'machine_type_phases', 'machine_type_cost_categories', 'machine_type_itp_systems',
       'connector_sync_runs', 'connectors', 'import_formats', 'app_settings', 'reference_values',
     ];
