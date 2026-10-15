@@ -292,7 +292,8 @@ export function Notifications({ items, role }: { items: NotificationView[]; role
                 </Link>
               );
             })}
-            <span className={styles.notifFoot}>{t('Also sent by e-mail digest and to the project Teams channel · preferences in Settings')}</span>
+            {/* X-6b / S-11 (R-037): no e-mail digest nor Teams channel post exists — the bell says so (e-mail: R-036). */}
+            <span className={styles.notifFoot}>{t('E-mail not connected yet — notifications stay in Keystone · preferences in Settings')}</span>
           </div>
         </>
       )}

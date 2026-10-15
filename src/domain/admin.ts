@@ -271,16 +271,14 @@ export const EMAIL_CONNECTOR = 'E-mail (SMTP)';
 export const TEAMS_CONNECTOR = 'Microsoft Teams';
 
 /**
- * Notification channels really available: in-app always, e-mail and Teams when their connector is live (X-6: no mail is sent
- * today). Sub-line "In-app · e-mail · Teams", or "In-app · e-mail and Teams not connected".
+ * Notification channels really available: in-app always, e-mail when its connector is live (X-6: no mail is sent today).
+ * X-6b / S-11 (R-037): Teams is no notification channel any more — no channel posts; its row stands for the Teams meetings of
+ * Microsoft 365 (`TEAMS_CONNECTOR`, src/domain/connectors.ts `connectorScopeText`). Sub-line "In-app · e-mail", or
+ * "In-app · e-mail not connected".
  */
 export function notificationChannels(rows: readonly { name: string; link: ConnectorLink; state: ConnectorState }[]): { count: number; sub: string } {
-  const live = (name: string) => rows.some((r) => r.name === name && r.link === 'live' && r.state !== 'disabled');
-  const email = live(EMAIL_CONNECTOR);
-  const teams = live(TEAMS_CONNECTOR);
-  const missing = [email ? null : 'e-mail', teams ? null : 'Teams'].filter((x): x is string => !!x);
-  const on = ['In-app', email ? 'e-mail' : null, teams ? 'Teams' : null].filter((x): x is string => !!x);
-  return { count: on.length, sub: missing.length ? `${on.join(' · ')} · ${missing.join(' and ')} not connected` : on.join(' · ') };
+  const email = rows.some((r) => r.name === EMAIL_CONNECTOR && r.link === 'live' && r.state !== 'disabled');
+  return email ? { count: 2, sub: 'In-app · e-mail' } : { count: 1, sub: 'In-app · e-mail not connected' };
 }
 
 export interface AuditCsvRow {

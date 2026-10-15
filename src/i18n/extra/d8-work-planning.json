@@ -5,5 +5,11 @@
   "Moved to": "Déplacée vers",
   "Move to…": "Déplacer vers…",
   "Follow-up": "Relance",
-  "No activity": "Aucune activité"
+  "No activity": "Aucune activité",
+  "Meetings carrying the project code, Outlook / Teams → Keystone (S-11)": "Réunions portant le code projet, Outlook / Teams → Keystone (S-11)",
+  "Teams meetings through the Microsoft 365 app with Outlook, no channel posts": "Réunions Teams via l’application Microsoft 365 avec Outlook, sans publication dans les canaux",
+  "E-mail not connected yet — notifications stay in Keystone · preferences in Settings": "E-mail pas encore connecté — les notifications restent dans Keystone · préférences dans Paramètres",
+  "Meeting created": "Réunion créée",
+  "Create meeting": "Créer la réunion",
+  "Minutes become a numbered document (MIN) · actions go to the owners’ tasks · read receipts are tracked in Keystone": "Le CR devient un document numéroté (MIN) · les actions vont dans les tâches des responsables · les accusés de lecture sont suivis dans Keystone"
 }

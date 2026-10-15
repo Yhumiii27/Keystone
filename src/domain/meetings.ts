@@ -93,6 +93,8 @@ export interface Meeting {
   location: string;
   /** Short name ("R. Aubert"). */
   organizer: string;
+  /** S-11 (R-037): the meeting came from Outlook / Teams (meetings.external_calendar_id) — none until the Microsoft 365 link exists. */
+  syncedFromOutlook?: boolean;
   minutesNumber: string | null;
   /** The minutes record exists in the Codex index. */
   minutesIndexed: boolean;

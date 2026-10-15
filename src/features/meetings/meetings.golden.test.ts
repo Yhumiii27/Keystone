@@ -54,7 +54,8 @@ function expected(state: any, lang: Lang) {
       number: sel.id,
       title: dt(selEn.title),
       meta: `${sel.meta.split(' · ').slice(0, 3).join(' · ')} · ${selEn.loc} · ${sel.organizer}`,
-      synced: `${t('Synced from Outlook')} · ${sel.series}`,
+      // S-11 / A-15 (R-037): no meeting is synced from Outlook yet — the series alone (the prototype: "Synced from Outlook · {series}").
+      synced: sel.series,
       type: [sel.type, sel.typeClass, sel.status, sel.stClass],
       attendance: sel.attendance.map((a: any) => [a.label, a.cls, a.color === 'var(--color-neutral-500)']),
       carried: sel.carried.length ? sel.carried.map((c: any, i: number) => [dt(selEn.carried[i].text), `${c.owner} · ${c.due}`]) : null,

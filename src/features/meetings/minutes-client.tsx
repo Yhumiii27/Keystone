@@ -3,19 +3,19 @@
 // over, previous meeting, Actions register — optimistic, reconciled when the Server Function revalidates), the
 // agenda with its selectable point and the minutes composer, and "Send minutes" (the transcript box is in
 // transcript-client.tsx). Edit controls are rendered only when `canEdit` (not outside the workspace, not a read-only project).
-import { ArrowBendDownRight, CheckCircle, CheckSquare, Circle, Gavel, Info, PaperPlaneTilt, Plus, Square } from '@phosphor-icons/react/dist/ssr';
+import { ArrowBendDownRight, CheckCircle, CheckSquare, Circle, FileText, Gavel, Info, PaperPlaneTilt, Plus, Square } from '@phosphor-icons/react/dist/ssr';
 import type { Icon } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useOptimistic, useRef, useState, useTransition, type CSSProperties, type KeyboardEvent } from 'react';
-import { Button } from '@/components/ds/Button';
+import { Button, ButtonLink } from '@/components/ds/Button';
 import { Segmented } from '@/components/ds/Segmented';
 import { useToast } from '@/components/ds/Toast';
 import { cx } from '@/components/ds/cx';
 import { LINE_TYPES, lineKey, type LineRef } from '@/domain/meetings';
 import { useI18n } from '@/i18n/client';
 import type { MeetingLineType } from '@/server/db/codes';
-import { addMinutesLineAction, sendMinutesAction, toggleMeetingActionAction } from './actions';
+import { addMinutesLineAction, recordMinutesReadAction, sendMinutesAction, toggleMeetingActionAction } from './actions';
 import { LINE_COLOR, type ActionRowView, type AgendaPointView, type LineView, type PrepActionView } from './model';
 import s from './meetings.module.css';
 
@@ -154,6 +154,26 @@ export function ActionRows({ code, rows, canEdit }: { code: string; rows: Action
       </tr>
     );
   });
+}
+
+/**
+ * "Open minutes" of "Distribution & read receipts" (S-11 a, R-037): the link opens the MIN record as before and, on the way,
+ * records the viewer's read receipt in Keystone when they are a recipient (the server decides; a failure never blocks the link).
+ */
+export function OpenMinutesLink({ code, meeting, href, label }: { code: string; meeting: string; href: string; label: string }) {
+  return (
+    <ButtonLink
+      variant="ghost"
+      size="xs"
+      icon={FileText}
+      href={href}
+      onClick={() => {
+        recordMinutesReadAction({ code, meeting }).catch(() => undefined);
+      }}
+    >
+      {label}
+    </ButtonLink>
+  );
 }
 
 // ── Agenda & composer ──────────────────────────────────────────────────────────────────────────────────
@@ -345,7 +365,8 @@ export function MinutesEditor({ code, meeting, organizer, agenda, editable, canE
           </div>
           <div className={s.footer}>
             <span className={s.footerText}>
-              {t(canSend ? 'Minutes become a numbered document (MIN) · actions go to the owners’ tasks · read receipts are tracked' : 'The organiser or the project manager sends the minutes')}
+              {/* S-11 a (R-037): a read receipt = a recipient opening the minutes from Keystone; nothing is e-mailed. */}
+              {t(canSend ? 'Minutes become a numbered document (MIN) · actions go to the owners’ tasks · read receipts are tracked in Keystone' : 'The organiser or the project manager sends the minutes')}
             </span>
             {canSend && (
               <Button variant="primary" size="sm" icon={PaperPlaneTilt} onClick={send} disabled={busy}>

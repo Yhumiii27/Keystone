@@ -207,7 +207,8 @@ describe('Activity, integrations & audit view model', () => {
     const k = kpis(g((x) => x.plumbing.kpis));
     expect([k[1].sub, k[4].value, k[4].sub]).toEqual([lang === 'en' ? '7 healthy · 1 warning' : '7 sains · 1 en alerte', '3', 'In-app · e-mail · Teams']);
     k[1] = { ...k[1], value: '9', sub: lang === 'en' ? '1 connected · 3 mock · 5 not connected' : '1 connecté · 3 simulés · 5 non connectés', color: 'var(--color-text)' };
-    k[4] = { ...k[4], value: '1', sub: lang === 'en' ? 'In-app · e-mail and Teams not connected' : 'In-app · e-mail et Teams non connectés' };
+    // X-6b / S-11 (R-037): Teams is no notification channel any more (was "In-app · e-mail and Teams not connected").
+    k[4] = { ...k[4], value: '1', sub: lang === 'en' ? 'In-app · e-mail not connected' : 'In-app · e-mail non connecté' };
     // A-12 (chapter 4, 10 OQ4): "Events today" = events of the data date (Paris day) — 5 on 25 Sep (the prototype's 6
     // included an event of 26 Sep).
     expect(k[0].value).toBe('6');
@@ -238,6 +239,14 @@ describe('Activity, integrations & audit view model', () => {
       if (r.name === 'Cursus') return { ...r, st: mock, last: '—', tagClass: 'tag tag-outline' };
       if (r.name === 'Codex') return { ...r, st: mock, last: '—', vol: lang === 'en' ? r.vol : '412 fiches · 38 liées à HLT-026', tagClass: 'tag tag-outline' };
       if (r.name === 'MS Project') return r;
+      // S-11 a, X-6b, I-3c (R-037): the Microsoft 365 rows requalified — Outlook / Teams meetings into Keystone, no channel posts.
+      if (r.name === 'Outlook / Exchange')
+        return { ...r, what: lang === 'en' ? 'Meetings carrying the project code, Outlook / Teams → Keystone (S-11)' : 'Réunions portant le code projet, Outlook / Teams → Keystone (S-11)', st: none, last: '—', vol: '—', tagClass: 'tag tag-outline' };
+      if (r.name === 'Microsoft Teams')
+        return {
+          ...r, what: lang === 'en' ? 'Teams meetings through the Microsoft 365 app with Outlook, no channel posts' : 'Réunions Teams via l’application Microsoft 365 avec Outlook, sans publication dans les canaux',
+          st: none, last: '—', vol: '—', tagClass: 'tag tag-outline',
+        };
       return { ...r, st: none, last: '—', vol: '—', tagClass: 'tag tag-outline' };
     });
     expect(g.map((r: any) => [r.name, r.st])).toEqual([

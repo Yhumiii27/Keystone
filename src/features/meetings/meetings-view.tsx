@@ -3,7 +3,7 @@
 // register. Server Component; ticks, the agenda/composer and the transcript buttons are client islands
 // (minutes-client.tsx). The Decisions register's headers say what the columns hold — "Agenda point" and "Type" —
 // where the prototype titled them "Project" and "Status" (00 §7.16, 05 OQ13).
-import { ArrowBendDownRight, ArrowsLeftRight, CalendarCheck, ChatsCircle, Eye, FileText, Gavel } from '@phosphor-icons/react/dist/ssr';
+import { ArrowBendDownRight, ArrowsLeftRight, CalendarCheck, ChatsCircle, Eye, Gavel } from '@phosphor-icons/react/dist/ssr';
 import type { FormDef } from '@/components/app/form-def';
 import type { Icon } from '@phosphor-icons/react';
 import Link from 'next/link';
@@ -11,13 +11,12 @@ import { EmptyState } from '@/components/app/EmptyState';
 import { FilterChips, FilterGroup, FilterLabel } from '@/components/app/Filter';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
 import { SectionCard, Stack } from '@/components/app/SectionCard';
-import { ButtonLink } from '@/components/ds/Button';
 import { Segmented } from '@/components/ds/Segmented';
 import { Table, Th } from '@/components/ds/Table';
 import { cx } from '@/components/ds/cx';
 import type { MeetingsView as ViewKey } from '@/domain/meetings';
 import type { T } from '@/i18n/translate';
-import { ActionRows, CarriedRows, MinutesEditor, PrevActionRows } from './minutes-client';
+import { ActionRows, CarriedRows, MinutesEditor, OpenMinutesLink, PrevActionRows } from './minutes-client';
 import { type DetailView, type MeetingsScreenView } from './model';
 import { TranscriptBox, TranscriptImportPanel, type TranscriptAi } from './transcript-client';
 import s from './meetings.module.css';
@@ -207,7 +206,7 @@ function MeetingDetail({ code, d, canEdit, canWrite, pinned, organizer, t, ai, r
           <div className={cx('card-title', s.headTitle)}>{d.title}</div>
           <span className={s.meta}>{d.meta}</span>
           <span className={s.synced}>
-            <CalendarCheck aria-hidden />
+            {d.syncedFromOutlook && <CalendarCheck aria-hidden />}
             {d.synced}
           </span>
         </div>
@@ -312,9 +311,7 @@ function MeetingDetail({ code, d, canEdit, canWrite, pinned, organizer, t, ai, r
           <div className={s.distHead}>
             <span className={cx(s.kicker, s.push)}>{t('Distribution & read receipts')}</span>
             {d.sent.text && <span className={s.sentText}>{d.sent.text}</span>}
-            <ButtonLink variant="ghost" size="xs" icon={FileText} href={d.sent.openHref}>
-              {t('Open minutes')}
-            </ButtonLink>
+            <OpenMinutesLink code={code} meeting={d.number} href={d.sent.openHref} label={t('Open minutes')} />
           </div>
           <div className={s.tags}>
             {d.sent.dist.map((x) => (

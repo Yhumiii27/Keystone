@@ -40,7 +40,7 @@ describe('meetings screen render', () => {
     const h = text(await html('fr'));
     for (const s of [
       'Vue', 'Réunions', 'Décisions', 'Actions', 'Réunions cette semaine', '2 à venir', 'CR à rédiger', 'à envoyer sous 24 h', 'Statut', 'Tous 5', 'CR à rédiger 1',
-      'Réunion de chantier hebdo n°24', '29 sept. 2026 · 08:30 · 5 conviés · 3 actions', 'Notes en cours', 'Synchronisé depuis Outlook · Réunion de chantier hebdo',
+      'Réunion de chantier hebdo n°24', '29 sept. 2026 · 08:30 · 5 conviés · 3 actions', 'Notes en cours', 'Réunion de chantier hebdo', // S-11 / A-15 (R-037): was "Synchronisé depuis Outlook · Réunion de chantier hebdo"
       'Participants · 5 Conviés', 'T. Kerbrat · absent', 'Décisions de la réunion précédente', 'Réunion de chantier hebdo n°23 · 22 sept. 2026', '2 / 2', 'Close depuis',
       'Issu de la réunion client — questions à préparer', 'Question client · N. Bensaïd · S. Haddad', 'Ordre du jour & notes', 'L. Fabre · 2 oct.',
       'Ajouter une note au point sélectionné', 'Envoyer le CR à tous les conviés',

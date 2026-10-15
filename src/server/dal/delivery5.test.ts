@@ -567,8 +567,13 @@ describe('administration (09 §9, 10 §1–2)', () => {
     // The prototype's connectors with their real state (R-021: A-15, NEW-CURSUS-4): Lucca retired; Cursus and Codex mocks (no
     // last sync, the mirror / index content); Sage X3, the PDM, Outlook, Teams and SMTP "Not connected" (no seeded status,
     // last sync or volume); MS Project keeps its last export.
+    // S-11 a, X-6b, I-3c (R-037): the Microsoft 365 rows requalified (Outlook / Teams meetings into Keystone, no channel posts).
+    const SCOPE: Record<string, string> = {
+      'Outlook / Exchange': 'Meetings carrying the project code, Outlook / Teams → Keystone (S-11)',
+      'Microsoft Teams': 'Teams meetings through the Microsoft 365 app with Outlook, no channel posts',
+    };
     const expected = g.connectors.filter((r: any) => r.name !== 'Lucca').map((r: any) =>
-      r.name === 'Cursus' || r.name === 'Codex' ? { ...r, st: 'Mock', last: '—' } : r.name === 'MS Project' ? r : { ...r, st: 'Not connected', last: '—', vol: '' });
+      r.name === 'Cursus' || r.name === 'Codex' ? { ...r, st: 'Mock', last: '—' } : r.name === 'MS Project' ? r : { ...r, what: SCOPE[r.name] ?? r.what, st: 'Not connected', last: '—', vol: '' });
     expect(conns.slice(0, 8).map((c) => ({ name: c.name, what: c.dataScope, freq: c.frequency, st: c.statusLabel, last: c.lastSyncAt ? stampText(new Date(c.lastSyncAt)) : '—', vol: c.lastVolume })))
       .toEqual(expected);
     // Deliberate: Vigie (ECOs, NCRs, site HSE) is listed last, its state read from the connector layer (a mock without its API URL).

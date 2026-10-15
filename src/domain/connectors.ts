@@ -33,6 +33,25 @@ export const FILE_CONNECTORS: readonly string[] = ['MS Project'];
 
 export const isRetiredConnector = (name: string) => RETIRED_CONNECTORS.includes(name);
 
+// ── S-11 a, X-6b, I-3c (R-037): what the Microsoft 365 rows stand for ─────────────────────────────────────────────────────
+/**
+ * The prototype seeded "Outlook / Exchange" as a calendar sync of milestones and "Microsoft Teams" as notifications to project
+ * channels. S-11: Outlook / Teams meetings carrying the project code come into Keystone (once IT registers Keystone in Microsoft
+ * 365 with Graph access); X-6b: no notification goes to Teams channels; I-3c keeps Teams (meetings, in the same Microsoft app
+ * as Outlook) — the row is requalified, not retired (owner to confirm). Both stay "Not connected". Applied at read time over
+ * the seeded texts only: a scope IT set in the connectors file (R-020) is shown as set.
+ */
+const MICROSOFT_SCOPES: Readonly<Record<string, { seeded: string; scope: string }>> = {
+  'Outlook / Exchange': { seeded: 'Calendar sync for milestones and approvals', scope: 'Meetings carrying the project code, Outlook / Teams → Keystone (S-11)' },
+  'Microsoft Teams': { seeded: 'Notifications to project channels', scope: 'Teams meetings through the Microsoft 365 app with Outlook, no channel posts' },
+};
+
+/** Data scope shown for a connector row: the Microsoft 365 rows' requalified texts over their seeded ones (R-037), else as stored. */
+export function connectorScopeText(name: string, stored: string): string {
+  const m = Object.hasOwn(MICROSOFT_SCOPES, name) ? MICROSOFT_SCOPES[name] : null;
+  return m && stored === m.seeded ? m.scope : stored;
+}
+
 /** How Keystone is linked to the system of a connector row (`mode`: Vigie / Cursus connector-layer mode). */
 export function connectorLink(c: { name: string; kind: ConnectorKind; mode: 'mock' | 'http' | null }): ConnectorLink {
   if (c.kind === 'vigie' || c.kind === 'cursus') return c.mode === 'http' ? 'live' : 'mock';

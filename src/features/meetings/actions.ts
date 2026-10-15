@@ -17,7 +17,8 @@ import { parseNewRisk } from '@/domain/risk';
 import { RISK_RESULT } from '@/features/risks/forms';
 import { transcriptAiInfo } from '@/server/ai/config';
 import {
-  addMeetingLine, analyseTranscript, applyTranscriptToMinutes, createMeeting, getMeeting, listMeetingActivityOptions, sendMinutes, toggleMeetingAction, type MeetingRow,
+  addMeetingLine, analyseTranscript, applyTranscriptToMinutes, createMeeting, getMeeting, listMeetingActivityOptions, readerOf, recordMinutesRead, sendMinutes,
+  toggleMeetingAction, type MeetingRow,
 } from '@/server/dal/meetings';
 import { MeetingLineError } from '@/server/dal/meetings-core';
 import { ensureFirstAgendaPoint } from '@/server/dal/meetings-screen';
@@ -105,7 +106,7 @@ async function write<R>(label: string, fn: () => Promise<R>): Promise<{ ok: true
   }
 }
 
-/** "New meeting" → "Create & invite": MTG-130…, Scheduled, organized by the viewer; toast "{title} · Meeting created · …". */
+/** "New meeting" → "Create meeting": MTG-130…, Scheduled, organized by the viewer; toast "{title} · Meeting created" (no invitation sent, R-037). */
 export async function createMeetingAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const g = await editable(code);
   if (!g.ok) return { error: await tr(g.error) };
@@ -311,6 +312,31 @@ export async function addProposalQuestionAction(code: string, meeting: string, p
   if (!r.ok) return { error: await tr(r.error) };
   refresh(g.code);
   return { toast: await tr('Question added to the client questions') };
+}
+
+/**
+ * S-11 a (R-037): a read receipt recorded in Keystone when a minutes recipient clicks "Open minutes" in "Distribution & read
+ * receipts" (merely viewing the meeting does not count). Reading is not editing: the viewer only has to see the project's
+ * meetings (getProjectContext — read-only projects and screens outside the workspace included; a client only on their
+ * organisation's projects and the external meetings, P-10b). Nothing is recorded for a viewer who is not a recipient, the
+ * organizer, or a receipt already there. Returns whether a receipt was recorded.
+ */
+export async function recordMinutesReadAction(input: { code: string; meeting: string }): Promise<{ ok: true; recorded: boolean } | { ok: false; error: string }> {
+  const readFail = async (error: string) => ({ ok: false as const, error: await tr(error) });
+  if (typeof input?.code !== 'string' || !input.code) return readFail('Invalid request');
+  if (typeof input.meeting !== 'string' || !MTG_RE.test(input.meeting)) return readFail('Unknown meeting');
+  const project = await getProject(input.code);
+  if (!project) return readFail('Unknown project');
+  const ctx = await getProjectContext(project.code, 'meetings');
+  const meeting = await getMeeting(input.meeting);
+  if (!meeting || meeting.projectCode !== project.code || (ctx.viewer.role === 'client' && meeting.type !== 'external')) return readFail('Unknown meeting');
+  if (meeting.status !== 'minutes_sent') return { ok: true, recorded: false };
+  const reader = await readerOf(ctx.viewer);
+  if (!reader) return { ok: true, recorded: false };
+  const r = await write('recordMinutesReadAction', () => recordMinutesRead(meeting.number, reader));
+  if (!r.ok) return readFail(r.error);
+  if (r.value) refresh(project.code);
+  return { ok: true, recorded: r.value };
 }
 
 /**

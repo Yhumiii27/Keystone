@@ -24,6 +24,8 @@ import {
   CONNECTOR_STATE_LABEL, connectorCanSync, connectorLink, connectorState, connectorStateNeedsAttention, isRetiredConnector, isSimulatedSync, showsLastSync,
   showsVolume, type ConnectorLink, type ConnectorState,
 } from '@/domain/connectors';
+// R-037 (S-11, X-6b): the Microsoft 365 rows' scope texts, applied at read time.
+import { connectorScopeText } from '@/domain/connectors';
 import { fmt } from '@/server/interchange/messages';
 import { ensureConnectorsFileApplied } from './connector-config';
 import { eventsToday } from './kpis';
@@ -125,7 +127,7 @@ export async function listConnectors(): Promise<ConnectorRow[]> {
     // Last successful sync: the connector layer's latest refresh, or a later successful "Sync now" — a real exchange only.
     const last = [live?.lastSyncAt, c.lastSyncAt].filter((d): d is Date => !!d).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
     return {
-      name: c.name, kind: c.kind, mode, link, state, canSync: connectorCanSync(link, c.enabled), dataScope: c.dataScope, frequency: c.frequency,
+      name: c.name, kind: c.kind, mode, link, state, canSync: connectorCanSync(link, c.enabled), dataScope: connectorScopeText(c.name, c.dataScope), frequency: c.frequency,
       direction: c.direction, status, statusLabel: CONNECTOR_STATE_LABEL[state], lastSyncAt: showsLastSync(link) ? ((live ? last : c.lastSyncAt)?.toISOString() ?? null) : null,
       lastVolume: showsVolume(link) ? (live ? live.volume : c.lastVolume) : '', pending: live?.pending ?? 0, failed: live?.failed ?? 0, owner: c.ownerName,
       addedInKeystone: c.addedInKeystone, enabled: c.enabled,

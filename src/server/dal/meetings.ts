@@ -138,6 +138,8 @@ export interface MeetingRow {
   organizer: string;
   /** The organiser's person (P-9b: they and the project's PM write and send the minutes); null when only a name is known. */
   organizerPersonId: string | null;
+  /** S-11 (R-037): synced from Outlook / Teams (an external calendar id is recorded); false for every meeting today. */
+  syncedFromOutlook: boolean;
   status: MeetingStatus;
   statusLabel: string;
   /** "MIN-HLT-023"; `minutesIndexed` = the record exists in the Codex index ("Open minutes"). */
@@ -202,7 +204,8 @@ export async function listMeetings(projectCode: string): Promise<MeetingRow[]> {
     return {
       number: m.number, projectCode: code, title: m.title, series: m.series, seriesLabel: meetingSeries.label(m.series), type: m.type, typeLabel: meetingType.label(m.type),
       startsOn: m.startsOn, dateText: displayOfIso(m.startsOn), monthIndex: monthIndexOfIso(m.startsOn), time: m.startTime, durationMin: m.durationMin,
-      durationText: durationText(m.durationMin), location: m.location, organizer: m.organizerName, organizerPersonId: m.organizerPersonId, status: m.status, statusLabel: meetingStatus.label(m.status),
+      durationText: durationText(m.durationMin), location: m.location, organizer: m.organizerName, organizerPersonId: m.organizerPersonId,
+      syncedFromOutlook: !!m.externalCalendarId, status: m.status, statusLabel: meetingStatus.label(m.status),
       minutesNumber: m.minutesNumber, minutesIndexed: !!docNumber, minutesSentOn: m.minutesSentOn, sentText: m.minutesSentOn ? shortDateOfIso(m.minutesSentOn) : '',
       participants: parts.filter((p) => p.meetingId === m.id).map((p) => ({
         name: p.name, present: p.present, minutesRecipient: p.minutesRecipient, readOn: p.minutesReadOn, readText: p.minutesReadOn ? shortDateOfIso(p.minutesReadOn) : '',
@@ -312,9 +315,9 @@ export interface NewMeeting {
 }
 
 /**
- * "New meeting" (AF.meetings, "Create & invite"): MTG-130… (global sequence), organized by the viewer, Scheduled,
+ * "New meeting" (AF.meetings, "Create meeting" — R-037, was "Create & invite"): MTG-130… (global sequence), organized by the viewer, Scheduled,
  * 1 h, on top of the register — created meetings come before the seeded register, in creation order, as the
- * prototype's `[...added.meetings, ...MEETINGS]`. Returns the number (toast "{title} · Meeting created · …").
+ * prototype's `[...added.meetings, ...MEETINGS]`. Returns the number (toast "{title} · Meeting created").
  */
 export async function createMeeting(projectCode: string, input: NewMeeting, actorName: string): Promise<string> {
   const db = await getDb();
@@ -475,11 +478,38 @@ export async function sendMinutes(meetingNumber: string, actorName: string, on: 
   return sent;
 }
 
-/** Records a read receipt of the minutes (Outlook sync, OPEN QUESTION S-11). */
-export async function recordMinutesRead(meetingNumber: string, participant: string, on: string = NOW_ISO): Promise<void> {
+/**
+ * Read receipt recorded in Keystone (S-11 a, R-037 — the Outlook receipt waits for the Microsoft 365 link): the reader opened
+ * the sent minutes from the meeting ("Open minutes"). Only a minutes recipient (every invitee but the organizer) whose receipt
+ * is still empty: matched by person, else — a participant invited by a name Keystone could not link — by the reader's full or
+ * short name. Recorded once, audited; returns whether a receipt was recorded (false: not a recipient, already read, not sent).
+ */
+export async function recordMinutesRead(
+  meetingNumber: string, reader: { personId: string; fullName: string | null; shortName: string }, on: string = NOW_ISO,
+): Promise<boolean> {
   const db = await getDb();
-  const [m] = await db.select({ id: meetings.id }).from(meetings).where(eq(meetings.number, meetingNumber));
-  if (!m) throw new Error(`Unknown meeting ${meetingNumber}`);
-  await db.update(meetingParticipants).set({ minutesReadOn: on })
-    .where(and(eq(meetingParticipants.meetingId, m.id), eq(meetingParticipants.name, participant), eq(meetingParticipants.minutesRecipient, true)));
+  return db.transaction(async (tx) => {
+    const m = await loadMeeting(tx, meetingNumber);
+    if (m.status !== 'minutes_sent') return false;
+    const parts = await tx
+      .select()
+      .from(meetingParticipants)
+      .where(and(eq(meetingParticipants.meetingId, m.id), eq(meetingParticipants.minutesRecipient, true)));
+    const names = [reader.fullName, reader.shortName].filter((x): x is string => !!x);
+    const p = parts.find((x) => x.personId === reader.personId) ?? parts.find((x) => !x.personId && names.includes(x.name));
+    if (!p || p.minutesReadOn) return false;
+    await tx.update(meetingParticipants).set({ minutesReadOn: on }).where(and(eq(meetingParticipants.id, p.id), sql`${meetingParticipants.minutesReadOn} is null`));
+    await audit(tx, reader.fullName ?? reader.shortName, meetingNumber, `minutes read · ${m.minutesNumber ?? ''} · ${p.name} · ${shortDateOfIso(on)}`, m.projectId, m.id);
+    return true;
+  });
+}
+
+/** The person of a viewer (R-037 read receipts): by person id when signed in (Entra), else the demo persona's short name. */
+export async function readerOf(v: { personId: string | null; short: string }): Promise<{ personId: string; fullName: string | null; shortName: string } | null> {
+  const db = await getDb();
+  const [p] = await db
+    .select({ personId: persons.id, fullName: persons.fullName, shortName: persons.shortName })
+    .from(persons)
+    .where(v.personId ? eq(persons.id, v.personId) : eq(persons.shortName, v.short));
+  return p ?? null;
 }

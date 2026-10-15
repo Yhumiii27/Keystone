@@ -160,8 +160,9 @@ export interface DetailView {
   title: string;
   /** "{date} · {time} · {dur} · {loc} · {organizer}". */
   meta: string;
-  /** "Synced from Outlook · {series}". */
+  /** The series; "Synced from Outlook · {series}" only for a meeting synced from Outlook (S-11, A-15 — none today). */
   synced: string;
+  syncedFromOutlook: boolean;
   typeLabel: string;
   typeClass: string;
   statusLabel: string;
@@ -316,7 +317,9 @@ export function meetingsScreenView({ code, meetings: ms, questions, query, clien
       number: m.number,
       title: title(m),
       meta: `${t(m.dateText)} · ${m.time} · ${t(m.durationText)} · ${m.location} · ${m.organizer}`,
-      synced: `${t('Synced from Outlook')} · ${t(meetingSeries.label(m.series))}`,
+      // S-11 / A-15 (R-037): the prototype labelled every meeting "Synced from Outlook"; no meeting comes from Outlook yet.
+      synced: m.syncedFromOutlook ? `${t('Synced from Outlook')} · ${t(meetingSeries.label(m.series))}` : t(meetingSeries.label(m.series)),
+      syncedFromOutlook: !!m.syncedFromOutlook,
       typeLabel: t(meetingType.label(m.type)),
       typeClass: tagOf('meetingType', m.type),
       statusLabel: t(meetingStatus.label(m.status)),
