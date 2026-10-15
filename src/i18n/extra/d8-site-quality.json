@@ -98,6 +98,7 @@
   "The name is required": "Le nom est obligatoire",
   "Unknown source": "Source inconnue",
   "Choose a person of the project team or type the contractor crew": "Choisissez une personne de l’équipe projet ou saisissez l’équipe sous-traitante",
+  "This name is a person known to Keystone — add them to the project team, then choose them": "Ce nom est celui d’une personne connue de Keystone — ajoutez-la à l’équipe projet, puis choisissez-la",
   "The role on site is required": "Le rôle sur site est obligatoire",
   "From: enter a date such as 19 Oct 2026": "Du : saisissez une date comme 19 oct. 2026",
   "To: enter a date such as 13 Nov 2026": "Au : saisissez une date comme 13 nov. 2026",

@@ -17,7 +17,7 @@ import {
   ARBITRATION_COMMENT_MAX, PREREQUISITE_ALERT_DAYS, canArbitrateConflict, goChantier, isPrerequisiteLate, missionCostUse, siteConflicts,
   type ConflictFacts, type GoCondition, type SiteConflict, type SitePremium,
 } from '@/domain/site';
-import { costStamp, equipmentStamp, prerequisiteStamp, rotationStamp } from '@/domain/site-sheet';
+import { SITE_LINE_CHANGED, costStamp, equipmentStamp, prerequisiteStamp, rotationStamp, siteSheetOpen } from '@/domain/site-sheet';
 import { getDb } from '@/server/db/client';
 import {
   STATUS_ISO, addDaysIso, collisionKind, confirmStatus, cursusClearance, cursusVaccination, cursusVerdict, cursusVisa, equipmentSource, hseIncident, hseStatus,
@@ -209,7 +209,9 @@ type Q = DB | Tx;
 
 /**
  * The facts the site-team conflicts are computed from (R-119): the rotation (with each person's department), the pool's
- * weekly loads, the other projects' rotations of the same people, Cursus's clearances of the team (matched by matricule when
+ * weekly loads, the other projects' rotations of the same people (only on a project whose site sheet is still open —
+ * Études … Mise en service & SAT: a cancelled, closed or warranty project's rotation is no longer a cause, and nobody can
+ * change it any more, D-6b 'a'), Cursus's clearances of the team (matched by matricule when
  * Cursus gives one, else by name), the absences received from Cursus (R-031) and the arbitrations of the project. The pool
  * and Cursus are read by the caller through their own readers (never inside a transaction).
  */
@@ -224,7 +226,9 @@ async function conflictFacts(
         .where(inArray(persons.id, ids))
       : Promise.resolve([]),
     names.length
-      ? q.select({ person: siteRotations.personName, personId: siteRotations.personId, code: projects.code, fromOn: siteRotations.fromOn, toOn: siteRotations.toOn })
+      ? q.select({
+        person: siteRotations.personName, personId: siteRotations.personId, code: projects.code, stage: projects.stage, fromOn: siteRotations.fromOn, toOn: siteRotations.toOn,
+      })
         .from(siteRotations).innerJoin(projects, eq(projects.id, siteRotations.projectId))
         .where(and(ne(siteRotations.projectId, projectId), ids.length ? or(inArray(siteRotations.personId, ids), inArray(siteRotations.personName, names)) : inArray(siteRotations.personName, names)))
       : Promise.resolve([]),
@@ -239,7 +243,7 @@ async function conflictFacts(
   return {
     rotation: rot.map((r) => ({ person: r.personName, personId: r.personId, department: (r.personId && byId.get(r.personId)?.department) || null, fromOn: r.fromOn, toOn: r.toOn })),
     pool: { weeks: pool.weeks.map((w) => w.start), people: pool.people.map((x) => ({ name: x.name, loads: x.loads })) },
-    otherSites: others.map((o) => ({ person: o.person, personId: o.personId, projectCode: o.code, fromOn: o.fromOn, toOn: o.toOn })),
+    otherSites: others.filter((o) => siteSheetOpen(o.stage)).map((o) => ({ person: o.person, personId: o.personId, projectCode: o.code, fromOn: o.fromOn, toOn: o.toOn })),
     cursus: cursus.map((c) => ({ personName: c.personName, personId: c.matricule ? idOfMatricule.get(c.matricule) ?? null : null, clearance: c.clearance, clearanceNote: c.clearanceNote })),
     absences: absences.map((a) => ({ personId: a.personId, leaveType: a.leaveType, start: a.startDate ?? a.weekStart, end: a.endDate ?? addDaysIso(a.weekStart, 4) })),
     arbitrations: arbitrations.map((a) => ({ key: a.conflictKey, comment: a.comment, by: a.arbitratedByName, at: a.arbitratedAt.toISOString() })),
@@ -278,14 +282,20 @@ async function sheetProject(tx: Tx, code: string) {
   return p;
 }
 
-/** "Client confirms" (Pending → Confirmed) and "Signed on site" (Confirmed → Signed) on a client prerequisite. */
-export async function advancePrerequisite(projectCode: string, position: number, to: 'confirmed' | 'signed', actor: Actor, on: string = STATUS_ISO): Promise<void> {
+/**
+ * "Client confirms" (Pending → Confirmed) and "Signed on site" (Confirmed → Signed) on a client prerequisite, as the page showed
+ * it (`stamp`, R-118): a line edited, or removed and replaced at the same position meanwhile, is refused (SITE_LINE_CHANGED).
+ */
+export async function advancePrerequisite(
+  projectCode: string, position: number, to: 'confirmed' | 'signed', stamp: string, actor: Actor, on: string = STATUS_ISO,
+): Promise<void> {
   requireWorkspace('site', actor, 'Site');
   const db = await getDb();
   await db.transaction(async (tx) => {
     const p = await sheetProject(tx, projectCode);
     const [x] = await tx.select().from(sitePrerequisites).where(and(eq(sitePrerequisites.projectId, p.id), eq(sitePrerequisites.position, position)));
     if (!x) throw new Error(`Unknown prerequisite ${position} on ${projectCode}`);
+    if (prerequisiteStamp(x) !== stamp) throw new Error(SITE_LINE_CHANGED);
     const expected: ConfirmStatus = to === 'confirmed' ? 'pending' : 'confirmed';
     if (x.status !== expected) throw new Error(`"${x.title}" is ${confirmStatus.label(x.status)}`);
     await tx.update(sitePrerequisites).set(to === 'confirmed' ? { status: to, confirmedOn: on, updatedAt: new Date() } : { status: to, signedOn: on, updatedAt: new Date() })
@@ -297,14 +307,15 @@ export async function advancePrerequisite(projectCode: string, position: number,
   });
 }
 
-/** "Confirm" on a pending equipment line. */
-export async function confirmEquipment(projectCode: string, position: number, actor: Actor, on: string = STATUS_ISO): Promise<void> {
+/** "Confirm" on a pending equipment line, as the page showed it (`stamp`, as for the prerequisites). */
+export async function confirmEquipment(projectCode: string, position: number, stamp: string, actor: Actor, on: string = STATUS_ISO): Promise<void> {
   requireWorkspace('site', actor, 'Site');
   const db = await getDb();
   await db.transaction(async (tx) => {
     const p = await sheetProject(tx, projectCode);
     const [x] = await tx.select().from(siteEquipment).where(and(eq(siteEquipment.projectId, p.id), eq(siteEquipment.position, position)));
     if (!x) throw new Error(`Unknown equipment ${position} on ${projectCode}`);
+    if (equipmentStamp(x) !== stamp) throw new Error(SITE_LINE_CHANGED);
     if (x.status !== 'pending') throw new Error(`"${x.name}" is already confirmed`);
     const who = await whoIs(tx, actor);
     await tx.update(siteEquipment).set({ status: 'confirmed', confirmedOn: on, confirmedByPersonId: who.personId, updatedAt: new Date() }).where(eq(siteEquipment.id, x.id));

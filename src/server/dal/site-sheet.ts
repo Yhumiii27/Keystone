@@ -12,19 +12,20 @@ import { and, asc, eq, max } from 'drizzle-orm';
 import { currencyOf, type CurrencyCode } from '@/domain/currency';
 import { plannedManDays, standardCalendar } from '@/domain/kpis';
 import {
-  NO_PLAN_ACTIVITY, PERSON_REQUIRED, SITE_COST_KEPT, SITE_LEADS_ONLY, SITE_LINE_CHANGED, SITE_LINE_KEPT, SITE_SHEET_CHANGED, SITE_SHEET_EXISTS, SITE_STAGE_ERROR,
-  UNKNOWN_ACTIVITY, costStamp, equipmentStamp, prerequisiteStamp, rotationStamp, sheetStamp, siteLineEditable, siteLineRemovable, siteSheetOpen,
-  type SiteLineForm, type SiteLineKind, type SiteSheetForm,
+  CREW_IS_PERSON, NO_PLAN_ACTIVITY, PERSON_REQUIRED, SITE_COST_KEPT, SITE_LEADS_ONLY, SITE_LINE_CHANGED, SITE_LINE_KEPT, SITE_SHEET_CHANGED, SITE_SHEET_EXISTS,
+  SITE_STAGE_ERROR, UNKNOWN_ACTIVITY, costStamp, equipmentStamp, isKnownPersonName, prerequisiteStamp, rotationStamp, sheetStamp, siteLineEditable, siteLineRemovable,
+  siteSheetOpen, type SiteLineForm, type SiteLineKind, type SiteSheetForm,
 } from '@/domain/site-sheet';
 import { getDb } from '@/server/db/client';
 import { equipmentSource } from '@/server/db/codes';
 import {
   activities, contracts, missionCostLines, projectSites, projects, siteEquipment, sitePrerequisites, siteRotations, siteSheets, stakeholders,
 } from '@/server/db/schema';
-import type { Tx } from '@/server/db/types';
+import type { DB, Tx } from '@/server/db/types';
 import { getProjectCalendarCode, loadWorkCalendars } from './calendars';
 import { managesProject, requireWorkspace, trace, whoIs, type Actor } from './ops-common';
 import { getNamedTeam } from './project-team';
+import { listSourcingCandidates } from './requests';
 
 export const NO_SHEET = 'This project has no site sheet';
 
@@ -72,6 +73,14 @@ export async function planActivities(projectCode: string): Promise<{ code: strin
   const db = await getDb();
   return db.select({ code: activities.code, name: activities.name }).from(activities).innerJoin(projects, eq(projects.id, activities.projectId))
     .where(eq(projects.code, projectCode)).orderBy(asc(activities.code));
+}
+
+/**
+ * The names (full and short) of the people Keystone knows — not a client's contacts or users, not a contract-role placeholder:
+ * a contractor crew may not be typed with one of them (R-118 / R-119, `isKnownPersonName`).
+ */
+export async function knownPersonNames(q?: DB | Tx): Promise<string[]> {
+  return (await listSourcingCandidates(q ?? (await getDb()))).flatMap((p) => [p.name, p.short]);
 }
 
 /** Rights and stage, re-checked in the transaction: Site in the workspace, a lead of the project (or the director), stage window. */
@@ -194,9 +203,15 @@ async function planActivityOf(tx: Tx, projectId: string, code: string): Promise<
   return a.id;
 }
 
-/** A rotation's person: a member of the project's team (by name), a contractor crew (no person), or the line's current person kept. */
+/**
+ * A rotation's person: a member of the project's team (by name), a contractor crew (no person — never a name of a person
+ * Keystone knows, who is chosen from the team instead), or the line's current person kept.
+ */
 async function rotationPerson(tx: Tx, code: string, line: Extract<SiteLineForm, { kind: 'rotation' }>['value'], current?: { personName: string | null; personId: string | null }) {
-  if (line.crew) return null;
+  if (line.crew) {
+    if (isKnownPersonName(line.personName, await knownPersonNames(tx))) throw new Error(CREW_IS_PERSON);
+    return null;
+  }
   const member = (await getNamedTeam(code, tx)).find((m) => m.name === line.personName);
   if (member) return member.personId;
   if (current && current.personName === line.personName) return current.personId;
