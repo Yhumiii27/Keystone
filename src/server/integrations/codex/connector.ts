@@ -112,10 +112,13 @@ async function refreshFromCodex(numbers: readonly string[]): Promise<number> {
  * Index read (Delivery 8, R-033; D-2 scope) — TODO(codex): `GET /api/documents?since=…[&project=…]` returning the records
  * changed since the last read (the whole index without `since`), each with its current revision and current circuit
  * (mirror.ts `CodexIndexRecord`). A proposal until Codex publishes its API (OPEN QUESTION D-1); the HTTP connector only.
- * Unknown projects and types are skipped and logged (A-15: never a phantom QMS record).
+ * Unknown projects and types are skipped and logged (A-15: never a phantom QMS record). `onlyNew`: the re-read of records
+ * that waited for a project or type of Keystone writes only those, when not indexed yet (`applyCodexIndex`).
  */
 /** Null when IT disabled the connector (D-7a): nothing is asked. */
-export async function readCodexIndex(opts: { since?: Date | null; project?: string | null } = {}, at = new Date()): Promise<CodexIndexResult | null> {
+export async function readCodexIndex(
+  opts: { since?: Date | null; project?: string | null; onlyNew?: ReadonlySet<string> } = {}, at = new Date(),
+): Promise<CodexIndexResult | null> {
   if (codexConnectorMode() !== 'http') throw new Error('The Codex index is read from Codex only when CODEX_API_URL is set');
   if (!(await connectorEnabled(CODEX_CONNECTOR_NAME))) return null;
   const q = new URLSearchParams();
@@ -125,7 +128,7 @@ export async function readCodexIndex(opts: { since?: Date | null; project?: stri
   const records = (await res.json()) as unknown;
   if (!Array.isArray(records)) throw new Error('Codex: unexpected index payload');
   const db = await getDb();
-  const r = await db.transaction((tx) => applyCodexIndex(tx, records, at));
+  const r = await db.transaction((tx) => applyCodexIndex(tx, records, at, { onlyNew: opts.onlyNew }));
   if (r.skipped.length)
     log.warn('Codex index: records skipped', { component: 'codex', skipped: r.skipped.length, sample: r.skipped.slice(0, 10).map((x) => `${x.number}: ${x.reason}`).join(' · ') });
   return r;

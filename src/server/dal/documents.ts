@@ -10,7 +10,7 @@ import 'server-only';
 // Delivery 7 (P-7b = a, D-1b = a, P-7c = a; R-124, R-106): circuit decisions and the start of an engineering
 // deliverable's circuit are recorded in the Codex outbox (src/server/integrations/codex) and shown "pending sync with
 // Codex" over the mirrored circuit; the status and the approval proof change only when Codex answers.
-import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, notInArray, or, sql } from 'drizzle-orm';
 import { cache } from 'react';
 import { getDb } from '@/server/db/client';
 import {
@@ -26,8 +26,9 @@ import { closeCodexEntries, insertCodexEntry, openCodexEntries, type CodexOutbox
 import { codexConnectorMode } from '@/server/integrations/codex/config';
 import { readCodexIndex } from '@/server/integrations/codex/connector';
 import { awaitsKeystoneData } from '@/server/integrations/codex/mirror';
+import { logWarning } from '@/server/log';
 import {
-  clients, deliverables, documentAcknowledgements, documentApprovals, documentApproverAssignments, documentDeposits, documentIndexSyncs,
+  clients, codexIndexAwaiting, deliverables, documentAcknowledgements, documentApprovals, documentApproverAssignments, documentDeposits, documentIndexSyncs,
   documentLinks, documentRevisions, documentTypeCircuitSteps, documentTypes, documents, persons, projects, punchItems, purchaseOrders, users,
 } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
@@ -494,9 +495,9 @@ export async function getCodexSyncState(): Promise<CodexSyncState | null> {
 }
 
 /**
- * `since` of the next read of Codex's index by the HTTP connector (R-033): the last read's mark — its time, or an earlier mark
- * held while records waited for their project or document type in Keystone (integration review). Null = the whole index
- * (before the first read, or while the first read's skipped records wait).
+ * `since` of the next read of Codex's index by the HTTP connector (R-033): the last read's mark, its time (null = the whole
+ * index, before the first read). Records waiting for their project or document type in Keystone no longer hold it back
+ * (integration review): they wait in `codex_index_awaiting`.
  */
 export async function nextCodexIndexSince(): Promise<Date | null> {
   const db = await getDb();
@@ -519,22 +520,73 @@ export interface CodexIndexRead {
  * HTTP connector (Delivery 8, R-033): reads Codex's index since the last read (the whole index the first time), writes it
  * into Keystone's index (mirror.ts `applyCodexIndex`) and records the read. Throws when Codex is unreachable or answers
  * badly (nothing recorded, the next read asks again). `actorName` null = the scheduled job.
- * Integration review: a read that skipped a record for a project or document type Keystone does not know yet keeps its own
- * `since` as the next one (`awaitsKeystoneData`), so the record comes back once the project or type exists — Codex sends a
- * record again only when it changes; the upserts are idempotent. The read's time stays the banner's "Last sync".
+ * Integration review: the read mark always moves to the read's time — a mark held back had every read apply unchanged
+ * records again, reverting Keystone's own transitions (Freeze, Propose release) and closing decisions not yet delivered to
+ * Codex. A record skipped because Keystone did not know its project or document type yet waits in `codex_index_awaiting`;
+ * once both exist, the read asks Codex again for that project from the skipping read's `since` and creates only the records
+ * that waited, when not indexed meanwhile. A failure of that re-read is logged and retried by the next read. The read's time
+ * stays the banner's "Last sync".
  */
 export async function refreshCodexIndex(actorName: string | null, at: Date = new Date()): Promise<CodexIndexRead> {
   const since = await nextCodexIndexSince();
   const r = await readCodexIndex({ since }, at);
   const db = await getDb();
-  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(documents);
-  if (!r) return { read: false, records: n, applied: 0, created: 0, skipped: 0 };
-  const nextSince = r.skipped.some(awaitsKeystoneData) ? since : at;
+  if (!r) return { read: false, records: await countIndexed(db), applied: 0, created: 0, skipped: 0 };
+  let { applied, created } = r;
+  let skipped = r.skipped.length;
+  const waiting = r.skipped.filter(awaitsKeystoneData).map((x) => ({ ...x, since }));
+  const reread: string[] = [];
+  for (const [project, rows] of await awaitingRecordsReady(db)) {
+    const from = rows.some((x) => !x.readSince) ? null : new Date(Math.min(...rows.map((x) => x.readSince!.getTime())));
+    try {
+      const c = await readCodexIndex({ since: from, project, onlyNew: new Set(rows.map((x) => x.number)) }, at);
+      if (!c) break;
+      applied += c.applied;
+      created += c.created;
+      skipped += c.skipped.length;
+      reread.push(...rows.map((x) => x.number));
+      waiting.push(...c.skipped.filter(awaitsKeystoneData).map((x) => ({ ...x, since: from })));
+    } catch (err) {
+      logWarning('Codex index re-read of the records waiting for Keystone data', err, { component: 'codex', project });
+    }
+  }
+  const n = await countIndexed(db);
   await db.transaction(async (tx) => {
+    if (reread.length) await tx.delete(codexIndexAwaiting).where(inArray(codexIndexAwaiting.number, reread));
+    const rows = [...new Map(waiting.filter((x) => x.project && x.type).map((x) => [x.number, {
+      number: x.number, projectCode: x.project!, typeCode: x.type!, readSince: x.since, skippedAt: at,
+    }])).values()];
+    for (let i = 0; i < rows.length; i += 500)
+      await tx.insert(codexIndexAwaiting).values(rows.slice(i, i + 500)).onConflictDoUpdate({
+        target: codexIndexAwaiting.number,
+        set: { projectCode: sql`excluded.project_code`, typeCode: sql`excluded.type_code`, readSince: sql`excluded.read_since`, skippedAt: sql`excluded.skipped_at` },
+      });
+    // A waiting record Codex sent again once Keystone knew its project and type was indexed by the read itself.
+    await tx.delete(codexIndexAwaiting).where(inArray(codexIndexAwaiting.number, tx.select({ number: documents.number }).from(documents)));
     const actor = actorName ? await findPerson(tx, actorName) : null;
-    await tx.insert(documentIndexSyncs).values({ syncedAt: at, recordCount: n, requestedByPersonId: actor?.id ?? null, source: 'codex', nextSince });
+    await tx.insert(documentIndexSyncs).values({ syncedAt: at, recordCount: n, requestedByPersonId: actor?.id ?? null, source: 'codex', nextSince: at });
   });
-  return { read: true, records: n, applied: r.applied, created: r.created, skipped: r.skipped.length };
+  return { read: true, records: n, applied, created, skipped };
+}
+
+async function countIndexed(q: Awaited<ReturnType<typeof getDb>>): Promise<number> {
+  const [{ n }] = await q.select({ n: sql<number>`count(*)::int` }).from(documents);
+  return n;
+}
+
+/**
+ * Records waiting for Keystone data whose project (or QMS) and document type Keystone now knows, not indexed yet — by
+ * project code, the key of the re-read.
+ */
+async function awaitingRecordsReady(q: Awaited<ReturnType<typeof getDb>>): Promise<Map<string, (typeof codexIndexAwaiting.$inferSelect)[]>> {
+  const rows = await q.select().from(codexIndexAwaiting).where(and(
+    inArray(codexIndexAwaiting.typeCode, q.select({ code: documentTypes.code }).from(documentTypes)),
+    or(eq(codexIndexAwaiting.projectCode, QMS), inArray(codexIndexAwaiting.projectCode, q.select({ code: projects.code }).from(projects))),
+    notInArray(codexIndexAwaiting.number, q.select({ number: documents.number }).from(documents)),
+  )).orderBy(asc(codexIndexAwaiting.projectCode), asc(codexIndexAwaiting.number));
+  const byProject = new Map<string, typeof rows>();
+  for (const x of rows) byProject.set(x.projectCode, [...(byProject.get(x.projectCode) ?? []), x]);
+  return byProject;
 }
 
 /** Codex project code of a number: "QMS" or the 3-letter prefix of the project code (HLT-026 → HLT). */

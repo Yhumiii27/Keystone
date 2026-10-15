@@ -4,7 +4,7 @@ import 'server-only';
 // reference: this refresh is what turns a Keystone decision into a signed step or a Released status, never the
 // decision itself. Entries Codex reflects (step signed, status moved on, other revision) are closed.
 // Delivery 8 (R-033): the index read (`applyCodexIndex`) writes Codex's records into the index, with the same state rule.
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import {
   confidentiality, docService, documentStatus, type Confidentiality, type DocRecipient, type DocService, type DocumentStatus,
 } from '@/server/db/codes';
@@ -147,17 +147,20 @@ export interface CodexIndexResult {
   /** Records written to the index (created or updated). */
   applied: number;
   created: number;
-  /** Records skipped: malformed, or a project / type Keystone does not know (each logged). */
-  skipped: { number: string; reason: string }[];
+  /**
+   * Records skipped: malformed, or a project / type Keystone does not know (each logged) — then with the record's project and
+   * type codes, kept by `refreshCodexIndex` until Keystone knows them (integration review).
+   */
+  skipped: { number: string; reason: string; project?: string; type?: string }[];
 }
 
 const UNKNOWN_TYPE = 'unknown document type';
 const UNKNOWN_PROJECT = 'unknown project';
 
 /**
- * A record skipped because Keystone does not know its project or document type yet (integration review): once the project or
- * the type exists, the next read must bring it again — the read mark does not move past it (`refreshCodexIndex`). A
- * malformed record is dropped.
+ * A record skipped because Keystone does not know its project or document type yet (integration review): it waits in
+ * `codex_index_awaiting` and, once the project and the type exist, the next read asks Codex for it again and creates it
+ * (`refreshCodexIndex`). A malformed record is dropped.
  */
 export const awaitsKeystoneData = (s: { reason: string }): boolean => s.reason.startsWith(`${UNKNOWN_TYPE} `) || s.reason.startsWith(`${UNKNOWN_PROJECT} `);
 
@@ -169,30 +172,43 @@ export const awaitsKeystoneData = (s: { reason: string }): boolean => s.reason.s
  * previous revision, the client acknowledgement reset and the closing of the outbox entries Codex reflects go through
  * `applyCodexDocumentStates` (one rule for both reads); a new revision of an indexed record is audited, and released over a
  * released one it withdraws the previous revision here. Runs in the caller's transaction.
+ * `onlyNew` (integration review): the re-read of records that waited for a project or type of Keystone writes only those
+ * records, and only when Keystone has not indexed them meanwhile — a record already in the index may carry Keystone's own
+ * state (a Freeze, a decision waiting in the outbox) that an unchanged Codex record must not overwrite; anything else is ignored.
  */
-export async function applyCodexIndex(tx: Tx, records: readonly unknown[], at = new Date()): Promise<CodexIndexResult> {
+export async function applyCodexIndex(tx: Tx, records: readonly unknown[], at = new Date(), opts: { onlyNew?: ReadonlySet<string> } = {}): Promise<CodexIndexResult> {
   const result: CodexIndexResult = { applied: 0, created: 0, skipped: [] };
-  const skip = (number: string, reason: string) => result.skipped.push({ number, reason });
-  const [types, steps] = await Promise.all([
+  const skip = (number: string, reason: string, rec?: CodexIndexRecord) =>
+    result.skipped.push(rec ? { number, reason, project: rec.project, type: rec.type } : { number, reason });
+  const only = opts.onlyNew;
+  if (only && !only.size) return result;
+  const [types, steps, indexed] = await Promise.all([
     tx.select({ code: documentTypes.code }).from(documentTypes),
     tx.select().from(documentTypeCircuitSteps),
+    only ? tx.select({ number: documents.number }).from(documents).where(inArray(documents.number, [...only])) : [],
   ]);
   const knownTypes = new Set(types.map((t) => t.code));
+  const alreadyIndexed = new Set(indexed.map((d) => d.number));
   for (const raw of records) {
+    if (only) {
+      const number = (raw as { number?: unknown } | null)?.number;
+      if (typeof number !== 'string' || !only.has(number) || alreadyIndexed.has(number)) continue;
+      alreadyIndexed.add(number);
+    }
     if (!isCodexIndexRecord(raw)) {
       skip(typeof (raw as { number?: unknown })?.number === 'string' ? String((raw as { number: string }).number).slice(0, 40) : '?', 'malformed record');
       continue;
     }
     const rec = raw;
     if (!knownTypes.has(rec.type)) {
-      skip(rec.number, `${UNKNOWN_TYPE} ${rec.type}`);
+      skip(rec.number, `${UNKNOWN_TYPE} ${rec.type}`, rec);
       continue;
     }
     let projectId: string | null = null;
     if (rec.project !== 'QMS') {
       const [p] = await tx.select({ id: projects.id }).from(projects).where(eq(projects.code, rec.project));
       if (!p) {
-        skip(rec.number, `${UNKNOWN_PROJECT} ${rec.project}`);
+        skip(rec.number, `${UNKNOWN_PROJECT} ${rec.project}`, rec);
         continue;
       }
       projectId = p.id;

@@ -191,11 +191,28 @@ export const documentIndexSyncs = pgTable('document_index_syncs', {
    */
   source: text('source').$type<'keystone' | 'codex'>().notNull().default('keystone'),
   /**
-   * A read of Codex's index: the `since` of the next read (integration review) — the read's time, or the read's own `since`
-   * (null = the whole index) when it skipped a record whose project or document type Keystone did not know yet, so the next
-   * reads ask for it again. `syncedAt` stays the banner's "Last sync".
+   * A read of Codex's index: the `since` of the next read (integration review) — the read's time. Records it skipped because
+   * Keystone did not know their project or document type yet wait in `codex_index_awaiting` instead of holding the mark: a
+   * held mark had every read apply unchanged records again over Keystone's own state. `syncedAt` stays the banner's "Last sync".
    */
   nextSince: timestamp('next_since', { withTimezone: true }),
+});
+
+/**
+ * Records of Codex's index waiting for Keystone data (Delivery 8, R-033; integration review): a read skipped them because
+ * Keystone did not know their project or document type yet. Once both exist, the next read asks Codex again for that
+ * project from `readSince` and creates these records only, when Keystone has not indexed them meanwhile (`refreshCodexIndex`).
+ */
+export const codexIndexAwaiting = pgTable('codex_index_awaiting', {
+  /** Codex number of the record ("RPT-XYZ-001"). */
+  number: text('number').primaryKey(),
+  /** Project code ("XYZ-999") or "QMS", and document type code, as Codex sent them. */
+  projectCode: text('project_code').notNull(),
+  typeCode: text('type_code').notNull(),
+  /** `since` of the read that skipped it (null = the whole index): a read from there brings it again. */
+  readSince: timestamp('read_since', { withTimezone: true }),
+  /** Time of the read that skipped it. */
+  skippedAt: timestamp('skipped_at', { withTimezone: true }).notNull(),
 });
 
 /**
