@@ -4,8 +4,9 @@
 // `?part=` shared part record drawer. Roles: director, pm, quality, procurement; other roles see the screen outside
 // their workspace (banner, read-only: no movement form, no "Push to X3", no primary). The project read-only mode
 // does not apply (08 §0.2). Writes go through src/features/stock/actions.ts. R-034: "Import from X3" and "Push to X3" are
-// a simulation (Sage X3 is not connected): shown on a demo database only, hidden and refused on a production database. Delivery 7: an issue names an activity of
-// the current project's plan (SC-5a, R-098); reservations are protected ("Release reservation", director override, R-099).
+// a simulation (Sage X3 is not connected): shown on a demo database only, hidden and refused on a production database.
+// Delivery 7: an issue names an activity of the current project's plan (SC-5a, R-098); reservations are protected
+// ("Release reservation", director override, R-099).
 import { PageHeader } from '@/components/app/shell/page-header';
 import { DEFAULT_PROJECT } from '@/config/screens';
 import { parseLocationFilter } from '@/domain/stock';
