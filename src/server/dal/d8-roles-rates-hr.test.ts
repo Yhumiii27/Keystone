@@ -62,7 +62,15 @@ describe('R-044 · the Finance persona', () => {
 
   it('backfill of a database seeded before delivery 8: created once, then a no-op', async () => {
     expect(await db.transaction((tx) => seedFinanceUser(tx))).toBeNull();
-    await db.delete(users).where(eq(users.personaRole, 'finance'));
+    // A database seeded before delivery 8 has no Finance user, so no audit row names her account. Here the seed attributed the
+    // prototype's "Rate card" row to her (R-168), and audit_entries is append-only: detach it the way R-168's data migrations do
+    // (as the table owner, the trigger disabled inside one transaction), then remove the user.
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`ALTER TABLE audit_entries DISABLE TRIGGER audit_entries_no_update_delete`);
+      await tx.execute(sql`UPDATE audit_entries SET actor_user_id = NULL WHERE actor_user_id IN (SELECT id FROM users WHERE role = 'finance')`);
+      await tx.execute(sql`ALTER TABLE audit_entries ENABLE TRIGGER audit_entries_no_update_delete`);
+      await tx.delete(users).where(eq(users.personaRole, 'finance'));
+    });
     expect((await listUsers()).some((x) => x.role === 'finance')).toBe(false);
     expect(await seedIfEmpty(db)).toBe(false); // the demo backfills run
     expect((await listUsers()).filter((x) => x.role === 'finance').map((x) => x.name)).toEqual(['Léa Marchand']);

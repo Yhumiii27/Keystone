@@ -153,6 +153,9 @@ div.staticAnchor { position: static; }
   color: var(--color-text);
 }
 .delivItem:disabled { cursor: default; }
+/* Delivery 8 (R-054): « Planning BL1 posé » follows BL1 — its reason under the label. */
+.delivText { display: flex; flex-direction: column; gap: 1px; min-width: 0; text-align: left; }
+.delivLock { font-size: 11px; color: var(--color-neutral-400); text-wrap: pretty; }
 .delivIcon { font-size: 16px; flex: none; color: var(--color-neutral-400); }
 .delivIconDone { color: var(--color-accent-300); }
 .help { font-size: 11px; color: var(--color-neutral-400); text-wrap: pretty; }

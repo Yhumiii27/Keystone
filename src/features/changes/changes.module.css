@@ -21,6 +21,9 @@
 
 /* ── CR drawer (1868–1879) ── */
 .raised { font-size: 12px; color: var(--color-neutral-400); }
+/* Delivery 8 (R-140): the justification as typed, line breaks kept. */
+.justification { display: flex; flex-direction: column; gap: 6px; }
+.justificationText { margin: 0; font-size: 13px; line-height: 1.5; color: var(--color-neutral-200); white-space: pre-wrap; overflow-wrap: anywhere; }
 .chainSection { display: flex; flex-direction: column; gap: 6px; }
 .step {
   display: grid;

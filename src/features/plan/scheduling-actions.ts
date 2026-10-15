@@ -3,7 +3,7 @@
 // activity drawer's calendar override, relationships and to-dos. Each one re-checks the viewer's rights on the server
 // (src/features/plan/rights.ts), validates the untrusted input, writes through the DAL (which audits) and revalidates.
 import { revalidatePath } from 'next/cache';
-import { canSnapshotFreely } from '@/domain/baseline-policy';
+import { BL1_TICKED, canSnapshotFreely } from '@/domain/baseline-policy';
 import { longDateText } from '@/domain/schedule-rollup';
 import { addActivityTodo, listActivityTodos, removeActivityTodo, setActivityTodoDone } from '@/server/dal/activity-todos';
 import { BaselinePolicyError, createBaselineSnapshot, listProjectBaselines } from '@/server/dal/baselines';
@@ -89,7 +89,7 @@ export async function setBaselineAction(code: string, values: Record<string, str
   const comment = str(values?.comment).trim();
   if (name.length > NAME_MAX) return { error: t('Baseline name is too long') };
   if (comment.length > COMMENT_MAX) return { error: t('Comment is too long') };
-  let res: { code: string; activityCount: number };
+  let res: Awaited<ReturnType<typeof createBaselineSnapshot>>;
   try {
     // The S-3 rule is checked again inside the snapshot transaction (R-010): two "Set baseline" sent at BL0 at the same time
     // create BL1 once; the second is refused instead of creating BL2 without a change request.
@@ -101,7 +101,9 @@ export async function setBaselineAction(code: string, values: Record<string, str
     throw e;
   }
   refresh(r.ctx.project.code);
-  return { toast: baselineSetText(res.code, res.activityCount, lang) };
+  // R-054 (L-2 "a"): BL1 ticked the APD deliverable « Planning BL1 posé » — said only when the tick changed.
+  const toast = baselineSetText(res.code, res.activityCount, lang);
+  return { toast: res.bl1Ticked ? `${toast} · ${t(BL1_TICKED)}` : toast };
 }
 
 /** Baseline chip: shows another baseline (variance columns, Gantt baseline bars). */

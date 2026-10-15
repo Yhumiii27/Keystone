@@ -3,7 +3,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
-import { addPaymentMilestone, issueInvoice } from './contract';
+import { addPaymentMilestone, getContract, issueInvoice, updatePaymentMilestone } from './contract';
 import { getPortfolioAlerts } from './portfolio-alerts';
 
 beforeAll(async () => {
@@ -30,6 +30,10 @@ describe('portfolio alerts (R-130)', () => {
       kind: 'billing_late', title: 'Harbor Line Terminal Expansion — billing late', detail: `${n} Early works · contractual date 1 Aug 2026, not invoiced.`,
       target: { screen: 'billing', code: 'HLT-026' },
     });
+    // Delivery 8 (R-077, C-7): the extra 1 % takes the base schedule to 101 %, which blocks its invoicing — the schedule is
+    // corrected first (C-7a: M5 25 % → 24 %, back to 100 %).
+    const m5 = (await getContract('HLT-026'))!.milestones.find((m) => m.number === 'M5')!;
+    await updatePaymentMilestone('HLT-026', 'M5', { label: m5.label, sharePct: 24, contractualDue: m5.contractualDue!, condition: m5.condition }, { name: 'Romain Aubert', role: 'pm' });
     // Invoiced on 1 Aug, net 45 → due 15 Sep: overdue at the data date.
     await issueInvoice('HLT-026', { milestone: n, issuedOn: '2026-08-01' }, 'Romain Aubert');
     alerts = await getPortfolioAlerts('fr');

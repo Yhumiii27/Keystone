@@ -7,12 +7,15 @@
 // the project goes back to the stage it left; audited, notified to whoever forced it and to the PM). The other kinds
 // are decided by their module's Server Functions (src/features/myapprovals/decision-buttons.tsx).
 // Messages are English source strings (the client shows them with toast showEn).
+// Delivery 8: the change-request step follows the sequential chain (R-069 — Change control's one `canDecideStep` rule; a later step
+// answers "Not yours to decide yet") and the next approvers or the requester are notified after the decision (R-015).
 import { revalidatePath } from 'next/cache';
-import { canDecideStep } from '@/domain/approvals';
+import { NOT_YOURS_YET, canDecideStep, holdsStep, stepWaitsForEarlier } from '@/domain/change-control';
 import { FORCED_STAGE_COMMENT_MAX, isForcedStageDecider } from '@/domain/forced-stage';
 import { approveRequestAction, rejectRequestAction } from '@/features/requests/actions';
 import { changeStatus, stage as stageCodec, type ChangeStep } from '@/server/db/codes';
-import { decideChangeStep, listChangeRequestDetails } from '@/server/dal/changes';
+import { notifyChangeRequest } from '@/server/dal/change-notices';
+import { ChangeStepError, decideChangeStep, listChangeRequestDetails } from '@/server/dal/changes';
 import { StageDecisionError, decideForcedStageChange, type ForcedStageDecision } from '@/server/dal/lifecycle';
 import { notifyRequestEvent, type RequestNotice } from '@/server/dal/requests-screens';
 import { getScreenAccess } from '@/server/project-context';
@@ -35,20 +38,33 @@ export async function decideChangeRequestAction(input: { projectCode: string; nu
   const step = input?.step as ChangeStep;
   const decision = input?.decision === 'ok' || input?.decision === 'rejected' ? input.decision : null;
   if (!/^[A-Z]{3}-\d{3}$/.test(code) || !/^CR-\d{3,}$/.test(number) || !STEPS.includes(step) || !decision) return { ok: false, error: INVALID };
+  let status: Awaited<ReturnType<typeof decideChangeStep>>;
   try {
     const cr = (await listChangeRequestDetails(code)).find((c) => c.id === number);
-    // Same routing rule as the inbox: in review, this step pending, and the viewer holds it.
-    if (!cr || !canDecideStep(cr, step, viewer)) {
+    const who = { role: viewer.role, name: viewer.name };
+    // R-069: a step the viewer holds that waits for an earlier one.
+    if (cr && stepWaitsForEarlier(cr, step) && holdsStep(cr, step, who)) {
+      revalidatePath('/', 'layout');
+      return { ok: false, error: NOT_YOURS_YET };
+    }
+    // Same routing rule as the inbox: in review, this step current, and the viewer holds it.
+    if (!cr || !canDecideStep(cr, step, who)) {
       revalidatePath('/', 'layout'); // the row is stale
       return { ok: false, error: NOT_YOURS };
     }
-    const status = await decideChangeStep(code, number, step, decision, viewer.name);
-    revalidatePath('/', 'layout');
-    return { ok: true, status: changeStatus.label(status) };
+    status = await decideChangeStep(code, number, step, decision, viewer.name);
   } catch (e) {
+    if (e instanceof ChangeStepError) {
+      revalidatePath('/', 'layout'); // decided meanwhile (R-010)
+      return { ok: false, error: e.code === 'not_current' ? NOT_YOURS_YET : NOT_YOURS };
+    }
     logError('decideChangeRequestAction', e);
     return { ok: false, error: FAILED };
   }
+  // R-015 (X-6a): the next step's approvers, or the requester once decided (after the commit, best effort).
+  await notifyChangeRequest(code, number, viewer.name);
+  revalidatePath('/', 'layout');
+  return { ok: true, status: changeStatus.label(status) };
 }
 
 // ── Chapter 4: resource requests and forced stage changes ─────────────────────────────────────────────────

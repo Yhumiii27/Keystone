@@ -91,7 +91,9 @@ describe('Change control & baselines', () => {
     const tx = text(changes(hlt, 'en'));
     expect(tx).toContain('Change requests 6 1 in review · 1 draft');
     expect(tx).toContain('Approved budget changes +€200k BL1 €4.60M → BAC €4.80M');
-    expect(tx).toContain('Pending value +€85k Awaiting director · client · CCB');
+    // Deviation P-6b (delivery 8, R-069): the sub-line names the step CR-008 waits for (the prototype's fixed step list).
+    expect(tx).toContain('Pending value +€85k Awaiting director');
+    expect(tx).not.toContain('Awaiting director · client · CCB');
     expect(tx).toContain('Schedule changes 2 Net 27 d on handover');
     expect(tx).toContain('Baseline BL1 BL2 proposed · CR-009 draft');
     expect(tx).toContain('Type All 6 Budget 4 Scope 3 Schedule 2');
@@ -143,19 +145,36 @@ describe('Change control & baselines', () => {
     expect(d8).toContain('Raised by R. Aubert · 24 Sep');
     expect(d8).toContain('Impact Budget +€85k → BAC €4.88M Schedule -12 days on handover WBS impacted 1.4 · Steel structure Baseline Requires re-baseline → BL2 Contingency Funded from contingency · 57% of reserve');
     expect(d8).toContain('Project manager Romain Aubert Approved');
-    // the director decides the director step and records the change control board
+    // the director decides the director step — and only it: the board's step waits for the client (P-6b, R-069)
     expect(d8).toContain('Portfolio director Marie Lefebvre Reject Approve Pending');
     expect(d8).toContain('Client / sponsor Nadia Bensaïd Pending');
     // R-169, P-6a: the director records the CCB decision (the prototype printed the cadence "Monthly · next 8 Oct").
-    expect(d8).toContain('Change control board Marie Lefebvre Reject Approve Pending');
+    // Deviation P-6b (R-069): no decision buttons on the board's step before the client decided.
+    expect(d8).toContain('Change control board Marie Lefebvre Pending');
+    expect(d8.match(/\bApprove\b/g)).toHaveLength(1);
     expect(d8).toContain('Open plan Open budget');
     // decision buttons name their step for screen readers
-    expect(drawer(hlt, 'CR-008', 'en')).toContain('aria-label="Approve · Change control board"');
+    expect(drawer(hlt, 'CR-008', 'en')).toContain('aria-label="Approve · Portfolio director"');
     expect(drawer(hlt, 'CR-008', 'fr')).toContain('aria-label="Refuser · Directrice de portefeuille"');
+    // P-6b: the client's step waits for the director's — no buttons, the hint says what it waits for.
     const asClient = text(drawer(hlt, 'CR-008', 'en', 'client'));
-    expect(asClient).toContain('Client / sponsor Nadia Bensaïd Reject Approve Pending');
-    expect(asClient.match(/\bApprove\b/g)).toHaveLength(1);
-    expect(text(drawer(hlt, 'CR-008', 'en', 'client', false))).not.toMatch(/\bApprove\b/);
+    expect(asClient).toContain('Client / sponsor Nadia Bensaïd Pending');
+    expect(asClient).not.toMatch(/\bApprove\b/);
+    expect(asClient).toContain('Waiting for Portfolio director');
+    expect(text(drawer(hlt, 'CR-008', 'fr', 'client'))).toContain('En attente de la directrice de portefeuille');
+    // Once the director approved: the client decides, then the board.
+    const step = (cc: ChangeControl, s: string) => ({
+      ...cc, changeRequests: cc.changeRequests.map((c) => (c.id === 'CR-008' ? { ...c, chain: c.chain.map((x) => (x.step === s ? { ...x, decision: 'ok' as const } : x)) } : c)),
+    });
+    const afterDirector = step(hlt, 'director');
+    const clientNow = text(drawer(afterDirector, 'CR-008', 'en', 'client'));
+    expect(clientNow).toContain('Client / sponsor Nadia Bensaïd Reject Approve Pending');
+    expect(clientNow.match(/\bApprove\b/g)).toHaveLength(1);
+    expect(text(drawer(afterDirector, 'CR-008', 'en', 'client', false))).not.toMatch(/\bApprove\b/);
+    expect(text(drawer(afterDirector, 'CR-008', 'en'))).toContain('Waiting for Client / sponsor');
+    const board = drawer(step(afterDirector, 'client'), 'CR-008', 'en');
+    expect(text(board)).toContain('Change control board Marie Lefebvre Reject Approve Pending');
+    expect(board).toContain('aria-label="Approve · Change control board"');
     expect(text(drawer(hlt, 'CR-008', 'en', 'quality'))).toContain('Switch to Project manager, Portfolio director or Client (bottom-left) to decide.');
     const d9 = text(drawer(hlt, 'CR-009', 'en'));
     expect(d9).toContain('Submit the request to start the approval chain.');
@@ -172,8 +191,9 @@ describe('Change control & baselines', () => {
     const fr = text(drawer(hlt, 'CR-008', 'fr'));
     expect(fr).toContain('Émise par R. Aubert · 24 sept.');
     expect(fr).toContain('Financé par la provision · 57 % de la réserve');
-    // R-169, P-6a: the CCB line names the director who records the decision (the prototype printed "Monthly · next 8 Oct").
-    expect(fr).toContain('Comité de contrôle des modifications Marie Lefebvre Refuser Approuver En attente');
+    // R-169, P-6a: the CCB line names the director who records the decision (the prototype printed "Monthly · next 8 Oct");
+    // P-6b (R-069): no buttons before the client decided.
+    expect(fr).toContain('Comité de contrôle des modifications Marie Lefebvre En attente');
   });
 });
 

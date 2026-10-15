@@ -12,7 +12,7 @@ import { downloadExport } from '@/features/exports/download';
 import { useI18n } from '@/i18n/client';
 import { exportHref } from '@/lib/export-href';
 import { createChangeRequestAction, decideChangeStepAction, generateStatusReportAction, submitChangeRequestAction, type ChangeActionResult } from './actions';
-import { STATUS_REPORT_FORM, newChangeRequestForm } from './forms';
+import { STATUS_REPORT_FORM, newChangeRequestForm, translatedChangeRequestForm } from './forms';
 
 export interface NewChangeRequestButtonProps {
   code: string;
@@ -31,10 +31,12 @@ export interface NewChangeRequestButtonProps {
   initialValues?: Record<string, string>;
   /** Delivery 7 (NEW-D2-2): offer the "Plan activities touched" field (the project team, not the client). */
   withActivities?: boolean;
+  /** Delivery 8 (R-081): the project's cost categories ("C03 · Steel", labels as typed) — the project team only, never the client. */
+  costCategories?: { value: string; label: string }[];
 }
 
 /** Header primary "New change request" (`btn btn-primary` + plus) opening AF `changes`. */
-export function NewChangeRequestButton({ code, context, defaultWbs, autoOpen, closeHref, proposeBaseline, initialValues, withActivities }: NewChangeRequestButtonProps) {
+export function NewChangeRequestButton({ code, context, defaultWbs, autoOpen, closeHref, proposeBaseline, initialValues, withActivities, costCategories }: NewChangeRequestButtonProps) {
   const { t } = useI18n();
   const router = useRouter();
   const [open, setOpen] = useState(!!autoOpen);
@@ -52,8 +54,7 @@ export function NewChangeRequestButton({ code, context, defaultWbs, autoOpen, cl
       </Button>
       {open && (
         <FormDialog
-          {...newChangeRequestForm(defaultWbs, { proposeBaseline: proposing, withActivities })}
-          translate
+          {...translatedChangeRequestForm(newChangeRequestForm(defaultWbs, { proposeBaseline: proposing, withActivities, costCategories }), t)}
           open
           onClose={close}
           context={context}

@@ -134,9 +134,10 @@ const D5_COUNTS: Record<string, number> = {
   site_collisions: 4, mission_cost_lines: 6, daily_reports: 2, cursus_clearances: 5, cursus_requests: 0, cursus_sync_runs: 1, client_issues: 3,
   client_document_categories: 5, eng_disciplines: 4, eng_inputs: 12, eng_consistency_rules: 6, eng_checks: 10, eng_outputs: 6, eng_changes: 4, eng_import_tools: 4,
   eng_column_mappings: 6, eng_import_deltas: 4, eng_imports: 0, pid_sheets: 1, pid_tags: 24, pid_validation_steps: 5, machine_type_phases: 28,
-  // app_settings: the health thresholds, the hours-variance threshold (delivery 8, R-088) and, since delivery 7, the seed record "keystone.seed" (R-011, A-15), the "Reset to
-  // defaults" document (R-170) and the record that the demo referents were seeded (R-041).
-  machine_type_cost_categories: 25, machine_type_itp_systems: 17, reference_values: 60, app_settings: 5, connectors: 10, connector_sync_runs: 0, import_formats: 6,
+  // app_settings: the health thresholds and, since delivery 7, the seed record "keystone.seed" (R-011, A-15), the "Reset to
+  // defaults" document (R-170) and the record that the demo referents were seeded (R-041); delivery 8, the hours-variance
+  // threshold (R-088) and the change control board threshold (R-069, P-6c).
+  machine_type_cost_categories: 25, machine_type_itp_systems: 17, reference_values: 60, app_settings: 6, connectors: 10, connector_sync_runs: 0, import_formats: 6,
 };
 
 /**
@@ -622,8 +623,9 @@ async function delivery5Reads() {
   check('no site sheet, commissioning, ITP, REX, register or P&ID on NDC-031 / EWA-051', (await getSite('NDC-031')) === null && (await getCommissioning('EWA-051')) === null
     && (await getItpPlan('NDC-031')) === null && (await getRex('EWA-051')).lessons.length === 0 && (await getEngineeringRegister('NDC-031')) === null && (await getPidValidation('EWA-051')) === null);
   const cp = await getClientPortal('HLT-026');
-  check('client portal HLT-026: waiting CR-008, D-014, D-016 · 5 decided · 2 open issues · 7 shared documents',
-    same([cp.decisions.map((d) => d.id), cp.decided.length, cp.issues.filter((i) => i.status !== 'closed').length, cp.documents.length], [['CR-008', 'D-014', 'D-016'], 5, 2, 7]));
+  // Delivery 8 (R-069, P-6b): CR-008 reaches the client once the portfolio director approved it — not in the seed.
+  check('client portal HLT-026: waiting D-014, D-016 (CR-008 waits for the director) · 5 decided · 2 open issues · 7 shared documents',
+    same([cp.decisions.map((d) => d.id), cp.decided.length, cp.issues.filter((i) => i.status !== 'closed').length, cp.documents.length], [['D-014', 'D-016'], 5, 2, 7]));
   const eng = (await getEngineeringRegister('HLT-026'))!;
   // E-5 (Delivery 7, R-105): LST-IO-026 rev B (Frozen) is the reference, no longer outdated.
   check('engineering HLT-026: 4 blocking · 3 outdated inputs · 5 / 13 released · 2 / 6 outputs ready',

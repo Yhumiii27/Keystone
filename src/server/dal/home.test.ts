@@ -11,6 +11,7 @@ import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import type { ZoneKey } from '@/server/session';
+import { decideChangeStep } from './changes';
 import { recordEcoProgress } from './eco';
 import { getHomeView } from './home';
 import { getProject } from './projects';
@@ -239,7 +240,11 @@ function expected(role: RoleKey, lang: Lang): Golden {
   if (role === 'englead') out.rr = out.rr.map((r) => r.map((x) => x.replace(R5B[lang][0], R5B[lang][1])));
   if (role !== 'client') return out;
   const db = new Map(CLIENT_DB[lang]);
-  return { ...out, rr: out.rr.map((r) => r.map((x) => db.get(x) ?? x)) };
+  // Deviation P-6b (delivery 8, R-069): CR-008 reaches the client once the portfolio director approved it — not yet in the seed:
+  // the KPI reads 0 · None and its row leaves "Waiting for your decision" (back once the director approved, see the last test).
+  const crKpi = out.kpis.findIndex((k) => k?.[0] === (lang === 'en' ? 'Change requests to approve' : 'Demandes de modification à approuver'));
+  out.kpis[crKpi] = [out.kpis[crKpi]![0], '0', lang === 'en' ? 'None' : 'Aucun', false];
+  return { ...out, rr: out.rr.filter((r) => !/^CR-008/.test(r[0]) ).map((r) => r.map((x) => db.get(x) ?? x)) };
 }
 
 describe('Home view', () => {
@@ -271,10 +276,10 @@ describe('Home view', () => {
     expect(await sub('englead', 'rr', 0)).toBe('Expert unique — 1 expert · 1 au niveau ≥3');
     expect(await sub('quality', 'rr', 1)).toBe('Utilisé dans HLT, RCF');
     expect(await sub('client', 'lr', 5)).toBe('Référence 18 déc. · Prévision 13 janv. ’27');
-    expect(await sub('client', 'rr', 0)).toBe('+85 k€ · rattrapage de 12 jours · soumise le 24 sept.');
-    expect(await sub('client', 'rr', 1)).toBe('Rapports d’essais et d’inspection · Accepter avant le 2 oct.');
-    expect(await sub('client', 'rr', 2)).toBe('Manuels / plans de récolement · Signé le 18 sept.');
-    expect(await sub('client', 'rr', 5)).toBe('INV-2026-003 · M3 Structure hors d’eau · 1,35 M€ · échéance 10 nov.'); // NEW-D3-3
+    // P-6b (R-069): CR-008's row comes back once the director approved it (last test of this block).
+    expect(await sub('client', 'rr', 0)).toBe('Rapports d’essais et d’inspection · Accepter avant le 2 oct.');
+    expect(await sub('client', 'rr', 1)).toBe('Manuels / plans de récolement · Signé le 18 sept.');
+    expect(await sub('client', 'rr', 4)).toBe('INV-2026-003 · M3 Structure hors d’eau · 1,35 M€ · échéance 10 nov.'); // NEW-D3-3
   });
 
   it('director KPIs and alerts follow the zone filter', async () => {
@@ -371,6 +376,15 @@ describe('Home view', () => {
     const none = (await render('client', 'en', 'HLT-026', null, null)).out;
     // Integration with R-011: a client whose organisation has no project gets the same "No project yet" Home as an empty database.
     expect([none.kpis, JSON.stringify(none.lr).includes('No project yet'), none.rr]).toEqual([[], true, []]);
+  });
+
+  it('P-6b (delivery 8, R-069): once the director approved CR-008, the client Home lists it as in the prototype', async () => {
+    await decideChangeStep('HLT-026', 'CR-008', 'director', 'ok', 'Marie Lefebvre');
+    const en = (await render('client', 'en')).out;
+    const g = G.client.en;
+    const crKpi = g.kpis.findIndex((k) => k?.[0] === 'Change requests to approve');
+    expect([en.kpis[crKpi], en.rr[0]]).toEqual([g.kpis[crKpi], g.rr[0]]);
+    expect((await render('client', 'fr')).out.rr[0][1]).toBe('+85 k€ · rattrapage de 12 jours · soumise le 24 sept.');
   });
 });
 

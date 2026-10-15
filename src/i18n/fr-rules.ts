@@ -19,3 +19,10 @@ FR_RULES.push(
   [/^The file is larger than (.+)$/, 'Le fichier dépasse $1'],
   [/^Removed work packages and activities can be restored for (\d+) days, with their links, assignments and to-dos$/, 'Les lots et activités supprimés peuvent être restaurés pendant $1 jours, avec leurs liens, affectations et tâches'],
 );
+
+// R-083 (A-10, delivery 8 integration): the dated rate grid's version texts on Resources › Rates ("since 1 Jan 2026 · 70,00 € from
+// 1 Jan 2025", "×1.25 from 1 Jan 2025"). Anchored on a leading rate or factor and a following date or number.
+FR_RULES.push(
+  [/^since (\d.*)$/, 'depuis le $1'],
+  [/^(-?[\d\s.,]+(?: €)?|×[\d.]+) from (\d.*)$/, '$1 à partir du $2'],
+);

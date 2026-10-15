@@ -14,9 +14,21 @@ describe('New change request (AF.changes)', () => {
   it('mirrors the prototype form: labels, defaults, required fields', () => {
     const def = newChangeRequestForm();
     expect([def.title, def.submit, def.kind]).toEqual([AF.changes.title, AF.changes.submit, 'create']);
-    expect(def.fields.map((f) => [f.id, f.label, f.type, !!f.required])).toEqual(
+    // Deviation P-6c (delivery 8, R-069): the required "Contractual impact" select follows "Type" (the prototype had none).
+    expect(def.fields.filter((f) => f.id !== 'impact').map((f) => [f.id, f.label, f.type, !!f.required])).toEqual(
       AF.changes.fields.map(([id, label, type, , req]: [string, string, string, unknown, number?]) => [id, label, type, !!req]),
     );
+    expect(def.fields.map((f) => f.id)).toEqual(['title', 'type', 'impact', 'amt', 'days', 'wbs', 'why']);
+    expect(def.fields.find((f) => f.id === 'impact')).toMatchObject({ label: 'Contractual impact', type: 'select', required: true });
+    expect(def.fields.find((f) => f.id === 'impact')?.options).toEqual([
+      { value: '', label: 'Choose the contractual impact' },
+      { value: 'price', label: 'Contract price' },
+      { value: 'dates', label: 'Contractual dates' },
+      { value: 'price_dates', label: 'Contract price and dates' },
+      { value: 'none', label: 'None (internal)' },
+    ]);
+    // R-140 (X-11): the justification reaches the client — the field says so.
+    expect(def.fields.find((f) => f.id === 'why')?.placeholder).toBe('Shown to the client with the change request');
     expect(def.fields.find((f) => f.id === 'type')?.options).toEqual([
       { value: 'scope', label: 'Scope' },
       { value: 'budget', label: 'Budget' },
@@ -24,25 +36,40 @@ describe('New change request (AF.changes)', () => {
       { value: 'scope_budget', label: 'Scope + budget' },
     ]);
     const init = initialFormValues(def.fields);
-    expect(init).toEqual({ title: '', type: 'scope', amt: '0', days: '0', wbs: '1.3', why: '' });
+    expect(init).toEqual({ title: '', type: 'scope', impact: '', amt: '0', days: '0', wbs: '1.3', why: '' });
     expect(isFormValid(def.fields, init)).toBe(false);
     expect(isFormValid(def.fields, { ...init, title: 'x', why: 'y' })).toBe(true);
     expect(initialFormValues(newChangeRequestForm('1').fields).wbs).toBe('1');
+    // R-081: the cost category select only when the categories are given (the project team), with "no category" first.
+    expect(def.fields.some((f) => f.id === 'cat')).toBe(false);
+    const team = newChangeRequestForm('1.3', { costCategories: [{ value: 'C01', label: 'C01 · Labor' }] });
+    expect(team.fields.find((f) => f.id === 'cat')?.options).toEqual([{ value: '', label: 'No category — BAC and work packages only' }, { value: 'C01', label: 'C01 · Labor' }]);
   });
 
   it('parses types, amounts, delay and WBS codes', () => {
-    const ok = parseNewChangeRequest({ title: ' Extra lighting ', type: 'scope_budget', amt: '12.4', days: '-3', wbs: '1.6, 1.7 1.6', why: ' Client ask ' });
+    const ok = parseNewChangeRequest({ title: ' Extra lighting ', type: 'scope_budget', impact: 'price', amt: '12.4', days: '-3', wbs: '1.6, 1.7 1.6', why: ' Client ask ' });
     expect(ok).toEqual({
       ok: true,
-      value: { title: 'Extra lighting', types: ['scope', 'budget'], amountKeur: 12, scheduleDays: -3, wbsCodes: ['1.6', '1.7'], justification: 'Client ask' },
+      value: {
+        title: 'Extra lighting', types: ['scope', 'budget'], amountKeur: 12, scheduleDays: -3, wbsCodes: ['1.6', '1.7'], justification: 'Client ask',
+        contractImpact: 'price', costCategoryCode: null,
+      },
     });
-    const blank = parseNewChangeRequest({ title: 'T', type: '', amt: '', days: '', wbs: '', why: 'W' });
-    expect(blank).toMatchObject({ ok: true, value: { types: ['scope'], amountKeur: 0, scheduleDays: 0, wbsCodes: ['1'] } });
-    expect(parseNewChangeRequest({ title: 'T', amt: '−40', why: 'W' })).toMatchObject({ ok: true, value: { amountKeur: -40 } });
+    const blank = parseNewChangeRequest({ title: 'T', type: '', impact: 'none', amt: '', days: '', wbs: '', why: 'W' });
+    expect(blank).toMatchObject({ ok: true, value: { types: ['scope'], amountKeur: 0, scheduleDays: 0, wbsCodes: ['1'], contractImpact: 'none' } });
+    expect(parseNewChangeRequest({ title: 'T', impact: 'dates', amt: '−40', why: 'W' })).toMatchObject({ ok: true, value: { amountKeur: -40 } });
+    expect(parseNewChangeRequest({ title: 'T', impact: 'price_dates', why: 'W', cat: 'C03' })).toMatchObject({ ok: true, value: { costCategoryCode: 'C03' } });
+  });
+
+  // R-069 (P-6c) / R-081: the contractual impact is required; a cost category must look like a project category code.
+  it('requires the contractual impact and checks the cost category code', () => {
+    const base = { title: 'T', type: 'budget', amt: '0', days: '0', wbs: '1.3', why: 'W' };
+    for (const impact of [undefined, '', 'maybe', 'PRICE']) expect(parseNewChangeRequest({ ...base, impact })).toEqual({ ok: false, error: 'Choose the contractual impact' });
+    for (const cat of ['C', 'X01', 'C01; DROP', 'C123456']) expect(parseNewChangeRequest({ ...base, impact: 'price', cat })).toEqual({ ok: false, error: 'Unknown cost category' });
   });
 
   it('rejects invalid input with EN source messages', () => {
-    const base = { title: 'T', type: 'budget', amt: '0', days: '0', wbs: '1.3', why: 'W' };
+    const base = { title: 'T', type: 'budget', impact: 'price', amt: '0', days: '0', wbs: '1.3', why: 'W' };
     expect(parseNewChangeRequest({ ...base, title: '  ' })).toEqual({ ok: false, error: 'Title is required' });
     expect(parseNewChangeRequest({ ...base, why: '' })).toEqual({ ok: false, error: 'Justification is required' });
     expect(parseNewChangeRequest({ ...base, type: 'cost' })).toEqual({ ok: false, error: 'Unknown change type' });

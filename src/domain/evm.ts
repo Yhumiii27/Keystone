@@ -1,6 +1,8 @@
 // Earned-value and cash-recovery logic of the Budget & cost screen (docs/spec/04 §1.4–§1.8; prototype logic
 // 3099–3100, 3784–3788, 3829–3845, 4048–4056, 4904–4928). Pure functions: amounts in k€, months as indexes.
 // Formatting (money, translated sentences) stays in the UI. Golden values: src/domain/evm.test.ts.
+// Delivery 8 (R-080, C-1): the Performance tiles follow the Settings health thresholds and the variance bars are signed.
+import { DEFAULT_HEALTH_THRESHOLDS, indexAlert, type HealthThresholds } from './health';
 
 // ── EVM core (logic 3787–3788) ─────────────────────────────────────────────────────────────────────────
 
@@ -114,11 +116,43 @@ export const isLongLead = (q: Pick<OfferQuote, 'leadWeeks'>) => q.leadWeeks >= 2
 
 // ── Variance card (logic 3842–3843) ────────────────────────────────────────────────────────────────────
 
-/** Monthly cumulative cost variance bars: `cv = EV − AC`, height % = max(3, |cv| / max(1, max|cv|) × 80). */
-export function costVarianceBars(ev: number[], ac: number[]): { cv: number; h: number }[] {
+/** Delivery 8 (R-080, C-1): height of the largest bar (% of half the plot) and of the stub shown for a small or zero variance. */
+export const VARIANCE_BAR_MAX = 90;
+export const VARIANCE_BAR_STUB = 4;
+
+/**
+ * Monthly cumulative cost variance bars, signed (R-080, C-1 — the prototype drew every bar downwards): `cv = EV − AC`; a saving
+ * (cv > 0) rises from the centre axis, an overrun (cv < 0) goes down, cv = 0 is a neutral stub. Height % of HALF the plot =
+ * max(stub, |cv| / max(1, max|cv|) × 90).
+ */
+export function costVarianceBars(ev: number[], ac: number[]): { cv: number; h: number; dir: 'up' | 'down' | 'flat' }[] {
   const cvs = ev.map((e, i) => e - ac[i]);
   const max = Math.max(1, ...cvs.map(Math.abs));
-  return cvs.map((cv) => ({ cv, h: Math.max(3, (Math.abs(cv) / max) * 80) }));
+  return cvs.map((cv) => ({
+    cv,
+    h: cv ? Math.max(VARIANCE_BAR_STUB, (Math.abs(cv) / max) * VARIANCE_BAR_MAX) : VARIANCE_BAR_STUB,
+    dir: cv > 0 ? 'up' : cv < 0 ? 'down' : 'flat',
+  }));
+}
+
+// ── Budget KPI colours (delivery 8, R-080 — C-1 "mêmes seuils que la santé projet") ────────────────────────────────────
+
+/**
+ * TCPI above which the remaining work is flagged: 1 / "At risk below" (≈ 1.03 at 0.97) — the efficiency the rest of the project
+ * must exceed is beyond the margin the health rule tolerates. A default the triage chose (C-1 names only "the same
+ * thresholds"); owner to confirm.
+ */
+export const tcpiAlertLimit = (th: HealthThresholds = DEFAULT_HEALTH_THRESHOLDS) => 1 / th.risk;
+
+/**
+ * Which Budget › Performance figures are in the attention colour (C-1; the prototype coloured EAC, VAC, CPI and TCPI LO whatever
+ * the value, 04 Q1): CPI below "At risk below"; EAC and VAC when the project finishes over budget (VAC < 0) at a CPI in alert;
+ * TCPI above `tcpiAlertLimit`; the Variance card's CV like CPI and SV like SPI.
+ */
+export function budgetKpiAlerts(core: Pick<EvmCore, 'cpi' | 'spi' | 'vac' | 'tcpi'>, th: HealthThresholds = DEFAULT_HEALTH_THRESHOLDS) {
+  const cpi = indexAlert(core.cpi, th);
+  const overrun = core.vac < 0 && cpi;
+  return { cpi, eac: overrun, vac: overrun, tcpi: core.tcpi > tcpiAlertLimit(th), cv: cpi, sv: indexAlert(core.spi, th) };
 }
 
 // ── Bars (logic 3844–3845, 4054) ───────────────────────────────────────────────────────────────────────

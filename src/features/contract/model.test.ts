@@ -59,8 +59,11 @@ describe('Contract view = prototype render (EN, FR)', () => {
           g.milestones.map((m: Record<string, string>) => [gid(name, m.id), m.label, deviate(m.pctText, lang), m.due, m.condText]),
         );
         expect(v.milestones.map((m) => m.amount)).toEqual(d.milestones.map((m) => f(x.amount(m))));
+        // Delivery 8 (R-077, C-7): above 100 % the hint says invoicing is blocked (was "Shares must total 100 %", a hint only).
+        const over = v.figures.groups[0].over;
         expect([v.total.share, v.total.ok ? 'var(--color-text)' : 'var(--color-accent-300)', v.total.hint]).toEqual([
-          deviate(g.schedTotal.pct, lang), g.schedTotal.color, g.schedTotal.hint,
+          deviate(g.schedTotal.pct, lang), g.schedTotal.color,
+          over ? (lang === 'en' ? `Shares total ${v.total.share} · invoicing blocked` : `Total des parts ${v.total.share} · facturation bloquée`) : g.schedTotal.hint,
         ]);
         expect(v.total.amount).toBe(f(x.schedule));
         expect(v.reference).toBe(g.crumb.split(' · ').at(-1));

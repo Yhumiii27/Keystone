@@ -3,7 +3,7 @@
 import { PERSONA_BY_ROLE } from '@/config/personas';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { revalidatePath } from 'next/cache';
-import { canSnapshotFreely } from '@/domain/baseline-policy';
+import { BL1_TICKED, canSnapshotFreely } from '@/domain/baseline-policy';
 import { BaselinePolicyError, createBaselineSnapshot, listProjectBaselines } from '@/server/dal/baselines';
 import { listChangeRequestDetails } from '@/server/dal/changes';
 import { getProject } from '@/server/dal/projects';
@@ -45,7 +45,7 @@ export async function rebaselineSchedule(code: string, values: Record<string, st
   // Only an open request that proposes no baseline yet can carry the snapshot (it becomes current at its approval); a closed
   // one named while snapshots are still free is ignored, else the baseline would stay proposed for ever (correctness review).
   const linked = open && !taken ? open : null;
-  let res: { code: string; activityCount: number };
+  let res: Awaited<ReturnType<typeof createBaselineSnapshot>>;
   try {
     // Checked again inside the snapshot transaction (R-010): a concurrent BL1 or a concurrent proposal on the same request.
     res = await createBaselineSnapshot(project.code, {
@@ -58,5 +58,6 @@ export async function rebaselineSchedule(code: string, values: Record<string, st
     return { error: t('After BL1, a new baseline goes through a change request — name an open change request (CR-…)') };
   }
   revalidatePath(`/projects/${project.code}`, 'layout');
-  return { toast: `${name} · ${t(REBASELINE_RESULT)} · ${res.code}` };
+  // R-054 (L-2 "a"): a BL1 made current here ticked « Planning BL1 posé » — said only when the tick changed.
+  return { toast: `${name} · ${t(REBASELINE_RESULT)} · ${res.code}${res.bl1Ticked ? ` · ${t(BL1_TICKED)}` : ''}` };
 }

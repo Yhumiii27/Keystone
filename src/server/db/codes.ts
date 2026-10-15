@@ -148,6 +148,18 @@ export type StepDecision = 'pending' | 'ok' | 'rejected' | 'na';
 export const stepDecision = codec<StepDecision, string>([
   ['pending', 'pending'], ['ok', 'ok'], ['rejected', 'rejected'], ['na', 'n/a'],
 ]);
+/**
+ * Delivery 8 (R-069, P-6c): what a change request changes in the contract, chosen on "New change request". 'none' (an
+ * internal change) makes the client step not required; the price makes an approved request prepare an amendment (A-4).
+ */
+export type ContractImpact = 'none' | 'price' | 'dates' | 'price_dates';
+export const contractImpact = codec<ContractImpact, string>([
+  ['price', 'Contract price'], ['dates', 'Contractual dates'], ['price_dates', 'Contract price and dates'], ['none', 'None (internal)'],
+]);
+/** The impact includes the contract price (A-4: the approval prepares an amendment for the request's amount). */
+export const impactIncludesPrice = (i: ContractImpact | null | undefined) => i === 'price' || i === 'price_dates';
+/** app_settings key of the change control board threshold (R-069, P-6c): { keur }. */
+export const APP_SETTING_CCB = 'change.ccbThreshold';
 
 // ── Dates ──────────────────────────────────────────────────────────────────────────────────────────────
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

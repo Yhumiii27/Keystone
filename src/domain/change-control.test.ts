@@ -62,7 +62,9 @@ describe('KPI tiles (crKpis 4604)', () => {
     expect(k.map((x) => [x.label, x.value, x.sub, x.alert])).toEqual([
       ['Change requests', '5', '1 in review · 1 draft', false],
       ['Approved budget changes', '+€200k', 'BL1 €4.60M → BAC €4.80M', false],
-      ['Pending value', '+€85k', 'Awaiting director · client · CCB', true],
+      // Deviation P-6b (delivery 8, R-069): the sub-line names the steps the requests wait for — CR-008 waits for the director
+      // (the prototype's fixed "Awaiting director · client · CCB").
+      ['Pending value', '+€85k', 'Awaiting director', true],
       ['Schedule changes', '2', 'Net 27 d on handover', false],
       ['Baseline', 'BL1', 'BL2 proposed · CR-009 draft', false],
     ]);
@@ -80,7 +82,8 @@ describe('KPI tiles (crKpis 4604)', () => {
     expect(k.map((x) => [x.value, x.sub])).toEqual([
       ['0', '0 in review · 0 draft'],
       ['—', 'BAC €1.20M'],
-      ['—', 'Awaiting director · client · CCB'],
+      // Deviation P-6b (R-069): nothing in review → the register says so instead of the fixed step list.
+      ['—', 'No change request in review'],
       ['0', 'Net 0 d on handover'],
       ['—', 'No baseline yet'],
     ]);
@@ -191,17 +194,28 @@ describe('drawer (crVals 4607–4610)', () => {
     expect(stepsOfRole('client')).toEqual(['client']);
     expect(stepsOfRole('quality')).toEqual([]);
     const cr8 = byId('CR-008');
-    expect(STEPS.filter((s) => canDecideStep('director', cr8, s))).toEqual(['director', 'ccb']);
-    expect(STEPS.filter((s) => canDecideStep('client', cr8, s))).toEqual(['client']);
-    expect(STEPS.filter((s) => canDecideStep('pm', cr8, s))).toEqual([]); // pm step already ok
-    expect(STEPS.filter((s) => canDecideStep('pm', byId('CR-009'), s))).toEqual([]); // draft: submit first
-    expect(STEPS.filter((s) => canDecideStep('director', byId('CR-004'), s))).toEqual([]);
+    const decides = (role: Parameters<typeof stepsOfRole>[0], cr: ChangeRequestLike) => STEPS.filter((s) => canDecideStep(cr, s, { role }));
+    // Deviation P-6b (delivery 8, R-069): the chain is sequential — CR-008 waits for the director only (the prototype let the
+    // director decide the board step and the client its step at once, 07 OQ3).
+    expect(decides('director', cr8)).toEqual(['director']);
+    expect(decides('client', cr8)).toEqual([]);
+    expect(decides('pm', cr8)).toEqual([]); // pm step already ok
+    expect(decides('pm', byId('CR-009'))).toEqual([]); // draft: submit first
+    expect(decides('director', byId('CR-004'))).toEqual([]);
+    // Once the director approved, the client's step opens; then the board (recorded by the director).
+    const afterDirector = { ...cr8, chain: cr8.chain.map((c) => (c.step === 'director' ? { ...c, decision: 'ok' as const } : c)) };
+    expect(decides('client', afterDirector)).toEqual(['client']);
+    expect(decides('director', afterDirector)).toEqual([]);
+    const afterClient = { ...afterDirector, chain: afterDirector.chain.map((c) => (c.step === 'client' ? { ...c, decision: 'ok' as const } : c)) };
+    expect(decides('director', afterClient)).toEqual(['ccb']);
   });
 
   it('hints', () => {
     expect(crHint(byId('CR-009'), 'director')).toBe('Submit the request to start the approval chain.');
     expect(crHint(byId('CR-008'), 'quality')).toBe('Switch to Project manager, Portfolio director or Client (bottom-left) to decide.');
-    expect(crHint(byId('CR-008'), 'client')).toBe('');
+    // R-069 (P-6b): the client's step waits for the director's.
+    expect(crHint(byId('CR-008'), 'client')).toBe('Waiting for Portfolio director');
+    expect(crHint(byId('CR-008'), 'director')).toBe('');
     expect(crHint(byId('CR-004'), 'quality')).toBe('');
   });
 });

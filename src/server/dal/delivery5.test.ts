@@ -392,7 +392,8 @@ describe('client portal (03 §8)', () => {
     expect(c.decisions.map((x) => x.changeRequest
       ? { kind: 'Change request', id: x.id, title: x.title, sub: `${x.changeRequest.typesLabel}${x.changeRequest.amount ? ` · ${f(x.changeRequest.amount, true)} on contract` : ''}${x.changeRequest.days ? ` · ${x.changeRequest.days > 0 ? '+' : ''}${x.changeRequest.days} d on handover` : ''}`, when: x.changeRequest.date, approveLabel: 'Approve' }
       : { kind: 'Deliverable', id: x.id, title: x.title, sub: `${x.deliverable!.typeLabel} · rev ${x.deliverable!.revision ?? '—'} · ${x.deliverable!.acceptanceText}`, when: d(x.deliverable!.dueOn), approveLabel: 'Accept (PV)' }))
-      .toEqual(g.decisions);
+      // Deviation P-6b (delivery 8, R-069): CR-008 reaches the client once the portfolio director approved it.
+      .toEqual(g.decisions.filter((x: any) => x.id !== 'CR-008'));
     expect(c.decided.map((x) => ({
       id: x.id, title: x.title, state: x.changeRequest ? (x.state === 'approved' ? 'Approved' : 'Rejected') : x.deliverable!.statusLabel,
       when: x.changeRequest ? x.changeRequest.date : x.deliverable!.acceptanceText,

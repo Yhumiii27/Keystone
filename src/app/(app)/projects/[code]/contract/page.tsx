@@ -12,7 +12,7 @@ import { PageHeader } from '@/components/app/shell/page-header';
 import { ContractScreen, CurrencyCard } from '@/features/contract/contract-view';
 import { FormButton } from '@/features/contract/form-button';
 import {
-  amendmentFormDef, bondFormDef, contractView, currencyView, milestoneFormDef, releaseFormDef, signFormDef,
+  amendmentFormDef, bondFormDef, contractView, currencyView, editMilestoneFormDef, milestoneFormDef, releaseFormDef, signFormDef,
 } from '@/features/contract/model';
 import { canSetBudgetRate } from '@/domain/rights';
 import { getContract } from '@/server/dal/contract';
@@ -49,6 +49,8 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
     milestone: milestoneFormDef(t, contract.amendments, lang),
     sign: (doc: string | null) => signFormDef(t, doc),
     release: releaseFormDef(t),
+    // Delivery 8 (R-077, C-7a): correcting a planned milestone (its basis stays).
+    editMilestone: (onAmendment: boolean) => editMilestoneFormDef(t, onAmendment),
   };
   const primary = canEdit ? (
     <FormButton kind="amendment" code={projectCode} context={context} form={forms.amendment} label={t('Add amendment')} variant="primary" />

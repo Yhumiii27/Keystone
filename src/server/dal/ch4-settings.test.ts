@@ -106,9 +106,12 @@ describe('A-14 — Settings lists drive the modules', () => {
     const code = await addProjectCostCategory('NDC-031', { name: 'Permits & fees', type: 'fees', budgetKeur: 40 }, 'Marie Lefebvre');
     await expect(addProjectCostCategory('NDC-031', { name: 'permits & FEES', type: 'fees', budgetKeur: 1 }, 'Marie Lefebvre')).rejects.toThrow(/already a cost category/);
     await expect(addProjectCostCategory('NDC-031', { name: 'X', type: 'fees', budgetKeur: -1 }, 'Marie Lefebvre')).rejects.toThrow(/budget/);
-    await updateProjectCostCategory('NDC-031', code, { name: 'Permits & local fees', budgetKeur: 55.5 }, 'Marie Lefebvre');
+    // Delivery 8 (R-081, C-3a): NDC-031 has BL1 — the category starts at 0 k€ (was: the 40 k€ given) and its amount changes only
+    // through an approved change request (was: edited to 55.5 k€); the name stays editable.
+    await expect(updateProjectCostCategory('NDC-031', code, { name: 'Permits & local fees', budgetKeur: 55.5 }, 'Marie Lefebvre')).rejects.toThrow(/approved change request/);
+    await updateProjectCostCategory('NDC-031', code, { name: 'Permits & local fees' }, 'Marie Lefebvre');
     const after = (await getCostControl('NDC-031'))!;
-    expect(after.categories.at(-1)).toMatchObject({ code, name: 'Permits & local fees', costType: 'fees', budget: 55.5, forecast: 55.5, actual: 0 });
+    expect(after.categories.at(-1)).toMatchObject({ code, name: 'Permits & local fees', costType: 'fees', budget: 0, forecast: 0, actual: 0 });
     expect(after.bac).toBe(before.bac);
     const db = await getDb();
     const [a] = await db.select().from(auditEntries).where(eq(auditEntries.objectRef, `NDC-031 · ${code}`)).orderBy(asc(auditEntries.occurredAt));

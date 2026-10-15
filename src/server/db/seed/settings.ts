@@ -3,9 +3,10 @@
 // whose ECO / NCR / HSE connector Keystone runs) and the import / export formats (IMPORTS 3571).
 import { PROTO } from '@/server/prototype';
 import {
-  APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, HEALTH_DEFAULTS, connectorStatus, deliverableType, locationType, parseStampText, riskCategory, slugOf, stage,
+  APP_SETTING_CCB, APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, HEALTH_DEFAULTS, connectorStatus, deliverableType, locationType, parseStampText, riskCategory, slugOf, stage,
   type ReferenceListKey,
 } from '../codes';
+import { DEFAULT_CCB_THRESHOLD_KEUR } from '@/domain/change-control';
 import { HOURS_VARIANCE_DEFAULT } from '@/domain/hr';
 import { APP_SETTING_DEFAULTS, holidayCode, type SettingsDefaults } from '@/domain/settings-defaults';
 import { appSettings, connectors, importFormats, referenceValues } from '../schema';
@@ -45,6 +46,8 @@ export function settingsDefaultsDocument(opts: { demo: boolean } = { demo: true 
     health: { risk: HEALTH_DEFAULTS.risk, off: HEALTH_DEFAULTS.off },
     // R-088 (R-6b): the hours-variance threshold.
     hours: { pct: HOURS_VARIANCE_DEFAULT },
+    // Delivery 8 (R-069, P-6c): the change control board threshold (the prototype's 50 k€ highlight, until management sets it).
+    change: { ccbThresholdKeur: DEFAULT_CCB_THRESHOLD_KEUR },
   };
 }
 
@@ -69,6 +72,8 @@ export async function seedSettings(tx: Tx, opts: { demo: boolean } = { demo: tru
   await tx.insert(appSettings).values({ key: APP_SETTING_HEALTH, value: { risk: HEALTH_DEFAULTS.risk, off: HEALTH_DEFAULTS.off } });
   // R-088 (R-6b): the hours-variance threshold (a database seeded earlier has no row: the reader falls back to the default).
   await tx.insert(appSettings).values({ key: APP_SETTING_HOURS_VARIANCE, value: { pct: HOURS_VARIANCE_DEFAULT } });
+  // Delivery 8 (R-069, P-6c): both seeds store the board threshold (a database without it reads the same default).
+  await tx.insert(appSettings).values({ key: APP_SETTING_CCB, value: { keur: DEFAULT_CCB_THRESHOLD_KEUR } });
   await seedSettingsDefaults(tx, opts);
   const rows: (Omit<typeof connectors.$inferInsert, 'direction'>)[] = (PROTO.CONNECTORS as [string, string, string, string, string, string][]).map(([name, what, freq, status, last, vol], position) => ({
     name, kind: name === 'Cursus' ? 'cursus' : 'static', dataScope: what, frequency: freq,

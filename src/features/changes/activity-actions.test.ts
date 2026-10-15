@@ -26,7 +26,8 @@ import { linkCrActivityAction, unlinkCrActivityAction } from './activity-actions
 
 const HLT = 'HLT-026';
 const linksOf = async (cr: string) => (await listCrActivityLinks(HLT)).filter((l) => l.cr === cr);
-const form = (acts: string) => ({ title: 'Second crane for erection', type: 'schedule', amt: '40', days: '-10', wbs: '1.3', acts, why: 'Recover the steel slip' });
+// R-069 (P-6c): the contractual impact is required on the form.
+const form = (acts: string) => ({ title: 'Second crane for erection', type: 'schedule', impact: 'price_dates', amt: '40', days: '-10', wbs: '1.3', acts, why: 'Recover the steel slip' });
 const duration = async (code: string) => {
   const db = await getDb();
   const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, HLT));

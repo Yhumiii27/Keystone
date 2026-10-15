@@ -92,7 +92,9 @@ describe('client portal screen', () => {
           decisions: g0.decisions.map((d: any, i: number) => (i === 0 ? { ...d, sub: d.sub.replace('-12 j sur la livraison', '-12 j sur le transfert') } : d)),
         }
       : g0;
-    expect(v.kpis).toEqual(withD7('HLT-026', lang, str(g.kpis)));
+    // Deviation P-6b (delivery 8, R-069): CR-008 reaches the client only once the portfolio director approved it — 3 → 2 waiting.
+    const notYet = (d: any) => d.id !== 'CR-008';
+    expect(v.kpis).toEqual(withD7('HLT-026', lang, str(g.kpis)).map((k: any, i: number) => (i === 3 ? { ...k, value: String(g.decisions.filter(notYet).length) } : k)));
     // S-9a: "Schedule" (FR "Planning") added after the prototype's first segment.
     expect(v.tabs.map((o) => o.label)).toEqual([g.seg[0], t('Schedule'), ...g.seg.slice(1)]);
     expect(v.tabs.map((o) => o.href)).toEqual(['', 'planning', 'decisions', 'invoices', 'issues', 'docs'].map((x) => `/projects/HLT-026/client${x ? `?tab=${x}` : ''}`));
@@ -101,7 +103,7 @@ describe('client portal screen', () => {
     // Deliverable types the prototype left in English are translated by the shared dictionary when it has them.
     const typeFr = (sub: string) => (lang === 'fr' ? sub.replace(/^[^·]+ · /, (m) => `${t(m.slice(0, -3))} · `) : sub);
     expect(v.decisions.map((d) => ({ kind: d.kindLabel, id: d.id, title: d.title, sub: d.sub, when: d.when, approveLabel: d.approveLabel })))
-      .toEqual(g.decisions.map((d: any) => (d.id.startsWith('D-') ? { ...d, sub: typeFr(d.sub) } : d)));
+      .toEqual(g.decisions.filter(notYet).map((d: any) => (d.id.startsWith('D-') ? { ...d, sub: typeFr(d.sub) } : d)));
     expect(v.decided).toEqual(g.decided);
   });
 

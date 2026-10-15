@@ -10,12 +10,12 @@
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import {
-  parseAmendmentForm, parseBondForm, parseInvoiceForm, parseMilestoneForm, parseReleaseBondForm, parseSheetField, parseSignAmendmentForm,
+  INVOICE_BLOCKED_MESSAGE, parseAmendmentForm, parseBondForm, parseInvoiceForm, parseMilestoneForm, parseReleaseBondForm, parseSheetField, parseSignAmendmentForm,
 } from '@/domain/contract';
 import { bondType } from '@/server/db/codes';
 import {
-  addAmendment, addBond, addPaymentMilestone, getContract, issueInvoice, markInvoicePaid, releaseBond, sendAmendmentForSignature, signAmendment,
-  updateContractSheet, type ProjectContract,
+  MilestoneEditError, addAmendment, addBond, addPaymentMilestone, getContract, issueInvoice, markInvoicePaid, releaseBond, removePaymentMilestone,
+  sendAmendmentForSignature, signAmendment, updateContractSheet, updatePaymentMilestone, type ProjectContract,
 } from '@/server/dal/contract';
 import { canSetBudgetRate } from '@/domain/rights';
 import { setProjectBudgetRate } from '@/server/dal/currency';
@@ -41,7 +41,9 @@ async function tr(english: string) {
 }
 
 /** Resolves the project and its contract after checking the viewer may edit `screen` on it. */
-async function editable(code: unknown, screen: 'contract' | 'billing'): Promise<{ code: string; actor: string; contract: ProjectContract } | { error: string }> {
+async function editable(
+  code: unknown, screen: 'contract' | 'billing',
+): Promise<{ code: string; actor: string; viewer: { name: string; role: string }; contract: ProjectContract } | { error: string }> {
   if (typeof code !== 'string' || !code) return { error: await tr('Invalid request') };
   const project = await getProject(code);
   if (!project) return { error: await tr('Unknown project') };
@@ -49,7 +51,7 @@ async function editable(code: unknown, screen: 'contract' | 'billing'): Promise<
   if (!ctx.canEdit(screen)) return { error: await tr(screen === 'contract' ? 'This contract is read-only for you' : 'Billing is read-only for you') };
   const contract = await getContract(project.code);
   if (!contract) return { error: await tr('No contract registered for this project') };
-  return { code: project.code, actor: ctx.viewer.name, contract };
+  return { code: project.code, actor: ctx.viewer.name, viewer: { name: ctx.viewer.name, role: ctx.viewer.role }, contract };
 }
 
 /** Contract sheet: one field saved on blur / Enter / select change (`setCtr`). */
@@ -140,7 +142,12 @@ export async function issueInvoiceAction(code: string, values: Record<string, st
   const ok = await editable(code, 'billing');
   if ('error' in ok) return ok;
   // Planned milestones of the base contract and of the signed amendments (NEW-D3-3: an unsigned amendment's are not billable).
-  const planned = ok.contract.milestones.filter((m) => m.status === 'planned' && m.billable).map((m) => m.number);
+  const billable = ok.contract.milestones.filter((m) => m.status === 'planned' && m.billable);
+  // R-077 (C-7): a milestone whose group exceeds 100 % is refused with the reason — checked before the form is parsed, else it
+  // would read "Choose a milestone still to invoice".
+  const asked = strings(values).ms?.split(' · ')[0]?.trim() || billable.find((m) => !m.blocked)?.number || billable[0]?.number;
+  if (asked && billable.some((m) => m.number === asked && m.blocked)) return { error: await tr(INVOICE_BLOCKED_MESSAGE) };
+  const planned = billable.filter((m) => !m.blocked).map((m) => m.number);
   const parsed = parseInvoiceForm(strings(values), planned);
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
@@ -150,11 +157,67 @@ export async function issueInvoiceAction(code: string, values: Record<string, st
     number = await issueInvoice(ok.code, { milestone: v.milestone, invoiceNumber: v.invoiceNumber, issuedOn: v.issuedOn, note: v.note }, ok.actor);
   } catch (e) {
     const used = e instanceof Error && /already exists/.test(e.message);
+    if (e instanceof Error && e.message === INVOICE_BLOCKED_MESSAGE) return { error: await tr(INVOICE_BLOCKED_MESSAGE) };
     return { error: used ? `${v.invoiceNumber} · ${await tr('This invoice number is already used')}` : await tr('The change could not be saved') };
   }
   refresh();
   const { t } = await getI18n();
   return { toast: `${number} · ${v.milestone} · ${t(RESULT.billing[0])} · ${t(RESULT.billing[1])}` };
+}
+
+// ── Delivery 8 (R-077, C-7a): correcting the schedule ──────────────────────────────────────────────────────────────────
+
+const MILESTONE_RE = /^M\d{1,4}$/;
+
+/** A planned milestone of the contract (the row the viewer saw); else the refusal. */
+async function plannedMilestone(ok: { contract: ProjectContract }, number: unknown): Promise<{ number: string } | { error: string }> {
+  if (typeof number !== 'string' || !MILESTONE_RE.test(number)) return { error: await tr('Invalid request') };
+  const m = ok.contract.milestones.find((x) => x.number === number);
+  if (!m) return { error: await tr('Unknown milestone') };
+  if (m.status !== 'planned') return { error: await tr('Only a planned milestone can be changed') };
+  return { number };
+}
+
+const milestoneError = async (e: unknown) =>
+  e instanceof MilestoneEditError ? { error: await tr(e.message) } : { error: await tr(knownError(e) ?? 'The change could not be saved') };
+
+/**
+ * "Edit" of a planned payment milestone (row action, AF.milestone without "Applies to"): label, share, contractual date, condition
+ * — the basis stays. Toast "M5 · Payment milestone updated".
+ */
+export async function updatePaymentMilestoneAction(code: string, number: string, values: Record<string, string>): Promise<FormDialogResult> {
+  const ok = await editable(code, 'contract');
+  if ('error' in ok) return ok;
+  const m = await plannedMilestone(ok, number);
+  if ('error' in m) return m;
+  const v = strings(values);
+  delete v.basis; // the basis of a milestone does not change
+  const parsed = parseMilestoneForm(v);
+  if (!parsed.ok) return { error: await tr(parsed.error) };
+  try {
+    await updatePaymentMilestone(ok.code, m.number, { label: parsed.value.label, sharePct: parsed.value.sharePct, contractualDue: parsed.value.contractualDue, condition: parsed.value.condition }, ok.viewer);
+  } catch (e) {
+    return milestoneError(e);
+  }
+  refresh();
+  const { t } = await getI18n();
+  return { toast: `${m.number} · ${t(RESULT.milestoneUpdated)}` };
+}
+
+/** "Remove" of a planned payment milestone (after the confirmation; its number is never reused). Toast "M5 · Payment milestone removed". */
+export async function removePaymentMilestoneAction(code: string, number: string): Promise<{ toast: string } | { error: string }> {
+  const ok = await editable(code, 'contract');
+  if ('error' in ok) return ok;
+  const m = await plannedMilestone(ok, number);
+  if ('error' in m) return m;
+  try {
+    await removePaymentMilestone(ok.code, m.number, ok.viewer);
+  } catch (e) {
+    return milestoneError(e);
+  }
+  refresh();
+  const { t } = await getI18n();
+  return { toast: `${m.number} · ${t(RESULT.milestoneRemoved)}` };
 }
 
 /** "Mark paid": an invoice awaiting payment is paid on the prototype's date (30 Sep); no toast, as in the prototype. */

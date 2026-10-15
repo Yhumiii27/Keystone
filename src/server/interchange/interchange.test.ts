@@ -11,11 +11,12 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/domain/ch4-defaults', async (orig) => ({ ...(await orig<typeof import('@/domain/ch4-defaults')>()), IMPORTS_ENABLED: true }));
 import { PERSONA_BY_ROLE } from '@/config/personas';
+import { CATEGORY_FROZEN_MESSAGE } from '@/domain/baseline-policy';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import {
   activities, activityAssignments, activityLinks, auditEntries, baselineActivities, baselines, calendars, connectors, costCategories, importJobs, milestones, parts, projectBomLines,
-  projectControls, projects, scheduleBars, wbsNodes,
+  projectControls, projects, scheduleBars, stageDeliverableChecks, stageDeliverableDefs, wbsNodes,
 } from '@/server/db/schema';
 import { getPlanData } from '@/server/dal/plan';
 import { setFilesRoot } from '@/server/storage/files';
@@ -23,6 +24,7 @@ import { fmt } from './messages';
 import { parseMspdi } from './mspdi';
 import { applyImport, cancelImport, previewTable, startImport, tableMapping, type ImportStep, type ImportViewer, type PreviewView } from './jobs';
 import { exportScheduleXml } from './schedule-export';
+import { CATEGORY_CREATED_AT_ZERO } from './table-import';
 
 const viewer = (role: keyof typeof PERSONA_BY_ROLE): ImportViewer => ({ name: PERSONA_BY_ROLE[role].name, short: PERSONA_BY_ROLE[role].short, role });
 const DIRECTOR = viewer('director');
@@ -112,6 +114,11 @@ describe('MS Project XML into a new project', () => {
     expect(bls.map((b) => [b.code, b.state, b.source, b.finishDate])).toEqual([['BL1', 'current', 'import', '2026-03-06'], ['BL2', 'superseded', 'import', '2026-02-02']]);
     const [{ n: bl1Rows }] = await db.select({ n: sql<number>`count(*)::int` }).from(baselineActivities).where(eq(baselineActivities.baselineId, bls[0].id));
     expect(bl1Rows).toBe(3);
+    // Delivery 8 (R-054, L-2 "a"): the imported BL1 (current) ticks « Planning BL1 posé »; the project stays at Initiative.
+    const [apd1] = await db.select({ done: stageDeliverableChecks.done }).from(stageDeliverableChecks)
+      .innerJoin(stageDeliverableDefs, eq(stageDeliverableDefs.id, stageDeliverableChecks.deliverableId))
+      .where(and(eq(stageDeliverableChecks.projectId, p.id), eq(stageDeliverableDefs.stage, 'apd'), eq(stageDeliverableDefs.position, 1)));
+    expect(apd1?.done).toBe(true);
     const [ctrl] = await db.select().from(projectControls).where(eq(projectControls.projectId, p.id));
     expect(ctrl).toMatchObject({ startMonth: 0, floatDays: 0, finishText: '16 Mar 2026', baselineText: '16 Mar 2026', milesText: '0 of 1', critText: '1 of 2 packages critical' });
     expect(await db.select({ name: milestones.name, status: milestones.status }).from(milestones).where(eq(milestones.projectId, p.id))).toEqual([{ name: 'Handover', status: 'on_track' }]);
@@ -266,20 +273,25 @@ describe('Excel / CSV tables', () => {
     const before = await counts();
     const p = preview(await previewTable(m.jobId, m.mapping, null, PM));
     expect(await counts()).toEqual(before);
-    expect(p.summary).toMatchObject({ create: 1, update: 1, error: 2, skip: 0 });
-    expect(p.rows.map((r) => [r.key, r.status, r.action])).toEqual([['C01', 'ok', 'update'], ['Location grue', 'ok', 'create'], ['C99', 'error', 'skip'], ['Honoraires bureau de contrôle', 'error', 'skip']]);
-    // Someone adds "Location grue" meanwhile: the confirmation re-plans and refuses.
+    // Delivery 8 (R-081, C-3a): HLT-026 has BL1 — a line changing C01's amount is refused (was: updated to 1 250,5 k€) and a new
+    // category is created at 0 k€ with a warning (was: at 85 k€).
+    expect(p.summary).toMatchObject({ create: 1, update: 0, error: 3, skip: 0, warning: 1 });
+    expect(p.rows.map((r) => [r.key, r.status, r.action])).toEqual([['C01', 'error', 'skip'], ['Location grue', 'warning', 'create'], ['C99', 'error', 'skip'], ['Honoraires bureau de contrôle', 'error', 'skip']]);
+    expect(p.rows[0].messages).toEqual([CATEGORY_FROZEN_MESSAGE]);
+    expect(p.rows[1].messages).toEqual([CATEGORY_CREATED_AT_ZERO]);
+    // Someone adds "Location grue" meanwhile (at the file's 85 k€): the confirmation re-plans and refuses.
     const db = await getDb();
     const pid = await projectId('HLT-026');
-    await db.insert(costCategories).values({ projectId: pid, code: 'C50', name: 'Location grue', costType: 'equipment', budgetKeur: 1, actualKeur: 0, committedKeur: 0, forecastKeur: 1, position: 50 });
+    const c01 = (await db.select().from(costCategories).where(and(eq(costCategories.projectId, pid), eq(costCategories.code, 'C01'))))[0];
+    await db.insert(costCategories).values({ projectId: pid, code: 'C50', name: 'Location grue', costType: 'equipment', budgetKeur: 85, actualKeur: 0, committedKeur: 0, forecastKeur: 85, position: 50 });
     const stale = await applyImport(p.jobId, PM);
     expect(stale).toMatchObject({ ok: false, error: 'The data changed since the preview — check the new preview' });
     if (stale.ok || !stale.stale) throw new Error('stale preview expected');
-    expect(stale.stale.summary).toMatchObject({ create: 0, update: 2 });
+    expect(stale.stale.summary).toMatchObject({ create: 0, update: 1 });
     const done = await applyImport(p.jobId, PM);
-    expect(done).toMatchObject({ ok: true, created: 0, updated: 2 });
+    expect(done).toMatchObject({ ok: true, created: 0, updated: 1 });
     const cats = await db.select().from(costCategories).where(eq(costCategories.projectId, pid)).orderBy(asc(costCategories.position));
-    expect(cats.find((c) => c.code === 'C01')).toMatchObject({ name: 'Main-d’œuvre chantier', costType: 'labor', budgetKeur: 1250.5, actualKeur: 300 });
+    expect(cats.find((c) => c.code === 'C01')).toMatchObject({ name: c01.name, costType: c01.costType, budgetKeur: c01.budgetKeur, actualKeur: c01.actualKeur });
     expect(cats.find((c) => c.code === 'C50')).toMatchObject({ budgetKeur: 85, costType: 'equipment' });
   });
 

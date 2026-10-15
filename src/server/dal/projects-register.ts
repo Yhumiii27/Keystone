@@ -7,6 +7,7 @@ import 'server-only';
 // finish-to-start links, the cost categories, the ITP plan — with the chosen PM, planned window, calendar and currency.
 // Permission checks, input validation and revalidation belong to src/features/projects/actions.ts.
 import { and, asc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
+import { BL1_DELIVERABLE_MESSAGE, bl1TickRefused, hasBl1 } from '@/domain/baseline-policy';
 import { BUILTIN_CALENDAR_BY_CODE, WorkCalendar } from '@/domain/calendar';
 import { projectDataDate } from '@/domain/ch4-defaults';
 import {
@@ -23,12 +24,12 @@ import {
 import { recordActivity, writeAudit } from '@/server/db/helpers';
 import { databaseSeedMode } from '@/server/db/seed/mode';
 import {
-  activities, activityLinks, cities, clients, costCategories, countries, itpPlans, machineTypeCostCategories, machineTypeItpSystems, machineTypePhases, machineTypes,
+  activities, activityLinks, baselines, cities, clients, costCategories, countries, itpPlans, machineTypeCostCategories, machineTypeItpSystems, machineTypePhases, machineTypes,
   persons, projectSites, projectTemplates, projects, stageDeliverableChecks, stageDeliverableDefs, wbsNodes,
 } from '@/server/db/schema';
 import { loadWorkCalendars } from './calendars';
 import { healthThresholds, type HealthThresholds } from './health-thresholds';
-import { listStageHistory, listStages, recordStageChange, setStageDeliverable, type StageHistoryRow, type StageInfo } from './lifecycle';
+import { listStageHistory, listStages, projectHasBl1, recordStageChange, setStageDeliverable, type StageHistoryRow, type StageInfo } from './lifecycle';
 import { getClientCodes } from './people';
 import { listScheduleSummaries, type MilestoneRow, type ScheduleControl } from './planning';
 import { listProjects, type ProjectRow } from './projects';
@@ -84,17 +85,28 @@ export interface RegisterData {
   thresholds?: HealthThresholds;
   /** Data date of each project (ISO; the status date until S-4 writes one): "today" of the stage-change date (L-4c). */
   dataDates?: Record<string, string>;
+  /**
+   * Delivery 8 (R-054, L-2 "a"): BL1 of each project with baselines — set (a BLn ≥ 1 current or superseded) and BL1's ISO date; the
+   * APD deliverable « Planning BL1 posé » follows it (read-only in the register).
+   */
+  bl1?: Record<string, { set: boolean; setOn: string | null }>;
 }
 
 /** Everything the Projects register renders. */
 export async function getRegisterData(): Promise<RegisterData> {
   const db = await getDb();
-  const [list, stages, checklists, history, schedules, inactiveStages, planned, thresholds, dates] = await Promise.all([
+  const [list, stages, checklists, history, schedules, inactiveStages, planned, thresholds, dates, bls] = await Promise.all([
     listProjects(), listStages(), listStageChecklists(), listStageHistory(), listScheduleSummaries(), inactiveStageCodes(), listPlannedProjectCodes(),
     healthThresholds(), db.select({ code: projects.code, dataDate: projects.dataDate }).from(projects),
+    db.select({ project: projects.code, code: baselines.code, state: baselines.state, setOn: baselines.setOn }).from(baselines).innerJoin(projects, eq(projects.id, baselines.projectId)),
   ]);
   const dataDates = Object.fromEntries(dates.map((d) => [d.code, projectDataDate(d)]));
-  return { projects: list, stages, checklists, history, schedules, inactiveStages, planned, thresholds, dataDates };
+  const bl1: NonNullable<RegisterData['bl1']> = {};
+  for (const code of new Set(bls.map((b) => b.project))) {
+    const own = bls.filter((b) => b.project === code);
+    bl1[code] = { set: hasBl1(own), setOn: own.find((b) => b.code === 'BL1' && b.state !== 'proposed')?.setOn ?? null };
+  }
+  return { projects: list, stages, checklists, history, schedules, inactiveStages, planned, thresholds, dataDates, bl1 };
 }
 
 /** Current stage of a project (null when unknown). */
@@ -133,6 +145,8 @@ export async function moveProjectStage(
  * stage. Returns the stage entered, if any.
  */
 export async function setDeliverableAndAdvance(code: string, stage: StageCode, index: number, done: boolean, requestedBy?: string): Promise<StageCode | null> {
+  // R-054 (L-2 "a"): « Planning BL1 posé » follows BL1 (re-checked here for every caller; a forced move is unchanged).
+  if (bl1TickRefused({ stage, position: index, done }, (await projectHasBl1(code)).bl1)) throw new Error(BL1_DELIVERABLE_MESSAGE);
   await setStageDeliverable(code, stage, index, done);
   const [current, stages, checklists, inactive] = await Promise.all([getProjectStage(code), listStages(), listStageChecklists(), inactiveStageCodes()]);
   const s = stages.find((x) => x.code === stage);

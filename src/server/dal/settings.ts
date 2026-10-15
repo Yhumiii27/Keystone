@@ -10,10 +10,11 @@ import 'server-only';
 import { and, asc, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import {
-  APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, REFERENCE_LIST_KEYS, locationType, slugOf,
+  APP_SETTING_CCB, APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, REFERENCE_LIST_KEYS, locationType, slugOf,
   type LocationType, type ReferenceListKey,
 } from '@/server/db/codes';
 import { SETTINGS_CARDS } from '@/domain/admin';
+import { DEFAULT_CCB_THRESHOLD_KEUR, isCcbThreshold } from '@/domain/change-control';
 import { isHoursVariancePct } from '@/domain/hr';
 import {
   APP_SETTING_DEFAULTS, defaultHoursVariance, defaultsOfList, fallbackSettingsDefaults, holidayCode, parseSettingsDefaults, type SettingsDefaults,
@@ -24,6 +25,7 @@ import {
 } from '@/domain/settings-rules';
 import { appSettings, referenceValues, skills, storageLocations } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
+import { readCcbThreshold } from './change-settings';
 import { readHealthThresholds } from './health-thresholds';
 import { readHoursVariance } from './hours-variance';
 import { requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
@@ -47,6 +49,8 @@ export interface SettingsData {
   health: HealthThresholds;
   /** R-088 (R-6b): the hours-variance threshold, % of planned (default 10). */
   hoursVariance: number;
+  /** Delivery 8 (R-069, P-6c): change control board threshold, k€ (optional for callers building the data by hand). */
+  ccbThresholdKeur?: number;
 }
 
 /** Active values of one list, in order. */
@@ -64,14 +68,15 @@ export async function getHealthThresholds(): Promise<HealthThresholds> {
 /** Everything the Settings screen shows. */
 export async function getSettings(): Promise<SettingsData> {
   const db = await getDb();
-  const [values, locs, health, hoursVariance] = await Promise.all([
+  const [values, locs, health, hoursVariance, ccbThresholdKeur] = await Promise.all([
     db.select().from(referenceValues).where(eq(referenceValues.active, true)).orderBy(asc(referenceValues.position)),
     db.select().from(storageLocations).where(eq(storageLocations.active, true)).orderBy(asc(storageLocations.position)),
     getHealthThresholds(),
     readHoursVariance(),
+    readCcbThreshold(),
   ]);
   const lists = Object.fromEntries(REFERENCE_LIST_KEYS.map((k) => [k, values.filter((v) => v.listKey === k).map((v) => ({ code: v.code, label: v.label }))])) as Record<ReferenceListKey, ReferenceValueRow[]>;
-  return { lists, locations: locs.map((l) => ({ name: l.name, type: l.type, typeLabel: locationType.label(l.type) })), health, hoursVariance };
+  return { lists, locations: locs.map((l) => ({ name: l.name, type: l.type, typeLabel: locationType.label(l.type) })), health, hoursVariance, ccbThresholdKeur };
 }
 
 /** Writers: the Settings workspace, and only the roles that edit Settings (A-14: the portfolio director). */
@@ -201,6 +206,34 @@ export async function setHealthThresholds(input: Partial<HealthThresholds>, acto
   return next;
 }
 
+/** Refusal of a board threshold that is not a number of k€ in [0, 1 000 000]. */
+export const CCB_THRESHOLD_ERROR = 'Enter a threshold in k€ (0 or more)';
+
+/**
+ * Delivery 8 (R-069, P-6c): the change control board threshold, k€ — a number in [0, 1 000 000] (0 = the board decides every
+ * request with an amount). Applies to change requests submitted afterwards: the steps of a request are fixed at submission.
+ * Director only (Settings, A-14); audited and written to the activity feed. Returns the new value.
+ */
+export async function setCcbThreshold(keur: number, actor: Actor): Promise<number> {
+  ST(actor);
+  if (!isCcbThreshold(keur)) throw new Error(CCB_THRESHOLD_ERROR);
+  const value = Math.round(keur * 100) / 100;
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const cur = await readCcbThreshold(tx);
+    const who = await whoIs(tx, actor);
+    await tx.insert(appSettings).values({ key: APP_SETTING_CCB, value: { keur: value }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value: { keur: value }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
+    if (cur !== value) {
+      await trace(tx, who, {
+        objectRef: 'Change control board', change: `threshold ${cur} → ${value} k€`, area: 'Settings', entityType: 'app_setting',
+        activity: { text: `Change control board threshold · ${cur} → ${value} k€`, kind: 'change' },
+      });
+    }
+    return value;
+  });
+}
+
 /**
  * R-088 (R-6b): the hours-variance threshold — an integer % of the planned hours, 1–50 (A-14: the portfolio director). Audit and
  * activity "Hours variance threshold: ±10 % → ±7 %". Returns the stored value.
@@ -251,6 +284,8 @@ export async function resetSettings(actor: Actor): Promise<void> {
       listKey: referenceValues.listKey, code: referenceValues.code, label: referenceValues.label, position: referenceValues.position, isDefault: referenceValues.isDefault,
     }).from(referenceValues));
     const doc = { lists: defaults.lists, locations: [], health: defaults.health } satisfies SettingsDefaults;
+    // R-069: a document stored before delivery 8 has no board threshold — the default (50 k€).
+    const ccb = defaults.change?.ccbThresholdKeur ?? DEFAULT_CCB_THRESHOLD_KEUR;
     for (const listKey of REFERENCE_LIST_KEYS) {
       const own = defaultsOfList(doc, listKey);
       // A list without defaults is left as it is (a reset never empties a list, e.g. the lifecycle stages).
@@ -278,6 +313,8 @@ export async function resetSettings(actor: Actor): Promise<void> {
     const hours = { pct: defaultHoursVariance(defaults) };
     await tx.insert(appSettings).values({ key: APP_SETTING_HOURS_VARIANCE, value: hours, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
       .onConflictDoUpdate({ target: appSettings.key, set: { value: hours, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
+    await tx.insert(appSettings).values({ key: APP_SETTING_CCB, value: { keur: ccb }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value: { keur: ccb }, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
     await trace(tx, who, { objectRef: 'Settings', change: 'reset to defaults', area: 'Settings', activity: { text: 'Reset the settings lists to their defaults', kind: 'change' } });
   });
 }

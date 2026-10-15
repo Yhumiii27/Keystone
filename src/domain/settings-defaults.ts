@@ -8,9 +8,11 @@
 //   health     the project health thresholds;
 //   hours      R-088 (R-6b): the hours-variance threshold { pct } — OPTIONAL: documents stored before delivery 8 have none and
 //              stay valid (Reset then restores the default 10 %).
+//   change     (delivery 8, R-069, optional) the change control board threshold — 50 k€ when the document predates it.
 // Without the document (a database loaded before Delivery 7 and not yet backfilled), Reset falls back to the list
 // entries flagged `is_default` in their current order, the current locations and HEALTH_DEFAULTS.
 import { HEALTH_DEFAULTS, REFERENCE_LIST_KEYS, isoOfDisplayDate, locationType, slugOf, type LocationType, type ReferenceListKey } from '@/server/db/codes';
+import { DEFAULT_CCB_THRESHOLD_KEUR, isCcbThreshold } from './change-control';
 import { HOURS_VARIANCE_DEFAULT, isHoursVariancePct } from './hr';
 
 /** app_settings key of the stored defaults. */
@@ -25,6 +27,8 @@ export interface SettingsDefaults {
   health: { risk: number; off: number };
   /** R-088 (R-6b): the hours-variance threshold (% of planned); absent from documents stored before delivery 8. */
   hours?: { pct: number };
+  /** Delivery 8 (R-069, P-6c): change control board threshold, k€; absent in a document stored before it (Reset → 50 k€). */
+  change?: { ccbThresholdKeur: number };
 }
 
 const isText = (v: unknown, max = 200): v is string => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
@@ -66,7 +70,14 @@ export function parseSettingsDefaults(value: unknown): SettingsDefaults | null {
     if (!isHoursVariancePct(pct)) return null;
     hours = { pct };
   }
-  return { lists, locations, health: { risk: h.risk, off: h.off }, ...(hours ? { hours } : {}) };
+  // R-069: optional; when present it must be a usable threshold.
+  let change: SettingsDefaults['change'];
+  if (v.change !== undefined) {
+    const c = (v.change ?? {}) as Record<string, unknown>;
+    if (!isCcbThreshold(c.ccbThresholdKeur)) return null;
+    change = { ccbThresholdKeur: c.ccbThresholdKeur };
+  }
+  return { lists, locations, health: { risk: h.risk, off: h.off }, ...(hours ? { hours } : {}), ...(change ? { change } : {}) };
 }
 
 /** The entries of one list with their Settings position (0-based, document order). */
@@ -76,7 +87,7 @@ export const defaultsOfList = (d: SettingsDefaults, listKey: ReferenceListKey) =
 /** Fallback when no document is stored: the entries flagged as defaults, current locations kept, HEALTH_DEFAULTS, 10 % hours variance. */
 export function fallbackSettingsDefaults(rows: readonly { listKey: ReferenceListKey; code: string; label: string; position: number; isDefault: boolean }[]): Omit<SettingsDefaults, 'locations'> & { locations: null } {
   const lists = [...rows].filter((r) => r.isDefault).sort((a, b) => a.position - b.position).map(({ listKey, code, label }) => ({ listKey, code, label }));
-  return { lists, locations: null, health: { risk: HEALTH_DEFAULTS.risk, off: HEALTH_DEFAULTS.off }, hours: { pct: HOURS_VARIANCE_DEFAULT } };
+  return { lists, locations: null, health: { risk: HEALTH_DEFAULTS.risk, off: HEALTH_DEFAULTS.off }, hours: { pct: HOURS_VARIANCE_DEFAULT }, change: { ccbThresholdKeur: DEFAULT_CCB_THRESHOLD_KEUR } };
 }
 
 /** R-088: the hours-variance threshold a reset restores (the document's, else the default 10 %). */

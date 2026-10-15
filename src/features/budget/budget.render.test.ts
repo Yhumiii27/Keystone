@@ -110,7 +110,9 @@ describe('Budget & cost', () => {
       expect(tx).toContain(s);
     expect(out).toContain('d="M52.0 260.0 L109.7 255.8 L167.3 251.5 L225.0 248.1');
     expect(out).toContain('<title>Structural steel — columns, beams, purlins · deposit 30 % · €192k · Mar</title>');
-    expect(out).toContain('--bar-h:80%');
+    // Delivery 8 (R-080, C-1): signed variance bars — the largest is 90 % of half the plot (was 80 % of the plot, always downwards).
+    expect(out).toContain('_barDown_');
+    expect(out).toContain('--bar-h:90%');
     expect(out).toContain('href="/b?tab=setup"');
   });
 

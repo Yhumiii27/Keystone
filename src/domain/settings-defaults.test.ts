@@ -49,7 +49,17 @@ describe('stored Settings defaults (R-170)', () => {
       health: { risk: 0.97, off: 0.9 },
       // R-088 (R-6b): the default hours-variance threshold.
       hours: { pct: 10 },
+      // Delivery 8 (R-069, P-6c): Reset restores the change control board threshold too (50 k€ by default).
+      change: { ccbThresholdKeur: 50 },
     });
+  });
+
+  // Delivery 8 (R-069, P-6c): the board threshold is optional in the stored document (one stored before it falls back to 50 k€).
+  it('reads the optional change control board threshold, refusing an unusable one', () => {
+    expect(parseSettingsDefaults(DOC)?.change).toBeUndefined();
+    expect(parseSettingsDefaults({ ...DOC, change: { ccbThresholdKeur: 75 } })?.change).toEqual({ ccbThresholdKeur: 75 });
+    expect(parseSettingsDefaults({ ...DOC, change: { ccbThresholdKeur: 0 } })?.change).toEqual({ ccbThresholdKeur: 0 });
+    for (const bad of [-1, 'x', null, 2_000_000]) expect(parseSettingsDefaults({ ...DOC, change: { ccbThresholdKeur: bad } })).toBeNull();
   });
 
   it('codes a public holiday by its 2026 date', () => {

@@ -21,8 +21,9 @@ import {
 } from '@/server/dal/mtypes';
 import type { Actor } from '@/server/dal/ops-common';
 import {
-  HOURS_VARIANCE_RANGE, addLocation, addReferenceValue, getHealthThresholds, removeLocation, removeReferenceValue, resetSettings, setHealthThresholds, setHoursVariance,
+  CCB_THRESHOLD_ERROR, HOURS_VARIANCE_RANGE, addLocation, addReferenceValue, getHealthThresholds, removeLocation, removeReferenceValue, resetSettings, setCcbThreshold, setHealthThresholds, setHoursVariance,
 } from '@/server/dal/settings';
+import { isCcbThreshold } from '@/domain/change-control';
 import { parseHoursVarianceInput } from '@/domain/hr';
 import { translateMessage } from '@/server/interchange/messages';
 import { getScreenAccess } from '@/server/project-context';
@@ -174,6 +175,24 @@ export async function setHoursVarianceAction(raw: unknown): Promise<AdminActionR
   if (pct === null) return fail(HOURS_VARIANCE_RANGE);
   try {
     await setHoursVariance(pct, ok.actor);
+  } catch (e) {
+    return failure(e);
+  }
+  refresh();
+  return { ok: true };
+}
+
+/**
+ * Delivery 8 (R-069, P-6c): "Change control board above (k€)" — a number of k€, 0 or more; the director only. It applies to the
+ * change requests submitted afterwards (the steps are fixed at submission).
+ */
+export async function setCcbThresholdAction(raw: unknown): Promise<AdminActionResult> {
+  const ok = await settingsEditor();
+  if ('error' in ok) return ok;
+  const v = parseThresholdInput(raw);
+  if (v === null || !isCcbThreshold(v)) return fail(CCB_THRESHOLD_ERROR);
+  try {
+    await setCcbThreshold(v, ok.actor);
   } catch (e) {
     return failure(e);
   }

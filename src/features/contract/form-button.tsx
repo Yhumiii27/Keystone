@@ -40,13 +40,18 @@ export interface FormButtonProps {
   initialValues?: FormValues;
   /** Accessible name when the label alone is ambiguous ("Issue invoice M5"). */
   ariaLabel?: string;
+  /** Delivery 8 (R-077): the reason the action is not available (button disabled, reason as its title and description). */
+  disabledReason?: string | null;
 }
 
-export function FormButton({ kind, code, context, form, label, variant = 'ghost', size, icon = Plus, push, nowrap, initialValues, ariaLabel }: FormButtonProps) {
+export function FormButton({ kind, code, context, form, label, variant = 'ghost', size, icon = Plus, push, nowrap, initialValues, ariaLabel, disabledReason }: FormButtonProps) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant={variant} size={size} icon={icon ?? undefined} push={push} nowrap={nowrap} onClick={() => setOpen(true)} aria-label={ariaLabel}>
+      <Button
+        variant={variant} size={size} icon={icon ?? undefined} push={push} nowrap={nowrap} onClick={() => setOpen(true)} aria-label={ariaLabel}
+        disabled={!!disabledReason} title={disabledReason ?? undefined}
+      >
         {label}
       </Button>
       <FormDialog {...form} open={open} onClose={() => setOpen(false)} context={context} initialValues={initialValues} onSubmit={(values) => ACTIONS[kind](code, values)} />

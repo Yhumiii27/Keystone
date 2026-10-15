@@ -11,6 +11,7 @@ import { ButtonLink } from '@/components/ds/Button';
 import { CardTitle } from '@/components/ds/Card';
 import { Table, Td, Th } from '@/components/ds/Table';
 import { screenHref } from '@/config/screens';
+import { CATEGORY_FROZEN_MESSAGE } from '@/domain/baseline-policy';
 import { contingencyTile } from '@/domain/cost-control';
 import { isLongLead, workPackageBar, workPackageTotals, type OfferQuote } from '@/domain/evm';
 import type { Lang, T } from '@/i18n/translate';
@@ -41,6 +42,11 @@ export interface SetupTabProps {
   context?: string;
   /** Settings › Cost categories offered by "Add category" (active values, A-14). */
   categoryOptions?: readonly ListOption[];
+  /**
+   * Delivery 8 (R-081, C-3a): the project has BL1 — the dialogs drop the budget field (a new category starts at 0) and a hint
+   * points to Change control: the amount changes only through an approved change request.
+   */
+  amountsFrozen?: boolean;
   lang: Lang;
   t: T;
 }
@@ -61,7 +67,7 @@ function CardHead({ title, subtitle, actions }: { title: string; subtitle: strin
   );
 }
 
-export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, code, context, categoryOptions = [], lang, t }: SetupTabProps) {
+export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, code, context, categoryOptions = [], amountsFrozen = false, lang, t }: SetupTabProps) {
   const f = (k: number, signed?: boolean) => money(k, lang, { signed });
   const m = (i: number | null) => (i == null ? '' : (cost.chartMonths[i] ?? ''));
   const rc = cost.recon;
@@ -168,8 +174,17 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
           <CardHead
             title={t('Cost categories')}
             subtitle={t('Defined per project · actuals map in by rule')}
-            actions={canEdit ? <AddCategoryButton code={code} context={context} form={addCategoryFormDef(categoryOptions)} /> : undefined}
+            actions={canEdit ? <AddCategoryButton code={code} context={context} form={addCategoryFormDef(categoryOptions, { frozen: amountsFrozen })} /> : undefined}
           />
+          {canEdit && amountsFrozen && (
+            // R-081 (C-3a, A-4): after BL1 an amount moves only through an approved change request.
+            <p className={s.frozenHint}>
+              {t(CATEGORY_FROZEN_MESSAGE)} ·{' '}
+              <Link href={`${screenHref('changes', { code })}?new=1`} className={s.frozenLink}>
+                {t('New change request')}
+              </Link>
+            </p>
+          )}
           <Table size={13}>
             <thead>
               <tr>
@@ -197,7 +212,7 @@ export function SetupTab({ cost, offer, rex, profileText, planHref, canEdit, cod
                   </Td>
                   {canEdit && (
                     <Td align="right">
-                      <EditCategoryButton code={code} context={context} form={editCategoryFormDef()} category={c.code} values={editCategoryValues(c)} />
+                      <EditCategoryButton code={code} context={context} form={editCategoryFormDef({ frozen: amountsFrozen })} category={c.code} values={editCategoryValues(c, { frozen: amountsFrozen })} />
                     </Td>
                   )}
                 </tr>

@@ -77,13 +77,24 @@ describe('commercial offer', () => {
 });
 
 describe('variance card & bars', () => {
-  it('cost variance bars: cv −5…−280, heights 3 %…80 %', () => {
+  it('cost variance bars: cv −5…−280, signed heights 4 %…90 % of half the plot (C-1)', () => {
     const bars = costVarianceBars(HLT.ev, HLT.ac);
     expect(bars.map((b) => b.cv)).toEqual([-5, -20, -45, -70, -110, -150, -190, -240, -280]);
+    // Deviation C-1 (delivery 8, R-080): the bars are signed around a centre axis — heights are % of HALF the plot (max 90 %,
+    // stub 4 %) instead of the prototype's 3 %…80 % of the whole column, and every HLT-026 month is an overrun (down).
     expect(bars.map((b) => b.h + '%')).toEqual([
-      '3%', '5.7142857142857135%', '12.857142857142858%', '20%', '31.428571428571427%', '42.857142857142854%', '54.28571428571429%',
-      '68.57142857142857%', '80%',
+      '4%', '6.428571428571428%', '14.464285714285715%', '22.5%', '35.357142857142854%', '48.214285714285715%', '61.07142857142858%',
+      '77.14285714285714%', '90%',
     ]);
+    expect(new Set(bars.map((b) => b.dir))).toEqual(new Set(['down']));
+  });
+
+  it('signed bars: savings up, overruns down, zero a neutral stub (C-1)', () => {
+    expect(costVarianceBars([10, 20, 30], [10, 10, 60])).toEqual([
+      { cv: 0, h: 4, dir: 'flat' }, { cv: 10, h: 30, dir: 'up' }, { cv: -30, h: 90, dir: 'down' },
+    ]);
+    // A tiny variance next to a large one keeps a visible stub.
+    expect(costVarianceBars([1, 1000], [0, 0])[0]).toEqual({ cv: 1, h: 4, dir: 'up' });
   });
 
   it('cost breakdown bullets (HCATS)', () => {

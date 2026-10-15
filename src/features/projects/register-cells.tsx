@@ -163,20 +163,29 @@ export function DeliverablesCell({ row, stageLabel, canEdit }: DeliverablesCellP
         {row.delivs.map((d, i) => {
           const done = !!ticks[i];
           const I = done ? CheckSquare : Square;
+          // R-054 (L-2 "a"): « Planning BL1 posé » follows BL1 — read-only here, with the reason (the server refuses a manual tick too).
           return (
             <button
               key={i}
               type="button"
               className={s.delivItem}
-              disabled={!canEdit}
+              disabled={!canEdit || !!d.lock}
               aria-pressed={done}
+              aria-describedby={d.lock ? `${row.code}-deliv-${i}-lock` : undefined}
               onClick={(e) => {
                 e.stopPropagation();
                 toggle(i);
               }}
             >
               <I className={cx(s.delivIcon, done && s.delivIconDone)} aria-hidden />
-              {d.label}
+              <span className={s.delivText}>
+                {d.label}
+                {d.lock && (
+                  <span id={`${row.code}-deliv-${i}-lock`} className={s.delivLock}>
+                    {d.lock}
+                  </span>
+                )}
+              </span>
             </button>
           );
         })}

@@ -11,6 +11,7 @@ import 'server-only';
 //  - R-070 (A-8): the contingency drawn is the register's validated draw-downs; the forecast consumption shows apart.
 import { asc, eq, inArray } from 'drizzle-orm';
 import { budgetChangeRows, contingencyTile, pendingSubText, registerReconciliation, workPackageChanges } from '@/domain/cost-control';
+import { DEFAULT_HEALTH_THRESHOLDS, indexAlert, type HealthThresholds } from '@/domain/health';
 import { monthLabels } from '@/lib/format';
 import { getDb } from '@/server/db/client';
 import {
@@ -23,6 +24,7 @@ import {
 } from '@/server/db/schema';
 import { getContingencyTotals } from './contingency';
 import { getOpenCommitment, getProjectEvm } from './evm';
+import { healthThresholds } from './health-thresholds';
 import { stockCostByWorkPackage } from './stock';
 
 export interface OfferQuoteRow {
@@ -122,11 +124,14 @@ export interface CostControl {
   evmSource: 'keystone' | 'seed';
 }
 
-/** The prototype's generated notes quote the CPI: rebuilt from the computed CPI (A-12); a written narrative is kept. */
-export function costNote(stored: string, cpi: number | null): string {
+/**
+ * The prototype's generated notes quote the CPI: rebuilt from the computed CPI (A-12); a written narrative is kept. Delivery 8
+ * (R-080, C-1): "running ahead" below the Settings "At risk below" threshold (0.97 by default), like the CPI tile.
+ */
+export function costNote(stored: string, cpi: number | null, th: HealthThresholds = DEFAULT_HEALTH_THRESHOLDS): string {
   if (cpi == null || !/^(Spending is running ahead of earned value|Cost performance is healthy) \(CPI [\d.]+\)/.test(stored)) return stored;
   const c = cpi.toFixed(2);
-  return cpi < 0.97
+  return indexAlert(cpi, th)
     ? `Spending is running ahead of earned value (CPI ${c}); the forecast at completion exceeds the budget.`
     : `Cost performance is healthy (CPI ${c}); the forecast at completion sits within budget.`;
 }
@@ -141,7 +146,7 @@ export async function getCostControl(code: string): Promise<CostControl | null> 
     .where(eq(projects.code, code));
   if (!head) return null;
   const pid = head.projectId;
-  const [evmRows, offer, streams, cats, wps, crs, acts, evm, ordersPlaced, contingency, stockByWp] = await Promise.all([
+  const [evmRows, offer, streams, cats, wps, crs, acts, evm, ordersPlaced, contingency, stockByWp, th] = await Promise.all([
     db.select().from(evmPeriods).where(eq(evmPeriods.projectId, pid)).orderBy(asc(evmPeriods.monthIndex)),
     db.select().from(offerQuotes).where(eq(offerQuotes.projectId, pid)).orderBy(asc(offerQuotes.position)),
     db.select().from(costStreams).where(eq(costStreams.projectId, pid)).orderBy(asc(costStreams.position)),
@@ -157,6 +162,7 @@ export async function getCostControl(code: string): Promise<CostControl | null> 
     getOpenCommitment(code),
     getContingencyTotals(code),
     stockCostByWorkPackage(pid),
+    healthThresholds(),
   ]);
   const periods = streams.length
     ? await db.select().from(costStreamPeriods).where(inArray(costStreamPeriods.streamId, streams.map((s) => s.id))).orderBy(asc(costStreamPeriods.monthIndex))
@@ -217,7 +223,7 @@ export async function getCostControl(code: string): Promise<CostControl | null> 
       orig: c.reconOrigKeur, chg: rec.approved, crCount: rec.approvedCount, pending: rec.pending, pendingSub: pendingSubText(rec.pendingIds, crs.length),
       cont: provision, contUsed: drawn, contForecast: tile.forecast, contPending: contingency?.pending ?? 0,
     },
-    note: costNote(c.note, evm?.cpi ?? null),
+    note: costNote(c.note, evm?.cpi ?? null, th),
     ordersPlaced,
     evmSource: evm ? 'keystone' : 'seed',
   };

@@ -3,6 +3,7 @@
 // templates (phases, cost categories, ITP systems, payment terms); document types: the Codex register; Activity &
 // integrations: the current view first (`?view=activity|connectors|imports|audit`, `?source=` chip of the feed).
 import { SETTINGS_CARDS, parseActivitySource, parsePlumbView } from '@/domain/admin';
+import { DEFAULT_CCB_THRESHOLD_KEUR } from '@/domain/change-control';
 import { listAdminConnectors } from '@/server/dal/admin-connectors';
 import { listDocumentTypes } from '@/server/dal/documents';
 import { activityWhatT, auditAreaT, auditChangeT, auditObjectT } from '@/features/admin/i18n';
@@ -33,6 +34,10 @@ async function settingsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
         // R-088 (R-6b): the hours-variance threshold.
         { label: t('Hours variance threshold (%)'), value: `± ${data.hoursVariance} %`, sub: t('Hours variance') },
       ], t('Project health rules')),
+      // Delivery 8 (R-069, P-6c): the change control board threshold.
+      kpiSheet(ctx, [
+        { label: t('Board above (k€)'), value: `> ${data.ccbThresholdKeur ?? DEFAULT_CCB_THRESHOLD_KEUR}`, sub: t('Applies to change requests submitted afterwards') },
+      ], t('Change control board')),
     ],
   };
 }

@@ -64,8 +64,8 @@ describe('Settings body', () => {
     expect(out).not.toContain('aria-label="Remove');
     expect(out).not.toContain('placeholder="Add an entry"');
     expect(out).not.toContain('aria-pressed=');
-    // The two health thresholds and the hours-variance threshold (R-088).
-    expect(count(out, /readOnly=""|readonly=""/gi)).toBe(3);
+    // The two health thresholds, the hours-variance threshold (R-088) and (delivery 8, R-069) the change control board threshold.
+    expect(count(out, /readOnly=""|readonly=""/gi)).toBe(4);
     expect(text(out)).toContain('Software / IT');
   });
 });

@@ -396,7 +396,8 @@ export function NewProjectWizard({ open, onClose, step, onStepChange, setup, dra
             <PseudoInput icon={Clock} caret={false}>{t('Weekly · Fridays')}</PseudoInput>
           </Field>
           <Field label={t('Baseline policy')}>
-            <PseudoInput icon={FlagBanner} caret={false}>{t('Set BL1 at Planning → Active')}</PseudoInput>
+            {/* R-054 (L-2 "a"): BL1 is frozen at the end of APD and ticks its deliverable (the prototype's "Planning → Active" was stale). */}
+            <PseudoInput icon={FlagBanner} caret={false}>{t('BL1 frozen at the end of APD (ticks “Planning BL1 posé”)')}</PseudoInput>
           </Field>
           <Field label={t('Working time')}>
             <PseudoInput caret={false}>{calDef ? workingTimeT(workingTimeText(calDef), lang) : '—'}</PseudoInput>

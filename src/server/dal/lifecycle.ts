@@ -8,6 +8,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { cache } from 'react';
 import type { RoleKey } from '@/config/screens';
 import { projectDataDate } from '@/domain/ch4-defaults';
+import { BL1_DELIVERABLE_MESSAGE, BL1_STAGE_DELIVERABLE, bl1TickRefused, hasBl1 } from '@/domain/baseline-policy';
 import { REVERT_BLOCKER_MESSAGE, isForcedStageDecider, revertBlocker, revertReason, FORCED_STAGE_COMMENT_MAX } from '@/domain/forced-stage';
 import { defaultEffectiveDate, effectiveDateError, type EffectiveDateBounds } from '@/domain/lifecycle';
 import { getDb } from '@/server/db/client';
@@ -16,8 +17,10 @@ import {
   type StageCode, type StageGroup, type TransitionMode, type ValidationStatus,
 } from '@/server/db/codes';
 import { actorOf, findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
-import { lifecycleStages, lifecycleTransitions, persons, projects, stageDeliverableChecks, stageDeliverableDefs, stageTransitions } from '@/server/db/schema';
-import type { Tx } from '@/server/db/types';
+import {
+  baselines, lifecycleStages, lifecycleTransitions, persons, projects, stageDeliverableChecks, stageDeliverableDefs, stageTransitions,
+} from '@/server/db/schema';
+import type { DB, Tx } from '@/server/db/types';
 
 export interface StageInfo {
   code: StageCode;
@@ -221,12 +224,59 @@ export async function setStageDeliverable(projectCode: string, stage: StageCode,
 }
 
 /**
+ * Delivery 8 (R-054, L-2 "a"): ticks « Planning BL1 posé » (APD #1) when BL1 is set — "Set baseline" up to BL1, a change request
+ * approval making a BLn ≥ 1 current, a NEW MS Project import with BL1 current. Runs inside the caller's transaction; idempotent:
+ * returns true only when the tick changed (the callback's return value, never an outer variable — transactions may rerun, R-010),
+ * and writes the audit and activity lines only then, in the real actor's name. Never moves the stage (no auto-advance).
+ */
+export async function markBl1Deliverable(tx: DB | Tx, projectId: string, actorName: string): Promise<boolean> {
+  const [def] = await tx
+    .select({ id: stageDeliverableDefs.id, label: stageDeliverableDefs.label })
+    .from(stageDeliverableDefs)
+    .where(and(eq(stageDeliverableDefs.stage, BL1_STAGE_DELIVERABLE.stage), eq(stageDeliverableDefs.position, BL1_STAGE_DELIVERABLE.position)));
+  if (!def) return false;
+  const [cur] = await tx
+    .select({ done: stageDeliverableChecks.done })
+    .from(stageDeliverableChecks)
+    .where(and(eq(stageDeliverableChecks.projectId, projectId), eq(stageDeliverableChecks.deliverableId, def.id)));
+  if (cur?.done) return false;
+  const actor = await findPerson(tx, actorName);
+  const at = new Date();
+  await tx
+    .insert(stageDeliverableChecks)
+    .values({ projectId, deliverableId: def.id, done: true, doneAt: at, doneByPersonId: actor?.id ?? null })
+    .onConflictDoUpdate({ target: [stageDeliverableChecks.projectId, stageDeliverableChecks.deliverableId], set: { done: true, doneAt: at, doneByPersonId: actor?.id ?? null } });
+  const [p] = await tx.select({ code: projects.code }).from(projects).where(eq(projects.id, projectId));
+  const who = actor ? nameOf(actor) : actorName;
+  await writeAudit(tx, {
+    actorName: who, actorPersonId: actor?.id, objectRef: `${p?.code ?? ''} stage`, area: 'Lifecycle', entityType: 'stage_deliverable', entityId: def.id, projectId, occurredAt: at,
+    change: `deliverable ticked: ${def.label} · BL1 set`,
+  });
+  await recordActivity(tx, { actorName: who, actorPersonId: actor?.id, kind: 'change', projectId, occurredAt: at, text: `${p?.code ?? ''} · “${def.label}” ticked · BL1 set` });
+  return true;
+}
+
+/** BL1 set on the project (current or superseded BLn ≥ 1, R-054) — the manual tick rule of « Planning BL1 posé ». */
+export async function projectHasBl1(projectCode: string): Promise<{ bl1: boolean; setOn: string | null }> {
+  const db = await getDb();
+  const rows = await db
+    .select({ code: baselines.code, state: baselines.state, setOn: baselines.setOn })
+    .from(baselines)
+    .innerJoin(projects, eq(projects.id, baselines.projectId))
+    .where(eq(projects.code, projectCode));
+  const bl1 = rows.find((b) => b.code === 'BL1' && b.state !== 'proposed');
+  return { bl1: hasBl1(rows), setOn: bl1?.setOn ?? null };
+}
+
+/**
  * Prototype toggleDeliv (3923): flips a deliverable; when this completes the project's current stage and a next
  * stage exists, the project auto-advances (history mode 'auto'). Returns the stage entered, if any.
  */
 export async function toggleStageDeliverable(projectCode: string, stage: StageCode, position: number): Promise<StageCode | null> {
   const before = await getStageChecklist(projectCode);
   const done = !before[stage]?.[position];
+  // R-054 (L-2 "a"): « Planning BL1 posé » follows BL1, as in the register (setDeliverableAndAdvance).
+  if (bl1TickRefused({ stage, position, done }, (await projectHasBl1(projectCode)).bl1)) throw new Error(BL1_DELIVERABLE_MESSAGE);
   await setStageDeliverable(projectCode, stage, position, done);
   const after = await getStageChecklist(projectCode);
   const db = await getDb();

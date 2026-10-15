@@ -87,6 +87,8 @@ test('a new baseline after BL1 goes through a change request; approved by the ch
   const form = dialog(page, 'New baseline · change request');
   await expect(form.getByLabel('Title')).toHaveValue('New baseline BL3');
   await form.getByLabel('Justification').fill('Recovery plan agreed with the client');
+  // Delivery 8 (R-069, P-6c): the contractual impact is required — a re-baseline moving the contractual dates.
+  await form.getByLabel('Contractual impact').selectOption('dates');
   await form.getByRole('button', { name: 'Submit for review' }).click();
   await expect(toast(page)).toContainText(/(CR-\d+) · Change request submitted for review · BL3 proposed/);
   const number = /(CR-\d+)/.exec((await toast(page).textContent()) ?? '')![1];
@@ -97,10 +99,10 @@ test('a new baseline after BL1 goes through a change request; approved by the ch
     await page.getByRole('button', { name: `Approve · ${step}` }).click();
     await expect(page.getByRole('button', { name: `Approve · ${step}` })).toHaveCount(0);
   };
+  // R-069 (P-6b): the chain is decided in order; 0 k€ is not above the board threshold (50 k€), so no board step (P-6c).
   await approve('pm', 'Project manager');
-  await approve('client', 'Client / sponsor');
   await approve('director', 'Portfolio director');
-  await approve('director', 'Change control board');
+  await approve('client', 'Client / sponsor');
   await page.goto('/projects/HLT-026/changes');
   await expect(page.getByRole('row', { name: new RegExp(`^${number} New baseline BL3 .* Approved$`) })).toBeVisible();
   await expect(page.getByRole('row', { name: /^BL3 BL3 — CR-\d+ .* Current$/ })).toBeVisible();
