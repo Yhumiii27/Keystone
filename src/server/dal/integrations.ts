@@ -9,13 +9,14 @@ import 'server-only';
 // read (connector-config.ts); "Add connector" is gone from the app.
 import { and, asc, desc, eq, gte, sql } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
-import { STATUS_ISO, addDaysIso, parisInstant, type ConnectorDirection, type ConnectorKind, type ConnectorStatus } from '@/server/db/codes';
+import { STATUS_ISO, addDaysIso, parisInstant, stampText, type ConnectorDirection, type ConnectorKind, type ConnectorStatus } from '@/server/db/codes';
 import {
   auditEntries, connectorSyncRuns, connectors, cursusClearances, cursusRequests, cursusSyncRuns, importFormats, siteSheets, projects, vigieEcoProgress, vigieEcos,
   vigieHseItems, vigieNcrProgress, vigieNcrs,
 } from '@/server/db/schema';
 import { cursusConnectorMode } from '@/server/integrations/cursus/connection';
 import { getCursusConnector } from '@/server/integrations/cursus/connector';
+import { cursusInboxState } from '@/server/integrations/cursus/inbox';
 import { recordFailedSync } from '@/server/integrations/cursus/mirror';
 import { vigieConnectorMode } from '@/server/integrations/vigie/connection';
 import { getVigieEcoConnector } from '@/server/integrations/vigie/eco-connector';
@@ -26,6 +27,8 @@ import {
 } from '@/domain/connectors';
 import { fmt } from '@/server/interchange/messages';
 import { ensureConnectorsFileApplied } from './connector-config';
+import { directoryRunSummary, runDirectoryImport } from './persons-directory';
+import { log } from '@/server/log';
 import { eventsToday } from './kpis';
 import { requireWorkspace, trace, whoIs, type Actor } from './ops-common';
 
@@ -85,18 +88,24 @@ async function vigieState() {
 
 /**
  * Live state of the Cursus connector: people received per site, the outbox, the last successful refresh and whether
- * the latest refresh of a site failed (Cursus unreachable: the mirror is kept, the connector needs attention).
+ * the latest refresh of a site failed (Cursus unreachable: the mirror is kept, the connector needs attention). R-029: the
+ * events Cursus pushes — when the last one arrived and how many wait for a person or a site ("Last Cursus event · 12 Oct
+ * 09:15 · Unresolved events · 2": key / value segments the bell's translator handles).
  */
 async function cursusState() {
   const db = await getDb();
-  const [people, out, runs] = await Promise.all([
+  const [people, out, runs, inbox] = await Promise.all([
     db.select({ code: cursusClearances.projectCode }).from(cursusClearances),
     db.select({ s: cursusRequests.syncStatus }).from(cursusRequests),
     db.select({ code: cursusSyncRuns.projectCode, at: cursusSyncRuns.syncedAt, ok: cursusSyncRuns.ok }).from(cursusSyncRuns).orderBy(desc(cursusSyncRuns.syncedAt)),
+    cursusInboxState(db),
   ]);
   const byCode = new Map<string, number>();
   for (const p of people) byCode.set(p.code, (byCode.get(p.code) ?? 0) + 1);
-  const volume = [...byCode].map(([code, n]) => `${n} people · ${code}`).join(' · ') || '0 people';
+  const events = inbox.lastReceivedAt
+    ? [`Last Cursus event · ${stampText(inbox.lastReceivedAt)}`, ...(inbox.unresolved ? [`Unresolved events · ${inbox.unresolved}`] : [])]
+    : [];
+  const volume = [[...byCode].map(([code, n]) => `${n} people · ${code}`).join(' · ') || '0 people', ...events].join(' · ');
   const latest = new Map<string, boolean>();
   for (const r of runs) if (!latest.has(r.code)) latest.set(r.code, r.ok);
   return {
@@ -185,6 +194,15 @@ export async function syncConnector(name: string, actor: Actor): Promise<{ ok: b
       const sites = await db.select({ code: projects.code }).from(siteSheets).innerJoin(projects, eq(projects.id, siteSheets.projectId));
       let received = 0;
       const errors: string[] = [];
+      // R-027: the staff directory import runs first with "Sync now" once CURSUS_DIRECTORY is on (HTTP mode, connector
+      // enabled), so the sites' refresh below already names the people it imported; its counts are in the activity feed and
+      // the log, a failure in the run's error.
+      try {
+        const run = await runDirectoryImport();
+        if (run.state === 'done') log.info('Cursus staff directory imported (Sync now)', { component: 'cursus', summary: directoryRunSummary(run) });
+      } catch (e) {
+        errors.push(`staff directory: ${e instanceof Error ? e.message : String(e)}`);
+      }
       for (const s of sites) {
         try {
           received += (await getCursusConnector().sync(s.code)).received;

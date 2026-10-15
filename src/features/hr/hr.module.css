@@ -53,10 +53,11 @@
 .leaveLabel { font-size: 11.5px; color: var(--color-neutral-400); }
 .leaveHours { font-size: 10.5px; color: var(--color-neutral-400); font-variant-numeric: tabular-nums; }
 .cellLeave { background: var(--color-accent-900); }
-.cellSick { background: var(--color-accent-800); }
+/* NEW-CURSUS-4 / R-173: an absence (any reason) takes the prototype's former sick-leave look. */
+.cellAbsence { background: var(--color-accent-800); }
 .cellHoliday { background: var(--color-neutral-800); }
 .cellLeave .leaveLabel,
-.cellSick .leaveLabel { color: var(--color-accent-200); }
+.cellAbsence .leaveLabel { color: var(--color-accent-200); }
 .rightNum { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--color-neutral-300); }
 .legend { display: flex; gap: 14px; font-size: 11.5px; color: var(--color-neutral-400); flex-wrap: wrap; }
 

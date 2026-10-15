@@ -50,6 +50,8 @@ export interface ReceiptRow {
   projectCode: string;
   poNumber: string;
   supplier: string;
+  /** Sage X3 supplier code (R-096: `code_fournisseur` of the Vigie supplier NCR); null until the Sage supplier file is loaded (NEW-D4-4). */
+  supplierCode: string | null;
   status: ReceiptStatus;
   /** "QC pending". */
   statusLabel: string;
@@ -73,7 +75,7 @@ export interface ReceiptRow {
 
 async function loadReceipts(q: Q, where: ReturnType<typeof eq>): Promise<ReceiptRow[]> {
   const rows = await q
-    .select({ r: goodsReceipts, code: projects.code, po: purchaseOrders.number, supplier: suppliers.name, by: persons.fullName })
+    .select({ r: goodsReceipts, code: projects.code, po: purchaseOrders.number, supplier: suppliers.name, supplierCode: suppliers.x3Code, by: persons.fullName })
     .from(goodsReceipts)
     .innerJoin(projects, eq(projects.id, goodsReceipts.projectId))
     .innerJoin(purchaseOrders, eq(purchaseOrders.id, goodsReceipts.poId))
@@ -89,14 +91,14 @@ async function loadReceipts(q: Q, where: ReturnType<typeof eq>): Promise<Receipt
       .where(inArray(receiptLines.receiptId, ids)).orderBy(asc(receiptLines.position)),
     q.select().from(receiptAttachments).where(inArray(receiptAttachments.receiptId, ids)).orderBy(asc(receiptAttachments.position)),
   ]);
-  return rows.map(({ r, code, po, supplier, by }) => {
+  return rows.map(({ r, code, po, supplier, supplierCode, by }) => {
     const ls = lines.filter((l) => l.l.receiptId === r.id).map(({ l, ref, name, loc, type }) => ({
       ref, name, ordered: l.orderedQty, delivered: l.deliveredQty, accepted: l.acceptedQty, rejected: l.rejectedQty, location: loc, locationType: type,
     }));
     const a = att.filter((x) => x.receiptId === r.id);
     const sum = (k: 'ordered' | 'delivered' | 'accepted' | 'rejected') => ls.reduce((s, l) => s + l[k], 0);
     return {
-      number: r.number, projectCode: code, poNumber: po, supplier, status: r.status, statusLabel: receiptStatus.label(r.status), date: r.receivedOn ?? r.expectedOn,
+      number: r.number, projectCode: code, poNumber: po, supplier, supplierCode: supplierCode ?? null, status: r.status, statusLabel: receiptStatus.label(r.status), date: r.receivedOn ?? r.expectedOn,
       expectedOn: r.expectedOn, receivedOn: r.receivedOn, carrier: r.carrier, supplierDeliveryNote: r.supplierDeliveryNote, lines: ls,
       totals: { ordered: sum('ordered'), delivered: sum('delivered'), accepted: sum('accepted'), rejected: sum('rejected') }, putAway: ls[0]?.location ?? null,
       qc: { by: r.qcByName, result: r.qcResult, remarks: r.qcRemarks }, receivedBy: by ?? null,

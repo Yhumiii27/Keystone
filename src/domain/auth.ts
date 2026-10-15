@@ -262,6 +262,8 @@ export const AUTH_PATHS = {
 
 /** Health probe(s), reachable without a session (load balancer, monitoring). */
 export const HEALTH_PATHS = ['/api/health'] as const;
+/** R-029 (NEW-CURSUS-7): endpoints another application calls with its own key (no session): Cursus's events. */
+export const INBOUND_API_PATHS = ['/api/integrations/cursus/events'] as const;
 
 const STATIC_FILE_RE = /\.(?:ico|png|jpe?g|gif|svg|webp|avif|woff2?|ttf|otf|css|js|map|txt|webmanifest)$/i;
 
@@ -272,6 +274,8 @@ const STATIC_FILE_RE = /\.(?:ico|png|jpe?g|gif|svg|webp|avif|woff2?|ttf|otf|css|
 export function isPublicPath(pathname: string): boolean {
   if (pathname === AUTH_PATHS.page || pathname.startsWith('/api/auth/')) return true;
   if (HEALTH_PATHS.some((h) => pathname === h || pathname.startsWith(h + '/'))) return true;
+  // R-029: server-to-server endpoints authenticated by their own key (exact path only).
+  if ((INBOUND_API_PATHS as readonly string[]).includes(pathname)) return true;
   if (pathname.startsWith('/_next/')) return true;
   // Static files: a single path segment with a file extension (public/ is flat: favicon.ico, *.svg).
   return /^\/[^/]+$/.test(pathname) && STATIC_FILE_RE.test(pathname);

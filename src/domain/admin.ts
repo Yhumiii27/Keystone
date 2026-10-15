@@ -40,7 +40,7 @@ export const SETTINGS_CARDS: readonly { key: SettingsCardKey; title: string; sub
   { key: 'statuses', title: 'Project statuses', sub: 'Lifecycle stages available on the Projects page', icon: 'flag' },
   { key: 'riskCats', title: 'Risk categories', sub: 'Used by the risk register (5×5 + EMV)', icon: 'warning' },
   { key: 'delivTypes', title: 'Deliverable types', sub: 'Register with RACI-B (B = backup)', icon: 'files' },
-  { key: 'holidays', title: 'Public holidays 2026 — France', sub: 'Removed from capacity · Lucca stays the source for leave', icon: 'calendar-x' },
+  { key: 'holidays', title: 'Public holidays 2026 — France', sub: 'Removed from capacity · Cursus is the source for leave', icon: 'calendar-x' },
 ];
 
 export const isSettingsCardKey = (v: unknown): v is SettingsCardKey => typeof v === 'string' && SETTINGS_CARDS.some((c) => c.key === v);

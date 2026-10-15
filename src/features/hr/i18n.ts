@@ -5,11 +5,12 @@ import { FR_MONTHS } from '@/i18n/fr-rules';
 
 const MONTHS = 'Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec';
 
-/** Leave codes the prototype leaves in English in FR (06 OQ12). CP and RTT are French already. */
+/**
+ * Leave codes the prototype leaves in English in FR (06 OQ12). NEW-CURSUS-4 / R-173: the leave types are Leave and Absence
+ * (shared dictionary); the reason of an absence (sick leave…) is never shown, so it has no entry any more.
+ */
 const LEAVE_FR: Record<string, string> = {
-  Sick: 'Maladie',
   'Hol.': 'Férié',
-  'Sick · sick leave': 'Maladie · arrêt maladie',
   'Hol. · public holiday': 'Férié · jour férié',
   // Tag of hours routed to a work package ("heures affectées").
   Assigned: 'Affectées',

@@ -200,21 +200,25 @@ describe('Leave & working calendar', () => {
   it('KPIs, holiday row, person rows (EN)', () => {
     const m = html(h(LeaveView, { data: leave, t: tOf('en') }), 'en');
     const x = text(m);
-    expect(x).toContain('Lucca sync 06:30 Today · leave, RTT, sick, training');
+    // R-031 (NEW-CURSUS-4 / NEW-CURSUS-7): Lucca is unplugged — the tile says when Cursus last pushed an absence (none on
+    // the seed); R-173: no reason in any text (Leave / Absence only).
+    expect(x).toContain('Cursus — None received yet');
+    expect(x).not.toMatch(/sick|Sick|Training|Lucca/);
     expect(x).toContain('Team availability 85% Next 8 weeks · 35 h basis');
-    expect(x).toContain('Leave days 43 Approved in Lucca');
+    expect(x).toContain('Leave days 43 Approved in Cursus');
     expect(x).toContain('Public holidays 1 11 Nov · France');
     expect(x).toContain('Weeks under 60% team capacity 0 Capacity feeds the allocation heatmap');
     expect(x).toContain('Person Sep 28 Oct 5 Oct 12 Oct 19 Oct 26 Nov 2 Nov 9 Nov 16 Leave Avail.');
     expect(x).toContain('Public holidays 11 Nov');
-    expect(x).toContain('Amélie Ollivier Site lead 35 h 35 h CP 0 h CP 0 h 35 h 35 h Hol. 28 h 35 h 10 d 73%');
+    expect(x).toContain('Amélie Ollivier Site lead 35 h 35 h Leave 0 h Leave 0 h 35 h 35 h Hol. 28 h 35 h 10 d 73%');
     expect(x).toContain('Pauline Noguès');
-    expect(x).toContain('Training 14 h');
-    expect(x).toContain('Sick 21 h');
+    expect(x).toContain('Absence 14 h');
+    expect(x).toContain('Absence 21 h');
     expect(x).toContain('Fabien Bertrand');
-    expect(x).toContain('CP 0 h CP 0 h 10 d 75%');
-    expect(x).toContain('CP · paid leave RTT · reduced working time Sick · sick leave Training Hol. · public holiday');
-    expect(x).toContain('Leave is requested and approved in Lucca');
+    expect(x).toContain('Leave 0 h Leave 0 h 10 d 75%');
+    expect(x).toContain('Leave · paid leave or RTT Absence · any other absence Hol. · public holiday');
+    expect(x).toContain('Received from Cursus · 35 h week · 7 h per leave day · public holidays removed');
+    expect(x).toContain('Leave is requested and approved in Cursus');
   });
 
   it('FR: week labels "28 sept.", leave codes, day unit', () => {
@@ -222,11 +226,15 @@ describe('Leave & working calendar', () => {
     expect(x).toContain('Personne 28 sept. 5 oct. 12 oct. 19 oct. 26 oct. 2 nov. 9 nov. 16 nov. Congés Dispo.');
     expect(x).toContain('Disponibilité de l’équipe 85%');
     expect(x).toContain('Jours fériés 1 11 nov. · France');
-    expect(x).toContain('Maladie 21 h');
-    expect(x).toContain('Formation 14 h');
+    // NEW-CURSUS-4 / R-173: Congés / Absence, never « Maladie » or « Formation ».
+    expect(x).toContain('Absence 21 h');
+    expect(x).toContain('Absence 14 h');
+    expect(x).toContain('Congés 0 h');
     expect(x).toContain('Férié 28 h');
     expect(x).toContain('10 j 73%');
-    expect(x).toContain('Maladie · arrêt maladie');
+    expect(x).toContain('Congés · congés payés ou RTT Absence · toute autre absence Férié · jour férié');
+    expect(x).toContain('Cursus — Aucune reçue pour l’instant');
+    expect(x).not.toMatch(/Maladie|maladie|Formation|Lucca/);
   });
 });
 

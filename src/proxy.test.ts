@@ -59,6 +59,21 @@ describe('proxy', () => {
     expect((await proxy(req('/', { cookie: 'ks-role=director' }))).status).toBe(307);
   });
 
+  it('R-029: Cursus reaches its events endpoint without a session in Entra mode — and still needs its key', async () => {
+    useEntra();
+    const post = (path: string, key?: string) => req(path, { method: 'POST', headers: { 'content-type': 'application/json', ...(key ? { 'x-api-key': key } : {}) } });
+    expect(passes(await proxy(post('/api/integrations/cursus/events')))).toBe(true);
+    // Only that exact path: its neighbours keep the session check.
+    expect((await proxy(post('/api/integrations/cursus/events/replay'))).status).toBe(401);
+    expect((await proxy(post('/api/integrations/cursus'))).status).toBe(401);
+    // The route itself refuses a call without the key, or with the outbound Cursus key (a separate secret).
+    const { handleCursusEvent } = await import('@/server/integrations/cursus/events');
+    const body = JSON.stringify({ id: 'evt-1', type: 'heures.validees', emis_le: '2026-10-05T08:30:00Z', data: {} });
+    const call = (key?: string) => handleCursusEvent(new Request(`${ORIGIN}/api/integrations/cursus/events`, { method: 'POST', headers: key ? { 'x-api-key': key } : {}, body }));
+    expect((await call()).status).toBe(401);
+    expect((await call('demo-keystone')).status).toBe(401);
+  });
+
   it('fails closed when misconfigured', async () => {
     vi.stubEnv('KEYSTONE_AUTH', 'off');
     expect((await proxy(req('/'))).status).toBe(500);

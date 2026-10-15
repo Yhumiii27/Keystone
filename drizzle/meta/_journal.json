@@ -169,6 +169,20 @@
       "when": 1792054904071,
       "tag": "0023_mute_archangel",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792055656102,
+      "tag": "0024_curious_lady_deathstrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792055658374,
+      "tag": "0025_leave_types_simple",
+      "breakpoints": true
     }
   ]
 }

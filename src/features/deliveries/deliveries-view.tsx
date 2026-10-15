@@ -4,7 +4,7 @@
 // Component; the actions are client islands (src/features/deliveries/receipt-actions.tsx), shown only to viewers who
 // may act: `canEdit` (not outside the workspace, not a read-only project) for Register receipt and documents,
 // `canQc` (quality manager, procurement, director) for the quality decision.
-import { FilePdf, Funnel, ShoppingCart } from '@phosphor-icons/react/dist/ssr';
+import { ArrowSquareOut, FilePdf, Funnel, ShoppingCart } from '@phosphor-icons/react/dist/ssr';
 import type { ReactNode } from 'react';
 import { ClickableRow } from '@/components/app/ClickableRow';
 import { DocumentPreview } from '@/components/app/DocumentPreview';
@@ -21,6 +21,7 @@ import { Drawer } from '@/components/ds/Drawer';
 import { Table, Td, Th } from '@/components/ds/Table';
 import { Tag } from '@/components/ds/Tag';
 import type { T } from '@/i18n/translate';
+import { VIGIE_LINK_ATTRS } from '@/server/integrations/vigie/links';
 import type { DeliveriesView, DrawerView } from './model';
 import { AttachNoteButton, PrintReceiptButton, QcPanel, RegisterReceiptButton, RowQcButtons } from './receipt-actions';
 import s from './deliveries.module.css';
@@ -190,6 +191,13 @@ export function DeliveryDrawerBody({ code, d, canEdit, canQc, register, photos, 
         <KeyValueList title={t('Delivery')} items={d.meta.map((m) => ({ k: m.k, v: m.v, color: m.color }))} />
         <div className={s.col}>
           <KeyValueList title={t('Quality check')} items={d.qc.map((m) => ({ k: m.k, v: m.v, color: m.color }))} />
+          {/* R-096 (NEW-D4-3): the supplier NCR is declared in Vigie, which owns it — prefilled report form, opens outside. */}
+          {d.ncrLinks.map((l) => (
+            <a key={l.href} href={l.href} {...VIGIE_LINK_ATTRS} className={cx('btn btn-ghost', s.vigieNcr)}>
+              {l.label}
+              <ArrowSquareOut aria-hidden />
+            </a>
+          ))}
           {canQc && d.canQc && (
             <QcPanel key={d.id} code={code} number={d.id} context={`${d.id} · ${d.supplier}`} lines={d.qcLines} deliveredText={d.lines.map((l) => l.d)} />
           )}

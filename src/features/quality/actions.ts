@@ -40,7 +40,11 @@ const NOT_YOURS = 'This decision is not waiting for you any more';
 const FAILED = 'The progress could not be recorded';
 const NOT_SAVED = 'The change could not be saved';
 
-const NCR_NUMBER = /^NCR-\d{2,}$/i;
+/**
+ * An NCR reference: the demo numbers ("NCR-029") and Vigie's own event numbers ("EV-2026-130"; V-3a, R-023) — letters,
+ * then one to four dash-separated groups of letters and digits. Nothing else (no space, slash or dot) reaches the DAL.
+ */
+const NCR_NUMBER = /^[A-Z]{1,10}(?:-[A-Z0-9]{1,12}){1,4}$/i;
 const DLV_NUMBER = /^D-\d{2,}$/i;
 const PRODUCER_TARGETS: readonly ProducerTarget[] = ['in_progress', 'internal_review', 'submitted'];
 

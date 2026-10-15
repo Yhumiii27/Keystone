@@ -2,7 +2,7 @@ import 'server-only';
 // The local mirror of Vigie's ECOs and the outbox of progress recorded in Keystone (schema/vigie.ts). Shared by the
 // mock and HTTP connectors and the seed: `upsertMirror` is the only writer of the mirror tables (seed and Vigie
 // refresh), `readMirror` overlays the progress Vigie has not reflected yet (progress.ts queues it).
-import { and, asc, eq, inArray, isNull, lt, ne, or, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, lt, ne, notExists, or, sql } from 'drizzle-orm';
 import { claimExpiry } from '../outbox';
 import { ecoStatus, type EcoApproverKey } from '@/server/db/codes';
 import { findPerson } from '@/server/db/helpers';
@@ -17,7 +17,10 @@ type Q = DB | Tx;
 
 /**
  * Writes Vigie's records into the mirror (insert or replace by number). With `prune`, mirror rows absent from the
- * records are deleted (a full refresh), together with their outbox entries.
+ * records are deleted (a full refresh), together with their delivered outbox entries — except a row that still has
+ * progress Vigie has not received (pending or failed): it stays until every entry is sent, so a refresh never loses
+ * what Keystone recorded (R-023, V-2). The condition is inside the DELETE (NOT EXISTS), so a progress entry recorded
+ * concurrently on PostgreSQL is never cascade-deleted between a check and the delete.
  */
 export async function upsertMirror(q: Q, records: VigieEcoRecord[], syncedAt: Date, opts: { prune?: boolean } = {}): Promise<number> {
   const existing = await q.select({ id: vigieEcos.id, number: vigieEcos.number, position: vigieEcos.position }).from(vigieEcos);
@@ -55,7 +58,11 @@ export async function upsertMirror(q: Q, records: VigieEcoRecord[], syncedAt: Da
   if (opts.prune) {
     const keep = new Set(records.map((r) => r.number));
     const gone = existing.filter((e) => !keep.has(e.number)).map((e) => e.id);
-    if (gone.length) await q.delete(vigieEcos).where(inArray(vigieEcos.id, gone));
+    if (gone.length)
+      await q.delete(vigieEcos).where(and(
+        inArray(vigieEcos.id, gone),
+        notExists(q.select({ one: sql`1` }).from(vigieEcoProgress).where(and(eq(vigieEcoProgress.ecoId, vigieEcos.id), ne(vigieEcoProgress.syncStatus, 'sent')))),
+      ));
   }
   return records.length;
 }

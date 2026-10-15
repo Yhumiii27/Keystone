@@ -272,9 +272,14 @@ describe('HR (06 §2–5)', () => {
 
   it('leave calendar: LEAVE, LEAVE_DAYS, HOLIDAYS; 43 leave days, 85 % availability', async () => {
     const lc = await getLeaveCalendar();
-    expect(Object.fromEntries(lc.leaveTypes.map((t) => [t.label, t.days]))).toEqual(P.LEAVE_DAYS);
+    // NEW-CURSUS-4 (R-031, R-173): two simple types instead of LEAVE_DAYS' CP / RTT / Sick / Training; the prototype's weeks
+    // keep their days, CP and RTT as Leave, Sick and Training as Absence (the reason is not kept).
+    const SIMPLE: Record<string, string> = { CP: 'Leave', RTT: 'Leave', Sick: 'Absence', Training: 'Absence' };
+    expect(lc.leaveTypes.map((t) => [t.code, t.label, t.days])).toEqual([['leave', 'Leave', 5], ['absence', 'Absence', 5]]);
     expect(Object.fromEntries(lc.holidays.map((h) => [h.weekIndex, h.label]))).toEqual(P.HOLIDAYS);
-    expect(Object.fromEntries(lc.people.map((p) => [p.name, Object.fromEntries(p.weeks.flatMap((w, i) => (w.typeLabel ? [[String(i), w.typeLabel]] : [])))]))).toEqual(P.LEAVE);
+    expect(Object.fromEntries(lc.people.map((p) => [p.name, Object.fromEntries(p.weeks.flatMap((w, i) => (w.typeLabel ? [[String(i), w.typeLabel]] : [])))])))
+      .toEqual(Object.fromEntries(Object.entries(P.LEAVE as Record<string, Record<string, string>>).map(([n, ws]) => [n, Object.fromEntries(Object.entries(ws).map(([i, l]) => [i, SIMPLE[l]]))])));
+    expect(lc.lastAbsenceReceivedAt).toBeNull();
     const avail = lc.people.map((p) => Math.round((p.weeks.reduce((a, w) => a + Math.max(0, 5 - w.days - w.holidays) * 7, 0) / (lc.weeks.length * 35)) * 100));
     expect(avail).toEqual([73, 95, 78, 73, 93, 98, 93, 75]);
     expect(lc.people.reduce((a, p) => a + p.weeks.reduce((b, w) => b + w.days, 0), 0)).toBe(43);

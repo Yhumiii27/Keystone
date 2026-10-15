@@ -5,6 +5,8 @@ import { JOB_SCHEDULES, ORPHAN_FILE_GRACE_MS, type JobName, type JobSchedule } f
 import { purgeExpiredPlanTrash } from '@/server/dal/plan-trash';
 import { redeliverCodexOutbox } from '@/server/integrations/codex/connector';
 import { redeliverCursusOutbox } from '@/server/integrations/cursus/connector';
+import { purgeOldCursusEvents } from '@/server/integrations/cursus/inbox';
+import { directoryRunSummary, runDirectoryImport } from '@/server/dal/persons-directory';
 import { redeliverEcoOutbox } from '@/server/integrations/vigie/eco-connector';
 import { redeliverNcrOutbox } from '@/server/integrations/vigie/quality-connector';
 import { pruneOrphanFiles } from '@/server/storage/files';
@@ -64,6 +66,22 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
     return { summary: r.state === 'stopped' ? `antivirus unavailable · stopped after ${summary}` : summary, counts, warn: r.state === 'stopped' || r.flagged > 0 };
   },
   // ── Delivery 8 · connectors jobs ──
+  // R-027 (NEW-CURSUS-2): Cursus's staff directory → persons, then the events left unresolved replayed. Nothing while
+  // CURSUS_DIRECTORY is off, the connector disabled by IT or simulated.
+  'cursus-directory': async (): Promise<JobOutcome> => {
+    const run = await runDirectoryImport();
+    const summary = `Cursus staff directory · ${directoryRunSummary(run)}`;
+    if (run.state !== 'done') return { summary, counts: {} };
+    const r = run.result;
+    return {
+      summary, counts: { matched: r.matched, created: r.created, reported: r.reported + r.invalid, resolved: run.replayed.received }, warn: r.reported + r.invalid > 0,
+    };
+  },
+  // R-029 (NEW-CURSUS-7): events Cursus pushed, kept 13 months.
+  'cursus-events-purge': async () => {
+    const removed = await purgeOldCursusEvents();
+    return { summary: `${removed} Cursus events older than 13 months purged`, counts: { removed } };
+  },
   // ── Delivery 8 · docs-client-portfolio jobs ──
 };
 

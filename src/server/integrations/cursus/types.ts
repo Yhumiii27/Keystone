@@ -1,5 +1,6 @@
 // Types of the Cursus integration: what Cursus reports (its real Go / No Go payload and the mirror record), the read
 // model the connector returns and what Keystone sends (reminders, travel requests).
+import type { DirectoryEntry } from '@/domain/directory';
 import type { CursusClearance, CursusRequestKind, CursusSyncStatus, CursusVaccination, CursusVerdict, CursusVisa } from '@/server/db/codes';
 
 /**
@@ -70,6 +71,16 @@ export interface CursusRequestReceipt {
   recordedAt: string;
 }
 
+/**
+ * Cursus's staff directory (R-027, NEW-CURSUS-2 "a"). TODO(cursus) — OPEN QUESTION C-4 (new): Cursus has no directory
+ * access yet; Keystone proposes GET /api/integrations/keystone/annuaire (X-Api-Key) → [{ matricule, nom, prenom, email,
+ * equipe }] (docs/integrations/cursus-contract.md). Rows that are not usable (no matricule or name) are counted, not kept.
+ */
+export interface CursusDirectoryPayload {
+  entries: DirectoryEntry[];
+  invalid: number;
+}
+
 /** The Cursus connector (mock over the local mirror, or HTTP to Cursus). */
 export interface CursusConnector {
   readonly mode: 'mock' | 'http';
@@ -81,4 +92,6 @@ export interface CursusConnector {
   remind(projectCode: string, personName: string, actor: CursusActor): Promise<CursusRequestReceipt>;
   /** Travel request for a person of the site (Cursus POST /api/integrations/keystone/demandes). */
   requestTravel(projectCode: string, input: CursusTravelRequestInput, actor: CursusActor): Promise<CursusRequestReceipt>;
+  /** R-027: Cursus's staff directory; null when Cursus is not connected (the mock has no directory). */
+  listDirectory(): Promise<CursusDirectoryPayload | null>;
 }

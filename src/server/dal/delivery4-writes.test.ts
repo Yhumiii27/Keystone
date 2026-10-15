@@ -302,7 +302,7 @@ describe('ECO progress sent to Vigie (outbox)', () => {
   });
 });
 
-describe('links to Vigie (OPEN QUESTION V-1)', () => {
+describe('links to Vigie (routes and parameters agreed by NEW-D4-1 "a")', () => {
   it('default base http://localhost:3200, NEXT_PUBLIC_VIGIE_URL overrides; new-ECO link prefilled', () => {
     expect(vigieEcoUrl('ECO-2026-015')).toBe('http://localhost:3200/modifications-techniques/ECO-2026-015');
     expect(vigieNewEcoUrl({ partRef: 'HST-BRK-DSC', projectCode: 'HLT-026', title: 'Disc brake' })).toBe('http://localhost:3200/modifications-techniques/nouvelle?part=HST-BRK-DSC&project=HLT-026&title=Disc+brake&source=keystone');

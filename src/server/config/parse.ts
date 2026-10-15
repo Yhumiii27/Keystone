@@ -11,6 +11,9 @@
 //   except for a Cursus on this machine (loopback URL — the Mac app next to a local Cursus), where it is only a warning.
 // - Production with the production data set needs KEYSTONE_FILE_SCAN set explicitly (antivirus on uploads, R-175), like
 //   KEYSTONE_AUTH; other production runs get a warning.
+// - The key Cursus presents to Keystone's events endpoint (CURSUS_EVENTS_KEY, R-029) is a separate secret: never the key
+//   Keystone sends to Cursus. Outside production it defaults to the demo events key; production refuses the demo key (an
+//   error) and, without a key, the endpoint refuses every call (503: Cursus keeps its events and retries).
 // - Messages name the variable, never its value (values may be secrets).
 // - NEXT_PUBLIC_* URLs are inlined in the bundles at build time (`next build`) and read by the integration modules that are
 //   safe in client components (src/server/integrations/*/config.ts); they are only validated here.
@@ -31,6 +34,8 @@ export type RuntimeEnv = 'development' | 'production' | 'test';
 
 /** Cursus's demo API key (Cursus README: KEYSTONE_API_KEY default) — accepted outside production only. */
 export const DEMO_CURSUS_API_KEY = 'demo-keystone';
+/** R-029: demo key of Keystone's Cursus events endpoint (what a local Cursus presents) — accepted outside production only. */
+export const DEMO_CURSUS_EVENTS_KEY = 'demo-cursus-events';
 export const DEFAULT_POOL_MAX = 10;
 
 export type DatabaseConfig =
@@ -63,7 +68,11 @@ export interface KeystoneConfig {
   /** KEYSTONE_SEED was set explicitly (seeding an empty PostgreSQL database requires it). */
   seedExplicit: boolean;
   log: { level: LogLevel; format: LogFormat };
-  cursus: { apiUrl: string | null; apiKey: string | null };
+  /**
+   * Cursus: API URL and key Keystone sends (outbound); `eventsKey` = the key Cursus must present to Keystone's events endpoint
+   * (inbound, R-029; null = the endpoint refuses every call); `directory` = the staff directory import is switched on (R-027).
+   */
+  cursus: { apiUrl: string | null; apiKey: string | null; eventsKey: string | null; directory: boolean };
   vigie: { apiUrl: string | null; apiKey: string | null };
   ai: { anthropicApiKeySet: boolean; enabled: boolean; model: string | null; fallbacks: boolean };
   /** Secret values present in the environment: the logger masks them wherever they appear. */
@@ -137,6 +146,10 @@ const VARS = {
   CURSUS_API_URL: httpUrl.optional(),
   CURSUS_API_KEY: z.string().optional(),
   KEYSTONE_API_KEY: z.string().optional(),
+  // R-029 (NEW-CURSUS-7): key Cursus presents to POST /api/integrations/cursus/events (inbound; separate from the outbound keys).
+  CURSUS_EVENTS_KEY: z.string().min(16, 'must be at least 16 characters').optional(),
+  // R-027 (NEW-CURSUS-2): staff directory import from Cursus, off until Cursus publishes its directory endpoint.
+  CURSUS_DIRECTORY: onOff.optional(),
   VIGIE_API_URL: httpUrl.optional(),
   VIGIE_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
@@ -178,7 +191,9 @@ export type ConfigVariable = keyof typeof VARS;
 /** Every variable the configuration reads (the cache key of src/server/config/index.ts). */
 export const CONFIG_VARIABLES = Object.keys(VARS) as ConfigVariable[];
 /** Variables whose value is a secret (masked in logs, never echoed in messages). */
-const SECRET_VARIABLES: ConfigVariable[] = ['CURSUS_API_KEY', 'KEYSTONE_API_KEY', 'VIGIE_API_KEY', 'ANTHROPIC_API_KEY', 'KEYSTONE_SESSION_SECRET', 'ENTRA_CLIENT_SECRET'];
+const SECRET_VARIABLES: ConfigVariable[] = [
+  'CURSUS_API_KEY', 'KEYSTONE_API_KEY', 'CURSUS_EVENTS_KEY', 'VIGIE_API_KEY', 'ANTHROPIC_API_KEY', 'KEYSTONE_SESSION_SECRET', 'ENTRA_CLIENT_SECRET',
+];
 
 type Values = { [K in ConfigVariable]: z.output<(typeof VARS)[K]> };
 
@@ -275,6 +290,10 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
     });
   if (production && localCursus && cursusApiKey === DEMO_CURSUS_API_KEY)
     warnings.push({ variable: 'CURSUS_API_KEY', message: 'is the Cursus demo key: accepted for a Cursus on this machine only' });
+  // R-029: the inbound events key. Production never accepts the demo key, whatever the address the call comes from.
+  if (production && v.CURSUS_EVENTS_KEY === DEMO_CURSUS_EVENTS_KEY)
+    errors.push({ variable: 'CURSUS_EVENTS_KEY', message: 'is the demo events key, refused in production' });
+  const cursusEventsKey = production ? (v.CURSUS_EVENTS_KEY && v.CURSUS_EVENTS_KEY !== DEMO_CURSUS_EVENTS_KEY ? v.CURSUS_EVENTS_KEY : null) : (v.CURSUS_EVENTS_KEY ?? DEMO_CURSUS_EVENTS_KEY);
 
   if (v.VIGIE_API_URL && !v.VIGIE_API_KEY && production)
     warnings.push({ variable: 'VIGIE_API_KEY', message: 'is not set: calls to Vigie are not authenticated (Vigie API authentication is open question V-3)' });
@@ -317,6 +336,13 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
       if (v[name] != null) warnings.push({ variable: name, message: 'is ignored unless KEYSTONE_FILE_SCAN=clamav' });
 
   const anthropic = v.ANTHROPIC_API_KEY ?? null;
+  // R-173 (GDPR): meeting transcripts analysed by Claude leave EPC2i for Anthropic, a sub-processor — with real data the
+  // sub-processing agreement (DPA) must be signed. A reminder at start-up, no behaviour change.
+  if (anthropic && v.KEYSTONE_AI !== 'off' && (production || v.KEYSTONE_SEED === 'production'))
+    warnings.push({
+      variable: 'ANTHROPIC_API_KEY',
+      message: 'is set: meeting transcripts are sent to Anthropic for analysis — the sub-processing agreement (DPA) must be signed (GDPR)',
+    });
   const secrets = [...SECRET_VARIABLES.map((n) => v[n] as string | undefined), urlPassword(v.DATABASE_URL)].filter((s): s is string => !!s && s.length >= 4);
 
   return {
@@ -332,7 +358,7 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
       seed: v.KEYSTONE_SEED ?? 'demo',
       seedExplicit: v.KEYSTONE_SEED != null,
       log: { level: v.LOG_LEVEL ?? 'info', format: v.LOG_FORMAT ?? (production ? 'json' : 'pretty') },
-      cursus: { apiUrl: v.CURSUS_API_URL ?? null, apiKey: cursusApiKey },
+      cursus: { apiUrl: v.CURSUS_API_URL ?? null, apiKey: cursusApiKey, eventsKey: cursusEventsKey, directory: v.CURSUS_DIRECTORY === 'on' },
       vigie: { apiUrl: v.VIGIE_API_URL ?? null, apiKey: v.VIGIE_API_KEY ?? null },
       ai: { anthropicApiKeySet: !!anthropic, enabled: !!anthropic && v.KEYSTONE_AI !== 'off', model: v.KEYSTONE_AI_MODEL ?? null, fallbacks: v.KEYSTONE_AI_FALLBACKS !== 'off' },
       secrets: [...new Set(secrets)],

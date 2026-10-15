@@ -34,7 +34,16 @@ const RULES: [RegExp, (m: RegExpExecArray) => string][] = [
   [/^Delivery (\S+) announced$/, (m) => `Livraison ${m[1]} annoncée`],
   [/^(\S+) received · quality check to do$/, (m) => `${m[1]} reçue · contrôle qualité à faire`],
   [/^(.+) attached to (\S+)$/, (m) => `${m[1]} joint à ${m[2]}`],
+  // R-096: rejected units counted in the toast of a rejection.
+  [/^(\d+) rejected$/, (m) => `${m[1]} refusé${m[1] === '1' ? '' : 's'}`],
 ];
+
+/** R-096 (NEW-D4-3 "a"): toast segment after a rejection on the Deliveries screen (FR in the d8-connectors dictionary). */
+export const DECLARE_NCR_HINT = 'declare the supplier NCR in Vigie';
+/** R-096: drawer link of a rejected line (one per line with rejected units). */
+export const DECLARE_NCR_LINK = 'Declare the supplier NCR in Vigie';
+/** "3 rejected" (EN source of the toast segment; the RULES above give the French). */
+export const rejectedCountText = (n: number) => `${n} rejected`;
 
 function ruleFr(s: string): string | null {
   for (const [re, f] of RULES) {

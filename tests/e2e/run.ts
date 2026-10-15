@@ -89,6 +89,8 @@ async function main(): Promise<number> {
     // No antivirus (R-175) and no backups (R-004) in the end-to-end runs, whatever the shell sets.
     KEYSTONE_FILE_SCAN: '',
     KEYSTONE_BACKUP_DIR: '',
+    // R-029: the key Cursus would present to the events endpoint (production refuses the demo key; d8-connectors.spec.ts).
+    CURSUS_EVENTS_KEY: process.env.CURSUS_EVENTS_KEY || 'e2e-cursus-events-key-0001',
     NEXT_TELEMETRY_DISABLED: '1',
   };
   let server: ChildProcess | null = null;

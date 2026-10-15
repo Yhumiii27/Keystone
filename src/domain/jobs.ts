@@ -23,6 +23,8 @@ export type JobName =
   // Antivirus rescan of the stored files and purge of expired quarantine copies (R-175), daily.
   | 'files-rescan'
   // ── Delivery 8 · connectors jobs ──
+  | 'cursus-directory'
+  | 'cursus-events-purge'
   // ── Delivery 8 · docs-client-portfolio jobs ──
   ;
 
@@ -49,6 +51,9 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   { name: 'backup', everyMs: 5 * MIN, leaseMs: 3 * HOUR, firstDelayMs: 25_000 },
   { name: 'files-rescan', everyMs: 24 * HOUR, leaseMs: 6 * HOUR, firstDelayMs: 30_000 },
   // ── Delivery 8 · connectors jobs ──
+  // R-027: Cursus's staff directory, daily (a no-op until CURSUS_DIRECTORY=on); R-029: the events inbox kept 13 months.
+  { name: 'cursus-directory', everyMs: 24 * HOUR, leaseMs: HOUR, firstDelayMs: 35_000 },
+  { name: 'cursus-events-purge', everyMs: 24 * HOUR, leaseMs: 15 * MIN, firstDelayMs: 40_000 },
   // ── Delivery 8 · docs-client-portfolio jobs ──
 ];
 

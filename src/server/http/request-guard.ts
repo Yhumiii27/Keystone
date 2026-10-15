@@ -15,7 +15,7 @@ import { headers as nextHeaders } from 'next/headers';
 // stuck client from flooding the server with uploads, file generations or paid Claude analyses.
 
 /** Kinds of rate-limited requests. */
-export type RateBucket = 'upload' | 'import' | 'export' | 'analysis' | 'report';
+export type RateBucket = 'upload' | 'import' | 'export' | 'analysis' | 'report' | 'events';
 
 /** Requests allowed per client within `windowMs`. */
 export const RATE_LIMITS: Readonly<Record<RateBucket, { limit: number; windowMs: number }>> = {
@@ -29,6 +29,11 @@ export const RATE_LIMITS: Readonly<Record<RateBucket, { limit: number; windowMs:
   analysis: { limit: 10, windowMs: 60_000 },
   /** Browser errors reported by the error pages (R-176), written to the server log. */
   report: { limit: 20, windowMs: 60_000 },
+  /**
+   * Events Cursus pushes (R-029), per client address (no viewer): generous, as Cursus re-sends its backlog after an outage —
+   * a 429 is retryable (Retry-After) in the contract.
+   */
+  events: { limit: 600, windowMs: 60_000 },
 };
 
 /** EN source message of a refusal (translated by the caller). */

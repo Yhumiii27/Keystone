@@ -336,7 +336,7 @@ export async function defaultTitleOf(screen: ScreenId, ctx: { taskId?: string; r
 
 const STATIC_EXTRA: Partial<Record<ScreenId, string>> = {
   stock: 'Sage X3 + local',
-  leave: 'Lucca',
+  leave: 'Cursus',
   drawings: 'SolidWorks PDM',
   plumbing: 'all projects',
   procurement: 'all projects',

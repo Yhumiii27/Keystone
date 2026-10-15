@@ -286,9 +286,20 @@ export const ATTACHMENT_ICON: Record<AttachmentKind, string> = {
 };
 
 // ── Resources and HR (docs/spec/11 §2.6, 06) ──────────────────────────────────────────────────────────
-/** Leave types (LEAVE_DAYS 3460: working days lost in the week). Labels are Lucca codes (no FR). */
-export type LeaveType = 'cp' | 'rtt' | 'sick' | 'training';
-export const leaveType = codec<LeaveType, string>([['cp', 'CP'], ['rtt', 'RTT'], ['sick', 'Sick'], ['training', 'Training']]);
+/**
+ * Leave types (NEW-CURSUS-4 "a", R-031 / R-173): Keystone keeps two simple types and never the reason of an absence —
+ * Leave (paid leave, RTT) and Absence (sickness, training, anything else). Labels are EN source strings.
+ */
+export type LeaveType = 'leave' | 'absence';
+export const leaveType = codec<LeaveType, string>([['leave', 'Leave'], ['absence', 'Absence']]);
+/**
+ * The simple type of an absence nature as Cursus or the prototype names it (provisional: Cursus's nature codes are not
+ * known, R-031): paid leave and RTT are Leave, everything else is Absence. The nature itself is never stored.
+ */
+export function leaveTypeOfNature(nature: string | null | undefined): LeaveType {
+  const n = (nature ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s_-]+/g, ' ');
+  return /^(cp|rtt|leave|paid leave|conge|conges|conges payes|conge paye)$/.test(n) ? 'leave' : 'absence';
+}
 /** Rate multipliers (MULTS 3455). */
 export type RateMultiplierKey = 'ot' | 'sat' | 'sun' | 'night' | 'oncall' | (string & {});
 /** Lucca hours matching mode (AF.hours). */
@@ -984,6 +995,12 @@ export type CursusVerdict = 'go' | 'go_with_reserve' | 'no_go';
 export const cursusVerdict = codec<CursusVerdict, string>([['go', 'GO'], ['go_with_reserve', 'GO with reserve'], ['no_go', 'NO GO']]);
 /** What Keystone sends to Cursus: a reminder on a person's pending approvals ("Remind in Cursus"), or a travel request. */
 export type CursusRequestKind = 'reminder' | 'travel_request';
+/**
+ * State of an event Cursus pushed (R-029, cursus_events): received (stored, and applied where Keystone applies it), unresolved
+ * (kept for replay: no person or site matches yet), ignored (unknown type, or older than the event already received for its
+ * key), error (the dispatch failed; kept for replay).
+ */
+export type CursusEventStatus = 'received' | 'unresolved' | 'ignored' | 'error';
 export type CursusSyncStatus = 'pending' | 'sent' | 'failed';
 export const cursusSyncStatus = codec<CursusSyncStatus, string>([['pending', 'Pending sync with Cursus'], ['sent', 'Sent to Cursus'], ['failed', 'Sync with Cursus failed']]);
 

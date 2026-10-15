@@ -116,10 +116,13 @@ describe('skills matrix (06 §3)', () => {
 });
 
 describe('leave & working calendar (06 §4)', () => {
+  // NEW-CURSUS-4 (R-031, R-173): the prototype's CP / RTT weeks are Leave, its Sick / Training weeks Absence — the reason of
+  // an absence is never kept; the days (and so the hours and KPIs) are the prototype's.
+  const SIMPLE: Record<string, string> = { CP: 'Leave', RTT: 'Leave', Sick: 'Absence', Training: 'Absence' };
   const weeksOf = (name: string): LeaveWeekInput[] =>
     Array.from({ length: 8 }, (_, i) => {
       const t = (P.LEAVE[name] ?? {})[i] ?? null;
-      return { type: t, days: t ? P.LEAVE_DAYS[t] : 0, holidays: P.HOLIDAYS[i] ? 1 : 0 };
+      return { type: t ? SIMPLE[t] : null, days: t ? P.LEAVE_DAYS[t] : 0, holidays: P.HOLIDAYS[i] ? 1 : 0 };
     });
   const rows = (P.PEOPLE as [string][]).map(([n]) => [n, leaveRow(weeksOf(n))] as const);
 
@@ -139,18 +142,20 @@ describe('leave & working calendar (06 §4)', () => {
 
   it('cells: labels and tones (leave wins over the holiday label, both deducted)', () => {
     const am = rows[0][1].cells;
-    expect(am.map((c) => c.label)).toEqual(['', '', 'CP', 'CP', '', '', 'Hol.', '']);
+    // NEW-CURSUS-4: "Leave" / "Absence" instead of the prototype's CP, RTT, Sick, Training; an absence takes the former
+    // sick-leave look (tone "absence"), whatever its reason (training included).
+    expect(am.map((c) => c.label)).toEqual(['', '', 'Leave', 'Leave', '', '', 'Hol.', '']);
     expect(am.map((c) => c.tone)).toEqual(['none', 'none', 'leave', 'leave', 'none', 'none', 'holiday', 'none']);
-    expect(rows[6][1].cells[3]).toEqual({ label: 'Sick', tone: 'sick', hours: 21 });
-    expect(rows[2][1].cells[0]).toEqual({ label: 'Training', tone: 'leave', hours: 14 });
-    expect(leaveCell({ type: 'RTT', days: 1, holidays: 1 })).toEqual({ label: 'RTT', tone: 'leave', hours: 21 });
-    expect(rows[7][1].cells[6]).toEqual({ label: 'CP', tone: 'leave', hours: 0 });
+    expect(rows[6][1].cells[3]).toEqual({ label: 'Absence', tone: 'absence', hours: 21 });
+    expect(rows[2][1].cells[0]).toEqual({ label: 'Absence', tone: 'absence', hours: 14 });
+    expect(leaveCell({ type: 'Leave', days: 1, holidays: 1 })).toEqual({ label: 'Leave', tone: 'leave', hours: 21 });
+    expect(rows[7][1].cells[6]).toEqual({ label: 'Leave', tone: 'leave', hours: 0 });
   });
 
   it('KPIs: team availability 85 %, 43 leave days, 0 weeks under 60 %', () => {
     expect(leaveKpis(rows.map(([, r]) => r), 8)).toEqual({ teamAvailabilityPct: 85, leaveDays: 43, weeksUnder60: 0 });
     // under-capacity week: everybody on CP in week 0
-    const allOff = leaveRow([{ type: 'CP', days: 5, holidays: 0 }, { type: null, days: 0, holidays: 0 }]);
+    const allOff = leaveRow([{ type: 'Leave', days: 5, holidays: 0 }, { type: null, days: 0, holidays: 0 }]);
     expect(allOff.lo).toBe(true);
     expect(leaveKpis([allOff, allOff], 2).weeksUnder60).toBe(1);
   });

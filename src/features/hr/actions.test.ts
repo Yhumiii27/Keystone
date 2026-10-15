@@ -29,7 +29,7 @@ import { openDatabase } from '@/server/db/open';
 import { getHoursReconciliation, getRateCard, getSkillsMatrix } from '@/server/dal/hr';
 import { listAudit } from '@/server/dal/notifications';
 import {
-  addRateRoleAction, addSkillAction, assignHoursAction, importHoursAction, setBaseRateAction, setMultiplierAction, syncLuccaAction,
+  addRateRoleAction, addSkillAction, assignHoursAction, importHoursAction, setBaseRateAction, setMultiplierAction,
 } from './actions';
 
 const as = (role: string, name: string, projectEditable = true) => Object.assign(viewer, { role, name, projectEditable });
@@ -104,12 +104,9 @@ describe('HR Server Functions', () => {
     expect(await addSkillAction({ name: 'Negotiation' })).toEqual({ error: 'Outside my workspace · Read-only' });
   });
 
-  it('Sync Lucca: toast for every internal role, refused to the client (outside)', async () => {
-    as('quality', 'Gabriel Comte');
-    expect(await syncLuccaAction({ period: 'next_6m', teams: 'site' })).toEqual({ toast: 'Lucca synchronised · 14 absences updated' });
-    expect(await syncLuccaAction({ period: 'later' })).toEqual({ error: 'Unknown period' });
-    as('client', 'Nadia Bensaïd');
-    expect(await syncLuccaAction({})).toEqual({ error: 'Outside my workspace · Read-only' });
+  // NEW-CURSUS-7 (R-031): "Sync Lucca" is retired — absences arrive from Cursus through the events endpoint (R-029).
+  it('Sync Lucca no longer exists', async () => {
+    expect('syncLuccaAction' in (await import('./actions'))).toBe(false);
   });
 
   it('Import Lucca hours: date flips to 30 Sep 2026, real counts; gates and refusals', async () => {

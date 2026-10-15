@@ -1,6 +1,7 @@
 'use client';
 // Header primary actions of the HR screens (docs/spec/01 §5.9): `btn btn-primary` + plus icon opening the AF dialog.
-// Rate cards "Add role", Skills matrix "Add skill", Leave "Sync Lucca", Hours "Import Lucca". PageHeader hides them
+// Rate cards "Add role", Skills matrix "Add skill", Hours "Import Lucca" (Leave's "Sync Lucca" is retired: absences come
+// from Cursus, NEW-CURSUS-7). PageHeader hides them
 // outside the workspace and on read-only projects; the Server Functions check the same rules.
 import { Plus } from '@phosphor-icons/react/dist/ssr';
 import { useState } from 'react';
@@ -8,8 +9,8 @@ import { FormDialog } from '@/components/app/FormDialog';
 import type { FormDef, FormValues } from '@/components/app/form-def';
 import { Button } from '@/components/ds/Button';
 import { useI18n } from '@/i18n/client';
-import { addRateRoleAction, addSkillAction, importHoursAction, syncLuccaAction } from './actions';
-import { ADD_SKILL_FORM, SYNC_LUCCA_FORM, addRoleForm, importHoursForm } from './forms';
+import { addRateRoleAction, addSkillAction, importHoursAction } from './actions';
+import { ADD_SKILL_FORM, addRoleForm, importHoursForm } from './forms';
 
 function AfButton({ label, form, onSubmit, context }: { label: string; form: FormDef; onSubmit: (v: FormValues) => ReturnType<typeof addSkillAction>; context?: string }) {
   const { t } = useI18n();
@@ -32,11 +33,6 @@ export function AddRoleButton({ effectiveFrom }: { effectiveFrom: string }) {
 /** Skills matrix — "Add skill" (AF.skills). */
 export function AddSkillButton() {
   return <AfButton label="Add skill" form={ADD_SKILL_FORM} onSubmit={addSkillAction} />;
-}
-
-/** Leave & working calendar — "Sync Lucca" (AF.leave). */
-export function SyncLuccaButton() {
-  return <AfButton label="Sync Lucca" form={SYNC_LUCCA_FORM} onSubmit={syncLuccaAction} />;
 }
 
 /** Hours — "Import Lucca" (AF.hours); `context` = the translated project label of the dialog sub-line. */

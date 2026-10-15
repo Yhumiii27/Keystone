@@ -46,6 +46,12 @@ export const persons = pgTable('persons', {
   /** External contacts: their organisation. */
   clientId: uuid('client_id').references(() => clients.id),
   email: text('email'),
+  /** R-027 (NEW-CURSUS-2): Cursus employee id ("EMP-0018"), the key of the staff directory import; null until imported. */
+  matricule: text('matricule').unique(),
+  /** R-027: the Cursus team as received when no department has exactly that name (kept as text, never invented). */
+  directoryTeam: text('directory_team'),
+  /** R-027: last staff-directory import that matched or created this person. */
+  directorySyncedAt: timestamp('directory_synced_at', { withTimezone: true }),
   isContractRole: boolean('is_contract_role').notNull().default(false),
   /**
    * R-083 (A-10, R-4a): the person's role on the rate grid — how their hours are valued (rate in force on the date worked).

@@ -9,11 +9,14 @@ import 'server-only';
 //   outbox, where it stays "pending sync with Vigie";
 // - http (when VIGIE_API_URL is set): refreshes the mirror from Vigie and delivers the outbox — TODO(vigie): the
 //   endpoints are a proposal until Vigie publishes its API (OPEN QUESTION V-2).
+import { ecosEnteringApproval } from '@/domain/vigie-events';
 import { getDb } from '@/server/db/client';
+import { vigieEcos } from '@/server/db/schema';
 import { VIGIE_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
-import { logWarning } from '@/server/log';
+import { logError, logWarning } from '@/server/log';
 import { vigieApiUrl, vigieAuthHeaders, vigieConnectorMode } from './connection';
 import { claimProgressDelivery, markDelivery, progressSyncStatus, readMirror, undeliveredProgress, upsertMirror } from './mirror';
+import { notifyEcosToApprove } from './notices';
 import { recordProgressEntry } from './progress';
 import type { EcoListFilter, EcoProgressActor, EcoProgressInput, EcoProgressReceipt, VigieEcoConnector, VigieEcoRecord } from './types';
 
@@ -81,8 +84,15 @@ async function refreshFromVigie(): Promise<number> {
   const records = (await res.json()) as VigieEcoRecord[];
   if (!Array.isArray(records)) throw new Error('Vigie: unexpected ECO payload');
   const db = await getDb();
-  const n = await db.transaction((tx) => upsertMirror(tx, records, new Date(), { prune: true }));
+  // R-015 (X-6a, dormant until V-3): the ECOs entering "In approval", from the statuses read in the refresh's transaction
+  // and returned from it (the callback may run twice, R-010); notified after the commit.
+  const { n, toApprove } = await db.transaction(async (tx) => {
+    const before = await tx.select({ number: vigieEcos.number, status: vigieEcos.status }).from(vigieEcos);
+    const count = await upsertMirror(tx, records, new Date(), { prune: true });
+    return { n: count, toApprove: ecosEnteringApproval(new Map(before.map((e) => [e.number, e.status])), records) };
+  });
   g.__ksVigieRefreshedAt = Date.now();
+  if (toApprove.length) await notifyEcosToApprove(toApprove).catch((e) => logError('Vigie ECO notices', e, { component: 'vigie' }));
   return n;
 }
 

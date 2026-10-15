@@ -131,7 +131,10 @@ describe('deliveries Server Functions', () => {
 
   it('Reject → quarantine (procurement); per article on NDC-031 → Partially rejected; invalid splits refused', async () => {
     as('procurement', 'Fabien Bertrand');
-    expect(await rejectReceiptAction('HLT-026', 'BL-2026-0521')).toEqual({ ok: true, status: 'Rejected', message: 'BL-2026-0521 · Rejected' });
+    // R-096 (NEW-D4-3 "a"): a rejection on the Deliveries screen reminds to declare the supplier NCR in Vigie.
+    expect(await rejectReceiptAction('HLT-026', 'BL-2026-0521')).toEqual({
+      ok: true, status: 'Rejected', message: 'BL-2026-0521 · Rejected · 2 rejected · declare the supplier NCR in Vigie',
+    });
     const r = (await getReceipt('BL-2026-0521'))!;
     expect([r.qc.by, r.qc.result, r.qc.remarks, r.lines.map((l) => [l.rejected, l.location])]).toEqual([
       'Fabien Bertrand', 'Failed', 'Non-conforming — supplier notified', [[2, 'Zone quarantaine QC — Lyon']],
@@ -142,7 +145,7 @@ describe('deliveries Server Functions', () => {
     });
     expect(await recordPartialQcAction('NDC-031', 'BL-2026-0331', { 'EL-CBL-XLPE': '3', 'XX-1': '1' })).toEqual({ ok: false, error: 'Unknown article in the decision' });
     expect(await recordPartialQcAction('NDC-031', 'BL-2026-0331', { 'EL-CBL-XLPE': '3' }, 'Sheath damage on 3 drums')).toEqual({
-      ok: true, status: 'Partially rejected', message: 'BL-2026-0331 · Partially rejected',
+      ok: true, status: 'Partially rejected', message: 'BL-2026-0331 · Partially rejected · 3 rejected · declare the supplier NCR in Vigie', // R-096
     });
     const p = (await getReceipt('BL-2026-0331'))!;
     expect([p.status, p.qc.by, p.qc.result, p.qc.remarks, p.lines.map((l) => [l.ref, l.accepted, l.rejected, l.location])]).toEqual([
