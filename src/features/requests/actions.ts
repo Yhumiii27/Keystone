@@ -147,11 +147,14 @@ export async function withdrawRequestAction(id: string): Promise<RequestActionRe
   return { ok: true };
 }
 
-/** "Re-request" (rejected): back to pending, sent today. */
+/**
+ * "Re-request" (rejected or withdrawn — P-8c a, R-090): back to pending, sent today, with the dates it was sent with; the
+ * department head is told as for a new request. Every other status (draft, pending, reschedule, approved) is stale.
+ */
 export async function reRequestAction(id: string): Promise<RequestActionResult> {
   const o = await ownRequest(id);
   if ('error' in o) return { ok: false, error: o.error };
-  if (o.r.status !== 'rejected') return { ok: false, error: STALE };
+  if (o.r.status !== 'rejected' && o.r.status !== 'withdrawn') return { ok: false, error: STALE };
   try {
     await reRequestResourceRequest(o.r.id, o.viewer.name);
   } catch (e) {

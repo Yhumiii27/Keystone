@@ -89,7 +89,15 @@ describe('resource-request Server Functions', () => {
     expect(await withdrawRequestAction('RQ-044')).toEqual({ ok: true });
     expect(await getResourceRequest('RQ-044')).toMatchObject({ status: 'withdrawn', response: 'Withdrawn by PM · Fri 25 Sep' });
     expect(await withdrawRequestAction('RQ-044')).toEqual({ ok: false, error: 'This request has already been decided' });
-    expect(await reRequestAction('RQ-044')).toEqual({ ok: false, error: 'This request has already been decided' }); // 08 OQ21: only rejected
+    // P-8c a (R-090): a withdrawn request is re-sent as it was, by its sender (was 08 OQ21: only rejected → stale).
+    state.role = 'depthead';
+    expect(await reRequestAction('RQ-044')).toEqual({ ok: false, error: 'Read-only — only the sender can change this request' });
+    state.role = 'pm';
+    expect(await reRequestAction('RQ-044')).toEqual({ ok: true });
+    expect(await getResourceRequest('RQ-044')).toMatchObject({ status: 'pending', response: '', sentText: 'Fri 25 Sep' });
+    expect(await top('depthead')).toMatchObject({ kind: 'request', title: 'New resource request', screen: 'approvals' });
+    // Pending again: a second re-request is stale.
+    expect(await reRequestAction('RQ-044')).toEqual({ ok: false, error: 'This request has already been decided' });
   });
 
   it('R-048 (P-8a): a department head decides their own department\'s requests only (was: any department)', async () => {

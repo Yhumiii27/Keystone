@@ -20,7 +20,7 @@ import {
 import { useI18n } from '@/i18n/client';
 import type { NewRequestSetup } from '@/server/dal/requests-screens';
 import { sendResourceRequestAction } from './actions';
-import { reqT, routingText, sentByText, weekOfText } from './i18n';
+import { reqT, requestSentText, routingText, sentByText, weekOfText } from './i18n';
 import { requestsHref } from './routes';
 import s from './requests.module.css';
 import { dataText } from '@/i18n/data-text';
@@ -88,8 +88,9 @@ export function NewRequestLauncher({ label, setup, defaults, sender, openRequest
       }
       setOpen(false);
       setDraft((d) => ({ ...d, title: '', note: '' }));
+      // X-9 (R-152): the confirmation is shown in both cases (it was skipped when landing on Resource requests).
+      if (r.number) toast.show(requestSentText(r.number, lang));
       if (openRequests) router.push(requestsHref());
-      else toast.show(`${t('Request sent')} · ${r.number}`);
     });
 
   const chip = (on: boolean) => cx(s.chip, on && s.chipOn);

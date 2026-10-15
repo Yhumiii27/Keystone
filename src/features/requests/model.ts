@@ -58,6 +58,8 @@ export interface RequestRowView {
   isPending: boolean;
   isReschedule: boolean;
   isRejected: boolean;
+  /** P-8c (R-090): a rejected or withdrawn request can be sent again by its sender. */
+  canReRequest: boolean;
   /** Chapter 4 (S-7): drafted by the what-if levelling, not sent to the department yet. */
   isDraft: boolean;
   /** "12 Oct – 16 Oct" (reschedule proposals). */
@@ -100,6 +102,7 @@ export function requestRowView(r: ResourceRequestRow, t: T, lang: Lang, viewer: 
     isPending: r.status === 'pending',
     isReschedule: r.status === 'reschedule',
     isRejected: r.status === 'rejected',
+    canReRequest: r.status === 'rejected' || r.status === 'withdrawn',
     isDraft: draft,
     proposed: r.proposedStart && r.proposedDue ? tt(datesText(r.proposedStart, r.proposedDue)) : '',
     mine: isRequester(r, viewer),

@@ -1,6 +1,6 @@
 'use client';
 // PM row actions of the Requests table (docs/spec/08 §5.4 last column, §5.6): reschedule proposed → "Accept {dates}"
-// + "Withdraw"; pending → "Withdraw"; rejected → "Re-request". Drafts made by the what-if levelling (chapter 4, S-7)
+// + "Withdraw"; pending → "Withdraw"; rejected or withdrawn → "Re-request" (P-8c a, R-090). Drafts made by the what-if levelling (chapter 4, S-7)
 // → "Send" + "Discard" (confirmed in a dialog). Each calls its Server Function; errors are toasted.
 import { ArrowCounterClockwise, Check, PaperPlaneTilt, Trash } from '@phosphor-icons/react/dist/ssr';
 import { useState, useTransition } from 'react';
@@ -18,12 +18,13 @@ export interface RequestRowActionsProps {
   id: string;
   isPending: boolean;
   isReschedule: boolean;
-  isRejected: boolean;
+  /** Rejected or withdrawn (P-8c): "Re-request". */
+  canReRequest: boolean;
   /** Proposed dates, already translated ("12 Oct – 16 Oct"). */
   proposed: string;
 }
 
-export function RequestRowActions({ id, isPending, isReschedule, isRejected, proposed }: RequestRowActionsProps) {
+export function RequestRowActions({ id, isPending, isReschedule, canReRequest, proposed }: RequestRowActionsProps) {
   const { t } = useI18n();
   const toast = useToast();
   const [busy, start] = useTransition();
@@ -44,7 +45,7 @@ export function RequestRowActions({ id, isPending, isReschedule, isRejected, pro
           {t('Withdraw')}
         </Button>
       )}
-      {isRejected && (
+      {canReRequest && (
         <Button variant="secondary" icon={ArrowCounterClockwise} className={s.rowBtn} disabled={busy} onClick={() => run(() => reRequestAction(id))}>
           {t('Re-request')}
         </Button>

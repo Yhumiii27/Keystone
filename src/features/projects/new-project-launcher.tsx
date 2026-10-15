@@ -13,10 +13,11 @@ import { useI18n } from '@/i18n/client';
 import type { NewProjectSetup } from '@/server/dal/projects-register';
 import { createProjectAction } from './actions';
 import { PROJECTS_RESET_EVENT } from './events';
+import { projectCreatedToastText } from './toasts';
 import { DEFAULT_DRAFT, NewProjectWizard, draftCalendar, draftCategories, draftManager, type WizardDraft } from './new-project-wizard';
 
 export function NewProjectLauncher({ setup }: { setup: NewProjectSetup }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const router = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -38,7 +39,8 @@ export function NewProjectLauncher({ setup }: { setup: NewProjectSetup }) {
       setDraft(DEFAULT_DRAFT);
       // npCreate cleared the register's status filter; the created project now opens on its plan (L-3).
       window.dispatchEvent(new Event(PROJECTS_RESET_EVENT));
-      toast.showEn(`${r.number} · ${r.name} · Project created`);
+      // R-152 / R-148: the typed name is shown as typed, never through t() (showEn translated every segment).
+      toast.show(projectCreatedToastText(r.number, r.name, t, lang));
       router.push(screenHref('plan', { code: r.code }));
     });
 

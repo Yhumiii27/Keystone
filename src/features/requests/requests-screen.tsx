@@ -97,8 +97,8 @@ export function RequestsScreen({ model, filter, canAct, t }: RequestsScreenProps
                 {r.response}
               </span>
               <div className={s.rowActions} role="cell">
-                {canAct && r.mine && (r.isPending || r.isReschedule || r.isRejected) && (
-                  <RequestRowActions id={r.id} isPending={r.isPending} isReschedule={r.isReschedule} isRejected={r.isRejected} proposed={r.proposed} />
+                {canAct && r.mine && (r.isPending || r.isReschedule || r.canReRequest) && (
+                  <RequestRowActions id={r.id} isPending={r.isPending} isReschedule={r.isReschedule} canReRequest={r.canReRequest} proposed={r.proposed} />
                 )}
                 {canAct && r.canSendDraft && <DraftRowActions id={r.id} title={r.title} />}
               </div>
