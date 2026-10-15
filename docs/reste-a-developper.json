@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-10-12",
+ "updated": "2026-10-15",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -18,6 +18,10 @@
   {
    "date": "2026-10-12",
    "text": "Livraison 8 lancée : 67 points en cours, en 9 lots (journal d’audit et traduction, plateforme d’exploitation, rôles et taux, demandes de modification et coûts, achats et ingénierie, connecteurs Vigie et Cursus, documents et portefeuille, travail et planning, qualité et chantier) — plan dans docs/DELIVERY-8-PLAN.md. Tri préalable des 103 points restants hors « à décider » : 36 écartés de cette livraison (en attente du responsable produit ou d’un autre système, ou trop transverses pour des lots parallèles)."
+  },
+  {
+   "date": "2026-10-15",
+   "text": "Livraison 8 : lots 1 à 4 intégrés et vérifiés sur main-2a2fep (journal d’audit et traduction, plateforme d’exploitation, rôles et taux, demandes de modification et coûts) — 17 points faits, 9 restent en cours (parties en attente du responsable produit, de l’hébergement ou de données). Les 5 autres lots sont en construction."
   }
  ],
  "items": [
@@ -101,7 +105,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : kit conteneur Compose pour Coolify et job CI d’image ; reste à construire l’image sur main et à choisir l’hébergement (I-1a)."
    }
   },
   {
@@ -127,7 +132,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : sauvegardes planifiées (10 min, rétention 48 h / 30 j / 12 m) et restauration vérifiée ; copie hors site et PITR attendent l’hébergement (I-1a)."
    }
   },
   {
@@ -444,7 +450,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : avis des demandes de modification faits (X-6a) ; autres avis par les lots suivants."
    }
   },
   {
@@ -1282,7 +1289,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : rôle Finance (9e persona Léa Marchand), droits P-4 sur le contrat, lecture seule sur Budget / Heures / Facturation ; questions ouvertes : factures, périmètre des projets."
    }
   },
   {
@@ -1500,8 +1508,9 @@
     "src/components/app/shell/actions.ts:10-15 searchAction n’appelle pas getViewer et ne transmet pas le lecteur — vérifié"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : recherche globale sur tout le portefeuille (X-5), projet courant d’abord ; le client voit les demandes de modification de ses propres projets."
    }
   },
   {
@@ -1560,8 +1569,9 @@
     "src/features/projects/new-project-wizard.tsx:398 « Set BL1 at Planning → Active »"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : « Planning BL1 posé » coché par la vraie référence BL1."
    }
   },
   {
@@ -1982,8 +1992,9 @@
     "src/server/db/schema/change.ts:26-29 amountKeur et scheduleDays sans indicateur d’impact contractuel ; aucun seuil CCB dans src/domain/ch4-defaults.ts ni les Paramètres (grep P-6 / ccbThreshold : aucun)"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : circuit séquentiel des demandes de modification, étapes selon l’impact contractuel et le seuil du comité (50 k€ par défaut, réglable)."
    }
   },
   {
@@ -2205,8 +2216,9 @@
     "src/server/dal/contract.ts:485-505 issueInvoice (seul écrivain de customer_invoices hors seed) sans contrôle du total ; src/features/contract/actions.ts:114-125 non plus"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : facturation bloquée au-delà de 100 %, jalons prévus modifiables et supprimables."
    }
   },
   {
@@ -2286,8 +2298,9 @@
     "DELIVERY-6.md §4 : seuls Overview/Projects/portfolio/Home suivent les seuils A-13, pas l’onglet Performance du Budget"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : couleurs des indicateurs Budget sur les seuils de Paramètres, barres d’écart signées."
    }
   },
   {
@@ -2313,8 +2326,9 @@
     "src/domain/baseline-policy.ts canSnapshotFreely (règle « libre jusqu’à BL1 ») réutilisable, non appelée ici"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : montants des catégories de coûts figés après BL1, catégorie imputée à l’approbation."
    }
   },
   {
@@ -2373,7 +2387,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : grille de taux datée, une seule valorisation des heures par rôle de la grille ; reste : source en production du rôle de taux d’une personne."
    }
   },
   {
@@ -2457,8 +2472,9 @@
     "Le cookie de zone existe (src/server/session.ts:14,50 ks-zone / getZone) mais n’est pas utilisé par la tuile"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : coût main-d’œuvre du portefeuille par zone (R-2 a)."
    }
   },
   {
@@ -2482,8 +2498,9 @@
     "src/features/hr/skills-view.tsx:35 une seule tuile « Single-expert skills » (« Fewer than 2 people at level ≥4 ») ; src/domain/hr.ts:161 singleExpert = coverage.filter(gap)"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : une échelle de compétences 1–5 et deux indicateurs (R-5a, R-5b)."
    }
   },
   {
@@ -2508,8 +2525,9 @@
     "src/domain/hr.ts:320 varianceLo à 5 % en dur ; aucun paramètre de seuil dans les Paramètres (grep variance threshold vide)"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : seuil d’écart d’heures réglable dans Paramètres (R-6b, 10 % par défaut)."
    }
   },
   {
@@ -3930,7 +3948,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : « Voir comme le client » pour le directeur et les responsables du projet (P-11 a) ; question ouverte sur « Signaler un problème » du directeur."
    }
   },
   {
@@ -3957,8 +3976,9 @@
     "docs/decisions/questions.json X-11 appliedNote : « n’est encore affichée ni dans la fiche ni sur le portail client »"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : justification visible dans le panneau et sur le portail client."
    }
   },
   {
@@ -4265,8 +4285,9 @@
     "vérifié : nav-model.ts:194 shown = open ? items : items.filter(active) ; la ligne 'group' n’est poussée que pour le premier élément du groupe, absent quand la section est repliée"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : une section repliée garde l’en-tête de groupe de l’entrée affichée (X-8)."
    }
   },
   {
@@ -4402,8 +4423,9 @@
     "à revoir : fr-dict.json:1628, 1963, 2244, 2482, 2494 (« Livraison prévue ») ; fr-rules.ts « (.+) d on handover », « (.+) days on handover », « Net (.+) on handover » → livraison, « % at (SAT|handover…) » → « à la réception » ; src/i18n/extra/portfolio.json:16,26 et extra/home.json:37"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : l’étape Handover se dit « Transfert » en français (NEW-D5-3 'a')."
    }
   },
   {
@@ -4691,8 +4713,9 @@
     "tests : src/server/dal/delivery2.test.ts:329 ne couvre que o = 0..39"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : isoOfDayOffset correct pour les décalages négatifs."
    }
   },
   {
@@ -4718,7 +4741,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8, lot journal d’audit : table en ajout seul (déclencheurs), utilisateur, avant / après, motif, 4 colonnes de plus dans l’export CSV ISO. Reste : remplir avant / après / motif dans les autres écritures (balayage après la livraison) et REVOKE quand l’hébergement est choisi (I-1a)."
    }
   },
   {
@@ -4902,7 +4926,8 @@
    "verdict": "ajout_critique",
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : processus de sécurité documenté, audit des dépendances en CI ; Dependabot à activer par le propriétaire, test d’intrusion après l’hébergement."
    }
   },
   {
@@ -4927,8 +4952,9 @@
    "id": "R-175",
    "verdict": "ajout_critique",
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8, lot plateforme : antivirus (clamd) sur les dépôts de fichiers, fichiers bloqués en 410, nouvelle analyse planifiée, quarantaine purgée."
    }
   },
   {
@@ -4978,7 +5004,8 @@
    "verdict": "ajout_critique",
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : runbook, guides par rôle et scénarios de recette bêta en français ; contacts support, plan de formation et calendrier bêta à compléter."
    }
   },
   {
@@ -5005,7 +5032,8 @@
    "verdict": "ajout_critique",
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : coefficients de production en attente (valeurs provisoires) et fiche de collecte des données de référence ; vraies valeurs attendues de la direction."
    }
   },
   {
@@ -5163,8 +5191,9 @@
    "id": "R-184",
    "verdict": "ajout_critique",
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : garde de complétude du français (src/i18n/completeness.test.ts), une seule traduction par clé, messages système à clé, fil d’activité et journal d’audit dans la langue de l’utilisateur."
    }
   }
  ]

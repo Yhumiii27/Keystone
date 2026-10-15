@@ -1,6 +1,6 @@
 # Keystone PM — reste à développer
 
-Inventaire initial du 2026-10-10, mis à jour le 2026-10-12 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
+Inventaire initial du 2026-10-10, mis à jour le 2026-10-15 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
 
 **Méthode.** Onze relectures indépendantes ont croisé les 195 décisions produit (`docs/DECISIONS.md`), les écarts et questions ouvertes de `DELIVERY-1.md` à `DELIVERY-6.md`, `docs/BACKLOG.md`, les marqueurs du code (TODO, simulations, constantes du prototype), la spécification fonctionnelle (`docs/spec/`) et la préparation à la production. Chaque point a ensuite été vérifié dans le code, catégorie par catégorie : ce qui existait déjà a été écarté (153 candidats), les doublons fusionnés, puis un contrôle de complétude a ajouté ce qui manquait. Le détail, avec les preuves relevées dans le code pour chaque point, est dans `docs/reste-a-developper.json` ; ce document et la page sont produits par `npm run remaining:page`.
 
@@ -8,43 +8,43 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-12 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 56 faits, 68 en cours, 60 à faire, sur 184 points.
+**Avancement** : 71 faits, 53 en cours, 60 à faire, sur 184 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 17 | ≈ 136 |
-| Prochaine étape | 33 | ≈ 234 |
+| Prochaine étape | 30 | ≈ 227 |
 | À décider | 25 | ≈ 213 |
-| Plus tard | 53 | ≈ 133 |
-| **Total** | **128** | **≈ 715** |
+| Plus tard | 41 | ≈ 110 |
+| **Total** | **113** | **≈ 685** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 63 |
-| Partiel | 25 |
+| Non commencé | 53 |
+| Partiel | 20 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
 
 | Domaine | Bloquant production | Prochaine étape | À décider | Plus tard | Restants | Faits |
 |---|---:|---:|---:|---:|---:|---:|
-| Plateforme et mise en production | 8 | 7 | 0 | 2 | 17 | 8 |
-| Authentification, utilisateurs et droits | 1 | 0 | 2 | 2 | 5 | 11 |
+| Plateforme et mise en production | 8 | 6 | 0 | 2 | 16 | 9 |
+| Authentification, utilisateurs et droits | 1 | 0 | 2 | 1 | 4 | 12 |
 | Intégrations avec les autres systèmes | 5 | 8 | 1 | 4 | 18 | 2 |
-| Projets, cycle de vie et modèles par type de machine | 0 | 2 | 2 | 2 | 6 | 1 |
+| Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 2 | 5 | 2 |
 | Planning | 1 | 0 | 3 | 2 | 6 | 2 |
-| Coûts, contrat et finance | 0 | 3 | 2 | 3 | 8 | 8 |
-| Ressources et RH | 0 | 3 | 1 | 5 | 9 | 0 |
+| Coûts, contrat et finance | 0 | 2 | 2 | 0 | 4 | 12 |
+| Ressources et RH | 0 | 3 | 1 | 2 | 6 | 3 |
 | Achats et stock | 2 | 2 | 2 | 0 | 6 | 3 |
 | Ingénierie et PLM | 0 | 2 | 1 | 5 | 8 | 3 |
 | Qualité, chantier et mise en service | 0 | 3 | 1 | 4 | 8 | 4 |
 | Documents | 0 | 1 | 0 | 2 | 3 | 2 |
 | Portefeuille, pilotage et indicateurs | 0 | 0 | 0 | 3 | 3 | 5 |
-| Portail client | 0 | 0 | 1 | 4 | 5 | 1 |
+| Portail client | 0 | 0 | 1 | 3 | 4 | 2 |
 | SAV et parc installé | 0 | 0 | 0 | 1 | 1 | 2 |
-| Ergonomie, langues et accessibilité | 0 | 1 | 0 | 11 | 12 | 2 |
-| Dette technique | 0 | 1 | 0 | 3 | 4 | 2 |
+| Ergonomie, langues et accessibilité | 0 | 1 | 0 | 8 | 9 | 5 |
+| Dette technique | 0 | 1 | 0 | 2 | 3 | 3 |
 | Nouveaux modules demandés ou proposés (à valider) | 0 | 0 | 9 | 0 | 9 | 0 |
 
 ### 1.1 Chemin critique vers la production
@@ -118,15 +118,15 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 
 ## 2. Liste détaillée par domaine
 
-### 2.1 Plateforme et mise en production (17 restants, 8 faits)
+### 2.1 Plateforme et mise en production (16 restants, 9 faits)
 
 **R-003 · Héberger une instance multi-utilisateur (bêta puis production)** — *Bloquant production · partiel · effort M* · **en cours (Livraison 8)**  
 La PR #1 (ouverte, non fusionnée) apporte un Dockerfile Coolify : un seul conteneur next start sur le port 3000, PGlite et fichiers sur un volume /data. Il reste à la rebaser sur la livraison 6, construire et tester l’image, ajouter NEXT_PUBLIC_CODEX_URL aux arguments de build, configurer TLS et domaine, et protéger l’accès tant que l’authentification manque. Ensuite viennent la préproduction et la production avec PostgreSQL et un worker ; leur cible (Azure, serveur interne ou cloud) reste à décider.  
-*Attend : Relecture et fusion de la PR #1 après la livraison 6 ; choix de la cible de production avec l’IT et la DSI (I-1a « À discuter ») · Sources : I-1a, 00 §8.15, DECISIONS.md « À traiter en priorité », PR #1 claude/deploiement-coolify*
+*Avancement : Livraison 8 : kit conteneur Compose pour Coolify et job CI d’image ; reste à construire l’image sur main et à choisir l’hébergement (I-1a). · Attend : Relecture et fusion de la PR #1 après la livraison 6 ; choix de la cible de production avec l’IT et la DSI (I-1a « À discuter ») · Sources : I-1a, 00 §8.15, DECISIONS.md « À traiter en priorité », PR #1 claude/deploiement-coolify*
 
 **R-004 · Mettre en place sauvegardes et restauration (RPO ≤ 15 min, RTO ≤ 4 h)** — *Bloquant production · non commencé · effort M* · **en cours (Livraison 8)**  
 Sauvegarder la base en continu (restauration à un instant donné) ainsi que les fichiers stockés par Keystone, et écrire une procédure de restauration testée en moins de 4 h. Rien n’existe aujourd’hui : la base est un dossier PGlite local.  
-*Attend : Hébergement choisi (I-1a) · Sources : I-1b, 00 §8.10*
+*Avancement : Livraison 8 : sauvegardes planifiées (10 min, rétention 48 h / 30 j / 12 m) et restauration vérifiée ; copie hors site et PITR attendent l’hébergement (I-1a). · Attend : Hébergement choisi (I-1a) · Sources : I-1b, 00 §8.10*
 
 **R-010 · Sécuriser les écritures concurrentes en multi-utilisateur** — *Bloquant production · non commencé · effort M* · **en cours (Livraison 7)**  
 Rendre sûres sous accès concurrent la numérotation métier (max+1 sur toute la table), les contrôles « vérifier puis écrire » et les états gardés dans globalThis : contraintes uniques avec nouvel essai, verrous ou transactions SERIALIZABLE, détection des modifications simultanées d’une fiche. Cas connu : « Définir la référence » revérifie la règle BL1 hors de la transaction, donc deux envois simultanés à BL0 peuvent créer BL2 sans demande de modification.  
@@ -150,7 +150,7 @@ Keystone stocke des données personnelles (absences dont « maladie » visibles 
 
 **R-174 · Faire auditer la sécurité avant production (test d'intrusion, veille des dépendances)** — *Bloquant production · non commencé · effort M* · **en cours (Livraison 8)**  
 Les seules revues de sécurité sont les revues internes des livraisons. Avant d'exposer une instance multi-utilisateur avec des données financières et client, il faut un test d'intrusion externe (droits par rôle et par projet, routes d'envoi de fichiers et d'import, Server Functions) et une veille automatique des vulnérabilités des dépendances (Next.js, pdfkit, exceljs, PGlite), avec une politique de mise à jour.  
-*Attend : Choix de l'hébergement (I-1a) et d'un prestataire d'audit · Sources : 00 §8.12, 00 §8.15, I-1a, DELIVERY-6.md §1 (revues adverses internes), §1.1*
+*Avancement : Livraison 8 : processus de sécurité documenté, audit des dépendances en CI ; Dependabot à activer par le propriétaire, test d’intrusion après l’hébergement. · Attend : Choix de l'hébergement (I-1a) et d'un prestataire d'audit · Sources : 00 §8.12, 00 §8.15, I-1a, DELIVERY-6.md §1 (revues adverses internes), §1.1*
 
 **R-001 · Fusionner la livraison 6 dans main** — *Prochaine étape · non commencé · effort S*  
 La branche main-2a2fep (livraisons 1–6) a 30 commits d’avance sur origin/main (95412b5), et aucune PR n’est ouverte pour elle. La fusion peut se faire en avance rapide et seule la migration 0006 est nouvelle (0005 est déjà sur main). Il faut ouvrir et relire la PR, relancer typecheck, lint, tests et build, rebaser ensuite la PR #1 (Dockerfile Coolify, partie de 95412b5), puis supprimer les 3 worktrees et branches worktree-agent-*.  
@@ -162,23 +162,19 @@ Pièces jointes, transcriptions, fichiers d’import et futures photos sont écr
 
 **R-015 · Notifier les événements clés aux personnes concernées (X-6a)** — *Prochaine étape · partiel · effort M* · **en cours (Livraison 8)**  
 Créer les notifications choisies : CR soumise, NCR, livraison refusée, ECO à approuver, mention @, tâche assignée, facture bloquée, alerte d’indicateur. Elles doivent aller à l’approbateur, au demandeur, au responsable ou à la personne citée, et non à tout un rôle. Le ciblage par personne n’a de sens qu’avec de vrais comptes, car la table users n’a qu’un utilisateur par rôle.  
-*Attend : Comptes utilisateurs réels (R-038, R-039) pour cibler des personnes plutôt que des rôles · Sources : X-6a, 01 §5.5, OQ19, 00 §7.7, DELIVERY-2.md §5, §7*
+*Avancement : Livraison 8 : avis des demandes de modification faits (X-6a) ; autres avis par les lots suivants. · Attend : Comptes utilisateurs réels (R-038, R-039) pour cibler des personnes plutôt que des rôles · Sources : X-6a, 01 §5.5, OQ19, 00 §7.7, DELIVERY-2.md §5, §7*
 
 **R-017 · Tenir la charge avec de vrais volumes de données** — *Prochaine étape · non commencé · effort L*  
 Ajouter les index manquants sur les clés étrangères, paginer les grandes listes, éviter les lectures complètes de tables et mettre en cache les ~20 badges du menu calculés à chaque page, dont certains interrogent Cursus. Valider par un test de charge sur un jeu réaliste.  
 *Sources : 00 Phase 9 (performance)*
 
-**R-175 · Analyser par antivirus les fichiers déposés dans Keystone** — *Prochaine étape · non commencé · effort S* · **en cours (Livraison 8)**  
-Les pièces jointes des tâches, transcriptions et imports sont contrôlés sur l'extension, la taille et la signature, mais pas analysés par un antivirus, alors que docx, xlsx, zip, msg et eml sont acceptés et ensuite téléchargés par d'autres utilisateurs. Brancher une analyse (ClamAV ou service de l'hébergeur) au dépôt, avec mise en quarantaine.  
-*Attend : Choix de l'hébergement (I-1a) pour retenir le service antivirus · Sources : R-8a, X-15, DELIVERY-6.md §2 (Files)*
-
 **R-177 · Rédiger le guide utilisateur, former par rôle et organiser le support** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 8)**  
 Il n'existe aucune documentation pour les utilisateurs : le README et docs/ s'adressent aux développeurs. Avant la bêta multi-utilisateur, préparer un guide par rôle (8 profils), des scénarios de recette pour les bêta-testeurs, une formation, un canal de support et un dossier d'exploitation pour la DSI (déploiement, configuration des connecteurs, restauration).  
-*Attend : Liste des bêta-testeurs et calendrier de la bêta (I-1a) · Sources : I-1a (bêta-testeurs avant production), D-7a (connecteurs configurés par l'IT), 00 §8.15*
+*Avancement : Livraison 8 : runbook, guides par rôle et scénarios de recette bêta en français ; contacts support, plan de formation et calendrier bêta à compléter. · Attend : Liste des bêta-testeurs et calendrier de la bêta (I-1a) · Sources : I-1a (bêta-testeurs avant production), D-7a (connecteurs configurés par l'IT), 00 §8.15*
 
 **R-178 · Fournir et charger les listes de référence réelles d'EPC2i** — *Prochaine étape · attend le responsable produit · effort S* · **en cours (Livraison 8)**  
 Les Paramètres (catégories de risques et de coûts, compétences, types de livrables, statuts, lieux de stockage), la grille de taux, les services et les clients viennent des constantes du prototype, et « Rétablir les valeurs par défaut » recharge SETTINGS0. Il faut que la direction fournisse les vraies listes et qu'une reprise les charge, en complément du démarrage sans données de démonstration.  
-*Attend : Listes métier validées par la direction (catégories, compétences, taux, services, clients, lieux) · Sources : A-14, A-15, A-10, 10 §1 (Paramètres)*
+*Avancement : Livraison 8 : coefficients de production en attente (valeurs provisoires) et fiche de collecte des données de référence ; vraies valeurs attendues de la direction. · Attend : Listes métier validées par la direction (catégories, compétences, taux, services, clients, lieux) · Sources : A-14, A-15, A-10, 10 §1 (Paramètres)*
 
 **R-018 · Mémoriser les préférences par utilisateur (langue, menu, projet, zone)** — *Plus tard · partiel · effort S*  
 Une fois l’authentification en place, stocker en base, par utilisateur, la langue (français par défaut, choix FR/EN suivant l’utilisateur sur tous ses postes, X-1), l’état du menu, le dernier projet, la zone et les préférences de notification, qui vivent aujourd’hui dans des cookies du navigateur.  
@@ -216,15 +212,19 @@ En production, Keystone ne doit afficher que ce qu’il a enregistré ou reçu d
 Créer un pipeline CI (typecheck, lint, vitest, build) sur chaque PR, puis un pipeline de déploiement. Versionner les 14 scénarios Playwright et la matrice des routes (3 520 requêtes) de la livraison 6, exécutés hors du dépôt, et supprimer les worktrees d’agents qui obligent à passer --ignore-pattern au lint.  
 *Sources : DELIVERY-6.md §1, 00 §8.14*
 
+**~~R-175 · Analyser par antivirus les fichiers déposés dans Keystone~~** — *Prochaine étape · non commencé · effort S* · **fait (Livraison 8)**  
+Les pièces jointes des tâches, transcriptions et imports sont contrôlés sur l'extension, la taille et la signature, mais pas analysés par un antivirus, alors que docx, xlsx, zip, msg et eml sont acceptés et ensuite téléchargés par d'autres utilisateurs. Brancher une analyse (ClamAV ou service de l'hébergeur) au dépôt, avec mise en quarantaine.  
+*Avancement : Livraison 8, lot plateforme : antivirus (clamd) sur les dépôts de fichiers, fichiers bloqués en 410, nouvelle analyse planifiée, quarantaine purgée. · Attend : Choix de l'hébergement (I-1a) pour retenir le service antivirus · Sources : R-8a, X-15, DELIVERY-6.md §2 (Files)*
+
 **~~R-176 · Ajouter des pages d'erreur et « page introuvable » traduites~~** — *Prochaine étape · non commencé · effort S* · **fait (Livraison 7)**  
 Aucune page error.tsx, global-error.tsx ni not-found.tsx n'existe : une erreur serveur affiche la page brute de Next.js et une adresse inconnue la page 404 par défaut, en anglais. Ajouter des pages aux couleurs de Nocturne, en français par défaut, avec un identifiant d'incident relié à la journalisation.  
 *Sources : DELIVERY-5.md §7 (Catch-all : 404 pour un écran construit), 00 §7.9, 01 (i18n, français par défaut)*
 
-### 2.2 Authentification, utilisateurs et droits (5 restants, 11 faits)
+### 2.2 Authentification, utilisateurs et droits (4 restants, 12 faits)
 
 **R-044 · Créer le rôle Finance (contrat, facturation, grille de taux)** — *Bloquant production · non commencé · effort M* · **en cours (Livraison 8)**  
 Ajouter un rôle Finance (persona, ROLE_SCREENS, contrôles serveur, exports, i18n). Directeur, CP du projet et Finance modifient la page Contrat ; les achats perdent ce droit (P-4). Finance et directeur tiennent la grille des taux et coefficients, les CP la consultent (P-12).  
-*Attend : Responsable produit : droits de Finance sur l’émission et le « payé » des factures client · Sources : P-4, P-12, A-10, 04 Q7, DELIVERY-2.md §7, DELIVERY-3.md §6, §7, DELIVERY-6.md §5*
+*Avancement : Livraison 8 : rôle Finance (9e persona Léa Marchand), droits P-4 sur le contrat, lecture seule sur Budget / Heures / Facturation ; questions ouvertes : factures, périmètre des projets. · Attend : Responsable produit : droits de Finance sur l’émission et le « payé » des factures client · Sources : P-4, P-12, A-10, 04 Q7, DELIVERY-2.md §7, DELIVERY-3.md §6, §7, DELIVERY-6.md §5*
 
 **R-040 · Décider où s’attribuent les rôles (groupes Entra ou écran Keystone)** — *À décider · attend le responsable produit · effort M*  
 Choisir si les rôles (directeur, CP, chef de service, achats, qualité, futur rôle Finance) viennent des groupes Entra ID ou d’un écran d’administration des utilisateurs. Un tel écran, absent du prototype, demande la validation du responsable produit.  
@@ -237,10 +237,6 @@ Le responsable produit a retenu « pas d'accès client au lancement » (I-2b) ; 
 **R-051 · Ajouter la délégation des validations à un suppléant sur une période** — *Plus tard · non commencé · effort M*  
 L’approbateur déclare un suppléant et des dates ; pendant cette période, ses validations (documents, demandes, commandes, Mes validations) sont routées vers le suppléant, et les décisions sont tracées à son nom.  
 *Sources : P-7d, 08 §7*
-
-**R-052 · Étendre la recherche globale au portefeuille, filtrée selon les droits** — *Plus tard · non commencé · effort M* · **en cours (Livraison 8)**  
-Chercher commandes, CR, NCR et risques sur tous les projets, chaque résultat ouvrant son projet, en filtrant les résultats selon les droits du lecteur (un client ne voit que ses projets). Aujourd’hui la recherche ignore l’utilisateur et limite ces objets au projet courant.  
-*Sources : X-5, 01 OQ18, 00 §7.6, DELIVERY-1.md §4*
 
 **~~R-038 · Remplacer « Voir en tant que » par la connexion Microsoft Entra ID~~** — *Bloquant production · non commencé · effort L* · **fait (Livraison 7)**  
 Connexion OIDC Entra ID (session serveur, connexion, déconnexion, redirection via proxy.ts) à la place du cookie ks-role, avec le même fournisseur que Cursus, Vigie et Codex, et « Voir en tant que » réservé à la démo. Aujourd’hui n’importe qui peut se déclarer directeur et une requête sans cookie s’exécute en directeur. Aucun compte client n’est ouvert au lancement (I-2b).  
@@ -285,6 +281,10 @@ Réponse retenue : le directeur voit tout le monde, un chef de service son servi
 **~~R-050 · Réserver l’envoi des comptes rendus à l’organisateur et au CP~~** — *Prochaine étape · non commencé · effort S* · **fait (Livraison 7)**  
 Seuls l’organisateur et le CP du projet envoient le compte rendu ; les internes ajoutent des notes ; le client lit sans modifier ni créer de réunion. Aujourd’hui tout rôle ayant l’écran Réunions, membre et client compris, crée une réunion et envoie le compte rendu.  
 *Sources : P-9b, 05 OQ7, DELIVERY-3.md §6, §7*
+
+**~~R-052 · Étendre la recherche globale au portefeuille, filtrée selon les droits~~** — *Plus tard · non commencé · effort M* · **fait (Livraison 8)**  
+Chercher commandes, CR, NCR et risques sur tous les projets, chaque résultat ouvrant son projet, en filtrant les résultats selon les droits du lecteur (un client ne voit que ses projets). Aujourd’hui la recherche ignore l’utilisateur et limite ces objets au projet courant.  
+*Avancement : Livraison 8 : recherche globale sur tout le portefeuille (X-5), projet courant d’abord ; le client voit les demandes de modification de ses propres projets. · Sources : X-5, 01 OQ18, 00 §7.6, DELIVERY-1.md §4*
 
 ### 2.3 Intégrations avec les autres systèmes (18 restants, 2 faits)
 
@@ -368,15 +368,11 @@ Codex, Lucca, Sage X3, SolidWorks PDM, MS Project, Outlook, Teams et SMTP affich
 Le dialogue « Configurer » est déjà en lecture seule, mais « Ajouter un connecteur » écrit encore un connecteur depuis l’écran Intégrations, et rien ne permet à l’IT d’activer, désactiver ou régler un connecteur hors des variables d’environnement Vigie et Cursus. Retirer l’ajout dans l’interface et prévoir un fichier de configuration lu au démarrage ou un script d’administration.  
 *Sources : D-7a, 01 §5.9, docs/delivery-6/notes-admin-settings.md §2.1*
 
-### 2.4 Projets, cycle de vie et modèles par type de machine (6 restants, 1 faits)
+### 2.4 Projets, cycle de vie et modèles par type de machine (5 restants, 2 faits)
 
 **R-053 · Créer le standard complet par type de machine et l’instancier à la création** — *Prochaine étape · attend le responsable produit · effort L*  
 Chaque type de projet doit avoir un standard tenu et modifiable dans Keystone : WBS avec lots, activités, durées et liens, budgets, livrables par étape, points ITP. L’assistant en fait une copie que le CP personnalise avant le lancement. Aujourd’hui le modèle se limite aux noms des phases (un lot et une activité de 30 jours ouvrés par phase, enchaînés FS), aux catégories de coûts et aux noms des systèmes ITP : aucun point d’inspection n’est créé et les livrables d’étape sont communs à tous les types. Sans fin saisie, la fin prévue vient de ce plan type, pas d’une date fixe.  
 *Attend : Données standard par type de machine (WBS, budgets, durées, livrables, ITP) promises par le responsable produit (A-2, L-3a) · Sources : A-2, L-3a, DELIVERY-1.md §7, DELIVERY-6.md §4, §5, §8 L-3b, DELIVERY-6-PLAN.md §2, docs/delivery-6/notes-admin-settings.md §4.4*
-
-**R-054 · Lier le livrable « Planning BL1 posé » à la référence BL1 réelle** — *Prochaine étape · partiel · effort S* · **en cours (Livraison 8)**  
-L-2 : BL1 est figée en fin d’APD et conditionne le passage en Études. Le livrable d’étape APD « Planning BL1 posé » existe déjà : tant qu’il n’est pas coché, le passage automatique est refusé et il faut forcer. Mais la case se coche à la main, sans lien avec les références. Reste à faire : cocher la case quand on définit BL1, refuser de la cocher sans BL1 (ou la décocher), éventuellement réserver BL1 à l’étape APD, et corriger le texte obsolète de l’assistant « Set BL1 at Planning → Active ».  
-*Attend : Confirmer la coche automatique du livrable « Planning BL1 posé » (DELIVERY-6 §8 L-2) · Sources : L-2, 01 OQ10, DELIVERY-1.md §7, DELIVERY-6.md §8 L-2, docs/delivery-6/notes-planning.md §3*
 
 **R-056 · Choisir une source de géocodage pour les sites des nouveaux projets** — *À décider · attend le responsable produit · effort S*  
 La saisie pays / ville est faite, mais un site dont la ville n’est pas déjà connue n’a pas de coordonnées et le projet n’apparaît pas sur la carte. Le responsable produit doit choisir entre une table de villes dans les Paramètres et un service de géocodage (nouvel outil, soumis à approbation).  
@@ -393,6 +389,10 @@ E-9 veut que la modification d’un type de machine ne touche que les nouveaux p
 **R-058 · Intégrer la matrice RACI d’entreprise, par rôle et non modifiable** — *Plus tard · attend le responsable produit · effort M*  
 S-13b : la matrice RACI fournie par le responsable produit sera fixe et organisée par rôle, et Keystone doit permettre d’affecter chaque rôle à une personne de l’équipe projet. Aujourd’hui la RACI est stockée par projet, en lecture seule, avec des colonnes en texte libre. Seul HLT-026 en a une (semée depuis le prototype), et un projet créé par l’assistant n’en a aucune. La RACI-B des livrables qualité est un objet distinct, hors du périmètre de la réponse.  
 *Attend : Matrice RACI par rôle, en cours de définition par le responsable produit · Sources : S-13b, 05 OQ20, DELIVERY-3.md §7, DELIVERY-5.md §6*
+
+**~~R-054 · Lier le livrable « Planning BL1 posé » à la référence BL1 réelle~~** — *Prochaine étape · partiel · effort S* · **fait (Livraison 8)**  
+L-2 : BL1 est figée en fin d’APD et conditionne le passage en Études. Le livrable d’étape APD « Planning BL1 posé » existe déjà : tant qu’il n’est pas coché, le passage automatique est refusé et il faut forcer. Mais la case se coche à la main, sans lien avec les références. Reste à faire : cocher la case quand on définit BL1, refuser de la cocher sans BL1 (ou la décocher), éventuellement réserver BL1 à l’étape APD, et corriger le texte obsolète de l’assistant « Set BL1 at Planning → Active ».  
+*Avancement : Livraison 8 : « Planning BL1 posé » coché par la vraie référence BL1. · Attend : Confirmer la coche automatique du livrable « Planning BL1 posé » (DELIVERY-6 §8 L-2) · Sources : L-2, 01 OQ10, DELIVERY-1.md §7, DELIVERY-6.md §8 L-2, docs/delivery-6/notes-planning.md §3*
 
 **~~R-055 · Saisir la date effective d’un changement d’étape~~** — *Prochaine étape · partiel · effort S* · **fait (Livraison 7)**  
 Le CP indique la date réelle du changement d’étape (par exemple un PV de FAT signé la veille), proposée par défaut à aujourd’hui ; l’heure de saisie reste dans l’audit. Le DAL accepte déjà effectiveOn mais l’interface ne le propose pas, et c’est la date figée qui est inscrite.  
@@ -432,11 +432,7 @@ WBS, durées, budgets et liens ne sont modifiables que par le CP du projet et le
 En plus du lot, une CR peut citer, en option, les activités touchées et leur nouvelle durée ; l’impact apparaît au prochain « Replanifier » et le lien s’affiche dans le tiroir d’activité. Il faut une table de liaison, le champ dans le formulaire et la fiche, et retirer le texte codé en dur « second crew (CR-008) » sur A1250.  
 *Sources : NEW-D2-2, A-4, S-3, DELIVERY-1.md §5, DELIVERY-2.md §5, DELIVERY-5.md §6*
 
-### 2.6 Coûts, contrat et finance (8 restants, 8 faits)
-
-**R-069 · Rendre séquentiel le circuit des CR avec étapes non requises automatiques** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 8)**  
-Le circuit doit suivre CP → directeur → client → comité : le client ne voit la demande qu’après l’accord interne et le comité tranche en dernier (P-6b). L’étape client n’est requise que si le prix ou le délai contractuel change, et le comité qu’au-delà d’un seuil réglable dans les Paramètres (P-6c). Il faut distinguer l’impact contractuel, faire suivre Mes validations et le portail, et remplacer la cadence figée du comité.  
-*Attend : Seuil et cadence du comité de contrôle des modifications, à fixer par la direction · Sources : P-6b, P-6c, A-4, 07 OQ3, 11 §6.3, DELIVERY-2.md §5, §7*
+### 2.6 Coûts, contrat et finance (4 restants, 12 faits)
 
 **R-074 · Alimenter le coût réel depuis Cursus et Sage X3** — *Prochaine étape · attend un système externe · effort L*  
 Coût réel = heures validées Cursus × taux en vigueur, plus achats à la réception, sous-traitance et locations sur facture validée dans Sage X3. Aujourd’hui seules les étiquettes de source existent et les colonnes actual / committed ne sont écrites que par le seed.  
@@ -454,18 +450,6 @@ Le responsable produit doit vérifier avec la finance les types de retenues et g
 Keystone émet lui-même les factures client avec sa propre numérotation (INV-2026-00n) et les marque payées à la main, alors que la facture légale et les encaissements relèvent normalement de la comptabilité (Sage X3), et que la réforme de la facturation électronique s'applique. Décider avec la finance si Keystone garde l'émission ou passe une demande de facturation à X3 et reçoit en retour le numéro et le paiement, comme pour les factures fournisseurs (SC-2).  
 *Attend : Service finance : processus de facturation client dans Sage X3 (numérotation légale, encaissements, facturation électronique) · Sources : P-4, I-3b, A-5, SC-2 (règle analogue fournisseurs), 04 §4, DELIVERY-3.md §4 (Billing), §7 (P-4, 04 Q7)*
 
-**R-077 · Bloquer la facturation quand les jalons dépassent 100 %** — *Plus tard · partiel · effort S* · **en cours (Livraison 8)**  
-L’échéancier reste modifiable, mais aucune facture ne doit partir tant que le total des jalons dépasse 100 % de la valeur du contrat. Aujourd’hui un simple avertissement s’affiche.  
-*Sources : C-7, 04 Q13*
-
-**R-080 · Colorer les indicateurs du Budget selon les seuils et signer les barres d’écart** — *Plus tard · non commencé · effort S* · **en cours (Livraison 8)**  
-EAC, VAC, CPI et TCPI doivent suivre les seuils de santé des Paramètres au lieu d’être toujours en couleur d’alerte, et les barres d’écart doivent monter en cas d’économie et descendre en cas de dépassement.  
-*Sources : C-1, A-13, 04 Q1-Q2, DELIVERY-1.md §6*
-
-**R-081 · Figer le montant des catégories de coûts après BL1** — *Plus tard · partiel · effort S* · **en cours (Livraison 8)**  
-Les catégories viennent déjà des Paramètres ; leur montant doit être libre avant BL1, puis ne changer que par une CR approuvée. Aujourd’hui il reste modifiable à tout moment.  
-*Sources : C-3, S-3, 04 Q4, DELIVERY-1.md §7*
-
 **~~R-075 · Gérer plusieurs devises avec consolidation en euros~~** — *Bloquant production · non commencé · effort L* · **fait (Livraison 7)**  
 Chaque contrat, commande et facture garde sa devise ; budget, trésorerie et finance du portefeuille sont consolidés en euros au taux budgétaire fixé pour chaque projet. Aujourd’hui seul le symbole change et tous les montants sont en k€.  
 *Attend : Taux budgétaire par projet à fournir par la finance · Sources : C-9, 04 Q17, BACKLOG.md §2 P4*
@@ -473,6 +457,10 @@ Chaque contrat, commande et facture garde sa devise ; budget, trésorerie et fin
 **~~R-068 · Propager les CR approuvées au budget et au contrat (registre unique)~~** — *Prochaine étape · non commencé · effort L* · **fait (Livraison 7)**  
 À l’approbation d’une CR, réviser le BAC, les lots et les « modifications approuvées », et préparer l’avenant au contrat. L’écran Budget doit lire le registre unique des CR au lieu de sa liste budget_change_lines et de sa réconciliation figée. Aujourd’hui l’approbation ne rend courante que la référence de planning proposée.  
 *Sources : A-4, 04 Q6, 07 §2.2, 11 §7 #2, DELIVERY-1.md §7, DELIVERY-2.md §5, §6*
+
+**~~R-069 · Rendre séquentiel le circuit des CR avec étapes non requises automatiques~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 8)**  
+Le circuit doit suivre CP → directeur → client → comité : le client ne voit la demande qu’après l’accord interne et le comité tranche en dernier (P-6b). L’étape client n’est requise que si le prix ou le délai contractuel change, et le comité qu’au-delà d’un seuil réglable dans les Paramètres (P-6c). Il faut distinguer l’impact contractuel, faire suivre Mes validations et le portail, et remplacer la cadence figée du comité.  
+*Avancement : Livraison 8 : circuit séquentiel des demandes de modification, étapes selon l’impact contractuel et le seuil du comité (50 k€ par défaut, réglable). · Attend : Seuil et cadence du comité de contrôle des modifications, à fixer par la direction · Sources : P-6b, P-6c, A-4, 07 OQ3, 11 §6.3, DELIVERY-2.md §5, §7*
 
 **~~R-070 · Faire du registre de la provision la source du « consommé » au Budget~~** — *Prochaine étape · non commencé · effort S* · **fait (Livraison 7)**  
 Le « consommé » de la provision pour aléas affiché par le Budget doit être la somme des prélèvements du registre, avec la prévision de consommation à part. Aujourd’hui il affiche une valeur semée (208 k€, soit 139 % sur HLT-026) qui diffère du registre (48 k€) et ne suit pas les prélèvements.  
@@ -498,11 +486,23 @@ Chaque contrat choisit sa règle : N jours date de facture, 45 jours fin de mois
 Un avenant signé doit porter ses propres échéances au lieu de re-chiffrer tous les jalons, y compris ceux déjà facturés (NEW-D3-3). Il faut modéliser les jalons par avenant, leur saisie, revoir le plan de facturation et les écarts jalon / facture, et ajouter les transitions brouillon → envoyé pour signature → signé ainsi que la libération des cautions.  
 *Sources : NEW-D3-3, A-5, C-7, 11 §6.3 Amendment / Bond, DELIVERY-3.md §5*
 
-### 2.7 Ressources et RH (9 restants)
+**~~R-077 · Bloquer la facturation quand les jalons dépassent 100 %~~** — *Plus tard · partiel · effort S* · **fait (Livraison 8)**  
+L’échéancier reste modifiable, mais aucune facture ne doit partir tant que le total des jalons dépasse 100 % de la valeur du contrat. Aujourd’hui un simple avertissement s’affiche.  
+*Avancement : Livraison 8 : facturation bloquée au-delà de 100 %, jalons prévus modifiables et supprimables. · Sources : C-7, 04 Q13*
+
+**~~R-080 · Colorer les indicateurs du Budget selon les seuils et signer les barres d’écart~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
+EAC, VAC, CPI et TCPI doivent suivre les seuils de santé des Paramètres au lieu d’être toujours en couleur d’alerte, et les barres d’écart doivent monter en cas d’économie et descendre en cas de dépassement.  
+*Avancement : Livraison 8 : couleurs des indicateurs Budget sur les seuils de Paramètres, barres d’écart signées. · Sources : C-1, A-13, 04 Q1-Q2, DELIVERY-1.md §6*
+
+**~~R-081 · Figer le montant des catégories de coûts après BL1~~** — *Plus tard · partiel · effort S* · **fait (Livraison 8)**  
+Les catégories viennent déjà des Paramètres ; leur montant doit être libre avant BL1, puis ne changer que par une CR approuvée. Aujourd’hui il reste modifiable à tout moment.  
+*Avancement : Livraison 8 : montants des catégories de coûts figés après BL1, catégorie imputée à l’approbation. · Sources : C-3, S-3, 04 Q4, DELIVERY-1.md §7*
+
+### 2.7 Ressources et RH (6 restants, 3 faits)
 
 **R-083 · Dater la grille de taux par rôle et unifier la valorisation des heures** — *Prochaine étape · partiel · effort M* · **en cours (Livraison 8)**  
 Grille de taux par rôle (taux de base × coefficients) avec date d’effet et historique, un seul taux par rôle (R-4b), chaque heure valorisée au taux en vigueur et chaque personne reliée à son rôle. Supprimer les sources concurrentes : taux par intitulé de poste pour la note de coût des tâches, 62 €/h fixe de l’écran Heures, 60 €/h du what-if, et la modification en place qui revalorise tout l’historique.  
-*Attend : Rôle Finance pour les droits de modification (R-044) · Sources : A-10, R-4a, R-4b, P-12, 06 OQ6-7, 11 §7 #7, DELIVERY-2.md §5, §7*
+*Avancement : Livraison 8 : grille de taux datée, une seule valorisation des heures par rôle de la grille ; reste : source en production du rôle de taux d’une personne. · Attend : Rôle Finance pour les droits de modification (R-044) · Sources : A-10, R-4a, R-4b, P-12, 06 OQ6-7, 11 §7 #7, DELIVERY-2.md §5, §7*
 
 **R-084 · Calculer la capacité et la charge réelles avec une source unique** — *Prochaine étape · partiel · effort L*  
 Capacité = horaire contractuel de chacun (35 h par défaut, temps partiels respectés) − absences validées − fériés ; charge = affectations du planning et demandes approuvées ; même règle dans Ressources, Congés, what-if et Priorisation, le ratio par M€ ne servant qu’aux propositions sans planning. Aujourd’hui seul l’écran Congés déduit congés et fériés (sur 35 h fixes) ; les autres comptent 40 h fixes, lisent des pourcentages de charge semés et des capacités de service statiques, et Priorisation (pool × 40 h) diffère de Ressources (department_capacities).  
@@ -516,18 +516,6 @@ Ressources, Congés et what-if doivent partir de la semaine en cours, avec bouto
 À trancher : ignorer un levier déjà demandé depuis une suggestion ou un autre scénario, approbation formelle d’un scénario, scénarios basés sur une référence, horizon au-delà de 8 semaines ; pour les brouillons, visibilité par le CP, demandeur à l’envoi, envoi par les achats, filtre « Brouillons ».  
 *Attend : Réponses du responsable produit (DELIVERY-6 §8 S-7) · Sources : S-7, R-3, DELIVERY-6.md §8 S-7, docs/delivery-6/notes-whatif-kpis.md §5*
 
-**R-086 · Afficher le coût main-d’œuvre du portefeuille par zone sur Ressources** — *Plus tard · non commencé · effort S* · **en cours (Livraison 8)**  
-La tuile « Coût main-d’œuvre à date » de l’écran Ressources global doit totaliser les heures valorisées de tous les projets de la zone affichée ; elle lit aujourd’hui la catégorie main-d’œuvre du dernier projet consulté.  
-*Sources : R-2, 06 OQ2, DELIVERY-2.md §6*
-
-**R-087 · Compétences : échelle unique 1–5 et deux indicateurs** — *Plus tard · non commencé · effort S* · **en cours (Livraison 8)**  
-Retirer les échelles 1–4, 1–3 et Oui/Non du formulaire « Ajouter une compétence » (R-5a) et séparer l’indicateur unique en « aucun expert » et « un seul expert » (R-5b).  
-*Sources : R-5a, R-5b, 06 OQ8, OQ11*
-
-**R-088 · Rendre réglable le seuil d’écart d’heures (±10 %, inclus), couleurs distinctes** — *Plus tard · non commencé · effort S* · **en cours (Livraison 8)**  
-Le seuil se règle dans les Paramètres, inclut la valeur limite et distingue sur- et sous-déclaration ; à reprendre dans le futur écran Heures (Cursus). Aujourd’hui il est fixe, strict, et les deux cas ont la même couleur.  
-*Sources : R-6b, 06 OQ10, DELIVERY-2.md §4*
-
 **R-089 · Envoyer aux achats une tâche pour trouver l’intervenant externe** — *Plus tard · non commencé · effort M* · **en cours (Livraison 8)**  
 Après approbation d’une demande portant sur un profil sans personne nommée (intérim, sous-traitance), les achats reçoivent une tâche pour trouver l’intervenant ; la tâche passe ensuite à la personne retenue. Aujourd’hui la tâche est créée au nom du rôle contractuel, sans suite.  
 *Sources : P-8b, 08 OQ20, DELIVERY-2.md §7*
@@ -535,6 +523,18 @@ Après approbation d’une demande portant sur un profil sans personne nommée (
 **R-090 · Autoriser la relance d’une demande de ressource retirée** — *Plus tard · partiel · effort S* · **en cours (Livraison 8)**  
 « Relancer » doit aussi apparaître sur une demande retirée, qui repart en attente à la date du jour. Le DAL l’accepte déjà, mais l’action serveur et le bouton sont limités aux demandes refusées.  
 *Sources : P-8c*
+
+**~~R-086 · Afficher le coût main-d’œuvre du portefeuille par zone sur Ressources~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
+La tuile « Coût main-d’œuvre à date » de l’écran Ressources global doit totaliser les heures valorisées de tous les projets de la zone affichée ; elle lit aujourd’hui la catégorie main-d’œuvre du dernier projet consulté.  
+*Avancement : Livraison 8 : coût main-d’œuvre du portefeuille par zone (R-2 a). · Sources : R-2, 06 OQ2, DELIVERY-2.md §6*
+
+**~~R-087 · Compétences : échelle unique 1–5 et deux indicateurs~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
+Retirer les échelles 1–4, 1–3 et Oui/Non du formulaire « Ajouter une compétence » (R-5a) et séparer l’indicateur unique en « aucun expert » et « un seul expert » (R-5b).  
+*Avancement : Livraison 8 : une échelle de compétences 1–5 et deux indicateurs (R-5a, R-5b). · Sources : R-5a, R-5b, 06 OQ8, OQ11*
+
+**~~R-088 · Rendre réglable le seuil d’écart d’heures (±10 %, inclus), couleurs distinctes~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
+Le seuil se règle dans les Paramètres, inclut la valeur limite et distingue sur- et sous-déclaration ; à reprendre dans le futur écran Heures (Cursus). Aujourd’hui il est fixe, strict, et les deux cas ont la même couleur.  
+*Avancement : Livraison 8 : seuil d’écart d’heures réglable dans Paramètres (R-6b, 10 % par défaut). · Sources : R-6b, 06 OQ10, DELIVERY-2.md §4*
 
 ### 2.8 Achats et stock (6 restants, 3 faits)
 
@@ -726,7 +726,7 @@ La marge du portefeuille utilise déjà (contrat − EAC) / contrat. Les marges 
 C-10a demande que les décaissements restants suivent la courbe prévue du planning. Le calcul actuel répartit l’ETC à parts égales jusqu’au mois de fin. Les encaissements suivent déjà le plan de facturation. La courbe PV par période existe (evm_periods) et peut servir de clé de répartition.  
 *Sources : C-10a, A-12*
 
-### 2.13 Portail client (5 restants, 1 faits)
+### 2.13 Portail client (4 restants, 2 faits)
 
 **R-142 · Préciser l’onglet Planning du portail client et les PDF de planning** — *À décider · attend le responsable produit · effort S*  
 À confirmer par le responsable produit : le nom et la place de l’onglet « Planning », et si le client voit le plan d’activités détaillé (il ne voit aujourd’hui que le Gantt des lots). Faut-il aussi un Gantt PDF qui va jusqu’à la fin prévue, au lieu des 13 mois de l’écran ? Et une variante interne du PDF du plan, avec les coûts ?  
@@ -738,11 +738,7 @@ Afficher dans l’onglet Documents du portail un regroupement par catégorie (co
 
 **R-139 · Ajouter l’entrée « Voir comme le client » pour le directeur et le CP** — *Plus tard · partiel · effort S* · **en cours (Livraison 8)**  
 Appliquer P-11 : ajouter dans le projet une entrée « Voir comme le client » qui ouvre le portail en lecture seule, sans décision possible, et la réserver au directeur et au CP du projet. Aujourd’hui le portail ne s’ouvre que par lien. Tout rôle interne peut l’ouvrir en lecture seule, hors de son espace. Le directeur y garde « Signaler un point ».  
-*Sources : P-11, 01 OQ8, DELIVERY-6.md §4 « internal people preview the client view (P-11) »*
-
-**R-140 · Afficher la justification des CR dans la fiche et au client** — *Plus tard · partiel · effort S* · **en cours (Livraison 8)**  
-La justification obligatoire, déjà enregistrée, doit s’afficher dans la fiche de la CR et être transmise au client quand la CR lui est soumise ; elle n’apparaît aujourd’hui que dans l’export.  
-*Sources : X-11, 01 OQ15, 07 OQ17, DELIVERY-2.md §6*
+*Avancement : Livraison 8 : « Voir comme le client » pour le directeur et les responsables du projet (P-11 a) ; question ouverte sur « Signaler un problème » du directeur. · Sources : P-11, 01 OQ8, DELIVERY-6.md §4 « internal people preview the client view (P-11) »*
 
 **R-141 · Recueillir l’enquête de satisfaction client par le portail** — *Plus tard · attend le responsable produit · effort M*  
 À la clôture, un questionnaire sur les 5 critères est envoyé au client sur son portail et ses notes arrivent dans Keystone. Aujourd’hui l’enquête est en lecture seule avec les notes du prototype.  
@@ -751,6 +747,10 @@ La justification obligatoire, déjà enregistrée, doit s’afficher dans la fic
 **~~R-137 · Faire traiter par le CP les points soulevés par le client~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 7)**  
 Appliquer L-6 : le CP est prévenu quand un point est soulevé, le prend en charge (Ouvert → En cours → Clos) depuis un espace interne et rédige la réponse ; le client est prévenu de la réponse et de la clôture (notification Keystone, l’e-mail n’envoyant rien, X-6). Aujourd’hui un point peut seulement être créé : il reste « Ouvert » avec l’accusé automatique, le CP n’est pas notifié et ne voit le registre qu’en lecture seule, hors de son espace.  
 *Sources : L-6, 03 OQ16-17, 11 §6.4 (« the UI only creates open »), §7 #22, DELIVERY-5.md §7*
+
+**~~R-140 · Afficher la justification des CR dans la fiche et au client~~** — *Plus tard · partiel · effort S* · **fait (Livraison 8)**  
+La justification obligatoire, déjà enregistrée, doit s’afficher dans la fiche de la CR et être transmise au client quand la CR lui est soumise ; elle n’apparaît aujourd’hui que dans l’export.  
+*Avancement : Livraison 8 : justification visible dans le panneau et sur le portail client. · Sources : X-11, 01 OQ15, 07 OQ17, DELIVERY-2.md §6*
 
 ### 2.14 SAV et parc installé (1 restants, 2 faits)
 
@@ -766,7 +766,7 @@ Donner aux réclamations une fiche détaillée où le SAV fait avancer les statu
 À la livraison d’un projet, Keystone crée les machines et leur configuration (révision de chaque pièce montée) depuis la nomenclature ; chaque intervention SAV la met ensuite à jour. Aujourd’hui « Ajouter une machine » crée une machine sans projet ni configuration.  
 *Sources : E-8, 09 OQ23, 11 §3.7, DELIVERY-4.md §8, DELIVERY-5.md §3*
 
-### 2.15 Ergonomie, langues et accessibilité (12 restants, 2 faits)
+### 2.15 Ergonomie, langues et accessibilité (9 restants, 5 faits)
 
 **R-147 · Ajouter un libellé anglais à chaque terme métier** — *Prochaine étape · non commencé · effort M*  
 Étapes du cycle de vie, livrables d’étape, jalons, modèles de projet (descriptions de l’assistant) et données chantier doivent avoir un libellé anglais en mode EN ; ils s’affichent aujourd’hui en français dans les deux langues. Proposer le glossaire et le faire valider.  
@@ -779,10 +779,6 @@ Reconnaître les mentions @personne dans les commentaires et notifier la personn
 **R-150 · Changer le statut d’une tâche par glisser-déposer dans le Tableau** — *Plus tard · non commencé · effort S* · **en cours (Livraison 8)**  
 Dans « Mon travail › Tableau », glisser une carte vers une autre colonne change son statut, avec les mêmes règles que le menu de statut et une alternative au clavier.  
 *Sources : R-8c, 10 OQ21, DELIVERY-2.md §7*
-
-**R-151 · Toujours afficher le nom du groupe dans une section de menu repliée** — *Plus tard · non commencé · effort S* · **en cours (Livraison 8)**  
-Quand une section est repliée, l’en-tête du groupe de l’écran ouvert doit rester visible, même si cet écran n’est pas le premier du groupe.  
-*Sources : X-8, 01 OQ21*
 
 **R-152 · Afficher les messages de confirmation manquants** — *Plus tard · partiel · effort S* · **en cours (Livraison 8)**  
 Afficher « Demande RQ-xxx envoyée » même quand on est redirigé vers les demandes, et « Validation demandée au directeur de portefeuille » après un changement d’étape forcé ; « Projet créé » est déjà en place.  
@@ -800,10 +796,6 @@ Un même statut a la même couleur sur tous les écrans (par exemple CR approuv�
 Parc installé et Garantie doivent afficher « Aucune machine dans cette zone » au lieu du message prévu pour les projets ; ajouter la traduction et mettre à jour les tests.  
 *Sources : X-16, 01 §7.2, 07 A.1, 12 §5, DELIVERY-5.md §6, §7*
 
-**R-156 · Traduire l’étape « Handover » par « Transfert »** — *Plus tard · partiel · effort S* · **en cours (Livraison 8)**  
-L’étape « Handover » de l’écran Mise en service s’affiche « Livraison » ; la traduire par « Transfert » et aligner les phrases dérivées encore en « livraison » / « réception » (« Livraison prévue », chemin critique, « j sur la livraison », jalons du portefeuille, alertes). Le « Dossier de transfert » est déjà traduit ainsi.  
-*Sources : NEW-D5-3, DELIVERY-5.md §6, §7, 11*
-
 **R-157 · Corriger les finitions d’ergonomie relevées par les revues** — *Plus tard · non commencé · effort M*  
 Reprendre les petits défauts listés aux livraisons 1–6 : messages de refus génériques, textes des connecteurs en anglais en mode français, recherche de la nomenclature limitée aux noms anglais, colonnes Début/Fin exportées en texte, IF-02 / IF-05 non cliquables, boutons de statut « outline » au fond gris du navigateur, mention « Modifiable » montrée en lecture seule, focus perdu après « Marquer payée », vues Décisions/Actions vides sans message, et l’analyseur local de transcriptions qui ignore les actions à la 2e personne (« tu vas », « vous allez »).  
 *Sources : X-13b, S-10, DELIVERY-1.md §6, DELIVERY-3.md §5, DELIVERY-4.md §6, DELIVERY-5.md §6, DELIVERY-6.md §6 Minor points, docs/delivery-6/notes-exports.md §7.4*
@@ -811,10 +803,6 @@ Reprendre les petits défauts listés aux livraisons 1–6 : messages de refus g
 **R-183 · Auditer l'accessibilité (WCAG 2.1 AA) et automatiser des contrôles axe** — *Plus tard · non commencé · effort M*  
 La spécification vise WCAG 2.1 AA avec des contrôles automatiques (axe) et des parcours au clavier, mais aucun outil n'est en place et seules des corrections ponctuelles ont été faites. Faire un audit complet (contraste accent-300, rôles ARIA des onglets et segments, focus après action, lien d'évitement), corriger, puis ajouter les contrôles axe aux tests de bout en bout.  
 *Sources : 00 §7.15, 00 §8.14, X-13a, X-7, DELIVERY-5.md §6 (focus non déplacé, initiales d'avatar lues avant le nom)*
-
-**R-184 · Contrôler automatiquement la complétude de la traduction française** — *Plus tard · non commencé · effort M* · **en cours (Livraison 8)**  
-L'interface passe par le moteur de traduction du prototype (dictionnaire exact puis règles regex) sans aucun test qui vérifie que chaque libellé affiché a sa traduction ; des textes écrits par le DAL restent en anglais en français. Ajouter un contrôle de complétude dans les tests et stocker les textes système (journal, synchronisations) sous forme de code et paramètres plutôt qu'en phrases anglaises.  
-*Sources : 00 §7.2, 00 §8.7, 00 §8.14 (i18n completeness), 12 §6.3, DELIVERY-5.md §6 (Administration : textes du DAL en anglais)*
 
 **~~R-146 · Rendre Keystone utilisable sur tablette~~** — *Prochaine étape · non commencé · effort L* · **fait (Livraison 7)**  
 Menu latéral repliable et mises en page tablette, en commençant par Chantier, Réserves et Livraisons, en ligne. Le shell est figé à 232 px sans point de rupture ; c’est un préalable à toute application chantier hors ligne (P8).  
@@ -824,15 +812,23 @@ Menu latéral repliable et mises en page tablette, en commençant par Chantier, 
 Titres, noms de projets et de clients, lots, clauses du contrat, CR et textes reçus de Vigie et Cursus ne doivent plus passer par les règles de traduction jour / mois (« Sun Valley Farm » devient « dim. Valley Farm »). Un helper partagé unique remplace les copies locales de dataText, avec au plus une correspondance exacte pour les données de démo ; la recherche ne doit plus traduire ses résultats.  
 *Sources : NEW-D1-2, X-12b, DELIVERY-1.md §5, DELIVERY-2.md §5, DELIVERY-3.md §5, DELIVERY-4.md §7, DELIVERY-5.md §7*
 
-### 2.16 Dette technique (4 restants, 2 faits)
+**~~R-151 · Toujours afficher le nom du groupe dans une section de menu repliée~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
+Quand une section est repliée, l’en-tête du groupe de l’écran ouvert doit rester visible, même si cet écran n’est pas le premier du groupe.  
+*Avancement : Livraison 8 : une section repliée garde l’en-tête de groupe de l’entrée affichée (X-8). · Sources : X-8, 01 OQ21*
+
+**~~R-156 · Traduire l’étape « Handover » par « Transfert »~~** — *Plus tard · partiel · effort S* · **fait (Livraison 8)**  
+L’étape « Handover » de l’écran Mise en service s’affiche « Livraison » ; la traduire par « Transfert » et aligner les phrases dérivées encore en « livraison » / « réception » (« Livraison prévue », chemin critique, « j sur la livraison », jalons du portefeuille, alertes). Le « Dossier de transfert » est déjà traduit ainsi.  
+*Avancement : Livraison 8 : l’étape Handover se dit « Transfert » en français (NEW-D5-3 'a'). · Sources : NEW-D5-3, DELIVERY-5.md §6, §7, 11*
+
+**~~R-184 · Contrôler automatiquement la complétude de la traduction française~~** — *Plus tard · non commencé · effort M* · **fait (Livraison 8)**  
+L'interface passe par le moteur de traduction du prototype (dictionnaire exact puis règles regex) sans aucun test qui vérifie que chaque libellé affiché a sa traduction ; des textes écrits par le DAL restent en anglais en français. Ajouter un contrôle de complétude dans les tests et stocker les textes système (journal, synchronisations) sous forme de code et paramètres plutôt qu'en phrases anglaises.  
+*Avancement : Livraison 8 : garde de complétude du français (src/i18n/completeness.test.ts), une seule traduction par clé, messages système à clé, fil d’activité et journal d’audit dans la langue de l’utilisateur. · Sources : 00 §7.2, 00 §8.7, 00 §8.14 (i18n completeness), 12 §6.3, DELIVERY-5.md §6 (Administration : textes du DAL en anglais)*
+
+### 2.16 Dette technique (3 restants, 3 faits)
 
 **R-168 · Renforcer le journal d’audit (avant / après, motif, utilisateur, immuabilité)** — *Prochaine étape · partiel · effort M* · **en cours (Livraison 8)**  
 Enrichir audit_entries avec un avant / après structuré (jsonb), le motif et l’utilisateur authentifié, et rendre la table non modifiable (trigger ou droits SQL), comme le prévoit le modèle de données pour l’export ISO 9001.  
-*Attend : Vrais utilisateurs (R-039) · Sources : 11 §3.12 AuditEntry*
-
-**R-167 · Corriger isoOfDayOffset pour les décalages négatifs** — *Plus tard · non commencé · effort S* · **en cours (Livraison 8)**  
-isoOfDayOffset calcule une date fausse pour un décalage négatif : −1 jour ouvré donne le dimanche 13 sept. au lieu du vendredi 18. Le même bug a déjà été corrigé dans dayDate (src/lib/format.ts:74). Le bug est aujourd’hui latent, car tous les appelants passent un décalage ≥ 0 (semaines 5/10/15, TODAY = 4, valeur par défaut 5, seed à partir du 21 sept.). Il faut corriger la formule et ajouter un test sur les décalages négatifs avant qu’un appelant n’en passe un. Il faut aussi mettre à jour DELIVERY-2 §5, qui dit à tort que seuls les seeders l’utilisent.  
-*Sources : DELIVERY-2.md §5 (l.361, l.399)*
+*Avancement : Livraison 8, lot journal d’audit : table en ajout seul (déclencheurs), utilisateur, avant / après, motif, 4 colonnes de plus dans l’export CSV ISO. Reste : remplir avant / après / motif dans les autres écritures (balayage après la livraison) et REVOKE quand l’hébergement est choisi (I-1a). · Attend : Vrais utilisateurs (R-039) · Sources : 11 §3.12 AuditEntry*
 
 **R-171 · Supprimer le code mort, les doublons et les commentaires périmés** — *Plus tard · non commencé · effort S*  
 À retirer : addTaskAttachment, INDEX_ALERT, les fonctions de disponibilité de resources.ts (seulement testées, hr.ts a sa copie), transferTargets, getPortfolioCashForecast, listDeliverableTypes et les doublons priorityScore / marginPct. Il faut aussi unifier les deux règles de décision d’une étape de CR (par rôle ou par approbateur nommé) et supprimer client_communications, son DAL et openClientFollowUps si D-5 le confirme. Enfin, mettre à jour les 81 commentaires « OPEN QUESTION », dont la plupart sont tranchés. Les routes catch-all restent (404, redirection /projects/<code>) : seule la branche ComingSoon, gardée volontairement pour un futur écran, est inatteignible.  
@@ -849,6 +845,10 @@ Plusieurs écrans lisent encore les constantes PROTO alors que la base contient 
 **~~R-169 · Retirer les constantes figées du prototype des écrans et écritures~~** — *Prochaine étape · partiel · effort S* · **fait (Livraison 7)**  
 Remplacer par des données ou des paramètres : la prime chantier « ×1,5 / ×2 » (à lire dans rate_multipliers, comme l’annonce D-5), la tuile « Règle d’attribution : PM », le sous-titre « Superseded by rev 2 », la référence par défaut CR-BRG-SKF de « Où utilisé », les conditions « Site gate 2 · DAP · Net 30 » écrites sur chaque nouvelle commande et la tuile « Canaux 3 ». Il faut aussi corriger ou confirmer la date du run PDM du seed (26 sept., après la date de situation). Les périodes figées « Sept. 2026 » et l’heure de synchro Lucca des formulaires RH disparaîtront avec le débranchement de Lucca (NEW-CURSUS-4, C-2b) : pas de correctif séparé.  
 *Attend : Choix sur la date du run PDM du seed (DELIVERY-6 §8 A-12) · Sources : A-12, D-5 (contexte : majoration lue dans les grilles de taux), 09 OQ22, NEW-CURSUS-4, C-2b, DELIVERY-4.md §6, DELIVERY-5.md §6, DELIVERY-6.md §4 (table A-12), §8 A-12*
+
+**~~R-167 · Corriger isoOfDayOffset pour les décalages négatifs~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
+isoOfDayOffset calcule une date fausse pour un décalage négatif : −1 jour ouvré donne le dimanche 13 sept. au lieu du vendredi 18. Le même bug a déjà été corrigé dans dayDate (src/lib/format.ts:74). Le bug est aujourd’hui latent, car tous les appelants passent un décalage ≥ 0 (semaines 5/10/15, TODAY = 4, valeur par défaut 5, seed à partir du 21 sept.). Il faut corriger la formule et ajouter un test sur les décalages négatifs avant qu’un appelant n’en passe un. Il faut aussi mettre à jour DELIVERY-2 §5, qui dit à tort que seuls les seeders l’utilisent.  
+*Avancement : Livraison 8 : isoOfDayOffset correct pour les décalages négatifs. · Sources : DELIVERY-2.md §5 (l.361, l.399)*
 
 ### 2.17 Nouveaux modules demandés ou proposés (à valider) (9 restants)
 
@@ -890,6 +890,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-15 — Livraison 8 : lots 1 à 4 intégrés et vérifiés sur main-2a2fep (journal d’audit et traduction, plateforme d’exploitation, rôles et taux, demandes de modification et coûts) — 17 points faits, 9 restent en cours (parties en attente du responsable produit, de l’hébergement ou de données). Les 5 autres lots sont en construction.
 - 2026-10-12 — Livraison 8 lancée : 67 points en cours, en 9 lots (journal d’audit et traduction, plateforme d’exploitation, rôles et taux, demandes de modification et coûts, achats et ingénierie, connecteurs Vigie et Cursus, documents et portefeuille, travail et planning, qualité et chantier) — plan dans docs/DELIVERY-8-PLAN.md. Tri préalable des 103 points restants hors « à décider » : 36 écartés de cette livraison (en attente du responsable produit ou d’un autre système, ou trop transverses pour des lots parallèles).
 - 2026-10-11 — Livraison 7 intégrée et vérifiée : 56 points faits (plateforme de production, connexion Entra ID et vrais utilisateurs, droits par équipe projet, maîtrise des coûts, contrat et portefeuille, opérations, qualité et chantier, dette technique et tablette) ; R-010 reste en cours (détection d’édition concurrente d’une même fiche). Détail dans docs/DELIVERY-7.md.
 - 2026-10-11 — Livraison 7 lancée : 57 points en cours (plateforme, authentification Entra ID, droits, coûts, contrat et portefeuille, opérations, qualité et chantier, dette technique) — plan dans docs/DELIVERY-7-PLAN.md.
