@@ -4,8 +4,9 @@
 // The Cursus approvals and the HSE register are the connectors' records (Cursus / Vigie own them): the view model
 // only adds the links to those applications and the last refresh.
 import type { FormDef } from '@/components/app/form-def';
+import type { RoleKey } from '@/config/screens';
 import {
-  COLLISION_TARGET, DEFAULT_HEADCOUNT, SITE_TABS, SITE_TAB_LABEL, WEATHER_OPTIONS, collisionTagClass, equipmentSourceTagClass,
+  COLLISION_TARGET, DEFAULT_HEADCOUNT, SITE_TABS, SITE_TAB_LABEL, WEATHER_OPTIONS, canArbitrateConflict, collisionTagClass, equipmentSourceTagClass,
   execKpis, goLabel, isNcrLink, preparationNote, prerequisiteStep, readinessKpis, siteDateText, siteTagClass, teamKpis,
   type SiteFacts, type SiteKpi, type SiteTab,
 } from '@/domain/site';
@@ -17,7 +18,7 @@ import {
 import type { SiteData } from '@/server/dal/site';
 import { cursusChantierUrl, cursusEmployeeUrl } from '@/server/integrations/cursus/links';
 import { vigieHseListUrl, vigieReportIncidentUrl } from '@/server/integrations/vigie/links';
-import { dataText, incidentText, siteText, weatherText } from './i18n';
+import { conflictText, dataText, incidentText, siteText, weatherText } from './i18n';
 import { CURSUS_CARD_ID, qualityNcrHref, screenOf, siteHref, sitePunchHref } from './links';
 import { fieldsText } from '@/i18n/data-text';
 
@@ -66,7 +67,16 @@ export interface ReadyView {
 export interface TeamView {
   kpis: KpiView[];
   rotation: { who: string; role: string; from: string; to: string; rot: string; lodging: string; travel: string; collision: boolean; collisionLabel: string }[];
-  collisions: { position: number; who: string; kind: string; tagClass: string; what: string; fix: string; href: string }[];
+  /**
+   * R-119 (D-6b 'a'): the open conflicts computed from the rotation plan, with "Resolve" and — for whoever may arbitrate it —
+   * "Arbitrate"; then the conflicts arbitrated while their cause is unchanged (who, when, why).
+   */
+  collisions: { key: string; who: string; kind: string; tagClass: string; what: string; fix: string; href: string; canArbitrate: boolean }[];
+  arbitrated: { key: string; who: string; kind: string; what: string; by: string; at: string; comment: string }[];
+  /** "No conflict" when there is none open. */
+  noCollision: string | null;
+  /** The arbitration form (comment required), translated. */
+  arbitrationForm: FormDef;
   missionCosts: { name: string; budget: string; actual: string; pct: string; left: string }[];
 }
 
@@ -164,7 +174,24 @@ function readyView(code: string, d: SiteData, t: T, lang: Lang): ReadyView {
   };
 }
 
-function teamView(code: string, d: SiteData, t: T, lang: Lang): TeamView {
+/** Who looks at the conflicts (R-119): their role, the departments they head, and whether they lead the project. */
+export interface ConflictArbiter {
+  role: RoleKey;
+  headed: readonly string[];
+  lead: boolean;
+}
+
+/** The "Arbitrate" form (R-119): why the conflict is accepted (required). */
+export function arbitrationFormDef(t: T): FormDef {
+  return {
+    title: t('Arbitrate the conflict'),
+    submit: t('Mark arbitrated'),
+    kind: 'create',
+    fields: [{ id: 'comment', label: t('Why it is accepted'), type: 'textarea', required: true }],
+  };
+}
+
+function teamView(code: string, d: SiteData, t: T, lang: Lang, arbiter: ConflictArbiter | null): TeamView {
   return {
     kpis: teamKpis(factsOf(d), lang).map((k) => kpiView(k, t, lang)),
     rotation: d.rotation.map((r) => ({
@@ -176,10 +203,19 @@ function teamView(code: string, d: SiteData, t: T, lang: Lang): TeamView {
       .map((c) => {
         const target = COLLISION_TARGET[c.kind];
         return {
-          position: c.position, who: c.person, kind: t(c.kindLabel), tagClass: collisionTagClass(c.kind), what: dataText(c.description, lang), fix: dataText(c.proposedFix, lang),
+          key: c.key, who: c.person, kind: t(c.kindLabel), tagClass: collisionTagClass(c.kind), what: conflictText(c.cause, t, lang), fix: t(c.proposedFix),
           href: target === 'ready' ? siteHref(code, 'ready', CURSUS_CARD_ID) : screenOf(target),
+          canArbitrate: !!arbiter && canArbitrateConflict(arbiter.role, arbiter, c),
         };
       }),
+    arbitrated: d.collisions
+      .filter((c) => c.resolved && c.arbitration)
+      .map((c) => ({
+        key: c.key, who: c.person, kind: t(c.kindLabel), what: conflictText(c.cause, t, lang), by: c.arbitration!.by, at: t(stampText(new Date(c.arbitration!.at))),
+        comment: dataText(c.arbitration!.comment, lang),
+      })),
+    noCollision: d.collisions.some((c) => !c.resolved) ? null : t('No conflict'),
+    arbitrationForm: arbitrationFormDef(t),
     missionCosts: d.missionCosts.map((m) => ({
       name: dataText(m.name, lang), budget: money(m.budgetKeur, lang), actual: m.actualKeur ? money(m.actualKeur, lang) : '—', pct: `${m.usedPct}%`, left: money(m.remainingKeur, lang),
     })),
@@ -228,7 +264,9 @@ function execView(code: string, d: SiteData, t: T, lang: Lang, today: string, pu
  * The Site screen of `code` for the selected tab (all three tabs are built; the view renders the selected one). `punch`: the
  * Daily execution punch list's origin filter (R-117; default the items raised on site).
  */
-export function siteView(code: string, data: SiteData | null, opts: { tab: SiteTab; today?: string; punch?: 'site' | 'all' }, t: T, lang: Lang): SiteView {
+export function siteView(
+  code: string, data: SiteData | null, opts: { tab: SiteTab; today?: string; punch?: 'site' | 'all'; arbiter?: ConflictArbiter | null }, t: T, lang: Lang,
+): SiteView {
   const segs = SITE_TABS.map((v) => ({ value: v, label: t(SITE_TAB_LABEL[v]), href: siteHref(code, v) }));
   if (!data) return { tab: opts.tab, segs, empty: t(EMPTY_TEXT), ready: null, team: null, exec: null };
   return {
@@ -236,7 +274,7 @@ export function siteView(code: string, data: SiteData | null, opts: { tab: SiteT
     segs,
     empty: null,
     ready: readyView(code, data, t, lang),
-    team: teamView(code, data, t, lang),
+    team: teamView(code, data, t, lang, opts.arbiter ?? null),
     exec: execView(code, data, t, lang, opts.today ?? STATUS_ISO, opts.punch ?? 'site'),
   };
 }

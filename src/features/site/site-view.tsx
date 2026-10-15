@@ -26,7 +26,7 @@ import { PhotosButton, type PhotoView } from '@/features/photos/photo-gallery';
 import { CURSUS_CARD_ID } from './links';
 import type { ExecView, KpiView, ReadyView, SiteView, TeamView } from './model';
 import { clientDecisionsHref } from '@/features/meetings/model';
-import { ConfirmEquipmentButton, PrerequisiteButton, RemindButton, SyncCursusButton } from './site-buttons';
+import { ArbitrateButton, ConfirmEquipmentButton, PrerequisiteButton, RemindButton, SyncCursusButton } from './site-buttons';
 import s from './site.module.css';
 
 export interface SiteBodyProps {
@@ -62,7 +62,7 @@ export function SiteBody({ code, view, canEdit, showCommLog = true, photos, t }:
             <Segmented wrap label={t('Display')} value={view.tab} options={view.segs.map((o) => ({ value: o.value, label: o.label, href: o.href }))} />
           </FilterBar>
           {view.tab === 'ready' && view.ready && <ReadyTab code={code} v={view.ready} canEdit={canEdit} t={t} />}
-          {view.tab === 'team' && view.team && <TeamTab v={view.team} t={t} />}
+          {view.tab === 'team' && view.team && <TeamTab code={code} v={view.team} t={t} />}
           {view.tab === 'exec' && view.exec && <ExecTab code={code} v={view.exec} showCommLog={showCommLog} photos={photos} t={t} />}
         </>
       )}
@@ -283,7 +283,7 @@ function CursusCard({ code, v, canEdit, t }: { code: string; v: ReadyView['cursu
 
 // ── Team & mobilisation ───────────────────────────────────────────────────────────────────────────────
 
-function TeamTab({ v, t }: { v: TeamView; t: T }) {
+function TeamTab({ code, v, t }: { code: string; v: TeamView; t: T }) {
   return (
     <>
       <Kpis kpis={v.kpis} />
@@ -325,9 +325,11 @@ function TeamTab({ v, t }: { v: TeamView; t: T }) {
         </Table>
       </SectionCard>
       <CardGrid min={540}>
-        <SectionCard gap={6} title={t('Collision detection')} subtitle={t('Same person on two sites · Lucca leave · certificate expiring · badge missing · mission length')}>
+        {/* R-119 (D-6b 'a'): conflicts computed from the rotation plan (the subtitle no longer names Lucca — absences come from Cursus, R-031). */}
+        <SectionCard gap={6} title={t('Collision detection')} subtitle={t('Same person on two sites · overload · leave and absences · clearance expiring · badge missing')}>
+          {v.noCollision && <span className={s.footnote}>{v.noCollision}</span>}
           {v.collisions.map((c) => (
-            <div key={c.position} className={s.collision}>
+            <div key={c.key} className={s.collision}>
               <span className={s.collisionText}>
                 <span className={s.collisionWho}>
                   {c.who}
@@ -336,9 +338,27 @@ function TeamTab({ v, t }: { v: TeamView; t: T }) {
                 <span className={s.collisionWhat}>{c.what}</span>
                 <span className={s.collisionFix}>→ {c.fix}</span>
               </span>
-              <ButtonLink href={c.href} variant="secondary" size="row" aria-label={`${t('Resolve')} — ${c.who}`}>
-                {t('Resolve')}
-              </ButtonLink>
+              <span className={s.collisionBtns}>
+                <ButtonLink href={c.href} variant="secondary" size="row" aria-label={`${t('Resolve')} — ${c.who}`}>
+                  {t('Resolve')}
+                </ButtonLink>
+                {c.canArbitrate && <ArbitrateButton code={code} conflictKey={c.key} label={`${c.who} · ${c.kind}`} form={v.arbitrationForm} />}
+              </span>
+            </div>
+          ))}
+          {v.arbitrated.map((c) => (
+            <div key={c.key} className={cx(s.collision, s.arbitrated)}>
+              <span className={s.collisionText}>
+                <span className={s.collisionWho}>
+                  {c.who}
+                  <span className={cx('tag tag-neutral', s.kindTag)}>{c.kind}</span>
+                  <span className={cx('tag tag-outline', s.kindTag)}>{t('Arbitrated')}</span>
+                </span>
+                <span className={s.collisionWhat}>{c.what}</span>
+                <span className={s.collisionFix}>
+                  {t('Arbitrated by')} {c.by} · {c.at} · {c.comment}
+                </span>
+              </span>
             </div>
           ))}
         </SectionCard>

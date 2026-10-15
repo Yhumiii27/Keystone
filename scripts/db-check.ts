@@ -126,7 +126,7 @@ const D4_COUNTS: Record<string, number> = {
  * mirror HLT_NCRS 5 + 5 × 2 generated and the site HSE register 5; ITP 13 inspections and the plan's 6 frozen systems (R-057);
  * punch PUNCH 5 + SITE_PUNCH 3 (one list, R-117);
  * commissioning 6 systems × 5 steps, 8 dossier items; LESSONS 4, CLOSURE 10, SATISFACTION 5; FLEET 8 (AS_MAINT 31 part
- * revisions), CLAIMS 8, INTERVENTIONS 6; the site sheet with 8 equipment, 6 prerequisites, 6 rotations, 4 collisions,
+ * revisions), CLAIMS 8, INTERVENTIONS 6; the site sheet with 8 equipment, 6 prerequisites, 6 rotations, 4 collisions (no longer read, R-119),
  * 6 cost lines, 2 reports; Cursus 5 people (1 sync); CLIENT_ISSUES 3 (CLIENT_DOCS dropped, L-9: computed from Codex); ENG_* registers; PID 1 / 24 / 5;
  * machine-type aggregate 28 phases, 25 cost categories, 17 ITP systems; SETTINGS0 60 values; CONNECTORS 9 + Vigie; IMPORTS 6.
  */
@@ -631,11 +631,12 @@ async function delivery5Reads() {
       ivs.filter((i) => i.status === 'planned').map((i) => i.scheduledOn).sort()[0], claims.filter((c) => c.coverage !== 'chargeable').reduce((a, c) => a + c.costKeur, 0),
       claims.filter((c) => c.coverage === 'chargeable').reduce((a, c) => a + c.costKeur, 0), claims.filter((c) => c.ecoNumber).length], [5, 2, 4, '2026-10-06', 34, 6, 1]));
   const site = (await getSite('HLT-026'))!;
-  check('site HLT-026: NO GO (5 conditions open) · prerequisites 4 / 6 · Cursus 3 / 5 (1 reserve, mock) · equipment 6 / 8 · 4 collisions · budget 98.3 k€ (11.3 committed) · 2 permits pending',
+  // D-6b 'a' (R-119): the conflicts are computed from the rotation plan, the pool, Cursus and the absences — 8 (the prototype's 4).
+  check('site HLT-026: NO GO (5 conditions open) · prerequisites 4 / 6 · Cursus 3 / 5 (1 reserve, mock) · equipment 6 / 8 · 8 conflicts · budget 98.3 k€ (11.3 committed) · 2 permits pending',
     getCursusConnector().mode === 'mock' && same([site.go.ok, site.go.conditions.filter((c) => !c.ok).length, site.prerequisites.filter((p) => p.status !== 'pending').length,
       site.cursus.people.filter((p) => p.verdict !== 'no_go').length, site.cursus.people.filter((p) => p.verdict === 'go_with_reserve').length,
       site.equipment.filter((e) => e.status === 'confirmed').length, site.collisions.length, Math.round(site.missionCosts.reduce((a, m) => a + m.budgetKeur, 0) * 10) / 10,
-      Math.round(site.missionCosts.reduce((a, m) => a + m.actualKeur, 0) * 10) / 10, site.hse.filter((h) => h.status === 'pending').length], [false, 5, 4, 3, 1, 6, 4, 98.3, 11.3, 2]));
+      Math.round(site.missionCosts.reduce((a, m) => a + m.actualKeur, 0) * 10) / 10, site.hse.filter((h) => h.status === 'pending').length], [false, 5, 4, 3, 1, 6, 8, 98.3, 11.3, 2]));
   check('no site sheet, commissioning, ITP, REX, register or P&ID on NDC-031 / EWA-051', (await getSite('NDC-031')) === null && (await getCommissioning('EWA-051')) === null
     && (await getItpPlan('NDC-031')) === null && (await getRex('EWA-051')).lessons.length === 0 && (await getEngineeringRegister('NDC-031')) === null && (await getPidValidation('EWA-051')) === null);
   const cp = await getClientPortal('HLT-026');

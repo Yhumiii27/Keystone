@@ -8,6 +8,7 @@ import { siteTabOf } from '@/domain/site';
 import { getCommissioning } from '@/server/dal/commissioning';
 import { listPunchItems } from '@/server/dal/itp';
 import { getSite } from '@/server/dal/site';
+import { conflictText } from '@/features/site/i18n';
 import { cursusClearance, cursusVaccination, cursusVerdict, cursusVisa } from '@/server/db/codes';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
@@ -42,8 +43,14 @@ async function siteWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> 
       col('person', t('Person'), 'text', 20), col('role', t('Role on site'), 'text', 20), col('from', t('From'), 'date'), col('to', t('To'), 'date'), col('lodging', t('Lodging'), 'text', 20),
       col('travel', t('Travel'), 'text', 20), col('rotation', t('Rotation'), 'integer'), col('collision', t('Collision'), 'boolean'),
     ], d.rotation.map((r) => ({ person: r.person, role: dataText(r.roleOnSite, ctx.lang), from: r.fromOn, to: r.toOn, lodging: dataText(r.lodging, ctx.lang), travel: dataText(r.travel, ctx.lang), rotation: r.rotationNo, collision: r.hasCollision }))),
-    sheet(t('Collisions'), [col('person', t('Person'), 'text', 20), col('description', t('Description'), 'text', 40), col('kind', t('Type'), 'text', 14), col('fix', t('Proposed fix'), 'text', 36), col('resolved', t('Resolved'), 'boolean')],
-      d.collisions.map((c) => ({ person: c.person, description: dataText(c.description, ctx.lang), kind: t(c.kindLabel), fix: dataText(c.proposedFix, ctx.lang), resolved: c.resolved }))),
+    // R-119 (D-6b 'a'): the conflicts computed from the rotation plan; "Arbitrated" with its comment while the cause is unchanged.
+    sheet(t('Collisions'), [
+      col('person', t('Person'), 'text', 20), col('description', t('Description'), 'text', 40), col('kind', t('Type'), 'text', 14), col('fix', t('Proposed fix'), 'text', 36),
+      col('resolved', t('Arbitrated'), 'boolean'), col('comment', t('Comment'), 'text', 36),
+    ], d.collisions.map((c) => ({
+      person: c.person, description: conflictText(c.cause, t, ctx.lang), kind: t(c.kindLabel), fix: t(c.proposedFix), resolved: c.resolved,
+      comment: c.arbitration ? dataText(c.arbitration.comment, ctx.lang) : '',
+    }))),
   ];
   const exec: ExportSheet[] = [
     sheet(t('Daily reports'), [

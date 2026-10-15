@@ -39,6 +39,34 @@ const kpis = (ks: any[]) => ks.map((k) => ({ label: k.label, value: String(k.val
  * CR-006: also 2).
  */
 const computed = (i: number, value: string) => (k: any, j: number) => (j === i ? { ...k, value } : k);
+/**
+ * D-6b 'a' (R-119): the site-team conflicts are computed from the rotation plan, the pool, Cursus and the absences — 8 on the
+ * seed (the prototype's 4 authored collisions): Amélie Ollivier and Julien Wagner over 110 % in the week of 19 Oct and absent
+ * during the mission, Thomas Kerbrat's pending ISPS badge and absence, Pauline Noguès's expiring HT clearance, Hélène
+ * Sauvage's missing badge.
+ */
+const CONFLICTS = {
+  en: [
+    ['Amélie Ollivier', 'Load', 'Load above 110 % · week of 19 Oct: 120 %', 'Level the load in What-if or move the work', '/resources/what-if'],
+    ['Amélie Ollivier', 'Leave', 'Leave 12 Oct → 23 Oct · during the mission', 'Move the mission or plan a replacement during the absence', '/resources/leave'],
+    ['Julien Wagner', 'Load', 'Load above 110 % · week of 19 Oct: 125 %', 'Level the load in What-if or move the work', '/resources/what-if'],
+    ['Julien Wagner', 'Leave', 'Leave 9 Nov · during the mission', 'Move the mission or plan a replacement during the absence', '/resources/leave'],
+    ['Thomas Kerbrat', 'Document', 'Clearance pending · Badge ISPS pending · arrival 26 Oct', 'Chase the missing clearance in Cursus before arrival', '/projects/HLT-026/site#cursus'],
+    ['Thomas Kerbrat', 'Leave', 'Leave 26 Oct → 6 Nov · during the mission', 'Move the mission or plan a replacement during the absence', '/resources/leave'],
+    ['Pauline Noguès', 'Certificate', 'Clearance expiring · HT B2V expires 30 Nov 2026 · mission until 18 Dec', 'Renew the clearance before the end of the mission', '/resources/skills'],
+    ['Hélène Sauvage', 'Document', 'Clearance missing · Badge ISPS missing · arrival 30 Nov', 'Chase the missing clearance in Cursus before arrival', '/projects/HLT-026/site#cursus'],
+  ],
+  fr: [
+    ['Amélie Ollivier', 'Charge', 'Charge au-delà de 110 % · semaine du 19 oct. : 120 %', 'Lisser la charge dans What-if ou déplacer le travail'],
+    ['Amélie Ollivier', 'Congés', 'Congés 12 oct. → 23 oct. · pendant la mission', 'Décaler la mission ou prévoir un remplaçant pendant l’absence'],
+    ['Julien Wagner', 'Charge', 'Charge au-delà de 110 % · semaine du 19 oct. : 125 %', 'Lisser la charge dans What-if ou déplacer le travail'],
+    ['Julien Wagner', 'Congés', 'Congés 9 nov. · pendant la mission', 'Décaler la mission ou prévoir un remplaçant pendant l’absence'],
+    ['Thomas Kerbrat', 'Document', 'Habilitation en attente · Badge ISPS en attente · arrivée 26 oct.', 'Relancer l’habilitation manquante dans Cursus avant l’arrivée'],
+    ['Thomas Kerbrat', 'Congés', 'Congés 26 oct. → 6 nov. · pendant la mission', 'Décaler la mission ou prévoir un remplaçant pendant l’absence'],
+    ['Pauline Noguès', 'Habilitation', 'Habilitation qui expire · HT B2V expire le 30 nov. 2026 · mission jusqu’au 18 déc.', 'Renouveler l’habilitation avant la fin de la mission'],
+    ['Hélène Sauvage', 'Document', 'Habilitation manquante · Badge ISPS manquant · arrivée 30 nov.', 'Relancer l’habilitation manquante dans Cursus avant l’arrivée'],
+  ],
+};
 
 beforeAll(async () => {
   setDb(await openDatabase());
@@ -64,9 +92,12 @@ describe('Site view model vs the prototype (EN and FR)', () => {
       const { v } = await view(lang);
       expect(v.segs.map((s) => s.label)).toEqual(g.seg);
       const r = v.ready!;
-      expect(r.kpis).toEqual(kpis(g.kpis));
+      // D-6b 'a' (R-119): 8 computed conflicts (the prototype's 4 authored ones).
+      expect(r.kpis).toEqual(kpis(g.kpis).map(computed(4, '8')));
       expect([r.go.tag, r.go.tagClass]).toEqual([g.goLabel, 'tag tag-accent']);
-      expect(r.go.items.map((i) => ({ label: i.label, ok: i.ok, sub: i.sub, icon: i.ok ? 'ph ph-check-circle' : 'ph ph-warning-circle', color: i.color }))).toEqual(g.goItems);
+      expect(r.go.items.map((i) => ({ label: i.label, ok: i.ok, sub: i.sub, icon: i.ok ? 'ph ph-check-circle' : 'ph ph-warning-circle', color: i.color }))).toEqual(
+        g.goItems.map((i: any) => (i.sub === '4 collisions' ? { ...i, sub: '8 collisions' } : i)),
+      );
       expect(r.meta.map((m) => [m.k, m.v])).toEqual(g.meta);
       expect(r.prereqs.map((p) => ({
         title: p.title, act: p.act, due: p.due, status: p.status, tagClass: p.tagClass, note: p.note, late: p.late, dueColor: p.dueColor,
@@ -88,13 +119,17 @@ describe('Site view model vs the prototype (EN and FR)', () => {
       const t = (await view(lang)).v.team!;
       // R-169: the Site premium sub names the rate grid (×1.5 / ×2 read from it) instead of the prototype's "6d · 10h calendar".
       const premium = { en: 'Saturday / Sunday rates · rate grid', fr: 'Taux samedi / dimanche · grille de taux' }[lang];
-      expect(t.kpis).toEqual(kpis(g.teamKpis).map(computed(1, '179')).map((k: any, i: number) => (i === 4 ? { ...k, sub: premium } : k)));
+      // D-6b 'a' (R-119): "Collisions open" counts the 8 computed conflicts; Amélie Ollivier gets the icon too.
+      expect(t.kpis).toEqual(kpis(g.teamKpis).map(computed(1, '179')).map(computed(2, '8')).map((k: any, i: number) => (i === 4 ? { ...k, sub: premium } : k)));
       expect(t.rotation.map((r) => ({
         who: r.who, role: r.role, from: r.from, to: r.to, lodging: r.lodging, travel: r.travel, rot: r.rot, collideIcon: r.collision ? 'ph ph-warning' : 'ph ph-check',
         collideColor: 'var(--color-accent-300)',
-      }))).toEqual(g.rotation);
-      expect(t.collisions.map((c) => ({ who: c.who, what: c.what, kind: c.kind, tagClass: c.tagClass, fix: c.fix }))).toEqual(g.collisions);
-      expect(t.collisions.map((c) => c.href)).toEqual(['/resources/what-if', '/resources/skills', '/projects/HLT-026/site#cursus', '/resources/leave']);
+      }))).toEqual(g.rotation.map((r: any) => (r.who === 'Amélie Ollivier' ? { ...r, collideIcon: 'ph ph-warning' } : r)));
+      expect(t.collisions.map((c) => [c.who, c.kind, c.what, c.fix])).toEqual(CONFLICTS[lang].map((x) => x.slice(0, 4)));
+      expect(t.collisions.map((c) => c.tagClass)).toEqual(['tag tag-accent', 'tag tag-outline', 'tag tag-accent', 'tag tag-outline', 'tag tag-outline', 'tag tag-outline', 'tag tag-outline', 'tag tag-outline']);
+      expect(t.collisions.map((c) => c.href)).toEqual(CONFLICTS.en.map((x) => x[4]));
+      // No arbiter given: nobody may arbitrate; nothing is arbitrated on the seed.
+      expect([t.collisions.some((c) => c.canArbitrate), t.arbitrated, t.noCollision]).toEqual([false, [], null]);
       expect(t.missionCosts).toEqual(g.missionCosts);
     });
 
@@ -210,9 +245,12 @@ describe('Site static render', () => {
     expect(out).toContain('>From</th>');
     expect(out).toContain('>To</th>');
     expect(out).not.toMatch(/Issued by|Recipients/);
-    expect(out.match(/aria-label="Collision"/g)).toHaveLength(4);
-    expect(out.match(/aria-label="No collision"/g)).toHaveLength(2);
-    expect(out.match(/>Resolve</g)).toHaveLength(4);
+    // D-6b 'a' (R-119): 5 people with a computed conflict (Amélie Ollivier too), the contractor crew without; 8 conflicts.
+    expect(out.match(/aria-label="Collision"/g)).toHaveLength(5);
+    expect(out.match(/aria-label="No collision"/g)).toHaveLength(1);
+    expect(out.match(/>Resolve</g)).toHaveLength(8);
+    expect(out).not.toContain('Lucca');
+    expect(out).toContain('Same person on two sites · overload · leave and absences · clearance expiring · badge missing');
     expect(out).toContain('href="/resources/what-if"');
     expect(out).toContain('--w:34%');
     const fr = await render('fr', 'team', true);

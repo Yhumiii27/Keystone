@@ -5,8 +5,10 @@
 // - Weather: the dictionary renders "Clear" as "Effacer" (the button) — the weather is "Dégagé".
 // - Parameterised sentences the shared FR rules do not cover (man-days consumed ≠ 0, the preparation footnote for any
 //   start date, the last-sync lines, the toasts with a number).
+import type { ConflictCause } from '@/domain/site';
+import { OVER_ALLOCATED_PCT } from '@/domain/resources';
 import type { Lang, T } from '@/i18n/translate';
-import { hseIncident, weather, type HseIncident, type Weather } from '@/server/db/codes';
+import { hseIncident, shortDateOfIso, weather, type HseIncident, type Weather } from '@/server/db/codes';
 import { dataText } from '@/i18n/data-text';
 
 const fr = (lang: Lang) => lang === 'fr';
@@ -19,6 +21,30 @@ const WEATHER_FR: Record<Weather, string> = { clear: 'Dégagé', rain: 'Pluie', 
 export const weatherText = (w: Weather, t: T, lang: Lang) => (fr(lang) ? WEATHER_FR[w] : t(weather.label(w)));
 /** HSE field of a daily report ("None", "Near miss"…). */
 export const incidentText = (i: HseIncident, t: T) => t(hseIncident.label(i));
+
+/**
+ * Description of a computed site-team conflict (R-119, D-6b 'a') in the viewer's language: Keystone's vocabulary through t(),
+ * dates as the screens print them, Cursus's note and another project's code as received.
+ * "Load above 110 % · week of 19 Oct: 120 %", "Also on the site of NDC-031 · 26 Oct → 27 Nov", "Clearance expiring · HT B2V
+ * expires 30 Nov 2026 · mission until 18 Dec", "Clearance pending · Badge ISPS pending · arrival 26 Oct", "Leave 26 Oct → 6 Nov
+ * · during the mission".
+ */
+export function conflictText(c: ConflictCause, t: T, lang: Lang): string {
+  const d = (iso: string) => t(shortDateOfIso(iso));
+  const colon = fr(lang) ? ' : ' : ': ';
+  switch (c.type) {
+    case 'pool':
+      return `${t('Load above')} ${OVER_ALLOCATED_PCT} % · ${c.weeks.map((w) => `${t('week of')} ${d(w.start)}${colon}${w.pct} %`).join(', ')}`;
+    case 'site':
+      return `${t('Also on the site of')} ${c.projectCode} · ${d(c.fromOn)} → ${d(c.toOn)}`;
+    case 'cert':
+      return `${t('Clearance expiring')} · ${dataText(c.note, lang)} · ${t('mission until')} ${d(c.missionTo)}`;
+    case 'doc':
+      return `${t(c.clearance === 'missing' ? 'Clearance missing' : 'Clearance pending')} · ${dataText(c.note, lang)} · ${t('arrival')} ${d(c.missionFrom)}`;
+    case 'leave':
+      return `${t(c.leaveType === 'absence' ? 'Absence' : 'Leave')} ${c.start === c.end ? d(c.start) : `${d(c.start)} → ${d(c.end)}`} · ${t('during the mission')}`;
+  }
+}
 
 /** French plural mark: 0 and 1 take the singular. */
 const pl = (n: string) => (+n > 1 ? 's' : '');

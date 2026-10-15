@@ -256,7 +256,8 @@ describe('site — readiness, daily reports, Cursus', () => {
     await expect(confirmEquipment(HLT, 4, A.quality)).rejects.toThrow(/outside your workspace/);
     const s = (await getSite(HLT))!;
     // HSE: the HTTP refresh above left Vigie's single signed prevention plan in the mirror — no permit pending.
-    expect(s.go.conditions.map((c) => c.sub)).toEqual(['1 pending', '2 NO GO', '1 unconfirmed', '4 collisions', 'Ready']);
+    // D-6b 'a' (R-119): 8 conflicts computed from the rotation plan (the prototype's 4 authored collisions).
+    expect(s.go.conditions.map((c) => c.sub)).toEqual(['1 pending', '2 NO GO', '1 unconfirmed', '8 collisions', 'Ready']);
     await expect(advancePrerequisite('NDC-031', 0, 'confirmed', A.pm)).rejects.toThrow(/no site sheet/);
   });
 
@@ -475,7 +476,7 @@ describe('Delivery 5 backfill (database seeded before migration 0004)', () => {
     const tables = [
       'deliverable_raci', 'deliverables', 'vigie_ncr_progress', 'vigie_ncrs', 'vigie_hse_items', 'punch_items', 'itp_inspections', 'itp_plans', 'commissioning_steps', 'commissioning_systems',
       'handover_items', 'sat_plans', 'lessons_learned', 'closure_items', 'satisfaction_scores', 'interventions', 'warranty_claims', 'machine_part_revisions', 'machines', 'daily_reports',
-      'mission_cost_lines', 'site_collisions', 'site_rotations', 'site_prerequisites', 'site_equipment', 'site_sheets', 'cursus_requests', 'cursus_sync_runs', 'cursus_clearances',
+      'mission_cost_lines', 'site_conflict_arbitrations', 'site_collisions', 'site_rotations', 'site_prerequisites', 'site_equipment', 'site_sheets', 'cursus_requests', 'cursus_sync_runs', 'cursus_clearances',
       'client_issues', 'eng_imports', 'eng_changes', 'eng_outputs', 'eng_checks', 'eng_consistency_rules', 'eng_inputs', 'eng_disciplines', 'eng_import_tools',
       'eng_column_mappings', 'eng_import_deltas', 'pid_validation_steps', 'pid_tags', 'pid_sheets', 'machine_type_phases', 'machine_type_cost_categories', 'machine_type_itp_systems',
       'connector_sync_runs', 'connectors', 'import_formats', 'app_settings', 'reference_values',

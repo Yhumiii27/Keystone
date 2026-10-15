@@ -19,6 +19,7 @@ import { DailyReportButton } from '@/features/site/site-buttons';
 import { photoViews } from '@/features/photos/model';
 import { SiteBody } from '@/features/site/site-view';
 import { listProjectPhotos } from '@/server/dal/photos';
+import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { getSite } from '@/server/dal/site';
 import { vigieReportIncidentUrl } from '@/server/integrations/vigie/links';
 import { getProjectContext } from '@/server/project-context';
@@ -34,7 +35,10 @@ export default async function SitePage({ params, searchParams }: { params: Promi
   const projectCode = ctx.project.code;
   const [{ t, lang }, data] = await Promise.all([getI18n(), getSite(projectCode)]);
   const canEdit = ctx.canEdit('site') && !!data;
-  const view = siteView(projectCode, data, { tab: siteTabOf(first(sp.tab)), punch: first(sp.punch) === 'all' ? 'all' : 'site' }, t, lang);
+  // R-119 (D-6b 'a'): who may arbitrate the team's conflicts — the director, the heads of the people's departments, the leads
+  // for contractors (not the Site's edit right: a department head off the team reads the Site, R-041).
+  const arbiter = data ? { role: ctx.viewer.role, headed: (await getApproverIdentity(ctx.viewer)).departments, lead: ctx.isLead } : null;
+  const view = siteView(projectCode, data, { tab: siteTabOf(first(sp.tab)), punch: first(sp.punch) === 'all' ? 'all' : 'site', arbiter }, t, lang);
 
   const primary = canEdit ? (
     <DailyReportButton

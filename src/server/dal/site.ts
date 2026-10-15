@@ -8,17 +8,22 @@ import 'server-only';
 // src/domain/site.ts (`goChantier`).
 // Time model: a prerequisite is late when still pending at J-15 of its need date (J-15 rule of the card subtitle,
 // against the status date; the prototype listed two dates, 10 OQ6) — `isPrerequisiteLate`.
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, or } from 'drizzle-orm';
+import type { RoleKey } from '@/config/screens';
 import { plannedManDays, standardCalendar } from '@/domain/kpis';
-import { PREREQUISITE_ALERT_DAYS, goChantier, isPrerequisiteLate, missionCostUse, type GoCondition, type SitePremium } from '@/domain/site';
+import {
+  ARBITRATION_COMMENT_MAX, PREREQUISITE_ALERT_DAYS, canArbitrateConflict, goChantier, isPrerequisiteLate, missionCostUse, siteConflicts,
+  type ConflictFacts, type GoCondition, type SiteConflict, type SitePremium,
+} from '@/domain/site';
 import { getDb } from '@/server/db/client';
 import {
-  STATUS_ISO, collisionKind, confirmStatus, cursusClearance, cursusVaccination, cursusVerdict, cursusVisa, equipmentSource, hseIncident, hseStatus,
+  STATUS_ISO, addDaysIso, collisionKind, confirmStatus, cursusClearance, cursusVaccination, cursusVerdict, cursusVisa, equipmentSource, hseIncident, hseStatus,
   nextBusinessNumber, weather,
-  type CollisionKind, type ConfirmStatus, type CursusVerdict, type EquipmentSource, type HseIncident, type HseItemKind, type HseStatus, type Weather,
+  type ConfirmStatus, type CursusVerdict, type EquipmentSource, type HseIncident, type HseItemKind, type HseStatus, type Weather,
 } from '@/server/db/codes';
 import {
-  activities, dailyReports, missionCostLines, projects, siteCollisions, siteEquipment, sitePrerequisites, siteRotations, siteSheets,
+  activities, dailyReports, departments, leaveEntries, missionCostLines, persons, projects, siteConflictArbitrations, siteEquipment, sitePrerequisites, siteRotations,
+  siteSheets,
 } from '@/server/db/schema';
 import { cursusChantierUrl } from '@/server/integrations/cursus/links';
 import { getCursusConnector, type CursusClearanceView } from '@/server/integrations/cursus/connector';
@@ -30,8 +35,9 @@ import { getProjectCalendarCode, loadWorkCalendars } from './calendars';
 import { getRateGrid } from './hr';
 import { listPunchItems, type PunchRow } from './itp';
 import { clientDecisionsOf } from './kpis';
-import type { Tx } from '@/server/db/types';
-import { isIsoDate, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
+import { getResourcePool, type ResourcePool } from './resources';
+import type { DB, Tx } from '@/server/db/types';
+import { isIsoDate, managesProject, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 
 export type { Actor, CursusClearanceView, GoCondition };
 export { PREREQUISITE_ALERT_DAYS, cursusChantierUrl, vigieCoactivityUrl, vigieHseListUrl, vigieReportIncidentUrl };
@@ -60,9 +66,12 @@ export interface PrerequisiteRow {
   late: boolean;
 }
 export interface RotationRow {
-  person: string; roleOnSite: string; fromOn: string; toOn: string; lodging: string; travel: string; rotationNo: number; hasCollision: boolean;
+  person: string; personId: string | null; roleOnSite: string; fromOn: string; toOn: string; lodging: string; travel: string; rotationNo: number;
+  /** An open (not arbitrated) conflict of this person (R-119). */
+  hasCollision: boolean;
 }
-export interface CollisionRow { position: number; person: string; description: string; kind: CollisionKind; kindLabel: string; proposedFix: string; resolved: boolean }
+/** A site-team conflict computed from the rotation plan (R-119, D-6b 'a'); `resolved` = arbitrated while its cause is unchanged. */
+export interface CollisionRow extends SiteConflict { kindLabel: string; resolved: boolean }
 export interface MissionCostRow { name: string; budgetKeur: number; actualKeur: number; remainingKeur: number; usedPct: number }
 export interface DailyReportRow {
   number: string; reportOn: string; activity: string; percentComplete: number | null; text: string; linkRef: string | null; author: string;
@@ -122,12 +131,13 @@ export async function getSite(projectCode: string, today: string = STATUS_ISO): 
   const [s] = await db.select().from(siteSheets).where(eq(siteSheets.projectId, p.id));
   if (!s) return null;
   const cursus = getCursusConnector();
-  const [eq_, pre, acts, rot, col, costs, reports, punch, hse, gng, cals, calCode, clientDecisions] = await Promise.all([
+  const [eq_, pre, acts, rot, pool, costs, reports, punch, hse, gng, cals, calCode, clientDecisions] = await Promise.all([
     db.select().from(siteEquipment).where(eq(siteEquipment.projectId, p.id)).orderBy(asc(siteEquipment.position)),
     db.select().from(sitePrerequisites).where(eq(sitePrerequisites.projectId, p.id)).orderBy(asc(sitePrerequisites.position)),
     db.select({ code: activities.code, name: activities.name }).from(activities).where(eq(activities.projectId, p.id)),
     db.select().from(siteRotations).where(eq(siteRotations.projectId, p.id)).orderBy(asc(siteRotations.position)),
-    db.select().from(siteCollisions).where(eq(siteCollisions.projectId, p.id)).orderBy(asc(siteCollisions.position)),
+    // R-119: the resource pool's weekly loads, through its own reader.
+    getResourcePool(),
     db.select().from(missionCostLines).where(eq(missionCostLines.projectId, p.id)).orderBy(asc(missionCostLines.position)),
     db.select().from(dailyReports).where(eq(dailyReports.projectId, p.id)).orderBy(desc(dailyReports.reportOn), desc(dailyReports.number)),
     listPunchItems(projectCode),
@@ -138,9 +148,8 @@ export async function getSite(projectCode: string, today: string = STATUS_ISO): 
     clientDecisionsOf(projectCode),
   ]);
   const actName = new Map(acts.map((a) => [a.code, a.name]));
-  const collisions: CollisionRow[] = col.map((c) => ({
-    position: c.position, person: c.personName, description: c.description, kind: c.kind, kindLabel: collisionKind.label(c.kind), proposedFix: c.proposedFix, resolved: !!c.resolvedAt,
-  }));
+  // R-119 (D-6b 'a'): the conflicts are computed (site_collisions, the prototype's literals, is no longer read).
+  const collisions = collisionRows(siteConflicts(await conflictFacts(db, p.id, rot, gng.people, pool)));
   const open = new Set(collisions.filter((c) => !c.resolved).map((c) => c.person));
   const data: Omit<SiteData, 'go'> = {
     projectCode,
@@ -158,7 +167,8 @@ export async function getSite(projectCode: string, today: string = STATUS_ISO): 
     })),
     cursus: { verdict: gng.verdict, people: gng.people, lastSyncedAt: gng.lastSyncedAt, mode: cursus.mode, openUrl: cursusChantierUrl(s.cursusChantierId) },
     rotation: rot.map((r) => ({
-      person: r.personName, roleOnSite: r.roleOnSite, fromOn: r.fromOn, toOn: r.toOn, lodging: r.lodging, travel: r.travel, rotationNo: r.rotationNo, hasCollision: open.has(r.personName),
+      person: r.personName, personId: r.personId, roleOnSite: r.roleOnSite, fromOn: r.fromOn, toOn: r.toOn, lodging: r.lodging, travel: r.travel, rotationNo: r.rotationNo,
+      hasCollision: open.has(r.personName),
     })),
     collisions,
     missionCosts: costs.map((c) => ({ name: c.name, budgetKeur: c.budgetKeur, actualKeur: c.actualKeur, ...missionCostUse(c) })),
@@ -177,6 +187,49 @@ export async function getSite(projectCode: string, today: string = STATUS_ISO): 
   };
   return { ...data, go: goConditions(data) };
 }
+
+type Q = DB | Tx;
+
+/**
+ * The facts the site-team conflicts are computed from (R-119): the rotation (with each person's department), the pool's
+ * weekly loads, the other projects' rotations of the same people, Cursus's clearances of the team (matched by matricule when
+ * Cursus gives one, else by name), the absences received from Cursus (R-031) and the arbitrations of the project. The pool
+ * and Cursus are read by the caller through their own readers (never inside a transaction).
+ */
+async function conflictFacts(
+  q: Q, projectId: string, rot: (typeof siteRotations.$inferSelect)[], cursus: readonly CursusClearanceView[], pool: ResourcePool,
+): Promise<ConflictFacts> {
+  const ids = [...new Set(rot.map((r) => r.personId).filter((x): x is string => !!x))];
+  const names = [...new Set(rot.map((r) => r.personName))];
+  const [people, others, absences, arbitrations] = await Promise.all([
+    ids.length
+      ? q.select({ id: persons.id, matricule: persons.matricule, department: departments.name }).from(persons).leftJoin(departments, eq(departments.id, persons.departmentId))
+        .where(inArray(persons.id, ids))
+      : Promise.resolve([]),
+    names.length
+      ? q.select({ person: siteRotations.personName, personId: siteRotations.personId, code: projects.code, fromOn: siteRotations.fromOn, toOn: siteRotations.toOn })
+        .from(siteRotations).innerJoin(projects, eq(projects.id, siteRotations.projectId))
+        .where(and(ne(siteRotations.projectId, projectId), ids.length ? or(inArray(siteRotations.personId, ids), inArray(siteRotations.personName, names)) : inArray(siteRotations.personName, names)))
+      : Promise.resolve([]),
+    ids.length
+      ? q.select({ personId: leaveEntries.personId, leaveType: leaveEntries.leaveType, weekStart: leaveEntries.weekStart, startDate: leaveEntries.startDate, endDate: leaveEntries.endDate })
+        .from(leaveEntries).where(inArray(leaveEntries.personId, ids))
+      : Promise.resolve([]),
+    q.select().from(siteConflictArbitrations).where(eq(siteConflictArbitrations.projectId, projectId)),
+  ]);
+  const byId = new Map(people.map((x) => [x.id, x]));
+  const idOfMatricule = new Map(people.filter((x) => x.matricule).map((x) => [x.matricule!, x.id]));
+  return {
+    rotation: rot.map((r) => ({ person: r.personName, personId: r.personId, department: (r.personId && byId.get(r.personId)?.department) || null, fromOn: r.fromOn, toOn: r.toOn })),
+    pool: { weeks: pool.weeks.map((w) => w.start), people: pool.people.map((x) => ({ name: x.name, loads: x.loads })) },
+    otherSites: others.map((o) => ({ person: o.person, personId: o.personId, projectCode: o.code, fromOn: o.fromOn, toOn: o.toOn })),
+    cursus: cursus.map((c) => ({ personName: c.personName, personId: c.matricule ? idOfMatricule.get(c.matricule) ?? null : null, clearance: c.clearance, clearanceNote: c.clearanceNote })),
+    absences: absences.map((a) => ({ personId: a.personId, leaveType: a.leaveType, start: a.startDate ?? a.weekStart, end: a.endDate ?? addDaysIso(a.weekStart, 4) })),
+    arbitrations: arbitrations.map((a) => ({ key: a.conflictKey, comment: a.comment, by: a.arbitratedByName, at: a.arbitratedAt.toISOString() })),
+  };
+}
+
+const collisionRows = (cs: SiteConflict[]): CollisionRow[] => cs.map((c) => ({ ...c, kindLabel: collisionKind.label(c.kind), resolved: !!c.arbitration }));
 
 /** Labels of the Cursus approvals (visa, vaccinations, clearances, verdict) for one person row. */
 export const cursusLabels = (c: Pick<CursusClearanceView, 'visa' | 'vaccination' | 'clearance' | 'verdict'>) => ({
@@ -273,6 +326,49 @@ export async function saveDailyReport(projectCode: string, input: DailyReportInp
       area: 'Site', entityType: 'daily_report', entityId: row.id, projectId: p.id, activity: { text: `Daily report ${number} saved · ${text.slice(0, 80)}`, kind: 'comment' },
     });
     return number;
+  });
+}
+
+export const CONFLICT_CHANGED = 'This conflict has changed';
+export const CONFLICT_ARBITRATED = 'This conflict is already arbitrated';
+export const ARBITRATION_REFUSED = 'Only the head of the person’s department or the director arbitrates this conflict';
+
+/**
+ * "Arbitrate" a site-team conflict (R-119, D-6b 'a'): records why it is accepted (comment required). Who: the director, the
+ * head of the person's department; for a contractor crew or a person without a department, the director and the project's
+ * leads (`canArbitrateConflict`, re-checked here with the actor — not the Site's edit right). The conflict is recomputed in the
+ * transaction: a key that no longer exists (its cause changed or disappeared) or one already arbitrated is refused. The
+ * arbitration lasts while the cause is unchanged (same key). Audit (reason = the comment) and activity. Returns the conflict.
+ */
+export async function arbitrateSiteConflict(projectCode: string, key: string, comment: string, actor: Actor): Promise<CollisionRow> {
+  if (actor.role === 'client') throw new Error(ARBITRATION_REFUSED);
+  if (typeof key !== 'string' || !key || key.length > 600) throw new Error('Invalid conflict');
+  const text = requiredText(comment, 'Comment', ARBITRATION_COMMENT_MAX);
+  const db = await getDb();
+  const project = await projectOf(db, projectCode);
+  // Mirrors read through their own readers, outside the transaction.
+  const [gng, pool] = await Promise.all([getCursusConnector().getGoNoGo(project.code), getResourcePool()]);
+  return db.transaction(async (tx) => {
+    const p = await sheetProject(tx, projectCode);
+    const rot = await tx.select().from(siteRotations).where(eq(siteRotations.projectId, p.id)).orderBy(asc(siteRotations.position));
+    const c = collisionRows(siteConflicts(await conflictFacts(tx, p.id, rot, gng.people, pool))).find((x) => x.key === key);
+    if (!c) throw new Error(CONFLICT_CHANGED);
+    const who = await whoIs(tx, actor);
+    const [headed, lead] = await Promise.all([
+      who.personId ? tx.select({ name: departments.name }).from(departments).where(eq(departments.headPersonId, who.personId)) : Promise.resolve([]),
+      managesProject(tx, actor, p),
+    ]);
+    if (!canArbitrateConflict(actor.role as RoleKey, { headed: headed.map((d) => d.name), lead }, c)) throw new Error(ARBITRATION_REFUSED);
+    if (c.resolved) throw new Error(CONFLICT_ARBITRATED);
+    const [row] = await tx.insert(siteConflictArbitrations).values({
+      projectId: p.id, conflictKey: c.key, personName: c.person, kind: c.kind, comment: text, arbitratedByName: who.who, arbitratedByPersonId: who.personId,
+    }).returning({ id: siteConflictArbitrations.id, at: siteConflictArbitrations.arbitratedAt });
+    await trace(tx, who, {
+      objectRef: `Conflict · ${c.person}`, change: `arbitrated · ${c.kindLabel}`, area: 'Site', entityType: 'site_conflict_arbitration', entityId: row.id, projectId: p.id,
+      reason: text, after: { key: c.key, kind: c.kind, comment: text },
+      activity: { text: `Arbitrated the ${c.kindLabel.toLowerCase()} conflict of ${c.person}`, kind: 'change' },
+    });
+    return { ...c, resolved: true, arbitration: { comment: text, by: who.who, at: row.at.toISOString() } };
   });
 }
 

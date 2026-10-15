@@ -12,7 +12,9 @@ import type { FormDef } from '@/components/app/form-def';
 import { Button } from '@/components/ds/Button';
 import { showToast } from '@/components/ds/Toast';
 import { useI18n } from '@/i18n/client';
-import { advancePrerequisiteAction, confirmEquipmentAction, remindInCursusAction, saveDailyReportAction, syncCursusAction, type SiteActionResult } from './actions';
+import {
+  advancePrerequisiteAction, arbitrateConflictAction, confirmEquipmentAction, remindInCursusAction, saveDailyReportAction, syncCursusAction, type SiteActionResult,
+} from './actions';
 import s from './site.module.css';
 
 /** Shown when the Server Function itself fails (network, server error). */
@@ -105,6 +107,24 @@ export function RemindButton({ code, person, label }: { code: string; person: st
     <Button variant="secondary" size="row" disabled={pending} aria-label={`${t('Remind in Cursus')} — ${label}`} onClick={() => run(() => remindInCursusAction(code, person))}>
       {t('Remind in Cursus')}
     </Button>
+  );
+}
+
+/**
+ * "Arbitrate" on an open site-team conflict (R-119, D-6b 'a'): the comment form; shown to whoever may arbitrate it (the
+ * director, the head of the person's department; for a contractor, the director and the project's leads) — re-checked by the
+ * Server Function and the writer.
+ */
+export function ArbitrateButton({ code, conflictKey, label, form }: { code: string; conflictKey: string; label: string; form: FormDef }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="ghost" size="row" aria-label={`${t('Arbitrate')} — ${label}`} onClick={() => setOpen(true)}>
+        {t('Arbitrate')}
+      </Button>
+      <FormDialog {...form} open={open} onClose={() => setOpen(false)} context={label} onSubmit={(values) => arbitrateConflictAction(code, conflictKey, values)} />
+    </>
   );
 }
 

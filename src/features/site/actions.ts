@@ -9,10 +9,14 @@
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { parseDateInput } from '@/domain/contract';
-import { parseDailyReportForm } from '@/domain/site';
+import { canArbitrateConflict, parseArbitration, parseDailyReportForm } from '@/domain/site';
 import { STATUS_ISO, inWorkspace } from '@/server/db/codes';
 import { getProject } from '@/server/dal/projects';
-import { advancePrerequisite, confirmEquipment, getSite, remindInCursus, saveDailyReport, syncCursus, type Actor, type SiteData } from '@/server/dal/site';
+import {
+  ARBITRATION_REFUSED, CONFLICT_ARBITRATED, CONFLICT_CHANGED, advancePrerequisite, arbitrateSiteConflict, confirmEquipment, getSite, remindInCursus, saveDailyReport,
+  syncCursus, type Actor, type SiteData,
+} from '@/server/dal/site';
+import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { messageText } from './i18n';
@@ -133,6 +137,51 @@ export async function syncCursusAction(code: string): Promise<SiteActionResult> 
     logError('syncCursusAction', e);
     return fail('Cursus could not be reached — the last approvals received are shown');
   }
+}
+
+// ── Site-team conflicts (R-119, D-6b 'a') ───────────────────────────────────────────────────────────
+
+/**
+ * "Arbitrate" a computed conflict of the site team with a comment (required). Not the Site's edit right: the director, the
+ * head of the person's department (even off the project's team, which reads the Site — R-041), and for a contractor crew or
+ * a person without a department the director and the project's leads (`canArbitrateConflict`; the writer re-checks it with
+ * the actor). A conflict whose cause changed or that was arbitrated meanwhile is refused and the page refreshed. The client
+ * never reaches the Site (sent home, R-042). Revalidates every page (the NO GO badge).
+ */
+export async function arbitrateConflictAction(code: string, key: string, values: Record<string, string>): Promise<FormDialogResult> {
+  if (typeof code !== 'string' || !code || typeof key !== 'string' || !key || key.length > 600) return { error: await tr(INVALID) };
+  const project = await getProject(code);
+  if (!project) return { error: await tr('Unknown project') };
+  const ctx = await getProjectContext(project.code, 'site');
+  const site = await getSite(project.code);
+  if (!site) return { error: await tr(NO_SHEET) };
+  const c = site.collisions.find((x) => x.key === key);
+  if (!c) {
+    refresh();
+    return { error: await tr(CONFLICT_CHANGED) };
+  }
+  const identity = await getApproverIdentity(ctx.viewer);
+  if (!canArbitrateConflict(ctx.viewer.role, { headed: identity.departments, lead: ctx.isLead }, c)) return { error: await tr(ARBITRATION_REFUSED) };
+  if (c.resolved) {
+    refresh();
+    return { error: await tr(CONFLICT_ARBITRATED) };
+  }
+  const parsed = parseArbitration(strings(values));
+  if (!parsed.ok) return { error: await tr(parsed.error) };
+  try {
+    await arbitrateSiteConflict(project.code, key, parsed.value.comment, { name: ctx.viewer.name, role: ctx.viewer.role });
+  } catch (e) {
+    const m = e instanceof Error ? e.message : '';
+    if (m === CONFLICT_CHANGED || m === CONFLICT_ARBITRATED) {
+      refresh();
+      return { error: await tr(m) };
+    }
+    if (m === ARBITRATION_REFUSED) return { error: await tr(m) };
+    logError('arbitrateConflictAction', e);
+    return { error: await tr(FAILED) };
+  }
+  refresh();
+  return { toast: `${await tr('Conflict arbitrated')} · ${c.person}` };
 }
 
 // ── Daily report (header primary, AF.site) ─────────────────────────────────────────────────────────
