@@ -190,7 +190,7 @@ approved · CR-011" / "Change request rejected · CR-011" (FR in the lot file), 
 
 ## 8. Migration
 
-`drizzle/0016_curvy_talos.sql` (generated): `change_requests.contract_impact text` and `change_requests.cost_category_code text`,
+`drizzle/0022_clever_wolf_cub.sql` (generated): `change_requests.contract_impact text` and `change_requests.cost_category_code text`,
 both nullable. No custom SQL. Data: the demo backfill above; a production database keeps null impacts (its requests behave as in
 delivery 7: client step required, delivery 7's amendment rule) — no production backfill (no marker for this lot). The board
 threshold row is seeded by both seeds; a database without it reads 50 k€.

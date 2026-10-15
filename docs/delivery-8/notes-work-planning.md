@@ -20,7 +20,7 @@ cites its decision id. Where the brief and the code disagreed, the code was foll
 
 ## 1. Migration
 
-One generated migration: **`drizzle/0016_true_bastion.sql`** (+ `drizzle/meta/0016_snapshot.json`, `_journal.json`) — R-067:
+One generated migration: **`drizzle/0027_exotic_chimera.sql`** (+ `drizzle/meta/0016_snapshot.json`, `_journal.json`) — R-067:
 
 ```sql
 ALTER TABLE "meeting_lines" ADD COLUMN "activity_id" uuid;

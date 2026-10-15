@@ -14,7 +14,7 @@ Branch `worktree-wf_3e64f8c5-23c-3`, based on `e41c309` (plan base on main-2a2fe
 
 ## Migration
 
-One generated migration for the whole lot: **`drizzle/0016_clean_gargoyle.sql`** (+ `drizzle/meta/0016_snapshot.json`, `_journal.json`). No custom migration.
+One generated migration for the whole lot: **`drizzle/0026_faulty_zuras.sql`** (+ `drizzle/meta/0016_snapshot.json`, `_journal.json`). No custom migration.
 
 ```sql
 DROP TABLE "document_downloads" CASCADE;

@@ -21,7 +21,7 @@ and is finished in `7512fb0` together with R-155; R-153 is `5a256a9`. The decisi
 
 ## Migration
 
-One generated migration for the lot: **`drizzle/0016_burly_golden_guardian.sql`** (+ `drizzle/meta/0016_snapshot.json`,
+One generated migration for the lot: **`drizzle/0023_mute_archangel.sql`** (+ `drizzle/meta/0016_snapshot.json`,
 `_journal.json`). No custom SQL. `npm run db:generate` reports no further change on the lot's schema.
 
 - `purchase_orders`: `cancel_reason` (text), `cancelled_by_person_id` (FK persons), `cancelled_at` (timestamptz) — R-095.

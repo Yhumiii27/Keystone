@@ -13,8 +13,8 @@ Migrations (in this order):
 
 | File | Kind | Content |
 |---|---|---|
-| `drizzle/0016_worried_spyke.sql` | generated (`npm run db:generate`) | table `cursus_events` (event id unique, indexes on (type, replace_key), status, received_at); `persons.matricule` (text, unique, nullable), `persons.directory_team`, `persons.directory_synced_at`; `leave_entries.source` default `'cursus'` |
-| `drizzle/0017_leave_types_simple.sql` | custom (`npx drizzle-kit generate --custom --name leave_types_simple`) | a database that already has leave types gets `leave` / `absence`, its entries mapped (CP, RTT → leave; anything else → absence; days unchanged), the old types deleted; a new database (no leave type yet) is left to the seed |
+| `drizzle/0024_curious_lady_deathstrike.sql` | generated (`npm run db:generate`) | table `cursus_events` (event id unique, indexes on (type, replace_key), status, received_at); `persons.matricule` (text, unique, nullable), `persons.directory_team`, `persons.directory_synced_at`; `leave_entries.source` default `'cursus'` |
+| `drizzle/0025_leave_types_simple.sql` | custom (`npx drizzle-kit generate --custom --name leave_types_simple`) | a database that already has leave types gets `leave` / `absence`, its entries mapped (CP, RTT → leave; anything else → absence; days unchanged), the old types deleted; a new database (no leave type yet) is left to the seed |
 
 No seed backfill (the custom migration maps existing databases); the `connectors` marker of `src/server/db/seed/index.ts` stays
 empty. The migration test finds the custom file by name (`NNNN_leave_types_simple.sql`), so renumbering does not break it.
@@ -244,9 +244,9 @@ meetings, photos, plm, quality page, shell, shell-render, home, health) and all 
 
 ## 6. Notes for the integrator
 
-- **Migrations:** drop `0016_worried_spyke.sql` and `0017_leave_types_simple.sql` and their snapshots, regenerate in merge
+- **Migrations:** drop `0024_curious_lady_deathstrike.sql` and `0025_leave_types_simple.sql` and their snapshots, regenerate in merge
   order: `npm run db:generate` (cursus_events, persons columns, leave_entries.source default), then
-  `npx drizzle-kit generate --custom --name leave_types_simple` with the SQL of `0017_leave_types_simple.sql` unchanged.
+  `npx drizzle-kit generate --custom --name leave_types_simple` with the SQL of `0025_leave_types_simple.sql` unchanged.
 - **Shared files touched:** `schema/organisation.ts` (persons `matricule`, `directory_team`, `directory_synced_at` — next to
   roles-rates-hr's `rate_role_id`); `codes.ts` (leave codecs + `leaveTypeOfNature`; `CursusEventStatus` next to the Cursus
   codes); `parse.ts` / `.env.example` (CURSUS_EVENTS_KEY, CURSUS_DIRECTORY next to the CURSUS block; AI/DPA warning next to

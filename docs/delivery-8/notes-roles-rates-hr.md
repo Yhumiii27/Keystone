@@ -8,8 +8,8 @@ A-3, A-14, A-15 (`docs/DECISIONS.md`), with the defaults of `docs/DELIVERY-8-PLA
 Built: every item as scoped by the brief, except the parts that need the owner or another system (§6). R-044, R-139, R-083 and
 R-178 stay partly open by design; R-086, R-087 and R-088 are complete.
 
-Migrations (in this order — see §4): `drizzle/0016_tense_guardian.sql` (generated), `drizzle/0017_rate_versions_backfill.sql`
-(custom, `drizzle-kit generate --custom --name rate_versions_backfill`), `drizzle/0018_wild_dark_phoenix.sql` (generated).
+Migrations (in this order — see §4): `drizzle/0019_sparkling_toxin.sql` (generated), `drizzle/0020_rate_versions_backfill.sql`
+(custom, `drizzle-kit generate --custom --name rate_versions_backfill`), `drizzle/0021_striped_bruce_banner.sql` (generated).
 
 Where the brief and the code disagreed, the code was followed:
 
@@ -208,12 +208,12 @@ What-if costs and the site premiums are unchanged on the seed (the grid roles ca
 Three files, in this order (the custom one must run between the two generated ones — it reads the old columns and fills the
 new tables):
 
-1. `0016_tense_guardian.sql` (generated): creates `rate_role_rates`, `rate_multiplier_rates`, adds `persons.rate_role_id` and the
+1. `0019_sparkling_toxin.sql` (generated): creates `rate_role_rates`, `rate_multiplier_rates`, adds `persons.rate_role_id` and the
    foreign keys. Nothing is dropped yet.
-2. `0017_rate_versions_backfill.sql` (custom): the current base rates / factors become first versions (`coalesce(effective_from,
+2. `0020_rate_versions_backfill.sql` (custom): the current base rates / factors become first versions (`coalesce(effective_from,
    '2026-01-01')` for roles, 1 Jan 2026 for multipliers), persons get the role named as their job title. Idempotent; no-op on a
    new database.
-3. `0018_wild_dark_phoenix.sql` (generated): drops `job_title_rates`, `rate_multipliers.factor`, `rate_roles.base_rate_eur` and
+3. `0021_striped_bruce_banner.sql` (generated): drops `job_title_rates`, `rate_multipliers.factor`, `rate_roles.base_rate_eur` and
    `rate_roles.effective_from`.
 
 To regenerate at integration: (a) schema with the new tables and `persons.rate_role_id` but the old columns and
