@@ -127,6 +127,13 @@
       "when": 1791812622694,
       "tag": "0017_audit_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792050458899,
+      "tag": "0018_tranquil_chat",
+      "breakpoints": true
     }
   ]
 }

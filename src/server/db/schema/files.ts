@@ -2,6 +2,7 @@
 // src/server/storage), staged import jobs with their preview rows (S-9 and the Excel / CSV table imports), and the export log
 // (src/server/export). Codex documents are not stored here: Codex owns them (Keystone keeps the index, documents.ts).
 import { integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import type { FileScanStatus } from '../../../domain/file-scan';
 import type { ExportFormat, ImportJobStatus, ImportKind, ImportMode, ImportRowAction, ImportRowStatus, StoredFilePurpose } from '../codes';
 import { id } from './_common';
 import { persons } from './organisation';
@@ -10,7 +11,8 @@ import { projects } from './portfolio';
 /**
  * A file kept by Keystone under <data dir>/files (`storagePath` is relative to that folder). `ownerType` / `ownerId` say what
  * it is attached to ('task_attachment', 'meeting_transcript', 'import_job'…); deleting the owner deletes the row and the file
- * through the storage module.
+ * through the storage module. `scanStatus` is the antivirus verdict (R-175): 'unscanned' (scanning off, or stored before it),
+ * 'clean', or 'infected' — a file flagged by a rescan is blocked (downloads answer 410) and kept until IT acts.
  */
 export const storedFiles = pgTable('stored_files', {
   id: id(),
@@ -27,6 +29,10 @@ export const storedFiles = pgTable('stored_files', {
   createdByPersonId: uuid('created_by_person_id').references(() => persons.id),
   createdByName: text('created_by_name').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  scanStatus: text('scan_status').$type<FileScanStatus>().notNull().default('unscanned'),
+  scannedAt: timestamp('scanned_at', { withTimezone: true }),
+  /** Signature clamd reported (internal: logs and IT only, never shown to the uploader). */
+  scanSignature: text('scan_signature'),
 });
 
 /**

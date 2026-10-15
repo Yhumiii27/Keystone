@@ -67,7 +67,8 @@ describe('parseConfig', () => {
   });
 
   it('production: JSON logs; the Cursus demo key is refused and CURSUS_API_URL needs a key', () => {
-    const base = { NODE_ENV: 'production', KEYSTONE_AUTH: 'demo', NEXT_PUBLIC_CODEX_URL: 'https://codex', NEXT_PUBLIC_CURSUS_URL: 'https://cursus', NEXT_PUBLIC_VIGIE_URL: 'https://vigie' };
+    // KEYSTONE_FILE_SCAN explicit: unset, production warns about the antivirus (R-175).
+    const base = { NODE_ENV: 'production', KEYSTONE_AUTH: 'demo', KEYSTONE_FILE_SCAN: 'off', NEXT_PUBLIC_CODEX_URL: 'https://codex', NEXT_PUBLIC_CURSUS_URL: 'https://cursus', NEXT_PUBLIC_VIGIE_URL: 'https://vigie' };
     expect(parse(base)).toMatchObject({ errors: [], warnings: [], config: { production: true, log: { format: 'json' }, cursus: { apiKey: null } } });
     expect(vars(parse({ ...base, CURSUS_API_URL: 'https://cursus/api' }).errors)).toEqual(['CURSUS_API_KEY']);
     const demo = parse({ ...base, CURSUS_API_URL: 'https://cursus/api', CURSUS_API_KEY: DEMO_CURSUS_API_KEY });
@@ -82,7 +83,7 @@ describe('parseConfig', () => {
   });
 
   it('production with a Cursus on this machine (the Mac app): the demo key is accepted with a warning', () => {
-    const base = { NODE_ENV: 'production', KEYSTONE_AUTH: 'demo', NEXT_PUBLIC_CODEX_URL: 'https://codex', NEXT_PUBLIC_CURSUS_URL: 'https://cursus', NEXT_PUBLIC_VIGIE_URL: 'https://vigie' };
+    const base = { NODE_ENV: 'production', KEYSTONE_AUTH: 'demo', KEYSTONE_FILE_SCAN: 'off', NEXT_PUBLIC_CODEX_URL: 'https://codex', NEXT_PUBLIC_CURSUS_URL: 'https://cursus', NEXT_PUBLIC_VIGIE_URL: 'https://vigie' };
     for (const url of ['http://localhost:3210', 'http://127.0.0.1:3210', 'http://[::1]:3210']) {
       const r = parse({ ...base, CURSUS_API_URL: url });
       expect(r.errors).toEqual([]);
@@ -96,7 +97,7 @@ describe('parseConfig', () => {
   });
 
   it('production warnings: links to localhost, Vigie without a key (V-3)', () => {
-    const r = parse({ NODE_ENV: 'production', KEYSTONE_AUTH: 'demo', VIGIE_API_URL: 'https://vigie/api' });
+    const r = parse({ NODE_ENV: 'production', KEYSTONE_AUTH: 'demo', KEYSTONE_FILE_SCAN: 'off', VIGIE_API_URL: 'https://vigie/api' });
     expect(r.errors).toEqual([]);
     expect(vars(r.warnings)).toEqual(['VIGIE_API_KEY', 'NEXT_PUBLIC_CODEX_URL', 'NEXT_PUBLIC_CURSUS_URL', 'NEXT_PUBLIC_VIGIE_URL']);
     expect(parse({ NODE_ENV: 'production', VIGIE_API_URL: 'https://vigie/api', VIGIE_API_KEY: 'v-key-123' }).config.vigie).toEqual({ apiUrl: 'https://vigie/api', apiKey: 'v-key-123' });
@@ -132,8 +133,9 @@ describe('parseConfig', () => {
 
   it('production: demo mode is refused with the production data set and only warned about when implicit', () => {
     const prod = { NODE_ENV: 'production' };
-    expect(vars(parse({ ...prod, KEYSTONE_SEED: 'production' }).errors)).toEqual(['KEYSTONE_AUTH']);
-    expect(vars(parse({ ...prod, KEYSTONE_SEED: 'production', KEYSTONE_AUTH: 'demo' }).errors)).toEqual(['KEYSTONE_AUTH']);
+    // R-175: the production data set also needs KEYSTONE_FILE_SCAN set explicitly (antivirus on uploads).
+    expect(vars(parse({ ...prod, KEYSTONE_SEED: 'production' }).errors)).toEqual(['KEYSTONE_AUTH', 'KEYSTONE_FILE_SCAN']);
+    expect(vars(parse({ ...prod, KEYSTONE_SEED: 'production', KEYSTONE_AUTH: 'demo' }).errors)).toEqual(['KEYSTONE_AUTH', 'KEYSTONE_FILE_SCAN']);
     const implicit = parse(prod);
     expect([vars(implicit.errors), vars(implicit.warnings)]).toEqual([[], expect.arrayContaining(['KEYSTONE_AUTH'])]);
     expect(vars(parse({ ...prod, KEYSTONE_AUTH: 'demo' }).warnings)).not.toContain('KEYSTONE_AUTH');

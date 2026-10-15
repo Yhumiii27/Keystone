@@ -11,6 +11,7 @@ import { findPerson, nameOf } from '@/server/db/helpers';
 import { dailyReports, goodsReceipts, projects, punchItems, receiptAttachments, storedFiles } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
 import { checkUpload, deleteStoredFile, readStoredFile, storeFile, type StoredFileMeta } from '@/server/storage/files';
+import { scanUpload } from '@/server/storage/scan';
 import { trace } from './ops-common';
 
 type Q = DB | Tx;
@@ -95,8 +96,11 @@ export async function legacyReceiptPhotoCount(receiptNumber: string): Promise<nu
  * receipt attachment — with the audit entry, in one transaction. Refused beyond MAX_PHOTOS_PER_OWNER. Returns the file id.
  */
 export async function addPhoto(o: PhotoOwnerKey, file: { name: string; data: Uint8Array | ArrayBuffer } | File, actorName: string): Promise<string> {
-  const data = file instanceof File ? (checkUpload('photo', file.name, file.size), new Uint8Array(await file.arrayBuffer())) : file.data;
+  const raw = file instanceof File ? (checkUpload('photo', file.name, file.size), new Uint8Array(await file.arrayBuffer())) : file.data;
   const db = await getDb();
+  // R-175: the antivirus checks the bytes before the transaction (FileRejectedError 'infected' / 'scan_unavailable').
+  checkUpload('photo', file.name, raw.byteLength);
+  const data = await scanUpload(raw, { purpose: 'photo', name: file.name, actor: { name: actorName }, objectRef: `${o.code} · ${o.ref}` });
   return db.transaction(async (tx) => {
     const owner = await resolvePhotoOwner(tx, o);
     if (!owner) throw new Error(`Unknown ${o.kind} ${o.ref} on ${o.code}`);

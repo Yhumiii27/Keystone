@@ -7,7 +7,7 @@ import { CONFIG_VARIABLES, formatIssues, parseConfig, type ConfigIssue, type Con
 
 export {
   DEMO_CURSUS_API_KEY, SEED_MODES, formatIssues, parseConfig, redactUrl,
-  type ConfigIssue, type ConfigResult, type DatabaseConfig, type KeystoneConfig, type LogFormat, type LogLevel, type SeedMode,
+  type ClamdTarget, type ConfigIssue, type ConfigResult, type DatabaseConfig, type FileScanMode, type KeystoneConfig, type LogFormat, type LogLevel, type SeedMode,
 } from './parse';
 
 let cache: { key: string; result: ConfigResult } | null = null;

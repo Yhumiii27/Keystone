@@ -245,7 +245,7 @@ describe('task attachments', () => {
     expect(files.filter((f) => !f.hasFile).length).toBeGreaterThan(0); // the seed's FILES rows
     const got = await getTaskFile('T-2314', id);
     expect(got!.meta.ownerType).toBe('task_attachment');
-    expect(Buffer.from(got!.data).toString()).toBe('%PDF-1.4 test');
+    expect(got && !got.blocked && Buffer.from(got.data).toString()).toBe('%PDF-1.4 test'); // R-175: a flagged file would be { blocked }
     expect(await getTaskFile('T-2318', id)).toBeNull();
     await removeTaskFile('T-2314', id, 'Julien Wagner');
     expect((await listTaskFiles('T-2314')).some((f) => f.id === id)).toBe(false);
