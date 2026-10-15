@@ -9,10 +9,13 @@
 // "Client communication log" opens the project's Meetings screen on the decisions taken with the client (shown when the
 // viewer may see Meetings); the dedicated log of chapter 4 is retired from the screen. R-126 (X-15): photos of the daily
 // reports and of the punch items are stored by Keystone (added by the editors of the screen governing the item's origin, seen
-// by internal viewers).
+// by internal viewers). R-118 (D-3 'a'): the project's leads (PM of record, co-PM, deputy, director) prepare the site sheet
+// from the empty state and fill it ("Edit site sheet", the lines' Add / Edit / Remove) from Études until Mise en service & SAT
+// (not at Garantie, Clos or Annulé, nor on a read-only project).
 import { PageHeader } from '@/components/app/shell/page-header';
 import { canSee } from '@/config/screens';
 import { siteTabOf } from '@/domain/site';
+import { canFillSiteSheet } from '@/domain/site-sheet';
 import { siteHref } from '@/features/site/links';
 import { dailyReportFormDef, siteView } from '@/features/site/model';
 import { DailyReportButton } from '@/features/site/site-buttons';
@@ -21,6 +24,7 @@ import { SiteBody } from '@/features/site/site-view';
 import { listProjectPhotos } from '@/server/dal/photos';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { getSite } from '@/server/dal/site';
+import { siteSheetDefaults } from '@/server/dal/site-sheet';
 import { vigieReportIncidentUrl } from '@/server/integrations/vigie/links';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -38,12 +42,16 @@ export default async function SitePage({ params, searchParams }: { params: Promi
   // R-119 (D-6b 'a'): who may arbitrate the team's conflicts — the director, the heads of the people's departments, the leads
   // for contractors (not the Site's edit right: a department head off the team reads the Site, R-041).
   const arbiter = data ? { role: ctx.viewer.role, headed: (await getApproverIdentity(ctx.viewer)).departments, lead: ctx.isLead } : null;
-  const view = siteView(projectCode, data, { tab: siteTabOf(first(sp.tab)), punch: first(sp.punch) === 'all' ? 'all' : 'site', arbiter }, t, lang);
+  // R-118: the leads' entry (the Site's edit right, a lead of the project, the stage window); the project's defaults for a new sheet.
+  const fill = canFillSiteSheet({ lead: ctx.isLead, canEdit: ctx.canEdit('site'), stage: ctx.project.stage });
+  const entry = fill ? { team: ctx.team.map((m) => m.name), defaults: data ? null : await siteSheetDefaults(projectCode) } : null;
+  const view = siteView(projectCode, data, { tab: siteTabOf(first(sp.tab)), punch: first(sp.punch) === 'all' ? 'all' : 'site', arbiter, entry }, t, lang);
+  const context = projectLabelText(ctx.project, lang);
 
   const primary = canEdit ? (
     <DailyReportButton
       code={projectCode}
-      context={projectLabelText(ctx.project, lang)}
+      context={context}
       // NEW-SITE-2 'a' (R-122): no HSE field; incidents are declared in Vigie (prefilled with the project and the site).
       form={dailyReportFormDef(t, lang, undefined, vigieReportIncidentUrl({ projectCode, location: data?.sheet.site }))}
       execHref={siteHref(projectCode, 'exec')}
@@ -62,7 +70,7 @@ export default async function SitePage({ params, searchParams }: { params: Promi
   return (
     <>
       <PageHeader screen="site" projectCode={projectCode} primary={primary} />
-      <SiteBody code={projectCode} view={view} canEdit={canEdit} showCommLog={canSee(ctx.viewer.role, 'meetings')} photos={photos} t={t} />
+      <SiteBody code={projectCode} view={view} canEdit={canEdit} showCommLog={canSee(ctx.viewer.role, 'meetings')} photos={photos} context={context} t={t} />
     </>
   );
 }

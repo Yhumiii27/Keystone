@@ -2,20 +2,23 @@
 // three tabs, translated, with the tags and colours the template binds. Built on the server from the DAL's
 // `SiteData` (null = no site sheet → empty state); the rights (edit, remind) are applied by the view.
 // The Cursus approvals and the HSE register are the connectors' records (Cursus / Vigie own them): the view model
-// only adds the links to those applications and the last refresh.
-import type { FormDef } from '@/components/app/form-def';
+// only adds the links to those applications and the last refresh. R-118 (D-3 'a'): for the project's leads, the forms of
+// "Prepare the site", "Edit site sheet" and the lines, with each line's values and stamp (src/domain/site-sheet.ts).
+import type { FormDef, FormValues } from '@/components/app/form-def';
 import type { RoleKey } from '@/config/screens';
 import {
   COLLISION_TARGET, DEFAULT_HEADCOUNT, SITE_TABS, SITE_TAB_LABEL, WEATHER_OPTIONS, canArbitrateConflict, collisionTagClass, equipmentSourceTagClass,
   execKpis, goLabel, isNcrLink, preparationNote, prerequisiteStep, readinessKpis, siteDateText, siteTagClass, teamKpis,
   type SiteFacts, type SiteKpi, type SiteTab,
 } from '@/domain/site';
+import { CONTRACTOR_CREW, SITE_CURRENCIES, siteLineEditable, siteLineRemovable, type SiteLineKind } from '@/domain/site-sheet';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import {
-  STATUS_ISO, cursusClearance, cursusSyncStatus, cursusVaccination, cursusVerdict, cursusVisa, shortDateOfIso, stampText,
+  STATUS_ISO, cursusClearance, cursusSyncStatus, cursusVaccination, cursusVerdict, cursusVisa, equipmentSource, shortDateOfIso, stampText,
 } from '@/server/db/codes';
 import type { SiteData } from '@/server/dal/site';
+import type { SiteSheetDefaults } from '@/server/dal/site-sheet';
 import { cursusChantierUrl, cursusEmployeeUrl } from '@/server/integrations/cursus/links';
 import { vigieHseListUrl, vigieReportIncidentUrl } from '@/server/integrations/vigie/links';
 import { conflictText, dataText, incidentText, siteText, weatherText } from './i18n';
@@ -32,6 +35,17 @@ export interface KpiView {
   color: string;
 }
 
+/**
+ * R-118: a line as its "Edit" form opens it (typed values as typed), the stamp the form saw, and whether it may be edited or
+ * removed (prerequisites and equipment while Pending; a mission cost line without an actual). Present for the leads only.
+ */
+export interface LineEntry {
+  values: FormValues;
+  stamp: string;
+  editable: boolean;
+  removable: boolean;
+}
+
 export interface ReadyView {
   kpis: KpiView[];
   go: { tag: string; tagClass: string; items: { key: string; label: string; sub: string; ok: boolean; color: string }[] };
@@ -40,8 +54,12 @@ export interface ReadyView {
     position: number; title: string; act: string; due: string; dueColor: string; status: string; tagClass: string; note: string; late: boolean;
     /** Next step offered ("Client confirms" / "Signed on site"); null when signed. */
     step: { to: 'confirmed' | 'signed'; label: string } | null;
+    entry: LineEntry | null;
   }[];
-  equip: { position: number; name: string; src: string; srcClass: string; status: string; tagClass: string; note: string; canConfirm: boolean }[];
+  equip: { position: number; name: string; src: string; srcClass: string; status: string; tagClass: string; note: string; canConfirm: boolean; entry: LineEntry | null }[];
+  /** R-118: the message of an empty table. */
+  noPrereq: string | null;
+  noEquip: string | null;
   cursus: {
     rows: {
       /** Cursus's name of the person (the reminder's key; `who` is the displayed text). */
@@ -66,7 +84,11 @@ export interface ReadyView {
 
 export interface TeamView {
   kpis: KpiView[];
-  rotation: { who: string; role: string; from: string; to: string; rot: string; lodging: string; travel: string; collision: boolean; collisionLabel: string }[];
+  rotation: {
+    position: number; who: string; role: string; from: string; to: string; rot: string; lodging: string; travel: string; collision: boolean; collisionLabel: string;
+    entry: LineEntry | null;
+  }[];
+  noRotation: string | null;
   /**
    * R-119 (D-6b 'a'): the open conflicts computed from the rotation plan, with "Resolve" and — for whoever may arbitrate it —
    * "Arbitrate"; then the conflicts arbitrated while their cause is unchanged (who, when, why).
@@ -77,7 +99,9 @@ export interface TeamView {
   noCollision: string | null;
   /** The arbitration form (comment required), translated. */
   arbitrationForm: FormDef;
-  missionCosts: { name: string; budget: string; actual: string; pct: string; left: string }[];
+  /** R-118: an actual not received yet shows "—" with "Waiting for Sage X3" (actuals are never typed — C-2a / A-12 'a'). */
+  missionCosts: { position: number; name: string; budget: string; actual: string; actualTitle: string | null; pct: string; left: string; entry: LineEntry | null }[];
+  noCost: string | null;
 }
 
 export interface ExecView {
@@ -99,19 +123,36 @@ export interface ExecView {
   };
 }
 
+/** R-118: what the project's leads enter on an existing sheet — the sheet's form and the lines' add / edit forms. */
+export interface SheetEntry {
+  sheet: { form: FormDef; values: FormValues; stamp: string };
+  /** "Add …" forms; the prerequisite's is null when the plan has no activity (`noActivity` explains). */
+  add: Record<SiteLineKind, FormDef | null>;
+  edit: Record<SiteLineKind, FormDef | null>;
+  noActivity: string | null;
+}
+
 export interface SiteView {
   tab: SiteTab;
   /** "Display" segmented control (links). */
   segs: { value: SiteTab; label: string; href: string }[];
   /** Empty state (no site sheet), translated; null when the module is open. */
   empty: string | null;
+  /** R-118: "Prepare the site" on the empty state for the project's leads (stage window); null otherwise. */
+  prepare: { form: FormDef; values: FormValues } | null;
+  /** R-118: the leads' entry on an existing sheet; null for everybody else. */
+  entry: SheetEntry | null;
   ready: ReadyView | null;
   team: TeamView | null;
   exec: ExecView | null;
 }
 
-/** Empty state of a project without a site sheet (the prototype's sentence without its "in this mockup" clause). */
-export const EMPTY_TEXT = 'The site module opens when the project reaches the Expédition stage — no site sheet yet for this project.';
+/**
+ * Empty state of a project without a site sheet. D-3 'a' (R-118): the project's leads create it from the Études stage (the
+ * prototype said the module opened at the Expédition stage).
+ */
+export const EMPTY_TEXT = 'No site sheet yet for this project — the project’s leads prepare it from the Études stage.';
+const dash = (v: string) => v || '—';
 
 const kpiView = (k: SiteKpi, t: T, lang: Lang): KpiView => ({ label: t(k.label), value: siteText(k.value, t, lang), sub: siteText(k.sub, t, lang), color: k.alert ? LO : OK });
 const day = (iso: string | null, t: T) => (iso ? t(shortDateOfIso(iso)) : '—');
@@ -127,7 +168,12 @@ export function factsOf(d: SiteData): SiteFacts {
   };
 }
 
-function readyView(code: string, d: SiteData, t: T, lang: Lang): ReadyView {
+/** A line's entry (R-118): values, stamp, edit / remove rules. */
+function lineEntry(kind: SiteLineKind, line: { stamp: string; status?: string; actualKeur?: number }, values: FormValues): LineEntry {
+  return { values, stamp: line.stamp, editable: siteLineEditable(kind, line), removable: siteLineRemovable(kind, line) };
+}
+
+function readyView(code: string, d: SiteData, t: T, lang: Lang, entry: boolean): ReadyView {
   const s = d.sheet;
   return {
     kpis: readinessKpis(factsOf(d), d.go).map((k) => kpiView(k, t, lang)),
@@ -137,23 +183,32 @@ function readyView(code: string, d: SiteData, t: T, lang: Lang): ReadyView {
       // ok and not ok share accent-300 in the prototype (only the icon differs, 10 OQ9).
       items: d.go.conditions.map((c) => ({ key: c.key, label: t(c.label), sub: siteText(c.sub, t, lang), ok: c.ok, color: LO })),
     },
-    meta: ([
-      ['Site', s.site], ['Country · time zone', `${s.country} · ${s.timeZone}`], ['Language · currency', `${s.language} · ${s.currency}`],
-      ['Client contact on site', s.clientContact], ['Working hours', s.workingHours], ['Local holidays', s.localHolidays], ['Access constraints', s.accessConstraints],
-      ['Window', `${siteDateText(s.startOn)} → ${siteDateText(s.endOn)} · ${s.planDays} working days`],
-    ] as const).map(([k, v]) => ({ k: t(k), v: k === 'Window' ? t(v) : fieldsText(v, t, lang) })),
+    // R-118: values typed in Keystone may be blank ("—"); "Cursus site" = the site's id in Cursus, "Not created yet" until Cursus
+    // creates it (R-028 — Cursus has no site-creation endpoint; no request is queued).
+    meta: [
+      ...([
+        ['Site', dash(s.site)], ['Country · time zone', `${dash(s.country)} · ${dash(s.timeZone)}`], ['Language · currency', `${dash(s.language)} · ${s.currency}`],
+        ['Client contact on site', dash(s.clientContact)], ['Working hours', dash(s.workingHours)], ['Local holidays', dash(s.localHolidays)],
+        ['Access constraints', dash(s.accessConstraints)], ['Window', `${siteDateText(s.startOn)} → ${siteDateText(s.endOn)} · ${s.planDays} working days`],
+      ] as const).map(([k, v]) => ({ k: t(k), v: k === 'Window' ? t(v) : fieldsText(v, t, lang) })),
+      { k: t('Cursus site'), v: s.cursusChantierId ?? t('Not created yet') },
+    ],
     prereqs: d.prerequisites.map((p) => {
       const step = prerequisiteStep(p.status);
       return {
         position: p.position, title: dataText(p.title, lang), act: p.activityCode + (p.activityName ? ` · ${dataText(p.activityName, lang)}` : ''), due: day(p.neededBy, t),
         dueColor: p.late ? LO : 'var(--color-neutral-300)', status: t(p.statusLabel), tagClass: siteTagClass(p.statusLabel), note: fieldsText(p.evidence, t, lang), late: p.late,
         step: step && { to: step.to, label: t(step.label) },
+        entry: entry ? lineEntry('prerequisite', p, { title: p.title, activity: p.activityCode, needed: t(siteDateText(p.neededBy)), evidence: p.evidence }) : null,
       };
     }),
     equip: d.equipment.map((e) => ({
       position: e.position, name: dataText(e.name, lang), src: t(e.sourceLabel), srcClass: equipmentSourceTagClass(e.source), status: t(e.statusLabel), tagClass: siteTagClass(e.statusLabel),
       note: fieldsText(e.note, t, lang), canConfirm: e.status === 'pending',
+      entry: entry ? lineEntry('equipment', e, { name: e.name, source: e.source, note: e.note }) : null,
     })),
+    noPrereq: d.prerequisites.length ? null : t('No client prerequisite yet'),
+    noEquip: d.equipment.length ? null : t('No equipment yet'),
     cursus: {
       rows: d.cursus.people.map((p) => {
         const visa = cursusVisa.label(p.visa);
@@ -191,13 +246,15 @@ export function arbitrationFormDef(t: T): FormDef {
   };
 }
 
-function teamView(code: string, d: SiteData, t: T, lang: Lang, arbiter: ConflictArbiter | null): TeamView {
+function teamView(code: string, d: SiteData, t: T, lang: Lang, arbiter: ConflictArbiter | null, entry: { team: readonly string[] } | null): TeamView {
   return {
     kpis: teamKpis(factsOf(d), lang).map((k) => kpiView(k, t, lang)),
     rotation: d.rotation.map((r) => ({
-      who: r.person, role: dataText(r.roleOnSite, lang), from: day(r.fromOn, t), to: day(r.toOn, t), rot: `R${r.rotationNo}`, lodging: dataText(r.lodging, lang), travel: dataText(r.travel, lang),
-      collision: r.hasCollision, collisionLabel: t(r.hasCollision ? 'Collision' : 'No collision'),
+      position: r.position, who: r.person, role: dataText(r.roleOnSite, lang), from: day(r.fromOn, t), to: day(r.toOn, t), rot: `R${r.rotationNo}`,
+      lodging: dataText(r.lodging, lang), travel: dataText(r.travel, lang), collision: r.hasCollision, collisionLabel: t(r.hasCollision ? 'Collision' : 'No collision'),
+      entry: entry ? lineEntry('rotation', r, rotationValues(r, entry.team, t)) : null,
     })),
+    noRotation: d.rotation.length ? null : t('No one on the rotation plan yet'),
     collisions: d.collisions
       .filter((c) => !c.resolved)
       .map((c) => {
@@ -217,8 +274,20 @@ function teamView(code: string, d: SiteData, t: T, lang: Lang, arbiter: Conflict
     noCollision: d.collisions.some((c) => !c.resolved) ? null : t('No conflict'),
     arbitrationForm: arbitrationFormDef(t),
     missionCosts: d.missionCosts.map((m) => ({
-      name: dataText(m.name, lang), budget: money(m.budgetKeur, lang), actual: m.actualKeur ? money(m.actualKeur, lang) : '—', pct: `${m.usedPct}%`, left: money(m.remainingKeur, lang),
+      position: m.position, name: dataText(m.name, lang), budget: money(m.budgetKeur, lang), actual: m.actualKeur ? money(m.actualKeur, lang) : '—',
+      actualTitle: m.actualKeur ? null : t('Waiting for Sage X3'), pct: `${m.usedPct}%`, left: money(m.remainingKeur, lang),
+      entry: entry ? lineEntry('cost', m, { name: m.name, budget: String(m.budgetKeur) }) : null,
     })),
+    noCost: d.missionCosts.length ? null : t('No mission cost line yet'),
+  };
+}
+
+/** A rotation's form values: a team member (or the line's own person) by name, else the contractor crew typed. */
+function rotationValues(r: SiteData['rotation'][number], team: readonly string[], t: T): FormValues {
+  const member = !!r.personId || team.includes(r.person);
+  return {
+    person: member ? r.person : CONTRACTOR_CREW, crew: member ? '' : r.person, role: r.roleOnSite, from: t(siteDateText(r.fromOn)), to: t(siteDateText(r.toOn)),
+    rotation: String(r.rotationNo), lodging: r.lodging, travel: r.travel,
   };
 }
 
@@ -261,21 +330,152 @@ function execView(code: string, d: SiteData, t: T, lang: Lang, today: string, pu
 }
 
 /**
+ * R-118: what the project's leads may enter (`canFillSiteSheet`) — their team's names (the rotation's people) and, without a
+ * sheet, the project's defaults for "Prepare the site".
+ */
+export interface EntryContext {
+  team: readonly string[];
+  defaults?: SiteSheetDefaults | null;
+}
+
+/**
  * The Site screen of `code` for the selected tab (all three tabs are built; the view renders the selected one). `punch`: the
- * Daily execution punch list's origin filter (R-117; default the items raised on site).
+ * Daily execution punch list's origin filter (R-117; default the items raised on site). `entry` (R-118): the viewer may prepare
+ * and fill the site sheet.
  */
 export function siteView(
-  code: string, data: SiteData | null, opts: { tab: SiteTab; today?: string; punch?: 'site' | 'all'; arbiter?: ConflictArbiter | null }, t: T, lang: Lang,
+  code: string,
+  data: SiteData | null,
+  opts: { tab: SiteTab; today?: string; punch?: 'site' | 'all'; arbiter?: ConflictArbiter | null; entry?: EntryContext | null },
+  t: T,
+  lang: Lang,
 ): SiteView {
   const segs = SITE_TABS.map((v) => ({ value: v, label: t(SITE_TAB_LABEL[v]), href: siteHref(code, v) }));
-  if (!data) return { tab: opts.tab, segs, empty: t(EMPTY_TEXT), ready: null, team: null, exec: null };
+  const entry = opts.entry ?? null;
+  if (!data) {
+    const d = entry?.defaults;
+    const prepare = entry
+      ? { form: siteSheetFormDef(t, 'prepare'), values: { site: d?.site ?? '', country: d?.country ?? '', currency: d?.currency ?? 'EUR', contact: d?.clientContact ?? '' } }
+      : null;
+    return { tab: opts.tab, segs, empty: t(EMPTY_TEXT), prepare, entry: null, ready: null, team: null, exec: null };
+  }
   return {
     tab: opts.tab,
     segs,
     empty: null,
-    ready: readyView(code, data, t, lang),
-    team: teamView(code, data, t, lang, opts.arbiter ?? null),
+    prepare: null,
+    entry: entry && sheetEntry(data, entry, t, lang),
+    ready: readyView(code, data, t, lang, !!entry),
+    team: teamView(code, data, t, lang, opts.arbiter ?? null, entry),
     exec: execView(code, data, t, lang, opts.today ?? STATUS_ISO, opts.punch ?? 'site'),
+  };
+}
+
+// ── Site sheet entry forms (R-118, D-3 'a') ─────────────────────────────────────────────────────────
+
+/** "Prepare the site" / "Edit site sheet": the sheet's values; site and country prefilled from the project on a new sheet. */
+export function siteSheetFormDef(t: T, mode: 'prepare' | 'edit'): FormDef {
+  return {
+    title: t(mode === 'prepare' ? 'Prepare the site' : 'Edit site sheet'),
+    submit: t(mode === 'prepare' ? 'Create the site sheet' : 'Save'),
+    kind: 'create',
+    fields: [
+      { id: 'site', label: t('Site'), type: 'text', required: true, span: 'full' },
+      { id: 'country', label: t('Country'), type: 'text', required: true },
+      { id: 'tz', label: t('Time zone'), type: 'text', placeholder: t('e.g. Europe/Paris (UTC+1)') },
+      { id: 'lang', label: t('Language'), type: 'text' },
+      { id: 'currency', label: t('Currency'), type: 'select', options: SITE_CURRENCIES.map((c) => ({ value: c, label: c })) },
+      { id: 'contact', label: t('Client contact on site'), type: 'text', span: 'full' },
+      { id: 'hours', label: t('Working hours'), type: 'text' },
+      { id: 'holidays', label: t('Local holidays'), type: 'text' },
+      { id: 'access', label: t('Access constraints'), type: 'textarea' },
+      { id: 'start', label: t('Site start'), type: 'text', required: true, placeholder: t('e.g. 19 Oct 2026') },
+      { id: 'end', label: t('Site end'), type: 'text', required: true, placeholder: t('e.g. 18 Dec 2026') },
+    ],
+  };
+}
+
+const ADD_TITLE: Record<SiteLineKind, string> = {
+  prerequisite: 'Add client prerequisite', equipment: 'Add equipment', rotation: 'Add a rotation', cost: 'Add mission cost line',
+};
+const EDIT_TITLE: Record<SiteLineKind, string> = {
+  prerequisite: 'Edit client prerequisite', equipment: 'Edit equipment', rotation: 'Edit rotation', cost: 'Edit mission cost line',
+};
+
+/**
+ * The form of a line kind: the prototype's columns only. A prerequisite offers the plan's activities (none → no form); a
+ * rotation offers the project team's people (and the people already on the plan) or a contractor crew typed by name; a mission
+ * cost line has a budget only (the actual comes from Sage X3).
+ */
+export function siteLineFormDef(
+  kind: SiteLineKind, mode: 'add' | 'edit', ctx: { activities: readonly { code: string; name: string }[]; people: readonly string[] }, t: T, lang: Lang,
+): FormDef | null {
+  const head = { title: t(mode === 'add' ? ADD_TITLE[kind] : EDIT_TITLE[kind]), submit: t(mode === 'add' ? 'Add' : 'Save'), kind: 'create' as const };
+  switch (kind) {
+    case 'prerequisite':
+      if (!ctx.activities.length) return null;
+      return {
+        ...head,
+        fields: [
+          { id: 'title', label: t('Prerequisite'), type: 'text', required: true },
+          { id: 'activity', label: t('Conditions activity'), type: 'select', options: ctx.activities.map((a) => ({ value: a.code, label: `${a.code} · ${dataText(a.name, lang)}` })) },
+          { id: 'needed', label: t('Needed by'), type: 'text', required: true, placeholder: t('e.g. 2 Nov 2026') },
+          { id: 'evidence', label: t('Evidence'), type: 'text' },
+        ],
+      };
+    case 'equipment':
+      return {
+        ...head,
+        fields: [
+          { id: 'name', label: t('Equipment'), type: 'text', required: true, span: 'full' },
+          { id: 'source', label: t('Source'), type: 'select', options: equipmentSource.codes.map((c) => ({ value: c, label: t(equipmentSource.label(c)) })) },
+          { id: 'note', label: t('Note'), type: 'text' },
+        ],
+      };
+    case 'rotation':
+      return {
+        ...head,
+        fields: [
+          { id: 'person', label: t('Person'), type: 'select', options: [...ctx.people.map((n) => ({ value: n, label: n })), { value: CONTRACTOR_CREW, label: t('Contractor crew (name below)') }] },
+          { id: 'crew', label: t('Contractor crew'), type: 'text', placeholder: t('e.g. Contractor — 2 fitters') },
+          { id: 'role', label: t('Role on site'), type: 'text', required: true },
+          { id: 'rotation', label: t('Rotation'), type: 'number', defaultValue: '1' },
+          { id: 'from', label: t('From'), type: 'text', required: true, placeholder: t('e.g. 19 Oct 2026') },
+          { id: 'to', label: t('To'), type: 'text', required: true, placeholder: t('e.g. 13 Nov 2026') },
+          { id: 'lodging', label: t('Lodging'), type: 'text' },
+          { id: 'travel', label: t('Travel'), type: 'text' },
+        ],
+      };
+    case 'cost':
+      return {
+        ...head,
+        fields: [
+          { id: 'name', label: t('Line'), type: 'text', required: true, span: 'full' },
+          { id: 'budget', label: t('Budget (k€)'), type: 'number', required: true },
+        ],
+      };
+  }
+}
+
+function sheetEntry(d: SiteData, entry: EntryContext, t: T, lang: Lang): SheetEntry {
+  const s = d.sheet;
+  // The rotation's people: the project team, and the people already on the plan (a line keeps its person — the writer re-checks).
+  const people = [...new Set([...entry.team, ...d.rotation.filter((r) => r.personId).map((r) => r.person)])];
+  const ctx = { activities: d.planActivities, people };
+  const forms = (mode: 'add' | 'edit') =>
+    Object.fromEntries((['prerequisite', 'equipment', 'rotation', 'cost'] as const).map((k) => [k, siteLineFormDef(k, mode, ctx, t, lang)])) as Record<SiteLineKind, FormDef | null>;
+  return {
+    sheet: {
+      form: siteSheetFormDef(t, 'edit'),
+      values: {
+        site: s.site, country: s.country, tz: s.timeZone, lang: s.language, currency: s.currency, contact: s.clientContact, hours: s.workingHours, holidays: s.localHolidays,
+        access: s.accessConstraints, start: t(siteDateText(s.startOn)), end: t(siteDateText(s.endOn)),
+      },
+      stamp: s.stamp,
+    },
+    add: forms('add'),
+    edit: forms('edit'),
+    noActivity: d.planActivities.length ? null : t('A prerequisite conditions an activity of the plan — this project’s plan has no activity yet'),
   };
 }
 

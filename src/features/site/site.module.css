@@ -102,3 +102,9 @@ a:global(.btn-ghost).hseBtn:hover { color: var(--color-accent); }
 
 /* Empty state: 12.5px neutral-400 · padding 14 · centred · radius md · neutral-900 */
 .empty { font-size: 12.5px; color: var(--color-neutral-400); padding: 14px; text-align: center; border-radius: var(--radius-md); background: var(--color-neutral-900); }
+
+/* R-118 (D-3 'a'): the leads' entry — "Prepare the site" under the empty state, "Edit site sheet" next to the card title,
+ * the remove confirmation. */
+.emptyAction { display: flex; justify-content: center; margin-top: 10px; }
+.sheetHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.confirmText { margin: 0; font-size: 13px; color: var(--color-neutral-300); text-wrap: pretty; }

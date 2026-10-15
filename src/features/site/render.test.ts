@@ -98,7 +98,8 @@ describe('Site view model vs the prototype (EN and FR)', () => {
       expect(r.go.items.map((i) => ({ label: i.label, ok: i.ok, sub: i.sub, icon: i.ok ? 'ph ph-check-circle' : 'ph ph-warning-circle', color: i.color }))).toEqual(
         g.goItems.map((i: any) => (i.sub === '4 collisions' ? { ...i, sub: '8 collisions' } : i)),
       );
-      expect(r.meta.map((m) => [m.k, m.v])).toEqual(g.meta);
+      // D-3 'a' / R-028 (R-118): the sheet also shows its Cursus site — not created yet (Cursus has no site-creation endpoint).
+      expect(r.meta.map((m) => [m.k, m.v])).toEqual([...g.meta, lang === 'fr' ? ['Chantier Cursus', 'Pas encore créé'] : ['Cursus site', 'Not created yet']]);
       expect(r.prereqs.map((p) => ({
         title: p.title, act: p.act, due: p.due, status: p.status, tagClass: p.tagClass, note: p.note, late: p.late, dueColor: p.dueColor,
         canConfirm: p.step?.to === 'confirmed', canSign: p.step?.to === 'signed',
@@ -130,7 +131,13 @@ describe('Site view model vs the prototype (EN and FR)', () => {
       expect(t.collisions.map((c) => c.href)).toEqual(CONFLICTS.en.map((x) => x[4]));
       // No arbiter given: nobody may arbitrate; nothing is arbitrated on the seed.
       expect([t.collisions.some((c) => c.canArbitrate), t.arbitrated, t.noCollision]).toEqual([false, [], null]);
-      expect(t.missionCosts).toEqual(g.missionCosts);
+      // R-118: the prototype's columns, plus the line's position, its entry (none: no viewer entry here) and "Waiting for Sage X3" on an
+      // actual not received (C-2a / A-12 'a': actuals are never typed).
+      expect(t.missionCosts.map(({ name, budget, actual, pct, left }) => ({ name, budget, actual, pct, left }))).toEqual(g.missionCosts);
+      expect(t.missionCosts.map((m) => [m.position, m.entry, m.actualTitle])).toEqual(
+        g.missionCosts.map((m: any, i: number) => [i, null, m.actual === '—' ? (lang === 'fr' ? 'En attente de Sage X3' : 'Waiting for Sage X3') : null]),
+      );
+      expect([t.noRotation, t.noCost]).toEqual([null, null]);
     });
 
     it(`${lang} · Daily execution: KPIs, daily reports and their NCR link, site punch list, HSE register (Vigie)`, async () => {
@@ -164,11 +171,13 @@ describe('Site view model vs the prototype (EN and FR)', () => {
     for (const code of ['NDC-031', 'RCF-019', 'ERP-202', 'WSA-044', 'MSR-012', 'EWA-051']) {
       expect(G.seed.en.others[code]).toMatchObject({ siteNotProj: true, badge: '' });
       const { v } = await view('en', code);
+      // D-3 'a' (R-118): the leads prepare the sheet from the Études stage (the prototype: "opens when the project reaches the
+      // Expédition stage").
       expect([v.empty, v.ready, v.team, v.exec]).toEqual([
-        'The site module opens when the project reaches the Expédition stage — no site sheet yet for this project.', null, null, null,
+        'No site sheet yet for this project — the project’s leads prepare it from the Études stage.', null, null, null,
       ]);
     }
-    expect((await view('fr', 'NDC-031')).v.empty).toBe('Le module chantier s’ouvre quand le projet atteint l’étape Expédition — pas encore de fiche chantier pour ce projet.');
+    expect((await view('fr', 'NDC-031')).v.empty).toBe('Pas encore de fiche chantier pour ce projet — les responsables du projet la préparent dès l’étape Études.');
   });
 
   it('Daily report form: the prototype fields without HSE (NEW-SITE-2 a), weather codes as values, the status date by default, FR weather "Dégagé"', () => {
@@ -272,7 +281,8 @@ describe('Site static render', () => {
 
   it('a project without a site sheet renders the empty state only', async () => {
     const out = await render('en', 'ready', true, 'NDC-031');
-    expect(text(out).trim()).toBe('The site module opens when the project reaches the Expédition stage — no site sheet yet for this project.');
+    // D-3 'a' (R-118): the empty state's sentence (this viewer gets no "Prepare the site": the view is built without entry).
+    expect(text(out).trim()).toBe('No site sheet yet for this project — the project’s leads prepare it from the Études stage.');
   });
 });
 

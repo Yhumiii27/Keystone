@@ -104,7 +104,8 @@ describe('/projects/[code]/site', () => {
 
   it('a project without a site sheet: empty state; an unknown project → not found', async () => {
     const v = (await page({}, 'EWA-051')).SiteBody.props.view as SiteView;
-    expect([v.empty, v.ready]).toEqual(['The site module opens when the project reaches the Expédition stage — no site sheet yet for this project.', null]);
+    // D-3 'a' (R-118): the leads prepare the sheet from Études — EWA-051 is at Initiative, so no "Prepare the site" either.
+    expect([v.empty, v.ready, v.prepare]).toEqual(['No site sheet yet for this project — the project’s leads prepare it from the Études stage.', null, null]);
     await expect(page({}, 'XXX-999')).rejects.toThrow('NOT_FOUND');
   });
 });

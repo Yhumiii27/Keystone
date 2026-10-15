@@ -8,6 +8,8 @@ import 'server-only';
 // src/domain/site.ts (`goChantier`).
 // Time model: a prerequisite is late when still pending at J-15 of its need date (J-15 rule of the card subtitle,
 // against the status date; the prototype listed two dates, 10 OQ6) — `isPrerequisiteLate`.
+// R-118 (D-3 'a'): the sheet and its lines are created and filled by the project's leads (./site-sheet.ts); `getSite` gives
+// each line its position and the stamp its edit form sends back.
 import { and, asc, desc, eq, inArray, ne, or } from 'drizzle-orm';
 import type { RoleKey } from '@/config/screens';
 import { plannedManDays, standardCalendar } from '@/domain/kpis';
@@ -15,6 +17,7 @@ import {
   ARBITRATION_COMMENT_MAX, PREREQUISITE_ALERT_DAYS, canArbitrateConflict, goChantier, isPrerequisiteLate, missionCostUse, siteConflicts,
   type ConflictFacts, type GoCondition, type SiteConflict, type SitePremium,
 } from '@/domain/site';
+import { costStamp, equipmentStamp, prerequisiteStamp, rotationStamp } from '@/domain/site-sheet';
 import { getDb } from '@/server/db/client';
 import {
   STATUS_ISO, addDaysIso, collisionKind, confirmStatus, cursusClearance, cursusVaccination, cursusVerdict, cursusVisa, equipmentSource, hseIncident, hseStatus,
@@ -38,6 +41,7 @@ import { clientDecisionsOf } from './kpis';
 import { getResourcePool, type ResourcePool } from './resources';
 import type { DB, Tx } from '@/server/db/types';
 import { isIsoDate, managesProject, projectOf, requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
+import { siteSheetStamp } from './site-sheet';
 
 export type { Actor, CursusClearanceView, GoCondition };
 export { PREREQUISITE_ALERT_DAYS, cursusChantierUrl, vigieCoactivityUrl, vigieHseListUrl, vigieReportIncidentUrl };
@@ -58,21 +62,27 @@ export interface SiteSheet {
   planDays: number;
   manDaysPlanned: number;
   cursusChantierId: string | null;
+  /** R-118: what "Edit site sheet" saw (the writer refuses a sheet changed since). */
+  stamp: string;
 }
 
-export interface EquipmentRow { position: number; name: string; source: EquipmentSource; sourceLabel: string; status: Exclude<ConfirmStatus, 'signed'>; statusLabel: string; note: string }
+// R-118: `position` identifies a line for its Server Functions; `stamp` is what the edit / remove form saw (src/domain/site-sheet.ts).
+export interface EquipmentRow {
+  position: number; name: string; source: EquipmentSource; sourceLabel: string; status: Exclude<ConfirmStatus, 'signed'>; statusLabel: string; note: string; stamp: string;
+}
 export interface PrerequisiteRow {
   position: number; title: string; activityCode: string; activityName: string | null; neededBy: string; status: ConfirmStatus; statusLabel: string; evidence: string;
-  late: boolean;
+  late: boolean; stamp: string;
 }
 export interface RotationRow {
-  person: string; personId: string | null; roleOnSite: string; fromOn: string; toOn: string; lodging: string; travel: string; rotationNo: number;
+  position: number; person: string; personId: string | null; roleOnSite: string; fromOn: string; toOn: string; lodging: string; travel: string; rotationNo: number;
   /** An open (not arbitrated) conflict of this person (R-119). */
   hasCollision: boolean;
+  stamp: string;
 }
 /** A site-team conflict computed from the rotation plan (R-119, D-6b 'a'); `resolved` = arbitrated while its cause is unchanged. */
 export interface CollisionRow extends SiteConflict { kindLabel: string; resolved: boolean }
-export interface MissionCostRow { name: string; budgetKeur: number; actualKeur: number; remainingKeur: number; usedPct: number }
+export interface MissionCostRow { position: number; name: string; budgetKeur: number; actualKeur: number; remainingKeur: number; usedPct: number; stamp: string }
 export interface DailyReportRow {
   number: string; reportOn: string; activity: string; percentComplete: number | null; text: string; linkRef: string | null; author: string;
   weather: Weather | null; weatherLabel: string | null; headcount: number | null; hseIncident: HseIncident | null; hseIncidentLabel: string | null;
@@ -91,6 +101,8 @@ export interface HseRow {
 export interface SiteData {
   projectCode: string;
   sheet: SiteSheet;
+  /** R-118: the plan's activities (code order) — what a client prerequisite may condition. */
+  planActivities: { code: string; name: string }[];
   equipment: EquipmentRow[];
   prerequisites: PrerequisiteRow[];
   cursus: { verdict: CursusVerdict | null; people: CursusClearanceView[]; lastSyncedAt: string | null; mode: 'mock' | 'http'; openUrl: string };
@@ -134,7 +146,7 @@ export async function getSite(projectCode: string, today: string = STATUS_ISO): 
   const [eq_, pre, acts, rot, pool, costs, reports, punch, hse, gng, cals, calCode, clientDecisions] = await Promise.all([
     db.select().from(siteEquipment).where(eq(siteEquipment.projectId, p.id)).orderBy(asc(siteEquipment.position)),
     db.select().from(sitePrerequisites).where(eq(sitePrerequisites.projectId, p.id)).orderBy(asc(sitePrerequisites.position)),
-    db.select({ code: activities.code, name: activities.name }).from(activities).where(eq(activities.projectId, p.id)),
+    db.select({ code: activities.code, name: activities.name }).from(activities).where(eq(activities.projectId, p.id)).orderBy(asc(activities.code)),
     db.select().from(siteRotations).where(eq(siteRotations.projectId, p.id)).orderBy(asc(siteRotations.position)),
     // R-119: the resource pool's weekly loads, through its own reader.
     getResourcePool(),
@@ -159,19 +171,24 @@ export async function getSite(projectCode: string, today: string = STATUS_ISO): 
       // A-12: Σ rotation crew × working days on the project calendar (the stored figure is the prototype's literal 168).
       manDaysPlanned: plannedManDays(rot.map((r) => ({ person: r.personName, fromOn: r.fromOn, toOn: r.toOn })), cals[calCode] ?? standardCalendar()),
       cursusChantierId: s.cursusChantierId,
+      stamp: siteSheetStamp(s),
     },
-    equipment: eq_.map((e) => ({ position: e.position, name: e.name, source: e.source, sourceLabel: equipmentSource.label(e.source), status: e.status, statusLabel: confirmStatus.label(e.status), note: e.note })),
+    planActivities: acts,
+    equipment: eq_.map((e) => ({
+      position: e.position, name: e.name, source: e.source, sourceLabel: equipmentSource.label(e.source), status: e.status, statusLabel: confirmStatus.label(e.status), note: e.note,
+      stamp: equipmentStamp(e),
+    })),
     prerequisites: pre.map((x) => ({
       position: x.position, title: x.title, activityCode: x.activityCode, activityName: actName.get(x.activityCode) ?? null, neededBy: x.neededBy, status: x.status,
-      statusLabel: confirmStatus.label(x.status), evidence: x.evidence, late: isPrerequisiteLate(x, today),
+      statusLabel: confirmStatus.label(x.status), evidence: x.evidence, late: isPrerequisiteLate(x, today), stamp: prerequisiteStamp(x),
     })),
     cursus: { verdict: gng.verdict, people: gng.people, lastSyncedAt: gng.lastSyncedAt, mode: cursus.mode, openUrl: cursusChantierUrl(s.cursusChantierId) },
     rotation: rot.map((r) => ({
-      person: r.personName, personId: r.personId, roleOnSite: r.roleOnSite, fromOn: r.fromOn, toOn: r.toOn, lodging: r.lodging, travel: r.travel, rotationNo: r.rotationNo,
-      hasCollision: open.has(r.personName),
+      position: r.position, person: r.personName, personId: r.personId, roleOnSite: r.roleOnSite, fromOn: r.fromOn, toOn: r.toOn, lodging: r.lodging, travel: r.travel,
+      rotationNo: r.rotationNo, hasCollision: open.has(r.personName), stamp: rotationStamp(r),
     })),
     collisions,
-    missionCosts: costs.map((c) => ({ name: c.name, budgetKeur: c.budgetKeur, actualKeur: c.actualKeur, ...missionCostUse(c) })),
+    missionCosts: costs.map((c) => ({ position: c.position, name: c.name, budgetKeur: c.budgetKeur, actualKeur: c.actualKeur, ...missionCostUse(c), stamp: costStamp(c) })),
     dailyReports: reports.map((r) => ({
       number: r.number, reportOn: r.reportOn, activity: r.activityLabel, percentComplete: r.percentComplete, text: r.text, linkRef: r.linkRef, author: r.authorName,
       weather: r.weather, weatherLabel: r.weather ? weather.label(r.weather) : null, headcount: r.headcount, hseIncident: r.hseIncident,
@@ -236,7 +253,11 @@ export const cursusLabels = (c: Pick<CursusClearanceView, 'visa' | 'vaccination'
   visa: cursusVisa.label(c.visa), vaccination: cursusVaccination.label(c.vaccination), clearance: cursusClearance.label(c.clearance), verdict: cursusVerdict.label(c.verdict),
 });
 
-/** "NO GO" when the project has a site sheet and Go chantier is not reached (Site nav badge), per project. */
+/**
+ * "NO GO" when the project has a site sheet and Go chantier is not reached (Site nav badge), per project. R-118: sheets are now
+ * created from Études, so this full read per sheet grows with the portfolio, and a new sheet shows NO GO until Cursus sends
+ * verdicts (R-120) — a lighter query and a J-30 window are for the owner to confirm (docs/delivery-8/notes-site-quality.md).
+ */
 export async function siteBadgeByProject(): Promise<Record<string, string>> {
   const db = await getDb();
   const rows = await db.select({ code: projects.code }).from(siteSheets).innerJoin(projects, eq(projects.id, siteSheets.projectId));

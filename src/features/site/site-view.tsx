@@ -4,7 +4,9 @@
 // reports, site punch list, Vigie's HSE register) — or the empty state of a project without a site sheet.
 // Server Component; the buttons that write are client islands (site-buttons.tsx), shown to editors only. Links to
 // Cursus and Vigie open outside Keystone. R-117: the punch list is the project's single list — the items raised on site by
-// default, "All" on demand — read-only here as in the prototype (Start / Close are on Inspections & punch list).
+// default, "All" on demand — read-only here as in the prototype (Start / Close are on Inspections & punch list). R-118
+// (D-3 'a'): the project's leads get "Prepare the site" on the empty state, "Edit site sheet" and the lines' Add / Edit /
+// Remove (`view.entry`); every table has its empty message.
 import {
   ArrowSquareOut, ArrowsClockwise, Chats, Check, CheckCircle, Eye, FirstAid, LockSimple, Warning, WarningCircle,
 } from '@phosphor-icons/react/dist/ssr';
@@ -24,9 +26,13 @@ import { CURSUS_LINK_ATTRS } from '@/server/integrations/cursus/links';
 import { VIGIE_LINK_ATTRS } from '@/server/integrations/vigie/links';
 import { PhotosButton, type PhotoView } from '@/features/photos/photo-gallery';
 import { CURSUS_CARD_ID } from './links';
-import type { ExecView, KpiView, ReadyView, SiteView, TeamView } from './model';
+import type { ExecView, KpiView, LineEntry, ReadyView, SheetEntry, SiteView, TeamView } from './model';
 import { clientDecisionsHref } from '@/features/meetings/model';
-import { ArbitrateButton, ConfirmEquipmentButton, PrerequisiteButton, RemindButton, SyncCursusButton } from './site-buttons';
+import type { SiteLineKind } from '@/domain/site-sheet';
+import {
+  AddLineButton, ArbitrateButton, ConfirmEquipmentButton, EditLineButton, EditSheetButton, PrepareSiteButton, PrerequisiteButton, RemindButton, RemoveLineButton,
+  SyncCursusButton,
+} from './site-buttons';
 import s from './site.module.css';
 
 export interface SiteBodyProps {
@@ -38,6 +44,8 @@ export interface SiteBodyProps {
   showCommLog?: boolean;
   /** R-126: photos stored by Keystone of the daily reports and the site punch items (by number); none when not given. */
   photos?: SitePhotos;
+  /** The project's label, the sub-line of the site sheet's dialogs (R-118). */
+  context?: string;
   t: T;
 }
 
@@ -50,19 +58,26 @@ export interface SitePhotos {
   punch: Record<string, PhotoView[]>;
 }
 
-export function SiteBody({ code, view, canEdit, showCommLog = true, photos, t }: SiteBodyProps) {
+export function SiteBody({ code, view, canEdit, showCommLog = true, photos, context = code, t }: SiteBodyProps) {
   return (
     <Stack>
       {view.empty ? (
-        <div className={s.empty}>{view.empty}</div>
+        <div className={s.empty}>
+          <span>{view.empty}</span>
+          {view.prepare && (
+            <span className={s.emptyAction}>
+              <PrepareSiteButton code={code} context={context} form={view.prepare.form} values={view.prepare.values} />
+            </span>
+          )}
+        </div>
       ) : (
         <>
           <FilterBar>
             <FilterLabel icon={Eye}>{t('Display')}</FilterLabel>
             <Segmented wrap label={t('Display')} value={view.tab} options={view.segs.map((o) => ({ value: o.value, label: o.label, href: o.href }))} />
           </FilterBar>
-          {view.tab === 'ready' && view.ready && <ReadyTab code={code} v={view.ready} canEdit={canEdit} t={t} />}
-          {view.tab === 'team' && view.team && <TeamTab code={code} v={view.team} t={t} />}
+          {view.tab === 'ready' && view.ready && <ReadyTab code={code} v={view.ready} canEdit={canEdit} entry={view.entry} context={context} t={t} />}
+          {view.tab === 'team' && view.team && <TeamTab code={code} v={view.team} entry={view.entry} t={t} />}
           {view.tab === 'exec' && view.exec && <ExecTab code={code} v={view.exec} showCommLog={showCommLog} photos={photos} t={t} />}
         </>
       )}
@@ -80,9 +95,27 @@ function Kpis({ kpis }: { kpis: KpiView[] }) {
   );
 }
 
+/** R-118: "Add …" in a table's header for the leads (no form → nothing: the prerequisite's empty plan is explained). */
+function AddLine({ code, kind, entry }: { code: string; kind: SiteLineKind; entry: SheetEntry | null }) {
+  const form = entry?.add[kind];
+  return form ? <AddLineButton code={code} kind={kind} label={form.title} form={form} /> : null;
+}
+
+/** R-118: "Edit" / "Remove" of a line for the leads (what the line allows). */
+function LineButtons({ code, kind, position, label, line, entry }: { code: string; kind: SiteLineKind; position: number; label: string; line: LineEntry | null; entry: SheetEntry | null }) {
+  const form = entry?.edit[kind];
+  if (!line || !entry) return null;
+  return (
+    <>
+      {line.editable && form && <EditLineButton code={code} kind={kind} position={position} stamp={line.stamp} label={label} form={form} values={line.values} />}
+      {line.removable && <RemoveLineButton code={code} kind={kind} position={position} stamp={line.stamp} label={label} />}
+    </>
+  );
+}
+
 // ── Readiness & go ───────────────────────────────────────────────────────────────────────────────────
 
-function ReadyTab({ code, v, canEdit, t }: { code: string; v: ReadyView; canEdit: boolean; t: T }) {
+function ReadyTab({ code, v, canEdit, entry, context, t }: { code: string; v: ReadyView; canEdit: boolean; entry: SheetEntry | null; context: string; t: T }) {
   return (
     <>
       <Kpis kpis={v.kpis} />
@@ -108,7 +141,10 @@ function ReadyTab({ code, v, canEdit, t }: { code: string; v: ReadyView; canEdit
           </div>
         </SectionCard>
         <SectionCard gap={4}>
-          <CardTitle className={s.sheetTitle}>{t('Site sheet')}</CardTitle>
+          <div className={s.sheetHead}>
+            <CardTitle className={s.sheetTitle}>{t('Site sheet')}</CardTitle>
+            {entry && <EditSheetButton code={code} context={context} stamp={entry.sheet.stamp} form={entry.sheet.form} values={entry.sheet.values} />}
+          </div>
           {v.meta.map((m) => (
             <div key={m.k} className={s.metaRow}>
               <span className={s.metaKey}>{m.k}</span>
@@ -122,7 +158,10 @@ function ReadyTab({ code, v, canEdit, t }: { code: string; v: ReadyView; canEdit
         scroll
         title={t('Client prerequisites (readiness)')}
         subtitle={t('Dated and signed by the client · each one conditions a site activity · J-15 unconfirmed → alert, risk and client letter')}
+        actions={<AddLine code={code} kind="prerequisite" entry={entry} />}
       >
+        {entry?.noActivity && <span className={s.footnote}>{entry.noActivity}</span>}
+        {v.noPrereq && <span className={s.footnote}>{v.noPrereq}</span>}
         <Table>
           <thead>
             <tr>
@@ -151,6 +190,7 @@ function ReadyTab({ code, v, canEdit, t }: { code: string; v: ReadyView; canEdit
                 <td>
                   <div className={s.actions}>
                     {canEdit && r.step && <PrerequisiteButton code={code} position={r.position} to={r.step.to} label={r.step.label} title={r.title} />}
+                    <LineButtons code={code} kind="prerequisite" position={r.position} label={r.title} line={r.entry} entry={entry} />
                   </div>
                 </td>
               </tr>
@@ -160,7 +200,13 @@ function ReadyTab({ code, v, canEdit, t }: { code: string; v: ReadyView; canEdit
       </SectionCard>
 
       <CardGrid min={540}>
-        <SectionCard scroll title={t('Equipment on site')} subtitle={t('Shipped with the machine · rented locally · provided by the client')}>
+        <SectionCard
+          scroll
+          title={t('Equipment on site')}
+          subtitle={t('Shipped with the machine · rented locally · provided by the client')}
+          actions={<AddLine code={code} kind="equipment" entry={entry} />}
+        >
+          {v.noEquip && <span className={s.footnote}>{v.noEquip}</span>}
           <Table size={12.5}>
             <thead>
               <tr>
@@ -182,7 +228,12 @@ function ReadyTab({ code, v, canEdit, t }: { code: string; v: ReadyView; canEdit
                     <span className={r.tagClass}>{r.status}</span>
                   </td>
                   <td className={s.note115}>{r.note}</td>
-                  <td>{canEdit && r.canConfirm && <ConfirmEquipmentButton code={code} position={r.position} name={r.name} />}</td>
+                  <td>
+                    <div className={s.actions}>
+                      {canEdit && r.canConfirm && <ConfirmEquipmentButton code={code} position={r.position} name={r.name} />}
+                      <LineButtons code={code} kind="equipment" position={r.position} label={r.name} line={r.entry} entry={entry} />
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -283,11 +334,17 @@ function CursusCard({ code, v, canEdit, t }: { code: string; v: ReadyView['cursu
 
 // ── Team & mobilisation ───────────────────────────────────────────────────────────────────────────────
 
-function TeamTab({ code, v, t }: { code: string; v: TeamView; t: T }) {
+function TeamTab({ code, v, entry, t }: { code: string; v: TeamView; entry: SheetEntry | null; t: T }) {
   return (
     <>
       <Kpis kpis={v.kpis} />
-      <SectionCard scroll title={t('Rotation plan')} subtitle={t('Who, when, where they sleep, how they travel · shown next to the site activities in the Gantt')}>
+      <SectionCard
+        scroll
+        title={t('Rotation plan')}
+        subtitle={t('Who, when, where they sleep, how they travel · shown next to the site activities in the Gantt')}
+        actions={<AddLine code={code} kind="rotation" entry={entry} />}
+      >
+        {v.noRotation && <span className={s.footnote}>{v.noRotation}</span>}
         <Table>
           <thead>
             <tr>
@@ -300,11 +357,12 @@ function TeamTab({ code, v, t }: { code: string; v: TeamView; t: T }) {
               <Th>{t('Lodging')}</Th>
               <Th>{t('Travel')}</Th>
               <Th>{t('Collision')}</Th>
+              {entry && <Th aria-label={t('Actions')} />}
             </tr>
           </thead>
           <tbody>
-            {v.rotation.map((r, i) => (
-              <tr key={`${r.who}-${i}`}>
+            {v.rotation.map((r) => (
+              <tr key={r.position}>
                 <td className={s.nowrap}>{r.who}</td>
                 <Td tone="secondary">{r.role}</Td>
                 <td className={s.due}>{r.from}</td>
@@ -319,6 +377,13 @@ function TeamTab({ code, v, t }: { code: string; v: TeamView; t: T }) {
                     <Check className={s.collideIcon} role="img" aria-label={r.collisionLabel} />
                   )}
                 </td>
+                {entry && (
+                  <td>
+                    <div className={s.actions}>
+                      <LineButtons code={code} kind="rotation" position={r.position} label={`${r.who} · ${r.from} → ${r.to}`} line={r.entry} entry={entry} />
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -362,7 +427,13 @@ function TeamTab({ code, v, t }: { code: string; v: TeamView; t: T }) {
             </div>
           ))}
         </SectionCard>
-        <SectionCard scroll title={t('Mission costs')} subtitle={t('Charged to the Site work package · planned vs actual')}>
+        <SectionCard
+          scroll
+          title={t('Mission costs')}
+          subtitle={t('Charged to the Site work package · planned vs actual')}
+          actions={<AddLine code={code} kind="cost" entry={entry} />}
+        >
+          {v.noCost && <span className={s.footnote}>{v.noCost}</span>}
           <Table size={12.5}>
             <thead>
               <tr>
@@ -371,16 +442,17 @@ function TeamTab({ code, v, t }: { code: string; v: TeamView; t: T }) {
                 <Th align="right">{t('Actual')}</Th>
                 <Th width="26%" aria-label={t('Used')} />
                 <Th align="right">{t('Remaining')}</Th>
+                {entry && <Th aria-label={t('Actions')} />}
               </tr>
             </thead>
             <tbody>
               {v.missionCosts.map((r) => (
-                <tr key={r.name}>
+                <tr key={r.position}>
                   <td>{r.name}</td>
                   <Td align="right" numeric>
                     {r.budget}
                   </Td>
-                  <Td align="right" numeric>
+                  <Td align="right" numeric title={r.actualTitle ?? undefined}>
                     {r.actual}
                   </Td>
                   <td>
@@ -391,6 +463,13 @@ function TeamTab({ code, v, t }: { code: string; v: TeamView; t: T }) {
                   <Td align="right" numeric>
                     {r.left}
                   </Td>
+                  {entry && (
+                    <td>
+                      <div className={s.actions}>
+                        <LineButtons code={code} kind="cost" position={r.position} label={r.name} line={r.entry} entry={entry} />
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
