@@ -103,5 +103,7 @@
   "To: enter a date such as 13 Nov 2026": "Au : saisissez une date comme 13 nov. 2026",
   "The departure is before the arrival": "Le départ est avant l’arrivée",
   "The rotation is a whole number from 1 to 99": "La rotation est un nombre entier de 1 à 99",
-  "The budget is an amount in k€, 0 or more": "Le budget est un montant en k€, 0 ou plus"
+  "The budget is an amount in k€, 0 or more": "Le budget est un montant en k€, 0 ou plus",
+  "No approval received from Cursus yet": "Aucune approbation reçue de Cursus pour l’instant",
+  "No daily report yet": "Aucun rapport journalier pour l’instant"
 }

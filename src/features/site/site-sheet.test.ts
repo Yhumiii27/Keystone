@@ -184,8 +184,9 @@ describe('R-118 · who prepares and fills the site sheet (9 personas)', () => {
     // The new sheet's empty state per table, and the empty plan explained.
     as('pm');
     const v = await pageView('PRS-038');
-    expect([v.ready!.noPrereq, v.ready!.noEquip, v.team!.noRotation, v.team!.noCost]).toEqual([
-      'No client prerequisite yet', 'No equipment yet', 'No one on the rotation plan yet', 'No mission cost line yet',
+    expect([v.ready!.noPrereq, v.ready!.noEquip, v.ready!.cursus.empty, v.team!.noRotation, v.team!.noCost, v.exec!.noReport]).toEqual([
+      'No client prerequisite yet', 'No equipment yet', 'No approval received from Cursus yet', 'No one on the rotation plan yet', 'No mission cost line yet',
+      'No daily report yet',
     ]);
     expect([v.entry!.add.prerequisite, v.entry!.noActivity]).toEqual([null, 'A prerequisite conditions an activity of the plan — this project’s plan has no activity yet']);
   });

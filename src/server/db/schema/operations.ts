@@ -29,7 +29,7 @@ export const projectInterfaces = pgTable(
     dataExpected: text('data_expected').notNull(),
     /** "15 Oct" → 2026-10-15 (2026 assumed, as the prototype). */
     neededBy: date('needed_by', { mode: 'string' }).notNull(),
-    /** Provided date: the received date "Mark received" stamps (Q-4 'a', R-116; today by default); null for older receipts. */
+    /** Provided date; "Mark received" does not stamp it (OPEN QUESTION Q-4). */
     providedOn: date('provided_on', { mode: 'string' }),
     status: text('status').$type<InterfaceStatus>().notNull(),
     ownerPersonId: uuid('owner_person_id').references(() => persons.id),

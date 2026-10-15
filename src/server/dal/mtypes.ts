@@ -139,8 +139,7 @@ export async function setMachineTypePhases(code: string, phases: string[], actor
   });
 }
 
-/** Replaces the ITP systems ("Add system" appends "New system"). */
-/** Replaces the type's ITP systems — for the plans created afterwards (E-9 'a', R-057: existing plans keep theirs). */
+/** Replaces the ITP systems ("Add system" appends "New system") — for the plans created afterwards (E-9 'a', R-057: existing plans keep theirs). */
 export async function setMachineTypeItpSystems(code: string, systems: string[], actor: Actor): Promise<void> {
   MT(actor);
   const names = systems.map((s, i) => requiredText(s, `System ${i + 1}`, 120));

@@ -272,6 +272,7 @@ function CursusCard({ code, v, canEdit, t }: { code: string; v: ReadyView['cursu
         <ArrowsClockwise className={s.mirrorIcon} aria-hidden />
         {t('Mirrored from Cursus — verdicts are managed in Cursus')} · {v.lastSync}
       </span>
+      {v.empty && <span className={s.footnote}>{v.empty}</span>}
       <Table size={12.5}>
         <thead>
           <tr>
@@ -491,6 +492,7 @@ function ExecTab({ code, v, showCommLog, photos, t }: { code: string; v: ExecVie
         title={t('Daily reports')}
         subtitle={t('Filled on mobile by the site lead · hours per activity, % complete, photos, weather, incidents, visitors')}
       >
+        {v.noReport && <span className={s.footnote}>{v.noReport}</span>}
         <Table>
           <thead>
             <tr>

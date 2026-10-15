@@ -79,6 +79,8 @@ export interface ReadyView {
     lastSync: string;
     openUrl: string;
     mode: 'mock' | 'http';
+    /** R-118: no approval received yet (a new sheet). */
+    empty: string | null;
   };
 }
 
@@ -107,6 +109,8 @@ export interface TeamView {
 export interface ExecView {
   kpis: KpiView[];
   reports: { number: string; date: string; act: string; pct: string; txt: string; detail: string | null; link: string; href: string | null; by: string }[];
+  /** R-118: no daily report yet (a new sheet). */
+  noReport: string | null;
   note: string | null;
   /**
    * R-117 (A-6 'a'): the project's single punch list, the items raised on site by default ("Site" | "All", `?punch=all`);
@@ -225,6 +229,7 @@ function readyView(code: string, d: SiteData, t: T, lang: Lang, entry: boolean):
       lastSync: lastSyncText(d.cursus.lastSyncedAt, t, lang),
       openUrl: cursusChantierUrl(s.cursusChantierId),
       mode: d.cursus.mode,
+      empty: d.cursus.people.length ? null : t('No approval received from Cursus yet'),
     },
   };
 }
@@ -308,6 +313,7 @@ function execView(code: string, d: SiteData, t: T, lang: Lang, today: string, pu
         by: r.author,
       };
     }),
+    noReport: d.dailyReports.length ? null : t('No daily report yet'),
     note: note && siteText(note, t, lang),
     punch: punch.map((p) => ({
       id: p.number, title: dataText(p.description, lang), origin: t(p.originLabel), siteOrigin: p.origin === 'site', ncr: p.ncrNumber ?? '—',
