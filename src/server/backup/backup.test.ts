@@ -8,6 +8,9 @@ import { createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { PGlite } from '@electric-sql/pglite';
+import { drizzle } from 'drizzle-orm/pglite';
+import { migrate } from 'drizzle-orm/pglite/migrator';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { getPlanData } from '@/server/dal/plan';
 import { getProjectData, listProjects } from '@/server/dal/projects';
@@ -157,15 +160,18 @@ describe('snapshot and restore (PGlite)', () => {
     const journal = JSON.parse(fs.readFileSync(path.join(folder, 'meta', '_journal.json'), 'utf8'));
     journal.entries.pop();
     fs.writeFileSync(path.join(folder, 'meta', '_journal.json'), JSON.stringify(journal));
-    const old = await openDatabase(undefined, folder);
+    // Migrated, not seeded: today's seed writes today's schema, which the older migrations may not have yet (R-083's last
+    // migration drops the undated rate columns the older schema still requires).
+    const old = new PGlite();
+    await migrate(drizzle(old), { migrationsFolder: folder });
     try {
-      const snap = await createSnapshot({ dir: path.join(tmp, 'backups-old'), source: { kind: 'pglite', client: clientOf(old) }, filesRoot: path.join(tmp, 'no-files') });
+      const snap = await createSnapshot({ dir: path.join(tmp, 'backups-old'), source: { kind: 'pglite', client: old }, filesRoot: path.join(tmp, 'no-files') });
       expect(snap.manifest.migrations.applied).toBe(migrationFiles().length - 1);
       const report = await restoreSnapshot({ snapshotPath: snap.path, target: { kind: 'pglite', dataDir: path.join(tmp, 'restored-old') } });
       expect([report.ok, report.pendingMigrations]).toEqual([true, 1]);
       expect(report.notes.join(' ')).toContain('npm run db:migrate');
     } finally {
-      await closeDatabase(old);
+      await old.close();
     }
   }, 60_000);
 });
