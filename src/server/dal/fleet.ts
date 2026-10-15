@@ -6,7 +6,7 @@ import 'server-only';
 // (`machineZone` 4981). Time model: "Warranty ending < 90 days" and "ends in n d" use the prototype's month index
 // against PG_NOW (as the interfaces' "in n d").
 import { asc, eq, inArray } from 'drizzle-orm';
-import { addedWarrantyStatus, warrantyEnding } from '@/domain/aftersales';
+import { addedWarrantyStatus, warrantyEnding, warrantyInForce } from '@/domain/aftersales';
 import { DEFAULT_WARRANTY_MONTHS, MAX_MACHINES_PER_DELIVERY, asBuiltConfiguration, isDeliveredStage, machineNames, warrantyMonthsOf } from '@/domain/claims';
 import { getDb } from '@/server/db/client';
 import { demoFloor } from '@/server/db/helpers';
@@ -116,12 +116,15 @@ export async function listMachines(opts: { zone?: ZoneCode | null } = {}): Promi
   const empty: MachineConfiguration = { pending: 0, retrofit: 0, pinned: 0, firstEco: null, ecos: [] };
   return rows
     .map((m) => {
-      const ending = warrantyEnding(m.warrantyEndOn);
+      // R-145 (NEW-D5-2 = a): the warranty in force today, computed on read (no job, no stored status change); the "Warranty
+      // end" column keeps the contractual date, the ending alert counts from the end in force.
+      const w = warrantyInForce(m);
+      const ending = warrantyEnding(w.endOn);
       const mine = claims.filter((c) => c.machineId === m.id);
       return {
         number: m.number, machineType: m.machineTypeCode, machineTypeLabel: typeLabel.get(m.machineTypeCode) ?? m.machineTypeCode, name: m.name, client: m.clientName,
         site: m.siteText, zone: zoneOf(m.siteText, m.projectCode), projectCode: m.projectCode, deliveredOn: m.deliveredOn, warrantyEndOn: m.warrantyEndOn,
-        warrantyStatus: m.warrantyStatus, warrantyText: warrantyTextOf(m.warrantyStatus, m.extendedUntil), extendedUntil: m.extendedUntil, warrantyEndingSoon: ending.soon,
+        warrantyStatus: w.status, warrantyText: warrantyTextOf(w.status, w.status === 'extended' ? w.endOn : m.extendedUntil), extendedUntil: m.extendedUntil, warrantyEndingSoon: ending.soon,
         warrantyEndsInDays: ending.days, generation: m.generation,
         parts: revs.filter((r) => r.machineId === m.id).map((r) => ({ ref: r.partRef, revision: r.revision })),
         openClaims: mine.filter((c) => c.status !== 'closed').length, warrantyCostKeur: mine.filter((c) => c.coverage !== 'chargeable').reduce((s, c) => s + c.cost, 0),
