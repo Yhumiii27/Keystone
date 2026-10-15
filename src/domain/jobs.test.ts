@@ -8,13 +8,15 @@ const NOW = new Date('2026-10-11T12:00:00Z');
 const ago = (days: number) => new Date(NOW.getTime() - days * day);
 
 describe('jobs and schedules', () => {
-  it('the jobs: outboxes (Vigie, Cursus, Codex — R-124) every 5 min, plan-trash purge hourly, orphan prune daily (no Friday freeze: S-4 open)', () => {
+  it('the jobs: outboxes (Vigie, Cursus, Codex — R-124) every 5 min, plan-trash purge hourly, orphan prune daily, Codex index read hourly (R-033; no Friday freeze: S-4 open)', () => {
     expect(JOB_SCHEDULES.map((j) => [j.name, j.everyMs / 60_000, j.leaseMs / 60_000])).toEqual([
       ['vigie-outbox', 5, 15], ['cursus-outbox', 5, 15], ['codex-outbox', 5, 15], ['plan-trash-purge', 60, 15], ['orphan-files-prune', 1440, 60],
       // Delivery 8 · platform-ops: backups wake every 5 min (a snapshot when due, R-004); antivirus rescan daily (R-175).
       ['backup', 5, 180], ['files-rescan', 1440, 360],
       // Delivery 8 · connectors: Cursus staff directory (R-027) and events inbox purge (R-029), daily.
       ['cursus-directory', 1440, 60], ['cursus-events-purge', 1440, 15],
+      // Delivery 8 (R-033): Codex's index read by the HTTP connector, hourly (interval to confirm).
+      ['codex-index', 60, 15],
     ]);
     expect(JOB_NAMES).not.toContain('friday-freeze');
     // Staggered first runs.

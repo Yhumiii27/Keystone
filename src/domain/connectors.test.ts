@@ -16,6 +16,12 @@ describe('connector link', () => {
 
   it('Codex is a mock, MS Project exchanges files, every other recorded connector does not exist', () => {
     expect(connectorLink({ name: 'Codex', kind: 'static', mode: null })).toBe('mock');
+    // Delivery 8 (R-033): Codex is live once CODEX_API_URL is set (outbox delivered, index read), a mock otherwise.
+    expect(connectorLink({ name: 'Codex', kind: 'static', mode: 'mock' })).toBe('mock');
+    expect(connectorLink({ name: 'Codex', kind: 'static', mode: 'http' })).toBe('live');
+    expect(connectorState(connectorLink({ name: 'Codex', kind: 'static', mode: 'http' }), 'ok', true)).toBe('ok');
+    expect(connectorCanSync('live', true)).toBe(true);
+    expect([showsLastSync('live'), isSimulatedSync('live')]).toEqual([true, false]);
     expect(connectorLink({ name: 'MS Project', kind: 'static', mode: null })).toBe('file');
     for (const name of ['Sage X3', 'SolidWorks PDM', 'Outlook / Exchange', 'Microsoft Teams', 'E-mail (SMTP)', 'SharePoint', 'Lucca']) {
       expect(connectorLink({ name, kind: 'static', mode: null }), name).toBe('none');

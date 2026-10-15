@@ -36,20 +36,8 @@ export const clientIssues = pgTable(
   (t) => [unique().on(t.projectId, t.number)],
 );
 
-/** Document categories shared with the client (CLIENT_DOCS 3543, HLT-026 × 5) — defined but not rendered by the prototype (L-9). */
-export const clientDocumentCategories = pgTable(
-  'client_document_categories',
-  {
-    id: id(),
-    projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
-    category: text('category').notNull(),
-    description: text('description').notNull(),
-    /** "3 files". */
-    fileCountText: text('file_count_text').notNull(),
-    position: integer('position').notNull(),
-  },
-  (t) => [unique().on(t.projectId, t.position)],
-);
+// The prototype's typed document categories (CLIENT_DOCS 3543, table `client_document_categories`) were dropped in
+// Delivery 8 (L-9 = a, R-138): the client portal computes them from the Codex index (src/domain/rexclient.ts).
 
 /**
  * Client communication log (chapter 4, Site › "Client communication log"; Keystone-owned, per project): every exchange with

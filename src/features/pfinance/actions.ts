@@ -34,9 +34,9 @@ export async function setScoreWeightAction(axis: string, value: unknown): Promis
 }
 
 /**
- * "Score a proposal" (AF.portfolio, "Save score"): records strategic fit, financial return (Margin / NPV axis) and
- * risk on a pipeline project with the viewer as scorer (the prototype only toasted, 03 OQ10). The ranking picks the
- * new scores up on the next render.
+ * "Score a proposal" (AF.portfolio, "Save score"): records the 5 ranking axes — strategic fit, financial return (Margin
+ * / NPV axis), risk, resource fit and client priority (L-5a, R-134) — on a pipeline project with the viewer as scorer
+ * (the prototype only toasted, 03 OQ10). The ranking picks the new scores up on the next render.
  */
 export async function scoreProposalAction(values: Record<string, string>): Promise<FormDialogResult> {
   const who = await editor();
@@ -44,8 +44,8 @@ export async function scoreProposalAction(values: Record<string, string>): Promi
   const options = await listProposalOptions();
   const parsed = parseScoreProposal(values, options.map((o) => o.value));
   if (!parsed.ok) return { error: who.t(parsed.error) };
-  const { projectCode, fit, margin, risk, comment } = parsed.value;
-  await saveProposalScore(projectCode, { fit, margin, risk, comment }, who.name);
+  const { projectCode, fit, margin, risk, res, client, comment } = parsed.value;
+  await saveProposalScore(projectCode, { fit, margin, risk, res, client, comment }, { name: who.name, role: who.role });
   revalidatePath(screenHref('portfolio'));
   return { toast: who.t(SCORE_SAVED) };
 }

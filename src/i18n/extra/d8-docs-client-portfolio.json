@@ -1,1 +1,14 @@
-{}
+{
+  "Resource fit (1–5)": "Adéquation ressources (1–5)",
+  "Client priority (1–5)": "Priorité client (1–5)",
+  "Previous quarter": "Trimestre précédent",
+  "Next quarter": "Trimestre suivant",
+  "Closed / cancelled": "Clos / annulé",
+  "By category": "Par catégorie",
+  "HSE documents": "Documents HSE",
+  "Last issued": "Dernière diffusion",
+  "1 file": "1 fichier",
+  "Earlier revisions and download log in Codex": "Révisions antérieures et journal des téléchargements dans Codex",
+  "Download needs Codex — the document files are stored in Codex": "Le téléchargement nécessite Codex — les fichiers des documents sont stockés dans Codex",
+  "Codex is connected — deposit the document in Codex": "Codex est connecté — déposez le document dans Codex"
+}

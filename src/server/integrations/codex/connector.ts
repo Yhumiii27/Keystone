@@ -8,13 +8,14 @@ import 'server-only';
 // - mock (default): entries stay "pending sync with Codex"; the index is never changed;
 // - http (when CODEX_API_URL is set): delivers the outbox, then refreshes the records concerned from Codex
 //   (mirror.ts, the only writer of their status and approval proof) — TODO(codex): the endpoints below are a proposal
-//   until Codex publishes its API (OPEN QUESTION D-1).
+//   until Codex publishes its API (OPEN QUESTION D-1). Delivery 8 (R-033): it also reads Codex's index (`readCodexIndex`,
+//   "Sync now" and the hourly "codex-index" job).
 import { getDb } from '@/server/db/client';
 import { CODEX_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
 import type { CodexSyncStatus } from '@/server/db/codes';
-import { logWarning } from '@/server/log';
+import { log, logWarning } from '@/server/log';
 import { codexApiUrl, codexConnectorMode, type CodexConnectorMode } from './config';
-import { applyCodexDocumentStates, isCodexDocumentState, type CodexDocumentState } from './mirror';
+import { applyCodexDocumentStates, applyCodexIndex, isCodexDocumentState, type CodexDocumentState, type CodexIndexResult } from './mirror';
 import { claimCodexDelivery, codexEntrySyncStatus, markCodexDelivery, openCodexEntries, undeliveredCodexEntries } from './outbox';
 
 export type { CodexDocumentState };
@@ -105,6 +106,29 @@ async function refreshFromCodex(numbers: readonly string[]): Promise<number> {
   if (!Array.isArray(records)) throw new Error('Codex: unexpected document payload');
   const db = await getDb();
   return db.transaction((tx) => applyCodexDocumentStates(tx, records.filter(isCodexDocumentState)));
+}
+
+/**
+ * Index read (Delivery 8, R-033; D-2 scope) — TODO(codex): `GET /api/documents?since=…[&project=…]` returning the records
+ * changed since the last read (the whole index without `since`), each with its current revision and current circuit
+ * (mirror.ts `CodexIndexRecord`). A proposal until Codex publishes its API (OPEN QUESTION D-1); the HTTP connector only.
+ * Unknown projects and types are skipped and logged (A-15: never a phantom QMS record).
+ */
+/** Null when IT disabled the connector (D-7a): nothing is asked. */
+export async function readCodexIndex(opts: { since?: Date | null; project?: string | null } = {}, at = new Date()): Promise<CodexIndexResult | null> {
+  if (codexConnectorMode() !== 'http') throw new Error('The Codex index is read from Codex only when CODEX_API_URL is set');
+  if (!(await connectorEnabled(CODEX_CONNECTOR_NAME))) return null;
+  const q = new URLSearchParams();
+  if (opts.since) q.set('since', opts.since.toISOString());
+  if (opts.project) q.set('project', opts.project);
+  const res = await codexFetch(`/api/documents${q.size ? `?${q}` : ''}`);
+  const records = (await res.json()) as unknown;
+  if (!Array.isArray(records)) throw new Error('Codex: unexpected index payload');
+  const db = await getDb();
+  const r = await db.transaction((tx) => applyCodexIndex(tx, records, at));
+  if (r.skipped.length)
+    log.warn('Codex index: records skipped', { component: 'codex', skipped: r.skipped.length, sample: r.skipped.slice(0, 10).map((x) => `${x.number}: ${x.reason}`).join(' · ') });
+  return r;
 }
 
 /** Numbers of the records with open entries (delivered and not reflected yet included). */

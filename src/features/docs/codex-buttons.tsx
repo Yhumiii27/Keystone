@@ -1,12 +1,14 @@
 'use client';
 // Codex banner and drawer buttons (docs/spec/10 §4.4a, §4.5, §5.3): "Sync now" (records a sync of the index, toast
-// "Codex sync · index up to date · 412 records"), "Open Codex" / "Edit in Codex" / "Open in Codex" (hand-off to the
-// external system: toast "Opening Codex · …" until the deep link exists, D-1), downloads (download log) and "Approve in
-// Codex · {role} · {approver}". Labels and toasts arrive translated.
+// "Codex sync · index up to date · 412 records"), "Open Codex" / "Edit in Codex" / "Open in Codex" (Delivery 8, R-033:
+// links opening Codex in a new tab — its home with parameters Codex ignores until the deep links exist, TODO(codex) D-1),
+// downloads (Delivery 8, R-127, D-2: the files are in Codex — the Codex hand-off toast, no Keystone download log) and
+// "Approve in Codex · {role} · {approver}". Labels and toasts arrive translated.
 import { ArrowSquareOut, DownloadSimple, Stamp } from '@phosphor-icons/react/dist/ssr';
 import { useTransition } from 'react';
-import { Button, IconButton, type ButtonSize } from '@/components/ds/Button';
+import { Button, ButtonLink, IconButton, type ButtonSize } from '@/components/ds/Button';
 import { showToast } from '@/components/ds/Toast';
+import { CODEX_LINK_ATTRS } from '@/server/integrations/codex/links';
 import { approveDocumentAction, logDownloadAction, syncCodexAction } from './actions';
 
 /** `btn btn-secondary` 12px "Sync now". */
@@ -30,16 +32,20 @@ export function SyncNowButton({ project, label }: { project: string; label: stri
   );
 }
 
-/** `btn btn-primary` + arrow-square-out: shows the hand-off toast. */
-export function OpenCodexButton({ label, toast, size = 'xs' }: { label: string; toast: string; size?: ButtonSize }) {
+/** `btn btn-primary` + arrow-square-out: opens Codex in a new tab (R-033; the hand-off toast before Delivery 8). */
+export function OpenCodexButton({ label, href, size = 'xs' }: { label: string; href: string; size?: ButtonSize }) {
   return (
-    <Button variant="primary" size={size} icon={ArrowSquareOut} onClick={() => showToast(toast)}>
+    <ButtonLink variant="primary" size={size} icon={ArrowSquareOut} href={href} prefetch={false} {...CODEX_LINK_ATTRS}>
       {label}
-    </Button>
+    </ButtonLink>
   );
 }
 
-/** Download of the current revision: icon button (vault row), "Download PDF" (drawer) or "Native" / "PDF" (revision rows). */
+/**
+ * Download of the current revision: icon button (vault row), "Download PDF" (drawer) or "Native" / "PDF" (revision rows).
+ * The files are stored in Codex (D-2 = a, R-127): the server checks the viewer may see the record and answers the Codex
+ * hand-off toast, with an "Open Codex" link for the internal team (clients have no Codex access).
+ */
 export function DownloadButton({
   project,
   number,
@@ -59,6 +65,7 @@ export function DownloadButton({
     start(async () => {
       const r = await logDownloadAction(project, number, format);
       if ('error' in r) showToast(r.error);
+      else if (r.toast) showToast(r.toast, r.link ?? undefined);
     });
   if (variant === 'icon')
     return <IconButton icon={DownloadSimple} muted label={label} disabled={pending} aria-busy={pending || undefined} onClick={run} />;

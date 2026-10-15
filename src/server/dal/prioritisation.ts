@@ -5,6 +5,7 @@ import 'server-only';
 // remapped at seed (00 §7.16). Margin = margin at completion (C-10b, R-132): (contract − EAC) / contract, the contract
 // from the billing plan (the contract when one exists, A-5) consolidated in euros (C-9) — it was (contract − budget) / contract.
 import { and, asc, eq } from 'drizzle-orm';
+import { canSee, type RoleKey } from '@/config/screens';
 import { inExecution } from '@/domain/portfolio';
 import { getDb } from '@/server/db/client';
 import { scoreAxis, type ScoreAxis, type StageCode } from '@/server/db/codes';
@@ -150,24 +151,32 @@ export async function getCapacityWhatIf(projectCode: string): Promise<{ project:
 }
 
 export interface ProposalScore {
-  /** Strategic fit, financial return (margin axis), risk (5 = low) — 1–5 each (AF.portfolio). */
+  /** Strategic fit, financial return (margin axis), risk (5 = low), resource fit, client priority — 1–5 each (AF.portfolio, L-5a). */
   fit: number;
   margin: number;
   risk: number;
+  res: number;
+  client: number;
   comment?: string | null;
 }
 
 /**
- * "Score a proposal" (AF.portfolio, "Save score"): records the three axes of the form on a pipeline project (the
- * prototype only toasted, OPEN QUESTION L-5) with the scorer and comment; the other axes keep their values (1 when new).
+ * "Score a proposal" (AF.portfolio, "Save score"): records the 5 axes of the ranking on a pipeline project (the
+ * prototype only toasted, OPEN QUESTION L-5; L-5a = a, R-134: the form scores every axis of the ranking) with the
+ * scorer and comment. An axis added to the register later and absent from the form gets 1 when new.
  */
-export async function saveProposalScore(projectCode: string, input: ProposalScore, actorName: string, at: Date = new Date()): Promise<void> {
+export async function saveProposalScore(projectCode: string, input: ProposalScore, by: string | { name: string; role: string }, at: Date = new Date()): Promise<void> {
+  // The Server Function's rule re-checked with the actor (R-134): scoring is the Portfolio screen's (its workspace roles).
+  if (typeof by !== 'string' && !canSee(by.role as RoleKey, 'portfolio')) throw new Error('Prioritisation is outside your workspace');
+  const actorName = typeof by === 'string' ? by : by.name;
   const db = await getDb();
   await db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);
     const actor = await findPerson(tx, actorName);
     const clamp = (v: number) => Math.max(1, Math.min(5, Math.round(Number.isFinite(v) ? v : 3)));
-    const values: [ScoreAxis, number][] = [['fit', clamp(input.fit)], ['margin', clamp(input.margin)], ['risk', clamp(input.risk)]];
+    const values: [ScoreAxis, number][] = [
+      ['fit', clamp(input.fit)], ['margin', clamp(input.margin)], ['risk', clamp(input.risk)], ['res', clamp(input.res)], ['client', clamp(input.client)],
+    ];
     const axes = await tx.select({ code: scoreAxes.code }).from(scoreAxes);
     for (const a of axes) {
       const v = values.find(([k]) => k === a.code);
@@ -182,7 +191,7 @@ export async function saveProposalScore(projectCode: string, input: ProposalScor
     }
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: projectCode,
-      change: `score: fit ${values[0][1]} · margin ${values[1][1]} · risk ${values[2][1]}`, area: 'Prioritisation', entityType: 'project', entityId: p.id, projectId: p.id,
+      change: `score: fit ${values[0][1]} · margin ${values[1][1]} · risk ${values[2][1]} · resources ${values[3][1]} · client ${values[4][1]}`, area: 'Prioritisation', entityType: 'project', entityId: p.id, projectId: p.id,
     });
   });
 }

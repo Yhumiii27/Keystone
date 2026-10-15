@@ -9,9 +9,14 @@
 //   through the outbox ("pending sync with Codex"); the index record changes only when Codex answers. A rejection
 //   needs its reason.
 // - Downloads (table icon, "Download PDF", revision "Native" / "PDF"): every viewer of the record (a read); a client only the
-//   documents shared with them on their organisation's projects (P-10a, P-10b).
+//   documents shared with them on their organisation's projects (P-10a, P-10b). Delivery 8 (D-2 = a, R-127): the files are in
+//   Codex — nothing is written (no Keystone download log, no read event in the audit trail); the answer is the Codex hand-off
+//   toast, with a link to the record in Codex for the internal team (clients have no Codex access).
 // - "Sync now": the portfolio director (NEW-D3-1: "directeur et administrateur" — Keystone has no administrator role); it also
-//   delivers the Codex outbox (mock: the decisions stay pending).
+//   delivers the Codex outbox (mock: the decisions stay pending). Delivery 8 (R-033): with Codex connected (HTTP) it reads
+//   Codex's index, and the toast reports sent / pending / refreshed — "index up to date" only when the index was read.
+// - Delivery 8 (A-15, R-033, default to confirm): with Codex connected the deposit hand-off is refused with an "Open Codex"
+//   link — the document is deposited in Codex itself (no Keystone-numbered draft Codex never receives); mock unchanged.
 // - "Acknowledge receipt" (client portal, cpVaultDocs): the client of the project's organisation.
 // The Codex hand-off itself is simulated (OPEN QUESTION D-1): the index record is created / reset at once.
 import { revalidatePath } from 'next/cache';
@@ -19,7 +24,7 @@ import { codexDecisionToast, parseRejectComment, type CodexDecision } from '@/do
 import { canApproveDocument, parseDeposit } from '@/domain/documents';
 import { DEPOSIT_TYPES } from '@/server/db/codes';
 import {
-  CodexDecisionError, acknowledgeDocument, depositInCodex, getDocumentRecord, listVaultDocuments, logDocumentDownload, recordDocumentDecision, syncCodexIndex,
+  CodexDecisionError, DepositInCodexOnlyError, acknowledgeDocument, depositInCodex, getDocumentRecord, listVaultDocuments, recordDocumentDecision, syncCodexIndex,
 } from '@/server/dal/documents';
 import { getProject } from '@/server/dal/projects';
 import { canDepositInCodex, canSyncCodex } from '@/domain/rights';
@@ -27,6 +32,8 @@ import { clientProjectCodes, getProjectContext, getScreenAccess, type ProjectCon
 import { codexConnectorMode } from '@/server/integrations/codex/config';
 import { getCodexConnector } from '@/server/integrations/codex/connector';
 import { codexSyncToastT } from '@/server/integrations/codex/display';
+import { codexDocumentUrl, codexHomeUrl } from '@/server/integrations/codex/links';
+import { logError } from '@/server/log';
 import { getI18n, type Viewer } from '@/server/session';
 import { pendingSyncCountText } from './i18n';
 
@@ -34,7 +41,11 @@ export type DocActionResult = { ok: true; toast?: string } | { error: string };
 
 /** NEW-D3-1 refusal: deposits and revisions are the project's internal team's. */
 const NOT_TEAM = 'Only the project’s internal team deposits documents in Codex';
-export type DepositResult = { ok: true; number: string; created: boolean; toast: string } | { error: string };
+/** A-15 (R-033): with Codex connected, deposits are made in Codex itself. */
+const DEPOSIT_IN_CODEX = 'Codex is connected — deposit the document in Codex';
+export type DepositResult =
+  | { ok: true; number: string; created: boolean; toast: string }
+  | { error: string; link?: { href: string; label: string } };
 
 /** Sidebar badge, My approvals, the vault and the screens listing documents change together. */
 const refreshAll = () => revalidatePath('/', 'layout');
@@ -67,6 +78,11 @@ export async function depositInCodexAction(raw: unknown): Promise<DepositResult>
   if ('error' in access) return access;
   const { ctx } = access;
   if (!canDepositInCodex(ctx.viewer.role, ctx.outside, ctx.access)) return { error: await tr(NOT_TEAM) };
+  const inCodexOnly = async () => {
+    const { t } = await getI18n();
+    return { error: t(DEPOSIT_IN_CODEX), link: { href: v.revisionOf ? codexDocumentUrl(v.revisionOf) : codexHomeUrl(ctx.project.code), label: t('Open Codex') } };
+  };
+  if (codexConnectorMode() === 'http') return inCodexOnly();
   // A new revision keeps the record's own type (and title); a new document takes the type confirmed in the dialog. A revision
   // is deposited from the record's own project vault (R-047: the team of that project).
   let typeCode = v.type;
@@ -83,7 +99,9 @@ export async function depositInCodexAction(raw: unknown): Promise<DepositResult>
     );
     refreshAll();
     return { ok: true, number: r.number, created: r.created, toast: await tr(`Codex · ${r.number} recorded · synced to Keystone`) };
-  } catch {
+  } catch (e) {
+    // The DAL re-checks the connector mode (defense in depth).
+    if (e instanceof DepositInCodexOnlyError) return inCodexOnly();
     return { error: await tr('The hand-off to Codex could not be recorded') };
   }
 }
@@ -157,8 +175,19 @@ export async function decideDocumentFromInboxAction(input: { number: string; ste
   return 'error' in r ? { ok: false, error: r.error } : r;
 }
 
-/** Download of the current revision: appends "{viewer} · rev D · 29 Sep · PDF" to the download log. */
-export async function logDownloadAction(project: string, number: string, format: 'PDF' | 'Native' = 'PDF'): Promise<DocActionResult> {
+/** Answer of a download: the Codex hand-off toast, with the "Open Codex" link to the record for the internal team. */
+export type DownloadResult = { ok: true; toast: string; link: { href: string; label: string } | null } | { error: string };
+
+/** The hand-off toast of a download (the files are stored in Codex, D-2 = a). */
+export const DOWNLOAD_IN_CODEX = 'Download needs Codex — the document files are stored in Codex';
+
+/**
+ * Download of the current revision (table icon, drawer "Download PDF", revision "Native" / "PDF"). D-2 = a (R-127): the
+ * files are stored in Codex and Keystone keeps no download log — after the access checks (the vault's project, a client
+ * only the documents shared with them on their own projects, P-10a / P-10b) the answer is the Codex hand-off toast, with a
+ * link to the record in Codex except for a client. Nothing is written.
+ */
+export async function logDownloadAction(project: string, number: string, format: 'PDF' | 'Native' = 'PDF'): Promise<DownloadResult> {
   const access = await vault(project);
   if ('error' in access) return access;
   const { ctx } = access;
@@ -166,10 +195,10 @@ export async function logDownloadAction(project: string, number: string, format:
   const d = await findRecord(number);
   if (!d) return { error: await tr('Unknown document') };
   // P-10a / P-10b: a client downloads only the documents shared with them on their own projects.
-  if (ctx.viewer.role === 'client' && (!d.shared || !(await clientProjectCodes(ctx.viewer)).has(d.project))) return { error: await tr('Unknown document') };
-  await logDocumentDownload(number, ctx.viewer.name, format);
-  revalidatePath(`/projects/${ctx.project.code}/documents`);
-  return { ok: true };
+  const client = ctx.viewer.role === 'client';
+  if (client && (!d.shared || !(await clientProjectCodes(ctx.viewer)).has(d.project))) return { error: await tr('Unknown document') };
+  const { t } = await getI18n();
+  return { ok: true, toast: t(DOWNLOAD_IN_CODEX), link: client ? null : { href: codexDocumentUrl(d.number, d.revision, d.codexUrl), label: t('Open Codex') } };
 }
 
 /**
@@ -183,13 +212,29 @@ export async function syncCodexAction(project: string): Promise<DocActionResult>
   if (!canSyncCodex(ctx.viewer.role, ctx.outside)) return { error: await tr('Only the portfolio director synchronises the Codex index') };
   // Delivery 7 (R-124): delivers the approval outbox first (mock connector: the decisions stay pending).
   const outbox = await getCodexConnector().sync().catch((e) => {
-    console.error('syncCodexAction: outbox', e);
+    logError('syncCodexAction: Codex outbox', e, { component: 'codex' });
     return null;
   });
+  const mode = codexConnectorMode();
+  const { t, lang } = await getI18n();
+  if (mode === 'http') {
+    // R-033: Codex's index is read; unreachable, the toast says the index was not read (never "up to date").
+    let records = 0;
+    let indexRead = false;
+    try {
+      records = await syncCodexIndex(ctx.viewer.name);
+      indexRead = true;
+    } catch (e) {
+      logError('syncCodexAction: Codex index', e, { component: 'codex' });
+    }
+    refreshAll();
+    const toast = codexSyncToastT({ records, indexRead, delivered: outbox?.delivered ?? 0, pending: outbox?.pending ?? 0, refreshed: outbox?.refreshed ?? 0 }, mode, t, lang);
+    // A failed delivery, an outbox that could not run or an index not read is reported as an error toast.
+    return indexRead && outbox && !outbox.failed ? { ok: true, toast } : { error: toast };
+  }
   const records = await syncCodexIndex(ctx.viewer.name);
   refreshAll();
-  const { t, lang } = await getI18n();
-  const toast = codexSyncToastT(records, codexConnectorMode(), t, lang);
+  const toast = codexSyncToastT(records, mode, t, lang);
   return { ok: true, toast: outbox?.pending ? `${toast} · ${pendingSyncCountText(outbox.pending, lang)}` : toast };
 }
 

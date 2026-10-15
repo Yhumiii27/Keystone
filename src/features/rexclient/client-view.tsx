@@ -2,7 +2,8 @@
 // `?tab=`) and one of the six tabs — Progress & milestones, Schedule (S-9a: summary Gantt + PDF, not in the prototype),
 // Decisions, Invoices, Issues, Documents. Server Component;
 // the decisions, "Raise issue" and "Acknowledge receipt" are client islands shown to the viewers allowed to act (the
-// project's client contact; the director may also raise issues). Shared documents link to their Codex record.
+// project's client contact; the director may also raise issues). Shared documents link to their Codex record; Delivery 8
+// (L-9 = a, R-138): a "By category" strip, computed from the Codex index, sits above them (a grouped display, no filter).
 import { Eye } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import { EmptyState } from '@/components/app/EmptyState';
@@ -294,6 +295,23 @@ function IssuesTab({ code, view, can, t }: { code: string; view: ClientScreenVie
 function DocumentsTab({ code, view, can, t }: { code: string; view: ClientScreenView; can: ClientCapabilities; t: T }) {
   return (
     <SectionCard title={t('Documents')} subtitle={view.docsLabels.sub} scroll>
+      {view.docCategories.length > 0 && (
+        <div className={s.docCats}>
+          <span className={s.docCatsTitle}>{view.docsLabels.byCategory}</span>
+          <ul className={s.docCatList} aria-label={view.docsLabels.byCategory}>
+            {view.docCategories.map((c) => (
+              <li key={c.key} className={s.docCat}>
+                <span className={s.docCatHead}>
+                  <span className={s.docCatName}>{c.name}</span>
+                  <span className={s.docCatCount}>{c.files}</span>
+                </span>
+                <span className={s.docCatSub}>{c.description}</span>
+                <span className={s.docCatSub}>{c.latest}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <Table size={12.5}>
         <thead>
           <tr>

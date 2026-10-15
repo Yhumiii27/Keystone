@@ -10,7 +10,7 @@ import { STAGES, stage } from '@/server/db/codes';
 import screenGolden from '@/features/worldmap/worldmap.golden.json';
 import {
   clusterClick, clusterKey, clusterPoints, defaultView, focusTransform, homeView, mapCategoryOf, mapCrumbExtra, mapKpis, markerLabel,
-  markerStyleOf, placeTooltip, showMarkerLabels, tooltipHeader, tooltipStatusTone, viewTransform, type GeoBounds, type MapCategory,
+  markerStyleOf, placeTooltip, showMarkerLabels, tooltipHeader, viewTransform, type GeoBounds, type MapCategory,
   type Placed, type Projector,
 } from './worldmap';
 import golden from './worldmap.golden.json';
@@ -58,16 +58,17 @@ describe('worldmap — projection, clusters and framing match the prototype map 
       });
     }
 
-  it('marker styles and tooltip status tags follow category and health codes (styleOf, tagClass)', () => {
+  it('marker styles follow category and health codes (styleOf)', () => {
+    // L-7 (R-135): the prototype's tooltip status tag (`tagClass`, from category and health) is not kept: the tooltip's
+    // stage tag takes the stage colour like the side list — asserted in src/features/worldmap/render.test.ts.
     for (const p of G.zones.null.points) {
       const health = HEALTH[p.health];
       expect(markerStyleOf(p.cat as MapCategory, health), p.code).toBe(G.styles[p.code].style);
-      expect(`tag tag-${tooltipStatusTone(p.cat as MapCategory, health)}`, p.code).toBe(G.styles[p.code].tagClass);
     }
     // Codes, not labels: the French render of the prototype compared "Conforme" with "On track" (00 §7.16).
     expect(markerStyleOf('active', 'on_track')).toBe('ontrack');
+    // The grey marker ("Closed / cancelled") also covers an execution project without a health yet ('other').
     expect(markerStyleOf('other', null)).toBe('closed');
-    expect(tooltipStatusTone('other', null)).toBe('neutral');
   });
 
   it('map category from the stage code and the health (mapPts.cat, logic 5074)', () => {

@@ -8,7 +8,6 @@ import { SearchField } from '@/components/app/SearchField';
 import { Stack } from '@/components/app/SectionCard';
 import { Segmented } from '@/components/ds/Segmented';
 import type { T } from '@/i18n/translate';
-import { codexPublicUrl } from '@/server/integrations/codex/config';
 import { CodexBanner } from './codex-banner';
 import { OpenCodexButton, SyncNowButton } from './codex-buttons';
 import type { VaultView } from './model';
@@ -20,12 +19,12 @@ export interface DocsVaultProps {
   view: VaultView;
   /** "Sync now" records a sync of the Codex index (NEW-D3-1, R-047: the portfolio director). */
   canEdit: boolean;
-  /** Toast of "Open Codex" ("Opening Codex · project HLT-026", translated). */
-  openToast: string;
+  /** "Open Codex" (R-033): Codex in a new tab; null hides it (a client has no Codex access). */
+  codexHref: string | null;
   t: T;
 }
 
-export function DocsVault({ project, view, canEdit, openToast, t }: DocsVaultProps) {
+export function DocsVault({ project, view, canEdit, codexHref, t }: DocsVaultProps) {
   return (
     <Stack>
       <CodexBanner
@@ -39,7 +38,7 @@ export function DocsVault({ project, view, canEdit, openToast, t }: DocsVaultPro
           </span>
         )}
         {canEdit && <SyncNowButton project={project} label={t('Sync now')} />}
-        <OpenCodexButton label={t('Open Codex')} toast={openToast} />
+        {codexHref && <OpenCodexButton label={t('Open Codex')} href={codexHref} />}
       </CodexBanner>
 
       <KpiGrid>
@@ -72,7 +71,7 @@ export function DocsVault({ project, view, canEdit, openToast, t }: DocsVaultPro
         </FilterGroup>
       </FilterBar>
 
-      <VaultTable project={project} title={view.title} rows={view.rows} empty={view.empty} codexUrl={codexPublicUrl()} />
+      <VaultTable project={project} title={view.title} rows={view.rows} empty={view.empty} codexLink={!!codexHref} />
     </Stack>
   );
 }

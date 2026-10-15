@@ -183,6 +183,13 @@
       "when": 1792055658374,
       "tag": "0025_leave_types_simple",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792060254585,
+      "tag": "0026_faulty_zuras",
+      "breakpoints": true
     }
   ]
 }

@@ -411,11 +411,17 @@ describe('client portal (03 §8)', () => {
     expect(f(c.contract!.approvedChangesKeur, true)).toBe(g.invKpis[3][1]);
     expect(c.issues.map((i) => ({ id: i.number, title: i.title, when: `Raised ${d(i.raisedOn)}`, status: i.statusLabel, resp: i.response }))).toEqual(g.issues);
     expect(c.documents.map((x) => ({ id: x.number, title: x.title, rev: x.revision, status: x.statusLabel, ack: x.acknowledged }))).toEqual(g.docs.map((x: any) => pickKeys(x, ['id', 'title', 'rev', 'status', 'ack'])));
-    expect(c.documentCategories.length).toBe(5);
+    // L-9 (R-138): the categories are computed from the shared documents of the Codex index (the prototype's 5 typed
+    // CLIENT_DOCS rows are gone): every shared file is in exactly one category.
+    expect(c.documentCategories.reduce((a, x) => a + x.fileCount, 0)).toBe(c.documents.length);
+    expect(c.documentCategories.map((x) => x.key)).toEqual(HLT_DOC_CATEGORIES.map(([k]) => k));
+    expect(c.documentCategories.map((x) => x.fileCount)).toEqual(HLT_DOC_CATEGORIES.map(([, n]) => n));
   });
 });
 
 const pickKeys = (o: any, ks: string[]) => Object.fromEntries(ks.map((k) => [k, o[k]]));
+/** HLT-026's client document categories on the seed (L-9, R-138): key and file count. */
+const HLT_DOC_CATEGORIES: [string, number][] = [['minutes', 1], ['hse', 1], ['accepted', 1], ['eng', 2], ['client', 1], ['purchasing', 1]];
 
 // ── Engineering ────────────────────────────────────────────────────────────────────────────────────────
 

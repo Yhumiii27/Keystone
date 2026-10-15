@@ -26,6 +26,7 @@ export type JobName =
   | 'cursus-directory'
   | 'cursus-events-purge'
   // ── Delivery 8 · docs-client-portfolio jobs ──
+  | 'codex-index'
   ;
 
 export interface JobSchedule {
@@ -55,6 +56,9 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   { name: 'cursus-directory', everyMs: 24 * HOUR, leaseMs: HOUR, firstDelayMs: 35_000 },
   { name: 'cursus-events-purge', everyMs: 24 * HOUR, leaseMs: 15 * MIN, firstDelayMs: 40_000 },
   // ── Delivery 8 · docs-client-portfolio jobs ──
+  // R-033: Codex's index read every hour with the HTTP connector (interval to confirm — the spec's Codex row says real time /
+  // webhooks, which Codex does not offer yet); with the mock it reads nothing.
+  { name: 'codex-index', everyMs: HOUR, leaseMs: 15 * MIN, firstDelayMs: 45_000 },
 ];
 
 export const JOB_NAMES: readonly JobName[] = JOB_SCHEDULES.map((j) => j.name);

@@ -183,7 +183,9 @@ export interface VaultDocForInbox {
  * Delivery 7 (P-7b = a, R-124): decided inline (Approve, Reject with the reason), sent to Codex; "Open in Codex" opens
  * Codex (its home until the deep links exist, D-1).
  */
-export function codexVaultItems(docs: VaultDocForInbox[], viewerShort: string, currentCode: string, codexUrl?: string): ApprovalItem[] {
+export function codexVaultItems(
+  docs: VaultDocForInbox[], viewerShort: string, currentCode: string, codexUrl?: string | ((d: VaultDocForInbox) => string),
+): ApprovalItem[] {
   return docs
     .filter((d) => d.status === 'release_proposed' && d.circuitState.nextStep != null && !!d.nextRoleLabel && d.nextApprover === viewerShort)
     .map((d) =>
@@ -191,7 +193,8 @@ export function codexVaultItems(docs: VaultDocForInbox[], viewerShort: string, c
         id: d.number, title: d.title, sub: `${d.typeLabel} · rev ${d.revision} · ${d.nextRoleLabel}`, when: d.dateText, who: d.author,
         href: href('docs', d.project === 'QMS' ? currentCode : d.project, { doc: d.number }),
         decision: { mode: 'codex-document', number: d.number, step: d.circuitState.nextStep! },
-        ...(codexUrl ? { external: { href: codexUrl, label: 'Open in Codex' } } : {}),
+        // Delivery 8 (R-033): "Open in Codex" opens the record in Codex (`codexUrl` per record; Codex's home before).
+        ...(codexUrl ? { external: { href: typeof codexUrl === 'function' ? codexUrl(d) : codexUrl, label: 'Open in Codex' } } : {}),
       }),
     );
 }

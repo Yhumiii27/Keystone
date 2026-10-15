@@ -90,14 +90,15 @@ const D2_COUNTS: Record<string, number> = {
 
 /**
  * Seed row counts of the delivery-3 tables: 42 DOCS with revisions A…current (Σ = 68), one approval row per circuit
- * step (Σ = 96), downloads 2 × 30 released, acknowledgements of the 7 shared documents not released on 26/28/29 Sep;
+ * step (Σ = 96), acknowledgements of the 7 shared documents not released on 26/28/29 Sep (the download log — 2 × 30
+ * released — was dropped in delivery 8, D-2 = a / R-127: it stays in Codex; the revision rows stay for the KPI);
  * HLT-026 contract (2 amendments, 2 bonds, 5 milestones + Amendment 1's own M6 — delivery 7, NEW-D3-3 / R-079 —, 3 invoices) +
  * the BILLING rows of NDC, RCF, WSA, MSR (15);
  * MEETINGS 6 (25 invitees, 14 agenda points, 18 lines, 3 transcripts with 13 proposals); SCORES 10 × 5 axes.
  */
 const D3_COUNTS: Record<string, number> = {
   document_types: 28, document_type_circuit_steps: 65, document_approver_assignments: 10, documents: 42, document_revisions: 68, document_approvals: 96,
-  document_links: 18, document_acknowledgements: 7, document_downloads: 60, document_deposits: 0, document_index_syncs: 1,
+  document_links: 18, document_acknowledgements: 7, document_deposits: 0, document_index_syncs: 1,
   contracts: 1, contract_amendments: 2, contract_bonds: 2, billing_plans: 6, payment_milestones: 21, customer_invoices: 3, portfolio_cash_forecasts: 6,
   meetings: 6, meeting_participants: 25, meeting_agenda_points: 14, meeting_lines: 18, meeting_transcripts: 3, meeting_transcript_proposals: 13,
   client_questions: 5, stakeholders: 8, raci_matrices: 1, raci_columns: 6, raci_rows: 7, raci_cells: 35, project_interfaces: 7,
@@ -125,7 +126,7 @@ const D4_COUNTS: Record<string, number> = {
  * mirror HLT_NCRS 5 + 5 × 2 generated and the site HSE register 5; ITP 13 inspections; punch PUNCH 5 + SITE_PUNCH 3;
  * commissioning 6 systems × 5 steps, 8 dossier items; LESSONS 4, CLOSURE 10, SATISFACTION 5; FLEET 8 (AS_MAINT 31 part
  * revisions), CLAIMS 8, INTERVENTIONS 6; the site sheet with 8 equipment, 6 prerequisites, 6 rotations, 4 collisions,
- * 6 cost lines, 2 reports; Cursus 5 people (1 sync); CLIENT_ISSUES 3, CLIENT_DOCS 5; ENG_* registers; PID 1 / 24 / 5;
+ * 6 cost lines, 2 reports; Cursus 5 people (1 sync); CLIENT_ISSUES 3 (CLIENT_DOCS dropped, L-9: computed from Codex); ENG_* registers; PID 1 / 24 / 5;
  * machine-type aggregate 28 phases, 25 cost categories, 17 ITP systems; SETTINGS0 60 values; CONNECTORS 9 + Vigie; IMPORTS 6.
  */
 const D5_COUNTS: Record<string, number> = {
@@ -133,7 +134,7 @@ const D5_COUNTS: Record<string, number> = {
   commissioning_systems: 6, commissioning_steps: 30, handover_items: 8, sat_plans: 0, lessons_learned: 4, closure_items: 10, satisfaction_scores: 5,
   machines: 8, machine_part_revisions: 31, warranty_claims: 8, interventions: 6, site_sheets: 1, site_equipment: 8, site_prerequisites: 6, site_rotations: 6,
   site_collisions: 4, mission_cost_lines: 6, daily_reports: 2, cursus_clearances: 5, cursus_requests: 0, cursus_sync_runs: 1, cursus_events: 0, client_issues: 3,
-  client_document_categories: 5, eng_disciplines: 4, eng_inputs: 12, eng_consistency_rules: 6, eng_checks: 10, eng_outputs: 6, eng_changes: 4, eng_import_tools: 4,
+  eng_disciplines: 4, eng_inputs: 12, eng_consistency_rules: 6, eng_checks: 10, eng_outputs: 6, eng_changes: 4, eng_import_tools: 4,
   eng_column_mappings: 6, eng_import_deltas: 4, eng_imports: 0, pid_sheets: 1, pid_tags: 24, pid_validation_steps: 5, machine_type_phases: 28,
   // app_settings: the health thresholds and, since delivery 7, the seed record "keystone.seed" (R-011, A-15), the "Reset to
   // defaults" document (R-170) and the record that the demo referents were seeded (R-041); delivery 8, the hours-variance
@@ -420,8 +421,9 @@ async function delivery3Reads() {
   const sync = await getCodexSyncState();
   check('Codex sync 08:02 · 412 records', sync?.time === '08:02' && sync.records === 412, sync);
   const pid = await getDocumentRecord('PID-HLT-026');
-  check('PID-HLT-026: rev D, revisions D→A, proof signed 24/25/26 Sep, client acknowledgement pending',
-    same(pid?.revisions.map((r) => [r.revision, r.issuedOn, r.withdrawnOn]), [['D', '2026-09-26', null], ['C', '2026-09-05', '2026-09-26'], ['B', '2026-08-15', '2026-09-05'], ['A', '2026-07-25', '2026-08-15']])
+  // D-2 = a (R-127): the drawer reads the current revision only (rows C, B, A stay stored for the "Obsolete revisions" KPI).
+  check('PID-HLT-026: rev D (current revision only), proof signed 24/25/26 Sep, client acknowledgement pending',
+    same(pid?.revisions.map((r) => [r.revision, r.issuedOn, r.withdrawnOn]), [['D', '2026-09-26', null]])
       && same(pid?.approvals.map((a) => a.signedOn), ['2026-09-24', '2026-09-25', '2026-09-26']) && pid?.acknowledged === false, pid?.revisions);
   const types = await listDocumentTypes();
   check('document types register = DOC_TYPES, In Codex counts', same(types.map((t) => [t.code, t.label, t.circuitText, t.retention, t.isoClause, t.isClientDeliverable]),

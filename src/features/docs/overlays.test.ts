@@ -45,8 +45,10 @@ describe('document record drawer markup', () => {
       'Nouvelle révision · Codex', 'Approuver dans Codex · Responsable qualité · G. Comte',
       'Fiche miroir de Codex · révisions, approbations et diffusion en lecture seule ici', 'Identité', 'Numéro', 'RPT-HLT-014', 'Type', 'Rapport d’essai & contrôle (RPT)',
       'Classification', 'A1320', 'D-014', 'Révisions', 'rev A', 'Première émission', '28 sept. · G. Comte · A.3', 'Diffusion proposée', 'Natif', 'PDF',
+      // D-2 = a (R-127): the history stays in Codex — a link instead of the earlier revisions and the « Journal des téléchargements ».
+      'Révisions antérieures et journal des téléchargements dans Codex',
       'Preuve d’approbation', 'Auteur · G. Comte', 'Signé · 26 sept.', 'Responsable qualité · G. Comte', 'En attente · —', 'Chef de projet · R. Aubert', 'En attente · —',
-      'Journal des téléchargements', 'Relations', 'Livrable', 'D-014',
+      'Relations', 'Livrable', 'D-014',
     ];
     let at = 0;
     for (const s of order) {
@@ -55,16 +57,35 @@ describe('document record drawer markup', () => {
       at = i + 1;
     }
     expect(html).not.toContain('Distribution');
+    expect(html).not.toContain('Journal des téléchargements</');
     expect(html).toContain('class="tag tag-accent');
     expect(html).toContain('href="/projects/HLT-026/documents?deposit=RPT-HLT-014"');
+    // R-033: "Ouvrir dans Codex" and the history link open the record in Codex, in a new tab.
+    expect(html.match(/<a [^>]*href="http:\/\/localhost:3100\/\?document=RPT-HLT-014&amp;revision=A"[^>]*>/g)?.length).toBe(2);
+    expect(html.match(/<a [^>]*target="_blank"[^>]*href="http:\/\/localhost:3100[^"]*"[^>]*>|<a [^>]*href="http:\/\/localhost:3100[^"]*"[^>]*target="_blank"[^>]*>/g)?.length).toBe(2);
   });
 
-  it('EN, PID-HLT-026: distribution with the client acknowledgement, download log, Codex download entries', async () => {
+  it('EN, PID-HLT-026: distribution with the client acknowledgement; current revision only, no download log (D-2)', async () => {
     const seq = text(await drawerHtml('en', 'PID-HLT-026', { short: 'R. Aubert', role: 'pm' }));
-    for (const s of ['Distribution', 'Client — Port authority · N. Bensaïd', '· rev D · 26 Sep', 'Acknowledgment pending', 'Mechanical', 'Received', 'Download log',
-      'S. Haddad · rev D · 27 Sep · PDF', 'N. Bensaïd · rev D · 28 Sep · PDF', 'Deliverable', 'D-016', 'rev C', 'Withdrawn 26 Sep', '5 Sep · P. Noguès · 4 working versions'])
+    // R-128: the deliverable relation D-016 is a link (Quality › Deliverables, the record's own project).
+    for (const s of ['Distribution', 'Client — Port authority · N. Bensaïd', '· rev D · 26 Sep', 'Acknowledgment pending', 'Mechanical', 'Received',
+      'Earlier revisions and download log in Codex', 'Deliverable', 'D-016'])
       expect(seq, s).toContain(s);
+    // D-2 = a (R-127): no earlier revision (rev C, "Withdrawn 26 Sep") and no download log in Keystone.
+    for (const s of ['Download log', 'S. Haddad · rev D · 27 Sep · PDF', 'N. Bensaïd · rev D · 28 Sep · PDF', 'rev C', 'Withdrawn 26 Sep', '5 Sep · P. Noguès · 4 working versions'])
+      expect(seq, s).not.toContain(s);
     expect(seq.some((x) => x.startsWith('Approve in Codex'))).toBe(false);
+    const html = await drawerHtml('en', 'PID-HLT-026', { short: 'R. Aubert', role: 'pm' });
+    expect(html).toContain('href="/projects/HLT-026/quality?tab=dlv&amp;dlv=D-016"');
+  });
+
+  it('client: no link to Codex (no Codex access), relations inert', async () => {
+    const html = await drawerHtml('en', 'PID-HLT-026', { short: 'N. Bensaïd', role: 'client' });
+    expect(html).not.toContain('localhost:3100');
+    expect(html).not.toContain('Open in Codex');
+    expect(html).not.toContain('Earlier revisions and download log in Codex');
+    expect(html).not.toContain('href="/projects/HLT-026/quality');
+    expect(text(html)).toContain('D-016');
   });
 });
 

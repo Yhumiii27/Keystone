@@ -110,7 +110,7 @@ describe('documents — Codex index (10 §4)', () => {
     expect(`Last sync ${s.time} · ${s.records} records`).toBe(G.docs.sync);
   });
 
-  it('every record drawer: identity, revisions, approval proof, distribution, download log, relations', async () => {
+  it('every record drawer: identity, current revision, approval proof, distribution, relations', async () => {
     const all = await listVaultDocuments();
     for (const doc of all) {
       const r = (await getDocumentRecord(doc.number))!;
@@ -125,7 +125,8 @@ describe('documents — Codex index (10 §4)', () => {
         rev: x.revision, date: x.dateText, by: x.author, status: x.current ? r.statusLabel : 'Obsolete', versions: x.current ? 'A.3' : `${x.workingVersions} working versions`,
         note: x.current ? (x.revision === 'A' ? 'First issue' : `Rev ${x.revision} · changes recorded in transmittal`) : `Withdrawn ${shortDateOfIso(x.withdrawnOn!)}`,
       }));
-      expect(revs, doc.number).toEqual(g.revs);
+      // D-2 = a (R-127): the current revision only (the prototype's first, newest row); the history stays in Codex.
+      expect(revs, doc.number).toEqual(g.revs.slice(0, 1));
       expect(r.approvals.map((a) => ({ role: a.roleLabel, who: a.who, when: a.signedOn ? shortDateOfIso(a.signedOn) : '—', state: a.signed ? 'Signed' : 'Pending' })), doc.number).toEqual(g.appr);
       // Client row: the project's client contact (the prototype printed Port authority · N. Bensaïd on every project).
       const dist = r.distribution.map((x) => x.kind === 'client'
@@ -133,7 +134,8 @@ describe('documents — Codex index (10 §4)', () => {
         : { to: x.label, rev: x.revision, date: shortDateOfIso(x.date), ack: 'Received' });
       const want = doc.project === 'NDC-031' ? g.dist.map((x: any) => ({ ...x, to: x.to.replace('Port authority · N. Bensaïd', 'Infrastructure BU · null') })) : g.dist;
       expect(dist, doc.number).toEqual(want);
-      expect(r.downloads.map((x) => ({ text: x.text })), doc.number).toEqual(g.dl);
+      // D-2 = a (R-127): no download log in Keystone (the prototype's g.dl stays in Codex).
+      expect(r, doc.number).not.toHaveProperty('downloads');
       expect(r.links.map((l) => ({ kind: l.kindLabel, id: l.ref })), doc.number).toEqual(g.links);
     }
   });

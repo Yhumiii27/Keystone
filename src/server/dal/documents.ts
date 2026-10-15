@@ -1,13 +1,16 @@
 import 'server-only';
 // Documents — Codex index DAL (docs/spec/10 §4 Documents, §5 Document types register; 11 §3.10). Keystone mirrors
 // the Codex records (number, revision, status, confidentiality, tags, links), shows the approval proof, distribution
-// and acknowledgements and the download log, and hands deposits over to Codex (simulated: the index record is
-// created at once, OPEN QUESTION D-1). Writers follow the vault's state machine (10 §9): Draft → Frozen →
-// Release proposed → (approvals) → Released; client acknowledgement of released client deliverables.
+// and acknowledgements, and hands deposits over to Codex (simulated: the index record is created at once, OPEN QUESTION
+// D-1). Writers follow the vault's state machine (10 §9): Draft → Frozen → Release proposed → (approvals) → Released;
+// client acknowledgement of released client deliverables.
+// Delivery 8 (D-2 = a, A-15 = a; R-127): Keystone keeps the record, its current revision and its current circuit — the
+// earlier revisions and the download log stay in Codex (the drawer links there); no Keystone download log is written.
+// R-128: the drawer's relations (deliverable, order, punch item) resolve in the record's own project.
 // Delivery 7 (P-7b = a, D-1b = a, P-7c = a; R-124, R-106): circuit decisions and the start of an engineering
 // deliverable's circuit are recorded in the Codex outbox (src/server/integrations/codex) and shown "pending sync with
 // Codex" over the mirrored circuit; the status and the approval proof change only when Codex answers.
-import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { cache } from 'react';
 import { getDb } from '@/server/db/client';
 import {
@@ -20,9 +23,11 @@ import {
   circuitNoteText, codexCircuitState, isEngineeringDeliverable, type CircuitState, type CodexDecision, type CodexSyncStatus,
 } from '@/domain/codex-approvals';
 import { closeCodexEntries, insertCodexEntry, openCodexEntries, type CodexOutboxEntry } from '@/server/integrations/codex/outbox';
+import { codexConnectorMode } from '@/server/integrations/codex/config';
+import { readCodexIndex } from '@/server/integrations/codex/connector';
 import {
-  clients, documentAcknowledgements, documentApprovals, documentApproverAssignments, documentDeposits, documentDownloads, documentIndexSyncs,
-  documentLinks, documentRevisions, documentTypeCircuitSteps, documentTypes, documents, persons, projects, users,
+  clients, deliverables, documentAcknowledgements, documentApprovals, documentApproverAssignments, documentDeposits, documentIndexSyncs,
+  documentLinks, documentRevisions, documentTypeCircuitSteps, documentTypes, documents, persons, projects, punchItems, purchaseOrders, users,
 } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 
@@ -156,8 +161,14 @@ export interface VaultDocument {
   circuitNote: string | null;
   /** Withdrawal of the previous revision on the last release ("rev C withdrawn automatically · 29 Sep"). */
   withdrawal: { revision: string; on: string } | null;
-  /** Revisions withdrawn so far (obsolete revision rows). */
+  /**
+   * Revisions withdrawn so far (obsolete revision rows): the KPI "Obsolete revisions withdrawn" keeps reading the stored rows,
+   * never the revision letter (00 §7.16, 10 OQ16); they are not displayed any more (D-2, R-127). TODO(codex): the D-1 index
+   * payload must carry a withdrawn-revision count, or the KPI only counts the withdrawals seen after connection.
+   */
   withdrawnRevisions: number;
+  /** Codex's own link of the record, once the index read brought it (R-033); null until then (links open Codex's home). */
+  codexUrl: string | null;
 }
 
 const tagsTextOf = (tags: string[]) => tags.join(' · ') || '—';
@@ -244,6 +255,7 @@ function toVault(b: VaultBundle, d: VaultBundle['docs'][number]): VaultDocument 
     circuitState: state, needsCircuitStart, circuitNote: circuitNoteText(state, needsCircuitStart, d.status),
     withdrawal: d.lastWithdrawnRevision && d.lastWithdrawnOn ? { revision: d.lastWithdrawnRevision, on: d.lastWithdrawnOn } : null,
     withdrawnRevisions: b.withdrawn.get(d.id) ?? 0,
+    codexUrl: d.codexUrl,
   };
 }
 
@@ -310,39 +322,97 @@ export type DistributionRow =
   | { kind: 'client'; organisation: string; contact: string | null; revision: string; date: string; acknowledgedOn: string | null }
   | { kind: 'internal'; recipient: DocRecipient; label: string; revision: string; date: string };
 
-export interface DownloadRow {
-  who: string;
-  revision: string;
-  on: string;
-  format: string;
-  source: 'keystone' | 'codex';
-  /** "S. Haddad · rev D · 27 Sep · PDF". */
-  text: string;
+/**
+ * Screen a relation of a record opens (R-128), resolved in the record's own project: a deliverable (Quality ›
+ * Deliverables), a purchase order (Orders, `ref` = the Keystone number even when Codex carried the Sage X3 one) or a punch
+ * item (Inspections & punch list, one list per project — A-6).
+ */
+export interface DocumentLinkTarget {
+  screen: 'deliverable' | 'order' | 'punch';
+  project: string;
+  ref: string;
+}
+
+export interface DocumentLinkRow {
+  kind: DocLinkKind;
+  kindLabel: string;
+  ref: string;
+  /** Deliverable / order / punch item found in the record's project; null for a QMS record or an unknown reference (inert). */
+  target: DocumentLinkTarget | null;
 }
 
 export interface DocumentRecord extends VaultDocument {
-  /** Newest first (A … current reversed). */
+  /**
+   * The current revision only (D-2 = a, R-127): the earlier revisions and the download log stay in Codex, which the drawer
+   * links to. One row (none for a record without revision row).
+   */
   revisions: DocumentRevisionRow[];
   approvals: ApprovalProofRow[];
   distribution: DistributionRow[];
-  /** Keystone downloads first (oldest first), then the Codex log. */
-  downloads: DownloadRow[];
+  /** Relations with their target in the record's own project (R-128). */
+  links: DocumentLinkRow[];
   /** "PHO" → JPG ×12, else native + PDF (display only). */
   files: 'photos' | 'native_pdf';
 }
 
-/** Drawer of a vault record (`showDoc`, 10 §4.5); null when the number is unknown. */
+type Q = Awaited<ReturnType<typeof getDb>> | Tx;
+
+/**
+ * Punch item of a project by number (R-128): the ITP register first, then the site register — both open the project's
+ * punch list (A-6, one list per project). Kept in one function so the unified list (R-117) can replace the lookup.
+ */
+async function findPunchItem(q: Q, projectId: string, numbers: readonly string[]): Promise<Set<string>> {
+  if (!numbers.length) return new Set();
+  const rows = await q.select({ number: punchItems.number }).from(punchItems)
+    .where(and(eq(punchItems.projectId, projectId), inArray(punchItems.number, [...numbers])));
+  return new Set(rows.map((r) => r.number));
+}
+
+/**
+ * Targets of the relations of a record (R-128), in the record's own project — never the vault page's: deliverable by
+ * number, purchase order by number then by Sage X3 reference (SC-4b: Codex may carry the X3 number), punch item by
+ * number. Article and change-request relations keep their own links (docs/model.ts); a QMS record resolves nothing.
+ */
+async function linkTargets(q: Q, projectId: string | null, projectCode: string | null, links: VaultDocument['links']): Promise<DocumentLinkRow[]> {
+  const refs = (kind: DocLinkKind) => [...new Set(links.filter((l) => l.kind === kind).map((l) => l.ref))];
+  if (!projectId || !projectCode) return links.map((l) => ({ ...l, target: null }));
+  const [dlv, po, punch] = await Promise.all([
+    refs('deliverable').length
+      ? q.select({ number: deliverables.number }).from(deliverables).where(and(eq(deliverables.projectId, projectId), inArray(deliverables.number, refs('deliverable'))))
+      : Promise.resolve([]),
+    refs('purchase_order').length
+      ? q.select({ number: purchaseOrders.number, x3Ref: purchaseOrders.x3Ref }).from(purchaseOrders)
+        .where(and(eq(purchaseOrders.projectId, projectId), or(inArray(purchaseOrders.number, refs('purchase_order')), inArray(purchaseOrders.x3Ref, refs('purchase_order')))))
+      : Promise.resolve([]),
+    findPunchItem(q, projectId, refs('punch_item')),
+  ]);
+  const dlvSet = new Set(dlv.map((r) => r.number));
+  const poOf = (ref: string) => po.find((r) => r.number === ref)?.number ?? po.find((r) => r.x3Ref === ref)?.number ?? null;
+  return links.map((l) => {
+    const target = (screen: DocumentLinkTarget['screen'], ref: string | null): DocumentLinkTarget | null => (ref ? { screen, project: projectCode, ref } : null);
+    if (l.kind === 'deliverable') return { ...l, target: target('deliverable', dlvSet.has(l.ref) ? l.ref : null) };
+    if (l.kind === 'purchase_order') return { ...l, target: target('order', poOf(l.ref)) };
+    if (l.kind === 'punch_item') return { ...l, target: target('punch', punch.has(l.ref) ? l.ref : null) };
+    return { ...l, target: null };
+  });
+}
+
+/**
+ * Drawer of a vault record (`showDoc`, 10 §4.5); null when the number is unknown. D-2 = a (R-127): the record, its current
+ * revision and its current circuit — no earlier revision, no download log (both stay in Codex). R-128: relations resolved
+ * in the record's own project.
+ */
 export async function getDocumentRecord(number: string): Promise<DocumentRecord | null> {
   const db = await getDb();
   const b = await loadVault(db, eq(documents.number, number));
   const d = b.docs[0];
   if (!d) return null;
   const base = toVault(b, d);
-  const [revs, dls, ack, client] = await Promise.all([
-    db.select().from(documentRevisions).where(eq(documentRevisions.documentId, d.id)).orderBy(desc(documentRevisions.position)),
-    db.select().from(documentDownloads).where(eq(documentDownloads.documentId, d.id)).orderBy(asc(documentDownloads.downloadedOn), asc(documentDownloads.createdAt)),
+  const [revs, ack, client, links] = await Promise.all([
+    db.select().from(documentRevisions).where(and(eq(documentRevisions.documentId, d.id), eq(documentRevisions.revision, d.currentRevision))),
     db.select().from(documentAcknowledgements).where(and(eq(documentAcknowledgements.documentId, d.id), eq(documentAcknowledgements.revision, d.currentRevision))),
     d.projectId ? clientContactOf(db, d.projectId) : Promise.resolve(null),
+    linkTargets(db, d.projectId, d.projectCode, base.links),
   ]);
   const current = (b.approvals.get(d.id) ?? []).filter((a) => a.revision === d.currentRevision);
   const signerIds = [...new Set(current.map((a) => (a.signedOn ? a.signedByPersonId : null)).filter((x): x is string => !!x))];
@@ -366,17 +436,13 @@ export async function getDocumentRecord(number: string): Promise<DocumentRecord 
       : []),
     ...d.recipients.filter((r) => r !== 'client').map((r) => ({ kind: 'internal' as const, recipient: r, label: docRecipient.isCode(r) ? docRecipient.label(r) : r, revision: d.currentRevision, date: d.issuedOn })),
   ];
-  const downloads = [...dls.filter((x) => x.source === 'keystone'), ...dls.filter((x) => x.source === 'codex')].map((x) => ({
-    who: x.personName, revision: x.revision, on: x.downloadedOn, format: x.format, source: x.source,
-    text: `${x.personName} · rev ${x.revision} · ${shortDateOfIso(x.downloadedOn)} · ${x.format}`,
-  }));
   return {
     ...base,
     revisions: revs.map((r) => ({
-      revision: r.revision, current: r.revision === d.currentRevision, status: r.revision === d.currentRevision ? d.status : 'obsolete', issuedOn: r.issuedOn,
-      dateText: shortDateOfIso(r.issuedOn), author: r.authorName, workingVersions: r.workingVersions, withdrawnOn: r.withdrawnOn,
+      revision: r.revision, current: true, status: d.status, issuedOn: r.issuedOn, dateText: shortDateOfIso(r.issuedOn), author: r.authorName,
+      workingVersions: r.workingVersions, withdrawnOn: r.withdrawnOn,
     })),
-    approvals, distribution, downloads, files: d.typeCode === 'PHO' ? 'photos' : 'native_pdf',
+    approvals, distribution, links, files: d.typeCode === 'PHO' ? 'photos' : 'native_pdf',
   };
 }
 
@@ -398,14 +464,58 @@ export interface CodexSyncState {
   records: number;
 }
 
-/** "Last sync 08:02 · 412 records" (`codexSync`). */
+/**
+ * "Last sync 08:02 · 412 records" (`codexSync`). Delivery 8 (R-033): with the HTTP connector, the last read of Codex's index
+ * (its record count), null before the first one — a seeded or mock sync is never shown as a sync with Codex.
+ */
 export async function getCodexSyncState(): Promise<CodexSyncState | null> {
   const db = await getDb();
+  if (codexConnectorMode() === 'http') {
+    const [r] = await db.select().from(documentIndexSyncs).where(eq(documentIndexSyncs.source, 'codex')).orderBy(desc(documentIndexSyncs.syncedAt)).limit(1);
+    if (!r) return null;
+    const p = parisParts(r.syncedAt);
+    return { time: `${p.hh}:${p.mm}`, syncedAt: r.syncedAt.toISOString(), records: r.recordCount };
+  }
   const [s] = await db.select().from(documentIndexSyncs).orderBy(desc(documentIndexSyncs.syncedAt)).limit(1);
   if (!s) return null;
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(documents).where(eq(documents.isNew, true));
   const p = parisParts(s.syncedAt);
   return { time: `${p.hh}:${p.mm}`, syncedAt: s.syncedAt.toISOString(), records: s.recordCount + n };
+}
+
+/** Last read of Codex's index by the HTTP connector (R-033), null before the first one. */
+export async function lastCodexIndexRead(): Promise<Date | null> {
+  const db = await getDb();
+  const [r] = await db.select({ at: documentIndexSyncs.syncedAt }).from(documentIndexSyncs).where(eq(documentIndexSyncs.source, 'codex'))
+    .orderBy(desc(documentIndexSyncs.syncedAt)).limit(1);
+  return r?.at ?? null;
+}
+
+export interface CodexIndexRead {
+  /** Codex's index was read (false when IT disabled the connector: nothing was asked). */
+  read: boolean;
+  /** Records of Keystone's index after the read. */
+  records: number;
+  applied: number;
+  created: number;
+  skipped: number;
+}
+
+/**
+ * HTTP connector (Delivery 8, R-033): reads Codex's index since the last read (the whole index the first time), writes it
+ * into Keystone's index (mirror.ts `applyCodexIndex`) and records the read. Throws when Codex is unreachable or answers
+ * badly (nothing recorded, the next read asks again). `actorName` null = the scheduled job.
+ */
+export async function refreshCodexIndex(actorName: string | null, at: Date = new Date()): Promise<CodexIndexRead> {
+  const r = await readCodexIndex({ since: await lastCodexIndexRead() }, at);
+  const db = await getDb();
+  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(documents);
+  if (!r) return { read: false, records: n, applied: 0, created: 0, skipped: 0 };
+  await db.transaction(async (tx) => {
+    const actor = actorName ? await findPerson(tx, actorName) : null;
+    await tx.insert(documentIndexSyncs).values({ syncedAt: at, recordCount: n, requestedByPersonId: actor?.id ?? null, source: 'codex' });
+  });
+  return { read: true, records: n, applied: r.applied, created: r.created, skipped: r.skipped.length };
 }
 
 /** Codex project code of a number: "QMS" or the 3-letter prefix of the project code (HLT-026 → HLT). */
@@ -458,6 +568,9 @@ const depositService = (family: DocFamily): DocService => (family === 'purchasin
  * record back to Draft (the revision letter is not bumped, as in the prototype — D-1) and resets its approvals.
  */
 export async function depositInCodex(input: DepositInput, actorName: string, on: string = CODEX_TODAY_ISO): Promise<{ number: string; created: boolean }> {
+  // A-15 (R-033, default to confirm): with Codex connected, a deposit is made in Codex — no Keystone-numbered draft that Codex
+  // never receives (the Server Function answers with an "Open Codex" link; R-125 later brings the prefilled deposit form).
+  if (codexConnectorMode() === 'http') throw new DepositInCodexOnlyError();
   const db = await getDb();
   return db.transaction(async (tx) => {
     const [type] = await tx.select().from(documentTypes).where(eq(documentTypes.code, input.typeCode));
@@ -718,20 +831,25 @@ export async function acknowledgeDocument(number: string, actorName: string, on:
   });
 }
 
-/** Download of the current revision (table icon, drawer "Download PDF" / "Native"): appends to the download log. */
-export async function logDocumentDownload(number: string, actorName: string, format: 'PDF' | 'Native' = 'PDF', on: string = CODEX_TODAY_ISO): Promise<void> {
-  const db = await getDb();
-  await db.transaction(async (tx) => {
-    const d = await loadDoc(tx, number);
-    const actor = await findPerson(tx, actorName);
-    await tx.insert(documentDownloads).values({
-      documentId: d.id, revision: d.currentRevision, personId: actor?.id ?? null, personName: actor ? nameOf(actor) : actorName, downloadedOn: on, format, source: 'keystone',
-    });
-  });
+/** A deposit refused because Codex is connected (HTTP connector): it is made in Codex itself (A-15, R-033). */
+export class DepositInCodexOnlyError extends Error {
+  constructor() {
+    super('Codex is connected — deposit the document in Codex');
+    this.name = 'DepositInCodexOnlyError';
+  }
 }
 
-/** "Sync now": records a sync of the Codex index (count = last count + records created from Keystone). Returns the record count. */
+/**
+ * "Sync now": the mock records a sync of Keystone's own index (count = last count + records created from Keystone); the
+ * HTTP connector reads Codex's index (R-033, `refreshCodexIndex`; throws when Codex is unreachable or the connector is
+ * disabled). Returns the record count.
+ */
 export async function syncCodexIndex(actorName: string, at: Date = new Date()): Promise<number> {
+  if (codexConnectorMode() === 'http') {
+    const r = await refreshCodexIndex(actorName, at);
+    if (!r.read) throw new Error('The Codex connector is disabled — the index was not read');
+    return r.records;
+  }
   const db = await getDb();
   return db.transaction(async (tx) => {
     const [last] = await tx.select().from(documentIndexSyncs).orderBy(desc(documentIndexSyncs.syncedAt)).limit(1);

@@ -142,18 +142,23 @@ describe('documents Server Functions', () => {
     expect(d.approvals.map((a) => [a.who, a.signed, a.keystone])).toEqual([['J. Wagner', true, null], ['M. Lefebvre', true, null], ['M. Lefebvre', true, null]]);
   });
 
-  it('downloads are logged for every viewer, with the format; a client downloads the shared records of their projects only', async () => {
+  it('downloads: the Codex hand-off for every viewer (nothing logged, D-2); a client downloads the shared records of their projects only', async () => {
     as('Nadia Bensaïd', 'N. Bensaïd', 'client', { canEdit: false });
     // P-10a / P-10b: an internal record (not shared) or another organisation's record is unknown to the client.
     expect(await logDownloadAction('HLT-026', 'LST-INS-026')).toEqual({ error: 'Unknown document' });
     expect(await logDownloadAction('HLT-026', 'PID-NDC-031')).toEqual({ error: 'Unknown document' });
-    expect(await logDownloadAction('HLT-026', 'PID-HLT-026')).toEqual({ ok: true });
+    // D-2 = a (R-127): the files are in Codex — the hand-off toast; no Codex link for the client (no Codex access).
+    const HAND_OFF = 'Download needs Codex — the document files are stored in Codex';
+    expect(await logDownloadAction('HLT-026', 'PID-HLT-026')).toEqual({ ok: true, toast: HAND_OFF, link: null });
     as('Julien Wagner', 'J. Wagner', 'member');
-    expect(await logDownloadAction('HLT-026', 'PID-HLT-026', 'Native')).toEqual({ ok: true });
-    const d = (await getDocumentRecord('PID-HLT-026'))!;
-    expect(d.downloads.map((x) => x.text)).toEqual([
-      'Nadia Bensaïd · rev D · 29 Sep · PDF', 'Julien Wagner · rev D · 29 Sep · Native', 'S. Haddad · rev D · 27 Sep · PDF', 'N. Bensaïd · rev D · 28 Sep · PDF',
-    ]);
+    expect(await logDownloadAction('HLT-026', 'PID-HLT-026', 'Native')).toEqual({
+      ok: true, toast: HAND_OFF, link: { href: 'http://localhost:3100/?document=PID-HLT-026&revision=D', label: 'Open Codex' },
+    });
+    expect(await logDownloadAction('HLT-026', 'PID-HLT-026', 'Zip' as never)).toEqual({ error: 'Invalid request' });
+    expect(await logDownloadAction('HLT-026', 'NOPE-000')).toEqual({ error: 'Unknown document' });
+    // No Keystone download log, no read event in the audit trail.
+    expect(await getDocumentRecord('PID-HLT-026')).not.toHaveProperty('downloads');
+    expect((await listAudit({ projectCode: 'HLT-026' })).filter((a) => a.object === 'PID-HLT-026' && /download/i.test(a.change))).toEqual([]);
   });
 
   it('"Sync now": toast with the index record count, saying the run is simulated (Codex is a mock), and the decisions still waiting for Codex', async () => {

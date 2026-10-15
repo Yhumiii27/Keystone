@@ -11,9 +11,10 @@ import { and, asc, eq, inArray, or } from 'drizzle-orm';
 import { currentStep } from '@/domain/change-control';
 import { registerReconciliation } from '@/domain/cost-control';
 import { CLIENT_ISSUE_HANDLER_ROLES, ISSUE_ACKNOWLEDGEMENT, ISSUE_NOTICE, hasRealAnswer, issueSteps, type IssueStep } from '@/domain/client-issues';
+import { clientDocCategories, type ClientDocCategory } from '@/domain/rexclient';
 import { getDb } from '@/server/db/client';
 import { NOW_ISO, STATUS_ISO, clientIssueStatus, nextBusinessNumber, type ClientIssueStatus } from '@/server/db/codes';
-import { clientDocumentCategories, clientIssues, persons, projectControls, users } from '@/server/db/schema';
+import { clientIssues, persons, projectControls, users } from '@/server/db/schema';
 import { listChangeRequestDetails, type ChangeRequestDetail } from './changes';
 import { BASE_CURRENCY, type CurrencyCode } from '@/domain/currency';
 import { getBillingPlan } from './cashflow';
@@ -90,8 +91,11 @@ export interface ClientPortal {
   /** C-9: currency of the invoices and of the contract summary (the contract's, EUR for a legacy plan). */
   currency: CurrencyCode;
   documents: VaultDocument[];
-  /** CLIENT_DOCS categories (not rendered by the prototype, L-9). */
-  documentCategories: { category: string; description: string; fileCount: string }[];
+  /**
+   * Categories of the shared documents, computed from the Codex index (L-9 = a, R-138: the prototype's typed CLIENT_DOCS rows
+   * are gone): EN source category and type labels, file count, latest issue date.
+   */
+  documentCategories: ClientDocCategory[];
 }
 
 async function issuesOf(projectId: string): Promise<ClientIssueRow[]> {
@@ -127,10 +131,9 @@ const approvedChangesOf = (crs: ChangeRequestDetail[]) => registerReconciliation
 export async function getClientPortal(projectCode: string): Promise<ClientPortal> {
   const db = await getDb();
   const p = await projectOf(db, projectCode);
-  const [issues, crs, dlv, plan, docs, cats, [ctl]] = await Promise.all([
+  const [issues, crs, dlv, plan, docs, [ctl]] = await Promise.all([
     issuesOf(p.id), listChangeRequestDetails(projectCode), listDeliverables(projectCode), getBillingPlan(projectCode),
     listSharedDocuments(projectCode),
-    db.select().from(clientDocumentCategories).where(eq(clientDocumentCategories.projectId, p.id)).orderBy(asc(clientDocumentCategories.position)),
     db.select({ id: projectControls.projectId }).from(projectControls).where(eq(projectControls.projectId, p.id)),
   ]);
   const clientStep = (c: ChangeRequestDetail) => c.chain.find((s) => s.step === 'client')?.decision ?? null;
@@ -161,7 +164,8 @@ export async function getClientPortal(projectCode: string): Promise<ClientPortal
     projectCode, issues, decisions, decided, invoices, currency,
     // Delivery 7 (R-068, A-4): approved changes read from the single register (Σ approved change requests); C-9: contract currency.
     contract: plan ? { valueKeur: plan.contractValueKeur, invoicedKeur: plan.invoicedKeur, paidKeur: plan.paidKeur, approvedChangesKeur: ctl ? approvedChangesOf(crs) : 0, currency } : null,
-    documents: docs, documentCategories: cats.map((c) => ({ category: c.category, description: c.description, fileCount: c.fileCountText })),
+    // L-9 (R-138): the categories follow the shared documents of the Codex index, so they always agree with the table.
+    documents: docs, documentCategories: clientDocCategories(docs),
   };
 }
 

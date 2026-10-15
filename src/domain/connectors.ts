@@ -1,9 +1,10 @@
 // Real state of the connectors of Activity & integrations (R-021; A-15 "real data only", D-7a, NEW-CURSUS-4). Pure.
 //
 // Each connector row says how Keystone is actually linked to the other system:
-// - live — a connector layer talks to the system's API: Vigie or Cursus with their API URL set (mode "http");
-// - mock — Keystone runs the connector against a local mirror, nothing is exchanged with the system: Vigie and Cursus
-//   without an API URL, and Codex (Keystone's Codex index; Codex has no API yet, R-033);
+// - live — a connector layer talks to the system's API: Vigie, Cursus or Codex with their API URL set (mode "http"; Codex
+//   since Delivery 8, R-033: CODEX_API_URL delivers the approval outbox and reads the index);
+// - mock — Keystone runs the connector against a local mirror, nothing is exchanged with the system: Vigie, Cursus and
+//   Codex without an API URL (Keystone's own Codex index);
 // - file — exchange by files only: MS Project (the XML export works, imports are off by D-7b);
 // - none — no connector exists in Keystone: Sage X3, SolidWorks PDM, Outlook / Exchange, Microsoft Teams, e-mail (SMTP)
 //   and the connectors added with "Add connector", until IT builds them.
@@ -26,17 +27,21 @@ export type ConnectorState = ConnectorStatus | 'mock' | 'not_connected' | 'disab
 
 /** Connectors no longer listed (NEW-CURSUS-4: Lucca unplugged, Cursus provides leave and absences). */
 export const RETIRED_CONNECTORS: readonly string[] = ['Lucca'];
-/** Recorded connectors that Keystone runs as a mock over its own index (Codex: no API yet, R-033). */
+/**
+ * Recorded connectors whose connector layer is a mock over Keystone's own index until their API URL is set (Codex:
+ * CODEX_API_URL, R-033 — then live like Vigie and Cursus).
+ */
 export const MOCK_CONNECTORS: readonly string[] = ['Codex'];
 /** Recorded connectors that exchange files only (MS Project XML export; imports off, D-7b). */
 export const FILE_CONNECTORS: readonly string[] = ['MS Project'];
 
 export const isRetiredConnector = (name: string) => RETIRED_CONNECTORS.includes(name);
 
-/** How Keystone is linked to the system of a connector row (`mode`: Vigie / Cursus connector-layer mode). */
+/** How Keystone is linked to the system of a connector row (`mode`: Vigie / Cursus / Codex connector-layer mode). */
 export function connectorLink(c: { name: string; kind: ConnectorKind; mode: 'mock' | 'http' | null }): ConnectorLink {
   if (c.kind === 'vigie' || c.kind === 'cursus') return c.mode === 'http' ? 'live' : 'mock';
-  if (MOCK_CONNECTORS.includes(c.name)) return 'mock';
+  // R-033: Codex is live once its API URL is set (the outbox is delivered and the index read), a mock over the index otherwise.
+  if (MOCK_CONNECTORS.includes(c.name)) return c.mode === 'http' ? 'live' : 'mock';
   if (FILE_CONNECTORS.includes(c.name)) return 'file';
   return 'none';
 }

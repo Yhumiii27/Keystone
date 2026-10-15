@@ -19,9 +19,9 @@ import type { Lang } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import {
-  CLOSURE_NEXT, DOCUMENT_STATUS_TAG, LESSON_APPLIES_TO, STATUS_ISO, closureItemStatus, clientIssueStatus, fmtDOfIso, lessonStatus,
+  CLOSURE_NEXT, DOCUMENT_STATUS_TAG, LESSON_APPLIES_TO, STATUS_ISO, closureItemStatus, clientIssueStatus, docFamily, fmtDOfIso, lessonStatus,
   lessonTheme, reportPeriod,
-  type ChangeStatus, type ChangeStep, type ChangeType, type ClientIssueStatus, type ClosureItemStatus, type DeliverableStatus, type DocumentStatus,
+  type ChangeStatus, type ChangeStep, type ChangeType, type ClientIssueStatus, type ClosureItemStatus, type DeliverableStatus, type DocFamily, type DocumentStatus,
   type LessonStatus, type LessonTheme, type PaymentMilestoneStatus, type ReportPeriod, type StepDecision,
 } from '@/server/db/codes';
 
@@ -546,6 +546,63 @@ export const sharedDocRow = (d: SharedDocLike): SharedDocRow => ({
  * and "Own documents · files stay in the business tool…" (empty state); the rebuild uses client-facing strings.
  */
 export const DOCS_TAB = { idHeader: 'Reference', sub: 'Released documents shared with you', empty: 'No document shared with you yet' } as const;
+
+/**
+ * Client document categories (Delivery 8, L-9 = a, R-138): the prototype's typed CLIENT_DOCS rows (defined, never
+ * rendered) give way to categories computed from the Codex index — the documents shared with the client. One constant
+ * maps a Codex type to its category; any other type falls back to its Codex family. Keys are stable; the order is the
+ * prototype's (contract, minutes, HSE, accepted deliverables), then the families in Codex order. The owner's own list
+ * can replace this constant. "HSE documents", not "HSE reports": the Codex HSE type is a prevention plan, and the
+ * monthly safety statistics and incident reports are Vigie site-HSE records, never in the Codex index. "Monthly progress
+ * reports" has no Codex type (Keystone's status report is not a Codex record): it is left out until the owner decides.
+ */
+export const CLIENT_DOC_CATEGORY_OF_TYPE: Readonly<Record<string, { key: string; label: string }>> = {
+  CTR: { key: 'contract', label: 'Contract & amendments' },
+  MIN: { key: 'minutes', label: 'Meeting minutes' },
+  HSE: { key: 'hse', label: 'HSE documents' },
+  PV: { key: 'accepted', label: 'Accepted deliverables' },
+};
+/** Order of the categories: the typed ones above, then the Codex families (DOC_FAM order). */
+const CLIENT_DOC_CATEGORY_ORDER: readonly string[] = ['contract', 'minutes', 'hse', 'accepted', ...docFamily.codes];
+
+export interface SharedDocCategoryInput {
+  /** Codex type code ("MIN") and its EN label ("Meeting minutes"). */
+  type: string;
+  typeLabel: string;
+  family: DocFamily;
+  issuedOn: string;
+}
+
+export interface ClientDocCategory {
+  /** Stable key ("minutes", "hse", "eng"…). */
+  key: string;
+  /** EN source label ("Meeting minutes", "Engineering"). */
+  category: string;
+  fileCount: number;
+  /** The distinct type labels of its files (EN source, first-seen order). */
+  types: string[];
+  /** Description: the type labels joined with " · " (EN source). */
+  description: string;
+  /** Latest issue date of its files (ISO). */
+  latestIssuedOn: string;
+}
+
+/** Categories of the documents shared with the client, in a fixed order; a category without file is left out. */
+export function clientDocCategories(docs: readonly SharedDocCategoryInput[]): ClientDocCategory[] {
+  const by = new Map<string, ClientDocCategory>();
+  for (const d of docs) {
+    const c = CLIENT_DOC_CATEGORY_OF_TYPE[d.type] ?? { key: d.family, label: docFamily.label(d.family) };
+    const cur = by.get(c.key) ?? { key: c.key, category: c.label, fileCount: 0, types: [], description: '', latestIssuedOn: d.issuedOn };
+    cur.fileCount++;
+    if (!cur.types.includes(d.typeLabel)) cur.types.push(d.typeLabel);
+    if (d.issuedOn > cur.latestIssuedOn) cur.latestIssuedOn = d.issuedOn;
+    by.set(c.key, cur);
+  }
+  return CLIENT_DOC_CATEGORY_ORDER.flatMap((k) => {
+    const c = by.get(k);
+    return c ? [{ ...c, description: c.types.join(' · ') }] : [];
+  });
+}
 
 // ── Download status report (AF.client) ─────────────────────────────────────────────────────────────────
 

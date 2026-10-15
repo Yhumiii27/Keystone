@@ -138,9 +138,10 @@ describe('client portal screen', () => {
       id: d.id, title: d.title, typeLabel: d.typeLabel, date: d.date, rev: d.rev, status: d.status, stClass: d.tagClass, ack: d.acknowledged, canAck: !d.acknowledged, ackLabel: d.ackLabel,
     }))).toEqual(g.docs);
     // 03 OQ2 / A.3: real labels instead of the engineering register's "Column mapping" / "Deliverables" / "Own documents · …".
+    // L-9 (R-138): + the title of the "By category" strip.
     expect(v.docsLabels).toEqual(lang === 'en'
-      ? { idHeader: 'Reference', sub: 'Released documents shared with you', empty: 'No document shared with you yet' }
-      : { idHeader: 'Référence', sub: 'Documents diffusés partagés avec vous', empty: 'Aucun document partagé avec vous pour l’instant' });
+      ? { idHeader: 'Reference', sub: 'Released documents shared with you', empty: 'No document shared with you yet', byCategory: 'By category' }
+      : { idHeader: 'Référence', sub: 'Documents diffusés partagés avec vous', empty: 'Aucun document partagé avec vous pour l’instant', byCategory: 'Par catégorie' });
   });
 
   it('NDC-031: generated data; issues are per project (the prototype listed Harbor Line’s issues everywhere)', async () => {
