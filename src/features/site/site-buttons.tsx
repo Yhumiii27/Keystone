@@ -76,8 +76,8 @@ export function DailyReportButton({ code, context, form, execHref }: DailyReport
   );
 }
 
-/** "Client confirms" (secondary) / "Signed on site" (primary, signature icon) on a client prerequisite. */
-export function PrerequisiteButton({ code, position, to, label, title }: { code: string; position: number; to: 'confirmed' | 'signed'; label: string; title: string }) {
+/** "Client confirms" (secondary) / "Signed on site" (primary, signature icon) on a client prerequisite, as the page shows it (`stamp`). */
+export function PrerequisiteButton({ code, position, stamp, to, label, title }: { code: string; position: number; stamp: string; to: 'confirmed' | 'signed'; label: string; title: string }) {
   const { pending, run } = useSiteAction();
   return (
     <Button
@@ -86,19 +86,19 @@ export function PrerequisiteButton({ code, position, to, label, title }: { code:
       icon={to === 'signed' ? Signature : undefined}
       disabled={pending}
       aria-label={`${label} — ${title}`}
-      onClick={() => run(() => advancePrerequisiteAction(code, position, to))}
+      onClick={() => run(() => advancePrerequisiteAction(code, position, to, stamp))}
     >
       {label}
     </Button>
   );
 }
 
-/** "Confirm" on a pending equipment line. */
-export function ConfirmEquipmentButton({ code, position, name }: { code: string; position: number; name: string }) {
+/** "Confirm" on a pending equipment line, as the page shows it (`stamp`). */
+export function ConfirmEquipmentButton({ code, position, stamp, name }: { code: string; position: number; stamp: string; name: string }) {
   const { t } = useI18n();
   const { pending, run } = useSiteAction();
   return (
-    <Button variant="secondary" size="row" disabled={pending} aria-label={`${t('Confirm')} — ${name}`} onClick={() => run(() => confirmEquipmentAction(code, position))}>
+    <Button variant="secondary" size="row" disabled={pending} aria-label={`${t('Confirm')} — ${name}`} onClick={() => run(() => confirmEquipmentAction(code, position, stamp))}>
       {t('Confirm')}
     </Button>
   );

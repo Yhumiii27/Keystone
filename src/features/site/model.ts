@@ -44,6 +44,11 @@ export interface LineEntry {
   stamp: string;
   editable: boolean;
   removable: boolean;
+  /**
+   * The line's own "Edit" form when it differs from the kind's (`SheetEntry.edit`): a rotation whose person left the project
+   * team offers the team and that person (the line keeps its person — the writer re-checks).
+   */
+  form?: FormDef;
 }
 
 export interface ReadyView {
@@ -54,9 +59,16 @@ export interface ReadyView {
     position: number; title: string; act: string; due: string; dueColor: string; status: string; tagClass: string; note: string; late: boolean;
     /** Next step offered ("Client confirms" / "Signed on site"); null when signed. */
     step: { to: 'confirmed' | 'signed'; label: string } | null;
+    /** R-118: the line as the page shows it — the step sends it back (a line replaced at the same position is refused). */
+    stamp: string;
     entry: LineEntry | null;
   }[];
-  equip: { position: number; name: string; src: string; srcClass: string; status: string; tagClass: string; note: string; canConfirm: boolean; entry: LineEntry | null }[];
+  equip: {
+    position: number; name: string; src: string; srcClass: string; status: string; tagClass: string; note: string; canConfirm: boolean;
+    /** R-118: the line as the page shows it — "Confirm" sends it back. */
+    stamp: string;
+    entry: LineEntry | null;
+  }[];
   /** R-118: the message of an empty table. */
   noPrereq: string | null;
   noEquip: string | null;
@@ -203,12 +215,13 @@ function readyView(code: string, d: SiteData, t: T, lang: Lang, entry: boolean):
         position: p.position, title: dataText(p.title, lang), act: p.activityCode + (p.activityName ? ` · ${dataText(p.activityName, lang)}` : ''), due: day(p.neededBy, t),
         dueColor: p.late ? LO : 'var(--color-neutral-300)', status: t(p.statusLabel), tagClass: siteTagClass(p.statusLabel), note: fieldsText(p.evidence, t, lang), late: p.late,
         step: step && { to: step.to, label: t(step.label) },
+        stamp: p.stamp,
         entry: entry ? lineEntry('prerequisite', p, { title: p.title, activity: p.activityCode, needed: t(siteDateText(p.neededBy)), evidence: p.evidence }) : null,
       };
     }),
     equip: d.equipment.map((e) => ({
       position: e.position, name: dataText(e.name, lang), src: t(e.sourceLabel), srcClass: equipmentSourceTagClass(e.source), status: t(e.statusLabel), tagClass: siteTagClass(e.statusLabel),
-      note: fieldsText(e.note, t, lang), canConfirm: e.status === 'pending',
+      note: fieldsText(e.note, t, lang), canConfirm: e.status === 'pending', stamp: e.stamp,
       entry: entry ? lineEntry('equipment', e, { name: e.name, source: e.source, note: e.note }) : null,
     })),
     noPrereq: d.prerequisites.length ? null : t('No client prerequisite yet'),
@@ -257,7 +270,7 @@ function teamView(code: string, d: SiteData, t: T, lang: Lang, arbiter: Conflict
     rotation: d.rotation.map((r) => ({
       position: r.position, who: r.person, role: dataText(r.roleOnSite, lang), from: day(r.fromOn, t), to: day(r.toOn, t), rot: `R${r.rotationNo}`,
       lodging: dataText(r.lodging, lang), travel: dataText(r.travel, lang), collision: r.hasCollision, collisionLabel: t(r.hasCollision ? 'Collision' : 'No collision'),
-      entry: entry ? lineEntry('rotation', r, rotationValues(r, entry.team, t)) : null,
+      entry: entry ? rotationEntry(r, d, entry.team, t, lang) : null,
     })),
     noRotation: d.rotation.length ? null : t('No one on the rotation plan yet'),
     collisions: d.collisions
@@ -285,6 +298,16 @@ function teamView(code: string, d: SiteData, t: T, lang: Lang, arbiter: Conflict
     })),
     noCost: d.missionCosts.length ? null : t('No mission cost line yet'),
   };
+}
+
+/**
+ * A rotation line's entry: its values and, when its person left the project team, its own "Edit" form offering the team and
+ * that person (the kind's form offers the team only — R-118).
+ */
+function rotationEntry(r: SiteData['rotation'][number], d: SiteData, team: readonly string[], t: T, lang: Lang): LineEntry {
+  const e = lineEntry('rotation', r, rotationValues(r, team, t));
+  if (!r.personId || team.includes(r.person)) return e;
+  return { ...e, form: siteLineFormDef('rotation', 'edit', { activities: d.planActivities, people: [...team, r.person] }, t, lang) ?? undefined };
 }
 
 /** A rotation's form values: a team member (or the line's own person) by name, else the contractor crew typed. */
@@ -410,8 +433,8 @@ const EDIT_TITLE: Record<SiteLineKind, string> = {
 
 /**
  * The form of a line kind: the prototype's columns only. A prerequisite offers the plan's activities (none → no form); a
- * rotation offers the project team's people (and the people already on the plan) or a contractor crew typed by name; a mission
- * cost line has a budget only (the actual comes from Sage X3).
+ * rotation offers `people` — the project team's (and, to edit a line whose person left the team, that person) — or a
+ * contractor crew typed by name; a mission cost line has a budget only (the actual comes from Sage X3).
  */
 export function siteLineFormDef(
   kind: SiteLineKind, mode: 'add' | 'edit', ctx: { activities: readonly { code: string; name: string }[]; people: readonly string[] }, t: T, lang: Lang,
@@ -465,9 +488,9 @@ export function siteLineFormDef(
 
 function sheetEntry(d: SiteData, entry: EntryContext, t: T, lang: Lang): SheetEntry {
   const s = d.sheet;
-  // The rotation's people: the project team, and the people already on the plan (a line keeps its person — the writer re-checks).
-  const people = [...new Set([...entry.team, ...d.rotation.filter((r) => r.personId).map((r) => r.person)])];
-  const ctx = { activities: d.planActivities, people };
+  // The rotation's people: the project team only — "Add" accepts nobody else (the Server Function and the writer re-check); a
+  // line whose person left the team gets its own "Edit" form with that person (`rotationEntry`).
+  const ctx = { activities: d.planActivities, people: entry.team };
   const forms = (mode: 'add' | 'edit') =>
     Object.fromEntries((['prerequisite', 'equipment', 'rotation', 'cost'] as const).map((k) => [k, siteLineFormDef(k, mode, ctx, t, lang)])) as Record<SiteLineKind, FormDef | null>;
   return {

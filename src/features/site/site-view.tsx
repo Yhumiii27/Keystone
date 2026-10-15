@@ -103,7 +103,7 @@ function AddLine({ code, kind, entry }: { code: string; kind: SiteLineKind; entr
 
 /** R-118: "Edit" / "Remove" of a line for the leads (what the line allows). */
 function LineButtons({ code, kind, position, label, line, entry }: { code: string; kind: SiteLineKind; position: number; label: string; line: LineEntry | null; entry: SheetEntry | null }) {
-  const form = entry?.edit[kind];
+  const form = line?.form ?? entry?.edit[kind];
   if (!line || !entry) return null;
   return (
     <>
@@ -189,7 +189,7 @@ function ReadyTab({ code, v, canEdit, entry, context, t }: { code: string; v: Re
                 <td className={s.note}>{r.note}</td>
                 <td>
                   <div className={s.actions}>
-                    {canEdit && r.step && <PrerequisiteButton code={code} position={r.position} to={r.step.to} label={r.step.label} title={r.title} />}
+                    {canEdit && r.step && <PrerequisiteButton code={code} position={r.position} stamp={r.stamp} to={r.step.to} label={r.step.label} title={r.title} />}
                     <LineButtons code={code} kind="prerequisite" position={r.position} label={r.title} line={r.entry} entry={entry} />
                   </div>
                 </td>
@@ -230,7 +230,7 @@ function ReadyTab({ code, v, canEdit, entry, context, t }: { code: string; v: Re
                   <td className={s.note115}>{r.note}</td>
                   <td>
                     <div className={s.actions}>
-                      {canEdit && r.canConfirm && <ConfirmEquipmentButton code={code} position={r.position} name={r.name} />}
+                      {canEdit && r.canConfirm && <ConfirmEquipmentButton code={code} position={r.position} stamp={r.stamp} name={r.name} />}
                       <LineButtons code={code} kind="equipment" position={r.position} label={r.name} line={r.entry} entry={entry} />
                     </div>
                   </td>

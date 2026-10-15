@@ -12,8 +12,9 @@ import type { FormDialogResult } from '@/components/app/FormDialog';
 import { parseDateInput } from '@/domain/contract';
 import { canArbitrateConflict, parseArbitration, parseDailyReportForm } from '@/domain/site';
 import {
-  NO_PLAN_ACTIVITY, PERSON_REQUIRED, SITE_COST_KEPT, SITE_LEADS_ONLY, SITE_LINE_CHANGED, SITE_LINE_KEPT, SITE_SHEET_CHANGED, SITE_SHEET_EXISTS, SITE_STAGE_ERROR,
-  UNKNOWN_ACTIVITY, isSiteLineKind, parseSiteLine, parseSiteSheetForm, siteLineEditable, siteLineRemovable, siteSheetOpen, type SiteLineForm, type SiteLineKind,
+  CREW_IS_PERSON, NO_PLAN_ACTIVITY, PERSON_REQUIRED, SITE_COST_KEPT, SITE_LEADS_ONLY, SITE_LINE_CHANGED, SITE_LINE_KEPT, SITE_SHEET_CHANGED, SITE_SHEET_EXISTS,
+  SITE_STAGE_ERROR, UNKNOWN_ACTIVITY, isSiteLineKind, parseSiteLine, parseSiteSheetForm, siteLineEditable, siteLineRemovable, siteSheetOpen, type SiteLineForm,
+  type SiteLineKind,
 } from '@/domain/site-sheet';
 import { STATUS_ISO, inWorkspace } from '@/server/db/codes';
 import { getProject } from '@/server/dal/projects';
@@ -23,7 +24,7 @@ import {
 } from '@/server/dal/site';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import {
-  addSiteLine, createSiteSheet, hasSiteSheet, planActivities, removeSiteLine, siteSheetDefaults, updateSiteLine, updateSiteSheet,
+  addSiteLine, createSiteSheet, hasSiteSheet, knownPersonNames, planActivities, removeSiteLine, siteSheetDefaults, updateSiteLine, updateSiteSheet,
 } from '@/server/dal/site-sheet';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -62,23 +63,33 @@ async function access(code: unknown): Promise<{ code: string; actor: Actor; site
 }
 
 const isPosition = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < 10_000;
+/** A line's stamp as the page saw it (src/domain/site-sheet.ts `siteStamp`). */
+const isStamp = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-z]{1,16}$/.test(v);
 
 // ── Readiness: client prerequisites and equipment ───────────────────────────────────────────────────
 
-/** "Client confirms" (Pending → Confirmed) and "Signed on site" (Confirmed → Signed) on a client prerequisite. */
-export async function advancePrerequisiteAction(code: string, position: number, to: 'confirmed' | 'signed'): Promise<SiteActionResult> {
-  if (!isPosition(position) || (to !== 'confirmed' && to !== 'signed')) return fail(INVALID);
+/**
+ * "Client confirms" (Pending → Confirmed) and "Signed on site" (Confirmed → Signed) on a client prerequisite. `stamp` is the
+ * line as the page showed it: a line edited, or removed and replaced at the same position meanwhile, is refused (the writer
+ * re-checks it in its transaction) — the client's confirmation is never recorded on content the page did not show.
+ */
+export async function advancePrerequisiteAction(code: string, position: number, to: 'confirmed' | 'signed', stamp: string): Promise<SiteActionResult> {
+  if (!isPosition(position) || (to !== 'confirmed' && to !== 'signed') || !isStamp(stamp)) return fail(INVALID);
   const ok = await access(code);
   if ('error' in ok) return fail(ok.error);
   const p = ok.site.prerequisites.find((x) => x.position === position);
   if (!p) return fail('Unknown prerequisite');
-  if (p.status !== (to === 'confirmed' ? 'pending' : 'confirmed')) {
+  if (p.stamp !== stamp || p.status !== (to === 'confirmed' ? 'pending' : 'confirmed')) {
     refresh();
     return fail(STALE);
   }
   try {
-    await advancePrerequisite(ok.code, position, to, ok.actor);
+    await advancePrerequisite(ok.code, position, to, stamp, ok.actor);
   } catch (e) {
+    if (e instanceof Error && e.message === SITE_LINE_CHANGED) {
+      refresh();
+      return fail(STALE);
+    }
     logError('advancePrerequisiteAction', e);
     return fail(FAILED);
   }
@@ -86,20 +97,24 @@ export async function advancePrerequisiteAction(code: string, position: number, 
   return { ok: true };
 }
 
-/** "Confirm" on a pending equipment line. */
-export async function confirmEquipmentAction(code: string, position: number): Promise<SiteActionResult> {
-  if (!isPosition(position)) return fail(INVALID);
+/** "Confirm" on a pending equipment line, as the page showed it (`stamp`, as for the prerequisites). */
+export async function confirmEquipmentAction(code: string, position: number, stamp: string): Promise<SiteActionResult> {
+  if (!isPosition(position) || !isStamp(stamp)) return fail(INVALID);
   const ok = await access(code);
   if ('error' in ok) return fail(ok.error);
   const e = ok.site.equipment.find((x) => x.position === position);
   if (!e) return fail('Unknown equipment');
-  if (e.status !== 'pending') {
+  if (e.stamp !== stamp || e.status !== 'pending') {
     refresh();
     return fail(STALE);
   }
   try {
-    await confirmEquipment(ok.code, position, ok.actor);
+    await confirmEquipment(ok.code, position, stamp, ok.actor);
   } catch (err) {
+    if (err instanceof Error && err.message === SITE_LINE_CHANGED) {
+      refresh();
+      return fail(STALE);
+    }
     logError('confirmEquipmentAction', err);
     return fail(FAILED);
   }
@@ -221,7 +236,7 @@ export async function saveDailyReportAction(code: string, values: Record<string,
 /** The writers' refusals shown as they are (translated); the stale ones refresh the page. */
 const SHEET_ERRORS = new Set([
   SITE_LEADS_ONLY, SITE_STAGE_ERROR, SITE_SHEET_EXISTS, SITE_SHEET_CHANGED, SITE_LINE_CHANGED, SITE_LINE_KEPT, SITE_COST_KEPT, NO_PLAN_ACTIVITY, UNKNOWN_ACTIVITY,
-  PERSON_REQUIRED, NO_SHEET,
+  PERSON_REQUIRED, CREW_IS_PERSON, NO_SHEET,
 ]);
 const STALE_ERRORS = new Set([SITE_STAGE_ERROR, SITE_SHEET_EXISTS, SITE_SHEET_CHANGED, SITE_LINE_CHANGED, SITE_LINE_KEPT, SITE_COST_KEPT, NO_SHEET]);
 
@@ -254,7 +269,6 @@ async function leadAccess(code: unknown): Promise<{ code: string; actor: Actor; 
   return { code: project.code, actor: { name: ctx.viewer.name, role: ctx.viewer.role }, team: ctx.team.map((m) => m.name) };
 }
 
-const isStamp = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-z]{1,16}$/.test(v);
 const parseDate = (s: string) => parseDateInput(s);
 
 /**
@@ -343,7 +357,8 @@ export async function addSiteLineAction(code: string, kind: SiteLineKind, values
     return { error: await tr(NO_SHEET) };
   }
   const activities = kind === 'prerequisite' ? (await planActivities(ok.code)).map((a) => a.code) : [];
-  const parsed = parseSiteLine(kind, strings(values), { activities, team: ok.team, parseDate });
+  const known = kind === 'rotation' ? await knownPersonNames() : [];
+  const parsed = parseSiteLine(kind, strings(values), { activities, team: ok.team, known, parseDate });
   if (!parsed.ok) return { error: await tr(parsed.error) };
   try {
     await addSiteLine(ok.code, parsed.value, ok.actor);
@@ -373,7 +388,8 @@ export async function editSiteLineAction(code: string, kind: SiteLineKind, posit
     refresh();
     return { error: await tr(SITE_LINE_KEPT) };
   }
-  const parsed = parseSiteLine(kind, strings(values), { activities: site.planActivities.map((a) => a.code), team: ok.team, keepPerson: cur.person, parseDate });
+  const known = kind === 'rotation' ? await knownPersonNames() : [];
+  const parsed = parseSiteLine(kind, strings(values), { activities: site.planActivities.map((a) => a.code), team: ok.team, keepPerson: cur.person, known, parseDate });
   if (!parsed.ok) return { error: await tr(parsed.error) };
   try {
     await updateSiteLine(ok.code, position, stamp, parsed.value, ok.actor);

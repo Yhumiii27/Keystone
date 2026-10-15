@@ -248,17 +248,22 @@ describe('installed base and warranty claims', () => {
 
 describe('site — readiness, daily reports, Cursus', () => {
   it('prerequisites (Client confirms → Signed on site), equipment confirmation, Go conditions follow', async () => {
-    await advancePrerequisite(HLT, 3, 'confirmed', A.member);
-    await expect(advancePrerequisite(HLT, 3, 'confirmed', A.member)).rejects.toThrow(/Confirmed/);
-    await advancePrerequisite(HLT, 3, 'signed', A.member);
-    await confirmEquipment(HLT, 2, A.depthead);
-    await expect(confirmEquipment(HLT, 2, A.depthead)).rejects.toThrow(/already confirmed/);
-    await expect(confirmEquipment(HLT, 4, A.quality)).rejects.toThrow(/outside your workspace/);
+    // R-118: each step names the line as the page showed it (its stamp); a stale one is refused.
+    const pre = async (i: number) => (await getSite(HLT))!.prerequisites[i].stamp;
+    const eqp = async (i: number) => (await getSite(HLT))!.equipment[i].stamp;
+    const pending = await pre(3);
+    await advancePrerequisite(HLT, 3, 'confirmed', pending, A.member);
+    await expect(advancePrerequisite(HLT, 3, 'confirmed', pending, A.member)).rejects.toThrow(/This line has changed/);
+    await expect(advancePrerequisite(HLT, 3, 'confirmed', await pre(3), A.member)).rejects.toThrow(/Confirmed/);
+    await advancePrerequisite(HLT, 3, 'signed', await pre(3), A.member);
+    await confirmEquipment(HLT, 2, await eqp(2), A.depthead);
+    await expect(confirmEquipment(HLT, 2, await eqp(2), A.depthead)).rejects.toThrow(/already confirmed/);
+    await expect(confirmEquipment(HLT, 4, await eqp(4), A.quality)).rejects.toThrow(/outside your workspace/);
     const s = (await getSite(HLT))!;
     // HSE: the HTTP refresh above left Vigie's single signed prevention plan in the mirror — no permit pending.
     // D-6b 'a' (R-119): 8 conflicts computed from the rotation plan (the prototype's 4 authored collisions).
     expect(s.go.conditions.map((c) => c.sub)).toEqual(['1 pending', '2 NO GO', '1 unconfirmed', '8 collisions', 'Ready']);
-    await expect(advancePrerequisite('NDC-031', 0, 'confirmed', A.pm)).rejects.toThrow(/no site sheet/);
+    await expect(advancePrerequisite('NDC-031', 0, 'confirmed', 'abc', A.pm)).rejects.toThrow(/no site sheet/);
   });
 
   it('"Daily report": DR-003 by the viewer, listed first', async () => {

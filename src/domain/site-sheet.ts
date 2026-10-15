@@ -60,6 +60,7 @@ export const NEED_DATE_ERROR = 'Needed by: enter a date such as 2 Nov 2026';
 export const NAME_REQUIRED = 'The name is required';
 export const UNKNOWN_SOURCE = 'Unknown source';
 export const PERSON_REQUIRED = 'Choose a person of the project team or type the contractor crew';
+export const CREW_IS_PERSON = 'This name is a person known to Keystone — add them to the project team, then choose them';
 export const ROLE_REQUIRED = 'The role on site is required';
 export const FROM_DATE_ERROR = 'From: enter a date such as 19 Oct 2026';
 export const TO_DATE_ERROR = 'To: enter a date such as 13 Nov 2026';
@@ -187,12 +188,28 @@ export function parseEquipmentForm(v: Values): ParseResult<EquipmentForm> {
   return { ok: true, value: { name, source, note } };
 }
 
+/** A name as compared with the known people's (trimmed, single spaces, case and accents ignored). */
+const nameKey = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+/**
+ * A contractor crew's typed name is a person Keystone knows (`known` = their full and short names): such a person is chosen
+ * from the project team, never typed as a crew — a crew line has no person, so their department, absences and other sites
+ * would not be matched (R-119).
+ */
+export const isKnownPersonName = (name: string, known: readonly string[]) => {
+  const k = nameKey(name);
+  return !!k && known.some((n) => nameKey(n) === k);
+};
+
 /**
  * A rotation line (the prototype's columns): a person of the project team (`team` = their names; `keep` = the line's current
  * person, accepted unchanged even when no longer on the team) or a contractor crew typed by name (`person` = CONTRACTOR_CREW,
- * `crew` = the name), role on site, arrival and departure (departure ≥ arrival), lodging and travel as text, rotation 1–99.
+ * `crew` = the name, not a person Keystone knows — `known`), role on site, arrival and departure (departure ≥ arrival),
+ * lodging and travel as text, rotation 1–99.
  */
-export function parseRotationForm(v: Values, team: readonly string[], parseDate: DateParser, keep?: string | null): ParseResult<RotationForm> {
+export function parseRotationForm(
+  v: Values, team: readonly string[], parseDate: DateParser, keep?: string | null, known: readonly string[] = [],
+): ParseResult<RotationForm> {
   const roleOnSite = bounded(v.role);
   const lodging = bounded(v.lodging);
   const travel = bounded(v.travel);
@@ -202,6 +219,7 @@ export function parseRotationForm(v: Values, team: readonly string[], parseDate:
   const crew = person === CONTRACTOR_CREW;
   const personName = crew ? typedCrew! : person;
   if (!personName || (!crew && !team.includes(personName) && personName !== keep)) return fail(PERSON_REQUIRED);
+  if (crew && isKnownPersonName(personName, known)) return fail(CREW_IS_PERSON);
   if (!roleOnSite) return fail(ROLE_REQUIRED);
   const fromOn = parseDate(text(v.from));
   if (!fromOn) return fail(FROM_DATE_ERROR);
@@ -223,9 +241,13 @@ export function parseCostLineForm(v: Values): ParseResult<CostLineForm> {
   return { ok: true, value: { name, budgetKeur: +raw } };
 }
 
-/** The form of a line kind, validated (the plan's activities, the team's names and the current person as context). */
+/**
+ * The form of a line kind, validated (the plan's activities, the team's names, the current person and the names of the people
+ * Keystone knows as context).
+ */
 export function parseSiteLine(
-  kind: SiteLineKind, v: Values, ctx: { activities: readonly string[]; team: readonly string[]; keepPerson?: string | null; parseDate: DateParser },
+  kind: SiteLineKind, v: Values,
+  ctx: { activities: readonly string[]; team: readonly string[]; keepPerson?: string | null; known?: readonly string[]; parseDate: DateParser },
 ): ParseResult<SiteLineForm> {
   switch (kind) {
     case 'prerequisite': {
@@ -237,7 +259,7 @@ export function parseSiteLine(
       return r.ok ? { ok: true, value: { kind, value: r.value } } : r;
     }
     case 'rotation': {
-      const r = parseRotationForm(v, ctx.team, ctx.parseDate, ctx.keepPerson);
+      const r = parseRotationForm(v, ctx.team, ctx.parseDate, ctx.keepPerson, ctx.known);
       return r.ok ? { ok: true, value: { kind, value: r.value } } : r;
     }
     case 'cost': {

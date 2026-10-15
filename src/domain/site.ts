@@ -30,6 +30,7 @@ import { absenceOverlapsRotation } from './absences';
 import { vigieIncidentCount } from './kpis';
 import { OVER_ALLOCATED_PCT } from './resources';
 import { canDecideDepartment } from './rights';
+import { siteStamp } from './site-sheet';
 import {
   STATUS_ISO, addDaysIso, shortDateOfIso, weather,
   type CollisionKind, type ConfirmStatus, type CursusVerdict, type EquipmentSource, type HseStatus, type PunchOwnerParty, type Weather,
@@ -191,7 +192,10 @@ export interface ConflictFacts {
 }
 
 export interface SiteConflict {
-  /** Stable key: kind, person and cause (weeks, dates, Cursus state and note) — never the load percentage. */
+  /**
+   * Stable key: kind, person and cause (weeks, dates, Cursus state and a hash of its note — Cursus's joined reason labels have no
+   * bound, the key stays short enough to arbitrate) — never the load percentage.
+   */
   key: string;
   person: string;
   personId: string | null;
@@ -263,9 +267,11 @@ export function siteConflicts(f: ConflictFacts): SiteConflict[] {
     }
     // Certificate / Document — Cursus.
     for (const c of f.cursus.filter((x) => (m.personId && x.personId ? x.personId === m.personId : x.personName === m.person))) {
-      if (c.clearance === 'expiring') push(m, 'cert', { type: 'cert', note: c.clearanceNote, missionTo: m.toOn }, `cert:${who}:${c.clearanceNote}`);
+      // The note is shown whole (`cause.note`); the key carries its FNV-1a hash (a changed note is another cause, R-119).
+      const note = siteStamp([c.clearanceNote]);
+      if (c.clearance === 'expiring') push(m, 'cert', { type: 'cert', note: c.clearanceNote, missionTo: m.toOn }, `cert:${who}:${note}`);
       if (c.clearance === 'pending' || c.clearance === 'missing')
-        push(m, 'doc', { type: 'doc', clearance: c.clearance, note: c.clearanceNote, missionFrom: m.fromOn }, `doc:${who}:${c.clearance}:${c.clearanceNote}`);
+        push(m, 'doc', { type: 'doc', clearance: c.clearance, note: c.clearanceNote, missionFrom: m.fromOn }, `doc:${who}:${c.clearance}:${note}`);
     }
     // Leave — the absences received from Cursus (R-031).
     if (m.personId) {
