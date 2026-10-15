@@ -3,7 +3,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { RoleKey } from '@/config/screens';
 
-const state = { role: 'procurement' as RoleKey };
+const state = { role: 'procurement' as RoleKey, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('next/navigation', () => ({
   usePathname: () => '/my/tasks',
@@ -15,7 +15,7 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('@/server/session', async () => {
   const { makeT } = await import('@/i18n/translate');
-  return { getI18n: async () => ({ lang: 'en', t: makeT('en') }) };
+  return { getI18n: async () => ({ lang: state.lang, t: makeT(state.lang) }) };
 });
 vi.mock('@/server/project-context', async () => {
   const { PERSONA_BY_ROLE } = await import('@/config/personas');
@@ -41,7 +41,7 @@ import { openDatabase } from '@/server/db/open';
 import { approveResourceRequest } from '@/server/dal/requests';
 
 let task = '';
-const page = async (id: string) => renderToStaticMarkup(h(I18nProvider, { lang: 'en', children: (await TaskPage({ params: Promise.resolve({ taskId: id }) })) as never }));
+const page = async (id: string) => renderToStaticMarkup(h(I18nProvider, { lang: state.lang, children: (await TaskPage({ params: Promise.resolve({ taskId: id }) })) as never }));
 
 beforeAll(async () => {
   setDb(await openDatabase());
@@ -65,6 +65,16 @@ describe('R-089 — sourcing card on the task sheet', () => {
     const html = await page(task);
     expect(html).toContain('Person to find and name');
     expect(html).not.toContain('Name the person');
+  });
+
+  it('French: the seeded contract role keeps its dictionary entry (dataText, R-148), the vocabulary is translated', async () => {
+    state.role = 'procurement';
+    state.lang = 'fr';
+    const html = await page(task);
+    state.lang = 'en';
+    expect(html).toContain('Personne à trouver et nommer');
+    expect(html).toContain('Ingénieur structure intérimaire · RQ-043');
+    expect(html).toContain('>Nommer la personne<');
   });
 
   it('an ordinary task has no sourcing card', async () => {

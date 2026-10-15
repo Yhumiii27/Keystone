@@ -27,6 +27,7 @@ import {
   hoursBar, isCritical, laborCost, parseHours, type TaskStatus,
 } from '@/domain/tasks';
 import { useI18n } from '@/i18n/client';
+import { dataText } from '@/i18n/data-text';
 import { TODAY, dayLabel } from '@/lib/format';
 import type { AttachmentKind } from '@/server/db/codes';
 import {
@@ -458,10 +459,12 @@ function CommentsCard() {
  * (an existing person only); the task then goes to that person. Others see the card without the action.
  */
 function SourcingCard() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { data, naming } = useTask();
   const [open, setOpen] = useState(false);
   const sourcing = data.sourcing!;
+  // The contract role is shown as typed (a seeded role keeps its dictionary entry, R-148).
+  const role = dataText(sourcing.contractRole, lang);
   const name = async (values: Record<string, string>) => {
     const person = values.person ?? '';
     const r = await nameSourcedPersonAction({ taskId: data.id, person });
@@ -471,7 +474,7 @@ function SourcingCard() {
   return (
     <div className={cx('card', 'elev-sm', s.sheet, s.gap8)}>
       <CardTitle compact>{t('Person to find and name')}</CardTitle>
-      <span className={s.sourcingRole}>{`${sourcing.contractRole} · ${sourcing.request}`}</span>
+      <span className={s.sourcingRole}>{`${role} · ${sourcing.request}`}</span>
       {naming && (
         <>
           <span className={s.costNote}>{t('Choose an existing person: the resource pool first, then the other people Keystone knows. Not in Keystone yet? Leave a comment — the task stays with procurement.')}</span>
@@ -486,7 +489,7 @@ function SourcingCard() {
               fields={[{ id: 'person', label: t('Person'), type: 'select', required: true, options: naming.candidates }]}
               open
               onClose={() => setOpen(false)}
-              context={`${data.id} · ${sourcing.contractRole}`}
+              context={`${data.id} · ${role}`}
               onSubmit={name}
             />
           )}
