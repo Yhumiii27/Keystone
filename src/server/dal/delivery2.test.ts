@@ -3,7 +3,7 @@
 // PEOPLE, REQUESTS, TODOS…, NOTIFS, ACTIVITY, AUDIT) and the KPI figures quoted by the screen specs.
 import { beforeAll, describe, expect, it } from 'vitest';
 import { setDb } from '@/server/db/client';
-import { dayOffsetOfIso, isoOfDayOffset, riskCategory, riskResponse, riskStatus, stepDecision } from '@/server/db/codes';
+import { dayOffsetOfIso, dowOfIso, isoOfDayOffset, riskCategory, riskResponse, riskStatus, stepDecision } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
 import { PROTO } from '@/server/prototype';
 import { getChangeControl } from './changes';
@@ -330,7 +330,16 @@ describe('notifications, activity, audit (01 §5.5, 10 §2)', () => {
 
 describe('day offsets', () => {
   it('round-trips the prototype working-day axis', () => {
-    for (let o = 0; o < 40; o++) expect(dayOffsetOfIso(isoOfDayOffset(o))).toBe(o);
+    // R-167: negative offsets land on working days before Mon 21 Sep 2026, as the prototype's dayDate does.
+    for (let o = -40; o < 40; o++) {
+      const iso = isoOfDayOffset(o);
+      expect(dayOffsetOfIso(iso)).toBe(o);
+      expect(dowOfIso(iso)).toBeGreaterThanOrEqual(1);
+      expect(dowOfIso(iso)).toBeLessThanOrEqual(5);
+    }
+    expect(isoOfDayOffset(-1)).toBe('2026-09-18');
+    expect(isoOfDayOffset(-5)).toBe('2026-09-14');
+    expect(isoOfDayOffset(-6)).toBe('2026-09-11');
     expect(isoOfDayOffset(4)).toBe('2026-09-25');
     expect(isoOfDayOffset(15)).toBe('2026-10-12');
     expect(dayOffsetOfIso('2026-09-26')).toBeNull();

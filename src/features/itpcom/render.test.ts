@@ -141,7 +141,8 @@ describe('Commissioning', () => {
       const g = G.commissioning[lang]['HLT-026'];
       const { view } = await cm(lang);
       expect(view!.kpis).toEqual(kpis(g.kpis));
-      expect(view!.columns).toEqual(g.cols);
+      // NEW-D5-3 'a' (R-156): the prototype's French 'Handover' column « Livraison » is « Transfert ».
+      expect(view!.columns).toEqual(lang === 'fr' ? g.cols.map((c: string) => (c === 'Livraison' ? 'Transfert' : c)) : g.cols);
       expect(view!.rows.map((r) => ({ sys: r.system, punchA: r.blockingA, cells: r.cells.map((c) => [c.status, c.date, c.bg, c.border, c.color]) }))).toEqual(
         g.rows.map((r: any) => ({ sys: r.sys, punchA: r.punchA, cells: r.cells.map((c: any) => [c.st, c.date, c.bg, c.border, c.color]) })),
       );

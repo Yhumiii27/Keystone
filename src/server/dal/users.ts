@@ -8,6 +8,7 @@ import { and, arrayOverlaps, asc, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { RoleKey } from '@/config/screens';
 import { ROLE_LABEL, SIGN_IN_REFUSAL_LABEL, decideSignIn, sortRoles, userTitle, type SignInPerson, type SignInRefusal, type SignInUser } from '@/domain/auth';
+import { systemMessage } from '@/domain/system-messages';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import { writeAudit } from '@/server/db/helpers';
 import { clients, departments, persons, users } from '@/server/db/schema';
@@ -89,8 +90,12 @@ export async function listUserAccounts(): Promise<UserAccount[]> {
 /** Display name of a person row. */
 const displayName = (p: { fullName: string | null; shortName: string }) => p.fullName ?? p.shortName;
 
-/** "Portfolio director / Project manager" (the translator handles each segment). */
-const rolesText = (roles: readonly RoleKey[]) => roles.map((r) => ROLE_LABEL[r]).join(' / ');
+/** Department name of an id (audit before / after values, R-168). */
+async function departmentName(q: Q, id: string | null): Promise<string | null> {
+  if (!id) return null;
+  const [d] = await q.select({ name: departments.name }).from(departments).where(eq(departments.id, id));
+  return d?.name ?? null;
+}
 
 export interface SignInInput {
   /** Entra object id (`oid` claim). */
@@ -141,7 +146,11 @@ export async function signInUser(input: SignInInput): Promise<SignInResult> {
         oid: input.oid, email: input.email, roles, byObjectId: linked ?? null, persons: matched as SignInPerson[], userOfPerson: ofPerson,
       });
       if (!decision.ok) {
-        await writeAudit(tx, { actorName: input.email ?? `Entra ${input.oid}`, objectRef: 'Sign-in', change: `Sign-in refused · ${SIGN_IN_REFUSAL_LABEL[decision.reason]}`, area: 'Sign-in', occurredAt: at });
+        // R-168: no account signed in — the row names the token e-mail and carries no user.
+        await writeAudit(tx, {
+          actorName: input.email ?? `Entra ${input.oid}`, actorUserId: null, objectRef: 'Sign-in', message: systemMessage('signin.refused', { reason: SIGN_IN_REFUSAL_LABEL[decision.reason] }),
+          area: 'Sign-in', occurredAt: at,
+        });
         return decision;
       }
       const [person] = await tx
@@ -156,6 +165,8 @@ export async function signInUser(input: SignInInput): Promise<SignInResult> {
       };
       let userId = decision.userId;
       let created = false;
+      // R-168: the roles and department the account had, for the audit row's before / after when they change.
+      const [prev] = userId ? await tx.select({ roles: users.roles, departmentId: users.departmentId }).from(users).where(eq(users.id, userId)) : [];
       if (userId) {
         await tx.update(users).set(values).where(eq(users.id, userId));
       } else {
@@ -164,9 +175,11 @@ export async function signInUser(input: SignInInput): Promise<SignInResult> {
         userId = row.id;
         created = true;
       }
+      const [before, after] = await accountChange(tx, prev ?? null, { roles, departmentId: person.departmentId });
       await writeAudit(tx, {
-        actorName: displayName(person), actorPersonId: decision.personId, objectRef: 'Sign-in', change: `Signed in · ${rolesText(roles)}`, area: 'Sign-in',
-        entityType: 'user', entityId: userId, occurredAt: at,
+        actorName: displayName(person), actorPersonId: decision.personId, actorUserId: userId, objectRef: 'Sign-in',
+        message: systemMessage('signin.signedIn', { roles: roles.map((r) => ROLE_LABEL[r]) }), area: 'Sign-in', entityType: 'user', entityId: userId, occurredAt: at,
+        before, after,
       });
       return { ok: true, account: (await getUserAccount(userId, tx))!, created };
     });
@@ -189,12 +202,30 @@ export function isUniqueViolation(e: unknown, constraints: string[]): boolean {
   return false;
 }
 
+/**
+ * Roles and department an account had and has (R-168 before / after): only the fields that changed; the first sign-in has
+ * an `after` only; nothing when nothing changed.
+ */
+async function accountChange(
+  q: Q, prev: { roles: string[]; departmentId: string | null } | null, next: { roles: string[]; departmentId: string | null },
+): Promise<[Record<string, unknown> | null, Record<string, unknown> | null]> {
+  if (!prev) return [null, { roles: next.roles, department: await departmentName(q, next.departmentId) }];
+  const before: Record<string, unknown> = {};
+  const after: Record<string, unknown> = {};
+  if (prev.roles.join() !== next.roles.join()) [before.roles, after.roles] = [prev.roles, next.roles];
+  if (prev.departmentId !== next.departmentId) [before.department, after.department] = [await departmentName(q, prev.departmentId), await departmentName(q, next.departmentId)];
+  return Object.keys(after).length ? [before, after] : [null, null];
+}
+
 /** Audit row of a sign-out. */
 export async function recordSignOut(userId: string): Promise<void> {
   const db = await getDb();
   const a = await getUserAccount(userId, db);
   if (!a) return;
-  await writeAudit(db, { actorName: displayName(a), actorPersonId: a.personId, objectRef: 'Sign-in', change: 'Signed out', area: 'Sign-in', entityType: 'user', entityId: userId });
+  await writeAudit(db, {
+    actorName: displayName(a), actorPersonId: a.personId, actorUserId: userId, objectRef: 'Sign-in', message: systemMessage('signin.signedOut', {}), area: 'Sign-in',
+    entityType: 'user', entityId: userId,
+  });
 }
 
 /** Audit row of an active-role switch ("Active role · Project manager → Portfolio director"). */
@@ -203,8 +234,9 @@ export async function recordActiveRole(userId: string, from: RoleKey, to: RoleKe
   const a = await getUserAccount(userId, db);
   if (!a) return;
   await writeAudit(db, {
-    actorName: displayName(a), actorPersonId: a.personId, objectRef: 'Sign-in', change: `Active role · ${ROLE_LABEL[from]} → ${ROLE_LABEL[to]}`, area: 'Sign-in',
-    entityType: 'user', entityId: userId,
+    actorName: displayName(a), actorPersonId: a.personId, actorUserId: userId, objectRef: 'Sign-in',
+    message: systemMessage('signin.activeRole', { from: ROLE_LABEL[from], to: ROLE_LABEL[to] }), area: 'Sign-in', entityType: 'user', entityId: userId,
+    before: { activeRole: from }, after: { activeRole: to },
   });
 }
 

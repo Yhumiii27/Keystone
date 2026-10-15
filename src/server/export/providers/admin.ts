@@ -5,6 +5,7 @@
 import { SETTINGS_CARDS, parseActivitySource, parsePlumbView } from '@/domain/admin';
 import { listAdminConnectors } from '@/server/dal/admin-connectors';
 import { listDocumentTypes } from '@/server/dal/documents';
+import { activityWhatT, auditAreaT, auditChangeT, auditObjectT } from '@/features/admin/i18n';
 import { visibleImportFormats } from '@/features/admin/model';
 import { listImportFormats } from '@/server/dal/integrations';
 import { listMachineTypes } from '@/server/dal/mtypes';
@@ -81,7 +82,8 @@ async function plumbingWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   // A client sees its own projects' events only; events without a project are company-wide and stay internal.
   const own = <R extends { projectCode: string | null }>(r: R) => (ctx.viewer.role === 'client' ? !!r.projectCode && visible(r.projectCode) : true);
   const feed = sheet(t('Activity feed'), [col('when', t('Date'), 'datetime'), col('who', t('Who'), 'text', 18), col('what', t('What'), 'text', 60), col('kind', t('Source'), 'text', 14), col('project', t('Project'), 'text', 10)],
-    activity.filter((a) => (!source || a.kind === source) && own(a)).map((a) => ({ when: a.occurredAt, who: a.who, what: t(a.what), kind: a.kind, project: a.projectCode ?? '' })));
+    // R-184 (NEW-D1-2): as on the screen — from the message key, else as written; names as typed.
+    activity.filter((a) => (!source || a.kind === source) && own(a)).map((a) => ({ when: a.occurredAt, who: dataText(a.who, ctx.lang), what: activityWhatT(a, t, ctx.lang), kind: a.kind, project: a.projectCode ?? '' })));
   const conn: ExportSheet = sheet(t('Connectors'), [
     col('name', t('System'), 'text', 20), col('data', t('Data'), 'text', 44), col('frequency', t('Frequency'), 'text', 18), col('direction', t('Direction'), 'text', 10), col('status', t('Status'), 'text', 10),
     col('last', t('Last sync'), 'datetime'), col('volume', t('Last volume'), 'text', 26), col('pending', t('Pending'), 'integer'), col('failed', t('Failed'), 'integer'), col('owner', t('Owner'), 'text', 16),
@@ -91,7 +93,10 @@ async function plumbingWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const formats = sheet(t('Import & export formats'), [col('name', t('Format'), 'text', 26), col('direction', t('Direction'), 'text', 10), col('description', t('Description'), 'text', 60)],
     imports.map((f) => ({ name: t(f.name), direction: t(f.direction === 'import' ? 'Import' : 'Export'), description: t(f.description) })));
   const trail = sheet(t('Audit trail'), [col('when', t('Date'), 'datetime'), col('who', t('Who'), 'text', 18), col('object', t('Object'), 'text', 18), col('change', t('Change'), 'text', 50), col('area', t('Area'), 'text', 18), col('project', t('Project'), 'text', 10)],
-    audit.filter(own).map((a) => ({ when: a.occurredAt, who: a.who, object: a.object, change: a.change, area: t(a.area), project: a.projectCode ?? '' })));
+    audit.filter(own).map((a) => ({
+      when: a.occurredAt, who: dataText(a.who, ctx.lang), object: auditObjectT(a.object, t, ctx.lang), change: auditChangeT(a, t, ctx.lang), area: auditAreaT(a.area, t, ctx.lang),
+      project: a.projectCode ?? '',
+    })));
   const first = view === 'connectors' ? conn : view === 'imports' ? formats : view === 'audit' ? trail : feed;
   return {
     title: t('Activity, integrations & audit'),

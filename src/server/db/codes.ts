@@ -306,9 +306,13 @@ export const DAY_ZERO = '2026-09-21';
 /** Status date of the frozen data set (Fri 25 Sep 2026, TODAY = 4): the business date stamped on writes. */
 export const STATUS_ISO = '2026-09-25';
 
-/** Prototype working-day offset → ISO date (dayDate: 5 working days per week from Mon 21 Sep 2026). */
+/**
+ * Prototype working-day offset → ISO date (dayDate: 5 working days per week from Mon 21 Sep 2026). Correct for negative
+ * offsets too, as dayDate is (R-167): the weekday is the floored remainder, so −1 is Fri 18 Sep, not Sun 20 Sep.
+ */
 export function isoOfDayOffset(o: number): string {
-  return isoOfUtc(utcOf(DAY_ZERO) + (Math.floor(o / 5) * 7 + (o % 5)) * DAY_MS);
+  const w = Math.floor(o / 5);
+  return isoOfUtc(utcOf(DAY_ZERO) + (w * 7 + (o - w * 5)) * DAY_MS);
 }
 /** ISO date → working-day offset (inverse of isoOfDayOffset); null for a Saturday or Sunday. */
 export function dayOffsetOfIso(iso: string): number | null {

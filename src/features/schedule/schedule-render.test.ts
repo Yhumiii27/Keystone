@@ -46,7 +46,7 @@ describe('ScheduleView render (FR)', () => {
     expect(html).toContain('left:53.8%;width:21.5%');
     expect(html).toContain('width:72%');
     expect(html.match(/left:67.7%/g)?.length).toBe(10); // 8 rows + milestone row + "Today" chip
-    expect(html).toContain('title="Livraison"');
+    expect(html).toContain('title="Transfert"'); // NEW-D5-3 'a' (R-156): the 'Handover' milestone is « Transfert »
     expect(html).toContain('style="left:95.8%"');
   });
 
@@ -72,7 +72,7 @@ describe('ScheduleView render (FR)', () => {
     expect(html).toContain('Aucun jalon enregistré pour ce projet');
     expect(html).not.toContain('Lot de travaux<');
     const onlyMiles = await render(true, { ...input, bars: [] });
-    expect(onlyMiles).toContain('title="Livraison"');
+    expect(onlyMiles).toContain('title="Transfert"'); // NEW-D5-3 'a' (R-156)
     expect(onlyMiles).not.toContain('Aucun jalon');
   });
 

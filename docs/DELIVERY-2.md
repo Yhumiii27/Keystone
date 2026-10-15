@@ -358,7 +358,7 @@ Other gaps:
   - `src/i18n/extra/budget.json` translates "second crew", so RQ-043 reads "Steel connection checks — seconde équipe" in
     French on Home, the Plan drawer and My approvals. The Requests screens use `dataText` and keep the stored English.
   - Package names are partly translated in French (e.g. "1.2 CVC-élec — electrical & medical gas"), on My work as on Plan.
-  - `isoOfDayOffset` (`src/server/db/codes.ts:306`) has the negative-offset bug fixed in `dayDate`; only the seeders use it, with dates from 21 Sep on.
+  - `isoOfDayOffset` (`src/server/db/codes.ts:310`) had the negative-offset bug fixed in `dayDate`. Its callers: the request DAL's default start, the meeting action-to-task writer, `nrDates` in the request dialog and its server action, and the seeders (all with offsets ≥ 0 today). Fixed in delivery 8 (R-167): negative offsets now land on the working days before 21 Sep.
   - The leave-availability functions of `src/domain/resources.ts` are tested but unused; `src/domain/hr.ts` has its own copy.
   - Resources "Labor cost to date" shows "—" when a project has no labour or staff cost category (the prototype fell back to the first category).
   - The Contingency register shows "No draw-down recorded yet" under an empty table; spec 04 §5.3 has no empty state there.

@@ -205,7 +205,7 @@ const DIRECTOR_D7: Record<Lang, Pick<Golden, 'kpis' | 'lr'>> = {
     ],
     lr: [
       ['Extension du terminal Harbor Line — hors trajectoire', 'SPI 0,82 · CPI 0,89 — sous le seuil « hors trajectoire » 0,90.', '', ''],
-      ['Aménagement de la Clinique Pasteur Lyon — glissement du chemin critique', 'Chemin critique −29 j · fin prévue 27 déc. 2026 (référence 1 déc. 2026) · 2 jalons en retard : Systèmes incendie terminés, Mise en service & livraison terminées.', '', ''],
+      ['Aménagement de la Clinique Pasteur Lyon — glissement du chemin critique', 'Chemin critique −29 j · fin prévue 27 déc. 2026 (référence 1 déc. 2026) · 2 jalons en retard : Systèmes incendie terminés, Mise en service & transfert terminés.', '', ''],
       ['Extension du terminal Harbor Line — glissement du chemin critique', 'Chemin critique −27 j · fin prévue 14 janv. 2027 (référence 18 déc. 2026) · 2 jalons en retard : Structure hors d’eau, Grues opérationnelles.', '', ''],
       ['Déploiement signalétique métro de Marseille — glissement du chemin critique', 'Chemin critique −9 j · fin prévue 9 nov. 2026 (référence 1 nov. 2026).', '', ''],
       ['Rénovation du data center Northgate — glissement du chemin critique', 'Chemin critique −4 j · fin prévue 5 avr. 2027 (référence 1 avr. 2027).', '', ''],

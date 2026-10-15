@@ -18,7 +18,7 @@ import type { MachineTypeRow } from '@/server/dal/mtypes';
 import type { ActivityRow, AuditRow } from '@/server/dal/notifications';
 import type { ProjectRow } from '@/server/dal/projects';
 import type { SettingsData } from '@/server/dal/settings';
-import { activityChipT, addedConnectorDataT, auditAreaT, connectorLinkT, connectorsSubT, mtListSubT, outboxT, volumeT } from './i18n';
+import { activityChipT, activityWhatT, addedConnectorDataT, auditAreaT, auditChangeT, auditObjectT, connectorLinkT, connectorsSubT, mtListSubT, outboxT, volumeT } from './i18n';
 import { integrationsHref, machineTypesHref } from './links';
 import { dataText, fieldsText } from '@/i18n/data-text';
 
@@ -275,7 +275,8 @@ export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
     seg: PLUMB_VIEWS.map((v) => ({ value: v.value, label: t(v.label), href: integrationsHref({ view: v.value }) })),
     chips: chips.map((c) => ({ value: c.value ?? '', label: activityChipT(c.label, t, lang), count: String(c.count), href: integrationsHref({ source: c.value }) })),
     chipValue: i.source ?? '',
-    activity: rows.map((a, n) => ({ key: `${a.occurredAt}-${n}`, icon: ACTIVITY_ICON[a.kind] ?? 'arrows-clockwise', who: dataText(a.who, lang), what: t(a.what), when: t(a.when) })),
+    // R-184 (NEW-D1-2): the text from its message key in the viewer's language, else as written (typed values as typed).
+    activity: rows.map((a, n) => ({ key: `${a.occurredAt}-${n}`, icon: ACTIVITY_ICON[a.kind] ?? 'arrows-clockwise', who: dataText(a.who, lang), what: activityWhatT(a, t, lang), when: t(a.when) })),
     connectors: i.connectors.map((c) => {
       const outbox = outboxT(c.pending, c.failed, lang);
       const volume = volumeT(c.lastVolume, t, lang);
@@ -296,7 +297,11 @@ export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
       };
     }),
     imports: i.imports.map((f) => ({ name: t(f.name), description: t(f.description), icon: importIcon(f.icon), direction: f.direction })),
-    audit: i.audit.map((a, n) => ({ key: `${a.occurredAt}-${n}`, when: t(a.when), who: dataText(a.who, lang), object: t(a.object), change: t(a.change), area: auditAreaT(a.area, t, lang) })),
+    // R-184: the trail is not passed through the segment translator — its generic shapes are rendered, typed values kept.
+    audit: i.audit.map((a, n) => ({
+      key: `${a.occurredAt}-${n}`, when: t(a.when), who: dataText(a.who, lang), object: auditObjectT(a.object, t, lang), change: auditChangeT(a, t, lang),
+      area: auditAreaT(a.area, t, lang),
+    })),
   };
 }
 

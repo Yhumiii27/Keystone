@@ -81,7 +81,17 @@ describe('client portal screen', () => {
   it.each(LANGS)('HLT-026 (%s): tiles, tabs, progress, milestones, decisions', async (lang) => {
     const t = makeT(lang);
     const v = await getClientScreen('HLT-026', 'decisions', t, lang);
-    const g = G.client[lang]['HLT-026'];
+    const g0 = G.client[lang]['HLT-026'];
+    // NEW-D5-3 'a' (R-156): in French the 'Handover' step is « Transfert » (the prototype said « Livraison »): the forecast tile,
+    // the Handover milestone and CR-008's schedule impact. Golden values are not regenerated; only these three change.
+    const g = lang === 'fr'
+      ? {
+          ...g0,
+          kpis: g0.kpis.map((k: any, i: number) => (i === 1 ? { ...k, label: 'Transfert prévu' } : k)),
+          milestones: g0.milestones.map((m: any, i: number) => (i === 5 ? { ...m, name: 'Transfert' } : m)),
+          decisions: g0.decisions.map((d: any, i: number) => (i === 0 ? { ...d, sub: d.sub.replace('-12 j sur la livraison', '-12 j sur le transfert') } : d)),
+        }
+      : g0;
     expect(v.kpis).toEqual(withD7('HLT-026', lang, str(g.kpis)));
     // S-9a: "Schedule" (FR "Planning") added after the prototype's first segment.
     expect(v.tabs.map((o) => o.label)).toEqual([g.seg[0], t('Schedule'), ...g.seg.slice(1)]);

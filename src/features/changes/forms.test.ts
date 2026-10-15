@@ -85,7 +85,8 @@ describe('changesT (FR fixes local to these screens)', () => {
     expect(fr('+12 d')).toBe('+12 j');
     expect(fr('-31 d')).toBe('-31 j');
     expect(fr('−9 d · 4 wk')).toBe('−9 j · 4 sem.');
-    expect(fr('Net 27 d on handover')).toBe('Net 27 j sur la livraison');
+    // NEW-D5-3 'a' (R-156): the 'Handover' step is « Transfert » in French.
+    expect(fr('Net 27 d on handover')).toBe('Net 27 j sur le transfert');
     expect(fr('BL2 proposed · CR-009 draft')).toBe('BL2 proposée · CR-009 brouillon');
     expect(fr('BL2 proposed · CR-009 in review')).toBe('BL2 proposée · CR-009 en revue');
     expect(fr('Contingency 150 k€')).toBe('Provision 150 k€');
