@@ -25,6 +25,7 @@ import {
 import { closeCodexEntries, insertCodexEntry, openCodexEntries, type CodexOutboxEntry } from '@/server/integrations/codex/outbox';
 import { codexConnectorMode } from '@/server/integrations/codex/config';
 import { readCodexIndex } from '@/server/integrations/codex/connector';
+import { awaitsKeystoneData } from '@/server/integrations/codex/mirror';
 import {
   clients, deliverables, documentAcknowledgements, documentApprovals, documentApproverAssignments, documentDeposits, documentIndexSyncs,
   documentLinks, documentRevisions, documentTypeCircuitSteps, documentTypes, documents, persons, projects, punchItems, purchaseOrders, users,
@@ -127,7 +128,7 @@ export interface VaultDocument {
   links: { kind: DocLinkKind; kindLabel: string; ref: string }[];
   /** Created from Keystone (deposit, meeting minutes): "New" tag. */
   isNew: boolean;
-  /** Client deliverable type and released: shared with the client. */
+  /** Client deliverable type, released and of Client confidentiality: shared with the client (`sharedWithClient`). */
   shared: boolean;
   /** Shared and acknowledged by the client for the current revision. */
   acknowledged: boolean;
@@ -228,6 +229,15 @@ async function loadVault(q: Awaited<ReturnType<typeof getDb>> | Tx, where?: Retu
   };
 }
 
+/**
+ * Shared with the client: a released record of a client-deliverable type whose confidentiality is Client. P-10b / R-043:
+ * an internal or supplier record never reaches the client, even of a client type — the minutes of an internal meeting (MIN,
+ * Internal) or a record the Codex index read brings with that confidentiality.
+ */
+function sharedWithClient(t: { isClientDeliverable: boolean }, d: { status: DocumentStatus; confidentiality: Confidentiality }): boolean {
+  return t.isClientDeliverable && d.status === 'released' && d.confidentiality === 'client';
+}
+
 function toVault(b: VaultBundle, d: VaultBundle['docs'][number]): VaultDocument {
   const t = b.types.get(d.typeCode)!;
   const circuit = b.steps.get(d.typeCode) ?? [];
@@ -241,7 +251,7 @@ function toVault(b: VaultBundle, d: VaultBundle['docs'][number]): VaultDocument 
   });
   // Release proposed: the step open in Keystone; other statuses: the step after Codex's signed ones (register exports).
   const next = d.status === 'release_proposed' ? (state.nextStep != null ? circuit[state.nextStep] ?? null : null) : circuit.length > 1 + given ? circuit[1 + given] : null;
-  const shared = t.isClientDeliverable && d.status === 'released';
+  const shared = sharedWithClient(t, d);
   return {
     number: d.number, type: d.typeCode, typeLabel: t.label, family: t.family, familyLabel: docFamily.label(t.family), title: d.title,
     project, service: d.service, serviceLabel: docService.label(d.service), revision: d.currentRevision, status: d.status,
@@ -483,12 +493,16 @@ export async function getCodexSyncState(): Promise<CodexSyncState | null> {
   return { time: `${p.hh}:${p.mm}`, syncedAt: s.syncedAt.toISOString(), records: s.recordCount + n };
 }
 
-/** Last read of Codex's index by the HTTP connector (R-033), null before the first one. */
-export async function lastCodexIndexRead(): Promise<Date | null> {
+/**
+ * `since` of the next read of Codex's index by the HTTP connector (R-033): the last read's mark — its time, or an earlier mark
+ * held while records waited for their project or document type in Keystone (integration review). Null = the whole index
+ * (before the first read, or while the first read's skipped records wait).
+ */
+export async function nextCodexIndexSince(): Promise<Date | null> {
   const db = await getDb();
-  const [r] = await db.select({ at: documentIndexSyncs.syncedAt }).from(documentIndexSyncs).where(eq(documentIndexSyncs.source, 'codex'))
+  const [r] = await db.select({ next: documentIndexSyncs.nextSince }).from(documentIndexSyncs).where(eq(documentIndexSyncs.source, 'codex'))
     .orderBy(desc(documentIndexSyncs.syncedAt)).limit(1);
-  return r?.at ?? null;
+  return r?.next ?? null;
 }
 
 export interface CodexIndexRead {
@@ -505,15 +519,20 @@ export interface CodexIndexRead {
  * HTTP connector (Delivery 8, R-033): reads Codex's index since the last read (the whole index the first time), writes it
  * into Keystone's index (mirror.ts `applyCodexIndex`) and records the read. Throws when Codex is unreachable or answers
  * badly (nothing recorded, the next read asks again). `actorName` null = the scheduled job.
+ * Integration review: a read that skipped a record for a project or document type Keystone does not know yet keeps its own
+ * `since` as the next one (`awaitsKeystoneData`), so the record comes back once the project or type exists — Codex sends a
+ * record again only when it changes; the upserts are idempotent. The read's time stays the banner's "Last sync".
  */
 export async function refreshCodexIndex(actorName: string | null, at: Date = new Date()): Promise<CodexIndexRead> {
-  const r = await readCodexIndex({ since: await lastCodexIndexRead() }, at);
+  const since = await nextCodexIndexSince();
+  const r = await readCodexIndex({ since }, at);
   const db = await getDb();
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(documents);
   if (!r) return { read: false, records: n, applied: 0, created: 0, skipped: 0 };
+  const nextSince = r.skipped.some(awaitsKeystoneData) ? since : at;
   await db.transaction(async (tx) => {
     const actor = actorName ? await findPerson(tx, actorName) : null;
-    await tx.insert(documentIndexSyncs).values({ syncedAt: at, recordCount: n, requestedByPersonId: actor?.id ?? null, source: 'codex' });
+    await tx.insert(documentIndexSyncs).values({ syncedAt: at, recordCount: n, requestedByPersonId: actor?.id ?? null, source: 'codex', nextSince });
   });
   return { read: true, records: n, applied: r.applied, created: r.created, skipped: r.skipped.length };
 }
@@ -820,7 +839,7 @@ export async function acknowledgeDocument(number: string, actorName: string, on:
   await db.transaction(async (tx) => {
     const d = await loadDoc(tx, number);
     const [t] = await tx.select().from(documentTypes).where(eq(documentTypes.code, d.typeCode));
-    if (!t.isClientDeliverable || d.status !== 'released') throw new Error(`${number} is not shared with the client`);
+    if (!t || !sharedWithClient(t, d)) throw new Error(`${number} is not shared with the client`);
     const actor = await findPerson(tx, actorName);
     await tx.insert(documentAcknowledgements).values({ documentId: d.id, revision: d.currentRevision, acknowledgedByPersonId: actor?.id ?? null, acknowledgedOn: on })
       .onConflictDoNothing();

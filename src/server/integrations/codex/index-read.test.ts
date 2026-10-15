@@ -10,7 +10,7 @@ import { openDatabase } from '@/server/db/open';
 import { documentApprovals, documentIndexSyncs, documentRevisions, documents } from '@/server/db/schema';
 import { listAdminConnectors, syncAdminConnector } from '@/server/dal/admin-connectors';
 import {
-  DepositInCodexOnlyError, depositInCodex, getCodexSyncState, getDocumentRecord, lastCodexIndexRead, listVaultDocuments, refreshCodexIndex,
+  DepositInCodexOnlyError, depositInCodex, getCodexSyncState, getDocumentRecord, nextCodexIndexSince, listVaultDocuments, refreshCodexIndex,
 } from '@/server/dal/documents';
 import { listAudit } from '@/server/dal/notifications';
 import { jobDefinition } from '@/server/jobs/definitions';
@@ -79,7 +79,9 @@ describe('applyCodexIndex (index read, D-2 scope)', () => {
     // The earlier revision rows stay stored (KPI), the new one comes after them.
     const revs = await db.select().from(documentRevisions).where(eq(documentRevisions.documentId, (await db.select().from(documents).where(eq(documents.number, 'PID-HLT-026')))[0].id));
     expect(revs.map((x) => [x.revision, x.position]).sort()).toEqual([['A', 0], ['B', 1], ['C', 2], ['D', 3], ['E', 4]]);
-    expect((await listAudit({ projectCode: 'HLT-026' }))[0]).toMatchObject({ who: 'Codex', object: 'PID-HLT-026', change: 'status: Released → Draft · synced from Codex' });
+    // Integration review: the new revision is audited too (both lines at the read's instant).
+    const lines = (await listAudit({ projectCode: 'HLT-026' })).filter((a) => a.who === 'Codex' && a.object === 'PID-HLT-026').map((a) => a.change);
+    expect(lines.sort()).toEqual(['revision D → E · synced from Codex', 'status: Released → Draft · synced from Codex']);
   });
 
   it('skips and logs unknown projects and types and malformed records — never a phantom QMS record; a QMS record is QMS', async () => {
@@ -118,7 +120,7 @@ describe('HTTP connector: the index read, the Codex row and "Sync now"', () => {
     vi.stubEnv('CODEX_API_URL', 'http://codex.test');
     // Before any read of Codex: no sync line (the seeded 08:02 sync was never an exchange with Codex).
     expect(await getCodexSyncState()).toBeNull();
-    expect(await lastCodexIndexRead()).toBeNull();
+    expect(await nextCodexIndexSince()).toBeNull();
     const calls = stubCodex(() => Response.json([rec({ id: 'CDX-2', number: 'RPT-HLT-098', title: 'Bolt torque report' })]));
     const first = await refreshCodexIndex('Marie Lefebvre', new Date('2026-10-02T08:00:00Z'));
     const count = (await listVaultDocuments()).length;
@@ -133,12 +135,12 @@ describe('HTTP connector: the index read, the Codex row and "Sync now"', () => {
 
   it('Codex unreachable or answering badly: the read throws and nothing is recorded', async () => {
     vi.stubEnv('CODEX_API_URL', 'http://codex.test');
-    const before = await lastCodexIndexRead();
+    const before = await nextCodexIndexSince();
     stubCodex(() => new Response('down', { status: 503 }));
     await expect(refreshCodexIndex(null)).rejects.toThrow('Codex GET /api/documents?since=');
     stubCodex(() => Response.json({ not: 'an array' }));
     await expect(refreshCodexIndex(null)).rejects.toThrow('Codex: unexpected index payload');
-    expect(await lastCodexIndexRead()).toEqual(before);
+    expect(await nextCodexIndexSince()).toEqual(before);
   });
 
   it('Activity & integrations: the Codex row is live (last read, outbox counts); "Sync now" delivers then reads; a failure marks the row', async () => {

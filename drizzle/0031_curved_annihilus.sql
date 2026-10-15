@@ -1,0 +1,1 @@
+ALTER TABLE "document_index_syncs" ADD COLUMN "next_since" timestamp with time zone;
