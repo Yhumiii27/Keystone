@@ -54,5 +54,10 @@
   "This article is not in the project BOM": "Cet article n’est pas dans la nomenclature du projet",
   "Link only": "Lier seulement",
   "Link and add to the BOM": "Lier et ajouter à la nomenclature",
-  "Enter a quantity greater than 0": "Saisissez une quantité supérieure à 0"
+  "Enter a quantity greater than 0": "Saisissez une quantité supérieure à 0",
+  "Warranty cost YTD": "Coût garantie de l’année",
+  "No machine in this zone": "Aucune machine dans cette zone",
+  "No claim in this zone": "Aucune réclamation dans cette zone",
+  "No intervention in this zone": "Aucune intervention dans cette zone",
+  "No warranty cost in this zone": "Aucun coût de garantie dans cette zone"
 }

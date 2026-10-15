@@ -4,7 +4,8 @@ import 'server-only';
 // from the ECO effectivity Vigie reports (Vigie ECO mirror, src/server/dal/eco.ts). Machine zone: the site's city
 // (cities → countries → zones), else the delivering project's zone when it has a site, else Europe & North America
 // (`machineZone` 4981). Time model: "Warranty ending < 90 days" and "ends in n d" use the prototype's month index
-// against PG_NOW (as the interfaces' "in n d").
+// against PG_NOW (as the interfaces' "in n d"); the warranty status in force (R-145) compares ISO dates with NOW_ISO —
+// two clocks that agree on 30 Sep 2026 and move together with R-013.
 import { asc, eq, inArray } from 'drizzle-orm';
 import { addedWarrantyStatus, warrantyEnding, warrantyInForce } from '@/domain/aftersales';
 import { DEFAULT_WARRANTY_MONTHS, MAX_MACHINES_PER_DELIVERY, asBuiltConfiguration, isDeliveredStage, machineNames, warrantyMonthsOf } from '@/domain/claims';

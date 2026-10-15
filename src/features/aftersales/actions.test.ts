@@ -128,7 +128,9 @@ describe('after-sales Server Functions', () => {
       // The prototype's next step is the description (as typed: no translation in Keystone).
       expect([c.machineName, c.machineSub, c.issue, c.severity, c.severityClass, c.date, c.status, c.statusClass, c.coverage, c.coverageClass, c.cost, c.owner, c.next, c.eco])
         .toEqual([gc.mname, `${gc.mch} · ${gc.client}`, gc.issue, gc.sev, gc.sevClass, gc.date, gc.status, gc.stClass, gc.cover, gc.coverClass, gc.costText, gc.owner, NEW_CLAIM.desc, null]);
-      expect(v.kpis.map((k) => [k.label, k.value, k.color])).toEqual(g.kpis.map((k: any) => [k.label, String(k.value), k.color]));
+      // R-145 (NEW-D5-2 = a): FR « Coût garantie de l’année » (the calendar year's claims; the prototype's « cumulé »).
+      const label = (l: string) => (l === 'Coût garantie cumulé' ? 'Coût garantie de l’année' : l);
+      expect(v.kpis.map((k) => [k.label, k.value, k.color])).toEqual(g.kpis.map((k: any) => [label(k.label), String(k.value), k.color]));
     }
     expect(await savNavBadge()).toBe(G.en.added.claim.sav.claims.badge);
     viewer.lang = 'en';

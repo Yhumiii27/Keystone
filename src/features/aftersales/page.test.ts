@@ -111,7 +111,8 @@ describe('/after-sales/claims', () => {
     }
     Object.assign(session, { zone: 'apac', role: 'director' });
     const v = (await savPage({ view: 'interventions' })).SavBody.props.view as SavScreenView;
-    expect([v.interventions, v.zoneEmpty]).toEqual([[], 'No project in this zone for this view']);
+    // R-155 (X-16 + 07 A.1): the zone has a machine, so the notice names the empty list (was the project screens' text).
+    expect([v.interventions, v.zoneEmpty]).toEqual([[], 'No intervention in this zone']);
     // WC-013's design ECO (not reported by Vigie): a Vigie link for staff; the client is refused the screen (R-042, P-1).
     Object.assign(session, { zone: null, role: 'quality' });
     const ecoOf = async () => ((await savPage()).SavBody.props.view as SavScreenView).claims!.find((c) => c.number === 'WC-013')!.eco!.href;

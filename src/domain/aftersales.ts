@@ -247,16 +247,18 @@ export interface FleetKpiFacts extends MachineFacts {
 }
 
 /**
- * Installed base tiles (`fleetKpis` 4993) over the machines shown (zone filter applied). R-145: "Warranty ending < 90 days"
- * counts from the end in force — an extension ending within three months is ending soon.
+ * Installed base tiles (`fleetKpis` 4993) over the machines shown (zone filter applied). R-145 (NEW-D5-2 = a): the tiles
+ * read the warranty in force on `today` (`warrantyInForce`), and "Warranty ending < 90 days" counts from the end in force —
+ * an extension ending within three months is ending soon.
  */
-export function fleetKpis(machines: readonly FleetKpiFacts[]): KpiCard[] {
+export function fleetKpis(machines: readonly FleetKpiFacts[], today = NOW_ISO): KpiCard[] {
   const clients = new Set(machines.map((m) => m.client)).size;
-  const extended = machines.filter((m) => m.warrantyStatus === 'extended').length;
-  const ending = machines.filter((m) => warrantyEnding(m.extendedUntil ? warrantyInForce(m).endOn : m.warrantyEndOn).soon).map((m) => m.number);
+  const inForce = machines.map((m) => ({ number: m.number, ...warrantyInForce(m, today) }));
+  const extended = inForce.filter((w) => w.status === 'extended').length;
+  const ending = inForce.filter((w) => warrantyEnding(w.endOn).soon).map((w) => w.number);
   return [
     { label: 'Machines in service', value: String(machines.length), sub: countTextEn('clients', clients), count: { kind: 'clients', n: clients }, alert: false },
-    { label: 'In warranty', value: String(machines.filter((m) => m.warrantyStatus === 'in_warranty').length), sub: countTextEn('extended', extended), count: { kind: 'extended', n: extended }, alert: false },
+    { label: 'In warranty', value: String(inForce.filter((w) => w.status === 'in_warranty').length), sub: countTextEn('extended', extended), count: { kind: 'extended', n: extended }, alert: false },
     { label: 'Warranty ending < 90 days', value: String(ending.length), sub: ending.join(' · ') || '—', alert: ending.length > 0 },
     { label: 'Machines with open claims', value: String(machines.filter((m) => m.openClaims > 0).length), sub: 'see warranty claims', alert: false },
   ];
