@@ -47,6 +47,15 @@ export function nextBaselineCode(existing: readonly string[]): string {
   return `${BASELINE_PREFIX}${max + 1}`;
 }
 
+// ── S-5 plan trash ────────────────────────────────────────────────────────────────────────────────────────────────────
+// Unconfirmed by the owner (DELIVERY-6 §8 S-5, R-064): the retention, the number of entries kept and who may remove and
+// restore. The rights rule stays with the Plan's rights (src/features/plan/rights.ts `canSchedulePlan` = `canEditPlanStructure`
+// of src/domain/rights.ts: the project's PMs and the director); the trash itself is src/server/dal/plan-trash.ts.
+/** Days a removal stays restorable ("Recently deleted"); older entries are purged (next removal, "plan-trash-purge" job). */
+export const PLAN_TRASH_RETENTION_DAYS = 30;
+/** Trash entries kept per project (the oldest beyond are purged). */
+export const PLAN_TRASH_MAX_ENTRIES = 20;
+
 // ── S-8 units ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 /**
  * Durations, lags, floats and slips are in working days of the activity's calendar. Documentation only: the CPM engine
