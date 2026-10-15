@@ -9,6 +9,7 @@ import { myWorkHref, taskSheetData } from '@/features/mywork/model';
 import { canCommentTask, canEditTask } from '@/features/mywork/permissions';
 import { MarkDoneButton, TaskBody, TaskProvider } from '@/features/mywork/task-sheet';
 import { myWorkAccess } from '@/server/dal/mywork-data';
+import { listMentionablePersons } from '@/server/dal/task-notices';
 import { getTask } from '@/server/dal/tasks';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -24,7 +25,8 @@ export default async function TaskPage({ params }: { params: Promise<{ taskId: s
 
   // Back to the assignee's work (the prototype's openTask set `person` to the assignee) when the viewer may look at it (R-049).
   const otherPerson = task.assigneeShort != null && task.assignee !== viewer.name && (await myWorkAccess(viewer)).canView(task.assignee) ? task.assignee : null;
-  const data = taskSheetData(task, myWorkHref({ person: otherPerson }), t, lang, { rates: canSeeRates(viewer.role) });
+  // R-149: the comments' @mentions are highlighted (the people who can be mentioned: an active internal account).
+  const data = taskSheetData(task, myWorkHref({ person: otherPerson }), t, lang, { rates: canSeeRates(viewer.role), mentionables: await listMentionablePersons() });
   const canEdit = canEditTask(viewer, task.assignee, outside);
 
   return (

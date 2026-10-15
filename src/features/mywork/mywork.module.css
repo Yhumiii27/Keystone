@@ -68,6 +68,16 @@
 }
 :global(.card).boardCard:hover { box-shadow: var(--shadow-md); color: var(--color-text); }
 .cardTitle { font-size: 13px; line-height: 1.35; text-wrap: pretty; }
+/* R-150: editable board — drop target highlight, draggable card with its title link and the "Move to…" menu (tablet-sized rows). */
+.columnOver { outline: 2px dashed var(--color-accent); outline-offset: -2px; }
+:global(.card).movable { cursor: grab; }
+:global(.card).movable:active { cursor: grabbing; }
+.cardTop { display: flex; align-items: flex-start; gap: 6px; }
+.cardLink { flex: 1; min-width: 0; color: inherit; text-decoration: none; }
+.cardLink:hover { text-decoration: underline; }
+.cardLink:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 2px; }
+:global(.btn).moveBtn { flex: none; width: 32px; height: 32px; margin: -6px -6px 0 0; color: var(--color-neutral-400); }
+.moveItem { min-height: 40px; }
 /* Board: done titles are struck through but keep the text colour (2862 `text-decoration:{{ t.deco }}` only). */
 .strike { text-decoration: line-through; }
 .cardMeta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11px; color: var(--color-neutral-400); }
@@ -142,6 +152,8 @@
 .addRow { display: flex; gap: 6px; margin-top: 4px; }
 :global(.input).addInput { min-height: 32px; font-size: 13px; }
 :global(.input).commentInput { min-height: 34px; font-size: 13px; }
+/* R-149: an @mention in a posted comment. */
+.mention { color: var(--color-accent-300); font-weight: 600; }
 :global(.btn).addBtn { font-size: 12.5px; padding: 4px 10px; }
 :global(.btn).postBtn { font-size: 12.5px; padding: 4px 12px; }
 :global(.btn).attach { font-size: 12.5px; }

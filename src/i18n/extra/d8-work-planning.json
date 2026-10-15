@@ -1,4 +1,7 @@
 {
   "Validation requested from the portfolio director": "Validation demandée au directeur de portefeuille",
-  "The received date cannot be after today": "La date de réception ne peut pas être postérieure à aujourd’hui"
+  "The received date cannot be after today": "La date de réception ne peut pas être postérieure à aujourd’hui",
+  "Task assigned": "Tâche assignée",
+  "Moved to": "Déplacée vers",
+  "Move to…": "Déplacer vers…"
 }

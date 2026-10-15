@@ -7,12 +7,14 @@
 // src/app/api/tasks/[taskId]/files, which Server Functions' 1 MB body limit would not allow). Error messages are English
 // source strings (the client shows them with toast.showEn).
 import { revalidatePath } from 'next/cache';
+import { mentionExcerpt } from '@/domain/mentions';
 import { isTaskStatus, parseHours } from '@/domain/tasks';
 import {
   addChecklistItem, addTaskComment, listTasks, logTaskTime, setTaskProgress, setTaskStatus, toggleChecklistItem, toggleTaskDone,
-  type TaskRow,
+  type PostedComment, type TaskRow,
 } from '@/server/dal/tasks';
 import { listTaskFiles, removeTaskFile } from '@/server/dal/task-files';
+import { notifyTaskMentions } from '@/server/dal/task-notices';
 import { getScreenAccess } from '@/server/project-context';
 import type { Viewer } from '@/server/session';
 import { canCommentTask, canEditTask } from './permissions';
@@ -109,13 +111,27 @@ export async function addChecklistItemAction(input: { taskId: string; text: stri
   return write('addChecklistItemAction', () => addChecklistItem(g.task.id, item, g.viewer.name));
 }
 
-/** "Post": a comment by the viewer (the prototype always wrote "Marie Lefebvre", 00 §7.16). */
+/**
+ * "Post": a comment by the viewer (the prototype always wrote "Marie Lefebvre", 00 §7.16). R-149 (R-8b a): the people it
+ * @mentions with an active internal account get a bell notification once the comment is committed ('@you in T-xxxx',
+ * '“excerpt” · author', opening the task) — never the author; a notification failure never undoes the comment.
+ */
 export async function addTaskCommentAction(input: { taskId: string; text: string }): Promise<TaskActionResult> {
   const g = await gate(input?.taskId, 'comment');
   if (!g.ok) return g;
   const body = text(input.text, MAX_COMMENT);
   if (!body) return fail('Write a comment first');
-  return write('addTaskCommentAction', () => addTaskComment(g.task.id, g.viewer.name, body));
+  let posted: PostedComment | null;
+  try {
+    posted = await addTaskComment(g.task.id, g.viewer.name, body);
+  } catch (e) {
+    logError('addTaskCommentAction', e);
+    return fail(FAILED);
+  }
+  // After the commit (never inside the comment's transaction); notifyTaskMentions logs its own failures.
+  if (posted?.mentioned.length) await notifyTaskMentions({ number: posted.task, projectCode: posted.projectCode }, posted.mentioned, mentionExcerpt(body), posted.author);
+  revalidatePath('/', 'layout');
+  return { ok: true };
 }
 
 /** "Log": hours (> 0, ≤ 24) and an optional note (default "Work on {title}") on the status date, added to the logged total. */

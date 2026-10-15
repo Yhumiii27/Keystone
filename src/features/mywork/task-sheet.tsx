@@ -413,7 +413,18 @@ function CommentsCard() {
       <CardTitle compact>{t('Comments')}</CardTitle>
       {live.comments.map((c, i) => (
         <CommentRow key={i} author={c.author} initials={c.initials} when={c.when}>
-          {c.text}
+          {/* R-149: @mentions highlighted (typed text, shown as typed). */}
+          {c.parts
+            ? c.parts.map((p, j) =>
+                p.mention ? (
+                  <span key={j} className={s.mention}>
+                    {p.text}
+                  </span>
+                ) : (
+                  p.text
+                ),
+              )
+            : c.text}
         </CommentRow>
       ))}
       {!live.comments.length && <span className={s.empty}>{t('No comments yet')}</span>}
