@@ -102,6 +102,34 @@ export function projectAccess(v: RightsViewer, p: ProjectFacts): ProjectAccess {
  */
 export const canManageTeam = (role: RoleKey, a: Pick<ProjectAccess, 'teamRole'>) => role === 'director' || a.teamRole === 'pm';
 
+// ── R-044 · Finance and the contract (P-4, C-9) ────────────────────────────────────────────────────────────────────
+
+/**
+ * P-4: who edits a project's contract (sheet, amendments, bonds, milestones) — the portfolio director, Finance on every
+ * project (delivery-8 default: departs from P-2's named-team rule, the owner to confirm), or one of the project's PMs (PM of
+ * record, co-PM, deputy) whose workspace has the Contract screen — so a deputy whose role is 'member' gets no editing.
+ * Procurement no longer has the Contract screen (P-4).
+ */
+export const canEditContract = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) =>
+  role === 'director' || role === 'finance' || (a.lead && role !== 'client' && canSee(role, 'contract'));
+
+/** R-044: Finance reads Budget, Hours and Billing, even on a project whose team it is on (billing gate unchanged). */
+export const FINANCE_READ_ONLY_SCREENS: readonly ScreenId[] = ['budget', 'hours', 'billing'];
+export const financeReadOnly = (role: RoleKey, screen: ScreenId) => role === 'finance' && FINANCE_READ_ONLY_SCREENS.includes(screen);
+
+/** C-9 (R-044 default, DELIVERY-7 §8 open question): the project currency and budget rate — the director and Finance. */
+export const BUDGET_RATE_ROLES: readonly RoleKey[] = ['director', 'finance'];
+export const canSetBudgetRate = (role: string) => (BUDGET_RATE_ROLES as readonly string[]).includes(role);
+
+// ── R-139 · "View as client" (P-11) ────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * P-11 (answer a): the director and the project's leads (PM of record, co-PMs, deputies) preview the client portal of the
+ * project — the "View as client" entry of the project screens' header and the preview banner of the portal. Other internal
+ * roles keep the read-only outside view (P-1 = a); the client never previews.
+ */
+export const canPreviewClientView = (role: RoleKey, a: Pick<ProjectAccess, 'lead'>) => role !== 'client' && (role === 'director' || a.lead);
+
 // ── R-042 · Screens outside the client's workspace (P-1, P-10a) ─────────────────────────────────────────────────────
 
 /** P-1: a client is refused (sent to their home) on any screen outside their workspace; internal roles read it. */
@@ -144,7 +172,8 @@ export const canSeeSupplierPrices = (role: RoleKey) => SUPPLIER_PRICE_ROLES.incl
 export const PRICE_MASK = '•••';
 /** Hint shown where prices are masked (EN source). */
 export const PRICES_HIDDEN = 'Prices are visible to the director, the project managers and procurement';
-// Hourly rates (task cost note, rate card, what-if helpers): `canSeeRates` in src/domain/hr.ts (director, PM).
+// Hourly rates (task cost note, rate card, what-if helpers): `canSeeRates` in src/domain/hr.ts (director, PM, Finance — P-12 c);
+// editing the grid: `canEditRates` (director, Finance).
 
 // ── R-047 · Codex deposit and synchronisation (NEW-D3-1) ───────────────────────────────────────────────────────────
 

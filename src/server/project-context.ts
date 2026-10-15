@@ -6,6 +6,8 @@ import 'server-only';
 // - R-041 (P-2): write rights on a project follow its named team (src/domain/rights.ts `projectAccess`): the PM of record,
 //   co-PMs, deputies, referents and team members edit the screens of their workspace; everybody else reads. The PM rights
 //   (L-4b, P-9a, P-9b) follow `isLead` (PMs and deputies, and the director).
+// - R-044 (P-4): the Contract is edited by the director, Finance (every project) and the project's leads whose workspace has
+//   it (`canEditContract`); Finance reads Budget, Hours and Billing even on its teams (`financeReadOnly`).
 // - R-042 (P-1, P-10a): a client is refused — sent to their home — on any screen outside their workspace and on another
 //   organisation's project, by these two helpers (so pages, Server Functions and Route Handlers that use them all refuse);
 //   internal roles keep the read-only view outside their workspace.
@@ -13,7 +15,9 @@ import { notFound, redirect } from 'next/navigation';
 import { cache } from 'react';
 import { screenHref, type ScreenId } from '@/config/screens';
 import { PROJECT_EDITABLE, isOutside } from '@/components/app/shell/nav-model';
-import { clientRefusedProject, clientRefusedScreen, projectAccess, type ProjectAccess, type TeamMember } from '@/domain/rights';
+import {
+  canEditContract, clientRefusedProject, clientRefusedScreen, financeReadOnly, projectAccess, type ProjectAccess, type TeamMember,
+} from '@/domain/rights';
 import { listProjectTeams } from '@/server/dal/project-team';
 import { getProject, listProjects, type ProjectRow } from '@/server/dal/projects';
 import { getViewer, type Viewer } from '@/server/session';
@@ -107,7 +111,10 @@ export interface ProjectContext {
   outside: boolean;
   /** Screen outside the viewer's workspace. */
   isOutside: (screen: ScreenId) => boolean;
-  /** Edits allowed on `screen` for this project: not outside and not read-only (client/docs ignore read-only, line 5176). */
+  /**
+   * Edits allowed on `screen` for this project: not outside and not read-only (client/docs ignore read-only, line 5176); the
+   * Contract follows `canEditContract` (P-4) and Finance reads Budget, Hours and Billing (R-044).
+   */
   canEdit: (screen?: ScreenId) => boolean;
 }
 
@@ -126,6 +133,8 @@ export const getProjectContext = cache(async (code: string, screen?: ScreenId): 
   const out = (s: ScreenId) => isOutside(viewer.role, s);
   const canEdit = (s: ScreenId | undefined = screen) => {
     if (!s) return !readOnly;
+    if (s === 'contract') return canEditContract(viewer.role, access);
+    if (financeReadOnly(viewer.role, s)) return false;
     return !out(s) && !(readOnly && PROJECT_EDITABLE.includes(s));
   };
   return {

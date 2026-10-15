@@ -8,6 +8,7 @@ import 'server-only';
 import { and, eq } from 'drizzle-orm';
 import { ROLE_SCREENS, canSee } from '@/config/role-screens';
 import type { RoleKey, ScreenId } from '@/config/screens';
+import { financeReadOnly } from '@/domain/rights';
 import { findPerson } from '@/server/db/helpers';
 import { projectMembers, projects } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
@@ -37,8 +38,9 @@ export async function onProjectTeam(q: Q, actor: Actor, projectId: string): Prom
 
 /**
  * `getProjectContext(code).canEdit(screen)` for an internal writer: the screen is in the actor's workspace and the actor is
- * on the project's team (or is the director). A client is refused.
+ * on the project's team (or is the director). A client is refused. R-044: Finance reads Budget, Hours and Billing even on its
+ * teams (`financeReadOnly`).
  */
 export async function editsProjectScreen(q: Q, actor: Actor, projectId: string, screen: ScreenId): Promise<boolean> {
-  return actorSees(actor, screen) && (await onProjectTeam(q, actor, projectId));
+  return actorSees(actor, screen) && !financeReadOnly(actor.role as RoleKey, screen) && (await onProjectTeam(q, actor, projectId));
 }

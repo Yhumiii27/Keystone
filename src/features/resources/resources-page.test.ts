@@ -57,8 +57,10 @@ describe('Resources page', () => {
     expect(v.people.map((p) => p.name)).toEqual([
       'Amélie Ollivier', 'Julien Wagner', 'Pauline Noguès', 'Thomas Kerbrat', 'Léa Marchand', 'Damien Roux', 'Hélène Sauvage', 'Fabien Bertrand',
     ]);
-    // A-12: unmet demand computed from the ROLES bars (prototype constant 240 h).
-    expect(v.kpis.map((k) => k.value)).toEqual(['83%', '3 people', '280 h', '€1.42M', '4']);
+    // A-12: unmet demand computed from the ROLES bars (prototype constant 240 h). R-086 (R-2 a): the labour cost of the
+    // portfolio's projects in execution (A-3) of the displayed zone — all zones: 2 512 of 3 590 k€ (was the current project's €1.42M).
+    expect(v.kpis.map((k) => k.value)).toEqual(['83%', '3 people', '280 h', '€2.51M', '4']);
+    expect(v.kpis[3].sub).toBe('70% of labor budget · All zones');
     expect(v.roles.map((r) => r.text)).toEqual(['1110 / 960 h', '690 / 640 h', '510 / 480 h', '560 / 640 h', '370 / 320 h']);
     expect(body.props.canEdit).toBe(true);
     expect(body.props.projectName).toBeUndefined();
@@ -67,11 +69,17 @@ describe('Resources page', () => {
     expect(primary.props.label).toBe('Request resource');
   });
 
-  it('labour cost follows the last project used (06 OQ2); none for a project without data', async () => {
+  it('R-086 (R-2 a): labour cost of the displayed zone, whatever the last project used (no longer 06 OQ2)', async () => {
     as('director', 'en', 'NDC-031');
-    expect((await resources()).body.props.view!.kpis[3]).toMatchObject({ value: '€340k', sub: '49% of labor budget' });
-    as('director', 'en', 'EWA-051');
-    expect((await resources()).body.props.view!.kpis[3]).toMatchObject({ value: '—', sub: '' });
+    expect((await resources()).body.props.view!.kpis[3]).toMatchObject({ value: '€2.51M', sub: '70% of labor budget · All zones' });
+    // The zone chosen on the zone screens (ks-zone): EU/NA = HLT-026, RCF-019, ERP-202, MSR-012, PRS-038; Africa = NDC-031.
+    jar.set(COOKIE.zone, 'euna');
+    expect((await resources()).body.props.view!.kpis[3]).toMatchObject({ value: '€2.17M', sub: '75% of labor budget · Europe & North America' });
+    jar.set(COOKIE.zone, 'afr');
+    expect((await resources()).body.props.view!.kpis[3]).toMatchObject({ value: '€340k', sub: '49% of labor budget · Africa' });
+    // No project in execution in the zone: no figure.
+    jar.set(COOKIE.zone, 'apac');
+    expect((await resources()).body.props.view!.kpis[3]).toMatchObject({ value: '—', sub: 'Asia Pacific' });
   });
 
   it('procurement and department head are in the workspace; the PM is outside (no primary, no Apply)', async () => {
@@ -105,7 +113,8 @@ describe('Resources page', () => {
   it('renders in French', async () => {
     as('director', 'fr');
     const out = html((await resources()).body, 'fr');
-    for (const s of ['Affectation — 8 prochaines semaines', 'Taux d’occupation', '28 sept.', 'Moy.', 'Capacité vs demande', 'Ingénierie', 'Rééquilibrage suggéré', 'Appliquer', '1,42 M€'])
+    // R-086: the portfolio's labour cost (all zones), named in French.
+    for (const s of ['Affectation — 8 prochaines semaines', 'Taux d’occupation', '28 sept.', 'Moy.', 'Capacité vs demande', 'Ingénierie', 'Rééquilibrage suggéré', 'Appliquer', '2,51 M€', '70 % du budget main-d’œuvre · Toutes zones'])
       expect(out).toContain(s);
   });
 });

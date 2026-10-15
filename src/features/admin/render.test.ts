@@ -39,7 +39,9 @@ describe('Settings body', () => {
     const t = makeT(lang);
     const out = html(h(SettingsBody, { view: settingsView(await getSettings(), t, lang), canEdit: true }), lang);
     const plain = text(out);
-    for (const l of ['Project health rules', 'At risk below', 'Off track below', 'Labor rates and multipliers are edited on the', 'Rate cards', 'page (directors and PMs).', 'Add']) {
+    // R-044 (P-12 c): the rate grid is edited by the director and Finance — the prototype's "page (directors and PMs)." is replaced.
+    // R-088 (R-6b): the hours-variance threshold on its own row.
+    for (const l of ['Project health rules', 'At risk below', 'Off track below', 'Labor rates and multipliers are edited on the', 'Rate cards', 'page (director and Finance).', 'Add', 'Hours variance', 'Hours variance threshold (%)']) {
       expect(plain, l).toContain(label(l, lang));
     }
     expect(out).toContain(`placeholder="${label('Add an entry', lang)}"`);
@@ -49,9 +51,11 @@ describe('Settings body', () => {
     expect(count(out, /aria-label="(Remove|Retirer) · /g)).toBe(58);
     expect(count(out, /aria-pressed=/g)).toBe(5);
     expect(out).toContain('type="number" step="0.01" value="0.97"');
+    expect(out).toContain('id="hours-variance" class="input');
+    expect(out).toMatch(/id="hours-variance"[^>]*type="number" step="1" min="1" max="50" value="10"/);
     // The footnote's text, link and text are three flex items 8px apart, as the prototype's (template 1581).
     const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    expect(out).toMatch(new RegExp(`</svg>${esc(label('Labor rates and multipliers are edited on the', lang))}<a [^>]*href="/resources/rates"[^>]*>${esc(label('Rate cards', lang))}</a>${esc(label('page (directors and PMs).', lang))}</div>`));
+    expect(out).toMatch(new RegExp(`</svg>${esc(label('Labor rates and multipliers are edited on the', lang))}<a [^>]*href="/resources/rates"[^>]*>${esc(label('Rate cards', lang))}</a>${esc(label('page (director and Finance).', lang))}</div>`));
     expect(plain).toContain(lang === 'en' ? 'Entrepôt central — Lyon Central warehouse' : 'Entrepôt central — Lyon Entrepôt central');
   });
 
@@ -60,7 +64,8 @@ describe('Settings body', () => {
     expect(out).not.toContain('aria-label="Remove');
     expect(out).not.toContain('placeholder="Add an entry"');
     expect(out).not.toContain('aria-pressed=');
-    expect(count(out, /readOnly=""|readonly=""/gi)).toBe(2);
+    // The two health thresholds and the hours-variance threshold (R-088).
+    expect(count(out, /readOnly=""|readonly=""/gi)).toBe(3);
     expect(text(out)).toContain('Software / IT');
   });
 });

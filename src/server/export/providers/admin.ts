@@ -30,6 +30,8 @@ async function settingsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
       kpiSheet(ctx, [
         { label: t('On track'), value: `≥ ${data.health.risk}`, sub: t('Project health rules') },
         { label: t('At risk'), value: `< ${data.health.risk}` }, { label: t('Off track'), value: `< ${data.health.off}` },
+        // R-088 (R-6b): the hours-variance threshold.
+        { label: t('Hours variance threshold (%)'), value: `± ${data.hoursVariance} %`, sub: t('Hours variance') },
       ], t('Project health rules')),
     ],
   };

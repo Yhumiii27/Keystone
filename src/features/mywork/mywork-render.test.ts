@@ -177,7 +177,8 @@ describe('Task detail render', () => {
       'Fichiers', 'Joindre', 'verticality-survey-bay3.xlsx', '48 KB · H. Sauvage · aujourd’hui', '2.1 MB · H. Sauvage · hier',
       'Commentaires', 'Julien Wagner', 'Hier 16:40', 'Aujourd’hui 08:15', 'Romain Aubert', 'Publier',
       'Avancement', '75%', 'Temps', '6.0', '/ 8 h', 'mer. 23 sept.', 'Set-up & columns C1–C6', '2.5 h', 'Saisir',
-      '6.0 h × 95 €/h = 570 € de coût réel → Main-d’œuvre · Lot 1.4 Steel structure',
+      // A-10 (R-083): Hélène Sauvage's grid role "QA / QC" on the entries' dates (60 €/h), no longer the job-title rate (95 €/h).
+      '6.0 h × 60 €/h = 360 € de coût réel → Main-d’œuvre · Lot 1.4 Steel structure',
       'Position dans le plan', 'Activité', 'Lot de travaux', '1.4 Steel structure', 'Fin de l’activité', '09 oct.', 'Flottement total', '-27 j',
       'Avancement de l’activité', '72%', 'Sur le chemin critique', 'Ouvrir l’activité dans le plan', 'Marquer terminé',
     ])
@@ -197,7 +198,8 @@ describe('Task detail render', () => {
     expect(tx).toContain('No checklist yet');
     expect(tx).toContain('— (complete)');
     expect(tx).toContain('28 Aug A');
-    expect(tx).toContain('4.5 h × €95/h = €428 actual cost → Labor · WP 1.5 Crane installation');
+    // A-10 (R-083): logged hours without time entries are valued at the assignee's grid rate in force today (60 €/h, was 95).
+    expect(tx).toContain('4.5 h × €60/h = €270 actual cost → Labor · WP 1.5 Crane installation');
     expect(tx).not.toContain('On the critical path');
     tx = text(await task('t-2318'));
     expect(tx).toContain('0 of 3 done');

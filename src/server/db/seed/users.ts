@@ -25,3 +25,35 @@ export async function backfillDemoUsers(tx: Tx): Promise<void> {
     if (p && !p.email && persona.email) await tx.update(persons).set({ email: persona.email }).where(eq(persons.id, u.personId));
   }
 }
+
+// ── Delivery 8 (R-044): the Finance persona's user ─────────────────────────────────────────────────────────────────
+
+/**
+ * The demo user of the Finance persona (Léa Marchand, "Cost controller", Controls & planning — src/config/personas.ts), created
+ * apart from the prototype's PERSONAS (which has no Finance persona): on a fresh demo seed after the persona users, and once on
+ * a demo database seeded earlier (users.role is plain text: no migration). Idempotent: nothing happens when the persona user
+ * exists, when the person is missing, or when the person already has a user (a real account signed in with Entra ID).
+ * Returns the new user's id, null when nothing was created.
+ */
+export async function seedFinanceUser(tx: Tx): Promise<string | null> {
+  const persona = PERSONA_BY_ROLE.finance;
+  const [existing] = await tx.select({ id: users.id }).from(users).where(eq(users.personaRole, 'finance'));
+  if (existing) return null;
+  const [p] = await tx.select({ id: persons.id, departmentId: persons.departmentId, email: persons.email }).from(persons).where(eq(persons.fullName, persona.name));
+  if (!p) return null;
+  const [own] = await tx.select({ id: users.id }).from(users).where(eq(users.personId, p.id));
+  if (own) return null;
+  const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${users.sortOrder}), 0)::int` }).from(users);
+  const [u] = await tx
+    .insert(users)
+    .values({ personaRole: 'finance', roles: ['finance'], personId: p.id, title: persona.title, email: persona.email, departmentId: p.departmentId, sortOrder: pos + 1 })
+    .returning({ id: users.id });
+  if (!p.email && persona.email) await tx.update(persons).set({ email: persona.email }).where(eq(persons.id, p.id));
+  return u.id;
+}
+
+/** The Finance persona's user is missing on this (demo) database. */
+export async function financeUserToBackfill(q: DB | Tx): Promise<boolean> {
+  const [u] = await q.select({ id: users.id }).from(users).where(eq(users.personaRole, 'finance'));
+  return !u;
+}

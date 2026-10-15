@@ -162,15 +162,17 @@ describe('data access and gating', () => {
     expect(await getContractHeader('HLT-026')).toEqual({ reference: 'CTR-HLT-001', paymentTerms: 'Net 45 days' });
   });
 
-  it('outside-workspace roles = the prototype for the 8 personas (contract: director, PM, procurement; billing: director, PM)', () => {
+  it('outside-workspace roles = the prototype for the 8 personas (contract: director, PM — procurement since P-4 no more; billing: director, PM)', () => {
     for (const role of ['director', 'pm', 'procurement', 'client', 'depthead', 'member', 'englead', 'quality'] as RoleKey[])
       for (const screen of ['contract', 'billing'] as const)
         for (const lang of ['en', 'fr'] as const) {
           const g = G.scenarios[`${role === 'director' ? 'seed' : role}|${screen}|${lang}`];
+          // P-4 (R-044): procurement no longer has the Contract screen — the prototype's procurement scenario is overridden.
+          const p4 = role === 'procurement' && screen === 'contract' ? false : null;
           // HLT-026 is never read-only for these personas, so the edit rights are the workspace rule alone.
-          expect([role, screen, !isOutside(role, screen)]).toEqual([role, screen, g.ctrCanEdit]);
+          expect([role, screen, !isOutside(role, screen)]).toEqual([role, screen, p4 ?? g.ctrCanEdit]);
           // The header primary of the prototype (`hasPrimary`) follows the same rule (Billing: a milestone is still planned).
-          expect([role, screen, !isOutside(role, screen)]).toEqual([role, screen, g.hasPrimary]);
+          expect([role, screen, !isOutside(role, screen)]).toEqual([role, screen, p4 ?? g.hasPrimary]);
           // Outside viewers still see the figures.
           expect(g.kpis.length).toBe(screen === 'contract' ? 4 : 5);
         }

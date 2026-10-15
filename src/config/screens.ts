@@ -11,7 +11,8 @@ import {
   Strategy, TreeStructure, Truck, UserList, UsersFour, UsersThree, Warehouse, Wrench,
 } from '@phosphor-icons/react/dist/ssr';
 
-export type RoleKey = 'director' | 'pm' | 'depthead' | 'member' | 'englead' | 'quality' | 'procurement' | 'client';
+// R-044 (P-4, P-12 c, C-9): 'finance' — contract, billing (read), the rate grid and the budget rate.
+export type RoleKey = 'director' | 'pm' | 'depthead' | 'member' | 'englead' | 'quality' | 'procurement' | 'finance' | 'client';
 
 export type ScreenId =
   | 'home' | 'myprojects' | 'client' | 'mywork' | 'task' | 'myapprovals' | 'docs'

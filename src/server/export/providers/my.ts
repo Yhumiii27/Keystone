@@ -6,7 +6,6 @@ import { DEFAULT_PROJECT } from '@/config/screens';
 import { inboxView, kpiTexts, APPROVAL_KIND_LABEL } from '@/domain/approvals';
 import { HEALTH_LABEL } from '@/domain/health';
 import { renderTxt } from '@/domain/home';
-import { laborCost } from '@/domain/tasks';
 import { getApprovalInbox } from '@/server/approvals';
 import { getHomeView } from '@/server/dal/home';
 import { getMyProjects } from '@/server/dal/portfolio';
@@ -107,8 +106,11 @@ async function taskWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> 
     [t('Activity'), a ? `${a.code} · ${dataText(a.name, ctx.lang)}` : '—'], [t('Status'), t(d.statusLabel)], [t('Priority'), t(d.priorityLabel)], [t('Start date'), t(d.start)],
     [t('Due'), t(d.due)], [t('Estimate (h)'), d.estimateH], [t('Logged (h)'), d.loggedH], [t('Progress'), `${d.pct}%`],
     // R-046 (NEW-D2-1): the hourly rate and the actual cost (hours × rate, which reveals the rate) only for the roles that see
-    // rates (director, PM) — as the task sheet.
-    ...(ctx.ratesMasked ? [] : ([[t('Hourly rate (€)'), d.costRate], [t('Actual cost (€)'), laborCost(d.loggedH, d.costRate)]] as [string, number][])),
+    // rates (director, PMs, Finance) — as the task sheet. R-083 (A-10): each entry at its person's rate on its date; the rate
+    // cell is empty when several rates apply, "Rate missing" when an hour has no rate.
+    ...(ctx.ratesMasked ? [] : ([
+      [t('Hourly rate (€)'), d.costNote.rate ?? ''], [t('Actual cost (€)'), d.costNote.missing || d.costNote.cost == null ? t('Rate missing') : d.costNote.cost],
+    ] as [string, string | number][])),
     [t('Description'), d.description ?? ''],
   ];
   return {

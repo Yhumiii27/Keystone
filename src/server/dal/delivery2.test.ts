@@ -8,7 +8,7 @@ import { openDatabase } from '@/server/db/open';
 import { PROTO } from '@/server/prototype';
 import { getChangeControl } from './changes';
 import { getContingency } from './contingency';
-import { getHoursReconciliation, getJobTitleRates, getLeaveCalendar, getRateCard, getSkillsMatrix, listPublicHolidays } from './hr';
+import { getHoursReconciliation, getLeaveCalendar, getRateCard, getSkillsMatrix, listPublicHolidays } from './hr';
 import { countUnreadNotifications, listActivity, listAudit, listNotifications } from './notifications';
 import { getDepartmentApprovals, listApprovalDepartments, listPendingForcedStageChanges, listRequestActivities, listResourceRequests } from './requests';
 import { getLaborCost, getProjectTeam, getResourcePool, getWhatIf, listDepartments } from './resources';
@@ -229,14 +229,18 @@ describe('tasks (10 §6–7)', () => {
     expect([...new Set(mine.map((t) => t.project.shortName))]).toEqual(['Harbor Line', 'Clinique Pasteur Lyon']);
   });
 
-  it('task sheet T-2314: description, checklist, comments, files, entries, cost rate', async () => {
+  it('task sheet T-2314: description, checklist, comments, files, entries, cost valuation', async () => {
     const t = (await getTask('T-2314'))!;
     expect(t.description).toBe(P.DESC['T-2314']);
     expect(t.checklistItems.map((i) => [i.text, i.done ? 1 : 0])).toEqual(P.CHECKS['T-2314']);
     expect(t.comments.map((c) => [c.author, c.when, c.text])).toEqual(P.COMMENTS['T-2314']);
     expect(t.attachments.map((f) => [f.name, f.meta, f.icon])).toEqual(P.FILES['T-2314']);
     expect(t.entries.map((e) => [e.dateText, e.hours, e.note])).toEqual(P.ENTRIES['T-2314']);
-    expect([t.costRate, t.activity?.code, t.activity?.wbs, t.activity?.packageName, t.priorityLabel, t.statusLabel]).toEqual([95, 'A1250', '1.4', 'Steel structure', 'High', 'In progress']);
+    // A-10 (R-083): the hours are valued at Hélène Sauvage's grid role "QA / QC" on each entry's date (60 €/h) — the prototype's
+    // job-title rate (RATES "QA / QC" 95 €/h) is retired: 6 h → 360 € (was 570 €).
+    expect([t.costNote, t.activity?.code, t.activity?.wbs, t.activity?.packageName, t.priorityLabel, t.statusLabel]).toEqual([
+      { cost: 360, rate: 60, missing: false, todayRate: 60 }, 'A1250', '1.4', 'Steel structure', 'High', 'In progress',
+    ]);
     expect((await getTask('T-2305'))!.attachments.map((f) => [f.name, f.meta, f.icon])).toEqual(P.FILES['T-2305']);
     expect((await getTask('T-2290'))!.checklist).toEqual({ done: 2, total: 2 });
     expect(await getTask('T-9999')).toBeNull();
@@ -244,15 +248,17 @@ describe('tasks (10 §6–7)', () => {
 });
 
 describe('HR (06 §2–5)', () => {
-  it('rate card: RATE_ROLES, MULTS; average internal 72,33 €/h; contractor premium +39 %; legacy RATES', async () => {
+  it('rate card: RATE_ROLES, MULTS (R-083: first versions from 1 Jan 2026); average internal 72,33 €/h; contractor premium +39 %', async () => {
     const rc = await getRateCard();
     expect(rc.roles.map((r) => [r.role, r.baseRateEur])).toEqual(P.RATE_ROLES);
     expect(rc.multipliers.map((m) => [m.key, m.label, m.factor])).toEqual(P.MULTS);
     const internal = rc.roles.filter((r) => !r.isExternal);
-    expect((internal.reduce((a, r) => a + r.baseRateEur, 0) / internal.length).toFixed(2)).toBe('72.33');
-    const rate = (n: string) => rc.roles.find((r) => r.role === n)!.baseRateEur;
+    expect((internal.reduce((a, r) => a + r.baseRateEur!, 0) / internal.length).toFixed(2)).toBe('72.33');
+    const rate = (n: string) => rc.roles.find((r) => r.role === n)!.baseRateEur!;
     expect(Math.round((rate('Contractor — structural (external)') / rate('Structural engineer') - 1) * 100)).toBe(39);
-    expect(await getJobTitleRates()).toEqual(P.RATES);
+    // R-083 (A-10): one dated grid — every rate and factor since 1 Jan 2026; the legacy job-title rates (RATES) are retired.
+    expect([...new Set([...rc.roles, ...rc.multipliers].map((r) => r.effectiveFrom))]).toEqual(['2026-01-01']);
+    expect((await getRateCard('2025-12-31')).roles.every((r) => r.baseRateEur === null)).toBe(true);
   });
 
   it('skills matrix: SKILL_LV, CERTS; 8 single-expert skills', async () => {

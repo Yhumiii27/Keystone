@@ -9,7 +9,7 @@ import type { FormDef, FormValues } from '@/components/app/form-def';
 import { Button } from '@/components/ds/Button';
 import { useI18n } from '@/i18n/client';
 import { addRateRoleAction, addSkillAction, importHoursAction, syncLuccaAction } from './actions';
-import { ADD_ROLE_FORM, ADD_SKILL_FORM, SYNC_LUCCA_FORM, importHoursForm } from './forms';
+import { ADD_SKILL_FORM, SYNC_LUCCA_FORM, addRoleForm, importHoursForm } from './forms';
 
 function AfButton({ label, form, onSubmit, context }: { label: string; form: FormDef; onSubmit: (v: FormValues) => ReturnType<typeof addSkillAction>; context?: string }) {
   const { t } = useI18n();
@@ -24,9 +24,9 @@ function AfButton({ label, form, onSubmit, context }: { label: string; form: For
   );
 }
 
-/** Rate cards — "Add role" (AF.rates). */
-export function AddRoleButton() {
-  return <AfButton label="Add role" form={ADD_ROLE_FORM} onSubmit={addRateRoleAction} />;
+/** Rate cards — "Add role" (AF.rates + R-083 "Effective from", defaulting to the date the card shows — translated text). */
+export function AddRoleButton({ effectiveFrom }: { effectiveFrom: string }) {
+  return <AfButton label="Add role" form={addRoleForm(effectiveFrom)} onSubmit={addRateRoleAction} />;
 }
 
 /** Skills matrix — "Add skill" (AF.skills). */

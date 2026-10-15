@@ -11,6 +11,7 @@ import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import { weekHoursOf } from './kpis';
 import { mainShortfall, peakWeekNumbers, unmetDemand, weekRangesText, type CapacityRow } from './resources';
 import { nextWeekEnd, spanText } from './tasks';
+import { skillCoverage as hrSkillCoverage } from './hr';
 
 // ── View model ───────────────────────────────────────────────────────────────────────────────────────────
 
@@ -656,15 +657,19 @@ export interface EngLeadInput {
   people: PersonLoad[];
 }
 
-/** Skill coverage (logic 4394): a skill family is a gap when fewer than 2 people are at level ≥ 4. */
+/**
+ * Skill coverage (logic 4394): a skill family is a gap when fewer than 2 people are at level ≥ 4. One definition with the Skills
+ * matrix (`skillCoverage` of src/domain/hr.ts, R-5b: no expert / a single expert).
+ */
 export function skillCoverage(skills: string[], people: PersonLoad[], levels: Record<string, number[]>) {
-  return skills.map((name, i) => {
-    const lv = people.map((p) => levels[p.name]?.[i] ?? 0);
-    const experts = lv.filter((v) => v >= 4).length;
-    const able = lv.filter((v) => v >= 3).length;
-    return { name, experts, able, gap: experts < 2, text: `${experts} expert${experts === 1 ? '' : 's'} · ${able} at level ≥3` };
-  });
+  return hrSkillCoverage(skills, people.map((p) => ({ name: p.name, levels: levels[p.name] ?? [] })));
 }
+
+/** R-5b: the watchlist sub-line names the case — no expert, or a single expert. */
+const skillGapSub = (c: { experts: number; able: number }): Txt =>
+  c.experts === 0
+    ? { tpl: 'No expert — {a} at level ≥3', p: { a: c.able } }
+    : { tpl: `Single expert — {e} expert${c.experts === 1 ? '' : 's'} · {a} at level ≥3`, p: { e: c.experts, a: c.able } };
 
 export function engLeadHome(i: EngLeadInput): HomeView {
   const ecos = i.ecos.map((e) => ({ ...e, status: ecoStatus(e) }));
@@ -695,7 +700,7 @@ export function engLeadHome(i: EngLeadInput): HomeView {
           .map((c) =>
             row(
               c.name,
-              { tpl: `Single expert — {e} expert${c.experts === 1 ? '' : 's'} · {a} at level ≥3`, p: { e: c.experts, a: c.able } },
+              skillGapSub(c),
               'Skill gap',
               TAG.outline,
               homeHref('skills'),

@@ -181,14 +181,16 @@ describe('tasks', () => {
 
 describe('HR and what-if', () => {
   it('rates, multipliers, roles and skills', async () => {
-    await setBaseRate('Structural engineer', 88, 'Léa Marchand');
-    await setMultiplier('sun', 2.1, 'Léa Marchand');
-    await addRateRole({ role: 'Commissioning engineer (external)', rateEur: 110, costCenter: 'Site', grade: 'Senior' }, 'Marie Lefebvre');
+    // R-083 (A-10, R-4a): dated versions, written by the director or Finance (P-12 c — the DAL re-checks the role).
+    const FINANCE = { name: 'Léa Marchand', role: 'finance' };
+    await setBaseRate('Structural engineer', 88, '2026-09-25', FINANCE);
+    await setMultiplier('sun', 2.1, '2026-09-25', FINANCE);
+    await addRateRole({ role: 'Commissioning engineer (external)', rateEur: 110, costCenter: 'Site', grade: 'Senior', effectiveFrom: '2026-09-25' }, { name: 'Marie Lefebvre', role: 'director' });
     const rc = await getRateCard();
     expect(rc.roles.find((r) => r.role === 'Structural engineer')!.baseRateEur).toBe(88);
     expect(rc.roles.at(-1)).toMatchObject({ role: 'Commissioning engineer (external)', isExternal: true, costCenter: 'Site', grade: 'Senior' });
     expect(rc.multipliers.find((m) => m.key === 'sun')!.factor).toBe(2.1);
-    expect((await listAudit({ limit: 3 })).map((a) => a.change)).toContain('Structural engineer base: 85 → 88 €/h');
+    expect((await listAudit({ limit: 3 })).map((a) => a.change)).toContain('Structural engineer base: 85 → 88 €/h from 25 Sep 2026');
     await addSkill({ name: 'Rope access', category: 'Safety' }, 'Marion Kerviel');
     const m = await getSkillsMatrix();
     expect(m.skills.at(-1)).toEqual({ name: 'Rope access', category: 'Safety' });
@@ -196,8 +198,11 @@ describe('HR and what-if', () => {
   });
 
   it('hours import and assignment', async () => {
-    await markHoursImported('HLT-026', {}, 'Romain Aubert');
-    await assignUnassignedHours('HLT-026', 0, '1.4', 'Romain Aubert');
+    // Delivery 8: the hours writers re-check the project rule with the actor (R-044: Finance reads Hours).
+    const PM = { name: 'Romain Aubert', role: 'pm' };
+    await expect(markHoursImported('HLT-026', {}, { name: 'Léa Marchand', role: 'finance' })).rejects.toThrow('Hours are read-only for you on this project');
+    await markHoursImported('HLT-026', {}, PM);
+    await assignUnassignedHours('HLT-026', 0, '1.4', PM);
     const h = (await getHoursReconciliation('HLT-026'))!;
     expect([h.importedText, h.unassigned[0].assignedWbs, h.unassigned[1].assignedWbs]).toEqual(['30 Sep 2026', '1.4', null]);
   });

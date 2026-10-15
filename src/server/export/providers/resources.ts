@@ -1,21 +1,22 @@
 // Export providers — Resources: Resources (pool load), Project resources, Resource requests, Approvals (department),
 // What-if levelling, Skills matrix, Leave & working calendar, Rate cards.
-// Rights as on screen: hourly rates and premium multipliers only for the roles that see rates (director, PM) — the
+// Rights as on screen: hourly rates and premium multipliers only for the roles that see rates (director, PMs, Finance) — the
 // columns are left out otherwise; requests are the viewer's own unless the screen shows them all (director, outside
 // the workspace); a client exports only its own projects' rows. Weekly loads are fractions (1 = 100 % of the hours).
-import { DEFAULT_PROJECT } from '@/config/screens';
 import { matchesFilter as matchesRequestFilter, isRequestFilter, isSentRequest, deptOfSlug, REQUEST_FILTERS } from '@/domain/requests';
-import { parseSkillFilter } from '@/domain/hr';
+import { parseEffectiveDate, parseSkillFilter } from '@/domain/hr';
+import { STATUS_ISO } from '@/server/db/codes';
 import { leverLabel, type WhatIfResult } from '@/domain/whatif';
 import { getRateCard, getLeaveCalendar, getSkillsMatrix } from '@/server/dal/hr';
 import { getProject } from '@/server/dal/projects';
 import { listResourceRequests, type ResourceRequestRow } from '@/server/dal/requests';
 import { departmentOfPerson, getApprovalsScreenData, listApprovalDepartmentsFull } from '@/server/dal/requests-screens';
-import { getLaborCost, getProjectTeam, getResourcePool, getWhatIf, listDepartments, type PoolPerson, type ResourceWeek } from '@/server/dal/resources';
+import { getLaborCost, getPortfolioLaborCost, getProjectTeam, getResourcePool, getWhatIf, listDepartments, type PoolPerson, type ResourceWeek } from '@/server/dal/resources';
+import { zoneLabel } from '@/server/dal/shell';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
 import { col, compact, filterLine, isoOf, kpiSheet, param, sheet } from './common';
-import { currentProjectCode, projectFilter } from './scope';
+import { projectFilter } from './scope';
 import { canViewDepartmentApprovals } from '@/domain/rights';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { dataText } from '@/i18n/data-text';
@@ -62,15 +63,19 @@ function loadKpis(ctx: ExportContext, people: PoolPerson[], openRequests: number
 // ── Resources (pool) ─────────────────────────────────────────────────────────────────────────────────────────────────
 async function resourcesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
-  const [pool, departments, pending, labor] = await Promise.all([getResourcePool(), listDepartments(), listResourceRequests({ status: 'pending' }), currentProjectCode(ctx, DEFAULT_PROJECT).then((c) => (c ? getLaborCost(c) : null))]);
+  // R-086 (R-2 a): the labour cost of the projects in execution of the displayed zone, as on screen.
+  const [pool, departments, pending, labor, zoneText] = await Promise.all([
+    getResourcePool(), listDepartments(), listResourceRequests({ status: 'pending' }), getPortfolioLaborCost(ctx.zone), zoneLabel(ctx.zone),
+  ]);
   const caps = departments.filter((d) => d.capacityH != null && d.demandH != null).sort((a, b) => (a.capacityPosition ?? 0) - (b.capacityPosition ?? 0));
   return {
     title: t('Resources'),
+    filters: [`${t('Zone')}: ${t(zoneText || 'All zones')}`],
     sheets: [
       loadSheet(ctx, t('Weekly load'), pool.weeks, pool.people),
       sheet(t('Department capacity'), [col('department', t('Department'), 'text', 22), col('head', t('Head'), 'text', 18), col('capacity', t('Capacity (h)'), 'integer'), col('demand', t('Demand (h)'), 'integer'), col('gap', t('Gap (h)'), 'integer')],
         caps.map((d) => ({ department: t(d.name), head: d.head?.name ?? '', capacity: d.capacityH, demand: d.demandH, gap: (d.demandH ?? 0) - (d.capacityH ?? 0) }))),
-      loadKpis(ctx, pool.people, pending.length, labor),
+      loadKpis(ctx, pool.people, pending.length, labor.projects.length ? { name: t('Labor'), budget: labor.budget, actual: labor.actual } : null),
     ],
   };
 }
@@ -219,18 +224,25 @@ async function leaveWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
 
 async function ratesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
-  const card = await getRateCard();
+  // R-083 (A-10): the grid in force on the card's date (`?on=`, default the business date) and every dated version.
+  const on = parseEffectiveDate(param(ctx, 'on')) ?? STATUS_ISO;
+  const card = await getRateCard(on);
   const masked = ctx.ratesMasked;
   return {
     title: t('Rate cards'),
-    filters: masked ? [t('Rates are visible to directors and project managers only')] : [],
+    filters: [`${t('Rates in force on')}: ${on}`, ...(masked ? [t('Rates are visible to the director, project managers and Finance only — switch role (bottom-left) to see them.')] : [])],
     sheets: [
       sheet(t('Rate cards'), [
         col('role', t('Role'), 'text', 26), ...(masked ? [] : [col('rate', t('Hourly rate'), 'money_eur')]), col('external', t('External'), 'boolean'), col('costCenter', t('Cost centre'), 'text', 12),
-        col('grade', t('Grade'), 'text', 8), col('from', t('Effective from'), 'date'),
-      ], card.roles.map((r) => ({ role: dataText(r.role, ctx.lang), rate: masked ? null : r.baseRateEur, external: r.isExternal, costCenter: r.costCenter ?? '', grade: r.grade ?? '', from: r.effectiveFrom }))),
-      sheet(t('Premium multipliers'), [col('label', t('Premium'), 'text', 30), ...(masked ? [] : [col('factor', t('Multiplier'), 'number', 10, { decimals: 2 })])],
-        card.multipliers.map((m) => ({ label: t(m.label), factor: masked ? null : m.factor }))),
+        col('grade', t('Grade'), 'text', 8), ...(masked ? [] : [col('from', t('Effective from'), 'date')]),
+      ], card.roles.map((r) => ({ role: dataText(r.role, ctx.lang), rate: masked ? null : r.baseRateEur, external: r.isExternal, costCenter: r.costCenter ?? '', grade: r.grade ?? '', from: masked ? null : r.effectiveFrom }))),
+      sheet(t('Premium multipliers'), [col('label', t('Premium'), 'text', 30), ...(masked ? [] : [col('factor', t('Multiplier'), 'number', 10, { decimals: 2 }), col('from', t('Effective from'), 'date')])],
+        card.multipliers.map((m) => ({ label: t(m.label), factor: masked ? null : m.factor, from: masked ? null : m.effectiveFrom }))),
+      // R-083: every version of the grid (none for the roles that may not see rates — R-046).
+      ...(masked ? [] : [sheet(t('Rate history'), [col('item', t('Role or premium'), 'text', 30), col('from', t('Effective from'), 'date'), col('value', t('Rate or factor'), 'number', 10, { decimals: 2 })], [
+        ...card.roles.flatMap((r) => r.versions.map((v) => ({ item: dataText(r.role, ctx.lang), from: v.effectiveFrom, value: v.value }))),
+        ...card.multipliers.flatMap((m) => m.versions.map((v) => ({ item: t(m.label), from: v.effectiveFrom, value: v.value }))),
+      ])]),
     ],
   };
 }

@@ -1032,6 +1032,8 @@ export const REFERENCE_LIST_KEYS: readonly ReferenceListKey[] = ['skills', 'cost
 /** Project health thresholds (SETTINGS0.health): at risk below 0.97, off track below 0.90. */
 export const HEALTH_DEFAULTS = { risk: 0.97, off: 0.9 } as const;
 export const APP_SETTING_HEALTH = 'health.thresholds';
+/** R-088 (R-6b): the hours-variance threshold { pct } (default and bounds: src/domain/hr.ts HOURS_VARIANCE_*). */
+export const APP_SETTING_HOURS_VARIANCE = 'hours.variance';
 
 /** Slug of a free label (custom Settings entries, custom machine types): "Permits & fees" → "permits_fees". */
 export const slugOf = (label: string) =>

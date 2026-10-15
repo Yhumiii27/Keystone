@@ -36,6 +36,11 @@ const RULES: [RegExp, (t: T, ...m: string[]) => string][] = [
   ],
   // Assign toast.
   [/^(\d+(?:[.,]\d+)?) h assigned to (.+)$/, (t, _s, h, wp) => `${h.replace('.', ',')} h affectées à ${t(wp)}`],
+  // R-083: dated rates on the rate card ("since 1 Jan 2026", "70 € from 1 Nov 2026", "×1.5 from 1 Jan 2027").
+  [/^since (\d{1,2} \w{3} \d{4})$/, (t, _s, d) => `depuis le ${t(d)}`],
+  [/^(.+) from (\d{1,2} \w{3} \d{4})$/, (t, _s, v, d) => `${v} à partir du ${t(d)}`],
+  // R-083: Hours KPI — lines whose person has no rate on the import's month.
+  [/^(\d+) lines not valued$/, (_t, _s, n) => `${n} lignes non valorisées`],
 ];
 
 /** t() extended with the HR screens' FR forms. */

@@ -42,8 +42,13 @@ export interface ResourcesInput {
   people: ResourcePerson[];
   /** Portfolio: department capacity vs demand over the window (ROLES order). Ignored for a project (derived from the team). */
   departments: CapacityRow[];
-  /** Labour cost category of the current project (first /labor|staff/i category), null when none. */
+  /**
+   * "Labor cost to date": portfolio — Σ labour categories of the projects in execution of the displayed zone (R-086, R-2 a);
+   * project — the project's labour categories. Null when none.
+   */
   labor: { budget: number; actual: number } | null;
+  /** Portfolio scope: EN label of the displayed zone ('' or null = all zones), named in the sub-line (R-086). */
+  zoneLabel?: string | null;
   /** Pending resource requests (all projects, or the project's). */
   openRequests: number;
   /**
@@ -158,7 +163,10 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
     {
       label: t('Labor cost to date'),
       value: input.labor ? money(input.labor.actual, lang) : '—',
-      sub: share != null ? t(`${share}% of labor budget`) : '',
+      // R-086: the portfolio figure names its zone (Resources has no zone bar: the zone is the one chosen on the zone screens).
+      sub: isProject
+        ? (share != null ? t(`${share}% of labor budget`) : '')
+        : [share != null ? t(`${share}% of labor budget`) : '', t(input.zoneLabel || 'All zones')].filter(Boolean).join(' · '),
       color: OK,
     },
     { label: t('Open requests'), value: String(input.openRequests), sub: t(isProject ? 'Awaiting department approval' : 'Across all projects'), color: OK },

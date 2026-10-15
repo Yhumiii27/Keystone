@@ -23,8 +23,9 @@ import { useToast } from '@/components/ds/Toast';
 import { cx } from '@/components/ds/cx';
 import {
   PCT_STEPS, TASK_PRIORITY_LABEL, TASK_STATUSES, TASK_STATUS_LABEL, applyProgress, applyStatus, checklistCounts, checklistPct, floatText,
-  hoursBar, isCritical, laborCost, parseHours, type TaskStatus,
+  hoursBar, isCritical, parseHours, type TaskStatus,
 } from '@/domain/tasks';
+import { liveTaskCost } from '@/domain/hr';
 import { useI18n } from '@/i18n/client';
 import { TODAY, dayLabel } from '@/lib/format';
 import type { AttachmentKind } from '@/server/db/codes';
@@ -517,7 +518,7 @@ function ProgressCard() {
         </form>
       )}
       <span className={s.costNote}>
-        {costNoteText(live.loggedH, data.costRate, data.costRate == null ? 0 : laborCost(live.loggedH, data.costRate), data.costTarget, data.projectName, t, lang)}
+        {costNoteText(live.loggedH, data.costNote && liveTaskCost(data.costNote, live.loggedH - data.loggedH), data.costTarget, data.projectName, t, lang)}
       </span>
     </div>
   );

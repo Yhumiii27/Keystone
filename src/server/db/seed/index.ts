@@ -26,12 +26,12 @@ import { seedPortfolio } from './portfolio';
 import { seedPrioritisation } from './prioritisation';
 import { seedPurchasing } from './purchasing';
 import { seedQuality } from './quality';
-import { seedResources } from './resources';
+import { seedRateMultipliers, seedResources } from './resources';
 import { seedSettings, seedSettingsDefaults } from './settings';
 import { seedSite } from './site';
 import { seedStock } from './stock';
 import { demoReferentsToBackfill, seedDemoReferents } from './project-team';
-import { backfillDemoUsers, demoUsersToBackfill } from './users';
+import { backfillDemoUsers, demoUsersToBackfill, financeUserToBackfill, seedFinanceUser } from './users';
 import { seedVigie, seedVigieQuality } from './vigie';
 import { seedWork } from './work';
 import { readSeedRecord, writeSeedRecord } from './mode';
@@ -106,6 +106,10 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
   if (record || n > 0) {
     if ((record?.mode ?? 'demo') !== 'demo') {
       // ── Delivery 8 · production backfills · roles-rates-hr ──
+      // R-178: the premium multipliers (placeholders to confirm) of a production database seeded before delivery 8. Idempotent:
+      // only missing keys are added, an edited factor is never overwritten; here rather than in a SQL migration (PostgreSQL gets
+      // it through db:migrate, which seeds after migrating).
+      await db.transaction(async (tx) => seedRateMultipliers(tx)).catch((e) => logError('Delivery 8 rate multipliers backfill', e, { component: 'seed' }));
       return false;
     }
     const [{ c }] = await db.select({ c: sql<number>`count(*)::int` }).from(parts);
@@ -135,6 +139,10 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     }
     // ── Delivery 8 · demo backfills · cost-change ──
     // ── Delivery 8 · demo backfills · roles-rates-hr ──
+    // R-044: the Finance persona's user on a demo database seeded before delivery 8 (idempotent).
+    if (await financeUserToBackfill(db)) {
+      await db.transaction(async (tx) => seedFinanceUser(tx)).catch((e) => logError('Delivery 8 Finance user backfill', e, { component: 'seed' }));
+    }
     // ── Delivery 8 · demo backfills · connectors ──
     // Databases seeded before delivery 7 adopt their (demo) record.
     if (!record) await writeSeedRecord(db, 'demo').catch((e) => logError('Seed record', e, { component: 'seed' }));

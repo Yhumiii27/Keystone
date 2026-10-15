@@ -3,6 +3,8 @@
 // (FormDialog, `translate`) and the Server Functions. Labels are the prototype's English source strings; select
 // values are stable codes.
 import type { FormDef, FormValues } from '@/components/app/form-def';
+import { parseDateInput } from '@/domain/contract';
+import { parseEffectiveDate } from '@/domain/hr';
 
 type Opt<C extends string> = { value: C; label: string };
 
@@ -34,6 +36,18 @@ export const ADD_ROLE_FORM: FormDef = {
     { id: 'grade', label: 'Grade', type: 'select', options: GRADES },
   ],
 };
+
+/**
+ * R-083 (A-10, R-4a): "Add role" with the explicit date the role's first rate takes effect — the prototype's form plus an
+ * "Effective from" field defaulting to the date the rate card shows (the business date unless another one is chosen).
+ * `defaultDate` = that date as shown ("25 Sep 2026", translated).
+ */
+export function addRoleForm(defaultDate: string): FormDef {
+  return {
+    ...ADD_ROLE_FORM,
+    fields: [...ADD_ROLE_FORM.fields, { id: 'from', label: 'Effective from', type: 'text', required: true, defaultValue: defaultDate, placeholder: 'e.g. 1 Nov 2026' }],
+  };
+}
 /** AF_RESULT.rates */
 export const ADD_ROLE_RESULT = 'Role added to the rate card';
 
@@ -47,14 +61,7 @@ export const SKILL_CATEGORIES: Opt<SkillCategory>[] = [
   { value: 'management', label: 'Management' },
   { value: 'safety', label: 'Safety' },
 ];
-/** "Levels" scale of the form (not stored: the matrix rates every skill 1–5 — 06 OQ8). */
-export type SkillScale = '1_4' | '1_3' | 'yes_no';
-export const SKILL_SCALES: Opt<SkillScale>[] = [
-  { value: '1_4', label: '1–4' },
-  { value: '1_3', label: '1–3' },
-  { value: 'yes_no', label: 'Yes / No' },
-];
-
+// R-5a (R-087): one 1–5 scale for every skill — the prototype's "Levels" field (1–4, 1–3, Yes / No; never stored) is removed.
 export const ADD_SKILL_FORM: FormDef = {
   title: 'Add skill',
   submit: 'Add skill',
@@ -62,7 +69,6 @@ export const ADD_SKILL_FORM: FormDef = {
   fields: [
     { id: 'name', label: 'Skill', type: 'text', required: true },
     { id: 'cat', label: 'Category', type: 'select', options: SKILL_CATEGORIES },
-    { id: 'levels', label: 'Levels', type: 'select', options: SKILL_SCALES },
   ],
 };
 /** AF_RESULT.skills */
@@ -167,6 +173,8 @@ export interface AddRoleInput {
   rateEur: number;
   costCenter: CostCenter;
   grade: Grade;
+  /** ISO date the first rate takes effect (R-083). */
+  effectiveFrom: string;
 }
 
 export function parseAddRole(values: FormValues | unknown, existing: string[] = []): Parse<AddRoleInput> {
@@ -181,13 +189,15 @@ export function parseAddRole(values: FormValues | unknown, existing: string[] = 
   if (!costCenter) return { ok: false, error: 'Unknown cost center' };
   const grade = pick(GRADES, str(v.grade));
   if (!grade) return { ok: false, error: 'Unknown grade' };
-  return { ok: true, value: { role, rateEur: rate.value, costCenter, grade } };
+  // R-083: an explicit effective date ("1 Nov 2026", "1 nov. 2026", "01/11/2026" or ISO).
+  const effectiveFrom = parseEffectiveDate(parseDateInput(str(v.from)));
+  if (!effectiveFrom) return { ok: false, error: 'Enter a valid effective date' };
+  return { ok: true, value: { role, rateEur: rate.value, costCenter, grade, effectiveFrom } };
 }
 
 export interface AddSkillInput {
   name: string;
   category: SkillCategory;
-  scale: SkillScale;
 }
 
 export function parseAddSkill(values: FormValues | unknown, existing: string[] = []): Parse<AddSkillInput> {
@@ -198,9 +208,7 @@ export function parseAddSkill(values: FormValues | unknown, existing: string[] =
   if (existing.some((s) => s.toLowerCase() === name.toLowerCase())) return { ok: false, error: 'This skill is already in the matrix' };
   const category = pick(SKILL_CATEGORIES, str(v.cat));
   if (!category) return { ok: false, error: 'Unknown category' };
-  const scale = pick(SKILL_SCALES, str(v.levels));
-  if (!scale) return { ok: false, error: 'Unknown level scale' };
-  return { ok: true, value: { name, category, scale } };
+  return { ok: true, value: { name, category } };
 }
 
 export interface SyncLuccaInput {

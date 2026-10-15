@@ -55,7 +55,8 @@ describe('shell badges (golden values, docs/spec/01 §4.3–4.4)', () => {
   it("My approvals badge = the viewer's inbox (myapprovals providers, HLT-026)", async () => {
     // The quality manager heads Quality (RQ-042) and is the next Codex approver of RPT-HLT-014, besides the
     // BL-2026-0521 delivery QC: 3 items where the prototype's fixed routing gave 1 (docs/spec/08 §7, myapprovals report).
-    const want: Record<RoleKey, number> = { director: 5, pm: 3, depthead: 2, member: 0, englead: 0, quality: 3, procurement: 5, client: 3 };
+    // R-044: Finance has no My approvals kind (no approvals inbox, no screen in its workspace).
+    const want: Record<RoleKey, number> = { director: 5, pm: 3, depthead: 2, member: 0, englead: 0, quality: 3, procurement: 5, finance: 0, client: 3 };
     for (const [role, n] of Object.entries(want)) {
       expect([role, await approvalCount(PERSONA_BY_ROLE[role as RoleKey], 'HLT-026')]).toEqual([role, n]);
       expect([role, (await projectBadges(role as RoleKey, 'HLT-026')).myapprovals]).toEqual([role, n ? String(n) : '']);
@@ -79,7 +80,8 @@ describe('shell badges (golden values, docs/spec/01 §4.3–4.4)', () => {
 
 describe('notifications (docs/spec/01 §5.5)', () => {
   it('initial unread counts per role', async () => {
-    const want: Record<RoleKey, number> = { director: 3, pm: 4, depthead: 1, member: 2, englead: 1, quality: 1, procurement: 1, client: 1 };
+    // R-044: no notification audience for Finance.
+    const want: Record<RoleKey, number> = { director: 3, pm: 4, depthead: 1, member: 2, englead: 1, quality: 1, procurement: 1, finance: 0, client: 1 };
     for (const [role, n] of Object.entries(want)) expect([role, (await notificationsFor(role as RoleKey)).filter((x) => !x.read).length]).toEqual([role, n]);
   });
 

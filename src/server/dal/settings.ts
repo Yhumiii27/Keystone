@@ -10,12 +10,13 @@ import 'server-only';
 import { and, asc, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import {
-  APP_SETTING_HEALTH, REFERENCE_LIST_KEYS, locationType, slugOf,
+  APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, REFERENCE_LIST_KEYS, locationType, slugOf,
   type LocationType, type ReferenceListKey,
 } from '@/server/db/codes';
 import { SETTINGS_CARDS } from '@/domain/admin';
+import { isHoursVariancePct } from '@/domain/hr';
 import {
-  APP_SETTING_DEFAULTS, defaultsOfList, fallbackSettingsDefaults, holidayCode, parseSettingsDefaults, type SettingsDefaults,
+  APP_SETTING_DEFAULTS, defaultHoursVariance, defaultsOfList, fallbackSettingsDefaults, holidayCode, parseSettingsDefaults, type SettingsDefaults,
 } from '@/domain/settings-defaults';
 import {
   CUSTOM_STATUSES_ALLOWED, CUSTOM_STATUS_REFUSED, HOLIDAY_DATE_TAKEN, REQUIRED_STAGES, REQUIRED_STAGE_REFUSED, SETTINGS_DIRECTOR_ONLY, canEditSettings, removalModeOf,
@@ -24,6 +25,7 @@ import {
 import { appSettings, referenceValues, skills, storageLocations } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 import { readHealthThresholds } from './health-thresholds';
+import { readHoursVariance } from './hours-variance';
 import { requireWorkspace, requiredText, trace, whoIs, type Actor } from './ops-common';
 import { referenceUsage } from './settings-lists';
 
@@ -36,11 +38,15 @@ export type { Actor };
 export interface ReferenceValueRow { code: string; label: string }
 export interface LocationRow { name: string; type: LocationType; typeLabel: string }
 export interface HealthThresholds { risk: number; off: number }
+/** R-088: refusal of an hours-variance threshold out of range (EN source; FR in d8-roles-rates-hr.json). */
+export const HOURS_VARIANCE_RANGE = 'Enter a whole percentage between 1 and 50';
 
 export interface SettingsData {
   lists: Record<ReferenceListKey, ReferenceValueRow[]>;
   locations: LocationRow[];
   health: HealthThresholds;
+  /** R-088 (R-6b): the hours-variance threshold, % of planned (default 10). */
+  hoursVariance: number;
 }
 
 /** Active values of one list, in order. */
@@ -58,13 +64,14 @@ export async function getHealthThresholds(): Promise<HealthThresholds> {
 /** Everything the Settings screen shows. */
 export async function getSettings(): Promise<SettingsData> {
   const db = await getDb();
-  const [values, locs, health] = await Promise.all([
+  const [values, locs, health, hoursVariance] = await Promise.all([
     db.select().from(referenceValues).where(eq(referenceValues.active, true)).orderBy(asc(referenceValues.position)),
     db.select().from(storageLocations).where(eq(storageLocations.active, true)).orderBy(asc(storageLocations.position)),
     getHealthThresholds(),
+    readHoursVariance(),
   ]);
   const lists = Object.fromEntries(REFERENCE_LIST_KEYS.map((k) => [k, values.filter((v) => v.listKey === k).map((v) => ({ code: v.code, label: v.label }))])) as Record<ReferenceListKey, ReferenceValueRow[]>;
-  return { lists, locations: locs.map((l) => ({ name: l.name, type: l.type, typeLabel: locationType.label(l.type) })), health };
+  return { lists, locations: locs.map((l) => ({ name: l.name, type: l.type, typeLabel: locationType.label(l.type) })), health, hoursVariance };
 }
 
 /** Writers: the Settings workspace, and only the roles that edit Settings (A-14: the portfolio director). */
@@ -195,6 +202,31 @@ export async function setHealthThresholds(input: Partial<HealthThresholds>, acto
 }
 
 /**
+ * R-088 (R-6b): the hours-variance threshold — an integer % of the planned hours, 1–50 (A-14: the portfolio director). Audit and
+ * activity "Hours variance threshold: ±10 % → ±7 %". Returns the stored value.
+ */
+export async function setHoursVariance(pct: unknown, actor: Actor): Promise<number> {
+  ST(actor);
+  if (!isHoursVariancePct(pct)) throw new Error(HOURS_VARIANCE_RANGE);
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    // Read inside the transaction (R-010: it may run again; nothing accumulates outside it).
+    const cur = await readHoursVariance(tx);
+    if (cur === pct) return cur;
+    const who = await whoIs(tx, actor);
+    const value = { pct };
+    await tx.insert(appSettings).values({ key: APP_SETTING_HOURS_VARIANCE, value, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
+    const change = `±${cur} % → ±${pct} %`;
+    await trace(tx, who, {
+      objectRef: 'Hours variance threshold', change, area: 'Settings', entityType: 'app_setting',
+      activity: { text: `Hours variance threshold ${change}`, kind: 'change' },
+    });
+    return pct;
+  });
+}
+
+/**
  * The stored "Reset to defaults" document (R-170: app_settings "settings.defaults", written with the reference data);
  * null when none is stored or it does not validate.
  */
@@ -242,6 +274,10 @@ export async function resetSettings(actor: Actor): Promise<void> {
     const health = { ...defaults.health };
     await tx.insert(appSettings).values({ key: APP_SETTING_HEALTH, value: health, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
       .onConflictDoUpdate({ target: appSettings.key, set: { value: health, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
+    // R-088: the hours-variance threshold (a document stored before delivery 8 has none: the default 10 %).
+    const hours = { pct: defaultHoursVariance(defaults) };
+    await tx.insert(appSettings).values({ key: APP_SETTING_HOURS_VARIANCE, value: hours, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value: hours, updatedAt: new Date(), updatedByName: who.who, updatedByPersonId: who.personId } });
     await trace(tx, who, { objectRef: 'Settings', change: 'reset to defaults', area: 'Settings', activity: { text: 'Reset the settings lists to their defaults', kind: 'change' } });
   });
 }

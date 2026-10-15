@@ -39,6 +39,8 @@ const P: [RoleKey, string, string, string, string | null][] = [
   ['englead', 'Antoine Girard', 'Engineering lead', 'antoine.girard@epc2i.fr', null],
   ['quality', 'Gabriel Comte', 'Quality manager', 'gabriel.comte@epc2i.fr', 'Quality'],
   ['procurement', 'Fabien Bertrand', 'Procurement & stock', 'fabien.bertrand@epc2i.fr', 'Controls & planning'],
+  // R-044 (P-4, P-12 c): the Finance persona — the cost controller of the resource pool (no prototype persona).
+  ['finance', 'Léa Marchand', 'Cost controller', 'lea.marchand@epc2i.fr', 'Controls & planning'],
   ['client', 'Nadia Bensaïd', 'Client — Port authority', 'n.bensaid@port-lehavre.fr', null],
 ];
 

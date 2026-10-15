@@ -1,4 +1,4 @@
-// HR Server Functions against an in-memory database: permission gates (rates: director/pm; outside the workspace;
+// HR Server Functions against an in-memory database: permission gates (rates: director and Finance — P-12 c; outside the workspace;
 // project read-only on Hours), validation, writes through the DAL (audit actor = the viewer) and toasts.
 // Session and access helpers are mocked; the gating rules use the real role matrix.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -43,40 +43,59 @@ describe('HR Server Functions', () => {
     vi.mocked(revalidatePath).mockClear();
   });
 
-  it('rate card: director/pm only; NaN-free validation; audit row by the viewer; revalidates /resources/rates', async () => {
+  it('rate card (P-12 c, R-044): the director and Finance edit, PMs read; NaN-free validation; dated versions; audit by the viewer', async () => {
+    const ON = '2026-09-25';
+    const REFUSED = { error: 'Rates are edited by the portfolio director and Finance' };
     as('member', 'Julien Wagner');
-    expect(await setBaseRateAction('Planner', 80)).toEqual({ error: 'Rates are visible to directors and project managers only' });
+    expect(await setBaseRateAction('Planner', 80, ON)).toEqual(REFUSED);
     as('depthead', 'Marion Kerviel');
-    expect(await setMultiplierAction('sun', 2.5)).toEqual({ error: 'Rates are visible to directors and project managers only' });
+    expect(await setMultiplierAction('sun', 2.5, ON)).toEqual(REFUSED);
+    // P-12 (c): the PMs read the grid (they edited it before delivery 8).
     as('pm', 'Romain Aubert');
-    expect(await setBaseRateAction('Planner', -5)).toEqual({ error: 'Hourly rate out of range' });
-    expect(await setBaseRateAction('Nobody', 80)).toEqual({ error: 'Invalid request' });
-    expect(await setBaseRateAction('Planner', 80)).toEqual({ ok: true, value: 80 });
-    expect(await setMultiplierAction('sun', 2.5)).toEqual({ ok: true, value: 2.5 });
-    expect(await setMultiplierAction('xx', 2)).toEqual({ error: 'Invalid request' });
-    const card = await getRateCard();
-    expect(card.roles.find((r) => r.role === 'Planner')!.baseRateEur).toBe(80);
-    expect(card.multipliers.find((m) => m.key === 'sun')!.factor).toBe(2.5);
-    expect(revalidatePath).toHaveBeenCalledWith('/resources/rates');
+    expect(await setBaseRateAction('Planner', 80, ON)).toEqual(REFUSED);
+    expect(await setMultiplierAction('sun', 2.5, ON)).toEqual(REFUSED);
+    as('finance', 'Léa Marchand');
+    expect(await setBaseRateAction('Planner', -5, ON)).toEqual({ error: 'Hourly rate out of range' });
+    expect(await setBaseRateAction('Nobody', 80, ON)).toEqual({ error: 'Invalid request' });
+    expect(await setBaseRateAction('Planner', 80, 'yesterday')).toEqual({ error: 'Enter a valid effective date' });
+    expect(await setBaseRateAction('Planner', 80, '2026-02-30')).toEqual({ error: 'Enter a valid effective date' });
+    expect(await setBaseRateAction('Planner', 80, ON)).toEqual({ ok: true, value: 80 });
+    expect(await setMultiplierAction('sun', 2.5, ON)).toEqual({ ok: true, value: 2.5 });
+    expect(await setMultiplierAction('xx', 2, ON)).toEqual({ error: 'Invalid request' });
+    // R-083: the new versions apply from 25 Sep 2026; the seed grid (1 Jan 2026) still values the hours before.
+    const card = await getRateCard(ON);
+    expect(card.roles.find((r) => r.role === 'Planner')).toMatchObject({ baseRateEur: 80, effectiveFrom: ON });
+    expect(card.multipliers.find((m) => m.key === 'sun')).toMatchObject({ factor: 2.5, effectiveFrom: ON });
+    expect((await getRateCard('2026-09-24')).roles.find((r) => r.role === 'Planner')).toMatchObject({ baseRateEur: 74, effectiveFrom: '2026-01-01' });
+    expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
     const audit = await listAudit();
-    expect(audit.some((a) => a.who.includes('Aubert') && /Planner base: 74 → 80/.test(a.change))).toBe(true);
-    // restore the seed values
-    await setBaseRateAction('Planner', 74);
-    await setMultiplierAction('sun', 2);
+    expect(audit.some((a) => a.who.includes('Marchand') && a.change === 'Planner base: 74 → 80 €/h from 25 Sep 2026')).toBe(true);
+    // The director edits too; the same date updates the version instead of adding one.
+    as('director', 'Marie Lefebvre');
+    expect(await setBaseRateAction('Planner', 74, ON)).toEqual({ ok: true, value: 74 });
+    expect(await setMultiplierAction('sun', 2, ON)).toEqual({ ok: true, value: 2 });
+    expect((await getRateCard(ON)).roles.find((r) => r.role === 'Planner')!.versions.map((v) => v.effectiveFrom)).toEqual(['2026-01-01', ON]);
   });
 
-  it('Add role: appended to the rate card; duplicates refused', async () => {
-    expect(await addRateRoleAction({ role: 'Commissioning engineer', rate: '78', cc: 'site', grade: 'senior' })).toEqual({ toast: 'Role added to the rate card' });
-    const card = await getRateCard();
-    expect(card.roles.at(-1)).toMatchObject({ role: 'Commissioning engineer', baseRateEur: 78, isExternal: false, costCenter: 'site', grade: 'senior' });
-    expect(await addRateRoleAction({ role: 'commissioning ENGINEER', rate: '70' })).toEqual({ error: 'This role is already on the rate card' });
-    as('quality', 'Gabriel Comte');
-    expect(await addRateRoleAction({ role: 'Inspector', rate: '70' })).toEqual({ error: 'Rates are visible to directors and project managers only' });
+  it('Add role: appended to the rate card from its effective date; duplicates refused; director and Finance only', async () => {
+    expect(await addRateRoleAction({ role: 'Commissioning engineer', rate: '78', cc: 'site', grade: 'senior', from: '1 Nov 2026' })).toEqual({ toast: 'Role added to the rate card' });
+    const card = await getRateCard('2026-11-01');
+    expect(card.roles.at(-1)).toMatchObject({ role: 'Commissioning engineer', baseRateEur: 78, isExternal: false, costCenter: 'site', grade: 'senior', effectiveFrom: '2026-11-01' });
+    // Before its effective date the role has no rate (not valued).
+    expect((await getRateCard('2026-10-31')).roles.at(-1)).toMatchObject({ baseRateEur: null, effectiveFrom: null });
+    expect(await addRateRoleAction({ role: 'commissioning ENGINEER', rate: '70', from: '1 Nov 2026' })).toEqual({ error: 'This role is already on the rate card' });
+    expect(await addRateRoleAction({ role: 'Inspector', rate: '70', from: '31 Feb 2026' })).toEqual({ error: 'Enter a valid effective date' });
+    expect(await addRateRoleAction({ role: 'Inspector', rate: '70' })).toEqual({ error: 'Enter a valid effective date' });
+    for (const [role, name] of [['quality', 'Gabriel Comte'], ['pm', 'Romain Aubert']] as const) {
+      as(role, name);
+      expect(await addRateRoleAction({ role: 'Inspector', rate: '70', from: '1 Nov 2026' })).toEqual({ error: 'Rates are edited by the portfolio director and Finance' });
+    }
   });
 
   it('Add skill: new matrix column (all levels 0); outside viewers refused', async () => {
     as('member', 'Julien Wagner');
-    expect(await addSkillAction({ name: 'Welding', cat: 'site', levels: '1_4' })).toEqual({ toast: 'Skill added' });
+    // R-5a (R-087): one 1–5 scale — the form has no "Levels" field any more.
+    expect(await addSkillAction({ name: 'Welding', cat: 'site' })).toEqual({ toast: 'Skill added' });
     const m = await getSkillsMatrix();
     expect(m.skills.at(-1)).toEqual({ name: 'Welding', category: 'site' });
     expect(m.people.every((p) => p.levels.length === 11 && p.levels[10] === 0)).toBe(true);
@@ -104,6 +123,11 @@ describe('HR Server Functions', () => {
     expect(await importHoursAction('HLT-026', { period: '2026-08' })).toEqual({ error: 'No hours declared in Lucca for this period' });
     expect(await importHoursAction('NDC-031', {})).toEqual({ error: 'No hours declared in Lucca for this period' });
     expect((await getHoursReconciliation('HLT-026'))!.importedText).toBe('29 Sep 2026');
+    // Delivery 8: the hours writers re-check the project rule with the actor — Marion Kerviel is not on HLT-026's team (R-041),
+    // which this mocked context ignores; the DAL refuses, nothing is written.
+    expect(await importHoursAction('HLT-026', { period: '2026-q3', code: '', mode: 'resource_wp' })).toEqual({ error: 'Hours are read-only for you on this project' });
+    expect((await getHoursReconciliation('HLT-026'))!.importedText).toBe('29 Sep 2026');
+    as('pm', 'Romain Aubert');
     expect(await importHoursAction('HLT-026', { period: '2026-q3', code: '', mode: 'resource_wp' })).toEqual({
       toast: 'Lucca hours imported · 10 lines matched · 2 to assign',
     });

@@ -9,6 +9,7 @@ import {
   type ActivityIcon, type PlumbView, type SettingsCardKey, type SettingsIcon,
 } from '@/domain/admin';
 import { IMPORTS_ENABLED } from '@/domain/ch4-defaults';
+import { HOURS_VARIANCE_RULE } from '@/domain/hr';
 import { connectorStateTone } from '@/domain/connectors';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
@@ -54,6 +55,8 @@ export interface SettingsCardView {
 export interface SettingsView {
   kpis: KpiView[];
   health: { risk: number; off: number; riskText: string; offText: string; text: string };
+  /** R-088 (R-6b): the hours-variance threshold (% of planned) and its rule, translated. */
+  hoursVariance: { pct: number; text: string };
   cards: SettingsCardView[];
   /** Location type options of the Locations card (shortened labels). */
   locTypes: { value: LocationType; label: string }[];
@@ -75,6 +78,7 @@ export function settingsView(data: SettingsData, t: T, lang: Lang): SettingsView
       health: data.health,
     }).map((k) => kpiT(k, t)),
     health: { risk: data.health.risk, off: data.health.off, riskText: thresholdText(data.health.risk), offText: thresholdText(data.health.off), text: t(healthRuleText(data.health)) },
+    hoursVariance: { pct: data.hoursVariance, text: t(HOURS_VARIANCE_RULE) },
     cards: SETTINGS_CARDS.map((c) => ({ key: c.key, title: t(c.title), sub: t(c.sub), icon: c.icon, count: String(items[c.key].length), isLoc: c.key === 'locations', items: items[c.key] })),
     locTypes: locTypeCodes.map((code) => ({ value: code, label: t(locationTypeShortLabel(locationType.label(code))) })),
   };

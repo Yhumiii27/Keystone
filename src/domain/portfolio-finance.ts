@@ -5,8 +5,11 @@
 
 // ── Margin rights ──────────────────────────────────────────────────────────────────────────────────────
 
-/** Margins (ranking "Margin", cash "Margin", "Portfolio margin") are shown to these roles only (`canSeeMargin`). */
-export const MARGIN_ROLES = ['director', 'pm'] as const;
+/**
+ * Margins (ranking "Margin", cash "Margin", "Portfolio margin") are shown to these roles only (`canSeeMargin`). R-044 (P-4,
+ * default to confirm): Finance sees them too — Cash flow, Prioritisation, the status report and the exports are not masked.
+ */
+export const MARGIN_ROLES = ['director', 'pm', 'finance'] as const;
 export const canSeeMargins = (role: string) => (MARGIN_ROLES as readonly string[]).includes(role);
 
 /** A margin below this % is shown in the attention colour (strict). */

@@ -47,6 +47,8 @@ describe('stored Settings defaults (R-170)', () => {
       lists: [{ listKey: 'riskCats', code: 'technical', label: 'Technical' }, { listKey: 'riskCats', code: 'supplier', label: 'Supplier / delivery' }],
       locations: null,
       health: { risk: 0.97, off: 0.9 },
+      // R-088 (R-6b): the default hours-variance threshold.
+      hours: { pct: 10 },
     });
   });
 

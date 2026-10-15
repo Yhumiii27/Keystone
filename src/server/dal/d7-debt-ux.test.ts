@@ -149,9 +149,10 @@ describe('R-169 — prototype constants replaced by data', () => {
 
   it('site premium: the weekend multipliers of the rate grid, as Resources › Rates sets them', async () => {
     expect((await getSite('HLT-026'))!.premium).toEqual({ sat: 1.5, sun: 2 });
-    await setMultiplier('sat', 1.4, 'Marie Lefebvre');
+    // R-083: the factor in force on the business date (25 Sep 2026) — a version from that date.
+    await setMultiplier('sat', 1.4, '2026-09-25', { name: 'Marie Lefebvre', role: 'director' });
     expect((await getSite('HLT-026'))!.premium).toEqual({ sat: 1.4, sun: 2 });
-    await setMultiplier('sat', 1.5, 'Marie Lefebvre');
+    await setMultiplier('sat', 1.5, '2026-09-25', { name: 'Marie Lefebvre', role: 'director' });
   });
 
   it('notification channels: in-app only while no e-mail or Teams connector is live (R-021 over R-169)', async () => {
