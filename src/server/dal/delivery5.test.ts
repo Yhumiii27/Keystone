@@ -190,8 +190,15 @@ describe('inspection & test plan, punch lists (07 §2.4)', () => {
   });
 
   it('site register: SITE_PUNCH with its NCR and the owner party; open A per project (ITP badge) is none at seed', async () => {
+    // A-6 'a' (R-117): one list per project — the items raised on site are numbered after the ITP items (P-01…P-03 → P-06…P-08),
+    // category B; the ITP items have the Keystone party.
     expect((await listPunchItems('HLT-026', 'site')).map((p) => ({ id: p.number, title: p.description, ncr: p.ncrNumber ?? '—', status: p.statusLabel, owner: p.owner, due: d(p.dueOn) })))
-      .toEqual(G.site.punch);
+      .toEqual(G.site.punch.map((p: { id: string }) => ({ ...p, id: `P-0${+p.id.slice(2) + 5}` })));
+    const all = await listPunchItems('HLT-026');
+    expect(all.map((p) => [p.number, p.origin, p.category, p.ownerParty])).toEqual([
+      ['P-01', 'itp', 'A', 'keystone'], ['P-02', 'itp', 'B', 'keystone'], ['P-03', 'itp', 'C', 'keystone'], ['P-04', 'itp', 'B', 'keystone'], ['P-05', 'itp', 'C', 'keystone'],
+      ['P-06', 'site', 'B', 'client'], ['P-07', 'site', 'B', 'keystone'], ['P-08', 'site', 'B', 'client'],
+    ]);
     expect(await openPunchAByProject()).toEqual({});
   });
 });
@@ -317,7 +324,10 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
   it('HLT-026: Go chantier, prerequisites, equipment, Cursus approvals and the Readiness KPIs', async () => {
     const s = (await getSite('HLT-026'))!;
     const g = G.site;
-    expect(s.go.conditions.map((c) => ({ label: c.label, ok: c.ok, sub: c.sub }))).toEqual(g.goItems);
+    // D-6b 'a' (R-119): the conflicts are computed — 8 on the seed (the prototype's 4 authored collisions).
+    expect(s.go.conditions.map((c) => ({ label: c.label, ok: c.ok, sub: c.sub }))).toEqual(
+      g.goItems.map((i: { sub: string }) => (i.sub === '4 collisions' ? { ...i, sub: '8 collisions' } : i)),
+    );
     expect(s.go.ok ? 'GO' : 'NO GO').toBe(g.goLabel);
     expect([
       ['Site', s.sheet.site], ['Country · time zone', `${s.sheet.country} · ${s.sheet.timeZone}`], ['Language · currency', `${s.sheet.language} · ${s.sheet.currency}`],
@@ -339,7 +349,7 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
       [`${s.cursus.people.filter((p) => p.verdict !== 'no_go').length} / ${s.cursus.people.length}`, `${s.cursus.people.filter((p) => p.verdict === 'go_with_reserve').length} with reserve · approvals only`],
       [`${s.equipment.filter((e) => e.status === 'confirmed').length} / ${s.equipment.length}`, `${s.equipment.filter((e) => e.source === 'shipped').length} shipped · ${s.equipment.filter((e) => e.source !== 'shipped').length} local / client`],
       [s.collisions.length, 'Load · leave · certificates · badges'],
-    ]).toEqual(kv(g.kpis));
+    ]).toEqual(kv(g.kpis).map((x: unknown[], i: number) => (i === 4 ? [8, x[1]] : x)));
     expect(s.cursus.verdict).toBe('no_go');
     expect(s.cursus.openUrl).toBe('http://localhost:5173/chantiers');
   });
@@ -347,9 +357,15 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
   it('HLT-026: rotation, collisions, mission costs and the Team KPIs', async () => {
     const s = (await getSite('HLT-026'))!;
     const g = G.site;
+    // D-6b 'a' (R-119): computed conflicts — Amélie Ollivier (over 110 % in the week of 19 Oct, absent 12–23 Oct) gets the icon too.
     expect(s.rotation.map((r) => ({ who: r.person, role: r.roleOnSite, from: d(r.fromOn), to: d(r.toOn), lodging: r.lodging, travel: r.travel, rot: `R${r.rotationNo}`, collideIcon: r.hasCollision ? 'ph ph-warning' : 'ph ph-check' })))
-      .toEqual(g.rotation);
-    expect(s.collisions.map((c) => ({ who: c.person, what: c.description, kind: c.kindLabel, fix: c.proposedFix }))).toEqual(g.collisions);
+      .toEqual(g.rotation.map((r: { who: string }) => (r.who === 'Amélie Ollivier' ? { ...r, collideIcon: 'ph ph-warning' } : r)));
+    expect(g.collisions.map((c: { who: string; kind: string }) => [c.who, c.kind])).toEqual([['Julien Wagner', 'Load'], ['Pauline Noguès', 'Certificate'], ['Thomas Kerbrat', 'Document'], ['Hélène Sauvage', 'Leave']]);
+    expect(s.collisions.map((c) => [c.person, c.kindLabel, c.department, c.resolved])).toEqual([
+      ['Amélie Ollivier', 'Load', 'Site operations', false], ['Amélie Ollivier', 'Leave', 'Site operations', false], ['Julien Wagner', 'Load', 'Engineering', false],
+      ['Julien Wagner', 'Leave', 'Engineering', false], ['Thomas Kerbrat', 'Document', 'Site operations', false], ['Thomas Kerbrat', 'Leave', 'Site operations', false],
+      ['Pauline Noguès', 'Certificate', 'MEP', false], ['Hélène Sauvage', 'Document', 'Quality', false],
+    ]);
     expect(s.missionCosts.map((m) => ({ name: m.name, budget: f(m.budgetKeur), actual: m.actualKeur ? f(m.actualKeur) : '—', pct: `${m.usedPct}%`, left: f(m.remainingKeur) }))).toEqual(g.missionCosts);
     const b = s.missionCosts.reduce((x, m) => x + m.budgetKeur, 0);
     const a = s.missionCosts.reduce((x, m) => x + m.actualKeur, 0);
@@ -358,7 +374,8 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
       [s.collisions.filter((c) => !c.resolved).length, 'Arbitrated by department heads'], [f(b), `${f(a)} committed · ${Math.round((a / b) * 100)}%`],
       ['×1.5 / ×2', 'Saturday / Sunday rates · 6d · 10h calendar'],
     // A-12 (chapter 4): "Man-days planned" = Σ rotation crew × working days on the project calendar — 179, not the literal 168.
-    ]).toEqual(kv(g.teamKpis).map((x: any[], i: number) => (i === 1 ? ['179', x[1]] : x)));
+    // D-6b 'a' (R-119): 8 computed conflicts open (the prototype's 4).
+    ]).toEqual(kv(g.teamKpis).map((x: any[], i: number) => (i === 1 ? ['179', x[1]] : i === 2 ? [8, x[1]] : x)));
   });
 
   it('HLT-026: daily reports (newest first), site punch list, HSE register (Vigie) and the Execution KPIs', async () => {
@@ -368,7 +385,10 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
       .toEqual(g.reports);
     expect(s.hse.map((h) => ({ title: h.title, status: h.statusText, date: h.dateOn ? d(h.dateOn) : '—' }))).toEqual(g.hse);
     expect(s.hse.map((h) => h.kind)).toEqual(['prevention_plan', 'induction', 'permit', 'permit', 'register']);
-    const open = s.punch.filter((p) => p.status === 'open');
+    // A-6 'a' (R-117): getSite returns the project's single punch list; the prototype's figure is that of its items raised on
+    // site (the screen's "Punch list open" tile counts the whole list: 6 — src/features/site/render.test.ts).
+    expect(s.punch.map((p) => p.origin)).toEqual(['itp', 'itp', 'itp', 'itp', 'itp', 'site', 'site', 'site']);
+    const open = s.punch.filter((p) => p.origin === 'site' && p.status === 'open');
     expect([
       [`${s.sheet.doneDays} / ${s.sheet.planDays} d`, 'Daily reports feed the data date'], [s.dailyReports.length, 'Mobile · hours, %, photos, weather'],
       [open.length, `${open.filter((p) => p.ownerParty === 'client').length} on the client`], ['0 incident', `${s.hse.filter((h) => h.status === 'pending').length} permits pending`],

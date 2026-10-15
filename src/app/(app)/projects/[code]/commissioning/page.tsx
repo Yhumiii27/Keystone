@@ -24,7 +24,8 @@ export default async function CommissioningPage({ params }: { params: Promise<{ 
   const { code } = await params;
   const ctx = await getProjectContext(code, 'commissioning');
   const projectCode = ctx.project.code;
-  const [{ t, lang }, data, punch] = await Promise.all([getI18n(), getCommissioning(projectCode), listPunchItems(projectCode, 'itp')]);
+  // R-117 (A-6 'a'): "Blocking A" counts the category-A items of every origin (one punch list per project).
+  const [{ t, lang }, data, punch] = await Promise.all([getI18n(), getCommissioning(projectCode), listPunchItems(projectCode)]);
   const canEdit = ctx.canEdit('commissioning');
 
   let primary: ReactNode;

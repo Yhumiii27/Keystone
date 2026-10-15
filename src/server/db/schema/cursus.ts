@@ -17,7 +17,10 @@ export const cursusClearances = pgTable(
     projectCode: text('project_code').notNull(),
     /** Cursus's id of the site ("K-2614") when known. */
     chantierId: text('chantier_id'),
-    /** Cursus employee id ("EMP-0018"); null for the prototype seed (names only). OPEN QUESTION C-3: matricule ↔ Keystone person. */
+    /**
+     * Cursus employee id ("EMP-0018"); null for the prototype seed (names only). Matricule ↔ Keystone person: persons.matricule
+     * (R-027, NEW-CURSUS-2 'a'); the Site links the person to Cursus by it (R-032, NEW-CURSUS-3 'a').
+     */
     matricule: text('matricule'),
     /** Display name; the Keystone person when the name resolves. */
     personName: text('person_name').notNull(),

@@ -9,7 +9,7 @@ import 'server-only';
 // (Purchase orders badge, search), goods receipts (Deliveries badge), supplier invoices (Sourcing & invoices badge),
 // stock positions (Stock & storages badge), the parts catalogue (search), the Vigie ECO mirror (Change orders badge,
 // search) and the PDM vault mirror (search); since Delivery 5, the engineering checks (Engineering badges), the P&ID
-// tags (P&ID badge), the Vigie NCR mirror (Quality badge, NCR search), the ITP punch list (Inspections badge), the site
+// tags (P&ID badge), the Vigie NCR mirror (Quality badge, NCR search), the project's punch list (Inspections badge), the site
 // sheet with Cursus's Go / No Go and Vigie's HSE mirror (Site badge), warranty claims (Warranty claims badge), the
 // connectors (Activity & integrations badge) and the installed base (zone bar of Installed base / Warranty claims).
 // Delivery 7 (R-170): the zones and their managers come from the zones table; nothing is read from the prototype data.
@@ -163,7 +163,7 @@ interface ProjectBadgeInputs {
   pid: Record<string, number>;
   /** Open critical NCRs of the Vigie mirror (`qBadge`). */
   quality: Record<string, number>;
-  /** Open category-A items of the ITP punch list (`itpBadge`). */
+  /** Open category-A items of the project's punch list, every origin (`itpBadge`, R-117). */
   itp: Record<string, number>;
   /** "NO GO" while Go chantier is not reached (`goOk`, logic 4748). */
   site: Record<string, string>;

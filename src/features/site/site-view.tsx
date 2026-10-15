@@ -3,7 +3,10 @@
 // go / no go), Team & mobilisation (KPIs, rotation plan, collisions, mission costs) and Daily execution (KPIs, daily
 // reports, site punch list, Vigie's HSE register) — or the empty state of a project without a site sheet.
 // Server Component; the buttons that write are client islands (site-buttons.tsx), shown to editors only. Links to
-// Cursus and Vigie open outside Keystone.
+// Cursus and Vigie open outside Keystone. R-117: the punch list is the project's single list — the items raised on site by
+// default, "All" on demand — read-only here as in the prototype (Start / Close are on Inspections & punch list). R-118
+// (D-3 'a'): the project's leads get "Prepare the site" on the empty state, "Edit site sheet" and the lines' Add / Edit /
+// Remove (`view.entry`); every table has its empty message.
 import {
   ArrowSquareOut, ArrowsClockwise, Chats, Check, CheckCircle, Eye, FirstAid, LockSimple, Warning, WarningCircle,
 } from '@phosphor-icons/react/dist/ssr';
@@ -23,9 +26,13 @@ import { CURSUS_LINK_ATTRS } from '@/server/integrations/cursus/links';
 import { VIGIE_LINK_ATTRS } from '@/server/integrations/vigie/links';
 import { PhotosButton, type PhotoView } from '@/features/photos/photo-gallery';
 import { CURSUS_CARD_ID } from './links';
-import type { ExecView, KpiView, ReadyView, SiteView, TeamView } from './model';
+import type { ExecView, KpiView, LineEntry, ReadyView, SheetEntry, SiteView, TeamView } from './model';
 import { clientDecisionsHref } from '@/features/meetings/model';
-import { ConfirmEquipmentButton, PrerequisiteButton, RemindButton, SyncCursusButton } from './site-buttons';
+import type { SiteLineKind } from '@/domain/site-sheet';
+import {
+  AddLineButton, ArbitrateButton, ConfirmEquipmentButton, EditLineButton, EditSheetButton, PrepareSiteButton, PrerequisiteButton, RemindButton, RemoveLineButton,
+  SyncCursusButton,
+} from './site-buttons';
 import s from './site.module.css';
 
 export interface SiteBodyProps {
@@ -37,29 +44,40 @@ export interface SiteBodyProps {
   showCommLog?: boolean;
   /** R-126: photos stored by Keystone of the daily reports and the site punch items (by number); none when not given. */
   photos?: SitePhotos;
+  /** The project's label, the sub-line of the site sheet's dialogs (R-118). */
+  context?: string;
   t: T;
 }
 
 export interface SitePhotos {
   /** Add / remove (the viewer may edit the Site screen of the project). */
   canEdit: boolean;
+  /** R-117: the photos of the items raised by an inspection follow Inspections & punch list's rights (shown with "All"). */
+  canEditItp?: boolean;
   reports: Record<string, PhotoView[]>;
   punch: Record<string, PhotoView[]>;
 }
 
-export function SiteBody({ code, view, canEdit, showCommLog = true, photos, t }: SiteBodyProps) {
+export function SiteBody({ code, view, canEdit, showCommLog = true, photos, context = code, t }: SiteBodyProps) {
   return (
     <Stack>
       {view.empty ? (
-        <div className={s.empty}>{view.empty}</div>
+        <div className={s.empty}>
+          <span>{view.empty}</span>
+          {view.prepare && (
+            <span className={s.emptyAction}>
+              <PrepareSiteButton code={code} context={context} form={view.prepare.form} values={view.prepare.values} />
+            </span>
+          )}
+        </div>
       ) : (
         <>
           <FilterBar>
             <FilterLabel icon={Eye}>{t('Display')}</FilterLabel>
             <Segmented wrap label={t('Display')} value={view.tab} options={view.segs.map((o) => ({ value: o.value, label: o.label, href: o.href }))} />
           </FilterBar>
-          {view.tab === 'ready' && view.ready && <ReadyTab code={code} v={view.ready} canEdit={canEdit} t={t} />}
-          {view.tab === 'team' && view.team && <TeamTab v={view.team} t={t} />}
+          {view.tab === 'ready' && view.ready && <ReadyTab code={code} v={view.ready} canEdit={canEdit} entry={view.entry} context={context} t={t} />}
+          {view.tab === 'team' && view.team && <TeamTab code={code} v={view.team} entry={view.entry} t={t} />}
           {view.tab === 'exec' && view.exec && <ExecTab code={code} v={view.exec} showCommLog={showCommLog} photos={photos} t={t} />}
         </>
       )}
@@ -77,9 +95,27 @@ function Kpis({ kpis }: { kpis: KpiView[] }) {
   );
 }
 
+/** R-118: "Add …" in a table's header for the leads (no form → nothing: the prerequisite's empty plan is explained). */
+function AddLine({ code, kind, entry }: { code: string; kind: SiteLineKind; entry: SheetEntry | null }) {
+  const form = entry?.add[kind];
+  return form ? <AddLineButton code={code} kind={kind} label={form.title} form={form} /> : null;
+}
+
+/** R-118: "Edit" / "Remove" of a line for the leads (what the line allows). */
+function LineButtons({ code, kind, position, label, line, entry }: { code: string; kind: SiteLineKind; position: number; label: string; line: LineEntry | null; entry: SheetEntry | null }) {
+  const form = entry?.edit[kind];
+  if (!line || !entry) return null;
+  return (
+    <>
+      {line.editable && form && <EditLineButton code={code} kind={kind} position={position} stamp={line.stamp} label={label} form={form} values={line.values} />}
+      {line.removable && <RemoveLineButton code={code} kind={kind} position={position} stamp={line.stamp} label={label} />}
+    </>
+  );
+}
+
 // ── Readiness & go ───────────────────────────────────────────────────────────────────────────────────
 
-function ReadyTab({ code, v, canEdit, t }: { code: string; v: ReadyView; canEdit: boolean; t: T }) {
+function ReadyTab({ code, v, canEdit, entry, context, t }: { code: string; v: ReadyView; canEdit: boolean; entry: SheetEntry | null; context: string; t: T }) {
   return (
     <>
       <Kpis kpis={v.kpis} />
@@ -105,7 +141,10 @@ function ReadyTab({ code, v, canEdit, t }: { code: string; v: ReadyView; canEdit
           </div>
         </SectionCard>
         <SectionCard gap={4}>
-          <CardTitle className={s.sheetTitle}>{t('Site sheet')}</CardTitle>
+          <div className={s.sheetHead}>
+            <CardTitle className={s.sheetTitle}>{t('Site sheet')}</CardTitle>
+            {entry && <EditSheetButton code={code} context={context} stamp={entry.sheet.stamp} form={entry.sheet.form} values={entry.sheet.values} />}
+          </div>
           {v.meta.map((m) => (
             <div key={m.k} className={s.metaRow}>
               <span className={s.metaKey}>{m.k}</span>
@@ -119,7 +158,10 @@ function ReadyTab({ code, v, canEdit, t }: { code: string; v: ReadyView; canEdit
         scroll
         title={t('Client prerequisites (readiness)')}
         subtitle={t('Dated and signed by the client · each one conditions a site activity · J-15 unconfirmed → alert, risk and client letter')}
+        actions={<AddLine code={code} kind="prerequisite" entry={entry} />}
       >
+        {entry?.noActivity && <span className={s.footnote}>{entry.noActivity}</span>}
+        {v.noPrereq && <span className={s.footnote}>{v.noPrereq}</span>}
         <Table>
           <thead>
             <tr>
@@ -148,6 +190,7 @@ function ReadyTab({ code, v, canEdit, t }: { code: string; v: ReadyView; canEdit
                 <td>
                   <div className={s.actions}>
                     {canEdit && r.step && <PrerequisiteButton code={code} position={r.position} to={r.step.to} label={r.step.label} title={r.title} />}
+                    <LineButtons code={code} kind="prerequisite" position={r.position} label={r.title} line={r.entry} entry={entry} />
                   </div>
                 </td>
               </tr>
@@ -157,7 +200,13 @@ function ReadyTab({ code, v, canEdit, t }: { code: string; v: ReadyView; canEdit
       </SectionCard>
 
       <CardGrid min={540}>
-        <SectionCard scroll title={t('Equipment on site')} subtitle={t('Shipped with the machine · rented locally · provided by the client')}>
+        <SectionCard
+          scroll
+          title={t('Equipment on site')}
+          subtitle={t('Shipped with the machine · rented locally · provided by the client')}
+          actions={<AddLine code={code} kind="equipment" entry={entry} />}
+        >
+          {v.noEquip && <span className={s.footnote}>{v.noEquip}</span>}
           <Table size={12.5}>
             <thead>
               <tr>
@@ -179,7 +228,12 @@ function ReadyTab({ code, v, canEdit, t }: { code: string; v: ReadyView; canEdit
                     <span className={r.tagClass}>{r.status}</span>
                   </td>
                   <td className={s.note115}>{r.note}</td>
-                  <td>{canEdit && r.canConfirm && <ConfirmEquipmentButton code={code} position={r.position} name={r.name} />}</td>
+                  <td>
+                    <div className={s.actions}>
+                      {canEdit && r.canConfirm && <ConfirmEquipmentButton code={code} position={r.position} name={r.name} />}
+                      <LineButtons code={code} kind="equipment" position={r.position} label={r.name} line={r.entry} entry={entry} />
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -218,6 +272,7 @@ function CursusCard({ code, v, canEdit, t }: { code: string; v: ReadyView['cursu
         <ArrowsClockwise className={s.mirrorIcon} aria-hidden />
         {t('Mirrored from Cursus — verdicts are managed in Cursus')} · {v.lastSync}
       </span>
+      {v.empty && <span className={s.footnote}>{v.empty}</span>}
       <Table size={12.5}>
         <thead>
           <tr>
@@ -233,7 +288,16 @@ function CursusCard({ code, v, canEdit, t }: { code: string; v: ReadyView['cursu
         <tbody>
           {v.rows.map((r) => (
             <tr key={r.person}>
-              <td className={s.nowrap}>{r.who}</td>
+              <td className={s.nowrap}>
+                {/* R-032 (NEW-CURSUS-3 'a'): the person in Cursus when Cursus gave a matricule; plain text otherwise (the prototype). */}
+                {r.personUrl ? (
+                  <a href={r.personUrl} {...CURSUS_LINK_ATTRS} className={s.personLink} title={t('Opens Cursus in a new window')}>
+                    {r.who}
+                  </a>
+                ) : (
+                  r.who
+                )}
+              </td>
               <td>
                 <span className={cx(r.visaClass, s.nowrap)}>{r.visa}</span>
               </td>
@@ -271,11 +335,17 @@ function CursusCard({ code, v, canEdit, t }: { code: string; v: ReadyView['cursu
 
 // ── Team & mobilisation ───────────────────────────────────────────────────────────────────────────────
 
-function TeamTab({ v, t }: { v: TeamView; t: T }) {
+function TeamTab({ code, v, entry, t }: { code: string; v: TeamView; entry: SheetEntry | null; t: T }) {
   return (
     <>
       <Kpis kpis={v.kpis} />
-      <SectionCard scroll title={t('Rotation plan')} subtitle={t('Who, when, where they sleep, how they travel · shown next to the site activities in the Gantt')}>
+      <SectionCard
+        scroll
+        title={t('Rotation plan')}
+        subtitle={t('Who, when, where they sleep, how they travel · shown next to the site activities in the Gantt')}
+        actions={<AddLine code={code} kind="rotation" entry={entry} />}
+      >
+        {v.noRotation && <span className={s.footnote}>{v.noRotation}</span>}
         <Table>
           <thead>
             <tr>
@@ -288,11 +358,12 @@ function TeamTab({ v, t }: { v: TeamView; t: T }) {
               <Th>{t('Lodging')}</Th>
               <Th>{t('Travel')}</Th>
               <Th>{t('Collision')}</Th>
+              {entry && <Th aria-label={t('Actions')} />}
             </tr>
           </thead>
           <tbody>
-            {v.rotation.map((r, i) => (
-              <tr key={`${r.who}-${i}`}>
+            {v.rotation.map((r) => (
+              <tr key={r.position}>
                 <td className={s.nowrap}>{r.who}</td>
                 <Td tone="secondary">{r.role}</Td>
                 <td className={s.due}>{r.from}</td>
@@ -307,15 +378,24 @@ function TeamTab({ v, t }: { v: TeamView; t: T }) {
                     <Check className={s.collideIcon} role="img" aria-label={r.collisionLabel} />
                   )}
                 </td>
+                {entry && (
+                  <td>
+                    <div className={s.actions}>
+                      <LineButtons code={code} kind="rotation" position={r.position} label={`${r.who} · ${r.from} → ${r.to}`} line={r.entry} entry={entry} />
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </Table>
       </SectionCard>
       <CardGrid min={540}>
-        <SectionCard gap={6} title={t('Collision detection')} subtitle={t('Same person on two sites · Lucca leave · certificate expiring · badge missing · mission length')}>
+        {/* R-119 (D-6b 'a'): conflicts computed from the rotation plan (the subtitle no longer names Lucca — absences come from Cursus, R-031). */}
+        <SectionCard gap={6} title={t('Collision detection')} subtitle={t('Same person on two sites · overload · leave and absences · clearance expiring · badge missing')}>
+          {v.noCollision && <span className={s.footnote}>{v.noCollision}</span>}
           {v.collisions.map((c) => (
-            <div key={c.position} className={s.collision}>
+            <div key={c.key} className={s.collision}>
               <span className={s.collisionText}>
                 <span className={s.collisionWho}>
                   {c.who}
@@ -324,13 +404,37 @@ function TeamTab({ v, t }: { v: TeamView; t: T }) {
                 <span className={s.collisionWhat}>{c.what}</span>
                 <span className={s.collisionFix}>→ {c.fix}</span>
               </span>
-              <ButtonLink href={c.href} variant="secondary" size="row" aria-label={`${t('Resolve')} — ${c.who}`}>
-                {t('Resolve')}
-              </ButtonLink>
+              <span className={s.collisionBtns}>
+                <ButtonLink href={c.href} variant="secondary" size="row" aria-label={`${t('Resolve')} — ${c.who}`}>
+                  {t('Resolve')}
+                </ButtonLink>
+                {c.canArbitrate && <ArbitrateButton code={code} conflictKey={c.key} label={`${c.who} · ${c.kind}`} form={v.arbitrationForm} />}
+              </span>
+            </div>
+          ))}
+          {v.arbitrated.map((c) => (
+            <div key={c.key} className={cx(s.collision, s.arbitrated)}>
+              <span className={s.collisionText}>
+                <span className={s.collisionWho}>
+                  {c.who}
+                  <span className={cx('tag tag-neutral', s.kindTag)}>{c.kind}</span>
+                  <span className={cx('tag tag-outline', s.kindTag)}>{t('Arbitrated')}</span>
+                </span>
+                <span className={s.collisionWhat}>{c.what}</span>
+                <span className={s.collisionFix}>
+                  {t('Arbitrated by')} {c.by} · {c.at} · {c.comment}
+                </span>
+              </span>
             </div>
           ))}
         </SectionCard>
-        <SectionCard scroll title={t('Mission costs')} subtitle={t('Charged to the Site work package · planned vs actual')}>
+        <SectionCard
+          scroll
+          title={t('Mission costs')}
+          subtitle={t('Charged to the Site work package · planned vs actual')}
+          actions={<AddLine code={code} kind="cost" entry={entry} />}
+        >
+          {v.noCost && <span className={s.footnote}>{v.noCost}</span>}
           <Table size={12.5}>
             <thead>
               <tr>
@@ -339,16 +443,17 @@ function TeamTab({ v, t }: { v: TeamView; t: T }) {
                 <Th align="right">{t('Actual')}</Th>
                 <Th width="26%" aria-label={t('Used')} />
                 <Th align="right">{t('Remaining')}</Th>
+                {entry && <Th aria-label={t('Actions')} />}
               </tr>
             </thead>
             <tbody>
               {v.missionCosts.map((r) => (
-                <tr key={r.name}>
+                <tr key={r.position}>
                   <td>{r.name}</td>
                   <Td align="right" numeric>
                     {r.budget}
                   </Td>
-                  <Td align="right" numeric>
+                  <Td align="right" numeric title={r.actualTitle ?? undefined}>
                     {r.actual}
                   </Td>
                   <td>
@@ -359,6 +464,13 @@ function TeamTab({ v, t }: { v: TeamView; t: T }) {
                   <Td align="right" numeric>
                     {r.left}
                   </Td>
+                  {entry && (
+                    <td>
+                      <div className={s.actions}>
+                        <LineButtons code={code} kind="cost" position={r.position} label={r.name} line={r.entry} entry={entry} />
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -380,6 +492,7 @@ function ExecTab({ code, v, showCommLog, photos, t }: { code: string; v: ExecVie
         title={t('Daily reports')}
         subtitle={t('Filled on mobile by the site lead · hours per activity, % complete, photos, weather, incidents, visitors')}
       >
+        {v.noReport && <span className={s.footnote}>{v.noReport}</span>}
         <Table>
           <thead>
             <tr>
@@ -441,12 +554,25 @@ function ExecTab({ code, v, showCommLog, photos, t }: { code: string; v: ExecVie
         {v.note && <span className={s.footnote}>{v.note}</span>}
       </SectionCard>
       <CardGrid min={540}>
-        <SectionCard scroll title={t('Punch list & reserves')} subtitle={t('Linked to NCRs and to the SAT acceptance · signed off by the client')}>
+        <SectionCard
+          scroll
+          title={t('Punch list & reserves')}
+          subtitle={t('Linked to NCRs and to the SAT acceptance · signed off by the client')}
+          actions={
+            <Segmented
+              label={v.punchFilter.label}
+              value={v.punchFilter.value}
+              options={v.punchFilter.options.map((o) => ({ value: o.value, label: o.label, href: o.href }))}
+            />
+          }
+        >
+          {v.punchFilter.empty && <span className={s.footnote}>{v.punchFilter.empty}</span>}
           <Table size={12.5}>
             <thead>
               <tr>
                 <Th>#</Th>
                 <Th>{t('Item')}</Th>
+                {v.punchFilter.value === 'all' && <Th>{t('Origin')}</Th>}
                 <Th>NCR</Th>
                 <Th>{t('Owner')}</Th>
                 <Th>{t('Due')}</Th>
@@ -459,6 +585,7 @@ function ExecTab({ code, v, showCommLog, photos, t }: { code: string; v: ExecVie
                 <tr key={r.id}>
                   <td className={s.punchId}>{r.id}</td>
                   <td className={s.pretty}>{r.title}</td>
+                  {v.punchFilter.value === 'all' && <Td tone="secondary">{r.origin}</Td>}
                   <td className={s.ncr}>{r.ncr}</td>
                   <td className={s.cell12}>{r.owner}</td>
                   <td className={s.due}>{r.due}</td>
@@ -469,9 +596,9 @@ function ExecTab({ code, v, showCommLog, photos, t }: { code: string; v: ExecVie
                     <td>
                       <PhotosButton
                         title={`${r.id} · ${t('Photos')}`}
-                        owner={{ kind: 'punch_item', code, ref: r.id, register: 'site' }}
+                        owner={{ kind: 'punch_item', code, ref: r.id }}
                         photos={photos.punch[r.id] ?? []}
-                        canEdit={photos.canEdit}
+                        canEdit={r.siteOrigin ? photos.canEdit : !!photos.canEditItp}
                         empty={t('No photo yet')}
                       />
                     </td>

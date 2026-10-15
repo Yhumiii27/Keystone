@@ -19,12 +19,24 @@ export interface FormFieldDef {
   span?: 'full' | 'auto';
 }
 
+/**
+ * Optional note under the fields with a link opening outside Keystone (new tab): "HSE incident? Declare it in Vigie"
+ * (NEW-SITE-2 'a', R-122). Serialisable; texts already translated (Keystone vocabulary, or English with `translate`).
+ */
+export interface FormNoteLink {
+  text: string;
+  linkLabel: string;
+  href: string;
+}
+
 export interface FormDef {
   title: string;
   submit: string;
   /** `create` → Check icon on submit, `run` → Play icon. Default create. */
   kind?: 'create' | 'run';
   fields: FormFieldDef[];
+  /** Note with an outside link shown under the fields; forms without it are unchanged. */
+  note?: FormNoteLink;
 }
 
 export type FormValues = Record<string, string>;

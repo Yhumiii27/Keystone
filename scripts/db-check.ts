@@ -123,17 +123,19 @@ const D4_COUNTS: Record<string, number> = {
 
 /**
  * Seed row counts of the delivery-5 tables: deliverables HLT_DELIVS 10 + 5 × 4 generated (RACI 5 each); the Vigie NCR
- * mirror HLT_NCRS 5 + 5 × 2 generated and the site HSE register 5; ITP 13 inspections; punch PUNCH 5 + SITE_PUNCH 3;
+ * mirror HLT_NCRS 5 + 5 × 2 generated and the site HSE register 5; ITP 13 inspections and the plan's 6 frozen systems (R-057);
+ * punch PUNCH 5 + SITE_PUNCH 3 (one list, R-117);
  * commissioning 6 systems × 5 steps, 8 dossier items; LESSONS 4, CLOSURE 10, SATISFACTION 5; FLEET 8 (AS_MAINT 31 part
- * revisions), CLAIMS 8, INTERVENTIONS 6; the site sheet with 8 equipment, 6 prerequisites, 6 rotations, 4 collisions,
+ * revisions), CLAIMS 8, INTERVENTIONS 6; the site sheet with 8 equipment, 6 prerequisites, 6 rotations, 4 collisions (no longer read, R-119),
  * 6 cost lines, 2 reports; Cursus 5 people (1 sync); CLIENT_ISSUES 3 (CLIENT_DOCS dropped, L-9: computed from Codex); ENG_* registers; PID 1 / 24 / 5;
  * machine-type aggregate 28 phases, 25 cost categories, 17 ITP systems; SETTINGS0 60 values; CONNECTORS 9 + Vigie; IMPORTS 6.
  */
 const D5_COUNTS: Record<string, number> = {
-  deliverables: 30, deliverable_raci: 150, vigie_ncrs: 15, vigie_ncr_progress: 0, vigie_hse_items: 5, itp_plans: 1, itp_inspections: 13, punch_items: 8,
+  deliverables: 30, deliverable_raci: 150, vigie_ncrs: 15, vigie_ncr_progress: 0, vigie_hse_items: 5, itp_plans: 1, itp_plan_systems: 6, itp_inspections: 13, punch_items: 8,
   commissioning_systems: 6, commissioning_steps: 30, handover_items: 8, sat_plans: 0, lessons_learned: 4, closure_items: 10, satisfaction_scores: 5,
   machines: 8, machine_part_revisions: 31, warranty_claims: 8, interventions: 6, site_sheets: 1, site_equipment: 8, site_prerequisites: 6, site_rotations: 6,
-  site_collisions: 4, mission_cost_lines: 6, daily_reports: 2, cursus_clearances: 5, cursus_requests: 0, cursus_sync_runs: 1, cursus_events: 0, client_issues: 3,
+  site_collisions: 4, site_conflict_arbitrations: 0, mission_cost_lines: 6, daily_reports: 2, cursus_clearances: 5, cursus_requests: 0, cursus_sync_runs: 1, cursus_events: 0,
+  client_issues: 3,
   eng_disciplines: 4, eng_inputs: 12, eng_consistency_rules: 6, eng_checks: 10, eng_outputs: 6, eng_changes: 4, eng_import_tools: 4,
   eng_column_mappings: 6, eng_import_deltas: 4, eng_imports: 0, pid_sheets: 1, pid_tags: 24, pid_validation_steps: 5, machine_type_phases: 28,
   // app_settings: the health thresholds and, since delivery 7, the seed record "keystone.seed" (R-011, A-15), the "Reset to
@@ -602,6 +604,13 @@ async function delivery5Reads() {
     same([plan.inspections.filter((i) => i.result === 'passed').length, plan.inspections.length, plan.inspections.filter((i) => i.result === 'failed').length,
       plan.inspections.filter((i) => i.pointType === 'hold' && i.result !== 'passed').length, plan.template, plan.systems.length, plan.customCount, punch.length,
       punch.filter((p) => p.category === 'B').length, punch.filter((p) => p.category === 'C').length], [3, 13, 1, 5, 'EMP', 6, 2, 4, 2, 2]));
+  const all = await listPunchItems('HLT-026');
+  // A-6 'a' (R-117): one punch list per project, numbered over it — the Site items renumbered after the ITP items.
+  check('punch HLT-026: one list P-01…P-08 · ITP items Keystone · Site items P-06…P-08 category B · P-06 carries NCR-029',
+    same(all.map((p) => [p.number, p.origin, p.category, p.ownerParty, p.ncrNumber]), [
+      ['P-01', 'itp', 'A', 'keystone', null], ['P-02', 'itp', 'B', 'keystone', null], ['P-03', 'itp', 'C', 'keystone', null], ['P-04', 'itp', 'B', 'keystone', null],
+      ['P-05', 'itp', 'C', 'keystone', null], ['P-06', 'site', 'B', 'client', 'NCR-029'], ['P-07', 'site', 'B', 'keystone', null], ['P-08', 'site', 'B', 'client', null],
+    ]), all.map((p) => p.number));
   const cm = (await getCommissioning('HLT-026'))!;
   const cells = cm.systems.flatMap((x) => x.cells);
   check('commissioning HLT-026: 0 / 6 handed over · 1 / 30 steps done · 2 blocked (IF-02, IF-05) · dossier 19 % · 4 missing',
@@ -626,11 +635,12 @@ async function delivery5Reads() {
       ivs.filter((i) => i.status === 'planned').map((i) => i.scheduledOn).sort()[0], claims.filter((c) => c.coverage !== 'chargeable').reduce((a, c) => a + c.costKeur, 0),
       claims.filter((c) => c.coverage === 'chargeable').reduce((a, c) => a + c.costKeur, 0), claims.filter((c) => c.ecoNumber).length], [5, 2, 4, '2026-10-06', 34, 6, 1]));
   const site = (await getSite('HLT-026'))!;
-  check('site HLT-026: NO GO (5 conditions open) · prerequisites 4 / 6 · Cursus 3 / 5 (1 reserve, mock) · equipment 6 / 8 · 4 collisions · budget 98.3 k€ (11.3 committed) · 2 permits pending',
+  // D-6b 'a' (R-119): the conflicts are computed from the rotation plan, the pool, Cursus and the absences — 8 (the prototype's 4).
+  check('site HLT-026: NO GO (5 conditions open) · prerequisites 4 / 6 · Cursus 3 / 5 (1 reserve, mock) · equipment 6 / 8 · 8 conflicts · budget 98.3 k€ (11.3 committed) · 2 permits pending',
     getCursusConnector().mode === 'mock' && same([site.go.ok, site.go.conditions.filter((c) => !c.ok).length, site.prerequisites.filter((p) => p.status !== 'pending').length,
       site.cursus.people.filter((p) => p.verdict !== 'no_go').length, site.cursus.people.filter((p) => p.verdict === 'go_with_reserve').length,
       site.equipment.filter((e) => e.status === 'confirmed').length, site.collisions.length, Math.round(site.missionCosts.reduce((a, m) => a + m.budgetKeur, 0) * 10) / 10,
-      Math.round(site.missionCosts.reduce((a, m) => a + m.actualKeur, 0) * 10) / 10, site.hse.filter((h) => h.status === 'pending').length], [false, 5, 4, 3, 1, 6, 4, 98.3, 11.3, 2]));
+      Math.round(site.missionCosts.reduce((a, m) => a + m.actualKeur, 0) * 10) / 10, site.hse.filter((h) => h.status === 'pending').length], [false, 5, 4, 3, 1, 6, 8, 98.3, 11.3, 2]));
   check('no site sheet, commissioning, ITP, REX, register or P&ID on NDC-031 / EWA-051', (await getSite('NDC-031')) === null && (await getCommissioning('EWA-051')) === null
     && (await getItpPlan('NDC-031')) === null && (await getRex('EWA-051')).lessons.length === 0 && (await getEngineeringRegister('NDC-031')) === null && (await getPidValidation('EWA-051')) === null);
   const cp = await getClientPortal('HLT-026');
@@ -676,7 +686,7 @@ async function delivery5Writes() {
     await addMachine({ name: 'Check crane', machineType: 'EMP', client: 'Port authority', site: 'Le Havre · quay 5' }, pm),
     await openClaim({ machineNumber: 'MCH-050', issue: 'Check', severity: 'minor', coverage: 'warranty', owner: 'T. Kerbrat' }, pm),
     await raiseClientIssue('HLT-026', 'Check', { name: 'Nadia Bensaïd', role: 'client' }),
-    await saveDailyReport('HLT-026', { date: '2026-09-30', weather: 'clear', progress: 'Check', incident: 'none' }, pm),
+    await saveDailyReport('HLT-026', { date: '2026-09-30', weather: 'clear', progress: 'Check' }, pm),
   ];
   check('numbering: P-10 · LL-10 · MCH-050 · WC-020 · CI-08 · DR-003', same(numbers, ['P-10', 'LL-10', 'MCH-050', 'WC-020', 'CI-08', 'DR-003']), numbers);
   const rem = await remindInCursus('HLT-026', 'Thomas Kerbrat', pm);

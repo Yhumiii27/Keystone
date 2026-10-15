@@ -8,6 +8,14 @@ export function siteHref(code: string, tab: SiteTab = 'ready', hash?: string): s
   return screenHref('site', { code }) + (tab === 'ready' ? '' : `?tab=${tab}`) + (hash ? `#${hash}` : '');
 }
 
+/**
+ * Daily execution with the punch list filtered on an origin (R-117): the items raised on site by default, `&punch=all` for the
+ * project's whole list.
+ */
+export function sitePunchHref(code: string, filter: 'site' | 'all'): string {
+  return siteHref(code, 'exec') + (filter === 'all' ? '&punch=all' : '');
+}
+
 /** Quality screen with the NCR drawer open (`goTo('quality', {qTab:'ncr', ncr})`, 4759) — the Quality screen's own URL helper. */
 export const qualityNcrHref = (code: string, ncr: string): string => ncrHref(code, ncr);
 

@@ -181,7 +181,7 @@ describe('ITP and punch list', () => {
     expect((await getItpPlan('NDC-031'))!).toMatchObject({ template: 'AUTRE', systems: ['General'] });
   });
 
-  it('"Add punch item": P-10 Open; Start → In progress → Close; the site register is read-only', async () => {
+  it('"Add punch item": P-10 Open; Start → In progress → Close on every origin; outside the workspace refused', async () => {
     expect(await addPunchItem(HLT, { description: 'Missing anchor nut — bay 2', location: 'Structure · Bay 2', category: 'A', source: 'site_walk', owner: 'J. Wagner', dueOn: '2026-10-10' }, A.englead)).toBe('P-10');
     expect((await listPunchItems(HLT, 'itp')).at(-1)).toMatchObject({ number: 'P-10', status: 'open', category: 'A', owner: 'J. Wagner', sourceText: 'Site walk' });
     expect((await getCommissioning(HLT))!.systems[0].blockingA).toBe(1);
@@ -189,6 +189,10 @@ describe('ITP and punch list', () => {
     expect(await advancePunchItem(HLT, 'P-10', A.englead)).toBe('closed');
     await expect(advancePunchItem(HLT, 'P-10', A.englead)).rejects.toThrow(/closed/);
     await expect(advancePunchItem(HLT, 'P-02', A.member)).rejects.toThrow(/outside your workspace/);
+    // A-6 'a' (R-117): one list — an item raised on site (P-07, was the read-only Site register's P-02) takes the same steps,
+    // on Inspections & punch list; the Site screen stays read-only (no writer there), a team member is still refused.
+    expect(await advancePunchItem(HLT, 'P-07', A.quality)).toBe('in_progress');
+    await expect(advancePunchItem(HLT, 'P-07', A.member)).rejects.toThrow(/outside your workspace/);
   });
 });
 
@@ -252,15 +256,17 @@ describe('site — readiness, daily reports, Cursus', () => {
     await expect(confirmEquipment(HLT, 4, A.quality)).rejects.toThrow(/outside your workspace/);
     const s = (await getSite(HLT))!;
     // HSE: the HTTP refresh above left Vigie's single signed prevention plan in the mirror — no permit pending.
-    expect(s.go.conditions.map((c) => c.sub)).toEqual(['1 pending', '2 NO GO', '1 unconfirmed', '4 collisions', 'Ready']);
+    // D-6b 'a' (R-119): 8 conflicts computed from the rotation plan (the prototype's 4 authored collisions).
+    expect(s.go.conditions.map((c) => c.sub)).toEqual(['1 pending', '2 NO GO', '1 unconfirmed', '8 collisions', 'Ready']);
     await expect(advancePrerequisite('NDC-031', 0, 'confirmed', A.pm)).rejects.toThrow(/no site sheet/);
   });
 
   it('"Daily report": DR-003 by the viewer, listed first', async () => {
-    expect(await saveDailyReport(HLT, { date: '2026-09-30', weather: 'wind', headcount: 24, progress: 'Crane rail survey bays 1–3', incident: 'none' }, A.pm)).toBe('DR-003');
+    // NEW-SITE-2 'a' (R-122): no HSE incident is recorded with the report any more (declared in Vigie).
+    expect(await saveDailyReport(HLT, { date: '2026-09-30', weather: 'wind', headcount: 24, progress: 'Crane rail survey bays 1–3' }, A.pm)).toBe('DR-003');
     const s = (await getSite(HLT))!;
-    expect(s.dailyReports[0]).toMatchObject({ number: 'DR-003', reportOn: '2026-09-30', author: 'R. Aubert', weatherLabel: 'Wind > 50 km/h', headcount: 24, hseIncidentLabel: 'None' });
-    await expect(saveDailyReport(HLT, { date: '2026-09-30', weather: 'clear', progress: ' ', incident: 'none' }, A.pm)).rejects.toThrow(/required/);
+    expect(s.dailyReports[0]).toMatchObject({ number: 'DR-003', reportOn: '2026-09-30', author: 'R. Aubert', weatherLabel: 'Wind > 50 km/h', headcount: 24, hseIncident: null, hseIncidentLabel: null });
+    await expect(saveDailyReport(HLT, { date: '2026-09-30', weather: 'clear', progress: ' ' }, A.pm)).rejects.toThrow(/required/);
   });
 
   it('Cursus (mock): remind once per person not GO; GO refused; sync reports the approvals', async () => {
@@ -470,7 +476,7 @@ describe('Delivery 5 backfill (database seeded before migration 0004)', () => {
     const tables = [
       'deliverable_raci', 'deliverables', 'vigie_ncr_progress', 'vigie_ncrs', 'vigie_hse_items', 'punch_items', 'itp_inspections', 'itp_plans', 'commissioning_steps', 'commissioning_systems',
       'handover_items', 'sat_plans', 'lessons_learned', 'closure_items', 'satisfaction_scores', 'interventions', 'warranty_claims', 'machine_part_revisions', 'machines', 'daily_reports',
-      'mission_cost_lines', 'site_collisions', 'site_rotations', 'site_prerequisites', 'site_equipment', 'site_sheets', 'cursus_requests', 'cursus_sync_runs', 'cursus_clearances',
+      'mission_cost_lines', 'site_conflict_arbitrations', 'site_collisions', 'site_rotations', 'site_prerequisites', 'site_equipment', 'site_sheets', 'cursus_requests', 'cursus_sync_runs', 'cursus_clearances',
       'client_issues', 'eng_imports', 'eng_changes', 'eng_outputs', 'eng_checks', 'eng_consistency_rules', 'eng_inputs', 'eng_disciplines', 'eng_import_tools',
       'eng_column_mappings', 'eng_import_deltas', 'pid_validation_steps', 'pid_tags', 'pid_sheets', 'machine_type_phases', 'machine_type_cost_categories', 'machine_type_itp_systems',
       'connector_sync_runs', 'connectors', 'import_formats', 'app_settings', 'reference_values',

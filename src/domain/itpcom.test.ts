@@ -209,8 +209,10 @@ describe('action forms', () => {
   });
 
   it('Add punch item: category from the letter or its label, source, owner from TEAM; errors', () => {
+    // A-6 'a' (R-117): every item also carries its origin (Inspection by default), its party (Keystone) and an optional NCR.
     expect(parseNewPunch({ item: 'Missing bolt — post 3', loc: 'Structure · Bay 2', cat: 'A — blocking', src: 'SAT', due: '9 Oct' }, TEAM)).toEqual({
-      ok: true, value: { description: 'Missing bolt — post 3', location: 'Structure · Bay 2', category: 'A', source: 'sat', owner: TEAM[0], dueOn: '2026-10-09' },
+      ok: true,
+      value: { description: 'Missing bolt — post 3', location: 'Structure · Bay 2', category: 'A', source: 'sat', owner: TEAM[0], dueOn: '2026-10-09', origin: 'itp', ownerParty: 'keystone', ncrNumber: null },
     });
     expect(parseNewPunch({ item: 'x', cat: 'C', src: 'client_inspection', owner: 'Julien Wagner' }, TEAM)).toMatchObject({ ok: true, value: { category: 'C', source: 'client_inspection', owner: 'Julien Wagner', location: null, dueOn: null } });
     expect(parseNewPunch({ item: '' }, TEAM)).toEqual({ ok: false, error: 'Item is required' });

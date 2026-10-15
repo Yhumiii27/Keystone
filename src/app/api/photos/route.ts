@@ -1,5 +1,6 @@
 // Photos stored by Keystone (R-126, X-15 / SC-4a) — POST /api/photos, multipart fields `kind` (goods_receipt | daily_report |
-// punch_item), `code` (project), `ref` (BL-…, DR-…, P-…), `register` (punch items: itp | site) and `file`. A Route Handler
+// punch_item), `code` (project), `ref` (BL-…, DR-…, P-…) and `file` (an optional `register` sent by older pages is ignored:
+// R-117, a punch item is found by its number and its stored origin governs the rights — photoGate). A Route Handler
 // rather than a Server Function because Server Functions take at most 1 MB per request by default, below the 20 MB file
 // limit. The viewer must be able to edit the screen that governs the record (src/features/photos/access.ts); size, type,
 // content and the per-record count are checked before anything is written. Answers JSON { ok: true, id } or { ok: false,

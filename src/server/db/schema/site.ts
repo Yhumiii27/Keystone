@@ -10,9 +10,11 @@ import { activities } from './planning';
 import { projects } from './portfolio';
 
 /**
- * Site sheet of a project (SITE 3573: HLT-026 only). Values are authored in French in the prototype ("Lun–Sam 7h–19h…")
- * and kept as data. `cursusChantierId` is the site's id in Cursus ("K-2614"), used by the HTTP Cursus connector — null in
- * the seed: OPEN QUESTION C-3, how Keystone projects map to Cursus chantiers (Cursus numbers them K-26xx).
+ * Site sheet of a project (SITE 3573: HLT-026 only in the seed). D-3 'a' (R-118): the project's leads create it with
+ * "Prepare the site" from the Études stage and fill it in Keystone; values are typed text (the seed's are authored in French,
+ * "Lun–Sam 7h–19h…"). `cursusChantierId` is the site's id in Cursus ("K-2614"), used by the HTTP Cursus connector — D-3 'a'
+ * says the sheet carries it, but Cursus has no site-creation endpoint yet (R-028, NEW-CURSUS-1): null until Cursus creates
+ * the site ("Cursus site: not created yet").
  */
 export const siteSheets = pgTable('site_sheets', {
   id: id(),
@@ -97,7 +99,11 @@ export const siteRotations = pgTable(
   (t) => [unique().on(t.projectId, t.position)],
 );
 
-/** Collisions detected on the site team (SITE_COLLISIONS 3578): load, certificate, document, leave. */
+/**
+ * Collisions of the site team as the prototype listed them (SITE_COLLISIONS 3578: load, certificate, document, leave). R-119
+ * (D-6b 'a'): the conflicts are now computed from the rotation plan, the resource pool, Cursus and the absences
+ * (src/domain/site.ts `siteConflicts`); this table is no longer read and is kept until the owner confirms its deletion.
+ */
 export const siteCollisions = pgTable(
   'site_collisions',
   {
@@ -113,6 +119,30 @@ export const siteCollisions = pgTable(
     position: integer('position').notNull(),
   },
   (t) => [unique().on(t.projectId, t.position)],
+);
+
+/**
+ * R-119 (D-6b 'a': "le conflit disparaît quand sa cause disparaît ; le chef de service peut aussi le marquer « arbitré », avec un
+ * commentaire"): a computed site-team conflict marked arbitrated. `conflictKey` names the conflict and its cause (kind,
+ * person, and what causes it — weeks, dates, Cursus state — never the load percentage), so the arbitration lasts while the
+ * cause is unchanged and a new or changed cause is open again. Who may arbitrate: src/domain/site.ts `canArbitrateConflict`.
+ */
+export const siteConflictArbitrations = pgTable(
+  'site_conflict_arbitrations',
+  {
+    id: id(),
+    projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+    conflictKey: text('conflict_key').notNull(),
+    /** Person of the conflict as the rotation plan names them ("Julien Wagner", "Contractant — 2 monteurs"). */
+    personName: text('person_name').notNull(),
+    kind: text('kind').$type<CollisionKind>().notNull(),
+    /** Why it is accepted (required). */
+    comment: text('comment').notNull(),
+    arbitratedByName: text('arbitrated_by_name').notNull(),
+    arbitratedByPersonId: uuid('arbitrated_by_person_id').references(() => persons.id),
+    arbitratedAt: timestamp('arbitrated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.projectId, t.conflictKey)],
 );
 
 /** Mission cost lines charged to the Site work package (SITE_COSTS 3579), k€. */

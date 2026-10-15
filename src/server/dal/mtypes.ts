@@ -1,8 +1,9 @@
 import 'server-only';
 // Standard machine types DAL (docs/spec/09 §9). One aggregate per machine type: label, description, default calendar,
 // active flag, standard phases, reference cost categories (k€), ITP systems, the REX payment pattern and its reference
-// projects (`MT_ALL` 5085). The ITP screen reads the systems (itp.ts) and Budget the REX pattern (budget.ts); the
-// new-project wizard still reads the project templates (project_templates, NP_TEMPLATES — OPEN QUESTION A-2 / E-9).
+// projects (`MT_ALL` 5085). The new-project wizard instantiates the type (phases, cost categories, ITP plan — A-2); E-9 'a'
+// (R-057): a type's changes apply to the projects created afterwards — an ITP plan keeps the systems frozen when it was
+// created (itp_plan_systems, itp.ts); Budget still reads the REX pattern live (budget.ts).
 import { asc, eq } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { calendar, costType, machineType, type CalendarCode, type CostType, type MachineTypeCode } from '@/server/db/codes';
@@ -138,7 +139,7 @@ export async function setMachineTypePhases(code: string, phases: string[], actor
   });
 }
 
-/** Replaces the ITP systems ("Add system" appends "New system"). */
+/** Replaces the ITP systems ("Add system" appends "New system") — for the plans created afterwards (E-9 'a', R-057: existing plans keep theirs). */
 export async function setMachineTypeItpSystems(code: string, systems: string[], actor: Actor): Promise<void> {
   MT(actor);
   const names = systems.map((s, i) => requiredText(s, `System ${i + 1}`, 120));

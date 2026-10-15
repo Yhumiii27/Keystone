@@ -358,8 +358,8 @@ export interface DocumentRecord extends VaultDocument {
 type Q = Awaited<ReturnType<typeof getDb>> | Tx;
 
 /**
- * Punch item of a project by number (R-128): the ITP register first, then the site register — both open the project's
- * punch list (A-6, one list per project). Kept in one function so the unified list (R-117) can replace the lookup.
+ * Punch item of a project by number (R-128): one punch list per project, numbered over the project (R-117, A-6 'a'), so a
+ * number names one item; it opens that item's row of the project's punch list (`#punch-P-01`).
  */
 async function findPunchItem(q: Q, projectId: string, numbers: readonly string[]): Promise<Set<string>> {
   if (!numbers.length) return new Set();
