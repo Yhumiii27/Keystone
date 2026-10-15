@@ -4,7 +4,9 @@
 // scripts/proto-golden-worldmap.ts (prototype logic in node:vm, `renderVals`, director). Deliberate deviations are
 // asserted explicitly: project names translated on their own (the prototype left "ERP Migration — Phase 2" and
 // every tooltip name and client in English), marker and tooltip tags from codes (in French the prototype compared
-// translated health labels), singular "1 project located".
+// translated health labels), singular "1 project located". Delivery 8 (L-7 = a, R-135): the tooltip's stage tag takes
+// the stage colour of the list (`statusTag`) instead of the prototype's health-driven `tagClass`, the legend's grey
+// marker reads "Closed / cancelled", and the markers are keyboard buttons.
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 vi.mock('next/navigation', () => ({ usePathname: () => '/portfolio/map', useRouter: () => ({ push() {}, prefetch() {}, refresh() {} }) }));
 import { createElement as h } from 'react';
@@ -28,15 +30,22 @@ import { D7_HEALTH, withD7Health } from '@/test/d7-cost-control';
 // Delivery 7 (R-073, C-2a): the health of the six projects with activities follows their computed progress, actual cost and SPI
 // (HLT-026 off track, NDC-031 / RCF-019 at risk, MSR-012 on track): list rows, points and tooltip tags; "At risk" tile per zone.
 const HEALTH_FR: Record<string, string> = { 'On track': 'Conforme', 'At risk': 'À risque', 'Off track': 'Hors trajectoire' };
+/** L-7 (R-135): stage tag class of every project = the prototype's list `statusTag` (golden "Sites" rows), by code. */
+const STAGE_CLASS: Record<string, string> = Object.fromEntries(
+  (golden as any)['en|null'].groups.flatMap((g: any) => g.items.map((i: any) => [i.code, i.statusClass])),
+);
 const tipTags = (tips: Record<string, any[]>) =>
   Object.fromEntries(Object.entries(tips).map(([key, clusters]) => [key, clusters.map((c) => ({
     ...c,
     rows: c.rows.map((r: any) => {
-      const now = D7_HEALTH[r.sub.split(' · ')[0]];
-      if (!now || r.tags.length < 2) return r;
+      const code = r.sub.split(' · ')[0];
+      // L-7 (R-135): the status tag takes the stage colour (the prototype's tooltip took the health's): the golden tone
+      // of the tooltip is replaced by the list's stage tone, so this comparison no longer covers the prototype's tones.
+      const stage = `${STAGE_CLASS[code]}|${r.tags[0].split('|')[1]}`;
+      const now = D7_HEALTH[code];
+      if (!now || r.tags.length < 2) return { ...r, tags: [stage, ...r.tags.slice(1)] };
       const label = key.startsWith('fr|') ? HEALTH_FR[HEALTH_LABEL[now]] : HEALTH_LABEL[now];
-      // The status tag of an active project takes the tone of its health (the map's tooltip colouring).
-      return { ...r, tags: [`${HEALTH_TAG[now]}|${r.tags[0].split('|')[1]}`, `${HEALTH_TAG[now]}|${label}`] };
+      return { ...r, tags: [stage, `${HEALTH_TAG[now]}|${label}`] };
     }),
   }))]));
 const D7_AT_RISK: Record<string, [string, string]> = { euna: ['2', 'var(--color-accent-300)'], afr: ['1', 'var(--color-accent-300)'] };
@@ -97,9 +106,11 @@ describe('projects map — view model vs prototype', () => {
         // The tooltip translates names and clients like the list (the prototype sent them in English).
         expect(m.points.map((p) => [p.name, p.sub])).toEqual(g.points.map((p: any) => [`${p.name.split(' · ')[0]} · ${t(p.name.slice(p.name.indexOf(' · ') + 3))}`, `${p.code} · ${p.pm} · ${t(p.client)}`]));
         const ui = g.ui;
+        // L-7 (R-135): the grey marker's legend reads "Closed / cancelled" (« Clos / annulé »), the prototype's "Closed / on hold".
         expect([m.labels.world, m.labels.fit, m.labels.ontrack, m.labels.risk, m.labels.pipeline, m.labels.closed, m.labels.open, m.labels.loading, m.labels.failed]).toEqual(
-          [ui.world, ui.fit, ui.ontrack, ui.risk, ui.pipeline, ui.closed, ui.open, ui.loading, ui.failed],
+          [ui.world, ui.fit, ui.ontrack, ui.risk, ui.pipeline, t('Closed / cancelled'), ui.open, ui.loading, ui.failed],
         );
+        expect(m.labels.closed).toBe(lang === 'fr' ? 'Clos / annulé' : 'Closed / cancelled');
         // The second view button shows the zone name when a zone is selected (map `buildCtl`).
         expect(m.labels.europe).toBe(g.zone ? g.zone.label : ui.europe);
         expect(m.zone ? { label: m.zone.label, bounds: m.zone.bounds } : null).toEqual(g.zone);
@@ -110,6 +121,11 @@ describe('projects map — view model vs prototype', () => {
     const en = modelOf('en', null);
     const fr = modelOf('fr', null);
     expect(fr.points.map((p) => [p.style, p.status.tone, p.health?.tone ?? null])).toEqual(en.points.map((p) => [p.style, p.status.tone, p.health?.tone ?? null]));
+    // L-7 (R-135): the tooltip's stage tag has the list's stage tone (accent in execution, outline in the pipeline and
+    // Garantie, neutral when closed or cancelled), whatever the health.
+    const listTone = new Map(en.groups.flatMap((g) => g.items.map((i) => [i.code, i.status.tone])));
+    for (const p of en.points) expect(p.status.tone, p.code).toBe(listTone.get(p.code));
+    expect(Object.fromEntries(en.points.map((p) => [p.code, p.status.tone]))).toMatchObject({ 'HLT-026': 'accent', 'MSR-012': 'accent', 'WSA-044': 'outline', 'DRR-009': 'neutral' });
     // R-073: NDC-031 is at risk (SPI 0.96 computed from its activities and BL1; the prototype's synthetic figures had it on track).
     expect(Object.fromEntries(en.points.map((p) => [p.code, p.style]))).toMatchObject({ 'HLT-026': 'risk', 'NDC-031': 'risk', 'RCF-019': 'risk', 'WSA-044': 'pipeline', 'DRR-009': 'closed' });
   });
@@ -176,7 +192,8 @@ describe('projects map — static render', () => {
       'Projets localisés', 'Tout le portefeuille', '6 pays', 'Actifs', '5 en pipeline', 'À risque', '1 hors trajectoire', 'Sites · 11',
       'Le Havre', 'France · 3', 'Maroc · 1', '#026 · Extension du terminal Harbor Line', 'HLT-026 · R. Aubert · Autorité portuaire',
       'Fabrication & Assemblage', 'Mise en service & SAT', 'Études', 'Hors trajectoire', 'Conforme', 'Monde', 'Europe', 'Projets',
-      'À risque / hors trajectoire', 'Clos / en attente', 'Natural Earth · world-atlas 2.0.2', 'Chargement de la géométrie de la carte…',
+      // L-7 (R-135): « Clos / annulé » (the prototype's « Clos / en attente »).
+      'À risque / hors trajectoire', 'Clos / annulé', 'Natural Earth · world-atlas 2.0.2', 'Chargement de la géométrie de la carte…',
       'Déplacez et zoomez · cliquez un repère pour ouvrir le projet · survolez un projet pour le mettre en évidence sur la carte',
     ])
       expect(txt).toContain(s);
@@ -187,6 +204,22 @@ describe('projects map — static render', () => {
     expect(txt).not.toContain('Aucun projet dans cette zone');
     // 17 located projects at the initial (world) zoom: 7 markers, two of them clusters (France 10, Morocco 2).
     expect(html.match(/<text class="[^"]*count/g)?.length).toBe(2);
+    // L-7 (R-135): the map is a group of keyboard buttons named after their tooltip (+ the project for a single marker).
+    expect(html).toMatch(/<svg[^>]*role="group"[^>]*aria-label="Mappemonde des projets"/);
+    const markers = [...html.matchAll(/<g [^>]*role="button"[^>]*>/g)].map((x) => x[0]);
+    expect(markers).toHaveLength(7);
+    // World view: every marker is inside the frame, so every marker is a tab stop.
+    for (const g of markers) expect(g).toContain('tabindex="0"');
+    expect(markers.map((g) => /aria-label="([^"]*)"/.exec(g)?.[1])).toEqual([
+      '4 sites · 10 projets',
+      '2 sites · 2 projets',
+      'Westfield (WA) · Australie · 1 projet · #044 · Centrale solaire de Westfield',
+      'Sydney · Australie · 1 projet · FTU-052 · Modernisation télématique de flotte',
+      'Ridgeway (Ontario) · Canada · 1 projet · RBR-048 · Réhabilitation du pont de Ridgeway',
+      'Kuala Lumpur · Malaisie · 1 projet · CER-047 · Rénovation énergétique du campus',
+      'Abidjan · Côte d’Ivoire · 1 projet · TTR-017 · Déplacement du pylône télécom',
+    ]);
+    expect(html.match(/<circle class="[^"]*focusRing/g)?.length).toBe(7);
   });
 
   it('English body with a zone: zone button label and empty-zone notice', () => {
