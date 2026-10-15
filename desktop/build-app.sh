@@ -61,7 +61,8 @@ plutil -insert KeystoneProjectDir -string "$PROJECT" "$PLIST"
 plutil -insert KeystoneNodePath -string "$NODE" "$PLIST"
 
 echo "› Build de production de Keystone (évite l'attente à la première ouverture)…"
-NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 "$NODE" node_modules/next/dist/bin/next build >/dev/null
+# `next build` type-checks the project: it needs more than Node's default ~2 GB heap.
+NODE_OPTIONS="--max-old-space-size=4096 ${NODE_OPTIONS:-}" NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 "$NODE" node_modules/next/dist/bin/next build >/dev/null
 
 xattr -cr "$OUT"
 codesign --force --deep --sign - "$OUT" >/dev/null

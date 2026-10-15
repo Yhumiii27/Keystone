@@ -79,6 +79,8 @@ async function main(): Promise<number> {
   const root = turbopackRoot();
   const env: NodeJS.ProcessEnv = {
     ...process.env,
+    // `next build` type-checks the project: since delivery 8 it needs more than Node's default ~2 GB heap.
+    NODE_OPTIONS: `--max-old-space-size=4096 ${process.env.NODE_OPTIONS ?? ''}`.trim(),
     KEYSTONE_DIST_DIR: DIST,
     KEYSTONE_DATA_DIR: dataDir,
     ...(root ? { KEYSTONE_TURBOPACK_ROOT: root } : {}),

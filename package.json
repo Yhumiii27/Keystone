@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "NODE_OPTIONS=\"--max-old-space-size=4096 ${NODE_OPTIONS:-}\" next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "NODE_OPTIONS=\"--max-old-space-size=4096 ${NODE_OPTIONS:-}\" tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --conditions=react-server scripts/db-migrate.ts",
     "db:reset": "rm -rf .data",
