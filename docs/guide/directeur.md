@@ -43,30 +43,53 @@ décisions de documents.
   confirme, « Refuser » (avec un commentaire que le chef de projet verra) le ramène à l’étape précédente.
 - **Prélèvement sur la provision** : « Approuver » le valide (il compte alors dans le consommé).
 
-### Demandes de modification et références — *à vérifier après intégration (R-069)*
+### Demandes de modification et références (R-069)
 
-Une nouvelle référence après BL1 passe par une demande de modification : le chef de projet la soumet depuis le Plan
-(« Fixer la référence ») ; elle est approuvée successivement par le chef de projet, le client, le directeur puis le CCB
-(le directeur décide aussi pour le CCB). Une fois approuvée, la nouvelle référence devient courante. La livraison 8 rend ce
-circuit séquentiel avec un seuil CCB réglable (étapes non requises passées automatiquement).
+Les étapes d’une demande de modification sont fixées à sa soumission et se décident **dans l’ordre** :
+
+1. **chef de projet** ;
+2. **directeur de portefeuille** ;
+3. **client**, seulement si l’impact contractuel n’est pas « Aucun (interne) » ;
+4. **comité de contrôle des modifications**, seulement si le montant dépasse le seuil des Paramètres (50 k€ par défaut) ; le
+   directeur enregistre la décision du comité (P-6a).
+
+Une étape non requise est « Non requis » ; une étape n’arrive dans Mes approbations qu’à son tour (sinon « Pas encore à vous
+de décider »). La **justification** de la demande est visible du client (R-140).
+
+Une nouvelle référence après BL1 passe par ce circuit : le chef de projet la soumet depuis le Plan (« Fixer la référence ») ;
+une fois la demande approuvée, la nouvelle référence devient courante et l’ancienne est « Remplacée ».
+
+Approuvée, une demande met à jour le BAC, les lots de travaux et la catégorie de coûts choisie ; si le client l’a approuvée
+et qu’elle touche le prix, un avenant brouillon est préparé au Contrat.
 
 ### Ressources
 
 - **Approbations** : le directeur décide les demandes de ressources de **tous** les services (un chef de service, celles de
   ses services).
-- **Grilles de taux** : les taux horaires (visibles du directeur et des chefs de projet seulement).
+- **Grilles de taux** (R-083) : taux horaires et majorations **datés**. Le champ « Taux en vigueur le · les modifications
+  s’appliquent à partir du » choisit la date ; une modification crée une version à cette date (une date antérieure revalorise
+  les heures travaillées depuis). Le directeur et la Finance les modifient ; les chefs de projet les lisent ; les autres rôles
+  ne les voient pas.
 - « Mes tâches » d’une autre personne : le directeur peut ouvrir celles de tout le monde.
 
 ### Administration
 
-- **Paramètres** : listes personnalisables, seuils de santé (« À risque sous »), règles du portefeuille.
+- **Paramètres** : listes personnalisables, seuils de santé (« À risque sous »), règles du portefeuille. Deux réglages de
+  la livraison 8, modifiables par le directeur seul :
+  - **Comité de contrôle des modifications** : « Comité au-delà de (k€) », 50 k€ par défaut ; s’applique aux demandes
+    soumises ensuite ;
+  - **Écart d’heures** : « Seuil d’écart d’heures (%) », 10 % par défaut ; une ligne d’Heures (Lucca) est signalée au-dessus
+    comme en dessous du prévu.
 - **Activité et intégrations** : journal d’activité et d’audit, état réel de chaque connecteur (simulé, connecté, non
   connecté, désactivé), export du journal d’audit. « Synchroniser » l’index Codex est réservé au directeur.
 
 ## Points d’attention
 
 - **Mode démonstration** : « Voir en tant que » permet de vérifier ce que voit chaque rôle ; il n’existe que sur la bêta.
-- Le rôle **Finance** (contrat, facturation, grille de taux) arrive avec la livraison 8 (R-044) — *à vérifier après
-  intégration*. L’entrée « Voir comme le client » pour le directeur et les chefs de projet aussi (R-139).
+- Le rôle **Finance** (R-044, [guide](finance.md)) modifie le contrat de tous les projets, les grilles de taux et le taux
+  budgétaire ; il lit Facturation, Budget et Heures.
+- **« Voir comme le client »** (R-139) : bouton de l’en-tête des écrans d’un projet. Il ouvre le portail client sous le
+  bandeau « Vue client · aperçu · lecture seule », avec « Retour au projet ». Le directeur y garde « Signaler » ; les
+  décisions restent au client.
 - Les seuils, intervalles et réglages par défaut listés comme « à confirmer » dans les notes de livraison attendent votre
   décision.

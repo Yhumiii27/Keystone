@@ -4,9 +4,7 @@ Keystone PM est l’outil de gestion de projets et de portefeuille d’EPC2i. Ce
 aujourd’hui**, rôle par rôle. Il ne décrit pas les procédures d’EPC2i qui sont encore en cours de définition (procédure
 d’achat, matrice RACI, gel hebdomadaire des données) : l’application ne les impose pas encore.
 
-> **Bêta.** Les parcours marqués **« à vérifier après intégration »** changent dans la livraison 8 (circuit des demandes de
-> modification, liste de réserves unique, fiche chantier, annulation de commande, rôle Finance, mentions @…) : relisez-les
-> sur la version installée avant de les suivre à la lettre.
+Les guides décrivent la version de la **livraison 8**.
 
 ## Guides par rôle
 
@@ -19,7 +17,7 @@ d’achat, matrice RACI, gel hebdomadaire des données) : l’application ne les
 | Responsable ingénierie | [responsable-ingenierie.md](responsable-ingenierie.md) | Antoine Girard |
 | Responsable qualité | [qualite.md](qualite.md) | Gabriel Comte |
 | Achats & stock | [achats.md](achats.md) | Fabien Bertrand |
-| Finance | [finance.md](finance.md) | à venir (R-044) |
+| Finance | [finance.md](finance.md) | Léa Marchand |
 
 Le guide du **client** attend l’ouverture du portail client (I-2b, R-179). Les scénarios de recette de la bêta sont dans
 [recette-beta.md](recette-beta.md) ; l’exploitation (installation, sauvegardes, antivirus) dans
@@ -39,7 +37,8 @@ Le guide du **client** attend l’ouverture du portail client (I-2b, R-179). Les
 - **Projet courant.** Les écrans de la section Projet portent sur le projet choisi dans le sélecteur de projet de l’en-tête.
 - **Langue.** Français par défaut ; FR / EN dans l’en-tête.
 - **Recherche, notifications.** La recherche de l’en-tête trouve projets, activités, commandes, demandes de modification,
-  risques… ; la cloche liste vos notifications (Keystone n’envoie pas encore d’e-mail).
+  risques… sur tout le portefeuille, le projet courant en premier ; la cloche liste vos notifications (demandes à décider,
+  tâches assignées, mentions @…) ; Keystone n’envoie pas encore d’e-mail.
 - **Exports.** Les écrans principaux s’exportent en CSV, Excel ou PDF (bouton « Exporter »).
 - **Tablette.** L’application fonctionne sur tablette jusqu’à 1 024 px de large (menu en tiroir) ; pas de mise en page
   téléphone.
@@ -54,7 +53,9 @@ Le guide du **client** attend l’ouverture du portail client (I-2b, R-179). Les
     activités) ;
   - hors de l’équipe, un projet est **en consultation**.
 - **Création de projet** : le directeur et les chefs de projet (P-3).
-- **Taux horaires** : visibles du directeur et des chefs de projet seulement.
+- **Contrat** : modifié par le directeur et la Finance sur tous les projets, et par les chefs de projet du projet (P-4).
+- **Taux horaires** : visibles du directeur, des chefs de projet et de la Finance ; modifiés par le directeur et la Finance
+  seulement (P-12).
 - **Prix fournisseurs** (prix d’achat, montants de commande, factures fournisseurs) : le directeur, les chefs de projet **et
   les achats** (NEW-D2-1) ; masqués `•••` pour les autres, exports compris.
 - **Comptes rendus de réunion** : rédigés et envoyés par l’organisateur et le chef de projet ; l’équipe ajoute des notes et
@@ -71,15 +72,16 @@ gestion complètes restent chez elles :
 
 | Application | Ce qu’elle garde | Dans Keystone |
 |---|---|---|
-| **Vigie** (QHSE) | ECO, NCR des projets (8D, plans d’action), HSE du chantier | listes en lecture, « Signaler dans Vigie », avancement en attente de synchronisation |
-| **Cursus** (RH, formation) | habilitations chantier et Go / No Go des personnes ; temps passés | verdicts Cursus sur la fiche chantier, liens vers Cursus |
+| **Vigie** (QHSE) | ECO, NCR des projets (8D, plans d’action), HSE du chantier | listes en lecture, « Signaler dans Vigie », liens préremplis (NC fournisseur d’une réception refusée, incident HSE du chantier), avancement en attente de synchronisation |
+| **Cursus** (RH, formation) | habilitations chantier et Go / No Go des personnes ; congés et absences ; temps passés | verdicts Cursus sur la fiche chantier, absences reçues (Congés et calendrier), liens vers Cursus |
 | **Codex** (documents) | les documents, leurs révisions et circuits d’approbation | l’index, les liens « Ouvrir dans Codex », les décisions en attente de synchronisation avec Codex |
 
 ## Limites connues de la bêta
 
 - **Connecteurs** : sans adresse d’API, Vigie, Cursus et Codex sont **simulés** (miroir local, « Synchroniser » indique une
   synchronisation simulée) ; avec une adresse, ils appellent les API des applications sœurs, qui servent aujourd’hui des
-  données de démonstration. Sage X3, SolidWorks PDM, Outlook / Exchange, Teams et la messagerie ne sont **pas connectés**.
+  données de démonstration. Sage X3, SolidWorks PDM, Outlook / Exchange, Teams et la messagerie ne sont **pas connectés** ;
+  sur la base de démonstration, les actions Sage X3 sont simulées et le disent (« Import simulé (Sage X3 non connecté) »).
 - **Date d’état figée** : les indicateurs se calculent au **25 septembre 2026** (« aujourd’hui » = 30 septembre 2026) tant que
   l’horloge réelle et la date des données ne sont pas décidées (R-013, S-4).
 - **Imports désactivés** (D-7b) : MS Project, Primavera P6 et les imports Excel / CSV ne sont pas proposés.
