@@ -43,8 +43,10 @@ describe('Settings rules (settingsKpis / settingsCards / locTypeSeg / setHealth)
   });
 
   it('card metadata, location-type options and the add-entry draft', () => {
+    // R-031 (NEW-CURSUS-4 / NEW-CURSUS-7): the holidays card names Cursus, not Lucca, as the source for leave.
+    const cursus = (sub: string) => sub.replace('Lucca stays the source for leave', 'Cursus is the source for leave');
     expect(SETTINGS_CARDS.map((c) => ({ key: c.key, title: c.title, sub: c.sub, icon: `ph ph-${c.icon}` }))).toEqual(
-      G.en.settings.cards.map((c: any) => ({ key: c.key, title: c.title, sub: c.sub, icon: c.icon })),
+      G.en.settings.cards.map((c: any) => ({ key: c.key, title: c.title, sub: cursus(c.sub), icon: c.icon })),
     );
     expect(S.locTypes.map(locationTypeShortLabel)).toEqual(G.en.settings.locTypeSeg.map((o: any) => o.label));
     expect(isSettingsCardKey('holidays')).toBe(true);

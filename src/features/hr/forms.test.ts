@@ -1,10 +1,11 @@
-// HR action forms vs the prototype AF catalogue (AF.rates / skills / leave / hours, AF_RESULT) and input validation.
+// HR action forms vs the prototype AF catalogue (AF.rates / skills / hours, AF_RESULT) and input validation. AF.leave
+// ("Sync Lucca") is retired: absences come from Cursus (NEW-CURSUS-7 "a", R-031; Lucca unplugged, NEW-CURSUS-4).
 import { describe, expect, it } from 'vitest';
 import PROTO from '@/server/prototype/prototype-data.json';
 import { formDefFromPrototype, optionLabel, type FormDef } from '@/components/app/form-def';
 import {
-  ADD_ROLE_FORM, ADD_ROLE_RESULT, ADD_SKILL_FORM, ADD_SKILL_RESULT, SYNC_LUCCA_FORM, SYNC_LUCCA_RESULT, importHoursForm, importHoursResult,
-  parseAddRole, parseAddSkill, parseFactor, parseImportHours, parseRate, parseSyncLucca, periodCovers,
+  ADD_ROLE_FORM, ADD_ROLE_RESULT, ADD_SKILL_FORM, ADD_SKILL_RESULT, importHoursForm, importHoursResult,
+  parseAddRole, parseAddSkill, parseFactor, parseImportHours, parseRate, periodCovers,
 } from './forms';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -19,17 +20,17 @@ const shape = (f: FormDef) => ({
 });
 
 describe('HR forms = prototype AF catalogue', () => {
-  it('Add role, Add skill, Sync Lucca, Import Lucca hours', () => {
+  // NEW-CURSUS-7 (R-031): the prototype's AF.leave "Sync Lucca" form is no longer offered.
+  it('Add role, Add skill, Import Lucca hours', () => {
     expect(shape(ADD_ROLE_FORM)).toEqual(shape(formDefFromPrototype(P.AF.rates)));
     expect(shape(ADD_SKILL_FORM)).toEqual(shape(formDefFromPrototype(P.AF.skills)));
-    expect(shape(SYNC_LUCCA_FORM)).toEqual(shape(formDefFromPrototype(P.AF.leave)));
     // the analytic code defaults to the project's code (HAV004 for HLT-026 = the prototype's constant)
     expect(shape(importHoursForm('HAV004'))).toEqual(shape(formDefFromPrototype(P.AF.hours)));
     expect(importHoursForm(null).fields.find((f) => f.id === 'code')!.defaultValue).toBe('');
   });
 
   it('toasts = AF_RESULT (hours with the real counts)', () => {
-    expect([ADD_ROLE_RESULT, ADD_SKILL_RESULT, SYNC_LUCCA_RESULT]).toEqual([P.AF_RESULT.rates, P.AF_RESULT.skills, P.AF_RESULT.leave]);
+    expect([ADD_ROLE_RESULT, ADD_SKILL_RESULT]).toEqual([P.AF_RESULT.rates, P.AF_RESULT.skills]);
     expect(importHoursResult(12, 2)).toBe(P.AF_RESULT.hours);
     expect(importHoursResult(1, 0)).toBe('Lucca hours imported · 1 line matched · 0 to assign');
   });
@@ -65,11 +66,6 @@ describe('validation', () => {
     expect(parseAddSkill({ name: 'mep' }, ['MEP'])).toEqual({ ok: false, error: 'This skill is already in the matrix' });
     expect(parseAddSkill({ name: ' ' })).toEqual({ ok: false, error: 'Skill is required' });
     expect(parseAddSkill({ name: 'X', cat: 'hr' })).toEqual({ ok: false, error: 'Unknown category' });
-  });
-
-  it('Sync Lucca', () => {
-    expect(parseSyncLucca({})).toEqual({ ok: true, value: { period: 'next_3m', teams: 'all' } });
-    expect(parseSyncLucca({ period: 'x' })).toEqual({ ok: false, error: 'Unknown period' });
   });
 
   it('Import Lucca hours: project analytic code (blank → default), period coverage', () => {

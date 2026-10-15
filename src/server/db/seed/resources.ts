@@ -2,7 +2,8 @@
 // (SKILLS, SKILL_LV, CERTS), leave (LEAVE_DAYS, LEAVE) and public holidays (SETTINGS0.holidays), Lucca hours
 // (HOURS) and what-if levelling (LEVERS, AUTO, the HLT-026 scenarios of the initial state). See schema/resources.ts.
 import { PROTO } from '@/server/prototype';
-import { addDaysIso, hoursMatching, isoOfDisplayDate, leaveType, whatIfPriority, type WhatIfPriority } from '../codes';
+import { LEAVE_TYPE_ROWS } from '@/domain/absences';
+import { addDaysIso, hoursMatching, isoOfDisplayDate, leaveTypeOfNature, whatIfPriority, type WhatIfPriority } from '../codes';
 import {
   allocations, certifications, hoursImports, hoursLines, jobTitleRates, leaveEntries, leaveTypes, personSkills, publicHolidays, rateMultipliers,
   rateRoles, skills, unassignedHours, whatIfAutoLevers, whatIfContexts, whatIfLevers, whatIfScenarioLevers, whatIfScenarios,
@@ -33,9 +34,8 @@ export const skillRowsOf = () => (PROTO.SKILLS as string[]).map((name, i) => ({ 
 export async function seedResourceReference(tx: Tx): Promise<{ id: string; name: string; position: number }[]> {
   const skillRows = skillRowsOf();
   await tx.insert(skills).values(skillRows);
-  await tx.insert(leaveTypes).values(
-    Object.entries(PROTO.LEAVE_DAYS as Record<string, number>).map(([label, days], i) => ({ code: leaveType.code(label), label, daysPerWeek: days, position: i + 1 })),
-  );
+  // NEW-CURSUS-4 (R-031, R-173): two simple types, Leave and Absence — never the reason of an absence.
+  await tx.insert(leaveTypes).values(LEAVE_TYPE_ROWS.map((t, i) => ({ code: t.code, label: t.label, daysPerWeek: t.daysPerWeek, position: i + 1 })));
   await tx.insert(publicHolidays).values(
     (PROTO.SETTINGS0.holidays as string[]).map((h, i) => {
       const [day, name] = h.split(' · ');
@@ -92,14 +92,15 @@ export async function seedResources(tx: Tx, ctx: SeedCtx): Promise<void> {
     ),
   );
 
-  // Leave (leave types and public holidays are reference data).
+  // Leave (leave types and public holidays are reference data). NEW-CURSUS-4: the prototype's CP / RTT weeks are Leave,
+  // its Sick / Training weeks Absence; their working days are kept (availability and KPIs unchanged).
   const leaveDays = PROTO.LEAVE_DAYS as Record<string, number>;
   const leaveRows = Object.entries(PROTO.LEAVE as Record<string, Record<string, string>>).flatMap(([name, byWeek]) =>
     Object.entries(byWeek).map(([week, label]) => {
       const weekStart = resourceWeekStart(+week);
       const days = leaveDays[label];
       return {
-        id: newId(), personId: personId(ctx, name), leaveType: leaveType.code(label), weekStart, startDate: weekStart,
+        id: newId(), personId: personId(ctx, name), leaveType: leaveTypeOfNature(label), weekStart, startDate: weekStart,
         endDate: addDaysIso(weekStart, days - 1), days,
       };
     }),

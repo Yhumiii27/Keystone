@@ -128,4 +128,10 @@ describe('titles and paths', () => {
     for (const p of ['/', '/projects/HLT-026/plan', '/api/export/budget', '/api/healthz', '/sign-in/x', '/admin/integrations/audit.csv', '/projects/x.js', '/api/authx'])
       expect(isPublicPath(p), p).toBe(false);
   });
+
+  it('R-029 (NEW-CURSUS-7): the Cursus events endpoint is public (its own key authenticates the call) — that exact path only', () => {
+    expect(isPublicPath('/api/integrations/cursus/events')).toBe(true);
+    for (const p of ['/api/integrations/cursus/events/x', '/api/integrations/cursus', '/api/integrations/cursus/eventsx', '/api/integrations/vigie/events', '/API/integrations/cursus/events'])
+      expect(isPublicPath(p), p).toBe(false);
+  });
 });

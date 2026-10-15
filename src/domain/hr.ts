@@ -163,8 +163,8 @@ export function skillKpis(coverage: SkillCoverage[], peopleWithCerts: number): S
 
 // ── Leave & working calendar (§4, logic 4398–4404) ──────────────────────────────────────────────────────
 
-/** Leave code shown in the cell ("CP", "RTT", "Sick", "Training"). */
-export type LeaveLabel = 'CP' | 'RTT' | 'Sick' | 'Training';
+/** Leave type shown in the cell (NEW-CURSUS-4, R-173: "Leave" or "Absence" — never the reason of an absence). */
+export type LeaveLabel = 'Leave' | 'Absence';
 
 export interface LeaveWeekInput {
   /** Leave label of the week, null when none. */
@@ -175,11 +175,14 @@ export interface LeaveWeekInput {
   holidays: number;
 }
 
-/** Cell look: sick → accent-800/accent-200 · other leave → accent-900/accent-200 · holiday → neutral-800 · none → neutral-900. */
-export type LeaveCellTone = 'sick' | 'leave' | 'holiday' | 'none';
+/**
+ * Cell look: absence → accent-800/accent-200 (the prototype's sick-leave look) · leave → accent-900/accent-200 · holiday →
+ * neutral-800 · none → neutral-900.
+ */
+export type LeaveCellTone = 'absence' | 'leave' | 'holiday' | 'none';
 
 export interface LeaveCell {
-  /** "CP" / "Training" / "Hol." / '' (EN source). */
+  /** "Leave" / "Absence" / "Hol." / '' (EN source). */
   label: string;
   tone: LeaveCellTone;
   /** Available hours in the week: max(0, 5 − days off) × 7. */
@@ -204,7 +207,7 @@ export function leaveCell(w: LeaveWeekInput): LeaveCell {
   const hol = w.holidays > 0;
   const daysOff = (t ? w.days : 0) + w.holidays;
   const hours = Math.max(0, WEEK_DAYS - daysOff) * DAY_HOURS;
-  const tone: LeaveCellTone = t === 'Sick' ? 'sick' : t ? 'leave' : hol ? 'holiday' : 'none';
+  const tone: LeaveCellTone = t === 'Absence' ? 'absence' : t ? 'leave' : hol ? 'holiday' : 'none';
   return { label: t ?? (hol ? 'Hol.' : ''), tone, hours };
 }
 

@@ -41,6 +41,11 @@ const fr = (en: unknown, frG: unknown): any => {
 };
 const golden = (lang: Lang, path: (g: any) => any) => (lang === 'en' ? path(G.en) : fr(path(G.en), path(G.fr)));
 const kpis = (ks: any[]) => ks.map((k) => ({ label: k.label, value: String(k.value), sub: k.sub, color: k.color }));
+/** R-031 (NEW-CURSUS-4 / NEW-CURSUS-7): Cursus, not Lucca, is the source for leave (the prototype's holidays card sub). */
+const HOLIDAYS_SUB: Record<Lang, Record<string, string>> = {
+  en: { 'Removed from capacity · Lucca stays the source for leave': 'Removed from capacity · Cursus is the source for leave' },
+  fr: { 'Retirés de la capacité · Lucca reste la source des congés': 'Retirés de la capacité · Cursus est la source des congés' },
+};
 const DIRECTOR = { name: 'Marie Lefebvre', role: 'director' };
 const QUALITY = { name: 'Gabriel Comte', role: 'quality' };
 
@@ -88,7 +93,7 @@ describe('Settings view model', () => {
     expect(v.kpis).toEqual(kpis(golden(lang, (g) => g.settings.kpis)));
     expect([v.health.riskText, v.health.offText, v.health.text]).toEqual(golden(lang, (g) => [g.settings.health.risk, g.settings.health.off, g.settings.health.text]));
     expect(v.cards.map((c) => ({ key: c.key, title: c.title, sub: c.sub, icon: `ph ph-${c.icon}`, count: c.count, isLoc: c.isLoc, items: c.items.map((i) => ({ label: i.label, sub: i.sub ?? '', hasSub: i.sub != null })) })))
-      .toEqual(golden(lang, (g) => g.settings.cards.map((c: any) => ({ key: c.key, title: c.title, sub: c.sub, icon: c.icon, count: String(c.count), isLoc: c.isLoc, items: c.items }))));
+      .toEqual(golden(lang, (g) => g.settings.cards.map((c: any) => ({ key: c.key, title: c.title, sub: HOLIDAYS_SUB[lang][c.sub] ?? c.sub, icon: c.icon, count: String(c.count), isLoc: c.isLoc, items: c.items }))));
     expect(v.locTypes.map((o) => o.label)).toEqual(golden(lang, (g) => g.settings.locTypeSeg.map((o: any) => o.label)));
     expect(v.locTypes.map((o) => o.value)).toEqual(['central_warehouse', 'workshop', 'site_store', 'consignment', 'quarantine']);
     // Item ids: the location name, the reference value code (holidays: the 2026 date).

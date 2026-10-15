@@ -4,20 +4,25 @@ import 'server-only';
 import { and, asc, desc, eq, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import { claimExpiry } from '../outbox';
 import { findPerson } from '@/server/db/helpers';
-import { cursusClearances, cursusRequests, cursusSyncRuns } from '@/server/db/schema';
+import { cursusClearances, cursusRequests, cursusSyncRuns, persons } from '@/server/db/schema';
 import type { DB, Tx } from '@/server/db/types';
 import type { CursusClearanceRecord, CursusClearanceView, CursusGoNoGo } from './types';
 
 type Q = DB | Tx;
 
-/** Replaces a project's clearances with Cursus's records (matched by person; rows Cursus no longer lists are removed). */
+/**
+ * Replaces a project's clearances with Cursus's records (matched by person; rows Cursus no longer lists are removed). R-027:
+ * the Keystone person is the one carrying the matricule (staff directory), else the person of that name. A row keeps the
+ * name it was first stored under (reminders and the (project, name) key use it); a new row takes the directory's name.
+ */
 export async function upsertClearances(q: Q, projectCode: string, records: CursusClearanceRecord[], syncedAt: Date, mode: 'mock' | 'http'): Promise<number> {
   const existing = await q.select({ id: cursusClearances.id, personName: cursusClearances.personName, matricule: cursusClearances.matricule })
     .from(cursusClearances).where(eq(cursusClearances.projectCode, projectCode));
   const keep = new Set<string>();
   for (const [position, r] of records.entries()) {
     const old = existing.find((e) => (r.matricule && e.matricule === r.matricule) || e.personName === r.personName);
-    const person = await findPerson(q, r.personName);
+    const [byMatricule] = r.matricule ? await q.select({ id: persons.id }).from(persons).where(eq(persons.matricule, r.matricule)) : [];
+    const person = byMatricule ?? (await findPerson(q, r.personName));
     const values = {
       projectCode, chantierId: r.chantierId, matricule: r.matricule, personName: old && r.matricule && old.matricule === r.matricule ? old.personName : r.personName,
       personId: person?.id ?? null, visa: r.visa, vaccination: r.vaccination, clearance: r.clearance, clearanceNote: r.clearanceNote, verdict: r.verdict,

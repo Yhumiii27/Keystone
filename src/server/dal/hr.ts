@@ -1,7 +1,7 @@
 import 'server-only';
 // HR DAL (docs/spec/06 §2–5, 11 §3.3 PublicHoliday, §3.6): rate cards and multipliers (+ the legacy job-title
-// rates), skills matrix and certifications, leave and the working calendar, Lucca hours reconciliation — and
-// their writers (rates, multipliers, roles, skills, hours import / assignment).
+// rates), skills matrix and certifications, leave and the working calendar (absences received from Cursus, R-031), Lucca
+// hours reconciliation — and their writers (rates, multipliers, roles, skills, Cursus absences, hours import / assignment).
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { getDb, type Tx } from '@/server/db/client';
 import {
@@ -10,9 +10,11 @@ import {
 } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
 import {
-  allocations, certifications, hoursImports, hoursLines, jobTitleRates, leaveEntries, leaveTypes, personSkills, persons, publicHolidays,
+  allocations, certifications, cursusEvents, hoursImports, hoursLines, jobTitleRates, leaveEntries, leaveTypes, personSkills, persons, publicHolidays,
   rateMultipliers, rateRoles, skills, unassignedHours, wbsNodes,
 } from '@/server/db/schema';
+import type { DB } from '@/server/db/types';
+import { absenceWeeks } from '@/domain/absences';
 import type { ResourceWeek } from './resources';
 import { ensureSettingsEntry, hiddenSkillNames, settingsHolidayRows } from './settings-lists';
 
@@ -162,9 +164,9 @@ export interface HolidayRow {
 
 export interface LeaveWeekCell {
   type: LeaveType | null;
-  /** "CP" / "RTT" / "Sick" / "Training". */
+  /** "Leave" / "Absence" (NEW-CURSUS-4: never the reason). */
   typeLabel: string | null;
-  /** Working days lost to leave (LEAVE_DAYS). */
+  /** Working days lost to leave that week (every absence of the week added up, at most 5). */
   days: number;
   /** Public holidays on a weekday of that week. */
   holidays: number;
@@ -177,6 +179,8 @@ export interface LeaveCalendar {
   leaveTypes: { code: LeaveType; label: string; days: number }[];
   /** Resource pool order. */
   people: { name: string; shortName: string; initials: string; jobTitle: string | null; weeks: LeaveWeekCell[] }[];
+  /** R-031: when Keystone last received an absence from Cursus (ISO timestamp); null when none yet. */
+  lastAbsenceReceivedAt: string | null;
 }
 
 /**
@@ -191,15 +195,20 @@ export async function listPublicHolidays(countryCode = 'FR'): Promise<HolidayRow
   return rows.map((h) => ({ date: h.date, name: h.name, label: `${displayOfIso(h.date).replace(/ \d{4}$/, '')} · ${h.name}` }));
 }
 
-/** Leave grid over the resource window (Leave & calendar; read-only Lucca mirror). */
+/**
+ * Leave grid over the resource window (Leave & calendar; read-only mirror of the absences received from Cursus, R-031).
+ * Several absences of a person in one week add up (at most the 5 days of the week); the cell shows the type with the
+ * most days (Leave on a tie).
+ */
 export async function getLeaveCalendar(countryCode = 'FR'): Promise<LeaveCalendar> {
   const db = await getDb();
-  const [weekRows, types, people, entries, hols] = await Promise.all([
+  const [weekRows, types, people, entries, hols, [last]] = await Promise.all([
     db.selectDistinct({ w: allocations.weekStart }).from(allocations).where(isNull(allocations.projectId)).orderBy(asc(allocations.weekStart)),
     db.select().from(leaveTypes).orderBy(asc(leaveTypes.position)),
     db.select().from(persons).where(sql`${persons.resourcePoolPosition} is not null`).orderBy(asc(persons.resourcePoolPosition)),
     db.select().from(leaveEntries),
     listPublicHolidays(countryCode),
+    db.select({ at: sql<string | null>`max(${cursusEvents.receivedAt})` }).from(cursusEvents).where(eq(cursusEvents.type, 'absence.validee')),
   ]);
   const weeks = weekRows.map((r) => ({ start: r.w, label: weekLabelOfIso(r.w) }));
   const weekOf = (iso: string) => weeks.findIndex((w) => iso >= w.start && iso <= addDaysIso(w.start, 6));
@@ -210,11 +219,45 @@ export async function getLeaveCalendar(countryCode = 'FR'): Promise<LeaveCalenda
     people: people.map((p) => ({
       name: p.fullName ?? p.shortName, shortName: p.shortName, initials: p.initials, jobTitle: p.jobTitle,
       weeks: weeks.map((w, i) => {
-        const e = entries.find((x) => x.personId === p.id && x.weekStart === w.start);
-        return { type: e?.leaveType ?? null, typeLabel: e ? leaveType.label(e.leaveType) : null, days: e?.days ?? 0, holidays: holidays.filter((h) => h.weekIndex === i).length };
+        const es = entries.filter((x) => x.personId === p.id && x.weekStart === w.start);
+        const byType = new Map<LeaveType, number>();
+        for (const e of es) byType.set(e.leaveType, (byType.get(e.leaveType) ?? 0) + e.days);
+        const type = [...byType].sort((a, b) => b[1] - a[1] || (a[0] === 'leave' ? -1 : 1))[0]?.[0] ?? null;
+        return {
+          type, typeLabel: type ? leaveType.label(type) : null, days: Math.min(5, es.reduce((n, e) => n + e.days, 0)), holidays: holidays.filter((h) => h.weekIndex === i).length,
+        };
       }),
     })),
+    lastAbsenceReceivedAt: last?.at ? new Date(last.at).toISOString() : null,
   };
+}
+
+export interface CursusAbsence {
+  personId: string;
+  type: LeaveType;
+  /** ISO dates, inclusive. */
+  start: string;
+  end: string;
+  /** Replacement key (src/domain/absences.ts `absenceKey`). */
+  key: string;
+}
+
+/**
+ * Writes an absence received from Cursus (R-031, NEW-CURSUS-4 / NEW-CURSUS-7): replaces the rows of its key, one row per
+ * week it covers (source "cursus"), the week's working days minus the public holidays of Settings. The reason is never
+ * stored. Runs in the caller's transaction (the event inbox's): it never opens a connection of its own. Returns the
+ * weeks written.
+ */
+export async function replaceCursusAbsence(q: DB | Tx, a: CursusAbsence): Promise<number> {
+  const holidays = new Set((await settingsHolidayRows(q)).map((h) => h.date));
+  const weeks = absenceWeeks(a.start, a.end, holidays);
+  await q.delete(leaveEntries).where(eq(leaveEntries.externalId, a.key));
+  if (weeks.length)
+    await q.insert(leaveEntries).values(weeks.map((w) => ({
+      personId: a.personId, leaveType: a.type, weekStart: w.weekStart, startDate: w.startDate, endDate: w.endDate, days: w.days, status: 'approved', source: 'cursus',
+      externalId: a.key,
+    })));
+  return weeks.length;
 }
 
 // ── Hours (Lucca reconciliation) ───────────────────────────────────────────────────────────────────────

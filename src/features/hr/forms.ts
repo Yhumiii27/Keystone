@@ -1,5 +1,5 @@
-// HR action forms (prototype AF catalogue `rates`, `skills`, `leave`, `hours`, design line 3674–3700; docs/spec/06
-// §2.4e, §3.4e, §4.4d, §5.4f) and the validation of what they submit. Pure module shared by the client buttons
+// HR action forms (prototype AF catalogue `rates`, `skills`, `hours`, design line 3674–3700; docs/spec/06
+// §2.4e, §3.4e, §5.4f; the `leave` form "Sync Lucca" is retired, NEW-CURSUS-7) and the validation of what they submit. Pure module shared by the client buttons
 // (FormDialog, `translate`) and the Server Functions. Labels are the prototype's English source strings; select
 // values are stable codes.
 import type { FormDef, FormValues } from '@/components/app/form-def';
@@ -68,32 +68,8 @@ export const ADD_SKILL_FORM: FormDef = {
 /** AF_RESULT.skills */
 export const ADD_SKILL_RESULT = 'Skill added';
 
-// ── Sync Lucca (AF.leave) ──────────────────────────────────────────────────────────────────────────────
-
-export type SyncPeriod = 'next_3m' | 'next_6m' | 'full_year';
-export const SYNC_PERIODS: Opt<SyncPeriod>[] = [
-  { value: 'next_3m', label: 'Next 3 months' },
-  { value: 'next_6m', label: 'Next 6 months' },
-  { value: 'full_year', label: 'Full year' },
-];
-export type SyncTeams = 'all' | 'engineering' | 'site';
-export const SYNC_TEAMS: Opt<SyncTeams>[] = [
-  { value: 'all', label: 'All teams' },
-  { value: 'engineering', label: 'Engineering' },
-  { value: 'site', label: 'Site' },
-];
-
-export const SYNC_LUCCA_FORM: FormDef = {
-  title: 'Sync Lucca',
-  submit: 'Synchronise',
-  kind: 'run',
-  fields: [
-    { id: 'period', label: 'Period', type: 'select', options: SYNC_PERIODS },
-    { id: 'teams', label: 'Teams', type: 'select', options: SYNC_TEAMS },
-  ],
-};
-/** AF_RESULT.leave */
-export const SYNC_LUCCA_RESULT = 'Lucca synchronised · 14 absences updated';
+// "Sync Lucca" (AF.leave) is gone: absences arrive from Cursus by themselves (R-031, NEW-CURSUS-7 "a"; Lucca unplugged,
+// NEW-CURSUS-4).
 
 // ── Import Lucca hours (AF.hours) ──────────────────────────────────────────────────────────────────────
 
@@ -201,20 +177,6 @@ export function parseAddSkill(values: FormValues | unknown, existing: string[] =
   const scale = pick(SKILL_SCALES, str(v.levels));
   if (!scale) return { ok: false, error: 'Unknown level scale' };
   return { ok: true, value: { name, category, scale } };
-}
-
-export interface SyncLuccaInput {
-  period: SyncPeriod;
-  teams: SyncTeams;
-}
-
-export function parseSyncLucca(values: FormValues | unknown): Parse<SyncLuccaInput> {
-  const v = rec(values);
-  const period = pick(SYNC_PERIODS, str(v.period));
-  if (!period) return { ok: false, error: 'Unknown period' };
-  const teams = pick(SYNC_TEAMS, str(v.teams));
-  if (!teams) return { ok: false, error: 'Unknown team' };
-  return { ok: true, value: { period, teams } };
 }
 
 export interface ImportHoursInput {

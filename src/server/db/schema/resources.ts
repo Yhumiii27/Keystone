@@ -1,6 +1,6 @@
 // Resources and HR (docs/spec/11 §3.3 Calendar / WhatIf, §3.6; screens 06 resources, rates, skills, leave,
 // hours; 05 §4 what-if levelling): weekly allocations, rate cards and multipliers, skills and certifications,
-// leave and public holidays, Lucca hours imports, what-if levers and scenarios.
+// leave (received from Cursus) and public holidays, Lucca hours imports, what-if levers and scenarios.
 import { boolean, date, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { HoursMatching, LeaveType, RateMultiplierKey, WhatIfActionKind, WhatIfLeverCode, WhatIfPriority } from '../codes';
 import { id, keur, num, timestamps } from './_common';
@@ -96,16 +96,22 @@ export const certifications = pgTable('certifications', {
 
 // ── Leave and calendar ─────────────────────────────────────────────────────────────────────────────────
 
-/** Leave types with the working days lost in a week (LEAVE_DAYS 3460). */
+/**
+ * Leave types (NEW-CURSUS-4, R-031 / R-173): two simple types only — Leave (paid leave, RTT) and Absence (any other reason,
+ * never stored). `days_per_week` = the most working days one entry can take in a week (an entry carries its own days).
+ */
 export const leaveTypes = pgTable('leave_types', {
   code: text('code').$type<LeaveType>().primaryKey(),
-  /** Lucca label "CP", "RTT", "Sick", "Training". */
+  /** "Leave" / "Absence" (EN source strings). */
   label: text('label').notNull(),
   daysPerWeek: integer('days_per_week').notNull(),
   position: integer('position').notNull(),
 });
 
-/** Approved absences mirrored from Lucca (LEAVE 3459, week-indexed in the prototype → one row per week). */
+/**
+ * Approved absences received from Cursus (R-031, NEW-CURSUS-4 / NEW-CURSUS-7: Lucca is unplugged), one row per week an
+ * absence covers (the prototype's LEAVE 3459 was week-indexed); the demo seed keeps the prototype's weeks.
+ */
 export const leaveEntries = pgTable('leave_entries', {
   id: id(),
   personId: uuid('person_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
@@ -114,11 +120,12 @@ export const leaveEntries = pgTable('leave_entries', {
   weekStart: date('week_start', { mode: 'string' }).notNull(),
   startDate: date('start_date', { mode: 'string' }).notNull(),
   endDate: date('end_date', { mode: 'string' }).notNull(),
-  /** Working days lost (LEAVE_DAYS of the type). */
+  /** Working days lost that week: weekdays of the absence minus the public holidays of Settings. */
   days: integer('days').notNull(),
-  /** Read-only mirror: always approved in Lucca. */
+  /** Read-only mirror: always approved in Cursus. */
   status: text('status').notNull().default('approved'),
-  source: text('source').notNull().default('lucca'),
+  source: text('source').notNull().default('cursus'),
+  /** Replacement key of the absence (Cursus's absence id, else "<matricule>|<start>|<end>"); null for the demo seed. */
   externalId: text('external_id'),
 });
 

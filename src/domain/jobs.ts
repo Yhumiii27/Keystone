@@ -18,6 +18,8 @@ export type JobName =
   | 'orphan-files-prune'
   // ── Delivery 8 · platform-ops jobs ──
   // ── Delivery 8 · connectors jobs ──
+  | 'cursus-directory'
+  | 'cursus-events-purge'
   // ── Delivery 8 · docs-client-portfolio jobs ──
   ;
 
@@ -42,6 +44,9 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   { name: 'orphan-files-prune', everyMs: 24 * HOUR, leaseMs: HOUR, firstDelayMs: 20_000 },
   // ── Delivery 8 · platform-ops jobs ──
   // ── Delivery 8 · connectors jobs ──
+  // R-027: Cursus's staff directory, daily (a no-op until CURSUS_DIRECTORY=on); R-029: the events inbox kept 13 months.
+  { name: 'cursus-directory', everyMs: 24 * HOUR, leaseMs: HOUR, firstDelayMs: 25_000 },
+  { name: 'cursus-events-purge', everyMs: 24 * HOUR, leaseMs: 15 * MIN, firstDelayMs: 30_000 },
   // ── Delivery 8 · docs-client-portfolio jobs ──
 ];
 

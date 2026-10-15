@@ -200,6 +200,10 @@ async function skillsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   };
 }
 
+/**
+ * Leave & working calendar workbook. NEW-CURSUS-4 / R-173: cells name the simple type only ("Leave · 5 d", "Absence · 2 d"),
+ * never the reason of an absence; the "Leave types" sheet lists the two types.
+ */
 async function leaveWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
   const data = await getLeaveCalendar();
@@ -212,7 +216,7 @@ async function leaveWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
           days: p.weeks.reduce((a, c) => a + c.days, 0),
         }))),
       sheet(t('Public holidays'), [col('date', t('Date'), 'date'), col('name', t('Holiday'), 'text', 30)], data.holidays.map((h) => ({ date: h.date, name: dataText(h.name, ctx.lang) }))),
-      sheet(t('Leave types'), [col('code', t('Code'), 'text', 8), col('label', t('Type'), 'text', 20), col('days', t('Days'), 'number', 8)], data.leaveTypes.map((l) => ({ code: l.code, label: t(l.label), days: l.days }))),
+      sheet(t('Leave types'), [col('code', t('Code'), 'text', 10), col('label', t('Type'), 'text', 20)], data.leaveTypes.map((l) => ({ code: l.code, label: t(l.label) }))),
     ],
   };
 }

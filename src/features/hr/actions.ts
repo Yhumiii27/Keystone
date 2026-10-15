@@ -1,6 +1,6 @@
 'use server';
-// HR Server Functions (docs/spec/06 §2–§5): rate card edits and "Add role", "Add skill", "Sync Lucca", "Import Lucca
-// hours" and the "Assign" of hours declared without a planned task. Each one checks the viewer's access to the
+// HR Server Functions (docs/spec/06 §2–§5): rate card edits and "Add role", "Add skill", "Import Lucca hours" and the
+// "Assign" of hours declared without a planned task ("Sync Lucca" is retired: absences come from Cursus, NEW-CURSUS-7). Each one checks the viewer's access to the
 // screen (not outside the workspace; rates: director/pm; hours: project editable), validates the untrusted input,
 // writes through the DAL (the viewer is the actor of the audit row) and revalidates the screen.
 import { revalidatePath } from 'next/cache';
@@ -14,8 +14,7 @@ import { getProject } from '@/server/dal/projects';
 import { getProjectContext, getScreenAccess } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import {
-  ADD_ROLE_RESULT, ADD_SKILL_RESULT, SYNC_LUCCA_RESULT, importHoursResult, parseAddRole, parseAddSkill, parseFactor, parseImportHours, parseRate,
-  parseSyncLucca, periodCovers,
+  ADD_ROLE_RESULT, ADD_SKILL_RESULT, importHoursResult, parseAddRole, parseAddSkill, parseFactor, parseImportHours, parseRate, periodCovers,
 } from './forms';
 import { hrT } from './i18n';
 
@@ -87,19 +86,6 @@ export async function addSkillAction(values: Record<string, string>): Promise<Fo
   await addSkill({ name: parsed.value.name, category: parsed.value.category }, viewer.name);
   revalidatePath(screenHref('skills'));
   return { toast: t(ADD_SKILL_RESULT) };
-}
-
-/**
- * "Sync Lucca" (AF.leave): toast only, as in the prototype — the Lucca connector is not modelled, leave stays the
- * seeded mirror. TODO(db): call the Lucca connector, upsert leave entries, stamp the connector's last sync.
- */
-export async function syncLuccaAction(values: Record<string, string>): Promise<FormDialogResult> {
-  const t = await tr();
-  const { outside } = await getScreenAccess('leave');
-  if (outside) return { error: t('Outside my workspace · Read-only') };
-  const parsed = parseSyncLucca(values);
-  if (!parsed.ok) return { error: t(parsed.error) };
-  return { toast: t(SYNC_LUCCA_RESULT) };
 }
 
 async function hoursEditor(code: unknown): Promise<{ code: string; analytic: string | null; actor: string } | { error: string }> {

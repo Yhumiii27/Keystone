@@ -4,27 +4,32 @@ import 'server-only';
 // Cursus's contract (Cursus README, server/src/index.ts, shared/domain.ts):
 //   GET  /api/integrations/keystone/chantiers/:id/go-no-go   → { chantier, evalue_le, statut, ressources: [{ matricule, statut, motifs }] }
 //   POST /api/integrations/keystone/demandes                 { matricule, chantier, destination, depart, retour } → 201 { id, statut }
+//   GET  /api/integrations/keystone/annuaire                 → [{ matricule, nom, prenom, email, equipe }]  TODO(cursus): proposal (R-027)
 //   header X-Api-Key (Cursus's KEYSTONE_API_KEY, "demo-keystone" by default)
+// What Cursus pushes to Keystone (POST /api/integrations/cursus/events, R-029) is received by ./events.ts and ./inbox.ts.
 // Two implementations behind one interface:
 // - mock (default; tests and the default run never need Cursus): the local mirror seeded from the prototype's SITE_DOCS;
 //   reminders and travel requests wait in the outbox ("pending sync with Cursus");
 // - http (CURSUS_API_URL set): refreshes the mirror from the go-no-go endpoint and delivers travel requests. Cursus has
 //   no reminder endpoint: reminders stay pending (TODO(cursus), OPEN QUESTION C-2).
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
+import { directoryEntryOf } from '@/domain/directory';
 import { STATUS_ISO, cursusSyncStatus, inWorkspace, type CursusClearance, type CursusVerdict } from '@/server/db/codes';
 import { getDb } from '@/server/db/client';
 import { CURSUS_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
-import { cursusClearances, cursusRequests, projects, siteSheets } from '@/server/db/schema';
+import { cursusClearances, cursusRequests, persons, projects, siteSheets } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 import { logWarning } from '@/server/log';
 import { cursusApiKey, cursusApiUrl, cursusConnectorMode } from './connection';
 import { claimRequestDelivery, markRequestDelivery, readClearances, recordFailedSync, undeliveredRequests, upsertClearances } from './mirror';
 import type {
-  CursusActor, CursusClearanceRecord, CursusConnector, CursusGoNoGo, CursusGoNoGoPayload, CursusRequestReceipt, CursusTravelRequestInput,
+  CursusActor, CursusClearanceRecord, CursusConnector, CursusDirectoryPayload, CursusGoNoGo, CursusGoNoGoPayload, CursusRequestReceipt, CursusTravelRequestInput,
 } from './types';
 
-export type { CursusActor, CursusClearanceView, CursusConnector, CursusGoNoGo, CursusRequestReceipt, CursusTravelRequestInput } from './types';
+export type {
+  CursusActor, CursusClearanceView, CursusConnector, CursusDirectoryPayload, CursusGoNoGo, CursusRequestReceipt, CursusTravelRequestInput,
+} from './types';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -89,6 +94,8 @@ export const mockCursusConnector: CursusConnector = {
   },
   remind: (projectCode, personName, actor) => queue(projectCode, 'reminder', personName, {}, actor),
   requestTravel: (projectCode, input, actor) => queue(projectCode, 'travel_request', input.personName, travelPayload(input), actor),
+  // R-027: the mock has no staff directory ("not connected").
+  listDirectory: async () => null,
 };
 
 // ── HTTP (Cursus's real contract) ───────────────────────────────────────────────────────────────────────
@@ -98,14 +105,18 @@ const HTTP_TIMEOUT_MS = 5000;
 const REFRESH_EVERY_MS = 60_000;
 // Per server process (R-010): with several instances each refreshes a project at most once a minute (bounded load on
 // Cursus); concurrent reads of one process share the refresh in flight instead of starting their own.
-const g = globalThis as unknown as { __ksCursusRefreshedAt?: Map<string, number>; __ksCursusRefreshing?: Map<string, Promise<void>> };
+const g = globalThis as unknown as {
+  __ksCursusRefreshedAt?: Map<string, number>; __ksCursusRefreshing?: Map<string, Promise<void>>; __ksCursusInFlight?: Map<string, Promise<number>>;
+};
 const refreshedAt = () => (g.__ksCursusRefreshedAt ??= new Map());
 const refreshing = () => (g.__ksCursusRefreshing ??= new Map());
+const inFlight = () => (g.__ksCursusInFlight ??= new Map());
 
 /** Forgets the last refresh times (tests). */
 export function resetCursusRefreshThrottle(): void {
   g.__ksCursusRefreshedAt = undefined;
   g.__ksCursusRefreshing = undefined;
+  g.__ksCursusInFlight = undefined;
 }
 
 async function cursusFetch(path: string, init?: RequestInit): Promise<Response> {
@@ -158,11 +169,48 @@ async function refresh(projectCode: string): Promise<number> {
   const res = await cursusFetch(`/api/integrations/keystone/chantiers/${encodeURIComponent(chantierId)}/go-no-go`);
   const payload = (await res.json()) as CursusGoNoGoPayload;
   if (!payload || !Array.isArray(payload.ressources)) throw new Error('Cursus: unexpected go-no-go payload');
+  // R-027: a person imported from Cursus's staff directory names its matricule first; else the name the mirror already has.
   const known = await db.select({ m: cursusClearances.matricule, n: cursusClearances.personName }).from(cursusClearances).where(eq(cursusClearances.projectCode, projectCode));
   const names = new Map(known.filter((k) => k.m).map((k) => [k.m!, k.n]));
+  const matricules = [...new Set(payload.ressources.map((r) => r.matricule).filter((m): m is string => typeof m === 'string' && !!m))];
+  if (matricules.length)
+    for (const p of await db.select({ m: persons.matricule, full: persons.fullName, short: persons.shortName }).from(persons).where(inArray(persons.matricule, matricules)))
+      if (p.m) names.set(p.m, p.full ?? p.short);
   const n = await db.transaction((tx) => upsertClearances(tx, projectCode, recordsOfPayload(projectCode, payload, names), new Date(), 'http'));
   refreshedAt().set(projectCode, Date.now());
   return n;
+}
+
+/** One refresh of a project's verdicts at a time per process (R-010): concurrent callers share the one in flight. */
+function refreshShared(projectCode: string): Promise<number> {
+  let running = inFlight().get(projectCode);
+  if (!running) {
+    running = refresh(projectCode).finally(() => inFlight().delete(projectCode));
+    inFlight().set(projectCode, running);
+  }
+  return running;
+}
+
+/**
+ * R-029 (NEW-CURSUS-7): refreshes a project's verdicts now — Cursus pushed a "verdict.modifie" event — bypassing the
+ * one-minute read throttle but sharing a refresh already in flight. HTTP mode only (the mock has nothing to refresh);
+ * throws when Cursus is unreachable or the site is not linked.
+ */
+export async function refreshCursusSiteNow(projectCode: string): Promise<number> {
+  if (cursusConnectorMode() !== 'http') return 0;
+  return refreshShared(projectCode);
+}
+
+/**
+ * R-027: Cursus's staff directory. TODO(cursus): GET /api/integrations/keystone/annuaire is Keystone's proposal (NEW-CURSUS-2:
+ * Cursus needs a new access) — field names, team codes and paging may change when Cursus publishes it.
+ */
+async function fetchDirectory(): Promise<CursusDirectoryPayload> {
+  const res = await cursusFetch('/api/integrations/keystone/annuaire');
+  const body = (await res.json()) as unknown;
+  if (!Array.isArray(body)) throw new Error('Cursus: unexpected directory payload');
+  const entries = body.map(directoryEntryOf);
+  return { entries: entries.filter((e): e is NonNullable<typeof e> => !!e), invalid: entries.filter((e) => !e).length };
 }
 
 /** Delivers the outbox: travel requests go to POST /demandes; reminders have no Cursus endpoint (TODO(cursus), C-2). */
@@ -203,7 +251,7 @@ export const httpCursusConnector: CursusConnector = {
     if (!chantierId) return readClearances(db, projectCode);
     let running = refreshing().get(projectCode);
     if (!running) {
-      running = refresh(projectCode)
+      running = refreshShared(projectCode)
         .then(
           () => undefined,
           async (e) => {
@@ -235,6 +283,7 @@ export const httpCursusConnector: CursusConnector = {
     const [row] = await db.select({ s: cursusRequests.syncStatus }).from(cursusRequests).where(eq(cursusRequests.id, r.id));
     return { ...r, syncStatus: row?.s ?? r.syncStatus };
   },
+  listDirectory: fetchDirectory,
 };
 
 /** The connector in use (http when CURSUS_API_URL is set, else the mock). */
