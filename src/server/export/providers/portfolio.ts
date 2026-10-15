@@ -3,7 +3,7 @@
 // score / capacity, `?project=` candidate) and the viewer's rights (margins masked as on screen; a client exports only
 // their organisation's projects).
 import { HEALTH_LABEL } from '@/domain/health';
-import { isPgFilter, portfolioScheduleModel } from '@/domain/pfplan';
+import { isPgFilter, parseWindowParam, portfolioScheduleModel, windowLabel } from '@/domain/pfplan';
 import { portfolioKpis, portfolioTotals } from '@/domain/portfolio';
 import { billingRollup, cashBars, rankByScore } from '@/domain/portfolio-finance';
 import { mapKpis } from '@/domain/worldmap';
@@ -61,12 +61,15 @@ async function pfplanWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const filter = isPgFilter(f) ? f : 'all';
   const [input, visible] = await Promise.all([getPortfolioSchedule(ctx.zone), projectFilter(ctx)]);
   const scoped = { ...input, rows: input.rows.filter((r) => visible(r.project.code)) };
-  const model = portfolioScheduleModel(scoped, { filter, lang });
+  // L-8 (R-136): the window of the screen (`?from=`); the sheets list every row whatever the window.
+  const model = portfolioScheduleModel(scoped, { filter, lang, from: parseWindowParam(param(ctx, 'from')) });
   const byCode = new Map(scoped.rows.map((r) => [r.project.code, r]));
   const shown = model.groups.flatMap((g) => g.rows.map((r) => ({ g, r, i: byCode.get(r.code)! })));
   return {
     title: t('Portfolio schedule — projects in progress & pipeline'),
-    filters: compact([zoneLine(ctx), filter !== 'all' ? `${t('Display')}: ${t(filter === 'exec' ? 'In progress' : 'Pipeline')}` : null]),
+    filters: compact([
+      zoneLine(ctx), filter !== 'all' ? `${t('Display')}: ${t(filter === 'exec' ? 'In progress' : 'Pipeline')}` : null, filterLine(t('Period'), windowLabel(model.window.from, t)),
+    ]),
     sheets: [
       sheet(t('Projects'), [
         col('group', t('Group'), 'text', 12), col('code', t('Code'), 'text', 10), col('name', t('Project'), 'text', 36), col('pm', t('Project manager'), 'text', 26),

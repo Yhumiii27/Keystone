@@ -46,7 +46,8 @@ export function dateOf(m: number): string {
 }
 
 export const monthDate = (m: number) => new Date(2026 + Math.floor(m / 12), m % 12, 1 + Math.round((m - Math.floor(m)) * 27));
-export const fmtD = (dt: Date) => dt.getDate() + ' ' + MO[dt.getMonth()] + (dt.getFullYear() > 2026 ? ' ’27' : '');
+/** "12 Nov", "14 Jan ’27", "3 Mar ’28": the year suffix of the actual year after 2026 (L-8, R-136: the prototype always wrote ’27). */
+export const fmtD = (dt: Date) => dt.getDate() + ' ' + MO[dt.getMonth()] + (dt.getFullYear() > 2026 ? ' ’' + String(dt.getFullYear()).slice(-2) : '');
 export const fmtDY = (dt: Date) => dt.getDate() + ' ' + MO[dt.getMonth()] + ' ' + dt.getFullYear();
 export const monthLabels = (start: number, n: number) =>
   Array.from({ length: n }, (_, i) => MO[(start + i) % 12] + (start + i >= 12 && (start + i) % 12 === 0 ? ' ’27' : ''));

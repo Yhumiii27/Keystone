@@ -3,6 +3,9 @@
 // scripts/proto-golden-pfplan.ts (prototype logic 3096–5239 evaluated in node:vm). The inputs are rebuilt here from
 // the prototype data set (initialProjects, STAGE_HISTORY, PIPE_PLAN, projectData) the way the DAL resolves them, so
 // this test checks the pure model; src/features/pfplan/pfplan.render.test.ts checks the same values on the database.
+// L-8 (R-136): the screen's window slides (default Oct 2025 – Sep 2027 on the seed); every comparison with the
+// prototype pins the window to its fixed Jan 2026 – Dec 2027 (`from: 0`). The sliding window is tested in
+// pfplan-window.test.ts.
 import { describe, expect, it } from 'vitest';
 import { makeT, type Lang } from '@/i18n/translate';
 import { mIdx } from '@/lib/format';
@@ -145,7 +148,7 @@ describe.each(LANGS)('pfplan vs prototype (%s)', (lang) => {
   it('static labels: stage filter, month header, template keys', () => {
     expect(t('Stage')).toBe(g.stageLabel);
     expect(PG_FILTERS.map((f) => t(f.label))).toEqual(g.segCtl);
-    const m = portfolioScheduleModel({ rows: [], averageBoardWaitDays: 0 }, { filter: 'all', lang }).months;
+    const m = portfolioScheduleModel({ rows: [], averageBoardWaitDays: 0 }, { filter: 'all', lang, from: 0 }).months;
     expect(m.map((x) => ({ label: t(x.label), year: x.year, bl: `1px solid var(--color-neutral-${x.yearStart ? 700 : 900})` }))).toEqual(g.months);
     expect(t('Portfolio schedule — projects in progress & pipeline')).toBe(g.title);
     expect(t('No project in this zone for this view')).toBe(g.zoneEmptyText);
@@ -160,13 +163,13 @@ describe.each(LANGS)('pfplan vs prototype (%s)', (lang) => {
   it.each(ZONES)('zone %s: KPI tiles, groups per filter and every row', (zone) => {
     const gz = g.zones[zone];
     const input = zoneInput(zone);
-    const all = portfolioScheduleModel(input, { filter: 'all', lang });
+    const all = portfolioScheduleModel(input, { filter: 'all', lang, from: 0 });
     expect(all.kpis.map((k) => ({ label: t(k.label), value: t(k.value), sub: t(k.sub), color: KPI_TINT[k.tint] }))).toEqual(
       gz.kpis.map((k: any) => ({ ...k, value: String(k.value) })),
     );
     expect(all.groups.map((x) => ({ key: x.key, label: t(x.label), count: x.count, codes: x.rows.map((r) => r.code) }))).toEqual(gz.groups);
     for (const f of ['all', 'exec', 'pipe'] as const)
-      expect(portfolioScheduleModel(input, { filter: f, lang }).groups.map((x) => x.key)).toEqual(gz.filters[f]);
+      expect(portfolioScheduleModel(input, { filter: f, lang, from: 0 }).groups.map((x) => x.key)).toEqual(gz.filters[f]);
     expect(all.empty).toBe(input.rows.length === 0);
     const rows = all.groups.flatMap((x) => x.rows);
     expect(rows.length).toBe(gz.groups.reduce((a: number, x: any) => a + x.count, 0));
