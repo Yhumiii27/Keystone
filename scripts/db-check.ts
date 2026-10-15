@@ -397,7 +397,10 @@ async function main() {
   check('new risk R-21, CR-011, request RQ-045', (await createRisk('HLT-026', { title: 'Check', category: 'technical', response: 'mitigate' }, 'Romain Aubert')) === 'R-21'
     && (await createChangeRequest('HLT-026', { title: 'Check', types: ['scope'], amountKeur: 1, scheduleDays: 0 }, 'Romain Aubert')) === 'CR-011'
     && (await createResourceRequest({ projectCode: 'HLT-026', title: 'Check', activityCode: 'A1250', person: 'Julien Wagner', priority: 'med' }, 'Romain Aubert')) === 'RQ-045');
-  check('approving RQ-043 creates task T-2341 (contract role)', (await approveResourceRequest('RQ-043', 'Marion Kerviel')) === 'T-2341' && (await getTask('T-2341'))?.assignee === 'Contract structural engineer');
+  // P-8b (Delivery 8, R-089): an approved request for a contract role becomes a "Find and name" task for procurement.
+  check('approving RQ-043 creates task T-2341 for procurement to find and name the contract role',
+    (await approveResourceRequest('RQ-043', 'Marion Kerviel')) === 'T-2341' && (await getTask('T-2341'))?.assignee === 'Fabien Bertrand'
+      && (await getTask('T-2341'))?.contractRole === 'Contract structural engineer');
   // L-4c (Delivery 7, R-055): the automatic stage change is audited too.
   check('audit rows appended (8 seed + 4 + the stage change)', (await listAudit()).length === 13);
   await delivery3Writes();

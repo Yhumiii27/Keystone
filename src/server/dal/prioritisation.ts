@@ -5,7 +5,9 @@ import 'server-only';
 // remapped at seed (00 §7.16). Margin = margin at completion (C-10b, R-132): (contract − EAC) / contract, the contract
 // from the billing plan (the contract when one exists, A-5) consolidated in euros (C-9) — it was (contract − budget) / contract.
 import { and, asc, eq } from 'drizzle-orm';
-import { canSee, type RoleKey } from '@/config/screens';
+// The role rules without the navigation icons (./screens.ts loads them; scripts such as db-check import this module).
+import { canSee } from '@/config/role-screens';
+import type { RoleKey } from '@/config/screens';
 import { inExecution } from '@/domain/portfolio';
 import { getDb } from '@/server/db/client';
 import { scoreAxis, type ScoreAxis, type StageCode } from '@/server/db/codes';

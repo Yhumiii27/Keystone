@@ -9,7 +9,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, useTransition, type KeyboardEvent } from 'react';
 import { cx } from '@/components/ds/cx';
-import { SCREEN_BY_ID, screenHref, type RoleKey, type ScreenId } from '@/config/screens';
+import { SCREEN_ICONS } from '@/config/screen-icons';
+import { screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import { useI18n } from '@/i18n/client';
 import { setViewAs } from '@/server/actions/preferences';
 import { AccountMenu, type SidebarAccount } from './account-menu';
@@ -141,7 +142,7 @@ export function Sidebar({ role, personas, account, navOpen: initialOpen, zoneLab
   };
 
   const entry = (n: NavEntry, kind: 'fixed' | 'item') => {
-    const Icon = n.synthetic ? Eye : SCREEN_BY_ID[n.id].icon ?? Eye;
+    const Icon = n.synthetic ? Eye : SCREEN_ICONS[n.id] ?? Eye;
     return (
       <Link
         key={n.id}
@@ -233,7 +234,7 @@ export function Sidebar({ role, personas, account, navOpen: initialOpen, zoneLab
         {searching ? (
           <div className={styles.list}>
             {hits.map((n) => {
-              const Icon = SCREEN_BY_ID[n.id].icon ?? Eye;
+              const Icon = SCREEN_ICONS[n.id] ?? Eye;
               return (
                 <Link
                   key={n.id}
