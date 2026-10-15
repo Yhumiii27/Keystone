@@ -38,6 +38,10 @@
   {
    "date": "2026-10-15",
    "text": "PR #2 (main-2a2fep → main) : main, qui contient la PR #1 (Dockerfile Coolify), fusionnée dans la branche ; le kit de la livraison 8 remplace ce Dockerfile."
+  },
+  {
+   "date": "2026-10-15",
+   "text": "Nouveau besoin du responsable produit (R-185) : un projet peut fournir plusieurs équipements (par exemple une EMP et plusieurs MEMU) ; l’approche projet devra s’adapter — à cadrer avant la livraison 9."
   }
  ],
  "items": [
@@ -5257,6 +5261,33 @@
     "state": "fait",
     "delivery": "Livraison 8",
     "note": "Livraison 8 : garde de complétude du français (src/i18n/completeness.test.ts), une seule traduction par clé, messages système à clé, fil d’activité et journal d’audit dans la langue de l’utilisateur."
+   }
+  },
+  {
+   "id": "R-185",
+   "verdict": "ajout_critique",
+   "title": "Projets multi-équipements (ex. une EMP et plusieurs MEMU) : adapter l’approche projet",
+   "description": "Un projet peut fournir plusieurs équipements, de types différents et en plusieurs exemplaires (par exemple une EMP et plusieurs MEMU). Aujourd’hui un projet porte un seul type de machine : le modèle de création (phases, catégories de coûts, systèmes ITP), le plan ITP unique du projet, le budget de référence (références REX) et l’affichage du projet en dépendent ; la mise en service et la nomenclature ne savent pas à quel équipement se rattache un système ou une ligne. Le parc installé, lui, enregistre déjà une machine par équipement livré, avec son propre type. L’approche projet doit pouvoir s’adapter : équipements du projet (type, quantité), lots / systèmes, ITP, mise en service, nomenclature et coûts par équipement, livraison et parc installé par exemplaire. À cadrer avec le responsable produit avant de construire ; toute nouvelle fonction ne doit plus supposer « un seul type de machine par projet ».",
+   "category": "projets_cycle_de_vie_modeles",
+   "kind": "fonction_manquante",
+   "priority": "a_decider",
+   "status": "non_commence",
+   "waiting_on": "Cadrage avec le responsable produit (structure d’un projet multi-équipements)",
+   "effort": "XL",
+   "sources": [
+    "Responsable produit, 15 oct. 2026 (note pour les futurs développements)"
+   ],
+   "evidence": [
+    "src/server/db/schema/portfolio.ts:159-175 projects.machine_type_code : un seul type de machine par projet",
+    "src/server/dal/projects-register.ts:361-364, 408 assistant de création : phases et systèmes ITP pris du seul modèle de type de machine choisi",
+    "src/server/db/schema/operations.ts:44-50 itp_plans : un plan ITP par projet (project_id unique), construit depuis un seul type de machine",
+    "src/server/dal/budget.ts:39-47 budget de référence : références REX du type de machine du projet",
+    "src/server/db/schema/operations.ts:155-160 commissioning_systems : systèmes rattachés au projet, sans lien vers un équipement",
+    "src/server/db/schema/aftersales.ts:12-18 machines : une machine par équipement livré, avec son propre type (déjà multi-équipements)"
+   ],
+   "progress": {
+    "state": "a_faire",
+    "note": "Consigné le 15 oct. 2026 à la demande du responsable produit ; à cadrer avant la livraison 9."
    }
   }
  ]

@@ -82,6 +82,22 @@ notifications.
 - **Heures internes :** les codes `INT-*` (heures hors projet) doivent-ils remonter dans Keystone, pour la charge des
   ressources ?
 
+## 1 ter. Demandé — Projets multi-équipements
+
+**Besoin (2026-10-15, responsable produit).** Un projet peut fournir plusieurs équipements, de types différents et en
+plusieurs exemplaires — par exemple **une EMP et plusieurs MEMU**. L’approche projet doit pouvoir s’adapter à ce cas.
+
+**Aujourd’hui** (R-185 de `docs/RESTE-A-DEVELOPPER.md`, avec les références dans le code) :
+- un projet porte **un seul type de machine** ; l’assistant de création en tire les phases, les catégories de coûts et les
+  systèmes ITP, et le budget de référence ses références REX ;
+- le plan ITP est unique par projet ; les systèmes de mise en service et la nomenclature ne sont rattachés à aucun équipement ;
+- le parc installé enregistre déjà une machine par équipement livré, avec son propre type.
+
+**À cadrer avant de construire :** la liste des équipements d’un projet (type, quantité), et pour chacun ce qui se décline
+— lots du planning, ITP et réserves, mise en service, nomenclature, coûts et budget, livraison, parc installé ; ce qui reste
+commun au projet (contrat, facturation, équipe, documents) ; l’effet sur les modèles de type de machine et sur les projets
+existants (un seul équipement). D’ici là, aucune nouvelle fonction ne doit supposer « un seul type de machine par projet ».
+
 ## 2. Proposés — à valider
 
 | # | Outil | Pourquoi (contexte Keystone) | Portée indicative |

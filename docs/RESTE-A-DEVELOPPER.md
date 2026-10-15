@@ -8,21 +8,21 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-15 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 99 faits, 27 en cours, 58 à faire, sur 184 points.
+**Avancement** : 99 faits, 27 en cours, 59 à faire, sur 185 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 17 | ≈ 136 |
 | Prochaine étape | 25 | ≈ 193 |
-| À décider | 25 | ≈ 213 |
+| À décider | 26 | ≈ 243 |
 | Plus tard | 18 | ≈ 60 |
-| **Total** | **85** | **≈ 602** |
+| **Total** | **86** | **≈ 632** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 32 |
+| Non commencé | 33 |
 | Partiel | 13 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
@@ -32,7 +32,7 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 | Plateforme et mise en production | 8 | 6 | 0 | 2 | 16 | 9 |
 | Authentification, utilisateurs et droits | 1 | 0 | 2 | 1 | 4 | 12 |
 | Intégrations avec les autres systèmes | 5 | 7 | 1 | 4 | 17 | 3 |
-| Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 1 | 4 | 3 |
+| Projets, cycle de vie et modèles par type de machine | 0 | 1 | 3 | 1 | 5 | 3 |
 | Planning | 1 | 0 | 3 | 1 | 5 | 3 |
 | Coûts, contrat et finance | 0 | 2 | 2 | 0 | 4 | 12 |
 | Ressources et RH | 0 | 3 | 1 | 1 | 5 | 4 |
@@ -100,6 +100,7 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 - **R-179** Choisir la connexion des clients avant d'ouvrir le portail — Décision du responsable produit et de la DSI sur la date d'ouverture du portail et le mode de connexion client
 - **R-181** Décider qui crée le projet dans Codex et Vigie à sa création dans Keystone — Décision du responsable produit ; API de création de projet côté Codex et Vigie
 - **R-182** Décider si les factures client sont émises et encaissées dans Sage X3 — Service finance : processus de facturation client dans Sage X3 (numérotation légale, encaissements, facturation électronique)
+- **R-185** Projets multi-équipements (ex. une EMP et plusieurs MEMU) : adapter l’approche projet — Cadrage avec le responsable produit (structure d’un projet multi-équipements)
 
 ### 1.3 Ce qui attend les autres applications
 
@@ -368,7 +369,7 @@ Le dialogue « Configurer » est déjà en lecture seule, mais « Ajouter un con
 Point d’entrée HTTP protégé par clé d’API pour heures.validees, absence.validee, demande.decision et verdict.modifie. Un renvoi remplace la semaine déjà reçue pour un même salarié sans doublon, chaque réception est tracée dans l’audit, et l’émetteur peut renvoyer en cas d’échec.  
 *Avancement : Livraison 8 : point d’entrée POST /api/integrations/cursus/events (clé dédiée CURSUS_EVENTS_KEY, idempotent, purge planifiée). · Attend : Contrat d’événements à définir avec Cursus (POST /events, jeton) · Sources : NEW-CURSUS-7, NEW-CURSUS-4, NEW-CURSUS-5, BACKLOG.md §1 bis*
 
-### 2.4 Projets, cycle de vie et modèles par type de machine (4 restants, 3 faits)
+### 2.4 Projets, cycle de vie et modèles par type de machine (5 restants, 3 faits)
 
 **R-053 · Créer le standard complet par type de machine et l’instancier à la création** — *Prochaine étape · attend le responsable produit · effort L*  
 Chaque type de projet doit avoir un standard tenu et modifiable dans Keystone : WBS avec lots, activités, durées et liens, budgets, livrables par étape, points ITP. L’assistant en fait une copie que le CP personnalise avant le lancement. Aujourd’hui le modèle se limite aux noms des phases (un lot et une activité de 30 jours ouvrés par phase, enchaînés FS), aux catégories de coûts et aux noms des systèmes ITP : aucun point d’inspection n’est créé et les livrables d’étape sont communs à tous les types. Sans fin saisie, la fin prévue vient de ce plan type, pas d’une date fixe.  
@@ -381,6 +382,10 @@ La saisie pays / ville est faite, mais un site dont la ville n’est pas déjà 
 **R-059 · Trancher la grille pouvoir / intérêt et le « dernier contact » des parties prenantes** — *À décider · attend le responsable produit · effort M*  
 Réponse « À discuter » sans note. Les champs influence, intérêt et attitude existent mais restent vides et ne sont pas affichés. Le « dernier contact » prend la date figée du 30 sept. 2026 à la création de la partie prenante et ne peut plus être modifié ensuite. Il faut choisir entre une grille avec dernier contact déduit des réunions Keystone (recommandé), une grille avec les e-mails Microsoft 365, ou un registre simple avec une date à mettre à jour à la main (à rendre modifiable).  
 *Attend : Discussion avec le responsable produit (S-13a, « À discuter » sans note ; statut Plus tard) · Sources : S-13a, 05 OQ19, DELIVERY-3.md §4, §6, §7*
+
+**R-185 · Projets multi-équipements (ex. une EMP et plusieurs MEMU) : adapter l’approche projet** — *À décider · non commencé · effort XL*  
+Un projet peut fournir plusieurs équipements, de types différents et en plusieurs exemplaires (par exemple une EMP et plusieurs MEMU). Aujourd’hui un projet porte un seul type de machine : le modèle de création (phases, catégories de coûts, systèmes ITP), le plan ITP unique du projet, le budget de référence (références REX) et l’affichage du projet en dépendent ; la mise en service et la nomenclature ne savent pas à quel équipement se rattache un système ou une ligne. Le parc installé, lui, enregistre déjà une machine par équipement livré, avec son propre type. L’approche projet doit pouvoir s’adapter : équipements du projet (type, quantité), lots / systèmes, ITP, mise en service, nomenclature et coûts par équipement, livraison et parc installé par exemplaire. À cadrer avec le responsable produit avant de construire ; toute nouvelle fonction ne doit plus supposer « un seul type de machine par projet ».  
+*Avancement : Consigné le 15 oct. 2026 à la demande du responsable produit ; à cadrer avant la livraison 9. · Attend : Cadrage avec le responsable produit (structure d’un projet multi-équipements) · Sources : Responsable produit, 15 oct. 2026 (note pour les futurs développements)*
 
 **R-058 · Intégrer la matrice RACI d’entreprise, par rôle et non modifiable** — *Plus tard · attend le responsable produit · effort M*  
 S-13b : la matrice RACI fournie par le responsable produit sera fixe et organisée par rôle, et Keystone doit permettre d’affecter chaque rôle à une personne de l’équipe projet. Aujourd’hui la RACI est stockée par projet, en lecture seule, avec des colonnes en texte libre. Seul HLT-026 en a une (semée depuis le prototype), et un projet créé par l’assistant n’en a aucune. La RACI-B des livrables qualité est un objet distinct, hors du périmètre de la réponse.  
@@ -890,6 +895,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-15 — Nouveau besoin du responsable produit (R-185) : un projet peut fournir plusieurs équipements (par exemple une EMP et plusieurs MEMU) ; l’approche projet devra s’adapter — à cadrer avant la livraison 9.
 - 2026-10-15 — PR #2 (main-2a2fep → main) : main, qui contient la PR #1 (Dockerfile Coolify), fusionnée dans la branche ; le kit de la livraison 8 remplace ce Dockerfile.
 - 2026-10-15 — Livraison 8 terminée : lot 9 (qualité et chantier) intégré, deux revues croisées (26 constats confirmés, tous corrigés avec un test), vérification complète (4 000 tests, build, db-check, matrice des routes à 9 profils, tests de bout en bout). Bilan dans docs/DELIVERY-8.md.
 - 2026-10-15 — Livraison 8 : lots 7 et 8 intégrés et vérifiés (documents et portefeuille, travail et planning) — 11 points faits, 7 restent en cours (Codex, Microsoft 365, annuaire Cursus, rétention de la corbeille, import P&ID). Suite complète : 3 866 tests verts. Le lot 9 (qualité et chantier) est en construction.

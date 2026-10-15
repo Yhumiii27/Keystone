@@ -18,6 +18,7 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
   - The answers override the spec and the chapter-4 defaults where they differ.
   - Chapter-4 defaults are centralised in `src/domain/ch4-defaults.ts`.
   - Answers marked "À discuter" or "Autre réponse" carry notes. Several wait for data the owner will provide: machine-type standards, purchasing procedure, Sage extracts, the RACI matrix.
+- **Multi-equipment projects (owner's note, 15 Oct 2026; R-185, `docs/BACKLOG.md` §1 ter).** A project can supply several machines of different types and quantities (e.g. one EMP and several MEMU). Today a project has one machine type (creation template, ITP plan, reference budget). Frame the project approach with the owner before building it, and do not add new features that assume one machine type per project.
 
 ## Rules from the product owner
 
