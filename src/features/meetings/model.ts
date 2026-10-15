@@ -225,11 +225,16 @@ export interface MeetingsInput {
   meetings: Meeting[];
   questions: ClientQuestion[];
   query: MeetingsQuery;
+  /**
+   * The viewer is a client (P-10b): the tasks the minutes created are internal — their numbers and links are not shown (an
+   * external owner's action becomes an internal follow-up task, S-12 a); nor the plan activity of an action.
+   */
+  client?: boolean;
 }
 
 const tagOf = (kind: 'meetingType' | 'meetingStatus', code: string) => TAG_CLASS[statusTone(kind, code)];
 
-export function meetingsScreenView({ code, meetings: ms, questions, query }: MeetingsInput, t: T, lang: Lang): MeetingsScreenView {
+export function meetingsScreenView({ code, meetings: ms, questions, query, client = false }: MeetingsInput, t: T, lang: Lang): MeetingsScreenView {
   const title = (m: Meeting) => dataText(m.title, lang);
   const ref = (m: Meeting) => `${m.number} · ${t(m.dateText)}`;
   const due = (d: string | null) => dueText(d, t, lang);
@@ -268,7 +273,8 @@ export function meetingsScreenView({ code, meetings: ms, questions, query }: Mee
     const r = { meeting: m.number, point: l.point, position: l.position };
     return {
       ref: r, key: lineKey(r), type: l.type, typeLabel: t(meetingLineType.label(l.type)), text: dataText(l.text, lang), isAction: l.type === 'action', done: l.done,
-      meta: l.type === 'action' ? ownerDue(l.owner, l.due) : '', taskNumber: l.taskNumber, taskHref: taskHref(l.taskNumber),
+      meta: l.type === 'action' ? ownerDue(l.owner, l.due) + (l.activity && !client ? ` · ${l.activity}` : '') : '',
+      taskNumber: client ? null : l.taskNumber, taskHref: client ? null : taskHref(l.taskNumber),
     };
   };
 
@@ -371,7 +377,7 @@ export function meetingsScreenView({ code, meetings: ms, questions, query }: Mee
       stateText: t(ACTION_STATE_LABEL[a.state]),
       done: a.line.done,
       href: meetingsHref(code, { filter: query.filter, meeting: a.meeting.number }),
-      taskHref: taskHref(a.line.taskNumber),
+      taskHref: client ? null : taskHref(a.line.taskNumber),
     };
   });
 

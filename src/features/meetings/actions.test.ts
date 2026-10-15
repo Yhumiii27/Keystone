@@ -119,8 +119,9 @@ describe('meetings Server Functions', () => {
     expect(m.agenda[2].lines.map((l) => l.type)).toEqual(['decision', 'decision', 'decision', 'action', 'action', 'action']);
   });
 
-  it('"Send minutes": MIN-HLT-027, tasks for the pool owners, toast EN / FR, then the minutes are locked', async () => {
-    expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual({ ok: true, toast: 'MIN-HLT-027 · minutes sent to 5 invitees · 2 actions added to tasks' });
+  it('"Send minutes": MIN-HLT-027, a task for every internal action owner, toast EN / FR, then the minutes are locked', async () => {
+    // S-12 a (R-067): L. Fabre (internal, outside the resource pool) gets a task too — 2 → 3 actions added to tasks.
+    expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual({ ok: true, toast: 'MIN-HLT-027 · minutes sent to 5 invitees · 3 actions added to tasks' });
     expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
     expect((await listTasks({ person: 'Julien Wagner' })).some((t) => t.labels.includes('MTG-118'))).toBe(true);
     expect(await sendMinutesAction({ code: 'HLT-026', meeting: 'MTG-118' })).toEqual({ ok: false, error: 'Minutes already sent' });

@@ -171,6 +171,11 @@ export interface MinutesEditorProps {
   /** This meeting's URL; the page switches to it after a write when the selection came from the default. */
   selfHref: string;
   pinned: boolean;
+  /**
+   * S-12 a (R-067): plan activities an action may serve (value = code, label = "A1250 · name" as typed) — the minutes' writers
+   * only; empty → no Activity select. The task "Send minutes" creates carries the activity.
+   */
+  activities?: { value: string; label: string }[];
 }
 
 interface PendingLine {
@@ -179,7 +184,7 @@ interface PendingLine {
 }
 
 /** Agenda & notes (one block per point, selectable when editable) + composer + "Send minutes to all invitees". */
-export function MinutesEditor({ code, meeting, organizer, agenda, editable, canEdit, canSend = canEdit, selfHref, pinned }: MinutesEditorProps) {
+export function MinutesEditor({ code, meeting, organizer, agenda, editable, canEdit, canSend = canEdit, selfHref, pinned, activities = [] }: MinutesEditorProps) {
   const { t } = useI18n();
   const toast = useToast();
   const router = useRouter();
@@ -191,6 +196,7 @@ export function MinutesEditor({ code, meeting, organizer, agenda, editable, canE
   const [text, setText] = useState('');
   const [owner, setOwner] = useState('');
   const [due, setDue] = useState('');
+  const [activity, setActivity] = useState('');
   const seq = useRef(0);
   const composing = editable && canEdit;
   const target = agenda.some((a) => a.position === point) ? point : (agenda[0]?.position ?? 0);
@@ -203,18 +209,19 @@ export function MinutesEditor({ code, meeting, organizer, agenda, editable, canE
     const body = text.trim();
     if (!body || busy) return;
     const isAction = type === 'action';
-    const draft = { type, text: body, owner: isAction ? owner : '', due: isAction ? due : '' };
+    const draft = { type, text: body, owner: isAction ? owner : '', due: isAction ? due : '', activity: isAction ? activity : '' };
     const n = ++seq.current;
     const ref = { meeting, point: target, position: 10_000 + n };
     setText('');
     setOwner('');
     setDue('');
+    setActivity('');
     startTransition(async () => {
       addPending({
         point: target,
         line: {
           ref, key: `pending-${n}`, type, typeLabel: t(TYPE_LABEL[type]), text: body, isAction, done: false,
-          meta: isAction ? `${owner.trim() || organizer} · ${due.trim() ? t(due.trim()) : '—'}` : '', taskNumber: null, taskHref: null,
+          meta: isAction ? `${owner.trim() || organizer} · ${due.trim() ? t(due.trim()) : '—'}${activity ? ` · ${activity}` : ''}` : '', taskNumber: null, taskHref: null,
         },
       });
       const r = await addMinutesLineAction({ code, meeting, point: target, ...draft });
@@ -223,6 +230,7 @@ export function MinutesEditor({ code, meeting, organizer, agenda, editable, canE
         setText(body);
         setOwner(draft.owner);
         setDue(draft.due);
+        setActivity(draft.activity);
       } else pin();
     });
   };
@@ -318,6 +326,16 @@ export function MinutesEditor({ code, meeting, organizer, agenda, editable, canE
                 <>
                   <input className={cx('input', s.draftOwner)} value={owner} onChange={(e) => setOwner(e.target.value)} onKeyDown={onKey} placeholder={t('Owner')} aria-label={t('Owner')} maxLength={80} />
                   <input className={cx('input', s.draftDue)} value={due} onChange={(e) => setDue(e.target.value)} onKeyDown={onKey} placeholder={t('Due')} aria-label={t('Due')} maxLength={40} />
+                  {activities.length > 0 && (
+                    <select className={cx('input', s.draftActivity)} value={activity} onChange={(e) => setActivity(e.target.value)} aria-label={t('Activity')}>
+                      <option value="">{t('No activity')}</option>
+                      {activities.map((a) => (
+                        <option key={a.value} value={a.value}>
+                          {a.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </>
               )}
               <Button size="sm" icon={Plus} onClick={add} disabled={!text.trim() || busy}>

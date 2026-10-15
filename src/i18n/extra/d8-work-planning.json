@@ -3,5 +3,7 @@
   "The received date cannot be after today": "La date de réception ne peut pas être postérieure à aujourd’hui",
   "Task assigned": "Tâche assignée",
   "Moved to": "Déplacée vers",
-  "Move to…": "Déplacer vers…"
+  "Move to…": "Déplacer vers…",
+  "Follow-up": "Relance",
+  "No activity": "Aucune activité"
 }

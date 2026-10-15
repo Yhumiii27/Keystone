@@ -14,6 +14,7 @@ import { id, timestamps } from './_common';
 import { documents } from './documents';
 import { storedFiles } from './files';
 import { persons } from './organisation';
+import { activities } from './planning';
 import { projects } from './portfolio';
 import { tasks } from './work';
 
@@ -96,6 +97,8 @@ export const meetingLines = pgTable(
     done: boolean('done').notNull().default(false),
     doneAt: timestamp('done_at', { withTimezone: true }),
     taskId: uuid('task_id').references(() => tasks.id, { onDelete: 'set null' }),
+    /** Actions (S-12 a, R-067): the plan activity the action serves (same project) — carried to the task "Send minutes" creates. */
+    activityId: uuid('activity_id').references(() => activities.id, { onDelete: 'set null' }),
     origin: text('origin').$type<MeetingLineOrigin>().notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },

@@ -3,8 +3,10 @@ import 'server-only';
 // attendance, agenda and minutes lines, transcripts with their analysis and its human review (chapter 4, S-10 — writers in
 // meetings-transcripts.ts), the internal ⇄ client question bridge, and the writers: new meeting (MTG-130…), minutes lines
 // (Scheduled → Notes in progress), action ticks, and "Send minutes" — a numbered MIN document released in the Codex index,
-// a to-do for every action owner of the resource pool, read receipts for every invitee but the organizer.
+// a task for every action (S-12 a, R-067: the internal owner, else a follow-up for the external owner's relationship owner or
+// the PM), read receipts for every invitee but the organizer.
 import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { FOLLOW_UP_LABEL, followUpTarget, followUpTitle, minutesTaskDates } from '@/domain/meetings';
 import { TODAY } from '@/lib/format';
 import { getDb } from '@/server/db/client';
 import {
@@ -15,12 +17,13 @@ import {
 } from '@/server/db/codes';
 import { demoFloor, findPerson, nextNumber, requireProject } from '@/server/db/helpers';
 import {
-  clientQuestions, documents, meetingAgendaPoints, meetingLines, meetingParticipants, meetingTranscriptProposals, meetingTranscripts, meetings, persons,
-  projects, storedFiles, tasks,
+  activities, clientQuestions, documents, meetingAgendaPoints, meetingLines, meetingParticipants, meetingTranscriptProposals, meetingTranscripts, meetings, persons,
+  projects, stakeholders, storedFiles, tasks, users,
 } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 import { createMinutesDocument } from './documents';
 import { appendLines, auditMeeting as audit, loadMeeting, type NewMeetingLine } from './meetings-core';
+import { notifyTasksAssigned } from './task-notices';
 
 export type { NewMeetingLine } from './meetings-core';
 export { analyseTranscript, applyTranscriptToMinutes } from './meetings-transcripts';
@@ -45,6 +48,8 @@ export interface MeetingLineRow {
   /** Task created by "Send minutes". */
   taskNumber: string | null;
   origin: MeetingLineOrigin;
+  /** Actions (S-12 a): the plan activity code the action serves, null when none. */
+  activity: string | null;
 }
 
 export interface MeetingParticipantRow {
@@ -171,9 +176,10 @@ export async function listMeetings(projectCode: string): Promise<MeetingRow[]> {
   const [parts, points, lines, trs, props, pool] = await Promise.all([
     db.select().from(meetingParticipants).where(inArray(meetingParticipants.meetingId, ids)).orderBy(asc(meetingParticipants.position)),
     db.select().from(meetingAgendaPoints).where(inArray(meetingAgendaPoints.meetingId, ids)).orderBy(asc(meetingAgendaPoints.position)),
-    db.select({ l: meetingLines, meetingId: meetingAgendaPoints.meetingId, task: tasks.number }).from(meetingLines)
+    db.select({ l: meetingLines, meetingId: meetingAgendaPoints.meetingId, task: tasks.number, act: activities.code }).from(meetingLines)
       .innerJoin(meetingAgendaPoints, eq(meetingAgendaPoints.id, meetingLines.agendaPointId))
       .leftJoin(tasks, eq(tasks.id, meetingLines.taskId))
+      .leftJoin(activities, eq(activities.id, meetingLines.activityId))
       .where(inArray(meetingAgendaPoints.meetingId, ids)).orderBy(asc(meetingLines.position)),
     db.select().from(meetingTranscripts).where(inArray(meetingTranscripts.meetingId, ids)),
     db.select().from(meetingTranscriptProposals).where(inArray(meetingTranscriptProposals.meetingId, ids)).orderBy(asc(meetingTranscriptProposals.position)),
@@ -186,10 +192,10 @@ export async function listMeetings(projectCode: string): Promise<MeetingRow[]> {
   return ms.map(({ m, code, docNumber }) => {
     const agenda = points.filter((p) => p.meetingId === m.id).map((p) => ({
       position: p.position, title: p.title,
-      lines: lines.filter((x) => x.l.agendaPointId === p.id).map(({ l, task }) => ({
+      lines: lines.filter((x) => x.l.agendaPointId === p.id).map(({ l, task, act }) => ({
         point: p.position, position: l.position, type: l.type, text: l.text, owner: l.ownerName,
         ownerFull: l.ownerName ? ((l.ownerPersonId && poolName.get(l.ownerPersonId)) || l.ownerName) : null, due: l.dueText, dueDate: l.dueDate, done: l.done,
-        overdue: l.type === 'action' && !l.done && before(l.dueDate), taskNumber: task, origin: l.origin,
+        overdue: l.type === 'action' && !l.done && before(l.dueDate), taskNumber: task, origin: l.origin, activity: act,
       })),
     }));
     const tr = trs.find((t) => t.meetingId === m.id);
@@ -261,6 +267,20 @@ export interface ClientQuestionRow {
   owner: string;
   state: 'open' | 'answered';
   answer: string | null;
+}
+
+/**
+ * S-12 a (R-067): the project's plan activities for the composer's optional "Activity" select — plan order, code and name (the
+ * name is typed text: shown with dataText).
+ */
+export async function listMeetingActivityOptions(projectCode: string): Promise<{ code: string; name: string }[]> {
+  const db = await getDb();
+  return db
+    .select({ code: activities.code, name: activities.name })
+    .from(activities)
+    .innerJoin(projects, eq(projects.id, activities.projectId))
+    .where(eq(projects.code, projectCode))
+    .orderBy(asc(activities.position));
 }
 
 /** Internal ⇄ client question bridge of a project (MTG_EXCHANGE order). */
@@ -381,18 +401,22 @@ export interface SentMinutes {
   minutesNumber: string;
   /** Everyone invited (the toast's "{n} invitees"). */
   invited: number;
-  /** Tasks created for the action owners of the resource pool. */
+  /** Tasks created for the actions (internal owners and follow-ups), in agenda order. */
   tasks: string[];
 }
 
 /**
  * "Send minutes to all invitees" (`sendMinutes`): Minutes sent on `on`, a Released MIN record in the Codex index,
- * read receipts for every invitee but the organizer, and a to-do (T-2341…) for each action whose owner is in the
- * resource pool — start today (Fri 25 Sep), due today + 3 working days, 2 h, labels Meeting + meeting number.
+ * read receipts for every invitee but the organizer, and a task (T-2341…) for each action (S-12 a, R-067; the prototype made
+ * one only for owners of the resource pool): an internal owner gets it (title = the action, labels Meeting + meeting number);
+ * an external owner's action becomes a follow-up ("{action} — {owner as typed}", labels + Follow-up) for the relationship owner
+ * of the matching stakeholder, else the project's PM (src/domain/meetings.ts `followUpTarget`); no PM → no task. Due = the typed
+ * due date, else today (Fri 25 Sep) + 3 working days; start today, or the typed due when earlier; 2 h; the line's plan activity.
+ * Once committed, each assignee but the sender is told (R-015, "Task assigned · T-xxxx").
  */
 export async function sendMinutes(meetingNumber: string, actorName: string, on: string = NOW_ISO): Promise<SentMinutes> {
   const db = await getDb();
-  return db.transaction(async (tx) => {
+  const sent = await db.transaction(async (tx) => {
     const m = await loadMeeting(tx, meetingNumber);
     if (m.status === 'minutes_sent') throw new Error(`${meetingNumber}: minutes already sent`);
     const [p] = await tx.select().from(projects).where(eq(projects.id, m.projectId));
@@ -408,23 +432,36 @@ export async function sendMinutes(meetingNumber: string, actorName: string, on: 
     for (const x of parts)
       if (!isOrganizer(x)) await tx.update(meetingParticipants).set({ minutesRecipient: true, minutesReadOn: null }).where(eq(meetingParticipants.id, x.id));
     const actions = await tx
-      .select({ l: meetingLines, pool: persons.resourcePoolPosition })
+      .select({ l: meetingLines, clientId: persons.clientId, external: users.isExternal, userClientId: users.clientId })
       .from(meetingLines)
       .innerJoin(meetingAgendaPoints, eq(meetingAgendaPoints.id, meetingLines.agendaPointId))
       .leftJoin(persons, eq(persons.id, meetingLines.ownerPersonId))
+      .leftJoin(users, eq(users.personId, meetingLines.ownerPersonId))
       .where(and(eq(meetingAgendaPoints.meetingId, m.id), eq(meetingLines.type, 'action')))
       .orderBy(asc(meetingAgendaPoints.position), asc(meetingLines.position));
+    const register = await tx
+      .select({ personId: stakeholders.personId, name: stakeholders.name, ownerPersonId: stakeholders.ownerPersonId, position: stakeholders.position })
+      .from(stakeholders)
+      .where(eq(stakeholders.projectId, p.id));
     const created: string[] = [];
     const [{ maxOrder }] = await tx.select({ maxOrder: sql<number>`coalesce(max(${tasks.sortOrder}), 0)::int` }).from(tasks);
-    for (const { l, pool } of actions) {
-      if (l.taskId || !l.ownerPersonId || pool == null) continue;
+    const today = isoOfDayOffset(TODAY);
+    const defaultDue = isoOfDayOffset(TODAY + 3);
+    for (const { l, clientId, external, userClientId } of actions) {
+      if (l.taskId) continue;
+      // Internal: a known person outside any client organisation who is not an external user (S-12 a).
+      const owner = l.ownerPersonId ? { personId: l.ownerPersonId, internal: !clientId && !external && !userClientId } : null;
+      const target = followUpTarget({ ownerName: l.ownerName ?? '', owner, stakeholders: register, pmPersonId: p.pmPersonId });
+      if (!target) continue;
+      const { start, due } = minutesTaskDates(l.dueDate, today, defaultDue);
       const number = await nextNumber(tx, tasks, tasks.number, 'T-', 4, 2340);
       const [t] = await tx
         .insert(tasks)
         .values({
-          number, assigneePersonId: l.ownerPersonId, title: l.text, projectId: p.id, activityId: null, status: 'todo', priority: 'med',
-          startDate: isoOfDayOffset(TODAY), dueDate: isoOfDayOffset(TODAY + 3), estimateH: 2, loggedH: 0, percentComplete: 0,
-          labels: ['Meeting', m.number], checklistDone: 0, checklistTotal: 0, sortOrder: maxOrder + 1 + created.length,
+          number, assigneePersonId: target.personId, title: target.followUp ? followUpTitle(l.text, l.ownerName ?? '') : l.text, projectId: p.id,
+          activityId: l.activityId, status: 'todo', priority: 'med', startDate: start, dueDate: due, estimateH: 2, loggedH: 0, percentComplete: 0,
+          labels: target.followUp ? ['Meeting', m.number, FOLLOW_UP_LABEL] : ['Meeting', m.number], checklistDone: 0, checklistTotal: 0,
+          sortOrder: maxOrder + 1 + created.length, origin: 'meeting',
         })
         .returning({ id: tasks.id });
       await tx.update(meetingLines).set({ taskId: t.id }).where(eq(meetingLines.id, l.id));
@@ -434,6 +471,8 @@ export async function sendMinutes(meetingNumber: string, actorName: string, on: 
     await audit(tx, actorName, meetingNumber, `minutes sent · ${minutesNumber} · ${parts.length} invitees · ${created.length} actions added to tasks`, p.id, m.id);
     return { minutesNumber, invited: parts.length, tasks: created };
   });
+  await notifyTasksAssigned(sent.tasks, actorName);
+  return sent;
 }
 
 /** Records a read receipt of the minutes (Outlook sync, OPEN QUESTION S-11). */

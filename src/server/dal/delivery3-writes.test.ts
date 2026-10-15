@@ -194,18 +194,21 @@ describe('meetings writers', () => {
     expect([m.status, m.agenda[2].lines.length, m.agenda[2].lines[3]]).toEqual(['scheduled', 6, expect.objectContaining({ type: 'action', owner: 'S. Haddad', dueDate: '2026-10-06', origin: 'transcript' })]);
   });
 
-  it('send the minutes of MTG-118: MIN-HLT-027 released in the vault, tasks for J. Wagner and H. Sauvage, read receipts', async () => {
+  it('send the minutes of MTG-118: MIN-HLT-027 released in the vault, tasks for L. Fabre, J. Wagner and H. Sauvage, read receipts', async () => {
     expect(await toggleMeetingAction('MTG-118', 1, 1, 'Romain Aubert')).toBe(true);
     const tasksBefore = (await listTasks()).length;
     const sent = await sendMinutes('MTG-118', 'Romain Aubert');
-    expect(sent).toEqual({ minutesNumber: 'MIN-HLT-027', invited: 5, tasks: ['T-2341', 'T-2342'] });
+    // S-12 a (R-067): every internal owner gets a task (L. Fabre, outside the resource pool, too), due on the typed date.
+    expect(sent).toEqual({ minutesNumber: 'MIN-HLT-027', invited: 5, tasks: ['T-2341', 'T-2342', 'T-2343'] });
     const m = (await getMeeting('MTG-118'))!;
     expect([m.status, m.sentText, m.minutesIndexed]).toEqual(['minutes_sent', '30 Sep', true]);
     expect(m.participants.filter((p) => p.minutesRecipient).map((p) => [p.name, p.readOn])).toEqual([['L. Fabre', null], ['J. Wagner', null], ['H. Sauvage', null], ['T. Kerbrat', null]]);
-    expect(m.agenda[1].lines.filter((l) => l.type === 'action').map((l) => l.taskNumber)).toEqual(['T-2341', 'T-2342']);
-    const t = (await getTask('T-2341'))!;
-    expect([t.assignee, t.title, t.labels, t.status, t.estimateH, t.start, t.due]).toEqual(['Julien Wagner', 'Electrode oven on site and WPS reminder to welders', ['Meeting', 'MTG-118'], 'todo', 2, '2026-09-25', '2026-09-30']);
-    expect((await listTasks()).length).toBe(tasksBefore + 2);
+    expect(m.agenda[1].lines.filter((l) => l.type === 'action').map((l) => l.taskNumber)).toEqual(['T-2342', 'T-2343']);
+    expect((await getTask('T-2341'))!.assignee).toBe('L. Fabre');
+    const t = (await getTask('T-2342'))!;
+    // S-12 a: the typed due (1 Oct) — was today + 3 working days (30 Sep).
+    expect([t.assignee, t.title, t.labels, t.status, t.estimateH, t.start, t.due]).toEqual(['Julien Wagner', 'Electrode oven on site and WPS reminder to welders', ['Meeting', 'MTG-118'], 'todo', 2, '2026-09-25', '2026-10-01']);
+    expect((await listTasks()).length).toBe(tasksBefore + 3);
     const doc = (await listVaultDocuments())[0];
     expect(doc).toMatchObject({ number: 'MIN-HLT-027', type: 'MIN', status: 'released', title: 'Weekly site meeting #24', author: 'R. Aubert', confidentiality: 'internal', tagsText: 'MTG-118 · Weekly site meeting', isNew: true, shared: true, acknowledged: false });
     await expect(addMeetingLine('MTG-118', 0, { type: 'info', text: 'late' }, 'Romain Aubert')).rejects.toThrow(/already sent/);

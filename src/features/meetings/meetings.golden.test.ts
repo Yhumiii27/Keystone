@@ -247,13 +247,14 @@ describe('meetings screen — interactions played on both sides', () => {
   it('minutes of MTG-118 sent: MIN-HLT-027 on 30 Sep, read receipts for every invitee but the organizer', async () => {
     const r = await sendMinutes('MTG-118', 'Romain Aubert');
     expect(r).toMatchObject({ minutesNumber: 'MIN-HLT-027', invited: 5 });
-    expect(r.tasks).toHaveLength(2);
+    // S-12 a (R-067): L. Fabre (internal, outside the resource pool) gets a task too — the prototype made 2.
+    expect(r.tasks).toHaveLength(3);
     set({ ov: { ...state.mtg.ov, 'MTG-118': { ...state.mtg.ov['MTG-118'], status: 'Minutes sent', doc: 'MIN-HLT-027', sent: '30 Sep', read: { 'L. Fabre': '', 'J. Wagner': '', 'H. Sauvage': '', 'T. Kerbrat': '' } } } });
     await same('MTG-118');
     await same('MTG-118', 'fr');
-    // The action of J. Wagner now links to its task.
+    // The action of J. Wagner now links to its task (S-12 a: the second task, after L. Fabre's).
     const m = await ours('HLT-026', 'en', { meeting: 'MTG-118' });
-    expect(m.detail!.agenda[1].lines[1]).toMatchObject({ taskNumber: r.tasks[0], taskHref: `/my/tasks/${r.tasks[0]}` });
+    expect(m.detail!.agenda[1].lines[1]).toMatchObject({ taskNumber: r.tasks[1], taskHref: `/my/tasks/${r.tasks[1]}` });
   });
 
   it('"New meeting" MTG-130 on top of the register, organized by the viewer', async () => {

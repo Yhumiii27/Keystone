@@ -41,11 +41,13 @@ export interface MeetingsBodyProps {
   /** "New risk" form for a risk proposal and its owner options (null: the viewer may not edit the risk register). */
   riskForm?: FormDef | null;
   riskTeam?: string[];
+  /** S-12 a (R-067): plan activities an action may serve (composer select; the minutes' writers only). */
+  activities?: { value: string; label: string }[];
 }
 
 const LOCAL_AI: TranscriptAi = { claude: false, model: null };
 
-export function MeetingsBody({ code, view, canEdit, canWrite = canEdit, pinned, organizer, t, ai = LOCAL_AI, riskForm = null, riskTeam = [] }: MeetingsBodyProps) {
+export function MeetingsBody({ code, view, canEdit, canWrite = canEdit, pinned, organizer, t, ai = LOCAL_AI, riskForm = null, riskTeam = [], activities = [] }: MeetingsBodyProps) {
   return (
     <Stack>
       <FilterGroup>
@@ -89,7 +91,19 @@ export function MeetingsBody({ code, view, canEdit, canWrite = canEdit, pinned, 
             </nav>
           </div>
           {view.detail && (
-            <MeetingDetail code={code} d={view.detail} canEdit={canEdit} canWrite={canWrite} pinned={pinned} organizer={organizer} t={t} ai={ai} riskForm={riskForm} riskTeam={riskTeam} />
+            <MeetingDetail
+              code={code}
+              d={view.detail}
+              canEdit={canEdit}
+              canWrite={canWrite}
+              pinned={pinned}
+              organizer={organizer}
+              t={t}
+              ai={ai}
+              riskForm={riskForm}
+              riskTeam={riskTeam}
+              activities={activities}
+            />
           )}
         </div>
       )}
@@ -179,10 +193,11 @@ interface DetailProps {
   ai: TranscriptAi;
   riskForm: FormDef | null;
   riskTeam: string[];
+  activities: { value: string; label: string }[];
 }
 
 /** Detail card of the selected meeting (mtgSel). */
-function MeetingDetail({ code, d, canEdit, canWrite, pinned, organizer, t, ai, riskForm, riskTeam }: DetailProps) {
+function MeetingDetail({ code, d, canEdit, canWrite, pinned, organizer, t, ai, riskForm, riskTeam, activities }: DetailProps) {
   const prep = d.prep;
   const tr = prep?.transcript ?? null;
   return (
@@ -289,6 +304,7 @@ function MeetingDetail({ code, d, canEdit, canWrite, pinned, organizer, t, ai, r
         canSend={canWrite}
         selfHref={d.selfHref}
         pinned={pinned}
+        activities={canWrite ? activities : []}
       />
 
       {d.sent && (
