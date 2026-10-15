@@ -337,7 +337,10 @@ async function main() {
   check('SKILL_LV and CERTS reproduced', same(Object.fromEntries(sm.people.map((p) => [p.name, p.levels])), PROTO.SKILL_LV)
     && same(Object.fromEntries(sm.people.filter((p) => p.certText).map((p) => [p.name, p.certText])), PROTO.CERTS));
   const lc = await getLeaveCalendar();
-  check('LEAVE and HOLIDAYS reproduced', same(Object.fromEntries(lc.people.map((p) => [p.name, Object.fromEntries(p.weeks.flatMap((w, i) => (w.typeLabel ? [[String(i), w.typeLabel]] : [])))])), PROTO.LEAVE)
+  // NEW-CURSUS-4 (R-031, R-173): the prototype's CP / RTT weeks are Leave, its Sick / Training weeks Absence (no reason kept).
+  const simpleLeave: Record<string, string> = { CP: 'Leave', RTT: 'Leave', Sick: 'Absence', Training: 'Absence' };
+  const protoLeave = Object.fromEntries(Object.entries(PROTO.LEAVE as Record<string, Record<string, string>>).map(([n, ws]) => [n, Object.fromEntries(Object.entries(ws).map(([i, l]) => [i, simpleLeave[l]]))]));
+  check('LEAVE and HOLIDAYS reproduced', same(Object.fromEntries(lc.people.map((p) => [p.name, Object.fromEntries(p.weeks.flatMap((w, i) => (w.typeLabel ? [[String(i), w.typeLabel]] : [])))])), protoLeave)
     && same(Object.fromEntries(lc.holidays.map((h) => [h.weekIndex, h.label])), PROTO.HOLIDAYS));
   const hr = await getHoursReconciliation('HLT-026');
   check('HOURS reproduced', same(hr && { imported: hr.importedText, code: hr.analyticCode, lines: hr.lines.map((l) => [l.person, l.wbsLabel, l.plannedH, l.declaredH]), unassigned: hr.unassigned.map((u) => [u.person, u.hours, u.reason]) }, PROTO.HOURS['HLT-026']));

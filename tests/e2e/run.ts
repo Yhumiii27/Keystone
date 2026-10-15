@@ -86,6 +86,8 @@ async function main(): Promise<number> {
     VIGIE_API_URL: '',
     CURSUS_API_URL: '',
     ANTHROPIC_API_KEY: '',
+    // R-029: the key Cursus would present to the events endpoint (production refuses the demo key; d8-connectors.spec.ts).
+    CURSUS_EVENTS_KEY: process.env.CURSUS_EVENTS_KEY || 'e2e-cursus-events-key-0001',
     NEXT_TELEMETRY_DISABLED: '1',
   };
   let server: ChildProcess | null = null;

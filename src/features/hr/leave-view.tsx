@@ -15,8 +15,8 @@ import { stampText } from '@/server/db/codes';
 import type { LeaveCalendar } from '@/server/dal/hr';
 import s from './hr.module.css';
 
-// An absence keeps the prototype's sick-leave look (cellSick); leave keeps the leave look.
-const CELL: Record<LeaveCellTone, string | undefined> = { absence: s.cellSick, leave: s.cellLeave, holiday: s.cellHoliday, none: undefined };
+// An absence keeps the prototype's former sick-leave look; leave keeps the leave look.
+const CELL: Record<LeaveCellTone, string | undefined> = { absence: s.cellAbsence, leave: s.cellLeave, holiday: s.cellHoliday, none: undefined };
 
 /** "11 Nov" (date part of "11 Nov · Armistice"). */
 const datePart = (label: string) => label.split(' · ')[0];
