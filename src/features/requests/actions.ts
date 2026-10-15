@@ -17,6 +17,7 @@ import {
   reRequestResourceRequest, rejectResourceRequest, sendDraftRequest, withdrawResourceRequest, type ResourceRequestRow,
 } from '@/server/dal/requests';
 import { notifyRequestEvent, recordRequestActivity, type RequestNotice } from '@/server/dal/requests-screens';
+import { notifySourcingTask } from '@/server/dal/task-notices';
 import { getResourcePool } from '@/server/dal/resources';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { canDecideDepartment } from '@/domain/rights';
@@ -46,15 +47,28 @@ const isNumber = (v: unknown): v is string => typeof v === 'string' && /^RQ-\d{3
 
 const refresh = () => revalidatePath('/', 'layout');
 
-/** Notifications and activity are a courtesy: a failure there must not undo or fail the decision. */
-async function announce(viewer: Viewer, r: ResourceRequestRow | null, notices: (r: ResourceRequestRow) => RequestNotice[], activity: string) {
+/** Notifications and activity are a courtesy: a failure there must not undo or fail the decision. `extra`: activity suffix. */
+async function announce(viewer: Viewer, r: ResourceRequestRow | null, notices: (r: ResourceRequestRow) => RequestNotice[], activity: string, extra?: string) {
   if (!r) return;
   try {
     await notifyRequestEvent(notices(r), viewer);
-    await recordRequestActivity(r.projectCode, viewer.name, `${activity} ${r.id} — ${r.title}`);
+    await recordRequestActivity(r.projectCode, viewer.name, `${activity} ${r.id} — ${r.title}${extra ? ` · ${extra}` : ''}`);
   } catch (e) {
     logError('Resource request notification', e);
   }
+}
+
+/** P-8b (R-089): a request for a contract role (no person) — its task goes to procurement to find and name the person. */
+const isSourcing = (r: ResourceRequestRow) => !r.person && !!r.contractRole;
+
+/**
+ * The notices of a task created from a request: the named person ("New task assigned"), or — P-8b, contract role — every
+ * procurement user ("Person to find and name"), never the actor. The PM is told by the decision notice.
+ */
+async function announceTask(r: ResourceRequestRow, task: string, viewer: Viewer, sub: string): Promise<RequestNotice[]> {
+  if (!isSourcing(r)) return [{ kind: 'task', title: 'New task assigned', sub, screen: 'mywork', params: {}, projectCode: r.projectCode, to: r.person }];
+  await notifySourcingTask(task, { contractRole: r.contractRole!, title: r.title, due: shortDateOfIso(r.due), projectCode: r.projectCode }, viewer.name);
+  return [];
 }
 
 const who = (r: ResourceRequestRow) => r.resource;
@@ -180,10 +194,12 @@ export async function acceptRescheduleAction(id: string): Promise<RequestActionR
     logError('acceptRescheduleAction', e);
     return { ok: false, error: FAILED };
   }
-  await announce(o.viewer, await getResourceRequest(o.r.id), (r) => [
+  const accepted = await getResourceRequest(o.r.id);
+  const taskNotices = accepted ? await announceTask(accepted, task, o.viewer, `${accepted.title} · Accepted by ${o.viewer.name} · due ${shortDateOfIso(accepted.due)}`) : [];
+  await announce(o.viewer, accepted, (r) => [
     { kind: 'approval', title: 'Reschedule accepted', sub: `${r.title} · ${who(r)} · ${datesText(r.start, r.due)} · ${o.viewer.name}`, screen: 'approvals', params: { dept: r.department }, projectCode: r.projectCode, to: r.departmentHead },
-    { kind: 'task', title: 'New task assigned', sub: `${r.title} · Accepted by ${o.viewer.name} · due ${shortDateOfIso(r.due)}`, screen: 'mywork', params: {}, projectCode: r.projectCode, to: r.person },
-  ], 'Accepted reschedule of resource request');
+    ...taskNotices,
+  ], 'Accepted reschedule of resource request', accepted && isSourcing(accepted) ? 'task created for Procurement' : undefined);
   refresh();
   return { ok: true, number: task };
 }
@@ -267,10 +283,11 @@ export async function approveRequestAction(id: string): Promise<RequestActionRes
     logError('approveRequestAction', e);
     return { ok: false, error: FAILED };
   }
+  const taskNotices = await announceTask(o.r, task, o.viewer, `${o.r.title} · Approved by ${o.viewer.name} · due ${shortDateOfIso(o.r.due)}`);
   await announce(o.viewer, o.r, (r) => [
     { kind: 'approval', title: 'Resource request approved', sub: `${r.title} · ${who(r)} · ${o.viewer.name}`, screen: 'requests', params: { status: 'approved' }, projectCode: r.projectCode, to: r.requestedByName },
-    { kind: 'task', title: 'New task assigned', sub: `${r.title} · Approved by ${o.viewer.name} · due ${shortDateOfIso(r.due)}`, screen: 'mywork', params: {}, projectCode: r.projectCode, to: r.person },
-  ], 'Approved resource request');
+    ...taskNotices,
+  ], 'Approved resource request', isSourcing(o.r) ? 'task created for Procurement' : undefined);
   refresh();
   return { ok: true, number: task };
 }

@@ -125,6 +125,8 @@ export interface TaskSheetData {
   projectName: string;
   /** "Where this sits in the plan" (translated values; float as days, signed later). */
   plan: { activity: string; workPackage: string; finish: string; float: number | null; progress: number } | null;
+  /** P-8b (R-089): a sourcing task — created from a contract-role request ("RQ-043"), the person not named yet. */
+  sourcing: { contractRole: string; request: string } | null;
 }
 
 /**
@@ -171,5 +173,6 @@ export function taskSheetData(d: TaskDetail, backHref: string, t: T, lang: Lang,
           progress: a.pct,
         }
       : null,
+    sourcing: d.sourceRequest && d.contractRole ? { contractRole: d.contractRole, request: d.sourceRequest } : null,
   };
 }

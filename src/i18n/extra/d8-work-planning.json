@@ -11,5 +11,13 @@
   "E-mail not connected yet — notifications stay in Keystone · preferences in Settings": "E-mail pas encore connecté — les notifications restent dans Keystone · préférences dans Paramètres",
   "Meeting created": "Réunion créée",
   "Create meeting": "Créer la réunion",
-  "Minutes become a numbered document (MIN) · actions go to the owners’ tasks · read receipts are tracked in Keystone": "Le CR devient un document numéroté (MIN) · les actions vont dans les tâches des responsables · les accusés de lecture sont suivis dans Keystone"
+  "Minutes become a numbered document (MIN) · actions go to the owners’ tasks · read receipts are tracked in Keystone": "Le CR devient un document numéroté (MIN) · les actions vont dans les tâches des responsables · les accusés de lecture sont suivis dans Keystone",
+  "Person to find and name": "Personne à trouver et nommer",
+  "task created for Procurement": "tâche créée pour les achats",
+  "Only procurement or the portfolio director can name the person": "Seuls les achats ou le directeur de portefeuille peuvent nommer la personne",
+  "This task already names its person": "Cette tâche nomme déjà sa personne",
+  "Choose a person known to Keystone": "Choisissez une personne connue de Keystone",
+  "Name the person": "Nommer la personne",
+  "Person named": "Personne nommée",
+  "Choose an existing person: the resource pool first, then the other people Keystone knows. Not in Keystone yet? Leave a comment — the task stays with procurement.": "Choisissez une personne existante : le pool de ressources d’abord, puis les autres personnes connues de Keystone. Pas encore dans Keystone ? Laissez un commentaire — la tâche reste aux achats."
 }

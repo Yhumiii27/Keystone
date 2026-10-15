@@ -3,17 +3,19 @@ import 'server-only';
 // heads' queues, the My approvals sources held in this database (resource requests, change requests, forced
 // stage changes), and the request workflow writers — send, withdraw, re-request, approve (creates the task
 // T-2341…), propose reschedule, reject, accept reschedule. Actors are the viewer, not the prototype's
-// hard-coded R. Aubert / department head (00 §7.16).
+// hard-coded R. Aubert / department head (00 §7.16). P-8b (R-089): a request for a contract role (no person yet) becomes,
+// once approved, a sourcing task for procurement ("Find and name: …"); procurement or the director then names an existing
+// person on it (`nameSourcedPerson`), which reassigns the task and completes the request.
 import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { getDb, type Tx } from '@/server/db/client';
+import { getDb, type DB, type Tx } from '@/server/db/client';
 import {
   STATUS_ISO, addDaysIso, dayLabelOfIso, dayOffsetOfIso, isoOfDayOffset, requestStatus, shortDateOfIso, stage,
   type Priority, type RequestEventAction, type RequestStatus, type StageCode,
 } from '@/server/db/codes';
-import { findPerson, nameOf, nextNumber, requirePerson, requireProject, writeAudit } from '@/server/db/helpers';
+import { findPerson, nameOf, nextNumber, recordActivity, requirePerson, requireProject, writeAudit } from '@/server/db/helpers';
 import {
-  activities, departments, persons, projects, requestActivityChoices, resourceRequestEvents, resourceRequests, stageTransitions, tasks,
+  activities, departments, persons, projects, requestActivityChoices, resourceRequestEvents, resourceRequests, stageTransitions, tasks, users,
 } from '@/server/db/schema';
 
 export interface RequestEventRow {
@@ -380,20 +382,122 @@ export async function reRequestResourceRequest(number: string, actorName: string
   });
 }
 
-/** Creates the task of an approved request (assign 4111): T-2341…, todo, 0/3 checklist, label = first word of the department, "fresh". */
-async function createTaskFromRequest(tx: Tx, r: typeof resourceRequests.$inferSelect, start: string, due: string): Promise<{ id: string; number: string }> {
+// ── P-8b (R-089): sourcing a contract role through procurement ─────────────────────────────────────────────────────
+
+/** Persons holding an active user account with `role`, in user order (users.sort_order). */
+async function personsWithRole(q: DB | Tx, role: string): Promise<string[]> {
+  const rows = await q
+    .select({ personId: users.personId })
+    .from(users)
+    .where(and(eq(users.active, true), sql`${role} = any(${users.roles})`))
+    .orderBy(asc(users.sortOrder));
+  return rows.map((r) => r.personId);
+}
+
+/**
+ * Who gets the sourcing task of an approved contract-role request: the first active user holding the procurement role (user
+ * order), else the portfolio director (P-8b default — the owner may name a buyer later); null when neither exists.
+ */
+export async function procurementAssignee(q?: DB | Tx): Promise<string | null> {
+  const db = q ?? (await getDb());
+  return (await personsWithRole(db, 'procurement'))[0] ?? (await personsWithRole(db, 'director'))[0] ?? null;
+}
+
+/** Every active procurement user's person (they are all told about a new sourcing task). */
+export async function procurementPersonIds(): Promise<string[]> {
+  return personsWithRole(await getDb(), 'procurement');
+}
+
+/** Title of a sourcing task: "Find and name: Contract structural engineer — Steel connection checks". */
+export const sourcingTaskTitle = (contractRole: string, title: string) => `Find and name: ${contractRole} — ${title}`;
+
+/**
+ * Creates the task of an approved request (assign 4111): T-2341…, todo, 0/3 checklist, label = first word of the department,
+ * "fresh". P-8b (R-089): a contract role (no person) gives the sourcing task to procurement (`procurementAssignee`) —
+ * "Find and name: {role} — {title}", same dates, hours and source request, the contract role kept on it until a person is
+ * named.
+ */
+async function createTaskFromRequest(tx: Tx, r: typeof resourceRequests.$inferSelect, start: string, due: string): Promise<{ id: string; number: string; sourcing: boolean }> {
   const number = await nextNumber(tx, tasks, tasks.number, 'T-', 4, 2340);
   const [{ maxOrder }] = await tx.select({ maxOrder: sql<number>`coalesce(max(${tasks.sortOrder}), 0)::int` }).from(tasks);
   const [dept] = await tx.select({ name: departments.name }).from(departments).where(eq(departments.id, r.departmentId));
+  const sourcing = !r.personId && !!r.contractRole;
+  const assignee = r.personId ?? (sourcing ? await procurementAssignee(tx) : null);
   const [t] = await tx
     .insert(tasks)
     .values({
-      number, assigneePersonId: r.personId, contractRole: r.personId ? null : r.contractRole, title: r.title, projectId: r.projectId, activityId: r.activityId,
-      status: 'todo', priority: r.priority, startDate: start, dueDate: due, estimateH: r.hours, loggedH: 0, percentComplete: 0,
-      labels: [dept.name.split(' ')[0]], checklistDone: 0, checklistTotal: 3, isFresh: true, departmentId: r.departmentId, sourceRequestId: r.id, sortOrder: maxOrder + 1,
+      number, assigneePersonId: assignee, contractRole: r.personId ? null : r.contractRole, title: sourcing ? sourcingTaskTitle(r.contractRole!, r.title) : r.title,
+      projectId: r.projectId, activityId: r.activityId, status: 'todo', priority: r.priority, startDate: start, dueDate: due, estimateH: r.hours, loggedH: 0,
+      percentComplete: 0, labels: [dept.name.split(' ')[0]], checklistDone: 0, checklistTotal: 3, isFresh: true, departmentId: r.departmentId, sourceRequestId: r.id,
+      sortOrder: maxOrder + 1, origin: 'request',
     })
     .returning({ id: tasks.id });
-  return { id: t.id, number };
+  return { id: t.id, number, sourcing };
+}
+
+/**
+ * People procurement may name on a sourcing task (P-8b): existing persons only — the internal resource pool first (pool order),
+ * then the other known people who are not a client organisation's contacts (external workers already in Keystone), by name.
+ * Contract-role placeholders and client users are left out. Creating a person waits for the Cursus staff directory (R-027).
+ */
+export async function listSourcingCandidates(q?: DB | Tx): Promise<{ personId: string; name: string; short: string; pool: boolean }[]> {
+  const db = q ?? (await getDb());
+  const rows = await db
+    .select({ id: persons.id, full: persons.fullName, short: persons.shortName, pool: persons.resourcePoolPosition, order: persons.sortOrder, userClient: users.clientId, roles: users.roles })
+    .from(persons)
+    .leftJoin(users, eq(users.personId, persons.id))
+    .where(and(sql`${persons.clientId} is null`, eq(persons.isContractRole, false)));
+  return rows
+    .filter((r) => !r.userClient && !(r.roles ?? []).includes('client'))
+    .sort((a, b) => (a.pool == null) !== (b.pool == null) ? (a.pool == null ? 1 : -1) : a.pool != null && b.pool != null ? a.pool - b.pool : (a.full ?? a.short).localeCompare(b.full ?? b.short))
+    .map((r) => ({ personId: r.id, name: r.full ?? r.short, short: r.short, pool: r.pool != null }));
+}
+
+/** The sourcing task changed meanwhile (named already, not a sourcing task): refused, nothing written. */
+export class SourcingStaleError extends Error {}
+
+export interface NamedSourcing {
+  task: string;
+  request: string;
+  projectCode: string;
+  /** The person named (display name) and their id; the requesting PM's person. */
+  person: string;
+  personId: string;
+  pmPersonId: string;
+}
+
+/**
+ * P-8b (R-089) "Name the person": on a sourcing task (created from a contract-role request, not named yet), procurement or the
+ * director names an EXISTING person (`listSourcingCandidates`). In one transaction the writer re-checks the actor's role, the
+ * task's origin and the not-yet-named state (task and request rows locked), then: the same task goes to the person (contract
+ * role cleared, the request title back as its title), the request names the person (its contract role kept as history) with
+ * a 'named' event, and an audit line "T-xxxx · named: {person}" is written with the activity line.
+ */
+export async function nameSourcedPerson(taskNumber: string, personName: string, actorName: string, on?: string): Promise<NamedSourcing> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const actor = await findPerson(tx, actorName);
+    const roles = actor ? (await tx.select({ roles: users.roles }).from(users).where(and(eq(users.personId, actor.id), eq(users.active, true)))).flatMap((u) => u.roles) : [];
+    if (!actor || !roles.some((r) => r === 'procurement' || r === 'director')) throw new Error('Only procurement or the portfolio director can name the person');
+    const [t] = await tx.select().from(tasks).where(eq(tasks.number, taskNumber)).for('update');
+    if (!t) throw new SourcingStaleError('Unknown task');
+    if (!t.sourceRequestId || !t.contractRole) throw new SourcingStaleError('This task already names its person');
+    const [r] = await tx.select().from(resourceRequests).where(eq(resourceRequests.id, t.sourceRequestId)).for('update');
+    if (!r || r.personId || r.taskId !== t.id) throw new SourcingStaleError('This task already names its person');
+    const candidates = await listSourcingCandidates(tx);
+    const person = candidates.find((c) => c.name === personName || c.short === personName);
+    if (!person) throw new SourcingStaleError('Choose a person known to Keystone');
+    await tx.update(tasks).set({ assigneePersonId: person.personId, contractRole: null, title: r.title, updatedAt: new Date() }).where(eq(tasks.id, t.id));
+    await tx.update(resourceRequests).set({ personId: person.personId, updatedAt: new Date() }).where(eq(resourceRequests.id, r.id));
+    await addEvent(tx, r.id, 'named', today(on), actor.id, person.name);
+    const [p] = await tx.select({ code: projects.code }).from(projects).where(eq(projects.id, t.projectId));
+    await writeAudit(tx, {
+      actorName: nameOf(actor), actorPersonId: actor.id, objectRef: t.number, change: `named: ${person.name} · ${t.contractRole} · ${r.number}`, area: 'Resource requests',
+      entityType: 'task', entityId: t.id, projectId: t.projectId,
+    });
+    await recordActivity(tx, { actorName: nameOf(actor), actorPersonId: actor.id, text: `Named ${person.name} for resource request ${r.number} — ${r.title}`, kind: 'request', projectId: t.projectId });
+    return { task: t.number, request: r.number, projectCode: p.code, person: person.name, personId: person.personId, pmPersonId: r.requestedByPersonId };
+  });
 }
 
 /**
@@ -411,9 +515,10 @@ export async function approveResourceRequest(number: string, approverName: strin
     await tx.update(resourceRequests).set({ status: 'approved', response: `Approved · ${nameOf(approver)} · ${dayLabelOfIso(d)}`, taskId: task.id, updatedAt: new Date() }).where(eq(resourceRequests.id, r.id));
     await addEvent(tx, r.id, 'approved', d, approver.id, null);
     const [who] = r.personId ? await tx.select({ full: persons.fullName, short: persons.shortName }).from(persons).where(eq(persons.id, r.personId)) : [];
+    // P-8b (R-089): a contract role's task goes to procurement (was "task created for {contract role}").
     await writeAudit(tx, {
       actorName: nameOf(approver), actorPersonId: approver.id, objectRef: `Request ${number}`,
-      change: `approved → task created for ${who ? (who.full ?? who.short) : (r.contractRole ?? '')}`, area: 'Approvals', entityType: 'resource_request', entityId: r.id, projectId: r.projectId,
+      change: `approved → task created for ${who ? (who.full ?? who.short) : task.sourcing ? 'Procurement' : (r.contractRole ?? '')}`, area: 'Approvals', entityType: 'resource_request', entityId: r.id, projectId: r.projectId,
     });
     return task.number;
   });
@@ -472,7 +577,10 @@ export async function acceptReschedule(number: string, actorName: string, on?: s
       })
       .where(eq(resourceRequests.id, r.id));
     await addEvent(tx, r.id, 'accepted', today(on), actor?.id ?? null, null);
-    await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: `reschedule accepted → task ${task.number}`, area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId });
+    await writeAudit(tx, {
+      actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: `reschedule accepted → task ${task.number}${task.sourcing ? ' created for Procurement' : ''}`,
+      area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId,
+    });
     return task.number;
   });
 }

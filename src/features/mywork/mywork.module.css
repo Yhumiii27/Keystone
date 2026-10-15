@@ -152,6 +152,8 @@
 .addRow { display: flex; gap: 6px; margin-top: 4px; }
 :global(.input).addInput { min-height: 32px; font-size: 13px; }
 :global(.input).commentInput { min-height: 34px; font-size: 13px; }
+/* P-8b (R-089): the contract role and request of a sourcing task. */
+.sourcingRole { font-size: 13px; color: var(--color-neutral-200); }
 /* R-149: an @mention in a posted comment. */
 .mention { color: var(--color-accent-300); font-weight: 600; }
 :global(.btn).addBtn { font-size: 12.5px; padding: 4px 10px; }

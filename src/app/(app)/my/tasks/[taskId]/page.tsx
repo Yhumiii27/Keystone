@@ -6,9 +6,10 @@ import { notFound } from 'next/navigation';
 import { canSeeRates } from '@/domain/hr';
 import { PageHeader } from '@/components/app/shell/page-header';
 import { myWorkHref, taskSheetData } from '@/features/mywork/model';
-import { canCommentTask, canEditTask } from '@/features/mywork/permissions';
+import { canCommentTask, canEditTask, canNameSourcedPerson } from '@/features/mywork/permissions';
 import { MarkDoneButton, TaskBody, TaskProvider } from '@/features/mywork/task-sheet';
 import { myWorkAccess } from '@/server/dal/mywork-data';
+import { listSourcingCandidates } from '@/server/dal/requests';
 import { listMentionablePersons } from '@/server/dal/task-notices';
 import { getTask } from '@/server/dal/tasks';
 import { getScreenAccess } from '@/server/project-context';
@@ -28,9 +29,11 @@ export default async function TaskPage({ params }: { params: Promise<{ taskId: s
   // R-149: the comments' @mentions are highlighted (the people who can be mentioned: an active internal account).
   const data = taskSheetData(task, myWorkHref({ person: otherPerson }), t, lang, { rates: canSeeRates(viewer.role), mentionables: await listMentionablePersons() });
   const canEdit = canEditTask(viewer, task.assignee, outside);
+  // P-8b (R-089): procurement and the director name the person of a sourcing task (existing people only).
+  const naming = data.sourcing && canNameSourcedPerson(viewer, outside) ? { candidates: (await listSourcingCandidates()).map((c) => c.name) } : null;
 
   return (
-    <TaskProvider data={data} canEdit={canEdit} canComment={canCommentTask(outside)} viewer={{ name: viewer.name, initials: viewer.initials }}>
+    <TaskProvider data={data} canEdit={canEdit} canComment={canCommentTask(outside)} naming={naming} viewer={{ name: viewer.name, initials: viewer.initials }}>
       <PageHeader screen="task" taskId={task.id} title={data.title} crumbExtra={task.id} primary={canEdit ? <MarkDoneButton /> : undefined} />
       <TaskBody />
     </TaskProvider>

@@ -11,6 +11,7 @@ import { getDb, type DB, type Tx } from '@/server/db/client';
 import { persons, projects, tasks, users } from '@/server/db/schema';
 import { logError } from '@/server/log';
 import { createNotification } from './notifications';
+import { procurementPersonIds, type NamedSourcing } from './requests';
 
 type Q = DB | Tx;
 
@@ -27,6 +28,47 @@ export async function listMentionablePersons(q?: Q): Promise<MentionCandidate[]>
     .innerJoin(users, eq(users.personId, persons.id))
     .where(and(eq(users.active, true), eq(users.isExternal, false), isNull(users.clientId), isNull(persons.clientId), not(sql`'client' = any(${users.roles})`)));
   return rows;
+}
+
+/**
+ * P-8b (R-089): every active procurement user is told about a new sourcing task — "Person to find and name · T-xxxx", sub
+ * "{contract role} · {request title} · due {date}", opening the task — never the actor. Never throws.
+ */
+export async function notifySourcingTask(
+  taskNumber: string, request: { contractRole: string; title: string; due: string; projectCode: string }, actorName: string,
+): Promise<void> {
+  try {
+    const db = await getDb();
+    const [actor] = await db.select({ id: persons.id }).from(persons).where(sql`${persons.fullName} = ${actorName} or ${persons.shortName} = ${actorName}`);
+    const to = (await procurementPersonIds()).filter((id) => id !== actor?.id);
+    if (!to.length) return;
+    await createNotification({
+      kind: 'task', title: `Person to find and name · ${taskNumber}`, sub: `${request.contractRole} · ${request.title} · due ${request.due}`, screen: 'task',
+      params: { taskId: taskNumber }, projectCode: request.projectCode, audience: [], toPersonIds: to,
+    });
+  } catch (e) {
+    logError('Sourcing task notification', e);
+  }
+}
+
+/**
+ * P-8b (R-089): once procurement named the person of a sourcing task — the requesting PM ("Person named · RQ-xxx", sub
+ * "{person} · {task}") and the person, when they have an account ("Task assigned · T-xxxx"); never the actor. Never throws.
+ */
+export async function notifyPersonNamed(n: NamedSourcing, actorName: string): Promise<void> {
+  try {
+    const db = await getDb();
+    const [actor] = await db.select({ id: persons.id }).from(persons).where(sql`${persons.fullName} = ${actorName} or ${persons.shortName} = ${actorName}`);
+    const [pmUser] = await db.select({ id: users.id }).from(users).where(and(eq(users.personId, n.pmPersonId), eq(users.active, true)));
+    if (pmUser && n.pmPersonId !== actor?.id)
+      await createNotification({
+        kind: 'request', title: `Person named · ${n.request}`, sub: `${n.person} · ${n.task}`, screen: 'requests', params: { status: 'approved' }, projectCode: n.projectCode,
+        audience: [], toPersonIds: [n.pmPersonId],
+      });
+  } catch (e) {
+    logError('Person named notification', e);
+  }
+  await notifyTasksAssigned([n.task], actorName);
 }
 
 /** "@you in T-2341" — fixed template (FR rule "@vous dans T-2341", src/i18n/fr-rules.ts). */
