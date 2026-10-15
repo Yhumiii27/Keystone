@@ -5,9 +5,11 @@
 // ISO 9001 CSV export (./audit.csv). URL state: `?view=` display (activity default, connectors, imports, audit), `?source=`
 // activity kind. No primary action: IT configures the connectors outside Keystone (D-7a, R-020 — the connectors file and
 // the server environment; "Configure" shows them read-only). Roles: director, PM; the others see it outside their
-// workspace (banner, no Sync / export).
+// workspace (banner, no Sync / export). R-046: the rate values of "Rate card" changes are masked for the roles that do not
+// see rates (`canSeeRates`).
 import { PageHeader } from '@/components/app/shell/page-header';
 import { parseActivitySource, parsePlumbView } from '@/domain/admin';
+import { canSeeRates } from '@/domain/hr';
 import { plumbingView, visibleImportFormats } from '@/features/admin/model';
 import { PlumbingBody } from '@/features/admin/plumbing-view';
 import { listAdminConnectors } from '@/server/dal/admin-connectors';
@@ -32,6 +34,7 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
       view: parsePlumbView(first(sp.view)),
       source: parseActivitySource(first(sp.source), activity.map((a) => a.kind)),
       activity, connectors, imports: visibleImportFormats(imports), audit, counts, unread, personaTitle: access.viewer.title,
+      ratesVisible: canSeeRates(access.viewer.role),
     },
     t, lang,
   );

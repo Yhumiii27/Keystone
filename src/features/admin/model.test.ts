@@ -67,7 +67,7 @@ async function plumbing(lang: Lang, q: { view?: string; source?: string; role?: 
   const persona = PERSONA_BY_ROLE[q.role ?? 'director'];
   const unread = await countUnreadNotifications(persona.role);
   return plumbingView(
-    { view: (q.view ?? 'activity') as any, source: parseActivitySource(q.source, activity.map((a) => a.kind)), activity, connectors, imports, audit, counts, unread, personaTitle: persona.title },
+    { view: (q.view ?? 'activity') as any, source: parseActivitySource(q.source, activity.map((a) => a.kind)), activity, connectors, imports, audit, counts, unread, personaTitle: persona.title, ratesVisible: true },
     makeT(lang), lang,
   );
 }
@@ -328,7 +328,7 @@ describe('Activity, integrations & audit view model', () => {
     await db.update(connectorsTable).set({ enabled: false }).where(eq(connectorsTable.name, 'Vigie'));
     try {
       const [activity, connectors, imports, audit, counts] = await Promise.all([listActivity(), listAdminConnectors(), listImportFormats(), listAudit(), getPlumbingCounts()]);
-      const v = plumbingView({ view: 'connectors', source: null, activity, connectors, imports, audit, counts, unread: 0, personaTitle: 'Portfolio director' }, makeT(lang), lang);
+      const v = plumbingView({ view: 'connectors', source: null, activity, connectors, imports, audit, counts, unread: 0, personaTitle: 'Portfolio director', ratesVisible: true }, makeT(lang), lang);
       expect(v.connectors.find((c) => c.rawName === 'Vigie')).toMatchObject({ status: lang === 'en' ? 'Disabled' : 'Désactivé', tone: 'neutral', canSync: false, last: '—' });
     } finally {
       await db.update(connectorsTable).set({ enabled: true }).where(eq(connectorsTable.name, 'Vigie'));

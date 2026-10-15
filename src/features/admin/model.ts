@@ -10,7 +10,7 @@ import {
 } from '@/domain/admin';
 import { IMPORTS_ENABLED } from '@/domain/ch4-defaults';
 import { DEFAULT_CCB_THRESHOLD_KEUR } from '@/domain/change-control';
-import { HOURS_VARIANCE_RULE } from '@/domain/hr';
+import { HOURS_VARIANCE_RULE, ratesMaskedActivity, ratesMaskedAudit } from '@/domain/hr';
 import { connectorStateTone } from '@/domain/connectors';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
@@ -252,6 +252,8 @@ export interface PlumbingInput {
   unread: number;
   /** Persona title of the viewer (EN source). */
   personaTitle: string;
+  /** R-046: the viewer sees rate values (`canSeeRates`); else the "Rate card" changes are masked in the feed and the trail. */
+  ratesVisible: boolean;
 }
 
 /**
@@ -274,7 +276,8 @@ const stampOf = (iso: string | null, t: T) => (iso ? t(stampText(new Date(iso)))
 export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
   const kinds = i.activity.map((a) => a.kind);
   const chips = activityChips(kinds);
-  const rows = i.source ? i.activity.filter((a) => a.kind === i.source) : i.activity;
+  const activity = ratesMaskedActivity(i.activity, i.ratesVisible);
+  const rows = i.source ? activity.filter((a) => a.kind === i.source) : activity;
   return {
     kpis: plumbingKpis({
       eventsToday: i.counts.eventsToday, connectors: i.connectors, unread: i.unread, personaTitle: i.personaTitle, auditEntries: i.counts.auditLast7Days,
@@ -306,7 +309,7 @@ export function plumbingView(i: PlumbingInput, t: T, lang: Lang): PlumbingView {
     }),
     imports: i.imports.map((f) => ({ name: t(f.name), description: t(f.description), icon: importIcon(f.icon), direction: f.direction })),
     // R-184: the trail is not passed through the segment translator — its generic shapes are rendered, typed values kept.
-    audit: i.audit.map((a, n) => ({
+    audit: ratesMaskedAudit(i.audit, i.ratesVisible).map((a, n) => ({
       key: `${a.occurredAt}-${n}`, when: t(a.when), who: dataText(a.who, lang), object: auditObjectT(a.object, t, lang), change: auditChangeT(a, t, lang),
       area: auditAreaT(a.area, t, lang),
     })),

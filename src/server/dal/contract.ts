@@ -27,7 +27,7 @@ import {
 } from '@/server/db/schema';
 import type { Tx } from '@/server/db/types';
 import type { Actor } from './ops-common';
-import { editsProjectScreen } from './team-guard';
+import { editsContract } from './team-guard';
 
 // ── Read model ─────────────────────────────────────────────────────────────────────────────────────────
 
@@ -693,9 +693,9 @@ export class MilestoneEditError extends Error {
   }
 }
 
-/** The actor edits the contract of this project (the Server Function's `canEdit('contract')`, re-checked — R-041, P-2). */
+/** The actor edits the contract of this project (the Server Function's `canEdit('contract')`, re-checked — P-4, R-044). */
 async function requireContractEditor(tx: Tx, actor: Actor, projectId: string): Promise<void> {
-  if (!(await editsProjectScreen(tx, actor, projectId, 'contract'))) throw new MilestoneEditError('not_allowed', 'This contract is read-only for you');
+  if (!(await editsContract(tx, actor, projectId))) throw new MilestoneEditError('not_allowed', 'This contract is read-only for you');
 }
 
 export interface PaymentMilestonePatch {

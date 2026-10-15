@@ -1,9 +1,11 @@
 // Export providers — Administration: Settings (personalisable lists), Machine types, Document types register (Codex) and
 // Activity, integrations & audit. Settings: every list with its codes plus the health thresholds; machine types: the
 // templates (phases, cost categories, ITP systems, payment terms); document types: the Codex register; Activity &
-// integrations: the current view first (`?view=activity|connectors|imports|audit`, `?source=` chip of the feed).
+// integrations: the current view first (`?view=activity|connectors|imports|audit`, `?source=` chip of the feed); R-046: the
+// rate values of "Rate card" changes masked for the roles that do not see rates, as on the screen.
 import { SETTINGS_CARDS, parseActivitySource, parsePlumbView } from '@/domain/admin';
 import { DEFAULT_CCB_THRESHOLD_KEUR } from '@/domain/change-control';
+import { ratesMaskedActivity, ratesMaskedAudit } from '@/domain/hr';
 import { listAdminConnectors } from '@/server/dal/admin-connectors';
 import { listDocumentTypes } from '@/server/dal/documents';
 import { activityWhatT, auditAreaT, auditChangeT, auditObjectT } from '@/features/admin/i18n';
@@ -90,7 +92,7 @@ async function plumbingWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const own = <R extends { projectCode: string | null }>(r: R) => (ctx.viewer.role === 'client' ? !!r.projectCode && visible(r.projectCode) : true);
   const feed = sheet(t('Activity feed'), [col('when', t('Date'), 'datetime'), col('who', t('Who'), 'text', 18), col('what', t('What'), 'text', 60), col('kind', t('Source'), 'text', 14), col('project', t('Project'), 'text', 10)],
     // R-184 (NEW-D1-2): as on the screen — from the message key, else as written; names as typed.
-    activity.filter((a) => (!source || a.kind === source) && own(a)).map((a) => ({ when: a.occurredAt, who: dataText(a.who, ctx.lang), what: activityWhatT(a, t, ctx.lang), kind: a.kind, project: a.projectCode ?? '' })));
+    ratesMaskedActivity(activity, !ctx.ratesMasked).filter((a) => (!source || a.kind === source) && own(a)).map((a) => ({ when: a.occurredAt, who: dataText(a.who, ctx.lang), what: activityWhatT(a, t, ctx.lang), kind: a.kind, project: a.projectCode ?? '' })));
   const conn: ExportSheet = sheet(t('Connectors'), [
     col('name', t('System'), 'text', 20), col('data', t('Data'), 'text', 44), col('frequency', t('Frequency'), 'text', 18), col('direction', t('Direction'), 'text', 10), col('status', t('Status'), 'text', 10),
     col('last', t('Last sync'), 'datetime'), col('volume', t('Last volume'), 'text', 26), col('pending', t('Pending'), 'integer'), col('failed', t('Failed'), 'integer'), col('owner', t('Owner'), 'text', 16),
@@ -100,7 +102,7 @@ async function plumbingWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const formats = sheet(t('Import & export formats'), [col('name', t('Format'), 'text', 26), col('direction', t('Direction'), 'text', 10), col('description', t('Description'), 'text', 60)],
     imports.map((f) => ({ name: t(f.name), direction: t(f.direction === 'import' ? 'Import' : 'Export'), description: t(f.description) })));
   const trail = sheet(t('Audit trail'), [col('when', t('Date'), 'datetime'), col('who', t('Who'), 'text', 18), col('object', t('Object'), 'text', 18), col('change', t('Change'), 'text', 50), col('area', t('Area'), 'text', 18), col('project', t('Project'), 'text', 10)],
-    audit.filter(own).map((a) => ({
+    ratesMaskedAudit(audit, !ctx.ratesMasked).filter(own).map((a) => ({
       when: a.occurredAt, who: dataText(a.who, ctx.lang), object: auditObjectT(a.object, t, ctx.lang), change: auditChangeT(a, t, ctx.lang), area: auditAreaT(a.area, t, ctx.lang),
       project: a.projectCode ?? '',
     })));

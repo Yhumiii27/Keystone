@@ -253,3 +253,10 @@ threshold row is seeded by both seeds; a database without it reads 50 k€.
 - `tests/e2e/02-planning.spec.ts` updated (impact select, chain order, no board step) — not run in the lot.
 - Suggested `docs/reste-a-developper.json` progress: R-069, R-081, R-077, R-080, R-054, R-140 → `fait` (delivery 8, after
   integration); R-015 → `en_cours` (change-request notices done).
+
+## Integration review fixes
+
+- R-077 / P-4: the "Edit" / "Remove" milestone DAL re-check (`requireContractEditor`) now mirrors `canEditContract` through
+  `editsContract` (`team-guard.ts`: director and Finance on every project, else a lead whose workspace has Contract) instead of
+  the P-2 team rule — Finance off the team is no longer refused, a 'pm'-role plain member no longer passes
+  (`src/features/contract/d8-milestone-rights.test.ts`).
