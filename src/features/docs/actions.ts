@@ -229,7 +229,8 @@ export async function syncCodexAction(project: string): Promise<DocActionResult>
     }
     refreshAll();
     const toast = codexSyncToastT({ records, indexRead, delivered: outbox?.delivered ?? 0, pending: outbox?.pending ?? 0, refreshed: outbox?.refreshed ?? 0 }, mode, t, lang);
-    return indexRead && !outbox?.failed ? { ok: true, toast } : { error: toast };
+    // A failed delivery, an outbox that could not run or an index not read is reported as an error toast.
+    return indexRead && outbox && !outbox.failed ? { ok: true, toast } : { error: toast };
   }
   const records = await syncCodexIndex(ctx.viewer.name);
   refreshAll();
