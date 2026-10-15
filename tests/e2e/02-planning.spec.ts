@@ -107,7 +107,9 @@ test('a new baseline after BL1 goes through a change request; approved by the ch
   await expect(page.getByRole('row', { name: new RegExp(`^${number} New baseline BL3 .* Approved$`) })).toBeVisible();
   await expect(page.getByRole('row', { name: /^BL3 BL3 — CR-\d+ .* Current$/ })).toBeVisible();
   await expect(page.getByRole('row', { name: /^BL1 .* Superseded$/ })).toBeVisible();
-  // The Plan's Baseline tile: BL3 with its 21-activity snapshot.
+  // The Plan's Baseline tile: BL3 with its 21-activity snapshot — seen by the PM (the client, last in the chain since P-6b, is
+  // sent home from the Plan, R-042).
+  await viewAs(context, 'pm');
   await page.goto(`${PLAN}?view=structure`);
   await expect(page.locator('main')).toContainText(/Set .+ · 21 activities/);
   w.check();
