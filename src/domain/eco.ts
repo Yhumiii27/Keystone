@@ -100,6 +100,45 @@ export const ecoBadge = (ecos: Pick<EcoLike, 'status'>[]) => {
   return n ? String(n) : '';
 };
 
+// ── Parts kept for the installed base (`pinnedFor` 4198; R-110, E-4 = a) ─────────────────────────────────
+
+export interface InstalledBasePin {
+  eco: string;
+  /** Machine id ("MCH-029"). */
+  machine: string;
+  /** Revision fitted on the machine. */
+  revision: string | null;
+  disposition: 'pinned' | 'retrofit';
+}
+
+/**
+ * Parts to keep for the installed base, ref → pins: for every non-rejected ECO with a machine target pinned or retrofitted
+ * (Vigie's effectivity). E-4 = a (R-110, closes 09 OQ21): a machine whose as-maintained configuration is recorded in Keystone
+ * pins only the ECO parts it carries, at the revision fitted on that machine; a machine without a recorded configuration (added
+ * with "Add machine", or known to Vigie but not to Keystone) keeps the cautious rule and pins every ECO part (default, owner to
+ * confirm). A retrofit to the ECO's new revision keeps the pin (the rule tests the reference, not the revision).
+ */
+export function installedBasePinsOf(
+  ecos: readonly { number: string; status: EcoStatus; parts: readonly string[]; effectivity: readonly Pick<EcoTargetLike, 'targetType' | 'targetRef' | 'disposition' | 'fittedRevision'>[] }[],
+  configurations: ReadonlyMap<string, readonly { ref: string; revision: string }[]>,
+): Record<string, InstalledBasePin[]> {
+  const out: Record<string, InstalledBasePin[]> = {};
+  for (const e of ecos) {
+    if (e.status === 'rejected') continue;
+    for (const t of e.effectivity) {
+      if (t.targetType !== 'machine' || (t.disposition !== 'pinned' && t.disposition !== 'retrofit')) continue;
+      const fitted = configurations.get(t.targetRef);
+      for (const ref of e.parts) {
+        if (fitted?.length) {
+          const carried = fitted.find((f) => f.ref === ref);
+          if (carried) (out[ref] ??= []).push({ eco: e.number, machine: t.targetRef, revision: carried.revision, disposition: t.disposition });
+        } else (out[ref] ??= []).push({ eco: e.number, machine: t.targetRef, revision: t.fittedRevision, disposition: t.disposition });
+      }
+    }
+  }
+  return out;
+}
+
 // ── KPI tiles (ecoKpis 4350) ───────────────────────────────────────────────────────────────────────────
 
 export interface EcoKpi {

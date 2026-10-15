@@ -10,7 +10,7 @@ import d4 from '@/server/dal/delivery4.golden.json';
 import golden from '@/features/bom/bom.golden.json';
 import {
   BOM_SORT_KEYS, DEFAULT_BOM_SORT, assemblyPaths, assemblyRows, bomLineTotal, bomShortfall, bomSummary, bomSupplierOptions, bomTypeOptions, bomUnitPrice, buildAssembly,
-  diffCostDelta, diffNewRef, filterBomLines, filterSpares, groupBySupplier, isValuedByComponents, leafCount, nextBomSort, nodeCost, orderedQtyByRef,
+  diffCostDelta, diffNewRef, diffOldRef, filterBomLines, filterSpares, groupBySupplier, isValuedByComponents, leafCount, nextBomSort, nodeCost, orderedQtyByRef,
   defaultWhereUsedRef, parseNewBomLine, parseQuantity, pathQuantity, resolvePartQuery, rollupCost, sortBomLines, spareShortfall, spareSummary, systemQuantity,
   visibleAssemblyRows, type AssemblyLink, type BomSortKey,
 } from './bom';
@@ -173,14 +173,29 @@ describe('where-used, compare revisions, PU/PR list', () => {
     }
   });
 
-  it('compare revisions: new part of a line, quantity × the E-2a price deltas (R-103), "+€19,180 per crane"', () => {
+  // E-2b (R-104): a substitution costs new qty × new price − old qty × old price (both E-2a); the golden is regenerated with the
+  // E-2b patch (scripts/proto-e2b.ts): EL-HMI-10 → EL-HMI-15 "—" → "+€750", FD-DET-OPT → FD-DET-OPT2 "—" → "+€12", total +€19,942.
+  it('compare revisions: old and new part of a line, E-2b deltas at the E-2a prices (R-103, R-104), "+€19,942 per crane"', () => {
     const rd = PROTO.REV_DIFF[root.ref];
     const toN = (s: string) => (/^\d+$/.test(s) ? Number(s) : null);
-    const deltas = rd.rows.map(([path, , a, b]: string[]) => diffCostDelta(toN(a), toN(b), byRef.has(diffNewRef(path)) ? e2aHlt(diffNewRef(path)) : null));
+    const price = (ref: string) => (byRef.has(ref) ? e2aHlt(ref) : null);
+    const deltas = rd.rows.map(([path, , a, b]: string[]) => diffCostDelta(toN(a), toN(b), price(diffNewRef(path)), price(diffOldRef(path))));
     expect(deltas.map((d: number) => (d ? (d > 0 ? '+' : '−') + $(Math.abs(d)) : '—'))).toEqual(EN.compare.cmp.rows.map((r: any) => r.delta));
     const t = deltas.reduce((s: number, d: number) => s + d, 0);
     expect(`${t >= 0 ? '+' : '−'}${$(Math.abs(t))} per crane`).toBe(EN.compare.cmp.total);
     expect(diffNewRef('ASM-DRV-700 / EL-HMI-10 → EL-HMI-15')).toBe('EL-HMI-15');
+    expect(diffOldRef('ASM-DRV-700 / EL-HMI-10 → EL-HMI-15')).toBe('EL-HMI-10');
+    expect(diffOldRef('ASM-RMG-250 / EL-VFD-200')).toBe('EL-VFD-200');
+  });
+
+  it('E-2b cost delta: substitution, quantity and added lines; an unknown price keeps the quantity-only rule (R-104)', () => {
+    expect(diffCostDelta(1, 1, 2950, 2200)).toBe(750); // substitution at equal quantity
+    expect(diffCostDelta(2, 3, 3000, 2000)).toBe(5000); // substitution whose quantity changes too (default beyond E-2b)
+    expect(diffCostDelta(2, 3, 13600, 13600)).toBe(13600); // quantity line: same part
+    expect(diffCostDelta(null, 1, 860, 860)).toBe(860); // added line
+    expect(diffCostDelta(1, 1, 2950, null)).toBe(0); // old price unknown: never the whole new price
+    expect(diffCostDelta(2, 3, 100)).toBe(100); // no old price given: quantity-only rule
+    expect(diffCostDelta(1, 2, null, 50)).toBe(0); // new price unknown
   });
 
   it('PU/PR: system quantity, rows and KPIs per system and kind (stock as the prototype read it: 0)', () => {

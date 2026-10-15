@@ -15,13 +15,14 @@ import 'server-only';
 // src/domain/bom.ts, golden-tested against the prototype.
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import {
-  ORDERED_PO_STATUSES, assemblyPaths, assemblyRows, bomSummary, bomUnitPrice, buildAssembly, defaultWhereUsedRef, diffCostDelta, diffNewRef, isValuedByComponents,
+  ORDERED_PO_STATUSES, assemblyPaths, assemblyRows, bomSummary, bomUnitPrice, buildAssembly, defaultWhereUsedRef, diffCostDelta, diffNewRef, diffOldRef, isValuedByComponents, possibleDuplicates,
   orderedUnitPrice, pathQuantity, resolvePartQuery, systemQuantity, type AssemblyLink, type AssemblyNode, type BomPriceSource,
 } from '@/domain/bom';
 import { projectFxOf, toEur } from '@/domain/currency';
 import { getDb } from '@/server/db/client';
 import { bomScope, revisionDiffKind, stage as stageCodec, type BomScope, type PartStatus, type RevisionDiffKind, type StageCode, type WearSpare } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
+import type { Tx } from '@/server/db/types';
 import {
   activities, assemblyLinks, parts, poLines, projectAssemblyRoots, projectBomLines, projects, purchaseOrders, revisionDiffLines, revisionDiffs, spareListLines,
 } from '@/server/db/schema';
@@ -51,6 +52,8 @@ export interface BomLine extends PartRow {
   alsoUsedIn: string[];
   /** First open Vigie ECO touching the part; null when none. */
   openEco: string | null;
+  /** R-111 (NEW-D4-5 = c): lines this one may duplicate (a purchased line and an assembly line), to be checked; [] when none. */
+  possibleDuplicateOf: string[];
 }
 
 export interface ProjectBom {
@@ -68,6 +71,8 @@ export interface ProjectBom {
     notValidated: number;
     outdatedOrObsolete: number;
     exportRestricted: number;
+    /** R-111: pairs of lines that may be the same article counted twice (never an amount). */
+    possibleDuplicates: number;
   };
   /** A multi-level structure is configured (Assembly tree, Compare revisions, PU/PR list). */
   hasTree: boolean;
@@ -129,6 +134,7 @@ export async function getProjectBom(projectCode: string): Promise<ProjectBom | n
   const byRef = new Map(rows.map((r) => [r.ref, r]));
   const inBom = new Set(lines.map((l) => l.ref));
   const childrenOf = (ref: string) => kids.get(ref) ?? [];
+  const dup = possibleDuplicates(lines.map((l) => ({ ...byRef.get(l.ref)!, quantity: l.qty })), childrenOf);
   const out: BomLine[] = lines.map((l) => {
     const r = byRef.get(l.ref)!;
     const v = value.get(l.ref) ?? { unitEur: r.listPriceEur, source: 'catalogue' as const };
@@ -136,9 +142,26 @@ export async function getProjectBom(projectCode: string): Promise<ProjectBom | n
       ...r, quantity: l.qty, unitPriceEur: v.unitEur, priceSource: v.source, totalEur: v.unitEur * l.qty, valuedByComponents: isValuedByComponents(l.ref, childrenOf, inBom),
       scope: l.scope, scopeLabel: bomScope.label(l.scope), activityCode: l.act ?? null, note: l.note,
       alsoUsedIn: r.usage.filter((u) => u.projectCode !== projectCode).map((u) => u.shortCode), openEco: ecoFor[l.ref] ?? null,
+      possibleDuplicateOf: dup.partners[l.ref] ?? [],
     };
   });
-  return { projectCode: p.code, shortCode: p.short, lines: out, summary: bomSummary(out), hasTree: roots.length > 0 };
+  return { projectCode: p.code, shortCode: p.short, lines: out, summary: { ...bomSummary(out), possibleDuplicates: dup.pairs }, hasTree: roots.length > 0 };
+}
+
+/**
+ * R-111 (NEW-D4-5 = c): the lines of the project's BOM that `ref` may duplicate (the part drawer opened on a project screen);
+ * [] when none, the part is not in the BOM, or the project is unknown. Same rule as the BOM screen (`possibleDuplicates`).
+ */
+export async function bomDuplicatePartners(projectCode: string, ref: string): Promise<string[]> {
+  const db = await getDb();
+  const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, projectCode));
+  if (!p) return [];
+  const lines = await db
+    .select({ ref: parts.ref, makeBuy: parts.makeBuy, type: parts.type, hsCode: parts.hsCode, listPriceEur: parts.listPriceEur, quantity: projectBomLines.quantity })
+    .from(projectBomLines).innerJoin(parts, eq(parts.id, projectBomLines.partId)).where(eq(projectBomLines.projectId, p.id));
+  if (!lines.some((l) => l.ref === ref)) return [];
+  const kids = await childrenMap();
+  return possibleDuplicates(lines, (r) => kids.get(r) ?? []).partners[ref] ?? [];
 }
 
 // ── Assembly tree ──────────────────────────────────────────────────────────────────────────────────────
@@ -270,12 +293,16 @@ export interface RevisionComparison {
   toRevision: string;
   date: string;
   ecoNumber: string | null;
-  /** `unitPriceEur`: the new part's valuation (E-2a: ordered, else last purchase, else catalogue) and its source. */
+  /**
+   * `unitPriceEur`: the new part's valuation (E-2a: ordered, else last purchase, else catalogue) and its source; `old*`: the
+   * old part's (R-104, E-2b — the same part on a quantity or added line).
+   */
   lines: {
     path: string; name: string; qtyFrom: number | null; qtyTo: number | null; kind: RevisionDiffKind; kindLabel: string; newRef: string;
     unitPriceEur: number | null; priceSource: BomPriceSource | null; deltaEur: number;
+    oldRef: string; oldUnitPriceEur: number | null; oldPriceSource: BomPriceSource | null;
   }[];
-  /** Σ quantity delta × unit price (per root unit — "per crane"). */
+  /** Σ line deltas (new qty × new price − old qty × old price, E-2b), per root unit — "per crane". */
   totalDeltaEur: number;
 }
 
@@ -288,14 +315,18 @@ export async function getRevisionComparison(projectCode: string): Promise<Revisi
   if (!d) return null;
   const lines = await db.select().from(revisionDiffLines).where(eq(revisionDiffLines.diffId, d.d.id)).orderBy(asc(revisionDiffLines.position));
   const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, projectCode));
-  const prices = await projectPartValuation(p.id, lines.map((l) => diffNewRef(l.path)));
+  // E-2b (R-104): the old and the new part of each line valued once, by the same E-2a rule.
+  const prices = await projectPartValuation(p.id, [...new Set(lines.flatMap((l) => [diffNewRef(l.path), diffOldRef(l.path)]))]);
   const out = lines.map((l) => {
     const ref = diffNewRef(l.path);
+    const oldRef = diffOldRef(l.path);
     const v = prices.get(ref) ?? null;
-    const delta = diffCostDelta(l.qtyFrom, l.qtyTo, v?.unitEur ?? null);
+    const o = prices.get(oldRef) ?? null;
+    // An unknown price on either side keeps the quantity-only rule (never the whole new price).
+    const delta = diffCostDelta(l.qtyFrom, l.qtyTo, v?.unitEur ?? null, v && o ? o.unitEur : null);
     return {
       path: l.path, name: l.name, qtyFrom: l.qtyFrom, qtyTo: l.qtyTo, kind: l.kind, kindLabel: revisionDiffKind.label(l.kind), newRef: ref,
-      unitPriceEur: v?.unitEur ?? null, priceSource: v?.source ?? null, deltaEur: delta,
+      unitPriceEur: v?.unitEur ?? null, priceSource: v?.source ?? null, deltaEur: delta, oldRef, oldUnitPriceEur: o?.unitEur ?? null, oldPriceSource: o?.source ?? null,
     };
   });
   return { assemblyRef: asm.root.ref, fromRevision: d.d.fromRevision, toRevision: d.d.toRevision, date: d.d.diffDate, ecoNumber: d.d.ecoNumber, lines: out, totalDeltaEur: out.reduce((s, l) => s + l.deltaEur, 0) };
@@ -390,35 +421,42 @@ export interface NewBomLineInput {
   note?: string | null;
 }
 
-/** "Add to BOM" (AF.bom): a catalogue article added to the project BOM (once per article). Returns the reference. */
-export async function addBomLine(projectCode: string, input: NewBomLineInput, actorName: string): Promise<string> {
+/**
+ * "Add to BOM" (AF.bom): a catalogue article added to the project BOM (once per article). Returns the reference. R-108: with
+ * `tx`, the line is added inside the caller's transaction (the P&ID tag drawer's "Link and add to the BOM").
+ */
+export async function addBomLine(projectCode: string, input: NewBomLineInput, actorName: string, tx?: Tx): Promise<string> {
+  if (tx) return insertBomLine(tx, projectCode, input, actorName);
   const db = await getDb();
-  return db.transaction(async (tx) => {
-    const p = await requireProject(tx, projectCode);
-    const ref = input.ref.trim().toUpperCase();
-    if (!ref) throw new Error('The article reference is required');
-    const [part] = await tx.select({ id: parts.id }).from(parts).where(eq(parts.ref, ref));
-    if (!part) throw new Error(`${ref} is not in the catalogue`);
-    if (!Number.isFinite(input.quantity) || input.quantity <= 0) throw new Error('Invalid quantity');
-    const scope = input.scope ?? 'keystone';
-    if (!bomScope.isCode(scope)) throw new Error('Invalid scope');
-    const [dup] = await tx.select({ id: projectBomLines.id }).from(projectBomLines).where(and(eq(projectBomLines.projectId, p.id), eq(projectBomLines.partId, part.id)));
-    if (dup) throw new Error(`${ref} is already in the project BOM`);
-    let activityId: string | null = null;
-    if (input.activityCode) {
-      const [a] = await tx.select({ id: activities.id }).from(activities).where(and(eq(activities.projectId, p.id), eq(activities.code, input.activityCode)));
-      if (!a) throw new Error(`Unknown activity ${input.activityCode}`);
-      activityId = a.id;
-    }
-    const actor = await findPerson(tx, actorName);
-    const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${projectBomLines.position}), -1)::int` }).from(projectBomLines).where(eq(projectBomLines.projectId, p.id));
-    const [line] = await tx.insert(projectBomLines).values({
-      projectId: p.id, partId: part.id, quantity: input.quantity, activityId, scope, note: input.note?.trim() || null, position: pos + 1, addedByPersonId: actor?.id ?? null,
-    }).returning({ id: projectBomLines.id });
-    await writeAudit(tx, {
-      actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `${p.code} BOM`,
-      change: `${ref} × ${input.quantity} added · ${bomScope.label(scope)}${input.activityCode ? ` · ${input.activityCode}` : ''}`, area: 'BOM', entityType: 'project_bom_line', entityId: line.id, projectId: p.id,
-    });
-    return ref;
+  return db.transaction((t) => insertBomLine(t, projectCode, input, actorName));
+}
+
+async function insertBomLine(tx: Tx, projectCode: string, input: NewBomLineInput, actorName: string): Promise<string> {
+  const p = await requireProject(tx, projectCode);
+  const ref = input.ref.trim().toUpperCase();
+  if (!ref) throw new Error('The article reference is required');
+  const [part] = await tx.select({ id: parts.id }).from(parts).where(eq(parts.ref, ref));
+  if (!part) throw new Error(`${ref} is not in the catalogue`);
+  if (!Number.isFinite(input.quantity) || input.quantity <= 0) throw new Error('Invalid quantity');
+  const scope = input.scope ?? 'keystone';
+  if (!bomScope.isCode(scope)) throw new Error('Invalid scope');
+  const [dup] = await tx.select({ id: projectBomLines.id, qty: projectBomLines.quantity }).from(projectBomLines).where(and(eq(projectBomLines.projectId, p.id), eq(projectBomLines.partId, part.id)));
+  // R-108: a line at quantity 0 (possible through the table import) reads "Not in BOM" on the P&ID: say how to fix it.
+  if (dup) throw new Error(dup.qty > 0 ? `${ref} is already in the project BOM` : `${ref} is in the project BOM with quantity 0 — change its quantity on the BOM screen`);
+  let activityId: string | null = null;
+  if (input.activityCode) {
+    const [a] = await tx.select({ id: activities.id }).from(activities).where(and(eq(activities.projectId, p.id), eq(activities.code, input.activityCode)));
+    if (!a) throw new Error(`Unknown activity ${input.activityCode}`);
+    activityId = a.id;
+  }
+  const actor = await findPerson(tx, actorName);
+  const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${projectBomLines.position}), -1)::int` }).from(projectBomLines).where(eq(projectBomLines.projectId, p.id));
+  const [line] = await tx.insert(projectBomLines).values({
+    projectId: p.id, partId: part.id, quantity: input.quantity, activityId, scope, note: input.note?.trim() || null, position: pos + 1, addedByPersonId: actor?.id ?? null,
+  }).returning({ id: projectBomLines.id });
+  await writeAudit(tx, {
+    actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `${p.code} BOM`,
+    change: `${ref} × ${input.quantity} added · ${bomScope.label(scope)}${input.activityCode ? ` · ${input.activityCode}` : ''}`, area: 'BOM', entityType: 'project_bom_line', entityId: line.id, projectId: p.id,
   });
+  return ref;
 }

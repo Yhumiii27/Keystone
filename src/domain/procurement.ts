@@ -25,7 +25,7 @@ import { moneyEur } from '@/lib/format';
 import { BASE_CURRENCY, moneyUnitsIn, type CurrencyCode } from './currency';
 import {
   RFQ_AWARD_ROLES, STATUS_ISO, addDaysIso, incoterm, shortDateYearOfIso,
-  type Incoterm, type MatchState, type RfqStatus, type SupplierGrade, type SupplierInvoiceStatus,
+  type Incoterm, type MatchState, type PoStatus, type RfqStatus, type SupplierGrade, type SupplierInvoiceStatus,
 } from '@/server/db/codes';
 import type { ApprovalItem } from './approvals';
 import { parseNeedDate } from './team';
@@ -239,11 +239,21 @@ export const canAwardRfq = (r: RfqStateInput, role: RoleKey) => r.status === 'co
 /**
  * Footnote of the quote comparison (`rfqVals.hint`, EN source): who awards while Comparing, the award once Awarded.
  * An award made in Keystone without an order to draft (no project or quantity) says so instead of promising one.
+ * R-095: once the drafted order moved on, the footnote says where it stands (sent for approval, placed, or cancelled before
+ * it was placed — the RFQ itself stays awarded); a Draft keeps the prototype's sentence.
  */
-export function rfqHint(r: RfqStateInput & { purchaseOrderNumber: string | null; awardedInKeystone: boolean }, role: RoleKey): string {
+export function rfqHint(
+  r: RfqStateInput & { purchaseOrderNumber: string | null; awardedInKeystone: boolean; purchaseOrderStatus?: PoStatus | null },
+  role: RoleKey,
+): string {
   if (r.status === 'comparing' && !canAwardRole(role)) return 'Switch to Project manager or Procurement to award.';
   if (r.status === 'awarded' && r.awardedTo) {
     if (r.awardedInKeystone && !r.purchaseOrderNumber) return `Awarded to ${r.awardedTo} — no purchase order drafted (no project or quantity on the RFQ).`;
+    const po = r.purchaseOrderNumber;
+    const st = r.purchaseOrderStatus;
+    if (po && st === 'cancelled') return `Awarded to ${r.awardedTo} — purchase order ${po} cancelled before it was placed.`;
+    if (po && st === 'awaiting_approval') return `Awarded to ${r.awardedTo} — purchase order ${po} awaiting approval.`;
+    if (po && (st === 'ordered' || st === 'partially_received' || st === 'received')) return `Awarded to ${r.awardedTo} — purchase order ${po} placed.`;
     return `Awarded to ${r.awardedTo} — purchase order created as draft.`;
   }
   return '';

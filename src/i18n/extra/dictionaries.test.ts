@@ -23,6 +23,8 @@ const OVERRIDES: Record<string, [file: string, decision: string]> = {
   // R-184 (NEW-D1-2): the prototype's entry was the English itself.
   'Action due': ['d8-audit-i18n-shell.json', 'NEW-D1-2'],
   'Client / sponsor': ['d8-audit-i18n-shell.json', 'NEW-D1-2'],
+  // NEW-D5-2 'a' (R-145): the tile counts the warranty cost of the calendar year.
+  'Warranty cost YTD': ['d8-supply-engineering.json', 'NEW-D5-2'],
 };
 
 describe('extra dictionaries', () => {

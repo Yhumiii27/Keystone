@@ -67,6 +67,8 @@
 /* the header button keeps one line; a long (French) section label wraps inside the column instead
    ("MODIFICATIONS TECHNIQUES" + "Créer un ECO" exceed the 289 px column of the drawer grid) */
 .sectionHead > :not(:first-child) { flex: none; white-space: nowrap; }
+/* R-102: Qualification section buttons ("Complete the record", "Validate part"). */
+.qualButtons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .label { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent); }
 .labelGap { margin-bottom: 4px; }
 /* section grid: repeat(auto-fit,minmax(min(100%,230px),1fr)) · gap 18px */

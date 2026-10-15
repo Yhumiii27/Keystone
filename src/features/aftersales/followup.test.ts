@@ -208,7 +208,8 @@ describe('R-143 / R-144 Server Functions', () => {
     const m = (await getMachine('MCH-051'))!;
     expect([m.name, m.projectCode, m.deliveredOn, m.warrantyEndOn, m.warrantyStatus, m.site, m.parts.length]).toEqual(['Overhead crane 10 t #2', 'RCF-019', '2026-09-30', '2028-09-29', 'in_warranty', 'Lyon · clinic', 5]);
     expect((await listDeliveryCandidates()).find((c) => c.projectCode === 'RCF-019')!.registered).toBe(2);
-    const [audit] = await listAudit({ limit: 1 });
+    // The project row and the last machine row may share their millisecond (same transaction): look among the latest rows.
+    const audit = (await listAudit({ limit: 3 })).find((a) => a.object === 'RCF-019')!;
     expect([audit.who, audit.object, audit.area]).toEqual(['Gabriel Comte', 'RCF-019', 'Installed base']);
     // A claim on a registered machine is followed like the others.
     const cfg = (await machineConfigurations(['MCH-050'])).get('MCH-050')!;

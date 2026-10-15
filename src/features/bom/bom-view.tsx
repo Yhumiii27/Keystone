@@ -2,7 +2,8 @@
 // tree (+ node drawer), where-used, compare revisions or PU/PR list — and the "no multi-level assembly" notice.
 // Server Component; interactive islands: FlatFilters / UsedSearch (URL search), ClickableRow (row → drawer),
 // TreeTable (folding), NodeDrawer, SparesActions. Every label arrives translated in the view model.
-import { CaretDown, CaretUp, CaretUpDown, Eye, PushPin, Tag as TagIcon, TreeStructure } from '@phosphor-icons/react/dist/ssr';
+import { CaretDown, CaretUp, CaretUpDown, Copy, Eye, PushPin, Tag as TagIcon, TreeStructure } from '@phosphor-icons/react/dist/ssr';
+import { Callout } from '@/components/app/Callout';
 import Link from 'next/link';
 import { ClickableRow } from '@/components/app/ClickableRow';
 import { EmptyState } from '@/components/app/EmptyState';
@@ -86,6 +87,7 @@ function FlatList({ view }: { view: FlatView }) {
                   <div className={s.article}>
                     <span>{r.name}</span>
                     <span className={s.articleSub}>{r.sub}</span>
+                    {r.duplicate && <span className={s.duplicate}>{r.duplicate}</span>}
                   </div>
                 </td>
                 <Td tone="secondary" nowrap>
@@ -333,6 +335,11 @@ export function BomBody({ view, canEdit }: { view: BomScreenView; canEdit: boole
   return (
     <div className={s.root}>
       <Kpis kpis={view.kpis} />
+      {view.duplicates && (
+        <Callout variant="compact" icon={Copy} role="note">
+          {view.duplicates}
+        </Callout>
+      )}
       <div className={s.toolbar}>
         <div className={s.cluster}>
           <FilterLabel icon={Eye}>{view.displayLabel}</FilterLabel>

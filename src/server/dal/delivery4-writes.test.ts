@@ -59,11 +59,12 @@ describe('purchase orders', () => {
     await approvePurchaseOrder('PO-1100', 'Romain Aubert');
     const po = (await getPurchaseOrder('PO-1100'))!;
     expect([po.status, po.submittedBy, po.decidedBy]).toEqual(['ordered', 'Fabien Bertrand', 'Romain Aubert']);
-    await rejectPurchaseOrder('PO-1082', 'Marie Lefebvre');
+    // R-095 (SC-3a, P-5c): a rejection carries its reason, stored on the order and appended to the audit change.
+    await rejectPurchaseOrder('PO-1082', 'Marie Lefebvre', 'Wrong supplier');
     expect((await getPurchaseOrder('PO-1082'))!.status).toBe('cancelled');
     // A cancelled order no longer covers the BOM: FD-DET-OPT is short again.
     expect((await getBomShortfall('HLT-026')).lines.map((l) => [l.ref, l.need])).toEqual([['FD-DET-OPT', 180]]);
-    expect(await lastAudit()).toMatchObject({ who: 'Marie Lefebvre', object: 'PO-1082', change: 'status: Awaiting approval → Cancelled' });
+    expect(await lastAudit()).toMatchObject({ who: 'Marie Lefebvre', object: 'PO-1082', change: 'status: Awaiting approval → Cancelled · Wrong supplier' });
   });
 });
 

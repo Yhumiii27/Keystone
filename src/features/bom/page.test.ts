@@ -114,7 +114,8 @@ describe('/projects/[code]/bom', () => {
     expect([tree.tree!.rows.length, tree.node!.ref, tree.node!.closeHref]).toEqual([29, 'CR-BRG-SKF', '/projects/HLT-026/bom?view=tree']);
     const used = body(await page({ view: 'used', used: 'vfd' }));
     expect([used.used!.part.ref, used.used!.q]).toEqual(['EL-VFD-200', 'vfd']);
-    expect(body(await page({ view: 'compare' })).compare!.total).toBe('+€19,180 per crane');
+    // E-2b (R-104): the two substitutions are priced (+€750, +€12).
+    expect(body(await page({ view: 'compare' })).compare!.total).toBe('+€19,942 per crane');
     const sp = body(await page({ view: 'spares', kind: 'PU' })).spares!;
     expect([sp.rows.length, sp.kinds.find((k) => k.active)!.value]).toEqual([4, 'PU']);
     const bad = body(await page({ view: 'nope', sort: 'mfr', kind: 'X' }));

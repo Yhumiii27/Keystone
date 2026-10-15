@@ -5,7 +5,7 @@
 //   the prototype reset its in-memory copy without asking, 10 OQ2).
 // - Machine types "New machine type" (AF.mtype): creates the type and selects it (`?type=`).
 // - Activity & integrations "Add connector" (AF.plumbing): the connector is listed at once, waiting for its first sync.
-// The add-forms name the current project in their sub-line, as every add-form of the prototype (`projectName`, template 142).
+// R-153 (X-10): these add-forms do not target a project — no project sub-line (the prototype's `projectName`, template 142).
 import { Plus } from '@phosphor-icons/react/dist/ssr';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';

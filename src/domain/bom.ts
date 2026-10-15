@@ -168,6 +168,37 @@ export function isValuedByComponents(ref: string, childrenOf: ChildrenOf, inBom:
   return childrenOf(ref).some((c) => inBom.has(c.ref));
 }
 
+/**
+ * Possible duplicates of the BOM (R-111, NEW-D4-5 = c): a purchased line and an assembly line (type Assembly, or a part with
+ * components) with the same customs code and the same catalogue price, neither in the other's structure — on the seed,
+ * EQ-CRN-250T (the crane bought from Halvorsen) and ASM-RMG-250 (the crane assembly), possibly the same machine counted
+ * twice. A guess from the data, flagged for the engineering office to check: no amount, no effect on any value, no dismiss
+ * (R-169: no reference written in the code). Line ref → partner refs (both directions); `pairs` = number of pairs.
+ */
+export function possibleDuplicates(
+  lines: readonly { ref: string; makeBuy: PartMakeBuy; type: string; hsCode: string | null; listPriceEur: number; quantity: number }[],
+  childrenOf: ChildrenOf,
+): { partners: Record<string, string[]>; pairs: number } {
+  const live = lines.filter((l) => l.quantity > 0);
+  const isAssembly = (l: (typeof live)[number]) => l.type === 'assembly' || childrenOf(l.ref).length > 0;
+  const inside = (root: string, ref: string) => {
+    const walk = (n: AssemblyNode): boolean => n.children.some((c) => c.ref === ref || walk(c));
+    return walk(buildAssembly(root, 1, childrenOf));
+  };
+  const partners: Record<string, string[]> = {};
+  let pairs = 0;
+  for (const p of live.filter((l) => l.makeBuy === 'purchased' && !isAssembly(l))) {
+    for (const a of live.filter(isAssembly)) {
+      if (a.ref === p.ref || !p.hsCode || p.hsCode !== a.hsCode || p.listPriceEur !== a.listPriceEur) continue;
+      if (inside(a.ref, p.ref) || inside(p.ref, a.ref)) continue;
+      (partners[p.ref] ??= []).push(a.ref);
+      (partners[a.ref] ??= []).push(p.ref);
+      pairs++;
+    }
+  }
+  return { partners, pairs };
+}
+
 export interface BomSummaryInput {
   quantity: number;
   listPriceEur: number;
@@ -328,11 +359,25 @@ export function resolvePartQuery<T extends { ref: string; name: string }>(parts:
 /** The new part of a comparison line ("ASM-DRV-700 / EL-HMI-10 → EL-HMI-15" → EL-HMI-15). */
 export const diffNewRef = (path: string) => path.split(' / ').pop()!.split(' → ').pop()!;
 
+/** The old part of a comparison line ("ASM-DRV-700 / EL-HMI-10 → EL-HMI-15" → EL-HMI-10); without "→", the same part as `diffNewRef`. */
+export const diffOldRef = (path: string) => path.split(' / ').pop()!.split(' → ')[0];
+
 /** Quantity change of a comparison line ("—" counts 0). */
 export const diffQtyDelta = (from: number | null, to: number | null) => (to ?? 0) - (from ?? 0);
 
-/** Cost delta of a line: quantity change × the unit price (E-2a valuation; substitutions at equal quantity: 0, 09 OQ8). */
-export const diffCostDelta = (from: number | null, to: number | null, unitPriceEur: number | null) => diffQtyDelta(from, to) * (unitPriceEur ?? 0);
+/**
+ * Cost delta of a line (E-2b = a, R-104 — the 09 OQ8 "substitution at equal quantity costs 0" is closed): the new quantity
+ * at the new part's price minus the old quantity at the old part's price, both valued by the E-2a rule (ordered, else last
+ * purchase, else catalogue). A quantity line or an added line (same part, or no old quantity) gives the quantity change ×
+ * the price, as before. Default beyond E-2b (which only defines the equal-quantity case): a substitution whose quantity also
+ * changes uses the same formula. When the old price is unknown (`oldUnitEur` undefined / null — a part missing from the
+ * catalogue), the quantity-only rule applies: never the whole new price.
+ */
+export function diffCostDelta(from: number | null, to: number | null, newUnitEur: number | null, oldUnitEur?: number | null): number {
+  if (newUnitEur == null) return 0;
+  if (oldUnitEur == null) return diffQtyDelta(from, to) * newUnitEur;
+  return (to ?? 0) * newUnitEur - (from ?? 0) * oldUnitEur;
+}
 
 // ── PU/PR list ─────────────────────────────────────────────────────────────────────────────────────────
 

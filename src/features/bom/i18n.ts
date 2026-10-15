@@ -2,7 +2,7 @@
 // the prototype dictionary through t(), with these local forms:
 // - quantities are formatted in the viewer's language ("2 042" in French; the prototype used the browser locale);
 // - parameterised sentences the prototype left in English in French (its deepTr skipped the `qty` and `total` keys):
-//   "32 per project", "6 units", "+€19,180 per crane";
+//   "32 per project", "6 units", "+€19,942 per crane" (E-2b, R-104);
 // - singular forms ("1 part · 1 direct child", "1 unit", "1 week") the prototype never built;
 // - catalogue data is translated on exact dictionary matches only (`dataT`: part names such as "Safety PLC",
 //   restriction texts, spare notes), never through the month / day / sentence rules; supplier names and manufacturer
@@ -54,7 +54,7 @@ export const stockText = (n: number, t: T, lang: Lang) => (n > 0 ? (fr(lang) ? `
 /** Signed full-euro amount "+€13,600" / "−€42" ("+13 600 €"). */
 export const signedEur = (v: number, lang: Lang) => (v >= 0 ? '+' : MINUS) + moneyEur(Math.abs(v), lang);
 
-/** Compare revisions total "+€19,180 per crane" ("+19 180 € par grue"). */
+/** Compare revisions total "+€19,942 per crane" ("+19 942 € par grue"; E-2b, R-104). */
 export const perCraneText = (v: number, lang: Lang) => `${signedEur(v, lang)} ${fr(lang) ? 'par grue' : 'per crane'}`;
 
 /** PU/PR KPI sub "4 wear · 8 spare". */
@@ -72,3 +72,15 @@ export const countText = (shown: number, total: number, t: T) => t(`${shown} / $
 
 /** Flat list card title "Bill of materials · 35 articles". */
 export const bomTitleText = (n: number, t: T) => t(`Bill of materials · ${n} ${plural(n, 'article', 'articles')}`);
+
+/** R-111 (NEW-D4-5 = c): flat-list note of a line that may duplicate another ("Possible duplicate of ASM-RMG-250 · …"). */
+export const duplicateOfText = (refs: readonly string[], lang: Lang) =>
+  lang === 'fr'
+    ? `Doublon possible de ${refs.join(', ')} · à vérifier par le bureau d’études`
+    : `Possible duplicate of ${refs.join(', ')} · to be checked by the engineering office`;
+
+/** R-111: note under the KPI tiles — qualitative, never an amount (the two lines are valued differently). */
+export const possibleDuplicatesText = (n: number, lang: Lang) =>
+  lang === 'fr'
+    ? `${n} ${n === 1 ? 'doublon possible' : 'doublons possibles'} · la valeur de la nomenclature peut le compter deux fois`
+    : `${n} possible ${n === 1 ? 'duplicate' : 'duplicates'} · the BOM value may count it twice`;

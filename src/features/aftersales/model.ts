@@ -2,8 +2,9 @@
 // on the server from the screen loaders (src/server/dal/aftersales.ts) and the domain rules (src/domain/aftersales.ts),
 // translated with t() and the feature's helpers (./i18n.ts). Pure: no I/O.
 // Deliberate deviations from the prototype: the Interventions column headed "Project" showed the intervention type —
-// it is headed "Type" (00 §7.16, 07 OQ7); the claims screen's zone notice tests the list on show (07 A.1); the machine
-// sub-line drops the trailing " · " when no configuration generation is recorded; a claim's design ECO opens Keystone's
+// it is headed "Type" (00 §7.16, 07 OQ7); the claims screen's zone notice tests the list on show (07 A.1) and names what
+// is missing — the machines, else the view's list (R-155, X-16); the machine sub-line drops the trailing " · " when no
+// configuration generation is recorded; a claim's design ECO opens Keystone's
 // Change orders screen when Vigie reports it, else the ECO in Vigie (the prototype's tag was inert, 07 OQ20); the
 // configuration tags also offer "Open in Vigie" (Vigie owns the ECOs). Vigie is an internal application: the client
 // (who reaches these screens outside their workspace) gets no Vigie link — a design ECO Vigie does not report to
@@ -45,7 +46,14 @@ function kpiViews(cards: KpiCard[], t: T, lang: Lang): KpiView[] {
   }));
 }
 
-const zoneNotice = (show: boolean, t: T) => (show ? t('No project in this zone for this view') : null);
+/**
+ * Zone notice of the machine lists (R-155, X-16): "No machine in this zone" when the zone has no machine; on Warranty &
+ * claims, a zone with machines whose view lists nothing names that view's list (07 A.1 — the notice tests the list on
+ * show; deviation from X-16's literal text, which would be false for Asia Pacific › Interventions on the seed). The
+ * project screens keep "No project in this zone for this view".
+ */
+const NO_MACHINE = 'No machine in this zone';
+const SAV_ZONE_EMPTY: Record<SavView, string> = { claims: 'No claim in this zone', interventions: 'No intervention in this zone', costs: 'No warranty cost in this zone' };
 
 /** Who looks at the screens. */
 export interface AftersalesViewer {
@@ -133,7 +141,7 @@ export function fleetView(data: FleetScreenData, zone: ZoneCode | null, t: T, la
   });
   return {
     kpis: kpiViews(fleetKpis(data.machines), t, lang),
-    zoneEmpty: zoneNotice(fleetZoneEmpty(zone, rows.length), t),
+    zoneEmpty: fleetZoneEmpty(zone, rows.length) ? t(NO_MACHINE) : null,
     rows,
   };
 }
@@ -234,7 +242,7 @@ export function savView(data: SavScreenData, view: SavView, zone: ZoneCode | nul
     view,
     seg: SAV_VIEWS.map((v) => ({ value: v, label: t(SAV_VIEW_LABEL[v]), href: savHref(v) })),
     kpis: kpiViews(savKpis(data.claims, data.interventions, lang), t, lang),
-    zoneEmpty: zoneNotice(savZoneEmpty(zone, listShown), t),
+    zoneEmpty: savZoneEmpty(zone, listShown) ? t(data.machines.length ? SAV_ZONE_EMPTY[view] : NO_MACHINE) : null,
     claims:
       view === 'claims'
         ? data.claims.map((c) => ({

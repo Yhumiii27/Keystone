@@ -7,8 +7,8 @@
 // No I/O, no translation: texts are the prototype's English source strings; money and thousands are formatted by the
 // caller. Golden values: src/domain/parts.test.ts (prototype render values, src/features/plm/plm.golden.json).
 import {
-  PART_STATUS_NOTE, partMakeBuy, partStatus, partType, wearSpare,
-  type PartMakeBuy, type PartStatus, type PartType, type RevisionDiffKind, type WearSpare,
+  PART_STATUS_NOTE, exportControl, partMakeBuy, partStatus, partType, wearSpare,
+  type ExportControl, type PartMakeBuy, type PartStatus, type PartType, type RevisionDiffKind, type WearSpare,
 } from '@/server/db/codes';
 
 export type { PartMakeBuy, PartStatus, PartType, WearSpare };
@@ -337,6 +337,101 @@ export function commercialLines(p: PartFacts, money: (eur: number) => string, qt
     { k: 'Total quantity', v: totalQuantityText(totalQuantity(p), p.usage.length, qty), translate: true, alert: false },
     { k: 'Committed value', v: money(committedValueEur(p)), translate: false, alert: false },
   ];
+}
+
+// ── Validation by engineering (R-102: E-1a = a, E-1b = a) ──────────────────────────────────────────────
+
+/** What the qualification rules read from a part (the DAL's PartRow fits). */
+export interface PartQualificationFacts {
+  status: PartStatus;
+  hsCode: string | null;
+  /** Explicit "no customs code" (a null hsCode alone may mean "not filled in"). */
+  hsNotApplicable: boolean;
+  exportRestriction: string | null;
+  /** The export restriction was confirmed, "None" included (a null restriction alone may mean "not checked"). */
+  exportReviewed: boolean;
+  leadWeeks: number | null;
+  manufacturerRef: string | null;
+}
+
+/** Roles that validate a part: the engineering lead (E-1a) and — a default for the owner to confirm — the director. */
+export const PART_VALIDATOR_ROLES: readonly string[] = ['englead', 'director'];
+
+/**
+ * What still prevents validating the part (EN source strings, record order); [] = complete. Tests presence, not truth:
+ * a lead time of 0 weeks is filled in. A restriction text counts as confirmed; "None" must be confirmed explicitly.
+ */
+export function partValidationErrors(p: Omit<PartQualificationFacts, 'status'>): string[] {
+  const out: string[] = [];
+  if (p.hsCode == null && !p.hsNotApplicable) out.push('Customs (HS) code missing (or mark it not applicable)');
+  if (p.exportRestriction == null && !p.exportReviewed) out.push('Export restriction not confirmed');
+  if (p.leadWeeks == null) out.push('Lead time missing');
+  if (p.manufacturerRef == null) out.push('Manufacturer reference missing');
+  return out;
+}
+
+/** "Validate part": the active role validates (engineering lead, director) and the part is still Not validated. */
+export const canValidatePart = (status: PartStatus, role: string) => status === 'not_validated' && PART_VALIDATOR_ROLES.includes(role);
+
+/**
+ * "Complete the record": the catalogue's editors (the PLM screen in their workspace) while the part is Not validated; once it
+ * is Validated (or Outdated / Obsolete), the validators only — the record they validated is locked for the others (default).
+ */
+export const canCompletePartRecord = (status: PartStatus, role: string, editsCatalogue: boolean) =>
+  editsCatalogue && (status === 'not_validated' || PART_VALIDATOR_ROLES.includes(role));
+
+/** Values of "Complete the record" after parsing (stored as such). */
+export interface PartQualificationInput {
+  hsCode: string | null;
+  hsNotApplicable: boolean;
+  exportRestriction: string | null;
+  exportControl: ExportControl | null;
+  exportReviewed: boolean;
+  leadWeeks: number | null;
+  manufacturerRef: string | null;
+}
+
+/** "Export restriction" choice of the form: not confirmed yet, an explicit None, or a restriction of an export-control family. */
+export type ExportChoice = 'unconfirmed' | 'none' | ExportControl;
+export const EXPORT_CHOICES: readonly ExportChoice[] = ['unconfirmed', 'none', ...exportControl.codes];
+export const HS_CODE_RE = /^\d{4}(?:[.\s]?\d{2}){0,3}$/;
+export const PART_LEAD_MAX_WEEKS = 520;
+
+/** The form's export choice for a stored part. */
+export const exportChoiceOf = (p: Pick<PartQualificationFacts, 'exportRestriction' | 'exportReviewed'> & { exportControl: ExportControl | null }): ExportChoice =>
+  p.exportRestriction != null ? (p.exportControl ?? 'unconfirmed') : p.exportReviewed ? 'none' : 'unconfirmed';
+
+/**
+ * Parses "Complete the record" (raw strings): the HS mode ("code" / "na") and the export choice are required (the form's
+ * selects); HS code (4–10 digits, "8504.40") unless "Not applicable"; export choice, with
+ * the restriction text (≤ 300 characters) required for a family; lead time in whole weeks 0–520 ('' = not filled in);
+ * manufacturer reference (≤ 80 characters). EN error texts.
+ */
+export function parsePartQualification(v: Record<string, string>): { ok: true; value: PartQualificationInput } | { ok: false; error: string } {
+  // The two selects always send a value: a payload without them is not the form's.
+  if (v.hsMode !== 'na' && v.hsMode !== 'code') return { ok: false, error: 'Invalid request' };
+  const hsNotApplicable = v.hsMode === 'na';
+  const hs = (v.hs ?? '').trim();
+  if (!hsNotApplicable && hs && !HS_CODE_RE.test(hs)) return { ok: false, error: 'Enter the customs code as digits, e.g. 8504.40' };
+  const choice = v.export as ExportChoice;
+  if (!EXPORT_CHOICES.includes(choice)) return { ok: false, error: 'Invalid request' };
+  const text = (v.restriction ?? '').trim();
+  if (choice !== 'unconfirmed' && choice !== 'none' && !text) return { ok: false, error: 'Describe the export restriction' };
+  if (text.length > 300) return { ok: false, error: 'Text is too long' };
+  const leadRaw = (v.lead ?? '').trim();
+  const lead = leadRaw === '' ? null : Number(leadRaw);
+  if (lead != null && (!Number.isInteger(lead) || lead < 0 || lead > PART_LEAD_MAX_WEEKS)) return { ok: false, error: 'Enter the lead time in whole weeks (0–520)' };
+  const mfrRef = (v.mfrRef ?? '').trim();
+  if (mfrRef.length > 80) return { ok: false, error: 'Text is too long' };
+  const family = choice === 'unconfirmed' || choice === 'none' ? null : choice;
+  return {
+    ok: true,
+    value: {
+      hsCode: hsNotApplicable ? null : hs || null, hsNotApplicable,
+      exportRestriction: family ? text : null, exportControl: family, exportReviewed: choice !== 'unconfirmed',
+      leadWeeks: lead, manufacturerRef: mfrRef || null,
+    },
+  };
 }
 
 // ── Stock by location (fixes STOCK_BY_REF, 09 OQ1) ─────────────────────────────────────────────────────

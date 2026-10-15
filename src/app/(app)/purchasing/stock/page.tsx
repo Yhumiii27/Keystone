@@ -3,8 +3,10 @@
 // URL state (src/features/stock/links.ts): `?loc=` location chip, `?q=` search, `?stock=` stock-line drawer,
 // `?part=` shared part record drawer. Roles: director, pm, quality, procurement; other roles see the screen outside
 // their workspace (banner, read-only: no movement form, no "Push to X3", no primary). The project read-only mode
-// does not apply (08 §0.2). Writes go through src/features/stock/actions.ts. Delivery 7: an issue names an activity of
-// the current project's plan (SC-5a, R-098); reservations are protected ("Release reservation", director override, R-099).
+// does not apply (08 §0.2). Writes go through src/features/stock/actions.ts. R-034: "Import from X3" and "Push to X3" are
+// a simulation (Sage X3 is not connected): shown on a demo database only, hidden and refused on a production database.
+// Delivery 7: an issue names an activity of the current project's plan (SC-5a, R-098); reservations are protected
+// ("Release reservation", director override, R-099).
 import { PageHeader } from '@/components/app/shell/page-header';
 import { DEFAULT_PROJECT } from '@/config/screens';
 import { parseLocationFilter } from '@/domain/stock';
@@ -18,6 +20,7 @@ import { installedBasePins } from '@/server/dal/eco';
 import { getProject } from '@/server/dal/projects';
 import { getStockPosition, getX3StockSync, listIssueActivityOptions, listStock, listStockMovements } from '@/server/dal/stock';
 import { listStorageLocations } from '@/server/dal/suppliers';
+import { x3Simulated } from '@/server/integrations/x3/mock-mode';
 import { getScreenAccess, projectAccessResolver } from '@/server/project-context';
 import { getI18n, getLastProject } from '@/server/session';
 import { canSeeSupplierPrices } from '@/domain/rights';
@@ -27,8 +30,8 @@ const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v
 
 export default async function StockPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const [{ t, lang }, access, rows, locations, sync, moves, pins, last] = await Promise.all([
-    getI18n(), getScreenAccess('stock'), listStock(), listStorageLocations(), getX3StockSync(), listStockMovements({ limit: 8 }), installedBasePins(), getLastProject(),
+  const [{ t, lang }, access, rows, locations, sync, moves, pins, last, x3] = await Promise.all([
+    getI18n(), getScreenAccess('stock'), listStock(), listStorageLocations(), getX3StockSync(), listStockMovements({ limit: 8 }), installedBasePins(), getLastProject(), x3Simulated(),
   ]);
   const state: StockUrlState = {
     loc: parseLocationFilter(first(sp.loc), locations.map((l) => l.name)),
@@ -43,7 +46,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
 
   // R-046 (NEW-D2-1): stock values at purchase price only for the director, the PMs and procurement.
   const prices = canSeeSupplierPrices(access.viewer.role);
-  const view = stockScreenView({ rows, locations, sync, moves, pins, state, prices }, t, lang);
+  const view = stockScreenView({ rows, locations, sync, moves, pins, state, prices, x3 }, t, lang);
   // Delivery 7: an issue names an activity of the current project's plan (SC-5a); the reserving project's PM or the
   // director releases a reservation, the director alone may take another project's reserved units (R-099).
   const [acts, owner] = detail && project
@@ -52,7 +55,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
   const viewer = access.viewer;
   const drawer = detail
     ? stockDrawerView({
-      detail, locations, pins, state, prices, projectCode: project?.code ?? null, activities: acts,
+      detail, locations, pins, state, prices, projectCode: project?.code ?? null, activities: acts, x3,
       // R-041: the reserving project's PM team (PM of record, co-PMs, deputies) or the director.
       canRelease: access.canEdit && !!owner && (await projectAccessResolver(viewer))(owner).lead,
       canOverride: access.canEdit && viewer.role === 'director',
@@ -62,7 +65,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <PageHeader screen="stock" primary={access.canEdit ? <ImportX3Button label={t('Import from X3')} closeHref={closeHref} /> : undefined} />
+      <PageHeader screen="stock" primary={access.canEdit && x3 ? <ImportX3Button label={t('Import from X3')} closeHref={closeHref} /> : undefined} />
       <StockBody view={view} t={t} />
       <StockDrawer view={drawer} projectCode={project?.code ?? null} canEdit={access.canEdit} />
       {state.part && <PartDrawer partRef={state.part} closeHref={stockHref({ ...state, part: null })} />}

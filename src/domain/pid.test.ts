@@ -11,8 +11,8 @@ import PROTO from '@/server/prototype/prototype-data.json';
 import GEN from '@/server/prototype/prototype-generated.json';
 import {
   PID_SCOPE_SEG, activityText, candidateTag, extractedStepLabel, feedbackMissing, feedbackView, filterPidTags, kindLabel, nextRevision, overlayTags, partLine,
-  pidCandidatesOf, pidChips, pidCoverage, pidKpis, pidNavBadge, pidScopeFilterOf, pidScopeTag, pidStatusFilterOf, pidStatusTag, pidStepView, pidTagActions,
-  pidTagRecord, pidTagStatusOf, plcView, refText, releasedStepLabel, scopeLabel, statusLabel, type PidTagLike,
+  pidChips, pidCoverage, pidKpis, pidNavBadge, pidScopeFilterOf, pidScopeTag, pidStatusFilterOf, pidStatusTag, pidStepView, pidTagActions,
+  pidTagRecord, pidTagStatusOf, plcView, refText, releasedStepLabel, scopeLabel, searchPidCandidates, statusLabel, type PidTagLike,
 } from './pid';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -70,7 +70,10 @@ const drawer = (t: PidTagLike) => {
     isClient: a.isClient, fbWarn: feedbackMissing(t), canMap: a.canMap, hasPart: a.hasPart, notInBom: a.notInBom,
     // The prototype hard-codes "PID-HLT-026" in the sheet label; the rebuild uses the sheet's own document number (the same here).
     meta: pidTagRecord(t, SHEET.documentNumber),
-    candidates: pidCandidatesOf(t.kind, PARTS, BOM).map((p) => ({ ref: p.ref, name: p.name, status: partStatus.label(p.status), tagClass: candidateTag(p.status) })),
+    // E-6 (R-108): the whole catalogue is searched, the project BOM's articles first; the prototype's 8 candidates (BOM
+    // articles of a compatible type, catalogue order) are the first BOM-marked results of the default search.
+    candidates: searchPidCandidates(PARTS, { kind: t.kind, q: '', type: 'compatible', bomRefs: BOM }).rows.filter((p) => p.inBom).slice(0, 8)
+      .map((p) => ({ ref: p.ref, name: p.name, status: partStatus.label(p.status), tagClass: candidateTag(p.status) })),
   };
 };
 

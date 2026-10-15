@@ -11,6 +11,9 @@ import {
   type ExportControl, type PartFamily, type PartMakeBuy, type PartStatus, type PartType, type PartUnit, type StageCode, type WearSpare,
 } from '@/server/db/codes';
 import { findPerson, nameOf, writeAudit } from '@/server/db/helpers';
+import { canSee } from '@/config/role-screens';
+import type { RoleKey } from '@/config/screens';
+import { canCompletePartRecord, canValidatePart, partValidationErrors, type PartQualificationInput } from '@/domain/parts';
 import {
   documentLinks, documents, partEquivalents, partLastPrices, parts, persons, projectBomLines, projects, spareListLines, suppliers,
 } from '@/server/db/schema';
@@ -53,6 +56,12 @@ export interface PartRow {
   exportRestriction: string | null;
   exportControl: ExportControl | null;
   exportControlLabel: string | null;
+  /** R-102: explicit "no customs code" / export restriction confirmed (None included) — see `partValidationErrors`. */
+  hsNotApplicable: boolean;
+  exportReviewed: boolean;
+  /** R-102: who validated the part in Keystone and when (ISO); null for the seed's Validated parts and the others. */
+  validatedBy: string | null;
+  validatedAt: string | null;
   status: PartStatus;
   /** "Not validated". */
   statusLabel: string;
@@ -87,8 +96,9 @@ export async function lastPriceByRef(q?: Q): Promise<Record<string, number>> {
 
 async function loadParts(q: Q, refs?: string[]): Promise<PartRow[]> {
   const where = refs ? inArray(parts.ref, refs.length ? refs : ['']) : undefined;
+  const validator = sql<string | null>`(select coalesce(${persons.fullName}, ${persons.shortName}) from ${persons} where ${persons.id} = ${parts.validatedByPersonId})`;
   const rows = await q
-    .select({ p: parts, mfr: suppliers.name, internal: suppliers.isInternal, last: partLastPrices.unitPriceEur })
+    .select({ p: parts, mfr: suppliers.name, internal: suppliers.isInternal, last: partLastPrices.unitPriceEur, validator })
     .from(parts)
     .leftJoin(suppliers, eq(suppliers.id, parts.manufacturerId))
     .leftJoin(partLastPrices, eq(partLastPrices.partId, parts.id))
@@ -102,13 +112,14 @@ async function loadParts(q: Q, refs?: string[]): Promise<PartRow[]> {
     q.select({ partId: projectBomLines.partId, code: projects.code, short: projects.shortCode, qty: projectBomLines.quantity, order: projects.sortOrder })
       .from(projectBomLines).innerJoin(projects, eq(projects.id, projectBomLines.projectId)).where(inArray(projectBomLines.partId, ids)).orderBy(asc(projects.sortOrder)),
   ]);
-  return rows.map(({ p, mfr, internal, last }) => {
+  return rows.map(({ p, mfr, internal, last, validator: vBy }) => {
     const use = usage.filter((u) => u.partId === p.id && u.qty > 0).map((u) => ({ projectCode: u.code, shortCode: u.short, quantity: u.qty }));
     return {
       ref: p.ref, name: p.name, makeBuy: p.makeBuy, makeBuyLabel: partMakeBuy.label(p.makeBuy), type: p.type, typeLabel: partType.label(p.type),
       listPriceEur: p.listPriceEur, lastPriceEur: last ?? p.listPriceEur, hasLastPrice: last != null, manufacturer: mfr ?? null, manufacturerIsInternal: !!internal,
       manufacturerRef: p.manufacturerRef, hsCode: p.hsCode, exportRestriction: p.exportRestriction, exportControl: p.exportControl ?? null,
-      exportControlLabel: p.exportControl ? exportControl.label(p.exportControl) : null, status: p.status, statusLabel: partStatus.label(p.status),
+      exportControlLabel: p.exportControl ? exportControl.label(p.exportControl) : null, hsNotApplicable: p.hsNotApplicable, exportReviewed: p.exportReviewed,
+      validatedBy: p.validatedAt ? vBy : null, validatedAt: p.validatedAt?.toISOString() ?? null, status: p.status, statusLabel: partStatus.label(p.status),
       statusNote: PART_STATUS_NOTE[p.status] ?? null, revision: p.revision, leadWeeks: p.leadWeeks, wearSpare: p.wearSpare ?? null,
       wearSpareLabel: p.wearSpare ? wearSpare.label(p.wearSpare) : null, unit: p.unit,
       equivalents: equiv.filter((e) => e.partId === p.id).map((e) => e.ref), usage: use, totalQuantity: use.reduce((s, u) => s + u.quantity, 0), position: p.position,
@@ -249,6 +260,88 @@ export async function createPart(input: NewPartInput, actorName: string): Promis
       change: `part created · ${partFamily.label(input.family)} · ${price} € / ${unit} · Not validated`, area: 'PLM', entityType: 'part', entityId: p.id,
     });
     return ref;
+  });
+}
+
+// ── R-102: validation of parts by engineering (E-1a = a, E-1b = a) ─────────────────────────────────────
+
+/** Refusal of a qualification write: `stale` = the part's status moved on since the drawer was rendered. */
+export class PartQualificationError extends Error {
+  constructor(readonly code: 'stale' | 'not_allowed' | 'incomplete' | 'unknown', message: string) {
+    super(message);
+    this.name = 'PartQualificationError';
+  }
+}
+
+/** The viewer recording a qualification change: full name and active role (R-039: the role in force decides). */
+export interface PartActor {
+  name: string;
+  role: string;
+}
+
+async function lockPart(tx: Tx, ref: string) {
+  const [p] = await tx.select().from(parts).where(eq(parts.ref, ref)).for('update');
+  if (!p) throw new PartQualificationError('unknown', `Unknown part ${ref}`);
+  return p;
+}
+
+const show = (v: string | number | null) => (v == null || v === '' ? '—' : String(v));
+
+/**
+ * "Complete the record" (part drawer): HS code or an explicit "Not applicable", export restriction confirmed (None, or a text
+ * with its export-control family), lead time in weeks, manufacturer reference. The catalogue's editors (PLM in their
+ * workspace) while the part is Not validated; the engineering lead and the director once it is Validated
+ * (`canCompletePartRecord`, re-checked here on the locked row). Never changes the status. Audited in PLM with the fields
+ * that changed ("record completed · HS code — → 8504.40 · …"); nothing is written when nothing changed.
+ */
+export async function updatePartQualification(ref: string, input: PartQualificationInput, actor: PartActor): Promise<{ changed: boolean }> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const p = await lockPart(tx, ref);
+    if (!canCompletePartRecord(p.status, actor.role, canSee(actor.role as RoleKey, 'plm')))
+      throw new PartQualificationError('not_allowed', p.status === 'not_validated' ? 'The parts catalogue is read-only for you' : 'Only the engineering lead or the director changes a validated part');
+    const changes = [
+      p.hsCode !== input.hsCode || p.hsNotApplicable !== input.hsNotApplicable
+        ? `HS code ${p.hsNotApplicable ? 'n/a' : show(p.hsCode)} → ${input.hsNotApplicable ? 'n/a' : show(input.hsCode)}` : null,
+      p.exportRestriction !== input.exportRestriction || p.exportReviewed !== input.exportReviewed || (p.exportControl ?? null) !== input.exportControl
+        ? `export ${input.exportReviewed ? (input.exportRestriction ?? 'None') : 'not confirmed'}` : null,
+      p.leadWeeks !== input.leadWeeks ? `lead time ${show(p.leadWeeks)} → ${show(input.leadWeeks)} wk` : null,
+      p.manufacturerRef !== input.manufacturerRef ? `manufacturer ref. ${show(p.manufacturerRef)} → ${show(input.manufacturerRef)}` : null,
+    ].filter((x): x is string => !!x);
+    if (!changes.length) return { changed: false };
+    const at = new Date();
+    await tx.update(parts).set({
+      hsCode: input.hsCode, hsNotApplicable: input.hsNotApplicable, exportRestriction: input.exportRestriction, exportControl: input.exportControl,
+      exportReviewed: input.exportReviewed, leadWeeks: input.leadWeeks, manufacturerRef: input.manufacturerRef, updatedAt: at,
+    }).where(eq(parts.id, p.id));
+    const who = await findPerson(tx, actor.name);
+    await writeAudit(tx, {
+      actorName: who ? nameOf(who) : actor.name, actorPersonId: who?.id, objectRef: ref, change: `record completed · ${changes.join(' · ')}`, area: 'PLM', entityType: 'part',
+      entityId: p.id, occurredAt: at,
+    });
+    return { changed: true };
+  });
+}
+
+/**
+ * "Validate part" (E-1a): Not validated → Validated by the engineering lead or — default — the director (active role), once
+ * the record is complete (`partValidationErrors`). The status and the record are re-read on the locked row; stores who and
+ * when, audited "status: Not validated → Validated". No manual path to Outdated / Obsolete, nor back to Not validated.
+ */
+export async function validatePart(ref: string, actor: PartActor): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async (tx) => {
+    const p = await lockPart(tx, ref);
+    if (p.status !== 'not_validated') throw new PartQualificationError('stale', `${ref} is not awaiting validation`);
+    if (!canValidatePart(p.status, actor.role)) throw new PartQualificationError('not_allowed', 'Only the engineering lead or the director validates a part');
+    const missing = partValidationErrors(p);
+    if (missing.length) throw new PartQualificationError('incomplete', missing.join(' · '));
+    const at = new Date();
+    const who = await findPerson(tx, actor.name);
+    await tx.update(parts).set({ status: 'validated', validatedAt: at, validatedByPersonId: who?.id ?? null, updatedAt: at }).where(eq(parts.id, p.id));
+    await writeAudit(tx, {
+      actorName: who ? nameOf(who) : actor.name, actorPersonId: who?.id, objectRef: ref, change: 'status: Not validated → Validated', area: 'PLM', entityType: 'part', entityId: p.id, occurredAt: at,
+    });
   });
 }
 

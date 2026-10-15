@@ -8,7 +8,8 @@
 // design ECO), Mark diagnosed, Plan intervention, Close claim — and a planned intervention is marked done (with the part
 // fitted, which updates the machine's configuration, R-144). Roles: director, pm, quality, procurement; others get the
 // "Outside my workspace" banner (PageHeader), no primary action and no step (refused server-side too). Sidebar badge:
-// open Major / Critical claims (`savNavBadge`).
+// open Major / Critical claims (`savNavBadge`). R-153 (X-10): "New claim" and "Plan intervention" concern a machine, not
+// the current project — no project sub-line (the prototype's `projectName`).
 import { PageHeader } from '@/components/app/shell/page-header';
 import { savViewOf } from '@/domain/aftersales';
 import { NewClaimButton } from '@/features/aftersales/add-buttons';
@@ -21,11 +22,9 @@ import { SavBody } from '@/features/aftersales/sav-view';
 import { claimFormOptions, getSavScreen } from '@/server/dal/aftersales';
 import { CLAIM_OWNERS, getClaim, interventionPartOptions } from '@/server/dal/claims';
 import { machineConfigurations } from '@/server/dal/fleet';
-import { getProject } from '@/server/dal/projects';
 import { NOW_ISO, displayOfIso } from '@/server/db/codes';
 import { getScreenAccess } from '@/server/project-context';
-import { getI18n, getLastProject, getZone } from '@/server/session';
-import { projectLabelText } from '@/i18n/data-text';
+import { getI18n, getZone } from '@/server/session';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -39,13 +38,12 @@ export default async function WarrantyClaimsPage({ searchParams }: { searchParam
 
   let primary;
   if (access.canEdit) {
-    const [opts, project] = await Promise.all([claimFormOptions(), getLastProject().then(getProject)]);
-    const context = project ? projectLabelText(project, lang) : undefined;
+    const opts = await claimFormOptions();
     primary =
       view === 'interventions' ? (
-        <FollowupFormButton kind="plan-preventive" target={null} label={t('Plan intervention')} context={context} form={localizeForm(planInterventionFormDef(opts.machines, { technicians: '' }), t, lang)} variant="primary" size="md" />
+        <FollowupFormButton kind="plan-preventive" target={null} label={t('Plan intervention')} form={localizeForm(planInterventionFormDef(opts.machines, { technicians: '' }), t, lang)} variant="primary" size="md" />
       ) : (
-        <NewClaimButton label={t('New claim')} form={localizeForm(claimFormDef(opts.machines, opts.owners), t, lang)} context={context} />
+        <NewClaimButton label={t('New claim')} form={localizeForm(claimFormDef(opts.machines, opts.owners), t, lang)} />
       );
   }
 

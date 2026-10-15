@@ -5,8 +5,9 @@
 //   ?q=<search>                      tag, description, reference, PLC, feedback (`pidQ`)
 //   ?tag=LT-101                      tag drawer (`pidTag`; matched case-insensitively, unknown → none)
 //   ?part=EL-PLC-S7                  part record drawer over the screen (the shared <PartDrawer/>; "Part record")
+//   ?cq=<search>&ctype=all|<type>   R-108: the tag drawer's catalogue search (text, type filter — default the compatible types)
 import { screenHref } from '@/config/screens';
-import { pidScopeFilterOf, pidStatusFilterOf, type BomScope, type PidTagStatus } from '@/domain/pid';
+import { pidScopeFilterOf, pidStatusFilterOf, pidTypeFilterOf, type BomScope, type PidTagStatus, type PidTypeFilter } from '@/domain/pid';
 
 export interface PidState {
   status: PidTagStatus | null;
@@ -14,9 +15,13 @@ export interface PidState {
   q: string;
   tag: string | null;
   part: string | null;
+  /** R-108: candidate search text of the tag drawer ('' = none). */
+  cq?: string;
+  /** R-108: candidate type filter ('compatible' = the default, omitted from the URL). */
+  ctype?: PidTypeFilter;
 }
 
-export const DEFAULT_PID_STATE: PidState = { status: null, scope: null, q: '', tag: null, part: null };
+export const DEFAULT_PID_STATE: PidState = { status: null, scope: null, q: '', tag: null, part: null, cq: '', ctype: 'compatible' };
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -34,6 +39,8 @@ export function parsePidState(sp: SP): PidState {
     q: (first(sp.q) ?? '').replace(/[\u0000-\u001f]/g, '').slice(0, 120),
     tag: ident(sp.tag),
     part: ident(sp.part),
+    cq: (first(sp.cq) ?? '').replace(/[\u0000-\u001f]/g, '').slice(0, 60),
+    ctype: pidTypeFilterOf(first(sp.ctype)),
   };
 }
 
@@ -45,6 +52,9 @@ export function pidHref(code: string, s: Partial<PidState> = {}): string {
   if (s.q) u.set('q', s.q);
   if (s.tag) u.set('tag', s.tag);
   if (s.part) u.set('part', s.part);
+  // The candidate search belongs to the open tag drawer.
+  if (s.tag && s.cq) u.set('cq', s.cq);
+  if (s.tag && s.ctype && s.ctype !== 'compatible') u.set('ctype', s.ctype);
   const qs = u.toString();
   const base = screenHref('pid', { code });
   return qs ? `${base}?${qs}` : base;

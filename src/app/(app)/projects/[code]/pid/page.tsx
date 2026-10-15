@@ -5,7 +5,8 @@
 // unknown → none), `?part=` (the shared part record drawer, over the tag drawer's place).
 // Primary action "Import P&ID tags" (AF `pid`, a staging import) for viewers who may edit the project's P&ID (director,
 // engineering lead, quality; not on a read-only project); the tag drawer's mapping follows the same rule, server-side
-// too (src/features/pid/actions.ts). Projects without a P&ID show the prototype's empty state.
+// too (src/features/pid/actions.ts). Projects without a P&ID show the prototype's empty state. R-108: the tag drawer searches
+// the whole catalogue (`?cq=`, `?ctype=`); R-109: a banner when Codex's P&ID revision is ahead of the tags'.
 import { EmptyState } from '@/components/app/EmptyState';
 import { Stack } from '@/components/app/SectionCard';
 import { PageHeader } from '@/components/app/shell/page-header';
@@ -35,31 +36,36 @@ export default async function PidPage({ params, searchParams }: { params: Promis
   // `?tag=` as written anywhere (case-insensitive); an unknown tag opens nothing and is dropped from the links.
   const tag = parsed.tag && data ? (data.tags.find((x) => x.tag.toUpperCase() === parsed.tag!.toUpperCase()) ?? null) : null;
   const state = { ...parsed, tag: tag?.tag ?? null };
-  const candidates = tag && !state.part && canEdit && tag.scope !== 'client' ? await pidCandidates(projectCode, tag.tag) : [];
-
-  const primary = canEdit ? (
-    <ImportTagsButton code={projectCode} context={projectLabelText(ctx.project, lang)} currentRevision={data?.sheet.revision ?? null} />
-  ) : undefined;
+  // R-108 (E-6 = a): the whole catalogue, searched (`?cq=`, `?ctype=`), the project BOM's articles first.
+  const candidates = tag && !state.part && canEdit && tag.scope !== 'client'
+    ? await pidCandidates(projectCode, tag.tag, { q: state.cq, type: state.ctype, lang })
+    : { rows: [], more: false };
 
   const view = data
     ? pidScreenView({ code: projectCode, data, state, docHref: data.sheet.codexRevision ? docHref(data.sheet.documentNumber, projectCode) : null }, t, lang)
     : null;
+  // R-109: when Codex is ahead, both "Import P&ID tags" buttons suggest Codex's reference revision.
+  const suggested = view?.drawing.gap?.ahead ? view.drawing.gap.suggestedRevision : null;
+  const importButton = (variant: 'primary' | 'secondary') => (
+    <ImportTagsButton code={projectCode} context={projectLabelText(ctx.project, lang)} currentRevision={data?.sheet.revision ?? null} suggestedRevision={suggested} variant={variant} />
+  );
+  const primary = canEdit ? importButton('primary') : undefined;
   const drawer =
     data && tag && !state.part
-      ? pidTagDrawerView({ code: projectCode, data, tag, candidates, state, bomHrefOf: (ref) => bomPartHref(projectCode, ref) }, t, lang)
+      ? pidTagDrawerView({ code: projectCode, data, tag, candidates: candidates.rows, more: candidates.more, state, bomHrefOf: (ref) => bomPartHref(projectCode, ref) }, t, lang)
       : null;
 
   return (
     <>
       <PageHeader screen="pid" projectCode={projectCode} primary={primary} />
       {view ? (
-        <PidBody view={view} t={t} />
+        <PidBody view={view} t={t} gapAction={canEdit ? importButton('secondary') : undefined} />
       ) : (
         <Stack>
           <EmptyState variant="boxed">{t('No P&ID registered for this project yet — import the tag list from the drawing to start the validation.')}</EmptyState>
         </Stack>
       )}
-      {drawer && <PidTagDrawer key={drawer.tag} code={projectCode} view={drawer} canEdit={canEdit} t={t} />}
+      {drawer && <PidTagDrawer key={drawer.tag} code={projectCode} view={drawer} canEdit={canEdit} canEditBom={ctx.canEdit('bom')} t={t} />}
       {state.part && <PartDrawer key={state.part} partRef={state.part} projectCode={projectCode} closeHref={pidHref(projectCode, { ...state, part: null })} />}
     </>
   );

@@ -10,9 +10,10 @@
 // - no nav badge "0" when the project has no tag in our scope (coverage 0 % with nothing to link);
 // - the sheet label uses the P&ID's own document number (the prototype hard-coded "PID-HLT-026").
 import {
-  PART_STATUS_TAG, bomScope, partStatus, pidTagKind, pidTagStatus, plcType, stepState,
-  type BomScope, type PartStatus, type PartType, type PidRole, type PidTagKind, type PidTagStatus, type PlcType, type StepState,
+  PART_STATUS_TAG, bomScope, documentStatus, partStatus, partType, pidTagKind, pidTagStatus, plcType, stepState,
+  type BomScope, type DocumentStatus, type PartStatus, type PartType, type PidRole, type PidTagKind, type PidTagStatus, type PlcType, type StepState,
 } from '@/server/db/codes';
+import { inputLatest } from './engineering';
 
 export type { BomScope, PidRole, PidTagKind, PidTagStatus, PlcType, StepState };
 
@@ -251,13 +252,94 @@ export const PID_COMPATIBLE_TYPES: Record<PidTagKind, readonly PartType[]> = {
   instrument: ['electronics', 'electrical', 'fire_safety'],
   equipment: ['electrical', 'mechanical', 'heavy_equipment', 'assembly'],
 };
-/** At most 8 candidates (09 OQ15 / E-6: candidate search UX still open). */
-export const PID_MAX_CANDIDATES = 8;
+/**
+ * Type filter of the tag drawer's catalogue search (R-108, E-6 = a): `compatible` (the default — the tag kind's compatible
+ * types), `all` (every type), or one part type.
+ */
+export type PidTypeFilter = 'compatible' | 'all' | PartType;
+export const pidTypeFilterOf = (v: string | null | undefined): PidTypeFilter =>
+  v === 'all' ? 'all' : v && partType.isCode(v) ? (v as PartType) : 'compatible';
 
-/** Candidate references of a tag: BOM articles of a compatible type in catalogue order, at most 8. */
-export function pidCandidatesOf<P extends { ref: string; type: PartType }>(kind: PidTagKind, catalogue: readonly P[], bomRefs: ReadonlySet<string>): P[] {
-  const types = PID_COMPATIBLE_TYPES[kind];
-  return catalogue.filter((p) => bomRefs.has(p.ref) && types.includes(p.type)).slice(0, PID_MAX_CANDIDATES);
+/** At most 20 results (default beyond E-6, which asks for a search but sets no size): "Refine the search" beyond. */
+export const PID_SEARCH_LIMIT = 20;
+
+/**
+ * Candidates of a tag over the whole catalogue (R-108, E-6 = a — replaces the prototype's 8 BOM articles, 09 OQ15): text on
+ * the reference or the name (case-insensitive; `display` adds what the viewer reads, the French name), the type filter, the
+ * project BOM's articles first (marked), then catalogue order; at most 20, `more` when the search should be refined.
+ * Not validated, Outdated and Obsolete parts stay selectable with their status (as the prototype's candidates). The search
+ * reads the local catalogue only and never offers to create a part (A-1b open).
+ */
+export function searchPidCandidates<P extends { ref: string; name: string; type: PartType }>(
+  catalogue: readonly P[],
+  o: { kind: PidTagKind; q: string; type: PidTypeFilter; bomRefs: ReadonlySet<string>; display?: (p: P) => string },
+): { rows: (P & { inBom: boolean })[]; more: boolean } {
+  const types = o.type === 'compatible' ? PID_COMPATIBLE_TYPES[o.kind] : o.type === 'all' ? null : [o.type];
+  const words = o.q.toLowerCase().split(/\s+/).filter(Boolean);
+  const hit = (p: P) => {
+    const hay = `${p.ref} ${p.name} ${o.display?.(p) ?? ''}`.toLowerCase();
+    return words.every((w) => hay.includes(w));
+  };
+  const found = catalogue.filter((p) => (!types || types.includes(p.type)) && hit(p)).map((p) => ({ ...p, inBom: o.bomRefs.has(p.ref) }));
+  const ordered = [...found.filter((p) => p.inBom), ...found.filter((p) => !p.inBom)];
+  return { rows: ordered.slice(0, PID_SEARCH_LIMIT), more: ordered.length > PID_SEARCH_LIMIT };
+}
+
+/** "Link and add to the BOM": the quantity typed (default 1) — a positive number, at most 1,000,000. */
+export const PID_BOM_QTY_MAX = 1_000_000;
+export function pidBomQuantity(v: unknown): number | null {
+  if (v == null || v === '') return 1;
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v.trim().replace(',', '.')) : NaN;
+  return Number.isFinite(n) && n > 0 && n <= PID_BOM_QTY_MAX ? n : null;
+}
+
+// ── Revision gap with Codex (R-109, A-9 = a) ──────────────────────────────────────────────────────────
+
+/**
+ * Position of a drawing revision in the order `nextRevision` follows: A…Y, Z, then Z1, Z2…; numbers numerically. Null for
+ * anything else ("C1", "B.2", free import revisions): such a revision is not compared.
+ */
+function revisionRank(rev: string): { kind: 'letter' | 'number'; n: number } | null {
+  if (/^[A-Z]$/.test(rev)) return { kind: 'letter', n: rev.charCodeAt(0) - 65 };
+  const z = /^Z(\d+)$/.exec(rev);
+  if (z) return { kind: 'letter', n: 25 + Number(z[1]) };
+  if (/^\d+$/.test(rev)) return { kind: 'number', n: Number(rev) };
+  return null;
+}
+
+/** −1 / 0 / 1, or null when the two revisions cannot be compared (different kinds, free text). */
+export function compareRevisions(a: string, b: string): -1 | 0 | 1 | null {
+  if (a === b) return 0;
+  const x = revisionRank(a);
+  const y = revisionRank(b);
+  if (!x || !y || x.kind !== y.kind) return null;
+  return x.n === y.n ? 0 : x.n < y.n ? -1 : 1;
+}
+
+export interface PidRevisionGap {
+  /** Codex's reference revision is later than the revision the tags were extracted from: re-import suggested. */
+  ahead: boolean;
+  /** The two revisions differ but cannot be ordered ("C1" vs "D"): a neutral "different", never "ahead". */
+  different: boolean;
+  /** Codex's reference revision (E-5: the current one once frozen or released, the previous one while Draft). */
+  referenceRevision: string;
+}
+
+/**
+ * R-109 (A-9 = a): where Codex's P&ID stands against the revision of Keystone's tag list. E-5 (`inputLatest`): a Codex
+ * Draft makes the previous revision the reference ("rev E Draft" against tags in rev C signals rev D). An Obsolete record is
+ * excluded on purpose — REFERENCE_STATUSES counts it for the engineering inputs, but a withdrawn P&ID is no revision to
+ * re-import (A-9 / E-5). Null when there is no Codex record, or nothing to report (same, earlier or obsolete).
+ * Default (owner to confirm): the gap shows whenever Codex is ahead, including right after a "released for construction"
+ * step — the case the owner described on the seed (tags rev C, Codex rev D Released).
+ */
+export function pidRevisionGap(sheetRevision: string, codexRevision: string | null, codexStatus: string | null): PidRevisionGap | null {
+  if (!codexRevision || !codexStatus || codexStatus === 'obsolete' || !documentStatus.isCode(codexStatus)) return null;
+  const referenceRevision = inputLatest(sheetRevision, { revision: codexRevision, status: codexStatus as DocumentStatus });
+  const cmp = compareRevisions(referenceRevision, sheetRevision);
+  if (cmp === 1) return { ahead: true, different: false, referenceRevision };
+  if (cmp === null) return { ahead: false, different: true, referenceRevision };
+  return null;
 }
 
 /** Part status tag of a candidate (`partTag` 4176). */

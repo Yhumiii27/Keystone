@@ -91,25 +91,33 @@ export function moveView(m: MovementRow, t: T, lang: Lang, i: number): MoveView 
   return { key: `${m.occurredAt}-${i}`, type: moveTypeT(m.typeLabel, t, lang), ref: m.ref, qty: qtyText(m.qty, lang), where: whereT(m.where, lang), who: m.who, when: t(m.when) };
 }
 
+/** R-034: KPI sub-line and drawer note when Sage X3 is not connected (production database). */
+export const X3_OFF_TEXT = 'Sage X3 not connected';
+export const X3_OFF_NOTE = 'Sage X3 not connected · movements are recorded in Keystone only';
+
 export function stockScreenView(
   input: {
     rows: StockRow[]; locations: StorageLocationRow[]; sync: X3StockSync | null; moves: MovementRow[]; pins: Record<string, InstalledBasePin[]>; state: StockUrlState;
     /** Stock values at purchase price shown (R-046, NEW-D2-1: director, PMs, procurement); masked otherwise. Default true. */
     prices?: boolean;
+    /** R-034: the simulated X3 exchange is available (demo database); false = "Sage X3 not connected". Default true. */
+    x3?: boolean;
   },
   t: T,
   lang: Lang,
 ): StockScreenView {
   const { rows, locations, sync, moves, pins, state } = input;
   const prices = input.prices !== false;
+  const x3 = input.x3 !== false;
   const names = locations.map((l) => l.name);
   const f = stockFigures(rows, names.length);
   const kpis: KpiView[] = [
     { label: t('Stock value'), value: prices ? money(f.valueEur / 1000, lang) : PRICE_MASK, sub: linesLocationsText(f.lines, f.locations, lang), color: OK },
     { label: t('Below minimum'), value: String(f.belowMin), sub: t('Reorder or transfer'), color: f.belowMin ? LO : OK },
     { label: t('In quarantine'), value: qtyText(f.quarantineQty, lang), sub: t('Awaiting quality decision'), color: OK },
-    { label: t('X3 import'), value: sync?.time ?? '—', sub: x3LinesText(f.x3Lines, lang), color: OK },
-    { label: t('Local changes'), value: String(f.localLines), sub: t('To push back to X3'), color: f.localLines ? LO : OK },
+    // R-034: without the X3 simulation (production database) nothing is imported from nor pushed back to Sage X3.
+    { label: t('X3 import'), value: sync?.time ?? '—', sub: x3 ? x3LinesText(f.x3Lines, lang) : t(X3_OFF_TEXT), color: OK },
+    { label: t('Local changes'), value: String(f.localLines), sub: x3 ? t('To push back to X3') : t(X3_OFF_TEXT), color: f.localLines && x3 ? LO : OK },
   ];
   const chips = locationChipCounts(rows, names).map((c) => ({
     value: c.location ?? '',
@@ -170,6 +178,10 @@ export interface StockDrawerView {
   sourceTone: 'neutral' | 'accent';
   /** Changed in Keystone, not yet pushed ("Push to X3" has something to send). */
   isLocal: boolean;
+  /** R-034: "Push to X3" offered at all (the simulated exchange is available: demo database). */
+  canPush: boolean;
+  /** Note under the movement form (the X3 hand-back, or "Sage X3 not connected"). */
+  x3Note: string;
   meta: { k: string; v: string }[];
   ops: { value: StockOperation; label: string; qtyLabel: string }[];
   targets: { value: string; label: string; title: string }[];
@@ -196,6 +208,8 @@ export function stockDrawerView(
     detail: StockPositionDetail; locations: StorageLocationRow[]; pins: Record<string, InstalledBasePin[]>; state: StockUrlState; prices?: boolean;
     /** Delivery 7: the current project, its plan's activities, and the viewer's rights on reservations (R-098 / R-099). */
     projectCode?: string | null; activities?: { code: string; name: string }[]; canRelease?: boolean; canOverride?: boolean;
+    /** R-034: the simulated X3 exchange is available (demo database). Default true. */
+    x3?: boolean;
   },
   t: T,
   lang: Lang,
@@ -213,6 +227,8 @@ export function stockDrawerView(
     source: t(d.sourceLabel),
     sourceTone: d.source === 'x3' ? 'neutral' : 'accent',
     isLocal: d.source === 'local',
+    canPush: input.x3 !== false,
+    x3Note: t(input.x3 !== false ? 'Local movements are flagged until the next push to X3 · X3 remains the accounting reference' : X3_OFF_NOTE),
     meta: [
       { k: t('On hand'), v: qtyText(d.onHand, lang) },
       { k: t('Reserved'), v: reservedText(d.reserved, d.reservedForShort, (n) => qtyText(n, lang)) },

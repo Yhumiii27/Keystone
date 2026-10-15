@@ -78,8 +78,9 @@ describe('/reference/parts', () => {
     expect(p.PageHeader.props).toMatchObject({ screen: 'plm' });
     const primary = p.PageHeader.props.primary as El;
     expect((primary.type as { name: string }).name).toBe('NewPartButton');
-    // Sub-line of the dialog: the current project, as every add-form of the prototype (`projectName`, 09 §0.3).
-    expect(primary.props).toMatchObject({ label: 'New part', context: '#026 · Harbor Line Terminal Expansion' });
+    // R-153 (X-10): no project sub-line — a catalogue part is not a project's (the prototype named the current project).
+    expect(primary.props).toMatchObject({ label: 'New part' });
+    expect(primary.props.context).toBeUndefined();
     expect((primary.props.form as { title: string; submit: string; fields: { label: string }[] }).fields.map((f) => f.label)).toEqual([
       'Reference', 'Designation', 'Family', 'Preferred supplier', 'Unit price (€)', 'Unit',
     ]);
@@ -135,7 +136,9 @@ describe('/reference/parts', () => {
     session.lang = 'fr';
     const p = await page();
     const primary = p.PageHeader.props.primary as El;
-    expect(primary.props).toMatchObject({ label: 'Nouvel article', context: '#026 · Extension du terminal Harbor Line' });
+    // R-153 (X-10): no project sub-line in French either.
+    expect(primary.props).toMatchObject({ label: 'Nouvel article' });
+    expect(primary.props.context).toBeUndefined();
     const form = primary.props.form as { title: string; submit: string; fields: { id: string; label: string; options?: { value: string; label: string }[] }[] };
     expect([form.title, form.submit]).toEqual(['Nouvel article', 'Créer l’article']);
     expect(form.fields.map((f) => f.label)).toEqual(['Référence', 'Désignation', 'Famille', 'Fournisseur préférentiel', 'Prix unitaire (€)', 'Unité']);

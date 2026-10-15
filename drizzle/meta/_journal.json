@@ -162,6 +162,13 @@
       "when": 1792052709863,
       "tag": "0022_clever_wolf_cub",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792054904071,
+      "tag": "0023_mute_archangel",
+      "breakpoints": true
     }
   ]
 }

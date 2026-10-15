@@ -4,7 +4,7 @@
 // - BOM value counts each article once (09 OQ6): HLT-026 €7.05M (the prototype €14.05M);
 // - PU/PR stock is Σ on hand (the prototype always read 0): "16 in stock", "Not in stock" 10 of 12;
 // - quantities in French use the French format ("2 042"; the prototype used the browser locale);
-// - French the prototype left in English: "32 par projet", "32 unités", "+19 180 € par grue", "Plan / réf.",
+// - French the prototype left in English: "32 par projet", "32 unités", "+19 942 € par grue" (E-2b, R-104), "Plan / réf.",
 //   restriction texts (translated through the PLM dictionary entries); singular forms ("1 week", "1 semaine");
 // - projects without data (EWA-051) show an empty BOM instead of Harbor Line's.
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -37,6 +37,10 @@ const gKpis = (ks: any[], lang: Lang) => ks.map((k) => ({ label: k.label, value:
 beforeAll(async () => {
   setDb(await openDatabase());
 }, 60_000);
+
+// E-4 = a (R-110): only the parts a machine actually carries are kept for the installed base. On the seed, the machines pinned by
+// ECO-2026-014 / -015 carry neither EL-HMI-15 nor FD-DET-OPT2: the prototype pinned them (09 OQ21), the goldens keep its values.
+const E4_UNPINNED = new Set(['EL-HMI-15', 'FD-DET-OPT2']);
 
 describe.each(LANGS)('Project BOM screen model (%s)', (lang) => {
   const g = G[lang];
@@ -194,7 +198,7 @@ describe.each(LANGS)('Project BOM screen model (%s)', (lang) => {
         return {
           ref: r.ref, name: r.name, kind: r.kind, tagClass: r.tagClass, qPer: String(r.qPer), qTotal: String(r.qTotal), note: r.note, price: r.price, total: r.total, lead: r.lead,
           status: r.status, statusClass: r.statusClass, stock: stock ? (lang === 'fr' ? `${stock} en stock` : `${stock} in stock`) : r.stockText, short: stock < r.qTotal,
-          pinned: r.pinned ? r.pinnedText : null,
+          pinned: r.pinned && !E4_UNPINNED.has(r.ref) ? r.pinnedText : null,
         };
       });
       expect(s.rows.map((r) => ({

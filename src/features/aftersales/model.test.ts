@@ -5,7 +5,9 @@
 // - counts agree in number ("1 client", FR "1 étendue", "1 ouverte", "0 majeure"; the prototype always used the plural);
 // - FR intervention statuses agree with "intervention" ("Planifiée", "Terminée");
 // - the machine sub-line drops the trailing " · " when no generation is recorded (MCH-044, MCH-040);
-// - the claims screen's zone notice tests the list on show (Asia Pacific › Interventions shows it; 07 A.1);
+// - the claims screen's zone notice tests the list on show (Asia Pacific › Interventions shows it; 07 A.1) and names
+//   what is missing: "No machine in this zone", else the view's list (R-155, X-16);
+// - FR "Warranty cost YTD" reads « Coût garantie de l’année » (R-145, NEW-D5-2 = a: the calendar year's claims);
 // - the configuration tags link to the first ECO on the Change orders screen and to Vigie; a claim's design ECO not
 //   reported by Vigie (ECO-031) links to Vigie;
 // - the add-forms store codes; FR "Issue" is "Problème" (the dictionary's "Sortie" is a stock issue).
@@ -29,7 +31,14 @@ const FR_SINGULAR: Record<string, string> = { clients: 'client', étendues: 'ét
 /** The prototype's count sub-lines, agreed in number. */
 const agree = (s: string) => s.replace(/^1 clients$/, '1 client').replace(/^([01]) (clients|étendues|ouvertes|majeures)$/, (_, n, w) => `${n} ${FR_SINGULAR[w]}`);
 const FR_IV: Record<string, string> = { Planifié: 'Planifiée', Terminé: 'Terminée' };
-const kpis = (ks: any[]) => ks.map((k: any) => ({ label: k.label, value: String(k.value), sub: agree(k.sub), color: k.color }));
+/** R-145 (NEW-D5-2 = a): the tile counts the calendar year's claims; FR label « Coût garantie de l’année » (was « cumulé »). */
+const YEAR_LABEL: Record<string, string> = { 'Coût garantie cumulé': 'Coût garantie de l’année' };
+const kpis = (ks: any[]) => ks.map((k: any) => ({ label: YEAR_LABEL[k.label] ?? k.label, value: String(k.value), sub: agree(k.sub), color: k.color }));
+/** R-155 (X-16): the machine lists' zone notices (the prototype showed "No project in this zone for this view"). */
+const NOTICE: Record<Lang, Record<'machine' | SavView, string>> = {
+  en: { machine: 'No machine in this zone', claims: 'No claim in this zone', interventions: 'No intervention in this zone', costs: 'No warranty cost in this zone' },
+  fr: { machine: 'Aucune machine dans cette zone', claims: 'Aucune réclamation dans cette zone', interventions: 'Aucune intervention dans cette zone', costs: 'Aucun coût de garantie dans cette zone' },
+};
 
 beforeAll(async () => {
   setDb(await openDatabase());
@@ -40,7 +49,8 @@ describe('Installed base view model', () => {
     const g = G[lang].fleet[key];
     const view = fleetView(await getFleetScreen(zone), zone, makeT(lang), lang);
     expect(view.kpis).toEqual(kpis(g.kpis));
-    expect(view.zoneEmpty).toBe(g.zoneEmpty ? g.zoneEmptyText : null);
+    // R-155 (X-16): "No machine in this zone" (the prototype's text was the project screens'); no seeded zone is empty.
+    expect(view.zoneEmpty).toBe(g.zoneEmpty ? NOTICE[lang].machine : null);
     expect(view.rows.map((r) => ({ ...r, config: r.config && { items: r.config.items, href: r.config.href, vigieHref: r.config.vigieHref } }))).toEqual(
       g.rows.map((r: any) => ({
         number: r.id, name: r.name, sub: [r.type, r.client, r.gen].filter(Boolean).join(' · '), status: r.status, statusClass: r.stClass, project: r.proj, site: r.site,
@@ -80,8 +90,9 @@ describe('Warranty claims & interventions view model', () => {
     expect(v.kpis).toEqual(kpis(g.kpis));
     // The prototype tested the machine list (never empty in a zone); the rebuild tests the list on show.
     const shown = view === 'claims' ? g.claims.length : view === 'interventions' ? g.interventions.length : g.costs.length;
-    expect(v.zoneEmpty).toBe(zone && !shown ? G[lang].fleet.all.zoneEmptyText : null);
-    if (key === 'apac' && view === 'interventions') expect([g.zoneEmpty, v.zoneEmpty]).toEqual([false, G[lang].fleet.all.zoneEmptyText]);
+    // R-155 (X-16 + 07 A.1): every seeded zone has machines, so an empty list names the view's list.
+    expect(v.zoneEmpty).toBe(zone && !shown ? NOTICE[lang][view] : null);
+    if (key === 'apac' && view === 'interventions') expect([g.zoneEmpty, v.zoneEmpty]).toEqual([false, NOTICE[lang].interventions]);
     expect(v.claims).toEqual(
       view !== 'claims' ? null : g.claims.map((c: any) => ({
         number: c.id, machineName: c.mname, machineSub: `${c.mch} · ${c.client}`, color: c.color, issue: c.issue,
@@ -105,6 +116,23 @@ describe('Warranty claims & interventions view model', () => {
         number: m.id, name: m.name, sub: `${m.client} · ${m.status}`, claims: m.claims, warrantyCost: m.warrantyCost, chargeable: m.chargeable, barPct: parseInt(m.barW, 10),
       })),
     );
+  });
+});
+
+describe('R-155 (X-16): zone notices of the machine lists', () => {
+  it.each(LANGS)('%s: a zone without machines says so on both screens; a zone with machines names the empty list', async (lang) => {
+    const t = makeT(lang);
+    const none = { ...(await getSavScreen('apac')), machines: [], claims: [], interventions: [] };
+    expect(fleetView({ machines: [] }, 'apac', t, lang).zoneEmpty).toBe(NOTICE[lang].machine);
+    for (const view of SAV_VIEWS) expect(savView(none, view, 'apac', t, lang).zoneEmpty, view).toBe(NOTICE[lang].machine);
+    // Asia Pacific of the seed: one machine (MCH-040), one closed claim, no intervention.
+    const apac = await getSavScreen('apac');
+    expect(SAV_VIEWS.map((view) => savView(apac, view, 'apac', t, lang).zoneEmpty)).toEqual([null, NOTICE[lang].interventions, null]);
+    const noClaim = { ...apac, claims: [] };
+    expect(SAV_VIEWS.map((view) => savView(noClaim, view, 'apac', t, lang).zoneEmpty)).toEqual([NOTICE[lang].claims, NOTICE[lang].interventions, NOTICE[lang].costs]);
+    // No zone selected: never a notice.
+    expect(savView(none, 'claims', null, t, lang).zoneEmpty).toBeNull();
+    expect(fleetView({ machines: [] }, null, t, lang).zoneEmpty).toBeNull();
   });
 });
 

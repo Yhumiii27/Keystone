@@ -47,17 +47,17 @@ export function scrapWarnT(pinnedEn: string, t: T, lang: Lang): string {
   return `Révision épinglée en service — ${t(pinnedEn)}. Le rebut est autorisé, mais le SAV doit d’abord confirmer la couverture en pièces de rechange.`;
 }
 
-/** Toast of "Import from X3". */
+/** Toast of "Import from X3" — R-034: a simulation, Sage X3 is not connected (demo database only). */
 export const importToastText = (lines: number, keptLocal: number, lang: Lang) =>
   fr(lang)
-    ? `Importé depuis Sage X3 · ${lines} ${plural(lines, 'ligne', 'lignes')} · ${keptLocal} ${plural(keptLocal, 'modification locale conservée', 'modifications locales conservées')}`
-    : `Imported from Sage X3 · ${lines} ${plural(lines, 'line', 'lines')} · ${keptLocal} ${plural(keptLocal, 'local change', 'local changes')} kept`;
+    ? `Import simulé (Sage X3 non connecté) · ${lines} ${plural(lines, 'ligne', 'lignes')} · ${keptLocal} ${plural(keptLocal, 'modification locale conservée', 'modifications locales conservées')}`
+    : `Simulated import (Sage X3 not connected) · ${lines} ${plural(lines, 'line', 'lines')} · ${keptLocal} ${plural(keptLocal, 'local change', 'local changes')} kept`;
 
-/** Toast of the drawer's "Push to X3". */
+/** Toast of the drawer's "Push to X3" — R-034: a simulation, Sage X3 is not connected (demo database only). */
 export const pushToastText = (ref: string, location: string, movements: number, lang: Lang) =>
   fr(lang)
-    ? `Envoyé vers Sage X3 · ${ref} · ${location} · ${movements} ${plural(movements, 'mouvement', 'mouvements')}`
-    : `Pushed to Sage X3 · ${ref} · ${location} · ${movements} ${plural(movements, 'movement', 'movements')}`;
+    ? `Envoi simulé (Sage X3 non connecté) · ${ref} · ${location} · ${movements} ${plural(movements, 'mouvement', 'mouvements')}`
+    : `Simulated push (Sage X3 not connected) · ${ref} · ${location} · ${movements} ${plural(movements, 'movement', 'movements')}`;
 
 /** Rule messages of the movement form (src/domain/stock.ts, the stock DAL) → the viewer's language; null when unknown. */
 export function stockErrorT(message: string, t: T, lang: Lang): string | null {

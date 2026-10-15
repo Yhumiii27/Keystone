@@ -22,7 +22,7 @@ import { bomHref, type BomState, type BomView } from './links';
 import { PRICE_MASK } from '@/domain/rights';
 import {
   bomTitleText, componentsText, countText, dataT, keepForInstalledBaseText, perCraneText, perProjectText, qtyText, signedEur, stockText, systemsText,
-  unitsInTotalText, unitsText, wearSpareText, weeksText, wksText,
+  unitsInTotalText, unitsText, wearSpareText, weeksText, wksText, duplicateOfText, possibleDuplicatesText,
 } from './i18n';
 
 export interface KpiView {
@@ -106,6 +106,8 @@ export interface FlatRowView {
   total: string;
   /** Assembly valued through its components: its total is not added to the BOM value (09 OQ6). */
   totalNote: string | null;
+  /** R-111 (NEW-D4-5 = c): "Possible duplicate of ASM-RMG-250 · to be checked by the engineering office"; null when none. */
+  duplicate: string | null;
   status: TagView;
   /** Open ECO touching the part (Vigie), opened on the ECO screen. */
   eco: { number: string; href: string } | null;
@@ -175,6 +177,7 @@ export function flatView(code: string, state: BomState, lines: readonly BomLine[
     priceTitle: prices && l.priceSource !== 'catalogue' ? `${t('Catalogue price')}: ${moneyEur(l.listPriceEur, lang)}` : null,
     total: eur(l.totalEur),
     totalNote: l.valuedByComponents ? t('Valued through its components — not added to the BOM value') : null,
+    duplicate: l.possibleDuplicateOf.length ? duplicateOfText(l.possibleDuplicateOf, lang) : null,
     status: partTag(l.status, l.statusLabel, t),
     eco: l.openEco ? { number: l.openEco, href: ecoScreenHref(l.openEco) } : null,
     restriction: l.exportRestriction ? dataT(l.exportRestriction, lang) : '—',
@@ -379,7 +382,7 @@ export interface CompareView {
   totalLabel: string;
   total: string;
   labels: Record<'line' | 'article' | 'from' | 'to' | 'change' | 'delta', string>;
-  /** `deltaTitle`: the unit price and its basis behind the delta (E-2a), null when the line has no price. */
+  /** `deltaTitle`: the unit price and its basis behind the delta (E-2a) — old → new for a substitution (R-104, E-2b); null when the line has no price. */
   rows: { line: string; name: string; a: string; b: string; kind: TagView; delta: string; deltaTitle: string | null }[];
 }
 
@@ -403,7 +406,12 @@ export function compareView(c: NonNullable<BomScreenData['comparison']>, t: T, l
     rows: c.lines.map((l) => ({
       line: l.path, name: dataT(l.name, lang), a: l.qtyFrom == null ? '—' : qtyText(l.qtyFrom, lang), b: l.qtyTo == null ? '—' : qtyText(l.qtyTo, lang),
       kind: { label: t(l.kindLabel), cls: DIFF_TAG[l.kind] }, delta: l.deltaEur ? (prices ? signedEur(l.deltaEur, lang) : PRICE_MASK) : '—',
-      deltaTitle: prices && l.unitPriceEur != null && l.priceSource ? `${moneyEur(l.unitPriceEur, lang)} · ${t(BOM_PRICE_SOURCE_LABEL[l.priceSource])}` : null,
+      // R-104 (E-2b): a substitution's tooltip gives both prices and their sources, old → new; masked with the prices (R-046).
+      deltaTitle: !prices || l.unitPriceEur == null || !l.priceSource
+        ? null
+        : l.kind === 'substitution' && l.oldUnitPriceEur != null && l.oldPriceSource && l.oldRef !== l.newRef
+          ? `${l.oldRef} ${moneyEur(l.oldUnitPriceEur, lang)} · ${t(BOM_PRICE_SOURCE_LABEL[l.oldPriceSource])} → ${l.newRef} ${moneyEur(l.unitPriceEur, lang)} · ${t(BOM_PRICE_SOURCE_LABEL[l.priceSource])}`
+          : `${moneyEur(l.unitPriceEur, lang)} · ${t(BOM_PRICE_SOURCE_LABEL[l.priceSource])}`,
     })),
   };
 }
@@ -517,6 +525,8 @@ export interface BomScreenView {
   spares: SparesView | null;
   /** "No multi-level assembly is registered…" (`bomNoTree`: no structure and a view other than the flat list). */
   noTree: string | null;
+  /** R-111 (NEW-D4-5 = c): note under the KPIs, "1 possible duplicate · the BOM value may count it twice" — never an amount. */
+  duplicates: string | null;
 }
 
 export interface BomViewOpts {
@@ -553,5 +563,6 @@ export function bomScreenView(code: string, state: BomState, data: BomScreenData
     compare: v === 'compare' && data.comparison ? compareView(data.comparison, t, lang, prices) : null,
     spares: v === 'spares' && data.spares ? sparesView(code, state, data.spares, t, lang, prices) : null,
     noTree: !data.bom.hasTree && v !== 'flat' ? t('No multi-level assembly is registered for this project — the flat list is the full BOM.') : null,
+    duplicates: data.bom.summary.possibleDuplicates ? possibleDuplicatesText(data.bom.summary.possibleDuplicates, lang) : null,
   };
 }

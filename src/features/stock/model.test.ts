@@ -41,10 +41,14 @@ const viewRows = (rows: any[]) =>
     min: r.min, below: r.belowMin, value: r.value, source: r.source, srcClass: `tag tag-${r.sourceTone}`, last: r.last, pinned: !!r.pinned, pinnedText: r.pinned ?? '',
   }));
 const goldenRows = (rows: any[], lang: Lang) =>
-  rows.map((r) => ({
+  rows.map((r0) => (E4_UNPINNED.has(r0.ref) ? { ...r0, pinned: false, pinnedText: '' } : r0)).map((r) => ({
     ref: r.ref, name: nameFix(lang, r.name), loc: r.loc, locType: r.locType, onHand: r.onHand, reserved: r.reserved, avail: r.avail, availColor: r.availColor, min: r.min,
     below: !!r.below, value: r.value, source: r.source, srcClass: r.srcClass, last: day(r.last), pinned: r.pinned, pinnedText: r.pinnedText,
   }));
+
+// E-4 = a (R-110): only the parts a machine actually carries are kept for the installed base. On the seed, the machines pinned by
+// ECO-2026-014 / -015 carry neither EL-HMI-15 nor FD-DET-OPT2: the prototype pinned them (09 OQ21), the goldens keep its values.
+const E4_UNPINNED = new Set(['EL-HMI-15', 'FD-DET-OPT2']);
 
 describe('Stock & storages view model (seed)', () => {
   beforeAll(async () => {

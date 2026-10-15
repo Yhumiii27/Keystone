@@ -369,7 +369,7 @@ describe('engineering register', () => {
 
 describe('P&ID mapping', () => {
   it('maps an unmapped tag to a candidate, unlinks it; client scope and non-candidates refused; outside refused', async () => {
-    const [cand] = (await pidCandidates(HLT, 'TT-102')).filter((c) => c.status === 'validated');
+    const [cand] = (await pidCandidates(HLT, 'TT-102')).rows.filter((c) => c.status === 'validated' && c.inBom);
     await mapPidTag(HLT, 'TT-102', cand.ref, A.englead);
     let v = (await getPidValidation(HLT))!;
     expect(v.tags.find((t) => t.tag === 'TT-102')).toMatchObject({ partRef: cand.ref, status: 'linked' });
@@ -378,7 +378,12 @@ describe('P&ID mapping', () => {
     v = (await getPidValidation(HLT))!;
     expect(v.tags.find((t) => t.tag === 'TT-102')!.status).toBe('unmapped');
     await expect(mapPidTag(HLT, 'T-101', 'EQ-CRN-250T', A.englead)).rejects.toThrow(/Client-supplied/);
-    await expect(mapPidTag(HLT, 'TT-102', 'KS-STL-0450', A.englead)).rejects.toThrow(/not a BOM article of a compatible type/);
+    // E-6 (R-108): any catalogue article may be linked (KS-STL-0450 was refused as "not a BOM article of a compatible type");
+    // an unknown reference is still refused.
+    await expect(mapPidTag(HLT, 'TT-102', 'NOPE-999', A.englead)).rejects.toThrow(/not in the catalogue/);
+    await mapPidTag(HLT, 'TT-102', 'KS-STL-0450', A.englead);
+    expect((await getPidValidation(HLT))!.tags.find((t) => t.tag === 'TT-102')!.partRef).toBe('KS-STL-0450');
+    await mapPidTag(HLT, 'TT-102', null, A.englead);
     await expect(mapPidTag(HLT, 'TT-102', cand.ref, A.pm)).rejects.toThrow(/outside your workspace/);
   });
 });

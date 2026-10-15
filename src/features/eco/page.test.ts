@@ -133,10 +133,13 @@ describe('/reference/drawings', () => {
     session.role = 'englead';
     const p = await dwg({ state: 'released', q: 'bracket', dwg: 'DWG-MC-0031-2' });
     const primary = p.PageHeader.props.primary as El;
-    expect(primary.props).toMatchObject({ label: 'Sync vault', context: '#026 · Harbor Line Terminal Expansion' });
+    // R-153 (X-10): no project sub-line; the project a "Current project" run is attached to is named in that option.
+    expect(primary.props).toMatchObject({ label: 'Sync vault' });
+    expect(primary.props.context).toBeUndefined();
     const form = primary.props.form as { title: string; submit: string; kind: string; fields: { id: string; options: { value: string; label: string }[] }[] };
     expect([form.title, form.submit, form.kind, form.fields.map((f) => f.options.map((o) => `${o.value}=${o.label}`))]).toEqual([
-      'Sync vault', 'Synchronise', 'run', [['solidworks_3dx=SolidWorks 3DX vault', 'see_electrical=SeeElectrical', 'both=Both'], ['current_project=Current project', 'all_projects=All projects']],
+      'Sync vault', 'Synchronise', 'run',
+      [['solidworks_3dx=SolidWorks 3DX vault', 'see_electrical=SeeElectrical', 'both=Both'], ['current_project=Current project · #026 · Harbor Line Terminal Expansion', 'all_projects=All projects']],
     ]);
     const view = p.DrawingsRegister.props.view as DrawingsView;
     expect([view.filter, view.q, view.rows.map((r) => r.number)]).toEqual(['released', 'bracket', ['DWG-MC-0031-2']]);

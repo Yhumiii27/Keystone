@@ -4073,7 +4073,7 @@
     "b": "1",
     "kind": "Substitution",
     "tagClass": "tag tag-outline",
-    "delta": "—"
+    "delta": "+€750"
    },
    {
     "line": "ASM-CTL-800 / FD-DET-OPT → FD-DET-OPT2",
@@ -4082,7 +4082,7 @@
     "b": "2",
     "kind": "Substitution",
     "tagClass": "tag tag-outline",
-    "delta": "—"
+    "delta": "+€12"
    },
    {
     "line": "ASM-CTL-800 / CTL-WIND-SN",
@@ -4103,7 +4103,7 @@
     "delta": "+€4,720"
    }
   ],
-  "total": "+€19,180 per crane",
+  "total": "+€19,942 per crane",
   "from": "B",
   "to": "C"
  },
