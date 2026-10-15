@@ -3,8 +3,8 @@
 // in this context or the prototype left parameterised strings in English:
 // - approver role "Direction" (management) is "Sens" in the shared dictionary (the connector form's direction
 //   field), so circuit roles go through `roleT`;
-// - "Opening Codex · project HLT-026", "PID-HLT-026 · new revision E", "1 selected", "Approve in Codex · {role} ·
-//   {name}" (the prototype translated neither the word "project", the revision banner, the singular nor the role);
+// - "PID-HLT-026 · new revision E", "1 selected", "Approve in Codex · {role} · {name}" (the prototype translated neither
+//   the revision banner, the singular nor the role);
 // - Keystone-created records (deposits, minutes): typed titles and tags are translated only on an exact dictionary
 //   match (`exactT`), never segment by segment.
 import { approveLabelText } from '@/domain/documents';
@@ -28,9 +28,6 @@ export const circuitT = (labels: readonly string[], t: T, lang: Lang) => labels.
 
 /** Free text typed in Keystone: as typed, or a seeded string's exact dictionary entry (R-148: the shared helper). */
 export const exactT = (s: string, lang: Lang) => dataText(s, lang);
-
-/** Toast "Opening Codex · project HLT-026" (`openCodex`). */
-export const openingCodexProjectText = (code: string, lang: Lang) => (fr(lang) ? `Ouverture de Codex · projet ${code}` : `Opening Codex · project ${code}`);
 
 /** Deposit banner "PID-HLT-026 · new revision E" (EN source from the domain). */
 export const revisionContextT = (english: string, lang: Lang) => (fr(lang) ? english.replace(' · new revision', ' · nouvelle révision') : english);

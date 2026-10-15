@@ -1,7 +1,9 @@
 // Delivery 8, lot cost-change — R-069 (P-6c): the "Change control board" threshold of Settings. The Server Function for the
-// 8 personas (the client is sent home, the member reads Settings, the other workspace roles are refused, the portfolio
-// director edits), malformed input, the audit row in the viewer's name, the view model and "Reset to defaults" (50 k€).
+// 9 personas (the client is sent home, a role without Settings in its workspace — the member, Finance — reads it, the other
+// workspace roles are refused, the portfolio director edits), malformed input, the audit row in the viewer's name, the view
+// model and "Reset to defaults" (50 k€).
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { canSee } from '@/config/role-screens';
 import type { RoleKey } from '@/config/screens';
 
 const viewer = { role: 'director' as RoleKey, lang: 'en' as 'en' | 'fr' };
@@ -17,6 +19,7 @@ vi.mock('@/server/session', async () => {
 });
 
 import { revalidatePath } from 'next/cache';
+import { PERSONAS } from '@/config/personas';
 import { makeT } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
@@ -26,7 +29,8 @@ import { getSettings } from '@/server/dal/settings';
 import { resetSettingsAction, setCcbThresholdAction } from './actions';
 import { settingsView } from './model';
 
-const ROLES: RoleKey[] = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'];
+// Every persona, Finance (R-044) included; the director is the first persona (the value the others must leave untouched).
+const ROLES: RoleKey[] = PERSONAS.map((p) => p.role);
 
 beforeAll(async () => setDb(await openDatabase()), 60_000);
 beforeEach(() => {
@@ -41,7 +45,7 @@ describe('R-069 — Settings › Change control board threshold', () => {
       viewer.role = role;
       if (role === 'client') {
         await expect(setCcbThresholdAction('80')).rejects.toThrow('NEXT_REDIRECT');
-      } else if (role === 'member') {
+      } else if (!canSee(role, 'settings')) {
         expect(await setCcbThresholdAction('80')).toEqual({ error: 'Settings are read-only for you' });
       } else if (role !== 'director') {
         expect(await setCcbThresholdAction('80')).toEqual({ error: 'Settings are edited by the portfolio director' });

@@ -131,3 +131,7 @@ Checks: `npm run typecheck` clean; eslint clean on every changed file; `scripts/
 7. **R-134.** The form keeps the prototype's labels ("Financial return" scores the "Margin / NPV" axis); rename to the ranking's axis names? Re-scoring overwrites the seeded Resource fit / Client priority with the defaults if the user leaves them.
 8. **R-135.** L-7 (a) read as "stage colour" for the tooltip tag (inferred from (a) ≠ (c)); confirm. The grey marker ("Closed / cancelled") also covers an execution project without a health yet — give it its own style?
 9. **R-136.** Window bounds (Jan 2020 – Oct 2035), round-to-nearest-quarter centring and the year on the first column are Keystone defaults; "now" stays PG_NOW until R-013.
+
+## Integration review fixes
+
+- Dead code removed: `openingCodexProjectText` (`src/features/docs/i18n.ts`, replaced by the real Codex links of R-033) and its header bullet. The prototype FR rule `^Opening Codex · (.+)$` stays in `src/i18n/fr-rules.ts`.

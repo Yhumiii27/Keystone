@@ -298,3 +298,4 @@ independent of the other lots' tables).
 ## Integration review fixes
 
 - R-177: `docs/EXPLOITATION.md` § 8 lists the delivery-8 jobs `cursus-directory`, `cursus-events-purge` and `codex-index`, and § 7 says the Cursus directory import exists but stays dormant until `CURSUS_DIRECTORY=on` (guard `src/domain/jobs-runbook.test.ts`: every job of `JOB_SCHEDULES` is in the § 8 table).
+- R-175 / R-168: the files-rescan job now changes a file's scan status and writes its audit row in one transaction per file (row locked with `for update`); a failed audit leaves the status for the next run, which then audits the block or release. The quarantine note and the logs follow the commit (`src/server/storage/rescan-atomic.test.ts`).

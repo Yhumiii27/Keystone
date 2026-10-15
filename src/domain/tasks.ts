@@ -277,9 +277,6 @@ export function hoursBar(loggedH: number, estimateH: number): { share: number; o
   return { share: estimateH > 0 ? Math.min(loggedH / estimateH, 1) : loggedH > 0 ? 1 : 0, over: loggedH > estimateH };
 }
 
-/** Actual labour cost of the logged hours (cost note): round(logged × rate). */
-export const laborCost = (loggedH: number, rate: number) => Math.round(loggedH * rate);
-
 /** Plan card "Total float": "— (complete)" when the activity has no float (finished), else signed days ("-27d", "+3d"). */
 export const floatText = (tf: number | null) => (tf == null ? '— (complete)' : (tf > 0 ? '+' : '') + tf + 'd');
 

@@ -329,3 +329,4 @@ en_cours (built part merged; §6–§7 open); R-178 → en_cours (placeholders a
   1 Nov 2026"); Activity & integrations and its export mask the "Rate card" audit changes and older feed events with values
   ("•••") for the roles without `canSeeRates` (`ratesMaskedAudit` / `ratesMaskedActivity` in `src/domain/hr.ts`;
   `src/features/admin/d8-rate-audit-mask.test.ts`, 9 personas).
+- Dead code removed: `laborCost` (`src/domain/tasks.ts`) and its two `tasks.test.ts` assertions; the cost note uses the dated-rate valuation (R-083, `costNote`).
