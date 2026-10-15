@@ -82,6 +82,9 @@ describe('verdict.modifie and demande.decision', () => {
     expect(parseCursusEvent(env('verdict.modifie', {}))).toMatchObject({ ok: false });
     expect(parseCursusEvent(env('demande.decision', { demande: 42, statut: 'VALIDEE' }))).toMatchObject({ ok: true, event: { kind: 'request', data: { demande: 42, statut: 'VALIDEE' } } });
     expect(parseCursusEvent(env('demande.decision', { statut: 'VALIDEE' }))).toMatchObject({ ok: false });
+    // R-173: nothing but the request and its decision is kept.
+    const extra = parseCursusEvent(env('demande.decision', { demande: 'D-7', statut: 'REFUSEE', commentaire: 'Passeport expiré', matricule: 'EMP-0018' }));
+    expect(extra.ok && extra.event.data).toEqual({ demande: 'D-7', statut: 'REFUSEE' });
   });
 });
 

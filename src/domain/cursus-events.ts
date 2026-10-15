@@ -8,7 +8,7 @@
 // - absence.validee  { matricule, start (or debut), end (or fin), nature, id? } — PROVISIONAL (R-031): reduced at once to
 //                    Leave or Absence; the nature is never stored (R-173). Replacement key: Cursus's id, else matricule + dates.
 // - verdict.modifie  { chantier, … } — a site's people Go / No Go changed: Keystone refreshes that site (HTTP mode).
-// - demande.decision { demande, statut, … } — a decision on a travel request: stored only.
+// - demande.decision { demande, statut } — a decision on a travel request: stored only (other fields dropped).
 // Any other type is accepted and ignored (Cursus may add types before Keystone reads them).
 import { z } from 'zod';
 import { absenceKey, isIsoDate } from './absences';
@@ -54,8 +54,9 @@ const absenceData = z.object({
   id: ident(100).optional(),
 });
 
-const verdictData = z.object({ chantier: ident(100) }).passthrough();
-const requestData = z.object({ demande: z.union([ident(100), z.number().int().nonnegative()]) }).passthrough();
+const verdictData = z.object({ chantier: ident(100) });
+// R-173 (minimisation): only the request and its decision are kept, never other fields Cursus may add.
+const requestData = z.object({ demande: z.union([ident(100), z.number().int().nonnegative()]), statut: z.string().trim().max(40).optional() });
 
 interface EventBase {
   id: string;

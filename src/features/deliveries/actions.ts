@@ -145,12 +145,11 @@ async function decide(code: string, number: unknown, decision: QcDecision, remar
   }
   // R-096 / R-015: the buyer (else procurement) and the project's leads learn of rejected goods, the buyer and the director
   // of an invoice the match now blocks — after the commit, never undoing the decision (bell only, X-6).
-  if (invoicesBefore) {
-    try {
-      await notifyReceiptDecision(r.number, invoicesBefore, ok.viewer);
-    } catch (e) {
-      logError('decideReceipt · notifications', e);
-    }
+  // Without the invoices read before, only the rejection can be told (no invoice is seen turning blocked).
+  try {
+    await notifyReceiptDecision(r.number, invoicesBefore ?? new Map(), ok.viewer);
+  } catch (e) {
+    logError('decideReceipt · notifications', e);
   }
   refresh();
   const { t, lang } = await getI18n();
