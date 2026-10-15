@@ -26,6 +26,10 @@
   {
    "date": "2026-10-15",
    "text": "Livraison 8 : lots 5 et 6 intégrés et vérifiés (achats et ingénierie, connecteurs Vigie et Cursus) — 11 points faits, 9 restent en cours (en attente de Vigie, Cursus, Sage X3 ou d’un arbitrage). Suite complète : 3 696 tests verts."
+  },
+  {
+   "date": "2026-10-15",
+   "text": "Livraison 8 : lots 7 et 8 intégrés et vérifiés (documents et portefeuille, travail et planning) — 11 points faits, 7 restent en cours (Codex, Microsoft 365, annuaire Cursus, rétention de la corbeille, import P&ID). Suite complète : 3 866 tests verts. Le lot 9 (qualité et chantier) est en construction."
   }
  ],
  "items": [
@@ -455,7 +459,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 8",
-    "note": "Livraison 8 : avis des demandes de modification (lot coûts) et des connecteurs (réceptions refusées, NC fournisseur) faits ; autres avis par les lots suivants."
+    "note": "Livraison 8 : avis des demandes de modification, des réceptions refusées, des tâches affectées et des réunions faits ; d’autres avis restent à faire."
    }
   },
   {
@@ -962,7 +966,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : côté Keystone du connecteur Codex (liens, état réel, lecture de l’index toutes les heures) ; l’API Codex (D-1), le formulaire de dépôt (R-125) et les téléchargements restent à faire."
    }
   },
   {
@@ -1087,7 +1092,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : libellés Outlook / Teams fidèles et accusés de lecture dans Keystone ; la synchronisation Outlook attend l’accès Graph de la DSI."
    }
   },
   {
@@ -1863,7 +1869,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : positions après restauration (emplacements fantômes) ; 30 jours, 20 entrées et droits PM + directeur restent à confirmer (S-5)."
    }
   },
   {
@@ -1942,8 +1949,9 @@
     "src/features/meetings/meetings.golden.test.ts compare avec le prototype : les tests dorés seront à mettre à jour (S-12), d’où un effort M plutôt que S"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : tâches de suivi des actions de compte rendu avec l’échéance saisie (S-12)."
    }
   },
   {
@@ -2564,7 +2572,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : la tâche de recherche part aux achats (P-8b), « Nommer la personne » ; créer une nouvelle personne attend l’annuaire Cursus (R-027)."
    }
   },
   {
@@ -2587,8 +2596,9 @@
     "src/features/requests/request-row-actions.tsx:47-51 bouton « Re-request » seulement si isRejected ; aucune autre surface (grep Re-request)"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8, lot travail et planning : une demande retirée peut être relancée (P-8c)."
    }
   },
   {
@@ -3330,8 +3340,9 @@
     "Fait : src/features/team/model.ts:144 utilise dueWithinDays(…, 30) (src/domain/kpis.ts:354, test kpis.test.ts:202) ; le champ dueWithin30 de src/domain/team.ts:129-150 et son commentaire « Kept as is » sont obsolètes"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : date de réception d’une interface (Q-4)."
    }
   },
   {
@@ -3638,8 +3649,9 @@
     "DECISIONS.md:204 D-2 = Plus tard"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : l’historique reste dans Codex — fiche, révision courante et circuit en cours seulement ; journal de téléchargement Keystone supprimé (D-2)."
    }
   },
   {
@@ -3665,7 +3677,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : relations Livrable, Commande et Réserve cliquables ; les ancres des lignes de réserve arrivent avec le lot qualité et chantier (R-117)."
    }
   },
   {
@@ -3831,8 +3844,9 @@
     "src/server/dal/prioritisation.ts:63 axes du classement [fit, margin, risk, res, client]"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8, lot documents et portefeuille : une proposition se note sur les 5 axes du classement (L-5a)."
    }
   },
   {
@@ -3858,8 +3872,9 @@
     "src/components/charts/projects-map.tsx:296 tabIndex={-1} sur le svg ; marqueurs <g> l.309-323 sans tabIndex ni onKeyDown (souris seulement)"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : couleur d’étape sur l’étiquette, légende « Clos / annulé », marqueurs au clavier (L-7)."
    }
   },
   {
@@ -3884,8 +3899,9 @@
     "src/app/(app)/portfolio/schedule/page.tsx:14-17 seul le paramètre ?filter est lu, aucun décalage de fenêtre"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : planning de portefeuille sur une fenêtre glissante de 24 mois, pas trimestriel (L-8)."
    }
   },
   {
@@ -3939,8 +3955,9 @@
     "src/server/dal/documents.ts:202,232 « shared » = type isClientDeliverable et statut released : les contrats, comptes rendus et rapports HSE n’entrent pas dans la liste partagée"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : catégories de documents du portail client calculées depuis l’index Codex (L-9) ; « Contrat & avenants » et « Rapports mensuels » attendent le responsable produit."
    }
   },
   {
@@ -4256,8 +4273,9 @@
     "vérifié : grep mention → seuls le type de notification 'mention' (codes.ts:290) et l’icône existent, aucun parseur ; src/server/db/schema/organisation.ts:59 users.role unique (un utilisateur par persona)"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : mentions @ dans les commentaires de tâche, avis à la personne mentionnée (R-8b)."
    }
   },
   {
@@ -4281,8 +4299,9 @@
     "vérifié : draggable/onDrop seulement dans admin/plumbing-islands.tsx et docs/deposit-wizard.tsx (dépôt de fichiers) ; setTaskStatusAction existe déjà (src/features/mywork/actions.ts:59), donc effort S"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : glisser-déposer sur le Tableau pour changer le statut d’une tâche (R-8c)."
    }
   },
   {
@@ -4334,8 +4353,9 @@
     "vérifié : moveStageAction n’est appelé que depuis register.tsx:109 ; DELIVERY-6.md §6 « A forced stage move in the Projects register shows no success toast »"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : messages de confirmation manquants ajoutés (X-9, L-1)."
    }
   },
   {
@@ -4888,7 +4908,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : noms des responsables sur le Plan ; le lien CR ↔ activité était R-062 ; l’import P&ID reste suspendu tant que les imports sont coupés (D-7b)."
    }
   },
   {
