@@ -95,8 +95,10 @@ describe('applyCodexIndex (index read, D-2 scope)', () => {
         approvals: [{ step: 0, signedOn: '2026-10-01' }] }),
     ]));
     expect(r.applied).toBe(1);
+    // Integration review: a record waiting for a project or type of Keystone carries its codes (`codex_index_awaiting`).
     expect(r.skipped).toEqual([
-      { number: 'RPT-XYZ-001', reason: 'unknown project XYZ-999' }, { number: 'ZZZ-HLT-001', reason: 'unknown document type ZZZ' },
+      { number: 'RPT-XYZ-001', reason: 'unknown project XYZ-999', project: 'XYZ-999', type: 'RPT' },
+      { number: 'ZZZ-HLT-001', reason: 'unknown document type ZZZ', project: 'HLT-026', type: 'ZZZ' },
       { number: 'BAD-HLT-001', reason: 'malformed record' }, { number: '?', reason: 'malformed record' },
     ]);
     const numbers = (await listVaultDocuments()).map((d) => d.number);

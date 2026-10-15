@@ -98,7 +98,7 @@ const D2_COUNTS: Record<string, number> = {
  */
 const D3_COUNTS: Record<string, number> = {
   document_types: 28, document_type_circuit_steps: 65, document_approver_assignments: 10, documents: 42, document_revisions: 68, document_approvals: 96,
-  document_links: 18, document_acknowledgements: 7, document_deposits: 0, document_index_syncs: 1,
+  document_links: 18, document_acknowledgements: 7, document_deposits: 0, document_index_syncs: 1, codex_index_awaiting: 0,
   contracts: 1, contract_amendments: 2, contract_bonds: 2, billing_plans: 6, payment_milestones: 21, customer_invoices: 3, portfolio_cash_forecasts: 6,
   meetings: 6, meeting_participants: 25, meeting_agenda_points: 14, meeting_lines: 18, meeting_transcripts: 3, meeting_transcript_proposals: 13,
   client_questions: 5, stakeholders: 8, raci_matrices: 1, raci_columns: 6, raci_rows: 7, raci_cells: 35, project_interfaces: 7,
