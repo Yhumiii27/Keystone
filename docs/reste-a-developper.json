@@ -22,6 +22,10 @@
   {
    "date": "2026-10-15",
    "text": "Livraison 8 : lots 1 à 4 intégrés et vérifiés sur main-2a2fep (journal d’audit et traduction, plateforme d’exploitation, rôles et taux, demandes de modification et coûts) — 17 points faits, 9 restent en cours (parties en attente du responsable produit, de l’hébergement ou de données). Les 5 autres lots sont en construction."
+  },
+  {
+   "date": "2026-10-15",
+   "text": "Livraison 8 : lots 5 et 6 intégrés et vérifiés (achats et ingénierie, connecteurs Vigie et Cursus) — 11 points faits, 9 restent en cours (en attente de Vigie, Cursus, Sage X3 ou d’un arbitrage). Suite complète : 3 696 tests verts."
   }
  ],
  "items": [
@@ -451,7 +455,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 8",
-    "note": "Livraison 8 : avis des demandes de modification faits (X-6a) ; autres avis par les lots suivants."
+    "note": "Livraison 8 : avis des demandes de modification (lot coûts) et des connecteurs (réceptions refusées, NC fournisseur) faits ; autres avis par les lots suivants."
    }
   },
   {
@@ -664,7 +668,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8, lot connecteurs : côté Keystone du connecteur Vigie (élagage du miroir, contrat, liens projet) ; l’API réelle attend Vigie (V-2, V-3a)."
    }
   },
   {
@@ -692,7 +697,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : section ECO du contrat d’interface Vigie rédigée (NEW-D4-1, NEW-VIGIE-1) ; le module reste à construire par Vigie."
    }
   },
   {
@@ -718,7 +724,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : moitié Keystone du filtre par projet des listes Vigie (V-3b) ; le filtre côté Vigie reste à faire."
    }
   },
   {
@@ -772,7 +779,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : import de l’annuaire Cursus côté Keystone (matricule ↔ personne), en veille (CURSUS_DIRECTORY=off) tant que Cursus n’expose pas son annuaire."
    }
   },
   {
@@ -825,8 +833,9 @@
     "BACKLOG.md §1 bis : Cursus émet ces événements vers POST ${KEYSTONE_URL}/events, contrat non défini"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : point d’entrée POST /api/integrations/cursus/events (clé dédiée CURSUS_EVENTS_KEY, idempotent, purge planifiée)."
    }
   },
   {
@@ -888,7 +897,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : absences reçues de Cursus en deux types simples (Congé, Absence), « Sync Lucca » retiré ; l’envoi réel par Cursus reste à brancher."
    }
   },
   {
@@ -990,7 +1000,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : simulation Sage X3 honnête (« Import simulé (Sage X3 non connecté) ») ; le vrai connecteur attend les extractions X3 (format, fréquence, périmètre — I-3b)."
    }
   },
   {
@@ -2719,7 +2730,8 @@
    ],
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8, lot achats et ingénierie : annulation avec motif d’une commande pas encore passée (SC-3a, P-5c), avis à l’acheteur ; l’annulation d’une commande passée attend l’arbitrage du responsable produit."
    }
   },
   {
@@ -2747,8 +2759,9 @@
     "src/server/dal/notifications.ts:98 createNotification existe et peut servir pour l’alerte acheteur"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : réception refusée → NC fournisseur Vigie pré-remplie et alerte à l’acheteur (NEW-D4-3, SC-3b)."
    }
   },
   {
@@ -2918,8 +2931,9 @@
     "docs/DELIVERY-6.md §5 : E-1a / E-1b non appliqués"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : validation des articles par le responsable ingénierie ou le directeur, contrôle export explicite (E-1a, E-1b)."
    }
   },
   {
@@ -2976,8 +2990,9 @@
     "revision_diffs / revision_diff_lines n’ont pas de writer (seed seulement, src/server/db/seed/catalogue.ts)"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : remplacement chiffré entre deux révisions (E-2b)."
    }
   },
   {
@@ -3087,8 +3102,9 @@
     "src/server/dal/bom.ts:341 addBomLine réutilisable pour l’ajout à la nomenclature"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : recherche de l’article d’un repère P&ID dans tout le catalogue (E-6)."
    }
   },
   {
@@ -3114,8 +3130,9 @@
     "src/server/dal/pid-import.ts (stagePidImport / applyPidImport) et src/features/pid/import-dialog.tsx, pid-buttons.tsx:86-93 : ré-import réel déjà disponible, non soumis à IMPORTS_ENABLED"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : écart de révision P&ID avec Codex signalé, ré-import proposé (A-9)."
    }
   },
   {
@@ -3141,8 +3158,9 @@
     "machinePartRevisions n’a qu’un writer de seed (src/server/db/seed/aftersales.ts:50) : configuration non tenue à jour (E-8)"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : seules les pièces montées sont protégées pour le parc installé (E-4)."
    }
   },
   {
@@ -3169,8 +3187,9 @@
     "docs/decisions/questions.json NEW-D4-5 option c : « Le doublon possible reste signalé jusqu'à la réponse du bureau d'études »"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : doublon possible EQ-CRN-250T / ASM-RMG-250 signalé (NEW-D4-5 c)."
    }
   },
   {
@@ -4122,8 +4141,9 @@
     "src/server/db/codes.ts:404-406 PG_NOW / NOW_ISO fixes"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : coût garantie de l’année civile, extension en vigueur (NEW-D5-2)."
    }
   },
   {
@@ -4343,8 +4363,9 @@
     "X-10 : « Le sous-titre n’apparaît que lorsque la saisie est vraiment rattachée au projet »"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : plus de nom de projet sur les formulaires qui ne visent pas un projet (X-10)."
    }
   },
   {
@@ -4397,8 +4418,9 @@
     "vérifié : grep « No machine in this zone » → aucune occurrence dans src ni dans les dictionnaires"
    ],
    "progress": {
-    "state": "en_cours",
-    "delivery": "Livraison 8"
+    "state": "fait",
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : message de zone vide des listes de machines (X-16)."
    }
   },
   {
@@ -4898,7 +4920,8 @@
    "verdict": "ajout_critique",
    "progress": {
     "state": "en_cours",
-    "delivery": "Livraison 8"
+    "delivery": "Livraison 8",
+    "note": "Livraison 8 : partie constructible du RGPD (types d’absence sans motif, rappel DPA pour l’analyse Claude, minimisation des décisions) ; registre et durées de conservation attendent le responsable produit."
    }
   },
   {

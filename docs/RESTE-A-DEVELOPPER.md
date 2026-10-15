@@ -8,22 +8,22 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-15 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 71 faits, 53 en cours, 60 à faire, sur 184 points.
+**Avancement** : 82 faits, 42 en cours, 60 à faire, sur 184 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 17 | ≈ 136 |
-| Prochaine étape | 30 | ≈ 227 |
+| Prochaine étape | 27 | ≈ 217 |
 | À décider | 25 | ≈ 213 |
-| Plus tard | 41 | ≈ 110 |
-| **Total** | **113** | **≈ 685** |
+| Plus tard | 33 | ≈ 95 |
+| **Total** | **102** | **≈ 661** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 53 |
-| Partiel | 20 |
+| Non commencé | 43 |
+| Partiel | 19 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
 
@@ -31,19 +31,19 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 |---|---:|---:|---:|---:|---:|---:|
 | Plateforme et mise en production | 8 | 6 | 0 | 2 | 16 | 9 |
 | Authentification, utilisateurs et droits | 1 | 0 | 2 | 1 | 4 | 12 |
-| Intégrations avec les autres systèmes | 5 | 8 | 1 | 4 | 18 | 2 |
+| Intégrations avec les autres systèmes | 5 | 7 | 1 | 4 | 17 | 3 |
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 2 | 2 | 5 | 2 |
 | Planning | 1 | 0 | 3 | 2 | 6 | 2 |
 | Coûts, contrat et finance | 0 | 2 | 2 | 0 | 4 | 12 |
 | Ressources et RH | 0 | 3 | 1 | 2 | 6 | 3 |
-| Achats et stock | 2 | 2 | 2 | 0 | 6 | 3 |
-| Ingénierie et PLM | 0 | 2 | 1 | 5 | 8 | 3 |
+| Achats et stock | 2 | 1 | 2 | 0 | 5 | 4 |
+| Ingénierie et PLM | 0 | 1 | 1 | 0 | 2 | 9 |
 | Qualité, chantier et mise en service | 0 | 3 | 1 | 4 | 8 | 4 |
 | Documents | 0 | 1 | 0 | 2 | 3 | 2 |
 | Portefeuille, pilotage et indicateurs | 0 | 0 | 0 | 3 | 3 | 5 |
 | Portail client | 0 | 0 | 1 | 3 | 4 | 2 |
-| SAV et parc installé | 0 | 0 | 0 | 1 | 1 | 2 |
-| Ergonomie, langues et accessibilité | 0 | 1 | 0 | 8 | 9 | 5 |
+| SAV et parc installé | 0 | 0 | 0 | 0 | 0 | 3 |
+| Ergonomie, langues et accessibilité | 0 | 1 | 0 | 6 | 7 | 7 |
 | Dette technique | 0 | 1 | 0 | 2 | 3 | 3 |
 | Nouveaux modules demandés ou proposés (à valider) | 0 | 0 | 9 | 0 | 9 | 0 |
 
@@ -146,7 +146,7 @@ Les registres projet (risques, demandes de modification, réunions, livrables, r
 
 **R-173 · Mettre Keystone en conformité RGPD (données personnelles, conservation, sous-traitants)** — *Bloquant production · non commencé · effort M* · **en cours (Livraison 8)**  
 Keystone stocke des données personnelles (absences dont « maladie » visibles par tous les rôles qui ouvrent Congés, taux horaires, compétences, e-mails des parties prenantes, transcriptions de réunion, journaux nominatifs) et peut envoyer les transcriptions à Anthropic. Il faut tenir le registre des traitements avec le DPO, minimiser (masquer le motif d'absence, cloisonner le calendrier des congés), fixer et appliquer des durées de conservation (audit, export_log, notifications, fichiers), encadrer les droits d'accès et d'effacement, et signer les contrats de sous-traitance (hébergeur, Anthropic). Tant que ce n'est pas validé, l'analyse par Claude reste désactivée en production.  
-*Attend : DPO / DSI : registre des traitements, base légale, contrats de sous-traitance (hébergeur, Anthropic) · Sources : S-10, R-1, NEW-CURSUS-4, 00 §7.12 (Cursus : aucune donnée personnelle importée), docs/spec/10-site-docs-mywork-settings.md l.334 (notice de confidentialité), DELIVERY-6.md §2 (Analyse par Claude)*
+*Avancement : Livraison 8 : partie constructible du RGPD (types d’absence sans motif, rappel DPA pour l’analyse Claude, minimisation des décisions) ; registre et durées de conservation attendent le responsable produit. · Attend : DPO / DSI : registre des traitements, base légale, contrats de sous-traitance (hébergeur, Anthropic) · Sources : S-10, R-1, NEW-CURSUS-4, 00 §7.12 (Cursus : aucune donnée personnelle importée), docs/spec/10-site-docs-mywork-settings.md l.334 (notice de confidentialité), DELIVERY-6.md §2 (Analyse par Claude)*
 
 **R-174 · Faire auditer la sécurité avant production (test d'intrusion, veille des dépendances)** — *Bloquant production · non commencé · effort M* · **en cours (Livraison 8)**  
 Les seules revues de sécurité sont les revues internes des livraisons. Avant d'exposer une instance multi-utilisateur avec des données financières et client, il faut un test d'intrusion externe (droits par rôle et par projet, routes d'envoi de fichiers et d'import, Server Functions) et une veille automatique des vulnérabilités des dépendances (Next.js, pdfkit, exceljs, PGlite), avec une politique de mise à jour.  
@@ -162,7 +162,7 @@ Pièces jointes, transcriptions, fichiers d’import et futures photos sont écr
 
 **R-015 · Notifier les événements clés aux personnes concernées (X-6a)** — *Prochaine étape · partiel · effort M* · **en cours (Livraison 8)**  
 Créer les notifications choisies : CR soumise, NCR, livraison refusée, ECO à approuver, mention @, tâche assignée, facture bloquée, alerte d’indicateur. Elles doivent aller à l’approbateur, au demandeur, au responsable ou à la personne citée, et non à tout un rôle. Le ciblage par personne n’a de sens qu’avec de vrais comptes, car la table users n’a qu’un utilisateur par rôle.  
-*Avancement : Livraison 8 : avis des demandes de modification faits (X-6a) ; autres avis par les lots suivants. · Attend : Comptes utilisateurs réels (R-038, R-039) pour cibler des personnes plutôt que des rôles · Sources : X-6a, 01 §5.5, OQ19, 00 §7.7, DELIVERY-2.md §5, §7*
+*Avancement : Livraison 8 : avis des demandes de modification (lot coûts) et des connecteurs (réceptions refusées, NC fournisseur) faits ; autres avis par les lots suivants. · Attend : Comptes utilisateurs réels (R-038, R-039) pour cibler des personnes plutôt que des rôles · Sources : X-6a, 01 §5.5, OQ19, 00 §7.7, DELIVERY-2.md §5, §7*
 
 **R-017 · Tenir la charge avec de vrais volumes de données** — *Prochaine étape · non commencé · effort L*  
 Ajouter les index manquants sur les clés étrangères, paginer les grandes listes, éviter les lectures complètes de tables et mettre en cache les ~20 badges du menu calculés à chaque page, dont certains interrogent Cursus. Valider par un test de charge sur un jeu réaliste.  
@@ -286,7 +286,7 @@ Seuls l’organisateur et le CP du projet envoient le compte rendu ; les interne
 Chercher commandes, CR, NCR et risques sur tous les projets, chaque résultat ouvrant son projet, en filtrant les résultats selon les droits du lecteur (un client ne voit que ses projets). Aujourd’hui la recherche ignore l’utilisateur et limite ces objets au projet courant.  
 *Avancement : Livraison 8 : recherche globale sur tout le portefeuille (X-5), projet courant d’abord ; le client voit les demandes de modification de ses propres projets. · Sources : X-5, 01 OQ18, 00 §7.6, DELIVERY-1.md §4*
 
-### 2.3 Intégrations avec les autres systèmes (18 restants, 2 faits)
+### 2.3 Intégrations avec les autres systèmes (17 restants, 3 faits)
 
 **R-022 · Réconcilier les codes projet (#000, XXX000, Cursus, Vigie) dans la fiche projet** — *Bloquant production · attend le responsable produit · effort M*  
 La fiche projet doit porter et réconcilier le numéro ingénierie #000 (liste incrémentée) et le code analytique XXX000 créé dans Sage et donc imposé, au lieu de les générer. Elle doit aussi tenir la correspondance avec les identifiants Cursus (chantier K-26xx) et Vigie (K-2025-042), clé commune de tous les connecteurs.  
@@ -294,11 +294,11 @@ La fiche projet doit porter et réconcilier le numéro ingénierie #000 (liste i
 
 **R-024 · Faire construire le module ECO de Vigie avec les adresses proposées** — *Bloquant production · attend un système externe · effort M* · **en cours (Livraison 8)**  
 Le démarrage sur les vraies ECO attend le module ECO de Vigie, qui doit reprendre les routes proposées par Keystone (registre, fiche, formulaire « Nouvelle ECO » pré-rempli avec part, project, title, source=keystone). Côté Keystone : transmettre la spécification, adopter l’API réelle, vérifier de bout en bout, retirer les 6 ECO de démonstration du miroir et les mentions OPEN QUESTION V-1. D’ici là, « Ouvrir dans Vigie » et « Créer l’ECO » mènent à une page vide.  
-*Attend : Équipe Vigie : module ECO et routes /modifications-techniques, /<id>, /nouvelle · Sources : NEW-VIGIE-1, NEW-D4-1, V-1, P-7a, DELIVERY-4.md §5, §8*
+*Avancement : Livraison 8 : section ECO du contrat d’interface Vigie rédigée (NEW-D4-1, NEW-VIGIE-1) ; le module reste à construire par Vigie. · Attend : Équipe Vigie : module ECO et routes /modifications-techniques, /<id>, /nouvelle · Sources : NEW-VIGIE-1, NEW-D4-1, V-1, P-7a, DELIVERY-4.md §5, §8*
 
 **R-027 · Importer l’annuaire du personnel de Cursus (matricule ↔ personne)** — *Bloquant production · attend un système externe · effort M* · **en cours (Livraison 8)**  
 Reprendre de Cursus le matricule, le nom, l’e-mail professionnel et l’équipe, et rattacher chaque matricule à une personne Keystone, y compris les intérimaires sans compte Microsoft. Sans cette correspondance, verdicts, heures et absences reçus de Cursus restent sans nom.  
-*Attend : Nouvel accès « annuaire » côté Cursus · Sources : NEW-CURSUS-2, C-3, BACKLOG.md §1 bis, 11 §3.1, DELIVERY-5.md §5.2, §8*
+*Avancement : Livraison 8 : import de l’annuaire Cursus côté Keystone (matricule ↔ personne), en veille (CURSUS_DIRECTORY=off) tant que Cursus n’expose pas son annuaire. · Attend : Nouvel accès « annuaire » côté Cursus · Sources : NEW-CURSUS-2, C-3, BACKLOG.md §1 bis, 11 §3.1, DELIVERY-5.md §5.2, §8*
 
 **R-033 · Construire le connecteur Codex (index, approbations, dépôts, liens profonds)** — *Bloquant production · attend un système externe · effort L* · **en cours (Livraison 8)**  
 Créer src/server/integrations/codex/ sur le modèle Vigie/Cursus : miroir en lecture de l’index (révisions, statuts, téléchargements réels à la place de l’historique fabriqué), outbox des approbations signées dans Keystone vers Codex (P-7b, D-1b) et dépôt par le formulaire Codex pré-rempli (D-1a) au lieu de la création locale simulée, modes mock et http, synchro réelle, liens profonds par document et par sélection (zip), « Ouvrir / Modifier dans Codex » réels. Aujourd’hui seule l’URL de base existe.  
@@ -306,19 +306,15 @@ Créer src/server/integrations/codex/ sur le modèle Vigie/Cursus : miroir en le
 
 **R-034 · Construire le connecteur Sage X3 (extractions quotidiennes et envois)** — *Bloquant production · attend le responsable produit · effort XL* · **en cours (Livraison 8)**  
 Importer chaque jour les extractions Sage proposées par le responsable produit : fichier fournisseurs (SC-7b), stock, commandes et références X3, réceptions, factures fournisseurs et statut « Payée » (SC-2), coûts par code analytique et codes NIM. Définir ensuite ce qui repart vers X3 (commandes approuvées, annulations, mouvements de stock, factures). Aujourd’hui tout est un mock sur l’instantané du prototype et aucun planificateur ne lance d’import périodique.  
-*Attend : Partage des rôles Keystone / X3 (A-1a, avec finance, achats et logistique), extractions Sage et procédure d’achats (P-5a) · Sources : I-3b, A-1a, SC-2, SC-4b, SC-7b, NEW-D4-4, P-5c, S-6, C-2a, 00 §7.12, 08 §0, DELIVERY-4.md §6, §8, DELIVERY-6.md §6*
+*Avancement : Livraison 8 : simulation Sage X3 honnête (« Import simulé (Sage X3 non connecté) ») ; le vrai connecteur attend les extractions X3 (format, fréquence, périmètre — I-3b). · Attend : Partage des rôles Keystone / X3 (A-1a, avec finance, achats et logistique), extractions Sage et procédure d’achats (P-5a) · Sources : I-3b, A-1a, SC-2, SC-4b, SC-7b, NEW-D4-4, P-5c, S-6, C-2a, 00 §7.12, 08 §0, DELIVERY-4.md §6, §8, DELIVERY-6.md §6*
 
 **R-023 · Brancher l’API Vigie réelle (NC, HSE, ECO) et passer au numéro Vigie** — *Prochaine étape · attend un système externe · effort M* · **en cours (Livraison 8)**  
 Le miroir en lecture et les outbox sont prêts en mode mock et http sur des endpoints proposés. Il reste à les aligner sur l’API publiée par Vigie avec authentification, à faire correspondre projets Vigie et codes Keystone, à afficher le seul numéro Vigie et ouvrir la fiche par son identifiant (V-3a), et à ne plus perdre l’avancement non envoyé quand un rafraîchissement complet supprime une ECO ou une NC du miroir (suppression en cascade des outbox).  
-*Attend : API d’échange de Vigie (contrat, endpoints, authentification) · Sources : V-2, V-3a, I-3a, DELIVERY-4.md §5, §8, DELIVERY-5.md §5.1, §8 (V-3), DELIVERY-6.md §6*
+*Avancement : Livraison 8, lot connecteurs : côté Keystone du connecteur Vigie (élagage du miroir, contrat, liens projet) ; l’API réelle attend Vigie (V-2, V-3a). · Attend : API d’échange de Vigie (contrat, endpoints, authentification) · Sources : V-2, V-3a, I-3a, DELIVERY-4.md §5, §8, DELIVERY-5.md §5.1, §8 (V-3), DELIVERY-6.md §6*
 
 **R-028 · Créer le chantier Cursus depuis Keystone (un par projet)** — *Prochaine étape · attend un système externe · effort M*  
 À l’ouverture de la fiche chantier, Keystone doit créer le chantier dans Cursus (dates, lieu, équipe) et enregistrer son identifiant. Aujourd’hui cursus_chantier_id n’est jamais renseigné, donc en mode http aucun Go/No-Go réel n’est rafraîchi et les demandes de voyage sont refusées. Prérequis : la création de la fiche chantier par le chef de projet (D-3) n’existe pas non plus, seule la graine crée des fiches.  
 *Attend : Point d’API de création de chantier dans Cursus ; création de la fiche chantier dans Keystone (D-3) · Sources : NEW-CURSUS-1, D-3, C-3, DELIVERY-5.md §5.2, §8*
-
-**R-029 · Créer le point d’entrée des événements poussés par Cursus** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 8)**  
-Point d’entrée HTTP protégé par clé d’API pour heures.validees, absence.validee, demande.decision et verdict.modifie. Un renvoi remplace la semaine déjà reçue pour un même salarié sans doublon, chaque réception est tracée dans l’audit, et l’émetteur peut renvoyer en cas d’échec.  
-*Attend : Contrat d’événements à définir avec Cursus (POST /events, jeton) · Sources : NEW-CURSUS-7, NEW-CURSUS-4, NEW-CURSUS-5, BACKLOG.md §1 bis*
 
 **R-030 · Recevoir les heures validées Cursus par tâche et remplacer l’écran Heures (Lucca)** — *Prochaine étape · attend le responsable produit · effort L*  
 Recevoir les heures validées détaillées par tâche Keystone, exposer à Cursus un point de lecture des tâches affectées à un matricule pour une semaine, imputer les heures par activité et tenir un total hors projet INT-* par personne et par semaine pour la charge. L’écran devient « Heures (Cursus) » (prévu contre réalisé, anomalies) et la saisie d’heures dans Keystone disparaît (C-2b). Le lien feuilles de temps Cursus est encore « à valider » (CLAUDE.md, BACKLOG).  
@@ -326,7 +322,7 @@ Recevoir les heures validées détaillées par tâche Keystone, exposer à Cursu
 
 **R-031 · Recevoir les absences de Cursus et débrancher Lucca** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 8)**  
 Les absences validées (dates et type simple) doivent arriver de Cursus, alimenter l’écran Congés, réduire la disponibilité dans la charge et le what-if, et révéler les conflits avec la rotation chantier. Il faut aussi retirer Lucca partout : connecteur, libellés, accueil, notifications, journal d’activité.  
-*Attend : Envoi des événements absence.validee par Cursus · Sources : NEW-CURSUS-4, R-1, BACKLOG.md §1 bis, 00 §10 R-1, 11 §6.7, DELIVERY-2.md §5, §7*
+*Avancement : Livraison 8 : absences reçues de Cursus en deux types simples (Congé, Absence), « Sync Lucca » retiré ; l’envoi réel par Cursus reste à brancher. · Attend : Envoi des événements absence.validee par Cursus · Sources : NEW-CURSUS-4, R-1, BACKLOG.md §1 bis, 00 §10 R-1, 11 §6.7, DELIVERY-2.md §5, §7*
 
 **R-035 · Brancher SolidWorks PDM / 3DEXPERIENCE (plans, aperçus, « Ouvrir dans PDM »)** — *Prochaine étape · attend un système externe · effort L*  
 Synchroniser chaque heure les données des plans (numéro, titre, révision, état, article lié) et l’aperçu PDF des révisions diffusées, avec un vrai lien « Ouvrir dans PDM » depuis Plans et P&ID et les aperçus des feuilles P&ID (X-15). Aujourd’hui la synchro du coffre est simulée et recopie le volume précédent. Le périmètre dépend du référentiel articles (A-1b).  
@@ -346,7 +342,7 @@ Keystone créera le chantier Cursus (NEW-CURSUS-1), mais rien n'est décidé pou
 
 **R-025 · Pré-remplir les signalements Vigie et filtrer ses listes par projet** — *Plus tard · attend un système externe · effort S* · **en cours (Livraison 8)**  
 Keystone envoie déjà projet, article, activité, titre et lieu au formulaire /signaler, mais Vigie ne lit que le lieu. Il reste à ajouter le filtre projet aux liens vers les listes Vigie, puis à valider de bout en bout quand Vigie aura évolué ; dépend de la correspondance des codes projet (R-022).  
-*Attend : Évolution de Vigie (lecture des paramètres et filtre par projet Keystone) · Sources : V-3b, NEW-SYS-1, DELIVERY-5.md §5.1, §8 (V-3)*
+*Avancement : Livraison 8 : moitié Keystone du filtre par projet des listes Vigie (V-3b) ; le filtre côté Vigie reste à faire. · Attend : Évolution de Vigie (lecture des paramètres et filtre par projet Keystone) · Sources : V-3b, NEW-SYS-1, DELIVERY-5.md §5.1, §8 (V-3)*
 
 **R-026 · Afficher la note fournisseur A/B/C évaluée dans Vigie** — *Plus tard · attend un système externe · effort M*  
 L’évaluation des fournisseurs (ISO 9001 §8.4) est tenue dans Vigie. Keystone doit relire la note et ses indicateurs par le miroir Vigie, au lieu des pourcentages et notes figés du prototype.  
@@ -367,6 +363,10 @@ Codex, Lucca, Sage X3, SolidWorks PDM, MS Project, Outlook, Teams et SMTP affich
 **~~R-020 · Configurer les connecteurs hors de l’application, par l’IT (D-7a)~~** — *Prochaine étape · partiel · effort S* · **fait (Livraison 7)**  
 Le dialogue « Configurer » est déjà en lecture seule, mais « Ajouter un connecteur » écrit encore un connecteur depuis l’écran Intégrations, et rien ne permet à l’IT d’activer, désactiver ou régler un connecteur hors des variables d’environnement Vigie et Cursus. Retirer l’ajout dans l’interface et prévoir un fichier de configuration lu au démarrage ou un script d’administration.  
 *Sources : D-7a, 01 §5.9, docs/delivery-6/notes-admin-settings.md §2.1*
+
+**~~R-029 · Créer le point d’entrée des événements poussés par Cursus~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 8)**  
+Point d’entrée HTTP protégé par clé d’API pour heures.validees, absence.validee, demande.decision et verdict.modifie. Un renvoi remplace la semaine déjà reçue pour un même salarié sans doublon, chaque réception est tracée dans l’audit, et l’émetteur peut renvoyer en cas d’échec.  
+*Avancement : Livraison 8 : point d’entrée POST /api/integrations/cursus/events (clé dédiée CURSUS_EVENTS_KEY, idempotent, purge planifiée). · Attend : Contrat d’événements à définir avec Cursus (POST /events, jeton) · Sources : NEW-CURSUS-7, NEW-CURSUS-4, NEW-CURSUS-5, BACKLOG.md §1 bis*
 
 ### 2.4 Projets, cycle de vie et modèles par type de machine (5 restants, 2 faits)
 
@@ -536,7 +536,7 @@ Retirer les échelles 1–4, 1–3 et Oui/Non du formulaire « Ajouter une comp�
 Le seuil se règle dans les Paramètres, inclut la valeur limite et distingue sur- et sous-déclaration ; à reprendre dans le futur écran Heures (Cursus). Aujourd’hui il est fixe, strict, et les deux cas ont la même couleur.  
 *Avancement : Livraison 8 : seuil d’écart d’heures réglable dans Paramètres (R-6b, 10 % par défaut). · Sources : R-6b, 06 OQ10, DELIVERY-2.md §4*
 
-### 2.8 Achats et stock (6 restants, 3 faits)
+### 2.8 Achats et stock (5 restants, 4 faits)
 
 **R-093 · Reprendre la liste des fournisseurs de Sage X3 et supprimer la saisie libre** — *Bloquant production · attend le responsable produit · effort M*  
 Les fournisseurs doivent venir du fichier X3 (avec le code X3) et être choisis dans une liste pour les articles, les consultations, les commandes et les factures. Les nouveaux fournisseurs se créent dans X3. Aujourd’hui ils sont saisis librement, et un fabricant inconnu crée un fournisseur, ce qui produit des doublons et empêche le rapprochement avec X3.  
@@ -548,11 +548,7 @@ Le responsable produit doit transmettre la procédure d’achats (montants et ci
 
 **R-095 · Annuler une commande d’achat avec motif (brouillon, puis commande passée selon arbitrage)** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 8)**  
 Il faut ajouter « Annuler » avec un motif obligatoire. Pour un brouillon, l’auteur annule dans Keystone ; ce cas est cohérent avec P-5c et SC-3a et peut se faire tout de suite. Pour une commande passée, les deux réponses se contredisent : SC-3a fait annuler le CP ou le directeur dans Keystone avec report vers X3, alors que P-5c fait annuler dans Sage X3 et Keystone reprend le statut. Le responsable produit doit trancher, puis on ajoute « Solder le reste à livrer » (SC-3a).  
-*Attend : Arbitrage P-5c / SC-3a pour l’annulation d’une commande passée ; report ou reprise du statut via le connecteur X3 (R-034) · Sources : SC-3a, P-5c, I-3b, 08 OQ12, DELIVERY-4.md §6, §8*
-
-**R-096 · Réception refusée : NC fournisseur Vigie pré-remplie et alerte acheteur** — *Prochaine étape · non commencé · effort S* · **en cours (Livraison 8)**  
-Sur un refus total ou partiel à la réception, proposer « Déclarer la NC fournisseur dans Vigie », pré-rempli avec le fournisseur, la commande, l’article et la quantité refusée, et notifier l’acheteur. Aujourd’hui le refus ne fait que mettre la marchandise en quarantaine. Le côté Keystone (lien et notification) peut se construire dès maintenant, mais le pré-remplissage dépend de Vigie.  
-*Attend : Vigie doit accepter les paramètres fournisseur, commande et quantité dans /signaler (V-3) · Sources : SC-3b, NEW-D4-3, V-3b, DELIVERY-4.md §6, §8, DELIVERY-5.md §5.1*
+*Avancement : Livraison 8, lot achats et ingénierie : annulation avec motif d’une commande pas encore passée (SC-3a, P-5c), avis à l’acheteur ; l’annulation d’une commande passée attend l’arbitrage du responsable produit. · Attend : Arbitrage P-5c / SC-3a pour l’annulation d’une commande passée ; report ou reprise du statut via le connecteur X3 (R-034) · Sources : SC-3a, P-5c, I-3b, 08 OQ12, DELIVERY-4.md §6, §8*
 
 **R-092 · Arbitrer le partage achats / stock entre Keystone et Sage X3** — *À décider · attend le responsable produit · effort M*  
 Le responsable produit doit décider avec la finance, les achats et la logistique qui saisit et qui fait foi pour les commandes et le stock. Il a classé la question « Bloquant production ». Aujourd’hui Keystone crée les commandes et les mouvements, et l’envoi vers X3 est simulé. Cette décision conditionne le connecteur X3 (R-034) et les règles de validation (R-094).  
@@ -561,6 +557,10 @@ Le responsable produit doit décider avec la finance, les achats et la logistiqu
 **R-100 · Décider comment les devis fournisseurs entrent dans les consultations** — *À décider · attend le responsable produit · effort M*  
 Une consultation créée dans Keystone ne reçoit jamais de devis : elle ne peut être ni comparée ni attribuée, et le KPI « délai moyen » reste vide. Avant de construire l’écrivain, le responsable produit doit choisir entre la saisie par l’acheteur, l’import X3 et un portail fournisseur.  
 *Attend : Réponse du responsable produit (SC-7a « je dois me renseigner ») · Sources : SC-7a, SC-7, 08 #3, #4, DELIVERY-4.md §6, §8, DELIVERY-6.md §8 A-12, docs/delivery-6/notes-whatif-kpis.md §5.6*
+
+**~~R-096 · Réception refusée : NC fournisseur Vigie pré-remplie et alerte acheteur~~** — *Prochaine étape · non commencé · effort S* · **fait (Livraison 8)**  
+Sur un refus total ou partiel à la réception, proposer « Déclarer la NC fournisseur dans Vigie », pré-rempli avec le fournisseur, la commande, l’article et la quantité refusée, et notifier l’acheteur. Aujourd’hui le refus ne fait que mettre la marchandise en quarantaine. Le côté Keystone (lien et notification) peut se construire dès maintenant, mais le pré-remplissage dépend de Vigie.  
+*Avancement : Livraison 8 : réception refusée → NC fournisseur Vigie pré-remplie et alerte à l’acheteur (NEW-D4-3, SC-3b). · Attend : Vigie doit accepter les paramètres fournisseur, commande et quantité dans /signaler (V-3) · Sources : SC-3b, NEW-D4-3, V-3b, DELIVERY-4.md §6, §8, DELIVERY-5.md §5.1*
 
 **~~R-097 · Présenter le PDF de commande Keystone comme un récapitulatif interne~~** — *Prochaine étape · non commencé · effort S* · **fait (Livraison 7)**  
 Le document officiel envoyé au fournisseur est le bon de commande édité par Sage X3. « Exporter la commande » doit donc produire un récapitulatif interne qui renvoie à la référence X3, sans la signature « Accusé de réception fournisseur » ni les consignes au fournisseur.  
@@ -574,11 +574,7 @@ Le document officiel envoyé au fournisseur est le bon de commande édité par S
 Une sortie ou un rebut ne doit plus consommer des unités réservées pour un autre projet. Le chef de l’autre projet doit d’abord libérer sa réservation (NEW-D4-2, SC-5b) : il faut donc un refus côté domaine et une opération « Libérer la réservation » réservée à ce projet. Le transfert fait déjà suivre la réservation et refuse une destination réservée par un autre projet. Les décisions ne demandent pas de circuit de demande d’accord.  
 *Sources : NEW-D4-2, SC-5b, 08 OQ14, DELIVERY-4.md §6, §8*
 
-### 2.9 Ingénierie et PLM (8 restants, 3 faits)
-
-**R-102 · Mettre en place la validation des articles par l’ingénierie** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 8)**  
-La création n’exige que le minimum ; le responsable ingénierie fait passer l’article de « Non validé » à « Validé », refusé sans code HS, restriction export, délai et référence fabricant (E-1b). « Périmé » et « Obsolète » ne viennent que d’un ECO diffusé dans Vigie (E-1a). Aujourd’hui aucun changement de statut n’existe.  
-*Attend : Référentiel articles maître (R-101) · Sources : E-1a, E-1b, A-1b, 09 OQ5, 11 §6.6, DELIVERY-4.md §5, §9*
+### 2.9 Ingénierie et PLM (2 restants, 9 faits)
 
 **R-107 · Lire les exports natifs EPLAN, TIA Portal et SolidWorks** — *Prochaine étape · attend le responsable produit · effort XL*  
 L’assistant « Importer une liste » ne lit aucun fichier : 27 lignes, mapping et écarts semés du prototype, et « Générer xlsx » horodate sans produire de fichier. Il faut lire chaque format natif, comparer à la révision précédente (écarts, contrôles de cohérence) et produire les fichiers ; confirmer d’abord que ce sujet est distinct de D-7b.  
@@ -588,25 +584,9 @@ L’assistant « Importer une liste » ne lit aucun fichier : 27 lignes, mapping
 Le responsable produit pense que les numéros d’articles PLM sont attribués par SolidWorks 3DX ; l’ingénierie doit le confirmer, ainsi que le système visé (3DEXPERIENCE ou SolidWorks PDM). Si c’est le cas, la création d’articles dans Keystone devient une reprise en lecture, Keystone n’ajoutant que ses données techniques.  
 *Attend : Confirmation de l’ingénierie (A-1b, marqué Bloquant production) · Sources : A-1b, E-1a, E-1b, 09 §5.9, DECISIONS.md « À traiter en priorité », DELIVERY-4.md §3*
 
-**R-104 · Chiffrer les remplacements d’articles entre deux révisions** — *Plus tard · non commencé · effort S* · **en cours (Livraison 8)**  
-Dans la comparaison de révisions, une substitution doit valoir (nouveau prix − ancien prix) × quantité ; aujourd’hui seule une variation de quantité est chiffrée et une substitution à quantité égale affiche 0 €.  
-*Sources : E-2b, E-2a, 09 OQ8*
-
-**R-108 · P&ID : rechercher l’article d’un repère dans tout le catalogue** — *Plus tard · non commencé · effort M* · **en cours (Livraison 8)**  
-Rechercher dans tout le catalogue, avec un filtre par type et la nomenclature du projet en tête ; lier un article absent de la nomenclature propose de l’y ajouter. Aujourd’hui la liste se limite à 8 articles compatibles déjà dans la nomenclature, et tout autre article est refusé.  
-*Sources : E-6, 09 OQ15, DELIVERY-5.md §4, §6, §8*
-
-**R-109 · P&ID : signaler l’écart de révision avec Codex et proposer un ré-import** — *Plus tard · partiel · effort S* · **en cours (Livraison 8)**  
-Quand l’index Codex porte une révision plus récente que celle d’où les repères ont été extraits, un bandeau doit le signaler et ouvrir l’import « Importer les repères P&ID » existant, sans rien bloquer. Aujourd’hui l’écart n’apparaît qu’en infobulle ; le ré-import lui-même existe déjà.  
-*Sources : A-9, 09 OQ13, 11 §7 #10, DELIVERY-5.md §5.3, §8*
-
-**R-110 · Ne protéger pour le parc que les pièces réellement montées** — *Plus tard · non commencé · effort S* · **en cours (Livraison 8)**  
-La mention « à garder pour le parc installé » ne doit concerner que les pièces de l’ECO montées sur chaque machine concernée, d’après sa configuration ; aujourd’hui toutes les pièces de l’ECO sont marquées pour chaque machine.  
-*Attend : Configuration des machines tenue à jour (R-144) · Sources : E-4, E-8, 09 OQ21, DELIVERY-4.md §7*
-
-**R-111 · Signaler le doublon possible de la grue EQ-CRN-250T / ASM-RMG-250** — *Plus tard · non commencé · effort S* · **en cours (Livraison 8)**  
-La nomenclature de HLT-026 compte peut-être deux fois la même grue. La réponse retenue (NEW-D4-5 c) demande de signaler le doublon possible jusqu’à la réponse du bureau d’études, ce qui n’est pas fait et peut l’être dès maintenant. Corriger ensuite les données ou la règle de valorisation selon la réponse.  
-*Attend : Réponse du bureau d’études (même grue ou deux équipements) pour la correction définitive ; le signalement n’attend rien · Sources : NEW-D4-5, E-2, A-11, DELIVERY-4.md §3, §6, §8*
+**~~R-102 · Mettre en place la validation des articles par l’ingénierie~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 8)**  
+La création n’exige que le minimum ; le responsable ingénierie fait passer l’article de « Non validé » à « Validé », refusé sans code HS, restriction export, délai et référence fabricant (E-1b). « Périmé » et « Obsolète » ne viennent que d’un ECO diffusé dans Vigie (E-1a). Aujourd’hui aucun changement de statut n’existe.  
+*Avancement : Livraison 8 : validation des articles par le responsable ingénierie ou le directeur, contrôle export explicite (E-1a, E-1b). · Attend : Référentiel articles maître (R-101) · Sources : E-1a, E-1b, A-1b, 09 OQ5, 11 §6.6, DELIVERY-4.md §5, §9*
 
 **~~R-103 · Valoriser la nomenclature au prix commandé, sinon dernier achat, sinon catalogue~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 7)**  
 Appliquer une seule règle à la liste à plat, à l’arborescence, au coût d’un nœud et à la comparaison de révisions : prix de la ligne de commande du projet, sinon dernier prix d’achat, sinon catalogue ; le stock reste au dernier prix d’achat. Le « dernier prix d’achat » doit aussi être tenu à jour (aujourd’hui 15 prix figés semés du prototype) à partir des commandes reçues dans Keystone. Mettre à jour les tests golden en citant E-2a / A-11.  
@@ -619,6 +599,26 @@ Une discipline qui travaille sur une révision figée doit être considérée à
 **~~R-106 · Faire lancer le circuit Codex par « Valider la diffusion » des livrables d’ingénierie~~** — *Prochaine étape · partiel · effort M* · **fait (Livraison 7)**  
 « Valider la diffusion (CP) » doit lancer le circuit d’approbation du type de document ; le livrable ne passe à Diffusé qu’une fois toutes les étapes approuvées. Le circuit miroir existe déjà (Documents › « Approuver dans Codex », diffusion à la dernière étape), mais l’écran Ingénierie le court-circuite : le CP ou le directeur passe directement à Diffusé. Il reste à brancher l’ingénierie sur ce circuit, puis à transmettre les décisions à Codex.  
 *Attend : Rien pour la partie Keystone (circuit miroir existant) ; transmission réelle des approbations à Codex via le connecteur (D-1b, R-033, R-124) · Sources : P-7c, D-1b, E-5, 09 OQ11, DELIVERY-5.md §6*
+
+**~~R-104 · Chiffrer les remplacements d’articles entre deux révisions~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
+Dans la comparaison de révisions, une substitution doit valoir (nouveau prix − ancien prix) × quantité ; aujourd’hui seule une variation de quantité est chiffrée et une substitution à quantité égale affiche 0 €.  
+*Avancement : Livraison 8 : remplacement chiffré entre deux révisions (E-2b). · Sources : E-2b, E-2a, 09 OQ8*
+
+**~~R-108 · P&ID : rechercher l’article d’un repère dans tout le catalogue~~** — *Plus tard · non commencé · effort M* · **fait (Livraison 8)**  
+Rechercher dans tout le catalogue, avec un filtre par type et la nomenclature du projet en tête ; lier un article absent de la nomenclature propose de l’y ajouter. Aujourd’hui la liste se limite à 8 articles compatibles déjà dans la nomenclature, et tout autre article est refusé.  
+*Avancement : Livraison 8 : recherche de l’article d’un repère P&ID dans tout le catalogue (E-6). · Sources : E-6, 09 OQ15, DELIVERY-5.md §4, §6, §8*
+
+**~~R-109 · P&ID : signaler l’écart de révision avec Codex et proposer un ré-import~~** — *Plus tard · partiel · effort S* · **fait (Livraison 8)**  
+Quand l’index Codex porte une révision plus récente que celle d’où les repères ont été extraits, un bandeau doit le signaler et ouvrir l’import « Importer les repères P&ID » existant, sans rien bloquer. Aujourd’hui l’écart n’apparaît qu’en infobulle ; le ré-import lui-même existe déjà.  
+*Avancement : Livraison 8 : écart de révision P&ID avec Codex signalé, ré-import proposé (A-9). · Sources : A-9, 09 OQ13, 11 §7 #10, DELIVERY-5.md §5.3, §8*
+
+**~~R-110 · Ne protéger pour le parc que les pièces réellement montées~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
+La mention « à garder pour le parc installé » ne doit concerner que les pièces de l’ECO montées sur chaque machine concernée, d’après sa configuration ; aujourd’hui toutes les pièces de l’ECO sont marquées pour chaque machine.  
+*Avancement : Livraison 8 : seules les pièces montées sont protégées pour le parc installé (E-4). · Attend : Configuration des machines tenue à jour (R-144) · Sources : E-4, E-8, 09 OQ21, DELIVERY-4.md §7*
+
+**~~R-111 · Signaler le doublon possible de la grue EQ-CRN-250T / ASM-RMG-250~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
+La nomenclature de HLT-026 compte peut-être deux fois la même grue. La réponse retenue (NEW-D4-5 c) demande de signaler le doublon possible jusqu’à la réponse du bureau d’études, ce qui n’est pas fait et peut l’être dès maintenant. Corriger ensuite les données ou la règle de valorisation selon la réponse.  
+*Avancement : Livraison 8 : doublon possible EQ-CRN-250T / ASM-RMG-250 signalé (NEW-D4-5 c). · Attend : Réponse du bureau d’études (même grue ou deux équipements) pour la correction définitive ; le signalement n’attend rien · Sources : NEW-D4-5, E-2, A-11, DELIVERY-4.md §3, §6, §8*
 
 ### 2.10 Qualité, chantier et mise en service (8 restants, 4 faits)
 
@@ -752,11 +752,7 @@ Appliquer L-6 : le CP est prévenu quand un point est soulevé, le prend en char
 La justification obligatoire, déjà enregistrée, doit s’afficher dans la fiche de la CR et être transmise au client quand la CR lui est soumise ; elle n’apparaît aujourd’hui que dans l’export.  
 *Avancement : Livraison 8 : justification visible dans le panneau et sur le portail client. · Sources : X-11, 01 OQ15, 07 OQ17, DELIVERY-2.md §6*
 
-### 2.14 SAV et parc installé (1 restants, 2 faits)
-
-**R-145 · Coût garantie sur l’année civile et alerte sur la fin prolongée** — *Plus tard · non commencé · effort S* · **en cours (Livraison 8)**  
-« Coût garantie depuis le début de l’année » ne doit compter que les réclamations non facturables de l’année civile en cours, selon reportedOn. L’alerte « fin de garantie < 90 jours » et le statut doivent suivre la garantie réellement en vigueur : la fin prolongée (extendedUntil), et le passage automatique à « Hors garantie » à l’échéance, alors que le statut est aujourd’hui stocké et figé. Mettre à jour les tests golden en citant NEW-D5-2. L’« année en cours » dépend encore du « maintenant » du prototype (NOW_ISO/PG_NOW = 30 sept. 2026).  
-*Sources : NEW-D5-2, Q-8, DELIVERY-5.md §6*
+### 2.14 SAV et parc installé (0 restants, 3 faits)
 
 **~~R-143 · Suivre les réclamations sous garantie de bout en bout~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 7)**  
 Donner aux réclamations une fiche détaillée où le SAV fait avancer les statuts (Ouverte → Diagnostiquée → Intervention planifiée → Clôturée), décide de la prise en charge (garantie, extension, facturable) et saisit le diagnostic, la prochaine étape et le coût (aujourd’hui figé à 0). Il crée et clôt aussi les interventions (Planifiée → Réalisée) et rattache un ECO de conception : il en ouvre un dans Vigie via vigieNewEcoUrl prérempli, ou saisit un ECO existant. L’affichage de l’étiquette ECO existe déjà, mais seule la création d’une réclamation est réelle. Aucun persona « responsable SAV » n’existe : il faut rattacher ce pilotage aux rôles qui modifient déjà l’écran (directeur, chef de projet, qualité, achats) ou au responsable de la réclamation.  
@@ -766,7 +762,11 @@ Donner aux réclamations une fiche détaillée où le SAV fait avancer les statu
 À la livraison d’un projet, Keystone crée les machines et leur configuration (révision de chaque pièce montée) depuis la nomenclature ; chaque intervention SAV la met ensuite à jour. Aujourd’hui « Ajouter une machine » crée une machine sans projet ni configuration.  
 *Sources : E-8, 09 OQ23, 11 §3.7, DELIVERY-4.md §8, DELIVERY-5.md §3*
 
-### 2.15 Ergonomie, langues et accessibilité (9 restants, 5 faits)
+**~~R-145 · Coût garantie sur l’année civile et alerte sur la fin prolongée~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
+« Coût garantie depuis le début de l’année » ne doit compter que les réclamations non facturables de l’année civile en cours, selon reportedOn. L’alerte « fin de garantie < 90 jours » et le statut doivent suivre la garantie réellement en vigueur : la fin prolongée (extendedUntil), et le passage automatique à « Hors garantie » à l’échéance, alors que le statut est aujourd’hui stocké et figé. Mettre à jour les tests golden en citant NEW-D5-2. L’« année en cours » dépend encore du « maintenant » du prototype (NOW_ISO/PG_NOW = 30 sept. 2026).  
+*Avancement : Livraison 8 : coût garantie de l’année civile, extension en vigueur (NEW-D5-2). · Sources : NEW-D5-2, Q-8, DELIVERY-5.md §6*
+
+### 2.15 Ergonomie, langues et accessibilité (7 restants, 7 faits)
 
 **R-147 · Ajouter un libellé anglais à chaque terme métier** — *Prochaine étape · non commencé · effort M*  
 Étapes du cycle de vie, livrables d’étape, jalons, modèles de projet (descriptions de l’assistant) et données chantier doivent avoir un libellé anglais en mode EN ; ils s’affichent aujourd’hui en français dans les deux langues. Proposer le glossaire et le faire valider.  
@@ -784,17 +784,9 @@ Dans « Mon travail › Tableau », glisser une carte vers une autre colonne cha
 Afficher « Demande RQ-xxx envoyée » même quand on est redirigé vers les demandes, et « Validation demandée au directeur de portefeuille » après un changement d’étape forcé ; « Projet créé » est déjà en place.  
 *Sources : X-9, L-1, 01 OQ22, DELIVERY-6.md §6 Minor points*
 
-**R-153 · Retirer le nom du projet des formulaires qui ne visent pas un projet** — *Plus tard · non commencé · effort S* · **en cours (Livraison 8)**  
-Supprimer le sous-titre « projet courant » des formulaires de listes communes : types de machine, connecteurs, nouvel article, synchro du coffre PDM, ajout de machine et nouvelle réclamation de garantie. Le garder sur « Nouvelle consultation » : la RFQ créée est bien rattachée au projet courant.  
-*Sources : X-10, 01 OQ14, 06 OQ14, DELIVERY-4.md §7.1, DELIVERY-5.md §7.1*
-
 **R-154 · Harmoniser les couleurs de statut et doubler chaque couleur d’un texte** — *Plus tard · non commencé · effort M*  
 Un même statut a la même couleur sur tous les écrans (par exemple CR approuvée en neutre, activité en cours en contour), et aucune information n’est portée par la seule couleur (WCAG AA). Cela demande un audit des points et pastilles sans libellé.  
 *Sources : X-13a, X-13b, 02 Q-1, Q-5, Q-6, 10 OQ9, DELIVERY-5.md §7*
-
-**R-155 · Corriger le message de zone vide des listes de machines** — *Plus tard · non commencé · effort S* · **en cours (Livraison 8)**  
-Parc installé et Garantie doivent afficher « Aucune machine dans cette zone » au lieu du message prévu pour les projets ; ajouter la traduction et mettre à jour les tests.  
-*Sources : X-16, 01 §7.2, 07 A.1, 12 §5, DELIVERY-5.md §6, §7*
 
 **R-157 · Corriger les finitions d’ergonomie relevées par les revues** — *Plus tard · non commencé · effort M*  
 Reprendre les petits défauts listés aux livraisons 1–6 : messages de refus génériques, textes des connecteurs en anglais en mode français, recherche de la nomenclature limitée aux noms anglais, colonnes Début/Fin exportées en texte, IF-02 / IF-05 non cliquables, boutons de statut « outline » au fond gris du navigateur, mention « Modifiable » montrée en lecture seule, focus perdu après « Marquer payée », vues Décisions/Actions vides sans message, et l’analyseur local de transcriptions qui ignore les actions à la 2e personne (« tu vas », « vous allez »).  
@@ -815,6 +807,14 @@ Titres, noms de projets et de clients, lots, clauses du contrat, CR et textes re
 **~~R-151 · Toujours afficher le nom du groupe dans une section de menu repliée~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
 Quand une section est repliée, l’en-tête du groupe de l’écran ouvert doit rester visible, même si cet écran n’est pas le premier du groupe.  
 *Avancement : Livraison 8 : une section repliée garde l’en-tête de groupe de l’entrée affichée (X-8). · Sources : X-8, 01 OQ21*
+
+**~~R-153 · Retirer le nom du projet des formulaires qui ne visent pas un projet~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
+Supprimer le sous-titre « projet courant » des formulaires de listes communes : types de machine, connecteurs, nouvel article, synchro du coffre PDM, ajout de machine et nouvelle réclamation de garantie. Le garder sur « Nouvelle consultation » : la RFQ créée est bien rattachée au projet courant.  
+*Avancement : Livraison 8 : plus de nom de projet sur les formulaires qui ne visent pas un projet (X-10). · Sources : X-10, 01 OQ14, 06 OQ14, DELIVERY-4.md §7.1, DELIVERY-5.md §7.1*
+
+**~~R-155 · Corriger le message de zone vide des listes de machines~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
+Parc installé et Garantie doivent afficher « Aucune machine dans cette zone » au lieu du message prévu pour les projets ; ajouter la traduction et mettre à jour les tests.  
+*Avancement : Livraison 8 : message de zone vide des listes de machines (X-16). · Sources : X-16, 01 §7.2, 07 A.1, 12 §5, DELIVERY-5.md §6, §7*
 
 **~~R-156 · Traduire l’étape « Handover » par « Transfert »~~** — *Plus tard · partiel · effort S* · **fait (Livraison 8)**  
 L’étape « Handover » de l’écran Mise en service s’affiche « Livraison » ; la traduire par « Transfert » et aligner les phrases dérivées encore en « livraison » / « réception » (« Livraison prévue », chemin critique, « j sur la livraison », jalons du portefeuille, alertes). Le « Dossier de transfert » est déjà traduit ainsi.  
@@ -890,6 +890,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-15 — Livraison 8 : lots 5 et 6 intégrés et vérifiés (achats et ingénierie, connecteurs Vigie et Cursus) — 11 points faits, 9 restent en cours (en attente de Vigie, Cursus, Sage X3 ou d’un arbitrage). Suite complète : 3 696 tests verts.
 - 2026-10-15 — Livraison 8 : lots 1 à 4 intégrés et vérifiés sur main-2a2fep (journal d’audit et traduction, plateforme d’exploitation, rôles et taux, demandes de modification et coûts) — 17 points faits, 9 restent en cours (parties en attente du responsable produit, de l’hébergement ou de données). Les 5 autres lots sont en construction.
 - 2026-10-12 — Livraison 8 lancée : 67 points en cours, en 9 lots (journal d’audit et traduction, plateforme d’exploitation, rôles et taux, demandes de modification et coûts, achats et ingénierie, connecteurs Vigie et Cursus, documents et portefeuille, travail et planning, qualité et chantier) — plan dans docs/DELIVERY-8-PLAN.md. Tri préalable des 103 points restants hors « à décider » : 36 écartés de cette livraison (en attente du responsable produit ou d’un autre système, ou trop transverses pour des lots parallèles).
 - 2026-10-11 — Livraison 7 intégrée et vérifiée : 56 points faits (plateforme de production, connexion Entra ID et vrais utilisateurs, droits par équipe projet, maîtrise des coûts, contrat et portefeuille, opérations, qualité et chantier, dette technique et tablette) ; R-010 reste en cours (détection d’édition concurrente d’une même fiche). Détail dans docs/DELIVERY-7.md.
