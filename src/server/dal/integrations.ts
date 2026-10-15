@@ -194,6 +194,15 @@ export async function syncConnector(name: string, actor: Actor): Promise<{ ok: b
       const sites = await db.select({ code: projects.code }).from(siteSheets).innerJoin(projects, eq(projects.id, siteSheets.projectId));
       let received = 0;
       const errors: string[] = [];
+      // R-027: the staff directory import runs first with "Sync now" once CURSUS_DIRECTORY is on (HTTP mode, connector
+      // enabled), so the sites' refresh below already names the people it imported; its counts are in the activity feed and
+      // the log, a failure in the run's error.
+      try {
+        const run = await runDirectoryImport();
+        if (run.state === 'done') log.info('Cursus staff directory imported (Sync now)', { component: 'cursus', summary: directoryRunSummary(run) });
+      } catch (e) {
+        errors.push(`staff directory: ${e instanceof Error ? e.message : String(e)}`);
+      }
       for (const s of sites) {
         try {
           received += (await getCursusConnector().sync(s.code)).received;
@@ -205,14 +214,6 @@ export async function syncConnector(name: string, actor: Actor): Promise<{ ok: b
         }
       }
       volume = `${received} approvals received`;
-      // R-027: the staff directory import runs with "Sync now" once CURSUS_DIRECTORY is on (HTTP mode, connector enabled);
-      // its counts are in the activity feed and the log, a failure in the run's error.
-      try {
-        const run = await runDirectoryImport();
-        if (run.state === 'done') log.info('Cursus staff directory imported (Sync now)', { component: 'cursus', summary: directoryRunSummary(run) });
-      } catch (e) {
-        errors.push(`staff directory: ${e instanceof Error ? e.message : String(e)}`);
-      }
       if (errors.length) { ok = false; error = errors.join(' · '); }
     }
   } catch (e) {

@@ -113,7 +113,9 @@ export function planDirectoryImport(
   const claimed = new Set<string>();
   const createdEmails = new Set<string>();
   const teams = new Set<string>();
-  for (const e of entries) {
+  for (const raw of entries) {
+    // E-mails compare case-insensitively whoever built the entry (directoryEntryOf already lower-cases them).
+    const e = { ...raw, email: raw.email ? raw.email.trim().toLowerCase() || null : null };
     if (seen.has(e.matricule)) {
       plan.reports.push({ matricule: e.matricule, reason: 'Matricule listed twice in the directory' });
       continue;

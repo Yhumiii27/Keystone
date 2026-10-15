@@ -11,20 +11,39 @@ import type { CursusClearanceRecord, CursusClearanceView, CursusGoNoGo } from '.
 type Q = DB | Tx;
 
 /**
+ * The name a clearance row keeps (R-027). A row keeps the name it was first stored under: reminders and the unique
+ * (project, name) key use it. Exception: a row only named after its matricule ("EMP-0018": Cursus sends no names, and no
+ * person carried that matricule yet) takes the directory's name once one is known, unless another row of the project
+ * already has that name.
+ */
+export function keptClearanceName(old: { personName: string; matricule: string | null } | undefined, r: { personName: string; matricule: string | null }, takenByOthers: ReadonlySet<string>): string {
+  if (!old || !r.matricule || old.matricule !== r.matricule) return r.personName;
+  const placeholder = old.personName === old.matricule;
+  return placeholder && r.personName !== r.matricule && !takenByOthers.has(r.personName) ? r.personName : old.personName;
+}
+
+/**
  * Replaces a project's clearances with Cursus's records (matched by person; rows Cursus no longer lists are removed). R-027:
- * the Keystone person is the one carrying the matricule (staff directory), else the person of that name. A row keeps the
- * name it was first stored under (reminders and the (project, name) key use it); a new row takes the directory's name.
+ * the Keystone person is the one carrying the matricule (staff directory), else the person of that name; the row's name
+ * follows keptClearanceName (a placeholder matricule name is replaced, with its reminders, by the directory's name).
  */
 export async function upsertClearances(q: Q, projectCode: string, records: CursusClearanceRecord[], syncedAt: Date, mode: 'mock' | 'http'): Promise<number> {
   const existing = await q.select({ id: cursusClearances.id, personName: cursusClearances.personName, matricule: cursusClearances.matricule })
     .from(cursusClearances).where(eq(cursusClearances.projectCode, projectCode));
   const keep = new Set<string>();
+  // Names in use on the project (the stored ones, then those given in this loop): a rename never breaks the unique key.
+  const names = new Map(existing.map((e) => [e.id, e.personName]));
   for (const [position, r] of records.entries()) {
     const old = existing.find((e) => (r.matricule && e.matricule === r.matricule) || e.personName === r.personName);
     const [byMatricule] = r.matricule ? await q.select({ id: persons.id }).from(persons).where(eq(persons.matricule, r.matricule)) : [];
     const person = byMatricule ?? (await findPerson(q, r.personName));
+    const personName = keptClearanceName(old, r, new Set([...names].filter(([id]) => id !== old?.id).map(([, n]) => n)));
+    if (old) names.set(old.id, personName);
+    // The reminders recorded under the placeholder name follow the row (readClearances matches them by name).
+    if (old && personName !== old.personName)
+      await q.update(cursusRequests).set({ personName }).where(and(eq(cursusRequests.projectCode, projectCode), eq(cursusRequests.personName, old.personName)));
     const values = {
-      projectCode, chantierId: r.chantierId, matricule: r.matricule, personName: old && r.matricule && old.matricule === r.matricule ? old.personName : r.personName,
+      projectCode, chantierId: r.chantierId, matricule: r.matricule, personName,
       personId: person?.id ?? null, visa: r.visa, vaccination: r.vaccination, clearance: r.clearance, clearanceNote: r.clearanceNote, verdict: r.verdict,
       reasonCodes: r.reasonCodes, receivedAt: new Date(r.receivedAt), position, lastSyncedAt: syncedAt,
     };

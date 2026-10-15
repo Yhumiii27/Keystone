@@ -52,7 +52,8 @@ afterEach(() => {
 describe('authentication and refusals', () => {
   it('401 without the key, with a wrong one, or with the outbound Cursus key; nothing stored', async () => {
     const e = evt('heures.validees', { matricule: 'EMP-0018', semaine: '2026-W40', projets: { 'HLT-026': 32 } });
-    for (const key of [null, '', 'wrong-key-wrong-key', 'demo-keystone', `${DEMO_CURSUS_EVENTS_KEY} `])
+    // (HTTP trims header values: a near miss is a different case or a prefix, not a trailing space.)
+    for (const key of [null, '', 'wrong-key-wrong-key', 'demo-keystone', DEMO_CURSUS_EVENTS_KEY.toUpperCase(), DEMO_CURSUS_EVENTS_KEY.slice(0, -1)])
       expect((await post(e, { key })).status, String(key)).toBe(401);
     expect(await stored(e.id as string)).toBeUndefined();
     expect(await auditsOf(e.id as string)).toEqual([]);
