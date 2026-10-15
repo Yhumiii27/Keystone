@@ -14,12 +14,12 @@ Conventions: `docs/ARCHITECTURE.md`. Functional spec: `docs/spec/`. Earlier base
 |---|---|
 | `npx tsc --noEmit` (after `npx next typegen` in a fresh clone) | clean |
 | `npm run lint` | clean |
-| `npm test` | @@TESTS@@ (Delivery 7: 266 files, 3 313 tests) |
+| `npm test` | 364 files, 4 000 tests passing, 6 skipped (Delivery 7: 266 files, 3 313 tests), run with `--testTimeout=60000` on a loaded machine |
 | `KEYSTONE_DIST_DIR=.next-ci npm run build` | succeeds; new Route Handler `POST /api/integrations/cursus/events` (R-029); no new page |
 | `npm run db:generate` | "No schema changes". 33 migrations; Delivery 8 adds `0016` … `0032` (§3) |
 | `scripts/db-check.ts` (`npx tsx --conditions=react-server`) | "All checks passed" (new blocks: audit trail append-only, dated rate grid, two leave types, sourcing task P-8b, delivery-8 table counts) |
 | Route matrix on `next start` with a fresh database | @@MATRIX@@ |
-| End-to-end scenarios (Playwright, `npm run test:e2e`) | @@E2E@@ |
+| End-to-end scenarios (Playwright, `npm run test:e2e`) | 26 scenarios, all passing: the 22 of Delivery 7 (the BL3 scenario now follows the sequential chain and opens the Plan as the PM) and 4 new ones — Cursus pushes an event (stored once, duplicates answered, wrong key refused, shown on Activity & integrations); one punch list with the P-01 anchor and the origin filter; the PM prepares the site sheet and edits an equipment line; the daily report without the HSE field and its Vigie link |
 | Adversarial reviews | Two rounds, each finding confirmed by an independent verifier with a reproduction: lots 1–8 (security and rights, data and migrations, seams between lots, rules against the decisions) — 17 confirmed findings, 15 distinct; lot 9 and the first round's fixes — 9 confirmed. All fixed with a regression test (§1.1) |
 
 ### 1.1 Fixed at integration and after the reviews
