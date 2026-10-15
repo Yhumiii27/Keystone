@@ -2,7 +2,8 @@
 // (§4.5, template 2346–2362), the "Deposit in Codex" hand-off (§4.6, template 2363–2374, depVals) and the Document
 // types register (§5, template 2375–2383): the domain figures (src/domain/documents.ts) and the DAL rows turned into
 // the translated strings, tag classes and links the components render. Pure (no I/O): `t` and `lang` come from the
-// page.
+// page. Delivery 8: links to Codex open it in a new tab (R-033); the drawer keeps the current revision and circuit, the
+// history stays in Codex (R-127, D-2 = a); deliverable, order and punch-item relations are links (R-128).
 import { LO, OK } from '@/components/app/tones';
 import { screenHref } from '@/config/screens';
 import {
@@ -13,10 +14,14 @@ import {
 import type { Lang, T } from '@/i18n/translate';
 import { codexSyncText } from '@/domain/codex-approvals';
 import { CONFIDENTIALITY_TAG, DOCUMENT_STATUS_TAG, codexDecision, confidentiality, docFamily, docSavedView, documentStatus, shortDateOfIso } from '@/server/db/codes';
-import type { CodexSyncState, DocumentRecord, DocumentTypeRow, VaultDocument } from '@/server/dal/documents';
+import type { CodexSyncState, DocumentLinkRow, DocumentRecord, DocumentTypeRow, VaultDocument } from '@/server/dal/documents';
 import { approveLabelT, circuitT, exactT, revisionContextT, roleT } from './i18n';
 import { codexConnectorMode } from '@/server/integrations/codex/config';
 import { codexIndexLineT } from '@/server/integrations/codex/display';
+import { codexDocumentUrl } from '@/server/integrations/codex/links';
+import { itpHref } from '@/features/itpcom/model';
+import { ordersHref } from '@/features/orders/links';
+import { deliverableHref } from '@/features/quality/links';
 import { documentsHref, type DocsQuery } from './links';
 
 const tag = (tone: string) => `tag ${tone}`;
@@ -178,7 +183,12 @@ export interface DrawerDistributionView {
 export interface DrawerLinkView {
   kind: string;
   ref: string;
-  /** Article → PLM part drawer, change request → Change control drawer; other kinds have no target yet (D-2). */
+  /**
+   * Article → PLM part drawer, change request → Change control drawer; R-128: deliverable → Quality › Deliverables, purchase
+   * order → Orders, punch item → the project's punch list row (`#punch-P-01`), each resolved in the record's own project.
+   * Null (inert pill) for a QMS record or a reference not found there. Not gated by the viewer's screens: the target pages
+   * apply their own rights and read-only banner, as for the article and change-request links.
+   */
   href: string | null;
 }
 
@@ -193,8 +203,13 @@ export interface DocDrawerView {
   status: string;
   statusClass: string;
   closeHref: string;
-  /** Toast of "Open in Codex": "Opening Codex · PID-HLT-026 rev D". */
-  openToast: string;
+  /**
+   * "Open in Codex" (R-033): the record in Codex, new tab — Codex's own link once the index read brought it, else Codex's
+   * home (TODO(codex) D-1); null for the client role (no Codex access).
+   */
+  codexHref: string | null;
+  /** R-127 (D-2 = a): "Earlier revisions and download log in Codex" under the current revision; null for the client role. */
+  historyHref: string | null;
   /** "New revision · Codex" → the deposit hand-off in revision mode; null for read-only viewers. */
   newRevisionHref: string | null;
   /** "Approve in Codex · {role} · {approver}" when the viewer may record the next step, else null. */
@@ -205,10 +220,10 @@ export interface DocDrawerView {
   withdrawal: string | null;
   identity: { k: string; v: string }[];
   tags: string[];
+  /** The current revision only (D-2 = a, R-127). */
   revisions: DrawerRevisionView[];
   approvals: DrawerApprovalView[];
   distribution: DrawerDistributionView[];
-  downloads: string[];
   links: DrawerLinkView[];
 }
 
@@ -222,11 +237,19 @@ export interface DrawerInput {
   canEdit: boolean;
 }
 
-/** Link targets of a relation (`docLinks` 5047). */
-function linkHref(kind: string, ref: string, project: string): string | null {
-  if (kind === 'article') return `${screenHref('plm')}?part=${encodeURIComponent(ref)}`;
-  if (kind === 'change_request' && project !== QMS) return `${screenHref('changes', { code: project })}?cr=${encodeURIComponent(ref)}`;
-  return null;
+/**
+ * Link targets of a relation (`docLinks` 5047): article and change request as before; R-128 (D-2 context, 10 OQ15):
+ * deliverable, purchase order and punch item through the target the DAL resolved in the record's own project.
+ */
+function linkHref(l: DocumentLinkRow, project: string): string | null {
+  if (l.kind === 'article') return `${screenHref('plm')}?part=${encodeURIComponent(l.ref)}`;
+  if (l.kind === 'change_request' && project !== QMS) return `${screenHref('changes', { code: project })}?cr=${encodeURIComponent(l.ref)}`;
+  const x = l.target;
+  if (!x) return null;
+  if (x.screen === 'deliverable') return deliverableHref(x.project, x.ref);
+  if (x.screen === 'order') return ordersHref(x.project, { po: x.ref });
+  // The punch list of the project; the row carries id="punch-{number}" (site-quality lot, R-117).
+  return `${itpHref(x.project, 'punch')}#punch-${encodeURIComponent(x.ref)}`;
 }
 
 export function drawerView({ project, record: r, state, viewer, canEdit }: DrawerInput, t: T, lang: Lang): DocDrawerView {
@@ -286,6 +309,9 @@ export function drawerView({ project, record: r, state, viewer, canEdit }: Drawe
   );
 
   const mayApprove = canApproveDocument(viewer, r) && r.nextRoleLabel && r.nextApprover;
+  // Clients have no Codex access: no link to Codex in their drawer (R-127; R-033 opens the record in Codex for the team).
+  const client = viewer.role === 'client';
+  const inCodex = client ? null : codexDocumentUrl(r.number, r.revision, r.codexUrl);
   return {
     number: r.number,
     revision: r.revision,
@@ -296,8 +322,8 @@ export function drawerView({ project, record: r, state, viewer, canEdit }: Drawe
     status: t(r.statusLabel),
     statusClass: tag(DOCUMENT_STATUS_TAG[r.status]),
     closeHref: documentsHref(project, keep),
-    // "rev D" translated like the header ("rév. D"), as the prototype's segment-wise toast did.
-    openToast: `${t(`Opening Codex · ${r.number}`)} ${t(`rev ${r.revision}`)}`,
+    codexHref: inCodex,
+    historyHref: inCodex,
     // R-047: a new revision is deposited by the team of the record's own project, from its vault (the page's `canEdit`).
     newRevisionHref: canEdit && r.project === project ? documentsHref(project, { ...keep, deposit: r.number }) : null,
     approveLabel: mayApprove ? approveLabelT(r.nextRoleLabel!, r.nextApprover!, t, lang) : null,
@@ -309,8 +335,8 @@ export function drawerView({ project, record: r, state, viewer, canEdit }: Drawe
     revisions,
     approvals,
     distribution,
-    downloads: r.downloads.map((x) => t(x.text)),
-    links: r.links.map((l) => ({ kind: t(l.kindLabel), ref: l.ref, href: linkHref(l.kind, l.ref, r.project) })),
+    // A client's relations stay inert: every target is an internal screen that sends the client home (P-1).
+    links: r.links.map((l) => ({ kind: t(l.kindLabel), ref: l.ref, href: client ? null : linkHref(l, r.project) })),
   };
 }
 

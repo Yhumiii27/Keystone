@@ -1,1 +1,0 @@
-DROP TABLE "client_document_categories" CASCADE;

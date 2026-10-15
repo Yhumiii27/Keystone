@@ -11,12 +11,12 @@ import { ButtonLink } from '@/components/ds/Button';
 import { parseFamily, parseScope, parseStatus, parseView } from '@/domain/documents';
 import { DepositWizard } from '@/features/docs/deposit-wizard';
 import { DocumentDrawer } from '@/features/docs/document-drawer';
-import { openingCodexProjectText } from '@/features/docs/i18n';
 import { depositHref } from '@/features/docs/links';
 import { depositView, drawerView, keepQuery, vaultView, type DocsState } from '@/features/docs/model';
 import { DocsVault } from '@/features/docs/vault';
 import { DEPOSIT_TYPES } from '@/server/db/codes';
 import { getCodexSyncState, getDocumentRecord, listDocumentTypes, listVaultDocuments } from '@/server/dal/documents';
+import { codexHomeUrl } from '@/server/integrations/codex/links';
 import { canDepositInCodex, canSyncCodex } from '@/domain/rights';
 import { clientProjectCodes, getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -75,7 +75,8 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
   return (
     <>
       <PageHeader screen="docs" projectCode={project} primary={primary} />
-      <DocsVault project={project} view={view} canEdit={canSync} openToast={openingCodexProjectText(project, lang)} t={t} />
+      {/* R-033: "Open Codex" opens Codex in a new tab — not for a client (no Codex access). */}
+      <DocsVault project={project} view={view} canEdit={canSync} codexHref={ctx.viewer.role === 'client' ? null : codexHomeUrl(project)} t={t} />
       {drawer && <DocumentDrawer key={drawer.number} project={project} view={drawer} t={t} />}
       {dep && <DepositWizard key={deposit} view={dep} />}
     </>

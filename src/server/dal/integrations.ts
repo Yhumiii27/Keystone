@@ -7,13 +7,18 @@ import 'server-only';
 // sync), Lucca is no longer listed; "Sync now" runs live and mock connectors only, a mock run being recorded as simulated.
 // R-020 (D-7a): IT configures the connectors outside Keystone — the connectors file is applied before the connectors are
 // read (connector-config.ts); "Add connector" is gone from the app.
+// Delivery 8 (R-033): the Codex row is live once CODEX_API_URL is set — its approval outbox (pending / failed), the last read
+// of Codex's index as its last sync, "Sync now" exchanging with Codex (outbox, then index) and dating a successful run.
 import { and, asc, desc, eq, gte, sql } from 'drizzle-orm';
 import { getDb } from '@/server/db/client';
 import { STATUS_ISO, addDaysIso, parisInstant, type ConnectorDirection, type ConnectorKind, type ConnectorStatus } from '@/server/db/codes';
 import {
-  auditEntries, connectorSyncRuns, connectors, cursusClearances, cursusRequests, cursusSyncRuns, importFormats, siteSheets, projects, vigieEcoProgress, vigieEcos,
-  vigieHseItems, vigieNcrProgress, vigieNcrs,
+  auditEntries, connectorSyncRuns, connectors, cursusClearances, cursusRequests, cursusSyncRuns, documentIndexSyncs, importFormats, siteSheets, projects, vigieEcoProgress,
+  vigieEcos, vigieHseItems, vigieNcrProgress, vigieNcrs,
 } from '@/server/db/schema';
+import { codexConnectorMode } from '@/server/integrations/codex/config';
+import { undeliveredCodexEntries } from '@/server/integrations/codex/outbox';
+import { CODEX_CONNECTOR_NAME } from '@/server/integrations/connector-enabled';
 import { cursusConnectorMode } from '@/server/integrations/cursus/connection';
 import { getCursusConnector } from '@/server/integrations/cursus/connector';
 import { recordFailedSync } from '@/server/integrations/cursus/mirror';
@@ -106,20 +111,44 @@ async function cursusState() {
 }
 
 /**
- * Connectors (CONNECTORS order, Vigie and connectors added in Keystone after) with the live Vigie / Cursus state and the
- * real link of each one (R-021); retired connectors (Lucca) are left out.
+ * State of the Codex connector (R-033): its approval outbox (decisions and circuit starts waiting for delivery, failed ones)
+ * and the last read of Codex's index by the HTTP connector (the seeded and mock syncs are not reads of Codex).
+ */
+async function codexState(lastVolume: string) {
+  const db = await getDb();
+  const [out, [read]] = await Promise.all([
+    undeliveredCodexEntries(db),
+    db.select({ at: documentIndexSyncs.syncedAt }).from(documentIndexSyncs).where(eq(documentIndexSyncs.source, 'codex')).orderBy(desc(documentIndexSyncs.syncedAt)).limit(1),
+  ]);
+  return {
+    volume: lastVolume, pending: out.filter((e) => e.syncStatus === 'pending').length, failed: out.filter((e) => e.syncStatus === 'failed').length,
+    lastSyncAt: read?.at ?? null,
+  };
+}
+
+/** Connector-layer mode of a row: Vigie, Cursus and (R-033) Codex — mock, or http once their API URL is set; null otherwise. */
+const modeOf = (c: { name: string; kind: ConnectorKind }): 'mock' | 'http' | null =>
+  c.kind === 'vigie' ? vigieConnectorMode() : c.kind === 'cursus' ? cursusConnectorMode() : c.name === CODEX_CONNECTOR_NAME ? codexConnectorMode() : null;
+
+/**
+ * Connectors (CONNECTORS order, Vigie and connectors added in Keystone after) with the live Vigie / Cursus / Codex state and
+ * the real link of each one (R-021); retired connectors (Lucca) are left out.
  */
 export async function listConnectors(): Promise<ConnectorRow[]> {
   await ensureConnectorsFileApplied();
   const db = await getDb();
   const [rows, vigie, cursus] = await Promise.all([db.select().from(connectors).orderBy(asc(connectors.position)), vigieState(), cursusState()]);
-  return rows.filter((c) => !isRetiredConnector(c.name)).map((c) => {
-    const live = c.kind === 'vigie' ? vigie : c.kind === 'cursus' ? cursus : null;
-    // Live connectors need attention when deliveries failed, when the latest Cursus refresh of a site failed, or (Vigie)
-    // when the last "Sync now" failed (`syncConnector` records it on the row).
-    const attention = !!live && (live.failed > 0 || ('lastRunFailed' in live && live.lastRunFailed) || (c.kind === 'vigie' && (c.status === 'warning' || c.status === 'error')));
+  const listed = rows.filter((c) => !isRetiredConnector(c.name));
+  const codexRow = listed.find((c) => c.name === CODEX_CONNECTOR_NAME && c.kind === 'static');
+  const codex = codexRow ? await codexState(codexRow.lastVolume) : null;
+  return listed.map((c) => {
+    const live = c.kind === 'vigie' ? vigie : c.kind === 'cursus' ? cursus : c === codexRow ? codex : null;
+    // Live connectors need attention when deliveries failed, when the latest Cursus refresh of a site failed, or (Vigie,
+    // Codex) when the last "Sync now" failed (`syncConnector` records it on the row).
+    const lastRunFailed = (c.kind === 'vigie' || c === codexRow) && (c.status === 'warning' || c.status === 'error');
+    const attention = !!live && (live.failed > 0 || ('lastRunFailed' in live && live.lastRunFailed) || lastRunFailed);
     const status: ConnectorStatus = live ? (attention ? 'warning' : 'ok') : c.status;
-    const mode = c.kind === 'vigie' ? vigieConnectorMode() : c.kind === 'cursus' ? cursusConnectorMode() : null;
+    const mode = modeOf(c);
     const link = connectorLink({ name: c.name, kind: c.kind, mode });
     const state = connectorState(link, status, c.enabled);
     // Last successful sync: the connector layer's latest refresh, or a later successful "Sync now" — a real exchange only.
@@ -162,14 +191,16 @@ export class ConnectorDisabledError extends Error {
  * that does not exist (or exchanges files only) throws ConnectorNotConnectedError, a retired one is unknown, and one disabled
  * by IT throws ConnectorDisabledError (every caller — Server Functions, Codex index sync — goes through here).
  */
-export async function syncConnector(name: string, actor: Actor): Promise<{ ok: boolean; volume: string; error: string | null; simulated: boolean }> {
+export async function syncConnector(
+  name: string, actor: Actor, opts: { exchange?: () => Promise<{ ok: boolean; volume: string; error: string | null }> } = {},
+): Promise<{ ok: boolean; volume: string; error: string | null; simulated: boolean }> {
   requireWorkspace('plumbing', actor, 'Activity & integrations');
   await ensureConnectorsFileApplied();
   const db = await getDb();
   const [c] = await db.select().from(connectors).where(eq(connectors.name, name));
   if (!c || isRetiredConnector(c.name)) throw new Error(`Unknown connector ${name}`);
   if (!c.enabled) throw new ConnectorDisabledError(c.name);
-  const link = connectorLink({ name: c.name, kind: c.kind, mode: c.kind === 'vigie' ? vigieConnectorMode() : c.kind === 'cursus' ? cursusConnectorMode() : null });
+  const link = connectorLink({ name: c.name, kind: c.kind, mode: modeOf(c) });
   if (!connectorCanSync(link, c.enabled)) throw new ConnectorNotConnectedError(c.name, link);
   const simulated = isSimulatedSync(link);
   const startedAt = new Date();
@@ -197,6 +228,9 @@ export async function syncConnector(name: string, actor: Actor): Promise<{ ok: b
       }
       volume = `${received} approvals received`;
       if (errors.length) { ok = false; error = errors.join(' · '); }
+    } else if (opts.exchange && link === 'live') {
+      // R-033: a live static connector's exchange (Codex: outbox, then index read — admin-connectors.ts).
+      ({ ok, volume, error } = await opts.exchange());
     }
   } catch (e) {
     ok = false;
@@ -207,8 +241,8 @@ export async function syncConnector(name: string, actor: Actor): Promise<{ ok: b
   await db.transaction(async (tx) => {
     const who = await whoIs(tx, actor);
     await tx.insert(connectorSyncRuns).values({ connectorId: c.id, startedAt, finishedAt, ok, volume, error, requestedByName: who.who });
-    // A simulated run is no sync: the last-sync date only moves for a real exchange.
-    if (c.kind !== 'static') {
+    // A simulated run is no sync: the last-sync date only moves for a real exchange (R-033: a live Codex too).
+    if (c.kind !== 'static' || link === 'live') {
       await tx.update(connectors).set({ lastSyncAt: ok && !simulated ? finishedAt : c.lastSyncAt, status: ok ? 'ok' : 'warning', updatedAt: finishedAt }).where(eq(connectors.id, c.id));
     }
     await trace(tx, who, {

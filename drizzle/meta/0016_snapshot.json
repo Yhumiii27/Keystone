@@ -1,5 +1,5 @@
 {
-  "id": "5519f24f-bad8-43de-af8d-beb162a83a17",
+  "id": "643f634f-121f-4e10-ab58-19ee0dd5ef00",
   "prevId": "2275a374-b222-4e1b-93fa-ecb2231550c4",
   "version": "7",
   "dialect": "postgresql",
@@ -8901,102 +8901,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.document_downloads": {
-      "name": "document_downloads",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "document_id": {
-          "name": "document_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "revision": {
-          "name": "revision",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "person_id": {
-          "name": "person_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "person_name": {
-          "name": "person_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "downloaded_on": {
-          "name": "downloaded_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "format": {
-          "name": "format",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source": {
-          "name": "source",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "document_downloads_document_id_documents_id_fk": {
-          "name": "document_downloads_document_id_documents_id_fk",
-          "tableFrom": "document_downloads",
-          "tableTo": "documents",
-          "columnsFrom": [
-            "document_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "document_downloads_person_id_persons_id_fk": {
-          "name": "document_downloads_person_id_persons_id_fk",
-          "tableFrom": "document_downloads",
-          "tableTo": "persons",
-          "columnsFrom": [
-            "person_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.document_index_syncs": {
       "name": "document_index_syncs",
       "schema": "",
@@ -9025,6 +8929,13 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'keystone'"
         }
       },
       "indexes": {},

@@ -125,7 +125,9 @@
   font-size: 12.5px;
 }
 .muted { color: var(--color-neutral-400); }
-.dlRow { font-size: 12.5px; padding: 4px 0; border-bottom: 1px solid var(--color-neutral-900); color: var(--color-neutral-300); }
+/* Delivery 8 (R-127, D-2): the history stays in Codex — link under the current revision (the Download log section is gone). */
+.historyLink { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; margin-top: 6px; font-size: 12px; color: var(--color-accent-300); text-decoration: none; }
+.historyLink:hover { color: var(--color-accent); text-decoration: underline; }
 .relation {
   display: inline-flex;
   align-items: center;

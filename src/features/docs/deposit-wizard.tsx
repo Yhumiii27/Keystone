@@ -19,6 +19,7 @@ import { CenteredModal } from '@/components/ds/CenteredModal';
 import { cx } from '@/components/ds/cx';
 import { Field, Input } from '@/components/ds/Field';
 import { showToast } from '@/components/ds/Toast';
+import { CODEX_LINK_ATTRS } from '@/server/integrations/codex/links';
 import { DEPOSIT_TITLE_MAX, DEPOSIT_REF_MAX, detectDocType, linkedToText, titleFromFileName } from '@/domain/documents';
 import { useI18n } from '@/i18n/client';
 import { depositInCodexAction } from './actions';
@@ -41,6 +42,8 @@ export function DepositWizard({ view }: { view: DepositView }) {
   const [detected, setDetected] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
+  /** R-033 (A-15): with Codex connected the hand-off is refused with a link to deposit in Codex. */
+  const [errorLink, setErrorLink] = useState<{ href: string; label: string } | null>(null);
   const [pending, start] = useTransition();
 
   const revision = view.revision;
@@ -63,9 +66,11 @@ export function DepositWizard({ view }: { view: DepositView }) {
   const finish = () =>
     start(async () => {
       setError(null);
+      setErrorLink(null);
       const r = await depositInCodexAction({ project: view.page, type, title, po, part, revisionOf: revision?.number ?? '' });
       if ('error' in r) {
         setError(r.error);
+        setErrorLink(r.link ?? null);
         return;
       }
       showToast(r.toast);
@@ -160,6 +165,14 @@ export function DepositWizard({ view }: { view: DepositView }) {
       {error && (
         <Callout variant="compact" tone="accent" role="alert">
           {error}
+          {errorLink && (
+            <>
+              {' · '}
+              <a href={errorLink.href} {...CODEX_LINK_ATTRS}>
+                {errorLink.label}
+              </a>
+            </>
+          )}
         </Callout>
       )}
 

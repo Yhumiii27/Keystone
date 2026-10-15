@@ -477,8 +477,6 @@ export const approverRole = codec<ApproverRole, string>([
   ['direction', 'Direction'], ['client', 'Client'], ['quality_verification', 'Quality (verification)'], ['hse_officer', 'HSE officer'],
   ['buyer', 'Buyer'], ['site_manager', 'Site manager'], ['auditor', 'Auditor'],
 ]);
-/** Where a download log entry comes from: made from Keystone, or synced from the Codex log. */
-export type DocDownloadSource = 'keystone' | 'codex';
 /** Hand-off state of a deposit to Codex (simulated: recorded at once, OPEN QUESTION D-1). */
 export type DepositStatus = 'handed_off' | 'recorded';
 /**

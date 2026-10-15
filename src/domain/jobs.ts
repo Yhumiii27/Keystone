@@ -19,6 +19,7 @@ export type JobName =
   // ── Delivery 8 · platform-ops jobs ──
   // ── Delivery 8 · connectors jobs ──
   // ── Delivery 8 · docs-client-portfolio jobs ──
+  | 'codex-index'
   ;
 
 export interface JobSchedule {
@@ -43,6 +44,9 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   // ── Delivery 8 · platform-ops jobs ──
   // ── Delivery 8 · connectors jobs ──
   // ── Delivery 8 · docs-client-portfolio jobs ──
+  // R-033: Codex's index read every hour with the HTTP connector (interval to confirm — the spec's Codex row says real time /
+  // webhooks, which Codex does not offer yet); with the mock it reads nothing.
+  { name: 'codex-index', everyMs: HOUR, leaseMs: 15 * MIN, firstDelayMs: 25_000 },
 ];
 
 export const JOB_NAMES: readonly JobName[] = JOB_SCHEDULES.map((j) => j.name);

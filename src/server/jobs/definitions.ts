@@ -3,6 +3,8 @@ import 'server-only';
 // for the log and the job_locks row, and whether something needs attention (a delivery that failed).
 import { JOB_SCHEDULES, ORPHAN_FILE_GRACE_MS, type JobName, type JobSchedule } from '@/domain/jobs';
 import { purgeExpiredPlanTrash } from '@/server/dal/plan-trash';
+import { refreshCodexIndex } from '@/server/dal/documents';
+import { codexConnectorMode } from '@/server/integrations/codex/config';
 import { redeliverCodexOutbox } from '@/server/integrations/codex/connector';
 import { redeliverCursusOutbox } from '@/server/integrations/cursus/connector';
 import { redeliverEcoOutbox } from '@/server/integrations/vigie/eco-connector';
@@ -54,6 +56,17 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
   // ── Delivery 8 · platform-ops jobs ──
   // ── Delivery 8 · connectors jobs ──
   // ── Delivery 8 · docs-client-portfolio jobs ──
+  // Codex's index read by the HTTP connector (R-033): records changed since the last read; the mock reads nothing (A-15:
+  // production without Codex keeps an empty index). A Codex that does not answer fails the run (logged, retried next hour).
+  'codex-index': async (): Promise<JobOutcome> => {
+    if (codexConnectorMode() !== 'http') return { summary: 'Codex mock connector · index not read', counts: { applied: 0 } };
+    const r = await refreshCodexIndex(null);
+    if (!r.read) return { summary: 'Codex connector disabled · index not read', counts: { applied: 0 } };
+    return {
+      summary: `Codex index read · ${r.applied} records applied · ${r.created} new · ${r.skipped} skipped · ${r.records} in the index`,
+      counts: { applied: r.applied, created: r.created, skipped: r.skipped, records: r.records }, warn: r.skipped > 0,
+    };
+  },
 };
 
 export const JOB_DEFINITIONS: readonly JobDefinition[] = JOB_SCHEDULES.map((s) => ({ ...s, run: RUNS[s.name] }));

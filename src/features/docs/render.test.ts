@@ -128,7 +128,7 @@ describe('vault (dvKpis, dvScope, dvViews, dvFam, dvSt, dvList) — EN and FR', 
     const t = makeT('fr');
     const v = await vault('fr', { view: 'pending' });
     const html = renderToStaticMarkup(
-      withI18n('fr', createElement(DocsVault, { project: 'HLT-026', view: v, canEdit: true, openToast: 'x', t })),
+      withI18n('fr', createElement(DocsVault, { project: 'HLT-026', view: v, canEdit: true, codexHref: 'http://localhost:3100/?project=HLT-026', t })),
     );
     for (const s of ['Les documents projet vivent dans Codex', 'Index simulé · 412 fiches', 'Synchroniser', 'Ouvrir Codex', 'Documents dans le périmètre',
       'Vues enregistrées', 'En attente d’approbation', 'Rechercher numéro, titre, tag, auteur…', 'Toutes familles', 'Tous statuts', 'Coffre-fort · 1 / 40 documents',
@@ -137,12 +137,20 @@ describe('vault (dvKpis, dvScope, dvViews, dvFam, dvSt, dvList) — EN and FR', 
     expect(v.rows[0].href).toBe('/projects/HLT-026/documents?view=pending&doc=RPT-HLT-014');
     expect(html).not.toContain('Aucun document ne correspond');
     const ro = renderToStaticMarkup(
-      withI18n('en', createElement(DocsVault, { project: 'HLT-026', view: await vault('en'), canEdit: false, openToast: 'x', t: makeT('en') })),
+      withI18n('en', createElement(DocsVault, { project: 'HLT-026', view: await vault('en'), canEdit: false, codexHref: 'http://localhost:3100/?project=HLT-026', t: makeT('en') })),
     );
     expect(ro).not.toContain('Sync now');
     expect(ro).toContain('Open Codex');
+    // R-033: "Open Codex" opens Codex in a new tab (it showed the toast "Opening Codex · project HLT-026").
+    expect(anchor(ro, 'http://localhost:3100/?project=HLT-026')).toMatch(/target="_blank"[^>]*rel="noopener noreferrer"/);
+    // A client has no Codex access: no "Open Codex".
+    const client = renderToStaticMarkup(withI18n('en', createElement(DocsVault, { project: 'HLT-026', view: await vault('en'), canEdit: false, codexHref: null, t: makeT('en') })));
+    expect(client).not.toContain('Open Codex');
   });
 });
+
+/** The opening tag of the anchor pointing at `href` ('' when none). */
+const anchor = (html: string, href: string) => [...html.matchAll(/<a [^>]*>/g)].map((m) => m[0]).find((a) => a.includes(`href="${href}"`)) ?? '';
 
 // ── Drawer ─────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -161,7 +169,7 @@ function expectedMeta(lang: Lang, g: any, record: { typeLabel: string; type: str
 }
 
 describe('document record drawer (showDoc, docVals) — EN and FR', () => {
-  it.each(LANGS)('%s: header, identity, classification, revisions, approval proof, distribution, download log, relations', async (lang) => {
+  it.each(LANGS)('%s: header, identity, classification, current revision, approval proof, distribution, relations', async (lang) => {
     for (const [number, g] of Object.entries(G[lang].drawers) as [string, any][]) {
       const d = await drawer(lang, number);
       const record = (await getDocumentRecord(number))!;
@@ -169,11 +177,13 @@ describe('document record drawer (showDoc, docVals) — EN and FR', () => {
       expect([d.title, d.conf, d.confClass, d.status, d.statusClass], number).toEqual([g.title, g.conf, g.confClass, g.status, g.stClass]);
       expect(d.identity, number).toEqual(expectedMeta(lang, g, record));
       expect(d.tags, number).toEqual(g.tagList);
+      // D-2 = a (R-127): the current revision only — the earlier revisions stay in Codex (the prototype listed A … current).
       // Current working version: "{rev}.3" (the prototype printed "A.3" for every revision).
       expect(d.revisions.map((r) => ({ rev: r.revision, note: r.note, sub: r.sub, status: r.status, stClass: r.statusClass })), number).toEqual(
-        g.revs.map((r: any, i: number) => ({ rev: r.rev, note: r.note, sub: `${r.date} · ${r.by} · ${i === 0 ? `${r.rev}.3` : r.versions}`, status: r.status, stClass: r.stClass })),
+        g.revs.slice(0, 1).map((r: any) => ({ rev: r.rev, note: r.note, sub: `${r.date} · ${r.by} · ${r.rev}.3`, status: r.status, stClass: r.stClass })),
       );
-      expect(d.revisions.map((r) => r.current)).toEqual(g.revs.map((r: any) => r.color === 'var(--color-text)'));
+      expect(d.revisions.map((r) => r.current)).toEqual([true]);
+      expect(g.revs[0].color).toBe('var(--color-text)');
       const role = (x: string) => (lang === 'fr' && x === 'Sens' ? 'Direction' : x);
       expect(d.approvals.map((a) => ({ label: a.label, state: a.state, signed: a.signed })), number).toEqual(
         g.appr.map((a: any) => ({ label: `${role(a.role)} · ${a.who}`, state: `${a.state} · ${a.when}`, signed: a.dot === 'var(--color-accent)' })),
@@ -184,7 +194,9 @@ describe('document record drawer (showDoc, docVals) — EN and FR', () => {
         sub: `· rev ${x.rev} · ${x.date}`, ack: x.ack, ackClass: x.cls,
       }));
       expect(d.distribution, number).toEqual(dist);
-      expect(d.downloads, number).toEqual(g.dl);
+      // D-2 = a (R-127): no download log in Keystone (the prototype's g.dl): a link to the history in Codex instead.
+      expect(d, number).not.toHaveProperty('downloads');
+      expect(d.historyHref, number).toBe(`http://localhost:3100/?document=${number}&revision=${record.revision}`);
       // "Punch item" has no French in the prototype dictionary ("Réserve" added).
       expect(d.links.map((l) => ({ kind: l.kind, id: l.ref })), number).toEqual(
         g.links.map((l: any) => ({ kind: lang === 'fr' && l.kind === 'Punch item' ? 'Réserve' : l.kind, id: l.id })),
@@ -202,18 +214,20 @@ describe('document record drawer (showDoc, docVals) — EN and FR', () => {
     expect((await drawer('en', 'PID-HLT-026')).approveLabel).toBeNull();
   });
 
-  it('actions and links: open toast, new revision hand-off, relation targets, close keeps the vault state', async () => {
+  it('actions and links: Open in Codex, new revision hand-off, relation targets, close keeps the vault state', async () => {
     const d = await drawer('fr', 'REC-HLT-009', DIRECTOR, true, { view: 'audit' });
-    expect(d.openToast).toBe('Ouverture de Codex · REC-HLT-009 rév. A');
-    expect((await drawer('en', 'REC-HLT-009')).openToast).toBe('Opening Codex · REC-HLT-009 rev A');
+    // R-033: "Open in Codex" opens the record in Codex (it was the toast "Ouverture de Codex · REC-HLT-009 rév. A").
+    expect(d.codexHref).toBe('http://localhost:3100/?document=REC-HLT-009&revision=A');
     expect(d.newRevisionHref).toBe('/projects/HLT-026/documents?scope=all&view=audit&deposit=REC-HLT-009');
     expect(d.closeHref).toBe('/projects/HLT-026/documents?scope=all&view=audit');
+    // R-128: PO-2026-118 is not an HLT-026 order (seed left as is, owner question): inert.
     expect(d.links).toEqual([
       { kind: 'Commande d’achat', ref: 'PO-2026-118', href: null },
       { kind: 'Article', ref: 'EL-VFD-200', href: '/reference/parts?part=EL-VFD-200' },
     ]);
     expect((await drawer('en', 'CTR-HLT-002')).links).toEqual([{ kind: 'Change request', ref: 'CR-004', href: '/projects/HLT-026/changes?cr=CR-004' }]);
-    expect((await drawer('fr', 'PHO-HLT-011')).links[0]).toEqual({ kind: 'Réserve', ref: 'P-01', href: null });
+    // R-128: the punch item opens the project's punch list on its row (it was inert).
+    expect((await drawer('fr', 'PHO-HLT-011')).links[0]).toEqual({ kind: 'Réserve', ref: 'P-01', href: '/projects/HLT-026/itp?view=punch#punch-P-01' });
     expect((await drawer('en', 'PID-HLT-026', DIRECTOR, false)).newRevisionHref).toBeNull();
   });
 });
@@ -291,11 +305,13 @@ describe('document types register (docTypesRows) — EN and FR', () => {
   it('static render with and without "Edit in Codex"', async () => {
     const t = makeT('fr');
     const rows = docTypesView(await listDocumentTypes(), t, 'fr');
-    const html = renderToStaticMarkup(withI18n('fr', createElement(DocTypesRegister, { rows, editToast: 'x', t })));
+    const html = renderToStaticMarkup(withI18n('fr', createElement(DocTypesRegister, { rows, editHref: 'http://localhost:3100/?view=document-types', t })));
     for (const s of ['Synchronisé depuis Codex', 'Modifier dans Codex', 'Registre des types de documents', 'Circuit d’approbation', 'Livrable client', 'Dans Codex',
       'Auteur → Responsable qualité → Direction', 'Schéma de procédé (PFD)'])
       expect(html, s).toContain(s);
-    const ro = renderToStaticMarkup(withI18n('fr', createElement(DocTypesRegister, { rows, editToast: null, t })));
+    // R-033: "Edit in Codex" opens Codex's register in a new tab (TODO(codex) D-1: Codex's home until its deep links exist).
+    expect(anchor(html, 'http://localhost:3100/?view=document-types')).toContain('target="_blank"');
+    const ro = renderToStaticMarkup(withI18n('fr', createElement(DocTypesRegister, { rows, editHref: null, t })));
     expect(ro).not.toContain('Modifier dans Codex');
   });
 });

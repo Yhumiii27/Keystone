@@ -65,7 +65,8 @@ describe('/projects/[code]/documents', () => {
     expect(primary.props).toMatchObject({ href: '/projects/HLT-026/documents?deposit=new', variant: 'primary' });
     const view = p.DocsVault.props.view as VaultView;
     expect([view.rows.length, view.kpis[0].value, view.title]).toEqual([40, '40', 'Vault · 40 / 40 documents']);
-    expect(p.DocsVault.props).toMatchObject({ canEdit: true, openToast: 'Opening Codex · project HLT-026' });
+    // R-033: "Open Codex" opens Codex in a new tab (it was the toast "Opening Codex · project HLT-026").
+    expect(p.DocsVault.props).toMatchObject({ canEdit: true, codexHref: 'http://localhost:3100/?project=HLT-026' });
   });
 
   it('URL state: scope, view, family, status, search; unknown values fall back', async () => {
@@ -146,10 +147,11 @@ describe('/admin/document-types', () => {
     const p = await tree();
     expect(p.PageHeader.props).toMatchObject({ screen: 'doctypes' });
     expect((p.DocTypesRegister.props.rows as unknown[]).length).toBe(28);
-    expect(p.DocTypesRegister.props.editToast).toBe('Opening Codex · project HLT-026');
+    // R-033: "Edit in Codex" opens Codex's register (it was the toast "Opening Codex · project HLT-026"; TODO(codex) D-1).
+    expect(p.DocTypesRegister.props.editHref).toBe('http://localhost:3100/?view=document-types');
     for (const [role, edit] of [['pm', true], ['quality', true], ['member', false], ['englead', false]] as const) {
       session.role = role;
-      expect(!!(await tree()).DocTypesRegister.props.editToast, role).toBe(edit);
+      expect(!!(await tree()).DocTypesRegister.props.editHref, role).toBe(edit);
     }
     // R-042 (P-1): outside their workspace the client is sent home.
     session.role = 'client';

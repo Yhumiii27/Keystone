@@ -9,7 +9,7 @@ import { openDatabase } from '@/server/db/open';
 import { getCashFlow, listBillingPlans } from './cashflow';
 import { addAmendment, addBond, addPaymentMilestone, getContract, issueInvoice, markInvoicePaid, updateContractSheet } from './contract';
 import {
-  acknowledgeDocument, depositInCodex, freezeDocument, getCodexSyncState, getDocumentRecord, listVaultDocuments, logDocumentDownload,
+  acknowledgeDocument, depositInCodex, freezeDocument, getCodexSyncState, getDocumentRecord, listVaultDocuments,
   proposeDocumentRelease, recordCircuitStart, recordDocumentDecision,
 } from './documents';
 import { createInterface, freezeInterface, listInterfaces, markInterfaceReceived } from './interfaces';
@@ -70,14 +70,12 @@ describe('Codex vault writers', () => {
     expect(await recordDocumentDecision(d.number, { decision: 'approved' }, { name: 'Marie Lefebvre', role: 'director' })).toMatchObject({ step: d.circuitState.nextStep });
   });
 
-  it('client acknowledges PID-HLT-026; downloads are logged before the Codex log', async () => {
+  it('client acknowledges PID-HLT-026; the record keeps no download log (D-2: it stays in Codex)', async () => {
     await acknowledgeDocument('PID-HLT-026', 'Nadia Bensaïd');
     expect((await vault('PID-HLT-026')).acknowledged).toBe(true);
     await expect(acknowledgeDocument('BOM-MEC-026', 'Nadia Bensaïd')).rejects.toThrow(/not shared/);
-    await logDocumentDownload('PID-HLT-026', 'Marie Lefebvre');
-    expect((await getDocumentRecord('PID-HLT-026'))!.downloads.map((x) => x.text)).toEqual([
-      'Marie Lefebvre · rev D · 29 Sep · PDF', 'S. Haddad · rev D · 27 Sep · PDF', 'N. Bensaïd · rev D · 28 Sep · PDF',
-    ]);
+    // D-2 = a (R-127): no Keystone download log (logDocumentDownload and document_downloads are gone).
+    expect(await getDocumentRecord('PID-HLT-026')).not.toHaveProperty('downloads');
   });
 
   it('freeze → propose release on an engineering draft; wrong transitions are refused', async () => {

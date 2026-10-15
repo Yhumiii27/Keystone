@@ -1,14 +1,15 @@
 // Documents — the Codex index (docs/spec/11 §3.10, screens 10 §4 Documents and §5 Document types register).
 // Codex (the document management system) owns the files, numbering, approval circuits and retention; Keystone
 // keeps a synced index of the records (number, revision, status, confidentiality, tags, links), the approval proof,
-// distribution / client acknowledgements and the download log, and hands deposits over to Codex.
+// distribution / client acknowledgements, and hands deposits over to Codex. Delivery 8 (D-2 = a, R-127): the download log
+// stays in Codex (table `document_downloads` dropped); the revision rows are kept for the "Obsolete revisions withdrawn" KPI.
 //
 // The prototype synthesises part of the history (one revision every 21 days, approval dates counted back from the
 // document date, two fixed download entries per released document). The seed materialises that history as rows so
 // the screens read data, never formulas; a real Codex sync replaces them (OPEN QUESTION D-1, 10 OQ13).
 import { boolean, date, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type {
-  ApproverRole, CodexDecision, CodexOutboxKind, CodexSyncStatus, Confidentiality, DepositStatus, DocDownloadSource, DocFamily, DocLinkKind, DocRecipient,
+  ApproverRole, CodexDecision, CodexOutboxKind, CodexSyncStatus, Confidentiality, DepositStatus, DocFamily, DocLinkKind, DocRecipient,
   DocService, DocumentStatus,
 } from '../codes';
 import { id, timestamps } from './_common';
@@ -83,7 +84,7 @@ export const documents = pgTable('documents', {
   lastWithdrawnOn: date('last_withdrawn_on', { mode: 'string' }),
   /** Created from Keystone (deposit hand-off, meeting minutes) — "New" tag. */
   isNew: boolean('is_new').notNull().default(false),
-  /** Codex deep link (OPEN QUESTION D-1). */
+  /** Codex's id and own link of the record, filled by the index read (R-033; OPEN QUESTION D-1); null until then. */
   codexId: text('codex_id'),
   codexUrl: text('codex_url'),
   /** Vault order: DOCS order; Keystone-created records are prepended with a lower value. */
@@ -153,20 +154,8 @@ export const documentAcknowledgements = pgTable(
   (t) => [primaryKey({ columns: [t.documentId, t.revision] })],
 );
 
-/** Download log (`engOv.dl` + the Codex log). */
-export const documentDownloads = pgTable('document_downloads', {
-  id: id(),
-  documentId: uuid('document_id').notNull().references(() => documents.id, { onDelete: 'cascade' }),
-  revision: text('revision').notNull(),
-  personId: uuid('person_id').references(() => persons.id),
-  /** "S. Haddad" / persona full name. */
-  personName: text('person_name').notNull(),
-  downloadedOn: date('downloaded_on', { mode: 'string' }).notNull(),
-  /** "PDF" | "Native". */
-  format: text('format').notNull(),
-  source: text('source').$type<DocDownloadSource>().notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+// The download log (`engOv.dl` + the Codex log, table `document_downloads`) was dropped in Delivery 8 (D-2 = a, R-127): it
+// stays in Codex, which the drawer links to.
 
 /** Deposit hand-offs to Codex (`dv.dep`): a new document, or a new revision of an existing one. */
 export const documentDeposits = pgTable('document_deposits', {
@@ -193,9 +182,14 @@ export const documentDeposits = pgTable('document_deposits', {
 export const documentIndexSyncs = pgTable('document_index_syncs', {
   id: id(),
   syncedAt: timestamp('synced_at', { withTimezone: true }).notNull(),
-  /** Records in Codex at that sync (beyond the documents indexed here). */
+  /** Records in Codex at that sync (beyond the documents indexed here); a read of Codex's index: the records of the index. */
   recordCount: integer('record_count').notNull(),
   requestedByPersonId: uuid('requested_by_person_id').references(() => persons.id),
+  /**
+   * Delivery 8 (R-033): `codex` = a read of Codex's index by the HTTP connector (the banner's "Last sync" and the next read's
+   * `since`); `keystone` = Keystone's own index (seed, mock "Sync now"), never shown as a sync with Codex.
+   */
+  source: text('source').$type<'keystone' | 'codex'>().notNull().default('keystone'),
 });
 
 /**

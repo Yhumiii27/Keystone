@@ -1,9 +1,9 @@
 'use client';
 // Selection bar and Vault card (docs/spec/10 §4.4h–i, template 2320–2343). Multi-select is transient client state
 // (`dv.sel`): the 16px check of each row toggles it, the bar shows "{n} selected" with "Download zip" (the files are in
-// Codex: a toast says so, with an "Open Codex" link), "Export register (xlsx)" (the ticked documents; the card's button exports the register as
-// filtered — chapter 4 exports) and "Clear". A row click opens / closes the
-// document record drawer (`?doc=`); the download icon logs a download of the current revision.
+// Codex: a toast says so, with an "Open Codex" link to the selection — R-033, TODO(codex) D-1), "Export register (xlsx)"
+// (the ticked documents; the card's button exports the register as filtered — chapter 4 exports) and "Clear". A row click
+// opens / closes the document record drawer (`?doc=`); the download icon gives the Codex hand-off toast (R-127, D-2).
 import { Check, FileXls, FileZip } from '@phosphor-icons/react/dist/ssr';
 import { useState } from 'react';
 import { ClickableRow } from '@/components/app/ClickableRow';
@@ -18,6 +18,7 @@ import { showToast } from '@/components/ds/Toast';
 import { downloadExport } from '@/features/exports/download';
 import { useI18n } from '@/i18n/client';
 import { exportHref } from '@/lib/export-href';
+import { codexSelectionUrl } from '@/server/integrations/codex/links';
 import { DownloadButton } from './codex-buttons';
 import { selectedT } from './i18n';
 import type { VaultRowView } from './model';
@@ -30,11 +31,11 @@ export interface VaultTableProps {
   rows: VaultRowView[];
   /** "No document matches" or null. */
   empty: string | null;
-  /** Codex web app (the "Download zip" toast links to it: the files are stored in Codex). */
-  codexUrl?: string;
+  /** The "Download zip" toast links to the selection in Codex (the files are stored there); false for a client (no Codex access). */
+  codexLink?: boolean;
 }
 
-export function VaultTable({ project, title, rows, empty, codexUrl }: VaultTableProps) {
+export function VaultTable({ project, title, rows, empty, codexLink }: VaultTableProps) {
   const { t, lang } = useI18n();
   const [sel, setSel] = useState<Record<string, boolean>>({});
   const count = Object.values(sel).filter(Boolean).length;
@@ -60,7 +61,17 @@ export function VaultTable({ project, title, rows, empty, codexUrl }: VaultTable
           <span className={s.selText} aria-live="polite">
             {selectedT(count, t, lang)}
           </span>
-          <Button variant="secondary" size="xs" icon={FileZip} onClick={() => showToast(t('Download zip needs Codex — the document files are stored in Codex'), codexUrl ? { href: codexUrl, label: t('Open Codex') } : undefined)}>
+          <Button
+            variant="secondary"
+            size="xs"
+            icon={FileZip}
+            onClick={() =>
+              showToast(
+                t('Download zip needs Codex — the document files are stored in Codex'),
+                codexLink ? { href: codexSelectionUrl(Object.keys(sel).filter((n) => sel[n])), label: t('Open Codex') } : undefined,
+              )
+            }
+          >
             {t('Download zip')}
           </Button>
           <Button variant="secondary" size="xs" icon={FileXls} disabled={busy} onClick={() => exportRegister(Object.keys(sel).filter((n) => sel[n]))}>

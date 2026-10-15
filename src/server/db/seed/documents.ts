@@ -1,10 +1,11 @@
 // Documents seed (Codex index): document types and circuits (DOC_TYPES, DOC_WHO), the 42 DOCS records with the
-// history the prototype synthesises at render time (docRow / docRevs / docAppr / docDist / docDl, logic 5020–5047)
-// materialised as rows, and the Codex sync state ("Last sync 08:02 · 412 records"). See schema/documents.ts.
+// history the prototype synthesises at render time (docRow / docRevs / docAppr / docDist, logic 5020–5047) materialised
+// as rows, and the Codex sync state ("Last sync 08:02 · 412 records"). See schema/documents.ts. Delivery 8 (D-2 = a,
+// R-127): the download log (docDl) is not seeded — it stays in Codex; the revision rows are kept (KPI, A-15 demo history).
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { addDaysIso, approverRole, confidentiality, docFamily, docLinkKind, documentStatus, isoOfDisplayDate, parisInstant, type DocRecipient, type DocService } from '../codes';
 import {
-  documentAcknowledgements, documentApprovals, documentApproverAssignments, documentDownloads, documentIndexSyncs, documentLinks, documentRevisions,
+  documentAcknowledgements, documentApprovals, documentApproverAssignments, documentIndexSyncs, documentLinks, documentRevisions,
   documentTypeCircuitSteps, documentTypes, documents,
 } from '../schema';
 import type { Tx } from '../types';
@@ -63,7 +64,6 @@ export async function seedDocuments(tx: Tx, ctx: SeedCtx): Promise<void> {
   const apprRows: (typeof documentApprovals.$inferInsert)[] = [];
   const linkRows: (typeof documentLinks.$inferInsert)[] = [];
   const ackRows: (typeof documentAcknowledgements.$inferInsert)[] = [];
-  const dlRows: (typeof documentDownloads.$inferInsert)[] = [];
   docs.forEach((d, i) => {
     const id = newId();
     ctx.document.set(d.id, id);
@@ -100,16 +100,12 @@ export async function seedDocuments(tx: Tx, ctx: SeedCtx): Promise<void> {
     const shared = t.client && status === 'released';
     if (shared && !RECENT_RELEASES.has(d.date))
       ackRows.push({ documentId: id, revision: d.rev, acknowledgedByPersonId: d.proj === 'QMS' ? null : contactOf(d.proj), acknowledgedOn: addDaysIso(issuedOn, 1) });
-    // Codex download log of released documents (docDl: two entries the day after and two days after the release).
-    if (status === 'released')
-      for (const [name, days] of [['S. Haddad', 1], ['N. Bensaïd', 2]] as const)
-        dlRows.push({ id: newId(), documentId: id, revision: d.rev, personId: personIdOrNull(ctx, name), personName: name, downloadedOn: addDaysIso(issuedOn, days), format: 'PDF', source: 'codex' });
+    // D-2 = a (R-127): no synthetic Codex download log — the log stays in Codex (the prototype's docDl rows are not seeded).
   });
   await tx.insert(documents).values(docRows);
   await tx.insert(documentRevisions).values(revRows);
   await tx.insert(documentApprovals).values(apprRows);
   if (linkRows.length) await tx.insert(documentLinks).values(linkRows);
   if (ackRows.length) await tx.insert(documentAcknowledgements).values(ackRows);
-  if (dlRows.length) await tx.insert(documentDownloads).values(dlRows);
   await tx.insert(documentIndexSyncs).values({ id: newId(), syncedAt: parisInstant('2026-09-29', '08:02'), recordCount: CODEX_RECORDS });
 }

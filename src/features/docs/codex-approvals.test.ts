@@ -96,15 +96,19 @@ describe('Codex document decisions from My approvals (R-124)', () => {
       return Response.json([{ number: 'RPT-HLT-014', revision: 'A', status: 'draft', approvals: [{ step: 1, signedOn: null }, { step: 2, signedOn: null }] }, { bogus: true }]);
     }));
     let r = await syncCodexAction('HLT-026');
-    expect(r).toEqual({ ok: true, toast: 'Codex sync · index up to date · 412 records · 1 decision pending sync with Codex' });
+    // R-033: Codex unreachable — the index was not read, so the toast never says "index up to date" (Delivery 7 did).
+    expect(r).toEqual({ error: 'Codex sync · index not read · 0 sent · 1 pending · 0 refreshed' });
     expect((await entries('RPT-HLT-014'))[0]).toMatchObject({ syncStatus: 'failed', attempts: 1, lastError: 'Codex POST /api/documents/RPT-HLT-014/approvals → 503' });
     expect((await getDocumentRecord('RPT-HLT-014'))!.circuitNote).toBe('Rejected · Sync with Codex failed');
     up = true;
     calls.length = 0;
     r = await syncCodexAction('HLT-026');
-    expect(r).toEqual({ ok: true, toast: 'Codex sync · index up to date · 412 records' });
+    // R-033: the outbox is delivered, the records concerned refreshed, then Codex's index read (the stub's records are not
+    // index records: skipped and logged); the count is Keystone's index (42 records), not the mock's 412.
+    expect(r).toEqual({ ok: true, toast: 'Codex sync · index up to date · 42 records · 1 sent · 0 pending · 1 refreshed' });
     expect(calls.map((c) => [c.method, c.url])).toEqual([
       ['POST', 'http://codex.test/api/documents/RPT-HLT-014/approvals'], ['GET', 'http://codex.test/api/documents/state?numbers=RPT-HLT-014'],
+      ['GET', 'http://codex.test/api/documents'],
     ]);
     expect(calls[0].body).toMatchObject({ revision: 'A', step: 1, role: 'quality_manager', decision: 'rejected', comment: 'Missing the torque table', actor: { name: 'Gabriel Comte', role: 'quality' } });
     const [e] = await entries('RPT-HLT-014');
