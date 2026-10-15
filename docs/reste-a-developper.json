@@ -42,6 +42,10 @@
   {
    "date": "2026-10-15",
    "text": "Nouveau besoin du responsable produit (R-185) : un projet peut fournir plusieurs équipements (par exemple une EMP et plusieurs MEMU) ; l’approche projet devra s’adapter — à cadrer avant la livraison 9."
+  },
+  {
+   "date": "2026-10-15",
+   "text": "PR #2 fusionnée dans main par le responsable produit : les livraisons 1 à 8 sont sur main (R-001 fait)."
   }
  ],
  "items": [
@@ -69,9 +73,9 @@
     "git worktree list : 3 worktrees .claude/worktrees/agent-a0c5…, agent-abbd…, agent-ad73… avec leurs branches worktree-agent-*"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 8",
-    "note": "PR #2 ouverte (main-2a2fep → main, livraisons 1 à 8) ; main (PR #1) fusionnée dans la branche et conflits résolus ; la fusion dans main attend l’accord du responsable produit."
+    "note": "PR #2 fusionnée dans main le 15 oct. 2026 par le responsable produit (livraisons 1 à 8, commit e302703) ; CI verte avant fusion (types, lint, tests, build, bout en bout, image conteneur) ; la PR #1 était déjà dans main ; worktrees et branches worktree-agent-* supprimés."
    }
   },
   {
@@ -128,7 +132,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 8",
-    "note": "Livraison 8 : kit conteneur Compose pour Coolify et job CI d’image ; il remplace le Dockerfile de la PR #1 (fusionnée dans main). Reste à construire l’image sur main et à choisir l’hébergement (I-1a)."
+    "note": "Livraison 8 : kit conteneur Compose pour Coolify et job CI d’image, fusionnés dans main (PR #2) ; il remplace le Dockerfile de la PR #1. Reste à choisir l’hébergement (I-1a) et à déployer la bêta multi-utilisateur."
    }
   },
   {
