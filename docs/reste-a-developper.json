@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-10-15",
+ "updated": "2026-10-16",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -46,6 +46,10 @@
   {
    "date": "2026-10-15",
    "text": "PR #2 fusionnée dans main par le responsable produit : les livraisons 1 à 8 sont sur main (R-001 fait)."
+  },
+  {
+   "date": "2026-10-16",
+   "text": "Livraison 9, lot « horloge » : R-013 fait — Keystone suit la date réelle sur une base de production (la démonstration reste au 25 sept. 2026, réglable par KEYSTONE_CLOCK)."
   }
  ],
  "items": [
@@ -419,7 +423,9 @@
     "déjà en place : projects.data_date (schema/portfolio.ts:200) lu via projectDataDate() dans schedule.ts:166, baselines.ts, kpis.ts:29-32, plan.ts:438 ; notes-planning.md §3 : aucun écrivain (gap 6)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Lot « horloge » (docs/delivery-9/notes-clock.md) : une seule date métier (src/domain/clock.ts, src/server/clock.ts) à la place des six dates figées ; réglage KEYSTONE_CLOCK ; date réelle sur une base de production, 25 sept. 2026 sur la base de démonstration ; années des dates saisies et affichées selon l’année en cours. La date de situation par projet reste à faire (R-060, S-4)."
    }
   },
   {
@@ -2486,7 +2492,8 @@
     "src/domain/ch4-defaults.ts:19 DEFAULT_DATA_DATE figée (pas d’horloge réelle)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "a_faire",
+    "note": "Débloqué par l’horloge réelle (R-013, livraison 9)."
    }
   },
   {
@@ -3500,7 +3507,8 @@
     "src/server/db/codes.ts:220 RiskStatus open | closed : aucun état « proposé » pour un risque à confirmer ; src/server/dal/risks.ts:170 createRisk réutilisable"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "a_faire",
+    "note": "Débloqué par l’horloge réelle (R-013, livraison 9)."
    }
   },
   {

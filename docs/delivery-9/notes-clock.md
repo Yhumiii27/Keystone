@@ -34,6 +34,13 @@ the Monday on or after today + 105 days, finish = end of today's month one year 
 calendar starts on the Monday of today's week; a request's default start is next Monday; ITP year-less dates read within
 today ± 183 days; the project data date falls back to today (S-4 open).
 
+**Years.** Dates typed or stored without a year are read in the business year at runtime (`isoOfDisplayDate(text, year)`,
+`parseDateInput`, `parseMeetingDate`, `parseNeedDate`, export `isoOf`, transcripts, holidays added in Settings); seeds and
+prototype snapshots keep 2026 (`isoOfDemoDate`, `DEMO_YEAR`). "Year shown only outside the current year" compares with the
+business year (`shortDateYearOfIso`, `fmtDOfIso` — a 2026 date seen in 2027 reads "12 Mar ’26" —, plan date texts, cash-flow
+months, schedule milestones). Report-period labels ("September 2026", "Q3 2026") are built from the business date, in French
+through FR rules. Nothing displayed changes on the demo data set.
+
 ## 2. Values that change on the demo data set
 
 One date instead of three: what the prototype computed at 29 or 30 Sep is now computed at 25 Sep. Golden tests of the pure
@@ -57,7 +64,8 @@ purchasing, ECO, drawings, Cursus, the INV/RFQ year (2026).
 
 ## 3. Verification
 
-`npm run typecheck`, `npm run lint`, `npm test` (365 files, 4 014 tests) green after the conversion; tests of the clock:
+`npm run typecheck`, `npm run lint`, `npm test` (365 files, 4 018 tests), `scripts/db-check.ts` ("All checks passed" — two
+expectations moved: IF-07 5 d late, MCH-035 36 d), `npm run test:e2e` (production build, 26 scenarios) all green. Tests of the clock:
 `src/domain/clock.test.ts`, `src/server/clock.test.ts` (automatic by data set, KEYSTONE_CLOCK, override, inside a
 transaction), `src/server/config/parse.test.ts` (KEYSTONE_CLOCK).
 
@@ -71,5 +79,10 @@ transaction), `src/server/config/parse.test.ts` (KEYSTONE_CLOCK).
    status date") — kept to avoid new translations; they now mean the business date.
 4. `advancePunchItem(…, on = null)` called directly without a date closes an item undated (the Server Function passes the
    business date) — unchanged behaviour.
-5. Unblocked by this lot, not built: R-121 (J-15 alert on an unconfirmed client prerequisite), R-085 (8-week load plans),
+5. Still on the Jan-2026 month axis (follow-up): labels of axis positions in `src/lib/format.ts` (`fmtD`, `dateOf`,
+   `monthLabels`) used by portfolio indicators, the pfplan gate line and chart months; the cash recovery window
+   (`RECOVERY_MONTHS`, Jan 2026 – Mar 2027); the Lucca import period codes (Lucca unplugged); the titles "Quality records 2026
+   (ISO audit)" and "Public holidays 2026 — France". Readers that parse stored year-less texts (plan texts in exports, cash
+   milestone texts) read them in the current year; the ISO columns should be read instead.
+6. Unblocked by this lot, not built: R-121 (J-15 alert on an unconfirmed client prerequisite), R-085 (8-week load plans),
    R-015 KPI alerts.
