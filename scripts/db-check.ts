@@ -472,7 +472,8 @@ async function delivery3Reads() {
   check('stakeholders 8 · 1 stale (DREAL Normandie) · RACI 7 × 6', stk.stakeholders.length === 8 && same(stk.stakeholders.filter((s) => s.stale).map((s) => s.name), ['DREAL Normandie'])
     && stk.raci?.rows.length === 7 && stk.raci.columns.length === 6);
   const ifc = await listInterfaces('HLT-026');
-  check('interfaces: 7 · IF-07 late (10 d) · badge 1', ifc.length === 7 && same(ifc.filter((i) => i.status === 'late').map((i) => [i.number, i.daysToNeed]), [['IF-07', -10]])
+  // R-013: one business date (25 Sep 2026 on the demo data set), not the prototype's 30 Sep: IF-07 is 5 days late, not 10.
+  check('interfaces: 7 · IF-07 late (5 d) · badge 1', ifc.length === 7 && same(ifc.filter((i) => i.status === 'late').map((i) => [i.number, i.daysToNeed]), [['IF-07', -5]])
     && same(await lateInterfacesByProject(), { 'HLT-026': 1 }));
   const ps = await getPortfolioSchedule(null);
   check('portfolio schedule: 7 in progress · 5 pipeline · average board wait 28 d', ps.rows.filter((r) => !r.pipeline).length === 7 && ps.rows.filter((r) => r.pipeline).length === 5 && ps.averageBoardWaitDays === 28);
@@ -624,10 +625,11 @@ async function delivery5Reads() {
       (rex.satisfaction.reduce((a, x) => a + x.score, 0) / rex.satisfaction.length).toFixed(1)], [4, 1, 1, 1, 3, '4.0']));
   const ms = await listMachines();
   const z = await machinesByZone();
-  check('installed base: 8 machines · 6 clients · 6 in warranty · 1 extended · MCH-035 ends in 31 d · 4 with open claims · zones 6 / 1 / 1',
+  // R-013: MCH-035's warranty end is counted from 25 Sep 2026 (the business date), not the prototype's 30 Sep.
+  check('installed base: 8 machines · 6 clients · 6 in warranty · 1 extended · MCH-035 ends in 36 d · 4 with open claims · zones 6 / 1 / 1',
     same([ms.length, new Set(ms.map((m) => m.client)).size, ms.filter((m) => m.warrantyStatus === 'in_warranty').length, ms.filter((m) => m.warrantyStatus === 'extended').length,
       ms.filter((m) => m.warrantyEndingSoon).map((m) => [m.number, m.warrantyEndsInDays]), ms.filter((m) => m.openClaims).length, [z.byZone.euna, z.byZone.afr, z.byZone.apac]],
-    [8, 6, 6, 1, [['MCH-035', 31]], 4, [6, 1, 1]]));
+    [8, 6, 6, 1, [['MCH-035', 36]], 4, [6, 1, 1]]));
   const claims = await listClaims();
   const ivs = await listInterventions();
   check('warranty claims: 5 open (2 major) · 4 interventions planned (next 6 Oct 2026) · €34k warranty · €6k chargeable · 1 linked to an ECO',
