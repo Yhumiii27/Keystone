@@ -2,13 +2,13 @@
 // 08 OQ22–23, 09 OQ17–18, 10 OQ4, OQ7, OQ16, OQ18, 07 OQ6, OQ23). Pure functions: every getter that feeds a KPI tile
 // (DAL, view model) calls one of them, so a questionnaire answer changes one place. Each formula is stated in a
 // one-line comment; values are computed at the project's data date (`projectDataDate`, src/domain/ch4-defaults.ts) or
-// the portfolio data date (`DEFAULT_DATA_DATE`) — never the real clock. Golden values: src/domain/kpis.test.ts.
+// the business date (`businessToday`, src/server/clock.ts — R-013), passed in by the caller. Golden values: src/domain/kpis.test.ts.
 //
 // Already computed before chapter 4 (kept where they are, listed for completeness): client home "Change requests to
 // approve" (`crAwaiting`, src/domain/home.ts), My approvals "Oldest" (`oldestItem`, src/domain/approvals.ts), Documents
 // "Obsolete revisions withdrawn" (`vaultKpis`, src/domain/documents.ts), Site "2 rotations" (`rotationCount`,
 // src/domain/site.ts). Resources KPIs (unmet demand, peak weeks, skills ≥ 4) belong to the what-if module.
-import { addDaysIso, daysBetweenIso, dowOfIso, parisParts, STATUS_ISO } from '@/server/db/codes';
+import { addDaysIso, daysBetweenIso, dowOfIso, parisParts } from '@/server/db/codes';
 import { BUILTIN_CALENDAR_BY_CODE, makeCalendar, type CalendarDef, type WorkCalendar } from './calendar';
 import { DEFAULT_PROJECT_CALENDAR } from './ch4-defaults';
 import { clampHealthCpi } from './health';
@@ -426,4 +426,4 @@ export function nextWeeksLoad(weekStarts: readonly string[], loads: readonly num
 // ── Activity & integrations (10 OQ4) ─────────────────────────────────────────────────────────────────────────────────
 
 /** Events today = activity events whose Paris date is the data date. */
-export const eventsOnDay = (instants: readonly (Date | string)[], day: string = STATUS_ISO) => instants.filter((at) => parisDateOf(at) === day).length;
+export const eventsOnDay = (instants: readonly (Date | string)[], day: string) => instants.filter((at) => parisDateOf(at) === day).length;

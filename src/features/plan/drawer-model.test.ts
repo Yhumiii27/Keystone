@@ -39,7 +39,7 @@ const CR008 = (status: 'in_review' | 'approved', extra: Partial<NonNullable<Draw
 const view = (id: string, lang: Lang, assignments: DrawerInput['assignments'] = []) =>
   activityDrawerView(
     {
-      act: activities.find((a) => a.id === id)!, activities, packages, owners, assignments, todos, requests, deptHeads, changeLinks: id === 'A1250' ? [CR008('in_review')] : [],
+      act: activities.find((a) => a.id === id)!, activities, packages, owners, assignments, todos, today: 4, requests, deptHeads, changeLinks: id === 'A1250' ? [CR008('in_review')] : [],
       taskHref: (x) => `/my/tasks/${x.id}`,
     },
     makeT(lang),
@@ -96,7 +96,7 @@ describe('activity drawer — A1250 (EN)', () => {
     // Once CR-008 is decided (no longer in review), the pending-change mention goes; the request stays listed.
     const decided = activityDrawerView(
       {
-        act: activities.find((a) => a.id === 'A1250')!, activities, packages, owners, assignments: A1250_RES, todos, requests, deptHeads,
+        act: activities.find((a) => a.id === 'A1250')!, activities, packages, owners, assignments: A1250_RES, todos, today: 4, requests, deptHeads,
         changeLinks: [CR008('approved', { newDurationDays: 28, appliedAt: '2026-09-25T10:00:00Z', appliedFromDays: 20, durationDays: 28 })], taskHref: (x) => `/my/tasks/${x.id}`,
       },
       makeT('en'),
@@ -106,7 +106,7 @@ describe('activity drawer — A1250 (EN)', () => {
     expect(decided.changes.map((c) => [c.status.label, c.duration])).toEqual([['Approved', '20d → 28d · applied']]);
     const fr = activityDrawerView(
       {
-        act: activities.find((a) => a.id === 'A1250')!, activities, packages, owners, assignments: A1250_RES, todos, requests, deptHeads,
+        act: activities.find((a) => a.id === 'A1250')!, activities, packages, owners, assignments: A1250_RES, todos, today: 4, requests, deptHeads,
         changeLinks: [CR008('in_review', { newDurationDays: 28 })], taskHref: (x) => `/my/tasks/${x.id}`,
       },
       makeT('fr'),
@@ -187,7 +187,7 @@ describe('activity drawer — chapter 4 (S-1, S-2, S-3)', () => {
   const ch4 = (id: string, patch: Partial<PlanActivity>, extra: Partial<DrawerInput> = {}, lang: Lang = 'en') =>
     activityDrawerView(
       {
-        act: { ...activities.find((a) => a.id === id)!, ...patch }, activities, packages, owners, assignments: [], todos, requests, deptHeads, changeLinks: [],
+        act: { ...activities.find((a) => a.id === id)!, ...patch }, activities, packages, owners, assignments: [], todos, today: 4, requests, deptHeads, changeLinks: [],
         taskHref: (x) => `/my/tasks/${x.id}`, calendars: cals, projectCalendar: 'standard_5x8', baselineCode: 'BL2', removableTodos: new Set(['T-2314']), ...extra,
       },
       makeT(lang),

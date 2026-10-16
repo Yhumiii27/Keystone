@@ -3,7 +3,7 @@
 // derivations: status sort, chips, KPI tiles, carried-over actions, preparation pack (previous meeting, internal ⇄
 // client question bridge, transcript), Decisions and Actions registers. Text is English source; screens translate.
 // Also the input parsers of the writes: "New meeting" (AF `meetings`) and the minutes composer.
-import { PG_NOW, isoOfDisplayDate, type MeetingLineType, type MeetingSeries, type MeetingStatus, type MeetingType } from '@/server/db/codes';
+import { isoOfDisplayDate, monthIndexOfIso, type MeetingLineType, type MeetingSeries, type MeetingStatus, type MeetingType } from '@/server/db/codes';
 
 // ── Input model (structurally compatible with the DAL `MeetingRow` / `ClientQuestionRow`) ──────────────────
 
@@ -19,7 +19,7 @@ export interface MeetingLine {
   /** Actions: due as typed ("2 Oct", "—"). */
   due: string | null;
   done: boolean;
-  /** Open action due before the prototype's now (`mIdx(due) < PG_NOW`). */
+  /** Open action due before the business date's month index (the prototype's `mIdx(due) < PG_NOW`; R-013). */
   overdue: boolean;
   /** Task created for the owner by "Send minutes". */
   taskNumber: string | null;
@@ -182,7 +182,7 @@ export const actionCountOf = (m: Pick<Meeting, 'agenda'>) => m.agenda.reduce((s,
 // ── KPI tiles (mtgKpis 4866) ───────────────────────────────────────────────────────────────────────────
 
 export interface MeetingKpis {
-  /** Meetings within ±0.25 month of now (≈ ±1 week). */
+  /** Meetings within ±0.25 month of the business date (≈ ±1 week). */
   thisWeek: number;
   /** Scheduled meetings. */
   upcoming: number;
@@ -199,7 +199,9 @@ export interface MeetingKpis {
 
 const linesOf = (ms: readonly Meeting[]) => ms.flatMap((m) => m.agenda.flatMap((a) => a.lines.map((l) => ({ m, l }))));
 
-export function meetingKpis(ms: readonly Meeting[], now = PG_NOW): MeetingKpis {
+/** `today`: business date (R-013) — "now" is its month index (the prototype's PG_NOW). */
+export function meetingKpis(ms: readonly Meeting[], today: string): MeetingKpis {
+  const now = monthIndexOfIso(today);
   const lines = linesOf(ms);
   const actions = lines.filter((x) => x.l.type === 'action');
   const decisions = lines.filter((x) => x.l.type === 'decision');

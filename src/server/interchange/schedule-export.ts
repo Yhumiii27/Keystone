@@ -7,6 +7,7 @@ import 'server-only';
 import { asc, eq } from 'drizzle-orm';
 import { BUILTIN_CALENDARS } from '@/domain/calendar';
 import { DEFAULT_PROJECT_CALENDAR, projectDataDate } from '@/domain/ch4-defaults';
+import { businessToday } from '@/server/clock';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import { activities, activityAssignments, activityLinks, clients, connectors, projects, wbsNodes } from '@/server/db/schema';
 import { getBaselineActivities, getDisplayedBaselineCode } from '@/server/dal/baselines';
@@ -49,6 +50,7 @@ export async function buildScheduleExport(code: string, now: Date = new Date(), 
     .leftJoin(clients, eq(clients.id, projects.clientId))
     .where(eq(projects.code, code));
   if (!p) return null;
+  const dataDate = projectDataDate(p, await businessToday(db));
   const [nodes, acts, linkRows] = await Promise.all([
     db.select().from(wbsNodes).where(eq(wbsNodes.projectId, p.id)).orderBy(asc(wbsNodes.position)),
     db.select().from(activities).where(eq(activities.projectId, p.id)).orderBy(asc(activities.position)),
@@ -64,8 +66,8 @@ export async function buildScheduleExport(code: string, now: Date = new Date(), 
   const calCodes = [...new Set([projectCalendar, ...acts.map((a) => a.calendarCode).filter((c): c is NonNullable<typeof c> => !!c)])];
   const [calRows, workCals] = await Promise.all([listCalendars({ projectCode: code, includeInactive: true }, db), loadWorkCalendars(code, db)]);
   const dates = acts.flatMap((a) => [a.startDate, a.finishDate]).filter((x): x is string => !!x).sort();
-  const y0 = +(dates[0] ?? projectDataDate(p)).slice(0, 4);
-  const y1 = Math.max(y0, +(dates[dates.length - 1] ?? projectDataDate(p)).slice(0, 4));
+  const y0 = +(dates[0] ?? dataDate).slice(0, 4);
+  const y1 = Math.max(y0, +(dates[dates.length - 1] ?? dataDate).slice(0, 4));
   const calUid = new Map<string, string>();
   const calendars: ImportedCalendar[] = [];
   for (const c of calCodes) {
@@ -129,7 +131,7 @@ export async function buildScheduleExport(code: string, now: Date = new Date(), 
 
   const starts = acts.map((a) => a.startDate).filter((x): x is string => !!x).sort();
   const schedule: ImportedSchedule = {
-    format: 'mspdi', name: p.name, company: p.client, start: p.plannedStart ?? starts[0] ?? null, finish: dates[dates.length - 1] ?? null, statusDate: projectDataDate(p),
+    format: 'mspdi', name: p.name, company: p.client, start: p.plannedStart ?? starts[0] ?? null, finish: dates[dates.length - 1] ?? null, statusDate: dataDate,
     calendarUid: calUid.get(projectCalendar) ?? null, hoursPerDay, calendars, wbs, activities: activityRows, links, resources, assignments, unmapped: [], warnings: [],
   };
   return { schedule, baselineCode, fileName: `${code}-schedule-${now.toISOString().slice(0, 10)}.xml` };

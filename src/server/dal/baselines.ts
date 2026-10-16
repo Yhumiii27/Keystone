@@ -6,6 +6,7 @@ import 'server-only';
 // The Change control register keeps reading `getBaselines` / `getBaselineRegister` (planning.ts, changes-baselines.ts).
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { baselineNumber, canSnapshotFreely } from '@/domain/baseline-policy';
+import { businessToday } from '@/server/clock';
 import { DEFAULT_DISPLAYED_BASELINE, displayedBaselineCode, nextBaselineCode, projectDataDate } from '@/domain/ch4-defaults';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import type { BaselineSource, BaselineState } from '@/server/db/codes';
@@ -196,13 +197,14 @@ export async function createBaselineSnapshot(code: string, input: SnapshotInput,
     const actor = await findPerson(tx, input.actorName);
     const approver = input.approverName ? await findPerson(tx, input.approverName) : null;
     const [{ finish }] = await tx.select({ finish: sql<string | null>`max(${activities.finishDate})::text` }).from(activities).where(eq(activities.projectId, proj.id));
-    const setOn = input.setOn ?? projectDataDate(p);
+    const dataDate = projectDataDate(p, await businessToday(tx));
+    const setOn = input.setOn ?? dataDate;
     const [b] = await tx
       .insert(baselines)
       .values({
         projectId: proj.id, code: blCode, name: input.name?.trim() || blCode, setOn, bacKeur: input.bacKeur ?? p.budget, finishDate: finish ?? setOn,
         state: input.makeCurrent ? 'current' : 'proposed', changeRequestId: cr?.id ?? null, comment: input.comment?.trim() || null, source: input.source ?? 'snapshot',
-        dataDate: projectDataDate(p), createdByPersonId: actor?.id ?? null, createdByName: actor ? nameOf(actor) : input.actorName, approverPersonId: approver?.id ?? null,
+        dataDate, createdByPersonId: actor?.id ?? null, createdByName: actor ? nameOf(actor) : input.actorName, approverPersonId: approver?.id ?? null,
         scope: input.scope ?? null, position: Math.max(-1, ...existing.map((e) => e.position)) + 1,
       })
       .returning({ id: baselines.id });
@@ -235,10 +237,11 @@ export async function snapshotIntoBaseline(code: string, baselineCode: string, i
     if (rows.length) await tx.insert(baselineActivities).values(rows);
     const [{ finish }] = await tx.select({ finish: sql<string | null>`max(${activities.finishDate})::text` }).from(activities).where(eq(activities.projectId, proj.id));
     const actor = await findPerson(tx, input.actorName);
+    const dataDate = projectDataDate(p, await businessToday(tx));
     await tx
       .update(baselines)
       .set({
-        setOn: input.setOn ?? projectDataDate(p), dataDate: projectDataDate(p), ...(finish ? { finishDate: finish } : {}), ...(input.bacKeur != null ? { bacKeur: input.bacKeur } : {}),
+        setOn: input.setOn ?? dataDate, dataDate, ...(finish ? { finishDate: finish } : {}), ...(input.bacKeur != null ? { bacKeur: input.bacKeur } : {}),
         ...(input.makeCurrent ? { state: 'current' as const } : {}), ...(input.comment ? { comment: input.comment } : {}), updatedAt: new Date(),
       })
       .where(eq(baselines.id, b.id));
@@ -270,7 +273,7 @@ export async function createProposedBaseline(tx: Q, input: { projectId: string; 
   const [b] = await tx
     .insert(baselines)
     .values({
-      projectId: input.projectId, code: blCode, name: `${blCode} — ${input.changeRequestNumber}`, setOn: null, bacKeur: p.budget, finishDate: finish ?? projectDataDate(p),
+      projectId: input.projectId, code: blCode, name: `${blCode} — ${input.changeRequestNumber}`, setOn: null, bacKeur: p.budget, finishDate: finish ?? projectDataDate(p, await businessToday(tx)),
       state: 'proposed', changeRequestId: input.changeRequestId, comment: input.comment?.trim() || null, source: 'change_request', dataDate: null,
       createdByPersonId: actor?.id ?? null, createdByName: actor ? nameOf(actor) : input.actorName, position: Math.max(-1, ...existing.map((e) => e.position)) + 1,
     })

@@ -15,7 +15,7 @@ import { CONTRACTOR_CREW, SITE_CURRENCIES, siteLineEditable, siteLineRemovable, 
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import {
-  STATUS_ISO, cursusClearance, cursusSyncStatus, cursusVaccination, cursusVerdict, cursusVisa, equipmentSource, shortDateOfIso, stampText,
+  cursusClearance, cursusSyncStatus, cursusVaccination, cursusVerdict, cursusVisa, equipmentSource, shortDateOfIso, stampText,
 } from '@/server/db/codes';
 import type { SiteData } from '@/server/dal/site';
 import type { SiteSheetDefaults } from '@/server/dal/site-sheet';
@@ -375,7 +375,7 @@ export interface EntryContext {
 export function siteView(
   code: string,
   data: SiteData | null,
-  opts: { tab: SiteTab; today?: string; punch?: 'site' | 'all'; arbiter?: ConflictArbiter | null; entry?: EntryContext | null },
+  opts: { tab: SiteTab; punch?: 'site' | 'all'; arbiter?: ConflictArbiter | null; entry?: EntryContext | null },
   t: T,
   lang: Lang,
 ): SiteView {
@@ -396,7 +396,7 @@ export function siteView(
     entry: entry && sheetEntry(data, entry, t, lang),
     ready: readyView(code, data, t, lang, !!entry),
     team: teamView(code, data, t, lang, opts.arbiter ?? null, entry),
-    exec: execView(code, data, t, lang, opts.today ?? STATUS_ISO, opts.punch ?? 'site'),
+    exec: execView(code, data, t, lang, data.today, opts.punch ?? 'site'),
   };
 }
 
@@ -509,11 +509,11 @@ function sheetEntry(d: SiteData, entry: EntryContext, t: T, lang: Lang): SheetEn
 }
 
 /**
- * The header primary's form (AF.site): weather codes as values, the status date as the default date. NEW-SITE-2 'a' (R-122):
+ * The header primary's form (AF.site): weather codes as values, the business date `today` (R-013) as the default date. NEW-SITE-2 'a' (R-122):
  * no HSE field any more — `incidentUrl` (Vigie's "report an incident" page, prefilled with the project and the site) is the
  * note under the fields, "HSE incident? Declare it in Vigie".
  */
-export function dailyReportFormDef(t: T, lang: Lang, today: string = STATUS_ISO, incidentUrl?: string): FormDef {
+export function dailyReportFormDef(t: T, lang: Lang, today: string, incidentUrl?: string): FormDef {
   return {
     title: t('Daily report'),
     submit: t('Save report'),

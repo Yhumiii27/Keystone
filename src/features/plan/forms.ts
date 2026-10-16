@@ -12,8 +12,8 @@ export interface PlanFormSources {
   team: string[];
   /** ACTOPEN: "A1250 · Steel erection — Bays 3–4" for activities below 100 %. */
   actOpen: string[];
-  /** Project data date (ISO): the default start / finish of "Add activity" follow it (R-169). */
-  dataDate?: string;
+  /** Project data date (ISO; `projectDataDate`, else the business date — R-013): "Add activity" defaults follow it (R-169). */
+  dataDate: string;
 }
 
 export function planFormDefs(src: PlanFormSources): Record<PlanFormKey, FormDef> {

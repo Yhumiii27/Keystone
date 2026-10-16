@@ -2,8 +2,9 @@
 // displayed status, the effectivity targets and their dispositions at render time (`allEcos` / `ecoTargets`,
 // logic 4182–4193) from the project stages, the installed base (FLEET 3729, AS_MAINT 3722) and the approvals;
 // Vigie computes them now, so the seed materialises that derivation once. Pure (no database).
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import {
-  STATUS_ISO, ecoStatus, hseStatus, isoOfDisplayDate, ncrSeverity, ncrSource, ncrStatus, parisInstant, stage as stageCodec, OPEN_BOM_STAGES,
+  ecoStatus, hseStatus, isoOfDisplayDate, ncrSeverity, ncrSource, ncrStatus, parisInstant, stage as stageCodec, OPEN_BOM_STAGES,
   type EcoApproverKey, type EcoDecision, type EcoDisposition, type EcoType, type HseItemKind, type HseStatus, type Interchangeability, type StageCode,
 } from '@/server/db/codes';
 import type { VigieEcoRecord, VigieHseRecord, VigieNcrRecord } from './types';
@@ -52,7 +53,7 @@ const KEYS: EcoApproverKey[] = ['englead', 'quality', 'pm'];
 
 /** Refresh time stamped on the seeded mirror: the status date (Fri 25 Sep 2026) at 07:30, Paris (no Vigie sync exists yet). */
 export const MIRROR_SEED_TIME = '07:30';
-export const mirrorSeedInstant = () => parisInstant(STATUS_ISO, MIRROR_SEED_TIME);
+export const mirrorSeedInstant = () => parisInstant(DEMO_TODAY_ISO, MIRROR_SEED_TIME);
 
 /** The ECOs as Vigie reports them (status, effectivity, pending dispositions and lock derived as in the prototype). */
 export function prototypeEcoSnapshot(c: SnapshotContext): VigieEcoRecord[] {

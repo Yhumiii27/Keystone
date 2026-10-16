@@ -143,10 +143,8 @@ export interface ItpViewer {
   internal: boolean;
   /** Full name: the inspector proposed by the result form. */
   name: string;
-  /** Business "today" of the result form ("30 Sep", English). */
-  today: string;
 }
-const READER: ItpViewer = { canRecord: false, internal: true, name: '', today: '' };
+const READER: ItpViewer = { canRecord: false, internal: true, name: '' };
 
 export interface ItpScreenInput {
   code: string;
@@ -158,11 +156,13 @@ export interface ItpScreenInput {
   origin?: PunchOriginFilter;
   /** Label of the project's machine type (KPI "Template" without a plan). */
   machineType: string | null;
+  /** Business date (ISO, R-013): the dates' year window and the result form's default date. */
+  today: string;
   /** Default: an internal reader who cannot record results. */
   viewer?: ItpViewer;
 }
 
-export function itpScreenView({ code, view, plan, punch, origin = 'all', machineType, viewer = READER }: ItpScreenInput, t: T, lang: Lang): ItpScreenView {
+export function itpScreenView({ code, view, plan, punch, origin = 'all', machineType, today, viewer = READER }: ItpScreenInput, t: T, lang: Lang): ItpScreenView {
   const inspections = plan?.inspections ?? [];
   const s = summariseItp(inspections, punch, plan && plan.template ? { template: plan.template, systems: plan.systems.length, custom: plan.customCount } : null, machineType);
   const kpis: KpiView[] = [
@@ -187,9 +187,9 @@ export function itpScreenView({ code, view, plan, punch, origin = 'all', machine
       const recordLabel = t('Record result');
       return {
         number: r.number, name, type: t(r.pointTypeLabel), typeClass: look.typeClass, stage: t(r.stageLabel), reference: r.reference,
-        date: t(itpDateText(r.plannedOn)), status: t(r.resultLabel), statusClass: look.statusClass, statusColor: look.statusColor,
+        date: t(itpDateText(r.plannedOn, today)), status: t(r.resultLabel), statusClass: look.statusClass, statusColor: look.statusColor,
         doc: docButton(r.recordRef, r.recordInCodex, code, t),
-        resultLine: line ? resultLineText(r, t) : null,
+        resultLine: line ? resultLineText(r, today, t) : null,
         // The comment of a failure describes the non-conformity: internal (P-10b), not shown to the client.
         comment: viewer.internal ? (r.resultComment ?? null) : null,
         ncrs,
@@ -203,7 +203,7 @@ export function itpScreenView({ code, view, plan, punch, origin = 'all', machine
               ariaLabel: `${recordLabel} · ${r.number}`,
               from: r.result,
               form: localizeForm(resultFormDef(r.pointType, {
-                result: r.resultOn ? r.result : 'passed', date: r.resultOn ? itpDateText(r.resultOn) : viewer.today, inspector: r.inspector ?? viewer.name,
+                result: r.resultOn ? r.result : 'passed', date: itpDateText(r.resultOn ?? today, today), inspector: r.inspector ?? viewer.name,
                 witness: r.clientWitness ?? '', comment: r.resultComment ?? '',
               }), t, lang),
             }
@@ -230,7 +230,7 @@ export function itpScreenView({ code, view, plan, punch, origin = 'all', machine
             return {
               title: t('Punch list'),
               subtitle: t('A blocking · B before SAT · C cosmetic'),
-              rows: rows.map((p) => punchRowView(p, viewer.internal, t, lang)),
+              rows: rows.map((p) => punchRowView(p, viewer.internal, today, t, lang)),
               empty: rows.length ? null : t(punch.length ? 'No punch item of this origin' : 'No punch item yet'),
               origin,
               originLabel: t('Origin'),
@@ -246,14 +246,14 @@ export function itpScreenView({ code, view, plan, punch, origin = 'all', machine
  * A row of the unified punch list (R-117). Typed text (item, location, owner person) as typed; the party and the codes'
  * labels through t(); the NCR number for internal viewers only (P-10b).
  */
-export function punchRowView(p: PunchRow, internal: boolean, t: T, lang: Lang): PunchRowView {
+export function punchRowView(p: PunchRow, internal: boolean, today: string, t: T, lang: Lang): PunchRowView {
   const look = punchLook(p.category, p.status);
   const step = punchStep(p.status);
   const label = step ? stepT(step.label, t, lang) : '';
   return {
     number: p.number, anchor: punchAnchorId(p.number), item: dataT(p.description, lang), origin: t(p.originLabel), siteOrigin: p.origin === 'site',
     ncr: internal ? (p.ncrNumber ?? '—') : null, location: dataT(p.location, lang), category: p.category ?? '—', categoryClass: look.categoryClass,
-    source: p.sourceText ? t(p.sourceText) : '—', owner: p.ownerName ? dataT(p.ownerName, lang) : p.owner ? t(p.owner) : '—', due: t(itpDateText(p.dueOn)),
+    source: p.sourceText ? t(p.sourceText) : '—', owner: p.ownerName ? dataT(p.ownerName, lang) : p.owner ? t(p.owner) : '—', due: t(itpDateText(p.dueOn, today)),
     status: t(p.statusLabel), statusClass: look.statusClass, color: look.color, step: step ? { label, ariaLabel: `${label} · ${p.number}`, from: p.status } : null,
   };
 }
@@ -296,14 +296,14 @@ export interface CommissioningScreenView {
   dossier: DossierRowView[];
 }
 
-const satTitle = (p: SatPlanRow, t: T) =>
-  [`${t('SAT planned')} ${t(itpDateText(p.plannedOn))} · ${p.plannedBy}`, p.clientWitnesses ? `${t('Client witnesses')} ${p.clientWitnesses}` : ''].filter(Boolean).join(' · ');
+const satTitle = (p: SatPlanRow, today: string, t: T) =>
+  [`${t('SAT planned')} ${t(itpDateText(p.plannedOn, today))} · ${p.plannedBy}`, p.clientWitnesses ? `${t('Client witnesses')} ${p.clientWitnesses}` : ''].filter(Boolean).join(' · ');
 
-/** Null when the project has no commissioning plan (the screen shows its empty panel). */
-export function commissioningScreenView(code: string, c: Commissioning | null, punch: readonly PunchRow[], t: T, lang: Lang): CommissioningScreenView | null {
+/** Null when the project has no commissioning plan (the screen shows its empty panel). `today` = the business date (R-013). */
+export function commissioningScreenView(code: string, c: Commissioning | null, punch: readonly PunchRow[], today: string, t: T, lang: Lang): CommissioningScreenView | null {
   if (!c) return null;
   const s = summariseCommissioning(c.systems, c.dossier, punch);
-  const dash = (iso: string | null) => (iso ? itpDateText(iso) : '—');
+  const dash = (iso: string | null) => (iso ? itpDateText(iso, today) : '—');
   const lastSat = (system: string) => [...c.satPlans].reverse().find((p) => p.system === system);
   return {
     kpis: [
@@ -322,9 +322,9 @@ export function commissioningScreenView(code: string, c: Commissioning | null, p
         blockingA: blockingAOf(sys.name, punch),
         cells: sys.cells.map((x) => ({
           status: t(x.statusLabel),
-          date: x.blockingRef ?? t(itpDateText(x.dateOn)),
+          date: x.blockingRef ?? t(itpDateText(x.dateOn, today)),
           ...commissioningCellLook(x.status),
-          ...(x.step === 'sat' && sat ? { title: satTitle(sat, t) } : {}),
+          ...(x.step === 'sat' && sat ? { title: satTitle(sat, today, t) } : {}),
         })),
       };
     }),

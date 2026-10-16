@@ -6,9 +6,9 @@ import 'server-only';
 // document's currency (C-9); the portfolio screens read it consolidated in euros at the project's budget rate
 // (`listEurBillingPlans`). The 6-month cash forecast is computed from the billing plans and cost forecasts (A-12, chapter 4;
 // the stored portfolio plan of the prototype is kept but no longer read).
+import { businessToday } from '@/server/clock';
 import { asc, eq, isNull } from 'drizzle-orm';
 import { cache } from 'react';
-import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
 import { BASE_CURRENCY, eurRate, type CurrencyCode } from '@/domain/currency';
 import { cashForecast, lowestCumulativePoint, projectEacKeur, projectMarginPct } from '@/domain/kpis';
 import type { PaymentTerms } from '@/domain/payment-terms';
@@ -186,15 +186,15 @@ export interface CashFlowData {
 /** Everything the Cash flow screen reads (03 §7). */
 export async function getCashFlow(zone: ZoneKey | null): Promise<CashFlowData> {
   // C-9: the portfolio is consolidated in euros at each project's budget rate.
-  const [projects_, plans] = await Promise.all([listProjects(), listEurBillingPlans()]);
+  const [projects_, plans, today] = await Promise.all([listProjects(), listEurBillingPlans(), businessToday()]);
   const all = projects_.filter((p) => plans[p.code] && inExecution(p));
   const inZone = all.filter((p) => !zone || p.zone === zone);
   const cv = (rows: ProjectRow[]) => rows.reduce((s, p) => s + plans[p.code].contractValueKeur, 0);
   const zoneShare = zone ? (cv(all) ? cv(inZone) / cv(all) : 0) : 1;
   // C-10b (R-132): margin at completion (contract − EAC) / contract.
   const rows = inZone.map((p) => ({ project: p, plan: plans[p.code], marginPct: marginAtCompletion(plans[p.code], p) }));
-  // A-12: billing plan in, cost forecast out, at the portfolio data date (was the stored plan × zone share).
-  const months = cashForecast(await cashProjectInputs(rows), DEFAULT_DATA_DATE);
+  // A-12: billing plan in, cost forecast out, at the business date (R-013; was the stored plan × zone share).
+  const months = cashForecast(await cashProjectInputs(rows), today);
   const low = lowestCumulativePoint(months);
   return {
     rows,

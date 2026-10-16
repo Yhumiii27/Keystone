@@ -44,8 +44,8 @@ export interface DrawingsView {
 
 const dateText = (iso: string | null, t: T) => (iso ? t(fmtDOfIso(iso)) : '—');
 
-/** Register view: KPI tiles, State chips (links keeping the search), rows matching chip and search. */
-export function drawingsView(input: { drawings: DrawingRow[]; sync: VaultSyncState | null; state: DrawingsState }, t: T, lang: Lang): DrawingsView {
+/** Register view: KPI tiles, State chips (links keeping the search), rows matching chip and search. `today`: business date (R-013). */
+export function drawingsView(input: { drawings: DrawingRow[]; sync: VaultSyncState | null; state: DrawingsState; today: string }, t: T, lang: Lang): DrawingsView {
   const { drawings, sync, state } = input;
   const rows = filterDrawings(drawings, state.state, state.q).map((d): DrawingRowView => {
     const selected = state.dwg === d.number;
@@ -65,7 +65,7 @@ export function drawingsView(input: { drawings: DrawingRow[]; sync: VaultSyncSta
     };
   });
   return {
-    kpis: drawingKpis(drawings, sync).map((k) => ({ label: t(k.label), value: k.value, sub: t(k.sub), color: k.lo ? LO : OK })),
+    kpis: drawingKpis(drawings, sync, input.today).map((k) => ({ label: t(k.label), value: k.value, sub: t(k.sub), color: k.lo ? LO : OK })),
     chips: drawingChips(drawings).map((c) => ({ value: c.value ?? 'all', label: t(c.label), count: c.count, href: drawingsHref({ state: c.value, q: state.q, dwg: state.dwg }) })),
     filter: state.state ?? 'all',
     q: state.q,

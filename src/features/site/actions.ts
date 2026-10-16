@@ -16,7 +16,8 @@ import {
   SITE_STAGE_ERROR, UNKNOWN_ACTIVITY, isSiteLineKind, parseSiteLine, parseSiteSheetForm, siteLineEditable, siteLineRemovable, siteSheetOpen, type SiteLineForm,
   type SiteLineKind,
 } from '@/domain/site-sheet';
-import { STATUS_ISO, inWorkspace } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
+import { inWorkspace } from '@/server/db/codes';
 import { getProject } from '@/server/dal/projects';
 import {
   ARBITRATION_REFUSED, CONFLICT_ARBITRATED, CONFLICT_CHANGED, advancePrerequisite, arbitrateSiteConflict, confirmEquipment, getSite, remindInCursus, saveDailyReport,
@@ -219,7 +220,7 @@ const strings = (values: unknown): Record<string, string> =>
 export async function saveDailyReportAction(code: string, values: Record<string, string>): Promise<FormDialogResult & { number?: string }> {
   const ok = await access(code);
   if ('error' in ok) return { error: await tr(ok.error) };
-  const parsed = parseDailyReportForm(strings(values), { today: STATUS_ISO, parseDate: (s) => parseDateInput(s) });
+  const parsed = parseDailyReportForm(strings(values), { today: await businessToday(), parseDate: (s) => parseDateInput(s) });
   if (!parsed.ok) return { error: await tr(parsed.error) };
   try {
     const number = await saveDailyReport(ok.code, parsed.value, ok.actor);

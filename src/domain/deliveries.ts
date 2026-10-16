@@ -471,7 +471,7 @@ export interface RegisterForm {
 /** Field id of a line's delivered quantity in the "Register receipt" form. */
 export const qtyFieldId = (ref: string) => `qty:${ref}`;
 
-/** "Register receipt" form: delivered on (default the status date), carrier, delivery note, delivered per line. */
+/** "Register receipt" form: delivered on (default the business date `opts.today`, R-013), carrier, delivery note, delivered per line. */
 export function parseRegisterForm(
   v: Record<string, unknown>,
   lines: readonly Pick<ReceiptLineLike, 'ref' | 'ordered'>[],

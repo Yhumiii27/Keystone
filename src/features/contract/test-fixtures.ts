@@ -129,6 +129,8 @@ export function scenarioData(name: string): ContractData {
       scope: 'Terminal extension: steel structure, two 250 t gantry cranes, HV connection and yard works — design, supply, erection and commissioning.',
     },
     nextInvoiceNumber: 'INV-2026-' + String(c.milestones.filter((m) => m.invoice).length + 1).padStart(3, '0'),
+    // R-013: the golden comparison keeps the prototype's "now" (PG_NOW / NOWD = 30 Sep 2026), passed explicitly.
+    today: '2026-09-30',
   };
 }
 

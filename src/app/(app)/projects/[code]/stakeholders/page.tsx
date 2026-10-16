@@ -17,6 +17,7 @@ import { stakeholdersView } from '@/features/team/model';
 import { StakeholdersBody } from '@/features/team/stakeholders-view';
 import { listClientIssuesForTeam } from '@/server/dal/client';
 import { getStakeholdersScreen } from '@/server/dal/team';
+import { businessToday } from '@/server/clock';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { projectLabelText } from '@/i18n/data-text';
@@ -29,7 +30,9 @@ export default async function StakeholdersPage({ params, searchParams }: { param
   const ctx = await getProjectContext(code, 'stakeholders');
   const projectCode = ctx.project.code;
   const internal = ctx.viewer.role !== 'client';
-  const [{ t, lang }, data, issues] = await Promise.all([getI18n(), getStakeholdersScreen(projectCode), internal ? listClientIssuesForTeam(projectCode) : Promise.resolve(null)]);
+  const [{ t, lang }, data, issues, today] = await Promise.all([
+    getI18n(), getStakeholdersScreen(projectCode), internal ? listClientIssuesForTeam(projectCode) : Promise.resolve(null), businessToday(),
+  ]);
 
   const primary =
     ctx.canEdit('stakeholders') && data ? (
@@ -42,7 +45,7 @@ export default async function StakeholdersPage({ params, searchParams }: { param
     <>
       <PageHeader screen="stakeholders" projectCode={projectCode} primary={primary} />
       {data && <StakeholdersBody view={stakeholdersView(data.register, t, lang)} t={t} />}
-      {issues && <ClientIssuesCard code={projectCode} view={clientIssuesView(issues, { canHandle, selected }, t, lang)} t={t} />}
+      {issues && <ClientIssuesCard code={projectCode} view={clientIssuesView(issues, { canHandle, selected, today }, t, lang)} t={t} />}
     </>
   );
 }

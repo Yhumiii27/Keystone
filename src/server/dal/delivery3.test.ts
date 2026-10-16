@@ -14,7 +14,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { healthLabel, projectIndicators } from '@/domain/portfolio';
 import { fmtD, money, monthDate } from '@/lib/format';
 import { setDb } from '@/server/db/client';
-import { PG_NOW, addDaysIso, monthIndexOfIso, shortDateOfIso } from '@/server/db/codes';
+import { addDaysIso, beforePgNow, monthIndexOfIso, shortDateOfIso } from '@/server/db/codes';
+import { DEMO_TODAY_ISO, monthNowOf } from '@/domain/clock';
 import { openDatabase } from '@/server/db/open';
 import { PROTO } from '@/server/prototype';
 import { getBudgetContract } from './budget';
@@ -31,6 +32,13 @@ import { getPortfolioSchedule, PG_MONTHS } from './pipeline';
 import { getCapacityWhatIf, getPrioritisation, priorityScore } from './prioritisation';
 import { getStakeholderRegister } from './stakeholders';
 import golden from './delivery3.golden.json';
+
+/**
+ * R-013: the prototype's PG_NOW (month index 8.97, just after 30 Sep 2026) for the golden comparisons, and the business date of the demo data set the
+ * DAL now reads at (25 Sep 2026: one business date instead of the prototype's 25 / 30 Sep).
+ */
+const PG_NOW = 8.97;
+const NOW = monthNowOf(DEMO_TODAY_ISO);
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const G = golden as any;
@@ -375,7 +383,8 @@ describe('prioritisation & capacity (03 §6)', () => {
 // ── Meetings ───────────────────────────────────────────────────────────────────────────────────────────
 
 const ORDER = { notes_in_progress: 0, scheduled: 1, minutes_sent: 2 } as const;
-const overdueDue = (due: string | null) => !!due && due !== '—' && monthIndexOfIso(`2026-${String(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(due.split(' ')[1]) + 1).padStart(2, '0')}-${due.split(' ')[0].padStart(2, '0')}`) < PG_NOW;
+/** The DAL's overdue rule: due before the business date's month index (R-013: NOW, 25 Sep on the demo data set). */
+const overdueDue = (due: string | null) => !!due && due !== '—' && monthIndexOfIso(`2026-${String(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(due.split(' ')[1]) + 1).padStart(2, '0')}-${due.split(' ')[0].padStart(2, '0')}`) < NOW;
 
 describe('meetings & minutes (05 §5)', () => {
   it.each(['HLT-026', 'NDC-031', 'EWA-051'])('%s: list, KPIs, actions and decisions registers', async (code) => {
@@ -470,13 +479,19 @@ describe('stakeholders & RACI (05 §6)', () => {
   });
 });
 
+/**
+ * R-013: one business date (25 Sep 2026 on the demo data set), not the prototype's PG_NOW (8.97, just after 30 Sep): every
+ * need date is 5 days further away ("in 15 d" → "in 20 d", "10 d late" → "5 d late"); no interface changes state.
+ */
+const atBusinessDate = (sub: string) => sub.replace(/^in (\d+) d$/, (_, n) => `in ${+n + 5} d`).replace(/^(\d+) d late$/, (_, n) => `${+n - 5} d late`);
+
 describe('interface register (07 §2.5)', () => {
   it('rows (late derived, days to need), KPI tiles and badge', async () => {
     const rows = await listInterfaces('HLT-026');
     expect(rows.map((r) => ({
       id: r.number, title: r.title, a: r.keystoneSideLabel, b: r.otherParty, data: r.dataExpected, needed: r.neededText, provided: r.providedText, status: r.statusLabel, owner: r.owner,
       neededSub: r.status === 'late' ? `${Math.abs(r.daysToNeed)} d late` : r.status === 'open' ? `in ${r.daysToNeed} d` : '',
-    }))).toEqual(G.interfaces.rows);
+    }))).toEqual(G.interfaces.rows.map((g: { neededSub: string }) => ({ ...g, neededSub: atBusinessDate(g.neededSub) })));
     const blocking = rows.filter((r) => ['IF-02', 'IF-05'].includes(r.number) && r.status !== 'frozen' && r.status !== 'received');
     expect([
       rows.length, `${rows.filter((r) => r.status === 'frozen').length} frozen · ${rows.filter((r) => r.status === 'received').length} received`,
@@ -565,10 +580,12 @@ describe('projects map (03 §3)', () => {
 });
 
 describe('time model helpers', () => {
-  it('PG_NOW comparisons match the prototype mIdx', () => {
+  it('month-index comparisons match the prototype mIdx', () => {
     expect(monthIndexOfIso('2026-12-14')).toBeCloseTo(11 + 13 / 30);
-    expect(monthIndexOfIso('2026-09-30') < PG_NOW).toBe(true);
-    expect(monthIndexOfIso('2026-10-01') < PG_NOW).toBe(false);
+    // R-013: the prototype's PG_NOW (8.97, just after 30 Sep) became the month index of the business date — a date is before
+    // it when strictly earlier, so the business date itself is not ("30 Sep < PG_NOW" was true in the prototype).
+    expect([beforePgNow('2026-09-29', '2026-09-30'), beforePgNow('2026-09-30', '2026-09-30'), beforePgNow('2026-10-01', '2026-09-30')]).toEqual([true, false, false]);
+    expect(beforePgNow('2026-09-24', DEMO_TODAY_ISO) && !beforePgNow('2026-09-25', DEMO_TODAY_ISO)).toBe(true);
     expect(addDaysIso('2026-09-26', 45)).toBe('2026-11-10');
   });
 });

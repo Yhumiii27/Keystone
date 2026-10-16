@@ -11,7 +11,8 @@ import type { ReactNode } from 'react';
 import { SCREEN_BY_ID, screenHref, type ScreenId } from '@/config/screens';
 import { HEALTH_LABEL, HEALTH_TAG } from '@/domain/health';
 import { exportFormatsOf } from '@/features/exports/catalog';
-import { STATUS_DATE } from '@/lib/format';
+import { businessToday } from '@/server/clock';
+import { displayOfIso } from '@/server/db/codes';
 import { dataText, fieldsText, projectLabelText } from '@/i18n/data-text';
 import { getProject, type ProjectRow } from '@/server/dal/projects';
 import { crumbExtraOf, defaultTitleOf, notificationsFor, zoneBarOf } from '@/server/dal/shell';
@@ -50,7 +51,7 @@ const healthView = (p: Pick<ProjectRow, 'health'>) =>
   p.health ? { label: HEALTH_LABEL[p.health], cls: HEALTH_TAG[p.health] } : { label: '—', cls: 'tag tag-neutral' };
 
 export async function PageHeader({ screen, projectCode, title, crumbExtra, primary, taskId, projectParam }: PageHeaderProps) {
-  const [{ t, lang }, viewer, zone, lastProject, scope] = await Promise.all([getI18n(), getViewer(), getZone(), getLastProject(), getProjectScope()]);
+  const [{ t, lang }, viewer, zone, lastProject, scope, today] = await Promise.all([getI18n(), getViewer(), getZone(), getLastProject(), getProjectScope(), businessToday()]);
   // R-042 (P-1, P-10a): backstop of the pages' own refusal — a client never gets an outside screen or another
   // organisation's project rendered.
   if (clientRefusedScreen(viewer.role, screen)) refuseClient();
@@ -150,7 +151,8 @@ export async function PageHeader({ screen, projectCode, title, crumbExtra, prima
         <Notifications items={notifs} role={viewer.role} />
         <div className={styles.statusDate}>
           <CalendarBlank />
-          {`${t('Status date ·')} ${t(STATUS_DATE)}`}
+          {/* R-013: the business date ("25 Sep 2026" on the demo data set), translated as the former STATUS_DATE ("25 sept. 2026"). */}
+          {`${t('Status date ·')} ${t(displayOfIso(today))}`}
         </div>
         <LangToggle lang={lang} />
         <div className={styles.actions}>

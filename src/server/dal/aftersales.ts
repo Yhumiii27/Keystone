@@ -4,6 +4,7 @@ import 'server-only';
 // (fleet.ts, claims.ts — Keystone owns machines, claims and interventions) with the Vigie ECO mirror (eco.ts — the ECO
 // pins of the as-maintained configuration and the design ECOs claims refer to), and lists the add-form options.
 import { asc } from 'drizzle-orm';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import type { ZoneCode } from '@/server/db/codes';
 import { machineTypes } from '@/server/db/schema';
@@ -24,10 +25,14 @@ export interface MirrorEcoRef {
 export interface FleetScreenData {
   /** Machines of the zone (every machine when none is selected), FLEET order, with their configuration against Vigie's ECOs. */
   machines: MachineRow[];
+  /** Business date (ISO, R-013): the warranty in force and the KPI tiles are read on it. */
+  today: string;
 }
 
 export interface SavScreenData {
   machines: MachineRow[];
+  /** Business date (ISO, R-013): the warranty cost of its calendar year, the warranty in force. */
+  today: string;
   /** Claims of the zone's machines, open first. */
   claims: ClaimRow[];
   interventions: InterventionRow[];
@@ -40,12 +45,13 @@ async function mirrorEcos(): Promise<Record<string, MirrorEcoRef>> {
 }
 
 export async function getFleetScreen(zone: ZoneCode | null): Promise<FleetScreenData> {
-  return { machines: await listMachines({ zone }) };
+  const [machines, today] = await Promise.all([listMachines({ zone }), businessToday()]);
+  return { machines, today };
 }
 
 export async function getSavScreen(zone: ZoneCode | null): Promise<SavScreenData> {
-  const [machines, claims, interventions, ecos] = await Promise.all([listMachines({ zone }), listClaims({ zone }), listInterventions({ zone }), mirrorEcos()]);
-  return { machines, claims, interventions, ecos };
+  const [machines, claims, interventions, ecos, today] = await Promise.all([listMachines({ zone }), listClaims({ zone }), listInterventions({ zone }), mirrorEcos(), businessToday()]);
+  return { machines, claims, interventions, ecos, today };
 }
 
 /**

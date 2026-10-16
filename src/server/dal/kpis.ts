@@ -2,16 +2,17 @@ import 'server-only';
 // Chapter 4 — A-12: the database reads behind the KPIs that used to be prototype constants. The formulas live in
 // src/domain/kpis.ts (pure, tested); this module only gathers their inputs and is called by the screen getters
 // (cash flow, prioritisation, sourcing, deliveries, site, drawings, quality, My work, Home, Activity & integrations).
-// Values are computed at the project's data date (`projects.data_date`, default the status date) or the portfolio data
-// date — never the real clock. No writer here.
+// Values are computed at the project's data date (`projects.data_date`, default the business date) or the business date
+// (`businessToday`, R-013 — Fri 25 Sep 2026 on the demo data set). No writer here.
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, like, lt, or } from 'drizzle-orm';
-import { projectDataDate, DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
+import { projectDataDate } from '@/domain/ch4-defaults';
 import {
   CAPACITY_WINDOW_WEEKS, DEFAULT_PAYMENT_DAYS, demandPerMeur, departmentCapacity, eventsOnDay, finishOfMonthText,
   latestVaultSync, leadingCount, loggedInWeek, nextWeeksLoad, onTimeDeliveryPct, parisDateOf, plannedSpendOfPv, projectEacKeur, projectValueKeur, weekHoursOf, weekMondayOf,
   type CashProjectInput, type RfqKpiFacts, type VaultSyncFacts,
 } from '@/domain/kpis';
 import { clientDecisionCount } from '@/domain/meetings';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { addDaysIso, parisInstant } from '@/server/db/codes';
 import {
@@ -25,11 +26,11 @@ import type { ProjectRow } from './projects';
 
 // ── Data date ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Data date of a project (`projects.data_date`, else the status date); the portfolio data date for an unknown code. */
+/** Data date of a project (`projects.data_date`, else the business date — R-013); the business date for an unknown code. */
 export async function projectDataDateOf(code: string): Promise<string> {
   const db = await getDb();
-  const [p] = await db.select({ dataDate: projects.dataDate }).from(projects).where(eq(projects.code, code));
-  return p ? projectDataDate(p) : DEFAULT_DATA_DATE;
+  const [[p], today] = await Promise.all([db.select({ dataDate: projects.dataDate }).from(projects).where(eq(projects.code, code)), businessToday()]);
+  return p ? projectDataDate(p, today) : today;
 }
 
 // ── Cash flow & billing (03 OQ7) ─────────────────────────────────────────────────────────────────────────────────────
@@ -75,19 +76,20 @@ export interface CapacityModelRow {
 /**
  * Capacity model of the departments (department_capacities order): capacity and commitments from the resource pool's
  * weekly loads (people with a pool position, allocations without project), demand per €1M = commitments ÷ value of the active portfolio (`activeProjects`: contract
- * value from `plans`, else budget). The window starts at the week of `asOf` (the portfolio data date).
+ * value from `plans`, else budget). The window starts at the week of `asOf` (default: the business date, R-013).
  */
 export async function capacityModel(
-  activeProjects: readonly ProjectRow[], plans: Readonly<Record<string, Pick<BillingPlan, 'contractValueKeur'>>>, asOf: string = DEFAULT_DATA_DATE,
+  activeProjects: readonly ProjectRow[], plans: Readonly<Record<string, Pick<BillingPlan, 'contractValueKeur'>>>, asOf?: string,
 ): Promise<CapacityModelRow[]> {
   const db = await getDb();
+  const day = asOf ?? (await businessToday());
   const [depts, pool, allocs] = await Promise.all([
     db.select({ name: departments.name }).from(departmentCapacities).innerJoin(departments, eq(departments.id, departmentCapacities.departmentId)).orderBy(asc(departmentCapacities.position)),
     db.select({ id: persons.id, dept: departments.name }).from(persons).leftJoin(departments, eq(departments.id, persons.departmentId)).where(isNotNull(persons.resourcePoolPosition)),
     db.select({ personId: allocations.personId, weekStart: allocations.weekStart, loadPct: allocations.loadPct }).from(allocations).where(isNull(allocations.projectId)).orderBy(asc(allocations.weekStart)),
   ]);
   // The window: the 8 pool weeks from the data date's week on (the seed's pool starts the Monday after, 28 Sep).
-  const from = weekMondayOf(asOf);
+  const from = weekMondayOf(day);
   const weeks = [...new Set(allocs.map((a) => a.weekStart))].filter((w) => w >= from).sort().slice(0, CAPACITY_WINDOW_WEEKS);
   const people = pool.map((p) => ({
     department: p.dept, loads: weeks.map((w) => allocs.find((a) => a.personId === p.id && a.weekStart === w)?.loadPct ?? 0),
@@ -192,20 +194,22 @@ export async function latestVaultRun(): Promise<VaultSyncFacts | null> {
 
 // ── My work, Home (10 OQ18) ──────────────────────────────────────────────────────────────────────────────────────────
 
-/** Hours a person logged in the week of the data date (time entries, Monday → data date). */
-export async function loggedThisWeek(personName: string, asOf: string = DEFAULT_DATA_DATE): Promise<number> {
+/** Hours a person logged in the week of `asOf` (default: the business date, R-013) — time entries, Monday → that date. */
+export async function loggedThisWeek(personName: string, asOf?: string): Promise<number> {
   const db = await getDb();
+  const day = asOf ?? (await businessToday());
   const rows = await db
     .select({ workDate: timeEntries.workDate, hours: timeEntries.hours })
     .from(timeEntries)
     .innerJoin(persons, eq(persons.id, timeEntries.personId))
-    .where(and(eq(persons.fullName, personName), gte(timeEntries.workDate, addDaysIso(asOf, -7))));
-  return loggedInWeek(rows, asOf);
+    .where(and(eq(persons.fullName, personName), gte(timeEntries.workDate, addDaysIso(day, -7))));
+  return loggedInWeek(rows, day);
 }
 
-/** "Load next 2 wks" of a person: mean of the pool loads of the two weeks after the data date; null outside the pool. */
-export async function loadNextWeeks(personName: string, asOf: string = DEFAULT_DATA_DATE, n = 2): Promise<number | null> {
+/** "Load next 2 wks" of a person: mean of the pool loads of the two weeks after `asOf` (default: the business date); null outside the pool. */
+export async function loadNextWeeks(personName: string, asOf?: string, n = 2): Promise<number | null> {
   const db = await getDb();
+  const day = asOf ?? (await businessToday());
   const rows = await db
     .select({ weekStart: allocations.weekStart, loadPct: allocations.loadPct })
     .from(allocations)
@@ -213,14 +217,15 @@ export async function loadNextWeeks(personName: string, asOf: string = DEFAULT_D
     .where(and(eq(persons.fullName, personName), isNull(allocations.projectId)))
     .orderBy(asc(allocations.weekStart));
   if (!rows.length) return null;
-  return nextWeeksLoad(rows.map((r) => r.weekStart), rows.map((r) => r.loadPct), asOf, n);
+  return nextWeeksLoad(rows.map((r) => r.weekStart), rows.map((r) => r.loadPct), day, n);
 }
 
 // ── Activity & integrations (10 OQ4) ─────────────────────────────────────────────────────────────────────────────────
 
-/** "Events today": activity events of the portfolio data date (Paris day). */
-export async function eventsToday(day: string = DEFAULT_DATA_DATE): Promise<number> {
+/** "Events today": activity events of the business date (Paris day; `on` defaults to `businessToday()`, R-013). */
+export async function eventsToday(on?: string): Promise<number> {
   const db = await getDb();
+  const day = on ?? (await businessToday());
   const rows = await db.select({ at: activityEvents.occurredAt }).from(activityEvents)
     .where(and(gte(activityEvents.occurredAt, parisInstant(addDaysIso(day, -1), '00:00')), lt(activityEvents.occurredAt, parisInstant(addDaysIso(day, 2), '00:00'))));
   return eventsOnDay(rows.map((r) => r.at), day);

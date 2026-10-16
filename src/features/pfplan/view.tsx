@@ -14,7 +14,7 @@ import { CardTitle } from '@/components/ds/Card';
 import { Segmented } from '@/components/ds/Segmented';
 import { screenHref } from '@/config/screens';
 import {
-  PG_FILTERS, defaultWindowStart, windowLabel, windowParam, type PgFilter, type PgKpiTint, type PgRow, type PgTarget, type PortfolioScheduleModel,
+  PG_FILTERS, windowLabel, windowParam, type PgFilter, type PgKpiTint, type PgRow, type PgTarget, type PortfolioScheduleModel,
 } from '@/domain/pfplan';
 import type { Lang, T } from '@/i18n/translate';
 import { projectName } from '@/features/portfolio/view';
@@ -24,18 +24,19 @@ const KPI_COLOR: Record<PgKpiTint, string> = { ok: OK, n200: 'var(--color-neutra
 
 /**
  * Link of the screen with its stage filter and window (the zone lives in its cookie): `?filter=` (All omitted) and
- * `?from=YYYY-MM` (the default window omitted, L-8). Filter links keep the window; window links keep the filter.
+ * `?from=YYYY-MM` (the default window `defaultFrom` omitted, L-8 — it follows the business date, R-013). Filter links keep the
+ * window; window links keep the filter.
  */
-export function pfplanHref(filter: PgFilter, from: number | null = null): string {
+export function pfplanHref(filter: PgFilter, from: number | null, defaultFrom: number): string {
   const q = new URLSearchParams();
   if (filter !== 'all') q.set('filter', filter);
-  if (from != null && from !== defaultWindowStart()) q.set('from', windowParam(from));
+  if (from != null && from !== defaultFrom) q.set('from', windowParam(from));
   const qs = q.toString();
   return screenHref('pfplan') + (qs ? `?${qs}` : '');
 }
 
 /** `?filter=` link of the stage segment, keeping the window. */
-export const filterHref = (f: PgFilter, from: number | null = null) => pfplanHref(f, from);
+export const filterHref = (f: PgFilter, from: number | null, defaultFrom: number) => pfplanHref(f, from, defaultFrom);
 
 /** Row click (4547): Plan of a project with planning data, else the Projects register searched by code (no stage filter). */
 export const targetHref = (target: PgTarget) =>
@@ -68,14 +69,14 @@ function PeriodLinks({ model, filter, t }: { model: PortfolioScheduleModel; filt
         {label}
       </Button>
     ) : (
-      <ButtonLink variant="secondary" size="xs" href={pfplanHref(filter, to)} icon={right ? undefined : icon} iconRight={right ? icon : undefined}>
+      <ButtonLink variant="secondary" size="xs" href={pfplanHref(filter, to, w.defaultFrom)} icon={right ? undefined : icon} iconRight={right ? icon : undefined}>
         {label}
       </ButtonLink>
     );
   return (
     <>
       {step(w.prevFrom, t('Previous quarter'), CaretLeft, false)}
-      <ButtonLink variant="ghost" size="xs" href={pfplanHref(filter, null)} aria-current={w.isDefault ? 'page' : undefined}>
+      <ButtonLink variant="ghost" size="xs" href={pfplanHref(filter, null, w.defaultFrom)} aria-current={w.isDefault ? 'page' : undefined}>
         {t('Today')}
       </ButtonLink>
       {step(w.nextFrom, t('Next quarter'), CaretRight, true)}
@@ -94,7 +95,7 @@ export function PfPlanBody({ model, filter, zoneSelected, t, lang }: { model: Po
             wrap
             label={t('Stage')}
             value={filter}
-            options={PG_FILTERS.map((o) => ({ value: o.value, label: t(o.label), href: filterHref(o.value, model.window.from) }))}
+            options={PG_FILTERS.map((o) => ({ value: o.value, label: t(o.label), href: filterHref(o.value, model.window.from, model.window.defaultFrom) }))}
           />
         </FilterGroup>
         <FilterGroup>

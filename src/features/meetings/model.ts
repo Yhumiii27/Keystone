@@ -226,6 +226,8 @@ export interface MeetingsInput {
   meetings: Meeting[];
   questions: ClientQuestion[];
   query: MeetingsQuery;
+  /** R-013: business date — "Meetings this week", "Decisions this month" (its month index is the prototype's PG_NOW). */
+  today: string;
   /**
    * The viewer is a client (P-10b): the tasks the minutes created are internal — their numbers and links are not shown (an
    * external owner's action becomes an internal follow-up task, S-12 a); nor the plan activity of an action.
@@ -235,7 +237,7 @@ export interface MeetingsInput {
 
 const tagOf = (kind: 'meetingType' | 'meetingStatus', code: string) => TAG_CLASS[statusTone(kind, code)];
 
-export function meetingsScreenView({ code, meetings: ms, questions, query, client = false }: MeetingsInput, t: T, lang: Lang): MeetingsScreenView {
+export function meetingsScreenView({ code, meetings: ms, questions, query, today, client = false }: MeetingsInput, t: T, lang: Lang): MeetingsScreenView {
   const title = (m: Meeting) => dataText(m.title, lang);
   const ref = (m: Meeting) => `${m.number} · ${t(m.dateText)}`;
   const due = (d: string | null) => dueText(d, t, lang);
@@ -244,7 +246,7 @@ export function meetingsScreenView({ code, meetings: ms, questions, query, clien
   const href = (q: Partial<MeetingsQuery>) => meetingsHref(code, { view: query.view, filter: query.filter, meeting: query.meeting, ...q });
 
   // KPI tiles (mtgKpis 4866)
-  const k = meetingKpis(ms);
+  const k = meetingKpis(ms, today);
   const kpis: KpiView[] = [
     { label: t('Meetings this week'), value: String(k.thisWeek), sub: t(`${k.upcoming} upcoming`), color: OK },
     { label: t('Minutes to write'), value: String(k.toWrite), sub: t('send within 24 h'), color: k.toWrite > 0 ? LO : OK },

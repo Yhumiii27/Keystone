@@ -14,12 +14,15 @@ import { describe, expect, it } from 'vitest';
 import { G, M6, SCENARIOS, addMs, expectedFigures, invoiceOf, ms, seedInput } from '@/features/contract/test-fixtures';
 import { money } from '@/lib/format';
 import {
-  canSendAmendment, canSignAmendment, contractFigures, contractValueSub, decimalText, liquidatedDamagesKpi, nextInvoiceNo, outstandingSub, overdueSub,
+  canSendAmendment, canSignAmendment, contractFigures as contractFiguresAt, contractValueSub, decimalText, liquidatedDamagesKpi, nextInvoiceNo, outstandingSub, overdueSub,
   parseAmendmentForm, parseBondForm, parseDateInput, parseInvoiceForm, parseMilestoneForm, parseNumber, parseReleaseBondForm, parseSheetField,
   parseSignAmendmentForm, pendingSub, plannedMilestoneAmount, progressCss, progressText, shareTotalText,
 } from './contract';
 
 const en = (k: number) => money(k, 'en');
+/** R-013: the golden comparison keeps the prototype's "now" (PG_NOW / NOWD = 30 Sep 2026), passed explicitly. */
+const PROTO_NOW = '2026-09-30';
+const contractFigures = (c: Parameters<typeof contractFiguresAt>[0]) => contractFiguresAt(c, PROTO_NOW);
 /** The base contract's milestones (the prototype's list); the golden's "M6" of the add-milestone scenarios is M7 here (M6 = Amendment 1's). */
 const base = <T extends { amendment?: number | null }>(xs: readonly T[]) => xs.filter((m) => m.amendment == null);
 const gid = (name: string, id: string) => (name.startsWith('milestone') && id === 'M6' ? 'M7' : id);
@@ -93,9 +96,10 @@ describe('contract figures vs the prototype (CONTRACTS HLT-026 + the screens’ 
     expect(G.dst).toEqual({ tz: 'UTC', m3Due: '10 Nov' });
   });
 
-  it('late flag = planned and contractual date before PG_NOW (30 Sep is already late, 1 Oct is not); overdue = due before 30 Sep', () => {
+  it('late flag = planned and contractual date before the business date (29 Sep is late on 30 Sep, 30 Sep is not); overdue = due before 30 Sep', () => {
     const late = (due: string) => contractFigures(addMs(seedInput(), { number: 'M7', label: 'x', sharePct: 1, contractualDue: due, condition: null })).milestones.find((m) => m.number === 'M7')!.late;
-    expect([late('2026-09-29'), late('2026-09-30'), late('2026-10-01')]).toEqual([true, true, false]);
+    // R-013: the prototype's PG_NOW (8.97) lay just after 30 Sep, so "30 Sep" was already late; the business date's own day is not.
+    expect([late('2026-09-29'), late('2026-09-30'), late('2026-10-01')]).toEqual([true, false, false]);
     const over = (issued: string) => {
       const c = seedInput();
       return contractFigures(ms(c, 'M4', { status: 'invoiced', invoice: invoiceOf(c, 'M4', 'INV-2026-004', issued) })).invoices[3].overdue;

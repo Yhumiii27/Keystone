@@ -13,6 +13,9 @@ import {
   quotesText, receiptGap, rfqActions, rfqAwardItems, rfqHint, rfqKpis, sourcingHref, supplierAttention, supplierKpis,
 } from './procurement';
 
+/** R-013: the prototype's status date (Fri 25 Sep 2026), passed explicitly to the business-date rules. */
+const STATUS_DATE_ISO = '2026-09-25';
+
 interface ProtoInvoice { id: string; supplier: string; po: string; gr: string; amount: number; poAmt: number; grAmt: number; date: string; dueDate: string; status: string }
 interface ProtoRfq { id: string; title: string; part: string; qty: number; due: string; status: string; rule: string; owner: string; quotes: [string, number, number, string, string, number][]; chosen: string | null }
 
@@ -86,7 +89,7 @@ describe('3-way match and invoice decisions (match3 4663, invRows 4665)', () => 
 
 describe('Invoice KPIs and chips (invKpis 4668, invChips 4666)', () => {
   const kpiOf = (list: ProtoInvoice[]) =>
-    invoiceKpis(list.map((i) => ({ status: supplierInvoiceStatus.code(i.status), amountEur: i.amount, dueDate: isoOfDisplayDate(i.dueDate)! })));
+    invoiceKpis(list.map((i) => ({ status: supplierInvoiceStatus.code(i.status), amountEur: i.amount, dueDate: isoOfDisplayDate(i.dueDate)! })), STATUS_DATE_ISO);
 
   it('seed: 5 to process (€1,724,160) · 3 blocked · 2 awaiting receipt · 0 approved · 5 due within 30 days', () => {
     const k = kpiOf(INVOICES);
@@ -114,7 +117,7 @@ describe('Invoice KPIs and chips (invKpis 4668, invChips 4666)', () => {
 
   it('"Due within 30 days" follows the due date', () => {
     const base = { status: 'blocked' as const, amountEur: 1 };
-    expect(invoiceKpis([{ ...base, dueDate: '2026-10-25' }, { ...base, dueDate: '2026-10-26' }, { ...base, dueDate: '2026-09-01' }]).dueWithin30).toBe(2);
+    expect(invoiceKpis([{ ...base, dueDate: '2026-10-25' }, { ...base, dueDate: '2026-10-26' }, { ...base, dueDate: '2026-09-01' }], STATUS_DATE_ISO).dueWithin30).toBe(2);
   });
 
   it('chips: All + the five prototype statuses with their counts', () => {
@@ -227,19 +230,19 @@ describe('URLs and the New RFQ form', () => {
 
   it('parseNewRfq: required fields, reply date (EN / FR / default), incoterm code', () => {
     const ok = { title: ' Steel plate S355 ', suppliers: 'ArcelorMittal, Dillinger;Salzgitter, Dillinger', articles: 'KS-PLT-S355 × 192', due: '15 Oct 2026', incoterm: 'DAP' };
-    expect(parseNewRfq(ok)).toEqual({
+    expect(parseNewRfq(ok, STATUS_DATE_ISO)).toEqual({
       ok: true,
       value: { title: 'Steel plate S355', suppliers: ['ArcelorMittal', 'Dillinger', 'Salzgitter'], articles: 'KS-PLT-S355 × 192', replyDueOn: '2026-10-15', incoterm: 'DAP' },
     });
-    expect(parseNewRfq({ ...ok, due: '20 oct. 2026' })).toMatchObject({ ok: true, value: { replyDueOn: '2026-10-20' } });
-    expect(parseNewRfq({ ...ok, due: '' })).toMatchObject({ ok: true, value: { replyDueOn: '2026-10-15' } });
-    expect(parseNewRfq({ ...ok, incoterm: '' })).toMatchObject({ ok: true, value: { incoterm: 'DAP' } });
-    expect(parseNewRfq({ ...ok, title: '  ' })).toEqual({ ok: false, error: 'The title is required' });
-    expect(parseNewRfq({ ...ok, suppliers: ' , ;' })).toEqual({ ok: false, error: 'Name at least one supplier' });
-    expect(parseNewRfq({ ...ok, articles: '' })).toEqual({ ok: false, error: 'The articles are required' });
-    expect(parseNewRfq({ ...ok, due: 'next week' })).toEqual({ ok: false, error: 'Enter the reply date as a date (e.g. 15 Oct 2026)' });
-    expect(parseNewRfq({ ...ok, due: '1 Sep 2026' })).toEqual({ ok: false, error: 'The reply date is before the status date' });
-    expect(parseNewRfq({ ...ok, incoterm: 'CIF' })).toEqual({ ok: false, error: 'Unknown incoterm' });
-    expect(parseNewRfq({ ...ok, title: 42 })).toEqual({ ok: false, error: 'The title is required' });
+    expect(parseNewRfq({ ...ok, due: '20 oct. 2026' }, STATUS_DATE_ISO)).toMatchObject({ ok: true, value: { replyDueOn: '2026-10-20' } });
+    expect(parseNewRfq({ ...ok, due: '' }, STATUS_DATE_ISO)).toMatchObject({ ok: true, value: { replyDueOn: '2026-10-15' } });
+    expect(parseNewRfq({ ...ok, incoterm: '' }, STATUS_DATE_ISO)).toMatchObject({ ok: true, value: { incoterm: 'DAP' } });
+    expect(parseNewRfq({ ...ok, title: '  ' }, STATUS_DATE_ISO)).toEqual({ ok: false, error: 'The title is required' });
+    expect(parseNewRfq({ ...ok, suppliers: ' , ;' }, STATUS_DATE_ISO)).toEqual({ ok: false, error: 'Name at least one supplier' });
+    expect(parseNewRfq({ ...ok, articles: '' }, STATUS_DATE_ISO)).toEqual({ ok: false, error: 'The articles are required' });
+    expect(parseNewRfq({ ...ok, due: 'next week' }, STATUS_DATE_ISO)).toEqual({ ok: false, error: 'Enter the reply date as a date (e.g. 15 Oct 2026)' });
+    expect(parseNewRfq({ ...ok, due: '1 Sep 2026' }, STATUS_DATE_ISO)).toEqual({ ok: false, error: 'The reply date is before the status date' });
+    expect(parseNewRfq({ ...ok, incoterm: 'CIF' }, STATUS_DATE_ISO)).toEqual({ ok: false, error: 'Unknown incoterm' });
+    expect(parseNewRfq({ ...ok, title: 42 }, STATUS_DATE_ISO)).toEqual({ ok: false, error: 'The title is required' });
   });
 });

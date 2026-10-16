@@ -4,7 +4,7 @@
 // delivery from its bill of materials, then kept up to date by each after-sales intervention). Pure rules: the steps a
 // claim offers, the forms (claim update, diagnosis, intervention planned / done, machines registered at delivery), the
 // warranty end of a delivered machine and the machine names. No I/O, no translation (English source strings).
-import { NOW_ISO, STAGES, claimCoverage, interventionType, type ClaimCoverage, type ClaimStatus, type InterventionType, type StageCode } from '@/server/db/codes';
+import { STAGES, claimCoverage, interventionType, type ClaimCoverage, type ClaimStatus, type InterventionType, type StageCode } from '@/server/db/codes';
 import { parseDateInput } from './contract';
 import { parsePastDate } from './itpcom';
 
@@ -156,7 +156,7 @@ export const NO_PART = '—';
  * upgraded — one of the parts offered (the machine's configuration and the catalogue) — with the revision fitted (required
  * then, ≤ 10 characters).
  */
-export function parseInterventionDone(values: Record<string, string | undefined>, parts: readonly string[], today = NOW_ISO): ParseResult<InterventionDoneValues> {
+export function parseInterventionDone(values: Record<string, string | undefined>, parts: readonly string[], today: string): ParseResult<InterventionDoneValues> {
   const date = text(values.date);
   if (!date) return { ok: false, error: 'Date is required' };
   const doneOn = parsePastDate(date, today);
@@ -219,7 +219,7 @@ export interface RegisterMachinesValues {
  * "Register delivered machines": a project offered, the number of machines (1–20), a base name (required, ≤ 160), the site
  * (≤ 200), the delivery date (required, not after the business date) and the warranty end (required, after the delivery).
  */
-export function parseRegisterMachines(values: Record<string, string | undefined>, projects: readonly string[], today = NOW_ISO): ParseResult<RegisterMachinesValues> {
+export function parseRegisterMachines(values: Record<string, string | undefined>, projects: readonly string[], today: string): ParseResult<RegisterMachinesValues> {
   const projectCode = text(values.project) || projects[0] || '';
   if (!projects.includes(projectCode)) return { ok: false, error: 'Unknown project' };
   const count = num(values.count || '1');

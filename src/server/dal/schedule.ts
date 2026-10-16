@@ -18,6 +18,7 @@ import { and, asc, eq, inArray, isNotNull } from 'drizzle-orm';
 import type { WorkCalendar } from '@/domain/calendar';
 import { CpmCycleError, CpmInputError, schedule, type CpmResult } from '@/domain/cpm';
 import { DEFAULT_PROJECT_CALENDAR, RECALCULATION_MODE, projectDataDate } from '@/domain/ch4-defaults';
+import { businessToday } from '@/server/clock';
 import type { MilestoneInput, PackageBarInput, ScheduleInput } from '@/domain/schedule-gantt';
 import {
   CRITICAL_FLOAT_DAYS, actualsFromProgress, activityDateText, barOf, critPackagesText, finishVariance, floatDaysText, floatShortText, longDateText,
@@ -171,7 +172,7 @@ async function loadRollupState(q: Q, code: string): Promise<RollupState | null> 
       rollup: rollUpPackage(node.code, acts.filter((a) => a.wbsNodeId === node.id).map((a) => rollupActivity(a, node.code)), (c) => blMap.get(c)),
     }));
   return {
-    projectId: p.id, code, dataDate: projectDataDate(p), startMonth, hasControls: !!controls, calendar: projectCal,
+    projectId: p.id, code, dataDate: projectDataDate(p, await businessToday(q)), startMonth, hasControls: !!controls, calendar: projectCal,
     calendarOf: (c) => (c && calendars[c]) || projectCal, baseline: blRow ?? null, baselineOf: (c) => blMap.get(c), nodes, acts, bars, miles, packages,
   };
 }

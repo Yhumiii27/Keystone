@@ -5,7 +5,6 @@
 // the workspace); a client exports only its own projects' rows. Weekly loads are fractions (1 = 100 % of the hours).
 import { matchesFilter as matchesRequestFilter, isRequestFilter, isSentRequest, deptOfSlug, REQUEST_FILTERS } from '@/domain/requests';
 import { parseEffectiveDate, parseSkillFilter } from '@/domain/hr';
-import { STATUS_ISO } from '@/server/db/codes';
 import { leverLabel, type WhatIfResult } from '@/domain/whatif';
 import { getRateCard, getLeaveCalendar, getSkillsMatrix } from '@/server/dal/hr';
 import { getProject } from '@/server/dal/projects';
@@ -229,8 +228,8 @@ async function leaveWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
 async function ratesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
   // R-083 (A-10): the grid in force on the card's date (`?on=`, default the business date) and every dated version.
-  const on = parseEffectiveDate(param(ctx, 'on')) ?? STATUS_ISO;
-  const card = await getRateCard(on);
+  const card = await getRateCard(parseEffectiveDate(param(ctx, 'on')) ?? undefined);
+  const on = card.on;
   const masked = ctx.ratesMasked;
   return {
     title: t('Rate cards'),

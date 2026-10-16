@@ -26,7 +26,8 @@ import {
 import { weekHoursOf } from '@/domain/kpis';
 import { loggedOfText } from '@/features/kpis/i18n';
 import { useI18n } from '@/i18n/client';
-import { TODAY, dayLabel, pct } from '@/lib/format';
+import { dayLabel, pct } from '@/lib/format';
+import { useTodayOffset } from '@/components/app/clock';
 import { setTaskStatusAction, toggleTaskDoneAction } from './actions';
 import { TASK_DRAG_TYPE, acceptsDrag, applyWorkOp, isMove, moveTargets, type WorkOp } from './board-move';
 import { taskCountText } from './i18n';
@@ -94,15 +95,16 @@ export function MyWorkBody({ items, loads, measured, view, week, calendarHrefs, 
     });
   };
 
-  const base = workKpis(tasks, loads);
+  const today = useTodayOffset();
+  const base = workKpis(tasks, loads, today);
   const k = measured
     ? { ...base, loggedH: measured.loggedH, loggedPct: Math.round((measured.loggedH / weekHoursOf()) * 100), load: measured.load, overCapacity: measured.load != null && measured.load > 100 }
     : base;
-  const nextStart = nextWeekEnd() - 4;
+  const nextStart = nextWeekEnd(today) - 4;
   return (
     <>
       <KpiGrid>
-        <KpiTile label={t('Due today')} value={k.dueToday} sub={t(dayLabel(TODAY))} color={OK} />
+        <KpiTile label={t('Due today')} value={k.dueToday} sub={t(dayLabel(today))} color={OK} />
         <KpiTile label={t('Overdue')} value={k.overdue} sub={t('Needs a new date or a push')} color={k.overdue ? LO : OK} />
         <KpiTile label={t('Next week')} value={k.nextWeek} sub={t(spanText(nextStart, nextStart + 4))} color={OK} />
         <KpiTile label={t('Logged this week')} value={k.loggedH.toFixed(1) + ' h'} sub={loggedOfText(weekHoursOf(), k.loggedPct, lang)} color={OK} />
@@ -124,7 +126,7 @@ export function MyWorkBody({ items, loads, measured, view, week, calendarHrefs, 
 
 function WorkList({ items, onToggle }: { items: WorkItemData[]; onToggle?: (id: string) => void }) {
   const { t, lang } = useI18n();
-  const groups = workGroups(items);
+  const groups = workGroups(items, useTodayOffset());
   if (!groups.length) return <EmptyState variant="boxed">{t('No tasks yet')}</EmptyState>;
   return (
     <div className={s.groups}>
@@ -146,6 +148,7 @@ function WorkList({ items, onToggle }: { items: WorkItemData[]; onToggle?: (id: 
 }
 
 function TaskRowItem({ item: x, onToggle }: { item: WorkItemData; onToggle?: (id: string) => void }) {
+  const today = useTodayOffset();
   const { t } = useI18n();
   const router = useRouter();
   const done = x.status === 'done';
@@ -189,7 +192,7 @@ function TaskRowItem({ item: x, onToggle }: { item: WorkItemData; onToggle?: (id
           <Clock aria-hidden />
           {hoursText(x.loggedH, x.estimateH)}
         </span>
-        <span className={cx(s.due, s[`due_${dueTone(x)}`])}>{t(dueText(x))}</span>
+        <span className={cx(s.due, s[`due_${dueTone(x, today)}`])}>{t(dueText(x, today))}</span>
       </div>
     </div>
   );
@@ -253,6 +256,7 @@ function WorkBoard({ items, onMove }: { items: WorkItemData[]; onMove?: (id: str
 
 /** Meta, foot and progress line of a board card. */
 function BoardCardBody({ item: x }: { item: WorkItemData }) {
+  const today = useTodayOffset();
   const { t } = useI18n();
   return (
     <>
@@ -261,7 +265,7 @@ function BoardCardBody({ item: x }: { item: WorkItemData }) {
         {x.activity && <span>{x.activity}</span>}
       </div>
       <div className={s.cardFoot}>
-        <span className={s[`due_${dueTone(x)}`]}>{t(dueText(x))}</span>
+        <span className={s[`due_${dueTone(x, today)}`]}>{t(dueText(x, today))}</span>
         <span className={s.iconText}>
           <CheckSquare aria-hidden />
           {x.checklist.done}/{x.checklist.total}
@@ -328,11 +332,12 @@ function MovableCard({ item: x, onMove }: { item: WorkItemData; onMove: (id: str
 
 function WorkCalendar({ items, week, hrefs }: { items: WorkItemData[]; week: number; hrefs: { prev: string; next: string } }) {
   const { t } = useI18n();
-  const start = calendarStart(week);
-  const days = calendarDays(start);
-  const bars = calendarBars(items, start);
+  const today = useTodayOffset();
+  const start = calendarStart(week, today);
+  const days = calendarDays(start, today);
+  const bars = calendarBars(items, start, today);
   const hours = plannedHours(items, start);
-  const todayCol = todayColumn(start);
+  const todayCol = todayColumn(start, today);
   const band = todayCol == null ? null : ({ '--l': `${todayCol * 10}%` } as CSSProperties);
   return (
     <div className={cx('card', 'elev-sm', s.calCard)}>

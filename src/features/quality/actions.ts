@@ -171,7 +171,7 @@ export async function moveDeliverableAction(input: { projectCode: string; number
 
 /**
  * "Accept (PV)" / "Reject with comments" (register, drawer, My approvals): a submitted deliverable, decided by a client
- * contact of the project's client organisation. Accept stamps the status date and the viewer; reject keeps the comments.
+ * contact of the project's client organisation. Accept stamps the business date (R-013) and the viewer; reject keeps the comments.
  */
 export async function decideDeliverableAction(input: { projectCode: string; number: string; decision: string; comments?: string | null }): Promise<QualityResult> {
   const a = await access(input?.projectCode);

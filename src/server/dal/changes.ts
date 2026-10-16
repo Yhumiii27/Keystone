@@ -9,10 +9,11 @@ import 'server-only';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { projectDataDate } from '@/domain/ch4-defaults';
+import { businessToday } from '@/server/clock';
 import { currentStep, requiredSteps } from '@/domain/change-control';
 import { getDb, type Tx } from '@/server/db/client';
 import {
-  CHANGE_STEPS, STATUS_ISO, changeStatus, contractImpact as contractImpactCodec, shortDateOfIso, stepDecision,
+  CHANGE_STEPS, changeStatus, contractImpact as contractImpactCodec, shortDateOfIso, stepDecision,
   type ChangeStatus, type ChangeStep, type ChangeType, type ContractImpact, type StepDecision,
 } from '@/server/db/codes';
 import { findPerson, nameOf, nextNumber, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
@@ -230,7 +231,7 @@ export interface NewChangeRequestInput {
   baselineCode?: string;
   /** false → saved as Draft; default true: submitted, every step pending (afSubmit). */
   submit?: boolean;
-  /** Business date (default the status date). */
+  /** Business date (default the business date, R-013). */
   requestedOn?: string;
   /**
    * S-3: the request proposes the project's next baseline (Plan "Set baseline" after BL1). An empty proposed BLn is linked to
@@ -254,7 +255,7 @@ export async function createChangeRequest(projectCode: string, input: NewChangeR
       .select({ minPos: sql<number>`coalesce(min(${changeRequests.position}), 0)::int` })
       .from(changeRequests)
       .where(eq(changeRequests.projectId, p.id));
-    const on = input.requestedOn ?? STATUS_ISO;
+    const on = input.requestedOn ?? (await businessToday(tx));
     const status: ChangeStatus = input.submit === false ? 'draft' : 'in_review';
     const impact = input.contractImpact != null && contractImpactCodec.isCode(input.contractImpact) ? input.contractImpact : null;
     const amountKeur = Math.round(input.amountKeur) || 0;
@@ -361,7 +362,7 @@ export async function decideChangeStep(
         // activity snapshot (the seed's BL2 "Pending CR-009", or one proposed from the Plan) is filled with the activities now;
         // one frozen with its snapshot by the Schedule "Re-baseline" keeps it.
         const [proj] = await tx.select({ dataDate: projects.dataDate }).from(projects).where(eq(projects.id, p.id));
-        const setOn = projectDataDate(proj ?? {});
+        const setOn = projectDataDate(proj ?? {}, await businessToday(tx));
         if (!(await baselineSnapshotSize(bl.id, tx))) {
           const n = await snapshotIntoBaseline(projectCode, bl.code, { actorName, makeCurrent: true, setOn }, tx);
           changes.push(`${bl.code} snapshot · ${n} activities`);

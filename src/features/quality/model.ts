@@ -123,10 +123,12 @@ function ncrRowAction(n: NcrRow, viewer: QualityViewerCtx, t: T): NcrRowAction |
 }
 
 /** The NCR log of a project: KPI tiles, severity chips (links), rows in Vigie's order, filtered by severity. */
-export function ncrTabView(input: { code: string; ncrs: NcrRow[]; state: QualityState; viewer: QualityViewerCtx; dataDate?: string }, tr: T, lang: Lang): NcrTabView {
+export function ncrTabView(
+  input: { code: string; ncrs: NcrRow[]; state: QualityState; viewer: QualityViewerCtx; today: string; dataDate: string }, tr: T, lang: Lang,
+): NcrTabView {
   const t = qualityT(tr, lang);
   const { code, ncrs, state, viewer } = input;
-  const kpis = ncrKpis(ncrs, undefined, input.dataDate).map((k) => kpiView(k, t, lang));
+  const kpis = ncrKpis(ncrs, input.today, input.dataDate).map((k) => kpiView(k, t, lang));
   const chips = ncrChips(ncrs).map((c) => ({
     value: c.value ?? 'all', label: t(c.label), count: c.count, href: qualityHref(code, { filter: c.value, ncr: state.ncr }),
   }));
@@ -284,10 +286,10 @@ export interface DlvTabView {
 const accText = (s: string, t: T) => s.split(' · ').map(t).join(' · ');
 
 /** The deliverables register of a project: KPI tiles, status chips (links), rows in register order, filtered by status. */
-export function dlvTabView(input: { code: string; deliverables: DeliverableRow[]; state: QualityState; viewer: QualityViewerCtx }, tr: T, lang: Lang): DlvTabView {
+export function dlvTabView(input: { code: string; deliverables: DeliverableRow[]; state: QualityState; viewer: QualityViewerCtx; today: string }, tr: T, lang: Lang): DlvTabView {
   const t = qualityT(tr, lang);
   const { code, deliverables, state, viewer } = input;
-  const kpis = deliverableKpis(deliverables).map((k) => kpiView(k, t, lang));
+  const kpis = deliverableKpis(deliverables, input.today).map((k) => kpiView(k, t, lang));
   const chips = deliverableChips(deliverables).map((c) => ({
     value: c.value ?? 'all', label: t(c.label), count: c.count, href: qualityHref(code, { tab: 'dlv', status: c.value, dlv: state.dlv }),
   }));

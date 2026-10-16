@@ -18,7 +18,7 @@ import {
 import { PAYMENT_RULES, paymentTermsText } from '@/domain/payment-terms';
 import type { Lang, T } from '@/i18n/translate';
 import {
-  NOW_ISO, amendmentStatus, bondType, contractType, customerInvoiceStatus, displayOfIso, paymentRule, shortDateYearOfIso,
+  amendmentStatus, bondType, contractType, customerInvoiceStatus, displayOfIso, paymentRule, shortDateYearOfIso,
   type ContractType,
 } from '@/server/db/codes';
 import { dataText } from './i18n';
@@ -28,6 +28,8 @@ export interface ContractData extends ContractInput {
   sheet: ContractSheetInput & { client: string; type: ContractType; signedOn: string | null; governingLaw: string; scope: string };
   /** Next free invoice number ("INV-2026-004"). */
   nextInvoiceNumber: string;
+  /** R-013: business date the figures are read at (late milestones, overdue invoices, the invoice date proposed). */
+  today: string;
   /** C-9: project currency and budget rate (EUR without rate when absent). */
   fx?: ProjectFx;
   /** A customer invoice exists: the currency is locked. */
@@ -162,7 +164,7 @@ export function currencyView(fx: ProjectFx, lang: Lang): CurrencyView {
 }
 
 export function contractView(c: ContractData, t: T, lang: Lang): ContractView {
-  const fig = contractFigures(c);
+  const fig = contractFigures(c, c.today);
   const cur = fig.currency;
   const fx = c.fx ?? EUR_FX;
   const f = (k: number) => moneyIn(k, cur, lang);
@@ -324,7 +326,7 @@ export interface BillingView {
 const INVOICE_TAG = { paid: 'tag tag-neutral', overdue: 'tag tag-accent', awaiting_payment: 'tag tag-outline' } as const;
 
 export function billingView(c: ContractData, t: T, lang: Lang): BillingView {
-  const fig = contractFigures(c);
+  const fig = contractFigures(c, c.today);
   const f = (k: number) => moneyIn(k, fig.currency, lang);
   const total = fig.valueKeur;
   const next = fig.next;
@@ -485,34 +487,34 @@ export const editMilestoneValues = (m: { label: string; sharePct: number; contra
   label: m.label, pct: String(m.sharePct), due: m.contractualDue ? t(displayOfIso(m.contractualDue)) : '', cond: m.condition ?? '',
 });
 
-/** "Mark signed" (R-079): signature date (default NOWD) · document reference. */
-export function signFormDef(t: T, documentRef: string | null = null): FormDef {
+/** "Mark signed" (R-079): signature date (default the business date `today`, the prototype's NOWD; R-013) · document reference. */
+export function signFormDef(t: T, today: string, documentRef: string | null = null): FormDef {
   return {
     title: t('Mark signed'),
     kind: 'run',
     submit: t('Mark signed'),
     fields: [
-      { id: 'date', label: t('Signature date'), type: 'text', required: true, defaultValue: t(displayOfIso(NOW_ISO)), placeholder: t(DATE_EXAMPLE) },
+      { id: 'date', label: t('Signature date'), type: 'text', required: true, defaultValue: t(displayOfIso(today)), placeholder: t(DATE_EXAMPLE) },
       { id: 'doc', label: t('Document reference'), type: 'text', defaultValue: documentRef ?? '' },
     ],
   };
 }
 
-/** "Release" of a guarantee (R-079): release date (default NOWD). */
-export function releaseFormDef(t: T): FormDef {
+/** "Release" of a guarantee (R-079): release date (default the business date `today`, the prototype's NOWD; R-013). */
+export function releaseFormDef(t: T, today: string): FormDef {
   return {
     title: t('Release guarantee'),
     kind: 'run',
     submit: t('Release'),
-    fields: [{ id: 'date', label: t('Release date'), type: 'text', required: true, defaultValue: t(displayOfIso(NOW_ISO)), placeholder: t(DATE_EXAMPLE) }],
+    fields: [{ id: 'date', label: t('Release date'), type: 'text', required: true, defaultValue: t(displayOfIso(today)), placeholder: t(DATE_EXAMPLE) }],
   };
 }
 
 /**
  * AF.billing — "Issue invoice" (run): milestone (`MSPLAN`, the planned billable milestones "M4 · Cranes operational", value =
- * the number) · invoice number (pre-filled `ctrNextInvNo`) · invoice date ("30 Sep 2026") · note.
+ * the number) · invoice number (pre-filled `ctrNextInvNo`) · invoice date (the business date `c.today`, R-013) · note.
  */
-export function invoiceFormDef(c: Pick<ContractData, 'milestones' | 'nextInvoiceNumber'> & Partial<Pick<ContractData, 'amendments'>>, t: T, lang: Lang): FormDef {
+export function invoiceFormDef(c: Pick<ContractData, 'milestones' | 'nextInvoiceNumber' | 'today'> & Partial<Pick<ContractData, 'amendments'>>, t: T, lang: Lang): FormDef {
   const signed = new Set((c.amendments ?? []).filter((a) => a.status === 'signed').map((a) => a.position));
   // R-077 (C-7): a milestone whose group exceeds 100 % is not offered (invoicing blocked until the schedule is corrected).
   const billable = c.milestones.filter((m) => m.status === 'planned' && (m.amendment == null || signed.has(m.amendment)) && !invoiceBlocked(c.milestones, m.number));
@@ -528,7 +530,7 @@ export function invoiceFormDef(c: Pick<ContractData, 'milestones' | 'nextInvoice
         options: billable.map((m) => ({ value: m.number, label: `${m.number} · ${dataText(m.label, lang)}` })),
       },
       { id: 'no', label: t('Invoice number'), type: 'text', required: true, defaultValue: c.nextInvoiceNumber },
-      { id: 'date', label: t('Invoice date'), type: 'text', required: true, defaultValue: t(displayOfIso(NOW_ISO)) },
+      { id: 'date', label: t('Invoice date'), type: 'text', required: true, defaultValue: t(displayOfIso(c.today)) },
       { id: 'note', label: t('Note on the invoice'), type: 'textarea' },
     ],
   };

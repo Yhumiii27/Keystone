@@ -135,7 +135,7 @@ async function hoursFailure(e: unknown): Promise<{ error: string }> {
 }
 
 /**
- * "Import Lucca hours" (AF.hours): re-stamps the project's latest import (imported 30 Sep 2026), its analytic code and
+ * "Import Lucca hours" (AF.hours): re-stamps the project's latest import (imported on the business date, R-013), its analytic code and
  * matching mode. The Lucca connector is not modelled, so no line is fetched (TODO(db)); a period that does not
  * contain the latest import, or a project without any import, is refused instead of toasting a fake result.
  */

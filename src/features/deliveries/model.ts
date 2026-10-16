@@ -12,7 +12,7 @@ import {
 import { bomHref } from '@/features/bom/links';
 import { ordersHref } from '@/features/orders/links';
 import type { Lang, T } from '@/i18n/translate';
-import { STATUS_ISO, displayOfIso, fmtDOfIso, type ReceiptStatus } from '@/server/db/codes';
+import { displayOfIso, fmtDOfIso, type ReceiptStatus } from '@/server/db/codes';
 import { vigieReportNcrUrl } from '@/server/integrations/vigie/links';
 import { DECLARE_NCR_LINK, dataText, qcResultText, statusText } from './i18n';
 
@@ -245,8 +245,8 @@ export interface RegisterReceiptLike {
   lines: { ref: string; name: string; ordered: number }[];
 }
 
-/** "Register receipt": delivered on (the status date) · carrier · supplier delivery note · delivered quantity per article. */
-export function registerFormDef(r: RegisterReceiptLike, t: T, lang: Lang): { def: FormDef; context: string } {
+/** "Register receipt": delivered on (the business date `today`, R-013) · carrier · supplier delivery note · delivered quantity per article. */
+export function registerFormDef(r: RegisterReceiptLike, today: string, t: T, lang: Lang): { def: FormDef; context: string } {
   return {
     context: `${r.number} · ${dataText(r.supplier, lang)}`,
     def: {
@@ -254,7 +254,7 @@ export function registerFormDef(r: RegisterReceiptLike, t: T, lang: Lang): { def
       submit: t('Register receipt'),
       kind: 'create',
       fields: [
-        { id: 'date', label: t('Delivered on'), type: 'text', required: true, defaultValue: t(displayOfIso(STATUS_ISO)) },
+        { id: 'date', label: t('Delivered on'), type: 'text', required: true, defaultValue: t(displayOfIso(today)) },
         { id: 'carrier', label: t('Carrier'), type: 'text', defaultValue: r.carrier ?? '' },
         { id: 'note', label: t('Supplier delivery note'), type: 'text', defaultValue: r.supplierDeliveryNote ?? '', span: 'full' },
         ...r.lines.map((l) => ({ id: qtyFieldId(l.ref), label: `${l.ref} · ${dataText(l.name, lang)}`, type: 'number' as const, required: true, defaultValue: String(l.ordered), span: 'full' as const })),

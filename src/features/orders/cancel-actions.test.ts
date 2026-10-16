@@ -4,6 +4,7 @@
 // (an approval racing a withdrawal), the writer's own re-check, the audit / activity / notice, the drawer, the RFQ footnote and
 // the internal PO summary. Golden baselines are untouched: the cancelled orders are drafts this file creates.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 
 const session = { role: 'director' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
@@ -222,7 +223,7 @@ describe('R-095 Server Functions', () => {
     expect((await cancelOrderAction(po.projectCode, po.number, 'Quote expired')).ok).toBe(true);
     const r = (await getRfq(comparing.number))!;
     expect([r.status, r.purchaseOrderNumber, r.purchaseOrderStatus]).toEqual(['awarded', po.number, 'cancelled']);
-    const v = rfqDrawerView(r, { t: procT(makeT('en'), 'en'), lang: 'en', role: 'procurement', canEdit: true, prices: true, orderProject: po.projectCode, currentProject: HLT });
+    const v = rfqDrawerView(r, { t: procT(makeT('en'), 'en'), lang: 'en', role: 'procurement', canEdit: true, prices: true, today: DEMO_TODAY_ISO, orderProject: po.projectCode, currentProject: HLT });
     expect(v.footnote).toContain(`purchase order ${po.number} cancelled before it was placed.`);
   });
 

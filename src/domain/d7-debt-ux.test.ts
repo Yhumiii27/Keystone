@@ -11,7 +11,6 @@ import { awardRuleTile, newRfqDefaultDueIso, parseNewRfq } from './procurement';
 describe('R-169 — form default dates follow the data date', () => {
   it('reproduce the prototype on the seed (data date Fri 25 Sep 2026)', () => {
     expect(newActivityDates('2026-09-25')).toEqual({ start: '2026-10-05', finish: '2026-10-30' });
-    expect(newActivityDates()).toEqual({ start: '2026-10-05', finish: '2026-10-30' });
     expect([formDateText('2026-10-05'), formDateText('2026-10-30')]).toEqual(['5 Oct 2026', '30 Oct 2026']);
     expect(formDateText(newMeetingDateIso('2026-09-25'))).toBe('6 Oct 2026');
     expect(nextWeekLabels('2026-09-25')).toEqual(['28 Sep', '5 Oct']);

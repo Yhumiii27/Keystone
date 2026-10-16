@@ -8,7 +8,8 @@ import 'server-only';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { getDb } from '@/server/db/client';
-import { STATUS_ISO, taskStatus, type TaskStatus } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
+import { taskStatus, type TaskStatus } from '@/server/db/codes';
 import { findPerson, nameOf, nextNumber, requireProject, writeAudit } from '@/server/db/helpers';
 import { activities, persons, tasks, timeEntries } from '@/server/db/schema';
 import { notifyTasksAssigned } from './task-notices';
@@ -61,7 +62,7 @@ export interface NewActivityTodo {
   title: string;
   /** Assignee (full or short name); default: the activity owner. */
   assignee?: string | null;
-  /** ISO; default: the activity finish (or the status date). */
+  /** ISO; default: the activity finish (or the business date, R-013). */
   dueDate?: string | null;
 }
 
@@ -72,17 +73,18 @@ export async function addActivityTodo(code: string, activityCode: string, input:
   if (title.length > 200) throw new Error('A to-do title holds at most 200 characters');
   const a = await activityOf(code, activityCode);
   const db = await getDb();
+  const today = await businessToday();
   const number = await db.transaction(async (tx) => {
     const assignee = input.assignee ? await findPerson(tx, input.assignee) : null;
     if (input.assignee && !assignee) throw new Error(`Unknown person "${input.assignee}"`);
-    const due = input.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(input.dueDate) ? input.dueDate : a.finish && a.finish >= STATUS_ISO ? a.finish : STATUS_ISO;
+    const due = input.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(input.dueDate) ? input.dueDate : a.finish && a.finish >= today ? a.finish : today;
     const number = await nextNumber(tx, tasks, tasks.number, 'T-', 4, 2340);
     const [{ maxOrder }] = await tx.select({ maxOrder: sql<number>`coalesce(max(${tasks.sortOrder}), 0)::int` }).from(tasks);
     const [t] = await tx
       .insert(tasks)
       .values({
-        number, assigneePersonId: assignee?.id ?? a.owner, title, projectId: a.projectId, activityId: a.id, status: 'todo', priority: 'med', startDate: STATUS_ISO,
-        dueDate: due < STATUS_ISO ? STATUS_ISO : due, estimateH: 0, loggedH: 0, percentComplete: 0, labels: [], sortOrder: maxOrder + 1, origin: 'activity_todo',
+        number, assigneePersonId: assignee?.id ?? a.owner, title, projectId: a.projectId, activityId: a.id, status: 'todo', priority: 'med', startDate: today,
+        dueDate: due < today ? today : due, estimateH: 0, loggedH: 0, percentComplete: 0, labels: [], sortOrder: maxOrder + 1, origin: 'activity_todo',
       })
       .returning({ id: tasks.id });
     const actor = await findPerson(tx, actorName);

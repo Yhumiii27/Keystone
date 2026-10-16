@@ -14,6 +14,7 @@ vi.mock('./actions', () => ({
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push() {}, replace() {}, prefetch() {}, refresh() {} }), usePathname: () => '/projects/HLT-026/site' }));
 
 import { renderToStaticMarkup } from 'react-dom/server';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import GOLDEN from '@/domain/site.golden.json';
 import { I18nProvider } from '@/i18n/client';
 import { fieldsText } from '@/i18n/data-text';
@@ -180,8 +181,8 @@ describe('Site view model vs the prototype (EN and FR)', () => {
     expect((await view('fr', 'NDC-031')).v.empty).toBe('Pas encore de fiche chantier pour ce projet — les responsables du projet la préparent dès l’étape Études.');
   });
 
-  it('Daily report form: the prototype fields without HSE (NEW-SITE-2 a), weather codes as values, the status date by default, FR weather "Dégagé"', () => {
-    const en = dailyReportFormDef(makeT('en'), 'en');
+  it('Daily report form: the prototype fields without HSE (NEW-SITE-2 a), weather codes as values, the business date by default (R-013), FR weather "Dégagé"', () => {
+    const en = dailyReportFormDef(makeT('en'), 'en', DEMO_TODAY_ISO);
     expect([en.title, en.submit, en.kind]).toEqual([G.form.title, G.form.submit, 'create']);
     // NEW-SITE-2 'a' (R-122): the prototype's fifth field (HSE incident, AF.site) is gone — incidents are declared in Vigie.
     expect(G.form.fields[4][0]).toBe('incident');
@@ -189,14 +190,14 @@ describe('Site view model vs the prototype (EN and FR)', () => {
     expect(en.fields.map((f) => f.defaultValue ?? null)).toEqual(['25 Sep 2026', null, '24', null]);
     expect(en.fields[1].options).toEqual(G.form.fields[1][3].map((l: string, i: number) => ({ value: ['clear', 'rain', 'wind', 'storm'][i], label: l })));
     expect(en.note).toBeUndefined();
-    const fr = dailyReportFormDef(makeT('fr'), 'fr');
+    const fr = dailyReportFormDef(makeT('fr'), 'fr', DEMO_TODAY_ISO);
     expect([fr.title, fr.submit, fr.fields.map((f) => f.label)]).toEqual(['Rapport journalier', 'Enregistrer le rapport', ['Date', 'Météo', 'Effectif sur site', 'Avancement']]);
     expect(fr.fields[0].defaultValue).toBe('25 sept. 2026');
     expect(fr.fields[1].options!.map((o) => (typeof o === 'string' ? o : o.label))).toEqual(['Dégagé', 'Pluie', 'Vent > 50 km/h', 'Tempête']);
     // The link to Vigie's incident form (prefilled with the project and the site) under the fields.
     const url = 'http://localhost:3200/signaler?projet=HLT-026&source=keystone';
-    expect(dailyReportFormDef(makeT('en'), 'en', undefined, url).note).toEqual({ text: 'HSE incident?', linkLabel: 'Declare it in Vigie', href: url });
-    expect(dailyReportFormDef(makeT('fr'), 'fr', undefined, url).note).toEqual({ text: 'Incident HSE ?', linkLabel: 'Déclarez-le dans Vigie', href: url });
+    expect(dailyReportFormDef(makeT('en'), 'en', DEMO_TODAY_ISO, url).note).toEqual({ text: 'HSE incident?', linkLabel: 'Declare it in Vigie', href: url });
+    expect(dailyReportFormDef(makeT('fr'), 'fr', DEMO_TODAY_ISO, url).note).toEqual({ text: 'Incident HSE ?', linkLabel: 'Déclarez-le dans Vigie', href: url });
   });
 
   it('FR counts agree in number (the shared rules gave "1 non confirmés", "1 conditions sur 5", "1 expédiés", "1 approbations")', () => {

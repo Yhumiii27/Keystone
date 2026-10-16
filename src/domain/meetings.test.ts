@@ -73,7 +73,7 @@ function check(state: any) {
   expect(sortMeetings(ms.filter((m) => matchesFilter(m, filter))).map((m) => m.number)).toEqual(plain(v.mtgList).map((m: any) => m.id));
   const counts = filterCounts(ms);
   expect([counts.all, counts.todo, counts.upcoming, counts.sent].map(String)).toEqual(plain(v.mtgChips).map((c: any) => c.count));
-  const k = meetingKpis(ms);
+  const k = meetingKpis(ms, '2026-09-30'); // R-013: the prototype's PG_NOW (30 Sep 2026), passed explicitly
   expect([
     k.thisWeek, `${k.upcoming} upcoming`, k.toWrite, k.toWrite > 0, k.openActions, `${k.overdueActions} overdue`, k.overdueActions > 0,
     k.decisionsThisMonth, `${k.decisionsWithClient} with the client`,

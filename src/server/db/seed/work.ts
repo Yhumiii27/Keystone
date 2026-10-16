@@ -1,5 +1,6 @@
 // Work seed: tasks (TODOS + DESC, CHECKS, COMMENTS, FILES, ENTRIES) and resource requests (REQUESTS, with a
 // decision trail parsed from `sent` and `response`). See schema/work.ts.
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { eq } from 'drizzle-orm';
 import { PROTO } from '@/server/prototype';
 import { addDaysIso, isoOfDayOffset, isoOfDisplayDate, parseStampText, type AttachmentKind, type Priority, type RequestEventAction, type RequestStatus, type TaskStatus } from '../codes';
@@ -67,7 +68,7 @@ export async function seedWork(tx: Tx, ctx: SeedCtx): Promise<void> {
   await tx.insert(taskComments).values(
     Object.entries(PROTO.COMMENTS as Record<string, [string, string, string][]>).flatMap(([n, rows]) =>
       rows.map(([author, when, text], position) => ({
-        id: newId(), taskId: taskId(n), authorPersonId: personId(ctx, author), postedAt: parseStampText(when), text, position,
+        id: newId(), taskId: taskId(n), authorPersonId: personId(ctx, author), postedAt: parseStampText(when, DEMO_TODAY_ISO), text, position,
       })),
     ),
   );

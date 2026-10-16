@@ -25,6 +25,7 @@ vi.mock('@/server/session', async () => {
 });
 
 import { and, eq } from 'drizzle-orm';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { deliverableActionFor, nextRevision, parseNewDeliverable, reviewLineText } from '@/domain/quality';
 import { makeT } from '@/i18n/translate';
 import { getDb, setDb } from '@/server/db/client';
@@ -188,7 +189,7 @@ describe('R-114 / R-115 Server Functions', () => {
     // Register row: "Start next revision" for the PM, nothing for the client.
     const state: QualityState = { tab: 'dlv', filter: null, status: null, ncr: null, dlv: null };
     const rows = (role: string) =>
-      dlvTabView({ code: HLT, deliverables: [d], state, viewer: { role, canEdit: true, isClientContact: role === 'client', vigie: role !== 'client' } }, makeT('en'), 'en').rows;
+      dlvTabView({ code: HLT, deliverables: [d], state, viewer: { role, canEdit: true, isClientContact: role === 'client', vigie: role !== 'client' }, today: DEMO_TODAY_ISO }, makeT('en'), 'en').rows;
     expect(rows('pm')[0].action).toEqual({ kind: 'move', to: 'in_progress', label: 'Start next revision', variant: 'secondary', restart: true });
     expect(rows('client')[0].action).toBeNull();
     session.role = 'director';

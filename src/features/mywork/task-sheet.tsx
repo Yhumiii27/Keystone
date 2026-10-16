@@ -10,6 +10,7 @@ import type { Icon } from '@phosphor-icons/react';
 import { useRouter } from 'next/navigation';
 import { createContext, useContext, useOptimistic, useRef, useState, useTransition, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { Callout } from '@/components/app/Callout';
+import { useTodayOffset } from '@/components/app/clock';
 import { FormDialog } from '@/components/app/FormDialog';
 import { CheckRow, CheckSquare } from '@/components/app/Check';
 import { KeyValueList } from '@/components/app/KeyValueList';
@@ -29,7 +30,7 @@ import {
 import { liveTaskCost } from '@/domain/hr';
 import { useI18n } from '@/i18n/client';
 import { dataText } from '@/i18n/data-text';
-import { TODAY, dayLabel } from '@/lib/format';
+import { dayLabel } from '@/lib/format';
 import type { AttachmentKind } from '@/server/db/codes';
 import {
   addChecklistItemAction, addTaskCommentAction, logTaskTimeAction, markTaskDoneAction, nameSourcedPersonAction, removeTaskFileAction, setTaskProgressAction,
@@ -191,7 +192,7 @@ export function TaskBody() {
 function MetaCard() {
   const { t } = useI18n();
   const { data, live } = useTask();
-  const overdue = data.due < TODAY && live.status !== 'done';
+  const overdue = data.due < useTodayOffset() && live.status !== 'done';
   return (
     <div className={cx('card', 'elev-sm', s.sheet, s.gap10)}>
       <KeyValueList
@@ -504,6 +505,7 @@ function ProgressCard() {
   const { t, lang } = useI18n();
   const toast = useToast();
   const { data, live, canEdit, run } = useTask();
+  const today = useTodayOffset();
   const [hours, setHours] = useState('');
   const [note, setNote] = useState('');
   const bar = hoursBar(live.loggedH, data.estimateH);
@@ -515,7 +517,7 @@ function ProgressCard() {
     const n = note.trim();
     setHours('');
     setNote('');
-    run({ kind: 'log', entry: { date: t(dayLabel(TODAY)), hours: h, note: n || data.defaultLogNote } }, () =>
+    run({ kind: 'log', entry: { date: t(dayLabel(today)), hours: h, note: n || data.defaultLogNote } }, () =>
       logTaskTimeAction({ taskId: data.id, hours: h, note: n }),
     );
   };

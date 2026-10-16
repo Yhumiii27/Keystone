@@ -66,8 +66,6 @@ export function mIdx(str: string | null | undefined): number | null {
   return (y - 2026) * 12 + m + (d - 1) / 30;
 }
 
-/** Working-day offsets from Mon 21 Sep 2026 (5 working days per week). TODAY = 4 → Fri 25 Sep 2026. */
-export const TODAY = 4;
 /**
  * Prototype `dayDate` (3266). Same result for o ≥ 0; negative offsets (the weeks before 21 Sep — older tasks, the
  * My work calendar's previous weeks) use a floored remainder so −1 is Fri 18 Sep, not the prototype's Sun 13 Sep.
@@ -78,8 +76,6 @@ export const dayLabel = (o: number) => {
   return DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MO[d.getMonth()];
 };
 
-/** Frozen status date of the prototype data set. */
-export const STATUS_DATE = '25 Sep 2026';
 
 export const wbsParseDate = (s: string | null | undefined) => {
   const p = String(s || '').trim().split(/\s+/);

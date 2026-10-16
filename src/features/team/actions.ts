@@ -6,7 +6,7 @@
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { interfaceRowState, parseNewInterface, parseNewStakeholder, parseReceivedOn } from '@/domain/team';
-import { NOW_ISO } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
 import { createInterface, freezeInterface, listInterfaces, markInterfaceReceived } from '@/server/dal/interfaces';
 import { getProject } from '@/server/dal/projects';
 import { addStakeholder } from '@/server/dal/stakeholders';
@@ -44,7 +44,7 @@ async function editable(code: unknown, screen: Screen): Promise<{ code: string; 
   return { code: project.code, actor: ctx.viewer.name };
 }
 
-/** "Add stakeholder" (AF `stakeholders`, "Add"): appended with last contact 30 Sep and notes "New"; toast "Stakeholder added". */
+/** "Add stakeholder" (AF `stakeholders`, "Add"): appended with last contact the business date (R-013; the prototype's 30 Sep) and notes "New"; toast "Stakeholder added". */
 export async function addStakeholderAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const ok = await editable(code, 'stakeholders');
   if ('error' in ok) return ok;
@@ -90,7 +90,7 @@ async function transition(code: string, number: string, to: 'received' | 'frozen
     return { error: await tr(to === 'received' ? 'This interface is no longer open' : 'Only a received interface can be frozen') };
   let receivedOn: string | undefined;
   if (to === 'received') {
-    const parsed = parseReceivedOn(strings(values).received, NOW_ISO);
+    const parsed = parseReceivedOn(strings(values).received, await businessToday()); // R-013: never after the business date
     if (!parsed.ok) return { error: await tr(parsed.error) };
     receivedOn = parsed.value;
   }

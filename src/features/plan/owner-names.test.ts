@@ -29,7 +29,7 @@ const rowsOf = async (code: string, data: PlanData) => planRowViews(planRows(dat
 const drawerOwner = (data: PlanData, id: string) => {
   const act = data.activities.find((a) => a.id === id)!;
   const v = activityDrawerView(
-    { act, activities: data.activities, packages: data.packages, owners: data.owners, ownerName: act.ownerName, assignments: [], todos: [], requests: [], deptHeads: {}, taskHref: () => '' },
+    { act, activities: data.activities, packages: data.packages, owners: data.owners, ownerName: act.ownerName, assignments: [], todos: [], today: 4, requests: [], deptHeads: {}, taskHref: () => '' },
     EN,
     'en',
   );

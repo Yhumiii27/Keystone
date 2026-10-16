@@ -21,6 +21,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import { parseGroupRoleMap } from '@/domain/auth';
 import { BACKUP_DEFAULTS, BACKUP_EVERY_MIN_RANGE, parseBackupRetention, type BackupRetention } from '@/domain/backup';
+import { parseClockSetting, type ClockSetting } from '@/domain/clock';
 
 export const SEED_MODES = ['demo', 'production'] as const;
 /** What a NEW database is seeded with (KEYSTONE_SEED): the prototype data set, or reference data only (A-15). */
@@ -67,6 +68,11 @@ export interface KeystoneConfig {
   seed: SeedMode;
   /** KEYSTONE_SEED was set explicitly (seeding an empty PostgreSQL database requires it). */
   seedExplicit: boolean;
+  /**
+   * Business clock (R-013, KEYSTONE_CLOCK): null = automatic (the real clock on a production database, the demo data set's
+   * date — Fri 25 Sep 2026 — on a demo database); else the real clock or a pinned date.
+   */
+  clock: ClockSetting | null;
   log: { level: LogLevel; format: LogFormat };
   /**
    * Cursus: API URL and key Keystone sends (outbound); `eventsKey` = the key Cursus must present to Keystone's events endpoint
@@ -138,6 +144,11 @@ const VARS = {
     .optional(),
   DATABASE_POOL_MAX: z.coerce.number().int().min(1, 'must be at least 1').max(200, 'must be at most 200').optional(),
   KEYSTONE_SEED: z.enum(SEED_MODES, { message: 'must be "demo" or "production"' }).optional(),
+  // R-013: "real", or a pinned business date YYYY-MM-DD; unset = automatic (real clock on a production database).
+  KEYSTONE_CLOCK: z
+    .string()
+    .transform((v, ctx) => parseClockSetting(v) ?? (ctx.addIssue({ code: 'custom', message: 'must be "real" or a date YYYY-MM-DD' }), z.NEVER))
+    .optional(),
   LOG_LEVEL: z.enum(LOG_LEVELS, { message: `must be one of ${LOG_LEVELS.join(', ')}` }).optional(),
   LOG_FORMAT: z.enum(LOG_FORMATS, { message: 'must be "json" or "pretty"' }).optional(),
   NEXT_PUBLIC_CODEX_URL: httpUrl.optional(),
@@ -343,6 +354,9 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
       variable: 'ANTHROPIC_API_KEY',
       message: 'is set: meeting transcripts are sent to Anthropic for analysis — the sub-processing agreement (DPA) must be signed (GDPR)',
     });
+  // R-013: a pinned date in production is a demonstration setting; real use needs the real clock.
+  if (production && v.KEYSTONE_CLOCK?.kind === 'fixed')
+    warnings.push({ variable: 'KEYSTONE_CLOCK', message: 'pins the business date in production: lateness, due dates and dated writes ignore the real date' });
   const secrets = [...SECRET_VARIABLES.map((n) => v[n] as string | undefined), urlPassword(v.DATABASE_URL)].filter((s): s is string => !!s && s.length >= 4);
 
   return {
@@ -357,6 +371,7 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
       database,
       seed: v.KEYSTONE_SEED ?? 'demo',
       seedExplicit: v.KEYSTONE_SEED != null,
+      clock: v.KEYSTONE_CLOCK ?? null,
       log: { level: v.LOG_LEVEL ?? 'info', format: v.LOG_FORMAT ?? (production ? 'json' : 'pretty') },
       cursus: { apiUrl: v.CURSUS_API_URL ?? null, apiKey: cursusApiKey, eventsKey: cursusEventsKey, directory: v.CURSUS_DIRECTORY === 'on' },
       vigie: { apiUrl: v.VIGIE_API_URL ?? null, apiKey: v.VIGIE_API_KEY ?? null },

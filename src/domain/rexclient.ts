@@ -19,7 +19,7 @@ import type { Lang } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import {
-  CLOSURE_NEXT, DOCUMENT_STATUS_TAG, LESSON_APPLIES_TO, STATUS_ISO, closureItemStatus, clientIssueStatus, docFamily, fmtDOfIso, lessonStatus,
+  CLOSURE_NEXT, DOCUMENT_STATUS_TAG, LESSON_APPLIES_TO, closureItemStatus, clientIssueStatus, docFamily, fmtDOfIso, lessonStatus,
   lessonTheme, reportPeriod,
   type ChangeStatus, type ChangeStep, type ChangeType, type ClientIssueStatus, type ClosureItemStatus, type DeliverableStatus, type DocFamily, type DocumentStatus,
   type LessonStatus, type LessonTheme, type PaymentMilestoneStatus, type ReportPeriod, type StepDecision,
@@ -481,7 +481,7 @@ export interface IssueLike {
 export interface IssueRow {
   id: string;
   title: string;
-  /** "Raised 12 Aug" / "Raised today" (the status date). */
+  /** "Raised 12 Aug" / "Raised today" (raised on the business date, R-013 — the prototype's status date). */
   when: string;
   status: string;
   /** Closed neutral, Open accent, In progress outline. */
@@ -491,7 +491,7 @@ export interface IssueRow {
 
 export const ISSUE_TONE: Record<ClientIssueStatus, Tone> = { closed: 'neutral', open: 'accent', in_progress: 'outline' };
 
-export const issueRow = (i: IssueLike, today: string = STATUS_ISO): IssueRow => ({
+export const issueRow = (i: IssueLike, today: string): IssueRow => ({
   id: i.number, title: i.title, when: i.raisedOn === today ? 'Raised today' : `Raised ${fmtDOfIso(i.raisedOn)}`, status: clientIssueStatus.label(i.status),
   tone: ISSUE_TONE[i.status], response: i.response,
 });

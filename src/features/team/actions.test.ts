@@ -1,6 +1,7 @@
 // Team & exchanges Server Functions against an in-memory database: permission gate, prototype parsing of the two
 // add-forms (toasts, numbering IF-10… per project, owner normalised to the short name), the interface row actions
 // with their status guards, and the viewer as the actor. Session and project context are mocked.
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const viewer = { name: 'Marie Lefebvre', canEdit: true, lang: 'en' as 'en' | 'fr' };
@@ -55,7 +56,8 @@ describe('team Server Functions', () => {
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 
-  it('"Add stakeholder": toast, appended with last contact 30 Sep and notes "New", owner as short name, viewer in the audit trail', async () => {
+  // R-013: one business date (25 Sep 2026 on the demo data set), not the prototype's 30 Sep (NOWD).
+  it('"Add stakeholder": toast, appended with last contact 25 Sep and notes "New", owner as short name, viewer in the audit trail', async () => {
     viewer.name = 'Romain Aubert';
     const team = await teamOwnerOptions('HLT-026');
     const owner = team[1];
@@ -65,7 +67,7 @@ describe('team Server Functions', () => {
     const reg = await getStakeholderRegister('HLT-026');
     expect(reg.stakeholders).toHaveLength(9);
     expect(reg.stakeholders.at(-1)).toMatchObject({
-      name: 'Yves Morel', organisation: 'Bureau Veritas', role: 'Inspector', type: 'third_party', contactEmail: 'y.morel@bv.com', lastText: '30 Sep', notes: 'New', stale: false,
+      name: 'Yves Morel', organisation: 'Bureau Veritas', role: 'Inspector', type: 'third_party', contactEmail: 'y.morel@bv.com', lastText: '25 Sep', notes: 'New', stale: false,
     });
     expect(reg.stakeholders.at(-1)!.owner).toMatch(/^[A-Z]\. /);
     expect((await listAudit())[0]).toMatchObject({ who: 'Romain Aubert', object: 'Yves Morel', area: 'Stakeholders' });
@@ -86,29 +88,32 @@ describe('team Server Functions', () => {
     expect(await addStakeholderAction('HLT-026', { name: 'A', org: 'B', contact: 'nope' })).toEqual({ error: 'Saisissez une adresse e-mail valide' });
   });
 
-  it('"New interface": toast, IF-10 Open needed 2 Nov (in 32 d); a past need date is Late at once; per-project numbering', async () => {
+  // R-013: days counted from the business date (25 Sep 2026 on the demo data set), not the prototype's now (≈ 30 Sep): 32 → 37 d;
+  // the "past" need date moves from 28 Sep to 23 Sep (28 Sep is ahead of 25 Sep).
+  it('"New interface": toast, IF-10 Open needed 2 Nov (in 37 d); a past need date is Late at once; per-project numbering', async () => {
     viewer.name = 'Romain Aubert';
     const team = await teamOwnerOptions('HLT-026');
     expect(await createInterfaceAction('HLT-026', { title: 'Port Wi-Fi coverage', a: 'automation', b: 'Client · IT', data: 'Coverage map', needed: '2 Nov', owner: team[0] })).toEqual({
       toast: 'Interface registered',
     });
-    expect(await ifc('IF-10')).toMatchObject({ title: 'Port Wi-Fi coverage', keystoneSide: 'automation', neededBy: '2026-11-02', daysToNeed: 32, status: 'open', providedText: '—' });
+    expect(await ifc('IF-10')).toMatchObject({ title: 'Port Wi-Fi coverage', keystoneSide: 'automation', neededBy: '2026-11-02', daysToNeed: 37, status: 'open', providedText: '—' });
     expect((await listAudit())[0]).toMatchObject({ who: 'Romain Aubert', object: 'IF-10', area: 'Interfaces' });
-    expect(await createInterfaceAction('HLT-026', { title: 'Old', b: 'Client', data: 'x', needed: '28/09/2026' })).toEqual({ toast: 'Interface registered' });
+    expect(await createInterfaceAction('HLT-026', { title: 'Old', b: 'Client', data: 'x', needed: '23/09/2026' })).toEqual({ toast: 'Interface registered' });
     expect(await ifc('IF-11')).toMatchObject({ status: 'late', daysToNeed: -2, keystoneSide: 'process' });
     expect(await createInterfaceAction('EWA-051', { title: 'Grid connection', a: 'electrical', b: 'Utility', data: 'Connection date', needed: '15 déc.' })).toEqual({ toast: 'Interface registered' });
     expect(await ifc('IF-10', 'EWA-051')).toMatchObject({ neededBy: '2026-12-15', status: 'open' });
   });
 
-  it('"New interface" needed in another year keeps the year on screen (14 Jan 2027, in 104 d; FR "14 janv. 2027")', async () => {
+  // R-013: in 109 d from the business date (25 Sep 2026 on the demo data set), not 104 d from the prototype's 30 Sep.
+  it('"New interface" needed in another year keeps the year on screen (14 Jan 2027, in 109 d; FR "14 janv. 2027")', async () => {
     expect(await createInterfaceAction('HLT-026', { title: 'Crane rail survey', b: 'Client · civil works', data: 'Rail alignment report', needed: '14 Jan 2027' })).toEqual({
       toast: 'Interface registered',
     });
     const row = (await listInterfaces('HLT-026')).find((r) => r.title === 'Crane rail survey')!;
-    expect(row).toMatchObject({ neededBy: '2027-01-14', neededText: '14 Jan 2027', daysToNeed: 104, status: 'open', providedText: '—' });
-    const fr = interfacesView([row], [], makeT('fr'), 'fr').rows[0];
-    expect([fr.needed, fr.neededSub, fr.status]).toEqual(['14 janv. 2027', 'dans 104 j', 'Ouverte']);
-    expect(interfacesView([row], [], makeT('en'), 'en').rows[0].needed).toBe('14 Jan 2027');
+    expect(row).toMatchObject({ neededBy: '2027-01-14', neededText: '14 Jan 2027', daysToNeed: 109, status: 'open', providedText: '—' });
+    const fr = interfacesView([row], [], makeT('fr'), 'fr', DEMO_TODAY_ISO).rows[0];
+    expect([fr.needed, fr.neededSub, fr.status]).toEqual(['14 janv. 2027', 'dans 109 j', 'Ouverte']);
+    expect(interfacesView([row], [], makeT('en'), 'en', DEMO_TODAY_ISO).rows[0].needed).toBe('14 Jan 2027');
   });
 
   it('"New interface" validation: required fields, need date, Keystone side, TEAM owner', async () => {
@@ -124,21 +129,22 @@ describe('team Server Functions', () => {
     viewer.name = 'Antoine Girard';
     expect(await freezeInterfaceAction('HLT-026', 'IF-07')).toEqual({ error: 'Only a received interface can be frozen' });
     // Q-4 a (R-116): the received date the user confirmed is stamped as the provided date and named in the audit line.
-    expect(await markInterfaceReceivedAction('HLT-026', 'IF-07', { received: '28 Sep 2026' })).toEqual({ ok: true });
-    expect(await ifc('IF-07')).toMatchObject({ status: 'received', statusLabel: 'Received', providedOn: '2026-09-28', providedText: '28 Sep' });
-    expect((await listAudit())[0]).toMatchObject({ who: 'Antoine Girard', object: 'IF-07', change: 'status: Late → Received · received 28 Sep' });
-    expect(await markInterfaceReceivedAction('HLT-026', 'IF-07', { received: '28 Sep 2026' })).toEqual({ error: 'This interface is no longer open' });
+    // R-013: dates on or before the business date (25 Sep 2026 on the demo data set; the prototype's today was 30 Sep).
+    expect(await markInterfaceReceivedAction('HLT-026', 'IF-07', { received: '24 Sep 2026' })).toEqual({ ok: true });
+    expect(await ifc('IF-07')).toMatchObject({ status: 'received', statusLabel: 'Received', providedOn: '2026-09-24', providedText: '24 Sep' });
+    expect((await listAudit())[0]).toMatchObject({ who: 'Antoine Girard', object: 'IF-07', change: 'status: Late → Received · received 24 Sep' });
+    expect(await markInterfaceReceivedAction('HLT-026', 'IF-07', { received: '24 Sep 2026' })).toEqual({ error: 'This interface is no longer open' });
     expect(await freezeInterfaceAction('HLT-026', 'IF-07')).toEqual({ ok: true });
     // Freeze keeps the provided date.
-    expect(await ifc('IF-07')).toMatchObject({ status: 'frozen', providedOn: '2026-09-28' });
-    expect(await markInterfaceReceivedAction('HLT-026', 'IF-03', { received: '30 Sep 2026' })).toEqual({ error: 'This interface is no longer open' });
-    // The French default of the dialog ("30 sept. 2026") is read too.
-    expect(await markInterfaceReceivedAction('HLT-026', 'IF-02', { received: '30 sept. 2026' })).toEqual({ ok: true });
-    expect(await ifc('IF-02')).toMatchObject({ providedOn: '2026-09-30', providedText: '30 Sep' });
+    expect(await ifc('IF-07')).toMatchObject({ status: 'frozen', providedOn: '2026-09-24' });
+    expect(await markInterfaceReceivedAction('HLT-026', 'IF-03', { received: '25 Sep 2026' })).toEqual({ error: 'This interface is no longer open' });
+    // The French default of the dialog ("25 sept. 2026") is read too.
+    expect(await markInterfaceReceivedAction('HLT-026', 'IF-02', { received: '25 sept. 2026' })).toEqual({ ok: true });
+    expect(await ifc('IF-02')).toMatchObject({ providedOn: '2026-09-25', providedText: '25 Sep' });
     expect(revalidatePath).toHaveBeenCalledWith('/projects/HLT-026', 'layout');
   });
 
-  it('R-116 (Q-4 a): "Received on" required, a readable date, never after today (30 Sep); nothing written when refused', async () => {
+  it('R-116 (Q-4 a): "Received on" required, a readable date, never after today (25 Sep, R-013); nothing written when refused', async () => {
     viewer.name = 'Antoine Girard';
     const before = await ifc('IF-05');
     for (const values of [undefined, {}, { received: '' }, { received: '   ' }, { received: 'yesterday' }, { received: '31 Feb 2026' }, { received: 42 }] as unknown[])

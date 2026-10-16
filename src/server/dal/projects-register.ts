@@ -10,11 +10,12 @@ import { and, asc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import { BL1_DELIVERABLE_MESSAGE, bl1TickRefused, hasBl1 } from '@/domain/baseline-policy';
 import { BUILTIN_CALENDAR_BY_CODE, WorkCalendar } from '@/domain/calendar';
 import { projectDataDate } from '@/domain/ch4-defaults';
+import { businessToday } from '@/server/clock';
 import {
   allocateProjectIdentity, deliverableToggle, NEW_PROJECT_DEFAULTS, nextProjectId, wizardTotal, type ProjectIdentity,
 } from '@/domain/lifecycle';
 import {
-  DEFAULT_PLANNED_FINISH, DEFAULT_PLANNED_START, instantiateTemplate, monthOfIso, templateActivitiesText, templateWbsText,
+  defaultPlannedFinish, defaultPlannedStart, instantiateTemplate, monthOfIso, templateActivitiesText, templateWbsText,
 } from '@/domain/project-template';
 import { activityDateText } from '@/domain/schedule-rollup';
 import { getDb } from '@/server/db/client';
@@ -83,8 +84,10 @@ export interface RegisterData {
   planned?: string[];
   /** Settings health thresholds (A-13): the register's CPI / SPI colours and attention items. */
   thresholds?: HealthThresholds;
-  /** Data date of each project (ISO; the status date until S-4 writes one): "today" of the stage-change date (L-4c). */
+  /** Data date of each project (ISO; the business date until S-4 writes one — R-013): "today" of the stage-change date (L-4c). */
   dataDates?: Record<string, string>;
+  /** Business date (ISO, R-013). */
+  today: string;
   /**
    * Delivery 8 (R-054, L-2 "a"): BL1 of each project with baselines — set (a BLn ≥ 1 current or superseded) and BL1's ISO date; the
    * APD deliverable « Planning BL1 posé » follows it (read-only in the register).
@@ -100,13 +103,14 @@ export async function getRegisterData(): Promise<RegisterData> {
     healthThresholds(), db.select({ code: projects.code, dataDate: projects.dataDate }).from(projects),
     db.select({ project: projects.code, code: baselines.code, state: baselines.state, setOn: baselines.setOn }).from(baselines).innerJoin(projects, eq(projects.id, baselines.projectId)),
   ]);
-  const dataDates = Object.fromEntries(dates.map((d) => [d.code, projectDataDate(d)]));
+  const today = await businessToday();
+  const dataDates = Object.fromEntries(dates.map((d) => [d.code, projectDataDate(d, today)]));
   const bl1: NonNullable<RegisterData['bl1']> = {};
   for (const code of new Set(bls.map((b) => b.project))) {
     const own = bls.filter((b) => b.project === code);
     bl1[code] = { set: hasBl1(own), setOn: own.find((b) => b.code === 'BL1' && b.state !== 'proposed')?.setOn ?? null };
   }
-  return { projects: list, stages, checklists, history, schedules, inactiveStages, planned, thresholds, dataDates, bl1 };
+  return { projects: list, stages, checklists, history, schedules, inactiveStages, planned, thresholds, dataDates, bl1, today };
 }
 
 /** Current stage of a project (null when unknown). */
@@ -344,8 +348,10 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
   const client = input.client.trim();
   const cats = input.categories.map((c) => ({ ...c, name: c.name.trim() || 'New category', budget: Number.isFinite(c.budget) ? c.budget : 0 }));
   const budget = wizardTotal(cats, input.contingencyPct);
-  const plannedStart = input.plannedStart ?? DEFAULT_PLANNED_START;
-  const askedFinish = input.plannedFinish === undefined ? DEFAULT_PLANNED_FINISH : input.plannedFinish;
+  // R-013: the wizard's default window follows the business date (11 Jan → 30 Sep 2027 on 25 Sep 2026).
+  const today = await businessToday();
+  const plannedStart = input.plannedStart ?? defaultPlannedStart(today);
+  const askedFinish = input.plannedFinish === undefined ? defaultPlannedFinish(today) : input.plannedFinish;
   const startM = monthOfIso(plannedStart);
   return db.transaction(async (tx) => {
     // Without a chosen PM, the prototype's default (S. Perrin) on a demo database only (R-011); none on a production one.

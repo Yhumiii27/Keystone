@@ -1,12 +1,15 @@
 import 'server-only';
 // Stakeholders & RACI DAL (docs/spec/05 §6; 11 §3.4 Stakeholder / RaciMatrix). Register with relationship owner and
-// last contact (stale when (PG_NOW − mIdx(last)) × 30 > 30 days, logic 4932), the project RACI matrix (dynamic
-// columns), and "Add stakeholder" (AF.stakeholders: last contact = NOWD, notes "New", owner normalised to the
+// last contact (stale when (now − mIdx(last)) × 30 > 30 days, logic 4932; now = the business date's month index, the
+// prototype's PG_NOW — R-013), the project RACI matrix (dynamic columns), and "Add stakeholder" (AF.stakeholders: last
+// contact = the business date, the prototype's NOWD; notes "New", owner normalised to the
 // person's short name — the prototype stored the TEAM full name, S-13).
 import { asc, eq, inArray, sql } from 'drizzle-orm';
+import { monthNowOf } from '@/domain/clock';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { isStaleContact, stakeholderInitials } from '@/domain/team';
-import { NOW_ISO, shortDateYearOfIso, stakeholderType, type RaciCode, type StakeholderType } from '@/server/db/codes';
+import { shortDateYearOfIso, stakeholderType, type RaciCode, type StakeholderType } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
 import { persons, projects, raciCells, raciColumns, raciMatrices, raciRows, stakeholders } from '@/server/db/schema';
 
@@ -25,7 +28,7 @@ export interface StakeholderRow {
   lastContactOn: string;
   /** "25 Sep" (with the year outside 2026). */
   lastText: string;
-  /** No contact for more than 30 days (prototype now). */
+  /** No contact for more than 30 days (before the business date, R-013). */
   stale: boolean;
   notes: string;
   influence: number;
@@ -48,6 +51,7 @@ export interface StakeholderRegister {
 /** Register (STAKEHOLDERS order, added ones last) and RACI matrix of a project. */
 export async function getStakeholderRegister(projectCode: string): Promise<StakeholderRegister> {
   const db = await getDb();
+  const now = monthNowOf(await businessToday());
   const rows = await db
     .select({ s: stakeholders, ownerShort: persons.shortName })
     .from(stakeholders)
@@ -72,7 +76,7 @@ export async function getStakeholderRegister(projectCode: string): Promise<Stake
     stakeholders: rows.map(({ s, ownerShort }) => ({
       name: s.name, organisation: s.organisation, role: s.role, type: s.type, typeLabel: stakeholderType.label(s.type), initials: stakeholderInitials(s.name),
       contactEmail: s.contactEmail, owner: ownerShort ?? s.ownerName, lastContactOn: s.lastContactOn, lastText: shortDateYearOfIso(s.lastContactOn),
-      stale: isStaleContact(s.lastContactOn), notes: s.notes, influence: s.influence, interest: s.interest, attitude: s.attitude,
+      stale: isStaleContact(s.lastContactOn, now), notes: s.notes, influence: s.influence, interest: s.interest, attitude: s.attitude,
     })),
     raci,
   };
@@ -88,9 +92,10 @@ export interface NewStakeholder {
   owner: string;
 }
 
-/** "Add stakeholder" (AF.stakeholders, "Add"): appended with last contact = `on` (NOWD) and notes "New". */
-export async function addStakeholder(projectCode: string, input: NewStakeholder, actorName: string, on: string = NOW_ISO): Promise<void> {
+/** "Add stakeholder" (AF.stakeholders, "Add"): appended with last contact = `on` (default the business date, R-013) and notes "New". */
+export async function addStakeholder(projectCode: string, input: NewStakeholder, actorName: string, onDate?: string): Promise<void> {
   const db = await getDb();
+  const on = onDate ?? (await businessToday());
   await db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);
     const name = input.name.trim();

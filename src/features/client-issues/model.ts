@@ -48,10 +48,11 @@ const answerForm = (t: T, title: string, submit: string, required: boolean, curr
   ],
 });
 
-export function clientIssuesView(rows: readonly ClientIssueHandlingRow[], opts: { canHandle: boolean; selected: string | null }, t: T, lang: Lang): ClientIssuesView {
+/** `opts.today`: the business date ("Raised today", R-013). */
+export function clientIssuesView(rows: readonly ClientIssueHandlingRow[], opts: { canHandle: boolean; selected: string | null; today: string }, t: T, lang: Lang): ClientIssuesView {
   return {
     rows: rows.map((i) => {
-      const r = issueRow(i);
+      const r = issueRow(i, opts.today);
       const real = hasRealAnswer(i.response);
       const handling = i.handledBy
         ? [

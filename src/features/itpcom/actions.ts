@@ -9,7 +9,8 @@ import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { canRecordItpResult, parseInspectionResult, parseNewInspection, parseNewPunch, parsePlanSat, punchStep } from '@/domain/itpcom';
 import { shortName } from '@/lib/format';
-import { NOW_ISO, itpResult, punchStatus } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
+import { itpResult, punchStatus } from '@/server/db/codes';
 import { listSatSystems, planSat } from '@/server/dal/commissioning';
 import { addItpInspection, addPunchItem, advancePunchItem, getItpInspection, listItpSystems, listPunchItems, recordItpResult } from '@/server/dal/itp';
 import type { Actor } from '@/server/dal/ops-common';
@@ -57,7 +58,7 @@ async function editable(code: unknown, screen: Screen): Promise<{ code: string; 
 export async function addInspectionAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const ok = await editable(code, 'itp');
   if ('error' in ok) return ok;
-  const parsed = parseNewInspection(strings(values), await listItpSystems(ok.code));
+  const parsed = parseNewInspection(strings(values), await listItpSystems(ok.code), await businessToday());
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
   try {
@@ -77,7 +78,7 @@ export async function addInspectionAction(code: string, values: Record<string, s
 export async function addPunchItemAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const ok = await editable(code, 'itp');
   if ('error' in ok) return ok;
-  const parsed = parseNewPunch(strings(values), await teamOwnerOptions(ok.code), { internal: ok.actor.role !== 'client' });
+  const parsed = parseNewPunch(strings(values), await teamOwnerOptions(ok.code), await businessToday(), { internal: ok.actor.role !== 'client' });
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
   try {
@@ -115,7 +116,7 @@ export async function advancePunchItemAction(code: string, number: string, from:
   if (!punchStep(row.status)) return stale(ok.code, CLOSED);
   if (row.status !== from) return stale(ok.code, MOVED_ON);
   try {
-    await advancePunchItem(ok.code, row.number, ok.actor, NOW_ISO, from);
+    await advancePunchItem(ok.code, row.number, ok.actor, await businessToday(), from);
   } catch (e) {
     if (e instanceof Error && / has moved on$/.test(e.message)) return stale(ok.code, MOVED_ON);
     if (e instanceof Error && / is closed$/.test(e.message)) return stale(ok.code, CLOSED);
@@ -133,7 +134,7 @@ export async function planSatAction(code: string, values: Record<string, string>
   const ok = await editable(code, 'commissioning');
   if ('error' in ok) return ok;
   const systems = await listSatSystems(ok.code);
-  const parsed = parsePlanSat(strings(values), systems);
+  const parsed = parsePlanSat(strings(values), systems, await businessToday());
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
   try {
@@ -165,7 +166,7 @@ export async function recordInspectionResultAction(code: string, number: string,
     refresh(ok.code);
     return { error: await tr(RESULT_CHANGED) };
   }
-  const parsed = parseInspectionResult(strings(values), row.pointType);
+  const parsed = parseInspectionResult(strings(values), row.pointType, await businessToday());
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
   try {

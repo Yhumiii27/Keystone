@@ -7,7 +7,8 @@
 import { describe, expect, it } from 'vitest';
 import { parseDateInput } from '@/domain/contract';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
-import { STATUS_ISO, isoOfDisplayDate, receiptStatus } from '@/server/db/codes';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
+import { isoOfDisplayDate, receiptStatus } from '@/server/db/codes';
 import {
   DEFAULT_QC_REMARKS, QC_DECIDERS, QC_INBOX_ROLES, RECEIPT_FLOW, canDecideQc, deliveryChips, deliveryKpis, failedOnText, filterReceipts, parseAnnounceForm,
   parseQty, parseRegisterForm, putAwayAfterQc, qcInboxItems, qcPlan, qtyFieldId, qtyText, receiptDrawerView, receiptFilterOf, receiptRowView, registerPlan,
@@ -97,7 +98,7 @@ function applyRegister(r: ReceiptLike, delivered: Record<string, unknown> = {}, 
   const p = registerPlan(r.lines, delivered);
   if (!p.ok) throw new Error(p.error);
   return {
-    ...r, status: 'qc_pending', date: STATUS_ISO, carrier: typed.carrier ?? r.carrier,
+    ...r, status: 'qc_pending', date: DEMO_TODAY_ISO, carrier: typed.carrier ?? r.carrier,
     lines: r.lines.map((l) => ({ ...l, delivered: p.value.delivered[l.ref], accepted: 0, rejected: 0 })),
     qc: { by: null, result: 'Pending', remarks: p.value.remarks },
   };
@@ -289,7 +290,7 @@ describe('"Register receipt" plan and form', () => {
   });
 
   it('form: delivered on (EN / FR, default the status date), carrier, delivery note, quantities by field', () => {
-    const opts = { today: STATUS_ISO, parseDate: (s: string) => parseDateInput(s) };
+    const opts = { today: DEMO_TODAY_ISO, parseDate: (s: string) => parseDateInput(s) };
     expect(parseRegisterForm({ date: '25 sept. 2026', carrier: 'Geodis', note: ' CF-DN-0921 ', [qtyFieldId('FD-DAMP-FR')]: '24', [qtyFieldId('FD-SPR-HD')]: '420' }, lines, opts)).toEqual({
       ok: true, value: { receivedOn: '2026-09-25', carrier: 'Geodis', supplierDeliveryNote: 'CF-DN-0921', plan: { delivered: { 'FD-DAMP-FR': 24, 'FD-SPR-HD': 420 }, complete: true, remarks: 'Received complete · inspection to do' } },
     });

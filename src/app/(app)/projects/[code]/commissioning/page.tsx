@@ -13,6 +13,7 @@ import { CommissioningBody } from '@/features/itpcom/commissioning-view';
 import { localizeForm, planSatFormDef } from '@/features/itpcom/forms';
 import { commissioningScreenView } from '@/features/itpcom/model';
 import { shortName } from '@/lib/format';
+import { businessToday } from '@/server/clock';
 import { getCommissioning } from '@/server/dal/commissioning';
 import { listItpSystems, listPunchItems } from '@/server/dal/itp';
 import { getStakeholderRegister } from '@/server/dal/stakeholders';
@@ -25,7 +26,7 @@ export default async function CommissioningPage({ params }: { params: Promise<{ 
   const ctx = await getProjectContext(code, 'commissioning');
   const projectCode = ctx.project.code;
   // R-117 (A-6 'a'): "Blocking A" counts the category-A items of every origin (one punch list per project).
-  const [{ t, lang }, data, punch] = await Promise.all([getI18n(), getCommissioning(projectCode), listPunchItems(projectCode)]);
+  const [{ t, lang }, data, punch, today] = await Promise.all([getI18n(), getCommissioning(projectCode), listPunchItems(projectCode), businessToday()]);
   const canEdit = ctx.canEdit('commissioning');
 
   let primary: ReactNode;
@@ -43,7 +44,7 @@ export default async function CommissioningPage({ params }: { params: Promise<{ 
   return (
     <>
       <PageHeader screen="commissioning" projectCode={projectCode} primary={primary} />
-      <CommissioningBody view={commissioningScreenView(projectCode, data, punch, t, lang)} t={t} />
+      <CommissioningBody view={commissioningScreenView(projectCode, data, punch, today, t, lang)} t={t} />
     </>
   );
 }

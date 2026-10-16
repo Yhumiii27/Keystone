@@ -12,6 +12,7 @@
 //   reported by Vigie (ECO-031) links to Vigie;
 // - the add-forms store codes; FR "Issue" is "Problème" (the dictionary's "Sortie" is a stock issue).
 import { beforeAll, describe, expect, it } from 'vitest';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { SAV_VIEWS, type SavView, type ZoneCode } from '@/domain/aftersales';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
@@ -44,6 +45,10 @@ beforeAll(async () => {
   setDb(await openDatabase());
 }, 60_000);
 
+// R-013: "ends in n d" counts from the business date (25 Sep 2026 on the demo data set), not the prototype's 30 Sep: MCH-035
+// (1 Nov 2026) ends in 36 days, not 31.
+const ending = (s: string) => s.replace('ends in 31 d', 'ends in 36 d').replace('finit dans 31 j', 'finit dans 36 j');
+
 describe('Installed base view model', () => {
   it.each(LANGS.flatMap((l) => ZONES.map(([k, z]) => [l, k, z] as const)))('%s · zone %s: KPI tiles, notice and rows equal the prototype', async (lang, key, zone) => {
     const g = G[lang].fleet[key];
@@ -54,7 +59,7 @@ describe('Installed base view model', () => {
     expect(view.rows.map((r) => ({ ...r, config: r.config && { items: r.config.items, href: r.config.href, vigieHref: r.config.vigieHref } }))).toEqual(
       g.rows.map((r: any) => ({
         number: r.id, name: r.name, sub: [r.type, r.client, r.gen].filter(Boolean).join(' · '), status: r.status, statusClass: r.stClass, project: r.proj, site: r.site,
-        delivered: r.delivered, warrantyEnd: r.wend, warrantyEndColor: r.wendColor, warrantyEndSub: r.wendSub, openText: agree(r.openText), openColor: r.openColor,
+        delivered: r.delivered, warrantyEnd: r.wend, warrantyEndColor: r.wendColor, warrantyEndSub: ending(r.wendSub), openText: agree(r.openText), openColor: r.openColor,
         config: r.hasCfg ? { items: r.cfgItems.map((c: any) => ({ text: c.text, cls: c.cls })), href: ecoHref(r.firstEco), vigieHref: vigieEcoUrl(r.firstEco) } : null,
         cost: `${r.cost} k€`,
       })),
@@ -123,7 +128,7 @@ describe('R-155 (X-16): zone notices of the machine lists', () => {
   it.each(LANGS)('%s: a zone without machines says so on both screens; a zone with machines names the empty list', async (lang) => {
     const t = makeT(lang);
     const none = { ...(await getSavScreen('apac')), machines: [], claims: [], interventions: [] };
-    expect(fleetView({ machines: [] }, 'apac', t, lang).zoneEmpty).toBe(NOTICE[lang].machine);
+    expect(fleetView({ machines: [], today: DEMO_TODAY_ISO }, 'apac', t, lang).zoneEmpty).toBe(NOTICE[lang].machine);
     for (const view of SAV_VIEWS) expect(savView(none, view, 'apac', t, lang).zoneEmpty, view).toBe(NOTICE[lang].machine);
     // Asia Pacific of the seed: one machine (MCH-040), one closed claim, no intervention.
     const apac = await getSavScreen('apac');
@@ -132,7 +137,7 @@ describe('R-155 (X-16): zone notices of the machine lists', () => {
     expect(SAV_VIEWS.map((view) => savView(noClaim, view, 'apac', t, lang).zoneEmpty)).toEqual([NOTICE[lang].claims, NOTICE[lang].interventions, NOTICE[lang].costs]);
     // No zone selected: never a notice.
     expect(savView(none, 'claims', null, t, lang).zoneEmpty).toBeNull();
-    expect(fleetView({ machines: [] }, null, t, lang).zoneEmpty).toBeNull();
+    expect(fleetView({ machines: [], today: DEMO_TODAY_ISO }, null, t, lang).zoneEmpty).toBeNull();
   });
 });
 

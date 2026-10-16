@@ -153,3 +153,23 @@ describe('redactUrl', () => {
     expect(redactUrl('nope')).toBe('[invalid URL]');
   });
 });
+
+describe('KEYSTONE_CLOCK (R-013)', () => {
+  it('unset: automatic (null — the clock follows the database data set); "real" or a pinned date otherwise', () => {
+    expect(parse({}).config.clock).toBeNull();
+    expect(parse({ KEYSTONE_CLOCK: 'real' }).config.clock).toEqual({ kind: 'real' });
+    expect(parse({ KEYSTONE_CLOCK: '2026-09-25' }).config.clock).toEqual({ kind: 'fixed', iso: '2026-09-25' });
+  });
+
+  it('an invalid value is an error and falls back to automatic', () => {
+    const r = parse({ KEYSTONE_CLOCK: 'tomorrow' });
+    expect(formatIssues(r.errors)).toEqual(['KEYSTONE_CLOCK must be "real" or a date YYYY-MM-DD']);
+    expect(r.config.clock).toBeNull();
+    expect(vars(parse({ KEYSTONE_CLOCK: '2026-02-30' }).errors)).toEqual(['KEYSTONE_CLOCK']);
+  });
+
+  it('a pinned date in production is a warning; the real clock is not', () => {
+    expect(vars(parse({ NODE_ENV: 'production', KEYSTONE_CLOCK: '2026-09-25' }).warnings)).toContain('KEYSTONE_CLOCK');
+    expect(vars(parse({ NODE_ENV: 'production', KEYSTONE_CLOCK: 'real' }).warnings)).not.toContain('KEYSTONE_CLOCK');
+  });
+});

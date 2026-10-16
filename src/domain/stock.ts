@@ -221,7 +221,7 @@ export function checkQuantity(op: StockOperation, qty: number): string | null {
 
 /**
  * Plans one movement on a line (`applyOp`), with the stock rules above. `locations` = the configured locations
- * (transfer destinations). Every accepted movement flags the line Local and stamps it on the status date (caller).
+ * (transfer destinations). Every accepted movement flags the line Local and stamps it on the business date (caller, R-013).
  */
 export function planStockMovement(pos: PositionFacts, req: MovementRequest, locations: readonly string[]): ParseResult<MovementPlan> {
   const { op, qty } = req;

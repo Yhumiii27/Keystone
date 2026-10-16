@@ -234,13 +234,14 @@ describe('installed base and warranty claims', () => {
     expect((await listMachines()).length).toBe(10);
   });
 
-  it('"New warranty claim": WC-020 Open, reported 30 Sep 2026, cost 0, first in the list', async () => {
+  it('"New warranty claim": WC-020 Open, reported on the business date (25 Sep 2026), cost 0, first in the list', async () => {
     expect(await openClaim({ machineNumber: 'MCH-050', issue: 'Hoist overheating', severity: 'major', coverage: 'warranty', owner: 'S. Haddad', description: 'Remote diagnosis' }, A.quality)).toBe('WC-020');
     // Added claims follow the seed claims, open ones first (`claimsAll` then the open-first sort, 4987).
     const all = await listClaims();
     expect(all.findIndex((x) => x.number === 'WC-020')).toBe(all.filter((x) => x.open).length - 1);
     const c = all.find((x) => x.number === 'WC-020')!;
-    expect(c).toMatchObject({ number: 'WC-020', machineNumber: 'MCH-050', status: 'open', reportedOn: '2026-09-30', costKeur: 0, nextStep: 'Remote diagnosis', owner: 'S. Haddad' });
+    // R-013: one business date (25 Sep 2026 on the demo data set), not the prototype's 30 Sep.
+    expect(c).toMatchObject({ number: 'WC-020', machineNumber: 'MCH-050', status: 'open', reportedOn: '2026-09-25', costKeur: 0, nextStep: 'Remote diagnosis', owner: 'S. Haddad' });
     expect((await listClaims({ zone: 'afr' })).map((x) => x.number)).toEqual(['WC-017', 'WC-020']);
     await expect(openClaim({ machineNumber: 'MCH-999', issue: 'x', severity: 'minor', coverage: 'warranty', owner: 'S. Haddad' }, A.quality)).rejects.toThrow(/Unknown machine/);
   });

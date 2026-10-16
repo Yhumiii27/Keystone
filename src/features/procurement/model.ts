@@ -18,7 +18,6 @@ import {
 } from '@/server/db/codes';
 import type { RfqRow, SupplierInvoiceRow } from '@/server/dal/purchasing';
 import type { SupplierScorecard } from '@/server/dal/suppliers';
-import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
 import { rfqAverageCycleDays, rfqSavingsKeur, type RfqKpiFacts } from '@/domain/kpis';
 import { wholeDaysText } from '@/features/kpis/i18n';
 import { dataText } from './i18n';
@@ -44,6 +43,8 @@ export interface SourcingCtx {
   canEdit: boolean;
   /** Supplier prices and invoice amounts shown (R-046, NEW-D2-1: director, PMs, procurement); masked otherwise. */
   prices: boolean;
+  /** R-013: business date — "Savings vs list" (its quarter), invoices due within 30 days. */
+  today: string;
 }
 
 /** A price text, or the mask for a viewer who may not see supplier prices (R-046). */
@@ -87,9 +88,9 @@ export interface RfqTabView {
 
 /**
  * `facts` = the RFQ facts of the computed tiles (src/server/dal/kpis.ts `rfqKpiFacts`): "Savings vs list" (awarded in the
- * data date's quarter) and "Average cycle" (sent → award) — A-12; `asOf` = the portfolio data date.
+ * business date's quarter, `c.today` — R-013) and "Average cycle" (sent → award) — A-12.
  */
-export function rfqTabView(rfqs: readonly RfqRow[], selected: string | null, c: SourcingCtx, facts: readonly RfqKpiFacts[] = [], asOf: string = DEFAULT_DATA_DATE): RfqTabView {
+export function rfqTabView(rfqs: readonly RfqRow[], selected: string | null, c: SourcingCtx, facts: readonly RfqKpiFacts[] = []): RfqTabView {
   const { t, lang } = c;
   const pr = priced(c);
   const k = rfqKpis(rfqs.map((r) => ({ status: r.status, quoteCount: r.quotes.length })));
@@ -99,7 +100,7 @@ export function rfqTabView(rfqs: readonly RfqRow[], selected: string | null, c: 
     kpis: [
       kpi(t, 'Open RFQs', k.open, t(`${k.readyToAward} ready to award`)),
       kpi(t, 'Quotes received', k.quotes, t('Across open requests')),
-      kpi(t, 'Savings vs list', pr(() => money(rfqSavingsKeur(facts, asOf), lang)), t('Awarded this quarter')),
+      kpi(t, 'Savings vs list', pr(() => money(rfqSavingsKeur(facts, c.today), lang)), t('Awarded this quarter')),
       kpi(t, 'Average cycle', wholeDaysText(rfqAverageCycleDays(facts), lang), t('RFQ sent → award')),
       kpi(t, 'Award rule', award.value, t(award.sub)),
     ],
@@ -277,7 +278,7 @@ export function parseInvoiceFilter(v: string | undefined, invoices: readonly { s
 export function invoiceTabView(invoices: readonly SupplierInvoiceRow[], filter: SupplierInvoiceStatus | 'all', selected: string | null, c: SourcingCtx): InvoiceTabView {
   const { t, lang } = c;
   const pr = priced(c);
-  const k = invoiceKpis(invoices.map((i) => ({ status: i.status, amountEur: i.amountEur, dueDate: i.dueDate })));
+  const k = invoiceKpis(invoices.map((i) => ({ status: i.status, amountEur: i.amountEur, dueDate: i.dueDate })), c.today);
   const statuses = invoiceChipStatuses(invoices);
   const status = filter === 'all' ? null : filter;
   return {

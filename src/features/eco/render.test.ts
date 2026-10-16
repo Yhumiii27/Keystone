@@ -4,6 +4,7 @@
 // PDM vault mirror — in EN and FR, for every persona: KPI tiles, chips, rows, the ECO drawer, the drawings register
 // and drawer, and the template labels. Deliberate deviations are listed in DEVIATIONS and asserted explicitly.
 import { beforeAll, describe, expect, it } from 'vitest';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { PERSONA_BY_ROLE } from '@/config/personas';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
@@ -53,7 +54,7 @@ beforeAll(async () => {
 async function screen(role: (typeof ROLES)[number], lang: Lang, state: EcoState = S0) {
   const viewer = PERSONA_BY_ROLE[role];
   const data = await getEcoScreen(viewer, state.eco);
-  return ecoScreenView({ ecos: data.ecos, awaitingMine: data.awaitingMine, state, viewer }, makeT(lang), lang);
+  return ecoScreenView({ ecos: data.ecos, awaitingMine: data.awaitingMine, state, viewer, today: DEMO_TODAY_ISO }, makeT(lang), lang);
 }
 
 async function drawer(role: (typeof ROLES)[number], lang: Lang, number: string) {
@@ -100,7 +101,7 @@ describe('Change orders register — EN and FR', () => {
     for (const [label, status] of Object.entries(codes)) {
       expect((await screen('pm', lang, { status, eco: null })).rows.map((r) => r.number)).toEqual(G[lang].eco.filters[label].rows);
     }
-    const none = ecoScreenView({ ecos: [], awaitingMine: 0, state: S0, viewer: PERSONA_BY_ROLE.pm }, makeT(lang), lang);
+    const none = ecoScreenView({ ecos: [], awaitingMine: 0, state: S0, viewer: PERSONA_BY_ROLE.pm, today: DEMO_TODAY_ISO }, makeT(lang), lang);
     expect(none.empty).toBe(lang === 'fr' ? 'Aucun ECO dans ce statut' : 'No ECO in this status');
   });
 });
@@ -146,7 +147,7 @@ describe('Drawings — PDM vault — EN and FR', () => {
   it.each(LANGS)('%s: KPI tiles, chips, rows, search and the drawer', async (lang) => {
     const t = makeT(lang);
     const data = await getDrawingsScreen(null);
-    const v = drawingsView({ drawings: data.drawings, sync: data.sync, state: { state: null, q: '', dwg: null } }, t, lang);
+    const v = drawingsView({ drawings: data.drawings, sync: data.sync, state: { state: null, q: '', dwg: null }, today: DEMO_TODAY_ISO }, t, lang);
     const g = G[lang].drawings;
     // A-12 (chapter 4): the "Last vault sync" day is computed from the run against the data date (25 Sep). The latest run
     // is the PDM connector row's, seeded "26 Sep 07:40" from the prototype's CONNECTORS — the prototype printed "today".
@@ -159,7 +160,7 @@ describe('Drawings — PDM vault — EN and FR', () => {
     expect(v.rows.map((r) => ({ no: r.number, title: r.title, part: r.part, partName: r.partName, rev: r.rev, state: r.state, tagClass: r.stateClass, path: r.path, byLine: r.byLine, eco: r.eco })))
       .toEqual(g.rows.map((r: any) => ({ no: r.no, title: asTyped(lang, r.title), part: r.part, partName: asTyped(lang, r.partName), rev: r.rev, state: r.state, tagClass: r.tagClass, path: r.path, byLine: day(`${r.by} · ${r.date}`), eco: r.eco })));
     for (const [q, ids] of Object.entries(g.search as Record<string, string[]>)) {
-      const s = drawingsView({ drawings: data.drawings, sync: data.sync, state: { state: null, q, dwg: null } }, t, lang);
+      const s = drawingsView({ drawings: data.drawings, sync: data.sync, state: { state: null, q, dwg: null }, today: DEMO_TODAY_ISO }, t, lang);
       expect(s.rows.map((r) => r.number), q).toEqual(ids);
       expect(s.empty).toBe(ids.length ? null : lang === 'fr' ? 'Aucun plan ne correspond' : 'No drawing matches');
     }

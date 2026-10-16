@@ -53,7 +53,7 @@ export default async function SitePage({ params, searchParams }: { params: Promi
       code={projectCode}
       context={context}
       // NEW-SITE-2 'a' (R-122): no HSE field; incidents are declared in Vigie (prefilled with the project and the site).
-      form={dailyReportFormDef(t, lang, undefined, vigieReportIncidentUrl({ projectCode, location: data?.sheet.site }))}
+      form={dailyReportFormDef(t, lang, data!.today, vigieReportIncidentUrl({ projectCode, location: data?.sheet.site }))}
       execHref={siteHref(projectCode, 'exec')}
     />
   ) : undefined;

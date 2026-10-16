@@ -8,21 +8,23 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { screenHref } from '@/config/screens';
 import { Button } from '@/components/ds/Button';
+import { useToday } from '@/components/app/clock';
 import { useToast } from '@/components/ds/Toast';
 import { useI18n } from '@/i18n/client';
 import type { NewProjectSetup } from '@/server/dal/projects-register';
 import { createProjectAction } from './actions';
 import { PROJECTS_RESET_EVENT } from './events';
 import { projectCreatedToastText } from './toasts';
-import { DEFAULT_DRAFT, NewProjectWizard, draftCalendar, draftCategories, draftManager, type WizardDraft } from './new-project-wizard';
+import { NewProjectWizard, defaultDraft, draftCalendar, draftCategories, draftManager, type WizardDraft } from './new-project-wizard';
 
 export function NewProjectLauncher({ setup }: { setup: NewProjectSetup }) {
   const { t, lang } = useI18n();
   const router = useRouter();
   const toast = useToast();
+  const today = useToday();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
-  const [draft, setDraft] = useState<WizardDraft>(DEFAULT_DRAFT);
+  const [draft, setDraft] = useState<WizardDraft>(() => defaultDraft(today));
   const [pending, startTransition] = useTransition();
 
   const create = () =>
@@ -36,7 +38,7 @@ export function NewProjectLauncher({ setup }: { setup: NewProjectSetup }) {
       }
       setOpen(false);
       setStep(1);
-      setDraft(DEFAULT_DRAFT);
+      setDraft(defaultDraft(today));
       // npCreate cleared the register's status filter; the created project now opens on its plan (L-3).
       window.dispatchEvent(new Event(PROJECTS_RESET_EVENT));
       // R-152 / R-148: the typed name is shown as typed, never through t() (showEn translated every segment).

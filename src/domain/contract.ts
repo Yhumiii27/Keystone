@@ -3,7 +3,8 @@
 // - Figures: contract value (base + signed amendments); payment milestones of the base contract priced on the base amount
 //   and an amendment's own milestones priced on the amendment's amount, billable once it is signed (NEW-D3-3, R-079: an
 //   amendment no longer re-prices the existing milestones, the invoiced ones included); an invoiced milestone keeps the
-//   amount of its invoice; late milestones (planned, billable, contractual date before PG_NOW); invoices due by the
+//   amount of its invoice; late milestones (planned, billable, contractual date before the business date's month, the
+//   prototype's PG_NOW — R-013); invoices due by the
 //   contract's payment rule (C-6, R-076 — calendar days, not the prototype's DST-sensitive ms arithmetic, 04 Q12);
 //   receivables, retention, schedule totals per basis. Every amount is in the contract's currency (C-9, R-075).
 // - The KPI sub-lines the prototype builds with explicit FR branches (4883, 4899), returned in the render language
@@ -13,7 +14,7 @@
 // No I/O, no translation. Golden values: src/domain/contract.test.ts (prototype renderVals, EN and FR).
 import type { Lang } from '@/i18n/translate';
 import {
-  AMENDMENT_AWAITING, NOW_ISO, amendmentStatus, beforePgNow, bondType, contractType,
+  AMENDMENT_AWAITING, amendmentStatus, beforePgNow, bondType, contractType,
   type AmendmentStatus, type BondType, type ContractType, type CustomerInvoiceStatus, type PaymentMilestoneStatus,
 } from '@/server/db/codes';
 import { BASE_CURRENCY, isCurrency, type CurrencyCode } from './currency';
@@ -119,7 +120,7 @@ export interface MilestoneFigure extends MilestoneInput {
   amountKeur: number;
   /** A base-contract milestone, or one of a signed amendment: it may be invoiced and counts in the billing plan. */
   billable: boolean;
-  /** Planned, billable and contractual date before the status "now" (PG_NOW ≈ 30 Sep 2026). */
+  /** Planned, billable and contractual date before the business date's month (the prototype's PG_NOW; R-013). */
   late: boolean;
   /** Delivery 8 (R-077, C-7): its schedule group (base contract or its amendment) exceeds 100 % — invoicing is blocked. */
   blocked: boolean;
@@ -137,7 +138,7 @@ export interface InvoiceFigure {
   paidOn: string | null;
   note: string | null;
   status: CustomerInvoiceStatus;
-  /** Awaiting payment and due before NOWD (30 Sep 2026). */
+  /** Awaiting payment and due before the business date (the prototype's NOWD, 30 Sep 2026; R-013). */
   overdue: boolean;
   /** "Mark paid" applies (milestone invoiced). */
   canPay: boolean;
@@ -224,7 +225,8 @@ export interface ContractFigures {
 
 const sum = <T>(xs: readonly T[], f: (x: T) => number) => xs.reduce((s, x) => s + f(x), 0);
 
-export function contractFigures(c: ContractInput): ContractFigures {
+/** `today`: business date (R-013) — late milestones (before its month) and overdue invoices (due before it). */
+export function contractFigures(c: ContractInput, today: string): ContractFigures {
   const terms = termsOfSheet(c.sheet);
   const signed = c.amendments.filter(isSignedAmendment);
   const pending = c.amendments.filter((a) => !isSignedAmendment(a));
@@ -239,7 +241,7 @@ export function contractFigures(c: ContractInput): ContractFigures {
       ...m,
       amountKeur: m.status !== 'planned' && m.invoice ? m.invoice.amountKeur : plannedMilestoneAmount(basis, m.sharePct),
       billable,
-      late: billable && m.status === 'planned' && beforePgNow(m.contractualDue),
+      late: billable && m.status === 'planned' && beforePgNow(m.contractualDue, today),
       blocked: invoiceBlocked(c.milestones, m.number),
     };
   });
@@ -248,7 +250,7 @@ export function contractFigures(c: ContractInput): ContractFigures {
     const i = m.invoice;
     const dueOn = paymentDueOn(i.issuedOn, terms);
     const paid = m.status === 'paid';
-    const overdue = !paid && dueOn < NOW_ISO;
+    const overdue = !paid && dueOn < today;
     return [{
       number: i.number, milestone: m.number, label: m.label, issuedOn: i.issuedOn, amountKeur: m.amountKeur, dueOn, paidOn: i.paidOn, note: i.note,
       status: paid ? 'paid' : overdue ? 'overdue' : 'awaiting_payment', overdue, canPay: m.status === 'invoiced',

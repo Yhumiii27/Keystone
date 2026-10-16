@@ -13,6 +13,7 @@ import { DeliveriesBody } from '@/features/deliveries/deliveries-view';
 import { announceFormDef, deliveriesHref, deliveriesView, registerFormDef } from '@/features/deliveries/model';
 import { PhotoGallery } from '@/features/photos/photo-gallery';
 import { photoViews } from '@/features/photos/model';
+import { businessToday } from '@/server/clock';
 import { getDeliveriesScreen } from '@/server/dal/deliveries';
 import { legacyReceiptPhotoCount, listProjectPhotos } from '@/server/dal/photos';
 import { getProjectContext } from '@/server/project-context';
@@ -34,8 +35,9 @@ export default async function DeliveriesPage({ params, searchParams }: { params:
   const receiptParam = first(sp.receipt ?? sp.deliv)?.trim().toUpperCase() || null;
   // R-096: the Vigie supplier NCR links are for internal viewers (the client never sees purchasing records, P-10b).
   const view = deliveriesView(projectCode, data, { status, receipt: receiptParam }, t, lang, { vigieLinks: ctx.viewer.role !== 'client' });
+  const today = await businessToday();
   const registerForms = canEdit
-    ? Object.fromEntries(data.receipts.filter((r) => r.status === 'announced').map((r) => [r.number, registerFormDef(r, t, lang)]))
+    ? Object.fromEntries(data.receipts.filter((r) => r.status === 'announced').map((r) => [r.number, registerFormDef(r, today, t, lang)]))
     : {};
 
   const primary = canEdit ? (

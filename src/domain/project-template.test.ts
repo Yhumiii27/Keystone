@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_CALENDAR_BY_CODE, WorkCalendar } from './calendar';
 import {
-  TEMPLATE_ACTIVITY_DAYS, WIZARD_REQUIRED, holidaysText, instantiateTemplate, monthOfIso, plannedWindowError, shareDays, templateActivitiesText, templateWbsText,
+  TEMPLATE_ACTIVITY_DAYS, WIZARD_REQUIRED, defaultPlannedFinish, defaultPlannedStart, holidaysText, instantiateTemplate, monthOfIso, plannedWindowError, shareDays, templateActivitiesText, templateWbsText,
   wizardSiteError, wizardWindowError, workingTimeText,
 } from './project-template';
 
@@ -11,6 +11,12 @@ describe('machine-type template instantiation (A-2 / L-3)', () => {
   it('describes what is created', () => {
     expect([templateWbsText(6), templateActivitiesText(6), templateWbsText(1), templateActivitiesText(1), templateWbsText(0), templateActivitiesText(0)])
       .toEqual(['6 phases · 6 work packages', '6 activities · 5 links', '1 phase · 1 work package', '1 activity · 0 links', 'Empty', 'None']);
+  });
+
+  it('default planned window from the business date (R-013): the prototype\'s 11 Jan → 30 Sep 2027 on 25 Sep 2026', () => {
+    expect([defaultPlannedStart('2026-09-25'), defaultPlannedFinish('2026-09-25')]).toEqual(['2027-01-11', '2027-09-30']);
+    // Later dates move the window: start the Monday after today + 15 weeks, finish the end of the month a year later.
+    expect([defaultPlannedStart('2026-12-14'), defaultPlannedFinish('2026-12-14'), defaultPlannedFinish('2027-02-03')]).toEqual(['2027-04-05', '2027-12-31', '2028-02-29']);
   });
 
   it('validates the planned window', () => {

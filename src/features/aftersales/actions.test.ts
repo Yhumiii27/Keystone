@@ -125,9 +125,10 @@ describe('after-sales Server Functions', () => {
       expect(v.claims!.map((c) => c.number)).toEqual(g.claims.map((c: any) => num(c.id)));
       const c = v.claims!.find((x) => x.number === 'WC-020')!;
       const gc = g.claims.find((x: any) => x.id === 'WC-20');
-      // The prototype's next step is the description (as typed: no translation in Keystone).
+      // The prototype's next step is the description (as typed: no translation in Keystone). R-013: reported on the business date
+      // (25 Sep 2026 on the demo data set), not the prototype's 30 Sep.
       expect([c.machineName, c.machineSub, c.issue, c.severity, c.severityClass, c.date, c.status, c.statusClass, c.coverage, c.coverageClass, c.cost, c.owner, c.next, c.eco])
-        .toEqual([gc.mname, `${gc.mch} · ${gc.client}`, gc.issue, gc.sev, gc.sevClass, gc.date, gc.status, gc.stClass, gc.cover, gc.coverClass, gc.costText, gc.owner, NEW_CLAIM.desc, null]);
+        .toEqual([gc.mname, `${gc.mch} · ${gc.client}`, gc.issue, gc.sev, gc.sevClass, gc.date.replace(/^30 /, '25 '), gc.status, gc.stClass, gc.cover, gc.coverClass, gc.costText, gc.owner, NEW_CLAIM.desc, null]);
       // R-145 (NEW-D5-2 = a): FR « Coût garantie de l’année » (the calendar year's claims; the prototype's « cumulé »).
       const label = (l: string) => (l === 'Coût garantie cumulé' ? 'Coût garantie de l’année' : l);
       expect(v.kpis.map((k) => [k.label, k.value, k.color])).toEqual(g.kpis.map((k: any) => [label(k.label), String(k.value), k.color]));
@@ -140,7 +141,7 @@ describe('after-sales Server Functions', () => {
     expect(v2.claims!.map((c) => c.number)).toEqual(g2.claims.map((c: any) => num(c.id)));
     const c2 = v2.claims!.find((x) => x.number === 'WC-021')!;
     const gc2 = g2.claims.find((x: any) => x.id === 'WC-21');
-    expect([c2.machineSub, c2.issue, c2.severity, c2.coverage, c2.owner, c2.next, c2.date]).toEqual([`${gc2.mch} · ${gc2.client}`, gc2.issue, gc2.sev, gc2.cover, gc2.owner, gc2.next, gc2.date]);
+    expect([c2.machineSub, c2.issue, c2.severity, c2.coverage, c2.owner, c2.next, c2.date]).toEqual([`${gc2.mch} · ${gc2.client}`, gc2.issue, gc2.sev, gc2.cover, gc2.owner, gc2.next, gc2.date.replace(/^30 /, '25 ')]); // R-013: the business date
     expect(v2.kpis.map((k) => [k.value, k.sub])).toEqual(g2.kpis.map((k: any) => [String(k.value), k.sub]));
     expect((await listAudit()).find((a) => a.object === 'WC-020')).toMatchObject({ who: 'Fabien Bertrand' });
   });

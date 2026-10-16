@@ -22,7 +22,7 @@ import {
   wizardClientCode, wizardTotal, wizardTotalText, type ProjectIdentity, type WizardCurrency,
 } from '@/domain/lifecycle';
 import {
-  DEFAULT_PLANNED_START, WIZARD_CALENDAR_OPTIONS, holidaysText, templateActivitiesText, templateWbsText, wizardSiteError, wizardWindowError,
+  WIZARD_CALENDAR_OPTIONS, defaultPlannedStart, holidaysText, templateActivitiesText, templateWbsText, wizardSiteError, wizardWindowError,
   workingTimeText,
 } from '@/domain/project-template';
 import { useI18n } from '@/i18n/client';
@@ -65,10 +65,11 @@ export interface WizardDraft {
   country: string;
 }
 
-export const DEFAULT_DRAFT: WizardDraft = {
+/** Empty draft; the planned start follows the business date `today` (R-013; 11 Jan 2027 on 25 Sep 2026). */
+export const defaultDraft = (today: string): WizardDraft => ({
   name: '', client: '', das: '2', mt: 'EMP', cur: 'EUR', template: 'EMP', cats: null, cont: 5, cal: null, pm: null,
-  start: DEFAULT_PLANNED_START, finish: '', city: '', country: '',
-};
+  start: defaultPlannedStart(today), finish: '', city: '', country: '',
+});
 
 const BLANK: WizardTemplate = {
   id: 'blank', mt: null, name: 'Projet blank', desc: '', wbs: templateWbsText(0), acts: templateActivitiesText(0), cal: 'Standard 5d · 8h',

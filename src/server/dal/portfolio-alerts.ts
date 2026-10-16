@@ -3,8 +3,8 @@ import 'server-only';
 // health, EVM figures and schedule header, the contract billing (overdue invoices, late payment milestones), the shared pool's
 // loads over the 8-week window from the data date, and the portfolio director's approval queue (items older than N days).
 // Health thresholds from Settings (A-13). Computed at the portfolio data date.
+import { businessToday } from '@/server/clock';
 import { PERSONA_BY_ROLE } from '@/config/personas';
-import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
 import { weekMondayOf } from '@/domain/kpis';
 import { inExecution } from '@/domain/portfolio';
 import { ALERT_RULE_DEFAULTS, portfolioAlertRules, type AlertApproval, type AlertProject, type PortfolioAlert } from '@/domain/portfolio-alerts';
@@ -73,9 +73,12 @@ async function directorQueue(projects: readonly ProjectRow[], lang: Lang): Promi
   return out;
 }
 
-/** "Needs attention" of the portfolio at the data date, every zone (the overview filters project alerts by zone). */
-export async function getPortfolioAlerts(lang: Lang, asOf: string = DEFAULT_DATA_DATE): Promise<PortfolioAlert[]> {
-  const [all, sched, health] = await Promise.all([listProjects(), listScheduleSummaries(), healthThresholds()]);
+/**
+ * "Needs attention" of the portfolio at `on` (default: the business date, R-013), every zone (the overview filters project
+ * alerts by zone).
+ */
+export async function getPortfolioAlerts(lang: Lang, on?: string): Promise<PortfolioAlert[]> {
+  const [all, sched, health, asOf] = await Promise.all([listProjects(), listScheduleSummaries(), healthThresholds(), on ?? businessToday()]);
   const t = makeT(lang);
   const rows = all.filter(inExecution);
   const projects: AlertProject[] = await Promise.all(rows.map(async (p) => {

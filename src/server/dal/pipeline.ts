@@ -5,8 +5,11 @@ import 'server-only';
 //  - pipeline projects (Initiative, APS, APD): their PIPE_PLAN windows, else the default windows relative to the start;
 //  - projects in execution: windows built from the stage history dates (Initiative, APS, APD, Etudes) with defaults.
 // Execution bar inputs (start/finish months, float, forecast finish) come with the planning summary of the project.
+// "Now" is the month index of the business date (`monthNowOf(businessToday())`, R-013 — the prototype's PG_NOW ≈ 30 Sep 2026).
+import { monthNowOf } from '@/domain/clock';
 import { mIdx } from '@/lib/format';
-import { PG_NOW, type PipelineWindow, type StageCode } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
+import { type PipelineWindow, type StageCode } from '@/server/db/codes';
 import type { ZoneKey } from '@/server/session';
 import { listStageHistory } from './lifecycle';
 import { getPipelinePlans, listScheduleSummaries, type MilestoneRow, type ScheduleControl } from './planning';
@@ -14,7 +17,6 @@ import { listProjects, type ProjectRow } from './projects';
 
 /** Horizon of the portfolio Gantt: 24 months from Jan 2026 (`PG_MONTHS`). */
 export const PG_MONTHS = 24;
-export { PG_NOW };
 
 export interface StageWindow {
   window: PipelineWindow;
@@ -23,14 +25,14 @@ export interface StageWindow {
   /** Month offsets from Jan 2026. */
   start: number;
   end: number;
-  /** Board windows: approved (ended), decision pending (running at PG_NOW) or planned. */
+  /** Board windows: approved (ended), decision pending (running now) or planned. */
   board: 'approved' | 'pending' | 'planned' | null;
 }
 
 export interface PortfolioScheduleRow {
   project: ProjectRow;
   pipeline: boolean;
-  /** Month index of the start (PG_NOW when unknown) and end of the finish month (null when "—"). */
+  /** Month index of the start (now when unknown) and end of the finish month (null when "—"). */
   startMonth: number;
   finishMonth: number | null;
   windows: StageWindow[];
@@ -47,24 +49,27 @@ export interface PortfolioSchedule {
   rows: PortfolioScheduleRow[];
   /** Mean duration in days of the completed boards across every pipeline plan (all zones, logic 4554). */
   averageBoardWaitDays: number;
+  /** Month index of the business date (`monthNowOf(today)`): board states, waits and the Gantt's "now". */
+  now: number;
 }
 
 const PIPELINE: ReadonlySet<StageCode> = new Set(['initiative', 'aps', 'apd']);
 const CLOSED: ReadonlySet<StageCode> = new Set(['clos', 'annule']);
 const LABEL: Record<PipelineWindow, string> = { initiative: 'Initiative', board: 'Board', aps: 'APS', apd: 'APD' };
 
-const boardState = (w: PipelineWindow, a: number, b: number): StageWindow['board'] =>
-  w !== 'board' ? null : b <= PG_NOW ? 'approved' : a <= PG_NOW ? 'pending' : 'planned';
-const win = (window: PipelineWindow, start: number, end: number): StageWindow => ({ window, label: LABEL[window], start, end, board: boardState(window, start, end) });
+const boardState = (w: PipelineWindow, a: number, b: number, now: number): StageWindow['board'] =>
+  w !== 'board' ? null : b <= now ? 'approved' : a <= now ? 'pending' : 'planned';
 
-/** Rows of the portfolio schedule for a zone (null = all zones). */
-export async function getPortfolioSchedule(zone: ZoneKey | null): Promise<PortfolioSchedule> {
-  const [all, plans, history, summaries] = await Promise.all([listProjects(), getPipelinePlans(), listStageHistory(), listScheduleSummaries()]);
+/** Rows of the portfolio schedule for a zone (null = all zones), at the business date (`today`, default: `businessToday()`). */
+export async function getPortfolioSchedule(zone: ZoneKey | null, today?: string): Promise<PortfolioSchedule> {
+  const [all, plans, history, summaries, day] = await Promise.all([listProjects(), getPipelinePlans(), listStageHistory(), listScheduleSummaries(), today ?? businessToday()]);
+  const now = monthNowOf(day);
+  const win = (window: PipelineWindow, start: number, end: number): StageWindow => ({ window, label: LABEL[window], start, end, board: boardState(window, start, end, now) });
   const rows = all
     .filter((p) => (!zone || p.zone === zone) && !CLOSED.has(p.stage))
     .map((p): PortfolioScheduleRow => {
       const pipeline = PIPELINE.has(p.stage);
-      const startMonth = mIdx(p.start) ?? PG_NOW;
+      const startMonth = mIdx(p.start) ?? now;
       const fin = mIdx(p.finish);
       let windows: StageWindow[];
       let windowsSource: PortfolioScheduleRow['windowsSource'];
@@ -95,6 +100,6 @@ export async function getPortfolioSchedule(zone: ZoneKey | null): Promise<Portfo
         schedule: summaries[p.code] ?? null,
       };
     });
-  const waits = Object.values(plans).flatMap((pl) => pl.filter((w) => w.window === 'board' && w.endMonth <= PG_NOW).map((w) => (w.endMonth - w.startMonth) * 30));
-  return { rows, averageBoardWaitDays: waits.length ? Math.round(waits.reduce((a, b) => a + b, 0) / waits.length) : 0 };
+  const waits = Object.values(plans).flatMap((pl) => pl.filter((w) => w.window === 'board' && w.endMonth <= now).map((w) => (w.endMonth - w.startMonth) * 30));
+  return { rows, averageBoardWaitDays: waits.length ? Math.round(waits.reduce((a, b) => a + b, 0) / waits.length) : 0, now };
 }

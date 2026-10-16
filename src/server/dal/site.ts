@@ -7,7 +7,7 @@ import 'server-only';
 // all equipment confirmed ∧ no open collision ∧ no HSE item pending (`goItems` 4747) — the rule lives in
 // src/domain/site.ts (`goChantier`).
 // Time model: a prerequisite is late when still pending at J-15 of its need date (J-15 rule of the card subtitle,
-// against the status date; the prototype listed two dates, 10 OQ6) — `isPrerequisiteLate`.
+// against the business date, R-013; the prototype listed two dates, 10 OQ6) — `isPrerequisiteLate`.
 // R-118 (D-3 'a'): the sheet and its lines are created and filled by the project's leads (./site-sheet.ts); `getSite` gives
 // each line its position and the stamp its edit form sends back.
 import { and, asc, desc, eq, inArray, ne, or } from 'drizzle-orm';
@@ -18,9 +18,10 @@ import {
   type ConflictFacts, type GoCondition, type SiteConflict, type SitePremium,
 } from '@/domain/site';
 import { SITE_LINE_CHANGED, costStamp, equipmentStamp, prerequisiteStamp, rotationStamp, siteSheetOpen } from '@/domain/site-sheet';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import {
-  STATUS_ISO, addDaysIso, collisionKind, confirmStatus, cursusClearance, cursusVaccination, cursusVerdict, cursusVisa, equipmentSource, hseIncident, hseStatus,
+  addDaysIso, collisionKind, confirmStatus, cursusClearance, cursusVaccination, cursusVerdict, cursusVisa, equipmentSource, hseIncident, hseStatus,
   nextBusinessNumber, weather,
   type ConfirmStatus, type CursusVerdict, type EquipmentSource, type HseIncident, type HseItemKind, type HseStatus, type Weather,
 } from '@/server/db/codes';
@@ -100,6 +101,8 @@ export interface HseRow {
 
 export interface SiteData {
   projectCode: string;
+  /** Business date the site was read on (ISO, R-013): late prerequisites, the preparation note, the report form's date. */
+  today: string;
   sheet: SiteSheet;
   /** R-118: the plan's activities (code order) — what a client prerequisite may condition. */
   planActivities: { code: string; name: string }[];
@@ -124,9 +127,9 @@ export interface SiteData {
 
 /**
  * R-169: the weekend premiums of the rate grid (Resources › Rates; multipliers 'sat' and 'sun') — R-083: the factors in force on
- * `on` (the business date until R-013).
+ * `on` (the business date, R-013).
  */
-async function weekendPremium(on: string = STATUS_ISO): Promise<SitePremium> {
+async function weekendPremium(on: string): Promise<SitePremium> {
   const grid = await getRateGrid();
   return { sat: multiplierAt(grid, 'sat', on), sun: multiplierAt(grid, 'sun', on) };
 }
@@ -136,8 +139,9 @@ export function goConditions(d: Pick<SiteData, 'prerequisites' | 'equipment' | '
   return goChantier({ prerequisites: d.prerequisites, people: d.cursus.people, equipment: d.equipment, collisions: d.collisions, hse: d.hse });
 }
 
-/** The site module of a project; null when it has no site sheet (the screen's empty state). */
-export async function getSite(projectCode: string, today: string = STATUS_ISO): Promise<SiteData | null> {
+/** The site module of a project; null when it has no site sheet (the screen's empty state). `today`: default the business date (R-013). */
+export async function getSite(projectCode: string, on?: string): Promise<SiteData | null> {
+  const today = on ?? (await businessToday());
   const db = await getDb();
   const p = await projectOf(db, projectCode);
   const [s] = await db.select().from(siteSheets).where(eq(siteSheets.projectId, p.id));
@@ -165,6 +169,7 @@ export async function getSite(projectCode: string, today: string = STATUS_ISO): 
   const open = new Set(collisions.filter((c) => !c.resolved).map((c) => c.person));
   const data: Omit<SiteData, 'go'> = {
     projectCode,
+    today,
     sheet: {
       site: s.siteName, country: s.country, timeZone: s.timeZone, language: s.language, currency: s.currency, clientContact: s.clientContact, workingHours: s.workingHours,
       localHolidays: s.localHolidays, accessConstraints: s.accessConstraints, startOn: s.startOn, endOn: s.endOn, doneDays: s.doneDays, planDays: s.planDays,
@@ -200,7 +205,7 @@ export async function getSite(projectCode: string, today: string = STATUS_ISO): 
     })),
     hseSource: { mode: vigieConnectorMode(), lastSyncedAt: hse.reduce<string | null>((m, h) => (!m || h.lastSyncedAt > m ? h.lastSyncedAt : m), null) },
     clientDecisions,
-    premium: await weekendPremium(),
+    premium: await weekendPremium(today),
   };
   return { ...data, go: goConditions(data) };
 }
@@ -287,9 +292,10 @@ async function sheetProject(tx: Tx, code: string) {
  * it (`stamp`, R-118): a line edited, or removed and replaced at the same position meanwhile, is refused (SITE_LINE_CHANGED).
  */
 export async function advancePrerequisite(
-  projectCode: string, position: number, to: 'confirmed' | 'signed', stamp: string, actor: Actor, on: string = STATUS_ISO,
+  projectCode: string, position: number, to: 'confirmed' | 'signed', stamp: string, actor: Actor, on?: string,
 ): Promise<void> {
   requireWorkspace('site', actor, 'Site');
+  const day = on ?? (await businessToday());
   const db = await getDb();
   await db.transaction(async (tx) => {
     const p = await sheetProject(tx, projectCode);
@@ -298,7 +304,7 @@ export async function advancePrerequisite(
     if (prerequisiteStamp(x) !== stamp) throw new Error(SITE_LINE_CHANGED);
     const expected: ConfirmStatus = to === 'confirmed' ? 'pending' : 'confirmed';
     if (x.status !== expected) throw new Error(`"${x.title}" is ${confirmStatus.label(x.status)}`);
-    await tx.update(sitePrerequisites).set(to === 'confirmed' ? { status: to, confirmedOn: on, updatedAt: new Date() } : { status: to, signedOn: on, updatedAt: new Date() })
+    await tx.update(sitePrerequisites).set(to === 'confirmed' ? { status: to, confirmedOn: day, updatedAt: new Date() } : { status: to, signedOn: day, updatedAt: new Date() })
       .where(eq(sitePrerequisites.id, x.id));
     await trace(tx, await whoIs(tx, actor), {
       objectRef: `Prerequisite · ${x.title}`, change: `status: ${confirmStatus.label(x.status)} → ${confirmStatus.label(to)}`, area: 'Site', entityType: 'site_prerequisite', entityId: x.id,
@@ -308,8 +314,9 @@ export async function advancePrerequisite(
 }
 
 /** "Confirm" on a pending equipment line, as the page showed it (`stamp`, as for the prerequisites). */
-export async function confirmEquipment(projectCode: string, position: number, stamp: string, actor: Actor, on: string = STATUS_ISO): Promise<void> {
+export async function confirmEquipment(projectCode: string, position: number, stamp: string, actor: Actor, on?: string): Promise<void> {
   requireWorkspace('site', actor, 'Site');
+  const day = on ?? (await businessToday());
   const db = await getDb();
   await db.transaction(async (tx) => {
     const p = await sheetProject(tx, projectCode);
@@ -318,13 +325,13 @@ export async function confirmEquipment(projectCode: string, position: number, st
     if (equipmentStamp(x) !== stamp) throw new Error(SITE_LINE_CHANGED);
     if (x.status !== 'pending') throw new Error(`"${x.name}" is already confirmed`);
     const who = await whoIs(tx, actor);
-    await tx.update(siteEquipment).set({ status: 'confirmed', confirmedOn: on, confirmedByPersonId: who.personId, updatedAt: new Date() }).where(eq(siteEquipment.id, x.id));
+    await tx.update(siteEquipment).set({ status: 'confirmed', confirmedOn: day, confirmedByPersonId: who.personId, updatedAt: new Date() }).where(eq(siteEquipment.id, x.id));
     await trace(tx, who, { objectRef: `Equipment · ${x.name}`, change: 'status: Pending → Confirmed', area: 'Site', entityType: 'site_equipment', entityId: x.id, projectId: p.id });
   });
 }
 
 export interface DailyReportInput {
-  /** ISO date (the form's default "30 Sep 2026"). */
+  /** ISO date (the form's default: the business date, R-013). */
   date: string;
   weather: Weather;
   headcount?: number | null;

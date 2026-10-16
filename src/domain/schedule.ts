@@ -3,7 +3,7 @@
 // validation, KPI figures, activity-drawer derivations and the numbering rules of the add forms.
 // Shared by the server (view model, Server Functions) and tests. No I/O, no translation: strings returned
 // here are the prototype's English source strings (translate with t()).
-import { TODAY, dayLabel, pct as pctW, wbsParseDate } from '@/lib/format';
+import { dayLabel, pct as pctW, wbsParseDate } from '@/lib/format';
 
 export type LinkType = 'FS' | 'SS' | 'FF' | 'SF';
 /** Logic link stored on the successor: [predecessor id, type, lag in days]. */
@@ -465,8 +465,8 @@ export function successorsOf(id: string, acts: PlanActivity[]): { act: PlanActiv
 export type TodoStatus = 'todo' | 'doing' | 'review' | 'done';
 export const TODO_STATUS_LABEL: Record<TodoStatus, string> = { todo: 'To do', doing: 'In progress', review: 'In review', done: 'Done' };
 
-/** "Done" · "Overdue · Tue 22 Sep" · "Today" · "Thu 1 Oct" (`due` = working-day offset from Mon 21 Sep 2026). */
-export function dueText(status: TodoStatus, due: number, today = TODAY): string {
+/** "Done" · "Overdue · Tue 22 Sep" · "Today" · "Thu 1 Oct" (`due`, `today` = working-day offsets from Mon 21 Sep 2026; `today` from `workdayOffsetOf`, R-013). */
+export function dueText(status: TodoStatus, due: number, today: number): string {
   if (status === 'done') return 'Done';
   if (due < today) return 'Overdue · ' + dayLabel(due);
   if (due === today) return 'Today';

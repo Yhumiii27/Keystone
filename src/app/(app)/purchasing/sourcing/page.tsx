@@ -15,6 +15,7 @@ import {
 } from '@/features/procurement/model';
 import { NewRfqButton } from '@/features/procurement/new-rfq-button';
 import { SourcingBody, type SourcingBodyProps } from '@/features/procurement/sourcing-view';
+import { businessToday } from '@/server/clock';
 import { getProject } from '@/server/dal/projects';
 import { getPurchaseOrder, listRfqs, listSupplierInvoices } from '@/server/dal/purchasing';
 import { rfqKpiFacts } from '@/server/dal/kpis';
@@ -28,7 +29,7 @@ type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? null;
 
 export default async function SourcingPage({ searchParams }: { searchParams: Promise<SP> }) {
-  const [sp, i18n, access, lastProject] = await Promise.all([searchParams, getI18n(), getScreenAccess('procurement'), getLastProject()]);
+  const [sp, i18n, access, lastProject, today] = await Promise.all([searchParams, getI18n(), getScreenAccess('procurement'), getLastProject(), businessToday()]);
   const { lang } = i18n;
   const t = procT(i18n.t, lang);
   const rawTab = first(sp.tab);
@@ -36,7 +37,7 @@ export default async function SourcingPage({ searchParams }: { searchParams: Pro
   const invSel = first(sp.inv);
   const tab: SourcingTab = isSourcingTab(rawTab) ? rawTab : invSel && !rfqSel ? 'inv' : 'rfq';
   // R-046 (NEW-D2-1): quotes, last prices and supplier invoices only for the director, the PMs and procurement.
-  const ctx: SourcingCtx = { t, lang, role: access.viewer.role, canEdit: access.canEdit, prices: canSeeSupplierPrices(access.viewer.role) };
+  const ctx: SourcingCtx = { t, lang, role: access.viewer.role, canEdit: access.canEdit, prices: canSeeSupplierPrices(access.viewer.role), today };
   const project = await getProject(lastProject);
   // Links to project screens (Purchase orders, Deliveries) need a real project: an unknown last-project cookie falls
   // back to the default project; the scorecard keeps the cookie's code (no Harbor Line data for an unknown project).
@@ -63,7 +64,7 @@ export default async function SourcingPage({ searchParams }: { searchParams: Pro
     body.sup = supplierTabView(await getSupplierScorecard(project?.code ?? lastProject), ctx);
   }
 
-  const primary = access.canEdit ? <NewRfqButton form={newRfqFormDef(t)} context={project ? projectLabelText(project, lang) : undefined} /> : undefined;
+  const primary = access.canEdit ? <NewRfqButton form={newRfqFormDef(t, today)} context={project ? projectLabelText(project, lang) : undefined} /> : undefined;
 
   return (
     <>

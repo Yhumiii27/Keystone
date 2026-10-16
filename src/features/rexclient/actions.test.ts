@@ -22,7 +22,7 @@ vi.mock('@/server/project-context', () => ({
 
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
-import { STATUS_ISO } from '@/server/db/codes';
+import { DEMO_TODAY_ISO as STATUS_ISO } from '@/domain/clock'; // R-013: the business date of the demo data set (the prototype's status date)
 import { decideChangeStep, listChangeRequestDetails } from '@/server/dal/changes';
 import { listClientIssues } from '@/server/dal/client';
 import { listSharedDocuments } from '@/server/dal/documents';

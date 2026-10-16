@@ -269,10 +269,10 @@ describe('activity drawer — A1250', () => {
   });
 
   it('to-do due texts (TODAY = 4, Fri 25 Sep)', () => {
-    expect(dueText('doing', 4)).toBe('Today');
-    expect(dueText('todo', 8)).toBe('Thu 1 Oct');
-    expect(dueText('review', 1)).toBe('Overdue · Tue 22 Sep');
-    expect(dueText('done', 1)).toBe('Done');
+    expect(dueText('doing', 4, 4)).toBe('Today');
+    expect(dueText('todo', 8, 4)).toBe('Thu 1 Oct');
+    expect(dueText('review', 1, 4)).toBe('Overdue · Tue 22 Sep');
+    expect(dueText('done', 1, 4)).toBe('Done');
   });
 });
 

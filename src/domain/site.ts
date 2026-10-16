@@ -14,8 +14,8 @@
 //   plan; "0 consumed" is the man-days reported on site since the start (daily-report headcounts); "0 incident" is
 //   the incidents Vigie reports (chapter 4, A-12; the daily reports' count before) — the prototype showed literals;
 // - the Go chantier tag follows `stTag` (GO neutral, NO GO accent) — the prototype always used the accent tag (10 OQ9);
-// - the Daily report form is saved (dated at most on the status date, default the status date — the prototype's
-//   default "30 Sep 2026" was after it) and listed with the other reports. NEW-SITE-2 'a' (R-122): it no longer asks for an
+// - the Daily report form is saved (dated at most on the business date, default the business date — R-013; the
+//   prototype's default "30 Sep 2026" was after its status date) and listed with the other reports. NEW-SITE-2 'a' (R-122): it no longer asks for an
 //   HSE incident — incidents are declared in Vigie (the form links to it); the reports' saved values are kept and shown.
 // Kept as constants (A-12, 10 OQ7): the site premium "×1.5 / ×2" and its calendar text.
 // Chapter 4 (A-12, src/domain/kpis.ts): "Man-days planned" = Σ rotation crew × working days on the project calendar
@@ -32,7 +32,7 @@ import { OVER_ALLOCATED_PCT } from './resources';
 import { canDecideDepartment } from './rights';
 import { siteStamp } from './site-sheet';
 import {
-  STATUS_ISO, addDaysIso, shortDateOfIso, weather,
+  addDaysIso, shortDateOfIso, weather,
   type CollisionKind, type ConfirmStatus, type CursusVerdict, type EquipmentSource, type HseStatus, type PunchOwnerParty, type Weather,
 } from '@/server/db/codes';
 
@@ -132,8 +132,8 @@ export const siteBadge = (v: { ok: boolean }) => (v.ok ? '' : 'NO GO');
 /** A prerequisite still unconfirmed this many days before its need date raises the alert (J-15). */
 export const PREREQUISITE_ALERT_DAYS = 15;
 
-/** Late = still pending on or after J-15 of its need date (status date as "today"). */
-export const isPrerequisiteLate = (p: { status: ConfirmStatus; neededBy: string }, today: string = STATUS_ISO, alertDays = PREREQUISITE_ALERT_DAYS) =>
+/** Late = still pending on or after J-15 of its need date (`today` = the business date, R-013). */
+export const isPrerequisiteLate = (p: { status: ConfirmStatus; neededBy: string }, today: string, alertDays = PREREQUISITE_ALERT_DAYS) =>
   p.status === 'pending' && addDaysIso(p.neededBy, -alertDays) <= today;
 
 /** Next step of a prerequisite: Pending → "Client confirms" → Confirmed → "Signed on site" → Signed. */
@@ -422,7 +422,7 @@ export const missionCostUse = (c: { budgetKeur: number; actualKeur: number }) =>
 });
 
 /** Footnote under the Daily reports while the site has not started (the prototype's text with the start date). */
-export const preparationNote = (f: Pick<SiteFacts, 'startOn' | 'doneDays'>, today: string = STATUS_ISO) =>
+export const preparationNote = (f: Pick<SiteFacts, 'startOn' | 'doneDays'>, today: string) =>
   f.doneDays === 0 && today < f.startOn ? `Site starts ${shortDateOfIso(f.startOn)} — reports so far cover preparation visits.` : null;
 
 /** A daily-report link that opens the Quality screen (NCR drawer): "NCR-029". */
@@ -434,7 +434,7 @@ export type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string
 
 /** NEW-SITE-2 'a' (R-122): no HSE incident field — incidents are declared in Vigie. */
 export interface DailyReportForm {
-  /** ISO date, at most the status date. */
+  /** ISO date, at most the business date. */
   date: string;
   weather: Weather;
   headcount: number | null;
@@ -459,9 +459,9 @@ export const WEATHER_OPTIONS: readonly Weather[] = weather.codes;
  */
 export function parseDailyReportForm(
   v: Record<string, string | undefined>,
-  opts: { today?: string; parseDate: (s: string) => string | null },
+  opts: { today: string; parseDate: (s: string) => string | null },
 ): ParseResult<DailyReportForm> {
-  const today = opts.today ?? STATUS_ISO;
+  const today = opts.today;
   const progress = (v.progress ?? '').trim();
   if (!progress) return { ok: false, error: PROGRESS_REQUIRED };
   if (progress.length > PROGRESS_MAX) return { ok: false, error: 'Progress is too long' };

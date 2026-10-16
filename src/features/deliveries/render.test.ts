@@ -12,6 +12,7 @@ vi.mock('./actions', () => ({
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push() {}, replace() {}, prefetch() {}, refresh() {} }), usePathname: () => '/projects/HLT-026/deliveries' }));
 
 import { renderToStaticMarkup } from 'react-dom/server';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import GOLDEN from '@/domain/deliveries.golden.json';
 import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
@@ -111,7 +112,7 @@ describe('Deliveries static render', () => {
   const body = async (lang: Lang, opts: { canEdit: boolean; canQc: boolean; code?: string; receipt?: string }) => {
     const code = opts.code ?? 'HLT-026';
     const { data, t, v } = await view(lang, code, { receipt: opts.receipt ?? null });
-    const forms = opts.canEdit ? Object.fromEntries(data.receipts.filter((r) => r.status === 'announced').map((r) => [r.number, registerFormDef(r, t, lang)])) : {};
+    const forms = opts.canEdit ? Object.fromEntries(data.receipts.filter((r) => r.status === 'announced').map((r) => [r.number, registerFormDef(r, DEMO_TODAY_ISO, t, lang)])) : {};
     const page = html(h(DeliveriesBody, { code, view: v, canEdit: opts.canEdit, canQc: opts.canQc, registerForms: forms, t }), lang);
     const drawer = v.drawer ? html(h(DeliveryDrawerBody, { code, d: v.drawer, canEdit: opts.canEdit, canQc: opts.canQc, register: forms[v.drawer.id] ?? null, t }), lang) : '';
     return { page, drawer };
@@ -197,7 +198,7 @@ describe('forms', () => {
   it('Register receipt: delivered on (the status date), carrier and note as announced, one quantity per article', async () => {
     const { data } = await view('fr');
     const r = data.receipts.find((x) => x.number === 'BL-2026-0540')!;
-    const { def, context } = registerFormDef(r, makeT('fr'), 'fr');
+    const { def, context } = registerFormDef(r, DEMO_TODAY_ISO, makeT('fr'), 'fr');
     expect(context).toBe('BL-2026-0540 · Cotswold Fire Systems');
     expect(def.fields.map((f) => [f.id, f.label, f.defaultValue, f.required ?? false])).toEqual([
       ['date', 'Livré le', '25 sept. 2026', true],

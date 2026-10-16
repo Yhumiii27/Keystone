@@ -17,8 +17,9 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { replacesLastPrice } from '@/domain/bom';
 import { projectFxOf, toEur } from '@/domain/currency';
 import { putAwayAfterQc, qcPlan, registerPlan, remainingToAnnounce, type QcDecision, type ReceiptForAnnounce } from '@/domain/deliveries';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
-import { STATUS_ISO, locationType, receiptStatus, type LocationType, type ReceiptStatus } from '@/server/db/codes';
+import { locationType, receiptStatus, type LocationType, type ReceiptStatus } from '@/server/db/codes';
 import { demoFloor, findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import {
   goodsReceipts, partLastPrices, parts, persons, poLines, projectSites, projects, purchaseOrders, receiptAttachments, receiptLines, stockPositions, storageLocations,
@@ -262,6 +263,7 @@ export interface AnnounceInput {
  * the project's receipts (the prototype stored it where nothing listed it, 00 §7.16). Returns its number.
  */
 export async function announceDelivery(projectCode: string, input: AnnounceInput, actorName: string): Promise<string> {
+  const today = await businessToday();
   const db = await getDb();
   return db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);
@@ -286,7 +288,7 @@ export async function announceDelivery(projectCode: string, input: AnnounceInput
       if (!loc) throw new Error(`Unknown location ${input.location}`);
     } else loc = await defaultPutAway(tx, p.id);
     const all = (await tx.select({ n: goodsReceipts.number }).from(goodsReceipts)).map((r) => r.n);
-    const number = nextReceiptNumber(all, await demoFloor(tx, RECEIPT_NUMBER_FLOOR));
+    const number = nextReceiptNumber(all, today, await demoFloor(tx, RECEIPT_NUMBER_FLOOR));
     const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${goodsReceipts.position}), -1)::int` }).from(goodsReceipts).where(eq(goodsReceipts.projectId, p.id));
     const [r] = await tx
       .insert(goodsReceipts)
@@ -309,18 +311,22 @@ export async function announceDelivery(projectCode: string, input: AnnounceInput
 /** The prototype numbered the receipts it announced from BL-2026-0600 (`announce`); a demo database keeps that floor (R-011). */
 export const RECEIPT_NUMBER_FLOOR = 599;
 
-/** Next BL-2026-nnnn of the receipts announced in Keystone (after `floor`: the demo floor, 0 on a production database). */
-export function nextReceiptNumber(existing: string[], floor = RECEIPT_NUMBER_FLOOR): string {
+/**
+ * Next BL-yyyy-nnnn of the receipts announced in Keystone: the year of the business date `today` (R-013; 2026 on the demo
+ * data set), numbered after the year's highest and `floor` (the demo floor, 0 on a production database).
+ */
+export function nextReceiptNumber(existing: string[], today: string, floor = RECEIPT_NUMBER_FLOOR): string {
+  const year = today.slice(0, 4);
   let max = floor;
   for (const n of existing) {
-    const m = /^BL-2026-(\d{4})$/.exec(n);
-    if (m && +m[1] > max) max = +m[1];
+    const m = /^BL-(\d{4})-(\d{4})$/.exec(n);
+    if (m && m[1] === year && +m[2] > max) max = +m[2];
   }
-  return `BL-2026-${String(max + 1).padStart(4, '0')}`;
+  return `BL-${year}-${String(max + 1).padStart(4, '0')}`;
 }
 
 export interface RegisterInput {
-  /** ISO; default the status date. */
+  /** ISO; default the business date (R-013). */
   receivedOn?: string | null;
   carrier?: string | null;
   supplierDeliveryNote?: string | null;
@@ -334,11 +340,11 @@ export interface RegisterInput {
  * incomplete"). Carrier and delivery note: as typed, else as announced.
  */
 export async function registerReceipt(number: string, input: RegisterInput, actorName: string): Promise<void> {
+  const on = input.receivedOn ?? (await businessToday());
   const db = await getDb();
   await db.transaction(async (tx) => {
     const r = await loadReceipt(tx, number);
     if (r.status !== 'announced') throw new Error(`${number} is not announced`);
-    const on = input.receivedOn ?? STATUS_ISO;
     if (!isIso(on)) throw new Error('Invalid receipt date');
     const lines = await tx.select({ l: receiptLines, ref: parts.ref }).from(receiptLines).innerJoin(parts, eq(parts.id, receiptLines.partId)).where(eq(receiptLines.receiptId, r.id));
     const plan = registerPlan(lines.map(({ l, ref }) => ({ ref, ordered: l.orderedQty })), input.delivered ?? {});
@@ -386,6 +392,7 @@ export async function recordReceiptQc(number: string, input: QcInput & { lines: 
 }
 
 async function decideReceipt(number: string, mode: 'accept' | 'reject' | 'lines', input: QcInput, actorName: string): Promise<ReceiptStatus> {
+  const today = await businessToday();
   const db = await getDb();
   return db.transaction(async (tx) => {
     const r = await loadReceipt(tx, number);
@@ -433,22 +440,22 @@ async function decideReceipt(number: string, mode: 'accept' | 'reject' | 'lines'
         if (heldInQuarantine) {
           const held = await ensurePosition(tx, l.partId, loc.id);
           const moved = Math.min(accepted, held.onHand);
-          if (moved > 0) await tx.update(stockPositions).set({ onHand: held.onHand - moved, reserved: Math.min(held.reserved, held.onHand - moved), source: 'local', lastMovementOn: STATUS_ISO, updatedAt: new Date() }).where(eq(stockPositions.id, held.id));
+          if (moved > 0) await tx.update(stockPositions).set({ onHand: held.onHand - moved, reserved: Math.min(held.reserved, held.onHand - moved), source: 'local', lastMovementOn: today, updatedAt: new Date() }).where(eq(stockPositions.id, held.id));
           const into = await ensurePosition(tx, l.partId, central.id);
           await tx.update(stockPositions).set({
             onHand: into.onHand + accepted, reserved: into.reserved + Math.min(held.reserved, moved), reservedForProjectId: held.reserved > 0 ? held.reservedForProjectId : into.reservedForProjectId,
-            source: 'local', lastMovementOn: STATUS_ISO, updatedAt: new Date(),
+            source: 'local', lastMovementOn: today, updatedAt: new Date(),
           }).where(eq(stockPositions.id, into.id));
           await insertMovement(tx, { ...base, type: 'transfer', qty: accepted, fromLocationId: loc.id, toLocationId: central.id, whereText: `${loc.name} → ${central.name} · ${number} accepted` });
         } else {
           const into = await ensurePosition(tx, l.partId, putAway.id);
-          await tx.update(stockPositions).set({ onHand: into.onHand + accepted, source: 'local', lastMovementOn: STATUS_ISO, updatedAt: new Date() }).where(eq(stockPositions.id, into.id));
+          await tx.update(stockPositions).set({ onHand: into.onHand + accepted, source: 'local', lastMovementOn: today, updatedAt: new Date() }).where(eq(stockPositions.id, into.id));
           await insertMovement(tx, { ...base, type: 'receipt', qty: accepted, toLocationId: putAway.id, whereText: `${number} → ${putAway.name}` });
         }
       }
       if (rejected > 0 && !heldInQuarantine) {
         const into = await ensurePosition(tx, l.partId, quarantine.id);
-        await tx.update(stockPositions).set({ onHand: into.onHand + rejected, source: 'local', lastMovementOn: STATUS_ISO, updatedAt: new Date() }).where(eq(stockPositions.id, into.id));
+        await tx.update(stockPositions).set({ onHand: into.onHand + rejected, source: 'local', lastMovementOn: today, updatedAt: new Date() }).where(eq(stockPositions.id, into.id));
         await insertMovement(tx, { ...base, type: 'receipt', qty: rejected, toLocationId: quarantine.id, whereText: `${number} → ${quarantine.name} · QC failed` });
       }
       const pl = poLineRows.find((x) => x.partId === l.partId);
@@ -456,7 +463,7 @@ async function decideReceipt(number: string, mode: 'accept' | 'reject' | 'lines'
       // A-11 (R-103): the accepted goods give the part its last purchase price — in euros (the catalogue, the BOM and the
       // stock unit cost are), the line price converted from the order's currency at the project's budget rate (C-9, R-075).
       if (pl && accepted > 0) {
-        const receivedOn = r.receivedOn ?? STATUS_ISO;
+        const receivedOn = r.receivedOn ?? today;
         const [stored] = await tx.select({ purchasedOn: partLastPrices.purchasedOn }).from(partLastPrices).where(eq(partLastPrices.partId, l.partId));
         if (replacesLastPrice(stored, receivedOn)) {
           const unitPriceEur = Math.round(toEur(pl.unitPriceEur, po.currency, fx) * 100) / 100;

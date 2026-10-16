@@ -5,7 +5,8 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { MAX_ATTACHMENTS_PER_TASK, fileSizeText } from '@/domain/ch4-defaults';
 import { getDb } from '@/server/db/client';
-import { ATTACHMENT_ICON, STATUS_ISO, type AttachmentKind } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
+import { ATTACHMENT_ICON, type AttachmentKind } from '@/server/db/codes';
 import { findPerson, nameOf, writeAudit } from '@/server/db/helpers';
 import { persons, taskAttachments, tasks } from '@/server/db/schema';
 import { checkUpload, deleteStoredFile, extensionOf, readStoredFile, setFileOwner, storeFile, type BlockedStoredFile, type StoredFileMeta } from '@/server/storage/files';
@@ -62,7 +63,7 @@ export async function listTaskFiles(number: string): Promise<TaskFileRow[]> {
 
 /**
  * Attaches a file to a task: checks size / type (storage limits), the antivirus verdict (R-175, before the transaction) and
- * the per-task limit, stores the bytes, records the attachment ("48 KB · H. Sauvage · today", dated the status date) and the
+ * the per-task limit, stores the bytes, records the attachment ("48 KB · H. Sauvage · today", dated the business date) and the
  * audit entry. Returns the attachment id.
  */
 export async function attachTaskFile(number: string, file: { name: string; data: Uint8Array | ArrayBuffer } | File, actorName: string): Promise<string> {
@@ -73,6 +74,7 @@ export async function attachTaskFile(number: string, file: { name: string; data:
   checkUpload('attachment', name, raw.byteLength);
   const actorRow = await findPerson(db, actorName);
   const data = await scanUpload(raw, { purpose: 'attachment', name, actor: { name: actorRow ? nameOf(actorRow) : actorName, personId: actorRow?.id }, objectRef: t.number, projectId: t.projectId });
+  const today = await businessToday();
   return db.transaction(async (tx) => {
     const [{ n, pos }] = await tx
       .select({ n: sql<number>`count(*)::int`, pos: sql<number>`coalesce(max(${taskAttachments.position}), -1)::int` })
@@ -84,7 +86,7 @@ export async function attachTaskFile(number: string, file: { name: string; data:
     const [a] = await tx
       .insert(taskAttachments)
       .values({
-        taskId: t.id, name: meta.name, sizeText: fileSizeText(meta.sizeBytes), uploadedByPersonId: actor?.id ?? null, uploadedOn: STATUS_ISO, kind: attachmentKindOf(meta.name),
+        taskId: t.id, name: meta.name, sizeText: fileSizeText(meta.sizeBytes), uploadedByPersonId: actor?.id ?? null, uploadedOn: today, kind: attachmentKindOf(meta.name),
         storageRef: meta.id, fileId: meta.id, mime: meta.mime, sizeBytes: meta.sizeBytes, position: pos + 1,
       })
       .returning({ id: taskAttachments.id });

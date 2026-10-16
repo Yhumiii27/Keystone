@@ -53,10 +53,14 @@ beforeAll(async () => {
 }, 60_000);
 
 const screen = (code: string) => getQualityScreen(code);
-const ncrTab = async (code: string, lang: Lang, state: QualityState = S0, viewer = DIRECTOR) =>
-  ncrTabView({ code, ncrs: (await screen(code)).ncrs, state, viewer }, makeT(lang), lang);
-const dlvTab = async (code: string, lang: Lang, state: QualityState = { ...S0, tab: 'dlv' }, viewer = PM) =>
-  dlvTabView({ code, deliverables: (await screen(code)).deliverables, state, viewer }, makeT(lang), lang);
+const ncrTab = async (code: string, lang: Lang, state: QualityState = S0, viewer = DIRECTOR) => {
+  const s = await screen(code);
+  return ncrTabView({ code, ncrs: s.ncrs, state, viewer, today: s.today, dataDate: s.dataDate }, makeT(lang), lang);
+};
+const dlvTab = async (code: string, lang: Lang, state: QualityState = { ...S0, tab: 'dlv' }, viewer = PM) => {
+  const s = await screen(code);
+  return dlvTabView({ code, deliverables: s.deliverables, state, viewer, today: s.today }, makeT(lang), lang);
+};
 
 describe('register switch', () => {
   it.each(LANGS)('%s: two options (links keep the chip filters)', (lang) => {

@@ -3,9 +3,10 @@ import 'server-only';
 // Friday status date (CPI, SPI, EAC, critical-path float, risk exposure, milestone slip), the BAC and contingency
 // targets, the next status report date, and the writers (generate status report, freeze a snapshot).
 import { asc, desc, eq } from 'drizzle-orm';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import {
-  STATUS_ISO, addDaysIso, isoWeekOf, reportAudience, reportPeriod, reportSections, shortDateOfIso,
+  addDaysIso, isoWeekOf, reportAudience, reportPeriod, reportSections, shortDateOfIso,
   type ReportAudience, type ReportPeriod, type ReportSections,
 } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
@@ -122,7 +123,7 @@ export async function recordStatusReport(projectCode: string, input: StatusRepor
     const actor = await findPerson(tx, actorName);
     const [r] = await tx
       .insert(statusReports)
-      .values({ projectId: p.id, period: input.period, audience: input.audience, sections: input.sections, note: input.note?.trim() || null, statusDate: STATUS_ISO, generatedByPersonId: actor?.id ?? null })
+      .values({ projectId: p.id, period: input.period, audience: input.audience, sections: input.sections, note: input.note?.trim() || null, statusDate: await businessToday(tx), generatedByPersonId: actor?.id ?? null })
       .returning({ id: statusReports.id });
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: 'Status report',

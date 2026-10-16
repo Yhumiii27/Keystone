@@ -110,7 +110,7 @@ describe('Codex vault writers', () => {
     const all = await listVaultDocuments();
     expect(all[0]).toMatchObject({
       number: 'CER-HLT-042', title: 'Material certificate 3.1 — S355 · heat 7781', status: 'draft', revision: 'A', author: 'M. Lefebvre', service: 'procurement',
-      confidentiality: 'internal', tagsText: 'PO-2026-118 · CR-RAIL-A100', isNew: true, dateText: '29 Sep',
+      confidentiality: 'internal', tagsText: 'PO-2026-118 · CR-RAIL-A100', isNew: true, dateText: '25 Sep', // R-013: the business date, not Codex's 29 Sep
     });
     expect(all[0].links.map((l) => [l.kindLabel, l.ref])).toEqual([['Purchase order', 'PO-2026-118'], ['Article', 'CR-RAIL-A100']]);
     expect((await getCodexSyncState())!.records).toBe(413);
@@ -127,13 +127,14 @@ describe('contract & billing writers', () => {
     let c = (await getContract('HLT-026'))!;
     const inv = c.invoices.find((i) => i.number === 'INV-2026-004')!;
     // NEW-D3-3 (R-079): M4 is 20 % of the base amount (€1 080k; the prototype re-priced it on base + signed amendments, 1 104).
-    expect([inv.issuedText, inv.amountKeur, inv.dueText, inv.statusLabel, inv.note]).toEqual(['30 Sep', 1080, '14 Nov', 'Awaiting payment', 'Cranes 1–2']);
+    // R-013: issued on the business date (25 Sep 2026 on the demo data set, not the prototype's 30 Sep) → due 9 Nov (net 45).
+    expect([inv.issuedText, inv.amountKeur, inv.dueText, inv.statusLabel, inv.note]).toEqual(['25 Sep', 1080, '9 Nov', 'Awaiting payment', 'Cranes 1–2']);
     expect([c.invoicedKeur, c.nextInvoiceNumber]).toEqual([4050, 'INV-2026-005']);
     await expect(issueInvoice('HLT-026', { milestone: 'M4' }, 'Romain Aubert')).rejects.toThrow(/already invoiced/);
     await markInvoicePaid('HLT-026', 'M3', 'Romain Aubert');
     c = (await getContract('HLT-026'))!;
     expect(c.milestones.map((m) => m.statusLabel)).toEqual(['Paid', 'Paid', 'Paid', 'Invoiced', 'Planned', 'Planned']);
-    expect(c.invoices.find((i) => i.milestoneNumber === 'M3')).toMatchObject({ paidText: '30 Sep', status: 'paid' });
+    expect(c.invoices.find((i) => i.milestoneNumber === 'M3')).toMatchObject({ paidText: '25 Sep', status: 'paid' }); // R-013: paid on the business date
     expect([c.paidKeur, c.retentionKeur]).toEqual([2970, 149]);
     expect((await listBillingPlans())['HLT-026'].next).toMatchObject({ label: 'M5 Handover', amountKeur: 1350 });
     expect((await getCashFlow(null)).rows[0].plan.outstandingKeur).toBe(1080);
@@ -199,7 +200,7 @@ describe('meetings writers', () => {
     // S-12 a (R-067): every internal owner gets a task (L. Fabre, outside the resource pool, too), due on the typed date.
     expect(sent).toEqual({ minutesNumber: 'MIN-HLT-027', invited: 5, tasks: ['T-2341', 'T-2342', 'T-2343'] });
     const m = (await getMeeting('MTG-118'))!;
-    expect([m.status, m.sentText, m.minutesIndexed]).toEqual(['minutes_sent', '30 Sep', true]);
+    expect([m.status, m.sentText, m.minutesIndexed]).toEqual(['minutes_sent', '25 Sep', true]); // R-013: sent on the business date (25 Sep 2026 on the demo data set), not the prototype's 30 Sep
     expect(m.participants.filter((p) => p.minutesRecipient).map((p) => [p.name, p.readOn])).toEqual([['L. Fabre', null], ['J. Wagner', null], ['H. Sauvage', null], ['T. Kerbrat', null]]);
     expect(m.agenda[1].lines.filter((l) => l.type === 'action').map((l) => l.taskNumber)).toEqual(['T-2342', 'T-2343']);
     expect((await getTask('T-2341'))!.assignee).toBe('L. Fabre');
@@ -216,10 +217,11 @@ describe('meetings writers', () => {
 });
 
 describe('stakeholders, interfaces, prioritisation writers', () => {
-  it('add a stakeholder: owner normalised to the short name, last contact 30 Sep, notes "New"', async () => {
+  it('add a stakeholder: owner normalised to the short name, last contact on the business date (25 Sep), notes "New"', async () => {
     await addStakeholder('HLT-026', { name: 'Yves Morel', organisation: 'Bureau Veritas', role: 'Inspector', type: 'third_party', contactEmail: 'y.morel@bv.com', owner: 'Amélie Ollivier' }, 'Romain Aubert');
     const r = (await getStakeholderRegister('HLT-026')).stakeholders.at(-1)!;
-    expect(r).toMatchObject({ name: 'Yves Morel', owner: 'A. Ollivier', lastText: '30 Sep', notes: 'New', stale: false, typeLabel: 'Third party', initials: 'YM' });
+    // R-013: last contact = the business date (25 Sep 2026 on the demo data set), not the prototype's 30 Sep.
+    expect(r).toMatchObject({ name: 'Yves Morel', owner: 'A. Ollivier', lastText: '25 Sep', notes: 'New', stale: false, typeLabel: 'Third party', initials: 'YM' });
     await expect(addStakeholder('HLT-026', { name: 'X', organisation: 'Y', type: 'client', contactEmail: 'nope', owner: 'R. Aubert' }, 'Romain Aubert')).rejects.toThrow(/e-mail/);
   });
 
@@ -232,7 +234,8 @@ describe('stakeholders, interfaces, prioritisation writers', () => {
     expect(rows.map((r) => [r.number, r.statusLabel])).toEqual([
       ['IF-01', 'Received'], ['IF-02', 'Open'], ['IF-03', 'Frozen'], ['IF-04', 'Received'], ['IF-05', 'Open'], ['IF-06', 'Frozen'], ['IF-07', 'Frozen'], ['IF-10', 'Open'],
     ]);
-    expect(rows.at(-1)).toMatchObject({ owner: 'S. Haddad', providedText: '—', neededText: '2 Nov', daysToNeed: 32 });
+    // R-013: days counted from the business date (25 Sep 2026 on the demo data set), not the prototype's PG_NOW (≈ 30 Sep): 37, was 32.
+    expect(rows.at(-1)).toMatchObject({ owner: 'S. Haddad', providedText: '—', neededText: '2 Nov', daysToNeed: 37 });
     expect(await lastAudit()).toMatchObject({ object: 'IF-07', change: 'status: Received → Frozen', area: 'Interfaces' });
   });
 

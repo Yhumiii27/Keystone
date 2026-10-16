@@ -6,6 +6,7 @@
 // types, Settings, Activity & integrations and the NCR / deliverable kinds of My approvals. The screen-side formatting is
 // redone here with the prototype's rules to show the data is complete; deliberate deviations are asserted explicitly.
 import { beforeAll, describe, expect, it } from 'vitest';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { canSee, type RoleKey, type ScreenId } from '@/config/screens';
 import { money } from '@/lib/format';
 import { and, eq } from 'drizzle-orm';
@@ -13,7 +14,7 @@ import { ncrKpis } from '@/domain/quality';
 import { getDb, setDb } from '@/server/db/client';
 import { vigieNcrs } from '@/server/db/schema';
 import {
-  D5_SCREEN_ROLES, NCR_FLOW, STATUS_ISO, addDaysIso, fmtDOfIso, ncrStatus, shortDateOfIso, stampText, type D5Screen,
+  D5_SCREEN_ROLES, NCR_FLOW, addDaysIso, fmtDOfIso, ncrStatus, shortDateOfIso, stampText, type D5Screen,
 } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
 import { getClientPortal } from './client';
@@ -115,8 +116,9 @@ describe('quality — NCRs (Vigie mirror) and deliverables (07 §2.3)', () => {
       raci: x.raci.map((c) => [c.role, c.name, c.initials]),
     }))).toEqual(g.dlvRows);
     expect([['All', dl.length], ...['Planned', 'In progress', 'Internal review', 'Submitted', 'Accepted', 'Rejected'].map((s) => [s, dl.filter((x) => x.statusLabel === s).length])]).toEqual(g.dlvChips);
-    // "Due in 30 days" computed from the status date (the prototype listed "25 Sep" and "30 Sep", 07 OQ5) gives the same counts.
-    const in30 = dl.filter((x) => x.status !== 'accepted' && x.dueOn >= STATUS_ISO && x.dueOn <= addDaysIso(STATUS_ISO, 30)).length;
+    // "Due in 30 days" computed from the business date (R-013: 25 Sep 2026 on the demo data set; the prototype listed "25 Sep" and
+    // "30 Sep", 07 OQ5) gives the same counts.
+    const in30 = dl.filter((x) => x.status !== 'accepted' && x.dueOn >= DEMO_TODAY_ISO && x.dueOn <= addDaysIso(DEMO_TODAY_ISO, 30)).length;
     expect([
       [dl.length, `${dl.filter((x) => x.status === 'accepted').length} accepted by client`], [dl.filter((x) => x.status === 'submitted').length, '10-day acceptance window'],
       [in30, 'Not yet accepted'], [dl.filter((x) => !x.raci.find((c) => c.role === 'B')?.name).length, 'RACI-B complete on every line'],
@@ -269,7 +271,9 @@ describe('installed base and warranty claims (07 §2.8–2.9), per zone', () => 
       openText: m.openClaims ? `${m.openClaims} open` : '—', wendSub: m.warrantyEndingSoon ? `ends in ${m.warrantyEndsInDays} d` : '', cost: m.warrantyCostKeur,
       cfg: [m.configuration.pending ? `${m.configuration.pending} pending` : null, m.configuration.retrofit ? `${m.configuration.retrofit} retrofit` : null,
         m.configuration.pinned ? `${m.configuration.pinned} pinned` : null].filter(Boolean),
-    }))).toEqual(g.rows);
+      // R-013: "ends in n d" counts from the business date (25 Sep 2026 on the demo data set), not the prototype's 30 Sep: MCH-035
+      // (1 Nov 2026) ends in 36 d, not 31.
+    }))).toEqual(g.rows.map((r: any) => (r.id === 'MCH-035' ? { ...r, wendSub: r.wendSub.replace('ends in 31 d', 'ends in 36 d') } : r)));
     expect([
       [ms.length, `${new Set(ms.map((m) => m.client)).size} clients`], [ms.filter((m) => m.warrantyStatus === 'in_warranty').length, `${ms.filter((m) => m.warrantyStatus === 'extended').length} extended`],
       [ms.filter((m) => m.warrantyEndingSoon).length, ms.filter((m) => m.warrantyEndingSoon).map((m) => m.number).join(' · ') || '—'],
@@ -633,7 +637,7 @@ describe('quality — "N closed this quarter" counts the data date\'s quarter on
     expect(closed.length).toBeGreaterThan(0);
     const sub = async () => {
       const q = await getQualityScreen('HLT-026');
-      return ncrKpis(q.ncrs, undefined, q.dataDate)[0].sub;
+      return ncrKpis(q.ncrs, q.today, q.dataDate)[0].sub;
     };
     // Seed: every closed NCR was closed in Q3 2026, the data date's quarter (the prototype counted every closed NCR).
     expect(await sub()).toBe(`${closed.length} closed this quarter`);

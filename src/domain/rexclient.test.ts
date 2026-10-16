@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import {
-  STATUS_ISO, changeStatus, clientIssueStatus, closureItemStatus, deliverableStatus, isoOfDisplayDate, lessonStatus, lessonTheme, milestoneStatus,
+  changeStatus, clientIssueStatus, closureItemStatus, deliverableStatus, isoOfDisplayDate, lessonStatus, lessonTheme, milestoneStatus,
   type ChangeStep, type StepDecision,
 } from '@/server/db/codes';
 import {
@@ -16,6 +16,9 @@ import {
   paymentOf, rexView, type ChangeRequestLike, type ClosureLike, type DeliverableLike, type Kpi, type LessonLike, type SatisfactionLike,
 } from './rexclient';
 import golden from './rexclient.golden.json';
+
+/** R-013: the prototype's status date (Fri 25 Sep 2026), passed explicitly ("Raised today"). */
+const STATUS_ISO = '2026-09-25';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const G = golden as any;
@@ -215,9 +218,9 @@ describe('client portal (03 §8)', () => {
   });
 
   it('issues: status tags, "Raised today" for issues raised on the status date', () => {
-    expect(issues().map((i) => issueRow(i)).map((r) => ({ id: r.id, title: r.title, when: r.when, status: r.status, resp: r.response, tagClass: tag(r.tone) })))
+    expect(issues().map((i) => issueRow(i, STATUS_ISO)).map((r) => ({ id: r.id, title: r.title, when: r.when, status: r.status, resp: r.response, tagClass: tag(r.tone) })))
       .toEqual(G.client.en['HLT-026'].issues);
-    const fresh = issueRow({ number: 'CI-08', title: 'Crane test witness slot', raisedOn: STATUS_ISO, status: 'open', response: 'Acknowledged — response within 2 working days' });
+    const fresh = issueRow({ number: 'CI-08', title: 'Crane test witness slot', raisedOn: STATUS_ISO, status: 'open', response: 'Acknowledged — response within 2 working days' }, STATUS_ISO);
     const g = G.client.en.afterIssues.issues[2];
     expect({ when: fresh.when, status: fresh.status, resp: fresh.response, tagClass: tag(fresh.tone) }).toEqual({ when: g.when, status: g.status, resp: g.resp, tagClass: g.tagClass });
     // The prototype numbered the third new issue "CI-010" ('CI-0' + 10); the data layer pads to two digits (CI-10).

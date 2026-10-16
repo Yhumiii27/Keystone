@@ -23,10 +23,12 @@ const RACI: { roles: string[]; rows: string[][] } = P.RACI['HLT-026'];
 const raci = { columns: RACI.roles, rows: RACI.rows };
 
 const iso = (d: string) => isoOfDisplayDate(d)!;
+/** The prototype's now (`PG_NOW`, ≈ 30 Sep 2026): the golden comparison passes it explicitly since R-013. */
+const PG_NOW = 8.97;
 /** Stored status as the seed keeps it ("Late" in the prototype tuple is derived → stored open). */
 const stored = (label: string): InterfaceStatus => (label === 'Late' ? 'open' : (interfaceStatus.code(label) as InterfaceStatus));
 const facts = (rows: { n: string; needed: string; st: InterfaceStatus }[]): InterfaceFacts[] =>
-  rows.map((r) => ({ number: r.n, status: effectiveInterfaceStatus(r.st, iso(r.needed)), daysToNeed: daysToNeed(iso(r.needed)) }));
+  rows.map((r) => ({ number: r.n, status: effectiveInterfaceStatus(r.st, iso(r.needed), PG_NOW), daysToNeed: daysToNeed(iso(r.needed), PG_NOW) }));
 const seedFacts = (ov: Record<string, InterfaceStatus> = {}) => facts(IFC.map((x) => ({ n: x[0], needed: x[5], st: ov[x[0]] ?? stored(x[7]) })));
 
 /** The EN sentences of ifcKpis, rebuilt from the summary (the feature model formats them the same way). */
@@ -36,14 +38,14 @@ const neededSubEn = (f: InterfaceFacts) => {
 };
 
 describe('stakeholders (stkRows / stkKpis 4931–4936)', () => {
-  const rows = STK.map((x) => ({ name: x[0], type: stakeholderType.code(x[3]), owner: x[8], last: x[9], stale: isStaleContact(iso(x[9])) }));
+  const rows = STK.map((x) => ({ name: x[0], type: stakeholderType.code(x[3]), owner: x[8], last: x[9], stale: isStaleContact(iso(x[9]), PG_NOW) }));
 
   it('initials, kind tones and the > 30 days rule match the prototype rows', () => {
     expect(rows.map((r) => stakeholderInitials(r.name))).toEqual(G.stakeholders.rows.map((r) => r.initials));
     expect(rows.map((r) => r.last + (r.stale ? ' · > 30 d' : ''))).toEqual(G.stakeholders.rows.map((r) => r.lastText));
     expect(rows.map((r) => stakeholderTone(r.type))).toEqual(['accent', 'accent', 'outline', 'neutral', 'neutral', 'outline', 'outline', 'outline']);
     // 31 Aug is 30 days before the prototype's now (8.97 → ≈ 30 Sep): not stale; 30 Aug is.
-    expect([isStaleContact('2026-08-31'), isStaleContact('2026-08-30'), isStaleContact('2026-09-30')]).toEqual([false, true, false]);
+    expect([isStaleContact('2026-08-31', PG_NOW), isStaleContact('2026-08-30', PG_NOW), isStaleContact('2026-09-30', PG_NOW)]).toEqual([false, true, false]);
   });
 
   it('KPI figures: 8 (2 client · 2 authorities · 2 suppliers & third parties) · 4 owners · 7 RACI rows / 6 roles · 1 stale', () => {
@@ -62,7 +64,7 @@ describe('stakeholders (stkRows / stkKpis 4931–4936)', () => {
   });
 
   it('added stakeholder (third party, last contact 30 Sep): 9 · 3 suppliers & third parties · not stale', () => {
-    const s = summariseStakeholders([...rows, { name: 'Yves Morel', type: 'third_party', owner: 'A. Ollivier', last: '30 Sep', stale: isStaleContact('2026-09-30') }], raci);
+    const s = summariseStakeholders([...rows, { name: 'Yves Morel', type: 'third_party', owner: 'A. Ollivier', last: '30 Sep', stale: isStaleContact('2026-09-30', PG_NOW) }], raci);
     expect([s.count, s.suppliersAndThirdParties, s.owners.length, s.stale]).toEqual([9, 3, 5, 1]);
   });
 
@@ -124,10 +126,10 @@ describe('interfaces (ifcRows / ifcKpis / ifcBadge 4954–4957)', () => {
   });
 
   it('received / frozen interfaces are never late, whatever their date; open and needed 30 Sep is late (mIdx 8.967 < PG_NOW 8.97), 0 d', () => {
-    expect(effectiveInterfaceStatus('received', '2026-01-01')).toBe('received');
-    expect(effectiveInterfaceStatus('frozen', '2026-01-01')).toBe('frozen');
-    expect([effectiveInterfaceStatus('open', '2026-09-30'), effectiveInterfaceStatus('open', '2026-10-01')]).toEqual(['late', 'open']);
-    expect([daysToNeed('2026-09-30'), daysToNeed('2026-10-01')]).toEqual([0, 1]);
+    expect(effectiveInterfaceStatus('received', '2026-01-01', PG_NOW)).toBe('received');
+    expect(effectiveInterfaceStatus('frozen', '2026-01-01', PG_NOW)).toBe('frozen');
+    expect([effectiveInterfaceStatus('open', '2026-09-30', PG_NOW), effectiveInterfaceStatus('open', '2026-10-01', PG_NOW)]).toEqual(['late', 'open']);
+    expect([daysToNeed('2026-09-30', PG_NOW), daysToNeed('2026-10-01', PG_NOW)]).toEqual([0, 1]);
     expect(interfaceRowState({ number: 'IF-99', status: 'late', daysToNeed: 0 }).neededSub).toEqual({ kind: 'late', days: 0 });
   });
 });

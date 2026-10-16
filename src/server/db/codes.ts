@@ -326,8 +326,6 @@ const utcOf = (iso: string) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, 
 const isoOfUtc = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 /** Day 0 of the prototype's working-day axis: Mon 21 Sep 2026 (`dayDate`, 3266). */
 export const DAY_ZERO = '2026-09-21';
-/** Status date of the frozen data set (Fri 25 Sep 2026, TODAY = 4): the business date stamped on writes. */
-export const STATUS_ISO = '2026-09-25';
 
 /**
  * Prototype working-day offset → ISO date (dayDate: 5 working days per week from Mon 21 Sep 2026). Correct for negative
@@ -396,20 +394,20 @@ export function stampText(at: Date): string {
   return `${shortDateOfIso(p.iso)} ${p.hh}:${p.mm}`;
 }
 /** "25 Sep 09:12" (current year) → instant; also "Yesterday 16:40" / "Today 08:15" relative to `today`. */
-export function parseStampText(text: string, today = STATUS_ISO): Date {
+export function parseStampText(text: string, today: string): Date {
   const m = /^(Today|Yesterday|\d{1,2} \w{3}) (\d{2}:\d{2})$/.exec(text.trim());
   if (!m) throw new Error(`Unparseable timestamp "${text}"`);
   const iso = m[1] === 'Today' ? today : m[1] === 'Yesterday' ? addDaysIso(today, -1) : isoOfDisplayDate(m[1], +today.slice(0, 4))!;
   return parisInstant(iso, m[2]);
 }
 /** Comment time as the Task screen shows it: "Today 08:15" / "Yesterday 16:40" relative to `today`, else "8 Oct 14:05". */
-export function relativeStampText(at: Date, today = STATUS_ISO): string {
+export function relativeStampText(at: Date, today: string): string {
   const p = parisParts(at);
   const day = p.iso === today ? 'Today' : p.iso === addDaysIso(today, -1) ? 'Yesterday' : shortDateOfIso(p.iso);
   return `${day} ${p.hh}:${p.mm}`;
 }
 /** "today" / "yesterday" / "18 Sep" relative to `today` (attachment meta). */
-export const relativeDayText = (iso: string, today = STATUS_ISO) =>
+export const relativeDayText = (iso: string, today: string) =>
   iso === today ? 'today' : iso === addDaysIso(today, -1) ? 'yesterday' : shortDateOfIso(iso);
 
 /** Next business number of a "PREFIX-nnn" sequence: max(existing, floor) + 1, zero-padded (OPEN QUESTION Q-7). */
@@ -424,24 +422,14 @@ export function nextBusinessNumber(existing: readonly string[], prefix: string, 
 }
 
 // ── Delivery 3 time model (docs/spec/00 §7.5) ─────────────────────────────────────────────────────────
-/**
- * Month index of the prototype "now" used by the portfolio Gantt, meetings, interfaces, stakeholders and the
- * Billing late flag (`PG_NOW` 3671 ≈ 30 Sep 2026). Comparisons use `monthIndexOfIso(date) < PG_NOW` exactly like
- * the prototype's `mIdx(date) < PG_NOW`.
- */
-export const PG_NOW = 8.97;
-/** Prototype `NOWD` / literal "30 Sep": overdue invoices (due < NOWD) and the date stamped on invoices, payments, minutes and records created by the Contract, Billing, Meetings, Stakeholders and Interfaces writers. */
-export const NOW_ISO = '2026-09-30';
-/** Literal "29 Sep" of the Codex vault: downloads, deposits and automatic withdrawals. */
-export const CODEX_TODAY_ISO = '2026-09-29';
 
 /** Month index since 1 Jan 2026 of an ISO date (prototype `mIdx('14 Dec 2026')` = 11 + 13/30). */
 export function monthIndexOfIso(iso: string): number {
   const [y, m, d] = iso.split('-').map((x) => parseInt(x, 10));
   return (y - 2026) * 12 + (m - 1) + (d - 1) / 30;
 }
-/** Prototype `mIdx(x) < PG_NOW` on an ISO date (null → false). */
-export const beforePgNow = (iso: string | null | undefined) => !!iso && monthIndexOfIso(iso) < PG_NOW;
+/** Prototype `mIdx(x) < PG_NOW` on an ISO date (null → false): before the month index of `today` (R-013). */
+export const beforePgNow = (iso: string | null | undefined, today: string) => !!iso && monthIndexOfIso(iso) < monthIndexOfIso(today);
 
 /** "12 Mar" (current year 2026) / "14 Jan 2027" — the prototype's short date with the year only when ≠ 2026 (`fmtInvD`). */
 export function shortDateYearOfIso(iso: string): string {
@@ -606,13 +594,14 @@ export const keystoneSide = codec<KeystoneSide, string>([
 // ── Delivery 4 time helpers (docs/spec/08 §4.5, 09 §5) ───────────────────────────────────────────────
 /**
  * Stamp of the n-th stock movement recorded in Keystone (`applyOp` 4480: '25 Sep 16:' + pad(10 + moves.length)):
- * the status date at 16:10 + n minutes (n = movements already listed), so new movements sort above the seed ones.
+ * the business date (`today`, R-013) at 16:10 + n minutes (n = movements already listed), so new movements sort above the seed
+ * ones.
  */
-export function stockMoveInstant(count: number): Date {
+export function stockMoveInstant(count: number, today: string): Date {
   const minutes = 16 * 60 + 10 + count;
   const hh = String(Math.min(23, Math.floor(minutes / 60))).padStart(2, '0');
   const mm = String(minutes >= 24 * 60 ? 59 : minutes % 60).padStart(2, '0');
-  return parisInstant(STATUS_ISO, `${hh}:${mm}`);
+  return parisInstant(today, `${hh}:${mm}`);
 }
 
 /** "12 Mar" (2026) / "13 Feb ’27" — the prototype's `fmtD` on an ISO date (purchase orders, receipts generated in Keystone). */

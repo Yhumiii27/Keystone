@@ -10,7 +10,8 @@ import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { QC_INBOX_ROLES, canDecideQc, parseAnnounceForm, parseRegisterForm, qcPlan, type QcDecision } from '@/domain/deliveries';
 import { parseDateInput } from '@/domain/contract';
-import { STATUS_ISO, receiptStatus, type ReceiptStatus } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
+import { receiptStatus, type ReceiptStatus } from '@/server/db/codes';
 import {
   acceptReceipt, announceDelivery, attachReceiptDocument, getPutAwayOptions, getReceipt, listAnnounceableOrders, recordReceiptQc, registerReceipt, rejectReceipt,
   type ReceiptRow,
@@ -99,7 +100,7 @@ export async function registerReceiptAction(code: string, number: string, values
     refresh();
     return { error: await tr('This delivery is no longer waiting to be received') };
   }
-  const parsed = parseRegisterForm(strings(values), r.lines, { today: STATUS_ISO, parseDate: (s) => parseDateInput(s) });
+  const parsed = parseRegisterForm(strings(values), r.lines, { today: await businessToday(), parseDate: (s) => parseDateInput(s) });
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
   try {

@@ -23,6 +23,7 @@ import { canEditPlan, canEditStructure, canSchedulePlan } from '@/features/plan/
 import { PlanToolbar } from '@/features/plan/toolbar';
 import s from '@/features/plan/plan.module.css';
 import { canSnapshotFreely } from '@/domain/baseline-policy';
+import { workdayOffsetOf } from '@/domain/clock';
 import { nextBaselineCode } from '@/domain/ch4-defaults';
 import { longDateText } from '@/domain/schedule-rollup';
 import { baselineWhenText, trashMetaText } from '@/features/plan/i18n';
@@ -34,7 +35,7 @@ import { listDepartments } from '@/server/dal/people';
 import { getPlanData, getPlanRequests, getPlanSettings, getPlanTodos, ownerCodeOfViewer } from '@/server/dal/plan';
 import { getActivityAssignments } from '@/server/dal/planning';
 import { baselineState } from '@/server/db/codes';
-import { STATUS_DATE } from '@/lib/format';
+import { businessToday } from '@/server/clock';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { projectLabelText } from '@/i18n/data-text';
@@ -96,8 +97,10 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
   const [todos, requests, trash] = await Promise.all([getPlanTodos(projectCode), getPlanRequests(projectCode), canSchedule ? listPlanTrash(projectCode) : []]);
   const rows = planRowViews(planRows(data, todos), data, t, lang);
   const displayed = settings?.displayed ?? null;
-  const kpis = planKpis(view, data, t, lang, { dataDate: settings?.dataDate, baseline: displayed });
-  const dataDateText = t(settings ? longDateText(settings.dataDate) : STATUS_DATE);
+  // The project's data date (its own, else the business date — R-013).
+  const dataDate = settings?.dataDate ?? (await businessToday());
+  const kpis = planKpis(view, data, t, lang, { dataDate, baseline: displayed });
+  const dataDateText = t(longDateText(dataDate));
   const context = projectLabelText(ctx.project, lang);
   // "Recently deleted" (S-5): real-clock removal times.
   const whenText = new Intl.DateTimeFormat(lang === 'fr' ? 'fr-FR' : 'en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
@@ -139,6 +142,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
         ownerName: act.ownerName,
         assignments,
         todos,
+        today: workdayOffsetOf(await businessToday()),
         requests,
         deptHeads: Object.fromEntries(depts.map((d) => [d.name, d.head ?? d.headShort ?? d.name])),
         changeLinks: crLinks.filter((l) => l.code === act.id).map((l) => ({
@@ -172,7 +176,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
     wp: data.packages.map((p) => `${p.code} · ${p.name}`),
     team: data.control.team.length ? data.control.team : data.owners.map((o) => o.name),
     actOpen: (canStructure ? data.activities : ownActs).filter((a) => a.pct < 100).map((a) => `${a.id} · ${a.name}`),
-    dataDate: settings?.dataDate,
+    dataDate,
   });
   const canProgress = canStructure || progressIds.length > 0;
   const primary = (view === 'structure' ? canStructure : canProgress) ? (

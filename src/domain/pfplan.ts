@@ -8,14 +8,13 @@
 //    fill, the baseline-finish line when slipping and the forecast finish.
 // Pure: the stage windows are resolved by the DAL (`getPortfolioSchedule`), this module turns them into geometry,
 // gate texts and KPI tiles. Strings are the prototype's English source (render through t()); money is formatted for
-// `lang` as the prototype does before translation. "Now" is `PG_NOW` (≈ 30 Sep 2026) until the real clock (R-013): the
-// default window, the board states, the gates and the KPIs read it.
+// `lang` as the prototype does before translation. "Now" is the month index of the business date (`now` =
+// `monthNowOf(today)`, R-013 — the prototype's PG_NOW ≈ 8.97, 30 Sep 2026): the default window, the board states, the gates
+// and the KPIs read it. It stays a month index (not an ISO date) because the whole Gantt is laid out in month offsets.
 import type { Lang } from '@/i18n/translate';
 import { MO, fmtD, money, monthDate } from '@/lib/format';
-import { PG_NOW, type PipelineWindow, type StageCode } from '@/server/db/codes';
+import { type PipelineWindow, type StageCode } from '@/server/db/codes';
 import { projectIndicators, type EvmInput, type ScheduleSummary } from './portfolio';
-
-export { PG_NOW };
 
 /** Horizon of the Gantt in months (`PG_MONTHS`): the window shows 24 months from its start `from`. */
 export const PG_MONTHS = 24;
@@ -35,9 +34,6 @@ export function pgSeg(a: number, b: number, from = 0): { left: string; width: st
   return R > L ? { left: pgPct(L, from), width: (((R - L) / PG_MONTHS) * 100).toFixed(2) + '%', w: R - L } : null;
 }
 
-/** Today line of the prototype's fixed window (`pgTodayL`, Jan 2026 – Dec 2027). */
-export const PG_TODAY_L = pgPct(PG_NOW);
-
 // ── Sliding window (L-8 = a, R-136) ────────────────────────────────────────────────────────────────────
 
 /** Window steps: one quarter. */
@@ -55,9 +51,9 @@ const yearOf = (m: number) => 2026 + Math.floor(m / 12);
 
 /**
  * Default window start: the quarter start nearest to now − 12 months, so that "now" sits in the middle of the 24 months
- * (−3 = Oct 2025 on the seed, PG_NOW ≈ 30 Sep 2026).
+ * (−3 = Oct 2025 on the seed: `now` = month index of the business date, 8.8 on 25 Sep 2026, the prototype's 8.97 likewise).
  */
-export function defaultWindowStart(now: number = PG_NOW): number {
+export function defaultWindowStart(now: number): number {
   return PG_STEP * Math.round((now - 12) / PG_STEP) || 0;
 }
 
@@ -84,8 +80,8 @@ export function windowLabel(from: number, tr: (s: string) => string = (s) => s):
   return `${tr(MO[mod12(from)])} ${yearOf(from)} – ${tr(MO[mod12(last)])} ${yearOf(last)}`;
 }
 
-/** Today line on the window starting at `from`, null when now is outside it. */
-export function pgTodayL(from: number, now: number = PG_NOW): string | null {
+/** Today line on the window starting at `from`, null when now (month index of the business date) is outside it. */
+export function pgTodayL(from: number, now: number): string | null {
   return now < from || now > from + PG_MONTHS ? null : pgPct(now, from);
 }
 
@@ -134,6 +130,8 @@ export interface PgInput {
   rows: PgRowInput[];
   /** Mean duration in days of the completed boards of every pipeline plan (all zones). */
   averageBoardWaitDays: number;
+  /** Month index since Jan 2026 of the business date (`monthNowOf(today)`, R-013; the prototype's PG_NOW). */
+  now: number;
 }
 
 // ── View model ─────────────────────────────────────────────────────────────────────────────────────────
@@ -147,7 +145,7 @@ export const PG_FILTERS: { value: PgFilter; label: string }[] = [
 ];
 export const isPgFilter = (v: unknown): v is PgFilter => v === 'all' || v === 'exec' || v === 'pipe';
 
-/** Group board state at PG_NOW: ended (approved), running (decision pending) or ahead (planned). */
+/** Group board state at now: ended (approved), running (decision pending) or ahead (planned). */
 export type PgBoardState = 'approved' | 'pending' | 'planned';
 
 const STAGE_TITLE: Record<PipelineWindow, string> = { initiative: 'Initiative', board: 'Board', aps: 'APS', apd: 'APD' };
@@ -197,7 +195,7 @@ export interface PgRow {
   /** "Decision pending · 8 d" / "12 Nov" / "−27 d" / ''. */
   gateSub: string;
   gateTint: PgTint;
-  /** A board of this pipeline project is running at PG_NOW. */
+  /** A board of this pipeline project is running now. */
   decisionPending: boolean;
   /** Row click: Plan of a project with data, else the Projects register searched by code. */
   target: PgTarget;
@@ -240,6 +238,8 @@ export interface PgWindow {
   nextFrom: number | null;
   /** The default window (now − 12 months): the "Today" link drops `?from=`. */
   isDefault: boolean;
+  /** Start of the default window (`defaultWindowStart(now)`): links to it drop `?from=`. */
+  defaultFrom: number;
 }
 
 export interface PortfolioScheduleModel {
@@ -269,10 +269,13 @@ export const pgMonths = (from = 0): PgMonth[] =>
 const toneOf = (r: PgRowInput): PgTone =>
   r.project.stage === 'clos' || r.project.stage === 'annule' ? 'neutral' : r.project.stage === 'garantie' || r.pipeline ? 'outline' : 'accent';
 
-const boardStateAt = (a: number, b: number): PgBoardState => (b <= PG_NOW ? 'approved' : a <= PG_NOW ? 'pending' : 'planned');
+const boardStateAt = (a: number, b: number, now: number): PgBoardState => (b <= now ? 'approved' : a <= now ? 'pending' : 'planned');
 
-/** `pgRow(p)` (4529–4548) on the window starting at `from` (default Jan 2026, the prototype's fixed window). */
-export function pgRow(r: PgRowInput, from = 0): PgRow {
+/**
+ * `pgRow(p)` (4529–4548) on the window starting at `from` (0 = Jan 2026, the prototype's fixed window); `now` = month index of
+ * the business date (R-013).
+ */
+export function pgRow(r: PgRowInput, from: number, now: number): PgRow {
   const p = r.project;
   const pipe = r.pipeline;
   const plan = r.windows;
@@ -282,7 +285,7 @@ export function pgRow(r: PgRowInput, from = 0): PgRow {
   const floatDays = ind?.floatDays ?? 0;
   const slipM = ind && floatDays < 0 ? -floatDays / 30 : 0;
   const finM = r.finishMonth;
-  const base = finM !== null ? finM : pipe ? execStart + 8 : Math.max(execStart + 1, PG_NOW);
+  const base = finM !== null ? finM : pipe ? execStart + 8 : Math.max(execStart + 1, now);
   const fc = finM !== null || pipe ? base + slipM : base;
 
   const segments: PgSegment[] = [];
@@ -290,12 +293,12 @@ export function pgRow(r: PgRowInput, from = 0): PgRow {
     const g = pgSeg(w.start, w.end, from);
     if (!g) continue;
     if (w.window === 'board') {
-      const state = boardStateAt(w.start, w.end);
+      const state = boardStateAt(w.start, w.end, now);
       segments.push({ kind: 'board', left: g.left, width: g.width, state, title: boardTitle(state) });
       segments.push({ kind: 'diamond', left: pgPct(w.end, from), state, title: boardTitle(state) });
     } else {
       segments.push({
-        kind: 'stage', left: g.left, width: g.width, done: w.end <= PG_NOW,
+        kind: 'stage', left: g.left, width: g.width, done: w.end <= now,
         label: g.w > 0.8 ? STAGE_SHORT[w.window] : '', title: STAGE_TITLE[w.window],
       });
     }
@@ -303,11 +306,11 @@ export function pgRow(r: PgRowInput, from = 0): PgRow {
 
   const exec = pgSeg(execStart, fc, from);
   const execBase = pgSeg(execStart, base, from);
-  const pendingB = plan.find((w) => w.window === 'board' && w.start <= PG_NOW && w.end > PG_NOW);
-  const nextB = plan.find((w) => w.window === 'board' && w.end > PG_NOW);
+  const pendingB = plan.find((w) => w.window === 'board' && w.start <= now && w.end > now);
+  const nextB = plan.find((w) => w.window === 'board' && w.end > now);
   const after = nextB ? plan[plan.indexOf(nextB) + 1] : undefined;
   const nextStage = nextB ? (after ? STAGE_TITLE[after.window] : 'Execution') : '';
-  const waitDays = pendingB ? Math.round((PG_NOW - pendingB.start) * 30) : 0;
+  const waitDays = pendingB ? Math.round((now - pendingB.start) * 30) : 0;
 
   let gate: string, gateSub: string, gateTint: PgTint;
   if (pipe) {
@@ -355,12 +358,12 @@ export function pgKpis(rows: PgRow[], input: PgInput, lang: Lang): PgKpi[] {
 
 /**
  * Screen model: KPI tiles, the groups of the stage filter, month header, today line and window. `from` = window start
- * (default: `defaultWindowStart()`, L-8); the rows are never filtered by the window, only clipped.
+ * (default: `defaultWindowStart(input.now)`, L-8); the rows are never filtered by the window, only clipped.
  */
 export function portfolioScheduleModel(input: PgInput, opts: { filter: PgFilter; lang: Lang; from?: number | null }): PortfolioScheduleModel {
-  const def = defaultWindowStart();
+  const def = defaultWindowStart(input.now);
   const from = opts.from ?? def;
-  const rows = input.rows.map((r) => pgRow(r, from));
+  const rows = input.rows.map((r) => pgRow(r, from, input.now));
   const groups: PgGroup[] = (
     [
       { key: 'exec', label: 'In progress', rows: rows.filter((r) => !r.pipeline) },
@@ -371,7 +374,7 @@ export function portfolioScheduleModel(input: PgInput, opts: { filter: PgFilter;
     .map((g) => ({ ...g, count: g.rows.length }));
   const window: PgWindow = {
     from, label: windowLabel(from), prevFrom: from - PG_STEP >= PG_FROM_MIN ? from - PG_STEP : null,
-    nextFrom: from + PG_STEP <= PG_FROM_MAX ? from + PG_STEP : null, isDefault: from === def,
+    nextFrom: from + PG_STEP <= PG_FROM_MAX ? from + PG_STEP : null, isDefault: from === def, defaultFrom: def,
   };
-  return { kpis: pgKpis(rows, input, opts.lang), groups, months: pgMonths(from), todayL: pgTodayL(from), window, empty: rows.length === 0 };
+  return { kpis: pgKpis(rows, input, opts.lang), groups, months: pgMonths(from), todayL: pgTodayL(from, input.now), window, empty: rows.length === 0 };
 }

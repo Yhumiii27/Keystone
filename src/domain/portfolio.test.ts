@@ -72,9 +72,9 @@ describe('Portfolio overview (spec §4)', () => {
     expect(portfolioKpis(one, 'en')[5]).toMatchObject({ value: '0 of 1', alert: false });
     const none = portfolioTotals([]);
     expect(portfolioKpis(none, 'en').map((k) => k.value)).toEqual(['€0k', '€0k', '€0k', '1.00', '1.00', '0 of 0']);
-    expect([activeProjectsHint(6), activeProjectsHint(1)]).toEqual(['6 projects · FY2026', '1 project · FY2026']);
+    expect([activeProjectsHint(6, '2026-09-25'), activeProjectsHint(1, '2026-09-25')]).toEqual(['6 projects · FY2026', '1 project · FY2026']);
     // R-129: the fiscal year comes from the data date (was a fixed "FY2026").
-    expect([activeProjectsHint(4, '2027-02-26'), fiscalYearLabel('2027-02-26'), fiscalYearLabel()]).toEqual(['4 projects · FY2027', 'FY2027', 'FY2026']);
+    expect([activeProjectsHint(4, '2027-02-26'), fiscalYearLabel('2027-02-26'), fiscalYearLabel('2026-09-25')]).toEqual(['4 projects · FY2027', 'FY2027', 'FY2026']);
     expect([makeT('fr')('6 projects · FY2026'), makeT('fr')(activeProjectsHint(6, '2027-01-05')), makeT('fr')('FY2027 · 17 projects')]).toEqual([
       '6 projets · exercice 2026', '6 projets · Exercice 2027', 'Exercice 2027 · 17 projets',
     ]);

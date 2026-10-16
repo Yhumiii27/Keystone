@@ -201,8 +201,9 @@ export function approvalsModel(
   const weekStarts = data.pool.weeks.map((w) => w.start);
   const team = teamLoad(pool, d.name, pendingHoursByPerson(data.allPending));
   const k = approvalKpis([...data.pending, ...data.decided], team, d);
-  // R-169: without pool weeks, next week and the one after from the data date (the prototype's literals "28 Sep", "5 Oct").
-  const [n0, n1] = nextWeekLabels();
+  // R-169: without pool weeks, next week and the one after from the business date (R-013; the prototype's literals "28 Sep",
+  // "5 Oct" on 25 Sep 2026).
+  const [n0, n1] = nextWeekLabels(data.today);
   const w0 = weekStarts[0] ? shortDateOfIso(weekStarts[0]) : n0;
   const w1 = weekStarts[1] ? shortDateOfIso(weekStarts[1]) : n1;
   const cell = (v: number) => ({ v: `${v}%`, ...shade(v) });

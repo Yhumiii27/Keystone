@@ -3,9 +3,10 @@
 // product structure (TREE 3421), the wear & spare lists (SPARE_LISTS 3399), the project BOM lines (`PARTS.usage`), the
 // assembly configured per project (TREES 3426), the revision comparison (REV_DIFF 3427) and the PDM drawings
 // (DRAWINGS 3439, revision history A…current as `dwgVals` shows it) with the vault sync state ("07:40 · 1 248").
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { PROTO } from '@/server/prototype';
 import {
-  STATUS_ISO, exportControlOf, isoOfDisplayDate, locationType, parisInstant, partMakeBuy, partStatus, partType, revisionDiffKind,
+  exportControlOf, isoOfDisplayDate, locationType, parisInstant, partMakeBuy, partStatus, partType, revisionDiffKind,
   type DrawingState, type WearSpare,
 } from '../codes';
 import {
@@ -149,5 +150,5 @@ export async function seedCatalogue(tx: Tx, ctx: SeedCtx): Promise<void> {
       return { drawingId: id, revision: r, isCurrent: current, checkedInOn: current ? checkedInOn : null, ecoNumber: current ? d.eco || null : null };
     }));
   }
-  await tx.insert(pdmVaultSyncs).values({ id: newId(), syncedAt: parisInstant(STATUS_ISO, PDM_LAST_SYNC), drawingsInVault: PDM_VAULT_DRAWINGS, drawingsUpdated: 0 });
+  await tx.insert(pdmVaultSyncs).values({ id: newId(), syncedAt: parisInstant(DEMO_TODAY_ISO, PDM_LAST_SYNC), drawingsInVault: PDM_VAULT_DRAWINGS, drawingsUpdated: 0 });
 }

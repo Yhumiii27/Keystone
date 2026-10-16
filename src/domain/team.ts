@@ -4,7 +4,7 @@
 // texts, the row actions, the nav badge rule and the parsing of the two add-forms. No I/O, no translation: labels are
 // the prototype's English source strings. Golden values: src/domain/team.test.ts.
 import {
-  PG_NOW, interfaceStatus, keystoneSide, monthIndexOfIso, stakeholderType,
+  interfaceStatus, keystoneSide, monthIndexOfIso, stakeholderType,
   type InterfaceEffectiveStatus, type InterfaceStatus, type KeystoneSide, type StakeholderType,
 } from '@/server/db/codes';
 import { DATE_ERROR, parseDateInput } from './contract';
@@ -23,8 +23,12 @@ export function stakeholderTone(type: StakeholderType): 'accent' | 'neutral' | '
   return type === 'client' ? 'accent' : type === 'internal' ? 'neutral' : 'outline';
 }
 
-/** "No contact for more than 30 days": (PG_NOW − mIdx(last)) × 30 > 30 (the prototype's now ≈ 30 Sep 2026). */
-export const isStaleContact = (lastContactIso: string, now = PG_NOW) => (now - monthIndexOfIso(lastContactIso)) * 30 > 30;
+/**
+ * "No contact for more than 30 days": (now − mIdx(last)) × 30 > 30. `now` = month index of the business date
+ * (`monthNowOf(today)`, src/domain/clock.ts — R-013; the prototype's PG_NOW = 8.97 ≈ 30 Sep 2026). A month index rather than
+ * an ISO date, like the prototype's rule, so the golden values at PG_NOW stay exact.
+ */
+export const isStaleContact = (lastContactIso: string, now: number) => (now - monthIndexOfIso(lastContactIso)) * 30 > 30;
 
 /** First letters of the first two words ("Port authority HSE" → "Pa", "Nadia Bensaïd" → "NB"). */
 export const stakeholderInitials = (name: string) =>
@@ -84,13 +88,16 @@ export function raciGrid(columns: number): { template: string; minWidth: number 
 /** Form order of the "Keystone side" select (AF.interfaces). */
 export const KEYSTONE_SIDES: readonly KeystoneSide[] = ['process', 'mechanical', 'electrical', 'automation', 'site'];
 
-/** Effective status: an open interface needed before the prototype's now (PG_NOW) is Late. */
-export function effectiveInterfaceStatus(stored: InterfaceStatus, neededIso: string, now = PG_NOW): InterfaceEffectiveStatus {
+/**
+ * Effective status: an open interface needed before now is Late. `now` = month index of the business date
+ * (`monthNowOf(today)`, R-013; the prototype's PG_NOW).
+ */
+export function effectiveInterfaceStatus(stored: InterfaceStatus, neededIso: string, now: number): InterfaceEffectiveStatus {
   return stored === 'open' && monthIndexOfIso(neededIso) < now ? 'late' : stored;
 }
 
-/** Days from the prototype's now to the need date: round((mIdx(needed) − PG_NOW) × 30); negative = late. */
-export const daysToNeed = (neededIso: string, now = PG_NOW) => Math.round((monthIndexOfIso(neededIso) - now) * 30) + 0; // + 0: no −0
+/** Days from now (`monthNowOf(today)`, R-013) to the need date: round((mIdx(needed) − now) × 30); negative = late. */
+export const daysToNeed = (neededIso: string, now: number) => Math.round((monthIndexOfIso(neededIso) - now) * 30) + 0; // + 0: no −0
 
 export interface InterfaceFacts {
   /** "IF-02". */
@@ -293,7 +300,7 @@ export const RECEIVED_AFTER_TODAY = 'The received date cannot be after today';
 
 /**
  * "Received on" of "Mark received" (Q-4 a, R-116): a date as typed in either language (parseDateInput, year 2026 by
- * default) → ISO; empty or unreadable → DATE_ERROR; after `today` (the business date, NOW_ISO until R-013) refused.
+ * default) → ISO; empty or unreadable → DATE_ERROR; after `today` (the business date, R-013) refused.
  */
 export function parseReceivedOn(raw: string | undefined, today: string): ParseResult<string> {
   const iso = parseDateInput(raw);

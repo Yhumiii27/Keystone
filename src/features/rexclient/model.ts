@@ -205,9 +205,11 @@ export interface ClientScreenInput {
   schedule: ScheduleLike | null;
   /** The project has a billing plan, and it is an internal one (no client revenue). */
   billing: { internal: boolean } | null;
+  /** R-013: business date ("Raised today"). */
+  today: string;
 }
 
-export function clientScreenView({ code, tab, portal, schedule, billing }: ClientScreenInput, t: T, lang: Lang): ClientScreenView {
+export function clientScreenView({ code, tab, portal, schedule, billing, today }: ClientScreenInput, t: T, lang: Lang): ClientScreenView {
   // The DAL lists the change requests / deliverables waiting for the client and those it decided; the domain derives both lists.
   const all = [...portal.decisions, ...portal.decided];
   const crs: ChangeRequestLike[] = all.flatMap((x) => (x.changeRequest ? [x.changeRequest] : []));
@@ -240,7 +242,7 @@ export function clientScreenView({ code, tab, portal, schedule, billing }: Clien
     summary: portal.contract ? contractSummary(portal.contract, lang).map((r) => ({ k: t(r.k), v: r.v })) : null,
     summaryEmpty: portal.contract ? null : t('No contract recorded for this project'),
     issues: portal.issues.map((i) => {
-      const r = issueRow({ number: i.number, title: i.title, raisedOn: i.raisedOn, status: i.status, response: i.response });
+      const r = issueRow({ number: i.number, title: i.title, raisedOn: i.raisedOn, status: i.status, response: i.response }, today);
       const when = i.answeredOn ? `${t(r.when)} · ${t('Answered')} ${t(fmtDOfIso(i.answeredOn))}` : t(r.when);
       return { id: r.id, title: exactText(r.title, lang), when, status: t(r.status), tagClass: tag(r.tone), response: exactText(r.response, lang) };
     }),

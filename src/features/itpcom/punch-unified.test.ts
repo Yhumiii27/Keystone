@@ -13,6 +13,7 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 import { revalidatePath } from 'next/cache';
 import { PERSONAS, PERSONA_BY_ROLE } from '@/config/personas';
 import type { RoleKey } from '@/config/screens';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { punchOriginFilterOf } from '@/domain/itpcom';
 import { makeT } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
@@ -138,15 +139,15 @@ describe('R-117 · the screen and the export', () => {
   it('Origin filter (All / Inspection / Site), row anchors for the document relations, the NCR column for internal viewers only', async () => {
     const [plan, punch] = await Promise.all([getItpPlan(HLT), listPunchItems(HLT)]);
     const t = makeT('en');
-    const all = itpScreenView({ code: HLT, view: 'punch', plan, punch, machineType: null }, t, 'en').punch!;
+    const all = itpScreenView({ code: HLT, view: 'punch', plan, punch, machineType: null, today: DEMO_TODAY_ISO }, t, 'en').punch!;
     expect(all.origins.map((o) => [o.value, o.label, o.href])).toEqual([
       ['all', 'All', '/projects/HLT-026/itp?view=punch'], ['itp', 'Inspection', '/projects/HLT-026/itp?view=punch&origin=itp'], ['site', 'Site', '/projects/HLT-026/itp?view=punch&origin=site'],
     ]);
     expect([all.origin, all.ncr, all.rows[0].anchor, punchAnchorId('P-01'), punchListHref(HLT, 'site')]).toEqual(['all', true, 'punch-P-01', 'punch-P-01', '/projects/HLT-026/itp?view=punch&origin=site']);
     expect(all.rows.find((r) => r.number === 'P-06')).toMatchObject({ origin: 'Site', siteOrigin: true, ncr: 'NCR-029', owner: 'Client' });
-    const site = itpScreenView({ code: HLT, view: 'punch', plan, punch, origin: 'site', machineType: null }, t, 'en').punch!;
+    const site = itpScreenView({ code: HLT, view: 'punch', plan, punch, origin: 'site', machineType: null, today: DEMO_TODAY_ISO }, t, 'en').punch!;
     expect(site.rows.every((r) => r.siteOrigin)).toBe(true);
-    const client = itpScreenView({ code: HLT, view: 'punch', plan, punch, machineType: null, viewer: { canRecord: false, internal: false, name: 'Nadia Bensaïd', today: '30 Sep' } }, t, 'en').punch!;
+    const client = itpScreenView({ code: HLT, view: 'punch', plan, punch, machineType: null, today: DEMO_TODAY_ISO, viewer: { canRecord: false, internal: false, name: 'Nadia Bensaïd' } }, t, 'en').punch!;
     expect([client.ncr, client.rows.every((r) => r.ncr === null)]).toEqual([false, true]);
     expect([punchOriginFilterOf('site'), punchOriginFilterOf('vigie'), punchOriginFilterOf(undefined)]).toEqual(['site', 'all', 'all']);
     // The form: the client's has no NCR field.

@@ -13,7 +13,8 @@ import 'server-only';
 // the project absent from the file are kept; the logic of every activity present in the file is replaced by the file's.
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { BUILTIN_CALENDARS, WorkCalendar, holidaysOf, type CalendarDef } from '@/domain/calendar';
-import { DEFAULT_DATA_DATE, DEFAULT_PROJECT_CALENDAR, nextBaselineCode } from '@/domain/ch4-defaults';
+import { DEFAULT_PROJECT_CALENDAR, nextBaselineCode } from '@/domain/ch4-defaults';
+import { businessToday } from '@/server/clock';
 import { detectCycle } from '@/domain/cpm';
 import { allocateProjectIdentity } from '@/domain/lifecycle';
 import type { DB, Tx } from '@/server/db/client';
@@ -526,7 +527,7 @@ export async function writeScheduleImport(s: ImportedSchedule, plan: SchedulePla
   }
 
   // Activities.
-  const projectStart = s.start ?? DEFAULT_DATA_DATE;
+  const projectStart = s.start ?? (await businessToday(tx));
   const idOfCode = new Map<string, string>();
   let created = 0;
   let updated = 0;
@@ -623,7 +624,7 @@ async function createImportedProject(tx: Tx, s: ImportedSchedule, plan: Schedule
     [{ id: clientId }] = await tx.insert(clients).values({ name: client, sortOrder: max + 1 }).returning({ id: clients.id });
   }
   const pm = await findPerson(tx, opts.pmName ?? who);
-  const start = s.start ?? plan.activities.map((p) => p.a.actualStart ?? p.a.start).filter((x): x is string => !!x).sort()[0] ?? DEFAULT_DATA_DATE;
+  const start = s.start ?? plan.activities.map((p) => p.a.actualStart ?? p.a.start).filter((x): x is string => !!x).sort()[0] ?? (await businessToday(tx));
   const finish = s.finish ?? plan.activities.map((p) => p.a.finish).filter((x): x is string => !!x).sort().pop() ?? start;
   const [p] = await tx
     .insert(projects)
@@ -763,7 +764,9 @@ async function writeProjectHeader(tx: Tx, s: ImportedSchedule, projectId: string
   const acts = await tx.select().from(activities).where(eq(activities.projectId, projectId)).orderBy(asc(activities.position));
   const nodes = await tx.select().from(wbsNodes).where(eq(wbsNodes.projectId, projectId)).orderBy(asc(wbsNodes.position));
   const [proj] = await tx.select().from(projects).where(eq(projects.id, projectId));
-  const start = proj.plannedStartDate ?? DEFAULT_DATA_DATE;
+  // R-013: without a planned start or a data date, the business date.
+  const today = await businessToday(tx);
+  const start = proj.plannedStartDate ?? today;
   const startMonth = Math.floor(monthIndex(start));
   const rel = (iso: string | null) => round2(monthIndex(iso ?? start) - startMonth);
   const weight = (a: (typeof acts)[number]) => Math.max(1, a.durationDays);
@@ -790,7 +793,7 @@ async function writeProjectHeader(tx: Tx, s: ImportedSchedule, projectId: string
     .where(eq(projects.id, projectId));
   await tx.update(wbsNodes).set({ baselineFinishText: planDateText(blFinish) }).where(and(eq(wbsNodes.projectId, projectId), eq(wbsNodes.level, 0)));
   await tx.insert(projectControls).values({
-    projectId, startMonth, tNow: round1(monthIndex(proj.dataDate ?? DEFAULT_DATA_DATE) - startMonth), floatDays: float, finishText: longDateText(finish), baselineText: longDateText(blFinish),
+    projectId, startMonth, tNow: round1(monthIndex(proj.dataDate ?? today) - startMonth), floatDays: float, finishText: longDateText(finish), baselineText: longDateText(blFinish),
     floatText: `${minus(float)} days`, floatShort: `${minus(float)} d`, critText: `${critPkgs} of ${pkgs.length} packages critical`, milesText: `${done.length} of ${miles.length}`,
     milesSub: `Complete · ${onDate} on baseline date`, baselineSet: bl1?.setOn ? longDateText(bl1.setOn) : '—', reconOrigKeur: budget, reconChangesKeur: 0, reconCrCount: 0,
     reconPendingKeur: 0, reconPendingSub: '—', contingencyKeur: 0, contingencyUsedKeur: 0, ordersPlacedKeur: null,

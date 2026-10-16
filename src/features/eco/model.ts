@@ -79,14 +79,14 @@ function rowAction(a: EcoRowAction, t: T): EcoRowView['action'] {
 
 /** Register view: KPI tiles for the viewer, status chips (links), filtered rows. */
 export function ecoScreenView(
-  input: { ecos: EcoView[]; awaitingMine: number; state: EcoState; viewer: { role: string; title: string } },
+  input: { ecos: EcoView[]; awaitingMine: number; state: EcoState; viewer: { role: string; title: string }; /** R-013: business date ("released this month"). */ today: string },
   tr: T,
   lang: Lang,
 ): EcoScreenView {
   const t = ecoT(tr, lang);
   const { ecos, state } = input;
   const roleKey = input.viewer.role === 'englead' || input.viewer.role === 'quality' || input.viewer.role === 'pm' ? input.viewer.role : null;
-  const kpis = ecoKpis(ecos, { roleKey, roleTitle: input.viewer.title, awaitingMine: input.awaitingMine, lang }).map((k) => ({
+  const kpis = ecoKpis(ecos, { roleKey, roleTitle: input.viewer.title, awaitingMine: input.awaitingMine, lang, asOf: input.today }).map((k) => ({
     label: t(k.label), value: String(k.value), sub: renderTxt(k.sub, t), color: kpiColor(k.lo),
   }));
   const chips = ecoChips(ecos).map((c) => ({ value: c.value ?? 'all', label: t(c.label), count: c.count, href: ecoScreenHref({ status: c.value, eco: state.eco }) }));

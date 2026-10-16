@@ -8,9 +8,10 @@ import { cache } from 'react';
 import {
   RATE_CARD_OBJECT, canEditRates, isExternalRole, parseEffectiveDate, rateActivityText, rateAt, rateChangeText, versionAt, type RateGrid,
 } from '@/domain/hr';
+import { businessToday } from '@/server/clock';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import {
-  STATUS_ISO, addDaysIso, displayOfIso, dowOfIso, hoursMatching, leaveType, slugOf, weekLabelOfIso,
+  addDaysIso, displayOfIso, dowOfIso, hoursMatching, leaveType, slugOf, weekLabelOfIso,
   type HoursMatching, type LeaveType, type RateMultiplierKey,
 } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
@@ -94,8 +95,8 @@ export interface RateCard {
  * Rate card on a date (Rate cards screen and export; default the business date): each role's base rate and each multiplier's
  * factor in force on `on`, with every version. Values are for the roles that see rates only — the screen and the export mask them.
  */
-export async function getRateCard(on: string = STATUS_ISO): Promise<RateCard> {
-  const grid = await getRateGrid();
+export async function getRateCard(date?: string): Promise<RateCard> {
+  const [grid, on] = await Promise.all([getRateGrid(), date ?? businessToday()]);
   return {
     on,
     roles: grid.roles.map((r) => {
@@ -147,6 +148,7 @@ export async function setBaseRate(role: string, rateEur: number, effectiveFrom: 
   if (!parseEffectiveDate(effectiveFrom)) throw new Error('Invalid effective date');
   if (!Number.isFinite(rateEur) || rateEur < 0) throw new Error('Enter a valid hourly rate');
   const db = await getDb();
+  const today = await businessToday();
   await db.transaction(async (tx) => {
     const [r] = await tx.select().from(rateRoles).where(eq(rateRoles.role, role));
     if (!r) throw new Error(`Unknown rate role ${role}`);
@@ -159,7 +161,7 @@ export async function setBaseRate(role: string, rateEur: number, effectiveFrom: 
     });
     if (!done) return;
     const on = displayOfIso(effectiveFrom);
-    const backdated = effectiveFrom < STATUS_ISO;
+    const backdated = effectiveFrom < today;
     await traceRate(tx, actor, rateChangeText(`${role} base`, done.from, rateEur, '€/h', on, backdated), rateActivityText(`${role} base`, on, backdated));
   });
 }
@@ -170,6 +172,7 @@ export async function setMultiplier(key: RateMultiplierKey, factor: number, effe
   if (!parseEffectiveDate(effectiveFrom)) throw new Error('Invalid effective date');
   if (!Number.isFinite(factor) || factor < 0) throw new Error('Enter a valid multiplier');
   const db = await getDb();
+  const today = await businessToday();
   await db.transaction(async (tx) => {
     const [m] = await tx.select().from(rateMultipliers).where(eq(rateMultipliers.key, key));
     if (!m) throw new Error(`Unknown multiplier ${key}`);
@@ -182,7 +185,7 @@ export async function setMultiplier(key: RateMultiplierKey, factor: number, effe
     });
     if (!done) return;
     const on = displayOfIso(effectiveFrom);
-    const backdated = effectiveFrom < STATUS_ISO;
+    const backdated = effectiveFrom < today;
     await traceRate(tx, actor, rateChangeText(`${m.label} multiplier`, done.from, factor, '×', on, backdated), rateActivityText(`${m.label} multiplier`, on, backdated));
   });
 }
@@ -489,14 +492,15 @@ async function requireHoursEditor(tx: Tx, actor: Actor, projectId: string): Prom
 }
 
 /**
- * "Import Lucca hours" (AF.hours): re-stamps the latest import of the project (the prototype only flips the date
- * to 30 Sep 2026; no lines are fetched — the Lucca connector is not modelled).
+ * "Import Lucca hours" (AF.hours): re-stamps the latest import of the project with the business date (R-013; the prototype
+ * only flipped the date to 30 Sep 2026; no lines are fetched — the Lucca connector is not modelled).
  */
 export async function markHoursImported(
   projectCode: string, input: { analyticCode?: string; matchingMode?: HoursMatching; importedOn?: string }, actor: Actor,
 ): Promise<void> {
   const actorName = actor.name;
   const db = await getDb();
+  const importedOn = input.importedOn ?? (await businessToday());
   await db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);
     await requireHoursEditor(tx, actor, p.id);
@@ -504,7 +508,7 @@ export async function markHoursImported(
     if (!imp) return;
     await tx
       .update(hoursImports)
-      .set({ importedOn: input.importedOn ?? '2026-09-30', analyticCode: input.analyticCode ?? imp.analyticCode, matchingMode: input.matchingMode ?? imp.matchingMode, updatedAt: new Date() })
+      .set({ importedOn, analyticCode: input.analyticCode ?? imp.analyticCode, matchingMode: input.matchingMode ?? imp.matchingMode, updatedAt: new Date() })
       .where(eq(hoursImports.id, imp.id));
     const person = await findPerson(tx, actorName);
     await writeAudit(tx, { actorName: person ? nameOf(person) : actorName, actorPersonId: person?.id, objectRef: `Hours ${imp.analyticCode}`, change: 'Lucca import', area: 'Hours', entityType: 'hours_import', entityId: imp.id, projectId: p.id });
