@@ -8,7 +8,7 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-16 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 101 faits, 26 en cours, 58 à faire, sur 185 points.
+**Avancement** : 101 faits, 28 en cours, 56 à faire, sur 185 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
@@ -513,9 +513,9 @@ Grille de taux par rôle (taux de base × coefficients) avec date d’effet et h
 Capacité = horaire contractuel de chacun (35 h par défaut, temps partiels respectés) − absences validées − fériés ; charge = affectations du planning et demandes approuvées ; même règle dans Ressources, Congés, what-if et Priorisation, le ratio par M€ ne servant qu’aux propositions sans planning. Aujourd’hui seul l’écran Congés déduit congés et fériés (sur 35 h fixes) ; les autres comptent 40 h fixes, lisent des pourcentages de charge semés et des capacités de service statiques, et Priorisation (pool × 40 h) diffère de Ressources (department_capacities).  
 *Attend : Absences Cursus (R-031) et source de l’horaire contractuel ; confirmation de la source de capacité (DELIVERY-6 §8 A-12) · Sources : R-1, L-5b, A-12, 06 OQ3, 03 OQ9, 11 §7 #16, DELIVERY-2.md §6, DELIVERY-3.md §5, DELIVERY-6.md §8 A-12*
 
-**R-085 · Afficher les plans de charge sur 8 semaines glissantes** — *Prochaine étape · non commencé · effort M*  
+**R-085 · Afficher les plans de charge sur 8 semaines glissantes** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 9)**  
 Ressources, Congés et what-if doivent partir de la semaine en cours, avec boutons précédent et suivant. Aujourd’hui ils montrent toujours les 8 semaines semées (28 sept. – 16 nov. 2026).  
-*Avancement : Débloqué par l’horloge réelle (R-013, livraison 9). · Attend : Horloge réelle (R-013) · Sources : R-7, S-4, S-7, 06 OQ15*
+*Avancement : Débloqué par l’horloge réelle (R-013, livraison 9). En cours (livraison 9). · Attend : Horloge réelle (R-013) · Sources : R-7, S-4, S-7, 06 OQ15*
 
 **R-091 · Préciser les règles des scénarios what-if et des brouillons** — *À décider · attend le responsable produit · effort M*  
 À trancher : ignorer un levier déjà demandé depuis une suggestion ou un autre scénario, approbation formelle d’un scénario, scénarios basés sur une référence, horizon au-delà de 8 semaines ; pour les brouillons, visibilité par le CP, demandeur à l’envoi, envoi par les achats, filtre « Brouillons ».  
@@ -635,9 +635,9 @@ Rendre la grille modifiable : une étape (fin de montage, pré-mise en service, 
 La table client_communications et son DAL sont conservés mais inaccessibles : faut-il les supprimer par une nouvelle migration ? Une « décision client » est aujourd’hui toute décision d’une réunion externe, revues fournisseurs comprises : faut-il un indicateur « client présent » ?  
 *Attend : Réponse du responsable produit (DELIVERY-6 §8 D-5) · Sources : D-5, DELIVERY-6.md §3, §8 D-5, docs/delivery-6/notes-admin-settings.md §2.3, §4 points 1-2*
 
-**R-121 · Alerter le CP à J-15 sur un prérequis client non confirmé** — *Plus tard · partiel · effort M*  
+**R-121 · Alerter le CP à J-15 sur un prérequis client non confirmé** — *Plus tard · partiel · effort M* · **en cours (Livraison 9)**  
 Un contrôle quotidien envoie une notification au CP et lui propose un risque pré-rempli à confirmer quand un prérequis client n’est pas confirmé à J-15. Aujourd’hui le retard n’est qu’un indicateur à l’écran.  
-*Avancement : Débloqué par l’horloge réelle (R-013, livraison 9). · Attend : Notifications par événement (R-015) et tâches planifiées (R-006) · Sources : D-4, X-6a, 10 OQ6, DELIVERY-5.md §7*
+*Avancement : Débloqué par l’horloge réelle (R-013, livraison 9). En cours (livraison 9). · Attend : Notifications par événement (R-015) et tâches planifiées (R-006) · Sources : D-4, X-6a, 10 OQ6, DELIVERY-5.md §7*
 
 **~~R-112 · Saisir les résultats d’inspection ITP et ouvrir une NC Vigie en cas d’échec~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 7)**  
 La qualité et le responsable ingénierie enregistrent le résultat (conforme, non conforme) et, pour un point témoin, le représentant client présent (Q-6a). Un résultat non conforme ouvre le formulaire NC de Vigie pré-rempli (projet, inspection, système, article) et le numéro Vigie s’affiche sur l’inspection à la synchro (Q-6b). Aujourd’hui les résultats sont en lecture seule.  
@@ -895,6 +895,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-16 — Livraison 9 : lots R-085 (plans de charge sur 8 semaines glissantes, R-7) et R-121 (alerte J-15 sur prérequis client et proposition de risque, D-4) démarrés.
 - 2026-10-16 — Livraison 9, lot « horloge » : R-013 fait — Keystone suit la date réelle sur une base de production (la démonstration reste au 25 sept. 2026, réglable par KEYSTONE_CLOCK).
 - 2026-10-15 — PR #2 fusionnée dans main par le responsable produit : les livraisons 1 à 8 sont sur main (R-001 fait).
 - 2026-10-15 — Nouveau besoin du responsable produit (R-185) : un projet peut fournir plusieurs équipements (par exemple une EMP et plusieurs MEMU) ; l’approche projet devra s’adapter — à cadrer avant la livraison 9.
