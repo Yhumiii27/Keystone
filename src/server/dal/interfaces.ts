@@ -5,7 +5,7 @@ import 'server-only';
 // (open or late → received, the provided date stamped with the received date the user confirmed — today by default, never
 // after today; Q-4 a, R-116) and "Freeze" (received → frozen, the provided date kept).
 import { and, asc, eq } from 'drizzle-orm';
-import { monthNowOf } from '@/domain/clock';
+import { monthNowOf, yearOfIso } from '@/domain/clock';
 import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { daysToNeed, effectiveInterfaceStatus as effective } from '@/domain/team';
@@ -26,12 +26,12 @@ export interface InterfaceRow {
   otherParty: string;
   dataExpected: string;
   neededBy: string;
-  /** "15 Oct" ("14 Jan 2027" outside 2026: a typed need date may fall in another year). */
+  /** "15 Oct" ("14 Jan 2027" outside the business year — R-013: a typed need date may fall in another year). */
   neededText: string;
   /** Days from the prototype's now to the need date (negative = late). */
   daysToNeed: number;
   providedOn: string | null;
-  /** "12 Sep" ("… 2027" outside 2026) or "—". */
+  /** "12 Sep" ("… 2027" outside the business year, R-013) or "—". */
   providedText: string;
   /** Stored status and the effective one (Late derived). */
   storedStatus: InterfaceStatus;
@@ -45,7 +45,10 @@ export interface InterfaceRow {
 /** Interfaces of a project, register order (added ones last). */
 export async function listInterfaces(projectCode: string): Promise<InterfaceRow[]> {
   const db = await getDb();
-  const now = monthNowOf(await businessToday());
+  const today = await businessToday();
+  const now = monthNowOf(today);
+  // R-013: the dates show their year outside the business year.
+  const year = yearOfIso(today);
   const rows = await db
     .select({ i: projectInterfaces, ownerShort: persons.shortName })
     .from(projectInterfaces)
@@ -57,8 +60,8 @@ export async function listInterfaces(projectCode: string): Promise<InterfaceRow[
     const status = effective(i.status, i.neededBy, now);
     return {
       number: i.number, title: i.title, keystoneSide: i.keystoneSide, keystoneSideLabel: keystoneSide.label(i.keystoneSide), otherParty: i.otherParty,
-      dataExpected: i.dataExpected, neededBy: i.neededBy, neededText: shortDateYearOfIso(i.neededBy), daysToNeed: daysToNeed(i.neededBy, now),
-      providedOn: i.providedOn, providedText: i.providedOn ? shortDateYearOfIso(i.providedOn) : '—', storedStatus: i.status, status, statusLabel: interfaceStatus.label(status),
+      dataExpected: i.dataExpected, neededBy: i.neededBy, neededText: shortDateYearOfIso(i.neededBy, year), daysToNeed: daysToNeed(i.neededBy, now),
+      providedOn: i.providedOn, providedText: i.providedOn ? shortDateYearOfIso(i.providedOn, year) : '—', storedStatus: i.status, status, statusLabel: interfaceStatus.label(status),
       owner: ownerShort ?? i.ownerName,
     };
   });
@@ -132,7 +135,7 @@ async function transition(tx: Tx, projectCode: string, number: string, from: Int
   const actor = await findPerson(tx, actorName);
   await writeAudit(tx, {
     actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: number,
-    change: `status: ${interfaceStatus.label(effective(i.status, i.neededBy, now))} → ${interfaceStatus.label(to)}${receivedOn ? ` · received ${shortDateYearOfIso(receivedOn)}` : ''}`,
+    change: `status: ${interfaceStatus.label(effective(i.status, i.neededBy, now))} → ${interfaceStatus.label(to)}${receivedOn ? ` · received ${shortDateYearOfIso(receivedOn, yearOfIso(today))}` : ''}`,
     area: 'Interfaces', entityType: 'interface', entityId: i.id, projectId: p.id,
   });
 }

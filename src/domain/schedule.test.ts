@@ -2,7 +2,7 @@
 // planRows / planKpis logic (design lines 3988–4046) transcribed verbatim and run on the 6 projects with data.
 import { describe, expect, it } from 'vitest';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
-import { isoOfDisplayDate, splitActual } from '@/server/db/codes';
+import { isoOfDemoDate, splitActual } from '@/server/db/codes';
 import { money } from '@/lib/format';
 import {
   DEFAULT_COLLAPSED, PROGRESS_STATUS, applyBudget, buildPlanRows, clampPct, costBar, createsCycle, drawerStatus, dueText,
@@ -27,7 +27,7 @@ function inputsOf(code: string) {
     const fi = splitActual(a.f);
     return {
       id: a.id, wbs: a.w, name: a.n, durationDays: a.d, start: s.text, startActual: s.actual, finish: fi.text, finishActual: fi.actual,
-      startDate: isoOfDisplayDate(s.text), baselineFinish: a.bl, variance: a.v, constraint: a.c, violated: !!a.viol, totalFloat: a.tf,
+      startDate: isoOfDemoDate(s.text), baselineFinish: a.bl, variance: a.v, constraint: a.c, violated: !!a.viol, totalFloat: a.tf,
       pct: a.pc, owner: a.o, budget: a.b[0], actual: a.b[1], eac: a.b[2], preds: a.p,
     };
   });
@@ -304,10 +304,12 @@ describe('predecessor syntax and validation', () => {
 
 describe('add forms and inline edits', () => {
   it('working days between the default dates (5 Oct → 30 Oct 2026)', () => {
-    expect(workingDaysBetween('5 Oct 2026', '30 Oct 2026')).toBe(18);
-    expect(workingDaysBetween('30 Oct 2026', '5 Oct 2026')).toBe(20);
-    expect(workingDaysBetween('soon', '30 Oct 2026')).toBe(20);
-    expect(workingDaysBetween('1 Oct 2026', '2 Oct 2026')).toBe(1);
+    expect(workingDaysBetween('5 Oct 2026', '30 Oct 2026', 2026)).toBe(18);
+    expect(workingDaysBetween('30 Oct 2026', '5 Oct 2026', 2026)).toBe(20);
+    expect(workingDaysBetween('soon', '30 Oct 2026', 2026)).toBe(20);
+    expect(workingDaysBetween('1 Oct 2026', '2 Oct 2026', 2026)).toBe(1);
+    // R-013: a year-less date is in the business year — 28 Dec 2027 → 3 Jan 2028 across the year end.
+    expect(workingDaysBetween('28 Dec', '3 Jan 2028', 2027)).toBe(4);
   });
   it('numbering', () => {
     expect(nextActivityCode(1, 0, new Set(['A1010']))).toBe('A1901');

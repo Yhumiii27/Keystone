@@ -213,7 +213,7 @@ describe('meetings screen — interactions played on both sides', () => {
   const fixNoDue = (exp: any, lang: Lang) => {
     const t = makeT(lang);
     const notYetDue = (due: string) => {
-      const iso = parseDateInput(due);
+      const iso = parseDateInput(due, 2026);
       return !!iso && iso >= DEMO_TODAY_ISO;
     };
     let n = 0;
@@ -231,7 +231,7 @@ describe('meetings screen — interactions played on both sides', () => {
     const inWeek = (iso: string, now: number) => Math.abs(monthIndexOfIso(iso) - now) <= 0.25;
     const now = monthIndexOfIso(DEMO_TODAY_ISO);
     for (const c of exp.cards) {
-      const iso = parseDateInput(String(c[6]).split(' · ')[0]);
+      const iso = parseDateInput(String(c[6]).split(' · ')[0], 2026);
       if (iso && inWeek(iso, PROTOTYPE_PG_NOW) !== inWeek(iso, now)) exp.kpis[0][1] = String(+exp.kpis[0][1] + (inWeek(iso, now) ? 1 : -1));
     }
   };

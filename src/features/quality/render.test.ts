@@ -4,6 +4,7 @@
 // from Keystone's register — in EN and FR, for the six projects with data: register switch, KPI tiles, chips, rows, both
 // drawers, the client's view, and a project without data. Deliberate deviations are listed and asserted explicitly.
 import { beforeAll, describe, expect, it } from 'vitest';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
@@ -119,7 +120,7 @@ describe('NCR log — EN and FR', () => {
       const data = await screen(code);
       for (const n of data.ncrs) {
         const g = G[lang].ncrDrawers[code === 'HLT-026' ? n.number : `${code}:${n.number}`];
-        const d = ncrDrawerView({ code, ncr: n, state: { ...S0, ncr: n.number }, viewer: DIRECTOR, ecoByPart: data.ecoByPart, ordersByPart: data.ordersByPart }, makeT(lang), lang);
+        const d = ncrDrawerView({ today: DEMO_TODAY_ISO, code, ncr: n, state: { ...S0, ncr: n.number }, viewer: DIRECTOR, ecoByPart: data.ecoByPart, ordersByPart: data.ordersByPart }, makeT(lang), lang);
         expect({
           head: d.head, title: d.title, sev: d.severity, sevClass: d.severityClass, status: d.status, tagClass: d.statusClass, root: d.rootCause, action: d.action,
           steps: d.steps, meta: d.record.map((r) => ({ k: r.k, v: r.v })), sevSeg: d.severities, next: d.move?.label ?? null,
@@ -137,7 +138,7 @@ describe('NCR log — EN and FR', () => {
 
   it('drawer links: activity, part record, open ECO of the part, purchase orders carrying it, impacted deliverable', async () => {
     const data = await screen('HLT-026');
-    const view = (num: string) => ncrDrawerView({ code: 'HLT-026', ncr: data.ncrs.find((n) => n.number === num)!, state: S0, viewer: DIRECTOR, ecoByPart: data.ecoByPart, ordersByPart: data.ordersByPart }, makeT('en'), 'en');
+    const view = (num: string) => ncrDrawerView({ today: DEMO_TODAY_ISO, code: 'HLT-026', ncr: data.ncrs.find((n) => n.number === num)!, state: S0, viewer: DIRECTOR, ecoByPart: data.ecoByPart, ordersByPart: data.ordersByPart }, makeT('en'), 'en');
     const d30 = view('NCR-030');
     expect([d30.activityHref, d30.partHref, d30.eco]).toEqual(['/projects/HLT-026/plan?act=A1430', '/reference/parts?part=FD-DET-OPT', { number: 'ECO-2026-015', href: '/reference/eco?eco=ECO-2026-015' }]);
     expect(d30.orders.every((o) => o.href === `/projects/HLT-026/orders?po=${o.number}`)).toBe(true);
@@ -155,9 +156,9 @@ describe('NCR log — EN and FR', () => {
     expect(ro.rows.every((r) => r.action === null && r.vigieUrl)).toBe(true);
     const data = await screen('HLT-026');
     const ver = { ...data.ncrs.find((n) => n.number === 'NCR-026')!, status: 'verification' as const, statusLabel: 'Verification' };
-    const q = ncrDrawerView({ code: 'HLT-026', ncr: ver, state: S0, viewer: { ...DIRECTOR, role: 'quality' }, ecoByPart: {}, ordersByPart: {} }, makeT('fr'), 'fr');
+    const q = ncrDrawerView({ today: DEMO_TODAY_ISO, code: 'HLT-026', ncr: ver, state: S0, viewer: { ...DIRECTOR, role: 'quality' }, ecoByPart: {}, ordersByPart: {} }, makeT('fr'), 'fr');
     expect([q.move, q.verify, q.verifyHint]).toEqual([null, { closeLabel: 'Passer à Clôturée', backLabel: 'Retour à l’action corrective' }, null]);
-    const p = ncrDrawerView({ code: 'HLT-026', ncr: ver, state: S0, viewer: PM, ecoByPart: {}, ordersByPart: {} }, makeT('en'), 'en');
+    const p = ncrDrawerView({ today: DEMO_TODAY_ISO, code: 'HLT-026', ncr: ver, state: S0, viewer: PM, ecoByPart: {}, ordersByPart: {} }, makeT('en'), 'en');
     expect([p.move, p.verify, p.verifyHint]).toEqual([null, null, 'Verification and closure are decided by the quality manager.']);
   });
 });
@@ -205,7 +206,7 @@ describe('Deliverables register — EN and FR', () => {
     for (const d of data.deliverables) {
       for (const [role, viewer] of [['pm', PM], ['client', CLIENT]] as const) {
         const g = G[lang].dlvDrawers[d.number][role];
-        const v = dlvDrawerView({ code: 'HLT-026', deliverable: d, state: { ...S0, tab: 'dlv', dlv: d.number }, viewer, documents: data.documents }, makeT(lang), lang);
+        const v = dlvDrawerView({ today: DEMO_TODAY_ISO, code: 'HLT-026', deliverable: d, state: { ...S0, tab: 'dlv', dlv: d.number }, viewer, documents: data.documents }, makeT(lang), lang);
         expect({
           head: v.head, title: v.title, status: v.status, tagClass: v.statusClass, steps: v.steps, raci: v.raci, meta: v.record.map((r) => ({ k: r.k, v: r.v })),
           hint: v.hint, canSubmit: v.canSubmit, canAccept: v.canDecide,
@@ -219,7 +220,7 @@ describe('Deliverables register — EN and FR', () => {
         expect(v.planHref).toBe('/projects/HLT-026/plan');
       }
     }
-    const d15 = dlvDrawerView({ code: 'HLT-026', deliverable: data.deliverables.find((d) => d.number === 'D-015')!, state: S0, viewer: PM, documents: data.documents }, makeT(lang), lang);
+    const d15 = dlvDrawerView({ today: DEMO_TODAY_ISO, code: 'HLT-026', deliverable: data.deliverables.find((d) => d.number === 'D-015')!, state: S0, viewer: PM, documents: data.documents }, makeT(lang), lang);
     expect(d15.record.find((r) => r.links)?.links).toEqual([{ label: 'NCR-029', href: '/projects/HLT-026/quality?ncr=NCR-029' }]);
     expect([d15.document, d15.canLinkDocument, d15.depositType]).toEqual([null, true, null]);
     expect(d15.documentOptions.length).toBeGreaterThan(0);
@@ -230,7 +231,7 @@ describe('Deliverables register — EN and FR', () => {
     const data = await screen('NDC-031');
     for (const d of data.deliverables) {
       const g = G.en.dlvDrawers[`NDC-031:${d.number}`].pm;
-      const v = dlvDrawerView({ code: 'NDC-031', deliverable: d, state: S0, viewer: PM, documents: data.documents }, makeT('en'), 'en');
+      const v = dlvDrawerView({ today: DEMO_TODAY_ISO, code: 'NDC-031', deliverable: d, state: S0, viewer: PM, documents: data.documents }, makeT('en'), 'en');
       expect(v.raci.map((r) => r.who)).toEqual(g.raci.map((r: any) => r.who));
       expect(v.record.map((r) => ({ k: r.k, v: r.v }))).toEqual(g.meta);
     }

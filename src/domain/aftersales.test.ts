@@ -8,7 +8,7 @@
 // claims and the warranty status is the one in force (the seed's figures do not move: every claim is of 2026).
 import { describe, expect, it } from 'vitest';
 import PROTO from '@/server/prototype/prototype-data.json';
-import { claimCoverage, claimStatus, interventionStatus, isoOfDisplayDate, ncrSeverity, warrantyStatus, type ZoneCode } from '@/server/db/codes';
+import { claimCoverage, claimStatus, interventionStatus, isoOfDemoDate, ncrSeverity, warrantyStatus, type ZoneCode } from '@/server/db/codes';
 import { money } from '@/lib/format';
 import GOLDEN from './aftersales.golden.json';
 import {
@@ -23,7 +23,7 @@ const P = PROTO as any;
 const LO = 'var(--color-accent-300)';
 const OK = 'var(--color-text)';
 const ZONES: [string, ZoneCode | null][] = [['all', null], ['euna', 'euna'], ['afr', 'afr'], ['apac', 'apac']];
-const iso = (s: string) => (s && s !== '—' ? isoOfDisplayDate(s) : null);
+const iso = (s: string) => (s && s !== '—' ? isoOfDemoDate(s) : null);
 const day = (i: string | null) => {
   if (!i) return '—';
   const [y, m, d] = i.split('-').map(Number);
@@ -146,24 +146,24 @@ describe('add-forms (AF fleet / AF sav, afSubmit 5121)', () => {
 
   it('"Add machine" reads the prototype inputs as the prototype recorded them (dates parsed)', () => {
     const { NEW_MACHINE, BARE_MACHINE } = G.inputs;
-    const a = parseNewMachine(NEW_MACHINE, TYPES);
+    const a = parseNewMachine(NEW_MACHINE, TYPES, 2026);
     expect(a).toEqual({ ok: true, value: { name: NEW_MACHINE.name, machineType: 'MEMU', client: 'Port authority', site: 'Abidjan · quay 1', deliveredOn: '2026-10-01', warrantyEndOn: '2028-09-30' } });
     const added = G.en.added.machine.fleet.rows.at(-1);
     expect([a.ok && day(a.value.deliveredOn), a.ok && day(a.value.warrantyEndOn), added.status]).toEqual([added.delivered, added.wend, 'In warranty']);
-    const b = parseNewMachine(BARE_MACHINE, TYPES);
+    const b = parseNewMachine(BARE_MACHINE, TYPES, 2026);
     expect(b).toEqual({ ok: true, value: { name: BARE_MACHINE.name, machineType: 'EMP', client: 'Transit BU', site: null, deliveredOn: null, warrantyEndOn: null } });
     expect(G.en.added.bareMachine.fleet.rows.at(-1)).toMatchObject({ type: 'EMP', delivered: '—', wend: '—', site: '' });
-    expect(parseNewMachine({ ...NEW_MACHINE, delivered: '14/12/2025', warranty: '13 déc. 2027' }, TYPES)).toMatchObject({ ok: true, value: { deliveredOn: '2025-12-14', warrantyEndOn: '2027-12-13' } });
+    expect(parseNewMachine({ ...NEW_MACHINE, delivered: '14/12/2025', warranty: '13 déc. 2027' }, TYPES, 2026)).toMatchObject({ ok: true, value: { deliveredOn: '2025-12-14', warrantyEndOn: '2027-12-13' } });
   });
 
   it('"Add machine" refuses what the prototype accepted', () => {
-    expect(parseNewMachine({ name: ' ', client: 'x' }, TYPES)).toEqual({ ok: false, error: 'Machine is required' });
-    expect(parseNewMachine({ name: 'x', client: '' }, TYPES)).toEqual({ ok: false, error: 'Client is required' });
-    expect(parseNewMachine({ name: 'x', client: 'y', type: 'CRANE' }, TYPES)).toEqual({ ok: false, error: 'Unknown machine type' });
-    expect(parseNewMachine({ name: 'x', client: 'y', delivered: 'soon' }, TYPES)).toEqual({ ok: false, error: 'Enter the delivery date as a date, e.g. 14 Dec 2025' });
-    expect(parseNewMachine({ name: 'x', client: 'y', warranty: '31 Feb 2027' }, TYPES)).toEqual({ ok: false, error: 'Enter the warranty end as a date, e.g. 13 Dec 2027' });
-    expect(parseNewMachine({ name: 'x', client: 'y', delivered: '1 Oct 2026', warranty: '1 Sep 2026' }, TYPES)).toEqual({ ok: false, error: 'Warranty end is before delivery' });
-    expect(parseNewMachine({ name: 'x'.repeat(201), client: 'y' }, TYPES)).toEqual({ ok: false, error: 'Text is too long' });
+    expect(parseNewMachine({ name: ' ', client: 'x' }, TYPES, 2026)).toEqual({ ok: false, error: 'Machine is required' });
+    expect(parseNewMachine({ name: 'x', client: '' }, TYPES, 2026)).toEqual({ ok: false, error: 'Client is required' });
+    expect(parseNewMachine({ name: 'x', client: 'y', type: 'CRANE' }, TYPES, 2026)).toEqual({ ok: false, error: 'Unknown machine type' });
+    expect(parseNewMachine({ name: 'x', client: 'y', delivered: 'soon' }, TYPES, 2026)).toEqual({ ok: false, error: 'Enter the delivery date as a date, e.g. 14 Dec 2025' });
+    expect(parseNewMachine({ name: 'x', client: 'y', warranty: '31 Feb 2027' }, TYPES, 2026)).toEqual({ ok: false, error: 'Enter the warranty end as a date, e.g. 13 Dec 2027' });
+    expect(parseNewMachine({ name: 'x', client: 'y', delivered: '1 Oct 2026', warranty: '1 Sep 2026' }, TYPES, 2026)).toEqual({ ok: false, error: 'Warranty end is before delivery' });
+    expect(parseNewMachine({ name: 'x'.repeat(201), client: 'y' }, TYPES, 2026)).toEqual({ ok: false, error: 'Text is too long' });
   });
 
   it('"New warranty claim": defaults (first machine, Minor, Warranty, first owner), codes, refusals', () => {

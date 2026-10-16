@@ -14,6 +14,7 @@ import { getLaborCost, getPortfolioLaborCost, getProjectTeam, getResourcePool, g
 import { zoneLabel } from '@/server/dal/shell';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
+import { yearOfIso } from '@/domain/clock';
 import { col, compact, filterLine, isoOf, kpiSheet, param, sheet } from './common';
 import { projectFilter } from './scope';
 import { canViewDepartmentApprovals } from '@/domain/rights';
@@ -41,9 +42,9 @@ function requestSheet(ctx: ExportContext, name: string, rows: ResourceRequestRow
     col('sent', t('Sent'), 'date'), col('response', t('Response'), 'text', 36), col('task', t('Task'), 'text', 9),
   ], rows.map((r) => ({
     id: r.id, project: r.projectCode, title: dataText(r.title, ctx.lang), resource: t(r.resource), department: t(r.department), activity: r.activity ? `${r.activity.code} · ${dataText(r.activity.name, ctx.lang)}` : '',
-    hours: r.hours, start: isoOf(r.start) ?? t(r.start), due: isoOf(r.due) ?? t(r.due), priority: t(r.priority === 'high' ? 'High' : r.priority === 'low' ? 'Low' : 'Medium'), status: t(r.statusLabel),
+    hours: r.hours, start: isoOf(r.start, yearOfIso(ctx.today)) ?? t(r.start), due: isoOf(r.due, yearOfIso(ctx.today)) ?? t(r.due), priority: t(r.priority === 'high' ? 'High' : r.priority === 'low' ? 'Low' : 'Medium'), status: t(r.statusLabel),
     // S-7: a draft (status "Draft") has no sent date — its stored date is when the what-if levelling drafted it.
-    requestedBy: r.requestedBy, sent: isSentRequest(r) ? (isoOf(r.sent) ?? isoOf(r.sentText) ?? t(r.sentText)) : null, response: t(r.response), task: r.taskId ?? '',
+    requestedBy: r.requestedBy, sent: isSentRequest(r) ? (isoOf(r.sent, yearOfIso(ctx.today)) ?? isoOf(r.sentText, yearOfIso(ctx.today)) ?? t(r.sentText)) : null, response: t(r.response), task: r.taskId ?? '',
   })));
 }
 

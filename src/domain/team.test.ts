@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import PROTO from '@/server/prototype/prototype-data.json';
 import GOLDEN from '@/server/dal/delivery3.golden.json';
-import { isoOfDisplayDate, interfaceStatus, keystoneSide, stakeholderType } from '@/server/db/codes';
+import { isoOfDemoDate, interfaceStatus, keystoneSide, stakeholderType } from '@/server/db/codes';
 import {
   KEYSTONE_SIDES, STAKEHOLDER_TYPES, daysToNeed, effectiveInterfaceStatus, interfaceRowState, interfacesBadge, isStaleContact, parseNeedDate,
   parseNewInterface, parseNewStakeholder, raciGrid, stakeholderInitials, stakeholderTone, summariseInterfaces, summariseStakeholders,
@@ -22,7 +22,7 @@ const IFC: IfcTuple[] = P.INTERFACES['HLT-026'];
 const RACI: { roles: string[]; rows: string[][] } = P.RACI['HLT-026'];
 const raci = { columns: RACI.roles, rows: RACI.rows };
 
-const iso = (d: string) => isoOfDisplayDate(d)!;
+const iso = (d: string) => isoOfDemoDate(d)!;
 /** The prototype's now (`PG_NOW`, ≈ 30 Sep 2026): the golden comparison passes it explicitly since R-013. */
 const PG_NOW = 8.97;
 /** Stored status as the seed keeps it ("Late" in the prototype tuple is derived → stored open). */
@@ -155,18 +155,18 @@ describe('add-forms', () => {
   });
 
   it('"New interface": required interface, other party, data and need date; Process by default; first TEAM owner', () => {
-    expect(parseNewInterface({ title: 'Port Wi-Fi coverage', a: 'automation', b: 'Client · IT', data: 'Coverage map', needed: '2 Nov', owner: 'Sami Haddad' }, team)).toEqual({
+    expect(parseNewInterface({ title: 'Port Wi-Fi coverage', a: 'automation', b: 'Client · IT', data: 'Coverage map', needed: '2 Nov', owner: 'Sami Haddad' }, team, 2026)).toEqual({
       ok: true, value: { title: 'Port Wi-Fi coverage', keystoneSide: 'automation', otherParty: 'Client · IT', dataExpected: 'Coverage map', neededBy: '2026-11-02', owner: 'Sami Haddad' },
     });
-    expect(parseNewInterface({ title: 'T', b: 'B', data: 'D', needed: '15/10' }, team)).toMatchObject({ ok: true, value: { keystoneSide: 'process', neededBy: '2026-10-15', owner: 'Romain Aubert' } });
-    expect(parseNewInterface({ title: 'T', a: 'Electrical', b: 'B', data: 'D', needed: '1 Oct' }, team)).toMatchObject({ ok: true, value: { keystoneSide: 'electrical' } });
-    expect(parseNewInterface({ title: '', b: 'B', data: 'D', needed: '1 Oct' }, team)).toEqual({ ok: false, error: 'Interface is required' });
-    expect(parseNewInterface({ title: 'T', b: '', data: 'D', needed: '1 Oct' }, team)).toEqual({ ok: false, error: 'Other party is required' });
-    expect(parseNewInterface({ title: 'T', b: 'B', data: ' ', needed: '1 Oct' }, team)).toEqual({ ok: false, error: 'Data expected is required' });
-    expect(parseNewInterface({ title: 'T', b: 'B', data: 'D', needed: '' }, team)).toEqual({ ok: false, error: 'Needed by is required' });
-    expect(parseNewInterface({ title: 'T', b: 'B', data: 'D', needed: 'soon' }, team)).toEqual({ ok: false, error: 'Enter the need date as a date, e.g. 15 Oct' });
-    expect(parseNewInterface({ title: 'T', a: 'Civil', b: 'B', data: 'D', needed: '1 Oct' }, team)).toEqual({ ok: false, error: 'Unknown Keystone side' });
-    expect(parseNewInterface({ title: 'T', b: 'B', data: 'D', needed: '1 Oct', owner: 'Someone' }, team)).toEqual({ ok: false, error: 'Unknown owner' });
+    expect(parseNewInterface({ title: 'T', b: 'B', data: 'D', needed: '15/10' }, team, 2026)).toMatchObject({ ok: true, value: { keystoneSide: 'process', neededBy: '2026-10-15', owner: 'Romain Aubert' } });
+    expect(parseNewInterface({ title: 'T', a: 'Electrical', b: 'B', data: 'D', needed: '1 Oct' }, team, 2026)).toMatchObject({ ok: true, value: { keystoneSide: 'electrical' } });
+    expect(parseNewInterface({ title: '', b: 'B', data: 'D', needed: '1 Oct' }, team, 2026)).toEqual({ ok: false, error: 'Interface is required' });
+    expect(parseNewInterface({ title: 'T', b: '', data: 'D', needed: '1 Oct' }, team, 2026)).toEqual({ ok: false, error: 'Other party is required' });
+    expect(parseNewInterface({ title: 'T', b: 'B', data: ' ', needed: '1 Oct' }, team, 2026)).toEqual({ ok: false, error: 'Data expected is required' });
+    expect(parseNewInterface({ title: 'T', b: 'B', data: 'D', needed: '' }, team, 2026)).toEqual({ ok: false, error: 'Needed by is required' });
+    expect(parseNewInterface({ title: 'T', b: 'B', data: 'D', needed: 'soon' }, team, 2026)).toEqual({ ok: false, error: 'Enter the need date as a date, e.g. 15 Oct' });
+    expect(parseNewInterface({ title: 'T', a: 'Civil', b: 'B', data: 'D', needed: '1 Oct' }, team, 2026)).toEqual({ ok: false, error: 'Unknown Keystone side' });
+    expect(parseNewInterface({ title: 'T', b: 'B', data: 'D', needed: '1 Oct', owner: 'Someone' }, team, 2026)).toEqual({ ok: false, error: 'Unknown owner' });
     expect(KEYSTONE_SIDES.map((c) => keystoneSide.label(c))).toEqual(['Process', 'Mechanical', 'Electrical', 'Automation', 'Site']);
   });
 
@@ -176,6 +176,8 @@ describe('add-forms', () => {
       ['14 Jan ’27', '2027-01-14'], ['20 juillet', '2026-07-20'], ['2 juin', '2026-06-02'], ['15/10/2026', '2026-10-15'], ['5.11', '2026-11-05'], ['2026-10-15', '2026-10-15'],
       ['31 Feb', null], ['2026-13-01', null], ['Oct 15', null], ['', null], ['32 Oct', null],
     ];
-    for (const [input, out] of cases) expect([input, parseNeedDate(input)]).toEqual([input, out]);
+    for (const [input, out] of cases) expect([input, parseNeedDate(input, 2026)]).toEqual([input, out]);
+    // R-013: typed on 5 Jan 2027, "14 Jan" is 14 Jan 2027; a stated year stays.
+    expect([parseNeedDate('14 Jan', 2027), parseNeedDate('14/01', 2027), parseNeedDate('12 Mar 2026', 2027)]).toEqual(['2027-01-14', '2027-01-14', '2026-03-12']);
   });
 });

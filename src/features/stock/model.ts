@@ -77,8 +77,8 @@ export interface StockScreenView {
   moves: MoveView[];
 }
 
-/** Display date of a stock line / movement day ("12 Sep" → FR "12 sept."). */
-const dayT = (iso: string, t: T) => t(fmtDOfIso(iso));
+/** Display date of a stock line / movement day ("12 Sep" → FR "12 sept."; the year outside the business year `year`, R-013). */
+const dayT = (iso: string, t: T, year: number) => t(fmtDOfIso(iso, year));
 
 const pinOf = (pins: Record<string, InstalledBasePin[]>, ref: string) => {
   const ps = pins[ref];
@@ -98,6 +98,8 @@ export const X3_OFF_NOTE = 'Sage X3 not connected · movements are recorded in K
 export function stockScreenView(
   input: {
     rows: StockRow[]; locations: StorageLocationRow[]; sync: X3StockSync | null; moves: MovementRow[]; pins: Record<string, InstalledBasePin[]>; state: StockUrlState;
+    /** Business year (R-013): dates outside it show their year. */
+    year: number;
     /** Stock values at purchase price shown (R-046, NEW-D2-1: director, PMs, procurement); masked otherwise. Default true. */
     prices?: boolean;
     /** R-034: the simulated X3 exchange is available (demo database); false = "Sage X3 not connected". Default true. */
@@ -133,13 +135,13 @@ export function stockScreenView(
     kpis,
     chips,
     chipValue: state.loc ?? '',
-    rows: shown.map((r) => rowView(r, pins, state, t, lang, prices)),
+    rows: shown.map((r) => rowView(r, pins, state, t, lang, input.year, prices)),
     empty: shown.length ? null : t('No stock line matches'),
     moves: moves.slice(0, 8).map((m, i) => moveView(m, t, lang, i)),
   };
 }
 
-function rowView(r: StockRow, pins: Record<string, InstalledBasePin[]>, state: StockUrlState, t: T, lang: Lang, prices = true): StockRowView {
+function rowView(r: StockRow, pins: Record<string, InstalledBasePin[]>, state: StockUrlState, t: T, lang: Lang, year: number, prices = true): StockRowView {
   const selected = state.stock === r.id;
   const pin = pinOf(pins, r.ref);
   const avail = availableQty(r);
@@ -159,7 +161,7 @@ function rowView(r: StockRow, pins: Record<string, InstalledBasePin[]>, state: S
     value: prices ? moneyEur(lineValueEur(r), lang) : PRICE_MASK,
     source: t(r.sourceLabel),
     sourceTone: r.source === 'x3' ? 'neutral' : 'accent',
-    last: dayT(r.lastMovementOn, t),
+    last: dayT(r.lastMovementOn, t, year),
     selected,
     href: stockHref({ ...state, stock: selected ? null : r.id, part: null }),
   };
@@ -206,6 +208,8 @@ export interface StockDrawerView {
 export function stockDrawerView(
   input: {
     detail: StockPositionDetail; locations: StorageLocationRow[]; pins: Record<string, InstalledBasePin[]>; state: StockUrlState; prices?: boolean;
+    /** Business year (R-013): dates outside it show their year. */
+    year: number;
     /** Delivery 7: the current project, its plan's activities, and the viewer's rights on reservations (R-098 / R-099). */
     projectCode?: string | null; activities?: { code: string; name: string }[]; canRelease?: boolean; canOverride?: boolean;
     /** R-034: the simulated X3 exchange is available (demo database). Default true. */
@@ -235,7 +239,7 @@ export function stockDrawerView(
       { k: t('Available'), v: qtyText(availableQty(d), lang) },
       { k: t('Minimum level'), v: d.minQty ? String(d.minQty) : '—' },
       { k: t('Unit cost (last purchase)'), v: input.prices !== false ? moneyEur(d.unitCostEur, lang) : PRICE_MASK },
-      { k: t('Last movement'), v: dayT(d.lastMovementOn, t) },
+      { k: t('Last movement'), v: dayT(d.lastMovementOn, t, input.year) },
     ],
     // "Release reservation" (R-099) only on a reserved line, for the reserving project's PM or the director.
     ops: lineStockOps(input.canRelease ? d.reserved : 0).map((op) => ({ value: op, label: t(stockOperation.label(op)), qtyLabel: t(quantityLabel(op)) })),

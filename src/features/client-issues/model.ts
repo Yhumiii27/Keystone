@@ -5,6 +5,7 @@
 import type { FormDef } from '@/components/app/form-def';
 import { TAG_CLASS } from '@/components/app/tones';
 import { ISSUE_ACKNOWLEDGEMENT, hasRealAnswer } from '@/domain/client-issues';
+import { yearOfIso } from '@/domain/clock';
 import { ISSUE_TONE, issueRow } from '@/domain/rexclient';
 import { exactText } from '@/features/rexclient/i18n';
 import type { Lang, T } from '@/i18n/translate';
@@ -50,15 +51,16 @@ const answerForm = (t: T, title: string, submit: string, required: boolean, curr
 
 /** `opts.today`: the business date ("Raised today", R-013). */
 export function clientIssuesView(rows: readonly ClientIssueHandlingRow[], opts: { canHandle: boolean; selected: string | null; today: string }, t: T, lang: Lang): ClientIssuesView {
+  const year = yearOfIso(opts.today);
   return {
     rows: rows.map((i) => {
       const r = issueRow(i, opts.today);
       const real = hasRealAnswer(i.response);
       const handling = i.handledBy
         ? [
-            `${t('Taken in charge')} ${t(fmtDOfIso(i.takenOn ?? i.raisedOn))} · ${i.handledBy}`,
-            i.answeredOn ? `${t('Answered')} ${t(fmtDOfIso(i.answeredOn))}` : '',
-            i.closedOn ? `${t('Closed on')} ${t(fmtDOfIso(i.closedOn))}` : '',
+            `${t('Taken in charge')} ${t(fmtDOfIso(i.takenOn ?? i.raisedOn, year))} · ${i.handledBy}`,
+            i.answeredOn ? `${t('Answered')} ${t(fmtDOfIso(i.answeredOn, year))}` : '',
+            i.closedOn ? `${t('Closed on')} ${t(fmtDOfIso(i.closedOn, year))}` : '',
           ].filter(Boolean).join(' · ')
         : null;
       const current = real ? i.response : '';

@@ -7,6 +7,7 @@ import 'server-only';
 // prototype's month index of the business date (as the interfaces' "in n d"); the warranty status in force (R-145)
 // compares ISO dates with the same business date.
 import { asc, eq, inArray } from 'drizzle-orm';
+import { yearOfIso } from '@/domain/clock';
 import { addedWarrantyStatus, warrantyEnding, warrantyInForce } from '@/domain/aftersales';
 import { DEFAULT_WARRANTY_MONTHS, MAX_MACHINES_PER_DELIVERY, asBuiltConfiguration, isDeliveredStage, machineNames, warrantyMonthsOf } from '@/domain/claims';
 import { businessToday } from '@/server/clock';
@@ -228,7 +229,7 @@ export async function addMachine(input: NewMachineInput, actor: Actor): Promise<
       warrantyStatus: addedWarrantyStatus(warrantyEndOn, today), position: existing.reduce((m, e) => Math.max(m, e.pos + 1), 0),
     }).returning({ id: machines.id });
     await trace(tx, await whoIs(tx, actor), {
-      objectRef: number, change: `machine added · ${name} · ${client}${warrantyEndOn ? ` · warranty to ${fmtDOfIso(warrantyEndOn)}` : ''}`, area: 'Installed base', entityType: 'machine',
+      objectRef: number, change: `machine added · ${name} · ${client}${warrantyEndOn ? ` · warranty to ${fmtDOfIso(warrantyEndOn, yearOfIso(today))}` : ''}`, area: 'Installed base', entityType: 'machine',
       entityId: row.id, activity: { text: `Added ${number} ${name} to the installed base`, kind: 'change' },
     });
     return number;
@@ -363,7 +364,7 @@ export async function registerDeliveredMachines(projectCode: string, input: Regi
       }).returning({ id: machines.id });
       await tx.insert(machinePartRevisions).values(config.map((c, position) => ({ machineId: row.id, partRef: c.ref, revision: c.revision, position })));
       await trace(tx, who, {
-        objectRef: number, change: `machine delivered · ${p.code} · ${name} · ${config.length} parts as built · warranty to ${fmtDOfIso(input.warrantyEndOn)}`, area: 'Installed base',
+        objectRef: number, change: `machine delivered · ${p.code} · ${name} · ${config.length} parts as built · warranty to ${fmtDOfIso(input.warrantyEndOn, yearOfIso(today))}`, area: 'Installed base',
         entityType: 'machine', entityId: row.id, projectId: p.id,
       });
       numbers.push(number);

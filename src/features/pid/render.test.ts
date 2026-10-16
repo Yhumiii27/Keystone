@@ -39,7 +39,7 @@ beforeAll(async () => {
 }, 60_000);
 
 const screen = (lang: Lang, state: Partial<PidState> = {}) =>
-  pidScreenView({ code: CODE, data: DATA, state: { ...DEFAULT_PID_STATE, ...state }, docHref: '/projects/HLT-026/documents?doc=PID-HLT-026' }, makeT(lang), lang);
+  pidScreenView({ code: CODE, data: DATA, state: { ...DEFAULT_PID_STATE, ...state }, docHref: '/projects/HLT-026/documents?doc=PID-HLT-026', year: 2026 }, makeT(lang), lang);
 
 describe('P&ID screen — EN and FR', () => {
   it.each(LANGS)('%s: KPI tiles', (lang) => {

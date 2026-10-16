@@ -14,7 +14,7 @@ const fixture = (name: string) => parseTranscript(fs.readFileSync(path.join(__di
 
 describe('local transcript analyser — prototype transcripts', () => {
   it('MTG-119: three decisions, three actions; owners from the speakers, dues only when said', () => {
-    const r = analyseLocally({ text: T['MTG-119'], meetingTitle: 'Engineering coordination — automation', meetingDate: '2026-10-01', participants: ['A. Girard', 'C. Morvan', 'S. Haddad', 'P. Noguès'] });
+    const r = analyseLocally({ text: T['MTG-119'], meetingTitle: 'Engineering coordination — automation', meetingDate: '2026-10-01', today: '2026-09-25', participants: ['A. Girard', 'C. Morvan', 'S. Haddad', 'P. Noguès'] });
     expect(r.language).toBe('en');
     expect(rows(r.proposals)).toEqual([
       ['decision', 'Freeze the I/O list on rev D by Friday', null, null, 'C. Morvan'],
@@ -29,14 +29,14 @@ describe('local transcript analyser — prototype transcripts', () => {
   });
 
   it('MTG-120 / MTG-121: "Decision:" / "Decision —" labels, "<Org> to <verb>" with the invitee organisation', () => {
-    const r120 = analyseLocally({ text: T['MTG-120'], meetingTitle: 'Supplier review', meetingDate: '2026-10-03', participants: ['F. Bertrand', 'C. Morvan', 'K. Lindqvist (Nordvolt)'] });
+    const r120 = analyseLocally({ text: T['MTG-120'], meetingTitle: 'Supplier review', meetingDate: '2026-10-03', today: '2026-09-25', participants: ['F. Bertrand', 'C. Morvan', 'K. Lindqvist (Nordvolt)'] });
     expect(rows(r120.proposals)).toEqual([
       ['action', 'Issue the mapping rev B', 'K. Lindqvist', '10 Oct', 'K. Lindqvist'],
       ['action', 'Confirm crate dimensions', 'Nordvolt', null, 'F. Bertrand'],
       ['decision', 'FAT confirmed on 24 October with Keystone witness', null, null, 'F. Bertrand'],
       ['action', 'Send the crate drawings', 'K. Lindqvist', '15 Oct', 'K. Lindqvist'],
     ]);
-    const r121 = analyseLocally({ text: T['MTG-121'], meetingTitle: 'Kick-off', meetingDate: '2026-09-30', participants: ['S. Perrin', 'P. Noguès', 'D. Roux'] });
+    const r121 = analyseLocally({ text: T['MTG-121'], meetingTitle: 'Kick-off', meetingDate: '2026-09-30', today: '2026-09-25', participants: ['S. Perrin', 'P. Noguès', 'D. Roux'] });
     expect(rows(r121.proposals)).toEqual([
       ['action', 'Issue P&ID rev C for the cooling loop', 'P. Noguès', '10 Oct', 'P. Noguès'],
       ['action', "Confirm the window with the client's operations team", 'D. Roux', null, 'D. Roux'],
@@ -51,7 +51,7 @@ describe('local transcript analyser — fixtures', () => {
   const participants = ['R. Aubert', 'L. Fabre', 'J. Wagner'];
 
   it('French VTT: "on valide", "je vais … pour le 9 octobre", "<Prénom> doit", risque, "Est-ce que … ?"', () => {
-    const r = analyseLocally({ text: fixture('chantier-fr.vtt'), meetingTitle: 'Levage', meetingDate: '2026-10-07', participants });
+    const r = analyseLocally({ text: fixture('chantier-fr.vtt'), meetingTitle: 'Levage', meetingDate: '2026-10-07', today: '2026-09-25', participants });
     expect(rows(r.proposals)).toEqual([
       ['decision', 'On valide le passage à la grue de 300 tonnes pour le levage du 14 octobre', null, null, 'Léa Fabre'],
       ['action', 'Envoyer le plan de levage révisé', 'Julien Wagner', '9 Oct', 'Julien Wagner'],
@@ -62,8 +62,13 @@ describe('local transcript analyser — fixtures', () => {
     expect(r).toMatchObject({ language: 'fr', summary: 'Décisions — On valide le passage à la grue de 300 tonnes pour le levage du 14 octobre. 2 actions (Julien Wagner). 1 risque signalé. 1 question à traiter.' });
   });
 
+  it('R-013: the due text is written against the business year (a 2026 meeting read in 2027 keeps its year)', () => {
+    const r = analyseLocally({ text: fixture('chantier-fr.vtt'), meetingTitle: 'Levage', meetingDate: '2026-10-07', today: '2027-01-05', participants });
+    expect(r.proposals.find((p) => p.type === 'action')).toMatchObject({ due: '9 Oct 2026', dueDate: '2026-10-09' });
+  });
+
   it('French SRT: future tense, "Décision :" label, "pourrait retarder", "Action pour <Nom> :" with "avant le 20 octobre"', () => {
-    const r = analyseLocally({ text: fixture('revue-fr.srt'), meetingTitle: 'Revue', meetingDate: '2026-10-07', participants: [] });
+    const r = analyseLocally({ text: fixture('revue-fr.srt'), meetingTitle: 'Revue', meetingDate: '2026-10-07', today: '2026-09-25', participants: [] });
     expect(rows(r.proposals)).toEqual([
       ['action', 'J’enverrai le P&ID rév. C', 'Pierre Noguès', '16 Oct', 'Pierre Noguès'],
       ['decision', 'On garde la redondance N+1 pendant les travaux', null, null, 'Sophie Perrin'],
@@ -73,7 +78,7 @@ describe('local transcript analyser — fixtures', () => {
   });
 
   it('English text: "we agreed to", "I\'ll … by October 9", "H. Sauvage will … before 13/10"; a lone capitalised word is no owner; injected instructions are just text', () => {
-    const r = analyseLocally({ text: fixture('grue-en.txt'), meetingTitle: 'Crane', meetingDate: '2026-10-07', participants });
+    const r = analyseLocally({ text: fixture('grue-en.txt'), meetingTitle: 'Crane', meetingDate: '2026-10-07', today: '2026-09-25', participants });
     expect(rows(r.proposals)).toEqual([
       ['decision', 'Use the 300 t crane for the lift on 14 October', null, null, 'Léa Fabre'],
       ['action', 'Send the revised lifting plan', 'Julien Wagner', '9 Oct', 'Julien Wagner'],
@@ -84,13 +89,13 @@ describe('local transcript analyser — fixtures', () => {
   });
 
   it('meeting-flow phrases are not actions; nothing found → an explicit summary', () => {
-    const r = analyseLocally({ text: 'R. Aubert: We will start with safety. On va commencer par la sécurité. Let me go through the agenda.', meetingTitle: 'x', meetingDate: '2026-10-07', participants });
+    const r = analyseLocally({ text: 'R. Aubert: We will start with safety. On va commencer par la sécurité. Let me go through the agenda.', meetingTitle: 'x', meetingDate: '2026-10-07', today: '2026-09-25', participants });
     expect(r.proposals).toEqual([]);
     expect(r.summary).toBe('No decision, action, risk or question found in the transcript.');
   });
 
   it('is deterministic', () => {
-    const input = { text: fixture('chantier-fr.vtt'), meetingTitle: 'Levage', meetingDate: '2026-10-07', participants };
+    const input = { text: fixture('chantier-fr.vtt'), meetingTitle: 'Levage', meetingDate: '2026-10-07', today: '2026-09-25', participants };
     expect(analyseLocally(input)).toEqual(analyseLocally(input));
   });
 });

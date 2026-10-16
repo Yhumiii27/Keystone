@@ -17,6 +17,8 @@ export interface ApprovalContext {
   project: ProjectRow | null;
   /** Money in titles is formatted for the language (prototype `f()`). */
   lang: Lang;
+  /** Business date (R-013): the item dates show their year outside its year. */
+  today: string;
 }
 
 export interface ApprovalProvider {

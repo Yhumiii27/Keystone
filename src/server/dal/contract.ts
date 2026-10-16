@@ -14,6 +14,7 @@ import {
   INVOICE_BLOCKED_MESSAGE, canSendAmendment, canSignAmendment, contractFigures, invoiceBlocked, isSignedAmendment, plannedMilestoneAmount, termsOfSheet,
   type ContractFigures, type ContractInput,
 } from '@/domain/contract';
+import { yearOfIso } from '@/domain/clock';
 import { BASE_CURRENCY, currencyOf, documentCurrencyError, eurRate, projectFxOf, type CurrencyCode, type ProjectFx } from '@/domain/currency';
 import { isPaymentRule, paymentDueOn, paymentTermsText, termsOfText, type PaymentRule } from '@/domain/payment-terms';
 import { businessToday } from '@/server/clock';
@@ -255,6 +256,9 @@ export async function getContract(projectCode: string): Promise<ProjectContract 
     stateText: b.releasedOn ? `Released ${displayOfIso(b.releasedOn)}` : `Valid → ${dash(b.validUntil, displayOfIso)}`,
   }));
   const invoiceOf = new Map(fig.invoices.map((i) => [i.milestone, i]));
+  // R-013: invoice dates show their year outside the business year.
+  const year = yearOfIso(today);
+  const dayText = (iso: string) => shortDateYearOfIso(iso, year);
   const milestones: ContractMilestoneRow[] = fig.milestones.map((m, k) => {
     const i = invoiceOf.get(m.number);
     const stored = invByMs.get(ms[k].id);
@@ -263,9 +267,9 @@ export async function getContract(projectCode: string): Promise<ProjectContract 
       contractualDue: m.contractualDue, dueText: dash(m.contractualDue, displayOfIso), condition: m.condition, status: m.status,
       statusLabel: paymentMilestoneStatus.label(m.status), late: m.late, blocked: m.blocked,
       invoice: i ? {
-        number: i.number, milestoneNumber: m.number, milestoneLabel: m.label, issuedOn: i.issuedOn, issuedText: shortDateYearOfIso(i.issuedOn),
-        amountKeur: i.amountKeur, currency: currencyOf(stored?.currency ?? currency), dueOn: i.dueOn, dueText: shortDateYearOfIso(i.dueOn),
-        paidOn: i.paidOn, paidText: dash(i.paidOn, shortDateYearOfIso), note: i.note, status: i.status, statusLabel: customerInvoiceStatus.label(i.status), overdue: i.overdue,
+        number: i.number, milestoneNumber: m.number, milestoneLabel: m.label, issuedOn: i.issuedOn, issuedText: dayText(i.issuedOn),
+        amountKeur: i.amountKeur, currency: currencyOf(stored?.currency ?? currency), dueOn: i.dueOn, dueText: dayText(i.dueOn),
+        paidOn: i.paidOn, paidText: dash(i.paidOn, dayText), note: i.note, status: i.status, statusLabel: customerInvoiceStatus.label(i.status), overdue: i.overdue,
       } : null,
     };
   });
@@ -345,6 +349,8 @@ export interface CashContract {
   }[];
   /** Orders placed not yet in actual cost (project controls), null → the planned-value rule. */
   openCommit: number | null;
+  /** Business year (R-013): the milestone texts above show their year outside it. */
+  year: number;
 }
 
 /** Shape consumed by `cashRecovery()` — retires the Budget screen's prototype read of CONTRACTS. */
@@ -369,9 +375,10 @@ export async function getCashContract(projectCode: string): Promise<CashContract
       invoiced: m.invoice ? m.invoice.issuedText : null, paid: m.invoice?.paidOn ? m.invoice.paidText : null,
       amount: m.amountKeur * rate,
       // Expected payment: the invoice's due date, else the contractual date + the rule (an undated milestone has none).
-      paymentDue: m.invoice ? shortDateYearOfIso(m.invoice.dueOn) : m.contractualDue ? shortDateYearOfIso(paymentDueOn(m.contractualDue, terms)) : null,
+      paymentDue: m.invoice ? shortDateYearOfIso(m.invoice.dueOn, yearOfIso(c.today)) : m.contractualDue ? shortDateYearOfIso(paymentDueOn(m.contractualDue, terms), yearOfIso(c.today)) : null,
     })),
     openCommit: pc?.orders ?? null,
+    year: yearOfIso(c.today),
   };
 }
 

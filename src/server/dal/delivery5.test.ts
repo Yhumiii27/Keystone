@@ -77,8 +77,8 @@ describe('quality — NCRs (Vigie mirror) and deliverables (07 §2.3)', () => {
     const ncrs = await listNcrs(code);
     expect(ncrs.map((n) => ({
       id: n.number, title: n.title, sev: n.severityLabel, src: n.sourceLabel, actText: n.activityCode ? `${n.activityCode}${n.activityName ? ' · ' + n.activityName : ''}` : '—',
-      owner: n.owner, due: n.dueOn ? fmtDOfIso(n.dueOn) : '—', costText: n.costKeur ? f(n.costKeur) : '—', status: n.statusLabel, stepIdx: n.stepIndex,
-      canAdvance: n.open, nextLabel: ncrStatus.label(NCR_FLOW[Math.min(5, n.stepIndex + 1)]), raised: n.raisedBy, date: fmtDOfIso(n.raisedOn),
+      owner: n.owner, due: n.dueOn ? fmtDOfIso(n.dueOn, 2026) : '—', costText: n.costKeur ? f(n.costKeur) : '—', status: n.statusLabel, stepIdx: n.stepIndex,
+      canAdvance: n.open, nextLabel: ncrStatus.label(NCR_FLOW[Math.min(5, n.stepIndex + 1)]), raised: n.raisedBy, date: fmtDOfIso(n.raisedOn, 2026),
     }))).toEqual(g.ncrRows.map((r: any) => ({ ...r, date: day(r.date) })));
     expect([['All', ncrs.length], ...['minor', 'major', 'critical'].map((s) => [s[0].toUpperCase() + s.slice(1), ncrs.filter((n) => n.severity === s).length])]).toEqual(g.ncrChips);
     const open = ncrs.filter((n) => n.open);
@@ -96,9 +96,9 @@ describe('quality — NCRs (Vigie mirror) and deliverables (07 §2.3)', () => {
     for (const n of ncrs) {
       const g = G.ncrDrawers[n.number];
       expect([
-        ['Raised by', `${n.raisedBy} · ${fmtDOfIso(n.raisedOn)}`], ['Owner', n.owner], ['Source', n.sourceLabel],
+        ['Raised by', `${n.raisedBy} · ${fmtDOfIso(n.raisedOn, 2026)}`], ['Owner', n.owner], ['Source', n.sourceLabel],
         ['Linked activity', n.activityCode ? `${n.activityCode} · ${n.activityName}` : '—'], ['Part', n.partRef ?? '—'], ['Deliverable impacted', n.deliverableNumber ?? '—'],
-        ['ISO 9001 clause', n.isoClause], ['Cost of non-quality', n.costKeur ? f(n.costKeur) : '—'], ['Action due', n.dueOn ? fmtDOfIso(n.dueOn) : '—'],
+        ['ISO 9001 clause', n.isoClause], ['Cost of non-quality', n.costKeur ? f(n.costKeur) : '—'], ['Action due', n.dueOn ? fmtDOfIso(n.dueOn, 2026) : '—'],
       ], n.number).toEqual(g.meta.map((m: any) => [m.k, day(m.v)]));
       expect([n.rootCause, n.action, `Move to ${ncrStatus.label(NCR_FLOW[Math.min(5, n.stepIndex + 1)])}`]).toEqual([g.root, g.action, g.nextLabel]);
       const eco = n.partRef ? ecos[n.partRef] ?? '' : '';

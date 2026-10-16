@@ -145,12 +145,13 @@ export function deliveriesView(
   q: { status: ReceiptStatus | null; receipt: string | null },
   t: T,
   lang: Lang,
+  year: number,
   opts: { vigieLinks?: boolean } = {},
 ): DeliveriesView {
   const { receipts } = data;
   const open = q.receipt ? (receipts.find((r) => r.number === q.receipt) ?? null) : null;
   const rows = filterReceipts(receipts, q.status).map((r) => {
-    const v = receiptRowView(r, lang);
+    const v = receiptRowView(r, lang, year);
     const selected = v.id === open?.number;
     return {
       id: v.id, href: deliveriesHref(code, { status: q.status, receipt: selected ? null : v.id }), selected,
@@ -161,7 +162,7 @@ export function deliveriesView(
   });
   let drawer: DrawerView | null = null;
   if (open) {
-    const d = receiptDrawerView(open, lang);
+    const d = receiptDrawerView(open, lang, year);
     drawer = {
       id: d.id, head: `${d.id} · ${d.po}`, po: d.po, supplier: dataText(d.supplier, lang), status: statusText(d.status, t, lang), tone: d.tone,
       lines: d.lines.map((l) => ({
@@ -217,7 +218,7 @@ export interface AnnounceOrderLike {
 }
 
 /** "Announce a delivery" (SC-4): order still expecting goods · expected on (blank = the order's date) · carrier · put-away. */
-export function announceFormDef(orders: readonly AnnounceOrderLike[], putAway: { locations: readonly string[]; defaultLocation: string }, t: T, lang: Lang): FormDef {
+export function announceFormDef(orders: readonly AnnounceOrderLike[], putAway: { locations: readonly string[]; defaultLocation: string }, t: T, lang: Lang, year: number): FormDef {
   return {
     title: t('Announce a delivery'),
     submit: t('Announce'),
@@ -227,7 +228,7 @@ export function announceFormDef(orders: readonly AnnounceOrderLike[], putAway: {
         id: 'po', label: t('Purchase order'), type: 'select', span: 'full',
         options: orders.map((o) => ({
           value: o.number,
-          label: `${o.number} · ${dataText(o.supplier, lang)} · ${o.lines.map((l) => `${l.ref} × ${l.qty.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')}`).join(', ')}${o.expectedOn ? ` · ${t(fmtDOfIso(o.expectedOn))}` : ''}`,
+          label: `${o.number} · ${dataText(o.supplier, lang)} · ${o.lines.map((l) => `${l.ref} × ${l.qty.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')}`).join(', ')}${o.expectedOn ? ` · ${t(fmtDOfIso(o.expectedOn, year))}` : ''}`,
         })),
       },
       { id: 'expected', label: t('Expected on'), type: 'text', placeholder: t('Expected date of the order') },

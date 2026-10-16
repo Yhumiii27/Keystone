@@ -17,6 +17,7 @@ import {
 import {
   defaultPlannedFinish, defaultPlannedStart, instantiateTemplate, monthOfIso, templateActivitiesText, templateWbsText,
 } from '@/domain/project-template';
+import { yearOfIso } from '@/domain/clock';
 import { activityDateText } from '@/domain/schedule-rollup';
 import { getDb } from '@/server/db/client';
 import {
@@ -435,8 +436,8 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
       const [root] = await tx
         .insert(wbsNodes)
         .values({
-          projectId, code: '1', name, level: 0, position: 0, startText: plan.startDate ? activityDateText(plan.startDate) : null,
-          finishText: plan.finishDate ? activityDateText(plan.finishDate) : null, startDate: plan.startDate, finishDate: plan.finishDate, ownerPersonId: pmId,
+          projectId, code: '1', name, level: 0, position: 0, startText: plan.startDate ? activityDateText(plan.startDate, yearOfIso(today)) : null,
+          finishText: plan.finishDate ? activityDateText(plan.finishDate, yearOfIso(today)) : null, startDate: plan.startDate, finishDate: plan.finishDate, ownerPersonId: pmId,
         })
         .returning({ id: wbsNodes.id });
       let position = 1;
@@ -455,8 +456,8 @@ export async function createWizardProject(input: WizardCreateInput): Promise<Cre
             .insert(activities)
             .values({
               projectId, wbsNodeId: node.id, code: a.code, name: a.name, durationDays: a.durationDays,
-              startText: activityDateText(a.startDate), startActual: false, finishText: activityDateText(a.finishDate), finishActual: false,
-              startDate: a.startDate, finishDate: a.finishDate, baselineFinishText: activityDateText(a.finishDate), baselineFinishDate: a.finishDate,
+              startText: activityDateText(a.startDate, yearOfIso(today)), startActual: false, finishText: activityDateText(a.finishDate, yearOfIso(today)), finishActual: false,
+              startDate: a.startDate, finishDate: a.finishDate, baselineFinishText: activityDateText(a.finishDate, yearOfIso(today)), baselineFinishDate: a.finishDate,
               varianceDays: 0, constraintViolated: false, totalFloatDays: 0, percentComplete: 0, ownerPersonId: pmId,
               budgetKeur: a.budgetKeur, actualKeur: 0, eacKeur: a.budgetKeur, packageName: pkg.name, position: position++,
             })

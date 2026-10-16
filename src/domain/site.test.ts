@@ -9,7 +9,7 @@ import { DEMO_TODAY_ISO } from '@/domain/clock';
 import PROTO from '@/server/prototype/prototype-data.json';
 import { parseDateInput } from '@/domain/contract';
 import {
-  confirmStatus, cursusVerdict, equipmentSource, hseStatus, isoOfDisplayDate, punchOwnerParty, type ConfirmStatus, type HseStatus,
+  confirmStatus, cursusVerdict, equipmentSource, hseStatus, isoOfDemoDate, punchOwnerParty, type ConfirmStatus, type HseStatus,
 } from '@/server/db/codes';
 import GOLDEN from './site.golden.json';
 import {
@@ -22,7 +22,7 @@ const G = GOLDEN as any;
 const P = PROTO as any;
 const LO = 'var(--color-accent-300)';
 const OK = 'var(--color-text)';
-const iso = (d: string) => isoOfDisplayDate(d)!;
+const iso = (d: string) => isoOfDemoDate(d)!;
 
 /** The prototype's site data as the DAL returns it, with optional status overrides (siteOv / siteEqOv). */
 function facts(ov: { pre?: Record<number, ConfirmStatus>; eq?: Record<number, ConfirmStatus> } = {}): SiteFacts {
@@ -188,7 +188,7 @@ describe('computed literals of the prototype (10 OQ7)', () => {
 });
 
 describe('Daily report form (AF.site)', () => {
-  const parse = (v: Record<string, string>) => parseDailyReportForm(v, { today: '2026-09-25', parseDate: (s) => parseDateInput(s) });
+  const parse = (v: Record<string, string>) => parseDailyReportForm(v, { today: '2026-09-25', parseDate: (s) => parseDateInput(s, 2026) });
   // Record of AF.site (the prototype form); NEW-SITE-2 'a' (R-122) removes its HSE field in Keystone (src/features/site/model.ts).
   it('the prototype form: date, weather, headcount, progress (required), HSE', () => {
     expect(G.form.fields.map((f: any[]) => [f[0], f[1], f[2], f[4] ?? 0])).toEqual([

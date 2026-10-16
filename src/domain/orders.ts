@@ -15,7 +15,7 @@ import { screenHref } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
 import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import type { PartStatus, PoOrigin, PoStatus } from '@/server/db/codes';
-import { isoOfWhen, type ApprovalItem } from './approvals';
+import type { ApprovalItem } from './approvals';
 
 // ── Status machine (PO_FLOW 3414) ──────────────────────────────────────────────────────────────────────
 
@@ -255,7 +255,7 @@ export function poApprovalItems(queue: readonly PoQueueEntry[], code: string, la
       sub: o.refs.join(', '),
       who: o.submittedBy ?? '',
       when,
-      whenIso: o.orderedOn ?? isoOfWhen(when),
+      whenIso: o.orderedOn,
       href: orderHref(code, o.number),
       decision: { mode: 'purchase-order', projectCode: code, number: o.number },
     };

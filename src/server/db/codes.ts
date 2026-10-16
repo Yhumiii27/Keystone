@@ -167,9 +167,10 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
 /**
  * Prototype display date → ISO 'YYYY-MM-DD'. Accepts "05 Jan", "3 Apr", "14 Jan ’27", "12 Mar 2026" and the
- * activity " A" (actual) suffix. Year defaults to 2026 (the data set's year). Returns null when unparseable.
+ * activity " A" (actual) suffix. A date without a year is in `defaultYear`: the business date's year at runtime (R-013),
+ * the data set's year in seeds (`isoOfDemoDate`). Returns null when unparseable.
  */
-export function isoOfDisplayDate(text: string | null | undefined, defaultYear = 2026): string | null {
+export function isoOfDisplayDate(text: string | null | undefined, defaultYear: number): string | null {
   const parts = splitActual(text ?? '').text.split(/\s+/).filter(Boolean);
   if (parts.length < 2) return null;
   const d = parseInt(parts[0], 10);
@@ -182,6 +183,14 @@ export function isoOfDisplayDate(text: string | null | undefined, defaultYear = 
   if (isNaN(d) || m < 0 || isNaN(y) || d < 1 || d > 31) return null;
   return `${y}-${pad(m + 1)}-${pad(d)}`;
 }
+
+/** The text reads as a display date ("2 Oct", "5 Jan 2027"), whatever its year (the year plays no part in the check). */
+export const isDisplayDate = (text: string | null | undefined) => isoOfDisplayDate(text, 2000) != null;
+
+/** Year of the demo data set (DEMO_TODAY_ISO, src/domain/clock.ts): its prototype texts without a year are in 2026. */
+export const DEMO_YEAR = 2026;
+/** Seeds and prototype snapshots only: `isoOfDisplayDate` with the data set's year — never for user input or live reads. */
+export const isoOfDemoDate = (text: string | null | undefined) => isoOfDisplayDate(text, DEMO_YEAR);
 
 /** ISO date → "12 Jan 2026" (fmtDY form, no zero padding; English — translate with t()). */
 export function displayOfIso(iso: string): string {
@@ -244,6 +253,17 @@ export const riskLevelOf = (score: number): RiskLevel => (score >= 15 ? 'critica
 // ── Status report (AF.trends, 04 §2.5) ────────────────────────────────────────────────────────────────
 export type ReportPeriod = 'month' | 'quarter' | 'since_start';
 export const reportPeriod = codec<ReportPeriod, string>([['month', 'September 2026'], ['quarter', 'Q3 2026'], ['since_start', 'Since project start']]);
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+/**
+ * Label of a report period at the business date `today` (R-013): "September 2026" / "Q3 2026" / "Since project start" — the
+ * codec's labels are the demo data set's (25 Sep 2026). English; translated by t() (FR rules "Septembre 2026", "T3 2026").
+ */
+export function reportPeriodLabel(period: ReportPeriod, today: string): string {
+  const [y, m] = today.split('-').map((x) => parseInt(x, 10));
+  if (period === 'month') return `${MONTH_NAMES[m - 1]} ${y}`;
+  if (period === 'quarter') return `Q${Math.ceil(m / 3)} ${y}`;
+  return reportPeriod.label(period);
+}
 export type ReportAudience = 'steering' | 'client' | 'internal';
 export const reportAudience = codec<ReportAudience, string>([['steering', 'Steering committee'], ['client', 'Client'], ['internal', 'Internal']]);
 export type ReportSections = 'full' | 'summary' | 'kpis';
@@ -431,10 +451,12 @@ export function monthIndexOfIso(iso: string): number {
 /** Prototype `mIdx(x) < PG_NOW` on an ISO date (null → false): before the month index of `today` (R-013). */
 export const beforePgNow = (iso: string | null | undefined, today: string) => !!iso && monthIndexOfIso(iso) < monthIndexOfIso(today);
 
-/** "12 Mar" (current year 2026) / "14 Jan 2027" — the prototype's short date with the year only when ≠ 2026 (`fmtInvD`). */
-export function shortDateYearOfIso(iso: string): string {
-  const [y] = iso.split('-');
-  return y === '2026' ? shortDateOfIso(iso) : displayOfIso(iso);
+/**
+ * "12 Mar" (in the business year `year`) / "14 Jan 2027" — the prototype's short date with the year only outside the
+ * current year (`fmtInvD`, which compared with 2026; R-013: the business date's year).
+ */
+export function shortDateYearOfIso(iso: string, year: number): string {
+  return +iso.slice(0, 4) === year ? shortDateOfIso(iso) : displayOfIso(iso);
 }
 
 // ── Documents — Codex index (docs/spec/11 §2.7, §3.10; 10 §4–5) ─────────────────────────────────────
@@ -604,10 +626,14 @@ export function stockMoveInstant(count: number, today: string): Date {
   return parisInstant(today, `${hh}:${mm}`);
 }
 
-/** "12 Mar" (2026) / "13 Feb ’27" — the prototype's `fmtD` on an ISO date (purchase orders, receipts generated in Keystone). */
-export function fmtDOfIso(iso: string): string {
+/**
+ * "12 Mar" / "13 Feb ’27" — the prototype's `fmtD` on an ISO date (purchase orders, receipts generated in Keystone): the
+ * year suffix outside the business year `year` (R-013). The prototype suffixed the years after 2026 only; once the clock
+ * leaves 2026 a past year needs its suffix too ("12 Mar ’26" seen in 2027). The demo data set has no earlier date here.
+ */
+export function fmtDOfIso(iso: string, year: number): string {
   const [y] = iso.split('-');
-  return shortDateOfIso(iso) + (+y > 2026 ? ' ’' + y.slice(2) : '');
+  return shortDateOfIso(iso) + (+y !== year ? ' ’' + y.slice(2) : '');
 }
 
 // ── Engineering & PLM (docs/spec/11 §2.7, §3.9; 09 §1–5) ─────────────────────────────────────────────

@@ -64,12 +64,12 @@ describe('R-143 / R-144 rules', () => {
   });
 
   it('parses "Plan intervention" and "Mark done"', () => {
-    expect(parsePlanIntervention({ date: '8 Oct', tech: 'T. Kerbrat', duration: '0,5' }, { machines: [], claimMachine: 'MCH-041' })).toEqual({
+    expect(parsePlanIntervention({ date: '8 Oct', tech: 'T. Kerbrat', duration: '0,5' }, { machines: [], claimMachine: 'MCH-041', year: 2026 })).toEqual({
       ok: true, value: { machineNumber: 'MCH-041', type: 'corrective', scheduledOn: '2026-10-08', technicians: 'T. Kerbrat', durationDays: 0.5, detail: null },
     });
-    expect(parsePlanIntervention({ machine: 'MCH-038', ivtype: 'Preventive', date: '15 Oct', tech: 'S. Haddad' }, { machines: ['MCH-038'] })).toMatchObject({ ok: true, value: { machineNumber: 'MCH-038', type: 'preventive', durationDays: 1 } });
+    expect(parsePlanIntervention({ machine: 'MCH-038', ivtype: 'Preventive', date: '15 Oct', tech: 'S. Haddad' }, { machines: ['MCH-038'], year: 2026 })).toMatchObject({ ok: true, value: { machineNumber: 'MCH-038', type: 'preventive', durationDays: 1 } });
     const perr = (v: Record<string, string>, machines = ['MCH-038']) => {
-      const r = parsePlanIntervention({ date: '8 Oct', tech: 'x', ...v }, { machines });
+      const r = parsePlanIntervention({ date: '8 Oct', tech: 'x', ...v }, { machines, year: 2026 });
       return r.ok ? null : r.error;
     };
     expect([perr({ machine: 'MCH-999' }), perr({ ivtype: 'repair' }), perr({ date: '' }), perr({ date: 'soon' }), perr({ tech: ' ' }), perr({ duration: '0.3' }), perr({ duration: '31' })]).toEqual([

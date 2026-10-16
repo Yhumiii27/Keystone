@@ -28,6 +28,7 @@ import {
   type Incoterm, type MatchState, type PoStatus, type RfqStatus, type SupplierGrade, type SupplierInvoiceStatus,
 } from '@/server/db/codes';
 import type { ApprovalItem } from './approvals';
+import { yearOfIso } from './clock';
 import { parseNeedDate } from './team';
 
 // ── Rights ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -328,11 +329,11 @@ export interface RfqForInbox {
  * rule `^(\d+) quotes · (.+)$` translates the count but leaves the rule in English (the prototype showed
  * "3 devis · Lowest total cost of ownership").
  */
-export function rfqAwardItems(rfqs: readonly RfqForInbox[], t: T): ApprovalItem[] {
+export function rfqAwardItems(rfqs: readonly RfqForInbox[], t: T, year: number): ApprovalItem[] {
   return rfqs
     .filter((r) => r.status === 'comparing' && !r.awardedTo)
     .map((r) => {
-      const when = shortDateYearOfIso(r.replyDueOn);
+      const when = shortDateYearOfIso(r.replyDueOn, year);
       return {
         kind: 'rfq',
         id: r.number,
@@ -364,7 +365,7 @@ export const invoiceInboxSub = (i: Pick<InvoiceForInbox, 'status' | 'match'>) =>
   i.status === 'no_po' ? 'No purchase order referenced' : i.match.po === 'diff' ? 'Amount differs from PO' : 'Receipt does not cover invoice';
 
 /** Invoices blocked by the 3-way match or without PO, for procurement and the director; decided on Sourcing. */
-export function invoiceApprovalItems(invoices: readonly InvoiceForInbox[], lang: Lang): ApprovalItem[] {
+export function invoiceApprovalItems(invoices: readonly InvoiceForInbox[], lang: Lang, year: number): ApprovalItem[] {
   return invoices
     .filter((i) => isInvoiceToResolve(i.status))
     .map((i) => ({
@@ -373,7 +374,7 @@ export function invoiceApprovalItems(invoices: readonly InvoiceForInbox[], lang:
       title: `${i.supplier} · ${moneyUnitsIn(i.amountEur, i.currency ?? BASE_CURRENCY, lang)}`,
       sub: invoiceInboxSub(i),
       who: 'Accounts payable',
-      when: shortDateYearOfIso(i.invoiceDate),
+      when: shortDateYearOfIso(i.invoiceDate, year),
       whenIso: i.invoiceDate,
       href: sourcingHref({ tab: 'inv', inv: i.number }),
       decision: null,
@@ -411,7 +412,7 @@ export function parseNewRfq(values: Record<string, unknown>, todayIso: string): 
   if (!articles) return { ok: false, error: 'The articles are required' };
   if (title.length > MAX_TEXT || articles.length > MAX_TEXT || suppliers.length > 20 || suppliers.some((s) => s.length > 120)) return { ok: false, error: 'The text is too long' };
   const dueText = text(values.due);
-  const replyDueOn = dueText ? parseNeedDate(dueText) : newRfqDefaultDueIso(todayIso);
+  const replyDueOn = dueText ? parseNeedDate(dueText, yearOfIso(todayIso)) : newRfqDefaultDueIso(todayIso);
   if (!replyDueOn) return { ok: false, error: 'Enter the reply date as a date (e.g. 15 Oct 2026)' };
   if (replyDueOn < todayIso) return { ok: false, error: 'The reply date is before the status date' };
   const inc = text(values.incoterm) || 'DAP';

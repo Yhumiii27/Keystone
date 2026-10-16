@@ -243,13 +243,13 @@ export const RECOVERY_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul',
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /**
- * `mAt(s)`: month index (0 = Jan 2026, floored) of a display date; two-token dates ("2 Apr") are in 2026.
- * '—', empty or unparsable → null.
+ * `mAt(s)`: month index (0 = Jan 2026, floored) of a display date; two-token dates ("2 Apr") are in the business year `year`
+ * (R-013: the screens write the year only outside it; the prototype assumed 2026). '—', empty or unparsable → null.
  */
-export function monthAt(s: string | null | undefined): number | null {
+export function monthAt(s: string | null | undefined, year: number): number | null {
   if (!s || s === '—') return null;
   const p = String(s).trim().split(/\s+/);
-  const parts = p.length === 2 ? [...p, '2026'] : p;
+  const parts = p.length === 2 ? [...p, String(year)] : p;
   const d = parts.length === 3 ? parseInt(parts[0], 10) : 1;
   const mo = MONTHS.indexOf(parts[parts.length - 2]);
   const y = parseInt(parts[parts.length - 1], 10);
@@ -281,6 +281,8 @@ export interface CashRecoveryInput {
   termsDays: number;
   /** Orders placed (k€). */
   openCommit: number;
+  /** Business year (R-013): the milestones' dates written without a year are in it. */
+  year: number;
 }
 
 export interface CashRecovery {
@@ -325,13 +327,13 @@ export function cashRecovery(inp: CashRecoveryInput): CashRecovery {
   const milestones = inp.milestones.map((m) => ({ ...m, amount: m.amount ?? milestoneAmount(inp.contractTotal, m.pct) }));
   for (const m of milestones) {
     if (m.status === 'paid') {
-      const i = Math.min(monthAt(m.paid) ?? todayM, todayM);
+      const i = Math.min(monthAt(m.paid, inp.year) ?? todayM, todayM);
       recA[i] += m.amount;
       recWhat[i].push(m.id);
     } else {
       // R-076: the payment date of the contract's rule when known, else the prototype's month lag.
-      const payM = m.paymentDue ? monthAt(m.paymentDue) : null;
-      const base = m.status === 'invoiced' ? monthAt(m.invoiced) : monthAt(m.due);
+      const payM = m.paymentDue ? monthAt(m.paymentDue, inp.year) : null;
+      const base = m.status === 'invoiced' ? monthAt(m.invoiced, inp.year) : monthAt(m.due, inp.year);
       let i = payM ?? (base ?? todayM) + termsM;
       if (i <= todayM) i = todayM + 1;
       if (i < RCN) {

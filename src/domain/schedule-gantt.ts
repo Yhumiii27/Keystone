@@ -83,6 +83,8 @@ export interface ScheduleInput {
   ev: number[];
   /** Budget at completion (k€). */
   bac: number;
+  /** Business year (R-013): the milestones' exact dates carry their year after it. */
+  year: number;
 }
 
 // ── Outputs ────────────────────────────────────────────────────────────────────────────────────────────
@@ -176,8 +178,11 @@ export function ganttTask(b: PackageBarInput): GanttTask {
   };
 }
 
-/** `start` = project start month (Jan 2026 = 0), used for the absolute baseline / forecast dates. */
-export function scheduleMilestone(m: MilestoneInput, start: number): ScheduleMilestone {
+/**
+ * `start` = project start month (Jan 2026 = 0), used for the absolute baseline / forecast dates; `year` = the business year
+ * (exact dates show their year after it, R-013).
+ */
+export function scheduleMilestone(m: MilestoneInput, start: number, year: number): ScheduleMilestone {
   const slip = m.slipDays ?? slipDays(m.baselineMonth, m.forecastMonth);
   return {
     name: m.name,
@@ -186,8 +191,8 @@ export function scheduleMilestone(m: MilestoneInput, start: number): ScheduleMil
     done: m.status === 'done',
     bL: ganttPos(m.baselineMonth),
     fL: ganttPos(m.forecastMonth),
-    baseDate: m.baselineDate ? shortDateText(m.baselineDate) : dateOf(m.baselineMonth + start),
-    fcDate: m.forecastDate ? shortDateText(m.forecastDate) : dateOf(m.forecastMonth + start),
+    baseDate: m.baselineDate ? shortDateText(m.baselineDate, year) : dateOf(m.baselineMonth + start),
+    fcDate: m.forecastDate ? shortDateText(m.forecastDate, year) : dateOf(m.forecastMonth + start),
     slip,
     slipText: (slip < 0 ? '−' + -slip : '+' + slip) + 'd',
     slipAlert: slip > SLIP_ALERT_DAYS,
@@ -244,7 +249,7 @@ export function scheduleView(d: ScheduleInput): ScheduleView {
   return {
     kpis: scheduleKpis(d.header, d.pv, d.ev, d.bac),
     tasks: d.bars.map(ganttTask),
-    milestones: d.milestones.map((m) => scheduleMilestone(m, d.header.start)),
+    milestones: d.milestones.map((m) => scheduleMilestone(m, d.header.start, d.year)),
     progression: scheduleProgression(d.header.chartMonths, d.pv, d.ev, d.bac),
     todayL: ganttPos(d.header.tNow),
     ganttMonths: d.header.ganttMonths,

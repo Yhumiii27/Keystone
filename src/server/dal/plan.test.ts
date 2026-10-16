@@ -3,7 +3,7 @@
 // wbsOv / wbsRm / wbsOrd / added maps as real changes.
 import { beforeAll, describe, expect, it } from 'vitest';
 import { setDb } from '@/server/db/client';
-import { isoOfDisplayDate, splitActual } from '@/server/db/codes';
+import { isoOfDemoDate, splitActual } from '@/server/db/codes';
 import { openDatabase } from '@/server/db/open';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import {
@@ -33,7 +33,7 @@ describe('Plan DAL', () => {
       acts.filter((a) => a.id).map((a) => {
         const s = splitActual(a.s);
         const f = splitActual(a.f);
-        return [a.id, a.w, a.n, a.d, s.text, s.actual, f.text, f.actual, isoOfDisplayDate(s.text), a.bl, a.v, a.c, !!a.viol, a.tf, a.pc, a.o, a.b[0], a.b[1], a.b[2], a.p, false, false];
+        return [a.id, a.w, a.n, a.d, s.text, s.actual, f.text, f.actual, isoOfDemoDate(s.text), a.bl, a.v, a.c, !!a.viol, a.tf, a.pc, a.o, a.b[0], a.b[1], a.b[2], a.p, false, false];
       }),
     );
     // Delivery 7 (R-073, C-2a): % complete = budget-weighted progress of the prototype's own activities (Σ b × pc / Σ b), no longer

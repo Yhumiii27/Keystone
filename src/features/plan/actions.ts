@@ -9,7 +9,9 @@ import {
   applyBudget, clampPct, createsCycle, moveWithin, nextActivityCode, nextWorkPackageCode, parseDuration, parsePredecessors,
   predsInput, workingDaysBetween, type PredError,
 } from '@/domain/schedule';
+import { yearOfIso } from '@/domain/clock';
 import { wbsFmtDate, wbsParseDate } from '@/lib/format';
+import { businessToday } from '@/server/clock';
 import {
   getPackageOrder, getPlanData, insertActivity, insertWorkPackage, ownerCodeOfName, ownerCodeOfViewer, renameWorkPackage, reorderActivities, updateActivity,
   type ActivityPatch, type PlanData,
@@ -33,9 +35,9 @@ const MAX_NAME = 200;
 const MAX_TEXT = 2000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** A typed form date ("5 Oct 2026") → Date, or null when it does not parse to a plausible calendar date. */
-function formDate(text: string): Date | null {
-  const d = wbsParseDate(text);
+/** A typed form date ("5 Oct 2026"; "5 Oct" in the business year `year`) → Date, or null when it does not parse to a plausible calendar date. */
+function formDate(text: string, year: number): Date | null {
+  const d = wbsParseDate(text, year);
   return d && d.getFullYear() >= 2000 && d.getFullYear() <= 2100 ? d : null;
 }
 const isoOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -250,14 +252,15 @@ export async function addActivity(code: string, values: Record<string, string>):
   const id = nextActivityCode(data.projectIdx, data.activities.filter((a) => a.isAdded).length, new Set(data.activities.map((a) => a.id)));
   const start = str(values?.start).trim().slice(0, 40);
   const finish = str(values?.finish).trim().slice(0, 40);
-  const ds = formDate(start);
-  const df = formDate(finish);
+  const year = yearOfIso(await businessToday());
+  const ds = formDate(start, year);
+  const df = formDate(finish, year);
   const critical = str(values?.critical) === 'Yes';
   const ok = await insertActivity(code, {
-    id, wbs: w, name, durationDays: workingDaysBetween(start, finish),
+    id, wbs: w, name, durationDays: workingDaysBetween(start, finish, year),
     ownerCode: (await ownerCodeOfName(str(values?.owner))) ?? 'RA',
-    start: ds ? wbsFmtDate(ds) : start, startDate: ds ? isoOf(ds) : null,
-    finish: df ? wbsFmtDate(df) : finish, finishDate: df ? isoOf(df) : null,
+    start: ds ? wbsFmtDate(ds, year) : start, startDate: ds ? isoOf(ds) : null,
+    finish: df ? wbsFmtDate(df, year) : finish, finishDate: df ? isoOf(df) : null,
     budget: Math.max(0, parseFloat(str(values?.budget)) || 0), totalFloat: critical ? data.control.floatDays : 10, critical,
     description: str(values?.desc).trim().slice(0, MAX_TEXT),
   });

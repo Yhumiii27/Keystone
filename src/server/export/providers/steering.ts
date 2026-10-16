@@ -21,6 +21,7 @@ import { getContingencyScreen } from '@/server/dal/risks-screen';
 import { getScheduleData } from '@/server/dal/schedule';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportWorkbook, PdfBlock, PdfDocument } from '../types';
+import { yearOfIso } from '@/domain/clock';
 import { col, isoOf, kpiSheet, monthIso, param, projectRef, ratioText, sheet, todayIso } from './common';
 import { dataText } from '@/i18n/data-text';
 
@@ -40,8 +41,8 @@ async function planSheet(ctx: ExportContext) {
     const a = r.act;
     return {
       level: t(LEVEL[r.kind] ?? r.kind), id: r.id, wbs: r.wbs, name: dataText(r.name, ctx.lang), owner: a?.owner ? ownerName(a) : '',
-      duration: a ? a.durationDays : null, start: isoOf(r.start), startActual: a ? a.startActual : null, finish: isoOf(r.finish), finishActual: a ? a.finishActual : null,
-      baselineFinish: isoOf(r.baselineFinish), variance: r.variance, float: a ? effectiveFloat(a) : r.tf, constraint: a?.constraint ? t(a.constraint) : '',
+      duration: a ? a.durationDays : null, start: isoOf(r.start, yearOfIso(ctx.today)), startActual: a ? a.startActual : null, finish: isoOf(r.finish, yearOfIso(ctx.today)), finishActual: a ? a.finishActual : null,
+      baselineFinish: isoOf(r.baselineFinish, yearOfIso(ctx.today)), variance: r.variance, float: a ? effectiveFloat(a) : r.tf, constraint: a?.constraint ? t(a.constraint) : '',
       pct: r.pct / 100, budget: r.budget, actual: a ? a.actual : null, eac: a ? a.eac : null, preds: a ? (a.preds.length ? predsLabel(a.preds) : '') : '',
       todos: r.todos.total ? `${r.todos.done}/${r.todos.total}` : '',
     };

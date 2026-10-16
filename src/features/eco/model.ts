@@ -8,6 +8,7 @@ import {
   ecoStatusTag, ecoSteps, interchangeabilityView, keyStates, partsSummary, pendingDispositionsTag, pendingLine, pinnedListText, requestedStepText,
   schedDeltaText, schedText, syncLabelOf, type EcoRowAction, type EcoViewer,
 } from '@/domain/eco';
+import { yearOfIso } from '@/domain/clock';
 import { renderTxt } from '@/domain/home';
 import type { Lang, T } from '@/i18n/translate';
 import { displayOfIso, fmtDOfIso, OPEN_BOM_STAGES, PART_STATUS_TAG, vigieSyncStatus, type EcoApproverKey, type EcoStatus, type StageCode } from '@/server/db/codes';
@@ -100,7 +101,7 @@ export function ecoScreenView(
       href: ecoScreenHref({ status: state.status, eco: selected ? null : e.number }),
       selected,
       title: dataText(e.title, lang),
-      byLine: `${e.requestedBy} · ${t(fmtDOfIso(e.raisedOn))}`,
+      byLine: `${e.requestedBy} · ${t(fmtDOfIso(e.raisedOn, yearOfIso(input.today)))}`,
       type: t(e.typeLabel),
       parts: partsSummary(e.parts),
       projects: e.projectNames.map(t).join(', '),
@@ -183,7 +184,7 @@ export interface EcoDrawerView {
 }
 
 /** The ECO drawer for the viewer (`viewer.managedProjects` decides the PM key). */
-export function ecoDrawerView(input: { data: EcoDrawerData; state: EcoState; viewer: EcoViewer }, tr: T, lang: Lang): EcoDrawerView {
+export function ecoDrawerView(input: { data: EcoDrawerData; state: EcoState; viewer: EcoViewer; /** Business date (R-013). */ today: string }, tr: T, lang: Lang): EcoDrawerView {
   const t = ecoT(tr, lang);
   const { data, state, viewer } = input;
   const e = data.eco;
@@ -232,7 +233,7 @@ export function ecoDrawerView(input: { data: EcoDrawerData; state: EcoState; vie
     sync: sync ? t(e.requestedStatus ? `${requestedStepText(e.requestedStatus)} · ${sync}` : sync) : null,
     steps: steps.steps.map((s) => ({ label: t(s.label), reached: s.reached })),
     rejected: steps.rejected,
-    raisedBy: `${t('Raised by')} ${e.requestedBy} · ${t(fmtDOfIso(e.raisedOn))}`,
+    raisedBy: `${t('Raised by')} ${e.requestedBy} · ${t(fmtDOfIso(e.raisedOn, yearOfIso(input.today)))}`,
     impact: [
       { k: 'Projects & BOMs', v: e.projectNames.map(t).join(', '), color: OK },
       { k: 'Open purchase orders', v: e.openPurchaseOrders.map((o) => `${o.number} · ${o.supplier} · ${t(o.statusLabel)}`).join(' · ') || t('None'), color: OK },

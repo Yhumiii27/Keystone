@@ -5,6 +5,7 @@
 // claim offers, the forms (claim update, diagnosis, intervention planned / done, machines registered at delivery), the
 // warranty end of a delivered machine and the machine names. No I/O, no translation (English source strings).
 import { STAGES, claimCoverage, interventionType, type ClaimCoverage, type ClaimStatus, type InterventionType, type StageCode } from '@/server/db/codes';
+import { yearOfIso } from './clock';
 import { parseDateInput } from './contract';
 import { parsePastDate } from './itpcom';
 
@@ -117,7 +118,7 @@ export interface PlanInterventionValues {
  * (required), duration in days (0.5 to 30, by half days), detail (≤ 200).
  */
 export function parsePlanIntervention(
-  values: Record<string, string | undefined>, opts: { machines: readonly string[]; claimMachine?: string | null },
+  values: Record<string, string | undefined>, opts: { machines: readonly string[]; claimMachine?: string | null; year: number },
 ): ParseResult<Omit<PlanInterventionValues, 'claimNumber'>> {
   const machineNumber = opts.claimMachine ?? (text(values.machine) || opts.machines[0] || '');
   if (!opts.claimMachine && !opts.machines.includes(machineNumber)) return { ok: false, error: 'Unknown machine' };
@@ -126,7 +127,7 @@ export function parsePlanIntervention(
   if (!type) return { ok: false, error: 'Unknown intervention type' };
   const date = text(values.date);
   if (!date) return { ok: false, error: 'Date is required' };
-  const scheduledOn = parseDateInput(date);
+  const scheduledOn = parseDateInput(date, opts.year);
   if (!scheduledOn) return { ok: false, error: 'Enter the date as a date, e.g. 8 Oct' };
   const technicians = text(values.tech);
   if (!technicians) return { ok: false, error: 'Technicians are required' };
@@ -234,7 +235,7 @@ export function parseRegisterMachines(values: Record<string, string | undefined>
   if (!deliveredOn) return { ok: false, error: 'Enter the delivery date as a date, e.g. 30 Sep 2026' };
   if (deliveredOn > today) return { ok: false, error: 'The delivery date cannot be in the future' };
   const w = text(values.warranty);
-  const warrantyEndOn = w ? parseDateInput(w) : null;
+  const warrantyEndOn = w ? parseDateInput(w, yearOfIso(today)) : null;
   if (!warrantyEndOn) return { ok: false, error: 'Enter the warranty end as a date, e.g. 29 Sep 2028' };
   if (warrantyEndOn <= deliveredOn) return { ok: false, error: 'Warranty end is before delivery' };
   return { ok: true, value: { projectCode, count, name, site, deliveredOn, warrantyEndOn } };

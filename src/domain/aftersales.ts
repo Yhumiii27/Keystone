@@ -310,10 +310,10 @@ export interface NewMachineValues {
 /**
  * "Add machine" (AF `fleet`): machine and client required; type among `machineTypes` (default the first); site free
  * text; "Delivered" and "Warranty end" optional dates as typed ("14 Dec 2025", "14/12/2025", "2025-12-14"; the year
- * defaults to 2026). The prototype stored any text; a date that cannot be read is refused here, as is a warranty end
+ * defaults to the business year `year`, R-013). The prototype stored any text; a date that cannot be read is refused here, as is a warranty end
  * before delivery.
  */
-export function parseNewMachine(values: Record<string, string | undefined>, machineTypes: readonly string[]): ParseResult<NewMachineValues> {
+export function parseNewMachine(values: Record<string, string | undefined>, machineTypes: readonly string[], year: number): ParseResult<NewMachineValues> {
   const name = text(values.name);
   if (!name) return { ok: false, error: 'Machine is required' };
   const client = text(values.client);
@@ -323,10 +323,10 @@ export function parseNewMachine(values: Record<string, string | undefined>, mach
   const type = text(values.type) || machineTypes[0];
   if (!type || !machineTypes.includes(type)) return { ok: false, error: 'Unknown machine type' };
   const deliveredText = text(values.delivered);
-  const deliveredOn = deliveredText ? parseNeedDate(deliveredText) : null;
+  const deliveredOn = deliveredText ? parseNeedDate(deliveredText, year) : null;
   if (deliveredText && !deliveredOn) return { ok: false, error: 'Enter the delivery date as a date, e.g. 14 Dec 2025' };
   const warrantyText = text(values.warranty);
-  const warrantyEndOn = warrantyText ? parseNeedDate(warrantyText) : null;
+  const warrantyEndOn = warrantyText ? parseNeedDate(warrantyText, year) : null;
   if (warrantyText && !warrantyEndOn) return { ok: false, error: 'Enter the warranty end as a date, e.g. 13 Dec 2027' };
   if (deliveredOn && warrantyEndOn && warrantyEndOn < deliveredOn) return { ok: false, error: 'Warranty end is before delivery' };
   return { ok: true, value: { name, machineType: type, client, site: site || null, deliveredOn, warrantyEndOn } };

@@ -14,7 +14,7 @@ import { moneyEur } from '@/lib/format';
 import { releasedInMonth } from './kpis';
 import {
   ECO_APPROVER_KEYS, ECO_APPROVER_SHORT, ECO_DECISION_TAG, ECO_FLOW_STEPS, ECO_STATUS_TAG, ECO_STEP_ADVANCE, ecoApproverKey, ecoDecision,
-  ecoDisposition, ecoKeyOfRole, ecoStatus, interchangeability, INTERCHANGEABILITY_NOT_ASSESSED, isoOfDisplayDate, vigieSyncStatus,
+  ecoDisposition, ecoKeyOfRole, ecoStatus, interchangeability, INTERCHANGEABILITY_NOT_ASSESSED, vigieSyncStatus,
   type EcoApproverKey, type EcoDecision, type EcoDisposition, type EcoStatus, type EcoTargetType, type Interchangeability, type VigieSyncStatus,
 } from '@/server/db/codes';
 
@@ -433,7 +433,7 @@ export function ecoApprovalItems(queue: EcoQueueEntry[], links: { keystone: (n: 
   return queue.map((e) => {
     const when = fmtDay(e.raisedOn);
     return {
-      kind: 'eco', id: e.number, title: e.title, sub: `${e.typeLabel} · ${e.projectNames.join(', ')}`, who: e.requestedBy, when, whenIso: isoOfDisplayDate(when) ?? e.raisedOn,
+      kind: 'eco', id: e.number, title: e.title, sub: `${e.typeLabel} · ${e.projectNames.join(', ')}`, who: e.requestedBy, when, whenIso: e.raisedOn,
       href: links.keystone(e.number), decision: { mode: 'eco', number: e.number, key: e.key },
       external: { href: links.vigie(e.number), label: 'Open in Vigie' },
     } satisfies ApprovalItem;

@@ -153,7 +153,7 @@ function displayedText(r: PidTagLike, t: T, lang: Lang): string {
 
 /** Screen view: KPIs, drawing card, steps, chips (links), scope segment (links), filtered register, overlay table. */
 export function pidScreenView(
-  input: { code: string; data: PidValidation; state: PidState; docHref: string | null },
+  input: { code: string; data: PidValidation; state: PidState; docHref: string | null; /** Business year (R-013): step dates outside it show their year. */ year: number },
   t: T,
   lang: Lang,
 ): PidScreenView {
@@ -224,7 +224,7 @@ export function pidScreenView(
     },
     steps: data.steps.map((s) => {
       const v = pidStepView(s.state);
-      return { label: stepLabelT(s.label, t, lang), whoDate: `${stepWhoT(s.who, lang)} · ${stepDateT(s.dateOn, t)}`, dot: v.dot, color: v.color, state: t(v.label), tagClass: v.tagClass };
+      return { label: stepLabelT(s.label, t, lang), whoDate: `${stepWhoT(s.who, lang)} · ${stepDateT(s.dateOn, t, input.year)}`, dot: v.dot, color: v.color, state: t(v.label), tagClass: v.tagClass };
     }),
     chips: pidChips(tags).map((ch) => ({ value: ch.value ?? 'all', label: t(ch.label), count: ch.count, href: pidHref(code, { ...keep, status: ch.value, tag: state.tag }) })),
     filter: state.status ?? 'all',

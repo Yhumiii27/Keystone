@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import {
-  changeStatus, clientIssueStatus, closureItemStatus, deliverableStatus, isoOfDisplayDate, lessonStatus, lessonTheme, milestoneStatus,
+  changeStatus, clientIssueStatus, closureItemStatus, deliverableStatus, isoOfDemoDate, lessonStatus, lessonTheme, milestoneStatus,
   type ChangeStep, type StepDecision,
 } from '@/server/db/codes';
 import {
@@ -131,7 +131,7 @@ const crs = (): ChangeRequestLike[] =>
   (PROTO.HLT_CRS_X as any[]).map((c) => ({ id: c.id, title: c.title, types: c.types, amount: c.amt, days: c.days, status: changeStatus.code(c.status), date: c.date, chain: chainOf(c.chain) }));
 const deliverables = (): DeliverableLike[] =>
   (PROTO.HLT_DELIVS as any[]).map((d) => ({
-    number: d.id, title: d.title, typeLabel: d.type, revision: d.rev === '—' ? null : d.rev, status: deliverableStatus.code(d.status), dueOn: isoOfDisplayDate(d.due)!, acceptanceText: d.acc,
+    number: d.id, title: d.title, typeLabel: d.type, revision: d.rev === '—' ? null : d.rev, status: deliverableStatus.code(d.status), dueOn: isoOfDemoDate(d.due)!, acceptanceText: d.acc,
   }));
 const proto = (code: string) => (code === 'HLT-026' ? PROTO.HLT_PD : PROTO_GEN.projectData[code]);
 const evmOf = (code: string) => ({ pv: proto(code).PV, ev: proto(code).EV, bac: proto(code).BAC });
@@ -141,7 +141,7 @@ const msOf = (code: string) =>
   }));
 const issues = () =>
   (PROTO.CLIENT_ISSUES as string[][]).map(([number, title, raised, status, response]) => ({
-    number, title, raisedOn: isoOfDisplayDate(raised.replace('Raised ', ''))!, status: clientIssueStatus.code(status), response,
+    number, title, raisedOn: isoOfDemoDate(raised.replace('Raised ', ''))!, status: clientIssueStatus.code(status), response,
   }));
 
 describe('client portal (03 §8)', () => {
@@ -160,13 +160,13 @@ describe('client portal (03 §8)', () => {
   it('progress bars up to the data date and the milestone list', () => {
     for (const code of ['HLT-026', 'NDC-031']) {
       expect(clientProgress(proto(code).chartMonths, evmOf(code))).toEqual(G.client.en[code].progress);
-      expect(clientMilestones(msOf(code), proto(code).start).map((m) => ({ name: m.name, baseDate: m.baseDate, fcDate: m.fcDate, status: m.status, tagClass: tag(m.tone) })))
+      expect(clientMilestones(msOf(code), proto(code).start, 2026).map((m) => ({ name: m.name, baseDate: m.baseDate, fcDate: m.fcDate, status: m.status, tagClass: tag(m.tone) })))
         .toEqual(G.client.en[code].milestones);
     }
   });
 
   const decisionsOf = (c: ChangeRequestLike[], d: DeliverableLike[]) => {
-    const v = clientDecisions(c, d, 'en');
+    const v = clientDecisions(c, d, 'en', 2026);
     return {
       decisions: v.waiting.map((x) => ({ kind: x.kindLabel, id: x.id, title: x.title, sub: x.sub, when: x.when, approveLabel: x.approveLabel })),
       decided: v.decided.map((x) => ({ id: x.id, title: x.title, state: x.state, tagClass: tag(x.tone), when: x.when })),
@@ -203,7 +203,7 @@ describe('client portal (03 §8)', () => {
     const inv = rows.map(([milestone, amountKeur, st], i) => ({
       milestone, amountKeur, status: st.toLowerCase() as 'paid' | 'invoiced' | 'planned', invoiceNumber: 'F-2026-' + (101 + i), dueOn: st === 'Invoiced' ? '2026-10-15' : null,
     }));
-    expect(inv.map((i) => invoiceRow(i, 'en')).map((r) => ({
+    expect(inv.map((i) => invoiceRow(i, 'en', 2026)).map((r) => ({
       no: r.no, name: r.name, amt: r.amount, status: r.status, tagClass: tag(r.tone), due: r.payment.kind === 'due' ? `Due ${r.payment.date}` : r.payment.text,
     }))).toEqual(G.client.en['HLT-026'].invoices.map((i: any) => ({ ...i })));
     const sum = (f: (s: string) => boolean) => rows.filter(([, , s]) => f(s)).reduce((a, [, x]) => a + x, 0);
@@ -212,9 +212,11 @@ describe('client portal (03 §8)', () => {
     expect(contractSummary({ valueKeur: 2350, invoicedKeur: 890, paidKeur: 630, approvedChangesKeur: 0 }, 'en').map((r) => r.v))
       .toEqual(G.client.en['NDC-031'].invKpis.map((g: any) => g.v));
     // Not yet invoiced: no invoice number (the prototype pre-numbered planned milestones "F-2026-104"); an invoice without a due date reads "—".
-    expect(invoiceRow({ milestone: 'M4', amountKeur: 1104, status: 'planned', invoiceNumber: null, dueOn: null }, 'en').no).toBe('—');
-    expect(paymentOf({ status: 'invoiced', dueOn: null })).toEqual({ kind: 'text', text: '—' });
-    expect(paymentOf({ status: 'invoiced', dueOn: '2026-11-10' })).toEqual({ kind: 'due', date: '10 Nov' });
+    expect(invoiceRow({ milestone: 'M4', amountKeur: 1104, status: 'planned', invoiceNumber: null, dueOn: null }, 'en', 2026).no).toBe('—');
+    expect(paymentOf({ status: 'invoiced', dueOn: null }, 2026)).toEqual({ kind: 'text', text: '—' });
+    expect(paymentOf({ status: 'invoiced', dueOn: '2026-11-10' }, 2026)).toEqual({ kind: 'due', date: '10 Nov' });
+    // R-013: seen in 2027, a 2026 due date carries its year.
+    expect(paymentOf({ status: 'invoiced', dueOn: '2026-11-10' }, 2027)).toEqual({ kind: 'due', date: '10 Nov ’26' });
   });
 
   it('issues: status tags, "Raised today" for issues raised on the status date', () => {

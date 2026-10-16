@@ -25,7 +25,7 @@ const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&amp;/
 async function body(lang: Lang, q = '') {
   const [rows, locations, sync, moves, pins] = await Promise.all([listStock(), listStorageLocations(), getX3StockSync(), listStockMovements({ limit: 8 }), installedBasePins()]);
   const t = makeT(lang);
-  const view = stockScreenView({ rows, locations, sync, moves, pins, state: { loc: null, q, stock: null, part: null } }, t, lang);
+  const view = stockScreenView({ year: 2026, rows, locations, sync, moves, pins, state: { loc: null, q, stock: null, part: null } }, t, lang);
   return html(h(StockBody, { view, t }), lang);
 }
 

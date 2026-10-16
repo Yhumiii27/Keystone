@@ -4,6 +4,7 @@ import 'server-only';
 // inline: Approve → Closed, Reject → back to Corrective action, recorded through the Vigie connector's outbox
 // (verifyNcrAction → verifyNcr, "pending sync with Vigie"); the row opens the NCR drawer on the Quality screen and
 // "Open in Vigie" opens it where it is managed.
+import { yearOfIso } from '@/domain/clock';
 import { ncrVerificationItems } from '@/domain/quality';
 import { ncrHref } from '@/features/quality/links';
 import { ncrVerificationDecidedCount, ncrVerificationQueue } from '@/server/dal/quality';
@@ -18,7 +19,7 @@ export const ncrVerificationProvider: ApprovalProvider = {
   async items(ctx) {
     if (!ctx.project) return [];
     const code = ctx.project.code;
-    return ncrVerificationItems(await ncrVerificationQueue(code, actorOf(ctx)), code, { ncr: (n) => ncrHref(code, n) });
+    return ncrVerificationItems(await ncrVerificationQueue(code, actorOf(ctx)), code, { ncr: (n) => ncrHref(code, n) }, yearOfIso(ctx.today));
   },
   // Verifications the viewer recorded in Keystone (sent to Vigie or still pending).
   async decided(ctx) {

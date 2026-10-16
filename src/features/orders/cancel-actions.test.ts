@@ -159,7 +159,7 @@ describe('R-095 Server Functions', () => {
     expect(await cancelOrderAction(HLT, drafts[0], REASON)).toEqual({ ok: false, error: 'This order can no longer be cancelled' });
     const d = ordersView({ code: HLT, data: await getOrdersScreen(HLT, 'Romain Aubert'), filter: null, selected: drafts[0] }, makeT('fr'), 'fr').drawer!;
     expect([d.status, d.cancel]).toEqual(['Annulé', null]);
-    expect(d.meta.find((m) => m.k === 'Annulé')!.v).toBe(`${makeT('fr')(fmtDOfIso(po.cancellation!.at.slice(0, 10)))} · Fabien Bertrand · ${REASON}`);
+    expect(d.meta.find((m) => m.k === 'Annulé')!.v).toBe(`${makeT('fr')(fmtDOfIso(po.cancellation!.at.slice(0, 10), 2026))} · Fabien Bertrand · ${REASON}`);
   });
 
   it('the project’s PM cancels the buyer’s draft (default beyond SC-3a); the buyer is told in the bell', async () => {

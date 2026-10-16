@@ -10,6 +10,7 @@ import {
   plmKpis, plmOptions, plmRows, restrictionCell, stockSummary, usedCountText, wearSpareTone, canCompletePartRecord, canValidatePart, partValidationErrors,
   type PartFacts, type PlmSortKey, type PlmState,
 } from '@/domain/parts';
+import { yearOfIso } from '@/domain/clock';
 import type { Lang, T } from '@/i18n/translate';
 import { moneyEur } from '@/lib/format';
 import { depositHref, docHref } from '@/features/docs/links';
@@ -246,15 +247,15 @@ export interface DrawerContext {
 
 const kv = (k: string, v: string, alert = false): KeyValue => ({ k, v, color: alert ? LO : OK });
 
-/** R-102: the drawer's Qualification section for this viewer (role in force), or null. */
-export function partQualificationView(p: PartRow, role: RoleKey, t: T): PartQualificationView | null {
+/** R-102: the drawer's Qualification section for this viewer (role in force), or null; the date's year shown outside the business year `year`. */
+export function partQualificationView(p: PartRow, role: RoleKey, t: T, year: number): PartQualificationView | null {
   const edits = canSee(role, 'plm');
   const complete = canCompletePartRecord(p.status, role, edits);
   const validating = p.status === 'not_validated';
   if (!validating && !p.validatedAt && !complete) return null;
   const missing = validating ? partValidationErrors(p).map((m) => t(m)) : [];
   const items: KeyValue[] = [];
-  if (p.validatedAt) items.push(kv(t('Validated'), [t(fmtDOfIso(p.validatedAt.slice(0, 10))), p.validatedBy].filter(Boolean).join(' · ')));
+  if (p.validatedAt) items.push(kv(t('Validated'), [t(fmtDOfIso(p.validatedAt.slice(0, 10), year)), p.validatedBy].filter(Boolean).join(' · ')));
   if (validating) items.push(kv(t('Before validation'), missing.length ? missing.join(' · ') : t('Record complete'), missing.length > 0));
   return {
     label: t('Qualification'),
@@ -411,6 +412,6 @@ export function partDrawerView(data: PartDrawerData, ctx: DrawerContext, t: T, l
               : null,
           }
         : null,
-    qualification: partQualificationView(p, ctx.role, t),
+    qualification: partQualificationView(p, ctx.role, t, yearOfIso(data.today)),
   };
 }

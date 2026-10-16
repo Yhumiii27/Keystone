@@ -14,6 +14,7 @@ import { getTrends } from '@/server/dal/trends';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook, PdfDocument } from '../types';
 import { statementDocument } from './contract';
+import { yearOfIso } from '@/domain/clock';
 import { col, isoOf, kpiSheet, monthIso, param, sheet } from './common';
 import { statusReportDocument, statusReportOptions, trendsReportOptions } from './status-report';
 import { scheduleDocument } from './steering';
@@ -79,7 +80,7 @@ async function clientWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null
   const [view, en, portal] = await Promise.all([
     getClientScreen(ctx.project.code, tab, t, lang), getClientScreen(ctx.project.code, tab, makeT('en'), 'en'), getClientPortal(ctx.project.code),
   ]);
-  const dateOf = (enText: string | undefined, shown: string) => (enText ? isoOf(enText) : null) ?? shown;
+  const dateOf = (enText: string | undefined, shown: string) => (enText ? isoOf(enText, yearOfIso(ctx.today)) : null) ?? shown;
   const milestones = sheet(t('Milestones'), [col('name', t('Milestone'), 'text', 34), col('baseline', t('Baseline'), 'date'), col('forecast', t('Forecast'), 'date'), col('status', t('Status'), 'text', 12)],
     view.milestones.map((m, i) => ({ name: m.name, baseline: dateOf(en.milestones[i]?.baseDate, m.baseDate), forecast: dateOf(en.milestones[i]?.fcDate, m.fcDate), status: m.status })));
   const decisions = sheet(t('Decisions'), [col('id', t('Reference'), 'text', 10), col('kind', t('Type'), 'text', 16), col('title', t('Title'), 'text', 40), col('sub', t('Details'), 'text', 36), col('when', t('Since'), 'date'), col('state', t('Status'), 'text', 14)], [

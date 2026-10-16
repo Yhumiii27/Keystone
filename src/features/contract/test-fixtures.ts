@@ -8,7 +8,7 @@
 // goldens' amounts can be replaced by the values the rule gives (the prototype re-priced everything on base + signed amendments).
 import golden from './contract.golden.json';
 import data from '@/server/prototype/prototype-data.json';
-import { amendmentStatus, bondType, isoOfDisplayDate, paymentMilestoneStatus } from '@/server/db/codes';
+import { amendmentStatus, bondType, isoOfDemoDate, paymentMilestoneStatus } from '@/server/db/codes';
 import type { ContractInput, InvoiceInput, MilestoneInput } from '@/domain/contract';
 import { dataText } from '@/i18n/data-text';
 import type { ContractData } from './model';
@@ -18,7 +18,7 @@ export const G = golden as any;
 export const CT = (data as unknown as { CONTRACTS: Record<string, { ref: string; signed: string; amount: number; terms: string; retention: number; retentionNote: string; ld: string; warranty: string;
   amendments: [string, number, string, string, string][]; bonds: [string, number, string][]; milestones: [string, string, number, string, string, string, string][] }> }).CONTRACTS['HLT-026'];
 
-const iso = (s: string) => (!s || s === '—' ? null : isoOfDisplayDate(s));
+const iso = (s: string) => (!s || s === '—' ? null : isoOfDemoDate(s));
 
 /** Amendment 1's own milestone in the seed (NEW-D3-3, src/server/db/seed/contract.ts `AMENDMENT_MILESTONES`). */
 export const M6: MilestoneInput = {
@@ -124,7 +124,7 @@ export function scenarioData(name: string): ContractData {
   return {
     ...c,
     sheet: {
-      ...c.sheet, client: 'Port authority', type: 'lump_sum_epc', signedOn: isoOfDisplayDate(CT.signed),
+      ...c.sheet, client: 'Port authority', type: 'lump_sum_epc', signedOn: isoOfDemoDate(CT.signed),
       governingLaw: 'French law · Commercial court of Le Havre',
       scope: 'Terminal extension: steel structure, two 250 t gantry cranes, HV connection and yard works — design, supply, erection and commissioning.',
     },

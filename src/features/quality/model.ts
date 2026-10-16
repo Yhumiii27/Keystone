@@ -8,6 +8,7 @@ import {
   deliverableTagOf, depositTypeOf, ncrActionFor, ncrChips, ncrKpis, ncrSegments, ncrStatusTagOf, ncrSteps, ncrSyncLine, reviewLineText, severityTagOf,
   type DeliverableStatus, type DeliverableViewer, type NcrSeverity, type NcrStatus, type ProducerTarget, type QualityKpi, type QualityTab,
 } from '@/domain/quality';
+import { yearOfIso } from '@/domain/clock';
 import type { Lang, T } from '@/i18n/translate';
 import { exportHref } from '@/lib/export-href';
 import { money } from '@/lib/format';
@@ -129,6 +130,7 @@ export function ncrTabView(
   const t = qualityT(tr, lang);
   const { code, ncrs, state, viewer } = input;
   const kpis = ncrKpis(ncrs, input.today, input.dataDate).map((k) => kpiView(k, t, lang));
+  const year = yearOfIso(input.today);
   const chips = ncrChips(ncrs).map((c) => ({
     value: c.value ?? 'all', label: t(c.label), count: c.count, href: qualityHref(code, { filter: c.value, ncr: state.ncr }),
   }));
@@ -141,13 +143,13 @@ export function ncrTabView(
       href: qualityHref(code, { filter: state.filter, ncr: selected ? null : n.number }),
       selected,
       title: dataText(n.title, lang),
-      raisedLine: `${n.raisedBy} · ${t(fmtDOfIso(n.raisedOn))}`,
+      raisedLine: `${n.raisedBy} · ${t(fmtDOfIso(n.raisedOn, year))}`,
       severity: t(n.severityLabel),
       severityClass: severityTagOf(n.severity),
       source: t(n.sourceLabel),
       activity: t(activityText(n)),
       owner: n.owner,
-      due: n.dueOn ? t(fmtDOfIso(n.dueOn)) : '—',
+      due: n.dueOn ? t(fmtDOfIso(n.dueOn, year)) : '—',
       cost: n.costKeur ? money(n.costKeur, lang) : '—',
       segments: ncrSegments(n.status),
       status: t(n.statusLabel),
@@ -204,17 +206,18 @@ export interface NcrDrawerView {
 
 /** NCR drawer (ncrVals 4624): opened by `?ncr=`. */
 export function ncrDrawerView(
-  input: { code: string; ncr: NcrRow; state: QualityState; viewer: QualityViewerCtx; ecoByPart: Record<string, string>; ordersByPart: Record<string, string[]> },
+  input: { code: string; ncr: NcrRow; state: QualityState; viewer: QualityViewerCtx; ecoByPart: Record<string, string>; ordersByPart: Record<string, string[]>; today: string },
   tr: T,
   lang: Lang,
 ): NcrDrawerView {
   const t = qualityT(tr, lang);
   const { code, ncr: n, state, viewer } = input;
+  const year = yearOfIso(input.today);
   const a = ncrActionFor(n, viewer);
   const ecoNumber = n.partRef ? input.ecoByPart[n.partRef] ?? null : null;
   const sync = ncrSyncLine(n);
   const record: RecordRow[] = [
-    { k: t('Raised by'), v: `${n.raisedBy} · ${t(fmtDOfIso(n.raisedOn))}` },
+    { k: t('Raised by'), v: `${n.raisedBy} · ${t(fmtDOfIso(n.raisedOn, year))}` },
     { k: t('Owner'), v: n.owner },
     { k: t('Source'), v: t(n.sourceLabel) },
     { k: t('Linked activity'), v: t(activityText(n)) },
@@ -222,7 +225,7 @@ export function ncrDrawerView(
     { k: t('Deliverable impacted'), v: n.deliverableNumber ?? '—', href: n.deliverableNumber ? deliverableHref(code, n.deliverableNumber) : undefined },
     { k: t('ISO 9001 clause'), v: dataText(n.isoClause, lang) },
     { k: t('Cost of non-quality'), v: n.costKeur ? money(n.costKeur, lang) : '—' },
-    { k: t('Action due'), v: n.dueOn ? t(fmtDOfIso(n.dueOn)) : '—' },
+    { k: t('Action due'), v: n.dueOn ? t(fmtDOfIso(n.dueOn, year)) : '—' },
   ];
   const inVerification = awaitsVerification(n);
   return {
@@ -304,7 +307,7 @@ export function dlvTabView(input: { code: string; deliverables: DeliverableRow[]
       title: dataText(d.title, lang),
       type: t(d.typeLabel),
       wbs: d.wbsCode,
-      due: t(fmtDOfIso(d.dueOn)),
+      due: t(fmtDOfIso(d.dueOn, yearOfIso(input.today))),
       rev: d.revision ?? '—',
       raci: RACI_ORDER.map((role) => {
         const c = d.raci.find((x) => x.role === role);
@@ -355,7 +358,7 @@ export interface DlvDrawerView {
 
 /** Deliverable drawer (dlvVals 4639): opened by `?dlv=`. */
 export function dlvDrawerView(
-  input: { code: string; deliverable: DeliverableRow; state: QualityState; viewer: QualityViewerCtx; documents: QualityDocument[] },
+  input: { code: string; deliverable: DeliverableRow; state: QualityState; viewer: QualityViewerCtx; documents: QualityDocument[]; today: string },
   tr: T,
   lang: Lang,
 ): DlvDrawerView {
@@ -374,7 +377,7 @@ export function dlvDrawerView(
     raci: RACI_ORDER.map((k) => ({ k, l: t(RACI_LABEL[k]), who: d.raci.find((c) => c.role === k)?.name ?? '—' })),
     record: [
       { k: t('WBS'), v: t(d.wbsCode + (d.wbsName ? ' · ' + d.wbsName : '')) },
-      { k: t('Due'), v: t(fmtDOfIso(d.dueOn)) },
+      { k: t('Due'), v: t(fmtDOfIso(d.dueOn, yearOfIso(input.today))) },
       { k: t('Revision'), v: d.revision ?? '—' },
       { k: t('Acceptance'), v: accText(d.acceptanceText, t) },
       d.linkedNcrs.length
@@ -391,7 +394,7 @@ export function dlvDrawerView(
     canSubmit: a?.kind === 'move' && a.to === 'submitted',
     restart: a?.kind === 'move' && d.status === 'rejected' ? t(a.label) : null,
     reviews: (d.reviews ?? []).map((r) => ({
-      line: reviewLineText(r, t),
+      line: reviewLineText(r, yearOfIso(input.today), t),
       comments: r.comments,
     })),
     canDecide: a?.kind === 'decide',

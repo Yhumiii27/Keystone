@@ -3,7 +3,7 @@
 // derivations: status sort, chips, KPI tiles, carried-over actions, preparation pack (previous meeting, internal ⇄
 // client question bridge, transcript), Decisions and Actions registers. Text is English source; screens translate.
 // Also the input parsers of the writes: "New meeting" (AF `meetings`) and the minutes composer.
-import { isoOfDisplayDate, monthIndexOfIso, type MeetingLineType, type MeetingSeries, type MeetingStatus, type MeetingType } from '@/server/db/codes';
+import { isDisplayDate, monthIndexOfIso, type MeetingLineType, type MeetingSeries, type MeetingStatus, type MeetingType } from '@/server/db/codes';
 
 // ── Input model (structurally compatible with the DAL `MeetingRow` / `ClientQuestionRow`) ──────────────────
 
@@ -394,9 +394,10 @@ function monthOf(word: string): number | null {
 
 /**
  * Meeting date as typed ("6 Oct 2026", "6 oct. 2026", "6 octobre 2026", "06/10/2026", "2026-10-06"; the year
- * defaults to 2026, the data set's year) → ISO date, or null when it is not a real calendar date.
+ * defaults to `defaultYear`, the business date's year — R-013, the prototype's 2026) → ISO date, or null when it is not a
+ * real calendar date.
  */
-export function parseMeetingDate(text: string | null | undefined, defaultYear = 2026): string | null {
+export function parseMeetingDate(text: string | null | undefined, defaultYear: number): string | null {
   const s = (text ?? '').trim();
   let y: number;
   let m: number;
@@ -447,7 +448,7 @@ export const MAX = { title: 200, location: 120, name: 80, invitees: 40, points: 
  * "New meeting" form values (AF `meetings`: title*, type, series, date*, time, loc, invited*, agenda) → input of
  * `createMeeting`. Errors are English source strings. Blank time → 09:00, blank location → Teams (prototype defaults).
  */
-export function parseNewMeeting(v: Record<string, string | undefined>): Parsed<NewMeetingInput> {
+export function parseNewMeeting(v: Record<string, string | undefined>, year: number): Parsed<NewMeetingInput> {
   const title = (v.title ?? '').trim().replace(/\s+/g, ' ');
   if (!title) return { ok: false, error: 'Title is required' };
   if (title.length > MAX.title) return { ok: false, error: 'The title is too long' };
@@ -455,7 +456,7 @@ export function parseNewMeeting(v: Record<string, string | undefined>): Parsed<N
   if (!MEETING_TYPES.includes(type)) return { ok: false, error: 'Invalid meeting type' };
   const series = (v.series || 'weekly_site') as MeetingSeries;
   if (!MEETING_SERIES.includes(series)) return { ok: false, error: 'Invalid series' };
-  const date = parseMeetingDate(v.date);
+  const date = parseMeetingDate(v.date, year);
   if (!date) return { ok: false, error: 'Enter a valid date (e.g. 6 Oct 2026)' };
   const time = (v.time ?? '').trim() ? parseMeetingTime(v.time) : '09:00';
   if (!time) return { ok: false, error: 'Enter a valid time (e.g. 09:00)' };
@@ -482,18 +483,21 @@ export interface MinutesLineInput {
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-/** Due as typed → "2 Oct" (2026) / "5 Jan 2027" when it is a date, else the typed text ("next week", "—"). */
-export function normaliseDue(text: string | null | undefined): string | null {
+/**
+ * Due as typed → "2 Oct" (in the business year `year`) / "5 Jan 2027" when it is a date, else the typed text ("next week",
+ * "—"). R-013: the year is the business date's (the prototype's 2026); the DAL reads the stored text back in the same year.
+ */
+export function normaliseDue(text: string | null | undefined, year: number): string | null {
   const s = (text ?? '').trim().replace(/\s+/g, ' ');
   if (!s) return null;
-  const iso = parseMeetingDate(s);
+  const iso = parseMeetingDate(s, year);
   if (!iso) return s;
   const [y, m, d] = iso.split('-').map(Number);
-  return `${d} ${MON[m - 1]}${y === 2026 ? '' : ` ${y}`}`;
+  return `${d} ${MON[m - 1]}${y === year ? '' : ` ${y}`}`;
 }
 
 /** Composer "+ Add" (addLine 4848): type, non-blank text; owner and due kept for actions only. */
-export function parseMinutesLine(v: { type?: unknown; text?: unknown; owner?: unknown; due?: unknown; activity?: unknown }): Parsed<MinutesLineInput> {
+export function parseMinutesLine(v: { type?: unknown; text?: unknown; owner?: unknown; due?: unknown; activity?: unknown }, year: number): Parsed<MinutesLineInput> {
   const type = v.type as MeetingLineType;
   if (!LINE_TYPES.includes(type)) return { ok: false, error: 'Invalid note type' };
   const text = typeof v.text === 'string' ? v.text.trim().replace(/\s+/g, ' ') : '';
@@ -501,7 +505,7 @@ export function parseMinutesLine(v: { type?: unknown; text?: unknown; owner?: un
   if (text.length > MAX.note) return { ok: false, error: 'The note is too long' };
   if (type !== 'action') return { ok: true, value: { type, text, owner: null, due: null } };
   const owner = typeof v.owner === 'string' ? v.owner.trim().replace(/\s+/g, ' ') : '';
-  const due = typeof v.due === 'string' ? normaliseDue(v.due) : null;
+  const due = typeof v.due === 'string' ? normaliseDue(v.due, year) : null;
   if (owner.length > MAX.name || (due?.length ?? 0) > MAX.due) return { ok: false, error: 'The note is too long' };
   // S-12 a (R-067): an optional plan activity, by its code (checked against the project's plan by the Server Function and the writer).
   const activity = typeof v.activity === 'string' ? v.activity.trim() : '';
@@ -586,7 +590,7 @@ export function minutesTaskDates(typedDue: string | null, today: string, default
 }
 
 /** Due shown as a date ("2 Oct" → translated months) when it parses like the DAL does, else free text. */
-export const isDateDue = (due: string | null | undefined) => !!due && due !== '—' && !!isoOfDisplayDate(due);
+export const isDateDue = (due: string | null | undefined) => !!due && due !== '—' && isDisplayDate(due);
 
 // ── Transcripts (chapter 4, S-10) ──────────────────────────────────────────────────────────────────────────────────
 

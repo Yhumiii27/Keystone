@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import PROTO from '@/server/prototype/prototype-data.json';
 import { initialFormValues, isFormValid } from '@/components/app/form-def';
 import { makeT } from '@/i18n/translate';
-import { STATUS_REPORT_FORM, newChangeRequestForm, parseNewChangeRequest, parseStatusReport } from './forms';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
+import { newChangeRequestForm, parseNewChangeRequest, parseStatusReport, statusReportForm } from './forms';
 import { changesT } from './i18n';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -84,12 +85,20 @@ describe('New change request (AF.changes)', () => {
 
 describe('Generate status report (AF.trends)', () => {
   it('mirrors the prototype run form', () => {
+    const STATUS_REPORT_FORM = statusReportForm(DEMO_TODAY_ISO);
     expect([STATUS_REPORT_FORM.title, STATUS_REPORT_FORM.submit, STATUS_REPORT_FORM.kind]).toEqual([AF.trends.title, AF.trends.submit, 'run']);
     expect(STATUS_REPORT_FORM.fields.map((f) => [f.id, f.label, f.type])).toEqual(AF.trends.fields.map(([id, label, type]: string[]) => [id, label, type]));
     for (const f of STATUS_REPORT_FORM.fields.filter((x) => x.type === 'select')) {
       const proto = AF.trends.fields.find(([id]: string[]) => id === f.id)[3];
       expect(f.options?.map((o) => (typeof o === 'string' ? o : o.label))).toEqual(proto);
     }
+  });
+
+  it('names the periods after the business date (R-013), in French through the FR rules', () => {
+    const labels = (today: string) => statusReportForm(today).fields[0].options!.map((o) => (typeof o === 'string' ? o : o.label));
+    expect(labels('2027-01-05')).toEqual(['January 2027', 'Q1 2027', 'Since project start']);
+    expect(labels('2027-11-30').map(makeT('fr'))).toEqual(['Novembre 2027', 'T4 2027', 'Depuis le début du projet']);
+    expect(labels(DEMO_TODAY_ISO).map(makeT('fr'))).toEqual(['Septembre 2026', 'T3 2026', 'Depuis le début du projet']);
   });
 
   it('validates codes; blank selects take the first option', () => {

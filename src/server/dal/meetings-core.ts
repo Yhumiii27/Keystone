@@ -2,6 +2,8 @@ import 'server-only';
 // Meetings DAL — writer helpers shared by the minutes writers (meetings.ts) and the transcript writers
 // (meetings-transcripts.ts): load a meeting in a transaction, write its audit row, append minutes lines to an agenda point.
 import { and, eq, sql } from 'drizzle-orm';
+import { yearOfIso } from '@/domain/clock';
+import { businessToday } from '@/server/clock';
 import { isoOfDisplayDate, type MeetingLineOrigin, type MeetingLineType } from '@/server/db/codes';
 import { findPerson, nameOf, writeAudit } from '@/server/db/helpers';
 import { activities, meetingAgendaPoints, meetingLines, meetings } from '@/server/db/schema';
@@ -39,6 +41,8 @@ export class MeetingLineError extends Error {}
 export async function appendLines(tx: Tx, m: MeetingRecord, point: number, lines: (NewMeetingLine & { origin: MeetingLineOrigin })[]): Promise<number[]> {
   const [pt] = await tx.select().from(meetingAgendaPoints).where(and(eq(meetingAgendaPoints.meetingId, m.id), eq(meetingAgendaPoints.position, point)));
   if (!pt) throw new Error(`${m.number} has no agenda point ${point}`);
+  // R-013: a year-less due ("2 Oct") is in the business year, as `normaliseDue` wrote it.
+  const year = yearOfIso(await businessToday(tx));
   const [{ maxPos }] = await tx.select({ maxPos: sql<number>`coalesce(max(${meetingLines.position}), -1)::int` }).from(meetingLines).where(eq(meetingLines.agendaPointId, pt.id));
   const rows = [];
   for (const [k, l] of lines.entries()) {
@@ -53,7 +57,7 @@ export async function appendLines(tx: Tx, m: MeetingRecord, point: number, lines
     }
     rows.push({
       agendaPointId: pt.id, position: maxPos + 1 + k, type: l.type, text: l.text.trim(), ownerName: owner, ownerPersonId: owner ? (await findPerson(tx, owner))?.id ?? null : null,
-      dueText: due, dueDate: due && due !== '—' ? isoOfDisplayDate(due) : null, activityId, origin: l.origin,
+      dueText: due, dueDate: due && due !== '—' ? isoOfDisplayDate(due, year) : null, activityId, origin: l.origin,
     });
   }
   if (rows.length) await tx.insert(meetingLines).values(rows);

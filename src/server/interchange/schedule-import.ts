@@ -15,6 +15,7 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { BUILTIN_CALENDARS, WorkCalendar, holidaysOf, type CalendarDef } from '@/domain/calendar';
 import { DEFAULT_PROJECT_CALENDAR, nextBaselineCode } from '@/domain/ch4-defaults';
 import { businessToday } from '@/server/clock';
+import { yearOfIso } from '@/domain/clock';
 import { detectCycle } from '@/domain/cpm';
 import { allocateProjectIdentity } from '@/domain/lifecycle';
 import type { DB, Tx } from '@/server/db/client';
@@ -457,6 +458,8 @@ export async function writeScheduleImport(s: ImportedSchedule, plan: SchedulePla
   const who = actor ? nameOf(actor) : actorName;
   const settings = await settingsHolidayDates(tx);
   const dataDate = s.statusDate ?? null;
+  // R-013: the plan's display texts show their year outside the business year.
+  const year = yearOfIso(await businessToday(tx));
 
   // Project (NEW) or target (UPDATE).
   let projectId: string;
@@ -545,9 +548,9 @@ export async function writeScheduleImport(s: ImportedSchedule, plan: SchedulePla
     const constraint = a.constraint?.date && isConstraintType(a.constraint.type) ? a.constraint : null;
     const tf = complete ? null : a.totalFloatDays;
     const values = {
-      name: a.name.slice(0, 300), durationDays: Math.round(a.durationDays), startText: planDateText(start), startActual: !!a.actualStart, finishText: planDateText(finish),
+      name: a.name.slice(0, 300), durationDays: Math.round(a.durationDays), startText: planDateText(start, year), startActual: !!a.actualStart, finishText: planDateText(finish, year),
       finishActual: complete, startDate: start, finishDate: finish, percentComplete: Math.round(a.percentComplete), remainingDays: a.remainingDays,
-      constraintType: (constraint?.type ?? null) as ConstraintType | null, constraintDateText: constraint?.date ? planDateText(constraint.date) : null, constraintDate: constraint?.date ?? null,
+      constraintType: (constraint?.type ?? null) as ConstraintType | null, constraintDateText: constraint?.date ? planDateText(constraint.date, year) : null, constraintDate: constraint?.date ?? null,
       constraintViolated: false, totalFloatDays: tf, critical: complete ? false : (a.critical ?? (tf != null ? tf <= 0 : null)), calendarCode: override as CalendarCode | null,
       externalUid: a.uid, wbsNodeId: pkgId.get(p.packageKey)!,
     };
@@ -567,7 +570,7 @@ export async function writeScheduleImport(s: ImportedSchedule, plan: SchedulePla
     } else {
       const blFinish = (opts.importBaselines && bl0?.finish) || finish;
       inserts.push({
-        projectId, code: p.code, ...values, ...(money ?? { budgetKeur: 0, actualKeur: 0, eacKeur: 0 }), description, baselineFinishText: planDateText(blFinish), baselineFinishDate: blFinish,
+        projectId, code: p.code, ...values, ...(money ?? { budgetKeur: 0, actualKeur: 0, eacKeur: 0 }), description, baselineFinishText: planDateText(blFinish, year), baselineFinishDate: blFinish,
         varianceDays: wc.workDaysBetween(finish, blFinish), isAdded: true, position: 2_000_000 + order++,
       });
     }
@@ -608,6 +611,7 @@ export async function writeScheduleImport(s: ImportedSchedule, plan: SchedulePla
 }
 
 async function createImportedProject(tx: Tx, s: ImportedSchedule, plan: SchedulePlan, opts: ScheduleImportOptions, who: string): Promise<{ id: string; code: string }> {
+  const year = yearOfIso(await businessToday(tx));
   const client = (opts.client ?? s.company ?? '').trim().slice(0, 120);
   const name = ((opts.projectName ?? '').trim() || s.name || 'Imported schedule').slice(0, 200);
   const [existing, [registered], [{ min }]] = await Promise.all([
@@ -636,7 +640,7 @@ async function createImportedProject(tx: Tx, s: ImportedSchedule, plan: Schedule
     })
     .returning({ id: projects.id });
   if (pm) await tx.insert(projectMembers).values({ projectId: p.id, personId: pm.id, projectRole: 'pm', position: 0 });
-  await tx.insert(wbsNodes).values({ projectId: p.id, code: '1', name, level: 0, parentId: null, position: 0, startText: planDateText(start), finishText: planDateText(finish), startDate: start, finishDate: finish });
+  await tx.insert(wbsNodes).values({ projectId: p.id, code: '1', name, level: 0, parentId: null, position: 0, startText: planDateText(start, year), finishText: planDateText(finish, year), startDate: start, finishDate: finish });
   return { id: p.id, code: ident.code };
 }
 
@@ -699,6 +703,7 @@ async function renumber(tx: Tx, projectId: string): Promise<void> {
 
 /** Roll-up dates of the work packages and the root (start / finish texts, total float). */
 async function rollUp(tx: Tx, projectId: string, isNew: boolean): Promise<void> {
+  const year = yearOfIso(await businessToday(tx));
   const acts = await tx
     .select({ wbs: activities.wbsNodeId, start: activities.startDate, finish: activities.finishDate, tf: activities.totalFloatDays })
     .from(activities)
@@ -717,7 +722,7 @@ async function rollUp(tx: Tx, projectId: string, isNew: boolean): Promise<void> 
       await tx
         .update(wbsNodes)
         .set({
-          startDate: r.start, finishDate: r.finish, ...(r.start ? { startText: planDateText(r.start) } : {}), ...(r.finish ? { finishText: planDateText(r.finish) } : {}),
+          startDate: r.start, finishDate: r.finish, ...(r.start ? { startText: planDateText(r.start, year) } : {}), ...(r.finish ? { finishText: planDateText(r.finish, year) } : {}),
           ...(isNew || tfs.length ? { totalFloatDays: tfs.length ? Math.min(...tfs) : 0 } : {}), updatedAt: new Date(),
         })
         .where(eq(wbsNodes.id, n.id));
@@ -729,6 +734,7 @@ async function writeBaselines(
   tx: Tx, s: ImportedSchedule, plan: SchedulePlan, opts: ScheduleImportOptions, projectId: string, idOfCode: Map<string, string>, who: string, actorId: string | null,
   setOn: IsoDate,
 ): Promise<void> {
+  const year = yearOfIso(await businessToday(tx));
   const numbers = opts.mode === 'new' ? plan.baselineNumbers : plan.proposedBaseline ? [0] : [];
   const [proj] = await tx.select({ budget: projects.budgetKeur }).from(projects).where(eq(projects.id, projectId));
   const wbsCodes = new Map(plan.packages.map((p) => [p.key, p.code]));
@@ -750,7 +756,7 @@ async function writeBaselines(
       .returning({ id: baselines.id });
     const rows = values.map(({ p, b: v }, i) => ({
       baselineId: b.id, activityId: idOfCode.get(p.code)!, activityCode: p.code, name: p.a.name.slice(0, 300), wbsCode: wbsCodes.get(p.packageKey) ?? null,
-      startDate: v!.start, finishDate: v!.finish, startText: v!.start ? planDateText(v!.start) : null, finishText: v!.finish ? planDateText(v!.finish) : null,
+      startDate: v!.start, finishDate: v!.finish, startText: v!.start ? planDateText(v!.start, year) : null, finishText: v!.finish ? planDateText(v!.finish, year) : null,
       durationDays: v!.durationDays, budgetKeur: v!.costKeur, percentComplete: null, totalFloatDays: null, position: i,
     }));
     for (let i = 0; i < rows.length; i += 500) await tx.insert(baselineActivities).values(rows.slice(i, i + 500));
@@ -766,6 +772,7 @@ async function writeProjectHeader(tx: Tx, s: ImportedSchedule, projectId: string
   const [proj] = await tx.select().from(projects).where(eq(projects.id, projectId));
   // R-013: without a planned start or a data date, the business date.
   const today = await businessToday(tx);
+  const year = yearOfIso(today);
   const start = proj.plannedStartDate ?? today;
   const startMonth = Math.floor(monthIndex(start));
   const rel = (iso: string | null) => round2(monthIndex(iso ?? start) - startMonth);
@@ -791,7 +798,7 @@ async function writeProjectHeader(tx: Tx, s: ImportedSchedule, projectId: string
     .update(projects)
     .set({ budgetKeur: budget, actualKeur: actual, progress: round2(progress), finishText: monthText(finish), finishMonth: Math.floor(monthIndex(finish)), plannedFinishDate: finish, updatedAt: new Date() })
     .where(eq(projects.id, projectId));
-  await tx.update(wbsNodes).set({ baselineFinishText: planDateText(blFinish) }).where(and(eq(wbsNodes.projectId, projectId), eq(wbsNodes.level, 0)));
+  await tx.update(wbsNodes).set({ baselineFinishText: planDateText(blFinish, year) }).where(and(eq(wbsNodes.projectId, projectId), eq(wbsNodes.level, 0)));
   await tx.insert(projectControls).values({
     projectId, startMonth, tNow: round1(monthIndex(proj.dataDate ?? today) - startMonth), floatDays: float, finishText: longDateText(finish), baselineText: longDateText(blFinish),
     floatText: `${minus(float)} days`, floatShort: `${minus(float)} d`, critText: `${critPkgs} of ${pkgs.length} packages critical`, milesText: `${done.length} of ${miles.length}`,

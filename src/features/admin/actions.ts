@@ -12,6 +12,8 @@ import {
   MT_CALENDAR_OPTIONS, MT_COST_TYPES, MT_FORM_BASES, MT_FORM_CALENDARS, holidayEntry, isSettingsCardKey, normaliseMachineTypeCode, parseBudgetInput,
   parsePercentInput, parseThresholdInput, settingsEntry, thresholdsError,
 } from '@/domain/admin';
+import { yearOfIso } from '@/domain/clock';
+import { businessToday } from '@/server/clock';
 import { isoOfDisplayDate, locationType, type CalendarCode, type CostType } from '@/server/db/codes';
 import { listAdminConnectors, syncAdminConnector } from '@/server/dal/admin-connectors';
 import { ConnectorDisabledError } from '@/server/dal/integrations';
@@ -95,9 +97,9 @@ async function settingsEditor(): Promise<{ actor: Actor } | { error: string }> {
   return canEditSettings(r.actor.role) ? r : { error: await tr(SETTINGS_DIRECTOR_ONLY) };
 }
 
-/** A public holiday's date is a real 2026 day ("14 Jul · Fête nationale"; "31 Feb · …" refused). */
-function isRealHoliday(text: string): boolean {
-  const iso = isoOfDisplayDate(text.split(' · ')[0]);
+/** A public holiday's date is a real day of the business year `year` ("14 Jul · Fête nationale"; "31 Feb · …" refused). */
+function isRealHoliday(text: string, year: number): boolean {
+  const iso = isoOfDisplayDate(text.split(' · ')[0], year);
   if (!iso || !text.includes(' · ')) return false;
   const d = new Date(iso + 'T00:00:00Z');
   return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === iso;
@@ -111,7 +113,7 @@ export async function addSettingsEntryAction(listKey: unknown, raw: unknown, loc
   const entry = listKey === 'holidays' ? holidayEntry(raw) : settingsEntry(raw);
   if (!entry) return fail(listKey === 'locations' ? 'Location is required' : 'Entry is required');
   if (entry.length > 120) return fail('Invalid request');
-  if (listKey === 'holidays' && !isRealHoliday(entry)) return fail('A holiday reads "14 Jul · Fête nationale"');
+  if (listKey === 'holidays' && !isRealHoliday(entry, yearOfIso(await businessToday()))) return fail('A holiday reads "14 Jul · Fête nationale"');
   try {
     if (listKey === 'locations') {
       const type = locType ?? 'central_warehouse';

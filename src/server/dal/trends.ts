@@ -6,7 +6,7 @@ import { asc, desc, eq } from 'drizzle-orm';
 import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import {
-  addDaysIso, isoWeekOf, reportAudience, reportPeriod, reportSections, shortDateOfIso,
+  addDaysIso, isoWeekOf, reportAudience, reportPeriodLabel, reportSections, shortDateOfIso,
   type ReportAudience, type ReportPeriod, type ReportSections,
 } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
@@ -99,7 +99,8 @@ export async function getTrends(projectCode: string): Promise<Trends | null> {
     },
     bac: p.bac, contingency: p.cont ?? null, nextReport: { date: next, text: shortDateOfIso(next) },
     reports: reports.map(({ r, full, short }) => ({
-      period: r.period, periodLabel: reportPeriod.label(r.period), audience: r.audience, audienceLabel: reportAudience.label(r.audience),
+      // R-013: the period the report covered, at its status date ("September 2026").
+      period: r.period, periodLabel: reportPeriodLabel(r.period, r.statusDate), audience: r.audience, audienceLabel: reportAudience.label(r.audience),
       sections: r.sections, sectionsLabel: reportSections.label(r.sections), note: r.note, statusDate: r.statusDate,
       generatedBy: full ?? short ?? null, generatedAt: r.generatedAt.toISOString(),
     })),
@@ -121,13 +122,14 @@ export async function recordStatusReport(projectCode: string, input: StatusRepor
   await db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);
     const actor = await findPerson(tx, actorName);
+    const statusDate = await businessToday(tx);
     const [r] = await tx
       .insert(statusReports)
-      .values({ projectId: p.id, period: input.period, audience: input.audience, sections: input.sections, note: input.note?.trim() || null, statusDate: await businessToday(tx), generatedByPersonId: actor?.id ?? null })
+      .values({ projectId: p.id, period: input.period, audience: input.audience, sections: input.sections, note: input.note?.trim() || null, statusDate, generatedByPersonId: actor?.id ?? null })
       .returning({ id: statusReports.id });
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: 'Status report',
-      change: `generated · ${reportPeriod.label(input.period)} · ${reportAudience.label(input.audience)}`, area: 'Trends', entityType: 'status_report', entityId: r.id, projectId: p.id,
+      change: `generated · ${reportPeriodLabel(input.period, statusDate)} · ${reportAudience.label(input.audience)}`, area: 'Trends', entityType: 'status_report', entityId: r.id, projectId: p.id,
     });
   });
 }

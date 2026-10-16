@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { parseDateInput } from '@/domain/contract';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { DEMO_TODAY_ISO } from '@/domain/clock';
-import { isoOfDisplayDate, receiptStatus } from '@/server/db/codes';
+import { isoOfDemoDate, receiptStatus } from '@/server/db/codes';
 import {
   DEFAULT_QC_REMARKS, QC_DECIDERS, QC_INBOX_ROLES, RECEIPT_FLOW, canDecideQc, deliveryChips, deliveryKpis, failedOnText, filterReceipts, parseAnnounceForm,
   parseQty, parseRegisterForm, putAwayAfterQc, qcInboxItems, qcPlan, qtyFieldId, qtyText, receiptDrawerView, receiptFilterOf, receiptRowView, registerPlan,
@@ -54,7 +54,7 @@ function protoReceipts(code: string): ReceiptLike[] {
   }
   const dash = (s: string) => (s === '—' ? null : s);
   return raw.map((d) => ({
-    number: d.id, poNumber: d.po, supplier: d.supplier, status: receiptStatus.code(d.status), date: isoOfDisplayDate(d.date), carrier: dash(d.carrier),
+    number: d.id, poNumber: d.po, supplier: d.supplier, status: receiptStatus.code(d.status), date: isoOfDemoDate(d.date), carrier: dash(d.carrier),
     supplierDeliveryNote: dash(d.note), lines: d.lines.map(([ref, o, dq, a, r, l]: any[]) => ({ ref, name: PART_NAME[ref] ?? '', ordered: o, delivered: dq, accepted: a, rejected: r, location: l })),
     qc: { by: dash(d.qc.by), result: dash(d.qc.result), remarks: dash(d.qc.remarks) }, documents: [...d.docs], photoCount: d.photos, receivedBy: 'Fabien Bertrand',
   }));
@@ -71,14 +71,14 @@ const PROTO_ON_TIME = 83;
 const kpisOf = (rs: ReceiptLike[], code: string) => deliveryKpis(rs, openOrders(code), 'en', PROTO_ON_TIME).map((k) => ({ label: k.label, value: k.value, sub: k.sub, color: k.lo ? LO : TEXT }));
 const rowsOf = (rs: ReceiptLike[]) =>
   rs.map((r) => {
-    const v = receiptRowView(r, 'en');
+    const v = receiptRowView(r, 'en', 2026);
     return {
       id: v.id, po: v.po, supplier: v.supplier, date: v.date, note: v.note, lines: v.lines, qty: v.qty, acc: v.acc, rej: v.rej,
       rejColor: v.rejLo ? LO : 'var(--color-neutral-400)', status: v.statusLabel, tagClass: `tag tag-${v.tone}`, loc: v.loc, qc: v.qc, canReceive: v.canReceive, canQC: v.canQc,
     };
   });
 const drawerOf = (r: ReceiptLike) => {
-  const d = receiptDrawerView(r, 'en');
+  const d = receiptDrawerView(r, 'en', 2026);
   const kv = (xs: typeof d.meta) => xs.map((x) => ({ k: x.k, v: x.v, color: x.lo ? LO : TEXT }));
   return {
     id: d.id, po: d.po, supplier: d.supplier, status: d.statusLabel, tagClass: `tag tag-${d.tone}`, docs: d.docs, noDocs: !d.docs.length, slotId: `deliv-${d.id}`,
@@ -229,16 +229,16 @@ describe('transitions (receive / accept / reject 4455–4456)', () => {
 describe('"Delivery — quality check" items (apprItems 4725)', () => {
   it('quality and procurement get the current project\'s QC pending receipts', () => {
     expect(QC_INBOX_ROLES).toEqual(['quality', 'procurement']);
-    const items = (code: string) => qcInboxItems(protoReceipts(code)).map(({ id, title, sub, when, who }) => ({ kind: 'Delivery — quality check', id, title, sub, when, who }));
+    const items = (code: string) => qcInboxItems(protoReceipts(code), 2026).map(({ id, title, sub, when, who }) => ({ kind: 'Delivery — quality check', id, title, sub, when, who }));
     expect(items('HLT-026')).toEqual(G.inbox.en.quality);
     for (const code of PROJECTS) expect(items(code)).toEqual(G.inbox.en[`procurement:${code}`].map((i: any) => ({ ...i, when: day(i.when) })));
     for (const role of ['director', 'pm', 'depthead', 'member', 'englead', 'client']) expect(G.inbox.en[role]).toEqual([]);
-    expect(qcInboxItems(protoReceipts('HLT-026'))[0].whenIso).toBe('2026-09-18');
+    expect(qcInboxItems(protoReceipts('HLT-026'), 2026)[0].whenIso).toBe('2026-09-18');
   });
 
   it('a decided receipt leaves the queue (the prototype\'s inline call threw; replayed with the delivery handler)', () => {
     const rs = replace(protoReceipts('HLT-026'), applyQc(protoReceipts('HLT-026')[2], { mode: 'accept' }, 'Gabriel Comte'));
-    expect(qcInboxItems(rs)).toEqual(G.inbox.en.qualityAfterAccept);
+    expect(qcInboxItems(rs, 2026)).toEqual(G.inbox.en.qualityAfterAccept);
   });
 
   it('QC decisions: the inbox roles and the portfolio director; the project manager registers but does not accept', () => {
@@ -266,7 +266,7 @@ describe('"Announce a delivery" (announce 4466, SC-4)', () => {
   });
 
   it('form: order offered, date in EN / FR / ISO (blank = the order\'s date), carrier, put-away', () => {
-    const opts = { orders: ['PO-1052', 'PO-1063'], locations: ['Entrepôt central — Lyon', 'Magasin chantier — Le Havre'], parseDate: (s: string) => parseDateInput(s) };
+    const opts = { orders: ['PO-1052', 'PO-1063'], locations: ['Entrepôt central — Lyon', 'Magasin chantier — Le Havre'], parseDate: (s: string) => parseDateInput(s, 2026) };
     expect(parseAnnounceForm({ po: 'PO-1052', expected: '12 oct. 2026', carrier: ' Geodis ', location: 'Magasin chantier — Le Havre' }, opts)).toEqual({
       ok: true, value: { poNumber: 'PO-1052', expectedOn: '2026-10-12', carrier: 'Geodis', location: 'Magasin chantier — Le Havre' },
     });
@@ -290,7 +290,7 @@ describe('"Register receipt" plan and form', () => {
   });
 
   it('form: delivered on (EN / FR, default the status date), carrier, delivery note, quantities by field', () => {
-    const opts = { today: DEMO_TODAY_ISO, parseDate: (s: string) => parseDateInput(s) };
+    const opts = { today: DEMO_TODAY_ISO, parseDate: (s: string) => parseDateInput(s, 2026) };
     expect(parseRegisterForm({ date: '25 sept. 2026', carrier: 'Geodis', note: ' CF-DN-0921 ', [qtyFieldId('FD-DAMP-FR')]: '24', [qtyFieldId('FD-SPR-HD')]: '420' }, lines, opts)).toEqual({
       ok: true, value: { receivedOn: '2026-09-25', carrier: 'Geodis', supplierDeliveryNote: 'CF-DN-0921', plan: { delivered: { 'FD-DAMP-FR': 24, 'FD-SPR-HD': 420 }, complete: true, remarks: 'Received complete · inspection to do' } },
     });

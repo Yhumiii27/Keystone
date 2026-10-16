@@ -7,6 +7,7 @@ import 'server-only';
 // the delivery (the prototype wrote "Fabien Bertrand" for every receipt).
 import { screenHref } from '@/config/screens';
 import type { ApprovalItem } from '@/domain/approvals';
+import { yearOfIso } from '@/domain/clock';
 import { QC_INBOX_ROLES, qcInboxItems } from '@/domain/deliveries';
 import { qcDecidedCount, qcQueue } from '@/server/dal/deliveries';
 import type { ApprovalContext, ApprovalProvider } from './types';
@@ -20,7 +21,7 @@ export const deliveryQcProvider: ApprovalProvider = {
   async items(ctx) {
     if (!inScope(ctx)) return [];
     const code = ctx.project!.code;
-    return qcInboxItems(await qcQueue(code)).map(
+    return qcInboxItems(await qcQueue(code), yearOfIso(ctx.today)).map(
       (i): ApprovalItem => ({
         kind: 'delivery', id: i.id, title: i.title, sub: i.sub, who: i.who, when: i.when, whenIso: i.whenIso,
         href: `${screenHref('deliveries', { code })}?receipt=${encodeURIComponent(i.id)}`,

@@ -52,7 +52,7 @@ beforeAll(async () => {
 async function view(lang: Lang, code = 'HLT-026', q: { status?: ReceiptStatus | null; receipt?: string | null } = {}) {
   const data = await getDeliveriesScreen(code);
   const t = makeT(lang);
-  return { data, t, v: deliveriesView(code, data, { status: q.status ?? null, receipt: q.receipt ?? null }, t, lang) };
+  return { data, t, v: deliveriesView(code, data, { status: q.status ?? null, receipt: q.receipt ?? null }, t, lang, 2026) };
 }
 
 describe('Deliveries view model vs the prototype (EN and FR)', () => {
@@ -181,7 +181,7 @@ describe('Deliveries static render', () => {
 describe('forms', () => {
   it('Announce a delivery: the orders still expecting goods (Harbor Line), put-away default = the Le Havre site store', async () => {
     const { data } = await view('en');
-    const f = announceFormDef(data.announceable, data.putAway, makeT('en'), 'en');
+    const f = announceFormDef(data.announceable, data.putAway, makeT('en'), 'en', 2026);
     expect([f.title, f.submit, f.fields.map((x) => x.id)]).toEqual(['Announce a delivery', 'Announce', ['po', 'expected', 'carrier', 'location']]);
     expect(f.fields[0].options).toEqual([
       { value: 'PO-1052', label: 'PO-1052 · Halvorsen Cranes · EQ-CRN-250T × 2 · 12 Oct' },
@@ -189,7 +189,7 @@ describe('forms', () => {
       { value: 'PO-1071', label: 'PO-1071 · Brightline Electrics · LT-HB-200W × 260 · 19 Oct' },
     ]);
     expect(f.fields[3]).toMatchObject({ defaultValue: 'Magasin chantier — Le Havre', options: expect.not.arrayContaining([{ value: 'Zone quarantaine QC — Lyon', label: 'Zone quarantaine QC — Lyon' }]) });
-    const fr = announceFormDef(data.announceable, data.putAway, makeT('fr'), 'fr');
+    const fr = announceFormDef(data.announceable, data.putAway, makeT('fr'), 'fr', 2026);
     expect([fr.title, fr.submit, fr.fields.map((x) => x.label), fr.fields[1].placeholder]).toEqual([
       'Annoncer une livraison', 'Annoncer', ['Commande d’achat', 'Attendue le', 'Transporteur', 'Rangement'], 'Date attendue de la commande',
     ]);

@@ -14,8 +14,10 @@
 // client shows them with toast `showEn` (FormDialog results are translated here).
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
+import { yearOfIso } from '@/domain/clock';
 import { DELIVERABLE_CREATOR_ROLES, deliverableActionFor, ncrActionFor, ncrRequestText, parseNewDeliverable, producerNextOf, type ProducerTarget } from '@/domain/quality';
 import { NCR_VERIFIER_ROLES, deliverableStatus, ncrStatus, vigieSyncStatus, type NcrStatus } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { getProject } from '@/server/dal/projects';
 import {
@@ -248,7 +250,7 @@ export async function createDeliverableAction(projectCode: string, values: Recor
   if (!ctx.isLead) return { error: await tr(PM_ONLY) };
   const opts = await newDeliverableOptions(a.code);
   const raw = values && typeof values === 'object' ? Object.fromEntries(Object.entries(values).filter((e): e is [string, string] => typeof e[1] === 'string')) : {};
-  const parsed = parseNewDeliverable(raw, { types: opts.types, wbs: opts.wbs.map((w) => w.code), team: opts.team });
+  const parsed = parseNewDeliverable(raw, { types: opts.types, wbs: opts.wbs.map((w) => w.code), team: opts.team, year: yearOfIso(await businessToday()) });
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
   try {

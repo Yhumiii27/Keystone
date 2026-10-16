@@ -77,14 +77,16 @@ export const dayLabel = (o: number) => {
 };
 
 
-export const wbsParseDate = (s: string | null | undefined) => {
+/** "5 Oct 2026" / "5 Oct" (in the business year `year`, R-013; the prototype's 2026) → local Date; null when unparseable. */
+export const wbsParseDate = (s: string | null | undefined, year: number) => {
   const p = String(s || '').trim().split(/\s+/);
   const d = parseInt(p[0], 10);
   const m = MO.indexOf((p[1] || '').slice(0, 3) as (typeof MO)[number]);
-  return isNaN(d) || m < 0 ? null : new Date(p[2] ? parseInt(p[2], 10) : 2026, m, d);
+  return isNaN(d) || m < 0 ? null : new Date(p[2] ? parseInt(p[2], 10) : year, m, d);
 };
-export const wbsFmtDate = (d: Date) =>
-  String(d.getDate()).padStart(2, '0') + ' ' + MO[d.getMonth()] + (d.getFullYear() !== 2026 ? ' ’' + String(d.getFullYear()).slice(2) : '');
+/** "05 Oct" / "14 Jan ’27": the year suffix outside the business year `year` (R-013; the prototype compared with 2026). */
+export const wbsFmtDate = (d: Date, year: number) =>
+  String(d.getDate()).padStart(2, '0') + ' ' + MO[d.getMonth()] + (d.getFullYear() !== year ? ' ’' + String(d.getFullYear()).slice(2) : '');
 
 /** First letter of each word: "Marie Lefebvre" → "ML". */
 export const initials = (name: string) =>

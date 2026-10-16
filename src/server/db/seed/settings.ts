@@ -4,7 +4,7 @@
 import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { PROTO } from '@/server/prototype';
 import {
-  APP_SETTING_CCB, APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, HEALTH_DEFAULTS, connectorStatus, deliverableType, locationType, parseStampText, riskCategory, slugOf, stage,
+  APP_SETTING_CCB, APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, DEMO_YEAR, HEALTH_DEFAULTS, connectorStatus, deliverableType, locationType, parseStampText, riskCategory, slugOf, stage,
   type ReferenceListKey,
 } from '../codes';
 import { DEFAULT_CCB_THRESHOLD_KEUR } from '@/domain/change-control';
@@ -23,7 +23,7 @@ export function referenceCodeOf(list: ReferenceListKey, label: string): string {
     case 'riskCats': return riskCategory.code(label);
     case 'delivTypes': return deliverableType.code(label);
     case 'locTypes': return locationType.code(label);
-    case 'holidays': return holidayCode(label);
+    case 'holidays': return holidayCode(label, DEMO_YEAR);
     default: return slugOf(label);
   }
 }

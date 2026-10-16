@@ -250,6 +250,7 @@ describe('billing (04 §4)', () => {
         { id: 'M6', label: 'Anti-collision lidar commissioned', pct: 100, due: '14 Dec 2026', status: 'planned', invoiced: null, paid: null, amount: 120, paymentDue: '28 Jan 2027' },
       ],
       openCommit: 3946.5, // R-073: the open purchase orders at their line prices
+      year: 2026, // R-013: the business year the milestone texts are written against
     });
     expect(await getBudgetContract('NDC-031')).toBeNull();
   });

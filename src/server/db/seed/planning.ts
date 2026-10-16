@@ -1,7 +1,7 @@
 // Planning seed: materialises projectData() (HLT_PD + the 5 generated projects) — WBS nodes, activities,
 // links, milestones, schedule bars, the project control header — plus A1250_RES.
 import { PROTO, PROTO_GEN } from '@/server/prototype';
-import { isoOfDisplayDate, milestoneStatus, parseConstraint, splitActual, type LinkType } from '../codes';
+import { isoOfDemoDate, milestoneStatus, parseConstraint, splitActual, type LinkType } from '../codes';
 import { activities, activityAssignments, activityLinks, milestones, projectControls, scheduleBars, wbsNodes } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, personId, type SeedCtx } from './context';
@@ -62,9 +62,9 @@ export async function seedPlanning(tx: Tx, ctx: SeedCtx): Promise<void> {
       actRows.push({
         id, projectId, wbsNodeId: must(wbsIds, a.w, `WBS node of ${a.id}`), code: a.id, name: a.n, durationDays: a.d!,
         startText: s.text, startActual: s.actual, finishText: f.text, finishActual: f.actual,
-        startDate: isoOfDisplayDate(s.text), finishDate: isoOfDisplayDate(f.text),
-        baselineFinishText: a.bl!, baselineFinishDate: isoOfDisplayDate(a.bl), varianceDays: a.v!,
-        constraintType: cons?.type ?? null, constraintDateText: cons?.date ?? null, constraintDate: cons ? isoOfDisplayDate(cons.date) : null,
+        startDate: isoOfDemoDate(s.text), finishDate: isoOfDemoDate(f.text),
+        baselineFinishText: a.bl!, baselineFinishDate: isoOfDemoDate(a.bl), varianceDays: a.v!,
+        constraintType: cons?.type ?? null, constraintDateText: cons?.date ?? null, constraintDate: cons ? isoOfDemoDate(cons.date) : null,
         constraintViolated: !!a.viol, totalFloatDays: a.tf ?? null, percentComplete: a.pc!,
         ownerPersonId: a.o ? must(ctx.personByOwner, a.o, 'owner') : null,
         budgetKeur: a.b![0], actualKeur: a.b![1], eacKeur: a.b![2], packageName: a.pkg ?? null, position,

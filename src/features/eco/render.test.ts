@@ -60,7 +60,7 @@ async function screen(role: (typeof ROLES)[number], lang: Lang, state: EcoState 
 async function drawer(role: (typeof ROLES)[number], lang: Lang, number: string) {
   const viewer = PERSONA_BY_ROLE[role];
   const [data, identity] = await Promise.all([getEcoDrawer(number), getApproverIdentity(viewer)]);
-  return ecoDrawerView({ data: data!, state: { status: null, eco: number }, viewer: { role, managedProjects: identity.managedProjects } }, makeT(lang), lang);
+  return ecoDrawerView({ data: data!, state: { status: null, eco: number }, viewer: { role, managedProjects: identity.managedProjects }, today: DEMO_TODAY_ISO }, makeT(lang), lang);
 }
 
 describe('Change orders register — EN and FR', () => {
@@ -166,7 +166,7 @@ describe('Drawings — PDM vault — EN and FR', () => {
     }
     for (const r of data.drawings) {
       const det = (await getDrawingsScreen(r.number)).detail!;
-      const d = drawingDrawerView({ drawing: det, state: { state: 'released', q: 'rmg', dwg: r.number } }, t, lang);
+      const d = drawingDrawerView({ drawing: det, state: { state: 'released', q: 'rmg', dwg: r.number }, today: DEMO_TODAY_ISO }, t, lang);
       const gd = g.drawers[r.number];
       expect([d.head, d.title, d.state, d.stateClass, d.closeHref]).toEqual([`${gd.no} ${lang === 'fr' ? '· rév.' : '· rev'} ${gd.rev}`, asTyped(lang, gd.title), gd.state, gd.tagClass, '/reference/drawings?state=released&q=rmg']);
       expect(d.meta).toEqual(gd.meta.map((m: any) => ({ k: m.k, v: asTyped(lang, day(m.v)) })));
@@ -176,7 +176,7 @@ describe('Drawings — PDM vault — EN and FR', () => {
     }
     // "Open in PDM" opens a new window: only an http(s) link from the PDM sync is kept.
     const det = (await getDrawingsScreen('DWG-AS-9000')).detail!;
-    const pdm = (u: string) => drawingDrawerView({ drawing: { ...det, pdmUrl: u }, state: { state: null, q: '', dwg: det.number } }, t, lang).pdmUrl;
+    const pdm = (u: string) => drawingDrawerView({ drawing: { ...det, pdmUrl: u }, state: { state: null, q: '', dwg: det.number }, today: DEMO_TODAY_ISO }, t, lang).pdmUrl;
     expect([pdm('https://pdm.example/DWG-AS-9000'), pdm('javascript:alert(1)'), pdm('')]).toEqual(['https://pdm.example/DWG-AS-9000', null, null]);
   });
 });

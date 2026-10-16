@@ -11,6 +11,8 @@ import {
 } from '@/domain/whatif';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import { isoOfDisplayDate, weekLabelOfIso, whatIfPriority } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
+import { yearOfIso } from '@/domain/clock';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import {
   activities, activityAssignments, allocations, costCategories, departmentCapacities, departments, persons, projectControls, projectMembers, projects,
@@ -375,11 +377,12 @@ export async function getWhatIf(projectCode: string): Promise<WhatIf | null> {
   const st = await loadWhatIfState(projectCode);
   if (!st) return null;
   const db = await getDb();
-  const [rows, [root], [ctl], bls] = await Promise.all([
+  const [rows, [root], [ctl], bls, today] = await Promise.all([
     scenarioRows(st),
-    db.select({ finish: wbsNodes.finishText }).from(wbsNodes).where(and(eq(wbsNodes.projectId, st.projectId), eq(wbsNodes.level, 0))),
+    db.select({ finish: wbsNodes.finishText, finishDate: wbsNodes.finishDate }).from(wbsNodes).where(and(eq(wbsNodes.projectId, st.projectId), eq(wbsNodes.level, 0))),
     db.select({ float: projectControls.floatDays }).from(projectControls).where(eq(projectControls.projectId, st.projectId)),
     listProjectBaselines(st.projectCode),
+    businessToday(),
   ]);
   const { model } = st;
   const cache = new Map<string, WhatIfResult>([['', model.current]]);
@@ -409,7 +412,8 @@ export async function getWhatIf(projectCode: string): Promise<WhatIf | null> {
   return {
     projectCode: st.projectCode, dataDate: st.dataDate, weeks: st.weeks, levers: model.levers, effects: st.effects, autoLevers: st.auto, current: model.current,
     results: Object.fromEntries(cache), scenarios,
-    forecastFinish: root?.finish ? isoOfDisplayDate(root.finish) : null, floatDays: ctl?.float ?? null,
+    // The rescheduled date, else the stored text (a year-less text is in the business year, R-013).
+    forecastFinish: root?.finishDate ?? (root?.finish ? isoOfDisplayDate(root.finish, yearOfIso(today)) : null), floatDays: ctl?.float ?? null,
     baseline: shown?.finishDate ? { code: shown.code, finish: shown.finishDate } : null, baselineFinish: shown?.finishDate ?? null,
     peak, overByWeek: st.weeks.map((_, i) => st.team.filter((p) => (p.loads[i] ?? 0) > WHATIF_RULES.overloadPct).length), error: model.error,
   };

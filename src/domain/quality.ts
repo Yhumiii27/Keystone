@@ -339,9 +339,12 @@ export interface DeliverableReviewLike {
   comments: string | null;
 }
 
-/** "Rev C · Rejected 25 Sep · N. Bensaïd" (`t` translates the words and the date; the comments are shown under it as typed). */
-export const reviewLineText = (r: DeliverableReviewLike, t: (s: string) => string = (s) => s) =>
-  `${t('Rev')} ${r.revision ?? '—'} · ${t(r.decision === 'accepted' ? 'Accepted' : 'Rejected')} ${t(fmtDOfIso(r.decidedOn))} · ${r.decidedBy}`;
+/**
+ * "Rev C · Rejected 25 Sep · N. Bensaïd" (`t` translates the words and the date, shown with its year outside the business
+ * year `year`; the comments are shown under it as typed).
+ */
+export const reviewLineText = (r: DeliverableReviewLike, year: number, t: (s: string) => string = (s) => s) =>
+  `${t('Rev')} ${r.revision ?? '—'} · ${t(r.decision === 'accepted' ? 'Accepted' : 'Rejected')} ${t(fmtDOfIso(r.decidedOn, year))} · ${r.decidedBy}`;
 
 // ── New deliverable (R-115, Q-3b: added by the project manager) ─────────────────────────────────────────
 
@@ -368,7 +371,7 @@ export interface NewDeliverableValues {
  */
 export function parseNewDeliverable(
   values: Record<string, string | undefined>,
-  opts: { types: readonly { code: string; label: string }[]; wbs: readonly string[]; team: readonly string[] },
+  opts: { types: readonly { code: string; label: string }[]; wbs: readonly string[]; team: readonly string[]; year: number },
 ): ParseResult<NewDeliverableValues> {
   const v = (k: string) => (values[k] ?? '').trim();
   const rawType = v('type') || opts.types[0]?.code || '';
@@ -379,7 +382,7 @@ export function parseNewDeliverable(
   if (title.length > 200) return { ok: false, error: 'Text is too long' };
   const due = v('due');
   if (!due) return { ok: false, error: 'Due date is required' };
-  const dueOn = parseDateInput(due);
+  const dueOn = parseDateInput(due, opts.year);
   if (!dueOn) return { ok: false, error: 'Enter the due date as a date, e.g. 15 Oct' };
   const wbsCode = v('wbs') || opts.wbs[0] || '';
   if (!opts.wbs.includes(wbsCode)) return { ok: false, error: 'Unknown WBS element' };
@@ -420,19 +423,19 @@ export interface QualityItemHrefs {
 
 /** "NCR verification" items: NCRs of the current project waiting for the quality manager (Close / back to Corrective action). */
 export function ncrVerificationItems(
-  ncrs: (NcrLike & { vigieUrl: string })[], code: string, hrefs: Pick<QualityItemHrefs, 'ncr'>,
+  ncrs: (NcrLike & { vigieUrl: string })[], code: string, hrefs: Pick<QualityItemHrefs, 'ncr'>, year: number,
 ): ApprovalItem[] {
   return ncrs.filter(awaitsVerification).map((n) => ({
     kind: 'ncr', id: n.number, title: n.title, sub: `${ncrSeverity.label(n.severity)} · ${n.owner}`, who: n.raisedBy,
-    when: n.dueOn ? fmtDOfIso(n.dueOn) : '', whenIso: n.dueOn, href: hrefs.ncr(n.number),
+    when: n.dueOn ? fmtDOfIso(n.dueOn, year) : '', whenIso: n.dueOn, href: hrefs.ncr(n.number),
     decision: { mode: 'ncr-verification', projectCode: code, number: n.number }, external: { href: n.vigieUrl, label: 'Open in Vigie' },
   }));
 }
 
 /** "Deliverable acceptance" items: submitted deliverables of the current project, for its client contact. */
-export function deliverableAcceptanceItems(ds: DeliverableLike[], code: string, hrefs: Pick<QualityItemHrefs, 'deliverable'>): ApprovalItem[] {
+export function deliverableAcceptanceItems(ds: DeliverableLike[], code: string, hrefs: Pick<QualityItemHrefs, 'deliverable'>, year: number): ApprovalItem[] {
   return ds.filter((d) => d.status === 'submitted').map((d) => ({
     kind: 'deliverable', id: d.number, title: d.title, sub: `${d.typeLabel} · ${d.acceptanceText}`, who: d.raci.find((c) => c.role === 'R')?.name ?? '',
-    when: fmtDOfIso(d.dueOn), whenIso: d.dueOn, href: hrefs.deliverable(d.number), decision: { mode: 'deliverable', projectCode: code, number: d.number },
+    when: fmtDOfIso(d.dueOn, year), whenIso: d.dueOn, href: hrefs.deliverable(d.number), decision: { mode: 'deliverable', projectCode: code, number: d.number },
   }));
 }

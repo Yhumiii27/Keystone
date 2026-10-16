@@ -45,9 +45,9 @@ async function overAllocated(asOf: string, pct: number) {
  * The portfolio director's approval queue (global kinds once, project-bound kinds for every project in execution), each item
  * with the date it has been waiting since. Items without a date are left out. A failing provider counts nothing.
  */
-async function directorQueue(projects: readonly ProjectRow[], lang: Lang): Promise<AlertApproval[]> {
+async function directorQueue(projects: readonly ProjectRow[], lang: Lang, today: string): Promise<AlertApproval[]> {
   const viewer = await getApproverIdentity(PERSONA_BY_ROLE.director);
-  const base: ApprovalContext = { viewer, project: projects[0] ?? null, lang };
+  const base: ApprovalContext = { viewer, project: projects[0] ?? null, lang, today };
   const safe = async (p: (typeof APPROVAL_PROVIDERS)[number], ctx: ApprovalContext) => {
     try {
       return await p.items(ctx);
@@ -92,6 +92,6 @@ export async function getPortfolioAlerts(lang: Lang, on?: string): Promise<Portf
       billing: await billingOf(p.code, lang),
     };
   }));
-  const [people, approvals] = await Promise.all([overAllocated(asOf, ALERT_RULE_DEFAULTS.overAllocatedPct), directorQueue(rows, lang)]);
+  const [people, approvals] = await Promise.all([overAllocated(asOf, ALERT_RULE_DEFAULTS.overAllocatedPct), directorQueue(rows, lang, asOf)]);
   return portfolioAlertRules({ projects, people, approvals, asOf }, lang, t, { health, ...ALERT_RULE_DEFAULTS });
 }

@@ -15,6 +15,7 @@ import {
 import {
   BASE_CURRENCY, CURRENCIES, budgetRateText, documentCurrencies, eurEquivalentText, moneyIn, thousandsUnit, type CurrencyCode, type ProjectFx,
 } from '@/domain/currency';
+import { yearOfIso } from '@/domain/clock';
 import { PAYMENT_RULES, paymentTermsText } from '@/domain/payment-terms';
 import type { Lang, T } from '@/i18n/translate';
 import {
@@ -380,11 +381,11 @@ export function billingView(c: ContractData, t: T, lang: Lang): BillingView {
       milestone: i.milestone,
       label: dataText(i.label, lang),
       note: i.note ? dataText(i.note, lang) : null,
-      issued: t(shortDateYearOfIso(i.issuedOn)),
+      issued: t(shortDateYearOfIso(i.issuedOn, yearOfIso(c.today))),
       amount: f(i.amountKeur),
-      due: t(shortDateYearOfIso(i.dueOn)),
+      due: t(shortDateYearOfIso(i.dueOn, yearOfIso(c.today))),
       overdue: i.overdue,
-      paid: t(dash(i.paidOn && shortDateYearOfIso(i.paidOn))),
+      paid: t(dash(i.paidOn && shortDateYearOfIso(i.paidOn, yearOfIso(c.today)))),
       status: t(customerInvoiceStatus.label(i.status)),
       tagClass: INVOICE_TAG[i.status],
       canPay: i.canPay,

@@ -8,6 +8,7 @@ import 'server-only';
 //   rejection goes back to In progress at the next revision ("Start next revision", R-114 / Q-3a); every client decision
 //   is kept in `deliverable_reviews`. The project manager creates deliverables ("New deliverable", R-115 / Q-3b).
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { yearOfIso } from '@/domain/clock';
 import { DELIVERABLE_CREATOR_ROLES, nextRevision } from '@/domain/quality';
 import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
@@ -187,12 +188,12 @@ export interface DeliverableReview {
   comments: string | null;
 }
 
-/** Display text of the acceptance fields (the prototype's `acc`). */
-export function acceptanceTextOf(d: Pick<DeliverableRow, 'status' | 'issueOn' | 'acceptanceDueOn' | 'acceptedOn' | 'acceptedBy' | 'rejectedOn'>): string {
-  if (d.status === 'accepted' && d.acceptedOn) return `${fmtDOfIso(d.acceptedOn)} · ${d.acceptedBy ?? '—'}`;
-  if (d.status === 'rejected' && d.rejectedOn) return `${fmtDOfIso(d.rejectedOn)} · comments issued`;
-  if (d.status === 'submitted' && d.acceptanceDueOn) return `Accept by ${fmtDOfIso(d.acceptanceDueOn)}`;
-  if (d.issueOn && (d.status === 'in_progress' || d.status === 'internal_review')) return `Issue ${fmtDOfIso(d.issueOn)}`;
+/** Display text of the acceptance fields (the prototype's `acc`); dates show their year outside the business year `year` (R-013). */
+export function acceptanceTextOf(d: Pick<DeliverableRow, 'status' | 'issueOn' | 'acceptanceDueOn' | 'acceptedOn' | 'acceptedBy' | 'rejectedOn'>, year: number): string {
+  if (d.status === 'accepted' && d.acceptedOn) return `${fmtDOfIso(d.acceptedOn, year)} · ${d.acceptedBy ?? '—'}`;
+  if (d.status === 'rejected' && d.rejectedOn) return `${fmtDOfIso(d.rejectedOn, year)} · comments issued`;
+  if (d.status === 'submitted' && d.acceptanceDueOn) return `Accept by ${fmtDOfIso(d.acceptanceDueOn, year)}`;
+  if (d.issueOn && (d.status === 'in_progress' || d.status === 'internal_review')) return `Issue ${fmtDOfIso(d.issueOn, year)}`;
   return '—';
 }
 
@@ -210,14 +211,16 @@ async function loadDeliverables(projectCode: string, numbers?: string[]): Promis
     .where(and(eq(deliverables.projectId, p.id), numbers?.length ? inArray(deliverables.number, numbers) : undefined))
     .orderBy(asc(deliverables.position));
   if (!rows.length) return [];
-  const [raci, types, ncrs, people, reviewRows] = await Promise.all([
+  const [raci, types, ncrs, people, reviewRows, today] = await Promise.all([
     db.select().from(deliverableRaci).where(inArray(deliverableRaci.deliverableId, rows.map((r) => r.d.id))),
     db.select({ code: referenceValues.code, label: referenceValues.label }).from(referenceValues).where(eq(referenceValues.listKey, 'delivTypes')),
     db.select({ number: vigieNcrs.number, deliv: vigieNcrs.deliverableNumber }).from(vigieNcrs).where(eq(vigieNcrs.projectCode, projectCode)).orderBy(asc(vigieNcrs.position)),
     db.query.persons.findMany({ columns: { id: true, shortName: true } }),
     db.select().from(deliverableReviews).where(inArray(deliverableReviews.deliverableId, rows.map((r) => r.d.id)))
       .orderBy(desc(deliverableReviews.decidedOn), desc(deliverableReviews.createdAt)),
+    businessToday(),
   ]);
+  const year = yearOfIso(today);
   const shortById = new Map(people.map((x) => [x.id, x.shortName]));
   const typeLabel = new Map(types.map((t) => [t.code, t.label]));
   return rows.map(({ d, wbsName, doc }) => {
@@ -230,7 +233,7 @@ async function loadDeliverables(projectCode: string, numbers?: string[]): Promis
       number: d.number, projectCode, title: d.title, type: d.type,
       typeLabel: typeLabel.get(d.type) ?? (deliverableType.isCode(d.type) ? deliverableType.label(d.type) : d.type), wbsCode: d.wbsCode, wbsName: wbsName ?? null,
       dueOn: d.dueOn, statusLabel: deliverableStatus.label(d.status), statusTag: DELIVERABLE_STATUS_TAG[d.status],
-      revision: d.revision, submittedOn: d.submittedOn, reviewComments: d.reviewComments, ...base, acceptanceText: acceptanceTextOf(base),
+      revision: d.revision, submittedOn: d.submittedOn, reviewComments: d.reviewComments, ...base, acceptanceText: acceptanceTextOf(base, year),
       raci: RACI_CODES.map((role) => {
         const c = cells.find((x) => x.role === role);
         return { role, name: c?.name ?? null, initials: c ? initialsOf(c.name) : '' };

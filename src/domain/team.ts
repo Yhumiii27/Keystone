@@ -7,6 +7,7 @@ import {
   interfaceStatus, keystoneSide, monthIndexOfIso, stakeholderType,
   type InterfaceEffectiveStatus, type InterfaceStatus, type KeystoneSide, type StakeholderType,
 } from '@/server/db/codes';
+import { yearOfIso } from './clock';
 import { DATE_ERROR, parseDateInput } from './contract';
 
 export type { InterfaceEffectiveStatus, InterfaceStatus, KeystoneSide, StakeholderType };
@@ -255,9 +256,10 @@ const yearOf = (s: string | undefined, defaultYear: number) => {
 
 /**
  * "Needed by" as typed: "15 Oct", "15 Oct 2026", "15 oct. 2026", "15 octobre", "15/10/2026", "15/10" or ISO
- * "2026-10-15". The year defaults to the data set's year (the prototype appended " 2026"). Null when not a date.
+ * "2026-10-15". A date without a year is in `defaultYear`, the business date's year (R-013; the prototype appended " 2026",
+ * the data set's year). Null when not a date.
  */
-export function parseNeedDate(input: string | undefined, defaultYear = 2026): string | null {
+export function parseNeedDate(input: string | undefined, defaultYear: number): string | null {
   const s = text(input)
     .toLowerCase()
     .normalize('NFD')
@@ -276,7 +278,7 @@ export function parseNeedDate(input: string | undefined, defaultYear = 2026): st
  * "New interface": interface, other party, data expected and need date required (the need date must be a date —
  * the prototype stored any text and showed no lateness for it); Keystone side defaults to Process; owner from TEAM.
  */
-export function parseNewInterface(values: Record<string, string | undefined>, team: readonly string[]): ParseResult<NewInterfaceValues> {
+export function parseNewInterface(values: Record<string, string | undefined>, team: readonly string[], year: number): ParseResult<NewInterfaceValues> {
   const title = text(values.title);
   if (!title) return { ok: false, error: 'Interface is required' };
   const otherParty = text(values.b);
@@ -286,7 +288,7 @@ export function parseNewInterface(values: Record<string, string | undefined>, te
   if ([title, otherParty, dataExpected].some((x) => x.length > MAX_TEXT)) return { ok: false, error: 'Text is too long' };
   const needed = text(values.needed);
   if (!needed) return { ok: false, error: 'Needed by is required' };
-  const neededBy = parseNeedDate(needed);
+  const neededBy = parseNeedDate(needed, year);
   if (!neededBy) return { ok: false, error: 'Enter the need date as a date, e.g. 15 Oct' };
   const side = codeOf(text(values.a) || KEYSTONE_SIDES[0], keystoneSide);
   if (!side) return { ok: false, error: 'Unknown Keystone side' };
@@ -299,11 +301,11 @@ export function parseNewInterface(values: Record<string, string | undefined>, te
 export const RECEIVED_AFTER_TODAY = 'The received date cannot be after today';
 
 /**
- * "Received on" of "Mark received" (Q-4 a, R-116): a date as typed in either language (parseDateInput, year 2026 by
- * default) → ISO; empty or unreadable → DATE_ERROR; after `today` (the business date, R-013) refused.
+ * "Received on" of "Mark received" (Q-4 a, R-116): a date as typed in either language (parseDateInput, the business year
+ * by default) → ISO; empty or unreadable → DATE_ERROR; after `today` (the business date, R-013) refused.
  */
 export function parseReceivedOn(raw: string | undefined, today: string): ParseResult<string> {
-  const iso = parseDateInput(raw);
+  const iso = parseDateInput(raw, yearOfIso(today));
   if (!iso) return { ok: false, error: DATE_ERROR };
   if (iso > today) return { ok: false, error: RECEIVED_AFTER_TODAY };
   return { ok: true, value: iso };

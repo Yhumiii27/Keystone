@@ -18,13 +18,13 @@ const ids = (xs: ApprovalItem[]) => xs.map((x) => x.id);
 describe('Codex documents (00 §7.8, DOC_WHO)', () => {
   const docs = PROTO.DOCS as ProtoDoc[];
   it('RPT-HLT-014 (release proposed) waits for the quality manager, step 2 of its circuit', () => {
-    expect(codexDocItems(docs, PROTO.DOC_TYPE, PROTO.DOC_WHO, 'G. Comte', 'HLT-026')).toEqual([
+    expect(codexDocItems(docs, PROTO.DOC_TYPE, PROTO.DOC_WHO, 'G. Comte', 'HLT-026', 2026)).toEqual([
       {
         kind: 'doc', id: 'RPT-HLT-014', title: 'Crane rail alignment report', sub: 'Test & inspection report · rev A · Quality manager', when: '28 Sep', whenIso: '2026-09-28',
         who: 'G. Comte', href: '/projects/HLT-026/documents?doc=RPT-HLT-014', decision: null,
       },
     ]);
-    for (const who of ['R. Aubert', 'M. Lefebvre', 'A. Girard', 'N. Bensaïd', 'F. Bertrand']) expect(codexDocItems(docs, PROTO.DOC_TYPE, PROTO.DOC_WHO, who, 'HLT-026')).toEqual([]);
+    for (const who of ['R. Aubert', 'M. Lefebvre', 'A. Girard', 'N. Bensaïd', 'F. Bertrand']) expect(codexDocItems(docs, PROTO.DOC_TYPE, PROTO.DOC_WHO, who, 'HLT-026', 2026)).toEqual([]);
   });
 });
 
@@ -44,31 +44,31 @@ describe('change requests (apprItems 4726 by person)', () => {
   const withDecided = (list: ChangeRequestForInbox[], steps: ChangeRequestForInbox['chain'][number]['step'][]) =>
     list.map((c) => (c.id === 'CR-008' ? { ...c, chain: c.chain.map((x) => (steps.includes(x.step) ? { ...x, decision: 'ok' as const } : x)) } : c));
   it('CR-008 waits for the director only (sequential chain, P-6b), not the PM (step already ok)', () => {
-    expect(ids(changeRequestItems(crs, director, 'HLT-026', 'en'))).toEqual(['CR-008']);
-    expect(ids(changeRequestItems(crs, client, 'HLT-026', 'en'))).toEqual([]);
-    expect(changeRequestItems(crs, pm, 'HLT-026', 'en')).toEqual([]);
-    const [d] = changeRequestItems(crs, director, 'HLT-026', 'en');
+    expect(ids(changeRequestItems(crs, director, 'HLT-026', 'en', 2026))).toEqual(['CR-008']);
+    expect(ids(changeRequestItems(crs, client, 'HLT-026', 'en', 2026))).toEqual([]);
+    expect(changeRequestItems(crs, pm, 'HLT-026', 'en', 2026)).toEqual([]);
+    const [d] = changeRequestItems(crs, director, 'HLT-026', 'en', 2026);
     expect(d).toEqual({
       kind: 'cr', id: 'CR-008', title: 'Second steel crew — schedule recovery', sub: 'Budget · Schedule · +€85k · -12 d', when: '24 Sep', whenIso: '2026-09-24', who: 'R. Aubert',
       href: '/projects/HLT-026/changes?cr=CR-008', decision: { mode: 'change-request', projectCode: 'HLT-026', number: 'CR-008', step: 'director' },
     });
     const afterDirector = withDecided(crs, ['director']);
-    expect(changeRequestItems(afterDirector, client, 'HLT-026', 'fr')[0].sub).toBe('Budget · Schedule · +85 k€ · -12 d');
-    expect(changeRequestItems(afterDirector, client, 'HLT-026', 'en')[0].decision).toMatchObject({ step: 'client' });
-    expect(changeRequestItems(afterDirector, director, 'HLT-026', 'en')).toEqual([]);
+    expect(changeRequestItems(afterDirector, client, 'HLT-026', 'fr', 2026)[0].sub).toBe('Budget · Schedule · +85 k€ · -12 d');
+    expect(changeRequestItems(afterDirector, client, 'HLT-026', 'en', 2026)[0].decision).toMatchObject({ step: 'client' });
+    expect(changeRequestItems(afterDirector, director, 'HLT-026', 'en', 2026)).toEqual([]);
     // Another person holding the director role is not the named approver of the director step.
-    expect(ids(changeRequestItems(crs, { name: 'Someone Else', role: 'pm' }, 'HLT-026', 'en'))).toEqual([]);
+    expect(ids(changeRequestItems(crs, { name: 'Someone Else', role: 'pm' }, 'HLT-026', 'en', 2026))).toEqual([]);
   });
   it('once the director and the client decided, CR-008 comes back to the director for the change control board (recorded by the director on Change control)', () => {
     const decided = withDecided(crs, ['director', 'client']);
-    const [d] = changeRequestItems(decided, director, 'HLT-026', 'en');
+    const [d] = changeRequestItems(decided, director, 'HLT-026', 'en', 2026);
     expect([d.id, d.sub, d.decision]).toEqual([
       'CR-008', 'Budget · Schedule · +€85k · -12 d · Change control board', { mode: 'change-request', projectCode: 'HLT-026', number: 'CR-008', step: 'ccb' },
     ]);
-    const fr = changeRequestItems(decided, director, 'HLT-026', 'fr')[0].sub;
+    const fr = changeRequestItems(decided, director, 'HLT-026', 'fr', 2026)[0].sub;
     // Shared engine: the prototype's "-12 d" stays as is (the feature's inboxT renders "-12 j", see myapprovals.test.ts).
     expect(makeT('fr')(fr)).toBe('Budget · Planning · +85 k€ · -12 d · Comité de contrôle des modifications');
-    expect(changeRequestItems(decided, client, 'HLT-026', 'en')).toEqual([]);
+    expect(changeRequestItems(decided, client, 'HLT-026', 'en', 2026)).toEqual([]);
   });
   it('sub line omits a zero amount or zero days; days are signed', () => {
     expect(changeRequestSub({ typesLabel: 'Schedule', amount: 0, days: 27 }, 'en')).toBe('Schedule · +27 d');
@@ -98,7 +98,7 @@ describe('change requests (apprItems 4726 by person)', () => {
 });
 
 describe('inbox view (myApprKpis 4737, apprChips 4736)', () => {
-  const it_ = (kind: ApprovalItem['kind'], id: string, when: string): ApprovalItem => ({ kind, id, title: id, sub: '', who: '', when, whenIso: isoOfWhen(when), href: null, decision: null });
+  const it_ = (kind: ApprovalItem['kind'], id: string, when: string): ApprovalItem => ({ kind, id, title: id, sub: '', who: '', when, whenIso: isoOfWhen(when, 2026), href: null, decision: null });
   // The director's seed queue (HLT-026): PO-1082, CR-008, INV-HC-7781, INV-BX-55120, INV-LE-2210.
   const director = [it_('po', 'PO-1082', '24 Sep'), it_('cr', 'CR-008', '24 Sep'), it_('invoice', 'INV-HC-7781', '10 Sep'), it_('invoice', 'INV-BX-55120', '24 Sep'), it_('invoice', 'INV-LE-2210', '25 Sep')];
 

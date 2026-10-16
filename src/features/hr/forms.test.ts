@@ -55,20 +55,20 @@ describe('validation', () => {
   });
 
   it('Add role: required, unique (case-insensitive), codes, selects default to the first option', () => {
-    expect(parseAddRole({ role: '  Commissioning   engineer ', rate: '78', from: '1 Nov 2026' })).toEqual({
+    expect(parseAddRole({ role: '  Commissioning   engineer ', rate: '78', from: '1 Nov 2026' }, [], 2026)).toEqual({
       ok: true,
       value: { role: 'Commissioning engineer', rateEur: 78, costCenter: 'engineering', grade: 'junior', effectiveFrom: '2026-11-01' },
     });
-    expect(parseAddRole({ role: 'X', rate: '70', cc: 'site', grade: 'expert', from: '2027-01-01' })).toMatchObject({ ok: true, value: { costCenter: 'site', grade: 'expert', effectiveFrom: '2027-01-01' } });
+    expect(parseAddRole({ role: 'X', rate: '70', cc: 'site', grade: 'expert', from: '2027-01-01' }, [], 2026)).toMatchObject({ ok: true, value: { costCenter: 'site', grade: 'expert', effectiveFrom: '2027-01-01' } });
     // R-083: the effective date is required, in the forms' date formats (FR included), and must be a real day.
-    expect(parseAddRole({ role: 'X', rate: '70', from: '1 nov. 2026' })).toMatchObject({ ok: true, value: { effectiveFrom: '2026-11-01' } });
-    expect(parseAddRole({ role: 'X', rate: '70', from: '' })).toEqual({ ok: false, error: 'Enter a valid effective date' });
-    expect(parseAddRole({ role: 'X', rate: '70', from: '31 Feb 2026' })).toEqual({ ok: false, error: 'Enter a valid effective date' });
-    expect(parseAddRole({ role: '', rate: '70' })).toEqual({ ok: false, error: 'Role is required' });
-    expect(parseAddRole({ role: 'planner', rate: '70' }, ['Planner'])).toEqual({ ok: false, error: 'This role is already on the rate card' });
-    expect(parseAddRole({ role: 'X', rate: 'abc' })).toEqual({ ok: false, error: 'Enter a valid hourly rate' });
-    expect(parseAddRole({ role: 'X', rate: '70', cc: 'Engineering' })).toEqual({ ok: false, error: 'Unknown cost center' });
-    expect(parseAddRole(null)).toEqual({ ok: false, error: 'Role is required' });
+    expect(parseAddRole({ role: 'X', rate: '70', from: '1 nov. 2026' }, [], 2026)).toMatchObject({ ok: true, value: { effectiveFrom: '2026-11-01' } });
+    expect(parseAddRole({ role: 'X', rate: '70', from: '' }, [], 2026)).toEqual({ ok: false, error: 'Enter a valid effective date' });
+    expect(parseAddRole({ role: 'X', rate: '70', from: '31 Feb 2026' }, [], 2026)).toEqual({ ok: false, error: 'Enter a valid effective date' });
+    expect(parseAddRole({ role: '', rate: '70' }, [], 2026)).toEqual({ ok: false, error: 'Role is required' });
+    expect(parseAddRole({ role: 'planner', rate: '70' }, ['Planner'], 2026)).toEqual({ ok: false, error: 'This role is already on the rate card' });
+    expect(parseAddRole({ role: 'X', rate: 'abc' }, [], 2026)).toEqual({ ok: false, error: 'Enter a valid hourly rate' });
+    expect(parseAddRole({ role: 'X', rate: '70', cc: 'Engineering' }, [], 2026)).toEqual({ ok: false, error: 'Unknown cost center' });
+    expect(parseAddRole(null, [], 2026)).toEqual({ ok: false, error: 'Role is required' });
   });
 
   it('Add skill', () => {

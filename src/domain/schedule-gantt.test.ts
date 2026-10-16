@@ -22,7 +22,7 @@ function inputOf(pd: any): ScheduleInput {
       name, owner, baselineStart: bs, baselineEnd: be, forecastStart: as, forecastEnd: ae, pct: p, critical: crit,
     })),
     milestones: (pd.MILES as Mile[]).map(([name, b, fc, st]) => ({ name, baselineMonth: b, forecastMonth: fc, status: STATUS[st], statusLabel: st })),
-    pv: pd.PV, ev: pd.EV, bac: pd.BAC,
+    pv: pd.PV, ev: pd.EV, bac: pd.BAC, year: 2026,
   };
 }
 
@@ -153,7 +153,7 @@ describe('schedule domain — prototype parity for every project with data', () 
   });
 
   it('early milestone forecast reads "−Nd" (not the prototype\'s "+-Nd"); early package shows "—"', () => {
-    const m = scheduleMilestone({ name: 'Early', baselineMonth: 6, forecastMonth: 5.5, status: 'on_track', statusLabel: 'On track' }, 0);
+    const m = scheduleMilestone({ name: 'Early', baselineMonth: 6, forecastMonth: 5.5, status: 'on_track', statusLabel: 'On track' }, 0, 2026);
     expect([m.slip, m.slipText, m.slipAlert]).toEqual([-15, '−15d', false]);
     const t = ganttTask({ name: 'Early', owner: 'R. Aubert', baselineStart: 0, baselineEnd: 6, forecastStart: 0, forecastEnd: 5.5, pct: 50, critical: false });
     expect([t.slip, t.slipText, t.slipAlert]).toEqual([-15, '—', false]);

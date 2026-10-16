@@ -25,7 +25,7 @@ import { getProjectTeam } from '@/server/dal/resources';
 import { getRiskScreen } from '@/server/dal/risks-screen';
 import { getScheduleData } from '@/server/dal/schedule';
 import { getTrends } from '@/server/dal/trends';
-import { reportAudience, reportPeriod, reportSections, type ReportAudience, type ReportPeriod, type ReportSections } from '@/server/db/codes';
+import { reportAudience, reportPeriod, reportPeriodLabel, reportSections, type ReportAudience, type ReportPeriod, type ReportSections } from '@/server/db/codes';
 import { scheduleView } from '@/domain/schedule-gantt';
 import type { ExportContext, PdfBlock, PdfDocument } from '../types';
 import { col, daysText, monthIso, param, projectRef, ratioText, sheet, todayIso } from './common';
@@ -174,7 +174,7 @@ export async function statusReportDocument(ctx: ExportContext, options: StatusRe
   }
   return {
     title: t('Status report'),
-    subtitle: `${t(reportPeriod.label(o.period))} · ${t(reportAudience.label(o.audience))} · ${t(reportSections.label(o.sections))}`,
+    subtitle: `${t(reportPeriodLabel(o.period, ctx.today))} · ${t(reportAudience.label(o.audience))} · ${t(reportSections.label(o.sections))}`,
     project: projectRef(ctx),
     reference: trends?.snapshots.at(-1)?.week ?? ctx.project.code,
     date: todayIso(ctx),

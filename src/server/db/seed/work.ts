@@ -3,7 +3,7 @@
 import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { eq } from 'drizzle-orm';
 import { PROTO } from '@/server/prototype';
-import { addDaysIso, isoOfDayOffset, isoOfDisplayDate, parseStampText, type AttachmentKind, type Priority, type RequestEventAction, type RequestStatus, type TaskStatus } from '../codes';
+import { addDaysIso, isoOfDayOffset, isoOfDemoDate, parseStampText, type AttachmentKind, type Priority, type RequestEventAction, type RequestStatus, type TaskStatus } from '../codes';
 import {
   requestActivityChoices, resourceRequestEvents, resourceRequests, taskAttachments, taskChecklistItems, taskComments, tasks, timeEntries,
 } from '../schema';
@@ -21,7 +21,7 @@ interface ProtoRequest {
 
 /** "Thu 24 Sep" → '2026-09-24'. */
 function isoOfDayLabel(s: string): string {
-  const iso = isoOfDisplayDate(s.replace(/^\w{3}\s+/, ''));
+  const iso = isoOfDemoDate(s.replace(/^\w{3}\s+/, ''));
   if (!iso) throw new Error(`Seed: unparseable day "${s}"`);
   return iso;
 }
@@ -76,7 +76,7 @@ export async function seedWork(tx: Tx, ctx: SeedCtx): Promise<void> {
     Object.entries(PROTO.FILES as Record<string, [string, string, string][]>).flatMap(([n, rows]) =>
       rows.map(([name, meta, icon], position) => {
         const [sizeText, by, rel] = meta.split(' · ');
-        const uploadedOn = rel === 'today' ? '2026-09-25' : rel === 'yesterday' ? addDaysIso('2026-09-25', -1) : isoOfDisplayDate(rel)!;
+        const uploadedOn = rel === 'today' ? '2026-09-25' : rel === 'yesterday' ? addDaysIso('2026-09-25', -1) : isoOfDemoDate(rel)!;
         return {
           id: newId(), taskId: taskId(n), name, sizeText, uploadedByPersonId: personId(ctx, by), uploadedOn,
           kind: ATTACHMENT_KIND[icon] ?? 'other', position,

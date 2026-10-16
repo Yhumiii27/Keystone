@@ -9,6 +9,7 @@
 // sheet — no Cursus site-creation request is queued (R-028), mission actuals are never typed (Sage X3).
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
+import { yearOfIso } from '@/domain/clock';
 import { parseDateInput } from '@/domain/contract';
 import { canArbitrateConflict, parseArbitration, parseDailyReportForm } from '@/domain/site';
 import {
@@ -220,7 +221,8 @@ const strings = (values: unknown): Record<string, string> =>
 export async function saveDailyReportAction(code: string, values: Record<string, string>): Promise<FormDialogResult & { number?: string }> {
   const ok = await access(code);
   if ('error' in ok) return { error: await tr(ok.error) };
-  const parsed = parseDailyReportForm(strings(values), { today: await businessToday(), parseDate: (s) => parseDateInput(s) });
+  const today = await businessToday();
+  const parsed = parseDailyReportForm(strings(values), { today, parseDate: (s) => parseDateInput(s, yearOfIso(today)) });
   if (!parsed.ok) return { error: await tr(parsed.error) };
   try {
     const number = await saveDailyReport(ok.code, parsed.value, ok.actor);
@@ -270,7 +272,11 @@ async function leadAccess(code: unknown): Promise<{ code: string; actor: Actor; 
   return { code: project.code, actor: { name: ctx.viewer.name, role: ctx.viewer.role }, team: ctx.team.map((m) => m.name) };
 }
 
-const parseDate = (s: string) => parseDateInput(s);
+/** Dates as typed in the site forms; a date without a year is in the business year (R-013). */
+async function dateParser(): Promise<(s: string) => string | null> {
+  const year = yearOfIso(await businessToday());
+  return (s: string) => parseDateInput(s, year);
+}
 
 /**
  * "Prepare the site" on the Site's empty state: creates the project's site sheet. The site, country, currency and client contact
@@ -291,7 +297,7 @@ export async function prepareSiteAction(code: string, values: Record<string, str
     ...v, site: blank('site') ? d.site : v.site, country: blank('country') ? d.country : v.country, currency: blank('currency') ? d.currency : v.currency,
     contact: blank('contact') ? d.clientContact : v.contact,
   };
-  const parsed = parseSiteSheetForm(filled, parseDate);
+  const parsed = parseSiteSheetForm(filled, await dateParser());
   if (!parsed.ok) return { error: await tr(parsed.error) };
   try {
     await createSiteSheet(ok.code, parsed.value, ok.actor);
@@ -307,7 +313,7 @@ export async function editSiteSheetAction(code: string, stamp: string, values: R
   if (!isStamp(stamp)) return { error: await tr(INVALID) };
   const ok = await leadAccess(code);
   if ('error' in ok) return { error: await tr(ok.error) };
-  const parsed = parseSiteSheetForm(strings(values), parseDate);
+  const parsed = parseSiteSheetForm(strings(values), await dateParser());
   if (!parsed.ok) return { error: await tr(parsed.error) };
   try {
     await updateSiteSheet(ok.code, stamp, parsed.value, ok.actor);
@@ -359,7 +365,7 @@ export async function addSiteLineAction(code: string, kind: SiteLineKind, values
   }
   const activities = kind === 'prerequisite' ? (await planActivities(ok.code)).map((a) => a.code) : [];
   const known = kind === 'rotation' ? await knownPersonNames() : [];
-  const parsed = parseSiteLine(kind, strings(values), { activities, team: ok.team, known, parseDate });
+  const parsed = parseSiteLine(kind, strings(values), { activities, team: ok.team, known, parseDate: await dateParser() });
   if (!parsed.ok) return { error: await tr(parsed.error) };
   try {
     await addSiteLine(ok.code, parsed.value, ok.actor);
@@ -390,7 +396,7 @@ export async function editSiteLineAction(code: string, kind: SiteLineKind, posit
     return { error: await tr(SITE_LINE_KEPT) };
   }
   const known = kind === 'rotation' ? await knownPersonNames() : [];
-  const parsed = parseSiteLine(kind, strings(values), { activities: site.planActivities.map((a) => a.code), team: ok.team, keepPerson: cur.person, known, parseDate });
+  const parsed = parseSiteLine(kind, strings(values), { activities: site.planActivities.map((a) => a.code), team: ok.team, keepPerson: cur.person, known, parseDate: await dateParser() });
   if (!parsed.ok) return { error: await tr(parsed.error) };
   try {
     await updateSiteLine(ok.code, position, stamp, parsed.value, ok.actor);

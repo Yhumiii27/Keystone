@@ -139,7 +139,7 @@ describe('cash recovery (HLT-026)', () => {
   const core = evmCore(HLT);
   const rc = cashRecovery({
     pv: HLT.pv, ac: HLT.ac, bac: HLT.bac, evn: core.evn, cpi: core.cpi, contractTotal: total, milestones: ms,
-    termsDays: termsDays(CT.terms), openCommit: openCommitment(HLT.pv, core.evn, 713),
+    termsDays: termsDays(CT.terms), openCommit: openCommitment(HLT.pv, core.evn, 713), year: 2026,
   });
 
   it('contract value 5400 + signed amendment 120 = 5520; milestone amounts', () => {
@@ -150,12 +150,14 @@ describe('cash recovery (HLT-026)', () => {
   });
 
   it('monthAt', () => {
-    expect(monthAt('2 Apr')).toBe(3);
-    expect(monthAt('29 Aug')).toBe(7);
-    expect(monthAt('14 Dec 2026')).toBe(11);
-    expect(monthAt('14 Jan 2027')).toBe(12);
-    expect(monthAt('—')).toBeNull();
-    expect(monthAt(null)).toBeNull();
+    expect(monthAt('2 Apr', 2026)).toBe(3);
+    expect(monthAt('29 Aug', 2026)).toBe(7);
+    expect(monthAt('14 Dec 2026', 2026)).toBe(11);
+    expect(monthAt('14 Jan 2027', 2026)).toBe(12);
+    expect(monthAt('—', 2026)).toBeNull();
+    expect(monthAt(null, 2026)).toBeNull();
+    // R-013: a year-less date is in the business year ("14 Jan" shown in 2027 is Jan 2027).
+    expect(monthAt('14 Jan', 2027)).toBe(12);
   });
 
   it('receipts, commitments, recovery by month', () => {

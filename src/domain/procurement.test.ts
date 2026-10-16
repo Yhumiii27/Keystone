@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { moneyEur } from '@/lib/format';
 import { makeT } from '@/i18n/translate';
-import { awardRule, isoOfDisplayDate, rfqStatus, supplierInvoiceStatus, type SupplierGrade } from '@/server/db/codes';
+import { awardRule, isoOfDemoDate, rfqStatus, supplierInvoiceStatus, type SupplierGrade } from '@/server/db/codes';
 import { PROTO } from '@/server/prototype';
 import golden from '@/features/procurement/procurement.golden.json';
 import {
@@ -89,7 +89,7 @@ describe('3-way match and invoice decisions (match3 4663, invRows 4665)', () => 
 
 describe('Invoice KPIs and chips (invKpis 4668, invChips 4666)', () => {
   const kpiOf = (list: ProtoInvoice[]) =>
-    invoiceKpis(list.map((i) => ({ status: supplierInvoiceStatus.code(i.status), amountEur: i.amount, dueDate: isoOfDisplayDate(i.dueDate)! })), STATUS_DATE_ISO);
+    invoiceKpis(list.map((i) => ({ status: supplierInvoiceStatus.code(i.status), amountEur: i.amount, dueDate: isoOfDemoDate(i.dueDate)! })), STATUS_DATE_ISO);
 
   it('seed: 5 to process (€1,724,160) · 3 blocked · 2 awaiting receipt · 0 approved · 5 due within 30 days', () => {
     const k = kpiOf(INVOICES);
@@ -187,15 +187,15 @@ describe('Supplier scorecard (supRows 4674, supKpis 4675)', () => {
 describe('My approvals items (apprItems 4728–4729)', () => {
   const rfqInbox = RFQS.map((r) => ({
     number: r.id, title: r.title, status: rfqStatus.code(r.status), awardedTo: r.chosen, quoteCount: r.quotes.length,
-    awardRuleLabel: awardRule.label(awardRule.code(r.rule)), replyDueOn: isoOfDisplayDate(r.due)!, owner: r.owner,
+    awardRuleLabel: awardRule.label(awardRule.code(r.rule)), replyDueOn: isoOfDemoDate(r.due)!, owner: r.owner,
   }));
   const invInbox = INVOICES.map((i) => ({
-    number: i.id, supplier: i.supplier, status: supplierInvoiceStatus.code(i.status), amountEur: i.amount, match: match3(asMatch(i)), invoiceDate: isoOfDisplayDate(i.date)!,
+    number: i.id, supplier: i.supplier, status: supplierInvoiceStatus.code(i.status), amountEur: i.amount, match: match3(asMatch(i)), invoiceDate: isoOfDemoDate(i.date)!,
   }));
 
   it('EN: same items as the prototype for procurement (RFQ award + 3 invoices)', () => {
     const t = makeT('en');
-    const items = [...rfqAwardItems(rfqInbox, t), ...invoiceApprovalItems(invInbox, 'en')];
+    const items = [...rfqAwardItems(rfqInbox, t, 2026), ...invoiceApprovalItems(invInbox, 'en', 2026)];
     expect(items.map((i) => ({ id: i.id, title: i.title, sub: i.sub, when: i.when, who: i.who }))).toEqual(
       G.myapprovals.en.procurement.map((i) => ({ id: i.id, title: i.title, sub: i.sub, when: i.when.replace(/^0/, ''), who: i.who })),
     );
@@ -208,7 +208,7 @@ describe('My approvals items (apprItems 4728–4729)', () => {
 
   it('FR: the inbox translation of the items gives the prototype text, the award rule translated too', () => {
     const t = makeT('fr');
-    const items = [...rfqAwardItems(rfqInbox, t), ...invoiceApprovalItems(invInbox, 'fr')];
+    const items = [...rfqAwardItems(rfqInbox, t, 2026), ...invoiceApprovalItems(invInbox, 'fr', 2026)];
     const shown = items.map((i) => ({ title: t(i.title), sub: t(i.sub), when: t(i.when), who: t(i.who) }));
     const proto = G.myapprovals.fr.procurement.map((i) => ({ title: i.title, sub: i.sub, when: i.when, who: i.who }));
     expect(shown.slice(1)).toEqual(proto.slice(1));
@@ -217,7 +217,7 @@ describe('My approvals items (apprItems 4728–4729)', () => {
   });
 
   it('a Blocked invoice whose order amount differs says so', () => {
-    expect(invoiceApprovalItems([{ number: 'X', supplier: 'S', status: 'blocked', amountEur: 10, match: { po: 'diff', gr: 'ok' }, invoiceDate: '2026-09-01' }], 'en')[0].sub).toBe('Amount differs from PO');
+    expect(invoiceApprovalItems([{ number: 'X', supplier: 'S', status: 'blocked', amountEur: 10, match: { po: 'diff', gr: 'ok' }, invoiceDate: '2026-09-01' }], 'en', 2026)[0].sub).toBe('Amount differs from PO');
   });
 });
 

@@ -24,15 +24,19 @@ import { x3Simulated } from '@/server/integrations/x3/mock-mode';
 import { getScreenAccess, projectAccessResolver } from '@/server/project-context';
 import { getI18n, getLastProject } from '@/server/session';
 import { canSeeSupplierPrices } from '@/domain/rights';
+import { yearOfIso } from '@/domain/clock';
+import { businessToday } from '@/server/clock';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 export default async function StockPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const [{ t, lang }, access, rows, locations, sync, moves, pins, last, x3] = await Promise.all([
+  const [{ t, lang }, access, rows, locations, sync, moves, pins, last, x3, today] = await Promise.all([
     getI18n(), getScreenAccess('stock'), listStock(), listStorageLocations(), getX3StockSync(), listStockMovements({ limit: 8 }), installedBasePins(), getLastProject(), x3Simulated(),
+    businessToday(),
   ]);
+  const year = yearOfIso(today);
   const state: StockUrlState = {
     loc: parseLocationFilter(first(sp.loc), locations.map((l) => l.name)),
     q: (first(sp.q) ?? '').slice(0, 120),
@@ -46,7 +50,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
 
   // R-046 (NEW-D2-1): stock values at purchase price only for the director, the PMs and procurement.
   const prices = canSeeSupplierPrices(access.viewer.role);
-  const view = stockScreenView({ rows, locations, sync, moves, pins, state, prices, x3 }, t, lang);
+  const view = stockScreenView({ rows, locations, sync, moves, pins, state, prices, x3, year }, t, lang);
   // Delivery 7: an issue names an activity of the current project's plan (SC-5a); the reserving project's PM or the
   // director releases a reservation, the director alone may take another project's reserved units (R-099).
   const [acts, owner] = detail && project
@@ -55,7 +59,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
   const viewer = access.viewer;
   const drawer = detail
     ? stockDrawerView({
-      detail, locations, pins, state, prices, projectCode: project?.code ?? null, activities: acts, x3,
+      detail, locations, pins, state, prices, projectCode: project?.code ?? null, activities: acts, x3, year,
       // R-041: the reserving project's PM team (PM of record, co-PMs, deputies) or the director.
       canRelease: access.canEdit && !!owner && (await projectAccessResolver(viewer))(owner).lead,
       canOverride: access.canEdit && viewer.role === 'director',

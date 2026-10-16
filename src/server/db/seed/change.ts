@@ -4,7 +4,7 @@
 // crew (CR-008) pending approval" — becomes a real link (CR-008 touches A1250, no new duration given).
 import { inferredContractImpact } from '@/domain/change-control';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
-import { baselineState, budgetChangeStatus, CHANGE_STEPS, changeStatus, isoOfDisplayDate, stepDecision, type ChangeType } from '../codes';
+import { baselineState, budgetChangeStatus, CHANGE_STEPS, changeStatus, isoOfDemoDate, stepDecision, type ChangeType } from '../codes';
 import { baselines, budgetChangeLines, changeRequestActivities, changeRequestSteps, changeRequestWbs, changeRequests } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, type SeedCtx } from './context';
@@ -27,7 +27,7 @@ export async function seedChange(tx: Tx, ctx: SeedCtx): Promise<void> {
   const crRows = register.map((c, position) => ({
     id: newId(), projectId, number: c.id, title: c.title, types: c.types, amountKeur: c.amt, scheduleDays: c.days,
     status: changeStatus.code(c.status), requestedBy: c.by, requestedByPersonId: ctx.personByShort.get(c.by) ?? null,
-    requestedOnText: c.date, requestedOn: isoOfDisplayDate(c.date), baselineCode: c.bl, position,
+    requestedOnText: c.date, requestedOn: isoOfDemoDate(c.date), baselineCode: c.bl, position,
     contractImpact: inferredContractImpact({ clientStep: stepDecision.code(c.chain.client), amountKeur: c.amt, scheduleDays: c.days }),
   }));
   // CR-005 only exists in the Budget dataset (HCRS): add it to the register (11 §7 #2).
@@ -37,7 +37,7 @@ export async function seedChange(tx: Tx, ctx: SeedCtx): Promise<void> {
     crRows.push({
       id: newId(), projectId, number: num, title, types: ['budget'], amountKeur: amt, scheduleDays: days,
       status: changeStatus.code(status), requestedBy: by, requestedByPersonId: ctx.personByShort.get(by) ?? null,
-      requestedOnText: date, requestedOn: isoOfDisplayDate(date), baselineCode: 'BL1', position: crRows.length,
+      requestedOnText: date, requestedOn: isoOfDemoDate(date), baselineCode: 'BL1', position: crRows.length,
       contractImpact: inferredContractImpact({ clientStep: null, amountKeur: amt, scheduleDays: days }),
     });
   }
@@ -82,8 +82,8 @@ export async function seedChange(tx: Tx, ctx: SeedCtx): Promise<void> {
     (PROTO.BASELINES as [string, string, string, number, string, string][]).map(([blCode, name, setOn, bac, finish, state], position) => {
       const pending = /^Pending (CR-\d+)$/.exec(setOn);
       return {
-        id: newId(), projectId, code: blCode, name, setOn: pending ? null : isoOfDisplayDate(setOn), bacKeur: bac,
-        finishDate: isoOfDisplayDate(finish)!, state: baselineState.code(state), changeRequestId: pending ? must(crIds, pending[1], 'CR') : null, position,
+        id: newId(), projectId, code: blCode, name, setOn: pending ? null : isoOfDemoDate(setOn), bacKeur: bac,
+        finishDate: isoOfDemoDate(finish)!, state: baselineState.code(state), changeRequestId: pending ? must(crIds, pending[1], 'CR') : null, position,
       };
     }),
   );

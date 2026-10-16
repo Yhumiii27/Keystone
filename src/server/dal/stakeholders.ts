@@ -5,7 +5,7 @@ import 'server-only';
 // contact = the business date, the prototype's NOWD; notes "New", owner normalised to the
 // person's short name — the prototype stored the TEAM full name, S-13).
 import { asc, eq, inArray, sql } from 'drizzle-orm';
-import { monthNowOf } from '@/domain/clock';
+import { monthNowOf, yearOfIso } from '@/domain/clock';
 import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { isStaleContact, stakeholderInitials } from '@/domain/team';
@@ -26,7 +26,7 @@ export interface StakeholderRow {
   /** Relationship owner, short name ("R. Aubert"). */
   owner: string;
   lastContactOn: string;
-  /** "25 Sep" (with the year outside 2026). */
+  /** "25 Sep" (with the year outside the business year, R-013). */
   lastText: string;
   /** No contact for more than 30 days (before the business date, R-013). */
   stale: boolean;
@@ -51,7 +51,8 @@ export interface StakeholderRegister {
 /** Register (STAKEHOLDERS order, added ones last) and RACI matrix of a project. */
 export async function getStakeholderRegister(projectCode: string): Promise<StakeholderRegister> {
   const db = await getDb();
-  const now = monthNowOf(await businessToday());
+  const today = await businessToday();
+  const now = monthNowOf(today);
   const rows = await db
     .select({ s: stakeholders, ownerShort: persons.shortName })
     .from(stakeholders)
@@ -75,7 +76,7 @@ export async function getStakeholderRegister(projectCode: string): Promise<Stake
   return {
     stakeholders: rows.map(({ s, ownerShort }) => ({
       name: s.name, organisation: s.organisation, role: s.role, type: s.type, typeLabel: stakeholderType.label(s.type), initials: stakeholderInitials(s.name),
-      contactEmail: s.contactEmail, owner: ownerShort ?? s.ownerName, lastContactOn: s.lastContactOn, lastText: shortDateYearOfIso(s.lastContactOn),
+      contactEmail: s.contactEmail, owner: ownerShort ?? s.ownerName, lastContactOn: s.lastContactOn, lastText: shortDateYearOfIso(s.lastContactOn, yearOfIso(today)),
       stale: isStaleContact(s.lastContactOn, now), notes: s.notes, influence: s.influence, interest: s.interest, attitude: s.attitude,
     })),
     raci,

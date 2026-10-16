@@ -7,7 +7,7 @@
 // signed amendment carries its own milestone (`AMENDMENT_MILESTONES`).
 import { PROTO } from '@/server/prototype';
 import {
-  amendmentStatus, billingModel, bondType, contractType, isoOfDisplayDate, paymentMilestoneStatus, type PaymentMilestoneStatus,
+  amendmentStatus, billingModel, bondType, contractType, isoOfDemoDate, paymentMilestoneStatus, type PaymentMilestoneStatus,
 } from '../codes';
 import {
   billingPlans, contractAmendments, contractBonds, contracts, customerInvoices, paymentMilestones, portfolioCashForecasts,
@@ -40,7 +40,7 @@ export const CASH_FORECAST: readonly { month: string; cashIn: number; cashOut: n
   { month: '2027-03-01', cashIn: 585, cashOut: 520 },
 ];
 
-const dateOrNull = (s: string | null | undefined) => (!s || s === '—' ? null : isoOfDisplayDate(s));
+const dateOrNull = (s: string | null | undefined) => (!s || s === '—' ? null : isoOfDemoDate(s));
 
 /**
  * NEW-D3-3 (owner answer a, R-079): the amendment's own payment milestones. The prototype spread a signed amendment over every

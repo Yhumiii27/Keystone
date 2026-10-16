@@ -475,10 +475,13 @@ export function dueText(status: TodoStatus, due: number, today: number): string 
 
 // ── Add forms (afSubmit, logic 5129–5131) ──────────────────────────────────────────────────────────────
 
-/** Working days between two "5 Oct 2026" dates: max(1, round(days × 5/7)); 20 when unparseable or not increasing. */
-export function workingDaysBetween(start: string, finish: string): number {
-  const ds = wbsParseDate(start);
-  const df = wbsParseDate(finish);
+/**
+ * Working days between two "5 Oct 2026" dates (a year-less date is in the business year `year`, R-013): max(1, round(days ×
+ * 5/7)); 20 when unparseable or not increasing.
+ */
+export function workingDaysBetween(start: string, finish: string, year: number): number {
+  const ds = wbsParseDate(start, year);
+  const df = wbsParseDate(finish, year);
   if (!ds || !df || !(df > ds)) return 20;
   const days = (Date.UTC(df.getFullYear(), df.getMonth(), df.getDate()) - Date.UTC(ds.getFullYear(), ds.getMonth(), ds.getDate())) / 864e5;
   return Math.max(1, Math.round((days * 5) / 7));

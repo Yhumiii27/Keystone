@@ -13,6 +13,7 @@ import {
   qualityHome, type ChangeRequest, type CurrentProject, type Drawing, type Eco, type EvmSeries, type HomeView, type Lookups, type Part,
   type Persona, type PersonLoad, type PortfolioAlert, type PurchaseOrder, type ResourceRequest, type ScheduleHeader, type Todo,
 } from '@/domain/home';
+import { yearOfIso } from '@/domain/clock';
 import { noProjectHome } from '@/domain/home-empty';
 import { businessToday } from '@/server/clock';
 import { inExecution } from '@/domain/portfolio';
@@ -76,10 +77,10 @@ const TASK_STATUS: Record<string, string> = Object.fromEntries(taskStatus.codes.
 async function clientInputs(code: string, today: string) {
   const [dlv, portal] = await Promise.all([listDeliverables(code), getClientPortal(code)]);
   const deliverables = clientHomeDeliverables(
-    dlv.map((d) => ({ ...d, acceptedOnText: d.acceptedOn ? fmtDOfIso(d.acceptedOn) : null })),
+    dlv.map((d) => ({ ...d, acceptedOnText: d.acceptedOn ? fmtDOfIso(d.acceptedOn, yearOfIso(today)) : null })),
     addDaysIso(today, -30),
   );
-  const invoice = clientOpenInvoice(portal.invoices.map((m) => ({ ...m, dueText: m.dueOn ? fmtDOfIso(m.dueOn) : null })), portal.currency);
+  const invoice = clientOpenInvoice(portal.invoices.map((m) => ({ ...m, dueText: m.dueOn ? fmtDOfIso(m.dueOn, yearOfIso(today)) : null })), portal.currency);
   return { deliverables, invoice };
 }
 

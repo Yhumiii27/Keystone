@@ -88,9 +88,9 @@ export default async function QualityPage({ params, searchParams }: { params: Pr
         tab={tab}
         seg={viewer.vigie ? qualitySegView(projectCode, state, t) : qualitySegView(projectCode, state, t).filter((x) => x.value === 'dlv')}
         ncr={tab === 'ncr' ? ncrTabView({ ...input, ncrs, today: data.today, dataDate: data.dataDate }, t, lang) : null}
-        ncrDrawer={ncr ? ncrDrawerView({ ...input, ncr, ecoByPart: data.ecoByPart, ordersByPart: data.ordersByPart }, t, lang) : null}
+        ncrDrawer={ncr ? ncrDrawerView({ ...input, ncr, ecoByPart: data.ecoByPart, ordersByPart: data.ordersByPart, today: data.today }, t, lang) : null}
         dlv={tab === 'dlv' ? dlvTabView({ ...input, deliverables, today: data.today }, t, lang) : null}
-        dlvDrawer={dlv ? dlvDrawerView({ ...input, deliverable: dlv, documents: data.documents }, t, lang) : null}
+        dlvDrawer={dlv ? dlvDrawerView({ ...input, deliverable: dlv, documents: data.documents, today: data.today }, t, lang) : null}
         t={t}
       />
     </>

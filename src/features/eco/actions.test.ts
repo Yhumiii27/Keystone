@@ -109,7 +109,7 @@ describe('ECO and drawings Server Functions', () => {
     expect(en.rows.find((r) => r.number === 'ECO-2026-015')!.sync).toBe('Pending sync with Vigie');
     expect(en.rows.find((r) => r.number === 'ECO-2026-015')!.approvals.map((a) => a.dot)).toEqual(['var(--color-accent)', 'var(--color-accent)', 'var(--color-accent)']);
     expect(en.kpis[1]).toMatchObject({ value: '0', sub: 'As Project manager' });
-    const fr = ecoDrawerView({ data: (await getEcoDrawer('ECO-2026-015'))!, state: { status: null, eco: 'ECO-2026-015' }, viewer: { role: 'pm', managedProjects: ['HLT-026'] } }, makeT('fr'), 'fr');
+    const fr = ecoDrawerView({ data: (await getEcoDrawer('ECO-2026-015'))!, state: { status: null, eco: 'ECO-2026-015' }, viewer: { role: 'pm', managedProjects: ['HLT-026'] }, today: DEMO_TODAY_ISO }, makeT('fr'), 'fr');
     expect(fr.approvals[2]).toMatchObject({ state: 'Approuvé', sync: 'En attente de synchronisation avec Vigie', canAct: false });
     expect(fr.sync).toBe('En attente de synchronisation avec Vigie');
   });

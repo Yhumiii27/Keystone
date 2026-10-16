@@ -91,6 +91,7 @@ export default async function BudgetPage({
           milestones: contract.milestones,
           termsDays: termsDays(contract.terms),
           openCommit: openCommitment(cost.pv, core.evn, contract.openCommit),
+          year: contract.year,
         })
       : null;
     body = <CashTab recovery={recovery} contractTotal={total} terms={contract?.terms ?? ''} ac={core.ac} lang={lang} t={t} />;

@@ -8,7 +8,9 @@
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { screenHref } from '@/config/screens';
+import { yearOfIso } from '@/domain/clock';
 import { canEditRates, parseEffectiveDate } from '@/domain/hr';
+import { businessToday } from '@/server/clock';
 import {
   HOURS_READ_ONLY, RATES_EDIT_REFUSED, addRateRole, addSkill, assignUnassignedHours, getHoursReconciliation, getRateCard, getSkillsMatrix, markHoursImported,
   setBaseRate, setMultiplier,
@@ -93,7 +95,7 @@ export async function addRateRoleAction(values: Record<string, string>): Promise
   const who = await rateEditor();
   if ('error' in who) return who;
   const card = await getRateCard();
-  const parsed = parseAddRole(values, card.roles.map((r) => r.role));
+  const parsed = parseAddRole(values, card.roles.map((r) => r.role), yearOfIso(await businessToday()));
   if (!parsed.ok) return { error: t(parsed.error) };
   const { role, rateEur, costCenter, grade, effectiveFrom } = parsed.value;
   try {

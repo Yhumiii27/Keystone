@@ -5,7 +5,7 @@
 import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { PROTO } from '@/server/prototype';
 import { X3_LAST_IMPORT } from '@/server/integrations/x3/prototype-snapshot';
-import { isoOfDisplayDate, parisInstant, parseStampText, stockMovementType, stockSource } from '../codes';
+import { isoOfDemoDate, parisInstant, parseStampText, stockMovementType, stockSource } from '../codes';
 import { stockMovements, stockPositions, x3SyncRuns } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, personIdOrNull, projectCodeOfShort, type SeedCtx } from './context';
@@ -20,7 +20,7 @@ export async function seedStock(tx: Tx, ctx: SeedCtx): Promise<void> {
   const projectOf = (p3: string) => (p3 ? must(ctx.projectByCode, projectCodeOfShort(ctx, p3), 'project') : null);
   await tx.insert(stockPositions).values(rows.map((r, position) => ({
     id: newId(), partId: must(ctx.partByRef, r.ref, 'part'), locationId: must(ctx.locationByName, r.loc, 'storage location'), onHand: r.onHand, reserved: r.reserved,
-    reservedForProjectId: projectOf(r.proj), minQty: r.min, source: stockSource.code(r.source), lastMovementOn: isoOfDisplayDate(r.last)!, position,
+    reservedForProjectId: projectOf(r.proj), minQty: r.min, source: stockSource.code(r.source), lastMovementOn: isoOfDemoDate(r.last)!, position,
   })));
   const importedAt = parisInstant(DEMO_TODAY_ISO, X3_LAST_IMPORT);
   await tx.insert(x3SyncRuns).values({ id: newId(), kind: 'stock_import', occurredAt: importedAt, lineCount: rows.filter((r) => r.source === 'X3').length });

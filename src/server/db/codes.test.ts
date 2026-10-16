@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PROTO } from '@/server/prototype';
 import {
   ACTUALS_SOURCE, LEGACY_STATUS, STAGES, budgetChangeStatus, calendar, clientCode3, constraintText, costType, displayOfIso,
-  isoOfDisplayDate, machineType, milestoneStatus, nextStageOf, parseConstraint, splitActual, stage, stepDecision,
+  fmtDOfIso, isDisplayDate, isoOfDemoDate, isoOfDisplayDate, machineType, shortDateYearOfIso, milestoneStatus, nextStageOf, parseConstraint, splitActual, stage, stepDecision,
 } from './codes';
 
 describe('lifecycle codes', () => {
@@ -52,12 +52,22 @@ describe('enum codecs', () => {
 
 describe('dates', () => {
   it('parses prototype display dates', () => {
-    expect(isoOfDisplayDate('05 Jan')).toBe('2026-01-05');
-    expect(isoOfDisplayDate('3 Apr A')).toBe('2026-04-03');
-    expect(isoOfDisplayDate('14 Jan ’27')).toBe('2027-01-14');
-    expect(isoOfDisplayDate('12 Mar 2026')).toBe('2026-03-12');
-    expect(isoOfDisplayDate('Pending CR-009')).toBeNull();
-    expect(isoOfDisplayDate('')).toBeNull();
+    expect(isoOfDisplayDate('05 Jan', 2026)).toBe('2026-01-05');
+    expect(isoOfDisplayDate('3 Apr A', 2026)).toBe('2026-04-03');
+    expect(isoOfDisplayDate('14 Jan ’27', 2026)).toBe('2027-01-14');
+    expect(isoOfDisplayDate('12 Mar 2026', 2026)).toBe('2026-03-12');
+    expect(isoOfDisplayDate('Pending CR-009', 2026)).toBeNull();
+    expect(isoOfDisplayDate('', 2026)).toBeNull();
+    // R-013: a year-less display date is in the given (business) year; the seeds read the data set's year.
+    expect([isoOfDisplayDate('14 Jan', 2027), isoOfDisplayDate('12 Mar 2026', 2027), isoOfDemoDate('05 Jan')]).toEqual(['2027-01-14', '2026-03-12', '2026-01-05']);
+  });
+  it('shows the year of a date outside the business year (R-013)', () => {
+    // On the demo date (2026) nothing changes; with a business date in 2027 the 2026 dates carry their year.
+    expect([shortDateYearOfIso('2026-03-12', 2026), shortDateYearOfIso('2027-01-14', 2026)]).toEqual(['12 Mar', '14 Jan 2027']);
+    expect([shortDateYearOfIso('2026-03-12', 2027), shortDateYearOfIso('2027-01-14', 2027)]).toEqual(['12 Mar 2026', '14 Jan']);
+    expect([fmtDOfIso('2026-03-12', 2026), fmtDOfIso('2027-02-13', 2026)]).toEqual(['12 Mar', '13 Feb ’27']);
+    expect([fmtDOfIso('2026-03-12', 2027), fmtDOfIso('2027-02-13', 2027), fmtDOfIso('2028-02-13', 2027)]).toEqual(['12 Mar ’26', '13 Feb', '13 Feb ’28']);
+    expect([isDisplayDate('2 Oct'), isDisplayDate('5 Jan 2027'), isDisplayDate('next week')]).toEqual([true, true, false]);
   });
   it('formats ISO dates like fmtDY', () => {
     expect(displayOfIso('2026-02-09')).toBe('9 Feb 2026');

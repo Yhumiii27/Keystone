@@ -116,12 +116,12 @@ describe('NCR log (Vigie NCRs) — ncrKpis / ncrChips / ncrRows / ncrVals', () =
   it('My approvals "NCR verification": the prototype item of an NCR in verification; nothing at seed', () => {
     const code = 'HLT-026';
     const href = { ncr: (n: string) => `/q/${n}` };
-    expect(ncrVerificationItems(ncrsOf(code), code, href)).toEqual([]);
+    expect(ncrVerificationItems(ncrsOf(code), code, href, 2026)).toEqual([]);
     const ver = ncrsOf(code).map((n) => (n.number === 'NCR-026' ? { ...n, status: 'verification' as const } : n));
-    const items = ncrVerificationItems(ver, code, href);
+    const items = ncrVerificationItems(ver, code, href, 2026);
     expect(items.map((i) => ({ kind: 'NCR verification', id: i.id, title: i.title, sub: i.sub, when: i.when, who: i.who }))).toEqual(G.approvals.qualityVerification);
     expect(items[0]).toMatchObject({ kind: 'ncr', whenIso: '2026-10-02', href: '/q/NCR-026', decision: { mode: 'ncr-verification', projectCode: code, number: 'NCR-026' }, external: { href: 'vigie:NCR-026', label: 'Open in Vigie' } });
-    expect(ncrVerificationItems(ver.map((n) => (n.number === 'NCR-026' ? { ...n, requestedStatus: 'closed' as const } : n)), code, href)).toEqual([]);
+    expect(ncrVerificationItems(ver.map((n) => (n.number === 'NCR-026' ? { ...n, requestedStatus: 'closed' as const } : n)), code, href, 2026)).toEqual([]);
   });
 });
 
@@ -178,7 +178,7 @@ describe('Deliverables register — dlvKpis / dlvChips / dlvRows / dlvVals', () 
   });
 
   it('My approvals "Deliverable acceptance": the client contact’s items (apprItems 4727)', () => {
-    const items = deliverableAcceptanceItems(deliverablesOf('HLT-026'), 'HLT-026', { deliverable: (n) => `/d/${n}` });
+    const items = deliverableAcceptanceItems(deliverablesOf('HLT-026'), 'HLT-026', { deliverable: (n) => `/d/${n}` }, 2026);
     expect(items.map((i) => ({ kind: 'Deliverable acceptance', id: i.id, title: i.title, sub: i.sub, when: i.when, who: i.who }))).toEqual(G.approvals.client);
     expect(items[0]).toMatchObject({ kind: 'deliverable', whenIso: '2026-09-25', href: '/d/D-014', decision: { mode: 'deliverable', projectCode: 'HLT-026', number: 'D-014' } });
   });

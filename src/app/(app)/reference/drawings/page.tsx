@@ -53,7 +53,7 @@ export default async function DrawingsPage({ searchParams }: { searchParams: Pro
   const state: DrawingsState = { state: drawingFilterOf(first(sp.state)), q: (first(sp.q) ?? '').slice(0, 120), dwg: data.selected };
   const project = access.canEdit ? await getProject(lastProject) : null;
   const view = drawingsView({ drawings: data.drawings, sync: data.sync, state, today }, t, lang);
-  const drawer = data.detail ? drawingDrawerView({ drawing: data.detail, state }, t, lang) : null;
+  const drawer = data.detail ? drawingDrawerView({ drawing: data.detail, state, today }, t, lang) : null;
 
   return (
     <>

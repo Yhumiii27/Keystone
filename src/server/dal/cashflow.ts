@@ -12,6 +12,7 @@ import { cache } from 'react';
 import { BASE_CURRENCY, eurRate, type CurrencyCode } from '@/domain/currency';
 import { cashForecast, lowestCumulativePoint, projectEacKeur, projectMarginPct } from '@/domain/kpis';
 import type { PaymentTerms } from '@/domain/payment-terms';
+import { yearOfIso } from '@/domain/clock';
 import { inExecution } from '@/domain/portfolio';
 import { getDb } from '@/server/db/client';
 import { billingModel, paymentMilestoneStatus, type BillingModel, type PaymentMilestoneStatus } from '@/server/db/codes';
@@ -148,16 +149,18 @@ export interface CashForecastMonth {
 }
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const monthLabel = (iso: string) => {
+/** "Oct" / "Jan ’28": a January after the business year `year` carries its year (R-013; the prototype compared with 2026). */
+const monthLabel = (iso: string, year: number) => {
   const [y, m] = iso.split('-').map((x) => parseInt(x, 10));
-  return MON[m - 1] + (y > 2026 && m === 1 ? ' ’' + String(y).slice(2) : '');
+  return MON[m - 1] + (y > year && m === 1 ? ' ’' + String(y).slice(2) : '');
 };
 
 /** The prototype's stored portfolio cash plan (next 6 months, k€) — no longer read by the screens since A-12 (chapter 4). */
 export async function getPortfolioCashForecast(): Promise<CashForecastMonth[]> {
   const db = await getDb();
   const rows = await db.select().from(portfolioCashForecasts).orderBy(asc(portfolioCashForecasts.position));
-  return rows.map((r) => ({ month: r.month, label: monthLabel(r.month), cashInKeur: r.cashInKeur, cashOutKeur: r.cashOutKeur }));
+  const year = yearOfIso(await businessToday());
+  return rows.map((r) => ({ month: r.month, label: monthLabel(r.month, year), cashInKeur: r.cashInKeur, cashOutKeur: r.cashOutKeur }));
 }
 
 export interface CashFlowRow {
@@ -199,7 +202,7 @@ export async function getCashFlow(zone: ZoneKey | null): Promise<CashFlowData> {
   return {
     rows,
     zoneShare,
-    forecast: months.map((m) => ({ month: m.month, label: monthLabel(m.month), cashInKeur: m.cashInKeur, cashOutKeur: m.cashOutKeur })),
+    forecast: months.map((m) => ({ month: m.month, label: monthLabel(m.month, yearOfIso(today)), cashInKeur: m.cashInKeur, cashOutKeur: m.cashOutKeur })),
     lowPoint: low ? { month: months[low.index].month, cumKeur: low.cumKeur, next: low.next && { project: low.next.project, label: low.next.label, progressMonth: low.next.progressMonth } } : null,
   };
 }

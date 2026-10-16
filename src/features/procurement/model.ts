@@ -11,6 +11,7 @@ import {
 } from '@/domain/procurement';
 import type { Lang, T } from '@/i18n/translate';
 import { money, moneyEur } from '@/lib/format';
+import { yearOfIso } from '@/domain/clock';
 import { moneyUnitsIn } from '@/domain/currency';
 import {
   RFQ_STATUS_TAG, SUPPLIER_GRADE_TAG, SUPPLIER_INVOICE_STATUS_TAG, incoterm, matchState, shortDateYearOfIso, supplierInvoiceStatus,
@@ -32,7 +33,8 @@ export interface KpiView {
 
 const kpi = (t: T, label: string, value: string | number, sub: string, lo = false): KpiView => ({ label: t(label), value: t(String(value)), sub, color: lo ? LO : OK });
 const qtyText = (n: number, lang: Lang) => n.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US');
-const dateText = (iso: string, t: T) => t(shortDateYearOfIso(iso));
+/** "12 Mar" / "14 Jan 2027": the year outside the business year (R-013). */
+const dateText = (iso: string, t: T, today: string) => t(shortDateYearOfIso(iso, yearOfIso(today)));
 
 /** Shared context of the builders. */
 export interface SourcingCtx {
@@ -112,7 +114,7 @@ export function rfqTabView(rfqs: readonly RfqRow[], selected: string | null, c: 
         title: dataText(r.title, lang),
         part: r.partRef ?? '—',
         qty: r.quantity != null ? qtyText(r.quantity, lang) : '—',
-        due: dateText(r.replyDueOn, t),
+        due: dateText(r.replyDueOn, t, c.today),
         owner: r.owner,
         quotes: t(quotesText(r.quotes, lang)),
         rule: t(r.awardRuleLabel),
@@ -174,7 +176,7 @@ export function rfqDrawerView(r: RfqRow, c: SourcingCtx & { orderProject: string
   const meta: { k: string; v: string }[] = [
     { k: t('Part'), v: r.partRef ? r.partRef + (r.partName ? ' · ' + dataText(r.partName, lang) : '') : '—' },
     { k: t('Quantity'), v: r.quantity != null ? qtyText(r.quantity, lang) : '—' },
-    { k: t('Quotes due'), v: dateText(r.replyDueOn, t) },
+    { k: t('Quotes due'), v: dateText(r.replyDueOn, t, c.today) },
     { k: t('Buyer'), v: r.owner },
     { k: t('Award rule'), v: t(r.awardRuleLabel) },
     { k: t('Last purchase price'), v: r.lastPriceEur != null ? pr(() => moneyEur(r.lastPriceEur!, lang)) : '—' },
@@ -303,7 +305,7 @@ export function invoiceTabView(invoices: readonly SupplierInvoiceRow[], filter: 
         const on = i.number === selected;
         return {
           number: i.number,
-          date: dateText(i.invoiceDate, t),
+          date: dateText(i.invoiceDate, t, c.today),
           supplier: i.supplier,
           po: i.poNumber ?? '—',
           gr: i.receiptNumber ?? '—',
@@ -315,7 +317,7 @@ export function invoiceTabView(invoices: readonly SupplierInvoiceRow[], filter: 
             { label: 'GR', color: MATCH_DOT[m.gr], state: t(legState(m.gr)) },
             { label: 'INV', color: MATCH_DOT.ok, state: t(legState('ok')) },
           ],
-          due: dateText(i.dueDate, t),
+          due: dateText(i.dueDate, t, c.today),
           status: t(i.statusLabel),
           tagClass: `tag ${SUPPLIER_INVOICE_STATUS_TAG[i.status]}`,
           selected: on,
@@ -373,8 +375,8 @@ export function invoiceDrawerView(i: SupplierInvoiceRow, filter: SupplierInvoice
     closeHref: sourcingHref({ tab: 'inv', status: filter === 'all' ? null : filter }),
     legs: [leg('Purchase order', i.poNumber, i.poAmountEur, m.po), leg('Goods receipt', i.receiptNumber, i.receiptAmountEur, m.gr), leg('Invoice', i.number, i.amountEur, 'ok')],
     meta: [
-      { k: t('Invoice date'), v: dateText(i.invoiceDate, t), color: OK },
-      { k: t('Due date'), v: dateText(i.dueDate, t), color: OK },
+      { k: t('Invoice date'), v: dateText(i.invoiceDate, t, c.today), color: OK },
+      { k: t('Due date'), v: dateText(i.dueDate, t, c.today), color: OK },
       { k: t('Terms'), v: dataText(i.paymentTerms, lang), color: OK },
       { k: t('Variance invoice − receipt'), v: gap != null ? pr(() => moneyUnitsIn(gap, i.currency, lang)) : '—', color: OK },
       { k: t('Blocking reason'), v: reason ? t(reason) : '—', color: reason ? LO : OK },

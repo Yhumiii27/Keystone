@@ -66,3 +66,6 @@ export function lastWorkdayOf(iso: string): string {
   const dow = dowOfIso(iso);
   return dow === 6 ? addDaysIso(iso, -1) : dow === 0 ? addDaysIso(iso, -2) : iso;
 }
+
+/** Year of an ISO date: the business year that year-less dates are typed in and shown against (R-013). */
+export const yearOfIso = (iso: string) => +iso.slice(0, 4);

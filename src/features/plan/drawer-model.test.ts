@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LinkType, PlanActivity, PlanPackage } from '@/domain/schedule';
 import { makeT, type Lang } from '@/i18n/translate';
-import { isoOfDisplayDate, splitActual } from '@/server/db/codes';
+import { isoOfDemoDate, splitActual } from '@/server/db/codes';
 import type { PlanOwner, PlanRequest, PlanTodo } from '@/server/dal/plan';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import { activityDrawerView, type DrawerInput } from './drawer-model';
@@ -17,7 +17,7 @@ const activities: PlanActivity[] = ACTS.filter((a) => a.id).map((a) => {
   const f = splitActual(a.f);
   return {
     id: a.id, wbs: a.w, name: a.n, durationDays: a.d, start: s.text, startActual: s.actual, finish: f.text, finishActual: f.actual,
-    startDate: isoOfDisplayDate(s.text), baselineFinish: a.bl, variance: a.v, constraint: a.c, violated: !!a.viol, totalFloat: a.tf,
+    startDate: isoOfDemoDate(s.text), baselineFinish: a.bl, variance: a.v, constraint: a.c, violated: !!a.viol, totalFloat: a.tf,
     pct: a.pc, owner: a.o, budget: a.b[0], actual: a.b[1], eac: a.b[2], preds: a.p as [string, LinkType, number][],
   };
 });

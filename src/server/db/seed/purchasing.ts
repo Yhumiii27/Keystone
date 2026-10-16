@@ -4,7 +4,7 @@
 // priced at the catalogue list price, as the prototype values orders (A-11). Projects without data get nothing.
 import { eq } from 'drizzle-orm';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
-import { awardRule, isoOfDisplayDate, poStatus, receiptStatus, rfqStatus, supplierInvoiceStatus, type ReceiptStatus } from '../codes';
+import { awardRule, isoOfDemoDate, poStatus, receiptStatus, rfqStatus, supplierInvoiceStatus, type ReceiptStatus } from '../codes';
 import { goodsReceipts, poLines, purchaseOrders, receiptAttachments, receiptLines, rfqQuotes, rfqs, supplierInvoices } from '../schema';
 import type { Tx } from '../types';
 import type { ProtoPart } from './catalogue';
@@ -66,7 +66,7 @@ export async function seedPurchasing(tx: Tx, ctx: SeedCtx): Promise<void> {
       const supplierId = must(ctx.supplierByName, o.supplier, 'supplier');
       ctx.purchaseOrder.set(o.id, id);
       await tx.insert(purchaseOrders).values({
-        id, number: o.id, projectId, supplierId, status: poStatus.code(o.status), origin: 'x3', orderedOn: isoOfDisplayDate(o.ordered), expectedOn: isoOfDisplayDate(o.expected),
+        id, number: o.id, projectId, supplierId, status: poStatus.code(o.status), origin: 'x3', orderedOn: isoOfDemoDate(o.ordered), expectedOn: isoOfDemoDate(o.expected),
         neededForActivityId: (o.act && acts?.get(o.act)) || null, deliveryTerms: PO_DELIVERY_TERMS, createdByPersonId: buyer,
         submittedByPersonId: o.status === 'Draft' ? null : buyer, position,
       });
@@ -85,7 +85,7 @@ export async function seedPurchasing(tx: Tx, ctx: SeedCtx): Promise<void> {
       const id = newId();
       ctx.receipt.set(d.id, id);
       const status: ReceiptStatus = receiptStatus.code(d.status);
-      const date = isoOfDisplayDate(d.date);
+      const date = isoOfDemoDate(d.date);
       await tx.insert(goodsReceipts).values({
         id, number: d.id, poId: po.id, projectId: po.projectId, supplierId: must(ctx.supplierByName, d.supplier, 'supplier'), status,
         expectedOn: status === 'announced' ? date : null, receivedOn: status === 'announced' ? null : date, carrier: dash(d.carrier),
@@ -111,7 +111,7 @@ export async function seedPurchasing(tx: Tx, ctx: SeedCtx): Promise<void> {
       id: newId(), rfqId: id, supplierId: must(ctx.supplierByName, sup, 'supplier'), unitPriceEur, leadWeeks, paymentTerms, grade, score, position: i,
     }));
     await tx.insert(rfqs).values({
-      id, number: r.id, title: r.title, partId: must(ctx.partByRef, r.part, 'part'), quantity: r.qty, replyDueOn: isoOfDisplayDate(r.due)!, status: rfqStatus.code(r.status),
+      id, number: r.id, title: r.title, partId: must(ctx.partByRef, r.part, 'part'), quantity: r.qty, replyDueOn: isoOfDemoDate(r.due)!, status: rfqStatus.code(r.status),
       awardRule: awardRule.code(r.rule), ownerName: r.owner, ownerPersonId: personIdOrNull(ctx, r.owner), invitedSuppliers: r.quotes.map((q) => q[0]), position,
     });
     if (quotes.length) await tx.insert(rfqQuotes).values(quotes);
@@ -123,6 +123,6 @@ export async function seedPurchasing(tx: Tx, ctx: SeedCtx): Promise<void> {
   await tx.insert(supplierInvoices).values((PROTO.INVOICES as { id: string; supplier: string; po: string; gr: string; amount: number; poAmt: number; grAmt: number; date: string; dueDate: string; status: string }[]).map((i, position) => ({
     id: newId(), number: i.id, supplierId: must(ctx.supplierByName, i.supplier, 'supplier'), poId: i.po ? must(ctx.purchaseOrder, i.po, 'purchase order') : null,
     receiptId: i.gr ? must(ctx.receipt, i.gr, 'goods receipt') : null, amountEur: i.amount, poAmountEur: i.poAmt, receiptAmountEur: i.grAmt,
-    invoiceDate: isoOfDisplayDate(i.date)!, dueDate: isoOfDisplayDate(i.dueDate)!, paymentTerms: INVOICE_TERMS, status: supplierInvoiceStatus.code(i.status), position,
+    invoiceDate: isoOfDemoDate(i.date)!, dueDate: isoOfDemoDate(i.dueDate)!, paymentTerms: INVOICE_TERMS, status: supplierInvoiceStatus.code(i.status), position,
   })));
 }

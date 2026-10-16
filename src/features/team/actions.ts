@@ -5,6 +5,7 @@
 // writers with the viewer as the actor, then revalidates the project's pages (register, KPIs, sidebar badge).
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
+import { yearOfIso } from '@/domain/clock';
 import { interfaceRowState, parseNewInterface, parseNewStakeholder, parseReceivedOn } from '@/domain/team';
 import { businessToday } from '@/server/clock';
 import { createInterface, freezeInterface, listInterfaces, markInterfaceReceived } from '@/server/dal/interfaces';
@@ -64,7 +65,7 @@ export async function addStakeholderAction(code: string, values: Record<string, 
 export async function createInterfaceAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const ok = await editable(code, 'interfaces');
   if ('error' in ok) return ok;
-  const parsed = parseNewInterface(strings(values), await teamOwnerOptions(ok.code));
+  const parsed = parseNewInterface(strings(values), await teamOwnerOptions(ok.code), yearOfIso(await businessToday()));
   if (!parsed.ok) return { error: await tr(parsed.error) };
   try {
     await createInterface(ok.code, parsed.value, ok.actor);

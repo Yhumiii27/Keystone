@@ -23,7 +23,7 @@ const input: ScheduleInput = {
     name, owner, baselineStart: bs, baselineEnd: be, forecastStart: as, forecastEnd: ae, pct: p, critical: crit,
   })),
   milestones: (pd.MILES as [string, number, number, string][]).map(([name, b, fc, st]) => ({ name, baselineMonth: b, forecastMonth: fc, status: ST[st], statusLabel: st })),
-  pv: pd.PV, ev: pd.EV, bac: pd.BAC,
+  pv: pd.PV, ev: pd.EV, bac: pd.BAC, year: 2026,
 };
 
 const render = async (showBaseline = true, data: ScheduleInput = input) => renderToStaticMarkup(await ScheduleView({ view: scheduleView(data), showBaseline }));
