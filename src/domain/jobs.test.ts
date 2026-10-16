@@ -17,6 +17,8 @@ describe('jobs and schedules', () => {
       ['cursus-directory', 1440, 60], ['cursus-events-purge', 1440, 15],
       // Delivery 8 (R-033): Codex's index read by the HTTP connector, hourly (interval to confirm).
       ['codex-index', 60, 15],
+      // Delivery 9 (R-121, D-4 'a'): client prerequisites late at J-15, daily.
+      ['site-prerequisite-alerts', 1440, 15],
     ]);
     expect(JOB_NAMES).not.toContain('friday-freeze');
     // Staggered first runs.

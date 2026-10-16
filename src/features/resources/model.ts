@@ -38,6 +38,8 @@ export interface ResourcesInput {
   weeks: string[];
   /** ISO Mondays of the window weeks (peak week numbers). */
   weekStarts: string[];
+  /** R-085: the weeks are the current load window (default) — false names "8 weeks" instead of "next 8 weeks". */
+  windowIsCurrent?: boolean;
   /** Pool order (PEOPLE order); for a project, only its team members. */
   people: ResourcePerson[];
   /** Portfolio: department capacity vs demand over the window (ROLES order). Ignored for a project (derived from the team). */
@@ -157,7 +159,7 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
       // A-12: computed on both screens (the portfolio showed the constant 240 h), attention colour only when > 0.
       label: t('Unmet demand'),
       value: t(`${unmet} h`),
-      sub: isProject ? t('Next 8 weeks, by department') : shortfallText(roles, t, lang),
+      sub: isProject ? t(input.windowIsCurrent === false ? '8 weeks, by department' : 'Next 8 weeks, by department') : shortfallText(roles, t, lang),
       color: unmet > 0 ? LO : OK,
     },
     {

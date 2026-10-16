@@ -11,9 +11,12 @@
 // reports and of the punch items are stored by Keystone (added by the editors of the screen governing the item's origin, seen
 // by internal viewers). R-118 (D-3 'a'): the project's leads (PM of record, co-PM, deputy, director) prepare the site sheet
 // from the empty state and fill it ("Edit site sheet", the lines' Add / Edit / Remove) from Études until Mise en service & SAT
-// (not at Garantie, Clos or Annulé, nor on a read-only project).
+// (not at Garantie, Clos or Annulé, nor on a read-only project). R-121 (D-4 'a'): `?prereq=<position>` (the J-15 notification)
+// marks a client prerequisite and, for a lead who may edit the Site and the Risk register, opens its "Raise as a risk" form.
 import { PageHeader } from '@/components/app/shell/page-header';
 import { canSee } from '@/config/screens';
+import { FORM_CATEGORIES } from '@/domain/risk';
+import { orderedOptions } from '@/domain/settings-rules';
 import { siteTabOf } from '@/domain/site';
 import { canFillSiteSheet } from '@/domain/site-sheet';
 import { siteHref } from '@/features/site/links';
@@ -22,6 +25,9 @@ import { DailyReportButton } from '@/features/site/site-buttons';
 import { photoViews } from '@/features/photos/model';
 import { SiteBody } from '@/features/site/site-view';
 import { listProjectPhotos } from '@/server/dal/photos';
+import { projectPmName } from '@/server/dal/prerequisite-alerts';
+import { riskOwnerOptions } from '@/server/dal/risks-screen';
+import { riskCategoryOptions } from '@/server/dal/settings-lists';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { getSite } from '@/server/dal/site';
 import { siteSheetDefaults } from '@/server/dal/site-sheet';
@@ -31,6 +37,12 @@ import { getI18n } from '@/server/session';
 import { projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
+
+/** R-121: the "New risk" owners and active categories (A-14 order), and the PM of record proposed as owner. */
+async function raiseRiskContext(projectCode: string) {
+  const [owners, cats, pmName] = await Promise.all([riskOwnerOptions(projectCode), riskCategoryOptions(), projectPmName(projectCode)]);
+  return { owners, categories: orderedOptions(cats.active, FORM_CATEGORIES), pmName };
+}
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 export default async function SitePage({ params, searchParams }: { params: Promise<{ code: string }>; searchParams: Promise<SP> }) {
@@ -45,7 +57,11 @@ export default async function SitePage({ params, searchParams }: { params: Promi
   // R-118: the leads' entry (the Site's edit right, a lead of the project, the stage window); the project's defaults for a new sheet.
   const fill = canFillSiteSheet({ lead: ctx.isLead, canEdit: ctx.canEdit('site'), stage: ctx.project.stage });
   const entry = fill ? { team: ctx.team.map((m) => m.name), defaults: data ? null : await siteSheetDefaults(projectCode) } : null;
-  const view = siteView(projectCode, data, { tab: siteTabOf(first(sp.tab)), punch: first(sp.punch) === 'all' ? 'all' : 'site', arbiter, entry }, t, lang);
+  // R-121 (D-4 'a'): "Raise as a risk" on a late prerequisite — a lead of the project who may edit its Site and Risk register.
+  const raise = data && ctx.isLead && ctx.canEdit('site') && ctx.canEdit('risks') ? await raiseRiskContext(projectCode) : null;
+  const prereqParam = Number(first(sp.prereq));
+  const prereq = Number.isInteger(prereqParam) && prereqParam >= 0 ? prereqParam : null;
+  const view = siteView(projectCode, data, { tab: siteTabOf(first(sp.tab)), punch: first(sp.punch) === 'all' ? 'all' : 'site', arbiter, entry, raise, prereq }, t, lang);
   const context = projectLabelText(ctx.project, lang);
 
   const primary = canEdit ? (

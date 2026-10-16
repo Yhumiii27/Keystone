@@ -26,8 +26,8 @@ import {
   type ConfirmStatus, type CursusVerdict, type EquipmentSource, type HseIncident, type HseItemKind, type HseStatus, type Weather,
 } from '@/server/db/codes';
 import {
-  activities, dailyReports, departments, leaveEntries, missionCostLines, persons, projects, siteConflictArbitrations, siteEquipment, sitePrerequisites, siteRotations,
-  siteSheets,
+  activities, dailyReports, departments, leaveEntries, missionCostLines, persons, projects, risks, siteConflictArbitrations, siteEquipment, sitePrerequisites,
+  siteRotations, siteSheets,
 } from '@/server/db/schema';
 import { cursusChantierUrl } from '@/server/integrations/cursus/links';
 import { getCursusConnector, type CursusClearanceView } from '@/server/integrations/cursus/connector';
@@ -74,6 +74,8 @@ export interface EquipmentRow {
 export interface PrerequisiteRow {
   position: number; title: string; activityCode: string; activityName: string | null; neededBy: string; status: ConfirmStatus; statusLabel: string; evidence: string;
   late: boolean; stamp: string;
+  /** R-121 (D-4 'a'): the risk a lead raised from this prerequisite ("R-21"); null until then. */
+  riskNumber: string | null;
 }
 export interface RotationRow {
   position: number; person: string; personId: string | null; roleOnSite: string; fromOn: string; toOn: string; lodging: string; travel: string; rotationNo: number;
@@ -164,6 +166,9 @@ export async function getSite(projectCode: string, on?: string): Promise<SiteDat
     clientDecisionsOf(projectCode),
   ]);
   const actName = new Map(acts.map((a) => [a.code, a.name]));
+  // R-121: the risks raised from the prerequisites ("Raise as a risk").
+  const riskIds = pre.flatMap((x) => (x.riskId ? [x.riskId] : []));
+  const riskNo = new Map(riskIds.length ? (await db.select({ id: risks.id, number: risks.number }).from(risks).where(inArray(risks.id, riskIds))).map((r) => [r.id, r.number]) : []);
   // R-119 (D-6b 'a'): the conflicts are computed (site_collisions, the prototype's literals, is no longer read).
   const collisions = collisionRows(siteConflicts(await conflictFacts(db, p.id, rot, gng.people, pool)));
   const open = new Set(collisions.filter((c) => !c.resolved).map((c) => c.person));
@@ -186,6 +191,7 @@ export async function getSite(projectCode: string, on?: string): Promise<SiteDat
     prerequisites: pre.map((x) => ({
       position: x.position, title: x.title, activityCode: x.activityCode, activityName: actName.get(x.activityCode) ?? null, neededBy: x.neededBy, status: x.status,
       statusLabel: confirmStatus.label(x.status), evidence: x.evidence, late: isPrerequisiteLate(x, today), stamp: prerequisiteStamp(x),
+      riskNumber: (x.riskId && riskNo.get(x.riskId)) || null,
     })),
     cursus: { verdict: gng.verdict, people: gng.people, lastSyncedAt: gng.lastSyncedAt, mode: cursus.mode, openUrl: cursusChantierUrl(s.cursusChantierId) },
     rotation: rot.map((r) => ({

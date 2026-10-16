@@ -1,9 +1,10 @@
-// Leave & working calendar body (docs/spec/06 §4, template 1478–1501): KPIs and the 8-week availability grid of the
+// Leave & working calendar body (docs/spec/06 §4, template 1478–1501): KPIs and the 8-week availability grid (R-085: from the
+// current week, navigable) of the
 // absences received from Cursus (R-031: NEW-CURSUS-4 / NEW-CURSUS-7, Lucca unplugged) — two simple types, Leave and
 // Absence, never the reason (R-173) — public holidays and available hours on a 35 h week. Read-only by design. Server
 // Component.
 import { LockSimple } from '@phosphor-icons/react/dist/ssr';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Avatar } from '@/components/app/Badges';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
 import { SectionCard } from '@/components/app/SectionCard';
@@ -21,7 +22,16 @@ const CELL: Record<LeaveCellTone, string | undefined> = { absence: s.cellAbsence
 /** "11 Nov" (date part of "11 Nov · Armistice"). */
 const datePart = (label: string) => label.split(' · ')[0];
 
-export function LeaveView({ data, t }: { data: LeaveCalendar; t: T }) {
+export interface LeaveViewProps {
+  data: LeaveCalendar;
+  t: T;
+  /** R-085: the load-window navigation (`LoadWindowNav`) in the grid's header. */
+  windowNav?: ReactNode;
+  /** R-085: the grid shows the current window ("next 8 weeks"); false = another window ("8 weeks"). Default true. */
+  windowIsCurrent?: boolean;
+}
+
+export function LeaveView({ data, t, windowNav, windowIsCurrent = true }: LeaveViewProps) {
   const n = data.weeks.length;
   const rows = data.people.map((p) => ({ p, r: leaveRow(p.weeks.map((w) => ({ type: w.typeLabel, days: w.days, holidays: w.holidays }))) }));
   const k = leaveKpis(rows.map((x) => x.r), n);
@@ -38,7 +48,7 @@ export function LeaveView({ data, t }: { data: LeaveCalendar; t: T }) {
           sub={t(data.lastAbsenceReceivedAt ? 'Last absence received' : 'None received yet')}
           color={OK}
         />
-        <KpiTile label={t('Team availability')} value={`${k.teamAvailabilityPct}%`} sub={t('Next 8 weeks · 35 h basis')} color={OK} />
+        <KpiTile label={t('Team availability')} value={`${k.teamAvailabilityPct}%`} sub={t(windowIsCurrent ? 'Next 8 weeks · 35 h basis' : '8 weeks · 35 h basis')} color={OK} />
         <KpiTile label={t('Leave days')} value={k.leaveDays} sub={t('Approved in Cursus')} color={OK} />
         <KpiTile label={t('Public holidays')} value={data.holidays.length} sub={t(holDates.length ? `${holDates.join(', ')} · France` : 'France')} color={OK} />
         <KpiTile label={t('Weeks under 60% team capacity')} value={k.weeksUnder60} sub={t('Capacity feeds the allocation heatmap')} color={OK} />
@@ -46,8 +56,9 @@ export function LeaveView({ data, t }: { data: LeaveCalendar; t: T }) {
       <SectionCard
         gap={10}
         scroll
-        title={t('Availability — next 8 weeks')}
+        title={t(windowIsCurrent ? 'Availability — next 8 weeks' : 'Availability — 8 weeks')}
         subtitle={t('Received from Cursus · 35 h week · 7 h per leave day · public holidays removed')}
+        actions={windowNav}
         hint={
           <>
             <LockSimple aria-hidden />

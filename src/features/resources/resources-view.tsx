@@ -1,10 +1,10 @@
 // Resources (portfolio pool) and Project resources body (docs/spec/06 §1.3–§1.4, template 573–637): project banner,
-// 5 KPI tiles, allocation heatmap (next 8 weeks), capacity vs demand bars and the suggested rebalancing card.
+// 5 KPI tiles, allocation heatmap (8 weeks from the current week, navigable — R-085), capacity vs demand bars and the suggested rebalancing card.
 // Server Component; "Apply" is a client island that drafts a resource request (chapter 4, R-3 / S-7). Strings arrive
 // translated in `view` (model.ts).
 import { Sparkle, UsersThree } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Avatar } from '@/components/app/Badges';
 import { EmptyState } from '@/components/app/EmptyState';
 import { KpiGrid, KpiTile } from '@/components/app/Kpi';
@@ -24,9 +24,14 @@ export interface ResourcesViewProps {
   projectName?: string;
   /** Edit controls ("Apply") allowed: not outside the workspace, project not read-only. */
   canEdit: boolean;
+  /** R-085: the load-window navigation (`LoadWindowNav`) shown in the heatmap header. */
+  windowNav?: ReactNode;
+  /** R-085: the heatmap shows the current window ("next 8 weeks"); false = another window ("8 weeks"). Default true. */
+  windowIsCurrent?: boolean;
 }
 
-export function ResourcesView({ view, t, projectName, canEdit }: ResourcesViewProps) {
+export function ResourcesView({ view, t, projectName, canEdit, windowNav, windowIsCurrent = true }: ResourcesViewProps) {
+  const title = t(windowIsCurrent ? 'Allocation — next 8 weeks' : 'Allocation — 8 weeks');
   return (
     <div className={s.body}>
       {projectName != null && (
@@ -46,9 +51,10 @@ export function ResourcesView({ view, t, projectName, canEdit }: ResourcesViewPr
         <section className={cx('card', 'elev-sm', s.card, s.allocation)}>
           <div className={s.allocHead}>
             <div className={s.titleCol}>
-              <CardTitle>{t('Allocation — next 8 weeks')}</CardTitle>
+              <CardTitle>{title}</CardTitle>
               <span className={s.cardSub}>{t('% of available hours per person')}</span>
             </div>
+            {windowNav}
             <div className={s.legend}>
               {t('Under')}
               {SHADE_SCALE.map((c) => (
@@ -58,7 +64,7 @@ export function ResourcesView({ view, t, projectName, canEdit }: ResourcesViewPr
             </div>
           </div>
           {view.people.length ? (
-            <div className={s.grid} role="table" aria-label={t('Allocation — next 8 weeks')} style={{ '--weeks': view.weeks.length } as CSSProperties}>
+            <div className={s.grid} role="table" aria-label={title} style={{ '--weeks': view.weeks.length } as CSSProperties}>
               <div className={s.contents} role="row">
                 <div className={s.colHead} role="columnheader">
                   {t('Person')}

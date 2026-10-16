@@ -1,0 +1,135 @@
+import 'server-only';
+// R-121 (owner's decision D-4 'a' ★ "Notification et proposition de risque"): client prerequisites still unconfirmed at J-15.
+// - `alertLatePrerequisites` (daily job `site-prerequisite-alerts`): every prerequisite late at the business date and not yet
+//   alerted for its need date is claimed (alerted_needed_by, a conditional update — two workers never alert it twice), then its
+//   project's PM of record gets a bell notice linking to the prerequisite on the Site screen (sent after the claim commits;
+//   a PM without an active account is counted, nobody else is told).
+// - `raisePrerequisiteRisk` ("Raise as a risk" on the prerequisite's row): the existing "New risk" values, confirmed by a lead
+//   of the project, registered with the prerequisite's activity and its cause as trigger, linked to the prerequisite; audit
+//   rows (risk created, prerequisite) and an activity line. Rules: src/domain/prerequisite-alerts.ts.
+import { and, eq, isNull, ne, or } from 'drizzle-orm';
+import {
+  PREREQUISITE_ALERT_TITLE, PREREQ_RISK_LEADS_ONLY, PREREQ_RISK_NOT_LATE, PREREQ_RISK_RAISED, canRaisePrerequisiteRisk, prerequisitesToAlert,
+} from '@/domain/prerequisite-alerts';
+import { SITE_LINE_CHANGED, prerequisiteStamp } from '@/domain/site-sheet';
+import { systemMessage } from '@/domain/system-messages';
+import { businessToday } from '@/server/clock';
+import { getDb } from '@/server/db/client';
+import { shortDateOfIso } from '@/server/db/codes';
+import { nameOf } from '@/server/db/helpers';
+import { persons, projects, risks, sitePrerequisites } from '@/server/db/schema';
+import { logError } from '@/server/log';
+import { managesProject, projectOf, trace, whoIs, type Actor } from './ops-common';
+import { notifyPersonIds } from './person-notices';
+import { createRisk, type NewRiskInput } from './risks';
+
+export interface PrerequisiteAlertRun {
+  /** Business date of the run. */
+  today: string;
+  /** Pending prerequisites looked at. */
+  pending: number;
+  /** Prerequisites alerted by this run (claimed). */
+  alerted: number;
+  /** Alerts whose PM of record received the notice. */
+  notified: number;
+  /** Alerts nobody received (no PM of record, or no active account). */
+  unaddressed: number;
+}
+
+/** The bell notice of a late prerequisite: fixed English title; the prerequisite as typed · its activity · its need date. */
+export const prerequisiteAlertNotice = (p: { title: string; activityCode: string; neededBy: string; position: number }, projectCode: string) => ({
+  kind: 'alert' as const,
+  title: PREREQUISITE_ALERT_TITLE,
+  sub: `${p.title} · ${p.activityCode} · ${shortDateOfIso(p.neededBy)}`,
+  // `?prereq=` marks the row on the Site screen (Readiness & go) and opens "Raise as a risk" for a lead.
+  screen: 'site',
+  params: { prereq: p.position },
+  projectCode,
+});
+
+/**
+ * One run of the daily job at the business date (`on`, tests). Idempotent: a prerequisite is alerted once per need date; a second
+ * run the same day (or a racing worker) alerts nothing.
+ */
+export async function alertLatePrerequisites(on?: string): Promise<PrerequisiteAlertRun> {
+  const db = await getDb();
+  const today = on ?? (await businessToday());
+  const rows = await db
+    .select({
+      id: sitePrerequisites.id, title: sitePrerequisites.title, activityCode: sitePrerequisites.activityCode, neededBy: sitePrerequisites.neededBy,
+      status: sitePrerequisites.status, position: sitePrerequisites.position, alertedNeededBy: sitePrerequisites.alertedNeededBy,
+      code: projects.code, stage: projects.stage, pm: projects.pmPersonId,
+    })
+    .from(sitePrerequisites)
+    .innerJoin(projects, eq(projects.id, sitePrerequisites.projectId))
+    .where(eq(sitePrerequisites.status, 'pending'));
+  const due = prerequisitesToAlert(rows, today);
+  const run: PrerequisiteAlertRun = { today, pending: rows.length, alerted: 0, notified: 0, unaddressed: 0 };
+  for (const p of due) {
+    // The claim: only while still pending, at the need date read, and not alerted for it (a racing run claims nothing).
+    const claimed = await db
+      .update(sitePrerequisites)
+      .set({ alertedNeededBy: p.neededBy, alertedAt: new Date() })
+      .where(and(
+        eq(sitePrerequisites.id, p.id), eq(sitePrerequisites.status, 'pending'), eq(sitePrerequisites.neededBy, p.neededBy),
+        or(isNull(sitePrerequisites.alertedNeededBy), ne(sitePrerequisites.alertedNeededBy, p.neededBy)),
+      ))
+      .returning({ id: sitePrerequisites.id });
+    if (!claimed.length) continue;
+    run.alerted++;
+    let to: string[] = [];
+    try {
+      to = p.pm ? await notifyPersonIds(prerequisiteAlertNotice(p, p.code), [p.pm], null) : [];
+    } catch (e) {
+      logError('alertLatePrerequisites', e, { projectCode: p.code, position: p.position });
+    }
+    if (to.length) run.notified++;
+    else run.unaddressed++;
+  }
+  return run;
+}
+
+/** "Raise as a risk": the "New risk" values a lead confirmed (the trigger and the activity come from the prerequisite). */
+export type PrerequisiteRiskInput = Omit<NewRiskInput, 'trigger' | 'activityCode'>;
+
+/**
+ * Registers the risk proposed for a late prerequisite, as the page showed the line (`stamp`): a lead of the project only (PM of
+ * record, co-PM, deputy, the director — re-checked here), the prerequisite still late at the business date and no risk raised
+ * from it yet. Returns the risk's number ("R-21"). Errors: SITE_LINE_CHANGED, PREREQ_RISK_* (English source strings).
+ */
+export async function raisePrerequisiteRisk(
+  projectCode: string, position: number, stamp: string, input: PrerequisiteRiskInput, trigger: string, actor: Actor, on?: string,
+): Promise<string> {
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const today = on ?? (await businessToday(tx));
+    const p = await projectOf(tx, projectCode);
+    if (!(await managesProject(tx, actor, p))) throw new Error(PREREQ_RISK_LEADS_ONLY);
+    const [x] = await tx.select().from(sitePrerequisites).where(and(eq(sitePrerequisites.projectId, p.id), eq(sitePrerequisites.position, position)));
+    if (!x) throw new Error(`Unknown prerequisite ${position} on ${projectCode}`);
+    if (prerequisiteStamp(x) !== stamp) throw new Error(SITE_LINE_CHANGED);
+    if (x.riskId) throw new Error(PREREQ_RISK_RAISED);
+    if (!canRaisePrerequisiteRisk({ status: x.status, neededBy: x.neededBy, riskNumber: null }, today)) throw new Error(PREREQ_RISK_NOT_LATE);
+    const number = await createRisk(projectCode, { ...input, trigger, activityCode: x.activityCode }, actor.name, tx);
+    const [r] = await tx.select({ id: risks.id }).from(risks).where(and(eq(risks.projectId, p.id), eq(risks.number, number)));
+    // The line's stamp does not read the link: the page's other forms on this line stay valid.
+    await tx.update(sitePrerequisites).set({ riskId: r.id }).where(eq(sitePrerequisites.id, x.id));
+    await trace(tx, await whoIs(tx, actor), {
+      objectRef: `Prerequisite · ${x.title}`, change: `risk raised · ${number}`, area: 'Site', entityType: 'site_prerequisite', entityId: x.id, projectId: p.id,
+      after: { risk: number },
+      activity: { kind: 'change', message: systemMessage('site.prerequisiteRiskRaised', { risk: number, prerequisite: x.title }) },
+    });
+    return number;
+  });
+}
+
+/** The PM of record's name as the "New risk" owner list shows it (full name), proposed as the risk's owner; null without one. */
+export async function projectPmName(projectCode: string): Promise<string | null> {
+  const db = await getDb();
+  const [r] = await db
+    .select({ fullName: persons.fullName, shortName: persons.shortName })
+    .from(projects)
+    .innerJoin(persons, eq(persons.id, projects.pmPersonId))
+    .where(eq(projects.code, projectCode));
+  return r ? nameOf(r) : null;
+}

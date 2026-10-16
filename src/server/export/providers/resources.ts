@@ -15,12 +15,16 @@ import { zoneLabel } from '@/server/dal/shell';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
 import { yearOfIso } from '@/domain/clock';
+import { loadWindow, parseLoadWeekParam } from '@/domain/load-window';
 import { col, compact, filterLine, isoOf, kpiSheet, param, sheet } from './common';
 import { projectFilter } from './scope';
 import { canViewDepartmentApprovals } from '@/domain/rights';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { dataText } from '@/i18n/data-text';
 
+
+/** R-085: the load window the screen shows (`?week=` of the page, validated as on screen; none = the current window). */
+const windowOf = (ctx: ExportContext) => loadWindow(ctx.today, parseLoadWeekParam(param(ctx, 'week'), ctx.today));
 
 function loadSheet(ctx: ExportContext, name: string, weeks: ResourceWeek[], people: PoolPerson[]): ExportSheet {
   const { t } = ctx;
@@ -65,7 +69,7 @@ async function resourcesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
   // R-086 (R-2 a): the labour cost of the projects in execution of the displayed zone, as on screen.
   const [pool, departments, pending, labor, zoneText] = await Promise.all([
-    getResourcePool(), listDepartments(), listResourceRequests({ status: 'pending' }), getPortfolioLaborCost(ctx.zone), zoneLabel(ctx.zone),
+    getResourcePool(windowOf(ctx).weeks), listDepartments(), listResourceRequests({ status: 'pending' }), getPortfolioLaborCost(ctx.zone), zoneLabel(ctx.zone),
   ]);
   const caps = departments.filter((d) => d.capacityH != null && d.demandH != null).sort((a, b) => (a.capacityPosition ?? 0) - (b.capacityPosition ?? 0));
   return {
@@ -85,7 +89,7 @@ async function projectResourcesWorkbook(ctx: ExportContext): Promise<ExportWorkb
   if (!ctx.project) return null;
   const { t } = ctx;
   const code = ctx.project.code;
-  const [pool, team, labor, pending, all] = await Promise.all([getResourcePool(), getProjectTeam(code), getLaborCost(code), listResourceRequests({ projectCode: code, status: 'pending' }), listResourceRequests({ projectCode: code })]);
+  const [pool, team, labor, pending, all] = await Promise.all([getResourcePool(windowOf(ctx).weeks), getProjectTeam(code), getLaborCost(code), listResourceRequests({ projectCode: code, status: 'pending' }), listResourceRequests({ projectCode: code })]);
   const members = new Set(team.map((m) => m.name));
   const people = pool.people.filter((m) => members.has(m.name));
   return {
@@ -211,7 +215,7 @@ async function skillsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
  */
 async function leaveWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
-  const data = await getLeaveCalendar();
+  const data = await getLeaveCalendar('FR', windowOf(ctx).weeks);
   return {
     title: t('Leave & working calendar'),
     sheets: [

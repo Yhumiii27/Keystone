@@ -1,0 +1,10 @@
+{
+  "Client prerequisite unconfirmed at J-15 — raise a risk?": "Prérequis client non confirmé à J-15 — ouvrir un risque ?",
+  "Raise as a risk": "Ouvrir un risque",
+  "Risk raised from this prerequisite": "Risque ouvert depuis ce prérequis",
+  "Late client prerequisite": "Prérequis client en retard",
+  "Client prerequisite not confirmed 15 days before its need date": "Prérequis client non confirmé 15 jours avant sa date de besoin",
+  "Only the project’s leads raise a risk from a client prerequisite": "Seuls les responsables du projet ouvrent un risque depuis un prérequis client",
+  "This prerequisite is not late any more": "Ce prérequis n’est plus en retard",
+  "A risk was already raised from this prerequisite": "Un risque a déjà été ouvert depuis ce prérequis"
+}

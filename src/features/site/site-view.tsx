@@ -33,6 +33,7 @@ import {
   AddLineButton, ArbitrateButton, ConfirmEquipmentButton, EditLineButton, EditSheetButton, PrepareSiteButton, PrerequisiteButton, RemindButton, RemoveLineButton,
   SyncCursusButton,
 } from './site-buttons';
+import { RaiseRiskButton } from './prerequisite-risk-button';
 import s from './site.module.css';
 
 export interface SiteBodyProps {
@@ -175,7 +176,7 @@ function ReadyTab({ code, v, canEdit, entry, context, t }: { code: string; v: Re
           </thead>
           <tbody>
             {v.prereqs.map((r) => (
-              <tr key={r.position}>
+              <tr key={r.position} id={`prereq-${r.position}`} className={r.focus ? s.prereqFocus : undefined}>
                 <td className={s.pretty}>{r.title}</td>
                 <Td tone="muted" maxWidth={220}>
                   <Ellipsis title={r.act}>{r.act}</Ellipsis>
@@ -189,6 +190,14 @@ function ReadyTab({ code, v, canEdit, entry, context, t }: { code: string; v: Re
                 <td className={s.note}>{r.note}</td>
                 <td>
                   <div className={s.actions}>
+                    {r.risk && (
+                      <Link href={r.risk.href} className={s.riskLink} title={t('Risk raised from this prerequisite')}>
+                        {r.risk.number}
+                      </Link>
+                    )}
+                    {r.raise && v.raiseForm && (
+                      <RaiseRiskButton code={code} position={r.position} stamp={r.stamp} title={r.title} form={v.raiseForm} values={r.raise} autoOpen={r.focus} />
+                    )}
                     {canEdit && r.step && <PrerequisiteButton code={code} position={r.position} stamp={r.stamp} to={r.step.to} label={r.step.label} title={r.title} />}
                     <LineButtons code={code} kind="prerequisite" position={r.position} label={r.title} line={r.entry} entry={entry} />
                   </div>

@@ -8,22 +8,22 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-16 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 101 faits, 28 en cours, 56 à faire, sur 185 points.
+**Avancement** : 103 faits, 26 en cours, 56 à faire, sur 185 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
 | Bloquant production | 16 | ≈ 106 |
-| Prochaine étape | 24 | ≈ 192 |
+| Prochaine étape | 23 | ≈ 188 |
 | À décider | 26 | ≈ 243 |
-| Plus tard | 18 | ≈ 60 |
-| **Total** | **84** | **≈ 601** |
+| Plus tard | 17 | ≈ 56 |
+| **Total** | **82** | **≈ 593** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 32 |
-| Partiel | 12 |
+| Non commencé | 31 |
+| Partiel | 11 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
 
@@ -35,10 +35,10 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 3 | 1 | 5 | 3 |
 | Planning | 1 | 0 | 3 | 1 | 5 | 3 |
 | Coûts, contrat et finance | 0 | 2 | 2 | 0 | 4 | 12 |
-| Ressources et RH | 0 | 3 | 1 | 1 | 5 | 4 |
+| Ressources et RH | 0 | 2 | 1 | 1 | 4 | 5 |
 | Achats et stock | 2 | 1 | 2 | 0 | 5 | 4 |
 | Ingénierie et PLM | 0 | 1 | 1 | 0 | 2 | 9 |
-| Qualité, chantier et mise en service | 0 | 1 | 1 | 1 | 3 | 9 |
+| Qualité, chantier et mise en service | 0 | 1 | 1 | 0 | 2 | 10 |
 | Documents | 0 | 1 | 0 | 0 | 1 | 4 |
 | Portefeuille, pilotage et indicateurs | 0 | 0 | 0 | 0 | 0 | 8 |
 | Portail client | 0 | 0 | 1 | 2 | 3 | 3 |
@@ -503,7 +503,7 @@ EAC, VAC, CPI et TCPI doivent suivre les seuils de santé des Paramètres au lie
 Les catégories viennent déjà des Paramètres ; leur montant doit être libre avant BL1, puis ne changer que par une CR approuvée. Aujourd’hui il reste modifiable à tout moment.  
 *Avancement : Livraison 8 : montants des catégories de coûts figés après BL1, catégorie imputée à l’approbation. · Sources : C-3, S-3, 04 Q4, DELIVERY-1.md §7*
 
-### 2.7 Ressources et RH (5 restants, 4 faits)
+### 2.7 Ressources et RH (4 restants, 5 faits)
 
 **R-083 · Dater la grille de taux par rôle et unifier la valorisation des heures** — *Prochaine étape · partiel · effort M* · **en cours (Livraison 8)**  
 Grille de taux par rôle (taux de base × coefficients) avec date d’effet et historique, un seul taux par rôle (R-4b), chaque heure valorisée au taux en vigueur et chaque personne reliée à son rôle. Supprimer les sources concurrentes : taux par intitulé de poste pour la note de coût des tâches, 62 €/h fixe de l’écran Heures, 60 €/h du what-if, et la modification en place qui revalorise tout l’historique.  
@@ -513,10 +513,6 @@ Grille de taux par rôle (taux de base × coefficients) avec date d’effet et h
 Capacité = horaire contractuel de chacun (35 h par défaut, temps partiels respectés) − absences validées − fériés ; charge = affectations du planning et demandes approuvées ; même règle dans Ressources, Congés, what-if et Priorisation, le ratio par M€ ne servant qu’aux propositions sans planning. Aujourd’hui seul l’écran Congés déduit congés et fériés (sur 35 h fixes) ; les autres comptent 40 h fixes, lisent des pourcentages de charge semés et des capacités de service statiques, et Priorisation (pool × 40 h) diffère de Ressources (department_capacities).  
 *Attend : Absences Cursus (R-031) et source de l’horaire contractuel ; confirmation de la source de capacité (DELIVERY-6 §8 A-12) · Sources : R-1, L-5b, A-12, 06 OQ3, 03 OQ9, 11 §7 #16, DELIVERY-2.md §6, DELIVERY-3.md §5, DELIVERY-6.md §8 A-12*
 
-**R-085 · Afficher les plans de charge sur 8 semaines glissantes** — *Prochaine étape · non commencé · effort M* · **en cours (Livraison 9)**  
-Ressources, Congés et what-if doivent partir de la semaine en cours, avec boutons précédent et suivant. Aujourd’hui ils montrent toujours les 8 semaines semées (28 sept. – 16 nov. 2026).  
-*Avancement : Débloqué par l’horloge réelle (R-013, livraison 9). En cours (livraison 9). · Attend : Horloge réelle (R-013) · Sources : R-7, S-4, S-7, 06 OQ15*
-
 **R-091 · Préciser les règles des scénarios what-if et des brouillons** — *À décider · attend le responsable produit · effort M*  
 À trancher : ignorer un levier déjà demandé depuis une suggestion ou un autre scénario, approbation formelle d’un scénario, scénarios basés sur une référence, horizon au-delà de 8 semaines ; pour les brouillons, visibilité par le CP, demandeur à l’envoi, envoi par les achats, filtre « Brouillons ».  
 *Attend : Réponses du responsable produit (DELIVERY-6 §8 S-7) · Sources : S-7, R-3, DELIVERY-6.md §8 S-7, docs/delivery-6/notes-whatif-kpis.md §5*
@@ -524,6 +520,10 @@ Ressources, Congés et what-if doivent partir de la semaine en cours, avec bouto
 **R-089 · Envoyer aux achats une tâche pour trouver l’intervenant externe** — *Plus tard · non commencé · effort M* · **en cours (Livraison 8)**  
 Après approbation d’une demande portant sur un profil sans personne nommée (intérim, sous-traitance), les achats reçoivent une tâche pour trouver l’intervenant ; la tâche passe ensuite à la personne retenue. Aujourd’hui la tâche est créée au nom du rôle contractuel, sans suite.  
 *Avancement : Livraison 8 : la tâche de recherche part aux achats (P-8b), « Nommer la personne » ; créer une nouvelle personne attend l’annuaire Cursus (R-027). · Sources : P-8b, 08 OQ20, DELIVERY-2.md §7*
+
+**~~R-085 · Afficher les plans de charge sur 8 semaines glissantes~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 9)**  
+Ressources, Congés et what-if doivent partir de la semaine en cours, avec boutons précédent et suivant. Aujourd’hui ils montrent toujours les 8 semaines semées (28 sept. – 16 nov. 2026).  
+*Avancement : Livraison 9, lot « load-window » (docs/delivery-9/notes-load-window.md) : Ressources, ressources du projet et Congés sur 8 semaines depuis la semaine en cours, boutons semaine précédente / suivante (±52 semaines) ; what-if sur la fenêtre en cours. Les autres lecteurs de charge suivront avec R-084. · Attend : Horloge réelle (R-013) · Sources : R-7, S-4, S-7, 06 OQ15*
 
 **~~R-086 · Afficher le coût main-d’œuvre du portefeuille par zone sur Ressources~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
 La tuile « Coût main-d’œuvre à date » de l’écran Ressources global doit totaliser les heures valorisées de tous les projets de la zone affichée ; elle lit aujourd’hui la catégorie main-d’œuvre du dernier projet consulté.  
@@ -625,7 +625,7 @@ La mention « à garder pour le parc installé » ne doit concerner que les piè
 La nomenclature de HLT-026 compte peut-être deux fois la même grue. La réponse retenue (NEW-D4-5 c) demande de signaler le doublon possible jusqu’à la réponse du bureau d’études, ce qui n’est pas fait et peut l’être dès maintenant. Corriger ensuite les données ou la règle de valorisation selon la réponse.  
 *Avancement : Livraison 8 : doublon possible EQ-CRN-250T / ASM-RMG-250 signalé (NEW-D4-5 c). · Attend : Réponse du bureau d’études (même grue ou deux équipements) pour la correction définitive ; le signalement n’attend rien · Sources : NEW-D4-5, E-2, A-11, DELIVERY-4.md §3, §6, §8*
 
-### 2.10 Qualité, chantier et mise en service (3 restants, 9 faits)
+### 2.10 Qualité, chantier et mise en service (2 restants, 10 faits)
 
 **R-113 · Piloter les étapes de mise en service et le dossier de transfert** — *Prochaine étape · non commencé · effort L*  
 Rendre la grille modifiable : une étape (fin de montage, pré-mise en service, mise en service, SAT, transfert) ne se valide que si ses inspections obligatoires sont passées, sans réserve A ni interface bloquante, et c’est le CP ou le responsable mise en service qui la valide. Il faut aussi définir quelles inspections sont obligatoires par étape (les étapes ITP atelier/FAT/site/SAT ne correspondent pas aux étapes de mise en service), calculer les blocages au lieu du blockingRef semé, et créer la grille des nouveaux projets (l’assistant ne crée que le plan ITP). Aujourd’hui seule la date de la SAT est enregistrée.  
@@ -634,10 +634,6 @@ Rendre la grille modifiable : une étape (fin de montage, pré-mise en service, 
 **R-123 · Statuer sur le journal client retiré et la notion de « décision client »** — *À décider · attend le responsable produit · effort S*  
 La table client_communications et son DAL sont conservés mais inaccessibles : faut-il les supprimer par une nouvelle migration ? Une « décision client » est aujourd’hui toute décision d’une réunion externe, revues fournisseurs comprises : faut-il un indicateur « client présent » ?  
 *Attend : Réponse du responsable produit (DELIVERY-6 §8 D-5) · Sources : D-5, DELIVERY-6.md §3, §8 D-5, docs/delivery-6/notes-admin-settings.md §2.3, §4 points 1-2*
-
-**R-121 · Alerter le CP à J-15 sur un prérequis client non confirmé** — *Plus tard · partiel · effort M* · **en cours (Livraison 9)**  
-Un contrôle quotidien envoie une notification au CP et lui propose un risque pré-rempli à confirmer quand un prérequis client n’est pas confirmé à J-15. Aujourd’hui le retard n’est qu’un indicateur à l’écran.  
-*Avancement : Débloqué par l’horloge réelle (R-013, livraison 9). En cours (livraison 9). · Attend : Notifications par événement (R-015) et tâches planifiées (R-006) · Sources : D-4, X-6a, 10 OQ6, DELIVERY-5.md §7*
 
 **~~R-112 · Saisir les résultats d’inspection ITP et ouvrir une NC Vigie en cas d’échec~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 7)**  
 La qualité et le responsable ingénierie enregistrent le résultat (conforme, non conforme) et, pour un point témoin, le représentant client présent (Q-6a). Un résultat non conforme ouvre le formulaire NC de Vigie pré-rempli (projet, inspection, système, article) et le numéro Vigie s’affiche sur l’inspection à la synchro (Q-6b). Aujourd’hui les résultats sont en lecture seule.  
@@ -670,6 +666,10 @@ Sans aucun verdict reçu (par exemple un projet sans chantier Cursus), la condit
 **~~R-117 · Fusionner les réserves ITP et chantier en une liste unique par projet~~** — *Plus tard · non commencé · effort M* · **fait (Livraison 8)**  
 Une seule liste de réserves par projet, chaque réserve portant son origine (inspection ou chantier), sa catégorie A/B/C, sa partie responsable, sa NC ou inspection d’origine en option et un numéro unique. Aujourd’hui une même table porte deux registres numérotés séparément : les réserves chantier sont en lecture seule (ni ajout ni clôture) et le « Bloquant A » de la mise en service ne compte que le registre ITP.  
 *Avancement : Livraison 8, lot qualité et chantier : une liste de réserves par projet (origines Inspection et Chantier), numérotée sur le projet ; les réserves chantier de HLT-026 deviennent P-06…P-08 (A-6). · Sources : A-6, 11 §7 #4, DELIVERY-5.md §3, §8*
+
+**~~R-121 · Alerter le CP à J-15 sur un prérequis client non confirmé~~** — *Plus tard · partiel · effort M* · **fait (Livraison 9)**  
+Un contrôle quotidien envoie une notification au CP et lui propose un risque pré-rempli à confirmer quand un prérequis client n’est pas confirmé à J-15. Aujourd’hui le retard n’est qu’un indicateur à l’écran.  
+*Avancement : Livraison 9, lot « prereq-alert » (docs/delivery-9/notes-prereq-alert.md) : tâche quotidienne, une notification au CP par prérequis client non confirmé à J-15, « Ouvrir un risque » prérempli depuis la ligne du chantier, lié au prérequis. · Attend : Notifications par événement (R-015) et tâches planifiées (R-006) · Sources : D-4, X-6a, 10 OQ6, DELIVERY-5.md §7*
 
 **~~R-122 · Retirer la case incident du rapport journalier au profit de Vigie~~** — *Plus tard · partiel · effort S* · **fait (Livraison 8)**  
 La tuile HSE compte déjà les incidents de Vigie ; le rapport journalier doit cesser de demander un incident et renvoyer vers « Déclarer dans Vigie ».  
@@ -895,6 +895,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-16 — Livraison 9 : R-085 (plans de charge sur 8 semaines glissantes) et R-121 (alerte J-15 et proposition de risque) faits.
 - 2026-10-16 — Livraison 9 : lots R-085 (plans de charge sur 8 semaines glissantes, R-7) et R-121 (alerte J-15 sur prérequis client et proposition de risque, D-4) démarrés.
 - 2026-10-16 — Livraison 9, lot « horloge » : R-013 fait — Keystone suit la date réelle sur une base de production (la démonstration reste au 25 sept. 2026, réglable par KEYSTONE_CLOCK).
 - 2026-10-15 — PR #2 fusionnée dans main par le responsable produit : les livraisons 1 à 8 sont sur main (R-001 fait).

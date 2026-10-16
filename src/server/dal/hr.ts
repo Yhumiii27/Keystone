@@ -311,29 +311,32 @@ export async function listPublicHolidays(countryCode = 'FR'): Promise<HolidayRow
 }
 
 /**
- * Leave grid over the resource window (Leave & calendar; read-only mirror of the absences received from Cursus, R-031).
- * Several absences of a person in one week add up (at most the 5 days of the week); the cell shows the type with the
- * most days (Leave on a tie).
+ * Leave grid over the load window (Leave & calendar; read-only mirror of the absences received from Cursus, R-031).
+ * `weeks` = the window's Mondays (R-085, `getLoadWindow`: any week — the absences and holidays of that week, none otherwise);
+ * omitted = every week with an allocation row (the former rule). Several absences of a person in one week add up (at most
+ * the 5 days of the week); the cell shows the type with the most days (Leave on a tie).
  */
-export async function getLeaveCalendar(countryCode = 'FR'): Promise<LeaveCalendar> {
+export async function getLeaveCalendar(countryCode = 'FR', weeks?: readonly string[]): Promise<LeaveCalendar> {
   const db = await getDb();
   const [weekRows, types, people, entries, hols, [last]] = await Promise.all([
-    db.selectDistinct({ w: allocations.weekStart }).from(allocations).where(isNull(allocations.projectId)).orderBy(asc(allocations.weekStart)),
+    weeks
+      ? Promise.resolve(weeks.map((w) => ({ w })))
+      : db.selectDistinct({ w: allocations.weekStart }).from(allocations).where(isNull(allocations.projectId)).orderBy(asc(allocations.weekStart)),
     db.select().from(leaveTypes).orderBy(asc(leaveTypes.position)),
     db.select().from(persons).where(sql`${persons.resourcePoolPosition} is not null`).orderBy(asc(persons.resourcePoolPosition)),
     db.select().from(leaveEntries),
     listPublicHolidays(countryCode),
     db.select({ at: sql<string | null>`max(${cursusEvents.receivedAt})` }).from(cursusEvents).where(eq(cursusEvents.type, 'absence.validee')),
   ]);
-  const weeks = weekRows.map((r) => ({ start: r.w, label: weekLabelOfIso(r.w) }));
-  const weekOf = (iso: string) => weeks.findIndex((w) => iso >= w.start && iso <= addDaysIso(w.start, 6));
+  const shown = weekRows.map((r) => ({ start: r.w, label: weekLabelOfIso(r.w) }));
+  const weekOf = (iso: string) => shown.findIndex((w) => iso >= w.start && iso <= addDaysIso(w.start, 6));
   const holidays = hols.map((h) => ({ ...h, weekIndex: weekOf(h.date) })).filter((h) => h.weekIndex >= 0 && dowOfIso(h.date) >= 1 && dowOfIso(h.date) <= 5);
   return {
-    weeks, holidays,
+    weeks: shown, holidays,
     leaveTypes: types.map((t) => ({ code: t.code, label: t.label, days: t.daysPerWeek })),
     people: people.map((p) => ({
       name: p.fullName ?? p.shortName, shortName: p.shortName, initials: p.initials, jobTitle: p.jobTitle,
-      weeks: weeks.map((w, i) => {
+      weeks: shown.map((w, i) => {
         const es = entries.filter((x) => x.personId === p.id && x.weekStart === w.start);
         const byType = new Map<LeaveType, number>();
         for (const e of es) byType.set(e.leaveType, (byType.get(e.leaveType) ?? 0) + e.days);

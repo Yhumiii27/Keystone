@@ -54,6 +54,10 @@
   {
    "date": "2026-10-16",
    "text": "Livraison 9 : lots R-085 (plans de charge sur 8 semaines glissantes, R-7) et R-121 (alerte J-15 sur prérequis client et proposition de risque, D-4) démarrés."
+  },
+  {
+   "date": "2026-10-16",
+   "text": "Livraison 9 : R-085 (plans de charge sur 8 semaines glissantes) et R-121 (alerte J-15 et proposition de risque) faits."
   }
  ],
  "items": [
@@ -2496,9 +2500,9 @@
     "src/domain/ch4-defaults.ts:19 DEFAULT_DATA_DATE figée (pas d’horloge réelle)"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 9",
-    "note": "Débloqué par l’horloge réelle (R-013, livraison 9). En cours (livraison 9)."
+    "note": "Livraison 9, lot « load-window » (docs/delivery-9/notes-load-window.md) : Ressources, ressources du projet et Congés sur 8 semaines depuis la semaine en cours, boutons semaine précédente / suivante (±52 semaines) ; what-if sur la fenêtre en cours. Les autres lecteurs de charge suivront avec R-084."
    }
   },
   {
@@ -3512,9 +3516,9 @@
     "src/server/db/codes.ts:220 RiskStatus open | closed : aucun état « proposé » pour un risque à confirmer ; src/server/dal/risks.ts:170 createRisk réutilisable"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 9",
-    "note": "Débloqué par l’horloge réelle (R-013, livraison 9). En cours (livraison 9)."
+    "note": "Livraison 9, lot « prereq-alert » (docs/delivery-9/notes-prereq-alert.md) : tâche quotidienne, une notification au CP par prérequis client non confirmé à J-15, « Ouvrir un risque » prérempli depuis la ligne du chantier, lié au prérequis."
    }
   },
   {
