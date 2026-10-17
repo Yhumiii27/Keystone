@@ -1,5 +1,6 @@
 import 'server-only';
 import { getConfig, type SeedMode } from '@/server/config';
+import { declareKeystoneSchema } from '@/server/integrations/matrix';
 import { log } from '@/server/log';
 import { PendingMigrationsError, pendingMigrations } from './migrations';
 import { openDatabase } from './open';
@@ -29,6 +30,9 @@ async function openConfigured(): Promise<DB> {
       throw e;
     }
     log.info('Database opened', { component: 'db', driver: 'postgres', poolMax: cfg.database.poolMax });
+    // The server never migrates PostgreSQL (`npm run db:migrate` does at deploy): its schema, checked up to date above, is
+    // declared to Matrix in the background at start-up (an unchanged declaration is ignored by Matrix).
+    declareKeystoneSchema((sql) => h.pool.query(sql).then((r) => r.rows as Record<string, unknown>[]), { persistent: true });
     await warnSeedMismatch(h.db, cfg.seedExplicit ? cfg.seed : null);
     return h.db;
   }
