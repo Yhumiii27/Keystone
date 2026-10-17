@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-10-15",
+ "updated": "2026-10-17",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -42,6 +42,26 @@
   {
    "date": "2026-10-15",
    "text": "Nouveau besoin du responsable produit (R-185) : un projet peut fournir plusieurs équipements (par exemple une EMP et plusieurs MEMU) ; l’approche projet devra s’adapter — à cadrer avant la livraison 9."
+  },
+  {
+   "date": "2026-10-15",
+   "text": "PR #2 fusionnée dans main par le responsable produit : les livraisons 1 à 8 sont sur main (R-001 fait)."
+  },
+  {
+   "date": "2026-10-16",
+   "text": "Livraison 9, lot « horloge » : R-013 fait — Keystone suit la date réelle sur une base de production (la démonstration reste au 25 sept. 2026, réglable par KEYSTONE_CLOCK)."
+  },
+  {
+   "date": "2026-10-16",
+   "text": "Livraison 9 : lots R-085 (plans de charge sur 8 semaines glissantes, R-7) et R-121 (alerte J-15 sur prérequis client et proposition de risque, D-4) démarrés."
+  },
+  {
+   "date": "2026-10-16",
+   "text": "Livraison 9 : R-085 (plans de charge sur 8 semaines glissantes) et R-121 (alerte J-15 et proposition de risque) faits."
+  },
+  {
+   "date": "2026-10-17",
+   "text": "PR #10 fusionnée dans main (horloge réelle, plans de charge glissants, alerte J-15). Réponses du responsable produit appliquées : rappels le matin, CP responsable de risque, vues semaine / 8 semaines, navigation du what-if ; tout est fusionné dans main au fil de l’eau."
   }
  ],
  "items": [
@@ -69,9 +89,9 @@
     "git worktree list : 3 worktrees .claude/worktrees/agent-a0c5…, agent-abbd…, agent-ad73… avec leurs branches worktree-agent-*"
    ],
    "progress": {
-    "state": "en_cours",
+    "state": "fait",
     "delivery": "Livraison 8",
-    "note": "PR #2 ouverte (main-2a2fep → main, livraisons 1 à 8) ; main (PR #1) fusionnée dans la branche et conflits résolus ; la fusion dans main attend l’accord du responsable produit."
+    "note": "PR #2 fusionnée dans main le 15 oct. 2026 par le responsable produit (livraisons 1 à 8, commit e302703) ; CI verte avant fusion (types, lint, tests, build, bout en bout, image conteneur) ; la PR #1 était déjà dans main ; worktrees et branches worktree-agent-* supprimés."
    }
   },
   {
@@ -128,7 +148,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 8",
-    "note": "Livraison 8 : kit conteneur Compose pour Coolify et job CI d’image ; il remplace le Dockerfile de la PR #1 (fusionnée dans main). Reste à construire l’image sur main et à choisir l’hébergement (I-1a)."
+    "note": "Livraison 8 : kit conteneur Compose pour Coolify et job CI d’image, fusionnés dans main (PR #2) ; il remplace le Dockerfile de la PR #1. Reste à choisir l’hébergement (I-1a) et à déployer la bêta multi-utilisateur."
    }
   },
   {
@@ -415,7 +435,9 @@
     "déjà en place : projects.data_date (schema/portfolio.ts:200) lu via projectDataDate() dans schedule.ts:166, baselines.ts, kpis.ts:29-32, plan.ts:438 ; notes-planning.md §3 : aucun écrivain (gap 6)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Lot « horloge » (docs/delivery-9/notes-clock.md) : une seule date métier (src/domain/clock.ts, src/server/clock.ts) à la place des six dates figées ; réglage KEYSTONE_CLOCK ; date réelle sur une base de production, 25 sept. 2026 sur la base de démonstration ; années des dates saisies et affichées selon l’année en cours. La date de situation par projet reste à faire (R-060, S-4)."
    }
   },
   {
@@ -2482,7 +2504,9 @@
     "src/domain/ch4-defaults.ts:19 DEFAULT_DATA_DATE figée (pas d’horloge réelle)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Livraison 9, lot « load-window » (docs/delivery-9/notes-load-window.md) : Ressources, ressources du projet et Congés sur 8 semaines depuis la semaine en cours, boutons semaine précédente / suivante (±52 semaines) ; what-if sur la fenêtre en cours. Les autres lecteurs de charge suivront avec R-084. Réponses du 17 oct. 2026 : vues « Semaine » (congés jour par jour) et « 8 semaines » (pas d’une semaine ou de 8), navigation du what-if avec la période portée par toutes ses actions."
    }
   },
   {
@@ -3496,7 +3520,9 @@
     "src/server/db/codes.ts:220 RiskStatus open | closed : aucun état « proposé » pour un risque à confirmer ; src/server/dal/risks.ts:170 createRisk réutilisable"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "fait",
+    "delivery": "Livraison 9",
+    "note": "Livraison 9, lot « prereq-alert » (docs/delivery-9/notes-prereq-alert.md) : tâche quotidienne, une notification au CP par prérequis client non confirmé à J-15, « Ouvrir un risque » prérempli depuis la ligne du chantier, lié au prérequis. Réponses du 17 oct. 2026 : rappels automatiques chaque matin à 07:00 (KEYSTONE_REMINDERS_AT), destinataire le CP seul, CP ajouté aux responsables de risque proposés."
    }
   },
   {

@@ -26,8 +26,9 @@ beforeAll(async () => {
       { number: 'MCH-090', machineTypeCode: 'EMP', name: 'Gantry crane 30 t', clientName: 'Port authority', siteText: 'Le Havre · quay 9', deliveredOn: '2022-05-01', warrantyEndOn: '2024-05-01', warrantyStatus: 'extended', extendedUntil: '2026-08-31', position: position + 50 },
       // Extension running until 15 Dec 2026: Extended, ending within three months.
       { number: 'MCH-091', machineTypeCode: 'MEMU', name: 'Overhead crane 10 t', clientName: 'Port authority', siteText: 'Le Havre · hall 2', deliveredOn: '2023-01-10', warrantyEndOn: '2025-01-10', warrantyStatus: 'extended', extendedUntil: '2026-12-15', position: position + 51 },
-      // Contractual end passed yesterday (stored status still "In warranty").
-      { number: 'MCH-092', machineTypeCode: 'EMP', name: 'Gantry crane 25 t', clientName: 'Port authority', siteText: 'Le Havre · quay 8', deliveredOn: '2024-09-29', warrantyEndOn: '2026-09-29', warrantyStatus: 'in_warranty', extendedUntil: null, position: position + 52 },
+      // Contractual end passed yesterday (stored status still "In warranty"). R-013: yesterday of the business date (25 Sep 2026
+      // on the demo data set, not the prototype's 30 Sep).
+      { number: 'MCH-092', machineTypeCode: 'EMP', name: 'Gantry crane 25 t', clientName: 'Port authority', siteText: 'Le Havre · quay 8', deliveredOn: '2024-09-24', warrantyEndOn: '2026-09-24', warrantyStatus: 'in_warranty', extendedUntil: null, position: position + 52 },
     ])
     .returning({ id: machines.id, number: machines.number });
   const id = (n: string) => rows.find((r) => r.number === n)!.id;
@@ -45,23 +46,25 @@ describe('R-145 warranty in force (listMachines, Installed base)', () => {
       return [m.warrantyStatus, m.warrantyText, m.warrantyEndOn, m.warrantyEndingSoon, m.warrantyEndsInDays];
     };
     expect(pick('MCH-090')).toEqual(['out_of_warranty', 'Out of warranty', '2024-05-01', false, null]);
-    expect(pick('MCH-091')).toEqual(['extended', 'Extended → 15 Dec 2026', '2025-01-10', true, 75]);
-    expect(pick('MCH-092')).toEqual(['out_of_warranty', 'Out of warranty', '2026-09-29', false, null]);
-    // The seed reads as before: MCH-022's extension runs until 4 Jun 2027, MCH-029 is out, MCH-035 ends in 31 days.
+    // R-013: days counted from the business date (25 Sep 2026 on the demo data set, not the prototype's 30 Sep): 80, not 75.
+    expect(pick('MCH-091')).toEqual(['extended', 'Extended → 15 Dec 2026', '2025-01-10', true, 80]);
+    expect(pick('MCH-092')).toEqual(['out_of_warranty', 'Out of warranty', '2026-09-24', false, null]);
+    // The seed reads as before: MCH-022's extension runs until 4 Jun 2027, MCH-029 is out, MCH-035 ends in 36 days (R-013:
+    // from 25 Sep; 31 from the prototype's 30 Sep).
     expect(pick('MCH-022')).toEqual(['extended', 'Extended → 4 Jun 2027', '2025-06-04', false, null]);
     expect(pick('MCH-029')[0]).toBe('out_of_warranty');
-    expect(pick('MCH-035')).toEqual(['in_warranty', 'In warranty', '2026-11-01', true, 31]);
+    expect(pick('MCH-035')).toEqual(['in_warranty', 'In warranty', '2026-11-01', true, 36]);
   });
 
   it('Installed base tiles and rows (EN, FR)', async () => {
     const data = await getFleetScreen(null);
-    const tiles = Object.fromEntries(fleetKpis(data.machines).map((k) => [k.label, [k.value, k.sub]]));
+    const tiles = Object.fromEntries(fleetKpis(data.machines, data.today).map((k) => [k.label, [k.value, k.sub]]));
     expect(tiles['In warranty']).toEqual(['6', '2 extended']);
     expect(tiles['Warranty ending < 90 days']).toEqual(['2', 'MCH-035 · MCH-091']);
     const fr = fleetView(data, null, makeT('fr'), 'fr');
     const row = (n: string) => fr.rows.find((r) => r.number === n)!;
     expect([row('MCH-090').status, row('MCH-090').statusClass, row('MCH-090').warrantyEnd]).toEqual(['Hors garantie', 'tag tag-outline', '1 mai 2024']);
-    expect([row('MCH-091').statusClass, row('MCH-091').warrantyEnd, row('MCH-091').warrantyEndSub]).toEqual(['tag tag-accent', '10 janv. 2025', 'finit dans 75 j']);
+    expect([row('MCH-091').statusClass, row('MCH-091').warrantyEnd, row('MCH-091').warrantyEndSub]).toEqual(['tag tag-accent', '10 janv. 2025', 'finit dans 80 j']);
     expect(row('MCH-091').status).toBe('Étendue → 15 déc. 2026');
   });
 });
@@ -70,9 +73,9 @@ describe('R-145 warranty cost of the calendar year (Warranty & claims)', () => {
   it('the 2025 claims are left out of the tile and its sub-line, not out of the per-machine costs nor the other tiles', async () => {
     const data = await getSavScreen(null);
     expect(data.claims.map((c) => c.number)).toEqual(expect.arrayContaining(['WC-090', 'WC-091']));
-    const tile = savKpis(data.claims, data.interventions, 'en').find((k) => k.label === 'Warranty cost YTD')!;
+    const tile = savKpis(data.claims, data.interventions, 'en', data.today).find((k) => k.label === 'Warranty cost YTD')!;
     expect([tile.value, tile.sub]).toEqual(['€34k', '€6k chargeable']); // the seed's 2026 figures
-    expect(savKpis(data.claims, data.interventions, 'en').find((k) => k.label === 'Open claims')!.value).toBe('5');
+    expect(savKpis(data.claims, data.interventions, 'en', data.today).find((k) => k.label === 'Open claims')!.value).toBe('5');
     // A new year: nothing counted yet.
     const jan = savKpis(data.claims, data.interventions, 'en', '2027-01-05').find((k) => k.label === 'Warranty cost YTD')!;
     expect([jan.value, jan.sub]).toEqual(['€0k', '€0k chargeable']);

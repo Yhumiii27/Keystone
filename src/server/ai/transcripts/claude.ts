@@ -9,6 +9,7 @@ import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
+import { yearOfIso } from '@/domain/clock';
 import { normaliseDue } from '@/domain/meetings';
 import { TRANSCRIPT_AI, type ClaudeSettings } from '../config';
 import { detectLanguage, fold } from './parse';
@@ -145,7 +146,7 @@ export function guardAnalysis(out: ClaudeAnalysis, input: AnalysisInput, maxProp
     const owner = it.type === 'action' || it.type === 'risk' ? present(it.owner) : null;
     let dueDate: string | null = null;
     if (it.type === 'action' && it.due_date && isRealDate(it.due_date) && days.has(String(parseInt(it.due_date.slice(8), 10)))) dueDate = it.due_date;
-    proposals.push({ type: it.type, text, owner, due: dueDate ? normaliseDue(dueDate) : null, dueDate, speaker: present(it.speaker), quote });
+    proposals.push({ type: it.type, text, owner, due: dueDate ? normaliseDue(dueDate, yearOfIso(input.today)) : null, dueDate, speaker: present(it.speaker), quote });
     if (proposals.length >= maxProposals) break;
   }
   const lang = /^[a-z]{2}$/i.test(out.language.trim()) ? out.language.trim().toLowerCase() : detectLanguage(input.text);

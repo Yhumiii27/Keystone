@@ -108,3 +108,7 @@ a:global(.btn-ghost).hseBtn:hover { color: var(--color-accent); }
 .emptyAction { display: flex; justify-content: center; margin-top: 10px; }
 .sheetHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .confirmText { margin: 0; font-size: 13px; color: var(--color-neutral-300); text-wrap: pretty; }
+/* R-121: the client prerequisite the J-15 notification links to (`?prereq=`), and the risk raised from a prerequisite. */
+.prereqFocus td { background: var(--color-neutral-900); }
+.prereqFocus td:first-child { box-shadow: inset 2px 0 0 var(--color-accent-500); }
+.riskLink { font-size: 12px; white-space: nowrap; color: var(--color-accent-300); }

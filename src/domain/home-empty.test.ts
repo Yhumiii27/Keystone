@@ -6,7 +6,7 @@ import { NO_PROJECT_SUB, NO_PROJECT_TITLE, noProjectHome } from './home-empty';
 
 describe('noProjectHome', () => {
   it('greets the viewer, shows no KPI, explains why the queues are empty', () => {
-    const v = noProjectHome({ name: 'Marie Lefebvre', title: 'Portfolio director' });
+    const v = noProjectHome({ name: 'Marie Lefebvre', title: 'Portfolio director' }, '2026-09-25');
     expect(v.kpis).toEqual([]);
     expect(v.greeting).toBe('Good morning, Marie');
     expect(v.left).toEqual({ title: 'My projects', rows: [{ title: NO_PROJECT_TITLE, sub: NO_PROJECT_SUB, tag: '', tagClass: '', href: '' }] });
@@ -15,7 +15,7 @@ describe('noProjectHome', () => {
 
   it('is translated (FR default)', () => {
     const t = makeT('fr');
-    const v = noProjectHome({ name: 'Marie Lefebvre', title: 'Portfolio director' });
+    const v = noProjectHome({ name: 'Marie Lefebvre', title: 'Portfolio director' }, '2026-09-25');
     expect([renderTxt(v.greeting, t), renderTxt(v.left.title, t), renderTxt(v.left.rows[0].title, t), renderTxt(v.left.rows[0].sub, t), renderTxt(v.right.title, t)]).toEqual([
       'Bonjour, Marie', 'Mes projets', 'Aucun projet pour l’instant', 'Les projets apparaissent ici dès leur création', 'En attente de ma part',
     ]);

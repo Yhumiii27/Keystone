@@ -50,12 +50,18 @@ async function apply(sc: any): Promise<void> {
   } else await recordStageChange(sc.code, stage.code(sc.to), 'auto');
 }
 
+/**
+ * R-013: the golden comparison keeps the prototype's now, passed explicitly — its date (30 Sep 2026) for the DAL and its exact
+ * month index (PG_NOW = 8.97, a little after 30 Sep's 8.967) for the Gantt geometry.
+ */
+const protoSchedule = async (zone: Parameters<typeof getPortfolioSchedule>[0]) => ({ ...(await getPortfolioSchedule(zone, '2026-09-30')), now: 8.97 });
+
 describe('portfolio schedule after a stage change or a new project (prototype scenarios)', () => {
   it.each(Object.keys(G.scenarios))('%s', async (key) => {
     const sc = G.scenarios[key];
     setDb(await openDatabase());
     await apply(sc);
-    const data = await getPortfolioSchedule(null);
+    const data = await protoSchedule(null);
     for (const lang of ['en', 'fr'] as Lang[]) {
       const t = makeT(lang);
       const want = sc[lang];

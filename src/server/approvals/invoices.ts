@@ -3,6 +3,7 @@ import 'server-only';
 // the portfolio director (apprItems 4729), all projects. Decided on Sourcing only (row opens `?tab=inv&inv=…`; no
 // inline decision): approving the payment, approving the received part or rejecting takes the invoice out of the queue.
 // "Decided this week": the invoices the viewer decided in Keystone.
+import { yearOfIso } from '@/domain/clock';
 import { INVOICE_DECIDER_ROLES, invoiceApprovalItems } from '@/domain/procurement';
 import { invoiceQueue, listSupplierInvoices } from '@/server/dal/purchasing';
 import type { ApprovalProvider } from './types';
@@ -11,7 +12,7 @@ export const invoiceProvider: ApprovalProvider = {
   kind: 'invoice',
   scope: 'global',
   source: 'db',
-  async items({ viewer, lang }) {
+  async items({ viewer, lang, today }) {
     if (!INVOICE_DECIDER_ROLES.includes(viewer.role)) return [];
     const invoices = await invoiceQueue();
     return invoiceApprovalItems(
@@ -21,6 +22,7 @@ export const invoiceProvider: ApprovalProvider = {
         match: i.match,
       })),
       lang,
+      yearOfIso(today),
     );
   },
   async decided({ viewer }) {

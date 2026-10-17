@@ -5,6 +5,7 @@
 import { boolean, date, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { CollisionKind, ConfirmStatus, EquipmentSource, HseIncident, Weather } from '../codes';
 import { id, keur, num, timestamps } from './_common';
+import { risks } from './control';
 import { persons } from './organisation';
 import { activities } from './planning';
 import { projects } from './portfolio';
@@ -73,6 +74,14 @@ export const sitePrerequisites = pgTable(
     confirmedOn: date('confirmed_on', { mode: 'string' }),
     signedOn: date('signed_on', { mode: 'string' }),
     position: integer('position').notNull(),
+    /**
+     * R-121 (D-4 'a'): the need date the J-15 alert was sent for (null = never alerted) and when — one alert per need date
+     * (src/domain/prerequisite-alerts.ts). Written by the daily job only; not part of the line's stamp.
+     */
+    alertedNeededBy: date('alerted_needed_by', { mode: 'string' }),
+    alertedAt: timestamp('alerted_at', { withTimezone: true }),
+    /** R-121: the risk a lead raised from this prerequisite ("Raise as a risk"); null until then. */
+    riskId: uuid('risk_id').references(() => risks.id, { onDelete: 'set null' }),
     ...timestamps,
   },
   (t) => [unique().on(t.projectId, t.position)],

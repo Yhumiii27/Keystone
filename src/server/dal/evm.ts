@@ -9,6 +9,7 @@ import 'server-only';
 import { and, asc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { cache } from 'react';
 import { projectDataDate } from '@/domain/ch4-defaults';
+import { businessToday } from '@/server/clock';
 import { computeEvm, monthIndexOf, openCommitmentKeur, type ComputedEvm, type EvmActivity, type EvmCostEvent, type EvmPlanRow } from '@/domain/cost-control';
 import { projectFxOf, toEur } from '@/domain/currency';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
@@ -48,13 +49,14 @@ export function stockCostEvent(type: string, at: Date, valueEur: number): EvmCos
 
 /** Loads the inputs of the projects `ids` (all projects when omitted) and computes their earned value. */
 async function computeFor(q: Q, ids?: string[]): Promise<Map<string, ProjectEvm>> {
+  const today = await businessToday(q);
   const heads: Head[] = (
     await q
       .select({ id: projects.id, code: projects.code, bac: projects.budgetKeur, dataDate: projects.dataDate, startMonth: projects.startMonth, ctlStart: projectControls.startMonth })
       .from(projects)
       .leftJoin(projectControls, eq(projectControls.projectId, projects.id))
       .where(ids ? inArray(projects.id, ids) : undefined)
-  ).map((h) => ({ ...h, dataDate: projectDataDate(h) }));
+  ).map((h) => ({ ...h, dataDate: projectDataDate(h, today) }));
   const out = new Map<string, ProjectEvm>();
   if (!heads.length) return out;
   // Four reads for every project at once (the projects register calls this on each request).

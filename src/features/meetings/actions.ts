@@ -12,6 +12,7 @@
 // R-008: transcript imports count in the upload rate limit and analyses in the analysis one (src/server/http/request-guard.ts).
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
+import { yearOfIso } from '@/domain/clock';
 import { parseClientQuestion, parseMinutesLine, parseNewMeeting, parseProposalEdit, pasteTooLong, TRANSCRIPT_IMPORT } from '@/domain/meetings';
 import { parseNewRisk } from '@/domain/risk';
 import { RISK_RESULT } from '@/features/risks/forms';
@@ -26,6 +27,7 @@ import {
   addTranscriptQuestion, importTranscript, markTranscriptProposalApplied, setTranscriptProposalStatus, TranscriptError, updateTranscriptProposal,
 } from '@/server/dal/meetings-transcripts';
 import { getProject } from '@/server/dal/projects';
+import { businessToday } from '@/server/clock';
 import { createRisk } from '@/server/dal/risks';
 import { riskOwnerOptions } from '@/server/dal/risks-screen';
 import { canWriteMinutes } from '@/domain/rights';
@@ -110,7 +112,7 @@ async function write<R>(label: string, fn: () => Promise<R>): Promise<{ ok: true
 export async function createMeetingAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const g = await editable(code);
   if (!g.ok) return { error: await tr(g.error) };
-  const parsed = parseNewMeeting(strings(values));
+  const parsed = parseNewMeeting(strings(values), yearOfIso(await businessToday()));
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
   const r = await write('createMeetingAction', () =>
@@ -133,7 +135,7 @@ export async function addMinutesLineAction(input: {
   const g = await editableMeeting(input?.code, input?.meeting);
   if (!g.ok) return fail(g.error);
   if (g.meeting.status === 'minutes_sent') return fail('Minutes already sent');
-  const parsed = parseMinutesLine(input);
+  const parsed = parseMinutesLine(input, yearOfIso(await businessToday()));
   if (!parsed.ok) return fail(parsed.error);
   if (parsed.value.activity) {
     if (!canWriteMinutes(g.ctx.viewer, g.ctx.access, g.meeting)) return fail(MINUTES_WRITERS);

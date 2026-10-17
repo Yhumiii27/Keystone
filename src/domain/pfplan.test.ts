@@ -12,13 +12,15 @@ import { mIdx } from '@/lib/format';
 import { stage as stageCodec, type PipelineWindow } from '@/server/db/codes';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
 import {
-  PG_FILTERS, PG_NOW, PG_TODAY_L, boardTitle, isPgFilter, pgPct, pgRow, pgSeg, portfolioScheduleModel,
+  PG_FILTERS, boardTitle, isPgFilter, pgPct, pgRow, pgSeg, portfolioScheduleModel,
   type PgInput, type PgKpiTint, type PgRow, type PgRowInput, type PgSegment, type PgTint,
 } from './pfplan';
 import golden from './pfplan.golden.json';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const G = golden as any;
+/** The prototype's now (`PG_NOW`, ≈ 30 Sep 2026): the golden comparison passes it explicitly since R-013. */
+const PG_NOW = 8.97;
 const ZONES = ['null', 'euna', 'afr', 'apac'] as const;
 const LANGS: Lang[] = ['en', 'fr'];
 
@@ -75,7 +77,7 @@ const AVG_WAIT = Math.round(boardWaits.reduce((a, b) => a + b, 0) / boardWaits.l
 /** Rows of a zone: the live projects the prototype lists in that zone, register order. */
 function zoneInput(zone: string): PgInput {
   const codes = new Set<string>(G.en.zones[zone].groups.flatMap((g: any) => g.codes));
-  return { rows: LIVE.filter((p) => codes.has(p.code)).map(inputRow), averageBoardWaitDays: AVG_WAIT };
+  return { rows: LIVE.filter((p) => codes.has(p.code)).map(inputRow), averageBoardWaitDays: AVG_WAIT, now: PG_NOW };
 }
 
 // ── Prototype render values rebuilt from the model (styles transcribed from logic 4540–4545) ─────────────
@@ -125,8 +127,8 @@ const withBase = (r: PgRow, o: any) => (r.baseline ? { ...o, bL: r.baseline.left
 
 describe('pfplan geometry helpers', () => {
   it('pgPct clamps to the 24-month horizon with 2 decimals; today line at 30 Sep', () => {
-    expect([pgPct(-2), pgPct(0), pgPct(12), pgPct(30), PG_TODAY_L]).toEqual(['0.00%', '0.00%', '50.00%', '100.00%', '37.38%']);
-    expect(G.en.todayL).toBe(PG_TODAY_L);
+    expect([pgPct(-2), pgPct(0), pgPct(12), pgPct(30), pgPct(PG_NOW)]).toEqual(['0.00%', '0.00%', '50.00%', '100.00%', '37.38%']);
+    expect(G.en.todayL).toBe(pgPct(PG_NOW));
   });
   it('pgSeg clips to [0, 24] and drops empty segments', () => {
     expect(pgSeg(-3, -1)).toBeNull();
@@ -148,7 +150,7 @@ describe.each(LANGS)('pfplan vs prototype (%s)', (lang) => {
   it('static labels: stage filter, month header, template keys', () => {
     expect(t('Stage')).toBe(g.stageLabel);
     expect(PG_FILTERS.map((f) => t(f.label))).toEqual(g.segCtl);
-    const m = portfolioScheduleModel({ rows: [], averageBoardWaitDays: 0 }, { filter: 'all', lang, from: 0 }).months;
+    const m = portfolioScheduleModel({ rows: [], averageBoardWaitDays: 0, now: PG_NOW }, { filter: 'all', lang, from: 0 }).months;
     expect(m.map((x) => ({ label: t(x.label), year: x.year, bl: `1px solid var(--color-neutral-${x.yearStart ? 700 : 900})` }))).toEqual(g.months);
     expect(t('Portfolio schedule — projects in progress & pipeline')).toBe(g.title);
     expect(t('No project in this zone for this view')).toBe(g.zoneEmptyText);
@@ -182,14 +184,14 @@ describe('pfplan row rules', () => {
   const base = inputRow(LIVE.find((p) => p.code === 'HLT-026'));
 
   it('HLT-026: execution from the APD board (15.14 %), slip 27 d past the 1 Jan 2027 baseline, opens the Plan', () => {
-    const r = pgRow(base);
+    const r = pgRow(base, 0, PG_NOW);
     expect(r.exec).toEqual({ left: '15.14%', width: '38.61%', fill: '64%', ifApproved: false });
     expect(r.baseline).toEqual({ left: '15.14%', width: '34.86%' });
     expect([r.gate, r.gateSub, r.gateTint, r.target]).toEqual(['14 Jan 2027', '−27 d', 'lo', { screen: 'plan', code: 'HLT-026' }]);
   });
 
   it('EWA-051: board running since 21 Sep 2026 → decision pending 8 d, next stage APS, KPI lists the code', () => {
-    const r = pgRow(inputRow(LIVE.find((p) => p.code === 'EWA-051')));
+    const r = pgRow(inputRow(LIVE.find((p) => p.code === 'EWA-051')), 0, PG_NOW);
     expect([r.gate, r.gateSub, r.decisionPending, r.exec?.ifApproved, r.exec?.fill, r.target]).toEqual([
       'Group board → APS', 'Decision pending · 8 d', true, true, '0%', { screen: 'projects', q: 'EWA-051' },
     ]);
@@ -198,26 +200,26 @@ describe('pfplan row rules', () => {
 
   it('a pipeline project with every board behind it reads "—"; a board waiting 3 weeks or less is still attention', () => {
     const past = { ...base, pipeline: true, windows: [{ window: 'board' as const, start: 2, end: 3 }], execStart: 3 };
-    expect([pgRow(past).gate, pgRow(past).gateSub, pgRow(past).gateTint]).toEqual(['—', '', 'n400']);
+    expect([pgRow(past, 0, PG_NOW).gate, pgRow(past, 0, PG_NOW).gateSub, pgRow(past, 0, PG_NOW).gateTint]).toEqual(['—', '', 'n400']);
     const short = { ...past, windows: [{ window: 'board' as const, start: 8.5, end: 9.5 }], execStart: 9.5 };
-    expect([pgRow(short).gateSub, pgRow(short).gateTint]).toEqual(['Decision pending · 14 d', 'lo']);
+    expect([pgRow(short, 0, PG_NOW).gateSub, pgRow(short, 0, PG_NOW).gateTint]).toEqual(['Decision pending · 14 d', 'lo']);
   });
 
   it('a project in execution without a finish: "finish not planned", bar to max(execStart + 1, PG_NOW), no baseline', () => {
-    const r = pgRow({ ...base, finishMonth: null, project: { ...base.project, finish: '—' }, execStart: 3 });
+    const r = pgRow({ ...base, finishMonth: null, project: { ...base.project, finish: '—' }, execStart: 3 }, 0, PG_NOW);
     expect([r.gate, r.gateSub, r.baseline, r.exec?.width, r.clipText]).toEqual(['finish not planned', '', null, ((PG_NOW - 3) / 24 * 100).toFixed(2) + '%', '']);
   });
 
   it('a bar past Dec 2027 is clipped with "→ {finish}"; pipeline execution lasts 8 months when the finish is unknown', () => {
-    const rbr = pgRow(inputRow(LIVE.find((p) => p.code === 'RBR-048')));
+    const rbr = pgRow(inputRow(LIVE.find((p) => p.code === 'RBR-048')), 0, PG_NOW);
     expect([rbr.clipText, rbr.exec?.width]).toEqual(['→ Aug 2028', '41.67%']);
-    const noFin = pgRow({ ...inputRow(LIVE.find((p) => p.code === 'FTU-052')), finishMonth: null });
+    const noFin = pgRow({ ...inputRow(LIVE.find((p) => p.code === 'FTU-052')), finishMonth: null }, 0, PG_NOW);
     const seg = pgSeg(12.8, 20.8)!;
     expect(noFin.exec).toEqual({ left: seg.left, width: seg.width, fill: '0%', ifApproved: true });
   });
 
   it('status tag tones follow statusTag (accent in execution, outline for Garantie and the pipeline)', () => {
-    const tones = LIVE.map((p) => [p.code, pgRow(inputRow(p)).tone]);
+    const tones = LIVE.map((p) => [p.code, pgRow(inputRow(p), 0, PG_NOW).tone]);
     expect(Object.fromEntries(tones)).toMatchObject({ 'HLT-026': 'accent', 'ALP-021': 'outline', 'WSA-044': 'outline', 'PRS-038': 'accent' });
   });
 });

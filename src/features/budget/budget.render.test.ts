@@ -40,7 +40,7 @@ function render(data: BudgetData, tab: 'perf' | 'setup' | 'cash', lang: Lang, ca
   const recovery = contract
     ? cashRecovery({
         pv: cost.pv, ac: cost.ac, bac: cost.bac, evn: core.evn, cpi: core.cpi, contractTotal: total, milestones: contract.milestones,
-        termsDays: termsDays(contract.terms), openCommit: openCommitment(cost.pv, core.evn, contract.openCommit),
+        termsDays: termsDays(contract.terms), openCommit: openCommitment(cost.pv, core.evn, contract.openCommit), year: contract.year,
       })
     : null;
   return html(h(CashTab, { recovery, contractTotal: total, terms: contract?.terms ?? '', ac: core.ac, lang, t }), lang);

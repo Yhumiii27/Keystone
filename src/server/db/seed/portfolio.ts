@@ -2,7 +2,7 @@
 // stage deliverable checks and stage history.
 import { mIdx } from '@/lib/format';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
-import { STAGES, calendar, costType, isoOfDisplayDate, machineType, pipelineWindow, stage, type StageCode } from '../codes';
+import { STAGES, calendar, costType, isoOfDemoDate, machineType, pipelineWindow, stage, type StageCode } from '../codes';
 import {
   lifecycleStages, lifecycleTransitions, machineTypes, pipelineStagePlans, projectMembers, projectSites, projectTemplateCostCategories,
   projectTemplatePhases, projectTemplates, projects, rexReferences, stageDeliverableChecks, stageDeliverableDefs, stageTransitions,
@@ -121,7 +121,7 @@ async function seedProjects(tx: Tx, ctx: SeedCtx): Promise<void> {
       const to = stage.code(label);
       const row = {
         id: newId(), projectId: must(ctx.projectByCode, code, 'project'), seq: i + 1, fromStage: prev, toStage: to,
-        effectiveOn: isoOfDisplayDate(dateText)!, mode, reason: reason || null,
+        effectiveOn: isoOfDemoDate(dateText)!, mode, reason: reason || null,
       };
       prev = to;
       return row;

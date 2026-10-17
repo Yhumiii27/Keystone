@@ -17,13 +17,13 @@ export const MEETING_RESULT = 'Meeting created';
  * Default date of the form: the Tuesday of the week after next from the data date (R-169; Tue 6 Oct 2026 on the seed, the
  * prototype's literal).
  */
-export const defaultMeetingDate = (dataDate?: string) => formDateText(newMeetingDateIso(dataDate));
+export const defaultMeetingDate = (dataDate: string) => formDateText(newMeetingDateIso(dataDate));
 
 /**
  * The form, translated. `invitees` pre-fills "Invitees" — the prototype's fixed "R. Aubert, L. Fabre, J. Wagner"
  * follows the viewer here (the viewer, then the project manager).
  */
-export function meetingFormDef(t: T, lang: Lang, invitees: string, dataDate?: string): FormDef {
+export function meetingFormDef(t: T, lang: Lang, invitees: string, dataDate: string): FormDef {
   const tr = formT(t, lang);
   return {
     title: tr('New meeting'),

@@ -7,9 +7,10 @@ import { alias } from 'drizzle-orm/pg-core';
 import { rateAt, taskLaborCost, type TaskCost } from '@/domain/hr';
 import { mentionedKeys } from '@/domain/mentions';
 import { applyProgress, applyStatus } from '@/domain/tasks';
+import { businessToday } from '@/server/clock';
 import { getDb, type Tx } from '@/server/db/client';
 import {
-  ATTACHMENT_ICON, STATUS_ISO, dayLabelOfIso, dayOffsetOfIso, priority as priorityCodec, relativeDayText, relativeStampText, taskStatus,
+  ATTACHMENT_ICON, dayLabelOfIso, dayOffsetOfIso, priority as priorityCodec, relativeDayText, relativeStampText, taskStatus,
   type AttachmentKind, type Priority, type TaskStatus, type TimeEntrySource,
 } from '@/server/db/codes';
 import { findPerson, nameOf, requirePerson, writeAudit } from '@/server/db/helpers';
@@ -45,7 +46,7 @@ export interface TaskRow {
   priorityLabel: string;
   start: string;
   due: string;
-  /** Working-day offsets from Mon 21 Sep 2026 (TODAY = 4). */
+  /** Working-day offsets from Mon 21 Sep 2026 (`dayDate` axis). */
   startDay: number | null;
   dueDay: number | null;
   estimateH: number;
@@ -66,7 +67,7 @@ export interface TaskComment {
   authorShort: string;
   initials: string;
   postedAt: string;
-  /** "Today 08:15" / "Yesterday 16:40" relative to the status date, else "8 Oct 14:05". */
+  /** "Today 08:15" / "Yesterday 16:40" relative to the business date (R-013), else "8 Oct 14:05". */
   when: string;
   text: string;
 }
@@ -183,7 +184,7 @@ export async function getTask(number: string): Promise<TaskDetail | null> {
   const author = alias(persons, 'author');
   const uploader = alias(persons, 'uploader');
   const entryPerson = alias(persons, 'entry_person');
-  const [items, comments, files, entries, [assignee], grid] = await Promise.all([
+  const [items, comments, files, entries, [assignee], grid, today] = await Promise.all([
     db.select().from(taskChecklistItems).where(eq(taskChecklistItems.taskId, id)).orderBy(asc(taskChecklistItems.position)),
     db
       .select({ c: taskComments, full: author.fullName, short: author.shortName, initials: author.initials })
@@ -205,9 +206,11 @@ export async function getTask(number: string): Promise<TaskDetail | null> {
       .orderBy(asc(timeEntries.position)),
     db.select({ rateRoleId: persons.rateRoleId }).from(tasks).innerJoin(persons, eq(persons.id, tasks.assigneePersonId)).where(eq(tasks.id, id)),
     getRateGrid(),
+    businessToday(),
   ]);
-  // R-083 (A-10): one valuation of hours — the grid role's rate in force on the date worked (no job-title rate, no 100 €/h).
-  const todayRate = rateAt(grid, assignee?.rateRoleId ?? null, STATUS_ISO);
+  // R-083 (A-10): one valuation of hours — the grid role's rate in force on the date worked (no job-title rate, no 100 €/h);
+  // the remaining hours at today's rate (the business date, R-013).
+  const todayRate = rateAt(grid, assignee?.rateRoleId ?? null, today);
   const valuation = taskLaborCost({
     loggedH: row.loggedH, restRateEur: todayRate,
     entries: entries.map(({ e, rateRoleId }) => ({ hours: e.hours, rateEur: rateAt(grid, rateRoleId, e.workDate) })),
@@ -216,11 +219,11 @@ export async function getTask(number: string): Promise<TaskDetail | null> {
     ...row,
     checklistItems: items.map((i) => ({ position: i.position, text: i.text, done: i.done })),
     comments: comments.map(({ c, full, short, initials }) => ({
-      author: full ?? short, authorShort: short, initials, postedAt: c.postedAt.toISOString(), when: relativeStampText(c.postedAt), text: c.text,
+      author: full ?? short, authorShort: short, initials, postedAt: c.postedAt.toISOString(), when: relativeStampText(c.postedAt, today), text: c.text,
     })),
     attachments: files.map(({ f, short }) => ({
       id: f.id, hasFile: !!f.fileId,
-      name: f.name, meta: [f.sizeText, short, relativeDayText(f.uploadedOn)].filter(Boolean).join(' · '), sizeText: f.sizeText, uploadedBy: short,
+      name: f.name, meta: [f.sizeText, short, relativeDayText(f.uploadedOn, today)].filter(Boolean).join(' · '), sizeText: f.sizeText, uploadedBy: short,
       uploadedOn: f.uploadedOn, kind: f.kind, icon: ATTACHMENT_ICON[f.kind],
     })),
     entries: entries.map(({ e, full, short }) => ({
@@ -349,7 +352,7 @@ export interface LogTimeInput {
   note?: string;
   /** Who worked (default the assignee). */
   person?: string;
-  /** Business date (default the status date, Fri 25 Sep 2026). */
+  /** Business date worked (default the business date, R-013 — Fri 25 Sep 2026 on the demo data set). */
   workDate?: string;
   /** Who recorded it (the viewer), for the audit trail; the entry itself belongs to `person` / the assignee. */
   actorName?: string;
@@ -359,12 +362,13 @@ export interface LogTimeInput {
 export async function logTaskTime(number: string, input: LogTimeInput): Promise<void> {
   if (!input.hours || !Number.isFinite(input.hours)) return;
   const db = await getDb();
+  const workDate = input.workDate ?? (await businessToday());
   await db.transaction(async (tx) => {
     const t = await loadTask(tx, number);
     const person = input.person ? await requirePerson(tx, input.person) : null;
     const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${timeEntries.position}), -1)::int` }).from(timeEntries).where(eq(timeEntries.taskId, t.id));
     await tx.insert(timeEntries).values({
-      taskId: t.id, personId: person?.id ?? t.assigneePersonId, workDate: input.workDate ?? STATUS_ISO, hours: input.hours,
+      taskId: t.id, personId: person?.id ?? t.assigneePersonId, workDate, hours: input.hours,
       note: input.note?.trim() || 'Work on ' + t.title, source: 'keystone', position: pos + 1,
     });
     await tx.update(tasks).set({ loggedH: sql`${tasks.loggedH} + ${input.hours}`, updatedAt: new Date() }).where(eq(tasks.id, t.id));
@@ -384,12 +388,13 @@ export interface AttachmentInput {
 /** "Attach" (not wired in the prototype): registers a file on the task. */
 export async function addTaskAttachment(number: string, input: AttachmentInput): Promise<void> {
   const db = await getDb();
+  const uploadedOn = input.uploadedOn ?? (await businessToday());
   await db.transaction(async (tx) => {
     const t = await loadTask(tx, number);
     const by = await findPerson(tx, input.uploadedBy);
     const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${taskAttachments.position}), -1)::int` }).from(taskAttachments).where(eq(taskAttachments.taskId, t.id));
     await tx.insert(taskAttachments).values({
-      taskId: t.id, name: input.name, sizeText: input.sizeText, uploadedByPersonId: by?.id ?? null, uploadedOn: input.uploadedOn ?? STATUS_ISO,
+      taskId: t.id, name: input.name, sizeText: input.sizeText, uploadedByPersonId: by?.id ?? null, uploadedOn,
       kind: input.kind, storageRef: input.storageRef ?? null, position: pos + 1,
     });
   });

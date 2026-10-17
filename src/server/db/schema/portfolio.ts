@@ -202,7 +202,7 @@ export const projects = pgTable('projects', {
   /** Register order (state.projects order; new projects are prepended with a lower value). */
   sortOrder: integer('sort_order').notNull(),
   // ── Chapter 4 ──
-  /** Project data date (S-1, S-4): remaining work is scheduled from it. Null = DEFAULT_DATA_DATE (domain/ch4-defaults). */
+  /** Project data date (S-1, S-4): remaining work is scheduled from it. Null = the business date (projectDataDate, domain/ch4-defaults; R-013). */
   dataDate: date('data_date', { mode: 'string' }),
   /** Baseline shown by Plan / Schedule (S-3: "BL1"); null = DEFAULT_DISPLAYED_BASELINE (domain/ch4-defaults). */
   displayedBaselineCode: text('displayed_baseline_code'),

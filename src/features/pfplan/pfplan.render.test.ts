@@ -44,6 +44,12 @@ const goldenView = (g: any) => ({
   clipText: g.clipText, gate: g.gate, gateSub: g.gateSub, gateColor: g.gateColor,
 });
 
+/**
+ * R-013: the golden comparison keeps the prototype's now, passed explicitly — its date (30 Sep 2026) for the DAL and its exact
+ * month index (PG_NOW = 8.97, a little after 30 Sep's 8.967) for the Gantt geometry.
+ */
+const protoSchedule = async (zone: Parameters<typeof getPortfolioSchedule>[0]) => ({ ...(await getPortfolioSchedule(zone, '2026-09-30')), now: 8.97 });
+
 beforeAll(async () => {
   setDb(await openDatabase());
 }, 60_000);
@@ -52,7 +58,7 @@ describe.each(['en', 'fr'] as Lang[])('portfolio schedule on the database vs pro
   const t = makeT(lang);
   it.each(ZONES)('zone %s: KPI tiles, groups, filters and rows', async (zone) => {
     const gz = G[lang].zones[String(zone)];
-    const data = await getPortfolioSchedule(zone);
+    const data = await protoSchedule(zone);
     const model = portfolioScheduleModel(data, { filter: 'all', lang, from: 0 });
     expect(model.kpis.map((k) => ({ label: t(k.label), value: t(k.value), sub: t(k.sub), color: KPI_TINT[k.tint] }))).toEqual(
       gz.kpis.map((k: any) => ({ ...k, value: String(k.value) })),
@@ -67,7 +73,7 @@ describe.each(['en', 'fr'] as Lang[])('portfolio schedule on the database vs pro
 describe('portfolio schedule body', () => {
   it('French: header, legend, KPI tiles, groups, row links, gates, clip and today line', async () => {
     const t = makeT('fr');
-    const model = portfolioScheduleModel(await getPortfolioSchedule(null), { filter: 'all', lang: 'fr', from: 0 });
+    const model = portfolioScheduleModel(await protoSchedule(null), { filter: 'all', lang: 'fr', from: 0 });
     const html = renderToStaticMarkup(h(PfPlanBody, { model, filter: 'all', zoneSelected: false, t, lang: 'fr' }));
     const txt = text(html);
     for (const s of [
@@ -101,7 +107,7 @@ describe('portfolio schedule body', () => {
 
   it('pipeline filter keeps the KPI tiles over every row and shows the Pipeline group only', async () => {
     const t = makeT('en');
-    const model = portfolioScheduleModel(await getPortfolioSchedule(null), { filter: 'pipe', lang: 'en', from: 0 });
+    const model = portfolioScheduleModel(await protoSchedule(null), { filter: 'pipe', lang: 'en', from: 0 });
     const txt = text(renderToStaticMarkup(h(PfPlanBody, { model, filter: 'pipe', zoneSelected: false, t, lang: 'en' })));
     expect(txt).toContain('Projects in progress 7 €14.35M');
     expect(txt).toContain('Pipeline 5');
@@ -110,7 +116,7 @@ describe('portfolio schedule body', () => {
   });
 
   it('a zone without live project shows the notice (empty tiles, no rows)', async () => {
-    const data = { rows: [], averageBoardWaitDays: 28 };
+    const data = { rows: [], averageBoardWaitDays: 28, now: 8.8 };
     const txt = text(renderToStaticMarkup(h(PfPlanBody, { model: portfolioScheduleModel(data, { filter: 'all', lang: 'en', from: 0 }), filter: 'all', zoneSelected: true, t: makeT('en'), lang: 'en' })));
     expect(txt).toContain('No project in this zone for this view');
     expect(txt).toContain('Projects in progress 0 €0k');

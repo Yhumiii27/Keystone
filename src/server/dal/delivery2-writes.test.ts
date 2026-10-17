@@ -209,7 +209,8 @@ describe('HR and what-if', () => {
     await markHoursImported('HLT-026', {}, PM);
     await assignUnassignedHours('HLT-026', 0, '1.4', PM);
     const h = (await getHoursReconciliation('HLT-026'))!;
-    expect([h.importedText, h.unassigned[0].assignedWbs, h.unassigned[1].assignedWbs]).toEqual(['30 Sep 2026', '1.4', null]);
+    // R-013: one business date (25 Sep 2026 on the demo data set), not the prototype's 30 Sep.
+    expect([h.importedText, h.unassigned[0].assignedWbs, h.unassigned[1].assignedWbs]).toEqual(['25 Sep 2026', '1.4', null]);
   });
 
   it('what-if scenario edits', async () => {

@@ -2,6 +2,7 @@
 // row, meeting cards and detail card, Decisions register with the corrected headers (00 §7.16), Actions register,
 // and the read-only rendering (no composer, no Send, no ticks, no transcript buttons).
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 vi.mock('next/navigation', () => ({ usePathname: () => '/projects/HLT-026/meetings', useRouter: () => ({ push() {}, replace() {}, refresh() {} }) }));
 vi.mock('./actions', () => ({
   addMinutesLineAction: vi.fn(), analyseTranscriptAction: vi.fn(), applyTranscriptAction: vi.fn(), createMeetingAction: vi.fn(), sendMinutesAction: vi.fn(),
@@ -29,7 +30,7 @@ beforeAll(async () => {
 async function html(lang: Lang, q: { view?: MeetingsView; meeting?: string | null } = {}, canEdit = true, code = 'HLT-026', ai?: TranscriptAi) {
   const d = await getMeetingsScreen(code);
   const t = makeT(lang);
-  const view = meetingsScreenView({ code, meetings: d.meetings, questions: d.questions, query: { view: q.view ?? 'meetings', filter: 'all', meeting: q.meeting ?? null } }, t, lang);
+  const view = meetingsScreenView({ code, meetings: d.meetings, questions: d.questions, query: { view: q.view ?? 'meetings', filter: 'all', meeting: q.meeting ?? null }, today: DEMO_TODAY_ISO }, t, lang);
   const body = h(MeetingsBody, { code, view, canEdit, pinned: !!q.meeting, organizer: 'R. Aubert', t, ai });
   return renderToStaticMarkup(h(I18nProvider, { lang, children: body }));
 }
@@ -126,8 +127,8 @@ describe('meetings screen render — transcript (chapter 4, S-10)', () => {
   it('D-5: the Decisions register filters on the decisions taken with the client (?decisions=client)', async () => {
     const d = await getMeetingsScreen('HLT-026');
     const t = makeT('en');
-    const all = meetingsScreenView({ code: 'HLT-026', meetings: d.meetings, questions: d.questions, query: { view: 'decisions', filter: 'all', meeting: null } }, t, 'en');
-    const client = meetingsScreenView({ code: 'HLT-026', meetings: d.meetings, questions: d.questions, query: { view: 'decisions', filter: 'all', meeting: null, decisions: 'client' } }, t, 'en');
+    const all = meetingsScreenView({ code: 'HLT-026', meetings: d.meetings, questions: d.questions, query: { view: 'decisions', filter: 'all', meeting: null }, today: DEMO_TODAY_ISO }, t, 'en');
+    const client = meetingsScreenView({ code: 'HLT-026', meetings: d.meetings, questions: d.questions, query: { view: 'decisions', filter: 'all', meeting: null, decisions: 'client' }, today: DEMO_TODAY_ISO }, t, 'en');
     expect(all.decisionScope).toBe('all');
     expect(all.decisionChips.map((c) => [c.value, c.label, c.count, c.href])).toEqual([
       ['all', 'All', all.decisions.length, '/projects/HLT-026/meetings?view=decisions'],
@@ -135,7 +136,7 @@ describe('meetings screen render — transcript (chapter 4, S-10)', () => {
     ]);
     expect(client.decisions.map((x) => x.meetingRef.slice(0, 7))).toEqual(['MTG-117', 'MTG-117']);
     expect(client.decisions.every((x) => x.typeLabel === 'External')).toBe(true);
-    const fr = meetingsScreenView({ code: 'HLT-026', meetings: d.meetings, questions: d.questions, query: { view: 'decisions', filter: 'all', meeting: null, decisions: 'client' } }, makeT('fr'), 'fr');
+    const fr = meetingsScreenView({ code: 'HLT-026', meetings: d.meetings, questions: d.questions, query: { view: 'decisions', filter: 'all', meeting: null, decisions: 'client' }, today: DEMO_TODAY_ISO }, makeT('fr'), 'fr');
     const raw = renderToStaticMarkup(h(I18nProvider, { lang: 'fr', children: h(MeetingsBody, { code: 'HLT-026', view: fr, canEdit: true, pinned: false, organizer: 'R. Aubert', t: makeT('fr') }) }));
     expect(text(raw)).toContain('Avec le client');
   });

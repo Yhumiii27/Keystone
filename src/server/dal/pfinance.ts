@@ -2,6 +2,7 @@ import 'server-only';
 // Screen data of Portfolio — prioritisation & capacity and Cash flow & billing (docs/spec/03 §6, §7), assembled from
 // the Delivery 3 DAL (prioritisation.ts, cashflow.ts) into the view-model inputs of src/features/pfinance/model.ts.
 // Margins are removed here for viewers without margin rights (director, pm): they never reach the browser.
+import { businessToday } from '@/server/clock';
 import { canSeeMargins } from '@/domain/portfolio-finance';
 import { portfolioMarginPct, projectEacKeur } from '@/domain/kpis';
 import type { CapacityInput, CashData, PrioritisationData } from '@/features/pfinance/model';
@@ -68,7 +69,7 @@ export async function listProposalOptions(): Promise<{ value: string; label: str
 
 /** Billing rows and the zone-scaled forecast of the Cash flow screen for a viewer (role) and zone. */
 export async function getCashScreen(role: string, zone: ZoneKey | null): Promise<CashData> {
-  const cf = await getCashFlow(zone);
+  const [cf, today] = await Promise.all([getCashFlow(zone), businessToday()]);
   const see = canSeeMargins(role);
   return {
     rows: cf.rows.map(({ project: p, plan, marginPct }) => ({
@@ -84,5 +85,6 @@ export async function getCashScreen(role: string, zone: ZoneKey | null): Promise
     lowPoint: cf.lowPoint,
     canSeeMargin: see,
     zoneSelected: !!zone,
+    today,
   };
 }

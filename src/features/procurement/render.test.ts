@@ -3,6 +3,7 @@
 // (none outside the workspace, invoice decisions for procurement and the director only), the empty invoice filter,
 // and both drawers rendered in place (overlay hooks forced "client side", portals inline).
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 vi.mock('next/navigation', () => ({ usePathname: () => '/purchasing/sourcing', useRouter: () => ({ push() {}, replace() {}, refresh() {} }), useSearchParams: () => new URLSearchParams() }));
 vi.mock('./actions', () => ({
   sendRfqAction: vi.fn(), compareRfqAction: vi.fn(), awardRfqAction: vi.fn(), approveInvoiceAction: vi.fn(), approveInvoicePartAction: vi.fn(), rejectInvoiceAction: vi.fn(), createRfqAction: vi.fn(),
@@ -48,7 +49,7 @@ function inOrder(seq: string[], expected: string[]) {
 }
 const count = (s: string, sub: string) => s.split(sub).length - 1;
 // R-046: prices follow the role (director, PM, procurement), as the page does.
-const ctxOf = (lang: Lang, role: RoleKey = 'director'): SourcingCtx => ({ t: procT(makeT(lang), lang), lang, role, canEdit: canSee(role, 'procurement'), prices: canSeeSupplierPrices(role) });
+const ctxOf = (lang: Lang, role: RoleKey = 'director'): SourcingCtx => ({ t: procT(makeT(lang), lang), lang, role, canEdit: canSee(role, 'procurement'), prices: canSeeSupplierPrices(role), today: DEMO_TODAY_ISO });
 
 async function rfqHtml(lang: Lang, role: RoleKey = 'director', open: string | null = null) {
   const c = ctxOf(lang, role);

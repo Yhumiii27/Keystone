@@ -12,6 +12,7 @@ import type { Persona } from '@/config/personas';
 import type { ApprovalItem } from '@/domain/approvals';
 import { CLIENT_APPROVAL_KINDS, clientRefusedProject } from '@/domain/rights';
 import type { Lang } from '@/i18n/translate';
+import { businessToday } from '@/server/clock';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { getProject } from '@/server/dal/projects';
 import { getLastProject } from '@/server/session';
@@ -58,10 +59,10 @@ export interface ApprovalInbox {
 
 async function contextOf(viewer: Persona, projectCode: string | undefined, lang: Lang): Promise<ApprovalContext> {
   const code = projectCode ?? (await getLastProject());
-  const [identity, found] = await Promise.all([getApproverIdentity(viewer), getProject(code)]);
+  const [identity, found, today] = await Promise.all([getApproverIdentity(viewer), getProject(code), businessToday()]);
   // P-10a (R-042): a client's project-bound kinds never cover another organisation's project.
   const project = found && clientRefusedProject(viewer, found) ? null : found;
-  return { viewer: identity, project, lang };
+  return { viewer: identity, project, lang, today };
 }
 
 /**

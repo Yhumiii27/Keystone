@@ -18,8 +18,11 @@ import { HOURS_VARIANCE_DEFAULT, isHoursVariancePct } from './hr';
 /** app_settings key of the stored defaults. */
 export const APP_SETTING_DEFAULTS = 'settings.defaults';
 
-/** Code of a public holiday entry: "14 Jul · Fête nationale" → 2026-07-14 (the list is "Public holidays 2026 — France"). */
-export const holidayCode = (label: string) => isoOfDisplayDate(label.split(' · ')[0]) ?? slugOf(label);
+/**
+ * Code of a public holiday entry: "14 Jul · Fête nationale" → its date in `year` (2026-07-14 in 2026): the business year for an
+ * entry added in Settings (R-013), the data set's year for the seeded list ("Public holidays 2026 — France").
+ */
+export const holidayCode = (label: string, year: number) => isoOfDisplayDate(label.split(' · ')[0], year) ?? slugOf(label);
 
 export interface SettingsDefaults {
   lists: { listKey: ReferenceListKey; code: string; label: string }[];

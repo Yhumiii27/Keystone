@@ -64,6 +64,8 @@ export interface BudgetContract {
   milestones: PaymentMilestone[];
   /** Orders placed not yet received (k€): the project's purchase orders (delivery 7, R-073). */
   openCommit: number | null;
+  /** Business year (R-013): the milestone texts show their year outside it. */
+  year: number;
 }
 
 /**
@@ -76,7 +78,7 @@ export async function getBudgetContract(code: string): Promise<BudgetContract | 
   const ct = await getCashContract(code);
   if (!ct) return null;
   // R-073: the open purchase orders of the project (src/server/dal/evm.ts), not the stored prototype figure.
-  return { ref: ct.reference, amount: ct.amount, terms: ct.terms, amendments: ct.amendments, milestones: ct.milestones, openCommit: await getOpenCommitment(code) };
+  return { ref: ct.reference, amount: ct.amount, terms: ct.terms, amendments: ct.amendments, milestones: ct.milestones, openCommit: await getOpenCommitment(code), year: ct.year };
 }
 
 export interface BudgetData {

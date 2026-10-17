@@ -6,6 +6,7 @@
 // "Request" / "No quote yet" texts, the scorecard of a project without data (no Harbor Line fallback), viewers outside
 // the workspace get no action, a rejected invoice is closed (KPIs, chip, no second rejection).
 import { beforeAll, describe, expect, it } from 'vitest';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import type { RoleKey } from '@/config/screens';
 import { makeT, type Lang } from '@/i18n/translate';
 import { canSee } from '@/config/screens';
@@ -36,7 +37,7 @@ const LANGS: Lang[] = ['en', 'fr'];
 const ACCENT_300 = 'var(--color-accent-300)';
 
 // R-046: prices follow the role (director, PM, procurement), as the page does.
-const ctxOf = (lang: Lang, role: RoleKey = 'director'): SourcingCtx => ({ t: procT(makeT(lang), lang), lang, role, canEdit: canSee(role, 'procurement'), prices: canSeeSupplierPrices(role) });
+const ctxOf = (lang: Lang, role: RoleKey = 'director'): SourcingCtx => ({ t: procT(makeT(lang), lang), lang, role, canEdit: canSee(role, 'procurement'), prices: canSeeSupplierPrices(role), today: DEMO_TODAY_ISO });
 /** Prototype dates are zero-padded ("05 Jul"); the rebuild writes "5 Jul" / "5 juil." (data layer convention). */
 const date = (s: string) => s.replace(/^0(\d)/, '$1');
 const kpis = (ks: KpiView[]) => ks.map((k) => ({ label: k.label, value: k.value, sub: k.sub, color: k.color }));

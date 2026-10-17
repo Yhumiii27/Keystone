@@ -24,8 +24,8 @@ beforeAll(async () => {
 
 describe('links', () => {
   it('the default window has no ?from=; other windows keep the stage filter and vice versa', () => {
-    expect([pfplanHref('all', null), pfplanHref('all', -3), pfplanHref('exec', -3)]).toEqual(['/portfolio/schedule', '/portfolio/schedule', '/portfolio/schedule?filter=exec']);
-    expect([pfplanHref('all', 0), pfplanHref('pipe', -6), filterHref('exec', 3), filterHref('all', 117)]).toEqual([
+    expect([pfplanHref('all', null, -3), pfplanHref('all', -3, -3), pfplanHref('exec', -3, -3)]).toEqual(['/portfolio/schedule', '/portfolio/schedule', '/portfolio/schedule?filter=exec']);
+    expect([pfplanHref('all', 0, -3), pfplanHref('pipe', -6, -3), filterHref('exec', 3, -3), filterHref('all', 117, -3)]).toEqual([
       '/portfolio/schedule?from=2026-01', '/portfolio/schedule?filter=pipe&from=2025-07', '/portfolio/schedule?filter=exec&from=2026-04', '/portfolio/schedule?from=2035-10',
     ]);
   });
@@ -33,7 +33,8 @@ describe('links', () => {
 
 describe('body', () => {
   it('default window (EN): Period links, window label, month header from Oct 2025, today line on every row', async () => {
-    const model = portfolioScheduleModel(await getPortfolioSchedule(null), { filter: 'all', lang: 'en' });
+    const input = await getPortfolioSchedule(null);
+    const model = portfolioScheduleModel(input, { filter: 'all', lang: 'en' });
     const html = renderToStaticMarkup(h(PfPlanBody, { model, filter: 'all', zoneSelected: false, t: makeT('en'), lang: 'en' }));
     const txt = text(html);
     for (const s of ['Period', 'Previous quarter', 'Today', 'Next quarter', 'Oct 2025 – Sep 2027', 'Oct 2025']) expect(txt).toContain(s);
@@ -41,7 +42,7 @@ describe('body', () => {
     expect(html).toContain('href="/portfolio/schedule?from=2026-01"');
     expect(html).toContain('aria-current="page"');
     // 12 live projects: one today line per row, at the window's middle (L-8: it was 37.38 % on the prototype's window).
-    const today = pgTodayL(-3)!;
+    const today = pgTodayL(-3, input.now)!;
     expect(today).not.toBe('37.38%');
     expect(html.split(`left:${today}`).length - 1).toBe(12);
     expect(html).not.toContain('left:37.38%');

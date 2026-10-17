@@ -12,7 +12,8 @@ import { downloadExport } from '@/features/exports/download';
 import { useI18n } from '@/i18n/client';
 import { exportHref } from '@/lib/export-href';
 import { createChangeRequestAction, decideChangeStepAction, generateStatusReportAction, submitChangeRequestAction, type ChangeActionResult } from './actions';
-import { STATUS_REPORT_FORM, newChangeRequestForm, translatedChangeRequestForm } from './forms';
+import { useToday } from '@/components/app/clock';
+import { newChangeRequestForm, statusReportForm, translatedChangeRequestForm } from './forms';
 
 export interface NewChangeRequestButtonProps {
   code: string;
@@ -69,6 +70,7 @@ export function NewChangeRequestButton({ code, context, defaultWbs, autoOpen, cl
 /** Header primary "Generate status report" (`btn btn-primary` + plus) opening AF `trends` (run form). */
 export function StatusReportButton({ code, context }: { code: string; context: string }) {
   const { t } = useI18n();
+  const today = useToday();
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -76,7 +78,7 @@ export function StatusReportButton({ code, context }: { code: string; context: s
         {t('Generate status report')}
       </Button>
       <FormDialog
-        {...STATUS_REPORT_FORM}
+        {...statusReportForm(today)}
         translate
         open={open}
         onClose={() => setOpen(false)}

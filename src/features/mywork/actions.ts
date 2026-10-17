@@ -135,7 +135,7 @@ export async function addTaskCommentAction(input: { taskId: string; text: string
   return { ok: true };
 }
 
-/** "Log": hours (> 0, ≤ 24) and an optional note (default "Work on {title}") on the status date, added to the logged total. */
+/** "Log": hours (> 0, ≤ 24) and an optional note (default "Work on {title}") on the business date (R-013), added to the logged total. */
 export async function logTaskTimeAction(input: { taskId: string; hours: string | number; note?: string }): Promise<TaskActionResult> {
   const g = await gate(input?.taskId, 'edit');
   if (!g.ok) return g;

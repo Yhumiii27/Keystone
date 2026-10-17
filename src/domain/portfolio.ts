@@ -6,7 +6,6 @@ import type { RoleKey } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
 import { fmtD, mIdx, money, monthDate } from '@/lib/format';
 import { STAGES, type StageCode } from '@/server/db/codes';
-import { DEFAULT_DATA_DATE } from './ch4-defaults';
 import { DEFAULT_HEALTH_THRESHOLDS, HEALTH_LABEL, clampHealthCpi, healthOf, indexAlert, type Health, type HealthThresholds } from './health';
 import type { ProjectTeamRole } from './rights';
 
@@ -23,10 +22,11 @@ export const EXECUTION_STAGES: ReadonlySet<StageCode> = new Set(STAGES.filter((s
 export const inExecution = (p: { stage: StageCode }) => EXECUTION_STAGES.has(p.stage);
 
 /**
- * "FY2026" — the fiscal year shown in the Overview card hint and the portfolio breadcrumbs, from the portfolio data date
- * (R-129; it was a fixed "FY2026"). The fiscal year is the calendar year of the data date until the owner says otherwise.
+ * "FY2026" — the fiscal year shown in the Overview card hint and the portfolio breadcrumbs, from the portfolio data date, the
+ * business date (R-129, R-013; it was a fixed "FY2026"). The fiscal year is the calendar year of that date until the owner
+ * says otherwise.
  */
-export const fiscalYearLabel = (dataDate: string = DEFAULT_DATA_DATE) => `FY${dataDate.slice(0, 4)}`;
+export const fiscalYearLabel = (dataDate: string) => `FY${dataDate.slice(0, 4)}`;
 
 /** EVM inputs of a project record (ProjectRow subset). Amounts in k€. */
 export interface EvmInput {
@@ -150,7 +150,7 @@ export function portfolioKpis(t: PortfolioTotals, lang: Lang, th: HealthThreshol
 }
 
 /** "6 projects · FY2026" — the prototype's static card hint, here counting the rows shown (zone filter), fiscal year of the data date. */
-export const activeProjectsHint = (n: number, dataDate: string = DEFAULT_DATA_DATE) =>
+export const activeProjectsHint = (n: number, dataDate: string) =>
   `${n === 1 ? '1 project' : `${n} projects`} · ${fiscalYearLabel(dataDate)}`;
 
 // "Needs attention" items are computed by rules since R-130 (NEW-D1-1): src/domain/portfolio-alerts.ts.

@@ -7,7 +7,7 @@
 // src/domain/itpcom.golden.json, scripts/proto-golden-itpcom.ts).
 import { LO, OK, TAG_CLASS, commissioningCell, statusTone, type Tone } from '@/components/app/tones';
 import {
-  ITP_RECORDED_RESULTS, NOW_ISO, STATUS_ISO, addDaysIso, displayOfIso, itpPointType, itpResult, itpStage, punchCategory, punchOrigin, punchOwnerParty, punchSource,
+  ITP_RECORDED_RESULTS, addDaysIso, displayOfIso, itpPointType, itpResult, itpStage, punchCategory, punchOrigin, punchOwnerParty, punchSource,
   shortDateOfIso,
   type CommissioningCellStatus, type HandoverItemStatus, type ItpPointType, type ItpRecordedResult, type ItpResult, type ItpStage, type PunchCategory,
   type PunchOrigin, type PunchOwnerParty, type PunchSource, type PunchStatus,
@@ -20,17 +20,15 @@ export type { ParseResult };
 
 const text = (v: string | undefined) => (v ?? '').trim();
 
-const WINDOW_START = addDaysIso(STATUS_ISO, -183);
-const WINDOW_END = addDaysIso(STATUS_ISO, 183);
-
 /**
  * Date of a plan line, punch item or commissioning step as the screens show it: year-less ("9 Sep", "14 Jan") within six
- * months of the status date — the prototype's data is year-less and the seed reads it that way (handover 14 Jan = 2027)
- * — and with its year otherwise ("3 Mar ’27", "12 Mar ’26"), so a date typed for a later year is never ambiguous.
+ * months (183 days) of the business date `today` (R-013; the prototype's status date, 25 Sep 2026) — the prototype's data
+ * is year-less and the seed reads it that way (handover 14 Jan = 2027) — and with its year otherwise ("3 Mar ’27",
+ * "12 Mar ’26"), so a date typed for a later year is never ambiguous.
  */
-export function itpDateText(iso: string | null | undefined): string {
+export function itpDateText(iso: string | null | undefined, today: string): string {
   if (!iso) return '';
-  if (iso >= WINDOW_START && iso <= WINDOW_END) return shortDateOfIso(iso);
+  if (iso >= addDaysIso(today, -183) && iso <= addDaysIso(today, 183)) return shortDateOfIso(iso);
   return `${shortDateOfIso(iso)} ’${iso.slice(2, 4)}`;
 }
 
@@ -39,9 +37,9 @@ const hasYear = (s: string) => /^\d{4}-/.test(s) || /^\d{1,2}[/.]\d{1,2}[/.]\S+$
 
 /**
  * A forward-looking date as typed ("15 Oct", "15 oct. 2026", "15/10", ISO…): a year-less date more than six months before
- * the status date is next year's (the seed's rule: "Planned · 14 Jan" is 2027). Null when it is not a date.
+ * the business date `today` is next year's (the seed's rule: "Planned · 14 Jan" is 2027). Null when it is not a date.
  */
-export function parseForwardDate(input: string | undefined, today = STATUS_ISO): string | null {
+export function parseForwardDate(input: string | undefined, today: string): string | null {
   const iso = parseNeedDate(input, +today.slice(0, 4));
   if (!iso) return null;
   if (hasYear(text(input)) || iso >= addDaysIso(today, -183)) return iso;
@@ -316,7 +314,7 @@ export interface NewInspectionValues {
  * defaults to Hold and stage to Workshop (the select defaults); the planned date, when given, must be a date (the
  * prototype stored any text).
  */
-export function parseNewInspection(values: Record<string, string | undefined>, systems: readonly string[]): ParseResult<NewInspectionValues> {
+export function parseNewInspection(values: Record<string, string | undefined>, systems: readonly string[], today: string): ParseResult<NewInspectionValues> {
   const name = text(values.name);
   if (!name) return { ok: false, error: 'Inspection / test is required' };
   const reference = text(values.ref);
@@ -328,7 +326,7 @@ export function parseNewInspection(values: Record<string, string | undefined>, s
   const stage = codeOf(text(values.stage) || ITP_STAGES[0], itpStage);
   if (!stage) return { ok: false, error: 'Unknown stage' };
   const date = text(values.date);
-  const plannedOn = date ? parseForwardDate(date) : null;
+  const plannedOn = date ? parseForwardDate(date, today) : null;
   if (date && !plannedOn) return { ok: false, error: 'Enter the planned date as a date, e.g. 15 Oct' };
   return { ok: true, value: { name, system, pointType, stage, reference: reference || null, plannedOn } };
 }
@@ -356,7 +354,7 @@ export const NO_OWNER = '';
  * date. R-117 (A-6 'a'): origin (Inspection by default, or Site), responsible party (Keystone by default, or the client)
  * and, for internal viewers, Vigie's NCR number (optional; a client's is ignored — P-10b).
  */
-export function parseNewPunch(values: Record<string, string | undefined>, team: readonly string[], opts: { internal?: boolean } = {}): ParseResult<NewPunchValues> {
+export function parseNewPunch(values: Record<string, string | undefined>, team: readonly string[], today: string, opts: { internal?: boolean } = {}): ParseResult<NewPunchValues> {
   const internal = opts.internal ?? true;
   const description = text(values.item);
   if (!description) return { ok: false, error: 'Item is required' };
@@ -377,7 +375,7 @@ export function parseNewPunch(values: Record<string, string | undefined>, team: 
   const ncr = internal ? text(values.ncr) : '';
   if (ncr && !NCR_REF.test(ncr)) return { ok: false, error: 'Enter the NCR number as Vigie gives it, e.g. NCR-029' };
   const due = text(values.due);
-  const dueOn = due ? parseForwardDate(due) : null;
+  const dueOn = due ? parseForwardDate(due, today) : null;
   if (due && !dueOn) return { ok: false, error: 'Enter the due date as a date, e.g. 15 Oct' };
   return { ok: true, value: { description, location: location || null, category, source, owner, dueOn, origin, ownerParty, ncrNumber: ncr || null } };
 }
@@ -391,15 +389,15 @@ export interface PlanSatValues {
 }
 
 /**
- * "Plan SAT": a system of the commissioning plan (first when blank) and a date on or after the status date (required;
+ * "Plan SAT": a system of the commissioning plan (first when blank) and a date on or after the business date (required;
  * the prototype stored nothing); witnesses and prerequisites free text.
  */
-export function parsePlanSat(values: Record<string, string | undefined>, systems: readonly string[], today = STATUS_ISO): ParseResult<PlanSatValues> {
+export function parsePlanSat(values: Record<string, string | undefined>, systems: readonly string[], today: string): ParseResult<PlanSatValues> {
   const system = text(values.system) || systems[0] || '';
   if (!systems.includes(system)) return { ok: false, error: 'Unknown system' };
   const raw = text(values.date);
   if (!raw) return { ok: false, error: 'Date is required' };
-  const date = parseForwardDate(raw);
+  const date = parseForwardDate(raw, today);
   if (!date) return { ok: false, error: 'Enter the SAT date as a date, e.g. 10 Dec 2026' };
   if (date < today) return { ok: false, error: 'The SAT date cannot be before the status date' };
   const clientWitnesses = text(values.client);
@@ -425,7 +423,7 @@ export const witnessFieldOf = (pointType: ItpPointType): 'required' | 'optional'
   pointType === 'hold' ? 'required' : pointType === 'witness' ? 'optional' : null;
 
 /** The year-less date typed is the latest such day on or before `today` ("28 Dec" typed on 5 Jan is last year's). */
-export function parsePastDate(input: string | undefined, today = NOW_ISO): string | null {
+export function parsePastDate(input: string | undefined, today: string): string | null {
   const iso = parseNeedDate(input, +today.slice(0, 4));
   if (!iso) return null;
   if (!hasYear(text(input)) && iso > today) return `${+iso.slice(0, 4) - 1}${iso.slice(4)}`;
@@ -448,7 +446,7 @@ export interface InspectionResultValues {
  * comment — required for a failure (what is non-conforming, before the NCR is reported in Vigie) and for reservations
  * (they are listed there).
  */
-export function parseInspectionResult(values: Record<string, string | undefined>, pointType: ItpPointType, today = NOW_ISO): ParseResult<InspectionResultValues> {
+export function parseInspectionResult(values: Record<string, string | undefined>, pointType: ItpPointType, today: string): ParseResult<InspectionResultValues> {
   const raw = text(values.result);
   const result = (ITP_RECORDED_RESULTS as readonly string[]).includes(raw)
     ? (raw as ItpRecordedResult)
@@ -476,10 +474,11 @@ export function parseInspectionResult(values: Record<string, string | undefined>
  */
 export function resultLineText(
   r: { result: ItpResult; resultOn: string | null; inspector: string | null; clientWitness: string | null },
+  today: string,
   t: (s: string) => string = (s) => s,
 ): string | null {
   if (!r.resultOn) return null;
-  return [`${t(itpResult.label(r.result))} ${t(itpDateText(r.resultOn))}`, r.inspector ?? '', r.clientWitness ? `${t('client')} ${r.clientWitness}` : ''].filter(Boolean).join(' · ');
+  return [`${t(itpResult.label(r.result))} ${t(itpDateText(r.resultOn, today))}`, r.inspector ?? '', r.clientWitness ? `${t('client')} ${r.clientWitness}` : ''].filter(Boolean).join(' · ');
 }
 
 /** Title of the NCR reported in Vigie from a failed inspection (prefill `titre`): "ITP I-03 · Structure · Paint thickness (DFT)". */

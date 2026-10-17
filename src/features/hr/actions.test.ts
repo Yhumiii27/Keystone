@@ -109,7 +109,8 @@ describe('HR Server Functions', () => {
     expect('syncLuccaAction' in (await import('./actions'))).toBe(false);
   });
 
-  it('Import Lucca hours: date flips to 30 Sep 2026, real counts; gates and refusals', async () => {
+  // R-013: the import is stamped with the business date (25 Sep 2026 on the demo data set), not the prototype's literal 30 Sep.
+  it('Import Lucca hours: date flips to the business date (25 Sep 2026), real counts; gates and refusals', async () => {
     as('pm', 'Romain Aubert', false);
     expect(await importHoursAction('HLT-026', {})).toEqual({ error: 'Hours are read-only for you on this project' });
     as('member', 'Julien Wagner');
@@ -129,7 +130,7 @@ describe('HR Server Functions', () => {
       toast: 'Lucca hours imported · 10 lines matched · 2 to assign',
     });
     const h = (await getHoursReconciliation('HLT-026'))!;
-    expect([h.importedText, h.analyticCode, h.matchingMode]).toEqual(['30 Sep 2026', 'HAV004', 'resource_wp']);
+    expect([h.importedText, h.analyticCode, h.matchingMode]).toEqual(['25 Sep 2026', 'HAV004', 'resource_wp']);
     expect(revalidatePath).toHaveBeenCalledWith('/projects/HLT-026/hours');
   });
 

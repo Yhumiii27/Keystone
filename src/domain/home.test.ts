@@ -5,9 +5,10 @@ import { money, ratio } from '@/lib/format';
 import { makeT } from '@/i18n/translate';
 import { overviewMetrics, portfolioKpis, portfolioTotals, type EvmInput } from './portfolio';
 import {
-  bomShortfall, changeRequestStatus, clientHomeDeliverables, clientOpenInvoice, directorHome, ecoStatus, evmAtDate, homeHref, peakWeeksTxt, procurementHome, renderTxt, shortfallTxt, skillCoverage, teamLoad, workSummary,
+  bomShortfall, changeRequestStatus, clientHomeDeliverables, clientOpenInvoice, directorHome, ecoStatus, greeting, evmAtDate, homeHref, peakWeeksTxt, procurementHome, renderTxt, shortfallTxt, skillCoverage, teamLoad, workSummary,
   type Eco, type Part, type PersonLoad, type ResourceRequest, type Todo,
 } from './home';
+import { DEMO_TODAY_ISO } from './clock';
 
 const people: PersonLoad[] = (PROTO.PEOPLE as [string, string, number[]][]).map(([name, role, loads]) => ({ name, role, loads }));
 
@@ -15,7 +16,7 @@ describe('director KPIs (Overview tiles 1–4)', () => {
   const rows = (PROTO.PROJECTS as EvmInput[]).map((p) => ({ ...p, metrics: overviewMetrics(p) }));
   const view = (lang: 'en' | 'fr') =>
     directorHome({
-      lang, persona: { name: 'Marie Lefebvre', title: 'Portfolio director' }, project: { code: 'HLT-026', name: 'Harbor Line Terminal Expansion', shortCode: 'HLT' },
+      lang, today: DEMO_TODAY_ISO, persona: { name: 'Marie Lefebvre', title: 'Portfolio director' }, project: { code: 'HLT-026', name: 'Harbor Line Terminal Expansion', shortCode: 'HLT' },
       portfolioKpis: portfolioKpis(portfolioTotals(rows), lang), alerts: [], changeRequests: [], purchaseOrders: [], ecos: [], requests: [],
     });
   it('reproduces €13.23M · €7.43M · €13.50M (−€270k) · CPI 0.96', () => {
@@ -31,6 +32,9 @@ describe('director KPIs (Overview tiles 1–4)', () => {
   it('greets the persona and shows empty approval rows as "None"', () => {
     const v = view('en');
     expect([v.greeting, v.sub]).toEqual(['Good morning, Marie', 'Portfolio director · Friday 25 Sep 2026']);
+    // R-013: the date is the business date (here Tuesday 6 Oct 2026, translated by the day and month rules in French).
+    const later = greeting({ name: 'Marie Lefebvre', title: 'Portfolio director' }, '2026-10-06');
+    expect([later.sub, makeT('fr')(later.sub as string)]).toEqual(['Portfolio director · Tuesday 6 Oct 2026', 'Directrice de portefeuille · mardi 6 oct. 2026']);
     expect(v.right.rows.map((r) => [r.sub, r.tag])).toEqual([['None', '0'], ['None', '0'], ['None', '0'], ['Department heads · 0 open', '0']]);
   });
 });
@@ -66,7 +70,7 @@ describe('derived statuses', () => {
 describe('resources, work and skills', () => {
   it('team utilization 83 % · 3 people over-allocated', () => expect(teamLoad(people)).toEqual({ utilization: 83, over: 3 }));
   it('My work of Hélène Sauvage: 2 due today, 1 overdue, 2 next week, 15 h logged, 45 % load', () => {
-    const w = workSummary(PROTO.TODOS as Todo[], 'Hélène Sauvage', people);
+    const w = workSummary(PROTO.TODOS as Todo[], 'Hélène Sauvage', people, DEMO_TODAY_ISO);
     expect([w.dueToday, w.overdue, w.nextWeek, w.logged, w.load, w.open.length]).toEqual([2, 1, 2, 15, 45, 7]);
   });
   it('8 single-expert skill families', () => {
@@ -103,7 +107,7 @@ describe('rendering helpers', () => {
     const part: Part = { ref: 'PV-MOD-550', name: 'PV module 550 Wp', mfr: 'Acme', mb: 'Purchased', price: 1, status: 'Validated', usage: { WSA: 6200 } };
     const view = (lang: 'en' | 'fr') =>
       procurementHome({
-        lang, persona: { name: 'Fabien Bertrand', title: 'Procurement & stock' }, project: { code: 'WSA-044', name: 'Westfield Solar Array', shortCode: 'WSA' },
+        lang, today: DEMO_TODAY_ISO, persona: { name: 'Fabien Bertrand', title: 'Procurement & stock' }, project: { code: 'WSA-044', name: 'Westfield Solar Array', shortCode: 'WSA' },
         purchaseOrders: [], parts: [part], ecos: [], activityPct: {},
       }).right.rows[0].tag;
     expect(renderTxt(view('en'), makeT('en'))).toBe('6,200 to order');
@@ -112,7 +116,7 @@ describe('rendering helpers', () => {
   it('director: one pending resource request reads in the singular in FR', () => {
     const req = (PROTO.REQUESTS as ResourceRequest[]).find((r) => r.status === 'pending')!;
     const v = directorHome({
-      lang: 'fr', persona: { name: 'Marie Lefebvre', title: 'Portfolio director' }, project: { code: 'HLT-026', name: 'Harbor Line Terminal Expansion', shortCode: 'HLT' },
+      lang: 'fr', today: DEMO_TODAY_ISO, persona: { name: 'Marie Lefebvre', title: 'Portfolio director' }, project: { code: 'HLT-026', name: 'Harbor Line Terminal Expansion', shortCode: 'HLT' },
       portfolioKpis: [], alerts: [], changeRequests: [], purchaseOrders: [], ecos: [], requests: [req],
     });
     expect(renderTxt(v.right.rows[3].sub, makeT('fr'))).toBe('Chefs de service · 1 ouverte');

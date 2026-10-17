@@ -15,11 +15,13 @@ import { planT } from '@/features/plan/i18n';
 import { slipText } from '@/features/schedule/i18n';
 import { contingencyView } from '@/features/risks/model';
 import { getHoursReconciliation } from '@/server/dal/hr';
+import { projectDataDateOf } from '@/server/dal/kpis';
 import { getPlanData, getPlanTodos } from '@/server/dal/plan';
 import { getContingencyScreen } from '@/server/dal/risks-screen';
 import { getScheduleData } from '@/server/dal/schedule';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportWorkbook, PdfBlock, PdfDocument } from '../types';
+import { yearOfIso } from '@/domain/clock';
 import { col, isoOf, kpiSheet, monthIso, param, projectRef, ratioText, sheet, todayIso } from './common';
 import { dataText } from '@/i18n/data-text';
 
@@ -29,7 +31,7 @@ const LEVEL: Record<string, string> = { root: 'Project', wp: 'Work package', act
 /** The Plan's rows (every WBS row, display order) as an export sheet, with the screen's view and data. */
 async function planSheet(ctx: ExportContext) {
   if (!ctx.project) return null;
-  const [data, todos] = await Promise.all([getPlanData(ctx.project.code), getPlanTodos(ctx.project.code)]);
+  const [data, todos, dataDate] = await Promise.all([getPlanData(ctx.project.code), getPlanTodos(ctx.project.code), projectDataDateOf(ctx.project.code)]);
   if (!data) return null;
   const t = planT(ctx.t, ctx.lang);
   const view: 'structure' | 'progress' = param(ctx, 'view') === 'structure' ? 'structure' : 'progress';
@@ -39,8 +41,8 @@ async function planSheet(ctx: ExportContext) {
     const a = r.act;
     return {
       level: t(LEVEL[r.kind] ?? r.kind), id: r.id, wbs: r.wbs, name: dataText(r.name, ctx.lang), owner: a?.owner ? ownerName(a) : '',
-      duration: a ? a.durationDays : null, start: isoOf(r.start), startActual: a ? a.startActual : null, finish: isoOf(r.finish), finishActual: a ? a.finishActual : null,
-      baselineFinish: isoOf(r.baselineFinish), variance: r.variance, float: a ? effectiveFloat(a) : r.tf, constraint: a?.constraint ? t(a.constraint) : '',
+      duration: a ? a.durationDays : null, start: isoOf(r.start, yearOfIso(ctx.today)), startActual: a ? a.startActual : null, finish: isoOf(r.finish, yearOfIso(ctx.today)), finishActual: a ? a.finishActual : null,
+      baselineFinish: isoOf(r.baselineFinish, yearOfIso(ctx.today)), variance: r.variance, float: a ? effectiveFloat(a) : r.tf, constraint: a?.constraint ? t(a.constraint) : '',
       pct: r.pct / 100, budget: r.budget, actual: a ? a.actual : null, eac: a ? a.eac : null, preds: a ? (a.preds.length ? predsLabel(a.preds) : '') : '',
       todos: r.todos.total ? `${r.todos.done}/${r.todos.total}` : '',
     };
@@ -52,7 +54,7 @@ async function planSheet(ctx: ExportContext) {
         col('float', t('Total float (d)'), 'integer'), col('constraint', t('Constraint'), 'text', 16), col('pct', t('% complete'), 'percent'), col('budget', t('Budget'), 'money_keur'),
         col('actual', t('Actual'), 'money_keur'), col('eac', 'EAC', 'money_keur'), col('preds', t('Predecessors'), 'text', 26), col('todos', t('To-dos'), 'text', 8),
       ], rows);
-  return { t, view, data, wbs, kpis: planKpis(view, data, t, ctx.lang).map((k) => ({ label: k.label, value: k.value, sub: k.sub })) };
+  return { t, view, data, dataDate, wbs, kpis: planKpis(view, data, t, ctx.lang, { dataDate }).map((k) => ({ label: k.label, value: k.value, sub: k.sub })) };
 }
 
 async function planWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
@@ -74,7 +76,7 @@ async function planReport(ctx: ExportContext): Promise<PdfDocument | null> {
   const p = await planSheet(ctx);
   if (!p || !ctx.project) return null;
   const { t } = p;
-  const kpis = p.view === 'progress' ? p.kpis : planKpis('progress', p.data, t, ctx.lang).map((k) => ({ label: k.label, value: k.value, sub: k.sub }));
+  const kpis = p.view === 'progress' ? p.kpis : planKpis('progress', p.data, t, ctx.lang, { dataDate: p.dataDate }).map((k) => ({ label: k.label, value: k.value, sub: k.sub }));
   const indent = (level: unknown, name: unknown) => `${level === t('Activity') ? '      ' : level === t('Work package') ? '   ' : ''}${String(name ?? '')}`;
   const rows = p.wbs.rows.map((r) => ({ ...r, name: indent(r.level, r.name) }));
   const keys = ['id', 'name', 'owner', 'duration', 'start', 'finish', 'baselineFinish', 'variance', 'float', 'constraint', 'pct', 'preds'];

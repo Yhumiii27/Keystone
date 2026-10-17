@@ -222,6 +222,8 @@ describe('import rights and messages', () => {
   });
 
   it('date helpers', () => {
-    expect([planDateText('2026-10-05'), planDateText('2027-01-14'), monthIndex('2026-09-25')]).toEqual(['05 Oct', '14 Jan ’27', 8 + 24 / 30]);
+    expect([planDateText('2026-10-05', 2026), planDateText('2027-01-14', 2026), monthIndex('2026-09-25')]).toEqual(['05 Oct', '14 Jan ’27', 8 + 24 / 30]);
+    // R-013: the year suffix is relative to the business year.
+    expect([planDateText('2026-10-05', 2027), planDateText('2027-01-14', 2027)]).toEqual(['05 Oct ’26', '14 Jan']);
   });
 });

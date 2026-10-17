@@ -4,6 +4,7 @@
 // the 8 personas, malformed input, stale minutes; the client never sees the task numbers; the assignees are told, never the
 // sender.
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 
 const session = { role: 'pm' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
@@ -127,8 +128,8 @@ describe('R-067 — "Send minutes" tasks (S-12 a) and R-015 notices', () => {
   it('the client never sees the internal task numbers of an external meeting; the team does', async () => {
     const ms = await listMeetings(HLT);
     const q = { view: 'meetings' as const, filter: 'all' as const, meeting: number };
-    const team = meetingsScreenView({ code: HLT, meetings: ms, questions: [], query: q }, makeT('en'), 'en');
-    const client = meetingsScreenView({ code: HLT, meetings: ms, questions: [], query: q, client: true }, makeT('en'), 'en');
+    const team = meetingsScreenView({ code: HLT, meetings: ms, questions: [], query: q, today: DEMO_TODAY_ISO }, makeT('en'), 'en');
+    const client = meetingsScreenView({ code: HLT, meetings: ms, questions: [], query: q, today: DEMO_TODAY_ISO, client: true }, makeT('en'), 'en');
     expect(team.detail!.agenda[0].lines.every((l) => l.taskNumber && l.taskHref)).toBe(true);
     expect(team.detail!.agenda[0].lines[4].meta).toBe('J. Wagner · — · A1250');
     expect(client.detail!.agenda[0].lines.every((l) => l.taskNumber === null && l.taskHref === null)).toBe(true);

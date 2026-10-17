@@ -5,6 +5,7 @@
 // (HLT_DELIVS, D-110… on the other projects, year-less due dates read forward). Progress recorded in Keystone (pending
 // sync with Vigie), the viewer rules and the post-action states are asserted on top.
 import { describe, expect, it } from 'vitest';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import PROTO from '@/server/prototype/prototype-data.json';
 import GEN from '@/server/prototype/prototype-generated.json';
 import { deliverableStatus, NCR_FLOW, ncrStatus, type DeliverableStatus } from '@/server/db/codes';
@@ -13,8 +14,8 @@ import { prototypeNcrSnapshot, type ProtoNcrRow } from '@/server/integrations/vi
 import GOLD from '@/features/quality/quality.golden.json';
 import { money } from '@/lib/format';
 import {
-  NCR_OVERDUE_AS_OF, QUALITY_COLOR, RACI_LABEL, RACI_ORDER, awaitsVerification, deliverableAcceptanceItems, deliverableActionFor, deliverableChips, deliverableFilterOf,
-  deliverableHint, deliverableKpis, deliverableSteps, deliverableTagOf, depositTypeOf, ncrActionFor, ncrChips, ncrFilterOf, ncrKpis, ncrRequestText, ncrSegments,
+  QUALITY_COLOR, RACI_LABEL, RACI_ORDER, awaitsVerification, deliverableAcceptanceItems, deliverableActionFor, deliverableChips, deliverableFilterOf,
+  deliverableHint, deliverableKpis, deliverableSteps, deliverableTagOf, depositTypeOf, ncrActionFor, ncrChips, ncrFilterOf, ncrKpis, ncrOverdueAsOf, ncrRequestText, ncrSegments,
   ncrStatusTagOf, ncrSteps, ncrSyncLine, ncrSyncStateOf, ncrVerificationItems, producerNextOf, qualityBadge, qualityTabOf, severityTagOf,
   type DeliverableLike, type NcrLike, type NcrProgressLike, type QualityKpi,
 } from './quality';
@@ -48,8 +49,9 @@ const EDITOR = { role: 'director', canEdit: true };
 
 describe('NCR log (Vigie NCRs) — ncrKpis / ncrChips / ncrRows / ncrVals', () => {
   it.each(DATA)('%s: KPI tiles (Overdue actions as of the next weekly review: the prototype’s count)', (code) => {
-    expect(NCR_OVERDUE_AS_OF).toBe('2026-10-02');
-    expect(ncrKpis(ncrsOf(code)).map(kpiOut)).toEqual(G.projects[code].ncr.kpis);
+    // R-013: the as-of date follows the business date (+ 7 days); at the prototype's status date it is its 2 Oct.
+    expect(ncrOverdueAsOf(DEMO_TODAY_ISO)).toBe('2026-10-02');
+    expect(ncrKpis(ncrsOf(code), DEMO_TODAY_ISO, DEMO_TODAY_ISO).map(kpiOut)).toEqual(G.projects[code].ncr.kpis);
   });
 
   it.each(DATA)('%s: severity chips, tags, progress segments and next step of every row', (code) => {
@@ -114,19 +116,19 @@ describe('NCR log (Vigie NCRs) — ncrKpis / ncrChips / ncrRows / ncrVals', () =
   it('My approvals "NCR verification": the prototype item of an NCR in verification; nothing at seed', () => {
     const code = 'HLT-026';
     const href = { ncr: (n: string) => `/q/${n}` };
-    expect(ncrVerificationItems(ncrsOf(code), code, href)).toEqual([]);
+    expect(ncrVerificationItems(ncrsOf(code), code, href, 2026)).toEqual([]);
     const ver = ncrsOf(code).map((n) => (n.number === 'NCR-026' ? { ...n, status: 'verification' as const } : n));
-    const items = ncrVerificationItems(ver, code, href);
+    const items = ncrVerificationItems(ver, code, href, 2026);
     expect(items.map((i) => ({ kind: 'NCR verification', id: i.id, title: i.title, sub: i.sub, when: i.when, who: i.who }))).toEqual(G.approvals.qualityVerification);
     expect(items[0]).toMatchObject({ kind: 'ncr', whenIso: '2026-10-02', href: '/q/NCR-026', decision: { mode: 'ncr-verification', projectCode: code, number: 'NCR-026' }, external: { href: 'vigie:NCR-026', label: 'Open in Vigie' } });
-    expect(ncrVerificationItems(ver.map((n) => (n.number === 'NCR-026' ? { ...n, requestedStatus: 'closed' as const } : n)), code, href)).toEqual([]);
+    expect(ncrVerificationItems(ver.map((n) => (n.number === 'NCR-026' ? { ...n, requestedStatus: 'closed' as const } : n)), code, href, 2026)).toEqual([]);
   });
 });
 
 describe('Deliverables register — dlvKpis / dlvChips / dlvRows / dlvVals', () => {
   it.each(DATA)('%s: KPI tiles ("Due in 30 days" from the status date) and status chips', (code) => {
     const ds = deliverablesOf(code);
-    expect(deliverableKpis(ds).map(kpiOut)).toEqual(G.projects[code].dlv.kpis);
+    expect(deliverableKpis(ds, DEMO_TODAY_ISO).map(kpiOut)).toEqual(G.projects[code].dlv.kpis);
     expect(deliverableChips(ds).map((c) => ({ label: c.label, count: c.count }))).toEqual(G.projects[code].dlv.chips);
   });
 
@@ -167,7 +169,7 @@ describe('Deliverables register — dlvKpis / dlvChips / dlvRows / dlvVals', () 
     const cases: [string, string, DeliverableStatus][] = [['start', 'D-018', 'in_progress'], ['review', 'D-017', 'internal_review'], ['submit', 'D-017', 'submitted'], ['accept', 'D-014', 'accepted'], ['reject', 'D-016', 'rejected']];
     for (const [k, num, status] of cases) {
       const ds = apply(num, status);
-      expect(deliverableKpis(ds).map(kpiOut), k).toEqual(G.after[k].kpis);
+      expect(deliverableKpis(ds, DEMO_TODAY_ISO).map(kpiOut), k).toEqual(G.after[k].kpis);
       expect(deliverableChips(ds).map((c) => ({ label: c.label, count: c.count })), k).toEqual(G.after[k].chips);
     }
     // Q-3a (R-114): a rejected deliverable goes back to In progress at the next revision (the prototype had no step after a rejection).
@@ -176,7 +178,7 @@ describe('Deliverables register — dlvKpis / dlvChips / dlvRows / dlvVals', () 
   });
 
   it('My approvals "Deliverable acceptance": the client contact’s items (apprItems 4727)', () => {
-    const items = deliverableAcceptanceItems(deliverablesOf('HLT-026'), 'HLT-026', { deliverable: (n) => `/d/${n}` });
+    const items = deliverableAcceptanceItems(deliverablesOf('HLT-026'), 'HLT-026', { deliverable: (n) => `/d/${n}` }, 2026);
     expect(items.map((i) => ({ kind: 'Deliverable acceptance', id: i.id, title: i.title, sub: i.sub, when: i.when, who: i.who }))).toEqual(G.approvals.client);
     expect(items[0]).toMatchObject({ kind: 'deliverable', whenIso: '2026-09-25', href: '/d/D-014', decision: { mode: 'deliverable', projectCode: 'HLT-026', number: 'D-014' } });
   });

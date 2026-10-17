@@ -3,7 +3,7 @@
 // validation, KPI figures, activity-drawer derivations and the numbering rules of the add forms.
 // Shared by the server (view model, Server Functions) and tests. No I/O, no translation: strings returned
 // here are the prototype's English source strings (translate with t()).
-import { TODAY, dayLabel, pct as pctW, wbsParseDate } from '@/lib/format';
+import { dayLabel, pct as pctW, wbsParseDate } from '@/lib/format';
 
 export type LinkType = 'FS' | 'SS' | 'FF' | 'SF';
 /** Logic link stored on the successor: [predecessor id, type, lag in days]. */
@@ -465,8 +465,8 @@ export function successorsOf(id: string, acts: PlanActivity[]): { act: PlanActiv
 export type TodoStatus = 'todo' | 'doing' | 'review' | 'done';
 export const TODO_STATUS_LABEL: Record<TodoStatus, string> = { todo: 'To do', doing: 'In progress', review: 'In review', done: 'Done' };
 
-/** "Done" · "Overdue · Tue 22 Sep" · "Today" · "Thu 1 Oct" (`due` = working-day offset from Mon 21 Sep 2026). */
-export function dueText(status: TodoStatus, due: number, today = TODAY): string {
+/** "Done" · "Overdue · Tue 22 Sep" · "Today" · "Thu 1 Oct" (`due`, `today` = working-day offsets from Mon 21 Sep 2026; `today` from `workdayOffsetOf`, R-013). */
+export function dueText(status: TodoStatus, due: number, today: number): string {
   if (status === 'done') return 'Done';
   if (due < today) return 'Overdue · ' + dayLabel(due);
   if (due === today) return 'Today';
@@ -475,10 +475,13 @@ export function dueText(status: TodoStatus, due: number, today = TODAY): string 
 
 // ── Add forms (afSubmit, logic 5129–5131) ──────────────────────────────────────────────────────────────
 
-/** Working days between two "5 Oct 2026" dates: max(1, round(days × 5/7)); 20 when unparseable or not increasing. */
-export function workingDaysBetween(start: string, finish: string): number {
-  const ds = wbsParseDate(start);
-  const df = wbsParseDate(finish);
+/**
+ * Working days between two "5 Oct 2026" dates (a year-less date is in the business year `year`, R-013): max(1, round(days ×
+ * 5/7)); 20 when unparseable or not increasing.
+ */
+export function workingDaysBetween(start: string, finish: string, year: number): number {
+  const ds = wbsParseDate(start, year);
+  const df = wbsParseDate(finish, year);
   if (!ds || !df || !(df > ds)) return 20;
   const days = (Date.UTC(df.getFullYear(), df.getMonth(), df.getDate()) - Date.UTC(ds.getFullYear(), ds.getMonth(), ds.getDate())) / 864e5;
   return Math.max(1, Math.round((days * 5) / 7));

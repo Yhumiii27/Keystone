@@ -10,6 +10,7 @@
 import { EmptyState } from '@/components/app/EmptyState';
 import { Stack } from '@/components/app/SectionCard';
 import { PageHeader } from '@/components/app/shell/page-header';
+import { yearOfIso } from '@/domain/clock';
 import { bomPartHref } from '@/features/bom/links';
 import { docHref } from '@/features/docs/links';
 import { PartDrawer } from '@/features/plm/part-drawer';
@@ -18,6 +19,7 @@ import { pidScreenView, pidTagDrawerView } from '@/features/pid/model';
 import { ImportTagsButton } from '@/features/pid/pid-buttons';
 import { PidBody } from '@/features/pid/pid-view';
 import { PidTagDrawer } from '@/features/pid/tag-drawer';
+import { businessToday } from '@/server/clock';
 import { getPidValidation, pidCandidates } from '@/server/dal/pid';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -30,7 +32,7 @@ export default async function PidPage({ params, searchParams }: { params: Promis
   const ctx = await getProjectContext(code, 'pid');
   const projectCode = ctx.project.code;
   const canEdit = ctx.canEdit('pid');
-  const [{ t, lang }, data] = await Promise.all([getI18n(), getPidValidation(projectCode)]);
+  const [{ t, lang }, data, today] = await Promise.all([getI18n(), getPidValidation(projectCode), businessToday()]);
 
   const parsed = parsePidState(sp);
   // `?tag=` as written anywhere (case-insensitive); an unknown tag opens nothing and is dropped from the links.
@@ -42,7 +44,7 @@ export default async function PidPage({ params, searchParams }: { params: Promis
     : { rows: [], more: false };
 
   const view = data
-    ? pidScreenView({ code: projectCode, data, state, docHref: data.sheet.codexRevision ? docHref(data.sheet.documentNumber, projectCode) : null }, t, lang)
+    ? pidScreenView({ code: projectCode, data, state, docHref: data.sheet.codexRevision ? docHref(data.sheet.documentNumber, projectCode) : null, year: yearOfIso(today) }, t, lang)
     : null;
   // R-109: when Codex is ahead, both "Import P&ID tags" buttons suggest Codex's reference revision.
   const suggested = view?.drawing.gap?.ahead ? view.drawing.gap.suggestedRevision : null;

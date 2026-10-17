@@ -11,6 +11,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
@@ -43,7 +44,8 @@ describe('Installed base body', () => {
     expect(out.match(/<tr>/g)!.length).toBe(9);
     expect(out).toContain('href="/reference/eco?eco=ECO-2026-0');
     expect(out).toMatch(/href="http:\/\/localhost:3200\/modifications-techniques\/ECO-2026-0\d\d" target="_blank" rel="noopener noreferrer"/);
-    expect(out).toContain(lang === 'fr' ? 'finit dans 31 j' : 'ends in 31 d');
+    // R-013: MCH-035 (1 Nov 2026) counted from the business date, 25 Sep 2026 on the demo data set (31 d from the prototype's 30 Sep).
+    expect(out).toContain(lang === 'fr' ? 'finit dans 36 j' : 'ends in 36 d');
     expect(out).toContain('20 k€');
     // R-155 (X-16): the machine list's notice (never shown without a zone).
     expect(out).not.toContain(lang === 'fr' ? 'Aucune machine dans cette zone' : 'No machine in this zone');
@@ -51,7 +53,7 @@ describe('Installed base body', () => {
 
   it('a zone without machine shows the notice', () => {
     const t = makeT('fr');
-    const out = html(h(FleetBody, { view: fleetView({ machines: [] }, 'apac', t, 'fr'), t }), 'fr');
+    const out = html(h(FleetBody, { view: fleetView({ machines: [], today: DEMO_TODAY_ISO }, 'apac', t, 'fr'), t }), 'fr');
     // R-155 (X-16): « Aucune machine dans cette zone » (the prototype reused the project screens' text).
     expect(out).toContain('Aucune machine dans cette zone');
     expect(out).not.toContain('Aucun projet dans cette zone');

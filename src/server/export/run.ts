@@ -7,6 +7,7 @@ import { isOutside } from '@/components/app/shell/nav-model';
 import { canSeeRates } from '@/domain/hr';
 import { canSeeSupplierPrices } from '@/domain/rights';
 import { makeT, type Lang } from '@/i18n/translate';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { findPerson, requireProject } from '@/server/db/helpers';
 import type { ExportFormat } from '@/server/db/codes';
@@ -78,6 +79,7 @@ export async function buildExportContext(req: ExportRequest): Promise<ExportCont
   return {
     viewer: req.viewer, lang: req.lang, t: makeT(req.lang), screen, outside: isOutside(req.viewer.role, screen), project, readOnly, params, zone,
     ratesMasked: !canSeeRates(req.viewer.role), pricesMasked: !canSeeSupplierPrices(req.viewer.role), variant: req.params.get('variant') || null, now: req.now ?? new Date(),
+    today: await businessToday(),
   };
 }
 

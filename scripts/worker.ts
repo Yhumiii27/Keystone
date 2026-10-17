@@ -1,15 +1,16 @@
 // Keystone job worker (R-006) — `npm run worker` (tsx --conditions=react-server scripts/worker.ts).
-// Runs the scheduled jobs of src/server/jobs on their intervals: outbox redelivery to Vigie and Cursus, plan-trash purge of
+// Runs the scheduled jobs of src/server/jobs on their intervals (reminder jobs once a day at KEYSTONE_REMINDERS_AT, Paris): outbox redelivery to Vigie and Cursus, plan-trash purge of
 // expired entries for every project, orphan stored-file prune. Each job is idempotent, logged (one JSON line per run on
 // stdout / stderr) and leased in the database (table job_locks) so two workers never run the same job at once.
 // Options and database rules: src/server/jobs/cli.ts. Stops cleanly on SIGINT / SIGTERM (waits for the runs in progress).
 // The Friday freeze is not a job yet (S-4 open).
 import path from 'node:path';
+import { getConfig } from '@/server/config';
 import { lockPgliteFolder } from '@/server/db/pglite-lock';
 import { JOB_DEFINITIONS, jobDefinition } from '@/server/jobs/definitions';
 import { parseWorkerArgs, workerDatabaseGuard } from '@/server/jobs/cli';
 import { jobLog } from '@/server/jobs/log';
-import { holderId, runJob } from '@/server/jobs/runner';
+import { holderId, runJob, scheduledEntries } from '@/server/jobs/runner';
 import { startScheduler } from '@/server/jobs/scheduler';
 
 const dataDir = () => (process.env.KEYSTONE_DATA_DIR ? path.resolve(process.env.KEYSTONE_DATA_DIR) : path.join(process.cwd(), '.data'));
@@ -36,8 +37,8 @@ async function main(): Promise<number> {
       for (const job of jobs) if ((await runJob(job, holder, { force: true })).status === 'failed') failed++;
       return failed ? 1 : 0;
     }
-    const scheduler = startScheduler(jobs.map((d) => ({ name: d.name, everyMs: d.everyMs, firstDelayMs: d.firstDelayMs, run: () => runJob(d, holder) })), { keepAlive: true });
-    jobLog('info', 'Worker started', { holder, driver: guard.driver, jobs: jobs.map((j) => j.name).join(',') });
+    const scheduler = startScheduler(scheduledEntries(jobs, holder), { keepAlive: true });
+    jobLog('info', 'Worker started', { holder, driver: guard.driver, remindersAt: getConfig().remindersAt, jobs: jobs.map((j) => j.name).join(',') });
     await new Promise<void>((resolve) => {
       const stop = (signal: string) => {
         jobLog('info', 'Worker stopping', { holder, signal });

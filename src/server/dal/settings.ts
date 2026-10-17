@@ -8,6 +8,8 @@ import 'server-only';
 // a value still in use (or a default) and deletes an unused custom one; the lists drive the modules through
 // src/server/dal/settings-lists.ts; the thresholds drive the one health rule (src/server/dal/health-thresholds.ts).
 import { and, asc, eq, inArray, notInArray, sql } from 'drizzle-orm';
+import { yearOfIso } from '@/domain/clock';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import {
   APP_SETTING_CCB, APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, REFERENCE_LIST_KEYS, locationType, slugOf,
@@ -90,13 +92,14 @@ const listRef = (listKey: string) => `Settings · ${SETTINGS_CARDS.find((c) => c
 
 /**
  * "Add" an entry to a list (appended; a removed entry with the same label is reactivated; duplicates refused).
- * Holidays take the form "14 Jul · Fête nationale" (the code is the 2026 date).
+ * Holidays take the form "14 Jul · Fête nationale" (the code is that date in the business year, R-013).
  */
 export async function addReferenceValue(listKey: ReferenceListKey, label: string, actor: Actor): Promise<string> {
   ST(actor);
   if (!REFERENCE_LIST_KEYS.includes(listKey) || listKey === 'locTypes') throw new Error('Unknown list');
   const text = requiredText(label, 'Entry', 120);
-  if (listKey === 'holidays' && !/^\d{4}-\d{2}-\d{2}$/.test(holidayCode(text))) throw new Error('A holiday reads "14 Jul · Fête nationale"');
+  const year = yearOfIso(await businessToday());
+  if (listKey === 'holidays' && !/^\d{4}-\d{2}-\d{2}$/.test(holidayCode(text, year))) throw new Error('A holiday reads "14 Jul · Fête nationale"');
   const db = await getDb();
   return db.transaction(async (tx) => {
     const rows = await tx.select().from(referenceValues).where(eq(referenceValues.listKey, listKey));
@@ -105,14 +108,14 @@ export async function addReferenceValue(listKey: ReferenceListKey, label: string
     // A-14: project statuses are the lifecycle stages; only a deactivated stage can come back.
     if (listKey === 'statuses' && !same && !CUSTOM_STATUSES_ALLOWED) throw new Error(CUSTOM_STATUS_REFUSED);
     // Holidays are keyed by date (calendars, leave calendar): an active entry on that date refuses a second label.
-    if (listKey === 'holidays' && !same && rows.some((r) => r.active && r.code === holidayCode(text))) throw new Error(HOLIDAY_DATE_TAKEN);
+    if (listKey === 'holidays' && !same && rows.some((r) => r.active && r.code === holidayCode(text, year))) throw new Error(HOLIDAY_DATE_TAKEN);
     const position = rows.reduce((m, r) => Math.max(m, r.position + 1), 0);
     let code: string;
     if (same) {
       code = same.code;
       await tx.update(referenceValues).set({ active: true, position, updatedAt: new Date() }).where(eq(referenceValues.id, same.id));
     } else {
-      const base = listKey === 'holidays' ? holidayCode(text) : slugOf(text);
+      const base = listKey === 'holidays' ? holidayCode(text, year) : slugOf(text);
       code = base;
       for (let i = 2; rows.some((r) => r.code === code); i++) code = `${base}_${i}`;
       await tx.insert(referenceValues).values({ listKey, code, label: text, position, active: true, isDefault: false });

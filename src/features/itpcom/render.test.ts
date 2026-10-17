@@ -10,6 +10,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 vi.mock('./actions', () => ({ addInspectionAction: vi.fn(), addPunchItemAction: vi.fn(), advancePunchItemAction: vi.fn(), planSatAction: vi.fn() }));
 
 import { renderToStaticMarkup } from 'react-dom/server';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import GOLDEN from '@/domain/itpcom.golden.json';
 import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
@@ -35,12 +36,12 @@ beforeAll(async () => {
 async function itp(lang: Lang, code = 'HLT-026', view: ItpViewKey = 'plan') {
   const [plan, punch, machineType] = await Promise.all([getItpPlan(code), listPunchItems(code), projectMachineTypeLabel(code)]);
   const t = makeT(lang);
-  return { t, view: itpScreenView({ code, view, plan, punch, machineType }, t, lang) };
+  return { t, view: itpScreenView({ code, view, plan, punch, machineType, today: DEMO_TODAY_ISO }, t, lang) };
 }
 async function cm(lang: Lang, code = 'HLT-026') {
   const [c, punch] = await Promise.all([getCommissioning(code), listPunchItems(code)]);
   const t = makeT(lang);
-  return { t, c, view: commissioningScreenView(code, c, punch, t, lang) };
+  return { t, c, view: commissioningScreenView(code, c, punch, DEMO_TODAY_ISO, t, lang) };
 }
 
 /** Golden KPI tiles as the view shows them (values as strings). */
@@ -131,7 +132,7 @@ describe('ITP · punch view', () => {
   it('an item added without due date shows an empty Due cell (as the prototype), the step carries the status it starts from', async () => {
     const [plan, punch] = await Promise.all([getItpPlan('HLT-026'), listPunchItems('HLT-026', 'itp')]);
     const added = { ...punch[1], number: 'P-10', dueOn: null, location: '' };
-    const { punch: p } = itpScreenView({ code: 'HLT-026', view: 'punch', plan, punch: [...punch, added], machineType: null }, makeT('en'), 'en');
+    const { punch: p } = itpScreenView({ code: 'HLT-026', view: 'punch', plan, punch: [...punch, added], machineType: null, today: DEMO_TODAY_ISO }, makeT('en'), 'en');
     expect(p!.rows.at(-1)).toMatchObject({ number: 'P-10', location: '', due: '', step: { label: 'Start', ariaLabel: 'Start · P-10', from: 'open' } });
     expect(p!.rows.map((r) => r.step?.from ?? null)).toEqual([null, 'open', 'open', 'in_progress', 'open', 'open']);
   });

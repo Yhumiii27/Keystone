@@ -3,7 +3,7 @@
 // without data). The prototype's `acc` text is split into dates and people (schema/quality.ts). NCRs are seeded into
 // the Vigie mirror (seed/vigie.ts).
 import { PROTO, PROTO_GEN } from '@/server/prototype';
-import { RACI_CODES, addDaysIso, deliverableStatus, deliverableType, isoOfDisplayDate, type DeliverableStatus } from '../codes';
+import { RACI_CODES, addDaysIso, deliverableStatus, deliverableType, isoOfDemoDate, type DeliverableStatus } from '../codes';
 import { deliverableRaci, deliverables } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, personIdOrNull, type SeedCtx } from './context';
@@ -31,14 +31,14 @@ export function acceptanceOf(acc: string, status: DeliverableStatus): {
   if (!acc || acc === '—') return none;
   let m = /^Accept by (.+)$/.exec(acc);
   if (m) {
-    const due = isoOfDisplayDate(m[1])!;
+    const due = isoOfDemoDate(m[1])!;
     return { ...none, acceptanceDueOn: due, submittedOn: addDaysIso(due, -10) };
   }
   m = /^Issue (.+)$/.exec(acc);
-  if (m) return { ...none, issueOn: isoOfDisplayDate(m[1]) };
+  if (m) return { ...none, issueOn: isoOfDemoDate(m[1]) };
   m = /^(\d{1,2} \w{3}) · (.+)$/.exec(acc);
-  if (m && status === 'accepted') return { ...none, acceptedOn: isoOfDisplayDate(m[1]), acceptedByName: m[2] };
-  if (m && status === 'rejected') return { ...none, rejectedOn: isoOfDisplayDate(m[1]), reviewComments: m[2] };
+  if (m && status === 'accepted') return { ...none, acceptedOn: isoOfDemoDate(m[1]), acceptedByName: m[2] };
+  if (m && status === 'rejected') return { ...none, rejectedOn: isoOfDemoDate(m[1]), reviewComments: m[2] };
   throw new Error(`Seed: unparseable acceptance "${acc}"`);
 }
 

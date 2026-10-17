@@ -3,6 +3,7 @@
 // renderVals() for director, EN and FR — deepTr applied), except the deliberate deviations noted inline:
 // "> 30 j" (the prototype left "> 30 d" in French), the feminine interface statuses "Reçue" / "Gelée", and the
 // "Blocking commissioning" sub listing only the blockers still open.
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { createElement as h, type ReactElement } from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 vi.mock('./actions', () => ({ addStakeholderAction: vi.fn(), createInterfaceAction: vi.fn(), markInterfaceReceivedAction: vi.fn(), freezeInterfaceAction: vi.fn() }));
@@ -36,7 +37,7 @@ async function stk(lang: Lang, code = 'HLT-026') {
 async function ifc(lang: Lang, code = 'HLT-026') {
   const d = (await getInterfacesScreen(code))!;
   const t = makeT(lang);
-  return { t, d, view: interfacesView(d.interfaces, d.blockers, t, lang) };
+  return { t, d, view: interfacesView(d.interfaces, d.blockers, t, lang, DEMO_TODAY_ISO) };
 }
 
 describe('Stakeholders & RACI view model', () => {
@@ -137,8 +138,10 @@ describe('Interface register view model', () => {
     // A-12 (chapter 4, 07 OQ6): "due within 30 days" counts the open interfaces needed within 30 days of the data date —
     // IF-02 (15 Oct), not IF-05 (15 Nov, 51 days away) that the prototype counted.
     expect(view.kpis).toEqual(GOLDEN.interfaces.kpis.map((k, i) => ({ ...k, value: String(k.value), sub: i === 1 ? '1 due within 30 days' : k.sub })));
+    // R-013: days counted from the business date (25 Sep 2026 on the demo data set), 5 days before the prototype's now (≈ 30 Sep).
+    const r013: Record<string, string> = { 'IF-02': 'in 20 d', 'IF-05': 'in 50 d', 'IF-07': '5 d late' };
     expect(view.rows.map((r) => ({ id: r.number, title: r.title, a: r.side, b: r.otherParty, data: r.data, needed: r.needed, provided: r.provided, status: r.status, owner: r.owner, neededSub: r.neededSub }))).toEqual(
-      GOLDEN.interfaces.rows,
+      GOLDEN.interfaces.rows.map((r) => (r013[r.id] ? { ...r, neededSub: r013[r.id] } : r)),
     );
     expect(view.rows.map((r) => [r.statusClass, r.neededColor, r.canReceive, r.canFreeze])).toEqual([
       ['tag tag-neutral', OK, false, true], ['tag tag-outline', LO, true, false], ['tag tag-neutral', OK, false, false], ['tag tag-neutral', OK, false, true],
@@ -155,15 +158,17 @@ describe('Interface register view model', () => {
       ['En retard', '1', 'IF-07', LO],
       ['Bloquent la mise en service', '2', 'Cellule HT · zones anti-collision', LO],
     ]);
+    // R-013: "dans 20 j" / "dans 50 j" / "5 j de retard" from the business date (25 Sep 2026 on the demo data set; the prototype
+    // counted from ≈ 30 Sep: 15, 45 and 10 days).
     expect(view.rows.map((r) => [r.number, r.title, r.side, r.otherParty, r.data, r.needed, r.neededSub, r.provided, r.status, r.owner])).toEqual([
       ['IF-01', 'Quay 4 civil works — anchor loads & tolerances', 'Mécanique', 'Client · civil works', 'Foundation as-built + tolerances', '1 juil.', '', '12 sept.', 'Reçue', 'J. Wagner'],
-      ['IF-02', 'HV supply — port substation cell', 'Électricité', 'Client · port authority', 'Cell availability date + protection settings', '15 oct.', 'dans 15 j', '—', 'Ouverte', 'S. Haddad'],
+      ['IF-02', 'HV supply — port substation cell', 'Électricité', 'Client · port authority', 'Cell availability date + protection settings', '15 oct.', 'dans 20 j', '—', 'Ouverte', 'S. Haddad'],
       ['IF-03', 'Terminal operating system — data exchange', 'Automatisme', 'Navis · third party', 'Interface spec (OPC UA tags)', '22 sept.', '', '22 sept.', 'Gelée', 'C. Morvan'],
       ['IF-04', 'Quay access windows — crane erection', 'Site', 'Client · terminal operations', 'Restricted access calendar', '1 oct.', '', '29 sept.', 'Reçue', 'L. Fabre'],
       // R-148 (NEW-D1-2): the other party is shown as typed, not half translated ("Tiers · other supplier").
-      ['IF-05', 'Neighbouring cranes — anti-collision zones', 'Automatisme', 'Third party · other supplier', 'Crane envelope & positioning protocol', '15 nov.', 'dans 45 j', '—', 'Ouverte', 'C. Morvan'],
+      ['IF-05', 'Neighbouring cranes — anti-collision zones', 'Automatisme', 'Third party · other supplier', 'Crane envelope & positioning protocol', '15 nov.', 'dans 50 j', '—', 'Ouverte', 'C. Morvan'],
       ['IF-06', 'Environmental permit — night works', 'Process', 'DREAL · authority', 'Noise limits & allowed hours', '12 mars', '', '12 mars', 'Gelée', 'R. Aubert'],
-      ['IF-07', 'Fibre & network — port backbone', 'Automatisme', 'Client · IT', 'Fibre route & VLAN plan', '20 sept.', '10 j de retard', '—', 'En retard', 'S. Haddad'],
+      ['IF-07', 'Fibre & network — port backbone', 'Automatisme', 'Client · IT', 'Fibre route & VLAN plan', '20 sept.', '5 j de retard', '—', 'En retard', 'S. Haddad'],
     ]);
   });
 
@@ -171,11 +176,11 @@ describe('Interface register view model', () => {
     const { d } = await ifc('en');
     expect(d.blockers).toEqual([{ number: 'IF-02', label: 'HV cell' }, { number: 'IF-05', label: 'anti-collision zones' }]);
     const received = d.interfaces.map((r) => (r.number === 'IF-02' ? { ...r, status: 'received' as const, statusLabel: 'Received' } : r));
-    const en = interfacesView(received, d.blockers, makeT('en'), 'en').kpis[3];
-    const fr = interfacesView(received, d.blockers, makeT('fr'), 'fr').kpis[3];
+    const en = interfacesView(received, d.blockers, makeT('en'), 'en', DEMO_TODAY_ISO).kpis[3];
+    const fr = interfacesView(received, d.blockers, makeT('fr'), 'fr', DEMO_TODAY_ISO).kpis[3];
     expect([en.value, en.sub, en.color, fr.sub]).toEqual(['1', 'anti-collision zones', LO, 'zones anti-collision']);
     const none = received.map((r) => (r.number === 'IF-05' ? { ...r, status: 'frozen' as const, statusLabel: 'Frozen' } : r));
-    expect(interfacesView(none, d.blockers, makeT('en'), 'en').kpis[3]).toMatchObject({ value: '0', sub: '—', color: OK });
+    expect(interfacesView(none, d.blockers, makeT('en'), 'en', DEMO_TODAY_ISO).kpis[3]).toMatchObject({ value: '0', sub: '—', color: OK });
   });
 
   it('project without interfaces: zero KPIs, "—" subs, "No interface registered"', async () => {
@@ -189,7 +194,7 @@ describe('Interface register view model', () => {
 
   it('static render: row actions for editors only, with the item named for screen readers', async () => {
     const { t, view } = await ifc('fr');
-    const edit = html(InterfacesBody({ code: 'HLT-026', view, canEdit: true, receivedDefault: '30 sept. 2026', t }), 'fr');
+    const edit = html(InterfacesBody({ code: 'HLT-026', view, canEdit: true, receivedDefault: '25 sept. 2026', t }), 'fr');
     for (const s of [
       'Registre des interfaces', 'Une donnée en retard du client ou d’un tiers coûte des jours de planning · gardez-en la trace ici', 'Côté Keystone', 'Autre partie',
       'Donnée attendue', 'Requis pour le', 'Fournie le', 'Statut', 'Responsable', 'aria-label="Marquer reçu · IF-07"', 'aria-label="Geler · IF-01"',
@@ -201,10 +206,10 @@ describe('Interface register view model', () => {
     expect(edit).not.toContain('Reçu le');
     expect(edit.match(/>Geler</g)?.length).toBe(2);
     expect(edit.match(/class="tag tag-accent [^"]*">En retard</g)?.length).toBe(1);
-    const ro = html(InterfacesBody({ code: 'HLT-026', view, canEdit: false, receivedDefault: '30 sept. 2026', t }), 'fr');
+    const ro = html(InterfacesBody({ code: 'HLT-026', view, canEdit: false, receivedDefault: '25 sept. 2026', t }), 'fr');
     expect(ro).not.toContain('Marquer reçu');
     expect(ro).not.toContain('>Geler<');
-    expect(ro).toContain('10 j de retard');
+    expect(ro).toContain('5 j de retard'); // R-013: from 25 Sep (the prototype's 10 days from ≈ 30 Sep)
   });
 
   it('"New interface" form: prototype fields, Process first, submit "Enregistrer" (verb, not the noun "Registre")', async () => {

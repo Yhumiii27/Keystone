@@ -40,8 +40,12 @@ const as = (role: string, lang = 'en', project?: string) => {
 // Children passed as the third argument (react/no-children-prop); the provider's props type requires them.
 const Provider = I18nProvider as ComponentType<{ lang: 'en' | 'fr'; children?: ReactNode }>;
 const html = (body: ReactElement, lang: 'en' | 'fr' = 'en') => renderToStaticMarkup(createElement(Provider, { lang }, body));
-const resources = async () => parts(await ResourcesPage());
-const presources = async (code: string) => parts(await ProjectResourcesPage({ params: Promise.resolve({ code }) }));
+const resources = async (sp: Record<string, string> = {}) => parts(await ResourcesPage({ searchParams: Promise.resolve(sp) }));
+const presources = async (code: string, sp: Record<string, string> = {}) => parts(await ProjectResourcesPage({ params: Promise.resolve({ code }), searchParams: Promise.resolve(sp) }));
+// R-085 (R-7 a): the screens show 8 weeks from the Monday of the business date's week (21 Sep 2026 on the demo date). The
+// prototype's window — the seeded allocation weeks, 28 Sep – 16 Nov 2026 — is `?week=2026-09-28`: the tests that compare
+// with the prototype's values pass it explicitly.
+const PROTO = { week: '2026-09-28' };
 const whatif = async (sp: Record<string, string> = {}) => parts(await WhatIfPage({ searchParams: Promise.resolve(sp) }));
 
 beforeAll(async () => {
@@ -51,7 +55,7 @@ beforeEach(() => as('director'));
 
 describe('Resources page', () => {
   it('director: pool of 8, ROLES bars, open requests across projects, Request resource primary', async () => {
-    const { header, body } = await resources();
+    const { header, body } = await resources(PROTO);
     expect(body.type).toBe(ResourcesView);
     const v = body.props.view!;
     expect(v.people.map((p) => p.name)).toEqual([
@@ -96,9 +100,11 @@ describe('Resources page', () => {
   });
 
   it('renders the heatmap, legend, capacity bars and suggestions (EN)', async () => {
-    const out = html((await resources()).body);
+    const out = html((await resources(PROTO)).body);
     for (const s of [
-      'Allocation — next 8 weeks', '% of available hours per person', 'Under', 'Over', 'Person', 'Avg', 'Sep 28', 'Nov 16', 'Open their work',
+      // R-085: the prototype's window is not the current one — "8 weeks" and the window navigation.
+      'Allocation — 8 weeks', 'Sep 28 – Nov 16, 2026', 'href="/resources?week=2026-10-05"',
+      '% of available hours per person', 'Under', 'Over', 'Person', 'Avg', 'Sep 28', 'Nov 16', 'Open their work',
       'href="/my/tasks?person=Julien%20Wagner"', '--cell-bg:var(--color-accent-400);--cell-fg:var(--color-bg)', '>130<', '>101%<',
       'Capacity vs demand', 'Hours by role, next 8 weeks', 'Tick marks available capacity', '1110 / 960 h', 'Suggested rebalancing', '>Apply<',
       // R-3 / S-7: the suggestions are the portfolio's what-if levers (the prototype's three static sentences are gone).
@@ -119,15 +125,63 @@ describe('Resources page', () => {
   });
 });
 
+describe('R-085 (R-7 a): load window of Resources and Project resources', () => {
+  it('default: 8 weeks from the Monday of the business date week (21 Sep 2026), zero load where nothing is allocated', async () => {
+    const v = (await resources()).body.props.view!;
+    expect(v.weeks).toEqual(['Sep 21', 'Sep 28', 'Oct 5', 'Oct 12', 'Oct 19', 'Oct 26', 'Nov 2', 'Nov 9']);
+    // The seeded allocations start on 28 Sep: the week of 21 Sep is empty; 16 Nov is one week further (Following week).
+    expect(v.people.find((p) => p.name === 'Julien Wagner')!.cells.map((c) => c.v)).toEqual([0, 90, 100, 130, 125, 110, 100, 80]);
+    // Team utilisation is the mean over the window: 75 % (83 % on the prototype's 28 Sep – 16 Nov); the rest is unchanged.
+    expect(v.kpis.map((k) => [k.value, k.sub])).toEqual([
+      ['75%', 'Target 85–95%'], ['3 people', 'Peak weeks 42–44'], ['280 h', 'Mostly engineering'], ['€2.51M', '70% of labor budget · All zones'], ['4', 'Across all projects'],
+    ]);
+  });
+
+  it('renders the navigation: Current week is the bare screen, Previous / Following week slide one week', async () => {
+    const out = html((await resources()).body);
+    for (const s of [
+      'Allocation — next 8 weeks', 'aria-label="Weeks shown"', 'href="/resources?week=2026-09-14"', 'aria-current="page" href="/resources"',
+      'href="/resources?week=2026-09-28"', 'Sep 21 – Nov 9, 2026', '>Sep 21<', '>Nov 9<',
+    ])
+      expect(out).toContain(s);
+    expect(out).not.toContain('>Nov 16<');
+    as('director', 'fr');
+    const fr = html((await resources()).body, 'fr');
+    for (const s of ['Semaine précédente', 'Semaine en cours', 'Semaine suivante', '21 sept. – 9 nov. 2026', 'Affectation — 8 prochaines semaines']) expect(fr).toContain(s);
+    as('director', 'fr');
+    expect(html((await resources(PROTO)).body, 'fr')).toContain('Affectation — 8 semaines');
+  });
+
+  it('?week= is validated on the server: read as its Monday, malformed or out-of-bounds = the current window', async () => {
+    const weeks = async (sp: Record<string, string>) => (await resources(sp)).body.props.view!.weeks;
+    expect((await weeks({ week: '2026-10-01' }))[0]).toBe('Sep 28');
+    for (const bad of ['2026-02-30', 'next', '2031-01-06', '<script>']) expect((await weeks({ week: bad }))[0]).toBe('Sep 21');
+    // A window with no allocation at all: every load is 0 (no seeded week is invented).
+    const far = (await resources({ week: '2027-03-01' })).body.props.view!;
+    expect(far.weeks).toEqual(['Mar 1', 'Mar 8', 'Mar 15', 'Mar 22', 'Mar 29', 'Apr 5', 'Apr 12', 'Apr 19']);
+    expect(far.people.every((p) => p.cells.every((c) => c.v === 0))).toBe(true);
+  }, 30_000);
+
+  it('Project resources: the team over the window, links on the project screen', async () => {
+    const def = (await presources('HLT-026')).body;
+    expect(def.props.view!.weeks[0]).toBe('Sep 21');
+    expect(def.props.view!.kpis[2].sub).toBe('Next 8 weeks, by department');
+    const out = html(def);
+    expect(out).toContain('href="/projects/HLT-026/resources?week=2026-09-28"');
+    expect(out).toContain('aria-current="page" href="/projects/HLT-026/resources"');
+    expect((await presources('HLT-026', { week: '2026-11-16' })).body.props.view!.weeks).toEqual(['Nov 16', 'Nov 23', 'Nov 30', 'Dec 7', 'Dec 14', 'Dec 21', 'Dec 28', 'Jan 4']);
+  });
+});
+
 describe('Project resources page', () => {
   it('HLT-026 (director): banner, team of 8, open requests 4, suggestions, primary for the project', async () => {
-    const { header, body } = await presources('HLT-026');
+    const { header, body } = await presources('HLT-026', PROTO);
     const v = body.props.view!;
     expect(body.props.projectName).toBe('#026 · Harbor Line Terminal Expansion');
     expect(v.kpis.map((k) => [k.label, k.value, k.sub])).toEqual([
       ['Project team load', '83%', '8 people assigned'],
       ['Over-allocated', '3 people', 'Peak weeks 42–44'],
-      ['Unmet demand', '0 h', 'Next 8 weeks, by department'],
+      ['Unmet demand', '0 h', '8 weeks, by department'], // R-085: not the current window
       ['Labor cost to date', '€1.42M', '77% of labor budget'],
       ['Open requests', '4', 'Awaiting department approval'],
     ]);
@@ -135,7 +189,9 @@ describe('Project resources page', () => {
     expect(v.suggestions!.map((g) => [g.leverCode, g.impact, g.canApply])).toEqual([
       ['extra_resource:A1250:steel-erection-crew', '+1 d · +€2k', true],
       ['overtime:A1250:steel-erection-crew', '+1 d · +€5k', true],
-      ['extra_resource:A1250:julien-wagner', '+€2k · load −40 h', true], // 44 h × (118 − 85) € = 1.5 k€ → +€2k
+      // 44 h × (118 − 85) € = 1.5 k€ → +€2k. R-085: the suggestions use the what-if horizon, the current window (21 Sep –
+      // 15 Nov, whatever `?week=`): all 44 h of the relief fall inside it (−40 h on the seeded 28 Sep – 22 Nov window).
+      ['extra_resource:A1250:julien-wagner', '+€2k · load −44 h', true],
     ]);
     const primary = header.props.primary as ReactElement<Props>;
     expect([primary.type, primary.props.projectCode]).toEqual([NewRequestButton, 'HLT-026']);
@@ -145,7 +201,7 @@ describe('Project resources page', () => {
   });
 
   it('NDC-031: PEOPLE order, derived department bars, no suggestions, no open request', async () => {
-    const v = (await presources('NDC-031')).body.props.view!;
+    const v = (await presources('NDC-031', PROTO)).body.props.view!;
     expect(v.people.map((p) => p.name)).toEqual(['Pauline Noguès', 'Léa Marchand', 'Damien Roux', 'Fabien Bertrand']);
     expect(v.roles.map((r) => [r.name, r.text])).toEqual([['MEP', '314 / 320 h'], ['Controls & planning', '717 / 960 h']]);
     expect(v.kpis.map((k) => k.value)).toEqual(['80%', '1 person', '0 h', '€340k', '0']);
@@ -153,7 +209,7 @@ describe('Project resources page', () => {
   });
 
   it('RCF-019: 3 h unmet demand (Site operations 323 / 320 h)', async () => {
-    const v = (await presources('RCF-019')).body.props.view!;
+    const v = (await presources('RCF-019', PROTO)).body.props.view!;
     expect(v.kpis[2].value).toBe('3 h');
     expect(v.roles[0]).toMatchObject({ name: 'Site operations', text: '323 / 320 h' });
   });
@@ -207,18 +263,20 @@ describe('What-if page', () => {
     const { header, body } = await whatif();
     expect(body.type).toBe(WhatIfBoard);
     const d = body.props.data!;
-    expect([d.projectCode, d.dataDate, d.weekStarts[0], d.weeks[0]]).toEqual(['HLT-026', '2026-09-25', '2026-09-28', 'Sep 28']);
+    // R-085 (R-7 a): the horizon starts on the Monday of the business date's week (was the seeded 28 Sep).
+    expect([d.projectCode, d.dataDate, d.weekStarts[0], d.weeks[0]]).toEqual(['HLT-026', '2026-09-25', '2026-09-21', 'Sep 21']);
     expect(d.plan).toEqual({ forecastFinish: '2027-01-14', floatDays: -27 });
     expect(d.baseline).toEqual({ code: 'BL1', finish: '2026-12-18' });
     expect(d.peak).toEqual({ pct: 130, person: 'Julien Wagner', weekStart: '2026-10-12' });
-    expect(d.overByWeek).toEqual([0, 1, 2, 3, 2, 0, 1, 0]);
+    expect(d.overByWeek).toEqual([0, 0, 1, 2, 3, 2, 0, 1]); // R-085: one week earlier (21 Sep has no allocation)
     expect(d.levers.map((l) => [l.code, l.from, l.to, l.helper, l.effect.daysGained, l.effect.costKeur])).toEqual([
       ['extra_resource:A1250:julien-wagner', 1, 2, { kind: 'external', name: 'Contract structural engineer' }, 0, 1.5],
       ['overtime:A1250:steel-erection-crew', 10, 12, null, 1, 4.5],
       ['extra_resource:A1250:steel-erection-crew', 6, 7, { kind: 'same', name: 'Steel erection crew' }, 1, 1.8],
     ]);
     // The current plan rescheduled on a copy: finish 18 Jan 2027, float −19 working days (S-1, S-8).
-    expect([d.current.finish, d.current.floatDays, d.current.peakPct, d.current.bars]).toEqual(['2027-01-18', -19, 130, [100, 110, 130, 125, 115, 100, 110, 100]]);
+    // R-085: the peak bars follow the horizon (21 Sep – 9 Nov): 0 for the week of 21 Sep, the week of 16 Nov (100) leaves it.
+    expect([d.current.finish, d.current.floatDays, d.current.peakPct, d.current.bars]).toEqual(['2027-01-18', -19, 130, [0, 100, 110, 130, 125, 115, 100, 110]]);
     expect(d.scenarios.map((s) => [s.name, s.priority, s.selected, Object.keys(s.levers).filter((k) => s.levers[k])])).toEqual([
       ['A', 'date', false, ['extra_resource:A1250:julien-wagner', 'overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew']],
       ['B', 'people', false, []],

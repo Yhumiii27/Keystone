@@ -59,8 +59,9 @@ describe('R-116 — Mark received: personas', () => {
 
   it('the PM records it; a second click on the stale row is refused', async () => {
     session.role = 'pm';
-    expect(await markInterfaceReceivedAction('HLT-026', 'IF-05', { received: '29 Sep 2026' })).toEqual({ ok: true });
-    expect(await ifc('IF-05')).toMatchObject({ status: 'received', providedOn: '2026-09-29' });
-    expect(await markInterfaceReceivedAction('HLT-026', 'IF-05', { received: '29 Sep 2026' })).toEqual({ error: 'This interface is no longer open' });
+    // R-013: a date on or before the business date (25 Sep 2026 on the demo data set; the prototype's today was 30 Sep).
+    expect(await markInterfaceReceivedAction('HLT-026', 'IF-05', { received: '24 Sep 2026' })).toEqual({ ok: true });
+    expect(await ifc('IF-05')).toMatchObject({ status: 'received', providedOn: '2026-09-24' });
+    expect(await markInterfaceReceivedAction('HLT-026', 'IF-05', { received: '24 Sep 2026' })).toEqual({ error: 'This interface is no longer open' });
   });
 });

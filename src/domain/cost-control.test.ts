@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import PROTO from '@/server/prototype/prototype-data.json';
 import GEN from '@/server/prototype/prototype-generated.json';
-import { isoOfDisplayDate, splitActual } from '@/server/db/codes';
+import { isoOfDemoDate, splitActual } from '@/server/db/codes';
 import {
   activityProgress, allocateChange, amendmentOutcome, amendmentSubject, budgetChangeRows, computeEvm, contingencyTile, daysBetween, drawTotals,
   isContractualChange, isDrawDecider, monthEndOf, monthIndexOf, openCommitmentKeur, pendingSubText, provisionOf, registerReconciliation, spanShare,
@@ -44,11 +44,11 @@ const hltActivities = (): EvmActivity[] =>
       const s = splitActual(a.s!);
       const f = splitActual(a.f!);
       return {
-        budget: a.b![0], actual: a.b![1], pct: a.pc!, start: isoOfDisplayDate(s.text), finish: isoOfDisplayDate(f.text),
+        budget: a.b![0], actual: a.b![1], pct: a.pc!, start: isoOfDemoDate(s.text), finish: isoOfDemoDate(f.text),
         started: s.actual || a.pc! > 0, finished: f.actual || a.pc! >= 100,
       };
     });
-const HLT_DRAWS = (P.CONTINGENCY['HLT-026'].draws as [string, number][]).map(([d, amount]) => ({ date: isoOfDisplayDate(d)!, amount }));
+const HLT_DRAWS = (P.CONTINGENCY['HLT-026'].draws as [string, number][]).map(([d, amount]) => ({ date: isoOfDemoDate(d)!, amount }));
 
 describe('earned value from Keystone data (R-073)', () => {
   it('HLT-026 at the data date: progress 62.6 % (was 64 %), EV = progress × BAC 3 006 (was 3 080), AC 3 312 + 48 drawn = 3 360 (unchanged)', () => {

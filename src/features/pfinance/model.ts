@@ -10,7 +10,6 @@ import {
 } from '@/domain/portfolio-finance';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
-import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
 import { lowPointSubText, pctOrDash } from '@/features/kpis/i18n';
 import { dataText } from '@/i18n/data-text';
 
@@ -249,6 +248,8 @@ export interface CashData {
   lowPoint?: { month: string; next: { project: string; label: string; progressMonth?: string } | null } | null;
   canSeeMargin: boolean;
   zoneSelected: boolean;
+  /** Business date (ISO, R-013): its year is the one the low-point month omits. */
+  today: string;
 }
 
 export interface CashRowView {
@@ -325,7 +326,7 @@ export function cashView(d: CashData, t: T, lang: Lang): CashView {
       { label: t('Outstanding receivables'), value: f(sum(rolled.map((x) => x.b.receivableKeur))), sub: t('Invoiced, not yet paid'), color: A300 },
       { label: t('Net cash · next 6 months'), value: f(netCash(d.forecast), true), sub: t('Billing plan minus forecast spend'), color: OK },
       // A-12: the low month and the payment it waits for are computed (the prototype printed "November — before M3 payment lands").
-      { label: t('Lowest cumulative point'), value: f(lowestCumulative(d.forecast), true), sub: lowPointSubText(d.lowPoint, t, lang, +DEFAULT_DATA_DATE.slice(0, 4)), color: LO },
+      { label: t('Lowest cumulative point'), value: f(lowestCumulative(d.forecast), true), sub: lowPointSubText(d.lowPoint, t, lang, +d.today.slice(0, 4)), color: LO },
     ],
     rows,
     bars: d.forecast.map((m, i) => ({

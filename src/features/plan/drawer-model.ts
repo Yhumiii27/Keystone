@@ -36,6 +36,8 @@ export interface DrawerInput {
   assignments: DrawerResourceInput[];
   /** To-dos of the project (linked by `act`). */
   todos: PlanTodo[];
+  /** Working-day offset of the business date (`workdayOffsetOf`, R-013): to-do due texts ("Overdue", "Today"). */
+  today: number;
   /** Resource requests of the project (linked by `act`). */
   requests: PlanRequest[];
   /** Department → head's full name (DEPTS). */
@@ -191,7 +193,7 @@ export function activityDrawerView(input: DrawerInput, baseT: T, lang: Lang): Dr
   const todos: DrawerTodo[] = aTodos.map((x) => ({
     id: x.id,
     title: dataText(x.title, lang),
-    meta: t(`${x.person.split(' ')[0]} · ${dueText(x.status, x.due)} · ${TODO_STATUS_LABEL[x.status]}`),
+    meta: t(`${x.person.split(' ')[0]} · ${dueText(x.status, x.due, input.today)} · ${TODO_STATUS_LABEL[x.status]}`),
     done: x.status === 'done',
     initials: initials(x.person),
     href: input.taskHref(x),

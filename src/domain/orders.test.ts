@@ -158,14 +158,14 @@ describe('purchase orders — prototype golden values (08 §2)', () => {
 
   it('My approvals items reproduce apprItems (PO-1082 for the director and the PM), decided inline', () => {
     const o = posOf('HLT-026').find((x) => x.number === 'PO-1082')!;
-    const items = poApprovalItems([{ number: o.number, supplier: o.supplier, valueEur: poValueEur(o), refs: o.lines.map((l) => l.ref), orderedOn: '2026-09-24', submittedBy: 'Fabien Bertrand' }], 'HLT-026', 'en', fmtDOfIso);
+    const items = poApprovalItems([{ number: o.number, supplier: o.supplier, valueEur: poValueEur(o), refs: o.lines.map((l) => l.ref), orderedOn: '2026-09-24', submittedBy: 'Fabien Bertrand' }], 'HLT-026', 'en', (iso) => fmtDOfIso(iso, 2026));
     expect(items).toEqual([
       {
         kind: 'po', id: 'PO-1082', title: 'Cotswold Fire Systems · €9k', sub: 'FD-DET-OPT', who: 'Fabien Bertrand', when: '24 Sep', whenIso: '2026-09-24',
         href: '/projects/HLT-026/orders?po=PO-1082', decision: { mode: 'purchase-order', projectCode: 'HLT-026', number: 'PO-1082' },
       },
     ]);
-    expect(poApprovalItems([{ number: 'PO-1100', supplier: 'ArcelorMittal', valueEur: 238080, refs: ['KS-PLT-S355'], orderedOn: null, submittedBy: null }], 'HLT-026', 'fr', fmtDOfIso)[0])
+    expect(poApprovalItems([{ number: 'PO-1100', supplier: 'ArcelorMittal', valueEur: 238080, refs: ['KS-PLT-S355'], orderedOn: null, submittedBy: null }], 'HLT-026', 'fr', (iso) => fmtDOfIso(iso, 2026))[0])
       .toMatchObject({ title: 'ArcelorMittal · 238 k€', when: '', whenIso: null, who: '' });
     expect(orderHref('NDC-031', 'PO-3120')).toBe('/projects/NDC-031/orders?po=PO-3120');
   });

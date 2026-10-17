@@ -9,6 +9,7 @@ import {
   contractSummary, invoiceRow, type ChangeRequestLike, type ClientDocCategory, type ClientTab, type ClosureMark, type DeliverableLike, type EvmLike,
   type Kpi, type ScheduleHeaderLike, type Tone,
 } from '@/domain/rexclient';
+import { yearOfIso } from '@/domain/clock';
 import { scheduleView, type GanttTask, type MilestoneInput, type ScheduleInput, type ScheduleMilestone } from '@/domain/schedule-gantt';
 import { slipText } from '@/features/schedule/i18n';
 import { dataText } from '@/i18n/data-text';
@@ -160,14 +161,14 @@ export interface DocCategoryView {
   latest: string;
 }
 
-/** Categories of the shared documents (R-138), translated: Keystone's vocabulary through t(), no typed text involved. */
-export const docCategoryViews = (cats: readonly ClientDocCategory[], t: T): DocCategoryView[] =>
+/** Categories of the shared documents (R-138), translated: Keystone's vocabulary through t(), no typed text involved; dates against the business year `year`. */
+export const docCategoryViews = (cats: readonly ClientDocCategory[], t: T, year: number): DocCategoryView[] =>
   cats.map((c) => ({
     key: c.key,
     name: t(c.category),
     files: t(c.fileCount === 1 ? '1 file' : `${c.fileCount} files`),
     description: c.types.map((x) => t(x)).join(' · '),
-    latest: `${t('Last issued')} ${t(fmtDOfIso(c.latestIssuedOn))}`,
+    latest: `${t('Last issued')} ${t(fmtDOfIso(c.latestIssuedOn, year))}`,
   }));
 
 /** Client portal "Schedule" tab (S-9a): the Schedule screen's Gantt (work packages without owners) and milestone list. */
@@ -205,14 +206,17 @@ export interface ClientScreenInput {
   schedule: ScheduleLike | null;
   /** The project has a billing plan, and it is an internal one (no client revenue). */
   billing: { internal: boolean } | null;
+  /** R-013: business date ("Raised today"). */
+  today: string;
 }
 
-export function clientScreenView({ code, tab, portal, schedule, billing }: ClientScreenInput, t: T, lang: Lang): ClientScreenView {
+export function clientScreenView({ code, tab, portal, schedule, billing, today }: ClientScreenInput, t: T, lang: Lang): ClientScreenView {
   // The DAL lists the change requests / deliverables waiting for the client and those it decided; the domain derives both lists.
   const all = [...portal.decisions, ...portal.decided];
   const crs: ChangeRequestLike[] = all.flatMap((x) => (x.changeRequest ? [x.changeRequest] : []));
   const dlv: DeliverableLike[] = all.flatMap((x) => (x.deliverable ? [x.deliverable] : []));
-  const dec = clientDecisions(crs, dlv, lang);
+  const year = yearOfIso(today);
+  const dec = clientDecisions(crs, dlv, lang, year);
   const evm: EvmLike | null = schedule && schedule.ev.length ? { pv: schedule.pv, ev: schedule.ev, bac: schedule.bac } : null;
   const kpis = clientKpis({ evm, schedule: schedule?.header ?? null, awaiting: dec.waiting.length, openIssues: openIssueCount(portal.issues) });
   return {
@@ -221,7 +225,7 @@ export function clientScreenView({ code, tab, portal, schedule, billing }: Clien
     kpis: kpiViews(kpis, t, lang),
     progress: schedule && evm ? clientProgress(schedule.header.chartMonths, evm).map((p) => ({ ...p, label: t(p.label) })) : null,
     milestones: schedule
-      ? clientMilestones(schedule.milestones, schedule.header.start).map((m) => ({ name: exactText(m.name, lang), baseDate: t(m.baseDate), fcDate: t(m.fcDate), status: t(m.status), tagClass: tag(m.tone) }))
+      ? clientMilestones(schedule.milestones, schedule.header.start, year).map((m) => ({ name: exactText(m.name, lang), baseDate: t(m.baseDate), fcDate: t(m.fcDate), status: t(m.status), tagClass: tag(m.tone) }))
       : [],
     decisions: dec.waiting.map((d) => ({
       kind: d.kind, kindLabel: t(d.kindLabel), id: d.id, when: t(d.when), title: exactText(d.title, lang), sub: t(d.sub), approveLabel: t(d.approveLabel),
@@ -230,7 +234,7 @@ export function clientScreenView({ code, tab, portal, schedule, billing }: Clien
     })),
     decided: dec.decided.map((d) => ({ id: d.id, title: exactText(d.title, lang), state: t(d.state), tagClass: tag(d.tone), when: t(d.when) })),
     invoices: portal.invoices.map((i) => {
-      const r = invoiceRow({ milestone: i.milestone, amountKeur: i.amountKeur, status: i.status, invoiceNumber: i.invoiceNumber, dueOn: i.dueOn }, lang, portal.currency);
+      const r = invoiceRow({ milestone: i.milestone, amountKeur: i.amountKeur, status: i.status, invoiceNumber: i.invoiceNumber, dueOn: i.dueOn }, lang, year, portal.currency);
       return {
         no: r.no, name: milestoneText(r.name, i.milestoneNumber, t, lang), amount: r.amount, status: t(r.status), tagClass: tag(r.tone),
         payment: r.payment.kind === 'due' ? dueText(r.payment.date, t, lang) : t(r.payment.text),
@@ -240,8 +244,8 @@ export function clientScreenView({ code, tab, portal, schedule, billing }: Clien
     summary: portal.contract ? contractSummary(portal.contract, lang).map((r) => ({ k: t(r.k), v: r.v })) : null,
     summaryEmpty: portal.contract ? null : t('No contract recorded for this project'),
     issues: portal.issues.map((i) => {
-      const r = issueRow({ number: i.number, title: i.title, raisedOn: i.raisedOn, status: i.status, response: i.response });
-      const when = i.answeredOn ? `${t(r.when)} · ${t('Answered')} ${t(fmtDOfIso(i.answeredOn))}` : t(r.when);
+      const r = issueRow({ number: i.number, title: i.title, raisedOn: i.raisedOn, status: i.status, response: i.response }, today);
+      const when = i.answeredOn ? `${t(r.when)} · ${t('Answered')} ${t(fmtDOfIso(i.answeredOn, year))}` : t(r.when);
       return { id: r.id, title: exactText(r.title, lang), when, status: t(r.status), tagClass: tag(r.tone), response: exactText(r.response, lang) };
     }),
     docs: portal.documents.map((d) => {
@@ -250,7 +254,7 @@ export function clientScreenView({ code, tab, portal, schedule, billing }: Clien
       const title = exactText(r.title, lang);
       return { id: r.id, title, typeLabel: t(r.typeLabel), date: t(r.date), rev: r.rev, status: t(r.status), tagClass: tag(r.tone), acknowledged: r.acknowledged, ackLabel: t(r.ackLabel) };
     }),
-    docCategories: docCategoryViews(portal.documentCategories, t),
+    docCategories: docCategoryViews(portal.documentCategories, t, year),
     docsLabels: { idHeader: t(DOCS_TAB.idHeader), sub: t(DOCS_TAB.sub), empty: t(DOCS_TAB.empty), byCategory: t('By category') },
   };
 }

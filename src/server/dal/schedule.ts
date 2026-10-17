@@ -18,6 +18,8 @@ import { and, asc, eq, inArray, isNotNull } from 'drizzle-orm';
 import type { WorkCalendar } from '@/domain/calendar';
 import { CpmCycleError, CpmInputError, schedule, type CpmResult } from '@/domain/cpm';
 import { DEFAULT_PROJECT_CALENDAR, RECALCULATION_MODE, projectDataDate } from '@/domain/ch4-defaults';
+import { businessToday } from '@/server/clock';
+import { yearOfIso } from '@/domain/clock';
 import type { MilestoneInput, PackageBarInput, ScheduleInput } from '@/domain/schedule-gantt';
 import {
   CRITICAL_FLOAT_DAYS, actualsFromProgress, activityDateText, barOf, critPackagesText, finishVariance, floatDaysText, floatShortText, longDateText,
@@ -65,8 +67,8 @@ async function getEvmSeries(code: string): Promise<{ bac: number; pv: number[]; 
 
 /** Everything the Schedule screen shows for `code`; null when the project has no schedule. */
 export async function getScheduleData(code: string): Promise<ScheduleData | null> {
-  const [control, bars, milestoneRows, evm, rollup] = await Promise.all([
-    getScheduleControl(code), getScheduleBars(code), getMilestones(code), getEvmSeries(code), getScheduleRollup(code),
+  const [control, bars, milestoneRows, evm, rollup, today] = await Promise.all([
+    getScheduleControl(code), getScheduleBars(code), getMilestones(code), getEvmSeries(code), getScheduleRollup(code), businessToday(),
   ]);
   if (!control || !evm) return null;
   return {
@@ -109,6 +111,7 @@ export async function getScheduleData(code: string): Promise<ScheduleData | null
     pv: evm.pv,
     ev: evm.ev,
     bac: evm.bac,
+    year: yearOfIso(today),
   };
 }
 
@@ -118,6 +121,8 @@ interface RollupState {
   projectId: string;
   code: string;
   dataDate: string;
+  /** Business year (R-013): the stored activity texts show their year outside it. */
+  year: number;
   startMonth: number;
   hasControls: boolean;
   calendar: WorkCalendar;
@@ -170,8 +175,11 @@ async function loadRollupState(q: Q, code: string): Promise<RollupState | null> 
       node,
       rollup: rollUpPackage(node.code, acts.filter((a) => a.wbsNodeId === node.id).map((a) => rollupActivity(a, node.code)), (c) => blMap.get(c)),
     }));
+  const today = await businessToday(q);
   return {
-    projectId: p.id, code, dataDate: projectDataDate(p), startMonth, hasControls: !!controls, calendar: projectCal,
+    // R-013: the stored activity texts show their year outside the business year.
+    year: yearOfIso(today),
+    projectId: p.id, code, dataDate: projectDataDate(p, today), startMonth, hasControls: !!controls, calendar: projectCal,
     calendarOf: (c) => (c && calendars[c]) || projectCal, baseline: blRow ?? null, baselineOf: (c) => blMap.get(c), nodes, acts, bars, miles, packages,
   };
 }
@@ -255,7 +263,7 @@ export async function refreshRollups(tx: Q, code: string): Promise<void> {
     const bl = s.baselineOf(a.code)?.finish ?? null;
     const next = {
       baselineFinishDate: bl,
-      baselineFinishText: bl ? activityDateText(bl) : '—',
+      baselineFinishText: bl ? activityDateText(bl, s.year) : '—',
       varianceDays: bl && a.finishDate ? finishVariance(s.calendarOf(a.calendarCode), bl, a.finishDate) : 0,
     };
     if (next.baselineFinishDate !== a.baselineFinishDate || next.baselineFinishText !== a.baselineFinishText || next.varianceDays !== a.varianceDays) {
@@ -278,8 +286,8 @@ export async function refreshRollups(tx: Q, code: string): Promise<void> {
     await tx
       .update(wbsNodes)
       .set({
-        startDate: projectStart, finishDate: projectFinish, startText: projectStart ? activityDateText(projectStart) : root.startText,
-        finishText: projectFinish ? activityDateText(projectFinish) : root.finishText, baselineFinishText: s.baseline ? activityDateText(s.baseline.finishDate) : '—',
+        startDate: projectStart, finishDate: projectFinish, startText: projectStart ? activityDateText(projectStart, s.year) : root.startText,
+        finishText: projectFinish ? activityDateText(projectFinish, s.year) : root.finishText, baselineFinishText: s.baseline ? activityDateText(s.baseline.finishDate, s.year) : '—',
         totalFloatDays: s.acts.length ? pFloat : root.totalFloatDays,
       })
       .where(eq(wbsNodes.id, root.id));
@@ -389,6 +397,7 @@ export async function rescheduleProject(code: string, actorName: string): Promis
   const driving = new Set(result.drivingLinks);
   const changed: string[] = [];
   const now = new Date();
+  const year = yearOfIso(await businessToday());
   await db.transaction(async (tx) => {
     changed.length = 0; // the transaction may run again after a concurrent write (R-010, src/server/db/transactions.ts)
     for (const a of progressed) {
@@ -404,7 +413,7 @@ export async function rescheduleProject(code: string, actorName: string): Promis
       await tx
         .update(activities)
         .set({
-          startDate: r.start, finishDate: r.finish, startText: activityDateText(r.start), finishText: activityDateText(r.finish), startActual: a.startActual,
+          startDate: r.start, finishDate: r.finish, startText: activityDateText(r.start, year), finishText: activityDateText(r.finish, year), startActual: a.startActual,
           finishActual: a.finishActual, earlyStartDate: r.earlyStart, earlyFinishDate: r.earlyFinish, lateStartDate: r.lateStart, lateFinishDate: r.lateFinish,
           totalFloatDays: r.totalFloat, freeFloatDays: r.freeFloat, critical, constraintViolated: violated, scheduledAt: now,
         })

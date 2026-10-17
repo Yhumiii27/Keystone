@@ -14,9 +14,11 @@ import 'server-only';
 // reserving project's PMs and deputies or the director; the override of another project's reservation by the director.
 import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import { movementValueEur, planStockMovement, planX3Import, type MovementPlan } from '@/domain/stock';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import {
-  STATUS_ISO, locationType, parisInstant, parisParts, stampText, stockMoveInstant, stockMovementType, stockOperation, stockSource,
+  locationType, parisInstant, parisParts, stampText, stockMoveInstant, stockMovementType, stockOperation, stockSource,
   type LocationType, type StockMovementType, type StockOperation, type StockSource,
 } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
@@ -256,7 +258,7 @@ export async function stockCostByWorkPackage(projectId: string, q?: Q): Promise<
 
 /**
  * Internal: one stock movement on a position, inside the caller's transaction (stock-line drawer, goods receipts).
- * Updates the quantities, flags the touched positions Local (last movement = the status date) and appends the
+ * Updates the quantities, flags the touched positions Local (last movement = the business date, R-013) and appends the
  * movement (pending push to X3).
  */
 export async function insertMovement(
@@ -268,7 +270,7 @@ export async function insertMovement(
   },
 ): Promise<void> {
   const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(stockMovements);
-  await tx.insert(stockMovements).values({ ...m, occurredAt: stockMoveInstant(n), pushedToX3At: null });
+  await tx.insert(stockMovements).values({ ...m, occurredAt: stockMoveInstant(n, await businessToday(tx)), pushedToX3At: null });
 }
 
 /** Internal: the position of a part at a location, created empty (Local) when missing. */
@@ -278,7 +280,7 @@ export async function ensurePosition(tx: Tx, partId: string, locationId: string)
   const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${stockPositions.position}), -1)::int` }).from(stockPositions);
   const [c] = await tx
     .insert(stockPositions)
-    .values({ partId, locationId, onHand: 0, reserved: 0, minQty: 0, source: 'local', lastMovementOn: STATUS_ISO, position: pos + 1 })
+    .values({ partId, locationId, onHand: 0, reserved: 0, minQty: 0, source: 'local', lastMovementOn: await businessToday(tx), position: pos + 1 })
     .returning();
   return c;
 }
@@ -300,6 +302,7 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
   if (!actorSees(actor, 'stock')) throw new Error('Stock is read-only for you');
   if (input.override === true && actor.role !== 'director') throw new Error(STOCK_OVERRIDE_REFUSED);
   const actorName = actor.name;
+  const today = await businessToday();
   const db = await getDb();
   return db.transaction(async (tx) => {
     // The line is locked for the transaction: two movements on it never read the same quantities.
@@ -358,7 +361,7 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
     const wbsCode = charged ? await workPackageCodeOf(tx, activity!.wbsNodeId) : null;
     const valueEur = charged ? movementValueEur(plan.qty, unitCostEur) : null;
     await tx.update(stockPositions)
-      .set({ onHand: plan.onHand, reserved: plan.reserved, reservedForProjectId, source: 'local', lastMovementOn: STATUS_ISO, updatedAt: new Date() })
+      .set({ onHand: plan.onHand, reserved: plan.reserved, reservedForProjectId, source: 'local', lastMovementOn: today, updatedAt: new Date() })
       .where(eq(stockPositions.id, s.id));
     let toLocationId: string | null = null;
     if (plan.transferTo) {
@@ -367,7 +370,7 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
       const carried = plan.transferReserved;
       await tx.update(stockPositions).set({
         onHand: dest.onHand + plan.qty, reserved: dest.reserved + carried, reservedForProjectId: carried ? s.reservedForProjectId : dest.reservedForProjectId,
-        source: 'local', lastMovementOn: STATUS_ISO, updatedAt: new Date(),
+        source: 'local', lastMovementOn: today, updatedAt: new Date(),
       }).where(eq(stockPositions.id, dest.id));
       toLocationId = t.id;
     }
@@ -403,8 +406,11 @@ export async function applyStockMovement(positionId: string, input: StockMovemen
 
 // ── Sage X3 (mock connector) ───────────────────────────────────────────────────────────────────────────
 
-/** Instant of the X3 snapshot the database was seeded with (STOCK0 imported at 07:15 on the status date). */
-export const X3_SNAPSHOT_AT = parisInstant(STATUS_ISO, X3_LAST_IMPORT);
+/**
+ * Instant of the X3 snapshot the database was seeded with (STOCK0 imported at 07:15 on the demo data set's date, 25 Sep
+ * 2026): a fixed seed instant, not the business clock (R-013) — the X3 simulation runs on the demo database only (R-034).
+ */
+export const X3_SNAPSHOT_AT = parisInstant(DEMO_TODAY_ISO, X3_LAST_IMPORT);
 
 // Stock positions as Sage X3 reports them: the X3 mock connector (src/server/integrations/x3), until the X3 extracts.
 

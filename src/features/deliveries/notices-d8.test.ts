@@ -160,8 +160,8 @@ describe('R-096 — "Declare the supplier NCR in Vigie" in the drawer', () => {
       type: 'NC', projet: 'HLT-026', article: line.ref, titre: `BL-2026-0533 · ${line.ref} · ${line.name}`, fournisseur: 'Brightline Electrics', commande: 'PO-1071',
       reception: 'BL-2026-0533', quantite: String(line.rejected), source: 'keystone',
     });
-    expect(deliveriesView('HLT-026', data, { status: null, receipt: 'BL-2026-0533' }, t, 'en').drawer!.ncrLinks).toEqual([]);
-    expect(deliveriesView('HLT-026', data, { status: null, receipt: 'BL-2026-0533' }, t, 'en', { vigieLinks: true }).drawer!.ncrLinks).toEqual([link]);
+    expect(deliveriesView('HLT-026', data, { status: null, receipt: 'BL-2026-0533' }, t, 'en', 2026).drawer!.ncrLinks).toEqual([]);
+    expect(deliveriesView('HLT-026', data, { status: null, receipt: 'BL-2026-0533' }, t, 'en', 2026, { vigieLinks: true }).drawer!.ncrLinks).toEqual([link]);
   });
 
   it('several rejected lines: one link each, suffixed "· <ref> × <qty>" (FR)', async () => {
@@ -175,7 +175,7 @@ describe('R-096 — "Declare the supplier NCR in Vigie" in the drawer', () => {
 
   it('the drawer renders the link, opening Vigie outside Keystone', async () => {
     const data = await getDeliveriesScreen('HLT-026');
-    const d = deliveriesView('HLT-026', data, { status: null, receipt: 'BL-2026-0533' }, makeT('fr'), 'fr', { vigieLinks: true }).drawer!;
+    const d = deliveriesView('HLT-026', data, { status: null, receipt: 'BL-2026-0533' }, makeT('fr'), 'fr', 2026, { vigieLinks: true }).drawer!;
     const html = renderToStaticMarkup(h(I18nProvider, { lang: 'fr', children: h(DeliveryDrawerBody, { code: 'HLT-026', d, canEdit: true, canQc: true, register: null, t: makeT('fr') }) }));
     expect(html).toContain('Déclarer la NC fournisseur dans Vigie');
     expect(html).toMatch(/href="http:\/\/localhost:3200\/signaler\?type=NC&amp;projet=HLT-026[^"]*" target="_blank" rel="noopener noreferrer"/);

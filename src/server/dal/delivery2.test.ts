@@ -163,8 +163,11 @@ describe('resources (06 §1, 05 §4)', () => {
       ['A', 'date', ['extra_resource:A1250:julien-wagner', 'overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew']],
       ['B', 'people', []],
     ]);
+    // R-085 (R-7 a): the horizon is the current load window, 21 Sep – 9 Nov 2026 on the demo date (was the seeded 28 Sep –
+    // 16 Nov): the week of 21 Sep has no allocation (0) and 16 Nov (0) leaves the horizon; levers and scenarios are unchanged.
+    expect(w.weeks.map((x) => x.start)).toEqual(['2026-09-21', '2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09']);
     expect([w.forecastFinish, w.floatDays, w.baselineFinish, w.peak, w.overByWeek]).toEqual([
-      '2027-01-14', -27, '2026-12-18', { pct: 130, person: 'Julien Wagner', weekStart: '2026-10-12' }, [0, 1, 2, 3, 2, 0, 1, 0],
+      '2027-01-14', -27, '2026-12-18', { pct: 130, person: 'Julien Wagner', weekStart: '2026-10-12' }, [0, 0, 1, 2, 3, 2, 0, 1],
     ]);
     expect(Math.max(...w.overByWeek)).toBe(3);
     // S-7: any project with a plan has a what-if (no lever on NDC-031); a project without activities has none.

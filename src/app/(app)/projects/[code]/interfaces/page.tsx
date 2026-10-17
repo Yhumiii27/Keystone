@@ -14,13 +14,14 @@ import { getInterfacesScreen } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
 import { projectLabelText } from '@/i18n/data-text';
-import { NOW_ISO, displayOfIso } from '@/server/db/codes';
+import { displayOfIso } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
 
 export default async function InterfacesPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const ctx = await getProjectContext(code, 'interfaces');
   const projectCode = ctx.project.code;
-  const [{ t, lang }, data, dataDate] = await Promise.all([getI18n(), getInterfacesScreen(projectCode), projectDataDateOf(projectCode)]);
+  const [{ t, lang }, data, dataDate, today] = await Promise.all([getI18n(), getInterfacesScreen(projectCode), projectDataDateOf(projectCode), businessToday()]);
   const canEdit = ctx.canEdit('interfaces');
 
   const primary =
@@ -36,8 +37,8 @@ export default async function InterfacesPage({ params }: { params: Promise<{ cod
           code={projectCode}
           view={interfacesView(data.interfaces, data.blockers, t, lang, dataDate)}
           canEdit={canEdit}
-          // Q-4 a (R-116): "Received on" proposes today (NOW_ISO until the real clock, R-013), in the viewer's language.
-          receivedDefault={t(displayOfIso(NOW_ISO))}
+          // Q-4 a (R-116): "Received on" proposes today — the business date (R-013) — in the viewer's language.
+          receivedDefault={t(displayOfIso(today))}
           t={t}
         />
       )}

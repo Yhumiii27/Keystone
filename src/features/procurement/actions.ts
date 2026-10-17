@@ -12,6 +12,7 @@ import {
 import {
   approveInvoicePayment, approveInvoiceReceivedPart, awardRfq, compareRfqQuotes, createRfq, getRfq, getSupplierInvoice, rejectSupplierInvoice, sendRfq,
 } from '@/server/dal/purchasing';
+import { businessToday } from '@/server/clock';
 import { getProject } from '@/server/dal/projects';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n, getLastProject } from '@/server/session';
@@ -50,7 +51,7 @@ const strings = (values: unknown): Record<string, string> =>
 export async function createRfqAction(values: Record<string, string>): Promise<FormDialogResult> {
   const who = await editor();
   if ('error' in who) return who;
-  const parsed = parseNewRfq(strings(values));
+  const parsed = parseNewRfq(strings(values), await businessToday());
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const project = await getProject(await getLastProject());
   let number: string;

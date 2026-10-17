@@ -13,17 +13,22 @@
 //     decisions and three actions, the texts taken from the transcript, and no invented due date for A. Girard.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { beforeAll, describe, expect, it } from 'vitest';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { makeT, type Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { addMeetingLine, analyseTranscript, applyTranscriptToMinutes, createMeeting, sendMinutes, toggleMeetingAction } from '@/server/dal/meetings';
 import { getMeetingsScreen } from '@/server/dal/meetings-screen';
+import { parseDateInput } from '@/domain/contract';
+import { monthIndexOfIso } from '@/server/db/codes';
 import type { MeetingFilter, MeetingsView } from '@/domain/meetings';
 import { dataText } from './i18n';
 import { meetingsHref, meetingsScreenView, type MeetingsScreenView } from './model';
 import { loadPrototype, plain } from './prototype-harness';
 
 const P = loadPrototype();
+/** The prototype's "now" (month index 8.97, just after 30 Sep 2026). */
+const PROTOTYPE_PG_NOW = 8.97;
 
 beforeAll(async () => {
   setDb(await openDatabase());
@@ -31,7 +36,7 @@ beforeAll(async () => {
 
 async function ours(code: string, lang: Lang, q: { view?: MeetingsView; filter?: MeetingFilter; meeting?: string | null } = {}) {
   const d = await getMeetingsScreen(code);
-  return meetingsScreenView({ code, meetings: d.meetings, questions: d.questions, query: { view: q.view ?? 'meetings', filter: q.filter ?? 'all', meeting: q.meeting ?? null } }, makeT(lang), lang);
+  return meetingsScreenView({ code, meetings: d.meetings, questions: d.questions, query: { view: q.view ?? 'meetings', filter: q.filter ?? 'all', meeting: q.meeting ?? null }, today: DEMO_TODAY_ISO }, makeT(lang), lang);
 }
 
 /** The prototype's values for a state, with the rebuild's deliberate differences applied (see header). */
@@ -201,17 +206,34 @@ describe('meetings screen — interactions played on both sides', () => {
   /**
    * S-10 brings the first minutes action without a due date ("—", A. Girard's): the rebuild keeps it Open, the prototype's
    * `mIdx('— 2026') < PG_NOW` made it Overdue (and counted it in the "{n} overdue" KPI).
+   * R-013: one business date (25 Sep 2026 on the demo data set), not the prototype's PG_NOW (8.97 ≈ 30 Sep): an open action due
+   * on 25–29 Sep (MTG-116's reopened "Laser survey…", due 29 Sep) is still Open, not Overdue (the tile turns neutral at 0), and
+   * "Meetings this week" (±0.25 month) counts around 25 Sep — the meetings created for 6 Oct fall outside it.
    */
   const fixNoDue = (exp: any, lang: Lang) => {
     const t = makeT(lang);
+    const notYetDue = (due: string) => {
+      const iso = parseDateInput(due, 2026);
+      return !!iso && iso >= DEMO_TODAY_ISO;
+    };
     let n = 0;
     for (const a of exp.actions)
-      if (a[2] === '—' && !a[7] && a[6] === t('Overdue')) {
+      if ((a[2] === '—' || notYetDue(a[2])) && !a[7] && a[6] === t('Overdue')) {
         a[3] = 'var(--color-neutral-400)';
         a[6] = t('Open');
         n++;
       }
-    if (n) exp.kpis[2][2] = t(`${parseInt(exp.kpis[2][2], 10) - n} overdue`);
+    if (n) {
+      const left = parseInt(exp.kpis[2][2], 10) - n;
+      exp.kpis[2][2] = t(`${left} overdue`);
+      if (!left) exp.kpis[2][3] = 'var(--color-text)';
+    }
+    const inWeek = (iso: string, now: number) => Math.abs(monthIndexOfIso(iso) - now) <= 0.25;
+    const now = monthIndexOfIso(DEMO_TODAY_ISO);
+    for (const c of exp.cards) {
+      const iso = parseDateInput(String(c[6]).split(' · ')[0], 2026);
+      if (iso && inWeek(iso, PROTOTYPE_PG_NOW) !== inWeek(iso, now)) exp.kpis[0][1] = String(+exp.kpis[0][1] + (inWeek(iso, now) ? 1 : -1));
+    }
   };
 
   it('tick an MTG-118 action and reopen an MTG-116 one (carried over into #24, 1 / 2 closed)', async () => {
@@ -224,9 +246,10 @@ describe('meetings screen — interactions played on both sides', () => {
   });
 
   it('notes added to MTG-119 (scheduled → notes in progress; a past due action is overdue)', async () => {
+    // R-013: due 24 Sep (was 25 Sep) — past on the business date of the demo data set (25 Sep 2026) as on the prototype's 30 Sep.
     await addMeetingLine('MTG-119', 0, { type: 'decision', text: 'Freeze the I/O list on rev D' }, 'Antoine Girard');
-    await addMeetingLine('MTG-119', 0, { type: 'action', text: 'Check the PLC table', owner: 'J. Wagner', due: '25 Sep' }, 'Antoine Girard');
-    set({ lines: { 'MTG-119': { 0: [['decision', 'Freeze the I/O list on rev D', '', ''], ['action', 'Check the PLC table', 'J. Wagner', '25 Sep']] } }, ov: { ...state.mtg.ov, 'MTG-119': { status: 'Notes in progress' } } });
+    await addMeetingLine('MTG-119', 0, { type: 'action', text: 'Check the PLC table', owner: 'J. Wagner', due: '24 Sep' }, 'Antoine Girard');
+    set({ lines: { 'MTG-119': { 0: [['decision', 'Freeze the I/O list on rev D', '', ''], ['action', 'Check the PLC table', 'J. Wagner', '24 Sep']] } }, ov: { ...state.mtg.ov, 'MTG-119': { status: 'Notes in progress' } } });
     await same('MTG-119');
     await same('MTG-119', 'fr');
   });
@@ -243,14 +266,15 @@ describe('meetings screen — interactions played on both sides', () => {
     set({ applied: { 'MTG-119': true }, lines: { ...state.mtg.lines, 'MTG-119': { ...state.mtg.lines['MTG-119'], 2: drafts } } });
     await same('MTG-119');
     await same('MTG-119', 'fr');
-  });
+    // ~4.3 s alone (analysis + two renders on both sides): the 5 s default timed out under the full suite's load.
+  }, 30_000);
 
-  it('minutes of MTG-118 sent: MIN-HLT-027 on 30 Sep, read receipts for every invitee but the organizer', async () => {
+  it('minutes of MTG-118 sent: MIN-HLT-027 on the business date (25 Sep), read receipts for every invitee but the organizer', async () => {
     const r = await sendMinutes('MTG-118', 'Romain Aubert');
     expect(r).toMatchObject({ minutesNumber: 'MIN-HLT-027', invited: 5 });
     // S-12 a (R-067): L. Fabre (internal, outside the resource pool) gets a task too — the prototype made 2.
     expect(r.tasks).toHaveLength(3);
-    set({ ov: { ...state.mtg.ov, 'MTG-118': { ...state.mtg.ov['MTG-118'], status: 'Minutes sent', doc: 'MIN-HLT-027', sent: '30 Sep', read: { 'L. Fabre': '', 'J. Wagner': '', 'H. Sauvage': '', 'T. Kerbrat': '' } } } });
+    set({ ov: { ...state.mtg.ov, 'MTG-118': { ...state.mtg.ov['MTG-118'], status: 'Minutes sent', doc: 'MIN-HLT-027', sent: '25 Sep' /* R-013: the business date, not the prototype's 30 Sep */, read: { 'L. Fabre': '', 'J. Wagner': '', 'H. Sauvage': '', 'T. Kerbrat': '' } } } });
     await same('MTG-118');
     await same('MTG-118', 'fr');
     // The action of J. Wagner now links to its task (S-12 a: the second task, after L. Fabre's).

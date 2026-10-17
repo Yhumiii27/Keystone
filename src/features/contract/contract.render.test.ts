@@ -37,7 +37,7 @@ beforeAll(async () => {
 function contract(lang: Lang, canEdit = true, canSetRate = false) {
   const t = makeT(lang);
   const forms = {
-    amendment: amendmentFormDef(t), bond: bondFormDef(t), milestone: milestoneFormDef(t, hlt.amendments, lang), sign: (doc: string | null) => signFormDef(t, doc), release: releaseFormDef(t),
+    amendment: amendmentFormDef(t), bond: bondFormDef(t), milestone: milestoneFormDef(t, hlt.amendments, lang), sign: (doc: string | null) => signFormDef(t, hlt.today, doc), release: releaseFormDef(t, hlt.today),
   };
   return html(h(ContractScreen, { view: contractView(hlt, t, lang), code: 'HLT-026', canEdit, canSetRate, context: '#026 · Harbor Line', forms, t }), lang);
 }

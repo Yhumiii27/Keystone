@@ -69,10 +69,11 @@ export function pctNum(v: string | number | null | undefined): number | null {
 const MON: Record<string, number> = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
 
 /**
- * ISO date of an EN date string as the prototype writes them: "25 Sep 2026", "25 Sep" (year 2026, the data set's year),
- * "Wed 23 Sep", "17 Aug A" (actual), "2026-09-25". null when it is not a date (the caller then keeps the text).
+ * ISO date of an EN date string as the prototype writes them: "25 Sep 2026", "25 Sep" (in `year`, the business date's year
+ * — R-013, `yearOfIso(ctx.today)`; the prototype's 2026), "Wed 23 Sep", "17 Aug A" (actual), "2026-09-25". null when it is
+ * not a date (the caller then keeps the text).
  */
-export function isoOf(v: string | null | undefined, year = 2026): string | null {
+export function isoOf(v: string | null | undefined, year: number): string | null {
   if (!v) return null;
   // " A" marks an actual date in the planning screens ("17 Aug A").
   const s = v.trim().replace(/\s+A$/, '');

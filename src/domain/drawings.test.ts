@@ -22,7 +22,7 @@ describe('drawings register (dwgKpis, dwgChips, dwgRows — 4371–4377)', () =>
     // instead of the prototype's constant "Superseded by rev 2"; the other tiles are the prototype's.
     expect(drawingKpis(ROWS, sync, '2026-09-25').map((k) => ({ label: k.label, value: k.value, sub: k.sub, color: k.lo ? 'var(--color-accent-300)' : 'var(--color-text)' })))
       .toEqual(G.kpis.map((k: any) => ({ ...k, value: String(k.value), sub: k.sub === 'Superseded by rev 2' ? 'Superseded · ECO-2026-012' : k.sub })));
-    expect(drawingKpis([], null).map((k) => k.value)).toEqual(['—', '0', '0', '0', '—']);
+    expect(drawingKpis([], null, '2026-09-25').map((k) => k.value)).toEqual(['—', '0', '0', '0', '—']);
     expect([vaultCountText(1248), vaultCountText(12), vaultCountText(1234567)]).toEqual(['1 248', '12', '1 234 567']);
   });
 

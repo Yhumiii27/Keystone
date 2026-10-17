@@ -5,7 +5,7 @@ import { parseDateInput } from './contract';
 import { siteConflicts, type ConflictFacts } from './site';
 import { CONTRACTOR_CREW, CREW_IS_PERSON, isKnownPersonName, parseRotationForm, parseSiteLine } from './site-sheet';
 
-const pd = (s: string) => parseDateInput(s);
+const pd = (s: string) => parseDateInput(s, 2026);
 
 describe('a contractor crew is not a known person (R-118)', () => {
   const known = ['Amélie Ollivier', 'A. Ollivier', 'Marion Kerviel', 'M. Kerviel'];

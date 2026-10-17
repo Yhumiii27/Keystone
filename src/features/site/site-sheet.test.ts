@@ -253,7 +253,11 @@ describe('R-118 · lines: next position, stale forms, kept lines', () => {
     const [removed] = (await listAudit({ projectCode: HLT, limit: 20 })).filter((a) => a.change === 'removed');
     expect([removed.who, removed.object, removed.before]).toEqual([
       'Marie Lefebvre', 'Prerequisite · Plan de prévention signé',
-      { title: 'Plan de prévention signé', activityCode: 'A1410', neededBy: '2026-10-28', status: 'pending', evidence: 'Envoyé 15 Oct', confirmedOn: null, signedOn: null, position: 6 },
+      // R-121: the removed line's J-15 alert and raised risk (none here) are part of what it was.
+      {
+        title: 'Plan de prévention signé', activityCode: 'A1410', neededBy: '2026-10-28', status: 'pending', evidence: 'Envoyé 15 Oct', confirmedOn: null, signedOn: null, position: 6,
+        alertedNeededBy: null, alertedAt: null, riskId: null,
+      },
     ]);
   });
 

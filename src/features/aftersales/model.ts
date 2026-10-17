@@ -140,7 +140,7 @@ export function fleetView(data: FleetScreenData, zone: ZoneCode | null, t: T, la
     };
   });
   return {
-    kpis: kpiViews(fleetKpis(data.machines), t, lang),
+    kpis: kpiViews(fleetKpis(data.machines, data.today), t, lang),
     zoneEmpty: fleetZoneEmpty(zone, rows.length) ? t(NO_MACHINE) : null,
     rows,
   };
@@ -241,7 +241,7 @@ export function savView(data: SavScreenData, view: SavView, zone: ZoneCode | nul
   return {
     view,
     seg: SAV_VIEWS.map((v) => ({ value: v, label: t(SAV_VIEW_LABEL[v]), href: savHref(v) })),
-    kpis: kpiViews(savKpis(data.claims, data.interventions, lang), t, lang),
+    kpis: kpiViews(savKpis(data.claims, data.interventions, lang, data.today), t, lang),
     zoneEmpty: savZoneEmpty(zone, listShown) ? t(data.machines.length ? SAV_ZONE_EMPTY[view] : NO_MACHINE) : null,
     claims:
       view === 'claims'

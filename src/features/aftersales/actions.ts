@@ -8,7 +8,9 @@
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { parseNewClaim, parseNewMachine } from '@/domain/aftersales';
+import { yearOfIso } from '@/domain/clock';
 import { parseClaimUpdate, parseDiagnosis, parseInterventionDone, parsePlanIntervention, parseRegisterMachines } from '@/domain/claims';
+import { businessToday } from '@/server/clock';
 import { claimFormOptions, machineTypeOptions } from '@/server/dal/aftersales';
 import {
   CLAIM_OWNERS, advanceClaim, completeIntervention, getClaim, interventionPartOptions, listInterventions, openClaim, planIntervention, updateClaim,
@@ -34,7 +36,7 @@ const refreshAll = () => revalidatePath('/', 'layout');
 export async function addMachineAction(values: Record<string, string>): Promise<FormDialogResult> {
   const [{ t }, access] = await Promise.all([getI18n(), getScreenAccess('fleet')]);
   if (!access.canEdit) return { error: messageText('The installed base is read-only for you', t) };
-  const parsed = parseNewMachine(strings(values), (await machineTypeOptions()).map((m) => m.code));
+  const parsed = parseNewMachine(strings(values), (await machineTypeOptions()).map((m) => m.code), yearOfIso(await businessToday()));
   if (!parsed.ok) return { error: messageText(parsed.error, t) };
   const v = parsed.value;
   try {
@@ -51,7 +53,7 @@ export async function addMachineAction(values: Record<string, string>): Promise<
 }
 
 /**
- * "New warranty claim" → "Open claim": WC-020, WC-021…, Open, reported on the prototype's "today" (30 Sep 2026), cost 0;
+ * "New warranty claim" → "Open claim": WC-020, WC-021…, Open, reported on the business date (R-013), cost 0;
  * toast "Warranty claim opened".
  */
 export async function openClaimAction(values: Record<string, string>): Promise<FormDialogResult> {
@@ -158,7 +160,7 @@ export async function planInterventionAction(claimNumber: string | null, values:
     if (claim.status === 'closed') return { error: messageText('This claim is closed', e.t) };
   }
   const machines = (await listMachineOptions()).map((m) => m.number);
-  const parsed = parsePlanIntervention(strings(values), { machines, claimMachine: claim?.machineNumber ?? null });
+  const parsed = parsePlanIntervention(strings(values), { machines, claimMachine: claim?.machineNumber ?? null, year: yearOfIso(await businessToday()) });
   if (!parsed.ok) return { error: messageText(parsed.error, e.t) };
   try {
     const number = await planIntervention({ ...parsed.value, claimNumber: claim?.number ?? null }, e.actor);
@@ -181,7 +183,7 @@ export async function completeInterventionAction(number: string, values: Record<
     refreshAll();
     return { error: messageText('This intervention is already done', e.t) };
   }
-  const parsed = parseInterventionDone(strings(values), await interventionPartOptions(iv.machineNumber));
+  const parsed = parseInterventionDone(strings(values), await interventionPartOptions(iv.machineNumber), await businessToday());
   if (!parsed.ok) return { error: messageText(parsed.error, e.t) };
   try {
     await completeIntervention(iv.number, parsed.value, e.actor);
@@ -207,7 +209,7 @@ export async function registerMachinesAction(values: Record<string, string>): Pr
   const [{ t }, access] = await Promise.all([getI18n(), getScreenAccess('fleet')]);
   if (!access.canEdit) return { error: messageText('The installed base is read-only for you', t) };
   const candidates = await listDeliveryCandidates();
-  const parsed = parseRegisterMachines(strings(values), candidates.map((c) => c.projectCode));
+  const parsed = parseRegisterMachines(strings(values), candidates.map((c) => c.projectCode), await businessToday());
   if (!parsed.ok) return { error: messageText(parsed.error, t) };
   const v = parsed.value;
   if (access.viewer.role === 'pm') {

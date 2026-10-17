@@ -3,12 +3,14 @@ import 'server-only';
 // as-maintained configuration; the configuration state against engineering changes (pending / retrofit / pinned) comes
 // from the ECO effectivity Vigie reports (Vigie ECO mirror, src/server/dal/eco.ts). Machine zone: the site's city
 // (cities → countries → zones), else the delivering project's zone when it has a site, else Europe & North America
-// (`machineZone` 4981). Time model: "Warranty ending < 90 days" and "ends in n d" use the prototype's month index
-// against PG_NOW (as the interfaces' "in n d"); the warranty status in force (R-145) compares ISO dates with NOW_ISO —
-// two clocks that agree on 30 Sep 2026 and move together with R-013.
+// (`machineZone` 4981). Time model (R-013, one business clock): "Warranty ending < 90 days" and "ends in n d" use the
+// prototype's month index of the business date (as the interfaces' "in n d"); the warranty status in force (R-145)
+// compares ISO dates with the same business date.
 import { asc, eq, inArray } from 'drizzle-orm';
+import { yearOfIso } from '@/domain/clock';
 import { addedWarrantyStatus, warrantyEnding, warrantyInForce } from '@/domain/aftersales';
 import { DEFAULT_WARRANTY_MONTHS, MAX_MACHINES_PER_DELIVERY, asBuiltConfiguration, isDeliveredStage, machineNames, warrantyMonthsOf } from '@/domain/claims';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { demoFloor } from '@/server/db/helpers';
 import {
@@ -105,13 +107,14 @@ async function configurations(): Promise<Map<string, MachineConfiguration>> {
 /** Machines in service (FLEET order, machines added in Keystone after), optionally in one zone. */
 export async function listMachines(opts: { zone?: ZoneCode | null } = {}): Promise<MachineRow[]> {
   const db = await getDb();
-  const [rows, revs, claims, types, zoneOf, cfg] = await Promise.all([
+  const [rows, revs, claims, types, zoneOf, cfg, today] = await Promise.all([
     db.select().from(machines).orderBy(asc(machines.position)),
     db.select().from(machinePartRevisions).orderBy(asc(machinePartRevisions.position)),
     db.select({ machineId: warrantyClaims.machineId, status: warrantyClaims.status, coverage: warrantyClaims.coverage, cost: warrantyClaims.costKeur }).from(warrantyClaims),
     db.select({ code: machineTypes.code, label: machineTypes.label }).from(machineTypes),
     zoneResolver(),
     configurations(),
+    businessToday(),
   ]);
   const typeLabel = new Map(types.map((t) => [t.code, t.label]));
   const empty: MachineConfiguration = { pending: 0, retrofit: 0, pinned: 0, firstEco: null, ecos: [] };
@@ -119,8 +122,8 @@ export async function listMachines(opts: { zone?: ZoneCode | null } = {}): Promi
     .map((m) => {
       // R-145 (NEW-D5-2 = a): the warranty in force today, computed on read (no job, no stored status change); the "Warranty
       // end" column keeps the contractual date, the ending alert counts from the end in force.
-      const w = warrantyInForce(m);
-      const ending = warrantyEnding(w.endOn);
+      const w = warrantyInForce(m, today);
+      const ending = warrantyEnding(w.endOn, today);
       const mine = claims.filter((c) => c.machineId === m.id);
       return {
         number: m.number, machineType: m.machineTypeCode, machineTypeLabel: typeLabel.get(m.machineTypeCode) ?? m.machineTypeCode, name: m.name, client: m.clientName,
@@ -212,6 +215,7 @@ export async function addMachine(input: NewMachineInput, actor: Actor): Promise<
   const warrantyEndOn = optionalDate(input.warrantyEndOn, 'warranty end');
   if (deliveredOn && warrantyEndOn && isIsoDate(deliveredOn) && warrantyEndOn < deliveredOn) throw new Error('Warranty end is before delivery');
   const db = await getDb();
+  const today = await businessToday();
   return db.transaction(async (tx) => {
     const typeCode = input.machineType.trim();
     const [mt] = await tx.select({ code: machineTypes.code }).from(machineTypes)
@@ -222,10 +226,10 @@ export async function addMachine(input: NewMachineInput, actor: Actor): Promise<
     const [c] = await tx.select({ id: clients.id }).from(clients).where(eq(clients.name, client));
     const [row] = await tx.insert(machines).values({
       number, machineTypeCode: mt.code, name, clientName: client, clientId: c?.id ?? null, siteText: site, projectCode: null, projectId: null, deliveredOn, warrantyEndOn,
-      warrantyStatus: addedWarrantyStatus(warrantyEndOn), position: existing.reduce((m, e) => Math.max(m, e.pos + 1), 0),
+      warrantyStatus: addedWarrantyStatus(warrantyEndOn, today), position: existing.reduce((m, e) => Math.max(m, e.pos + 1), 0),
     }).returning({ id: machines.id });
     await trace(tx, await whoIs(tx, actor), {
-      objectRef: number, change: `machine added · ${name} · ${client}${warrantyEndOn ? ` · warranty to ${fmtDOfIso(warrantyEndOn)}` : ''}`, area: 'Installed base', entityType: 'machine',
+      objectRef: number, change: `machine added · ${name} · ${client}${warrantyEndOn ? ` · warranty to ${fmtDOfIso(warrantyEndOn, yearOfIso(today))}` : ''}`, area: 'Installed base', entityType: 'machine',
       entityId: row.id, activity: { text: `Added ${number} ${name} to the installed base`, kind: 'change' },
     });
     return number;
@@ -331,6 +335,7 @@ export async function registerDeliveredMachines(projectCode: string, input: Regi
   if (!isIsoDate(input.deliveredOn) || !isIsoDate(input.warrantyEndOn)) throw new Error('Invalid date');
   if (input.warrantyEndOn <= input.deliveredOn) throw new Error('Warranty end is before delivery');
   const db = await getDb();
+  const today = await businessToday();
   return db.transaction(async (tx) => {
     const [p] = await tx.select({ id: projects.id, code: projects.code, pmPersonId: projects.pmPersonId, clientId: projects.clientId, mt: projects.machineTypeCode, name: projects.name })
       .from(projects).where(eq(projects.code, projectCode));
@@ -355,11 +360,11 @@ export async function registerDeliveredMachines(projectCode: string, input: Regi
       taken.push(number);
       const [row] = await tx.insert(machines).values({
         number, machineTypeCode: typeCode, name, clientName: client?.name ?? '—', clientId: p.clientId, siteText: site, projectCode: p.code, projectId: p.id,
-        deliveredOn: input.deliveredOn, warrantyEndOn: input.warrantyEndOn, warrantyStatus: addedWarrantyStatus(input.warrantyEndOn), position: next++,
+        deliveredOn: input.deliveredOn, warrantyEndOn: input.warrantyEndOn, warrantyStatus: addedWarrantyStatus(input.warrantyEndOn, today), position: next++,
       }).returning({ id: machines.id });
       await tx.insert(machinePartRevisions).values(config.map((c, position) => ({ machineId: row.id, partRef: c.ref, revision: c.revision, position })));
       await trace(tx, who, {
-        objectRef: number, change: `machine delivered · ${p.code} · ${name} · ${config.length} parts as built · warranty to ${fmtDOfIso(input.warrantyEndOn)}`, area: 'Installed base',
+        objectRef: number, change: `machine delivered · ${p.code} · ${name} · ${config.length} parts as built · warranty to ${fmtDOfIso(input.warrantyEndOn, yearOfIso(today))}`, area: 'Installed base',
         entityType: 'machine', entityId: row.id, projectId: p.id,
       });
       numbers.push(number);

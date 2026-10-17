@@ -7,10 +7,11 @@ import 'server-only';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { savBadge } from '@/domain/aftersales';
 import { claimSteps, statusAfterPlanning, type ClaimStep } from '@/domain/claims';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { demoFloor } from '@/server/db/helpers';
 import {
-  NOW_ISO, SEVERITY_TAG, claimCoverage, claimStatus, interventionStatus, interventionType, ncrSeverity, nextBusinessNumber,
+  SEVERITY_TAG, claimCoverage, claimStatus, interventionStatus, interventionType, ncrSeverity, nextBusinessNumber,
   type ClaimCoverage, type ClaimStatus, type InterventionStatus, type InterventionType, type NcrSeverity, type ZoneCode,
 } from '@/server/db/codes';
 import { interventions, machinePartRevisions, machines, parts, persons, warrantyClaims } from '@/server/db/schema';
@@ -169,16 +170,17 @@ export interface NewClaimInput {
 }
 
 /**
- * "New warranty claim" (AF.sav): Open, reported on the prototype's "today" (30 Sep 2026), cost 0, numbered WC-020,
- * WC-021…; the next step shows the description ("—" when none), as the prototype.
+ * "New warranty claim" (AF.sav): Open, reported on the business date (R-013; the prototype's "today" was 30 Sep 2026) unless
+ * `on` is given, cost 0, numbered WC-020, WC-021…; the next step shows the description ("—" when none), as the prototype.
  */
-export async function openClaim(input: NewClaimInput, actor: Actor, on: string = NOW_ISO): Promise<string> {
+export async function openClaim(input: NewClaimInput, actor: Actor, on?: string): Promise<string> {
   requireWorkspace('sav', actor, 'Warranty claims & interventions');
   const issue = requiredText(input.issue, 'Issue', 300);
   if (!ncrSeverity.isCode(input.severity)) throw new Error('Invalid severity');
   if (!claimCoverage.isCode(input.coverage)) throw new Error('Invalid coverage');
   const owner = requiredText(input.owner, 'Owner', 120);
   const description = optionalText(input.description, 'Description', 1000);
+  const reportedOn = on ?? (await businessToday());
   const db = await getDb();
   return db.transaction(async (tx) => {
     const [m] = await tx.select({ id: machines.id, name: machines.name }).from(machines).where(eq(machines.number, input.machineNumber.trim()));
@@ -187,7 +189,7 @@ export async function openClaim(input: NewClaimInput, actor: Actor, on: string =
     const number = nextBusinessNumber(existing.map((e) => e.n), 'WC-', 3, await demoFloor(tx, 19));
     const [o] = await tx.select({ id: persons.id }).from(persons).where(eq(persons.shortName, owner));
     const [row] = await tx.insert(warrantyClaims).values({
-      number, machineId: m.id, issue, description, severity: input.severity, reportedOn: on, status: 'open', coverage: input.coverage, costKeur: 0, ecoNumber: null,
+      number, machineId: m.id, issue, description, severity: input.severity, reportedOn, status: 'open', coverage: input.coverage, costKeur: 0, ecoNumber: null,
       ownerName: owner, ownerPersonId: o?.id ?? null, nextStep: description ?? '—', position: existing.reduce((x, e) => Math.max(x, e.pos + 1), 0),
     }).returning({ id: warrantyClaims.id });
     await trace(tx, await whoIs(tx, actor), {
@@ -271,7 +273,7 @@ export async function updateClaim(number: string, input: ClaimUpdateInput, actor
  */
 export async function advanceClaim(number: string, step: ClaimStep, actor: Actor, opts: { diagnosis?: string | null; expected?: ClaimStatus; on?: string } = {}): Promise<ClaimStatus> {
   requireWorkspace('sav', actor, 'Warranty claims & interventions');
-  const on = opts.on ?? NOW_ISO;
+  const on = opts.on ?? (await businessToday());
   const db = await getDb();
   return db.transaction(async (tx) => {
     const c = await claimOf(tx, number);

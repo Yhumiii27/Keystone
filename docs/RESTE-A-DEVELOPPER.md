@@ -1,6 +1,6 @@
 # Keystone PM — reste à développer
 
-Inventaire initial du 2026-10-10, mis à jour le 2026-10-15 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
+Inventaire initial du 2026-10-10, mis à jour le 2026-10-17 (branche `main-2a2fep`). Il recense ce qu'il reste à développer, à brancher, à décider ou à mettre en production pour passer de la reconstruction du prototype à un outil utilisé en production par EPC2i. Il est tenu à jour à chaque développement : un point passe « en cours » quand une livraison le prend, « fait » quand elle est intégrée et vérifiée. Page interactive : https://claude.ai/artifact/NmH1NN5BjedvgHRjKaPpGc.
 
 **Méthode.** Onze relectures indépendantes ont croisé les 195 décisions produit (`docs/DECISIONS.md`), les écarts et questions ouvertes de `DELIVERY-1.md` à `DELIVERY-6.md`, `docs/BACKLOG.md`, les marqueurs du code (TODO, simulations, constantes du prototype), la spécification fonctionnelle (`docs/spec/`) et la préparation à la production. Chaque point a ensuite été vérifié dans le code, catégorie par catégorie : ce qui existait déjà a été écarté (153 candidats), les doublons fusionnés, puis un contrôle de complétude a ajouté ce qui manquait. Le détail, avec les preuves relevées dans le code pour chaque point, est dans `docs/reste-a-developper.json` ; ce document et la page sont produits par `npm run remaining:page`.
 
@@ -8,37 +8,37 @@ Inventaire initial du 2026-10-10, mis à jour le 2026-10-15 (branche `main-2a2fe
 
 ## 1. En bref
 
-**Avancement** : 99 faits, 27 en cours, 59 à faire, sur 185 points.
+**Avancement** : 103 faits, 26 en cours, 56 à faire, sur 185 points.
 
 | Priorité | Points restants | Effort estimé (jours) |
 |---|---:|---:|
-| Bloquant production | 17 | ≈ 136 |
-| Prochaine étape | 25 | ≈ 193 |
+| Bloquant production | 16 | ≈ 106 |
+| Prochaine étape | 23 | ≈ 188 |
 | À décider | 26 | ≈ 243 |
-| Plus tard | 18 | ≈ 60 |
-| **Total** | **86** | **≈ 632** |
+| Plus tard | 17 | ≈ 56 |
+| **Total** | **82** | **≈ 593** |
 
 L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il ne compte ni l'attente des décisions et des données, ni les développements à faire côté Vigie, Cursus, Codex ou Sage X3, ni la recette.
 
 | Statut (points restants) | Points |
 |---|---:|
-| Non commencé | 33 |
-| Partiel | 13 |
+| Non commencé | 31 |
+| Partiel | 11 |
 | Attend le responsable produit | 28 |
 | Attend un système externe | 12 |
 
 | Domaine | Bloquant production | Prochaine étape | À décider | Plus tard | Restants | Faits |
 |---|---:|---:|---:|---:|---:|---:|
-| Plateforme et mise en production | 8 | 6 | 0 | 2 | 16 | 9 |
+| Plateforme et mise en production | 7 | 5 | 0 | 2 | 14 | 11 |
 | Authentification, utilisateurs et droits | 1 | 0 | 2 | 1 | 4 | 12 |
 | Intégrations avec les autres systèmes | 5 | 7 | 1 | 4 | 17 | 3 |
 | Projets, cycle de vie et modèles par type de machine | 0 | 1 | 3 | 1 | 5 | 3 |
 | Planning | 1 | 0 | 3 | 1 | 5 | 3 |
 | Coûts, contrat et finance | 0 | 2 | 2 | 0 | 4 | 12 |
-| Ressources et RH | 0 | 3 | 1 | 1 | 5 | 4 |
+| Ressources et RH | 0 | 2 | 1 | 1 | 4 | 5 |
 | Achats et stock | 2 | 1 | 2 | 0 | 5 | 4 |
 | Ingénierie et PLM | 0 | 1 | 1 | 0 | 2 | 9 |
-| Qualité, chantier et mise en service | 0 | 1 | 1 | 1 | 3 | 9 |
+| Qualité, chantier et mise en service | 0 | 1 | 1 | 0 | 2 | 10 |
 | Documents | 0 | 1 | 0 | 0 | 1 | 4 |
 | Portefeuille, pilotage et indicateurs | 0 | 0 | 0 | 0 | 0 | 8 |
 | Portail client | 0 | 0 | 1 | 2 | 3 | 3 |
@@ -51,7 +51,7 @@ L'effort est un ordre de grandeur (S = 1,5 j, M = 4 j, L = 12 j, XL = 30 j) : il
 
 Les points « Bloquant production » restants, par domaine. Sans eux, Keystone reste un démonstrateur mono-utilisateur sur des données de démonstration.
 
-- **Plateforme et mise en production** : R-003 Héberger une instance multi-utilisateur (bêta puis production) *(en cours, Livraison 8)* ; R-004 Mettre en place sauvegardes et restauration (RPO ≤ 15 min, RTO ≤ 4 h) *(en cours, Livraison 8)* ; R-010 Sécuriser les écritures concurrentes en multi-utilisateur *(en cours, Livraison 7)* ; R-012 Faire la reprise initiale des plannings et données existants ; R-013 Remplacer l’horloge figée au 25 sept. 2026 par l’horloge réelle ; R-014 Numéroter les registres projet par projet (Q-7) ; R-173 Mettre Keystone en conformité RGPD (données personnelles, conservation, sous-traitants) *(en cours, Livraison 8)* ; R-174 Faire auditer la sécurité avant production (test d'intrusion, veille des dépendances) *(en cours, Livraison 8)*.
+- **Plateforme et mise en production** : R-003 Héberger une instance multi-utilisateur (bêta puis production) *(en cours, Livraison 8)* ; R-004 Mettre en place sauvegardes et restauration (RPO ≤ 15 min, RTO ≤ 4 h) *(en cours, Livraison 8)* ; R-010 Sécuriser les écritures concurrentes en multi-utilisateur *(en cours, Livraison 7)* ; R-012 Faire la reprise initiale des plannings et données existants ; R-014 Numéroter les registres projet par projet (Q-7) ; R-173 Mettre Keystone en conformité RGPD (données personnelles, conservation, sous-traitants) *(en cours, Livraison 8)* ; R-174 Faire auditer la sécurité avant production (test d'intrusion, veille des dépendances) *(en cours, Livraison 8)*.
 - **Authentification, utilisateurs et droits** : R-044 Créer le rôle Finance (contrat, facturation, grille de taux) *(en cours, Livraison 8)*.
 - **Intégrations avec les autres systèmes** : R-022 Réconcilier les codes projet (#000, XXX000, Cursus, Vigie) dans la fiche projet ; R-024 Faire construire le module ECO de Vigie avec les adresses proposées *(en cours, Livraison 8)* ; R-027 Importer l’annuaire du personnel de Cursus (matricule ↔ personne) *(en cours, Livraison 8)* ; R-033 Construire le connecteur Codex (index, approbations, dépôts, liens profonds) *(en cours, Livraison 8)* ; R-034 Construire le connecteur Sage X3 (extractions quotidiennes et envois) *(en cours, Livraison 8)*.
 - **Planning** : R-060 Gérer la date de situation par projet et le gel hebdomadaire du vendredi.
@@ -119,11 +119,11 @@ Décisions à prendre et données à fournir avant de pouvoir développer. Les q
 
 ## 2. Liste détaillée par domaine
 
-### 2.1 Plateforme et mise en production (16 restants, 9 faits)
+### 2.1 Plateforme et mise en production (14 restants, 11 faits)
 
 **R-003 · Héberger une instance multi-utilisateur (bêta puis production)** — *Bloquant production · partiel · effort M* · **en cours (Livraison 8)**  
 La PR #1 (ouverte, non fusionnée) apporte un Dockerfile Coolify : un seul conteneur next start sur le port 3000, PGlite et fichiers sur un volume /data. Il reste à la rebaser sur la livraison 6, construire et tester l’image, ajouter NEXT_PUBLIC_CODEX_URL aux arguments de build, configurer TLS et domaine, et protéger l’accès tant que l’authentification manque. Ensuite viennent la préproduction et la production avec PostgreSQL et un worker ; leur cible (Azure, serveur interne ou cloud) reste à décider.  
-*Avancement : Livraison 8 : kit conteneur Compose pour Coolify et job CI d’image ; il remplace le Dockerfile de la PR #1 (fusionnée dans main). Reste à construire l’image sur main et à choisir l’hébergement (I-1a). · Attend : Relecture et fusion de la PR #1 après la livraison 6 ; choix de la cible de production avec l’IT et la DSI (I-1a « À discuter ») · Sources : I-1a, 00 §8.15, DECISIONS.md « À traiter en priorité », PR #1 claude/deploiement-coolify*
+*Avancement : Livraison 8 : kit conteneur Compose pour Coolify et job CI d’image, fusionnés dans main (PR #2) ; il remplace le Dockerfile de la PR #1. Reste à choisir l’hébergement (I-1a) et à déployer la bêta multi-utilisateur. · Attend : Relecture et fusion de la PR #1 après la livraison 6 ; choix de la cible de production avec l’IT et la DSI (I-1a « À discuter ») · Sources : I-1a, 00 §8.15, DECISIONS.md « À traiter en priorité », PR #1 claude/deploiement-coolify*
 
 **R-004 · Mettre en place sauvegardes et restauration (RPO ≤ 15 min, RTO ≤ 4 h)** — *Bloquant production · non commencé · effort M* · **en cours (Livraison 8)**  
 Sauvegarder la base en continu (restauration à un instant donné) ainsi que les fichiers stockés par Keystone, et écrire une procédure de restauration testée en moins de 4 h. Rien n’existe aujourd’hui : la base est un dossier PGlite local.  
@@ -137,10 +137,6 @@ Rendre sûres sous accès concurrent la numérotation métier (max+1 sur toute l
 S-9b demande d’importer une seule fois les plannings des projets en cours (MS Project / P6), et éventuellement des tables Excel/CSV, puis de tout planifier dans Keystone. Les importeurs MSPDI, XER et tables sont construits et testés mais désactivés par D-7b (« ne rien traiter pour le moment »). Il faut le feu vert et le périmètre, activer IMPORTS_ENABLED, ajouter le choix du projet dans un XER multi-projets, déplacer la replanification dans la transaction d’écriture et écrire la procédure de migration par projet.  
 *Attend : Arbitrage du responsable produit entre S-9b (import unique) et D-7b (« rien sur les imports pour le moment »), puis fichiers MS Project / P6 des projets actifs · Sources : S-9b, D-7b, DELIVERY-6.md §4 Interchange, §8 D-7b / S-9b, docs/delivery-6/notes-admin-settings.md §2.1, §4.5*
 
-**R-013 · Remplacer l’horloge figée au 25 sept. 2026 par l’horloge réelle** — *Bloquant production · partiel · effort XL*  
-Introduire une source de date unique, injectable dans les tests, à la place de STATUS_ISO, NOW_ISO, CODEX_TODAY_ISO, PG_NOW, STATUS_DATE et TODAY. Retards, échéances, horodatages des écritures, salutation et périodes des formulaires doivent suivre le temps réel, et les tests golden fixeront l’horloge. La date de situation par projet (projects.data_date, lue par projectDataDate()) existe déjà, mais rien ne l’écrit encore (S-4).  
-*Attend : Réponse du responsable produit à S-4 (DELIVERY-6 §8) : ce qui fait avancer la date de situation par projet (tâche du vendredi, chef de projet ou replanification) et ce que le gel enregistre · Sources : S-4, R-7, 00 §7.5, 01 OQ5, 04 Q11, 05 OQ6, DELIVERY-1.md §2, DELIVERY-6.md §3, §8 S-4*
-
 **R-014 · Numéroter les registres projet par projet (Q-7)** — *Bloquant production · non commencé · effort M*  
 Les registres projet (risques, demandes de modification, réunions, livrables, réserves, interfaces, leçons…) doivent être numérotés par projet, par exemple R-HLT-026-01 ou CR-HLT-026-03 ; commandes, réceptions, machines et réclamations gardent une numérotation commune. Il faut un service de numérotation (entité NumberSequence) et adapter liens profonds et recherche.  
 *Attend : Format du code projet à confirmer (NEW-SYS-1) · Sources : Q-7, 07 OQ22, 05 OQ15, 11 §3.12 NumberSequence, DELIVERY-2.md §6, DELIVERY-3.md §6*
@@ -152,10 +148,6 @@ Keystone stocke des données personnelles (absences dont « maladie » visibles 
 **R-174 · Faire auditer la sécurité avant production (test d'intrusion, veille des dépendances)** — *Bloquant production · non commencé · effort M* · **en cours (Livraison 8)**  
 Les seules revues de sécurité sont les revues internes des livraisons. Avant d'exposer une instance multi-utilisateur avec des données financières et client, il faut un test d'intrusion externe (droits par rôle et par projet, routes d'envoi de fichiers et d'import, Server Functions) et une veille automatique des vulnérabilités des dépendances (Next.js, pdfkit, exceljs, PGlite), avec une politique de mise à jour.  
 *Avancement : Livraison 8 : processus de sécurité documenté, audit des dépendances en CI ; Dependabot à activer par le propriétaire, test d’intrusion après l’hébergement. · Attend : Choix de l'hébergement (I-1a) et d'un prestataire d'audit · Sources : 00 §8.12, 00 §8.15, I-1a, DELIVERY-6.md §1 (revues adverses internes), §1.1*
-
-**R-001 · Fusionner la livraison 6 dans main** — *Prochaine étape · non commencé · effort S* · **en cours (Livraison 8)**  
-La branche main-2a2fep (livraisons 1–6) a 30 commits d’avance sur origin/main (95412b5), et aucune PR n’est ouverte pour elle. La fusion peut se faire en avance rapide et seule la migration 0006 est nouvelle (0005 est déjà sur main). Il faut ouvrir et relire la PR, relancer typecheck, lint, tests et build, rebaser ensuite la PR #1 (Dockerfile Coolify, partie de 95412b5), puis supprimer les 3 worktrees et branches worktree-agent-*.  
-*Avancement : PR #2 ouverte (main-2a2fep → main, livraisons 1 à 8) ; main (PR #1) fusionnée dans la branche et conflits résolus ; la fusion dans main attend l’accord du responsable produit. · Attend : Relecture et accord du responsable produit · Sources : CLAUDE.md, DELIVERY-6.md §1, docs/delivery-6/notes-planning.md §3*
 
 **R-005 · Déplacer le stockage des fichiers hors du disque local** — *Prochaine étape · partiel · effort M*  
 Pièces jointes, transcriptions, fichiers d’import et futures photos sont écrits sur le disque du serveur (<data dir>/files). Le volume persistant /data de la PR #1 suffit pour une instance unique. Pour plusieurs instances, ou chez un hébergeur sans volume, il faut un stockage objet (S3, Azure Blob) derrière la même API storeFile / streamStoredFile.  
@@ -208,6 +200,14 @@ Mettre en place des journaux structurés, un suivi des erreurs, un point de cont
 **~~R-011 · Démarrer la production sans données de démonstration~~** — *Bloquant production · non commencé · effort M* · **fait (Livraison 7)**  
 En production, Keystone ne doit afficher que ce qu’il a enregistré ou reçu de Codex, du PDM, de Vigie, de Cursus ou de Sage. Il faut un mode d’initialisation « production » qui ne charge que les référentiels (étapes, calendriers, listes des Paramètres, types de documents et de machine, utilisateurs), garder le jeu du prototype pour une base de démo séparée, et retirer les artefacts de démo du code (projet par défaut HLT-026, numérotations décalées).  
 *Sources : A-15, 10#13, 09#17, 05#11, #16, OQ15, DELIVERY-1.md §3, DELIVERY-3.md §3*
+
+**~~R-013 · Remplacer l’horloge figée au 25 sept. 2026 par l’horloge réelle~~** — *Bloquant production · partiel · effort XL* · **fait (Livraison 9)**  
+Introduire une source de date unique, injectable dans les tests, à la place de STATUS_ISO, NOW_ISO, CODEX_TODAY_ISO, PG_NOW, STATUS_DATE et TODAY. Retards, échéances, horodatages des écritures, salutation et périodes des formulaires doivent suivre le temps réel, et les tests golden fixeront l’horloge. La date de situation par projet (projects.data_date, lue par projectDataDate()) existe déjà, mais rien ne l’écrit encore (S-4).  
+*Avancement : Lot « horloge » (docs/delivery-9/notes-clock.md) : une seule date métier (src/domain/clock.ts, src/server/clock.ts) à la place des six dates figées ; réglage KEYSTONE_CLOCK ; date réelle sur une base de production, 25 sept. 2026 sur la base de démonstration ; années des dates saisies et affichées selon l’année en cours. La date de situation par projet reste à faire (R-060, S-4). · Attend : Réponse du responsable produit à S-4 (DELIVERY-6 §8) : ce qui fait avancer la date de situation par projet (tâche du vendredi, chef de projet ou replanification) et ce que le gel enregistre · Sources : S-4, R-7, 00 §7.5, 01 OQ5, 04 Q11, 05 OQ6, DELIVERY-1.md §2, DELIVERY-6.md §3, §8 S-4*
+
+**~~R-001 · Fusionner la livraison 6 dans main~~** — *Prochaine étape · non commencé · effort S* · **fait (Livraison 8)**  
+La branche main-2a2fep (livraisons 1–6) a 30 commits d’avance sur origin/main (95412b5), et aucune PR n’est ouverte pour elle. La fusion peut se faire en avance rapide et seule la migration 0006 est nouvelle (0005 est déjà sur main). Il faut ouvrir et relire la PR, relancer typecheck, lint, tests et build, rebaser ensuite la PR #1 (Dockerfile Coolify, partie de 95412b5), puis supprimer les 3 worktrees et branches worktree-agent-*.  
+*Avancement : PR #2 fusionnée dans main le 15 oct. 2026 par le responsable produit (livraisons 1 à 8, commit e302703) ; CI verte avant fusion (types, lint, tests, build, bout en bout, image conteneur) ; la PR #1 était déjà dans main ; worktrees et branches worktree-agent-\* supprimés. · Attend : Relecture et accord du responsable produit · Sources : CLAUDE.md, DELIVERY-6.md §1, docs/delivery-6/notes-planning.md §3*
 
 **~~R-016 · Mettre en place l’intégration continue et versionner les tests de bout en bout~~** — *Prochaine étape · partiel · effort M* · **fait (Livraison 7)**  
 Créer un pipeline CI (typecheck, lint, vitest, build) sur chaque PR, puis un pipeline de déploiement. Versionner les 14 scénarios Playwright et la matrice des routes (3 520 requêtes) de la livraison 6, exécutés hors du dépôt, et supprimer les worktrees d’agents qui obligent à passer --ignore-pattern au lint.  
@@ -503,7 +503,7 @@ EAC, VAC, CPI et TCPI doivent suivre les seuils de santé des Paramètres au lie
 Les catégories viennent déjà des Paramètres ; leur montant doit être libre avant BL1, puis ne changer que par une CR approuvée. Aujourd’hui il reste modifiable à tout moment.  
 *Avancement : Livraison 8 : montants des catégories de coûts figés après BL1, catégorie imputée à l’approbation. · Sources : C-3, S-3, 04 Q4, DELIVERY-1.md §7*
 
-### 2.7 Ressources et RH (5 restants, 4 faits)
+### 2.7 Ressources et RH (4 restants, 5 faits)
 
 **R-083 · Dater la grille de taux par rôle et unifier la valorisation des heures** — *Prochaine étape · partiel · effort M* · **en cours (Livraison 8)**  
 Grille de taux par rôle (taux de base × coefficients) avec date d’effet et historique, un seul taux par rôle (R-4b), chaque heure valorisée au taux en vigueur et chaque personne reliée à son rôle. Supprimer les sources concurrentes : taux par intitulé de poste pour la note de coût des tâches, 62 €/h fixe de l’écran Heures, 60 €/h du what-if, et la modification en place qui revalorise tout l’historique.  
@@ -513,10 +513,6 @@ Grille de taux par rôle (taux de base × coefficients) avec date d’effet et h
 Capacité = horaire contractuel de chacun (35 h par défaut, temps partiels respectés) − absences validées − fériés ; charge = affectations du planning et demandes approuvées ; même règle dans Ressources, Congés, what-if et Priorisation, le ratio par M€ ne servant qu’aux propositions sans planning. Aujourd’hui seul l’écran Congés déduit congés et fériés (sur 35 h fixes) ; les autres comptent 40 h fixes, lisent des pourcentages de charge semés et des capacités de service statiques, et Priorisation (pool × 40 h) diffère de Ressources (department_capacities).  
 *Attend : Absences Cursus (R-031) et source de l’horaire contractuel ; confirmation de la source de capacité (DELIVERY-6 §8 A-12) · Sources : R-1, L-5b, A-12, 06 OQ3, 03 OQ9, 11 §7 #16, DELIVERY-2.md §6, DELIVERY-3.md §5, DELIVERY-6.md §8 A-12*
 
-**R-085 · Afficher les plans de charge sur 8 semaines glissantes** — *Prochaine étape · non commencé · effort M*  
-Ressources, Congés et what-if doivent partir de la semaine en cours, avec boutons précédent et suivant. Aujourd’hui ils montrent toujours les 8 semaines semées (28 sept. – 16 nov. 2026).  
-*Attend : Horloge réelle (R-013) · Sources : R-7, S-4, S-7, 06 OQ15*
-
 **R-091 · Préciser les règles des scénarios what-if et des brouillons** — *À décider · attend le responsable produit · effort M*  
 À trancher : ignorer un levier déjà demandé depuis une suggestion ou un autre scénario, approbation formelle d’un scénario, scénarios basés sur une référence, horizon au-delà de 8 semaines ; pour les brouillons, visibilité par le CP, demandeur à l’envoi, envoi par les achats, filtre « Brouillons ».  
 *Attend : Réponses du responsable produit (DELIVERY-6 §8 S-7) · Sources : S-7, R-3, DELIVERY-6.md §8 S-7, docs/delivery-6/notes-whatif-kpis.md §5*
@@ -524,6 +520,10 @@ Ressources, Congés et what-if doivent partir de la semaine en cours, avec bouto
 **R-089 · Envoyer aux achats une tâche pour trouver l’intervenant externe** — *Plus tard · non commencé · effort M* · **en cours (Livraison 8)**  
 Après approbation d’une demande portant sur un profil sans personne nommée (intérim, sous-traitance), les achats reçoivent une tâche pour trouver l’intervenant ; la tâche passe ensuite à la personne retenue. Aujourd’hui la tâche est créée au nom du rôle contractuel, sans suite.  
 *Avancement : Livraison 8 : la tâche de recherche part aux achats (P-8b), « Nommer la personne » ; créer une nouvelle personne attend l’annuaire Cursus (R-027). · Sources : P-8b, 08 OQ20, DELIVERY-2.md §7*
+
+**~~R-085 · Afficher les plans de charge sur 8 semaines glissantes~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 9)**  
+Ressources, Congés et what-if doivent partir de la semaine en cours, avec boutons précédent et suivant. Aujourd’hui ils montrent toujours les 8 semaines semées (28 sept. – 16 nov. 2026).  
+*Avancement : Livraison 9, lot « load-window » (docs/delivery-9/notes-load-window.md) : Ressources, ressources du projet et Congés sur 8 semaines depuis la semaine en cours, boutons semaine précédente / suivante (±52 semaines) ; what-if sur la fenêtre en cours. Les autres lecteurs de charge suivront avec R-084. Réponses du 17 oct. 2026 : vues « Semaine » (congés jour par jour) et « 8 semaines » (pas d’une semaine ou de 8), navigation du what-if avec la période portée par toutes ses actions. · Attend : Horloge réelle (R-013) · Sources : R-7, S-4, S-7, 06 OQ15*
 
 **~~R-086 · Afficher le coût main-d’œuvre du portefeuille par zone sur Ressources~~** — *Plus tard · non commencé · effort S* · **fait (Livraison 8)**  
 La tuile « Coût main-d’œuvre à date » de l’écran Ressources global doit totaliser les heures valorisées de tous les projets de la zone affichée ; elle lit aujourd’hui la catégorie main-d’œuvre du dernier projet consulté.  
@@ -625,7 +625,7 @@ La mention « à garder pour le parc installé » ne doit concerner que les piè
 La nomenclature de HLT-026 compte peut-être deux fois la même grue. La réponse retenue (NEW-D4-5 c) demande de signaler le doublon possible jusqu’à la réponse du bureau d’études, ce qui n’est pas fait et peut l’être dès maintenant. Corriger ensuite les données ou la règle de valorisation selon la réponse.  
 *Avancement : Livraison 8 : doublon possible EQ-CRN-250T / ASM-RMG-250 signalé (NEW-D4-5 c). · Attend : Réponse du bureau d’études (même grue ou deux équipements) pour la correction définitive ; le signalement n’attend rien · Sources : NEW-D4-5, E-2, A-11, DELIVERY-4.md §3, §6, §8*
 
-### 2.10 Qualité, chantier et mise en service (3 restants, 9 faits)
+### 2.10 Qualité, chantier et mise en service (2 restants, 10 faits)
 
 **R-113 · Piloter les étapes de mise en service et le dossier de transfert** — *Prochaine étape · non commencé · effort L*  
 Rendre la grille modifiable : une étape (fin de montage, pré-mise en service, mise en service, SAT, transfert) ne se valide que si ses inspections obligatoires sont passées, sans réserve A ni interface bloquante, et c’est le CP ou le responsable mise en service qui la valide. Il faut aussi définir quelles inspections sont obligatoires par étape (les étapes ITP atelier/FAT/site/SAT ne correspondent pas aux étapes de mise en service), calculer les blocages au lieu du blockingRef semé, et créer la grille des nouveaux projets (l’assistant ne crée que le plan ITP). Aujourd’hui seule la date de la SAT est enregistrée.  
@@ -634,10 +634,6 @@ Rendre la grille modifiable : une étape (fin de montage, pré-mise en service, 
 **R-123 · Statuer sur le journal client retiré et la notion de « décision client »** — *À décider · attend le responsable produit · effort S*  
 La table client_communications et son DAL sont conservés mais inaccessibles : faut-il les supprimer par une nouvelle migration ? Une « décision client » est aujourd’hui toute décision d’une réunion externe, revues fournisseurs comprises : faut-il un indicateur « client présent » ?  
 *Attend : Réponse du responsable produit (DELIVERY-6 §8 D-5) · Sources : D-5, DELIVERY-6.md §3, §8 D-5, docs/delivery-6/notes-admin-settings.md §2.3, §4 points 1-2*
-
-**R-121 · Alerter le CP à J-15 sur un prérequis client non confirmé** — *Plus tard · partiel · effort M*  
-Un contrôle quotidien envoie une notification au CP et lui propose un risque pré-rempli à confirmer quand un prérequis client n’est pas confirmé à J-15. Aujourd’hui le retard n’est qu’un indicateur à l’écran.  
-*Attend : Notifications par événement (R-015) et tâches planifiées (R-006) · Sources : D-4, X-6a, 10 OQ6, DELIVERY-5.md §7*
 
 **~~R-112 · Saisir les résultats d’inspection ITP et ouvrir une NC Vigie en cas d’échec~~** — *Prochaine étape · non commencé · effort M* · **fait (Livraison 7)**  
 La qualité et le responsable ingénierie enregistrent le résultat (conforme, non conforme) et, pour un point témoin, le représentant client présent (Q-6a). Un résultat non conforme ouvre le formulaire NC de Vigie pré-rempli (projet, inspection, système, article) et le numéro Vigie s’affiche sur l’inspection à la synchro (Q-6b). Aujourd’hui les résultats sont en lecture seule.  
@@ -670,6 +666,10 @@ Sans aucun verdict reçu (par exemple un projet sans chantier Cursus), la condit
 **~~R-117 · Fusionner les réserves ITP et chantier en une liste unique par projet~~** — *Plus tard · non commencé · effort M* · **fait (Livraison 8)**  
 Une seule liste de réserves par projet, chaque réserve portant son origine (inspection ou chantier), sa catégorie A/B/C, sa partie responsable, sa NC ou inspection d’origine en option et un numéro unique. Aujourd’hui une même table porte deux registres numérotés séparément : les réserves chantier sont en lecture seule (ni ajout ni clôture) et le « Bloquant A » de la mise en service ne compte que le registre ITP.  
 *Avancement : Livraison 8, lot qualité et chantier : une liste de réserves par projet (origines Inspection et Chantier), numérotée sur le projet ; les réserves chantier de HLT-026 deviennent P-06…P-08 (A-6). · Sources : A-6, 11 §7 #4, DELIVERY-5.md §3, §8*
+
+**~~R-121 · Alerter le CP à J-15 sur un prérequis client non confirmé~~** — *Plus tard · partiel · effort M* · **fait (Livraison 9)**  
+Un contrôle quotidien envoie une notification au CP et lui propose un risque pré-rempli à confirmer quand un prérequis client n’est pas confirmé à J-15. Aujourd’hui le retard n’est qu’un indicateur à l’écran.  
+*Avancement : Livraison 9, lot « prereq-alert » (docs/delivery-9/notes-prereq-alert.md) : tâche quotidienne, une notification au CP par prérequis client non confirmé à J-15, « Ouvrir un risque » prérempli depuis la ligne du chantier, lié au prérequis. Réponses du 17 oct. 2026 : rappels automatiques chaque matin à 07:00 (KEYSTONE_REMINDERS_AT), destinataire le CP seul, CP ajouté aux responsables de risque proposés. · Attend : Notifications par événement (R-015) et tâches planifiées (R-006) · Sources : D-4, X-6a, 10 OQ6, DELIVERY-5.md §7*
 
 **~~R-122 · Retirer la case incident du rapport journalier au profit de Vigie~~** — *Plus tard · partiel · effort S* · **fait (Livraison 8)**  
 La tuile HSE compte déjà les incidents de Vigie ; le rapport journalier doit cesser de demander un incident et renvoyer vers « Déclarer dans Vigie ».  
@@ -895,6 +895,11 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 
 ## 3. Mises à jour
 
+- 2026-10-17 — PR #10 fusionnée dans main (horloge réelle, plans de charge glissants, alerte J-15). Réponses du responsable produit appliquées : rappels le matin, CP responsable de risque, vues semaine / 8 semaines, navigation du what-if ; tout est fusionné dans main au fil de l’eau.
+- 2026-10-16 — Livraison 9 : R-085 (plans de charge sur 8 semaines glissantes) et R-121 (alerte J-15 et proposition de risque) faits.
+- 2026-10-16 — Livraison 9 : lots R-085 (plans de charge sur 8 semaines glissantes, R-7) et R-121 (alerte J-15 sur prérequis client et proposition de risque, D-4) démarrés.
+- 2026-10-16 — Livraison 9, lot « horloge » : R-013 fait — Keystone suit la date réelle sur une base de production (la démonstration reste au 25 sept. 2026, réglable par KEYSTONE_CLOCK).
+- 2026-10-15 — PR #2 fusionnée dans main par le responsable produit : les livraisons 1 à 8 sont sur main (R-001 fait).
 - 2026-10-15 — Nouveau besoin du responsable produit (R-185) : un projet peut fournir plusieurs équipements (par exemple une EMP et plusieurs MEMU) ; l’approche projet devra s’adapter — à cadrer avant la livraison 9.
 - 2026-10-15 — PR #2 (main-2a2fep → main) : main, qui contient la PR #1 (Dockerfile Coolify), fusionnée dans la branche ; le kit de la livraison 8 remplace ce Dockerfile.
 - 2026-10-15 — Livraison 8 terminée : lot 9 (qualité et chantier) intégré, deux revues croisées (26 constats confirmés, tous corrigés avec un test), vérification complète (4 000 tests, build, db-check, matrice des routes à 9 profils, tests de bout en bout). Bilan dans docs/DELIVERY-8.md.

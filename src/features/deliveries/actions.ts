@@ -9,8 +9,10 @@
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
 import { QC_INBOX_ROLES, canDecideQc, parseAnnounceForm, parseRegisterForm, qcPlan, type QcDecision } from '@/domain/deliveries';
+import { yearOfIso } from '@/domain/clock';
 import { parseDateInput } from '@/domain/contract';
-import { STATUS_ISO, receiptStatus, type ReceiptStatus } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
+import { receiptStatus, type ReceiptStatus } from '@/server/db/codes';
 import {
   acceptReceipt, announceDelivery, attachReceiptDocument, getPutAwayOptions, getReceipt, listAnnounceableOrders, recordReceiptQc, registerReceipt, rejectReceipt,
   type ReceiptRow,
@@ -75,7 +77,8 @@ export async function announceDeliveryAction(code: string, values: Record<string
   if ('error' in ok) return { error: await tr(ok.error) };
   const [orders, putAway] = await Promise.all([listAnnounceableOrders(ok.code), getPutAwayOptions(ok.code)]);
   if (!orders.length) return { error: await tr('No ordered purchase order is waiting for a delivery') };
-  const parsed = parseAnnounceForm(strings(values), { orders: orders.map((o) => o.number), locations: putAway.locations, parseDate: (s) => parseDateInput(s) });
+  const year = yearOfIso(await businessToday());
+  const parsed = parseAnnounceForm(strings(values), { orders: orders.map((o) => o.number), locations: putAway.locations, parseDate: (s) => parseDateInput(s, year) });
   if (!parsed.ok) return { error: await tr(parsed.error) };
   try {
     const number = await announceDelivery(ok.code, parsed.value, ok.viewer.name);
@@ -99,7 +102,8 @@ export async function registerReceiptAction(code: string, number: string, values
     refresh();
     return { error: await tr('This delivery is no longer waiting to be received') };
   }
-  const parsed = parseRegisterForm(strings(values), r.lines, { today: STATUS_ISO, parseDate: (s) => parseDateInput(s) });
+  const today = await businessToday();
+  const parsed = parseRegisterForm(strings(values), r.lines, { today, parseDate: (s) => parseDateInput(s, yearOfIso(today)) });
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
   try {

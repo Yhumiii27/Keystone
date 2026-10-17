@@ -11,6 +11,7 @@ import {
 import { PRICES_HIDDEN, PRICE_MASK } from '@/domain/rights';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
+import { yearOfIso } from '@/domain/clock';
 import { BASE_CURRENCY, moneyIn, moneyUnitsIn } from '@/domain/currency';
 import { PART_STATUS_TAG, PO_STATUS_TAG, fmtDOfIso, poStatus, type PoStatus } from '@/server/db/codes';
 import type { OrdersScreenData, PoDocRef } from '@/server/dal/orders';
@@ -145,9 +146,10 @@ export interface OrdersViewInput {
   x3?: boolean;
 }
 
-const dateText = (iso: string, t: T) => t(fmtDOfIso(iso));
+/** "12 Mar" / "13 Feb ’27": the year outside the business year `year` (R-013). */
+const dateText = (iso: string, t: T, year: number) => t(fmtDOfIso(iso, year));
 
-function rowView(o: PurchaseOrderRow, code: string, filter: PoStatus | null, selected: string | null, t: T, lang: Lang, prices = true): OrderRowView {
+function rowView(o: PurchaseOrderRow, code: string, filter: PoStatus | null, selected: string | null, t: T, lang: Lang, year: number, prices = true): OrderRowView {
   const risk = poRisk(o);
   const late = risk?.kind === 'late';
   return {
@@ -160,8 +162,8 @@ function rowView(o: PurchaseOrderRow, code: string, filter: PoStatus | null, sel
     value: prices ? moneyIn(poValueEur(o) / 1000, o.currency, lang) : PRICE_MASK,
     status: t(poStatus.label(o.status)),
     statusClass: `tag ${PO_STATUS_TAG[o.status]}`,
-    ordered: o.status === 'draft' || !o.orderedOn ? '—' : dateText(o.orderedOn, t),
-    expected: o.status === 'received' ? t('Delivered') : o.expectedOn ? dateText(o.expectedOn, t) : t('To confirm'),
+    ordered: o.status === 'draft' || !o.orderedOn ? '—' : dateText(o.orderedOn, t, year),
+    expected: o.status === 'received' ? t('Delivered') : o.expectedOn ? dateText(o.expectedOn, t, year) : t('To confirm'),
     expColor: late ? LO : NEUTRAL_300,
     need: o.neededFor ? t(needText(o)) : '—',
     risk: risk ? t(poRiskText(risk)) : '',
@@ -176,13 +178,14 @@ const docLinks = (refs: PoDocRef[] | undefined, href: (n: string) => string, t: 
 
 function drawerView(o: PurchaseOrderRow, input: OrdersViewInput, t: T, lang: Lang): OrderDrawerView {
   const { code, data, filter } = input;
+  const year = yearOfIso(data.today);
   const prices = input.prices !== false;
   const late = isLatePo(o);
   const meta: MetaRowView[] = [
     // C-9: in the order's currency, with its euro equivalent at the project's budget rate.
     { k: t('Order value'), v: prices ? moneyIn(poValueEur(o) / 1000, o.currency, lang) + (o.currency === BASE_CURRENCY ? '' : ` · ≈ ${money((poValueEur(o) * o.eurRate) / 1000, lang)}`) : PRICE_MASK, color: OK },
-    { k: t('Ordered on'), v: o.status === 'draft' || !o.orderedOn ? t('Not yet') : dateText(o.orderedOn, t), color: OK },
-    { k: t('Expected delivery'), v: o.expectedOn ? dateText(o.expectedOn, t) : t('To confirm'), color: late ? LO : OK },
+    { k: t('Ordered on'), v: o.status === 'draft' || !o.orderedOn ? t('Not yet') : dateText(o.orderedOn, t, year), color: OK },
+    { k: t('Expected delivery'), v: o.expectedOn ? dateText(o.expectedOn, t, year) : t('To confirm'), color: late ? LO : OK },
     { k: t('Needed by'), v: o.neededFor ? t(needText(o)) : '—', color: OK },
     // R-169: an order drafted in Keystone without an RFQ has no terms yet (the prototype wrote "Site gate 2 · DAP · Net 30").
     { k: t('Delivery / terms'), v: deliveryTermsText(o.deliveryTerms, lang, t), color: OK },
@@ -204,7 +207,7 @@ function drawerView(o: PurchaseOrderRow, input: OrdersViewInput, t: T, lang: Lan
     });
   // R-095: why, by whom and when a Keystone-drafted order was cancelled (typed reason shown as typed).
   if (o.cancellation)
-    meta.push({ k: t('Cancelled'), v: [dateText(o.cancellation.at.slice(0, 10), t), o.cancellation.by, dataT(o.cancellation.reason, lang)].filter(Boolean).join(' · '), color: OK });
+    meta.push({ k: t('Cancelled'), v: [dateText(o.cancellation.at.slice(0, 10), t, year), o.cancellation.by, dataT(o.cancellation.reason, lang)].filter(Boolean).join(' · '), color: OK });
   const warn = partWarningText(partWarnings(o), lang);
   return {
     number: o.number,
@@ -245,7 +248,7 @@ export function ordersView(input: OrdersViewInput, t: T, lang: Lang): OrdersView
   const orders = data.orders;
   const k = poKpis(orders);
   const counts = poStatusCounts(orders);
-  const rows = filterPos(orders, filter).map((o) => rowView(o, code, filter, selected, t, lang, prices));
+  const rows = filterPos(orders, filter).map((o) => rowView(o, code, filter, selected, t, lang, yearOfIso(input.data.today), prices));
   const sel = selected ? orders.find((o) => o.number === selected) : undefined;
   const sf = data.shortfall;
   return {

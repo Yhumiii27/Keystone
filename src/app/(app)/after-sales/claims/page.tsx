@@ -22,7 +22,7 @@ import { SavBody } from '@/features/aftersales/sav-view';
 import { claimFormOptions, getSavScreen } from '@/server/dal/aftersales';
 import { CLAIM_OWNERS, getClaim, interventionPartOptions } from '@/server/dal/claims';
 import { machineConfigurations } from '@/server/dal/fleet';
-import { NOW_ISO, displayOfIso } from '@/server/db/codes';
+import { displayOfIso } from '@/server/db/codes';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n, getZone } from '@/server/session';
 
@@ -48,7 +48,7 @@ export default async function WarrantyClaimsPage({ searchParams }: { searchParam
   }
 
   // R-143: "Mark done" forms of the planned interventions shown (parts: the machine's configuration, then the catalogue).
-  const today = displayOfIso(NOW_ISO);
+  const today = displayOfIso(data.today);
   const doneForms =
     access.canEdit && view === 'interventions'
       ? Object.fromEntries(
@@ -66,7 +66,7 @@ export default async function WarrantyClaimsPage({ searchParams }: { searchParam
     const [configs, parts] = await Promise.all([machineConfigurations([claim.machineNumber]), interventionPartOptions(claim.machineNumber)]);
     drawer = (
       <ClaimDrawer
-        view={claimDrawerView({ claim, ecos: data.ecos, config: configs.get(claim.machineNumber) ?? [], parts, owners: CLAIM_OWNERS, viewer: { vigie, canEdit: access.canEdit } }, t, lang)}
+        view={claimDrawerView({ claim, ecos: data.ecos, config: configs.get(claim.machineNumber) ?? [], parts, owners: CLAIM_OWNERS, viewer: { vigie, canEdit: access.canEdit }, today: data.today }, t, lang)}
         t={t}
       />
     );

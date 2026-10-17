@@ -1,13 +1,14 @@
 // "Delivered projects" card of the Installed base (R-144, E-8 "a": the machines and their as-built configuration are created
 // at the project's delivery, from its bill of materials, then kept by after-sales): each delivered project (stage Expédition
 // or later) with a BOM carrying revisions — its stage, the parts recorded as built, the machines already registered — and,
-// for editors, "Register machines" with the project's defaults (assembly roots, name, site, today, the contract's warranty).
+// for editors, "Register machines" with the project's defaults (assembly roots, name, site, the business date `today` —
+// R-013 —, the contract's warranty).
 // Server Component (view model + markup); the button is a client island.
 import { SectionCard } from '@/components/app/SectionCard';
 import type { FormDef } from '@/components/app/form-def';
 import { warrantyEndOf } from '@/domain/claims';
 import type { Lang, T } from '@/i18n/translate';
-import { NOW_ISO, displayOfIso, stage as stageCodec, type StageCode } from '@/server/db/codes';
+import { displayOfIso, stage as stageCodec, type StageCode } from '@/server/db/codes';
 import type { DeliveryCandidate } from '@/server/dal/fleet';
 import { FollowupFormButton } from './followup-buttons';
 import { localizeForm, registerMachinesFormDef } from './forms';
@@ -23,7 +24,7 @@ export interface DeliveredRowView {
 }
 
 export function deliveredView(
-  candidates: readonly (DeliveryCandidate & { stage: StageCode })[], opts: { canRegister: (projectCode: string) => boolean }, t: T, lang: Lang,
+  candidates: readonly (DeliveryCandidate & { stage: StageCode })[], opts: { canRegister: (projectCode: string) => boolean; today: string }, t: T, lang: Lang,
 ): DeliveredRowView[] {
   return candidates.map((c) => {
     // Singular for 1 (and 0 in French).
@@ -39,8 +40,8 @@ export function deliveredView(
         ? {
             label, ariaLabel: `${label} · ${c.projectCode}`,
             form: localizeForm(registerMachinesFormDef({
-              project: c.projectCode, count: c.defaultCount, name: c.defaultName, site: c.site, delivered: displayOfIso(NOW_ISO),
-              warrantyEnd: displayOfIso(warrantyEndOf(NOW_ISO, c.warrantyMonths)),
+              project: c.projectCode, count: c.defaultCount, name: c.defaultName, site: c.site, delivered: displayOfIso(opts.today),
+              warrantyEnd: displayOfIso(warrantyEndOf(opts.today, c.warrantyMonths)),
             }), t, lang),
           }
         : null,

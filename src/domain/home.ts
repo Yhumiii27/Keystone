@@ -6,8 +6,9 @@
 // Purchase orders 4308–4328, Skills 4394, Drawings 4373–4376); each is reproduced here at the scale the Home needs.
 import { screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import type { Lang } from '@/i18n/translate';
-import { STATUS_DATE, TODAY, dateOf, dayLabel, money } from '@/lib/format';
-import type { StepDecision } from '@/server/db/codes';
+import { dateOf, dayLabel, money } from '@/lib/format';
+import { displayOfIso, dowOfIso, type StepDecision } from '@/server/db/codes';
+import { workdayOffsetOf } from './clock';
 import { CR_STEPS, currentStep } from './change-control';
 import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import { weekHoursOf } from './kpis';
@@ -189,7 +190,7 @@ export interface ResourceRequest {
   dept: string;
   title: string;
   hours: number;
-  /** Working-day offsets (TODAY = 4). */
+  /** Working-day offsets (Mon 21 Sep 2026 = 0). */
   start: number;
   due: number;
   status: 'draft' | 'pending' | 'approved' | 'reschedule' | 'rejected' | 'withdrawn';
@@ -264,7 +265,7 @@ export interface RegisterDeliverable {
 
 /**
  * Deliverables on the client Home (the prototype's static DELIVERABLES 3464: D-014…D-017 of Harbor Line), from the
- * register: being produced, waiting for the client, rejected, or accepted since `acceptedSince` (ISO, the status date
+ * register: being produced, waiting for the client, rejected, or accepted since `acceptedSince` (ISO, the business date
  * − 30 days); planned ones and older acceptances stay on the client portal. Register order.
  */
 export function clientHomeDeliverables(rows: RegisterDeliverable[], acceptedSince: string): ClientDeliverable[] {
@@ -384,9 +385,14 @@ const crAwaiting = (cr: ChangeRequest, step: 'client' | 'director') =>
   changeRequestStatus(cr) === 'in_review' &&
   currentStep(CR_STEPS.map((s) => ({ step: s, decision: (cr.chain[s] === 'n/a' ? 'na' : (cr.chain[s] ?? null)) as StepDecision | null }))) === step;
 
-/** "Good morning, Marie" / "Portfolio director · Friday 25 Sep 2026" (homeVals, line 4435). */
-export function greeting(persona: Persona): Pick<HomeView, 'greeting' | 'sub'> {
-  return { greeting: 'Good morning, ' + persona.name.split(' ')[0], sub: persona.title + ' · Friday ' + STATUS_DATE };
+const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/**
+ * "Good morning, Marie" / "Portfolio director · Friday 25 Sep 2026" (homeVals, line 4435): the business date `today` (R-013;
+ * the prototype's frozen "Friday 25 Sep 2026").
+ */
+export function greeting(persona: Persona, today: string): Pick<HomeView, 'greeting' | 'sub'> {
+  return { greeting: 'Good morning, ' + persona.name.split(' ')[0], sub: persona.title + ' · ' + WEEKDAY[dowOfIso(today)] + ' ' + displayOfIso(today) };
 }
 
 const NO_DATA = 'No planning data yet';
@@ -396,6 +402,8 @@ const NO_DATA = 'No planning data yet';
 export interface DirectorInput {
   lang: Lang;
   persona: Persona;
+  /** Business date (ISO, R-013): the greeting, and My work's due buckets. */
+  today: string;
   /** Current project (the header project): its purchase orders feed the PO row, as in the prototype. */
   project: CurrentProject;
   /** The Portfolio overview's KPI tiles for the selected zone (`portfolioKpis`); the Home shows the first four. */
@@ -423,7 +431,7 @@ export function directorHome(i: DirectorInput): HomeView {
   const inApproval = i.ecos.filter((e) => ecoStatus(e) === 'In approval');
   const pending = i.requests.filter((r) => r.status === 'pending');
   return {
-    ...greeting(i.persona),
+    ...greeting(i.persona, i.today),
     kpis,
     left: { title: 'Needs attention', rows: i.alerts.map((a) => row(a.title, a.detail, '', '', a.href)) },
     right: {
@@ -443,6 +451,8 @@ export function directorHome(i: DirectorInput): HomeView {
 export interface PmInput {
   lang: Lang;
   persona: Persona;
+  /** Business date (ISO, R-013): the greeting, and My work's due buckets. */
+  today: string;
   project: CurrentProject;
   /** null for projects without planning data (empty KPIs, never another project's figures). */
   evm: EvmSeries | null;
@@ -493,7 +503,7 @@ export function pmHome(i: PmInput): HomeView {
       row('Re-baseline proposal', { tpl: 'Schedule slip {d} · BL2 to submit to the change control board', p: { d: i.schedule.floatShort } }, 'Prepare', TAG.outline, homeHref('schedule', { code })),
     );
   return {
-    ...greeting(i.persona),
+    ...greeting(i.persona, i.today),
     kpis,
     left: {
       title: { tpl: 'My resource requests — {name}', p: { name: project.name } },
@@ -510,6 +520,8 @@ export function pmHome(i: PmInput): HomeView {
 
 export interface DeptHeadInput {
   persona: Persona;
+  /** Business date (ISO, R-013): the greeting, and My work's due buckets. */
+  today: string;
   /** Department of the viewer ("Engineering"). */
   dept: string;
   requests: ResourceRequest[];
@@ -556,7 +568,7 @@ export function deptHeadHome(i: DeptHeadInput): HomeView {
   const unmet = unmetDemand(i.departments);
   const dates = (r: ResourceRequest) => dayLabel(r.start).slice(4) + ' – ' + dayLabel(r.due).slice(4);
   return {
-    ...greeting(i.persona),
+    ...greeting(i.persona, i.today),
     kpis: [
       kpi('Awaiting my approval', pending.length, 'Resource requests · ' + i.dept, pending.length > 0),
       kpi('Team utilization', utilization + '%', 'Target 85–95%', false),
@@ -588,6 +600,8 @@ export function deptHeadHome(i: DeptHeadInput): HomeView {
 
 export interface MemberInput {
   persona: Persona;
+  /** Business date (ISO, R-013): the greeting, and My work's due buckets. */
+  today: string;
   /** Person whose work is shown: the viewer (the prototype always showed Hélène Sauvage — defect, docs/spec/00 §7.16). */
   person: string;
   todos: Todo[];
@@ -602,33 +616,35 @@ export interface MemberInput {
 }
 
 /** My work buckets (logic 4061–4071). */
-export function workSummary(todos: Todo[], person: string, people: PersonLoad[]) {
+export function workSummary(todos: Todo[], person: string, people: PersonLoad[], todayIso: string) {
+  const todayOff = workdayOffsetOf(todayIso);
   const mine = todos.filter((t) => t.person === person);
   const open = mine.filter((t) => t.status !== 'done');
-  const logged = mine.reduce((a, t) => a + (t.start <= TODAY ? t.logged : 0), 0);
+  const logged = mine.reduce((a, t) => a + (t.start <= todayOff ? t.logged : 0), 0);
   const loads = people.find((p) => p.name === person)?.loads ?? [80, 80];
   return {
     open,
-    dueToday: open.filter((t) => t.due === TODAY).length,
-    overdue: open.filter((t) => t.due < TODAY).length,
-    nextWeek: open.filter((t) => t.due > TODAY && t.due <= nextWeekEnd()).length,
+    dueToday: open.filter((t) => t.due === todayOff).length,
+    overdue: open.filter((t) => t.due < todayOff).length,
+    nextWeek: open.filter((t) => t.due > todayOff && t.due <= nextWeekEnd(todayOff)).length,
     logged,
     load: Math.round((loads[0] + loads[1]) / 2),
   };
 }
 
 export function memberHome(i: MemberInput): HomeView {
-  const w = workSummary(i.todos, i.person, i.people);
+  const w = workSummary(i.todos, i.person, i.people, i.today);
+  const todayOff = workdayOffsetOf(i.today);
   const logged = i.loggedThisWeekH ?? w.logged;
   // Computed instead of the prototype's literals "28 Sep – 2 Oct" and "of 40 h" (same values at the status date): next
   // week's span (as My work's calendar) and the standard calendar's weekly hours (5 × 8 h, S-2).
   const weekH = weekHoursOf();
   return {
-    ...greeting(i.persona),
+    ...greeting(i.persona, i.today),
     kpis: [
-      kpi('Due today', w.dueToday, dayLabel(TODAY), false),
+      kpi('Due today', w.dueToday, dayLabel(todayOff), false),
       kpi('Overdue', w.overdue, 'Needs a new date or a push', w.overdue > 0),
-      kpi('Next week', w.nextWeek, spanText(nextWeekEnd() - 4, nextWeekEnd()), false),
+      kpi('Next week', w.nextWeek, spanText(nextWeekEnd(todayOff) - 4, nextWeekEnd(todayOff)), false),
       kpi('Logged this week', logged.toFixed(1) + ' h', { tpl: 'of {h} h · {pct}%', p: { h: weekH, pct: Math.round((logged / weekH) * 100) } }, false),
     ],
     left: {
@@ -636,7 +652,7 @@ export function memberHome(i: MemberInput): HomeView {
       rows: w.open
         .slice(0, 6)
         .map((t) =>
-          row(t.title, (i.lookups.projectNames[t.project] ?? t.project) + ' · due ' + dayLabel(t.due), i.statusLabels[t.status] ?? t.status, t.due <= TODAY ? TAG.accent : TAG.neutral, homeHref('task', { taskId: t.id })),
+          row(t.title, (i.lookups.projectNames[t.project] ?? t.project) + ' · due ' + dayLabel(t.due), i.statusLabels[t.status] ?? t.status, t.due <= todayOff ? TAG.accent : TAG.neutral, homeHref('task', { taskId: t.id })),
         ),
     },
     right: {
@@ -654,6 +670,8 @@ export function memberHome(i: MemberInput): HomeView {
 
 export interface EngLeadInput {
   persona: Persona;
+  /** Business date (ISO, R-013): the greeting, and My work's due buckets. */
+  today: string;
   ecos: Eco[];
   /** ECO_TYPES: type key → label. */
   ecoTypes: Record<string, string>;
@@ -684,7 +702,7 @@ export function engLeadHome(i: EngLeadInput): HomeView {
   const open = ecos.filter((e) => ecoOpen(e.status));
   const validated = i.parts.filter((p) => p.status === 'Validated').length;
   return {
-    ...greeting(i.persona),
+    ...greeting(i.persona, i.today),
     kpis: [
       kpi('Open ECOs', open.length, `${ecos.length} in total`, false),
       kpi('Awaiting my approval', ecos.filter((e) => e.status === 'In approval' && e.appr.englead === 'pending').length, { tpl: 'As {role}', p: { role: i.persona.title } }, false),
@@ -727,6 +745,8 @@ export function engLeadHome(i: EngLeadInput): HomeView {
 
 export interface QualityInput {
   persona: Persona;
+  /** Business date (ISO, R-013): the greeting, and My work's due buckets. */
+  today: string;
   project: CurrentProject;
   ecos: Eco[];
   parts: Part[];
@@ -739,7 +759,7 @@ export function qualityHome(i: QualityInput): HomeView {
   const bomNotValidated = i.parts.filter((p) => (p.usage[i.project.shortCode] ?? 0) > 0 && p.status === 'Not validated').length;
   const inspections = i.requests.filter((r) => r.dept === 'Quality' && r.status === 'pending').length;
   return {
-    ...greeting(i.persona),
+    ...greeting(i.persona, i.today),
     kpis: [
       kpi('ECOs awaiting quality', ecos.filter((e) => e.status === 'In approval' && e.appr.quality === 'pending').length, 'ISO 9001 review', false),
       kpi('Outdated still in use', inUseBad.length, inUseBad.map((p) => p.ref).join(' · ') || 'None', inUseBad.length > 0),
@@ -767,6 +787,8 @@ export function qualityHome(i: QualityInput): HomeView {
 export interface ProcurementInput {
   lang: Lang;
   persona: Persona;
+  /** Business date (ISO, R-013): the greeting, and My work's due buckets. */
+  today: string;
   project: CurrentProject;
   purchaseOrders: PurchaseOrder[];
   parts: Part[];
@@ -786,7 +808,7 @@ export function procurementHome(i: ProcurementInput): HomeView {
   const shortfall = bomShortfall(i.parts, pos, project.shortCode);
   const touching = i.ecos.filter((e) => ecoOpen(ecoStatus(e)) && pos.some((o) => o.lines.some((l) => e.parts.includes(l[0])))).length;
   return {
-    ...greeting(i.persona),
+    ...greeting(i.persona, i.today),
     kpis: [
       kpi('Awaiting approval', awaiting, 'Blocks ordering', awaiting > 0),
       // The prototype reads poKpis[4], which does not exist (docs/spec/03 Q-1); "Late deliveries" (poKpis[2]) is shown instead.
@@ -817,6 +839,8 @@ export function procurementHome(i: ProcurementInput): HomeView {
 export interface ClientInput {
   lang: Lang;
   persona: Persona;
+  /** Business date (ISO, R-013): the greeting, and My work's due buckets. */
+  today: string;
   project: CurrentProject;
   evm: EvmSeries | null;
   schedule: ScheduleHeader | null;
@@ -845,7 +869,7 @@ export function clientHome(i: ClientInput): HomeView {
     return { tpl: '{amt} · submitted {date}', p };
   };
   return {
-    ...greeting(i.persona),
+    ...greeting(i.persona, i.today),
     kpis: [
       kpi('Progress', progress, i.evm ? { tpl: 'Work completed · {name}', p: { name: project.name } } : NO_DATA, false),
       // Template, not 'Next: ' + name: the FR dictionary only knows "Next: Structure topped out".

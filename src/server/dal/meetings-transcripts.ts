@@ -8,10 +8,12 @@ import 'server-only';
 // Tasks still come from "Send minutes" (actions of the minutes). The analysis runs outside any transaction (a Claude call may
 // take a minute); its result is written only if the transcript did not change meanwhile.
 import { and, asc, eq, sql } from 'drizzle-orm';
+import { yearOfIso } from '@/domain/clock';
 import { MAX, normaliseDue, TRANSCRIPT_IMPORT } from '@/domain/meetings';
 import { analyseTranscriptText, type AnalysisEngine } from '@/server/ai/transcripts';
 import { parseTranscript } from '@/server/ai/transcripts/parse';
 import type { AnalyzerId, TranscriptAnalyzerImpl } from '@/server/ai/transcripts/types';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { isoOfDisplayDate, type TranscriptProposalStatus, type TranscriptProposalType } from '@/server/db/codes';
 import { findPerson, nameOf, recordActivity } from '@/server/db/helpers';
@@ -155,7 +157,7 @@ export async function analyseTranscript(meetingNumber: string, actorName: string
   if (tr.appliedAt || (tr.analysedAt && anyApplied(before))) throw new TranscriptError('Proposals were already added · the analysis cannot be replaced');
   const participants = (await db.select({ name: meetingParticipants.name }).from(meetingParticipants).where(eq(meetingParticipants.meetingId, m.id)).orderBy(asc(meetingParticipants.position))).map((p) => p.name);
 
-  const outcome = await analyseTranscriptText({ text: tr.rawText, meetingTitle: m.title, meetingDate: m.startsOn, participants }, { engine: opts.engine, claude: opts.claude });
+  const outcome = await analyseTranscriptText({ text: tr.rawText, meetingTitle: m.title, meetingDate: m.startsOn, today: await businessToday(), participants }, { engine: opts.engine, claude: opts.claude });
   const counts: Record<TranscriptProposalType, number> = { decision: 0, action: 0, risk: 0, question: 0 };
   for (const p of outcome.proposals) counts[p.type]++;
 
@@ -237,12 +239,13 @@ export async function updateTranscriptProposal(meetingNumber: string, position: 
     if (p.status === 'applied') throw new TranscriptError('This proposal was already added');
     const owner = p.type === 'action' || p.type === 'risk' ? edit.owner?.replace(/\s+/g, ' ').trim() || null : null;
     if ((owner?.length ?? 0) > MAX.name) throw new TranscriptError('The note is too long');
-    const due = p.type === 'action' ? normaliseDue(edit.due) : null;
+    const year = yearOfIso(await businessToday(tx));
+    const due = p.type === 'action' ? normaliseDue(edit.due, year) : null;
     if ((due?.length ?? 0) > MAX.due) throw new TranscriptError('The note is too long');
     await tx
       .update(meetingTranscriptProposals)
       .set({
-        text, ownerName: owner, ownerPersonId: owner ? (await findPerson(tx, owner))?.id ?? null : null, dueText: due, dueDate: due ? isoOfDisplayDate(due) : null,
+        text, ownerName: owner, ownerPersonId: owner ? (await findPerson(tx, owner))?.id ?? null : null, dueText: due, dueDate: due ? isoOfDisplayDate(due, year) : null,
         status: p.status === 'rejected' ? 'proposed' : p.status, ...(await reviewer(tx, actorName)),
       })
       .where(and(eq(meetingTranscriptProposals.meetingId, m.id), eq(meetingTranscriptProposals.position, position)));

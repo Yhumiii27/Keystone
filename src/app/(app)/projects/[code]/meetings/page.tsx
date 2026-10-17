@@ -23,6 +23,7 @@ import { riskOwnerOptions } from '@/server/dal/risks-screen';
 import { canWriteMinutes } from '@/domain/rights';
 import { getProjectContext } from '@/server/project-context';
 import { getI18n } from '@/server/session';
+import { businessToday } from '@/server/clock';
 import { dataText, projectLabelText } from '@/i18n/data-text';
 
 type SP = Record<string, string | string[] | undefined>;
@@ -33,13 +34,13 @@ export default async function MeetingsPage({ params, searchParams }: { params: P
   const ctx = await getProjectContext(code, 'meetings');
   const projectCode = ctx.project.code;
   const client = ctx.viewer.role === 'client';
-  const [{ t, lang }, data] = await Promise.all([getI18n(), getMeetingsScreen(projectCode, { client })]);
+  const [{ t, lang }, data, today] = await Promise.all([getI18n(), getMeetingsScreen(projectCode, { client }), businessToday()]);
   const canEdit = ctx.canEdit('meetings') && !client;
 
   const requested = first(sp.meeting)?.toUpperCase() ?? null;
   const pinned = !!requested && data.meetings.some((m) => m.number === requested);
   const query = { view: parseMeetingsView(first(sp.view)), filter: parseMeetingFilter(first(sp.filter)), meeting: pinned ? requested : null, decisions: parseDecisionScope(first(sp.decisions)) };
-  const view = meetingsScreenView({ code: projectCode, meetings: data.meetings, questions: data.questions, query, client }, t, lang);
+  const view = meetingsScreenView({ code: projectCode, meetings: data.meetings, questions: data.questions, query, today, client }, t, lang);
   const selected = selectMeeting(data.meetings, query.meeting);
   const canWrite = canEdit && !!selected && canWriteMinutes(ctx.viewer, ctx.access, selected);
   // A risk proposal of the selected meeting's transcript opens the risk register's "New risk" form (risk editors only).
@@ -49,7 +50,7 @@ export default async function MeetingsPage({ params, searchParams }: { params: P
   const activities = canWrite ? (await listMeetingActivityOptions(projectCode)).map((a) => ({ value: a.code, label: `${a.code} · ${dataText(a.name, lang)}` })) : [];
 
   const primary = canEdit ? (
-    <NewMeetingButton code={projectCode} context={projectLabelText(ctx.project, lang)} form={meetingFormDef(t, lang, defaultInvitees(ctx.viewer.short, ctx.project.pm))} />
+    <NewMeetingButton code={projectCode} context={projectLabelText(ctx.project, lang)} form={meetingFormDef(t, lang, defaultInvitees(ctx.viewer.short, ctx.project.pm), today)} />
   ) : undefined;
 
   return (

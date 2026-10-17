@@ -2,7 +2,7 @@
 // definitions (English source strings — FormDialog `translate`; select values are codes) and validation of the
 // untrusted submitted values. Pure module shared by the client buttons and the Server Functions.
 import type { FormDef, FormValues } from '@/components/app/form-def';
-import { contractImpact, type ChangeType, type ContractImpact, type ReportAudience, type ReportPeriod, type ReportSections } from '@/server/db/codes';
+import { contractImpact, reportPeriod, reportPeriodLabel, type ChangeType, type ContractImpact, type ReportAudience, type ReportPeriod, type ReportSections } from '@/server/db/codes';
 
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 const record = (v: unknown) => (v && typeof v === 'object' ? (v as Record<string, unknown>) : {});
@@ -146,11 +146,9 @@ export const NEW_CR_RESULT = 'Change request submitted for review';
 
 // ── Generate status report (AF.trends) ─────────────────────────────────────────────────────────────
 
-export const REPORT_PERIODS: { value: ReportPeriod; label: string }[] = [
-  { value: 'month', label: 'September 2026' },
-  { value: 'quarter', label: 'Q3 2026' },
-  { value: 'since_start', label: 'Since project start' },
-];
+/** Period options at the business date `today` (R-013: "September 2026" / "Q3 2026" on the demo data set's date). */
+export const reportPeriodOptions = (today: string): { value: ReportPeriod; label: string }[] =>
+  reportPeriod.codes.map((value) => ({ value, label: reportPeriodLabel(value, today) }));
 export const REPORT_AUDIENCES: { value: ReportAudience; label: string }[] = [
   { value: 'steering', label: 'Steering committee' },
   { value: 'client', label: 'Client' },
@@ -163,17 +161,18 @@ export const REPORT_SECTIONS: { value: ReportSections; label: string }[] = [
 ];
 export const REPORT_NOTE_MAX = 2000;
 
-export const STATUS_REPORT_FORM: FormDef = {
+/** AF.trends at the business date `today` (the period labels). */
+export const statusReportForm = (today: string): FormDef => ({
   title: 'Generate status report',
   submit: 'Generate PDF',
   kind: 'run',
   fields: [
-    { id: 'period', label: 'Period', type: 'select', options: REPORT_PERIODS },
+    { id: 'period', label: 'Period', type: 'select', options: reportPeriodOptions(today) },
     { id: 'audience', label: 'Audience', type: 'select', options: REPORT_AUDIENCES },
     { id: 'sections', label: 'Sections', type: 'select', options: REPORT_SECTIONS },
     { id: 'note', label: 'Manager note', type: 'textarea' },
   ],
-};
+});
 
 export interface StatusReportRequest {
   period: ReportPeriod;
@@ -191,7 +190,7 @@ const pick = <T extends string>(opts: { value: T }[], v: unknown): T | null => {
 /** Validates the AF.trends values (blank selects → first option, as afOpen). */
 export function parseStatusReport(values: FormValues | unknown): Parsed<StatusReportRequest> {
   const v = record(values);
-  const period = pick(REPORT_PERIODS, v.period);
+  const period = pick(reportPeriod.codes.map((value) => ({ value })), v.period);
   const audience = pick(REPORT_AUDIENCES, v.audience);
   const sections = pick(REPORT_SECTIONS, v.sections);
   const note = str(v.note);

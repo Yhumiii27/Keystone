@@ -29,6 +29,8 @@ export interface AnalysisInput {
   meetingTitle: string;
   /** ISO date of the meeting (year of the due dates said without one). */
   meetingDate: string;
+  /** Business date (R-013): due texts are written against its year ("6 Oct" in that year, "10 Jan 2027" outside it). */
+  today: string;
   /** Invitees as listed on the meeting ("A. Girard", "K. Lindqvist (Nordvolt)") — owners may be resolved to these names. */
   participants: string[];
 }
@@ -40,7 +42,7 @@ export interface ProposalDraft {
   text: string;
   /** Actions: a person or organisation named in the transcript (the speaker for "I will" / "je vais"), else null. */
   owner: string | null;
-  /** Actions: due as a calendar date stated in the transcript — "6 Oct" (2026) / "10 Jan 2027" — and its ISO date; else null. */
+  /** Actions: due as a calendar date stated in the transcript — "6 Oct" (business year) / "10 Jan 2027" — and its ISO date; else null. */
   due: string | null;
   dueDate: string | null;
   /** Speaker label and the verbatim excerpt the proposal comes from. */

@@ -11,22 +11,21 @@
 // drawer's step indicator, RACI-B rows, the role hint and the deliverable acceptance items.
 //
 // Deviations from the prototype (docs/spec/07 OQ5, OQ14, 00 §7.16):
-// - "Due in 30 days" is computed from the status date (due between the status date and 30 days later, not accepted)
+// - "Due in 30 days" is computed from the business date (R-013; due between it and 30 days later, not accepted)
 //   instead of the literal dates {25 Sep, 30 Sep}; the counts are the prototype's.
 // - "Overdue actions" counts the open NCRs whose action is due on or before the as-of date (OPEN QUESTION 07 OQ5: the
-//   prototype listed the literal dates {30 Sep, 2 Oct}); the as-of date is the next weekly review after the status
-//   date (status date + 7 days), which gives the prototype's count — with a real clock it becomes today.
+//   prototype listed the literal dates {30 Sep, 2 Oct}); the as-of date is the next weekly review after the business
+//   date (business date + 7 days, R-013 — on the demo data set 25 Sep + 7 = 2 Oct, the prototype's count).
 // - Step buttons follow the viewer: the client never advances NCRs nor produces deliverables, NCR closure is the quality
 //   manager's verification, and only a client contact of the project accepts or rejects (07 OQ14).
 // Golden values: src/domain/quality.test.ts (prototype render values, src/features/quality/quality.golden.json).
 // Type-only import: a value import of '@/domain/approvals' loads the screen registry (icons), which breaks scripts/db-check.ts.
 import type { ApprovalItem } from '@/domain/approvals';
 import {
-  DELIVERABLE_ACCEPTANCE_DAYS, DELIVERABLE_STATUS_TAG, NCR_FLOW, NCR_STATUS_TAG, NCR_VERIFIER_ROLES, RACI_CODES, SEVERITY_TAG, STATUS_ISO, addDaysIso,
+  DELIVERABLE_ACCEPTANCE_DAYS, DELIVERABLE_STATUS_TAG, NCR_FLOW, NCR_STATUS_TAG, NCR_VERIFIER_ROLES, RACI_CODES, SEVERITY_TAG, addDaysIso,
   deliverableStatus, fmtDOfIso, ncrNextStatus, ncrSeverity, ncrStatus, vigieSyncStatus,
   type DeliverableStatus, type NcrSeverity, type NcrSource, type NcrStatus, type NcrVerificationDecision, type RaciCode, type VigieSyncStatus,
 } from '@/server/db/codes';
-import { DEFAULT_DATA_DATE } from './ch4-defaults';
 import { parseDateInput, type ParseResult } from './contract';
 import { closedInQuarter } from './kpis';
 
@@ -89,8 +88,11 @@ export const ncrFilterOf = (v: unknown): NcrSeverity | null => (typeof v === 'st
 export const severityTagOf = (s: NcrSeverity) => tag(SEVERITY_TAG[s]);
 export const ncrStatusTagOf = (s: NcrStatus) => tag(NCR_STATUS_TAG[s]);
 
-/** As-of date of "Overdue actions" (see the header: status date + 7 days, OPEN QUESTION 07 OQ5). */
-export const NCR_OVERDUE_AS_OF = addDaysIso(STATUS_ISO, 7);
+/**
+ * As-of date of "Overdue actions" (see the header, OPEN QUESTION 07 OQ5): the business date + 7 days (R-013; was the frozen
+ * status date + 7 = 2 Oct 2026, the same value on the demo data set).
+ */
+export const ncrOverdueAsOf = (today: string) => addDaysIso(today, 7);
 
 export interface QualityKpi {
   label: string;
@@ -106,9 +108,11 @@ export interface QualityKpi {
 /**
  * NCR KPI tiles (ncrKpis 4622): open, critical, cost of non-quality, overdue actions, from goods receipt. "Closed this
  * quarter" (A-12, 07 OQ23) counts the NCRs closed in the data date's quarter (`closedInQuarter`; `dataDate` = the
- * project's data date) — the prototype counted every closed NCR.
+ * project's data date) — the prototype counted every closed NCR. `today` = the business date (R-013): "Overdue actions"
+ * counts up to `ncrOverdueAsOf(today)`.
  */
-export function ncrKpis(ncrs: NcrLike[], asOf: string = NCR_OVERDUE_AS_OF, dataDate: string = DEFAULT_DATA_DATE): QualityKpi[] {
+export function ncrKpis(ncrs: NcrLike[], today: string, dataDate: string): QualityKpi[] {
+  const asOf = ncrOverdueAsOf(today);
   const open = ncrs.filter((n) => n.status !== 'closed');
   const critical = open.filter((n) => n.severity === 'critical').length;
   return [
@@ -221,8 +225,11 @@ export const DELIVERABLE_FLOW: readonly DeliverableStatus[] = deliverableStatus.
 export const deliverableFilterOf = (v: unknown): DeliverableStatus | null => (typeof v === 'string' && deliverableStatus.isCode(v) ? v : null);
 export const deliverableTagOf = (s: DeliverableStatus) => tag(DELIVERABLE_STATUS_TAG[s]);
 
-/** Deliverable KPI tiles (dlvKpis 4637): count, awaiting acceptance, due in 30 days, without backup, rejected. */
-export function deliverableKpis(ds: DeliverableLike[], statusIso: string = STATUS_ISO): QualityKpi[] {
+/**
+ * Deliverable KPI tiles (dlvKpis 4637): count, awaiting acceptance, due in 30 days, without backup, rejected. `statusIso` = the
+ * business date (R-013).
+ */
+export function deliverableKpis(ds: DeliverableLike[], statusIso: string): QualityKpi[] {
   const submitted = ds.filter((d) => d.status === 'submitted').length;
   const rejected = ds.filter((d) => d.status === 'rejected').length;
   const horizon = addDaysIso(statusIso, 30);
@@ -332,9 +339,12 @@ export interface DeliverableReviewLike {
   comments: string | null;
 }
 
-/** "Rev C · Rejected 25 Sep · N. Bensaïd" (`t` translates the words and the date; the comments are shown under it as typed). */
-export const reviewLineText = (r: DeliverableReviewLike, t: (s: string) => string = (s) => s) =>
-  `${t('Rev')} ${r.revision ?? '—'} · ${t(r.decision === 'accepted' ? 'Accepted' : 'Rejected')} ${t(fmtDOfIso(r.decidedOn))} · ${r.decidedBy}`;
+/**
+ * "Rev C · Rejected 25 Sep · N. Bensaïd" (`t` translates the words and the date, shown with its year outside the business
+ * year `year`; the comments are shown under it as typed).
+ */
+export const reviewLineText = (r: DeliverableReviewLike, year: number, t: (s: string) => string = (s) => s) =>
+  `${t('Rev')} ${r.revision ?? '—'} · ${t(r.decision === 'accepted' ? 'Accepted' : 'Rejected')} ${t(fmtDOfIso(r.decidedOn, year))} · ${r.decidedBy}`;
 
 // ── New deliverable (R-115, Q-3b: added by the project manager) ─────────────────────────────────────────
 
@@ -361,7 +371,7 @@ export interface NewDeliverableValues {
  */
 export function parseNewDeliverable(
   values: Record<string, string | undefined>,
-  opts: { types: readonly { code: string; label: string }[]; wbs: readonly string[]; team: readonly string[] },
+  opts: { types: readonly { code: string; label: string }[]; wbs: readonly string[]; team: readonly string[]; year: number },
 ): ParseResult<NewDeliverableValues> {
   const v = (k: string) => (values[k] ?? '').trim();
   const rawType = v('type') || opts.types[0]?.code || '';
@@ -372,7 +382,7 @@ export function parseNewDeliverable(
   if (title.length > 200) return { ok: false, error: 'Text is too long' };
   const due = v('due');
   if (!due) return { ok: false, error: 'Due date is required' };
-  const dueOn = parseDateInput(due);
+  const dueOn = parseDateInput(due, opts.year);
   if (!dueOn) return { ok: false, error: 'Enter the due date as a date, e.g. 15 Oct' };
   const wbsCode = v('wbs') || opts.wbs[0] || '';
   if (!opts.wbs.includes(wbsCode)) return { ok: false, error: 'Unknown WBS element' };
@@ -413,19 +423,19 @@ export interface QualityItemHrefs {
 
 /** "NCR verification" items: NCRs of the current project waiting for the quality manager (Close / back to Corrective action). */
 export function ncrVerificationItems(
-  ncrs: (NcrLike & { vigieUrl: string })[], code: string, hrefs: Pick<QualityItemHrefs, 'ncr'>,
+  ncrs: (NcrLike & { vigieUrl: string })[], code: string, hrefs: Pick<QualityItemHrefs, 'ncr'>, year: number,
 ): ApprovalItem[] {
   return ncrs.filter(awaitsVerification).map((n) => ({
     kind: 'ncr', id: n.number, title: n.title, sub: `${ncrSeverity.label(n.severity)} · ${n.owner}`, who: n.raisedBy,
-    when: n.dueOn ? fmtDOfIso(n.dueOn) : '', whenIso: n.dueOn, href: hrefs.ncr(n.number),
+    when: n.dueOn ? fmtDOfIso(n.dueOn, year) : '', whenIso: n.dueOn, href: hrefs.ncr(n.number),
     decision: { mode: 'ncr-verification', projectCode: code, number: n.number }, external: { href: n.vigieUrl, label: 'Open in Vigie' },
   }));
 }
 
 /** "Deliverable acceptance" items: submitted deliverables of the current project, for its client contact. */
-export function deliverableAcceptanceItems(ds: DeliverableLike[], code: string, hrefs: Pick<QualityItemHrefs, 'deliverable'>): ApprovalItem[] {
+export function deliverableAcceptanceItems(ds: DeliverableLike[], code: string, hrefs: Pick<QualityItemHrefs, 'deliverable'>, year: number): ApprovalItem[] {
   return ds.filter((d) => d.status === 'submitted').map((d) => ({
     kind: 'deliverable', id: d.number, title: d.title, sub: `${d.typeLabel} · ${d.acceptanceText}`, who: d.raci.find((c) => c.role === 'R')?.name ?? '',
-    when: fmtDOfIso(d.dueOn), whenIso: d.dueOn, href: hrefs.deliverable(d.number), decision: { mode: 'deliverable', projectCode: code, number: d.number },
+    when: fmtDOfIso(d.dueOn, year), whenIso: d.dueOn, href: hrefs.deliverable(d.number), decision: { mode: 'deliverable', projectCode: code, number: d.number },
   }));
 }

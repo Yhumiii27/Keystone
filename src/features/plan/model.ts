@@ -8,7 +8,7 @@ import {
   type BarTone, type PlanRow,
 } from '@/domain/schedule';
 import type { Lang, T } from '@/i18n/translate';
-import { STATUS_DATE, money } from '@/lib/format';
+import { money } from '@/lib/format';
 import type { BaselineInfo } from '@/server/dal/baselines';
 import type { PlanData, PlanTodo } from '@/server/dal/plan';
 import { baselineKpiSub, daysText, finishVsBaselineText } from './i18n';
@@ -150,14 +150,14 @@ export function planRowViews(rows: PlanRow[], data: PlanData, t: T, lang: Lang):
 
 /** Chapter 4 context of the KPI tiles: the project data date and the displayed baseline (S-3). */
 export interface PlanKpiContext {
-  /** ISO data date (default: the status date). */
-  dataDate?: string;
+  /** ISO data date of the project (`projectDataDate`: its data date, else the business date — R-013). */
+  dataDate: string;
   /** Displayed baseline (null: the prototype's fixed "BL1" and `baselineSet`). */
   baseline?: Pick<BaselineInfo, 'code' | 'setOn' | 'changeRequest' | 'activityCount'> | null;
 }
 
 /** The five KPI tiles of the view (`planKpis`, logic 4036–4046), translated. */
-export function planKpis(view: PlanView, data: PlanData, t: T, lang: Lang, ctx: PlanKpiContext = {}): KpiView[] {
+export function planKpis(view: PlanView, data: PlanData, t: T, lang: Lang, ctx: PlanKpiContext): KpiView[] {
   const acts = data.activities;
   const f = (k: number) => money(k, lang);
   const bl = ctx.baseline ?? null;
@@ -175,7 +175,7 @@ export function planKpis(view: PlanView, data: PlanData, t: T, lang: Lang, ctx: 
     ];
   }
   const k = progressKpis(acts);
-  const dataDate = ctx.dataDate ? longDateText(ctx.dataDate) : STATUS_DATE;
+  const dataDate = longDateText(ctx.dataDate);
   return [
     { label: t('Overall progress'), value: `${k.overall} %`, sub: t(`weighted by budget · data date ${dataDate}`), color: OK },
     { label: t('Completed'), value: `${k.done} / ${k.total}`, sub: t(`${f(k.earned)} earned`), color: OK },

@@ -12,7 +12,7 @@
 import type { Lang } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import {
-  NOW_ISO, PG_NOW, claimCoverage, displayOfIso, monthIndexOfIso, ncrSeverity, warrantyStatus,
+  claimCoverage, displayOfIso, monthIndexOfIso, ncrSeverity, warrantyStatus,
   type ClaimCoverage, type ClaimStatus, type InterventionStatus, type NcrSeverity, type WarrantyStatus, type ZoneCode,
 } from '@/server/db/codes';
 import { parseNeedDate } from './team';
@@ -92,11 +92,13 @@ export function warrantyStatusText(status: WarrantyStatus, extendedUntil: string
 }
 
 /**
- * Warranty ending within the next three months (`wendSub` 4985): end in the future, at most 3 months after the prototype's
- * now (PG_NOW ≈ 30 Sep 2026); days = round((mIdx(end) − now) × 30). "Warranty ending < 90 days" counts these machines.
+ * Warranty ending within the next three months (`wendSub` 4985): end in the future, at most 3 months after the business
+ * date `today` (R-013; the prototype's now was PG_NOW ≈ 30 Sep 2026); days = round((mIdx(end) − mIdx(today)) × 30). "Warranty
+ * ending < 90 days" counts these machines.
  */
-export function warrantyEnding(endIso: string | null, now = PG_NOW): { soon: boolean; days: number | null } {
+export function warrantyEnding(endIso: string | null, today: string): { soon: boolean; days: number | null } {
   if (!endIso) return { soon: false, days: null };
+  const now = monthIndexOfIso(today);
   const wm = monthIndexOfIso(endIso);
   const soon = wm > now && wm - now <= 3;
   return { soon, days: soon ? Math.round((wm - now) * 30) : null };
@@ -109,7 +111,7 @@ export function warrantyEnding(endIso: string | null, now = PG_NOW): { soon: boo
  * past; "Out of warranty" once it has passed. Without any date, the stored status. `endOn` = the end in force (the warranty
  * ending alert and its days count from it); the "Warranty end" column keeps the contractual date.
  */
-export function warrantyInForce(m: { warrantyEndOn: string | null; extendedUntil?: string | null; warrantyStatus: WarrantyStatus }, today = NOW_ISO): { status: WarrantyStatus; endOn: string | null } {
+export function warrantyInForce(m: { warrantyEndOn: string | null; extendedUntil?: string | null; warrantyStatus: WarrantyStatus }, today: string): { status: WarrantyStatus; endOn: string | null } {
   const ext = m.extendedUntil && (!m.warrantyEndOn || m.extendedUntil > m.warrantyEndOn) ? m.extendedUntil : null;
   if (ext && ext >= today) return { status: 'extended', endOn: ext };
   const endOn = ext ?? m.warrantyEndOn;
@@ -119,9 +121,10 @@ export function warrantyInForce(m: { warrantyEndOn: string | null; extendedUntil
 
 /**
  * Warranty state of a machine added in Keystone ("Add machine"): Out of warranty when its warranty end is already past
- * (before the prototype's today, 30 Sep 2026), else In warranty — also without a warranty end, as the prototype.
+ * (before the business date `todayIso`, R-013 — the prototype's today was 30 Sep 2026), else In warranty — also without a
+ * warranty end, as the prototype.
  */
-export const addedWarrantyStatus = (warrantyEndOn: string | null, todayIso = NOW_ISO): WarrantyStatus =>
+export const addedWarrantyStatus = (warrantyEndOn: string | null, todayIso: string): WarrantyStatus =>
   warrantyInForce({ warrantyEndOn, extendedUntil: null, warrantyStatus: 'in_warranty' }, todayIso).status;
 
 // ── Configuration (as-maintained vs ECOs) ───────────────────────────────────────────────────────────────
@@ -251,11 +254,11 @@ export interface FleetKpiFacts extends MachineFacts {
  * read the warranty in force on `today` (`warrantyInForce`), and "Warranty ending < 90 days" counts from the end in force —
  * an extension ending within three months is ending soon.
  */
-export function fleetKpis(machines: readonly FleetKpiFacts[], today = NOW_ISO): KpiCard[] {
+export function fleetKpis(machines: readonly FleetKpiFacts[], today: string): KpiCard[] {
   const clients = new Set(machines.map((m) => m.client)).size;
   const inForce = machines.map((m) => ({ number: m.number, ...warrantyInForce(m, today) }));
   const extended = inForce.filter((w) => w.status === 'extended').length;
-  const ending = inForce.filter((w) => warrantyEnding(w.endOn).soon).map((w) => w.number);
+  const ending = inForce.filter((w) => warrantyEnding(w.endOn, today).soon).map((w) => w.number);
   return [
     { label: 'Machines in service', value: String(machines.length), sub: countTextEn('clients', clients), count: { kind: 'clients', n: clients }, alert: false },
     { label: 'In warranty', value: String(inForce.filter((w) => w.status === 'in_warranty').length), sub: countTextEn('extended', extended), count: { kind: 'extended', n: extended }, alert: false },
@@ -268,10 +271,10 @@ export function fleetKpis(machines: readonly FleetKpiFacts[], today = NOW_ISO): 
  * Warranty claims tiles (`savKpis` 4992) over the claims and interventions shown (zone filter applied); the same in
  * every view. Amounts in k€ (`money`); "Warranty cost YTD" sums the claims not Chargeable and its sub-line the Chargeable
  * ones — R-145 (NEW-D5-2 = a): of the calendar year of `today` only (the claim's report date; no upper bound, so a claim
- * dated after the frozen business date still counts in its year). Two clocks until R-013: `today` (NOW_ISO) here, PG_NOW for
- * the warranty ending alert — they agree on 30 Sep 2026 and must move together.
+ * dated after the business date still counts in its year). `today` is the business date (R-013), the same one the warranty
+ * ending alert counts from.
  */
-export function savKpis(claims: readonly ClaimFacts[], ivs: readonly InterventionFacts[], lang: Lang, today = NOW_ISO): KpiCard[] {
+export function savKpis(claims: readonly ClaimFacts[], ivs: readonly InterventionFacts[], lang: Lang, today: string): KpiCard[] {
   const open = claims.filter((c) => c.status !== 'closed');
   const major = open.filter((c) => c.severity === 'major' || c.severity === 'critical').length;
   const planned = ivs.filter((i) => i.status === 'planned').length;
@@ -307,10 +310,10 @@ export interface NewMachineValues {
 /**
  * "Add machine" (AF `fleet`): machine and client required; type among `machineTypes` (default the first); site free
  * text; "Delivered" and "Warranty end" optional dates as typed ("14 Dec 2025", "14/12/2025", "2025-12-14"; the year
- * defaults to 2026). The prototype stored any text; a date that cannot be read is refused here, as is a warranty end
+ * defaults to the business year `year`, R-013). The prototype stored any text; a date that cannot be read is refused here, as is a warranty end
  * before delivery.
  */
-export function parseNewMachine(values: Record<string, string | undefined>, machineTypes: readonly string[]): ParseResult<NewMachineValues> {
+export function parseNewMachine(values: Record<string, string | undefined>, machineTypes: readonly string[], year: number): ParseResult<NewMachineValues> {
   const name = text(values.name);
   if (!name) return { ok: false, error: 'Machine is required' };
   const client = text(values.client);
@@ -320,10 +323,10 @@ export function parseNewMachine(values: Record<string, string | undefined>, mach
   const type = text(values.type) || machineTypes[0];
   if (!type || !machineTypes.includes(type)) return { ok: false, error: 'Unknown machine type' };
   const deliveredText = text(values.delivered);
-  const deliveredOn = deliveredText ? parseNeedDate(deliveredText) : null;
+  const deliveredOn = deliveredText ? parseNeedDate(deliveredText, year) : null;
   if (deliveredText && !deliveredOn) return { ok: false, error: 'Enter the delivery date as a date, e.g. 14 Dec 2025' };
   const warrantyText = text(values.warranty);
-  const warrantyEndOn = warrantyText ? parseNeedDate(warrantyText) : null;
+  const warrantyEndOn = warrantyText ? parseNeedDate(warrantyText, year) : null;
   if (warrantyText && !warrantyEndOn) return { ok: false, error: 'Enter the warranty end as a date, e.g. 13 Dec 2027' };
   if (deliveredOn && warrantyEndOn && warrantyEndOn < deliveredOn) return { ok: false, error: 'Warranty end is before delivery' };
   return { ok: true, value: { name, machineType: type, client, site: site || null, deliveredOn, warrantyEndOn } };

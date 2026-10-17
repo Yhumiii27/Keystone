@@ -3,7 +3,8 @@
 // - Figures: contract value (base + signed amendments); payment milestones of the base contract priced on the base amount
 //   and an amendment's own milestones priced on the amendment's amount, billable once it is signed (NEW-D3-3, R-079: an
 //   amendment no longer re-prices the existing milestones, the invoiced ones included); an invoiced milestone keeps the
-//   amount of its invoice; late milestones (planned, billable, contractual date before PG_NOW); invoices due by the
+//   amount of its invoice; late milestones (planned, billable, contractual date before the business date's month, the
+//   prototype's PG_NOW — R-013); invoices due by the
 //   contract's payment rule (C-6, R-076 — calendar days, not the prototype's DST-sensitive ms arithmetic, 04 Q12);
 //   receivables, retention, schedule totals per basis. Every amount is in the contract's currency (C-9, R-075).
 // - The KPI sub-lines the prototype builds with explicit FR branches (4883, 4899), returned in the render language
@@ -13,7 +14,7 @@
 // No I/O, no translation. Golden values: src/domain/contract.test.ts (prototype renderVals, EN and FR).
 import type { Lang } from '@/i18n/translate';
 import {
-  AMENDMENT_AWAITING, NOW_ISO, amendmentStatus, beforePgNow, bondType, contractType,
+  AMENDMENT_AWAITING, amendmentStatus, beforePgNow, bondType, contractType,
   type AmendmentStatus, type BondType, type ContractType, type CustomerInvoiceStatus, type PaymentMilestoneStatus,
 } from '@/server/db/codes';
 import { BASE_CURRENCY, isCurrency, type CurrencyCode } from './currency';
@@ -119,7 +120,7 @@ export interface MilestoneFigure extends MilestoneInput {
   amountKeur: number;
   /** A base-contract milestone, or one of a signed amendment: it may be invoiced and counts in the billing plan. */
   billable: boolean;
-  /** Planned, billable and contractual date before the status "now" (PG_NOW ≈ 30 Sep 2026). */
+  /** Planned, billable and contractual date before the business date's month (the prototype's PG_NOW; R-013). */
   late: boolean;
   /** Delivery 8 (R-077, C-7): its schedule group (base contract or its amendment) exceeds 100 % — invoicing is blocked. */
   blocked: boolean;
@@ -137,7 +138,7 @@ export interface InvoiceFigure {
   paidOn: string | null;
   note: string | null;
   status: CustomerInvoiceStatus;
-  /** Awaiting payment and due before NOWD (30 Sep 2026). */
+  /** Awaiting payment and due before the business date (the prototype's NOWD, 30 Sep 2026; R-013). */
   overdue: boolean;
   /** "Mark paid" applies (milestone invoiced). */
   canPay: boolean;
@@ -224,7 +225,8 @@ export interface ContractFigures {
 
 const sum = <T>(xs: readonly T[], f: (x: T) => number) => xs.reduce((s, x) => s + f(x), 0);
 
-export function contractFigures(c: ContractInput): ContractFigures {
+/** `today`: business date (R-013) — late milestones (before its month) and overdue invoices (due before it). */
+export function contractFigures(c: ContractInput, today: string): ContractFigures {
   const terms = termsOfSheet(c.sheet);
   const signed = c.amendments.filter(isSignedAmendment);
   const pending = c.amendments.filter((a) => !isSignedAmendment(a));
@@ -239,7 +241,7 @@ export function contractFigures(c: ContractInput): ContractFigures {
       ...m,
       amountKeur: m.status !== 'planned' && m.invoice ? m.invoice.amountKeur : plannedMilestoneAmount(basis, m.sharePct),
       billable,
-      late: billable && m.status === 'planned' && beforePgNow(m.contractualDue),
+      late: billable && m.status === 'planned' && beforePgNow(m.contractualDue, today),
       blocked: invoiceBlocked(c.milestones, m.number),
     };
   });
@@ -248,7 +250,7 @@ export function contractFigures(c: ContractInput): ContractFigures {
     const i = m.invoice;
     const dueOn = paymentDueOn(i.issuedOn, terms);
     const paid = m.status === 'paid';
-    const overdue = !paid && dueOn < NOW_ISO;
+    const overdue = !paid && dueOn < today;
     return [{
       number: i.number, milestone: m.number, label: m.label, issuedOn: i.issuedOn, amountKeur: m.amountKeur, dueOn, paidOn: i.paidOn, note: i.note,
       status: paid ? 'paid' : overdue ? 'overdue' : 'awaiting_payment', overdue, canPay: m.status === 'invoiced',
@@ -409,9 +411,10 @@ function isoOf(y: number, m: number, d: number): string | null {
 /**
  * A date as typed in the forms → ISO, or null. Accepts the prototype's display forms in both languages
  * ("14 Dec 2026", "14 déc. 2026", "14 décembre 2026", "1er oct. 2026"), "14/12/2026" and ISO "2026-12-14".
- * The year defaults to 2026 (the data set's year, as the prototype's `parseD`); "’27" means 2027.
+ * A date without a year is in `defaultYear` — the business date's year (R-013; the prototype's `parseD` appended 2026, the
+ * data set's year); "’27" means 2027.
  */
-export function parseDateInput(raw: string | null | undefined, defaultYear = 2026): string | null {
+export function parseDateInput(raw: string | null | undefined, defaultYear: number): string | null {
   const s = String(raw ?? '').trim().toLowerCase();
   if (!s) return null;
   let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
@@ -456,7 +459,7 @@ export interface AmendmentForm {
 }
 
 /** AF.amendment: subject* · linked CR · amount* (k€, may be negative for a reduction) · status · signature date · document. */
-export function parseAmendmentForm(v: Record<string, string | undefined>): ParseResult<AmendmentForm> {
+export function parseAmendmentForm(v: Record<string, string | undefined>, year: number): ParseResult<AmendmentForm> {
   const subject = text(v.label);
   if (!subject) return { ok: false, error: 'Subject is required' };
   if (subject.length > MAX_TEXT) return { ok: false, error: 'Subject is too long' };
@@ -465,7 +468,7 @@ export function parseAmendmentForm(v: Record<string, string | undefined>): Parse
   const status = text(v.status) || 'draft';
   if (!amendmentStatus.isCode(status)) return { ok: false, error: 'Unknown status' };
   const date = text(v.date);
-  const signedOn = date ? parseDateInput(date) : null;
+  const signedOn = date ? parseDateInput(date, year) : null;
   if (date && !signedOn) return { ok: false, error: DATE_ERROR };
   // R-079: an amendment registered as already signed carries its signature date (the value it adds starts that day).
   if (status === 'signed' && !signedOn) return { ok: false, error: 'Enter the signature date of a signed amendment' };
@@ -483,7 +486,7 @@ export interface BondForm {
 }
 
 /** AF.bond: type · amount* (k€ ≥ 0) · issuer* · valid until* (date). */
-export function parseBondForm(v: Record<string, string | undefined>): ParseResult<BondForm> {
+export function parseBondForm(v: Record<string, string | undefined>, year: number): ParseResult<BondForm> {
   const type = text(v.label) || 'performance';
   if (!bondType.isCode(type)) return { ok: false, error: 'Unknown guarantee type' };
   const amount = parseNumber(v.amt);
@@ -491,7 +494,7 @@ export function parseBondForm(v: Record<string, string | undefined>): ParseResul
   const issuer = text(v.issuer);
   if (!issuer) return { ok: false, error: 'Issuer is required' };
   if (issuer.length > MAX_TEXT) return { ok: false, error: 'Issuer is too long' };
-  const validUntil = parseDateInput(v.valid);
+  const validUntil = parseDateInput(v.valid, year);
   if (!validUntil) return { ok: false, error: DATE_ERROR };
   return { ok: true, value: { type, amountKeur: amount, issuer, validUntil } };
 }
@@ -513,7 +516,7 @@ export const BASE_CONTRACT_OPTION = 'base';
  * of the amendment's amount) · contractual date* · condition. Σ > 100 % is accepted (C-7a: the schedule can always be retouched)
  * but blocks invoicing of its group until corrected (delivery 8, R-077). "Edit milestone" uses the same form without "Applies to".
  */
-export function parseMilestoneForm(v: Record<string, string | undefined>): ParseResult<MilestoneForm> {
+export function parseMilestoneForm(v: Record<string, string | undefined>, year: number): ParseResult<MilestoneForm> {
   const basis = text(v.basis) || BASE_CONTRACT_OPTION;
   if (basis !== BASE_CONTRACT_OPTION && !/^\d{1,4}$/.test(basis)) return { ok: false, error: 'Choose the base contract or an amendment' };
   const amendment = basis === BASE_CONTRACT_OPTION ? null : Number(basis);
@@ -522,7 +525,7 @@ export function parseMilestoneForm(v: Record<string, string | undefined>): Parse
   if (label.length > MAX_TEXT) return { ok: false, error: 'Milestone is too long' };
   const pct = parseNumber(v.pct);
   if (!Number.isFinite(pct) || pct <= 0 || pct > 100) return { ok: false, error: 'Enter a share between 0 and 100 %' };
-  const due = parseDateInput(v.due);
+  const due = parseDateInput(v.due, year);
   if (!due) return { ok: false, error: DATE_ERROR };
   const cond = text(v.cond);
   if (cond.length > MAX_LONG_TEXT) return { ok: false, error: 'Condition is too long' };
@@ -535,8 +538,8 @@ export interface SignAmendmentForm {
 }
 
 /** "Mark signed" (R-079): signature date* · document reference (Codex number of the signed amendment). */
-export function parseSignAmendmentForm(v: Record<string, string | undefined>): ParseResult<SignAmendmentForm> {
-  const signedOn = parseDateInput(v.date);
+export function parseSignAmendmentForm(v: Record<string, string | undefined>, year: number): ParseResult<SignAmendmentForm> {
+  const signedOn = parseDateInput(v.date, year);
   if (!signedOn) return { ok: false, error: DATE_ERROR };
   const doc = text(v.doc);
   if (doc.length > 60) return { ok: false, error: 'Reference is too long' };
@@ -544,8 +547,8 @@ export function parseSignAmendmentForm(v: Record<string, string | undefined>): P
 }
 
 /** "Release" of a bond (R-079): release date*. */
-export function parseReleaseBondForm(v: Record<string, string | undefined>): ParseResult<{ releasedOn: string }> {
-  const releasedOn = parseDateInput(v.date);
+export function parseReleaseBondForm(v: Record<string, string | undefined>, year: number): ParseResult<{ releasedOn: string }> {
+  const releasedOn = parseDateInput(v.date, year);
   return releasedOn ? { ok: true, value: { releasedOn } } : { ok: false, error: DATE_ERROR };
 }
 
@@ -560,13 +563,13 @@ export interface InvoiceForm {
  * AF.billing: milestone (a planned one — select, first option when empty) · invoice number* · invoice date* ·
  * note. `planned` = the planned milestone numbers in contractual order.
  */
-export function parseInvoiceForm(v: Record<string, string | undefined>, planned: readonly string[]): ParseResult<InvoiceForm> {
+export function parseInvoiceForm(v: Record<string, string | undefined>, planned: readonly string[], year: number): ParseResult<InvoiceForm> {
   const ms = text(v.ms).split(' · ')[0] || planned[0] || '';
   if (!planned.includes(ms)) return { ok: false, error: 'Choose a milestone still to invoice' };
   const no = text(v.no);
   if (!no) return { ok: false, error: 'Invoice number is required' };
   if (no.length > 40) return { ok: false, error: 'Invoice number is too long' };
-  const issuedOn = parseDateInput(v.date);
+  const issuedOn = parseDateInput(v.date, year);
   if (!issuedOn) return { ok: false, error: DATE_ERROR };
   const note = text(v.note);
   if (note.length > MAX_LONG_TEXT) return { ok: false, error: 'Note is too long' };
@@ -608,7 +611,7 @@ export type SheetPatch =
  * code, a parsable signature date (or empty), a non-empty reference, a currency code (the DAL checks it against the project),
  * a payment rule code and its days (0–180); other texts as typed (trimmed).
  */
-export function parseSheetField(key: unknown, raw: unknown): ParseResult<SheetPatch> {
+export function parseSheetField(key: unknown, raw: unknown, year: number): ParseResult<SheetPatch> {
   if (!isSheetField(key) || typeof raw !== 'string') return { ok: false, error: 'Invalid request' };
   const v = raw.trim();
   const long = key === 'scope' ? MAX_LONG_TEXT : MAX_TEXT;
@@ -622,7 +625,7 @@ export function parseSheetField(key: unknown, raw: unknown): ParseResult<SheetPa
       return contractType.isCode(v) ? { ok: true, value: { type: v } } : { ok: false, error: 'Unknown contract type' };
     case 'signed': {
       if (!v) return { ok: true, value: { signedOn: null } };
-      const iso = parseDateInput(v);
+      const iso = parseDateInput(v, year);
       return iso ? { ok: true, value: { signedOn: iso } } : { ok: false, error: DATE_ERROR };
     }
     case 'amount': {

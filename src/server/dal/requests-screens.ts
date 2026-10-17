@@ -3,6 +3,7 @@ import 'server-only';
 // DAL: the Approvals screen data of one department, the New resource request dialog setup, the person → user account
 // lookup used to notify the requester / department head / assignee, and the request notifications + activity feed.
 import { and, eq, or } from 'drizzle-orm';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { recordActivity } from '@/server/db/helpers';
 import { departments, persons, projects, users } from '@/server/db/schema';
@@ -45,16 +46,18 @@ export interface ApprovalsScreenData {
   /** Every pending request (all departments) — Team load "Pending" column. */
   allPending: ResourceRequestRow[];
   pool: ResourcePool;
+  /** Business date (ISO, R-013): the team-load week labels when the pool has no weeks. */
+  today: string;
 }
 
 /** Approvals screen of a department (by exact name); null when unknown. */
 export async function getApprovalsScreenData(department: string): Promise<ApprovalsScreenData | null> {
-  const [departmentsFull, queue, allPending, pool] = await Promise.all([
-    listApprovalDepartmentsFull(), getDepartmentApprovals(department), listResourceRequests({ status: 'pending' }), getResourcePool(),
+  const [departmentsFull, queue, allPending, pool, today] = await Promise.all([
+    listApprovalDepartmentsFull(), getDepartmentApprovals(department), listResourceRequests({ status: 'pending' }), getResourcePool(), businessToday(),
   ]);
   const d = departmentsFull.find((x) => x.name === department);
   if (!d || !queue) return null;
-  return { departments: departmentsFull, department: d, pending: queue.pending, decided: queue.decided, allPending, pool };
+  return { departments: departmentsFull, department: d, pending: queue.pending, decided: queue.decided, allPending, pool, today };
 }
 
 /** Department a person belongs to (persons.department), null when none / unknown. */

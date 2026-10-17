@@ -8,7 +8,7 @@ import {
 } from './site-sheet';
 import { STAGES } from '@/server/db/codes';
 
-const pd = (s: string) => parseDateInput(s);
+const pd = (s: string) => parseDateInput(s, 2026);
 
 describe('stage window and who (D-3 a "dès les Études"; defaults for Garantie, Clos, Annulé)', () => {
   it('open from Études to Mise en service & SAT, closed before and after', () => {

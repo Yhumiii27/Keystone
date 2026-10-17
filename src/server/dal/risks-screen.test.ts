@@ -5,7 +5,7 @@ import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { PROTO } from '@/server/prototype';
 import { riskBadge, riskBadges } from './risks-badge';
-import { getContingencyScreen, getRiskScreen, riskOwnerOptions } from './risks-screen';
+import { getContingencyScreen, getRiskScreen, projectPmName, riskOwnerOptions } from './risks-screen';
 import { updateRisk } from './risks';
 
 beforeAll(async () => {
@@ -17,13 +17,17 @@ describe('getRiskScreen', () => {
     const s = (await getRiskScreen('HLT-026'))!;
     expect(s.register.risks).toHaveLength(8);
     expect(s.contingency).toBe(150);
-    expect(s.team).toEqual([...PROTO.DEFS['HLT-026'].team, 'Antoine Girard', 'Gabriel Comte']); // R-041 (P-2): + the seeded referents
+    // R-041 (P-2): + the seeded referents; R-121 (owner's answer of 17 Oct 2026): + the PM of record, Romain Aubert.
+    expect(s.team).toEqual([...PROTO.DEFS['HLT-026'].team, 'Antoine Girard', 'Gabriel Comte', 'Romain Aubert']);
   });
 
   it('other projects with data compare with DEFS.cont (NDC-031 → 100)', async () => {
     const s = (await getRiskScreen('NDC-031'))!;
     expect([s.register.risks.length, s.contingency, s.register.openEmv]).toEqual([4, 100, 115]);
-    expect(s.team).toEqual(PROTO.DEFS['NDC-031'].team);
+    // R-121 (owner's answer of 17 Oct 2026): + the PM of record, not on DEFS.team.
+    const pm = await projectPmName('NDC-031');
+    expect([pm, PROTO.DEFS['NDC-031'].team.includes(pm)]).toEqual([expect.any(String), false]);
+    expect(s.team).toEqual([...PROTO.DEFS['NDC-031'].team, pm]);
   });
 
   it('projects without data: empty register, contingency = default provision, owners = the whole pool', async () => {
@@ -31,7 +35,11 @@ describe('getRiskScreen', () => {
     expect(s.register.risks).toEqual([]);
     const c = (await getContingencyScreen('EWA-051'))!.contingency;
     expect([c.isDefault, s.contingency]).toEqual([true, c.initial]);
-    expect(await riskOwnerOptions('EWA-051')).toEqual((PROTO.PEOPLE as [string][]).map((p) => p[0]));
+    // R-121 (owner's answer of 17 Oct 2026): the pool, + the PM of record when not in it.
+    const pool = (PROTO.PEOPLE as [string][]).map((p) => p[0]);
+    const pm = (await projectPmName('EWA-051'))!;
+    expect([pm, pool.includes(pm)]).toEqual([expect.any(String), false]);
+    expect(await riskOwnerOptions('EWA-051')).toEqual([...pool, pm]);
     expect(await getRiskScreen('NOPE-000')).toBeNull();
   });
 });

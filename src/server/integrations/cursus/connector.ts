@@ -14,7 +14,8 @@ import 'server-only';
 //   no reminder endpoint: reminders stay pending (TODO(cursus), OPEN QUESTION C-2).
 import { and, eq, inArray } from 'drizzle-orm';
 import { directoryEntryOf } from '@/domain/directory';
-import { STATUS_ISO, cursusSyncStatus, inWorkspace, type CursusClearance, type CursusVerdict } from '@/server/db/codes';
+import { cursusSyncStatus, inWorkspace, type CursusClearance, type CursusVerdict } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { CURSUS_CONNECTOR_NAME, connectorEnabled } from '@/server/integrations/connector-enabled';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
@@ -45,6 +46,8 @@ async function queue(
 ): Promise<CursusRequestReceipt> {
   if (!inWorkspace('site', actor.role)) throw new Error('Site is outside your workspace');
   const db = await getDb();
+  // R-013: the request is dated on the business date (the prototype's status date).
+  const requestedOn = await businessToday();
   return db.transaction(async (tx) => {
     const { projectId } = await chantierOf(tx, projectCode);
     const [row] = await tx.select().from(cursusClearances).where(and(eq(cursusClearances.projectCode, projectCode), eq(cursusClearances.personName, personName)));
@@ -60,7 +63,7 @@ async function queue(
     const at = new Date();
     const [r] = await tx.insert(cursusRequests).values({
       projectCode, kind, personName, matricule: row.matricule, clearanceId: row.id, payload, actorName: who, actorPersonId: person?.id ?? null, actorRole: actor.role,
-      recordedAt: at, requestedOn: STATUS_ISO, syncStatus: 'pending',
+      recordedAt: at, requestedOn, syncStatus: 'pending',
     }).returning();
     const label = kind === 'reminder' ? `Reminder sent via Cursus · ${personName}` : `Travel request sent to Cursus · ${personName}`;
     await writeAudit(tx, {

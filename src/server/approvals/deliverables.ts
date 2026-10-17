@@ -3,6 +3,7 @@ import 'server-only';
 // that project's client organisation (apprItems 4727 by person instead of the client role). Decided inline:
 // Approve → Accepted (PV, the viewer and the status date stamped), Reject → Rejected ("comments issued"), through the
 // Quality writer (decideDeliverableAction → decideDeliverable); the row opens the deliverable drawer.
+import { yearOfIso } from '@/domain/clock';
 import { deliverableAcceptanceItems } from '@/domain/quality';
 import { deliverableHref } from '@/features/quality/links';
 import { deliverableAcceptanceQueue, deliverableDecidedCount } from '@/server/dal/quality';
@@ -17,7 +18,7 @@ export const deliverableProvider: ApprovalProvider = {
   async items(ctx) {
     if (!ctx.project || !ctx.viewer.clientProjects.includes(ctx.project.code)) return [];
     const code = ctx.project.code;
-    return deliverableAcceptanceItems(await deliverableAcceptanceQueue(code, actorOf(ctx)), code, { deliverable: (n) => deliverableHref(code, n) });
+    return deliverableAcceptanceItems(await deliverableAcceptanceQueue(code, actorOf(ctx)), code, { deliverable: (n) => deliverableHref(code, n) }, yearOfIso(ctx.today));
   },
   // Deliverables the viewer accepted or rejected in Keystone (register, drawer, inbox, client portal).
   async decided(ctx) {

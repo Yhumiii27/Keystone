@@ -14,6 +14,7 @@ import { EcoDrawer } from '@/features/eco/eco-drawer';
 import { EcoRegister } from '@/features/eco/eco-view';
 import { ecoDrawerView, ecoScreenView, type EcoState } from '@/features/eco/model';
 import { VigieLink } from '@/features/eco/vigie-link';
+import { businessToday } from '@/server/clock';
 import { getEcoScreen } from '@/server/dal/eco-screen';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { vigieNewEcoUrl } from '@/server/integrations/vigie/links';
@@ -25,12 +26,12 @@ const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v
 
 export default async function EcoPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const [{ t, lang }, access] = await Promise.all([getI18n(), getScreenAccess('eco')]);
+  const [{ t, lang }, access, today] = await Promise.all([getI18n(), getScreenAccess('eco'), businessToday()]);
   const [identity, data] = await Promise.all([getApproverIdentity(access.viewer), getEcoScreen(access.viewer, first(sp.eco)?.trim().slice(0, 60) || null)]);
   // `?eco=` as Vigie writes the number (case-insensitive deep link); an unknown ECO opens nothing and is dropped from the links.
   const state: EcoState = { status: ecoFilterOf(first(sp.status)), eco: data.selected };
-  const view = ecoScreenView({ ecos: data.ecos, awaitingMine: data.awaitingMine, state, viewer: access.viewer }, t, lang);
-  const drawer = data.detail ? ecoDrawerView({ data: data.detail, state, viewer: { role: access.viewer.role, managedProjects: identity.managedProjects } }, t, lang) : null;
+  const view = ecoScreenView({ ecos: data.ecos, awaitingMine: data.awaitingMine, state, viewer: access.viewer, today }, t, lang);
+  const drawer = data.detail ? ecoDrawerView({ data: data.detail, state, viewer: { role: access.viewer.role, managedProjects: identity.managedProjects }, today }, t, lang) : null;
 
   return (
     <>

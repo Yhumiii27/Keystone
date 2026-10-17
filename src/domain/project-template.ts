@@ -14,7 +14,9 @@
 //   Also          cost categories of the budget step, the ITP plan of the machine type (its systems), the calendar,
 //                 the PM chosen in the wizard, the planned start / finish, the currency and the site (L-3b: city and a
 //                 country of the countries table — the zone comes from the country).
+import { addDaysIso } from '@/server/db/codes';
 import type { WorkCalendar } from './calendar';
+import { nextMondayIso } from './form-dates';
 
 /** Activities created under each phase (the Machine types screen has no activity list yet). */
 export const TEMPLATE_ACTIVITIES_PER_PHASE = 1;
@@ -23,9 +25,20 @@ export const TEMPLATE_LINK = { type: 'FS' as const, lagDays: 0 };
 /** First activity code and step ("A1010", "A1020"…). */
 export const TEMPLATE_CODE_START = 1010;
 export const TEMPLATE_CODE_STEP = 10;
-/** Planned start / finish offered by the wizard (the prototype's static "11 Jan 2027" / "30 Sep 2027"). */
-export const DEFAULT_PLANNED_START = '2027-01-11';
-export const DEFAULT_PLANNED_FINISH = '2027-09-30';
+/**
+ * Planned start offered by the wizard, from the business date `today` (R-013): the Monday after today + 15 weeks — the
+ * prototype's static "11 Jan 2027" on Fri 25 Sep 2026 (+ 105 days = Fri 8 Jan → Mon 11 Jan).
+ */
+export const defaultPlannedStart = (today: string) => nextMondayIso(addDaysIso(today, 105));
+/**
+ * Planned finish of the wizard when none is typed: the last day of the business date's month one year later (R-013) — the
+ * prototype's static "30 Sep 2027" on 25 Sep 2026.
+ */
+export function defaultPlannedFinish(today: string): string {
+  const y = +today.slice(0, 4) + 1;
+  const m = +today.slice(5, 7);
+  return addDaysIso(`${m === 12 ? y + 1 : y}-${String((m % 12) + 1).padStart(2, '0')}-01`, -1);
+}
 /**
  * Required fields of the wizard. L-3b (owner's answer "a"): name, client, PM, type, start and location (site city + a
  * country of the countries table). The planned finish is optional: without it the finish comes from the instantiated plan.

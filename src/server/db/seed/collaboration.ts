@@ -2,7 +2,7 @@
 // transcripts (MTG_TRANSCRIPTS 3711) and their pre-baked analysis (logic 4840), the client question bridge
 // (MTG_EXCHANGE 3712), stakeholders (STAKEHOLDERS 3714) and the RACI matrix (RACI 3715). See schema/collaboration.ts.
 import { PROTO } from '@/server/prototype';
-import { isoOfDisplayDate, meetingLineType, meetingSeries, meetingStatus, meetingType, parisInstant, stakeholderType, type MeetingLineType, type RaciCode } from '../codes';
+import { isoOfDemoDate, meetingLineType, meetingSeries, meetingStatus, meetingType, parisInstant, stakeholderType, type MeetingLineType, type RaciCode } from '../codes';
 import {
   clientQuestions, meetingAgendaPoints, meetingLines, meetingParticipants, meetingTranscriptProposals, meetingTranscripts, meetings, raciCells,
   raciColumns, raciMatrices, raciRows, stakeholders,
@@ -62,7 +62,7 @@ export function durationMinOf(text: string): number {
   return parseInt(m[1] ?? '0', 10) * 60 + parseInt(m[2] ?? '0', 10);
 }
 /** Due typed on a minutes line ("2 Oct", "—") → ISO (2026 assumed, as `mIdx(due + ' 2026')`). */
-export const dueDateOf = (due: string | null | undefined) => (due && due !== '—' ? isoOfDisplayDate(due) : null);
+export const dueDateOf = (due: string | null | undefined) => (due && due !== '—' ? isoOfDemoDate(due) : null);
 
 export async function seedCollaboration(tx: Tx, ctx: SeedCtx): Promise<void> {
   const list = PROTO.MEETINGS as ProtoMeeting[];
@@ -70,17 +70,17 @@ export async function seedCollaboration(tx: Tx, ctx: SeedCtx): Promise<void> {
   const transcripts = PROTO.MTG_TRANSCRIPTS as Record<string, string>;
   for (const [i, m] of list.entries()) {
     const id = newId();
-    const startsOn = isoOfDisplayDate(m.date)!;
+    const startsOn = isoOfDemoDate(m.date)!;
     await tx.insert(meetings).values({
       id, projectId: must(ctx.projectByCode, m.proj, 'project'), number: m.id, title: m.title, series: meetingSeries.code(m.series), type: meetingType.code(m.type),
       startsOn, startTime: m.time, startsAt: parisInstant(startsOn, m.time), durationMin: durationMinOf(m.dur), location: m.loc,
       organizerPersonId: personIdOrNull(ctx, m.organizer), organizerName: m.organizer, status: meetingStatus.code(m.status), minutesNumber: m.doc || null,
-      minutesDocumentId: (m.doc && ctx.document.get(m.doc)) || null, minutesSentOn: m.sent ? isoOfDisplayDate(m.sent) : null, sortOrder: i + 1,
+      minutesDocumentId: (m.doc && ctx.document.get(m.doc)) || null, minutesSentOn: m.sent ? isoOfDemoDate(m.sent) : null, sortOrder: i + 1,
     });
     await tx.insert(meetingParticipants).values(
       m.invited.map((name, position) => ({
         id: newId(), meetingId: id, position, personId: personIdOrNull(ctx, name), name, present: m.present.includes(name),
-        minutesRecipient: !!m.read && name in m.read, minutesReadOn: m.read?.[name] ? isoOfDisplayDate(m.read[name]) : null,
+        minutesRecipient: !!m.read && name in m.read, minutesReadOn: m.read?.[name] ? isoOfDemoDate(m.read[name]) : null,
       })),
     );
     for (const [pi, a] of m.agenda.entries()) {
@@ -127,7 +127,7 @@ export async function seedCollaboration(tx: Tx, ctx: SeedCtx): Promise<void> {
     Object.entries(PROTO.STAKEHOLDERS as Record<string, Stk[]>).flatMap(([code, rows]) =>
       rows.map(([name, organisation, role, type, influence, interest, attitude, contact, owner, last, notes], position) => ({
         id: newId(), projectId: must(ctx.projectByCode, code, 'project'), name, organisation, role, type: stakeholderType.code(type), influence, interest, attitude,
-        contactEmail: contact || null, ownerPersonId: personIdOrNull(ctx, owner), ownerName: owner, lastContactOn: isoOfDisplayDate(last)!, notes,
+        contactEmail: contact || null, ownerPersonId: personIdOrNull(ctx, owner), ownerName: owner, lastContactOn: isoOfDemoDate(last)!, notes,
         personId: ctx.personByFull.get(name) ?? null, position,
       })),
     ),

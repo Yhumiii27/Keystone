@@ -7,7 +7,7 @@ import GEN from '@/server/prototype/prototype-generated.json';
 import { riskCategory, riskResponse, riskStatus } from '@/server/db/codes';
 import {
   FORM_CATEGORIES, FORM_RESPONSES, MAX_COST, badgeText, cellLevel, costIfOccurs, costOfLegacyEmv, criticalOpenCount, emvOf, levelOf, levelTagText,
-  levelTone, onCriticalPath, parseCategory, parseCost, parseNewRisk, parseRiskEdit, parseScale, registerRows, riskChips, riskKpis, riskMatrix, scoreOf,
+  levelTone, onCriticalPath, parseCategory, parseCost, parseNewRisk, parseRiskEdit, parseScale, registerRows, riskChips, riskKpis, riskMatrix, riskOwnersWithPm, scoreOf,
   statusTone, toggleOf, type RiskFacts,
 } from './risk';
 
@@ -202,6 +202,17 @@ describe('"New risk" form', () => {
     expect(parseNewRisk({ title: 'x' }, [])).toMatchObject({ ok: true, value: { owner: null } });
     expect(parseNewRisk({ title: 'x', cost: '-3' }, team)).toEqual({ ok: false, error: 'Enter a cost of 0 or more (k€)' });
     expect(parseNewRisk({ title: 'x', cost: 'lots' }, team)).toEqual({ ok: false, error: 'Enter a cost of 0 or more (k€)' });
+  });
+
+  it('R-121, owner’s answer of 17 Oct 2026: the PM of record is added to the owners (at the end: the default owner stays)', () => {
+    const team = P.DEFS['HLT-026'].team as string[];
+    const owners = riskOwnersWithPm(team, 'Romain Aubert');
+    expect([owners.length, owners[0], owners.at(-1)]).toEqual([team.length + 1, 'Amélie Ollivier', 'Romain Aubert']);
+    expect(riskOwnersWithPm(team, team[2])).toEqual(team);
+    expect(riskOwnersWithPm(team, null)).toEqual(team);
+    // The server-side validation reads the same list: the PM is accepted as owner.
+    expect(parseNewRisk({ title: 'x', owner: 'Romain Aubert' }, owners)).toMatchObject({ ok: true, value: { owner: 'Romain Aubert' } });
+    expect(parseNewRisk({ title: 'x', owner: 'Romain Aubert' }, team)).toEqual({ ok: false, error: 'Unknown owner' });
   });
 });
 

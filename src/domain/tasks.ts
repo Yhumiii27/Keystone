@@ -1,10 +1,10 @@
 // Personal tasks — My work and Task detail logic (docs/spec/10 §6–7, §9 "Task"; prototype logic 3893–3896,
 // 4058–4107). Pure TypeScript shared by the server pages, the client islands and the Server Functions.
 //
-// Day axis: working-day offsets from Mon 21 Sep 2026 (`dayDate`, 3266): 0 = Mon 21 Sep … 4 = Fri 25 Sep (TODAY,
-// the frozen status date) … 9 = Fri 2 Oct, 10 = Mon 5 Oct. Every English string returned here is a source string
-// to render through t().
-import { MO, TODAY, dayDate, dayLabel } from '@/lib/format';
+// Day axis: working-day offsets from Mon 21 Sep 2026 (`dayDate`, 3266): 0 = Mon 21 Sep … 4 = Fri 25 Sep … 9 = Fri 2 Oct,
+// 10 = Mon 5 Oct. `today` is the business date's offset on this axis (`workdayOffsetOf`, src/domain/clock.ts — R-013; 4 on
+// the demo data set). Every English string returned here is a source string to render through t().
+import { MO, dayDate, dayLabel } from '@/lib/format';
 
 export type TaskStatus = 'todo' | 'doing' | 'review' | 'done';
 export type TaskPriority = 'high' | 'med' | 'low';
@@ -51,8 +51,8 @@ export function workingDayOf(iso: string, round: 'up' | 'down' = 'down'): number
   return round === 'up' ? (w + 1) * 5 : w * 5 + 4;
 }
 
-/** Last day of next week (TODAY = 4 → 9, Fri 2 Oct): the "Next week" bucket is TODAY < due ≤ this. */
-export const nextWeekEnd = (today = TODAY) => (Math.floor(today / 5) + 1) * 5 + 4;
+/** Last day of next week (today = 4 → 9, Fri 2 Oct): the "Next week" bucket is today < due ≤ this. */
+export const nextWeekEnd = (today: number) => (Math.floor(today / 5) + 1) * 5 + 4;
 
 /** "21 Sep – 2 Oct": span of two working-day offsets (calendar title, "Next week" KPI sub). */
 export function spanText(from: number, to: number): string {
@@ -67,14 +67,14 @@ export type DueBucket = 'overdue' | 'today' | 'next' | 'later';
 export type DueTone = 'done' | 'overdue' | 'today' | 'normal';
 
 /** Urgency bucket of an open task. */
-export function dueBucket(due: number, today = TODAY): DueBucket {
+export function dueBucket(due: number, today: number): DueBucket {
   if (due < today) return 'overdue';
   if (due === today) return 'today';
   return due <= nextWeekEnd(today) ? 'next' : 'later';
 }
 
 /** "Done" · "Overdue · Tue 22 Sep" · "Today" · "Thu 1 Oct". */
-export function dueText(t: Pick<WorkTask, 'status' | 'due'>, today = TODAY): string {
+export function dueText(t: Pick<WorkTask, 'status' | 'due'>, today: number): string {
   if (t.status === 'done') return 'Done';
   if (t.due < today) return 'Overdue · ' + dayLabel(t.due);
   if (t.due === today) return 'Today';
@@ -82,7 +82,7 @@ export function dueText(t: Pick<WorkTask, 'status' | 'due'>, today = TODAY): str
 }
 
 /** Colour role of the due text: neutral-500 (done) · LO (overdue) · accent-300 (today) · neutral-400. */
-export function dueTone(t: Pick<WorkTask, 'status' | 'due'>, today = TODAY): DueTone {
+export function dueTone(t: Pick<WorkTask, 'status' | 'due'>, today: number): DueTone {
   if (t.status === 'done') return 'done';
   if (t.due < today) return 'overdue';
   return t.due === today ? 'today' : 'normal';
@@ -112,7 +112,7 @@ export interface WorkGroup<T> {
 }
 
 /** List view: Overdue · Today · Next week · Later (open tasks, byDue) · Recently done (list order); empty groups omitted. */
-export function workGroups<T extends WorkTask>(mine: readonly T[], today = TODAY): WorkGroup<T>[] {
+export function workGroups<T extends WorkTask>(mine: readonly T[], today: number): WorkGroup<T>[] {
   const open = mine.filter((t) => t.status !== 'done');
   const keys: DueBucket[] = ['overdue', 'today', 'next', 'later'];
   const groups: WorkGroup<T>[] = keys.map((key) => ({ key, items: sortByDue(open.filter((t) => dueBucket(t.due, today) === key)) }));
@@ -139,7 +139,7 @@ export interface WorkKpis {
 }
 
 /** `workKpis` (4066). `loads` = the person's weekly loads from the resource pool (first two = next two weeks). */
-export function workKpis(mine: readonly WorkTask[], loads: readonly number[] | null, today = TODAY): WorkKpis {
+export function workKpis(mine: readonly WorkTask[], loads: readonly number[] | null, today: number): WorkKpis {
   const open = mine.filter((t) => t.status !== 'done');
   const loggedH = mine.reduce((a, t) => a + (t.start <= today ? t.loggedH : 0), 0);
   const load = loads && loads.length >= 2 ? Math.round((loads[0] + loads[1]) / 2) : null;
@@ -155,7 +155,7 @@ export function workKpis(mine: readonly WorkTask[], loads: readonly number[] | n
 }
 
 /** Number shown in the "My tasks" badge: open tasks due today ('' when none). */
-export const dueTodayBadge = (mine: readonly WorkTask[], today = TODAY) => {
+export const dueTodayBadge = (mine: readonly WorkTask[], today: number) => {
   const n = mine.filter((t) => t.status !== 'done' && t.due === today).length;
   return n ? String(n) : '';
 };
@@ -167,8 +167,11 @@ export function logTimeTarget<T extends Pick<WorkTask, 'status'>>(mine: readonly
 
 // ── Calendar view (calDays / calRows / calHours, 4077–4080) ────────────────────────────────────────────
 
-/** First offset of the two-week window `week` weeks after the default one (week 0 = Mon 21 Sep – Fri 2 Oct). */
-export const calendarStart = (week: number) => week * 5;
+/**
+ * First offset of the two-week window `week` weeks after the default one, which starts on the Monday of the business date's
+ * week (R-013: (floor(today / 5) + week) × 5 — week 0 = Mon 21 Sep – Fri 2 Oct on the demo data set, today = 4).
+ */
+export const calendarStart = (week: number, today: number) => (Math.floor(today / 5) + week) * 5;
 
 export interface CalendarDay {
   offset: number;
@@ -181,7 +184,7 @@ export interface CalendarDay {
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export function calendarDays(start: number, today = TODAY): CalendarDay[] {
+export function calendarDays(start: number, today: number): CalendarDay[] {
   return Array.from({ length: CAL_DAYS }, (_, i) => {
     const d = dayDate(start + i);
     return { offset: start + i, weekday: DOW[d.getDay()], day: d.getDate(), isToday: start + i === today };
@@ -199,7 +202,7 @@ export interface CalendarBar<T> {
 }
 
 /** Open tasks overlapping the window, byDue, with their bar geometry (clipped to the window). */
-export function calendarBars<T extends WorkTask>(mine: readonly T[], start: number, today = TODAY): CalendarBar<T>[] {
+export function calendarBars<T extends WorkTask>(mine: readonly T[], start: number, today: number): CalendarBar<T>[] {
   const end = start + CAL_DAYS - 1;
   return sortByDue(mine.filter((t) => t.status !== 'done' && t.start <= end && t.due >= start)).map((task) => {
     const l = Math.max(task.start, start);
@@ -226,8 +229,8 @@ export function plannedHours(mine: readonly WorkTask[], start: number): { hours:
 /** "6.5" / "—" (calHours value). */
 export const hoursCellText = (h: number) => (h ? h.toFixed(1) : '—');
 
-/** Column of the status date in the window (the shaded "today" band), null when outside. */
-export const todayColumn = (start: number, today = TODAY): number | null =>
+/** Column of the business date (`today`) in the window (the shaded "today" band), null when outside. */
+export const todayColumn = (start: number, today: number): number | null =>
   today >= start && today < start + CAL_DAYS ? today - start : null;
 
 // ── Status ⇄ percent coupling (setTask, 4095–4097; 10 §9) ─────────────────────────────────────────────

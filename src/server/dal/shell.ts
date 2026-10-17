@@ -18,12 +18,14 @@ import { cache } from 'react';
 import { personaOf, type Persona, type PersonaRef } from '@/config/personas';
 import { DEFAULT_PROJECT, canSee, screenHref, type RoleKey, type ScreenId } from '@/config/screens';
 import { clientSeesChangeRequest } from '@/domain/client-visibility';
+import { workdayOffsetOf } from '@/domain/clock';
 import { fiscalYearLabel } from '@/domain/portfolio';
 import { defaultDepartment } from '@/domain/requests';
 import { PURCHASING_SCREENS, clientRefusedProject, clientSeesMeeting, clientSeesTarget } from '@/domain/rights';
 import { dueTodayBadge, workingDayOf } from '@/domain/tasks';
 import { mapCrumbExtra } from '@/domain/worldmap';
 import { approvalCountsByProject } from '@/server/approvals';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { ncrSeverity, ncrStatus } from '@/server/db/codes';
 import { changeRequests, meetings as meetingsTable, projects as projectsTable } from '@/server/db/schema';
@@ -92,7 +94,7 @@ async function approvalsDeptOf(who: PersonaRef) {
 /** Badges that do not depend on the current project. */
 async function globalBadges(viewer: Persona): Promise<Badges> {
   const role = viewer.role;
-  const [mine, rescheduled, dept, docs, eco, invoices, stock, sav, plumbing] = await Promise.all([
+  const [mine, rescheduled, dept, docs, eco, invoices, stock, sav, plumbing, today] = await Promise.all([
     listTasks({ person: viewer.name }),
     listResourceRequests({ status: 'reschedule', ...(seesAllRequests(role) ? {} : { requestedBy: viewer.short }) }),
     approvalsDeptOf(viewer),
@@ -102,6 +104,7 @@ async function globalBadges(viewer: Persona): Promise<Badges> {
     stockNavBadge(),
     savNavBadge(),
     safe(plumbingNavBadge, ''),
+    businessToday(),
   ]);
   return {
     // My tasks: the viewer's open tasks due today (line 5106; the prototype counted Hélène Sauvage's for everyone, 00 §7.16).
@@ -110,6 +113,7 @@ async function globalBadges(viewer: Persona): Promise<Badges> {
         status: t.status, priority: t.priority, start: t.startDay ?? workingDayOf(t.start, 'up'), due: t.dueDay ?? workingDayOf(t.due, 'down'),
         estimateH: t.estimateH, loggedH: t.loggedH,
       })),
+      workdayOffsetOf(today),
     ),
     // Codex records awaiting approval ("Release proposed"), all projects (logic 5150).
     docs,
@@ -291,14 +295,14 @@ export async function crumbExtraOf(screen: ScreenId, ctx: { role: PersonaRef; co
       return mapCrumbExtra((await getProjectsMap(ctx.zone)).points.length, zl || null);
     case 'projects': {
       const zp = (await listProjects()).filter((p) => inZone(p, ctx.zone));
-      // R-129: the fiscal year comes from the portfolio data date (was a fixed "FY2026").
-      return fiscalYearLabel() + ' · ' + zp.length + ' projects' + zoneCrumb;
+      // R-129: the fiscal year comes from the portfolio data date, the business date (R-013; was a fixed "FY2026").
+      return fiscalYearLabel(await businessToday()) + ' · ' + zp.length + ' projects' + zoneCrumb;
     }
     case 'overview':
     case 'portfolio':
     case 'pfplan':
     case 'cash':
-      return fiscalYearLabel() + zoneCrumb;
+      return fiscalYearLabel(await businessToday()) + zoneCrumb;
     case 'myprojects':
       return viewer.title;
     case 'approvals': {

@@ -5,10 +5,11 @@
 // late rule, the Go verdict once every condition is met (never reachable in the prototype: its collisions are a
 // constant) and the Daily report form.
 import { describe, expect, it } from 'vitest';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import PROTO from '@/server/prototype/prototype-data.json';
 import { parseDateInput } from '@/domain/contract';
 import {
-  confirmStatus, cursusVerdict, equipmentSource, hseStatus, isoOfDisplayDate, punchOwnerParty, type ConfirmStatus, type HseStatus,
+  confirmStatus, cursusVerdict, equipmentSource, hseStatus, isoOfDemoDate, punchOwnerParty, type ConfirmStatus, type HseStatus,
 } from '@/server/db/codes';
 import GOLDEN from './site.golden.json';
 import {
@@ -21,13 +22,13 @@ const G = GOLDEN as any;
 const P = PROTO as any;
 const LO = 'var(--color-accent-300)';
 const OK = 'var(--color-text)';
-const iso = (d: string) => isoOfDisplayDate(d)!;
+const iso = (d: string) => isoOfDemoDate(d)!;
 
 /** The prototype's site data as the DAL returns it, with optional status overrides (siteOv / siteEqOv). */
 function facts(ov: { pre?: Record<number, ConfirmStatus>; eq?: Record<number, ConfirmStatus> } = {}): SiteFacts {
   const prerequisites = (P.SITE_PREREQ as string[][]).map(([, , due, st], i) => {
     const status = ov.pre?.[i] ?? confirmStatus.code(st);
-    return { status, neededBy: iso(due), late: isPrerequisiteLate({ status, neededBy: iso(due) }) };
+    return { status, neededBy: iso(due), late: isPrerequisiteLate({ status, neededBy: iso(due) }, DEMO_TODAY_ISO) };
   });
   return {
     // A-12 (chapter 4): man-days planned and client decisions are inputs the DAL computes (rotation × calendar, change
@@ -152,12 +153,12 @@ describe('late prerequisites (J-15 rule, 10 OQ6)', () => {
     expect(isPrerequisiteLate({ status: 'pending', neededBy: '2026-10-10' }, '2026-09-25')).toBe(true);
     expect(isPrerequisiteLate({ status: 'pending', neededBy: '2026-10-10' }, '2026-10-12')).toBe(true);
     expect(isPrerequisiteLate({ status: 'confirmed', neededBy: '2026-10-10' }, '2026-10-12')).toBe(false);
-    expect(isPrerequisiteLate({ status: 'signed', neededBy: '2026-09-01' })).toBe(false);
+    expect(isPrerequisiteLate({ status: 'signed', neededBy: '2026-09-01' }, DEMO_TODAY_ISO)).toBe(false);
   });
   it('at the status date (25 Sep 2026) none of the seed prerequisites is late, as in the prototype', () => {
     expect(facts().prerequisites.map((p) => p.late)).toEqual(G.seed.en.prereqs.map((p: any) => p.late));
     // The prototype's list of dates ('12 Oct', '16 Oct') flagged pending rows due then; the rule flags them from J-15.
-    expect(isPrerequisiteLate({ status: 'pending', neededBy: '2026-10-12' })).toBe(false);
+    expect(isPrerequisiteLate({ status: 'pending', neededBy: '2026-10-12' }, DEMO_TODAY_ISO)).toBe(false);
     expect(isPrerequisiteLate({ status: 'pending', neededBy: '2026-10-12' }, '2026-09-27')).toBe(true);
   });
 });
@@ -180,14 +181,14 @@ describe('computed literals of the prototype (10 OQ7)', () => {
     expect(execKpis(v).map((k) => [k.value, k.sub]).slice(3)).toEqual([['2 incidents', '2 permits pending'], ['2', 'Out-of-scope requests → change request']]);
   });
   it('the preparation footnote while the site has not started', () => {
-    expect(preparationNote({ startOn: '2026-10-19', doneDays: 0 })).toBe('Site starts 19 Oct — reports so far cover preparation visits.');
-    expect(preparationNote({ startOn: '2026-10-19', doneDays: 3 })).toBeNull();
+    expect(preparationNote({ startOn: '2026-10-19', doneDays: 0 }, DEMO_TODAY_ISO)).toBe('Site starts 19 Oct — reports so far cover preparation visits.');
+    expect(preparationNote({ startOn: '2026-10-19', doneDays: 3 }, DEMO_TODAY_ISO)).toBeNull();
     expect(preparationNote({ startOn: '2026-10-19', doneDays: 0 }, '2026-10-20')).toBeNull();
   });
 });
 
 describe('Daily report form (AF.site)', () => {
-  const parse = (v: Record<string, string>) => parseDailyReportForm(v, { today: '2026-09-25', parseDate: (s) => parseDateInput(s) });
+  const parse = (v: Record<string, string>) => parseDailyReportForm(v, { today: '2026-09-25', parseDate: (s) => parseDateInput(s, 2026) });
   // Record of AF.site (the prototype form); NEW-SITE-2 'a' (R-122) removes its HSE field in Keystone (src/features/site/model.ts).
   it('the prototype form: date, weather, headcount, progress (required), HSE', () => {
     expect(G.form.fields.map((f: any[]) => [f[0], f[1], f[2], f[4] ?? 0])).toEqual([

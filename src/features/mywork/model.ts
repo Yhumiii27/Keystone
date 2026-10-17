@@ -45,7 +45,7 @@ export interface WorkItemData {
   title: string;
   status: TaskStatus;
   priority: TaskPriority;
-  /** Working-day offsets (TODAY = 4). */
+  /** Working-day offsets from Mon 21 Sep 2026 (`dayDate` axis). */
   start: number;
   due: number;
   estimateH: number;

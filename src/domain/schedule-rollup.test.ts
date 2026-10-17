@@ -11,8 +11,11 @@ const std = new WorkCalendar(BUILTIN_CALENDAR_BY_CODE.standard_5x8);
 
 describe('display dates and Gantt months', () => {
   it('prototype text forms', () => {
-    expect([activityDateText('2026-10-05'), activityDateText('2027-01-14')]).toEqual(['05 Oct', '14 Jan ’27']);
-    expect([shortDateText('2026-04-01'), shortDateText('2027-01-13')]).toEqual(['1 Apr', '13 Jan ’27']);
+    expect([activityDateText('2026-10-05', 2026), activityDateText('2027-01-14', 2026)]).toEqual(['05 Oct', '14 Jan ’27']);
+    expect([shortDateText('2026-04-01', 2026), shortDateText('2027-01-13', 2026)]).toEqual(['1 Apr', '13 Jan ’27']);
+    // R-013: against a business year 2027, the 2027 dates lose their suffix and a 2026 activity date gets one.
+    expect([activityDateText('2026-10-05', 2027), activityDateText('2027-01-14', 2027), shortDateText('2027-01-13', 2027), shortDateText('2028-01-13', 2027)])
+      .toEqual(['05 Oct ’26', '14 Jan', '13 Jan', '13 Jan ’28']);
     expect(longDateText('2027-01-18')).toBe('18 Jan 2027');
   });
   it('mIdx convention; the data date of the seed is tNow 8.8', () => {
@@ -21,7 +24,7 @@ describe('display dates and Gantt months', () => {
     expect(endMonthOf('2026-09-25', 3)).toBe(5.8333);
   });
   it('a milestone month reads its own day back through dateOf (days 1–30)', () => {
-    for (const iso of ['2026-03-01', '2026-04-15', '2026-11-30', '2027-01-18']) expect(dateOf(midMonthOf(iso, 0))).toBe(shortDateText(iso));
+    for (const iso of ['2026-03-01', '2026-04-15', '2026-11-30', '2027-01-18']) expect(dateOf(midMonthOf(iso, 0))).toBe(shortDateText(iso, 2026));
   });
 });
 

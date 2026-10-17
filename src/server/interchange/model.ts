@@ -146,10 +146,13 @@ export function isoOfStamp(v: unknown): IsoDate | null {
   return dt.getUTCMonth() === mo - 1 ? `${m[1]}-${m[2]}-${m[3]}` : null;
 }
 
-/** Plan display text of an ISO date: "05 Oct" in 2026, "14 Jan ’27" otherwise (the prototype's ACTS format, wbsFmtDate). */
-export function planDateText(iso: IsoDate): string {
+/**
+ * Plan display text of an ISO date: "05 Oct" in the business year `year`, "14 Jan ’27" otherwise (the prototype's ACTS format,
+ * wbsFmtDate, which compared with 2026; R-013).
+ */
+export function planDateText(iso: IsoDate, year: number): string {
   const [y, m, d] = iso.split('-');
-  return `${d} ${MON[+m - 1]}${+y !== 2026 ? ' ’' + y.slice(2) : ''}`;
+  return `${d} ${MON[+m - 1]}${+y !== year ? ' ’' + y.slice(2) : ''}`;
 }
 
 /** "14 Jan 2027" (project header texts). */

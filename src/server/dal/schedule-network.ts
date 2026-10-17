@@ -5,6 +5,7 @@ import 'server-only';
 import { and, asc, desc, eq } from 'drizzle-orm';
 import type { WorkCalendar } from '@/domain/calendar';
 import { CPM_DEFAULTS, projectCalendarCode, projectDataDate } from '@/domain/ch4-defaults';
+import { businessToday } from '@/server/clock';
 import type { CpmActivityInput, CpmInput, CpmLinkInput, CpmLinkType } from '@/domain/cpm';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import { isConstraintType, type ScheduleRunOutcome } from '@/server/db/codes';
@@ -102,7 +103,7 @@ export async function loadScheduleNetwork(code: string, q?: Q): Promise<Schedule
     .filter((l) => l.pred && l.succ)
     .sort((x, y) => order.get(x.succ)! - order.get(y.succ)! || x.pos - y.pos)
     .map((l): NetworkLink => ({ dbId: l.dbId, pred: l.pred, succ: l.succ, type: l.type, lag: l.lag, isDriving: l.isDriving }));
-  const dataDate = projectDataDate(p);
+  const dataDate = projectDataDate(p, await businessToday(db));
   const projectCalendar = projectCalendarCode(p);
   const input: CpmInput = {
     dataDate, projectStart: p.plannedStart, projectCalendar, calendars, activities: acts.map(toCpmActivity),

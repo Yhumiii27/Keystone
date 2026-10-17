@@ -17,10 +17,11 @@ import { CR_TYPE_LABEL, currentStep } from '@/domain/change-control';
 import { scheduleMilestone, scheduleProgression, type MilestoneInput } from '@/domain/schedule-gantt';
 import type { Lang } from '@/i18n/translate';
 import { money } from '@/lib/format';
+import { yearOfIso } from './clock';
 import { BASE_CURRENCY, moneyIn, type CurrencyCode } from './currency';
 import {
-  CLOSURE_NEXT, DOCUMENT_STATUS_TAG, LESSON_APPLIES_TO, STATUS_ISO, closureItemStatus, clientIssueStatus, docFamily, fmtDOfIso, lessonStatus,
-  lessonTheme, reportPeriod,
+  CLOSURE_NEXT, DOCUMENT_STATUS_TAG, LESSON_APPLIES_TO, closureItemStatus, clientIssueStatus, docFamily, fmtDOfIso, lessonStatus,
+  lessonTheme, reportPeriod, reportPeriodLabel,
   type ChangeStatus, type ChangeStep, type ChangeType, type ClientIssueStatus, type ClosureItemStatus, type DeliverableStatus, type DocFamily, type DocumentStatus,
   type LessonStatus, type LessonTheme, type PaymentMilestoneStatus, type ReportPeriod, type StepDecision,
 } from '@/server/db/codes';
@@ -307,9 +308,9 @@ export interface MilestoneRow {
   tone: Tone;
 }
 
-export function clientMilestones(ms: readonly MilestoneInput[], start: number): MilestoneRow[] {
+export function clientMilestones(ms: readonly MilestoneInput[], start: number, year: number): MilestoneRow[] {
   return ms.map((m) => {
-    const v = scheduleMilestone(m, start);
+    const v = scheduleMilestone(m, start, year);
     return { name: v.name, baseDate: v.baseDate, fcDate: v.fcDate, status: v.statusLabel, tone: m.status === 'done' ? 'neutral' : m.status === 'late' ? 'accent' : 'outline' };
   });
 }
@@ -377,8 +378,8 @@ export const crDecisionRow = (cr: ChangeRequestLike, lang: Lang): DecisionRow =>
   justification: cr.justification?.trim() ? cr.justification : null,
 });
 
-export const deliverableDecisionRow = (d: DeliverableLike): DecisionRow => ({
-  kind: 'deliverable', kindLabel: 'Deliverable', id: d.number, when: fmtDOfIso(d.dueOn), title: d.title,
+export const deliverableDecisionRow = (d: DeliverableLike, year: number): DecisionRow => ({
+  kind: 'deliverable', kindLabel: 'Deliverable', id: d.number, when: fmtDOfIso(d.dueOn, year), title: d.title,
   sub: `${d.typeLabel} · rev ${d.revision ?? '—'} · ${d.acceptanceText}`, approveLabel: 'Accept (PV)', justification: null,
 });
 
@@ -402,10 +403,12 @@ export function decidedDeliverableRow(d: DeliverableLike): DecidedRow {
   return { id: d.number, title: d.title, state: ok ? 'Accepted' : 'Rejected', tone: ok ? 'neutral' : 'outline', when: d.acceptanceText };
 }
 
-/** Waiting (`cpDecisions`) and decided (`cpDecided`) lists: change requests first, then deliverables. */
-export function clientDecisions(crs: readonly ChangeRequestLike[], dlv: readonly DeliverableLike[], lang: Lang): { waiting: DecisionRow[]; decided: DecidedRow[] } {
+/** Waiting (`cpDecisions`) and decided (`cpDecided`) lists: change requests first, then deliverables (dates against the business year `year`). */
+export function clientDecisions(
+  crs: readonly ChangeRequestLike[], dlv: readonly DeliverableLike[], lang: Lang, year: number,
+): { waiting: DecisionRow[]; decided: DecidedRow[] } {
   return {
-    waiting: [...crs.filter(crAwaitsClient).map((c) => crDecisionRow(c, lang)), ...dlv.filter((d) => d.status === 'submitted').map(deliverableDecisionRow)],
+    waiting: [...crs.filter(crAwaitsClient).map((c) => crDecisionRow(c, lang)), ...dlv.filter((d) => d.status === 'submitted').map((d) => deliverableDecisionRow(d, year))],
     decided: [
       ...crs.filter((c) => clientStepOf(c) === 'ok' || clientStepOf(c) === 'rejected').map(decidedCrRow),
       ...dlv.filter((d) => d.status === 'accepted' || d.status === 'rejected').map(decidedDeliverableRow),
@@ -441,17 +444,17 @@ const INVOICE_LOOK: Record<PaymentMilestoneStatus, { label: string; tone: Tone }
   planned: { label: 'Planned', tone: 'outline' },
 };
 
-/** Payment column: "Due 10 Nov" (invoice due date, 30 days net), "Settled", "On milestone". */
-export function paymentOf(i: Pick<InvoiceLike, 'status' | 'dueOn'>): PaymentText {
+/** Payment column: "Due 10 Nov" (invoice due date, 30 days net; its year outside the business year `year`), "Settled", "On milestone". */
+export function paymentOf(i: Pick<InvoiceLike, 'status' | 'dueOn'>, year: number): PaymentText {
   if (i.status === 'paid') return { kind: 'text', text: 'Settled' };
   if (i.status === 'planned') return { kind: 'text', text: 'On milestone' };
-  return i.dueOn ? { kind: 'due', date: fmtDOfIso(i.dueOn) } : { kind: 'text', text: '—' };
+  return i.dueOn ? { kind: 'due', date: fmtDOfIso(i.dueOn, year) } : { kind: 'text', text: '—' };
 }
 
 /** An invoice row in the invoice's currency (C-9: the contract's; EUR by default). */
-export const invoiceRow = (i: InvoiceLike, lang: Lang, currency: CurrencyCode = BASE_CURRENCY): InvoiceRow => ({
+export const invoiceRow = (i: InvoiceLike, lang: Lang, year: number, currency: CurrencyCode = BASE_CURRENCY): InvoiceRow => ({
   no: i.invoiceNumber ?? '—', name: i.milestone, amount: moneyIn(i.amountKeur, currency, lang), status: INVOICE_LOOK[i.status].label, tone: INVOICE_LOOK[i.status].tone,
-  payment: paymentOf(i),
+  payment: paymentOf(i, year),
 });
 
 /**
@@ -481,7 +484,7 @@ export interface IssueLike {
 export interface IssueRow {
   id: string;
   title: string;
-  /** "Raised 12 Aug" / "Raised today" (the status date). */
+  /** "Raised 12 Aug" / "Raised today" (raised on the business date, R-013 — the prototype's status date). */
   when: string;
   status: string;
   /** Closed neutral, Open accent, In progress outline. */
@@ -491,8 +494,8 @@ export interface IssueRow {
 
 export const ISSUE_TONE: Record<ClientIssueStatus, Tone> = { closed: 'neutral', open: 'accent', in_progress: 'outline' };
 
-export const issueRow = (i: IssueLike, today: string = STATUS_ISO): IssueRow => ({
-  id: i.number, title: i.title, when: i.raisedOn === today ? 'Raised today' : `Raised ${fmtDOfIso(i.raisedOn)}`, status: clientIssueStatus.label(i.status),
+export const issueRow = (i: IssueLike, today: string): IssueRow => ({
+  id: i.number, title: i.title, when: i.raisedOn === today ? 'Raised today' : `Raised ${fmtDOfIso(i.raisedOn, yearOfIso(today))}`, status: clientIssueStatus.label(i.status),
   tone: ISSUE_TONE[i.status], response: i.response,
 });
 
@@ -607,7 +610,9 @@ export function clientDocCategories(docs: readonly SharedDocCategoryInput[]): Cl
 // ── Download status report (AF.client) ─────────────────────────────────────────────────────────────────
 
 export type ReportFormat = 'pdf' | 'pptx';
-export const CLIENT_REPORT_PERIODS: { value: ReportPeriod; label: string }[] = reportPeriod.codes.map((c) => ({ value: c, label: reportPeriod.label(c) }));
+/** Period options at the business date `today` (R-013: "September 2026" / "Q3 2026" on the demo data set's date). */
+export const clientReportPeriods = (today: string): { value: ReportPeriod; label: string }[] =>
+  reportPeriod.codes.map((c) => ({ value: c, label: reportPeriodLabel(c, today) }));
 export const CLIENT_REPORT_FORMATS: { value: ReportFormat; label: string }[] = [
   { value: 'pdf', label: 'PDF' },
   { value: 'pptx', label: 'PowerPoint' },
@@ -617,7 +622,7 @@ export const REPORT_RESULT = 'Report downloaded';
 
 export function parseClientReport(values: unknown): Parsed<{ period: ReportPeriod; format: ReportFormat }> {
   const v = record(values);
-  const period = str(v.period) || CLIENT_REPORT_PERIODS[0].value;
+  const period = str(v.period) || reportPeriod.codes[0];
   const format = str(v.format) || CLIENT_REPORT_FORMATS[0].value;
   if (!reportPeriod.isCode(period)) return { ok: false, error: 'Unknown period' };
   const f = CLIENT_REPORT_FORMATS.find((o) => o.value === format);

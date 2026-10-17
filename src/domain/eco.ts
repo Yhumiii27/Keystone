@@ -11,11 +11,10 @@ import type { ApprovalItem } from '@/domain/approvals';
 import type { Txt } from '@/domain/home';
 import type { Lang } from '@/i18n/translate';
 import { moneyEur } from '@/lib/format';
-import { DEFAULT_DATA_DATE } from './ch4-defaults';
 import { releasedInMonth } from './kpis';
 import {
   ECO_APPROVER_KEYS, ECO_APPROVER_SHORT, ECO_DECISION_TAG, ECO_FLOW_STEPS, ECO_STATUS_TAG, ECO_STEP_ADVANCE, ecoApproverKey, ecoDecision,
-  ecoDisposition, ecoKeyOfRole, ecoStatus, interchangeability, INTERCHANGEABILITY_NOT_ASSESSED, isoOfDisplayDate, vigieSyncStatus,
+  ecoDisposition, ecoKeyOfRole, ecoStatus, interchangeability, INTERCHANGEABILITY_NOT_ASSESSED, vigieSyncStatus,
   type EcoApproverKey, type EcoDecision, type EcoDisposition, type EcoStatus, type EcoTargetType, type Interchangeability, type VigieSyncStatus,
 } from '@/server/db/codes';
 
@@ -159,9 +158,9 @@ export const releasesBlockedText = (n: number) => (n ? `${n} ${n === 1 ? 'releas
  * raise date (`ecoReleaseDate`) — falls in the data date's month (`opts.asOf`, default the portfolio data date); the
  * prototype counted every released ECO.
  */
-export function ecoKpis(ecos: EcoLike[], opts: { roleKey: EcoApproverKey | null; roleTitle: string; awaitingMine: number; lang: Lang; asOf?: string }): EcoKpi[] {
+export function ecoKpis(ecos: EcoLike[], opts: { roleKey: EcoApproverKey | null; roleTitle: string; awaitingMine: number; lang: Lang; asOf: string }): EcoKpi[] {
   const open = ecos.filter((e) => isOpenEco(e.status));
-  const released = releasedInMonth(ecos, opts.asOf ?? DEFAULT_DATA_DATE);
+  const released = releasedInMonth(ecos, opts.asOf);
   const locked = ecos.filter((e) => e.locked).length;
   return [
     { label: 'Open ECOs', value: open.length, sub: `${ecos.length} in total`, lo: false },
@@ -434,7 +433,7 @@ export function ecoApprovalItems(queue: EcoQueueEntry[], links: { keystone: (n: 
   return queue.map((e) => {
     const when = fmtDay(e.raisedOn);
     return {
-      kind: 'eco', id: e.number, title: e.title, sub: `${e.typeLabel} · ${e.projectNames.join(', ')}`, who: e.requestedBy, when, whenIso: isoOfDisplayDate(when) ?? e.raisedOn,
+      kind: 'eco', id: e.number, title: e.title, sub: `${e.typeLabel} · ${e.projectNames.join(', ')}`, who: e.requestedBy, when, whenIso: e.raisedOn,
       href: links.keystone(e.number), decision: { mode: 'eco', number: e.number, key: e.key },
       external: { href: links.vigie(e.number), label: 'Open in Vigie' },
     } satisfies ApprovalItem;

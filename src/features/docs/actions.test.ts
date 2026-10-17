@@ -179,7 +179,7 @@ describe('documents Server Functions', () => {
     expect(await acknowledgeDocumentAction('HLT-026', 'PID-HLT-026')).toEqual({ ok: true });
     const d = (await getDocumentRecord('PID-HLT-026'))!;
     expect(d.acknowledged).toBe(true);
-    expect(d.distribution[0]).toMatchObject({ kind: 'client', acknowledgedOn: '2026-09-29' });
+    expect(d.distribution[0]).toMatchObject({ kind: 'client', acknowledgedOn: '2026-09-25' }); // R-013: the business date, not Codex's 29 Sep
   });
 
   it('P-10b (integration review): the minutes of an internal meeting are not shared — the client can neither download nor acknowledge them', async () => {

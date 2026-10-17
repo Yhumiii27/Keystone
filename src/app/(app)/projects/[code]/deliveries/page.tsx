@@ -7,12 +7,14 @@
 // procurement, director). Projects without receipts show the empty register. R-126 (SC-4a): the drawer's photos are stored
 // by Keystone — added and removed by the viewers who may edit the screen, seen by the internal viewers.
 import { PageHeader } from '@/components/app/shell/page-header';
+import { yearOfIso } from '@/domain/clock';
 import { canDecideQc, receiptFilterOf } from '@/domain/deliveries';
 import { AnnounceDeliveryButton } from '@/features/deliveries/announce-button';
 import { DeliveriesBody } from '@/features/deliveries/deliveries-view';
 import { announceFormDef, deliveriesHref, deliveriesView, registerFormDef } from '@/features/deliveries/model';
 import { PhotoGallery } from '@/features/photos/photo-gallery';
 import { photoViews } from '@/features/photos/model';
+import { businessToday } from '@/server/clock';
 import { getDeliveriesScreen } from '@/server/dal/deliveries';
 import { legacyReceiptPhotoCount, listProjectPhotos } from '@/server/dal/photos';
 import { getProjectContext } from '@/server/project-context';
@@ -33,16 +35,18 @@ export default async function DeliveriesPage({ params, searchParams }: { params:
   const status = receiptFilterOf(first(sp.status));
   const receiptParam = first(sp.receipt ?? sp.deliv)?.trim().toUpperCase() || null;
   // R-096: the Vigie supplier NCR links are for internal viewers (the client never sees purchasing records, P-10b).
-  const view = deliveriesView(projectCode, data, { status, receipt: receiptParam }, t, lang, { vigieLinks: ctx.viewer.role !== 'client' });
+  const today = await businessToday();
+  const year = yearOfIso(today);
+  const view = deliveriesView(projectCode, data, { status, receipt: receiptParam }, t, lang, year, { vigieLinks: ctx.viewer.role !== 'client' });
   const registerForms = canEdit
-    ? Object.fromEntries(data.receipts.filter((r) => r.status === 'announced').map((r) => [r.number, registerFormDef(r, t, lang)]))
+    ? Object.fromEntries(data.receipts.filter((r) => r.status === 'announced').map((r) => [r.number, registerFormDef(r, today, t, lang)]))
     : {};
 
   const primary = canEdit ? (
     <AnnounceDeliveryButton
       code={projectCode}
       context={projectLabelText(ctx.project, lang)}
-      form={data.announceable.length ? announceFormDef(data.announceable, data.putAway, t, lang) : null}
+      form={data.announceable.length ? announceFormDef(data.announceable, data.putAway, t, lang, year) : null}
       path={deliveriesHref(projectCode)}
       status={status}
     />

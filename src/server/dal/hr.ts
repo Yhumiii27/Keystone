@@ -3,14 +3,15 @@ import 'server-only';
 // versions; the legacy job-title rates are retired), skills matrix and certifications, leave and the working calendar
 // (absences received from Cursus, R-031), Lucca hours reconciliation — and their writers (rates, multipliers, roles, skills,
 // Cursus absences, hours import / assignment).
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import { cache } from 'react';
 import {
   RATE_CARD_OBJECT, canEditRates, isExternalRole, parseEffectiveDate, rateActivityText, rateAt, rateChangeText, versionAt, type RateGrid,
 } from '@/domain/hr';
+import { businessToday } from '@/server/clock';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import {
-  STATUS_ISO, addDaysIso, displayOfIso, dowOfIso, hoursMatching, leaveType, slugOf, weekLabelOfIso,
+  addDaysIso, displayOfIso, dowOfIso, hoursMatching, leaveType, slugOf, weekLabelOfIso,
   type HoursMatching, type LeaveType, type RateMultiplierKey,
 } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
@@ -19,6 +20,8 @@ import {
   rateMultiplierRates, rateMultipliers, rateRoleRates, rateRoles, skills, unassignedHours, wbsNodes,
 } from '@/server/db/schema';
 import { absenceWeeks } from '@/domain/absences';
+import { workingDaysOf } from '@/domain/load-window';
+import { leaveWeekDays, type LeaveDayKind } from '@/domain/load-week';
 import { trace, whoIs, type Actor } from './ops-common';
 import { editsProjectScreen } from './team-guard';
 import type { ResourceWeek } from './resources';
@@ -94,8 +97,8 @@ export interface RateCard {
  * Rate card on a date (Rate cards screen and export; default the business date): each role's base rate and each multiplier's
  * factor in force on `on`, with every version. Values are for the roles that see rates only — the screen and the export mask them.
  */
-export async function getRateCard(on: string = STATUS_ISO): Promise<RateCard> {
-  const grid = await getRateGrid();
+export async function getRateCard(date?: string): Promise<RateCard> {
+  const [grid, on] = await Promise.all([getRateGrid(), date ?? businessToday()]);
   return {
     on,
     roles: grid.roles.map((r) => {
@@ -147,6 +150,7 @@ export async function setBaseRate(role: string, rateEur: number, effectiveFrom: 
   if (!parseEffectiveDate(effectiveFrom)) throw new Error('Invalid effective date');
   if (!Number.isFinite(rateEur) || rateEur < 0) throw new Error('Enter a valid hourly rate');
   const db = await getDb();
+  const today = await businessToday();
   await db.transaction(async (tx) => {
     const [r] = await tx.select().from(rateRoles).where(eq(rateRoles.role, role));
     if (!r) throw new Error(`Unknown rate role ${role}`);
@@ -159,7 +163,7 @@ export async function setBaseRate(role: string, rateEur: number, effectiveFrom: 
     });
     if (!done) return;
     const on = displayOfIso(effectiveFrom);
-    const backdated = effectiveFrom < STATUS_ISO;
+    const backdated = effectiveFrom < today;
     await traceRate(tx, actor, rateChangeText(`${role} base`, done.from, rateEur, '€/h', on, backdated), rateActivityText(`${role} base`, on, backdated));
   });
 }
@@ -170,6 +174,7 @@ export async function setMultiplier(key: RateMultiplierKey, factor: number, effe
   if (!parseEffectiveDate(effectiveFrom)) throw new Error('Invalid effective date');
   if (!Number.isFinite(factor) || factor < 0) throw new Error('Enter a valid multiplier');
   const db = await getDb();
+  const today = await businessToday();
   await db.transaction(async (tx) => {
     const [m] = await tx.select().from(rateMultipliers).where(eq(rateMultipliers.key, key));
     if (!m) throw new Error(`Unknown multiplier ${key}`);
@@ -182,7 +187,7 @@ export async function setMultiplier(key: RateMultiplierKey, factor: number, effe
     });
     if (!done) return;
     const on = displayOfIso(effectiveFrom);
-    const backdated = effectiveFrom < STATUS_ISO;
+    const backdated = effectiveFrom < today;
     await traceRate(tx, actor, rateChangeText(`${m.label} multiplier`, done.from, factor, '×', on, backdated), rateActivityText(`${m.label} multiplier`, on, backdated));
   });
 }
@@ -308,29 +313,32 @@ export async function listPublicHolidays(countryCode = 'FR'): Promise<HolidayRow
 }
 
 /**
- * Leave grid over the resource window (Leave & calendar; read-only mirror of the absences received from Cursus, R-031).
- * Several absences of a person in one week add up (at most the 5 days of the week); the cell shows the type with the
- * most days (Leave on a tie).
+ * Leave grid over the load window (Leave & calendar; read-only mirror of the absences received from Cursus, R-031).
+ * `weeks` = the window's Mondays (R-085, `getLoadWindow`: any week — the absences and holidays of that week, none otherwise);
+ * omitted = every week with an allocation row (the former rule). Several absences of a person in one week add up (at most
+ * the 5 days of the week); the cell shows the type with the most days (Leave on a tie).
  */
-export async function getLeaveCalendar(countryCode = 'FR'): Promise<LeaveCalendar> {
+export async function getLeaveCalendar(countryCode = 'FR', weeks?: readonly string[]): Promise<LeaveCalendar> {
   const db = await getDb();
   const [weekRows, types, people, entries, hols, [last]] = await Promise.all([
-    db.selectDistinct({ w: allocations.weekStart }).from(allocations).where(isNull(allocations.projectId)).orderBy(asc(allocations.weekStart)),
+    weeks
+      ? Promise.resolve(weeks.map((w) => ({ w })))
+      : db.selectDistinct({ w: allocations.weekStart }).from(allocations).where(isNull(allocations.projectId)).orderBy(asc(allocations.weekStart)),
     db.select().from(leaveTypes).orderBy(asc(leaveTypes.position)),
     db.select().from(persons).where(sql`${persons.resourcePoolPosition} is not null`).orderBy(asc(persons.resourcePoolPosition)),
     db.select().from(leaveEntries),
     listPublicHolidays(countryCode),
     db.select({ at: sql<string | null>`max(${cursusEvents.receivedAt})` }).from(cursusEvents).where(eq(cursusEvents.type, 'absence.validee')),
   ]);
-  const weeks = weekRows.map((r) => ({ start: r.w, label: weekLabelOfIso(r.w) }));
-  const weekOf = (iso: string) => weeks.findIndex((w) => iso >= w.start && iso <= addDaysIso(w.start, 6));
+  const shown = weekRows.map((r) => ({ start: r.w, label: weekLabelOfIso(r.w) }));
+  const weekOf = (iso: string) => shown.findIndex((w) => iso >= w.start && iso <= addDaysIso(w.start, 6));
   const holidays = hols.map((h) => ({ ...h, weekIndex: weekOf(h.date) })).filter((h) => h.weekIndex >= 0 && dowOfIso(h.date) >= 1 && dowOfIso(h.date) <= 5);
   return {
-    weeks, holidays,
+    weeks: shown, holidays,
     leaveTypes: types.map((t) => ({ code: t.code, label: t.label, days: t.daysPerWeek })),
     people: people.map((p) => ({
       name: p.fullName ?? p.shortName, shortName: p.shortName, initials: p.initials, jobTitle: p.jobTitle,
-      weeks: weeks.map((w, i) => {
+      weeks: shown.map((w, i) => {
         const es = entries.filter((x) => x.personId === p.id && x.weekStart === w.start);
         const byType = new Map<LeaveType, number>();
         for (const e of es) byType.set(e.leaveType, (byType.get(e.leaveType) ?? 0) + e.days);
@@ -340,6 +348,47 @@ export async function getLeaveCalendar(countryCode = 'FR'): Promise<LeaveCalenda
         };
       }),
     })),
+    lastAbsenceReceivedAt: last?.at ? new Date(last.at).toISOString() : null,
+  };
+}
+
+/** Week view of Leave & working calendar (owner answers 17 Oct 2026): one week, day by day. */
+export interface LeaveWeek {
+  /** Monday of the week shown. */
+  week: ResourceWeek;
+  /** Monday to Friday: ISO date and the public holiday of that day (Settings), if any. */
+  days: { date: string; holiday: HolidayRow | null }[];
+  /** Resource pool order; one cell per working day. */
+  people: { name: string; shortName: string; initials: string; jobTitle: string | null; days: LeaveDayKind[]; daysOff: number; holidays: number; availH: number }[];
+  /** R-031: when Keystone last received an absence from Cursus (ISO timestamp); null when none yet. */
+  lastAbsenceReceivedAt: string | null;
+}
+
+/**
+ * Leave & working calendar, week view (owner answers 17 Oct 2026: "une vision à la semaine"): the absences received from
+ * Cursus day by day — each `leave_entries` row carries its own dates inside its week (`start_date` / `end_date`), so the
+ * granularity is the day — and the weekday public holidays of Settings. Rule: `leaveWeekDays` (src/domain/load-week.ts).
+ */
+export async function getLeaveWeek(countryCode: string, weekStart: string): Promise<LeaveWeek> {
+  const db = await getDb();
+  const days = workingDaysOf(weekStart);
+  const friday = days[days.length - 1];
+  const [people, entries, hols, [last]] = await Promise.all([
+    db.select().from(persons).where(sql`${persons.resourcePoolPosition} is not null`).orderBy(asc(persons.resourcePoolPosition)),
+    db.select().from(leaveEntries).where(and(lte(leaveEntries.startDate, friday), gte(leaveEntries.endDate, weekStart))),
+    listPublicHolidays(countryCode),
+    db.select({ at: sql<string | null>`max(${cursusEvents.receivedAt})` }).from(cursusEvents).where(eq(cursusEvents.type, 'absence.validee')),
+  ]);
+  const holidayOn = new Map(hols.filter((h) => h.date >= weekStart && h.date <= friday).map((h) => [h.date, h]));
+  const holidaySet = new Set(holidayOn.keys());
+  return {
+    week: { start: weekStart, label: weekLabelOfIso(weekStart) },
+    days: days.map((date) => ({ date, holiday: holidayOn.get(date) ?? null })),
+    people: people.map((p) => {
+      const spans = entries.filter((e) => e.personId === p.id).map((e) => ({ type: e.leaveType, start: e.startDate, end: e.endDate }));
+      const w = leaveWeekDays(spans, days, holidaySet);
+      return { name: p.fullName ?? p.shortName, shortName: p.shortName, initials: p.initials, jobTitle: p.jobTitle, ...w };
+    }),
     lastAbsenceReceivedAt: last?.at ? new Date(last.at).toISOString() : null,
   };
 }
@@ -489,14 +538,15 @@ async function requireHoursEditor(tx: Tx, actor: Actor, projectId: string): Prom
 }
 
 /**
- * "Import Lucca hours" (AF.hours): re-stamps the latest import of the project (the prototype only flips the date
- * to 30 Sep 2026; no lines are fetched — the Lucca connector is not modelled).
+ * "Import Lucca hours" (AF.hours): re-stamps the latest import of the project with the business date (R-013; the prototype
+ * only flipped the date to 30 Sep 2026; no lines are fetched — the Lucca connector is not modelled).
  */
 export async function markHoursImported(
   projectCode: string, input: { analyticCode?: string; matchingMode?: HoursMatching; importedOn?: string }, actor: Actor,
 ): Promise<void> {
   const actorName = actor.name;
   const db = await getDb();
+  const importedOn = input.importedOn ?? (await businessToday());
   await db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);
     await requireHoursEditor(tx, actor, p.id);
@@ -504,7 +554,7 @@ export async function markHoursImported(
     if (!imp) return;
     await tx
       .update(hoursImports)
-      .set({ importedOn: input.importedOn ?? '2026-09-30', analyticCode: input.analyticCode ?? imp.analyticCode, matchingMode: input.matchingMode ?? imp.matchingMode, updatedAt: new Date() })
+      .set({ importedOn, analyticCode: input.analyticCode ?? imp.analyticCode, matchingMode: input.matchingMode ?? imp.matchingMode, updatedAt: new Date() })
       .where(eq(hoursImports.id, imp.id));
     const person = await findPerson(tx, actorName);
     await writeAudit(tx, { actorName: person ? nameOf(person) : actorName, actorPersonId: person?.id, objectRef: `Hours ${imp.analyticCode}`, change: 'Lucca import', area: 'Hours', entityType: 'hours_import', entityId: imp.id, projectId: p.id });

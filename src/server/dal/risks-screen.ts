@@ -3,7 +3,12 @@ import 'server-only';
 // data-layer getters (risks.ts, contingency.ts): the contingency the risk exposure is compared with, and the
 // option lists of the two add-forms (TEAM owners; delivery 7, C-4: the items a draw-down can be linked to — the
 // approver is no longer chosen, the portfolio director validates in My approvals).
+import { eq } from 'drizzle-orm';
 import type { DrawLinkOption } from '@/domain/contingency';
+import { riskOwnersWithPm } from '@/domain/risk';
+import { getDb } from '@/server/db/client';
+import { nameOf } from '@/server/db/helpers';
+import { persons, projects } from '@/server/db/schema';
 import { drawLinkOptions, getContingency, type Contingency } from './contingency';
 import { getScheduleControl } from './planning';
 import { getProject } from './projects';
@@ -11,13 +16,25 @@ import { getResourcePool } from './resources';
 import { getRiskRegister, type RiskRegister } from './risks';
 
 /**
- * `TEAM` option list (afOpts, logic 5117): the project team (DEFS.team) for projects with data, else every person of
- * the resource pool (PEOPLE).
+ * Owner options of "New risk" (afOpts `TEAM`, logic 5117): the project team (DEFS.team) for projects with data, else every
+ * person of the resource pool (PEOPLE) — plus the project's PM of record when absent (R-121, owner's answer of 17 Oct 2026:
+ * `riskOwnersWithPm`). Every "New risk" writer validates against this list (Risks, Meetings, Site).
  */
 export async function riskOwnerOptions(projectCode: string): Promise<string[]> {
-  const control = await getScheduleControl(projectCode);
-  if (control?.team.length) return control.team;
-  return (await getResourcePool()).people.map((p) => p.name);
+  const [control, pm] = await Promise.all([getScheduleControl(projectCode), projectPmName(projectCode)]);
+  const base = control?.team.length ? control.team : (await getResourcePool()).people.map((p) => p.name);
+  return riskOwnersWithPm(base, pm);
+}
+
+/** The PM of record's name as the owner lists show it (full name, else short name); null without one or for an unknown project. */
+export async function projectPmName(projectCode: string): Promise<string | null> {
+  const db = await getDb();
+  const [r] = await db
+    .select({ fullName: persons.fullName, shortName: persons.shortName })
+    .from(projects)
+    .innerJoin(persons, eq(persons.id, projects.pmPersonId))
+    .where(eq(projects.code, projectCode));
+  return r ? nameOf(r) : null;
 }
 
 export interface RiskScreenData {

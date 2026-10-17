@@ -153,7 +153,8 @@ export interface AddRoleInput {
   effectiveFrom: string;
 }
 
-export function parseAddRole(values: FormValues | unknown, existing: string[] = []): Parse<AddRoleInput> {
+/** "Add role": `existing` = the rate card's roles; a date typed without a year is in the business year `year` (R-013). */
+export function parseAddRole(values: FormValues | unknown, existing: string[], year: number): Parse<AddRoleInput> {
   const v = rec(values);
   const role = str(v.role).replace(/\s+/g, ' ');
   if (!role) return { ok: false, error: 'Role is required' };
@@ -166,7 +167,7 @@ export function parseAddRole(values: FormValues | unknown, existing: string[] = 
   const grade = pick(GRADES, str(v.grade));
   if (!grade) return { ok: false, error: 'Unknown grade' };
   // R-083: an explicit effective date ("1 Nov 2026", "1 nov. 2026", "01/11/2026" or ISO).
-  const effectiveFrom = parseEffectiveDate(parseDateInput(str(v.from)));
+  const effectiveFrom = parseEffectiveDate(parseDateInput(str(v.from), year));
   if (!effectiveFrom) return { ok: false, error: 'Enter a valid effective date' };
   return { ok: true, value: { role, rateEur: rate.value, costCenter, grade, effectiveFrom } };
 }

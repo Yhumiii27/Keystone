@@ -2,15 +2,16 @@
 // Hourly cost rate per role and premium multipliers. Values are visible to the director, the PMs and Finance (`canSeeRates`,
 // P-12 c, R-044): other viewers get "•••" and the lock banner — the values are not even sent to their browser. Edited by the
 // director and Finance (`canEditRates`); the PMs read. Primary action "Add role" (AF `rates`).
-// R-083 (A-10, R-4a): the grid is dated — the card shows the rates in force on `?on=` (default the business date STATUS_ISO
-// until R-013), with each rate's "since" date and its other versions; edits and "Add role" take effect from that date.
+// R-083 (A-10, R-4a): the grid is dated — the card shows the rates in force on `?on=` (default the business date,
+// R-013), with each rate's "since" date and its other versions; edits and "Add role" take effect from that date.
 import { Stack } from '@/components/app/SectionCard';
 import { PageHeader } from '@/components/app/shell/page-header';
 import { screenHref } from '@/config/screens';
 import { canEditRates, canSeeRates, parseEffectiveDate, type DatedValue } from '@/domain/hr';
 import { AddRoleButton } from '@/features/hr/primary-buttons';
 import { RatesView, type VersionView } from '@/features/hr/rates-view';
-import { STATUS_ISO, displayOfIso } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
+import { displayOfIso } from '@/server/db/codes';
 import { getRateCard } from '@/server/dal/hr';
 import { getScreenAccess } from '@/server/project-context';
 import { getI18n } from '@/server/session';
@@ -24,7 +25,7 @@ const othersOf = (versions: DatedValue[], since: string | null): VersionView[] =
 
 export default async function RatesPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const on = parseEffectiveDate(first(sp.on)) ?? STATUS_ISO;
+  const on = parseEffectiveDate(first(sp.on)) ?? (await businessToday());
   const [{ viewer, outside }, card, { t }] = await Promise.all([getScreenAccess('rates'), getRateCard(on), getI18n()]);
   const canSee = canSeeRates(viewer.role);
   const canEdit = canEditRates(viewer.role) && !outside;
