@@ -185,6 +185,10 @@ const VARS = {
   // Codex connector (R-124; read by src/server/integrations/codex/config.ts) and IT's connectors file (R-020).
   CODEX_API_URL: httpUrl.optional(),
   KEYSTONE_CONNECTORS_FILE: z.string().optional(),
+  // Schema declaration to Matrix, the data catalogue (read by src/server/integrations/matrix at each database open).
+  MATRIX_URL: httpUrl.optional(),
+  MATRIX_TOKEN: z.string().optional(),
+  MATRIX_DECLARATIONS_DIR: z.string().optional(),
 } as const;
 
 export type ConfigVariable = keyof typeof VARS;
@@ -192,7 +196,7 @@ export type ConfigVariable = keyof typeof VARS;
 export const CONFIG_VARIABLES = Object.keys(VARS) as ConfigVariable[];
 /** Variables whose value is a secret (masked in logs, never echoed in messages). */
 const SECRET_VARIABLES: ConfigVariable[] = [
-  'CURSUS_API_KEY', 'KEYSTONE_API_KEY', 'CURSUS_EVENTS_KEY', 'VIGIE_API_KEY', 'ANTHROPIC_API_KEY', 'KEYSTONE_SESSION_SECRET', 'ENTRA_CLIENT_SECRET',
+  'CURSUS_API_KEY', 'KEYSTONE_API_KEY', 'CURSUS_EVENTS_KEY', 'VIGIE_API_KEY', 'ANTHROPIC_API_KEY', 'KEYSTONE_SESSION_SECRET', 'ENTRA_CLIENT_SECRET', 'MATRIX_TOKEN',
 ];
 
 type Values = { [K in ConfigVariable]: z.output<(typeof VARS)[K]> };
@@ -343,7 +347,7 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
       variable: 'ANTHROPIC_API_KEY',
       message: 'is set: meeting transcripts are sent to Anthropic for analysis — the sub-processing agreement (DPA) must be signed (GDPR)',
     });
-  const secrets = [...SECRET_VARIABLES.map((n) => v[n] as string | undefined), urlPassword(v.DATABASE_URL)].filter((s): s is string => !!s && s.length >= 4);
+  const secrets = [...SECRET_VARIABLES.map((n) => v[n] as string | undefined), urlPassword(v.DATABASE_URL), urlPassword(v.MATRIX_URL)].filter((s): s is string => !!s && s.length >= 4);
 
   return {
     errors,

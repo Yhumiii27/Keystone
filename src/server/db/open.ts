@@ -5,6 +5,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import type { SeedMode } from '@/server/config/parse';
+import { declareKeystoneSchema } from '@/server/integrations/matrix';
 import { MIGRATIONS_FOLDER, pendingMigrations } from './migrations';
 import * as schema from './schema';
 import { seedIfEmpty } from './seed';
@@ -36,6 +37,9 @@ export async function openPglite(dataDir?: string, migrationsFolder = MIGRATIONS
   const db: DB = withSerializableTransactions<DB>(pglite);
   const applied = (await pendingMigrations(db, migrationsFolder)).length;
   if (applied) await migrate(pglite, { migrationsFolder });
+  // Declares the migrated schema to Matrix in the background (never awaited, never fails the open). Only for a persistent
+  // database or when MATRIX_URL is set: the tests' in-memory databases (no MATRIX_URL) send and read nothing.
+  declareKeystoneSchema((sql) => client.query<Record<string, unknown>>(sql).then((r) => r.rows), { persistent: !!dataDir });
   const seeded = await seedIfEmpty(db, { mode: opts.seed });
   return { db, applied, seeded };
 }

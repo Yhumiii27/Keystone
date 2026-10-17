@@ -79,6 +79,13 @@ web, worker). Détails, réglages Coolify et procédure de mise à jour : [`docs
 - **Production :** en attente — une base `KEYSTONE_SEED=production` n’a encore aucune personne pour se connecter
   ([`docs/EXPLOITATION.md`](docs/EXPLOITATION.md) § 7) ; hébergement, copie hors site des sauvegardes et stockage des fichiers
   attendent la décision I-1a.
+- **Déclaration du schéma à Matrix (catalogue des données) :** à chaque ouverture de la base (après les migrations avec
+  PGlite, au démarrage du serveur avec PostgreSQL), Keystone envoie la structure réelle de sa base (tables, colonnes, clés,
+  liens) à `POST {MATRIX_URL}/api/declarations` (contrat `matrix.schema/1`, `src/server/integrations/matrix/`). Variables
+  d’exécution : `MATRIX_URL` (sans elle, rien n’est envoyé ; identifiant et mot de passe dans l’adresse si Matrix est derrière
+  l’authentification HTTP de Coolify), `MATRIX_TOKEN` (jeton partagé, en-tête `X-Matrix-Token`) et, facultatif,
+  `MATRIX_DECLARATIONS_DIR` (écrit aussi `keystone.json` dans ce dossier). L’envoi ne bloque jamais le démarrage : un échec
+  laisse un avertissement dans le journal.
 - **Variante mono-conteneur :** sans `DATABASE_URL` (PGlite dans `/data/pg`) et avec `KEYSTONE_JOBS=inprocess`.
 - **Réseau à la construction :** le build télécharge les dépendances npm et la police Inter (Google Fonts) : le serveur de
   build doit avoir accès à Internet.
