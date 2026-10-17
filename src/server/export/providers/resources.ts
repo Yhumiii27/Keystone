@@ -10,13 +10,13 @@ import { getRateCard, getLeaveCalendar, getLeaveWeek, getSkillsMatrix } from '@/
 import { getProject } from '@/server/dal/projects';
 import { listResourceRequests, type ResourceRequestRow } from '@/server/dal/requests';
 import { departmentOfPerson, getApprovalsScreenData, listApprovalDepartmentsFull } from '@/server/dal/requests-screens';
-import { getLaborCost, getPortfolioLaborCost, getProjectTeam, getResourcePool, getWhatIf, listDepartments, type PoolPerson, type ResourceWeek } from '@/server/dal/resources';
+import { getLaborCost, getPortfolioLaborCost, getProjectTeam, getResourcePool, getWeekProjectSplit, getWhatIf, listDepartments, type PoolPerson, type ResourceWeek } from '@/server/dal/resources';
 import { zoneLabel } from '@/server/dal/shell';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
 import { yearOfIso } from '@/domain/clock';
-import { loadWindow, parseLoadViewParam, parseLoadWeekParam, type LoadView } from '@/domain/load-window';
-import { weekLoad } from '@/domain/load-week';
+import { loadWindow, parseLoadViewParam, parseLoadWeekParam, type LoadView, type LoadWindow } from '@/domain/load-window';
+import { weekLoad, weekSplitText, type WeekProjectHours } from '@/domain/load-week';
 import { col, compact, filterLine, isoOf, kpiSheet, param, sheet } from './common';
 import { projectFilter } from './scope';
 import { canViewDepartmentApprovals } from '@/domain/rights';
@@ -30,19 +30,25 @@ import { dataText } from '@/i18n/data-text';
  */
 const windowOf = (ctx: ExportContext, view?: LoadView) => loadWindow(ctx.today, parseLoadWeekParam(param(ctx, 'week'), ctx.today), view ?? parseLoadViewParam(param(ctx, 'view')));
 
-/** Weekly loads; one week (week view) adds its hours on the 40 h week and the hours above capacity, as on screen. */
-function loadSheet(ctx: ExportContext, name: string, weeks: ResourceWeek[], people: PoolPerson[]): ExportSheet {
+/** The split by project of the week view (none in the 8-week view). */
+const weekSplitOf = (win: LoadWindow) => (win.view === 'week' ? getWeekProjectSplit(win.start) : Promise.resolve(undefined));
+
+/**
+ * Weekly loads; one week (week view) adds its hours on the 40 h week, the hours above capacity and the split by project (the
+ * hours the schedules assign that week — owner answer 17 Oct 2026, second round; `split` = `getWeekProjectSplit`), as on screen.
+ */
+function loadSheet(ctx: ExportContext, name: string, weeks: ResourceWeek[], people: PoolPerson[], split?: Record<string, WeekProjectHours[]>): ExportSheet {
   const { t } = ctx;
   const one = weeks.length === 1;
   return sheet(name, [
     col('name', t('Person'), 'text', 22), col('job', t('Job title'), 'text', 22), col('department', t('Department'), 'text', 18),
     ...weeks.map((w, i) => col(`w${i}`, `${t('Week of')} ${w.start}`, 'percent', 12)),
-    ...(one ? [col('hours', t('Hours'), 'number', 8), col('over', t('Above capacity'), 'number', 10)] : [col('avg', t('Average'), 'percent'), col('max', t('Peak'), 'percent')]),
+    ...(one ? [col('hours', t('Hours'), 'number', 8), col('over', t('Above capacity'), 'number', 10), col('projects', t('By project'), 'text', 36)] : [col('avg', t('Average'), 'percent'), col('max', t('Peak'), 'percent')]),
   ], people.map((p) => {
-    const w = one ? weekLoad(p.loads[0] ?? 0, []) : null;
+    const w = one ? weekLoad(p.loads[0] ?? 0, split?.[p.name] ?? []) : null;
     return {
       name: p.name, job: p.jobTitle ? t(p.jobTitle) : '', department: p.department ? t(p.department) : '', ...Object.fromEntries(p.loads.map((l, i) => [`w${i}`, l / 100])),
-      ...(w ? { hours: w.hours, over: w.overH } : { avg: p.avg / 100, max: p.max / 100 }),
+      ...(w ? { hours: w.hours, over: w.overH, projects: weekSplitText(w, ctx.lang) } : { avg: p.avg / 100, max: p.max / 100 }),
     };
   }));
 }
@@ -78,15 +84,16 @@ function loadKpis(ctx: ExportContext, people: PoolPerson[], openRequests: number
 async function resourcesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
   // R-086 (R-2 a): the labour cost of the projects in execution of the displayed zone, as on screen.
-  const [pool, departments, pending, labor, zoneText] = await Promise.all([
-    getResourcePool(windowOf(ctx).weeks), listDepartments(), listResourceRequests({ status: 'pending' }), getPortfolioLaborCost(ctx.zone), zoneLabel(ctx.zone),
+  const win = windowOf(ctx);
+  const [pool, split, departments, pending, labor, zoneText] = await Promise.all([
+    getResourcePool(win.weeks), weekSplitOf(win), listDepartments(), listResourceRequests({ status: 'pending' }), getPortfolioLaborCost(ctx.zone), zoneLabel(ctx.zone),
   ]);
   const caps = departments.filter((d) => d.capacityH != null && d.demandH != null).sort((a, b) => (a.capacityPosition ?? 0) - (b.capacityPosition ?? 0));
   return {
     title: t('Resources'),
     filters: [`${t('Zone')}: ${t(zoneText || 'All zones')}`],
     sheets: [
-      loadSheet(ctx, t('Weekly load'), pool.weeks, pool.people),
+      loadSheet(ctx, t('Weekly load'), pool.weeks, pool.people, split),
       sheet(t('Department capacity'), [col('department', t('Department'), 'text', 22), col('head', t('Head'), 'text', 18), col('capacity', t('Capacity (h)'), 'integer'), col('demand', t('Demand (h)'), 'integer'), col('gap', t('Gap (h)'), 'integer')],
         caps.map((d) => ({ department: t(d.name), head: d.head?.name ?? '', capacity: d.capacityH, demand: d.demandH, gap: (d.demandH ?? 0) - (d.capacityH ?? 0) }))),
       loadKpis(ctx, pool.people, pending.length, labor.projects.length ? { name: t('Labor'), budget: labor.budget, actual: labor.actual } : null),
@@ -99,12 +106,13 @@ async function projectResourcesWorkbook(ctx: ExportContext): Promise<ExportWorkb
   if (!ctx.project) return null;
   const { t } = ctx;
   const code = ctx.project.code;
-  const [pool, team, labor, pending, all] = await Promise.all([getResourcePool(windowOf(ctx).weeks), getProjectTeam(code), getLaborCost(code), listResourceRequests({ projectCode: code, status: 'pending' }), listResourceRequests({ projectCode: code })]);
+  const win = windowOf(ctx);
+  const [pool, split, team, labor, pending, all] = await Promise.all([getResourcePool(win.weeks), weekSplitOf(win), getProjectTeam(code), getLaborCost(code), listResourceRequests({ projectCode: code, status: 'pending' }), listResourceRequests({ projectCode: code })]);
   const members = new Set(team.map((m) => m.name));
   const people = pool.people.filter((m) => members.has(m.name));
   return {
     title: t('Project resources'),
-    sheets: [loadSheet(ctx, t('Team load'), pool.weeks, people), requestSheet(ctx, t('Resource requests'), all), loadKpis(ctx, people, pending.length, labor)],
+    sheets: [loadSheet(ctx, t('Team load'), pool.weeks, people, split), requestSheet(ctx, t('Resource requests'), all), loadKpis(ctx, people, pending.length, labor)],
   };
 }
 

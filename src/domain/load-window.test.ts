@@ -103,14 +103,15 @@ describe('load views (owner answers 17 Oct 2026)', () => {
 });
 
 describe('week detail rules (owner answers 17 Oct 2026)', () => {
-  it('a weekly load: hours on the 40 h week, hours above capacity, over-allocation above 110 %, split by project', () => {
+  it('a weekly load: hours on the 40 h week, hours above capacity, over-allocation above 110 %, assigned hours by project', () => {
     expect(HOURS_PER_PERSON_WEEK).toBe(40);
     expect([hoursOfLoad(90), hoursOfLoad(130), hoursOfLoad(91)]).toEqual([36, 52, 36.4]);
-    expect(weekLoad(130, [])).toMatchObject({ pct: 130, hours: 52, capacityH: 40, overH: 12, overAllocated: true, band: 'over', projects: [], unsplitPct: 0 });
+    expect(weekLoad(130, [])).toMatchObject({ pct: 130, hours: 52, capacityH: 40, overH: 12, overAllocated: true, band: 'over', projects: [], assignedH: 0, notAssignedH: 0, beyondH: 0 });
     expect(weekLoad(110, [])).toMatchObject({ overH: 4, overAllocated: false });
     expect(weekLoad(80, [])).toMatchObject({ hours: 32, overH: 0, overAllocated: false });
-    expect(weekLoad(100, [{ code: 'NDC-031', pct: 30 }, { code: 'HLT-026', pct: 60 }, { code: 'ERP-202', pct: 0 }])).toMatchObject({
-      projects: [{ code: 'HLT-026', pct: 60, hours: 24 }, { code: 'NDC-031', pct: 30, hours: 12 }], unsplitPct: 10,
+    // Owner answer 17 Oct 2026, second round: the split is the hours the schedules assign (see load-week.test.ts).
+    expect(weekLoad(100, [{ code: 'NDC-031', hours: 12 }, { code: 'HLT-026', hours: 24 }, { code: 'ERP-202', hours: 0 }])).toMatchObject({
+      projects: [{ code: 'HLT-026', hours: 24 }, { code: 'NDC-031', hours: 12 }], assignedH: 36, notAssignedH: 4, beyondH: 0,
     });
   });
 

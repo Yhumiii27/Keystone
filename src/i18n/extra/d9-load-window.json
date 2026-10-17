@@ -14,7 +14,7 @@
   "Hours by role, week shown": "Heures par rôle, semaine affichée",
   "Above capacity": "Au-delà de la capacité",
   "By project": "Par projet",
-  "The allocations hold one weekly total per person: no split by project this week.": "Les affectations ne portent qu’un total hebdomadaire par personne : pas de répartition par projet cette semaine.",
+  "The projects’ schedules assign no one in this table this week: no split by project.": "Les plannings des projets n’affectent personne de ce tableau cette semaine : pas de répartition par projet.",
   "Week shown · 35 h basis": "Semaine affichée · base 35 h",
   "Availability — week": "Disponibilité — semaine",
   "Received from Cursus · day by day · 7 h per working day · public holidays removed": "Reçu de Cursus · jour par jour · 7 h par jour ouvré · jours fériés retirés",

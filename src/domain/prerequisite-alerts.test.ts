@@ -47,15 +47,15 @@ describe('which prerequisites are alerted', () => {
 });
 
 describe('"Raise as a risk"', () => {
-  it('offered while late and no risk raised yet', () => {
-    const p = { status: 'pending' as const, neededBy: '2026-11-02', riskNumber: null };
-    expect([canRaisePrerequisiteRisk(p, '2026-10-17'), canRaisePrerequisiteRisk(p, '2026-10-18')]).toEqual([false, true]);
-    expect(canRaisePrerequisiteRisk({ ...p, riskNumber: 'R-21' }, '2026-10-18')).toBe(false);
-    expect(canRaisePrerequisiteRisk({ ...p, status: 'confirmed' }, '2026-10-18')).toBe(false);
+  it('offered while pending (late or not — owner, 17 Oct 2026, second round) and no risk raised yet', () => {
+    const p = { status: 'pending' as const, riskNumber: null };
+    expect(canRaisePrerequisiteRisk(p)).toBe(true);
+    expect(canRaisePrerequisiteRisk({ ...p, riskNumber: 'R-21' })).toBe(false);
+    expect([canRaisePrerequisiteRisk({ ...p, status: 'confirmed' }), canRaisePrerequisiteRisk({ ...p, status: 'signed' })]).toEqual([false, false]);
   });
 
   it('pre-fills title, category (Contractual / client, else the first offered), owner (the PM of record when listed) and response', () => {
-    const p = { title: 'Autorisation de levage & arrêt exploitation quai 4', activityCode: 'A1320' };
+    const p = { title: 'Autorisation de levage & arrêt exploitation quai 4', activityCode: 'A1320', late: true };
     const owners = ['Julien Wagner', 'Romain Aubert'];
     const en = makeT('en');
     expect(prerequisiteRiskDraft(p, { pmName: 'Romain Aubert', owners, categories: ['technical', PREREQUISITE_RISK_CATEGORY] }, en)).toEqual({
@@ -65,11 +65,20 @@ describe('"Raise as a risk"', () => {
     expect(prerequisiteRiskDraft(p, { pmName: 'Nobody', owners, categories: ['technical'] }, en)).toMatchObject({ cat: 'technical', owner: 'Julien Wagner' });
     // French: Keystone's words translated, the prerequisite as typed.
     expect(prerequisiteRiskDraft(p, { pmName: null, owners, categories: [] }, makeT('fr')).title).toBe('Prérequis client en retard — Autorisation de levage & arrêt exploitation quai 4');
+    // Before J-15 (owner, 17 Oct 2026, second round): "at risk", not "late".
+    const early = { ...p, late: false };
+    expect(prerequisiteRiskDraft(early, { pmName: 'Romain Aubert', owners, categories: [PREREQUISITE_RISK_CATEGORY] }, en)).toEqual({
+      title: 'Client prerequisite at risk — Autorisation de levage & arrêt exploitation quai 4', cat: 'contractual_client', owner: 'Romain Aubert', resp: 'mitigate',
+    });
+    expect(prerequisiteRiskDraft(early, { pmName: null, owners, categories: [] }, makeT('fr')).title).toBe('Prérequis client à risque — Autorisation de levage & arrêt exploitation quai 4');
   });
 
   it('the trigger records the cause: rule · prerequisite · activity · need date', () => {
-    const p = { title: 'Point HT', activityCode: 'A1410' };
+    const p = { title: 'Point HT', activityCode: 'A1410', late: true };
     expect(prerequisiteRiskTrigger(p, '20 Nov 2026', makeT('en'))).toBe('Client prerequisite not confirmed 15 days before its need date · Point HT · A1410 · 20 Nov 2026');
     expect(prerequisiteRiskTrigger(p, '20 nov. 2026', makeT('fr'))).toBe('Prérequis client non confirmé 15 jours avant sa date de besoin · Point HT · A1410 · 20 nov. 2026');
+    // Before J-15: no "15 days before" in the cause.
+    expect(prerequisiteRiskTrigger({ ...p, late: false }, '20 Nov 2026', makeT('en'))).toBe('Client prerequisite not confirmed yet · Point HT · A1410 · 20 Nov 2026');
+    expect(prerequisiteRiskTrigger({ ...p, late: false }, '20 nov. 2026', makeT('fr'))).toBe('Prérequis client pas encore confirmé · Point HT · A1410 · 20 nov. 2026');
   });
 });

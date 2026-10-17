@@ -3,7 +3,7 @@ import 'server-only';
 // the 8-week window, departments with head and capacity, project teams, labour cost of a project, and what-if
 // levelling (chapter 4, S-7: levers derived from the data, effects computed by the CPM engine on a copy of the plan,
 // scenarios persisted per project, "Apply" → DRAFT resource requests) with its writers.
-import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
   WHATIF_PRIORITIES, WHATIF_RULES, autoLevel, createsRequest, evaluateScenario, leverEffects, leverLabel, leverSetKey, legacyLeverSet, prepareWhatIf, rankLevers,
@@ -14,6 +14,10 @@ import { isoOfDisplayDate, weekLabelOfIso, whatIfPriority } from '@/server/db/co
 import { businessToday } from '@/server/clock';
 import { yearOfIso } from '@/domain/clock';
 import { isPastWindow, loadWindow, parseLoadViewParam, parseLoadWeekParam, type LoadWindow } from '@/domain/load-window';
+import { weekProjectHours, type WeekProjectHours } from '@/domain/load-week';
+import { addCalendarDays } from '@/domain/calendar';
+import { DEFAULT_PROJECT_CALENDAR, projectCalendarCode } from '@/domain/ch4-defaults';
+import { loadWorkCalendars } from './calendars';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import {
   activities, activityAssignments, allocations, costCategories, departmentCapacities, departments, persons, projectControls, projectMembers, projects,
@@ -70,21 +74,37 @@ export async function getLoadWindow(week?: unknown, view?: unknown): Promise<Loa
 }
 
 /**
- * Week view (owner answers 17 Oct 2026): the allocation rows per project of one week (`allocations.project_id` set), by
- * person name, largest first. The demo data holds weekly totals only (the prototype's PEOPLE): empty there.
+ * Week view, split by project (owner answer 17 Oct 2026, second round: « la répartition projet est à tirer des affectations
+ * projets »): the hours the schedules of every project assign each named person in the week starting `weekStart` — every
+ * `activity_assignments` row with a person whose activity is dated across that week, spread by `assignmentHoursInWeek`
+ * (units × h/d, else planned hours, over the activity's working days on its calendar — its own, else the project's). By
+ * person name (as the pool names them), largest first. Replaces the allocation rows per project (`allocations.project_id`),
+ * which nothing feeds.
  */
-export async function getWeekProjectSplit(weekStart: string): Promise<Record<string, { code: string; pct: number }[]>> {
+export async function getWeekProjectSplit(weekStart: string): Promise<Record<string, WeekProjectHours[]>> {
   const db = await getDb();
+  const weekEnd = addCalendarDays(weekStart, 6);
   const rows = await db
-    .select({ full: persons.fullName, short: persons.shortName, code: projects.code, pct: allocations.loadPct })
-    .from(allocations)
-    .innerJoin(persons, eq(persons.id, allocations.personId))
-    .innerJoin(projects, eq(projects.id, allocations.projectId))
-    .where(eq(allocations.weekStart, weekStart))
-    .orderBy(asc(projects.sortOrder));
-  const out: Record<string, { code: string; pct: number }[]> = {};
-  for (const r of rows) (out[r.full ?? r.short] ??= []).push({ code: r.code, pct: Number(r.pct) });
-  return out;
+    .select({
+      code: projects.code, projectCalendar: projects.calendar, activityCalendar: activities.calendarCode, start: activities.startDate, finish: activities.finishDate,
+      full: persons.fullName, short: persons.shortName, units: activityAssignments.resourceCount, hpd: activityAssignments.hoursPerDay, planned: activityAssignments.plannedHours,
+    })
+    .from(activityAssignments)
+    .innerJoin(activities, eq(activities.id, activityAssignments.activityId))
+    .innerJoin(projects, eq(projects.id, activities.projectId))
+    .innerJoin(persons, eq(persons.id, activityAssignments.personId))
+    .where(and(lte(activities.startDate, weekEnd), gte(activities.finishDate, weekStart)));
+  if (!rows.length) return {};
+  const codes = [...new Set(rows.map((r) => r.code))];
+  const cals = new Map(await Promise.all(codes.map(async (c) => [c, await loadWorkCalendars(c)] as const)));
+  return weekProjectHours(
+    rows.map((r) => {
+      const own = cals.get(r.code)!;
+      const calendar = (r.activityCalendar && own[r.activityCalendar]) || own[projectCalendarCode({ calendar: r.projectCalendar })] || own[DEFAULT_PROJECT_CALENDAR];
+      return { project: r.code, person: r.full ?? r.short, start: r.start, finish: r.finish, units: r.units, hoursPerDay: r.hpd, plannedHours: r.planned, calendar };
+    }),
+    weekStart,
+  );
 }
 
 /**

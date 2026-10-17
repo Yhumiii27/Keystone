@@ -6,6 +6,7 @@
 //   prerequisite on the Site screen.
 // - The proposal is the existing "New risk" form, pre-filled from the prerequisite (`prerequisiteRiskDraft`), which a lead of the
 //   project confirms (or corrects) from the prerequisite's row: no new risk status, nothing is registered without that click.
+//   Offered on every pending prerequisite without a risk, before J-15 too (owner, 17 Oct 2026, second round).
 //
 // Episode (default, owner to confirm): a prerequisite is alerted once for a given need date. A prerequisite only moves forward
 // (Pending → Confirmed → Signed), so it cannot become late again after a confirmation; it is alerted again only when its need date
@@ -36,43 +37,50 @@ export function prerequisitesToAlert<P extends PrerequisiteAlertFacts & { stage:
 /** The bell notice's title (fixed English template, translated by the bell). */
 export const PREREQUISITE_ALERT_TITLE = 'Client prerequisite unconfirmed at J-15 — raise a risk?';
 
-/** "Raise as a risk" is offered: the prerequisite is late at `today` and no risk was raised from it yet. */
-export const canRaisePrerequisiteRisk = (p: { status: ConfirmStatus; neededBy: string; riskNumber: string | null }, today: string) =>
-  isPrerequisiteLate(p, today) && !p.riskNumber;
+/**
+ * "Raise as a risk" is offered: the prerequisite is still pending (not confirmed, not signed) and no risk was raised from it yet —
+ * late or not (owner, 17 Oct 2026, second round: « Risque avant J-15 : oui on peut l'ouvrir »). The J-15 notice is unchanged.
+ */
+export const canRaisePrerequisiteRisk = (p: { status: ConfirmStatus; riskNumber: string | null }) => p.status === 'pending' && !p.riskNumber;
 
 /** Category proposed for the risk (the client owes the prerequisite); falls back to the first category offered when inactive. */
 export const PREREQUISITE_RISK_CATEGORY = 'contractual_client';
 /** Response proposed: mitigate (chase the client, re-plan the activity). */
 export const PREREQUISITE_RISK_RESPONSE = 'mitigate';
 
-/** English source strings of the proposal (translated by the caller's `t`). */
+/** English source strings of the proposal (translated by the caller's `t`): late at J-15, or still pending before J-15. */
 export const PREREQUISITE_RISK_TITLE_PREFIX = 'Late client prerequisite';
+export const PREREQUISITE_RISK_TITLE_PREFIX_PENDING = 'Client prerequisite at risk';
 export const PREREQUISITE_RISK_CAUSE = 'Client prerequisite not confirmed 15 days before its need date';
+export const PREREQUISITE_RISK_CAUSE_PENDING = 'Client prerequisite not confirmed yet';
 
 /**
- * The "New risk" form values proposed for a late prerequisite (field ids of `riskFormDef`): title "Late client prerequisite —
+ * The "New risk" form values proposed for a pending prerequisite (field ids of `riskFormDef`): title "Late client prerequisite —
+ * {title}" when it is late at J-15 (`late`, `isPrerequisiteLate` at the business date), else "Client prerequisite at risk —
  * {title}", category Contractual / client (else the first offered), owner the PM of record when they are on the owner list (they
  * are since the owner's answer of 17 Oct 2026, `riskOwnersWithPm`; else the form's first option), response Mitigate; P and I keep the form's defaults (3), the cost and the plan are left to the PM.
  * `t` translates Keystone's own words; the prerequisite's title stays as typed.
  */
 export function prerequisiteRiskDraft(
-  p: { title: string },
+  p: { title: string; late: boolean },
   ctx: { pmName: string | null; owners: readonly string[]; categories: readonly string[] },
   t: (english: string) => string,
 ): Record<string, string> {
   const cat = ctx.categories.includes(PREREQUISITE_RISK_CATEGORY) ? PREREQUISITE_RISK_CATEGORY : (ctx.categories[0] ?? PREREQUISITE_RISK_CATEGORY);
   const owner = ctx.pmName && ctx.owners.includes(ctx.pmName) ? ctx.pmName : (ctx.owners[0] ?? '');
-  return { title: `${t(PREREQUISITE_RISK_TITLE_PREFIX)} — ${p.title}`, cat, owner, resp: PREREQUISITE_RISK_RESPONSE };
+  const prefix = p.late ? PREREQUISITE_RISK_TITLE_PREFIX : PREREQUISITE_RISK_TITLE_PREFIX_PENDING;
+  return { title: `${t(prefix)} — ${p.title}`, cat, owner, resp: PREREQUISITE_RISK_RESPONSE };
 }
 
 /**
- * The risk's trigger (its cause, stored with the risk): "{cause} · {prerequisite} · {activity} · {need date text}". Built in the
- * language of the lead who raises it (typed data from then on, like any trigger).
+ * The risk's trigger (its cause, stored with the risk): "{cause} · {prerequisite} · {activity} · {need date text}" — the cause
+ * "not confirmed 15 days before its need date" when late, "not confirmed yet" before J-15. Built in the language of the lead who
+ * raises it (typed data from then on, like any trigger).
  */
-export const prerequisiteRiskTrigger = (p: { title: string; activityCode: string }, neededText: string, t: (english: string) => string) =>
-  [t(PREREQUISITE_RISK_CAUSE), p.title, p.activityCode, neededText].join(' · ');
+export const prerequisiteRiskTrigger = (p: { title: string; activityCode: string; late: boolean }, neededText: string, t: (english: string) => string) =>
+  [t(p.late ? PREREQUISITE_RISK_CAUSE : PREREQUISITE_RISK_CAUSE_PENDING), p.title, p.activityCode, neededText].join(' · ');
 
 // ── Messages (English source, translated by the feature) ────────────────────────────────────────────
 export const PREREQ_RISK_LEADS_ONLY = 'Only the project’s leads raise a risk from a client prerequisite';
-export const PREREQ_RISK_NOT_LATE = 'This prerequisite is not late any more';
+export const PREREQ_RISK_NOT_PENDING = 'This prerequisite is not pending any more';
 export const PREREQ_RISK_RAISED = 'A risk was already raised from this prerequisite';
