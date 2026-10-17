@@ -896,6 +896,7 @@ Proposition : version tablette des écrans Chantier, Réserves et Livraisons ave
 ## 3. Mises à jour
 
 - 2026-10-18 — Livraison 9 : charge calculée depuis les affectations des plannings et par métier, alerte des activités sans ressource (R-084, partie charge) ; alerte J-15 avec risque déjà lié (R-121).
+- 2026-10-17 — PR #12 fusionnée : Keystone déclare le schéma de sa base à Matrix (catalogue des bases EPC2i) au démarrage, en arrière-plan ; variables MATRIX_URL et MATRIX_TOKEN.
 - 2026-10-17 — PR #11 fusionnée. Réponses du second tour : date réelle par défaut (bêta), répartition par projet depuis les affectations, lettre client retirée, risque ouvrable avant J-15.
 - 2026-10-17 — PR #10 fusionnée dans main (horloge réelle, plans de charge glissants, alerte J-15). Réponses du responsable produit appliquées : rappels le matin, CP responsable de risque, vues semaine / 8 semaines, navigation du what-if ; tout est fusionné dans main au fil de l’eau.
 - 2026-10-16 — Livraison 9 : R-085 (plans de charge sur 8 semaines glissantes) et R-121 (alerte J-15 et proposition de risque) faits.

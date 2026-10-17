@@ -68,6 +68,10 @@
    "text": "PR #11 fusionnée. Réponses du second tour : date réelle par défaut (bêta), répartition par projet depuis les affectations, lettre client retirée, risque ouvrable avant J-15."
   },
   {
+   "date": "2026-10-17",
+   "text": "PR #12 fusionnée : Keystone déclare le schéma de sa base à Matrix (catalogue des bases EPC2i) au démarrage, en arrière-plan ; variables MATRIX_URL et MATRIX_TOKEN."
+  },
+  {
    "date": "2026-10-18",
    "text": "Livraison 9 : charge calculée depuis les affectations des plannings et par métier, alerte des activités sans ressource (R-084, partie charge) ; alerte J-15 avec risque déjà lié (R-121)."
   }
