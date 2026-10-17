@@ -54,6 +54,8 @@ describe('startServer', () => {
   it('production: a valid configuration opens the database before serving; warnings are logged', async () => {
     capture();
     vi.stubEnv('NODE_ENV', 'production');
+    // The test run pins the clock (vitest.config.ts); production runs on the real clock (R-013).
+    vi.stubEnv('KEYSTONE_CLOCK', '');
     const cfg = await startServer();
     expect(cfg.production).toBe(true);
     const warned = lines.filter((l) => l.level === 'warn').map((l) => JSON.parse(l.line).msg);

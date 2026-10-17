@@ -18,8 +18,8 @@ export async function startServer(): Promise<KeystoneConfig> {
   log.info('Keystone server starting', {
     component: 'startup', env: config.env, database: config.database.driver, newDatabaseSeed: config.seed, logLevel: config.log.level,
     cursus: config.cursus.apiUrl ? 'http' : 'mock', vigie: config.vigie.apiUrl ? 'http' : 'mock', transcriptAnalysis: config.ai.enabled ? 'claude' : 'local',
-    // R-013: "auto" = real date on a production database, Fri 25 Sep 2026 on the demo database.
-    clock: config.clock ? (config.clock.kind === 'real' ? 'real' : config.clock.iso) : 'auto',
+    // R-013: the real date unless KEYSTONE_CLOCK pins one.
+    clock: config.clock?.kind === 'fixed' ? config.clock.iso : 'real',
   });
   // Production: an unreachable database or pending migrations stop the server now (PGlite: migrated and seeded here).
   if (config.production) await getDb();

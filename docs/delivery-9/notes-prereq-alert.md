@@ -45,13 +45,14 @@ leaves on 18 Oct and the HT alert on 5 Nov.
 demo run, one notice to the PM only and nothing on reruns, a moved need date, the page marking and offering, refusals
 (non-leads, client, stale stamp, unknown owner, not late), the raise with its audit and activity, the writer's re-checks.
 
-## 4. Open questions for the owner (asked at delivery; answered 17 Oct 2026 — §5)
+## 4. Open questions for the owner (asked at delivery; answered 17 Oct 2026 — §5 for 1–3, §6 second round for 4–5)
 
 1. Recipients: the PM of record only. Also co-PMs and deputies, or the director when the PM has no account?
 2. Timing: every 24 h from the worker's start — or at a fixed hour (early morning)?
 3. The "New risk" owner list is the prototype's team; on HLT-026 it lacks the PM (Romain Aubert). Add the PM of record?
 4. The Site card subtitle still mentions a "client letter" at J-15 — not built (D-4 asked for the notice and the risk).
-5. Raise a risk from a prerequisite before it is late too?
+   **Answered (§6):** « On supprime la lettre au client ».
+5. Raise a risk from a prerequisite before it is late too? **Answered (§6):** « Risque avant J-15 : oui on peut l'ouvrir ».
 
 ## 5. Owner answers 17 Oct 2026
 
@@ -111,7 +112,59 @@ forces; `KEYSTONE_REMINDERS_AT` read by the entries), `src/server/config/parse.t
 `src/server/dal/risks-screen.test.ts` (HLT-026 owners end with Romain Aubert, NDC-031 and EWA-051 with their PM), `src/features/site/prerequisite-risk.test.ts`
 (the proposal pre-selects Romain Aubert, the form's owners end with him, the PM confirms with himself as owner).
 
-**Still open.** Questions 4 (the "client letter" in the Site card subtitle) and 5 (raising a risk before J-15) were not
-answered. New: should a worker started late in the day (e.g. 22:00) still send the day's missed morning reminders at once —
+**Still open.** Questions 4 and 5 were answered in a second round (§6). New: should a worker started late in the day (e.g. 22:00) still send the day's missed morning reminders at once —
 today it does, as the brief asked — or wait for the next morning? A reminders hour between 02:00 and 02:59 does not exist on
 the spring-forward night: that day's run falls an hour earlier (07:00 is unaffected).
+
+## 6. Owner answers 17 Oct 2026 — second round
+
+| # | Answer | What changed |
+|---|---|---|
+| 4 | « On supprime la lettre au client » | The "Client prerequisites (readiness)" card subtitle no longer promises a client letter. |
+| 5 | « Risque avant J-15 : oui on peut l'ouvrir » | "Raise as a risk" is offered on every pending prerequisite without a risk, late or not. |
+
+**No client letter (answer 4).** Subtitle (`src/features/site/site-view.tsx`): "Dated and signed by the client · each one
+conditions a site activity · J-15 unconfirmed → alert and risk proposal" / « Datés et signés par le client · chacun conditionne
+une activité chantier · non confirmé à J-15 → alerte et proposition de risque » (new literal, French in
+`src/i18n/extra/d9-prereq-alert.json`; no existing string fitted). The prototype's subtitle entry (the only user of "client
+letter") is removed from `src/i18n/fr-dict.json` — the guards allow it (no test pins fr-dict to the prototype; the string stays in
+`src/server/prototype/prototype-data.json`, the prototype's own data, and in `design/`). Spec `docs/spec/10` §d notes the new
+subtitle. No guide (`docs/guide/*.md`) or `EXPLOITATION.md` mentioned the letter. "3 client letters + incremental number"
+(analytic code hint) is about the alphabet, untouched.
+
+**Raise before J-15 (answer 5).**
+- *Rule* (`src/domain/prerequisite-alerts.ts`): `canRaisePrerequisiteRisk(p)` = status Pending (not Confirmed, not Signed) and no
+  risk linked — no date any more (signature without `today`). Re-checked in the Server Function
+  (`src/features/site/prerequisite-risk-actions.ts`) and in the writer's transaction (`raisePrerequisiteRisk`,
+  `src/server/dal/prerequisite-alerts.ts`); the refusal "This prerequisite is not late any more" becomes `PREREQ_RISK_NOT_PENDING`
+  "This prerequisite is not pending any more" / « Ce prérequis n’est plus en attente » (the old entry is removed from
+  `d9-prereq-alert.json`). Lead right, stamp, owner list and "raised once" unchanged.
+- *Draft* (`prerequisiteRiskDraft(p: { title, late })`): late at J-15 (`isPrerequisiteLate` at the business date) → "Late client
+  prerequisite — {title}" (unchanged); not late → "Client prerequisite at risk — {title}" / « Prérequis client à risque — … ».
+  Category, owner (PM of record), response, P and I unchanged.
+- *Trigger* (`prerequisiteRiskTrigger(p: { title, activityCode, late }, …)`): late → "Client prerequisite not confirmed 15 days
+  before its need date · …" (unchanged); not late → "Client prerequisite not confirmed yet · {prerequisite} · {activity} · {need
+  date}" / « Prérequis client pas encore confirmé · … ». The Server Function computes `late` at the business date.
+- *Activity line*: a new system message `site.pendingPrerequisiteRiskRaised` — "Raised R-21 from a client prerequisite not
+  confirmed yet · {prerequisite}" / « Risque R-21 ouvert depuis un prérequis client pas encore confirmé · … » — for a raise before
+  J-15; `site.prerequisiteRiskRaised` ("… from a late client prerequisite …") is kept for a late one (stored rows keep their key
+  and text). The writer decides at the business date in its transaction.
+- *Page* (`src/features/site/model.ts`): every pending row without a risk shows "Raise as a risk" to a lead; only the row reached
+  from the notification (`?prereq=`) opens the form by itself (unchanged).
+- *Unchanged*: the J-15 notification (job, recipient, title, idempotence per need date), the 07:00 schedule.
+
+**Displayed values that change on the demo data set (25 Sep 2026).** HLT-026 › Site › Client prerequisites: the card subtitle (no
+letter); for the project's leads (among the personas: the PM Romain Aubert and the director) the two pending rows — quai 4 (needed 2 Nov) and HT
+11 kV (needed 20 Nov) — now show "Raise as a risk" (before: none until 18 Oct / 5 Nov), pre-filled "Client prerequisite at risk —
+{title}", owner Romain Aubert; from 18 Oct the quai 4 row reads "Late client prerequisite — …" as before. Other personas see no
+change. Confirmed and signed rows (4 of 6) offer nothing.
+
+**Tests.** `src/domain/prerequisite-alerts.test.ts`: offered while pending whatever the date, not when confirmed / signed or
+already raised; the draft title and the trigger late vs not late, in English and French. `src/features/site/prerequisite-risk.test.ts`
+(7): leads see "Raise as a risk" on both pending rows at 19 Oct (quai 4 late, HT not late) with their titles in both languages,
+only the notified row focused; a confirmed prerequisite (alimentation 400 V) is refused "not pending any more" by the Server Function
+and the writer; the PM raises HT before J-15 (trigger "Client prerequisite not confirmed yet · … · 1 Dec 2026", activity
+`site.pendingPrerequisiteRiskRaised`, row linked, offer gone); a member is still refused.
+
+**Open question.** Should the J-15 notice still be sent for a prerequisite whose risk was already raised before J-15? Today it is
+(the notice is unchanged, as asked); its link then shows the row with its risk.

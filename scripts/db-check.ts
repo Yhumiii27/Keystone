@@ -1,6 +1,8 @@
 // End-to-end database check: opens a PGlite in a temporary directory, applies ./drizzle, seeds from the
 // prototype data set, prints row counts and verifies golden values through the DAL.
 //   npx tsx --conditions=react-server scripts/db-check.ts
+// R-013: the golden values are the demo data set's at its date (the real clock is the default since 17 Oct 2026).
+process.env.KEYSTONE_CLOCK = '2026-09-25';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

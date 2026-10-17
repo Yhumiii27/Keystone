@@ -1,5 +1,6 @@
 'use client';
-// R-121 (owner's decision D-4 'a' ★): "Raise as a risk" on a client prerequisite still unconfirmed at J-15 — the existing "New
+// R-121 (owner's decision D-4 'a' ★): "Raise as a risk" on a pending client prerequisite, late at J-15 or not yet (owner, 17 Oct
+// 2026, second round) — the existing "New
 // risk" form (AF `risks`), pre-filled from the prerequisite, which the lead confirms or corrects. Opened directly when the page
 // is reached from the J-15 notification (`?prereq=`), and scrolled into view. Rendered for the project's leads only (the Server
 // Function and the writer re-check).

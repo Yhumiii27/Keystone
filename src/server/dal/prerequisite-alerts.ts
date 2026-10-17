@@ -4,13 +4,15 @@ import 'server-only';
 //   alerted for its need date is claimed (alerted_needed_by, a conditional update — two workers never alert it twice), then its
 //   project's PM of record gets a bell notice linking to the prerequisite on the Site screen (sent after the claim commits;
 //   a PM without an active account is counted, nobody else is told).
-// - `raisePrerequisiteRisk` ("Raise as a risk" on the prerequisite's row): the existing "New risk" values, confirmed by a lead
+// - `raisePrerequisiteRisk` ("Raise as a risk" on the row of any pending prerequisite, late or not — owner, 17 Oct 2026, second
+//   round): the existing "New risk" values, confirmed by a lead
 //   of the project, registered with the prerequisite's activity and its cause as trigger, linked to the prerequisite; audit
 //   rows (risk created, prerequisite) and an activity line. Rules: src/domain/prerequisite-alerts.ts.
 import { and, eq, isNull, ne, or } from 'drizzle-orm';
 import {
-  PREREQUISITE_ALERT_TITLE, PREREQ_RISK_LEADS_ONLY, PREREQ_RISK_NOT_LATE, PREREQ_RISK_RAISED, canRaisePrerequisiteRisk, prerequisitesToAlert,
+  PREREQUISITE_ALERT_TITLE, PREREQ_RISK_LEADS_ONLY, PREREQ_RISK_NOT_PENDING, PREREQ_RISK_RAISED, canRaisePrerequisiteRisk, prerequisitesToAlert,
 } from '@/domain/prerequisite-alerts';
+import { isPrerequisiteLate } from '@/domain/site';
 import { SITE_LINE_CHANGED, prerequisiteStamp } from '@/domain/site-sheet';
 import { systemMessage } from '@/domain/system-messages';
 import { businessToday } from '@/server/clock';
@@ -92,9 +94,9 @@ export async function alertLatePrerequisites(on?: string): Promise<PrerequisiteA
 export type PrerequisiteRiskInput = Omit<NewRiskInput, 'trigger' | 'activityCode'>;
 
 /**
- * Registers the risk proposed for a late prerequisite, as the page showed the line (`stamp`): a lead of the project only (PM of
- * record, co-PM, deputy, the director — re-checked here), the prerequisite still late at the business date and no risk raised
- * from it yet. Returns the risk's number ("R-21"). Errors: SITE_LINE_CHANGED, PREREQ_RISK_* (English source strings).
+ * Registers the risk proposed for a pending prerequisite (late at J-15 or not yet — owner, 17 Oct 2026, second round), as the
+ * page showed the line (`stamp`): a lead of the project only (PM of record, co-PM, deputy, the director — re-checked here), the
+ * prerequisite still pending (not confirmed, not signed) and no risk raised from it yet. Returns the risk's number ("R-21"). Errors: SITE_LINE_CHANGED, PREREQ_RISK_* (English source strings).
  */
 export async function raisePrerequisiteRisk(
   projectCode: string, position: number, stamp: string, input: PrerequisiteRiskInput, trigger: string, actor: Actor, on?: string,
@@ -108,7 +110,9 @@ export async function raisePrerequisiteRisk(
     if (!x) throw new Error(`Unknown prerequisite ${position} on ${projectCode}`);
     if (prerequisiteStamp(x) !== stamp) throw new Error(SITE_LINE_CHANGED);
     if (x.riskId) throw new Error(PREREQ_RISK_RAISED);
-    if (!canRaisePrerequisiteRisk({ status: x.status, neededBy: x.neededBy, riskNumber: null }, today)) throw new Error(PREREQ_RISK_NOT_LATE);
+    if (!canRaisePrerequisiteRisk({ status: x.status, riskNumber: null })) throw new Error(PREREQ_RISK_NOT_PENDING);
+    // Late at J-15 at the business date, or still pending before J-15: only the activity line's wording differs.
+    const late = isPrerequisiteLate(x, today);
     const number = await createRisk(projectCode, { ...input, trigger, activityCode: x.activityCode }, actor.name, tx);
     const [r] = await tx.select({ id: risks.id }).from(risks).where(and(eq(risks.projectId, p.id), eq(risks.number, number)));
     // The line's stamp does not read the link: the page's other forms on this line stay valid.
@@ -116,7 +120,7 @@ export async function raisePrerequisiteRisk(
     await trace(tx, await whoIs(tx, actor), {
       objectRef: `Prerequisite · ${x.title}`, change: `risk raised · ${number}`, area: 'Site', entityType: 'site_prerequisite', entityId: x.id, projectId: p.id,
       after: { risk: number },
-      activity: { kind: 'change', message: systemMessage('site.prerequisiteRiskRaised', { risk: number, prerequisite: x.title }) },
+      activity: { kind: 'change', message: systemMessage(late ? 'site.prerequisiteRiskRaised' : 'site.pendingPrerequisiteRiskRaised', { risk: number, prerequisite: x.title }) },
     });
     return number;
   });

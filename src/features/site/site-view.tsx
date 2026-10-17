@@ -158,7 +158,7 @@ function ReadyTab({ code, v, canEdit, entry, context, t }: { code: string; v: Re
       <SectionCard
         scroll
         title={t('Client prerequisites (readiness)')}
-        subtitle={t('Dated and signed by the client · each one conditions a site activity · J-15 unconfirmed → alert, risk and client letter')}
+        subtitle={t('Dated and signed by the client · each one conditions a site activity · J-15 unconfirmed → alert and risk proposal')}
         actions={<AddLine code={code} kind="prerequisite" entry={entry} />}
       >
         {entry?.noActivity && <span className={s.footnote}>{entry.noActivity}</span>}

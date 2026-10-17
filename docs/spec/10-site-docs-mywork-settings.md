@@ -314,7 +314,7 @@ ok → icon `ph ph-check-circle`, sub "Ready"; not ok → `ph ph-warning-circle`
 | "Access constraints" / "Contraintes d’accès" | `access` |
 | "Window" / "Fenêtre" | `{start} → {end} · {planDays} working days` — "19 Oct 2026 → 18 Dec 2026 · 44 working days" |
 
-**d) "Client prerequisites (readiness)"** / "Prérequis client (readiness)"; subtitle "Dated and signed by the client · each one conditions a site activity · J-15 unconfirmed → alert, risk and client letter". Table (13px), rows `prereqs` (line 4744):
+**d) "Client prerequisites (readiness)"** / "Prérequis client (readiness)"; subtitle "Dated and signed by the client · each one conditions a site activity · J-15 unconfirmed → alert, risk and client letter" (Keystone, R-121, owner 17 Oct 2026: no client letter — "… · J-15 unconfirmed → alert and risk proposal"). Table (13px), rows `prereqs` (line 4744):
 
 | Column EN / FR | Content |
 |---|---|
