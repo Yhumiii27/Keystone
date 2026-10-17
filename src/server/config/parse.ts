@@ -22,6 +22,7 @@ import { z } from 'zod';
 import { parseGroupRoleMap } from '@/domain/auth';
 import { BACKUP_DEFAULTS, BACKUP_EVERY_MIN_RANGE, parseBackupRetention, type BackupRetention } from '@/domain/backup';
 import { parseClockSetting, type ClockSetting } from '@/domain/clock';
+import { DEFAULT_REMINDERS_AT, parseTimeOfDay } from '@/domain/jobs';
 
 export const SEED_MODES = ['demo', 'production'] as const;
 /** What a NEW database is seeded with (KEYSTONE_SEED): the prototype data set, or reference data only (A-15). */
@@ -73,6 +74,11 @@ export interface KeystoneConfig {
    * date — Fri 25 Sep 2026 — on a demo database); else the real clock or a pinned date.
    */
   clock: ClockSetting | null;
+  /**
+   * Hour of the reminder jobs (KEYSTONE_REMINDERS_AT, HH:MM Europe/Paris; default 07:00) — owner's answer of 17 Oct 2026 to
+   * R-121: automatic reminders arrive in the morning (src/domain/jobs.ts).
+   */
+  remindersAt: string;
   log: { level: LogLevel; format: LogFormat };
   /**
    * Cursus: API URL and key Keystone sends (outbound); `eventsKey` = the key Cursus must present to Keystone's events endpoint
@@ -148,6 +154,11 @@ const VARS = {
   KEYSTONE_CLOCK: z
     .string()
     .transform((v, ctx) => parseClockSetting(v) ?? (ctx.addIssue({ code: 'custom', message: 'must be "real" or a date YYYY-MM-DD' }), z.NEVER))
+    .optional(),
+  // R-121 (owner's answer, 17 Oct 2026): hour of the automatic reminders, Paris time; unset = 07:00.
+  KEYSTONE_REMINDERS_AT: z
+    .string()
+    .transform((v, ctx) => parseTimeOfDay(v) ?? (ctx.addIssue({ code: 'custom', message: 'must be a time of day HH:MM (Europe/Paris), e.g. 07:00' }), z.NEVER))
     .optional(),
   LOG_LEVEL: z.enum(LOG_LEVELS, { message: `must be one of ${LOG_LEVELS.join(', ')}` }).optional(),
   LOG_FORMAT: z.enum(LOG_FORMATS, { message: 'must be "json" or "pretty"' }).optional(),
@@ -372,6 +383,7 @@ export function parseConfig(env: Record<string, string | undefined>, opts: { cwd
       seed: v.KEYSTONE_SEED ?? 'demo',
       seedExplicit: v.KEYSTONE_SEED != null,
       clock: v.KEYSTONE_CLOCK ?? null,
+      remindersAt: v.KEYSTONE_REMINDERS_AT ?? DEFAULT_REMINDERS_AT,
       log: { level: v.LOG_LEVEL ?? 'info', format: v.LOG_FORMAT ?? (production ? 'json' : 'pretty') },
       cursus: { apiUrl: v.CURSUS_API_URL ?? null, apiKey: cursusApiKey, eventsKey: cursusEventsKey, directory: v.CURSUS_DIRECTORY === 'on' },
       vigie: { apiUrl: v.VIGIE_API_URL ?? null, apiKey: v.VIGIE_API_KEY ?? null },

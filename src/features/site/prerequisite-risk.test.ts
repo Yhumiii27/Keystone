@@ -125,12 +125,15 @@ describe('R-121 · "Raise as a risk"', () => {
     expect(out).toEqual({ director: [QUAI], pm: [QUAI], depthead: [], member: [], englead: [], quality: [], procurement: [], finance: [] });
     as('pm');
     const v = (await pageView({ prereq: String(QUAI) })).ready!;
-    // Owner: the PM of record when the "New risk" owner list has them — HLT-026's list (the prototype's DEFS.team) does not, so the
-    // form's first owner is proposed.
+    // Owner: the PM of record — owner's answer of 17 Oct 2026 (R-121 Q3): the PM is on every "New risk" owner list, so the
+    // J-15 proposal pre-selects Romain Aubert on HLT-026 (before: the list was the prototype's DEFS.team, the first owner was
+    // proposed). The form's owner options end with him.
     expect(v.prereqs[QUAI].raise).toEqual({
-      title: 'Late client prerequisite — Autorisation de levage & arrêt exploitation quai 4', cat: 'contractual_client', owner: 'Amélie Ollivier', resp: 'mitigate',
+      title: 'Late client prerequisite — Autorisation de levage & arrêt exploitation quai 4', cat: 'contractual_client', owner: 'Romain Aubert', resp: 'mitigate',
     });
     expect(v.raiseForm!.title).toBe('New risk');
+    const ownerField = v.raiseForm!.fields.find((f) => f.id === 'owner') as { options: string[] };
+    expect([ownerField.options[0], ownerField.options.at(-1)]).toEqual(['Amélie Ollivier', 'Romain Aubert']);
     as('pm', 'fr');
     expect((await pageView()).ready!.prereqs[QUAI].raise!.title).toBe('Prérequis client en retard — Autorisation de levage & arrêt exploitation quai 4');
   });
@@ -138,7 +141,7 @@ describe('R-121 · "Raise as a risk"', () => {
   it('refused to everybody but the leads; the PM confirms it: risk registered with its cause, linked, audited, in the activity feed', async () => {
     at('2026-10-19');
     const stamp = (await line(QUAI)).stamp;
-    const values = { title: 'Late client prerequisite — Autorisation de levage & arrêt exploitation quai 4', cat: 'contractual_client', owner: 'Amélie Ollivier', resp: 'mitigate', p: '4', i: '4', cost: '30' };
+    const values = { title: 'Late client prerequisite — Autorisation de levage & arrêt exploitation quai 4', cat: 'contractual_client', owner: 'Romain Aubert', resp: 'mitigate', p: '4', i: '4', cost: '30' };
     for (const role of ROLES.filter((r) => r !== 'pm' && r !== 'director')) {
       as(role);
       if (role === 'client') {

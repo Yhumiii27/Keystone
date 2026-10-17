@@ -4,5 +4,19 @@
   "Allocation — 8 weeks": "Affectation — 8 semaines",
   "Availability — 8 weeks": "Disponibilité — 8 semaines",
   "8 weeks · 35 h basis": "8 semaines · base 35 h",
-  "8 weeks, by department": "8 semaines, par service"
+  "8 weeks, by department": "8 semaines, par service",
+  "8 weeks": "8 semaines",
+  "Load plan view": "Vue du plan de charge",
+  "Previous 8 weeks": "8 semaines précédentes",
+  "Next 8 weeks": "8 semaines suivantes",
+  "Allocation — week": "Affectation — semaine",
+  "Week shown, by department": "Semaine affichée, par service",
+  "Hours by role, week shown": "Heures par rôle, semaine affichée",
+  "Above capacity": "Au-delà de la capacité",
+  "By project": "Par projet",
+  "The allocations hold one weekly total per person: no split by project this week.": "Les affectations ne portent qu’un total hebdomadaire par personne : pas de répartition par projet cette semaine.",
+  "Week shown · 35 h basis": "Semaine affichée · base 35 h",
+  "Availability — week": "Disponibilité — semaine",
+  "Received from Cursus · day by day · 7 h per working day · public holidays removed": "Reçu de Cursus · jour par jour · 7 h par jour ouvré · jours fériés retirés",
+  "These weeks are past: the levelling is read-only — levers, auto-level and Apply work from the current week on": "Ces semaines sont passées : le nivellement est en lecture seule — leviers, nivellement automatique et application partent de la semaine en cours"
 }

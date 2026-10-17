@@ -14,18 +14,23 @@ const ms = (n: number) => sql`(${Math.max(0, Math.round(n))}::int * interval '1 
 
 /**
  * Takes the lease of `job` for `leaseMs` when it is free (never taken, released, or expired) and the job has not started
- * less than `minGapMs` ago. True when this holder now holds it.
+ * less than `minGapMs` ago — or, for a reminder job (`notStartedSince`, today's slot at the reminders hour), has not started
+ * since that instant: the day's run happens once, whatever the restarts and the number of workers. True when this holder now
+ * holds it.
  */
-export async function acquireJobLock(job: string, holder: string, leaseMs: number, minGapMs = 0): Promise<boolean> {
+export async function acquireJobLock(job: string, holder: string, leaseMs: number, minGapMs = 0, notStartedSince: Date | null = null): Promise<boolean> {
   const db = await getDb();
   const until = sql`now() + ${ms(leaseMs)}`;
+  const notRecent = notStartedSince
+    ? sql`${jobLocks.lastStartedAt} < ${notStartedSince.toISOString()}::timestamptz`
+    : sql`${jobLocks.lastStartedAt} <= now() - ${ms(minGapMs)}`;
   const rows = await db
     .insert(jobLocks)
     .values({ job, holder, lockedUntil: until, lastStartedAt: sql`now()` })
     .onConflictDoUpdate({
       target: jobLocks.job,
       set: { holder, lockedUntil: until, lastStartedAt: sql`now()` },
-      setWhere: sql`(${jobLocks.lockedUntil} is null or ${jobLocks.lockedUntil} <= now()) and (${jobLocks.lastStartedAt} is null or ${jobLocks.lastStartedAt} <= now() - ${ms(minGapMs)})`,
+      setWhere: sql`(${jobLocks.lockedUntil} is null or ${jobLocks.lockedUntil} <= now()) and (${jobLocks.lastStartedAt} is null or ${notRecent})`,
     })
     .returning({ job: jobLocks.job });
   return rows.length === 1;

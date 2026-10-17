@@ -83,15 +83,16 @@ export const OTHER_DEPARTMENT = 'Other';
 
 /**
  * Project resources bars: per department of the team (first-appearance order), capacity += 320 h per person and
- * demand += round(avg% × 3.2) h, with the rounded average as the prototype (`parseInt(avgText) * 3.2`).
+ * demand += round(avg% × 3.2) h, with the rounded average as the prototype (`parseInt(avgText) * 3.2`). `hoursPerPerson`:
+ * the capacity one person brings over the weeks shown — 320 h on 8 weeks, 40 h in the week view (owner answers 17 Oct 2026).
  */
-export function projectDepartmentDemand(people: { department: string | null | undefined; avgPct: number }[]): CapacityRow[] {
+export function projectDepartmentDemand(people: { department: string | null | undefined; avgPct: number }[], hoursPerPerson = HOURS_PER_PERSON_WINDOW): CapacityRow[] {
   const m = new Map<string, CapacityRow>();
   for (const p of people) {
     const d = p.department || OTHER_DEPARTMENT;
     const row = m.get(d) ?? { name: d, capacityH: 0, demandH: 0 };
-    row.capacityH += HOURS_PER_PERSON_WINDOW;
-    row.demandH += Math.round(p.avgPct * (HOURS_PER_PERSON_WINDOW / 100));
+    row.capacityH += hoursPerPerson;
+    row.demandH += Math.round(p.avgPct * (hoursPerPerson / 100));
     m.set(d, row);
   }
   return [...m.values()];

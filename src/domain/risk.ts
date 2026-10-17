@@ -255,6 +255,14 @@ export interface NewRisk {
   plan: string;
 }
 
+/**
+ * "New risk" owner options: the project's list (team, else the resource pool) with the project's PM of record added at the end
+ * when absent — owner's answer to R-121 question 3 (17 Oct 2026, « Ajouter le CP aux propriétaires de risque proposés : Oui »).
+ * At the end, so the form's first (default) owner does not change.
+ */
+export const riskOwnersWithPm = (owners: readonly string[], pmName: string | null): string[] =>
+  pmName && !owners.includes(pmName) ? [...owners, pmName] : [...owners];
+
 export type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
 export const MAX_TITLE = 200;

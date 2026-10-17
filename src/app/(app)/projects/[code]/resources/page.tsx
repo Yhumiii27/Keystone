@@ -4,14 +4,15 @@
 // Projects without a team show an empty heatmap (never Harbor Line's team, 00 §7.16). Chapter 4 (R-3, S-7): the suggestions
 // are the project's what-if levers that become a resource request (any project, not only Harbor Line); "Apply" drafts it.
 // R-041 (P-2): the "Project team" card lists the named team (PM, co-PMs, deputies, referents, members) whose people edit the
-// project; the director and the project's PMs manage it there. R-085 (R-7 a): 8 weeks from the current week, `?week=` slides.
+// project; the director and the project's PMs manage it there. R-085 (R-7 a): 8 weeks from the current week, `?week=` slides;
+// owner answers 17 Oct 2026: `?view=week` shows the one week in detail.
 import { PageHeader } from '@/components/app/shell/page-header';
 import { NewRequestButton } from '@/features/requests/new-request-button';
 import { resourcesView } from '@/features/resources/model';
 import { ResourcesView } from '@/features/resources/resources-view';
 import { suggestionInputs } from '@/features/resources/suggestions';
 import { listResourceRequests } from '@/server/dal/requests';
-import { getLaborCost, getLoadWindow, getProjectTeam, getRebalancingSuggestions, getResourcePool } from '@/server/dal/resources';
+import { getLaborCost, getLoadWindow, getWeekProjectSplit, getProjectTeam, getRebalancingSuggestions, getResourcePool } from '@/server/dal/resources';
 import { LoadWindowNav } from '@/features/resources/window-nav';
 import { screenHref } from '@/config/screens';
 import { canManageTeam } from '@/domain/rights';
@@ -30,10 +31,11 @@ export default async function ProjectResourcesPage({
   const p = ctx.project;
   const canEdit = ctx.canEdit('presources');
   const manageTeam = canEdit && canManageTeam(ctx.viewer.role, ctx.access);
-  const win = await getLoadWindow(sp.week);
-  const [{ t, lang }, pool, team, labor, pending, suggestions, named, candidates] = await Promise.all([
+  const win = await getLoadWindow(sp.week, sp.view);
+  const [{ t, lang }, pool, weekSplit, team, labor, pending, suggestions, named, candidates] = await Promise.all([
     getI18n(),
     getResourcePool(win.weeks),
+    win.view === 'week' ? getWeekProjectSplit(win.start) : Promise.resolve(undefined),
     getProjectTeam(p.code),
     getLaborCost(p.code),
     listResourceRequests({ projectCode: p.code, status: 'pending' }),
@@ -51,6 +53,8 @@ export default async function ProjectResourcesPage({
       weeks: pool.weeks.map((w) => w.label),
       weekStarts: pool.weeks.map((w) => w.start),
       windowIsCurrent: win.isCurrent,
+      view: win.view,
+      weekSplit,
       people: pool.people
         .filter((m) => members.has(m.name))
         .map((m) => ({ name: m.name, initials: m.initials, jobTitle: m.jobTitle, department: m.department, loads: m.loads })),

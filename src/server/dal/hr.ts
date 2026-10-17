@@ -3,7 +3,7 @@ import 'server-only';
 // versions; the legacy job-title rates are retired), skills matrix and certifications, leave and the working calendar
 // (absences received from Cursus, R-031), Lucca hours reconciliation — and their writers (rates, multipliers, roles, skills,
 // Cursus absences, hours import / assignment).
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import { cache } from 'react';
 import {
   RATE_CARD_OBJECT, canEditRates, isExternalRole, parseEffectiveDate, rateActivityText, rateAt, rateChangeText, versionAt, type RateGrid,
@@ -20,6 +20,8 @@ import {
   rateMultiplierRates, rateMultipliers, rateRoleRates, rateRoles, skills, unassignedHours, wbsNodes,
 } from '@/server/db/schema';
 import { absenceWeeks } from '@/domain/absences';
+import { workingDaysOf } from '@/domain/load-window';
+import { leaveWeekDays, type LeaveDayKind } from '@/domain/load-week';
 import { trace, whoIs, type Actor } from './ops-common';
 import { editsProjectScreen } from './team-guard';
 import type { ResourceWeek } from './resources';
@@ -346,6 +348,47 @@ export async function getLeaveCalendar(countryCode = 'FR', weeks?: readonly stri
         };
       }),
     })),
+    lastAbsenceReceivedAt: last?.at ? new Date(last.at).toISOString() : null,
+  };
+}
+
+/** Week view of Leave & working calendar (owner answers 17 Oct 2026): one week, day by day. */
+export interface LeaveWeek {
+  /** Monday of the week shown. */
+  week: ResourceWeek;
+  /** Monday to Friday: ISO date and the public holiday of that day (Settings), if any. */
+  days: { date: string; holiday: HolidayRow | null }[];
+  /** Resource pool order; one cell per working day. */
+  people: { name: string; shortName: string; initials: string; jobTitle: string | null; days: LeaveDayKind[]; daysOff: number; holidays: number; availH: number }[];
+  /** R-031: when Keystone last received an absence from Cursus (ISO timestamp); null when none yet. */
+  lastAbsenceReceivedAt: string | null;
+}
+
+/**
+ * Leave & working calendar, week view (owner answers 17 Oct 2026: "une vision à la semaine"): the absences received from
+ * Cursus day by day — each `leave_entries` row carries its own dates inside its week (`start_date` / `end_date`), so the
+ * granularity is the day — and the weekday public holidays of Settings. Rule: `leaveWeekDays` (src/domain/load-week.ts).
+ */
+export async function getLeaveWeek(countryCode: string, weekStart: string): Promise<LeaveWeek> {
+  const db = await getDb();
+  const days = workingDaysOf(weekStart);
+  const friday = days[days.length - 1];
+  const [people, entries, hols, [last]] = await Promise.all([
+    db.select().from(persons).where(sql`${persons.resourcePoolPosition} is not null`).orderBy(asc(persons.resourcePoolPosition)),
+    db.select().from(leaveEntries).where(and(lte(leaveEntries.startDate, friday), gte(leaveEntries.endDate, weekStart))),
+    listPublicHolidays(countryCode),
+    db.select({ at: sql<string | null>`max(${cursusEvents.receivedAt})` }).from(cursusEvents).where(eq(cursusEvents.type, 'absence.validee')),
+  ]);
+  const holidayOn = new Map(hols.filter((h) => h.date >= weekStart && h.date <= friday).map((h) => [h.date, h]));
+  const holidaySet = new Set(holidayOn.keys());
+  return {
+    week: { start: weekStart, label: weekLabelOfIso(weekStart) },
+    days: days.map((date) => ({ date, holiday: holidayOn.get(date) ?? null })),
+    people: people.map((p) => {
+      const spans = entries.filter((e) => e.personId === p.id).map((e) => ({ type: e.leaveType, start: e.startDate, end: e.endDate }));
+      const w = leaveWeekDays(spans, days, holidaySet);
+      return { name: p.fullName ?? p.shortName, shortName: p.shortName, initials: p.initials, jobTitle: p.jobTitle, ...w };
+    }),
     lastAbsenceReceivedAt: last?.at ? new Date(last.at).toISOString() : null,
   };
 }

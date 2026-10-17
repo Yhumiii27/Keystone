@@ -6,7 +6,7 @@
 import { matchesFilter as matchesRequestFilter, isRequestFilter, isSentRequest, deptOfSlug, REQUEST_FILTERS } from '@/domain/requests';
 import { parseEffectiveDate, parseSkillFilter } from '@/domain/hr';
 import { leverLabel, type WhatIfResult } from '@/domain/whatif';
-import { getRateCard, getLeaveCalendar, getSkillsMatrix } from '@/server/dal/hr';
+import { getRateCard, getLeaveCalendar, getLeaveWeek, getSkillsMatrix } from '@/server/dal/hr';
 import { getProject } from '@/server/dal/projects';
 import { listResourceRequests, type ResourceRequestRow } from '@/server/dal/requests';
 import { departmentOfPerson, getApprovalsScreenData, listApprovalDepartmentsFull } from '@/server/dal/requests-screens';
@@ -15,7 +15,8 @@ import { zoneLabel } from '@/server/dal/shell';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
 import { yearOfIso } from '@/domain/clock';
-import { loadWindow, parseLoadWeekParam } from '@/domain/load-window';
+import { loadWindow, parseLoadViewParam, parseLoadWeekParam, type LoadView } from '@/domain/load-window';
+import { weekLoad } from '@/domain/load-week';
 import { col, compact, filterLine, isoOf, kpiSheet, param, sheet } from './common';
 import { projectFilter } from './scope';
 import { canViewDepartmentApprovals } from '@/domain/rights';
@@ -23,18 +24,27 @@ import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { dataText } from '@/i18n/data-text';
 
 
-/** R-085: the load window the screen shows (`?week=` of the page, validated as on screen; none = the current window). */
-const windowOf = (ctx: ExportContext) => loadWindow(ctx.today, parseLoadWeekParam(param(ctx, 'week'), ctx.today));
+/**
+ * R-085: the load window the screen shows (`?week=` of the page, validated as on screen; none = the current window) in the
+ * view shown (owner answers 17 Oct 2026: `?view=week` = that one week; the what-if forces its 8-week horizon).
+ */
+const windowOf = (ctx: ExportContext, view?: LoadView) => loadWindow(ctx.today, parseLoadWeekParam(param(ctx, 'week'), ctx.today), view ?? parseLoadViewParam(param(ctx, 'view')));
 
+/** Weekly loads; one week (week view) adds its hours on the 40 h week and the hours above capacity, as on screen. */
 function loadSheet(ctx: ExportContext, name: string, weeks: ResourceWeek[], people: PoolPerson[]): ExportSheet {
   const { t } = ctx;
+  const one = weeks.length === 1;
   return sheet(name, [
     col('name', t('Person'), 'text', 22), col('job', t('Job title'), 'text', 22), col('department', t('Department'), 'text', 18),
-    ...weeks.map((w, i) => col(`w${i}`, `${t('Week of')} ${w.start}`, 'percent', 12)), col('avg', t('Average'), 'percent'), col('max', t('Peak'), 'percent'),
-  ], people.map((p) => ({
-    name: p.name, job: p.jobTitle ? t(p.jobTitle) : '', department: p.department ? t(p.department) : '', ...Object.fromEntries(p.loads.map((l, i) => [`w${i}`, l / 100])),
-    avg: p.avg / 100, max: p.max / 100,
-  })));
+    ...weeks.map((w, i) => col(`w${i}`, `${t('Week of')} ${w.start}`, 'percent', 12)),
+    ...(one ? [col('hours', t('Hours'), 'number', 8), col('over', t('Above capacity'), 'number', 10)] : [col('avg', t('Average'), 'percent'), col('max', t('Peak'), 'percent')]),
+  ], people.map((p) => {
+    const w = one ? weekLoad(p.loads[0] ?? 0, []) : null;
+    return {
+      name: p.name, job: p.jobTitle ? t(p.jobTitle) : '', department: p.department ? t(p.department) : '', ...Object.fromEntries(p.loads.map((l, i) => [`w${i}`, l / 100])),
+      ...(w ? { hours: w.hours, over: w.overH } : { avg: p.avg / 100, max: p.max / 100 }),
+    };
+  }));
 }
 
 function requestSheet(ctx: ExportContext, name: string, rows: ResourceRequestRow[]): ExportSheet {
@@ -150,7 +160,8 @@ async function whatIfWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null
   const { t } = ctx;
   const project = await getProject(param(ctx, 'project') ?? 'HLT-026');
   if (!project || (ctx.viewer.role === 'client' && !(await projectFilter(ctx))(project.code))) return null;
-  const w = await getWhatIf(project.code);
+  // Owner answers 17 Oct 2026: the horizon of the page (`?week=`, the 8-week window), as on screen.
+  const w = await getWhatIf(project.code, windowOf(ctx, '8w').start);
   if (!w) return null;
   const label = new Map(w.levers.map((l) => [l.code, leverLabel(l)]));
   const result = (r: WhatIfResult | undefined) => ({
@@ -215,7 +226,21 @@ async function skillsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
  */
 async function leaveWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
-  const data = await getLeaveCalendar('FR', windowOf(ctx).weeks);
+  const win = windowOf(ctx);
+  if (win.view === 'week') {
+    // Owner answers 17 Oct 2026: the week view exports the week day by day, as on screen.
+    const week = await getLeaveWeek('FR', win.start);
+    const kind = { leave: t('Leave'), absence: t('Absence'), holiday: t('Public holiday'), worked: '' } as const;
+    return {
+      title: t('Leave & working calendar'),
+      sheets: [
+        sheet(t('Leave'), [col('name', t('Person'), 'text', 22), col('job', t('Job title'), 'text', 22), ...week.days.map((d, i) => col(`d${i}`, d.date, 'text', 12)), col('days', t('Days off'), 'number', 8), col('hours', t('Hours'), 'number', 8)],
+          week.people.map((p) => ({ name: p.name, job: p.jobTitle ? t(p.jobTitle) : '', ...Object.fromEntries(p.days.map((k, i) => [`d${i}`, kind[k]])), days: p.daysOff, hours: p.availH }))),
+        sheet(t('Public holidays'), [col('date', t('Date'), 'date'), col('name', t('Holiday'), 'text', 30)], week.days.filter((d) => d.holiday).map((d) => ({ date: d.date, name: dataText(d.holiday!.name, ctx.lang) }))),
+      ],
+    };
+  }
+  const data = await getLeaveCalendar('FR', win.weeks);
   return {
     title: t('Leave & working calendar'),
     sheets: [

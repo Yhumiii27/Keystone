@@ -17,6 +17,12 @@ import { dataText } from '@/i18n/data-text';
 /** What-if levelling of a project: `/resources/what-if?project=HLT-026` (scenarios are per project). */
 export const whatIfHref = (code: string) => `${screenHref('whatif')}?project=${encodeURIComponent(code)}`;
 
+/**
+ * Owner answers 17 Oct 2026: a what-if horizon entirely in the past is read-only — the reason shown on the page and the error
+ * of an action sent on it (EN source string).
+ */
+export const WHATIF_PAST_HORIZON = 'These weeks are past: the levelling is read-only — levers, auto-level and Apply work from the current week on';
+
 /** A lever as the board needs it (serializable). */
 export interface WhatIfLeverData {
   code: string;
@@ -56,6 +62,11 @@ export interface WhatIfScenarioState {
 /** Serializable props of the what-if board (built by the page from the DAL). */
 export interface WhatIfData {
   projectCode: string;
+  /**
+   * Owner answers 17 Oct 2026: start (ISO Monday) of the 8-week horizon shown (`?week=`, the current window by default),
+   * passed with every action so that what is saved or drafted is what the screen shows.
+   */
+  horizon: string;
   /** Data date of the copy of the plan (ISO). */
   dataDate: string;
   /** Window week labels, EN ("Sep 28"), and their ISO Mondays. */
