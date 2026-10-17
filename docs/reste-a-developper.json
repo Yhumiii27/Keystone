@@ -62,6 +62,10 @@
   {
    "date": "2026-10-17",
    "text": "PR #10 fusionnée dans main (horloge réelle, plans de charge glissants, alerte J-15). Réponses du responsable produit appliquées : rappels le matin, CP responsable de risque, vues semaine / 8 semaines, navigation du what-if ; tout est fusionné dans main au fil de l’eau."
+  },
+  {
+   "date": "2026-10-17",
+   "text": "PR #12 : Keystone déclare le schéma de sa base à Matrix (catalogue des bases EPC2i) au démarrage, en arrière-plan ; variables MATRIX_URL et MATRIX_TOKEN."
   }
  ],
  "items": [
