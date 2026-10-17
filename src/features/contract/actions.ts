@@ -12,6 +12,8 @@ import type { FormDialogResult } from '@/components/app/FormDialog';
 import {
   INVOICE_BLOCKED_MESSAGE, parseAmendmentForm, parseBondForm, parseInvoiceForm, parseMilestoneForm, parseReleaseBondForm, parseSheetField, parseSignAmendmentForm,
 } from '@/domain/contract';
+import { yearOfIso } from '@/domain/clock';
+import { businessToday } from '@/server/clock';
 import { bondType } from '@/server/db/codes';
 import {
   MilestoneEditError, addAmendment, addBond, addPaymentMilestone, getContract, issueInvoice, markInvoicePaid, releaseBond, removePaymentMilestone,
@@ -43,7 +45,7 @@ async function tr(english: string) {
 /** Resolves the project and its contract after checking the viewer may edit `screen` on it. */
 async function editable(
   code: unknown, screen: 'contract' | 'billing',
-): Promise<{ code: string; actor: string; viewer: { name: string; role: string }; contract: ProjectContract } | { error: string }> {
+): Promise<{ code: string; actor: string; viewer: { name: string; role: string }; contract: ProjectContract; year: number } | { error: string }> {
   if (typeof code !== 'string' || !code) return { error: await tr('Invalid request') };
   const project = await getProject(code);
   if (!project) return { error: await tr('Unknown project') };
@@ -51,14 +53,15 @@ async function editable(
   if (!ctx.canEdit(screen)) return { error: await tr(screen === 'contract' ? 'This contract is read-only for you' : 'Billing is read-only for you') };
   const contract = await getContract(project.code);
   if (!contract) return { error: await tr('No contract registered for this project') };
-  return { code: project.code, actor: ctx.viewer.name, viewer: { name: ctx.viewer.name, role: ctx.viewer.role }, contract };
+  // R-013: a date typed without a year is in the business year.
+  return { code: project.code, actor: ctx.viewer.name, viewer: { name: ctx.viewer.name, role: ctx.viewer.role }, contract, year: yearOfIso(await businessToday()) };
 }
 
 /** Contract sheet: one field saved on blur / Enter / select change (`setCtr`). */
 export async function updateContractFieldAction(code: string, key: string, value: string): Promise<ContractEditResult> {
   const ok = await editable(code, 'contract');
   if ('error' in ok) return ok;
-  const parsed = parseSheetField(key, value);
+  const parsed = parseSheetField(key, value, ok.year);
   if (!parsed.ok) return { error: await tr(parsed.error) };
   // C-9: the currency is EUR or the project currency with a budget rate, and fixed once an invoice is issued.
   if ('currency' in parsed.value && parsed.value.currency !== ok.contract.sheet.currency) {
@@ -89,7 +92,7 @@ const position = (v: unknown) => (typeof v === 'number' && Number.isInteger(v) &
 export async function addAmendmentAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const ok = await editable(code, 'contract');
   if ('error' in ok) return ok;
-  const parsed = parseAmendmentForm(strings(values));
+  const parsed = parseAmendmentForm(strings(values), ok.year);
   if (!parsed.ok) return { error: await tr(parsed.error) };
   try {
     await addAmendment(ok.code, parsed.value, ok.actor);
@@ -105,7 +108,7 @@ export async function addAmendmentAction(code: string, values: Record<string, st
 export async function addBondAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const ok = await editable(code, 'contract');
   if ('error' in ok) return ok;
-  const parsed = parseBondForm(strings(values));
+  const parsed = parseBondForm(strings(values), ok.year);
   if (!parsed.ok) return { error: await tr(parsed.error) };
   try {
     await addBond(ok.code, parsed.value, ok.actor);
@@ -121,7 +124,7 @@ export async function addBondAction(code: string, values: Record<string, string>
 export async function addPaymentMilestoneAction(code: string, values: Record<string, string>): Promise<FormDialogResult> {
   const ok = await editable(code, 'contract');
   if ('error' in ok) return ok;
-  const parsed = parseMilestoneForm(strings(values));
+  const parsed = parseMilestoneForm(strings(values), ok.year);
   if (!parsed.ok) return { error: await tr(parsed.error) };
   // NEW-D3-3: a milestone of an amendment of this contract.
   if (parsed.value.amendment != null && !ok.contract.amendments.some((a) => a.position === parsed.value.amendment)) return { error: await tr('Unknown amendment') };
@@ -148,7 +151,7 @@ export async function issueInvoiceAction(code: string, values: Record<string, st
   const asked = strings(values).ms?.split(' · ')[0]?.trim() || billable.find((m) => !m.blocked)?.number || billable[0]?.number;
   if (asked && billable.some((m) => m.number === asked && m.blocked)) return { error: await tr(INVOICE_BLOCKED_MESSAGE) };
   const planned = billable.filter((m) => !m.blocked).map((m) => m.number);
-  const parsed = parseInvoiceForm(strings(values), planned);
+  const parsed = parseInvoiceForm(strings(values), planned, ok.year);
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
   if (ok.contract.invoices.some((i) => i.number === v.invoiceNumber)) return { error: `${v.invoiceNumber} · ${await tr('This invoice number is already used')}` };
@@ -192,7 +195,7 @@ export async function updatePaymentMilestoneAction(code: string, number: string,
   if ('error' in m) return m;
   const v = strings(values);
   delete v.basis; // the basis of a milestone does not change
-  const parsed = parseMilestoneForm(v);
+  const parsed = parseMilestoneForm(v, ok.year);
   if (!parsed.ok) return { error: await tr(parsed.error) };
   try {
     await updatePaymentMilestone(ok.code, m.number, { label: parsed.value.label, sharePct: parsed.value.sharePct, contractualDue: parsed.value.contractualDue, condition: parsed.value.condition }, ok.viewer);
@@ -265,7 +268,7 @@ export async function signAmendmentAction(code: string, pos: number, values: Rec
   const a = p == null ? null : ok.contract.amendments.find((x) => x.position === p);
   if (!a) return { error: await tr('Unknown amendment') };
   if (!a.canSign) return { error: await tr('Only an amendment sent for signature can be signed') };
-  const parsed = parseSignAmendmentForm(strings(values));
+  const parsed = parseSignAmendmentForm(strings(values), ok.year);
   if (!parsed.ok) return { error: await tr(parsed.error) };
   let label: string;
   try {
@@ -286,7 +289,7 @@ export async function releaseBondAction(code: string, pos: number, values: Recor
   const b = p == null ? null : ok.contract.bonds.find((x) => x.position === p);
   if (!b) return { error: await tr('Unknown guarantee') };
   if (!b.inForce) return { error: await tr('This guarantee is already released') };
-  const parsed = parseReleaseBondForm(strings(values));
+  const parsed = parseReleaseBondForm(strings(values), ok.year);
   if (!parsed.ok) return { error: await tr(parsed.error) };
   try {
     await releaseBond(ok.code, b.position, parsed.value.releasedOn, ok.actor);

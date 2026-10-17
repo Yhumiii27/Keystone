@@ -5,6 +5,8 @@ import 'server-only';
 // chip and the Budget reconciliation show as "BL1 · 9 Apr 2026" — so their register lists that BL1 instead of the
 // prototype's Harbor Line rows (00 §7.16). Projects without data have no baseline.
 import { eq } from 'drizzle-orm';
+import { yearOfIso } from '@/domain/clock';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { baselineState, isoOfDisplayDate } from '@/server/db/codes';
 import { projectControls, projects } from '@/server/db/schema';
@@ -21,10 +23,12 @@ export async function getBaselineRegister(code: string): Promise<BaselineRow[]> 
     .innerJoin(projects, eq(projects.id, projectControls.projectId))
     .where(eq(projects.code, code));
   if (!c) return [];
+  // The texts carry their year ("9 Apr 2026"); a year-less one would be in the business year (R-013).
+  const year = yearOfIso(await businessToday());
   return [
     {
-      code: 'BL1', name: 'Approved baseline', setOn: c.setOn, setOnDate: isoOfDisplayDate(c.setOn), bac: c.orig, finish: c.finish,
-      finishDate: isoOfDisplayDate(c.finish) ?? '', state: 'current', stateLabel: baselineState.label('current'), changeRequest: null,
+      code: 'BL1', name: 'Approved baseline', setOn: c.setOn, setOnDate: isoOfDisplayDate(c.setOn, year), bac: c.orig, finish: c.finish,
+      finishDate: isoOfDisplayDate(c.finish, year) ?? '', state: 'current', stateLabel: baselineState.label('current'), changeRequest: null,
     },
   ];
 }

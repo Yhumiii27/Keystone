@@ -73,7 +73,7 @@ function check(state: any) {
   expect(sortMeetings(ms.filter((m) => matchesFilter(m, filter))).map((m) => m.number)).toEqual(plain(v.mtgList).map((m: any) => m.id));
   const counts = filterCounts(ms);
   expect([counts.all, counts.todo, counts.upcoming, counts.sent].map(String)).toEqual(plain(v.mtgChips).map((c: any) => c.count));
-  const k = meetingKpis(ms);
+  const k = meetingKpis(ms, '2026-09-30'); // R-013: the prototype's PG_NOW (30 Sep 2026), passed explicitly
   expect([
     k.thisWeek, `${k.upcoming} upcoming`, k.toWrite, k.toWrite > 0, k.openActions, `${k.overdueActions} overdue`, k.overdueActions > 0,
     k.decisionsThisMonth, `${k.decisionsWithClient} with the client`,
@@ -179,40 +179,43 @@ describe('meetings domain — golden values from the prototype logic', () => {
 
 describe('meetings domain — input parsing', () => {
   it('dates in English, French, numeric and ISO forms; invalid calendar dates refused', () => {
-    expect(['6 Oct 2026', '6 oct. 2026', '6 octobre 2026', 'mar. 6 oct. 2026', 'Tue 6 Oct 2026', '06/10/2026', '6/10', '2026-10-06', '6 Oct'].map((s) => parseMeetingDate(s))).toEqual(
+    expect(['6 Oct 2026', '6 oct. 2026', '6 octobre 2026', 'mar. 6 oct. 2026', 'Tue 6 Oct 2026', '06/10/2026', '6/10', '2026-10-06', '6 Oct'].map((s) => parseMeetingDate(s, 2026))).toEqual(
       Array(9).fill('2026-10-06'),
     );
-    expect([parseMeetingDate('1er févr. 2027'), parseMeetingDate('3 août 2026'), parseMeetingDate('15 déc.'), parseMeetingDate('2 mai')]).toEqual([
+    expect([parseMeetingDate('1er févr. 2027', 2026), parseMeetingDate('3 août 2026', 2026), parseMeetingDate('15 déc.', 2026), parseMeetingDate('2 mai', 2026)]).toEqual([
       '2027-02-01', '2026-08-03', '2026-12-15', '2026-05-02',
     ]);
-    expect(['31 Sep 2026', '30 Feb', '6 Foo 2026', '', 'tomorrow', '2026-13-01'].map((s) => parseMeetingDate(s))).toEqual(Array(6).fill(null));
+    expect(['31 Sep 2026', '30 Feb', '6 Foo 2026', '', 'tomorrow', '2026-13-01'].map((s) => parseMeetingDate(s, 2026))).toEqual(Array(6).fill(null));
   });
 
   it('times, invitees and the New meeting form (prototype defaults: 09:00, Teams)', () => {
     expect(['09:00', '9:00', '9h', '9h30', '14.30', '24:00', '9:75', 'noon'].map(parseMeetingTime)).toEqual(['09:00', '09:00', '09:00', '09:30', '14:30', null, null, null]);
     expect(parseInvitees(' R. Aubert, L. Fabre ;J. Wagner,, R. Aubert ')).toEqual(['R. Aubert', 'L. Fabre', 'J. Wagner']);
-    expect(parseNewMeeting({ title: ' Weekly  site meeting #25 ', type: 'internal', series: 'weekly_site', date: '6 oct. 2026', time: '', loc: '', invited: 'R. Aubert, L. Fabre', agenda: 'Safety\n\n Steel ' })).toEqual({
+    expect(parseNewMeeting({ title: ' Weekly  site meeting #25 ', type: 'internal', series: 'weekly_site', date: '6 oct. 2026', time: '', loc: '', invited: 'R. Aubert, L. Fabre', agenda: 'Safety\n\n Steel ' }, 2026)).toEqual({
       ok: true,
       value: { title: 'Weekly site meeting #25', type: 'internal', series: 'weekly_site', date: '2026-10-06', time: '09:00', location: 'Teams', invitees: ['R. Aubert', 'L. Fabre'], agenda: ['Safety', 'Steel'] },
     });
-    expect(parseNewMeeting({ title: '', date: '6 Oct 2026', invited: 'x' })).toEqual({ ok: false, error: 'Title is required' });
-    expect(parseNewMeeting({ title: 'x', date: '32 Oct', invited: 'x' })).toEqual({ ok: false, error: 'Enter a valid date (e.g. 6 Oct 2026)' });
-    expect(parseNewMeeting({ title: 'x', date: '6 Oct', time: '25:00', invited: 'x' })).toEqual({ ok: false, error: 'Enter a valid time (e.g. 09:00)' });
-    expect(parseNewMeeting({ title: 'x', date: '6 Oct', invited: ' , ' })).toEqual({ ok: false, error: 'Invite at least one person' });
-    expect(parseNewMeeting({ title: 'x', type: 'secret', date: '6 Oct', invited: 'x' })).toEqual({ ok: false, error: 'Invalid meeting type' });
-    expect(parseNewMeeting({ title: 'x', series: 'Weekly site meeting', date: '6 Oct', invited: 'x' })).toEqual({ ok: false, error: 'Invalid series' });
+    expect(parseNewMeeting({ title: '', date: '6 Oct 2026', invited: 'x' }, 2026)).toEqual({ ok: false, error: 'Title is required' });
+    expect(parseNewMeeting({ title: 'x', date: '32 Oct', invited: 'x' }, 2026)).toEqual({ ok: false, error: 'Enter a valid date (e.g. 6 Oct 2026)' });
+    expect(parseNewMeeting({ title: 'x', date: '6 Oct', time: '25:00', invited: 'x' }, 2026)).toEqual({ ok: false, error: 'Enter a valid time (e.g. 09:00)' });
+    expect(parseNewMeeting({ title: 'x', date: '6 Oct', invited: ' , ' }, 2026)).toEqual({ ok: false, error: 'Invite at least one person' });
+    expect(parseNewMeeting({ title: 'x', type: 'secret', date: '6 Oct', invited: 'x' }, 2026)).toEqual({ ok: false, error: 'Invalid meeting type' });
+    expect(parseNewMeeting({ title: 'x', series: 'Weekly site meeting', date: '6 Oct', invited: 'x' }, 2026)).toEqual({ ok: false, error: 'Invalid series' });
   });
 
   it('composer lines: owner and due for actions only, dates normalised, blank text refused', () => {
-    expect(parseMinutesLine({ type: 'action', text: '  Check  the rails ', owner: ' J. Wagner ', due: '2 oct.' })).toEqual({
+    expect(parseMinutesLine({ type: 'action', text: '  Check  the rails ', owner: ' J. Wagner ', due: '2 oct.' }, 2026)).toEqual({
       ok: true, value: { type: 'action', text: 'Check the rails', owner: 'J. Wagner', due: '2 Oct' },
     });
-    expect(parseMinutesLine({ type: 'action', text: 'x', owner: '', due: '' })).toEqual({ ok: true, value: { type: 'action', text: 'x', owner: null, due: null } });
-    expect(parseMinutesLine({ type: 'decision', text: 'Go', owner: 'A', due: '1 Oct' })).toEqual({ ok: true, value: { type: 'decision', text: 'Go', owner: null, due: null } });
-    expect(parseMinutesLine({ type: 'info', text: '   ' })).toEqual({ ok: false, error: 'Write a note first' });
-    expect(parseMinutesLine({ type: 'todo', text: 'x' })).toEqual({ ok: false, error: 'Invalid note type' });
-    expect(parseMinutesLine({ type: 'info', text: 42 })).toEqual({ ok: false, error: 'Write a note first' });
-    expect([normaliseDue('5 janv. 2027'), normaliseDue('next week'), normaliseDue('—'), normaliseDue('')]).toEqual(['5 Jan 2027', 'next week', '—', null]);
+    expect(parseMinutesLine({ type: 'action', text: 'x', owner: '', due: '' }, 2026)).toEqual({ ok: true, value: { type: 'action', text: 'x', owner: null, due: null } });
+    expect(parseMinutesLine({ type: 'decision', text: 'Go', owner: 'A', due: '1 Oct' }, 2026)).toEqual({ ok: true, value: { type: 'decision', text: 'Go', owner: null, due: null } });
+    expect(parseMinutesLine({ type: 'info', text: '   ' }, 2026)).toEqual({ ok: false, error: 'Write a note first' });
+    expect(parseMinutesLine({ type: 'todo', text: 'x' }, 2026)).toEqual({ ok: false, error: 'Invalid note type' });
+    expect(parseMinutesLine({ type: 'info', text: 42 }, 2026)).toEqual({ ok: false, error: 'Write a note first' });
+    expect([normaliseDue('5 janv. 2027', 2026), normaliseDue('next week', 2026), normaliseDue('—', 2026), normaliseDue('', 2026)]).toEqual(['5 Jan 2027', 'next week', '—', null]);
+    // R-013: the year is the business date's — in 2027, "14 janv." is 14 Jan 2027 (no year shown) and a 2026 due keeps its year.
+    expect([normaliseDue('14 janv.', 2027), normaliseDue('5 janv. 2027', 2027), normaliseDue('2 Oct 2026', 2027)]).toEqual(['14 Jan', '5 Jan', '2 Oct 2026']);
+    expect(parseMeetingDate('14 Jan', 2027)).toBe('2027-01-14');
   });
 
   it('action state: done > overdue > open', () => {

@@ -12,9 +12,10 @@ import 'server-only';
 // Codex" over the mirrored circuit; the status and the approval proof change only when Codex answers.
 import { and, asc, desc, eq, inArray, isNull, notInArray, or, sql } from 'drizzle-orm';
 import { cache } from 'react';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import {
-  CODEX_TODAY_ISO, approverRole, codexDecision, codexSyncStatus, confidentiality, docFamily, docLinkKind, docRecipient, docService, documentStatus, parisParts,
+  approverRole, codexDecision, codexSyncStatus, confidentiality, docFamily, docLinkKind, docRecipient, docService, documentStatus, parisParts,
   shortDateOfIso, type ApproverRole, type Confidentiality, type DocFamily, type DocLinkKind, type DocRecipient, type DocService,
   type DocumentStatus,
 } from '@/server/db/codes';
@@ -636,13 +637,15 @@ const depositService = (family: DocFamily): DocService => (family === 'purchasin
 /**
  * "Continue in Codex" (`handoff`): records the hand-off and its result in the index. A new document is created as
  * Draft, rev A, dated `on`, authored by the viewer, prepended to the vault ("New"); a new revision sets the existing
- * record back to Draft (the revision letter is not bumped, as in the prototype — D-1) and resets its approvals.
+ * record back to Draft (the revision letter is not bumped, as in the prototype — D-1) and resets its approvals. `on` defaults to
+ * the business date (R-013; the prototype's Codex "today" was 29 Sep 2026).
  */
-export async function depositInCodex(input: DepositInput, actorName: string, on: string = CODEX_TODAY_ISO): Promise<{ number: string; created: boolean }> {
+export async function depositInCodex(input: DepositInput, actorName: string, onDate?: string): Promise<{ number: string; created: boolean }> {
   // A-15 (R-033, default to confirm): with Codex connected, a deposit is made in Codex — no Keystone-numbered draft that Codex
   // never receives (the Server Function answers with an "Open Codex" link; R-125 later brings the prefilled deposit form).
   if (codexConnectorMode() === 'http') throw new DepositInCodexOnlyError();
   const db = await getDb();
+  const on = onDate ?? (await businessToday());
   return db.transaction(async (tx) => {
     const [type] = await tx.select().from(documentTypes).where(eq(documentTypes.code, input.typeCode));
     if (!type) throw new Error(`Unknown document type ${input.typeCode}`);
@@ -885,9 +888,10 @@ export async function recordCircuitStart(tx: Tx, number: string, actor: { name: 
   return { entryId: entry.id, revision: d.currentRevision };
 }
 
-/** Client portal "Acknowledge receipt" of a shared document's current revision. */
-export async function acknowledgeDocument(number: string, actorName: string, on: string = CODEX_TODAY_ISO): Promise<void> {
+/** Client portal "Acknowledge receipt" of a shared document's current revision, on `on` (default the business date, R-013). */
+export async function acknowledgeDocument(number: string, actorName: string, onDate?: string): Promise<void> {
   const db = await getDb();
+  const on = onDate ?? (await businessToday());
   await db.transaction(async (tx) => {
     const d = await loadDoc(tx, number);
     const [t] = await tx.select().from(documentTypes).where(eq(documentTypes.code, d.typeCode));

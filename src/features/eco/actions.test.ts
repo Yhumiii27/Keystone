@@ -4,6 +4,7 @@
 // approval once Vigie reports the interchangeability), the outbox "pending sync with Vigie", the viewer as the actor,
 // the My approvals ECO kind before / after a decision, and "Sync vault". The session is mocked.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 
 const session = { role: 'director' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
@@ -104,11 +105,11 @@ describe('ECO and drawings Server Functions', () => {
 
     // The screen shows the decision as pending sync with Vigie, in EN and FR.
     const data = await getEcoScreen(pm, null);
-    const en = ecoScreenView({ ecos: data.ecos, awaitingMine: data.awaitingMine, state: { status: null, eco: null }, viewer: pm }, makeT('en'), 'en');
+    const en = ecoScreenView({ ecos: data.ecos, awaitingMine: data.awaitingMine, state: { status: null, eco: null }, viewer: pm, today: DEMO_TODAY_ISO }, makeT('en'), 'en');
     expect(en.rows.find((r) => r.number === 'ECO-2026-015')!.sync).toBe('Pending sync with Vigie');
     expect(en.rows.find((r) => r.number === 'ECO-2026-015')!.approvals.map((a) => a.dot)).toEqual(['var(--color-accent)', 'var(--color-accent)', 'var(--color-accent)']);
     expect(en.kpis[1]).toMatchObject({ value: '0', sub: 'As Project manager' });
-    const fr = ecoDrawerView({ data: (await getEcoDrawer('ECO-2026-015'))!, state: { status: null, eco: 'ECO-2026-015' }, viewer: { role: 'pm', managedProjects: ['HLT-026'] } }, makeT('fr'), 'fr');
+    const fr = ecoDrawerView({ data: (await getEcoDrawer('ECO-2026-015'))!, state: { status: null, eco: 'ECO-2026-015' }, viewer: { role: 'pm', managedProjects: ['HLT-026'] }, today: DEMO_TODAY_ISO }, makeT('fr'), 'fr');
     expect(fr.approvals[2]).toMatchObject({ state: 'Approuvé', sync: 'En attente de synchronisation avec Vigie', canAct: false });
     expect(fr.sync).toBe('En attente de synchronisation avec Vigie');
   });
@@ -125,7 +126,7 @@ describe('ECO and drawings Server Functions', () => {
     const e = (await getEco('ECO-2026-017'))!;
     expect([e.status, e.requestedStatus, e.pendingProgress.map((p) => [p.kind, p.targetStatus, p.actorName])]).toEqual(['draft', 'impact_analysis', [['step', 'impact_analysis', 'Fabien Bertrand']]]);
     const data = await getEcoScreen(PERSONA_BY_ROLE.procurement, null);
-    const row = ecoScreenView({ ecos: data.ecos, awaitingMine: 0, state: { status: null, eco: null }, viewer: PERSONA_BY_ROLE.procurement }, makeT('fr'), 'fr').rows.find((r) => r.number === 'ECO-2026-017')!;
+    const row = ecoScreenView({ ecos: data.ecos, awaitingMine: 0, state: { status: null, eco: null }, viewer: PERSONA_BY_ROLE.procurement, today: DEMO_TODAY_ISO }, makeT('fr'), 'fr').rows.find((r) => r.number === 'ECO-2026-017')!;
     expect([row.status, row.action, row.sync]).toEqual(['Brouillon', null, 'Analyse d’impact demandée · En attente de synchronisation avec Vigie']);
   });
 

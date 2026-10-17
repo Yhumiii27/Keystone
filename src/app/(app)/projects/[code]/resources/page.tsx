@@ -4,14 +4,16 @@
 // Projects without a team show an empty heatmap (never Harbor Line's team, 00 §7.16). Chapter 4 (R-3, S-7): the suggestions
 // are the project's what-if levers that become a resource request (any project, not only Harbor Line); "Apply" drafts it.
 // R-041 (P-2): the "Project team" card lists the named team (PM, co-PMs, deputies, referents, members) whose people edit the
-// project; the director and the project's PMs manage it there.
+// project; the director and the project's PMs manage it there. R-085 (R-7 a): 8 weeks from the current week, `?week=` slides.
 import { PageHeader } from '@/components/app/shell/page-header';
 import { NewRequestButton } from '@/features/requests/new-request-button';
 import { resourcesView } from '@/features/resources/model';
 import { ResourcesView } from '@/features/resources/resources-view';
 import { suggestionInputs } from '@/features/resources/suggestions';
 import { listResourceRequests } from '@/server/dal/requests';
-import { getLaborCost, getProjectTeam, getRebalancingSuggestions, getResourcePool } from '@/server/dal/resources';
+import { getLaborCost, getLoadWindow, getProjectTeam, getRebalancingSuggestions, getResourcePool } from '@/server/dal/resources';
+import { LoadWindowNav } from '@/features/resources/window-nav';
+import { screenHref } from '@/config/screens';
 import { canManageTeam } from '@/domain/rights';
 import { ProjectTeamCard } from '@/features/team/project-team';
 import { getNamedTeam, teamCandidates } from '@/server/dal/project-team';
@@ -20,15 +22,18 @@ import { getI18n } from '@/server/session';
 import { myWorkAccess } from '@/server/dal/mywork-data';
 import { projectLabelText } from '@/i18n/data-text';
 
-export default async function ProjectResourcesPage({ params }: { params: Promise<{ code: string }> }) {
-  const { code } = await params;
+export default async function ProjectResourcesPage({
+  params, searchParams,
+}: { params: Promise<{ code: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const [{ code }, sp] = await Promise.all([params, searchParams]);
   const ctx = await getProjectContext(code, 'presources');
   const p = ctx.project;
   const canEdit = ctx.canEdit('presources');
   const manageTeam = canEdit && canManageTeam(ctx.viewer.role, ctx.access);
+  const win = await getLoadWindow(sp.week);
   const [{ t, lang }, pool, team, labor, pending, suggestions, named, candidates] = await Promise.all([
     getI18n(),
-    getResourcePool(),
+    getResourcePool(win.weeks),
     getProjectTeam(p.code),
     getLaborCost(p.code),
     listResourceRequests({ projectCode: p.code, status: 'pending' }),
@@ -45,6 +50,7 @@ export default async function ProjectResourcesPage({ params }: { params: Promise
       scope: 'project',
       weeks: pool.weeks.map((w) => w.label),
       weekStarts: pool.weeks.map((w) => w.start),
+      windowIsCurrent: win.isCurrent,
       people: pool.people
         .filter((m) => members.has(m.name))
         .map((m) => ({ name: m.name, initials: m.initials, jobTitle: m.jobTitle, department: m.department, loads: m.loads })),
@@ -63,7 +69,14 @@ export default async function ProjectResourcesPage({ params }: { params: Promise
         projectCode={p.code}
         primary={canEdit ? <NewRequestButton label="Request resource" projectCode={p.code} /> : undefined}
       />
-      <ResourcesView view={view} t={t} projectName={projectLabelText(p, lang)} canEdit={canEdit} />
+      <ResourcesView
+        view={view}
+        t={t}
+        projectName={projectLabelText(p, lang)}
+        canEdit={canEdit}
+        windowIsCurrent={win.isCurrent}
+        windowNav={<LoadWindowNav window={win} path={screenHref('presources', { code: p.code })} t={t} lang={lang} />}
+      />
       <ProjectTeamCard code={p.code} context={projectLabelText(p, lang)} members={named} candidates={candidates} t={t} />
     </>
   );

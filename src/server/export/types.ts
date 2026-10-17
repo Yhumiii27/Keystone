@@ -160,6 +160,8 @@ export interface ExportContext {
   variant: string | null;
   /** Export instant (real clock: file names and the "exported on" line). */
   now: Date;
+  /** Business date (R-013, src/server/clock.ts): the year that the screens' year-less dates are in. */
+  today: string;
 }
 
 export interface ExportProvider {

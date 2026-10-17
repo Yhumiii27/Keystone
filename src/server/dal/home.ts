@@ -13,12 +13,14 @@ import {
   qualityHome, type ChangeRequest, type CurrentProject, type Drawing, type Eco, type EvmSeries, type HomeView, type Lookups, type Part,
   type Persona, type PersonLoad, type PortfolioAlert, type PurchaseOrder, type ResourceRequest, type ScheduleHeader, type Todo,
 } from '@/domain/home';
+import { yearOfIso } from '@/domain/clock';
 import { noProjectHome } from '@/domain/home-empty';
+import { businessToday } from '@/server/clock';
 import { inExecution } from '@/domain/portfolio';
 import { workingDayOf } from '@/domain/tasks';
 import type { Lang } from '@/i18n/translate';
 import { getDb } from '@/server/db/client';
-import { REQUEST_STATUS_TAG, STATUS_ISO, addDaysIso, ecoType, fmtDOfIso, requestStatus, taskStatus } from '@/server/db/codes';
+import { REQUEST_STATUS_TAG, addDaysIso, ecoType, fmtDOfIso, requestStatus, taskStatus } from '@/server/db/codes';
 import { projects as projectsTable } from '@/server/db/schema';
 import type { ZoneKey } from '@/server/session';
 import { getCostControl, listChangeRequests } from './cost';
@@ -72,13 +74,13 @@ const TASK_STATUS: Record<string, string> = Object.fromEntries(taskStatus.codes.
  * The client Home's deliverables (being produced, waiting for the client, rejected, accepted in the last 30 days) and
  * open invoice, from the deliverables register and the billing plan the client portal shows.
  */
-async function clientInputs(code: string) {
+async function clientInputs(code: string, today: string) {
   const [dlv, portal] = await Promise.all([listDeliverables(code), getClientPortal(code)]);
   const deliverables = clientHomeDeliverables(
-    dlv.map((d) => ({ ...d, acceptedOnText: d.acceptedOn ? fmtDOfIso(d.acceptedOn) : null })),
-    addDaysIso(STATUS_ISO, -30),
+    dlv.map((d) => ({ ...d, acceptedOnText: d.acceptedOn ? fmtDOfIso(d.acceptedOn, yearOfIso(today)) : null })),
+    addDaysIso(today, -30),
   );
-  const invoice = clientOpenInvoice(portal.invoices.map((m) => ({ ...m, dueText: m.dueOn ? fmtDOfIso(m.dueOn) : null })), portal.currency);
+  const invoice = clientOpenInvoice(portal.invoices.map((m) => ({ ...m, dueText: m.dueOn ? fmtDOfIso(m.dueOn, yearOfIso(today)) : null })), portal.currency);
   return { deliverables, invoice };
 }
 
@@ -219,51 +221,53 @@ async function deptOfHead(name: string): Promise<string> {
 /** The Home of a role (docs/spec/03 §1.2). Roles without a dedicated Home get the director's, as the prototype. */
 export async function getHomeView(q: HomeQuery): Promise<HomeView> {
   const { persona, lang } = q;
+  // R-013: the business date, once for the whole Home (greeting, due buckets, "accepted in the last 30 days").
+  const today = await businessToday();
   if (q.role === 'client') {
     const own = await resolveClientProject(q.projectCode, q.organisation ?? null);
-    if (!own) return noProjectHome(persona);
-    const [{ evm, schedule }, crs, { deliverables, invoice }] = await Promise.all([evmAndSchedule(own.code), changeRequestsOf([own]), clientInputs(own.code)]);
-    return clientHome({ lang, persona, project: currentOf(own), evm, schedule, changeRequests: crs, deliverables, invoice });
+    if (!own) return noProjectHome(persona, today);
+    const [{ evm, schedule }, crs, { deliverables, invoice }] = await Promise.all([evmAndSchedule(own.code), changeRequestsOf([own]), clientInputs(own.code, today)]);
+    return clientHome({ lang, persona, today, project: currentOf(own), evm, schedule, changeRequests: crs, deliverables, invoice });
   }
   switch (q.role) {
     case 'depthead': {
       const [dept, reqs, pool, departments] = await Promise.all([deptOfHead(persona.name), requests(), people(), capacityRows()]);
       return deptHeadHome({
-        persona, dept, requests: reqs, people: pool.loads, deptOf: pool.deptOf, reqStatus: REQ_STATUS, lookups: await lookups(), weekStarts: pool.weekStarts, departments,
+        persona, today, dept, requests: reqs, people: pool.loads, deptOf: pool.deptOf, reqStatus: REQ_STATUS, lookups: await lookups(), weekStarts: pool.weekStarts, departments,
       });
     }
     case 'member': {
       // The viewer's own work: the prototype always showed `state.person` = Hélène Sauvage (docs/spec/00 §7.16, 10 OQ17).
       const [tasks, pool, sk] = await Promise.all([todos(), people(), skillsMatrix()]);
       return memberHome({
-        persona, person: persona.name, todos: tasks, people: pool.loads, certs: sk.certs, statusLabels: TASK_STATUS, lookups: await lookups(),
-        loggedThisWeekH: await loggedThisWeek(persona.name), // A-12: this week's time entries
+        persona, today, person: persona.name, todos: tasks, people: pool.loads, certs: sk.certs, statusLabels: TASK_STATUS, lookups: await lookups(),
+        loggedThisWeekH: await loggedThisWeek(persona.name, today), // A-12: this week's time entries
       });
     }
     case 'englead': {
       const [pool, sk, es, dwgs, ps] = await Promise.all([people(), skillsMatrix(), ecos(), drawings(), parts()]);
       return engLeadHome({
-        persona, ecos: es, ecoTypes: ECO_TYPE_LABELS, drawings: dwgs, parts: ps, skills: sk.skills, skillLevels: sk.levels, people: pool.loads,
+        persona, today, ecos: es, ecoTypes: ECO_TYPE_LABELS, drawings: dwgs, parts: ps, skills: sk.skills, skillLevels: sk.levels, people: pool.loads,
       });
     }
   }
   // The other Homes are built around the current project; a new production database has none yet (R-011).
   const project = await resolveProject(q.projectCode, q.role, q.organisation);
-  if (!project) return noProjectHome(persona);
+  if (!project) return noProjectHome(persona, today);
   const current = currentOf(project);
   switch (q.role) {
     case 'pm': {
       const [{ evm, schedule }, reqs, pos, ps, es] = await Promise.all([evmAndSchedule(project.code), requests(), purchaseOrders(project.code), parts(), ecos()]);
-      return pmHome({ lang, persona, project: current, evm, schedule, requests: reqs, purchaseOrders: pos, parts: ps, ecos: es });
+      return pmHome({ lang, persona, today, project: current, evm, schedule, requests: reqs, purchaseOrders: pos, parts: ps, ecos: es });
     }
     case 'quality': {
       const [es, ps, reqs] = await Promise.all([ecos(), parts(), requests()]);
-      return qualityHome({ persona, project: current, ecos: es, parts: ps, requests: reqs });
+      return qualityHome({ persona, today, project: current, ecos: es, parts: ps, requests: reqs });
     }
     case 'procurement': {
       const [acts, pos, ps, es] = await Promise.all([getActivities(project.code), purchaseOrders(project.code), parts(), ecos()]);
       return procurementHome({
-        lang, persona, project: current, purchaseOrders: pos, parts: ps, ecos: es,
+        lang, persona, today, project: current, purchaseOrders: pos, parts: ps, ecos: es,
         activityPct: Object.fromEntries(acts.map((a) => [a.id, a.pct])),
       });
     }
@@ -271,7 +275,7 @@ export async function getHomeView(q: HomeQuery): Promise<HomeView> {
       // KPI tiles and "Needs attention" are the Portfolio overview's own (same zone filter, docs/spec/03 §1.2 / §4).
       const [overview, all, pos, es, reqs] = await Promise.all([getPortfolioOverview(q.zone, lang), listProjects(), purchaseOrders(project.code), ecos(), requests()]);
       return directorHome({
-        lang, persona, project: current,
+        lang, persona, today, project: current,
         portfolioKpis: overview.kpis,
         alerts: overview.alerts.map((a): PortfolioAlert => ({ title: a.title, detail: a.detail, href: homeHref(a.target.screen, { code: a.target.code }) })),
         // A-3: change requests of the projects in execution (the Overview's population).

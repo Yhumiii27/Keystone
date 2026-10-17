@@ -6,6 +6,7 @@ import 'server-only';
 import { and, asc, eq, gte, inArray, max, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { projectCalendarCode, projectDataDate } from '@/domain/ch4-defaults';
+import { businessToday } from '@/server/clock';
 import { detectCycle } from '@/domain/cpm';
 import type { PlanActivity, PlanPackage, PlanRoot, PredLink, TodoStatus } from '@/domain/schedule';
 import { workingDayOf } from '@/domain/tasks';
@@ -461,10 +462,10 @@ export async function getPlanSettings(code: string): Promise<PlanSettings | null
   const db = await getDb();
   const [p] = await db.select({ dataDate: projects.dataDate, calendar: projects.calendar }).from(projects).where(eq(projects.code, code));
   if (!p) return null;
-  const [cals, bls, runs] = await Promise.all([listCalendars({ projectCode: code }), listProjectBaselines(code), listScheduleRuns(code, 1)]);
+  const [cals, bls, runs, today] = await Promise.all([listCalendars({ projectCode: code }), listProjectBaselines(code), listScheduleRuns(code, 1), businessToday()]);
   const run = runs[0];
   return {
-    dataDate: projectDataDate(p),
+    dataDate: projectDataDate(p, today),
     calendarCode: projectCalendarCode(p),
     calendars: cals.map((c) => ({ code: c.code, name: c.name, hoursPerDay: c.hoursPerDay })),
     baselines: bls,

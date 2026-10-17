@@ -3,6 +3,7 @@ import 'server-only';
 // progress waiting for Vigie, src/server/dal/quality.ts), its deliverables register, and what the drawers link to — the
 // open ECO of each NCR part (Vigie ECO mirror, `ecoOpenFor`), the project's purchase orders carrying that part, and the
 // project's Codex index records (the deliverable's issued document). Projects without data get empty lists.
+import { businessToday } from '@/server/clock';
 import { listVaultDocuments } from './documents';
 import { openEcoByPart } from './eco';
 import { ncrClosureDates, projectDataDateOf } from './kpis';
@@ -31,11 +32,13 @@ export interface QualityScreenData {
   documents: QualityDocument[];
   /** The project's data date (A-12: "closed this quarter" is the quarter of this date). */
   dataDate: string;
+  /** Business date (ISO, R-013): "Overdue actions" as of a week later, "Due in 30 days" from it. */
+  today: string;
 }
 
 export async function getQualityScreen(projectCode: string): Promise<QualityScreenData> {
-  const [listed, deliverables, closedOn, dataDate] = await Promise.all([
-    listNcrs(projectCode), listDeliverables(projectCode), ncrClosureDates(projectCode), projectDataDateOf(projectCode),
+  const [listed, deliverables, closedOn, dataDate, today] = await Promise.all([
+    listNcrs(projectCode), listDeliverables(projectCode), ncrClosureDates(projectCode), projectDataDateOf(projectCode), businessToday(),
   ]);
   // A-12: closure date of a closed NCR = Vigie's last update of the record, when the mirror has it.
   const ncrs = listed.map((n) => (n.status === 'closed' ? { ...n, closedOn: closedOn.get(n.number) ?? null } : n));
@@ -56,5 +59,5 @@ export async function getQualityScreen(projectCode: string): Promise<QualityScre
     .filter((d) => d.project === projectCode)
     .map((d) => ({ number: d.number, title: d.title, revision: d.revision, statusLabel: d.statusLabel }))
     .sort((a, b) => a.number.localeCompare(b.number));
-  return { ncrs, deliverables, ecoByPart, ordersByPart, documents, dataDate };
+  return { ncrs, deliverables, ecoByPart, ordersByPart, documents, dataDate, today };
 }

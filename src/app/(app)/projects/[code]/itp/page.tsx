@@ -12,7 +12,7 @@
 // of the items raised on site (P-10b, X-15).
 import type { ReactNode } from 'react';
 import { PageHeader } from '@/components/app/shell/page-header';
-import { canRecordItpResult, itpDateText, punchOriginFilterOf } from '@/domain/itpcom';
+import { canRecordItpResult, punchOriginFilterOf } from '@/domain/itpcom';
 import { ItpFormButton } from '@/features/itpcom/add-buttons';
 import { inspectionFormDef, localizeForm, punchFormDef } from '@/features/itpcom/forms';
 import { ItpBody } from '@/features/itpcom/itp-view';
@@ -22,7 +22,7 @@ import { getItpPlan, listItpSystems, listPunchItems, projectMachineTypeLabel } f
 import { listProjectPhotos } from '@/server/dal/photos';
 import { teamOwnerOptions } from '@/server/dal/team';
 import { getProjectContext } from '@/server/project-context';
-import { NOW_ISO } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
 import { getI18n } from '@/server/session';
 import { projectLabelText } from '@/i18n/data-text';
 
@@ -35,11 +35,12 @@ export default async function ItpPage({ params, searchParams }: { params: Promis
   const projectCode = ctx.project.code;
   const view = itpViewOf(first(sp.view));
   const origin = punchOriginFilterOf(first(sp.origin));
-  const [{ t, lang }, plan, punch, machineType] = await Promise.all([
+  const [{ t, lang }, plan, punch, machineType, today] = await Promise.all([
     getI18n(),
     getItpPlan(projectCode),
     listPunchItems(projectCode),
     projectMachineTypeLabel(projectCode),
+    businessToday(),
   ]);
   const canEdit = ctx.canEdit('itp');
   const internal = ctx.viewer.role !== 'client';
@@ -74,8 +75,8 @@ export default async function ItpPage({ params, searchParams }: { params: Promis
         code={projectCode}
         view={itpScreenView(
           {
-            code: projectCode, view, plan, punch, origin, machineType,
-            viewer: { canRecord: canEdit && canRecordItpResult(ctx.viewer.role), internal, name: ctx.viewer.name, today: itpDateText(NOW_ISO) },
+            code: projectCode, view, plan, punch, origin, machineType, today,
+            viewer: { canRecord: canEdit && canRecordItpResult(ctx.viewer.role), internal, name: ctx.viewer.name },
           },
           t, lang,
         )}

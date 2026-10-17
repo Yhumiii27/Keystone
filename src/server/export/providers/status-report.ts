@@ -15,6 +15,7 @@ import { paymentTermsText } from '@/domain/payment-terms';
 import { canSeeMargins } from '@/domain/portfolio-finance';
 import { projectEacKeur } from '@/domain/kpis';
 import { clientScreenView } from '@/features/rexclient/model';
+import { businessToday } from '@/server/clock';
 import { getBillingPlan, marginAtCompletion } from '@/server/dal/cashflow';
 import { getChangeControl } from '@/server/dal/changes';
 import { getClientPortal } from '@/server/dal/client';
@@ -24,7 +25,7 @@ import { getProjectTeam } from '@/server/dal/resources';
 import { getRiskScreen } from '@/server/dal/risks-screen';
 import { getScheduleData } from '@/server/dal/schedule';
 import { getTrends } from '@/server/dal/trends';
-import { reportAudience, reportPeriod, reportSections, type ReportAudience, type ReportPeriod, type ReportSections } from '@/server/db/codes';
+import { reportAudience, reportPeriod, reportPeriodLabel, reportSections, type ReportAudience, type ReportPeriod, type ReportSections } from '@/server/db/codes';
 import { scheduleView } from '@/domain/schedule-gantt';
 import type { ExportContext, PdfBlock, PdfDocument } from '../types';
 import { col, daysText, monthIso, param, projectRef, ratioText, sheet, todayIso } from './common';
@@ -75,9 +76,9 @@ export async function statusReportDocument(ctx: ExportContext, options: StatusRe
     : null;
 
   if (o.audience === 'client') {
-    const [portal, billing, dlvs] = await Promise.all([getClientPortal(code), getBillingPlan(code), listDeliverables(code)]);
+    const [portal, billing, dlvs, today] = await Promise.all([getClientPortal(code), getBillingPlan(code), listDeliverables(code), businessToday()]);
     const view = clientScreenView({
-      code, tab: 'progress', portal, billing: billing ? { internal: billing.internal } : null,
+      code, tab: 'progress', portal, billing: billing ? { internal: billing.internal } : null, today,
       schedule: schedule && { header: schedule.header, milestones: schedule.milestones, pv: schedule.pv, ev: schedule.ev, bac: schedule.bac },
     }, t, lang);
     blocks.push({ kind: 'kpis', items: view.kpis.map((k) => ({ label: k.label, value: k.value, sub: k.sub || undefined })) });
@@ -133,7 +134,7 @@ export async function statusReportDocument(ctx: ExportContext, options: StatusRe
       if (milestones) blocks.push({ kind: 'heading', text: t('Milestones') }, { kind: 'table', sheet: milestones });
       if (contract) {
         // The contract and billing position (in the contract's currency).
-        const fig = contractFigures(contract);
+        const fig = contractFigures(contract, contract.today);
         const m = (k: number) => moneyIn(k, fig.currency, lang);
         blocks.push({ kind: 'heading', text: t('Contract & billing') }, { kind: 'fields', columns: 3, items: [
           [t('Contract value'), m(fig.valueKeur)], [t('Invoiced'), m(fig.invoicedKeur)], [t('Collected'), m(fig.paidKeur)],
@@ -173,7 +174,7 @@ export async function statusReportDocument(ctx: ExportContext, options: StatusRe
   }
   return {
     title: t('Status report'),
-    subtitle: `${t(reportPeriod.label(o.period))} · ${t(reportAudience.label(o.audience))} · ${t(reportSections.label(o.sections))}`,
+    subtitle: `${t(reportPeriodLabel(o.period, ctx.today))} · ${t(reportAudience.label(o.audience))} · ${t(reportSections.label(o.sections))}`,
     project: projectRef(ctx),
     reference: trends?.snapshots.at(-1)?.week ?? ctx.project.code,
     date: todayIso(ctx),

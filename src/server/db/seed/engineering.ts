@@ -6,7 +6,7 @@
 import { eq } from 'drizzle-orm';
 import { PROTO } from '@/server/prototype';
 import {
-  bomScope, calendar, checkSeverity, checkStatus, costType, discipline, drawingState, isoOfDisplayDate, machineType, outputState, pidTagKind,
+  bomScope, calendar, checkSeverity, checkStatus, costType, discipline, drawingState, isoOfDemoDate, machineType, outputState, pidTagKind,
   type Discipline, type DocRecipient, type PidRole, type PlcType, type StepState,
 } from '../codes';
 import {
@@ -41,7 +41,7 @@ export async function seedEngineering(tx: Tx, ctx: SeedCtx): Promise<void> {
     projectId, number: o.id, discipline: o.disc, name: o.name, recipients: o.to, source: o.source, state: outputState.code(o.state), position,
   })));
   await tx.insert(engChanges).values((PROTO.ENG_CHANGES as [string, string, string][]).map(([date, text, rcp], sortOrder) => ({
-    projectId, changedOn: isoOfDisplayDate(date)!, text, recipients: rcp.split(',') as DocRecipient[], sortOrder,
+    projectId, changedOn: isoOfDemoDate(date)!, text, recipients: rcp.split(',') as DocRecipient[], sortOrder,
   })));
   await tx.insert(engImportDeltas).values((PROTO.ENG_DELTAS as [string, string, string][]).map(([sym, label], position) => ({ position, kind: sym === '+' ? 'new' as const : 'changed' as const, label })));
 
@@ -49,7 +49,7 @@ export async function seedEngineering(tx: Tx, ctx: SeedCtx): Promise<void> {
   const pid = PROTO.PID as { code: string; doc: string; rev: string; date: string; sheets: number; by: string; checker: string; status: string };
   const pidProjectId = must(ctx.projectByCode, pid.code, 'project');
   await tx.insert(pidSheets).values({
-    projectId: pidProjectId, documentNumber: pid.doc, documentId: ctx.document.get(pid.doc) ?? null, revision: pid.rev, issuedOn: isoOfDisplayDate(pid.date)!,
+    projectId: pidProjectId, documentNumber: pid.doc, documentId: ctx.document.get(pid.doc) ?? null, revision: pid.rev, issuedOn: isoOfDemoDate(pid.date)!,
     sheetCount: pid.sheets, authorName: pid.by, authorPersonId: personIdOrNull(ctx, pid.by), checkerName: pid.checker, checkerPersonId: personIdOrNull(ctx, pid.checker),
     status: drawingState.code(pid.status),
   });
@@ -59,7 +59,7 @@ export async function seedEngineering(tx: Tx, ctx: SeedCtx): Promise<void> {
     activityCode: t.act, activityId: pidActs.get(t.act) ?? null, plcType: (t.plc || null) as PlcType | null, stateFeedback: t.fb, role: t.role, sheet: 1 + (position % 4), position,
   })));
   await tx.insert(pidValidationSteps).values((PROTO.PID_STEPS as [string, StepState, string, string][]).map(([label, state, date, who], position) => ({
-    projectId: pidProjectId, position, label, state, dateOn: date && date !== '—' ? isoOfDisplayDate(date) : null, who,
+    projectId: pidProjectId, position, label, state, dateOn: date && date !== '—' ? isoOfDemoDate(date) : null, who,
   })));
 
   await seedMachineTypeAggregate(tx);

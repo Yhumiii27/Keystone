@@ -3,7 +3,7 @@
 // (HOURS) and what-if levelling (LEVERS, AUTO, the HLT-026 scenarios of the initial state). See schema/resources.ts.
 import { PROTO } from '@/server/prototype';
 import { LEAVE_TYPE_ROWS } from '@/domain/absences';
-import { addDaysIso, hoursMatching, isoOfDisplayDate, leaveTypeOfNature, whatIfPriority, type WhatIfPriority } from '../codes';
+import { addDaysIso, hoursMatching, isoOfDemoDate, leaveTypeOfNature, whatIfPriority, type WhatIfPriority } from '../codes';
 import { sql } from 'drizzle-orm';
 import { RATE_GRID_START, RATE_MULTIPLIER_DEFAULTS } from '@/domain/rate-defaults';
 import {
@@ -41,7 +41,7 @@ export async function seedResourceReference(tx: Tx): Promise<{ id: string; name:
   await tx.insert(publicHolidays).values(
     (PROTO.SETTINGS0.holidays as string[]).map((h, i) => {
       const [day, name] = h.split(' · ');
-      return { id: newId(), countryCode: 'FR', date: isoOfDisplayDate(day)!, name, position: i + 1 };
+      return { id: newId(), countryCode: 'FR', date: isoOfDemoDate(day)!, name, position: i + 1 };
     }),
   );
   await tx.insert(whatIfLevers).values(
@@ -133,7 +133,7 @@ export async function seedResources(tx: Tx, ctx: SeedCtx): Promise<void> {
     const wbs = must(ctx.wbs, code, 'project WBS');
     await tx.insert(hoursImports).values({
       id: importId, projectId: must(ctx.projectByCode, code, 'project'), analyticCode: h.code, periodStart: '2026-09-01',
-      importedOn: isoOfDisplayDate(h.imported)!, matchingMode: hoursMatching.code('Resource × work package (planning)'),
+      importedOn: isoOfDemoDate(h.imported)!, matchingMode: hoursMatching.code('Resource × work package (planning)'),
     });
     await tx.insert(hoursLines).values(
       h.lines.map(([person, wbsLabel, plannedH, declaredH], position) => ({

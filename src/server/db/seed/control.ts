@@ -3,7 +3,7 @@
 import { evmCore } from '@/domain/evm';
 import { costOfLegacyEmv } from '@/domain/risk';
 import { PROTO, PROTO_GEN } from '@/server/prototype';
-import { addDaysIso, contingencyLinkTypeOf, isoOfDisplayDate, isoWeekOf, riskCategory, riskResponse, riskStatus, type RiskTrend } from '../codes';
+import { addDaysIso, contingencyLinkTypeOf, isoOfDemoDate, isoWeekOf, riskCategory, riskResponse, riskStatus, type RiskTrend } from '../codes';
 import { contingencyDraws, contingencyRegisters, risks, statusSnapshots } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, personId, type SeedCtx } from './context';
@@ -106,7 +106,7 @@ export async function seedControl(tx: Tx, ctx: SeedCtx): Promise<void> {
             : linkedEntityType === 'risk' ? (ctx.risk.get(code)?.get(linkRef) ?? null)
               : null;
         return {
-          id: newId(), registerId, drawnOn: isoOfDisplayDate(dateText)!, amountKeur: amount, reason, linkRef: linkRef || null,
+          id: newId(), registerId, drawnOn: isoOfDemoDate(dateText)!, amountKeur: amount, reason, linkRef: linkRef || null,
           // Approved when recorded in the prototype: validated draw-downs (R-071; no Keystone decision is recorded for them).
           linkedEntityType, linkedEntityId, approvedByPersonId: personId(ctx, approver), position, status: 'validated' as const,
         };

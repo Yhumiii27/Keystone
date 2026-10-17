@@ -6,18 +6,21 @@ import 'server-only';
 // amount. Customer invoices are 1:1 with the invoiced milestones and fall due by the contract's payment rule (C-6, R-076).
 // Every amount is in the contract's currency (C-9, R-075); `getCashContract` consolidates them in euros at the project's
 // budget rate for Budget › Cash & recovery. The figures are computed by `contractFigures` (src/domain/contract.ts) — one
-// rule for the screens and every reader. Late milestone = planned, billable and contractual date before the prototype's
-// now (PG_NOW); overdue invoice = awaiting payment and due before NOWD (30 Sep 2026).
+// rule for the screens and every reader. Late milestone = planned, billable and contractual date before the business date's
+// month (the prototype's PG_NOW); overdue invoice = awaiting payment and due before the business date (the prototype's NOWD,
+// 30 Sep 2026). R-013: the business date comes from the clock (`businessToday`), resolved once per read or write.
 import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import {
   INVOICE_BLOCKED_MESSAGE, canSendAmendment, canSignAmendment, contractFigures, invoiceBlocked, isSignedAmendment, plannedMilestoneAmount, termsOfSheet,
   type ContractFigures, type ContractInput,
 } from '@/domain/contract';
+import { yearOfIso } from '@/domain/clock';
 import { BASE_CURRENCY, currencyOf, documentCurrencyError, eurRate, projectFxOf, type CurrencyCode, type ProjectFx } from '@/domain/currency';
 import { isPaymentRule, paymentDueOn, paymentTermsText, termsOfText, type PaymentRule } from '@/domain/payment-terms';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import {
-  NOW_ISO, amendmentStatus, beforePgNow, bondType, contractType, customerInvoiceStatus, displayOfIso, nextBusinessNumber,
+  amendmentStatus, beforePgNow, bondType, contractType, customerInvoiceStatus, displayOfIso, nextBusinessNumber,
   paymentMilestoneStatus, shortDateYearOfIso,
   type AmendmentStatus, type BondType, type ContractType, type CustomerInvoiceStatus, type PaymentMilestoneStatus,
 } from '@/server/db/codes';
@@ -174,14 +177,18 @@ export interface ProjectContract {
   retentionKeur: number;
   /** Σ shares (%) of the base contract's milestones, 100 when its schedule is complete. */
   sharePctTotal: number;
-  /** Next invoice number proposed by "Issue invoice" ("INV-2026-004"). */
+  /** Next invoice number proposed by "Issue invoice" ("INV-2026-004", the business date's year). */
   nextInvoiceNumber: string;
+  /** R-013: business date the figures were computed at (late, overdue, the invoice date proposed). */
+  today: string;
   /** Planned milestones whose contractual date has passed (Billing nav badge). */
   lateCount: number;
   /** A customer invoice exists: the contract's currency can no longer change. */
   hasInvoices: boolean;
 }
 
+/** R-013: invoice numbers follow the business date's year ("INV-2026-"). */
+const invoicePrefix = (today: string) => `INV-${today.slice(0, 4)}-`;
 const dash = (iso: string | null, f: (s: string) => string) => (iso ? f(iso) : '—');
 /** ISO 'YYYY-MM-DD' of a real calendar day. */
 const isIso = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v + 'T00:00:00Z')) && new Date(v + 'T00:00:00Z').toISOString().slice(0, 10) === v;
@@ -194,6 +201,7 @@ function isoOrNull(v: string | null | undefined, what: string): string | null {
 /** Contract of a project with its amendments, bonds, payment schedule and invoices; null when none is registered. */
 export async function getContract(projectCode: string): Promise<ProjectContract | null> {
   const db = await getDb();
+  const today = await businessToday();
   const [row] = await db
     .select({ c: contracts, docId: documents.id, currency: projects.currency, budgetRate: projects.budgetRate })
     .from(contracts)
@@ -235,7 +243,7 @@ export async function getContract(projectCode: string): Promise<ProjectContract 
       };
     }),
   };
-  const fig = contractFigures(input);
+  const fig = contractFigures(input, today);
   const amendments: AmendmentRow[] = ams.map(({ a, crId, docId }) => ({
     position: a.position, label: a.subject + (a.changeRequestRef ? ` (${a.changeRequestRef})` : ''), subject: a.subject, changeRequestRef: a.changeRequestRef,
     changeRequestLinked: !!crId, amountKeur: a.amountKeur, status: a.status, statusLabel: amendmentStatus.label(a.status), signed: isSignedAmendment(a),
@@ -248,6 +256,9 @@ export async function getContract(projectCode: string): Promise<ProjectContract 
     stateText: b.releasedOn ? `Released ${displayOfIso(b.releasedOn)}` : `Valid → ${dash(b.validUntil, displayOfIso)}`,
   }));
   const invoiceOf = new Map(fig.invoices.map((i) => [i.milestone, i]));
+  // R-013: invoice dates show their year outside the business year.
+  const year = yearOfIso(today);
+  const dayText = (iso: string) => shortDateYearOfIso(iso, year);
   const milestones: ContractMilestoneRow[] = fig.milestones.map((m, k) => {
     const i = invoiceOf.get(m.number);
     const stored = invByMs.get(ms[k].id);
@@ -256,9 +267,9 @@ export async function getContract(projectCode: string): Promise<ProjectContract 
       contractualDue: m.contractualDue, dueText: dash(m.contractualDue, displayOfIso), condition: m.condition, status: m.status,
       statusLabel: paymentMilestoneStatus.label(m.status), late: m.late, blocked: m.blocked,
       invoice: i ? {
-        number: i.number, milestoneNumber: m.number, milestoneLabel: m.label, issuedOn: i.issuedOn, issuedText: shortDateYearOfIso(i.issuedOn),
-        amountKeur: i.amountKeur, currency: currencyOf(stored?.currency ?? currency), dueOn: i.dueOn, dueText: shortDateYearOfIso(i.dueOn),
-        paidOn: i.paidOn, paidText: dash(i.paidOn, shortDateYearOfIso), note: i.note, status: i.status, statusLabel: customerInvoiceStatus.label(i.status), overdue: i.overdue,
+        number: i.number, milestoneNumber: m.number, milestoneLabel: m.label, issuedOn: i.issuedOn, issuedText: dayText(i.issuedOn),
+        amountKeur: i.amountKeur, currency: currencyOf(stored?.currency ?? currency), dueOn: i.dueOn, dueText: dayText(i.dueOn),
+        paidOn: i.paidOn, paidText: dash(i.paidOn, dayText), note: i.note, status: i.status, statusLabel: customerInvoiceStatus.label(i.status), overdue: i.overdue,
       } : null,
     };
   });
@@ -284,7 +295,8 @@ export async function getContract(projectCode: string): Promise<ProjectContract 
     paidKeur: fig.paidKeur,
     retentionKeur: fig.retentionKeur,
     sharePctTotal: Math.round(fig.sharePct * 10) / 10,
-    nextInvoiceNumber: nextBusinessNumber(allNumbers, 'INV-2026-', 3),
+    nextInvoiceNumber: nextBusinessNumber(allNumbers, invoicePrefix(today), 3),
+    today,
     lateCount: fig.lateCount,
     hasInvoices: invs.length > 0,
   };
@@ -307,6 +319,7 @@ export async function getContractHeader(projectCode: string): Promise<{ referenc
 /** Late planned milestones per project code (Billing nav badge, `ctrBadge`) — billable ones only (base contract or signed amendment). */
 export async function lateBillingMilestonesByProject(): Promise<Record<string, number>> {
   const db = await getDb();
+  const today = await businessToday();
   const rows = await db
     .select({ code: projects.code, due: paymentMilestones.contractualDue, amendmentStatus: contractAmendments.status, amendmentId: paymentMilestones.amendmentId })
     .from(paymentMilestones)
@@ -314,7 +327,7 @@ export async function lateBillingMilestonesByProject(): Promise<Record<string, n
     .leftJoin(contractAmendments, eq(contractAmendments.id, paymentMilestones.amendmentId))
     .where(and(isNotNull(paymentMilestones.contractId), eq(paymentMilestones.status, 'planned')));
   const out: Record<string, number> = {};
-  for (const r of rows) if ((!r.amendmentId || r.amendmentStatus === 'signed') && beforePgNow(r.due)) out[r.code] = (out[r.code] ?? 0) + 1;
+  for (const r of rows) if ((!r.amendmentId || r.amendmentStatus === 'signed') && beforePgNow(r.due, today)) out[r.code] = (out[r.code] ?? 0) + 1;
   return out;
 }
 
@@ -336,6 +349,8 @@ export interface CashContract {
   }[];
   /** Orders placed not yet in actual cost (project controls), null → the planned-value rule. */
   openCommit: number | null;
+  /** Business year (R-013): the milestone texts above show their year outside it. */
+  year: number;
 }
 
 /** Shape consumed by `cashRecovery()` — retires the Budget screen's prototype read of CONTRACTS. */
@@ -360,9 +375,10 @@ export async function getCashContract(projectCode: string): Promise<CashContract
       invoiced: m.invoice ? m.invoice.issuedText : null, paid: m.invoice?.paidOn ? m.invoice.paidText : null,
       amount: m.amountKeur * rate,
       // Expected payment: the invoice's due date, else the contractual date + the rule (an undated milestone has none).
-      paymentDue: m.invoice ? shortDateYearOfIso(m.invoice.dueOn) : m.contractualDue ? shortDateYearOfIso(paymentDueOn(m.contractualDue, terms)) : null,
+      paymentDue: m.invoice ? shortDateYearOfIso(m.invoice.dueOn, yearOfIso(c.today)) : m.contractualDue ? shortDateYearOfIso(paymentDueOn(m.contractualDue, terms), yearOfIso(c.today)) : null,
     })),
     openCommit: pc?.orders ?? null,
+    year: yearOfIso(c.today),
   };
 }
 
@@ -494,6 +510,7 @@ export interface NewAmendment {
  */
 export async function addAmendment(projectCode: string, input: NewAmendment, actorName: string): Promise<string> {
   const db = await getDb();
+  const today = await businessToday();
   return db.transaction(async (tx) => {
     const { p, c } = await loadContract(tx, projectCode);
     const subject = input.subject.trim();
@@ -511,7 +528,7 @@ export async function addAmendment(projectCode: string, input: NewAmendment, act
       .insert(contractAmendments)
       .values({
         contractId: c.id, position: maxPos + 1, subject, changeRequestRef: crRef, changeRequestId: cr?.id ?? null, amountKeur: input.amountKeur, status: input.status,
-        sentOn: input.status === 'draft' ? null : NOW_ISO, signedOn, documentRef: docRef, documentId: doc?.id ?? null,
+        sentOn: input.status === 'draft' ? null : today, signedOn, documentRef: docRef, documentId: doc?.id ?? null,
       })
       .returning({ id: contractAmendments.id });
     const label = subject + (crRef ? ` (${crRef})` : '');
@@ -528,11 +545,13 @@ async function amendmentAt(tx: Tx, contractId: string, position: number) {
 }
 
 /**
- * "Send for signature" (R-079): a draft amendment goes to the client — Draft → Sent for signature, dated `on` (NOWD). The
+ * "Send for signature" (R-079): a draft amendment goes to the client — Draft → Sent for signature, dated `on` (default the
+ * business date, the prototype's NOWD; R-013). The
  * status is checked and changed in one guarded UPDATE, so two clicks cannot both succeed. Returns its label.
  */
-export async function sendAmendmentForSignature(projectCode: string, position: number, actorName: string, on: string = NOW_ISO): Promise<string> {
+export async function sendAmendmentForSignature(projectCode: string, position: number, actorName: string, onDate?: string): Promise<string> {
   const db = await getDb();
+  const on = onDate ?? (await businessToday());
   return db.transaction(async (tx) => {
     const { p, c } = await loadContract(tx, projectCode);
     const a = await amendmentAt(tx, c.id, position);
@@ -763,9 +782,9 @@ export async function removePaymentMilestone(projectCode: string, number: string
 export interface IssueInvoiceInput {
   /** "M4". */
   milestone: string;
-  /** Defaults to the next INV-2026-nnn. */
+  /** Defaults to the next INV-<business year>-nnn. */
   invoiceNumber?: string | null;
-  /** ISO invoice date (default NOWD, 30 Sep 2026). */
+  /** ISO invoice date (default the business date — the prototype's NOWD; R-013). */
   issuedOn?: string | null;
   note?: string | null;
 }
@@ -778,6 +797,7 @@ export interface IssueInvoiceInput {
  */
 export async function issueInvoice(projectCode: string, input: IssueInvoiceInput, actorName: string): Promise<string> {
   const db = await getDb();
+  const today = await businessToday();
   return db.transaction(async (tx) => {
     const { p, c } = await loadContract(tx, projectCode);
     const [m] = await tx.select().from(paymentMilestones).where(and(eq(paymentMilestones.contractId, c.id), eq(paymentMilestones.number, input.milestone)));
@@ -797,10 +817,10 @@ export async function issueInvoice(projectCode: string, input: IssueInvoiceInput
       basis = a.amountKeur;
     }
     const all = (await tx.select({ n: customerInvoices.number }).from(customerInvoices)).map((r) => r.n);
-    const number = input.invoiceNumber?.trim() || nextBusinessNumber(all, 'INV-2026-', 3);
+    const number = input.invoiceNumber?.trim() || nextBusinessNumber(all, invoicePrefix(today), 3);
     if (all.includes(number)) throw new Error(`Invoice ${number} already exists`);
     const amount = plannedMilestoneAmount(basis, m.sharePct ?? 0);
-    const issuedOn = isoOrNull(input.issuedOn, 'invoice date') ?? NOW_ISO;
+    const issuedOn = isoOrNull(input.issuedOn, 'invoice date') ?? today;
     const [moved] = await tx.update(paymentMilestones).set({ status: 'invoiced', updatedAt: new Date() })
       .where(and(eq(paymentMilestones.id, m.id), eq(paymentMilestones.status, 'planned'))).returning({ id: paymentMilestones.id });
     if (!moved) throw new Error(`${input.milestone} is already invoiced`);
@@ -813,9 +833,10 @@ export async function issueInvoice(projectCode: string, input: IssueInvoiceInput
   });
 }
 
-/** "Mark paid": an invoiced milestone becomes Paid, its invoice paid on `on` (default NOWD, "30 Sep"). */
-export async function markInvoicePaid(projectCode: string, milestone: string, actorName: string, on: string = NOW_ISO): Promise<void> {
+/** "Mark paid": an invoiced milestone becomes Paid, its invoice paid on `on` (default the business date — the prototype's NOWD; R-013). */
+export async function markInvoicePaid(projectCode: string, milestone: string, actorName: string, onDate?: string): Promise<void> {
   const db = await getDb();
+  const on = onDate ?? (await businessToday());
   await db.transaction(async (tx) => {
     const { p, c } = await loadContract(tx, projectCode);
     const [m] = await tx.select().from(paymentMilestones).where(and(eq(paymentMilestones.contractId, c.id), eq(paymentMilestones.number, milestone)));

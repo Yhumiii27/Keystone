@@ -214,7 +214,7 @@ describe('ECOs read through the Vigie connector (mock over the seeded mirror)', 
     const ecos = await listEcos();
     expect(ecos.map((e) => ({
       id: e.number, title: e.title, type: e.typeLabel, status: e.statusLabel, parts: e.parts.slice(0, 2).join(', ') + (e.parts.length > 2 ? ` +${e.parts.length - 2}` : ''),
-      projects: e.projectNames.join(', '), by: e.requestedBy, date: day(fmtDOfIso(e.raisedOn)), cost: e.costEur ? `+${$(e.costEur)}` : '—',
+      projects: e.projectNames.join(', '), by: e.requestedBy, date: day(fmtDOfIso(e.raisedOn, 2026)), cost: e.costEur ? `+${$(e.costEur)}` : '—',
       sched: e.scheduleDays ? `${e.scheduleDays > 0 ? '+' : ''}${e.scheduleDays} d` : '—', hasPend: e.pendingDispositions > 0 && !['draft', 'rejected', 'released'].includes(e.status),
       pendText: `${e.pendingDispositions} ${e.pendingDispositions === 1 ? 'disposition pending' : 'dispositions pending'}`, lockIcon: e.locked ? 'ph ph-lock-simple' : 'ph ph-hourglass',
       canStart: e.status === 'draft', canSubmit: e.status === 'impact_analysis' && e.interchangeability !== null, needInterch: e.status === 'impact_analysis' && e.interchangeability === null,
@@ -242,7 +242,7 @@ describe('ECOs read through the Vigie connector (mock over the seeded mirror)', 
   it('drawers reproduce ecoVals (impact analysis, approvers, effectivity, pinned list)', async () => {
     for (const [id, g] of Object.entries(G.eco.drawers as Record<string, any>)) {
       const e = (await getEco(id))!;
-      expect(`${e.requestedBy} · ${fmtDOfIso(e.raisedOn)}`).toBe(day(g.by));
+      expect(`${e.requestedBy} · ${fmtDOfIso(e.raisedOn, 2026)}`).toBe(day(g.by));
       expect(`${e.parts[0]} · ${e.fromRevision} → ${e.toRevision}`).toBe(g.revText);
       expect(e.interchangeabilityLabel).toBe(g.interchLabel);
       expect(e.pendingDispositions ? `${e.pendingDispositions} ${e.pendingDispositions === 1 ? 'disposition pending' : 'dispositions pending'}` : 'All dispositions set').toBe(g.pendText);
@@ -282,7 +282,7 @@ describe('ECOs read through the Vigie connector (mock over the seeded mirror)', 
 describe('drawings — PDM vault mirror (09 §5)', () => {
   it('register, KPI inputs and revision history reproduce dwgRows / dwgKpis / dwgVals', async () => {
     const rows = await listDrawings();
-    expect(rows.map((d) => ({ no: d.number, title: d.title, part: d.partRef, partName: d.partName, rev: d.revision, state: d.stateLabel, path: d.vaultPath, by: d.checkedInBy, date: day(fmtDOfIso(d.checkedInOn)), eco: d.ecoNumber ?? '—' })))
+    expect(rows.map((d) => ({ no: d.number, title: d.title, part: d.partRef, partName: d.partName, rev: d.revision, state: d.stateLabel, path: d.vaultPath, by: d.checkedInBy, date: day(fmtDOfIso(d.checkedInOn, 2026)), eco: d.ecoNumber ?? '—' })))
       .toEqual(G.drawings.rows.map((r: any) => ({ ...r, date: day(r.date) })));
     const s = (await getVaultSyncState())!;
     expect([[s.drawingsInVault.toLocaleString('fr-FR').replace(/ /g, ' '), `${s.linkedDrawings} linked to catalogue parts`], [rows.filter((d) => d.state === 'released').length, 'Current revision'],
@@ -291,7 +291,7 @@ describe('drawings — PDM vault mirror (09 §5)', () => {
     for (const d of rows) {
       const x = (await getDrawing(d.number))!;
       const g = G.drawings.drawers[d.number];
-      expect(x.revisions.map((r, i) => ({ rev: r.revision, label: i === 0 ? `Current · ${day(fmtDOfIso(r.checkedInOn!))}` : 'Superseded', eco: i === 0 ? r.ecoNumber ?? '—' : '—' })))
+      expect(x.revisions.map((r, i) => ({ rev: r.revision, label: i === 0 ? `Current · ${day(fmtDOfIso(r.checkedInOn!, 2026))}` : 'Superseded', eco: i === 0 ? r.ecoNumber ?? '—' : '—' })))
         .toEqual(g.hist.map((h: any) => ({ ...h, label: day(h.label) })));
       expect(g.meta.map((m: any) => m.v)).toEqual([`${x.partRef}${x.partName ? ' · ' + x.partName : ''}`, x.vaultFile, `${x.checkedInBy} · ${g.meta[2].v.split(' · ')[1]}`, x.ecoNumber ?? 'None', x.formats, x.partStatusLabel ?? '—']);
     }
@@ -311,8 +311,8 @@ describe('purchase orders (08 §2)', () => {
     expect(pos.map((o) => ({
       id: o.number, supplier: o.supplier, lineSummary: o.lines.map((l) => l.ref).slice(0, 2).join(', ') + (o.lines.length > 2 ? ` +${o.lines.length - 2}` : ''),
       lineCount: `${o.lines.length} ${o.lines.length === 1 ? 'line' : 'lines'} · ${n(o.orderedUnits)} units${o.partStatusIssue ? ' · part status issue' : ''}`,
-      value: f(o.valueEur / 1000), status: o.statusLabel, ordered: o.status === 'draft' ? '—' : day(fmtDOfIso(o.orderedOn!)),
-      expected: o.status === 'received' ? 'Delivered' : o.expectedOn ? day(fmtDOfIso(o.expectedOn)) : 'To confirm', need: o.neededFor ? `${o.neededFor.code} · ${o.neededFor.name}` : '—',
+      value: f(o.valueEur / 1000), status: o.statusLabel, ordered: o.status === 'draft' ? '—' : day(fmtDOfIso(o.orderedOn!, 2026)),
+      expected: o.status === 'received' ? 'Delivered' : o.expectedOn ? day(fmtDOfIso(o.expectedOn, 2026)) : 'To confirm', need: o.neededFor ? `${o.neededFor.code} · ${o.neededFor.name}` : '—',
       risk: o.late ? 'Activity already started — delivery is late' : o.neededFor?.startText ? `Needed from ${o.neededFor.startText}` : '', canSubmit: o.status === 'draft', canApprove: o.status === 'awaiting_approval',
     }))).toEqual(g.rows.map((r: any) => ({ ...r, ordered: day(r.ordered), expected: day(r.expected), risk: ACTUAL_STRIP_FIX[r.risk] ?? r.risk })));
     const committed = pos.filter((o) => o.status !== 'cancelled' && o.status !== 'draft').reduce((a, o) => a + o.valueEur, 0);
@@ -326,7 +326,7 @@ describe('purchase orders (08 §2)', () => {
       const d = g.drawers[o.number];
       expect(o.lines.map((l) => ({ ref: l.ref, name: l.name, qty: n(l.orderedQty), recv: n(l.receivedQty), price: $(l.unitPriceEur), total: $(l.totalEur), pstatus: l.partStatusLabel }))).toEqual(d.lines);
       expect(d.meta.map((m: any) => m.v)).toEqual([f(o.valueEur / 1000), o.status === 'draft' ? 'Not yet' : d.meta[1].v, d.meta[2].v, o.neededFor ? `${o.neededFor.code} · ${o.neededFor.name}` : '—', o.deliveryTerms]);
-      expect(day(d.meta[1].v)).toBe(o.status === 'draft' ? 'Not yet' : day(fmtDOfIso(o.orderedOn!)));
+      expect(day(d.meta[1].v)).toBe(o.status === 'draft' ? 'Not yet' : day(fmtDOfIso(o.orderedOn!, 2026)));
     }
     const bad = pos.flatMap((o) => o.lines.filter((l) => l.partStatus !== 'validated').map((l) => ({ o: o.number, w: `${l.ref} is ${l.partStatusLabel.toLowerCase()}` })));
     for (const o of pos) expect(g.drawers[o.number].warn).toBe(bad.filter((b) => b.o === o.number).length ? bad.filter((b) => b.o === o.number).map((b) => b.w).join(' · ') + ' — resolve in PLM before this order is released.' : '');
@@ -348,7 +348,7 @@ describe('deliveries & goods receipt (08 §3)', () => {
       return;
     }
     expect(rs.map((r) => ({
-      id: r.number, po: r.poNumber, supplier: r.supplier, date: day(fmtDOfIso(r.date!)), note: r.supplierDeliveryNote ?? '—', lines: r.lines.map((l) => l.ref).join(', '),
+      id: r.number, po: r.poNumber, supplier: r.supplier, date: day(fmtDOfIso(r.date!, 2026)), note: r.supplierDeliveryNote ?? '—', lines: r.lines.map((l) => l.ref).join(', '),
       qty: `${n(r.totals.delivered)} / ${n(r.totals.ordered)}`, acc: n(r.totals.accepted), rej: r.totals.rejected ? n(r.totals.rejected) : '—', status: r.statusLabel, loc: r.putAway, qc: r.qc.result ?? '—',
     }))).toEqual(g.rows.map((r: any) => ({ ...r, date: day(r.date) })));
     const rej = rs.reduce((a, r) => a + r.totals.rejected, 0);
@@ -359,7 +359,7 @@ describe('deliveries & goods receipt (08 §3)', () => {
     for (const r of rs) {
       const d = g.drawers[r.number];
       expect(d.meta.map((m: any) => m.v)).toEqual([r.poNumber, r.supplierDeliveryNote ?? '—', d.meta[2].v, r.carrier ?? '—', r.photoCount ? `${r.photoCount} attached` : 'None']);
-      expect(day(d.meta[2].v)).toBe(day(fmtDOfIso(r.date!)));
+      expect(day(d.meta[2].v)).toBe(day(fmtDOfIso(r.date!, 2026)));
       expect(d.qc.map((x: any) => x.v)).toEqual([r.qc.by ?? '—', r.qc.result ?? '—', r.qc.remarks ?? '—']);
       expect(r.documents).toEqual(d.docs);
       expect(r.lines.map((l) => ({ ref: l.ref, name: l.name, o: n(l.ordered), d: n(l.delivered), a: n(l.accepted), r: l.rejected ? n(l.rejected) : '—', loc: l.location }))).toEqual(d.lines);
@@ -383,7 +383,7 @@ describe('stock & storages (08 §4)', () => {
       const ps = pinSummary(pins[r.ref]);
       return {
         ref: r.ref, name: r.name, loc: r.location, locType: r.locationTypeLabel, onHand: n(r.onHand), reserved: r.reserved ? `${n(r.reserved)}${r.reservedForShort ? ' · ' + r.reservedForShort : ''}` : '—',
-        avail: n(r.available), min: r.minQty ? String(r.minQty) : '—', below: r.belowMin ? true : (r.minQty ? false : 0), value: $(r.valueEur), source: r.sourceLabel, last: day(fmtDOfIso(r.lastMovementOn)),
+        avail: n(r.available), min: r.minQty ? String(r.minQty) : '—', below: r.belowMin ? true : (r.minQty ? false : 0), value: $(r.valueEur), source: r.sourceLabel, last: day(fmtDOfIso(r.lastMovementOn, 2026)),
         pinned: !!ps, pinnedText: ps ? `Keep for the installed base · ${ps.machines} ${ps.machines === 1 ? 'machine' : 'machines'} · ${ps.ecos.join(', ')}` : '',
       };
     })).toEqual(G.stock.rows.map((r: any) => ({ ...e4(r), last: day(r.last) })));
@@ -398,7 +398,7 @@ describe('stock & storages (08 §4)', () => {
       const d = (await getStockPosition(r.id))!;
       const g = G.stock.drawers[String(i)];
       expect(g.meta.map((m: any) => m.v)).toEqual([n(d.onHand), d.reserved ? `${d.reserved}${d.reservedForShort ? ' · ' + d.reservedForShort : ''}` : '—', n(d.available), d.minQty || '—', $(d.unitCostEur), g.meta[5].v]);
-      expect(day(g.meta[5].v)).toBe(day(fmtDOfIso(d.lastMovementOn)));
+      expect(day(g.meta[5].v)).toBe(day(fmtDOfIso(d.lastMovementOn, 2026)));
       expect(d.movements.map((m) => ({ when: m.when, type: m.typeLabel, qty: m.qty, where: m.where, who: m.who }))).toEqual(g.moves);
       expect(d.transferTargets.map((t) => t.shortLabel)).toEqual(g.targets);
     }
@@ -413,7 +413,7 @@ describe('sourcing — RFQs, invoices 3-way match, suppliers (08 §1)', () => {
   it('RFQ rows, KPI inputs and drawers (per role) reproduce rfqRows / rfqKpis / rfqVals', async () => {
     const rfqs = await listRfqs();
     expect(rfqs.map((r) => ({
-      id: r.number, title: r.title, part: r.partRef, qty: r.quantity, due: day(fmtDOfIso(r.replyDueOn)), owner: r.owner,
+      id: r.number, title: r.title, part: r.partRef, qty: r.quantity, due: day(fmtDOfIso(r.replyDueOn, 2026)), owner: r.owner,
       quotesText: r.quotes.length ? `${r.quotes.length} quotes · from ${$(r.bestUnitPriceEur!)}` : 'No quote yet', rule: r.awardRuleLabel, chosenText: r.awardedTo ?? '—', status: r.statusLabel,
       canSend: r.status === 'draft', canCompare: r.status === 'open' && r.quotes.length > 1,
     }))).toEqual(G.procurement.rfqRows.map((r: any) => ({ ...r, due: day(r.due) })));
@@ -437,7 +437,7 @@ describe('sourcing — RFQs, invoices 3-way match, suppliers (08 §1)', () => {
     const dot = (s: string) => (s === 'ok' ? 'var(--color-accent)' : s === 'none' ? 'var(--color-neutral-100)' : s === 'partial' || s === 'diff' ? 'var(--color-accent-700)' : 'var(--color-neutral-700)');
     expect(inv.map((i) => ({
       id: i.number, supplier: i.supplier, poText: i.poNumber ?? '—', grText: i.receiptNumber ?? '—', amountText: $(i.amountEur), gapText: i.gapEur ? $(i.gapEur) : '—',
-      date: day(fmtDOfIso(i.invoiceDate)), dueDate: day(fmtDOfIso(i.dueDate)), status: i.statusLabel, canApprove: i.canApprove, canPartial: i.canApprovePart, m: [dot(i.match.po), dot(i.match.gr), dot('ok')],
+      date: day(fmtDOfIso(i.invoiceDate, 2026)), dueDate: day(fmtDOfIso(i.dueDate, 2026)), status: i.statusLabel, canApprove: i.canApprove, canPartial: i.canApprovePart, m: [dot(i.match.po), dot(i.match.gr), dot('ok')],
     }))).toEqual(G.procurement.invRows.map((r: any) => ({ ...r, date: day(r.date), dueDate: day(r.dueDate) })));
     const open = inv.filter((i) => i.status !== 'paid');
     expect([[open.length, $(open.reduce((a, i) => a + i.amountEur, 0))], [inv.filter((i) => i.status === 'blocked' || i.status === 'no_po').length, 'Quantity or PO mismatch'],
@@ -473,14 +473,14 @@ describe('My approvals — database-backed supply-chain and ECO kinds (08 §7.5)
     const name = PERSONA[role];
     const items: { kind: string; id: string; title: string; sub: string; when: string; who: string }[] = [];
     if (role === 'pm' || role === 'director')
-      for (const o of await poApprovalQueue('HLT-026', name)) items.push({ kind: 'Purchase order', id: o.number, title: `${o.supplier} · ${f(o.valueEur / 1000)}`, sub: o.refs.join(', '), when: day(fmtDOfIso(o.orderedOn!)), who: o.submittedBy ?? '' });
-    for (const e of await ecoApprovalQueue({ name, role })) items.push({ kind: 'ECO', id: e.number, title: e.title, sub: `${e.typeLabel} · ${e.projectNames.join(', ')}`, when: day(fmtDOfIso(e.raisedOn)), who: e.requestedBy });
+      for (const o of await poApprovalQueue('HLT-026', name)) items.push({ kind: 'Purchase order', id: o.number, title: `${o.supplier} · ${f(o.valueEur / 1000)}`, sub: o.refs.join(', '), when: day(fmtDOfIso(o.orderedOn!, 2026)), who: o.submittedBy ?? '' });
+    for (const e of await ecoApprovalQueue({ name, role })) items.push({ kind: 'ECO', id: e.number, title: e.title, sub: `${e.typeLabel} · ${e.projectNames.join(', ')}`, when: day(fmtDOfIso(e.raisedOn, 2026)), who: e.requestedBy });
     if (role === 'quality' || role === 'procurement')
-      for (const r of await qcQueue('HLT-026')) items.push({ kind: 'Delivery — quality check', id: r.number, title: `${r.supplier} · ${r.lines.map((l) => l.ref).join(', ')}`, sub: r.qc.remarks ?? '', when: day(fmtDOfIso(r.date!)), who: r.receivedBy ?? '' });
+      for (const r of await qcQueue('HLT-026')) items.push({ kind: 'Delivery — quality check', id: r.number, title: `${r.supplier} · ${r.lines.map((l) => l.ref).join(', ')}`, sub: r.qc.remarks ?? '', when: day(fmtDOfIso(r.date!, 2026)), who: r.receivedBy ?? '' });
     if (role === 'pm' || role === 'procurement')
-      for (const r of await rfqAwardQueue()) items.push({ kind: 'RFQ award', id: r.number, title: r.title, sub: `${r.quotes.length} quotes · ${r.awardRuleLabel}`, when: day(fmtDOfIso(r.replyDueOn)), who: r.owner });
+      for (const r of await rfqAwardQueue()) items.push({ kind: 'RFQ award', id: r.number, title: r.title, sub: `${r.quotes.length} quotes · ${r.awardRuleLabel}`, when: day(fmtDOfIso(r.replyDueOn, 2026)), who: r.owner });
     if (role === 'procurement' || role === 'director')
-      for (const i of await invoiceQueue()) items.push({ kind: 'Invoice — 3-way match', id: i.number, title: `${i.supplier} · ${$(i.amountEur)}`, sub: i.status === 'no_po' ? 'No purchase order referenced' : 'Receipt does not cover invoice', when: day(fmtDOfIso(i.invoiceDate)), who: 'Accounts payable' });
+      for (const i of await invoiceQueue()) items.push({ kind: 'Invoice — 3-way match', id: i.number, title: `${i.supplier} · ${$(i.amountEur)}`, sub: i.status === 'no_po' ? 'No purchase order referenced' : 'Receipt does not cover invoice', when: day(fmtDOfIso(i.invoiceDate, 2026)), who: 'Accounts payable' });
     const kinds = new Set(['Purchase order', 'ECO', 'Delivery — quality check', 'RFQ award', 'Invoice — 3-way match']);
     const order = ['Purchase order', 'ECO', 'Delivery — quality check', 'RFQ award', 'Invoice — 3-way match'];
     expect(items.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind))).toEqual(

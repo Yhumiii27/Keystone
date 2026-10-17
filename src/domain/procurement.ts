@@ -24,10 +24,11 @@ import type { Lang, T } from '@/i18n/translate';
 import { moneyEur } from '@/lib/format';
 import { BASE_CURRENCY, moneyUnitsIn, type CurrencyCode } from './currency';
 import {
-  RFQ_AWARD_ROLES, STATUS_ISO, addDaysIso, incoterm, shortDateYearOfIso,
+  RFQ_AWARD_ROLES, addDaysIso, incoterm, shortDateYearOfIso,
   type Incoterm, type MatchState, type PoStatus, type RfqStatus, type SupplierGrade, type SupplierInvoiceStatus,
 } from '@/server/db/codes';
 import type { ApprovalItem } from './approvals';
+import { yearOfIso } from './clock';
 import { parseNeedDate } from './team';
 
 // ── Rights ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -146,11 +147,11 @@ export interface InvoiceKpis {
   blocked: number;
   awaitingReceipt: number;
   approved: number;
-  /** Open invoices (not paid nor rejected) due on or before the status date + 30 days. */
+  /** Open invoices (not paid nor rejected) due on or before the business date + 30 days (R-013; the prototype's status date). */
   dueWithin30: number;
 }
 
-export function invoiceKpis(invoices: readonly InvoiceForKpi[], todayIso: string = STATUS_ISO): InvoiceKpis {
+export function invoiceKpis(invoices: readonly InvoiceForKpi[], todayIso: string): InvoiceKpis {
   const open = invoices.filter((i) => !isInvoiceClosed(i.status));
   const horizon = addDaysIso(todayIso, 30);
   return {
@@ -328,11 +329,11 @@ export interface RfqForInbox {
  * rule `^(\d+) quotes · (.+)$` translates the count but leaves the rule in English (the prototype showed
  * "3 devis · Lowest total cost of ownership").
  */
-export function rfqAwardItems(rfqs: readonly RfqForInbox[], t: T): ApprovalItem[] {
+export function rfqAwardItems(rfqs: readonly RfqForInbox[], t: T, year: number): ApprovalItem[] {
   return rfqs
     .filter((r) => r.status === 'comparing' && !r.awardedTo)
     .map((r) => {
-      const when = shortDateYearOfIso(r.replyDueOn);
+      const when = shortDateYearOfIso(r.replyDueOn, year);
       return {
         kind: 'rfq',
         id: r.number,
@@ -364,7 +365,7 @@ export const invoiceInboxSub = (i: Pick<InvoiceForInbox, 'status' | 'match'>) =>
   i.status === 'no_po' ? 'No purchase order referenced' : i.match.po === 'diff' ? 'Amount differs from PO' : 'Receipt does not cover invoice';
 
 /** Invoices blocked by the 3-way match or without PO, for procurement and the director; decided on Sourcing. */
-export function invoiceApprovalItems(invoices: readonly InvoiceForInbox[], lang: Lang): ApprovalItem[] {
+export function invoiceApprovalItems(invoices: readonly InvoiceForInbox[], lang: Lang, year: number): ApprovalItem[] {
   return invoices
     .filter((i) => isInvoiceToResolve(i.status))
     .map((i) => ({
@@ -373,7 +374,7 @@ export function invoiceApprovalItems(invoices: readonly InvoiceForInbox[], lang:
       title: `${i.supplier} · ${moneyUnitsIn(i.amountEur, i.currency ?? BASE_CURRENCY, lang)}`,
       sub: invoiceInboxSub(i),
       who: 'Accounts payable',
-      when: shortDateYearOfIso(i.invoiceDate),
+      when: shortDateYearOfIso(i.invoiceDate, year),
       whenIso: i.invoiceDate,
       href: sourcingHref({ tab: 'inv', inv: i.number }),
       decision: null,
@@ -399,9 +400,10 @@ const MAX_TEXT = 300;
 
 /**
  * Validates the New RFQ form: title, suppliers (comma, semicolon or line separated) and articles are required; the
- * reply date is a date (EN or FR; by default the status date + 20 days, R-169) not before the status date; the incoterm is a code.
+ * reply date is a date (EN or FR; by default the business date `todayIso` + 20 days, R-169, R-013) not before the business date;
+ * the incoterm is a code.
  */
-export function parseNewRfq(values: Record<string, unknown>, todayIso: string = STATUS_ISO): ParseResult<NewRfqValues> {
+export function parseNewRfq(values: Record<string, unknown>, todayIso: string): ParseResult<NewRfqValues> {
   const title = text(values.title);
   const articles = text(values.articles);
   const suppliers = text(values.suppliers).split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
@@ -410,7 +412,7 @@ export function parseNewRfq(values: Record<string, unknown>, todayIso: string = 
   if (!articles) return { ok: false, error: 'The articles are required' };
   if (title.length > MAX_TEXT || articles.length > MAX_TEXT || suppliers.length > 20 || suppliers.some((s) => s.length > 120)) return { ok: false, error: 'The text is too long' };
   const dueText = text(values.due);
-  const replyDueOn = dueText ? parseNeedDate(dueText) : newRfqDefaultDueIso(todayIso);
+  const replyDueOn = dueText ? parseNeedDate(dueText, yearOfIso(todayIso)) : newRfqDefaultDueIso(todayIso);
   if (!replyDueOn) return { ok: false, error: 'Enter the reply date as a date (e.g. 15 Oct 2026)' };
   if (replyDueOn < todayIso) return { ok: false, error: 'The reply date is before the status date' };
   const inc = text(values.incoterm) || 'DAP';
@@ -431,8 +433,8 @@ export function awardRuleTile(rfqs: readonly { status: RfqStatus; awardRule: str
   return { value: `${open.filter((r) => r.awardRule === 'pm_decides').length} / ${open.length}`, sub: 'RFQs to award decided by the project manager' };
 }
 
-/** Days from the data date to the default reply date of a new RFQ (25 Sep → 15 Oct on the seed, as the prototype). */
+/** Days from the business date to the default reply date of a new RFQ (25 Sep → 15 Oct on the seed, as the prototype). */
 export const NEW_RFQ_REPLY_DAYS = 20;
 
-/** Default "Reply due" of a new RFQ (R-169: the data date + 20 days, no longer the literal "15 Oct 2026"). */
-export const newRfqDefaultDueIso = (asOf: string = STATUS_ISO) => addDaysIso(asOf, NEW_RFQ_REPLY_DAYS);
+/** Default "Reply due" of a new RFQ (R-169: the business date + 20 days, R-013 — no longer the literal "15 Oct 2026"). */
+export const newRfqDefaultDueIso = (asOf: string) => addDaysIso(asOf, NEW_RFQ_REPLY_DAYS);

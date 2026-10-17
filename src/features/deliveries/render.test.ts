@@ -12,6 +12,7 @@ vi.mock('./actions', () => ({
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push() {}, replace() {}, prefetch() {}, refresh() {} }), usePathname: () => '/projects/HLT-026/deliveries' }));
 
 import { renderToStaticMarkup } from 'react-dom/server';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import GOLDEN from '@/domain/deliveries.golden.json';
 import { I18nProvider } from '@/i18n/client';
 import { makeT, type Lang } from '@/i18n/translate';
@@ -51,7 +52,7 @@ beforeAll(async () => {
 async function view(lang: Lang, code = 'HLT-026', q: { status?: ReceiptStatus | null; receipt?: string | null } = {}) {
   const data = await getDeliveriesScreen(code);
   const t = makeT(lang);
-  return { data, t, v: deliveriesView(code, data, { status: q.status ?? null, receipt: q.receipt ?? null }, t, lang) };
+  return { data, t, v: deliveriesView(code, data, { status: q.status ?? null, receipt: q.receipt ?? null }, t, lang, 2026) };
 }
 
 describe('Deliveries view model vs the prototype (EN and FR)', () => {
@@ -111,7 +112,7 @@ describe('Deliveries static render', () => {
   const body = async (lang: Lang, opts: { canEdit: boolean; canQc: boolean; code?: string; receipt?: string }) => {
     const code = opts.code ?? 'HLT-026';
     const { data, t, v } = await view(lang, code, { receipt: opts.receipt ?? null });
-    const forms = opts.canEdit ? Object.fromEntries(data.receipts.filter((r) => r.status === 'announced').map((r) => [r.number, registerFormDef(r, t, lang)])) : {};
+    const forms = opts.canEdit ? Object.fromEntries(data.receipts.filter((r) => r.status === 'announced').map((r) => [r.number, registerFormDef(r, DEMO_TODAY_ISO, t, lang)])) : {};
     const page = html(h(DeliveriesBody, { code, view: v, canEdit: opts.canEdit, canQc: opts.canQc, registerForms: forms, t }), lang);
     const drawer = v.drawer ? html(h(DeliveryDrawerBody, { code, d: v.drawer, canEdit: opts.canEdit, canQc: opts.canQc, register: forms[v.drawer.id] ?? null, t }), lang) : '';
     return { page, drawer };
@@ -180,7 +181,7 @@ describe('Deliveries static render', () => {
 describe('forms', () => {
   it('Announce a delivery: the orders still expecting goods (Harbor Line), put-away default = the Le Havre site store', async () => {
     const { data } = await view('en');
-    const f = announceFormDef(data.announceable, data.putAway, makeT('en'), 'en');
+    const f = announceFormDef(data.announceable, data.putAway, makeT('en'), 'en', 2026);
     expect([f.title, f.submit, f.fields.map((x) => x.id)]).toEqual(['Announce a delivery', 'Announce', ['po', 'expected', 'carrier', 'location']]);
     expect(f.fields[0].options).toEqual([
       { value: 'PO-1052', label: 'PO-1052 · Halvorsen Cranes · EQ-CRN-250T × 2 · 12 Oct' },
@@ -188,7 +189,7 @@ describe('forms', () => {
       { value: 'PO-1071', label: 'PO-1071 · Brightline Electrics · LT-HB-200W × 260 · 19 Oct' },
     ]);
     expect(f.fields[3]).toMatchObject({ defaultValue: 'Magasin chantier — Le Havre', options: expect.not.arrayContaining([{ value: 'Zone quarantaine QC — Lyon', label: 'Zone quarantaine QC — Lyon' }]) });
-    const fr = announceFormDef(data.announceable, data.putAway, makeT('fr'), 'fr');
+    const fr = announceFormDef(data.announceable, data.putAway, makeT('fr'), 'fr', 2026);
     expect([fr.title, fr.submit, fr.fields.map((x) => x.label), fr.fields[1].placeholder]).toEqual([
       'Annoncer une livraison', 'Annoncer', ['Commande d’achat', 'Attendue le', 'Transporteur', 'Rangement'], 'Date attendue de la commande',
     ]);
@@ -197,7 +198,7 @@ describe('forms', () => {
   it('Register receipt: delivered on (the status date), carrier and note as announced, one quantity per article', async () => {
     const { data } = await view('fr');
     const r = data.receipts.find((x) => x.number === 'BL-2026-0540')!;
-    const { def, context } = registerFormDef(r, makeT('fr'), 'fr');
+    const { def, context } = registerFormDef(r, DEMO_TODAY_ISO, makeT('fr'), 'fr');
     expect(context).toBe('BL-2026-0540 · Cotswold Fire Systems');
     expect(def.fields.map((f) => [f.id, f.label, f.defaultValue, f.required ?? false])).toEqual([
       ['date', 'Livré le', '25 sept. 2026', true],

@@ -4,6 +4,7 @@ import 'server-only';
 // Gantt from the same schedule data). One call per page.
 import type { ClientTab } from '@/domain/rexclient';
 import type { Lang, T } from '@/i18n/translate';
+import { businessToday } from '@/server/clock';
 import { getBillingPlan } from '@/server/dal/cashflow';
 import { getClientPortal } from '@/server/dal/client';
 import { getRex } from '@/server/dal/rex';
@@ -15,10 +16,10 @@ export async function getRexScreen(code: string, t: T, lang: Lang): Promise<RexS
 }
 
 export async function getClientScreen(code: string, tab: ClientTab, t: T, lang: Lang): Promise<ClientScreenView> {
-  const [portal, schedule, billing] = await Promise.all([getClientPortal(code), getScheduleData(code), getBillingPlan(code)]);
+  const [portal, schedule, billing, today] = await Promise.all([getClientPortal(code), getScheduleData(code), getBillingPlan(code), businessToday()]);
   const view = clientScreenView(
     {
-      code, tab, portal, billing: billing ? { internal: billing.internal } : null,
+      code, tab, portal, billing: billing ? { internal: billing.internal } : null, today,
       schedule: schedule && { header: schedule.header, milestones: schedule.milestones, pv: schedule.pv, ev: schedule.ev, bac: schedule.bac },
     },
     t,

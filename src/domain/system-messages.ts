@@ -52,6 +52,12 @@ const MESSAGES = {
   'signin.refused': def({ reason: 'label' }, (p) => `Sign-in refused · ${p.reason}`, (p, f) => `Connexion refusée · ${f.label(p.reason)}`),
   'signin.signedOut': def({}, () => 'Signed out', () => 'Déconnexion'),
   'signin.activeRole': def({ from: 'label', to: 'label' }, (p) => `Active role · ${p.from} → ${p.to}`, (p, f) => `Rôle actif · ${f.label(p.from)} → ${f.label(p.to)}`),
+  // R-121 (D-4 'a'): a risk raised by a lead from a client prerequisite late at J-15 (activity feed, src/server/dal/prerequisite-alerts.ts).
+  'site.prerequisiteRiskRaised': def(
+    { risk: 'ref', prerequisite: 'data' },
+    (p) => `Raised ${p.risk} from a late client prerequisite · ${p.prerequisite}`,
+    (p, f) => `Risque ${p.risk} ouvert depuis un prérequis client en retard · ${f.data(p.prerequisite)}`,
+  ),
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

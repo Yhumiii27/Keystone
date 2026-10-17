@@ -2,7 +2,7 @@
 // The person shown is the viewer (the prototype always showed Hélène Sauvage — 00 §7.16, 10 OQ17); R-049 (R-9 answer b):
 // the director may open anyone's work with `?person=Full Name`, a department head the people of their department, a PM the
 // people of the projects they lead — the person chip then becomes a switcher of those people. Any other `?person=` is ignored
-// with a note. URL state: `?view=board|calendar` (default list), `?week=n` (calendar window, 0 = 21 Sep – 2 Oct).
+// with a note. URL state: `?view=board|calendar` (default list), `?week=n` (calendar window, 0 = the business date's week and the next — 21 Sep – 2 Oct on the demo data set, R-013).
 // Primary "Log time" opens the person's first open task. Outside the workspace (every role but director and
 // member) the page renders read-only under the shell's banner.
 import { CalendarBlank, Eye, Kanban, ListBullets, Plus } from '@phosphor-icons/react/dist/ssr';

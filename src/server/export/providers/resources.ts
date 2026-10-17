@@ -5,7 +5,6 @@
 // the workspace); a client exports only its own projects' rows. Weekly loads are fractions (1 = 100 % of the hours).
 import { matchesFilter as matchesRequestFilter, isRequestFilter, isSentRequest, deptOfSlug, REQUEST_FILTERS } from '@/domain/requests';
 import { parseEffectiveDate, parseSkillFilter } from '@/domain/hr';
-import { STATUS_ISO } from '@/server/db/codes';
 import { leverLabel, type WhatIfResult } from '@/domain/whatif';
 import { getRateCard, getLeaveCalendar, getSkillsMatrix } from '@/server/dal/hr';
 import { getProject } from '@/server/dal/projects';
@@ -15,12 +14,17 @@ import { getLaborCost, getPortfolioLaborCost, getProjectTeam, getResourcePool, g
 import { zoneLabel } from '@/server/dal/shell';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
+import { yearOfIso } from '@/domain/clock';
+import { loadWindow, parseLoadWeekParam } from '@/domain/load-window';
 import { col, compact, filterLine, isoOf, kpiSheet, param, sheet } from './common';
 import { projectFilter } from './scope';
 import { canViewDepartmentApprovals } from '@/domain/rights';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { dataText } from '@/i18n/data-text';
 
+
+/** R-085: the load window the screen shows (`?week=` of the page, validated as on screen; none = the current window). */
+const windowOf = (ctx: ExportContext) => loadWindow(ctx.today, parseLoadWeekParam(param(ctx, 'week'), ctx.today));
 
 function loadSheet(ctx: ExportContext, name: string, weeks: ResourceWeek[], people: PoolPerson[]): ExportSheet {
   const { t } = ctx;
@@ -42,9 +46,9 @@ function requestSheet(ctx: ExportContext, name: string, rows: ResourceRequestRow
     col('sent', t('Sent'), 'date'), col('response', t('Response'), 'text', 36), col('task', t('Task'), 'text', 9),
   ], rows.map((r) => ({
     id: r.id, project: r.projectCode, title: dataText(r.title, ctx.lang), resource: t(r.resource), department: t(r.department), activity: r.activity ? `${r.activity.code} · ${dataText(r.activity.name, ctx.lang)}` : '',
-    hours: r.hours, start: isoOf(r.start) ?? t(r.start), due: isoOf(r.due) ?? t(r.due), priority: t(r.priority === 'high' ? 'High' : r.priority === 'low' ? 'Low' : 'Medium'), status: t(r.statusLabel),
+    hours: r.hours, start: isoOf(r.start, yearOfIso(ctx.today)) ?? t(r.start), due: isoOf(r.due, yearOfIso(ctx.today)) ?? t(r.due), priority: t(r.priority === 'high' ? 'High' : r.priority === 'low' ? 'Low' : 'Medium'), status: t(r.statusLabel),
     // S-7: a draft (status "Draft") has no sent date — its stored date is when the what-if levelling drafted it.
-    requestedBy: r.requestedBy, sent: isSentRequest(r) ? (isoOf(r.sent) ?? isoOf(r.sentText) ?? t(r.sentText)) : null, response: t(r.response), task: r.taskId ?? '',
+    requestedBy: r.requestedBy, sent: isSentRequest(r) ? (isoOf(r.sent, yearOfIso(ctx.today)) ?? isoOf(r.sentText, yearOfIso(ctx.today)) ?? t(r.sentText)) : null, response: t(r.response), task: r.taskId ?? '',
   })));
 }
 
@@ -65,7 +69,7 @@ async function resourcesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
   // R-086 (R-2 a): the labour cost of the projects in execution of the displayed zone, as on screen.
   const [pool, departments, pending, labor, zoneText] = await Promise.all([
-    getResourcePool(), listDepartments(), listResourceRequests({ status: 'pending' }), getPortfolioLaborCost(ctx.zone), zoneLabel(ctx.zone),
+    getResourcePool(windowOf(ctx).weeks), listDepartments(), listResourceRequests({ status: 'pending' }), getPortfolioLaborCost(ctx.zone), zoneLabel(ctx.zone),
   ]);
   const caps = departments.filter((d) => d.capacityH != null && d.demandH != null).sort((a, b) => (a.capacityPosition ?? 0) - (b.capacityPosition ?? 0));
   return {
@@ -85,7 +89,7 @@ async function projectResourcesWorkbook(ctx: ExportContext): Promise<ExportWorkb
   if (!ctx.project) return null;
   const { t } = ctx;
   const code = ctx.project.code;
-  const [pool, team, labor, pending, all] = await Promise.all([getResourcePool(), getProjectTeam(code), getLaborCost(code), listResourceRequests({ projectCode: code, status: 'pending' }), listResourceRequests({ projectCode: code })]);
+  const [pool, team, labor, pending, all] = await Promise.all([getResourcePool(windowOf(ctx).weeks), getProjectTeam(code), getLaborCost(code), listResourceRequests({ projectCode: code, status: 'pending' }), listResourceRequests({ projectCode: code })]);
   const members = new Set(team.map((m) => m.name));
   const people = pool.people.filter((m) => members.has(m.name));
   return {
@@ -211,7 +215,7 @@ async function skillsWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
  */
 async function leaveWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
-  const data = await getLeaveCalendar();
+  const data = await getLeaveCalendar('FR', windowOf(ctx).weeks);
   return {
     title: t('Leave & working calendar'),
     sheets: [
@@ -229,8 +233,8 @@ async function leaveWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
 async function ratesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
   // R-083 (A-10): the grid in force on the card's date (`?on=`, default the business date) and every dated version.
-  const on = parseEffectiveDate(param(ctx, 'on')) ?? STATUS_ISO;
-  const card = await getRateCard(on);
+  const card = await getRateCard(parseEffectiveDate(param(ctx, 'on')) ?? undefined);
+  const on = card.on;
   const masked = ctx.ratesMasked;
   return {
     title: t('Rate cards'),

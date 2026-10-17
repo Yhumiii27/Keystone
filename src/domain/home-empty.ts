@@ -6,9 +6,9 @@ import { greeting, type HomeView, type Persona } from './home';
 export const NO_PROJECT_TITLE = 'No project yet';
 export const NO_PROJECT_SUB = 'Projects appear here once they are created';
 
-export function noProjectHome(persona: Persona): HomeView {
+export function noProjectHome(persona: Persona, today: string): HomeView {
   return {
-    ...greeting(persona),
+    ...greeting(persona, today),
     kpis: [],
     left: { title: 'My projects', rows: [{ title: NO_PROJECT_TITLE, sub: NO_PROJECT_SUB, tag: '', tagClass: '', href: '' }] },
     right: { title: 'Waiting for me', rows: [] },

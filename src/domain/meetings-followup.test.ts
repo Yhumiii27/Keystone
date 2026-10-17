@@ -54,10 +54,10 @@ describe('follow-up title and dates', () => {
 
 describe('parseMinutesLine — activity (S-12 a)', () => {
   it('an action may name a plan activity code; other note types ignore it; a malformed code is refused', () => {
-    expect(parseMinutesLine({ type: 'action', text: 'Weld check', owner: 'J. Wagner', due: '1 Oct', activity: ' A1250 ' })).toMatchObject({ ok: true, value: { activity: 'A1250' } });
-    expect(parseMinutesLine({ type: 'action', text: 'Weld check', activity: '' })).toEqual({ ok: true, value: { type: 'action', text: 'Weld check', owner: null, due: null } });
-    expect(parseMinutesLine({ type: 'info', text: 'Note', activity: 'A1250' })).toEqual({ ok: true, value: { type: 'info', text: 'Note', owner: null, due: null } });
-    for (const activity of ['A1250; drop table', 'a b', 'x'.repeat(41), '-A1']) expect(parseMinutesLine({ type: 'action', text: 'T', activity })).toEqual({ ok: false, error: 'Unknown activity' });
-    expect(parseMinutesLine({ type: 'action', text: 'T', activity: 42 })).toMatchObject({ ok: true });
+    expect(parseMinutesLine({ type: 'action', text: 'Weld check', owner: 'J. Wagner', due: '1 Oct', activity: ' A1250 ' }, 2026)).toMatchObject({ ok: true, value: { activity: 'A1250' } });
+    expect(parseMinutesLine({ type: 'action', text: 'Weld check', activity: '' }, 2026)).toEqual({ ok: true, value: { type: 'action', text: 'Weld check', owner: null, due: null } });
+    expect(parseMinutesLine({ type: 'info', text: 'Note', activity: 'A1250' }, 2026)).toEqual({ ok: true, value: { type: 'info', text: 'Note', owner: null, due: null } });
+    for (const activity of ['A1250; drop table', 'a b', 'x'.repeat(41), '-A1']) expect(parseMinutesLine({ type: 'action', text: 'T', activity }, 2026)).toEqual({ ok: false, error: 'Unknown activity' });
+    expect(parseMinutesLine({ type: 'action', text: 'T', activity: 42 }, 2026)).toMatchObject({ ok: true });
   });
 });

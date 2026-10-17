@@ -15,12 +15,15 @@ import { CONTRACTOR_CREW, SITE_CURRENCIES, siteLineEditable, siteLineRemovable, 
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
 import {
-  STATUS_ISO, cursusClearance, cursusSyncStatus, cursusVaccination, cursusVerdict, cursusVisa, equipmentSource, shortDateOfIso, stampText,
+  cursusClearance, cursusSyncStatus, cursusVaccination, cursusVerdict, cursusVisa, equipmentSource, shortDateOfIso, stampText,
 } from '@/server/db/codes';
 import type { SiteData } from '@/server/dal/site';
 import type { SiteSheetDefaults } from '@/server/dal/site-sheet';
 import { cursusChantierUrl, cursusEmployeeUrl } from '@/server/integrations/cursus/links';
 import { vigieHseListUrl, vigieReportIncidentUrl } from '@/server/integrations/vigie/links';
+import { screenHref } from '@/config/screens';
+import { canRaisePrerequisiteRisk, prerequisiteRiskDraft } from '@/domain/prerequisite-alerts';
+import { riskFormDef } from '@/features/risks/forms';
 import { conflictText, dataText, incidentText, siteText, weatherText } from './i18n';
 import { CURSUS_CARD_ID, qualityNcrHref, screenOf, siteHref, sitePunchHref } from './links';
 import { fieldsText } from '@/i18n/data-text';
@@ -62,7 +65,15 @@ export interface ReadyView {
     /** R-118: the line as the page shows it — the step sends it back (a line replaced at the same position is refused). */
     stamp: string;
     entry: LineEntry | null;
+    /** R-121: the risk raised from it ("R-21", link to the register's drawer); null until then. */
+    risk: { number: string; href: string } | null;
+    /** R-121 (D-4 'a'): "Raise as a risk" — the "New risk" values proposed (late, no risk yet, a lead viewing); null otherwise. */
+    raise: FormValues | null;
+    /** The row the J-15 notification links to (`?prereq=`): marked, and its "Raise as a risk" opened. */
+    focus: boolean;
   }[];
+  /** R-121: the "New risk" form (English definition, translated by the dialog) for "Raise as a risk"; null when not offered. */
+  raiseForm: FormDef | null;
   equip: {
     position: number; name: string; src: string; srcClass: string; status: string; tagClass: string; note: string; canConfirm: boolean;
     /** R-118: the line as the page shows it — "Confirm" sends it back. */
@@ -189,8 +200,19 @@ function lineEntry(kind: SiteLineKind, line: { stamp: string; status?: string; a
   return { values, stamp: line.stamp, editable: siteLineEditable(kind, line), removable: siteLineRemovable(kind, line) };
 }
 
-function readyView(code: string, d: SiteData, t: T, lang: Lang, entry: boolean): ReadyView {
+/**
+ * R-121 (D-4 'a'): what "Raise as a risk" needs — given for a lead of the project who may edit its Site and Risk register only:
+ * the "New risk" form's owners and active categories, and the PM of record proposed as owner.
+ */
+export interface RaiseRiskContext {
+  owners: string[];
+  categories: { code: string; label: string }[];
+  pmName: string | null;
+}
+
+function readyView(code: string, d: SiteData, t: T, lang: Lang, entry: boolean, raise: RaiseRiskContext | null, focus: number | null): ReadyView {
   const s = d.sheet;
+  const categoryCodes = raise?.categories.map((c) => c.code) ?? [];
   return {
     kpis: readinessKpis(factsOf(d), d.go).map((k) => kpiView(k, t, lang)),
     go: {
@@ -217,8 +239,12 @@ function readyView(code: string, d: SiteData, t: T, lang: Lang, entry: boolean):
         step: step && { to: step.to, label: t(step.label) },
         stamp: p.stamp,
         entry: entry ? lineEntry('prerequisite', p, { title: p.title, activity: p.activityCode, needed: t(siteDateText(p.neededBy)), evidence: p.evidence }) : null,
+        risk: p.riskNumber ? { number: p.riskNumber, href: `${screenHref('risks', { code })}?risk=${encodeURIComponent(p.riskNumber)}` } : null,
+        raise: raise && canRaisePrerequisiteRisk(p, d.today) ? prerequisiteRiskDraft(p, { pmName: raise.pmName, owners: raise.owners, categories: categoryCodes }, t) : null,
+        focus: focus === p.position,
       };
     }),
+    raiseForm: raise ? riskFormDef(raise.owners, raise.categories) : null,
     equip: d.equipment.map((e) => ({
       position: e.position, name: dataText(e.name, lang), src: t(e.sourceLabel), srcClass: equipmentSourceTagClass(e.source), status: t(e.statusLabel), tagClass: siteTagClass(e.statusLabel),
       note: fieldsText(e.note, t, lang), canConfirm: e.status === 'pending', stamp: e.stamp,
@@ -375,7 +401,7 @@ export interface EntryContext {
 export function siteView(
   code: string,
   data: SiteData | null,
-  opts: { tab: SiteTab; today?: string; punch?: 'site' | 'all'; arbiter?: ConflictArbiter | null; entry?: EntryContext | null },
+  opts: { tab: SiteTab; punch?: 'site' | 'all'; arbiter?: ConflictArbiter | null; entry?: EntryContext | null; raise?: RaiseRiskContext | null; prereq?: number | null },
   t: T,
   lang: Lang,
 ): SiteView {
@@ -394,9 +420,9 @@ export function siteView(
     empty: null,
     prepare: null,
     entry: entry && sheetEntry(data, entry, t, lang),
-    ready: readyView(code, data, t, lang, !!entry),
+    ready: readyView(code, data, t, lang, !!entry, opts.raise ?? null, opts.prereq ?? null),
     team: teamView(code, data, t, lang, opts.arbiter ?? null, entry),
-    exec: execView(code, data, t, lang, opts.today ?? STATUS_ISO, opts.punch ?? 'site'),
+    exec: execView(code, data, t, lang, data.today, opts.punch ?? 'site'),
   };
 }
 
@@ -509,11 +535,11 @@ function sheetEntry(d: SiteData, entry: EntryContext, t: T, lang: Lang): SheetEn
 }
 
 /**
- * The header primary's form (AF.site): weather codes as values, the status date as the default date. NEW-SITE-2 'a' (R-122):
+ * The header primary's form (AF.site): weather codes as values, the business date `today` (R-013) as the default date. NEW-SITE-2 'a' (R-122):
  * no HSE field any more — `incidentUrl` (Vigie's "report an incident" page, prefilled with the project and the site) is the
  * note under the fields, "HSE incident? Declare it in Vigie".
  */
-export function dailyReportFormDef(t: T, lang: Lang, today: string = STATUS_ISO, incidentUrl?: string): FormDef {
+export function dailyReportFormDef(t: T, lang: Lang, today: string, incidentUrl?: string): FormDef {
   return {
     title: t('Daily report'),
     submit: t('Save report'),

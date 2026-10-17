@@ -6,7 +6,7 @@ import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { parseAssignmentQuantities } from '@/domain/assignments';
 import { BUILTIN_CALENDARS, BUILTIN_CALENDAR_BY_CODE, WorkCalendar } from '@/domain/calendar';
 import { DEFAULT_PROJECT_CALENDAR } from '@/domain/ch4-defaults';
-import { isoOfDisplayDate } from '../codes';
+import { isoOfDemoDate } from '../codes';
 import { activities, activityAssignments, baselineActivities, baselines, calendars, persons, projectControls, projects, wbsNodes } from '../schema';
 import type { Tx } from '../types';
 import { newId } from './context';
@@ -39,11 +39,11 @@ async function seedBaselineSnapshots(tx: Tx): Promise<void> {
     const existing = await tx.select({ id: baselines.id, code: baselines.code }).from(baselines).where(eq(baselines.projectId, c.projectId));
     let bl1 = existing.find((b) => b.code === 'BL1')?.id;
     if (!bl1) {
-      const finish = isoOfDisplayDate(c.finish);
+      const finish = isoOfDemoDate(c.finish);
       if (!finish) continue;
       bl1 = newId();
       await tx.insert(baselines).values({
-        id: bl1, projectId: c.projectId, code: 'BL1', name: 'Approved baseline', setOn: isoOfDisplayDate(c.setOn), bacKeur: c.bac, finishDate: finish, state: 'current',
+        id: bl1, projectId: c.projectId, code: 'BL1', name: 'Approved baseline', setOn: isoOfDemoDate(c.setOn), bacKeur: c.bac, finishDate: finish, state: 'current',
         position: 1, source: 'seed',
       });
     }

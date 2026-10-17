@@ -65,6 +65,9 @@ import d8Connectors from './d8-connectors.json';
 import d8DocsClientPortfolio from './d8-docs-client-portfolio.json';
 import d8WorkPlanning from './d8-work-planning.json';
 import d8SiteQuality from './d8-site-quality.json';
+// Delivery 9: one file per lot.
+import d9LoadWindow from './d9-load-window.json';
+import d9PrereqAlert from './d9-prereq-alert.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -131,4 +134,6 @@ export const EXTRA_FR: Record<string, string> = {
   ...d8DocsClientPortfolio,
   ...d8WorkPlanning,
   ...d8SiteQuality,
+  ...d9PrereqAlert,
+  ...d9LoadWindow,
 };

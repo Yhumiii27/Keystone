@@ -2,6 +2,7 @@ import 'server-only';
 // Portfolio DAL — Portfolio overview (docs/spec/03 §4) and My projects (§2). Composes the projects, planning
 // and people DALs with the pure logic of src/domain/portfolio.ts. Strings are EN source strings with money
 // formatted for `lang`: render them through t().
+import { businessToday } from '@/server/clock';
 import type { Lang } from '@/i18n/translate';
 import {
   inExecution, overviewMetrics, portfolioKpis, portfolioTotals, myProjectsModel,
@@ -30,6 +31,8 @@ export interface PortfolioOverview {
   kpis: KpiView[];
   /** "Needs attention" items computed by rules (R-130, NEW-D1-1), filtered by zone when they concern a project. */
   alerts: PortfolioAlert[];
+  /** Business date (ISO, R-013): the fiscal year of the card hint. */
+  today: string;
 }
 
 const inZone = (p: Pick<ProjectRow, 'zone'>, zone: ZoneKey | null) => !zone || p.zone === zone;
@@ -40,14 +43,14 @@ const inZone = (p: Pick<ProjectRow, 'zone'>, zone: ZoneKey | null) => !zone || p
  * PROJECTS seed (the six projects with planning data, WSA-044 in APD included).
  */
 export async function getPortfolioOverview(zone: ZoneKey | null, lang: Lang): Promise<PortfolioOverview> {
-  const [all, th] = await Promise.all([listProjects(), healthThresholds()]);
+  const [all, th, today] = await Promise.all([listProjects(), healthThresholds(), businessToday()]);
   // A-13: one health rule with the Settings thresholds (the same verdict as `ProjectRow.health`).
   const rows = all.filter((p) => inExecution(p) && inZone(p, zone)).map((p) => ({ ...p, metrics: overviewMetrics(p, th) }));
   const totals = portfolioTotals(rows);
   const zoneOf = new Map(all.map((p) => [p.code, p.zone]));
   // R-130 (NEW-D1-1): alerts computed by rules at the data date (were the prototype's four fixed texts).
   const alerts = (await getPortfolioAlerts(lang)).filter((a) => !a.code || !zone || zoneOf.get(a.code) === zone);
-  return { rows, totals, kpis: portfolioKpis(totals, lang, th), alerts };
+  return { rows, totals, kpis: portfolioKpis(totals, lang, th), alerts, today };
 }
 
 /** Every task (assignee full name, status, project short code) for the "open tasks" indicators. */

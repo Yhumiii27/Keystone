@@ -32,7 +32,7 @@ describe('getScheduleData', () => {
       milestones: (pd.MILES as [string, number, number, string][]).map(([name, b, fc, st]) => ({ name, baselineMonth: b, forecastMonth: fc, status: STATUS[st], statusLabel: st })),
       // Delivery 7 (R-073): the progression curve reads PV / EV computed from the activities and the cost-loaded BL1 (the
       // evm DAL, tested in src/server/dal/cost-control.test.ts); the seeded series are no longer read.
-      pv: d!.pv, ev: d!.ev, bac: pd.BAC,
+      pv: d!.pv, ev: d!.ev, bac: pd.BAC, year: 2026,
     });
     expect(scheduleView(d!)).toEqual(want);
     const evm = (await getProjectEvm(code))!;

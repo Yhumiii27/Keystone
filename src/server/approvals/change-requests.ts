@@ -5,6 +5,7 @@ import 'server-only';
 // control (the director, STEP_DECIDER — no persona holds it, 07 OQ2). Decided inline through the Change control
 // writer `decideChangeStep` (src/features/myapprovals/actions.ts), status derived from the chain.
 import { changeRequestItems } from '@/domain/approvals';
+import { yearOfIso } from '@/domain/clock';
 import { listChangeRequestDetails } from '@/server/dal/changes';
 import type { ApprovalProvider } from './types';
 
@@ -12,9 +13,9 @@ export const changeRequestProvider: ApprovalProvider = {
   kind: 'cr',
   scope: 'project',
   source: 'db',
-  async items({ viewer, project, lang }) {
+  async items({ viewer, project, lang, today }) {
     if (!project) return [];
-    return changeRequestItems(await listChangeRequestDetails(project.code), viewer, project.code, lang);
+    return changeRequestItems(await listChangeRequestDetails(project.code), viewer, project.code, lang, yearOfIso(today));
   },
   // Steps of the project's change requests the viewer decided in Keystone (the seed carries no decider).
   async decided({ viewer, project }) {

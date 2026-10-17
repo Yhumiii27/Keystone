@@ -62,8 +62,10 @@ describe('stored Settings defaults (R-170)', () => {
     for (const bad of [-1, 'x', null, 2_000_000]) expect(parseSettingsDefaults({ ...DOC, change: { ccbThresholdKeur: bad } })).toBeNull();
   });
 
-  it('codes a public holiday by its 2026 date', () => {
-    expect(holidayCode('14 Jul · Fête nationale')).toBe('2026-07-14');
-    expect(holidayCode('Fête locale')).toBe('fete_locale');
+  it('codes a public holiday by its date in the given year (the seed: 2026)', () => {
+    expect(holidayCode('14 Jul · Fête nationale', 2026)).toBe('2026-07-14');
+    expect(holidayCode('Fête locale', 2026)).toBe('fete_locale');
+    // R-013: an entry added in Settings is coded in the business year.
+    expect(holidayCode('14 Jul · Fête nationale', 2027)).toBe('2027-07-14');
   });
 });

@@ -8,9 +8,11 @@ import 'server-only';
 // person on it (`nameSourcedPerson`), which reassigns the task and completes the request.
 import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { workdayOffsetOf } from '@/domain/clock';
+import { businessToday } from '@/server/clock';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import {
-  STATUS_ISO, addDaysIso, dayLabelOfIso, dayOffsetOfIso, isoOfDayOffset, requestStatus, shortDateOfIso, stage,
+  addDaysIso, dayLabelOfIso, dayOffsetOfIso, isoOfDayOffset, requestStatus, shortDateOfIso, stage,
   type Priority, type RequestEventAction, type RequestStatus, type StageCode,
 } from '@/server/db/codes';
 import { findPerson, nameOf, nextNumber, recordActivity, requirePerson, requireProject, writeAudit } from '@/server/db/helpers';
@@ -265,7 +267,7 @@ export interface NewRequestInput {
   dueDay?: number;
   priority: Priority;
   note?: string;
-  /** Business date of sending (default the status date). */
+  /** Business date of sending (default the business date, R-013). */
   sentOn?: string;
   /** Chapter 4 (S-7): create a DRAFT (not sent to the department) — what-if "Apply"; `sendDraftRequest` sends it. */
   draft?: boolean;
@@ -273,7 +275,8 @@ export interface NewRequestInput {
   scenarioId?: string | null;
 }
 
-const today = (d?: string) => d ?? STATUS_ISO;
+/** The date given, else the business date (R-013), read inside the writer's transaction. */
+const dayOf = async (tx: Tx, d?: string) => d ?? businessToday(tx);
 
 async function loadRequest(tx: Tx, number: string) {
   const [r] = await tx.select().from(resourceRequests).where(eq(resourceRequests.number, number));
@@ -310,9 +313,12 @@ async function insertResourceRequest(tx: Tx, input: NewRequestInput, requestedBy
   const [act] = await tx.select({ id: activities.id }).from(activities).where(and(eq(activities.projectId, p.id), eq(activities.code, input.activityCode)));
   const number = await nextNumber(tx, resourceRequests, resourceRequests.number, 'RQ-', 3, 44);
   const [{ minOrder }] = await tx.select({ minOrder: sql<number>`coalesce(min(${resourceRequests.sortOrder}), 1)::int` }).from(resourceRequests);
-  const start = input.startDate ?? isoOfDayOffset(input.startDay ?? 5);
-  const due = input.dueDate ?? isoOfDayOffset(input.dueDay ?? (input.startDay ?? 5) + 4);
-  const sentOn = today(input.sentOn);
+  const sentOn = await dayOf(tx, input.sentOn);
+  // Default window: the week after the business date's (R-013: next Monday = (floor(today / 5) + 1) × 5 on the day axis —
+  // 5, Mon 28 Sep, on the demo data set — to its Friday).
+  const nextMonday = (Math.floor(workdayOffsetOf(sentOn) / 5) + 1) * 5;
+  const start = input.startDate ?? isoOfDayOffset(input.startDay ?? nextMonday);
+  const due = input.dueDate ?? isoOfDayOffset(input.dueDay ?? (input.startDay ?? nextMonday) + 4);
   const hours = input.hours != null && Number.isFinite(input.hours) && input.hours > 0 ? input.hours : 8;
   const [r] = await tx
     .insert(resourceRequests)
@@ -335,7 +341,7 @@ export async function sendDraftRequest(number: string, actorName: string, on?: s
     const r = await loadRequest(tx, number);
     if (r.status !== 'draft') throw new Error(`${number} is not a draft (${r.status})`);
     const actor = await findPerson(tx, actorName);
-    const d = today(on);
+    const d = await dayOf(tx, on);
     await tx.update(resourceRequests).set({ status: 'pending', sentOn: d, updatedAt: new Date() }).where(eq(resourceRequests.id, r.id));
     await addEvent(tx, r.id, 'sent', d, actor?.id ?? null, null);
     await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: 'draft → pending review', area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId });
@@ -361,7 +367,7 @@ export async function withdrawResourceRequest(number: string, actorName: string,
     const r = await loadRequest(tx, number);
     if (r.status !== 'pending' && r.status !== 'reschedule') throw new Error(`${number} cannot be withdrawn (${r.status})`);
     const actor = await findPerson(tx, actorName);
-    const d = today(on);
+    const d = await dayOf(tx, on);
     await tx.update(resourceRequests).set({ status: 'withdrawn', response: `Withdrawn by PM · ${dayLabelOfIso(d)}`, updatedAt: new Date() }).where(eq(resourceRequests.id, r.id));
     await addEvent(tx, r.id, 'withdrawn', d, actor?.id ?? null, null);
     await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: `${r.status} → withdrawn`, area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId });
@@ -375,7 +381,7 @@ export async function reRequestResourceRequest(number: string, actorName: string
     const r = await loadRequest(tx, number);
     if (r.status !== 'rejected' && r.status !== 'withdrawn') throw new Error(`${number} cannot be re-requested (${r.status})`);
     const actor = await findPerson(tx, actorName);
-    const d = today(on);
+    const d = await dayOf(tx, on);
     await tx.update(resourceRequests).set({ status: 'pending', sentOn: d, response: '', proposedStart: null, proposedDue: null, updatedAt: new Date() }).where(eq(resourceRequests.id, r.id));
     await addEvent(tx, r.id, 'resent', d, actor?.id ?? null, null);
     await writeAudit(tx, { actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: `${r.status} → pending`, area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId });
@@ -489,7 +495,7 @@ export async function nameSourcedPerson(taskNumber: string, personName: string, 
     if (!person) throw new SourcingStaleError('Choose a person known to Keystone');
     await tx.update(tasks).set({ assigneePersonId: person.personId, contractRole: null, title: r.title, updatedAt: new Date() }).where(eq(tasks.id, t.id));
     await tx.update(resourceRequests).set({ personId: person.personId, updatedAt: new Date() }).where(eq(resourceRequests.id, r.id));
-    await addEvent(tx, r.id, 'named', today(on), actor.id, person.name);
+    await addEvent(tx, r.id, 'named', await dayOf(tx, on), actor.id, person.name);
     const [p] = await tx.select({ code: projects.code }).from(projects).where(eq(projects.id, t.projectId));
     await writeAudit(tx, {
       actorName: nameOf(actor), actorPersonId: actor.id, objectRef: t.number, change: `named: ${person.name} · ${t.contractRole} · ${r.number}`, area: 'Resource requests',
@@ -510,7 +516,7 @@ export async function approveResourceRequest(number: string, approverName: strin
     const r = await loadRequest(tx, number);
     if (r.status !== 'pending') throw new Error(`${number} is not pending (${r.status})`);
     const approver = await requirePerson(tx, approverName);
-    const d = today(on);
+    const d = await dayOf(tx, on);
     const task = await createTaskFromRequest(tx, r, r.startDate, r.dueDate);
     await tx.update(resourceRequests).set({ status: 'approved', response: `Approved · ${nameOf(approver)} · ${dayLabelOfIso(d)}`, taskId: task.id, updatedAt: new Date() }).where(eq(resourceRequests.id, r.id));
     await addEvent(tx, r.id, 'approved', d, approver.id, null);
@@ -531,7 +537,7 @@ export async function proposeReschedule(number: string, shiftWeeks: number, note
     const r = await loadRequest(tx, number);
     if (r.status !== 'pending') throw new Error(`${number} is not pending (${r.status})`);
     const approver = await requirePerson(tx, approverName);
-    const d = today(on);
+    const d = await dayOf(tx, on);
     const shift = Math.max(1, Math.min(3, Math.round(shiftWeeks)));
     const n = note.trim();
     await tx
@@ -553,7 +559,7 @@ export async function rejectResourceRequest(number: string, note: string, approv
     const r = await loadRequest(tx, number);
     if (r.status !== 'pending') throw new Error(`${number} is not pending (${r.status})`);
     const approver = await requirePerson(tx, approverName);
-    const d = today(on);
+    const d = await dayOf(tx, on);
     const n = note.trim();
     await tx.update(resourceRequests).set({ status: 'rejected', response: `Rejected · ${nameOf(approver)} · ${dayLabelOfIso(d)}${n ? ' — ' + n : ''}`, updatedAt: new Date() }).where(eq(resourceRequests.id, r.id));
     await addEvent(tx, r.id, 'rejected', d, approver.id, n || null);
@@ -576,7 +582,7 @@ export async function acceptReschedule(number: string, actorName: string, on?: s
         response: `Rescheduled to ${shortDateOfIso(r.proposedStart)} – ${shortDateOfIso(r.proposedDue)} · accepted by PM · assigned`,
       })
       .where(eq(resourceRequests.id, r.id));
-    await addEvent(tx, r.id, 'accepted', today(on), actor?.id ?? null, null);
+    await addEvent(tx, r.id, 'accepted', await dayOf(tx, on), actor?.id ?? null, null);
     await writeAudit(tx, {
       actorName: actor ? nameOf(actor) : actorName, actorPersonId: actor?.id, objectRef: `Request ${number}`, change: `reschedule accepted → task ${task.number}${task.sourcing ? ' created for Procurement' : ''}`,
       area: 'Resource requests', entityType: 'resource_request', entityId: r.id, projectId: r.projectId,

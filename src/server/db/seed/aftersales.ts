@@ -2,7 +2,7 @@
 // configuration (AS_MAINT 3722, 6 machines), warranty claims (CLAIMS 3730, 8) and interventions (INTERVENTIONS 3731,
 // 6; the type text "Corrective · WC-014" split into type and claim). See schema/aftersales.ts.
 import { PROTO } from '@/server/prototype';
-import { claimCoverage, claimStatus, interventionStatus, interventionType, isoOfDisplayDate, machineType, ncrSeverity, warrantyStatus, type WarrantyStatus } from '../codes';
+import { claimCoverage, claimStatus, interventionStatus, interventionType, isoOfDemoDate, machineType, ncrSeverity, warrantyStatus, type WarrantyStatus } from '../codes';
 import { clients, interventions, machinePartRevisions, machines, warrantyClaims } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, personIdOrNull, type SeedCtx } from './context';
@@ -14,7 +14,7 @@ type InterventionRow = [string, string, string, string, string, string, string];
 /** "Extended → 4 Jun 2027" → extended until 2027-06-04; "In warranty" / "Out of warranty". */
 export function warrantyOf(text: string): { status: WarrantyStatus; extendedUntil: string | null } {
   const m = /^Extended → (.+)$/.exec(text);
-  return m ? { status: 'extended', extendedUntil: isoOfDisplayDate(m[1]) } : { status: warrantyStatus.code(text), extendedUntil: null };
+  return m ? { status: 'extended', extendedUntil: isoOfDemoDate(m[1]) } : { status: warrantyStatus.code(text), extendedUntil: null };
 }
 
 /** "Corrective · WC-012 (chargeable)" → corrective, WC-012, "(chargeable)"; "Preventive · annual check" → preventive, "annual check". */
@@ -40,7 +40,7 @@ export async function seedAftersales(tx: Tx, ctx: SeedCtx): Promise<void> {
     const code = project && project !== '—' ? project : null;
     return {
       id, number, machineTypeCode: machineType.code(type), name, clientName: client, clientId: clientIds.get(client) ?? null, siteText: site, projectCode: code,
-      projectId: code ? ctx.projectByCode.get(code) ?? null : null, deliveredOn: isoOfDisplayDate(delivered), warrantyEndOn: isoOfDisplayDate(wend),
+      projectId: code ? ctx.projectByCode.get(code) ?? null : null, deliveredOn: isoOfDemoDate(delivered), warrantyEndOn: isoOfDemoDate(wend),
       warrantyStatus: w.status, extendedUntil: w.extendedUntil, generation: am[number]?.gen ?? null, position,
     };
   }));
@@ -54,7 +54,7 @@ export async function seedAftersales(tx: Tx, ctx: SeedCtx): Promise<void> {
     const id = newId();
     claimIds.set(number, id);
     return {
-      id, number, machineId: must(machineIds, mch, 'machine'), issue, severity: ncrSeverity.code(sev), reportedOn: isoOfDisplayDate(date)!, status: claimStatus.code(status),
+      id, number, machineId: must(machineIds, mch, 'machine'), issue, severity: ncrSeverity.code(sev), reportedOn: isoOfDemoDate(date)!, status: claimStatus.code(status),
       coverage: claimCoverage.code(cover), costKeur: cost, ecoNumber: eco || null, ownerName: owner, ownerPersonId: personIdOrNull(ctx, owner), nextStep: next, position,
     };
   }));
@@ -62,7 +62,7 @@ export async function seedAftersales(tx: Tx, ctx: SeedCtx): Promise<void> {
     const t = interventionTypeOf(type);
     return {
       number, machineId: must(machineIds, mch, 'machine'), claimId: t.claim ? claimIds.get(t.claim) ?? null : null, type: t.type, typeDetail: t.detail,
-      scheduledOn: isoOfDisplayDate(date)!, technicians: tech, durationDays: durationDaysOf(dur), status: interventionStatus.code(status), position,
+      scheduledOn: isoOfDemoDate(date)!, technicians: tech, durationDays: durationDaysOf(dur), status: interventionStatus.code(status), position,
     };
   }));
 }

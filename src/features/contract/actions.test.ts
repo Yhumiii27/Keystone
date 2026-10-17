@@ -17,6 +17,7 @@ vi.mock('@/server/project-context', () => ({
   getProjectContext: async (_code: string, screen: string) => ({ viewer: { name: viewer.name, role: viewer.role }, canEdit: (s: string = screen) => !!viewer.edit[s] }),
 }));
 
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { makeT, type Lang } from '@/i18n/translate';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
@@ -31,7 +32,21 @@ import {
   setBudgetRateAction, signAmendmentAction, updateContractFieldAction,
 } from './actions';
 import { billingView, contractView } from './model';
-import { G, scenarioData } from './test-fixtures';
+import { G, scenarioData as prototypeScenario } from './test-fixtures';
+
+/**
+ * R-013: one business date (25 Sep 2026 on the demo data set), not the prototype's NOWD (30 Sep). The fixture's scenario is
+ * read at the database's business date, and the payments "Mark paid" records (no date field: the business date) are dated
+ * on it instead of the prototype's 30 Sep.
+ */
+function scenarioData(name: string) {
+  const d = prototypeScenario(name);
+  const paidToday = name.startsWith('pay');
+  return {
+    ...d, today: DEMO_TODAY_ISO,
+    milestones: d.milestones.map((m) => (paidToday && m.invoice?.paidOn === '2026-09-30' ? { ...m, invoice: { ...m.invoice, paidOn: DEMO_TODAY_ISO } } : m)),
+  };
+}
 
 const fresh = async () => setDb(await openDatabase());
 const hlt = async () => (await getContract('HLT-026'))!;
@@ -157,7 +172,7 @@ describe('Issue invoice (AF.billing)', () => {
 describe('Mark paid', () => {
   beforeAll(fresh, 60_000);
 
-  it('M4 issued then M3 and M4 paid on 30 Sep = scenario "pay-all"; a planned or paid milestone is refused', async () => {
+  it('M4 issued then M3 and M4 paid on the business date (R-013: 25 Sep) = scenario "pay-all"; a planned or paid milestone is refused', async () => {
     expect(await issueInvoiceAction('HLT-026', { ms: 'M4', no: 'INV-2026-004', date: '30 Sep 2026', note: '' })).toEqual({ toast: G.toasts['issue-m4|en'] });
     expect(await markInvoicePaidAction('HLT-026', 'M3')).toEqual({ ok: true });
     expect(await markInvoicePaidAction('HLT-026', 'M4')).toEqual({ ok: true });
@@ -226,8 +241,9 @@ describe('Signature cycle and guarantee release (R-079)', () => {
     expect(await sendAmendmentAction('HLT-026', 2)).toEqual({ toast: 'Amendment 3 — extra lighting · Sent for signature' });
     expect(await sendAmendmentAction('HLT-026', 2)).toEqual({ error: 'Only a draft amendment can be sent for signature' });
     let c = await hlt();
-    expect(c.amendments[2]).toMatchObject({ status: 'sent_for_signature', sentOn: '2026-09-30', canSend: false, canSign: true });
-    expect(contractView(c, makeT('fr'), 'fr').amendments[2].date).toBe('Envoyé pour signature le 30 sept. 2026');
+    // R-013: sent on the business date (25 Sep 2026 on the demo data set), not the prototype's NOWD (30 Sep).
+    expect(c.amendments[2]).toMatchObject({ status: 'sent_for_signature', sentOn: '2026-09-25', canSend: false, canSign: true });
+    expect(contractView(c, makeT('fr'), 'fr').amendments[2].date).toBe('Envoyé pour signature le 25 sept. 2026');
     expect(c.valueKeur).toBe(5520);
     expect(await signAmendmentAction('HLT-026', 2, { date: 'tomorrow' })).toEqual({ error: 'Enter a date such as 14 Dec 2026' });
     viewer.lang = 'fr';

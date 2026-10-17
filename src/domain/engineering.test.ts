@@ -7,7 +7,7 @@
 // domain rules (`planImport`, the check notes, the deliverable steps). Deliberate deviations are asserted explicitly.
 import { describe, expect, it } from 'vitest';
 import { PROTO } from '@/server/prototype';
-import { checkStatus, documentStatus, isoOfDisplayDate, outputState, type CheckSeverity, type Discipline, type DocRecipient } from '@/server/db/codes';
+import { checkStatus, documentStatus, isoOfDemoDate, outputState, type CheckSeverity, type Discipline, type DocRecipient } from '@/server/db/codes';
 import GOLD from '@/features/eng/eng.golden.json';
 import {
   CHECK_NOTE, DELIVERABLE_STEP, DISCIPLINE_SEGMENT, IMPORT_ROWS, canValidateRelease, checkFilterOf, deriveRegister, disciplineOfSegment, disciplineView, engBadges,
@@ -30,7 +30,7 @@ function protoRaw(): EngRaw {
       consumer: i.disc, documentNumber: i.doc, revisionInUse: i.rev, acknowledged: i.ack, providerParty: i.from || null, externalTitle: i.title || null,
     })),
     docs: (PROTO.ENG_DOCS as any[]).map((d) => ({
-      number: d.id, title: d.title, discipline: d.disc, revision: d.rev, status: documentStatus.code(d.status), issuedOn: isoOfDisplayDate(d.date)!, author: d.by, recipients: d.to,
+      number: d.id, title: d.title, discipline: d.disc, revision: d.rev, status: documentStatus.code(d.status), issuedOn: isoOfDemoDate(d.date)!, author: d.by, recipients: d.to,
     })),
     checks: (PROTO.ENG_CHECKS as any[]).map((c) => ({
       number: c.id, rulePair: c.pair, ruleLabel: rules[c.pair], severity: c.sev as CheckSeverity, title: c.title, detail: c.detail, owner: c.disc, status: checkStatus.code(c.status), note: '',
@@ -38,7 +38,7 @@ function protoRaw(): EngRaw {
     outputs: (PROTO.ENG_OUTPUTS as any[]).map((o) => ({
       number: o.id, discipline: o.disc, name: o.name, recipients: o.to, source: o.source, state: outputState.code(o.state), generatedAt: null, generatedFormat: null,
     })),
-    changes: (PROTO.ENG_CHANGES as [string, string, string][]).map(([date, text, rcp]) => ({ changedOn: isoOfDisplayDate(date)!, text, recipients: rcp.split(',') as DocRecipient[] })),
+    changes: (PROTO.ENG_CHANGES as [string, string, string][]).map(([date, text, rcp]) => ({ changedOn: isoOfDemoDate(date)!, text, recipients: rcp.split(',') as DocRecipient[] })),
     tools: (PROTO.ENG_TOOLS as [string, Discipline][]).map(([label, discipline], position) => ({ position, label, discipline })),
     mappings: (PROTO.ENG_MAP as [string, string][]).map(([sourceColumn, targetField]) => ({ sourceColumn, targetField })),
     deltas: (PROTO.ENG_DELTAS as [string, string][]).map(([sym, label]) => ({ kind: sym === '+' ? ('new' as const) : ('changed' as const), label })),

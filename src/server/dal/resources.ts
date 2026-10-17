@@ -11,6 +11,9 @@ import {
 } from '@/domain/whatif';
 import { getDb, type DB, type Tx } from '@/server/db/client';
 import { isoOfDisplayDate, weekLabelOfIso, whatIfPriority } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
+import { yearOfIso } from '@/domain/clock';
+import { loadWindow, parseLoadWeekParam, type LoadWindow } from '@/domain/load-window';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import {
   activities, activityAssignments, allocations, costCategories, departmentCapacities, departments, persons, projectControls, projectMembers, projects,
@@ -56,7 +59,21 @@ export interface ResourcePool {
   people: PoolPerson[];
 }
 
-async function poolRows(personIds?: string[]) {
+/**
+ * R-085 (R-7 a): the load window shown — 8 weeks from the Monday of the business date's week, or from `?week=` (validated
+ * here: malformed or out of bounds = the current window). Resources, Project resources, Leave and the what-if read it.
+ */
+export async function getLoadWindow(week?: unknown): Promise<LoadWindow> {
+  const today = await businessToday();
+  return loadWindow(today, parseLoadWeekParam(week, today));
+}
+
+/**
+ * Pool members and their weekly loads over `weeks` (ISO Mondays; R-085: any week, 0 where no allocation row). Without `weeks`,
+ * every week that has an allocation row (the former rule, still used by the readers outside the load plans: Home, alerts,
+ * Approvals, My work, Site conflicts).
+ */
+async function poolRows(personIds?: string[], weeks?: readonly string[]) {
   const db = await getDb();
   const rows = await db
     .select({ p: persons, dept: departments.name })
@@ -64,12 +81,14 @@ async function poolRows(personIds?: string[]) {
     .leftJoin(departments, eq(departments.id, persons.departmentId))
     .where(isNotNull(persons.resourcePoolPosition))
     .orderBy(asc(persons.resourcePoolPosition));
-  const allocs = await db
-    .select({ personId: allocations.personId, weekStart: allocations.weekStart, loadPct: allocations.loadPct })
-    .from(allocations)
-    .where(isNull(allocations.projectId))
-    .orderBy(asc(allocations.weekStart));
-  const weekStarts = [...new Set(allocs.map((a) => a.weekStart))].sort();
+  const allocs = weeks && !weeks.length
+    ? []
+    : await db
+      .select({ personId: allocations.personId, weekStart: allocations.weekStart, loadPct: allocations.loadPct })
+      .from(allocations)
+      .where(and(isNull(allocations.projectId), weeks ? inArray(allocations.weekStart, [...weeks]) : undefined))
+      .orderBy(asc(allocations.weekStart));
+  const weekStarts = weeks ? [...weeks] : [...new Set(allocs.map((a) => a.weekStart))].sort();
   const toPerson = (p: typeof persons.$inferSelect, dept: string | null): PoolPerson => {
     const own = new Map(allocs.filter((a) => a.personId === p.id).map((a) => [a.weekStart, a.loadPct]));
     const loads = weekStarts.map((w) => own.get(w) ?? 0);
@@ -82,17 +101,20 @@ async function poolRows(personIds?: string[]) {
   return { weekStarts, people: filtered.map((r) => toPerson(r.p, r.dept)), toPerson };
 }
 
-/** The shared pool: every person with a pool position, with the 8 weekly loads (Resources heatmap). */
-export async function getResourcePool(): Promise<ResourcePool> {
-  const { weekStarts, people } = await poolRows();
+/**
+ * The shared pool: every person with a pool position, with their weekly loads (Resources heatmap). `weeks` = the load window's
+ * Mondays (R-085, `getLoadWindow`); omitted = every week with an allocation row (see `poolRows`).
+ */
+export async function getResourcePool(weeks?: readonly string[]): Promise<ResourcePool> {
+  const { weekStarts, people } = await poolRows(undefined, weeks);
   return { weeks: weekStarts.map((start) => ({ start, label: weekLabelOfIso(start) })), people };
 }
 
 /**
- * Team of a project (projectData().team order) with their loads — Project resources. Members outside the pool
- * get zero loads. Empty for projects without a team.
+ * Team of a project (projectData().team order) with their loads over `weeks` (as `getResourcePool`) — Project resources,
+ * what-if. Members outside the pool get zero loads. Empty for projects without a team.
  */
-export async function getProjectTeam(projectCode: string): Promise<PoolPerson[]> {
+export async function getProjectTeam(projectCode: string, weeks?: readonly string[]): Promise<PoolPerson[]> {
   const db = await getDb();
   const members = await db
     .select({ p: persons, dept: departments.name })
@@ -102,7 +124,7 @@ export async function getProjectTeam(projectCode: string): Promise<PoolPerson[]>
     .leftJoin(departments, eq(departments.id, persons.departmentId))
     .where(eq(projects.code, projectCode))
     .orderBy(asc(projectMembers.position));
-  const { toPerson } = await poolRows([]);
+  const { toPerson } = await poolRows([], weeks);
   return members.map((m) => toPerson(m.p, m.dept));
 }
 
@@ -219,7 +241,7 @@ export interface WhatIf {
   projectCode: string;
   /** Data date the copy of the plan is scheduled from. */
   dataDate: string;
-  /** Horizon weeks (the pool's 8 weeks). */
+  /** Horizon weeks: the current load window (R-085 — 8 weeks from the Monday of the business date's week). */
   weeks: ResourceWeek[];
   /** Levers derived from the data (domain/whatif.ts). */
   levers: WhatIfLever[];
@@ -267,7 +289,10 @@ async function loadWhatIfState(projectCode: string): Promise<WhatIfState | null>
   const who = alias(persons, 'who');
   const adept = alias(departments, 'adept');
   const pdept = alias(departments, 'pdept');
-  const [acts, asg, team, pool, depts, grid, rated] = await Promise.all([
+  // R-085 (R-7 a): the horizon is the current load window. It does not follow the screens' `?week=` navigation: the levers,
+  // the saved scenario effects and the requests "Apply" drafts are computed on one horizon, from the current week on.
+  const { weeks } = await getLoadWindow();
+  const [acts, asg, team, depts, grid, rated] = await Promise.all([
     db
       .select({ code: activities.code, name: activities.name, full: owner.fullName, short: owner.shortName })
       .from(activities)
@@ -285,15 +310,14 @@ async function loadWhatIfState(projectCode: string): Promise<WhatIfState | null>
       .leftJoin(pdept, eq(pdept.id, who.departmentId))
       .where(eq(activities.projectId, pid))
       .orderBy(asc(activities.position), asc(activityAssignments.position)),
-    getProjectTeam(projectCode),
-    getResourcePool(),
+    getProjectTeam(projectCode, weeks),
     listDepartments(),
     getRateGrid(),
     db.select({ full: persons.fullName, short: persons.shortName, rateRoleId: persons.rateRoleId }).from(persons).where(isNotNull(persons.rateRoleId)),
   ]);
   // R-083 (A-10): everybody is valued through their grid role at the horizon start (the first week of the window); a crew or a
   // subcontractor through the grid role bearing its name; otherwise the what-if's isolated placeholder (WHATIF_RULES).
-  const horizon = pool.weeks[0]?.start ?? network.dataDate;
+  const horizon = weeks[0] ?? network.dataDate;
   const at = (role: string | null) => rateAt(grid, role, horizon);
   const gridRates = grid.roles.map((r) => ({ role: r.role, isExternal: r.isExternal, rateEur: at(r.id) })).filter((r): r is typeof r & { rateEur: number } => r.rateEur != null);
   const internal: Record<string, number> = Object.fromEntries(gridRates.filter((r) => !r.isExternal).map((r) => [r.role, r.rateEur]));
@@ -306,7 +330,7 @@ async function loadWhatIfState(projectCode: string): Promise<WhatIfState | null>
       rateEur: a.short ? at(a.rateRoleId) : (gridRates.find((r) => r.role.toLowerCase() === a.resource.trim().toLowerCase())?.rateEur ?? null),
     })),
     people: team.map((p) => ({ name: p.name, jobTitle: p.jobTitle, department: p.department, loads: p.loads, rateEur: at(roleOfPerson.get(p.name) ?? null) })),
-    weeks: pool.weeks.map((w) => w.start),
+    weeks,
     departments: depts.filter((d) => d.capacityH != null && d.demandH != null).map((d) => ({ name: d.name, capacityH: d.capacityH!, demandH: d.demandH! })),
     rates: {
       internal,
@@ -317,7 +341,9 @@ async function loadWhatIfState(projectCode: string): Promise<WhatIfState | null>
   const model = prepareWhatIf(ctx);
   const effects = leverEffects(model);
   const auto = Object.fromEntries(WHATIF_PRIORITIES.map((p) => [p, autoLevel(model.levers, effects, p)])) as Record<WhatIfPriority, string[]>;
-  return { projectId: pid, projectCode: network.projectCode, dataDate: network.dataDate, weeks: pool.weeks, team, model, effects, auto };
+  return {
+    projectId: pid, projectCode: network.projectCode, dataDate: network.dataDate, weeks: weeks.map((start) => ({ start, label: weekLabelOfIso(start) })), team, model, effects, auto,
+  };
 }
 
 interface ScenarioRow {
@@ -375,11 +401,12 @@ export async function getWhatIf(projectCode: string): Promise<WhatIf | null> {
   const st = await loadWhatIfState(projectCode);
   if (!st) return null;
   const db = await getDb();
-  const [rows, [root], [ctl], bls] = await Promise.all([
+  const [rows, [root], [ctl], bls, today] = await Promise.all([
     scenarioRows(st),
-    db.select({ finish: wbsNodes.finishText }).from(wbsNodes).where(and(eq(wbsNodes.projectId, st.projectId), eq(wbsNodes.level, 0))),
+    db.select({ finish: wbsNodes.finishText, finishDate: wbsNodes.finishDate }).from(wbsNodes).where(and(eq(wbsNodes.projectId, st.projectId), eq(wbsNodes.level, 0))),
     db.select({ float: projectControls.floatDays }).from(projectControls).where(eq(projectControls.projectId, st.projectId)),
     listProjectBaselines(st.projectCode),
+    businessToday(),
   ]);
   const { model } = st;
   const cache = new Map<string, WhatIfResult>([['', model.current]]);
@@ -409,7 +436,8 @@ export async function getWhatIf(projectCode: string): Promise<WhatIf | null> {
   return {
     projectCode: st.projectCode, dataDate: st.dataDate, weeks: st.weeks, levers: model.levers, effects: st.effects, autoLevers: st.auto, current: model.current,
     results: Object.fromEntries(cache), scenarios,
-    forecastFinish: root?.finish ? isoOfDisplayDate(root.finish) : null, floatDays: ctl?.float ?? null,
+    // The rescheduled date, else the stored text (a year-less text is in the business year, R-013).
+    forecastFinish: root?.finishDate ?? (root?.finish ? isoOfDisplayDate(root.finish, yearOfIso(today)) : null), floatDays: ctl?.float ?? null,
     baseline: shown?.finishDate ? { code: shown.code, finish: shown.finishDate } : null, baselineFinish: shown?.finishDate ?? null,
     peak, overByWeek: st.weeks.map((_, i) => st.team.filter((p) => (p.loads[i] ?? 0) > WHATIF_RULES.overloadPct).length), error: model.error,
   };
@@ -658,7 +686,7 @@ export interface NewScenarioInput {
   name: string;
   /** 'current_plan' (default: no lever) or 'last_approved' (the levers and priority of `retainedScenario`). Stored as given. */
   basis?: string;
-  /** Kept for the stored column only: the form no longer asks for it (the pool has 8 allocation weeks). */
+  /** Kept for the stored column only: the form no longer asks for it (the horizon is the 8-week load window, R-085). */
   horizonMonths?: number;
   hypotheses?: string;
   priority?: WhatIfPriority;

@@ -80,7 +80,7 @@ describe('R-037 — recordMinutesReadAction (Server Function)', () => {
     session.role = 'depthead';
     expect((await getProjectContext(HLT, 'meetings')).readOnly).toBe(true);
     expect(await recordMinutesReadAction({ code: HLT, meeting: ext })).toEqual({ ok: true, recorded: true });
-    expect((await readOf(ext))['M. Kerviel']).toBe('2026-09-30');
+    expect((await readOf(ext))['M. Kerviel']).toBe('2026-09-25'); // R-013: the business date (25 Sep 2026 on the demo data set), not the prototype's 30 Sep
   });
 
   it('every persona: only recipients without a receipt record one; the client on this external meeting too', async () => {
@@ -94,7 +94,7 @@ describe('R-037 — recordMinutesReadAction (Server Function)', () => {
     // J. Wagner and M. Kerviel had read already; R. Aubert organised; the others were not invited — only N. Bensaïd records.
     // Finance (R-044), the 9th persona, was not invited either.
     expect(recorded).toEqual({ director: false, pm: false, depthead: false, member: false, englead: false, quality: false, procurement: false, finance: false, client: true });
-    expect(await readOf(ext)).toEqual({ 'R. Aubert': null, 'M. Kerviel': '2026-09-30', 'J. Wagner': '2026-09-29', 'N. Bensaïd': '2026-09-30' });
+    expect(await readOf(ext)).toEqual({ 'R. Aubert': null, 'M. Kerviel': '2026-09-25', 'J. Wagner': '2026-09-29', 'N. Bensaïd': '2026-09-25' }); // R-013: read on the business date
   });
 
   it('the client never reaches an internal meeting; malformed and foreign input refused; minutes not sent record nothing', async () => {

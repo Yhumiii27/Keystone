@@ -21,7 +21,7 @@ const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;
 function contract(c: ProjectContract, lang: Lang, canEdit = true) {
   const t = makeT(lang);
   const forms = {
-    amendment: amendmentFormDef(t), bond: bondFormDef(t), milestone: milestoneFormDef(t, c.amendments, lang), sign: (doc: string | null) => signFormDef(t, doc), release: releaseFormDef(t),
+    amendment: amendmentFormDef(t), bond: bondFormDef(t), milestone: milestoneFormDef(t, c.amendments, lang), sign: (doc: string | null) => signFormDef(t, c.today, doc), release: releaseFormDef(t, c.today),
     editMilestone: (onAmendment: boolean) => editMilestoneFormDef(t, onAmendment),
   };
   return html(h(ContractScreen, { view: contractView(c, t, lang), code: 'HLT-026', canEdit, canSetRate: false, context: '#026 · Harbor Line', forms, t }), lang);

@@ -4,6 +4,7 @@
 // in the portal) → Close (notified); rights of the 8 personas, a PM on another project, stale rows, answers required, the
 // audit trail, the card's view model and the Stakeholders page (the client is sent home, R-042).
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 
 const session = { role: 'director' as string, lang: 'en' as 'en' | 'fr' };
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
@@ -121,7 +122,8 @@ describe('R-137 handling', () => {
     expect(await closeClientIssueAction(HLT, 'CI-08', 'open', { answer: '' })).toEqual({ error: 'Write the answer to the client' });
 
     expect(await takeClientIssueAction(HLT, 'CI-08', 'open')).toEqual({ ok: true, toast: 'CI-08 · Issue taken in charge' });
-    expect(await issue('CI-08')).toMatchObject({ status: 'in_progress', handledBy: 'Romain Aubert', takenOn: '2026-09-30', answered: false, steps: ['answer', 'close'] });
+    // R-013: handled on the business date (25 Sep 2026 on the demo data set), not the prototype's 30 Sep.
+    expect(await issue('CI-08')).toMatchObject({ status: 'in_progress', handledBy: 'Romain Aubert', takenOn: DEMO_TODAY_ISO, answered: false, steps: ['answer', 'close'] });
     expect(await takeClientIssueAction(HLT, 'CI-08', 'open')).toEqual({ ok: false, error: 'This issue has changed since you opened it' });
 
     expect(await answerClientIssueAction(HLT, 'CI-08', 'in_progress', { answer: ' ' })).toEqual({ error: 'Write the answer to the client' });
@@ -129,12 +131,12 @@ describe('R-137 handling', () => {
     const n = await topNotification('client');
     expect([n.title, n.sub, n.screen, n.params]).toEqual(['Your issue was answered', 'CI-08 · Weekly crane test schedule', 'client', { tab: 'issues' }]);
     const portal = (await getClientPortal(HLT)).issues.find((i) => i.number === 'CI-08')!;
-    expect([portal.status, portal.response, portal.answeredOn]).toEqual(['in_progress', 'Schedule sent every Friday from 2 Oct', '2026-09-30']);
+    expect([portal.status, portal.response, portal.answeredOn]).toEqual(['in_progress', 'Schedule sent every Friday from 2 Oct', DEMO_TODAY_ISO]);
 
     // Close without a new answer keeps the answer the client saw.
     session.lang = 'fr';
     expect(await closeClientIssueAction(HLT, 'CI-08', 'in_progress', { answer: '' })).toEqual({ toast: 'CI-08 · Point clos · le client est prévenu' });
-    expect(await issue('CI-08')).toMatchObject({ status: 'closed', closedOn: '2026-09-30', response: 'Schedule sent every Friday from 2 Oct', steps: [] });
+    expect(await issue('CI-08')).toMatchObject({ status: 'closed', closedOn: DEMO_TODAY_ISO, response: 'Schedule sent every Friday from 2 Oct', steps: [] });
     expect((await topNotification('client')).title).toBe('Your issue was closed');
     expect(await answerClientIssueAction(HLT, 'CI-08', 'closed', { answer: 'x' })).toEqual({ error: 'Ce point a changé depuis son ouverture' });
     const [audit] = await listAudit({ projectCode: HLT, limit: 1 });
@@ -149,7 +151,7 @@ describe('R-137 handling', () => {
     expect(await raiseClientIssueAction(HLT, 'Gate pass for the crane supplier')).toEqual({ ok: true, number: 'CI-09' });
     session.role = 'pm';
     expect(await answerClientIssueAction(HLT, 'CI-09', 'open', { answer: 'Passes issued for 6 Oct' })).toEqual({ toast: 'CI-09 · Answer sent to the client' });
-    expect(await issue('CI-09')).toMatchObject({ status: 'in_progress', handledBy: 'Romain Aubert', takenOn: '2026-09-30', answeredOn: '2026-09-30', answered: true });
+    expect(await issue('CI-09')).toMatchObject({ status: 'in_progress', handledBy: 'Romain Aubert', takenOn: DEMO_TODAY_ISO, answeredOn: DEMO_TODAY_ISO, answered: true });
   });
 
   it('a PM on another project is read-only there', async () => {
@@ -161,14 +163,14 @@ describe('R-137 handling', () => {
 
   it('card view model: steps for the handler only, answers and handling lines, highlight', async () => {
     const rows = await listClientIssuesForTeam(HLT);
-    const v = clientIssuesView(rows, { canHandle: true, selected: 'CI-07' }, makeT('en'), 'en');
+    const v = clientIssuesView(rows, { canHandle: true, selected: 'CI-07', today: DEMO_TODAY_ISO }, makeT('en'), 'en');
     const ci07 = v.rows.find((r) => r.number === 'CI-07')!;
-    expect([ci07.selected, ci07.status, ci07.answer, ci07.answered, ci07.handling]).toEqual([true, 'In progress', 'Photos added to the weekly report', true, 'Taken in charge 30 Sep · Marie Lefebvre · Answered 30 Sep']);
+    expect([ci07.selected, ci07.status, ci07.answer, ci07.answered, ci07.handling]).toEqual([true, 'In progress', 'Photos added to the weekly report', true, 'Taken in charge 25 Sep · Marie Lefebvre · Answered 25 Sep']); // R-013: the business date
     expect([ci07.actions!.take, ci07.actions!.answer!.label, ci07.actions!.close!.label, ci07.actions!.close!.form.fields[0].required]).toEqual([null, 'Answer', 'Close issue', false]);
     expect(ci07.actions!.answer!.form.fields[0].defaultValue).toBe('Photos added to the weekly report');
     const ci08 = v.rows.find((r) => r.number === 'CI-08')!;
     expect(ci08.actions).toBeNull();
-    const fr = clientIssuesView(rows, { canHandle: false, selected: null }, makeT('fr'), 'fr');
+    const fr = clientIssuesView(rows, { canHandle: false, selected: null, today: DEMO_TODAY_ISO }, makeT('fr'), 'fr');
     expect(fr.rows.every((r) => r.actions === null)).toBe(true);
     expect(fr.rows.find((r) => r.number === 'CI-08')!.status).toBe('Clôturée');
   });

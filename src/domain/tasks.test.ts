@@ -2,7 +2,8 @@
 // the prototype's own code (design lines 3893–3896, 4058–4097) is ported verbatim below as the reference and
 // compared with src/domain/tasks.ts for every person of TODOS, plus the literal figures quoted in the spec.
 import { describe, expect, it } from 'vitest';
-import { TODAY, dayDate, dayLabel } from '@/lib/format';
+import { dayDate, dayLabel } from '@/lib/format';
+import { DEMO_TODAY_ISO, workdayOffsetOf } from './clock';
 import { PROTO } from '@/server/prototype';
 import {
   applyProgress, applyStatus, boardColumns, calendarBars, calendarDays, calendarStart, checklistCounts, checklistPct, dueBucket, dueText,
@@ -21,6 +22,9 @@ const TODOS = PROTO.TODOS as ProtoTodo[];
 const PEOPLE = PROTO.PEOPLE as Person[];
 const CHECKS = PROTO.CHECKS as Record<string, [string, number][]>;
 const PERSONS = [...new Set(TODOS.map((t) => t.person))];
+
+/** The prototype's TODAY (Fri 25 Sep 2026 = offset 4): golden comparisons pass it explicitly (R-013). */
+const TODAY = workdayOffsetOf(DEMO_TODAY_ISO);
 
 type Item = WorkTask & { id: string };
 const toTask = (t: ProtoTodo): Item => ({ id: t.id, status: t.status, priority: t.prio, start: t.start, due: t.due, estimateH: t.est, loggedH: t.logged });
@@ -91,20 +95,20 @@ describe('My work — every person of TODOS against the prototype logic', () => 
       const ref = protoWork(person);
       const mine = mineOf(person).map(toTask);
       const loads = PEOPLE.find((p) => p[0] === person)![2];
-      const k = workKpis(mine, loads);
+      const k = workKpis(mine, loads, TODAY);
       expect([k.dueToday, k.overdue, k.nextWeek, k.loggedH.toFixed(1) + ' h', `of 40 h · ${k.loggedPct}%`, k.load + '%', k.overCapacity]).toEqual([
         ref.workKpis[0].value, ref.workKpis[1].value, ref.workKpis[2].value, ref.workKpis[3].value, ref.workKpis[3].sub, ref.workKpis[4].value,
         ref.workKpis[4].sub === 'Over capacity — rebalance',
       ]);
-      expect(workGroups(mine).map((g) => ({ label: groupKeyLabel[g.key], items: ids(g.items) }))).toEqual(ref.workGroups);
+      expect(workGroups(mine, TODAY).map((g) => ({ label: groupKeyLabel[g.key], items: ids(g.items) }))).toEqual(ref.workGroups);
       expect(boardColumns(mine).map((c) => ids(c.items))).toEqual(ref.boardCols);
-      expect(calendarDays(calendarStart(0)).map((d) => ({ wd: d.weekday, n: d.day, today: d.isToday }))).toEqual(ref.calDays);
-      expect(calendarBars(mine, 0).map((b) => ({ id: b.task.id, l: pctStr(b.left), w: pctStr(b.width), tone: b.tone }))).toEqual(ref.calRows);
+      expect(calendarDays(calendarStart(0, TODAY), TODAY).map((d) => ({ wd: d.weekday, n: d.day, today: d.isToday }))).toEqual(ref.calDays);
+      expect(calendarBars(mine, 0, TODAY).map((b) => ({ id: b.task.id, l: pctStr(b.left), w: pctStr(b.width), tone: b.tone }))).toEqual(ref.calRows);
       expect(plannedHours(mine, 0).map((h) => ({ v: hoursCellText(h.hours), over: h.over }))).toEqual(ref.calHours);
       expect(logTimeTarget(mineOf(person))!.id).toBe(ref.logTarget);
       for (const t of mineOf(person)) {
-        expect(dueText(toTask(t))).toBe(protoDueText(t));
-        expect({ done: 'var(--color-neutral-500)', overdue: LO, today: 'var(--color-accent-300)', normal: 'var(--color-neutral-400)' }[dueTone(toTask(t))]).toBe(protoDueColor(t));
+        expect(dueText(toTask(t), TODAY)).toBe(protoDueText(t));
+        expect({ done: 'var(--color-neutral-500)', overdue: LO, today: 'var(--color-accent-300)', normal: 'var(--color-neutral-400)' }[dueTone(toTask(t), TODAY)]).toBe(protoDueColor(t));
         expect(hoursText(t.logged, t.est)).toBe(t.logged + '/' + t.est + ' h');
         expect(initialPct(t.status, t.logged, t.est)).toBe(t.pct);
       }
@@ -115,56 +119,56 @@ describe('My work — every person of TODOS against the prototype logic', () => 
 describe('My work — figures quoted in docs/spec/10 §6.4 (Hélène Sauvage, status date Fri 25 Sep)', () => {
   const mine = mineOf('Hélène Sauvage').map(toTask);
   it('KPIs 2 · 1 · 2 · 15.0 h (38 %) · 45 % within capacity', () => {
-    const k = workKpis(mine, [40, 50, 60, 80, 90, 100, 110, 100]);
+    const k = workKpis(mine, [40, 50, 60, 80, 90, 100, 110, 100], TODAY);
     expect(k).toEqual({ dueToday: 2, overdue: 1, nextWeek: 2, loggedH: 15, loggedPct: 38, load: 45, overCapacity: false });
     expect(dayLabel(TODAY)).toBe('Fri 25 Sep');
-    expect(spanText(TODAY + 1, nextWeekEnd())).toBe('28 Sep – 2 Oct');
+    expect(spanText(TODAY + 1, nextWeekEnd(TODAY))).toBe('28 Sep – 2 Oct');
     expect(spanText(0, 9)).toBe('21 Sep – 2 Oct');
   });
   it('groups: Overdue T-2302 · Today T-2314, T-2311 · Next week T-2318, T-2331 · Later T-2335, T-2340 · Recently done T-2290', () => {
-    expect(workGroups(mine).map((g) => [g.key, ids(g.items)])).toEqual([
+    expect(workGroups(mine, TODAY).map((g) => [g.key, ids(g.items)])).toEqual([
       ['overdue', ['T-2302']], ['today', ['T-2314', 'T-2311']], ['next', ['T-2318', 'T-2331']], ['later', ['T-2335', 'T-2340']], ['done', ['T-2290']],
     ]);
-    expect(dueTodayBadge(mine)).toBe('2');
+    expect(dueTodayBadge(mine, TODAY)).toBe('2');
   });
   it('calendar: 5 bars, today band at column 5, planned hours peak 6.5 h on Fri 25 Sep', () => {
-    expect(calendarBars(mine, 0).map((b) => [b.task.id, b.left, b.width, b.tone])).toEqual([
+    expect(calendarBars(mine, 0, TODAY).map((b) => [b.task.id, b.left, b.width, b.tone])).toEqual([
       ['T-2302', 0.1, 0.2, 'late'], ['T-2314', 0.3, 0.2, 'doing'], ['T-2311', 0.2, 0.3, 'doing'], ['T-2318', 0.4, 0.5, 'idle'], ['T-2331', 0.6, 0.4, 'idle'],
     ]);
-    expect(todayColumn(0)).toBe(4);
+    expect(todayColumn(0, TODAY)).toBe(4);
     expect(plannedHours(mine, 0).map((h) => hoursCellText(h.hours))).toEqual(['—', '2.0', '3.3', '5.3', '6.5', '1.2', '2.5', '2.5', '2.5', '1.3']);
   });
   it('member persona Julien Wagner: 1 due today, 1 overdue, 1 next week, 14.0 h (35 %), load 95 %', () => {
-    const k = workKpis(mineOf('Julien Wagner').map(toTask), [90, 100, 130]);
+    const k = workKpis(mineOf('Julien Wagner').map(toTask), [90, 100, 130], TODAY);
     expect(k).toEqual({ dueToday: 1, overdue: 1, nextWeek: 1, loggedH: 14, loggedPct: 35, load: 95, overCapacity: false });
   });
   it('over capacity above 100 %; persons outside the pool have no load', () => {
-    expect(workKpis([], [130, 125]).overCapacity).toBe(true);
-    expect(workKpis([], [100, 100]).overCapacity).toBe(false);
-    expect(workKpis([], null)).toMatchObject({ load: null, overCapacity: false, loggedH: 0, loggedPct: 0 });
+    expect(workKpis([], [130, 125], TODAY).overCapacity).toBe(true);
+    expect(workKpis([], [100, 100], TODAY).overCapacity).toBe(false);
+    expect(workKpis([], null, TODAY)).toMatchObject({ load: null, overCapacity: false, loggedH: 0, loggedPct: 0 });
   });
 });
 
 describe('calendar navigation (two-week window moved by whole weeks)', () => {
   const mine = mineOf('Hélène Sauvage').map(toTask);
   it('next window 28 Sep – 9 Oct: bars clipped to the window, today band in column 0', () => {
-    const start = calendarStart(1);
+    const start = calendarStart(1, TODAY);
     expect(spanText(start, start + 9)).toBe('28 Sep – 9 Oct');
-    expect(todayColumn(start)).toBeNull();
-    expect(calendarBars(mine, start).map((b) => [b.task.id, b.left, b.width])).toEqual([
+    expect(todayColumn(start, TODAY)).toBeNull();
+    expect(calendarBars(mine, start, TODAY).map((b) => [b.task.id, b.left, b.width])).toEqual([
       ['T-2318', 0, 0.4], ['T-2331', 0.1, 0.4], ['T-2335', 0.5, 0.4], ['T-2340', 0.7, 0.3],
     ]);
-    expect(calendarDays(start)[0]).toEqual({ offset: 5, weekday: 'Mon', day: 28, isToday: false });
+    expect(calendarDays(start, TODAY)[0]).toEqual({ offset: 5, weekday: 'Mon', day: 28, isToday: false });
   });
   it('previous window 14 Sep – 25 Sep keeps the today band on the last column', () => {
-    expect(spanText(calendarStart(-1), calendarStart(-1) + 9)).toBe('14 Sep – 25 Sep');
-    expect(todayColumn(calendarStart(-1))).toBe(9);
+    expect(spanText(calendarStart(-1, TODAY), calendarStart(-1, TODAY) + 9)).toBe('14 Sep – 25 Sep');
+    expect(todayColumn(calendarStart(-1, TODAY), TODAY)).toBe(9);
     // Working days before 21 Sep (the prototype's `o % 5` gave Thu 10 Sep for −4 and Sun 13 Sep for −1).
-    expect(calendarDays(calendarStart(-1)).map((d) => `${d.weekday} ${d.day}`)).toEqual([
+    expect(calendarDays(calendarStart(-1, TODAY), TODAY).map((d) => `${d.weekday} ${d.day}`)).toEqual([
       'Mon 14', 'Tue 15', 'Wed 16', 'Thu 17', 'Fri 18', 'Mon 21', 'Tue 22', 'Wed 23', 'Thu 24', 'Fri 25',
     ]);
     expect([-1, -5, -6].map(dayLabel)).toEqual(['Fri 18 Sep', 'Mon 14 Sep', 'Fri 11 Sep']);
-    expect(dueText({ status: 'doing', due: -1 })).toBe('Overdue · Fri 18 Sep');
+    expect(dueText({ status: 'doing', due: -1 }, TODAY)).toBe('Overdue · Fri 18 Sep');
     const isoOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     for (let o = -12; o < 12; o++) expect(workingDayOf(isoOf(dayDate(o)))).toBe(o);
   });
@@ -178,9 +182,11 @@ describe('sorting', () => {
     // Per person and per bucket (the only way the prototype sorts) the orders are identical — see the per-person tests.
   });
   it('buckets around the status date', () => {
-    expect([3, 4, 5, 9, 10].map((d) => dueBucket(d))).toEqual(['overdue', 'today', 'next', 'next', 'later']);
+    expect([3, 4, 5, 9, 10].map((d) => dueBucket(d, TODAY))).toEqual(['overdue', 'today', 'next', 'next', 'later']);
     expect(nextWeekEnd(4)).toBe(9);
     expect(nextWeekEnd(5)).toBe(14);
+    // R-013: the default calendar window starts on the Monday of the business date's week (Wed 30 Sep = 7 → Mon 28 Sep = 5).
+    expect([calendarStart(0, 7), calendarStart(-1, 7), calendarStart(0, workdayOffsetOf('2026-10-04'))]).toEqual([5, 0, 5]);
   });
 });
 

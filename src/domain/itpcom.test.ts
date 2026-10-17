@@ -4,6 +4,7 @@
 // inspection). The facts fed to the rules are the golden rows with their labels turned back into codes. Deliberate
 // deviations are asserted explicitly: English singular forms ("1 system", "1 item missing").
 import { describe, expect, it } from 'vitest';
+import { DEMO_TODAY_ISO as D } from '@/domain/clock';
 import PROTO from '@/server/prototype/prototype-data.json';
 import {
   commissioningCellStatus, handoverItemStatus, itpPointType, itpResult, punchStatus,
@@ -123,7 +124,7 @@ describe('commissioning (cmStatus, cmRows, cmDossier, cmKpis)', () => {
   const ICON: Record<string, string> = { 'ph ph-check': 'Check', 'ph ph-lock-simple': 'LockSimple', 'ph ph-circle-half': 'CircleHalf', 'ph ph-circle-dashed': 'CircleDashed' };
   const cellFacts = (c: any) => {
     const status = commissioningCellStatus.code(c.st) as CommissioningCellStatus;
-    return { status, dateOn: status === 'blocked' || !c.date ? null : parseForwardDate(c.date) };
+    return { status, dateOn: status === 'blocked' || !c.date ? null : parseForwardDate(c.date, D) };
   };
 
   it('status cell look (every seed cell)', () => {
@@ -140,7 +141,7 @@ describe('commissioning (cmStatus, cmRows, cmDossier, cmKpis)', () => {
     const punch = punchFacts(G.itp.en['HLT-026'].punch.punch);
     const s = summariseCommissioning(systems, dossier, punch);
     expect([
-      [`${s.handedOver} / ${s.systems}`, `SAT planned ${itpDateText(s.satOn)} · handover ${itpDateText(s.handoverOn)}`, 'var(--color-text)'],
+      [`${s.handedOver} / ${s.systems}`, `SAT planned ${itpDateText(s.satOn, D)} · handover ${itpDateText(s.handoverOn, D)}`, 'var(--color-text)'],
       [`${s.done} / ${s.cells}`, blockedText(s.blocked), s.stepsColor],
       [String(s.openA), 'must be closed before SAT', s.punchColor],
       [`${s.dossierPct} %`, missingText(s.missing), s.dossierColor],
@@ -176,11 +177,11 @@ describe('KPI sentences', () => {
 
 describe('dates', () => {
   it('year-less within six months of the status date, with the year otherwise', () => {
-    expect(['2026-09-09', '2026-12-10', '2027-01-14', '2027-06-01', '2026-01-12', null].map(itpDateText)).toEqual(['9 Sep', '10 Dec', '14 Jan', '1 Jun ’27', '12 Jan ’26', '']);
+    expect(['2026-09-09', '2026-12-10', '2027-01-14', '2027-06-01', '2026-01-12', null].map((x) => itpDateText(x, D))).toEqual(['9 Sep', '10 Dec', '14 Jan', '1 Jun ’27', '12 Jan ’26', '']);
   });
 
   it('typed dates: a year-less date more than six months back is next year’s', () => {
-    expect(['14 Jan', '15 Oct', '12 Mar', '15 Oct 2026', '14 Jan 2026', '14 Jan ’26', '15/10', '15/10/2027', '2027-02-01', '10 déc. 2026', '6 Nov', 'nope', ''].map((s) => parseForwardDate(s))).toEqual([
+    expect(['14 Jan', '15 Oct', '12 Mar', '15 Oct 2026', '14 Jan 2026', '14 Jan ’26', '15/10', '15/10/2027', '2027-02-01', '10 déc. 2026', '6 Nov', 'nope', ''].map((s) => parseForwardDate(s, D))).toEqual([
       '2027-01-14', '2026-10-15', '2027-03-12', '2026-10-15', '2026-01-14', '2026-01-14', '2026-10-15', '2027-10-15', '2027-02-01', '2026-12-10', '2026-11-06', null, null,
     ]);
   });
@@ -195,44 +196,44 @@ describe('action forms', () => {
   const TEAM: string[] = G.forms.en.punch.fields.find((f: any) => f.id === 'owner').options;
 
   it('Add inspection: prototype values (labels) and codes; defaults; errors', () => {
-    expect(parseNewInspection({ name: ' Rope end terminations ', system: 'Hoist mechanisms', type: 'Witness', stage: 'Site', ref: 'EN 12385', date: '6 Nov' }, EMP)).toEqual({
+    expect(parseNewInspection({ name: ' Rope end terminations ', system: 'Hoist mechanisms', type: 'Witness', stage: 'Site', ref: 'EN 12385', date: '6 Nov' }, EMP, D)).toEqual({
       ok: true, value: { name: 'Rope end terminations', system: 'Hoist mechanisms', pointType: 'witness', stage: 'site', reference: 'EN 12385', plannedOn: '2026-11-06' },
     });
-    expect(parseNewInspection({ name: 'Bolt torque check' }, EMP)).toEqual({ ok: true, value: { name: 'Bolt torque check', system: 'Structure', pointType: 'hold', stage: 'workshop', reference: null, plannedOn: null } });
-    expect(parseNewInspection({ name: 'x', type: 'review', stage: 'fat' }, ['General'])).toMatchObject({ ok: true, value: { system: 'General', pointType: 'review', stage: 'fat' } });
-    expect(parseNewInspection({ name: ' ' }, EMP)).toEqual({ ok: false, error: 'Inspection / test is required' });
-    expect(parseNewInspection({ name: 'x', system: 'Track' }, EMP)).toEqual({ ok: false, error: 'Unknown system' });
-    expect(parseNewInspection({ name: 'x', type: 'Visual' }, EMP)).toEqual({ ok: false, error: 'Unknown inspection type' });
-    expect(parseNewInspection({ name: 'x', stage: 'Factory' }, EMP)).toEqual({ ok: false, error: 'Unknown stage' });
-    expect(parseNewInspection({ name: 'x', date: 'next week' }, EMP)).toEqual({ ok: false, error: 'Enter the planned date as a date, e.g. 15 Oct' });
-    expect(parseNewInspection({ name: 'x'.repeat(201) }, EMP)).toEqual({ ok: false, error: 'Text is too long' });
+    expect(parseNewInspection({ name: 'Bolt torque check' }, EMP, D)).toEqual({ ok: true, value: { name: 'Bolt torque check', system: 'Structure', pointType: 'hold', stage: 'workshop', reference: null, plannedOn: null } });
+    expect(parseNewInspection({ name: 'x', type: 'review', stage: 'fat' }, ['General'], D)).toMatchObject({ ok: true, value: { system: 'General', pointType: 'review', stage: 'fat' } });
+    expect(parseNewInspection({ name: ' ' }, EMP, D)).toEqual({ ok: false, error: 'Inspection / test is required' });
+    expect(parseNewInspection({ name: 'x', system: 'Track' }, EMP, D)).toEqual({ ok: false, error: 'Unknown system' });
+    expect(parseNewInspection({ name: 'x', type: 'Visual' }, EMP, D)).toEqual({ ok: false, error: 'Unknown inspection type' });
+    expect(parseNewInspection({ name: 'x', stage: 'Factory' }, EMP, D)).toEqual({ ok: false, error: 'Unknown stage' });
+    expect(parseNewInspection({ name: 'x', date: 'next week' }, EMP, D)).toEqual({ ok: false, error: 'Enter the planned date as a date, e.g. 15 Oct' });
+    expect(parseNewInspection({ name: 'x'.repeat(201) }, EMP, D)).toEqual({ ok: false, error: 'Text is too long' });
   });
 
   it('Add punch item: category from the letter or its label, source, owner from TEAM; errors', () => {
     // A-6 'a' (R-117): every item also carries its origin (Inspection by default), its party (Keystone) and an optional NCR.
-    expect(parseNewPunch({ item: 'Missing bolt — post 3', loc: 'Structure · Bay 2', cat: 'A — blocking', src: 'SAT', due: '9 Oct' }, TEAM)).toEqual({
+    expect(parseNewPunch({ item: 'Missing bolt — post 3', loc: 'Structure · Bay 2', cat: 'A — blocking', src: 'SAT', due: '9 Oct' }, TEAM, D)).toEqual({
       ok: true,
       value: { description: 'Missing bolt — post 3', location: 'Structure · Bay 2', category: 'A', source: 'sat', owner: TEAM[0], dueOn: '2026-10-09', origin: 'itp', ownerParty: 'keystone', ncrNumber: null },
     });
-    expect(parseNewPunch({ item: 'x', cat: 'C', src: 'client_inspection', owner: 'Julien Wagner' }, TEAM)).toMatchObject({ ok: true, value: { category: 'C', source: 'client_inspection', owner: 'Julien Wagner', location: null, dueOn: null } });
-    expect(parseNewPunch({ item: '' }, TEAM)).toEqual({ ok: false, error: 'Item is required' });
-    expect(parseNewPunch({ item: 'x', cat: 'D' }, TEAM)).toEqual({ ok: false, error: 'Unknown category' });
-    expect(parseNewPunch({ item: 'x', src: 'Audit' }, TEAM)).toEqual({ ok: false, error: 'Unknown source' });
-    expect(parseNewPunch({ item: 'x', owner: 'Someone Else' }, TEAM)).toEqual({ ok: false, error: 'Unknown owner' });
-    expect(parseNewPunch({ item: 'x', due: 'soon' }, TEAM)).toEqual({ ok: false, error: 'Enter the due date as a date, e.g. 15 Oct' });
+    expect(parseNewPunch({ item: 'x', cat: 'C', src: 'client_inspection', owner: 'Julien Wagner' }, TEAM, D)).toMatchObject({ ok: true, value: { category: 'C', source: 'client_inspection', owner: 'Julien Wagner', location: null, dueOn: null } });
+    expect(parseNewPunch({ item: '' }, TEAM, D)).toEqual({ ok: false, error: 'Item is required' });
+    expect(parseNewPunch({ item: 'x', cat: 'D' }, TEAM, D)).toEqual({ ok: false, error: 'Unknown category' });
+    expect(parseNewPunch({ item: 'x', src: 'Audit' }, TEAM, D)).toEqual({ ok: false, error: 'Unknown source' });
+    expect(parseNewPunch({ item: 'x', owner: 'Someone Else' }, TEAM, D)).toEqual({ ok: false, error: 'Unknown owner' });
+    expect(parseNewPunch({ item: 'x', due: 'soon' }, TEAM, D)).toEqual({ ok: false, error: 'Enter the due date as a date, e.g. 15 Oct' });
   });
 
   it('Plan SAT: the prototype defaults (EN and FR date); a date on or after the status date; errors', () => {
     const v = Object.fromEntries(G.forms.en.commissioning.fields.map((f: any) => [f.id, f.value]));
-    expect(parsePlanSat(v, EMP)).toEqual({
+    expect(parsePlanSat(v, EMP, D)).toEqual({
       ok: true, value: { system: 'Structure', date: '2026-12-10', clientWitnesses: 'N. Bensaïd, K. Doucouré', prerequisites: 'Punch A items closed · pre-commissioning reports issued' },
     });
     const fr = Object.fromEntries(G.forms.fr.commissioning.fields.map((f: any) => [f.id, f.value]));
-    expect(parsePlanSat({ ...fr, system: 'Anti-collision' }, EMP)).toMatchObject({ ok: true, value: { system: 'Anti-collision', date: '2026-12-10' } });
-    expect(parsePlanSat({ date: '' }, EMP)).toEqual({ ok: false, error: 'Date is required' });
-    expect(parsePlanSat({ date: 'mid December' }, EMP)).toEqual({ ok: false, error: 'Enter the SAT date as a date, e.g. 10 Dec 2026' });
-    expect(parsePlanSat({ date: '20 Sep 2026' }, EMP)).toEqual({ ok: false, error: 'The SAT date cannot be before the status date' });
-    expect(parsePlanSat({ date: '25 Sep 2026' }, EMP)).toMatchObject({ ok: true, value: { date: '2026-09-25' } });
-    expect(parsePlanSat({ system: 'Track', date: '10 Dec' }, EMP)).toEqual({ ok: false, error: 'Unknown system' });
+    expect(parsePlanSat({ ...fr, system: 'Anti-collision' }, EMP, D)).toMatchObject({ ok: true, value: { system: 'Anti-collision', date: '2026-12-10' } });
+    expect(parsePlanSat({ date: '' }, EMP, D)).toEqual({ ok: false, error: 'Date is required' });
+    expect(parsePlanSat({ date: 'mid December' }, EMP, D)).toEqual({ ok: false, error: 'Enter the SAT date as a date, e.g. 10 Dec 2026' });
+    expect(parsePlanSat({ date: '20 Sep 2026' }, EMP, D)).toEqual({ ok: false, error: 'The SAT date cannot be before the status date' });
+    expect(parsePlanSat({ date: '25 Sep 2026' }, EMP, D)).toMatchObject({ ok: true, value: { date: '2026-09-25' } });
+    expect(parsePlanSat({ system: 'Track', date: '10 Dec' }, EMP, D)).toEqual({ ok: false, error: 'Unknown system' });
   });
 });

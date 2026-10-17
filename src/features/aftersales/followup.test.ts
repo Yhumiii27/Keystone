@@ -33,6 +33,8 @@ import {
 import { claimDrawerView } from './claim-drawer-model';
 import { deliveredView } from './delivered';
 
+/** The prototype's today for after-sales dates (NOW_ISO, 30 Sep 2026): the pure rules take it explicitly since R-013. */
+const NOW = '2026-09-30';
 const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as const;
 const EDIT = { cover: 'warranty', owner: 'T. Kerbrat', cost: '8', next: 'Replace brake disc', eco: '', diagnosis: 'Worn brake disc lining' };
 
@@ -62,24 +64,24 @@ describe('R-143 / R-144 rules', () => {
   });
 
   it('parses "Plan intervention" and "Mark done"', () => {
-    expect(parsePlanIntervention({ date: '8 Oct', tech: 'T. Kerbrat', duration: '0,5' }, { machines: [], claimMachine: 'MCH-041' })).toEqual({
+    expect(parsePlanIntervention({ date: '8 Oct', tech: 'T. Kerbrat', duration: '0,5' }, { machines: [], claimMachine: 'MCH-041', year: 2026 })).toEqual({
       ok: true, value: { machineNumber: 'MCH-041', type: 'corrective', scheduledOn: '2026-10-08', technicians: 'T. Kerbrat', durationDays: 0.5, detail: null },
     });
-    expect(parsePlanIntervention({ machine: 'MCH-038', ivtype: 'Preventive', date: '15 Oct', tech: 'S. Haddad' }, { machines: ['MCH-038'] })).toMatchObject({ ok: true, value: { machineNumber: 'MCH-038', type: 'preventive', durationDays: 1 } });
+    expect(parsePlanIntervention({ machine: 'MCH-038', ivtype: 'Preventive', date: '15 Oct', tech: 'S. Haddad' }, { machines: ['MCH-038'], year: 2026 })).toMatchObject({ ok: true, value: { machineNumber: 'MCH-038', type: 'preventive', durationDays: 1 } });
     const perr = (v: Record<string, string>, machines = ['MCH-038']) => {
-      const r = parsePlanIntervention({ date: '8 Oct', tech: 'x', ...v }, { machines });
+      const r = parsePlanIntervention({ date: '8 Oct', tech: 'x', ...v }, { machines, year: 2026 });
       return r.ok ? null : r.error;
     };
     expect([perr({ machine: 'MCH-999' }), perr({ ivtype: 'repair' }), perr({ date: '' }), perr({ date: 'soon' }), perr({ tech: ' ' }), perr({ duration: '0.3' }), perr({ duration: '31' })]).toEqual([
       'Unknown machine', 'Unknown intervention type', 'Date is required', 'Enter the date as a date, e.g. 8 Oct', 'Technicians are required', 'Enter the duration in days (0.5 to 30)', 'Enter the duration in days (0.5 to 30)',
     ]);
     const parts = ['HST-BRK-DSC', 'EL-VFD-200'];
-    expect(parseInterventionDone({ date: '29 Sep', report: 'Disc replaced', part: 'HST-BRK-DSC', rev: 'b' }, parts)).toEqual({
+    expect(parseInterventionDone({ date: '29 Sep', report: 'Disc replaced', part: 'HST-BRK-DSC', rev: 'b' }, parts, NOW)).toEqual({
       ok: true, value: { doneOn: '2026-09-29', report: 'Disc replaced', partRef: 'HST-BRK-DSC', revision: 'B' },
     });
-    expect(parseInterventionDone({ date: '29 Sep', part: '—', rev: 'B' }, parts)).toEqual({ ok: true, value: { doneOn: '2026-09-29', report: null, partRef: null, revision: null } });
+    expect(parseInterventionDone({ date: '29 Sep', part: '—', rev: 'B' }, parts, NOW)).toEqual({ ok: true, value: { doneOn: '2026-09-29', report: null, partRef: null, revision: null } });
     const derr = (v: Record<string, string>) => {
-      const r = parseInterventionDone({ date: '29 Sep', ...v }, parts);
+      const r = parseInterventionDone({ date: '29 Sep', ...v }, parts, NOW);
       return r.ok ? null : r.error;
     };
     expect([derr({ date: '' }), derr({ date: '2026-10-05' }), derr({ part: 'NOPE' }), derr({ part: 'EL-VFD-200' }), derr({ report: 'x'.repeat(2001) })]).toEqual([
@@ -94,9 +96,9 @@ describe('R-143 / R-144 rules', () => {
     expect([machineNames('Gantry', 1), machineNames('Gantry', 2)]).toEqual([['Gantry'], ['Gantry #1', 'Gantry #2']]);
     expect(asBuiltConfiguration([{ ref: 'A', revision: 'C' }, { ref: 'SW', revision: null }, { ref: 'A', revision: 'D' }, { ref: 'B', revision: ' 2 ' }])).toEqual([{ ref: 'A', revision: 'C' }, { ref: 'B', revision: '2' }]);
     const v = { project: 'RCF-019', count: '2', name: 'Overhead crane', site: 'Lyon', delivered: '30 Sep 2026', warranty: '29 Sep 2028' };
-    expect(parseRegisterMachines(v, ['RCF-019'])).toEqual({ ok: true, value: { projectCode: 'RCF-019', count: 2, name: 'Overhead crane', site: 'Lyon', deliveredOn: '2026-09-30', warrantyEndOn: '2028-09-29' } });
+    expect(parseRegisterMachines(v, ['RCF-019'], NOW)).toEqual({ ok: true, value: { projectCode: 'RCF-019', count: 2, name: 'Overhead crane', site: 'Lyon', deliveredOn: '2026-09-30', warrantyEndOn: '2028-09-29' } });
     const err = (o: Record<string, string>) => {
-      const r = parseRegisterMachines({ ...v, ...o }, ['RCF-019']);
+      const r = parseRegisterMachines({ ...v, ...o }, ['RCF-019'], NOW);
       return r.ok ? null : r.error;
     };
     expect([err({ project: 'HLT-026' }), err({ count: '0' }), err({ count: '1.5' }), err({ count: '21' }), err({ name: '' }), err({ delivered: '' }), err({ delivered: '2026-10-02' }), err({ warranty: 'never' }), err({ warranty: '1 Sep 2026' })]).toEqual([
@@ -151,16 +153,17 @@ describe('R-143 / R-144 Server Functions', () => {
     expect(await closeClaimAction('WC-013', 'intervention_planned')).toEqual({ ok: false, error: 'This claim cannot be closed yet' });
     // Mark done with the part fitted: MCH-041's configuration takes the new revision.
     expect((await interventionPartOptions('MCH-041')).slice(0, 3)).toEqual(['ASM-RMG-250', 'EL-VFD-200', 'EL-HMI-15']);
-    expect(await completeInterventionAction('IV-085', { date: '30 Sep', report: 'Lidar firmware 2.4', part: 'FD-DET-OPT2', rev: 'b' })).toEqual({ toast: 'IV-085 · Intervention done · Configuration updated' });
+    // R-013: dated on the business date (25 Sep 2026 on the demo data set, not the prototype's 30 Sep).
+    expect(await completeInterventionAction('IV-085', { date: '25 Sep', report: 'Lidar firmware 2.4', part: 'FD-DET-OPT2', rev: 'b' })).toEqual({ toast: 'IV-085 · Intervention done · Configuration updated' });
     expect((await machineConfigurations(['MCH-041'])).get('MCH-041')!.find((p) => p.ref === 'FD-DET-OPT2')).toEqual({ ref: 'FD-DET-OPT2', revision: 'B' });
     expect((await machinesFittedWith('FD-DET-OPT2')).find((m) => m.number === 'MCH-041')!.revision).toBe('B');
-    expect(await completeInterventionAction('IV-085', { date: '30 Sep' })).toEqual({ error: 'This intervention is already done' });
+    expect(await completeInterventionAction('IV-085', { date: '25 Sep' })).toEqual({ error: 'This intervention is already done' });
     const iv = (await listInterventions()).find((i) => i.number === 'IV-085')!;
-    expect([iv.status, iv.doneOn, iv.report, iv.partRef, iv.partRevision]).toEqual(['done', '2026-09-30', 'Lidar firmware 2.4', 'FD-DET-OPT2', 'B']);
-    // Close: dated, no further step, read-only.
+    expect([iv.status, iv.doneOn, iv.report, iv.partRef, iv.partRevision]).toEqual(['done', '2026-09-25', 'Lidar firmware 2.4', 'FD-DET-OPT2', 'B']);
+    // Close: dated (R-013: on the business date, 25 Sep 2026 on the demo data set), no further step, read-only.
     expect(await closeClaimAction('WC-013', 'intervention_planned')).toEqual({ ok: true, toast: 'WC-013 · Closed' });
     c = (await getClaim('WC-013'))!;
-    expect([c.status, c.closedOn, c.steps, c.open]).toEqual(['closed', '2026-09-30', [], false]);
+    expect([c.status, c.closedOn, c.steps, c.open]).toEqual(['closed', '2026-09-25', [], false]);
     expect(await updateClaimAction('WC-013', EDIT)).toEqual({ error: 'This claim is closed' });
     expect(await planInterventionAction('WC-013', { date: '1 Oct', tech: 'x' })).toEqual({ error: 'This claim is closed' });
     const audit = await listAudit({ limit: 6 });
@@ -196,17 +199,18 @@ describe('R-143 / R-144 Server Functions', () => {
     session.role = 'pm';
     const pmOwn = cands.filter((c) => c.pm === 'R. Aubert').map((c) => c.projectCode);
     expect(pmOwn).toEqual([]);
-    expect(await registerMachinesAction({ project: 'RCF-019', count: '1', name: 'x', delivered: '30 Sep 2026', warranty: '29 Sep 2028' })).toEqual({
+    expect(await registerMachinesAction({ project: 'RCF-019', count: '1', name: 'x', delivered: '25 Sep 2026', warranty: '24 Sep 2028' })).toEqual({
       error: 'Only the project manager of this project registers its machines',
     });
     await expect(registerDeliveredMachines('HLT-026', { count: 1, name: 'x', site: '', deliveredOn: '2026-09-30', warrantyEndOn: '2028-09-29' }, { name: 'Marie Lefebvre', role: 'director' }))
       .rejects.toThrow(/not delivered/);
     session.role = 'quality';
-    expect(await registerMachinesAction({ project: 'RCF-019', count: '2', name: 'Overhead crane 10 t', site: 'Lyon · clinic', delivered: '30 Sep 2026', warranty: '29 Sep 2028' })).toEqual({
+    // R-013: delivered on the business date (25 Sep 2026 on the demo data set, not the prototype's 30 Sep).
+    expect(await registerMachinesAction({ project: 'RCF-019', count: '2', name: 'Overhead crane 10 t', site: 'Lyon · clinic', delivered: '25 Sep 2026', warranty: '24 Sep 2028' })).toEqual({
       toast: 'MCH-050, MCH-051 · Machines registered with their as-built configuration',
     });
     const m = (await getMachine('MCH-051'))!;
-    expect([m.name, m.projectCode, m.deliveredOn, m.warrantyEndOn, m.warrantyStatus, m.site, m.parts.length]).toEqual(['Overhead crane 10 t #2', 'RCF-019', '2026-09-30', '2028-09-29', 'in_warranty', 'Lyon · clinic', 5]);
+    expect([m.name, m.projectCode, m.deliveredOn, m.warrantyEndOn, m.warrantyStatus, m.site, m.parts.length]).toEqual(['Overhead crane 10 t #2', 'RCF-019', '2026-09-25', '2028-09-24', 'in_warranty', 'Lyon · clinic', 5]);
     expect((await listDeliveryCandidates()).find((c) => c.projectCode === 'RCF-019')!.registered).toBe(2);
     // The project row and the last machine row may share their millisecond (same transaction): look among the latest rows.
     const audit = (await listAudit({ limit: 3 })).find((a) => a.object === 'RCF-019')!;
@@ -219,7 +223,7 @@ describe('R-143 / R-144 Server Functions', () => {
   it('claim drawer view model and the "Delivered projects" card', async () => {
     const data = await getSavScreen(null);
     const claim = (await getClaim('WC-015'))!;
-    const view = (vigie: boolean, canEdit: boolean) => claimDrawerView({ claim, ecos: data.ecos, config: [], parts: ['EL-CBL-FEST'], owners: CLAIM_OWNERS, viewer: { vigie, canEdit } }, makeT('en'), 'en');
+    const view = (vigie: boolean, canEdit: boolean) => claimDrawerView({ claim, ecos: data.ecos, config: [], parts: ['EL-CBL-FEST'], owners: CLAIM_OWNERS, viewer: { vigie, canEdit }, today: data.today }, makeT('en'), 'en');
     const v = view(true, true);
     expect([v.number, v.status, v.steps.map((s) => s.reached), v.closeHref]).toEqual(['WC-015', 'Intervention planned', [true, true, true, false], '/after-sales/claims']);
     expect(v.raiseEco!.href).toBe('http://localhost:3200/modifications-techniques/nouvelle?project=DRR-009&title=WC-015+%C2%B7+Festoon+cable+wear+%E2%80%94+3+segments&source=keystone');
@@ -227,13 +231,14 @@ describe('R-143 / R-144 Server Functions', () => {
     expect(v.interventions.map((i) => [i.number, i.done?.label ?? null])).toEqual([['IV-081', 'Mark done']]);
     const ro = view(false, false);
     expect([ro.raiseEco, ro.actions, ro.interventions[0].done]).toEqual([null, null, null]);
-    const rows = deliveredView((await listDeliveryCandidates()), { canRegister: (c) => c === 'MSR-012' }, makeT('fr'), 'fr');
+    const rows = deliveredView((await listDeliveryCandidates()), { canRegister: (c) => c === 'MSR-012', today: data.today }, makeT('fr'), 'fr');
     expect(rows.map((r) => [r.projectCode, r.sub, !!r.register])).toEqual([
       ['RCF-019', 'Chantier · 5 pièces telles que construites · 2 machines enregistrées', false],
       ['MSR-012', 'Mise Service & SAT · 3 pièces telles que construites · 0 machine enregistrée', true],
     ]);
+    // R-013: the business date (25 Sep 2026 on the demo data set, not the prototype's 30 Sep) and its 24-month warranty end.
     expect(rows[1].register!.form.fields.map((f) => [f.id, f.defaultValue ?? ''])).toEqual([
-      ['project', ''], ['count', '1'], ['name', 'MEMU — Marseille Metro Signage Rollout'], ['site', 'Marseille'], ['delivered', '30 sept. 2026'], ['warranty', '29 sept. 2028'],
+      ['project', ''], ['count', '1'], ['name', 'MEMU — Marseille Metro Signage Rollout'], ['site', 'Marseille'], ['delivered', '25 sept. 2026'], ['warranty', '24 sept. 2028'],
     ]);
   });
 });

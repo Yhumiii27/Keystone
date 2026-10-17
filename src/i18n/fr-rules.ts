@@ -30,3 +30,13 @@ FR_RULES.push(
   [/^since (\d.*)$/, 'depuis le $1'],
   [/^(-?[\d\s.,]+(?: €)?|×[\d.]+) from (\d.*)$/, '$1 à partir du $2'],
 );
+
+// R-013: the status reports' period labels follow the business date ("October 2027", "Q4 2027" — reportPeriodLabel,
+// src/server/db/codes.ts); the dictionary keeps the data set's "September 2026" / "Q3 2026".
+FR_RULES.push(
+  ...([
+    ['January', 'Janvier'], ['February', 'Février'], ['March', 'Mars'], ['April', 'Avril'], ['May', 'Mai'], ['June', 'Juin'], ['July', 'Juillet'],
+    ['August', 'Août'], ['September', 'Septembre'], ['October', 'Octobre'], ['November', 'Novembre'], ['December', 'Décembre'],
+  ] as const).map(([en, fr]): [RegExp, string] => [new RegExp(`^${en} (\\d{4})$`), `${fr} $1`]),
+  [/^Q([1-4]) (\d{4})$/, 'T$1 $2'],
+);

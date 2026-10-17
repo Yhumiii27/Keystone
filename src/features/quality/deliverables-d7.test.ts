@@ -25,6 +25,7 @@ vi.mock('@/server/session', async () => {
 });
 
 import { and, eq } from 'drizzle-orm';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { deliverableActionFor, nextRevision, parseNewDeliverable, reviewLineText } from '@/domain/quality';
 import { makeT } from '@/i18n/translate';
 import { getDb, setDb } from '@/server/db/client';
@@ -56,12 +57,15 @@ describe('R-114 / R-115 rules', () => {
   });
 
   it('review line', () => {
-    expect(reviewLineText({ revision: 'C', decision: 'rejected', decidedOn: '2026-09-25', decidedBy: 'N. Bensaïd', comments: 'x' })).toBe('Rev C · Rejected 25 Sep · N. Bensaïd');
-    expect(reviewLineText({ revision: null, decision: 'accepted', decidedOn: '2027-01-14', decidedBy: 'Client', comments: null })).toBe('Rev — · Accepted 14 Jan ’27 · Client');
+    expect(reviewLineText({ revision: 'C', decision: 'rejected', decidedOn: '2026-09-25', decidedBy: 'N. Bensaïd', comments: 'x' }, 2026)).toBe('Rev C · Rejected 25 Sep · N. Bensaïd');
+    expect(reviewLineText({ revision: null, decision: 'accepted', decidedOn: '2027-01-14', decidedBy: 'Client', comments: null }, 2026)).toBe('Rev — · Accepted 14 Jan ’27 · Client');
+    // R-013: against a business date in 2027, the 2027 date loses its year and a 2026 one shows it.
+    expect(reviewLineText({ revision: null, decision: 'accepted', decidedOn: '2027-01-14', decidedBy: 'Client', comments: null }, 2027)).toBe('Rev — · Accepted 14 Jan · Client');
+    expect(reviewLineText({ revision: 'C', decision: 'rejected', decidedOn: '2026-09-25', decidedBy: 'N. Bensaïd', comments: 'x' }, 2027)).toBe('Rev C · Rejected 25 Sep ’26 · N. Bensaïd');
   });
 
   it('parses "New deliverable"', () => {
-    const opts = { types: [{ code: 'drawings', label: 'Drawings' }, { code: 'test_reports', label: 'Test & inspection reports' }], wbs: ['1', '1.5'], team: ['Thomas Kerbrat', 'Hélène Sauvage'] };
+    const opts = { types: [{ code: 'drawings', label: 'Drawings' }, { code: 'test_reports', label: 'Test & inspection reports' }], wbs: ['1', '1.5'], team: ['Thomas Kerbrat', 'Hélène Sauvage'], year: 2026 };
     expect(parseNewDeliverable(NEW, opts)).toEqual({
       ok: true, value: { type: 'test_reports', title: 'Load test report — gantry 2', dueOn: '2026-11-30', wbsCode: '1.5', responsible: 'Thomas Kerbrat', backup: 'Hélène Sauvage' },
     });
@@ -169,7 +173,7 @@ describe('R-114 / R-115 Server Functions', () => {
     // Drawer: history lines (newest first) in FR, no restart once accepted.
     const state: QualityState = { tab: 'dlv', filter: null, status: null, ncr: null, dlv: 'D-016' };
     const view = (role: string, dv = d) =>
-      dlvDrawerView({ code: HLT, deliverable: dv, state, viewer: { role, canEdit: true, isClientContact: role === 'client', vigie: role !== 'client' }, documents: [] }, makeT('fr'), 'fr');
+      dlvDrawerView({ today: DEMO_TODAY_ISO, code: HLT, deliverable: dv, state, viewer: { role, canEdit: true, isClientContact: role === 'client', vigie: role !== 'client' }, documents: [] }, makeT('fr'), 'fr');
     expect(view('pm').reviews).toEqual([
       { line: 'Rév. D · Accepté 25 sept. · N. Bensaïd', comments: null },
       { line: 'Rév. C · Refusé 25 sept. · N. Bensaïd', comments: 'Units on sheet 3' },
@@ -188,7 +192,7 @@ describe('R-114 / R-115 Server Functions', () => {
     // Register row: "Start next revision" for the PM, nothing for the client.
     const state: QualityState = { tab: 'dlv', filter: null, status: null, ncr: null, dlv: null };
     const rows = (role: string) =>
-      dlvTabView({ code: HLT, deliverables: [d], state, viewer: { role, canEdit: true, isClientContact: role === 'client', vigie: role !== 'client' } }, makeT('en'), 'en').rows;
+      dlvTabView({ code: HLT, deliverables: [d], state, viewer: { role, canEdit: true, isClientContact: role === 'client', vigie: role !== 'client' }, today: DEMO_TODAY_ISO }, makeT('en'), 'en').rows;
     expect(rows('pm')[0].action).toEqual({ kind: 'move', to: 'in_progress', label: 'Start next revision', variant: 'secondary', restart: true });
     expect(rows('client')[0].action).toBeNull();
     session.role = 'director';

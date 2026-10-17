@@ -9,6 +9,7 @@ import type { MeetingRow } from '@/server/dal/meetings';
 import { getInterfacesScreen, getStakeholdersScreen } from '@/server/dal/team';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook, PdfBlock, PdfDocument } from '../types';
+import { yearOfIso } from '@/domain/clock';
 import { col, compact, isoOf, param, projectRef, sheet } from './common';
 import { dataText } from '@/i18n/data-text';
 
@@ -25,7 +26,7 @@ function lineSheets(ctx: ExportContext, ms: MeetingRow[]): { decisions: ExportSh
       col('meeting', t('Meeting'), 'text', 10), col('date', t('Date'), 'date'), col('text', t('Action'), 'text', 60), col('owner', t('Owner'), 'text', 18), col('due', t('Due'), 'date'),
       col('done', t('Done'), 'boolean'), col('overdue', t('Overdue'), 'boolean'), col('task', t('Task'), 'text', 9),
     ], lines.filter((x) => x.l.type === 'action').map(({ m, l }) => ({
-      meeting: m.number, date: m.startsOn, text: dataText(l.text, ctx.lang), owner: l.ownerFull ?? l.owner ?? '', due: l.dueDate ?? isoOf(l.due), done: l.done, overdue: l.overdue, task: l.taskNumber ?? '',
+      meeting: m.number, date: m.startsOn, text: dataText(l.text, ctx.lang), owner: l.ownerFull ?? l.owner ?? '', due: l.dueDate ?? isoOf(l.due, yearOfIso(ctx.today)), done: l.done, overdue: l.overdue, task: l.taskNumber ?? '',
     }))),
   };
 }
@@ -80,7 +81,7 @@ async function minutesDocument(ctx: ExportContext): Promise<PdfDocument | null> 
     blocks.push({ kind: 'heading', text: `${p.position + 1}. ${dataText(p.title, ctx.lang)}` });
     if (!p.lines.length) blocks.push({ kind: 'paragraph', text: t('No note recorded'), muted: true });
     else blocks.push({ kind: 'table', sheet: sheet(t('Lines'), [col('type', t('Type'), 'text', 10), col('text', t('Note'), 'text', 60), col('owner', t('Owner'), 'text', 16), col('due', t('Due'), 'date', 12)],
-      p.lines.map((l) => ({ type: t(LINE_LABEL[l.type] ?? l.type), text: dataText(l.text, ctx.lang), owner: l.ownerFull ?? l.owner ?? '', due: l.dueDate ?? isoOf(l.due) }))) });
+      p.lines.map((l) => ({ type: t(LINE_LABEL[l.type] ?? l.type), text: dataText(l.text, ctx.lang), owner: l.ownerFull ?? l.owner ?? '', due: l.dueDate ?? isoOf(l.due, yearOfIso(ctx.today)) }))) });
   }
   return {
     title: `${t('Minutes')} · ${dataText(m.title, ctx.lang)}`,

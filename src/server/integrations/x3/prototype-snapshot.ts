@@ -4,7 +4,7 @@ import 'server-only';
 // reservations keyed by the 3-letter project code. R-170: this is the only run-time reader of the prototype data left
 // outside the seed, kept on purpose in the connector folder (like the Vigie and Cursus snapshots) until the X3 extracts
 // replace it.
-import { isoOfDisplayDate } from '@/server/db/codes';
+import { isoOfDemoDate } from '@/server/db/codes';
 import { PROTO } from '@/server/prototype';
 
 /** Time of the last X3 stock import of the snapshot (`x3Sync` initial state 3774: "07:15" on the status date). */
@@ -28,6 +28,6 @@ interface ProtoStockLine { ref: string; loc: string; onHand: number; reserved: n
 /** Stock positions as the X3 mock reports them. */
 export function x3StockSnapshot(): X3StockLine[] {
   return (PROTO.STOCK0 as ProtoStockLine[]).map((r) => ({
-    ref: r.ref, location: r.loc, onHand: r.onHand, reserved: r.reserved, projectShort: r.proj, minQty: r.min, lastMovementOn: isoOfDisplayDate(r.last)!,
+    ref: r.ref, location: r.loc, onHand: r.onHand, reserved: r.reserved, projectShort: r.proj, minQty: r.min, lastMovementOn: isoOfDemoDate(r.last)!,
   }));
 }

@@ -19,7 +19,7 @@ export interface InterfaceActionsProps {
   number: string;
   canReceive: boolean;
   canFreeze: boolean;
-  /** Default of "Received on": today in the viewer's language ("30 Sep 2026" / "30 sept. 2026"). */
+  /** Default of "Received on": the business date in the viewer's language ("25 Sep 2026" / "25 sept. 2026" on the demo data set). */
   receivedDefault: string;
 }
 

@@ -2,7 +2,6 @@
 // translated rows for the client island. Pure — runs in the page (Server Component) and in tests.
 import { screenHref } from '@/config/screens';
 import { BL1_STAGE_DELIVERABLE } from '@/domain/baseline-policy';
-import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
 import { displayOfIso } from '@/server/db/codes';
 import { HEALTH_LABEL, type HealthThresholds } from '@/domain/health';
 import { isLiveRow, type SearchableProject, type StageCode } from '@/domain/lifecycle';
@@ -98,8 +97,10 @@ export interface RegisterInput {
   planned?: readonly string[];
   /** Settings health thresholds (A-13): CPI / SPI colours and attention items. Default 0.97 / 0.90. */
   thresholds?: HealthThresholds;
-  /** Data date per project (ISO): "today" of the stage-change effective date (L-4c). Default: the status date. */
+  /** Data date per project (ISO): "today" of the stage-change effective date (L-4c). Default: `today`. */
   dataDates?: Record<string, string>;
+  /** Business date (ISO, R-013): the data date of a project without one. */
+  today: string;
   /** Delivery 8 (R-054): BL1 per project (set, ISO date) — « Planning BL1 posé » follows it. */
   bl1?: Record<string, { set: boolean; setOn: string | null }>;
 }
@@ -165,7 +166,7 @@ export function buildRegisterModel(data: RegisterInput, zone: ZoneKey | null, t:
         .slice()
         .reverse()
         .map((h) => ({ stage: t(h.label), date: t(h.date), forced: h.mode === 'forced', why: h.reason })),
-      dateBounds: { previous: data.history[p.code]?.at(-1)?.dateIso ?? null, today: data.dataDates?.[p.code] ?? DEFAULT_DATA_DATE },
+      dateBounds: { previous: data.history[p.code]?.at(-1)?.dateIso ?? null, today: data.dataDates?.[p.code] ?? data.today },
       progress: p.progress,
       progressPct: Math.round(p.progress * 100) + '%',
       finishPlanned: t(ind.finishPlanned),

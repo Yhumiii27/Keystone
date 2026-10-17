@@ -47,8 +47,8 @@ export default async function ContractPage({ params }: { params: Promise<{ code:
     amendment: amendmentFormDef(t, currency),
     bond: bondFormDef(t, currency),
     milestone: milestoneFormDef(t, contract.amendments, lang),
-    sign: (doc: string | null) => signFormDef(t, doc),
-    release: releaseFormDef(t),
+    sign: (doc: string | null) => signFormDef(t, contract.today, doc),
+    release: releaseFormDef(t, contract.today),
     // Delivery 8 (R-077, C-7a): correcting a planned milestone (its basis stays).
     editMilestone: (onAmendment: boolean) => editMilestoneFormDef(t, onAmendment),
   };

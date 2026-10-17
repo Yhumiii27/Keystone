@@ -1,5 +1,6 @@
 // Platform seed: notifications (NOTIFS, audience roles expanded to the users holding them, seed read flag →
 // readAt), activity feed (ACTIVITY) and audit trail (AUDIT). See schema/platform.ts.
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { PROTO } from '@/server/prototype';
 import { parseStampText, type ActivityKind, type NotificationKind } from '../codes';
 import { activityEvents, auditEntries, notificationRecipients, notifications, users } from '../schema';
@@ -16,7 +17,7 @@ export async function seedPlatform(tx: Tx, ctx: SeedCtx): Promise<void> {
 
   const notifs = (PROTO.NOTIFS as ProtoNotif[]).map(([code, kind, title, body, when, read, screen, extra, audience], i) => ({
     row: {
-      id: newId(), code, kind, title, body, occurredAt: parseStampText(when),
+      id: newId(), code, kind, title, body, occurredAt: parseStampText(when, DEMO_TODAY_ISO),
       projectId: NOTIF_PROJECT[code] === null ? null : must(ctx.projectByCode, NOTIF_PROJECT[code] ?? 'HLT-026', 'project'),
       targetScreen: screen, targetParams: extra ?? {}, audienceRoles: audience, sortOrder: i + 1,
     },
@@ -32,7 +33,7 @@ export async function seedPlatform(tx: Tx, ctx: SeedCtx): Promise<void> {
 
   await tx.insert(activityEvents).values(
     (PROTO.ACTIVITY as [string, string, string, ActivityKind][]).map(([when, who, text, kind]) => ({
-      id: newId(), occurredAt: parseStampText(when), actorPersonId: personOf(who), actorName: who, text, kind,
+      id: newId(), occurredAt: parseStampText(when, DEMO_TODAY_ISO), actorPersonId: personOf(who), actorName: who, text, kind,
       projectId: null,
     })),
   );
@@ -44,7 +45,7 @@ export async function seedPlatform(tx: Tx, ctx: SeedCtx): Promise<void> {
     (PROTO.AUDIT as [string, string, string, string, string][]).map(([when, who, objectRef, change, area]) => {
       const personId = personOf(who);
       return {
-        id: newId(), occurredAt: parseStampText(when), actorPersonId: personId, actorUserId: personId ? userOfPerson.get(personId) ?? null : null, actorName: who,
+        id: newId(), occurredAt: parseStampText(when, DEMO_TODAY_ISO), actorPersonId: personId, actorUserId: personId ? userOfPerson.get(personId) ?? null : null, actorName: who,
         objectRef, change, area,
       };
     }),

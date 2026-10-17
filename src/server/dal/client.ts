@@ -12,8 +12,9 @@ import { currentStep } from '@/domain/change-control';
 import { registerReconciliation } from '@/domain/cost-control';
 import { CLIENT_ISSUE_HANDLER_ROLES, ISSUE_ACKNOWLEDGEMENT, ISSUE_NOTICE, hasRealAnswer, issueSteps, type IssueStep } from '@/domain/client-issues';
 import { clientDocCategories, type ClientDocCategory } from '@/domain/rexclient';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
-import { NOW_ISO, STATUS_ISO, clientIssueStatus, nextBusinessNumber, type ClientIssueStatus } from '@/server/db/codes';
+import { clientIssueStatus, nextBusinessNumber, type ClientIssueStatus } from '@/server/db/codes';
 import { clientIssues, persons, projectControls, users } from '@/server/db/schema';
 import { listChangeRequestDetails, type ChangeRequestDetail } from './changes';
 import { BASE_CURRENCY, type CurrencyCode } from '@/domain/currency';
@@ -170,13 +171,14 @@ export async function getClientPortal(projectCode: string): Promise<ClientPortal
 }
 
 /**
- * "Raise issue": a new Open issue of the project (CI-08, CI-09…), raised by the viewer on the status date with the
+ * "Raise issue": a new Open issue of the project (CI-08, CI-09…), raised by the viewer on the business date (R-013) with the
  * standard acknowledgement. The project's client contacts and the director (client portal workspace) may raise one.
  */
-export async function raiseClientIssue(projectCode: string, title: string, actor: Actor, on: string = STATUS_ISO): Promise<string> {
+export async function raiseClientIssue(projectCode: string, title: string, actor: Actor, onDate?: string): Promise<string> {
   requireWorkspace('client', actor, 'My project');
   const text = requiredText(title, 'Issue', 500);
   const db = await getDb();
+  const on = onDate ?? (await businessToday());
   return db.transaction(async (tx) => {
     const p = await projectOf(tx, projectCode);
     if (actor.role !== 'director' && !(await isClientContactOf(tx, actor, p.clientId))) throw new Error('Only the project’s client raises issues here');
@@ -237,14 +239,15 @@ export type IssueHandling = { step: 'take' } | { step: 'answer'; answer: string 
  * answer the client sees; an Open issue is taken in charge at the same time) and "Close" (with a final answer, required
  * when the issue has no real answer yet). The project's manager or the director; with `expected` (the status the viewer
  * saw), an issue that moved on meanwhile is refused ("… has moved on"). The client is notified of an answer and of the
- * closure. Returns the new status.
+ * closure. Dated `on` (default the business date — the prototype's 30 Sep; R-013). Returns the new status.
  */
-export async function handleClientIssue(projectCode: string, number: string, h: IssueHandling, actor: Actor, expected?: ClientIssueStatus, on: string = NOW_ISO): Promise<ClientIssueStatus> {
+export async function handleClientIssue(projectCode: string, number: string, h: IssueHandling, actor: Actor, expected?: ClientIssueStatus, onDate?: string): Promise<ClientIssueStatus> {
   if (!CLIENT_ISSUE_HANDLER_ROLES.includes(actor.role)) throw new Error('Only the project manager handles client issues');
   const answer = h.step === 'take' ? null : h.answer?.trim() || null;
   if (h.step === 'answer' && !answer) throw new Error('An answer is required');
   if (answer && (answer.length > 2000 || answer === ISSUE_ACKNOWLEDGEMENT)) throw new Error('Invalid answer');
   const db = await getDb();
+  const on = onDate ?? (await businessToday());
   const done = await db.transaction(async (tx) => {
     const p = await projectOf(tx, projectCode);
     if (!(await managesProject(tx, actor, p))) throw new Error('Only the project manager handles client issues');

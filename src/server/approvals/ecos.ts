@@ -5,6 +5,7 @@ import 'server-only';
 // decision is recorded through the Vigie connector (decideEcoApprovalAction → recordEcoProgress, "pending sync with
 // Vigie"); the row opens the ECO in Keystone and "Open in Vigie" opens it where it is managed.
 import { screenHref } from '@/config/screens';
+import { yearOfIso } from '@/domain/clock';
 import { ecoApprovalItems } from '@/domain/eco';
 import { fmtDOfIso } from '@/server/db/codes';
 import { ecoApprovalQueue, ecoDecidedCount } from '@/server/dal/eco';
@@ -17,9 +18,9 @@ export const ecoProvider: ApprovalProvider = {
   kind: 'eco',
   scope: 'global',
   source: 'db',
-  async items({ viewer }) {
+  async items({ viewer, today }) {
     const queue = await ecoApprovalQueue({ name: viewer.name, role: viewer.role });
-    return ecoApprovalItems(queue, { keystone: keystoneEcoHref, vigie: vigieEcoUrl }, fmtDOfIso);
+    return ecoApprovalItems(queue, { keystone: keystoneEcoHref, vigie: vigieEcoUrl }, (iso) => fmtDOfIso(iso, yearOfIso(today)));
   },
   // Prototype term: ECOs approved on the viewer's key (decisions waiting for Vigie included).
   async decided({ viewer }) {

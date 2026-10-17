@@ -14,6 +14,7 @@
 //   6. a client question — "client question", "le client demande"…
 // Meeting-flow phrases ("we will start with", "on va commencer par") are not actions. The summary lists the decisions and
 // counts the rest, in the transcript's language.
+import { yearOfIso } from '@/domain/clock';
 import { normaliseDue } from '@/domain/meetings';
 import { fold, parseTranscript } from './parse';
 import type { AnalysisInput, AnalysisResult, ProposalDraft, TranscriptAnalyzerImpl, TranscriptLanguage } from './types';
@@ -109,13 +110,13 @@ export function findDates(text: string, meetingDate: string): FoundDate[] {
 }
 
 /** Due of an action: the first date introduced by a due word, else the first date. The text loses that phrase. */
-function dueOf(text: string, meetingDate: string): { due: string | null; dueDate: string | null; text: string } {
+function dueOf(text: string, meetingDate: string, year: number): { due: string | null; dueDate: string | null; text: string } {
   const dates = findDates(text, meetingDate);
   const pick = dates.find((d) => d.due) ?? dates[0];
   if (!pick) return { due: null, dueDate: null, text };
   const head = text.slice(0, pick.start).replace(DUE_PREP_CUT, '');
   const tail = text.slice(pick.end).replace(/^\s*(?:at the latest|au plus tard|latest)\b/i, '');
-  return { due: normaliseDue(pick.iso), dueDate: pick.iso, text: `${head}${tail}`.replace(/\s+([,.;:!?])/g, '$1').replace(/\s{2,}/g, ' ').trim() };
+  return { due: normaliseDue(pick.iso, year), dueDate: pick.iso, text: `${head}${tail}`.replace(/\s+([,.;:!?])/g, '$1').replace(/\s{2,}/g, ' ').trim() };
 }
 
 // ── Names ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -226,11 +227,13 @@ interface Clause {
 
 interface Ctx {
   meetingDate: string;
+  /** Business year (R-013) the due texts are written against. */
+  year: number;
   known: string[];
 }
 
 function action(c: Clause, ctx: Ctx, owner: string | null, rest: string): ProposalDraft {
-  const d = dueOf(rest, ctx.meetingDate);
+  const d = dueOf(rest, ctx.meetingDate, ctx.year);
   const text = tidy(d.text);
   return { type: 'action', text: capitalise(text.length >= 3 ? text : tidy(c.text)), owner, due: d.due, dueDate: d.dueDate, speaker: c.speaker, quote: c.text };
 }
@@ -302,7 +305,9 @@ export function localSummary(ps: ProposalDraft[], lang: TranscriptLanguage): str
 /** Runs the rules on a transcript. Same input → same output. */
 export function analyseLocally(input: AnalysisInput, maxProposals = 60): AnalysisResult {
   const parsed = parseTranscript(input.text);
-  const ctx: Ctx = { meetingDate: /^\d{4}-\d{2}-\d{2}$/.test(input.meetingDate) ? input.meetingDate : '2026-01-01', known: knownNames(parsed.speakers, input.participants) };
+  const ctx: Ctx = {
+    meetingDate: /^\d{4}-\d{2}-\d{2}$/.test(input.meetingDate) ? input.meetingDate : input.today, year: yearOfIso(input.today), known: knownNames(parsed.speakers, input.participants),
+  };
   const seen = new Set<string>();
   const proposals: ProposalDraft[] = [];
   for (const seg of parsed.segments)

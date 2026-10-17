@@ -3,6 +3,7 @@ import 'server-only';
 // (apprItems 4728), all projects. Awarded on Sourcing only (row opens `?tab=rfq&rfq=…`; no inline decision): the award
 // (pm, procurement, director) records the winner and drafts the purchase order, and the RFQ leaves every queue.
 // "Decided this week": the RFQs the viewer awarded in Keystone.
+import { yearOfIso } from '@/domain/clock';
 import { RFQ_INBOX_ROLES, rfqAwardItems } from '@/domain/procurement';
 import { makeT } from '@/i18n/translate';
 import { listRfqs, rfqAwardQueue } from '@/server/dal/purchasing';
@@ -12,7 +13,7 @@ export const rfqAwardProvider: ApprovalProvider = {
   kind: 'rfq',
   scope: 'global',
   source: 'db',
-  async items({ viewer, lang }) {
+  async items({ viewer, lang, today }) {
     if (!RFQ_INBOX_ROLES.includes(viewer.role)) return [];
     const rfqs = await rfqAwardQueue();
     return rfqAwardItems(
@@ -21,6 +22,7 @@ export const rfqAwardProvider: ApprovalProvider = {
         replyDueOn: r.replyDueOn, owner: r.owner,
       })),
       makeT(lang),
+      yearOfIso(today),
     );
   },
   async decided({ viewer }) {

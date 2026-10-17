@@ -14,7 +14,10 @@ import type { Lang } from '@/i18n/translate';
 import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { getNewProjectSetup, type NewProjectSetup } from '@/server/dal/projects-register';
-import { DEFAULT_DRAFT, NewProjectWizard, basicsComplete, draftCalendar, type WizardDraft } from './new-project-wizard';
+import { NewProjectWizard, basicsComplete, defaultDraft, draftCalendar, type WizardDraft } from './new-project-wizard';
+
+/** The empty draft on the demo data set's business date (Fri 25 Sep 2026, R-013): planned start 11 Jan 2027. */
+const DEFAULT_DRAFT = defaultDraft('2026-09-25');
 
 const text = (m: string) => m.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ');
 

@@ -1,9 +1,10 @@
 // Administration seed (docs/spec/11 §8.1, §8.5): the Settings reference lists (SETTINGS0 3467 — locations are the
 // storage locations of seed/catalogue.ts), the project health thresholds, the hours-variance threshold (R-088), the connectors (CONNECTORS 3570, plus Vigie,
 // whose ECO / NCR / HSE connector Keystone runs) and the import / export formats (IMPORTS 3571).
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { PROTO } from '@/server/prototype';
 import {
-  APP_SETTING_CCB, APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, HEALTH_DEFAULTS, connectorStatus, deliverableType, locationType, parseStampText, riskCategory, slugOf, stage,
+  APP_SETTING_CCB, APP_SETTING_HEALTH, APP_SETTING_HOURS_VARIANCE, DEMO_YEAR, HEALTH_DEFAULTS, connectorStatus, deliverableType, locationType, parseStampText, riskCategory, slugOf, stage,
   type ReferenceListKey,
 } from '../codes';
 import { DEFAULT_CCB_THRESHOLD_KEUR } from '@/domain/change-control';
@@ -22,7 +23,7 @@ export function referenceCodeOf(list: ReferenceListKey, label: string): string {
     case 'riskCats': return riskCategory.code(label);
     case 'delivTypes': return deliverableType.code(label);
     case 'locTypes': return locationType.code(label);
-    case 'holidays': return holidayCode(label);
+    case 'holidays': return holidayCode(label, DEMO_YEAR);
     default: return slugOf(label);
   }
 }
@@ -77,7 +78,7 @@ export async function seedSettings(tx: Tx, opts: { demo: boolean } = { demo: tru
   await seedSettingsDefaults(tx, opts);
   const rows: (Omit<typeof connectors.$inferInsert, 'direction'>)[] = (PROTO.CONNECTORS as [string, string, string, string, string, string][]).map(([name, what, freq, status, last, vol], position) => ({
     name, kind: name === 'Cursus' ? 'cursus' : 'static', dataScope: what, frequency: freq,
-    ...(opts.demo ? { status: connectorStatus.code(status), lastSyncAt: parseStampText(last), lastVolume: vol } : { status: 'ready' as const, lastSyncAt: null, lastVolume: '' }),
+    ...(opts.demo ? { status: connectorStatus.code(status), lastSyncAt: parseStampText(last, DEMO_TODAY_ISO), lastVolume: vol } : { status: 'ready' as const, lastSyncAt: null, lastVolume: '' }),
     position,
   }));
   rows.push({

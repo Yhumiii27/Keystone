@@ -31,7 +31,7 @@ import type { AnalysisInput } from './types';
 const INPUT: AnalysisInput = {
   text: 'Romain Aubert: Bonjour. Léa Fabre: On valide la grue de 300 t. Julien Wagner: Je vais envoyer le plan de levage pour le 9 octobre.',
   meetingTitle: 'Levage',
-  meetingDate: '2026-10-07',
+  meetingDate: '2026-10-07', today: '2026-09-25',
   participants: ['R. Aubert', 'L. Fabre', 'K. Lindqvist (Nordvolt)'],
 };
 const SETTINGS = { apiKey: 'sk-test', model: 'claude-opus-5-5', fallbacks: true };

@@ -5,7 +5,6 @@ import { LO, OK, TAG_CLASS, raciCell, statusTagClass } from '@/components/app/to
 import {
   interfaceRowState, raciGrid, stakeholderTone, summariseInterfaces, summariseStakeholders,
 } from '@/domain/team';
-import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
 import { dueWithinDays } from '@/domain/kpis';
 import type { Lang, T } from '@/i18n/translate';
 import type { InterfaceRow } from '@/server/dal/interfaces';
@@ -132,8 +131,8 @@ export interface InterfacesView {
   late: number;
 }
 
-/** `dataDate` = the project's data date (A-12: "due within 30 days" counts from it). */
-export function interfacesView(interfaces: readonly InterfaceRow[], blockers: readonly CommissioningBlocker[], t: T, lang: Lang, dataDate: string = DEFAULT_DATA_DATE): InterfacesView {
+/** `dataDate` = the project's data date (its own, else the business date — R-013; A-12: "due within 30 days" counts from it). */
+export function interfacesView(interfaces: readonly InterfaceRow[], blockers: readonly CommissioningBlocker[], t: T, lang: Lang, dataDate: string): InterfacesView {
   const facts = interfaces.map((r) => ({ number: r.number, status: r.status, daysToNeed: r.daysToNeed }));
   const s = summariseInterfaces(facts, blockers.map((b) => b.number));
   const st = statusT(t, lang);

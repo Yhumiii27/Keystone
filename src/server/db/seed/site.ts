@@ -3,7 +3,7 @@
 // reports (SITE_REPORTS, numbered DR-001… in date order). The Cursus approvals (SITE_DOCS) go to the Cursus mirror
 // (seed/cursus.ts), the HSE register (SITE_HSE) to the Vigie mirror (seed/vigie.ts), the site punch list to punch_items.
 import { PROTO } from '@/server/prototype';
-import { collisionKind, confirmStatus, equipmentSource, isoOfDisplayDate } from '../codes';
+import { collisionKind, confirmStatus, equipmentSource, isoOfDemoDate } from '../codes';
 import { dailyReports, missionCostLines, siteCollisions, siteEquipment, sitePrerequisites, siteRotations, siteSheets } from '../schema';
 import type { Tx } from '../types';
 import { must, personIdOrNull, type SeedCtx } from './context';
@@ -17,7 +17,7 @@ export async function seedSite(tx: Tx, ctx: SeedCtx): Promise<void> {
   const projectId = must(ctx.projectByCode, code, 'project');
   const acts = ctx.activity.get(code) ?? new Map<string, string>();
   const iso = (t: string) => {
-    const v = isoOfDisplayDate(t);
+    const v = isoOfDemoDate(t);
     if (!v) throw new Error(`Seed: unparseable date "${t}"`);
     return v;
   };

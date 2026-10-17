@@ -4,6 +4,7 @@ import 'server-only';
 // the writers are `createPart` / `registerEquivalent` (parts.ts). ECOs come from the Vigie connector (Vigie owns them);
 // the installed base is the database's (machines.ts over fleet.ts, Delivery 5).
 import { asc, eq, inArray, sql } from 'drizzle-orm';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { revisionEventsOf, parentChains, type PartRevisionEvent } from '@/domain/parts';
 import { assemblyLinks, drawingRevisions, drawings as drawingsTable, parts, revisionDiffLines, revisionDiffs } from '@/server/db/schema';
@@ -51,6 +52,8 @@ export interface PartDrawerData {
   revisions: PartRevisionEvent[];
   /** Assembly chains above the part in the product structure (top-level assembly → direct parent). */
   usedInAssemblies: string[][];
+  /** Business date (R-013): dates outside its year show their year. */
+  today: string;
 }
 
 async function revisionDiffsOf(ref: string): Promise<PartRevisionEvent[]> {
@@ -101,7 +104,7 @@ async function drawingsOf(ref: string): Promise<PartDrawing[]> {
 export async function getPartDrawer(ref: string): Promise<PartDrawerData | null> {
   const record = await getPartRecord(ref);
   if (!record) return null;
-  const [vault, ecos, machines, stock, drawingRows, revisions, usedInAssemblies] = await Promise.all([
+  const [vault, ecos, machines, stock, drawingRows, revisions, usedInAssemblies, today] = await Promise.all([
     listVaultDocuments(),
     listEcos({ partRefs: [ref] }),
     machinesCarryingPart(ref),
@@ -109,6 +112,7 @@ export async function getPartDrawer(ref: string): Promise<PartDrawerData | null>
     drawingsOf(ref),
     revisionDiffsOf(ref),
     assemblyChainsOf(ref),
+    businessToday(),
   ]);
   return {
     record,
@@ -119,6 +123,7 @@ export async function getPartDrawer(ref: string): Promise<PartDrawerData | null>
     drawings: drawingRows,
     revisions,
     usedInAssemblies,
+    today,
   };
 }
 

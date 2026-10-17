@@ -45,7 +45,7 @@ export function OverviewBody({ data, zoneSelected, t, lang }: { data: PortfolioO
 /** "Active projects" (line 3793): one row per project, click → the project's Plan. Seed order, no sorting. */
 function ActiveProjectsCard({ data, t, lang }: { data: PortfolioOverview; t: T; lang: Lang }) {
   return (
-    <SectionCard title={t('Active projects')} hint={t(activeProjectsHint(data.rows.length))} scroll>
+    <SectionCard title={t('Active projects')} hint={t(activeProjectsHint(data.rows.length, data.today))} scroll>
       <Table size={13}>
         <thead>
           <tr>

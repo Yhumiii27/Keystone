@@ -14,6 +14,7 @@ import { drawingDrawerView, drawingsView, type DrawingsState } from '@/features/
 import { SyncVaultButton } from '@/features/eco/drawings/sync-vault-button';
 import type { T } from '@/i18n/translate';
 import { vaultSyncScope, vaultSyncSource } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
 import { getDrawingsScreen } from '@/server/dal/eco-screen';
 import { getProject } from '@/server/dal/projects';
 import { getScreenAccess } from '@/server/project-context';
@@ -45,12 +46,14 @@ const syncVaultForm = (t: T, project: string | null): FormDef => ({
 
 export default async function DrawingsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const [{ t, lang }, access, data, lastProject] = await Promise.all([getI18n(), getScreenAccess('drawings'), getDrawingsScreen(first(sp.dwg)?.trim().slice(0, 60) || null), getLastProject()]);
+  const [{ t, lang }, access, data, lastProject, today] = await Promise.all([
+    getI18n(), getScreenAccess('drawings'), getDrawingsScreen(first(sp.dwg)?.trim().slice(0, 60) || null), getLastProject(), businessToday(),
+  ]);
   // `?dwg=` as the vault writes the number (case-insensitive deep link); an unknown drawing opens nothing.
   const state: DrawingsState = { state: drawingFilterOf(first(sp.state)), q: (first(sp.q) ?? '').slice(0, 120), dwg: data.selected };
   const project = access.canEdit ? await getProject(lastProject) : null;
-  const view = drawingsView({ drawings: data.drawings, sync: data.sync, state }, t, lang);
-  const drawer = data.detail ? drawingDrawerView({ drawing: data.detail, state }, t, lang) : null;
+  const view = drawingsView({ drawings: data.drawings, sync: data.sync, state, today }, t, lang);
+  const drawer = data.detail ? drawingDrawerView({ drawing: data.detail, state, today }, t, lang) : null;
 
   return (
     <>

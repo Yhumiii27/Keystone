@@ -1,7 +1,7 @@
 // Operations seed: the interface register (INTERFACES 3719, HLT-026 × 7). A seeded "Late" status is stored as open:
 // lateness is derived from the need date (IF-07, needed 20 Sep). See schema/operations.ts.
 import { PROTO } from '@/server/prototype';
-import { isoOfDisplayDate, keystoneSide, type InterfaceStatus } from '../codes';
+import { isoOfDemoDate, keystoneSide, type InterfaceStatus } from '../codes';
 import { projectInterfaces } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, personIdOrNull, type SeedCtx } from './context';
@@ -13,7 +13,7 @@ export async function seedOperations(tx: Tx, ctx: SeedCtx): Promise<void> {
   const rows = Object.entries(PROTO.INTERFACES as Record<string, Row[]>).flatMap(([code, list]) =>
     list.map(([number, title, side, otherParty, dataExpected, needed, provided, status, owner], position) => ({
       id: newId(), projectId: must(ctx.projectByCode, code, 'project'), number, title, keystoneSide: keystoneSide.code(side), otherParty, dataExpected,
-      neededBy: isoOfDisplayDate(needed)!, providedOn: provided && provided !== '—' ? isoOfDisplayDate(provided) : null,
+      neededBy: isoOfDemoDate(needed)!, providedOn: provided && provided !== '—' ? isoOfDemoDate(provided) : null,
       status: must(new Map(Object.entries(STORED_STATUS)), status, 'interface status'), ownerPersonId: personIdOrNull(ctx, owner), ownerName: owner, position,
     })),
   );

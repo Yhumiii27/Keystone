@@ -197,16 +197,16 @@ describe('R-102 Server Functions', () => {
 
   it('the drawer: Qualification section per persona; "Complete the record" prefilled for the editors', async () => {
     const data = (await getPartDrawer('FD-DET-OPT2'))!;
-    const q = (role: RoleKey) => partQualificationView(data.record, role, makeT('en'));
+    const q = (role: RoleKey) => partQualificationView(data.record, role, makeT('en'), 2026);
     expect(q('englead')).toMatchObject({ label: 'Qualification', complete: { label: 'Complete the record' }, validate: { label: 'Validate part', enabled: false } });
     expect(q('englead')!.items[0]).toMatchObject({ k: 'Before validation', color: 'var(--color-accent-300)' });
     expect(q('procurement')).toMatchObject({ complete: { label: 'Complete the record' }, validate: null });
     expect(q('member')).toMatchObject({ complete: null, validate: null });
-    expect(partQualificationView(data.record, 'englead', makeT('fr'))!.missing).toEqual(['Restriction à l’export non confirmée']);
+    expect(partQualificationView(data.record, 'englead', makeT('fr'), 2026)!.missing).toEqual(['Restriction à l’export non confirmée']);
     // A validated part: who and when; nothing for the viewers who cannot change it.
     const validated = (await getPartDrawer('CTL-WIND-SN'))!.record;
-    expect(partQualificationView(validated, 'pm', makeT('en'))!.items[0]).toMatchObject({ k: 'Validated', v: expect.stringMatching(/ · Marie Lefebvre$/) });
-    expect(partQualificationView((await getPartDrawer('EL-VFD-200'))!.record, 'pm', makeT('en'))).toBeNull();
+    expect(partQualificationView(validated, 'pm', makeT('en'), 2026)!.items[0]).toMatchObject({ k: 'Validated', v: expect.stringMatching(/ · Marie Lefebvre$/) });
+    expect(partQualificationView((await getPartDrawer('EL-VFD-200'))!.record, 'pm', makeT('en'), 2026)).toBeNull();
     // The server component builds the prefilled form for the editors only.
     as('englead');
     const el = (await PartDrawer({ partRef: 'HST-BRK-DSC', closeHref: '/reference/parts' })) as ReactElement<PartDrawerPanelProps>;

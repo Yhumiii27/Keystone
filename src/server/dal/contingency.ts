@@ -17,7 +17,8 @@ import {
 } from '@/domain/cost-control';
 import { linkOptionLabel, type DrawLinkOption, type DrawLinkType } from '@/domain/contingency';
 import { getDb, type DB, type Tx } from '@/server/db/client';
-import { STATUS_ISO, shortDateOfIso, type ContingencyLinkType } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
+import { shortDateOfIso, type ContingencyLinkType } from '@/server/db/codes';
 import { findPerson, nameOf, personOfRole, recordActivity, writeAudit } from '@/server/db/helpers';
 import { changeRequests, contingencyDraws, contingencyRegisters, persons, projectControls, projects, risks, vigieNcrs } from '@/server/db/schema';
 import { getProjectEvm } from './evm';
@@ -171,7 +172,7 @@ export interface DrawInput {
   /** Linked item ("CR-004", "R-03", "NCR-026") and its kind — required (C-4). */
   linkRef: string;
   linkType: DrawLinkType;
-  /** Business date (default the status date). */
+  /** Business date (default the business date, R-013). */
   drawnOn?: string;
 }
 
@@ -231,7 +232,7 @@ export async function submitContingencyDraw(projectCode: string, input: DrawInpu
     const [d] = await tx
       .insert(contingencyDraws)
       .values({
-        registerId: t.registerId!, drawnOn: input.drawnOn ?? STATUS_ISO, amountKeur: amount, reason, linkRef: input.linkRef, linkedEntityType: input.linkType,
+        registerId: t.registerId!, drawnOn: input.drawnOn ?? (await businessToday(tx)), amountKeur: amount, reason, linkRef: input.linkRef, linkedEntityType: input.linkType,
         linkedEntityId: linkedId, approvedByPersonId: null, position: pos + 1, status: 'submitted', requestedByPersonId: person?.id ?? null, requestedByName: who,
       })
       .returning({ id: contingencyDraws.id });

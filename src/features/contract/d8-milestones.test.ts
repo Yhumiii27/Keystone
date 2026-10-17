@@ -102,7 +102,7 @@ describe('R-077 — validation, stale rows, the basis never changes', () => {
     const m = { label: 'Handover', sharePct: 12.5, contractualDue: '2027-01-14', condition: null };
     for (const lang of ['en', 'fr'] as const) {
       const v = editMilestoneValues(m, makeT(lang));
-      const parsed = parseMilestoneForm(v);
+      const parsed = parseMilestoneForm(v, 2026);
       expect([lang, parsed]).toEqual([lang, { ok: true, value: { label: 'Handover', sharePct: 12.5, contractualDue: '2027-01-14', condition: null, amendment: null } }]);
     }
   });

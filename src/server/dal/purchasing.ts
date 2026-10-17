@@ -12,9 +12,10 @@ import 'server-only';
 //   only part of it reads as Blocked (`matchedInvoiceStatus`); a rejected invoice cannot be rejected again.
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { currencyOf, documentCurrencies, documentCurrencyError, eurRate, projectFxOf, type CurrencyCode } from '@/domain/currency';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import {
-  RFQ_AWARD_ROLES, STATUS_ISO, awardRule, incoterm, matchState, nextBusinessNumber, partStatus, poStatus, rfqStatus, splitActual, supplierInvoiceStatus,
+  RFQ_AWARD_ROLES, awardRule, incoterm, matchState, nextBusinessNumber, partStatus, poStatus, rfqStatus, splitActual, supplierInvoiceStatus,
   type AwardRule, type Incoterm, type MatchState, type PartStatus, type PoOrigin, type PoStatus, type RfqStatus, type SupplierGrade, type SupplierInvoiceStatus,
 } from '@/server/db/codes';
 import { actorOf, findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
@@ -212,7 +213,10 @@ async function nextDraftNumber(tx: Tx): Promise<string> {
   return +next.slice(3) <= 1999 && !all.includes(next) ? next : nextBusinessNumber(all, 'PO-', 4);
 }
 
-/** Inserts a Draft order (next PO-1100… number) with its lines; returns the number. Also used by the spares orders (chapter 4). */
+/**
+ * Inserts a Draft order (next PO-1100… number) with its lines, ordered on the business date (R-013; the prototype's status
+ * date); returns the number. Also used by the spares orders (chapter 4).
+ */
 export async function insertOrder(
   tx: Tx,
   o: {
@@ -222,11 +226,12 @@ export async function insertOrder(
   },
 ): Promise<string> {
   const number = await nextDraftNumber(tx);
+  const orderedOn = await businessToday(tx);
   const [{ pos }] = await tx.select({ pos: sql<number>`coalesce(max(${purchaseOrders.position}), -1)::int` }).from(purchaseOrders).where(eq(purchaseOrders.projectId, o.projectId));
   const [po] = await tx
     .insert(purchaseOrders)
     .values({
-      number, projectId: o.projectId, supplierId: o.supplierId, status: 'draft', origin: o.origin, orderedOn: STATUS_ISO, expectedOn: o.expectedOn ?? null,
+      number, projectId: o.projectId, supplierId: o.supplierId, status: 'draft', origin: o.origin, orderedOn, expectedOn: o.expectedOn ?? null,
       deliveryTerms: o.deliveryTerms ?? orderDeliveryTerms(), createdByPersonId: o.createdBy, position: pos + 1,
     })
     .returning({ id: purchaseOrders.id });
@@ -542,11 +547,12 @@ export interface NewRfqInput {
 const isIso = (s: string | null | undefined): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s));
 
 /**
- * "Send RFQ" (New RFQ form, AF.procurement): RFQ-2026-nnn, sent to the suppliers (status Open), the viewer as buyer.
+ * "Send RFQ" (New RFQ form, AF.procurement): RFQ-<business year>-nnn (R-013), sent to the suppliers (status Open), the viewer as buyer.
  * The prototype only toasted; the RFQ is now recorded (SC-4, SC-7: suppliers stay free text until a picker exists).
  */
 export async function createRfq(input: NewRfqInput, actorName: string): Promise<string> {
   const db = await getDb();
+  const today = await businessToday();
   return db.transaction(async (tx) => {
     const title = input.title.trim();
     const articles = input.articles.trim();
@@ -569,7 +575,7 @@ export async function createRfq(input: NewRfqInput, actorName: string): Promise<
     }
     const project = input.projectCode ? await requireProject(tx, input.projectCode) : null;
     const all = (await tx.select({ n: rfqs.number }).from(rfqs)).map((r) => r.n);
-    const number = nextBusinessNumber(all, 'RFQ-2026-', 3);
+    const number = nextBusinessNumber(all, `RFQ-${today.slice(0, 4)}-`, 3);
     const actor = await findPerson(tx, actorName);
     const [{ minPos }] = await tx.select({ minPos: sql<number>`coalesce(min(${rfqs.position}), 1)::int` }).from(rfqs);
     const [r] = await tx

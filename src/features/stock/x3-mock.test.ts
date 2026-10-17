@@ -109,7 +109,7 @@ describe('R-034 on a demo database: the X3 actions are simulated and say so', ()
       expect((await listAudit({ limit: 1 }))[0].change).toMatch(/^simulated stock push \(Sage X3 not connected\) · 1 lines · /);
     }
     const detail = (await getStockPosition((await listStock())[0].id))!;
-    const d = stockDrawerView({ detail, locations: [], pins: {}, state: STATE }, makeT('en'), 'en');
+    const d = stockDrawerView({ year: 2026, detail, locations: [], pins: {}, state: STATE }, makeT('en'), 'en');
     expect([d.canPush, d.x3Note]).toEqual([true, 'Local movements are flagged until the next push to X3 · X3 remains the accounting reference']);
     // A Keystone draft, approved, pushed: the toast, the audit and the activity line say "simulated".
     const [n] = await createDraftPurchaseOrders('HLT-026', 'Fabien Bertrand');
@@ -162,9 +162,9 @@ describe('R-034 on a production database: Sage X3 is not connected', () => {
     as('director');
     const page = await stockPage();
     expect(page.PageHeader.props.primary).toBeUndefined();
-    const v = stockScreenView({ rows: [], locations: [], sync: null, moves: [], pins: {}, state: STATE, x3: false }, makeT('en'), 'en');
+    const v = stockScreenView({ year: 2026, rows: [], locations: [], sync: null, moves: [], pins: {}, state: STATE, x3: false }, makeT('en'), 'en');
     expect(v.kpis.slice(3).map((k) => [k.label, k.value, k.sub])).toEqual([['X3 import', '—', 'Sage X3 not connected'], ['Local changes', '0', 'Sage X3 not connected']]);
-    expect(stockScreenView({ rows: [], locations: [], sync: null, moves: [], pins: {}, state: STATE, x3: false }, makeT('fr'), 'fr').kpis[4].sub).toBe('Sage X3 non connecté');
+    expect(stockScreenView({ year: 2026, rows: [], locations: [], sync: null, moves: [], pins: {}, state: STATE, x3: false }, makeT('fr'), 'fr').kpis[4].sub).toBe('Sage X3 non connecté');
   });
 });
 
@@ -183,7 +183,7 @@ describe('R-034 production wording of the drawers (demo data shown as a producti
     const off = ordersView({ code: 'HLT-026', data, filter: null, selected: n, x3: false }, makeT('fr'), 'fr').drawer!;
     expect([off.canPush, off.meta.at(-1)!.v, off.meta.at(-1)!.color]).toEqual([false, 'Absente de Sage X3 · Sage X3 non connecté', 'var(--color-text)']);
     const detail = (await getStockPosition((await listStock())[0].id))!;
-    const d = stockDrawerView({ detail, locations: [], pins: {}, state: STATE, x3: false }, makeT('fr'), 'fr');
+    const d = stockDrawerView({ year: 2026, detail, locations: [], pins: {}, state: STATE, x3: false }, makeT('fr'), 'fr');
     expect([d.canPush, d.x3Note]).toEqual([false, 'Sage X3 non connecté · les mouvements sont enregistrés dans Keystone seulement']);
   });
 });

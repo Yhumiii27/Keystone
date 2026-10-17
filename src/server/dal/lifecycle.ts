@@ -8,6 +8,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { cache } from 'react';
 import type { RoleKey } from '@/config/screens';
 import { projectDataDate } from '@/domain/ch4-defaults';
+import { businessToday } from '@/server/clock';
 import { BL1_DELIVERABLE_MESSAGE, BL1_STAGE_DELIVERABLE, bl1TickRefused, hasBl1 } from '@/domain/baseline-policy';
 import { REVERT_BLOCKER_MESSAGE, isForcedStageDecider, revertBlocker, revertReason, FORCED_STAGE_COMMENT_MAX } from '@/domain/forced-stage';
 import { defaultEffectiveDate, effectiveDateError, type EffectiveDateBounds } from '@/domain/lifecycle';
@@ -146,7 +147,7 @@ async function effectiveBoundsOf(q: Tx | Awaited<ReturnType<typeof getDb>>, p: {
     .where(eq(stageTransitions.projectId, p.id))
     .orderBy(desc(stageTransitions.seq))
     .limit(1);
-  return { previous: last?.effectiveOn ?? null, today: projectDataDate(p), lastSeq: last?.seq ?? 0 };
+  return { previous: last?.effectiveOn ?? null, today: projectDataDate(p, await businessToday(q)), lastSeq: last?.seq ?? 0 };
 }
 
 /** Effective-date bounds of a project's next stage change (the register's date field). */

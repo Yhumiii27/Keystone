@@ -4,6 +4,7 @@
 // `importX3`. The rules the rebuild settles differently (08 OQ13–16, SC-5) are asserted explicitly.
 import { describe, expect, it } from 'vitest';
 import { money, moneyEur } from '@/lib/format';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { stampText, stockMoveInstant, stockMovementType, stockOperation, type LocationType, locationType } from '@/server/db/codes';
 import PROTO from '@/server/prototype/prototype-data.json';
 import GOLDEN from '@/features/stock/stock.golden.json';
@@ -53,7 +54,7 @@ function apply(stock: Line[], moves: any[], row: number, req: MovementRequest, w
     if (!t) stock.push((t = { ref: l.ref, loc: p.transferTo, onHand: 0, reserved: 0, reservedFor: null, min: 0, source: 'local', last: '25 Sep' }));
     Object.assign(t, { onHand: t.onHand + p.qty, reserved: t.reserved + p.transferReserved, reservedFor: p.transferReserved ? p.transferReservedFor : t.reservedFor, source: 'local', last: '25 Sep' });
   }
-  moves.unshift({ when: stampText(stockMoveInstant(moves.length)), type: stockMovementType.label(p.type), ref: l.ref, qty: p.qty, where: p.whereText, who });
+  moves.unshift({ when: stampText(stockMoveInstant(moves.length, DEMO_TODAY_ISO)), type: stockMovementType.label(p.type), ref: l.ref, qty: p.qty, where: p.whereText, who });
   return null;
 }
 const moves0 = () => (P.MOVES0 as any[]).map(([when, type, ref, qty, where, who]) => ({ when, type, ref, qty, where, who }));

@@ -14,8 +14,10 @@
 // client shows them with toast `showEn` (FormDialog results are translated here).
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
+import { yearOfIso } from '@/domain/clock';
 import { DELIVERABLE_CREATOR_ROLES, deliverableActionFor, ncrActionFor, ncrRequestText, parseNewDeliverable, producerNextOf, type ProducerTarget } from '@/domain/quality';
 import { NCR_VERIFIER_ROLES, deliverableStatus, ncrStatus, vigieSyncStatus, type NcrStatus } from '@/server/db/codes';
+import { businessToday } from '@/server/clock';
 import { getApproverIdentity } from '@/server/dal/myapprovals-identity';
 import { getProject } from '@/server/dal/projects';
 import {
@@ -171,7 +173,7 @@ export async function moveDeliverableAction(input: { projectCode: string; number
 
 /**
  * "Accept (PV)" / "Reject with comments" (register, drawer, My approvals): a submitted deliverable, decided by a client
- * contact of the project's client organisation. Accept stamps the status date and the viewer; reject keeps the comments.
+ * contact of the project's client organisation. Accept stamps the business date (R-013) and the viewer; reject keeps the comments.
  */
 export async function decideDeliverableAction(input: { projectCode: string; number: string; decision: string; comments?: string | null }): Promise<QualityResult> {
   const a = await access(input?.projectCode);
@@ -248,7 +250,7 @@ export async function createDeliverableAction(projectCode: string, values: Recor
   if (!ctx.isLead) return { error: await tr(PM_ONLY) };
   const opts = await newDeliverableOptions(a.code);
   const raw = values && typeof values === 'object' ? Object.fromEntries(Object.entries(values).filter((e): e is [string, string] => typeof e[1] === 'string')) : {};
-  const parsed = parseNewDeliverable(raw, { types: opts.types, wbs: opts.wbs.map((w) => w.code), team: opts.team });
+  const parsed = parseNewDeliverable(raw, { types: opts.types, wbs: opts.wbs.map((w) => w.code), team: opts.team, year: yearOfIso(await businessToday()) });
   if (!parsed.ok) return { error: await tr(parsed.error) };
   const v = parsed.value;
   try {

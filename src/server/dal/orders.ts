@@ -6,6 +6,7 @@ import 'server-only';
 // The order lifecycle writers themselves (drafts, submit, approve, reject) are in ./purchasing.ts.
 import { eq } from 'drizzle-orm';
 import { canPushPoToX3, mockX3OrderRef, poX3State, type PoCancelKind } from '@/domain/orders';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { findPerson, nameOf, recordActivity, writeAudit } from '@/server/db/helpers';
 import { purchaseOrders } from '@/server/db/schema';
@@ -32,6 +33,8 @@ export interface OrdersScreenData {
   canApprove: boolean;
   /** R-095: orders the viewer may cancel (`cancel`, a Draft) or withdraw from approval (`withdraw`), by number. */
   cancelRights: Record<string, PoCancelKind>;
+  /** Business date (R-013): order dates show their year outside its year. */
+  today: string;
 }
 
 const group = <T extends { statusLabel: string; number: string }>(rows: T[], key: (r: T) => string | null) => {
@@ -45,13 +48,14 @@ const group = <T extends { statusLabel: string; number: string }>(rows: T[], key
 
 /** Everything the Orders screen reads for a project. Projects without orders or BOM get empty lists. */
 export async function getOrdersScreen(projectCode: string, viewerName: string): Promise<OrdersScreenData> {
-  const [orders, shortfall, receipts, invoices, canApprove, cancelRights] = await Promise.all([
+  const [orders, shortfall, receipts, invoices, canApprove, cancelRights, today] = await Promise.all([
     listPurchaseOrders(projectCode),
     getBomShortfall(projectCode),
     listReceipts(projectCode),
     listSupplierInvoices(),
     canApprovePurchaseOrders(projectCode, viewerName),
     poCancelRights(projectCode, viewerName),
+    businessToday(),
   ]);
   const mine = new Set(orders.map((o) => o.number));
   return {
@@ -61,6 +65,7 @@ export async function getOrdersScreen(projectCode: string, viewerName: string): 
     invoices: group(invoices, (i) => (i.poNumber && mine.has(i.poNumber) ? i.poNumber : null)),
     canApprove,
     cancelRights,
+    today,
   };
 }
 

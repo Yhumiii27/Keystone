@@ -64,9 +64,9 @@ export function stepLabelT(label: string, t: T, lang: Lang): string {
   return dataT(label, lang);
 }
 
-/** Step "who · date": who through the dictionary segments ("Quality · Engineering"), date "12 Sep" or "—". */
+/** Step "who · date": who through the dictionary segments ("Quality · Engineering"), date "12 Sep" (its year outside the business year `year`) or "—". */
 export const stepWhoT = (who: string, lang: Lang) => dataT(who, lang);
-export const stepDateT = (dateIso: string | null, t: T) => (dateIso ? t(fmtDOfIso(dateIso)) : '—');
+export const stepDateT = (dateIso: string | null, t: T, year: number) => (dateIso ? t(fmtDOfIso(dateIso, year)) : '—');
 
 // ── Import ───────────────────────────────────────────────────────────────────────────────────────────────
 

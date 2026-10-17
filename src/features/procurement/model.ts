@@ -11,6 +11,7 @@ import {
 } from '@/domain/procurement';
 import type { Lang, T } from '@/i18n/translate';
 import { money, moneyEur } from '@/lib/format';
+import { yearOfIso } from '@/domain/clock';
 import { moneyUnitsIn } from '@/domain/currency';
 import {
   RFQ_STATUS_TAG, SUPPLIER_GRADE_TAG, SUPPLIER_INVOICE_STATUS_TAG, incoterm, matchState, shortDateYearOfIso, supplierInvoiceStatus,
@@ -18,7 +19,6 @@ import {
 } from '@/server/db/codes';
 import type { RfqRow, SupplierInvoiceRow } from '@/server/dal/purchasing';
 import type { SupplierScorecard } from '@/server/dal/suppliers';
-import { DEFAULT_DATA_DATE } from '@/domain/ch4-defaults';
 import { rfqAverageCycleDays, rfqSavingsKeur, type RfqKpiFacts } from '@/domain/kpis';
 import { wholeDaysText } from '@/features/kpis/i18n';
 import { dataText } from './i18n';
@@ -33,7 +33,8 @@ export interface KpiView {
 
 const kpi = (t: T, label: string, value: string | number, sub: string, lo = false): KpiView => ({ label: t(label), value: t(String(value)), sub, color: lo ? LO : OK });
 const qtyText = (n: number, lang: Lang) => n.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US');
-const dateText = (iso: string, t: T) => t(shortDateYearOfIso(iso));
+/** "12 Mar" / "14 Jan 2027": the year outside the business year (R-013). */
+const dateText = (iso: string, t: T, today: string) => t(shortDateYearOfIso(iso, yearOfIso(today)));
 
 /** Shared context of the builders. */
 export interface SourcingCtx {
@@ -44,6 +45,8 @@ export interface SourcingCtx {
   canEdit: boolean;
   /** Supplier prices and invoice amounts shown (R-046, NEW-D2-1: director, PMs, procurement); masked otherwise. */
   prices: boolean;
+  /** R-013: business date — "Savings vs list" (its quarter), invoices due within 30 days. */
+  today: string;
 }
 
 /** A price text, or the mask for a viewer who may not see supplier prices (R-046). */
@@ -87,9 +90,9 @@ export interface RfqTabView {
 
 /**
  * `facts` = the RFQ facts of the computed tiles (src/server/dal/kpis.ts `rfqKpiFacts`): "Savings vs list" (awarded in the
- * data date's quarter) and "Average cycle" (sent → award) — A-12; `asOf` = the portfolio data date.
+ * business date's quarter, `c.today` — R-013) and "Average cycle" (sent → award) — A-12.
  */
-export function rfqTabView(rfqs: readonly RfqRow[], selected: string | null, c: SourcingCtx, facts: readonly RfqKpiFacts[] = [], asOf: string = DEFAULT_DATA_DATE): RfqTabView {
+export function rfqTabView(rfqs: readonly RfqRow[], selected: string | null, c: SourcingCtx, facts: readonly RfqKpiFacts[] = []): RfqTabView {
   const { t, lang } = c;
   const pr = priced(c);
   const k = rfqKpis(rfqs.map((r) => ({ status: r.status, quoteCount: r.quotes.length })));
@@ -99,7 +102,7 @@ export function rfqTabView(rfqs: readonly RfqRow[], selected: string | null, c: 
     kpis: [
       kpi(t, 'Open RFQs', k.open, t(`${k.readyToAward} ready to award`)),
       kpi(t, 'Quotes received', k.quotes, t('Across open requests')),
-      kpi(t, 'Savings vs list', pr(() => money(rfqSavingsKeur(facts, asOf), lang)), t('Awarded this quarter')),
+      kpi(t, 'Savings vs list', pr(() => money(rfqSavingsKeur(facts, c.today), lang)), t('Awarded this quarter')),
       kpi(t, 'Average cycle', wholeDaysText(rfqAverageCycleDays(facts), lang), t('RFQ sent → award')),
       kpi(t, 'Award rule', award.value, t(award.sub)),
     ],
@@ -111,7 +114,7 @@ export function rfqTabView(rfqs: readonly RfqRow[], selected: string | null, c: 
         title: dataText(r.title, lang),
         part: r.partRef ?? '—',
         qty: r.quantity != null ? qtyText(r.quantity, lang) : '—',
-        due: dateText(r.replyDueOn, t),
+        due: dateText(r.replyDueOn, t, c.today),
         owner: r.owner,
         quotes: t(quotesText(r.quotes, lang)),
         rule: t(r.awardRuleLabel),
@@ -173,7 +176,7 @@ export function rfqDrawerView(r: RfqRow, c: SourcingCtx & { orderProject: string
   const meta: { k: string; v: string }[] = [
     { k: t('Part'), v: r.partRef ? r.partRef + (r.partName ? ' · ' + dataText(r.partName, lang) : '') : '—' },
     { k: t('Quantity'), v: r.quantity != null ? qtyText(r.quantity, lang) : '—' },
-    { k: t('Quotes due'), v: dateText(r.replyDueOn, t) },
+    { k: t('Quotes due'), v: dateText(r.replyDueOn, t, c.today) },
     { k: t('Buyer'), v: r.owner },
     { k: t('Award rule'), v: t(r.awardRuleLabel) },
     { k: t('Last purchase price'), v: r.lastPriceEur != null ? pr(() => moneyEur(r.lastPriceEur!, lang)) : '—' },
@@ -277,7 +280,7 @@ export function parseInvoiceFilter(v: string | undefined, invoices: readonly { s
 export function invoiceTabView(invoices: readonly SupplierInvoiceRow[], filter: SupplierInvoiceStatus | 'all', selected: string | null, c: SourcingCtx): InvoiceTabView {
   const { t, lang } = c;
   const pr = priced(c);
-  const k = invoiceKpis(invoices.map((i) => ({ status: i.status, amountEur: i.amountEur, dueDate: i.dueDate })));
+  const k = invoiceKpis(invoices.map((i) => ({ status: i.status, amountEur: i.amountEur, dueDate: i.dueDate })), c.today);
   const statuses = invoiceChipStatuses(invoices);
   const status = filter === 'all' ? null : filter;
   return {
@@ -302,7 +305,7 @@ export function invoiceTabView(invoices: readonly SupplierInvoiceRow[], filter: 
         const on = i.number === selected;
         return {
           number: i.number,
-          date: dateText(i.invoiceDate, t),
+          date: dateText(i.invoiceDate, t, c.today),
           supplier: i.supplier,
           po: i.poNumber ?? '—',
           gr: i.receiptNumber ?? '—',
@@ -314,7 +317,7 @@ export function invoiceTabView(invoices: readonly SupplierInvoiceRow[], filter: 
             { label: 'GR', color: MATCH_DOT[m.gr], state: t(legState(m.gr)) },
             { label: 'INV', color: MATCH_DOT.ok, state: t(legState('ok')) },
           ],
-          due: dateText(i.dueDate, t),
+          due: dateText(i.dueDate, t, c.today),
           status: t(i.statusLabel),
           tagClass: `tag ${SUPPLIER_INVOICE_STATUS_TAG[i.status]}`,
           selected: on,
@@ -372,8 +375,8 @@ export function invoiceDrawerView(i: SupplierInvoiceRow, filter: SupplierInvoice
     closeHref: sourcingHref({ tab: 'inv', status: filter === 'all' ? null : filter }),
     legs: [leg('Purchase order', i.poNumber, i.poAmountEur, m.po), leg('Goods receipt', i.receiptNumber, i.receiptAmountEur, m.gr), leg('Invoice', i.number, i.amountEur, 'ok')],
     meta: [
-      { k: t('Invoice date'), v: dateText(i.invoiceDate, t), color: OK },
-      { k: t('Due date'), v: dateText(i.dueDate, t), color: OK },
+      { k: t('Invoice date'), v: dateText(i.invoiceDate, t, c.today), color: OK },
+      { k: t('Due date'), v: dateText(i.dueDate, t, c.today), color: OK },
       { k: t('Terms'), v: dataText(i.paymentTerms, lang), color: OK },
       { k: t('Variance invoice − receipt'), v: gap != null ? pr(() => moneyUnitsIn(gap, i.currency, lang)) : '—', color: OK },
       { k: t('Blocking reason'), v: reason ? t(reason) : '—', color: reason ? LO : OK },

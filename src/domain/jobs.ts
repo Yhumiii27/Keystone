@@ -27,6 +27,8 @@ export type JobName =
   | 'cursus-events-purge'
   // ── Delivery 8 · docs-client-portfolio jobs ──
   | 'codex-index'
+  // ── Delivery 9 · R-121 (D-4 'a'): client prerequisites late at J-15 → the PM of record notified, a risk proposed; daily.
+  | 'site-prerequisite-alerts'
   ;
 
 export interface JobSchedule {
@@ -59,6 +61,9 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   // R-033: Codex's index read every hour with the HTTP connector (interval to confirm — the spec's Codex row says real time /
   // webhooks, which Codex does not offer yet); with the mock it reads nothing.
   { name: 'codex-index', everyMs: HOUR, leaseMs: 15 * MIN, firstDelayMs: 45_000 },
+  // ── Delivery 9 · R-121: once a day (the J-15 rule moves by days); one alert per prerequisite and need date, so a run after a
+  // restart, or two workers, alert nothing twice.
+  { name: 'site-prerequisite-alerts', everyMs: 24 * HOUR, leaseMs: 15 * MIN, firstDelayMs: 50_000 },
 ];
 
 export const JOB_NAMES: readonly JobName[] = JOB_SCHEDULES.map((j) => j.name);

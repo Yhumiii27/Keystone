@@ -183,8 +183,9 @@ describe('add-forms and toasts = prototype dialogs (EN, FR)', () => {
       expect(t(RESULT.milestone)).toBe(G.toasts[`milestone|${lang}`]);
       expect(displayOfIso('2026-09-30')).toBe('30 Sep 2026');
       // R-079 dialogs.
-      expect(signFormDef(t, 'CTR-HLT-004').fields.map((f) => [f.id, f.defaultValue])).toEqual([['date', t('30 Sep 2026')], ['doc', 'CTR-HLT-004']]);
-      expect(releaseFormDef(t).fields.map((f) => f.id)).toEqual(['date']);
+      // R-013: the default date is the business date passed in — the prototype's NOWD (30 Sep 2026) for the golden.
+      expect(signFormDef(t, '2026-09-30', 'CTR-HLT-004').fields.map((f) => [f.id, f.defaultValue])).toEqual([['date', t('30 Sep 2026')], ['doc', 'CTR-HLT-004']]);
+      expect(releaseFormDef(t, '2026-09-30').fields.map((f) => [f.id, f.defaultValue])).toEqual([['date', t('30 Sep 2026')]]);
       expect(amendmentFormDef(t, 'USD').fields.find((f) => f.id === 'amt')!.label).toBe(lang === 'fr' ? 'Montant (k$)' : 'Amount (k$)');
     });
 

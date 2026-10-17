@@ -176,7 +176,7 @@ describe('My approvals registry', () => {
     // P-7b = a (Delivery 7, R-124): the rows are the prototype's, now decided inline (the prototype had no decision).
     const inline = (xs: ReturnType<typeof codexVaultItems>) => xs.map((x) => ({ ...x, decision: null }));
     for (const p of Object.values(PERSONA_BY_ROLE)) {
-      expect([p.short, inline(codexVaultItems(vault, p.short, 'HLT-026'))]).toEqual([p.short, codexDocItems(PROTO.DOCS as ProtoDoc[], PROTO.DOC_TYPE, PROTO.DOC_WHO, p.short, 'HLT-026')]);
+      expect([p.short, inline(codexVaultItems(vault, p.short, 'HLT-026', 2026))]).toEqual([p.short, codexDocItems(PROTO.DOCS as ProtoDoc[], PROTO.DOC_TYPE, PROTO.DOC_WHO, p.short, 'HLT-026', 2026)]);
     }
     const quality = (await inbox('quality')).items.find((i) => i.id === 'RPT-HLT-014')!;
     expect([quality.decision, quality.external?.label]).toEqual([{ mode: 'codex-document', number: 'RPT-HLT-014', step: 1 }, 'Open in Codex']);

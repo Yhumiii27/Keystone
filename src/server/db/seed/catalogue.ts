@@ -3,9 +3,10 @@
 // product structure (TREE 3421), the wear & spare lists (SPARE_LISTS 3399), the project BOM lines (`PARTS.usage`), the
 // assembly configured per project (TREES 3426), the revision comparison (REV_DIFF 3427) and the PDM drawings
 // (DRAWINGS 3439, revision history A…current as `dwgVals` shows it) with the vault sync state ("07:40 · 1 248").
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { PROTO } from '@/server/prototype';
 import {
-  STATUS_ISO, exportControlOf, isoOfDisplayDate, locationType, parisInstant, partMakeBuy, partStatus, partType, revisionDiffKind,
+  exportControlOf, isoOfDemoDate, locationType, parisInstant, partMakeBuy, partStatus, partType, revisionDiffKind,
   type DrawingState, type WearSpare,
 } from '../codes';
 import {
@@ -126,7 +127,7 @@ export async function seedCatalogue(tx: Tx, ctx: SeedCtx): Promise<void> {
   // Revision comparisons.
   for (const [asm, d] of Object.entries(PROTO.REV_DIFF as Record<string, { from: string; to: string; date: string; eco: string; rows: [string, string, string, string, string][] }>)) {
     const diffId = newId();
-    await tx.insert(revisionDiffs).values({ id: diffId, assemblyPartId: must(ctx.partByRef, asm, 'part'), fromRevision: d.from, toRevision: d.to, diffDate: isoOfDisplayDate(d.date)!, ecoNumber: d.eco || null });
+    await tx.insert(revisionDiffs).values({ id: diffId, assemblyPartId: must(ctx.partByRef, asm, 'part'), fromRevision: d.from, toRevision: d.to, diffDate: isoOfDemoDate(d.date)!, ecoNumber: d.eco || null });
     const qty = (s: string) => (/^\d+(\.\d+)?$/.test(s.trim()) ? Number(s) : null);
     await tx.insert(revisionDiffLines).values(d.rows.map(([path, name, a, b, kind], position) => ({
       id: newId(), diffId, path, name, qtyFrom: qty(a), qtyTo: qty(b), kind: revisionDiffKind.code(kind), position,
@@ -137,7 +138,7 @@ export async function seedCatalogue(tx: Tx, ctx: SeedCtx): Promise<void> {
   const LETTERS = ['A', 'B', 'C', 'D'];
   for (const [position, d] of (PROTO.DRAWINGS as { no: string; title: string; part: string; rev: string; state: string; path: string; by: string; date: string; eco: string }[]).entries()) {
     const id = newId();
-    const checkedInOn = isoOfDisplayDate(d.date)!;
+    const checkedInOn = isoOfDemoDate(d.date)!;
     await tx.insert(drawings).values({
       id, number: d.no, title: d.title, partId: ctx.partByRef.get(d.part) ?? null, revision: d.rev, state: must(new Map(Object.entries(DRAWING_STATE)), d.state, 'drawing state'),
       vaultPath: d.path, checkedInByName: d.by, checkedInByPersonId: personIdOrNull(ctx, d.by), checkedInOn, ecoNumber: d.eco || null, formats: DRAWING_FORMATS, position,
@@ -149,5 +150,5 @@ export async function seedCatalogue(tx: Tx, ctx: SeedCtx): Promise<void> {
       return { drawingId: id, revision: r, isCurrent: current, checkedInOn: current ? checkedInOn : null, ecoNumber: current ? d.eco || null : null };
     }));
   }
-  await tx.insert(pdmVaultSyncs).values({ id: newId(), syncedAt: parisInstant(STATUS_ISO, PDM_LAST_SYNC), drawingsInVault: PDM_VAULT_DRAWINGS, drawingsUpdated: 0 });
+  await tx.insert(pdmVaultSyncs).values({ id: newId(), syncedAt: parisInstant(DEMO_TODAY_ISO, PDM_LAST_SYNC), drawingsInVault: PDM_VAULT_DRAWINGS, drawingsUpdated: 0 });
 }

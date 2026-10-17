@@ -2,8 +2,9 @@
 // displayed status, the effectivity targets and their dispositions at render time (`allEcos` / `ecoTargets`,
 // logic 4182–4193) from the project stages, the installed base (FLEET 3729, AS_MAINT 3722) and the approvals;
 // Vigie computes them now, so the seed materialises that derivation once. Pure (no database).
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import {
-  STATUS_ISO, ecoStatus, hseStatus, isoOfDisplayDate, ncrSeverity, ncrSource, ncrStatus, parisInstant, stage as stageCodec, OPEN_BOM_STAGES,
+  ecoStatus, hseStatus, isoOfDemoDate, ncrSeverity, ncrSource, ncrStatus, parisInstant, stage as stageCodec, OPEN_BOM_STAGES,
   type EcoApproverKey, type EcoDecision, type EcoDisposition, type EcoType, type HseItemKind, type HseStatus, type Interchangeability, type StageCode,
 } from '@/server/db/codes';
 import type { VigieEcoRecord, VigieHseRecord, VigieNcrRecord } from './types';
@@ -52,7 +53,7 @@ const KEYS: EcoApproverKey[] = ['englead', 'quality', 'pm'];
 
 /** Refresh time stamped on the seeded mirror: the status date (Fri 25 Sep 2026) at 07:30, Paris (no Vigie sync exists yet). */
 export const MIRROR_SEED_TIME = '07:30';
-export const mirrorSeedInstant = () => parisInstant(STATUS_ISO, MIRROR_SEED_TIME);
+export const mirrorSeedInstant = () => parisInstant(DEMO_TODAY_ISO, MIRROR_SEED_TIME);
 
 /** The ECOs as Vigie reports them (status, effectivity, pending dispositions and lock derived as in the prototype). */
 export function prototypeEcoSnapshot(c: SnapshotContext): VigieEcoRecord[] {
@@ -102,7 +103,7 @@ export function prototypeEcoSnapshot(c: SnapshotContext): VigieEcoRecord[] {
     const approver: Record<EcoApproverKey, string> = { englead: c.englead, quality: c.quality, pm: pms };
     return {
       number: e.id, title: e.title, type: e.type, status, interchangeability: inter, fromRevision: e.from, toRevision: e.to, costEur: e.cost,
-      scheduleDays: e.sched, stockImpact: e.stock, documentRefs: e.docs, requestedBy: e.by, raisedOn: isoOfDisplayDate(e.date)!,
+      scheduleDays: e.sched, stockImpact: e.stock, documentRefs: e.docs, requestedBy: e.by, raisedOn: isoOfDemoDate(e.date)!,
       pendingDispositions: pending, locked, parts: e.parts,
       projects: e.projects.map((k) => projOf3(k)?.code ?? k),
       approvals: KEYS.map((k) => ({ key: k, decision: e.appr[k], approver: approver[k], decidedBy: e.appr[k] === 'pending' ? null : approver[k], decidedAt: null })),
@@ -130,7 +131,7 @@ export function prototypeNcrSnapshot(ncrs: ProtoNcrRow[], projectsWithData: stri
   const rec = (code: string, n: ProtoNcrRow): VigieNcrRecord => ({
     projectCode: code, number: n.id, vigieRef: null, title: n.title, severity: ncrSeverity.code(n.sev), source: ncrSource.code(n.src), status: ncrStatus.code(n.status),
     activityCode: n.act || null, partRef: n.part || null, deliverableNumber: n.deliv || null, supplierName: null, raisedBy: n.raised,
-    raisedOn: isoOfDisplayDate(n.date)!, owner: n.owner, rootCause: n.root, action: n.action, dueOn: n.due && n.due !== '—' ? isoOfDisplayDate(n.due) : null,
+    raisedOn: isoOfDemoDate(n.date)!, owner: n.owner, rootCause: n.root, action: n.action, dueOn: n.due && n.due !== '—' ? isoOfDemoDate(n.due) : null,
     costKeur: n.cost, isoClause: n.iso, updatedAt: null,
   });
   return projectsWithData.flatMap((code) =>
@@ -155,7 +156,7 @@ export function prototypeHseSnapshot(rows: [string, string, string][], projectCo
     const st: HseStatus = known ? hseStatus.code(status) : 'recorded';
     return {
       projectCode, vigieRef: null, kind: hseKindOf(title), title, status: st, statusText: known ? null : status,
-      dateOn: date && date !== '—' ? isoOfDisplayDate(date) : null,
+      dateOn: date && date !== '—' ? isoOfDemoDate(date) : null,
     };
   });
 }

@@ -10,8 +10,9 @@ import 'server-only';
 // Delivery 8 (R-033): the Codex row is live once CODEX_API_URL is set — its approval outbox (pending / failed), the last read
 // of Codex's index as its last sync, "Sync now" exchanging with Codex (outbox, then index) and dating a successful run.
 import { and, asc, desc, eq, gte, sql } from 'drizzle-orm';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
-import { STATUS_ISO, addDaysIso, parisInstant, stampText, type ConnectorDirection, type ConnectorKind, type ConnectorStatus } from '@/server/db/codes';
+import { addDaysIso, parisInstant, stampText, type ConnectorDirection, type ConnectorKind, type ConnectorStatus } from '@/server/db/codes';
 import {
   auditEntries, connectorSyncRuns, connectors, cursusClearances, cursusRequests, cursusSyncRuns, documentIndexSyncs, importFormats, siteSheets, projects, vigieEcoProgress,
   vigieEcos, vigieHseItems, vigieNcrProgress, vigieNcrs,
@@ -282,13 +283,15 @@ export async function listImportFormats(): Promise<{ name: string; description: 
 /**
  * KPI inputs of the screen: "Events today" = the activity events of the portfolio data date (Paris day — A-12, 10 OQ4:
  * the prototype counted "25 Sep" and "26 Sep" events, the rebuild before chapter 4 everything since the status date) and
- * audit entries of the last 7 days before the status date onwards.
+ * audit entries of the last 7 days before the business date onwards (R-013: the business date replaces the status date and
+ * the data date — 25 Sep 2026 on the demo data set, as both were).
  */
 export async function getPlumbingCounts(): Promise<{ eventsToday: number; auditLast7Days: number }> {
   const db = await getDb();
-  const week = parisInstant(addDaysIso(STATUS_ISO, -7), '00:00');
+  const today = await businessToday();
+  const week = parisInstant(addDaysIso(today, -7), '00:00');
   const [events, [a]] = await Promise.all([
-    eventsToday(),
+    eventsToday(today),
     db.select({ n: sql<number>`count(*)::int` }).from(auditEntries).where(and(gte(auditEntries.occurredAt, week))),
   ]);
   return { eventsToday: events, auditLast7Days: a.n };

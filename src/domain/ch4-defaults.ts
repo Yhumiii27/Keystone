@@ -4,7 +4,7 @@
 //
 // Feature modules keep their own defaults next to their logic and reference the questionnaire id in a comment; add a
 // constant here only for rules shared by several modules.
-import { STATUS_ISO, type CalendarCode, type StoredFilePurpose } from '@/server/db/codes';
+import { type CalendarCode, type StoredFilePurpose } from '@/server/db/codes';
 import { BUILTIN_CALENDARS } from './calendar';
 import { DEFAULT_CPM_OPTIONS, type CpmOptions } from './cpm';
 
@@ -15,9 +15,11 @@ export const RECALCULATION_MODE: 'manual' | 'automatic' = 'manual';
 export const CPM_DEFAULTS: CpmOptions = DEFAULT_CPM_OPTIONS;
 
 // ── S-4 data date ─────────────────────────────────────────────────────────────────────────────────────────────────────
-/** Data date of a project whose `projects.data_date` is null: the frozen status date of the data set (Fri 25 Sep 2026). */
-export const DEFAULT_DATA_DATE = STATUS_ISO;
-export const projectDataDate = (p: { dataDate?: string | null }) => p.dataDate || DEFAULT_DATA_DATE;
+/**
+ * Data date of a project: `projects.data_date`, else the business date (R-013 — nothing writes the data date yet, S-4 /
+ * R-060; on the demo data set the business date is its status date, Fri 25 Sep 2026).
+ */
+export const projectDataDate = (p: { dataDate?: string | null }, today: string) => p.dataDate || today;
 
 // ── S-2 calendars ─────────────────────────────────────────────────────────────────────────────────────────────────────
 /** Calendar of a project whose `projects.calendar` is null (the seed): Standard 5d · 8h. */
@@ -123,5 +125,5 @@ export function fileSizeText(bytes: number): string {
 export { DEFAULT_HEALTH_THRESHOLDS, HEALTH_CPI_CLAMP } from './health';
 export { CUSTOM_STATUSES_ALLOWED, REQUIRED_STAGES, SETTINGS_COST_TYPE, SETTINGS_EDIT_ROLES, removalModeOf } from './settings-rules';
 export {
-  DEFAULT_PLANNED_FINISH, DEFAULT_PLANNED_START, TEMPLATE_ACTIVITIES_PER_PHASE, TEMPLATE_ACTIVITY_DAYS, TEMPLATE_LINK, WIZARD_REQUIRED,
+  TEMPLATE_ACTIVITIES_PER_PHASE, defaultPlannedFinish, defaultPlannedStart, TEMPLATE_ACTIVITY_DAYS, TEMPLATE_LINK, WIZARD_REQUIRED,
 } from './project-template';

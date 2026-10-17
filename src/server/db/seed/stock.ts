@@ -2,9 +2,10 @@
 // to projects), the recent movements (MOVES0 3484, 5 rows, "where" parsed into locations / project / activity /
 // receipt when it names them) and the last Sage X3 import ("07:15 · 15 lines"). A movement is pending push to X3 when
 // it touched a position flagged Local (the others came from X3).
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { PROTO } from '@/server/prototype';
 import { X3_LAST_IMPORT } from '@/server/integrations/x3/prototype-snapshot';
-import { STATUS_ISO, isoOfDisplayDate, parisInstant, parseStampText, stockMovementType, stockSource } from '../codes';
+import { isoOfDemoDate, parisInstant, parseStampText, stockMovementType, stockSource } from '../codes';
 import { stockMovements, stockPositions, x3SyncRuns } from '../schema';
 import type { Tx } from '../types';
 import { must, newId, personIdOrNull, projectCodeOfShort, type SeedCtx } from './context';
@@ -19,9 +20,9 @@ export async function seedStock(tx: Tx, ctx: SeedCtx): Promise<void> {
   const projectOf = (p3: string) => (p3 ? must(ctx.projectByCode, projectCodeOfShort(ctx, p3), 'project') : null);
   await tx.insert(stockPositions).values(rows.map((r, position) => ({
     id: newId(), partId: must(ctx.partByRef, r.ref, 'part'), locationId: must(ctx.locationByName, r.loc, 'storage location'), onHand: r.onHand, reserved: r.reserved,
-    reservedForProjectId: projectOf(r.proj), minQty: r.min, source: stockSource.code(r.source), lastMovementOn: isoOfDisplayDate(r.last)!, position,
+    reservedForProjectId: projectOf(r.proj), minQty: r.min, source: stockSource.code(r.source), lastMovementOn: isoOfDemoDate(r.last)!, position,
   })));
-  const importedAt = parisInstant(STATUS_ISO, X3_LAST_IMPORT);
+  const importedAt = parisInstant(DEMO_TODAY_ISO, X3_LAST_IMPORT);
   await tx.insert(x3SyncRuns).values({ id: newId(), kind: 'stock_import', occurredAt: importedAt, lineCount: rows.filter((r) => r.source === 'X3').length });
 
   const local = new Set(rows.filter((r) => r.source === 'Local').map((r) => `${r.ref}|${r.loc}`));
@@ -52,7 +53,7 @@ export async function seedStock(tx: Tx, ctx: SeedCtx): Promise<void> {
     const locNames = [from, to].filter(Boolean).map((id) => [...ctx.locationByName].find(([, v]) => v === id)![0]);
     const pending = locNames.some((n) => local.has(`${ref}|${n}`));
     return {
-      id: newId(), occurredAt: parseStampText(when), type: stockMovementType.code(type), partId: must(ctx.partByRef, ref, 'part'), qty, fromLocationId: from, toLocationId: to,
+      id: newId(), occurredAt: parseStampText(when, DEMO_TODAY_ISO), type: stockMovementType.code(type), partId: must(ctx.partByRef, ref, 'part'), qty, fromLocationId: from, toLocationId: to,
       projectId, activityId, receiptId, whereText: where, personName: who, personId: personIdOrNull(ctx, who), pushedToX3At: pending ? null : importedAt,
     };
   }));

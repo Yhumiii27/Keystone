@@ -96,6 +96,15 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
       counts: { applied: r.applied, created: r.created, skipped: r.skipped, records: r.records }, warn: r.skipped > 0,
     };
   },
+  // ── Delivery 9 · R-121 (D-4 'a'): client prerequisites late at J-15 — the PM of record notified once per need date, the
+  // risk proposed on the prerequisite's row. A notice nobody could receive (no PM of record or no active account) is a warning.
+  'site-prerequisite-alerts': async (): Promise<JobOutcome> => {
+    const r = await (await import('@/server/dal/prerequisite-alerts')).alertLatePrerequisites();
+    return {
+      summary: `Client prerequisites at ${r.today} · ${r.alerted} late alerted · ${r.notified} PM notified · ${r.unaddressed} without recipient · ${r.pending} pending`,
+      counts: { alerted: r.alerted, notified: r.notified, unaddressed: r.unaddressed, pending: r.pending }, warn: r.unaddressed > 0,
+    };
+  },
 };
 
 export const JOB_DEFINITIONS: readonly JobDefinition[] = JOB_SCHEDULES.map((s) => ({ ...s, run: RUNS[s.name] }));

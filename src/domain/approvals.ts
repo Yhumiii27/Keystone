@@ -106,15 +106,15 @@ export interface ApprovalItem {
   external?: { href: string; label: string } | null;
 }
 
-/** "24 Sep" / "9 Jan ’27" / "25 Sep 2026" → ISO (2026 by default); null for "—" or ''. */
-export const isoOfWhen = (when: string | null | undefined): string | null => isoOfDisplayDate(when ?? '');
+/** "24 Sep" / "9 Jan ’27" / "25 Sep 2026" → ISO (a year-less date is in the business year `year`, R-013); null for "—" or ''. */
+export const isoOfWhen = (when: string | null | undefined, year: number): string | null => isoOfDisplayDate(when ?? '', year);
 
 const href = (screen: ScreenId, code: string | undefined, params: Record<string, string> = {}) => {
   const qs = new URLSearchParams(params).toString();
   return screenHref(screen, { code }) + (qs ? '?' + qs : '');
 };
 
-const item = (kind: ApprovalKind, x: Omit<ApprovalItem, 'kind' | 'whenIso'>): ApprovalItem => ({ kind, ...x, whenIso: isoOfWhen(x.when) });
+const item = (kind: ApprovalKind, x: Omit<ApprovalItem, 'kind' | 'whenIso'>, year: number): ApprovalItem => ({ kind, ...x, whenIso: isoOfWhen(x.when, year) });
 
 // Every kind is read from the database (or a connector mirror): purchase orders, ECOs (Vigie mirror), delivery quality
 // checks, RFQ awards and supplier invoices since Delivery 4 (`poApprovalItems` in ./orders, `ecoApprovalItems` in ./eco,
@@ -141,6 +141,7 @@ export interface ProtoDoc {
  */
 export function codexDocItems(
   docs: ProtoDoc[], docTypes: Record<string, { label: string; circuit: string }>, docWho: Record<string, string>, viewerShort: string, currentCode: string,
+  year: number,
 ): ApprovalItem[] {
   return docs
     .filter((d) => {
@@ -153,7 +154,7 @@ export function codexDocItems(
       return item('doc', {
         id: d.id, title: d.title, sub: `${docTypes[d.type].label} · rev ${d.rev} · ${step}`, when: d.date, who: d.by,
         href: href('docs', d.proj === 'QMS' ? currentCode : d.proj, { doc: d.id }), decision: null,
-      });
+      }, year);
     });
 }
 
@@ -184,7 +185,7 @@ export interface VaultDocForInbox {
  * Codex (its home until the deep links exist, D-1).
  */
 export function codexVaultItems(
-  docs: VaultDocForInbox[], viewerShort: string, currentCode: string, codexUrl?: string | ((d: VaultDocForInbox) => string),
+  docs: VaultDocForInbox[], viewerShort: string, currentCode: string, year: number, codexUrl?: string | ((d: VaultDocForInbox) => string),
 ): ApprovalItem[] {
   return docs
     .filter((d) => d.status === 'release_proposed' && d.circuitState.nextStep != null && !!d.nextRoleLabel && d.nextApprover === viewerShort)
@@ -195,7 +196,7 @@ export function codexVaultItems(
         decision: { mode: 'codex-document', number: d.number, step: d.circuitState.nextStep! },
         // Delivery 8 (R-033): "Open in Codex" opens the record in Codex (`codexUrl` per record; Codex's home before).
         ...(codexUrl ? { external: { href: typeof codexUrl === 'function' ? codexUrl(d) : codexUrl, label: 'Open in Codex' } } : {}),
-      }),
+      }, year),
     );
 }
 
@@ -245,7 +246,7 @@ export const changeRequestSub = (cr: Pick<ChangeRequestForInbox, 'typesLabel' | 
  * A CCB row names the step at the end of the sub line ("… · Change control board"), since the same request
  * already came by for the director's own step.
  */
-export function changeRequestItems(crs: ChangeRequestForInbox[], viewer: StepViewer, code: string, lang: Lang): ApprovalItem[] {
+export function changeRequestItems(crs: ChangeRequestForInbox[], viewer: StepViewer, code: string, lang: Lang, year: number): ApprovalItem[] {
   return crs.flatMap((cr) => {
     const step = pendingStepFor(cr, viewer);
     if (!step) return [];
@@ -254,7 +255,7 @@ export function changeRequestItems(crs: ChangeRequestForInbox[], viewer: StepVie
       item('cr', {
         id: cr.id, title: cr.title, sub, when: cr.date, who: cr.by,
         href: href('changes', code, { cr: cr.id }), decision: { mode: 'change-request', projectCode: code, number: cr.id, step },
-      }),
+      }, year),
     ];
   });
 }

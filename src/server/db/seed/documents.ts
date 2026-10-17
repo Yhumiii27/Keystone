@@ -3,7 +3,7 @@
 // as rows, and the Codex sync state ("Last sync 08:02 · 412 records"). See schema/documents.ts. Delivery 8 (D-2 = a,
 // R-127): the download log (docDl) is not seeded — it stays in Codex; the revision rows are kept (KPI, A-15 demo history).
 import { PROTO, PROTO_GEN } from '@/server/prototype';
-import { addDaysIso, approverRole, confidentiality, docFamily, docLinkKind, documentStatus, isoOfDisplayDate, parisInstant, type DocRecipient, type DocService } from '../codes';
+import { addDaysIso, approverRole, confidentiality, docFamily, docLinkKind, documentStatus, isoOfDemoDate, parisInstant, type DocRecipient, type DocService } from '../codes';
 import {
   documentAcknowledgements, documentApprovals, documentApproverAssignments, documentIndexSyncs, documentLinks, documentRevisions,
   documentTypeCircuitSteps, documentTypes, documents,
@@ -25,7 +25,7 @@ const RECENT_RELEASES = new Set(['26 Sep', '28 Sep', '29 Sep']);
 const CODEX_RECORDS = 412;
 
 const iso = (s: string) => {
-  const v = isoOfDisplayDate(s);
+  const v = isoOfDemoDate(s);
   if (!v) throw new Error(`Seed: unparseable date "${s}"`);
   return v;
 };

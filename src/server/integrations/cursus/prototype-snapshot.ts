@@ -1,5 +1,6 @@
 // Seed of the Cursus mirror: the prototype's SITE_DOCS (3574) as Cursus would report them — one person per row with
 // their visa, vaccination and clearance approvals, the verdict and when it was received. Pure (no database).
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { cursusClearance, cursusVaccination, cursusVerdict, cursusVisa, parseStampText } from '@/server/db/codes';
 import type { CursusClearanceRecord } from './types';
 
@@ -22,7 +23,7 @@ export function prototypeClearanceSnapshot(rows: ProtoSiteDocRow[], projectCode:
     const rec = { visa: cursusVisa.code(visa), vaccination: cursusVaccination.code(vacc), clearance: cursusClearance.code(hab) };
     return {
       projectCode, chantierId: null, matricule: null, personName: who, ...rec, clearanceNote: note, verdict: cursusVerdict.code(verdict),
-      reasonCodes: reasonCodesOf(rec), receivedAt: parseStampText(received).toISOString(),
+      reasonCodes: reasonCodesOf(rec), receivedAt: parseStampText(received, DEMO_TODAY_ISO).toISOString(),
     };
   });
 }

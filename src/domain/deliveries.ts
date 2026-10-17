@@ -63,8 +63,8 @@ export interface ReceiptLike {
 
 /** Quantity ("1,234" EN, "1 234" FR — the prototype used the browser's locale, 08 §0.7). */
 export const qtyText = (n: number, lang: Lang) => n.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US');
-/** "18 Sep" / "13 Feb ’27" (English; months translated by t()); "—" when unknown. */
-export const receiptDateText = (iso: string | null | undefined) => (iso ? fmtDOfIso(iso) : '—');
+/** "18 Sep" / "13 Feb ’27" (English; months translated by t(); the year outside the business year `year`, R-013); "—" when unknown. */
+export const receiptDateText = (iso: string | null | undefined, year: number) => (iso ? fmtDOfIso(iso, year) : '—');
 /** One decimal, the language's separator ("0.5" / "0,5"). */
 const dec1 = (v: number, lang: Lang) => {
   const s = String(Math.round(v * 10) / 10);
@@ -167,13 +167,13 @@ export interface ReceiptRowView {
   canQc: boolean;
 }
 
-export function receiptRowView(r: ReceiptLike, lang: Lang): ReceiptRowView {
+export function receiptRowView(r: ReceiptLike, lang: Lang, year: number): ReceiptRowView {
   const t = receiptTotals(r);
   return {
     id: r.number,
     po: r.poNumber,
     supplier: r.supplier,
-    date: receiptDateText(r.date),
+    date: receiptDateText(r.date, year),
     note: r.supplierDeliveryNote || '—',
     lines: r.lines.map((l) => l.ref).join(', '),
     qty: `${qtyText(t.delivered, lang)} / ${qtyText(t.ordered, lang)}`,
@@ -232,7 +232,7 @@ export interface ReceiptDrawerView {
   canQc: boolean;
 }
 
-export function receiptDrawerView(r: ReceiptLike, lang: Lang): ReceiptDrawerView {
+export function receiptDrawerView(r: ReceiptLike, lang: Lang, year: number): ReceiptDrawerView {
   const result = r.qc.result || '—';
   return {
     id: r.number,
@@ -248,7 +248,7 @@ export function receiptDrawerView(r: ReceiptLike, lang: Lang): ReceiptDrawerView
     meta: [
       { k: 'Purchase order', v: r.poNumber, kind: 'id', lo: false },
       { k: 'Supplier delivery note', v: r.supplierDeliveryNote || '—', kind: 'data', lo: false },
-      { k: 'Delivered on', v: receiptDateText(r.date), kind: 'date', lo: false },
+      { k: 'Delivered on', v: receiptDateText(r.date, year), kind: 'date', lo: false },
       { k: 'Carrier', v: r.carrier || '—', kind: 'data', lo: false },
       { k: 'Photos', v: r.photoCount ? `${r.photoCount} attached` : 'None', kind: 'ui', lo: false },
     ],
@@ -471,7 +471,7 @@ export interface RegisterForm {
 /** Field id of a line's delivered quantity in the "Register receipt" form. */
 export const qtyFieldId = (ref: string) => `qty:${ref}`;
 
-/** "Register receipt" form: delivered on (default the status date), carrier, delivery note, delivered per line. */
+/** "Register receipt" form: delivered on (default the business date `opts.today`, R-013), carrier, delivery note, delivered per line. */
 export function parseRegisterForm(
   v: Record<string, unknown>,
   lines: readonly Pick<ReceiptLineLike, 'ref' | 'ordered'>[],
@@ -503,10 +503,10 @@ export interface QcInboxItem {
 }
 
 /** Receipts of the current project waiting for their quality check, in list order (apprItems 4725). */
-export const qcInboxItems = (rs: readonly ReceiptLike[]): QcInboxItem[] =>
+export const qcInboxItems = (rs: readonly ReceiptLike[], year: number): QcInboxItem[] =>
   rs
     .filter((r) => r.status === 'qc_pending')
     .map((r) => ({
       id: r.number, title: `${r.supplier} · ${r.lines.map((l) => l.ref).join(', ')}`, sub: r.qc.remarks ?? '', who: r.receivedBy || '—',
-      when: r.date ? receiptDateText(r.date) : '', whenIso: r.date,
+      when: r.date ? receiptDateText(r.date, year) : '', whenIso: r.date,
     }));

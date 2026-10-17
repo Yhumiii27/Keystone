@@ -20,7 +20,8 @@ import {
   acknowledgeSharedDocumentAction, addLessonAction, advanceLessonAction, cycleClosureAction, decideClientChangeAction, decideClientDeliverableAction,
   downloadStatusReportAction, raiseClientIssueAction, type RexClientResult,
 } from './actions';
-import { LESSON_FORM, STATUS_REPORT_FORM } from './forms';
+import { useToday } from '@/components/app/clock';
+import { LESSON_FORM, statusReportForm } from './forms';
 import { recordVerb } from './i18n';
 import s from './rexclient.module.css';
 
@@ -73,13 +74,14 @@ async function downloadStatusReport(code: string, values: Record<string, string>
 /** Header primary "Download status report" (`btn btn-primary` + plus) opening AF `client` (run form). */
 export function StatusReportButton({ code, context }: PrimaryProps) {
   const { t } = useI18n();
+  const today = useToday();
   const [open, setOpen] = useState(false);
   return (
     <>
       <Button variant="primary" icon={Plus} onClick={() => setOpen(true)}>
         {t('Download status report')}
       </Button>
-      <FormDialog {...STATUS_REPORT_FORM} translate open={open} onClose={() => setOpen(false)} context={context} onSubmit={(values) => downloadStatusReport(code, values, t('Export failed'))} />
+      <FormDialog {...statusReportForm(today)} translate open={open} onClose={() => setOpen(false)} context={context} onSubmit={(values) => downloadStatusReport(code, values, t('Export failed'))} />
     </>
   );
 }

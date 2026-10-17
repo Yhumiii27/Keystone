@@ -5,11 +5,14 @@ import { fileNameOf } from '@/features/exports/download';
 import { isoOf, monthIso, num, pctNum } from './common';
 
 describe('export helpers', () => {
-  it('isoOf reads the prototype date strings (year 2026 by default, ’27, actual marker)', () => {
-    expect([isoOf('25 Sep 2026'), isoOf('25 Sep'), isoOf('Wed 23 Sep'), isoOf('14 Jan ’27'), isoOf('17 Aug A'), isoOf('2026-09-25')]).toEqual([
+  it('isoOf reads the prototype date strings (the business year by default, ’27, actual marker)', () => {
+    const iso = (v: string | null) => isoOf(v, 2026);
+    expect([iso('25 Sep 2026'), iso('25 Sep'), iso('Wed 23 Sep'), iso('14 Jan ’27'), iso('17 Aug A'), iso('2026-09-25')]).toEqual([
       '2026-09-25', '2026-09-25', '2026-09-23', '2027-01-14', '2026-08-17', '2026-09-25',
     ]);
-    expect([isoOf('—'), isoOf('TBD'), isoOf(null), isoOf('Q4 2026')]).toEqual([null, null, null, null]);
+    expect([iso('—'), iso('TBD'), iso(null), iso('Q4 2026')]).toEqual([null, null, null, null]);
+    // R-013: a year-less date is in the business year (the screens show the year outside it).
+    expect([isoOf('14 Jan', 2027), isoOf('12 Mar 2026', 2027)]).toEqual(['2027-01-14', '2026-03-12']);
   });
   it('num / pctNum read display numbers (spaces, minus sign, decimal comma)', () => {
     expect([num('4 800 k€'), num('−27'), num('0,90'), num('—'), num(12)]).toEqual([4800, -27, 0.9, null, 12]);

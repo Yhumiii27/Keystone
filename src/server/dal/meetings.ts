@@ -7,10 +7,11 @@ import 'server-only';
 // the PM), read receipts for every invitee but the organizer.
 import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { FOLLOW_UP_LABEL, followUpTarget, followUpTitle, minutesTaskDates } from '@/domain/meetings';
-import { TODAY } from '@/lib/format';
+import { workdayOffsetOf } from '@/domain/clock';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import {
-  NOW_ISO, PG_NOW, isoOfDayOffset, meetingLineType, meetingSeries, meetingStatus, meetingType, monthIndexOfIso,
+  isoOfDayOffset, meetingLineType, meetingSeries, meetingStatus, meetingType, monthIndexOfIso,
   nextBusinessNumber, parisInstant, shortDateOfIso, displayOfIso,
   type MeetingLineOrigin, type MeetingLineType, type MeetingSeries, type MeetingStatus, type MeetingType, type TranscriptAnalyzer,
   type TranscriptProposalStatus, type TranscriptProposalType, type TranscriptSource,
@@ -43,7 +44,7 @@ export interface MeetingLineRow {
   due: string | null;
   dueDate: string | null;
   done: boolean;
-  /** Open action due before the prototype's now (PG_NOW). */
+  /** Open action due before the business date's month index (the prototype's PG_NOW; R-013). */
   overdue: boolean;
   /** Task created by "Send minutes". */
   taskNumber: string | null;
@@ -161,11 +162,12 @@ export interface MeetingRow {
 export const createdSortOrder = (number: string) => parseInt(number.replace(/^MTG-/, ''), 10) - 1_000_000;
 
 export const durationText = (min: number) => (min < 60 ? `${min} min` : `${Math.floor(min / 60)} h${min % 60 ? ' ' + (min % 60) : ''}`);
-const before = (iso: string | null) => !!iso && monthIndexOfIso(iso) < PG_NOW;
+const before = (iso: string | null, today: string) => !!iso && monthIndexOfIso(iso) < monthIndexOfIso(today);
 
 /** Meetings of a project with everything the register, detail card and registers need (MEETINGS order). */
 export async function listMeetings(projectCode: string): Promise<MeetingRow[]> {
   const db = await getDb();
+  const today = await businessToday();
   const ms = await db
     .select({ m: meetings, code: projects.code, docNumber: documents.number })
     .from(meetings)
@@ -197,7 +199,7 @@ export async function listMeetings(projectCode: string): Promise<MeetingRow[]> {
       lines: lines.filter((x) => x.l.agendaPointId === p.id).map(({ l, task, act }) => ({
         point: p.position, position: l.position, type: l.type, text: l.text, owner: l.ownerName,
         ownerFull: l.ownerName ? ((l.ownerPersonId && poolName.get(l.ownerPersonId)) || l.ownerName) : null, due: l.dueText, dueDate: l.dueDate, done: l.done,
-        overdue: l.type === 'action' && !l.done && before(l.dueDate), taskNumber: task, origin: l.origin, activity: act,
+        overdue: l.type === 'action' && !l.done && before(l.dueDate, today), taskNumber: task, origin: l.origin, activity: act,
       })),
     }));
     const tr = trs.find((t) => t.meetingId === m.id);
@@ -414,11 +416,14 @@ export interface SentMinutes {
  * one only for owners of the resource pool): an internal owner gets it (title = the action, labels Meeting + meeting number);
  * an external owner's action becomes a follow-up ("{action} — {owner as typed}", labels + Follow-up) for the relationship owner
  * of the matching stakeholder, else the project's PM (src/domain/meetings.ts `followUpTarget`); no PM → no task. Due = the typed
- * due date, else today (Fri 25 Sep) + 3 working days; start today, or the typed due when earlier; 2 h; the line's plan activity.
+ * due date, else today + 3 working days (today = the business date's last working day, R-013: Fri 25 Sep on the demo data set);
+ * start today, or the typed due when earlier; 2 h; the line's plan activity. Sent on `on` (default the business date).
  * Once committed, each assignee but the sender is told (R-015, "Task assigned · T-xxxx").
  */
-export async function sendMinutes(meetingNumber: string, actorName: string, on: string = NOW_ISO): Promise<SentMinutes> {
+export async function sendMinutes(meetingNumber: string, actorName: string, onDate?: string): Promise<SentMinutes> {
   const db = await getDb();
+  const businessDay = await businessToday();
+  const on = onDate ?? businessDay;
   const sent = await db.transaction(async (tx) => {
     const m = await loadMeeting(tx, meetingNumber);
     if (m.status === 'minutes_sent') throw new Error(`${meetingNumber}: minutes already sent`);
@@ -448,8 +453,10 @@ export async function sendMinutes(meetingNumber: string, actorName: string, on: 
       .where(eq(stakeholders.projectId, p.id));
     const created: string[] = [];
     const [{ maxOrder }] = await tx.select({ maxOrder: sql<number>`coalesce(max(${tasks.sortOrder}), 0)::int` }).from(tasks);
-    const today = isoOfDayOffset(TODAY);
-    const defaultDue = isoOfDayOffset(TODAY + 3);
+    // Working-day offset of the business date (the prototype's TODAY; a weekend counts as its Friday).
+    const day = workdayOffsetOf(businessDay);
+    const today = isoOfDayOffset(day);
+    const defaultDue = isoOfDayOffset(day + 3);
     for (const { l, clientId, external, userClientId } of actions) {
       if (l.taskId) continue;
       // Internal: a known person outside any client organisation who is not an external user (S-12 a).
@@ -485,9 +492,10 @@ export async function sendMinutes(meetingNumber: string, actorName: string, on: 
  * short name. Recorded once, audited; returns whether a receipt was recorded (false: not a recipient, already read, not sent).
  */
 export async function recordMinutesRead(
-  meetingNumber: string, reader: { personId: string; fullName: string | null; shortName: string }, on: string = NOW_ISO,
+  meetingNumber: string, reader: { personId: string; fullName: string | null; shortName: string }, onDate?: string,
 ): Promise<boolean> {
   const db = await getDb();
+  const on = onDate ?? (await businessToday());
   return db.transaction(async (tx) => {
     const m = await loadMeeting(tx, meetingNumber);
     if (m.status !== 'minutes_sent') return false;

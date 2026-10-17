@@ -14,12 +14,15 @@ import { describe, expect, it } from 'vitest';
 import { G, M6, SCENARIOS, addMs, expectedFigures, invoiceOf, ms, seedInput } from '@/features/contract/test-fixtures';
 import { money } from '@/lib/format';
 import {
-  canSendAmendment, canSignAmendment, contractFigures, contractValueSub, decimalText, liquidatedDamagesKpi, nextInvoiceNo, outstandingSub, overdueSub,
+  canSendAmendment, canSignAmendment, contractFigures as contractFiguresAt, contractValueSub, decimalText, liquidatedDamagesKpi, nextInvoiceNo, outstandingSub, overdueSub,
   parseAmendmentForm, parseBondForm, parseDateInput, parseInvoiceForm, parseMilestoneForm, parseNumber, parseReleaseBondForm, parseSheetField,
   parseSignAmendmentForm, pendingSub, plannedMilestoneAmount, progressCss, progressText, shareTotalText,
 } from './contract';
 
 const en = (k: number) => money(k, 'en');
+/** R-013: the golden comparison keeps the prototype's "now" (PG_NOW / NOWD = 30 Sep 2026), passed explicitly. */
+const PROTO_NOW = '2026-09-30';
+const contractFigures = (c: Parameters<typeof contractFiguresAt>[0]) => contractFiguresAt(c, PROTO_NOW);
 /** The base contract's milestones (the prototype's list); the golden's "M6" of the add-milestone scenarios is M7 here (M6 = Amendment 1's). */
 const base = <T extends { amendment?: number | null }>(xs: readonly T[]) => xs.filter((m) => m.amendment == null);
 const gid = (name: string, id: string) => (name.startsWith('milestone') && id === 'M6' ? 'M7' : id);
@@ -93,9 +96,10 @@ describe('contract figures vs the prototype (CONTRACTS HLT-026 + the screens’ 
     expect(G.dst).toEqual({ tz: 'UTC', m3Due: '10 Nov' });
   });
 
-  it('late flag = planned and contractual date before PG_NOW (30 Sep is already late, 1 Oct is not); overdue = due before 30 Sep', () => {
+  it('late flag = planned and contractual date before the business date (29 Sep is late on 30 Sep, 30 Sep is not); overdue = due before 30 Sep', () => {
     const late = (due: string) => contractFigures(addMs(seedInput(), { number: 'M7', label: 'x', sharePct: 1, contractualDue: due, condition: null })).milestones.find((m) => m.number === 'M7')!.late;
-    expect([late('2026-09-29'), late('2026-09-30'), late('2026-10-01')]).toEqual([true, true, false]);
+    // R-013: the prototype's PG_NOW (8.97) lay just after 30 Sep, so "30 Sep" was already late; the business date's own day is not.
+    expect([late('2026-09-29'), late('2026-09-30'), late('2026-10-01')]).toEqual([true, false, false]);
     const over = (issued: string) => {
       const c = seedInput();
       return contractFigures(ms(c, 'M4', { status: 'invoiced', invoice: invoiceOf(c, 'M4', 'INV-2026-004', issued) })).invoices[3].overdue;
@@ -129,11 +133,14 @@ describe('contract texts', () => {
 });
 
 describe('form parsing', () => {
-  it('dates typed in EN, FR or ISO; year 2026 by default; impossible dates refused', () => {
-    expect(['14 Dec 2026', '14 déc. 2026', '14 décembre 2026', '14 dec', '1er oct. 2026', '30 sept. 2026', '14 Jan ’27', '14/12/2026', '2026-12-14', '3 août 2026', '3 aout'].map((s) => parseDateInput(s))).toEqual([
+  it('dates typed in EN, FR or ISO; the business year by default; impossible dates refused', () => {
+    expect(['14 Dec 2026', '14 déc. 2026', '14 décembre 2026', '14 dec', '1er oct. 2026', '30 sept. 2026', '14 Jan ’27', '14/12/2026', '2026-12-14', '3 août 2026', '3 aout'].map((s) => parseDateInput(s, 2026))).toEqual([
       '2026-12-14', '2026-12-14', '2026-12-14', '2026-12-14', '2026-10-01', '2026-09-30', '2027-01-14', '2026-12-14', '2026-12-14', '2026-08-03', '2026-08-03',
     ]);
-    expect(['', '31 Feb 2026', 'soon', '2026-13-01', '14 Foo 2026', '0 Jan 2026'].map((s) => parseDateInput(s))).toEqual([null, null, null, null, null, null]);
+    expect(['', '31 Feb 2026', 'soon', '2026-13-01', '14 Foo 2026', '0 Jan 2026'].map((s) => parseDateInput(s, 2026))).toEqual([null, null, null, null, null, null]);
+    // R-013: a year-less date is in the business date's year (14 Jan typed on 5 Jan 2027 → 2027); a stated year is kept.
+    expect([parseDateInput('14 Jan', 2027), parseDateInput('14/01', 2027), parseDateInput('12 Mar 2026', 2027), parseDateInput('29 Feb', 2028), parseDateInput('29 Feb', 2027)])
+      .toEqual(['2027-01-14', '2027-01-14', '2026-03-12', '2028-02-29', null]);
   });
 
   it('numbers with a French comma; anything else is NaN', () => {
@@ -142,87 +149,87 @@ describe('form parsing', () => {
   });
 
   it('AF.amendment', () => {
-    expect(parseAmendmentForm({ label: ' Amendment 3 — extra lighting ', cr: 'CR-007', amt: '80', status: 'signed', date: '30 sept. 2026', doc: 'CTR-HLT-003' })).toEqual({
+    expect(parseAmendmentForm({ label: ' Amendment 3 — extra lighting ', cr: 'CR-007', amt: '80', status: 'signed', date: '30 sept. 2026', doc: 'CTR-HLT-003' }, 2026)).toEqual({
       ok: true, value: { subject: 'Amendment 3 — extra lighting', changeRequestRef: 'CR-007', amountKeur: 80, status: 'signed', signedOn: '2026-09-30', documentRef: 'CTR-HLT-003' },
     });
-    expect(parseAmendmentForm({ label: 'x', amt: '0' })).toMatchObject({ ok: true, value: { status: 'draft', signedOn: null, changeRequestRef: null, documentRef: null } });
-    expect(parseAmendmentForm({ label: ' ', amt: '1' })).toEqual({ ok: false, error: 'Subject is required' });
-    expect(parseAmendmentForm({ label: 'x', amt: 'a' })).toEqual({ ok: false, error: 'Enter an amount in k€' });
-    expect(parseAmendmentForm({ label: 'x', amt: '1', status: 'Signed' })).toEqual({ ok: false, error: 'Unknown status' });
-    expect(parseAmendmentForm({ label: 'x', amt: '1', date: 'tomorrow' })).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
+    expect(parseAmendmentForm({ label: 'x', amt: '0' }, 2026)).toMatchObject({ ok: true, value: { status: 'draft', signedOn: null, changeRequestRef: null, documentRef: null } });
+    expect(parseAmendmentForm({ label: ' ', amt: '1' }, 2026)).toEqual({ ok: false, error: 'Subject is required' });
+    expect(parseAmendmentForm({ label: 'x', amt: 'a' }, 2026)).toEqual({ ok: false, error: 'Enter an amount in k€' });
+    expect(parseAmendmentForm({ label: 'x', amt: '1', status: 'Signed' }, 2026)).toEqual({ ok: false, error: 'Unknown status' });
+    expect(parseAmendmentForm({ label: 'x', amt: '1', date: 'tomorrow' }, 2026)).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
     // R-079: an amendment registered as signed carries its signature date.
-    expect(parseAmendmentForm({ label: 'x', amt: '1', status: 'signed' })).toEqual({ ok: false, error: 'Enter the signature date of a signed amendment' });
-    expect(parseAmendmentForm({ label: 'x', amt: '1', status: 'sent_for_signature' })).toMatchObject({ ok: true, value: { status: 'sent_for_signature', signedOn: null } });
+    expect(parseAmendmentForm({ label: 'x', amt: '1', status: 'signed' }, 2026)).toEqual({ ok: false, error: 'Enter the signature date of a signed amendment' });
+    expect(parseAmendmentForm({ label: 'x', amt: '1', status: 'sent_for_signature' }, 2026)).toMatchObject({ ok: true, value: { status: 'sent_for_signature', signedOn: null } });
   });
 
   it('Mark signed and Release (R-079)', () => {
-    expect(parseSignAmendmentForm({ date: '30 Sep 2026', doc: ' CTR-HLT-004 ' })).toEqual({ ok: true, value: { signedOn: '2026-09-30', documentRef: 'CTR-HLT-004' } });
-    expect(parseSignAmendmentForm({ date: '1 oct.', doc: '' })).toEqual({ ok: true, value: { signedOn: '2026-10-01', documentRef: null } });
-    expect(parseSignAmendmentForm({ date: '' })).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
-    expect(parseSignAmendmentForm({ date: '1 Oct 2026', doc: 'x'.repeat(61) })).toEqual({ ok: false, error: 'Reference is too long' });
-    expect(parseReleaseBondForm({ date: '12 Sep 2026' })).toEqual({ ok: true, value: { releasedOn: '2026-09-12' } });
-    expect(parseReleaseBondForm({ date: 'soon' })).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
+    expect(parseSignAmendmentForm({ date: '30 Sep 2026', doc: ' CTR-HLT-004 ' }, 2026)).toEqual({ ok: true, value: { signedOn: '2026-09-30', documentRef: 'CTR-HLT-004' } });
+    expect(parseSignAmendmentForm({ date: '1 oct.', doc: '' }, 2026)).toEqual({ ok: true, value: { signedOn: '2026-10-01', documentRef: null } });
+    expect(parseSignAmendmentForm({ date: '' }, 2026)).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
+    expect(parseSignAmendmentForm({ date: '1 Oct 2026', doc: 'x'.repeat(61) }, 2026)).toEqual({ ok: false, error: 'Reference is too long' });
+    expect(parseReleaseBondForm({ date: '12 Sep 2026' }, 2026)).toEqual({ ok: true, value: { releasedOn: '2026-09-12' } });
+    expect(parseReleaseBondForm({ date: 'soon' }, 2026)).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
   });
 
   it('AF.bond', () => {
-    expect(parseBondForm({ label: 'warranty', amt: '280', issuer: 'BNP Paribas', valid: '14 Jan 2029' })).toEqual({
+    expect(parseBondForm({ label: 'warranty', amt: '280', issuer: 'BNP Paribas', valid: '14 Jan 2029' }, 2026)).toEqual({
       ok: true, value: { type: 'warranty', amountKeur: 280, issuer: 'BNP Paribas', validUntil: '2029-01-14' },
     });
-    expect(parseBondForm({ amt: '0', issuer: 'x', valid: '1 Jan 2027' })).toMatchObject({ ok: true, value: { type: 'performance' } });
-    expect(parseBondForm({ label: 'surety', amt: '1', issuer: 'x', valid: '1 Jan 2027' })).toEqual({ ok: false, error: 'Unknown guarantee type' });
-    expect(parseBondForm({ amt: '-1', issuer: 'x', valid: '1 Jan 2027' })).toEqual({ ok: false, error: 'Enter an amount in k€' });
-    expect(parseBondForm({ amt: '1', issuer: '', valid: '1 Jan 2027' })).toEqual({ ok: false, error: 'Issuer is required' });
-    expect(parseBondForm({ amt: '1', issuer: 'x', valid: '' })).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
+    expect(parseBondForm({ amt: '0', issuer: 'x', valid: '1 Jan 2027' }, 2026)).toMatchObject({ ok: true, value: { type: 'performance' } });
+    expect(parseBondForm({ label: 'surety', amt: '1', issuer: 'x', valid: '1 Jan 2027' }, 2026)).toEqual({ ok: false, error: 'Unknown guarantee type' });
+    expect(parseBondForm({ amt: '-1', issuer: 'x', valid: '1 Jan 2027' }, 2026)).toEqual({ ok: false, error: 'Enter an amount in k€' });
+    expect(parseBondForm({ amt: '1', issuer: '', valid: '1 Jan 2027' }, 2026)).toEqual({ ok: false, error: 'Issuer is required' });
+    expect(parseBondForm({ amt: '1', issuer: 'x', valid: '' }, 2026)).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
   });
 
   it('AF.milestone', () => {
-    expect(parseMilestoneForm({ label: 'Final acceptance', pct: '2,5', due: '14 janv. 2028', cond: '' })).toEqual({
+    expect(parseMilestoneForm({ label: 'Final acceptance', pct: '2,5', due: '14 janv. 2028', cond: '' }, 2026)).toEqual({
       ok: true, value: { label: 'Final acceptance', sharePct: 2.5, contractualDue: '2028-01-14', condition: null, amendment: null },
     });
     // NEW-D3-3: "Applies to" the base contract or an amendment (its position).
-    expect(parseMilestoneForm({ basis: '1', label: 'Crane upgrade delivered', pct: '100', due: '14 Dec 2026' })).toMatchObject({ ok: true, value: { amendment: 1, sharePct: 100 } });
-    expect(parseMilestoneForm({ basis: 'base', label: 'x', pct: '10', due: '14 Dec 2026' })).toMatchObject({ ok: true, value: { amendment: null } });
-    expect(parseMilestoneForm({ basis: 'Amendment 1', label: 'x', pct: '10', due: '14 Dec 2026' })).toEqual({ ok: false, error: 'Choose the base contract or an amendment' });
-    expect(parseMilestoneForm({ label: '', pct: '10', due: '1 Jan 2027' })).toEqual({ ok: false, error: 'Milestone is required' });
-    expect(['0', '101', 'x'].map((pct) => parseMilestoneForm({ label: 'x', pct, due: '1 Jan 2027' }))).toEqual(
+    expect(parseMilestoneForm({ basis: '1', label: 'Crane upgrade delivered', pct: '100', due: '14 Dec 2026' }, 2026)).toMatchObject({ ok: true, value: { amendment: 1, sharePct: 100 } });
+    expect(parseMilestoneForm({ basis: 'base', label: 'x', pct: '10', due: '14 Dec 2026' }, 2026)).toMatchObject({ ok: true, value: { amendment: null } });
+    expect(parseMilestoneForm({ basis: 'Amendment 1', label: 'x', pct: '10', due: '14 Dec 2026' }, 2026)).toEqual({ ok: false, error: 'Choose the base contract or an amendment' });
+    expect(parseMilestoneForm({ label: '', pct: '10', due: '1 Jan 2027' }, 2026)).toEqual({ ok: false, error: 'Milestone is required' });
+    expect(['0', '101', 'x'].map((pct) => parseMilestoneForm({ label: 'x', pct, due: '1 Jan 2027' }, 2026))).toEqual(
       Array(3).fill({ ok: false, error: 'Enter a share between 0 and 100 %' }),
     );
   });
 
   it('AF.billing: a planned milestone (first by default), a number, a date', () => {
     const planned = ['M4', 'M5'];
-    expect(parseInvoiceForm({ ms: 'M5', no: ' INV-2026-004 ', date: '30 Sep 2026', note: 'x' }, planned)).toEqual({
+    expect(parseInvoiceForm({ ms: 'M5', no: ' INV-2026-004 ', date: '30 Sep 2026', note: 'x' }, planned, 2026)).toEqual({
       ok: true, value: { milestone: 'M5', invoiceNumber: 'INV-2026-004', issuedOn: '2026-09-30', note: 'x' },
     });
-    expect(parseInvoiceForm({ ms: 'M4 · Cranes operational', no: 'A', date: '30 Sep 2026' }, planned)).toMatchObject({ ok: true, value: { milestone: 'M4' } });
-    expect(parseInvoiceForm({ no: 'A', date: '30 Sep 2026' }, planned)).toMatchObject({ ok: true, value: { milestone: 'M4', note: null } });
-    expect(parseInvoiceForm({ ms: 'M3', no: 'A', date: '30 Sep 2026' }, planned)).toEqual({ ok: false, error: 'Choose a milestone still to invoice' });
-    expect(parseInvoiceForm({ ms: 'M4', no: ' ', date: '30 Sep 2026' }, planned)).toEqual({ ok: false, error: 'Invoice number is required' });
-    expect(parseInvoiceForm({ ms: 'M4', no: 'A', date: '' }, planned)).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
-    expect(parseInvoiceForm({ no: 'A', date: '30 Sep 2026' }, [])).toEqual({ ok: false, error: 'Choose a milestone still to invoice' });
+    expect(parseInvoiceForm({ ms: 'M4 · Cranes operational', no: 'A', date: '30 Sep 2026' }, planned, 2026)).toMatchObject({ ok: true, value: { milestone: 'M4' } });
+    expect(parseInvoiceForm({ no: 'A', date: '30 Sep 2026' }, planned, 2026)).toMatchObject({ ok: true, value: { milestone: 'M4', note: null } });
+    expect(parseInvoiceForm({ ms: 'M3', no: 'A', date: '30 Sep 2026' }, planned, 2026)).toEqual({ ok: false, error: 'Choose a milestone still to invoice' });
+    expect(parseInvoiceForm({ ms: 'M4', no: ' ', date: '30 Sep 2026' }, planned, 2026)).toEqual({ ok: false, error: 'Invoice number is required' });
+    expect(parseInvoiceForm({ ms: 'M4', no: 'A', date: '' }, planned, 2026)).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
+    expect(parseInvoiceForm({ no: 'A', date: '30 Sep 2026' }, [], 2026)).toEqual({ ok: false, error: 'Choose a milestone still to invoice' });
   });
 
   it('contract-sheet fields', () => {
-    expect(parseSheetField('amount', '6000')).toEqual({ ok: true, value: { baseAmountKeur: 6000 } });
-    expect(parseSheetField('retention', '2,5')).toEqual({ ok: true, value: { retentionPct: 2.5 } });
-    expect(parseSheetField('retention', '120')).toEqual({ ok: false, error: 'Enter a percentage between 0 and 100' });
-    expect(parseSheetField('amount', '-1')).toEqual({ ok: false, error: 'Enter an amount in k€' });
-    expect(parseSheetField('type', 'cost_plus')).toEqual({ ok: true, value: { type: 'cost_plus' } });
-    expect(parseSheetField('type', 'Cost plus')).toEqual({ ok: false, error: 'Unknown contract type' });
-    expect(parseSheetField('signed', '14 janv. 2026')).toEqual({ ok: true, value: { signedOn: '2026-01-14' } });
-    expect(parseSheetField('signed', '')).toEqual({ ok: true, value: { signedOn: null } });
-    expect(parseSheetField('signed', 'x')).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
-    expect(parseSheetField('ref', ' ')).toEqual({ ok: false, error: 'Reference is required' });
+    expect(parseSheetField('amount', '6000', 2026)).toEqual({ ok: true, value: { baseAmountKeur: 6000 } });
+    expect(parseSheetField('retention', '2,5', 2026)).toEqual({ ok: true, value: { retentionPct: 2.5 } });
+    expect(parseSheetField('retention', '120', 2026)).toEqual({ ok: false, error: 'Enter a percentage between 0 and 100' });
+    expect(parseSheetField('amount', '-1', 2026)).toEqual({ ok: false, error: 'Enter an amount in k€' });
+    expect(parseSheetField('type', 'cost_plus', 2026)).toEqual({ ok: true, value: { type: 'cost_plus' } });
+    expect(parseSheetField('type', 'Cost plus', 2026)).toEqual({ ok: false, error: 'Unknown contract type' });
+    expect(parseSheetField('signed', '14 janv. 2026', 2026)).toEqual({ ok: true, value: { signedOn: '2026-01-14' } });
+    expect(parseSheetField('signed', '', 2026)).toEqual({ ok: true, value: { signedOn: null } });
+    expect(parseSheetField('signed', 'x', 2026)).toEqual({ ok: false, error: 'Enter a date such as 14 Dec 2026' });
+    expect(parseSheetField('ref', ' ', 2026)).toEqual({ ok: false, error: 'Reference is required' });
     // C-6 (R-076): the payment rule and its days replace the free "Payment terms" text.
-    expect(parseSheetField('rule', 'days_eom')).toEqual({ ok: true, value: { paymentRule: 'days_eom' } });
-    expect(parseSheetField('rule', '45 days end of month')).toEqual({ ok: false, error: 'Unknown payment rule' });
-    expect(parseSheetField('days', ' 60 ')).toEqual({ ok: true, value: { paymentDays: 60 } });
-    expect(['181', '-1', '4.5', 'x', ''].map((d) => parseSheetField('days', d))).toEqual(Array(5).fill({ ok: false, error: 'Enter a number of days between 0 and 180' }));
+    expect(parseSheetField('rule', 'days_eom', 2026)).toEqual({ ok: true, value: { paymentRule: 'days_eom' } });
+    expect(parseSheetField('rule', '45 days end of month', 2026)).toEqual({ ok: false, error: 'Unknown payment rule' });
+    expect(parseSheetField('days', ' 60 ', 2026)).toEqual({ ok: true, value: { paymentDays: 60 } });
+    expect(['181', '-1', '4.5', 'x', ''].map((d) => parseSheetField('days', d, 2026))).toEqual(Array(5).fill({ ok: false, error: 'Enter a number of days between 0 and 180' }));
     // C-9 (R-075): a currency code (the DAL checks it against the project).
-    expect(parseSheetField('currency', 'USD')).toEqual({ ok: true, value: { currency: 'USD' } });
-    expect(parseSheetField('currency', 'usd')).toEqual({ ok: false, error: 'Unknown currency' });
-    expect(parseSheetField('scope', 'x'.repeat(2001))).toEqual({ ok: false, error: 'Text is too long' });
-    expect([parseSheetField('owner', 'x'), parseSheetField('terms', 'Net 60 days'), parseSheetField('rule', 5)]).toEqual([
+    expect(parseSheetField('currency', 'USD', 2026)).toEqual({ ok: true, value: { currency: 'USD' } });
+    expect(parseSheetField('currency', 'usd', 2026)).toEqual({ ok: false, error: 'Unknown currency' });
+    expect(parseSheetField('scope', 'x'.repeat(2001), 2026)).toEqual({ ok: false, error: 'Text is too long' });
+    expect([parseSheetField('owner', 'x', 2026), parseSheetField('terms', 'Net 60 days', 2026), parseSheetField('rule', 5, 2026)]).toEqual([
       { ok: false, error: 'Invalid request' }, { ok: false, error: 'Invalid request' }, { ok: false, error: 'Invalid request' },
     ]);
   });

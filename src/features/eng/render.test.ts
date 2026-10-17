@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { makeT, trFR, type Lang } from '@/i18n/translate';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
-import { CODEX_TODAY_ISO, parisParts, type Discipline } from '@/server/db/codes';
+import { parisParts, type Discipline } from '@/server/db/codes';
 import { getDocumentRecord, recordDocumentDecision } from '@/server/dal/documents';
 import { applyCodexDocumentStates } from '@/server/integrations/codex/mirror';
 import { getEngScreen } from '@/server/dal/eng-screen';
@@ -20,6 +20,9 @@ import { primaryImportTarget, type EngRegister, type EngScreen } from '@/domain/
 import GOLD from './eng.golden.json';
 import { frSingular } from './i18n';
 import { disciplineScreenView, importWizardModel, synthesisScreenView } from './model';
+
+/** The date Codex records the mirrored release on (the prototype's Codex "today"; R-013 removed the shared anchor). */
+const CODEX_TODAY_ISO = '2026-09-29';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const G = GOLD as any;

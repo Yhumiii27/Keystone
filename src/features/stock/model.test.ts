@@ -30,7 +30,7 @@ const nameFix = (lang: Lang, protoFr: string) => (lang === 'fr' ? protoFr.replac
 
 async function screen(lang: Lang, state: Partial<StockUrlState> = {}) {
   const [rows, locations, sync, moves, pins] = await Promise.all([listStock(), listStorageLocations(), getX3StockSync(), listStockMovements({ limit: 8 }), installedBasePins()]);
-  return { rows, locations, pins, view: stockScreenView({ rows, locations, sync, moves, pins, state: { ...S0, ...state } }, makeT(lang), lang) };
+  return { rows, locations, pins, view: stockScreenView({ year: 2026, rows, locations, sync, moves, pins, state: { ...S0, ...state } }, makeT(lang), lang) };
 }
 const goldenMoves = (ms: any[], lang: Lang) =>
   ms.map((m) => ({ type: lang === 'fr' ? (FR_MOVE[m.type] ?? m.type) : m.type, ref: m.ref, qty: String(m.qty), where: lang === 'fr' ? (FR_WHERE[m.where] ?? m.where) : m.where, who: m.who, when: m.when }));
@@ -97,7 +97,7 @@ describe('Stock & storages view model (seed)', () => {
     const { rows, locations, pins } = await screen(lang);
     for (const [i, r] of rows.entries()) {
       const g = G[lang].drawers[String(i)];
-      const d = stockDrawerView({ detail: (await getStockPosition(r.id))!, locations, pins, state: { ...S0, stock: r.id } }, t, lang);
+      const d = stockDrawerView({ year: 2026, detail: (await getStockPosition(r.id))!, locations, pins, state: { ...S0, stock: r.id } }, t, lang);
       expect([d.header, d.name, d.locationType, d.source, `tag tag-${d.sourceTone}`]).toEqual([`${g.ref} · ${g.loc}`, nameFix(lang, g.name), g.locType, g.source, g.srcClass]);
       expect(d.meta).toEqual(g.meta.map((m: any) => ({ k: m.k, v: day(String(m.v)) })));
       expect(d.ops.map((o) => o.label)).toEqual(g.opSeg.map((o: any) => o.label));
@@ -110,10 +110,10 @@ describe('Stock & storages view model (seed)', () => {
       expect(d.partHref).toBe(stockHref({ part: r.ref }));
     }
     // Quantity labels per operation, scrap warning of a pinned part (FD-DET-OPT, row 10).
-    const pinned = stockDrawerView({ detail: (await getStockPosition(rows[10].id))!, locations, pins, state: S0 }, t, lang);
+    const pinned = stockDrawerView({ year: 2026, detail: (await getStockPosition(rows[10].id))!, locations, pins, state: S0 }, t, lang);
     // "Release reservation" (R-099) only for who may release it (here nobody: the view gets no right).
     expect(pinned.ops.map((o) => o.qtyLabel)).toEqual(['adjust', 'transfer', 'reserve', 'issue', 'return', 'scrap'].map((op) => G[lang].drawerOps[op].qtyLabel));
-    const releasable = stockDrawerView({ detail: (await getStockPosition(rows[10].id))!, locations, pins, state: S0, canRelease: true, projectCode: 'MSR-012' }, t, lang);
+    const releasable = stockDrawerView({ year: 2026, detail: (await getStockPosition(rows[10].id))!, locations, pins, state: S0, canRelease: true, projectCode: 'MSR-012' }, t, lang);
     expect(releasable.ops.map((o) => o.value)).toEqual(['adjust', 'transfer', 'reserve', 'release', 'issue', 'return', 'scrap']);
     expect(releasable.reservedForOther).toEqual({ project: 'HLT-026', qty: 180 });
     expect(pinned.scrapWarning!.ecoHref).toBe('/reference/eco?eco=ECO-2026-015');
@@ -123,7 +123,7 @@ describe('Stock & storages view model (seed)', () => {
         : 'Révision épinglée en service — À conserver pour le parc · 1 machine · ECO-2026-015. Le rebut est autorisé, mais le SAV doit d’abord confirmer la couverture en pièces de rechange.',
     );
     expect(G.fr.drawerOps.scrap.scrapWarnText).toMatch(/Scrapping is allowed/); // the prototype's half-English French
-    const plain = stockDrawerView({ detail: (await getStockPosition(rows[0].id))!, locations, pins, state: S0 }, t, lang);
+    const plain = stockDrawerView({ year: 2026, detail: (await getStockPosition(rows[0].id))!, locations, pins, state: S0 }, t, lang);
     expect(plain.scrapWarning).toBeNull();
   });
 });

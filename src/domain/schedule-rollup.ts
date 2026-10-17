@@ -39,15 +39,18 @@ const parts = (iso: IsoDate) => {
   const [y, m, d] = iso.split('-').map((x) => parseInt(x, 10));
   return { y, m, d };
 };
-/** Activity display date ("05 Oct", "14 Jan ’27"): 2-digit day, year suffix when not 2026 (prototype `wbsFmtDate`). */
-export function activityDateText(iso: IsoDate): string {
+/**
+ * Activity display date ("05 Oct", "14 Jan ’27"): 2-digit day, year suffix outside the business year `year` (prototype
+ * `wbsFmtDate`, which compared with 2026; R-013).
+ */
+export function activityDateText(iso: IsoDate, year: number): string {
   const { y, m, d } = parts(iso);
-  return `${String(d).padStart(2, '0')} ${MO[m - 1]}${y !== 2026 ? ' ’' + String(y).slice(2) : ''}`;
+  return `${String(d).padStart(2, '0')} ${MO[m - 1]}${y !== year ? ' ’' + String(y).slice(2) : ''}`;
 }
-/** Short date ("1 Apr", "13 Jan ’27"), the prototype's `fmtD` / `dateOf` form. */
-export function shortDateText(iso: IsoDate): string {
+/** Short date ("1 Apr", "13 Jan ’27"), the prototype's `fmtD` / `dateOf` form: the year suffix after the business year `year` (R-013). */
+export function shortDateText(iso: IsoDate, year: number): string {
   const { y, m, d } = parts(iso);
-  return `${d} ${MO[m - 1]}${y > 2026 ? ' ’' + String(y).slice(2) : ''}`;
+  return `${d} ${MO[m - 1]}${y > year ? ' ’' + String(y).slice(2) : ''}`;
 }
 /** Long date ("14 Jan 2027"), the prototype's `fmtDY` form. */
 export function longDateText(iso: IsoDate): string {

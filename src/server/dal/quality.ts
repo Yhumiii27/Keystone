@@ -8,10 +8,12 @@ import 'server-only';
 //   rejection goes back to In progress at the next revision ("Start next revision", R-114 / Q-3a); every client decision
 //   is kept in `deliverable_reviews`. The project manager creates deliverables ("New deliverable", R-115 / Q-3b).
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { yearOfIso } from '@/domain/clock';
 import { DELIVERABLE_CREATOR_ROLES, nextRevision } from '@/domain/quality';
+import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import {
-  DELIVERABLE_ACCEPTANCE_DAYS, DELIVERABLE_STATUS_TAG, NCR_FLOW, NCR_STATUS_TAG, NCR_VERIFIER_ROLES, RACI_CODES, SEVERITY_TAG, STATUS_ISO, addDaysIso, deliverableStatus, deliverableType,
+  DELIVERABLE_ACCEPTANCE_DAYS, DELIVERABLE_STATUS_TAG, NCR_FLOW, NCR_STATUS_TAG, NCR_VERIFIER_ROLES, RACI_CODES, SEVERITY_TAG, addDaysIso, deliverableStatus, deliverableType,
   fmtDOfIso, nextBusinessNumber, ncrNextStatus, ncrSeverity, ncrSource, ncrStatus, vigieSyncStatus,
   type DeliverableReviewDecision, type DeliverableStatus, type NcrStatus, type NcrVerificationDecision, type RaciCode,
 } from '@/server/db/codes';
@@ -186,12 +188,12 @@ export interface DeliverableReview {
   comments: string | null;
 }
 
-/** Display text of the acceptance fields (the prototype's `acc`). */
-export function acceptanceTextOf(d: Pick<DeliverableRow, 'status' | 'issueOn' | 'acceptanceDueOn' | 'acceptedOn' | 'acceptedBy' | 'rejectedOn'>): string {
-  if (d.status === 'accepted' && d.acceptedOn) return `${fmtDOfIso(d.acceptedOn)} · ${d.acceptedBy ?? '—'}`;
-  if (d.status === 'rejected' && d.rejectedOn) return `${fmtDOfIso(d.rejectedOn)} · comments issued`;
-  if (d.status === 'submitted' && d.acceptanceDueOn) return `Accept by ${fmtDOfIso(d.acceptanceDueOn)}`;
-  if (d.issueOn && (d.status === 'in_progress' || d.status === 'internal_review')) return `Issue ${fmtDOfIso(d.issueOn)}`;
+/** Display text of the acceptance fields (the prototype's `acc`); dates show their year outside the business year `year` (R-013). */
+export function acceptanceTextOf(d: Pick<DeliverableRow, 'status' | 'issueOn' | 'acceptanceDueOn' | 'acceptedOn' | 'acceptedBy' | 'rejectedOn'>, year: number): string {
+  if (d.status === 'accepted' && d.acceptedOn) return `${fmtDOfIso(d.acceptedOn, year)} · ${d.acceptedBy ?? '—'}`;
+  if (d.status === 'rejected' && d.rejectedOn) return `${fmtDOfIso(d.rejectedOn, year)} · comments issued`;
+  if (d.status === 'submitted' && d.acceptanceDueOn) return `Accept by ${fmtDOfIso(d.acceptanceDueOn, year)}`;
+  if (d.issueOn && (d.status === 'in_progress' || d.status === 'internal_review')) return `Issue ${fmtDOfIso(d.issueOn, year)}`;
   return '—';
 }
 
@@ -209,14 +211,16 @@ async function loadDeliverables(projectCode: string, numbers?: string[]): Promis
     .where(and(eq(deliverables.projectId, p.id), numbers?.length ? inArray(deliverables.number, numbers) : undefined))
     .orderBy(asc(deliverables.position));
   if (!rows.length) return [];
-  const [raci, types, ncrs, people, reviewRows] = await Promise.all([
+  const [raci, types, ncrs, people, reviewRows, today] = await Promise.all([
     db.select().from(deliverableRaci).where(inArray(deliverableRaci.deliverableId, rows.map((r) => r.d.id))),
     db.select({ code: referenceValues.code, label: referenceValues.label }).from(referenceValues).where(eq(referenceValues.listKey, 'delivTypes')),
     db.select({ number: vigieNcrs.number, deliv: vigieNcrs.deliverableNumber }).from(vigieNcrs).where(eq(vigieNcrs.projectCode, projectCode)).orderBy(asc(vigieNcrs.position)),
     db.query.persons.findMany({ columns: { id: true, shortName: true } }),
     db.select().from(deliverableReviews).where(inArray(deliverableReviews.deliverableId, rows.map((r) => r.d.id)))
       .orderBy(desc(deliverableReviews.decidedOn), desc(deliverableReviews.createdAt)),
+    businessToday(),
   ]);
+  const year = yearOfIso(today);
   const shortById = new Map(people.map((x) => [x.id, x.shortName]));
   const typeLabel = new Map(types.map((t) => [t.code, t.label]));
   return rows.map(({ d, wbsName, doc }) => {
@@ -229,7 +233,7 @@ async function loadDeliverables(projectCode: string, numbers?: string[]): Promis
       number: d.number, projectCode, title: d.title, type: d.type,
       typeLabel: typeLabel.get(d.type) ?? (deliverableType.isCode(d.type) ? deliverableType.label(d.type) : d.type), wbsCode: d.wbsCode, wbsName: wbsName ?? null,
       dueOn: d.dueOn, statusLabel: deliverableStatus.label(d.status), statusTag: DELIVERABLE_STATUS_TAG[d.status],
-      revision: d.revision, submittedOn: d.submittedOn, reviewComments: d.reviewComments, ...base, acceptanceText: acceptanceTextOf(base),
+      revision: d.revision, submittedOn: d.submittedOn, reviewComments: d.reviewComments, ...base, acceptanceText: acceptanceTextOf(base, year),
       raci: RACI_CODES.map((role) => {
         const c = cells.find((x) => x.role === role);
         return { role, name: c?.name ?? null, initials: c ? initialsOf(c.name) : '' };
@@ -291,16 +295,17 @@ async function loadOne(tx: Tx, projectCode: string, number: string) {
 
 /**
  * "Start" (Planned → In progress), "To internal review" (In progress → Internal review), "Submit to client" (Internal review
- * → Submitted; the client has 10 days from the status date to accept: "Accept by 5 Oct") and "Start next revision"
+ * → Submitted; the client has 10 days from `on` — default the business date, R-013 — to accept: "Accept by 5 Oct") and "Start next revision"
  * (Rejected → In progress at the next revision, R-114: the rejection stays in the review history, the row's rejection,
  * submission and acceptance window are cleared for the new submission). `to` must be the next step; with `expected`, a
  * deliverable whose status changed meanwhile is refused ("… has moved on").
  */
 export async function moveDeliverable(
-  projectCode: string, number: string, to: 'in_progress' | 'internal_review' | 'submitted', actor: Actor, on: string = STATUS_ISO, expected?: DeliverableStatus,
+  projectCode: string, number: string, to: 'in_progress' | 'internal_review' | 'submitted', actor: Actor, on?: string, expected?: DeliverableStatus,
 ): Promise<void> {
   requireWorkspace('quality', actor, 'Quality');
   if (actor.role === 'client') throw new Error('The client accepts or rejects submitted deliverables only');
+  const day = on ?? (await businessToday());
   const db = await getDb();
   await db.transaction(async (tx) => {
     const { p, d } = await loadOne(tx, projectCode, number);
@@ -308,7 +313,7 @@ export async function moveDeliverable(
     if (PRODUCER_NEXT[d.status] !== to) throw new Error(`${number} cannot move from ${deliverableStatus.label(d.status)} to ${deliverableStatus.label(to)}`);
     const who = await whoIs(tx, actor);
     const patch: Partial<typeof deliverables.$inferInsert> = { status: to, updatedAt: new Date() };
-    if (to === 'submitted') Object.assign(patch, { submittedOn: on, acceptanceDueOn: addDaysIso(on, DELIVERABLE_ACCEPTANCE_DAYS) });
+    if (to === 'submitted') Object.assign(patch, { submittedOn: day, acceptanceDueOn: addDaysIso(day, DELIVERABLE_ACCEPTANCE_DAYS) });
     let revision: string | null = null;
     if (d.status === 'rejected') {
       // Keep the rejection in the history (a seeded rejection has no row yet), then open the next revision.
@@ -343,13 +348,14 @@ export async function moveDeliverable(
 /**
  * Client acceptance (PV de réception) or rejection of a submitted deliverable — the client contact of the project's
  * client organisation only (register, drawer, My approvals, client portal). Accept stamps the date and the viewer
- * ("25 Sep · N. Bensaïd"); reject records the comments ("comments issued").
+ * ("25 Sep · N. Bensaïd"; `on` — default the business date, R-013); reject records the comments ("comments issued").
  */
 export async function decideDeliverable(
-  projectCode: string, number: string, decision: 'accepted' | 'rejected', actor: Actor, comments?: string | null, on: string = STATUS_ISO,
+  projectCode: string, number: string, decision: 'accepted' | 'rejected', actor: Actor, comments?: string | null, on?: string,
 ): Promise<void> {
   requireWorkspace('quality', actor, 'Quality');
   const note = optionalText(comments, 'Comments');
+  const day = on ?? (await businessToday());
   const db = await getDb();
   await db.transaction(async (tx) => {
     const { p, d } = await loadOne(tx, projectCode, number);
@@ -358,12 +364,12 @@ export async function decideDeliverable(
     const who = await whoIs(tx, actor);
     const at = new Date();
     if (decision === 'accepted')
-      await tx.update(deliverables).set({ status: 'accepted', acceptedOn: on, acceptedByPersonId: who.personId, acceptedByName: who.who, updatedAt: at }).where(eq(deliverables.id, d.id));
+      await tx.update(deliverables).set({ status: 'accepted', acceptedOn: day, acceptedByPersonId: who.personId, acceptedByName: who.who, updatedAt: at }).where(eq(deliverables.id, d.id));
     else
-      await tx.update(deliverables).set({ status: 'rejected', rejectedOn: on, rejectedByPersonId: who.personId, reviewComments: note ?? 'comments issued', updatedAt: at }).where(eq(deliverables.id, d.id));
+      await tx.update(deliverables).set({ status: 'rejected', rejectedOn: day, rejectedByPersonId: who.personId, reviewComments: note ?? 'comments issued', updatedAt: at }).where(eq(deliverables.id, d.id));
     // R-114: every client decision is kept; the row only holds the latest one.
     await tx.insert(deliverableReviews).values({
-      deliverableId: d.id, revision: d.revision, submittedOn: d.submittedOn, decision, decidedOn: on, decidedByName: who.who, decidedByPersonId: who.personId,
+      deliverableId: d.id, revision: d.revision, submittedOn: d.submittedOn, decision, decidedOn: day, decidedByName: who.who, decidedByPersonId: who.personId,
       comments: decision === 'rejected' ? (note ?? 'comments issued') : note,
     });
     await trace(tx, who, {

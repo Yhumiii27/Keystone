@@ -37,7 +37,7 @@ export default async function InstalledBasePage() {
     <>
       <PageHeader screen="fleet" primary={primary} />
       <FleetBody view={fleetView(data, zone, t, lang, { vigie: access.viewer.role !== 'client' })} t={t} />
-      <DeliveredCard rows={deliveredView(candidates, { canRegister }, t, lang)} t={t} />
+      <DeliveredCard rows={deliveredView(candidates, { canRegister, today: data.today }, t, lang)} t={t} />
     </>
   );
 }

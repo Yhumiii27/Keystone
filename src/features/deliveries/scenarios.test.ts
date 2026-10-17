@@ -37,7 +37,7 @@ async function fresh() {
 /** The screen of `code` with `receipt` open, as the prototype's snapshot shape. */
 async function screen(code: string, receipt: string, lang: Lang) {
   const data = await getDeliveriesScreen(code);
-  const v = deliveriesView(code, data, { status: null, receipt }, makeT(lang), lang);
+  const v = deliveriesView(code, data, { status: null, receipt }, makeT(lang), lang, 2026);
   const d = v.drawer!;
   return {
     kpis: v.kpis.map((k) => ({ label: k.label, value: k.value, sub: k.sub, color: k.color })),

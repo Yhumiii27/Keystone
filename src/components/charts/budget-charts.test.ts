@@ -60,7 +60,7 @@ describe('Cash recovery geometry (HLT-026)', () => {
   const core = evmCore(HLT);
   const rc = cashRecovery({
     pv: HLT.pv, ac: HLT.ac, bac: HLT.bac, evn: core.evn, cpi: core.cpi, contractTotal: total, milestones: ms,
-    termsDays: termsDays(CT.terms), openCommit: openCommitment(HLT.pv, core.evn, 713),
+    termsDays: termsDays(CT.terms), openCommit: openCommitment(HLT.pv, core.evn, 713), year: 2026,
   });
   const g = cashChartGeometry(rc, total);
 

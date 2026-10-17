@@ -27,6 +27,7 @@ vi.mock('@/server/session', async () => {
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { revalidatePath } from 'next/cache';
+import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { canRecordItpResult, groupBySystem, inspectionNcrTitle, parseInspectionResult, parsePastDate, resultLineText, summariseItp, witnessFieldOf } from '@/domain/itpcom';
 import { I18nProvider } from '@/i18n/client';
 import { makeT } from '@/i18n/translate';
@@ -41,8 +42,11 @@ import { recordInspectionResultAction } from './actions';
 import { ItpBody } from './itp-view';
 import { itpScreenView } from './model';
 
+/** The prototype's today for recorded results (NOW_ISO, 30 Sep 2026): the pure rules take it explicitly since R-013. */
+const NOW = '2026-09-30';
 const ROLES = ['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'] as const;
-const FAIL = { result: 'failed', date: '29 Sep', inspector: 'Gabriel Comte', comment: 'DFT 180 µm < 240 µm on G2 web' };
+// R-013: one business date (25 Sep 2026 on the demo data set, not the prototype's 30 Sep): results are dated on or before it.
+const FAIL = { result: 'failed', date: '25 Sep', inspector: 'Gabriel Comte', comment: 'DFT 180 µm < 240 µm on G2 web' };
 
 describe('R-112 rules', () => {
   it('who records (Q-6a: quality, engineering lead; the director keeps every right)', () => {
@@ -54,21 +58,21 @@ describe('R-112 rules', () => {
   });
 
   it('past dates: year-less dates after today are last year’s; the business date is "today"', () => {
-    expect(['24 Sep', '29/09', '2026-09-30', '28 Dec', '24 sept. 2026', 'demain', ''].map((d) => parsePastDate(d))).toEqual([
+    expect(['24 Sep', '29/09', '2026-09-30', '28 Dec', '24 sept. 2026', 'demain', ''].map((d) => parsePastDate(d, NOW))).toEqual([
       '2026-09-24', '2026-09-29', '2026-09-30', '2025-12-28', '2026-09-24', null, null,
     ]);
   });
 
   it('parses the form: result, date, inspector, witness, comment', () => {
-    expect(parseInspectionResult({ result: 'passed', date: '24 Sep', inspector: ' Antoine Girard ' }, 'review')).toEqual({
+    expect(parseInspectionResult({ result: 'passed', date: '24 Sep', inspector: ' Antoine Girard ' }, 'review', NOW)).toEqual({
       ok: true, value: { result: 'passed', resultOn: '2026-09-24', inspector: 'Antoine Girard', clientWitness: null, comment: null },
     });
     // Labels are accepted (prototype payloads); a witness typed on a review point is ignored.
-    expect(parseInspectionResult({ result: 'Passed with reservations', date: '30 Sep', inspector: 'G. Comte', witness: 'N. Bensaïd', comment: 'Touch-up G3' }, 'review')).toEqual({
+    expect(parseInspectionResult({ result: 'Passed with reservations', date: '30 Sep', inspector: 'G. Comte', witness: 'N. Bensaïd', comment: 'Touch-up G3' }, 'review', NOW)).toEqual({
       ok: true, value: { result: 'reserved', resultOn: '2026-09-30', inspector: 'G. Comte', clientWitness: null, comment: 'Touch-up G3' },
     });
     const err = (v: Record<string, string>, pt: 'hold' | 'witness' | 'review' = 'review') => {
-      const r = parseInspectionResult(v, pt);
+      const r = parseInspectionResult(v, pt, NOW);
       return r.ok ? null : r.error;
     };
     expect([
@@ -101,8 +105,8 @@ describe('R-112 rules', () => {
   });
 
   it('texts: the result line and the NCR title passed to Vigie', () => {
-    expect(resultLineText({ result: 'failed', resultOn: '2026-09-29', inspector: 'Gabriel Comte', clientWitness: 'N. Bensaïd' })).toBe('Failed 29 Sep · Gabriel Comte · client N. Bensaïd');
-    expect(resultLineText({ result: 'passed', resultOn: null, inspector: null, clientWitness: null })).toBeNull();
+    expect(resultLineText({ result: 'failed', resultOn: '2026-09-29', inspector: 'Gabriel Comte', clientWitness: 'N. Bensaïd' }, NOW)).toBe('Failed 29 Sep · Gabriel Comte · client N. Bensaïd');
+    expect(resultLineText({ result: 'passed', resultOn: null, inspector: null, clientWitness: null }, NOW)).toBeNull();
     expect(inspectionNcrTitle({ number: 'I-03', system: 'Structure', name: 'Paint thickness (DFT)' })).toBe('ITP I-03 · Structure · Paint thickness (DFT)');
   });
 });
@@ -165,17 +169,17 @@ describe('R-112 "Record result" Server Function and DAL', () => {
     session.role = 'quality';
     expect(await recordInspectionResultAction('HLT-026', 'I-03', 'failed', FAIL)).toEqual({ toast: 'I-03 · Failed · Inspection result recorded' });
     expect(await getItpInspection('HLT-026', 'I-03')).toMatchObject({
-      result: 'failed', resultOn: '2026-09-29', inspector: 'Gabriel Comte', clientWitness: null, resultComment: 'DFT 180 µm < 240 µm on G2 web',
+      result: 'failed', resultOn: '2026-09-25', inspector: 'Gabriel Comte', clientWitness: null, resultComment: 'DFT 180 µm < 240 µm on G2 web',
     });
     const [audit] = await listAudit({ projectCode: 'HLT-026', limit: 1 });
-    expect([audit.who, audit.object, audit.area, audit.change]).toEqual(['Gabriel Comte', 'I-03', 'ITP', 'result: Failed → Failed · 2026-09-29 · Gabriel Comte · DFT 180 µm < 240 µm on G2 web']);
+    expect([audit.who, audit.object, audit.area, audit.change]).toEqual(['Gabriel Comte', 'I-03', 'ITP', 'result: Failed → Failed · 2026-09-25 · Gabriel Comte · DFT 180 µm < 240 µm on G2 web']);
     // A hold point with the client representative; FR toast.
     session.role = 'englead';
     session.lang = 'fr';
-    expect(await recordInspectionResultAction('HLT-026', 'I-04', 'scheduled', { result: 'reserved', date: '30 sept.', inspector: 'Antoine Girard', witness: 'N. Bensaïd', comment: 'Shim at rail joint 12' })).toEqual({
+    expect(await recordInspectionResultAction('HLT-026', 'I-04', 'scheduled', { result: 'reserved', date: '25 sept.', inspector: 'Antoine Girard', witness: 'N. Bensaïd', comment: 'Shim at rail joint 12' })).toEqual({
       toast: 'I-04 · Conforme avec réserves · Résultat d’inspection enregistré',
     });
-    expect(await getItpInspection('HLT-026', 'I-04')).toMatchObject({ result: 'reserved', resultOn: '2026-09-30', clientWitness: 'N. Bensaïd', inspector: 'Antoine Girard' });
+    expect(await getItpInspection('HLT-026', 'I-04')).toMatchObject({ result: 'reserved', resultOn: '2026-09-25', clientWitness: 'N. Bensaïd', inspector: 'Antoine Girard' });
     // Passed with reservations counts as passed: 4 passed before (I-01, I-02, I-08, I-10) + I-04.
     const plan = (await getItpPlan('HLT-026'))!;
     expect(summariseItp(plan.inspections, [], null, null).passed).toBe(plan.inspections.filter((i) => i.result === 'passed' || i.result === 'reserved').length);
@@ -184,30 +188,31 @@ describe('R-112 "Record result" Server Function and DAL', () => {
   it('view model: result line, "Report the NCR in Vigie" prefilled with the inspection, the Vigie NCR once reported, nothing for the client', async () => {
     const view = async (internal: boolean, canRecord: boolean, lang: 'en' | 'fr' = 'en') => {
       const [plan, punch, machineType] = await Promise.all([getItpPlan('HLT-026'), listPunchItems('HLT-026', 'itp'), projectMachineTypeLabel('HLT-026')]);
-      return itpScreenView({ code: 'HLT-026', view: 'plan', plan, punch, machineType, viewer: { canRecord, internal, name: 'Gabriel Comte', today: '30 Sep' } }, makeT(lang), lang);
+      return itpScreenView({ code: 'HLT-026', view: 'plan', plan, punch, machineType, today: DEMO_TODAY_ISO, viewer: { canRecord, internal, name: 'Gabriel Comte' } }, makeT(lang), lang);
     };
     const row = (v: Awaited<ReturnType<typeof view>>, n: string) => v.plan!.groups.flatMap((g) => g.rows).find((r) => r.number === n)!;
     const v = await view(true, true);
     const i03 = row(v, 'I-03');
-    expect([i03.resultLine, i03.comment, i03.ncrs]).toEqual(['Failed 29 Sep · Gabriel Comte', 'DFT 180 µm < 240 µm on G2 web', []]);
+    // R-013: recorded above on the business date (25 Sep on the demo data set; the form proposes it too).
+    expect([i03.resultLine, i03.comment, i03.ncrs]).toEqual(['Failed 25 Sep · Gabriel Comte', 'DFT 180 µm < 240 µm on G2 web', []]);
     expect(i03.reportNcr).toEqual({
       href: 'http://localhost:3200/signaler?type=NC&projet=HLT-026&titre=ITP+I-03+%C2%B7+Structure+%C2%B7+Paint+thickness+%28DFT%29&inspection=I-03&source=keystone',
       label: 'Report the NCR in Vigie',
     });
     expect(i03.record).toMatchObject({ label: 'Record result', ariaLabel: 'Record result · I-03', from: 'failed' });
     expect(i03.record!.form.fields.map((f) => [f.id, f.defaultValue ?? ''])).toEqual([
-      ['result', 'failed'], ['date', '29 Sep'], ['inspector', 'Gabriel Comte'], ['comment', 'DFT 180 µm < 240 µm on G2 web'],
+      ['result', 'failed'], ['date', '25 Sep'], ['inspector', 'Gabriel Comte'], ['comment', 'DFT 180 µm < 240 µm on G2 web'],
     ]);
     // Hold point I-06: the witness field is required; a line not recorded proposes the viewer and today.
     expect(row(v, 'I-06').record!.form.fields.map((f) => [f.id, f.required ?? false, f.defaultValue ?? ''])).toEqual([
-      ['result', false, 'passed'], ['date', true, '30 Sep'], ['inspector', true, 'Gabriel Comte'], ['witness', true, ''], ['comment', false, ''],
+      ['result', false, 'passed'], ['date', true, '25 Sep'], ['inspector', true, 'Gabriel Comte'], ['witness', true, ''], ['comment', false, ''],
     ]);
     expect(row(v, 'I-02').reportNcr).toBeNull();
     // Readers without the right: no "Record result"; the client sees no Vigie link nor NCR (P-10b).
     expect(row(await view(true, false), 'I-03').record).toBeNull();
     const c = row(await view(false, false), 'I-03');
     // P-10b: the description of the non-conformity is internal; the client sees the result line only.
-    expect([c.reportNcr, c.ncrs, c.record, c.resultLine, c.comment]).toEqual([null, [], null, 'Failed 29 Sep · Gabriel Comte', null]);
+    expect([c.reportNcr, c.ncrs, c.record, c.resultLine, c.comment]).toEqual([null, [], null, 'Failed 25 Sep · Gabriel Comte', null]);
 
     // Vigie reports the NCR with the inspection (V-3): its number replaces the report link.
     const db = await getDb();
@@ -225,6 +230,6 @@ describe('R-112 "Record result" Server Function and DAL', () => {
     // FR render: the line, the button, the NCR tag.
     const fr = await view(true, true, 'fr');
     const out = renderToStaticMarkup(h(I18nProvider, { lang: 'fr', children: ItpBody({ code: 'HLT-026', view: fr, canEdit: true, t: makeT('fr') }) }));
-    for (const s of ['Non conforme 29 sept. · Gabriel Comte', 'Enregistrer le résultat', 'NCR-031', 'aria-label="Ouvrir dans Vigie · NCR-031"', 'target="_blank"']) expect(out).toContain(s);
+    for (const s of ['Non conforme 25 sept. · Gabriel Comte', 'Enregistrer le résultat', 'NCR-031', 'aria-label="Ouvrir dans Vigie · NCR-031"', 'target="_blank"']) expect(out).toContain(s);
   });
 });

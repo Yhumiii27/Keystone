@@ -2,6 +2,7 @@
 // State chips, the register rows (search) and the drawing drawer, translated for the viewer. The vault is a read-only
 // mirror of SolidWorks PDM (src/server/dal/drawings.ts); the derivations are src/domain/drawings.ts. Pure (no I/O).
 import { LO, OK } from '@/components/app/tones';
+import { yearOfIso } from '@/domain/clock';
 import { drawingChips, drawingKpis, drawingStateTag, filterDrawings, revisionHistory, type DrawingState } from '@/domain/drawings';
 import type { Lang, T } from '@/i18n/translate';
 import { fmtDOfIso } from '@/server/db/codes';
@@ -42,10 +43,11 @@ export interface DrawingsView {
   empty: string | null;
 }
 
-const dateText = (iso: string | null, t: T) => (iso ? t(fmtDOfIso(iso)) : '—');
+/** "12 Mar" / "14 Jan ’27" (the year outside the business year `year`, R-013) or "—". */
+const dateText = (iso: string | null, t: T, year: number) => (iso ? t(fmtDOfIso(iso, year)) : '—');
 
-/** Register view: KPI tiles, State chips (links keeping the search), rows matching chip and search. */
-export function drawingsView(input: { drawings: DrawingRow[]; sync: VaultSyncState | null; state: DrawingsState }, t: T, lang: Lang): DrawingsView {
+/** Register view: KPI tiles, State chips (links keeping the search), rows matching chip and search. `today`: business date (R-013). */
+export function drawingsView(input: { drawings: DrawingRow[]; sync: VaultSyncState | null; state: DrawingsState; today: string }, t: T, lang: Lang): DrawingsView {
   const { drawings, sync, state } = input;
   const rows = filterDrawings(drawings, state.state, state.q).map((d): DrawingRowView => {
     const selected = state.dwg === d.number;
@@ -60,12 +62,12 @@ export function drawingsView(input: { drawings: DrawingRow[]; sync: VaultSyncSta
       rev: d.revision,
       state: t(d.stateLabel),
       stateClass: drawingStateTag(d.state),
-      byLine: `${d.checkedInBy} · ${dateText(d.checkedInOn, t)}`,
+      byLine: `${d.checkedInBy} · ${dateText(d.checkedInOn, t, yearOfIso(input.today))}`,
       eco: d.ecoNumber ?? '—',
     };
   });
   return {
-    kpis: drawingKpis(drawings, sync).map((k) => ({ label: t(k.label), value: k.value, sub: t(k.sub), color: k.lo ? LO : OK })),
+    kpis: drawingKpis(drawings, sync, input.today).map((k) => ({ label: t(k.label), value: k.value, sub: t(k.sub), color: k.lo ? LO : OK })),
     chips: drawingChips(drawings).map((c) => ({ value: c.value ?? 'all', label: t(c.label), count: c.count, href: drawingsHref({ state: c.value, q: state.q, dwg: state.dwg }) })),
     filter: state.state ?? 'all',
     q: state.q,
@@ -95,7 +97,8 @@ export interface DrawingDrawerView {
 }
 
 /** The drawing drawer. */
-export function drawingDrawerView(input: { drawing: DrawingDetail; state: DrawingsState }, t: T, lang: Lang): DrawingDrawerView {
+export function drawingDrawerView(input: { drawing: DrawingDetail; state: DrawingsState; today: string }, t: T, lang: Lang): DrawingDrawerView {
+  const year = yearOfIso(input.today);
   const d = input.drawing;
   return {
     number: d.number,
@@ -108,12 +111,12 @@ export function drawingDrawerView(input: { drawing: DrawingDetail; state: Drawin
     meta: [
       { k: 'Part', v: d.partRef ? `${d.partRef}${d.partName ? ` · ${dataText(d.partName, lang)}` : ''}` : '—' },
       { k: 'Vault path', v: d.vaultFile },
-      { k: 'Checked in by', v: `${d.checkedInBy} · ${dateText(d.checkedInOn, t)}` },
+      { k: 'Checked in by', v: `${d.checkedInBy} · ${dateText(d.checkedInOn, t, year)}` },
       { k: 'Linked ECO', v: d.ecoNumber ?? t('None') },
       { k: 'Formats', v: d.formats },
       { k: 'Part status', v: d.partStatusLabel ? t(d.partStatusLabel) : '—' },
     ].map((x) => ({ ...x, k: t(x.k) })),
-    history: revisionHistory(d.revisions.map((r) => ({ revision: r.revision, isCurrent: r.isCurrent, dateText: r.checkedInOn ? fmtDOfIso(r.checkedInOn) : null, ecoNumber: r.ecoNumber }))).map(
+    history: revisionHistory(d.revisions.map((r) => ({ revision: r.revision, isCurrent: r.isCurrent, dateText: r.checkedInOn ? fmtDOfIso(r.checkedInOn, year) : null, ecoNumber: r.ecoNumber }))).map(
       (h) => ({ rev: h.rev, label: t(h.label), eco: h.eco }),
     ),
     partHref: d.partRef ? partRecordHref(d.partRef) : null,

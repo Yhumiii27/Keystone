@@ -8,7 +8,7 @@ import { CLAIM_FLOW, closeBlocker } from '@/domain/claims';
 import { SEVERITY_TONE, claimStatusTone, coverageTone } from '@/domain/aftersales';
 import type { Lang, T } from '@/i18n/translate';
 import { money } from '@/lib/format';
-import { NOW_ISO, claimStatus, displayOfIso } from '@/server/db/codes';
+import { claimStatus, displayOfIso } from '@/server/db/codes';
 import type { MirrorEcoRef } from '@/server/dal/aftersales';
 import type { ClaimRow, InterventionRow } from '@/server/dal/claims';
 import { vigieEcoUrl, vigieNewEcoUrl } from '@/server/integrations/vigie/links';
@@ -65,9 +65,11 @@ export interface ClaimDrawerInput {
   parts: string[];
   owners: readonly string[];
   viewer: { vigie: boolean; canEdit: boolean };
+  /** Business date (ISO, R-013): the default date of "Mark done". */
+  today: string;
 }
 
-export function claimDrawerView({ claim: c, ecos, config, parts, owners, viewer }: ClaimDrawerInput, t: T, lang: Lang): ClaimDrawerView {
+export function claimDrawerView({ claim: c, ecos, config, parts, owners, viewer, today }: ClaimDrawerInput, t: T, lang: Lang): ClaimDrawerView {
   const idx = CLAIM_FLOW.indexOf(c.status);
   const known = c.ecoNumber ? ecos[c.ecoNumber] : undefined;
   const eco = c.ecoNumber
@@ -116,7 +118,7 @@ export function claimDrawerView({ claim: c, ecos, config, parts, owners, viewer 
       doneLine: doneLineText(i, t),
       done:
         viewer.canEdit && i.status === 'planned'
-          ? { label: t('Mark done'), ariaLabel: `${t('Mark done')} · ${i.number}`, form: loc(interventionDoneFormDef(parts, displayOfIso(NOW_ISO))) }
+          ? { label: t('Mark done'), ariaLabel: `${t('Mark done')} · ${i.number}`, form: loc(interventionDoneFormDef(parts, displayOfIso(today))) }
           : null,
     })),
     actions:
