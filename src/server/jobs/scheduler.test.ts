@@ -66,6 +66,52 @@ describe('scheduler', () => {
   });
 });
 
+// Owner's answer of 17 Oct 2026 to R-121: reminder jobs run once a day in the morning (Europe/Paris), not every 24 h from the
+// worker's start. The scheduler only times the attempts; the runner's lease decides whether the day's run already happened.
+describe('scheduler · reminder entries (dailyAt)', () => {
+  afterEach(() => vi.useRealTimers());
+  const H = 3_600_000;
+  const parisClock = () => new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', dateStyle: 'short', timeStyle: 'short' }).format(new Date());
+
+  it('started at 05:00 Paris: first run at 07:00, then 07:00 every day — through the change to winter time', async () => {
+    vi.useFakeTimers({ now: new Date('2026-10-23T03:00:00Z') }); // Fri 23 Oct, 05:00 CEST
+    const runs: string[] = [];
+    const s = startScheduler([{ name: 'r', everyMs: 24 * H, firstDelayMs: 50_000, dailyAt: '07:00', run: async () => void runs.push(parisClock()) }]);
+    await vi.advanceTimersByTimeAsync(2 * H - 1);
+    expect(runs).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1);
+    await vi.advanceTimersByTimeAsync(3 * 24 * H);
+    // Sun 25 Oct: clocks go back an hour at 03:00 — the run stays at 07:00 Paris (25 h after Saturday's).
+    expect(runs).toEqual(['23/10/2026, 07:00', '24/10/2026, 07:00', '25/10/2026, 07:00']);
+    await s.stop();
+  });
+
+  it('started at 10:00 Paris: the missed morning run is attempted at once (first delay), then the next day at 07:00', async () => {
+    vi.useFakeTimers({ now: new Date('2026-10-19T08:00:00Z') }); // Mon 19 Oct, 10:00 CEST
+    const runs: string[] = [];
+    const s = startScheduler([{ name: 'r', everyMs: 24 * H, firstDelayMs: 50_000, dailyAt: '07:00', run: async () => void runs.push(parisClock()) }]);
+    await vi.advanceTimersByTimeAsync(50_000);
+    expect(runs).toEqual(['19/10/2026, 10:00']);
+    await vi.advanceTimersByTimeAsync(21 * H);
+    expect(runs).toEqual(['19/10/2026, 10:00', '20/10/2026, 07:00']);
+    await s.stop();
+  });
+
+  it('a long run does not shift the hour; interval entries beside it are unchanged', async () => {
+    vi.useFakeTimers({ now: new Date('2026-10-19T04:00:00Z') }); // 06:00 CEST
+    const runs: string[] = [];
+    let ticks = 0;
+    const s = startScheduler([
+      { name: 'r', everyMs: 24 * H, firstDelayMs: 50_000, dailyAt: '07:00', run: async () => { runs.push(parisClock()); await new Promise((r) => setTimeout(r, 40 * 60_000)); } },
+      { name: 'tick', everyMs: H, firstDelayMs: 1000, run: async () => void ticks++ },
+    ]);
+    await vi.advanceTimersByTimeAsync(2 * 24 * H);
+    expect(runs).toEqual(['19/10/2026, 07:00', '20/10/2026, 07:00']);
+    expect(ticks).toBe(48);
+    await s.stop();
+  });
+});
+
 describe('npm run worker', () => {
   it('options: --once, --job <name> (repeatable, deduplicated); anything else refused', () => {
     expect(parseWorkerArgs([])).toEqual({ ok: true, args: { once: false, jobs: [] } });

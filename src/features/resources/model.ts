@@ -8,6 +8,7 @@ import {
   capacityBar, laborShare, overAllocatedCount, peakWeeksText, personLoad, projectDepartmentDemand, shortfallText, teamUtilization, unmetDemand, type CapacityRow,
 } from '@/domain/resources';
 import type { WhatIfResult } from '@/domain/whatif';
+import { HOURS_PER_PERSON_WEEK, weekLoad } from '@/domain/load-week';
 import { FR_MONTHS } from '@/i18n/fr-rules';
 import { money } from '@/lib/format';
 import type { Lang, T } from '@/i18n/translate';
@@ -40,6 +41,13 @@ export interface ResourcesInput {
   weekStarts: string[];
   /** R-085: the weeks are the current load window (default) — false names "8 weeks" instead of "next 8 weeks". */
   windowIsCurrent?: boolean;
+  /**
+   * Owner answers 17 Oct 2026: `week` = the one week shown in detail (`weekRows`; the project bars on a 40 h week); default
+   * the 8-week heatmap.
+   */
+  view?: 'week' | '8w';
+  /** Week view: allocation rows per project of that week, by person name (`getWeekProjectSplit`; empty on the demo data). */
+  weekSplit?: Record<string, { code: string; pct: number }[]>;
   /** Pool order (PEOPLE order); for a project, only its team members. */
   people: ResourcePerson[];
   /** Portfolio: department capacity vs demand over the window (ROLES order). Ignored for a project (derived from the team). */
@@ -114,10 +122,34 @@ export interface SuggestionView {
   canApply: boolean;
 }
 
+/** Week view: one person's load that week (owner answers 17 Oct 2026). */
+export interface WeekRowView {
+  name: string;
+  role: string;
+  initials: string;
+  href: string | null;
+  /** Load cell (% and heat colours). */
+  cell: { v: number; bg: string; fg: string };
+  /** "36 h / 40 h". */
+  hoursText: string;
+  /** Hours above capacity ("+12 h"), '' within capacity. */
+  overText: string;
+  /** Above 110 % (the "Over-allocated" tile's rule). */
+  overAllocated: boolean;
+  /** "HLT-026 60% · NDC-031 30%" ('' without a split; " · 10% not split" when the split does not cover the total). */
+  projectsText: string;
+}
+
 export interface ResourcesView {
   kpis: KpiView[];
   weeks: string[];
   people: PersonRowView[];
+  /** Week view: the rows of the week shown; null in the 8-week view. */
+  weekRows: WeekRowView[] | null;
+  /** Week view: some person has allocation rows per project that week (else the "By project" column is empty). */
+  weekHasSplit: boolean;
+  /** Sub-line of the "Capacity vs demand" card. */
+  rolesSub: string;
   roles: RoleBarView[];
   suggestions: SuggestionView[] | null;
 }
@@ -138,10 +170,12 @@ export const myWorkHref = (name: string) => `${screenHref('mywork')}?person=${en
 
 export function resourcesView(input: ResourcesInput, t: T, lang: Lang): ResourcesView {
   const isProject = input.scope === 'project';
+  const isWeek = input.view === 'week';
   const people = input.people.map((p) => ({ ...p, load: personLoad(p.loads) }));
   const roles: CapacityRow[] = isProject
-    ? projectDepartmentDemand(people.map((p) => ({ department: p.department, avgPct: p.load.avgPct })))
+    ? projectDepartmentDemand(people.map((p) => ({ department: p.department, avgPct: p.load.avgPct })), isWeek ? HOURS_PER_PERSON_WEEK : undefined)
     : input.departments;
+  const hrefOf = (name: string) => (!input.canOpenWork || input.canOpenWork(name) ? myWorkHref(name) : null);
   const n = people.length;
   const over = overAllocatedCount(people.map((p) => p.load));
   const share = input.labor ? laborShare(input.labor) : null;
@@ -159,7 +193,9 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
       // A-12: computed on both screens (the portfolio showed the constant 240 h), attention colour only when > 0.
       label: t('Unmet demand'),
       value: t(`${unmet} h`),
-      sub: isProject ? t(input.windowIsCurrent === false ? '8 weeks, by department' : 'Next 8 weeks, by department') : shortfallText(roles, t, lang),
+      sub: isProject
+        ? t(isWeek ? 'Week shown, by department' : input.windowIsCurrent === false ? '8 weeks, by department' : 'Next 8 weeks, by department')
+        : shortfallText(roles, t, lang),
       color: unmet > 0 ? LO : OK,
     },
     {
@@ -174,14 +210,33 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
     { label: t('Open requests'), value: String(input.openRequests), sub: t(isProject ? 'Awaiting department approval' : 'Across all projects'), color: OK },
   ];
 
+  const fr = lang === 'fr';
+  const pctText = (v: number) => (fr ? `${String(v).replace('.', ',')} %` : `${v}%`);
+  const hText = (v: number) => `${fr ? String(v).replace('.', ',') : v} h`;
+  const weekRows: WeekRowView[] | null = isWeek
+    ? people.map((p) => {
+        const w = weekLoad(p.loads[0] ?? 0, input.weekSplit?.[p.name] ?? []);
+        const split = w.projects.map((x) => `${x.code} ${pctText(x.pct)}`);
+        if (w.unsplitPct > 0) split.push(fr ? `${pctText(w.unsplitPct)} non ventilés` : `${pctText(w.unsplitPct)} not split`);
+        return {
+          name: p.name, role: p.jobTitle ? t(p.jobTitle) : '', initials: p.initials, href: hrefOf(p.name), cell: { v: w.pct, ...shade(w.pct) },
+          hoursText: `${hText(w.hours)} / ${hText(w.capacityH)}`, overText: w.overH > 0 ? `+${hText(w.overH)}` : '', overAllocated: w.overAllocated, projectsText: split.join(' · '),
+        };
+      })
+    : null;
+
   return {
     kpis,
     weeks: input.weeks.map((w) => weekLabel(w, t, lang)),
+    weekRows,
+    weekHasSplit: !!weekRows && weekRows.some((r) => r.projectsText !== ''),
+    // The portfolio bars are the stored 8-week department totals (R-084), whatever the view; a project's follow the weeks shown.
+    rolesSub: t(isProject && isWeek ? 'Hours by role, week shown' : 'Hours by role, next 8 weeks'),
     people: people.map((p) => ({
       name: p.name,
       role: p.jobTitle ? t(p.jobTitle) : '',
       initials: p.initials,
-      href: !input.canOpenWork || input.canOpenWork(p.name) ? myWorkHref(p.name) : null,
+      href: hrefOf(p.name),
       cells: p.loads.map((v) => ({ v, ...shade(v) })),
       avgText: `${p.load.avgPct}%`,
       avgColor: p.load.avgAlert ? LO : OK,

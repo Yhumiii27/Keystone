@@ -9,14 +9,15 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
-import { connectors, cursusRequests, planTrash, projects, vigieEcoProgress } from '@/server/db/schema';
+import { dailySlotOn } from '@/domain/jobs';
+import { connectors, cursusRequests, jobLocks, planTrash, projects, vigieEcoProgress } from '@/server/db/schema';
 import { recordEcoProgress } from '@/server/dal/eco';
 import { acquireJobLock, listJobLocks, releaseJobLock } from '@/server/dal/job-locks';
 import { listPlanTrash, trashPlanRow } from '@/server/dal/plan-trash';
 import { mockCursusConnector } from '@/server/integrations/cursus/connector';
 import { getStoredFile, setFilesRoot, storeFile } from '@/server/storage/files';
-import { jobDefinition, type JobDefinition } from './definitions';
-import { runJob } from './runner';
+import { JOB_DEFINITIONS, jobDefinition, type JobDefinition } from './definitions';
+import { jobDailyAt, runJob, scheduledEntries } from './runner';
 
 const day = 86_400_000;
 let dir: string;
@@ -96,6 +97,49 @@ describe('one run', () => {
     expect(JSON.parse(String(err.mock.calls.at(-1)![0]))).toMatchObject({ level: 'error', msg: 'Job failed', job: 'test-job', error: 'Vigie unreachable retry later' });
     const [row] = (await listJobLocks()).filter((x) => x.job === 'test-job');
     expect([row.lastOk, row.lastError, row.runCount, row.lockedUntil]).toEqual([false, 'Vigie unreachable retry later', 2, null]);
+  });
+});
+
+// Owner's answer of 17 Oct 2026 to R-121: reminder jobs run once a day in the morning (07:00 Paris by default,
+// KEYSTONE_REMINDERS_AT). The lease's "not started since today's slot" makes the day's run happen once, whatever the restarts
+// and the workers; a manual run (--once) ignores the hour.
+describe('reminder jobs: once per morning', () => {
+  const paris = (iso: string, hhmm: string) => dailySlotOn(iso, hhmm);
+  const setLastStart = async (job: string, at: Date) => {
+    const db = await getDb();
+    await db.update(jobLocks).set({ lastStartedAt: at }).where(eq(jobLocks.job, job));
+  };
+
+  it('runs after the hour only, once a day: a restart or a second worker the same day sends nothing more', async () => {
+    quiet();
+    let n = 0;
+    const job: JobDefinition = { name: 'test-reminders' as never, everyMs: day, leaseMs: 60_000, firstDelayMs: 0, daily: 'reminders', run: async () => ({ summary: `run ${++n}`, counts: {} }) };
+    // Worker started at 10:00 on a day whose 07:00 run was missed: runs at once.
+    const startedAt = paris('2030-01-10', '10:00');
+    expect(await runJob(job, 'W1', { at: startedAt })).toMatchObject({ status: 'ok', summary: 'run 1' });
+    await setLastStart('test-reminders', startedAt);
+    // Restarted at noon the same day: today's run already happened.
+    expect(await runJob(job, 'W2', { at: paris('2030-01-10', '12:00') })).toEqual({ status: 'skipped' });
+    // Next day before 07:00: not yet (no lease taken).
+    expect(await runJob(job, 'W2', { at: paris('2030-01-11', '06:59') })).toEqual({ status: 'skipped' });
+    // 07:00: the day's run; a second worker a few minutes later skips it.
+    expect(await runJob(job, 'W2', { at: paris('2030-01-11', '07:00') })).toMatchObject({ status: 'ok', summary: 'run 2' });
+    await setLastStart('test-reminders', paris('2030-01-11', '07:00'));
+    expect(await runJob(job, 'W3', { at: paris('2030-01-11', '07:05') })).toEqual({ status: 'skipped' });
+    // A manual run (npm run worker -- --once) runs whatever the hour (its gap 0 compares with the database clock: the last
+    // start is put back to a real past instant).
+    await setLastStart('test-reminders', new Date(Date.now() - day));
+    expect(await runJob(job, 'W3', { at: paris('2030-01-11', '07:06'), force: true })).toMatchObject({ status: 'ok', summary: 'run 3' });
+    expect(n).toBe(3);
+  });
+
+  it('the J-15 alerts are a reminder job at KEYSTONE_REMINDERS_AT (07:00 by default); technical jobs keep their intervals', () => {
+    expect(jobDailyAt(jobDefinition('site-prerequisite-alerts'))).toBe('07:00');
+    vi.stubEnv('KEYSTONE_REMINDERS_AT', '06:30');
+    expect(jobDailyAt(jobDefinition('site-prerequisite-alerts'))).toBe('06:30');
+    const entries = scheduledEntries(JOB_DEFINITIONS, 'W');
+    expect(entries.filter((e) => e.dailyAt).map((e) => [e.name, e.dailyAt])).toEqual([['site-prerequisite-alerts', '06:30']]);
+    expect(entries.find((e) => e.name === 'vigie-outbox')).toMatchObject({ everyMs: 300_000, dailyAt: null });
   });
 });
 

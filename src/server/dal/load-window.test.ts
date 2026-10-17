@@ -11,6 +11,13 @@ vi.mock('next/cache', () => ({ revalidatePath() {} }));
 import { createElement, isValidElement, type ComponentType, type ReactElement, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import LeavePage from '@/app/(app)/resources/leave/page';
+import ResourcesPage from '@/app/(app)/resources/page';
+import ProjectResourcesPage from '@/app/(app)/projects/[code]/resources/page';
+import { eq } from 'drizzle-orm';
+import { LeaveWeekView } from '@/features/hr/leave-view';
+import type { ResourcesView as View } from '@/features/resources/model';
+import { getDb } from '@/server/db/client';
+import { allocations, persons, projects } from '@/server/db/schema';
 import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { LeaveView } from '@/features/hr/leave-view';
 import { I18nProvider } from '@/i18n/client';
@@ -20,8 +27,8 @@ import { COOKIE } from '@/server/session';
 import { PERSONA_BY_ROLE } from '@/config/personas';
 import { buildExportContext, runExport } from '@/server/export/run';
 import '@/server/export/providers';
-import { getLeaveCalendar } from './hr';
-import { getLoadWindow, getProjectTeam, getResourcePool } from './resources';
+import { getLeaveCalendar, getLeaveWeek } from './hr';
+import { getLoadWindow, getProjectTeam, getResourcePool, getWeekProjectSplit } from './resources';
 
 const csvHead = async (screen: string, query: string) => {
   const ctx = await buildExportContext({ screen, viewer: PERSONA_BY_ROLE.director, lang: 'en', params: new URLSearchParams(query), now: new Date('2026-09-25T08:00:00Z') });
@@ -38,6 +45,14 @@ const leavePage = async (sp: Record<string, string> = {}) => {
   const el = (await LeavePage({ searchParams: Promise.resolve(sp) })) as ReactElement<{ children?: ReactNode }>;
   const stack = (el.props.children as ReactElement<{ children?: ReactNode }>[]).filter(isValidElement)[1];
   return stack.props.children as ReactElement<{ data: Awaited<ReturnType<typeof getLeaveCalendar>>; windowIsCurrent?: boolean }>;
+};
+type Body = ReactElement<{ view: View; children?: ReactNode }>;
+const bodyOf = (el: unknown) => ((el as ReactElement<{ children?: ReactNode }>).props.children as ReactElement[]).filter(isValidElement)[1] as Body;
+const resourcesPage = async (sp: Record<string, string>) => bodyOf(await ResourcesPage({ searchParams: Promise.resolve(sp) }));
+const projectPage = async (code: string, sp: Record<string, string>) => bodyOf(await ProjectResourcesPage({ params: Promise.resolve({ code }), searchParams: Promise.resolve(sp) }));
+const csv = async (screen: string, query: string) => {
+  const ctx = await buildExportContext({ screen, viewer: PERSONA_BY_ROLE.director, lang: 'en', params: new URLSearchParams(query), now: new Date('2026-09-25T08:00:00Z') });
+  return new TextDecoder().decode((await runExport(ctx, 'csv')).body).replace(/^\uFEFF/, '');
 };
 
 beforeAll(async () => {
@@ -131,4 +146,105 @@ describe('exports follow the window shown (R-085)', () => {
     expect(await csvHead('presources', 'code=HLT-026&week=2026-10-05')).toContain('Week of 2026-11-23');
     expect(await csvHead('leave', 'week=2026-09-14')).toContain('Week of 2026-09-14');
   }, 60_000);
+});
+
+// Owner answers 17 Oct 2026: "Il faut les deux : une vision à la semaine et une vision à 8 semaines" — `?view=week` on
+// Resources, Project resources and Leave; the 8-week view also steps by full pages.
+describe('week view and 8-week pages (owner answers 17 Oct 2026)', () => {
+  it('getLoadWindow reads ?view= (validated): one week, snapped to its Monday; anything else is the 8-week view', async () => {
+    expect(await getLoadWindow('2026-11-11', 'week')).toMatchObject({ view: 'week', start: '2026-11-09', weeks: ['2026-11-09'], prev: '2026-11-02', next: '2026-11-16', prevPage: null });
+    expect(await getLoadWindow(undefined, 'week')).toMatchObject({ view: 'week', weeks: ['2026-09-21'], isCurrent: true });
+    for (const bad of ['month', '', ['x'], 3]) expect((await getLoadWindow(undefined, bad)).view).toBe('8w');
+    expect(await getLoadWindow()).toMatchObject({ view: '8w', prevPage: '2026-07-27', nextPage: '2026-11-16' });
+  });
+
+  it('Leave by day: the leave rows carry their dates; the public holidays of the week by day', async () => {
+    const w = await getLeaveWeek('FR', '2026-11-09');
+    expect(w.days.map((d) => [d.date, d.holiday?.name ?? null])).toEqual([
+      ['2026-11-09', null], ['2026-11-10', null], ['2026-11-11', 'Armistice'], ['2026-11-12', null], ['2026-11-13', null],
+    ]);
+    const off = w.people.filter((p) => p.days.some((k) => k === 'leave' || k === 'absence')).map((p) => [p.name, p.days.join(' '), p.daysOff, p.availH]);
+    // Fabien Bertrand's seeded week counts 5 leave days on the 8-week grid (the prototype's LEAVE_DAYS); day by day the
+    // Armistice is a holiday, not a day of leave: 4 days (available hours unchanged, 0 h).
+    expect(off).toEqual([['Julien Wagner', 'leave worked holiday worked worked', 1, 21], ['Fabien Bertrand', 'leave leave holiday leave leave', 4, 0]]);
+    expect(w.people.find((p) => p.name === 'Damien Roux')).toMatchObject({ days: ['worked', 'worked', 'holiday', 'worked', 'worked'], daysOff: 0, availH: 28 });
+    const sep = await getLeaveWeek('FR', '2026-09-28');
+    expect(sep.people.find((p) => p.name === 'Pauline Noguès')).toMatchObject({ days: ['absence', 'absence', 'absence', 'worked', 'worked'], daysOff: 3, availH: 14 });
+    expect((await getLeaveWeek('FR', '2027-03-01')).people.every((p) => p.daysOff === 0 && p.availH === 35)).toBe(true);
+  });
+
+  it('the Leave page in the week view: day columns, holiday by name, view switch and one-week links (EN / FR)', async () => {
+    const el = await leavePage({ view: 'week', week: '2026-11-11' });
+    expect(el.type).toBe(LeaveWeekView);
+    const out = renderToStaticMarkup(createElement(Provider, { lang: 'en' }, el));
+    for (const s of [
+      'Availability — week', 'Week shown · 35 h basis', 'Mon 9', 'Wed 11', 'Fri 13', 'Armistice', 'Week 46 · Nov 9, 2026',
+      'aria-current="page" href="/resources/leave?view=week&amp;week=2026-11-09"', 'href="/resources/leave?week=2026-11-09"',
+      'href="/resources/leave?view=week&amp;week=2026-11-02"', 'href="/resources/leave?view=week&amp;week=2026-11-16"', 'href="/resources/leave?view=week"',
+    ]) expect(out).toContain(s);
+    expect(out).not.toContain('Previous 8 weeks');
+    as('director', 'fr');
+    const fr = renderToStaticMarkup(createElement(Provider, { lang: 'fr' }, await leavePage({ view: 'week', week: '2026-11-11' })));
+    for (const s of ['Disponibilité — semaine', 'lun. 9', 'mer. 11', 'Semaine 46 · 9 nov. 2026', 'Semaine affichée · base 35 h', 'Congés']) expect(fr).toContain(s);
+  });
+
+  it('the 8-week view steps one week or a full 8-week page', async () => {
+    const out = renderToStaticMarkup(createElement(Provider, { lang: 'en' }, await leavePage({ week: '2026-09-28' })));
+    for (const s of [
+      'Previous 8 weeks', 'Next 8 weeks', 'href="/resources/leave?week=2026-08-03"', 'href="/resources/leave?week=2026-11-23"', 'href="/resources/leave"',
+      'href="/resources/leave?week=2026-10-05"', 'href="/resources/leave?view=week&amp;week=2026-09-28"', 'aria-current="page" href="/resources/leave?week=2026-09-28"',
+    ]) expect(out).toContain(s);
+    expect((await leavePage({ week: '2026-11-16' })).props.data.weeks.map((w) => w.start)).toEqual(['2026-11-16', '2026-11-23', '2026-11-30', '2026-12-07', '2026-12-14', '2026-12-21', '2026-12-28', '2027-01-04']);
+  });
+
+  it('Resources in the week view: load, hours on the 40 h week, hours above capacity; no split by project on the demo data', async () => {
+    const body = await resourcesPage({ view: 'week', week: '2026-10-14' });
+    const v = body.props.view;
+    expect(v.weeks).toEqual(['Oct 12']);
+    const julien = v.weekRows!.find((r) => r.name === 'Julien Wagner')!;
+    expect(julien).toMatchObject({ cell: { v: 130 }, hoursText: '52 h / 40 h', overText: '+12 h', overAllocated: true, projectsText: '' });
+    expect(v.weekHasSplit).toBe(false);
+    const out = renderToStaticMarkup(createElement(Provider, { lang: 'en' }, body));
+    for (const s of ['Allocation — week', 'Above capacity', 'By project', 'one weekly total per person', 'Week 42 · Oct 12, 2026', 'aria-current="page" href="/resources?view=week&amp;week=2026-10-12"'])
+      expect(out).toContain(s);
+    // The 8-week view keeps its heatmap (no week rows).
+    expect((await resourcesPage({ week: '2026-10-12' })).props.view.weekRows).toBeNull();
+  }, 30_000);
+
+  it('Project resources in the week view: the team that week, the bars on a 40 h week per person', async () => {
+    const v = (await projectPage('HLT-026', { view: 'week', week: '2026-10-12' })).props.view;
+    expect(v.weeks).toEqual(['Oct 12']);
+    expect(v.kpis[2].sub).toBe('Week shown, by department');
+    expect(v.rolesSub).toBe('Hours by role, week shown');
+    expect(v.roles.reduce((a, r) => a + r.capacityH, 0)).toBe(40 * v.people.length);
+  }, 30_000);
+
+  it('the exports follow the view: one week (with hours and hours above capacity), Leave day by day', async () => {
+    const res = (await csv('resources', 'view=week&week=2026-10-12')).split('\r\n')[0];
+    expect(res).toContain('Week of 2026-10-12');
+    expect(res).toContain('Above capacity');
+    expect(res).not.toContain('Week of 2026-10-19');
+    const leave = (await csv('leave', 'view=week&week=2026-11-09')).split('\r\n');
+    expect(leave[0]).toContain('2026-11-09');
+    expect(leave[0]).toContain('2026-11-13');
+    expect(leave.find((l) => l.includes('Fabien Bertrand'))).toContain('Public holiday');
+  }, 60_000);
+
+  it('a split by project shows when the allocations hold one (project rows of that week)', async () => {
+    const db = await getDb();
+    const [julien] = await db.select({ id: persons.id }).from(persons).where(eq(persons.fullName, 'Julien Wagner'));
+    const pid = async (code: string) => (await db.select({ id: projects.id }).from(projects).where(eq(projects.code, code)))[0].id;
+    await db.insert(allocations).values([
+      { personId: julien.id, weekStart: '2027-03-01', loadPct: 100, projectId: null },
+      { personId: julien.id, weekStart: '2027-03-01', loadPct: 60, projectId: await pid('HLT-026') },
+      { personId: julien.id, weekStart: '2027-03-01', loadPct: 30, projectId: await pid('NDC-031') },
+    ]);
+    expect(await getWeekProjectSplit('2027-03-01')).toEqual({ 'Julien Wagner': [{ code: 'HLT-026', pct: 60 }, { code: 'NDC-031', pct: 30 }] });
+    const v = (await resourcesPage({ view: 'week', week: '2027-03-01' })).props.view;
+    expect(v.weekRows!.find((r) => r.name === 'Julien Wagner')).toMatchObject({ hoursText: '40 h / 40 h', overText: '', projectsText: 'HLT-026 60% · NDC-031 30% · 10% not split' });
+    expect(v.weekHasSplit).toBe(true);
+    as('director', 'fr');
+    const fr = (await resourcesPage({ view: 'week', week: '2027-03-01' })).props.view;
+    expect(fr.weekRows!.find((r) => r.name === 'Julien Wagner')!.projectsText).toBe('HLT-026 60 % · NDC-031 30 % · 10 % non ventilés');
+  }, 30_000);
 });

@@ -1,6 +1,7 @@
 {
   "_comment": "R-184 (NEW-D1-2): English source strings reviewed as reading the same in French (names, acronyms, cognates). A string passed to t() that has no French entry must be here; keep the list sorted (code-point order) and review each addition in code review.",
   "strings": [
+    "Absence",
     "Action",
     "Actions",
     "Article",
@@ -43,6 +44,7 @@
     "FS",
     "Format",
     "Formats",
+    "France",
     "Go / no go (Cursus)",
     "Go chantier",
     "HSE (Vigie)",

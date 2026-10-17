@@ -98,6 +98,7 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
   },
   // ── Delivery 9 · R-121 (D-4 'a'): client prerequisites late at J-15 — the PM of record notified once per need date, the
   // risk proposed on the prerequisite's row. A notice nobody could receive (no PM of record or no active account) is a warning.
+  // A reminder job: every morning at the reminders hour (owner's answer of 17 Oct 2026; src/domain/jobs.ts).
   'site-prerequisite-alerts': async (): Promise<JobOutcome> => {
     const r = await (await import('@/server/dal/prerequisite-alerts')).alertLatePrerequisites();
     return {

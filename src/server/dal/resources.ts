@@ -13,7 +13,7 @@ import { getDb, type DB, type Tx } from '@/server/db/client';
 import { isoOfDisplayDate, weekLabelOfIso, whatIfPriority } from '@/server/db/codes';
 import { businessToday } from '@/server/clock';
 import { yearOfIso } from '@/domain/clock';
-import { loadWindow, parseLoadWeekParam, type LoadWindow } from '@/domain/load-window';
+import { isPastWindow, loadWindow, parseLoadViewParam, parseLoadWeekParam, type LoadWindow } from '@/domain/load-window';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import {
   activities, activityAssignments, allocations, costCategories, departmentCapacities, departments, persons, projectControls, projectMembers, projects,
@@ -61,11 +61,30 @@ export interface ResourcePool {
 
 /**
  * R-085 (R-7 a): the load window shown — 8 weeks from the Monday of the business date's week, or from `?week=` (validated
- * here: malformed or out of bounds = the current window). Resources, Project resources, Leave and the what-if read it.
+ * here: malformed or out of bounds = the current window). Owner answers 17 Oct 2026: `?view=week` shows that one week
+ * (anything else = the 8-week view). Resources, Project resources, Leave and the what-if (8 weeks only) read it.
  */
-export async function getLoadWindow(week?: unknown): Promise<LoadWindow> {
+export async function getLoadWindow(week?: unknown, view?: unknown): Promise<LoadWindow> {
   const today = await businessToday();
-  return loadWindow(today, parseLoadWeekParam(week, today));
+  return loadWindow(today, parseLoadWeekParam(week, today), parseLoadViewParam(view));
+}
+
+/**
+ * Week view (owner answers 17 Oct 2026): the allocation rows per project of one week (`allocations.project_id` set), by
+ * person name, largest first. The demo data holds weekly totals only (the prototype's PEOPLE): empty there.
+ */
+export async function getWeekProjectSplit(weekStart: string): Promise<Record<string, { code: string; pct: number }[]>> {
+  const db = await getDb();
+  const rows = await db
+    .select({ full: persons.fullName, short: persons.shortName, code: projects.code, pct: allocations.loadPct })
+    .from(allocations)
+    .innerJoin(persons, eq(persons.id, allocations.personId))
+    .innerJoin(projects, eq(projects.id, allocations.projectId))
+    .where(eq(allocations.weekStart, weekStart))
+    .orderBy(asc(projects.sortOrder));
+  const out: Record<string, { code: string; pct: number }[]> = {};
+  for (const r of rows) (out[r.full ?? r.short] ??= []).push({ code: r.code, pct: Number(r.pct) });
+  return out;
 }
 
 /**
@@ -241,8 +260,13 @@ export interface WhatIf {
   projectCode: string;
   /** Data date the copy of the plan is scheduled from. */
   dataDate: string;
-  /** Horizon weeks: the current load window (R-085 — 8 weeks from the Monday of the business date's week). */
+  /**
+   * Horizon weeks: the 8-week load window of the page (R-085; owner answers 17 Oct 2026 — previous / current / next, the
+   * current window by default).
+   */
   weeks: ResourceWeek[];
+  /** The horizon: its window, and whether it lies entirely in the past (read-only: no levelling, no Apply). */
+  horizon: { window: LoadWindow; past: boolean };
   /** Levers derived from the data (domain/whatif.ts). */
   levers: WhatIfLever[];
   /** Each lever alone vs the current plan. */
@@ -272,6 +296,9 @@ interface WhatIfState {
   projectId: string;
   projectCode: string;
   dataDate: string;
+  /** The horizon's 8-week window and whether it is entirely past. */
+  window: LoadWindow;
+  past: boolean;
   weeks: ResourceWeek[];
   team: PoolPerson[];
   model: WhatIfModel;
@@ -279,8 +306,24 @@ interface WhatIfState {
   auto: Record<WhatIfPriority, string[]>;
 }
 
-/** Loads a project's what-if context (network, assignments, team loads, departments, rate card) and derives its levers. */
-async function loadWhatIfState(projectCode: string): Promise<WhatIfState | null> {
+/**
+ * The what-if horizon (owner answers 17 Oct 2026): the 8-week window starting at `horizon` — a window start the page passes
+ * through every action, validated as `?week=` (snapped to its Monday, ±52 weeks) — or the current window when absent. An
+ * invalid start is refused (an action never falls back silently to another horizon than the screen's).
+ */
+export async function whatIfWindow(horizon?: string | null): Promise<{ window: LoadWindow; past: boolean }> {
+  const today = await businessToday();
+  const start = horizon == null ? null : parseLoadWeekParam(horizon, today);
+  if (horizon != null && !start) throw new Error(`Invalid what-if horizon ${String(horizon)}`);
+  const window = loadWindow(today, start, '8w');
+  return { window, past: isPastWindow(window, today) };
+}
+
+/**
+ * Loads a project's what-if context (network, assignments, team loads, departments, rate card) over the horizon (`horizon` =
+ * its window start, see `whatIfWindow`) and derives its levers.
+ */
+async function loadWhatIfState(projectCode: string, horizon?: string | null): Promise<WhatIfState | null> {
   const network = await loadScheduleNetwork(projectCode);
   if (!network || !network.activities.length) return null;
   const db = await getDb();
@@ -289,9 +332,10 @@ async function loadWhatIfState(projectCode: string): Promise<WhatIfState | null>
   const who = alias(persons, 'who');
   const adept = alias(departments, 'adept');
   const pdept = alias(departments, 'pdept');
-  // R-085 (R-7 a): the horizon is the current load window. It does not follow the screens' `?week=` navigation: the levers,
-  // the saved scenario effects and the requests "Apply" drafts are computed on one horizon, from the current week on.
-  const { weeks } = await getLoadWindow();
+  // R-085, owner answers 17 Oct 2026: the horizon is the page's 8-week window (`?week=`, the current one by default), carried
+  // through every action so that the levers, the saved scenario effects and the requests "Apply" drafts are those shown.
+  const { window, past } = await whatIfWindow(horizon);
+  const { weeks } = window;
   const [acts, asg, team, depts, grid, rated] = await Promise.all([
     db
       .select({ code: activities.code, name: activities.name, full: owner.fullName, short: owner.shortName })
@@ -317,8 +361,8 @@ async function loadWhatIfState(projectCode: string): Promise<WhatIfState | null>
   ]);
   // R-083 (A-10): everybody is valued through their grid role at the horizon start (the first week of the window); a crew or a
   // subcontractor through the grid role bearing its name; otherwise the what-if's isolated placeholder (WHATIF_RULES).
-  const horizon = weeks[0] ?? network.dataDate;
-  const at = (role: string | null) => rateAt(grid, role, horizon);
+  const rateDate = weeks[0] ?? network.dataDate;
+  const at = (role: string | null) => rateAt(grid, role, rateDate);
   const gridRates = grid.roles.map((r) => ({ role: r.role, isExternal: r.isExternal, rateEur: at(r.id) })).filter((r): r is typeof r & { rateEur: number } => r.rateEur != null);
   const internal: Record<string, number> = Object.fromEntries(gridRates.filter((r) => !r.isExternal).map((r) => [r.role, r.rateEur]));
   const roleOfPerson = new Map(rated.flatMap((p) => [[p.full ?? p.short, p.rateRoleId], [p.short, p.rateRoleId]] as [string, string | null][]));
@@ -335,14 +379,15 @@ async function loadWhatIfState(projectCode: string): Promise<WhatIfState | null>
     rates: {
       internal,
       external: gridRates.filter((r) => r.isExternal).map((r) => ({ role: r.role, rateEur: r.rateEur })),
-      overtimeFactor: multiplierAt(grid, 'ot', horizon) ?? WHATIF_RULES.overtimeFactor,
+      overtimeFactor: multiplierAt(grid, 'ot', rateDate) ?? WHATIF_RULES.overtimeFactor,
     },
   };
   const model = prepareWhatIf(ctx);
   const effects = leverEffects(model);
   const auto = Object.fromEntries(WHATIF_PRIORITIES.map((p) => [p, autoLevel(model.levers, effects, p)])) as Record<WhatIfPriority, string[]>;
   return {
-    projectId: pid, projectCode: network.projectCode, dataDate: network.dataDate, weeks: weeks.map((start) => ({ start, label: weekLabelOfIso(start) })), team, model, effects, auto,
+    projectId: pid, projectCode: network.projectCode, dataDate: network.dataDate, window, past, weeks: weeks.map((start) => ({ start, label: weekLabelOfIso(start) })), team, model,
+    effects, auto,
   };
 }
 
@@ -397,8 +442,8 @@ async function scenarioRows(st: WhatIfState, q?: Q): Promise<ScenarioRow[]> {
  * What-if levelling of a project: levers derived from its data, every scenario with its computed effects, the current plan
  * recalculated, and the stored plan figures of the KPI tiles. Null for an unknown project or one without activities.
  */
-export async function getWhatIf(projectCode: string): Promise<WhatIf | null> {
-  const st = await loadWhatIfState(projectCode);
+export async function getWhatIf(projectCode: string, horizon?: string | null): Promise<WhatIf | null> {
+  const st = await loadWhatIfState(projectCode, horizon);
   if (!st) return null;
   const db = await getDb();
   const [rows, [root], [ctl], bls, today] = await Promise.all([
@@ -434,7 +479,7 @@ export async function getWhatIf(projectCode: string): Promise<WhatIf | null> {
     });
   const shown = bls.find((b) => b.displayed) ?? bls.find((b) => b.state === 'current') ?? null;
   return {
-    projectCode: st.projectCode, dataDate: st.dataDate, weeks: st.weeks, levers: model.levers, effects: st.effects, autoLevers: st.auto, current: model.current,
+    projectCode: st.projectCode, dataDate: st.dataDate, weeks: st.weeks, horizon: { window: st.window, past: st.past }, levers: model.levers, effects: st.effects, autoLevers: st.auto, current: model.current,
     results: Object.fromEntries(cache), scenarios,
     // The rescheduled date, else the stored text (a year-less text is in the business year, R-013).
     forecastFinish: root?.finishDate ?? (root?.finish ? isoOfDisplayDate(root.finish, yearOfIso(today)) : null), floatDays: ctl?.float ?? null,
@@ -497,7 +542,12 @@ async function saveScenarioLevers(tx: Tx, st: WhatIfState, scenarioId: string, e
   const actId = new Map(acts.map((a) => [a.code, a.id]));
   const personId = (n: string | null) => (n ? (people.find((p) => p.full === n || p.short === n)?.id ?? null) : null);
   const deptId = (n: string | null) => (n ? (depts.find((d) => d.name === n)?.id ?? null) : null);
-  await tx.delete(whatIfScenarioActions).where(eq(whatIfScenarioActions.scenarioId, scenarioId));
+  // Owner answers 17 Oct 2026 (navigable horizon): the rows of levers this horizon does not derive (saved on another
+  // horizon) are kept — saving on one horizon never drops what was enabled on another; this horizon's rows are replaced.
+  const codes = new Set(levers.map((l) => l.code));
+  const own = await tx.select({ id: whatIfScenarioActions.id, params: whatIfScenarioActions.params }).from(whatIfScenarioActions).where(eq(whatIfScenarioActions.scenarioId, scenarioId));
+  const replaced = own.filter((r) => typeof r.params.leverCode !== 'string' || codes.has(r.params.leverCode)).map((r) => r.id);
+  if (replaced.length) await tx.delete(whatIfScenarioActions).where(inArray(whatIfScenarioActions.id, replaced));
   if (levers.length)
     await tx.insert(whatIfScenarioActions).values(
       levers.map((l, position) => ({
@@ -506,15 +556,17 @@ async function saveScenarioLevers(tx: Tx, st: WhatIfState, scenarioId: string, e
       })),
     );
   const result = evaluateScenario(st.model, enabled);
-  await tx.update(whatIfScenarios).set({ result: { ...result, levers: [...enabled] }, computedAt: new Date(), updatedAt: new Date() }).where(eq(whatIfScenarios.id, scenarioId));
+  await tx.update(whatIfScenarios).set({ result: { ...result, levers: [...enabled], horizonStart: st.window.start }, computedAt: new Date(), updatedAt: new Date() }).where(eq(whatIfScenarios.id, scenarioId));
   return result;
 }
 
 const leverLabelEn = leverLabel;
 
-async function requireState(projectCode: string): Promise<WhatIfState> {
-  const st = await loadWhatIfState(projectCode);
+/** The what-if state of a write: refused on a horizon entirely in the past (read-only, owner answers 17 Oct 2026). */
+async function requireState(projectCode: string, horizon?: string | null): Promise<WhatIfState> {
+  const st = await loadWhatIfState(projectCode, horizon);
   if (!st) throw new Error(`No what-if levelling for ${projectCode}`);
+  if (st.past) throw new Error(`The what-if horizon ${st.window.start} is in the past`);
   return st;
 }
 
@@ -535,8 +587,8 @@ export async function setScenarioPriority(projectCode: string, name: string, pri
 }
 
 /** Lever row click: toggles one derived lever of a scenario (saving the scenario's levers and effects). Returns the new state. */
-export async function toggleScenarioLever(projectCode: string, name: string, lever: string, actorName?: string): Promise<boolean> {
-  const st = await requireState(projectCode);
+export async function toggleScenarioLever(projectCode: string, name: string, lever: string, actorName?: string, horizon?: string | null): Promise<boolean> {
+  const st = await requireState(projectCode, horizon);
   const l = st.model.levers.find((x) => x.code === lever);
   if (!l) throw new Error(`Unknown what-if lever ${lever} on ${projectCode}`);
   const sc = await enabledOf(st, name);
@@ -555,7 +607,7 @@ export async function toggleScenarioLever(projectCode: string, name: string, lev
       const known = new Set(st.model.levers.map((x) => x.code));
       const next = rows.filter((r) => (r.id === row.id ? on : r.enabled)).map((r) => r.params.leverCode as string).filter((c) => known.has(c));
       const result = evaluateScenario(st.model, next);
-      await tx.update(whatIfScenarios).set({ result: { ...result, levers: next }, computedAt: new Date(), updatedAt: new Date() }).where(eq(whatIfScenarios.id, sc.row.id));
+      await tx.update(whatIfScenarios).set({ result: { ...result, levers: next, horizonStart: st.window.start }, computedAt: new Date(), updatedAt: new Date() }).where(eq(whatIfScenarios.id, sc.row.id));
     } else {
       on = !sc.enabled.includes(lever);
       await saveScenarioLevers(tx, st, sc.row.id, on ? [...sc.enabled, lever] : sc.enabled.filter((c) => c !== lever));
@@ -566,8 +618,8 @@ export async function toggleScenarioLever(projectCode: string, name: string, lev
 }
 
 /** "Auto-level for this priority": the scenario's levers become the derived set of its priority (domain autoLevel). */
-export async function autoLevelScenario(projectCode: string, name: string, actorName?: string): Promise<string[]> {
-  const st = await requireState(projectCode);
+export async function autoLevelScenario(projectCode: string, name: string, actorName?: string, horizon?: string | null): Promise<string[]> {
+  const st = await requireState(projectCode, horizon);
   const sc = await enabledOf(st, name);
   const next = st.auto[sc.row.priority] ?? [];
   const db = await getDb();
@@ -642,8 +694,8 @@ async function openRequests(q: Q, projectId: string, scenarioId?: string) {
  * fresh data), and a failure leaves no draft without the stamp.
  * `actorName` must be a person.
  */
-export async function applyScenario(projectCode: string, name: string, actorName: string): Promise<ApplyOutcome> {
-  const st = await requireState(projectCode);
+export async function applyScenario(projectCode: string, name: string, actorName: string, horizon?: string | null): Promise<ApplyOutcome> {
+  const st = await requireState(projectCode, horizon);
   const db = await getDb();
   return db.transaction(async (tx) => {
     const sc = await enabledOf(st, name, tx);
@@ -709,8 +761,8 @@ export async function retainedScenario(projectCode: string, q?: Q): Promise<stri
  * "New scenario" (AF.whatif), audited under the viewer when `actorName` is given: no lever enabled, or — basis
  * "last_approved" — the levers and priority of the retained scenario (refused when there is none).
  */
-export async function createScenario(projectCode: string, input: NewScenarioInput, actorName?: string): Promise<void> {
-  const st = input.basis === 'last_approved' ? await requireState(projectCode) : null;
+export async function createScenario(projectCode: string, input: NewScenarioInput, actorName?: string, horizon?: string | null): Promise<void> {
+  const st = input.basis === 'last_approved' ? await requireState(projectCode, horizon) : null;
   const db = await getDb();
   await db.transaction(async (tx) => {
     const p = await requireProject(tx, projectCode);

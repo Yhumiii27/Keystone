@@ -173,3 +173,15 @@ describe('KEYSTONE_CLOCK (R-013)', () => {
     expect(vars(parse({ NODE_ENV: 'production', KEYSTONE_CLOCK: 'real' }).warnings)).not.toContain('KEYSTONE_CLOCK');
   });
 });
+
+describe('KEYSTONE_REMINDERS_AT (R-121, owner’s answer of 17 Oct 2026: reminders in the morning)', () => {
+  it('unset: 07:00 (Europe/Paris); a time of day HH:MM otherwise, normalised; anything else is an error and keeps 07:00', () => {
+    expect(parse({}).config.remindersAt).toBe('07:00');
+    expect(parse({ KEYSTONE_REMINDERS_AT: '6:30' }).config.remindersAt).toBe('06:30');
+    expect(parse({ KEYSTONE_REMINDERS_AT: ' 08:15 ' }).config.remindersAt).toBe('08:15');
+    for (const bad of ['7h', '24:00', '07:60', 'morning']) {
+      const r = parse({ KEYSTONE_REMINDERS_AT: bad });
+      expect([bad, formatIssues(r.errors), r.config.remindersAt]).toEqual([bad, ['KEYSTONE_REMINDERS_AT must be a time of day HH:MM (Europe/Paris), e.g. 07:00'], '07:00']);
+    }
+  });
+});

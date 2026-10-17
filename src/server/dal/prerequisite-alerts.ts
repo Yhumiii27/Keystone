@@ -16,8 +16,7 @@ import { systemMessage } from '@/domain/system-messages';
 import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { shortDateOfIso } from '@/server/db/codes';
-import { nameOf } from '@/server/db/helpers';
-import { persons, projects, risks, sitePrerequisites } from '@/server/db/schema';
+import { projects, risks, sitePrerequisites } from '@/server/db/schema';
 import { logError } from '@/server/log';
 import { managesProject, projectOf, trace, whoIs, type Actor } from './ops-common';
 import { notifyPersonIds } from './person-notices';
@@ -121,15 +120,4 @@ export async function raisePrerequisiteRisk(
     });
     return number;
   });
-}
-
-/** The PM of record's name as the "New risk" owner list shows it (full name), proposed as the risk's owner; null without one. */
-export async function projectPmName(projectCode: string): Promise<string | null> {
-  const db = await getDb();
-  const [r] = await db
-    .select({ fullName: persons.fullName, shortName: persons.shortName })
-    .from(projects)
-    .innerJoin(persons, eq(persons.id, projects.pmPersonId))
-    .where(eq(projects.code, projectCode));
-  return r ? nameOf(r) : null;
 }

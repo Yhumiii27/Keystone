@@ -195,6 +195,7 @@ put([OT_A, EX_A]);
 put([RELIEF]);
 const WI: WhatIfData = {
   projectCode: 'HLT-026',
+  horizon: '2026-09-28',
   dataDate: '2026-09-25',
   weeks: WEEKS,
   weekStarts: WEEK_STARTS,

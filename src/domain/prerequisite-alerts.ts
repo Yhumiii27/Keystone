@@ -1,8 +1,9 @@
 // R-121 (owner's decision D-4 'a' ★ "Notification et proposition de risque"): automatic actions on a client prerequisite still
 // unconfirmed at J-15 of its need date — the same rule as the Site screen's red date (`isPrerequisiteLate`).
 //
-// - A daily job (`site-prerequisite-alerts`, src/server/jobs) notifies the project's PM of record once per lateness episode and
-//   links to the prerequisite on the Site screen.
+// - A daily job (`site-prerequisite-alerts`, src/server/jobs; every morning at the reminders hour, 07:00 Paris by default — owner,
+//   17 Oct 2026) notifies the project's PM of record only (owner, 17 Oct 2026) once per lateness episode and links to the
+//   prerequisite on the Site screen.
 // - The proposal is the existing "New risk" form, pre-filled from the prerequisite (`prerequisiteRiskDraft`), which a lead of the
 //   project confirms (or corrects) from the prerequisite's row: no new risk status, nothing is registered without that click.
 //
@@ -50,8 +51,8 @@ export const PREREQUISITE_RISK_CAUSE = 'Client prerequisite not confirmed 15 day
 
 /**
  * The "New risk" form values proposed for a late prerequisite (field ids of `riskFormDef`): title "Late client prerequisite —
- * {title}", category Contractual / client (else the first offered), owner the PM of record when they are on the owner list (else
- * the form's first option), response Mitigate; P and I keep the form's defaults (3), the cost and the plan are left to the PM.
+ * {title}", category Contractual / client (else the first offered), owner the PM of record when they are on the owner list (they
+ * are since the owner's answer of 17 Oct 2026, `riskOwnersWithPm`; else the form's first option), response Mitigate; P and I keep the form's defaults (3), the cost and the plan are left to the PM.
  * `t` translates Keystone's own words; the prerequisite's title stays as typed.
  */
 export function prerequisiteRiskDraft(

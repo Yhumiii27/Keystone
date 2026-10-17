@@ -4,9 +4,11 @@
 // plan, "Select scenario → create requests") and the "Side by side" table with the current plan. Lever toggles, priority,
 // auto-level and selection are saved through Server Functions and shown optimistically (results of a lever set one toggle
 // away are precomputed by the server); rename and delete are confirmed in dialogs. Read-only viewers see the cards
-// without the controls.
+// without the controls. Owner answers 17 Oct 2026: the horizon navigation (`nav`, the load plans' previous / current / next
+// links) sits above the tiles; every action carries the horizon shown (`data.horizon`); a past horizon is read-only with
+// its reason (`readOnlyReason`).
 import { Check, CheckSquare, PencilSimple, Sparkle, Square, Trash } from '@phosphor-icons/react/dist/ssr';
-import { useOptimistic, useState, useTransition, type CSSProperties } from 'react';
+import { useOptimistic, useState, useTransition, type CSSProperties, type ReactNode } from 'react';
 import { Callout } from '@/components/app/Callout';
 import { EmptyState } from '@/components/app/EmptyState';
 import { FormDialog } from '@/components/app/FormDialog';
@@ -26,7 +28,14 @@ import { RENAME_SCENARIO_FORM } from './whatif-form';
 import { PRIORITY_OPTIONS, reduceScenarios, whatIfView, type ScenarioCardView, type WhatIfAction, type WhatIfData } from './whatif-model';
 import s from './whatif.module.css';
 
-export function WhatIfBoard({ data, canEdit }: { data: WhatIfData; canEdit: boolean }) {
+export function WhatIfBoard({ data, canEdit, nav, readOnlyReason }: {
+  data: WhatIfData;
+  canEdit: boolean;
+  /** Horizon navigation (`LoadWindowNav`, rendered by the page). */
+  nav?: ReactNode;
+  /** Why the horizon shown is read-only (translated; a past horizon), or null. */
+  readOnlyReason?: string | null;
+}) {
   const { t, lang } = useI18n();
   const toast = useToast();
   const [scenarios, apply] = useOptimistic(data.scenarios, (state, a: WhatIfAction) => reduceScenarios(state, a, data));
@@ -48,17 +57,20 @@ export function WhatIfBoard({ data, canEdit }: { data: WhatIfData; canEdit: bool
       }
     });
   const code = data.projectCode;
+  const horizon = data.horizon;
   const handlers: Handlers = {
-    priority: (name, priority) => run({ type: 'priority', name, priority }, () => setWhatIfPriority(code, name, priority)),
-    toggle: (name, lever) => run({ type: 'toggle', name, lever }, () => toggleWhatIfLever(code, name, lever)),
-    auto: (name) => run({ type: 'auto', name }, () => autoLevelWhatIf(code, name)),
-    select: (name) => run({ type: 'select', name }, () => selectWhatIfScenario(code, name)),
+    priority: (name, priority) => run({ type: 'priority', name, priority }, () => setWhatIfPriority(code, name, priority, horizon)),
+    toggle: (name, lever) => run({ type: 'toggle', name, lever }, () => toggleWhatIfLever(code, name, lever, horizon)),
+    auto: (name) => run({ type: 'auto', name }, () => autoLevelWhatIf(code, name, horizon)),
+    select: (name) => run({ type: 'select', name }, () => selectWhatIfScenario(code, name, horizon)),
     rename: setRenaming,
     remove: setDeleting,
   };
 
   return (
     <div className={s.body}>
+      {nav}
+      {readOnlyReason && <Callout tone="accent">{readOnlyReason}</Callout>}
       <KpiGrid min={150}>
         {view.kpis.map((k) => (
           <KpiTile key={k.label} label={k.label} value={k.value} sub={k.sub} color={k.color} />
@@ -114,9 +126,9 @@ export function WhatIfBoard({ data, canEdit }: { data: WhatIfData; canEdit: bool
             onClose={() => setRenaming(null)}
             context={renaming?.title}
             initialValues={renaming ? { name: renaming.name, note: renaming.hypotheses ?? '' } : undefined}
-            onSubmit={(values) => renameWhatIfScenario(code, renaming!.name, values)}
+            onSubmit={(values) => renameWhatIfScenario(code, renaming!.name, values, horizon)}
           />
-          <ConfirmDelete code={code} target={deleting} onClose={() => setDeleting(null)} />
+          <ConfirmDelete code={code} horizon={horizon} target={deleting} onClose={() => setDeleting(null)} />
         </>
       )}
     </div>
@@ -228,7 +240,7 @@ function ScenarioCard({ sc, canEdit, busy, hasLevers, handlers }: { sc: Scenario
   );
 }
 
-function ConfirmDelete({ code, target, onClose }: { code: string; target: ScenarioCardView | null; onClose: () => void }) {
+function ConfirmDelete({ code, horizon, target, onClose }: { code: string; horizon: string; target: ScenarioCardView | null; onClose: () => void }) {
   const { t, lang } = useI18n();
   const toast = useToast();
   const [pending, start] = useTransition();
@@ -236,7 +248,7 @@ function ConfirmDelete({ code, target, onClose }: { code: string; target: Scenar
     if (!target) return;
     start(async () => {
       try {
-        const r = await deleteWhatIfScenario(code, target.name);
+        const r = await deleteWhatIfScenario(code, target.name, horizon);
         toast.show('error' in r ? r.error : (r.message ?? ''));
       } catch {
         toast.show(t('The change could not be saved'));

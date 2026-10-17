@@ -266,7 +266,8 @@ describe('meetings screen — interactions played on both sides', () => {
     set({ applied: { 'MTG-119': true }, lines: { ...state.mtg.lines, 'MTG-119': { ...state.mtg.lines['MTG-119'], 2: drafts } } });
     await same('MTG-119');
     await same('MTG-119', 'fr');
-  });
+    // ~4.3 s alone (analysis + two renders on both sides): the 5 s default timed out under the full suite's load.
+  }, 30_000);
 
   it('minutes of MTG-118 sent: MIN-HLT-027 on the business date (25 Sep), read receipts for every invitee but the organizer', async () => {
     const r = await sendMinutes('MTG-118', 'Romain Aubert');

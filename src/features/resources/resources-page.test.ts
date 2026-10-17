@@ -160,7 +160,7 @@ describe('R-085 (R-7 a): load window of Resources and Project resources', () => 
     const far = (await resources({ week: '2027-03-01' })).body.props.view!;
     expect(far.weeks).toEqual(['Mar 1', 'Mar 8', 'Mar 15', 'Mar 22', 'Mar 29', 'Apr 5', 'Apr 12', 'Apr 19']);
     expect(far.people.every((p) => p.cells.every((c) => c.v === 0))).toBe(true);
-  });
+  }, 30_000);
 
   it('Project resources: the team over the window, links on the project screen', async () => {
     const def = (await presources('HLT-026')).body;

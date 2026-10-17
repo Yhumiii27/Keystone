@@ -24,6 +24,7 @@ Keystone PM is EPC2i's project and portfolio management tool. It is a Next.js 16
 ## Rules from the product owner
 
 - **Language.** Reply to the user in French. Code, identifiers and commit messages stay in English. UI strings are English source strings translated through `src/i18n`; French is the default language.
+- **Merging into `main` (owner, 17 Oct 2026: « l’outil est une immense bêta, on fusionne tout »).** Every verified lot goes to `main`: push it on the working branch, open a PR, and merge it once CI is green.
 - **No new tools without approval.** Build nothing that is absent from the prototype until the user has validated it. `docs/BACKLOG.md` lists:
   - the requested "Expédition & transport" module, whose scope must be refined with the user first;
   - the Cursus timesheet link;
