@@ -9,5 +9,9 @@
   "This prerequisite is not pending any more": "Ce prérequis n’est plus en attente",
   "Client prerequisite at risk": "Prérequis client à risque",
   "Client prerequisite not confirmed yet": "Prérequis client pas encore confirmé",
-  "Dated and signed by the client · each one conditions a site activity · J-15 unconfirmed → alert and risk proposal": "Datés et signés par le client · chacun conditionne une activité chantier · non confirmé à J-15 → alerte et proposition de risque"
+  "Dated and signed by the client · each one conditions a site activity · J-15 unconfirmed → alert and risk proposal": "Datés et signés par le client · chacun conditionne une activité chantier · non confirmé à J-15 → alerte et proposition de risque",
+  "Raise a new risk": "Ouvrir un nouveau risque",
+  "This risk did not prevent the delay": "Ce risque n’a pas empêché le retard",
+  "linked risk open": "risque lié ouvert",
+  "linked risk closed": "risque lié clôturé"
 }

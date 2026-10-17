@@ -68,6 +68,7 @@ import d8SiteQuality from './d8-site-quality.json';
 // Delivery 9: one file per lot.
 import d9LoadWindow from './d9-load-window.json';
 import d9PrereqAlert from './d9-prereq-alert.json';
+import d9PlanningLoad from './d9-planning-load.json';
 
 export const EXTRA_FR: Record<string, string> = {
   ...common,
@@ -136,4 +137,5 @@ export const EXTRA_FR: Record<string, string> = {
   ...d8SiteQuality,
   ...d9PrereqAlert,
   ...d9LoadWindow,
+  ...d9PlanningLoad,
 };

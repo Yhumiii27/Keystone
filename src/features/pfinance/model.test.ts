@@ -74,12 +74,15 @@ const CASH_TILES_D7: Record<string, string> = {
   '€5.26M': '€5.19M', '€1.94M': '€1.91M', '€4.37M': '€4.30M', '€1.68M': '€1.65M',
   '5,26 M€': '5,19 M€', '1,94 M€': '1,91 M€', '4,37 M€': '4,30 M€', '1,68 M€': '1,65 M€',
 };
+// R-084 (owner answers 17 Oct 2026, third round): the commitments are the planning load over the current window — the hours the
+// schedules assign the departments' pool members + the work no named person carries counted by trade: [170, 214, 300, 574, 106] h
+// (Σ seeded allocation % × 40 h gave [318, 532, 314, 716, 252] h and gaps 151 · 86 · 12 · 305 · 73 h).
 const CAPACITY_A12: Record<string, { gap: number; rows: [number, number, number][] }> = {
-  'WSA-044': { gap: 151, rows: [[73, 391, 320], [122, 654, 640], [72, 386, 320], [164, 880, 960], [58, 310, 320]] },
-  'EWA-051': { gap: 86, rows: [[47, 365, 320], [79, 611, 640], [47, 361, 320], [106, 822, 960], [37, 289, 320]] },
-  'FTU-052': { gap: 12, rows: [[10, 328, 320], [17, 549, 640], [10, 324, 320], [23, 739, 960], [8, 260, 320]] },
-  'RBR-048': { gap: 305, rows: [[109, 427, 320], [183, 715, 640], [108, 422, 320], [246, 962, 960], [87, 339, 320]] },
-  'CER-047': { gap: 73, rows: [[41, 359, 320], [68, 600, 640], [40, 354, 320], [92, 808, 960], [32, 284, 320]] },
+  'WSA-044': { gap: 49, rows: [[39, 209, 320], [49, 263, 640], [69, 369, 320], [131, 705, 960], [24, 130, 320]] },
+  'EWA-051': { gap: 24, rows: [[25, 195, 320], [32, 246, 640], [44, 344, 320], [85, 659, 960], [16, 122, 320]] },
+  'FTU-052': { gap: 0, rows: [[5, 175, 320], [7, 221, 640], [10, 310, 320], [19, 593, 960], [3, 109, 320]] },
+  'RBR-048': { gap: 83, rows: [[58, 228, 320], [73, 287, 640], [103, 403, 320], [197, 771, 960], [36, 142, 320]] },
+  'CER-047': { gap: 18, rows: [[22, 192, 320], [27, 241, 640], [38, 338, 320], [73, 647, 960], [14, 120, 320]] },
 };
 /**
  * Cash flow: the 6 months after the data date from the billing plans (in) and the cost forecasts (out), per zone —
@@ -210,6 +213,10 @@ describe('capacity what-if (03 §6.5)', () => {
       const t = tOf(lang);
       const verdict = a.gap >= 300 ? `Needs ${Math.ceil(a.gap / 140)} additional people or a later start` : `Absorbable with ${a.gap} h of overtime or one contractor`;
       const options = g.wi.options.map((o: string, i: number) => (i === 1 ? t(`Contract ${Math.ceil(a.gap / 280)} engineer(s) for the ramp-up phase`) : o));
+      if (a.gap === 0) {
+        // R-084: FTU-052 now fits — the verdict of a candidate without gap (the prototype's other branch).
+        expect([v.name, v.verdict, v.gapLine]).toEqual([g.wi.name, t('Can be absorbed with current capacity'), `${T('Capacity gap ·')} ${t('0 h over 8 weeks')}`]);
+      } else
       expect([v.name, v.status, tagClassOf(v.tone), v.budgetLine, v.verdict, v.verdictColor, v.gapLine, v.options]).toEqual([
         g.wi.name, g.wi.status, g.wi.tagClass, `${g.wi.budget} ${T('· start')} ${g.wi.start}`, t(verdict), LO, `${T('Capacity gap ·')} ${t(`${a.gap} h over 8 weeks`)}`, options,
       ]);

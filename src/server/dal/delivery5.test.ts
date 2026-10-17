@@ -328,9 +328,10 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
   it('HLT-026: Go chantier, prerequisites, equipment, Cursus approvals and the Readiness KPIs', async () => {
     const s = (await getSite('HLT-026'))!;
     const g = G.site;
-    // D-6b 'a' (R-119): the conflicts are computed — 8 on the seed (the prototype's 4 authored collisions).
+    // D-6b 'a' (R-119): the conflicts are computed — 6 on the seed (the prototype's 4 authored collisions). R-084: the loads come
+    // from the schedules, nobody is above 110 % — no load conflict (8 with the seeded allocation rows).
     expect(s.go.conditions.map((c) => ({ label: c.label, ok: c.ok, sub: c.sub }))).toEqual(
-      g.goItems.map((i: { sub: string }) => (i.sub === '4 collisions' ? { ...i, sub: '8 collisions' } : i)),
+      g.goItems.map((i: { sub: string }) => (i.sub === '4 collisions' ? { ...i, sub: '6 collisions' } : i)),
     );
     expect(s.go.ok ? 'GO' : 'NO GO').toBe(g.goLabel);
     expect([
@@ -353,7 +354,7 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
       [`${s.cursus.people.filter((p) => p.verdict !== 'no_go').length} / ${s.cursus.people.length}`, `${s.cursus.people.filter((p) => p.verdict === 'go_with_reserve').length} with reserve · approvals only`],
       [`${s.equipment.filter((e) => e.status === 'confirmed').length} / ${s.equipment.length}`, `${s.equipment.filter((e) => e.source === 'shipped').length} shipped · ${s.equipment.filter((e) => e.source !== 'shipped').length} local / client`],
       [s.collisions.length, 'Load · leave · certificates · badges'],
-    ]).toEqual(kv(g.kpis).map((x: unknown[], i: number) => (i === 4 ? [8, x[1]] : x)));
+    ]).toEqual(kv(g.kpis).map((x: unknown[], i: number) => (i === 4 ? [6, x[1]] : x)));
     expect(s.cursus.verdict).toBe('no_go');
     expect(s.cursus.openUrl).toBe('http://localhost:5173/chantiers');
   });
@@ -365,8 +366,10 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
     expect(s.rotation.map((r) => ({ who: r.person, role: r.roleOnSite, from: d(r.fromOn), to: d(r.toOn), lodging: r.lodging, travel: r.travel, rot: `R${r.rotationNo}`, collideIcon: r.hasCollision ? 'ph ph-warning' : 'ph ph-check' })))
       .toEqual(g.rotation.map((r: { who: string }) => (r.who === 'Amélie Ollivier' ? { ...r, collideIcon: 'ph ph-warning' } : r)));
     expect(g.collisions.map((c: { who: string; kind: string }) => [c.who, c.kind])).toEqual([['Julien Wagner', 'Load'], ['Pauline Noguès', 'Certificate'], ['Thomas Kerbrat', 'Document'], ['Hélène Sauvage', 'Leave']]);
+    // R-084: no load conflict — the loads come from the schedules (Amélie Ollivier and Julien Wagner were above 110 % on the
+    // seeded allocation rows).
     expect(s.collisions.map((c) => [c.person, c.kindLabel, c.department, c.resolved])).toEqual([
-      ['Amélie Ollivier', 'Load', 'Site operations', false], ['Amélie Ollivier', 'Leave', 'Site operations', false], ['Julien Wagner', 'Load', 'Engineering', false],
+      ['Amélie Ollivier', 'Leave', 'Site operations', false],
       ['Julien Wagner', 'Leave', 'Engineering', false], ['Thomas Kerbrat', 'Document', 'Site operations', false], ['Thomas Kerbrat', 'Leave', 'Site operations', false],
       ['Pauline Noguès', 'Certificate', 'MEP', false], ['Hélène Sauvage', 'Document', 'Quality', false],
     ]);
@@ -378,8 +381,8 @@ describe('site — readiness, mobilisation, execution (10 §3)', () => {
       [s.collisions.filter((c) => !c.resolved).length, 'Arbitrated by department heads'], [f(b), `${f(a)} committed · ${Math.round((a / b) * 100)}%`],
       ['×1.5 / ×2', 'Saturday / Sunday rates · 6d · 10h calendar'],
     // A-12 (chapter 4): "Man-days planned" = Σ rotation crew × working days on the project calendar — 179, not the literal 168.
-    // D-6b 'a' (R-119): 8 computed conflicts open (the prototype's 4).
-    ]).toEqual(kv(g.teamKpis).map((x: any[], i: number) => (i === 1 ? ['179', x[1]] : i === 2 ? [8, x[1]] : x)));
+    // D-6b 'a' (R-119): 6 computed conflicts open (the prototype's 4; 8 with the seeded allocation rows — R-084).
+    ]).toEqual(kv(g.teamKpis).map((x: any[], i: number) => (i === 1 ? ['179', x[1]] : i === 2 ? [6, x[1]] : x)));
   });
 
   it('HLT-026: daily reports (newest first), site punch list, HSE register (Vigie) and the Execution KPIs', async () => {

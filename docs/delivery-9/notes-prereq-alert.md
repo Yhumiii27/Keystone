@@ -45,7 +45,7 @@ leaves on 18 Oct and the HT alert on 5 Nov.
 demo run, one notice to the PM only and nothing on reruns, a moved need date, the page marking and offering, refusals
 (non-leads, client, stale stamp, unknown owner, not late), the raise with its audit and activity, the writer's re-checks.
 
-## 4. Open questions for the owner (asked at delivery; answered 17 Oct 2026 — §5 for 1–3, §6 second round for 4–5)
+## 4. Open questions for the owner (asked at delivery; answered 17 Oct 2026 — §5 for 1–3, §6 second round for 4–5, §7 third round for 6)
 
 1. Recipients: the PM of record only. Also co-PMs and deputies, or the director when the PM has no account?
 2. Timing: every 24 h from the worker's start — or at a fixed hour (early morning)?
@@ -53,6 +53,9 @@ demo run, one notice to the PM only and nothing on reruns, a moved need date, th
 4. The Site card subtitle still mentions a "client letter" at J-15 — not built (D-4 asked for the notice and the risk).
    **Answered (§6):** « On supprime la lettre au client ».
 5. Raise a risk from a prerequisite before it is late too? **Answered (§6):** « Risque avant J-15 : oui on peut l'ouvrir ».
+6. Should the J-15 notice still be sent for a prerequisite whose risk was already raised before J-15? **Answered (§7, third
+   round):** « Si l'alerte a déjà un risque ouvert [il faut quand même alerter] car c'est soit que le risque n'a pas été maîtrisé,
+   soit qu'il faudra en ouvrir un nouveau ».
 
 ## 5. Owner answers 17 Oct 2026
 
@@ -166,5 +169,64 @@ only the notified row focused; a confirmed prerequisite (alimentation 400 V) is 
 and the writer; the PM raises HT before J-15 (trigger "Client prerequisite not confirmed yet · … · 1 Dec 2026", activity
 `site.pendingPrerequisiteRiskRaised`, row linked, offer gone); a member is still refused.
 
-**Open question.** Should the J-15 notice still be sent for a prerequisite whose risk was already raised before J-15? Today it is
-(the notice is unchanged, as asked); its link then shows the row with its risk.
+**Open question** (answered in the third round, §7). Should the J-15 notice still be sent for a prerequisite whose risk was already
+raised before J-15?
+
+## 7. Owner answer 17 Oct 2026 — third round
+
+| # | Answer | What changed |
+|---|---|---|
+| 6 | « Si l'alerte a déjà un risque ouvert [il faut quand même alerter] car c'est soit que le risque n'a pas été maîtrisé, soit qu'il faudra en ouvrir un nouveau » | The J-15 notice still goes out and names the linked risk; once late, the row offers "Raise a new risk" beside the link. |
+
+**The notice (still sent).** The job never filtered on the linked risk; it now reads it (left join `risks`) to say so. Idempotence
+unchanged: one notice per need date (`alerted_needed_by` claim). Title unchanged; sub-line (`prerequisiteAlertSub`,
+`src/domain/prerequisite-alerts.ts`) "{prerequisite} · {activity} · {need date} · R-21 · linked risk open" — or "· linked risk
+closed" when the risk was closed (`risks.status`). The bell shows each " · " field as typed or through its exact FR entry
+(`fieldsText`): « … · 2 nov. · R-21 · risque lié ouvert » / « risque lié clôturé ». The number and the status are separate fields
+so the status has an exact French entry (a "risk R-21 open" segment could not be translated).
+
+**Rule** (`prerequisiteRiskRefusal` / `canRaisePrerequisiteRisk(p: { status, riskNumber, late })`):
+- not pending (confirmed, signed) → refused "This prerequisite is not pending any more" (checked first);
+- pending without a risk → offered, late or not (second round, unchanged);
+- pending with a linked risk, **before J-15** → the link only, no second risk — refused "A risk was already raised from this
+  prerequisite" (one risk per prerequisite while it is not late: the PM works the risk he opened);
+- pending with a linked risk, **late at J-15** (`isPrerequisiteLate` at the business date) → the link **and** "Raise a new risk"
+  (« Ouvrir un nouveau risque »), the same pre-filled form with the late wording ("Late client prerequisite — {title}", cause "…
+  not confirmed 15 days before its need date"), owner the PM of record.
+
+The Server Function (`late` from `getSite` at the business date) and the writer (`late` at the business date in its transaction)
+apply the same function; lead right, stamp, owner list and category parsing unchanged.
+
+**Raising the new risk** (`raisePrerequisiteRisk`): `site_prerequisites.risk_id` points to the latest risk; the previous one stays in
+the register untouched (status, links). Audit row on the prerequisite "risk raised · R-22 (after R-21)", `before: { risk: 'R-21' }`,
+`after: { risk: 'R-22' }`; activity line with a new system message `site.prerequisiteRiskRaisedAgain` — "Raised R-22 from a late
+client prerequisite (after R-21) · {prerequisite}" / « Risque R-22 ouvert depuis un prérequis client en retard (après R-21) · … ». No
+migration (a prerequisite keeps one link; the history is in the audit trail and the register).
+
+**Page** (`src/features/site/site-view.tsx`, `prerequisite-risk-button.tsx`): when late with a risk, the risk link's tooltip reads
+"This risk did not prevent the delay" / « Ce risque n’a pas empêché le retard » (instead of "Risk raised from this prerequisite") —
+the only marker, kept minimal; the button reads "Raise a new risk". Reached from the notice (`?prereq=`), such a row is marked and
+scrolled into view but the form is **not** opened by itself (default): the owner's answer gives two outcomes (the risk was not
+mastered, or a new one is needed), so the PM chooses between the existing risk and a new one. A row without a risk still opens
+the form as before.
+
+**French** (`src/i18n/extra/d9-prereq-alert.json`): "Raise a new risk", "This risk did not prevent the delay", "linked risk open",
+"linked risk closed".
+
+**Displayed values that change on the demo data set (25 Sep 2026).** None: no prerequisite has a risk in the seed and nothing is
+late at the demo date. With the real clock, from 18 Oct on HLT-026's quai 4 row: a lead who raised a risk before 18 Oct sees the
+risk link (tooltip "did not prevent the delay") and "Raise a new risk"; the 18 Oct notice reads "… · A1320 · 2 Nov · R-xx · linked
+risk open".
+
+**Tests.** `src/domain/prerequisite-alerts.test.ts` (10): the rule with a linked risk before / after J-15 and the refusal order; the
+sub-line with an open / closed risk, in English and through `fieldsText` in French. `src/features/site/prerequisite-risk.test.ts`
+(9): after raising on the late quai 4 row the page shows the link and still offers the late form; the director raises a new risk
+(link moves, first risk still open in the register, audit "risk raised · R-b (after R-a)" with before / after, activity
+`site.prerequisiteRiskRaisedAgain`), non-leads refused and see no offer (all personas); HT raised before J-15 → the link only, a
+second raise refused by the Server Function and the writer; the notice of HT (risk linked) at a new need date names "R-x · linked
+risk open", once per need date, then "linked risk closed" after the risk is closed, and in French « risque lié clôturé ».
+
+**Open questions.**
+- When a new risk is raised, should the previous risk be closed automatically (or flagged "superseded")? Default: untouched — the
+  PM closes it in the register if it is no longer relevant.
+- Should the notice's link open "Raise a new risk" by itself (as it does without a risk)? Default: no — the row is marked only.

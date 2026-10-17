@@ -5,7 +5,7 @@
 import { LO, OK, shade } from '@/components/app/tones';
 import { screenHref } from '@/config/screens';
 import {
-  capacityBar, laborShare, overAllocatedCount, peakWeeksText, personLoad, projectDepartmentDemand, shortfallText, teamUtilization, unmetDemand, type CapacityRow,
+  capacityBar, laborShare, overAllocatedCount, peakWeeksText, personLoad, projectDepartmentDemand, shortfallText, teamUtilization, unmetDemand, unnamedDemand, type CapacityRow,
 } from '@/domain/resources';
 import type { WhatIfResult } from '@/domain/whatif';
 import { HOURS_PER_PERSON_WEEK, weekLoad, weekSplitText, type WeekProjectHours } from '@/domain/load-week';
@@ -26,13 +26,17 @@ export interface ResourcePerson {
   jobTitle: string | null;
   /** EN source department name. */
   department: string | null;
-  /** % of available hours per window week. */
+  /** % of the 40 h week per window week (R-084: the hours the schedules assign the person). */
   loads: number[];
+  /** Hours the schedules assign per window week (week view: the hours column); absent = from the load %. */
+  hours?: number[];
 }
 
 export interface ResourcesInput {
   /** `resources` (whole pool) or `presources` (team of one project). */
   scope: 'portfolio' | 'project';
+  /** Project resources: the project's code (links to its plan). */
+  projectCode?: string;
   /** R-049: whose My work the viewer may open (the person cell links there); default: everyone's. */
   canOpenWork?: (name: string) => boolean;
   /** Window week labels, EN ("Sep 28"). */
@@ -53,8 +57,18 @@ export interface ResourcesInput {
   weekSplit?: Record<string, WeekProjectHours[]>;
   /** Pool order (PEOPLE order); for a project, only its team members. */
   people: ResourcePerson[];
-  /** Portfolio: department capacity vs demand over the window (ROLES order). Ignored for a project (derived from the team). */
+  /**
+   * Portfolio: capacity vs demand over the window — the departments (ROLES order), then the trades outside them (R-084,
+   * `getCapacityDemand`). Ignored for a project (derived from the team and `projectTrades`).
+   */
   departments: CapacityRow[];
+  /** Project: the project's work no named person carries, by trade, over the weeks shown (R-084, `getProjectTradeDemand`). */
+  projectTrades?: { trade: string; kind: 'department' | 'resource' | 'other'; hours: number }[];
+  /**
+   * Project: activities that need work and declare no resource at all — no assignment, no owner (R-084, owner answer B: an
+   * alert); a card lists them with a link to the plan. Absent = no card.
+   */
+  undeclared?: { code: string; name: string }[];
   /**
    * "Labor cost to date": portfolio — Σ labour categories of the projects in execution of the displayed zone (R-086, R-2 a);
    * project — the project's labour categories. Null when none.
@@ -157,6 +171,10 @@ export interface ResourcesView {
   /** Sub-line of the "Capacity vs demand" card. */
   rolesSub: string;
   roles: RoleBarView[];
+  /** "Of which 124 h not assigned to a person, counted by trade" under the bars; null when none (R-084). */
+  rolesNote: string | null;
+  /** Project: activities without any declared resource (code · name, link to the plan); empty = no card. */
+  undeclared: { code: string; name: string; href: string }[];
   suggestions: SuggestionView[] | null;
 }
 
@@ -179,8 +197,10 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
   const isWeek = input.view === 'week';
   const people = input.people.map((p) => ({ ...p, load: personLoad(p.loads) }));
   const roles: CapacityRow[] = isProject
-    ? projectDepartmentDemand(people.map((p) => ({ department: p.department, avgPct: p.load.avgPct })), isWeek ? HOURS_PER_PERSON_WEEK : undefined)
+    ? projectDepartmentDemand(people.map((p) => ({ department: p.department, avgPct: p.load.avgPct })), isWeek ? HOURS_PER_PERSON_WEEK : undefined, input.projectTrades ?? [])
     : input.departments;
+  const unnamed = unnamedDemand(roles);
+  const roleName = (r: CapacityRow) => (r.kind === 'resource' ? dataText(r.name, lang) : t(r.name));
   const hrefOf = (name: string) => (!input.canOpenWork || input.canOpenWork(name) ? myWorkHref(name) : null);
   const n = people.length;
   const over = overAllocatedCount(people.map((p) => p.load));
@@ -220,7 +240,7 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
   const hText = (v: number) => `${fr ? String(v).replace('.', ',') : v} h`;
   const weekRows: WeekRowView[] | null = isWeek
     ? people.map((p) => {
-        const w = weekLoad(p.loads[0] ?? 0, input.weekSplit?.[p.name] ?? []);
+        const w = weekLoad(p.loads[0] ?? 0, input.weekSplit?.[p.name] ?? [], p.hours?.[0]);
         return {
           name: p.name, role: p.jobTitle ? t(p.jobTitle) : '', initials: p.initials, href: hrefOf(p.name), cell: { v: w.pct, ...shade(w.pct) },
           hoursText: `${hText(w.hours)} / ${hText(w.capacityH)}`, overText: w.overH > 0 ? `+${hText(w.overH)}` : '', overAllocated: w.overAllocated, projectsText: weekSplitText(w, lang),
@@ -233,8 +253,12 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
     weeks: input.weeks.map((w) => weekLabel(w, t, lang)),
     weekRows,
     weekHasSplit: !!weekRows && weekRows.some((r) => r.projectsText !== ''),
-    // The portfolio bars are the stored 8-week department totals (R-084), whatever the view; a project's follow the weeks shown.
-    rolesSub: t(isProject && isWeek ? 'Hours by role, week shown' : 'Hours by role, next 8 weeks'),
+    // R-084: the bars follow the weeks shown on both screens (the portfolio's were the stored 8-week department totals).
+    rolesSub: t(isWeek ? 'Hours by role, week shown' : input.windowIsCurrent === false ? 'Hours by role, 8 weeks' : 'Hours by role, next 8 weeks'),
+    rolesNote: unnamed > 0
+      ? (lang === 'fr' ? `Dont ${unnamed} h non affectées à une personne, comptées par métier` : `Of which ${unnamed} h not assigned to a person, counted by trade`)
+      : null,
+    undeclared: (input.undeclared ?? []).map((a) => ({ code: a.code, name: dataText(a.name, lang), href: `${screenHref('plan', { code: input.projectCode })}?act=${encodeURIComponent(a.code)}` })),
     people: people.map((p) => ({
       name: p.name,
       role: p.jobTitle ? t(p.jobTitle) : '',
@@ -246,7 +270,7 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
     })),
     roles: roles.map((r) => {
       const bar = capacityBar(r);
-      return { name: t(r.name), text: `${r.demandH} / ${r.capacityH} h`, color: bar.over ? LO : 'var(--color-neutral-300)', demandH: r.demandH, capacityH: r.capacityH };
+      return { name: roleName(r), text: `${r.demandH} / ${r.capacityH} h`, color: bar.over ? LO : 'var(--color-neutral-300)', demandH: r.demandH, capacityH: r.capacityH };
     }),
     suggestions: input.suggestions
       ? input.suggestions.map((s) => ({

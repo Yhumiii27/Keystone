@@ -6,7 +6,8 @@
 //   prerequisite on the Site screen.
 // - The proposal is the existing "New risk" form, pre-filled from the prerequisite (`prerequisiteRiskDraft`), which a lead of the
 //   project confirms (or corrects) from the prerequisite's row: no new risk status, nothing is registered without that click.
-//   Offered on every pending prerequisite without a risk, before J-15 too (owner, 17 Oct 2026, second round).
+//   Offered on every pending prerequisite without a risk, before J-15 too (owner, 17 Oct 2026, second round); once late at J-15,
+//   also when a risk was already raised — a new risk, the notice going out all the same (owner, 17 Oct 2026, third round).
 //
 // Episode (default, owner to confirm): a prerequisite is alerted once for a given need date. A prerequisite only moves forward
 // (Pending → Confirmed → Signed), so it cannot become late again after a confirmation; it is alerted again only when its need date
@@ -38,10 +39,36 @@ export function prerequisitesToAlert<P extends PrerequisiteAlertFacts & { stage:
 export const PREREQUISITE_ALERT_TITLE = 'Client prerequisite unconfirmed at J-15 — raise a risk?';
 
 /**
- * "Raise as a risk" is offered: the prerequisite is still pending (not confirmed, not signed) and no risk was raised from it yet —
- * late or not (owner, 17 Oct 2026, second round: « Risque avant J-15 : oui on peut l'ouvrir »). The J-15 notice is unchanged.
+ * "Raise as a risk" is offered while the prerequisite is pending (not confirmed, not signed) — late or not (owner, 17 Oct 2026,
+ * second round: « Risque avant J-15 : oui on peut l'ouvrir ») — and either no risk was raised from it yet, or it is late at J-15
+ * (`late`, `isPrerequisiteLate` at the business date) although a risk was raised: the owner, 17 Oct 2026, third round: « Si l'alerte
+ * a déjà un risque ouvert [il faut quand même alerter] car c'est soit que le risque n'a pas été maîtrisé, soit qu'il faudra en
+ * ouvrir un nouveau ». Before J-15 a prerequisite carries one risk (the row links to it, no second one); once late, a lead may
+ * raise a new one ("Raise a new risk"), which becomes the prerequisite's linked risk (the previous one stays in the register).
  */
-export const canRaisePrerequisiteRisk = (p: { status: ConfirmStatus; riskNumber: string | null }) => p.status === 'pending' && !p.riskNumber;
+export const canRaisePrerequisiteRisk = (p: { status: ConfirmStatus; riskNumber: string | null; late: boolean }) =>
+  prerequisiteRiskRefusal(p) === null;
+
+/** Why "Raise as a risk" is refused (English source string), or null when allowed — the rule of `canRaisePrerequisiteRisk`. */
+export function prerequisiteRiskRefusal(p: { status: ConfirmStatus; riskNumber: string | null; late: boolean }): string | null {
+  if (p.status !== 'pending') return PREREQ_RISK_NOT_PENDING;
+  if (p.riskNumber && !p.late) return PREREQ_RISK_RAISED;
+  return null;
+}
+
+/**
+ * The J-15 notice's sub-line: "{prerequisite} · {activity} · {need date}", and when a risk is already linked to the prerequisite
+ * (raised before J-15, or at an earlier J-15) "· R-21 · linked risk open" (or "closed") — the notice still goes out (owner, 17 Oct
+ * 2026, third round) and tells the PM that the risk did not prevent the delay. Each " · " field is shown by the bell as typed, or
+ * through its exact FR entry (`fieldsText`).
+ */
+export const PREREQUISITE_ALERT_RISK_OPEN = 'linked risk open';
+export const PREREQUISITE_ALERT_RISK_CLOSED = 'linked risk closed';
+export const prerequisiteAlertSub = (
+  p: { title: string; activityCode: string; risk: { number: string; status: 'open' | 'closed' } | null },
+  neededText: string,
+) =>
+  [p.title, p.activityCode, neededText, ...(p.risk ? [p.risk.number, p.risk.status === 'open' ? PREREQUISITE_ALERT_RISK_OPEN : PREREQUISITE_ALERT_RISK_CLOSED] : [])].join(' · ');
 
 /** Category proposed for the risk (the client owes the prerequisite); falls back to the first category offered when inactive. */
 export const PREREQUISITE_RISK_CATEGORY = 'contractual_client';

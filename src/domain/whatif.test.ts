@@ -118,6 +118,17 @@ describe('effects (each lever alone vs the current plan)', () => {
     expect(e[SHIFT].sideEffects).toEqual([{ kind: 'overload', person: 'Paula', weekStart: '2026-10-19' }]);
   });
 
+  it('R-084 (owner answer 17 Oct 2026, third round): owners on their trade — no owner share on a person, a shift frees no owner', () => {
+    const t = prepareWhatIf(ctx({ ownerLoad: 'trade' }));
+    // D is owned by Paula without an assignment: no shift lever (its 2 h/d go to her trade, not to her load).
+    expect(t.levers.map((l) => l.code)).toEqual(m.levers.map((l) => l.code).filter((c) => c !== SHIFT));
+    // Dates and costs are the engine's, unchanged; the loads no longer carry D's owner share (Paula's 2 h/d moved with D when A
+    // shortens): one crew unit on A moves D earlier without loading Paula any more.
+    const te = leverEffects(t);
+    for (const c of [OT_A, EX_A, RELIEF, OT_B, EX_B]) expect([te[c].finish, te[c].daysGained, te[c].costKeur]).toEqual([e[c].finish, e[c].daysGained, e[c].costKeur]);
+    expect(prepareWhatIf(ctx({ ownerLoad: 'person' })).levers.map((l) => l.code)).toEqual(m.levers.map((l) => l.code));
+  });
+
   it('levers combine through the engine (not by adding effects)', () => {
     const r = evaluateScenario(m, [OT_A, EX_A]);
     // A: ⌈10 × 40 / (5 × 12)⌉ = 7 d → +3 d. Cost: crew + helper 420 h at 60 €/h + 140 premium hours × 15 € = 31 780 €

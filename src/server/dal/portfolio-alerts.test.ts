@@ -5,6 +5,7 @@ import { setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
 import { addPaymentMilestone, getContract, issueInvoice, updatePaymentMilestone } from './contract';
 import { getPortfolioAlerts } from './portfolio-alerts';
+import { overloadJulienWagner } from '@/features/resources/overload.test-fixture';
 
 beforeAll(async () => {
   setDb(await openDatabase());
@@ -14,9 +15,11 @@ beforeAll(async () => {
 // HLT-026 is the off-track project (SPI 0.82 · CPI 0.89; it was RCF-019 on the prototype's figures) and so carries no separate
 // cost alert, RCF-019 (At risk, CPI 0.97) raises the cost overrun (it was HLT-026, CPI 0.91).
 describe('portfolio alerts (R-130)', () => {
-  it('seed: 8 alerts, the director’s approvals last', async () => {
+  it('seed: 7 alerts, the director’s approvals last', async () => {
+    // R-084 (owner answers 17 Oct 2026, third round): the loads come from the schedules — nobody is above 110 % on the demo data
+    // set, so no over-allocation alert ("3 people over 110%" on the seeded allocation rows).
     expect((await getPortfolioAlerts('en')).map((a) => a.key)).toEqual([
-      'off-HLT-026', 'slip-RCF-019', 'slip-HLT-026', 'slip-MSR-012', 'slip-NDC-031', 'cost-RCF-019', 'people', 'approvals',
+      'off-HLT-026', 'slip-RCF-019', 'slip-HLT-026', 'slip-MSR-012', 'slip-NDC-031', 'cost-RCF-019', 'approvals',
     ]);
   });
 
@@ -24,7 +27,7 @@ describe('portfolio alerts (R-130)', () => {
     const n = await addPaymentMilestone('HLT-026', { label: 'Early works', sharePct: 1, contractualDue: '2026-08-01' }, 'Romain Aubert');
     let alerts = await getPortfolioAlerts('en');
     expect(alerts.map((a) => a.key)).toEqual([
-      'off-HLT-026', 'slip-RCF-019', 'slip-HLT-026', 'slip-MSR-012', 'slip-NDC-031', 'cost-RCF-019', 'bill-HLT-026', 'people',
+      'off-HLT-026', 'slip-RCF-019', 'slip-HLT-026', 'slip-MSR-012', 'slip-NDC-031', 'cost-RCF-019', 'bill-HLT-026', 'approvals',
     ]);
     expect(alerts[6]).toMatchObject({
       kind: 'billing_late', title: 'Harbor Line Terminal Expansion — billing late', detail: `${n} Early works · contractual date 1 Aug 2026, not invoiced.`,
@@ -41,5 +44,14 @@ describe('portfolio alerts (R-130)', () => {
     expect([bill.title, bill.detail]).toEqual([
       'Extension du terminal Harbor Line — facture en retard de paiement', 'INV-2026-004 · 54 k€ échue le 15 sept. 2026.',
     ]);
+  });
+
+  it('R-084: the over-allocation alert reads the schedules\' loads over the 8 weeks from the data date', async () => {
+    // Julien Wagner on a second assignment (NDC-031, 1 × 4 h/d, 28 Sep – 16 Oct): 60 h / 40 h = 150 % in weeks 40–41.
+    await overloadJulienWagner();
+    const people = (await getPortfolioAlerts('en')).find((a) => a.key === 'people')!;
+    expect(people).toMatchObject({ kind: 'over_allocation', title: '1 person over 110%', detail: 'Weeks 40–41 · Julien Wagner.', target: { screen: 'resources' } });
+    // From a data date after those weeks: nobody.
+    expect((await getPortfolioAlerts('en', '2026-10-19')).some((a) => a.key === 'people')).toBe(false);
   });
 });

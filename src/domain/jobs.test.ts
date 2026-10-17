@@ -22,10 +22,12 @@ describe('jobs and schedules', () => {
       ['codex-index', 60, 15],
       // Delivery 9 (R-121, D-4 'a'): client prerequisites late at J-15, daily — at the reminders hour (owner, 17 Oct 2026).
       ['site-prerequisite-alerts', 1440, 15],
+      // Delivery 9 (R-084, owner answer 17 Oct 2026, third round, B): activities without any declared resource, daily.
+      ['undeclared-resource-alerts', 1440, 15],
     ]);
     // Owner's answer of 17 Oct 2026 (R-121): the jobs that send reminders to people run in the morning; technical jobs keep
     // their intervals.
-    expect(JOB_SCHEDULES.filter((j) => j.daily === 'reminders').map((j) => j.name)).toEqual(['site-prerequisite-alerts']);
+    expect(JOB_SCHEDULES.filter((j) => j.daily === 'reminders').map((j) => j.name)).toEqual(['site-prerequisite-alerts', 'undeclared-resource-alerts']);
     expect(JOB_NAMES).not.toContain('friday-freeze');
     // Staggered first runs.
     expect(new Set(JOB_SCHEDULES.map((j) => j.firstDelayMs)).size).toBe(JOB_SCHEDULES.length);

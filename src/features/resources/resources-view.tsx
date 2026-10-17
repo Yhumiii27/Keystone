@@ -136,6 +136,7 @@ export function ResourcesView({ view, t, projectName, canEdit, windowNav, window
                 <CapacityBar demand={r.demandH} capacity={r.capacityH} />
               </div>
             ))}
+            {view.rolesNote && <div className={s.footnote}>{view.rolesNote}</div>}
             {view.roles.length ? (
               <div className={s.footnote}>{t('Tick marks available capacity')}</div>
             ) : (
@@ -143,6 +144,22 @@ export function ResourcesView({ view, t, projectName, canEdit, windowNav, window
               <EmptyState pad={4}>{t('No department to compare yet')}</EmptyState>
             )}
           </section>
+          {view.undeclared.length > 0 && (
+            // R-084 (owner answer 17 Oct 2026, third round, B): work nobody is declared on — no assignment, no owner.
+            <section className={cx('card', 'elev-sm', s.card)} aria-label={t('Activities without a declared resource')}>
+              <div className={s.titleStack}>
+                <CardTitle>{t('Activities without a declared resource')}</CardTitle>
+                <span className={s.cardSub}>{t('No assignment and no owner: their load counts nowhere')}</span>
+              </div>
+              {view.undeclared.map((a) => (
+                <div key={a.code} className={s.roleHead}>
+                  <Link href={a.href} className={s.roleName} style={{ color: LO }}>
+                    {a.code} · {a.name}
+                  </Link>
+                </div>
+              ))}
+            </section>
+          )}
           {view.suggestions && (
             <section className={cx('card', 'elev-sm', s.card, s.suggestionsCard)} aria-label={t('Suggested rebalancing')}>
               <div className={s.sugHead}>

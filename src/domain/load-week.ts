@@ -107,9 +107,12 @@ export interface WeekLoad {
   beyondH: number;
 }
 
-/** Load of a person for the week shown: the weekly total (allocation row) set against the hours the schedules assign. */
-export function weekLoad(pct: number, projects: readonly WeekProjectHours[]): WeekLoad {
-  const hours = hoursOfLoad(pct);
+/**
+ * Load of a person for the week shown set against the hours the schedules assign per project. R-084 (owner answer 17 Oct 2026,
+ * third round): the load IS the schedules' hours (`hours`, from `getPlanningLoad`), so the split covers it exactly; without
+ * `hours`, the hours of the % (the rule of a weekly total from another source).
+ */
+export function weekLoad(pct: number, projects: readonly WeekProjectHours[], hours: number = hoursOfLoad(pct)): WeekLoad {
   const split = projects.filter((p) => p.hours > 0).map((p) => ({ code: p.code, hours: round1(p.hours) })).sort((a, b) => b.hours - a.hours || a.code.localeCompare(b.code));
   const assignedH = round1(split.reduce((a, p) => a + p.hours, 0));
   return {

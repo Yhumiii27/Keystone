@@ -4,7 +4,7 @@ import 'server-only';
 // (cash flow, prioritisation, sourcing, deliveries, site, drawings, quality, My work, Home, Activity & integrations).
 // Values are computed at the project's data date (`projects.data_date`, default the business date) or the business date
 // (`businessToday`, R-013 — Fri 25 Sep 2026 on the demo data set). No writer here.
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, like, lt, or } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, like, lt, or } from 'drizzle-orm';
 import { projectDataDate } from '@/domain/ch4-defaults';
 import {
   CAPACITY_WINDOW_WEEKS, DEFAULT_PAYMENT_DAYS, demandPerMeur, departmentCapacity, eventsOnDay, finishOfMonthText,
@@ -12,16 +12,19 @@ import {
   type CashProjectInput, type RfqKpiFacts, type VaultSyncFacts,
 } from '@/domain/kpis';
 import { clientDecisionCount } from '@/domain/meetings';
+import { weekStartsFrom } from '@/domain/load-window';
+import { loadPctOfHours, sumHours } from '@/domain/planning-load';
 import { businessToday } from '@/server/clock';
 import { getDb } from '@/server/db/client';
 import { addDaysIso, parisInstant } from '@/server/db/codes';
 import {
-  activityEvents, allocations, auditEntries, connectors, departmentCapacities, departments, goodsReceipts, parts, pdmVaultSyncs, persons, projects,
+  activityEvents, auditEntries, connectors, departmentCapacities, departments, goodsReceipts, parts, pdmVaultSyncs, persons, projects,
   purchaseOrders, rfqQuotes, rfqs, timeEntries, vigieNcrs,
 } from '@/server/db/schema';
 import type { BillingPlan } from './cashflow';
 import { getCostControl } from './cost';
 import { listMeetings } from './meetings';
+import { getPlanningLoad } from './planning-load';
 import type { ProjectRow } from './projects';
 
 // ── Data date ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -74,30 +77,31 @@ export interface CapacityModelRow {
 }
 
 /**
- * Capacity model of the departments (department_capacities order): capacity and commitments from the resource pool's
- * weekly loads (people with a pool position, allocations without project), demand per €1M = commitments ÷ value of the active portfolio (`activeProjects`: contract
- * value from `plans`, else budget). The window starts at the week of `asOf` (default: the business date, R-013).
+ * Capacity model of the departments (department_capacities order): capacity = the pool members of the department × 40 h ×
+ * the window's weeks; commitments = the planning load over the window (R-084, owner answers 17 Oct 2026, third round): the
+ * hours the schedules assign the department's pool members + the work no named person carries counted against the department
+ * as a trade (`getPlanningLoad`; the seeded allocation percentages are no longer read). Demand per €1M = commitments ÷ value of
+ * the active portfolio (`activeProjects`: contract value from `plans`, else budget). The window: CAPACITY_WINDOW_WEEKS weeks from
+ * the week of `asOf` (default: the business date, R-013).
  */
 export async function capacityModel(
   activeProjects: readonly ProjectRow[], plans: Readonly<Record<string, Pick<BillingPlan, 'contractValueKeur'>>>, asOf?: string,
 ): Promise<CapacityModelRow[]> {
   const db = await getDb();
   const day = asOf ?? (await businessToday());
-  const [depts, pool, allocs] = await Promise.all([
+  const weeks = weekStartsFrom(weekMondayOf(day), CAPACITY_WINDOW_WEEKS);
+  const [depts, pool, load] = await Promise.all([
     db.select({ name: departments.name }).from(departmentCapacities).innerJoin(departments, eq(departments.id, departmentCapacities.departmentId)).orderBy(asc(departmentCapacities.position)),
     db.select({ id: persons.id, dept: departments.name }).from(persons).leftJoin(departments, eq(departments.id, persons.departmentId)).where(isNotNull(persons.resourcePoolPosition)),
-    db.select({ personId: allocations.personId, weekStart: allocations.weekStart, loadPct: allocations.loadPct }).from(allocations).where(isNull(allocations.projectId)).orderBy(asc(allocations.weekStart)),
+    getPlanningLoad(weeks),
   ]);
-  // The window: the 8 pool weeks from the data date's week on (the seed's pool starts the Monday after, 28 Sep).
-  const from = weekMondayOf(day);
-  const weeks = [...new Set(allocs.map((a) => a.weekStart))].filter((w) => w >= from).sort().slice(0, CAPACITY_WINDOW_WEEKS);
-  const people = pool.map((p) => ({
-    department: p.dept, loads: weeks.map((w) => allocs.find((a) => a.personId === p.id && a.weekStart === w)?.loadPct ?? 0),
-  }));
+  const people = pool.map((p) => ({ department: p.dept, loads: (load.people[p.id] ?? weeks.map(() => 0)).map((h) => (h / weekHoursOf()) * 100) }));
   const valueKeur = activeProjects.reduce((s, p) => s + projectValueKeur(plans[p.code]?.contractValueKeur, p.budget), 0);
   return depts.map(({ name }) => {
-    const c = departmentCapacity(people, name, weekHoursOf(), weeks.length || CAPACITY_WINDOW_WEEKS);
-    return { department: name, capacityH: c.capacityH, committedH: c.committedH, hoursPerMeur: demandPerMeur(c.committedH, valueKeur) };
+    const c = departmentCapacity(people, name, weekHoursOf(), weeks.length);
+    const trade = load.trades.find((t) => t.kind === 'department' && t.trade === name);
+    const committedH = c.committedH + Math.round(trade ? sumHours(trade.hours) : 0);
+    return { department: name, capacityH: c.capacityH, committedH, hoursPerMeur: demandPerMeur(committedH, valueKeur) };
   });
 }
 
@@ -206,18 +210,19 @@ export async function loggedThisWeek(personName: string, asOf?: string): Promise
   return loggedInWeek(rows, day);
 }
 
-/** "Load next 2 wks" of a person: mean of the pool loads of the two weeks after `asOf` (default: the business date); null outside the pool. */
+/**
+ * "Load next 2 wks" of a person: mean of their weekly loads of the n weeks after `asOf` (default: the business date); null outside
+ * the pool. R-084: the loads of the schedules (`getPlanningLoad`, % of the 40 h week) — no longer the seeded allocation rows.
+ */
 export async function loadNextWeeks(personName: string, asOf?: string, n = 2): Promise<number | null> {
   const db = await getDb();
   const day = asOf ?? (await businessToday());
-  const rows = await db
-    .select({ weekStart: allocations.weekStart, loadPct: allocations.loadPct })
-    .from(allocations)
-    .innerJoin(persons, eq(persons.id, allocations.personId))
-    .where(and(eq(persons.fullName, personName), isNull(allocations.projectId)))
-    .orderBy(asc(allocations.weekStart));
-  if (!rows.length) return null;
-  return nextWeeksLoad(rows.map((r) => r.weekStart), rows.map((r) => r.loadPct), day, n);
+  const [p] = await db.select({ id: persons.id }).from(persons).where(and(eq(persons.fullName, personName), isNotNull(persons.resourcePoolPosition)));
+  if (!p) return null;
+  // The weeks starting after `asOf`: from the Monday after it (the rule of `nextWeeksLoad`: a week starting on `asOf` is not "next").
+  const weeks = weekStartsFrom(addDaysIso(weekMondayOf(day), 7), n);
+  const load = await getPlanningLoad(weeks);
+  return nextWeeksLoad(weeks, (load.people[p.id] ?? weeks.map(() => 0)).map((h) => loadPctOfHours(h)), day, n);
 }
 
 // ── Activity & integrations (10 OQ4) ─────────────────────────────────────────────────────────────────────────────────

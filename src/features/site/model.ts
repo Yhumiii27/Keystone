@@ -67,7 +67,10 @@ export interface ReadyView {
     entry: LineEntry | null;
     /** R-121: the risk raised from it ("R-21", link to the register's drawer); null until then. */
     risk: { number: string; href: string } | null;
-    /** R-121 (D-4 'a'): "Raise as a risk" — the "New risk" values proposed (late, no risk yet, a lead viewing); null otherwise. */
+    /**
+     * R-121 (D-4 'a'): "Raise as a risk" — the "New risk" values proposed to a lead (pending, no risk yet); null otherwise. Once late
+     * at J-15 also beside the linked risk ("Raise a new risk", owner, 17 Oct 2026, third round); before J-15 the link only.
+     */
     raise: FormValues | null;
     /** The row the J-15 notification links to (`?prereq=`): marked, and its "Raise as a risk" opened. */
     focus: boolean;

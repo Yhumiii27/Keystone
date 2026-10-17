@@ -28,6 +28,7 @@ import { COOKIE } from '@/server/session';
 import { autoLevelWhatIf, createWhatIfScenario, selectWhatIfScenario, setWhatIfPriority, toggleWhatIfLever } from './actions';
 import { WhatIfBoard } from './whatif-board';
 import { WHATIF_PAST_HORIZON, type WhatIfData } from './whatif-model';
+import { overloadJulienWagner } from './overload.test-fixture';
 
 const RELIEF = 'extra_resource:A1250:julien-wagner';
 const OVERTIME = 'overtime:A1250:steel-erection-crew';
@@ -61,6 +62,9 @@ const storedHorizon = async (name: string) => {
 
 beforeAll(async () => {
   setDb(await openDatabase());
+  // R-084: the loads come from the schedules — Julien Wagner is overloaded (28 Sep – 9 Oct) only with the fixture's second
+  // assignment (overload.test-fixture.ts).
+  await overloadJulienWagner();
 }, 60_000);
 beforeEach(() => as('director'));
 
@@ -69,11 +73,14 @@ describe('what-if horizon navigation (owner answers 17 Oct 2026)', () => {
     const def = (await page({ project: 'HLT-026' })).body;
     expect(def.type).toBe(WhatIfBoard);
     expect([def.props.data!.horizon, def.props.data!.weekStarts[0], def.props.canEdit, def.props.readOnlyReason]).toEqual(['2026-09-21', '2026-09-21', true, null]);
-    expect(def.props.data!.overByWeek).toEqual([0, 0, 1, 2, 3, 2, 0, 1]);
-    // R-085 golden: the prototype's horizon (the seeded allocation weeks) gives back its people-above-100 % profile.
+    // R-084 (owner answer 17 Oct 2026, third round): the loads are the schedules' — Julien Wagner above 100 % in the weeks of
+    // 28 Sep and 5 Oct (fixture). The seeded allocation rows gave [0, 0, 1, 2, 3, 2, 0, 1].
+    expect(def.props.data!.overByWeek).toEqual([0, 1, 1, 0, 0, 0, 0, 0]);
+    // The prototype's horizon (`?week=2026-09-28`) shifts the same profile by one week (its golden [0, 1, 2, 3, 2, 0, 1, 0] read
+    // the seeded allocation rows, no longer read — R-084).
     const proto = (await page({ project: 'HLT-026', week: '2026-09-28' })).body;
     expect([proto.props.data!.horizon, proto.props.data!.weekStarts]).toEqual(['2026-09-28', PROTO_WEEKS]);
-    expect(proto.props.data!.overByWeek).toEqual([0, 1, 2, 3, 2, 0, 1, 0]);
+    expect(proto.props.data!.overByWeek).toEqual([1, 1, 0, 0, 0, 0, 0, 0]);
     expect((await page({ project: 'HLT-026', week: 'soon' })).body.props.data!.horizon).toBe('2026-09-21');
     const out = html(proto);
     for (const s of [
@@ -104,14 +111,15 @@ describe('what-if horizon navigation (owner answers 17 Oct 2026)', () => {
 
   it('auto-level and lever toggles follow the horizon shown; another horizon\'s levers are kept', async () => {
     as('pm');
-    // Priority "Protect people": the current horizon relieves Julien Wagner; from 16 Nov he is no longer overloaded.
+    // Priority "Protect people": the current horizon relieves Julien Wagner; from 16 Nov he is no longer overloaded — R-084:
+    // nobody is, so nothing to protect (the seeded loads overloaded departments there, and the crew unit relieved them).
     await setWhatIfPriority('HLT-026', 'B', 'people', '2026-11-16');
     expect(await autoLevelWhatIf('HLT-026', 'B', '2026-11-16')).toEqual({ ok: true });
-    expect(on((await scenario('B', '2026-11-16')).levers)).toEqual([CREW]);
+    expect(on((await scenario('B', '2026-11-16')).levers)).toEqual([]);
     expect(await storedHorizon('B')).toBe('2026-11-16');
     expect(await autoLevelWhatIf('HLT-026', 'B')).toEqual({ ok: true });
-    // CREW is derived on both horizons: the current one's auto-level replaces it.
-    expect(on((await scenario('B')).levers)).toEqual([RELIEF]);
+    // The current horizon: the relief, and the crew unit that ends A1250 earlier inside Julien Wagner's overloaded weeks (R-084).
+    expect(on((await scenario('B')).levers)).toEqual([RELIEF, CREW]);
     expect(await storedHorizon('B')).toBe('2026-09-21');
     // A lever the horizon does not derive cannot be toggled there.
     expect(await toggleWhatIfLever('HLT-026', 'B', RELIEF, '2026-11-16')).toEqual({ error: 'The change could not be saved' });

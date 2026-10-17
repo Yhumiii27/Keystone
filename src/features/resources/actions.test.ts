@@ -10,7 +10,7 @@ vi.mock('next/cache', () => ({ revalidatePath: (p: string) => revalidated.push(p
 import { asc, eq } from 'drizzle-orm';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
-import { activities, persons, projects } from '@/server/db/schema';
+import { activities, activityAssignments, persons, projects } from '@/server/db/schema';
 import { listActivity, listAudit } from '@/server/dal/notifications';
 import { getDepartmentApprovals, listResourceRequests } from '@/server/dal/requests';
 import { getRebalancingSuggestions, getWhatIf } from '@/server/dal/resources';
@@ -21,6 +21,7 @@ import {
 import { resourcesView } from './model';
 import { suggestionInputs } from './suggestions';
 import { parseNewScenario, parseRenameScenario } from './whatif-form';
+import { overloadJulienWagner } from './overload.test-fixture';
 
 const as = (role: string, lang = 'en') => {
   jar.clear();
@@ -29,13 +30,15 @@ const as = (role: string, lang = 'en') => {
 };
 const scenario = async (name: string) => (await getWhatIf('HLT-026'))!.scenarios.find((s) => s.name === name)!;
 const on = (levers: Record<string, boolean>) => Object.keys(levers).filter((k) => levers[k]);
-// HLT-026 levers derived from the seed (only A1250 carries labour assignments: Julien Wagner 8 h/d, crew 6 × 10 h/d).
+// HLT-026 levers derived from the seed (only A1250 carries labour assignments: Julien Wagner 8 h/d, crew 6 × 10 h/d). R-084: the
+// loads come from the schedules — Julien Wagner is above 100 % only with the fixture's second assignment (overload.test-fixture.ts).
 const RELIEF = 'extra_resource:A1250:julien-wagner';
 const OVERTIME = 'overtime:A1250:steel-erection-crew';
 const CREW = 'extra_resource:A1250:steel-erection-crew';
 
 beforeAll(async () => {
   setDb(await openDatabase());
+  await overloadJulienWagner();
 }, 60_000);
 beforeEach(() => {
   as('director');
@@ -64,7 +67,9 @@ describe('what-if Server Functions', () => {
     expect(on((await scenario('B')).levers)).toEqual([OVERTIME, CREW]);
     await setWhatIfPriority('HLT-026', 'B', 'people');
     expect(await autoLevelWhatIf('HLT-026', 'B')).toEqual({ ok: true });
-    expect(on((await scenario('B')).levers)).toEqual([RELIEF]);
+    // R-084: the loads are the schedules' — one more crew unit ends A1250 earlier, so Julien Wagner's A1250 hours in his
+    // overloaded weeks shrink too: "Protect people" takes it with the relief (it took the relief alone on the seeded loads).
+    expect(on((await scenario('B')).levers)).toEqual([RELIEF, CREW]);
   });
 
   it('select scenario → create requests: DRAFT requests (not in the department queue), toast, idempotent; one selected; audit by the viewer', async () => {
@@ -90,7 +95,8 @@ describe('what-if Server Functions', () => {
     as('depthead');
     expect(await selectWhatIfScenario('HLT-026', 'B')).toEqual({ error: 'What-if levelling is read-only for you' });
     as('director');
-    expect(await selectWhatIfScenario('HLT-026', 'B')).toEqual({ ok: true, message: 'Scenario B selected · 1 draft request created (RQ-048) — send it from Resource requests' });
+    // R-084: scenario B ("Protect people") holds the relief and the crew unit (see above): two drafts.
+    expect(await selectWhatIfScenario('HLT-026', 'B')).toEqual({ ok: true, message: 'Scenario B selected · 2 draft requests created (RQ-048, RQ-049) — send them from Resource requests' });
     const audit = (await listAudit()).filter((a) => a.object === 'Scenario B' && a.change === 'selected');
     expect(audit.map((a) => a.who)).toEqual(['Marie Lefebvre']);
   });
@@ -175,6 +181,7 @@ describe('form parsers', () => {
 describe('what-if — fresh data', () => {
   beforeAll(async () => {
     setDb(await openDatabase());
+    await overloadJulienWagner();
   }, 60_000);
 
   /** HLT-026 activities as stored (the plan must not change before the next Reschedule). */
@@ -226,11 +233,18 @@ describe('what-if — fresh data', () => {
     expect(await createWhatIfScenario('NDC-031', { name: 'Copy', basis: 'last_approved' })).toEqual({ error: 'Aucun scénario retenu ni appliqué pour l’instant — partez du plan actuel' });
   });
 
-  it('an overloaded owner on a movable activity yields a shift lever; selecting it drafts nothing and asks to enter the shift', async () => {
-    // Fixture: A1320 (not started, total float 1 d, SNET) owned by Julien Wagner, above 100 % in weeks 42–44 while it runs.
+  it('an overloaded assignee on a movable activity yields a shift lever; selecting it drafts nothing and asks to enter the shift', async () => {
+    // Fixture: A1320 (not started, total float 1 d, SNET). R-084 (owner answer 17 Oct 2026, third round): an owner carries no
+    // load (it is counted on their trade), so a shift frees an ASSIGNEE — Julien Wagner on A1320 at 8 h/d (stored 12 – 30 Oct),
+    // 150 % in the week of 12 Oct with the fixture's NDC-031 assignment.
     const db = await getDb();
     const [julien] = await db.select({ id: persons.id }).from(persons).where(eq(persons.fullName, 'Julien Wagner'));
-    await db.update(activities).set({ ownerPersonId: julien.id }).where(eq(activities.code, 'A1320'));
+    const [a1320] = await db.select({ id: activities.id }).from(activities).where(eq(activities.code, 'A1320'));
+    await db.update(activities).set({ ownerPersonId: julien.id }).where(eq(activities.id, a1320.id));
+    // The owner alone frees nobody (no shift lever)…
+    expect((await getWhatIf('HLT-026'))!.levers.some((l) => l.kind === 'shift')).toBe(false);
+    // …an assignment does.
+    await db.insert(activityAssignments).values({ activityId: a1320.id, position: 9, resource: 'Julien Wagner', personId: julien.id, detail: '', units: '1 × 8 h/d', progressText: '', resourceCount: 1, hoursPerDay: 8 });
     const w = (await getWhatIf('HLT-026'))!;
     const shift = w.levers.find((l) => l.kind === 'shift')!;
     expect([shift.code, shift.person, shift.to]).toEqual(['shift:A1320', 'Julien Wagner', 1]);

@@ -67,7 +67,8 @@ describe('My work render', () => {
       'Hélène Sauvage', 'QA / QC · Harbor Line · Clinique Pasteur Lyon', 'Vue manager · exactement ce que voit Hélène', 'Vue', 'Liste', 'Tableau', 'Calendrier',
       'Échéance aujourd’hui', 'ven. 25 sept.', 'En retard', 'Nouvelle date ou relance nécessaire', 'Semaine prochaine', '28 sept. – 2 oct.',
       // A-12 (chapter 4, 10 OQ18): this week's time entries (23 Sep 2.5 h + 24 Sep 3.5 h), not every hour of the tasks started.
-      'Saisi cette semaine', '6.0 h', 'sur 40 h · 15 %', 'Charge 2 prochaines sem.', '45%', 'Dans la capacité',
+      // R-084: "Load next 2 wks" from the schedules — Hélène Sauvage is on none (45 % on the seeded allocation rows).
+      'Saisi cette semaine', '6.0 h', 'sur 40 h · 15 %', 'Charge 2 prochaines sem.', '0%', 'Dans la capacité',
       'Aujourd’hui', '2 tâches', '1 tâche', 'Plus tard', 'Terminées récemment', 'Survey verticality', '#QA', '#Site', '2/4', '6/8 h',
       'En retard · mer. 23 sept.', 'jeu. 1 oct.', 'Terminé', 'Saisir du temps',
     ])
@@ -96,7 +97,8 @@ describe('My work render', () => {
     expect(tx).not.toContain('Manager view');
     expect(tx).not.toContain('Survey verticality');
     // A-12 (chapter 4): "Logged this week" = Julien's time entries of the week (22 Sep 3 h + 23 Sep 4 h; prototype 14.0 h).
-    for (const s of ['Due today', 'Overdue', 'Next week', 'Logged this week', '7.0 h', 'of 40 h · 18%', 'Load next 2 wks', '95%', 'Within capacity', 'Torque check — Bay 3 bolt groups', 'Log time'])
+    // R-084: "Load next 2 wks" = A1250's 40 h in the weeks of 28 Sep and 5 Oct (95 % on the seeded allocation rows).
+    for (const s of ['Due today', 'Overdue', 'Next week', 'Logged this week', '7.0 h', 'of 40 h · 18%', 'Load next 2 wks', '100%', 'Within capacity', 'Torque check — Bay 3 bolt groups', 'Log time'])
       expect(tx).toContain(s);
     expect(html).not.toContain('aria-haspopup'); // no person switcher for the member
 

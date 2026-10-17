@@ -64,6 +64,12 @@ const MESSAGES = {
     (p) => `Raised ${p.risk} from a client prerequisite not confirmed yet · ${p.prerequisite}`,
     (p, f) => `Risque ${p.risk} ouvert depuis un prérequis client pas encore confirmé · ${f.data(p.prerequisite)}`,
   ),
+  // R-121, owner's answer of 17 Oct 2026 (third round): a new risk raised from a late client prerequisite that already had one.
+  'site.prerequisiteRiskRaisedAgain': def(
+    { risk: 'ref', previous: 'ref', prerequisite: 'data' },
+    (p) => `Raised ${p.risk} from a late client prerequisite (after ${p.previous}) · ${p.prerequisite}`,
+    (p, f) => `Risque ${p.risk} ouvert depuis un prérequis client en retard (après ${p.previous}) · ${f.data(p.prerequisite)}`,
+  ),
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

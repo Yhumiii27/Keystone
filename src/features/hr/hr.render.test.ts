@@ -39,7 +39,9 @@ let expertRequests: { count: number; skills: string[] };
 
 beforeAll(async () => {
   setDb(await openDatabase());
-  [card, skills, leave, hours] = await Promise.all([getRateCard(), getSkillsMatrix(), getLeaveCalendar(), getHoursReconciliation('HLT-026').then((x) => x!)]);
+  // The prototype's weeks explicitly (R-084: without weeks, the current window — it was the seeded allocation weeks).
+  const PROTO_WEEKS = ['2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09', '2026-11-16'];
+  [card, skills, leave, hours] = await Promise.all([getRateCard(), getSkillsMatrix(), getLeaveCalendar('FR', PROTO_WEEKS), getHoursReconciliation('HLT-026').then((x) => x!)]);
   // As the Skills page computes it (A-12).
   expertRequests = requestsNeedingExperts(await listResourceRequests({ status: 'pending' }), skills.people, skills.skills.map((x) => x.name));
 }, 60_000);

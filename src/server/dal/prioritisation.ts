@@ -140,7 +140,7 @@ export async function getCapacityWhatIf(projectCode: string): Promise<{ project:
   const [all, plans] = await Promise.all([listProjects(), listEurBillingPlans()]);
   const project = all.find((p) => p.code === projectCode);
   if (!project) return null;
-  // A-12 (chapter 4): capacity and commitments from the resource pool's allocations, demand per €1M from the active
+  // A-12 (chapter 4): capacity from the resource pool, commitments from the schedules' planning load (R-084), demand per €1M from the active
   // portfolio's value (`capacityModel`, src/server/dal/kpis.ts) — the prototype's capBase and coefficients were constants.
   const rows = await capacityModel(all.filter(inExecution), plans);
   const k = project.budget / 1000;

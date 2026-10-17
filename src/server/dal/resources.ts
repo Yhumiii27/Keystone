@@ -3,7 +3,7 @@ import 'server-only';
 // the 8-week window, departments with head and capacity, project teams, labour cost of a project, and what-if
 // levelling (chapter 4, S-7: levers derived from the data, effects computed by the CPM engine on a copy of the plan,
 // scenarios persisted per project, "Apply" → DRAFT resource requests) with its writers.
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
   WHATIF_PRIORITIES, WHATIF_RULES, autoLevel, createsRequest, evaluateScenario, leverEffects, leverLabel, leverSetKey, legacyLeverSet, prepareWhatIf, rankLevers,
@@ -13,14 +13,13 @@ import { getDb, type DB, type Tx } from '@/server/db/client';
 import { isoOfDisplayDate, weekLabelOfIso, whatIfPriority } from '@/server/db/codes';
 import { businessToday } from '@/server/clock';
 import { yearOfIso } from '@/domain/clock';
-import { isPastWindow, loadWindow, parseLoadViewParam, parseLoadWeekParam, type LoadWindow } from '@/domain/load-window';
-import { weekProjectHours, type WeekProjectHours } from '@/domain/load-week';
-import { addCalendarDays } from '@/domain/calendar';
-import { DEFAULT_PROJECT_CALENDAR, projectCalendarCode } from '@/domain/ch4-defaults';
-import { loadWorkCalendars } from './calendars';
+import { LOAD_WINDOW_WEEKS, isPastWindow, loadWindow, parseLoadViewParam, parseLoadWeekParam, type LoadWindow } from '@/domain/load-window';
+import type { WeekProjectHours } from '@/domain/load-week';
+import { loadPctOfHours, sumHours, type TradeKind } from '@/domain/planning-load';
+import { getPlanningLoad } from './planning-load';
 import { findPerson, nameOf, recordActivity, requireProject, writeAudit } from '@/server/db/helpers';
 import {
-  activities, activityAssignments, allocations, costCategories, departmentCapacities, departments, persons, projectControls, projectMembers, projects,
+  activities, activityAssignments, costCategories, departmentCapacities, departments, persons, projectControls, projectMembers, projects,
   resourceRequests, wbsNodes, whatIfLevers, whatIfScenarioActions, whatIfScenarioLevers, whatIfScenarios,
 } from '@/server/db/schema';
 import { multiplierAt, rateAt } from '@/domain/hr';
@@ -50,8 +49,13 @@ export interface PoolPerson {
   /** EN source string ("Structural engineer"). */
   jobTitle: string | null;
   department: string | null;
-  /** % of available hours per week, one value per window week (0 when no allocation row). */
+  /**
+   * % of the 40 h week per window week: the hours the schedules assign the person (R-084, `getPlanningLoad`), rounded; 0 when
+   * nobody assigns them.
+   */
   loads: number[];
+  /** Hours the schedules assign the person per window week (one decimal). */
+  hours: number[];
   /** Mean of the weekly loads (unrounded; the screens show round(avg) %). */
   avg: number;
   max: number;
@@ -75,64 +79,49 @@ export async function getLoadWindow(week?: unknown, view?: unknown): Promise<Loa
 
 /**
  * Week view, split by project (owner answer 17 Oct 2026, second round: « la répartition projet est à tirer des affectations
- * projets »): the hours the schedules of every project assign each named person in the week starting `weekStart` — every
- * `activity_assignments` row with a person whose activity is dated across that week, spread by `assignmentHoursInWeek`
- * (units × h/d, else planned hours, over the activity's working days on its calendar — its own, else the project's). By
- * person name (as the pool names them), largest first. Replaces the allocation rows per project (`allocations.project_id`),
- * which nothing feeds.
+ * projets »): the hours the schedules of every project assign each named person in the week starting `weekStart` — the
+ * planning load (`getPlanningLoad`, src/server/dal/planning-load.ts: `activity_assignments` with a person whose activity is
+ * dated across that week and still needs work, spread by `assignmentHoursInWeek` on the activity's calendar). By person name
+ * (as the pool names them), largest first. R-084 (third round): the same source as the person's load, so the split and the
+ * load agree.
  */
 export async function getWeekProjectSplit(weekStart: string): Promise<Record<string, WeekProjectHours[]>> {
-  const db = await getDb();
-  const weekEnd = addCalendarDays(weekStart, 6);
-  const rows = await db
-    .select({
-      code: projects.code, projectCalendar: projects.calendar, activityCalendar: activities.calendarCode, start: activities.startDate, finish: activities.finishDate,
-      full: persons.fullName, short: persons.shortName, units: activityAssignments.resourceCount, hpd: activityAssignments.hoursPerDay, planned: activityAssignments.plannedHours,
-    })
-    .from(activityAssignments)
-    .innerJoin(activities, eq(activities.id, activityAssignments.activityId))
-    .innerJoin(projects, eq(projects.id, activities.projectId))
-    .innerJoin(persons, eq(persons.id, activityAssignments.personId))
-    .where(and(lte(activities.startDate, weekEnd), gte(activities.finishDate, weekStart)));
-  if (!rows.length) return {};
-  const codes = [...new Set(rows.map((r) => r.code))];
-  const cals = new Map(await Promise.all(codes.map(async (c) => [c, await loadWorkCalendars(c)] as const)));
-  return weekProjectHours(
-    rows.map((r) => {
-      const own = cals.get(r.code)!;
-      const calendar = (r.activityCalendar && own[r.activityCalendar]) || own[projectCalendarCode({ calendar: r.projectCalendar })] || own[DEFAULT_PROJECT_CALENDAR];
-      return { project: r.code, person: r.full ?? r.short, start: r.start, finish: r.finish, units: r.units, hoursPerDay: r.hpd, plannedHours: r.planned, calendar };
-    }),
-    weekStart,
-  );
+  const load = await getPlanningLoad([weekStart]);
+  const out: Record<string, WeekProjectHours[]> = {};
+  for (const [id, byProject] of Object.entries(load.personProjects)) {
+    const rows = Object.entries(byProject).map(([code, h]) => ({ code, hours: h[0] ?? 0 })).filter((r) => r.hours > 0);
+    if (rows.length) out[load.names[id] ?? id] = rows.sort((a, b) => b.hours - a.hours || a.code.localeCompare(b.code));
+  }
+  return out;
+}
+
+/** The current 8-week load window (R-085) — the weeks of the readers that do not show a window of their own. */
+export async function currentLoadWeeks(): Promise<string[]> {
+  return loadWindow(await businessToday(), null, '8w').weeks;
 }
 
 /**
- * Pool members and their weekly loads over `weeks` (ISO Mondays; R-085: any week, 0 where no allocation row). Without `weeks`,
- * every week that has an allocation row (the former rule, still used by the readers outside the load plans: Home, alerts,
- * Approvals, My work, Site conflicts).
+ * Pool members and their weekly loads over `weeks` (ISO Mondays; default: the current 8-week window). R-084 (owner answer 17
+ * Oct 2026, third round: « partir des allocations du planning pour faire les calculs de charge »): a person's load is the hours
+ * the schedules assign them that week (`getPlanningLoad`) on the 40 h week — the `allocations` table is no longer read.
  */
 async function poolRows(personIds?: string[], weeks?: readonly string[]) {
   const db = await getDb();
-  const rows = await db
-    .select({ p: persons, dept: departments.name })
-    .from(persons)
-    .leftJoin(departments, eq(departments.id, persons.departmentId))
-    .where(isNotNull(persons.resourcePoolPosition))
-    .orderBy(asc(persons.resourcePoolPosition));
-  const allocs = weeks && !weeks.length
-    ? []
-    : await db
-      .select({ personId: allocations.personId, weekStart: allocations.weekStart, loadPct: allocations.loadPct })
-      .from(allocations)
-      .where(and(isNull(allocations.projectId), weeks ? inArray(allocations.weekStart, [...weeks]) : undefined))
-      .orderBy(asc(allocations.weekStart));
-  const weekStarts = weeks ? [...weeks] : [...new Set(allocs.map((a) => a.weekStart))].sort();
+  const weekStarts = weeks ? [...weeks] : await currentLoadWeeks();
+  const [rows, load] = await Promise.all([
+    db
+      .select({ p: persons, dept: departments.name })
+      .from(persons)
+      .leftJoin(departments, eq(departments.id, persons.departmentId))
+      .where(isNotNull(persons.resourcePoolPosition))
+      .orderBy(asc(persons.resourcePoolPosition)),
+    getPlanningLoad(weekStarts),
+  ]);
   const toPerson = (p: typeof persons.$inferSelect, dept: string | null): PoolPerson => {
-    const own = new Map(allocs.filter((a) => a.personId === p.id).map((a) => [a.weekStart, a.loadPct]));
-    const loads = weekStarts.map((w) => own.get(w) ?? 0);
+    const hours = load.people[p.id] ?? weekStarts.map(() => 0);
+    const loads = hours.map((h) => loadPctOfHours(h));
     return {
-      name: p.fullName ?? p.shortName, shortName: p.shortName, initials: p.initials, jobTitle: p.jobTitle, department: dept, loads,
+      name: p.fullName ?? p.shortName, shortName: p.shortName, initials: p.initials, jobTitle: p.jobTitle, department: dept, loads, hours,
       avg: loads.length ? loads.reduce((a, b) => a + b, 0) / loads.length : 0, max: loads.length ? Math.max(...loads) : 0,
     };
   };
@@ -142,7 +131,8 @@ async function poolRows(personIds?: string[], weeks?: readonly string[]) {
 
 /**
  * The shared pool: every person with a pool position, with their weekly loads (Resources heatmap). `weeks` = the load window's
- * Mondays (R-085, `getLoadWindow`); omitted = every week with an allocation row (see `poolRows`).
+ * Mondays (R-085, `getLoadWindow`); omitted = the current 8-week window (R-084: Home, alerts, Approvals, My work, Site
+ * conflicts, search read the current window — they read the seeded allocation weeks before).
  */
 export async function getResourcePool(weeks?: readonly string[]): Promise<ResourcePool> {
   const { weekStarts, people } = await poolRows(undefined, weeks);
@@ -151,7 +141,7 @@ export async function getResourcePool(weeks?: readonly string[]): Promise<Resour
 
 /**
  * Team of a project (projectData().team order) with their loads over `weeks` (as `getResourcePool`) — Project resources,
- * what-if. Members outside the pool get zero loads. Empty for projects without a team.
+ * what-if. Members outside the pool get their schedule load too (zero when nobody assigns them). Empty for projects without a team.
  */
 export async function getProjectTeam(projectCode: string, weeks?: readonly string[]): Promise<PoolPerson[]> {
   const db = await getDb();
@@ -172,30 +162,100 @@ export interface DepartmentRow {
   head: { name: string; shortName: string; initials: string } | null;
   /** EN source string ("Head of engineering"). */
   headTitle: string | null;
-  /** Capacity vs committed demand over the window (ROLES), hours; null when not planned. */
+  /**
+   * Capacity vs demand over the weeks asked, hours; null when the department has no planned capacity. R-084: capacity = the
+   * stored department capacity (8 weeks) pro rata of the weeks; demand = the planning load — the hours the schedules assign the
+   * department's people (every project) + the work no named person carries counted against the department as a trade.
+   */
   capacityH: number | null;
   demandH: number | null;
+  /** Of the demand: hours not assigned to a person (unnamed assignments, owner-only activities) — null without capacity. */
+  unnamedH: number | null;
   /** ROLES order of the capacity bars (DEPTS order is the list order). */
   capacityPosition: number | null;
 }
 
-/** Departments in DEPTS order with head and 8-week capacity / demand (Resources bars, Approvals). */
-export async function listDepartments(): Promise<DepartmentRow[]> {
+/**
+ * Departments in DEPTS order with head and capacity / demand over `weeks` (default: the current 8-week window) — Resources bars,
+ * Home (department head), Approvals, what-if. R-084 (owner answers 17 Oct 2026, third round): the demand is computed from the
+ * schedules (`getPlanningLoad`); the stored 8-week demand (`department_capacities.demand_h`, the prototype's ROLES) is no longer read.
+ */
+export async function listDepartments(weeks?: readonly string[]): Promise<DepartmentRow[]> {
   const db = await getDb();
   const head = alias(persons, 'head');
-  const rows = await db
-    .select({
-      name: departments.name, headTitle: departments.headTitle, full: head.fullName, short: head.shortName, initials: head.initials,
-      cap: departmentCapacities.capacityH, dem: departmentCapacities.demandH, pos: departmentCapacities.position,
-    })
-    .from(departments)
-    .leftJoin(head, eq(head.id, departments.headPersonId))
-    .leftJoin(departmentCapacities, eq(departmentCapacities.departmentId, departments.id))
-    .orderBy(asc(departments.sortOrder));
-  return rows.map((r) => ({
-    name: r.name, headTitle: r.headTitle, head: r.short ? { name: r.full ?? r.short, shortName: r.short, initials: r.initials! } : null,
-    capacityH: r.cap, demandH: r.dem, capacityPosition: r.pos,
-  }));
+  const weekStarts = weeks ? [...weeks] : await currentLoadWeeks();
+  const [rows, members, load] = await Promise.all([
+    db
+      .select({
+        name: departments.name, headTitle: departments.headTitle, full: head.fullName, short: head.shortName, initials: head.initials,
+        cap: departmentCapacities.capacityH, capWeeks: departmentCapacities.weeks, pos: departmentCapacities.position,
+      })
+      .from(departments)
+      .leftJoin(head, eq(head.id, departments.headPersonId))
+      .leftJoin(departmentCapacities, eq(departmentCapacities.departmentId, departments.id))
+      .orderBy(asc(departments.sortOrder)),
+    db.select({ id: persons.id, dept: departments.name }).from(persons).innerJoin(departments, eq(departments.id, persons.departmentId)),
+    getPlanningLoad(weekStarts),
+  ]);
+  const deptOf = new Map(members.map((m) => [m.id, m.dept]));
+  const named = new Map<string, number>();
+  for (const [id, hours] of Object.entries(load.people)) {
+    const d = deptOf.get(id);
+    if (d) named.set(d, (named.get(d) ?? 0) + sumHours(hours));
+  }
+  return rows.map((r) => {
+    const trade = load.trades.find((t) => t.kind === 'department' && t.trade === r.name);
+    const unnamed = trade ? sumHours(trade.hours) : 0;
+    const planned = r.cap != null;
+    return {
+      name: r.name, headTitle: r.headTitle, head: r.short ? { name: r.full ?? r.short, shortName: r.short, initials: r.initials! } : null,
+      capacityH: planned ? Math.round((r.cap! * weekStarts.length) / (r.capWeeks || LOAD_WINDOW_WEEKS)) : null,
+      demandH: planned ? Math.round((named.get(r.name) ?? 0) + unnamed) : null,
+      unnamedH: planned ? Math.round(unnamed) : null,
+      capacityPosition: r.pos,
+    };
+  });
+}
+
+/** A bar of "Capacity vs demand" (Resources): a department, or a trade outside the departments. */
+export interface CapacityDemandRow {
+  /** Department (EN source), the resource an unnamed assignment names ("Steel erection crew", typed text) or "Other". */
+  name: string;
+  kind: TradeKind;
+  capacityH: number;
+  demandH: number;
+  /** Of the demand: hours not assigned to a person. */
+  unnamedH: number;
+}
+
+/**
+ * "Capacity vs demand" of the portfolio over `weeks` (R-084): the departments with a planned capacity (ROLES order), then the
+ * trades of work no named person carries that are not a planned department (a crew without a department, "Other"), with no
+ * capacity — their demand is unmet until the owner plans one (docs/delivery-9/notes-planning-load.md, open questions).
+ */
+export async function getCapacityDemand(weeks: readonly string[]): Promise<CapacityDemandRow[]> {
+  const [depts, load] = await Promise.all([listDepartments(weeks), getPlanningLoad(weeks)]);
+  const planned = depts
+    .filter((d) => d.capacityH != null && d.demandH != null)
+    .sort((a, b) => (a.capacityPosition ?? 0) - (b.capacityPosition ?? 0))
+    .map((d): CapacityDemandRow => ({ name: d.name, kind: 'department', capacityH: d.capacityH!, demandH: d.demandH!, unnamedH: d.unnamedH ?? 0 }));
+  const known = new Set(planned.map((d) => d.name));
+  const others = load.trades
+    .filter((t) => !(t.kind === 'department' && known.has(t.trade)))
+    .map((t): CapacityDemandRow => ({ name: t.trade, kind: t.kind === 'department' ? 'other' : t.kind, capacityH: 0, demandH: Math.round(sumHours(t.hours)), unnamedH: Math.round(sumHours(t.hours)) }))
+    .filter((t) => t.demandH > 0);
+  return [...planned, ...others];
+}
+
+/**
+ * Work no named person carries in one project, by trade, over `weeks` (Project resources bars, R-084): Σ hours of the project's
+ * unnamed assignments and owner-only activities per trade.
+ */
+export async function getProjectTradeDemand(projectCode: string, weeks: readonly string[]): Promise<{ trade: string; kind: TradeKind; hours: number }[]> {
+  const load = await getPlanningLoad(weeks);
+  return load.trades
+    .map((t) => ({ trade: t.trade, kind: t.kind, hours: Math.round(sumHours(t.byProject[projectCode] ?? [])) }))
+    .filter((t) => t.hours > 0);
 }
 
 export interface LaborCost {
@@ -375,7 +435,7 @@ async function loadWhatIfState(projectCode: string, horizon?: string | null): Pr
       .where(eq(activities.projectId, pid))
       .orderBy(asc(activities.position), asc(activityAssignments.position)),
     getProjectTeam(projectCode, weeks),
-    listDepartments(),
+    listDepartments(weeks),
     getRateGrid(),
     db.select({ full: persons.fullName, short: persons.shortName, rateRoleId: persons.rateRoleId }).from(persons).where(isNotNull(persons.rateRoleId)),
   ]);
@@ -395,7 +455,10 @@ async function loadWhatIfState(projectCode: string, horizon?: string | null): Pr
     })),
     people: team.map((p) => ({ name: p.name, jobTitle: p.jobTitle, department: p.department, loads: p.loads, rateEur: at(roleOfPerson.get(p.name) ?? null) })),
     weeks,
+    // R-084: the team's loads and the departments' demand come from the schedules over the horizon (getPlanningLoad); an
+    // owner-only activity is demand on the owner's trade, not on the owner (owner answer 17 Oct 2026, third round, B).
     departments: depts.filter((d) => d.capacityH != null && d.demandH != null).map((d) => ({ name: d.name, capacityH: d.capacityH!, demandH: d.demandH! })),
+    ownerLoad: 'trade',
     rates: {
       internal,
       external: gridRates.filter((r) => r.isExternal).map((r) => ({ role: r.role, rateEur: r.rateEur })),

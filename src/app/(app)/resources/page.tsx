@@ -1,6 +1,6 @@
 // Resources — the shared engineering & site pool (docs/spec/06 §1, template 573–637, logic 3866–3886).
 // 5 KPI tiles, allocation heatmap of every pool member over the next 8 weeks, capacity vs demand by department
-// (ROLES), suggested rebalancing. R-085 (R-7 a): the heatmap shows 8 weeks from the Monday of the business date's week,
+// (ROLES), suggested rebalancing. R-084 (owner answers 17 Oct 2026, third round): loads and demand from the schedules' assignments. R-085 (R-7 a): the heatmap shows 8 weeks from the Monday of the business date's week,
 // `?week=YYYY-MM-DD` slides the window (validated server-side; "Current week" drops it). Owner answers 17 Oct 2026:
 // `?view=week` shows the one week in detail (hours, above capacity, split by project), the 8-week view is the default. Primary action "Request resource" (New resource request dialog).
 // "Labor cost to date" (R-086, R-2 a): the labour categories (cost type Labor) of the projects in execution (A-3) of the zone
@@ -13,7 +13,7 @@ import { resourcesView } from '@/features/resources/model';
 import { ResourcesView } from '@/features/resources/resources-view';
 import { readOnlyIn, suggestionInputs } from '@/features/resources/suggestions';
 import { listResourceRequests } from '@/server/dal/requests';
-import { getLoadWindow, getPortfolioLaborCost, getWeekProjectSplit, getRebalancingSuggestions, getResourcePool, listDepartments } from '@/server/dal/resources';
+import { getCapacityDemand, getLoadWindow, getPortfolioLaborCost, getWeekProjectSplit, getRebalancingSuggestions, getResourcePool } from '@/server/dal/resources';
 import { LoadWindowNav } from '@/features/resources/window-nav';
 import { screenHref } from '@/config/screens';
 import { zoneLabel } from '@/server/dal/shell';
@@ -29,7 +29,7 @@ export default async function ResourcesPage({ searchParams }: { searchParams: Pr
     getProjectScope(),
     getResourcePool(win.weeks),
     win.view === 'week' ? getWeekProjectSplit(win.start) : Promise.resolve(undefined),
-    listDepartments(),
+    getCapacityDemand(win.weeks),
     listResourceRequests({ status: 'pending' }),
     getZone(),
     getRebalancingSuggestions(),
@@ -45,11 +45,9 @@ export default async function ResourcesPage({ searchParams }: { searchParams: Pr
       windowIsCurrent: win.isCurrent,
       view: win.view,
       weekSplit,
-      people: pool.people.map((p) => ({ name: p.name, initials: p.initials, jobTitle: p.jobTitle, department: p.department, loads: p.loads })),
-      departments: departments
-        .filter((d) => d.capacityH != null && d.demandH != null)
-        .sort((a, b) => (a.capacityPosition ?? 0) - (b.capacityPosition ?? 0))
-        .map((d) => ({ name: d.name, capacityH: d.capacityH!, demandH: d.demandH! })),
+      people: pool.people.map((p) => ({ name: p.name, initials: p.initials, jobTitle: p.jobTitle, department: p.department, loads: p.loads, hours: p.hours })),
+      // R-084: capacity vs demand over the window shown — demand from the schedules (named people + work counted by trade).
+      departments,
       labor: labor.projects.length ? { budget: labor.budget, actual: labor.actual } : null,
       zoneLabel: zoneText,
       openRequests: pending.length,

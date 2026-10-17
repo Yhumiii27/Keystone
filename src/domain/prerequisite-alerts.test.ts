@@ -1,8 +1,10 @@
 // R-121 (D-4 'a'): which client prerequisites the daily job alerts (late at J-15 — the Site screen's rule —, once per need date,
 // open stages only), when "Raise as a risk" is offered, and the "New risk" values proposed.
 import { describe, expect, it } from 'vitest';
+import { fieldsText } from '@/i18n/data-text';
 import { makeT } from '@/i18n/translate';
 import {
+  PREREQUISITE_ALERT_RISK_OPEN, PREREQ_RISK_NOT_PENDING, PREREQ_RISK_RAISED, prerequisiteAlertSub, prerequisiteRiskRefusal,
   PREREQUISITE_RISK_CATEGORY, canRaisePrerequisiteRisk, prerequisiteNeedsAlert, prerequisiteRiskDraft, prerequisiteRiskTrigger, prerequisitesToAlert,
 } from './prerequisite-alerts';
 import { isPrerequisiteLate } from './site';
@@ -48,10 +50,18 @@ describe('which prerequisites are alerted', () => {
 
 describe('"Raise as a risk"', () => {
   it('offered while pending (late or not — owner, 17 Oct 2026, second round) and no risk raised yet', () => {
-    const p = { status: 'pending' as const, riskNumber: null };
-    expect(canRaisePrerequisiteRisk(p)).toBe(true);
-    expect(canRaisePrerequisiteRisk({ ...p, riskNumber: 'R-21' })).toBe(false);
-    expect([canRaisePrerequisiteRisk({ ...p, status: 'confirmed' }), canRaisePrerequisiteRisk({ ...p, status: 'signed' })]).toEqual([false, false]);
+    for (const late of [false, true]) {
+      const p = { status: 'pending' as const, riskNumber: null, late };
+      expect(canRaisePrerequisiteRisk(p)).toBe(true);
+      expect([canRaisePrerequisiteRisk({ ...p, status: 'confirmed' }), canRaisePrerequisiteRisk({ ...p, status: 'signed' })]).toEqual([false, false]);
+      expect(prerequisiteRiskRefusal({ ...p, status: 'confirmed', riskNumber: 'R-21' })).toBe(PREREQ_RISK_NOT_PENDING);
+    }
+  });
+
+  it('with a risk already linked: the link only before J-15, a new risk once late (owner, 17 Oct 2026, third round)', () => {
+    const p = { status: 'pending' as const, riskNumber: 'R-21' };
+    expect([canRaisePrerequisiteRisk({ ...p, late: false }), prerequisiteRiskRefusal({ ...p, late: false })]).toEqual([false, PREREQ_RISK_RAISED]);
+    expect([canRaisePrerequisiteRisk({ ...p, late: true }), prerequisiteRiskRefusal({ ...p, late: true })]).toEqual([true, null]);
   });
 
   it('pre-fills title, category (Contractual / client, else the first offered), owner (the PM of record when listed) and response', () => {
@@ -80,5 +90,19 @@ describe('"Raise as a risk"', () => {
     // Before J-15: no "15 days before" in the cause.
     expect(prerequisiteRiskTrigger({ ...p, late: false }, '20 Nov 2026', makeT('en'))).toBe('Client prerequisite not confirmed yet · Point HT · A1410 · 20 Nov 2026');
     expect(prerequisiteRiskTrigger({ ...p, late: false }, '20 nov. 2026', makeT('fr'))).toBe('Prérequis client pas encore confirmé · Point HT · A1410 · 20 nov. 2026');
+  });
+});
+
+describe('the J-15 notice\'s sub-line', () => {
+  const p = { title: 'Autorisation de levage & arrêt exploitation quai 4', activityCode: 'A1320' };
+  it('the prerequisite · activity · need date; with a linked risk, its number and status (owner, 17 Oct 2026, third round)', () => {
+    expect(prerequisiteAlertSub({ ...p, risk: null }, '2 Nov')).toBe('Autorisation de levage & arrêt exploitation quai 4 · A1320 · 2 Nov');
+    expect(prerequisiteAlertSub({ ...p, risk: { number: 'R-21', status: 'open' } }, '2 Nov')).toBe(`${p.title} · A1320 · 2 Nov · R-21 · ${PREREQUISITE_ALERT_RISK_OPEN}`);
+    expect(prerequisiteAlertSub({ ...p, risk: { number: 'R-21', status: 'closed' } }, '2 Nov')).toBe(`${p.title} · A1320 · 2 Nov · R-21 · linked risk closed`);
+  });
+  it('shown in French by the bell field by field (fieldsText): the risk number as is, its status translated', () => {
+    const sub = prerequisiteAlertSub({ ...p, risk: { number: 'R-21', status: 'open' } }, '2 Nov');
+    expect(fieldsText(sub, makeT('fr'), 'fr')).toBe('Autorisation de levage & arrêt exploitation quai 4 · A1320 · 2 nov. · R-21 · risque lié ouvert');
+    expect(fieldsText(prerequisiteAlertSub({ ...p, risk: { number: 'R-21', status: 'closed' } }, '2 Nov'), makeT('fr'), 'fr')).toMatch(/ · R-21 · risque lié clôturé$/);
   });
 });

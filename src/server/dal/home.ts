@@ -37,7 +37,7 @@ import { getProject, listProjects, type ProjectRow } from './projects';
 import { listPurchaseOrders } from './purchasing';
 import { listDeliverables } from './quality';
 import { listApprovalDepartments, listResourceRequests } from './requests';
-import { getResourcePool, listDepartments } from './resources';
+import { currentLoadWeeks, getCapacityDemand, getResourcePool } from './resources';
 import { listTasks } from './tasks';
 import { resolveCurrentProject } from './current-project';
 
@@ -141,11 +141,12 @@ async function people(): Promise<{ loads: PersonLoad[]; deptOf: Record<string, s
   };
 }
 
-/** Department capacity vs demand over the window (the Resources bars), for the unmet demand (A-12). */
+/**
+ * Capacity vs demand over the current window (the Resources bars), for the unmet demand (A-12). R-084: demand from the
+ * schedules, the trades outside the departments included (as on Resources).
+ */
 async function capacityRows() {
-  return (await listDepartments())
-    .filter((d) => d.capacityH != null && d.demandH != null)
-    .map((d) => ({ name: d.name, capacityH: d.capacityH!, demandH: d.demandH! }));
+  return (await getCapacityDemand(await currentLoadWeeks())).map((d) => ({ name: d.name, capacityH: d.capacityH, demandH: d.demandH, kind: d.kind }));
 }
 
 /** Skill families (matrix columns), each pool member's levels, and their certifications text (CERTS). */

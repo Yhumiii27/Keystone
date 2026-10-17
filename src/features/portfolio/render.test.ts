@@ -31,14 +31,16 @@ describe('portfolio screens render', () => {
       'Projets actifs', '6 projets · exercice 2026', 'Dépensé vs acquis', 'Écart',
       '#026 · Extension du terminal Harbor Line', 'R. Aubert · échéance déc. 2026', 'Hors trajectoire', '5,37 M€', '−566 k€',
       'Budget dépensé', 'Travail acquis', 'Points d’attention', 'Extension du terminal Harbor Line — hors trajectoire',
-      'Prévision 1,40 M€ pour un budget de 1,35 M€ (+46 k€) · CPI 0,97.', '3 personnes au-delà de 110 %',
-      'Ouvrir le planning', 'Ouvrir le budget', 'Rééquilibrer', 'Ouvrir mes approbations',
+      'Prévision 1,40 M€ pour un budget de 1,35 M€ (+46 k€) · CPI 0,97.',
+      'Ouvrir le planning', 'Ouvrir le budget', 'Ouvrir mes approbations',
     ])
       expect(txt).toContain(s);
+    // R-084: no over-allocation alert — the loads come from the schedules, nobody above 110 % on the demo data set (it was
+    // "3 personnes au-delà de 110 %" · Rééquilibrer → /resources on the seeded allocation rows).
+    expect(txt).not.toContain('au-delà de 110 %');
     expect(html).toContain('href="/projects/HLT-026/schedule"');
     expect(html).toContain('href="/projects/RCF-019/budget"');
     expect(html).toContain('href="/projects/RCF-019/schedule"');
-    expect(html).toContain('href="/resources"');
     expect(html).toContain('href="/my/approvals"');
     expect(txt).not.toContain('Aucun projet dans cette zone');
   });

@@ -3,7 +3,7 @@ import 'server-only';
 // versions; the legacy job-title rates are retired), skills matrix and certifications, leave and the working calendar
 // (absences received from Cursus, R-031), Lucca hours reconciliation — and their writers (rates, multipliers, roles, skills,
 // Cursus absences, hours import / assignment).
-import { and, asc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, lte, sql } from 'drizzle-orm';
 import { cache } from 'react';
 import {
   RATE_CARD_OBJECT, canEditRates, isExternalRole, parseEffectiveDate, rateActivityText, rateAt, rateChangeText, versionAt, type RateGrid,
@@ -16,11 +16,11 @@ import {
 } from '@/server/db/codes';
 import { findPerson, nameOf, requireProject, writeAudit } from '@/server/db/helpers';
 import {
-  allocations, certifications, cursusEvents, hoursImports, hoursLines, leaveEntries, leaveTypes, personSkills, persons, publicHolidays,
+  certifications, cursusEvents, hoursImports, hoursLines, leaveEntries, leaveTypes, personSkills, persons, publicHolidays,
   rateMultiplierRates, rateMultipliers, rateRoleRates, rateRoles, skills, unassignedHours, wbsNodes,
 } from '@/server/db/schema';
 import { absenceWeeks } from '@/domain/absences';
-import { workingDaysOf } from '@/domain/load-window';
+import { loadWindow, workingDaysOf } from '@/domain/load-window';
 import { leaveWeekDays, type LeaveDayKind } from '@/domain/load-week';
 import { trace, whoIs, type Actor } from './ops-common';
 import { editsProjectScreen } from './team-guard';
@@ -315,15 +315,13 @@ export async function listPublicHolidays(countryCode = 'FR'): Promise<HolidayRow
 /**
  * Leave grid over the load window (Leave & calendar; read-only mirror of the absences received from Cursus, R-031).
  * `weeks` = the window's Mondays (R-085, `getLoadWindow`: any week — the absences and holidays of that week, none otherwise);
- * omitted = every week with an allocation row (the former rule). Several absences of a person in one week add up (at most
+ * omitted = the current 8-week window (R-084: the allocation rows are no longer read). Several absences of a person in one week add up (at most
  * the 5 days of the week); the cell shows the type with the most days (Leave on a tie).
  */
 export async function getLeaveCalendar(countryCode = 'FR', weeks?: readonly string[]): Promise<LeaveCalendar> {
   const db = await getDb();
   const [weekRows, types, people, entries, hols, [last]] = await Promise.all([
-    weeks
-      ? Promise.resolve(weeks.map((w) => ({ w })))
-      : db.selectDistinct({ w: allocations.weekStart }).from(allocations).where(isNull(allocations.projectId)).orderBy(asc(allocations.weekStart)),
+    (weeks ? Promise.resolve([...weeks]) : businessToday().then((today) => loadWindow(today, null, '8w').weeks)).then((ws) => ws.map((w) => ({ w }))),
     db.select().from(leaveTypes).orderBy(asc(leaveTypes.position)),
     db.select().from(persons).where(sql`${persons.resourcePoolPosition} is not null`).orderBy(asc(persons.resourcePoolPosition)),
     db.select().from(leaveEntries),

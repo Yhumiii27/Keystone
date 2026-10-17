@@ -76,19 +76,24 @@ describe('getLoadWindow (R-085)', () => {
 });
 
 describe('loads over any window (R-085)', () => {
-  it('the pool over the default window: zero for the week of 21 Sep (no allocation), seeded loads after', async () => {
+  it('the pool over the default window: the loads of the schedules (R-084)', async () => {
     const pool = await getResourcePool((await getLoadWindow()).weeks);
     expect(pool.weeks.map((w) => w.label)).toEqual(['Sep 21', 'Sep 28', 'Oct 5', 'Oct 12', 'Oct 19', 'Oct 26', 'Nov 2', 'Nov 9']);
     const julien = pool.people.find((p) => p.name === 'Julien Wagner')!;
-    expect(julien.loads).toEqual([0, 90, 100, 130, 125, 110, 100, 80]);
-    expect([julien.avg, julien.max]).toEqual([91.875, 130]);
+    // R-084 (owner answer 17 Oct 2026, third round): the hours the schedules assign — Julien Wagner on HLT-026 A1250 (40 h/wk
+    // until Fri 9 Oct) — no longer the seeded allocation rows ([0, 90, 100, 130, 125, 110, 100, 80], avg 91.875, max 130).
+    expect(julien.loads).toEqual([100, 100, 100, 0, 0, 0, 0, 0]);
+    expect(julien.hours).toEqual([40, 40, 40, 0, 0, 0, 0, 0]);
+    expect([julien.avg, julien.max]).toEqual([37.5, 100]);
+    // Nobody else is named on a schedule in the demo data set.
+    expect(pool.people.filter((p) => p.max > 0).map((p) => p.name)).toEqual(['Julien Wagner']);
   });
 
-  it('the prototype window reproduces the seeded loads; without weeks, every allocation week (former rule)', async () => {
-    const proto = await getResourcePool(PROTO_WEEKS);
+  it('without weeks, the current window (R-084: the readers outside the load plans read the seeded allocation weeks before)', async () => {
     const all = await getResourcePool();
-    expect(proto).toEqual(all);
-    expect(all.weeks.map((w) => w.start)).toEqual(PROTO_WEEKS);
+    expect(all).toEqual(await getResourcePool((await getLoadWindow()).weeks));
+    expect(all.weeks.map((w) => w.start)).toEqual(['2026-09-21', ...PROTO_WEEKS.slice(0, 7)]);
+    expect((await getResourcePool(PROTO_WEEKS)).people.find((p) => p.name === 'Julien Wagner')!.loads).toEqual([100, 100, 0, 0, 0, 0, 0, 0]);
   });
 
   it('a window without allocations: the pool with zero loads; the project team follows the window', async () => {
@@ -97,7 +102,8 @@ describe('loads over any window (R-085)', () => {
     expect(pool.people).toHaveLength(8);
     expect(pool.people.every((p) => p.loads.length === 8 && p.loads.every((l) => l === 0) && p.avg === 0 && p.max === 0)).toBe(true);
     expect((await getProjectTeam('HLT-026', later)).every((p) => p.loads.every((l) => l === 0))).toBe(true);
-    expect((await getProjectTeam('HLT-026', PROTO_WEEKS)).find((p) => p.name === 'Julien Wagner')!.loads).toEqual([90, 100, 130, 125, 110, 100, 80, 60]);
+    // R-084: the schedule's hours (the seeded rows gave [90, 100, 130, 125, 110, 100, 80, 60]).
+    expect((await getProjectTeam('HLT-026', PROTO_WEEKS)).find((p) => p.name === 'Julien Wagner')!.loads).toEqual([100, 100, 0, 0, 0, 0, 0, 0]);
     expect(await getResourcePool([])).toEqual({ weeks: [], people: expect.any(Array) });
   });
 });
@@ -105,8 +111,9 @@ describe('loads over any window (R-085)', () => {
 describe('Leave & working calendar over the window (R-085)', () => {
   it('the prototype window keeps the seeded grid; the default window shifts it by one week', async () => {
     const proto = await getLeaveCalendar('FR', PROTO_WEEKS);
-    expect(proto).toEqual(await getLeaveCalendar());
     const def = await getLeaveCalendar('FR', (await getLoadWindow()).weeks);
+    // R-084: without weeks, the current window (it was the seeded allocation weeks, i.e. the prototype window).
+    expect(await getLeaveCalendar()).toEqual(def);
     expect(def.weeks.map((w) => w.start)).toEqual(['2026-09-21', ...PROTO_WEEKS.slice(0, 7)]);
     // Same absences one column to the right; the 16 Nov column leaves the window.
     for (const [i, p] of def.people.entries()) {
@@ -202,7 +209,8 @@ describe('week view and 8-week pages (owner answers 17 Oct 2026)', () => {
     const v = body.props.view;
     expect(v.weeks).toEqual(['Oct 12']);
     const julien = v.weekRows!.find((r) => r.name === 'Julien Wagner')!;
-    expect(julien).toMatchObject({ cell: { v: 130 }, hoursText: '52 h / 40 h', overText: '+12 h', overAllocated: true, projectsText: '' });
+    // R-084: the load is the schedules' hours — nobody is assigned that week (the seeded row gave 130 % · 52 h · +12 h).
+    expect(julien).toMatchObject({ cell: { v: 0 }, hoursText: '0 h / 40 h', overText: '', overAllocated: false, projectsText: '' });
     expect(v.weekHasSplit).toBe(false);
     const out = renderToStaticMarkup(createElement(Provider, { lang: 'en' }, body));
     for (const s of ['Allocation — week', 'Above capacity', 'By project', 'The projects’ schedules assign no one in this table this week', 'Week 42 · Oct 12, 2026', 'aria-current="page" href="/resources?view=week&amp;week=2026-10-12"'])
@@ -232,8 +240,8 @@ describe('week view and 8-week pages (owner answers 17 Oct 2026)', () => {
 
   it('the split by project is drawn from the schedules\' activity assignments (owner answer 17 Oct 2026, second round)', async () => {
     // Demo data: one named assignment — Julien Wagner on HLT-026 A1250 (17 Aug – 9 Oct 2026, "40 h/wk" = 1 × 8 h/d,
-    // Standard 5d · 8h): 40 h in each week from 17 Aug to 5 Oct, none from 12 Oct. His weekly loads: 21 Sep 0 % (no seeded
-    // row), 28 Sep 90 % (36 h), 5 Oct 100 % (40 h), 12 Oct 130 % (52 h).
+    // Standard 5d · 8h): 40 h in each week from 17 Aug to 5 Oct, none from 12 Oct. R-084 (third round): his load IS those
+    // hours, so the split covers it exactly (the seeded rows gave 21 Sep 0 %, 28 Sep 90 %, 12 Oct 130 % — "beyond the load").
     expect(await getWeekProjectSplit('2026-08-10')).toEqual({});
     for (const w of ['2026-08-17', '2026-09-21', '2026-09-28', '2026-10-05']) expect(await getWeekProjectSplit(w)).toEqual({ 'Julien Wagner': [{ code: 'HLT-026', hours: 40 }] });
     expect(await getWeekProjectSplit('2026-10-12')).toEqual({});
@@ -242,38 +250,43 @@ describe('week view and 8-week pages (owner answers 17 Oct 2026)', () => {
       return { julien: v.weekRows!.find((r) => r.name === 'Julien Wagner')!, others: v.weekRows!.filter((r) => r.name !== 'Julien Wagner'), has: v.weekHasSplit };
     };
     const current = await row({});
-    expect(current.julien).toMatchObject({ hoursText: '0 h / 40 h', projectsText: 'HLT-026 40 h · 40 h assigned beyond the load' });
+    expect(current.julien).toMatchObject({ hoursText: '40 h / 40 h', projectsText: 'HLT-026 40 h' });
     expect(current.others.every((r) => r.projectsText === '')).toBe(true);
     expect(current.has).toBe(true);
-    expect((await row({ week: '2026-09-28' })).julien.projectsText).toBe('HLT-026 40 h · 4 h assigned beyond the load');
+    expect((await row({ week: '2026-09-28' })).julien.projectsText).toBe('HLT-026 40 h');
     expect((await row({ week: '2026-10-05' })).julien).toMatchObject({ hoursText: '40 h / 40 h', projectsText: 'HLT-026 40 h' });
     expect((await row({ week: '2026-10-12' })).has).toBe(false);
-    // Assignments on two projects, and a load the assignments do not cover: "not assigned".
+    // An assignment on another project (an activity still to do).
     const db = await getDb();
     const [julien] = await db.select({ id: persons.id }).from(persons).where(eq(persons.fullName, 'Julien Wagner'));
     const [ndc] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, 'NDC-031'));
     const [{ id: _source, ...copy }] = await db.select().from(activities).where(eq(activities.projectId, ndc.id)).limit(1);
     void _source;
-    await db.insert(activities).values({ ...copy, code: 'TST-SPLIT', position: 9999, startDate: '2026-10-14', finishDate: '2026-10-23', calendarCode: null });
+    await db.insert(activities).values({ ...copy, code: 'TST-SPLIT', position: 9999, startDate: '2026-10-14', finishDate: '2026-10-23', calendarCode: null, percentComplete: 0, durationDays: 8 });
     const [added] = await db.select({ id: activities.id }).from(activities).where(eq(activities.code, 'TST-SPLIT'));
     await db.insert(activityAssignments).values({ activityId: added.id, position: 0, resource: 'Julien Wagner', personId: julien.id, detail: '', units: '1 × 6 h/d', progressText: '', resourceCount: 1, hoursPerDay: 6 });
-    // Week of 12 Oct: Wed–Fri on NDC-031 = 18 h of a 52 h load.
+    // Week of 12 Oct: Wed–Fri on NDC-031 = 18 h — R-084: his load that week (45 %), all of it split (no "not assigned" any more:
+    // the load and the split come from the same assignments; the seeded 52 h gave "NDC-031 18 h · 34 h not assigned").
     expect(await getWeekProjectSplit('2026-10-12')).toEqual({ 'Julien Wagner': [{ code: 'NDC-031', hours: 18 }] });
     const oct12 = await row({ week: '2026-10-12' });
-    expect(oct12.julien.projectsText).toBe('NDC-031 18 h · 34 h not assigned');
+    expect(oct12.julien).toMatchObject({ cell: { v: 45 }, hoursText: '18 h / 40 h', projectsText: 'NDC-031 18 h' });
     expect(oct12.has).toBe(true);
     const out = renderToStaticMarkup(createElement(Provider, { lang: 'en' }, await resourcesPage({ view: 'week', week: '2026-10-12' })));
-    expect(out).toContain('NDC-031 18 h · 34 h not assigned');
+    expect(out).toContain('NDC-031 18 h');
     expect(out).not.toContain('The projects’ schedules assign no one');
     // Project resources: the person's whole week (every project), not only the project's own hours.
     const team = (await projectPage('HLT-026', { view: 'week', week: '2026-10-12' })).props.view;
-    expect(team.weekRows!.find((r) => r.name === 'Julien Wagner')!.projectsText).toBe('NDC-031 18 h · 34 h not assigned');
+    expect(team.weekRows!.find((r) => r.name === 'Julien Wagner')!.projectsText).toBe('NDC-031 18 h');
     // The week export carries the same text; French on screen.
     const lines = (await csv('resources', 'view=week&week=2026-10-12')).split('\r\n');
     expect(lines[0]).toContain('By project');
-    expect(lines.find((l) => l.includes('Julien Wagner'))).toContain('NDC-031 18 h · 34 h not assigned');
+    expect(lines.find((l) => l.includes('Julien Wagner'))).toContain('NDC-031 18 h');
+    // A complete activity puts no load (R-084: only work still to do counts).
+    await db.update(activities).set({ percentComplete: 100 }).where(eq(activities.id, added.id));
+    expect(await getWeekProjectSplit('2026-10-12')).toEqual({});
+    await db.update(activities).set({ percentComplete: 0 }).where(eq(activities.id, added.id));
     as('director', 'fr');
-    expect((await row({ week: '2026-10-12' })).julien.projectsText).toBe('NDC-031 18 h · 34 h non affectées');
+    expect((await row({ week: '2026-10-12' })).julien.projectsText).toBe('NDC-031 18 h');
     await db.delete(activities).where(eq(activities.id, added.id));
   }, 60_000);
 });

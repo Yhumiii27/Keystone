@@ -36,6 +36,9 @@ export type JobName =
   | 'codex-index'
   // ── Delivery 9 · R-121 (D-4 'a'): client prerequisites late at J-15 → the PM of record notified, a risk proposed; daily.
   | 'site-prerequisite-alerts'
+  // ── Delivery 9 · R-084 (owner answer 17 Oct 2026, third round, B): activities that need work with no declared resource → the PM
+  // of record notified once per activity; daily, at the reminders hour.
+  | 'undeclared-resource-alerts'
   ;
 
 export interface JobSchedule {
@@ -77,6 +80,8 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   // restart, or two workers, alert nothing twice.
   // Owner's answer of 17 Oct 2026: reminders arrive in the morning — at the reminders hour (07:00 Paris by default).
   { name: 'site-prerequisite-alerts', everyMs: 24 * HOUR, leaseMs: 15 * MIN, firstDelayMs: 50_000, daily: 'reminders' },
+  // ── Delivery 9 · R-084: one notice per activity without any declared resource (no assignment, no owner); a reminder job.
+  { name: 'undeclared-resource-alerts', everyMs: 24 * HOUR, leaseMs: 15 * MIN, firstDelayMs: 55_000, daily: 'reminders' },
 ];
 
 export const JOB_NAMES: readonly JobName[] = JOB_SCHEDULES.map((j) => j.name);

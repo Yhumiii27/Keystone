@@ -359,13 +359,17 @@ describe('prioritisation & capacity (03 §6)', () => {
   });
 
   /**
-   * A-12 (chapter 4): capacity = pool members × 40 h × 8 weeks, committed = Σ pool loads × 40 h (allocations), demand per
+   * A-12 (chapter 4): capacity = pool members × 40 h × 8 weeks, committed = the planning load (R-084), demand per
    * €1M = committed ÷ active portfolio value (contract, else budget: €14.85M) — the prototype's capBase and coefficients
    * gave Engineering 960 h / 1 110 h / 140 h per €1M. Per department: [capacity, committed, candidate add].
    */
-  const POOL: [number, number][] = [[320, 318], [640, 532], [320, 314], [960, 716], [320, 252]];
+  // R-084 (owner answers 17 Oct 2026, third round): committed = the planning load over the 8 weeks from the business date's week
+  // (21 Sep – 15 Nov) — the hours the schedules assign the department's pool members + the work no named person carries counted
+  // against the department as a trade — no longer Σ seeded allocation % × 40 h ([318, 532, 314, 716, 252] h, and the adds
+  // [73, 122, 72, 164, 58] h for WSA-044). Capacity unchanged.
+  const POOL: [number, number][] = [[320, 170], [640, 214], [320, 300], [960, 574], [320, 106]];
   const ADD: Record<string, number[]> = {
-    'WSA-044': [73, 122, 72, 164, 58], 'EWA-051': [47, 79, 47, 106, 37], 'FTU-052': [10, 17, 10, 23, 8], 'RBR-048': [109, 183, 108, 246, 87], 'CER-047': [41, 68, 40, 92, 32],
+    'WSA-044': [39, 49, 69, 131, 24], 'EWA-051': [25, 32, 44, 85, 16], 'FTU-052': [5, 7, 10, 19, 3], 'RBR-048': [58, 73, 103, 197, 36], 'CER-047': [22, 27, 38, 73, 14],
   };
   it.each(['WSA-044', 'EWA-051', 'FTU-052', 'RBR-048', 'CER-047'])('capacity what-if of %s', async (code) => {
     const g = G.prioritisation.capacity[code];

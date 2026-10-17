@@ -1,0 +1,133 @@
+import 'server-only';
+// Planning load (R-084; owner answers 17 Oct 2026, third round — rules in src/domain/planning-load.ts): the ONE source of the
+// people's load and of the demand by trade, read from the project schedules (activities × activity_assignments × working
+// calendars). Every load reader goes through it: Resources (heatmap, week view, capacity vs demand), Project resources, the
+// what-if, the department head's Home, the portfolio over-allocation alert, Approvals, the new-request dialog, My work, Site
+// conflicts, the capacity what-if of Prioritisation, the exports. The `allocations` table is no longer read for load.
+// Also: the activities that need work and declare no resource at all (owner answer B: an alert).
+import { cache } from 'react';
+import { and, asc, eq, gte, inArray, isNotNull, lte } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { addCalendarDays, type WorkCalendar } from '@/domain/calendar';
+import { DEFAULT_PROJECT_CALENDAR, projectCalendarCode } from '@/domain/ch4-defaults';
+import { planningLoad, undeclaredActivities, type PlanActivity, type PlanAssignment, type PlanningLoad } from '@/domain/planning-load';
+import { WHATIF_RULES } from '@/domain/whatif';
+import { getDb } from '@/server/db/client';
+import { activities, activityAssignments, departments, persons, projects } from '@/server/db/schema';
+import { loadWorkCalendars } from './calendars';
+
+/** Name of a person as the pool names them (full name, else short name). */
+const poolName = (p: { full: string | null; short: string }) => p.full ?? p.short;
+
+export interface PlanningLoadData extends PlanningLoad {
+  /** Person key (id) → name as the pool shows it. */
+  names: Record<string, string>;
+}
+
+async function calendarsOf(codes: readonly string[]) {
+  return new Map(await Promise.all([...new Set(codes)].map(async (c) => [c, await loadWorkCalendars(c)] as const)));
+}
+
+const calendarFor = (own: Record<string, WorkCalendar>, activityCalendar: string | null, projectCalendar: string | null): WorkCalendar =>
+  (activityCalendar && own[activityCalendar]) || own[projectCalendarCode({ calendar: projectCalendar })] || own[DEFAULT_PROJECT_CALENDAR];
+
+/** Activities dated across [from, to] (every project) with their assignments, in the shape of the load rules. */
+async function planFacts(from: string, to: string): Promise<{ acts: PlanActivity[]; asg: PlanAssignment[]; names: Record<string, string> }> {
+  const db = await getDb();
+  const owner = alias(persons, 'owner');
+  const odept = alias(departments, 'odept');
+  const rows = await db
+    .select({
+      id: activities.id, code: activities.code, name: activities.name, start: activities.startDate, finish: activities.finishDate, dur: activities.durationDays,
+      pc: activities.percentComplete, cal: activities.calendarCode, project: projects.code, projectCal: projects.calendar, owner: activities.ownerPersonId, ownerDept: odept.name,
+    })
+    .from(activities)
+    .innerJoin(projects, eq(projects.id, activities.projectId))
+    .leftJoin(owner, eq(owner.id, activities.ownerPersonId))
+    .leftJoin(odept, eq(odept.id, owner.departmentId))
+    .where(and(isNotNull(activities.startDate), isNotNull(activities.finishDate), lte(activities.startDate, to), gte(activities.finishDate, from)));
+  if (!rows.length) return { acts: [], asg: [], names: {} };
+  const adept = alias(departments, 'adept');
+  const who = alias(persons, 'who');
+  const asg = await db
+    .select({
+      act: activityAssignments.activityId, resource: activityAssignments.resource, person: activityAssignments.personId, full: who.fullName, short: who.shortName,
+      dept: adept.name, units: activityAssignments.resourceCount, hpd: activityAssignments.hoursPerDay, planned: activityAssignments.plannedHours,
+    })
+    .from(activityAssignments)
+    .leftJoin(who, eq(who.id, activityAssignments.personId))
+    .leftJoin(adept, eq(adept.id, activityAssignments.departmentId))
+    .where(inArray(activityAssignments.activityId, rows.map((r) => r.id)))
+    .orderBy(asc(activityAssignments.position));
+  const cals = await calendarsOf(rows.map((r) => r.project));
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const names: Record<string, string> = {};
+  for (const a of asg) if (a.person && a.short) names[a.person] = poolName({ full: a.full, short: a.short });
+  return {
+    acts: rows.map((r) => ({
+      project: r.project, code: r.code, name: r.name, start: r.start, finish: r.finish, durationDays: r.dur, percentComplete: r.pc, owner: r.owner, ownerTrade: r.ownerDept,
+      calendar: calendarFor(cals.get(r.project)!, r.cal, r.projectCal),
+    })),
+    asg: asg.flatMap((a) => {
+      const r = byId.get(a.act);
+      return r ? [{ project: r.project, activity: r.code, resource: a.resource, person: a.person, department: a.dept, units: a.units, hoursPerDay: a.hpd, plannedHours: a.planned }] : [];
+    }),
+    names,
+  };
+}
+
+/** Memoised per request on the weeks asked (several readers of one page share it). */
+const loadOf = cache(async (key: string): Promise<PlanningLoadData> => {
+  const weeks = key ? key.split(',') : [];
+  if (!weeks.length) return { weeks: [], people: {}, personProjects: {}, trades: [], names: {} };
+  const { acts, asg, names } = await planFacts(weeks[0], addCalendarDays(weeks[weeks.length - 1], 6));
+  return { ...planningLoad(acts, asg, weeks, WHATIF_RULES.ownerHoursPerDay), names };
+});
+
+/**
+ * Hours per week over `weeks` (ISO Mondays): of every named person (by person id; `names` gives their pool name) and of every
+ * trade (unnamed assignments and owner-only activities), from every project's schedule.
+ */
+export async function getPlanningLoad(weeks: readonly string[]): Promise<PlanningLoadData> {
+  return loadOf(weeks.join(','));
+}
+
+export interface UndeclaredActivity {
+  projectCode: string;
+  /** "A1250". */
+  code: string;
+  /** EN source name, as typed. */
+  name: string;
+  start: string | null;
+  finish: string | null;
+  percentComplete: number;
+}
+
+/**
+ * Activities that need work (not a milestone, not complete) with no resource declared at all — no assignment and no owner
+ * (owner answer 17 Oct 2026, third round, B: an alert). Of one project, or of every project; in plan order.
+ */
+export async function listUndeclaredActivities(projectCode?: string): Promise<UndeclaredActivity[]> {
+  const db = await getDb();
+  const rows = await db
+    .select({
+      id: activities.id, project: projects.code, code: activities.code, name: activities.name, start: activities.startDate, finish: activities.finishDate,
+      durationDays: activities.durationDays, percentComplete: activities.percentComplete, owner: activities.ownerPersonId,
+    })
+    .from(activities)
+    .innerJoin(projects, eq(projects.id, activities.projectId))
+    .where(projectCode ? eq(projects.code, projectCode) : undefined)
+    .orderBy(asc(projects.sortOrder), asc(activities.position));
+  const open = rows.filter((r) => !r.owner && r.durationDays > 0 && r.percentComplete < 100);
+  if (!open.length) return [];
+  const declared = await db
+    .selectDistinct({ id: activityAssignments.activityId })
+    .from(activityAssignments)
+    .where(inArray(activityAssignments.activityId, open.map((r) => r.id)));
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const asg = declared.flatMap((d) => {
+    const r = byId.get(d.id);
+    return r ? [{ project: r.project, activity: r.code }] : [];
+  });
+  return undeclaredActivities(open, asg).map((r) => ({ projectCode: r.project, code: r.code, name: r.name, start: r.start, finish: r.finish, percentComplete: r.percentComplete }));
+}
