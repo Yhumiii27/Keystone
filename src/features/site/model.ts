@@ -240,7 +240,7 @@ function readyView(code: string, d: SiteData, t: T, lang: Lang, entry: boolean, 
         stamp: p.stamp,
         entry: entry ? lineEntry('prerequisite', p, { title: p.title, activity: p.activityCode, needed: t(siteDateText(p.neededBy)), evidence: p.evidence }) : null,
         risk: p.riskNumber ? { number: p.riskNumber, href: `${screenHref('risks', { code })}?risk=${encodeURIComponent(p.riskNumber)}` } : null,
-        raise: raise && canRaisePrerequisiteRisk(p, d.today) ? prerequisiteRiskDraft(p, { pmName: raise.pmName, owners: raise.owners, categories: categoryCodes }, t) : null,
+        raise: raise && canRaisePrerequisiteRisk(p) ? prerequisiteRiskDraft(p, { pmName: raise.pmName, owners: raise.owners, categories: categoryCodes }, t) : null,
         focus: focus === p.position,
       };
     }),

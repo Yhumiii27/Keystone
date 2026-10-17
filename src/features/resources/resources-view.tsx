@@ -1,7 +1,7 @@
 // Resources (portfolio pool) and Project resources body (docs/spec/06 §1.3–§1.4, template 573–637): project banner,
 // 5 KPI tiles, allocation heatmap (8 weeks from the current week, navigable — R-085) or, in the week view (owner answers
-// 17 Oct 2026), the week shown in detail (load, hours on the 40 h week, hours above capacity, split by project when the
-// allocations hold one), capacity vs demand bars and the suggested rebalancing card.
+// 17 Oct 2026), the week shown in detail (load, hours on the 40 h week, hours above capacity, split by project from the
+// schedules' activity assignments — owner answer 17 Oct 2026, second round), capacity vs demand bars and the suggested rebalancing card.
 // Server Component; "Apply" is a client island that drafts a resource request (chapter 4, R-3 / S-7). Strings arrive
 // translated in `view` (model.ts).
 import { Sparkle, UsersThree } from '@phosphor-icons/react/dist/ssr';
@@ -224,7 +224,7 @@ function WeekTable({ view, t, title }: { view: View; t: T; title: string }) {
           ))}
         </tbody>
       </Table>
-      {!view.weekHasSplit && <div className={s.footnote}>{t('The allocations hold one weekly total per person: no split by project this week.')}</div>}
+      {!view.weekHasSplit && <div className={s.footnote}>{t('The projects’ schedules assign no one in this table this week: no split by project.')}</div>}
     </>
   );
 }

@@ -8,7 +8,7 @@ import {
   capacityBar, laborShare, overAllocatedCount, peakWeeksText, personLoad, projectDepartmentDemand, shortfallText, teamUtilization, unmetDemand, type CapacityRow,
 } from '@/domain/resources';
 import type { WhatIfResult } from '@/domain/whatif';
-import { HOURS_PER_PERSON_WEEK, weekLoad } from '@/domain/load-week';
+import { HOURS_PER_PERSON_WEEK, weekLoad, weekSplitText, type WeekProjectHours } from '@/domain/load-week';
 import { FR_MONTHS } from '@/i18n/fr-rules';
 import { money } from '@/lib/format';
 import type { Lang, T } from '@/i18n/translate';
@@ -46,8 +46,11 @@ export interface ResourcesInput {
    * the 8-week heatmap.
    */
   view?: 'week' | '8w';
-  /** Week view: allocation rows per project of that week, by person name (`getWeekProjectSplit`; empty on the demo data). */
-  weekSplit?: Record<string, { code: string; pct: number }[]>;
+  /**
+   * Week view: hours the projects' schedules assign each person that week, by person name (`getWeekProjectSplit` — owner answer
+   * 17 Oct 2026, second round: the split comes from the project assignments).
+   */
+  weekSplit?: Record<string, WeekProjectHours[]>;
   /** Pool order (PEOPLE order); for a project, only its team members. */
   people: ResourcePerson[];
   /** Portfolio: department capacity vs demand over the window (ROLES order). Ignored for a project (derived from the team). */
@@ -136,7 +139,10 @@ export interface WeekRowView {
   overText: string;
   /** Above 110 % (the "Over-allocated" tile's rule). */
   overAllocated: boolean;
-  /** "HLT-026 60% · NDC-031 30%" ('' without a split; " · 10% not split" when the split does not cover the total). */
+  /**
+   * "HLT-026 40 h · 12 h not assigned" — hours assigned per project, then the load no assignment covers or the hours assigned
+   * beyond the load ('' when the schedules assign the person nothing that week; `weekSplitText`).
+   */
   projectsText: string;
 }
 
@@ -146,7 +152,7 @@ export interface ResourcesView {
   people: PersonRowView[];
   /** Week view: the rows of the week shown; null in the 8-week view. */
   weekRows: WeekRowView[] | null;
-  /** Week view: some person has allocation rows per project that week (else the "By project" column is empty). */
+  /** Week view: the schedules assign some person of the table that week (else the "By project" column is empty: footnote). */
   weekHasSplit: boolean;
   /** Sub-line of the "Capacity vs demand" card. */
   rolesSub: string;
@@ -211,16 +217,13 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
   ];
 
   const fr = lang === 'fr';
-  const pctText = (v: number) => (fr ? `${String(v).replace('.', ',')} %` : `${v}%`);
   const hText = (v: number) => `${fr ? String(v).replace('.', ',') : v} h`;
   const weekRows: WeekRowView[] | null = isWeek
     ? people.map((p) => {
         const w = weekLoad(p.loads[0] ?? 0, input.weekSplit?.[p.name] ?? []);
-        const split = w.projects.map((x) => `${x.code} ${pctText(x.pct)}`);
-        if (w.unsplitPct > 0) split.push(fr ? `${pctText(w.unsplitPct)} non ventilés` : `${pctText(w.unsplitPct)} not split`);
         return {
           name: p.name, role: p.jobTitle ? t(p.jobTitle) : '', initials: p.initials, href: hrefOf(p.name), cell: { v: w.pct, ...shade(w.pct) },
-          hoursText: `${hText(w.hours)} / ${hText(w.capacityH)}`, overText: w.overH > 0 ? `+${hText(w.overH)}` : '', overAllocated: w.overAllocated, projectsText: split.join(' · '),
+          hoursText: `${hText(w.hours)} / ${hText(w.capacityH)}`, overText: w.overH > 0 ? `+${hText(w.overH)}` : '', overAllocated: w.overAllocated, projectsText: weekSplitText(w, lang),
         };
       })
     : null;

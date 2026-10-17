@@ -1,41 +1,29 @@
-// R-013: the business clock of the server — automatic by data set, KEYSTONE_CLOCK, the test override, inside a transaction.
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { DEMO_TODAY_ISO, todayOf, REAL_CLOCK } from '@/domain/clock';
-import { setDb } from '@/server/db/client';
-import { openDatabase } from '@/server/db/open';
-import type { DB } from '@/server/db/types';
+// R-013: the business clock of the server — the real clock by default on every database (owner, 17 Oct 2026), KEYSTONE_CLOCK,
+// the test override. The test run itself pins KEYSTONE_CLOCK to the demo data set's date (vitest.config.ts).
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { DEMO_TODAY_ISO, REAL_CLOCK, todayOf } from '@/domain/clock';
 import { businessNow, businessToday, clockSetting, setClockForTests } from './clock';
-
-let demo: DB;
-let production: DB;
-beforeAll(async () => {
-  [demo, production] = await Promise.all([openDatabase(), openDatabase(undefined, undefined, { seed: 'production' })]);
-}, 120_000);
 
 afterEach(() => {
   vi.unstubAllEnvs();
   setClockForTests(null);
-  setDb(demo);
 });
 
 describe('business clock (server)', () => {
-  it('automatic: the demo database works at its data set date, Fri 25 Sep 2026', async () => {
-    setDb(demo);
+  it('the test run is pinned to the demo data set date, Fri 25 Sep 2026', async () => {
     expect(await businessToday()).toBe(DEMO_TODAY_ISO);
     expect((await businessNow()).toISOString().slice(0, 10)).toBe(DEMO_TODAY_ISO);
   });
 
-  it('automatic: a production database works at the real date', async () => {
-    setDb(production);
+  it('unset: the real clock, whatever the database holds', async () => {
+    vi.stubEnv('KEYSTONE_CLOCK', '');
     expect(await clockSetting()).toEqual(REAL_CLOCK);
     expect(await businessToday()).toBe(todayOf(REAL_CLOCK));
   });
 
-  it('KEYSTONE_CLOCK wins over the data set: real on the demo database, a pinned date on production', async () => {
-    setDb(demo);
+  it('KEYSTONE_CLOCK: "real" or a pinned date', async () => {
     vi.stubEnv('KEYSTONE_CLOCK', 'real');
     expect(await businessToday()).toBe(todayOf(REAL_CLOCK));
-    setDb(production);
     vi.stubEnv('KEYSTONE_CLOCK', '2027-03-01');
     expect(await businessToday()).toBe('2027-03-01');
   });
@@ -45,11 +33,4 @@ describe('business clock (server)', () => {
     setClockForTests({ kind: 'fixed', iso: '2028-02-29' });
     expect(await businessToday()).toBe('2028-02-29');
   });
-
-  it('resolves inside an open transaction when given the transaction (no PGlite deadlock)', async () => {
-    const fresh = await openDatabase(undefined, undefined, { seed: 'production' });
-    setDb(fresh);
-    const today = await fresh.transaction(async (tx) => businessToday(tx));
-    expect(today).toBe(todayOf(REAL_CLOCK));
-  }, 120_000);
 });

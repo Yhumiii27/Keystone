@@ -17,7 +17,7 @@ import { eq } from 'drizzle-orm';
 import { LeaveWeekView } from '@/features/hr/leave-view';
 import type { ResourcesView as View } from '@/features/resources/model';
 import { getDb } from '@/server/db/client';
-import { allocations, persons, projects } from '@/server/db/schema';
+import { activities, activityAssignments, persons, projects } from '@/server/db/schema';
 import { DEMO_TODAY_ISO } from '@/domain/clock';
 import { LeaveView } from '@/features/hr/leave-view';
 import { I18nProvider } from '@/i18n/client';
@@ -197,7 +197,7 @@ describe('week view and 8-week pages (owner answers 17 Oct 2026)', () => {
     expect((await leavePage({ week: '2026-11-16' })).props.data.weeks.map((w) => w.start)).toEqual(['2026-11-16', '2026-11-23', '2026-11-30', '2026-12-07', '2026-12-14', '2026-12-21', '2026-12-28', '2027-01-04']);
   });
 
-  it('Resources in the week view: load, hours on the 40 h week, hours above capacity; no split by project on the demo data', async () => {
+  it('Resources in the week view: load, hours on the 40 h week, hours above capacity; no schedule assignment that week', async () => {
     const body = await resourcesPage({ view: 'week', week: '2026-10-14' });
     const v = body.props.view;
     expect(v.weeks).toEqual(['Oct 12']);
@@ -205,7 +205,7 @@ describe('week view and 8-week pages (owner answers 17 Oct 2026)', () => {
     expect(julien).toMatchObject({ cell: { v: 130 }, hoursText: '52 h / 40 h', overText: '+12 h', overAllocated: true, projectsText: '' });
     expect(v.weekHasSplit).toBe(false);
     const out = renderToStaticMarkup(createElement(Provider, { lang: 'en' }, body));
-    for (const s of ['Allocation — week', 'Above capacity', 'By project', 'one weekly total per person', 'Week 42 · Oct 12, 2026', 'aria-current="page" href="/resources?view=week&amp;week=2026-10-12"'])
+    for (const s of ['Allocation — week', 'Above capacity', 'By project', 'The projects’ schedules assign no one in this table this week', 'Week 42 · Oct 12, 2026', 'aria-current="page" href="/resources?view=week&amp;week=2026-10-12"'])
       expect(out).toContain(s);
     // The 8-week view keeps its heatmap (no week rows).
     expect((await resourcesPage({ week: '2026-10-12' })).props.view.weekRows).toBeNull();
@@ -230,21 +230,50 @@ describe('week view and 8-week pages (owner answers 17 Oct 2026)', () => {
     expect(leave.find((l) => l.includes('Fabien Bertrand'))).toContain('Public holiday');
   }, 60_000);
 
-  it('a split by project shows when the allocations hold one (project rows of that week)', async () => {
+  it('the split by project is drawn from the schedules\' activity assignments (owner answer 17 Oct 2026, second round)', async () => {
+    // Demo data: one named assignment — Julien Wagner on HLT-026 A1250 (17 Aug – 9 Oct 2026, "40 h/wk" = 1 × 8 h/d,
+    // Standard 5d · 8h): 40 h in each week from 17 Aug to 5 Oct, none from 12 Oct. His weekly loads: 21 Sep 0 % (no seeded
+    // row), 28 Sep 90 % (36 h), 5 Oct 100 % (40 h), 12 Oct 130 % (52 h).
+    expect(await getWeekProjectSplit('2026-08-10')).toEqual({});
+    for (const w of ['2026-08-17', '2026-09-21', '2026-09-28', '2026-10-05']) expect(await getWeekProjectSplit(w)).toEqual({ 'Julien Wagner': [{ code: 'HLT-026', hours: 40 }] });
+    expect(await getWeekProjectSplit('2026-10-12')).toEqual({});
+    const row = async (sp: Record<string, string>) => {
+      const v = (await resourcesPage({ view: 'week', ...sp })).props.view;
+      return { julien: v.weekRows!.find((r) => r.name === 'Julien Wagner')!, others: v.weekRows!.filter((r) => r.name !== 'Julien Wagner'), has: v.weekHasSplit };
+    };
+    const current = await row({});
+    expect(current.julien).toMatchObject({ hoursText: '0 h / 40 h', projectsText: 'HLT-026 40 h · 40 h assigned beyond the load' });
+    expect(current.others.every((r) => r.projectsText === '')).toBe(true);
+    expect(current.has).toBe(true);
+    expect((await row({ week: '2026-09-28' })).julien.projectsText).toBe('HLT-026 40 h · 4 h assigned beyond the load');
+    expect((await row({ week: '2026-10-05' })).julien).toMatchObject({ hoursText: '40 h / 40 h', projectsText: 'HLT-026 40 h' });
+    expect((await row({ week: '2026-10-12' })).has).toBe(false);
+    // Assignments on two projects, and a load the assignments do not cover: "not assigned".
     const db = await getDb();
     const [julien] = await db.select({ id: persons.id }).from(persons).where(eq(persons.fullName, 'Julien Wagner'));
-    const pid = async (code: string) => (await db.select({ id: projects.id }).from(projects).where(eq(projects.code, code)))[0].id;
-    await db.insert(allocations).values([
-      { personId: julien.id, weekStart: '2027-03-01', loadPct: 100, projectId: null },
-      { personId: julien.id, weekStart: '2027-03-01', loadPct: 60, projectId: await pid('HLT-026') },
-      { personId: julien.id, weekStart: '2027-03-01', loadPct: 30, projectId: await pid('NDC-031') },
-    ]);
-    expect(await getWeekProjectSplit('2027-03-01')).toEqual({ 'Julien Wagner': [{ code: 'HLT-026', pct: 60 }, { code: 'NDC-031', pct: 30 }] });
-    const v = (await resourcesPage({ view: 'week', week: '2027-03-01' })).props.view;
-    expect(v.weekRows!.find((r) => r.name === 'Julien Wagner')).toMatchObject({ hoursText: '40 h / 40 h', overText: '', projectsText: 'HLT-026 60% · NDC-031 30% · 10% not split' });
-    expect(v.weekHasSplit).toBe(true);
+    const [ndc] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, 'NDC-031'));
+    const [{ id: _source, ...copy }] = await db.select().from(activities).where(eq(activities.projectId, ndc.id)).limit(1);
+    void _source;
+    await db.insert(activities).values({ ...copy, code: 'TST-SPLIT', position: 9999, startDate: '2026-10-14', finishDate: '2026-10-23', calendarCode: null });
+    const [added] = await db.select({ id: activities.id }).from(activities).where(eq(activities.code, 'TST-SPLIT'));
+    await db.insert(activityAssignments).values({ activityId: added.id, position: 0, resource: 'Julien Wagner', personId: julien.id, detail: '', units: '1 × 6 h/d', progressText: '', resourceCount: 1, hoursPerDay: 6 });
+    // Week of 12 Oct: Wed–Fri on NDC-031 = 18 h of a 52 h load.
+    expect(await getWeekProjectSplit('2026-10-12')).toEqual({ 'Julien Wagner': [{ code: 'NDC-031', hours: 18 }] });
+    const oct12 = await row({ week: '2026-10-12' });
+    expect(oct12.julien.projectsText).toBe('NDC-031 18 h · 34 h not assigned');
+    expect(oct12.has).toBe(true);
+    const out = renderToStaticMarkup(createElement(Provider, { lang: 'en' }, await resourcesPage({ view: 'week', week: '2026-10-12' })));
+    expect(out).toContain('NDC-031 18 h · 34 h not assigned');
+    expect(out).not.toContain('The projects’ schedules assign no one');
+    // Project resources: the person's whole week (every project), not only the project's own hours.
+    const team = (await projectPage('HLT-026', { view: 'week', week: '2026-10-12' })).props.view;
+    expect(team.weekRows!.find((r) => r.name === 'Julien Wagner')!.projectsText).toBe('NDC-031 18 h · 34 h not assigned');
+    // The week export carries the same text; French on screen.
+    const lines = (await csv('resources', 'view=week&week=2026-10-12')).split('\r\n');
+    expect(lines[0]).toContain('By project');
+    expect(lines.find((l) => l.includes('Julien Wagner'))).toContain('NDC-031 18 h · 34 h not assigned');
     as('director', 'fr');
-    const fr = (await resourcesPage({ view: 'week', week: '2027-03-01' })).props.view;
-    expect(fr.weekRows!.find((r) => r.name === 'Julien Wagner')!.projectsText).toBe('HLT-026 60 % · NDC-031 30 % · 10 % non ventilés');
-  }, 30_000);
+    expect((await row({ week: '2026-10-12' })).julien.projectsText).toBe('NDC-031 18 h · 34 h non affectées');
+    await db.delete(activities).where(eq(activities.id, added.id));
+  }, 60_000);
 });

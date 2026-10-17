@@ -67,9 +67,9 @@ of the 8 shown).
     one week).
   - *Resources / Project resources:* a table instead of the heatmap — load % (heat colours), hours on the 40 h week the
     capacity bars use (320 h ÷ 8), hours above capacity, over-allocation in the attention colour (> 110 %, the tile's rule)
-    and the **split by project** from allocation rows with a project (`allocations.project_id`, schema already there). The
-    demo data holds weekly totals only (the prototype's PEOPLE): the column shows "—" with a footnote, a test inserts project
-    rows to show "HLT-026 60% · NDC-031 30% · 10% not split". KPI tiles on that week; the Project resources bars count
+    and the **split by project** — since the owner's second answer (§6) the hours the projects' schedules assign the person
+    that week (activity assignments), e.g. "HLT-026 40 h · 4 h assigned beyond the load"; "—" for a person nobody assigns,
+    and the footnote only when the schedules assign no one in the table that week. KPI tiles on that week; the Project resources bars count
     40 h per person ("Week shown, by department", "Hours by role, week shown"); the portfolio bars stay the stored 8-week
     department totals (R-084, unchanged).
 - **8-week view** — the R-085 view, now with **Previous 8 weeks** / **Next 8 weeks** (a full page, clamped to the ±52-week
@@ -131,8 +131,64 @@ prototype-golden comparisons keep `?week=2026-09-28`.
 
 6. Week view on Leave: the seeded weeks counted 5 leave days in the Armistice week (8-week grid); the day view counts 4.
    When Cursus pushes absences, both agree (holidays are removed at reception). Keep as is?
-7. Split by project in the week view: Keystone shows allocation rows per project when they exist; nothing feeds them yet
-   (allocations are weekly totals). Should the split come from the schedule's assignments (planned hours per activity), from
-   resource requests, or from a future allocation entry?
+7. ~~Split by project in the week view: from the schedule's assignments, resource requests or a future allocation entry?~~
+   Answered 17 Oct 2026 (second round): from the project assignments (§6).
 8. Suggested rebalancing on Resources / Project resources stays on the current horizon (it is not the what-if screen) even
    when another window is shown. Follow the window shown?
+
+## 6. Owner answers 17 Oct 2026 — second round
+
+### Split by project: « la répartition projet est à tirer des affectations projets »
+
+The "By project" column of the week view (Resources, Project resources) and of its export now comes from the **activity
+assignments of every project's schedule** (`activity_assignments` with a person), not from allocation rows per project.
+
+- **Spreading rule** (`assignmentHoursInWeek`, `src/domain/load-week.ts`): an assignment works on every working day of its
+  activity's calendar (its own, else the project's, else Standard 5d · 8h — Settings public holidays and calendar exceptions
+  applied) between the activity's start and finish dates as the schedule stores them (actual start, forecast finish; both
+  inclusive). The week (Monday–Sunday) receives the working days that fall inside it. Hours per working day = units × hours
+  per day per unit ("40 h/wk" → 1 × 8 h) — the rate the what-if levelling loads a person with (`weeklyHours`); when the rate
+  is unknown, the planned hours spread evenly over the activity's working days. An undated activity, or an assignment counted
+  neither way (equipment days, material tonnes), adds nothing. Crews and other unnamed resources are not pool people: left out.
+- **Display — hours**, as the load column next to it ("52 h / 40 h"): projects largest first, then the load no assignment
+  covers — "12 h not assigned" / « 12 h non affectées » — or the assignments above the load — "4 h assigned beyond the load" /
+  « 4 h affectées au-delà de la charge » (`weekSplitText`, shared by the screen and the export). A person nobody assigns that
+  week shows "—" (no "52 h not assigned": nothing to split). Project resources shows each team member's **whole week**, every
+  project included (the load is the person's, not the project's).
+- **Footnote** only when the schedules assign no one in the table that week: "The projects' schedules assign no one in this
+  table this week: no split by project." (replaces the former "The allocations hold one weekly total per person…").
+- **Export** of the week view (Resources, Project resources): a "By project" column with the same text.
+- **Allocation rows per project dropped** as the split's source: `getWeekProjectSplit(weekStart)` (`resources.ts`) now reads
+  the assignments (dated across the week, all projects, calendars per project) and returns hours per project by person.
+  Nothing fed `allocations.project_id`, and two sources for one column would disagree; the column stays in the schema (no
+  migration) and the pool readers still ignore those rows (`project_id IS NULL`).
+
+### Values on the demo data set (25 Sep 2026)
+
+The demo holds one named assignment: Julien Wagner on HLT-026 A1250 (17 Aug – 9 Oct 2026,
+"40 h/wk", Standard 5d · 8h) — 40 h a week from 17 Aug to the week of 5 Oct, nothing from 12 Oct.
+
+| Week view | Julien Wagner — load | By project |
+|---|---|---|
+| Current week (21 Sep) | 0 % · 0 h / 40 h (no seeded allocation that week) | HLT-026 40 h · 40 h assigned beyond the load |
+| 28 Sep | 90 % · 36 h | HLT-026 40 h · 4 h assigned beyond the load |
+| 5 Oct | 100 % · 40 h | HLT-026 40 h |
+| 12 Oct | 130 % · 52 h | — (footnote: nobody assigned that week) |
+
+Everyone else shows "—"; the footnote no longer shows in the weeks of 17 Aug – 5 Oct.
+
+### Tests
+
+`src/domain/load-week.test.ts` (new: spreading rule — in/out of the activity dates, partial weeks, public holiday, 6-day site
+calendar, planned-hours fallback, undated / unmeasured assignments; sums per person and project; cell text EN/FR, not assigned
+and beyond the load); `src/domain/load-window.test.ts` (`weekLoad` with hours); `src/server/dal/load-window.test.ts` (the
+demo weeks above, a NDC-031 assignment inserted on 14–23 Oct → "NDC-031 18 h · 34 h not assigned" on Resources, Project
+resources HLT-026, the CSV export and in French; footnote shown / hidden).
+
+### Open questions (new)
+
+9. A person assigned more than their allocation (Julien Wagner, 21 and 28 Sep): the allocation rows and the schedules
+   disagree. Should the week load itself come from the assignments (R-084, single capacity source), or stay the allocation
+   with the gap shown as today?
+10. Activity owners without an assignment are not counted (the what-if counts them at 2 h/d, `WHATIF_RULES.ownerHoursPerDay`).
+    Count them in the split too?

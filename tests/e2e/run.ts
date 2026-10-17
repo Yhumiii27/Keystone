@@ -93,6 +93,8 @@ async function main(): Promise<number> {
     KEYSTONE_BACKUP_DIR: '',
     // R-029: the key Cursus would present to the events endpoint (production refuses the demo key; d8-connectors.spec.ts).
     CURSUS_EVENTS_KEY: process.env.CURSUS_EVENTS_KEY || 'e2e-cursus-events-key-0001',
+    // R-013: the scenarios are written for the demo data set's date (the real clock is the default since 17 Oct 2026).
+    KEYSTONE_CLOCK: '2026-09-25',
     NEXT_TELEMETRY_DISABLED: '1',
   };
   let server: ChildProcess | null = null;

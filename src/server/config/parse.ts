@@ -70,8 +70,8 @@ export interface KeystoneConfig {
   /** KEYSTONE_SEED was set explicitly (seeding an empty PostgreSQL database requires it). */
   seedExplicit: boolean;
   /**
-   * Business clock (R-013, KEYSTONE_CLOCK): null = automatic (the real clock on a production database, the demo data set's
-   * date — Fri 25 Sep 2026 — on a demo database); else the real clock or a pinned date.
+   * Business clock (R-013, KEYSTONE_CLOCK): null = the real clock (every database, since the owner's answer of 17 Oct 2026);
+   * else the real clock or a pinned date (demonstrations, tests).
    */
   clock: ClockSetting | null;
   /**
@@ -150,7 +150,7 @@ const VARS = {
     .optional(),
   DATABASE_POOL_MAX: z.coerce.number().int().min(1, 'must be at least 1').max(200, 'must be at most 200').optional(),
   KEYSTONE_SEED: z.enum(SEED_MODES, { message: 'must be "demo" or "production"' }).optional(),
-  // R-013: "real", or a pinned business date YYYY-MM-DD; unset = automatic (real clock on a production database).
+  // R-013: "real", or a pinned business date YYYY-MM-DD; unset = the real clock.
   KEYSTONE_CLOCK: z
     .string()
     .transform((v, ctx) => parseClockSetting(v) ?? (ctx.addIssue({ code: 'custom', message: 'must be "real" or a date YYYY-MM-DD' }), z.NEVER))

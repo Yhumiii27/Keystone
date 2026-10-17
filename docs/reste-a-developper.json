@@ -65,7 +65,11 @@
   },
   {
    "date": "2026-10-17",
-   "text": "PR #12 : Keystone déclare le schéma de sa base à Matrix (catalogue des bases EPC2i) au démarrage, en arrière-plan ; variables MATRIX_URL et MATRIX_TOKEN."
+   "text": "PR #11 fusionnée. Réponses du second tour : date réelle par défaut (bêta), répartition par projet depuis les affectations, lettre client retirée, risque ouvrable avant J-15."
+  },
+  {
+   "date": "2026-10-17",
+   "text": "PR #12 fusionnée : Keystone déclare le schéma de sa base à Matrix (catalogue des bases EPC2i) au démarrage, en arrière-plan ; variables MATRIX_URL et MATRIX_TOKEN."
   }
  ],
  "items": [
@@ -441,7 +445,7 @@
    "progress": {
     "state": "fait",
     "delivery": "Livraison 9",
-    "note": "Lot « horloge » (docs/delivery-9/notes-clock.md) : une seule date métier (src/domain/clock.ts, src/server/clock.ts) à la place des six dates figées ; réglage KEYSTONE_CLOCK ; date réelle sur une base de production, 25 sept. 2026 sur la base de démonstration ; années des dates saisies et affichées selon l’année en cours. La date de situation par projet reste à faire (R-060, S-4)."
+    "note": "Lot « horloge » (docs/delivery-9/notes-clock.md) : une seule date métier (src/domain/clock.ts, src/server/clock.ts) à la place des six dates figées ; réglage KEYSTONE_CLOCK ; date réelle sur une base de production, 25 sept. 2026 sur la base de démonstration ; années des dates saisies et affichées selon l’année en cours. La date de situation par projet reste à faire (R-060, S-4). 17 oct. 2026 : « bêta fonctionnelle, c’est maintenant » — date réelle par défaut sur toute base, démonstration comprise (les tests restent au 25 sept. 2026)."
    }
   },
   {
@@ -2510,7 +2514,7 @@
    "progress": {
     "state": "fait",
     "delivery": "Livraison 9",
-    "note": "Livraison 9, lot « load-window » (docs/delivery-9/notes-load-window.md) : Ressources, ressources du projet et Congés sur 8 semaines depuis la semaine en cours, boutons semaine précédente / suivante (±52 semaines) ; what-if sur la fenêtre en cours. Les autres lecteurs de charge suivront avec R-084. Réponses du 17 oct. 2026 : vues « Semaine » (congés jour par jour) et « 8 semaines » (pas d’une semaine ou de 8), navigation du what-if avec la période portée par toutes ses actions."
+    "note": "Livraison 9, lot « load-window » (docs/delivery-9/notes-load-window.md) : Ressources, ressources du projet et Congés sur 8 semaines depuis la semaine en cours, boutons semaine précédente / suivante (±52 semaines) ; what-if sur la fenêtre en cours. Les autres lecteurs de charge suivront avec R-084. Réponses du 17 oct. 2026 : vues « Semaine » (congés jour par jour) et « 8 semaines » (pas d’une semaine ou de 8), navigation du what-if avec la période portée par toutes ses actions. Second tour (17 oct.) : répartition par projet de la vue semaine tirée des affectations du planning."
    }
   },
   {
@@ -3526,7 +3530,7 @@
    "progress": {
     "state": "fait",
     "delivery": "Livraison 9",
-    "note": "Livraison 9, lot « prereq-alert » (docs/delivery-9/notes-prereq-alert.md) : tâche quotidienne, une notification au CP par prérequis client non confirmé à J-15, « Ouvrir un risque » prérempli depuis la ligne du chantier, lié au prérequis. Réponses du 17 oct. 2026 : rappels automatiques chaque matin à 07:00 (KEYSTONE_REMINDERS_AT), destinataire le CP seul, CP ajouté aux responsables de risque proposés."
+    "note": "Livraison 9, lot « prereq-alert » (docs/delivery-9/notes-prereq-alert.md) : tâche quotidienne, une notification au CP par prérequis client non confirmé à J-15, « Ouvrir un risque » prérempli depuis la ligne du chantier, lié au prérequis. Réponses du 17 oct. 2026 : rappels automatiques chaque matin à 07:00 (KEYSTONE_REMINDERS_AT), destinataire le CP seul, CP ajouté aux responsables de risque proposés. Second tour (17 oct.) : mention de la lettre client retirée ; un risque peut être ouvert depuis tout prérequis non confirmé, avant J-15."
    }
   },
   {

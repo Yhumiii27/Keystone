@@ -16,13 +16,13 @@ default start offset 5). All are gone.
 |---|---|---|
 | Pure clock | `src/domain/clock.ts` | `ClockSetting` (real / fixed), `todayOf`, `businessNowOf`, `workdayOffsetOf` (former TODAY; a weekend counts as its Friday), `monthNowOf` (former PG_NOW), `DEMO_TODAY_ISO` (seeds and tests only) |
 | Server clock | `src/server/clock.ts` | `businessToday(q?)`, `businessNow(q?)`, `setClockForTests`; pass the transaction inside a transaction (PGlite) |
-| Setting | `KEYSTONE_CLOCK` (`src/server/config/parse.ts`, `.env.example`, `docs/EXPLOITATION.md` §3) | unset = automatic; `real`; or a pinned `YYYY-MM-DD` (warning in production); logged at start-up |
+| Setting | `KEYSTONE_CLOCK` (`src/server/config/parse.ts`, `.env.example`, `docs/EXPLOITATION.md` §3) | unset or `real` = the real clock (every database since 17 Oct 2026); a pinned `YYYY-MM-DD` (warning in production); logged at start-up |
 | Client | `src/components/app/clock.tsx` | `ClockProvider` in the app layout, `useToday()`, `useTodayOffset()` |
 
-**Automatic clock.** It follows the data, like the seed (R-011): the real date (Europe/Paris) on a production database;
-the demo data set's date, Fri 25 Sep 2026, on a demo database — its overdue items, weeks and periods were written for that
-date and would drift a little more every week under the real clock. `KEYSTONE_CLOCK=real` gives the real date on the demo
-database too. A pinned date keeps the real time of day.
+**Default clock.** The real date (Europe/Paris) on every database — owner, 17 Oct 2026: « Bêta fonctionnelle, c'est
+maintenant » (at first the clock followed the data: the demo database stayed at Fri 25 Sep 2026). The demo data set, written
+for 25 Sep 2026, looks more and more late; `KEYSTONE_CLOCK=2026-09-25` shows it at its own date. The tests pin that date:
+`vitest.config.ts`, `tests/e2e/run.ts`, `scripts/db-check.ts`. A pinned date keeps the real time of day.
 
 **Rules.** Pure functions take the date as a required parameter (no default anywhere); DAL readers, writers and Server
 Functions resolve it once; Client Components read the layout's date (the browser's own clock is never used for business
@@ -71,8 +71,8 @@ transaction), `src/server/config/parse.test.ts` (KEYSTONE_CLOCK).
 
 ## 4. Open points
 
-1. **Demo clock default.** The demo database stays at 25 Sep 2026 unless `KEYSTONE_CLOCK=real`. Should the beta (a demo
-   database, `EXPLOITATION.md` §7) run at the real date instead? Its prototype data would then look more and more late.
+1. ~~**Demo clock default.**~~ Answered 17 Oct 2026: the beta runs at the real date — the real clock is the default on
+   every database.
 2. **S-4 / R-060** — what advances a project's data date and what the Friday freeze records. Until then the data date is
    `projects.data_date` (never written) else today.
 3. Two messages still say "status date" ("The SAT date cannot be before the status date", "The reply date is before the
