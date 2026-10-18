@@ -25,6 +25,7 @@ import { NewScenarioButton } from './new-scenario-button';
 import { ResourcesView } from './resources-view';
 import { WhatIfBoard } from './whatif-board';
 import type { WhatIfData } from './whatif-model';
+import { overloadJulienWagner } from './overload.test-fixture';
 
 type Props = { projectParam?: string; primary?: ReactNode; children?: ReactNode; view?: View; canEdit?: boolean; projectName?: string; data?: WhatIfData; projectCode?: string; label?: string };
 const parts = (el: unknown) => {
@@ -63,9 +64,18 @@ describe('Resources page', () => {
     ]);
     // A-12: unmet demand computed from the ROLES bars (prototype constant 240 h). R-086 (R-2 a): the labour cost of the
     // portfolio's projects in execution (A-3) of the displayed zone — all zones: 2 512 of 3 590 k€ (was the current project's €1.42M).
-    expect(v.kpis.map((k) => k.value)).toEqual(['83%', '3 people', '280 h', '€2.51M', '4']);
+    // R-084 (owner answers 17 Oct 2026, third round): loads and demand from the schedules' assignments. On the demo data set only
+    // Julien Wagner is named (HLT-026 A1250, 40 h/wk until 9 Oct): utilisation 3 % (83 % on the seeded allocations), nobody
+    // above 110 % (3 people). The bars: each department's people's assigned hours + the work no named person carries counted
+    // by trade (owner-only activities at 2 h/d, unnamed assignments); the steel erection crew (no department) has no capacity:
+    // 600 h unmet (280 h on the stored ROLES totals).
+    expect(v.kpis.map((k) => k.value)).toEqual(['3%', '0 people', '600 h', '€2.51M', '4']);
     expect(v.kpis[3].sub).toBe('70% of labor budget · All zones');
-    expect(v.roles.map((r) => r.text)).toEqual(['1110 / 960 h', '690 / 640 h', '510 / 480 h', '560 / 640 h', '370 / 320 h']);
+    expect(v.roles.map((r) => [r.name, r.text])).toEqual([
+      ['Engineering', '130 / 960 h'], ['Site operations', '236 / 640 h'], ['MEP', '330 / 480 h'], ['Controls & planning', '542 / 640 h'], ['Quality', '86 / 320 h'],
+      ['Steel erection crew', '600 / 0 h'],
+    ]);
+    expect(v.rolesNote).toBe('Of which 1844 h not assigned to a person, counted by trade');
     expect(body.props.canEdit).toBe(true);
     expect(body.props.projectName).toBeUndefined();
     const primary = header.props.primary as ReactElement<Props>;
@@ -105,10 +115,13 @@ describe('Resources page', () => {
       // R-085: the prototype's window is not the current one — "8 weeks" and the window navigation.
       'Allocation — 8 weeks', 'Sep 28 – Nov 16, 2026', 'href="/resources?week=2026-10-05"',
       '% of available hours per person', 'Under', 'Over', 'Person', 'Avg', 'Sep 28', 'Nov 16', 'Open their work',
-      'href="/my/tasks?person=Julien%20Wagner"', '--cell-bg:var(--color-accent-400);--cell-fg:var(--color-bg)', '>130<', '>101%<',
-      'Capacity vs demand', 'Hours by role, next 8 weeks', 'Tick marks available capacity', '1110 / 960 h', 'Suggested rebalancing', '>Apply<',
-      // R-3 / S-7: the suggestions are the portfolio's what-if levers (the prototype's three static sentences are gone).
-      'Extra resource A1250 · Steel erection crew 6 → 7', 'Harbor Line · +1 d · +€2k', 'Contract structural engineer relieves Julien Wagner on A1250',
+      // R-084: the loads of the schedules (Julien Wagner 100 % in the weeks of 28 Sep and 5 Oct); the bars follow the window shown.
+      'href="/my/tasks?person=Julien%20Wagner"', '>100<', '>25%<',
+      'Capacity vs demand', 'Hours by role, 8 weeks', 'Tick marks available capacity', '130 / 960 h', 'Steel erection crew', '600 / 0 h',
+      'Of which 1844 h not assigned to a person, counted by trade', 'Suggested rebalancing', '>Apply<',
+      // R-3 / S-7: the suggestions are the portfolio's what-if levers (the prototype's three static sentences are gone). R-084:
+      // nobody is above 100 % on the demo data set — no relief of Julien Wagner any more.
+      'Extra resource A1250 · Steel erection crew 6 → 7', 'Harbor Line · +1 d · +€2k',
       'title="A1250 · Steel erection — Bays 3–4"',
     ])
       expect(out).toContain(s);
@@ -129,11 +142,12 @@ describe('R-085 (R-7 a): load window of Resources and Project resources', () => 
   it('default: 8 weeks from the Monday of the business date week (21 Sep 2026), zero load where nothing is allocated', async () => {
     const v = (await resources()).body.props.view!;
     expect(v.weeks).toEqual(['Sep 21', 'Sep 28', 'Oct 5', 'Oct 12', 'Oct 19', 'Oct 26', 'Nov 2', 'Nov 9']);
-    // The seeded allocations start on 28 Sep: the week of 21 Sep is empty; 16 Nov is one week further (Following week).
-    expect(v.people.find((p) => p.name === 'Julien Wagner')!.cells.map((c) => c.v)).toEqual([0, 90, 100, 130, 125, 110, 100, 80]);
-    // Team utilisation is the mean over the window: 75 % (83 % on the prototype's 28 Sep – 16 Nov); the rest is unchanged.
+    // R-084: Julien Wagner's A1250 hours (40 h/wk until Fri 9 Oct) — the seeded rows gave [0, 90, 100, 130, 125, 110, 100, 80].
+    expect(v.people.find((p) => p.name === 'Julien Wagner')!.cells.map((c) => c.v)).toEqual([100, 100, 100, 0, 0, 0, 0, 0]);
+    // Team utilisation 5 % (75 % on the seeded rows), nobody above 110 % (3 people, weeks 42–44); unmet demand 900 h — the steel
+    // erection crew's 3 weeks × 300 h, a trade without a department nor capacity (280 h "Mostly engineering" on the stored ROLES).
     expect(v.kpis.map((k) => [k.value, k.sub])).toEqual([
-      ['75%', 'Target 85–95%'], ['3 people', 'Peak weeks 42–44'], ['280 h', 'Mostly engineering'], ['€2.51M', '70% of labor budget · All zones'], ['4', 'Across all projects'],
+      ['5%', 'Target 85–95%'], ['0 people', 'No week above 110%'], ['900 h', 'Mostly steel erection crew'], ['€2.51M', '70% of labor budget · All zones'], ['4', 'Across all projects'],
     ]);
   });
 
@@ -178,10 +192,12 @@ describe('Project resources page', () => {
     const { header, body } = await presources('HLT-026', PROTO);
     const v = body.props.view!;
     expect(body.props.projectName).toBe('#026 · Harbor Line Terminal Expansion');
+    // R-084: loads from the schedules (83 % · 3 people · peak weeks 42–44 · 0 h on the seeded rows); the project's crew without a
+    // department (600 h over the window) is unmet demand.
     expect(v.kpis.map((k) => [k.label, k.value, k.sub])).toEqual([
-      ['Project team load', '83%', '8 people assigned'],
-      ['Over-allocated', '3 people', 'Peak weeks 42–44'],
-      ['Unmet demand', '0 h', '8 weeks, by department'], // R-085: not the current window
+      ['Project team load', '3%', '8 people assigned'],
+      ['Over-allocated', '0 people', 'No week above 110%'],
+      ['Unmet demand', '600 h', '8 weeks, by department'], // R-085: not the current window
       ['Labor cost to date', '€1.42M', '77% of labor budget'],
       ['Open requests', '4', 'Awaiting department approval'],
     ]);
@@ -189,10 +205,14 @@ describe('Project resources page', () => {
     expect(v.suggestions!.map((g) => [g.leverCode, g.impact, g.canApply])).toEqual([
       ['extra_resource:A1250:steel-erection-crew', '+1 d · +€2k', true],
       ['overtime:A1250:steel-erection-crew', '+1 d · +€5k', true],
-      // 44 h × (118 − 85) € = 1.5 k€ → +€2k. R-085: the suggestions use the what-if horizon, the current window (21 Sep –
-      // 15 Nov, whatever `?week=`): all 44 h of the relief fall inside it (−40 h on the seeded 28 Sep – 22 Nov window).
-      ['extra_resource:A1250:julien-wagner', '+€2k · load −44 h', true],
+      // R-084: Julien Wagner is not above 100 % on the demo data set — no relief lever (it was "+€2k · load −44 h").
     ]);
+    expect(v.roles.map((r) => [r.name, r.text])).toEqual([
+      ['Site operations', '116 / 640 h'], ['Engineering', '130 / 320 h'], ['MEP', '106 / 320 h'], ['Controls & planning', '0 / 960 h'], ['Quality', '0 / 320 h'],
+      ['Steel erection crew', '600 / 0 h'],
+    ]);
+    expect(v.rolesNote).toBe('Of which 872 h not assigned to a person, counted by trade');
+    expect(v.undeclared).toEqual([]);
     const primary = header.props.primary as ReactElement<Props>;
     expect([primary.type, primary.props.projectCode]).toEqual([NewRequestButton, 'HLT-026']);
     const out = html(body);
@@ -203,15 +223,17 @@ describe('Project resources page', () => {
   it('NDC-031: PEOPLE order, derived department bars, no suggestions, no open request', async () => {
     const v = (await presources('NDC-031', PROTO)).body.props.view!;
     expect(v.people.map((p) => p.name)).toEqual(['Pauline Noguès', 'Léa Marchand', 'Damien Roux', 'Fabien Bertrand']);
-    expect(v.roles.map((r) => [r.name, r.text])).toEqual([['MEP', '314 / 320 h'], ['Controls & planning', '717 / 960 h']]);
-    expect(v.kpis.map((k) => k.value)).toEqual(['80%', '1 person', '0 h', '€340k', '0']);
+    // R-084: nobody of the team is named on a schedule — the bars are the project's owner-only activities counted by trade
+    // (314 / 320 h and 717 / 960 h, 80 %, 1 person on the seeded rows).
+    expect(v.roles.map((r) => [r.name, r.text])).toEqual([['MEP', '68 / 320 h'], ['Controls & planning', '218 / 960 h']]);
+    expect(v.kpis.map((k) => k.value)).toEqual(['0%', '0 people', '0 h', '€340k', '0']);
     expect(v.suggestions).toBeNull();
   });
 
-  it('RCF-019: 3 h unmet demand (Site operations 323 / 320 h)', async () => {
+  it('RCF-019: the department bars from the schedules (R-084; 3 h unmet, Site operations 323 / 320 h on the seeded rows)', async () => {
     const v = (await presources('RCF-019', PROTO)).body.props.view!;
-    expect(v.kpis[2].value).toBe('3 h');
-    expect(v.roles[0]).toMatchObject({ name: 'Site operations', text: '323 / 320 h' });
+    expect(v.kpis[2].value).toBe('0 h');
+    expect(v.roles.map((r) => [r.name, r.text])).toEqual([['Site operations', '10 / 320 h'], ['MEP', '82 / 320 h'], ['Quality', '44 / 320 h']]);
   });
 
   it('project without a team: empty heatmap, zero KPIs (never Harbor Line data)', async () => {
@@ -246,6 +268,9 @@ describe('Project resources page', () => {
 });
 
 describe('What-if page', () => {
+  // R-084: the loads come from the schedules — Julien Wagner is above 100 % (28 Sep – 9 Oct) only with the fixture's second
+  // assignment (overload.test-fixture.ts); the Resources / Project resources tests above read the demo data set as it is.
+  beforeAll(() => overloadJulienWagner());
   it('without ?project= it redirects to the viewer\'s current project; the header shows that project with its switcher', async () => {
     redirected.length = 0;
     await whatif();
@@ -267,21 +292,24 @@ describe('What-if page', () => {
     expect([d.projectCode, d.dataDate, d.weekStarts[0], d.weeks[0]]).toEqual(['HLT-026', '2026-09-25', '2026-09-21', 'Sep 21']);
     expect(d.plan).toEqual({ forecastFinish: '2027-01-14', floatDays: -27 });
     expect(d.baseline).toEqual({ code: 'BL1', finish: '2026-12-18' });
-    expect(d.peak).toEqual({ pct: 130, person: 'Julien Wagner', weekStart: '2026-10-12' });
-    expect(d.overByWeek).toEqual([0, 0, 1, 2, 3, 2, 0, 1]); // R-085: one week earlier (21 Sep has no allocation)
+    // R-084: the loads of the schedules with the fixture (Julien Wagner 150 % in the weeks of 28 Sep and 5 Oct); the seeded rows
+    // gave a peak of 130 % in the week of 12 Oct and [0, 0, 1, 2, 3, 2, 0, 1].
+    expect(d.peak).toEqual({ pct: 150, person: 'Julien Wagner', weekStart: '2026-09-28' });
+    expect(d.overByWeek).toEqual([0, 1, 1, 0, 0, 0, 0, 0]);
     expect(d.levers.map((l) => [l.code, l.from, l.to, l.helper, l.effect.daysGained, l.effect.costKeur])).toEqual([
       ['extra_resource:A1250:julien-wagner', 1, 2, { kind: 'external', name: 'Contract structural engineer' }, 0, 1.5],
       ['overtime:A1250:steel-erection-crew', 10, 12, null, 1, 4.5],
       ['extra_resource:A1250:steel-erection-crew', 6, 7, { kind: 'same', name: 'Steel erection crew' }, 1, 1.8],
     ]);
     // The current plan rescheduled on a copy: finish 18 Jan 2027, float −19 working days (S-1, S-8).
-    // R-085: the peak bars follow the horizon (21 Sep – 9 Nov): 0 for the week of 21 Sep, the week of 16 Nov (100) leaves it.
-    expect([d.current.finish, d.current.floatDays, d.current.peakPct, d.current.bars]).toEqual(['2027-01-18', -19, 130, [0, 100, 110, 130, 125, 115, 100, 110]]);
+    // R-085: the peak bars follow the horizon (21 Sep – 9 Nov). R-084: the schedules' loads (fixture).
+    expect([d.current.finish, d.current.floatDays, d.current.peakPct, d.current.bars]).toEqual(['2027-01-18', -19, 150, [100, 150, 150, 50, 0, 0, 0, 0]]);
     expect(d.scenarios.map((s) => [s.name, s.priority, s.selected, Object.keys(s.levers).filter((k) => s.levers[k])])).toEqual([
       ['A', 'date', false, ['extra_resource:A1250:julien-wagner', 'overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew']],
       ['B', 'people', false, []],
     ]);
-    expect(d.auto).toEqual({ date: ['overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew'], budget: [], people: ['extra_resource:A1250:julien-wagner'] });
+    // R-084: the crew unit ends A1250 earlier inside Julien Wagner's overloaded weeks — "Protect people" takes it too.
+    expect(d.auto).toEqual({ date: ['overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew'], budget: [], people: ['extra_resource:A1250:julien-wagner', 'extra_resource:A1250:steel-erection-crew'] });
     expect(body.props.canEdit).toBe(true);
     const primary = header.props.primary as ReactElement<Props>;
     expect(primary.type).toBe(NewScenarioButton);
@@ -290,10 +318,11 @@ describe('What-if page', () => {
   it('renders KPI tiles, scenario cards and the side-by-side table with the current plan (EN)', async () => {
     const out = html((await whatif()).body);
     for (const s of [
-      'Baseline finish', '18 Dec 2026', 'BL1 · forecast 14 Jan 2027 · float −27 d', 'Julien Wagner · week of 12 Oct', 'Week 43', 'Scenario A', 'Scenario B',
+      // R-084: the schedules' loads (fixture) — the peak in the week of 28 Sep, people above 100 % in weeks 40–41.
+      'Baseline finish', '18 Dec 2026', 'BL1 · forecast 14 Jan 2027 · float −27 d', 'Julien Wagner · week of 28 Sep', 'Weeks 40–41', 'Scenario A', 'Scenario B',
       'Priority (set by the PM)', 'Protect date', 'Auto-level for this priority', 'Overtime A1250 · Steel erection crew 10 → 12 h/d', '+1 d · +€5k',
       'Contract structural engineer relieves Julien Wagner on A1250', 'Peak load by week', 'Current plan', '18 Jan 2027', '13 Jan 2027', '−19 days', '−16 days',
-      'Pauline Noguès above 100% · week of 12 Oct', 'Select scenario → create requests', 'Side by side', 'Indicator', 'copy of the plan at the data date (25 Sep 2026)',
+      'Select scenario → create requests', 'Side by side', 'Indicator', 'copy of the plan at the data date (25 Sep 2026)',
       'Rename scenario — Scenario A', 'Delete scenario — Scenario B',
     ])
       expect(out).toContain(s);
@@ -303,7 +332,7 @@ describe('What-if page', () => {
   it('renders in French', async () => {
     as('director', 'fr');
     const out = html((await whatif()).body, 'fr');
-    for (const s of ['Fin de référence', 'BL1 · prévision 14 janv. 2027 · marge −27 j', 'Semaine 43', 'Heures sup. A1250 · Steel erection crew 10 → 12 h/j', 'Plan actuel', '−19 jours'])
+    for (const s of ['Fin de référence', 'BL1 · prévision 14 janv. 2027 · marge −27 j', 'Semaines 40–41', 'Heures sup. A1250 · Steel erection crew 10 → 12 h/j', 'Plan actuel', '−19 jours'])
       expect(out).toContain(s);
   });
 

@@ -106,6 +106,15 @@ const RUNS: Record<JobName, () => Promise<JobOutcome>> = {
       counts: { alerted: r.alerted, notified: r.notified, unaddressed: r.unaddressed, pending: r.pending }, warn: r.unaddressed > 0,
     };
   },
+  // ── Delivery 9 · R-084 (owner answer 17 Oct 2026, third round, B): activities that need work and declare no resource at all
+  // (no assignment, no owner) — the PM of record notified once per activity. A reminder job (morning).
+  'undeclared-resource-alerts': async (): Promise<JobOutcome> => {
+    const r = await (await import('@/server/dal/undeclared-alerts')).alertUndeclaredActivities();
+    return {
+      summary: `Activities without a declared resource at ${r.today} · ${r.undeclared} found · ${r.alerted} PM notified · ${r.already} already alerted · ${r.unaddressed} without recipient`,
+      counts: { undeclared: r.undeclared, alerted: r.alerted, already: r.already, unaddressed: r.unaddressed }, warn: r.unaddressed > 0,
+    };
+  },
 };
 
 export const JOB_DEFINITIONS: readonly JobDefinition[] = JOB_SCHEDULES.map((s) => ({ ...s, run: RUNS[s.name] }));

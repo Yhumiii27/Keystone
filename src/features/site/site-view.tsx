@@ -191,12 +191,18 @@ function ReadyTab({ code, v, canEdit, entry, context, t }: { code: string; v: Re
                 <td>
                   <div className={s.actions}>
                     {r.risk && (
-                      <Link href={r.risk.href} className={s.riskLink} title={t('Risk raised from this prerequisite')}>
+                      // R-121, owner, 17 Oct 2026 (third round): late at J-15 with a risk already raised — the risk did not prevent the delay.
+                      <Link href={r.risk.href} className={s.riskLink} title={t(r.late ? 'This risk did not prevent the delay' : 'Risk raised from this prerequisite')}>
                         {r.risk.number}
                       </Link>
                     )}
                     {r.raise && v.raiseForm && (
-                      <RaiseRiskButton code={code} position={r.position} stamp={r.stamp} title={r.title} form={v.raiseForm} values={r.raise} autoOpen={r.focus} />
+                      // With a risk already linked (late only), the notice's link marks the row without opening the form: the PM
+                      // chooses between the existing risk and a new one.
+                      <RaiseRiskButton
+                        code={code} position={r.position} stamp={r.stamp} title={r.title} form={v.raiseForm} values={r.raise}
+                        again={!!r.risk} autoOpen={r.focus && !r.risk} scrollTo={r.focus}
+                      />
                     )}
                     {canEdit && r.step && <PrerequisiteButton code={code} position={r.position} stamp={r.stamp} to={r.step.to} label={r.step.label} title={r.title} />}
                     <LineButtons code={code} kind="prerequisite" position={r.position} label={r.title} line={r.entry} entry={entry} />

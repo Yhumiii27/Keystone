@@ -6,6 +6,7 @@ import 'server-only';
 import { businessToday } from '@/server/clock';
 import { PERSONA_BY_ROLE } from '@/config/personas';
 import { weekMondayOf } from '@/domain/kpis';
+import { LOAD_WINDOW_WEEKS, weekStartsFrom } from '@/domain/load-window';
 import { inExecution } from '@/domain/portfolio';
 import { ALERT_RULE_DEFAULTS, portfolioAlertRules, type AlertApproval, type AlertProject, type PortfolioAlert } from '@/domain/portfolio-alerts';
 import { isoWeekOf } from '@/server/db/codes';
@@ -31,11 +32,13 @@ async function billingOf(code: string, lang: Lang): Promise<AlertProject['billin
   };
 }
 
-/** People of the shared pool above the threshold in a week of the 8-week window from the data date. */
+/**
+ * People of the shared pool above the threshold in a week of the 8-week window from the data date's week. R-084: the loads of
+ * the schedules over that window (they were the seeded allocation weeks after the data date).
+ */
 async function overAllocated(asOf: string, pct: number) {
-  const pool = await getResourcePool();
-  const from = weekMondayOf(asOf);
-  const idx = pool.weeks.map((w, i) => [w.start, i] as const).filter(([start]) => start >= from).slice(0, 8);
+  const pool = await getResourcePool(weekStartsFrom(weekMondayOf(asOf), LOAD_WINDOW_WEEKS));
+  const idx = pool.weeks.map((w, i) => [w.start, i] as const);
   const over = pool.people.filter((p) => idx.some(([, i]) => (p.loads[i] ?? 0) > pct)).map((p) => p.name);
   const peakWeeks = idx.filter(([, i]) => pool.people.some((p) => (p.loads[i] ?? 0) > pct)).map(([start]) => isoWeekOf(start));
   return { over, peakWeeks };

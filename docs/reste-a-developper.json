@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-10",
- "updated": "2026-10-17",
+ "updated": "2026-10-18",
  "branch": "main-2a2fep",
  "history": [
   {
@@ -70,6 +70,10 @@
   {
    "date": "2026-10-17",
    "text": "PR #12 fusionnée : Keystone déclare le schéma de sa base à Matrix (catalogue des bases EPC2i) au démarrage, en arrière-plan ; variables MATRIX_URL et MATRIX_TOKEN."
+  },
+  {
+   "date": "2026-10-18",
+   "text": "Livraison 9 : charge calculée depuis les affectations des plannings et par métier, alerte des activités sans ressource (R-084, partie charge) ; alerte J-15 avec risque déjà lié (R-121)."
   }
  ],
  "items": [
@@ -2485,7 +2489,9 @@
     "src/server/dal/resources.ts:56-78 charge = allocations.loadPct semées ; :123-127 et src/server/dal/people.ts:114-119 department_capacities statiques ; persons sans horaire contractuel (schema/organisation.ts)"
    ],
    "progress": {
-    "state": "a_faire"
+    "state": "en_cours",
+    "delivery": "Livraison 9",
+    "note": "Lot « planning-load » (docs/delivery-9/notes-planning-load.md) : la charge vient des affectations des plannings (une seule source, getPlanningLoad) ; le travail non affecté à une personne compte par métier (service) ; alerte du matin au CP pour une activité sans ressource déclarée. Reste la partie capacité (horaire contractuel, absences Cursus)."
    }
   },
   {
@@ -3530,7 +3536,7 @@
    "progress": {
     "state": "fait",
     "delivery": "Livraison 9",
-    "note": "Livraison 9, lot « prereq-alert » (docs/delivery-9/notes-prereq-alert.md) : tâche quotidienne, une notification au CP par prérequis client non confirmé à J-15, « Ouvrir un risque » prérempli depuis la ligne du chantier, lié au prérequis. Réponses du 17 oct. 2026 : rappels automatiques chaque matin à 07:00 (KEYSTONE_REMINDERS_AT), destinataire le CP seul, CP ajouté aux responsables de risque proposés. Second tour (17 oct.) : mention de la lettre client retirée ; un risque peut être ouvert depuis tout prérequis non confirmé, avant J-15."
+    "note": "Livraison 9, lot « prereq-alert » (docs/delivery-9/notes-prereq-alert.md) : tâche quotidienne, une notification au CP par prérequis client non confirmé à J-15, « Ouvrir un risque » prérempli depuis la ligne du chantier, lié au prérequis. Réponses du 17 oct. 2026 : rappels automatiques chaque matin à 07:00 (KEYSTONE_REMINDERS_AT), destinataire le CP seul, CP ajouté aux responsables de risque proposés. Second tour (17 oct.) : mention de la lettre client retirée ; un risque peut être ouvert depuis tout prérequis non confirmé, avant J-15. Troisième tour : l’alerte J-15 part aussi quand un risque est déjà lié (elle le cite) ; un nouveau risque peut être ouvert quand le prérequis est en retard."
    }
   },
   {

@@ -4,16 +4,15 @@
 // pre-filled from the prerequisite (src/domain/prerequisite-alerts.ts), confirmed by a lead of the project. Checked here: the
 // viewer is a lead of the project (PM of record, co-PM, deputy, director — R-041) who may edit its Site and its Risk register
 // (inside the workspace, project not read-only); the line as the page showed it (`stamp`); still pending (not confirmed, not signed)
-// and no risk raised from it yet. The values are parsed like "New risk" (owners, active categories). The writer re-checks the lead
+// and no risk raised from it yet — or late at J-15, then a new risk replaces the link (owner, 17 Oct 2026, third round). The values are parsed like "New risk" (owners, active categories). The writer re-checks the lead
 // right and the line in its transaction, records the audit rows and the activity line; the pages are then revalidated.
 import { revalidatePath } from 'next/cache';
 import type { FormDialogResult } from '@/components/app/FormDialog';
-import { PREREQ_RISK_LEADS_ONLY, PREREQ_RISK_NOT_PENDING, PREREQ_RISK_RAISED, canRaisePrerequisiteRisk, prerequisiteRiskTrigger } from '@/domain/prerequisite-alerts';
+import { PREREQ_RISK_LEADS_ONLY, PREREQ_RISK_NOT_PENDING, PREREQ_RISK_RAISED, prerequisiteRiskRefusal, prerequisiteRiskTrigger } from '@/domain/prerequisite-alerts';
 import { FORM_CATEGORIES, parseNewRisk } from '@/domain/risk';
-import { isPrerequisiteLate, siteDateText } from '@/domain/site';
+import { siteDateText } from '@/domain/site';
 import { SITE_LINE_CHANGED } from '@/domain/site-sheet';
 import { orderedOptions } from '@/domain/settings-rules';
-import { businessToday } from '@/server/clock';
 import { getProject } from '@/server/dal/projects';
 import { raisePrerequisiteRisk } from '@/server/dal/prerequisite-alerts';
 import { riskOwnerOptions } from '@/server/dal/risks-screen';
@@ -51,16 +50,16 @@ export async function raisePrerequisiteRiskAction(code: string, position: number
   const p = site?.prerequisites.find((x) => x.position === position);
   if (!site || !p) return fail('Unknown prerequisite');
   if (p.stamp !== stamp) return fail(STALE);
-  if (p.riskNumber) return fail(PREREQ_RISK_RAISED);
-  if (!canRaisePrerequisiteRisk(p)) return fail(PREREQ_RISK_NOT_PENDING);
+  // Still pending; a second risk only once late at J-15 (owner, 17 Oct 2026, third round) — `late` at the business date (getSite).
+  const refusal = prerequisiteRiskRefusal(p);
+  if (refusal) return fail(refusal);
 
   const [team, cats] = await Promise.all([riskOwnerOptions(project.code), riskCategoryOptions()]);
   const parsed = parseNewRisk(strings(values), team, orderedOptions(cats.active, FORM_CATEGORIES).map((c) => c.code));
   if (!parsed.ok) return fail(parsed.error);
   const { t, lang } = await getI18n();
   // The cause in the trigger: late at J-15 at the business date, or still pending before J-15.
-  const late = isPrerequisiteLate(p, await businessToday());
-  const trigger = prerequisiteRiskTrigger({ ...p, late }, t(siteDateText(p.neededBy)), t);
+  const trigger = prerequisiteRiskTrigger(p, t(siteDateText(p.neededBy)), t);
   let number: string;
   try {
     number = await raisePrerequisiteRisk(project.code, position, stamp, parsed.value, trigger, { name: ctx.viewer.name, role: ctx.viewer.role });

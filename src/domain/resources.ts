@@ -4,6 +4,7 @@
 // (src/features/resources/model.ts), except the two KPI sub-lines Resources shares with the department head's Home
 // (`peakWeeksText`, `shortfallText`, A-12). Golden values: src/domain/resources.test.ts.
 import type { Lang, T } from '@/i18n/translate';
+import { dataText } from '@/i18n/data-text';
 import { isoWeekOf } from '@/server/db/codes';
 
 // ── Load bands (shade(), logic 3867) ───────────────────────────────────────────────────────────────────
@@ -70,10 +71,17 @@ export function peopleAboveByWeek(people: Pick<PersonLoad, 'loads'>[], threshold
 // ── Capacity vs demand (logic 3872–3874) ───────────────────────────────────────────────────────────────
 
 export interface CapacityRow {
-  /** Department name (EN source). */
+  /** Department name (EN source); R-084: or a trade outside the departments (`kind`). */
   name: string;
   capacityH: number;
   demandH: number;
+  /**
+   * R-084 (owner answer 17 Oct 2026, third round): what the row is — a department (default), the resource an unnamed assignment
+   * names when it has no department ('resource': typed text) or "Other" — and, of its demand, the hours no named person carries
+   * (unnamed assignments, owner-only activities) counted against it as a trade.
+   */
+  kind?: 'department' | 'resource' | 'other';
+  unnamedH?: number;
 }
 
 /** 8 weeks × 40 h: the capacity one team member brings to Project resources. */
@@ -85,8 +93,14 @@ export const OTHER_DEPARTMENT = 'Other';
  * Project resources bars: per department of the team (first-appearance order), capacity += 320 h per person and
  * demand += round(avg% × 3.2) h, with the rounded average as the prototype (`parseInt(avgText) * 3.2`). `hoursPerPerson`:
  * the capacity one person brings over the weeks shown — 320 h on 8 weeks, 40 h in the week view (owner answers 17 Oct 2026).
+ * R-084 (owner answer 17 Oct 2026, third round): `trades` — the project's work no named person carries, by trade, over the
+ * weeks shown — adds to the demand of its department's bar, or makes a bar of its own without capacity (a trade nobody of the
+ * team belongs to, a crew without a department).
  */
-export function projectDepartmentDemand(people: { department: string | null | undefined; avgPct: number }[], hoursPerPerson = HOURS_PER_PERSON_WINDOW): CapacityRow[] {
+export function projectDepartmentDemand(
+  people: { department: string | null | undefined; avgPct: number }[], hoursPerPerson = HOURS_PER_PERSON_WINDOW,
+  trades: readonly { trade: string; kind: 'department' | 'resource' | 'other'; hours: number }[] = [],
+): CapacityRow[] {
   const m = new Map<string, CapacityRow>();
   for (const p of people) {
     const d = p.department || OTHER_DEPARTMENT;
@@ -95,8 +109,18 @@ export function projectDepartmentDemand(people: { department: string | null | un
     row.demandH += Math.round(p.avgPct * (hoursPerPerson / 100));
     m.set(d, row);
   }
+  for (const t of trades) {
+    const key = t.kind === 'resource' ? `resource|${t.trade}` : t.trade;
+    const row = m.get(key) ?? { name: t.trade, capacityH: 0, demandH: 0, kind: t.kind };
+    row.demandH += Math.round(t.hours);
+    row.unnamedH = (row.unnamedH ?? 0) + Math.round(t.hours);
+    m.set(key, row);
+  }
   return [...m.values()];
 }
+
+/** Σ hours no named person carries over the bars (R-084: "of which … not assigned to a person"). */
+export const unnamedDemand = (rows: readonly Pick<CapacityRow, 'unnamedH'>[]): number => rows.reduce((a, r) => a + (r.unnamedH ?? 0), 0);
 
 export interface CapacityBarGeometry {
   /** Demand above capacity → accent fill, attention text. */
@@ -177,7 +201,9 @@ const lowerFirst = (s: string) => (/^[A-ZÀ-Ý]{2}/.test(s) ? s : s.charAt(0).to
 export function shortfallText(rows: readonly CapacityRow[], t: T, lang: Lang): string {
   const top = mainShortfall(rows);
   if (!top) return lang === 'fr' ? 'Aucun service au-delà de sa capacité' : 'No department over capacity';
-  return lang === 'fr' ? `Surtout ${lowerFirst(t(top.name))}` : `Mostly ${lowerFirst(top.name)}`;
+  // R-084: a trade outside the departments is the resource as typed ("Steel erection crew"; its exact demo entry in French).
+  const name = top.kind === 'resource' ? dataText(top.name, lang) : lang === 'fr' ? t(top.name) : top.name;
+  return lang === 'fr' ? `Surtout ${lowerFirst(name)}` : `Mostly ${lowerFirst(name)}`;
 }
 
 // ── Requests needing an expert (A-12: Skills "Open requests needing level ≥4" was the constant 2) ────────────────────

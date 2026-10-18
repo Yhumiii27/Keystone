@@ -16,7 +16,9 @@
 //
 // Duration model: an activity's remaining duration is driven by its labour assignment with the most hours per day
 // (units × h/d); R' = ⌈R × (u·h) / (u'·h')⌉. Load model (units/time): an assignment loads its person with h/d over the
-// remaining span; an activity owner without an assignment carries WHATIF_RULES.ownerHoursPerDay. Cost model: labour of the
+// remaining span; an activity owner without an assignment carries WHATIF_RULES.ownerHoursPerDay — unless the context counts
+// owners on their trade (`ownerLoad: 'trade'`, R-084: the application's rule since the owner's answer of 17 Oct 2026). The
+// base loads (`people[].loads`) are the schedules' (src/domain/planning-load.ts) in the application. Cost model: labour of the
 // remaining work at the rate card (internal rate by job title, external role, overtime multiplier above
 // normalHoursPerDay); equipment and material are not costed. Every rule the chapter-5 questionnaire may change is in
 // WHATIF_RULES. Formatting stays in the UI (src/features/resources/whatif-model.ts). Golden values: whatif.test.ts.
@@ -124,6 +126,12 @@ export interface WhatIfContext {
   /** 8-week capacity vs demand per department (overloaded when demand > capacity). */
   departments: readonly WhatIfDepartment[];
   rates: WhatIfRates;
+  /**
+   * Where the coordination share of an owner without an assignment goes: on the owner ('person', WHATIF_RULES.ownerHoursPerDay —
+   * the chapter-4 rule, the default) or on their trade ('trade': R-084, owner answer 17 Oct 2026 — « les compter par rapport à un
+   * métier et non une personne »; the person's load is then their assignments only, and a shift frees no owner).
+   */
+  ownerLoad?: 'person' | 'trade';
 }
 
 export interface WhatIfLever {
@@ -381,7 +389,8 @@ export function deriveLevers(ctx: WhatIfContext, base: CpmResult): WhatIfLever[]
     // Shift: not started, non-critical, SNET-compatible, an overloaded contributor while it runs (within the horizon).
     const cons = a.constraint?.type && a.constraint.type !== 'ASAP' ? a.constraint.type : null;
     if (r.state === 'not_started' && !critical && r.totalFloat != null && r.totalFloat >= 1 && (!cons || cons === 'SNET')) {
-      const contributors = [...labour.filter((j) => j.person).map((j) => j.person!), ...(info.owner && !labour.some((j) => j.person === info.owner) ? [info.owner] : [])];
+      const ownerCounts = ctx.ownerLoad !== 'trade' && !!info.owner && !labour.some((j) => j.person === info.owner);
+      const contributors = [...labour.filter((j) => j.person).map((j) => j.person!), ...(ownerCounts ? [info.owner!] : [])];
       const weeks = weeksOf(span);
       const freed = contributors.find((p) => weeks.some((w) => (ix.people.get(p)?.loads[w] ?? 0) > R.overloadPct));
       const days = Math.min(r.totalFloat, R.shiftMaxDays);
@@ -462,7 +471,7 @@ function activityPlan(model: WhatIfModel, code: string, levers: readonly WhatIfL
     }
   });
   const owner = ctx.activities[code]?.owner;
-  if (owner && ix.people.has(owner) && !labour.some((j) => j.person === owner)) entries.push({ person: owner, daily: R.ownerHoursPerDay, premium: 0, rate: 0, costed: false });
+  if (ctx.ownerLoad !== 'trade' && owner && ix.people.has(owner) && !labour.some((j) => j.person === owner)) entries.push({ person: owner, daily: R.ownerHoursPerDay, premium: 0, rate: 0, costed: false });
   return { entries, remaining: newRemaining };
 }
 

@@ -116,23 +116,24 @@ describe('Capacity what-if tab', () => {
     if (lang === 'en') {
       expect(x).toContain('Pipeline project to absorb WSA-044 EWA-051 FTU-052 RBR-048 CER-047');
       // A-12 (chapter 4): capacity from the pool's allocations, demand per €1M from the active portfolio (prototype: gap 1 560 h).
-      expect(x).toContain('Westfield Solar Array €3.40M · start Aug 2026 APD Absorbable with 151 h of overtime or one contractor Capacity gap · 151 h over 8 weeks');
+      // R-084: commitments from the schedules' planning load (gap 151 h on the seeded allocation rows).
+      expect(x).toContain('Westfield Solar Array €3.40M · start Aug 2026 APD Absorbable with 49 h of overtime or one contractor Capacity gap · 49 h over 8 weeks');
       expect(x).toContain('Demand vs capacity by department — next 8 weeks Current commitments + the candidate project · tick = available capacity');
-      expect(x).toContain('Engineering +73 h 391 / 320 h');
-      expect(x).toContain('Controls & planning +164 h 880 / 960 h');
+      expect(x).toContain('Engineering +39 h 209 / 320 h');
+      expect(x).toContain('Controls & planning +131 h 705 / 960 h');
       expect(x).toContain('Committed Candidate project Capacity');
       expect(x).toContain('Options Start Westfield 6 weeks later — gap closes as Harbor Line demobilises Contract 1 engineer(s) for the ramp-up phase Delay Metro Signage Line B (non-critical) by 2 weeks');
       expect(x).toContain('Demand is estimated from budget and past projects of the same type until the WBS is planned.');
     } else {
       expect(x).toContain('Projet du pipeline à absorber');
-      expect(x).toContain('Centrale solaire de Westfield 3,40 M€ · début août 2026 APD Absorbable avec 151 h d’heures sup. ou un prestataire Écart de capacité · 151 h sur 8 semaines'); // A-12
-      expect(x).toContain('Ingénierie +73 h 391 / 320 h');
+      expect(x).toContain('Centrale solaire de Westfield 3,40 M€ · début août 2026 APD Absorbable avec 49 h d’heures sup. ou un prestataire Écart de capacité · 49 h sur 8 semaines'); // A-12, R-084
+      expect(x).toContain('Ingénierie +39 h 209 / 320 h');
       expect(x).toContain('Engagé Projet candidat Capacité');
       expect(x).toContain('Recruter 1 ingénieur(s) en prestation pour la montée en charge');
     }
     expect(m).toContain('href="/portfolio/prioritisation?tab=capacity&amp;project=EWA-051&amp;sel=HLT-026"');
-    expect(m).toContain('width:74%'); // A-12: Engineering 318 h committed of max(320, 391) × 1.1
-    expect(m).toContain('--cap-left:74%');
+    expect(m).toContain('width:48%'); // A-12: Engineering 170 h committed of max(320, 209) × 1.1 (R-084; 318 h of 391 h → 74 %)
+    expect(m).toContain('--cap-left:91%');
   });
 });
 

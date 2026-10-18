@@ -2,6 +2,7 @@
 // the test override. The test run itself pins KEYSTONE_CLOCK to the demo data set's date (vitest.config.ts).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEMO_TODAY_ISO, REAL_CLOCK, todayOf } from '@/domain/clock';
+import { parisParts } from '@/server/db/codes';
 import { businessNow, businessToday, clockSetting, setClockForTests } from './clock';
 
 afterEach(() => {
@@ -12,7 +13,8 @@ afterEach(() => {
 describe('business clock (server)', () => {
   it('the test run is pinned to the demo data set date, Fri 25 Sep 2026', async () => {
     expect(await businessToday()).toBe(DEMO_TODAY_ISO);
-    expect((await businessNow()).toISOString().slice(0, 10)).toBe(DEMO_TODAY_ISO);
+    // The Paris date of the instant (its UTC date is the day before between 00:00 and 02:00 Paris time).
+    expect(parisParts(await businessNow()).iso).toBe(DEMO_TODAY_ISO);
   });
 
   it('unset: the real clock, whatever the database holds', async () => {

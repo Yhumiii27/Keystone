@@ -138,7 +138,8 @@ describe('reminder jobs: once per morning', () => {
     vi.stubEnv('KEYSTONE_REMINDERS_AT', '06:30');
     expect(jobDailyAt(jobDefinition('site-prerequisite-alerts'))).toBe('06:30');
     const entries = scheduledEntries(JOB_DEFINITIONS, 'W');
-    expect(entries.filter((e) => e.dailyAt).map((e) => [e.name, e.dailyAt])).toEqual([['site-prerequisite-alerts', '06:30']]);
+    // R-084: the alerts of activities without a declared resource are a reminder job too.
+    expect(entries.filter((e) => e.dailyAt).map((e) => [e.name, e.dailyAt])).toEqual([['site-prerequisite-alerts', '06:30'], ['undeclared-resource-alerts', '06:30']]);
     expect(entries.find((e) => e.name === 'vigie-outbox')).toMatchObject({ everyMs: 300_000, dailyAt: null });
   });
 });

@@ -10,7 +10,7 @@ import { getRateCard, getLeaveCalendar, getLeaveWeek, getSkillsMatrix } from '@/
 import { getProject } from '@/server/dal/projects';
 import { listResourceRequests, type ResourceRequestRow } from '@/server/dal/requests';
 import { departmentOfPerson, getApprovalsScreenData, listApprovalDepartmentsFull } from '@/server/dal/requests-screens';
-import { getLaborCost, getPortfolioLaborCost, getProjectTeam, getResourcePool, getWeekProjectSplit, getWhatIf, listDepartments, type PoolPerson, type ResourceWeek } from '@/server/dal/resources';
+import { getCapacityDemand, getLaborCost, getPortfolioLaborCost, getProjectTeam, getResourcePool, getWeekProjectSplit, getWhatIf, listDepartments, type PoolPerson, type ResourceWeek } from '@/server/dal/resources';
 import { zoneLabel } from '@/server/dal/shell';
 import { registerExportProvider } from '../registry';
 import type { ExportContext, ExportSheet, ExportWorkbook } from '../types';
@@ -85,17 +85,18 @@ async function resourcesWorkbook(ctx: ExportContext): Promise<ExportWorkbook> {
   const { t } = ctx;
   // R-086 (R-2 a): the labour cost of the projects in execution of the displayed zone, as on screen.
   const win = windowOf(ctx);
-  const [pool, split, departments, pending, labor, zoneText] = await Promise.all([
-    getResourcePool(win.weeks), weekSplitOf(win), listDepartments(), listResourceRequests({ status: 'pending' }), getPortfolioLaborCost(ctx.zone), zoneLabel(ctx.zone),
+  const [pool, split, departments, caps, pending, labor, zoneText] = await Promise.all([
+    getResourcePool(win.weeks), weekSplitOf(win), listDepartments(win.weeks), getCapacityDemand(win.weeks), listResourceRequests({ status: 'pending' }), getPortfolioLaborCost(ctx.zone), zoneLabel(ctx.zone),
   ]);
-  const caps = departments.filter((d) => d.capacityH != null && d.demandH != null).sort((a, b) => (a.capacityPosition ?? 0) - (b.capacityPosition ?? 0));
+  const headOf = new Map(departments.map((d) => [d.name, d.head?.name ?? '']));
   return {
     title: t('Resources'),
     filters: [`${t('Zone')}: ${t(zoneText || 'All zones')}`],
     sheets: [
       loadSheet(ctx, t('Weekly load'), pool.weeks, pool.people, split),
       sheet(t('Department capacity'), [col('department', t('Department'), 'text', 22), col('head', t('Head'), 'text', 18), col('capacity', t('Capacity (h)'), 'integer'), col('demand', t('Demand (h)'), 'integer'), col('gap', t('Gap (h)'), 'integer')],
-        caps.map((d) => ({ department: t(d.name), head: d.head?.name ?? '', capacity: d.capacityH, demand: d.demandH, gap: (d.demandH ?? 0) - (d.capacityH ?? 0) }))),
+        // R-084: the window shown (the screen's bars) — demand from the schedules, trades outside the departments after them.
+        caps.map((d) => ({ department: d.kind === 'resource' ? dataText(d.name, ctx.lang) : t(d.name), head: d.kind === 'department' ? (headOf.get(d.name) ?? '') : '', capacity: d.capacityH, demand: d.demandH, gap: d.demandH - d.capacityH }))),
       loadKpis(ctx, pool.people, pending.length, labor.projects.length ? { name: t('Labor'), budget: labor.budget, actual: labor.actual } : null),
     ],
   };
@@ -162,7 +163,7 @@ async function approvalsWorkbook(ctx: ExportContext): Promise<ExportWorkbook | n
 }
 
 // ── What-if levelling ────────────────────────────────────────────────────────────────────────────────────────────────
-// Levers are derived from the real allocations (S-7) and their effects computed with the CPM engine on a copy of the plan;
+// Levers are derived from the schedules' assignments (S-7; R-084) and their effects computed with the CPM engine on a copy of the plan;
 // the helper's hourly rate is left out for the roles that do not see rates.
 async function whatIfWorkbook(ctx: ExportContext): Promise<ExportWorkbook | null> {
   const { t } = ctx;

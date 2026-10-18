@@ -2,8 +2,8 @@
 // session ("View as" cookie) and project context: the daily job (first run at the demo date sends nothing; late at J-15 → one
 // notice to the PM of record; run twice → one notice; a new need date late again → a new notice), the Site page's proposal
 // (`?prereq=` marks the row; "Raise as a risk" pre-filled for the leads only, 9 personas), the risk raised (rights, audit,
-// activity, link back to the prerequisite, never twice, only while pending — late or not, owner's answer of 17 Oct 2026, second
-// round: before J-15 too).
+// activity, link back to the prerequisite, only while pending — late or not, owner's answer of 17 Oct 2026, second round: before
+// J-15 too; a second risk only once late, and the notice names the linked risk — third round).
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const jar = new Map<string, string>();
@@ -27,6 +27,8 @@ import SitePage from '@/app/(app)/projects/[code]/site/page';
 import { PERSONAS } from '@/config/personas';
 import type { RoleKey } from '@/config/screens';
 import { PREREQUISITE_ALERT_TITLE, PREREQ_RISK_LEADS_ONLY } from '@/domain/prerequisite-alerts';
+import { fieldsText } from '@/i18n/data-text';
+import { makeT } from '@/i18n/translate';
 import { setClockForTests } from '@/server/clock';
 import { getDb, setDb } from '@/server/db/client';
 import { openDatabase } from '@/server/db/open';
@@ -189,11 +191,43 @@ describe('R-121 · "Raise as a risk"', () => {
     expect(act).toMatchObject({ who: 'Romain Aubert', what: `Raised ${number} from a late client prerequisite · Autorisation de levage & arrêt exploitation quai 4`, projectCode: HLT });
     expect(act.messageKey).toBe('site.prerequisiteRiskRaised');
 
-    // Raised once: the row links to the risk and no longer offers it; a second confirmation is refused.
+    // The row links to the risk. Late at J-15, it still offers a new one beside the link (owner, 17 Oct 2026, third round —
+    // next test); before that answer the offer was gone and a second confirmation refused.
     const v = (await pageView()).ready!;
-    expect([v.prereqs[QUAI].risk, v.prereqs[QUAI].raise]).toEqual([{ number, href: `/projects/${HLT}/risks?risk=${number}` }, null]);
+    expect(v.prereqs[QUAI].risk).toEqual({ number, href: `/projects/${HLT}/risks?risk=${number}` });
+    expect(v.prereqs[QUAI].raise).toMatchObject({ title: 'Late client prerequisite — Autorisation de levage & arrêt exploitation quai 4', owner: 'Romain Aubert' });
+  });
+
+  it('late with a risk already linked (owner, 17 Oct 2026, third round): a lead raises a new risk; the link moves, the first risk stays, the audit names both', async () => {
+    at('2026-10-19');
+    const p = await line(QUAI);
+    const first = p.riskNumber!;
+    expect([p.late, first]).toEqual([true, expect.stringMatching(/^R-\d+$/)]);
+    const values = { title: 'Late client prerequisite — Autorisation de levage & arrêt exploitation quai 4', cat: 'contractual_client', owner: 'Romain Aubert', resp: 'mitigate' };
+    // Offered to the same leads only; the others are refused as before.
+    for (const role of ROLES) {
+      if (role === 'client') continue;
+      as(role);
+      const row = (await pageView()).ready!.prereqs[QUAI];
+      expect([role, !!row.risk, !!row.raise]).toEqual([role, true, role === 'pm' || role === 'director']);
+      if (role !== 'pm' && role !== 'director') expect([role, errorOf(await raisePrerequisiteRiskAction(HLT, QUAI, p.stamp, values))]).toEqual([role, PREREQ_RISK_LEADS_ONLY]);
+    }
     as('director');
-    expect(errorOf(await raisePrerequisiteRiskAction(HLT, QUAI, stamp, values))).toBe('A risk was already raised from this prerequisite');
+    const r = await raisePrerequisiteRiskAction(HLT, QUAI, p.stamp, values);
+    expect(r).toEqual({ toast: expect.stringMatching(/^R-\d+ · Risk registered$/) });
+    const second = (r as { toast: string }).toast.split(' · ')[0];
+    expect(second).not.toBe(first);
+    expect((await line(QUAI)).riskNumber).toBe(second);
+    const register = await listRisks(HLT);
+    expect([register.find((x) => x.id === first)?.status, register.find((x) => x.id === second)?.status]).toEqual(['open', 'open']);
+    const audit = await listAudit({ projectCode: HLT, limit: 10 });
+    expect(audit.find((a) => a.object === 'Prerequisite · Autorisation de levage & arrêt exploitation quai 4')).toMatchObject({
+      who: 'Marie Lefebvre', change: `risk raised · ${second} (after ${first})`, area: 'Site', before: { risk: first }, after: { risk: second },
+    });
+    const [act] = await listActivity({ limit: 1 });
+    expect(act).toMatchObject({ what: `Raised ${second} from a late client prerequisite (after ${first}) · Autorisation de levage & arrêt exploitation quai 4` });
+    expect(act.messageKey).toBe('site.prerequisiteRiskRaisedAgain');
+    expect((await pageView()).ready!.prereqs[QUAI].risk!.number).toBe(second);
   });
 
   it('before J-15 (owner, 17 Oct 2026, second round): the PM raises a risk from a pending prerequisite not late yet; non-leads still refused', async () => {
@@ -214,7 +248,13 @@ describe('R-121 · "Raise as a risk"', () => {
     const [act] = await listActivity({ limit: 1 });
     expect(act).toMatchObject({ who: 'Romain Aubert', what: `Raised ${number} from a client prerequisite not confirmed yet · Point de raccordement HT 11 kV disponible` });
     expect(act.messageKey).toBe('site.pendingPrerequisiteRiskRaised');
-    expect((await pageView()).ready!.prereqs[HT].raise).toBeNull();
+    // Before J-15 a prerequisite carries one risk: the link only, a second one is refused (owner, 17 Oct 2026, third round).
+    const v = (await pageView()).ready!.prereqs[HT];
+    expect([v.risk?.number, v.raise]).toEqual([number, null]);
+    expect(errorOf(await raisePrerequisiteRiskAction(HLT, HT, p.stamp, values))).toBe('A risk was already raised from this prerequisite');
+    const input = { title: 'x', category: 'technical', response: 'mitigate' as const };
+    await expect(raisePrerequisiteRisk(HLT, HT, p.stamp, input, 'cause', { name: 'Romain Aubert', role: 'pm' })).rejects.toThrow('A risk was already raised from this prerequisite');
+    expect((await line(HT)).riskNumber).toBe(number);
   });
 
   it('the writer re-checks the lead right and the status with the actor', async () => {
@@ -223,5 +263,25 @@ describe('R-121 · "Raise as a risk"', () => {
     const stamp = (await line(POWER)).stamp;
     await expect(raisePrerequisiteRisk(HLT, POWER, stamp, input, 'cause', { name: 'Julien Wagner', role: 'member' })).rejects.toThrow(PREREQ_RISK_LEADS_ONLY);
     await expect(raisePrerequisiteRisk(HLT, POWER, stamp, input, 'cause', { name: 'Marie Lefebvre', role: 'director' })).rejects.toThrow('This prerequisite is not pending any more');
+  });
+});
+
+describe('R-121 · the J-15 notice of a prerequisite that already has a risk (owner, 17 Oct 2026, third round)', () => {
+  it('still sent once per need date; its sub-line names the linked risk and its status', async () => {
+    const db = await getDb();
+    const [p] = await db.select({ id: projects.id }).from(projects).where(eq(projects.code, HLT));
+    const ht = and(eq(sitePrerequisites.projectId, p.id), eq(sitePrerequisites.position, HT));
+    const risk = (await line(HT)).riskNumber!;
+    await db.update(sitePrerequisites).set({ neededBy: '2026-12-15' }).where(ht);
+    expect(await alertLatePrerequisites('2026-11-30')).toMatchObject({ alerted: 1, notified: 1 });
+    expect(await alertLatePrerequisites('2026-11-30')).toMatchObject({ alerted: 0, notified: 0 });
+    expect((await alerts('pm'))[0].sub).toBe(`Point de raccordement HT 11 kV disponible · A1410 · 15 Dec · ${risk} · linked risk open`);
+    // The risk closed meanwhile: the notice says so.
+    await db.update(risks).set({ status: 'closed' }).where(and(eq(risks.projectId, p.id), eq(risks.number, risk)));
+    await db.update(sitePrerequisites).set({ neededBy: '2026-12-21' }).where(ht);
+    expect(await alertLatePrerequisites('2026-12-06')).toMatchObject({ alerted: 1, notified: 1 });
+    expect((await alerts('pm'))[0].sub).toBe(`Point de raccordement HT 11 kV disponible · A1410 · 21 Dec · ${risk} · linked risk closed`);
+    // Shown in French by the bell (page header: fieldsText), field by field: the risk number as is, its status translated.
+    expect(fieldsText((await alerts('pm'))[0].sub, makeT('fr'), 'fr')).toBe(`Point de raccordement HT 11 kV disponible · A1410 · 21 déc. · ${risk} · risque lié clôturé`);
   });
 });

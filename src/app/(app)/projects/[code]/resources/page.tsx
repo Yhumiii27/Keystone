@@ -12,7 +12,8 @@ import { resourcesView } from '@/features/resources/model';
 import { ResourcesView } from '@/features/resources/resources-view';
 import { suggestionInputs } from '@/features/resources/suggestions';
 import { listResourceRequests } from '@/server/dal/requests';
-import { getLaborCost, getLoadWindow, getWeekProjectSplit, getProjectTeam, getRebalancingSuggestions, getResourcePool } from '@/server/dal/resources';
+import { getLaborCost, getLoadWindow, getProjectTradeDemand, getWeekProjectSplit, getProjectTeam, getRebalancingSuggestions, getResourcePool } from '@/server/dal/resources';
+import { listUndeclaredActivities } from '@/server/dal/planning-load';
 import { LoadWindowNav } from '@/features/resources/window-nav';
 import { screenHref } from '@/config/screens';
 import { canManageTeam } from '@/domain/rights';
@@ -32,7 +33,7 @@ export default async function ProjectResourcesPage({
   const canEdit = ctx.canEdit('presources');
   const manageTeam = canEdit && canManageTeam(ctx.viewer.role, ctx.access);
   const win = await getLoadWindow(sp.week, sp.view);
-  const [{ t, lang }, pool, weekSplit, team, labor, pending, suggestions, named, candidates] = await Promise.all([
+  const [{ t, lang }, pool, weekSplit, team, labor, pending, suggestions, named, candidates, trades, undeclared] = await Promise.all([
     getI18n(),
     getResourcePool(win.weeks),
     win.view === 'week' ? getWeekProjectSplit(win.start) : Promise.resolve(undefined),
@@ -42,6 +43,8 @@ export default async function ProjectResourcesPage({
     getRebalancingSuggestions({ projectCode: p.code }),
     getNamedTeam(p.code),
     manageTeam ? teamCandidates(p.code) : Promise.resolve(null),
+    getProjectTradeDemand(p.code, win.weeks),
+    listUndeclaredActivities(p.code),
   ]);
   // Pool order (PEOPLE order), team members only — as the prototype's PEOPLE.filter(team.includes).
   const members = new Set(team.map((m) => m.name));
@@ -50,6 +53,7 @@ export default async function ProjectResourcesPage({
     {
       canOpenWork: work.canView,
       scope: 'project',
+      projectCode: p.code,
       weeks: pool.weeks.map((w) => w.label),
       weekStarts: pool.weeks.map((w) => w.start),
       windowIsCurrent: win.isCurrent,
@@ -57,8 +61,12 @@ export default async function ProjectResourcesPage({
       weekSplit,
       people: pool.people
         .filter((m) => members.has(m.name))
-        .map((m) => ({ name: m.name, initials: m.initials, jobTitle: m.jobTitle, department: m.department, loads: m.loads })),
+        .map((m) => ({ name: m.name, initials: m.initials, jobTitle: m.jobTitle, department: m.department, loads: m.loads, hours: m.hours })),
       departments: [],
+      // R-084 (owner answers 17 Oct 2026, third round): the project's work no named person carries, by trade; the activities
+      // that declare no resource at all.
+      projectTrades: trades,
+      undeclared,
       labor,
       openRequests: pending.length,
       suggestions: suggestions.length ? suggestionInputs(suggestions, { portfolio: false, canEdit, readOnly: () => false }) : null,
