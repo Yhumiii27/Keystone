@@ -20,7 +20,6 @@ import { openDatabase } from '@/server/db/open';
 import { listActivity, listAudit } from '@/server/dal/notifications';
 import { ARBITRATION_REFUSED, arbitrateSiteConflict, getSite } from '@/server/dal/site';
 import { COOKIE } from '@/server/session';
-import { overloadJulienWagner } from '@/features/resources/overload.test-fixture';
 import { arbitrateConflictAction } from './actions';
 import { siteView } from './model';
 
@@ -36,9 +35,7 @@ const run = async (q: string) => (await getDb()).execute(sql.raw(q));
 
 beforeAll(async () => {
   setDb(await openDatabase());
-  // R-084: the load conflicts read the schedules' loads — nobody is above 110 % on the demo data set. Julien Wagner on an NDC-031
-  // activity at 1 × 9 h/d during his HLT-026 rotation (19 Oct – 13 Nov): 45 h / 40 h = 113 % (overload.test-fixture.ts).
-  await overloadJulienWagner({ code: 'TST-ROT', from: '2026-10-19', to: '2026-11-13', hoursPerDay: 9 });
+  // R-084: the load conflicts read the schedules' loads — the named demo assignments (owner answer 18 Oct 2026).
 }, 60_000);
 
 describe('R-119 · arbitrate a site-team conflict, 9 personas', () => {
@@ -74,7 +71,7 @@ describe('R-119 · arbitrate a site-team conflict, 9 personas', () => {
     as('quality');
     expect(await arbitrateConflictAction(HLT, await keyOf('Hélène Sauvage', 'doc'), { comment: 'Badge requested, arrives 25 Nov' })).toEqual({ toast: 'Conflict arbitrated · Hélène Sauvage' });
     const s = (await getSite(HLT))!;
-    // R-084: 7 conflicts with the fixture (no load conflict for Amélie Ollivier any more), 3 arbitrated (5 on the seeded rows).
+    // R-084: 7 conflicts with the named demo assignments (no load conflict for Amélie Ollivier any more), 3 arbitrated (5 on the seeded rows).
     expect(s.collisions.filter((c) => !c.resolved).length).toBe(4);
     expect(s.go.conditions.find((c) => c.key === 'collisions')!.sub).toBe('4 collisions');
     // Julien still has no open conflict: no icon; Hélène neither.

@@ -77,6 +77,10 @@
   },
   {
    "date": "2026-10-18",
+   "text": "Réponses du 18 oct. : équipes externes exclues de la charge, alerte J-15 sur activité sans affectation, affectations nominatives dans les plannings de démonstration ; anciens risques de prérequis laissés ouverts."
+  },
+  {
+   "date": "2026-10-18",
    "text": "Serveur PostgreSQL commun EPC2I (étape 3, décision M-01) : sur PostgreSQL, tables, vues pub_ et journal des migrations dans le schéma keystone (rôle keystone_app), migrations publiées inchangées (« \"public\". » remplacé par « \"keystone\". » à l’application, verrou hashtext('keystone.migrations')), verrou d’écriture des transactions, numéro et code analytique d’un nouveau projet calculés dans la transaction, sauvegarde limitée au schéma keystone ; migrations 0034_share_prerequisites et 0035_share (12 vues pub_ du partage). PGlite inchangé."
   }
  ],
@@ -2496,7 +2500,7 @@
    "progress": {
     "state": "en_cours",
     "delivery": "Livraison 9",
-    "note": "Lot « planning-load » (docs/delivery-9/notes-planning-load.md) : la charge vient des affectations des plannings (une seule source, getPlanningLoad) ; le travail non affecté à une personne compte par métier (service) ; alerte du matin au CP pour une activité sans ressource déclarée. Reste la partie capacité (horaire contractuel, absences Cursus)."
+    "note": "Lot « planning-load » (docs/delivery-9/notes-planning-load.md) : la charge vient des affectations des plannings (une seule source, getPlanningLoad) ; le travail non affecté à une personne compte par métier (service) ; alerte du matin au CP pour une activité sans ressource déclarée. Reste la partie capacité (horaire contractuel, absences Cursus). Quatrième tour (18 oct.) : équipes externes hors du plan de charge ; alerte du matin au CP à J-15 pour une activité sans affectation ; plannings de démonstration enrichis d’affectations nominatives (occupation 84 %, 3 personnes surchargées). Les niveaux de compétence attendent les besoins par activité."
    }
   },
   {

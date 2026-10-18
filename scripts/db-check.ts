@@ -26,6 +26,7 @@ import { getHoursReconciliation, getLeaveCalendar, getRateCard, getSkillsMatrix 
 import { countUnreadNotifications, listActivity, listAudit } from '@/server/dal/notifications';
 import { approveResourceRequest, createResourceRequest, getDepartmentApprovals, listResourceRequests } from '@/server/dal/requests';
 import { getResourcePool, getWhatIf } from '@/server/dal/resources';
+import { listUnassignedActivities, listUndeclaredActivities } from '@/server/dal/planning-load';
 import { createRisk, getRiskRegister, listRisks } from '@/server/dal/risks';
 import { getTask, listTasks } from '@/server/dal/tasks';
 import { getTrends } from '@/server/dal/trends';
@@ -377,12 +378,20 @@ async function main() {
   check('contingency without a register: budget line (NDC-031 = 100), else round(BAC × 3 %) (EWA-051 = 66)',
     (await getContingency('NDC-031'))?.initial === 100 && (await getContingency('EWA-051'))?.initial === 66);
   // R-084 (owner answers 17 Oct 2026, third round): the loads come from the schedules' assignments (the PEOPLE percentages stay
-  // seeded in `allocations`, no longer read): on the prototype's weeks only Julien Wagner is named (A1250, 40 h/wk until 9 Oct).
+  // seeded in `allocations`, no longer read). Owner answer 18 Oct 2026 (fourth round): 61 named demo assignments
+  // (src/server/db/seed/demo-assignments.ts) fitted to PEOPLE — 4 A1250_RES rows + 61 = 65; on the prototype's weeks 83 %
+  // utilisation and 3 people above 110 % in weeks 42–44 (Julien Wagner 100 · 106 · 125 · 125 · 108 · 88 · 65 · 81).
   const PROTO_WEEKS = ['2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09', '2026-11-16'];
   const pool = await getResourcePool(PROTO_WEEKS);
   check('PEOPLE reproduced (pool order, job titles); loads from the schedules (R-084)',
     same(pool.people.map((p) => [p.name, p.jobTitle]), (PROTO.PEOPLE as [string, string][]).map(([n, j]) => [n, j]))
-      && same(pool.people.filter((p) => p.max > 0).map((p) => [p.name, p.loads]), [['Julien Wagner', [100, 100, 0, 0, 0, 0, 0, 0]]]));
+      && same(pool.people.find((p) => p.name === 'Julien Wagner')?.loads, [100, 106, 125, 125, 108, 88, 65, 81])
+      && Math.round(pool.people.reduce((a, p) => a + p.avg, 0) / pool.people.length) === 83
+      && same(pool.people.filter((p) => p.max > 110).map((p) => p.name), ['Amélie Ollivier', 'Julien Wagner', 'Pauline Noguès']));
+  check('activity_assignments = 65 (A1250_RES 4 + 61 named demo assignments)', counts.activity_assignments === 65, counts.activity_assignments);
+  // Owner answer 18 Oct 2026 (J-15 alert): HLT-026 A1410 is left owner-only on purpose; no activity without any declared resource.
+  check('without an assignment at J-15: HLT-026 A1410; undeclared: none',
+    same((await listUnassignedActivities('2026-09-25')).map((a) => `${a.projectCode} ${a.code}`), ['HLT-026 A1410']) && (await listUndeclaredActivities()).length === 0);
   const reqs = (await listResourceRequests()).map((r) => ({
     id: r.id, pm: r.requestedBy, project: r.projectShort, person: r.resource, dept: r.department, title: r.title, act: r.activity?.code, hours: r.hours,
     start: r.startDay, due: r.dueDay, prio: r.priority, status: r.status, sent: r.sentText, note: r.note, response: r.response,
@@ -413,8 +422,11 @@ async function main() {
   check('HOURS reproduced', same(hr && { imported: hr.importedText, code: hr.analyticCode, lines: hr.lines.map((l) => [l.person, l.wbsLabel, l.plannedH, l.declaredH]), unassigned: hr.unassigned.map((u) => [u.person, u.hours, u.reason]) }, PROTO.HOURS['HLT-026']));
   const wi = await getWhatIf('HLT-026');
   // Chapter 4 (S-7): levers derived from the plan (A1250 assignments) replace the prototype's LEVERS / AUTO.
-  // R-084: Julien Wagner at 100 % on the schedules (not above): no relief lever — overtime and an extra crew unit on A1250.
-  check('what-if levers derived from A1250, scenarios A/B', wi?.levers.length === 2 && wi.levers.every((l) => l.activity === 'A1250') && same(wi.scenarios.map((x) => x.name), ['A', 'B']));
+  // R-084 + named demo assignments (18 Oct 2026): 23 levers on HLT-026 — A1250's relief of Julien Wagner, the crew's overtime and
+  // unit first.
+  check('what-if levers derived from the HLT-026 assignments (23, A1250 first), scenarios A/B', wi?.levers.length === 23
+    && same(wi.levers.slice(0, 3).map((l) => l.code), ['extra_resource:A1250:julien-wagner', 'overtime:A1250:steel-erection-crew', 'extra_resource:A1250:steel-erection-crew'])
+    && same(wi.scenarios.map((x) => x.name), ['A', 'B']));
   check('unread notifications per role 3/4/1/2/1/1/1/1', same(await Promise.all(['director', 'pm', 'depthead', 'member', 'englead', 'quality', 'procurement', 'client'].map(countUnreadNotifications)), [3, 4, 1, 2, 1, 1, 1, 1]));
   check('ACTIVITY and AUDIT reproduced', same((await listActivity()).map((a) => [a.when, a.who, a.what, a.kind]), PROTO.ACTIVITY) && same((await listAudit()).map((a) => [a.when, a.who, a.object, a.change, a.area]), PROTO.AUDIT));
 
@@ -505,8 +517,8 @@ async function delivery3Reads() {
     pf.ranking.length === 10 && pf.ranking[0].project.code === 'WSA-044' && pf.ranking[0].score === 81
       && same(pf.ranking.find((r) => r.project.code === 'HLT-026') && [pf.ranking.find((r) => r.project.code === 'HLT-026')!.score, pf.ranking.find((r) => r.project.code === 'HLT-026')!.marginPct], [72, 3]));
   // A-12: capacity from the pool, demand per €1M from the active portfolio (prototype constants: 1 560 h). R-084: commitments from
-  // the schedules' planning load (151 h on the seeded allocation rows).
-  check('capacity what-if WSA-044: gap 49 h', (await getCapacityWhatIf('WSA-044'))?.gapH === 49);
+  // the schedules' planning load (151 h on the seeded allocation rows; 239 h with the named demo assignments of 18 Oct 2026).
+  check('capacity what-if WSA-044: gap 239 h', (await getCapacityWhatIf('WSA-044'))?.gapH === 239);
   const ms = await listMeetings('HLT-026');
   const acts = ms.flatMap((m) => m.agenda.flatMap((a) => a.lines)).filter((l) => l.type === 'action');
   check('meetings HLT-026: 5 · 1 notes in progress · 6 open actions · 0 overdue; MTG-121 on NDC-031',
@@ -681,13 +693,13 @@ async function delivery5Reads() {
       ivs.filter((i) => i.status === 'planned').map((i) => i.scheduledOn).sort()[0], claims.filter((c) => c.coverage !== 'chargeable').reduce((a, c) => a + c.costKeur, 0),
       claims.filter((c) => c.coverage === 'chargeable').reduce((a, c) => a + c.costKeur, 0), claims.filter((c) => c.ecoNumber).length], [5, 2, 4, '2026-10-06', 34, 6, 1]));
   const site = (await getSite('HLT-026'))!;
-  // D-6b 'a' (R-119): the conflicts are computed from the rotation plan, the pool, Cursus and the absences — 6 (the prototype's 4;
-  // R-084: no load conflict — the loads come from the schedules — 8 with the seeded allocation rows).
-  check('site HLT-026: NO GO (5 conditions open) · prerequisites 4 / 6 · Cursus 3 / 5 (1 reserve, mock) · equipment 6 / 8 · 6 conflicts · budget 98.3 k€ (11.3 committed) · 2 permits pending',
+  // D-6b 'a' (R-119): the conflicts are computed from the rotation plan, the pool, Cursus and the absences — 7 (the prototype's 4;
+  // R-084 + named demo assignments: Julien Wagner's load conflict — 8 with the seeded allocation rows).
+  check('site HLT-026: NO GO (5 conditions open) · prerequisites 4 / 6 · Cursus 3 / 5 (1 reserve, mock) · equipment 6 / 8 · 7 conflicts · budget 98.3 k€ (11.3 committed) · 2 permits pending',
     getCursusConnector().mode === 'mock' && same([site.go.ok, site.go.conditions.filter((c) => !c.ok).length, site.prerequisites.filter((p) => p.status !== 'pending').length,
       site.cursus.people.filter((p) => p.verdict !== 'no_go').length, site.cursus.people.filter((p) => p.verdict === 'go_with_reserve').length,
       site.equipment.filter((e) => e.status === 'confirmed').length, site.collisions.length, Math.round(site.missionCosts.reduce((a, m) => a + m.budgetKeur, 0) * 10) / 10,
-      Math.round(site.missionCosts.reduce((a, m) => a + m.actualKeur, 0) * 10) / 10, site.hse.filter((h) => h.status === 'pending').length], [false, 5, 4, 3, 1, 6, 6, 98.3, 11.3, 2]));
+      Math.round(site.missionCosts.reduce((a, m) => a + m.actualKeur, 0) * 10) / 10, site.hse.filter((h) => h.status === 'pending').length], [false, 5, 4, 3, 1, 6, 7, 98.3, 11.3, 2]));
   check('no site sheet, commissioning, ITP, REX, register or P&ID on NDC-031 / EWA-051', (await getSite('NDC-031')) === null && (await getCommissioning('EWA-051')) === null
     && (await getItpPlan('NDC-031')) === null && (await getRex('EWA-051')).lessons.length === 0 && (await getEngineeringRegister('NDC-031')) === null && (await getPidValidation('EWA-051')) === null);
   const cp = await getClientPortal('HLT-026');

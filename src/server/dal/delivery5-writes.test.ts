@@ -262,9 +262,9 @@ describe('site — readiness, daily reports, Cursus', () => {
     await expect(confirmEquipment(HLT, 4, await eqp(4), A.quality)).rejects.toThrow(/outside your workspace/);
     const s = (await getSite(HLT))!;
     // HSE: the HTTP refresh above left Vigie's single signed prevention plan in the mirror — no permit pending.
-    // D-6b 'a' (R-119): 6 conflicts computed from the rotation plan (the prototype's 4 authored collisions; R-084: no load
-    // conflict — the loads come from the schedules, 8 with the seeded allocation rows).
-    expect(s.go.conditions.map((c) => c.sub)).toEqual(['1 pending', '2 NO GO', '1 unconfirmed', '6 collisions', 'Ready']);
+    // D-6b 'a' (R-119): 7 conflicts computed from the rotation plan (the prototype's 4 authored collisions; R-084 + named demo
+    // assignments: Julien Wagner's load conflict — 8 with the seeded allocation rows).
+    expect(s.go.conditions.map((c) => c.sub)).toEqual(['1 pending', '2 NO GO', '1 unconfirmed', '7 collisions', 'Ready']);
     await expect(advancePrerequisite('NDC-031', 0, 'confirmed', 'abc', A.pm)).rejects.toThrow(/no site sheet/);
   });
 

@@ -36,7 +36,6 @@ import { getWhatIf } from './resources';
 import { HOURS_VARIANCE_RANGE, resetSettings, setHoursVariance } from './settings';
 import { getSite } from './site';
 import { getTask } from './tasks';
-import { overloadJulienWagner } from '@/features/resources/overload.test-fixture';
 
 const ROLES = PERSONAS.map((p) => p.role);
 const as = (role: RoleKey) => {
@@ -230,8 +229,7 @@ describe('R-083 · one valuation of hours on the seed', () => {
   });
 
   it('what-if: people through their role at the horizon start; the crew keeps the isolated 60 €/h placeholder', async () => {
-    // R-084: the loads come from the schedules — Julien Wagner is overloaded (relief lever) only with a second assignment.
-    await overloadJulienWagner();
+    // R-084: the loads come from the schedules — Julien Wagner is overloaded (relief lever) on the demo assignments (owner, 18 Oct 2026).
     const w = (await getWhatIf('HLT-026'))!;
     const julien = w.levers.find((l) => l.code === 'extra_resource:A1250:julien-wagner')!;
     expect(julien.helper).toMatchObject({ kind: 'external', rateEur: 118 });

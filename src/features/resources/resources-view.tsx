@@ -160,6 +160,23 @@ export function ResourcesView({ view, t, projectName, canEdit, windowNav, window
               ))}
             </section>
           )}
+          {view.unassigned.length > 0 && (
+            // Owner answer 18 Oct 2026, fourth round: an activity with no assignment (owner only) starting within 15 days.
+            <section className={cx('card', 'elev-sm', s.card)} aria-label={t('Activities without an assignment')}>
+              <div className={s.titleStack}>
+                <CardTitle>{t('Activities without an assignment')}</CardTitle>
+                <span className={s.cardSub}>{t('Starting within 15 days or started, owner only: assign the people who will do the work')}</span>
+              </div>
+              {view.unassigned.map((a) => (
+                <div key={a.code} className={s.roleHead}>
+                  <Link href={a.href} className={s.roleName} style={{ color: LO }}>
+                    {a.code} · {a.name}
+                  </Link>
+                  {a.start && <span className={s.cardSub}>{a.start}</span>}
+                </div>
+              ))}
+            </section>
+          )}
           {view.suggestions && (
             <section className={cx('card', 'elev-sm', s.card, s.suggestionsCard)} aria-label={t('Suggested rebalancing')}>
               <div className={s.sugHead}>

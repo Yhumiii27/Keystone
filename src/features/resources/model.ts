@@ -10,6 +10,7 @@ import {
 import type { WhatIfResult } from '@/domain/whatif';
 import { HOURS_PER_PERSON_WEEK, weekLoad, weekSplitText, type WeekProjectHours } from '@/domain/load-week';
 import { FR_MONTHS } from '@/i18n/fr-rules';
+import { shortDateOfIso } from '@/server/db/codes';
 import { money } from '@/lib/format';
 import type { Lang, T } from '@/i18n/translate';
 import { leverEffectText, leverText, type WhatIfLeverData } from './whatif-model';
@@ -69,6 +70,11 @@ export interface ResourcesInput {
    * alert); a card lists them with a link to the plan. Absent = no card.
    */
   undeclared?: { code: string; name: string }[];
+  /**
+   * Project: activities with an owner but no assignment that start within 15 days, or have started (owner answer 18 Oct 2026,
+   * fourth round: the PM is warned at J-15); a second card lists them with their start. Absent = no card.
+   */
+  unassigned?: { code: string; name: string; start: string | null }[];
   /**
    * "Labor cost to date": portfolio — Σ labour categories of the projects in execution of the displayed zone (R-086, R-2 a);
    * project — the project's labour categories. Null when none.
@@ -175,6 +181,8 @@ export interface ResourcesView {
   rolesNote: string | null;
   /** Project: activities without any declared resource (code · name, link to the plan); empty = no card. */
   undeclared: { code: string; name: string; href: string }[];
+  /** Project: activities without an assignment at J-15 (code · name · start, link to the plan); empty = no card. */
+  unassigned: { code: string; name: string; start: string; href: string }[];
   suggestions: SuggestionView[] | null;
 }
 
@@ -187,6 +195,15 @@ const WEEK_RE = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2})$/;
 export function weekLabel(label: string, t: T, lang: Lang): string {
   const m = lang === 'fr' ? WEEK_RE.exec(label) : null;
   return m ? `${m[2]} ${FR_MONTHS[m[1]]}` : t(label);
+}
+
+/** The activity on the project's Plan (`?act=`). */
+const planActHref = (projectCode: string | undefined, act: string) => `${screenHref('plan', { code: projectCode })}?act=${encodeURIComponent(act)}`;
+
+/** "5 Oct" (EN) / "5 oct." (FR). */
+function shortDateText(iso: string, lang: Lang): string {
+  const [d, m] = shortDateOfIso(iso).split(' ');
+  return lang === 'fr' ? `${d} ${FR_MONTHS[m]}` : `${d} ${m}`;
 }
 
 /** `?person=` link of the heatmap person cell (prototype `setState({screen:'mywork', person})`). */
@@ -258,7 +275,10 @@ export function resourcesView(input: ResourcesInput, t: T, lang: Lang): Resource
     rolesNote: unnamed > 0
       ? (lang === 'fr' ? `Dont ${unnamed} h non affectées à une personne, comptées par métier` : `Of which ${unnamed} h not assigned to a person, counted by trade`)
       : null,
-    undeclared: (input.undeclared ?? []).map((a) => ({ code: a.code, name: dataText(a.name, lang), href: `${screenHref('plan', { code: input.projectCode })}?act=${encodeURIComponent(a.code)}` })),
+    undeclared: (input.undeclared ?? []).map((a) => ({ code: a.code, name: dataText(a.name, lang), href: planActHref(input.projectCode, a.code) })),
+    unassigned: (input.unassigned ?? []).map((a) => ({
+      code: a.code, name: dataText(a.name, lang), start: a.start ? shortDateText(a.start, lang) : '', href: planActHref(input.projectCode, a.code),
+    })),
     people: people.map((p) => ({
       name: p.name,
       role: p.jobTitle ? t(p.jobTitle) : '',

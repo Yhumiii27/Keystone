@@ -16,6 +16,7 @@ import { backfillContractImpacts } from './cost-change';
 import { seedContract } from './contract';
 import { seedCost } from './cost';
 import { seedCursus } from './cursus';
+import { demoAssignmentsToBackfill, seedDemoAssignments } from './demo-assignments';
 import { seedDocuments } from './documents';
 import { seedEngineering } from './engineering';
 import { seedExecution } from './execution';
@@ -86,6 +87,8 @@ async function seedDemoData(tx: Tx): Promise<void> {
   await seedDelivery5(tx, ctx);
   await seedChapter4(tx);
   await seedDemoReferents(tx);
+  // Delivery 9 (owner answer 18 Oct 2026): named people on the demo schedules — the load is read from them (R-084).
+  await seedDemoAssignments(tx);
 }
 
 /**
@@ -145,6 +148,12 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     // R-044: the Finance persona's user on a demo database seeded before delivery 8 (idempotent).
     if (await financeUserToBackfill(db)) {
       await db.transaction(async (tx) => seedFinanceUser(tx)).catch((e) => logError('Delivery 8 Finance user backfill', e, { component: 'seed' }));
+    }
+    // ── Delivery 9 · demo backfills · planning-load ──
+    // Owner answer 18 Oct 2026 (fourth round): the named demo assignments of a demo database seeded before them (once: only while
+    // its schedules name at most the prototype's one person).
+    if (await demoAssignmentsToBackfill(db)) {
+      await db.transaction(async (tx) => { await seedDemoAssignments(tx); }).catch((e) => logError('Delivery 9 demo assignments backfill', e, { component: 'seed' }));
     }
     // ── Delivery 8 · demo backfills · connectors ──
     // Databases seeded before delivery 7 adopt their (demo) record.

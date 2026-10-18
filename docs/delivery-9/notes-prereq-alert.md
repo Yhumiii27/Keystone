@@ -228,5 +228,7 @@ risk open", once per need date, then "linked risk closed" after the risk is clos
 
 **Open questions.**
 - When a new risk is raised, should the previous risk be closed automatically (or flagged "superseded")? Default: untouched — the
-  PM closes it in the register if it is no longer relevant.
+  PM closes it in the register if it is no longer relevant. **Answered 18 Oct 2026 (fourth round):** « Nouveau risque sur un
+  prérequis : ne pas clôturer l'ancien, il peut y avoir plusieurs sources » — the default stands: the previous risk stays as it is
+  (it may have other sources than the prerequisite); no code change.
 - Should the notice's link open "Raise a new risk" by itself (as it does without a risk)? Default: no — the row is marked only.
