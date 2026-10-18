@@ -1,6 +1,7 @@
 // Portfolio and projects (docs/spec/11 §3.2): projects, sites, members, lifecycle reference (stages, gates,
 // transitions, stage deliverables), deliverable checks, stage history, machine types and project templates.
-import { boolean, date, doublePrecision, integer, pgTable, primaryKey, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { boolean, check, date, doublePrecision, integer, pgTable, primaryKey, text, timestamp, unique, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { CalendarCode, CostType, MachineTypeCode, StageCode, StageGroup, TransitionMode, ValidationStatus, ZoneCode } from '../codes';
 import { id, keur, months, num, timestamps } from './_common';
 import { clients, countries, persons, zones } from './organisation';
@@ -210,7 +211,12 @@ export const projects = pgTable('projects', {
   plannedStartDate: date('planned_start_date', { mode: 'string' }),
   plannedFinishDate: date('planned_finish_date', { mode: 'string' }),
   ...timestamps,
-});
+  /**
+   * Share D02 (Matrix): client project, or internal project (Cursus's non-project codes INT-PROD… ECOLE become internal
+   * projects). Every project Keystone creates today is a client project.
+   */
+  kind: text('kind').$type<'client' | 'internal'>().notNull().default('client'),
+}, (t) => [check('projects_kind_check', sql`${t.kind} in ('client', 'internal')`)]);
 
 /** Project site (GEO 3169). Zone = zoneOverride ?? country zone. */
 export const projectSites = pgTable('project_sites', {

@@ -1,6 +1,6 @@
 // Platform (docs/spec/11 §3.4 Notification, §3.12 AuditEntry / ActivityEvent; screens 01 §5.5 notifications,
 // 10 §2 activity feed and audit trail).
-import { integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import type { ActivityKind, NotificationKind } from '../codes';
 import { id } from './_common';
 import { persons, users } from './organisation';
@@ -60,7 +60,10 @@ export const activityEvents = pgTable('activity_events', {
   kind: text('kind').$type<ActivityKind>().notNull(),
   projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  /** Share D18 (Matrix): keystone.pub_journal is read by period. */
+  index('activity_events_occurred_at_idx').on(t.occurredAt),
+]);
 
 /**
  * Append-only audit trail (AUDIT 3572): who changed what, when — exportable for ISO 9001 audits (spec 11 §3.12).
@@ -93,4 +96,7 @@ export const auditEntries = pgTable('audit_entries', {
   /** R-184: the system message the change text was built from, and its typed parameters (as on activity_events). */
   messageKey: text('message_key'),
   messageParams: jsonb('message_params').$type<Record<string, unknown>>(),
-});
+}, (t) => [
+  /** Share D18 (Matrix): keystone.pub_journal is read by period. */
+  index('audit_entries_occurred_at_idx').on(t.occurredAt),
+]);

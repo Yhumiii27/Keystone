@@ -129,6 +129,17 @@ export async function seedDepartments(tx: Tx, ctx: SeedCtx): Promise<void> {
 }
 
 /**
+ * ISO 3166-1 alpha-2 codes of the prototype's countries (share D17: countries.iso2 is the key of matrix.pays). The same table
+ * backfills an existing database (migration 0035_share).
+ */
+export const COUNTRY_ISO2: Readonly<Record<string, string>> = {
+  France: 'FR', 'United Kingdom': 'GB', Netherlands: 'NL', Germany: 'DE', Belgium: 'BE', Spain: 'ES', Italy: 'IT', Canada: 'CA',
+  'United States': 'US', Morocco: 'MA', 'Côte d’Ivoire': 'CI', Senegal: 'SN', Kenya: 'KE', 'South Africa': 'ZA', Egypt: 'EG',
+  Australia: 'AU', Malaysia: 'MY', Singapore: 'SG', Indonesia: 'ID', Vietnam: 'VN', Japan: 'JP', India: 'IN', Ghana: 'GH',
+  Brazil: 'BR', 'Saudi Arabia': 'SA',
+};
+
+/**
  * Zones (with their bounds), countries and cities — reference data of both seeds (R-011). `managerOf` resolves the zone
  * manager of the prototype (demo) or returns null (production: no fictitious people).
  */
@@ -140,7 +151,7 @@ export async function seedGeography(tx: Tx, managerOf: (name: string) => string 
     }),
   );
   await tx.insert(countries).values(
-    Object.entries(PROTO.COUNTRY_ZONE as Record<string, 'euna' | 'afr' | 'apac'>).map(([name, zoneCode], i) => ({ name, zoneCode, sortOrder: i + 1 })),
+    Object.entries(PROTO.COUNTRY_ZONE as Record<string, 'euna' | 'afr' | 'apac'>).map(([name, zoneCode], i) => ({ name, zoneCode, sortOrder: i + 1, iso2: COUNTRY_ISO2[name] ?? null })),
   );
   await tx.insert(cities).values(Object.entries(PROTO.CITY_COUNTRY as Record<string, string>).map(([name, countryName]) => ({ name, countryName })));
 }
