@@ -1,7 +1,7 @@
 import 'server-only';
 // One backup snapshot (R-004) into KEYSTONE_BACKUP_DIR/<UTC stamp>/ (layout: ./store.ts):
 // 1. the database, consistently with the list of its stored files and its row counts:
-//    - PostgreSQL: one REPEATABLE READ READ ONLY transaction exports its snapshot; `pg_dump --format=custom --snapshot=…`
+//    - PostgreSQL: one REPEATABLE READ READ ONLY transaction exports its snapshot; `pg_dump --format=custom --schema=keystone --snapshot=…`
 //      dumps exactly that state while the same transaction reads stored_files and the row counts (pg_dump must be at least
 //      the server's major version and on the PATH of the process — the worker's image ships postgresql-client-16);
 //    - PGlite: inside one PGlite transaction (every other query and transaction of the process waits for it), the stored
@@ -19,6 +19,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { snapshotStamp } from '@/domain/backup';
 import type { SeedMode } from '@/server/config/parse';
+import { PGLITE_JOURNAL_SCHEMA, SERVER_CONNECTION_OPTIONS, SERVER_SCHEMA } from '@/server/db/server-schema';
 import { MANIFEST_FORMAT, blobPath, type ManifestFile, type SnapshotManifest } from './store';
 
 /** What the snapshot reads the database from. */
@@ -45,17 +46,28 @@ interface DbState {
 
 const qid = (s: string) => `"${s.replace(/"/g, '""')}"`;
 
+/**
+ * Where Keystone's tables and migration journal are: PGlite — tables in `public`, journal in `drizzle`; PostgreSQL server —
+ * both in the schema `keystone` (shared EPC2I server, src/server/db/server-schema.ts).
+ */
+interface Layout {
+  schemas: readonly string[];
+  journal: string;
+}
+const PGLITE_LAYOUT: Layout = { schemas: ['public', PGLITE_JOURNAL_SCHEMA], journal: PGLITE_JOURNAL_SCHEMA };
+const SERVER_LAYOUT: Layout = { schemas: [SERVER_SCHEMA], journal: SERVER_SCHEMA };
+
 /** stored_files, row counts, migrations and seed — read with `rows` inside the snapshot's consistent view. */
-async function readState(rows: Rows): Promise<DbState> {
+async function readState(rows: Rows, layout: Layout): Promise<DbState> {
   const files = await rows<DbState['files'][number]>('select id::text as id, storage_path, sha256, size_bytes from stored_files order by storage_path');
   const tables = await rows<{ s: string; t: string }>(
-    "select table_schema as s, table_name as t from information_schema.tables where table_type = 'BASE TABLE' and table_schema in ('public', 'drizzle') order by 1, 2",
+    `select table_schema as s, table_name as t from information_schema.tables where table_type = 'BASE TABLE' and table_schema in (${layout.schemas.map((x) => `'${x}'`).join(', ')}) order by 1, 2`,
   );
   const counts: Record<string, number> = {};
   for (const { s, t } of tables) counts[`${s}.${t}`] = Number((await rows<{ n: number | string }>(`select count(*) as n from ${qid(s)}.${qid(t)}`))[0]?.n ?? 0);
   let migrations: DbState['migrations'] = { applied: 0, last: null };
-  if (tables.some((x) => x.s === 'drizzle' && x.t === '__drizzle_migrations')) {
-    const [m] = await rows<{ n: number | string; last: string | null }>('select count(*) as n, max(created_at)::text as last from drizzle.__drizzle_migrations');
+  if (tables.some((x) => x.s === layout.journal && x.t === '__drizzle_migrations')) {
+    const [m] = await rows<{ n: number | string; last: string | null }>(`select count(*) as n, max(created_at)::text as last from ${qid(layout.journal)}.__drizzle_migrations`);
     migrations = { applied: Number(m?.n ?? 0), last: m?.last == null ? null : Number(m.last) };
   }
   const [seedRow] = await rows<{ mode: string | null }>("select value->>'mode' as mode from app_settings where key = 'keystone.seed'");
@@ -89,16 +101,17 @@ async function sha256File(file: string): Promise<{ sha256: string; bytes: number
 
 async function dumpPostgres(url: string, out: string): Promise<DbState> {
   const { default: pg } = await import('pg');
-  const client = new pg.Client({ connectionString: url, application_name: 'keystone-backup' });
+  const client = new pg.Client({ connectionString: url, application_name: 'keystone-backup', options: SERVER_CONNECTION_OPTIONS });
   await client.connect();
   try {
     await client.query('begin isolation level repeatable read read only');
     const { rows } = await client.query<{ s: string }>('select pg_export_snapshot() as s');
     const { url: bare, password } = splitPassword(url);
-    const dump = runCommand('pg_dump', ['--format=custom', `--snapshot=${rows[0].s}`, `--file=${out}`, `--dbname=${bare}`], password ? { PGPASSWORD: password } : {});
+    // Keystone's schema only (`--schema=keystone`): on the shared EPC2I server the other tools' schemas are not Keystone's to back up.
+    const dump = runCommand('pg_dump', ['--format=custom', `--schema=${SERVER_SCHEMA}`, `--snapshot=${rows[0].s}`, `--file=${out}`, `--dbname=${bare}`], password ? { PGPASSWORD: password } : {});
     // Read in the same snapshot while pg_dump runs (it imports the snapshot at its start; the transaction stays open until it
     // ends). Promise.all also handles pg_dump's failure when the reads fail first.
-    const [state] = await Promise.all([readState(async <T,>(q: string) => (await client.query(q)).rows as T[]), dump]);
+    const [state] = await Promise.all([readState(async <T,>(q: string) => (await client.query(q)).rows as T[], SERVER_LAYOUT), dump]);
     await client.query('commit');
     return state;
   } finally {
@@ -109,7 +122,7 @@ async function dumpPostgres(url: string, out: string): Promise<DbState> {
 async function dumpPglite(client: PgliteLike, out: string): Promise<DbState> {
   // PGlite runs one transaction at a time and its plain queries wait for it: nothing changes the data until the dump ends.
   return client.transaction(async (tx) => {
-    const state = await readState(async <T,>(q: string) => (await tx.query<T>(q)).rows);
+    const state = await readState(async <T,>(q: string) => (await tx.query<T>(q)).rows, PGLITE_LAYOUT);
     await tx.query('checkpoint');
     const tar = await client.dumpDataDir('gzip');
     await fs.writeFile(out, new Uint8Array(await tar.arrayBuffer()), { mode: 0o600 });

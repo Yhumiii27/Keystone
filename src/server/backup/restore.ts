@@ -1,9 +1,9 @@
 import 'server-only';
 // Restore of a backup snapshot (R-004, RTO ≤ 4 h) — `npm run restore -- <snapshot> --target <empty database URL | new data
 // folder>` (scripts/restore.ts). Never over existing data:
-// - the target must be empty: a PostgreSQL database without any table (create it first, with the roles and extensions the
-//   managed server needs), or a data folder that does not exist yet / is empty;
-// - the database: `pg_restore --no-owner --no-acl --exit-on-error` (PostgreSQL), or a new PGlite folder loaded from the
+// - the target must be empty: the `keystone` schema of a PostgreSQL database, existing and without any relation (the shared
+//   server's base layer creates it; other schemas are not looked at), or a data folder that does not exist yet / is empty;
+// - the database: `pg_restore --no-owner --no-acl --exit-on-error` without the dump's CREATE SCHEMA (PostgreSQL), or a new PGlite folder loaded from the
 //   tarball (<folder>/pg). The snapshot's file is checked against its recorded sha256 first;
 // - then the files: each one the snapshot stored is copied from the content store to <data folder>/files/<path> after its
 //   hash is checked;
@@ -16,8 +16,10 @@ import 'server-only';
 // - the elapsed time is reported (the quarterly drill measures the RTO on real volumes).
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { pendingMigrations } from '@/server/db/migrations';
+import { SERVER_CONNECTION_OPTIONS, SERVER_SCHEMA, markServerDatabase } from '@/server/db/server-schema';
 import type { DB } from '@/server/db/types';
 import { runCommand, splitPassword } from './snapshot';
 import { blobPath, readManifest, type SnapshotManifest } from './store';
@@ -74,15 +76,19 @@ async function openRestoredPglite(dir: string, tarball?: Uint8Array<ArrayBuffer>
 
 async function openRestoredPostgres(url: string): Promise<Opened> {
   const [{ default: pg }, { drizzle }, schema] = await Promise.all([import('pg'), import('drizzle-orm/node-postgres'), import('@/server/db/schema')]);
-  const pool = new pg.Pool({ connectionString: url, max: 2, application_name: 'keystone-restore' });
+  const pool = new pg.Pool({ connectionString: url, max: 2, application_name: 'keystone-restore', options: SERVER_CONNECTION_OPTIONS });
   return {
     rows: async <T,>(q: string) => (await pool.query(q)).rows as T[],
-    db: drizzle({ client: pool, schema }) as unknown as DB,
+    db: markServerDatabase(drizzle({ client: pool, schema }) as unknown as DB),
     close: () => pool.end(),
   };
 }
 
-/** Throws RestoreRefusedError when the target is not empty. */
+/**
+ * Throws RestoreRefusedError when the target is not empty. PostgreSQL: the target is the `keystone` schema of the database
+ * (created beforehand, by the shared server's base layer or an administrator) and must hold no relation — the other tools'
+ * schemas of the shared server are not looked at.
+ */
 async function checkTargetEmpty(target: RestoreTarget): Promise<void> {
   if (!(await isEmptyDir(target.dataDir))) throw new RestoreRefusedError(`The target folder ${target.dataDir} is not empty: restore into a new folder`);
   if (target.kind === 'postgres') {
@@ -90,11 +96,32 @@ async function checkTargetEmpty(target: RestoreTarget): Promise<void> {
     const client = new pg.Client({ connectionString: target.url, application_name: 'keystone-restore' });
     await client.connect();
     try {
-      const { rows } = await client.query<{ n: string }>("select count(*) as n from information_schema.tables where table_schema not in ('pg_catalog', 'information_schema')");
-      if (Number(rows[0]?.n ?? 0) > 0) throw new RestoreRefusedError('The target database is not empty: restore into a new, empty database');
+      const { rows } = await client.query<{ schema: boolean; n: string }>(
+        'select exists (select from pg_namespace where nspname = $1) as schema, (select count(*) from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = $1) as n',
+        [SERVER_SCHEMA],
+      );
+      if (!rows[0]?.schema) throw new RestoreRefusedError(`The target database has no "${SERVER_SCHEMA}" schema: create it first (base layer of the shared server)`);
+      if (Number(rows[0]?.n ?? 0) > 0) throw new RestoreRefusedError(`The "${SERVER_SCHEMA}" schema of the target database is not empty: restore into an empty schema`);
     } finally {
       await client.end().catch(() => null);
     }
+  }
+}
+
+/**
+ * pg_restore of a `--schema=keystone` dump into the existing, empty `keystone` schema: the dump's CREATE SCHEMA (and the schema's
+ * comment) are left out of the restore list — the schema exists and Keystone's role may not create one.
+ */
+async function restorePostgresDump(url: string, password: string | null, dbFile: string): Promise<void> {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'keystone-restore-'));
+  try {
+    const list = path.join(dir, 'toc.list');
+    await runCommand('pg_restore', ['--list', `--file=${list}`, dbFile], {});
+    const kept = (await fs.readFile(list, 'utf8')).split('\n').filter((line) => !/^\d+;.*\b(SCHEMA - |COMMENT - SCHEMA )/.test(line));
+    await fs.writeFile(path.join(dir, 'kept.list'), kept.join('\n'));
+    await runCommand('pg_restore', ['--no-owner', '--no-acl', '--exit-on-error', `--use-list=${path.join(dir, 'kept.list')}`, `--dbname=${url}`, dbFile], password ? { PGPASSWORD: password } : {});
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
   }
 }
 
@@ -135,7 +162,7 @@ export async function restoreSnapshot(opts: RestoreOptions): Promise<RestoreRepo
   } else {
     say('Restoring the database with pg_restore');
     const { url, password } = splitPassword(opts.target.url);
-    await runCommand('pg_restore', ['--no-owner', '--no-acl', '--exit-on-error', `--dbname=${url}`, dbFile], password ? { PGPASSWORD: password } : {});
+    await restorePostgresDump(url, password, dbFile);
     opened = await openRestoredPostgres(opts.target.url);
   }
 

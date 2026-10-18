@@ -4,12 +4,15 @@ import 'server-only';
 // two approvals of the same request, a second BL1. Keystone runs every transaction SERIALIZABLE: PostgreSQL aborts one of
 // two transactions whose reads and writes overlap (SQLSTATE 40001, or 40P01 for a deadlock) and the transaction is run
 // again from the start on fresh data, up to TX_RETRY.attempts times. On PGlite transactions already run one at a time;
-// the same setting applies so both drivers behave alike.
+// the same setting applies so both drivers behave alike. On a PostgreSQL server, transactions also take Keystone's write
+// lock first and run one at a time (withWriteLockedTransactions below, shared EPC2I server).
 //
 // Consequence for writers: a transaction callback may run more than once. It must only touch the database through `tx`
 // (no HTTP call, no e-mail) and must not accumulate into variables declared outside the callback without resetting them.
 // Files stored inside a transaction (src/server/storage/files.ts) are safe: a rolled-back attempt leaves an orphan file
 // that pruneOrphanFiles() removes.
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { sql } from 'drizzle-orm';
 import type { PgTransactionConfig } from 'drizzle-orm/pg-core';
 import { log } from '@/server/log';
 import type { DB } from './types';
@@ -71,6 +74,39 @@ export function withSerializableTransactions<D extends DB>(db: D): D {
   if (holder[WRAPPED]) return db;
   const original: DB['transaction'] = db.transaction.bind(db);
   const transaction: DB['transaction'] = (cb, config?: PgTransactionConfig) => runWithRetry(() => original(cb, { isolationLevel: 'serializable', ...config }));
+  Object.defineProperty(db, 'transaction', { value: transaction, configurable: true, writable: true });
+  Object.defineProperty(db, WRAPPED, { value: true });
+  return db;
+}
+
+const inWriteLock = new AsyncLocalStorage<true>();
+
+/**
+ * PostgreSQL server (shared EPC2I server, plan § 4.5 in Matrix): every `db.transaction()` of this handle first takes Keystone's
+ * write lock — pg_advisory_xact_lock(hashtext(lockName)), released at commit or rollback — so Keystone's transactions run one
+ * after the other, as on PGlite, while plain reads stay parallel. Why on top of R-010: SERIALIZABLE + retry keeps the numbers
+ * right, but many simultaneous writers of the same "max + 1" (20 project creations at once on the test server) exhaust the
+ * retries and some fail with a serialization error; behind the lock none fails.
+ * The transaction runs READ COMMITTED (unless the caller asks for another level): under SERIALIZABLE the snapshot would be taken
+ * by the lock statement itself, before the wait, and the transaction would then read the state from before the previous
+ * holder's commit. Behind the lock the transactions are executed serially, which is at least as strong. A deadlock is still
+ * retried (runWithRetry). A top-level transaction opened inside the callback of another one (same async context) does not
+ * wait for the lock its caller holds.
+ */
+export function withWriteLockedTransactions<D extends DB>(db: D, lockName: string): D {
+  const holder = db as D & { [WRAPPED]?: true };
+  if (holder[WRAPPED]) return db;
+  const original: DB['transaction'] = db.transaction.bind(db);
+  const lock = sql`select pg_advisory_xact_lock(hashtext(${lockName}))`;
+  const transaction: DB['transaction'] = (cb, config?: PgTransactionConfig) => {
+    if (inWriteLock.getStore()) return runWithRetry(() => original(cb, { isolationLevel: 'read committed', ...config }));
+    return runWithRetry(() =>
+      original(async (tx) => {
+        await tx.execute(lock);
+        return inWriteLock.run(true, () => cb(tx));
+      }, { isolationLevel: 'read committed', ...config }),
+    );
+  };
   Object.defineProperty(db, 'transaction', { value: transaction, configurable: true, writable: true });
   Object.defineProperty(db, WRAPPED, { value: true });
   return db;

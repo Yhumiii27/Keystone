@@ -1,8 +1,10 @@
 // R-010: every db.transaction() runs SERIALIZABLE and is run again after a serialization failure or a deadlock.
 import { sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { drizzle } from 'drizzle-orm/pglite';
+import { PGlite } from '@electric-sql/pglite';
 import { openDatabase } from './open';
-import { TX_RETRY, isRetryableTransactionError, runWithRetry, sqlStateOf, withSerializableTransactions } from './transactions';
+import { TX_RETRY, isRetryableTransactionError, runWithRetry, sqlStateOf, withSerializableTransactions, withWriteLockedTransactions } from './transactions';
 import type { DB } from './types';
 
 const pgError = (code: string, message = 'pg error') => Object.assign(new Error(message), { code });
@@ -97,4 +99,18 @@ describe('withSerializableTransactions (PGlite)', () => {
     expect(runs).toBe(2);
     expect((await db.execute(sql`select n from tx_retry_probe order by n`)).rows).toEqual([{ n: 2 }]);
   });
+});
+
+// Shared EPC2I server (plan § 4.5 in Matrix): the server handle takes Keystone's write lock in every transaction. Checked here
+// on a bare PGlite (advisory locks are PostgreSQL's); the real concurrency is in postgres.integration.test.ts.
+describe('withWriteLockedTransactions', () => {
+  it('takes the write lock first and runs READ COMMITTED unless the caller asks otherwise', async () => {
+    const db = withWriteLockedTransactions(drizzle(new PGlite()) as unknown as DB, 'keystone.ecritures');
+    const state = async (tx: Pick<DB, 'execute'>) =>
+      (await tx.execute(sql`select current_setting('transaction_isolation') as level,
+        (select count(*)::int from pg_locks where locktype = 'advisory' and pid = pg_backend_pid()) as locks`)).rows[0];
+    expect(await db.transaction((tx) => state(tx))).toEqual({ level: 'read committed', locks: 1 });
+    expect(await db.transaction((tx) => state(tx), { isolationLevel: 'serializable' })).toEqual({ level: 'serializable', locks: 1 });
+    expect(withWriteLockedTransactions(db, 'other').transaction).toBe(db.transaction);
+  }, 60_000);
 });

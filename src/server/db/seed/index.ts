@@ -152,11 +152,17 @@ export async function seedIfEmpty(db: DB, opts: { mode?: SeedMode } = {}): Promi
     return false;
   }
   const mode = opts.mode ?? 'demo';
-  await db.transaction(async (tx) => {
+  // Emptiness is checked again inside the seeding transaction: of two processes that both found the database empty (two
+  // instances starting together), one seeds and the other finds it seeded — after it on a server (write lock, and
+  // `db:migrate` holds the migration lock), or run again after the serialization failure (SERIALIZABLE, R-010).
+  const seeded = await db.transaction(async (tx) => {
+    const [{ n: already }] = await tx.select({ n: sql<number>`count(*)::int` }).from(projects);
+    if (already > 0 || (await readSeedRecord(tx))) return false;
     if (mode === 'production') await seedReferenceData(tx);
     else await seedDemoData(tx);
     await writeSeedRecord(tx, mode);
+    return true;
   });
-  log.info('Database seeded', { component: 'seed', seed: mode });
-  return true;
+  if (seeded) log.info('Database seeded', { component: 'seed', seed: mode });
+  return seeded;
 }

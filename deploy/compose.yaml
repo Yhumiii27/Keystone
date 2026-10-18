@@ -1,6 +1,8 @@
 # Keystone PM on Coolify — a "Docker Compose" resource (R-003). Runbook in French: docs/EXPLOITATION.md § Coolify.
 #
-#   db       PostgreSQL 16 (named volume keystone-db), healthy when pg_isready answers
+#   db       PostgreSQL 16 (named volume keystone-db), healthy when pg_isready answers; postgres-init/ creates the schema
+#            `keystone` on an empty volume (Keystone's tables live there, never in public). To use the shared EPC2I server
+#            instead (decision M-01), drop this service and set DATABASE_URL to postgres://keystone_app:…@<host>:5432/epc2i.
 #   migrate  one-shot `npm run db:migrate` before every start (migrations, then the seed of an EMPTY database: KEYSTONE_SEED
 #            must be set — demo for the beta, production for reference data only); left out of Coolify's health status
 #   app      the web server (port 3000, behind Coolify's proxy and TLS); starts once the migration has succeeded
@@ -59,6 +61,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - keystone-db:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U keystone -d keystone"]
       interval: 10s
